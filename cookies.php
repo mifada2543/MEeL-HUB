@@ -1,4 +1,5 @@
 <?php
+session_name("meel");
 session_start();
 include 'auth/config.php';
 include '../helpers.php';

@@ -1,56 +1,31 @@
 <?php
-// index.php - Versi Optimasi MEeL Cloud
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+
 require '../auth/auth.php';
 require '../auth/config.php';
 require '../helpers.php';
+require __DIR__ . '/DriveService.php';
 
-// 1. Validasi Sesi & Role
-$user_id = $_SESSION['user_id'] ?? die("Sesi berakhir.");
-$user_role = $_SESSION['role'] ?? 'guest';
-$username = $_SESSION['username'] ?? 'User';
+$user = DriveUserContext::fromSession($_SESSION);
+$user->authorize();
 
-if (!in_array($user_role, ['admin', 'member'])) {
-    die(include '../err/denied.php');
+$storage = new DriveStorage(dirname(__DIR__) . '/data_drive', $user);
+$renderer = new DriveViewRenderer();
+$currentScope = $storage->normalizeScope($_GET['scope'] ?? DriveStorage::SCOPE_PUBLIC);
+
+$videos = $storage->listFilesByType('video', $currentScope);
+$audios = $storage->listFilesByType('audio', $currentScope);
+$documents = $storage->listFilesByType('dokumen', $currentScope);
+
+$usage = null;
+$usagePercentage = null;
+
+if ($user->isMember()) {
+    $usage = get_user_usage($user->username);
+    $limit = 20 * 1024 * 1024 * 1024;
+    $usagePercentage = min(100, ($usage / $limit) * 100);
 }
-
-// 2. Logika Scope
-$current_scope = (isset($_GET['scope']) && $_GET['scope'] === 'private') ? 'private' : 'public';
-
-// 3. Fungsi Pengambil File (Lebih Efisien)
-function fetch_drive_data($type, $scope, $username)
-{
-    $base_dir = ($scope === 'private')
-        ? "../data_drive/private_admins/{$username}/{$type}"
-        : "../data_drive/public/{$type}";
-
-    if (!is_dir($base_dir)) {
-        mkdir($base_dir, 0777, true);
-    }
-
-    $files = [];
-    $iterator = new DirectoryIterator($base_dir);
-    foreach ($iterator as $fileinfo) {
-        if (!$fileinfo->isDot() && $fileinfo->isFile()) {
-            $files[] = [
-                'name' => $fileinfo->getFilename(),
-                'size' => $fileinfo->getSize(),
-                'time' => $fileinfo->getMTime(),
-                'path' => $base_dir . '/' . $fileinfo->getFilename(),
-                'ext'  => strtolower($fileinfo->getExtension())
-            ];
-        }
-    }
-
-    // Sortir: Terbaru di atas
-    usort($files, fn($a, $b) => $b['time'] - $a['time']);
-    return $files;
-}
-
-$videos   = fetch_drive_data('video', $current_scope, $username);
-$audios   = fetch_drive_data('audio', $current_scope, $username);
-$dokumens = fetch_drive_data('dokumen', $current_scope, $username);
 ?>
 
 <!DOCTYPE html>
@@ -61,8 +36,8 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEeL Cloud | Dashboard</title>
     <link rel="icon" href="../assets/MEeL.png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="../assets/js/tailwind.js"></script>
+    <script src="../assets/js/lucide.js"></script>
     <link rel="stylesheet" href="../assets/css/drive.css">
     <style>
         :root {
@@ -96,7 +71,7 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
     <div class="flex min-h-screen">
         <aside class="w-64 glass border-r border-gray-800 hidden md:flex flex-col sticky top-0 h-screen">
             <div class="p-6">
-                <div class="flex items-center gap-3 mb-8">
+                <div class="flex items-center gap-3 mb-8" onclick="window.location.href='../index.php'" style="cursor: pointer;">
                     <img src="../assets/MEeL.png" class="w-10 h-10 rounded-xl shadow-lg shadow-blue-500/20" alt="Logo">
                     <div>
                         <h1 class="font-bold text-lg leading-none">MEeL <span class="text-blue-500">Cloud</span></h1>
@@ -106,10 +81,10 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
 
                 <nav class="space-y-1">
                     <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Scope</p>
-                    <a href="?scope=public" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $current_scope === 'public' ? 'nav-active' : '' ?>">
+                    <a href="?scope=public" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'public' ? 'nav-active' : '' ?>">
                         <i data-lucide="globe" class="w-5 h-5"></i> Public Space
                     </a>
-                    <a href="?scope=private" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $current_scope === 'private' ? 'nav-active' : '' ?>">
+                    <a href="?scope=private" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'private' ? 'nav-active' : '' ?>">
                         <i data-lucide="shield-check" class="w-5 h-5"></i> Private Cloud
                     </a>
                 </nav>
@@ -131,11 +106,11 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
             <div class="mt-auto p-4 border-t border-gray-800 bg-black/20">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold">
-                        <?= strtoupper(substr($username, 0, 1)) ?>
+                        <?= strtoupper(substr($user->username, 0, 1)) ?>
                     </div>
                     <div class="overflow-hidden">
-                        <p class="text-sm font-semibold truncate"><?= htmlspecialchars($username) ?></p>
-                        <p class="text-[10px] text-gray-500 uppercase"><?= $user_role ?></p>
+                        <p class="text-sm font-semibold truncate"><?= htmlspecialchars($user->username, ENT_QUOTES, 'UTF-8') ?></p>
+                        <p class="text-[10px] text-gray-500 uppercase"><?= htmlspecialchars($user->role, ENT_QUOTES, 'UTF-8') ?></p>
                     </div>
                 </div>
             </div>
@@ -158,28 +133,24 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
                 </div>
             </header>
 
-            <?php if ($user_role === 'member'):
-                $usage = get_user_usage($username);
-                $limit = 20 * 1024 * 1024 * 1024;
-                $perc = min(100, ($usage / $limit) * 100);
-            ?>
+            <?php if ($user->isMember() && $usage !== null && $usagePercentage !== null): ?>
                 <div class="glass rounded-2xl p-4 mb-8 flex items-center gap-6">
                     <div class="flex-1">
                         <div class="flex justify-between text-[11px] font-bold uppercase mb-2">
                             <span class="text-gray-400">Penyimpanan Terpakai</span>
-                            <span class="<?= $perc > 80 ? 'text-red-500' : 'text-blue-500' ?>"><?= format_bytes($usage) ?> / 20 GB</span>
+                            <span class="<?= $usagePercentage > 80 ? 'text-red-500' : 'text-blue-500' ?>"><?= format_bytes($usage) ?> / 20 GB</span>
                         </div>
                         <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
-                            <div class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500" style="width: <?= $perc ?>%"></div>
+                            <div class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500" style="width: <?= $usagePercentage ?>%"></div>
                         </div>
                     </div>
-                    <a href="index.php?scope=<?= $current_scope ?>" class="p-2 hover:bg-gray-800 rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></a>
+                    <a href="index.php?scope=<?= urlencode($currentScope) ?>" class="p-2 hover:bg-gray-800 rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></a>
                 </div>
             <?php endif; ?>
 
             <section class="glass rounded-2xl p-6 mb-8 border-dashed border-2 border-gray-800 hover:border-blue-500/50 transition-colors">
                 <form action="upload.php" method="POST" enctype="multipart/form-data" class="flex flex-col md:flex-row items-center gap-6">
-                    <input type="hidden" name="scope" value="<?= $current_scope ?>">
+                    <input type="hidden" name="scope" value="<?= htmlspecialchars($currentScope, ENT_QUOTES, 'UTF-8') ?>">
 
                     <div class="flex-1 w-full">
                         <label for="fileInput" class="flex items-center justify-center gap-3 p-4 bg-black/30 rounded-xl cursor-pointer hover:bg-black/50 transition border border-gray-800">
@@ -196,76 +167,16 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
             </section>
 
             <div id="drive-video" class="drive-section">
-                <?php render_file_grid_new($videos, '#ef4444', 'play', 'video', $current_scope); ?>
+                <?php $renderer->renderFileGrid($videos, '#ef4444', 'play', 'video', $currentScope); ?>
             </div>
             <div id="drive-audio" class="drive-section hidden">
-                <?php render_file_grid_new($audios, '#f97316', 'music', 'audio', $current_scope); ?>
+                <?php $renderer->renderFileGrid($audios, '#f97316', 'music', 'audio', $currentScope); ?>
             </div>
             <div id="drive-dokumen" class="drive-section hidden">
-                <?php render_file_grid_new($dokumens, '#10b981', 'file-text', 'dokumen', $current_scope); ?>
+                <?php $renderer->renderFileGrid($documents, '#10b981', 'file-text', 'dokumen', $currentScope); ?>
             </div>
         </main>
     </div>
-
-    <?php
-    // Fungsi Grid Baru yang Lebih Indah
-    function render_file_grid_new($files, $accent, $icon, $type, $scope)
-    {
-        if (empty($files)) {
-            echo '<div class="flex flex-col items-center justify-center py-20 opacity-20">
-                <i data-lucide="folder-open" class="w-16 h-16 mb-4"></i>
-                <p>Tidak ada file ditemukan</p>
-              </div>';
-            return;
-        }
-
-        echo '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">';
-
-        foreach ($files as $f) {
-            // 1. Persiapkan Data (Clean)
-            $name = htmlspecialchars($f['name'], ENT_QUOTES);
-            $path = htmlspecialchars($f['path'], ENT_QUOTES);
-            $size = format_bytes($f['size']);
-            $date = date('d M Y', $f['time']);
-
-            // 2. Persiapkan URL
-            $dl_url  = "download.php?file=" . urlencode($f['name']) . "&type=$type&scope=$scope";
-            $del_url = "delete.php?file=" . urlencode($f['name']) . "&type=$type&scope=$scope";
-
-            // 3. Render HTML
-            echo "
-        <div class='glass p-4 rounded-2xl group hover:border-blue-500/50 transition-all duration-300 transform hover:-translate-y-1 shadow-xl hover:shadow-blue-900/10'>
-            <div class='flex items-start justify-between mb-4'>
-                <div class='p-3 rounded-xl bg-gray-900 group-hover:bg-blue-500/10 transition'>
-                    <i data-lucide='$icon' class='w-6 h-6' style='color: $accent'></i>
-                </div>
-                
-                <div class='flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
-                    <button onclick=\"openPreview('$path', '$type', '$name')\" class='p-2 hover:bg-blue-500/20 rounded-lg text-blue-400' title='Pratinjau'>
-                        <i data-lucide='eye' class='w-4 h-4'></i>
-                    </button>
-                    
-                    <a href='$dl_url' class='p-2 hover:bg-green-500/20 rounded-lg text-green-400' title='Unduh'>
-                        <i data-lucide='download' class='w-4 h-4'></i>
-                    </a>
-                    
-                    <a href='$del_url' onclick=\"return confirm('Hapus file ini?')\" class='p-2 hover:bg-red-500/20 rounded-lg text-red-400' title='Hapus'>
-                        <i data-lucide='trash-2' class='w-4 h-4'></i>
-                    </a>
-                </div>
-            </div>
-
-            <h3 class='text-sm font-bold truncate mb-1 text-gray-200' title='$name'>$name</h3>
-            <div class='flex justify-between items-center text-[10px] text-gray-500 font-medium uppercase tracking-tighter'>
-                <span>$size</span>
-                <span>$date</span>
-            </div>
-        </div>";
-        }
-
-        echo '</div>';
-    }
-    ?>
 
     <div id="previewModal" class="hidden fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-[#161b2a] border border-gray-800 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl relative">
@@ -287,10 +198,8 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
     </div>
 
     <script>
-        // 1. Inisialisasi Ikon Lucide
         lucide.createIcons();
 
-        // 2. Data untuk UI Dynamics
         const counts = {
             video: document.querySelectorAll('#drive-video .glass').length,
             audio: document.querySelectorAll('#drive-audio .glass').length,
@@ -312,41 +221,37 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
             }
         };
 
-        // 3. Navigasi Antar Seksi (Video/Audio/Dokumen)
         function showSection(id, btn) {
-            // Sembunyikan semua seksi
-            document.querySelectorAll('.drive-section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('.drive-section').forEach(section => section.classList.add('hidden'));
 
-            // Tampilkan seksi yang dipilih
             const target = document.getElementById('drive-' + id);
-            if (target) target.classList.remove('hidden');
+            if (target) {
+                target.classList.remove('hidden');
+            }
 
-            // Update Styling Tombol Sidebar (Desktop)
-            document.querySelectorAll('.nav-btn-desktop').forEach(b => {
-                b.classList.remove('nav-active', 'text-blue-500');
-                b.classList.add('text-gray-400');
+            document.querySelectorAll('.nav-btn-desktop').forEach(button => {
+                button.classList.remove('nav-active', 'text-blue-500');
+                button.classList.add('text-gray-400');
             });
+
             if (btn) {
                 btn.classList.add('nav-active');
                 btn.classList.remove('text-gray-400');
             }
 
-            // Update Header Text & Warna
             const headingAccent = document.getElementById('sectionAccent');
             headingAccent.innerText = accents[id].label;
             headingAccent.className = accents[id].color;
 
             document.getElementById('fileCount').innerText = `${counts[id]} file ditemukan`;
-
-            // Re-render ikon jika ada konten baru
             lucide.createIcons();
         }
 
-        // 4. Update Nama File Saat Pilih Upload
         function updateFileName(input) {
             const label = document.getElementById('fileLabel');
+
             if (input.files.length > 0) {
-                label.innerText = "Siap unggah: " + input.files[0].name;
+                label.innerText = 'Siap unggah: ' + input.files[0].name;
                 label.classList.remove('text-gray-400');
                 label.classList.add('text-blue-400', 'font-bold');
             }
@@ -357,20 +262,14 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
             const content = document.getElementById('previewContent');
             const title = document.getElementById('previewTitle');
 
-            // Set Judul
             title.innerText = name;
-
-            // Tampilkan Modal
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-
-            // Loading state
             content.innerHTML = '<div class="text-gray-500 flex flex-col items-center"><div class="animate-spin mb-2">⏳</div> Memuat pratinjau...</div>';
 
             let html = '';
             const ext = name.split('.').pop().toLowerCase();
 
-            // Logika Pemilihan Player
             if (type === 'video') {
                 html = `
             <video controls autoplay class="max-w-full max-h-[75vh] rounded-lg shadow-2xl bg-black">
@@ -392,8 +291,8 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
                 <p class="text-gray-500 text-xs mt-4 truncate">${name}</p>
             </div>`;
             } else if (type === 'dokumen') {
-                const imgExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
-                if (imgExts.includes(ext)) {
+                const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+                if (imageExtensions.includes(ext)) {
                     html = `<img src="${path}" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl">`;
                 } else {
                     html = `
@@ -407,10 +306,11 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
                 }
             }
 
-            // Masukkan ke DOM dengan delay sedikit agar transisi mulus
             setTimeout(() => {
                 content.innerHTML = html;
-                if (window.lucide) lucide.createIcons();
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
             }, 200);
         }
 
@@ -418,34 +318,33 @@ $dokumens = fetch_drive_data('dokumen', $current_scope, $username);
             const modal = document.getElementById('previewModal');
             const content = document.getElementById('previewContent');
 
-            // Penting: Kosongkan innerHTML agar video/musik berhenti saat modal ditutup
-            content.innerHTML = '';
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+            content.innerHTML = '';
         }
 
-        // 6. Fitur Pencarian Sederhana (Client-side)
-        document.querySelector('input[placeholder="Cari file..."]').addEventListener('input', function(e) {
-            const keyword = e.target.value.toLowerCase();
-            const activeSection = document.querySelector('.drive-section:not(.hidden)');
-            const cards = activeSection.querySelectorAll('.glass');
+        document.getElementById('previewModal').addEventListener('click', event => {
+            if (event.target.id === 'previewModal') {
+                closePreview();
+            }
+        });
 
-            cards.forEach(card => {
-                const fileName = card.querySelector('h3').innerText.toLowerCase();
-                if (fileName.includes(keyword)) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
+        document.querySelector('input[placeholder="Cari file..."]').addEventListener('input', event => {
+            const keyword = event.target.value.toLowerCase();
+            const activeSection = document.querySelector('.drive-section:not(.hidden)');
+
+            if (!activeSection) {
+                return;
+            }
+
+            activeSection.querySelectorAll('.glass').forEach(card => {
+                const fileName = card.querySelector('h3')?.innerText.toLowerCase() ?? '';
+                card.style.display = fileName.includes(keyword) ? 'block' : 'none';
             });
         });
 
-        // Jalankan hitung file pertama kali
-        document.addEventListener('DOMContentLoaded', () => {
-            showSection('video', document.querySelector('.nav-btn-desktop.active'));
-        });
+        showSection('video', document.querySelector('.nav-btn-desktop.active'));
     </script>
-
 </body>
 
 </html>
