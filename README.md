@@ -584,7 +584,7 @@ Untuk pengembangan lebih lanjut:
 
 ## 📄 Lisensi
 
-Aplikasi ini adalah proprietary software. Penggunaan hanya untuk keperluan internal.
+License Notice: MEeL is a proprietary software. All rights are reserved by the author (Mifada). See the LICENSE file for more details.
 
 ---
 
