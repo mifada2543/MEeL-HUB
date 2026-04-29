@@ -1,0 +1,139 @@
+<?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+session_name('meel');
+session_start();
+include '../auth/config.php';
+include '../helpers.php';
+require_once '../auth/MediaLibrary.php';
+
+$library    = new MediaLibrary($conn);
+$limit_init = 8;
+$data       = $library->getVideos($limit_init, 0);
+$total      = $library->countVideos();
+?>
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.7">
+    <title>MEeL Video | Library</title>
+    <?php include '../partials/link.php'; ?>
+    <link rel="stylesheet" href="../assets/css/video.css">
+    <script src="../assets/js/tailwind.js"></script>
+    <script src="../assets/js/lucide.js"></script>
+    <script src="../assets/js/htmx.js"></script>
+    <style>
+        :root {
+            --font-display: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 2.2rem;
+            letter-spacing: .06em;
+            color: #f0f2f7;
+            line-height: 1;
+        }
+    </style>
+</head>
+
+<body class="text-gray-400 min-h-screen">
+
+    <!-- NAVBAR -->
+    <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between gap-4">
+            <a href="../index.php" class="flex items-center gap-2.5 flex-shrink-0" title="MEeL HUB">
+                <div class="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center">
+                    <i data-lucide="play" class="w-3.5 h-3.5 text-white fill-current"></i>
+                </div>
+                <span class="text-sm font-bold tracking-tight text-white uppercase">
+                    MEeL<span class="text-red-500">Video</span>
+                </span>
+            </a>
+
+            <div class="flex-1 max-w-sm flex items-center gap-2">
+                <div class="relative flex-1 group" title="Cari">
+                    <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-red-500 transition-colors"></i>
+                    <input type="text"
+                        id="v-search"
+                        name="search"
+                        placeholder="Cari video..."
+                        title="Cari Video"
+                        class="w-full bg-white/[.04] border border-white/[.06] rounded-xl py-2 pl-9 pr-4 text-xs focus:outline-none focus:border-red-500/40 transition-all text-gray-300"
+                        hx-get="search_video.php"
+                        hx-trigger="keyup[key=='Enter']"
+                        hx-target="#video-container"
+                        hx-indicator="#search-indicator"
+                        autocomplete="off">
+                </div>
+
+                <button hx-get="search_video.php"
+                    hx-include="#v-search"
+                    hx-target="#video-container"
+                    hx-indicator="#search-indicator"
+                    title="Cari"
+                    class="px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-red-500 hover:border-red-500/30 transition-all flex-shrink-0">
+                    Cari
+                </button>
+
+                <div id="search-indicator" class="htmx-indicator ml-2">
+                    <div class="animate-spin h-3 w-3 border-2 border-red-500 border-t-transparent rounded-full"></div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-5 text-[10px] font-bold uppercase tracking-wider flex-shrink-0" title="MEeL Music">
+                <a href="../music/index.php" class="flex items-center gap-1.5 text-gray-600 hover:text-orange-500 transition-all">
+                    <i data-lucide="music" class="w-3.5 h-3.5"></i> Music
+                </a>
+                <?php include '../partials/nav.php'; ?>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-5 pt-8 pb-20">
+
+        <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
+            <div>
+                <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Library</div>
+                <div class="section-title">VIDEO</div>
+            </div>
+            <span class="text-[10px] text-gray-700 uppercase tracking-widest"><?= $total ?> clips</span>
+        </div>
+
+        <!-- [FIX] offset load_more sesuai $limit_init (8), bukan 10 -->
+        <div id="video-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5" title="Muat lebih banyak">
+            <?php if ($data && $data->num_rows > 0): ?>
+                <?php while ($v = $data->fetch_assoc()): ?>
+                    <?php include 'video_card.php'; ?>
+                <?php endwhile; ?>
+            <?php endif; ?>
+
+            <?php if ($total > $limit_init): ?>
+                <div id="load-more-area"
+                    class="aspect-video flex items-center justify-center bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl cursor-pointer hover:border-red-500/30 hover:bg-white/[.03] transition-all group"
+                    hx-get="load_more.php?offset=<?= $limit_init ?>"
+                    hx-target="#load-more-area"
+                    hx-swap="outerHTML">
+                    <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-700 group-hover:text-red-500 transition-colors">
+                        Muat Lebih Banyak
+                    </span>
+                </div>
+            <?php endif; ?>
+        </div>
+    </main>
+
+    <footer class="py-8 border-t border-white/[.03]">
+        <p class="text-center text-[9px] text-gray-800 uppercase tracking-[.5em]">MEeL Video • 2025</p>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+        document.body.addEventListener('htmx:afterOnLoad', function(evt) {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+
+</html>

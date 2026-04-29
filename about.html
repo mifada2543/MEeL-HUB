@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="assets/MEeL.png">
+    <title>MEeL Founder | Portfolio</title>
+    <script src="assets/js/tailwind.js"></script>
+    <!-- Lucide Icons Library -->
+    <script src="assets/js/lucide.js"></script>
+    <style>
+        :root {
+            --bg-dark: #05060a;
+            --meel-blue: #3b82f6;
+            --meel-orange: #f97316;
+            --meel-green: #22c55e;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-glow: rgba(59, 130, 246, 0.12);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* Latar Belakang Grid */
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+        }
+
+        /* Cahaya Mengikuti Mouse */
+        .hero-glow {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: -1;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.5s ease;
+        }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), 
+                        background 0.4s ease, 
+                        box-shadow 0.4s ease,
+                        border-color 0.4s ease;
+        }
+
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-8px);
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 12px 40px -10px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Navigasi */
+        nav.glass-nav {
+            background: rgba(5, 6, 10, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .nav-link {
+            position: relative;
+            transition: color 0.3s ease;
+            padding: 0.5rem 0;
+            color: #9ca3af;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--meel-blue);
+            box-shadow: 0 0 10px var(--meel-blue);
+            transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+            transform: translateX(-50%);
+        }
+
+        .nav-link:hover, .nav-link.active-link {
+            color: white;
+        }
+
+        .nav-link:hover::after, .nav-link.active-link::after {
+            width: 100%;
+        }
+
+        .meel-logo-box {
+            font-family: 'JetBrains Mono', monospace;
+            text-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Animasi */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--meel-blue); }
+    </style>
+</head>
+<body>
+
+    <div class="grid-bg"></div>
+    <div class="hero-glow" id="cursor-glow"></div>
+
+    <!-- Navigasi -->
+    <nav class="fixed top-8 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl z-50 py-3 px-8 flex justify-between items-center rounded-full glass-nav">
+        <div class="flex items-center space-x-3" onclick="window.location.href='index.php'">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white meel-logo-box shadow-lg shadow-blue-500/30">M</div>
+            <span class="text-lg font-bold tracking-tighter uppercase">MEeL <span class="text-blue-500">FOUNDER</span></span>
+        </div>
+        
+        <div id="nav-menu" class="hidden md:flex space-x-8 text-[11px] font-bold uppercase tracking-widest">
+            <a href="#home" class="nav-link active-link" data-section="home">Home</a>
+            <a href="#galeri" class="nav-link" data-section="galeri">Galeri</a>
+            <a href="#kontak" class="nav-link" data-section="kontak">Kontak</a>
+        </div>
+
+        <div class="hidden sm:flex text-[9px] font-mono text-green-500 items-center bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
+            <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-2 animate-pulse"></span> SYSTEM_LIVE
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="min-h-screen flex flex-col justify-center items-center px-6 text-center pt-24">
+        <div class="reveal">
+            <p class="text-blue-500 font-mono tracking-[0.4em] text-xs mb-6 uppercase bg-blue-500/10 px-4 py-2 rounded-full inline-block border border-blue-500/20">Architect of Digital Ecosystem</p>
+            <h1 class="text-7xl md:text-9xl font-extrabold mb-8 tracking-tighter leading-none">
+                MEeL <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">HUB</span>
+            </h1>
+            <p class="max-w-2xl mx-auto text-gray-400 text-lg md:text-xl leading-relaxed mb-12">
+                Membangun masa depan hiburan lokal melalui platform streaming terintegrasi. 
+                Fokus pada minimalisme, kecepatan, dan pengalaman pengguna yang imersif.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <a href="#galeri" class="w-full sm:w-auto px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2">
+                    Eksplorasi Proyek <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </a>
+                <a href="#kontak" class="w-full sm:w-auto px-10 py-4 glass-card rounded-xl font-bold transition-all flex items-center justify-center text-white">
+                    Hubungi Saya
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section id="galeri" class="py-32 px-6 max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-end mb-16 space-y-6">
+            <div class="reveal">
+                <h2 class="text-5xl font-extrabold mb-4 tracking-tight">Karya <span class="text-blue-500">Saya</span></h2>
+                <p class="text-gray-500 text-lg max-w-md">Dokumentasi evolusi antarmuka dan sistem MEeL Ecosystem.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="reveal glass-card p-6 rounded-3xl group cursor-pointer">
+                <div class="w-12 h-12 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500 mb-6">
+                    <i data-lucide="play-circle" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3 text-white group-hover:text-red-400 transition-colors">Video Portal</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">Streaming lokal koleksi video eksklusif dengan performa ultra cepat.</p>
+            </div>
+
+            <div class="reveal glass-card p-6 rounded-3xl group cursor-pointer" style="transition-delay: 100ms;">
+                <div class="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-500 mb-6">
+                    <i data-lucide="music" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3 text-white group-hover:text-orange-400 transition-colors">Music Stream</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">Koleksi audio lossless tanpa kompresi untuk pengalaman auditif murni.</p>
+            </div>
+
+            <div class="reveal glass-card p-6 rounded-3xl group cursor-pointer" style="transition-delay: 200ms;">
+                <div class="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500 mb-6">
+                    <i data-lucide="book-open" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3 text-white group-hover:text-green-400 transition-colors">Digital Books</h3>
+                <p class="text-gray-500 text-sm leading-relaxed">Arsip komik dan buku digital interaktif dalam satu genggaman.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="kontak" class="py-32 px-6">
+        <div class="max-w-4xl mx-auto glass-card p-12 md:p-20 rounded-[3rem] text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
+            
+            <div class="reveal">
+                <h2 class="text-5xl font-extrabold mb-6 tracking-tight">Mulai <span class="text-blue-500">Kolaborasi</span></h2>
+                <p class="text-gray-400 text-lg mb-16 max-w-xl mx-auto">Mari diskusikan ide-ide kreatif Anda bersama saya.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 reveal">
+                <a href="https://github.com/mifada2543" target="_blank" class="flex flex-col items-center p-8 glass-card rounded-3xl group">
+                    <div class="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i data-lucide="github" class="w-10 h-10 text-white"></i>
+                    </div>
+                    <span class="font-bold text-lg text-white">GitHub</span>
+                    <span class="text-sm text-gray-500 mt-2">@mifada2543</span>
+                </a>
+                
+                <a href="mailto:minecraft.daffa2501@gmail.com" class="flex flex-col items-center p-8 glass-card rounded-3xl group">
+                    <div class="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 text-blue-500 group-hover:scale-110 transition-transform">
+                        <i data-lucide="mail" class="w-10 h-10"></i>
+                    </div>
+                    <span class="font-bold text-lg text-white">Email</span>
+                    <span class="text-sm text-gray-500 mt-2">Kontak Langsung</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-16 px-6 text-center border-t border-white/5">
+        <div class="flex flex-col items-center space-y-6">
+            <div class="text-[10px] text-gray-700 uppercase tracking-[0.3em]">Built with Glassmorphism & Lucide Icons</div>
+        </div>
+    </footer>
+
+    <script>
+        // Inisialisasi Lucide Icons
+        lucide.createIcons();
+
+        // Reveal Animation Logic
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.classList.add("active");
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
+
+        // Active Link Tracking
+        const sections = document.querySelectorAll("section");
+        const navLinks = document.querySelectorAll(".nav-link");
+
+        const navObserverOptions = {
+            threshold: 0.5,
+            rootMargin: "-10% 0px -40% 0px"
+        };
+
+        const navObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    const activeId = entry.target.getAttribute("id");
+                    navLinks.forEach((link) => {
+                        link.classList.remove("active-link");
+                        if (link.getAttribute("data-section") === activeId) {
+                            link.classList.add("active-link");
+                        }
+                    });
+                }
+            });
+        }, navObserverOptions);
+
+        sections.forEach((section) => navObserver.observe(section));
+
+        // Cursor Glow
+        const glow = document.getElementById('cursor-glow');
+        let curX = 0, curY = 0, tgX = 0, tgY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            tgX = e.clientX;
+            tgY = e.clientY;
+        });
+
+        function updateGlow() {
+            curX += (tgX - curX) * 0.1;
+            curY += (tgY - curY) * 0.1;
+            glow.style.left = `${curX}px`;
+            glow.style.top = `${curY}px`;
+            requestAnimationFrame(updateGlow);
+        }
+        updateGlow();
+
+        // Smooth Scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

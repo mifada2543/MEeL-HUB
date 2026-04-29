@@ -1,0 +1,439 @@
+<?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+include 'auth/config.php';
+include 'auth/auth.php';
+include_once 'auth/activity_logger.php';
+if (!isset($_SESSION['user_id'])) {
+    die(include 'err/denied.php');
+}
+include 'fun.php';
+?>
+
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MEeL | System Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="assets/MEeL.png">
+    <script src="assets/js/tailwind.js"></script>
+    <script src="assets/js/lucide.js"></script>
+    <style>
+        body {
+            background-color: #0b0e14;
+        }
+
+        .glass {
+            background: rgba(22, 27, 34, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+
+<body class="text-gray-300 p-4 md:p-8 font-sans">
+    <div class="max-w-5xl mx-auto">
+
+        <div class="flex justify-between items-center mb-10">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-orange-500/20 rounded-2xl"><i data-lucide="activity" class="text-orange-500 w-6 h-6"></i></div>
+                <div>
+                    <h1 class="text-2xl font-bold text-white tracking-tight">System Admin</h1>
+                    <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Admin Center</p>
+                </div>
+            </div>
+            <a href="index.php" class="p-2 hover:bg-gray-800 rounded-xl transition-all"><i data-lucide="x" class="w-6 h-6 text-gray-500"></i></a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="glass rounded-3xl lg:col-span-2 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-700">
+                <div class="p-8 md:w-5/12 flex flex-col justify-center">
+                    <h3 class="text-sm font-bold text-gray-400 uppercase mb-4 tracking-wider">SSD Nvme Storage</h3>
+                    <div class="flex items-baseline gap-2 mb-4">
+                        <span class="text-5xl font-black text-white"><?= number_format($ssd_free, 1) ?></span>
+                        <span class="text-lg font-bold text-gray-500">GB Free</span>
+                    </div>
+                    <p class="text-xs text-gray-500 uppercase font-bold tracking-widest">Usage: <?= number_format($ssd_used, 1) ?> / <?= number_format($ssd_total, 1) ?> GB</p>
+                </div>
+
+                <div class="p-8 md:w-7/12">
+                    <div class="flex justify-between items-start mb-6">
+                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">MEeL Media Storage</h3>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-black text-white"><?= number_format($hdd_free, 1) ?></span>
+                            <span class="text-sm font-bold text-gray-500">GB Free</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-5">
+                        <div>
+                            <h4 class="text-sm font-bold text-red-500 mb-1">Video</h4>
+                            <div class="w-full bg-gray-800/80 h-2 rounded-full mb-1">
+                                <div class="bg-red-500 h-full rounded-full" style="width:<?= $p_vid ?>%"></div>
+                            </div>
+                            <p class="text-[11px] text-gray-500 font-medium">Size: <?= number_format($sz_vid, 2) ?> GB</p>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-bold text-orange-500 mb-1">Music</h4>
+                            <div class="w-full bg-gray-800/80 h-2 rounded-full mb-1">
+                                <div class="bg-orange-500 h-full rounded-full" style="width:<?= $p_mus ?>%"></div>
+                            </div>
+                            <p class="text-[11px] text-gray-500 font-medium">Size: <?= number_format($sz_mus, 2) ?> GB</p>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-bold text-green-500 mb-1">Books</h4>
+                            <div class="w-full bg-gray-800/80 h-2 rounded-full mb-1">
+                                <div class="bg-green-500 h-full rounded-full" style="width:<?= $p_book ?>%"></div>
+                            </div>
+                            <p class="text-[11px] text-gray-500 font-medium">Size: <?= number_format($sz_book, 2) ?> GB</p>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-bold text-blue-500 mb-1">Drive</h4>
+                            <div class="w-full bg-gray-800/80 h-2 rounded-full mb-1">
+                                <div class="bg-blue-500 h-full rounded-full" style="width:<?= $p_drive ?>%"></div>
+                            </div>
+                            <p class="text-[11px] text-gray-500 font-medium">Public: <?= number_format($sz_d_pub, 2) ?> GB | Private: <?= number_format($sz_d_prv, 2) ?> GB</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass p-6 rounded-3xl lg:col-span-1 flex flex-col justify-between border border-white/5">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Global Analytics</h3>
+                    </div>
+
+                    <div class="space-y-3 mb-6">
+                        <div class="flex justify-between items-center text-[11px]">
+                            <span class="text-gray-500">Total Views</span>
+                            <span class="text-white font-mono font-bold"><?= number_format($stats['total_views']) ?></span>
+                        </div>
+                        <div class="flex justify-between items-center text-[11px]">
+                            <span class="text-gray-500">Total Likes</span>
+                            <span class="text-green-500 font-mono font-bold">+<?= number_format($stats['total_likes']) ?></span>
+                        </div>
+                        <div class="flex justify-between items-center text-[11px]">
+                            <span class="text-gray-500">Total Dislikes</span>
+                            <span class="text-red-500 font-mono font-bold">-<?= number_format($stats['total_dislikes']) ?></span>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-white/5">
+                        <p class="text-[9px] font-black text-gray-600 uppercase mb-3 tracking-tighter">Most Viewed Content</p>
+                        <div class="space-y-2">
+                            <?php while ($tm = $top_media->fetch_assoc()):
+                                $link = ($tm['type'] == 'video') ? "video/watch.php?id=" : "music/watch.php?id=";
+                                $color = ($tm['type'] == 'video') ? "text-red-500" : "text-orange-500";
+                                $icon = ($tm['type'] == 'video') ? "play-circle" : "music-2";
+                            ?>
+                                <a href="<?= $link . $tm['id'] ?>" class="flex items-center gap-3 p-2 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-all group">
+                                    <div class="p-2 bg-gray-800 rounded-lg group-hover:scale-110 transition-transform">
+                                        <i data-lucide="<?= $icon ?>" class="w-3.5 h-3.5 <?= $color ?>"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-[10px] font-bold text-white truncate group-hover:text-blue-400"><?= htmlspecialchars($tm['title']) ?></p>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[8px] uppercase font-black <?= $color ?>"><?= $tm['type'] ?></span>
+                                            <span class="text-[8px] text-gray-600 font-mono"><?= number_format($tm['views']) ?> Views</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            <?php endwhile; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="cookies.php" class="block mt-6 text-center text-[9px] text-blue-400 border border-blue-400/20 py-2.5 rounded-xl hover:bg-blue-400 hover:text-white font-black uppercase tracking-widest transition-all">
+                    Full Reports
+                </a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <?php
+            $cards = [
+                ['label' => 'Video', 'val' => $stats['video'], 'icon' => 'video', 'color' => 'text-red-500'],
+                ['label' => 'Music', 'val' => $stats['music'], 'icon' => 'music', 'color' => 'text-orange-500'],
+                ['label' => 'Books', 'val' => $stats['books'], 'icon' => 'book-open', 'color' => 'text-blue-500'], // Card Baru
+                ['label' => 'Pending', 'val' => $stats['pending'], 'icon' => 'user-plus', 'color' => 'text-yellow-500']
+            ];
+            foreach ($cards as $c): ?>
+                <div class="glass p-4 rounded-2xl border-l-4 border-gray-700">
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1"><?= $c['label'] ?></p>
+                    <div class="flex items-center justify-between"><span class="text-xl font-bold text-white"><?= $c['val'] ?></span><i data-lucide="<?= $c['icon'] ?>" class="w-4 h-4 <?= $c['color'] ?> opacity-50"></i></div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <?php if ($pending_users->num_rows > 0): ?>
+            <div class="glass rounded-3xl overflow-hidden mb-8 border border-yellow-500/20">
+                <div class="p-4 bg-yellow-500/5 border-b border-white/5">
+                    <h3 class="text-xs font-bold text-white uppercase">Verification Queue (<?= $stats['pending'] ?>)</h3>
+                </div>
+                <table class="w-full text-left text-xs">
+                    <tbody class="divide-y divide-white/5">
+                        <?php while ($u = $pending_users->fetch_assoc()): ?>
+                            <tr class="hover:bg-white/[0.02]">
+                                <td class="py-4 px-6 font-bold text-white"><?= htmlspecialchars($u['username']) ?></td>
+                                <td class="py-4 px-6 text-right space-x-2">
+                                    <a href="?approve_id=<?= $u['id'] ?>" class="bg-green-600 text-white px-4 py-1.5 rounded-xl font-bold text-[10px]">APPROVE</a>
+                                    <a href="?reject_id=<?= $u['id'] ?>" class="bg-red-600/20 text-red-500 px-4 py-1.5 rounded-xl font-bold text-[10px] border border-red-500/20">REJECT</a>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+
+        <div class="glass p-6 rounded-3xl mb-8">
+            <h3 class="text-xs font-bold text-gray-500 uppercase mb-4">Database Sync Check</h3>
+            <?php if (count($orphans) > 0): ?>
+                <div class="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl">
+                    <p class="text-xs text-red-400 mb-2">Ditemukan <?= count($orphans) ?> file sampah (tidak ada di DB):</p>
+                    <ul class="text-[9px] font-mono text-gray-500 max-h-24 overflow-y-auto mb-4"><?php foreach ($orphans as $o) echo "<li>- $o</li>"; ?></ul>
+                    <form method="POST"><input type="hidden" name="files_to_delete" value='<?= json_encode($orphans) ?>'><button name="clean_orphans" class="bg-red-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl hover:bg-red-700 transition-all uppercase">Bersihkan SSD Thinkpad</button></form>
+                </div>
+            <?php else: ?>
+                <p class="text-xs text-green-500 font-bold uppercase tracking-widest flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Semua file di SSD sinkron dengan Database</p>
+            <?php endif; ?>
+        </div>
+        <div class="glass rounded-3xl overflow-hidden mb-8 border border-white/5">
+            <div class="p-6 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="users" class="w-5 h-5 text-blue-500"></i>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase">User Account Management</h3>
+                </div>
+                <span class="text-[9px] text-gray-600 font-mono">Total: <?= ($all_users) ? $all_users->num_rows : 0 ?> Accounts</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-white/[0.03] text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                        <tr>
+                            <th class="py-3 px-6">ID & Username</th>
+                            <th class="py-3 px-4">Role</th>
+                            <th class="py-3 px-4 text-center">Status</th>
+                            <th class="py-3 px-4">Registered</th>
+                            <th class="py-3 px-6 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        <?php
+                        if ($all_users && $all_users->num_rows > 0):
+                            while ($u = $all_users->fetch_assoc()):
+                        ?>
+                                <tr class="hover:bg-white/[0.02] transition-colors">
+                                    <td class="py-4 px-6">
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-white"><?= htmlspecialchars($u['username']) ?></span>
+                                            <span class="text-[10px] text-gray-500 font-mono">#ID-<?= $u['id'] ?></span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-4">
+                                        <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase <?= $u['role'] === 'admin' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20' ?>">
+                                            <?= $u['role'] ?>
+                                        </span>
+                                    </td>
+                                    <td class="py-4 px-4 text-center">
+                                        <span class="text-[10px] font-bold uppercase <?= $u['is_active'] == 1 ? 'text-green-500' : 'text-yellow-500' ?>">
+                                            <?= $u['is_active'] == 1 ? 'Active' : 'Pending' ?>
+                                        </span>
+                                    </td>
+                                    <td class="py-4 px-4 text-gray-500 font-mono text-[10px]">
+                                        <?= date('d/m/Y', strtotime($u['created_at'])) ?>
+                                    </td>
+                                    <td class="py-4 px-6 text-right">
+                                        <?php
+                                        // Tombol Hapus HANYA muncul jika role BUKAN admin
+                                        if ($u['role'] !== 'admin'):
+                                        ?>
+                                            <a href="?delete_user_id=<?= $u['id'] ?>"
+                                                onclick="return confirm('Hapus permanen user <?= $u['username'] ?>?')"
+                                                class="bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold text-[10px] uppercase">
+                                                Delete
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="text-[9px] text-gray-600 italic">Protected</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                        <?php
+                            endwhile;
+                        endif;
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="glass rounded-3xl overflow-hidden shadow-2xl" id="monitor">
+            <div class="p-6 border-b border-white/5 justify-between flex items-center">
+                <h3 class="text-xs font-bold text-gray-500 uppercase">Live Activity Monitor</h3>
+                <form method="POST" onsubmit="return confirm('Hapus semua Guest?');">
+                    <button name="clear_all_guests" class="group flex flex-col items-end gap-1">
+                        <div class="flex items-center gap-2 text-[9px] bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold uppercase">
+                            <i data-lucide="shield-alert" class="w-3 h-3"></i>
+                            Clean Inactive Guests
+                        </div>
+                        <span class="text-[8px] text-gray-600 font-mono tracking-tighter uppercase pr-1">Target: is_active = 0</span>
+                    </button>
+                </form>
+            </div>
+
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-white/[0.02] text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                        <tr>
+                            <th class="py-3 px-6">User</th>
+                            <th class="py-3 px-4 text-center">Status</th>
+                            <th class="py-3 px-4">Last Page</th>
+                            <th class="py-3 px-6 text-right">Activity</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        <?php while ($row = $result_monitor->fetch_assoc()):
+                            $is_online = (time() - strtotime($row['last_activity'])) < 300;
+                            $is_cloud = strpos($row['access_via'] ?? '', 'trycloudflare.com') !== false;
+                            $is_mobile = strpos($row['user_agent'] ?? '', 'Smartphone') !== false || strpos($row['user_agent'] ?? '', 'Android') !== false;
+                        ?>
+                            <tr class="group hover:bg-white/[0.02] transition-colors">
+                                <td class="py-4 px-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-bold <?= $row['role'] === 'guest' ? 'text-gray-500 italic' : 'text-white' ?>">
+                                            <a href="profile/?u=<?= $row['username'] ?>"><?= htmlspecialchars($row['username']) ?></a>
+                                        </span>
+                                        <?php if ($row['role'] === 'guest'): ?>
+                                            <span class="text-[7px] bg-white/5 text-gray-500 px-1 rounded border border-white/10 uppercase font-black">Guest</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-white">
+                                            <?= htmlspecialchars($row['user_agent']) ?>
+                                        </span>
+
+                                        <div class="flex items-center gap-1 mt-1">
+                                            <code class="text-[10px] bg-gray-800 text-cyan-400 px-1 rounded border border-gray-700 font-mono select-all">
+                                                <?= htmlspecialchars($row['ip_address'] ?? 'Unknown') ?>
+                                            </code>
+
+                                            <?php if (!empty($row['ip_address']) && $row['ip_address'] !== 'Unknown'): ?>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <span class="text-[9px] text-gray-600">
+                                            <?= htmlspecialchars($row['access_via']) ?>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-2">
+                                    <div class="flex items-center gap-2 <?= $is_online ? 'text-green-500' : 'text-gray-600' ?>">
+                                        <span class="h-1.5 w-1.5 rounded-full <?= $is_online ? 'bg-green-500 animate-pulse' : 'bg-gray-700' ?>"></span>
+                                        <span class="text-[10px] font-black uppercase tracking-tighter"><?= $is_online ? 'Online' : 'Offline' ?></span>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-2">
+                                    <code class="text-[10px] bg-orange-500/10 text-orange-500 px-2 py-1 rounded border border-orange-500/20 font-mono"><?= htmlspecialchars($row['last_page']) ?></code>
+                                </td>
+                                <td class="py-4 px-6 text-right">
+                                    <div class="flex items-center justify-end gap-3">
+                                        <span class="text-xs text-gray-400 font-mono"><?= date('H:i:s', strtotime($row['last_activity'])) ?></span>
+
+                                        <?php
+                                        // Hitung ulang status online di dalam loop agar akurat
+                                        $is_online = (time() - strtotime($row['last_activity'])) < 300;
+
+                                        if ($is_online && $row['username'] !== $_SESSION['username'] && $row['role'] !== 'guest'):
+                                        ?>
+                                            <a href="?kick_user=<?= urlencode($row['username']) ?>"
+                                                onclick="return confirm('Tendang <?= $row['username'] ?>? User akan langsung offline.')"
+                                                class="p-1.5 bg-red-600/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-600 hover:text-white transition-all"
+                                                title="Kick Active User">
+                                                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                                            </a>
+                                        <?php elseif (!$is_online && $row['username'] !== $_SESSION['username']): ?>
+                                            <span class="p-1.5 bg-gray-800/30 text-gray-700 rounded-lg border border-gray-800/50 cursor-not-allowed" title="User is already offline">
+                                                <i data-lucide="user-minus" class="w-3.5 h-3.5"></i>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="glass rounded-3xl overflow-hidden shadow-2xl mt-8 border border-red-500/20" id="unban">
+            <div class="p-6 border-b border-white/5 bg-red-500/5 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="shield-alert" class="w-5 h-5 text-red-500"></i>
+                    <h3 class="text-xs font-bold text-red-500 uppercase">Firewall & Banned IPs</h3>
+                </div>
+                <span class="text-[10px] text-gray-500 uppercase">Protected by MEeL Security</span>
+            </div>
+
+            <div class="p-6">
+                <form method="POST" class="flex flex-col gap-2 mb-6">
+                    <div class="flex gap-2">
+                        <input type="text" name="ip_target" placeholder="IP Address..."
+                            class="bg-gray-800 text-white text-xs px-4 py-2 rounded-xl border border-gray-700 focus:border-red-500 outline-none w-1/3" required>
+
+                        <input type="text" name="ban_reason" placeholder="Alasan pemblokiran (Contoh: Percobaan Brute Force)..."
+                            class="bg-gray-800 text-white text-xs px-4 py-2 rounded-xl border border-gray-700 focus:border-red-500 outline-none w-2/3">
+                    </div>
+
+                    <button type="submit" name="ban_ip"
+                        class="w-full bg-red-600 hover:bg-red-700 text-white text-[10px] font-black py-2 rounded-xl transition-all uppercase tracking-widest">
+                        EKSEKUSI BAN IP 🚫
+                    </button>
+                </form>
+
+                <?php if ($banned_ips->num_rows > 0): ?>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="text-gray-500 uppercase text-[9px] font-black">
+                                <tr>
+                                    <th class="py-2">IP Address</th>
+                                    <th class="py-2">Reason</th>
+                                    <th class="py-2">Time</th>
+                                    <th class="py-2 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-800">
+                                <?php while ($ban = $banned_ips->fetch_assoc()): ?>
+                                    <tr>
+                                        <td class="py-3 font-mono text-red-400 font-bold"><?= $ban['ip_address'] ?></td>
+                                        <td class="py-3 text-gray-400"><?= $ban['reason'] ?></td>
+                                        <td class="py-3 text-gray-500"><?= $ban['banned_at'] ?></td>
+                                        <td class="py-3 text-right">
+                                            <a href="?unban_ip=<?= $ban['ip_address'] ?>" class="text-[9px] border border-green-500/30 text-green-500 px-3 py-1 rounded hover:bg-green-500 hover:text-white transition">UNBAN</a>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <p class="text-center text-xs text-gray-500 py-4">Belum ada IP yang di-banned. Aman terkendali, Akiro! 🛡️</p>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <script>
+        lucide.createIcons();
+        setTimeout(() => {
+            location.reload();
+        }, 60000);
+    </script>
+</body>
+
+</html>

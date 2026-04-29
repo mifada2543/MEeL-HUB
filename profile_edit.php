@@ -1,0 +1,130 @@
+<?php
+require_once 'auth/auth.php';
+require_once 'auth/config.php';
+
+// Pastikan hanya user yang login bisa akses
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$msg = "";
+
+if (isset($_POST['update_profile'])) {
+    $bio = mysqli_real_escape_string($conn, $_POST['bio']);
+
+    // 1. UPDATE BIO & DATA TEKS
+    $stmt = $conn->prepare("UPDATE users SET bio = ? WHERE id = ?");
+    $stmt->bind_param("si", $bio, $user_id);
+    $stmt->execute();
+
+    // 2. LOGIKA UPLOAD FOTO (BAGIAN TERTANTANG)
+    if (!empty($_FILES['avatar']['name'])) {
+        $file_name = $_FILES['avatar']['name'];
+        $file_tmp  = $_FILES['avatar']['tmp_name'];
+        $file_type = $_FILES['avatar']['type'];
+
+        // Cek apakah benar gambar
+        $allowed = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (in_array($file_type, $allowed)) {
+
+            // Nama file baru yang unik
+            $new_name = "user_" . $user_id . ".jpg";
+            $upload_path = "profile/upload/" . $new_name;
+
+            // --- PROSES KOMPRESI (AGAR HEMAT SSD) ---
+            $source = ($file_type == 'image/png') ? imagecreatefrompng($file_tmp) : imagecreatefromjpeg($file_tmp);
+
+            // Dapatkan dimensi asli
+            list($width, $height) = getimagesize($file_tmp);
+            $new_width = 400; // Kita paksa jadi 400px saja
+            $new_height = ($height / $width) * $new_width;
+
+            $tmp_img = imagecreatetruecolor($new_width, $new_height);
+
+            // Copy dan resize
+            imagecopyresampled($tmp_img, $source, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
+
+            // Simpan sebagai Progressive JPEG (Kualitas 80% agar ringan)
+            if (imagejpeg($tmp_img, $upload_path, 80)) {
+                // Update nama file di database
+                $conn->query("UPDATE users SET profile_picture = '$new_name' WHERE id = $user_id");
+                $msg = "Profil berhasil diperbarui!";
+            }
+
+            imagedestroy($source);
+            imagedestroy($tmp_img);
+        } else {
+            $msg = "Format file tidak didukung!";
+        }
+    } else {
+        $msg = "Data teks berhasil diperbarui!";
+    }
+}
+
+// Ambil data terbaru untuk ditampilkan di form
+$data = $conn->query("SELECT * FROM users WHERE id = $user_id")->fetch_assoc();
+?>
+
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile | MEeL</title>
+    <link rel="icon" type="image/png" href="assets/MEeL.png">
+    <script src="assets/js/tailwind.js"></script>
+    <script src="assets/js/lucide.js"></script>
+    <style>
+        body {
+            background-color: #0b0e14;
+        }
+
+        .glass {
+            background: rgba(22, 27, 34, 0.7);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+
+<body class="text-gray-300 p-6">
+    <div class="max-w-md mx-auto mt-10">
+        <div class="glass p-8 rounded-[2.5rem] border border-white/5 shadow-2xl">
+            <h2 class="text-2xl font-black text-white mb-6 italic">Pengaturan Profil</h2>
+
+            <?php if ($msg): ?>
+                <div class="bg-blue-500/10 border border-blue-500/50 text-blue-400 p-3 rounded-xl text-xs mb-4">
+                    <?= $msg ?>
+                </div>
+            <?php endif; ?>
+
+            <form action="" method="POST" enctype="multipart/form-data" class="space-y-6">
+                <div class="flex flex-col items-center gap-4">
+                    <img src="profile/upload/<?= $data['profile_picture'] ?: 'default.png' ?>" class="w-24 h-24 rounded-3xl object-cover border-2 border-blue-500/30">
+                    <label class="cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-[10px] font-bold tracking-widest uppercase transition">
+                        Ganti Foto
+                        <input type="file" name="avatar" class="hidden" accept="image/*">
+                    </label>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Bio Anda</label>
+                    <textarea name="bio" rows="4" class="w-full bg-[#0b0e14] border border-white/5 rounded-2xl p-4 text-sm focus:outline-none focus:border-blue-600 transition"><?= htmlspecialchars($data['bio']) ?></textarea>
+                </div>
+
+                <button name="update_profile" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-600/20">
+                    Simpan Perubahan
+                </button>
+            </form>
+
+            <a href="profile/?u=<?= $_SESSION['username'] ?>" class="block text-center mt-6 text-xs text-gray-600 hover:text-gray-400">Batal dan Kembali</a>
+        </div>
+    </div>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

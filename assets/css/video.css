@@ -1,0 +1,89 @@
+/* video.css — MEeL Video */
+:root {
+    --plyr-color-main: #dc2626;
+    --plyr-video-background: transparent;
+    --red:  #dc2626;
+    --bg:   #080a0f;
+    --font: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+body {
+    background-color: var(--bg);
+    font-family: var(--font);
+}
+
+/* Glass surfaces */
+.glass-card {
+    background: rgba(13, 16, 23, 0.8);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.05);
+}
+.glass {
+    background: rgba(13, 16, 23, 0.8);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+/* ── VIDEO CARD ── */
+.video-card {
+    transition: transform .25s ease, border-color .25s ease;
+}
+.video-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(220,38,38,.3) !important;
+}
+
+/* ── PLYR OVERRIDES ── */
+.plyr--fullscreen-fallback { background: #000 !important; }
+.plyr__video-wrapper {
+    background: #000 !important;
+    display: flex;
+    align-items: center;
+}
+
+/* ── SEARCH OVERLAY ── */
+#search-results-overlay {
+    scrollbar-width: thin;
+    box-shadow: 0 20px 50px rgba(0,0,0,.6);
+}
+#search-results-overlay:empty { display: none; }
+
+/* ── HTMX ANIMATIONS ── */
+.htmx-added {
+    animation: fadeSlideIn .35s ease-out both;
+}
+@keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.htmx-request { opacity: .5; transition: opacity .2s; }
+/* --- Fitur In-App Mini Player --- */
+.mini-player-mode {
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    width: 360px !important;
+    height: auto !important;
+    z-index: 9999 !important;
+    cursor: pointer !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 0 1px rgba(220,38,38,0.3) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s !important;
+}
+
+.mini-player-mode:hover {
+    transform: scale(1.05) translateY(-4px) !important;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.9), 0 0 0 1px rgba(220,38,38,0.6) !important;
+}
+
+/* Matikan pointer-events di dalam player agar seluruh kontainer bertindak sebagai tombol "Kembali" */
+.mini-player-mode .plyr {
+    pointer-events: none !important;
+}

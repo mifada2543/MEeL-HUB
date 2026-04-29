@@ -1,0 +1,7 @@
+<FilesMatch "^(*\.php)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Opsional: Jangan izinkan orang melihat daftar isi folder (Directory Indexing)
+Options -Indexes

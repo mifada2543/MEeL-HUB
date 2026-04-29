@@ -1,0 +1,172 @@
+# ==========================================
+# MEeL Media Hub - Git Ignore Configuration
+# ==========================================
+
+# ─── SENSITIVE CONFIGURATION ───────────────────────────
+# Database credentials and local configuration
+auth/config.php
+auth/local.config.php
+.env
+.env.local
+.env.*.local
+
+# ─── UPLOADED MEDIA & USER FILES ───────────────────────
+# User-generated content - these are large and should not be in repo
+music/upload/*
+video/upload/*
+books/upload/*
+data_drive/public/*
+data_drive/private_admins/*
+profile/upload/*
+temp/*
+
+# Keep .gitkeep files to maintain directory structure
+!**/upload/.gitkeep
+!profile/upload/default_avatar.png
+!**/temp/.gitkeep
+!**/data_drive/public/.gitkeep
+!**/data_drive/private_admins/.gitkeep
+
+# ─── CACHE & TEMPORARY FILES ──────────────────────────
+.cache/
+cache/
+*.cache
+*.tmp
+transcode_temp/*
+*.converting
+
+# ─── SESSION & COOKIES ────────────────────────────────
+cookies.txt
+session/*
+*.session
+
+# ─── DATABASE FILES ───────────────────────────────────
+/mysql/
+*.sql
+!install.sql
+!schema.sql
+*.db
+*.sqlite
+
+# ─── OS-SPECIFIC FILES ────────────────────────────────
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+
+# ─── IDE & EDITOR FILES ───────────────────────────────
+# VS Code
+.vscode/
+*.code-workspace
+
+# PhpStorm / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim & Neovim
+*.swp
+*.swo
+*~
+.vim/
+.nvim/
+
+# Atom
+.atom/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+
+# ─── DEPENDENCY MANAGEMENT ────────────────────────────
+# Composer
+vendor/
+composer.lock
+composer.phar
+
+# npm (if used for frontend)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# ─── BUILD & DISTRIBUTION ─────────────────────────────
+dist/
+build/
+out/
+
+# ─── LOGS ─────────────────────────────────────────────
+error_log
+*.log
+error.log
+access.log
+debug.log
+
+# ─── DEVELOPMENT NOTES ────────────────────────────────
+notes/
+TODO.md
+NOTES.md
+*.local.md
+
+# ─── TESTING ──────────────────────────────────────────
+tests/coverage/
+.phpunit.result.cache
+
+# ─── DEPLOYMENT FILES ─────────────────────────────────
+deploy.sh
+*.deploy
+
+# ─── BACKUP FILES ─────────────────────────────────────
+*.bak
+*.backup
+*.orig
+~*
+
+# ─── ARCHIVES ─────────────────────────────────────────
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# ─── PYTHON (if backend scripts exist) ────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# ─── MISCELLANEOUS ────────────────────────────────────
+*.pem
+*.key
+*.pub
+
+# ==========================================
+# IMPORTANT: Files to KEEP in Repository
+# ==========================================
+# The following are kept and should be committed:
+# ✓ All source code (.php files)
+# ✓ auth/ directory (except config.php)
+# ✓ assets/ - CSS, JS, images
+# ✓ partials/ - UI components
+# ✓ README.md & Documentation
+# ✓ .htaccess (if needed for routing, or exclude if contains secrets)
+# ✓ Directory structure with .gitkeep files

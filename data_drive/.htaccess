@@ -1,0 +1,15 @@
+# 1. Matikan eksekusi script PHP
+php_flag engine off
+
+# 2. Larang akses ke file dengan ekstensi berbahaya
+<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|sh|cgi)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# 3. Paksa browser untuk menganggap file sebagai media, bukan script
+ForceType application/octet-stream
+<FilesMatch "\.(mp3|mp4|opus|ogg|wav|jpg|jpeg|png|gif)$">
+    ForceType inherit
+</FilesMatch>
+Options -Indexes

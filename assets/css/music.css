@@ -1,0 +1,80 @@
+/* music.css — MEeL Music */
+:root {
+    --plyr-color-main: #f97316;
+    --plyr-audio-controls-background: transparent;
+    --plyr-audio-control-color: #d1d5db;
+    --orange: #f97316;
+    --bg:     #080a0f;
+    --font:   ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+body {
+    background-color: var(--bg);
+    font-family: var(--font);
+    scroll-behavior: smooth;
+}
+
+/* Glass surfaces */
+.glass {
+    background: rgba(13, 16, 23, 0.8);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* ── VINYL ANIMATION ── */
+.vinyl-spin {
+    animation: rotate 10s linear infinite;
+    animation-play-state: paused;
+}
+.playing .vinyl-spin {
+    animation-play-state: running;
+}
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* ── SIDEBAR LINKS ── */
+.sidebar-link {
+    border-left: 2px solid transparent;
+    transition: all .2s;
+}
+.sidebar-link.active {
+    background: rgba(249,115,22,.08);
+    color: var(--orange);
+    border-left-color: var(--orange);
+}
+
+/* ── MUSIC ITEM ── */
+.music-item {
+    border-left: 2px solid transparent;
+    transition: background .2s, border-color .2s;
+}
+.music-item:hover {
+    background: rgba(255,255,255,.025);
+    border-left-color: var(--orange);
+}
+.music-item:hover .play-btn {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* ── HTMX ANIMATIONS ── */
+.htmx-added {
+    animation: fadeSlideIn .35s ease-out both;
+}
+@keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.htmx-request { opacity: .5; transition: opacity .2s; }
