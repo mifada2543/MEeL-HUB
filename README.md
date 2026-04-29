@@ -194,6 +194,10 @@ MEeL/
   ```bash
   sudo apt-get install ffmpeg
   ```
+- **yt-dlp**: Untuk download video dan music dari luar langsung kedalam MEeL
+  ```bash
+  sudo apt install yt-dlp
+  ```
 
 ---
 
