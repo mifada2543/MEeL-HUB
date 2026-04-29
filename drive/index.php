@@ -1,367 +1,451 @@
 <?php
+// index.php - Versi Optimasi MEeL Cloud
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 require '../auth/auth.php';
 require '../auth/config.php';
 require '../helpers.php';
 
-$back_url = '../index.php';
-if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref = $_SERVER['HTTP_REFERER'];
-    $host = $_SERVER['HTTP_HOST'];
-    if (parse_url($ref, PHP_URL_HOST) === $host) {
-        $ref_path = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages = ['index.php'];
-        $should_exclude = false;
-        foreach ($excluded_pages as $page) {
-            if (strpos($ref_path, $page) !== false) {
-                $should_exclude = true;
-                break;
-            }
-        }
-        if (!$should_exclude) {
-            $back_url = $ref;
-        }
-    }
-}
+// 1. Validasi Sesi & Role
+$user_id = $_SESSION['user_id'] ?? die("Sesi berakhir.");
+$user_role = $_SESSION['role'] ?? 'guest';
+$username = $_SESSION['username'] ?? 'User';
 
-$user_id = $_SESSION['user_id'];
-$user_role = $_SESSION['role'];
-$username = $_SESSION['username'] ?? 'unknown';
-
-if ($user_role !== 'admin' && $user_role !== 'member') {
+if (!in_array($user_role, ['admin', 'member'])) {
     die(include '../err/denied.php');
 }
 
-$current_scope = isset($_GET['scope']) && $_GET['scope'] === 'private' ? 'private' : 'public';
+// 2. Logika Scope
+$current_scope = (isset($_GET['scope']) && $_GET['scope'] === 'private') ? 'private' : 'public';
 
-if ($current_scope === 'private') {
-    if ($user_role !== 'admin' && $user_role !== 'member') {
-        $current_scope = 'public';
-    }
-}
-
-function get_drive_files($folder_name, $scope, $username)
+// 3. Fungsi Pengambil File (Lebih Efisien)
+function fetch_drive_data($type, $scope, $username)
 {
-    if ($scope === 'private') {
-        $dir = "../data_drive/private_admins/" . $username . "/" . $folder_name;
-    } else {
-        $dir = "../data_drive/public/" . $folder_name;
+    $base_dir = ($scope === 'private')
+        ? "../data_drive/private_admins/{$username}/{$type}"
+        : "../data_drive/public/{$type}";
+
+    if (!is_dir($base_dir)) {
+        mkdir($base_dir, 0777, true);
     }
 
     $files = [];
-    if (!is_dir($dir)) mkdir($dir, 0777, true);
-
-    $items = scandir($dir);
-    foreach ($items as $item) {
-        if ($item !== '.' && $item !== '..') {
-            $path = $dir . '/' . $item;
-            if (is_file($path)) {
-                $files[] = [
-                    'name' => $item,
-                    'size' => filesize($path),
-                    'time' => filemtime($path),
-                    'path' => $path
-                ];
-            }
+    $iterator = new DirectoryIterator($base_dir);
+    foreach ($iterator as $fileinfo) {
+        if (!$fileinfo->isDot() && $fileinfo->isFile()) {
+            $files[] = [
+                'name' => $fileinfo->getFilename(),
+                'size' => $fileinfo->getSize(),
+                'time' => $fileinfo->getMTime(),
+                'path' => $base_dir . '/' . $fileinfo->getFilename(),
+                'ext'  => strtolower($fileinfo->getExtension())
+            ];
         }
     }
-    usort($files, function ($a, $b) {
-        return $b['time'] - $a['time'];
-    });
+
+    // Sortir: Terbaru di atas
+    usort($files, fn($a, $b) => $b['time'] - $a['time']);
     return $files;
 }
 
-$videos   = get_drive_files('video',   $current_scope, $username);
-$audios   = get_drive_files('audio',   $current_scope, $username);
-$dokumens = get_drive_files('dokumen', $current_scope, $username);
+$videos   = fetch_drive_data('video', $current_scope, $username);
+$audios   = fetch_drive_data('audio', $current_scope, $username);
+$dokumens = fetch_drive_data('dokumen', $current_scope, $username);
 ?>
+
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MEeL | Drive</title>
+    <title>MEeL Cloud | Dashboard</title>
     <link rel="icon" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="../assets/css/drive.css">
+    <style>
+        :root {
+            --bg-main: #0b0f1a;
+            --bg-card: #161b2a;
+            --accent-blue: #3b82f6;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass {
+            background: rgba(22, 27, 42, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-active {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid var(--accent-blue);
+            color: var(--accent-blue);
+        }
+    </style>
 </head>
 
-<body>
+<body class="antialiased">
 
-    <!-- ═══════════════ SIDEBAR ═══════════════ -->
-    <aside id="sidebar">
-        <!-- Logo -->
-        <div style="padding:20px 20px 16px; border-bottom:1px solid var(--border);">
-            <a href="<?= htmlspecialchars($back_url) ?>" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
-                <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <img src="../assets/MEeL.png" alt="Kembali">
+    <div class="flex min-h-screen">
+        <aside class="w-64 glass border-r border-gray-800 hidden md:flex flex-col sticky top-0 h-screen">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-8">
+                    <img src="../assets/MEeL.png" class="w-10 h-10 rounded-xl shadow-lg shadow-blue-500/20" alt="Logo">
+                    <div>
+                        <h1 class="font-bold text-lg leading-none">MEeL <span class="text-blue-500">Cloud</span></h1>
+                        <p class="text-[10px] text-gray-500 tracking-widest uppercase mt-1">Storage System</p>
+                    </div>
                 </div>
-                <div>
-                    <div class="syne" style="color:#fff;font-size:18px;font-weight:800;letter-spacing:-.02em;line-height:1;">MEeL <span style="color:var(--accent-b);">Cloud</span></div>
-                    <div style="font-size:9px;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:1px;">Pusat Penyimpanan</div>
-                </div>
-            </a>
-        </div>
 
-        <!-- Scope -->
-        <div style="padding:16px 16px 8px;">
-            <div style="font-size:9px;color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px;padding-left:4px;">Storage Scope</div>
-            <a href="?scope=public" class="nav-item <?= $current_scope === 'public' ? 'active' : '' ?>" style="margin-bottom:4px;">
-                <i data-lucide="globe" style="width:16px;height:16px;color:var(--accent-b);flex-shrink:0;"></i>
-                Public Space
-            </a>
-            <?php if ($user_role === 'admin' || $user_role === 'member'): ?>
-                <a href="?scope=private" class="nav-item <?= $current_scope === 'private' ? 'active-purple' : '' ?>">
-                    <i data-lucide="shield-check" style="width:16px;height:16px;color:var(--accent-p);flex-shrink:0;"></i>
-                    Private Cloud
-                </a>
-            <?php endif; ?>
-        </div>
+                <nav class="space-y-1">
+                    <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Scope</p>
+                    <a href="?scope=public" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $current_scope === 'public' ? 'nav-active' : '' ?>">
+                        <i data-lucide="globe" class="w-5 h-5"></i> Public Space
+                    </a>
+                    <a href="?scope=private" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $current_scope === 'private' ? 'nav-active' : '' ?>">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i> Private Cloud
+                    </a>
+                </nav>
 
-        <!-- Nav sections (desktop) -->
-        <div style="padding:8px 16px;border-top:1px solid var(--border);margin-top:8px;">
-            <div style="font-size:9px;color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px;padding-left:4px;">Kategori</div>
-            <button onclick="showSection('video',this)" class="nav-btn-desktop nav-item active" style="width:100%;text-align:left;margin-bottom:4px;">
-                <i data-lucide="play-square" style="width:16px;height:16px;color:var(--accent-r);flex-shrink:0;"></i> Video
-            </button>
-            <button onclick="showSection('audio',this)" class="nav-btn-desktop nav-item" style="width:100%;text-align:left;margin-bottom:4px;">
-                <i data-lucide="music" style="width:16px;height:16px;color:var(--accent-o);flex-shrink:0;"></i> Music
-            </button>
-            <button onclick="showSection('dokumen',this)" class="nav-btn-desktop nav-item" style="width:100%;text-align:left;">
-                <i data-lucide="file-text" style="width:16px;height:16px;color:var(--accent-g);flex-shrink:0;"></i> Dokumen
-            </button>
-        </div>
-    </aside>
+                <nav class="mt-10 space-y-1">
+                    <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Kategori</p>
+                    <button onclick="showSection('video', this)" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition nav-btn-desktop active">
+                        <i data-lucide="play-circle" class="w-5 h-5 text-red-500"></i> Video
+                    </button>
+                    <button onclick="showSection('audio', this)" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition nav-btn-desktop text-gray-400">
+                        <i data-lucide="music" class="w-5 h-5 text-orange-500"></i> Audio
+                    </button>
+                    <button onclick="showSection('dokumen', this)" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition nav-btn-desktop text-gray-400">
+                        <i data-lucide="file-text" class="w-5 h-5 text-green-500"></i> Dokumen
+                    </button>
+                </nav>
+            </div>
 
-    <!-- ═══════════════ OVERLAY (mobile) ═══════════════ -->
-    <div id="overlay" onclick="closeSidebar()"></div>
-
-    <!-- ═══════════════ MAIN ═══════════════ -->
-    <div id="main-content">
-
-        <!-- Topbar (mobile only) -->
-        <div id="topbar" style="position:sticky;top:0;z-index:20;background:rgba(7,9,15,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:12px;">
-            <button onclick="openSidebar()" style="background:var(--bg-glass);border:1px solid var(--border);border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#e5e7eb;">
-                <i data-lucide="menu" style="width:18px;height:18px;"></i>
-            </button>
-            <div style="display:flex;align-items:center;gap:8px;flex:1;">
-                <!-- User info -->
-                <div style="width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;color:#fff;text-transform:uppercase;">
-                    <?= mb_substr($username, 0, 1) ?>
-                </div>
-                <div style="min-width:0;">
-                    <div style="font-size:12px;font-weight:700;color:#e5e7eb;truncate;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?= htmlspecialchars($username) ?></div>
-                    <div style="font-size:9px;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;"><?= htmlspecialchars($user_role) ?></div>
+            <div class="mt-auto p-4 border-t border-gray-800 bg-black/20">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold">
+                        <?= strtoupper(substr($username, 0, 1)) ?>
+                    </div>
+                    <div class="overflow-hidden">
+                        <p class="text-sm font-semibold truncate"><?= htmlspecialchars($username) ?></p>
+                        <p class="text-[10px] text-gray-500 uppercase"><?= $user_role ?></p>
+                    </div>
                 </div>
             </div>
-            <span class="badge" style="background:<?= $current_scope === 'private' ? 'rgba(139,92,246,.15)' : 'rgba(59,130,246,.15)' ?>;color:<?= $current_scope === 'private' ? 'var(--accent-p)' : 'var(--accent-b)' ?>;">
-                <?= $current_scope === 'private' ? 'Private' : 'Public' ?>
-            </span>
-        </div>
+        </aside>
 
-        <div style="padding:24px 28px;max-width:1200px;margin:0 auto;">
+        <main class="flex-1 p-6 md:p-10">
+            <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div>
+                    <h2 id="sectionHeading" class="text-3xl font-extrabold tracking-tight">
+                        Drive <span id="sectionAccent" class="text-red-500">Video</span>
+                    </h2>
+                    <p id="fileCount" class="text-sm text-gray-500 mt-1">Memuat file...</p>
+                </div>
 
-            <!-- ── Upload Panel ── -->
-            <?php if ($user_role === 'admin' || $user_role === 'member'): ?>
-                <div class="glass-panel" style="padding:20px;margin-bottom:20px;<?= $current_scope === 'private' ? 'border-color:rgba(139,92,246,.2)' : 'border-color:rgba(59,130,246,.2)' ?>;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-                        <div>
-                            <div class="syne" style="color:#fff;font-size:18px;font-weight:800;">Upload File</div>
-                            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Tambah file ke <?= $current_scope === 'private' ? 'Cloud Pribadi' : 'Public Space' ?></div>
-                        </div>
-                        <span class="badge" style="background:<?= $current_scope === 'private' ? 'rgba(139,92,246,.15)' : 'rgba(59,130,246,.15)' ?>;color:<?= $current_scope === 'private' ? 'var(--accent-p)' : 'var(--accent-b)' ?>;">
-                            <i data-lucide="<?= $current_scope === 'private' ? 'shield-check' : 'globe' ?>" style="width:10px;height:10px;"></i>
-                            <?= ucfirst($current_scope) ?>
-                        </span>
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                        <input type="text" placeholder="Cari file..." class="bg-gray-900 border border-gray-800 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64">
                     </div>
-
-                    <form action="upload.php" method="POST" enctype="multipart/form-data">
-                        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;" class="upload-grid">
-
-                            <div>
-                                <label style="display:block;font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;">Lokasi</label>
-                                <select name="scope" style="width:100%;background:var(--bg-glass);border:1px solid var(--border);color:#e5e7eb;font-size:12px;font-family:inherit;border-radius:10px;padding:10px 14px;outline:none;appearance:none;cursor:pointer;">
-                                    <option value="private" <?= $current_scope === 'private' ? 'selected' : '' ?>>☁ Cloud Pribadi Saya</option>
-                                    <?php if ($user_role === 'admin'): ?>
-                                        <option value="public" <?= $current_scope === 'public' ? 'selected' : '' ?>>🌐 Public Space</option>
-                                    <?php endif; ?>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style="display:block;font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;">Pilih Berkas</label>
-                                <div class="upload-zone">
-                                    <input type="file" name="file_drive" required id="fileInput" style="display:none;" onchange="updateFileName(this)">
-                                    <label for="fileInput" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                                        <i data-lucide="paperclip" style="width:14px;height:14px;color:var(--accent-b);flex-shrink:0;"></i>
-                                        <span id="fileLabel" style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Klik untuk pilih file...</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <button type="submit" name="submit_upload" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent-b);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-size:12px;font-weight:700;font-family:inherit;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:all .2s;white-space:nowrap;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='var(--accent-b)'">
-                                <i data-lucide="upload-cloud" style="width:14px;height:14px;"></i>
-                                Upload
-                            </button>
-                        </div>
-                    </form>
                 </div>
+            </header>
 
-                <style>
-                    @media(max-width:600px) {
-                        .upload-grid {
-                            grid-template-columns: 1fr !important;
-                        }
-                    }
-                </style>
-            <?php endif; ?>
-
-            <!-- ── Quota Alert ── -->
-            <?php if (isset($_GET['status']) && $_GET['status'] === 'quota_full'): ?>
-                <div style="display:flex;align-items:center;gap:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
-                    <i data-lucide="alert-triangle" style="width:18px;height:18px;color:var(--accent-r);flex-shrink:0;"></i>
-                    <span style="font-size:12px;font-weight:600;color:#fca5a5;">Penyimpanan penuh (Limit 20 GB). Hapus file lama untuk melanjutkan upload.</span>
-                </div>
-            <?php endif; ?>
-
-            <!-- ── Storage Bar ── -->
             <?php if ($user_role === 'member'):
                 $usage = get_user_usage($username);
                 $limit = 20 * 1024 * 1024 * 1024;
-                $perc  = min(100, ($usage / $limit) * 100);
+                $perc = min(100, ($usage / $limit) * 100);
             ?>
-                <div class="glass-panel" style="padding:14px 18px;margin-bottom:20px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                        <div style="display:flex;align-items:center;gap:7px;">
-                            <i data-lucide="hard-drive" style="width:14px;height:14px;color:<?= $perc > 80 ? 'var(--accent-r)' : 'var(--accent-b)' ?>;"></i>
-                            <span style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;">Penyimpanan Pribadi</span>
+                <div class="glass rounded-2xl p-4 mb-8 flex items-center gap-6">
+                    <div class="flex-1">
+                        <div class="flex justify-between text-[11px] font-bold uppercase mb-2">
+                            <span class="text-gray-400">Penyimpanan Terpakai</span>
+                            <span class="<?= $perc > 80 ? 'text-red-500' : 'text-blue-500' ?>"><?= format_bytes($usage) ?> / 20 GB</span>
                         </div>
-                        <span style="font-size:11px;font-weight:700;color:<?= $perc > 80 ? 'var(--accent-r)' : 'var(--accent-b)' ?>;"><?= format_bytes($usage) ?> / 20 GB</span>
+                        <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500" style="width: <?= $perc ?>%"></div>
+                        </div>
                     </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" style="width:<?= $perc ?>%;background:<?= $perc > 80 ? 'var(--accent-r)' : 'linear-gradient(90deg,#3b82f6,#8b5cf6)' ?>;"></div>
-                    </div>
-                    <div style="font-size:9px;color:var(--text-muted);margin-top:5px;text-align:right;"><?= round($perc, 1) ?>% terpakai</div>
+                    <a href="index.php?scope=<?= $current_scope ?>" class="p-2 hover:bg-gray-800 rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></a>
                 </div>
             <?php endif; ?>
 
-            <!-- ── Section Header ── -->
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
-                <div id="sectionHeading" class="syne page-title" style="color:#fff;font-size:28px;font-weight:800;">
-                    Drive <span id="sectionAccent" style="color:var(--accent-r);">Video</span>
-                </div>
-                <div id="fileCount" style="font-size:11px;color:var(--text-muted);font-weight:600;"></div>
-            </div>
+            <section class="glass rounded-2xl p-6 mb-8 border-dashed border-2 border-gray-800 hover:border-blue-500/50 transition-colors">
+                <form action="upload.php" method="POST" enctype="multipart/form-data" class="flex flex-col md:flex-row items-center gap-6">
+                    <input type="hidden" name="scope" value="<?= $current_scope ?>">
 
-            <!-- ── File Sections ── -->
-            <?php
-            function render_file_grid($files, $accent_color, $lucide_icon, $folder_type, $current_scope)
-            {
-                if (empty($files)) {
-                    echo '<div style="padding:48px 20px;text-align:center;border:1.5px dashed rgba(255,255,255,.08);border-radius:16px;">';
-                    echo '  <div style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">';
-                    echo '    <i data-lucide="' . $lucide_icon . '" style="width:22px;height:22px;color:rgba(255,255,255,.2);"></i>';
-                    echo '  </div>';
-                    echo '  <p style="font-size:13px;font-weight:600;color:rgba(255,255,255,.25);margin:0;">Folder masih kosong</p>';
-                    echo '</div>';
-                    return;
-                }
+                    <div class="flex-1 w-full">
+                        <label for="fileInput" class="flex items-center justify-center gap-3 p-4 bg-black/30 rounded-xl cursor-pointer hover:bg-black/50 transition border border-gray-800">
+                            <i data-lucide="cloud-upload" class="w-6 h-6 text-blue-500"></i>
+                            <span id="fileLabel" class="text-sm text-gray-400 font-medium">Tarik file atau klik untuk memilih</span>
+                            <input type="file" name="file_drive" id="fileInput" class="hidden" onchange="updateFileName(this)">
+                        </label>
+                    </div>
 
-                echo '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;">';
-                foreach ($files as $f) {
-                    $preview_path = $f['path'];
-                    $file_name    = htmlspecialchars($f['name']);
-                    $download_url = "download.php?file=" . urlencode($f['name']) . "&type=" . $folder_type . "&scope=" . $current_scope;
-
-                    // Extension badge color
-                    $ext = strtolower(pathinfo($f['name'], PATHINFO_EXTENSION));
-                    $ext_color = match (true) {
-                        in_array($ext, ['mp4', 'mkv', 'mov', 'avi']) => '#ef4444',
-                        in_array($ext, ['mp3', 'flac', 'wav', 'ogg']) => '#f97316',
-                        in_array($ext, ['pdf']) => '#f43f5e',
-                        in_array($ext, ['doc', 'docx']) => '#3b82f6',
-                        in_array($ext, ['xls', 'xlsx']) => '#10b981',
-                        in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']) => '#8b5cf6',
-                        default => '#6b7280'
-                    };
-
-                    echo '<div class="file-card fade-up">';
-                    echo '  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">';
-                    echo '    <div style="display:flex;align-items:center;gap:10px;min-width:0;">';
-                    echo '      <div style="width:38px;height:38px;border-radius:10px;background:rgba(' . hex2rgb_str($accent_color) . ',.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">';
-                    echo '        <i data-lucide="' . $lucide_icon . '" style="width:18px;height:18px;color:' . $accent_color . ';"></i>';
-                    echo '      </div>';
-                    echo '      <div style="min-width:0;">';
-                    echo '        <div style="font-size:12px;font-weight:700;color:#e5e7eb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;" title="' . $file_name . '">' . $file_name . '</div>';
-                    echo '        <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">';
-                    echo '          <span style="font-size:9px;font-weight:700;background:' . $ext_color . '22;color:' . $ext_color . ';padding:1px 6px;border-radius:4px;text-transform:uppercase;">' . $ext . '</span>';
-                    echo '          <span style="font-size:9px;color:#4b5563;font-family:monospace;">' . format_bytes($f['size']) . '</span>';
-                    echo '        </div>';
-                    echo '      </div>';
-                    echo '    </div>';
-                    echo '    <div style="display:flex;gap:2px;flex-shrink:0;">';
-                    echo '      <button onclick="openPreview(\'' . urlencode($preview_path) . '\', \'' . $folder_type . '\', \'' . urlencode($f['name']) . '\')" class="icon-btn cyan" title="Preview"><i data-lucide="eye" style="width:14px;height:14px;"></i></button>';
-                    echo '      <a href="' . $download_url . '" class="icon-btn blue" title="Download"><i data-lucide="download" style="width:14px;height:14px;"></i></a>';
-                    if ($GLOBALS['user_role'] === 'admin' || $current_scope === 'private') {
-                        $delete_url = "delete.php?file=" . urlencode($f['name']) . "&type=" . $folder_type . "&scope=" . $current_scope;
-                        echo '      <a href="' . $delete_url . '" onclick="return confirm(\'Hapus file ini?\')" class="icon-btn red" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></a>';
-                    }
-                    echo '    </div>';
-                    echo '  </div>';
-                    echo '  <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;align-items:center;">';
-                    echo '    <span style="font-size:9px;color:#374151;text-transform:uppercase;letter-spacing:.06em;">' . date('d M Y · H:i', $f['time']) . '</span>';
-                    echo '    <i data-lucide="clock" style="width:10px;height:10px;color:#374151;"></i>';
-                    echo '  </div>';
-                    echo '</div>';
-                }
-                echo '</div>';
-            }
-
-            function hex2rgb_str($hex)
-            {
-                $hex = ltrim($hex, '#');
-                if (strlen($hex) == 3) $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
-                return hexdec(substr($hex, 0, 2)) . ',' . hexdec(substr($hex, 2, 2)) . ',' . hexdec(substr($hex, 4, 2));
-            }
-            ?>
+                    <button type="submit" name="submit_upload" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20">
+                        Unggah Berkas <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </form>
+            </section>
 
             <div id="drive-video" class="drive-section">
-                <?php render_file_grid($videos, '#ef4444', 'play-square', 'video', $current_scope); ?>
+                <?php render_file_grid_new($videos, '#ef4444', 'play', 'video', $current_scope); ?>
             </div>
-
-            <div id="drive-audio" class="drive-section" style="display:none;">
-                <?php render_file_grid($audios, '#f97316', 'music', 'audio', $current_scope); ?>
+            <div id="drive-audio" class="drive-section hidden">
+                <?php render_file_grid_new($audios, '#f97316', 'music', 'audio', $current_scope); ?>
             </div>
-
-            <div id="drive-dokumen" class="drive-section" style="display:none;">
-                <?php render_file_grid($dokumens, '#10b981', 'file-text', 'dokumen', $current_scope); ?>
+            <div id="drive-dokumen" class="drive-section hidden">
+                <?php render_file_grid_new($dokumens, '#10b981', 'file-text', 'dokumen', $current_scope); ?>
             </div>
+        </main>
+    </div>
 
-        </div><!-- /inner -->
-    </div><!-- /main-content -->
+    <?php
+    // Fungsi Grid Baru yang Lebih Indah
+    function render_file_grid_new($files, $accent, $icon, $type, $scope)
+    {
+        if (empty($files)) {
+            echo '<div class="flex flex-col items-center justify-center py-20 opacity-20">
+                <i data-lucide="folder-open" class="w-16 h-16 mb-4"></i>
+                <p>Tidak ada file ditemukan</p>
+              </div>';
+            return;
+        }
 
-    <!-- ═══════════════ PREVIEW MODAL ═══════════════ -->
-    <div id="previewModal" style="display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:16px;">
-        <div style="position:relative;max-width:900px;width:100%;background:var(--bg-card);border-radius:20px;overflow:hidden;border:1px solid var(--border);box-shadow:0 40px 120px rgba(0,0,0,.8);">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);">
-                <div style="display:flex;align-items:center;gap:8px;min-width:0;">
-                    <i data-lucide="file" style="width:14px;height:14px;color:var(--text-muted);flex-shrink:0;"></i>
-                    <h3 id="previewTitle" style="font-size:13px;font-weight:600;color:#d1d5db;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Nama File</h3>
+        echo '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">';
+
+        foreach ($files as $f) {
+            // 1. Persiapkan Data (Clean)
+            $name = htmlspecialchars($f['name'], ENT_QUOTES);
+            $path = htmlspecialchars($f['path'], ENT_QUOTES);
+            $size = format_bytes($f['size']);
+            $date = date('d M Y', $f['time']);
+
+            // 2. Persiapkan URL
+            $dl_url  = "download.php?file=" . urlencode($f['name']) . "&type=$type&scope=$scope";
+            $del_url = "delete.php?file=" . urlencode($f['name']) . "&type=$type&scope=$scope";
+
+            // 3. Render HTML
+            echo "
+        <div class='glass p-4 rounded-2xl group hover:border-blue-500/50 transition-all duration-300 transform hover:-translate-y-1 shadow-xl hover:shadow-blue-900/10'>
+            <div class='flex items-start justify-between mb-4'>
+                <div class='p-3 rounded-xl bg-gray-900 group-hover:bg-blue-500/10 transition'>
+                    <i data-lucide='$icon' class='w-6 h-6' style='color: $accent'></i>
                 </div>
-                <button onclick="closePreview()" style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9ca3af;transition:all .15s;flex-shrink:0;" onmouseover="this.style.background='rgba(239,68,68,.15)';this.style.color='#ef4444'" onmouseout="this.style.background='rgba(255,255,255,.06)';this.style.color='#9ca3af'">
-                    <i data-lucide="x" style="width:16px;height:16px;"></i>
+                
+                <div class='flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                    <button onclick=\"openPreview('$path', '$type', '$name')\" class='p-2 hover:bg-blue-500/20 rounded-lg text-blue-400' title='Pratinjau'>
+                        <i data-lucide='eye' class='w-4 h-4'></i>
+                    </button>
+                    
+                    <a href='$dl_url' class='p-2 hover:bg-green-500/20 rounded-lg text-green-400' title='Unduh'>
+                        <i data-lucide='download' class='w-4 h-4'></i>
+                    </a>
+                    
+                    <a href='$del_url' onclick=\"return confirm('Hapus file ini?')\" class='p-2 hover:bg-red-500/20 rounded-lg text-red-400' title='Hapus'>
+                        <i data-lucide='trash-2' class='w-4 h-4'></i>
+                    </a>
+                </div>
+            </div>
+
+            <h3 class='text-sm font-bold truncate mb-1 text-gray-200' title='$name'>$name</h3>
+            <div class='flex justify-between items-center text-[10px] text-gray-500 font-medium uppercase tracking-tighter'>
+                <span>$size</span>
+                <span>$date</span>
+            </div>
+        </div>";
+        }
+
+        echo '</div>';
+    }
+    ?>
+
+    <div id="previewModal" class="hidden fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-[#161b2a] border border-gray-800 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl relative">
+
+            <div class="flex items-center justify-between p-4 border-bottom border-gray-800 bg-black/20">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="file" class="w-4 h-4 text-blue-500"></i>
+                    <h3 id="previewTitle" class="text-sm font-semibold truncate max-w-[200px] md:max-w-md text-gray-300">Nama File</h3>
+                </div>
+                <button onclick="closePreview()" class="p-2 hover:bg-red-500/20 text-gray-500 hover:text-red-500 rounded-lg transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
-            <div id="previewContent" style="display:flex;align-items:center;justify-content:center;min-height:280px;max-height:78vh;background:var(--bg-base);overflow:auto;"></div>
+
+            <div id="previewContent" class="min-h-[300px] flex items-center justify-center bg-black/40">
+            </div>
+
         </div>
     </div>
 
     <script>
-        <?php include '../assets/script/drive.php'; ?>
+        // 1. Inisialisasi Ikon Lucide
+        lucide.createIcons();
+
+        // 2. Data untuk UI Dynamics
+        const counts = {
+            video: document.querySelectorAll('#drive-video .glass').length,
+            audio: document.querySelectorAll('#drive-audio .glass').length,
+            dokumen: document.querySelectorAll('#drive-dokumen .glass').length
+        };
+
+        const accents = {
+            video: {
+                color: 'text-red-500',
+                label: 'Video'
+            },
+            audio: {
+                color: 'text-orange-500',
+                label: 'Audio'
+            },
+            dokumen: {
+                color: 'text-green-500',
+                label: 'Dokumen'
+            }
+        };
+
+        // 3. Navigasi Antar Seksi (Video/Audio/Dokumen)
+        function showSection(id, btn) {
+            // Sembunyikan semua seksi
+            document.querySelectorAll('.drive-section').forEach(s => s.classList.add('hidden'));
+
+            // Tampilkan seksi yang dipilih
+            const target = document.getElementById('drive-' + id);
+            if (target) target.classList.remove('hidden');
+
+            // Update Styling Tombol Sidebar (Desktop)
+            document.querySelectorAll('.nav-btn-desktop').forEach(b => {
+                b.classList.remove('nav-active', 'text-blue-500');
+                b.classList.add('text-gray-400');
+            });
+            if (btn) {
+                btn.classList.add('nav-active');
+                btn.classList.remove('text-gray-400');
+            }
+
+            // Update Header Text & Warna
+            const headingAccent = document.getElementById('sectionAccent');
+            headingAccent.innerText = accents[id].label;
+            headingAccent.className = accents[id].color;
+
+            document.getElementById('fileCount').innerText = `${counts[id]} file ditemukan`;
+
+            // Re-render ikon jika ada konten baru
+            lucide.createIcons();
+        }
+
+        // 4. Update Nama File Saat Pilih Upload
+        function updateFileName(input) {
+            const label = document.getElementById('fileLabel');
+            if (input.files.length > 0) {
+                label.innerText = "Siap unggah: " + input.files[0].name;
+                label.classList.remove('text-gray-400');
+                label.classList.add('text-blue-400', 'font-bold');
+            }
+        }
+
+        function openPreview(path, type, name) {
+            const modal = document.getElementById('previewModal');
+            const content = document.getElementById('previewContent');
+            const title = document.getElementById('previewTitle');
+
+            // Set Judul
+            title.innerText = name;
+
+            // Tampilkan Modal
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            // Loading state
+            content.innerHTML = '<div class="text-gray-500 flex flex-col items-center"><div class="animate-spin mb-2">⏳</div> Memuat pratinjau...</div>';
+
+            let html = '';
+            const ext = name.split('.').pop().toLowerCase();
+
+            // Logika Pemilihan Player
+            if (type === 'video') {
+                html = `
+            <video controls autoplay class="max-w-full max-h-[75vh] rounded-lg shadow-2xl bg-black">
+                <source src="${path}" type="video/mp4">
+                <source src="${path}" type="video/webm">
+                Browser Anda tidak mendukung pratinjau video.
+            </video>`;
+            } else if (type === 'audio') {
+                html = `
+            <div class="bg-gray-900 p-10 rounded-2xl border border-gray-800 w-full max-w-md text-center shadow-2xl">
+                <div class="mb-6 inline-block p-4 bg-orange-500/10 rounded-full">
+                    <i data-lucide="music" class="w-12 h-12 text-orange-500"></i>
+                </div>
+                <audio controls autoplay class="w-full">
+                    <source src="${path}" type="audio/mpeg">
+                    <source src="${path}" type="audio/wav">
+                    Browser Anda tidak mendukung pratinjau audio.
+                </audio>
+                <p class="text-gray-500 text-xs mt-4 truncate">${name}</p>
+            </div>`;
+            } else if (type === 'dokumen') {
+                const imgExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+                if (imgExts.includes(ext)) {
+                    html = `<img src="${path}" class="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl">`;
+                } else {
+                    html = `
+                <div class="text-center p-10 bg-gray-900 rounded-2xl border border-gray-800">
+                    <i data-lucide="file-warning" class="w-16 h-16 text-gray-600 mx-auto mb-4"></i>
+                    <p class="text-gray-400 mb-4">Pratinjau tidak tersedia untuk file .${ext}</p>
+                    <a href="${path}" download class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition font-bold">
+                        Unduh untuk Melihat
+                    </a>
+                </div>`;
+                }
+            }
+
+            // Masukkan ke DOM dengan delay sedikit agar transisi mulus
+            setTimeout(() => {
+                content.innerHTML = html;
+                if (window.lucide) lucide.createIcons();
+            }, 200);
+        }
+
+        function closePreview() {
+            const modal = document.getElementById('previewModal');
+            const content = document.getElementById('previewContent');
+
+            // Penting: Kosongkan innerHTML agar video/musik berhenti saat modal ditutup
+            content.innerHTML = '';
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // 6. Fitur Pencarian Sederhana (Client-side)
+        document.querySelector('input[placeholder="Cari file..."]').addEventListener('input', function(e) {
+            const keyword = e.target.value.toLowerCase();
+            const activeSection = document.querySelector('.drive-section:not(.hidden)');
+            const cards = activeSection.querySelectorAll('.glass');
+
+            cards.forEach(card => {
+                const fileName = card.querySelector('h3').innerText.toLowerCase();
+                if (fileName.includes(keyword)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // Jalankan hitung file pertama kali
+        document.addEventListener('DOMContentLoaded', () => {
+            showSection('video', document.querySelector('.nav-btn-desktop.active'));
+        });
     </script>
+
 </body>
 
 </html>
