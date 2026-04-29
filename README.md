@@ -1,5 +1,9 @@
-# MEeL - Media Hub Platform
-
+<p align="center">
+  <img src="assets/MEeL.png" alt="MEeL Logo" width="500">
+</p>
+<p align="center">
+<h2># MEeL - Media Hub Platform</h2>
+</p>
 Aplikasi media hub modern yang dibangun dengan PHP dan MySQL untuk mengelola koleksi musik, video, buku, dan file pribadi dengan fitur berbagi dan manajemen pengguna yang lengkap.
 
 ## 📋 Daftar Isi
