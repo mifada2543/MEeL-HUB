@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimasi PHP 8.4 untuk Menangani Request API Skala Kecil - TechNews</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap-grid.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap');
+
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f8fafc; }
+        .glass-card { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .glass-card:hover { border-color: #3b82f6; }
+        .highlight-text { color: #60a5fa; }
+        #ticker-container { display: flex; overflow: hidden; width: 100%; position: relative; }
+        #ticker-content { display: flex; white-space: nowrap; will-change: transform; }
+        .ticker-item { display: inline-flex; align-items: center; padding: 0 2rem; color: #cbd5e1; font-size: 0.875rem; }
+        .article-content p { margin-bottom: 1.5rem; line-height: 1.8; color: #cbd5e1; font-size: 1.125rem; font-weight: 300; }
+        .article-content h2 { font-size: 1.875rem; font-weight: 700; color: #f8fafc; margin-top: 3rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem; }
+        .article-content h2::before { content: ''; display: block; width: 6px; height: 24px; background-color: #3b82f6; border-radius: 4px; }
+        .article-content blockquote { border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.1); padding: 1.5rem; border-radius: 0 0.5rem 0.5rem 0; font-style: italic; margin: 2rem 0; color: #94a3b8; }
+        .code-block { font-family: 'Fira Code', monospace; background: #0f172a; border: 1px solid #1e293b; padding: 1.5rem; border-radius: 0.75rem; overflow-x: auto; margin: 2rem 0; font-size: 0.875rem; color: #e2e8f0; white-space: pre; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <nav class="sticky top-0 z-50 bg-[#0f172a]/90 backdrop-blur-xl border-b border-slate-800 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <a href="index.html" class="flex items-center gap-2 shrink-0 cursor-pointer text-decoration-none">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <img src="../assets/MEeL.png" alt="MEeL Logo" class="w-6 h-6">
+                </div>
+                <span class="text-xl font-bold tracking-tight hidden md:block text-white">TECH<span class="highlight-text">NEWS</span></span>
+            </a>
+            <div class="flex-grow bg-slate-900/80 rounded-full py-2 px-1 border border-slate-800 overflow-hidden hidden sm:block" id="ticker-wrapper">
+                <div id="ticker-container">
+                    <div id="ticker-content">
+                        <div class="ticker-item"><span class="bg-blue-500/20 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded mr-3">HOT</span>Proyek MEeL terintegrasi penuh dengan FFmpeg & LAMPP</div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Intel Core i5-6300U tetap relevan untuk web dev 2026</span></div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Optimasi Linux Mint Hyprland untuk workflow PPLG</span></div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Performance Improvement pada aplikasi MEeL</span></div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Peningkatan Keamanan pada Sistem MEeL</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="relative shrink-0 hidden sm:block">
+                <input type="text" id="search-input" placeholder="Cari teknologi..." class="bg-slate-800/50 text-sm rounded-full py-2 pl-10 pr-4 w-48 focus:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-500 border border-slate-700/50 text-white">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="flex items-center gap-2 text-sm text-slate-400 mb-8 font-medium">
+            <a href="index.html" class="hover:text-blue-400 transition-colors">Beranda</a>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+            <a href="#" class="hover:text-blue-400 transition-colors">Development</a>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+            <span class="text-slate-200">PHP 8.4</span>
+        </div>
+
+        <div class="row g-5">
+            <div class="col-lg-8">
+                <header class="mb-8">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="bg-purple-600/20 text-purple-400 border border-purple-500/30 text-[10px] font-black px-3 py-1 rounded uppercase tracking-[0.2em]">Development</span>
+                        <span class="text-slate-400 text-sm flex items-center gap-1"><i data-lucide="clock" class="w-4 h-4"></i> 6 Menit Baca</span>
+                    </div>
+                    <h1 class="text-4xl md:text-5xl font-extrabold mb-6 leading-tight text-white">
+                        Optimasi PHP 8.4 untuk Menangani Request API Skala Kecil
+                    </h1>
+                    <div class="flex flex-wrap items-center justify-between gap-4 py-4 border-y border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center border border-slate-700">
+                                <span class="font-bold text-lg text-white">AK</span>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white text-sm">Akiro</h4>
+                                <p class="text-xs text-slate-400">Dipublikasikan 26 April 2026</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-500 font-bold uppercase mr-2">Bagikan:</span>
+                            <button class="w-9 h-9 rounded-full glass-card flex items-center justify-center hover:text-blue-400 hover:border-blue-500 transition-all"><i data-lucide="twitter" class="w-4 h-4"></i></button>
+                            <button class="w-9 h-9 rounded-full glass-card flex items-center justify-center hover:text-blue-400 hover:border-blue-500 transition-all"><i data-lucide="link" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </header>
+
+                <figure class="mb-10 rounded-3xl overflow-hidden shadow-2xl shadow-blue-900/10 border border-slate-800">
+                    <img src="https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&q=80&w=1200" alt="PHP Code" class="w-full object-cover max-h-[500px]">
+                    <figcaption class="p-3 text-center text-xs text-slate-500 bg-slate-900/50">PHP 8.4 hadir dengan fitur-fitur yang membuat kode lebih ekspresif dan efisien. (Foto: Unsplash)</figcaption>
+                </figure>
+
+                <article class="article-content">
+                    <p class="text-xl text-slate-200 font-medium leading-relaxed mb-8">
+                        PHP 8.4 membawa serangkaian peningkatan signifikan yang sangat relevan untuk ekosistem MEeL: dari Property Hooks, Asymmetric Visibility, hingga peningkatan performa JIT. Semua ini memungkinkan API lokal berjalan lebih cepat dengan kode yang lebih bersih di hardware terbatas.
+                    </p>
+
+                    <p>Dalam konteks Proyek MEeL yang berjalan di atas tumpukan LAMPP (Linux, Apache, MariaDB, PHP, Perl), pemilihan versi PHP bukan sekadar kebiasaan — ini adalah keputusan arsitektur. PHP 8.4 yang dirilis akhir 2024 menjadi fondasi ideal untuk API sederhana yang melayani kebutuhan lokal tanpa overhead yang tidak perlu.</p>
+
+                    <h2>Fitur Kunci PHP 8.4 untuk API Lokal</h2>
+                    <p>Tiga fitur yang paling berdampak untuk use-case Proyek MEeL adalah <strong>Property Hooks</strong> yang menggantikan getter/setter boilerplate, <strong>Asymmetric Visibility</strong> untuk kontrol akses properti yang lebih granular, dan peningkatan <strong>JIT Compiler</strong> yang secara nyata meningkatkan throughput pada operasi CPU-intensive seperti transcoding data media.</p>
+
+                    <blockquote>"PHP bukan bahasa yang lambat — PHP yang tidak dikonfigurasi dengan benar yang lambat. Dengan OPcache dan JIT aktif, bahkan server i5-6300U bisa melayani ratusan request per detik." — Catatan Pengembangan MEeL</blockquote>
+
+                    <h2>Konfigurasi php.ini untuk Performa Optimal</h2>
+                    <p>Langkah pertama optimasi adalah memastikan OPcache dan JIT dikonfigurasi dengan benar. Berikut pengaturan yang digunakan dalam ekosistem MEeL:</p>
+
+                    <div class="code-block"><span class="text-slate-500">; /etc/php/8.4/apache2/php.ini — Konfigurasi MEeL</span>
+
+<span class="text-slate-500">; OPcache — Wajib aktif!</span>
+opcache.enable=1
+opcache.memory_consumption=128
+opcache.interned_strings_buffer=8
+opcache.max_accelerated_files=10000
+opcache.validate_timestamps=0  <span class="text-green-400">; Matikan di production</span>
+
+<span class="text-slate-500">; JIT Compiler — Aktifkan untuk CPU-bound tasks</span>
+opcache.jit=tracing
+opcache.jit_buffer_size=100M
+
+<span class="text-slate-500">; Tuning umum</span>
+memory_limit=256M
+max_execution_time=30
+upload_max_filesize=50M</div>
+
+                    <h2>Contoh Endpoint API yang Efisien</h2>
+                    <p>Dengan fitur baru PHP 8.4, penulisan endpoint API menjadi jauh lebih ringkas. Berikut contoh endpoint untuk metadata media dalam ekosistem MEeL:</p>
+
+                    <div class="code-block"><span class="text-blue-400">&lt;?php</span>
+<span class="text-slate-500">// PHP 8.4 — Property Hooks & Readonly Properties</span>
+
+<span class="text-purple-400">class</span> <span class="text-yellow-300">MediaItem</span> {
+    <span class="text-blue-400">public</span> <span class="text-purple-400">string</span> $title {
+        <span class="text-blue-400">set</span> => strtolower(trim($value));
+        <span class="text-blue-400">get</span> => ucwords($this->title);
+    }
+    
+    <span class="text-blue-400">public</span> <span class="text-blue-400">function</span> <span class="text-yellow-300">__construct</span>(
+        <span class="text-blue-400">public readonly</span> <span class="text-purple-400">int</span> $id,
+        <span class="text-purple-400">string</span> $title,
+        <span class="text-blue-400">public readonly</span> <span class="text-purple-400">string</span> $path
+    ) { $this->title = $title; }
+}
+
+<span class="text-slate-500">// Response JSON otomatis</span>
+header(<span class="text-green-400">'Content-Type: application/json'</span>);
+$item = <span class="text-blue-400">new</span> MediaItem(1, <span class="text-green-400">'film dokumenter'</span>, <span class="text-green-400">'/media/docs'</span>);
+echo json_encode($item, JSON_PRETTY_PRINT);</div>
+
+                    <h2>Benchmark pada Hardware MEeL</h2>
+                    <p>Pengujian dilakukan di Intel Core i5-6300U dengan 8GB RAM. Hasilnya mengejutkan: dengan OPcache + JIT aktif, throughput meningkat hingga 340% dibanding PHP 7.4 tanpa OPcache. Untuk API yang melayani 50–200 concurrent users di jaringan LAN, ini lebih dari cukup.</p>
+
+                    <h2>Kesimpulan</h2>
+                    <p>PHP 8.4 bukan hanya update incremental — ini adalah lompatan yang terasa nyata di hardware terbatas. Dalam ekosistem MEeL, setiap milidetik yang dihemat di layer aplikasi berarti lebih banyak sumber daya untuk proses lain seperti transcoding FFmpeg atau indexing database MariaDB.</p>
+                </article>
+
+                <div class="mt-10 pt-6 border-t border-slate-800 flex flex-wrap gap-2">
+                    <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#PHP84</span>
+                    <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#LAMPP</span>
+                    <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#ProyekMEeL</span>
+                    <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#WebDev</span>
+                    <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#API</span>
+                </div>
+            </div>
+
+            <aside class="col-lg-4">
+                <div class="sticky top-24 flex flex-col gap-6">
+                    <div class="glass-card rounded-2xl p-6 text-center">
+                        <div class="w-20 h-20 mx-auto rounded-full bg-slate-800 mb-4 overflow-hidden border-2 border-slate-700">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200" alt="Akiro" class="w-full h-full object-cover">
+                        </div>
+                        <h3 class="text-lg font-bold text-white">Akiro</h3>
+                        <p class="text-xs text-blue-400 font-medium mb-3">SYSTEM ADMINISTRATOR</p>
+                        <p class="text-sm text-slate-400 font-light leading-relaxed">Penggiat open-source dan dokumentator Proyek MEeL. Fokus pada efisiensi sistem dan kemandirian data.</p>
+                    </div>
+                    <div class="glass-card rounded-2xl p-6">
+                        <h3 class="text-base font-bold mb-5 flex items-center gap-2 border-b border-slate-800 pb-3">
+                            <i data-lucide="book-open" class="w-4 h-4 text-blue-500"></i> Baca Juga
+                        </h3>
+                        <div class="space-y-4">
+                            <a href="news7.html" class="group block text-decoration-none">
+                                <h4 class="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors leading-snug">Mengapa Home Server Adalah Kunci Privasi Data di 2026?</h4>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> 30 Apr 2026</p>
+                            </a>
+                            <a href="news8.html" class="group block text-decoration-none">
+                                <h4 class="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors leading-snug">Setup Hyprland di Thinkpad T470 untuk Produktivitas Maksimal</h4>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> 28 Apr 2026</p>
+                            </a>
+                            <a href="news10.html" class="group block text-decoration-none">
+                                <h4 class="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors leading-snug">Memahami Containerization untuk Pelajar PPLG</h4>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> 25 Apr 2026</p>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="p-6 bg-gradient-to-br from-blue-900/30 to-slate-900 border border-blue-500/20 rounded-2xl">
+                        <h4 class="text-sm font-bold mb-2">Dapatkan Update Mingguan</h4>
+                        <p class="text-xs text-slate-400 mb-4">Tutorial teknis dan insight mendalam langsung ke inbox Anda.</p>
+                        <div class="flex gap-2">
+                            <input type="email" placeholder="Email Anda" class="bg-slate-800 text-xs px-3 py-2 rounded-lg w-full border border-slate-700 outline-none text-white">
+                            <button class="bg-blue-600 p-2 rounded-lg hover:bg-blue-500 transition-colors"><i data-lucide="send" class="w-4 h-4 text-white"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="mt-20 py-12 border-t border-slate-800 bg-slate-900/30">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-slate-500 text-sm">&copy; 2026 Proyek MEeL - TechNews Portal by Akiro. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+        const tickerContent = document.getElementById('ticker-content');
+        if (tickerContent) {
+            const tickerContainer = document.getElementById('ticker-container');
+            const tickerWrapper = document.getElementById('ticker-wrapper');
+            let speed = 1.5, scrollPos = 0, isPaused = false;
+            tickerContainer.appendChild(tickerContent.cloneNode(true));
+            function animateTicker() {
+                if (!isPaused) { scrollPos -= speed; if (Math.abs(scrollPos) >= tickerContent.offsetWidth) scrollPos = 0; tickerContainer.style.transform = `translateX(${scrollPos}px)`; }
+                requestAnimationFrame(animateTicker);
+            }
+            window.addEventListener('load', () => animateTicker());
+            tickerWrapper.addEventListener('mouseenter', () => isPaused = true);
+            tickerWrapper.addEventListener('mouseleave', () => isPaused = false);
+        }
+    </script>
+</body>
+</html>

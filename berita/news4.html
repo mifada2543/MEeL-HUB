@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mengapa Home Server Adalah Kunci Privasi Data di 2026? - TechNews</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap-grid.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            /* Slate 950 */
+            color: #f8fafc;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .highlight-text {
+            color: #60a5fa;
+        }
+
+        /* News Ticker Styling */
+        #ticker-container {
+            display: flex;
+            overflow: hidden;
+            width: 100%;
+            position: relative;
+        }
+
+        #ticker-content {
+            display: flex;
+            white-space: nowrap;
+            will-change: transform;
+        }
+
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            padding: 0 2rem;
+            color: #cbd5e1;
+            font-size: 0.875rem;
+        }
+
+        /* Typography Styles for Article */
+        .article-content p {
+            margin-bottom: 1.5rem;
+            line-height: 1.8;
+            color: #cbd5e1;
+            font-size: 1.125rem;
+            font-weight: 300;
+        }
+
+        .article-content h2 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .article-content h2::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 24px;
+            background-color: #3b82f6;
+            border-radius: 4px;
+        }
+
+        .article-content blockquote {
+            border-left: 4px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 1.5rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+            font-style: italic;
+            margin: 2rem 0;
+            color: #94a3b8;
+        }
+
+        .code-block {
+            font-family: 'Fira Code', monospace;
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            overflow-x: auto;
+            margin: 2rem 0;
+            font-size: 0.875rem;
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+
+<body class="antialiased">
+
+    <nav class="sticky top-0 z-50 bg-[#0f172a]/90 backdrop-blur-xl border-b border-slate-800 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+
+            <a href="index.html" class="flex items-center gap-2 shrink-0 cursor-pointer text-decoration-none">
+                <div
+                    class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <img src="../assets/MEeL.png" alt="MEeL Logo" class="text-white w-6 h-6">
+                </div>
+                <span class="text-xl font-bold tracking-tight hidden md:block text-white">TECH<span
+                        class="highlight-text">NEWS</span></span>
+            </a>
+
+            <div class="flex-grow bg-slate-900/80 rounded-full py-2 px-1 border border-slate-800 overflow-hidden hidden sm:block"
+                id="ticker-wrapper">
+                <div id="ticker-container">
+                    <div id="ticker-content">
+                        <div class="ticker-item">
+                            <span
+                                class="bg-blue-500/20 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded mr-3">HOT</span>
+                            Proyek MEeL terintegrasi penuh dengan FFmpeg & LAMPP
+                        </div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Intel Core
+                                i5-6300U tetap relevan untuk web dev 2026</span></div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Optimasi Linux
+                                Mint Hyprland untuk workflow PPLG</span></div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Performance
+                                Improvement pada aplikasi MEeL</span></div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Peningkatan
+                                Keamanan pada Sistem MEeL</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative shrink-0 hidden sm:block">
+                <input type="text" id="search-input" placeholder="Cari teknologi..."
+                    class="bg-slate-800/50 text-sm rounded-full py-2 pl-10 pr-4 w-48 focus:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-500 border border-slate-700/50 text-white">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+
+        <div class="flex items-center gap-2 text-sm text-slate-400 mb-8 font-medium">
+            <a href="#" class="hover:text-blue-400 transition-colors">Beranda</a>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+            <a href="#" class="hover:text-blue-400 transition-colors">Eksklusif</a>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+            <span class="text-slate-200">Insight</span>
+        </div>
+
+        <div class="row g-5">
+            <div class="col-lg-8">
+
+                <header class="mb-8">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span
+                            class="bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[10px] font-black px-3 py-1 rounded uppercase tracking-[0.2em]">Eksklusif</span>
+                        <span class="text-slate-400 text-sm flex items-center gap-1">
+                            <i data-lucide="clock" class="w-4 h-4"></i> 5 Menit Baca
+                        </span>
+                    </div>
+                    <h1 class="text-4xl md:text-5xl font-extrabold mb-6 leading-tight text-white">
+                        Mengapa Home Server Adalah Kunci Privasi Data di 2026?
+                    </h1>
+
+                    <div class="flex flex-wrap items-center justify-between gap-4 py-4 border-y border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-12 h-12 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center border border-slate-700">
+                                <span class="font-bold text-lg text-white">AK</span>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white text-sm">Akiro</h4>
+                                <p class="text-xs text-slate-400">Dipublikasikan 30 April 2026</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-500 font-bold uppercase mr-2">Bagikan:</span>
+                            <button
+                                class="w-9 h-9 rounded-full glass-card flex items-center justify-center hover:text-blue-400 hover:border-blue-500 transition-all">
+                                <i data-lucide="twitter" class="w-4 h-4"></i>
+                            </button>
+                            <button
+                                class="w-9 h-9 rounded-full glass-card flex items-center justify-center hover:text-blue-400 hover:border-blue-500 transition-all">
+                                <i data-lucide="link" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                <figure class="mb-10 rounded-3xl overflow-hidden shadow-2xl shadow-blue-900/10 border border-slate-800">
+                    <img src="https://images.unsplash.com/photo-1550741111-c80717d56a0d?auto=format&fit=crop&q=80&w=1200"
+                        alt="Server Room" class="w-full object-cover max-h-[500px]">
+                    <figcaption class="p-3 text-center text-xs text-slate-500 bg-slate-900/50">Ilustrasi arsitektur
+                        server mandiri. (Foto: Unsplash)</figcaption>
+                </figure>
+
+                <article class="article-content">
+                    <p class="text-xl text-slate-200 font-medium leading-relaxed mb-8">
+                        Tahun 2026 menandai pergeseran besar dalam cara kita memandang data pribadi. Dengan semakin
+                        tingginya biaya langganan layanan cloud dan kekhawatiran seputar AI yang melahap data pengguna
+                        untuk pelatihan, tren "Self-Hosting" atau memiliki server mandiri di rumah kembali melonjak
+                        tajam.
+                    </p>
+
+                    <p>
+                        Membangun infrastruktur sendiri dulunya dianggap sebagai aktivitas khusus (niche) bagi para
+                        sysadmin atau penggiat Linux tingkat lanjut. Namun, saat ini, berkat berbagai optimalisasi
+                        perangkat lunak dan arsitektur kontainerisasi seperti Docker, siapa pun dengan perangkat keras
+                        lawas dapat membangun pusat data pribadinya.
+                    </p>
+
+                    <h2>Bangkitnya Proyek MEeL</h2>
+                    <p>
+                        Salah satu contoh nyata dari fenomena ini adalah <strong>Proyek MEeL</strong>. Proyek ini tidak
+                        menggunakan server seharga puluhan juta rupiah, melainkan memanfaatkan laptop bekas atau mini PC
+                        yang sudah dianggap "usang" oleh standar industri korporat.
+                    </p>
+                    <p>
+                        Menggunakan tumpukan teknologi (stack) LAMPP tradisional yang dikombinasikan dengan PHP 8.4
+                        terbaru, proyek ini membuktikan bahwa efisiensi kode lebih berharga daripada spesifikasi
+                        hardware mentah.
+                    </p>
+
+                    <blockquote>
+                        "Kita tidak membutuhkan prosesor generasi ke-15 untuk sekadar melakukan streaming file media
+                        secara lokal. Intel Core i5-6300U yang dirilis bertahun-tahun lalu masih sangat mumpuni jika
+                        sistem operasinya dioptimalkan." — Catatan Pengembangan MEeL
+                    </blockquote>
+
+                    <h2>Integrasi FFmpeg di Ekosistem Lokal</h2>
+                    <p>
+                        Salah satu tantangan terbesar dalam home server adalah manajemen media. Di sinilah integrasi
+                        FFmpeg berperan krusial. Alih-alih bergantung pada layanan streaming eksternal, pengguna dapat
+                        memproses, mengompresi, dan melakukan transcoding video langsung di jaringan lokal mereka (LAN).
+                    </p>
+
+                    <div class="code-block">
+                        <span class="text-slate-500"># Contoh skrip sederhana untuk otomasi FFmpeg di Home Server</span>
+                        #!/bin/bash
+                        <span class="text-blue-400">for</span> file <span class="text-blue-400">in</span>
+                        /media/raw/*.mp4; <span class="text-blue-400">do</span>
+                        ffmpeg -i "$file" -vcodec libx265 -crf 28 "/media/processed/$(basename "$file")"
+                        <span class="text-blue-400">done</span>
+                        echo <span class="text-green-400">"Konversi selesai! Ruang penyimpanan berhasil dihemat."</span>
+                    </div>
+
+                    <p>
+                        Skrip di atas berjalan di latar belakang (cronjob) menggunakan distro berbasis Linux Mint,
+                        memastikan bahwa media yang diunduh melalui alat seperti yt-dlp secara otomatis disesuaikan
+                        untuk menghemat penyimpanan lokal tanpa mengorbankan kualitas secara signifikan.
+                    </p>
+
+                    <h2>Kesimpulan</h2>
+                    <p>
+                        Mengambil alih kendali atas data Anda bukan lagi sekadar soal privasi; ini tentang kemandirian
+                        digital (Digital Sovereignty). Dengan mengkombinasikan perangkat keras lawas, sistem operasi
+                        open-source, dan sedikit kemauan untuk belajar, kita bisa terlepas dari ekosistem vendor yang
+                        mengikat. Di tahun 2026, rumah Anda adalah pusat data terbaik Anda.
+                    </p>
+                </article>
+
+                <div class="mt-10 pt-6 border-t border-slate-800 flex flex-wrap gap-2">
+                    <span
+                        class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#HomeServer</span>
+                    <span
+                        class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#LinuxMint</span>
+                    <span
+                        class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#ProyekMEeL</span>
+                    <span
+                        class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#DevOps</span>
+                </div>
+
+            </div>
+
+            <aside class="col-lg-4">
+                <div class="sticky top-24 flex flex-col gap-6">
+
+                    <div class="glass-card rounded-2xl p-6 text-center">
+                        <div
+                            class="w-20 h-20 mx-auto rounded-full bg-slate-800 mb-4 overflow-hidden border-2 border-slate-700">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200"
+                                alt="Akiro" class="w-full h-full object-cover">
+                        </div>
+                        <h3 class="text-lg font-bold text-white">Akiro</h3>
+                        <p class="text-xs text-blue-400 font-medium mb-3">SYSTEM ADMINISTRATOR</p>
+                        <p class="text-sm text-slate-400 font-light leading-relaxed">
+                            Penggiat open-source dan dokumentator Proyek MEeL. Fokus pada efisiensi sistem dan
+                            kemandirian data.
+                        </p>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-6">
+                        <h3 class="text-base font-bold mb-5 flex items-center gap-2 border-b border-slate-800 pb-3">
+                            <i data-lucide="book-open" class="w-4 h-4 text-blue-500"></i>
+                            Baca Juga
+                        </h3>
+
+                        <div class="space-y-4">
+                            <a href="#" class="group block text-decoration-none">
+                                <h4
+                                    class="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors leading-snug">
+                                    Setup Hyprland di Thinkpad T470 untuk Produktivitas Maksimal</h4>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="calendar"
+                                        class="w-3 h-3"></i> 28 Apr 2026</p>
+                            </a>
+                            <a href="#" class="group block text-decoration-none">
+                                <h4
+                                    class="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors leading-snug">
+                                    Optimasi PHP 8.4 untuk Menangani Request API Skala Kecil</h4>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="calendar"
+                                        class="w-3 h-3"></i> 26 Apr 2026</p>
+                            </a>
+                            <a href="#" class="group block text-decoration-none">
+                                <h4
+                                    class="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors leading-snug">
+                                    Memahami Containerization untuk Pelajar PPLG</h4>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="calendar"
+                                        class="w-3 h-3"></i> 25 Apr 2026</p>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div
+                        class="p-6 bg-gradient-to-br from-blue-900/30 to-slate-900 border border-blue-500/20 rounded-2xl">
+                        <h4 class="text-sm font-bold mb-2">Dapatkan Update Mingguan</h4>
+                        <p class="text-xs text-slate-400 mb-4">Tutorial teknis dan insight mendalam langsung ke inbox
+                            Anda.</p>
+                        <div class="flex gap-2">
+                            <input type="email" placeholder="Email Anda"
+                                class="bg-slate-800 text-xs px-3 py-2 rounded-lg w-full border border-slate-700 outline-none text-white">
+                            <button class="bg-blue-600 p-2 rounded-lg hover:bg-blue-500 transition-colors"><i
+                                    data-lucide="send" class="w-4 h-4 text-white"></i></button>
+                        </div>
+                    </div>
+
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="mt-20 py-12 border-t border-slate-800 bg-slate-900/30">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-slate-500 text-sm">&copy; 2026 Proyek MEeL - TechNews Portal by Akiro. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Inisialisasi Lucide Icons
+        lucide.createIcons();
+
+        // Animasi News Ticker JS (Sama dengan halaman utama)
+        const tickerContent = document.getElementById('ticker-content');
+        if (tickerContent) {
+            const tickerContainer = document.getElementById('ticker-container');
+            const tickerWrapper = document.getElementById('ticker-wrapper');
+
+            let speed = 1.5;
+            let scrollPos = 0;
+            let isPaused = false;
+
+            const clone = tickerContent.cloneNode(true);
+            tickerContainer.appendChild(clone);
+
+            function animateTicker() {
+                if (!isPaused) {
+                    scrollPos -= speed;
+                    if (Math.abs(scrollPos) >= tickerContent.offsetWidth) {
+                        scrollPos = 0;
+                    }
+                    tickerContainer.style.transform = `translateX(${scrollPos}px)`;
+                }
+                requestAnimationFrame(animateTicker);
+            }
+
+            window.addEventListener('load', () => {
+                animateTicker();
+            });
+
+            tickerWrapper.addEventListener('mouseenter', () => isPaused = true);
+            tickerWrapper.addEventListener('mouseleave', () => isPaused = false);
+        }
+
+        // Efek Search
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.addEventListener('focus', () => {
+                searchInput.parentElement.classList.add('ring-2', 'ring-blue-500');
+            });
+            searchInput.addEventListener('blur', () => {
+                searchInput.parentElement.classList.remove('ring-2', 'ring-blue-500');
+            });
+        }
+    </script>
+</body>
+
+</html>

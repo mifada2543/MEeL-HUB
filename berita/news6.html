@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Improvement: Benchmark MEeL Terbaru di 2026 - TechNews</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap-grid.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap');
+
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f8fafc; }
+        .glass-card { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .glass-card:hover { border-color: #3b82f6; }
+        .highlight-text { color: #60a5fa; }
+        #ticker-container { display: flex; overflow: hidden; width: 100%; position: relative; }
+        #ticker-content { display: flex; white-space: nowrap; will-change: transform; }
+        .ticker-item { display: inline-flex; align-items: center; padding: 0 2rem; color: #cbd5e1; font-size: 0.875rem; }
+        .article-content p { margin-bottom: 1.5rem; line-height: 1.8; color: #cbd5e1; font-size: 1.125rem; font-weight: 300; }
+        .article-content h2 { font-size: 1.875rem; font-weight: 700; color: #f8fafc; margin-top: 3rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem; }
+        .article-content h2::before { content: ''; display: block; width: 6px; height: 24px; background-color: #3b82f6; border-radius: 4px; }
+        .article-content blockquote { border-left: 4px solid #3b82f6; background: rgba(59, 130, 246, 0.1); padding: 1.5rem; border-radius: 0 0.5rem 0.5rem 0; font-style: italic; margin: 2rem 0; color: #94a3b8; }
+        .code-block { font-family: 'Fira Code', monospace; background: #0f172a; border: 1px solid #1e293b; padding: 1.5rem; border-radius: 0.75rem; overflow-x: auto; margin: 2rem 0; font-size: 0.875rem; color: #e2e8f0; white-space: pre; }
+
+        .benchmark-bar { height: 10px; border-radius: 9999px; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 1s ease; }
+        .benchmark-row { margin-bottom: 1.25rem; }
+        .benchmark-label { font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.3rem; display: flex; justify-content: space-between; }
+        .benchmark-track { background: #1e293b; border-radius: 9999px; overflow: hidden; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <nav class="sticky top-0 z-50 bg-[#0f172a]/90 backdrop-blur-xl border-b border-slate-800 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <a href="index.html" class="flex items-center gap-2 shrink-0 cursor-pointer text-decoration-none">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <img src="../assets/MEeL.png" alt="MEeL Logo" class="w-6 h-6">
+                </div>
+                <span class="text-xl font-bold tracking-tight hidden md:block text-white">TECH<span class="highlight-text">NEWS</span></span>
+            </a>
+            <div class="flex-grow bg-slate-900/80 rounded-full py-2 px-1 border border-slate-800 overflow-hidden hidden sm:block" id="ticker-wrapper">
+                <div id="ticker-container">
+                    <div id="ticker-content">
+                        <div class="ticker-item"><span class="bg-blue-500/20 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded mr-3">HOT</span>Proyek MEeL terintegrasi penuh dengan FFmpeg & LAMPP</div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Intel Core i5-6300U tetap relevan untuk web dev 2026</span></div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Optimasi Linux Mint Hyprland untuk workflow PPLG</span></div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Performance Improvement pada aplikasi MEeL</span></div>
+                        <div class="ticker-item"><span class="text-slate-600">•</span><span class="ml-3">Peningkatan Keamanan pada Sistem MEeL</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="relative shrink-0 hidden sm:block">
+                <input type="text" id="search-input" placeholder="Cari teknologi..." class="bg-slate-800/50 text-sm rounded-full py-2 pl-10 pr-4 w-48 focus:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-500 border border-slate-700/50 text-white">
+                <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="flex items-center gap-2 text-sm text-slate-400 mb-8 font-medium">
+            <a href="index.html" class="hover:text-blue-400 transition-colors">Beranda</a>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+            <a href="#" class="hover:text-blue-400 transition-colors">Eksklusif</a>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+            <span class="text-slate-200">Benchmark</span>
+        </div>
+
+        <div class="row g-5">
+            <div class="col-lg-8">
+                <header class="mb-8">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[10px] font-black px-3 py-1 rounded uppercase tracking-[0.2em]">Eksklusif</span>
+                        <span class="text-slate-400 text-sm flex items-center gap-1"><i data-lucide="clock" class="w-4 h-4"></i> 5 Menit Baca</span>
+                    </div>
+                    <h1 class="text-4xl md:text-5xl font-extrabold mb-6 leading-tight text-white">
+                        Performance Improvement: Benchmark MEeL Terbaru di 2026
+                    </h1>
+                    <div class="flex flex-wrap items-center justify-between gap-4 py-4 border-y border-slate-800">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center border border-slate-700">
+                                <span class="font-bold text-lg text-white">AK</span>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white text-sm">Akiro</h4>
+                                <p class="text-xs text-slate-400">Dipublikasikan 20 April 2026</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-500 font-bold uppercase mr-2">Bagikan:</span>
+                            <button class="w-9 h-9 rounded-full glass-card flex items-center justify-center hover:text-blue-400 hover:border-blue-500 transition-all"><i data-lucide="twitter" class="w-4 h-4"></i></button>
+                            <button class="w-9 h-9 rounded-full glass-card flex items-center justify-center hover:text-blue-400 hover:border-blue-500 transition-all"><i data-lucide="link" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </header>
+
+                <figure class="mb-10 rounded-3xl overflow-hidden shadow-2xl shadow-blue-900/10 border border-slate-800">
+                    <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200" alt="Performance Benchmark" class="w-full object-cover max-h-[500px]">
+                    <figcaption class="p-3 text-center text-xs text-slate-500 bg-slate-900/50">Angka tidak berbohong — benchmark MEeL 2026 mencatat hasil yang mengejutkan. (Foto: Unsplash)</figcaption>
+                </figure>
+
+                <article class="article-content">
+                    <p class="text-xl text-slate-200 font-medium leading-relaxed mb-8">
+                        Setelah serangkaian update pada stack LAMPP, konfigurasi Apache, dan optimasi query MariaDB, Proyek MEeL mencatat peningkatan performa yang signifikan. Data ini dikumpulkan selama 30 hari operasional di Intel Core i5-6300U dengan 8GB RAM.
+                    </p>
+
+                    <p>Benchmark dilakukan menggunakan kombinasi Apache Benchmark (ab), sysbench untuk database, dan pengukuran manual menggunakan waktu eksekusi FFmpeg. Semua pengujian dilakukan dalam kondisi idle normal tanpa beban artifisial.</p>
+
+                    <h2>Hasil Benchmark: Web Server (Apache)</h2>
+                    <p>Pengujian dilakukan dengan <code class="bg-slate-800 px-2 py-0.5 rounded text-blue-300 text-sm">ab -n 1000 -c 50</code> (1000 request, 50 concurrent). Hasilnya dibandingkan antara konfigurasi default vs konfigurasi yang dioptimalkan MEeL:</p>
+
+                    <div class="glass-card rounded-2xl p-6 my-8">
+                        <h3 class="text-sm font-bold text-slate-300 mb-5 uppercase tracking-wider">Apache Benchmark — Request Per Second</h3>
+                        <div class="benchmark-row">
+                            <div class="benchmark-label"><span>Apache Default (No OPcache)</span><span class="text-slate-400">142 req/s</span></div>
+                            <div class="benchmark-track"><div class="benchmark-bar" style="width: 30%"></div></div>
+                        </div>
+                        <div class="benchmark-row">
+                            <div class="benchmark-label"><span>Apache + OPcache (PHP 8.4)</span><span class="text-blue-400">487 req/s</span></div>
+                            <div class="benchmark-track"><div class="benchmark-bar" style="width: 65%"></div></div>
+                        </div>
+                        <div class="benchmark-row">
+                            <div class="benchmark-label"><span>Apache + OPcache + JIT + mod_deflate</span><span class="text-green-400 font-bold">624 req/s ↑</span></div>
+                            <div class="benchmark-track"><div class="benchmark-bar" style="width: 85%"></div></div>
+                        </div>
+                    </div>
+
+                    <blockquote>"Dari 142 ke 624 request per detik — tanpa upgrade hardware sepeserpun. Ini adalah kekuatan konfigurasi yang benar." — Catatan Benchmark MEeL</blockquote>
+
+                    <h2>Hasil Benchmark: Database (MariaDB)</h2>
+                    <p>Query database dioptimalkan melalui indexing yang tepat, query cache, dan konfigurasi InnoDB buffer pool yang disesuaikan dengan kapasitas RAM 8GB server MEeL.</p>
+
+                    <div class="code-block"><span class="text-slate-500"># Konfigurasi MariaDB untuk MEeL — /etc/mysql/mariadb.conf.d/50-server.cnf</span>
+
+[mysqld]
+<span class="text-slate-500"># InnoDB Buffer Pool — alokasikan ~60% dari total RAM</span>
+innodb_buffer_pool_size = 4G
+innodb_log_file_size    = 256M
+
+<span class="text-slate-500"># Query Cache (efektif untuk beban baca tinggi)</span>
+query_cache_type   = 1
+query_cache_size   = 64M
+query_cache_limit  = 2M
+
+<span class="text-slate-500"># Koneksi maksimum untuk LAN</span>
+max_connections    = 100</div>
+
+                    <h2>Hasil Benchmark: FFmpeg Transcoding</h2>
+                    <p>Pengujian transcoding video 1080p (H.264) ke 720p (H.265/HEVC) menggunakan libx265. Dengan optimasi threading dan preset yang tepat, waktu proses turun drastis:</p>
+
+                    <div class="glass-card rounded-2xl p-6 my-8">
+                        <h3 class="text-sm font-bold text-slate-300 mb-5 uppercase tracking-wider">FFmpeg — Waktu Transcoding (menit, lebih rendah = lebih baik)</h3>
+                        <div class="benchmark-row">
+                            <div class="benchmark-label"><span>FFmpeg Default (single-thread, preset slow)</span><span class="text-slate-400">12.4 menit</span></div>
+                            <div class="benchmark-track"><div class="benchmark-bar" style="width: 90%"></div></div>
+                        </div>
+                        <div class="benchmark-row">
+                            <div class="benchmark-label"><span>FFmpeg Multi-thread (4 core, preset medium)</span><span class="text-blue-400">4.8 menit</span></div>
+                            <div class="benchmark-track"><div class="benchmark-bar" style="width: 40%"></div></div>
+                        </div>
+                        <div class="benchmark-row">
+                            <div class="benchmark-label"><span>FFmpeg Multi-thread (preset fast, CRF 28)</span><span class="text-green-400 font-bold">2.9 menit ↑</span></div>
+                            <div class="benchmark-track"><div class="benchmark-bar" style="width: 24%"></div></div>
+                        </div>
+                    </div>
+
+                    <h2>Kesimpulan</h2>
+                    <p>Data ini membuktikan premis inti Proyek MEeL: hardware lama yang dikonfigurasi dengan cermat bisa menandingi — bahkan melampaui — hardware baru yang berjalan dengan konfigurasi default. Di tahun 2026, pengetahuan tentang optimasi sistem adalah aset yang nilainya lebih tinggi dari budget pembelian server baru.</p>
+                </article>
+
+                <div class="mt-10 pt-6 border-t border-slate-800 flex flex-wrap gap-2">
+                    <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#Benchmark</span>
+                    <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#Performance</span>
+                    <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#ProyekMEeL</span>
+                    <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#Apache</span>
+                    <span class="px-3 py-1 bg-slate-800 text-slate-300 text-xs rounded-full hover:bg-blue-900 hover:text-blue-300 cursor-pointer transition-colors">#MariaDB</span>
+                </div>
+            </div>
+
+            <aside class="col-lg-4">
+                <div class="sticky top-24 flex flex-col gap-6">
+                    <div class="glass-card rounded-2xl p-6 text-center">
+                        <div class="w-20 h-20 mx-auto rounded-full bg-slate-800 mb-4 overflow-hidden border-2 border-slate-700">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200" alt="Akiro" class="w-full h-full object-cover">
+                        </div>
+                        <h3 class="text-lg font-bold text-white">Akiro</h3>
+                        <p class="text-xs text-blue-400 font-medium mb-3">SYSTEM ADMINISTRATOR</p>
+                        <p class="text-sm text-slate-400 font-light leading-relaxed">Penggiat open-source dan dokumentator Proyek MEeL. Fokus pada efisiensi sistem dan kemandirian data.</p>
+                    </div>
+                    <div class="glass-card rounded-2xl p-6">
+                        <h3 class="text-base font-bold mb-5 flex items-center gap-2 border-b border-slate-800 pb-3">
+                            <i data-lucide="book-open" class="w-4 h-4 text-blue-500"></i> Baca Juga
+                        </h3>
+                        <div class="space-y-4">
+                            <a href="news7.html" class="group block text-decoration-none">
+                                <h4 class="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors leading-snug">Mengapa Home Server Adalah Kunci Privasi Data di 2026?</h4>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> 30 Apr 2026</p>
+                            </a>
+                            <a href="news11.html" class="group block text-decoration-none">
+                                <h4 class="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors leading-snug">Peningkatan Keamanan pada Sistem MEeL: Panduan Hardening</h4>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> 23 Apr 2026</p>
+                            </a>
+                            <a href="news9.html" class="group block text-decoration-none">
+                                <h4 class="text-sm font-bold text-slate-200 group-hover:text-blue-400 transition-colors leading-snug">Optimasi PHP 8.4 untuk Menangani Request API Skala Kecil</h4>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> 26 Apr 2026</p>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="p-6 bg-gradient-to-br from-blue-900/30 to-slate-900 border border-blue-500/20 rounded-2xl">
+                        <h4 class="text-sm font-bold mb-2">Dapatkan Update Mingguan</h4>
+                        <p class="text-xs text-slate-400 mb-4">Tutorial teknis dan insight mendalam langsung ke inbox Anda.</p>
+                        <div class="flex gap-2">
+                            <input type="email" placeholder="Email Anda" class="bg-slate-800 text-xs px-3 py-2 rounded-lg w-full border border-slate-700 outline-none text-white">
+                            <button class="bg-blue-600 p-2 rounded-lg hover:bg-blue-500 transition-colors"><i data-lucide="send" class="w-4 h-4 text-white"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="mt-20 py-12 border-t border-slate-800 bg-slate-900/30">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-slate-500 text-sm">&copy; 2026 Proyek MEeL - TechNews Portal by Akiro. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+        const tickerContent = document.getElementById('ticker-content');
+        if (tickerContent) {
+            const tickerContainer = document.getElementById('ticker-container');
+            const tickerWrapper = document.getElementById('ticker-wrapper');
+            let speed = 1.5, scrollPos = 0, isPaused = false;
+            tickerContainer.appendChild(tickerContent.cloneNode(true));
+            function animateTicker() {
+                if (!isPaused) { scrollPos -= speed; if (Math.abs(scrollPos) >= tickerContent.offsetWidth) scrollPos = 0; tickerContainer.style.transform = `translateX(${scrollPos}px)`; }
+                requestAnimationFrame(animateTicker);
+            }
+            window.addEventListener('load', () => animateTicker());
+            tickerWrapper.addEventListener('mouseenter', () => isPaused = true);
+            tickerWrapper.addEventListener('mouseleave', () => isPaused = false);
+        }
+    </script>
+</body>
+</html>
