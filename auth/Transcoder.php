@@ -333,7 +333,7 @@ class Transcoder
         $work_thumb = $work_folder . $db_thumb;
 
         if (file_exists($dl_thumb_src)) {
-            $cmd_compress = "export LD_LIBRARY_PATH=; /usr/local/bin/ffmpeg -y -i " . escapeshellarg($dl_thumb_src)
+            $cmd_compress = "export LD_LIBRARY_PATH=; /usr/bin/ffmpeg8 -y -i " . escapeshellarg($dl_thumb_src)
                 . " -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
                 . escapeshellarg($work_thumb) . " 2>&1";
             shell_exec($cmd_compress);
@@ -356,7 +356,7 @@ class Transcoder
 
         $work_m3u8 = $work_folder . $folder_name . ".m3u8";
 
-        $cmd_hls = "export LD_LIBRARY_PATH=; /usr/local/bin/ffmpeg -i " . escapeshellarg($staging_mp4)
+        $cmd_hls = "export LD_LIBRARY_PATH=; /usr/bin/ffmpeg8 -i " . escapeshellarg($staging_mp4)
             . " -codec copy"
             . " -start_number 0 -hls_time 10 -hls_list_size 0"
             . " -hls_segment_filename " . escapeshellarg($work_folder . $folder_name . "_%03d.ts")
@@ -476,7 +476,7 @@ class Transcoder
         $final_path  = "{$this->base_path}/music/upload/file/$final_fname";
         $thumb_name  = str_replace('.ogg', '.jpg', $final_fname);
 
-        $cmd = "/usr/local/bin/ffmpeg -y -i " . escapeshellarg($input_path)
+        $cmd = "/usr/bin/ffmpeg8 -y -i " . escapeshellarg($input_path)
             . " -c:a libopus -vbr on -compression_level 10 -b:a 128k"
             . " -metadata title="  . escapeshellarg($title)
             . " -metadata artist=" . escapeshellarg($artist)
@@ -624,7 +624,7 @@ class Transcoder
                 break;
         }
 
-        $cmd = "export LD_LIBRARY_PATH=''; /usr/local/bin/ffmpeg -y -f concat -safe 0 -i " . escapeshellarg($concat_list_path);
+        $cmd = "export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg8 -y -f concat -safe 0 -i " . escapeshellarg($concat_list_path);
         if ($use_thumb) $cmd .= " -i " . escapeshellarg($thumb_path);
         $cmd .= " -map 0:a";
         if ($use_thumb) {
@@ -704,7 +704,7 @@ class Transcoder
             $vtt_file    = $target_folder . 'thumbnails.vtt';
 
             // 2. Buat Sprite Image (Tiled)
-            $cmd_sprite = "export LD_LIBRARY_PATH=; /usr/local/bin/ffmpeg -y -i " . escapeshellarg($video_path) . " -vf \"fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}\" " . escapeshellarg($sprite_file) . " 2>&1";
+            $cmd_sprite = "export LD_LIBRARY_PATH=; /usr/bin/ffmpeg8 -y -i " . escapeshellarg($video_path) . " -vf \"fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}\" " . escapeshellarg($sprite_file) . " 2>&1";
             exec($cmd_sprite);
 
             // 3. Tulis file .vtt
