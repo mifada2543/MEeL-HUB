@@ -130,7 +130,7 @@ class Transcoder
         while (ob_get_level()) ob_end_clean();
 
         // Header penting untuk streaming
-        header('X-Accel-Buffering: no'); // Khusus Nginx
+        header('X-Accel-Buffering: no');
         header('Content-Encoding: none');
 
         $ui_file = $this->base_path . "/partials/ui.php";
@@ -170,6 +170,11 @@ class Transcoder
         // =========================
         // PREPARE COMMAND
         // =========================
+        // Inisialisasi variabel dengan nilai default
+        $temp_id    = null;
+        $staging_dir = null;
+        $basename    = null;
+
         if ($type === 'music') {
             $temp_id   = "raw_" . time();
             $temp_path = "{$this->base_path}/temp/$temp_id.%(ext)s";
@@ -477,7 +482,7 @@ class Transcoder
         $thumb_name  = str_replace('.ogg', '.jpg', $final_fname);
 
         $cmd = "/usr/bin/ffmpeg8 -y -i " . escapeshellarg($input_path)
-            . " -c:a libopus -vbr on -compression_level 10 -b:a 128k"
+            . " -c:a libopus -vbr on -compression_level 10"
             . " -metadata title="  . escapeshellarg($title)
             . " -metadata artist=" . escapeshellarg($artist)
             . " " . escapeshellarg($final_path) . " 2>&1";
@@ -540,11 +545,8 @@ class Transcoder
         }
 
         $v_data  = $res->fetch_assoc();
-        $db_file = $v_data['filename']; // Isinya misal: "video_name/video_name.m3u8"
+        $db_file = $v_data['filename'];
 
-        /** * PENYESUAIAN PATH SESUAI Uploader.php & migrator.php
-         * base_dir asli: /media/muhammaddaffa/MEeL/media/video/upload/
-         */
         $hls_base   = "/media/muhammaddaffa/MEeL/media/video/upload/";
         $m3u8_path  = $hls_base . $db_file;
         $hls_folder = dirname($m3u8_path) . "/";
