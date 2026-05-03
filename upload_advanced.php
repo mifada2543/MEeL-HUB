@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
 ?>
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <title>MEeL - Advanced Upload</title>
@@ -46,9 +47,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     <script src="assets/js/tailwind.js"></script>
     <script src="assets/js/lucide.js"></script>
     <style>
-        body { background-color: #05070a; color: white; }
+        body {
+            background-color: #05070a;
+            color: white;
+        }
     </style>
 </head>
+
 <body class="min-h-screen flex items-center justify-center p-6">
     <div class="w-full max-w-md bg-[#0b0e14] border border-gray-800 rounded-3xl p-8 shadow-2xl">
         <div class="text-center mb-8">
@@ -93,6 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
             <a href="index.php" class="text-xs text-gray-600 hover:text-white transition">Kembali ke Dashboard</a>
         </div>
     </div>
-    <script>lucide.createIcons();</script>
+    <?php include '../partials/footer.php'; ?>
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
+
 </html>

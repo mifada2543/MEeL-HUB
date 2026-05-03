@@ -124,9 +124,7 @@ $total      = $library->countVideos();
         </div>
     </main>
 
-    <footer class="py-8 border-t border-white/[.03]">
-        <p class="text-center text-[9px] text-gray-800 uppercase tracking-[.5em]">MEeL Video • 2025</p>
-    </footer>
+    <?php include '../partials/footer.php'; ?>
 
     <script>
         lucide.createIcons();

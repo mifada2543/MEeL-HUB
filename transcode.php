@@ -125,6 +125,7 @@ $video_id_value = isset($_GET['id']) ? (int)$_GET['id'] : "";
             </div>
         </div>
     </div>
+    <?php include '../partials/footer.php'; ?>
     <script>
         lucide.createIcons();
         // File JS Anda (misalnya script.js atau di dalam <script> pada transcode.php)

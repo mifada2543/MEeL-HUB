@@ -110,7 +110,7 @@ if (isset($_POST['upload'])) {
             </div>
         </div>
     </div>
-
+ <?php include '../partials/footer.php'; ?>
     <script>
         lucide.createIcons();
 

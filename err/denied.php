@@ -61,6 +61,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     <script>
         lucide.createIcons();
     </script>
+    <?php include '../partials/footer.php'; ?>
 </body>
 
 </html>

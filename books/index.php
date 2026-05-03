@@ -40,6 +40,12 @@ $books = $stmt->get_result();
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(10px);
         }
+
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
     </style>
 </head>
 
@@ -128,20 +134,11 @@ $books = $stmt->get_result();
             </div>
         <?php endif; ?>
     </div>
+    <?php include '../partials/footer.php'; ?>
     <script>
         lucide.createIcons();
     </script>
-    <style>
-        .glass {
-            background: rgba(255,255,255,0.03);
-            backdrop-filter: blur(10px);
-        }
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-    </style>
+
 </body>
 
 </html>

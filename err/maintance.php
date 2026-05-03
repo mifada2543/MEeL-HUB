@@ -139,7 +139,7 @@ if ($user_role === 'admin') {
             Log: Process [MEeL_Core] terminated due to I/O Exception :: MEeL 2025
         </p>
     </div>
-
     <script>lucide.createIcons();</script>
+    <?php include '../partials/footer.php'; ?>
 </body>
 </html>

@@ -642,6 +642,7 @@ if (isset($_GET['audio_state'])) {
             }
         }, 5000);
     </script>
+    <?php include '../partials/footer.php'; ?>
 </body>
 
 </html>

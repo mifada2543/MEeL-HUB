@@ -787,11 +787,7 @@ switch ($ext) {
             </div>
         </div>
     </div>
-
-    <footer class="py-8 border-t border-white/[.03]">
-        <p class="text-center text-[9px] text-gray-800 uppercase tracking-[.5em]">MEeL Music • 2025</p>
-    </footer>
-
+    <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/plyr.js"></script>
     <script src="../assets/js/script.js"></script>
     <?php include 'script/js.php'; ?>

@@ -160,7 +160,7 @@ $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
             </a>
         </div>
     </div>
-
+ <?php include '../partials/footer.php'; ?>
     <script>
         lucide.createIcons();
     </script>

@@ -345,6 +345,7 @@ if ($user->isMember()) {
 
         showSection('video', document.querySelector('.nav-btn-desktop.active'));
     </script>
+    <?php include '../partials/footer.php'; ?>
 </body>
 
 </html>

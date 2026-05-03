@@ -214,6 +214,7 @@ if (isset($_POST['upload'])) {
             }
         });
     </script>
+    <?php include '../partials/footer.php'; ?>
 </body>
 
 </html>

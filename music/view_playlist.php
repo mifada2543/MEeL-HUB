@@ -138,7 +138,7 @@ $songs_query = $conn->query("
             </a>
         </div>
     </div>
-
+    <?php include '../partials/footer.php'; ?>
     <script>
         lucide.createIcons();
     </script>
