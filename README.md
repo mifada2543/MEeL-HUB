@@ -587,8 +587,7 @@ Untuk pengembangan lebih lanjut:
 ---
 
 ## 📄 Lisensi
-
-License Notice: MEeL is a proprietary software. All rights are reserved by the author (Mifada). See the LICENSE file for more details.
+Project ini open-source untuk dipelajari, tapi kalau mau dipublikasikan secara official atau dipakai jualan, wajib izin ya! Cek file LICENSE untuk detailnya
 
 ---
 
