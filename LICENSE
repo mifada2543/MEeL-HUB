@@ -1,17 +1,24 @@
-Copyright (c) 2026 MEeL Media Hub Platform - Mifada. 
-All Rights Reserved.
-
-Pernyataan Hak Kekayaan Intelektual:
+Copyright (c) 2026 Mifada. All Rights Reserved.
+1. KEPEMILIKAN & HAK CIPTA
 Seluruh kode sumber, desain antarmuka, dan logika aplikasi dalam proyek MEeL adalah milik intelektual pribadi Mifada.
 
-SYARAT DAN KETENTUAN:
-Tanpa izin tertulis secara eksplisit dari pemilik hak cipta:
-1. REPRODUKSI: Tidak diperkenankan menyalin, mendistribusikan, atau mempublikasikan ulang kode ini dalam media apa pun.
-2. MODIFIKASI: Tidak diperkenankan melakukan modifikasi, dekompilasi, atau pembuatan karya turunan dari proyek ini.
-3. PENGGUNAAN: Penggunaan dalam bentuk apa pun (baik untuk keperluan pribadi, pendidikan, maupun komersial) wajib melalui izin tertulis dari pemilik hak cipta.
+2. KELONGGARAN PENGGUNAAN (PERMITTED USE)
+Anda diberikan izin untuk menggunakan, menyalin, dan memodifikasi kode ini TANPA izin tertulis khusus, HANYA JIKA digunakan untuk:
+    Keperluan Pendidikan/Belajar: Mempelajari struktur kode atau tugas sekolah/kuliah.
+    Penggunaan Pribadi (Local/Offline): Menjalankan aplikasi di komputer sendiri tanpa diakses oleh publik secara luas.
+    Eksperimen: Melakukan uji coba fitur secara tertutup.
 
-PENAFIAN (DISCLAIMER):
-Perangkat lunak ini disediakan "sebagaimana adanya" (AS IS), tanpa jaminan apa pun. Penulis tidak bertanggung jawab atas kerugian yang mungkin timbul dari penggunaan perangkat lunak ini.
+3. KONTRIBUSI BALIK (CONTRIBUTION CLAUSE)
+Dengan memodifikasi atau mengunggah versi turunan dari proyek ini ke publik (misalnya di GitHub Fork), Anda setuju untuk memberikan hak kepada Mifada untuk mengambil, menggunakan, memodifikasi, dan memublikasikan kembali kode hasil modifikasi tersebut ke dalam proyek Official MEeL tanpa kompensasi finansial, namun tetap memberikan kredit kepada Anda sebagai kontributor.
+
+4. PEMBATASAN & IZIN WAJIB (RESTRICTIONS)
+Izin tertulis secara eksplisit dari Mifada tetap WAJIB dimiliki jika Anda:
+    Menggunakan proyek ini untuk tujuan Komersial (mencari keuntungan/berbayar).
+    Mempublikasikan proyek ini secara Online/Public Hosting sebagai layanan resmi yang bisa diakses orang banyak.
+    Menghilangkan atribut atau nama pembuat asli (Mifada).
+
+5. PENAFIAN (DISCLAIMER)
+Perangkat lunak ini disediakan "sebagaimana adanya" (AS IS). Penulis tidak bertanggung jawab atas segala kerusakan atau kerugian yang timbul dari penggunaan kode ini.
 
 KONTAK IZIN & INFORMASI:
 Email: minecraft.daffa2501@gmail.com
