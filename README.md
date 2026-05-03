@@ -699,7 +699,7 @@ Project ini open-source untuk dipelajari, tapi kalau mau dipublikasikan secara o
   - Penggunaan komersial/penjualan
   - Redistribusi ke publik
 
-📧 Untuk izin, hubungi: muhammaddaffa@meel.local
+📧 Untuk izin, hubungi: minecraft.daffa2501@gmail.com atau github.com/mifada2543
 ```
 
 **Baca file [LICENSE](LICENSE) untuk detail lengkapnya**
