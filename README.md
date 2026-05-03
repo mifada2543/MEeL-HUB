@@ -14,6 +14,14 @@
 
 > Aplikasi media hub modern yang dibangun dengan PHP dan MySQL untuk mengelola koleksi musik, video, buku, dan file pribadi dengan fitur berbagi dan manajemen pengguna yang lengkap. Sempurna untuk personal storage atau sharing media dalam skala kecil hingga menengah.
 
+## 💡 Rekomendasi Sistem Operasi
+> **Saran Utama:** Sangat disarankan untuk menjalankan platform ini di atas lingkungan **Linux** (seperti Ubuntu Server atau Debian). 
+> 
+> Mengapa Linux?
+> - **FFmpeg Performance:** Proses transcoding video jauh lebih stabil dan efisien.
+> - **Permission System:** Manajemen hak akses file (`chmod/chown`) yang lebih ketat dan aman untuk folder media.
+> - **Case Sensitivity:** Konsistensi pemanggilan file yang sesuai dengan standar pengembangan web profesional.
+
 ## � Daftar Isi
 
 - **[✨ Fitur Utama](#fitur-utama)** - Apa saja yang bisa dilakukan
@@ -165,14 +173,12 @@ MEeL/
 ### 🛠️ Software Dependencies
 
 ```bash
-# FFmpeg - Video/Audio transcoding
+# FFmpeg - Video/Audio transcoding (wajib)
 sudo apt-get install ffmpeg
 
-# yt-dlp - Download video/music dari internet
+# yt-dlp - Download video/music dari internet (Pendukung)
 sudo apt install yt-dlp
 
-# Optional: ImageMagick - Advanced image processing
-sudo apt-get install imagemagick
 ```
 
 ### 🌐 Browser Compatibility
@@ -213,7 +219,7 @@ Sesuaikan dengan kredensial database Anda.
 Buat direktori untuk menyimpan file media:
 ```bash
 # External storage path (di helpers.php)
-mkdir -p /media/muhammaddaffa/MEeL/media
+mkdir -p #Dibuat ke path ke penyimpanan anda
 
 # Atau setup di internal storage
 mkdir -p data_drive/public
@@ -249,7 +255,7 @@ File: `auth/config.php`
 
 ```php
 // Database credentials
-$conn = new mysqli("localhost", "root", "", "MEeL");
+$conn = new mysqli("$host", "$usr", "$pass", "$db");
 
 // Session timeout: 12 jam (43200 detik)
 $timeout = 43200;
@@ -547,7 +553,7 @@ mysql -u root -p MEeL -e "SELECT 1;"
 **Solution**:
 ```bash
 # Fix ownership
-sudo chown -R www-data:www-data /opt/lampp/htdocs/MEeL
+sudo chown -R www-data:www-data /opt/lampp/htdocs/MEeL #atau sudo chown -R daemon:daemon /opt/lampp/htdocs/MEeL
 
 # Fix permissions
 chmod -R 755 data_drive temp video music books profile
