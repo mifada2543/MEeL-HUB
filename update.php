@@ -241,7 +241,7 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
             btns.announcement.className = 'tab-btn' + (t === 'announcement' ? ' active-blue' : '');
         }
     </script>
-    <?php include '../partials/footer.php'; ?>
+    <?php include 'partials/footer.php'; ?>
 </body>
 
 </html>

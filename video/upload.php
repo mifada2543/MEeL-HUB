@@ -51,66 +51,68 @@ if (isset($_POST['upload'])) {
     </style>
 </head>
 
-<body class="text-gray-200 min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-lg">
-        <div class="glass-card rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
-            <div class="absolute -top-24 -right-24 w-48 h-48 bg-red-600/10 rounded-full blur-3xl"></div>
+<body class="text-gray-200 min-h-screen flex flex-col">
+    <main class="flex-grow flex items-center justify-center p-4 w-full">
+        <div class="w-full max-w-lg">
+            <div class="glass-card rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-48 h-48 bg-red-600/10 rounded-full blur-3xl"></div>
 
-            <div class="relative z-10">
-                <div class="flex items-center justify-between mb-8">
-                    <div>
-                        <h2 class="text-2xl font-black text-white tracking-tight italic uppercase">Halo <?= htmlspecialchars($user) ?>, Upload <span class="text-red-600">Video</span></h2>
-                        <p class="text-[10px] text-gray-500 uppercase tracking-[0.2em]">Tambahkan Koleksi MP4 ke Library</p>
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h2 class="text-2xl font-black text-white tracking-tight italic uppercase">Halo <?= htmlspecialchars($user) ?>, Upload <span class="text-red-600">Video</span></h2>
+                            <p class="text-[10px] text-gray-500 uppercase tracking-[0.2em]">Tambahkan Koleksi MP4 ke Library</p>
+                        </div>
+                        <i data-lucide="clapperboard" class="text-red-600 w-8 h-8 opacity-50"></i>
                     </div>
-                    <i data-lucide="clapperboard" class="text-red-600 w-8 h-8 opacity-50"></i>
-                </div>
 
-                <?php if ($status === "success"): ?>
-                    <div class="bg-green-500/10 text-green-400 p-4 rounded-2xl text-xs mb-6 border border-green-500/20 flex items-center gap-3 animate-pulse">
-                        <i data-lucide="check-circle" class="w-4 h-4"></i> Video berhasil di Upload!
-                    </div>
-                <?php endif; ?>
-
-                <form method="POST" enctype="multipart/form-data" class="space-y-6" onsubmit="load()">
-                    <?php if (isset($_SESSION['csrf_token'])): ?>
-                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
+                    <?php if ($status === "success"): ?>
+                        <div class="bg-green-500/10 text-green-400 p-4 rounded-2xl text-xs mb-6 border border-green-500/20 flex items-center gap-3 animate-pulse">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i> Video berhasil di Upload!
+                        </div>
                     <?php endif; ?>
-                    <div>
-                        <label class="text-[10px] font-bold text-gray-600 uppercase ml-1 tracking-widest">Judul Konten</label>
-                        <input type="text" name="title" placeholder="Masukkan judul video..." title="Judul" required
-                            class="w-full bg-[#0b0e14]/50 border border-gray-800 rounded-2xl px-5 py-4 text-sm focus:border-red-600 transition-all outline-none mt-1 text-white">
-                    </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label class="group bg-[#0b0e14]/50 p-6 rounded-[2rem] border-2 border-dashed border-gray-800 cursor-pointer text-center hover:border-red-600 transition-all flex flex-col items-center">
-                            <i data-lucide="file-video" class="w-8 h-8 text-red-600 mb-2"></i>
-                            <span id="v-txt" class="text-[10px] text-gray-400 font-bold uppercase truncate w-full">Pilih MP4</span>
-                            <input type="file" name="video" accept=".mp4,.webm,.mkv" required class="hidden" onchange="checkFile(this)">
-                        </label>
+                    <form method="POST" enctype="multipart/form-data" class="space-y-6" onsubmit="load()">
+                        <?php if (isset($_SESSION['csrf_token'])): ?>
+                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
+                        <?php endif; ?>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-600 uppercase ml-1 tracking-widest">Judul Konten</label>
+                            <input type="text" name="title" placeholder="Masukkan judul video..." title="Judul" required
+                                class="w-full bg-[#0b0e14]/50 border border-gray-800 rounded-2xl px-5 py-4 text-sm focus:border-red-600 transition-all outline-none mt-1 text-white">
+                        </div>
 
-                        <label class="group bg-[#0b0e14]/50 p-6 rounded-[2rem] border-2 border-dashed border-gray-800 cursor-pointer text-center hover:border-red-600 transition-all flex flex-col items-center">
-                            <i id="icon-v" data-lucide="image" class="w-8 h-8 text-gray-500 mb-2"></i>
-                            <img id="preview-v" src="" class="hidden w-10 h-10 rounded-lg object-cover mb-2">
-                            <span id="t-txt" class="text-[10px] text-gray-400 font-bold uppercase truncate w-full">Thumbnail (Opsional)</span>
-                            <input type="file" name="thumbnail" accept="image/*" class="hidden" onchange="previewThumb(this)">
-                        </label>
-                    </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="group bg-[#0b0e14]/50 p-6 rounded-[2rem] border-2 border-dashed border-gray-800 cursor-pointer text-center hover:border-red-600 transition-all flex flex-col items-center">
+                                <i data-lucide="file-video" class="w-8 h-8 text-red-600 mb-2"></i>
+                                <span id="v-txt" class="text-[10px] text-gray-400 font-bold uppercase truncate w-full">Pilih MP4</span>
+                                <input type="file" name="video" accept=".mp4,.webm,.mkv" required class="hidden" onchange="checkFile(this)">
+                            </label>
 
-                    <button name="upload" id="btn" class="w-full bg-red-600 hover:bg-red-500 text-white py-4 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/30">
-                        MULAI SIMPAN <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                    </button>
-                </form>
+                            <label class="group bg-[#0b0e14]/50 p-6 rounded-[2rem] border-2 border-dashed border-gray-800 cursor-pointer text-center hover:border-red-600 transition-all flex flex-col items-center">
+                                <i id="icon-v" data-lucide="image" class="w-8 h-8 text-gray-500 mb-2"></i>
+                                <img id="preview-v" src="" class="hidden w-10 h-10 rounded-lg object-cover mb-2">
+                                <span id="t-txt" class="text-[10px] text-gray-400 font-bold uppercase truncate w-full">Thumbnail (Opsional)</span>
+                                <input type="file" name="thumbnail" accept="image/*" class="hidden" onchange="previewThumb(this)">
+                            </label>
+                        </div>
 
-                <footer class="mt-10 flex justify-center gap-8 border-t border-white/5 pt-8">
-                    <a href="index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Library</a>
-                    <a href="../index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Portal</a>
-                    <a href="../music/upload.php" class="text-[10px] font-bold text-orange-600 hover:text-orange-400 uppercase tracking-widest transition">Go to Music</a>
-                    <a class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition" href="../upload_advanced.php" onclick="alert('Anda dan Server memerlukan koneksi internet')">Upload Lanjutan</a>
-                </footer>
+                        <button name="upload" id="btn" class="w-full bg-red-600 hover:bg-red-500 text-white py-4 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/30">
+                            MULAI SIMPAN <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+
+                    <footer class="mt-10 flex justify-center gap-8 border-t border-white/5 pt-8">
+                        <a href="index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Library</a>
+                        <a href="../index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Portal</a>
+                        <a href="../music/upload.php" class="text-[10px] font-bold text-orange-600 hover:text-orange-400 uppercase tracking-widest transition">Go to Music</a>
+                        <a class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition" href="../upload_advanced.php" onclick="alert('Anda dan Server memerlukan koneksi internet')">Upload Lanjutan</a>
+                    </footer>
+                </div>
             </div>
         </div>
-    </div>
- <?php include '../partials/footer.php'; ?>
+    </main>
+    <?php include '../partials/footer.php'; ?>
     <script>
         lucide.createIcons();
 

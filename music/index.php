@@ -438,10 +438,6 @@ if (isset($_GET['audio_state'])) {
         </div>
     </div>
 
-    <footer class="py-8 border-t border-white/[.03]">
-        <p class="text-center text-[9px] text-gray-800 uppercase tracking-[.5em]">MEeL Music • 2025</p>
-    </footer>
-
     <script>
         lucide.createIcons();
 
