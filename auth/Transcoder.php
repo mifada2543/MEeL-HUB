@@ -18,7 +18,7 @@ class Transcoder
         $this->base_path    = "/opt/lampp/htdocs/MEeL";
         $this->cookies_path = $this->base_path . "/cookies.txt";
         $this->user_agent   = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-        $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; /usr/bin/yt-dlp --js-runtime node --no-warnings --restrict-filenames"
+        $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; /usr/local/bin/yt-dlp --js-runtime node --no-warnings --restrict-filenames"
             . " --user-agent " . escapeshellarg($this->user_agent)
             . " --cookies "    . escapeshellarg($this->cookies_path) . " ";
 
