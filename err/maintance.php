@@ -43,7 +43,7 @@ if ($user_role === 'admin') {
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+        @import url('../assets/css/font.css');
         
         body { font-family: 'JetBrains Mono', monospace; }
         .bg-grid {
