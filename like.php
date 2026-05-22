@@ -1,97 +1,67 @@
 <?php
-session_start();
 include 'auth/config.php';
+include 'auth/MediaInteraction.php';
 
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(403);
-    exit;
-}
-
-$user_id    = (int) $_SESSION['user_id'];
+// Get POST data
 $id         = isset($_POST['id'])         ? intval($_POST['id'])       : 0;
 $media_type = isset($_POST['media_type']) ? trim($_POST['media_type']) : '';
 $type       = isset($_POST['type'])       ? trim($_POST['type'])       : '';
 
-if ($id <= 0 || !in_array($media_type, ['music', 'video'], true) || !in_array($type, ['like', 'dislike'], true)) {
-    http_response_code(400);
+error_log("LIKE.PHP - POST: " . json_encode(['id' => $id, 'media_type' => $media_type, 'type' => $type]));
+
+// Gunakan MediaInteraction class
+$interaction = new MediaInteraction($conn, $_SESSION['user_id'] ?? null);
+$result = $interaction->toggleLike($id, $media_type, $type);
+
+// Handle response
+if (!$result['success']) {
+    error_log("LIKE.PHP - ERROR: {$result['message']} (Code: {$result['http_code']})");
+    http_response_code($result['http_code']);
     exit;
 }
 
-$col   = ($media_type === 'music') ? 'music_id' : 'video_id';
-$table = ($media_type === 'music') ? 'music'    : 'video';
+// Extract data
+$user_interaction = $result['data']['user_interaction'];
+$likes            = $result['data']['likes'];
+$dislikes         = $result['data']['dislikes'];
+$table = ($media_type === 'music') ? 'music' : 'video';
 
-// 1. Cek interaksi sebelumnya
-$check = $conn->prepare("SELECT `TYPE` FROM interactions WHERE user_id = ? AND $col = ?");
-$check->bind_param("ii", $user_id, $id);
-$check->execute();
-$existing = $check->get_result()->fetch_assoc();
-$check->close();
+// Konfigurasi style Tailwind yang ditulis penuh (Hardcoded class names)
+$like_active_class = ($media_type === 'music') 
+    ? 'bg-orange-500/15 border-orange-500/30 text-orange-400' 
+    : 'bg-red-600/15 border-red-600/30 text-red-400';
 
-// 2. INSERT / UPDATE / DELETE
-if ($existing) {
-    if ($existing['TYPE'] === $type) {
-        $op = $conn->prepare("DELETE FROM interactions WHERE user_id = ? AND $col = ?");
-        $op->bind_param("ii", $user_id, $id);
-    } else {
-        $op = $conn->prepare("UPDATE interactions SET `TYPE` = ? WHERE user_id = ? AND $col = ?");
-        $op->bind_param("sii", $type, $user_id, $id);
-    }
-} else {
-    $op = $conn->prepare("INSERT INTO interactions (user_id, $col, `TYPE`) VALUES (?, ?, ?)");
-    $op->bind_param("iis", $user_id, $id, $type);
-}
-$op->execute();
-$op->close();
-
-// 3. Sinkronisasi likes/dislikes
-$sync = $conn->prepare(
-    "UPDATE $table t SET
-        likes    = (SELECT COUNT(*) FROM interactions WHERE $col = t.id AND `TYPE` = 'like'),
-        dislikes = (SELECT COUNT(*) FROM interactions WHERE $col = t.id AND `TYPE` = 'dislike')
-     WHERE t.id = ?"
-);
-$sync->bind_param("i", $id);
-$sync->execute();
-$sync->close();
-
-// 4. Ambil jumlah terbaru
-$res_stmt = $conn->prepare("SELECT likes, dislikes FROM $table WHERE id = ?");
-$res_stmt->bind_param("i", $id);
-$res_stmt->execute();
-$counts = $res_stmt->get_result()->fetch_assoc();
-$res_stmt->close();
-
-// 5. Ambil status interaksi user sekarang
-$cur_stmt = $conn->prepare("SELECT `TYPE` FROM interactions WHERE user_id = ? AND $col = ?");
-$cur_stmt->bind_param("ii", $user_id, $id);
-$cur_stmt->execute();
-$cur = $cur_stmt->get_result()->fetch_assoc();
-$cur_stmt->close();
-
-$user_interaction = $cur['TYPE'] ?? null;
-$likes            = (int) ($counts['likes']    ?? 0);
-$dislikes         = (int) ($counts['dislikes'] ?? 0);
-$accent           = ($media_type === 'music') ? 'orange' : 'red';
+$dislike_active_class = 'bg-white/10 border-white/15 text-white';
+$inactive_class = 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300';
 ?>
-<div id="like-dislike-container" class="flex gap-2">
+
+<div id="like-dislike-container" class="flex items-center gap-2">
     <button
-        hx-post="../like.php"
-        hx-target="#like-dislike-container"
-        hx-swap="outerHTML"
-        hx-vals='{"id": "<?= $id ?>", "media_type": "<?= $media_type ?>", "type": "like"}'
-        class="flex items-center gap-2 px-5 py-2.5 rounded-full transition-all text-[11px] font-black uppercase tracking-wider <?= $user_interaction === 'like' ? "bg-{$accent}-600 text-white shadow-lg" : "bg-gray-800/50 text-gray-400 hover:bg-gray-700" ?>">
-        <i data-lucide="thumbs-up" class="w-4 h-4 <?= $user_interaction === 'like' ? 'fill-white' : '' ?>"></i>
-        Like <?= $likes > 0 ? "<span class='tabular-nums'>$likes</span>" : '' ?>
+        hx-post="../like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
+        hx-vals='{"id":"<?= $id ?>","media_type":"<?= $media_type ?>","type":"like"}'
+        class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer <?= $user_interaction === 'like' ? $like_active_class : $inactive_class ?>">
+        <i data-lucide="thumbs-up" class="w-3.5 h-3.5 <?= $user_interaction === 'like' ? 'fill-current' : '' ?>"></i>
+        Like<?= $likes > 0 ? " <span class='tabular-nums ml-0.5'>{$likes}</span>" : '' ?>
+    </button>
+    
+    <button
+        hx-post="../like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
+        hx-vals='{"id":"<?= $id ?>","media_type":"<?= $media_type ?>","type":"dislike"}'
+        class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer <?= $user_interaction === 'dislike' ? $dislike_active_class : $inactive_class ?>">
+        <i data-lucide="thumbs-down" class="w-3.5 h-3.5 <?= $user_interaction === 'dislike' ? 'fill-current' : '' ?>"></i>
+        <?= $dislikes > 0 ? "<span class='tabular-nums'>{$dislikes}</span>" : '' ?>
     </button>
 
-    <button
-        hx-post="../like.php"
-        hx-target="#like-dislike-container"
-        hx-swap="outerHTML"
-        hx-vals='{"id": "<?= $id ?>", "media_type": "<?= $media_type ?>", "type": "dislike"}'
-        class="flex items-center gap-2 px-5 py-2.5 rounded-full transition-all text-[11px] font-black uppercase tracking-wider <?= $user_interaction === 'dislike' ? "bg-white text-{$accent}-600 shadow-lg" : "bg-gray-800/50 text-gray-400 hover:bg-{$accent}-600 hover:text-white" ?>">
-        <i data-lucide="thumbs-down" class="w-4 h-4 <?= $user_interaction === 'dislike' ? 'fill-current' : '' ?>"></i>
-        <?= $dislikes > 0 ? "<span class='tabular-nums'>$dislikes</span>" : '' ?>
-    </button>
+    <?php if ($media_type === 'music'): ?>
+        <button onclick="document.getElementById('playlist-modal').classList.remove('hidden')"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300">
+            <i data-lucide="list-plus" class="w-3.5 h-3.5"></i> Simpan
+        </button>
+    <?php endif; ?>
 </div>
-<script>if(typeof lucide !== 'undefined') lucide.createIcons();</script>
+
+<script>
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+</script>
