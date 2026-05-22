@@ -167,3 +167,205 @@ class MediaLibrary {
         ];
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BookRepository — Query layer untuk tabel `books`
+// ═══════════════════════════════════════════════════════════════════════════════
+class BookRepository {
+    private $conn;
+
+    public function __construct($db_connection) {
+        $this->conn = $db_connection;
+    }
+
+    /**
+     * Ambil semua buku, atau filter berdasarkan tipe ('manga' / 'pdf' / 'all').
+     */
+    public function getBooks(string $filter = 'all') {
+        $allowed = ['manga', 'pdf'];
+
+        if (in_array($filter, $allowed, true)) {
+            $stmt = $this->conn->prepare(
+                "SELECT * FROM books WHERE type = ? ORDER BY upload_date DESC"
+            );
+            $stmt->bind_param("s", $filter);
+        } else {
+            // 'all' — query statis, tidak ada input user
+            $stmt = $this->conn->prepare(
+                "SELECT * FROM books ORDER BY upload_date DESC"
+            );
+        }
+
+        $stmt->execute();
+        return $stmt->get_result();
+    }
+
+    /**
+     * Ambil satu buku berdasarkan ID.
+     * Return array buku, atau null jika tidak ditemukan.
+     */
+    public function getBookById(int $id): ?array {
+        $stmt = $this->conn->prepare("SELECT * FROM books WHERE id = ? LIMIT 1");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return ($result && $result->num_rows > 0) ? $result->fetch_assoc() : null;
+    }
+
+    /**
+     * Ambil role user berdasarkan ID.
+     * Return string role ('admin' / 'member'), atau null jika user tidak ada.
+     */
+    public function getUserRole(int $user_id): ?string {
+        $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result ? $result->fetch_assoc() : null;
+        return $row ? $row['role'] : null;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BookUploader — Menangani validasi, file handling, dan insert DB untuk buku
+// ═══════════════════════════════════════════════════════════════════════════════
+class BookUploader {
+    private $conn;
+    private $base_path; // Absolute / relative base path ke direktori upload books
+
+    // $base_path: path ke folder books/ (misal: __DIR__ . '/../books')
+    public function __construct($db_connection, string $base_path) {
+        $this->conn = $db_connection;
+        $this->base_path = rtrim($base_path, '/');
+    }
+
+    /**
+     * Entry point upload buku.
+     * Return array ['success' => bool, 'message' => string]
+     */
+    public function handleUpload(array $post, array $files): array {
+        $title    = trim($post['title'] ?? '');
+        $author   = trim($post['author'] ?? 'Unknown');
+        $type     = $post['type'] ?? '';
+        $category = trim($post['category'] ?? '');
+        $user_id  = (int)($post['user_id'] ?? 0);
+
+        if (empty($title) || !in_array($type, ['manga', 'pdf'], true)) {
+            return ['success' => false, 'message' => 'Error: Data tidak lengkap atau tipe tidak valid.'];
+        }
+
+        // 1. Thumbnail
+        $thumb_name = $this->handleThumbnail($files['thumbnail'] ?? []);
+
+        // 2. File konten
+        $content = ($type === 'pdf')
+            ? $this->handlePdf($files['book_file'] ?? [], $title)
+            : $this->handleManga($files['book_file'] ?? [], $title);
+
+        if (!$content['success']) {
+            return $content; // Kembalikan pesan error dari handler
+        }
+
+        // 3. Jika manga sudah ada di DB (re-upload chapter), tidak perlu insert ulang
+        if (isset($content['existing']) && $content['existing'] === true) {
+            return ['success' => true, 'message' => $content['message']];
+        }
+
+        // 4. Insert ke database
+        return $this->insertBook($title, $author, $type, $content['has_chapters'], $category, $content['path_result'], $thumb_name, $user_id);
+    }
+
+    // ── PRIVATE HELPERS ──────────────────────────────────────────────────────
+
+    private function handleThumbnail(array $file): string {
+        if (!empty($file['name'])) {
+            $ext  = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $name = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            move_uploaded_file($file['tmp_name'], $this->base_path . '/upload/thumbnail/' . $name);
+            return $name;
+        }
+        return 'default_cover.jpg';
+    }
+
+    private function handlePdf(array $file, string $title): array {
+        $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+        if ($ext !== 'pdf') {
+            return ['success' => false, 'message' => 'Error: File harus berformat PDF!'];
+        }
+
+        $clean = preg_replace('/[^a-zA-Z0-9]/', '_', $title);
+        $final = $clean . '_' . time() . '.pdf';
+
+        if (!move_uploaded_file($file['tmp_name'], $this->base_path . '/upload/pdf/' . $final)) {
+            return ['success' => false, 'message' => 'Error: Gagal memindahkan file PDF!'];
+        }
+
+        return ['success' => true, 'has_chapters' => 0, 'path_result' => $final];
+    }
+
+    private function handleManga(array $file, string $title): array {
+        $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+        if ($ext !== 'zip') {
+            return ['success' => false, 'message' => 'Error: Harap upload file ZIP!'];
+        }
+
+        $clean        = preg_replace('/[^a-zA-Z0-9]/', '_', $title);
+        $manga_folder = $this->base_path . '/upload/manga/' . $clean;
+        $has_chapters = 0;
+
+        // Cek apakah entry sudah ada di DB (re-upload / tambah chapter)
+        $check = $this->conn->prepare("SELECT id FROM books WHERE path_folder = ? LIMIT 1");
+        $check->bind_param("s", $clean);
+        $check->execute();
+        $exists = $check->get_result()->num_rows > 0;
+
+        if (!is_dir($manga_folder)) {
+            mkdir($manga_folder, 0777, true);
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($file['tmp_name']) !== true) {
+            return ['success' => false, 'message' => 'Error: Gagal membuka file ZIP!'];
+        }
+
+        $zip->extractTo($manga_folder);
+        $first_entry = $zip->getNameIndex(0);
+
+        // Jika entry pertama mengandung '/', berarti ada subfolder (chapter)
+        if (strpos($first_entry, '/') !== false) {
+            $has_chapters = 1;
+        }
+        $zip->close();
+
+        // Manga sudah ada → hanya update flag has_chapters, tidak insert ulang
+        if ($exists) {
+            $stmt = $this->conn->prepare(
+                "UPDATE books SET has_chapters = 1 WHERE path_folder = ?"
+            );
+            $stmt->bind_param("s", $clean);
+            $stmt->execute();
+            return [
+                'success'  => true,
+                'existing' => true,
+                'message'  => 'Success: Chapter tambahan berhasil digabungkan!'
+            ];
+        }
+
+        return ['success' => true, 'has_chapters' => $has_chapters, 'path_result' => $clean];
+    }
+
+    private function insertBook(string $title, string $author, string $type, int $has_chapters, string $category, string $path_folder, string $thumbnail, int $user_id): array {
+        $stmt = $this->conn->prepare(
+            "INSERT INTO books (title, author, type, has_chapters, category, path_folder, thumbnail, user_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        $stmt->bind_param("sssisssi", $title, $author, $type, $has_chapters, $category, $path_folder, $thumbnail, $user_id);
+
+        if ($stmt->execute()) {
+            $label = ($type === 'manga') ? 'Manga' : 'Buku';
+            return ['success' => true, 'message' => "Success: $label berhasil ditambahkan!"];
+        }
+
+        return ['success' => false, 'message' => 'Error: Gagal menyimpan ke database.'];
+    }
+}
