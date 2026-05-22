@@ -16,8 +16,8 @@ class Uploader
         $this->user_id   = (int)$session_user_id;
         $this->username  = $session_username;
         $this->base_dir  = "/media/muhammaddaffa/MEeL/media/video/upload/";
-        $this->ffmpeg_bin  = $this->resolveBinary(['/usr/bin/ffmpeg8', '/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
-        $this->ffprobe_bin = $this->resolveBinary(['/usr/bin/ffprobe8', '/usr/local/bin/ffprobe', '/usr/bin/ffprobe', 'ffprobe']);
+        $this->ffmpeg_bin  = $this->resolveBinary(['/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
+        $this->ffprobe_bin = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
 
         $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
         $stmt->bind_param("i", $this->user_id);
@@ -149,7 +149,7 @@ class Uploader
             $thumb_candidate = $this->getUniqueFilename($t_clean, "jpg", $thumb_dir);
             $abs_out         = $thumb_dir . $thumb_candidate;
 
-            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg8 -y -i " . escapeshellarg($files['thumbnail']['tmp_name']) . " -vf \"scale='min(1280,iw)':-1\" -q:v 5 " . escapeshellarg($abs_out) . " 2>&1");
+            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($files['thumbnail']['tmp_name']) . " -vf \"scale='min(1280,iw)':-1\" -q:v 5 " . escapeshellarg($abs_out) . " 2>&1");
 
             if (file_exists($abs_out) && filesize($abs_out) > 0) {
                 $thumb_name = $thumb_candidate;
@@ -162,7 +162,7 @@ class Uploader
             $thumb_candidate = $this->getUniqueFilename($thumb_base, "jpg", $thumb_dir);
             $abs_out         = $thumb_dir . $thumb_candidate;
 
-            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg8 -y -i " . escapeshellarg($target_file) . " -an -vframes 1 " . escapeshellarg($abs_out) . " 2>&1");
+            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($target_file) . " -an -vframes 1 " . escapeshellarg($abs_out) . " 2>&1");
 
             if (file_exists($abs_out) && filesize($abs_out) > 0) {
                 $thumb_name = $thumb_candidate;

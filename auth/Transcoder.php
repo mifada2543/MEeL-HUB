@@ -20,8 +20,8 @@ class Transcoder
         $this->base_path    = "/opt/lampp/htdocs/MEeL";
         $this->cookies_path = $this->base_path . "/cookies.txt";
         $this->user_agent   = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-        $this->ffmpeg_bin   = $this->resolveBinary(['/usr/bin/ffmpeg8', '/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
-        $this->ffprobe_bin  = $this->resolveBinary(['/usr/bin/ffprobe8', '/usr/local/bin/ffprobe', '/usr/bin/ffprobe', 'ffprobe']);
+        $this->ffmpeg_bin   = $this->resolveBinary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+        $this->ffprobe_bin  = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
         $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; /usr/local/bin/yt-dlp --js-runtime node --no-warnings --restrict-filenames"
             . " --ffmpeg-location " . escapeshellarg(dirname($this->ffmpeg_bin))
             . " --user-agent " . escapeshellarg($this->user_agent)
@@ -216,7 +216,9 @@ class Transcoder
         if ($type === 'music') {
             $temp_id   = "raw_" . time();
             $temp_path = "{$this->base_path}/temp/$temp_id.%(ext)s";
-            $cmd_dl    = $this->base_cmd . "-f bestaudio -o " . escapeshellarg($temp_path);
+            $cmd_dl    = $this->base_cmd . "-f bestaudio -o " . escapeshellarg($temp_path)
+                . " --write-thumbnail --convert-thumbnails jpg --embed-thumbnail"
+                . " --newline " . escapeshellarg($url) . " 2>&1";
         } else {
             // [DIUBAH] Download video ke temp/ dulu, bukan langsung ke HDD
             $staging_dir = "{$this->base_path}/temp/";
@@ -229,10 +231,9 @@ class Transcoder
             $output_tpl = $staging_dir . $basename . ".%(ext)s";
             $format     = $this->resolveVideoFormat($url);
 
-            $cmd_dl = $this->base_cmd . "-f " . escapeshellarg($format) . " --merge-output-format mp4 -o " . escapeshellarg($output_tpl);
+            $cmd_dl = $this->base_cmd . "-f " . escapeshellarg($format) . " --merge-output-format mp4 -o " . escapeshellarg($output_tpl)
+                . " --write-thumbnail --convert-thumbnails jpg --newline " . escapeshellarg($url) . " 2>&1";
         }
-
-        $cmd_dl .= " --write-thumbnail --convert-thumbnails jpg --newline " . escapeshellarg($url) . " 2>&1";
 
         // =========================
         // EXECUTION
@@ -411,7 +412,7 @@ class Transcoder
         if (!$handle) {
             foreach (glob($work_folder . "*") as $f) @unlink($f);
             @rmdir($work_folder);
-            echo "<script>meelError(" . json_encode("Gagal menjalankan ffmpeg8 untuk transcode HLS. Cek instalasi ffmpeg.") . ");</script>";
+            echo "<script>meelError(" . json_encode("Gagal menjalankan ffmpeg untuk transcode HLS. Cek instalasi ffmpeg.") . ");</script>";
             flush();
             return "";
         }
@@ -567,23 +568,128 @@ class Transcoder
             return ['status' => 'error', 'msg' => $log];
         }
 
-        $temp_thumb = "{$this->base_path}/temp/" . pathinfo($temp_file, PATHINFO_FILENAME) . ".jpg";
-        if (file_exists($temp_thumb)) {
-            rename($temp_thumb, "{$this->base_path}/music/upload/thumbnail/$thumb_name");
-        }
+        // ─── EXTRACT THUMBNAIL (ROBUST) ────────────────────────────────────────
+        $temp_base = pathinfo($temp_file, PATHINFO_FILENAME);
+        $temp_dir = "{$this->base_path}/temp";
+        $thumb_result = $this->extractMusicThumbnail($input_path, $temp_dir, $temp_base, $thumb_name);
+        
         if (is_file($input_path)) unlink($input_path);
+
+        // Cleanup sisa file temporary (dari yt-dlp yg tidak ter-process)
+        foreach (glob("$temp_dir/$temp_base.*") as $leftover) {
+            @unlink($leftover);
+        }
 
         $romaji_title  = getRomajiName($title);
         $romaji_artist = getRomajiName($artist);
         $metadata      = mb_strtolower("$title $artist $album $romaji_title $romaji_artist", 'UTF-8');
 
         $stmt = $this->conn->prepare("INSERT INTO music (title, artist, album, search_metadata, filename, thumbnail, duration, user_id, upload_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-        $stmt->bind_param("ssssssii", $title, $artist, $album, $metadata, $final_fname, $thumb_name, $duration, $this->user_id);
+        $stmt->bind_param("ssssssii", $title, $artist, $album, $metadata, $final_fname, $thumb_result, $duration, $this->user_id);
 
         if ($stmt->execute()) {
             return ['status' => 'success', 'filename' => $final_fname];
         }
         return ['status' => 'error', 'msg' => 'Database error: ' . $this->conn->error];
+    }
+
+    // ─── HELPER: EXTRACT MUSIC THUMBNAIL (ROBUST) ──────────────────────────────
+    private function extractMusicThumbnail(string $audio_file, string $temp_dir, string $temp_base, string $target_name): string
+    {
+        $thumb_dir = "{$this->base_path}/music/upload/thumbnail";
+        if (!is_dir($thumb_dir)) mkdir($thumb_dir, 0755, true);
+
+        // STRATEGI 1: Cari thumbnail dari yt-dlp (semua format: .jpg, .webp, .png)
+        $image_patterns = [
+            "$temp_dir/$temp_base.jpg",
+            "$temp_dir/$temp_base.webp",
+            "$temp_dir/$temp_base.png",
+            "$temp_dir/$temp_base.jpeg",
+        ];
+
+        foreach ($image_patterns as $pattern) {
+            if (file_exists($pattern) && filesize($pattern) > 0) {
+                return $this->convertAndSaveThumbnail($pattern, $thumb_dir, $target_name);
+            }
+        }
+
+        // STRATEGI 2: Ekstrak thumbnail dari ID3/VORBIS metadata di audio file
+        $extracted_thumb = $this->extractThumbnailFromAudio($audio_file, $thumb_dir, $target_name);
+        if ($extracted_thumb !== 'music_default.png') {
+            return $extracted_thumb;
+        }
+
+        // STRATEGI 3: Gunakan default thumbnail
+        return 'music_default.png';
+    }
+
+    // ─── HELPER: CONVERT DAN SIMPAN THUMBNAIL ──────────────────────────────────
+    private function convertAndSaveThumbnail(string $source_image, string $target_dir, string $target_name): string
+    {
+        $target_path = "$target_dir/$target_name";
+
+        // Jika sudah jpg, copy langsung
+        if (strtolower(pathinfo($source_image, PATHINFO_EXTENSION)) === 'jpg') {
+            if (copy($source_image, $target_path)) {
+                @unlink($source_image);
+                return $target_name;
+            }
+        }
+
+        // Convert ke jpg menggunakan ffmpeg
+        $cmd = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) 
+            . " -y -i " . escapeshellarg($source_image)
+            . " -vf " . escapeshellarg("scale='min(500,iw)':-1")
+            . " -q:v 6 " . escapeshellarg($target_path) . " 2>&1";
+        
+        @shell_exec($cmd);
+
+        // Verifikasi hasil konversi
+        if (file_exists($target_path) && filesize($target_path) > 0) {
+            @unlink($source_image);
+            return $target_name;
+        }
+
+        // Fallback: copy original jika convert gagal
+        if (copy($source_image, $target_path)) {
+            @unlink($source_image);
+            return $target_name;
+        }
+
+        // Jika semua gagal, cleanup dan return default
+        @unlink($source_image);
+        return 'music_default.png';
+    }
+
+    // ─── HELPER: EKSTRAK THUMBNAIL DARI AUDIO METADATA ─────────────────────────
+    private function extractThumbnailFromAudio(string $audio_file, string $target_dir, string $target_name): string
+    {
+        if (!file_exists($audio_file) || filesize($audio_file) === 0) {
+            return 'music_default.png';
+        }
+
+        $temp_extracted = "{$target_dir}/.temp_thumb_" . time() . "_" . random_int(1000, 9999) . ".jpg";
+
+        // Ekstrak cover art dari audio file (bekerja untuk MP3, OGG, M4A, FLAC, dll)
+        $cmd = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin)
+            . " -y -i " . escapeshellarg($audio_file)
+            . " -an -vframes 1"
+            . " -vf " . escapeshellarg("scale='min(500,iw)':-1")
+            . " -q:v 6 " . escapeshellarg($temp_extracted) . " 2>&1";
+        
+        @shell_exec($cmd);
+
+        // Verifikasi hasil ekstraksi
+        if (file_exists($temp_extracted) && filesize($temp_extracted) > 1000) {
+            $final_path = "{$target_dir}/$target_name";
+            if (rename($temp_extracted, $final_path)) {
+                return $target_name;
+            }
+            @unlink($temp_extracted);
+        }
+
+        @unlink($temp_extracted);
+        return 'music_default.png';
     }
 
     // =========================================================
