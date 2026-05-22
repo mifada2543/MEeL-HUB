@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);  // Jangan display error langsung (akan diparsing oleh JS)
 ignore_user_abort(true);
 set_time_limit(0);
 putenv("LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib");
@@ -11,6 +11,32 @@ require_once 'auth/config.php';
 require_once 'auth/activity_logger.php';
 require_once 'auth/Transcoder.php';
 include 'helpers.php';
+
+// ─── GLOBAL ERROR HANDLER ──────────────────────────────────────────────────
+// Tangkap fatal error dan tampilkan ke user via JavaScript
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    // Jangan tangkap error dari library eksternal
+    if (strpos($errfile, 'node_modules') !== false || strpos($errfile, 'vendor') !== false) {
+        return false;
+    }
+    
+    $safe_msg = "$errstr (Line $errline)";
+    $json_msg = json_encode($safe_msg);
+    echo "<script>meelError($json_msg);</script>";
+    echo str_repeat(' ', 1024);
+    flush();
+    return true;
+});
+
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        $json_msg = json_encode($error['message']);
+        echo "<script>meelError($json_msg);</script>";
+        echo str_repeat(' ', 1024);
+        flush();
+    }
+});
 
 $message    = "";
 $transcoder = new Transcoder($conn, $_SESSION['user_id']);
@@ -25,14 +51,28 @@ if (isset($_GET['success'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     verify_csrf();
     if ($busy_data) {
-        $message = "<div class='bg-orange-500/10 text-orange-500 p-4 rounded-xl border border-orange-500/20 mb-6 font-bold text-sm text-center'>
-            ⚠️ SERVER SEDANG SIBUK<br>
-            <span class='font-normal opacity-80 text-xs'>@{$busy_data['username']} sedang mendownload. Coba lagi nanti!</span>
-        </div>";
+        $message = "<div class='bg-orange-500/10 text-orange-500 p-4 rounded-xl border border-orange-500/20 mb-6 font-bold text-sm text-center'>" .
+            "⚠️ SERVER SEDANG SIBUK<br>" .
+            "<span class='font-normal opacity-80 text-xs'>@{$busy_data['username']} sedang mendownload. Coba lagi nanti!</span>" .
+            "</div>";
     } else {
-        $url  = trim($_POST['url']);
-        $type = $_POST['type'] ?? '';
-        $message = $transcoder->processDownload($url, $type);
+        try {
+            $url  = trim($_POST['url']);
+            $type = $_POST['type'] ?? '';
+            $message = $transcoder->processDownload($url, $type);
+        } catch (Exception $e) {
+            $json_msg = json_encode($e->getMessage());
+            echo "<script>meelError($json_msg);</script>";
+            echo str_repeat(' ', 1024);
+            flush();
+            exit;
+        } catch (Throwable $e) {
+            $json_msg = json_encode($e->getMessage());
+            echo "<script>meelError($json_msg);</script>";
+            echo str_repeat(' ', 1024);
+            flush();
+            exit;
+        }
     }
 }
 ?>

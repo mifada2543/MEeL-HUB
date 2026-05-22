@@ -17,6 +17,11 @@
     /* Tambahan agar animasi lancar saat streaming */
     backface-visibility: hidden;
     perspective: 1000px;
+    backdrop-filter: blur(2px);
+  }
+
+  #meel-overlay.error-state {
+    background: rgba(5, 7, 12, 0.98);
   }
 
   #meel-card {
@@ -188,6 +193,8 @@
 <script>
   (function() {
     var _segsBuilt = false;
+    var _errorTimeout = null;
+    
     window.meelPhase = function(phase) {
       var phases = ['download', 'transcode', 'sprite', 'done', 'error'];
       phases.forEach(function(p) {
@@ -209,6 +216,7 @@
         }
       }
     };
+    
     window.meelDlPct = function(pct, eta) {
       var b = document.getElementById('meel-dl-bar');
       var t = document.getElementById('meel-dl-pct');
@@ -217,6 +225,7 @@
       if (t) t.textContent = pct + '%';
       if (e && eta) e.textContent = eta;
     };
+    
     window.meelTcPct = function(pct, label) {
       var b = document.getElementById('meel-tc-bar');
       var t = document.getElementById('meel-tc-pct');
@@ -228,12 +237,14 @@
         if (s) s.classList.add('done');
       }
     };
+    
     window.meelSpPct = function(pct, label) {
       var b = document.getElementById('meel-sp-bar');
       var t = document.getElementById('meel-sp-pct');
       if (b) b.style.width = pct + '%';
       if (t && label) t.textContent = label;
     };
+    
     window.meelDone = function(title, homeUrl) {
       meelPhase('done');
       var el = document.getElementById('meel-done-title');
@@ -243,12 +254,40 @@
         if (btn) btn.href = homeUrl;
       }
     };
+    
     window.meelError = function(log) {
+      // Clear any existing error timeout
+      if (_errorTimeout) clearTimeout(_errorTimeout);
+      
+      // Ganti fase ke error
       meelPhase('error');
+      
+      // Set error state untuk dark background
+      var overlay = document.getElementById('meel-overlay');
+      if (overlay) {
+        overlay.classList.add('error-state');
+      }
+      
+      // Set error message
       var el = document.getElementById('meel-error-log');
       if (el) el.textContent = log;
+      
+      console.error('MEeL Error:', log);
     };
+    
+    // Safety: Catch global errors dan tampilkan di overlay
+    window.addEventListener('error', function(event) {
+      console.error('Global JavaScript Error:', event.error);
+      meelError('Kesalahan sistem: ' + (event.error?.message || 'Unknown error'));
+    });
+    
+    // Safety: Catch unhandled promise rejections
+    window.addEventListener('unhandledrejection', function(event) {
+      console.error('Unhandled Promise:', event.reason);
+      meelError('Kesalahan sistem: ' + (event.reason?.message || String(event.reason)));
+    });
   })();
+  
   window.meelDoneTranscode = function(title, downloadUrl) {
     // 1. Ganti state ke 'done'
     meelPhase('done');
@@ -258,21 +297,19 @@
     if (titleEl) titleEl.textContent = title;
 
     // 3. Modifikasi Tombol "Download Lagi" agar tidak ke upload_advanced.php
-    // Kita cari tombol berdasarkan teks atau urutan (tombol kedua di meel-nav-btns)
     var navBtns = document.getElementById('meel-nav-btns');
     if (navBtns) {
       var btns = navBtns.getElementsByTagName('a');
       if (btns.length >= 2) {
-        // Tombol "Download Lagi" (Indeks 1)
         btns[1].innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan File';
         btns[1].href = downloadUrl;
-        btns[1].setAttribute('download', title); // Trigger download otomatis
-        btns[1].style.color = '#3b82f6'; // Beri warna biru agar beda
+        btns[1].setAttribute('download', title);
+        btns[1].style.color = '#3b82f6';
         btns[1].style.borderColor = 'rgba(59,130,246,0.3)';
       }
     }
 
-    // 4. (Opsional) Berikan tombol untuk "Tutup Overlay" agar UI utama terlihat
+    // 4. Tombol tutup overlay
     var closeBtn = document.createElement('a');
     closeBtn.className = 'meel-nav-btn';
     closeBtn.style.cssText = 'color:rgba(255,255,255,0.5); border-color:rgba(255,255,255,0.1); background:transparent;';

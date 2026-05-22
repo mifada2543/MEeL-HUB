@@ -7,6 +7,8 @@ class Uploader
     private $username;
     private $user_role;
     private $base_dir;
+    private $ffmpeg_bin;
+    private $ffprobe_bin;
 
     public function __construct($db_connection, $session_user_id, $session_username)
     {
@@ -14,6 +16,8 @@ class Uploader
         $this->user_id   = (int)$session_user_id;
         $this->username  = $session_username;
         $this->base_dir  = "/media/muhammaddaffa/MEeL/media/video/upload/";
+        $this->ffmpeg_bin  = $this->resolveBinary(['/usr/bin/ffmpeg8', '/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
+        $this->ffprobe_bin = $this->resolveBinary(['/usr/bin/ffprobe8', '/usr/local/bin/ffprobe', '/usr/bin/ffprobe', 'ffprobe']);
 
         $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
         $stmt->bind_param("i", $this->user_id);
@@ -23,6 +27,25 @@ class Uploader
     }
 
     // ─── PRIVATE HELPERS ──────────────────────────────────────────────────────
+
+    private function resolveBinary(array $candidates): string
+    {
+        foreach ($candidates as $candidate) {
+            if (strpos($candidate, '/') !== false) {
+                if (is_executable($candidate)) {
+                    return $candidate;
+                }
+                continue;
+            }
+
+            $resolved = trim((string)shell_exec("command -v " . escapeshellarg($candidate) . " 2>/dev/null"));
+            if ($resolved !== '') {
+                return $resolved;
+            }
+        }
+
+        return $candidates[0];
+    }
 
     private function checkRateLimit(string $table): array
     {
@@ -108,7 +131,7 @@ class Uploader
             return ['status' => 'error', 'msg' => "File terlalu besar!", 'alert' => true];
         }
 
-        $dur_cmd  = "export LD_LIBRARY_PATH=''; /usr/bin/ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($target_file);
+        $dur_cmd  = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffprobe_bin) . " -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($target_file);
         $duration = (float)trim(shell_exec($dur_cmd));
         $max_dur  = ($this->user_role === 'admin') ? 3600 : 300;
         if ($duration > $max_dur) {
@@ -126,7 +149,7 @@ class Uploader
             $thumb_candidate = $this->getUniqueFilename($t_clean, "jpg", $thumb_dir);
             $abs_out         = $thumb_dir . $thumb_candidate;
 
-            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($files['thumbnail']['tmp_name']) . " -vf \"scale='min(1280,iw)':-1\" -q:v 5 " . escapeshellarg($abs_out) . " 2>&1");
+            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg8 -y -i " . escapeshellarg($files['thumbnail']['tmp_name']) . " -vf \"scale='min(1280,iw)':-1\" -q:v 5 " . escapeshellarg($abs_out) . " 2>&1");
 
             if (file_exists($abs_out) && filesize($abs_out) > 0) {
                 $thumb_name = $thumb_candidate;
@@ -139,7 +162,7 @@ class Uploader
             $thumb_candidate = $this->getUniqueFilename($thumb_base, "jpg", $thumb_dir);
             $abs_out         = $thumb_dir . $thumb_candidate;
 
-            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($target_file) . " -an -vframes 1 " . escapeshellarg($abs_out) . " 2>&1");
+            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg8 -y -i " . escapeshellarg($target_file) . " -an -vframes 1 " . escapeshellarg($abs_out) . " 2>&1");
 
             if (file_exists($abs_out) && filesize($abs_out) > 0) {
                 $thumb_name = $thumb_candidate;
@@ -150,7 +173,7 @@ class Uploader
         if (!$skip_transcode) {
             $opus_file = pathinfo($file_name, PATHINFO_FILENAME) . ".ogg";
             $opus_path = $base_dir . "upload/file/" . $opus_file;
-            exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($target_file) . " -c:a libopus -vbr on -compression_level 10" . escapeshellarg($opus_path), $out, $ret);
+            exec("export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($target_file) . " -c:a libopus -vbr on -compression_level 10 " . escapeshellarg($opus_path), $out, $ret);
             if ($ret === 0 && file_exists($opus_path)) {
                 unlink($target_file);
                 $file_name = $opus_file;
@@ -219,7 +242,7 @@ class Uploader
         $thumb_name        = $clean_name . "_thumb.jpg";
         $work_thumb        = $work_folder . $thumb_name;
 
-        $cmd_thumb = "export LD_LIBRARY_PATH=; /usr/bin/ffmpeg -y -i "
+        $cmd_thumb = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i "
             . escapeshellarg($staged_video)
             . " -ss 00:00:05 -vframes 1 -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
             . escapeshellarg($work_thumb) . " 2>&1";
@@ -227,7 +250,7 @@ class Uploader
 
         // Fallback: ambil frame ke-1 kalau video < 5 detik
         if (!file_exists($work_thumb) || filesize($work_thumb) === 0) {
-            $cmd_thumb_fallback = "export LD_LIBRARY_PATH=; /usr/bin/ffmpeg -y -i "
+            $cmd_thumb_fallback = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i "
                 . escapeshellarg($staged_video)
                 . " -ss 00:00:01 -vframes 1 -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
                 . escapeshellarg($work_thumb) . " 2>&1";
@@ -243,7 +266,7 @@ class Uploader
         $work_m3u8 = $work_folder . $folder_name . ".m3u8";
         $db_filename = "video/" . $folder_name . "/" . $folder_name . ".m3u8";
 
-        $cmd = "export LD_LIBRARY_PATH=; /usr/bin/ffmpeg -i " . escapeshellarg($staged_video)
+        $cmd = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -i " . escapeshellarg($staged_video)
             . " -codec copy"
             . " -start_number 0 -hls_time 20 -hls_list_size 0"
             . " -hls_segment_filename " . escapeshellarg($work_folder . $folder_name . "_%03d.ts")
@@ -332,7 +355,7 @@ class Uploader
         $cols     = 5;       // Jumlah kolom menyamping dalam sprite
 
         // 1. Dapatkan durasi video memakai ffprobe
-        $probe_cmd = "export LD_LIBRARY_PATH=; /usr/bin/ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($staged_video);
+        $probe_cmd = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffprobe_bin) . " -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($staged_video);
         $duration = (float) shell_exec($probe_cmd);
 
         if ($duration > 0) {
@@ -344,7 +367,7 @@ class Uploader
             $sprite_file = $target_folder . 'thumb_sprite.jpg';
             $vtt_file    = $target_folder . 'thumbnails.vtt';
 
-            $cmd_sprite = "export LD_LIBRARY_PATH=; /usr/bin/ffmpeg -y -i " . escapeshellarg($staged_video) . " -vf \"fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}\" " . escapeshellarg($sprite_file) . " 2>&1";
+            $cmd_sprite = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($staged_video) . " -vf \"fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}\" " . escapeshellarg($sprite_file) . " 2>&1";
             exec($cmd_sprite);
 
             // 3. Tulis file .vtt menggunakan PHP (Matematika Koordinat)

@@ -10,6 +10,8 @@ class Transcoder
     private $cookies_path;
     private $user_agent;
     private $base_cmd;
+    private $ffmpeg_bin;
+    private $ffprobe_bin;
 
     public function __construct($db_connection, $session_user_id)
     {
@@ -18,7 +20,10 @@ class Transcoder
         $this->base_path    = "/opt/lampp/htdocs/MEeL";
         $this->cookies_path = $this->base_path . "/cookies.txt";
         $this->user_agent   = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        $this->ffmpeg_bin   = $this->resolveBinary(['/usr/bin/ffmpeg8', '/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
+        $this->ffprobe_bin  = $this->resolveBinary(['/usr/bin/ffprobe8', '/usr/local/bin/ffprobe', '/usr/bin/ffprobe', 'ffprobe']);
         $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; /usr/local/bin/yt-dlp --js-runtime node --no-warnings --restrict-filenames"
+            . " --ffmpeg-location " . escapeshellarg(dirname($this->ffmpeg_bin))
             . " --user-agent " . escapeshellarg($this->user_agent)
             . " --cookies "    . escapeshellarg($this->cookies_path) . " ";
 
@@ -31,6 +36,25 @@ class Transcoder
     public function getUserRole(): string
     {
         return $this->user_role;
+    }
+
+    private function resolveBinary(array $candidates): string
+    {
+        foreach ($candidates as $candidate) {
+            if (strpos($candidate, '/') !== false) {
+                if (is_executable($candidate)) {
+                    return $candidate;
+                }
+                continue;
+            }
+
+            $resolved = trim((string)shell_exec("command -v " . escapeshellarg($candidate) . " 2>/dev/null"));
+            if ($resolved !== '') {
+                return $resolved;
+            }
+        }
+
+        return $candidates[0];
     }
 
     public function checkServerBusy(): ?array
@@ -101,6 +125,8 @@ class Transcoder
         echo "<strong>Cek Path System:</strong><br>";
         echo "- Path Node: " . ($check_node ?: "<span style='color:yellow;'>Tidak ditemukan</span>") . "<br>";
         echo "- Path yt-dlp: " . ($check_ytdlp ?: "<span style='color:yellow;'>Tidak ditemukan</span>") . "<br>";
+        echo "- Path ffmpeg: " . htmlspecialchars($this->ffmpeg_bin) . "<br>";
+        echo "- Path ffprobe: " . htmlspecialchars($this->ffprobe_bin) . "<br>";
 
         echo "</div>";
         die("--- PROSES DIHENTIKAN UNTUK DEBUG ---");
@@ -148,17 +174,29 @@ class Transcoder
     public function processDownload(string $url, string $type): string
     {
         if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('/^https?:\/\//i', $url)) {
-            return $this->msgError("URL tidak valid atau protokol tidak didukung.");
+            echo "<script>meelError(" . json_encode("URL tidak valid atau protokol tidak didukung.") . ");</script>";
+            flush();
+            return "";
         }
-        if (!in_array($type, ['video', 'music'], true)) return $this->msgError("Tipe media tidak valid.");
-        if (strlen($url) > 500) return $this->msgError("URL terlalu panjang.");
+        if (!in_array($type, ['video', 'music'], true)) {
+            echo "<script>meelError(" . json_encode("Tipe media tidak valid.") . ");</script>";
+            flush();
+            return "";
+        }
+        if (strlen($url) > 500) {
+            echo "<script>meelError(" . json_encode("URL terlalu panjang.") . ");</script>";
+            flush();
+            return "";
+        }
 
         $queue_id = $this->lockQueue($url, $type);
 
         $meta = $this->fetchMetadata($url);
         if (!$meta) {
             $this->releaseQueue($queue_id, 'failed');
-            return $this->msgError("Gagal ambil metadata.");
+            echo "<script>meelError(" . json_encode("Gagal ambil metadata.") . ");</script>";
+            flush();
+            return "";
         }
 
         $title    = $meta['title'] ?? "Upload_" . time();
@@ -191,8 +229,7 @@ class Transcoder
             $output_tpl = $staging_dir . $basename . ".%(ext)s";
             $format     = $this->resolveVideoFormat($url);
 
-            $cmd_dl = $this->base_cmd .
-                "-f \"$format\" --merge-output-format mp4 -o " . escapeshellarg($output_tpl);
+            $cmd_dl = $this->base_cmd . "-f " . escapeshellarg($format) . " --merge-output-format mp4 -o " . escapeshellarg($output_tpl);
         }
 
         $cmd_dl .= " --write-thumbnail --convert-thumbnails jpg --newline " . escapeshellarg($url) . " 2>&1";
@@ -207,11 +244,12 @@ class Transcoder
         $timeout   = 900; // 15 menit
 
         $full_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; timeout 900 $cmd_dl";
-        $handle   = popen($full_cmd, 'r');
+        $handle   = @popen($full_cmd, 'r');
 
         if (!$handle) {
             $this->releaseQueue($queue_id, 'failed');
-            echo "<script>meelError('Gagal menjalankan yt-dlp');</script>";
+            echo "<script>meelError(" . json_encode("Gagal menjalankan yt-dlp. Cek permission atau install yt-dlp.") . ");</script>";
+            flush();
             return "";
         }
 
@@ -257,11 +295,14 @@ class Transcoder
         // =========================
         if (!$is_success) {
             $this->releaseQueue($queue_id, 'failed');
-
             file_put_contents('/tmp/ytdlp_error.log', $error_log);
-
-            $safe = addslashes(htmlspecialchars(substr($error_log, -800)));
-            echo "<script>meelError('$safe');</script>";
+            
+            $error_msg = "Download gagal. Detail disimpan di server.";
+            $last_lines = array_slice(explode("\n", $error_log), -3);
+            $detail = trim(implode(" | ", $last_lines));
+            if ($detail) $error_msg = substr($detail, 0, 200);
+            
+            echo "<script>meelError(" . json_encode($error_msg) . ");</script>";
             flush();
             return "";
         }
@@ -305,8 +346,7 @@ class Transcoder
 
         // ── 1. VALIDASI MP4 STAGING ───────────────────────────────────────────
         if (!file_exists($staging_mp4)) {
-            $safe = addslashes("File MP4 staging tidak ditemukan: {$staging_mp4}");
-            echo "<script>meelError('$safe');</script>";
+            echo "<script>meelError(" . json_encode("File MP4 staging tidak ditemukan: $staging_mp4") . ");</script>";
             flush();
             return "";
         }
@@ -338,8 +378,8 @@ class Transcoder
         $work_thumb = $work_folder . $db_thumb;
 
         if (file_exists($dl_thumb_src)) {
-            $cmd_compress = "export LD_LIBRARY_PATH=; /usr/bin/ffmpeg8 -y -i " . escapeshellarg($dl_thumb_src)
-                . " -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
+            $cmd_compress = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($dl_thumb_src)
+                . " -vf " . escapeshellarg("scale='min(1280,iw)':-1") . " -q:v 5 "
                 . escapeshellarg($work_thumb) . " 2>&1";
             shell_exec($cmd_compress);
 
@@ -356,18 +396,26 @@ class Transcoder
         }
 
         // ── 5. TRANSCODE KE HLS (output ke work_folder) ──────────────────────
-        $dur_cmd  = "export LD_LIBRARY_PATH=''; /usr/bin/ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($staging_mp4);
+        $dur_cmd  = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffprobe_bin) . " -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($staging_mp4);
         $file_dur = (float)trim(shell_exec($dur_cmd));
 
         $work_m3u8 = $work_folder . $folder_name . ".m3u8";
 
-        $cmd_hls = "export LD_LIBRARY_PATH=; /usr/bin/ffmpeg8 -i " . escapeshellarg($staging_mp4)
+        $cmd_hls = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) . " -i " . escapeshellarg($staging_mp4)
             . " -codec copy"
             . " -start_number 0 -hls_time 10 -hls_list_size 0"
             . " -hls_segment_filename " . escapeshellarg($work_folder . $folder_name . "_%03d.ts")
             . " -f hls " . escapeshellarg($work_m3u8) . " 2>&1";
 
-        $handle = popen($cmd_hls, 'r');
+        $handle = @popen($cmd_hls, 'r');
+        if (!$handle) {
+            foreach (glob($work_folder . "*") as $f) @unlink($f);
+            @rmdir($work_folder);
+            echo "<script>meelError(" . json_encode("Gagal menjalankan ffmpeg8 untuk transcode HLS. Cek instalasi ffmpeg.") . ");</script>";
+            flush();
+            return "";
+        }
+
         if ($handle) {
             while (!feof($handle)) {
                 $line = fgets($handle);
@@ -386,7 +434,7 @@ class Transcoder
             foreach (glob($work_folder . "*") as $f) @unlink($f);
             @rmdir($work_folder);
             @unlink($staging_mp4);
-            echo "<script>meelError('Transcode HLS gagal. File .m3u8 tidak terbentuk.');</script>";
+            echo "<script>meelError(" . json_encode("Transcode HLS gagal. File .m3u8 tidak terbentuk.") . ");</script>";
             flush();
             return "";
         }
@@ -431,12 +479,28 @@ class Transcoder
             foreach (glob($hdd_target_folder . "*") as $f) @unlink($f);
             @rmdir($hdd_target_folder);
             @unlink($hdd_thumb_dir . $db_thumb);
-            echo "<script>meelError('Gagal memindahkan file ke storage. Cek permission HDD.');</script>";
+            echo "<script>meelError(" . json_encode("Gagal memindahkan file ke storage. Cek permission HDD.") . ");</script>";
             flush();
             return "";
         }
 
         // ── 8. SIMPAN KE DATABASE ─────────────────────────────────────────────
+        // Verifikasi file benar-benar ada di HDD sebelum insert
+        $hdd_m3u8_full = $hdd_base . $db_filename;
+        $hdd_thumb_full = $hdd_thumb_dir . $db_thumb;
+        
+        if (!file_exists($hdd_m3u8_full) || filesize($hdd_m3u8_full) === 0) {
+            echo "<script>meelError(" . json_encode("File M3U8 tidak ditemukan di HDD: $hdd_m3u8_full") . ");</script>";
+            flush();
+            return "";
+        }
+
+        if ($thumb_generated && (!file_exists($hdd_thumb_full) || filesize($hdd_thumb_full) === 0)) {
+            echo "<script>meelError(" . json_encode("Thumbnail tidak ditemukan di HDD: $hdd_thumb_full") . ");</script>";
+            flush();
+            return "";
+        }
+
         $romaji   = getRomajiName($title);
         $metadata = mb_strtolower("$title $artist $romaji", 'UTF-8');
         $desc     = "Advanced Upload from URL";
@@ -446,14 +510,25 @@ class Transcoder
             "INSERT INTO video (title, description, filename, thumbnail, duration, views, user_id, search_metadata, upload_date)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())"
         );
-        if ($stmt) {
-            $stmt->bind_param("ssssiiss", $title, $desc, $db_filename, $db_thumb, $duration, $views, $this->user_id, $metadata);
-            $stmt->execute();
+        
+        if (!$stmt) {
+            echo "<script>meelError(" . json_encode("Database prepare error: " . $this->conn->error) . ");</script>";
+            flush();
+            return "";
         }
 
+        $stmt->bind_param("ssssiiss", $title, $desc, $db_filename, $db_thumb, $duration, $views, $this->user_id, $metadata);
+        
+        if (!$stmt->execute()) {
+            echo "<script>meelError(" . json_encode("Database insert error: " . $stmt->error) . ");</script>";
+            flush();
+            return "";
+        }
+
+        $stmt->close();
+
         // Tampilkan fase selesai dengan judul + tombol navigasi
-        $safe_title = addslashes(htmlspecialchars($title));
-        echo "<script>meelDone('$safe_title', 'index.php');</script>";
+        echo "<script>meelDone(" . json_encode($title) . ", 'index.php');</script>";
         flush();
         return "";
     }
@@ -481,7 +556,7 @@ class Transcoder
         $final_path  = "{$this->base_path}/music/upload/file/$final_fname";
         $thumb_name  = str_replace('.ogg', '.jpg', $final_fname);
 
-        $cmd = "/usr/bin/ffmpeg8 -y -i " . escapeshellarg($input_path)
+        $cmd = escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($input_path)
             . " -c:a libopus -vbr on -compression_level 10"
             . " -metadata title="  . escapeshellarg($title)
             . " -metadata artist=" . escapeshellarg($artist)
@@ -563,7 +638,7 @@ class Transcoder
         natsort($ts_files);
 
         // 3. VALIDASI DURASI & UKURAN
-        $dur_cmd  = "export LD_LIBRARY_PATH=''; /usr/bin/ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($m3u8_path);
+        $dur_cmd  = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffprobe_bin) . " -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($m3u8_path);
         $file_dur = (float)trim(shell_exec($dur_cmd));
         $total_size = array_sum(array_map('filesize', $ts_files));
 
@@ -580,7 +655,7 @@ class Transcoder
         if (file_exists($output_path)) {
             $download_link = "temp/" . $output_filename;
             // Panggil fungsi khusus transcode agar overlay hilang/berubah
-            echo "<script>meelDoneTranscode('{$clean_title}', '{$download_link}');</script>";
+            echo "<script>meelDoneTranscode(" . json_encode($clean_title) . ", " . json_encode($download_link) . ");</script>";
             flush();
             return ['status' => 'success', 'download_link' => $download_link];
         }
@@ -626,7 +701,7 @@ class Transcoder
                 break;
         }
 
-        $cmd = "export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg8 -y -f concat -safe 0 -i " . escapeshellarg($concat_list_path);
+        $cmd = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) . " -y -f concat -safe 0 -i " . escapeshellarg($concat_list_path);
         if ($use_thumb) $cmd .= " -i " . escapeshellarg($thumb_path);
         $cmd .= " -map 0:a";
         if ($use_thumb) {
@@ -646,7 +721,8 @@ class Transcoder
                     $cur = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
                     $pct = min(100, round(($cur / $file_dur) * 100));
                     $fmt = strtoupper($format);
-                    echo "<script>meelTcPct($pct, '$pct% — CONVERTING TO $fmt');</script>";
+                    $label = "$pct% — CONVERTING TO $fmt";
+                    echo "<script>meelTcPct($pct, " . json_encode($label) . ");</script>";
                     flush();
                 }
             }
@@ -658,16 +734,14 @@ class Transcoder
         $this->conn->query("UPDATE transcode_queue SET status = 'completed' WHERE id = $queue_id");
 
         if (!file_exists($output_path) || filesize($output_path) === 0) {
-            echo "<script>meelError('FFmpeg gagal menghasilkan file output.');</script>";
+            echo "<script>meelError(" . json_encode("FFmpeg gagal menghasilkan file output.") . ");</script>";
             flush();
             return ['status' => 'error', 'msg' => 'FFmpeg gagal menghasilkan file.'];
         }
 
         // [FIX] Tampilkan fase done menggunakan fungsi khusus Transcode
-        $safe_title = addslashes(htmlspecialchars($v_data['title']));
         $download_link = "temp/" . $output_filename;
-
-        echo "<script>meelDoneTranscode('$safe_title', '$download_link');</script>";
+        echo "<script>meelDoneTranscode(" . json_encode($v_data['title']) . ", " . json_encode($download_link) . ");</script>";
         flush();
 
         return [
@@ -694,7 +768,7 @@ class Transcoder
         $cols     = 5;       // 5 kolom menyamping
 
         // 1. Dapatkan durasi video memakai ffprobe
-        $probe_cmd = "export LD_LIBRARY_PATH=; /usr/bin/ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($video_path);
+        $probe_cmd = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffprobe_bin) . " -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($video_path);
         $duration = (float) shell_exec($probe_cmd);
 
         if ($duration > 0) {
@@ -706,7 +780,8 @@ class Transcoder
             $vtt_file    = $target_folder . 'thumbnails.vtt';
 
             // 2. Buat Sprite Image (Tiled)
-            $cmd_sprite = "export LD_LIBRARY_PATH=; /usr/bin/ffmpeg8 -y -i " . escapeshellarg($video_path) . " -vf \"fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}\" " . escapeshellarg($sprite_file) . " 2>&1";
+            $filter = "fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}";
+            $cmd_sprite = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($video_path) . " -vf " . escapeshellarg($filter) . " " . escapeshellarg($sprite_file) . " 2>&1";
             exec($cmd_sprite);
 
             // 3. Tulis file .vtt
