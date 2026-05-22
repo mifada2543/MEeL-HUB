@@ -258,9 +258,6 @@ $counts  = $library->getCounts();
             <a href="update.php" class="bottom-link">
                 <i data-lucide="radio" class="w-3 h-3"></i> Changelog
             </a>
-            <a href="berita/gate.html" class="bottom-link">
-                <i data-lucide="radio" class="w-3 h-3"></i> News
-            </a>
         </div>
 
         <!-- MODE SEHAT -->

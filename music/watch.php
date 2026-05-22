@@ -72,7 +72,8 @@ switch ($ext) {
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.65">
+    <!-- [FIX MOBILE] initial-scale=1 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($v['title']) ?> — MEeL Music</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <link rel="stylesheet" href="../assets/css/plyr.css">
@@ -89,9 +90,10 @@ switch ($ext) {
             position: relative;
         }
 
+        /* [FIX MOBILE] vinyl disc responsif */
         .vinyl-disc {
-            width: 180px;
-            height: 180px;
+            width: clamp(120px, 35vw, 180px);
+            height: clamp(120px, 35vw, 180px);
             border-radius: 50%;
             border: 8px solid #000;
             overflow: hidden;
@@ -119,17 +121,18 @@ switch ($ext) {
             border: 2px solid rgba(255, 255, 255, .12);
         }
 
+        /* [FIX MOBILE] track title font responsif */
         .track-title {
             font-family: var(--font-display);
-            font-size: 2rem;
+            font-size: clamp(1.3rem, 6vw, 2rem);
             letter-spacing: .04em;
             color: #f0f2f7;
             line-height: 1.08;
             overflow: hidden;
             display: -webkit-box;
-            -webkit-line-clamp: 2;
+            -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
-            line-clamp: 2;
+            line-clamp: 3;
         }
 
         .rec-title-text {
@@ -148,7 +151,6 @@ switch ($ext) {
             min-height: 80px;
         }
 
-        /* PERBAIKAN: Pisahkan display: flex agar bisa disembunyikan oleh class .hidden */
         #resume-modal {
             position: absolute;
             inset: 0;
@@ -163,7 +165,6 @@ switch ($ext) {
             justify-content: center;
         }
 
-        /* PERBAIKAN: Pisahkan display: flex agar class .hidden bekerja */
         #playlist-modal {
             position: fixed;
             inset: 0;
@@ -203,7 +204,7 @@ switch ($ext) {
             transform: scale(1.06);
         }
 
-        /* === MINI PLAYER STYLES === */
+        /* === MINI PLAYER === */
         #mini-player {
             position: fixed;
             bottom: 0;
@@ -361,12 +362,13 @@ switch ($ext) {
             color: #6b7280;
         }
 
-        @media (max-width: 768px) {
+        /* [FIX MOBILE] mini player full-width di mobile */
+        @media (max-width: 640px) {
             #mini-player {
-                width: 280px;
-                right: 8px;
-                bottom: 8px;
-                border-radius: 10px;
+                width: 100%;
+                right: 0;
+                bottom: 0;
+                border-radius: 12px 12px 0 0;
             }
         }
     </style>
@@ -374,10 +376,11 @@ switch ($ext) {
 
 <body class="text-gray-400 min-h-screen">
 
+    <!-- NAVBAR -->
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between gap-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
 
-            <a href="index.php" class="flex items-center gap-2.5 flex-shrink-0" title="MEeL Music">
+            <a href="index.php" class="flex items-center gap-2 flex-shrink-0" title="MEeL Music">
                 <div class="w-7 h-7 bg-orange-600 rounded-lg flex items-center justify-center">
                     <i data-lucide="music" class="w-3.5 h-3.5 text-white fill-current"></i>
                 </div>
@@ -386,7 +389,8 @@ switch ($ext) {
                 </span>
             </a>
 
-            <div class="flex-1 max-w-sm flex items-center gap-2">
+            <!-- [FIX MOBILE] Search bar disembunyikan di layar kecil -->
+            <div class="hidden sm:flex flex-1 max-w-sm items-center gap-2">
                 <div class="relative flex-1 group">
                     <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-orange-500 transition-colors"></i>
                     <input type="text"
@@ -399,12 +403,10 @@ switch ($ext) {
                         hx-target="#music-recommendation-column"
                         hx-indicator="#music-search-indicator"
                         autocomplete="off">
-
                     <div id="music-search-indicator" class="htmx-indicator absolute right-3.5 top-1/2 -translate-y-1/2">
                         <div class="animate-spin h-3 w-3 border-2 border-orange-500 border-t-transparent rounded-full"></div>
                     </div>
                 </div>
-
                 <button hx-get="search_music.php?exclude=<?= $id ?>"
                     hx-include="#m-search-watch"
                     hx-target="#music-recommendation-column"
@@ -414,20 +416,22 @@ switch ($ext) {
                 </button>
             </div>
 
-            <div class="flex items-center gap-5 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <a href="../video/index.php" class="flex items-center gap-1.5 text-gray-600 hover:text-red-500 transition-all">
-                    <i data-lucide="play" class="w-3.5 h-3.5"></i> Video
+            <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
+                <a href="../video/index.php" class="hidden sm:flex items-center gap-1.5 text-gray-600 hover:text-red-500 transition-all">
+                    <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                    <span class="hidden md:inline">Video</span>
                 </a>
                 <?php include '../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
 
-    <div class="max-w-7xl mx-auto px-5 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="lg:col-span-2 space-y-6">
-            <div id="player-container" class="bg-[#0d1017] border border-white/[.06] rounded-2xl overflow-hidden">
-                <div id="resume-modal" class="hidden rounded-2xl">
-                    <div class="bg-[#141820] border border-orange-500/25 border-t-2 border-t-orange-500 rounded-2xl p-7 max-w-xs w-full text-center">
+    <!-- [FIX MOBILE] Layout grid responsive -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-5 pt-4 sm:pt-8 pb-20 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div class="lg:col-span-2 space-y-5">
+            <div id="player-container" class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
+                <div id="resume-modal" class="hidden rounded-xl sm:rounded-2xl">
+                    <div class="bg-[#141820] border border-orange-500/25 border-t-2 border-t-orange-500 rounded-2xl p-6 max-w-xs w-full mx-4 text-center">
                         <div class="w-11 h-11 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
                             <i data-lucide="play-circle" class="w-5 h-5 text-orange-500"></i>
                         </div>
@@ -448,8 +452,9 @@ switch ($ext) {
                     </div>
                 </div>
 
-                <div class="flex flex-col md:flex-row gap-6 p-6 border-b border-white/[.04]">
-                    <div class="flex-shrink-0 flex items-center justify-center">
+                <!-- [FIX MOBILE] Vinyl + info: kolom di mobile, row di md+ -->
+                <div class="flex flex-col sm:flex-row gap-5 p-4 sm:p-6 border-b border-white/[.04]">
+                    <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
                         <div class="vinyl-spin vinyl-disc">
                             <img src="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>" alt="cover" class="w-full h-full object-cover">
                         </div>
@@ -457,12 +462,12 @@ switch ($ext) {
 
                     <div class="flex-1 min-w-0 flex flex-col justify-center gap-3">
                         <div>
-                            <div class="track-title" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
-                            <a href="index.php?artist=<?= urlencode($v['artist']) ?>" title="<?= htmlspecialchars($v['artist']) ?>"
-                                class="text-orange-400 font-bold text-sm uppercase tracking-widest hover:underline block mt-2 truncate">
+                            <div class="track-title text-center sm:text-left" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
+                            <a href="index.php?artist=<?= urlencode($v['artist']) ?>"
+                                class="text-orange-400 font-bold text-sm uppercase tracking-widest hover:underline block mt-2 truncate text-center sm:text-left">
                                 <?= htmlspecialchars($v['artist']) ?>
                             </a>
-                            <div class="text-[11px] text-gray-600 uppercase tracking-wider font-medium italic mt-0.5 truncate" title="<?= htmlspecialchars($v['album']) ?>">
+                            <div class="text-[11px] text-gray-600 uppercase tracking-wider font-medium italic mt-0.5 truncate text-center sm:text-left">
                                 <?= htmlspecialchars($v['album'] ?? '') ?>
                             </div>
                             <?php if (!empty($v['description'])): ?>
@@ -470,9 +475,8 @@ switch ($ext) {
                             <?php endif; ?>
                         </div>
 
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span
-                                class="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400"
+                        <div class="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400"
                                 title="<?= htmlspecialchars($deskripsi) ?>">
                                 <?= $fmt_label ?>
                             </span>
@@ -488,23 +492,27 @@ switch ($ext) {
                         </div>
                     </div>
 
+                    <!-- Visualizer: hanya di lg -->
                     <div id="cava-container" class="hidden lg:flex flex-1 min-w-[160px] bg-black/20 border border-white/[.04] rounded-xl p-3 items-end justify-center gap-[2px] min-h-[80px]"></div>
                 </div>
 
-                <div class="p-5">
+                <div class="p-4 sm:p-5">
                     <audio id="main-player" controls preload="metadata" class="w-full">
                         <source src="upload/file/<?= htmlspecialchars($v['filename']) ?>" type="audio/ogg">
                     </audio>
                 </div>
 
-                <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-t border-white/[.04] bg-black/10">
+                <!-- Uploader info + actions -->
+                <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-white/[.04] bg-black/10">
                     <div class="flex items-center gap-3">
                         <a href="../profile/?u=<?= urlencode($v['uploader']) ?>"
                             class="w-9 h-9 rounded-full overflow-hidden border border-orange-500/25 flex-shrink-0 block">
                             <?php if (!empty($v['uploader_pfp'])): ?>
                                 <img src="../profile/upload/<?= htmlspecialchars($v['uploader_pfp']) ?>" class="w-full h-full object-cover">
                             <?php else: ?>
-                                <img src="../profile/upload/default.png" class="w-full h-full object-cover">
+                                <div class="w-full h-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-sm font-bold">
+                                    <?= strtoupper(substr($v['uploader'], 0, 1)) ?>
+                                </div>
                             <?php endif; ?>
                         </a>
                         <div>
@@ -519,11 +527,11 @@ switch ($ext) {
                     </div>
 
                     <?php if (isset($_SESSION['username'])): ?>
-                        <div id="like-dislike-container" class="flex items-center gap-2">
+                        <div id="like-dislike-container" class="flex items-center gap-2 flex-wrap">
                             <button
                                 hx-post="../like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                 hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"like"}'
-                                class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
+                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                <?= $user_interaction === 'like'
                                     ? 'bg-orange-500/15 border-orange-500/30 text-orange-400'
                                     : 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300' ?>">
@@ -533,7 +541,7 @@ switch ($ext) {
                             <button
                                 hx-post="../like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                 hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"dislike"}'
-                                class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
+                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                <?= $user_interaction === 'dislike'
                                     ? 'bg-white/10 border-white/15 text-white'
                                     : 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300' ?>">
@@ -541,7 +549,7 @@ switch ($ext) {
                                 <?= ($v['dislikes'] ?? 0) > 0 ? "<span class='tabular-nums'>{$v['dislikes']}</span>" : '' ?>
                             </button>
                             <button onclick="document.getElementById('playlist-modal').classList.remove('hidden')"
-                                class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300">
+                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300">
                                 <i data-lucide="list-plus" class="w-3.5 h-3.5"></i> Simpan
                             </button>
                         </div>
@@ -549,20 +557,21 @@ switch ($ext) {
                 </div>
             </div>
 
-            <section class="bg-[#0d1017] border border-white/[.06] rounded-2xl overflow-hidden" id="comment-section">
-                <div class="px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
+            <!-- KOMENTAR -->
+            <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
+                <div class="px-4 sm:px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                     <i data-lucide="message-square" class="w-3.5 h-3.5 text-orange-500"></i>
                     <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600">Komentar</span>
                 </div>
-                <div class="p-6">
+                <div class="p-4 sm:p-6">
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">
                             <textarea name="comments"
-                                class="w-full bg-black/25 border border-white/[.06] rounded-xl p-4 text-sm text-gray-300 focus:outline-none focus:border-orange-500/40 min-h-[90px] resize-y transition-all"
+                                class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-orange-500/40 min-h-[80px] resize-y transition-all"
                                 placeholder="Tulis komentar..." required></textarea>
                             <div class="flex justify-end mt-2">
                                 <button name="send"
-                                    class="bg-orange-500 hover:bg-orange-400 text-black text-[10px] font-black uppercase tracking-wider px-6 py-2.5 rounded-xl transition-all border-none cursor-pointer">
+                                    class="bg-orange-500 hover:bg-orange-400 text-black text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer">
                                     Kirim
                                 </button>
                             </div>
@@ -578,21 +587,22 @@ switch ($ext) {
                             foreach ($grouped[$parent_id] as $c):
                                 $author      = $c['username'] ?? 'Guest';
                                 $parent_user = ($c['parent_id'] > 0) ? ($user_map[$c['parent_id']] ?? 'Guest') : null;
+                                $indent      = min($level * 16, 48);
                         ?>
-                                <div class="comment-row flex gap-3 p-3 rounded-xl" style="margin-left:<?= min($level * 20, 80) ?>px">
+                                <div class="comment-row flex gap-3 p-3 rounded-xl" style="margin-left:<?= $indent ?>px">
                                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                         <?= strtoupper(substr($author, 0, 1)) ?>
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center justify-between gap-2 mb-1">
-                                            <div class="flex items-center gap-2">
-                                                <span class="text-[11px] font-bold text-gray-300">@<?= htmlspecialchars($author) ?></span>
-                                                <span class="text-[10px] text-gray-600"><?= time_ago($c['created_at']) ?></span>
+                                            <div class="flex items-center gap-2 min-w-0">
+                                                <span class="text-[11px] font-bold text-gray-300 truncate">@<?= htmlspecialchars($author) ?></span>
+                                                <span class="text-[10px] text-gray-600 flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
                                             </div>
                                             <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
                                                 <a href="../delete_comment.php?id=<?= $c['id'] ?>"
                                                     onclick="return confirm('Hapus komentar ini?')"
-                                                    class="text-gray-600 hover:text-red-400 transition-colors no-underline">
+                                                    class="text-gray-600 hover:text-red-400 transition-colors no-underline flex-shrink-0">
                                                     <i data-lucide="trash-2" class="w-3 h-3"></i>
                                                 </a>
                                             <?php endif; ?>
@@ -612,10 +622,10 @@ switch ($ext) {
                                                 <form action="watch.php?id=<?= $id ?>" method="post" class="flex gap-2">
                                                     <input type="hidden" name="parent_id" value="<?= $c['id'] ?>">
                                                     <input type="text" name="comments"
-                                                        class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-white-300 focus:outline-none focus:border-orange-500/40"
+                                                        class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 min-w-0"
                                                         placeholder="Balas @<?= htmlspecialchars($author) ?>..." required>
                                                     <button name="send"
-                                                        class="bg-orange-500 text-white text-[10px] font-white uppercase px-4 py-2 rounded-xl border-none cursor-pointer">
+                                                        class="bg-orange-500 text-white text-[10px] font-black uppercase px-3 sm:px-4 py-2 rounded-xl border-none cursor-pointer flex-shrink-0">
                                                         Kirim
                                                     </button>
                                                 </form>
@@ -639,10 +649,11 @@ switch ($ext) {
 
         </div>
 
+        <!-- Sidebar kanan -->
         <div class="space-y-6">
 
             <?php if ($playlist_context > 0 && $queue_query && $queue_query->num_rows > 0): ?>
-                <div class="bg-[#0d1017] border border-white/[.06] rounded-2xl overflow-hidden">
+                <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
                     <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                         <i data-lucide="list-music" class="w-3.5 h-3.5 text-orange-500"></i>
                         <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600">Up Next</span>
@@ -653,9 +664,9 @@ switch ($ext) {
                         while ($q = $queue_query->fetch_assoc()):
                             $is_pl = ($q['id'] == $id);
                         ?>
-                            <a href="watch.php?id=<?= $q['id'] ?>&playlist_id=<?= $playlist_context ?>" title="<?= htmlspecialchars($q['title']) ?>"
+                            <a href="watch.php?id=<?= $q['id'] ?>&playlist_id=<?= $playlist_context ?>"
                                 class="flex items-center gap-3 px-2 py-2 rounded-xl transition-all no-underline
-                          <?= $is_pl ? 'bg-orange-500/8 border border-orange-500/20' : 'hover:bg-white/[.025] border border-transparent' ?>">
+                              <?= $is_pl ? 'bg-orange-500/8 border border-orange-500/20' : 'hover:bg-white/[.025] border border-transparent' ?>">
                                 <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 <?= $is_pl ? 'opacity-50' : '' ?>">
                                     <img src="upload/thumbnail/<?= htmlspecialchars($q['thumbnail']) ?>" class="w-full h-full object-cover" loading="lazy">
                                 </div>
@@ -672,23 +683,26 @@ switch ($ext) {
                 </div>
             <?php endif; ?>
 
-            <div class="bg-[#0d1017] border border-white/[.06] rounded-2xl overflow-hidden">
+            <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
                 <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                     <i data-lucide="shuffle" class="w-3.5 h-3.5 text-gray-600"></i>
                     <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600">Discover</span>
                 </div>
-                <div id="music-recommendation-column" class="p-3 space-y-0.5">
+                <!-- [MOBILE] grid 2 kolom di mobile, list di lg -->
+                <div id="music-recommendation-column" class="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-0 lg:space-y-0.5">
                     <?php while ($r = $rekom->fetch_assoc()):
                         $r_ext = strtolower(pathinfo($r['filename'], PATHINFO_EXTENSION));
                         $r_lbl = $r_ext === 'ogg' ? 'opus' : $r_ext;
                     ?>
-                        <a href="watch.php?id=<?= $r['id'] ?>" class="rekomendasi-item flex gap-3 px-2 py-2 rounded-xl no-underline" title="<?= htmlspecialchars($r['title']) ?>">
-                            <div class="w-16 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
+                        <a href="watch.php?id=<?= $r['id'] ?>"
+                            class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 p-2 rounded-xl no-underline"
+                            title="<?= htmlspecialchars($r['title']) ?>">
+                            <div class="w-full lg:w-16 aspect-square lg:h-12 lg:aspect-auto rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
                                 <img src="upload/thumbnail/<?= htmlspecialchars($r['thumbnail']) ?>"
                                     class="rec-thumb-img w-full h-full object-cover transition-transform duration-300" loading="lazy">
                             </div>
                             <div class="flex-1 min-w-0 flex flex-col justify-center">
-                                <div class="text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
+                                <div class="text-[11px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
                                     <?= htmlspecialchars($r['title']) ?>
                                 </div>
                                 <div class="text-[10px] text-gray-600 mt-0.5 truncate"><?= htmlspecialchars($r['artist']) ?></div>
@@ -708,7 +722,7 @@ switch ($ext) {
     <?php if (isset($_SESSION['user_id'])): ?>
         <div id="playlist-modal" class="hidden">
             <div class="absolute inset-0" onclick="document.getElementById('playlist-modal').classList.add('hidden')"></div>
-            <div class="relative bg-[#141820] border border-white/[.07] border-t-2 border-t-orange-500 rounded-2xl p-6 max-w-sm w-full">
+            <div class="relative bg-[#141820] border border-white/[.07] border-t-2 border-t-orange-500 rounded-2xl p-5 sm:p-6 max-w-sm w-full mx-4">
                 <button onclick="document.getElementById('playlist-modal').classList.add('hidden')"
                     class="absolute top-4 right-4 text-gray-600 hover:text-white transition-colors bg-none border-none cursor-pointer">
                     <i data-lucide="x" class="w-4 h-4"></i>
@@ -717,7 +731,6 @@ switch ($ext) {
                     <i data-lucide="list-music" class="w-4 h-4 text-orange-400"></i>
                     <span class="text-sm font-bold text-white uppercase tracking-wider">Simpan ke Playlist</span>
                 </div>
-
                 <div class="space-y-1.5 mb-4 max-h-[180px] overflow-y-auto pr-1 no-scrollbar">
                     <?php
                     $my_playlists = $conn->query("SELECT * FROM playlists WHERE user_id = {$_SESSION['user_id']} ORDER BY id DESC");
@@ -738,16 +751,15 @@ switch ($ext) {
                         <p class="text-[11px] text-gray-600 text-center py-3">Belum ada playlist.</p>
                     <?php endif; ?>
                 </div>
-
                 <div class="border-t border-white/[.05] pt-4">
                     <form action="playlist_action.php" method="POST" class="flex gap-2">
                         <input type="hidden" name="action" value="create_playlist">
                         <input type="hidden" name="music_id" value="<?= $id ?>">
                         <input type="text" name="playlist_name"
-                            class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 transition-all"
+                            class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 transition-all min-w-0"
                             placeholder="Nama playlist baru..." required>
                         <button type="submit"
-                            class="bg-orange-500 hover:bg-orange-400 text-black text-xs font-black uppercase px-4 py-2 rounded-xl border-none cursor-pointer transition-all">
+                            class="bg-orange-500 hover:bg-orange-400 text-black text-xs font-black uppercase px-4 py-2 rounded-xl border-none cursor-pointer transition-all flex-shrink-0">
                             Buat
                         </button>
                     </form>
@@ -770,13 +782,11 @@ switch ($ext) {
                 <i data-lucide="x" style="width: 16px; height: 16px;"></i>
             </div>
         </div>
-
         <div class="mini-player-controls">
             <button class="mini-player-btn" onclick="miniPlayPause()" id="mini-play-btn">
                 <i data-lucide="play" style="width: 18px; height: 18px;"></i>
             </button>
         </div>
-
         <div class="mini-player-progress">
             <div class="mini-progress-bar" id="mini-progress-bar" onclick="miniSeek(event)">
                 <div class="mini-progress-fill" id="mini-progress-fill" style="width: 0%"></div>
@@ -787,10 +797,18 @@ switch ($ext) {
             </div>
         </div>
     </div>
+
     <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/plyr.js"></script>
     <script src="../assets/js/script.js"></script>
     <?php include 'script/js.php'; ?>
+
+    <script>
+        lucide.createIcons();
+        document.body.addEventListener('htmx:afterOnLoad', function() {
+            lucide.createIcons();
+        });
+    </script>
 </body>
 
 </html>
