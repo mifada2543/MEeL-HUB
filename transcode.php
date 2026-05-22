@@ -63,7 +63,7 @@ $video_id_value = isset($_GET['id']) ? (int)$_GET['id'] : "";
     </style>
 </head>
 
-<body class="flex items-center justify-center min-h-screen p-6">
+<body class="flex flex-col items-center justify-center min-h-screen p-6 gap-6">
     <div class="max-w-md w-full">
         <div class="glass p-10 rounded-[3rem] shadow-2xl border border-white/10">
             <h1 class="text-3xl font-black text-white italic text-center mb-8 tracking-tighter">TRANSCODE<span class="text-red-600">.</span></h1>
@@ -125,37 +125,33 @@ $video_id_value = isset($_GET['id']) ? (int)$_GET['id'] : "";
             </div>
         </div>
     </div>
+
+    <!-- Sekarang footer otomatis berada di bawah kontainer utama -->
     <?php include 'partials/footer.php'; ?>
+
     <script>
         lucide.createIcons();
-        // File JS Anda (misalnya script.js atau di dalam <script> pada transcode.php)
 
         function finishTranscode(downloadUrl) {
-            // 1. Sembunyikan elemen animasi/progress bar agar tidak menimpa UI Audio
-            const progressContainer = document.getElementById('progress-container'); // Sesuaikan ID-nya
+            const progressContainer = document.getElementById('progress-container');
             if (progressContainer) {
                 progressContainer.style.display = 'none';
             }
 
-            // 2. Tampilkan kontainer Download Audio/Video
-            const downloadContainer = document.getElementById('audio-download-container'); // Sesuaikan ID
+            const downloadContainer = document.getElementById('audio-download-container');
             if (downloadContainer) {
-                downloadContainer.style.display = 'block'; // Munculkan elemen
+                downloadContainer.style.display = 'block';
             }
 
-            // 3. Set link untuk tombol Download
-            const downloadBtn = document.getElementById('actual-download-btn'); // Sesuaikan ID
+            const downloadBtn = document.getElementById('actual-download-btn');
             if (downloadBtn) {
                 downloadBtn.href = downloadUrl;
             }
 
-            // 4. Perbaiki tombol 'Download Lagi' agar TIDAK nyasar ke upload_advanced.php
-            // Melainkan me-refresh atau kembali ke halaman transcode
-            const downloadLagiBtn = document.getElementById('download-lagi-btn'); // Sesuaikan ID
+            const downloadLagiBtn = document.getElementById('download-lagi-btn');
             if (downloadLagiBtn) {
                 downloadLagiBtn.onclick = function(e) {
                     e.preventDefault();
-                    // Arahkan kembali ke halaman transcode, bukan upload_advanced
                     window.location.href = 'transcode.php';
                 };
             }
