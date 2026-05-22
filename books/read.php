@@ -41,7 +41,7 @@ if (str_contains($current_chapter, '..')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEeL Read | <?= htmlspecialchars($book['title']) ?></title>
-    <link rel="icon" href="../assets/logo.png" type="image/x-icon">
+    <link rel="icon" href="../assets/MEeL.png" type="image/png">
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>
     <style>
