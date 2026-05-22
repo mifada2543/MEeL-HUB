@@ -101,11 +101,6 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                 <i data-lucide="music" class="w-5 h-5 text-orange-500"></i>
                 <span class="text-sm font-bold uppercase tracking-wide">Music</span>
             </button>
-
-            <button onclick="showGuide('books', this)" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all text-gray-400 hover:bg-white/5 hover:text-gray-200 border-l-4 border-transparent">
-                <i data-lucide="book-open" class="w-5 h-5 text-emerald-500"></i>
-                <span class="text-sm font-bold uppercase tracking-wide">Books</span>
-            </button>
         </nav>
     </aside>
 
@@ -176,23 +171,6 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                     <p>L Alihkan pengulangan</p>
                 </div>
             </div>
-        </div>
-
-        <div id="guide-books" class="guide-section hidden max-w-4xl mx-auto">
-            <div class="mb-8">
-                <h2 class="text-3xl font-black uppercase tracking-tighter text-white mb-2">Panduan <span class="text-emerald-500">Books</span></h2>
-                <p class="text-gray-400 text-sm">Cara membaca PDF dan Manga dengan lancar di e-Library kita.</p>
-            </div>
-            <div class="rounded-3xl border border-white/10 overflow-hidden bg-gray-900/50 p-2 shadow-2xl">
-                <img src="assets/img/id=Books.png" alt="Panduan Buku" loading="lazy" class="w-full rounded-2xl opacity-90 hover:opacity-100 transition-opacity">
-            </div>
-        </div>
-        <div id="lightbox" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 md:p-10 transition-all duration-500 opacity-0">
-            <button onclick="closeLightbox()" class="absolute top-6 right-6 text-white/50 hover:text-white transition-colors">
-                <i data-lucide="x-circle" class="w-10 h-10"></i>
-            </button>
-
-            <img id="lightbox-img" src="" class="max-w-full max-h-full rounded-xl shadow-2xl transform scale-95 transition-transform duration-300">
         </div>
     </main>
 
