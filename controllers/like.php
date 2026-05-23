@@ -1,4 +1,10 @@
 <?php
+// Pastikan session sudah dimulai jika menggunakan $_SESSION
+if (session_status() === PHP_SESSION_NONE) {
+    session_name('meel');
+    session_start();
+}
+
 include '../auth/config.php';
 include '../modules/MediaInteraction.php';
 
@@ -9,8 +15,29 @@ $type       = isset($_POST['type'])       ? trim($_POST['type'])       : '';
 
 error_log("LIKE.PHP - POST: " . json_encode(['id' => $id, 'media_type' => $media_type, 'type' => $type]));
 
-// Gunakan MediaInteraction class
-$interaction = new MediaInteraction($conn, $_SESSION['user_id'] ?? null);
+$user_id = $_SESSION['user_id'] ?? null;
+
+// PENGUBAHAN: Validasi is_active == 1 dan role bukan 'guest'
+if ($user_id) {
+    $stmt_user = $conn->prepare("SELECT is_active, role FROM users WHERE id = ? LIMIT 1");
+    $stmt_user->bind_param("i", $user_id);
+    $stmt_user->execute();
+    $user = $stmt_user->get_result()->fetch_assoc();
+
+    // Jika user tidak aktif atau perannya adalah guest, batalkan proses (Forbidden)
+    if (!$user || $user['is_active'] != 1 || $user['role'] === 'guest') {
+        error_log("LIKE.PHP - BLOCKED: User ID $user_id is inactive or guest.");
+        http_response_code(403); // HTTP 403 Forbidden
+        exit;
+    }
+} else {
+    // Jika tidak ada user_id di session (belum login)
+    http_response_code(401); // HTTP 401 Unauthorized
+    exit;
+}
+
+// Gunakan MediaInteraction class jika lolos validasi di atas
+$interaction = new MediaInteraction($conn, $user_id);
 $result = $interaction->toggleLike($id, $media_type, $type);
 
 // Handle response
@@ -27,15 +54,18 @@ $dislikes         = $result['data']['dislikes'];
 $table = ($media_type === 'music') ? 'music' : 'video';
 
 // Konfigurasi style Tailwind yang ditulis penuh (Hardcoded class names)
-$like_active_class = ($media_type === 'music') 
-    ? 'bg-orange-500/15 border-orange-500/30 text-orange-400' 
-    : 'bg-red-600/15 border-red-600/30 text-red-400';
+$like_active_class = ($media_type === 'music')
+    ? 'bg-orange-500/15 border-orange-500/30 text-orange-400'
+    : 'bg-red-500/15 border-red-500/30 text-red-400';
 
-$dislike_active_class = 'bg-white/10 border-white/15 text-white';
-$inactive_class = 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300';
+$dislike_active_class = ($media_type === 'music')
+    ? 'bg-orange-500/15 border-orange-500/30 text-orange-400'
+    : 'bg-red-500/15 border-red-500/30 text-red-400';
+
+$inactive_class = 'bg-gray-900/40 border-gray-800 text-gray-400 hover:bg-gray-800/60 hover:text-gray-300';
 ?>
 
-<div id="like-dislike-container" class="flex items-center gap-2">
+<div id="like-dislike-container" class="flex items-center gap-2 mt-4 sm:mt-0" hx-get-trigger="load">
     <button
         hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
         hx-vals='{"id":"<?= $id ?>","media_type":"<?= $media_type ?>","type":"like"}'
@@ -43,7 +73,7 @@ $inactive_class = 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray
         <i data-lucide="thumbs-up" class="w-3.5 h-3.5 <?= $user_interaction === 'like' ? 'fill-current' : '' ?>"></i>
         Like<?= $likes > 0 ? " <span class='tabular-nums ml-0.5'>{$likes}</span>" : '' ?>
     </button>
-    
+
     <button
         hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
         hx-vals='{"id":"<?= $id ?>","media_type":"<?= $media_type ?>","type":"dislike"}'
@@ -54,14 +84,9 @@ $inactive_class = 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray
 
     <?php if ($media_type === 'music'): ?>
         <button onclick="document.getElementById('playlist-modal').classList.remove('hidden')"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300">
-            <i data-lucide="list-plus" class="w-3.5 h-3.5"></i> Simpan
+            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer bg-gray-900/40 border-gray-800 text-gray-400 hover:bg-gray-800/60 hover:text-gray-300">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            Playlist
         </button>
     <?php endif; ?>
 </div>
-
-<script>
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
-</script>

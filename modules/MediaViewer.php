@@ -18,19 +18,21 @@ class MediaViewer {
     public function recordView() {
         if (!$this->user_id || !$this->media_id) return false;
 
-        $stmt_user = $this->conn->prepare("SELECT is_active FROM users WHERE id = ? LIMIT 1");
+        // PENGUBAHAN: Tambahkan 'role' ke dalam SELECT query
+        $stmt_user = $this->conn->prepare("SELECT is_active, role FROM users WHERE id = ? LIMIT 1");
         $stmt_user->bind_param("i", $this->user_id);
         $stmt_user->execute();
         $user = $stmt_user->get_result()->fetch_assoc();
 
-        if ($user && $user['is_active'] == 1) {
+        // PENGUBAHAN: Pastikan is_active == 1 DAN role bukan 'guest'
+        if ($user && $user['is_active'] == 1 && $user['role'] !== 'guest') {
             $log_column = ($this->media_type === 'video') ? 'video_id' : 'music_id';
             $stmt_log = $this->conn->prepare("INSERT IGNORE INTO view_logs (user_id, $log_column) VALUES (?, ?)");
             $stmt_log->bind_param("ii", $this->user_id, $this->media_id);
             $stmt_log->execute();
 
             if ($stmt_log->affected_rows > 0) {
-                // DIUBAH: Menggunakan prepared statement untuk update views
+                // Menggunakan prepared statement untuk update views
                 $stmt_upd = $this->conn->prepare("UPDATE {$this->table} SET views = views + 1 WHERE id = ?");
                 $stmt_upd->bind_param("i", $this->media_id);
                 $stmt_upd->execute();
@@ -69,6 +71,17 @@ class MediaViewer {
     public function addComment($post_data) {
         if (!$this->user_id || empty(trim($post_data['comments']))) return false;
         
+        // PENGUBAHAN: Cek status dan role user sebelum mengizinkan komentar
+        $stmt_user = $this->conn->prepare("SELECT is_active, role FROM users WHERE id = ? LIMIT 1");
+        $stmt_user->bind_param("i", $this->user_id);
+        $stmt_user->execute();
+        $user = $stmt_user->get_result()->fetch_assoc();
+
+        // PENGUBAHAN: Tolak jika user tidak ditemukan, tidak aktif, atau role-nya guest
+        if (!$user || $user['is_active'] != 1 || $user['role'] === 'guest') {
+            return false; 
+        }
+
         $raw = trim($post_data['comments']);
         $parent_id = !empty($post_data['parent_id']) ? (int)$post_data['parent_id'] : null;
         $col = ($this->media_type === 'video') ? 'video_id' : 'music_id';
