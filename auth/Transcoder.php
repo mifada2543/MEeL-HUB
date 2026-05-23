@@ -59,6 +59,7 @@ class Transcoder
 
     public function checkServerBusy(): ?array
     {
+        // Deprecated: Gunakan System->getActiveQueues() atau System->isServerBusy()
         $res = $this->conn->query("SELECT q.*, u.username FROM upload_queue q 
                                    JOIN users u ON q.user_id = u.id 
                                    WHERE q.status = 'processing' LIMIT 1");
@@ -766,9 +767,10 @@ class Transcoder
             return ['status' => 'success', 'download_link' => $download_link];
         }
 
-        // 5. BATASAN 2 PROSES KONKUREN
-        $check_busy = $this->conn->query("SELECT COUNT(*) as total FROM transcode_queue WHERE status = 'processing'");
-        if ($check_busy && $check_busy->fetch_assoc()['total'] >= 2) {
+        // 5. BATASAN SERVER BUSY MENGGUNAKAN SYSTEM.PHP
+        require_once __DIR__ . '/System.php';
+        $sys = new System($this->conn);
+        if ($sys->isServerBusy()) {
             return ['status' => 'error', 'msg' => 'Silahkan Menunggu. Server sedang sibuk memproses antrean lain.'];
         }
 

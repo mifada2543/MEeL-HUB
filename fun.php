@@ -51,6 +51,14 @@ if (isset($_POST['clear_all_guests'])) {
     exit();
 }
 
+if (isset($_POST['clean_stuck_queues'])) {
+    include_once 'auth/System.php';
+    $sys = new System($conn);
+    $cleaned = $sys->cleanStuckQueues();
+    header("Location: system_check.php?msg=Queues_Cleaned_$cleaned");
+    exit();
+}
+
 // 2. Logika Aksi (Approve, Reject, Clean)
 if (isset($_GET['approve_id'])) {
     $id = (int)$_GET['approve_id'];
@@ -102,7 +110,7 @@ if (isset($_GET['delete_user_id'])) {
 }
 
 // Ambil data user - Pastikan kolom 'email' dihapus jika tidak ada di tabel database Anda
-$all_users = $conn->query("SELECT id, username, role, is_active, created_at FROM users ORDER BY role ASC, username ASC");
+$all_users = $conn->query("SELECT id, username, role, is_active, created_at FROM users WHERE role != 'guest' ORDER BY role ASC, username ASC");
 if (!$all_users) {
     die("Query Gagal: " . $conn->error);
 } // 3. Pengambilan Data & Statistik
@@ -130,41 +138,29 @@ $query_top_media = "
     ORDER BY views DESC LIMIT 2";
 $top_media = $conn->query($query_top_media);
 
-function get_folder_size($path)
-{
-    $full_path = realpath(__DIR__ . '/' . $path);
-    if ($full_path && file_exists($full_path)) {
-        $output = shell_exec("du -sb " . escapeshellarg($full_path) . " 2>&1");
-        if ($output && !str_contains($output, 'Permission denied')) {
-            return (float) explode("\t", $output)[0];
-        }
-    }
-    return 0;
-}
+include_once 'auth/System.php';
+$sys = new System($conn);
+$storage_usage = $sys->getStorageUsage();
 
-// Storage Info: SSD NVMe (Root /)
-$ssd_free = @disk_free_space("/") / (1024 ** 3);
-$ssd_total = @disk_total_space("/") / (1024 ** 3);
-$ssd_used = $ssd_total - $ssd_free;
-$ssd_perc = ($ssd_total > 0) ? ($ssd_used / $ssd_total) * 100 : 0;
+$ssd_free = $storage_usage['ssd']['free'];
+$ssd_total = $storage_usage['ssd']['total'];
+$ssd_used = $storage_usage['ssd']['used'];
+$ssd_perc = $storage_usage['ssd']['perc'];
 
-// Storage Info: HDD Toshiba (Media)
-$hdd_path = 'video/upload';
-$hdd_free = @disk_free_space($hdd_path) / (1024 ** 3);
-$hdd_total = @disk_total_space($hdd_path) / (1024 ** 3);
+$hdd_free = $storage_usage['hdd']['free'];
+$hdd_total = $storage_usage['hdd']['total'];
 
-// Ukuran per Kategori Folder (dalam GB)
-$sz_vid   = get_folder_size('video/upload') / (1024 ** 3);
-$sz_mus   = get_folder_size('music/upload') / (1024 ** 3);
-$sz_book  = get_folder_size('books/upload') / (1024 ** 3);
-$sz_d_pub = get_folder_size('data_drive/public') / (1024 ** 3);
-$sz_d_prv = get_folder_size('data_drive/private_admins') / (1024 ** 3);
+$sz_vid = $storage_usage['sizes']['video'];
+$sz_mus = $storage_usage['sizes']['music'];
+$sz_book = $storage_usage['sizes']['books'];
+$sz_d_pub = $storage_usage['sizes']['drive_pub'];
+$sz_d_prv = $storage_usage['sizes']['drive_prv'];
+$sz_drive_total = $storage_usage['sizes']['drive_total'];
 
-$sz_drive_total = $sz_d_pub + $sz_d_prv;
-$p_vid   = ($hdd_total > 0) ? ($sz_vid / $hdd_total) * 100 : 0;
-$p_mus   = ($hdd_total > 0) ? ($sz_mus / $hdd_total) * 100 : 0;
-$p_book  = ($hdd_total > 0) ? ($sz_book / $hdd_total) * 100 : 0;
-$p_drive = ($hdd_total > 0) ? ($sz_drive_total / $hdd_total) * 100 : 0;
+$p_vid = $storage_usage['percentages']['video'];
+$p_mus = $storage_usage['percentages']['music'];
+$p_book = $storage_usage['percentages']['books'];
+$p_drive = $storage_usage['percentages']['drive'];
 // 4. Orphan Check (Sync Check) - VERSI OPTIMAL & CEPAT
 $orphans = [];
 $check_map = [

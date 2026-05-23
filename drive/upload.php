@@ -17,6 +17,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['submit_upload'], $_F
 
 $storage = new DriveStorage(dirname(__DIR__) . '/data_drive', $user);
 
+require_once '../auth/System.php';
+$sys = new System($conn);
+$user_id = $_SESSION['user_id'];
+$user_role = $conn->query("SELECT role FROM users WHERE id = $user_id LIMIT 1")->fetch_assoc()['role'] ?? 'user';
+
+$limit = $sys->checkRateLimit($user_id, 'drive_files', $user_role);
+if (!$limit['allowed']) {
+    header('Location: index.php?status=rate_limit&minutes=' . $limit['minutes']);
+    exit();
+}
+
 try {
     $storage->enforceQuota($_FILES['file_drive'], 20 * 1024 * 1024 * 1024);
     $result = $storage->upload($_FILES['file_drive'], $_POST['scope'] ?? DriveStorage::SCOPE_PRIVATE);

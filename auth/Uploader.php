@@ -49,29 +49,9 @@ class Uploader
 
     private function checkRateLimit(string $table): array
     {
-        if ($this->user_role === 'admin') return ['allowed' => true];
-
-        // [DIUBAH]: Nama tabel divalidasi ketat karena tidak bisa di-bind
-        $allowed_tables = ['music', 'video'];
-        if (!in_array($table, $allowed_tables)) return ['allowed' => false, 'minutes' => 99];
-
-        $max_upload = 2;
-        // [DIUBAH]: Menggunakan Prepared Statement untuk query rate limit
-        $sql = "SELECT upload_date FROM $table 
-                WHERE user_id = ? AND upload_date > NOW() - INTERVAL 1 HOUR 
-                ORDER BY upload_date ASC";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("i", $this->user_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-
-        if ($res->num_rows >= $max_upload) {
-            $first = $res->fetch_assoc();
-            $next  = strtotime($first['upload_date']) + 3600;
-            $rem   = ceil(($next - time()) / 60);
-            return ['allowed' => false, 'minutes' => $rem];
-        }
-        return ['allowed' => true];
+        require_once __DIR__ . '/System.php';
+        $sys = new System($this->conn);
+        return $sys->checkRateLimit($this->user_id, $table, $this->user_role);
     }
 
     private function generateMetadata(string $title, string $artist = "", string $album = ""): string

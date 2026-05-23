@@ -41,8 +41,10 @@ register_shutdown_function(function() {
 $message    = "";
 $transcoder = new Transcoder($conn, $_SESSION['user_id']);
 
-// Cek apakah server sedang sibuk
-$busy_data = $transcoder->checkServerBusy();
+// Cek apakah server sedang sibuk menggunakan System
+require_once 'auth/System.php';
+$sys = new System($conn);
+$is_busy = $sys->isServerBusy();
 
 if (isset($_GET['success'])) {
     $message = "<div class='bg-green-500/10 text-green-500 p-4 rounded-xl border border-green-500/20 mb-6 font-bold text-center'>✓ AUDIO OGG BERHASIL DIPROSES!</div>";
@@ -50,10 +52,10 @@ if (isset($_GET['success'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     verify_csrf();
-    if ($busy_data) {
+    if ($is_busy) {
         $message = "<div class='bg-orange-500/10 text-orange-500 p-4 rounded-xl border border-orange-500/20 mb-6 font-bold text-sm text-center'>" .
             "⚠️ SERVER SEDANG SIBUK<br>" .
-            "<span class='font-normal opacity-80 text-xs'>@{$busy_data['username']} sedang mendownload. Coba lagi nanti!</span>" .
+            "<span class='font-normal opacity-80 text-xs'>Sistem sedang memproses antrean lain. Coba lagi nanti!</span>" .
             "</div>";
     } else {
         try {

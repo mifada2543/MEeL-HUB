@@ -274,6 +274,61 @@ include 'fun.php';
                 </table>
             </div>
         </div>
+        <div class="glass rounded-3xl overflow-hidden shadow-2xl mb-8" id="queues">
+            <div class="p-6 border-b border-white/5 justify-between flex items-center">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="server" class="w-5 h-5 text-purple-500"></i>
+                    <h3 class="text-xs font-bold text-purple-500 uppercase">Active Background Tasks</h3>
+                </div>
+                <form method="POST" onsubmit="return confirm('Bersihkan semua antrean yang stuck (> 30 menit)?');">
+                    <button name="clean_stuck_queues" class="flex items-center gap-2 text-[9px] bg-purple-600/10 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-xl hover:bg-purple-600 hover:text-white transition-all font-bold uppercase">
+                        <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                        Clean Stuck Queues
+                    </button>
+                </form>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-white/[0.02] text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                        <tr>
+                            <th class="py-3 px-6">Task ID</th>
+                            <th class="py-3 px-4">User</th>
+                            <th class="py-3 px-4">Type</th>
+                            <th class="py-3 px-4">Status</th>
+                            <th class="py-3 px-6 text-right">Started At</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        <?php 
+                        $active_queues = $sys->getActiveQueues();
+                        if (!empty($active_queues)):
+                            foreach ($active_queues as $q):
+                        ?>
+                            <tr class="hover:bg-white/[0.02] transition-colors">
+                                <td class="py-4 px-6 font-mono text-gray-400">#<?= $q['id'] ?></td>
+                                <td class="py-4 px-4 font-bold text-white"><?= htmlspecialchars($q['username'] ?? 'Unknown') ?></td>
+                                <td class="py-4 px-4">
+                                    <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase <?= $q['task_type'] === 'download' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400' ?>">
+                                        <?= $q['task_type'] ?>
+                                    </span>
+                                </td>
+                                <td class="py-4 px-4 text-yellow-500 font-bold uppercase text-[10px]"><?= $q['status'] ?></td>
+                                <td class="py-4 px-6 text-right text-gray-500 font-mono text-[10px]"><?= $q['created_at'] ?></td>
+                            </tr>
+                        <?php 
+                            endforeach;
+                        else:
+                        ?>
+                            <tr>
+                                <td colspan="5" class="py-6 text-center text-gray-500 text-xs italic">Tidak ada proses yang sedang berjalan.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="glass rounded-3xl overflow-hidden shadow-2xl" id="monitor">
             <div class="p-6 border-b border-white/5 justify-between flex items-center">
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Live Activity Monitor</h3>
