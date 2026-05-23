@@ -5,8 +5,8 @@ session_name('meel');
 session_start();
 
 include '../auth/config.php';
-require_once '../helpers.php';
-include '../auth/MediaViewer.php';
+require_once '../modules/helpers.php';
+include '../modules/MediaViewer.php';
 
 $id          = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $user_id     = $_SESSION['user_id'] ?? null;
@@ -534,7 +534,7 @@ switch ($ext) {
                     <?php if (isset($_SESSION['username'])): ?>
                         <div id="like-dislike-container" class="flex items-center gap-2 flex-wrap">
                             <button
-                                hx-post="../like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
+                                hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                 hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"like"}'
                                 class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                <?= $user_interaction === 'like'
@@ -544,7 +544,7 @@ switch ($ext) {
                                 Like<?= ($v['likes'] ?? 0) > 0 ? " <span class='tabular-nums ml-0.5'>{$v['likes']}</span>" : '' ?>
                             </button>
                             <button
-                                hx-post="../like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
+                                hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                 hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"dislike"}'
                                 class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                <?= $user_interaction === 'dislike'

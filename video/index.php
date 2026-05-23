@@ -4,8 +4,8 @@ ini_set('display_errors', 1);
 session_name('meel');
 session_start();
 include '../auth/config.php';
-include '../helpers.php';
-require_once '../auth/MediaLibrary.php';
+include '../modules/helpers.php';
+require_once '../modules/MediaLibrary.php';
 
 $library    = new MediaLibrary($conn);
 $limit_init = 8;

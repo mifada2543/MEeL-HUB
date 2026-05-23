@@ -1,8 +1,8 @@
 <?php
-include 'auth/config.php'; // sudah handle session_start() & $conn
+include '../auth/config.php'; // sudah handle session_start() & $conn
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || ($_SESSION['role'] ?? '') !== 'admin') {
-    header("Location: update.php");
+    header("Location: ../update.php");
     exit;
 }
 
@@ -13,5 +13,5 @@ $stmt = $conn->prepare("UPDATE sidebar_settings SET important_content = ?, annou
 $stmt->bind_param("ss", $imp, $ann);
 $stmt->execute();
 
-header("Location: update.php");
+header("Location: ../update.php");
 exit;

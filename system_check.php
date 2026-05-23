@@ -4,11 +4,11 @@ ini_set('display_errors', 1);
 
 include 'auth/config.php';
 include 'auth/auth.php';
-include_once 'auth/activity_logger.php';
+include_once 'modules/activity_logger.php';
 if (!isset($_SESSION['user_id'])) {
     die(include 'err/denied.php');
 }
-include 'fun.php';
+include 'controllers/fun.php';
 ?>
 
 <!DOCTYPE html>

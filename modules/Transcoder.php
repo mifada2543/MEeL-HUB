@@ -334,7 +334,7 @@ class Transcoder
 
         if ($raw_file) {
             $params = http_build_query(['temp_file' => $raw_file, 'title' => $title, 'artist' => $artist, 'album' => $album, 'duration' => $duration]);
-            echo "<script>window.location.href = 'post_encode.php?$params';</script>";
+            echo "<script>window.location.href = 'controllers/post_encode.php?$params';</script>";
             exit;
         }
         return $this->msgError("File audio tidak ditemukan setelah download.");

@@ -1,9 +1,9 @@
 <?php
 require_once '../auth/auth.php';
 require_once '../auth/config.php';
-require_once '../auth/activity_logger.php';
-require_once '../auth/MediaLibrary.php';
-include '../helpers.php';
+// activity_logger loaded via auth/config.php
+require_once '../modules/MediaLibrary.php';
+include '../modules/helpers.php';
 
 // ── Validasi ID ──────────────────────────────────────────────────────────────
 if (!isset($_GET['id']) || !ctype_digit($_GET['id'])) {

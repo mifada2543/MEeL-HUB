@@ -4,7 +4,7 @@ ini_set('display_errors', 1);
 
 require '../auth/auth.php';
 require '../auth/config.php';
-require '../helpers.php';
+require '../modules/helpers.php';
 require __DIR__ . '/DriveService.php';
 
 $user = DriveUserContext::fromSession($_SESSION);
@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['submit_upload'], $_F
 
 $storage = new DriveStorage(dirname(__DIR__) . '/data_drive', $user);
 
-require_once '../auth/System.php';
+require_once '../modules/System.php';
 $sys = new System($conn);
 $user_id = $_SESSION['user_id'];
 $user_role = $conn->query("SELECT role FROM users WHERE id = $user_id LIMIT 1")->fetch_assoc()['role'] ?? 'user';

@@ -3,9 +3,9 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 include '../auth/auth.php';
-include '../helpers.php';
+include '../modules/helpers.php';
 include '../auth/config.php';
-include '../auth/Uploader.php';
+include '../modules/Uploader.php';
 
 set_time_limit(0);
 $status   = "";

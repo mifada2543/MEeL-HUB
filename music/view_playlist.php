@@ -2,7 +2,7 @@
 session_name('meel');
 session_start();
 include '../auth/config.php';
-include '../helpers.php';
+include '../modules/helpers.php';
 $playlist_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $user_id = $_SESSION['user_id'] ?? 0;
 

@@ -2,7 +2,7 @@
 session_name("meel");
 session_start();
 include 'auth/config.php';
-include '../helpers.php';
+include __DIR__ . '/modules/helpers.php';
 // Proteksi Admin
 if (!isset($_SESSION['user_id'])) { die("Akses ditolak."); }
 

@@ -1,6 +1,6 @@
 <?php
 include '../auth/config.php';
-require_once '../auth/MediaLibrary.php';
+require_once '../modules/MediaLibrary.php';
 
 $q       = trim($_GET['search'] ?? '');
 $exclude = isset($_GET['exclude']) ? (int)$_GET['exclude'] : 0;

@@ -52,7 +52,7 @@ if (isset($_POST['clear_all_guests'])) {
 }
 
 if (isset($_POST['clean_stuck_queues'])) {
-    include_once 'auth/System.php';
+    include_once __DIR__ . '/../modules/System.php';
     $sys = new System($conn);
     $cleaned = $sys->cleanStuckQueues();
     header("Location: system_check.php?msg=Queues_Cleaned_$cleaned");
@@ -138,7 +138,7 @@ $query_top_media = "
     ORDER BY views DESC LIMIT 2";
 $top_media = $conn->query($query_top_media);
 
-include_once 'auth/System.php';
+include_once __DIR__ . '/../modules/System.php';
 $sys = new System($conn);
 $storage_usage = $sys->getStorageUsage();
 

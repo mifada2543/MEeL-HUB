@@ -3,8 +3,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 include '../auth/auth.php';
 include '../auth/config.php';
-include '../helpers.php';
-include '../auth/Uploader.php';
+include '../modules/helpers.php';
+include '../modules/Uploader.php';
 
 set_time_limit(0);
 $status  = "";

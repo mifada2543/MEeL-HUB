@@ -8,9 +8,9 @@ putenv("PATH=/usr/local/bin:/usr/bin:/bin");
 
 require_once 'auth/auth.php';
 require_once 'auth/config.php';
-require_once 'auth/activity_logger.php';
-require_once 'auth/Transcoder.php';
-include 'helpers.php';
+require_once 'modules/activity_logger.php';
+require_once 'modules/Transcoder.php';
+include 'modules/helpers.php';
 
 // ─── GLOBAL ERROR HANDLER ──────────────────────────────────────────────────
 // Tangkap fatal error dan tampilkan ke user via JavaScript
@@ -42,7 +42,7 @@ $message    = "";
 $transcoder = new Transcoder($conn, $_SESSION['user_id']);
 
 // Cek apakah server sedang sibuk menggunakan System
-require_once 'auth/System.php';
+require_once 'modules/System.php';
 $sys = new System($conn);
 $is_busy = $sys->isServerBusy();
 

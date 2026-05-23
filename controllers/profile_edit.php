@@ -1,10 +1,10 @@
 <?php
-require_once 'auth/auth.php';
-require_once 'auth/config.php';
+require_once '../auth/auth.php';
+require_once '../auth/config.php';
 
 // Pastikan hanya user yang login bisa akses
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
@@ -31,7 +31,7 @@ if (isset($_POST['update_profile'])) {
 
             // Nama file baru yang unik
             $new_name = "user_" . $user_id . ".jpg";
-            $upload_path = "profile/upload/" . $new_name;
+            $upload_path = "../profile/upload/" . $new_name;
 
             // --- PROSES KOMPRESI (AGAR HEMAT SSD) ---
             $source = ($file_type == 'image/png') ? imagecreatefrompng($file_tmp) : imagecreatefromjpeg($file_tmp);
@@ -74,9 +74,9 @@ $data = $conn->query("SELECT * FROM users WHERE id = $user_id")->fetch_assoc();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Profile | MEeL</title>
-    <link rel="icon" type="image/png" href="assets/MEeL.png">
-    <script src="assets/js/tailwind.js"></script>
-    <script src="assets/js/lucide.js"></script>
+    <link rel="icon" type="image/png" href="../assets/MEeL.png">
+    <script src="../assets/js/tailwind.js"></script>
+    <script src="../assets/js/lucide.js"></script>
     <style>
         body {
             background-color: #0b0e14;
@@ -102,7 +102,7 @@ $data = $conn->query("SELECT * FROM users WHERE id = $user_id")->fetch_assoc();
 
             <form action="" method="POST" enctype="multipart/form-data" class="space-y-6">
                 <div class="flex flex-col items-center gap-4">
-                    <img src="profile/upload/<?= $data['profile_picture'] ?: 'default.png' ?>" class="w-24 h-24 rounded-3xl object-cover border-2 border-blue-500/30">
+                    <img src="../profile/upload/<?= $data['profile_picture'] ?: 'default.png' ?>" class="w-24 h-24 rounded-3xl object-cover border-2 border-blue-500/30">
                     <label class="cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-[10px] font-bold tracking-widest uppercase transition">
                         Ganti Foto
                         <input type="file" name="avatar" class="hidden" accept="image/*">
@@ -119,7 +119,7 @@ $data = $conn->query("SELECT * FROM users WHERE id = $user_id")->fetch_assoc();
                 </button>
             </form>
 
-            <a href="profile/?u=<?= $_SESSION['username'] ?>" class="block text-center mt-6 text-xs text-gray-600 hover:text-gray-400">Batal dan Kembali</a>
+            <a href="../profile/?u=<?= $_SESSION['username'] ?>" class="block text-center mt-6 text-xs text-gray-600 hover:text-gray-400">Batal dan Kembali</a>
         </div>
     </div>
     <script>

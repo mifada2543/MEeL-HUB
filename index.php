@@ -2,7 +2,7 @@
 session_name('meel');
 session_start();
 include 'auth/config.php';
-require_once 'auth/MediaLibrary.php';
+require_once 'modules/MediaLibrary.php';
 
 $is_logged_in = isset($_SESSION['user_id']);
 

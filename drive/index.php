@@ -4,7 +4,7 @@ ini_set('display_errors', 1);
 
 require '../auth/auth.php';
 require '../auth/config.php';
-require '../helpers.php';
+require '../modules/helpers.php';
 require __DIR__ . '/DriveService.php';
 
 $user = DriveUserContext::fromSession($_SESSION);

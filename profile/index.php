@@ -3,7 +3,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 require_once '../auth/auth.php';
 require_once '../auth/config.php';
-require_once '../auth/activity_logger.php'; 
+// activity_logger loaded via auth/config.php 
 $back_url = '../index.php'; 
 
 if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
