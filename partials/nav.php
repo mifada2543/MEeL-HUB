@@ -127,7 +127,7 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
                 <?php endif; ?>
 
                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                    <a href="<?= $_nav_root ?>upload_advanced.php"
+                    <a href="upload.php"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Upload Media</span>

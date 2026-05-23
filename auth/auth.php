@@ -19,7 +19,7 @@ $stmt->execute();
 $user_data = $stmt->get_result()->fetch_assoc();
 
 if ($user_data) {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {if ($user_data['role'] !== 'admin' && $user_data['last_session_id'] !== session_id()) {session_destroy();header("Location: /opt/lampp/htdocs/MEeL/auth/login.php?error=session_expired");exit;}}
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {if ($user_data['role'] !== 'admin' && $user_data['last_session_id'] !== session_id()) {session_destroy();header("Location: /MEeL/auth/login.php?error=session_expired");exit;}}
     $stmt = $conn->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
