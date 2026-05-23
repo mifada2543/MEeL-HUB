@@ -251,24 +251,24 @@ if (isset($_GET['audio_state'])) {
 
     <!-- NAVBAR -->
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between gap-4">
-            <a href="../index.php" class="flex items-center gap-2.5 flex-shrink-0" title="MEeL HUB">
-                <div class="w-7 h-7 bg-orange-600 rounded-lg flex items-center justify-center">
+        <div class="max-w-7xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2 sm:gap-4">
+            <a href="../index.php" class="flex items-center gap-1 sm:gap-2.5 flex-shrink-0" title="MEeL HUB">
+                <div class="w-6 h-6 sm:w-7 sm:h-7 bg-orange-600 rounded-lg flex items-center justify-center">
                     <i data-lucide="music" class="w-3.5 h-3.5 text-white fill-current"></i>
                 </div>
-                <span class="text-sm font-bold tracking-tight text-white uppercase">
+                <span class="text-xs sm:text-sm font-bold tracking-tight text-white uppercase hidden sm:block">
                     MEeL<span class="text-orange-500">Music</span>
                 </span>
             </a>
 
-            <div class="flex-1 max-w-sm flex items-center gap-2">
+            <div class="flex-1 max-w-sm flex items-center gap-1.5 sm:gap-2">
                 <div class="relative flex-1 group">
-                    <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-orange-500 transition-colors"></i>
+                    <i data-lucide="search" class="absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-orange-500 transition-colors"></i>
                     <input type="text"
                         id="m-search"
                         name="search"
-                        placeholder="Cari lagu atau artis..."
-                        class="w-full bg-white/[.04] border border-white/[.06] rounded-xl py-2 pl-9 pr-4 text-xs focus:outline-none focus:border-orange-500/40 transition-all text-gray-300"
+                        placeholder="Cari lagu..."
+                        class="w-full bg-white/[.04] border border-white/[.06] rounded-xl py-2 pl-8 sm:pl-9 pr-3 sm:pr-4 text-xs focus:outline-none focus:border-orange-500/40 transition-all text-gray-300"
                         hx-get="search_music.php"
                         hx-trigger="keyup[key=='Enter']"
                         hx-target="#music-list"
@@ -279,17 +279,18 @@ if (isset($_GET['audio_state'])) {
                     hx-include="#m-search"
                     hx-target="#music-list"
                     hx-indicator="#search-indicator"
-                    class="px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
-                    Cari
+                    class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
+                    <span class="hidden sm:inline">Cari</span>
+                    <i data-lucide="search" class="w-3.5 h-3.5 sm:hidden"></i>
                 </button>
-                <div id="search-indicator" class="htmx-indicator ml-2">
+                <div id="search-indicator" class="htmx-indicator ml-1 sm:ml-2">
                     <div class="animate-spin h-3 w-3 border-2 border-orange-500 border-t-transparent rounded-full"></div>
                 </div>
             </div>
 
-            <div class="flex items-center gap-5 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
+            <div class="flex items-center gap-3 sm:gap-5 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
                 <a href="../video/index.php" class="flex items-center gap-1.5 text-gray-600 hover:text-red-500 transition-all">
-                    <i data-lucide="play" class="w-3.5 h-3.5"></i> Video
+                    <i data-lucide="play" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Video</span>
                 </a>
                 <?php include '../partials/nav.php'; ?>
             </div>
@@ -302,8 +303,8 @@ if (isset($_GET['audio_state'])) {
         <aside class="lg:col-span-3">
             <div class="sticky top-20 space-y-6">
 
-                <!-- FORMAT PILLS -->
-                <div>
+                <!-- FORMAT PILLS (Desktop) -->
+                <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3">Format</div>
                     <div class="flex flex-wrap gap-2">
                         <a href="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
@@ -317,8 +318,8 @@ if (isset($_GET['audio_state'])) {
                     </div>
                 </div>
 
-                <!-- ARTISTS -->
-                <div>
+                <!-- ARTISTS (Desktop) -->
+                <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
                         <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
                     </div>
@@ -328,7 +329,10 @@ if (isset($_GET['audio_state'])) {
                                   <?= $artist_filter === 'all' ? 'active' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[.03]' ?>">
                             <span>All Collections</span>
                         </a>
-                        <?php while ($a = $artists->fetch_assoc()): ?>
+                        <?php 
+                        // reset pointer
+                        $artists->data_seek(0);
+                        while ($a = $artists->fetch_assoc()): ?>
                             <a href="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
                                 class="sidebar-link flex items-center justify-between px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all
                                       <?= $artist_filter === $a['artist'] ? 'active' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[.03]' ?>">
@@ -338,9 +342,9 @@ if (isset($_GET['audio_state'])) {
                     </div>
                 </div>
 
-                <!-- PLAYLISTS -->
+                <!-- PLAYLISTS (Desktop) -->
                 <?php if ($is_logged_in): ?>
-                    <div>
+                    <div class="hidden lg:block">
                         <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
                             <i data-lucide="list-music" class="w-3 h-3"></i> Playlists
                         </div>
@@ -358,6 +362,55 @@ if (isset($_GET['audio_state'])) {
                         </div>
                     </div>
                 <?php endif; ?>
+
+                <!-- MOBILE FILTERS & MENUS (Select/Dropdowns) -->
+                <div class="lg:hidden flex flex-col gap-4 bg-black/20 p-4 rounded-xl border border-white/[.04]">
+                    <!-- Format Pills (Mobile) -->
+                    <div class="flex flex-wrap gap-2">
+                        <a href="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
+                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
+                        <a href="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
+                            class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
+                        <a href="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
+                            class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
+                        <a href="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
+                            class="format-pill <?= $format_filter === 'mp3' ? 'active-blue' : '' ?>">MP3</a>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Artists Select -->
+                        <div>
+                            <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
+                                <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
+                            </div>
+                            <select onchange="window.location.href='index.php?format=<?= $format_filter ?>&artist=' + encodeURIComponent(this.value)" class="w-full bg-white/[.04] border border-white/[.06] rounded-xl px-3 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none">
+                                <option value="all" <?= $artist_filter === 'all' ? 'selected' : '' ?>>All Collections</option>
+                                <?php 
+                                $artists->data_seek(0);
+                                while ($a = $artists->fetch_assoc()): ?>
+                                    <option value="<?= htmlspecialchars($a['artist']) ?>" <?= $artist_filter === $a['artist'] ? 'selected' : '' ?>><?= htmlspecialchars($a['artist']) ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+
+                        <!-- Playlists Select -->
+                        <?php if ($is_logged_in): ?>
+                        <div>
+                            <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
+                                <i data-lucide="list-music" class="w-3 h-3"></i> Playlists
+                            </div>
+                            <select onchange="if(this.value) window.location.href='view_playlist.php?id=' + this.value" class="w-full bg-white/[.04] border border-white/[.06] rounded-xl px-3 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none">
+                                <option value="">Pilih Playlist...</option>
+                                <?php 
+                                $playlists = $library->getUserPlaylists($_SESSION['user_id']);
+                                while ($pl = $playlists->fetch_assoc()): ?>
+                                    <option value="<?= $pl['id'] ?>"><?= htmlspecialchars($pl['name']) ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
 
             </div>
         </aside>

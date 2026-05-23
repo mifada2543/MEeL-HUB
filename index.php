@@ -164,7 +164,7 @@ $counts  = $library->getCounts();
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mb-20">
 
             <!-- VIDEO -->
-            <div class="media-card card-video flex flex-col gap-4 h-64"
+            <div class="media-card card-video flex flex-col gap-4 h-48 md:h-64"
                 onclick="window.location.href='video/index.php'"
                 title="MEeL Video" hx-boost="true">
                 <div class="flex items-start justify-between">
@@ -188,7 +188,7 @@ $counts  = $library->getCounts();
             </div>
 
             <!-- MUSIC (diperbesar di tengah) -->
-            <div class="media-card card-music flex flex-col gap-4 md:h-72 h-64 md:-mt-4"
+            <div class="media-card card-music flex flex-col gap-4 h-56 md:h-72 md:-mt-4"
                 onclick="window.location.href='music/index.php'"
                 title="MEeL Music">
                 <div class="flex items-start justify-between">
@@ -213,7 +213,7 @@ $counts  = $library->getCounts();
 
             <!-- BOOKS -->
             <?php if($is_logged_in): ?>
-            <div class="media-card card-books flex flex-col gap-4 h-64"
+            <div class="media-card card-books flex flex-col gap-4 h-48 md:h-64"
                 onclick="window.location.href='books/index.php'"
                 title="MEeL Books">
                 <div class="flex items-start justify-between">

@@ -489,11 +489,16 @@ switch ($ext) {
                                 <i data-lucide="repeat" class="w-3 h-3"></i>
                                 <span id="loop-text">Loop Off</span>
                             </button>
+                            <button id="btn-vis" onclick="toggleVisualizer()"
+                                class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
+                                <i data-lucide="activity" class="w-3 h-3"></i>
+                                <span id="vis-text">Vis On</span>
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Visualizer: hanya di lg -->
-                    <div id="cava-container" class="hidden lg:flex flex-1 min-w-[160px] bg-black/20 border border-white/[.04] rounded-xl p-3 items-end justify-center gap-[2px] min-h-[80px]"></div>
+                    <!-- Visualizer -->
+                    <div id="cava-container" class="hidden flex-1 min-w-[160px] bg-black/20 border border-white/[.04] rounded-xl p-3 items-end justify-center gap-[2px] min-h-[80px]"></div>
                 </div>
 
                 <div class="p-4 sm:p-5">

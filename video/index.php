@@ -43,25 +43,25 @@ $total      = $library->countVideos();
 
     <!-- NAVBAR -->
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-5 h-14 flex items-center justify-between gap-4">
-            <a href="../index.php" class="flex items-center gap-2.5 flex-shrink-0" title="MEeL HUB">
-                <div class="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center">
+        <div class="max-w-7xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2 sm:gap-4">
+            <a href="../index.php" class="flex items-center gap-1 sm:gap-2.5 flex-shrink-0" title="MEeL HUB">
+                <div class="w-6 h-6 sm:w-7 sm:h-7 bg-red-600 rounded-lg flex items-center justify-center">
                     <i data-lucide="play" class="w-3.5 h-3.5 text-white fill-current"></i>
                 </div>
-                <span class="text-sm font-bold tracking-tight text-white uppercase">
+                <span class="text-xs sm:text-sm font-bold tracking-tight text-white uppercase hidden sm:block">
                     MEeL<span class="text-red-500">Video</span>
                 </span>
             </a>
 
-            <div class="flex-1 max-w-sm flex items-center gap-2">
+            <div class="flex-1 max-w-sm flex items-center gap-1.5 sm:gap-2">
                 <div class="relative flex-1 group" title="Cari">
-                    <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-red-500 transition-colors"></i>
+                    <i data-lucide="search" class="absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-red-500 transition-colors"></i>
                     <input type="text"
                         id="v-search"
                         name="search"
                         placeholder="Cari video..."
                         title="Cari Video"
-                        class="w-full bg-white/[.04] border border-white/[.06] rounded-xl py-2 pl-9 pr-4 text-xs focus:outline-none focus:border-red-500/40 transition-all text-gray-300"
+                        class="w-full bg-white/[.04] border border-white/[.06] rounded-xl py-2 pl-8 sm:pl-9 pr-3 sm:pr-4 text-xs focus:outline-none focus:border-red-500/40 transition-all text-gray-300"
                         hx-get="search_video.php"
                         hx-trigger="keyup[key=='Enter']"
                         hx-target="#video-container"
@@ -74,18 +74,19 @@ $total      = $library->countVideos();
                     hx-target="#video-container"
                     hx-indicator="#search-indicator"
                     title="Cari"
-                    class="px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-red-500 hover:border-red-500/30 transition-all flex-shrink-0">
-                    Cari
+                    class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-red-500 hover:border-red-500/30 transition-all flex-shrink-0">
+                    <span class="hidden sm:inline">Cari</span>
+                    <i data-lucide="search" class="w-3.5 h-3.5 sm:hidden"></i>
                 </button>
 
-                <div id="search-indicator" class="htmx-indicator ml-2">
+                <div id="search-indicator" class="htmx-indicator ml-1 sm:ml-2">
                     <div class="animate-spin h-3 w-3 border-2 border-red-500 border-t-transparent rounded-full"></div>
                 </div>
             </div>
 
-            <div class="flex items-center gap-5 text-[10px] font-bold uppercase tracking-wider flex-shrink-0" title="MEeL Music">
+            <div class="flex items-center gap-3 sm:gap-5 text-[10px] font-bold uppercase tracking-wider flex-shrink-0" title="MEeL Music">
                 <a href="../music/index.php" class="flex items-center gap-1.5 text-gray-600 hover:text-orange-500 transition-all">
-                    <i data-lucide="music" class="w-3.5 h-3.5"></i> Music
+                    <i data-lucide="music" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Music</span>
                 </a>
                 <?php include '../partials/nav.php'; ?>
             </div>

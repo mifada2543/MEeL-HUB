@@ -161,9 +161,9 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
     <!-- ── HAMBURGER (mobile only) ── -->
     <button id="nav-hamburger"
         onclick="toggleNavDrawer()"
-        class="sm:hidden flex items-center justify-center w-9 h-9 rounded-xl bg-white/[.04] border border-white/[.06] text-gray-500 hover:text-white transition-all"
+        class="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/[.04] border border-white/[.06] text-gray-500 hover:text-white transition-all"
         title="Menu">
-        <i data-lucide="menu" class="w-4 h-4"></i>
+        <i data-lucide="menu" class="w-6 h-6"></i>
     </button>
 
     <!-- ── MOBILE DRAWER ── -->
@@ -172,7 +172,7 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
         onclick="toggleNavDrawer()"></div>
 
     <div id="nav-drawer"
-        class="fixed top-0 right-0 h-full w-72 bg-[#0a0d14] border-l border-white/[.06] z-[310] transform translate-x-full transition-transform duration-300 ease-out sm:hidden flex flex-col">
+        class="fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-[#0a0d14] border-l border-white/[.06] z-[310] transform translate-x-full transition-transform duration-300 ease-out sm:hidden flex flex-col">
 
         <!-- Drawer header -->
         <div class="flex items-center justify-between px-5 py-4 border-b border-white/[.05]">
@@ -222,63 +222,62 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
         </div>
 
         <!-- Drawer menu items -->
-        <nav class="flex-1 overflow-y-auto py-3">
+        <nav class="flex-1 overflow-y-auto py-4 space-y-1">
             <a href="<?= $_nav_root ?>profile/?u=<?= urlencode($_SESSION['username']) ?>"
-                class="flex items-center gap-4 px-5 py-3.5 text-sm text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
-                <i data-lucide="user" class="w-4 h-4 flex-shrink-0"></i>
+                class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
+                <i data-lucide="user" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Profil Saya</span>
             </a>
             <a href="<?= $_nav_root ?>books/index.php"
-                class="flex items-center gap-4 px-5 py-3.5 text-sm text-gray-400 hover:text-green-400 hover:bg-white/[.04] transition-all no-underline">
-                <i data-lucide="book-open" class="w-4 h-4 flex-shrink-0"></i>
+                class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-green-400 hover:bg-white/[.04] transition-all no-underline">
+                <i data-lucide="book-open" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Books</span>
             </a>
             <a href="<?= $_nav_root ?>introduction.php"
-                class="flex items-center gap-4 px-5 py-3.5 text-sm text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
-                <i data-lucide="compass" class="w-4 h-4 flex-shrink-0"></i>
+                class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
+                <i data-lucide="compass" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Cara Navigasi</span>
             </a>
             <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['member', 'admin'])): ?>
                 <a href="<?= $_nav_root ?>drive/index.php"
-                    class="flex items-center gap-4 px-5 py-3.5 text-sm text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
-                    <i data-lucide="hard-drive" class="w-4 h-4 flex-shrink-0"></i>
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
+                    <i data-lucide="hard-drive" class="w-5 h-5 flex-shrink-0"></i>
                     <span>Drive</span>
                 </a>
             <?php endif; ?>
             <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
                 <a href="<?= $_nav_root ?>upload_advanced.php"
-                    class="flex items-center gap-4 px-5 py-3.5 text-sm text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
-                    <i data-lucide="upload-cloud" class="w-4 h-4 flex-shrink-0"></i>
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
+                    <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
                     <span>Upload Media</span>
                 </a>
                 <a href="<?= $_nav_root ?>system_check.php"
-                    class="flex items-center gap-4 px-5 py-3.5 text-sm text-gray-400 hover:text-red-400 hover:bg-white/[.04] transition-all no-underline">
-                    <i data-lucide="settings" class="w-4 h-4 flex-shrink-0"></i>
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-white/[.04] transition-all no-underline">
+                    <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
                     <span>Admin Panel</span>
                 </a>
             <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'member'): ?>
                 <a href="upload.php"
-                    class="flex items-center gap-4 px-5 py-3.5 text-sm text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
-                    <i data-lucide="upload-cloud" class="w-4 h-4 flex-shrink-0"></i>
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
+                    <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
                     <span>Upload</span>
                 </a>
             <?php endif; ?>
 
-            <div class="mx-5 my-2 h-px bg-white/[.05]"></div>
+            <div class="mx-6 my-3 h-px bg-white/[.05]"></div>
 
             <a href="<?= $_nav_root ?>update.php"
-                class="flex items-center gap-4 px-5 py-3.5 text-sm text-gray-500 hover:text-white hover:bg-white/[.04] transition-all no-underline">
-                <i data-lucide="radio" class="w-4 h-4 flex-shrink-0"></i>
+                class="flex items-center gap-4 px-6 py-4 text-base text-gray-500 hover:text-white hover:bg-white/[.04] transition-all no-underline">
+                <i data-lucide="radio" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Changelog</span>
             </a>
         </nav>
 
-        <!-- Logout -->
-        <div class="border-t border-white/[.05] p-4">
+        <div class="border-t border-white/[.05] p-5">
             <a href="<?= $_nav_root ?>auth/logout.php"
                 onclick="return confirm('Yakin mau logout?')"
-                class="flex items-center justify-center gap-3 w-full py-3 rounded-xl bg-red-600/10 border border-red-600/20 text-sm text-red-400 hover:bg-red-600/20 transition-all no-underline font-bold">
-                <i data-lucide="log-out" class="w-4 h-4"></i>
+                class="flex items-center justify-center gap-3 w-full py-4 rounded-xl bg-red-600/10 border border-red-600/20 text-base text-red-400 hover:bg-red-600/20 transition-all no-underline font-bold">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
                 Logout
             </a>
         </div>

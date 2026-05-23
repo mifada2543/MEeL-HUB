@@ -116,8 +116,40 @@ if ($user->isMember()) {
             </div>
         </aside>
 
-        <main class="flex-1 p-6 md:p-10">
-            <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <main class="flex-1 p-4 md:p-10 w-full overflow-x-hidden">
+            <!-- Mobile Header -->
+            <div class="md:hidden flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
+                <div class="flex items-center gap-3" onclick="window.location.href='../index.php'" style="cursor: pointer;">
+                    <img src="../assets/MEeL.png" class="w-8 h-8 rounded-lg shadow-lg shadow-blue-500/20" alt="Logo">
+                    <div>
+                        <h1 class="font-bold text-base leading-none">MEeL <span class="text-blue-500">Cloud</span></h1>
+                    </div>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-xs">
+                    <?= strtoupper(substr($user->username, 0, 1)) ?>
+                </div>
+            </div>
+
+            <!-- Mobile Scope Toggle -->
+            <div class="md:hidden flex items-center gap-2 mb-4">
+                <a href="?scope=public" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'public' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Public</a>
+                <a href="?scope=private" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'private' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Private</a>
+            </div>
+
+            <!-- Mobile Category Tabs -->
+            <div class="md:hidden flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
+                <button onclick="showSection('video', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500 text-blue-500 whitespace-nowrap nav-btn-mobile active font-medium text-xs">
+                    <i data-lucide="play-circle" class="w-4 h-4"></i> Video
+                </button>
+                <button onclick="showSection('audio', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 border border-transparent text-gray-400 whitespace-nowrap nav-btn-mobile font-medium text-xs">
+                    <i data-lucide="music" class="w-4 h-4 text-orange-500"></i> Audio
+                </button>
+                <button onclick="showSection('dokumen', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 border border-transparent text-gray-400 whitespace-nowrap nav-btn-mobile font-medium text-xs">
+                    <i data-lucide="file-text" class="w-4 h-4 text-green-500"></i> Dokumen
+                </button>
+            </div>
+
+            <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 hidden md:flex">
                 <div>
                     <h2 id="sectionHeading" class="text-3xl font-extrabold tracking-tight">
                         Drive <span id="sectionAccent" class="text-red-500">Video</span>
@@ -128,10 +160,24 @@ if ($user->isMember()) {
                 <div class="flex items-center gap-3">
                     <div class="relative">
                         <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                        <input type="text" placeholder="Cari file..." class="bg-gray-900 border border-gray-800 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64">
+                        <input type="text" placeholder="Cari file..." class="bg-gray-900 border border-gray-800 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64">
                     </div>
                 </div>
             </header>
+
+            <!-- Mobile Heading & Search (since desktop header is hidden on mobile) -->
+            <div class="md:hidden flex flex-col gap-3 mb-6">
+                <div>
+                    <h2 class="text-xl font-extrabold tracking-tight">
+                        Drive <span id="sectionAccentMobile" class="text-red-500">Video</span>
+                    </h2>
+                    <p id="fileCountMobile" class="text-xs text-gray-500 mt-0.5">Memuat file...</p>
+                </div>
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                    <input type="text" placeholder="Cari file..." class="w-full bg-gray-900 border border-gray-800 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
 
             <?php if ($user->isMember() && $usage !== null && $usagePercentage !== null): ?>
                 <div class="glass rounded-2xl p-4 mb-8 flex items-center gap-6">
@@ -221,7 +267,7 @@ if ($user->isMember()) {
             }
         };
 
-        function showSection(id, btn) {
+        function showSection(id, btn, isMobile = false) {
             document.querySelectorAll('.drive-section').forEach(section => section.classList.add('hidden'));
 
             const target = document.getElementById('drive-' + id);
@@ -233,17 +279,51 @@ if ($user->isMember()) {
                 button.classList.remove('nav-active', 'text-blue-500');
                 button.classList.add('text-gray-400');
             });
+            document.querySelectorAll('.nav-btn-mobile').forEach(button => {
+                button.classList.remove('bg-blue-500/10', 'border-blue-500', 'text-blue-500');
+                button.classList.add('bg-gray-800', 'border-transparent', 'text-gray-400');
+            });
 
             if (btn) {
-                btn.classList.add('nav-active');
-                btn.classList.remove('text-gray-400');
+                if(isMobile) {
+                    btn.classList.add('bg-blue-500/10', 'border-blue-500', 'text-blue-500');
+                    btn.classList.remove('bg-gray-800', 'border-transparent', 'text-gray-400');
+                    // Sync desktop button
+                    const dtBtn = document.querySelector(`.nav-btn-desktop[onclick*="'${id}'"]`);
+                    if(dtBtn) {
+                        dtBtn.classList.add('nav-active');
+                        dtBtn.classList.remove('text-gray-400');
+                    }
+                } else {
+                    btn.classList.add('nav-active');
+                    btn.classList.remove('text-gray-400');
+                    // Sync mobile button
+                    const mbBtn = document.querySelector(`.nav-btn-mobile[onclick*="'${id}'"]`);
+                    if(mbBtn) {
+                        mbBtn.classList.add('bg-blue-500/10', 'border-blue-500', 'text-blue-500');
+                        mbBtn.classList.remove('bg-gray-800', 'border-transparent', 'text-gray-400');
+                    }
+                }
             }
 
             const headingAccent = document.getElementById('sectionAccent');
-            headingAccent.innerText = accents[id].label;
-            headingAccent.className = accents[id].color;
+            if (headingAccent) {
+                headingAccent.innerText = accents[id].label;
+                headingAccent.className = accents[id].color;
+            }
+            
+            const headingAccentMobile = document.getElementById('sectionAccentMobile');
+            if (headingAccentMobile) {
+                headingAccentMobile.innerText = accents[id].label;
+                headingAccentMobile.className = accents[id].color;
+            }
 
-            document.getElementById('fileCount').innerText = `${counts[id]} file ditemukan`;
+            const fileCount = document.getElementById('fileCount');
+            if (fileCount) fileCount.innerText = `${counts[id]} file ditemukan`;
+            
+            const fileCountMobile = document.getElementById('fileCountMobile');
+            if (fileCountMobile) fileCountMobile.innerText = `${counts[id]} file ditemukan`;
+            
             lucide.createIcons();
         }
 
@@ -329,17 +409,26 @@ if ($user->isMember()) {
             }
         });
 
-        document.querySelector('input[placeholder="Cari file..."]').addEventListener('input', event => {
-            const keyword = event.target.value.toLowerCase();
-            const activeSection = document.querySelector('.drive-section:not(.hidden)');
+        document.querySelectorAll('input[placeholder="Cari file..."]').forEach(input => {
+            input.addEventListener('input', event => {
+                const keyword = event.target.value.toLowerCase();
+                const activeSection = document.querySelector('.drive-section:not(.hidden)');
 
-            if (!activeSection) {
-                return;
-            }
+                if (!activeSection) {
+                    return;
+                }
 
-            activeSection.querySelectorAll('.glass').forEach(card => {
-                const fileName = card.querySelector('h3')?.innerText.toLowerCase() ?? '';
-                card.style.display = fileName.includes(keyword) ? 'block' : 'none';
+                activeSection.querySelectorAll('.glass').forEach(card => {
+                    const fileName = card.querySelector('h3')?.innerText.toLowerCase() ?? '';
+                    card.style.display = fileName.includes(keyword) ? 'block' : 'none';
+                });
+                
+                // Sync the other search input
+                document.querySelectorAll('input[placeholder="Cari file..."]').forEach(otherInput => {
+                    if (otherInput !== event.target) {
+                        otherInput.value = event.target.value;
+                    }
+                });
             });
         });
 

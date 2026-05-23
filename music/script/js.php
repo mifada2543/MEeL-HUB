@@ -79,6 +79,7 @@
         }
 
         // --- 3. SETTING VISUALIZER (CAVA) ---
+        let isVisualizerEnabled = window.innerWidth >= 1024; // Default mati di layar <1024px (mobile)
         const isMobile = window.innerWidth < 768;
         const numBars = isMobile ? 20 : 40;
         const bars = [];
@@ -97,15 +98,61 @@
         let baseBitrate = 160;
         let audioCtx, analyser, source, isInitialized = false;
         let animationId;
-
         let userInteracted = false;
 
-        document.addEventListener('click', () => userInteracted = true, {
-            once: true
-        });
-        document.addEventListener('keydown', () => userInteracted = true, {
-            once: true
-        });
+        document.addEventListener('click', () => userInteracted = true, { once: true });
+        document.addEventListener('keydown', () => userInteracted = true, { once: true });
+
+        // Toggle UI Initialization
+        setTimeout(() => {
+            const btnVis = document.getElementById('btn-vis');
+            const visText = document.getElementById('vis-text');
+            if (isVisualizerEnabled) {
+                if(btnVis) {
+                    btnVis.classList.add('bg-orange-500/10', 'text-orange-500', 'border', 'border-orange-500/30');
+                    btnVis.classList.remove('bg-gray-800', 'text-gray-400');
+                }
+                if(visText) visText.innerText = 'Vis On';
+                cavaContainer.classList.remove('hidden');
+                cavaContainer.style.display = 'flex';
+            } else {
+                if(btnVis) {
+                    btnVis.classList.add('bg-gray-800', 'text-gray-400');
+                    btnVis.classList.remove('bg-orange-500/10', 'text-orange-500', 'border', 'border-orange-500/30');
+                }
+                if(visText) visText.innerText = 'Vis Off';
+                cavaContainer.style.display = 'none';
+            }
+        }, 100);
+
+        window.toggleVisualizer = function() {
+            isVisualizerEnabled = !isVisualizerEnabled;
+            const btnVis = document.getElementById('btn-vis');
+            const visText = document.getElementById('vis-text');
+            
+            if (isVisualizerEnabled) {
+                if(btnVis) {
+                    btnVis.classList.remove('bg-gray-800', 'text-gray-400');
+                    btnVis.classList.add('bg-orange-500/10', 'text-orange-500', 'border', 'border-orange-500/30');
+                }
+                if(visText) visText.innerText = 'Vis On';
+                cavaContainer.classList.remove('hidden');
+                cavaContainer.style.display = 'flex';
+                if (!isInitialized && !player.paused) {
+                    if (initAudio()) render();
+                } else if (!player.paused) {
+                    render();
+                }
+            } else {
+                if(btnVis) {
+                    btnVis.classList.add('bg-gray-800', 'text-gray-400');
+                    btnVis.classList.remove('bg-orange-500/10', 'text-orange-500', 'border', 'border-orange-500/30');
+                }
+                if(visText) visText.innerText = 'Vis Off';
+                cavaContainer.style.display = 'none';
+                cancelAnimationFrame(animationId);
+            }
+        };
 
         function initAudio() {
             try {
@@ -134,7 +181,7 @@
         }
 
         function render() {
-            if (!isInitialized || player.paused) {
+            if (!isVisualizerEnabled || !isInitialized || player.paused) {
                 cancelAnimationFrame(animationId);
                 return;
             }
@@ -267,12 +314,15 @@
             container.classList.add('playing');
             const vinyl = document.querySelector('.vinyl-wrap .vinyl-spin');
             if (vinyl) vinyl.classList.add('playing');
-            if (!isInitialized) {
-                if (initAudio()) {
+            
+            if (isVisualizerEnabled) {
+                if (!isInitialized) {
+                    if (initAudio()) {
+                        render();
+                    }
+                } else {
                     render();
                 }
-            } else {
-                render();
             }
         });
 
