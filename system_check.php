@@ -314,7 +314,21 @@ include 'controllers/fun.php';
                                         </span>
                                     </td>
                                     <td class="py-4 px-4 text-yellow-500 font-bold uppercase text-[10px]"><?= $q['status'] ?></td>
-                                    <td class="py-4 px-6 text-right text-gray-500 font-mono text-[10px]"><?= $q['created_at'] ?></td>
+
+                                    <td class="py-4 px-6 text-right">
+                                        <div class="flex items-center justify-end gap-3">
+                                            <span class="text-gray-500 font-mono text-[10px]"><?= $q['created_at'] ?></span>
+
+                                            <form method="POST" action="system_check.php" class="m-0" onsubmit="return confirm('Hentikan paksa proses spesifik ini?');">
+                                                <input type="hidden" name="queue_id" value="<?= $q['id'] ?>">
+                                                <input type="hidden" name="task_type" value="<?= $q['task_type'] ?>">
+
+                                                <button type="submit" name="force_stop_queue" value="1" title="Force Stop" class="text-red-500 hover:text-white bg-red-500/10 hover:bg-red-600 border border-red-500/30 rounded p-1.5 transition-all flex items-center justify-center cursor-pointer">
+                                                    <i data-lucide="x" class="w-3 h-3"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
                                 </tr>
                             <?php
                             endforeach;

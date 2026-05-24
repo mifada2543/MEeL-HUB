@@ -78,7 +78,30 @@ if (isset($_POST['clean_stuck_queues'])) {
         exit();
     }
 }
+// LOGIKA FORCE STOP KUBIK (Per-Item)
+if (isset($_POST['force_stop_queue'])) {
+    $queue_id = (int)$_POST['queue_id'];
+    $task_type = $_POST['task_type']; // 'download' atau 'transcode'
 
+    // Load System class
+    $path_modules = __DIR__ . '/../modules/System.php';
+    $path_auth = __DIR__ . '/../auth/System.php';
+    if (file_exists($path_modules)) { include_once $path_modules; } 
+    elseif (file_exists($path_auth)) { include_once $path_auth; }
+
+    $sys = new System($conn);
+    $sys->forceStopQueue($queue_id, $task_type);
+
+    $redirect_url = "system_check.php?msg=Queue_Force_Stopped#queues";
+    
+    if (!headers_sent()) {
+        header("Location: " . $redirect_url);
+        exit();
+    } else {
+        echo "<script>window.location.href='$redirect_url';</script>";
+        exit();
+    }
+}
 // 2. Logika Aksi (Approve, Reject, Clean)
 if (isset($_GET['approve_id'])) {
     $id = (int)$_GET['approve_id'];

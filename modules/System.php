@@ -183,4 +183,22 @@ class System
 
         return $count;
     }
+    public function forceStopQueue(int $id, string $task_type): bool
+    {
+        // Tentukan tabel berdasarkan jenis task
+        if ($task_type === 'download') {
+            $stmt = $this->conn->prepare("DELETE FROM upload_queue WHERE id = ?");
+        } elseif ($task_type === 'transcode') {
+            $stmt = $this->conn->prepare("DELETE FROM transcode_queue WHERE id = ?");
+        } else {
+            return false;
+        }
+
+        // Eksekusi penghapusan spesifik berdasarkan ID
+        if ($stmt) {
+            $stmt->bind_param("i", $id);
+            return $stmt->execute();
+        }
+        return false;
+    }
 }
