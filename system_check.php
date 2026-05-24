@@ -280,14 +280,14 @@ include 'controllers/fun.php';
                     <i data-lucide="server" class="w-5 h-5 text-purple-500"></i>
                     <h3 class="text-xs font-bold text-purple-500 uppercase">Active Background Tasks</h3>
                 </div>
-                <form method="POST" onsubmit="return confirm('Bersihkan semua antrean yang stuck (> 30 menit)?');">
-                    <button name="clean_stuck_queues" class="flex items-center gap-2 text-[9px] bg-purple-600/10 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-xl hover:bg-purple-600 hover:text-white transition-all font-bold uppercase">
+                <form method="POST" action="system_check.php" onsubmit="return confirm('Bersihkan semua antrean yang stuck (> 30 menit)?');">
+                    <button type="submit" name="clean_stuck_queues" value="1" class="flex items-center gap-2 text-[9px] bg-purple-600/10 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-xl hover:bg-purple-600 hover:text-white transition-all font-bold uppercase cursor-pointer">
                         <i data-lucide="refresh-cw" class="w-3 h-3"></i>
                         Clean Stuck Queues
                     </button>
                 </form>
             </div>
-            
+
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs">
                     <thead class="bg-white/[0.02] text-gray-500 uppercase text-[9px] font-black tracking-widest">
@@ -300,26 +300,26 @@ include 'controllers/fun.php';
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-800">
-                        <?php 
+                        <?php
                         $active_queues = $sys->getActiveQueues();
                         if (!empty($active_queues)):
                             foreach ($active_queues as $q):
                         ?>
-                            <tr class="hover:bg-white/[0.02] transition-colors">
-                                <td class="py-4 px-6 font-mono text-gray-400">#<?= $q['id'] ?></td>
-                                <td class="py-4 px-4 font-bold text-white"><?= htmlspecialchars($q['username'] ?? 'Unknown') ?></td>
-                                <td class="py-4 px-4">
-                                    <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase <?= $q['task_type'] === 'download' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400' ?>">
-                                        <?= $q['task_type'] ?>
-                                    </span>
-                                </td>
-                                <td class="py-4 px-4 text-yellow-500 font-bold uppercase text-[10px]"><?= $q['status'] ?></td>
-                                <td class="py-4 px-6 text-right text-gray-500 font-mono text-[10px]"><?= $q['created_at'] ?></td>
-                            </tr>
-                        <?php 
+                                <tr class="hover:bg-white/[0.02] transition-colors">
+                                    <td class="py-4 px-6 font-mono text-gray-400">#<?= $q['id'] ?></td>
+                                    <td class="py-4 px-4 font-bold text-white"><?= htmlspecialchars($q['username'] ?? 'Unknown') ?></td>
+                                    <td class="py-4 px-4">
+                                        <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase <?= $q['task_type'] === 'download' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400' ?>">
+                                            <?= $q['task_type'] ?>
+                                        </span>
+                                    </td>
+                                    <td class="py-4 px-4 text-yellow-500 font-bold uppercase text-[10px]"><?= $q['status'] ?></td>
+                                    <td class="py-4 px-6 text-right text-gray-500 font-mono text-[10px]"><?= $q['created_at'] ?></td>
+                                </tr>
+                            <?php
                             endforeach;
                         else:
-                        ?>
+                            ?>
                             <tr>
                                 <td colspan="5" class="py-6 text-center text-gray-500 text-xs italic">Tidak ada proses yang sedang berjalan.</td>
                             </tr>
@@ -332,8 +332,8 @@ include 'controllers/fun.php';
         <div class="glass rounded-3xl overflow-hidden shadow-2xl" id="monitor">
             <div class="p-6 border-b border-white/5 justify-between flex items-center">
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Live Activity Monitor</h3>
-                <form method="POST" onsubmit="return confirm('Hapus semua Guest?');">
-                    <button name="clear_all_guests" class="group flex flex-col items-end gap-1">
+                <form method="POST" action="system_check.php" onsubmit="return confirm('Hapus semua Guest?');">
+                    <button type="submit" name="clear_all_guests" value="1" class="group flex flex-col items-end gap-1 cursor-pointer">
                         <div class="flex items-center gap-2 text-[9px] bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold uppercase">
                             <i data-lucide="shield-alert" class="w-3 h-3"></i>
                             Clean Inactive Guests

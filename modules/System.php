@@ -176,13 +176,9 @@ class System
     public function cleanStuckQueues(): int
     {
         $count = 0;
-        
-        // Hapus transcode_queue yang macet > 30 menit
-        $this->conn->query("DELETE FROM transcode_queue WHERE status = 'processing' AND created_at < NOW() - INTERVAL 30 MINUTE");
+        $this->conn->query("DELETE FROM transcode_queue WHERE status = 'processing'");
         $count += $this->conn->affected_rows;
-
-        // Update upload_queue yang macet > 30 menit menjadi failed
-        $this->conn->query("UPDATE upload_queue SET status = 'failed' WHERE status = 'processing' AND created_at < NOW() - INTERVAL 30 MINUTE");
+        $this->conn->query("UPDATE upload_queue SET status = 'failed' WHERE status = 'processing'");
         $count += $this->conn->affected_rows;
 
         return $count;

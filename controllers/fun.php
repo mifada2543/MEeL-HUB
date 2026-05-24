@@ -52,11 +52,31 @@ if (isset($_POST['clear_all_guests'])) {
 }
 
 if (isset($_POST['clean_stuck_queues'])) {
-    include_once __DIR__ . '/../modules/System.php';
+    // 1. Deteksi dinamis path file System.php untuk mencegah Fatal Error
+    $path_modules = __DIR__ . '/../modules/System.php';
+    $path_auth = __DIR__ . '/../auth/System.php';
+
+    if (file_exists($path_modules)) {
+        include_once $path_modules;
+    } elseif (file_exists($path_auth)) {
+        include_once $path_auth;
+    } else {
+        die("System Error: File System.php tidak ditemukan di /modules/ maupun /auth/!");
+    }
+
+    // 2. Eksekusi pembersihan
     $sys = new System($conn);
     $cleaned = $sys->cleanStuckQueues();
-    header("Location: system_check.php?msg=Queues_Cleaned_$cleaned");
-    exit();
+    $redirect_url = "system_check.php?msg=Queues_Cleaned_" . $cleaned . "#queues";
+
+    // 3. Fallback cerdas untuk menghindari "Headers Already Sent"
+    if (!headers_sent()) {
+        header("Location: " . $redirect_url);
+        exit();
+    } else {
+        echo "<script>window.location.href='$redirect_url';</script>";
+        exit();
+    }
 }
 
 // 2. Logika Aksi (Approve, Reject, Clean)
