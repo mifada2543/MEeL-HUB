@@ -1,227 +1,161 @@
 <div align="center">
   <img src="assets/MEeL.png" alt="MEeL Logo" width="500">
-  
-  # 🎬 MEeL - Media Hub Platform
-  
+
+  # MEeL - Media Hub Platform
+
   **Platform media cloud terpadu untuk mengelola musik, video, buku, dan file dengan mudah**
-  
+
   [![PHP](https://img.shields.io/badge/PHP-7.4%2B-blue?style=flat-square)](https://www.php.net/)
   [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-orange?style=flat-square)](https://www.mysql.com/)
   [![License](https://img.shields.io/badge/License-Custom-green?style=flat-square)](/LICENSE)
   [![Status](https://img.shields.io/badge/Status-Production%20Ready-success?style=flat-square)](https://github.com)
-  
+
 </div>
 
-> Aplikasi media hub modern yang dibangun dengan PHP dan MySQL untuk mengelola koleksi musik, video, buku, dan file pribadi dengan fitur berbagi dan manajemen pengguna yang lengkap. Sempurna untuk personal storage atau sharing media dalam skala kecil hingga menengah.
+Aplikasi media hub berbasis PHP dan MySQL untuk mengelola koleksi video, musik, buku, dan file cloud pribadi/public dengan sistem user role, interaksi sosial, serta workflow upload/transcode.
 
-## 💡 Rekomendasi Sistem Operasi
-> **Saran Utama:** Sangat disarankan untuk menjalankan platform ini di atas lingkungan **Linux** (seperti Ubuntu Server atau Debian). 
-> 
-> Mengapa Linux?
-> - **FFmpeg Performance:** Proses transcoding video jauh lebih stabil dan efisien.
-> - **Permission System:** Manajemen hak akses file (`chmod/chown`) yang lebih ketat dan aman untuk folder media.
-> - **Case Sensitivity:** Konsistensi pemanggilan file yang sesuai dengan standar pengembangan web profesional.
+## Rekomendasi Sistem Operasi
+Sangat disarankan menjalankan platform ini di Linux (Ubuntu Server/Debian) karena:
+- FFmpeg lebih stabil untuk transcoding video/audio.
+- Permission file (`chmod/chown`) lebih mudah dikontrol.
+- Case sensitivity path konsisten dengan lingkungan produksi web.
 
-## � Daftar Isi
-
-- **[✨ Fitur Utama](#fitur-utama)** - Apa saja yang bisa dilakukan
-- **[📁 Struktur Proyek](#struktur-proyek)** - Organisasi folder & file
-- **[🔧 Persyaratan Sistem](#persyaratan-sistem)** - Requirements & dependencies
-- **[📥 Instalasi](#instalasi)** - Setup awal
-- **[⚙️ Konfigurasi](#konfigurasi)** - Configuration guide
-- **[🚀 Penggunaan](#penggunaan)** - Cara menggunakan aplikasi
-- **[🏗️ Arsitektur](#arsitektur-aplikasi)** - Technical architecture
-- **[🔒 Keamanan](#keamanan)** - Security features & best practices
-- **[🔌 API](#api-dan-fungsi-utama)** - Available APIs & functions
-- **[📝 License](#lisensi)** - Informasi lisensi
-
----
-
-## ✨🎯 Modul Unggulan
-
-| Modul | Deskripsi | Fitur |
-|-------|-----------|-------|
-| 🎬 **Video** | Streaming video berkualitas tinggi | Upload, transcoding, search, rekomendasi, streaming |
-| 🎵 **Musik** | Music library dengan playlist support | Upload, playlist, sorting by artist, visualisasi |
-| 📚 **Buku** | E-book management dan reader | Upload, kategorisasi, pembacaan online |
-| ☁️ **Cloud Drive** | Personal cloud storage | Upload/download, sharing, quota management |
-| 👤 **User System** | Authentication & profiling | Login, role-based access, activity logging |
-| ❤️ **Social** | Community features | Like, comment, recommendations, playlists |
-
-### 🌟 Highlight Features
-
-✅ **Media Hub Dashboard** - Agregasi semua konten dalam satu dashboard  
-✅ **Auto-Transcoding** - Video/audio otomatis dikonversi ke format optimal  
-✅ **Role-Based Access** - Admin & member dengan permission berbeda  
-✅ **Cloud Storage** - 20GB quota per member dengan management system  
-✅ **Smart Search** - Pencarian cepat dengan ranking berdasarkan relevansi  
-✅ **Responsive UI** - Design modern yang mobile-friendly  
-✅ **Session Management** - Timeout 12 jam dengan security features  
-✅ **Activity Logging** - Track semua aktivitas user (admin only)
-   - Rekomendasi konten
-   - Playlist kolaboratif
+## Daftar Isi
+- [Fitur Utama](#fitur-utama)
+- [Struktur Proyek](#struktur-proyek)
+- [Persyaratan Sistem](#persyaratan-sistem)
+- [Instalasi](#instalasi)
+- [Konfigurasi](#konfigurasi)
+- [Penggunaan](#penggunaan)
+- [Arsitektur Aplikasi](#arsitektur-aplikasi)
+- [API dan Fungsi Utama](#api-dan-fungsi-utama)
+- [Keamanan](#keamanan)
+- [Troubleshooting](#troubleshooting)
+- [File Penting untuk Development](#file-penting-untuk-development)
+- [Lisensi](#lisensi)
 
 ---
 
-## 📁 Struktur Proyek
+## Fitur Utama
+- Dashboard media gabungan (video, musik, buku, drive).
+- Upload video/music/book dengan validasi dan metadata.
+- Transcoding video ke HLS (`.m3u8` + segment `.ts`) dan thumbnail sprite VTT.
+- Download media via URL (yt-dlp) untuk video/music.
+- Sistem komentar bertingkat + like/dislike untuk video/music.
+- Cloud drive dengan scope public/private, pembatasan role, dan kuota member.
+- Session security (timeout 12 jam, CSRF token, validasi sesi aktif).
 
-```
+---
+
+## Struktur Proyek
+```text
 MEeL/
+├── auth/                        # Authentication dan session bootstrap
+│   ├── config.php               # DB connection, CSRF, session timeout
+│   ├── auth.php                 # Login guard + validasi session user
+│   ├── login.php
+│   ├── register.php
+│   └── logout.php
 │
-├── 🔐 auth/                     # Authentication & Configuration
-│   ├── config.php              # 📌 Database & session setup
-│   ├── auth.php                # 🛡️ Middleware proteksi halaman
-│   ├── login.php               # 📝 Login form & processing
-│   ├── register.php            # ✍️ User registration
-│   ├── MediaLibrary.php        # 📚 Media utility class
-│   ├── MediaViewer.php         # 👁️ Media viewer class
-│   ├── Transcoder.php          # 🎞️ Video/audio transcoding
-│   ├── Uploader.php            # 📤 File upload handler
-│   └── activity_logger.php     # 📊 User activity tracking
+├── modules/                     # Business logic reusable
+│   ├── MediaLibrary.php         # Query layer video/music + BookRepository/BookUploader
+│   ├── MediaViewer.php          # View counter, komentar, interaksi, rekomendasi
+│   ├── Uploader.php             # Upload video/music lokal + transcode awal
+│   ├── Transcoder.php           # Download/transcode media via yt-dlp + ffmpeg
+│   ├── System.php               # Queue monitor, storage stats, rate limit
+│   ├── MediaInteraction.php     # Interaksi media tambahan
+│   ├── activity_logger.php      # Logging aktivitas/IP/session enforcement
+│   └── helpers.php              # time_ago, format_bytes, get_user_usage, HDD check
 │
-├── 🎨 assets/                   # Static files (CSS, JS, images)
-│   ├── css/
-│   │   ├── styles.css          # 🎯 Main stylesheet
-│   │   ├── tailwind.css        # 🎨 Tailwind CSS compiled
-│   │   ├── music.css / video.css / drive.css
-│   │   └── overlay.css / plyr.css
-│   ├── js/
-│   │   ├── script.js           # 🔧 Main frontend logic
-│   │   ├── tailwind.js / htmx.js / lucide.js
-│   │   ├── hls.js / plyr.js / overlay.js
-│   │   └── script/ (utility scripts)
-│   └── img/                    # 🖼️ Images & media assets
+├── video/                       # Modul video
+│   ├── index.php
+│   ├── watch.php
+│   ├── upload.php
+│   ├── search_video.php
+│   ├── load_more.php
+│   └── video_card.php
 │
-├── 🎬 video/                    # Video module
-│   ├── index.php               # 📺 Video hub
-│   ├── watch.php               # ▶️ Video player page
-│   ├── upload.php              # 📤 Upload interface
-│   └── search_video.php        # 🔍 Search functionality
+├── music/                       # Modul musik
+│   ├── index.php
+│   ├── index-content.php
+│   ├── watch.php
+│   ├── upload.php
+│   ├── search_music.php
+│   ├── load_more_music.php
+│   ├── playlist_action.php
+│   └── view_playlist.php
 │
-├── 🎵 music/                    # Music module
-│   ├── index.php               # 🎧 Music hub
-│   ├── watch.php               # ▶️ Music player
-│   ├── upload.php              # 📤 Upload interface
-│   ├── playlist_action.php     # 📋 Playlist management
-│   └── search_music.php        # 🔍 Search functionality
+├── books/                       # Modul buku
+│   ├── index.php
+│   ├── read.php
+│   └── upload.php
 │
-├── 📚 books/                    # E-book module
-│   ├── index.php               # 📖 Book library
-│   ├── read.php                # 📖 E-book reader
-│   └── upload.php              # 📤 Upload interface
+├── drive/                       # Cloud drive
+│   ├── index.php
+│   ├── upload.php
+│   ├── download.php
+│   ├── delete.php
+│   └── DriveService.php
 │
-├── ☁️ drive/                    # Cloud storage (REFACTORED v2.0)
-│   ├── index.php               # 💾 Drive explorer
-│   ├── api.php                 # 🔌 RESTful API endpoints
-│   ├── DriveManager.php        # 🏛️ Business logic class
-│   └── README.md               # 📖 API documentation
-│
-├── 👤 profile/                  # User profiles
-│   ├── index.php               # 👤 Profile page
-│   └── upload/                 # Avatar storage
-│
-├── 🧩 partials/                 # Reusable UI components
-│   ├── navbar.php              # 🧭 Navigation bar
-│   ├── nav.php / link.php
-│   └── ui.php
-│
-├── 💾 data_drive/               # Storage directories
-│   ├── public/                 # 🌐 Shared files
-│   └── private_admins/         # 🔒 User private storage
-│
-├── ⚙️ Core files
-│   ├── index.php               # 🏠 Homepage & hub
-│   ├── helpers.php             # 🔧 Utility functions
-│   ├── auth.php                # 🔐 Authentication
-│   └── system_check.php        # 🏥 Health check
-│
-├── 🚨 err/                      # Error pages
-│   ├── denied.php              # ❌ 403 Forbidden
-│   └── maintance.php           # 🔧 Maintenance
-│
-└── 📋 Configuration
-    ├── .htaccess               # 🔗 Apache routing
-    ├── .gitignore              # 🚫 Git exclusions
-    └── README.md               # 📖 This file
+├── controllers/                 # Endpoint aksi UI (like, comment, profile edit, dll)
+├── partials/                    # Komponen UI bersama
+├── assets/                      # CSS/JS/image (Tailwind, HLS.js, Plyr, HTMX, Lucide)
+├── data_drive/                  # Penyimpanan drive public/private
+├── temp/                        # Staging transcoding/download
+├── profile/                     # Halaman profil + avatar
+├── anime/                       # Modul anime
+├── err/                         # Halaman error
+├── index.php                    # Homepage hub
+├── transcode.php                # Entry untuk transcode/download media
+├── upload_advanced.php          # Advanced upload flow
+└── system_check.php             # Monitoring sistem
 ```
 
 ---
 
-## 🔧 Persyaratan Sistem
-
-### ⚙️ Minimum Requirements
-
+## Persyaratan Sistem
+### Minimum Requirements
 | Komponen | Versi | Status |
 |----------|-------|--------|
-| **PHP** | 7.4+ | ✅ Wajib |
-| **MySQL** | 5.7+ / MariaDB 10.2+ | ✅ Wajib |
-| **Apache** | 2.4+ | ✅ Wajib |
-| **RAM** | 512MB+ | ✅ Rekomendasi |
-| **Storage** | 1GB+ | ✅ Minimum |
+| PHP | 7.4+ | Wajib |
+| MySQL | 5.7+ / MariaDB 10.2+ | Wajib |
+| Apache | 2.4+ | Wajib |
+| RAM | 512MB+ | Rekomendasi |
+| Storage | 1GB+ | Minimum |
 
-### 📦 PHP Extensions
+### PHP Extensions
+- `mysqli`
+- `pdo`
+- `gd`
+- `fileinfo`
+- `json`
+- `mbstring`
+- `intl` (dipakai untuk transliterasi `getRomajiName`)
 
-```
-✅ MySQLi           (Database connection)
-✅ PDO              (Data abstraction)
-✅ GD Library       (Image processing)
-✅ FileInfo         (MIME type detection)
-✅ Session          (User sessions)
-✅ JSON             (API responses)
-```
-
-### 🛠️ Software Dependencies
-
+### Software Dependencies
 ```bash
-# FFmpeg - Video/Audio transcoding (wajib)
 sudo apt-get install ffmpeg
-
-# yt-dlp - Download video/music dari internet (Pendukung)
-sudo apt install yt-dlp
-
+sudo apt-get install yt-dlp
 ```
-
-### 🌐 Browser Compatibility
-
-| Browser | Support |
-|---------|---------|
-| Chrome 90+ | ✅ Full support |
-| Firefox 88+ | ✅ Full support |
-| Safari 14+ | ✅ Full support |
-| Edge 90+ | ✅ Full support |
-| IE 11 | ❌ Not supported |
 
 ---
 
-## 📥 Instalasi
-
+## Instalasi
 ### 1. Persiapan Database
 ```sql
--- Buat database MEeL
 CREATE DATABASE MEeL;
 USE MEeL;
-
--- Import database schema (sesuaikan dengan file SQL di proyek)
--- source path/to/database/schema.sql;
+-- Import schema sesuai dump SQL yang Anda gunakan.
 ```
 
-### 2. Konfigurasi Awal
-
-Edit file `auth/config.php`:
+### 2. Konfigurasi Database
+Edit `auth/config.php`:
 ```php
 $conn = new mysqli("localhost", "root", "", "MEeL");
 ```
 
-Sesuaikan dengan kredensial database Anda.
-
-### 3. Struktur Direktori Media
-
-Buat direktori untuk menyimpan file media:
+### 3. Struktur Folder Runtime
 ```bash
-# External storage path (di helpers.php)
-mkdir -p #Dibuat ke path ke penyimpanan anda
-
-# Atau setup di internal storage
 mkdir -p data_drive/public
 mkdir -p data_drive/private_admins
 mkdir -p temp
@@ -229,477 +163,276 @@ mkdir -p video/upload
 mkdir -p music/upload
 mkdir -p books/upload
 mkdir -p profile/upload
-
-# Set permissions
 chmod -R 755 data_drive temp video music books profile
 ```
 
 ### 4. Konfigurasi Apache
-
-Pastikan file `.htaccess` sudah tersedia dan `mod_rewrite` aktif:
 ```bash
 a2enmod rewrite
 systemctl restart apache2
 ```
 
-### 5. Setup Sessions dan Cookies
-
-MEeL menggunakan session name `meel` dengan timeout 12 jam. Direktori session default sudah terconfigurasi di `auth/config.php`.
+### 5. Session/Cookie
+Session name default adalah `meel` dengan timeout `43200` detik (12 jam) di `auth/config.php`.
 
 ---
 
-## ⚙️ Konfigurasi
+## Konfigurasi
+### Session + CSRF (`auth/config.php`)
+- Session timeout `43200` detik.
+- CSRF token otomatis dibuat pada session.
+- `verify_csrf()` digunakan untuk validasi request POST.
 
-### Environment & Database
-File: `auth/config.php`
-
+Snippet penting:
 ```php
-// Database credentials
-$conn = new mysqli("$host", "$usr", "$pass", "$db");
-
-// Session timeout: 12 jam (43200 detik)
 $timeout = 43200;
-
-// Session security
 session_set_cookie_params($timeout, "/");
 session_name('meel');
+
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 ```
 
-### Direktori Media
-File: `helpers.php`
-
+### Path Media dan HDD Check (`modules/helpers.php`)
 ```php
-// Path untuk penyimpanan media
-$hdd_check_path = '$path_media';
-
-// Jika HDD tidak terdeteksi, halaman akan redirect ke maintenance
+$hdd_check_path = '/media/muhammaddaffa/MEeL/media';
 ```
+Jika path ini tidak ada, aplikasi akan redirect ke `err/maintance.php`.
 
-### CSRF Protection
-Token CSRF otomatis dihasilkan dan disimpan dalam session untuk semua POST request.
+### Path Upload Video (`modules/Uploader.php`)
+Uploader video memakai base path hard-coded:
+```php
+$this->base_dir  = "/media/muhammaddaffa/MEeL/media/video/upload/";
+```
+Sesuaikan path ini saat deploy ke server lain.
 
 ---
 
-## 🚀 Penggunaan
-
+## Penggunaan
 ### Akses Aplikasi
-```
+```text
 http://localhost/MEeL/
 ```
 
-### User Roles
+### Role User
+1. `admin`: akses penuh, termasuk operasi public drive dan monitoring queue.
+2. `member`: upload, interaksi media, private drive dengan kuota.
+3. `guest`: akses terbatas (tidak boleh melakukan beberapa aksi interaktif tertentu).
 
-1. **Regular User**
-   - Upload media (video, musik, buku)
-   - Akses cloud drive pribadi
-   - Like/comment pada konten
-   - Lihat profil dan aktivitas
-
-2. **Admin**
-   - Akses seluruh fitur user
-   - Activity logging dan monitoring
-   - Manajemen pengguna
-   - System health check
-
-### Fitur Utama
-
-#### Upload Media
-- Navigasi ke modul yang sesuai (Video, Music, Books)
-- Klik tombol "Upload"
-- Pilih file dan isi metadata
-- Sistem akan melakukan transcoding jika perlu
-- Media tersedia di dashboard setelah selesai
-
-#### Pencarian
-Gunakan fitur search di setiap modul untuk mencari media berdasarkan:
-- Judul/nama file
-- Artis/creator
-- Metadata tambahan
-
-#### Cloud Drive
-- Akses `/drive/` untuk file management pribadi
-- Upload file dengan drag-drop
-- Buat folder baru
-- Share file dengan user lain
-
-#### Playlist & Favorit
-- Buat playlist musik custom
-- Like media favorit
-- Akses rekomendasi berdasarkan preference
+### Alur Umum
+1. Login melalui `auth/login.php`.
+2. Pilih modul (`video`, `music`, `books`, `drive`).
+3. Upload atau konsumsi konten.
+4. Gunakan fitur search, komentar, like/dislike, playlist sesuai modul.
 
 ---
 
-## 🏗️ Arsitektur Aplikasi
-
+## Arsitektur Aplikasi
 ### Authentication Flow
-```
-1. User login → auth/login.php
-2. Verifikasi credentials di database
-3. Generate session & CSRF token
-4. Set cookie dengan session name 'meel'
-5. Redirect ke homepage atau previous page
-6. Session timeout: 12 jam atau logout manual
+```text
+Login -> auth/config.php (session + csrf)
+      -> auth/auth.php (guard user_id + role + session validity)
+      -> halaman modul
 ```
 
-### Authorization & Session
-- **File**: `auth/auth.php` - Middleware proteksi halaman
-- **Check**: Verifikasi `$_SESSION['user_id']`
-- **Multi-tab**: Last session ID tracking untuk single-session enforcement
-- **Admin Check**: `$_SESSION['role'] === 'admin'`
+### Media Query Layer
+- `modules/MediaLibrary.php` menjadi query layer utama untuk listing/search video/music.
+- `BookRepository` (di file yang sama) menangani listing/detail buku.
+- `MediaViewer` menangani detail watch page, komentar, views, rekomendasi.
 
-### Media Processing Pipeline
-```
-User Upload → Uploader.php 
-    → File validation
-    → Store to storage location
-    → Transcoder.php (if video/audio)
-    → Generate thumbnails
-    → Update database
-    → Media ready
+### Upload/Transcode Flow
+```text
+Form Upload (video/music)
+-> modules/Uploader.php
+-> validasi file + metadata
+-> ffmpeg (thumbnail/transcode)
+-> simpan record DB
+-> tampil di modul terkait
 ```
 
-### Database Schema (Umum)
-
-#### Users Table
-```
-- id (PRIMARY KEY)
-- username (UNIQUE)
-- email (UNIQUE)
-- password (hashed)
-- role (user/admin)
-- last_session_id
-- last_activity
-- created_at
+### URL Download/Encode Flow
+```text
+transcode.php atau controllers/post_encode.php
+-> modules/Transcoder.php
+-> yt-dlp fetch metadata + media
+-> ffmpeg processing
+-> simpan hasil ke storage + update DB
 ```
 
-#### Media Tables (video, music, books)
-```
-- id (PRIMARY KEY)
-- title
-- user_id (FOREIGN KEY)
-- file_path
-- metadata (search_metadata)
-- upload_date
-- views/likes
-- thumbnail_path
-```
-
-#### Comments Table
-```
-- id (PRIMARY KEY)
-- media_id
-- user_id
-- comment_text
-- created_at
-```
-
-#### Likes Table
-```
-- id (PRIMARY KEY)
-- media_id
-- user_id
-- media_type
+### Drive Flow
+```text
+drive/index.php
+-> DriveUserContext::fromSession()
+-> DriveStorage (list/upload/download/delete)
+-> render UI by type (video/audio/dokumen)
 ```
 
 ---
 
-## 🔒 Keamanan
+## API dan Fungsi Utama
+### `MediaLibrary` (`modules/MediaLibrary.php`)
+Method yang dipakai lintas modul:
+- `getCounts()`
+- `getVideos($limit, $offset)`
+- `countVideos()`
+- `searchVideo($q, $exclude, $sidebar)`
+- `getMusicList($format, $artist, $limit, $offset)`
+- `countMusic($format, $artist)`
+- `getArtists()`
+- `getUserPlaylists($user_id)`
+- `searchMusic($q, $exclude, $sidebar)`
 
-### Implementasi Keamanan
-
-1. **CSRF Protection**
-   - Token otomatis dihasilkan per session
-   - Diverifikasi di setiap POST request
-   - Token tersimpan di `$_SESSION['csrf_token']`
-
-2. **Session Security**
-   - Session name custom: `meel`
-   - Timeout: 12 jam (43200 detik)
-   - Last session ID tracking untuk prevent session hijacking
-   - Automatic logout saat session expired
-
-3. **Database Security**
-   - Prepared statements untuk semua query
-   - Parameter binding untuk prevent SQL injection
-   - Password hashing (recommended: bcrypt/argon2)
-
-4. **Authentication**
-   - Login middleware di `auth/auth.php`
-   - Role-based access control
-   - Redirect ke login jika belum authenticated
-
-5. **File Upload Security**
-   - File validation di upload handler
-   - Unique filename generation
-   - Isolated upload directories
-   - MIME type checking
-
-### Best Practices untuk Production
-
-1. **Environment Variables**
-   ```php
-   // Gunakan env file untuk sensitive data
-   $db_host = getenv('DB_HOST') ?: 'localhost';
-   $db_password = getenv('DB_PASSWORD') ?: '';
-   ```
-
-2. **Error Handling**
-   - Hide detailed error messages di production
-   - Log errors secara internal
-   - User-friendly error pages
-
-3. **HTTPS**
-   - Force HTTPS di production
-   - Update session cookie settings
-
-4. **Rate Limiting**
-   - Implementasi rate limiting di upload & login
-
----
-
-## 🔌 API dan Fungsi Utama
-
-### MediaLibrary Class
-File: `auth/MediaLibrary.php`
-
+Contoh:
 ```php
 $library = new MediaLibrary($conn);
-
-// Get media counts
-$counts = $library->getCounts(); 
-// Returns: ['music' => int, 'video' => int, 'books' => int]
-
-// Get videos with pagination
-$videos = $library->getVideos(limit: 8, offset: 0);
-
-// Search video
-$results = $library->searchVideo(query: 'keyword', exclude: 0);
-
-// Get music list
-$music = $library->getMusicList(format: 'all', artist: 'all', limit: 10, offset: 0);
-
-// Get books
-$books = $library->getBooks(limit: 10, offset: 0);
+$videos = $library->getVideos(8, 0);
+$results = $library->searchVideo('anime', 0, false);
 ```
 
-### Helper Functions
-File: `helpers.php`
+### `BookRepository` dan `BookUploader` (`modules/MediaLibrary.php`)
+- `BookRepository::getBooks($filter)`
+- `BookRepository::getBookById($id)`
+- `BookRepository::getUserRole($user_id)`
+- `BookUploader` dipakai pada proses upload buku di `books/upload.php`.
 
-```php
-// Format timestamp menjadi "X waktu lalu"
-time_ago($timestamp); // Returns: "2 jam yang lalu"
+### `MediaViewer` (`modules/MediaViewer.php`)
+- `recordView()`
+- `getMediaData()`
+- `getUserInteraction()`
+- `addComment($post_data)`
+- `getComments()`
+- `getRecommendations($limit)`
+- `getPlaylistQueue($playlist_id)` (khusus mode music)
 
-// Format bytes ke human-readable
-format_bytes($bytes); // Returns: "2.5 MB"
+### `Uploader` (`modules/Uploader.php`)
+- `processMusic($post, $files, $base_dir)`
+- `processVideo($post, $files, $upload_dir)`
 
-// Get user storage usage
-get_user_usage($username); // Returns: bytes used
-```
+### `Transcoder` (`modules/Transcoder.php`)
+- `processDownload($url, $type)`
+- `checkServerBusy()` (deprecated, diarahkan ke `System`)
+- Queue lock/release internal untuk proses download/transcode.
 
-### Utility Functions
+### Helper Functions (`modules/helpers.php`)
+- `time_ago($timestamp)`
+- `format_bytes($bytes, $precision = 2)`
+- `get_user_usage($username)`
 
-```php
-// CSRF Token verification
-verify_csrf(); // Returns: boolean
+### Security Helper (`auth/config.php`)
+- `verify_csrf()`
 
-// Activity logging
-log_activity($user_id, $action, $details);
+---
 
-// File validation
-validate_upload_file($file);
-```
-❌ HDD/Storage Offline
-**Problem**: Halaman redirect ke maintenance  
-**Solution**:
-1. Cek path storage di `helpers.php`
-2. Verify storage device sudah mounted: `df -h`
-3. Check permissions: `chmod -R 755 data_drive`
+## Keamanan
+### Implementasi Saat Ini
+1. CSRF token per session (`auth/config.php`).
+2. Session timeout otomatis 12 jam.
+3. Validasi sesi aktif dan role di `auth/auth.php`.
+4. Query DB mayoritas sudah memakai prepared statements.
+5. Kontrol akses drive berdasarkan role (`DriveUserContext`).
+6. Ban IP + activity tracking di `modules/activity_logger.php`.
 
-### ⏱️ Session Expired
-**Problem**: User di-redirect ke login tanpa warning  
-**Solution**:
-1. Default timeout: 12 jam (43200 detik)
-2. Edit di `auth/config.php`: `$timeout = 43200`
-3. Clear browser cache jika perlu
+### Catatan Production
+- Simpan kredensial DB di environment variable.
+- Nonaktifkan `display_errors` pada production.
+- Aktifkan HTTPS + secure cookie flags.
+- Audit path hard-coded sebelum deploy lintas server.
 
-### 📤 Upload Failed
-**Problem**: File gagal diupload  
-**Solution**:
+---
+
+## Troubleshooting
+### HDD/Storage Offline
+Problem: redirect ke halaman maintenance.
+Solusi:
+1. Cek nilai `$hdd_check_path` di `modules/helpers.php`.
+2. Pastikan mount point storage aktif (`df -h`).
+3. Cek permission folder media.
+
+### Session Expired
+Problem: user kembali ke login.
+Solusi:
+1. Cek timeout di `auth/config.php` (`$timeout = 43200`).
+2. Pastikan jam server sinkron (NTP).
+3. Cek apakah user login dari device lain (single-session logic).
+
+### Upload Failed
+Problem: file gagal diunggah.
+Solusi:
 ```bash
-# Check file size limits
-php -r "echo ini_get('upload_max_filesize');"
-
-# Check folder permissions
-ls -ld /opt/lampp/htdocs/MEeL/data_drive
-
-# Verify FFmpeg installed
+php -r "echo ini_get('upload_max_filesize'), PHP_EOL;"
+php -r "echo ini_get('post_max_size'), PHP_EOL;"
 which ffmpeg
+which ffprobe
 ```
 
-### 🔴 Database Connection Error
-**Problem**: "Koneksi gagal: (error message)"  
-**Solution**:
+### Database Connection Error
+Problem: muncul `Koneksi gagal`.
+Solusi:
 ```bash
-# Check MySQL running
 sudo systemctl status mysql
-
-# Verify credentials in auth/config.php
-# Test connection
-mysql -u root -p MEeL -e "SELECT 1;"
+mysql -u root -p -e "SHOW DATABASES LIKE 'MEeL';"
 ```
 
-### 🔐 Permission Denied Errors
-**Problem**: Files dapat't be written/deleted  
-**Solution**:
+### Permission Denied
+Problem: file/folder tidak bisa ditulis/dihapus.
+Solusi:
 ```bash
-# Fix ownership
-sudo chown -R www-data:www-data /opt/lampp/htdocs/MEeL #atau sudo chown -R daemon:daemon /opt/lampp/htdocs/MEeL
-
-# Fix permissions
-chmod -R 755 data_drive temp video music books profile
-chmod 644 auth/config.php
-```
-## 🐛 Troubleshooting
-
-### ❌ HDD/Storage Offline
-**Problem**: Halaman redirect ke maintenance  
-**Solution**:
-1. Cek path storage di `helpers.php`
-2. Verify storage device sudah mounted: `df -h`
-3. Check permissions: `chmod -R 755 data_drive`
-
-### ⏱️ Session Expired
-**Problem**: User di-redirect ke login tanpa warning  
-**Solution**:
-1. Default timeout: 12 jam (43200 detik)
-2. Edit di `auth/config.php`: `$timeout = 43200`
-3. Clear browser cache jika perlu
-
-### 📤 Upload Failed
-**Problem**: File gagal diupload  
-**Solution**:
-```bash
-# Check file size limits
-php -r "echo ini_get('upload_max_filesize');"
-
-# Check folder permissions
-ls -ld /opt/lampp/htdocs/MEeL/data_drive
-
-# Verify FFmpeg installed
-which ffmpeg
-```
-
-### 🔴 Database Connection Error
-**Problem**: "Koneksi gagal: (error message)"  
-**Solution**:
-```bash
-# Check MySQL running
-sudo systemctl status mysql
-
-# Verify credentials in auth/config.php
-# Test connection
-mysql -u root -p MEeL -e "SELECT 1;"
-```
-
-### 🔐 Permission Denied Errors
-**Problem**: Files dapat't be written/deleted  
-**Solution**:
-```bash
-# Fix ownership
 sudo chown -R www-data:www-data /opt/lampp/htdocs/MEeL
-
-# Fix permissions
-chmod -R 755 data_drive temp video music books profile
-chmod 644 auth/config.php
+chmod -R 755 /opt/lampp/htdocs/MEeL/data_drive /opt/lampp/htdocs/MEeL/temp
 ```
 
 ---
 
-## 📝 File Penting untuk Development
-
-- `index.php` - Homepage & media hub
-- `auth/config.php` - Database & session config
-- `auth/auth.php` - Authentication middleware
-- `auth/MediaLibrary.php` - Media utility class
-- `helpers.php` - Global helper functions
-- `assets/js/script.js` - Main frontend logic
-- `assets/css/styles.css` - Main stylesheet
-
----
-
-## 🤝 Kontribusi
-
-Untuk pengembangan lebih lanjut:
-1. Follow structure yang sudah ada
-2. Gunakan prepared statements untuk database
-3. Implement error handling yang proper
-4. Test di staging sebelum production
-5. Update dokumentasi jika menambah fitur baru
+## File Penting untuk Development
+- `auth/config.php` - bootstrap session, DB, CSRF.
+- `auth/auth.php` - middleware proteksi halaman user.
+- `modules/MediaLibrary.php` - query layer utama media/books.
+- `modules/MediaViewer.php` - logic watch page media.
+- `modules/Uploader.php` - upload + transcode local file.
+- `modules/Transcoder.php` - pipeline yt-dlp + ffmpeg.
+- `modules/helpers.php` - helper global + HDD guard.
+- `drive/DriveService.php` - service layer cloud drive.
+- `assets/js/player_video.js` - logic player video (Plyr + HLS + resume).
+- `video/watch.php` - halaman player video.
 
 ---
 
-## 📄 Lisensi
-Project ini open-source untuk dipelajari, tapi kalau mau dipublikasikan secara official atau dipakai jualan, wajib izin ya! Cek file LICENSE untuk detailnya
+## Kontribusi
+1. Ikuti struktur folder yang sudah ada.
+2. Gunakan prepared statements untuk query baru.
+3. Tambahkan validasi input di endpoint controller.
+4. Uji upload/transcode di staging sebelum produksi.
+5. Perbarui dokumentasi saat menambah fitur baru.
 
 ---
 
-## 🤝 Support & Community
-
-**Dokumentasi Lengkap**
-- 📖 Lihat komentar inline di source code
-- 🔍 Check [drive/README.md](drive/README.md) untuk API documentation
-- 🛡️ Baca [SECURITY_AUDIT.md](SECURITY_AUDIT.md) untuk security details
-
-**Issues & Questions**
-- 🐛 Report bugs di GitHub Issues
-- 💬 Diskusi di GitHub Discussions
-- 📧 Direct contact: muhammaddaffa@meel.local
+## Lisensi
+Project ini open-source untuk pembelajaran dan pengembangan pribadi. Untuk publikasi ulang/komersial, lihat detail ketentuan di file `LICENSE`.
 
 ---
 
-## 📊 Project Stats
-
-| Metrik | Nilai |
-|--------|-------|
-| **Total Files** | 96+ |
-| **Code Lines** | 10,000+ |
-| **PHP Modules** | 8 utama |
-| **Database Tables** | 8+ |
-| **API Endpoints** | 20+ |
-| **Last Updated** | Mei 2026 |
-| **Status** | ✅ Production Ready |
+## Support
+- Gunakan issue tracker repository untuk bug report.
+- Gunakan diskusi internal tim untuk perubahan arsitektur besar.
+- Kontak maintainer: `minecraft.daffa2501@gmail.com`.
 
 ---
 
 <div align="center">
 
-### Made with ❤️ for MEeL Media Hub Platform
+### Custom License Summary
 
-**v2.0 - Refactored & Optimized**
+```text
+Boleh digunakan untuk:
+- Pembelajaran & penelitian personal
+- Pengembangan & modifikasi pribadi
+- Deployment internal/pribadi
 
-![PHP](https://img.shields.io/badge/Made%20with-PHP-777bb4?style=for-the-badge&logo=php)
-![MySQL](https://img.shields.io/badge/Database-MySQL-00758f?style=for-the-badge&logo=mysql)
-![Bootstrap](https://img.shields.io/badge/UI-Tailwind%20CSS-38b2ac?style=for-the-badge&logo=tailwind-css)
-
-</div>
-
-
-<div align="center">
-
-### 🔐 Custom License
-
-```
-✅ Boleh digunakan untuk:
-  - Pembelajaran & penelitian personal
-  - Pengembangan & modifikasi pribadi
-  - Deployment internal/pribadi
-
-⚠️ Memerlukan izin untuk:
-  - Publikasi resmi atau publikasi ulang
-  - Penggunaan komersial/penjualan
-  - Redistribusi ke publik
-
-📧 Untuk izin, hubungi: minecraft.daffa2501@gmail.com atau github.com/mifada2543
+Memerlukan izin untuk:
+- Publikasi resmi atau publikasi ulang
+- Penggunaan komersial/penjualan
+- Redistribusi ke publik
 ```
 
 **Baca file [LICENSE](LICENSE) untuk detail lengkapnya**
