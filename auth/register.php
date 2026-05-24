@@ -3,6 +3,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 session_name('meel');
 session_start();
+if (isset($_SESSION['user_id'])) {
+    header("Location: ../index.php");
+    exit;
+}
 include 'config.php';
 
 $back_url = '../index.php'; // Default jika tidak ada referrer

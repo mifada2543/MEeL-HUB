@@ -4,6 +4,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_name('meel');
     session_start();
 }
+if (isset($_SESSION['user_id'])) {
+    header("Location: ../index.php");
+    exit;
+}
 include 'config.php';
 
 $back_url = '../index.php';
