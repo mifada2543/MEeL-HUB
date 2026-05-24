@@ -46,7 +46,6 @@ $rekom            = $viewer->getRecommendations(15);
 
 <head>
     <meta charset="UTF-8">
-    <!-- [FIX MOBILE] initial-scale=1 agar tidak di-zoom-out paksa di HP -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($v['title']) ?> — MEeL Video</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
@@ -61,7 +60,6 @@ $rekom            = $viewer->getRecommendations(15);
             --font-display: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
         }
 
-        /* [FIX MOBILE] font lebih kecil di layar sempit */
         .video-title {
             font-family: var(--font-display);
             font-size: clamp(1.3rem, 5vw, 2rem);
@@ -121,7 +119,6 @@ $rekom            = $viewer->getRecommendations(15);
             transform: scale(1.06);
         }
 
-        /* [MOBILE] search bar di navbar: sembunyikan di layar sangat kecil */
         @media (max-width: 480px) {
             #navbar-search-wrap {
                 display: none;
@@ -132,7 +129,6 @@ $rekom            = $viewer->getRecommendations(15);
             }
         }
 
-        /* [MOBILE] search overlay saat ikon search diklik */
         #mobile-search-overlay {
             display: none;
             position: fixed;
@@ -155,7 +151,6 @@ $rekom            = $viewer->getRecommendations(15);
 
 <body class="text-gray-400 min-h-screen">
 
-    <!-- NAVBAR -->
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="max-w-7xl mx-auto px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
 
@@ -168,7 +163,6 @@ $rekom            = $viewer->getRecommendations(15);
                 </span>
             </a>
 
-            <!-- Search bar (tersembunyi di bawah 480px) -->
             <div id="navbar-search-wrap" class="flex-1 max-w-sm flex items-center gap-2">
                 <div class="relative flex-1 group">
                     <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-red-500 transition-colors"></i>
@@ -198,7 +192,6 @@ $rekom            = $viewer->getRecommendations(15);
             </div>
 
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <!-- Ikon search (muncul di < 480px menggantikan search bar) -->
                 <button id="navbar-search-icon-btn"
                     onclick="document.getElementById('mobile-search-overlay').classList.toggle('open')"
                     class="hidden items-center justify-center w-8 h-8 text-gray-500 hover:text-red-400 transition-all"
@@ -214,7 +207,6 @@ $rekom            = $viewer->getRecommendations(15);
         </div>
     </nav>
 
-    <!-- Mobile search overlay -->
     <div id="mobile-search-overlay">
         <button onclick="document.getElementById('mobile-search-overlay').classList.remove('open')"
             class="text-gray-600 flex-shrink-0">
@@ -234,7 +226,6 @@ $rekom            = $viewer->getRecommendations(15);
         </div>
     </div>
 
-    <!-- [FIX MOBILE] Layout: kolom tunggal di mobile, 2 kolom di lg+ -->
     <div id="app-content-grid" class="max-w-7xl mx-auto px-4 sm:px-5 pt-4 sm:pt-8 pb-20 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
 
         <div id="left-column" class="lg:col-span-2 space-y-4 sm:space-y-5">
@@ -287,7 +278,6 @@ $rekom            = $viewer->getRecommendations(15);
                 </div>
                 <div class="h-px bg-white/[.04]"></div>
 
-                <!-- [MOBILE] Uploader info + action buttons: stack di mobile, row di sm+ -->
                 <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">
                     <div class="flex items-center gap-3">
                         <a href="../profile/?u=<?= urlencode($v['uploader']) ?>"
@@ -378,7 +368,6 @@ $rekom            = $viewer->getRecommendations(15);
                                 foreach ($grouped[$parent_id] as $c):
                                     $author      = $c['username'] ?? 'Guest';
                                     $parent_user = ($c['parent_id'] > 0) ? ($user_map[$c['parent_id']] ?? 'Guest') : null;
-                                    // [FIX MOBILE] batasi indent di mobile agar tidak overflow
                                     $indent = min($level * 16, 48);
                             ?>
                                     <div class="comment-row flex gap-3 p-3 rounded-xl" style="margin-left:<?= $indent ?>px">
@@ -441,13 +430,11 @@ $rekom            = $viewer->getRecommendations(15);
             </div>
         </div>
 
-        <!-- [FIX MOBILE] Rekomendasi: muncul setelah konten utama di mobile -->
         <div id="recommendation-wrapper" class="space-y-4">
             <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] px-1 flex items-center gap-2" id="rec-title">
                 <i data-lucide="play-circle" class="w-3 h-3 text-red-500"></i>
                 Video Lainnya
             </div>
-            <!-- [MOBILE] grid 2 kolom di mobile, list di lg -->
             <div id="recommendation-column" class="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-0 lg:space-y-1">
                 <?php while ($r = $rekom->fetch_assoc()): ?>
                     <a href="watch.php?id=<?= $r['id'] ?>"
@@ -479,7 +466,16 @@ $rekom            = $viewer->getRecommendations(15);
 
     <script src="../assets/js/plyr.js"></script>
     <script src="../assets/js/script.js"></script>
-    <?php include 'script/js.php'; ?>
+
+    <script>
+        window.playerConfig = {
+            videoSrc: <?= json_encode($video_src) ?>,
+            isHls: <?= $is_hls ? 'true' : 'false' ?>,
+            vttSrc: <?= json_encode($vtt_src ?? '') ?>,
+            id: <?= json_encode($id) ?>
+        };
+    </script>
+    <script src="../assets/js/player_video.js"></script>
 
     <script>
         lucide.createIcons();
