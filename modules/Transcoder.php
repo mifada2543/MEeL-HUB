@@ -342,7 +342,6 @@ class Transcoder
 
     private function finalizeVideo(string $basename, string $db_thumb, string $title, string $artist, int $duration): string
     {
-        // [DIUBAH] MP4 sekarang ada di temp/ (bukan video/upload/file/)
         $staging_mp4  = "{$this->base_path}/temp/{$basename}.mp4";
         $dl_thumb_src = "{$this->base_path}/temp/{$basename}.jpg";
 
@@ -870,7 +869,6 @@ class Transcoder
     // ─── MESIN PEMBUAT THUMBNAIL SPRITE & VTT (VERSI TRANSCODER) ──────────────
     private function generateSpriteAndVTT(string $video_path, string $target_folder)
     {
-        $interval = 10;      // Ambil frame setiap 10 detik
         $width    = 160;     // Lebar per thumbnail
         $height   = 90;      // Tinggi per thumbnail
         $cols     = 5;       // 5 kolom menyamping
@@ -880,6 +878,17 @@ class Transcoder
         $duration = (float) shell_exec($probe_cmd);
 
         if ($duration > 0) {
+            // 2. Tentukan interval (dalam detik) secara dinamis berdasarkan durasi
+            if ($duration > 3600) {         // Jika lebih dari 1 jam
+                $interval = 300;            // Ambil frame tiap 5 menit
+            } elseif ($duration > 1800) {   // Jika lebih dari 30 menit
+                $interval = 180;            // Ambil frame tiap 3 menit
+            } elseif ($duration > 300) {    // Jika lebih dari 5 menit
+                $interval = 60;             // Ambil frame tiap 1 menit
+            } else {                        // Jika 5 menit ke bawah
+                $interval = 10;             // Ambil frame tiap 10 detik
+            }
+
             $total_frames = ceil($duration / $interval);
             $rows         = ceil($total_frames / $cols);
             if ($rows < 1) $rows = 1;
@@ -887,19 +896,26 @@ class Transcoder
             $sprite_file = $target_folder . 'thumb_sprite.jpg';
             $vtt_file    = $target_folder . 'thumbnails.vtt';
 
-            // 2. Buat Sprite Image (Tiled)
+            // 3. Buat Sprite Image (Tiled)
             $filter = "fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}";
             $cmd_sprite = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($video_path) . " -vf " . escapeshellarg($filter) . " " . escapeshellarg($sprite_file) . " 2>&1";
             exec($cmd_sprite);
 
-            // 3. Tulis file .vtt
+            // 4. Tulis file .vtt
             if (file_exists($sprite_file)) {
                 $vtt_content = "WEBVTT\n\n";
                 for ($i = 0; $i < $total_frames; $i++) {
                     $start = $i * $interval;
                     $end   = ($i + 1) * $interval;
+
+                    // Pastikan frame terakhir tidak melebihi durasi aktual video
+                    if ($end > $duration) {
+                        $end = $duration;
+                    }
+
                     $start_time = gmdate("H:i:s", $start) . ".000";
                     $end_time   = gmdate("H:i:s", $end) . ".000";
+                    
                     $x = ($i % $cols) * $width;
                     $y = floor($i / $cols) * $height;
 

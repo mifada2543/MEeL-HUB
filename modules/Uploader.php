@@ -329,48 +329,54 @@ class Uploader
     // ─── MESIN PEMBUAT THUMBNAIL SPRITE & VTT ──────────────────────────────────
     private function generateSpriteAndVTT(string $staged_video, string $target_folder)
     {
-        $interval = 20;      // Ambil frame setiap 20 detik
         $width    = 160;     // Lebar per thumbnail
         $height   = 90;      // Tinggi per thumbnail (16:9)
         $cols     = 5;       // Jumlah kolom menyamping dalam sprite
-
-        // 1. Dapatkan durasi video memakai ffprobe
+        // Command FFPROBE
         $probe_cmd = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffprobe_bin) . " -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($staged_video);
         $duration = (float) shell_exec($probe_cmd);
-
+        // Duration
         if ($duration > 0) {
-            // Hitung total frame dan baris yang dibutuhkan
+            if ($duration > 3600) {         // Jika lebih dari 1 jam
+                $interval = 300;            // Ambil frame tiap 5 menit
+            } elseif ($duration > 1800) {   // Jika lebih dari 30 menit
+                $interval = 180;            // Ambil frame tiap 3 menit
+            } elseif ($duration > 300) {    // Jika lebih dari 5 menit
+                $interval = 60;             // Ambil frame tiap 1 menit
+            } else {                        // Jika 5 menit ke bawah
+                $interval = 20;             // Ambil frame tiap 20 detik
+            }
+            // Hasil Frame
             $total_frames = ceil($duration / $interval);
             $rows         = ceil($total_frames / $cols);
             if ($rows < 1) $rows = 1;
 
             $sprite_file = $target_folder . 'thumb_sprite.jpg';
             $vtt_file    = $target_folder . 'thumbnails.vtt';
-
+            // Command FFMPEG
             $cmd_sprite = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($staged_video) . " -vf \"fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}\" " . escapeshellarg($sprite_file) . " 2>&1";
             exec($cmd_sprite);
-
-            // 3. Tulis file .vtt menggunakan PHP (Matematika Koordinat)
             if (file_exists($sprite_file)) {
                 $vtt_content = "WEBVTT\n\n";
                 for ($i = 0; $i < $total_frames; $i++) {
                     $start = $i * $interval;
                     $end   = ($i + 1) * $interval;
-
-                    // Format waktu ke HH:MM:SS.000
+                    if ($end > $duration) {
+                        $end = $duration;
+                    }
+                    // Perhitungan waktu
                     $start_time = gmdate("H:i:s", $start) . ".000";
                     $end_time   = gmdate("H:i:s", $end) . ".000";
-
-                    // Hitung koordinat X dan Y gambar di dalam Sprite
+                    // Perhitungan Kolom dan Baris(X dan Y)
                     $col = $i % $cols;
                     $row = floor($i / $cols);
                     $x   = $col * $width;
                     $y   = $row * $height;
-
+                    // Konten VTT
                     $vtt_content .= "$start_time --> $end_time\n";
                     $vtt_content .= "thumb_sprite.jpg#xywh=$x,$y,$width,$height\n\n";
                 }
-                // Simpan VTT ke dalam folder HLS
+                // Taruh Konten
                 file_put_contents($vtt_file, $vtt_content);
             }
         }
