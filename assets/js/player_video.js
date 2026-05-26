@@ -11,6 +11,7 @@ let storageKeyVideo = `video_pos_${videoId}`;
 
 let player;
 let hls;
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
 // Inisialisasi Icon
 if (window.lucide) {
@@ -29,7 +30,7 @@ const plyrOptions = {
         controls: true,
         seek: true
     },
-    clickToPlay: true,
+    clickToPlay: !isTouchDevice,
     keyboard: {
         focused: true,
         global: true
@@ -51,7 +52,7 @@ if (isHls && window.Hls && Hls.isSupported()) {
     hls.loadSource(videoSrc);
     hls.attachMedia(videoElement);
 
-    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+    hls.on(Hls.Events.MANIFEST_PARSED, function () {
         const availableQualities = hls.levels.map((l) => l.bitrate);
 
         if (availableQualities.length > 1) {
@@ -153,111 +154,100 @@ function setupMeelPlayerEvents() {
         const nextVideoLink = document.querySelector('.rekomendasi-item');
         if (!nextVideoLink) return;
 
-        const isFullscreen = player.fullscreen.active || !!document.fullscreenElement;
+        const wasFullscreen = player.fullscreen.active || !!document.fullscreenElement;
 
-        if (isFullscreen) {
-            try {
-                const response = await fetch(nextVideoLink.href);
-                const html = await response.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
+        try {
+            const response = await fetch(nextVideoLink.href);
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
 
-                window.history.pushState({}, '', nextVideoLink.href);
-                document.title = doc.title;
+            window.history.pushState({}, '', nextVideoLink.href);
+            document.title = doc.title;
 
-                const newVideoEl = doc.getElementById('main-video');
-                if (!newVideoEl) throw new Error("Video elemen tidak ditemukan");
+            const newVideoEl = doc.getElementById('main-video');
+            if (!newVideoEl) throw new Error("Video elemen tidak ditemukan");
 
-                const newSrc = newVideoEl.getAttribute('data-src');
-                const newIsHls = newVideoEl.getAttribute('data-ishls') === 'true';
-                const newPoster = newVideoEl.getAttribute('data-poster');
-                const newVtt = newVideoEl.getAttribute('data-vtt');
+            const newSrc = newVideoEl.getAttribute('data-src');
+            const newIsHls = newVideoEl.getAttribute('data-ishls') === 'true';
+            const newPoster = newVideoEl.getAttribute('data-poster');
+            const newVtt = newVideoEl.getAttribute('data-vtt');
 
-                // Update variabel global agar video selanjutnya dapat memproses localstorage dan antrean dengan benar
-                videoId = (new URL(nextVideoLink.href, window.location.href)).searchParams.get('id') || videoId;
-                storageKeyVideo = `video_pos_${videoId}`;
-                vttSrc = newVtt;
+            // Update variabel global agar video selanjutnya dapat memproses localstorage dan antrean dengan benar
+            videoId = (new URL(nextVideoLink.href, window.location.href)).searchParams.get('id') || videoId;
+            storageKeyVideo = `video_pos_${videoId}`;
+            vttSrc = newVtt;
 
-                const swapElements = ['video-info', 'comment-section', 'recommendation-column'];
-                swapElements.forEach(id => {
-                    const currentEl = document.getElementById(id);
-                    const newEl = doc.getElementById(id);
-                    if (currentEl && newEl) currentEl.innerHTML = newEl.innerHTML;
-                });
+            const swapElements = ['video-info', 'comment-section', 'recommendation-column'];
+            swapElements.forEach(id => {
+                const currentEl = document.getElementById(id);
+                const newEl = doc.getElementById(id);
+                if (currentEl && newEl) currentEl.innerHTML = newEl.innerHTML;
+            });
 
-                if (window.lucide) window.lucide.createIcons();
-                if (window.htmx) htmx.process(document.body);
+            if (window.lucide) window.lucide.createIcons();
+            if (window.htmx) htmx.process(document.body);
 
-                player.poster = newPoster;
+            player.poster = newPoster;
 
-                if (newIsHls) {
-                    if (!hls && window.Hls && Hls.isSupported()) {
-                        hls = new Hls();
-                        hls.attachMedia(player.media);
-                    } else if (hls && hls.media !== player.media) {
-                        hls.detachMedia();
-                        hls.attachMedia(player.media);
-                    }
-                    hls.loadSource(newSrc);
-                } else {
-                    if (hls) {
-                        hls.destroy();
-                        hls = null;
-                    }
-                    player.media.src = newSrc;
-                    player.media.load();
+            if (newIsHls) {
+                if (!hls && window.Hls && Hls.isSupported()) {
+                    hls = new Hls();
+                    hls.attachMedia(player.media);
+                } else if (hls && hls.media !== player.media) {
+                    hls.detachMedia();
+                    hls.attachMedia(player.media);
                 }
-
-                const playPromise = player.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(e => {
-                        console.error("Autoplay dicegah oleh browser:", e);
-                    });
+                hls.loadSource(newSrc);
+            } else {
+                if (hls) {
+                    hls.destroy();
+                    hls = null;
                 }
-
-                // Update VTT Hover Sprite secara dinamis
-                if (newVtt) {
-                    player.config.previewThumbnails.src = newVtt;
-                    player.config.previewThumbnails.enabled = true;
-                    const thumbElement = player.elements.container.querySelector('.plyr__preview-thumb');
-                    if (thumbElement) thumbElement.style.display = '';
-
-                    fetch(newVtt).then(res => res.text()).then(text => {
-                        const match = text.match(/([\w-]+\.(jpg|png|webp|jpeg))/i);
-                        if (match) {
-                            const baseUrl = newVtt.substring(0, newVtt.lastIndexOf('/') + 1);
-                            const spriteUrl = baseUrl + match[1];
-                            
-                            // Ganti semua kontainer background dan tag img di dalam player untuk jaga-jaga duplikasi fullscreen
-                            if (player && player.elements && player.elements.container) {
-                                const containers = player.elements.container.querySelectorAll('.plyr__preview-thumb__image-container');
-                                containers.forEach(container => {
-                                    container.style.backgroundImage = `url("${spriteUrl}")`;
-                                });
-                                const images = player.elements.container.querySelectorAll('.plyr__preview-thumb__image-container img');
-                                images.forEach(img => {
-                                    img.src = spriteUrl;
-                                });
-                            }
-                        }
-                    }).catch(e => console.error("Gagal load vtt:", e));
-                } else {
-                    player.config.previewThumbnails.enabled = false;
-                    const thumbElement = player.elements.container.querySelector('.plyr__preview-thumb');
-                    if (thumbElement) thumbElement.style.display = 'none';
-                }
-            } catch (err) {
-                console.error("Gagal transisi seamless, fallback ke reload:", err);
-                window.location.href = nextVideoLink.href;
+                player.media.src = newSrc;
+                player.media.load();
             }
-        } else {
+
+            const playPromise = player.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => {
+                    console.error("Autoplay dicegah oleh browser:", e);
+                });
+            }
+
+            // Update VTT Hover Sprite secara dinamis
+            if (newVtt) {
+                refreshVttSprites(newVtt);
+            } else {
+                player.config.previewThumbnails.enabled = false;
+                const thumbEl = document.querySelector('.plyr__preview-thumb');
+                if (thumbEl) thumbEl.style.display = 'none';
+            }
+
+            // Re-enter fullscreen if it was active before transition
+            if (wasFullscreen && !player.fullscreen.active) {
+                player.fullscreen.toggle();
+                // Setelah fullscreen re-entry, refresh VTT lagi karena browser mobile
+                // bisa me-recreate/clone elemen thumbnail
+                if (newVtt) {
+                    setTimeout(() => refreshVttSprites(newVtt), 500);
+                    setTimeout(() => refreshVttSprites(newVtt), 1500);
+                }
+            }
+
+        } catch (err) {
+            console.error("Gagal transisi seamless, fallback ke reload:", err);
             window.location.href = nextVideoLink.href;
         }
     });
 
     player.on('enterfullscreen', () => {
         if (screen.orientation?.lock) {
-            screen.orientation.lock('landscape').catch(() => {});
+            screen.orientation.lock('landscape').catch(() => { });
+        }
+        // Re-apply VTT sprites saat masuk fullscreen (handle mobile cloning)
+        if (vttSrc) {
+            setTimeout(() => refreshVttSprites(vttSrc), 300);
         }
     });
 
@@ -287,7 +277,7 @@ function updateLoopUI() {
     }
 }
 
-window.toggleLoop = function() {
+window.toggleLoop = function () {
     if (player) {
         player.loop = !player.loop;
         updateLoopUI();
@@ -298,7 +288,7 @@ window.toggleLoop = function() {
 let isMiniPlayerActive = false;
 const watchUrl = window.location.href;
 
-window.toggleMiniPlayer = async function() {
+window.toggleMiniPlayer = async function () {
     const videoWrapper = document.getElementById('main-video-wrapper');
     const detailsWrapper = document.getElementById('watch-details-wrapper');
     const recWrapper = document.getElementById('recommendation-wrapper');
@@ -307,7 +297,7 @@ window.toggleMiniPlayer = async function() {
 
     if (!isMiniPlayerActive) {
         isMiniPlayerActive = true;
-        if(videoWrapper) videoWrapper.classList.add('mini-player-mode');
+        if (videoWrapper) videoWrapper.classList.add('mini-player-mode');
 
         if (detailsWrapper) detailsWrapper.style.display = 'none';
         if (recWrapper) recWrapper.style.display = 'none';
@@ -330,7 +320,7 @@ window.toggleMiniPlayer = async function() {
 
                 if (indexMain) {
                     tempIndex.innerHTML = indexMain.innerHTML;
-                    window.history.pushState({ miniPlayer: true }, '', 'index.php'); 
+                    window.history.pushState({ miniPlayer: true }, '', 'index.php');
 
                     if (window.lucide) window.lucide.createIcons();
                     if (window.htmx) htmx.process(tempIndex);
@@ -344,7 +334,7 @@ window.toggleMiniPlayer = async function() {
         }
     } else {
         isMiniPlayerActive = false;
-        if(videoWrapper) videoWrapper.classList.remove('mini-player-mode');
+        if (videoWrapper) videoWrapper.classList.remove('mini-player-mode');
 
         const tempIndex = document.getElementById('temp-index-content');
         if (tempIndex) tempIndex.style.display = 'none';
@@ -388,24 +378,116 @@ window.addEventListener('popstate', (e) => {
 });
 
 function setupMobileGestures() {
+    // Hanya aktif di perangkat sentuh (HP/tablet), tidak di desktop
+    if (!isTouchDevice) return;
+
     let lastTap = 0;
+    let lastTouchTime = 0;
     const container = document.querySelector('.plyr');
     if (!container) return;
 
+    // Lacak waktu touch terakhir dan handle double-tap untuk rewind/forward/play-pause
     container.addEventListener('touchstart', (e) => {
         const now = Date.now();
+        lastTouchTime = now;
+
         if (now - lastTap < 300) {
-            const touchX = e.changedTouches[0].clientX;
-            if (touchX < window.innerWidth / 2) {
-                if(player) player.rewind(5);
-                tampilkanIndikator('⏪ -5s');
-            } else {
-                if(player) player.forward(5);
-                tampilkanIndikator('+5s ⏩');
+            const rect = container.getBoundingClientRect();
+            const touch = e.touches[0] || e.changedTouches[0];
+            if (touch) {
+                const touchX = touch.clientX - rect.left;
+                const width = rect.width;
+
+                // Batalkan event bawaan agar tidak memicu fullscreen
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (touchX < width * 0.4) {
+                    // Sisi kiri: Rewind
+                    if (player) player.rewind(5);
+                    tampilkanIndikator('⏪ -5s');
+                } else if (touchX > width * 0.6) {
+                    // Sisi kanan: Forward
+                    if (player) player.forward(5);
+                    tampilkanIndikator('+5s ⏩');
+                } else {
+                    // Bagian tengah: Tidak lakukan apa‑apa pada double‑tap,
+                    // biarkan tap pertama menangani play/pause secara default.
+                }
             }
         }
         lastTap = now;
+    }, { passive: false });
+
+    // Tap tunggal di tengah untuk toggle play/pause
+    container.addEventListener('click', (e) => {
+        const rect = container.getBoundingClientRect();
+        const touchX = e.clientX - rect.left;
+        const width = rect.width;
+
+        if (touchX >= width * 0.4 && touchX <= width * 0.6) {
+            if (player) {
+                if (player.paused) {
+                    player.play();
+                } else {
+                    player.pause();
+                }
+                // Optional indikator
+                tampilkanIndikator(player.paused ? '⏸️ Pause' : '▶️ Play');
+            }
+        }
     });
+
+    // Cegah event dblclick buatan (simulated) dari interaksi sentuh agar tidak memicu fullscreen
+    container.addEventListener('dblclick', (e) => {
+        if (Date.now() - lastTouchTime < 1000) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, true); // Gunakan fase capture agar dijalankan sebelum event listener bawaan Plyr
+}
+
+// Helper: Refresh VTT sprite images — reset cache internal Plyr dan update seluruh document
+function refreshVttSprites(vttUrl) {
+    if (!player) return;
+
+    // 1. Update config Plyr
+    player.config.previewThumbnails.src = vttUrl;
+    player.config.previewThumbnails.enabled = true;
+
+    // 2. Reset cache internal Plyr agar tidak pakai sprite lama
+    if (player.previewThumbnails) {
+        player.previewThumbnails.thumbnails = [];
+        player.previewThumbnails.loaded = false;
+        // Paksa Plyr reload VTT dari URL baru
+        if (typeof player.previewThumbnails.load === 'function') {
+            player.previewThumbnails.load();
+        }
+    }
+
+    // 3. Juga update elemen sprite secara manual di SELURUH document
+    //    (bukan hanya player.elements.container, karena mobile fullscreen
+    //    bisa me-render di luar container Plyr)
+    fetch(vttUrl).then(res => res.text()).then(text => {
+        const match = text.match(/([\w-]+\.(jpg|png|webp|jpeg))/i);
+        if (match) {
+            const baseUrl = vttUrl.substring(0, vttUrl.lastIndexOf('/') + 1);
+            const spriteUrl = baseUrl + match[1];
+
+            // Ganti background-image di semua container thumbnail di seluruh halaman
+            document.querySelectorAll('.plyr__preview-thumb__image-container').forEach(c => {
+                c.style.backgroundImage = `url("${spriteUrl}")`;
+            });
+            // Ganti src semua tag img thumbnail di seluruh halaman
+            document.querySelectorAll('.plyr__preview-thumb__image-container img').forEach(img => {
+                img.src = spriteUrl;
+            });
+            // Juga handle scrubbing images (preview saat drag progress bar)
+            document.querySelectorAll('.plyr__preview-scrubbing img').forEach(img => {
+                img.src = spriteUrl;
+            });
+        }
+    }).catch(e => console.error("Gagal refresh VTT sprites:", e));
 }
 
 function tampilkanIndikator(teks) {
@@ -421,7 +503,7 @@ function tampilkanIndikator(teks) {
     }, 500);
 }
 
-window.toggleReply = function(id) {
+window.toggleReply = function (id) {
     const element = document.getElementById(id);
     if (element) {
         element.classList.toggle('hidden');
