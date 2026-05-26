@@ -3,11 +3,11 @@ const config = window.playerConfig || {};
 
 // 1. Deklarasi Variabel Utama
 const videoElement = document.getElementById('main-video');
-const videoSrc = config.videoSrc || '';
-const isHls = config.isHls || false;
-const vttSrc = config.vttSrc || '';
-const videoId = config.id || '';
-const storageKeyVideo = `video_pos_${videoId}`;
+let videoSrc = config.videoSrc || '';
+let isHls = config.isHls || false;
+let vttSrc = config.vttSrc || '';
+let videoId = config.id || '';
+let storageKeyVideo = `video_pos_${videoId}`;
 
 let player;
 let hls;
@@ -75,8 +75,10 @@ if (isHls && window.Hls && Hls.isSupported()) {
             });
         }
 
-        player = new Plyr(videoElement, plyrOptions);
-        setupMeelPlayerEvents();
+        if (!player) {
+            player = new Plyr(videoElement, plyrOptions);
+            setupMeelPlayerEvents();
+        }
     });
 } else {
     player = new Plyr(videoElement, plyrOptions);
@@ -151,7 +153,9 @@ function setupMeelPlayerEvents() {
         const nextVideoLink = document.querySelector('.rekomendasi-item');
         if (!nextVideoLink) return;
 
-        if (player.fullscreen.active) {
+        const isFullscreen = player.fullscreen.active || !!document.fullscreenElement;
+
+        if (isFullscreen) {
             try {
                 const response = await fetch(nextVideoLink.href);
                 const html = await response.text();
@@ -167,6 +171,12 @@ function setupMeelPlayerEvents() {
                 const newSrc = newVideoEl.getAttribute('data-src');
                 const newIsHls = newVideoEl.getAttribute('data-ishls') === 'true';
                 const newPoster = newVideoEl.getAttribute('data-poster');
+                const newVtt = newVideoEl.getAttribute('data-vtt');
+
+                // Update variabel global agar video selanjutnya dapat memproses localstorage dan antrean dengan benar
+                videoId = (new URL(nextVideoLink.href, window.location.href)).searchParams.get('id') || videoId;
+                storageKeyVideo = `video_pos_${videoId}`;
+                vttSrc = newVtt;
 
                 const swapElements = ['video-info', 'comment-section', 'recommendation-column'];
                 swapElements.forEach(id => {
@@ -183,23 +193,58 @@ function setupMeelPlayerEvents() {
                 if (newIsHls) {
                     if (!hls && window.Hls && Hls.isSupported()) {
                         hls = new Hls();
-                        hls.attachMedia(videoElement);
+                        hls.attachMedia(player.media);
+                    } else if (hls && hls.media !== player.media) {
+                        hls.detachMedia();
+                        hls.attachMedia(player.media);
                     }
                     hls.loadSource(newSrc);
-                    player.play();
                 } else {
                     if (hls) {
                         hls.destroy();
                         hls = null;
                     }
-                    player.source = {
-                        type: 'video',
-                        sources: [{
-                            src: newSrc,
-                            type: 'video/mp4'
-                        }]
-                    };
-                    player.play();
+                    player.media.src = newSrc;
+                    player.media.load();
+                }
+
+                const playPromise = player.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(e => {
+                        console.error("Autoplay dicegah oleh browser:", e);
+                    });
+                }
+
+                // Update VTT Hover Sprite secara dinamis
+                if (newVtt) {
+                    player.config.previewThumbnails.src = newVtt;
+                    player.config.previewThumbnails.enabled = true;
+                    const thumbElement = player.elements.container.querySelector('.plyr__preview-thumb');
+                    if (thumbElement) thumbElement.style.display = '';
+
+                    fetch(newVtt).then(res => res.text()).then(text => {
+                        const match = text.match(/([\w-]+\.(jpg|png|webp|jpeg))/i);
+                        if (match) {
+                            const baseUrl = newVtt.substring(0, newVtt.lastIndexOf('/') + 1);
+                            const spriteUrl = baseUrl + match[1];
+                            
+                            // Ganti semua kontainer background dan tag img di dalam player untuk jaga-jaga duplikasi fullscreen
+                            if (player && player.elements && player.elements.container) {
+                                const containers = player.elements.container.querySelectorAll('.plyr__preview-thumb__image-container');
+                                containers.forEach(container => {
+                                    container.style.backgroundImage = `url("${spriteUrl}")`;
+                                });
+                                const images = player.elements.container.querySelectorAll('.plyr__preview-thumb__image-container img');
+                                images.forEach(img => {
+                                    img.src = spriteUrl;
+                                });
+                            }
+                        }
+                    }).catch(e => console.error("Gagal load vtt:", e));
+                } else {
+                    player.config.previewThumbnails.enabled = false;
+                    const thumbElement = player.elements.container.querySelector('.plyr__preview-thumb');
+                    if (thumbElement) thumbElement.style.display = 'none';
                 }
             } catch (err) {
                 console.error("Gagal transisi seamless, fallback ke reload:", err);
