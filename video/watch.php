@@ -465,6 +465,7 @@ $rekom            = $viewer->getRecommendations(15);
     <?php include '../partials/footer.php'; ?>
 
     <script src="../assets/js/plyr.js"></script>
+    <script src="../assets/js/sweetalert2.all.min.js.js"></script>
     <script src="../assets/js/script.js"></script>
 
     <script>
