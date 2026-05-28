@@ -485,16 +485,22 @@ if (isset($_GET['content_only'])) {
             });
         }
 
-        // --- Boot ---
-        document.addEventListener('DOMContentLoaded', () => {
+        // --- Boot & Perbaikan Sinkronisasi ---
+        function bootPlayerIndex() {
             initMiniPlayerIndex();
             setupMusicItemClicks();
+        }
+
+        // 1. Jalankan saat halaman pertama kali dimuat (Hard Reload / F5)
+        document.addEventListener('DOMContentLoaded', () => {
+            bootPlayerIndex();
         });
 
-        // Re-hook klik setelah HTMX swap (load more, search)
+        // 2. [PERBAIKAN UTAMA] Jalankan setiap kali HTMX selesai melakukan swap konten
+        // Ini memicu mini player otomatis muncul saat kembali dari watch.php lewat tombol 'i'
         document.addEventListener('htmx:afterSwap', () => {
-            lucide.createIcons();
-            setupMusicItemClicks();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            bootPlayerIndex(); // Memastikan player di-inisialisasi ulang dengan data sessionStorage terbaru
         });
 
         // Keyboard 'i' → expand ke full player

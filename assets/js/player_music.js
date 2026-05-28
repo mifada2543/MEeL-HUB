@@ -436,19 +436,44 @@ const playerContainer = document.getElementById("player-container");
 let isMiniPlayerActive = false;
 
 // Toggle mini-player dengan keyboard shortcut 'i'
+// Daftarkan event listener untuk tombol 'i' di halaman watch
 document.addEventListener("keydown", (e) => {
+  // Abaikan jika user sedang mengetik di kolom komentar/input
   if (
     e.target.tagName.toLowerCase() === "input" ||
     e.target.tagName.toLowerCase() === "textarea"
   )
     return;
-  if (
-    e.key.toLowerCase() === "i" &&
-    e.ctrlKey === false &&
-    e.altKey === false &&
-    e.metaKey === false
-  ) {
-    toggleMiniPlayer();
+
+  if (e.key.toLowerCase() === "i" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    e.preventDefault();
+
+    // 1. Ambil data konfigurasi dari window global milik watch.php
+    const config = window.MEEL_MUSIC_CONFIG || {};
+
+    // 2. Kemas state player saat ini ke objek state
+    const state = {
+      title: config.title || "",
+      artist: config.artist || "",
+      thumbnail: config.thumbnail || "",
+      filename: config.filename || "",
+      nextSongUrl: config.nextSongUrl || "",
+      currentTime: player ? player.currentTime : 0, // Simpan detik terakhir musik berputar
+      isPlaying: player ? !player.paused : false, // Simpan status apakah sedang play
+    };
+
+    // 3. Simpan data ke sessionStorage agar bisa langsung dibaca oleh index.php
+    sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
+
+    // 4. Hancurkan instance Plyr agar memori bersih
+    if (player) {
+      player.destroy();
+    }
+
+    // 5. Arahkan kembali ke halaman index
+    // Jika Anda menggunakan HTMX untuk navigasi global, gunakan htmx.ajax() atau htmx.trigger()
+    // Jika menggunakan navigasi standar, gunakan baris di bawah ini:
+    window.location.href = "index.php";
   }
 });
 
@@ -466,7 +491,7 @@ if (miniPlayerHeader) {
 window.toggleMiniPlayer = function () {
   // 1. Simpan state audio (waktu dan status play)
   saveAudioState();
-  
+
   // 2. Pause audio utama agar tidak double play di background
   if (player && !player.paused) {
     player.pause();
@@ -475,7 +500,7 @@ window.toggleMiniPlayer = function () {
   // 3. Load index.php menggunakan HTMX dan timpa isi <body>
   htmx.ajax("GET", "index.php", {
     target: "body",
-    swap: "innerHTML"
+    swap: "innerHTML",
   });
 
   // 4. Ubah URL di address bar agar terlihat natural
