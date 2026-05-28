@@ -154,7 +154,7 @@ switch ($ext) {
         #resume-modal {
             position: absolute;
             inset: 0;
-            z-index: 30;
+            z-index: 20;
             background: rgba(5, 7, 12, .85);
             backdrop-filter: blur(8px);
         }
@@ -817,6 +817,7 @@ switch ($ext) {
         };
     </script>
     <script src="../assets/js/plyr.js"></script>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
     <script src="../assets/js/script.js"></script>
     <script src="../assets/js/player_music.js"></script>
 
