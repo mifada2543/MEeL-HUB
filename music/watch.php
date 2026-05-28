@@ -10,12 +10,13 @@ include '../modules/MediaViewer.php';
 
 $id          = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $user_id     = $_SESSION['user_id'] ?? null;
+$is_logged_in = isset($_SESSION['user_id']);
 $playlist_id = isset($_GET['playlist_id']) ? (int)$_GET['playlist_id'] : 0;
 
 $viewer = new MediaViewer($conn, $user_id, 'music', $id);
 $viewer->recordView();
 
-if (isset($_POST['send'])) {
+if ($is_logged_in && isset($_POST['send'])) {
     if ($viewer->addComment($_POST)) {
         header("Location: watch.php?id=$id&playlist_id=$playlist_id#comment-section");
         exit;
@@ -561,8 +562,7 @@ switch ($ext) {
                     <p class="text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap"><?= htmlspecialchars($v['description']) ?></p>
                 </div>
             <?php endif; ?>
-            <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
-
+            <?php if ($is_logged_in): ?>
                 <!-- KOMENTAR -->
                 <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
                     <div class="px-4 sm:px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
@@ -570,19 +570,17 @@ switch ($ext) {
                         <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600">Komentar</span>
                     </div>
                     <div class="p-4 sm:p-6">
-                        <?php if (isset($_SESSION['user_id'])): ?>
-                            <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">
-                                <textarea name="comments"
-                                    class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-orange-500/40 min-h-[80px] resize-y transition-all"
-                                    placeholder="Tulis komentar..." required></textarea>
-                                <div class="flex justify-end mt-2">
-                                    <button name="send"
-                                        class="bg-orange-500 hover:bg-orange-400 text-black text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer">
-                                        Kirim
-                                    </button>
-                                </div>
-                            </form>
-                        <?php endif; ?>
+                        <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">
+                            <textarea name="comments"
+                                class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-orange-500/40 min-h-[80px] resize-y transition-all"
+                                placeholder="Tulis komentar..." required></textarea>
+                            <div class="flex justify-end mt-2">
+                                <button name="send"
+                                    class="bg-orange-500 hover:bg-orange-400 text-black text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer">
+                                    Kirim
+                                </button>
+                            </div>
+                        </form>
 
                         <div class="space-y-1 max-h-[500px] overflow-y-auto pr-1">
                             <?php
@@ -652,6 +650,7 @@ switch ($ext) {
                         </div>
                     </div>
                 </section>
+            <?php endif; ?>
 
         </div>
 
