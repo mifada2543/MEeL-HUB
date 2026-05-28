@@ -391,6 +391,16 @@ if (isset($_GET['content_only'])) {
 
         // --- Init: baca sessionStorage ---
         function initMiniPlayerIndex() {
+            // Daftarkan event klik pada bar mini player agar ketika diklik langsung pindah ke watch
+            const miniPlayerBar = document.getElementById('mini-player-bar'); // Sesuaikan dengan ID elemen mini-player Anda
+            if (miniPlayerBar) {
+                miniPlayerBar.style.cursor = 'pointer';
+                miniPlayerBar.addEventListener('click', (e) => {
+                    // Jangan trigger pindah halaman jika yang diklik adalah tombol play/pause mini
+                    if (e.target.closest('#mini-play-btn') || e.target.closest('.mp-close')) return;
+                    expandPlayerFromMiniPlayer();
+                });
+            }
             const raw = sessionStorage.getItem('meel_audio_state');
             if (!raw) return;
             try {
@@ -443,15 +453,26 @@ if (isset($_GET['content_only'])) {
             audioPlayer.currentTime = 0;
         };
 
-        // --- Expand ke full watch page ---
-        window.expandPlayerFromMiniPlayer = function() {
-            const raw = sessionStorage.getItem('meel_audio_state');
-            if (raw) {
-                saveIndexState();
-                const state = JSON.parse(raw);
-                window.location.href = `watch.php?id=${state.musicId}`;
+        // --- Perbaikan Fungsi Expand di index.php ---
+        function expandPlayerFromMiniPlayer() {
+            // Ambil data state terakhir untuk mendapatkan ID lagu atau URL-nya
+            const savedState = sessionStorage.getItem('meel_audio_state');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                // Pastikan saat menyimpan lagu dari klik list, Anda menyertakan ID atau URL watch-nya
+                if (state.watchUrl) {
+                    window.location.href = state.watchUrl;
+                } else if (state.id) {
+                    window.location.href = `watch.php?id=${state.id}`;
+                } else {
+                    // Fallback jika tidak ada ID (mencari link dari daftar lagu yang namanya sama)
+                    const fallbackItem = document.querySelector(`[data-filename="${state.filename}"]`);
+                    if (fallbackItem && fallbackItem.closest('a')) {
+                        window.location.href = fallbackItem.closest('a').getAttribute('href');
+                    }
+                }
             }
-        };
+        }
 
         // --- Tutup ---
         window.closeMiniPlayerIndex = function() {
@@ -462,18 +483,19 @@ if (isset($_GET['content_only'])) {
             currentState = null;
         };
 
-        // --- Klik item musik: ganti lagu di mini player (kalau sudah aktif) ---
         function setupMusicItemClicks() {
-            document.querySelectorAll('.music-item-link').forEach(item => {
+            document.querySelectorAll('.music-item').forEach(item => {
                 item.addEventListener('click', function(e) {
-                    if (!isMiniPlayerIndexActive) return; // biarkan navigasi biasa
-                    e.preventDefault();
+                    // Jika klik pada tombol download/share, abaikan
+                    if (e.target.closest('.no-player')) return;
+
                     const state = {
-                        musicId: this.dataset.musicId,
+                        id: this.dataset.id, // <--- PASTIKAN DATA ID INI ADA DI ELEMEN .music-item ANDA
                         title: this.dataset.title,
                         artist: this.dataset.artist,
                         thumbnail: this.dataset.thumbnail,
                         filename: this.dataset.filename,
+                        watchUrl: this.closest('a') ? this.closest('a').getAttribute('href') : '', // Ambil URL asli link-nya
                         nextSongUrl: '',
                         currentTime: 0,
                         isPlaying: true,
@@ -496,19 +518,24 @@ if (isset($_GET['content_only'])) {
             bootPlayerIndex();
         });
 
-        // 2. [PERBAIKAN UTAMA] Jalankan setiap kali HTMX selesai melakukan swap konten
-        // Ini memicu mini player otomatis muncul saat kembali dari watch.php lewat tombol 'i'
         document.addEventListener('htmx:afterSwap', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             bootPlayerIndex(); // Memastikan player di-inisialisasi ulang dengan data sessionStorage terbaru
         });
 
-        // Keyboard 'i' → expand ke full player
+        // Keyboard 'i' → Pindah kembali ke full player (watch.php)
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName.toLowerCase() === 'input' ||
                 e.target.tagName.toLowerCase() === 'textarea') return;
+
             if (e.key.toLowerCase() === 'i' && !e.ctrlKey && !e.altKey && !e.metaKey) {
-                if (isMiniPlayerIndexActive) expandPlayerFromMiniPlayer();
+                e.preventDefault();
+                // Cek apakah ada lagu yang sedang aktif di index
+                const savedState = sessionStorage.getItem('meel_audio_state');
+                if (savedState) {
+                    saveIndexState(); // Simpan detik terakhir di index dulu
+                    expandPlayerFromMiniPlayer(); // Buka halaman watch.php
+                }
             }
         });
 

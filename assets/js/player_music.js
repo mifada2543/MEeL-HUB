@@ -471,8 +471,6 @@ document.addEventListener("keydown", (e) => {
     }
 
     // 5. Arahkan kembali ke halaman index
-    // Jika Anda menggunakan HTMX untuk navigasi global, gunakan htmx.ajax() atau htmx.trigger()
-    // Jika menggunakan navigasi standar, gunakan baris di bawah ini:
     window.location.href = "index.php";
   }
 });

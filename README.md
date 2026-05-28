@@ -175,7 +175,7 @@ MEeL/
 │   │   ├── hls.js                 # HLS.js streaming library
 │   │   ├── htmx.js                # HTMX untuk partial page update
 │   │   ├── lucide.js              # Lucide icon library
-│   │   ├── sweetalert2.all.min.js.js  # SweetAlert2
+│   │   ├── sweetalert2.all.min.js  # SweetAlert2
 │   │   ├── player_video.js        # Logic player video kustom
 │   │   ├── player_music.js        # Logic player musik kustom
 │   │   └── script.js              # Script umum (tema, navigasi)
