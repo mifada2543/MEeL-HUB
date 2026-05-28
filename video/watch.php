@@ -227,9 +227,7 @@ $rekom            = $viewer->getRecommendations(15);
     </div>
 
     <div id="app-content-grid" class="max-w-7xl mx-auto px-4 sm:px-5 pt-4 sm:pt-8 pb-20 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-
         <div id="left-column" class="lg:col-span-2 space-y-4 sm:space-y-5">
-
             <div id="main-video-wrapper" class="relative bg-black rounded-xl sm:rounded-2xl overflow-hidden border border-white/[.06] shadow-2xl">
                 <?php
                 $video_src = "upload/" . $v['filename'];
@@ -271,10 +269,7 @@ $rekom            = $viewer->getRecommendations(15);
 
             <div id="watch-details-wrapper" class="space-y-4 sm:space-y-5">
                 <div id="video-info" class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                    <div class="video-title mb-3" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
-                    <?php if (!empty($v['description'])): ?>
-                        <p class="text-sm text-gray-400 leading-relaxed"><?= nl2br(htmlspecialchars($v['description'])) ?></p>
-                    <?php endif; ?>
+                    <div class="video-title" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
                 </div>
                 <div class="h-px bg-white/[.04]"></div>
 
@@ -337,8 +332,14 @@ $rekom            = $viewer->getRecommendations(15);
                             </div>
                         <?php endif; ?>
                     </div>
-                </div>
-
+                </div> <?php if (!empty($v['description'])): ?>
+                    <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                        <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600 mb-3 flex items-center gap-2">
+                            <i data-lucide="align-left" class="w-3.5 h-3.5 text-red-500"></i> Deskripsi
+                        </div>
+                        <p class="text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap"><?= htmlspecialchars($v['description']) ?></p>
+                    </div>
+                <?php endif; ?>
                 <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
                     <div class="px-4 sm:px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                         <i data-lucide="message-square" class="w-3.5 h-3.5 text-red-500"></i>

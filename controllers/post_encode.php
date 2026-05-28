@@ -4,18 +4,19 @@ require_once '../auth/config.php';
 require_once '../modules/Transcoder.php';
 include '../modules/helpers.php';
 
-$temp_file = $_GET['temp_file'] ?? '';
-$title     = $_GET['title']     ?? 'Unknown';
-$artist    = $_GET['artist']    ?? 'Unknown';
-$album     = $_GET['album']     ?? 'Single';
-$duration  = (int)($_GET['duration'] ?? 0);
+$temp_file   = $_GET['temp_file']   ?? '';
+$title       = $_GET['title']       ?? 'Unknown';
+$artist      = $_GET['artist']      ?? 'Unknown';
+$album       = $_GET['album']       ?? 'Single';
+$duration    = (int)($_GET['duration'] ?? 0);
+$description = $_GET['description'] ?? 'Upload by MEeL Engine';
 
 if (empty($temp_file)) {
     die("<h1>Error: Parameter temp_file tidak ditemukan.</h1>");
 }
 
 $transcoder = new Transcoder($conn, $_SESSION['user_id']);
-$result = $transcoder->encodeMusic($temp_file, $title, $artist, $album, $duration);
+$result = $transcoder->encodeMusic($temp_file, $title, $artist, $album, $duration, $description);
 
 if ($result['status'] === 'success') {
     header("Location: ../upload_advanced.php?success=1&file=" . urlencode($result['filename']));

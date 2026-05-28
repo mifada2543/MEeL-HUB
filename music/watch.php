@@ -467,14 +467,7 @@ switch ($ext) {
                                 class="text-orange-400 font-bold text-sm uppercase tracking-widest hover:underline block mt-2 truncate text-center sm:text-left">
                                 <?= htmlspecialchars($v['artist']) ?>
                             </a>
-                            <div class="text-[11px] text-gray-600 uppercase tracking-wider font-medium italic mt-0.5 truncate text-center sm:text-left">
-                                <?= htmlspecialchars($v['album'] ?? '') ?>
-                            </div>
-                            <?php if (!empty($v['description'])): ?>
-                                <p class="text-xs text-gray-500 leading-relaxed mt-2"><?= nl2br(htmlspecialchars($v['description'])) ?></p>
-                            <?php endif; ?>
                         </div>
-
                         <div class="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                             <span class="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400"
                                 title="<?= htmlspecialchars($deskripsi) ?>">
@@ -560,97 +553,105 @@ switch ($ext) {
                         </div>
                     <?php endif; ?>
                 </div>
-            </div>
-
-            <!-- KOMENTAR -->
-            <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
-                <div class="px-4 sm:px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
-                    <i data-lucide="message-square" class="w-3.5 h-3.5 text-orange-500"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600">Komentar</span>
+            </div> <?php if (!empty($v['description'])): ?>
+                <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                    <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600 mb-3 flex items-center gap-2">
+                        <i data-lucide="align-left" class="w-3.5 h-3.5 text-orange-500"></i> Deskripsi
+                    </div>
+                    <p class="text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap"><?= htmlspecialchars($v['description']) ?></p>
                 </div>
-                <div class="p-4 sm:p-6">
-                    <?php if (isset($_SESSION['user_id'])): ?>
-                        <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">
-                            <textarea name="comments"
-                                class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-orange-500/40 min-h-[80px] resize-y transition-all"
-                                placeholder="Tulis komentar..." required></textarea>
-                            <div class="flex justify-end mt-2">
-                                <button name="send"
-                                    class="bg-orange-500 hover:bg-orange-400 text-black text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer">
-                                    Kirim
-                                </button>
-                            </div>
-                        </form>
-                    <?php endif; ?>
+            <?php endif; ?>
+            <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
 
-                    <div class="space-y-1 max-h-[500px] overflow-y-auto pr-1">
-                        <?php
-                        function render_music_comments($parent_id, $grouped, $level = 0)
-                        {
-                            global $id, $user_map;
-                            if (!isset($grouped[$parent_id])) return;
-                            foreach ($grouped[$parent_id] as $c):
-                                $author      = $c['username'] ?? 'Guest';
-                                $parent_user = ($c['parent_id'] > 0) ? ($user_map[$c['parent_id']] ?? 'Guest') : null;
-                                $indent      = min($level * 16, 48);
-                        ?>
-                                <div class="comment-row flex gap-3 p-3 rounded-xl" style="margin-left:<?= $indent ?>px">
-                                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                        <?= strtoupper(substr($author, 0, 1)) ?>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center justify-between gap-2 mb-1">
-                                            <div class="flex items-center gap-2 min-w-0">
-                                                <span class="text-[11px] font-bold text-gray-300 truncate">@<?= htmlspecialchars($author) ?></span>
-                                                <span class="text-[10px] text-gray-600 flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
+                <!-- KOMENTAR -->
+                <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
+                    <div class="px-4 sm:px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
+                        <i data-lucide="message-square" class="w-3.5 h-3.5 text-orange-500"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600">Komentar</span>
+                    </div>
+                    <div class="p-4 sm:p-6">
+                        <?php if (isset($_SESSION['user_id'])): ?>
+                            <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">
+                                <textarea name="comments"
+                                    class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-orange-500/40 min-h-[80px] resize-y transition-all"
+                                    placeholder="Tulis komentar..." required></textarea>
+                                <div class="flex justify-end mt-2">
+                                    <button name="send"
+                                        class="bg-orange-500 hover:bg-orange-400 text-black text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer">
+                                        Kirim
+                                    </button>
+                                </div>
+                            </form>
+                        <?php endif; ?>
+
+                        <div class="space-y-1 max-h-[500px] overflow-y-auto pr-1">
+                            <?php
+                            function render_music_comments($parent_id, $grouped, $level = 0)
+                            {
+                                global $id, $user_map;
+                                if (!isset($grouped[$parent_id])) return;
+                                foreach ($grouped[$parent_id] as $c):
+                                    $author      = $c['username'] ?? 'Guest';
+                                    $parent_user = ($c['parent_id'] > 0) ? ($user_map[$c['parent_id']] ?? 'Guest') : null;
+                                    $indent      = min($level * 16, 48);
+                            ?>
+                                    <div class="comment-row flex gap-3 p-3 rounded-xl" style="margin-left:<?= $indent ?>px">
+                                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                                            <?= strtoupper(substr($author, 0, 1)) ?>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between gap-2 mb-1">
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <span class="text-[11px] font-bold text-gray-300 truncate">@<?= htmlspecialchars($author) ?></span>
+                                                    <span class="text-[10px] text-gray-600 flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
+                                                </div>
+                                                <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
+                                                    <a href="../delete_comment.php?id=<?= $c['id'] ?>"
+                                                        onclick="return confirm('Hapus komentar ini?')"
+                                                        class="text-gray-600 hover:text-red-400 transition-colors no-underline flex-shrink-0">
+                                                        <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                                    </a>
+                                                <?php endif; ?>
                                             </div>
-                                            <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
-                                                <a href="../delete_comment.php?id=<?= $c['id'] ?>"
-                                                    onclick="return confirm('Hapus komentar ini?')"
-                                                    class="text-gray-600 hover:text-red-400 transition-colors no-underline flex-shrink-0">
-                                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
-                                                </a>
+                                            <p class="text-sm text-gray-400 leading-relaxed">
+                                                <?php if ($parent_user): ?>
+                                                    <span class="text-orange-400 text-[10px] font-bold bg-orange-500/10 px-1.5 py-0.5 rounded mr-1">@<?= htmlspecialchars($parent_user) ?></span>
+                                                <?php endif; ?>
+                                                <?= nl2br(htmlspecialchars($c['comment'])) ?>
+                                            </p>
+                                            <?php if (isset($_SESSION['user_id'])): ?>
+                                                <button onclick="toggleReply('mus-<?= $c['id'] ?>')"
+                                                    class="text-[10px] font-bold text-orange-400 uppercase tracking-wider mt-2 bg-none border-none cursor-pointer p-0">
+                                                    Balas
+                                                </button>
+                                                <div id="mus-<?= $c['id'] ?>" class="hidden mt-3">
+                                                    <form action="watch.php?id=<?= $id ?>" method="post" class="flex gap-2">
+                                                        <input type="hidden" name="parent_id" value="<?= $c['id'] ?>">
+                                                        <input type="text" name="comments"
+                                                            class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 min-w-0"
+                                                            placeholder="Balas @<?= htmlspecialchars($author) ?>..." required>
+                                                        <button name="send"
+                                                            class="bg-orange-500 text-white text-[10px] font-black uppercase px-3 sm:px-4 py-2 rounded-xl border-none cursor-pointer flex-shrink-0">
+                                                            Kirim
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             <?php endif; ?>
                                         </div>
-                                        <p class="text-sm text-gray-400 leading-relaxed">
-                                            <?php if ($parent_user): ?>
-                                                <span class="text-orange-400 text-[10px] font-bold bg-orange-500/10 px-1.5 py-0.5 rounded mr-1">@<?= htmlspecialchars($parent_user) ?></span>
-                                            <?php endif; ?>
-                                            <?= nl2br(htmlspecialchars($c['comment'])) ?>
-                                        </p>
-                                        <?php if (isset($_SESSION['user_id'])): ?>
-                                            <button onclick="toggleReply('mus-<?= $c['id'] ?>')"
-                                                class="text-[10px] font-bold text-orange-400 uppercase tracking-wider mt-2 bg-none border-none cursor-pointer p-0">
-                                                Balas
-                                            </button>
-                                            <div id="mus-<?= $c['id'] ?>" class="hidden mt-3">
-                                                <form action="watch.php?id=<?= $id ?>" method="post" class="flex gap-2">
-                                                    <input type="hidden" name="parent_id" value="<?= $c['id'] ?>">
-                                                    <input type="text" name="comments"
-                                                        class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 min-w-0"
-                                                        placeholder="Balas @<?= htmlspecialchars($author) ?>..." required>
-                                                    <button name="send"
-                                                        class="bg-orange-500 text-white text-[10px] font-black uppercase px-3 sm:px-4 py-2 rounded-xl border-none cursor-pointer flex-shrink-0">
-                                                        Kirim
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        <?php endif; ?>
                                     </div>
-                                </div>
-                        <?php
-                                render_music_comments($c['id'], $grouped, $level + 1);
-                            endforeach;
-                        }
-                        if (empty($comments_grouped)) {
-                            echo "<div class='py-10 text-center text-[10px] text-gray-700 uppercase tracking-widest'>Belum ada komentar.</div>";
-                        } else {
-                            render_music_comments(0, $comments_grouped);
-                        }
-                        ?>
+                            <?php
+                                    render_music_comments($c['id'], $grouped, $level + 1);
+                                endforeach;
+                            }
+                            if (empty($comments_grouped)) {
+                                echo "<div class='py-10 text-center text-[10px] text-gray-700 uppercase tracking-widest'>Belum ada komentar.</div>";
+                            } else {
+                                render_music_comments(0, $comments_grouped);
+                            }
+                            ?>
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
         </div>
 

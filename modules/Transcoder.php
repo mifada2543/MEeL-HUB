@@ -205,6 +205,7 @@ class Transcoder
         $album    = $meta['album'] ?? 'Single';
         $duration = (int)($meta['duration'] ?? 0);
         $clean    = getRomajiName($title);
+        $description = !empty($meta['description']) ? $meta['description'] : 'Upload by MEeL Engine';
 
         // =========================
         // PREPARE COMMAND
@@ -298,12 +299,12 @@ class Transcoder
         if (!$is_success) {
             $this->releaseQueue($queue_id, 'failed');
             file_put_contents('/tmp/ytdlp_error.log', $error_log);
-            
+
             $error_msg = "Download gagal. Detail disimpan di server.";
             $last_lines = array_slice(explode("\n", $error_log), -3);
             $detail = trim(implode(" | ", $last_lines));
             if ($detail) $error_msg = substr($detail, 0, 200);
-            
+
             echo "<script>meelError(" . json_encode($error_msg) . ");</script>";
             flush();
             return "";
@@ -315,13 +316,12 @@ class Transcoder
         $this->releaseQueue($queue_id, 'completed');
 
         if ($type === 'music') {
-            return $this->finalizeMusic($temp_id, $title, $artist, $album, $duration);
+            return $this->finalizeMusic($temp_id, $title, $artist, $album, $duration, $description);
         }
-
-        return $this->finalizeVideo($basename, $basename . ".jpg", $title, $artist, $duration);
+        return $this->finalizeVideo($basename, $basename . ".jpg", $title, $artist, $duration, $description);
     }
 
-    private function finalizeMusic(string $temp_id, string $title, string $artist, string $album, int $duration): string
+    private function finalizeMusic(string $temp_id, string $title, string $artist, string $album, int $duration, string $description = 'Upload by MEeL Engine'): string
     {
         $found    = glob("{$this->base_path}/temp/$temp_id.*");
         $raw_file = "";
@@ -333,14 +333,22 @@ class Transcoder
         }
 
         if ($raw_file) {
-            $params = http_build_query(['temp_file' => $raw_file, 'title' => $title, 'artist' => $artist, 'album' => $album, 'duration' => $duration]);
+            // Tambahkan 'description' ke dalam parameter URL
+            $params = http_build_query([
+                'temp_file' => $raw_file,
+                'title' => $title,
+                'artist' => $artist,
+                'album' => $album,
+                'duration' => $duration,
+                'description' => $description
+            ]);
             echo "<script>window.location.href = 'controllers/post_encode.php?$params';</script>";
             exit;
         }
         return $this->msgError("File audio tidak ditemukan setelah download.");
     }
 
-    private function finalizeVideo(string $basename, string $db_thumb, string $title, string $artist, int $duration): string
+    private function finalizeVideo(string $basename, string $db_thumb, string $title, string $artist, int $duration, string $description = 'Upload by MEeL Engine'): string
     {
         $staging_mp4  = "{$this->base_path}/temp/{$basename}.mp4";
         $dl_thumb_src = "{$this->base_path}/temp/{$basename}.jpg";
@@ -489,7 +497,7 @@ class Transcoder
         // Verifikasi file benar-benar ada di HDD sebelum insert
         $hdd_m3u8_full = $hdd_base . $db_filename;
         $hdd_thumb_full = $hdd_thumb_dir . $db_thumb;
-        
+
         if (!file_exists($hdd_m3u8_full) || filesize($hdd_m3u8_full) === 0) {
             echo "<script>meelError(" . json_encode("File M3U8 tidak ditemukan di HDD: $hdd_m3u8_full") . ");</script>";
             flush();
@@ -504,14 +512,14 @@ class Transcoder
 
         $romaji   = getRomajiName($title);
         $metadata = mb_strtolower("$title $artist $romaji", 'UTF-8');
-        $desc     = "Advanced Upload from URL";
+        $desc     = $description;
         $views    = 0;
 
         $stmt = $this->conn->prepare(
             "INSERT INTO video (title, description, filename, thumbnail, duration, views, user_id, search_metadata, upload_date)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())"
         );
-        
+
         if (!$stmt) {
             echo "<script>meelError(" . json_encode("Database prepare error: " . $this->conn->error) . ");</script>";
             flush();
@@ -519,7 +527,7 @@ class Transcoder
         }
 
         $stmt->bind_param("ssssiiss", $title, $desc, $db_filename, $db_thumb, $duration, $views, $this->user_id, $metadata);
-        
+
         if (!$stmt->execute()) {
             echo "<script>meelError(" . json_encode("Database insert error: " . $stmt->error) . ");</script>";
             flush();
@@ -538,7 +546,7 @@ class Transcoder
     // BAGIAN 2: POST ENCODE (post_encode.php)
     // =========================================================
 
-    public function encodeMusic(string $temp_file, string $title, string $artist, string $album, int $duration): array
+    public function encodeMusic(string $temp_file, string $title, string $artist, string $album, int $duration, string $description = 'Upload by MEeL Engine'): array
     {
         putenv("LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib");
         putenv("PATH=/usr/local/bin:/usr/bin:/bin");
@@ -572,7 +580,7 @@ class Transcoder
         $temp_base = pathinfo($temp_file, PATHINFO_FILENAME);
         $temp_dir = "{$this->base_path}/temp";
         $thumb_result = $this->extractMusicThumbnail($input_path, $temp_dir, $temp_base, $thumb_name);
-        
+
         if (is_file($input_path)) unlink($input_path);
 
         // Cleanup sisa file temporary (dari yt-dlp yg tidak ter-process)
@@ -584,8 +592,8 @@ class Transcoder
         $romaji_artist = getRomajiName($artist);
         $metadata      = mb_strtolower("$title $artist $album $romaji_title $romaji_artist", 'UTF-8');
 
-        $stmt = $this->conn->prepare("INSERT INTO music (title, artist, album, search_metadata, filename, thumbnail, duration, user_id, upload_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-        $stmt->bind_param("ssssssii", $title, $artist, $album, $metadata, $final_fname, $thumb_result, $duration, $this->user_id);
+        $stmt = $this->conn->prepare("INSERT INTO music (title, artist, album, description, search_metadata, filename, thumbnail, duration, user_id, upload_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->bind_param("sssssssii", $title, $artist, $album, $description, $metadata, $final_fname, $thumb_result, $duration, $this->user_id);
 
         if ($stmt->execute()) {
             return ['status' => 'success', 'filename' => $final_fname];
@@ -637,11 +645,11 @@ class Transcoder
         }
 
         // Convert ke jpg menggunakan ffmpeg
-        $cmd = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) 
+        $cmd = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin)
             . " -y -i " . escapeshellarg($source_image)
             . " -vf " . escapeshellarg("scale='min(500,iw)':-1")
             . " -q:v 6 " . escapeshellarg($target_path) . " 2>&1";
-        
+
         @shell_exec($cmd);
 
         // Verifikasi hasil konversi
@@ -676,7 +684,7 @@ class Transcoder
             . " -an -vframes 1"
             . " -vf " . escapeshellarg("scale='min(500,iw)':-1")
             . " -q:v 6 " . escapeshellarg($temp_extracted) . " 2>&1";
-        
+
         @shell_exec($cmd);
 
         // Verifikasi hasil ekstraksi
@@ -915,7 +923,7 @@ class Transcoder
 
                     $start_time = gmdate("H:i:s", $start) . ".000";
                     $end_time   = gmdate("H:i:s", $end) . ".000";
-                    
+
                     $x = ($i % $cols) * $width;
                     $y = floor($i / $cols) * $height;
 
