@@ -520,7 +520,7 @@ include '../controllers/fun.php';
                         </table>
                     </div>
                 <?php else: ?>
-                    <p class="text-center text-xs text-gray-500 py-4">Belum ada IP yang di-banned. Aman terkendali, Akiro! 🛡️</p>
+                    <p class="text-center text-xs text-gray-500 py-4">Belum ada IP yang di-banned. Aman terkendali, <?= $_SESSION['username'] ?> 🛡️</p>
                 <?php endif; ?>
             </div>
         </div>
