@@ -162,7 +162,6 @@ MEeL/
 │
 ├── assets/                        # Aset statis
 │   ├── css/                       # Stylesheet
-│   │   ├── tailwind.css           # TailwindCSS (CDN build)
 │   │   ├── styles.css             # Stylesheet utama
 │   │   ├── plyr.css               # Stylesheet player Plyr
 │   │   ├── video.css              # Style khusus modul video
