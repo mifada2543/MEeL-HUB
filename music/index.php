@@ -14,8 +14,9 @@ $total_music    = $library->countMusic($format_filter, $artist_filter);
 $data_init      = $library->getMusicList($format_filter, $artist_filter, 10, 0);
 $is_logged_in   = isset($_SESSION['user_id']);
 
-function renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter) {
-    ?>
+function renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter)
+{
+?>
     <!-- HEADER -->
     <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
         <div>
@@ -53,7 +54,7 @@ function renderLibraryContent($artist_filter, $total_music, $data_init, $format_
             </button>
         </div>
     <?php endif; ?>
-    <?php
+<?php
 }
 
 // Check audio state dari sessionStorage (via hidden input)
@@ -164,7 +165,7 @@ if (isset($_GET['content_only'])) {
                                   <?= $artist_filter === 'all' ? 'active' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[.03]' ?>">
                             <span>All Collections</span>
                         </a>
-                        <?php 
+                        <?php
                         // reset pointer
                         $artists->data_seek(0);
                         while ($a = $artists->fetch_assoc()): ?>
@@ -211,7 +212,7 @@ if (isset($_GET['content_only'])) {
                         <a href="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
                             class="format-pill <?= $format_filter === 'mp3' ? 'active-blue' : '' ?>">MP3</a>
                     </div>
-                    
+
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <!-- Artists Select -->
                         <div>
@@ -220,7 +221,7 @@ if (isset($_GET['content_only'])) {
                             </div>
                             <select onchange="window.location.href='index.php?format=<?= $format_filter ?>&artist=' + encodeURIComponent(this.value)" class="w-full bg-white/[.04] border border-white/[.06] rounded-xl px-3 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none">
                                 <option value="all" <?= $artist_filter === 'all' ? 'selected' : '' ?>>All Collections</option>
-                                <?php 
+                                <?php
                                 $artists->data_seek(0);
                                 while ($a = $artists->fetch_assoc()): ?>
                                     <option value="<?= htmlspecialchars($a['artist']) ?>" <?= $artist_filter === $a['artist'] ? 'selected' : '' ?>><?= htmlspecialchars($a['artist']) ?></option>
@@ -230,19 +231,19 @@ if (isset($_GET['content_only'])) {
 
                         <!-- Playlists Select -->
                         <?php if ($is_logged_in): ?>
-                        <div>
-                            <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
-                                <i data-lucide="list-music" class="w-3 h-3"></i> Playlists
+                            <div>
+                                <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
+                                    <i data-lucide="list-music" class="w-3 h-3"></i> Playlists
+                                </div>
+                                <select onchange="if(this.value) window.location.href='view_playlist.php?id=' + this.value" class="w-full bg-white/[.04] border border-white/[.06] rounded-xl px-3 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none">
+                                    <option value="">Pilih Playlist...</option>
+                                    <?php
+                                    $playlists = $library->getUserPlaylists($_SESSION['user_id']);
+                                    while ($pl = $playlists->fetch_assoc()): ?>
+                                        <option value="<?= $pl['id'] ?>"><?= htmlspecialchars($pl['name']) ?></option>
+                                    <?php endwhile; ?>
+                                </select>
                             </div>
-                            <select onchange="if(this.value) window.location.href='view_playlist.php?id=' + this.value" class="w-full bg-white/[.04] border border-white/[.06] rounded-xl px-3 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none">
-                                <option value="">Pilih Playlist...</option>
-                                <?php 
-                                $playlists = $library->getUserPlaylists($_SESSION['user_id']);
-                                while ($pl = $playlists->fetch_assoc()): ?>
-                                    <option value="<?= $pl['id'] ?>"><?= htmlspecialchars($pl['name']) ?></option>
-                                <?php endwhile; ?>
-                            </select>
-                        </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -256,34 +257,53 @@ if (isset($_GET['content_only'])) {
         </main>
     </div>
 
-    <!-- MINI PLAYER INDEX -->
-    <div id="mini-player-index">
-        <div class="mini-player-header-index" onclick="toggleMiniPlayerIndex()">
-            <div class="mini-player-thumbnail-index">
-                <img id="mini-thumbnail-index" src="upload/thumbnail/default.png" alt="cover">
-            </div>
-            <div class="mini-player-info-index">
-                <div class="mini-player-title-index" id="mini-title-index">Tidak ada musik</div>
-                <div class="mini-player-artist-index" id="mini-artist-index">Unknown</div>
-            </div>
-            <div class="mini-player-close-index" onclick="event.stopPropagation(); closeMiniPlayerIndex()">
-                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
-            </div>
+    <!-- MINI PLAYER INDEX (Spotify-style) -->
+    <div id="mini-player-index" aria-label="Mini Player">
+
+        <!-- Seekbar atas -->
+        <div class="mp-seekbar" id="mp-seekbar-index" onclick="miniSeekIndex(event)" title="Klik untuk seek">
+            <div class="mp-seekbar-fill" id="mp-seekbar-fill-index"></div>
+            <div class="mp-seekbar-thumb" id="mp-seekbar-thumb-index"></div>
         </div>
 
-        <div class="mini-player-controls-index">
-            <button class="mini-player-btn-index" onclick="miniPlayPauseIndex()" id="mini-play-btn-index">
-                <i data-lucide="play" style="width: 18px; height: 18px;"></i>
-            </button>
-        </div>
-
-        <div class="mini-player-progress-index">
-            <div class="mini-progress-bar-index" id="mini-progress-bar-index" onclick="miniSeekIndex(event)">
-                <div class="mini-progress-fill-index" id="mini-progress-fill-index" style="width: 0%"></div>
+        <div class="mp-body">
+            <!-- Kiri: art + info -->
+            <div class="mp-track" onclick="expandPlayerFromMiniPlayer()" title="Buka player penuh">
+                <div class="mp-art">
+                    <img id="mini-thumbnail-index" src="upload/thumbnail/default.png" alt="cover">
+                    <div class="mp-art-overlay">
+                        <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
+                    </div>
+                </div>
+                <div class="mp-meta">
+                    <div class="mp-title" id="mini-title-index">Tidak ada musik</div>
+                    <div class="mp-artist" id="mini-artist-index">Unknown</div>
+                </div>
             </div>
-            <div class="mini-progress-text-index">
-                <span id="mini-current-time-index">0:00</span>
-                <span id="mini-duration-index">0:00</span>
+
+            <!-- Tengah: kontrol -->
+            <div class="mp-controls">
+                <button class="mp-btn mp-btn-ghost" onclick="miniPrevIndex()" id="mp-prev-btn-index" title="Sebelumnya">
+                    <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
+                </button>
+                <button class="mp-btn mp-btn-primary" onclick="miniPlayPauseIndex()" id="mini-play-btn-index" title="Play / Pause">
+                    <i data-lucide="play" style="width:18px;height:18px;"></i>
+                </button>
+                <button class="mp-btn mp-btn-ghost" onclick="miniNextIndex()" id="mp-next-btn-index" title="Berikutnya">
+                    <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
+                </button>
+            </div>
+
+            <!-- Kanan: waktu + tutup -->
+            <div class="mp-right">
+                <div class="mp-time">
+                    <span id="mini-current-time-index">0:00</span>
+                    <span class="mp-time-sep">/</span>
+                    <span id="mini-duration-index">0:00</span>
+                </div>
+                <button class="mp-btn mp-btn-ghost mp-close" onclick="closeMiniPlayerIndex()" title="Tutup">
+                    <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -291,201 +311,204 @@ if (isset($_GET['content_only'])) {
     <script>
         lucide.createIcons();
 
-        // === MINI PLAYER INDEX ===
+        // =============================================
+        // === MINI PLAYER INDEX (Spotify-style) ===
+        // =============================================
         const miniPlayerIndex = document.getElementById('mini-player-index');
         let audioPlayer = null;
         let isMiniPlayerIndexActive = false;
+        let currentState = null; // state object aktif
 
-        // Initialize mini player jika ada audio state
-        function initMiniPlayerIndex() {
-            const audioState = sessionStorage.getItem('meel_audio_state');
-            if (audioState) {
-                const state = JSON.parse(audioState);
-                isMiniPlayerIndexActive = true;
-                
-                // Load audio element
-                createAudioPlayer(state);
-                
-                // Update UI
-                updateMiniPlayerIndexUI(state);
-                miniPlayerIndex.classList.add('active');
-            }
+        // --- Helpers ---
+        function fmtTime(s) {
+            if (!s || isNaN(s)) return '0:00';
+            return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
         }
 
-        // Create hidden audio player
-        function createAudioPlayer(state) {
+        function saveIndexState() {
+            if (!currentState || !audioPlayer) return;
+            currentState.currentTime = audioPlayer.currentTime;
+            currentState.isPlaying = !audioPlayer.paused;
+            sessionStorage.setItem('meel_audio_state', JSON.stringify(currentState));
+        }
+
+        // --- Buat / ganti audio element ---
+        function loadAudio(state, autoplay) {
             if (!audioPlayer) {
                 audioPlayer = document.createElement('audio');
                 audioPlayer.id = 'hidden-audio-player';
                 audioPlayer.preload = 'metadata';
-                audioPlayer.crossOrigin = 'anonymous';
                 document.body.appendChild(audioPlayer);
+
+                audioPlayer.addEventListener('timeupdate', updateIndexUI);
+                audioPlayer.addEventListener('play', () => setPlayIcon('pause'));
+                audioPlayer.addEventListener('pause', () => setPlayIcon('play'));
+                audioPlayer.addEventListener('ended', () => miniNextIndex());
             }
-            
-            // Set source - direct path ke file musik
-            const filename = state.filename || 'audio.ogg';
-            audioPlayer.src = `upload/file/${filename}`;
-            
-            // Update jika sedang main
-            if (state.isPlaying) {
-                audioPlayer.currentTime = state.currentTime;
-                audioPlayer.play().catch(() => console.log("Playback dimulai dengan user gesture"));
+            currentState = state;
+            audioPlayer.src = `upload/file/${state.filename}`;
+            audioPlayer.load();
+            if (autoplay) {
+                audioPlayer.currentTime = state.currentTime || 0;
+                audioPlayer.play().catch(() => {});
             }
-            
-            // Setup event listeners
-            audioPlayer.addEventListener('timeupdate', () => updateMiniPlayerUIFromPlayer(state));
-            audioPlayer.addEventListener('play', () => updateMiniPlayBtn('pause'));
-            audioPlayer.addEventListener('pause', () => updateMiniPlayBtn('play'));
         }
 
-        // Update UI dari state
-        function updateMiniPlayerIndexUI(state) {
-            document.getElementById('mini-title-index').textContent = state.title;
-            document.getElementById('mini-artist-index').textContent = state.artist || 'Unknown';
-            document.getElementById('mini-thumbnail-index').src = `upload/thumbnail/${state.thumbnail}`;
+        // --- Update seluruh UI ---
+        function updateIndexUI() {
+            if (!audioPlayer || !currentState) return;
+            const pct = audioPlayer.duration > 0 ?
+                (audioPlayer.currentTime / audioPlayer.duration) * 100 : 0;
+
+            // Seekbar
+            const fill = document.getElementById('mp-seekbar-fill-index');
+            const thumb = document.getElementById('mp-seekbar-thumb-index');
+            if (fill) fill.style.width = pct + '%';
+            if (thumb) thumb.style.left = pct + '%';
+
+            // Waktu
+            const ct = document.getElementById('mini-current-time-index');
+            const dt = document.getElementById('mini-duration-index');
+            if (ct) ct.textContent = fmtTime(audioPlayer.currentTime);
+            if (dt) dt.textContent = fmtTime(audioPlayer.duration);
+
+            // Thumbnail / judul / artis
+            const img = document.getElementById('mini-thumbnail-index');
+            const title = document.getElementById('mini-title-index');
+            const artist = document.getElementById('mini-artist-index');
+            if (img) img.src = `upload/thumbnail/${currentState.thumbnail}`;
+            if (title) title.textContent = currentState.title || 'Unknown';
+            if (artist) artist.textContent = currentState.artist || 'Unknown';
         }
 
-        // Update UI dari player
-        function updateMiniPlayerUIFromPlayer(state) {
-            if (!audioPlayer) return;
-            
-            const percentage = (audioPlayer.currentTime / audioPlayer.duration) * 100;
-            document.getElementById('mini-progress-fill-index').style.width = percentage + '%';
-            document.getElementById('mini-current-time-index').textContent = formatTimeIndex(audioPlayer.currentTime);
-            document.getElementById('mini-duration-index').textContent = formatTimeIndex(audioPlayer.duration);
-        }
-
-        // Format time helper
-        function formatTimeIndex(seconds) {
-            if (!seconds || isNaN(seconds)) return '0:00';
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        // Update play button
-        function updateMiniPlayBtn(action) {
+        function setPlayIcon(icon) {
             const btn = document.getElementById('mini-play-btn-index');
-            if (action === 'play') {
-                btn.innerHTML = '<i data-lucide="play" style="width: 18px; height: 18px;"></i>';
-            } else {
-                btn.innerHTML = '<i data-lucide="pause" style="width: 18px; height: 18px;"></i>';
+            if (btn) {
+                btn.innerHTML = `<i data-lucide="${icon}" style="width:18px;height:18px;"></i>`;
+                lucide.createIcons();
             }
-            lucide.createIcons();
         }
 
-        // Play/Pause
+        // --- Init: baca sessionStorage ---
+        function initMiniPlayerIndex() {
+            const raw = sessionStorage.getItem('meel_audio_state');
+            if (!raw) return;
+            try {
+                const state = JSON.parse(raw);
+                isMiniPlayerIndexActive = true;
+                loadAudio(state, state.isPlaying);
+                updateIndexUI();
+                miniPlayerIndex.classList.add('active');
+            } catch (e) {
+                console.warn('Mini player init error:', e);
+            }
+        }
+
+        // --- Play / Pause ---
         window.miniPlayPauseIndex = function() {
             if (!audioPlayer) return;
-            if (audioPlayer.paused) {
-                audioPlayer.play();
-            } else {
-                audioPlayer.pause();
+            audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause();
+        };
+
+        // --- Seek ---
+        window.miniSeekIndex = function(event) {
+            if (!audioPlayer) return;
+            const rect = event.currentTarget.getBoundingClientRect();
+            const pct = (event.clientX - rect.left) / rect.width;
+            audioPlayer.currentTime = Math.max(0, Math.min(pct * audioPlayer.duration, audioPlayer.duration));
+        };
+
+        // --- Next via HTMX ---
+        window.miniNextIndex = function() {
+            if (!currentState) return;
+            const nextUrl = currentState.nextSongUrl;
+            if (nextUrl && nextUrl !== '') {
+                saveIndexState();
+                // HTMX load halaman lagu berikutnya, mirip pola video
+                htmx.ajax('GET', nextUrl, {
+                    target: 'body',
+                    swap: 'innerHTML'
+                });
+                window.history.pushState({}, '', nextUrl);
             }
         };
 
-        // Seek
-        window.miniSeekIndex = function(event) {
+        // --- Prev: restart jika >3 detik, else coba lagu sebelumnya ---
+        window.miniPrevIndex = function() {
             if (!audioPlayer) return;
-            const bar = event.currentTarget;
-            const rect = bar.getBoundingClientRect();
-            const clickX = event.clientX - rect.left;
-            const percentage = clickX / rect.width;
-            audioPlayer.currentTime = percentage * audioPlayer.duration;
+            if (audioPlayer.currentTime > 3) {
+                audioPlayer.currentTime = 0;
+                return;
+            }
+            audioPlayer.currentTime = 0;
         };
 
-        // Toggle visibility
-        window.toggleMiniPlayerIndex = function() {
-            // Expand player kembali ke full view
-            expandPlayerFromMiniPlayer();
-        };
-
-        // Expand player kembali dari mini player
-        function expandPlayerFromMiniPlayer() {
-            const audioState = sessionStorage.getItem('meel_audio_state');
-            if (audioState) {
-                const state = JSON.parse(audioState);
-                // Load watch page sambil maintain audio state
+        // --- Expand ke full watch page ---
+        window.expandPlayerFromMiniPlayer = function() {
+            const raw = sessionStorage.getItem('meel_audio_state');
+            if (raw) {
+                saveIndexState();
+                const state = JSON.parse(raw);
                 window.location.href = `watch.php?id=${state.musicId}`;
             }
         };
 
-        // Close mini player
+        // --- Tutup ---
         window.closeMiniPlayerIndex = function() {
-            if (audioPlayer) {
-                audioPlayer.pause();
-            }
+            if (audioPlayer) audioPlayer.pause();
             miniPlayerIndex.classList.remove('active');
             sessionStorage.removeItem('meel_audio_state');
             isMiniPlayerIndexActive = false;
+            currentState = null;
         };
 
-        // Handle click musik item untuk play di mini-player
+        // --- Klik item musik: ganti lagu di mini player (kalau sudah aktif) ---
         function setupMusicItemClicks() {
-            const musicItems = document.querySelectorAll('.music-item-link');
-            musicItems.forEach(item => {
+            document.querySelectorAll('.music-item-link').forEach(item => {
                 item.addEventListener('click', function(e) {
-                    if (isMiniPlayerIndexActive) {
-                        e.preventDefault();
-                        const musicId = this.dataset.musicId;
-                        const title = this.dataset.title;
-                        const artist = this.dataset.artist;
-                        const thumbnail = this.dataset.thumbnail;
-                        const filename = this.dataset.filename;
-                        
-                        // Update audio src
-                        if (audioPlayer) {
-                            audioPlayer.pause();
-                            audioPlayer.src = `upload/file/${filename}`;
-                            audioPlayer.load();
-                            audioPlayer.play().catch(err => console.log("Play:", err));
-                            
-                            // Update UI
-                            updateMiniPlayerIndexUI({
-                                musicId, title, artist, thumbnail, filename
-                            });
-                            
-                            // Save state
-                            sessionStorage.setItem('meel_audio_state', JSON.stringify({
-                                musicId, title, artist, thumbnail, filename, isPlaying: true, currentTime: 0
-                            }));
-                        }
-                    }
+                    if (!isMiniPlayerIndexActive) return; // biarkan navigasi biasa
+                    e.preventDefault();
+                    const state = {
+                        musicId: this.dataset.musicId,
+                        title: this.dataset.title,
+                        artist: this.dataset.artist,
+                        thumbnail: this.dataset.thumbnail,
+                        filename: this.dataset.filename,
+                        nextSongUrl: '',
+                        currentTime: 0,
+                        isPlaying: true,
+                    };
+                    loadAudio(state, true);
+                    updateIndexUI();
+                    sessionStorage.setItem('meel_audio_state', JSON.stringify(state));
                 });
             });
         }
 
+        // --- Boot ---
         document.addEventListener('DOMContentLoaded', () => {
             initMiniPlayerIndex();
             setupMusicItemClicks();
         });
 
-        // For HTMX loaded content
+        // Re-hook klik setelah HTMX swap (load more, search)
         document.addEventListener('htmx:afterSwap', () => {
+            lucide.createIcons();
             setupMusicItemClicks();
         });
 
-        // Keyboard shortcut 'i' di halaman index untuk toggle expand/minimize
+        // Keyboard 'i' → expand ke full player
         document.addEventListener('keydown', (e) => {
-            if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'textarea') return;
-            if (e.key.toLowerCase() === 'i' && e.ctrlKey === false && e.altKey === false && e.metaKey === false) {
-                if (isMiniPlayerIndexActive) {
-                    expandPlayerFromMiniPlayer();
-                }
+            if (e.target.tagName.toLowerCase() === 'input' ||
+                e.target.tagName.toLowerCase() === 'textarea') return;
+            if (e.key.toLowerCase() === 'i' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                if (isMiniPlayerIndexActive) expandPlayerFromMiniPlayer();
             }
         });
 
-        // Auto-save audio state setiap 5 detik
+        // Auto-save tiap 5 detik
         setInterval(() => {
-            if (isMiniPlayerIndexActive && audioPlayer) {
-                const audioState = sessionStorage.getItem('meel_audio_state');
-                if (audioState) {
-                    const state = JSON.parse(audioState);
-                    state.currentTime = audioPlayer.currentTime;
-                    state.isPlaying = !audioPlayer.paused;
-                    sessionStorage.setItem('meel_audio_state', JSON.stringify(state));
-                }
-            }
+            if (isMiniPlayerIndexActive) saveIndexState();
         }, 5000);
     </script>
     <?php include '../partials/footer.php'; ?>

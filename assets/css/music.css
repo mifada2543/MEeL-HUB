@@ -227,186 +227,298 @@ body {
   }
 }
 
-/* ── 6. MINI PLAYER (MERGED INDEX & WATCH) ── */
+/* ── 6. MINI PLAYER (Spotify-style, full-width) ── */
+
+/* --- Container utama --- */
 #mini-player,
 #mini-player-index {
   position: fixed;
   bottom: 0;
+  left: 0;
   right: 0;
-  width: 320px;
-  background: linear-gradient(135deg, #141820 0%, #0d1017 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px 12px 0 0;
-  z-index: 40;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  background: rgba(14, 17, 24, 0.97);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  /* Slide-up dari bawah */
   transform: translateY(100%);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  display: none;
-  flex-direction: column;
-  max-height: 100vh;
-}
-#mini-player.active,
-#mini-player-index.active {
-  display: flex;
-  transform: translateY(0);
+  opacity: 0;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease;
+  pointer-events: none;
 }
 
-.mini-player-header,
-.mini-player-header-index {
+#mini-player.active,
+#mini-player-index.active {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* --- Seekbar: bar tipis di bagian paling atas --- */
+.mp-seekbar {
+  position: relative;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: height 0.15s ease;
+}
+.mp-seekbar:hover {
+  height: 5px;
+}
+
+.mp-seekbar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--orange), #fb923c);
+  transition: width 0.1s linear;
+  pointer-events: none;
+}
+
+.mp-seekbar-thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.15s ease;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+.mp-seekbar:hover .mp-seekbar-thumb {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* --- Body row --- */
+.mp-body {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  height: 72px;
+  padding: 0 20px;
+  gap: 16px;
+}
+
+/* --- Kiri: art + meta --- */
+.mp-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
   cursor: pointer;
+  overflow: hidden;
   user-select: none;
 }
 
-.mini-player-thumbnail,
-.mini-player-thumbnail-index {
+.mp-art {
+  position: relative;
   width: 48px;
   height: 48px;
   border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
-.mini-player-thumbnail img,
-.mini-player-thumbnail-index img {
+.mp-art img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: filter 0.2s;
+}
+.mp-art-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.mp-track:hover .mp-art img {
+  filter: brightness(0.65);
+}
+.mp-track:hover .mp-art-overlay {
+  opacity: 1;
 }
 
-.mini-player-info,
-.mini-player-info-index {
-  flex: 1;
+.mp-meta {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
 }
-.mini-player-title,
-.mini-player-title-index {
-  font-size: 12px;
-  font-weight: 600;
+
+.mp-title {
+  font-size: 13px;
+  font-weight: 700;
   color: #f0f2f7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
-.mini-player-artist,
-.mini-player-artist-index {
-  font-size: 10px;
-  color: #9ca3af;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
-}
-
-.mini-player-close,
-.mini-player-close-index {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s;
+.mp-artist {
+  font-size: 11px;
   color: #6b7280;
-}
-.mini-player-close:hover,
-.mini-player-close-index:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f0f2f7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 3px;
 }
 
-.mini-player-controls,
-.mini-player-controls-index {
+/* --- Tengah: kontrol --- */
+.mp-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* --- Kanan: waktu + tutup --- */
+.mp-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.mp-time {
+  font-size: 11px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mp-time-sep {
+  margin: 0 2px;
+  opacity: 0.5;
+}
+
+/* --- Tombol --- */
+.mp-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  transition:
+    background 0.15s,
+    transform 0.1s,
+    color 0.15s;
+  color: #6b7280;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.mp-btn:active {
+  transform: scale(0.88);
 }
 
-.mini-player-btn,
-.mini-player-btn-index {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Play/Pause utama — lingkaran orange */
+.mp-btn-primary {
   width: 36px;
   height: 36px;
-  border-radius: 6px;
-  background: rgba(249, 115, 22, 0.15);
-  border: 1px solid rgba(249, 115, 22, 0.3);
-  color: var(--orange);
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0;
+  background: var(--orange);
+  color: #000;
 }
-.mini-player-btn:hover,
-.mini-player-btn-index:hover {
-  background: rgba(249, 115, 22, 0.25);
-}
-.mini-player-btn svg {
-  width: 18px;
-  height: 18px;
+.mp-btn-primary:hover {
+  background: #ea6a0a;
 }
 
-.mini-player-progress,
-.mini-player-progress-index {
-  padding: 0 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* Skip / close ghost */
+.mp-btn-ghost {
+  width: 32px;
+  height: 32px;
 }
-.mini-progress-bar,
-.mini-progress-bar-index {
-  width: 100%;
-  height: 4px;
+.mp-btn-ghost:hover {
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
-  cursor: pointer;
-  overflow: hidden;
+  color: #f0f2f7;
 }
-.mini-progress-fill,
-.mini-progress-fill-index {
-  height: 100%;
-  background: linear-gradient(90deg, var(--orange), #fb923c);
-  border-radius: 2px;
-  transition: width 0.1s linear;
-}
-.mini-progress-text,
-.mini-progress-text-index {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: #6b7280;
+.mp-close {
+  margin-left: 4px;
 }
 
-/* Mini Player Responsive */
-@media (max-width: 768px) {
-  #mini-player-index {
-    width: 280px;
-    right: 8px;
-    bottom: 8px;
-    border-radius: 10px;
+/* --- Denyut thumbnail saat playing --- */
+@keyframes mp-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(249, 115, 22, 0);
   }
 }
+#mini-player.active .mp-art,
+#mini-player-index.active .mp-art {
+  animation: mp-pulse 2.4s ease-in-out infinite;
+}
+
+/* --- Responsive mobile ≤ 480px --- */
+@media (max-width: 480px) {
+  .mp-body {
+    padding: 0 12px;
+    gap: 10px;
+    height: 64px;
+  }
+  .mp-time {
+    display: none;
+  }
+  .mp-art {
+    width: 42px;
+    height: 42px;
+  }
+  .mp-title {
+    font-size: 12px;
+  }
+  .mp-artist {
+    font-size: 10px;
+  }
+}
+
+/* --- Mode mini player: identik dengan .mini-player-mode di video.css --- */
+.music-mini-player-mode {
+  position: fixed !important;
+  bottom: 88px !important; /* di atas bar mini player (72px + 16px gap) */
+  right: 24px !important;
+  width: 360px !important;
+  height: auto !important;
+  z-index: 150 !important;
+  cursor: pointer !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(249, 115, 22, 0.3) !important; /* orange, bukan red */
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s !important;
+  overflow: hidden !important;
+}
+.music-mini-player-mode:hover {
+  transform: scale(1.04) translateY(-4px) !important;
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(249, 115, 22, 0.6) !important;
+}
+/* Nonaktifkan interaksi Plyr saat mini mode (seperti video) */
+.music-mini-player-mode .plyr {
+  pointer-events: none !important;
+}
+
+/* Padding bawah body agar konten tidak tertutup mini player bar */
+body:has(#mini-player.active),
+body:has(#mini-player-index.active) {
+  padding-bottom: 76px;
+}
+
+/* Mobile: player mini lebih kecil */
 @media (max-width: 640px) {
-  #mini-player {
-    width: 100%;
-    right: 0;
-    bottom: 0;
-    border-radius: 12px 12px 0 0;
+  .music-mini-player-mode {
+    width: 260px !important;
+    right: 12px !important;
+    bottom: 80px !important;
   }
 }
 

@@ -462,42 +462,24 @@ if (miniPlayerHeader) {
   });
 }
 
-// Toggle mini player visibility
+// Toggle mini player visibility -> Pindah ke index.php
 window.toggleMiniPlayer = function () {
-  isMiniPlayerActive = !isMiniPlayerActive;
-
-  if (isMiniPlayerActive) {
-    miniPlayer.classList.add("active");
-    playerContainer.style.display = "none";
-    updateMiniPlayerUI();
-
-    // Simpan audio state
-    saveAudioState();
-
-    // Load index content dengan HTMX (no page reload, smooth)
-    const mainContent = document.querySelector("main");
-    if (mainContent) {
-      htmx.ajax("GET", "index.php?content_only=1", {
-        target: mainContent,
-        swap: "innerHTML",
-        onLoad: function (xhr) {
-          // Reinit lucide icons
-          lucide.createIcons();
-          // Setup mini player
-          if (window.initMiniPlayerIndex) {
-            window.initMiniPlayerIndex();
-          }
-        },
-      });
-    }
-  } else {
-    // Expand kembali ke full player, tetap keep index-content
-    miniPlayer.classList.remove("active");
-    playerContainer.style.display = "block";
-
-    // Scroll to top agar player visible
-    playerContainer.scrollIntoView({ behavior: "smooth" });
+  // 1. Simpan state audio (waktu dan status play)
+  saveAudioState();
+  
+  // 2. Pause audio utama agar tidak double play di background
+  if (player && !player.paused) {
+    player.pause();
   }
+
+  // 3. Load index.php menggunakan HTMX dan timpa isi <body>
+  htmx.ajax("GET", "index.php", {
+    target: "body",
+    swap: "innerHTML"
+  });
+
+  // 4. Ubah URL di address bar agar terlihat natural
+  window.history.pushState({}, "", "index.php");
 };
 
 // Save audio state to sessionStorage

@@ -481,32 +481,53 @@ switch ($ext) {
         </div>
     <?php endif; ?>
 
-    <!-- MINI PLAYER -->
-    <div id="mini-player">
-        <div class="mini-player-header" onclick="toggleMiniPlayer()">
-            <div class="mini-player-thumbnail">
-                <img id="mini-thumbnail" src="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>" alt="cover">
-            </div>
-            <div class="mini-player-info">
-                <div class="mini-player-title" id="mini-title"><?= htmlspecialchars($v['title']) ?></div>
-                <div class="mini-player-artist" id="mini-artist"><?= htmlspecialchars($v['artist'] ?? 'Unknown') ?></div>
-            </div>
-            <div class="mini-player-close" onclick="event.stopPropagation(); toggleMiniPlayer()">
-                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
-            </div>
+    <!-- MINI PLAYER (Spotify-style) -->
+    <div id="mini-player" aria-label="Mini Player">
+
+        <!-- Progress bar — paling atas, full width -->
+        <div class="mp-seekbar" id="mp-seekbar" onclick="miniSeek(event)" title="Klik untuk seek">
+            <div class="mp-seekbar-fill" id="mp-seekbar-fill"></div>
+            <div class="mp-seekbar-thumb" id="mp-seekbar-thumb"></div>
         </div>
-        <div class="mini-player-controls">
-            <button class="mini-player-btn" onclick="miniPlayPause()" id="mini-play-btn">
-                <i data-lucide="play" style="width: 18px; height: 18px;"></i>
-            </button>
-        </div>
-        <div class="mini-player-progress">
-            <div class="mini-progress-bar" id="mini-progress-bar" onclick="miniSeek(event)">
-                <div class="mini-progress-fill" id="mini-progress-fill" style="width: 0%"></div>
+
+        <div class="mp-body">
+            <!-- Kiri: thumbnail + info -->
+            <div class="mp-track" onclick="toggleMiniPlayer()" title="Buka player penuh">
+                <div class="mp-art">
+                    <img id="mini-thumbnail" src="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>" alt="cover">
+                    <div class="mp-art-overlay">
+                        <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
+                    </div>
+                </div>
+                <div class="mp-meta">
+                    <div class="mp-title" id="mini-title"><?= htmlspecialchars($v['title']) ?></div>
+                    <div class="mp-artist" id="mini-artist"><?= htmlspecialchars($v['artist'] ?? 'Unknown') ?></div>
+                </div>
             </div>
-            <div class="mini-progress-text">
-                <span id="mini-current-time">0:00</span>
-                <span id="mini-duration">0:00</span>
+
+            <!-- Tengah: kontrol -->
+            <div class="mp-controls">
+                <button class="mp-btn mp-btn-ghost" onclick="miniPrev()" id="mp-prev-btn" title="Sebelumnya">
+                    <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
+                </button>
+                <button class="mp-btn mp-btn-primary" onclick="miniPlayPause()" id="mini-play-btn" title="Play / Pause">
+                    <i data-lucide="play" style="width:18px;height:18px;"></i>
+                </button>
+                <button class="mp-btn mp-btn-ghost" onclick="miniNext()" id="mp-next-btn" title="Berikutnya">
+                    <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
+                </button>
+            </div>
+
+            <!-- Kanan: waktu + tutup -->
+            <div class="mp-right">
+                <div class="mp-time">
+                    <span id="mini-current-time">0:00</span>
+                    <span class="mp-time-sep">/</span>
+                    <span id="mini-duration">0:00</span>
+                </div>
+                <button class="mp-btn mp-btn-ghost mp-close" onclick="event.stopPropagation(); closeMiniPlayer()" title="Tutup">
+                    <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+                </button>
             </div>
         </div>
     </div>
