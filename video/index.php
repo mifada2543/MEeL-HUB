@@ -24,19 +24,6 @@ $total      = $library->countVideos();
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>
     <script src="../assets/js/htmx.js"></script>
-    <style>
-        :root {
-            --font-display: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-        }
-
-        .section-title {
-            font-family: var(--font-display);
-            font-size: 2.2rem;
-            letter-spacing: .06em;
-            color: #f0f2f7;
-            line-height: 1;
-        }
-    </style>
 </head>
 
 <body class="text-gray-400 min-h-screen">
