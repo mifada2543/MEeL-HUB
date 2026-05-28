@@ -1,8 +1,8 @@
 <?php
 session_name("meel");
 session_start();
-include 'auth/config.php';
-include __DIR__ . '/modules/helpers.php';
+include '../auth/config.php';
+include __DIR__ . '/../modules/helpers.php';
 // Proteksi Admin
 if (!isset($_SESSION['user_id'])) { die("Akses ditolak."); }
 
@@ -13,7 +13,7 @@ $query_user->execute();
 $user_data = $query_user->get_result()->fetch_assoc();
 
 if (!$user_data || $user_data['role'] !== 'admin') {
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit();
 }
 
@@ -58,8 +58,8 @@ $result_media = $conn->query($query_media);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEeL | Media Analytics</title>
-    <link rel="icon" type="image/png" href="assets/MEeL.png">
-    <script src="assets/js/tailwind.js"></script>
+    <link rel="icon" type="image/png" href="../assets/MEeL.png">
+    <script src="../assets/js/tailwind.js"></script>
     <style>
         body { background-color: #0b0e14; }
         .glass { background: rgba(22, 27, 34, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
@@ -78,7 +78,7 @@ $result_media = $conn->query($query_media);
                     <p class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Media Monitor</p>
                 </div>
             </div>
-            <a href="system_check.php" class="p-2 hover:bg-gray-800 rounded-xl transition-all">
+            <a href="index.php" class="p-2 hover:bg-gray-800 rounded-xl transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </a>
         </div>
@@ -113,7 +113,7 @@ $result_media = $conn->query($query_media);
                         <?php while ($row = $result_media->fetch_assoc()): ?>
                             <?php 
                                 // Set path klik judul berdasarkan tipe media
-                                $target_path = ($row['media_type'] === 'video') ? "video/watch.php?id=" . $row['id'] : "music/watch.php?id=" . $row['id'];
+                                $target_path = ($row['media_type'] === 'video') ? "../video/watch.php?id=" . $row['id'] : "../music/watch.php?id=" . $row['id'];
                             ?>
                             <tr class="hover:bg-white/[0.02] transition-colors group">
                                 <td class="py-4 px-6">

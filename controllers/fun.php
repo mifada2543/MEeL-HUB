@@ -7,7 +7,7 @@ $query_user->execute();
 $user_data = $query_user->get_result()->fetch_assoc();
 
 if (!$user_data || $user_data['role'] !== 'admin') {
-    header("Location: index.php?error=ditolak");
+    header("Location: ../index.php?error=ditolak");
     exit();
 }
 
@@ -21,7 +21,7 @@ if (isset($_POST['ban_ip'])) {
     $stmt->bind_param("ss", $ip_to_ban, $reason);
 
     if ($stmt->execute()) {
-        header("Location: system_check.php?msg=IP_Banned");
+        header("Location: index.php?msg=IP_Banned");
     }
     exit();
 }
@@ -33,7 +33,7 @@ if (isset($_GET['unban_ip'])) {
     $stmt_unban->bind_param("s", $ip_to_unban);
 
     if ($stmt_unban->execute()) {
-        header("Location: system_check.php?msg=IP_Unbanned#unban");
+        header("Location: index.php?msg=IP_Unbanned#unban");
     }
     exit();
 }
@@ -44,9 +44,9 @@ if (isset($_POST['clear_all_guests'])) {
     // Miro memperbarui query agar hanya menghapus Guest yang tidak aktif (is_active 0)
     $stmt = $conn->prepare("DELETE FROM users WHERE role = 'guest' AND is_active = 0");
     if ($stmt->execute()) {
-        header("Location: system_check.php?msg=Guests_Cleared_Efficiently");
+        header("Location: index.php?msg=Guests_Cleared_Efficiently");
     } else {
-        header("Location: system_check.php?msg=Error_Cleaning");
+        header("Location: index.php?msg=Error_Cleaning");
     }
     exit();
 }
@@ -67,7 +67,7 @@ if (isset($_POST['clean_stuck_queues'])) {
     // 2. Eksekusi pembersihan
     $sys = new System($conn);
     $cleaned = $sys->cleanStuckQueues();
-    $redirect_url = "system_check.php?msg=Queues_Cleaned_" . $cleaned . "#queues";
+    $redirect_url = "index.php?msg=Queues_Cleaned_" . $cleaned . "#queues";
 
     // 3. Fallback cerdas untuk menghindari "Headers Already Sent"
     if (!headers_sent()) {
@@ -92,7 +92,7 @@ if (isset($_POST['force_stop_queue'])) {
     $sys = new System($conn);
     $sys->forceStopQueue($queue_id, $task_type);
 
-    $redirect_url = "system_check.php?msg=Queue_Force_Stopped#queues";
+    $redirect_url = "index.php?msg=Queue_Force_Stopped#queues";
     
     if (!headers_sent()) {
         header("Location: " . $redirect_url);
@@ -106,13 +106,13 @@ if (isset($_POST['force_stop_queue'])) {
 if (isset($_GET['approve_id'])) {
     $id = (int)$_GET['approve_id'];
     $conn->query("UPDATE users SET is_active = 1 WHERE id = $id");
-    header("Location: system_check.php?msg=Approved");
+    header("Location: index.php?msg=Approved");
     exit();
 }
 if (isset($_GET['reject_id'])) {
     $id = (int)$_GET['reject_id'];
     $conn->query("DELETE FROM users WHERE id = $id AND is_active = 2");
-    header("Location: system_check.php?msg=Rejected");
+    header("Location: index.php?msg=Rejected");
     exit();
 }
 if (isset($_POST['clean_orphans'])) {
@@ -120,7 +120,7 @@ if (isset($_POST['clean_orphans'])) {
     foreach ($files as $f) {
         if (file_exists($f)) unlink($f);
     }
-    header("Location: system_check.php?status=cleaned#monitor");
+    header("Location: index.php?status=cleaned#system_check");
     exit();
 }
 // LOGIKA HAPUS AKUN (Hanya boleh hapus non-admin)
@@ -135,10 +135,10 @@ if (isset($_GET['delete_user_id'])) {
 
     // 2. Validasi: Jangan hapus diri sendiri ATAU sesama admin
     if ($id_to_delete === $_SESSION['user_id']) {
-        header("Location: system_check.php?msg=Cannot_Delete_Self");
+        header("Location: index.php?msg=Cannot_Delete_Self");
         exit();
     } elseif ($target_user && $target_user['role'] === 'admin') {
-        header("Location: system_check.php?msg=Cannot_Delete_Admin");
+        header("Location: index.php?msg=Cannot_Delete_Admin");
         exit();
     }
 
@@ -147,7 +147,7 @@ if (isset($_GET['delete_user_id'])) {
     $stmt_del->bind_param("i", $id_to_delete);
 
     if ($stmt_del->execute()) {
-        header("Location: system_check.php?msg=User_Deleted");
+        header("Location: index.php?msg=User_Deleted");
     }
     exit();
 }
@@ -361,7 +361,7 @@ if (isset($_GET['kick_user'])) {
 
     if ($stmt_kick->execute()) {
         // Redirect kembali agar query $result_monitor di bawah mengambil data terbaru
-        header("Location: system_check.php?msg=Kicked_Success#monitor");
+        header("Location: index.php?msg=Kicked_Success#monitor");
         exit();
     }
 }

@@ -132,7 +132,7 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
                         <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Upload Media</span>
                     </a>
-                    <a href="<?= $_nav_root ?>system_check.php"
+                    <a href="<?= $_nav_root ?>admin/index.php"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-red-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="settings" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Admin Panel</span>
@@ -251,7 +251,7 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
                     <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
                     <span>Upload Media</span>
                 </a>
-                <a href="<?= $_nav_root ?>system_check.php"
+                <a href="<?= $_nav_root ?>admin/index.php"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
                     <span>Admin Panel</span>

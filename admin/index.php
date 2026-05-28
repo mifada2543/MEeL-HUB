@@ -2,13 +2,41 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-include 'auth/config.php';
-include 'auth/auth.php';
-include_once 'modules/activity_logger.php';
+include '../auth/config.php';
+include '../auth/auth.php';
+include_once '../modules/activity_logger.php';
+
 if (!isset($_SESSION['user_id'])) {
-    die(include 'err/denied.php');
+    die(include '../err/denied.php');
 }
-include 'controllers/fun.php';
+
+include '../controllers/fun.php';
+
+/** * --- IDE Type Hinting for Intelephense ---
+ * These variables are initialized in '../controllers/fun.php'
+ * * @var float $ssd_free
+ * @var float $ssd_used
+ * @var float $ssd_total
+ * @var float $hdd_free
+ * @var float $p_vid
+ * @var float $sz_vid
+ * @var float $p_mus
+ * @var float $sz_mus
+ * @var float $p_book
+ * @var float $sz_book
+ * @var float $p_drive
+ * @var float $sz_d_pub
+ * @var float $sz_d_prv
+ * @var array $stats
+ * @var array $orphans
+ * @var float $ssd_free
+ * @var mysqli_result $top_media
+ * @var mysqli_result $pending_users
+ * @var mysqli_result $all_users
+ * @var mysqli_result $result_monitor
+ * @var mysqli_result $banned_ips
+ * @var object $sys
+ */
 ?>
 
 <!DOCTYPE html>
@@ -18,9 +46,9 @@ include 'controllers/fun.php';
     <meta charset="UTF-8">
     <title>MEeL | System Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="assets/MEeL.png">
-    <script src="assets/js/tailwind.js"></script>
-    <script src="assets/js/lucide.js"></script>
+    <link rel="icon" type="image/png" href="../assets/MEeL.png">
+    <script src="../assets/js/tailwind.js"></script>
+    <script src="../assets/js/lucide.js"></script>
     <style>
         body {
             background-color: #0b0e14;
@@ -45,7 +73,7 @@ include 'controllers/fun.php';
                     <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Admin Center</p>
                 </div>
             </div>
-            <a href="index.php" class="p-2 hover:bg-gray-800 rounded-xl transition-all"><i data-lucide="x" class="w-6 h-6 text-gray-500"></i></a>
+            <a href="../index.php" class="p-2 hover:bg-gray-800 rounded-xl transition-all"><i data-lucide="x" class="w-6 h-6 text-gray-500"></i></a>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -280,7 +308,7 @@ include 'controllers/fun.php';
                     <i data-lucide="server" class="w-5 h-5 text-purple-500"></i>
                     <h3 class="text-xs font-bold text-purple-500 uppercase">Active Background Tasks</h3>
                 </div>
-                <form method="POST" action="system_check.php" onsubmit="return confirm('Bersihkan semua antrean yang stuck (> 30 menit)?');">
+                <form method="POST" action="index.php" onsubmit="return confirm('Bersihkan semua antrean yang stuck (> 30 menit)?');">
                     <button type="submit" name="clean_stuck_queues" value="1" class="flex items-center gap-2 text-[9px] bg-purple-600/10 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-xl hover:bg-purple-600 hover:text-white transition-all font-bold uppercase cursor-pointer">
                         <i data-lucide="refresh-cw" class="w-3 h-3"></i>
                         Clean Stuck Queues
@@ -319,7 +347,7 @@ include 'controllers/fun.php';
                                         <div class="flex items-center justify-end gap-3">
                                             <span class="text-gray-500 font-mono text-[10px]"><?= $q['created_at'] ?></span>
 
-                                            <form method="POST" action="system_check.php" class="m-0" onsubmit="return confirm('Hentikan paksa proses spesifik ini?');">
+                                            <form method="POST" action="index.php" class="m-0" onsubmit="return confirm('Hentikan paksa proses spesifik ini?');">
                                                 <input type="hidden" name="queue_id" value="<?= $q['id'] ?>">
                                                 <input type="hidden" name="task_type" value="<?= $q['task_type'] ?>">
 
@@ -346,7 +374,7 @@ include 'controllers/fun.php';
         <div class="glass rounded-3xl overflow-hidden shadow-2xl" id="monitor">
             <div class="p-6 border-b border-white/5 justify-between flex items-center">
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Live Activity Monitor</h3>
-                <form method="POST" action="system_check.php" onsubmit="return confirm('Hapus semua Guest?');">
+                <form method="POST" action="index.php" onsubmit="return confirm('Hapus semua Guest?');">
                     <button type="submit" name="clear_all_guests" value="1" class="group flex flex-col items-end gap-1 cursor-pointer">
                         <div class="flex items-center gap-2 text-[9px] bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold uppercase">
                             <i data-lucide="shield-alert" class="w-3 h-3"></i>

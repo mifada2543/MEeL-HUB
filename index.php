@@ -242,7 +242,7 @@ $counts  = $library->getCounts();
         <div class="flex flex-wrap items-center justify-center gap-3">
             <?php if ($is_logged_in && isset($_SESSION['role'])): ?>
                 <?php if ($_SESSION['role'] === 'admin'): ?>
-                    <a href="system_check.php" class="bottom-link">
+                    <a href="admin/index.php" class="bottom-link">
                         <i data-lucide="settings" class="w-3 h-3"></i> Admin Panel
                     </a>
                     <a href="upload_advanced.php" class="bottom-link">
