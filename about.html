@@ -1,126 +1,140 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="assets/MEeL.png">
     <title>MEeL Founder | Portfolio</title>
+    <link rel="icon" href="assets/MEeL.png" type="image/png">
     <script src="assets/js/tailwind.js"></script>
-    <!-- Lucide Icons Library -->
     <script src="assets/js/lucide.js"></script>
+    <link href="assets/css/font.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Fraunces', 'serif'],
+                        mono: ['IBM Plex Mono', 'monospace'],
+                    },
+                    colors: {
+                        ink: { DEFAULT: '#0a0b0f', 2: '#111318', 3: '#1a1c24' },
+                        meel: { blue: '#3b82f6', orange: '#f97316', green: '#22c55e', red: '#ef4444' },
+                    },
+                }
+            }
+        }
+    </script>
+
     <style>
-        :root {
-            --bg-dark: #05060a;
-            --meel-blue: #3b82f6;
-            --meel-orange: #f97316;
-            --meel-green: #22c55e;
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --accent-glow: rgba(59, 130, 246, 0.12);
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: auto;
         }
 
         body {
-            background-color: var(--bg-dark);
-            color: #e2e8f0;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Fraunces', serif;
+            cursor: none;
             overflow-x: hidden;
-            scroll-behavior: smooth;
         }
 
-        /* Latar Belakang Grid */
-        .grid-bg {
+        /* ── CURSOR ── */
+        #cursor-dot,
+        #cursor-ring {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-            background-size: 50px 50px;
-            z-index: -1;
-        }
-
-        /* Cahaya Mengikuti Mouse */
-        .hero-glow {
-            position: fixed;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-            filter: blur(80px);
             pointer-events: none;
-            z-index: -1;
+            z-index: 9999;
+            border-radius: 50%;
+            transition: opacity .3s;
+        }
+
+        #cursor-dot {
+            width: 6px;
+            height: 6px;
+            background: #3b82f6;
             transform: translate(-50%, -50%);
-            transition: opacity 0.5s ease;
         }
 
-        /* Glassmorphism Card */
-        .glass-card {
-            background: var(--glass-bg);
+        #cursor-ring {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(59, 130, 246, .45);
+            transform: translate(-50%, -50%);
+            transition: width .25s, height .25s, border-color .25s;
+        }
+
+        body:has(a:hover) #cursor-ring,
+        body:has(button:hover) #cursor-ring {
+            width: 48px;
+            height: 48px;
+            border-color: #3b82f6;
+        }
+
+        /* ── BG ── */
+        .bg-grid {
+            background-image: linear-gradient(rgba(255, 255, 255, .015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, .015) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        .noise {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-size: 256px;
+        }
+
+        /* ── GLASS ── */
+        .glass {
+            background: rgba(255, 255, 255, .03);
             backdrop-filter: blur(16px) saturate(180%);
-            -webkit-backdrop-filter: blur(16px) saturate(180%);
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), 
-                        background 0.4s ease, 
-                        box-shadow 0.4s ease,
-                        border-color 0.4s ease;
+            border: 1px solid rgba(255, 255, 255, .07);
         }
 
-        .glass-card:hover {
-            background: rgba(255, 255, 255, 0.06);
-            transform: translateY(-8px);
-            border-color: rgba(59, 130, 246, 0.3);
-            box-shadow: 0 12px 40px -10px rgba(59, 130, 246, 0.3);
+        .glass-nav {
+            background: rgba(10, 11, 15, .82);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, .07);
         }
 
-        /* Navigasi */
-        nav.glass-nav {
-            background: rgba(5, 6, 10, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-
+        /* ── NAV LINK ── */
         .nav-link {
             position: relative;
-            transition: color 0.3s ease;
-            padding: 0.5rem 0;
-            color: #9ca3af;
+            padding-bottom: 3px;
+            transition: color .25s;
+            color: #6b7280;
         }
 
         .nav-link::after {
             content: '';
             position: absolute;
-            bottom: -2px;
+            bottom: 0;
             left: 50%;
             width: 0;
-            height: 2px;
-            background: var(--meel-blue);
-            box-shadow: 0 0 10px var(--meel-blue);
-            transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-            transform: translateX(-50%);
+            height: 1px;
+            background: #3b82f6;
+            transition: width .3s, left .3s;
         }
 
-        .nav-link:hover, .nav-link.active-link {
-            color: white;
+        .nav-link:hover,
+        .nav-link.active {
+            color: #fff;
         }
 
-        .nav-link:hover::after, .nav-link.active-link::after {
+        .nav-link:hover::after,
+        .nav-link.active::after {
             width: 100%;
+            left: 0;
         }
 
-        .meel-logo-box {
-            font-family: 'JetBrains Mono', monospace;
-            text-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
-        }
-
-        /* Animasi */
+        /* ── REVEAL ── */
         .reveal {
             opacity: 0;
-            transform: translateY(40px);
-            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateY(36px);
+            transition: opacity .9s cubic-bezier(.16, 1, .3, 1), transform .9s cubic-bezier(.16, 1, .3, 1);
         }
 
         .reveal.active {
@@ -128,200 +142,801 @@
             transform: translateY(0);
         }
 
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-dark); }
-        ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--meel-blue); }
+        /* ── HERO TITLE ── */
+        .hero-outline {
+            -webkit-text-stroke: 1px rgba(255, 255, 255, .18);
+            color: transparent;
+            font-style: italic;
+            font-weight: 300;
+        }
+
+        /* ── CARD HOVER ── */
+        .module-card {
+            transition: transform .4s cubic-bezier(.23, 1, .32, 1), background .3s, border-color .35s;
+        }
+
+        .module-card:hover {
+            transform: translateY(-6px);
+        }
+
+        /* ── PAGE TRANSITION OVERLAY ── */
+        #transition-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .overlay-slice {
+            flex: 1;
+            background: #1a1c24;
+            transform: scaleY(0);
+        }
+
+        @keyframes slice-in {
+            from {
+                transform: scaleY(0);
+                transform-origin: bottom
+            }
+
+            to {
+                transform: scaleY(1);
+                transform-origin: bottom
+            }
+        }
+
+        @keyframes slice-out {
+            from {
+                transform: scaleY(1);
+                transform-origin: top
+            }
+
+            to {
+                transform: scaleY(0);
+                transform-origin: top
+            }
+        }
+
+        .slice-in {
+            animation: slice-in .35s cubic-bezier(.77, 0, .18, 1) forwards;
+        }
+
+        .slice-out {
+            animation: slice-out .45s cubic-bezier(.77, 0, .18, 1) forwards;
+        }
+
+        /* ── TICKER ── */
+        .ticker-track {
+            display: flex;
+            animation: ticker 28s linear infinite;
+            white-space: nowrap;
+        }
+
+        @keyframes ticker {
+            from {
+                transform: translateX(0)
+            }
+
+            to {
+                transform: translateX(-50%)
+            }
+        }
+
+        /* ── SCROLL PROGRESS ── */
+        #scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 200;
+            height: 2px;
+            width: 0;
+            background: linear-gradient(90deg, #3b82f6, #93c5fd);
+            box-shadow: 0 0 10px rgba(59, 130, 246, .4);
+            transition: width .1s linear;
+        }
+
+        /* ── SECTION LABEL ── */
+        #section-label {
+            position: fixed;
+            bottom: 36px;
+            left: 50%;
+            transform: translateX(-50%) translateY(12px);
+            z-index: 500;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s, transform .3s;
+        }
+
+        #section-label.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0b0f;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+        }
+
+        /* ── PULSE ── */
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: .4;
+                transform: scale(.7)
+            }
+        }
+
+        .pulse-dot {
+            animation: pulse 2s infinite;
+        }
+
+        /* ── SCROLL HINT ── */
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateX(-50%) translateY(0)
+            }
+
+            50% {
+                transform: translateX(-50%) translateY(8px)
+            }
+        }
+
+        .scroll-hint {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @media (max-width: 768px) {
+
+            #cursor-dot,
+            #cursor-ring {
+                display: none;
+            }
+
+            body {
+                cursor: auto;
+            }
+        }
     </style>
 </head>
-<body>
 
-    <div class="grid-bg"></div>
-    <div class="hero-glow" id="cursor-glow"></div>
+<body class="bg-ink text-slate-200">
+    <div class="bg-grid noise fixed inset-0 -z-10 opacity-[.025]"></div>
+    <div class="bg-grid fixed inset-0 -z-20"></div>
+    <div id="glow" class="fixed -z-10 w-[700px] h-[700px] rounded-full pointer-events-none"
+        style="background:radial-gradient(circle,rgba(59,130,246,.1),transparent 65%);filter:blur(60px);transform:translate(-50%,-50%)">
+    </div>
+    <div id="scroll-progress"></div>
+    <div id="section-label">
+        <span
+            class="font-mono text-[10px] tracking-[.25em] uppercase text-slate-400 glass px-5 py-2 rounded-full"></span>
+    </div>
+    <div id="transition-overlay">
+        <div class="overlay-slice"></div>
+        <div class="overlay-slice"></div>
+        <div class="overlay-slice"></div>
+        <div class="overlay-slice"></div>
+        <div class="overlay-slice"></div>
+        <div class="overlay-slice"></div>
+    </div>
+    <div id="cursor-dot"></div>
+    <div id="cursor-ring"></div>
 
-    <!-- Navigasi -->
-    <nav class="fixed top-8 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl z-50 py-3 px-8 flex justify-between items-center rounded-full glass-nav">
-        <div class="flex items-center space-x-3" onclick="window.location.href='index.php'">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white meel-logo-box shadow-lg shadow-blue-500/30">M</div>
-            <span class="text-lg font-bold tracking-tighter uppercase">MEeL <span class="text-blue-500">FOUNDER</span></span>
-        </div>
-        
-        <div id="nav-menu" class="hidden md:flex space-x-8 text-[11px] font-bold uppercase tracking-widest">
-            <a href="#home" class="nav-link active-link" data-section="home">Home</a>
-            <a href="#galeri" class="nav-link" data-section="galeri">Galeri</a>
-            <a href="#kontak" class="nav-link" data-section="kontak">Kontak</a>
-        </div>
+    <!-- ═══════════════════════════════════════ NAV ═══════════════════════════════════════ -->
+    <nav class="glass-nav fixed top-6 left-1/2 -translate-x-1/2 w-[92%] max-w-4xl z-50
+                flex items-center justify-between px-7 py-3.5 rounded-full">
+        <a href="index.php" class="flex items-center gap-2.5 no-underline cursor-none">
+            <img src="assets/MEeL.png" alt="MEeL" class="w-8 h-8 bg-blue-500 rounded-lg grid place-items-center font-mono font-bold text-white text-sm shadow-lg shadow-blue-500/30">
+            <span class="font-display font-black text-[15px] tracking-tight uppercase text-white">
+                MEeL <span class="text-blue-400">HUB</span>
+            </span>
+        </a>
 
-        <div class="hidden sm:flex text-[9px] font-mono text-green-500 items-center bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
-            <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-2 animate-pulse"></span> SYSTEM_LIVE
+        <ul class="hidden md:flex gap-9 list-none font-mono text-[10px] tracking-[.2em] uppercase">
+            <li><a href="#home" class="nav-link active" data-s="home">Home</a></li>
+            <li><a href="#modules" class="nav-link" data-s="modules">Modul</a></li>
+            <li><a href="#stack" class="nav-link" data-s="stack">Tech</a></li>
+            <li><a href="#kontak" class="nav-link" data-s="kontak">Kontak</a></li>
+        </ul>
+
+        <div class="hidden sm:flex items-center gap-2 font-mono text-[9px] tracking-widest uppercase
+                    text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-full">
+            <span class="pulse-dot w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+            SYSTEM_LIVE
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section id="home" class="min-h-screen flex flex-col justify-center items-center px-6 text-center pt-24">
+    <!-- ═══════════════════════════════════════ HERO ══════════════════════════════════════ -->
+    <section id="home" class="min-h-screen flex flex-col justify-center items-center text-center px-6 pt-28 relative">
         <div class="reveal">
-            <p class="text-blue-500 font-mono tracking-[0.4em] text-xs mb-6 uppercase bg-blue-500/10 px-4 py-2 rounded-full inline-block border border-blue-500/20">Architect of Digital Ecosystem</p>
-            <h1 class="text-7xl md:text-9xl font-extrabold mb-8 tracking-tighter leading-none">
-                MEeL <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">HUB</span>
-            </h1>
-            <p class="max-w-2xl mx-auto text-gray-400 text-lg md:text-xl leading-relaxed mb-12">
-                Membangun masa depan hiburan lokal melalui platform streaming terintegrasi. 
-                Fokus pada minimalisme, kecepatan, dan pengalaman pengguna yang imersif.
+
+            <p
+                class="font-mono text-[10px] tracking-[.4em] uppercase text-blue-400
+                       bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-full inline-flex items-center gap-2 mb-10">
+                <i data-lucide="zap" class="w-3 h-3"></i>
+                Architect of Digital Ecosystem
             </p>
-            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
-                <a href="#galeri" class="w-full sm:w-auto px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2">
-                    Eksplorasi Proyek <i data-lucide="arrow-right" class="w-4 h-4"></i>
+
+            <h1 class="font-display leading-[.88] tracking-tight mb-4" style="font-size:clamp(72px,13vw,160px)">
+                <span class="hero-outline block" style="font-size:.65em">DIGITAL</span>
+                <span class="block text-white font-black">MEeL</span>
+                <span class="block text-blue-400 italic font-bold">HUB</span>
+            </h1>
+
+            <p class="font-mono text-[11px] tracking-[.12em] text-slate-600 mb-8">
+                // v2026 · php · mysql · ffmpeg · hls
+            </p>
+
+            <p class="max-w-xl mx-auto text-slate-400 text-lg leading-relaxed mb-12">
+                Platform media cloud terpadu — streaming video, musik, buku digital, dan cloud drive
+                dalam satu ekosistem berperforma tinggi.
+            </p>
+
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="#modules" class="flex items-center gap-2 px-10 py-4 bg-blue-500 hover:bg-blue-400
+                          text-white font-bold rounded-xl shadow-xl shadow-blue-500/25
+                          transition-all duration-200 hover:-translate-y-0.5 cursor-none">
+                    Eksplorasi Modul <i data-lucide="arrow-right" class="w-4 h-4"></i>
                 </a>
-                <a href="#kontak" class="w-full sm:w-auto px-10 py-4 glass-card rounded-xl font-bold transition-all flex items-center justify-center text-white">
+                <a href="#kontak" class="flex items-center gap-2 px-10 py-4 glass hover:bg-white/[.06]
+                          text-white font-bold rounded-xl transition-all duration-200
+                          hover:-translate-y-0.5 cursor-none">
                     Hubungi Saya
                 </a>
             </div>
         </div>
-    </section>
 
-    <!-- Gallery Section -->
-    <section id="galeri" class="py-32 px-6 max-w-7xl mx-auto">
-        <div class="flex flex-col md:flex-row justify-between items-end mb-16 space-y-6">
-            <div class="reveal">
-                <h2 class="text-5xl font-extrabold mb-4 tracking-tight">Karya <span class="text-blue-500">Saya</span></h2>
-                <p class="text-gray-500 text-lg max-w-md">Dokumentasi evolusi antarmuka dan sistem MEeL Ecosystem.</p>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="reveal glass-card p-6 rounded-3xl group cursor-pointer">
-                <div class="w-12 h-12 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500 mb-6">
-                    <i data-lucide="play-circle" class="w-8 h-8"></i>
-                </div>
-                <h3 class="text-2xl font-bold mb-3 text-white group-hover:text-red-400 transition-colors">Video Portal</h3>
-                <p class="text-gray-500 text-sm leading-relaxed">Streaming lokal koleksi video eksklusif dengan performa ultra cepat.</p>
-            </div>
-
-            <div class="reveal glass-card p-6 rounded-3xl group cursor-pointer" style="transition-delay: 100ms;">
-                <div class="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-500 mb-6">
-                    <i data-lucide="music" class="w-8 h-8"></i>
-                </div>
-                <h3 class="text-2xl font-bold mb-3 text-white group-hover:text-orange-400 transition-colors">Music Stream</h3>
-                <p class="text-gray-500 text-sm leading-relaxed">Koleksi audio lossless tanpa kompresi untuk pengalaman auditif murni.</p>
-            </div>
-
-            <div class="reveal glass-card p-6 rounded-3xl group cursor-pointer" style="transition-delay: 200ms;">
-                <div class="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500 mb-6">
-                    <i data-lucide="book-open" class="w-8 h-8"></i>
-                </div>
-                <h3 class="text-2xl font-bold mb-3 text-white group-hover:text-green-400 transition-colors">Digital Books</h3>
-                <p class="text-gray-500 text-sm leading-relaxed">Arsip komik dan buku digital interaktif dalam satu genggaman.</p>
-            </div>
+        <div class="scroll-hint absolute bottom-10 left-1/2 flex flex-col items-center gap-2.5">
+            <div class="w-px h-12" style="background:linear-gradient(to bottom,transparent,#4b5563)"></div>
+            <span class="font-mono text-[9px] tracking-[.2em] uppercase text-slate-600">scroll</span>
         </div>
     </section>
 
-    <!-- Contact Section -->
-    <section id="kontak" class="py-32 px-6">
-        <div class="max-w-4xl mx-auto glass-card p-12 md:p-20 rounded-[3rem] text-center relative overflow-hidden">
-            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
-            
-            <div class="reveal">
-                <h2 class="text-5xl font-extrabold mb-6 tracking-tight">Mulai <span class="text-blue-500">Kolaborasi</span></h2>
-                <p class="text-gray-400 text-lg mb-16 max-w-xl mx-auto">Mari diskusikan ide-ide kreatif Anda bersama saya.</p>
+    <!-- ═══════════════════════════════════════ TICKER ════════════════════════════════════ -->
+    <div class="overflow-hidden border-y border-white/[.06] bg-ink-2 py-3.5">
+        <div class="ticker-track" id="ticker"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ MODULES ══════════════════════════════════ -->
+    <section id="modules" class="py-32 px-6">
+        <div class="max-w-6xl mx-auto">
+
+            <!-- Header -->
+            <div class="reveal mb-16">
+                <p class="font-mono text-[10px] tracking-[.35em] uppercase text-blue-400 mb-4 flex items-center gap-2">
+                    <span class="text-slate-600">//</span> 04 Modul Utama
+                </p>
+                <h2 class="font-display font-black tracking-tight leading-none mb-4"
+                    style="font-size:clamp(36px,5vw,60px)">
+                    Karya <span class="text-blue-400">Saya</span>
+                </h2>
+                <p class="text-slate-500 text-base leading-relaxed max-w-lg">
+                    Dokumentasi evolusi antarmuka dan arsitektur sistem MEeL Ecosystem.
+                </p>
             </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 reveal">
-                <a href="https://github.com/mifada2543" target="_blank" class="flex flex-col items-center p-8 glass-card rounded-3xl group">
-                    <div class="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                        <i data-lucide="github" class="w-10 h-10 text-white"></i>
+
+            <!-- Stats bar -->
+            <div class="reveal grid grid-cols-2 md:grid-cols-4 mb-5 rounded-2xl overflow-hidden border border-white/[.07]"
+                style="gap:1px;background:rgba(255,255,255,.07)">
+                <div class="bg-ink-2 px-7 py-9 hover:bg-ink-3 transition-colors">
+                    <div class="font-display font-black text-4xl text-red-400 mb-1">HLS</div>
+                    <div class="font-mono text-[10px] tracking-[.15em] uppercase text-slate-500">Video Streaming</div>
+                </div>
+                <div class="bg-ink-2 px-7 py-9 hover:bg-ink-3 transition-colors">
+                    <div class="font-display font-black text-4xl text-orange-400 mb-1">FLAC</div>
+                    <div class="font-mono text-[10px] tracking-[.15em] uppercase text-slate-500">Lossless Audio</div>
+                </div>
+                <div class="bg-ink-2 px-7 py-9 hover:bg-ink-3 transition-colors">
+                    <div class="font-display font-black text-4xl text-green-400 mb-1">PDF</div>
+                    <div class="font-mono text-[10px] tracking-[.15em] uppercase text-slate-500">Digital Books</div>
+                </div>
+                <div class="bg-ink-2 px-7 py-9 hover:bg-ink-3 transition-colors">
+                    <div class="font-display font-black text-4xl text-blue-400 mb-1">S3</div>
+                    <div class="font-mono text-[10px] tracking-[.15em] uppercase text-slate-500">Cloud Drive</div>
+                </div>
+            </div>
+
+            <!-- Module cards -->
+            <div class="grid md:grid-cols-2 gap-4">
+
+                <!-- Video -->
+                <div class="module-card reveal glass rounded-3xl p-10 group relative overflow-hidden cursor-none
+                            hover:border-red-500/30 hover:bg-white/[.04]">
+                    <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        style="background:radial-gradient(500px at 0 0,rgba(239,68,68,.1),transparent 60%)"></div>
+                    <span class="absolute top-7 right-7 font-mono text-[11px] text-slate-600">01</span>
+                    <div class="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400 mb-7">
+                        <i data-lucide="play-circle" class="w-7 h-7"></i>
                     </div>
-                    <span class="font-bold text-lg text-white">GitHub</span>
-                    <span class="text-sm text-gray-500 mt-2">@mifada2543</span>
-                </a>
-                
-                <a href="mailto:minecraft.daffa2501@gmail.com" class="flex flex-col items-center p-8 glass-card rounded-3xl group">
-                    <div class="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 text-blue-500 group-hover:scale-110 transition-transform">
-                        <i data-lucide="mail" class="w-10 h-10"></i>
+                    <h3
+                        class="font-display font-bold italic text-xl text-white group-hover:text-red-300 transition-colors mb-3">
+                        Video Portal</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed mb-6">
+                        Streaming HLS (m3u8 + ts) dengan fallback MP4. Plyr player, quality switching,
+                        VTT thumbnail sprite, PiP, gesture mobile, dan seamless next-video transition.
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-300">HLS.js</span>
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-300">Plyr</span>
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-300">FFmpeg</span>
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-300">yt-dlp</span>
                     </div>
-                    <span class="font-bold text-lg text-white">Email</span>
-                    <span class="text-sm text-gray-500 mt-2">Kontak Langsung</span>
-                </a>
+                </div>
+
+                <!-- Music -->
+                <div class="module-card reveal glass rounded-3xl p-10 group relative overflow-hidden cursor-none
+                            hover:border-orange-500/30 hover:bg-white/[.04]" style="transition-delay:80ms">
+                    <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        style="background:radial-gradient(500px at 100% 0,rgba(249,115,22,.1),transparent 60%)"></div>
+                    <span class="absolute top-7 right-7 font-mono text-[11px] text-slate-600">02</span>
+                    <div
+                        class="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400 mb-7">
+                        <i data-lucide="music" class="w-7 h-7"></i>
+                    </div>
+                    <h3
+                        class="font-display font-bold italic text-xl text-white group-hover:text-orange-300 transition-colors mb-3">
+                        Music Stream</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed mb-6">
+                        Koleksi audio lossless tanpa kompresi. Sistem playlist & antrian putar,
+                        filter format (MP3/FLAC) dan artis, komentar bertingkat & like/dislike.
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300">FLAC</span>
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300">MP3</span>
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300">Playlist</span>
+                    </div>
+                </div>
+
+                <!-- Books -->
+                <div class="module-card reveal glass rounded-3xl p-10 group relative overflow-hidden cursor-none
+                            hover:border-green-500/30 hover:bg-white/[.04]" style="transition-delay:160ms">
+                    <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        style="background:radial-gradient(500px at 0 100%,rgba(34,197,94,.1),transparent 60%)"></div>
+                    <span class="absolute top-7 right-7 font-mono text-[11px] text-slate-600">03</span>
+                    <div
+                        class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-400 mb-7">
+                        <i data-lucide="book-open" class="w-7 h-7"></i>
+                    </div>
+                    <h3
+                        class="font-display font-bold italic text-xl text-white group-hover:text-green-300 transition-colors mb-3">
+                        Digital Books</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed mb-6">
+                        Pembaca komik & buku digital langsung di browser. Upload dengan cover dan metadata,
+                        katalog dengan filter, akses berbasis role untuk konten eksklusif.
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-300">PDF</span>
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-300">Komik</span>
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-300">Role-based</span>
+                    </div>
+                </div>
+
+                <!-- Drive -->
+                <div class="module-card reveal glass rounded-3xl p-10 group relative overflow-hidden cursor-none
+                            hover:border-blue-500/30 hover:bg-white/[.04]" style="transition-delay:240ms">
+                    <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        style="background:radial-gradient(500px at 100% 100%,rgba(59,130,246,.1),transparent 60%)">
+                    </div>
+                    <span class="absolute top-7 right-7 font-mono text-[11px] text-slate-600">04</span>
+                    <div
+                        class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 mb-7">
+                        <i data-lucide="cloud" class="w-7 h-7"></i>
+                    </div>
+                    <h3
+                        class="font-display font-bold italic text-xl text-white group-hover:text-blue-300 transition-colors mb-3">
+                        Cloud Drive</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed mb-6">
+                        Penyimpanan file public/private per user dengan kuota. Upload, download, hapus
+                        dengan kontrol akses admin/member. Monitoring kapasitas storage realtime.
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">Admin/Member</span>
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">Kuota</span>
+                        <span
+                            class="font-mono text-[9px] tracking-[.1em] uppercase px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">CRUD</span>
+                    </div>
+                </div>
+
+                <!-- Feature highlights wide card -->
+                <div class="md:col-span-2 reveal glass rounded-3xl p-10 bg-ink-2 border-white/[.07]"
+                    style="transition-delay:320ms">
+                    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div>
+                            <p class="font-mono text-[10px] tracking-[.15em] uppercase text-blue-400 mb-3">Dashboard Hub
+                            </p>
+                            <p class="text-slate-500 text-sm leading-relaxed">Statistik jumlah media terpusat. Download
+                                via URL (yt-dlp) + transcoding otomatis FFmpeg.</p>
+                        </div>
+                        <div>
+                            <p class="font-mono text-[10px] tracking-[.15em] uppercase text-orange-400 mb-3">Sosial &
+                                Komentar</p>
+                            <p class="text-slate-500 text-sm leading-relaxed">Komentar bertingkat + like/dislike untuk
+                                video & musik. Profil user dengan avatar.</p>
+                        </div>
+                        <div>
+                            <p class="font-mono text-[10px] tracking-[.15em] uppercase text-green-400 mb-3">UX Ekstra
+                            </p>
+                            <p class="text-slate-500 text-sm leading-relaxed">Mode sehat 20-20-20 untuk istirahat mata.
+                                Resume posisi video terakhir via localStorage.</p>
+                        </div>
+                        <div>
+                            <p class="font-mono text-[10px] tracking-[.15em] uppercase text-red-400 mb-3">Changelog</p>
+                            <p class="text-slate-500 text-sm leading-relaxed">Panduan interaktif <code
+                                    class="font-mono text-[11px] text-blue-400">introduction.php</code> dan changelog
+                                rilis <code class="font-mono text-[11px] text-blue-400">update.php</code>.</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="py-16 px-6 text-center border-t border-white/5">
-        <div class="flex flex-col items-center space-y-6">
-            <div class="text-[10px] text-gray-700 uppercase tracking-[0.3em]">Built with Glassmorphism & Lucide Icons</div>
+    <!-- ═══════════════════════════════════════ TECH STACK ════════════════════════════════ -->
+    <div id="stack" class="py-20 px-6 bg-ink-2 border-y border-white/[.05]">
+        <div class="max-w-6xl mx-auto">
+            <div class="reveal mb-12">
+                <p class="font-mono text-[10px] tracking-[.35em] uppercase text-blue-400 mb-4 flex items-center gap-2">
+                    <span class="text-slate-600">//</span> Tech Stack
+                </p>
+                <h2 class="font-display font-black tracking-tight leading-none mb-4"
+                    style="font-size:clamp(36px,5vw,60px)">
+                    Dibangun <span class="text-blue-400">Dengan</span>
+                </h2>
+                <p class="text-slate-500 text-base max-w-lg leading-relaxed">
+                    Kombinasi teknologi battle-tested untuk performa media streaming lokal yang optimal.
+                </p>
+            </div>
+            <div class="reveal grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"
+                style="transition-delay:80ms">
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#777bb4] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">PHP 8.0+</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#4479a1] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">MySQL</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#d22128] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">Apache</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#06b6d4] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">Tailwind</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#3b82f6] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">HTMX</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#f59e0b] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">Lucide</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#00d4aa] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">Plyr.js</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#f97316] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">HLS.js</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#ef4444] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">FFmpeg</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#22c55e] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">yt-dlp</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-[#8b5cf6] shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">SweetAlert2</span>
+                </div>
+                <div
+                    class="glass rounded-2xl px-4 py-4 flex items-center gap-3 hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                    <span class="w-2 h-2 rounded-full bg-slate-400 shrink-0"></span><span
+                        class="font-mono text-[11px] text-slate-400">PHP intl</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ SECURITY ══════════════════════════════════ -->
+    <section id="security" class="py-28 px-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="reveal mb-14">
+                <p class="font-mono text-[10px] tracking-[.35em] uppercase text-blue-400 mb-4 flex items-center gap-2">
+                    <span class="text-slate-600">//</span> Keamanan
+                </p>
+                <h2 class="font-display font-black tracking-tight leading-none mb-4"
+                    style="font-size:clamp(36px,5vw,60px)">
+                    Dibangun <span class="text-blue-400">Aman</span>
+                </h2>
+                <p class="text-slate-500 text-base max-w-lg leading-relaxed">Lapisan keamanan berlapis untuk melindungi
+                    data dan akses sistem.</p>
+            </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div
+                    class="reveal glass rounded-2xl p-8 hover:bg-white/[.04] hover:-translate-y-1 transition-all cursor-none">
+                    <i data-lucide="shield" class="w-7 h-7 text-blue-400 mb-5"></i>
+                    <h4 class="font-display font-bold text-base text-white mb-2">CSRF Protection</h4>
+                    <p class="text-slate-500 text-sm leading-relaxed">Token per session, divalidasi di setiap POST
+                        request via <code class="font-mono text-[11px] text-blue-400">verify_csrf()</code>.</p>
+                </div>
+                <div class="reveal glass rounded-2xl p-8 hover:bg-white/[.04] hover:-translate-y-1 transition-all cursor-none"
+                    style="transition-delay:60ms">
+                    <i data-lucide="timer" class="w-7 h-7 text-orange-400 mb-5"></i>
+                    <h4 class="font-display font-bold text-base text-white mb-2">Session Timeout</h4>
+                    <p class="text-slate-500 text-sm leading-relaxed">Auto-expire setelah 12 jam inaktif. Single-session
+                        enforcement per user aktif.</p>
+                </div>
+                <div class="reveal glass rounded-2xl p-8 hover:bg-white/[.04] hover:-translate-y-1 transition-all cursor-none"
+                    style="transition-delay:120ms">
+                    <i data-lucide="lock" class="w-7 h-7 text-green-400 mb-5"></i>
+                    <h4 class="font-display font-bold text-base text-white mb-2">Prepared Statements</h4>
+                    <p class="text-slate-500 text-sm leading-relaxed">Seluruh query database menggunakan prepared
+                        statements mencegah SQL injection.</p>
+                </div>
+                <div class="reveal glass rounded-2xl p-8 hover:bg-white/[.04] hover:-translate-y-1 transition-all cursor-none"
+                    style="transition-delay:180ms">
+                    <i data-lucide="user-check" class="w-7 h-7 text-purple-400 mb-5"></i>
+                    <h4 class="font-display font-bold text-base text-white mb-2">Role-based Access</h4>
+                    <p class="text-slate-500 text-sm leading-relaxed">Kontrol akses drive dan fitur admin berdasarkan
+                        role <code class="font-mono text-[11px] text-blue-400">admin / member</code>.</p>
+                </div>
+                <div class="reveal glass rounded-2xl p-8 hover:bg-white/[.04] hover:-translate-y-1 transition-all cursor-none"
+                    style="transition-delay:240ms">
+                    <i data-lucide="activity" class="w-7 h-7 text-red-400 mb-5"></i>
+                    <h4 class="font-display font-bold text-base text-white mb-2">Activity Logging</h4>
+                    <p class="text-slate-500 text-sm leading-relaxed">Tracking IP, user agent, dan semua aktivitas.
+                        Sistem ban IP terintegrasi.</p>
+                </div>
+                <div class="reveal glass rounded-2xl p-8 hover:bg-white/[.04] hover:-translate-y-1 transition-all cursor-none"
+                    style="transition-delay:300ms">
+                    <i data-lucide="key" class="w-7 h-7 text-yellow-400 mb-5"></i>
+                    <h4 class="font-display font-bold text-base text-white mb-2">Session Enforcement</h4>
+                    <p class="text-slate-500 text-sm leading-relaxed">Validasi sesi aktif dan role di tiap request
+                        melalui <code class="font-mono text-[11px] text-blue-400">auth/auth.php</code>.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════ CONTACT ═══════════════════════════════════ -->
+    <section id="kontak" class="pb-28 px-6">
+        <div class="max-w-3xl mx-auto glass rounded-[2.5rem] p-16 text-center relative overflow-hidden">
+            <!-- top shimmer line -->
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px"
+                style="background:linear-gradient(90deg,transparent,#3b82f6,transparent)"></div>
+            <!-- glow -->
+            <div class="absolute -top-28 left-1/2 -translate-x-1/2 w-80 h-60 rounded-full pointer-events-none"
+                style="background:radial-gradient(circle,rgba(59,130,246,.1),transparent);filter:blur(40px)"></div>
+
+            <div class="reveal">
+                <p
+                    class="font-mono text-[10px] tracking-[.35em] uppercase text-blue-400 mb-4 flex items-center justify-center gap-2">
+                    <span class="text-slate-600">//</span> Kolaborasi
+                </p>
+                <h2 class="font-display font-black tracking-tight leading-none mb-5"
+                    style="font-size:clamp(36px,5vw,60px)">
+                    Mulai <span class="text-blue-400">Kolaborasi</span>
+                </h2>
+                <p class="text-slate-400 text-base leading-relaxed max-w-md mx-auto mb-14">
+                    Terbuka untuk kolaborasi, kontribusi, dan diskusi teknis seputar MEeL Ecosystem.
+                </p>
+
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <a href="https://github.com/mifada2543" target="_blank" class="flex flex-col items-center gap-3 p-8 glass rounded-3xl group
+                              hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-white/[.06] grid place-items-center group-hover:scale-110 transition-transform">
+                            <i data-lucide="github" class="w-8 h-8 text-white"></i>
+                        </div>
+                        <span class="font-display font-bold text-lg text-white">GitHub</span>
+                        <span class="font-mono text-[11px] text-slate-500">@mifada2543</span>
+                    </a>
+                    <a href="mailto:minecraft.daffa2501@gmail.com" class="flex flex-col items-center gap-3 p-8 glass rounded-3xl group
+                              hover:bg-white/[.05] hover:-translate-y-1 transition-all cursor-none">
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-blue-500/10 grid place-items-center text-blue-400 group-hover:scale-110 transition-transform">
+                            <i data-lucide="mail" class="w-8 h-8"></i>
+                        </div>
+                        <span class="font-display font-bold text-lg text-white">Email</span>
+                        <span class="font-mono text-[11px] text-slate-500">Kontak Langsung</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════ FOOTER ════════════════════════════════════ -->
+    <footer class="border-t border-white/[.05] py-12 px-6">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span class="font-mono text-[10px] tracking-[.1em] text-slate-600">© 2026 MEeL — Mifada. Custom
+                License.</span>
+            <span class="font-mono text-[9px] tracking-[.15em] uppercase text-slate-700">Built with Tailwind · Fraunces
+                · IBM Plex Mono</span>
         </div>
     </footer>
 
     <script>
-        // Inisialisasi Lucide Icons
+        // Initialize Lucide Icons
         lucide.createIcons();
 
-        // Reveal Animation Logic
-        const revealObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) entry.target.classList.add("active");
-            });
-        }, { threshold: 0.1 });
+        // ── CURSOR ──
+        const dot = document.getElementById('cursor-dot');
+        const ring = document.getElementById('cursor-ring');
+        let mx = 0, my = 0, rx = 0, ry = 0;
+        document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+        (function anim() {
+            rx += (mx - rx) * .12; ry += (my - ry) * .12;
+            dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+            ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+            requestAnimationFrame(anim);
+        })();
 
-        document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
+        // ── AMBIENT GLOW ──
+        const glow = document.getElementById('glow');
+        let gx = 0, gy = 0, gtx = 0, gty = 0;
+        document.addEventListener('mousemove', e => { gtx = e.clientX; gty = e.clientY; });
+        (function animG() {
+            gx += (gtx - gx) * .05; gy += (gty - gy) * .05;
+            glow.style.left = gx + 'px'; glow.style.top = gy + 'px';
+            requestAnimationFrame(animG);
+        })();
 
-        // Active Link Tracking
-        const sections = document.querySelectorAll("section");
-        const navLinks = document.querySelectorAll(".nav-link");
+        // ── REVEAL ON SCROLL ──
+        const obs = new IntersectionObserver(entries => {
+            entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('active'); });
+        }, { threshold: 0.08 });
+        document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 
-        const navObserverOptions = {
-            threshold: 0.5,
-            rootMargin: "-10% 0px -40% 0px"
-        };
-
-        const navObserver = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (entry.isIntersecting) {
-                    const activeId = entry.target.getAttribute("id");
-                    navLinks.forEach((link) => {
-                        link.classList.remove("active-link");
-                        if (link.getAttribute("data-section") === activeId) {
-                            link.classList.add("active-link");
-                        }
-                    });
+        // ── ACTIVE NAV ──
+        const navAs = document.querySelectorAll('.nav-link');
+        const secObs = new IntersectionObserver(entries => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    const id = e.target.id;
+                    navAs.forEach(a => a.classList.toggle('active', a.dataset.s === id));
                 }
             });
-        }, navObserverOptions);
+        }, { threshold: 0.4 });
+        document.querySelectorAll('section[id]').forEach(s => secObs.observe(s));
 
-        sections.forEach((section) => navObserver.observe(section));
+        // ── PAGE TRANSITION ──
+        const slices = document.querySelectorAll('.overlay-slice');
+        const overlay = document.getElementById('transition-overlay');
+        const labelEl = document.querySelector('#section-label span');
+        const labelWrap = document.getElementById('section-label');
+        let transitioning = false, labelTimer;
 
-        // Cursor Glow
-        const glow = document.getElementById('cursor-glow');
-        let curX = 0, curY = 0, tgX = 0, tgY = 0;
+        const NAMES = { home: '// Home', modules: '// Modul', stack: '// Tech Stack', security: '// Keamanan', kontak: '// Kontak' };
 
-        document.addEventListener('mousemove', (e) => {
-            tgX = e.clientX;
-            tgY = e.clientY;
-        });
-
-        function updateGlow() {
-            curX += (tgX - curX) * 0.1;
-            curY += (tgY - curY) * 0.1;
-            glow.style.left = `${curX}px`;
-            glow.style.top = `${curY}px`;
-            requestAnimationFrame(updateGlow);
+        function resetSlices() {
+            slices.forEach(s => {
+                s.classList.remove('slice-in', 'slice-out');
+                void s.offsetWidth;
+                s.style.transform = 'scaleY(0)';
+            });
         }
-        updateGlow();
 
-        // Smooth Scroll
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
+        function showLabel(id) {
+            if (!NAMES[id]) return;
+            labelEl.textContent = NAMES[id];
+            labelWrap.classList.add('visible');
+            clearTimeout(labelTimer);
+            labelTimer = setTimeout(() => labelWrap.classList.remove('visible'), 1800);
+        }
+
+        function transitionTo(target, id) {
+            if (transitioning) return;
+            transitioning = true;
+            overlay.style.pointerEvents = 'all';
+            resetSlices();
+
+            // Slices sliding in
+            slices.forEach((s, i) => {
+                s.style.transform = '';
+                setTimeout(() => s.classList.add('slice-in'), i * 40);
+            });
+
+            const inEnd = (slices.length - 1) * 40 + 380;
+            setTimeout(() => {
+                const navH = document.querySelector('nav').offsetHeight + 16;
+                window.scrollTo(0, target.getBoundingClientRect().top + window.scrollY - navH);
+                showLabel(id);
+
+                // Slices sliding out
+                slices.forEach((s, i) => {
+                    s.classList.remove('slice-in');
+                    s.style.transform = 'scaleY(1)';
+                    setTimeout(() => s.classList.add('slice-out'), i * 44 + 60);
+                });
+
+                const outEnd = (slices.length - 1) * 44 + 480 + 60;
+                setTimeout(() => {
+                    resetSlices();
+                    overlay.style.pointerEvents = 'none';
+                    transitioning = false;
+                }, outEnd);
+            }, inEnd);
+        }
+
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', e => {
                 e.preventDefault();
-                const targetId = this.getAttribute('href');
-                const targetElement = document.querySelector(targetId);
-                if (targetElement) {
-                    window.scrollTo({
-                        top: targetElement.offsetTop - 80,
-                        behavior: 'smooth'
-                    });
-                }
+                const target = document.querySelector(a.getAttribute('href'));
+                if (target) transitionTo(target, a.getAttribute('href').replace('#', ''));
             });
         });
+
+        // ── SCROLL PROGRESS ──
+        const bar = document.getElementById('scroll-progress');
+        window.addEventListener('scroll', () => {
+            bar.style.width = (window.scrollY / (document.documentElement.scrollHeight - innerHeight) * 100) + '%';
+        }, { passive: true });
+
+        // ── TICKER TEXT LOOP ──
+        const tickerItems = [
+            'Video Streaming', 'HLS.js', 'FFmpeg Transcoding', 'Music Lossless',
+            'Digital Books', 'Cloud Drive', 'yt-dlp', 'PHP 8.0', 'MySQL',
+            'TailwindCSS', 'Plyr Player', 'HTMX', 'Role-based Access',
+            'CSRF Protection', 'Resume Position', 'Seamless Transition', 'MEeL HUB 2026'
+        ];
+        const track = document.getElementById('ticker');
+        const html = tickerItems.map(t =>
+            `<span class="inline-flex items-center gap-4 px-8 font-mono text-[11px] tracking-[.1em] uppercase text-slate-600 shrink-0">
+                <span class="w-1 h-1 rounded-full bg-blue-500"></span>${t}
+             </span>`
+        ).join('');
+        track.innerHTML = html + html;
     </script>
 </body>
+
 </html>
