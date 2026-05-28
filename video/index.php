@@ -17,7 +17,7 @@ $total      = $library->countVideos();
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.7">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MEeL Video | Library</title>
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/video.css">

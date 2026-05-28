@@ -14,10 +14,57 @@ $total_music    = $library->countMusic($format_filter, $artist_filter);
 $data_init      = $library->getMusicList($format_filter, $artist_filter, 10, 0);
 $is_logged_in   = isset($_SESSION['user_id']);
 
+function renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter) {
+    ?>
+    <!-- HEADER -->
+    <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
+        <div>
+            <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Library</div>
+            <div class="section-title">
+                <?= $artist_filter === 'all' ? 'DISCOVERY' : strtoupper(htmlspecialchars($artist_filter)) ?>
+            </div>
+        </div>
+        <span class="text-[10px] text-gray-700 uppercase tracking-widest">
+            <?= $total_music ?> tracks
+        </span>
+    </div>
+
+    <!-- MUSIC LIST -->
+    <div id="music-list" class="space-y-1">
+        <?php if ($data_init && $data_init->num_rows > 0): ?>
+            <?php while ($v = $data_init->fetch_assoc()): ?>
+                <?php include 'music_item.php'; ?>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <div class="py-16 text-center text-[10px] text-gray-700 uppercase tracking-widest">
+                Tidak ada lagu ditemukan.
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- LOAD MORE -->
+    <?php if ($total_music > 10): ?>
+        <div id="load-more-music" class="pt-6">
+            <button hx-get="load_more_music.php?offset=10&format=<?= $format_filter ?>&artist=<?= urlencode($artist_filter) ?>"
+                hx-target="#music-list"
+                hx-swap="beforeend"
+                class="w-full py-4 border border-dashed border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-[.25em] text-gray-700 hover:text-orange-500 hover:border-orange-500/30 transition-all">
+                Load More
+            </button>
+        </div>
+    <?php endif; ?>
+    <?php
+}
+
 // Check audio state dari sessionStorage (via hidden input)
 $audio_state = null;
 if (isset($_GET['audio_state'])) {
     $audio_state = json_decode($_GET['audio_state'], true);
+}
+
+if (isset($_GET['content_only'])) {
+    renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter);
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -25,7 +72,7 @@ if (isset($_GET['audio_state'])) {
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.65">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MEeL Music | Library</title>
     <link rel="icon" type="image/png" href="../assets/logo.png">
     <?php include '../partials/link.php'; ?>
@@ -417,45 +464,7 @@ if (isset($_GET['audio_state'])) {
 
         <!-- MAIN -->
         <main class="lg:col-span-9">
-
-            <!-- HEADER -->
-            <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
-                <div>
-                    <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Library</div>
-                    <div class="section-title">
-                        <?= $artist_filter === 'all' ? 'DISCOVERY' : strtoupper(htmlspecialchars($artist_filter)) ?>
-                    </div>
-                </div>
-                <span class="text-[10px] text-gray-700 uppercase tracking-widest">
-                    <?= $total_music ?> tracks
-                </span>
-            </div>
-
-            <!-- MUSIC LIST -->
-            <div id="music-list" class="space-y-1">
-                <?php if ($data_init && $data_init->num_rows > 0): ?>
-                    <?php while ($v = $data_init->fetch_assoc()): ?>
-                        <?php include 'music_item.php'; ?>
-                    <?php endwhile; ?>
-                <?php else: ?>
-                    <div class="py-16 text-center text-[10px] text-gray-700 uppercase tracking-widest">
-                        Tidak ada lagu ditemukan.
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <!-- LOAD MORE -->
-            <?php if ($total_music > 10): ?>
-                <div id="load-more-music" class="pt-6">
-                    <button hx-get="load_more_music.php?offset=10&format=<?= $format_filter ?>&artist=<?= urlencode($artist_filter) ?>"
-                        hx-target="#music-list"
-                        hx-swap="beforeend"
-                        class="w-full py-4 border border-dashed border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-[.25em] text-gray-700 hover:text-orange-500 hover:border-orange-500/30 transition-all">
-                        Load More
-                    </button>
-                </div>
-            <?php endif; ?>
-
+            <?php renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter); ?>
         </main>
     </div>
 

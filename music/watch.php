@@ -804,9 +804,20 @@ switch ($ext) {
     </div>
 
     <?php include '../partials/footer.php'; ?>
+    <script>
+        window.MEEL_MUSIC_CONFIG = {
+            id: <?= $id ?>,
+            fileSizeBytes: <?= (int)$file_size_bytes ?>,
+            nextSongUrl: "<?= $next_song_url ?>",
+            title: '<?= htmlspecialchars(addslashes($v['title'])) ?>',
+            artist: '<?= htmlspecialchars(addslashes($v['artist'] ?? '')) ?>',
+            thumbnail: '<?= htmlspecialchars($v['thumbnail']) ?>',
+            filename: '<?= htmlspecialchars($v['filename']) ?>'
+        };
+    </script>
     <script src="../assets/js/plyr.js"></script>
     <script src="../assets/js/script.js"></script>
-    <?php include 'script/js.php'; ?>
+    <script src="../assets/js/player_music.js"></script>
 
     <script>
         lucide.createIcons();
