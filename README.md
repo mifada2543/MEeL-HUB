@@ -73,7 +73,7 @@ MEeL adalah media hub berbasis PHP & MySQL yang berjalan di atas Apache (XAMPP/L
 
 | Layer | Teknologi |
 |-------|-----------|
-| Backend | PHP 9.0+, MySQL/MariaDB |
+| Backend | PHP 8.0+, MySQL/MariaDB |
 | Web Server | Apache 2.4+ (mod_rewrite) |
 | Frontend CSS | TailwindCSS (CDN), custom CSS per modul |
 | Frontend JS | HTMX, Lucide Icons, SweetAlert2 |
