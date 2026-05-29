@@ -589,5 +589,6 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
 **MEeL** © 2025 — Mifada
 
 `minecraft.daffa2501@gmail.com` · [github.com/mifada2543](https://github.com/mifada2543)
-
+*en:Domains sometimes don't work because they are running on developer devices.
+*id:Domain terkadang tidak berfungsi karena berjalan di perangkat developer
 </div>
