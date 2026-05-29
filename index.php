@@ -20,6 +20,7 @@ $counts  = $library->getCounts();
     <link rel="stylesheet" href="assets/css/styles.css?v=<?= filemtime('assets/css/styles.css') ?>">
     <script src="assets/js/tailwind.js"></script>
     <script src="assets/js/lucide.js"></script>
+    <script src="assets/js/sweetalert2.all.min.js"></script>
     <script src="assets/js/script.js"></script>
     <script src="assets/js/htmx.js"></script>
     <style>

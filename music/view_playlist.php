@@ -34,6 +34,8 @@ $songs_query = $conn->query("
     <title><?= htmlspecialchars($playlist['name']) ?> | MEeL Playlist</title>
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <script src="../assets/js/script.js"></script>
     <link rel="stylesheet" href="../assets/css/style.css">
     <style>
         .glass {
@@ -78,7 +80,7 @@ $songs_query = $conn->query("
                     </div>
                 <?php endif; ?>
             </div>
-            <form action="playlist_action.php" method="POST" onsubmit="return confirm('Hapus seluruh playlist ini?')">
+            <form action="playlist_action.php" method="POST" onsubmit="return meelConfirmForm(event, { title: 'Hapus Playlist', text: 'Hapus seluruh playlist ini?', confirmButtonText: 'HAPUS' })">
                 <input type="hidden" name="action" value="delete_playlist">
                 <input type="hidden" name="playlist_id" value="<?= $playlist_id ?>">
                 <button type="submit" class="mt-4 text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-400 transition flex items-center gap-2">
@@ -115,7 +117,7 @@ $songs_query = $conn->query("
                             </div>
                         </a>
 
-                        <form action="playlist_action.php" method="POST" onsubmit="return confirm('Hapus dari playlist?')">
+                        <form action="playlist_action.php" method="POST" onsubmit="return meelConfirmForm(event, { title: 'Hapus Lagu', text: 'Hapus dari playlist?', confirmButtonText: 'HAPUS' })">
                             <input type="hidden" name="action" value="remove_from_playlist">
                             <input type="hidden" name="pivot_id" value="<?= $s['pivot_id'] ?>">
                             <input type="hidden" name="playlist_id" value="<?= $playlist_id ?>">

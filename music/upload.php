@@ -11,6 +11,7 @@ set_time_limit(0);
 $status   = "";
 $user     = $_SESSION['username'];
 $user_id  = $_SESSION['user_id'];
+$alert_message = "";
 
 $stmt_role = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
 $stmt_role->bind_param("i", $user_id);
@@ -27,8 +28,7 @@ if (isset($_POST['upload'])) {
     if ($result['status'] === 'success') {
         $status = "success";
     } elseif (isset($result['alert']) && $result['alert'] == true) {
-        echo "<script>alert('{$result['msg']}'); window.location.href='upload.php';</script>";
-        exit;
+        $alert_message = $result['msg'];
     } else {
         die("<div style='color:red;'>Error: {$result['msg']}</div>");
     }
@@ -146,14 +146,25 @@ if (isset($_POST['upload'])) {
                         <a href="index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Library</a>
                         <a href="../index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Portal</a>
                         <a href="../video/upload.php" class="text-[10px] font-bold text-orange-600 hover:text-orange-400 uppercase tracking-widest transition">Go to Video</a>
-                        <a class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition" href="../upload_advanced.php" onclick="alert('Anda dan Server memerlukan koneksi internet')">Upload Lanjutan</a>
+                        <a class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition" href="../upload_advanced.php" onclick="return meelAlertRedirect({ title: 'Upload Lanjutan', text: 'Anda dan Server memerlukan koneksi internet', icon: 'info', redirectUrl: '../upload_advanced.php' })">Upload Lanjutan</a>
                     </footer>
                 </div>
             </div>
         </div>
     </main>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <script src="../assets/js/script.js"></script>
     <script>
         lucide.createIcons();
+
+        <?php if ($alert_message !== ""): ?>
+            meelAlertRedirect({
+                title: 'Upload Music',
+                text: <?= json_encode($alert_message) ?>,
+                icon: 'warning',
+                redirectUrl: 'upload.php'
+            });
+        <?php endif; ?>
 
         // [FIX #2] Hapus definisi duplikat — cukup satu versi yang lengkap (dengan warna orange)
         function updateLabel(input, labelId) {

@@ -38,6 +38,8 @@ if ($user->isMember()) {
     <link rel="icon" href="../assets/MEeL.png">
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <script src="../assets/js/script.js"></script>
     <link rel="stylesheet" href="../assets/css/drive.css">
     <style>
         :root {

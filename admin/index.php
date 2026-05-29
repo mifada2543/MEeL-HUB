@@ -49,6 +49,8 @@ include '../controllers/fun.php';
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <script src="../assets/js/script.js"></script>
     <style>
         body {
             background-color: #0b0e14;
@@ -285,7 +287,7 @@ include '../controllers/fun.php';
                                         if ($u['role'] !== 'admin'):
                                         ?>
                                             <a href="?delete_user_id=<?= $u['id'] ?>"
-                                                onclick="return confirm('Hapus permanen user <?= $u['username'] ?>?')"
+                                                onclick="return meelConfirmLink(event, { title: 'Hapus User', text: 'Hapus permanen user <?= htmlspecialchars($u['username'], ENT_QUOTES) ?>?', confirmButtonText: 'HAPUS' })"
                                                 class="bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold text-[10px] uppercase">
                                                 Delete
                                             </a>
@@ -308,7 +310,7 @@ include '../controllers/fun.php';
                     <i data-lucide="server" class="w-5 h-5 text-purple-500"></i>
                     <h3 class="text-xs font-bold text-purple-500 uppercase">Active Background Tasks</h3>
                 </div>
-                <form method="POST" action="index.php" onsubmit="return confirm('Bersihkan semua antrean yang stuck (> 30 menit)?');">
+                <form method="POST" action="index.php" onsubmit="return meelConfirmForm(event, { title: 'Bersihkan Antrean', text: 'Bersihkan semua antrean yang stuck (> 30 menit)?', confirmButtonText: 'BERSIHKAN' });">
                     <button type="submit" name="clean_stuck_queues" value="1" class="flex items-center gap-2 text-[9px] bg-purple-600/10 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-xl hover:bg-purple-600 hover:text-white transition-all font-bold uppercase cursor-pointer">
                         <i data-lucide="refresh-cw" class="w-3 h-3"></i>
                         Clean Stuck Queues
@@ -347,7 +349,7 @@ include '../controllers/fun.php';
                                         <div class="flex items-center justify-end gap-3">
                                             <span class="text-gray-500 font-mono text-[10px]"><?= $q['created_at'] ?></span>
 
-                                            <form method="POST" action="index.php" class="m-0" onsubmit="return confirm('Hentikan paksa proses spesifik ini?');">
+                                            <form method="POST" action="index.php" class="m-0" onsubmit="return meelConfirmForm(event, { title: 'Hentikan Proses', text: 'Hentikan paksa proses spesifik ini?', confirmButtonText: 'HENTIKAN' });">
                                                 <input type="hidden" name="queue_id" value="<?= $q['id'] ?>">
                                                 <input type="hidden" name="task_type" value="<?= $q['task_type'] ?>">
 
@@ -374,7 +376,7 @@ include '../controllers/fun.php';
         <div class="glass rounded-3xl overflow-hidden shadow-2xl" id="monitor">
             <div class="p-6 border-b border-white/5 justify-between flex items-center">
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Live Activity Monitor</h3>
-                <form method="POST" action="index.php" onsubmit="return confirm('Hapus semua Guest?');">
+                <form method="POST" action="index.php" onsubmit="return meelConfirmForm(event, { title: 'Hapus Guest', text: 'Hapus semua Guest?', confirmButtonText: 'HAPUS' });">
                     <button type="submit" name="clear_all_guests" value="1" class="group flex flex-col items-end gap-1 cursor-pointer">
                         <div class="flex items-center gap-2 text-[9px] bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold uppercase">
                             <i data-lucide="shield-alert" class="w-3 h-3"></i>
@@ -451,7 +453,7 @@ include '../controllers/fun.php';
                                         if ($is_online && $row['username'] !== $_SESSION['username'] && $row['role'] !== 'guest'):
                                         ?>
                                             <a href="?kick_user=<?= urlencode($row['username']) ?>"
-                                                onclick="return confirm('Tendang <?= $row['username'] ?>? User akan langsung offline.')"
+                                                onclick="return meelConfirmLink(event, { title: 'Kick User', text: 'Tendang <?= htmlspecialchars($row['username'], ENT_QUOTES) ?>? User akan langsung offline.', confirmButtonText: 'TENDANG' })"
                                                 class="p-1.5 bg-red-600/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-600 hover:text-white transition-all"
                                                 title="Kick Active User">
                                                 <i data-lucide="log-out" class="w-3.5 h-3.5"></i>

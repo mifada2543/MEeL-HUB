@@ -149,7 +149,10 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
 
             <div class="border-t border-white/[.05] py-1.5">
                 <a href="<?= $_nav_root ?>auth/logout.php"
-                    onclick="return confirm('Yakin mau logout?')"
+                    data-meel-confirm-link
+                    data-meel-confirm-title="Logout"
+                    data-meel-confirm-text="Yakin mau logout?"
+                    data-meel-confirm-button="LOGOUT"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-500 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
                     <i data-lucide="log-out" class="w-3.5 h-3.5 flex-shrink-0"></i>
                     <span>Logout</span>
@@ -275,7 +278,10 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
 
         <div class="border-t border-white/[.05] p-5">
             <a href="<?= $_nav_root ?>auth/logout.php"
-                onclick="return confirm('Yakin mau logout?')"
+                data-meel-confirm-link
+                data-meel-confirm-title="Logout"
+                data-meel-confirm-text="Yakin mau logout?"
+                data-meel-confirm-button="LOGOUT"
                 class="flex items-center justify-center gap-3 w-full py-4 rounded-xl bg-red-600/10 border border-red-600/20 text-base text-red-400 hover:bg-red-600/20 transition-all no-underline font-bold">
                 <i data-lucide="log-out" class="w-5 h-5"></i>
                 Logout
@@ -297,6 +303,8 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
     </a>
 <?php endif; ?>
 
+<script src="<?= $_nav_root ?>assets/js/sweetalert2.all.min.js"></script>
+<script src="<?= $_nav_root ?>assets/js/script.js"></script>
 <script>
     // ── Dropdown desktop ──
     function toggleNavDropdown() {

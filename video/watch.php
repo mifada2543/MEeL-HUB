@@ -291,7 +291,7 @@ $rekom            = $viewer->getRecommendations(15);
                                                 </div>
                                                 <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
                                                     <a href="../delete_comment.php?id=<?= $c['id'] ?>"
-                                                        onclick="return confirm('Hapus komentar ini?')"
+                                                        onclick="return meelConfirmLink(event, { title: 'Hapus Komentar', text: 'Hapus komentar ini?', confirmButtonText: 'HAPUS' })"
                                                         class="text-gray-600 hover:text-red-400 transition-colors no-underline flex-shrink-0">
                                                         <i data-lucide="trash-2" class="w-3 h-3"></i>
                                                     </a>

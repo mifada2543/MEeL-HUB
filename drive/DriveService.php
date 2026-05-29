@@ -355,7 +355,7 @@ final class DriveViewRenderer
                         <i data-lucide='download' class='w-4 h-4'></i>
                     </a>
                     
-                    <a href='$deleteUrl' onclick=\"return confirm('Hapus file ini?')\" class='p-2 hover:bg-red-500/20 rounded-lg text-red-400' title='Hapus'>
+                    <a href='$deleteUrl' onclick=\"return meelConfirmLink(event, { title: 'Hapus File', text: 'Hapus file ini?', confirmButtonText: 'HAPUS' })\" class='p-2 hover:bg-red-500/20 rounded-lg text-red-400' title='Hapus'>
                         <i data-lucide='trash-2' class='w-4 h-4'></i>
                     </a>
                 </div>

@@ -8,24 +8,23 @@ $transcoder   = new Transcoder($conn, $_SESSION['user_id']);
 $download_link   = null;
 $output_filename = "";
 $format          = "mp3";
+$alert_message   = "";
 
 if (isset($_POST['start_transcode'])) {
     $video_id = (int)($_POST['video_id'] ?? 0);
     $format   = $_POST['format'] ?? 'mp3';
 
     if ($video_id <= 0) {
-        echo "<script>alert('ID Video harus berupa angka valid!'); window.location='transcode.php';</script>";
-        exit;
-    }
-
-    $result = $transcoder->transcodeVideo($video_id, $format);
-
-    if ($result['status'] === 'success') {
-        $download_link   = $result['download_link'];
-        $output_filename = $result['output_filename'];
+        $alert_message = 'ID Video harus berupa angka valid!';
     } else {
-        echo "<script>alert('" . addslashes($result['msg']) . "'); window.location='transcode.php';</script>";
-        exit;
+        $result = $transcoder->transcodeVideo($video_id, $format);
+
+        if ($result['status'] === 'success') {
+            $download_link   = $result['download_link'];
+            $output_filename = $result['output_filename'];
+        } else {
+            $alert_message = $result['msg'];
+        }
     }
 }
 
@@ -129,8 +128,19 @@ $video_id_value = isset($_GET['id']) ? (int)$_GET['id'] : "";
     <!-- Sekarang footer otomatis berada di bawah kontainer utama -->
     <?php include 'partials/footer.php'; ?>
 
+    <script src="assets/js/sweetalert2.all.min.js"></script>
+    <script src="assets/js/script.js"></script>
     <script>
         lucide.createIcons();
+
+        <?php if ($alert_message !== ""): ?>
+            meelAlertRedirect({
+                title: 'Transcode',
+                text: <?= json_encode($alert_message) ?>,
+                icon: 'warning',
+                redirectUrl: 'transcode.php'
+            });
+        <?php endif; ?>
 
         function finishTranscode(downloadUrl) {
             const progressContainer = document.getElementById('progress-container');

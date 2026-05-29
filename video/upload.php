@@ -10,6 +10,7 @@ set_time_limit(0);
 $status  = "";
 $user    = $_SESSION['username'];
 $user_id = $_SESSION['user_id'];
+$alert_message = "";
 
 // Instansiasi Objek Uploader
 $uploader = new Uploader($conn, $user_id, $user);
@@ -21,8 +22,7 @@ if (isset($_POST['upload'])) {
     if ($result['status'] === 'success') {
         $status = "success";
     } elseif (isset($result['alert']) && $result['alert'] == true) {
-        echo "<script>alert('{$result['msg']}'); window.location.href='upload.php';</script>";
-        exit;
+        $alert_message = $result['msg'];
     } else {
         die("<div style='color:red; padding:20px; background:#000;'><h2>$user, Error!</h2><p>{$result['msg']}</p></div>");
     }
@@ -106,15 +106,26 @@ if (isset($_POST['upload'])) {
                         <a href="index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Library</a>
                         <a href="../index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Portal</a>
                         <a href="../music/upload.php" class="text-[10px] font-bold text-orange-600 hover:text-orange-400 uppercase tracking-widest transition">Go to Music</a>
-                        <a class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition" href="../upload_advanced.php" onclick="alert('Anda dan Server memerlukan koneksi internet')">Upload Lanjutan</a>
+                        <a class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition" href="../upload_advanced.php" onclick="return meelAlertRedirect({ title: 'Upload Lanjutan', text: 'Anda dan Server memerlukan koneksi internet', icon: 'info', redirectUrl: '../upload_advanced.php' })">Upload Lanjutan</a>
                     </footer>
                 </div>
             </div>
         </div>
     </main>
     <?php include '../partials/footer.php'; ?>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <script src="../assets/js/script.js"></script>
     <script>
         lucide.createIcons();
+
+        <?php if ($alert_message !== ""): ?>
+            meelAlertRedirect({
+                title: 'Upload Video',
+                text: <?= json_encode($alert_message) ?>,
+                icon: 'warning',
+                redirectUrl: 'upload.php'
+            });
+        <?php endif; ?>
 
         function checkFile(input) {
             const file = input.files[0];
@@ -123,7 +134,11 @@ if (isset($_POST['upload'])) {
             const allowed = ['mp4', 'webm', 'mkv'];
 
             if (!allowed.includes(fileExt)) {
-                alert("FORMAT DITOLAK!\n\nFile ." + fileExt + " tidak didukung browser.\nSilakan gunakan MP4 atau WEBM.");
+                meelAlert({
+                    title: 'Format Ditolak',
+                    text: "File ." + fileExt + " tidak didukung browser. Silakan gunakan MP4 atau WEBM.",
+                    icon: 'error'
+                });
                 input.value = "";
                 document.getElementById('v-txt').innerText = "Pilih MP4/WEBM";
                 return;

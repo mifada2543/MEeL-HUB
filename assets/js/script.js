@@ -1,3 +1,185 @@
+function meelAlert(options = {}) {
+  const config = {
+    title: options.title || "MEeL",
+    text: options.text || "",
+    icon: options.icon || "info",
+    iconColor: options.iconColor || "#ef4444",
+    background: "#141820",
+    color: "#ffffff",
+    confirmButtonText: options.confirmButtonText || "OKE",
+    buttonsStyling: false,
+    customClass: {
+      popup:
+        "border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl shadow-2xl",
+      title: "text-sm font-black uppercase tracking-wider pt-4 text-red-500",
+      htmlContainer: "text-[11px] text-gray-400 uppercase tracking-wider",
+      confirmButton:
+        "bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider py-2.5 px-6 rounded-xl transition-all border-none cursor-pointer mt-2",
+    },
+  };
+
+  if (typeof Swal === "undefined") {
+    console.warn("SweetAlert2 belum ter-load.", config.text || config.title);
+    return Promise.resolve();
+  }
+
+  return Swal.fire(config);
+}
+
+function meelAlertRedirect(options = {}) {
+  meelAlert(options).then(() => {
+    if (options.redirectUrl) {
+      window.location.href = options.redirectUrl;
+    }
+  });
+
+  return false;
+}
+
+window.meelAlert = meelAlert;
+window.meelAlertRedirect = meelAlertRedirect;
+
+function meelConfirm(options = {}) {
+  const config = {
+    title: options.title || "Konfirmasi",
+    text: options.text || "Lanjutkan aksi ini?",
+    icon: options.icon || "warning",
+    iconColor: options.iconColor || "#ef4444",
+    background: "#141820",
+    color: "#ffffff",
+    showCancelButton: true,
+    confirmButtonText: options.confirmButtonText || "YA, LANJUTKAN",
+    cancelButtonText: options.cancelButtonText || "BATAL",
+    reverseButtons: true,
+    buttonsStyling: false,
+    customClass: {
+      popup:
+        "border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl shadow-2xl",
+      title: "text-sm font-black uppercase tracking-wider pt-4 text-red-500",
+      htmlContainer: "text-[11px] text-gray-400 uppercase tracking-wider",
+      actions: "flex gap-2 w-full mt-4 px-3",
+      confirmButton:
+        "flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider py-2.5 rounded-xl transition-all border-none cursor-pointer",
+      cancelButton:
+        "flex-1 bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-black uppercase tracking-wider py-2.5 rounded-xl border border-white/10 cursor-pointer transition-all",
+    },
+  };
+
+  if (typeof Swal === "undefined") {
+    console.warn("SweetAlert2 belum ter-load.", config.text);
+    return Promise.resolve(false);
+  }
+
+  return Swal.fire(config).then((result) => result.isConfirmed);
+}
+
+function meelConfirmLink(event, options = {}) {
+  if (event) {
+    event.preventDefault();
+  }
+
+  const link = event?.currentTarget;
+  const href = options.href || link?.getAttribute("href");
+
+  meelConfirm(options).then((confirmed) => {
+    if (confirmed && href) {
+      window.location.href = href;
+    }
+  });
+
+  return false;
+}
+
+function meelConfirmForm(event, options = {}) {
+  if (event) {
+    event.preventDefault();
+  }
+
+  const form = event?.currentTarget;
+  const submitter = event?.submitter;
+
+  meelConfirm(options).then((confirmed) => {
+    if (confirmed && form) {
+      if (submitter?.name) {
+        const hiddenSubmitter = document.createElement("input");
+        hiddenSubmitter.type = "hidden";
+        hiddenSubmitter.name = submitter.name;
+        hiddenSubmitter.value = submitter.value || "";
+        form.appendChild(hiddenSubmitter);
+      }
+
+      form.submit();
+    }
+  });
+
+  return false;
+}
+
+window.meelConfirm = meelConfirm;
+window.meelConfirmLink = meelConfirmLink;
+window.meelConfirmForm = meelConfirmForm;
+
+function submitMeelConfirmedForm(form, submitter) {
+  if (submitter?.name) {
+    const hiddenSubmitter = document.createElement("input");
+    hiddenSubmitter.type = "hidden";
+    hiddenSubmitter.name = submitter.name;
+    hiddenSubmitter.value = submitter.value || "";
+    form.appendChild(hiddenSubmitter);
+  }
+
+  form.submit();
+}
+
+function getMeelConfirmOptions(element) {
+  return {
+    title: element.dataset.meelConfirmTitle,
+    text: element.dataset.meelConfirmText,
+    icon: element.dataset.meelConfirmIcon,
+    confirmButtonText: element.dataset.meelConfirmButton,
+    cancelButtonText: element.dataset.meelCancelButton,
+  };
+}
+
+function initMeelConfirmHandlers() {
+  if (window.meelConfirmHandlersReady) {
+    return;
+  }
+
+  window.meelConfirmHandlersReady = true;
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest("[data-meel-confirm-link]");
+    if (!link) {
+      return;
+    }
+
+    meelConfirmLink(event, {
+      ...getMeelConfirmOptions(link),
+      href: link.getAttribute("href"),
+    });
+  });
+
+  document.addEventListener("submit", (event) => {
+    const form = event.target.closest("[data-meel-confirm-form]");
+    if (!form) {
+      return;
+    }
+
+    event.preventDefault();
+    meelConfirm(getMeelConfirmOptions(form)).then((confirmed) => {
+      if (confirmed) {
+        submitMeelConfirmedForm(form, event.submitter);
+      }
+    });
+  });
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initMeelConfirmHandlers);
+} else {
+  initMeelConfirmHandlers();
+}
+
 // Toggle HealthReminder (Mode Sehat) logic, auto-initialize jika tombol ada
 function toggleHealth() {
   const current = localStorage.getItem("health_reminder") === "true";
@@ -31,8 +213,13 @@ if (document.readyState === "loading") {
 
 // Menjalankan pemantau kesehatan mata di latar belakang jika Mode Sehat aktif
 function startHealthReminder() {
+  if (window.meelHealthReminderStarted) {
+    return;
+  }
+
   const isEnabled = localStorage.getItem("health_reminder") === "true";
   if (isEnabled) {
+    window.meelHealthReminderStarted = true;
     // Berjalan setiap 20 menit sekali
     setInterval(
       () => {
@@ -46,10 +233,8 @@ function startHealthReminder() {
 // FUNGSI UTAMA: Memicu SweetAlert2 Premium (Metode 20-20-20)
 function triggerPremiumHealthAlert() {
   if (typeof Swal === "undefined") {
-    // Fallback jika library SweetAlert2 gagal dimuat
-    console.warn("SweetAlert2 belum ter-load. Menggunakan fallback alert.");
-    alert(
-      "MEeL Health Check: Waktunya mengistirahatkan mata Anda (Aturan 20-20-20)!",
+    console.warn(
+      "SweetAlert2 belum ter-load. MEeL Health Check: Waktunya mengistirahatkan mata Anda (Aturan 20-20-20)!",
     );
     return;
   }
