@@ -7,15 +7,30 @@ if (session_status() === PHP_SESSION_NONE) {
     session_name('meel');
     session_start();
 }
-//Sesuaikan sendiri dengan konfigurasi database Anda
-$server = "";
+// Sesuaikan sendiri dengan konfigurasi database Anda
+$server   = "";
 $username = "";
 $password = "";
-$db = "";
-// Database connection
-$conn = new mysqli("$server", "$username", "$password", "$db");
+$db       = "";
+
+// JALUR EDUKASI: Deteksi jika mereka malas membaca README dan langsung menjalankan kode
+if (empty($server) || empty($username) || empty($db)) {
+    die("<pre style='color: #ef4444; background: #1e1e2e; padding: 20px; border-radius: 5px; font-family: monospace;'>
+[MEeL SYSTEM ERROR]
+Wah, tampaknya kamu terlalu terburu-buru! 
+Kamu belum mengisi konfigurasi database di file 'auth/config.php'.
+
+Yang harus kamu lakukan:
+1. Isi \$server, \$username, dan \$db dengan kredensial database lokalmu.
+2. Pastikan database-nya sudah di-import.
+3. Jangan lupa baca README.md lagi ya :)
+</pre>");
+}
+
+// Database connection - ditulis langsung tanpa tanda kutip ganda ("")
+$conn = new mysqli($server, $username, $password, $db);
 if ($conn->connect_error) {
-    die("Koneksi gagal: " . $conn->connect_error);
+    die("Koneksi ke database gagal: " . $conn->connect_error);
 }
 
 // CSRF Token
