@@ -302,13 +302,13 @@ $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
 ```
 
 Jika path ini tidak tersedia, aplikasi redirect ke `err/maintance.php`. **Sesuaikan path ini untuk environment Anda.**
-
+## Ubah path ini sesuai keinginanmu, kalau gagal, jangan panggil saya, panggil Tuhan (atau baca README lagi) :)
 ### Path Upload Video (`modules/Uploader.php`)
 
 ```php
 $this->base_dir = "/media/muhammaddaffa/MEeL/media/video/upload/";
 ```
-
+## Ubah path ini sesuai keinginanmu, kalau gagal, jangan panggil saya, panggil Tuhan (atau baca README lagi) :)
 **Wajib disesuaikan saat deploy ke server lain.**
 
 ---
