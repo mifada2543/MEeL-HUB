@@ -27,12 +27,11 @@ function meelAlert(options = {}) {
 }
 
 function meelAlertRedirect(options = {}) {
-  meelAlert(options).then(() => {
-    if (options.redirectUrl) {
+  meelAlert(options).then((result) => {
+    if (result.isConfirmed && options.redirectUrl) {
       window.location.href = options.redirectUrl;
     }
   });
-
   return false;
 }
 
@@ -174,17 +173,18 @@ function initMeelConfirmHandlers() {
   });
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initMeelConfirmHandlers);
-} else {
-  initMeelConfirmHandlers();
-}
-
 // Toggle HealthReminder (Mode Sehat) logic, auto-initialize jika tombol ada
 function toggleHealth() {
   const current = localStorage.getItem("health_reminder") === "true";
-  localStorage.setItem("health_reminder", !current);
-  location.reload();
+  const newState = !current;
+  localStorage.setItem("health_reminder", newState);
+  updateHealthToggleButton(); // Perbarui tampilan tombol
+  if (newState) {
+    scheduleNextHealthAlert(); // Mulai timer
+  } else {
+    clearTimeout(healthReminderTimer); // Matikan timer
+    window.meelHealthReminderStarted = false;
+  }
 }
 
 function updateHealthToggleButton() {
@@ -192,9 +192,12 @@ function updateHealthToggleButton() {
   if (btn) {
     btn.onclick = toggleHealth;
     const active = localStorage.getItem("health_reminder") === "true";
-    btn.className = btn.className
-      .replace(/bg-(green|red)-500\/20|text-(green|red)-500/g, "")
-      .trim();
+    btn.classList.remove(
+      "bg-green-500/20",
+      "text-green-500",
+      "bg-red-500/20",
+      "text-red-500",
+    );
     if (active) {
       btn.classList.add("bg-green-500/20", "text-green-500");
       btn.innerText = "ON";
@@ -205,11 +208,6 @@ function updateHealthToggleButton() {
   }
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", updateHealthToggleButton);
-} else {
-  updateHealthToggleButton();
-}
 // Variabel global untuk menyimpan timer
 let healthReminderTimer;
 
@@ -386,8 +384,14 @@ function triggerPremiumHealthAlert() {
   });
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", startHealthReminder);
-} else {
+function initAll() {
+  initMeelConfirmHandlers();
+  updateHealthToggleButton();
   startHealthReminder();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAll);
+} else {
+  initAll();
 }
