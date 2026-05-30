@@ -285,6 +285,7 @@ function triggerPremiumHealthAlert() {
     reverseButtons: true,
     buttonsStyling: false,
     allowOutsideClick: false,
+    timer: 300000,
     customClass: {
       popup:
         "border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl shadow-2xl",
@@ -303,7 +304,7 @@ function triggerPremiumHealthAlert() {
     },
   }).then((result) => {
     if (result.isConfirmed) {
-      // Memulai hitung mundur interaktif 20 detik untuk merelaksasikan mata
+      // --- LOGIKA 1: PENGGUNA KLIK "SAYA MAU JEDA" ---
       let timerInterval;
       Swal.fire({
         title: "RELAKSASI DIMULAI",
@@ -348,7 +349,7 @@ function triggerPremiumHealthAlert() {
           clearInterval(timerInterval);
         },
       }).then(() => {
-        // Notifikasi relaksasi selesai dilakukan
+        // Notifikasi relaksasi selesai (Sudah menggunakan auto-close 3 detik yang baru)
         Swal.fire({
           title: "SELESAI!",
           text: "Mata Anda kembali bugar. Selamat menonton kembali!",
@@ -356,7 +357,9 @@ function triggerPremiumHealthAlert() {
           iconColor: "#10b981",
           background: "#141820",
           color: "#ffffff",
-          confirmButtonText: "OKE",
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false,
           buttonsStyling: false,
           customClass: {
             popup:
@@ -364,22 +367,20 @@ function triggerPremiumHealthAlert() {
             title:
               "text-xs font-black uppercase tracking-widest pt-4 text-green-400",
             htmlContainer: "text-[11px] text-gray-400 uppercase tracking-wider",
-            confirmButton:
-              "bg-green-600 hover:bg-green-500 text-white text-xs font-black uppercase tracking-wider py-2 px-6 rounded-xl transition-all border-none cursor-pointer mt-2",
           },
         }).then(() => {
-          // Resume video & Mulai ulang perhitungan 20 menit
           if (wasPlaying && mainVideo) {
             mainVideo.play();
           }
           scheduleNextHealthAlert();
         });
       });
-    } else {
-      // Jika menolak jeda: Resume video & Mulai ulang perhitungan 20 menit
+    } else if (result.dismiss === Swal.DismissReason.cancel) {
       if (wasPlaying && mainVideo) {
         mainVideo.play();
       }
+      scheduleNextHealthAlert();
+    } else if (result.dismiss === Swal.DismissReason.timer) {
       scheduleNextHealthAlert();
     }
   });
