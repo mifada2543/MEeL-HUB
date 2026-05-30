@@ -210,6 +210,19 @@ if (document.readyState === "loading") {
 } else {
   updateHealthToggleButton();
 }
+// Variabel global untuk menyimpan timer
+let healthReminderTimer;
+
+// Fungsi untuk mereset dan menjadwalkan ulang alert 20 menit ke depan
+function scheduleNextHealthAlert() {
+  clearTimeout(healthReminderTimer);
+  healthReminderTimer = setTimeout(
+    () => {
+      triggerPremiumHealthAlert();
+    },
+    20 * 60 * 1000, // 20 Menit
+  );
+}
 
 // Menjalankan pemantau kesehatan mata di latar belakang jika Mode Sehat aktif
 function startHealthReminder() {
@@ -220,13 +233,7 @@ function startHealthReminder() {
   const isEnabled = localStorage.getItem("health_reminder") === "true";
   if (isEnabled) {
     window.meelHealthReminderStarted = true;
-    // Berjalan setiap 20 menit sekali
-    setInterval(
-      () => {
-        triggerPremiumHealthAlert();
-      },
-      20 * 60 * 1000,
-    );
+    scheduleNextHealthAlert(); // Mulai perhitungan waktu
   }
 }
 
@@ -261,7 +268,7 @@ function triggerPremiumHealthAlert() {
                         <span>Langkah Istirahat:</span>
                     </div>
                     <ol class="list-decimal list-inside text-[11px] text-gray-400 space-y-1 pl-1">
-                        <li>Hentikan tatapan ke arah video player.</li>
+                        <li>Hentikan tatapan ke layar perangkat.</li>
                         <li>Pandang objek sejauh minimal 6 meter (20 kaki).</li>
                         <li>Fokuskan mata Anda di sana selama 20 detik.</li>
                     </ol>
@@ -269,15 +276,15 @@ function triggerPremiumHealthAlert() {
             </div>
         `,
     icon: "warning",
-    iconColor: "#dc2626", // Warna merah tema MEeL
-    background: "#141820", // Warna background modal gelap premium
+    iconColor: "#dc2626",
+    background: "#141820",
     color: "#ffffff",
     showCancelButton: true,
     confirmButtonText: "SAYA MAU JEDA",
     cancelButtonText: "LANJUT NONTON",
-    reverseButtons: true, // Tombol aksi utama di sebelah kanan
-    buttonsStyling: false, // Matikan style default SWAL agar kelas Tailwind bekerja
-    allowOutsideClick: false, // Paksa pengguna merespon
+    reverseButtons: true,
+    buttonsStyling: false,
+    allowOutsideClick: false,
     customClass: {
       popup:
         "border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl shadow-2xl",
@@ -290,7 +297,6 @@ function triggerPremiumHealthAlert() {
         "flex-1 bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-black uppercase tracking-wider py-2.5 rounded-xl border border-white/10 cursor-pointer transition-all",
     },
     didOpen: () => {
-      // Render ulang ikon Lucide agar muncul di dalam modal SweetAlert
       if (typeof lucide !== "undefined") {
         lucide.createIcons();
       }
@@ -362,17 +368,19 @@ function triggerPremiumHealthAlert() {
               "bg-green-600 hover:bg-green-500 text-white text-xs font-black uppercase tracking-wider py-2 px-6 rounded-xl transition-all border-none cursor-pointer mt-2",
           },
         }).then(() => {
-          // Resume video kembali jika sebelumnya sedang berputar sebelum alert dipicu
+          // Resume video & Mulai ulang perhitungan 20 menit
           if (wasPlaying && mainVideo) {
             mainVideo.play();
           }
+          scheduleNextHealthAlert();
         });
       });
     } else {
-      // Jika memilih lanjut menonton, mainkan kembali video yang tadi ter-pause
+      // Jika menolak jeda: Resume video & Mulai ulang perhitungan 20 menit
       if (wasPlaying && mainVideo) {
         mainVideo.play();
       }
+      scheduleNextHealthAlert();
     }
   });
 }
