@@ -173,16 +173,24 @@ function initMeelConfirmHandlers() {
   });
 }
 
-// Toggle HealthReminder (Mode Sehat) logic, auto-initialize jika tombol ada
+// --- LOGIKA MODE SEHAT (PERSISTEN & BEBAS BUG) ---
+
+// Konstanta durasi untuk memudahkan pengaturan (20 Menit)
+const HEALTH_INTERVAL_MS = 20 * 60 * 1000;
+let healthReminderTimer;
+
 function toggleHealth() {
   const current = localStorage.getItem("health_reminder") === "true";
   const newState = !current;
   localStorage.setItem("health_reminder", newState);
-  updateHealthToggleButton(); // Perbarui tampilan tombol
+  updateHealthToggleButton();
+
   if (newState) {
-    scheduleNextHealthAlert(); // Mulai timer
+    scheduleNextHealthAlert(); // Set waktu target baru & mulai
   } else {
-    clearTimeout(healthReminderTimer); // Matikan timer
+    // Matikan timer dan hapus jejak waktunya
+    clearTimeout(healthReminderTimer);
+    localStorage.removeItem("health_target_time");
     window.meelHealthReminderStarted = false;
   }
 }
@@ -208,21 +216,38 @@ function updateHealthToggleButton() {
   }
 }
 
-// Variabel global untuk menyimpan timer
-let healthReminderTimer;
-
-// Fungsi untuk mereset dan menjadwalkan ulang alert 20 menit ke depan
+// Fungsi menetapkan target waktu baru (Dipanggil setelah alert ditutup / Mode Sehat dinyalakan)
 function scheduleNextHealthAlert() {
-  clearTimeout(healthReminderTimer);
-  healthReminderTimer = setTimeout(
-    () => {
-      triggerPremiumHealthAlert();
-    },
-    20 * 60 * 1000, // 20 Menit
-  );
+  const targetTime = Date.now() + HEALTH_INTERVAL_MS;
+  localStorage.setItem("health_target_time", targetTime.toString());
+  startHealthCountdown();
 }
 
-// Menjalankan pemantau kesehatan mata di latar belakang jika Mode Sehat aktif
+// Logika pemantau timer (Persisten melintasi refresh halaman)
+function startHealthCountdown() {
+  clearTimeout(healthReminderTimer);
+
+  const targetTimeStr = localStorage.getItem("health_target_time");
+  if (!targetTimeStr) {
+    // Jika belum ada target, buat target baru
+    scheduleNextHealthAlert();
+    return;
+  }
+
+  const targetTime = parseInt(targetTimeStr, 10);
+  const timeLeft = targetTime - Date.now();
+
+  if (timeLeft <= 0) {
+    // Waktu sudah habis (misal user refresh tepat saat 20 menit)
+    triggerPremiumHealthAlert();
+  } else {
+    // Hitung mundur sisa waktu
+    healthReminderTimer = setTimeout(() => {
+      triggerPremiumHealthAlert();
+    }, timeLeft);
+  }
+}
+
 function startHealthReminder() {
   if (window.meelHealthReminderStarted) {
     return;
@@ -231,26 +256,27 @@ function startHealthReminder() {
   const isEnabled = localStorage.getItem("health_reminder") === "true";
   if (isEnabled) {
     window.meelHealthReminderStarted = true;
-    scheduleNextHealthAlert(); // Mulai perhitungan waktu
+    startHealthCountdown(); // Gunakan penghitung yang persisten
   }
 }
 
-// FUNGSI UTAMA: Memicu SweetAlert2 Premium (Metode 20-20-20)
 function triggerPremiumHealthAlert() {
   if (typeof Swal === "undefined") {
-    console.warn(
-      "SweetAlert2 belum ter-load. MEeL Health Check: Waktunya mengistirahatkan mata Anda (Aturan 20-20-20)!",
-    );
+    console.warn("SweetAlert2 belum ter-load.");
     return;
   }
 
-  // Jeda paksa/pause video player utama jika sedang berputar agar tidak mengganggu relaksasi
   const mainVideo = document.getElementById("main-video");
   let wasPlaying = false;
   if (mainVideo && !mainVideo.paused) {
     mainVideo.pause();
     wasPlaying = true;
   }
+
+  // Helper function untuk melanjutkan video
+  const resumeVideo = () => {
+    if (wasPlaying && mainVideo) mainVideo.play();
+  };
 
   Swal.fire({
     title: "WAKTUNYA ISTIRAHATKAN MATA!",
@@ -283,7 +309,7 @@ function triggerPremiumHealthAlert() {
     reverseButtons: true,
     buttonsStyling: false,
     allowOutsideClick: false,
-    timer: 300000,
+    timer: 300000, // Hilang otomatis dalam 5 Menit
     customClass: {
       popup:
         "border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl shadow-2xl",
@@ -319,7 +345,7 @@ function triggerPremiumHealthAlert() {
                 `,
         background: "#141820",
         color: "#ffffff",
-        timer: 20000,
+        timer: 20000, // Timer relaksasi 20 detik
         timerProgressBar: false,
         showConfirmButton: false,
         allowOutsideClick: false,
@@ -347,7 +373,7 @@ function triggerPremiumHealthAlert() {
           clearInterval(timerInterval);
         },
       }).then(() => {
-        // Notifikasi relaksasi selesai (Sudah menggunakan auto-close 3 detik yang baru)
+        // Notifikasi Selesai - Otomatis tertutup dalam 2 detik
         Swal.fire({
           title: "SELESAI!",
           text: "Mata Anda kembali bugar. Selamat menonton kembali!",
@@ -355,7 +381,7 @@ function triggerPremiumHealthAlert() {
           iconColor: "#10b981",
           background: "#141820",
           color: "#ffffff",
-          timer: 3000,
+          timer: 2000, // <--- Sudah diperbaiki menjadi 2 Detik
           timerProgressBar: true,
           showConfirmButton: false,
           buttonsStyling: false,
@@ -367,18 +393,17 @@ function triggerPremiumHealthAlert() {
             htmlContainer: "text-[11px] text-gray-400 uppercase tracking-wider",
           },
         }).then(() => {
-          if (wasPlaying && mainVideo) {
-            mainVideo.play();
-          }
+          resumeVideo();
           scheduleNextHealthAlert();
         });
       });
     } else if (result.dismiss === Swal.DismissReason.cancel) {
-      if (wasPlaying && mainVideo) {
-        mainVideo.play();
-      }
+      // PENGGUNA KLIK "LANJUT NONTON"
+      resumeVideo();
       scheduleNextHealthAlert();
     } else if (result.dismiss === Swal.DismissReason.timer) {
+      // DIDIAMKAN SELAMA 5 MENIT
+      resumeVideo(); // <--- Bug fixed: Video sekarang akan kembali berjalan
       scheduleNextHealthAlert();
     }
   });
