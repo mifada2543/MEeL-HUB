@@ -17,29 +17,40 @@ let skipResumeModalOnce = false;
 function updateLoopUI() {
   const btnLoop = document.getElementById("btn-loop");
   const loopText = document.getElementById("loop-text");
+  const miniLoopBtn = document.getElementById("mini-loop-btn");
 
-  if (!btnLoop || !loopText || !player) {
-    return;
-  }
+  if (!player) return;
 
   if (player.loop) {
-    btnLoop.classList.remove("bg-gray-800", "text-gray-400");
-    btnLoop.classList.add(
-      "bg-orange-500/10",
-      "text-orange-500",
-      "border",
-      "border-orange-500/30",
-    );
-    loopText.innerText = "Loop On";
+    if (btnLoop) {
+      btnLoop.classList.remove("bg-gray-800", "text-gray-400");
+      btnLoop.classList.add(
+        "bg-orange-500/10",
+        "text-orange-500",
+        "border",
+        "border-orange-500/30",
+      );
+    }
+    if (loopText) loopText.innerText = "Loop On";
+    if (miniLoopBtn) {
+      miniLoopBtn.style.color = "#f97316";
+      miniLoopBtn.style.opacity = "1";
+    }
   } else {
-    btnLoop.classList.add("bg-gray-800", "text-gray-400");
-    btnLoop.classList.remove(
-      "bg-orange-500/10",
-      "text-orange-500",
-      "border",
-      "border-orange-500/30",
-    );
-    loopText.innerText = "Loop Off";
+    if (btnLoop) {
+      btnLoop.classList.add("bg-gray-800", "text-gray-400");
+      btnLoop.classList.remove(
+        "bg-orange-500/10",
+        "text-orange-500",
+        "border",
+        "border-orange-500/30",
+      );
+    }
+    if (loopText) loopText.innerText = "Loop Off";
+    if (miniLoopBtn) {
+      miniLoopBtn.style.color = "";
+      miniLoopBtn.style.opacity = "0.5";
+    }
   }
 }
 
@@ -728,7 +739,47 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // --- 12. ICONS INITIALIZATION ---
+  // --- 12. MINI PLAYER NEXT / PREV ---
+  window.miniNext = function () {
+    const nextUrl = window.MEEL_MUSIC_CONFIG?.nextSongUrl;
+    if (nextUrl && nextUrl !== "") {
+      // Simpan posisi terakhir ke sessionStorage sebelum pindah
+      if (player) {
+        const state = {
+          musicId: window.MEEL_MUSIC_CONFIG.id,
+          currentTime: player.currentTime,
+          isPlaying: !player.paused,
+          title: window.MEEL_MUSIC_CONFIG.title,
+          artist: window.MEEL_MUSIC_CONFIG.artist,
+          thumbnail: window.MEEL_MUSIC_CONFIG.thumbnail,
+          filename: window.MEEL_MUSIC_CONFIG.filename,
+        };
+        sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
+      }
+      window.location.href = nextUrl;
+    } else {
+      // Fallback: ambil lagu pertama dari daftar rekomendasi
+      const firstRec = document.querySelector(".rekomendasi-item");
+      if (firstRec) window.location.href = firstRec.href;
+    }
+  };
+
+  window.miniPrev = function () {
+    if (!player) return;
+    // Jika sudah > 3 detik, restart lagu yang sama
+    if (player.currentTime > 3) {
+      player.currentTime = 0;
+      return;
+    }
+    // Kalau di awal, coba kembali ke halaman sebelumnya di history browser
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      player.currentTime = 0;
+    }
+  };
+
+  // --- 13. ICONS INITIALIZATION ---
   if (typeof lucide !== "undefined") {
     lucide.createIcons();
   }

@@ -39,6 +39,14 @@ $queue_query      = $playlist_data['queue']    ?? null;
 $next_url         = $playlist_data['next_url'] ?? "";
 $playlist_context = $playlist_id;
 $next_song_url    = $next_url;
+if (empty($next_song_url) && $rekom && $rekom->num_rows > 0) {
+    $rekom->data_seek(0);
+    $first_rec = $rekom->fetch_assoc();
+    if ($first_rec) {
+        $next_song_url = "watch.php?id=" . $first_rec['id'];
+    }
+    $rekom->data_seek(0);
+}
 $file_size_bytes  = !empty($v['filename'])
     ? (@filesize(__DIR__ . "/upload/file/" . $v['filename']) ?: 0) : 0;
 
@@ -507,6 +515,9 @@ switch ($ext) {
 
             <!-- Tengah: kontrol -->
             <div class="mp-controls">
+                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn" onclick="toggleLoop()" title="Ulang">
+                    <i data-lucide="repeat" style="width:15px;height:15px;"></i>
+                </button>
                 <button class="mp-btn mp-btn-ghost" onclick="miniPrev()" id="mp-prev-btn" title="Sebelumnya">
                     <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
                 </button>

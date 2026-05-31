@@ -85,16 +85,19 @@ if (isset($_GET['content_only'])) {
         .artist-dropdown-active .music-item {
             pointer-events: none !important;
         }
+
         /* Smoothly blur and dim the main discovery content when the mobile dropdown is active */
         main {
             transition: filter 0.2s ease, opacity 0.2s ease;
         }
+
         .artist-dropdown-active main {
             position: relative;
             z-index: 10;
             filter: blur(4px);
             opacity: 0.45;
         }
+
         .artist-dropdown-active aside {
             position: relative;
             z-index: 50;
@@ -371,6 +374,9 @@ if (isset($_GET['content_only'])) {
 
             <!-- Tengah: kontrol -->
             <div class="mp-controls">
+                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulang">
+                    <i data-lucide="repeat" style="width:15px;height:15px;"></i>
+                </button>
                 <button class="mp-btn mp-btn-ghost" onclick="miniPrevIndex()" id="mp-prev-btn-index" title="Sebelumnya">
                     <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
                 </button>
@@ -522,27 +528,41 @@ if (isset($_GET['content_only'])) {
             audioPlayer.currentTime = Math.max(0, Math.min(pct * audioPlayer.duration, audioPlayer.duration));
         };
 
-        // --- Next via HTMX ---
+        // --- Next: Cari lagu berikutnya di DOM secara dinamis (SPA-style) ---
         window.miniNextIndex = function() {
-            if (!currentState) return;
-            const nextUrl = currentState.nextSongUrl;
-            if (nextUrl && nextUrl !== '') {
-                saveIndexState();
-                // HTMX load halaman lagu berikutnya, mirip pola video
-                htmx.ajax('GET', nextUrl, {
-                    target: 'body',
-                    swap: 'innerHTML'
-                });
-                window.history.pushState({}, '', nextUrl);
+            if (!audioPlayer) return;
+            if (audioPlayer.loop) return;
+            if (currentState && currentState.filename) {
+                const allItems = Array.from(document.querySelectorAll('.music-item'));
+                const idx = allItems.findIndex(el => el.dataset.filename === currentState.filename);
+                if (idx !== -1 && idx < allItems.length - 1) {
+                    allItems[idx + 1].click();
+                    return;
+                }
+            }
+            audioPlayer.currentTime = 0;
+            audioPlayer.pause();
+            const btn = document.getElementById('mini-play-btn-index');
+            if (btn) {
+                btn.innerHTML = `<i data-lucide="play" style="width:18px;height:18px;"></i>`;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
             }
         };
-
-        // --- Prev: restart jika >3 detik, else coba lagu sebelumnya ---
+        // --- Prev: restart jika > 3 detik, else coba lagu sebelumnya ---
         window.miniPrevIndex = function() {
             if (!audioPlayer) return;
             if (audioPlayer.currentTime > 3) {
                 audioPlayer.currentTime = 0;
                 return;
+            }
+            // Cari lagu sebelumnya di DOM
+            if (currentState && currentState.filename) {
+                const allItems = Array.from(document.querySelectorAll('.music-item'));
+                const idx = allItems.findIndex(el => el.dataset.filename === currentState.filename);
+                if (idx > 0) {
+                    allItems[idx - 1].click();
+                    return;
+                }
             }
             audioPlayer.currentTime = 0;
         };
@@ -571,6 +591,28 @@ if (isset($_GET['content_only'])) {
             }
         }
 
+        // --- Loop toggle untuk mini player index ---
+        let isMiniLoopIndexActive = false;
+
+        window.toggleMiniLoopIndex = function() {
+            if (!audioPlayer) return;
+            isMiniLoopIndexActive = !isMiniLoopIndexActive;
+            audioPlayer.loop = isMiniLoopIndexActive;
+            updateMiniLoopUIIndex();
+        };
+
+        function updateMiniLoopUIIndex() {
+            const btn = document.getElementById('mini-loop-btn-index');
+            if (!btn) return;
+            if (isMiniLoopIndexActive) {
+                btn.style.color = '#f97316';
+                btn.style.opacity = '1';
+            } else {
+                btn.style.color = '';
+                btn.style.opacity = '0.5';
+            }
+        }
+
         // --- Tutup ---
         window.closeMiniPlayerIndex = function() {
             if (audioPlayer) audioPlayer.pause();
@@ -581,6 +623,7 @@ if (isset($_GET['content_only'])) {
         };
 
         function setupMusicItemClicks() {
+            const allItems = () => Array.from(document.querySelectorAll('.music-item'));
             document.querySelectorAll('.music-item').forEach(item => {
                 item.addEventListener('click', function(e) {
                     // Jika klik pada tombol download/share, abaikan
@@ -589,6 +632,16 @@ if (isset($_GET['content_only'])) {
                     // Tandai sessionStorage agar tidak men-trigger modal resume di watch.php
                     sessionStorage.setItem('skip_resume_once', 'true');
 
+                    // Cari indeks lagu ini dan tentukan nextSongUrl dari lagu berikutnya
+                    const items = allItems();
+                    const idx = items.indexOf(this);
+                    let nextSongUrl = '';
+                    if (idx >= 0 && idx < items.length - 1) {
+                        const nextItem = items[idx + 1];
+                        const nextId = nextItem.dataset.id;
+                        if (nextId) nextSongUrl = `watch.php?id=${nextId}`;
+                    }
+
                     const state = {
                         id: this.dataset.id,
                         title: this.dataset.title,
@@ -596,13 +649,16 @@ if (isset($_GET['content_only'])) {
                         thumbnail: this.dataset.thumbnail,
                         filename: this.dataset.filename,
                         watchUrl: e.target.closest('a') ? e.target.closest('a').getAttribute('href') : `watch.php?id=${this.dataset.id}`,
-                        nextSongUrl: '',
+                        nextSongUrl: nextSongUrl,
                         currentTime: 0,
                         isPlaying: true,
                     };
                     loadAudio(state, true);
                     updateIndexUI();
                     sessionStorage.setItem('meel_audio_state', JSON.stringify(state));
+                    // Tampilkan mini player
+                    isMiniPlayerIndexActive = true;
+                    miniPlayerIndex.classList.add('active');
                 });
             });
         }
