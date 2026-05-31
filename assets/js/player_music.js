@@ -8,6 +8,9 @@ let audio;
 let storageKeyMusic;
 let isFinished = false;
 let canResume = false;
+let isMiniPlayerActive = false;
+let watchUrl;
+let skipResumeModalOnce = false;
 
 // --- GLOBAL UI FUNCTIONS (Safe for event listeners) ---
 
@@ -76,6 +79,11 @@ document.addEventListener("keydown", (e) => {
       window.toggleVisualizer();
     }
   }
+  if (key === "i") {
+    if (typeof window.toggleMiniPlayer === "function") {
+      window.toggleMiniPlayer();
+    }
+  }
 });
 
 // ========================================
@@ -83,6 +91,9 @@ document.addEventListener("keydown", (e) => {
 // ========================================
 
 document.addEventListener("DOMContentLoaded", () => {
+  // --- Set watch URL for mini player toggle ---
+  watchUrl = window.location.href;
+
   // --- Safety Check: Required elements & config ---
   audio = document.getElementById("main-player");
   if (!audio) {
@@ -330,6 +341,12 @@ document.addEventListener("DOMContentLoaded", () => {
     let sessionHandled = false;
 
     function showResumeModal() {
+      // Skip modal jika toggle via 'i' key (mini player mode)
+      if (skipResumeModalOnce) {
+        skipResumeModalOnce = false;
+        return;
+      }
+
       const savedPos = localStorage.getItem(storageKeyMusic);
       if (
         savedPos &&
@@ -470,17 +487,86 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // --- 10. MINI PLAYER FUNCTIONALITY ---
-  window.toggleMiniPlayer = function () {
-    saveAudioState();
-    if (player && !player.paused) {
-      player.pause();
+  // --- 10. MINI PLAYER FUNCTIONALITY (SPA-style) ---
+  window.toggleMiniPlayer = async function () {
+    const playerContainer = document.getElementById('player-container');
+    const mainGrid = document.querySelector('div[class*="grid-cols-1"][class*="lg:grid-cols-3"]');
+    const leftColumn = mainGrid?.querySelector('div[class*="lg:col-span-2"]');
+    const rightSidebar = leftColumn?.nextElementSibling;
+
+    if (!isMiniPlayerActive) {
+      isMiniPlayerActive = true;
+      skipResumeModalOnce = true; // Abaikan resume modal saat toggle via 'i'
+      
+      // Hide sidebar (recommendations and playlist)
+      if (rightSidebar) rightSidebar.style.display = 'none';
+      
+      // Minimize player
+      if (playerContainer) {
+        playerContainer.style.maxHeight = '120px';
+        playerContainer.style.overflow = 'hidden';
+      }
+      
+      // Adjust grid layout
+      if (mainGrid) {
+        mainGrid.classList.remove('grid', 'grid-cols-1', 'lg:grid-cols-3', 'gap-6', 'lg:gap-8');
+        mainGrid.style.display = 'flex';
+        mainGrid.style.flexDirection = 'column';
+      }
+      
+      // Load index content into temp container
+      let tempIndex = document.getElementById('temp-index-content');
+      if (!tempIndex) {
+        tempIndex = document.createElement('div');
+        tempIndex.id = 'temp-index-content';
+        tempIndex.className = 'w-full';
+        if (mainGrid) mainGrid.appendChild(tempIndex);
+
+        try {
+          const response = await fetch('index.php');
+          const html = await response.text();
+          const doc = new DOMParser().parseFromString(html, 'text/html');
+          const indexMain = doc.querySelector('main');
+
+          if (indexMain) {
+            tempIndex.innerHTML = indexMain.innerHTML;
+            window.history.pushState({ miniPlayer: true }, '', 'index.php');
+
+            if (window.lucide) window.lucide.createIcons();
+            if (window.htmx) htmx.process(tempIndex);
+          }
+        } catch (err) {
+          console.error("Gagal memuat index:", err);
+        }
+      } else {
+        tempIndex.style.display = 'block';
+        window.history.pushState({ miniPlayer: true }, '', 'index.php');
+      }
+    } else {
+      isMiniPlayerActive = false;
+      
+      // Restore player
+      if (playerContainer) {
+        playerContainer.style.maxHeight = '';
+        playerContainer.style.overflow = '';
+      }
+
+      const tempIndex = document.getElementById('temp-index-content');
+      if (tempIndex) tempIndex.style.display = 'none';
+
+      // Restore grid layout
+      if (mainGrid) {
+        mainGrid.style.display = 'grid';
+        mainGrid.classList.add('grid', 'grid-cols-1', 'lg:grid-cols-3', 'gap-6', 'lg:gap-8');
+      }
+      
+      if (leftColumn) leftColumn.classList.add('lg:col-span-2', 'space-y-5');
+      
+      // Show sidebar
+      if (rightSidebar) rightSidebar.style.display = 'block';
+
+      window.history.pushState({}, '', watchUrl);
     }
-    htmx.ajax("GET", "index.php", {
-      target: "body",
-      swap: "innerHTML",
-    });
-    window.history.pushState({}, "", "index.php");
   };
 
   function saveAudioState() {
@@ -605,6 +691,23 @@ document.addEventListener("DOMContentLoaded", () => {
         player.destroy();
       }
       window.location.href = "index.php";
+    }
+  });
+
+  // --- 11. MINI PLAYER EVENT LISTENERS ---
+  const playerContainer = document.getElementById('player-container');
+  if (playerContainer) {
+    playerContainer.addEventListener('click', (e) => {
+      if (isMiniPlayerActive) {
+        e.preventDefault();
+        window.toggleMiniPlayer();
+      }
+    });
+  }
+
+  window.addEventListener('popstate', (e) => {
+    if (isMiniPlayerActive && window.location.href === watchUrl) {
+      window.toggleMiniPlayer();
     }
   });
 

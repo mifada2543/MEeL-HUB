@@ -518,9 +518,24 @@ if (isset($_GET['content_only'])) {
             bootPlayerIndex();
         });
 
+        document.addEventListener('htmx:beforeRequest', (e) => {
+            const targetId = e.detail.target?.id || '';
+            const isContentUpdate = targetId.includes('music-list') || 
+                                   targetId.includes('recommendation') ||
+                                   targetId.includes('search');
+            window._htmxContentUpdate = isContentUpdate;
+        });
+
         document.addEventListener('htmx:afterSwap', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            bootPlayerIndex(); // Memastikan player di-inisialisasi ulang dengan data sessionStorage terbaru
+            const isContentUpdate = window._htmxContentUpdate === true;
+            window._htmxContentUpdate = false;
+            
+            if (!isContentUpdate) {
+                bootPlayerIndex();
+            } else {
+                setupMusicItemClicks();
+            }
         });
 
         // Keyboard 'i' → Pindah kembali ke full player (watch.php)
