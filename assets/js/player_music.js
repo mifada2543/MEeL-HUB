@@ -347,6 +347,17 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // Skip modal jika navigasi berasal dari klik lagu di index.php
+      if (sessionStorage.getItem('skip_resume_once') === 'true') {
+        sessionStorage.removeItem('skip_resume_once');
+        return;
+      }
+
+      // Skip modal jika sedang memulihkan state dari mini-player
+      if (shouldRestore) {
+        return;
+      }
+
       const savedPos = localStorage.getItem(storageKeyMusic);
       if (
         savedPos &&
@@ -666,6 +677,26 @@ document.addEventListener("DOMContentLoaded", () => {
     updateMiniPlayerUI();
   });
 
+  window.goBackToLibrary = function () {
+    const config = window.MEEL_MUSIC_CONFIG || {};
+    const state = {
+      musicId: config.id || "",
+      id: config.id || "",
+      title: config.title || "",
+      artist: config.artist || "",
+      thumbnail: config.thumbnail || "",
+      filename: config.filename || "",
+      nextSongUrl: config.nextSongUrl || "",
+      currentTime: player ? player.currentTime : 0,
+      isPlaying: player ? !player.paused : false,
+    };
+    sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
+    if (player) {
+      player.destroy();
+    }
+    window.location.href = "index.php";
+  };
+
   // --- 11. KEYBOARD SHORTCUTS (In-page) ---
   document.addEventListener("keydown", (e) => {
     if (
@@ -676,21 +707,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (e.key.toLowerCase() === "i" && !e.ctrlKey && !e.altKey && !e.metaKey) {
       e.preventDefault();
-      const config = window.MEEL_MUSIC_CONFIG || {};
-      const state = {
-        title: config.title || "",
-        artist: config.artist || "",
-        thumbnail: config.thumbnail || "",
-        filename: config.filename || "",
-        nextSongUrl: config.nextSongUrl || "",
-        currentTime: player ? player.currentTime : 0,
-        isPlaying: player ? !player.paused : false,
-      };
-      sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
-      if (player) {
-        player.destroy();
-      }
-      window.location.href = "index.php";
+      window.goBackToLibrary();
     }
   });
 

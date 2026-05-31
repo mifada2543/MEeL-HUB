@@ -13,27 +13,25 @@ if ($data && $data->num_rows > 0) {
     while ($v = $data->fetch_assoc()) {
         if ($sidebar) {
             // Tampilan rekomendasi di watch.php
-            $v_ext = pathinfo($v['filename'], PATHINFO_EXTENSION);
+            $v_ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
+            $v_lbl = $v_ext === 'ogg' ? 'opus' : $v_ext;
             ?>
             <a href="watch.php?id=<?= $v['id'] ?>"
-               class="flex gap-3 group rekomendasi-item p-2 rounded-xl hover:bg-white/[.03] transition-all htmx-added">
-                <div class="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04]">
+               class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 p-2 rounded-xl no-underline htmx-added"
+               title="<?= htmlspecialchars($v['title']) ?>">
+                <div class="w-full lg:w-16 aspect-square lg:h-12 lg:aspect-auto rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
                     <img src="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
-                         class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                         class="rec-thumb-img w-full h-full object-cover transition-transform duration-300"
                          loading="lazy">
                 </div>
                 <div class="flex-1 min-w-0 flex flex-col justify-center">
-                    <h5 class="text-[11px] font-bold text-gray-300 truncate group-hover:text-orange-400 transition uppercase tracking-tight">
+                    <div class="text-[11px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
                         <?= htmlspecialchars($v['title']) ?>
-                    </h5>
-                    <p class="text-[10px] text-orange-500/70 font-bold truncate mt-0.5">
-                        <?= htmlspecialchars($v['artist']) ?>
-                    </p>
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="text-[9px] text-gray-600"><?= number_format($v['views']) ?> views</span>
-                        <span class="text-[8px] px-1.5 py-0.5 rounded bg-orange-600/10 text-orange-500 border border-orange-600/20 font-bold uppercase">
-                            <?= $v_ext === 'ogg' ? 'OPUS' : strtoupper($v_ext) ?>
-                        </span>
+                    </div>
+                    <div class="text-[10px] text-gray-600 mt-0.5 truncate"><?= htmlspecialchars($v['artist']) ?></div>
+                    <div class="flex items-center gap-1.5 mt-1">
+                        <span class="text-[9px] text-gray-700"><?= number_format($v['views']) ?> views</span>
+                        <span class="text-[8px] px-1.5 py-0.5 rounded bg-white/[.04] border border-white/[.05] text-gray-600 uppercase"><?= $v_lbl ?></span>
                     </div>
                 </div>
             </a>

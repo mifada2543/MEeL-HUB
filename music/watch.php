@@ -493,7 +493,7 @@ switch ($ext) {
         <div class="mp-body">
             <!-- Kiri: thumbnail + info -->
             <div class="mp-track" onclick="toggleMiniPlayer()" title="Buka player penuh">
-                <div class="mp-art">
+                <div class="mp-art" onclick="event.stopPropagation(); window.goBackToLibrary();">
                     <img id="mini-thumbnail" src="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>" alt="cover">
                     <div class="mp-art-overlay">
                         <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>

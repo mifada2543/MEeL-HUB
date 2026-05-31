@@ -81,6 +81,25 @@ if (isset($_GET['content_only'])) {
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>
     <script src="../assets/js/htmx.js"></script>
+    <style>
+        .artist-dropdown-active .music-item {
+            pointer-events: none !important;
+        }
+        /* Smoothly blur and dim the main discovery content when the mobile dropdown is active */
+        main {
+            transition: filter 0.2s ease, opacity 0.2s ease;
+        }
+        .artist-dropdown-active main {
+            position: relative;
+            z-index: 10;
+            filter: blur(4px);
+            opacity: 0.45;
+        }
+        .artist-dropdown-active aside {
+            position: relative;
+            z-index: 50;
+        }
+    </style>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -133,7 +152,7 @@ if (isset($_GET['content_only'])) {
         </div>
     </nav>
 
-    <div class="max-w-7xl mx-auto px-5 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div id="library-container" class="max-w-7xl mx-auto px-5 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
 
         <!-- SIDEBAR -->
         <aside class="lg:col-span-3">
@@ -143,13 +162,29 @@ if (isset($_GET['content_only'])) {
                 <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3">Format</div>
                     <div class="flex flex-wrap gap-2">
-                        <a href="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="javascript:void(0)"
+                            hx-get="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
+                            hx-target="#library-container"
+                            hx-select="#library-container"
+                            hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
-                        <a href="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="javascript:void(0)"
+                            hx-get="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
+                            hx-target="#library-container"
+                            hx-select="#library-container"
+                            hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
-                        <a href="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="javascript:void(0)"
+                            hx-get="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
+                            hx-target="#library-container"
+                            hx-select="#library-container"
+                            hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
-                        <a href="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="javascript:void(0)"
+                            hx-get="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
+                            hx-target="#library-container"
+                            hx-select="#library-container"
+                            hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'mp3' ? 'active-blue' : '' ?>">MP3</a>
                     </div>
                 </div>
@@ -160,18 +195,26 @@ if (isset($_GET['content_only'])) {
                         <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
                     </div>
                     <div class="space-y-0.5 max-h-[45vh] overflow-y-auto no-scrollbar">
-                        <a href="index.php?format=<?= $format_filter ?>&artist=all"
+                        <a href="javascript:void(0)"
+                            hx-get="index.php?format=<?= $format_filter ?>&artist=all"
+                            hx-target="#library-container"
+                            hx-select="#library-container"
+                            hx-swap="outerHTML"
                             class="sidebar-link flex items-center justify-between px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all
-                                  <?= $artist_filter === 'all' ? 'active' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[.03]' ?>">
+                                 <?= $artist_filter === 'all' ? 'active' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[.03]' ?>">
                             <span>All Collections</span>
                         </a>
                         <?php
                         // reset pointer
                         $artists->data_seek(0);
                         while ($a = $artists->fetch_assoc()): ?>
-                            <a href="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
+                            <a href="javascript:void(0)"
+                                hx-get="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
+                                hx-target="#library-container"
+                                hx-select="#library-container"
+                                hx-swap="outerHTML"
                                 class="sidebar-link flex items-center justify-between px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all
-                                      <?= $artist_filter === $a['artist'] ? 'active' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[.03]' ?>">
+                                     <?= $artist_filter === $a['artist'] ? 'active' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[.03]' ?>">
                                 <span class="truncate"><?= htmlspecialchars($a['artist']) ?></span>
                             </a>
                         <?php endwhile; ?>
@@ -200,33 +243,73 @@ if (isset($_GET['content_only'])) {
                 <?php endif; ?>
 
                 <!-- MOBILE FILTERS & MENUS (Select/Dropdowns) -->
-                <div class="lg:hidden flex flex-col gap-4 bg-black/20 p-4 rounded-xl border border-white/[.04]">
+                <div class="lg:hidden flex flex-col gap-4 bg-[#0d1017]/95 backdrop-blur-md p-4 rounded-xl border border-white/[.04] shadow-lg">
                     <!-- Format Pills (Mobile) -->
                     <div class="flex flex-wrap gap-2">
-                        <a href="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="javascript:void(0)"
+                            hx-get="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
+                            hx-target="#library-container"
+                            hx-select="#library-container"
+                            hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
-                        <a href="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="javascript:void(0)"
+                            hx-get="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
+                            hx-target="#library-container"
+                            hx-select="#library-container"
+                            hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
-                        <a href="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="javascript:void(0)"
+                            hx-get="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
+                            hx-target="#library-container"
+                            hx-select="#library-container"
+                            hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
-                        <a href="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="javascript:void(0)"
+                            hx-get="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
+                            hx-target="#library-container"
+                            hx-select="#library-container"
+                            hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'mp3' ? 'active-blue' : '' ?>">MP3</a>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <!-- Artists Select -->
+                        <!-- Artists Select (Custom Dropdown) -->
                         <div>
                             <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
                                 <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
                             </div>
-                            <select onchange="window.location.href='index.php?format=<?= $format_filter ?>&artist=' + encodeURIComponent(this.value)" class="w-full bg-white/[.04] border border-white/[.06] rounded-xl px-3 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none">
-                                <option value="all" <?= $artist_filter === 'all' ? 'selected' : '' ?>>All Collections</option>
-                                <?php
-                                $artists->data_seek(0);
-                                while ($a = $artists->fetch_assoc()): ?>
-                                    <option value="<?= htmlspecialchars($a['artist']) ?>" <?= $artist_filter === $a['artist'] ? 'selected' : '' ?>><?= htmlspecialchars($a['artist']) ?></option>
-                                <?php endwhile; ?>
-                            </select>
+                            <div class="relative w-full z-[100]" id="custom-artist-dropdown">
+
+                                <button type="button"
+                                    onclick="toggleArtistDropdown()"
+                                    class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
+                                    <span class="truncate"><?= $artist_filter === 'all' ? 'All Collections' : htmlspecialchars($artist_filter) ?></span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
+                                </button>
+
+                                <div id="artist-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
+                                    <button hx-get="index.php?format=<?= $format_filter ?>&artist=all"
+                                        hx-target="#library-container"
+                                        hx-select="#library-container"
+                                        hx-swap="outerHTML"
+                                        onclick="closeArtistDropdown()"
+                                        class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[.04] transition-colors truncate <?= $artist_filter === 'all' ? 'text-orange-500 font-bold' : '' ?>">
+                                        All Collections
+                                    </button>
+                                    <?php
+                                    $artists->data_seek(0);
+                                    while ($a = $artists->fetch_assoc()): ?>
+                                        <button hx-get="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
+                                            hx-target="#library-container"
+                                            hx-select="#library-container"
+                                            hx-swap="outerHTML"
+                                            onclick="closeArtistDropdown()"
+                                            class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[.04] transition-colors truncate <?= $artist_filter === $a['artist'] ? 'text-orange-500 font-bold' : '' ?>">
+                                            <?= htmlspecialchars($a['artist']) ?>
+                                        </button>
+                                    <?php endwhile; ?>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Playlists Select -->
@@ -235,14 +318,19 @@ if (isset($_GET['content_only'])) {
                                 <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
                                     <i data-lucide="list-music" class="w-3 h-3"></i> Playlists
                                 </div>
-                                <select onchange="if(this.value) window.location.href='view_playlist.php?id=' + this.value" class="w-full bg-white/[.04] border border-white/[.06] rounded-xl px-3 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none">
-                                    <option value="">Pilih Playlist...</option>
-                                    <?php
-                                    $playlists = $library->getUserPlaylists($_SESSION['user_id']);
-                                    while ($pl = $playlists->fetch_assoc()): ?>
-                                        <option value="<?= $pl['id'] ?>"><?= htmlspecialchars($pl['name']) ?></option>
-                                    <?php endwhile; ?>
-                                </select>
+                                <div class="relative w-full">
+                                    <select onchange="if(this.value) window.location.href='view_playlist.php?id=' + this.value" class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none cursor-pointer transition-all hover:bg-white/[.05] hover:border-white/[.1]">
+                                        <option value="">Pilih Playlist...</option>
+                                        <?php
+                                        $playlists = $library->getUserPlaylists($_SESSION['user_id']);
+                                        while ($pl = $playlists->fetch_assoc()): ?>
+                                            <option value="<?= $pl['id'] ?>"><?= htmlspecialchars($pl['name']) ?></option>
+                                        <?php endwhile; ?>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-gray-500">
+                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                                    </div>
+                                </div>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -268,8 +356,8 @@ if (isset($_GET['content_only'])) {
 
         <div class="mp-body">
             <!-- Kiri: art + info -->
-            <div class="mp-track" onclick="expandPlayerFromMiniPlayer()" title="Buka player penuh">
-                <div class="mp-art">
+            <div class="mp-track" title="Buka player penuh">
+                <div class="mp-art" onclick="expandPlayerFromMiniPlayer()">
                     <img id="mini-thumbnail-index" src="upload/thumbnail/default.png" alt="cover">
                     <div class="mp-art-overlay">
                         <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
@@ -345,6 +433,12 @@ if (isset($_GET['content_only'])) {
                 audioPlayer.addEventListener('pause', () => setPlayIcon('play'));
                 audioPlayer.addEventListener('ended', () => miniNextIndex());
             }
+
+            // Hindari memuat ulang audio jika lagu yang sama sedang dimainkan
+            if (currentState && currentState.filename === state.filename) {
+                return;
+            }
+
             currentState = state;
             audioPlayer.src = `upload/file/${state.filename}`;
             audioPlayer.load();
@@ -455,6 +549,9 @@ if (isset($_GET['content_only'])) {
 
         // --- Perbaikan Fungsi Expand di index.php ---
         function expandPlayerFromMiniPlayer() {
+            // Simpan detik terakhir di index dulu
+            saveIndexState();
+
             // Ambil data state terakhir untuk mendapatkan ID lagu atau URL-nya
             const savedState = sessionStorage.getItem('meel_audio_state');
             if (savedState) {
@@ -489,13 +586,16 @@ if (isset($_GET['content_only'])) {
                     // Jika klik pada tombol download/share, abaikan
                     if (e.target.closest('.no-player')) return;
 
+                    // Tandai sessionStorage agar tidak men-trigger modal resume di watch.php
+                    sessionStorage.setItem('skip_resume_once', 'true');
+
                     const state = {
-                        id: this.dataset.id, // <--- PASTIKAN DATA ID INI ADA DI ELEMEN .music-item ANDA
+                        id: this.dataset.id,
                         title: this.dataset.title,
                         artist: this.dataset.artist,
                         thumbnail: this.dataset.thumbnail,
                         filename: this.dataset.filename,
-                        watchUrl: this.closest('a') ? this.closest('a').getAttribute('href') : '', // Ambil URL asli link-nya
+                        watchUrl: e.target.closest('a') ? e.target.closest('a').getAttribute('href') : `watch.php?id=${this.dataset.id}`,
                         nextSongUrl: '',
                         currentTime: 0,
                         isPlaying: true,
@@ -518,25 +618,57 @@ if (isset($_GET['content_only'])) {
             bootPlayerIndex();
         });
 
-        document.addEventListener('htmx:beforeRequest', (e) => {
-            const targetId = e.detail.target?.id || '';
-            const isContentUpdate = targetId.includes('music-list') || 
-                                   targetId.includes('recommendation') ||
-                                   targetId.includes('search');
-            window._htmxContentUpdate = isContentUpdate;
-        });
-
-        document.addEventListener('htmx:afterSwap', () => {
+        document.addEventListener('htmx:afterSwap', (e) => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            const isContentUpdate = window._htmxContentUpdate === true;
-            window._htmxContentUpdate = false;
-            
+
+            const targetId = e.target?.id || '';
+            const isContentUpdate = targetId.includes('music-list') ||
+                targetId.includes('recommendation') ||
+                targetId.includes('search') ||
+                targetId.includes('load-more-music') ||
+                targetId.includes('library-container');
+
+            document.body.classList.remove('artist-dropdown-active');
+
             if (!isContentUpdate) {
                 bootPlayerIndex();
             } else {
                 setupMusicItemClicks();
             }
         });
+
+        // Close custom dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('artist-options');
+            const trigger = e.target.closest('#custom-artist-dropdown');
+            if (!trigger && dropdown && !dropdown.classList.contains('hidden')) {
+                closeArtistDropdown();
+            }
+        });
+
+        window.toggleArtistDropdown = function() {
+            const dropdown = document.getElementById('artist-options');
+            if (dropdown) {
+                const isHidden = dropdown.classList.contains('hidden');
+                if (isHidden) {
+                    dropdown.classList.remove('hidden');
+                    document.body.classList.add('artist-dropdown-active');
+                } else {
+                    dropdown.classList.add('hidden');
+                    setTimeout(() => {
+                        document.body.classList.remove('artist-dropdown-active');
+                    }, 350);
+                }
+            }
+        };
+
+        window.closeArtistDropdown = function() {
+            const dropdown = document.getElementById('artist-options');
+            if (dropdown) dropdown.classList.add('hidden');
+            setTimeout(() => {
+                document.body.classList.remove('artist-dropdown-active');
+            }, 350);
+        };
 
         // Keyboard 'i' → Pindah kembali ke full player (watch.php)
         document.addEventListener('keydown', (e) => {
@@ -545,12 +677,7 @@ if (isset($_GET['content_only'])) {
 
             if (e.key.toLowerCase() === 'i' && !e.ctrlKey && !e.altKey && !e.metaKey) {
                 e.preventDefault();
-                // Cek apakah ada lagu yang sedang aktif di index
-                const savedState = sessionStorage.getItem('meel_audio_state');
-                if (savedState) {
-                    saveIndexState(); // Simpan detik terakhir di index dulu
-                    expandPlayerFromMiniPlayer(); // Buka halaman watch.php
-                }
+                expandPlayerFromMiniPlayer();
             }
         });
 

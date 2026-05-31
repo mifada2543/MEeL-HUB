@@ -1,4 +1,9 @@
-<div class="music-item flex items-center gap-3 px-3 py-2.5 rounded-xl htmx-added">
+<div class="music-item flex items-center gap-3 px-3 py-2.5 rounded-xl htmx-added"
+     data-id="<?= $v['id'] ?>"
+     data-title="<?= htmlspecialchars($v['title']) ?>"
+     data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
+     data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
+     data-filename="<?= htmlspecialchars($v['filename']) ?>">
     <!-- THUMBNAIL -->
     <a href="watch.php?id=<?= $v['id'] ?>" 
        class="music-item-link relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04]"
