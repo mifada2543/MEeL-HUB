@@ -441,7 +441,12 @@ function triggerPremiumHealthAlert() {
     }
   });
 }
-
+// --- FUNGSI INISIALISASI UTAMA ---
+function initAll() {
+  initMeelConfirmHandlers();
+  updateHealthToggleButton();
+  startHealthReminder();
+}
 // --- INITIALIZATION ---
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initAll);
