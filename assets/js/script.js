@@ -266,17 +266,29 @@ function triggerPremiumHealthAlert() {
     return;
   }
 
-  const mainVideo = document.getElementById("main-video");
+  // Support both video dan audio players (music/video watch pages)
+  let mediaElement =
+    document.getElementById("main-video") ||
+    document.getElementById("main-player");
+
+  // Jika fullscreen, cari element di fullscreen container juga
+  if (!mediaElement && document.fullscreenElement) {
+    mediaElement = document.fullscreenElement.querySelector("video, audio");
+  }
+
   let wasPlaying = false;
-  if (mainVideo && !mainVideo.paused) {
-    mainVideo.pause();
+  if (mediaElement && !mediaElement.paused) {
+    mediaElement.pause();
     wasPlaying = true;
   }
 
-  // Helper function untuk melanjutkan video
+  // Helper function untuk melanjutkan video/audio
   const resumeVideo = () => {
-    if (wasPlaying && mainVideo) mainVideo.play();
+    if (wasPlaying && mediaElement) mediaElement.play();
   };
+
+  // Simpan status fullscreen sebelum alert muncul
+  const wasFullscreen = !!document.fullscreenElement;
 
   Swal.fire({
     title: "WAKTUNYA ISTIRAHATKAN MATA!",
@@ -324,6 +336,10 @@ function triggerPremiumHealthAlert() {
     didOpen: () => {
       if (typeof lucide !== "undefined") {
         lucide.createIcons();
+      }
+      // Exit fullscreen saat modal muncul agar user bisa interact
+      if (wasFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
       }
     },
   }).then((result) => {
@@ -381,7 +397,7 @@ function triggerPremiumHealthAlert() {
           iconColor: "#10b981",
           background: "#141820",
           color: "#ffffff",
-          timer: 2000, // <--- Sudah diperbaiki menjadi 2 Detik
+          timer: 2000,
           timerProgressBar: true,
           showConfirmButton: false,
           buttonsStyling: false,
@@ -394,27 +410,39 @@ function triggerPremiumHealthAlert() {
           },
         }).then(() => {
           resumeVideo();
+          // Re-enter fullscreen jika sebelumnya fullscreen
+          if (wasFullscreen && mediaElement && mediaElement.requestFullscreen) {
+            mediaElement
+              .requestFullscreen()
+              .catch((err) => console.log("Fullscreen re-entry:", err));
+          }
           scheduleNextHealthAlert();
         });
       });
     } else if (result.dismiss === Swal.DismissReason.cancel) {
       // PENGGUNA KLIK "LANJUT NONTON"
       resumeVideo();
+      // Re-enter fullscreen jika sebelumnya fullscreen
+      if (wasFullscreen && mediaElement && mediaElement.requestFullscreen) {
+        mediaElement
+          .requestFullscreen()
+          .catch((err) => console.log("Fullscreen re-entry:", err));
+      }
       scheduleNextHealthAlert();
     } else if (result.dismiss === Swal.DismissReason.timer) {
       // DIDIAMKAN SELAMA 5 MENIT
-      resumeVideo(); // <--- Bug fixed: Video sekarang akan kembali berjalan
-      scheduleNextHealthAlert();
+      resumeVideo();
+      // Re-enter fullscreen jika sebelumnya fullscreen
+      if (wasFullscreen && mediaElement && mediaElement.requestFullscreen) {
+        mediaElement
+          .requestFullscreen()
+          .catch((err) => console.log("Fullscreen re-entry:", err));
+      }
     }
   });
 }
 
-function initAll() {
-  initMeelConfirmHandlers();
-  updateHealthToggleButton();
-  startHealthReminder();
-}
-
+// --- INITIALIZATION ---
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initAll);
 } else {

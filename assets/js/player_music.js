@@ -1,36 +1,24 @@
-lucide.createIcons();
-// --- 1. INISIALISASI PLYR ---
-const player = new Plyr("#main-player", {
-  controls: [
-    "play",
-    "progress",
-    "current-time",
-    "duration",
-    "mute",
-    "volume",
-    "settings",
-  ],
-  settings: ["speed"],
-  speed: {
-    selected: 1,
-    options: [0.5, 0.75, 1, 1.25, 1.5, 2],
-  },
-  keyboard: {
-    focused: true,
-    global: true,
-  },
-});
+// ========================================
+// MEeL MUSIC PLAYER - FIXED VERSION
+// ========================================
 
-// --- LOGIKA LOOP CUSTOM ---
-const btnLoop = document.getElementById("btn-loop");
-const loopText = document.getElementById("loop-text");
+// --- GLOBAL VARIABLES (Safe declarations) ---
+let player;
+let audio;
+let storageKeyMusic;
+let isFinished = false;
+let canResume = false;
 
-window.toggleLoop = function () {
-  player.loop = !player.loop;
-  updateLoopUI();
-};
+// --- GLOBAL UI FUNCTIONS (Safe for event listeners) ---
 
 function updateLoopUI() {
+  const btnLoop = document.getElementById("btn-loop");
+  const loopText = document.getElementById("loop-text");
+
+  if (!btnLoop || !loopText || !player) {
+    return;
+  }
+
   if (player.loop) {
     btnLoop.classList.remove("bg-gray-800", "text-gray-400");
     btnLoop.classList.add(
@@ -52,6 +40,26 @@ function updateLoopUI() {
   }
 }
 
+window.toggleLoop = function () {
+  if (!player) return;
+  player.loop = !player.loop;
+  updateLoopUI();
+};
+
+window.toggleVisualizer = function () {
+  // Will be redefined inside DOMContentLoaded
+};
+
+window.toggleReply = function (id) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.classList.toggle("hidden");
+    const input = element.querySelector('input[type="text"]');
+    if (input && !element.classList.contains("hidden")) input.focus();
+  }
+};
+
+// --- KEYBOARD SHORTCUTS (Safe globally) ---
 document.addEventListener("keydown", (e) => {
   if (
     e.target.tagName.toLowerCase() === "input" ||
@@ -70,19 +78,61 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// --- 2. VARIABEL GLOBAL ---
-const audio = document.getElementById("main-player");
-const storageKeyMusic = "music_pos_" + window.MEEL_MUSIC_CONFIG.id;
-let isFinished = false;
-let canResume = false;
+// ========================================
+// MAIN INITIALIZATION (DOMContentLoaded)
+// ========================================
 
 document.addEventListener("DOMContentLoaded", () => {
+  // --- Safety Check: Required elements & config ---
+  audio = document.getElementById("main-player");
+  if (!audio) {
+    console.error("❌ Audio element #main-player tidak ditemukan");
+    return;
+  }
+
+  if (!window.MEEL_MUSIC_CONFIG || !window.MEEL_MUSIC_CONFIG.id) {
+    console.error("❌ MEEL_MUSIC_CONFIG belum diset dari watch.php");
+    return;
+  }
+
+  storageKeyMusic = "music_pos_" + window.MEEL_MUSIC_CONFIG.id;
+
+  // --- 1. INISIALISASI PLYR ---
+  player = new Plyr("#main-player", {
+    controls: [
+      "play",
+      "progress",
+      "current-time",
+      "duration",
+      "mute",
+      "volume",
+      "settings",
+    ],
+    settings: ["speed"],
+    speed: {
+      selected: 1,
+      options: [0.5, 0.75, 1, 1.25, 1.5, 2],
+    },
+    keyboard: {
+      focused: true,
+      global: true,
+    },
+  });
+
+  // --- 2. DOM ELEMENTS (Safe retrieval) ---
   const container = document.getElementById("player-container");
-  const savedTime = localStorage.getItem(storageKeyMusic);
   const bitrateDisplay = document.getElementById("realtime-bitrate");
   const cavaContainer = document.getElementById("cava-container");
 
-  // Check jika ada audio state dari mini-player (restore current time & play status)
+  if (!container || !bitrateDisplay || !cavaContainer) {
+    console.error("❌ Container elements tidak ditemukan");
+    return;
+  }
+
+  // Update loop UI after player initialized
+  updateLoopUI();
+
+  // --- 3. AUDIO STATE RESTORATION (from mini-player) ---
   const audioState = sessionStorage.getItem("meel_audio_state");
   let shouldRestore = false;
   let restoreTime = 0;
@@ -91,23 +141,23 @@ document.addEventListener("DOMContentLoaded", () => {
   if (audioState) {
     try {
       const state = JSON.parse(audioState);
-      // Only restore jika music ID sama
       if (state.musicId == window.MEEL_MUSIC_CONFIG.id) {
         shouldRestore = true;
         restoreTime = state.currentTime;
         restorePlayStatus = state.isPlaying;
       }
     } catch (e) {
-      console.log("Error parsing audio state:", e);
+      console.log("⚠️ Error parsing audio state:", e);
     }
   }
 
+  const savedTime = localStorage.getItem(storageKeyMusic);
   if (savedTime && !isFinished && !shouldRestore) {
     canResume = true;
   }
 
-  // --- 3. SETTING VISUALIZER (CAVA) ---
-  let isVisualizerEnabled = window.innerWidth >= 1024; // Default mati di layar <1024px (mobile)
+  // --- 4. VISUALIZER (CAVA) SETUP ---
+  let isVisualizerEnabled = window.innerWidth >= 1024;
   const isMobile = window.innerWidth < 768;
   const numBars = isMobile ? 20 : 40;
   const bars = [];
@@ -139,38 +189,58 @@ document.addEventListener("DOMContentLoaded", () => {
     once: true,
   });
 
-  // Toggle UI Initialization
-  setTimeout(() => {
-    const btnVis = document.getElementById("btn-vis");
-    const visText = document.getElementById("vis-text");
-    if (isVisualizerEnabled) {
-      if (btnVis) {
-        btnVis.classList.add(
-          "bg-orange-500/10",
-          "text-orange-500",
-          "border",
-          "border-orange-500/30",
-        );
-        btnVis.classList.remove("bg-gray-800", "text-gray-400");
+  // --- 5. AUDIO CONTEXT & VISUALIZATION ---
+  function initAudio() {
+    try {
+      if (!userInteracted) {
+        console.warn("⚠️ Cava: Waiting for user gesture...");
+        return false;
       }
-      if (visText) visText.innerText = "Vis On";
-      cavaContainer.classList.remove("hidden");
-      cavaContainer.style.display = "flex";
-    } else {
-      if (btnVis) {
-        btnVis.classList.add("bg-gray-800", "text-gray-400");
-        btnVis.classList.remove(
-          "bg-orange-500/10",
-          "text-orange-500",
-          "border",
-          "border-orange-500/30",
-        );
+      if (audioCtx && audioCtx.state !== "closed") {
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+        return true;
       }
-      if (visText) visText.innerText = "Vis Off";
-      cavaContainer.style.display = "none";
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      source = audioCtx.createMediaElementSource(audio);
+      source.connect(analyser);
+      analyser.connect(audioCtx.destination);
+      analyser.fftSize = 256;
+      isInitialized = true;
+      return true;
+    } catch (e) {
+      console.error("❌ Cava init error:", e);
+      return false;
     }
-  }, 100);
+  }
 
+  function render() {
+    if (!isVisualizerEnabled || !isInitialized || player.paused) {
+      cancelAnimationFrame(animationId);
+      return;
+    }
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(dataArray);
+
+    let sum = 0;
+    for (let i = 0; i < numBars; i++) {
+      const idx = Math.floor(i * (dataArray.length / numBars) * 0.7);
+      const val = dataArray[idx];
+      bars[i].style.height = `${Math.max(4, (val / 255) * 100)}%`;
+      sum += val;
+    }
+    const fluctuation = (sum / numBars / 128) * 0.25;
+    if (isInitialized && bitrateDisplay) {
+      bitrateDisplay.innerText = Math.round(baseBitrate * (0.85 + fluctuation));
+    } else if (bitrateDisplay) {
+      bitrateDisplay.innerText = Math.round(baseBitrate);
+    }
+    animationId = requestAnimationFrame(render);
+  }
+
+  // --- 6. VISUALIZER TOGGLE ---
   window.toggleVisualizer = function () {
     isVisualizerEnabled = !isVisualizerEnabled;
     const btnVis = document.getElementById("btn-vis");
@@ -210,169 +280,150 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  function initAudio() {
-    try {
-      if (!userInteracted) {
-        console.warn("Cava: Waiting for user gesture...");
-        return false;
+  // --- 7. VISUALIZER UI INIT ---
+  setTimeout(() => {
+    const btnVis = document.getElementById("btn-vis");
+    const visText = document.getElementById("vis-text");
+    if (isVisualizerEnabled) {
+      if (btnVis) {
+        btnVis.classList.add(
+          "bg-orange-500/10",
+          "text-orange-500",
+          "border",
+          "border-orange-500/30",
+        );
+        btnVis.classList.remove("bg-gray-800", "text-gray-400");
       }
-      if (audioCtx && audioCtx.state !== "closed") {
-        if (audioCtx.state === "suspended") {
-          audioCtx.resume();
-        }
-        return true;
-      }
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      analyser = audioCtx.createAnalyser();
-      source = audioCtx.createMediaElementSource(audio);
-      source.connect(analyser);
-      analyser.connect(audioCtx.destination);
-      analyser.fftSize = 256;
-      isInitialized = true;
-      return true;
-    } catch (e) {
-      console.error("Cava init error:", e);
-      return false;
-    }
-  }
-
-  function render() {
-    if (!isVisualizerEnabled || !isInitialized || player.paused) {
-      cancelAnimationFrame(animationId);
-      return;
-    }
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    analyser.getByteFrequencyData(dataArray);
-
-    let sum = 0;
-    for (let i = 0; i < numBars; i++) {
-      const idx = Math.floor(i * (dataArray.length / numBars) * 0.7);
-      const val = dataArray[idx];
-      bars[i].style.height = `${Math.max(4, (val / 255) * 100)}%`;
-      sum += val;
-    }
-    const fluctuation = (sum / numBars / 128) * 0.25;
-    if (isInitialized) {
-      bitrateDisplay.innerText = Math.round(baseBitrate * (0.85 + fluctuation));
+      if (visText) visText.innerText = "Vis On";
+      cavaContainer.classList.remove("hidden");
+      cavaContainer.style.display = "flex";
     } else {
-      bitrateDisplay.innerText = Math.round(baseBitrate);
+      if (btnVis) {
+        btnVis.classList.add("bg-gray-800", "text-gray-400");
+        btnVis.classList.remove(
+          "bg-orange-500/10",
+          "text-orange-500",
+          "border",
+          "border-orange-500/30",
+        );
+      }
+      if (visText) visText.innerText = "Vis Off";
+      cavaContainer.style.display = "none";
     }
-    animationId = requestAnimationFrame(render);
-  }
+  }, 100);
 
-  // --- 4. LOGIKA MODAL RESUME ---
+  // --- 8. RESUME MODAL LOGIC ---
   const modal = document.getElementById("resume-modal");
   const btnResume = document.getElementById("btn-resume");
   const btnRestart = document.getElementById("btn-restart");
   const displayTime = document.getElementById("resume-time");
 
-  let countdownText = document.createElement("p");
-  countdownText.className = "text-[9px] text-gray-500 italic mb-4";
-  displayTime.parentNode.after(countdownText);
+  if (!modal || !btnResume || !btnRestart || !displayTime) {
+    console.warn("⚠️ Resume modal elements belum lengkap");
+  } else {
+    let countdownText = document.createElement("p");
+    countdownText.className = "text-[9px] text-gray-500 italic mb-4";
+    displayTime.parentNode.after(countdownText);
 
-  let autoRestartTimer;
-  let countdownInterval;
-  let sessionHandled = false;
+    let autoRestartTimer;
+    let countdownInterval;
+    let sessionHandled = false;
 
-  function showResumeModal() {
-    const savedPos = localStorage.getItem(storageKeyMusic);
-    if (
-      savedPos &&
-      parseFloat(savedPos) > 10 &&
-      (!player.duration || parseFloat(savedPos) < player.duration - 5)
-    ) {
-      sessionHandled = false;
-      clearInterval(countdownInterval);
-      clearTimeout(autoRestartTimer);
-      let timeLeft = 15;
-      const mins = Math.floor(savedPos / 60);
-      const secs = Math.floor(savedPos % 60);
-      displayTime.innerText = `${mins}:${secs.toString().padStart(2, "0")}`;
-      audio.autoplay = false;
-      player.autoplay = false;
-      audio.currentTime = parseFloat(savedPos);
-      modal.classList.remove("hidden");
-      countdownText.innerText = `Otomatis putar dari awal dalam ${timeLeft}s...`;
-      countdownInterval = setInterval(() => {
-        timeLeft--;
-        if (timeLeft >= 0) {
-          countdownText.innerText = `Otomatis putar dari awal dalam ${timeLeft}s...`;
-        } else {
-          countdownText.innerText = `Otomatis putar dari awal...`;
-          clearInterval(countdownInterval);
-        }
-      }, 1000);
-      autoRestartTimer = setTimeout(() => {
-        if (!sessionHandled && !modal.classList.contains("hidden")) {
-          clearInterval(countdownInterval);
-          btnRestart.click();
-        }
-      }, 15000);
-    }
-  }
-
-  // Di js_music.php, ubah bagian player.on('ready') menjadi:
-  player.on("ready", () => {
-    if (realFileSize > 0 && player.duration > 0) {
-      baseBitrate = Math.round((realFileSize * 8) / (player.duration * 1000));
-    }
-    const plyrContainer = document.querySelector(".plyr");
-    if (plyrContainer) {
-      plyrContainer.tabIndex = 0;
-      plyrContainer.focus();
-    }
-
-    // Jika ada restore dari mini-player, prioritas restore dibanding savedPos
-    if (shouldRestore) {
-      player.currentTime = Math.max(0, restoreTime);
-      if (restorePlayStatus) {
-        player.play().catch(() => console.log("Playback dimulai..."));
-      } else {
-        player.pause();
-      }
-      // Clear audio state setelah restore
-      sessionStorage.removeItem("meel_audio_state");
-    } else {
+    function showResumeModal() {
       const savedPos = localStorage.getItem(storageKeyMusic);
-      // Cek apakah perlu memunculkan modal
       if (
         savedPos &&
         parseFloat(savedPos) > 10 &&
         (!player.duration || parseFloat(savedPos) < player.duration - 5)
       ) {
-        showResumeModal();
-      } else {
-        // Jika tidak ada sesi lanjutan, baru play!
-        player.play().catch(() => console.log("Menunggu interaksi user..."));
+        sessionHandled = false;
+        clearInterval(countdownInterval);
+        clearTimeout(autoRestartTimer);
+        let timeLeft = 15;
+        const mins = Math.floor(savedPos / 60);
+        const secs = Math.floor(savedPos % 60);
+        displayTime.innerText = `${mins}:${secs.toString().padStart(2, "0")}`;
+        audio.autoplay = false;
+        player.autoplay = false;
+        audio.currentTime = parseFloat(savedPos);
+        modal.classList.remove("hidden");
+        countdownText.innerText = `Otomatis putar dari awal dalam ${timeLeft}s...`;
+        countdownInterval = setInterval(() => {
+          timeLeft--;
+          if (timeLeft >= 0) {
+            countdownText.innerText = `Otomatis putar dari awal dalam ${timeLeft}s...`;
+          } else {
+            countdownText.innerText = `Otomatis putar dari awal...`;
+            clearInterval(countdownInterval);
+          }
+        }, 1000);
+        autoRestartTimer = setTimeout(() => {
+          if (!sessionHandled && !modal.classList.contains("hidden")) {
+            clearInterval(countdownInterval);
+            btnRestart.click();
+          }
+        }, 15000);
       }
     }
-  });
 
-  audio.addEventListener("loadedmetadata", () => {
-    showResumeModal();
-  });
+    player.on("ready", () => {
+      if (realFileSize > 0 && player.duration > 0) {
+        baseBitrate = Math.round((realFileSize * 8) / (player.duration * 1000));
+      }
+      const plyrContainer = document.querySelector(".plyr");
+      if (plyrContainer) {
+        plyrContainer.tabIndex = 0;
+        plyrContainer.focus();
+      }
 
-  btnResume.onclick = () => {
-    sessionHandled = true;
-    clearTimeout(autoRestartTimer);
-    clearInterval(countdownInterval);
-    const savedPos = localStorage.getItem(storageKeyMusic);
-    player.currentTime = parseFloat(savedPos);
-    player.play();
-    modal.classList.add("hidden"); // Menutup modal dengan benar
-  };
+      if (shouldRestore) {
+        player.currentTime = Math.max(0, restoreTime);
+        if (restorePlayStatus) {
+          player.play().catch(() => console.log("Playback dimulai..."));
+        } else {
+          player.pause();
+        }
+        sessionStorage.removeItem("meel_audio_state");
+      } else {
+        const savedPos = localStorage.getItem(storageKeyMusic);
+        if (
+          savedPos &&
+          parseFloat(savedPos) > 10 &&
+          (!player.duration || parseFloat(savedPos) < player.duration - 5)
+        ) {
+          showResumeModal();
+        } else {
+          player.play().catch(() => console.log("Menunggu interaksi user..."));
+        }
+      }
+    });
 
-  btnRestart.onclick = () => {
-    sessionHandled = true;
-    clearTimeout(autoRestartTimer);
-    clearInterval(countdownInterval);
-    localStorage.removeItem(storageKeyMusic);
-    player.currentTime = 0;
-    player.play();
-    modal.classList.add("hidden"); // Menutup modal dengan benar
-  };
+    audio.addEventListener("loadedmetadata", () => {
+      showResumeModal();
+    });
 
-  // --- 5. EVENT LISTENER PLYR ---
+    btnResume.onclick = () => {
+      sessionHandled = true;
+      clearTimeout(autoRestartTimer);
+      clearInterval(countdownInterval);
+      const savedPos = localStorage.getItem(storageKeyMusic);
+      player.currentTime = parseFloat(savedPos);
+      player.play();
+      modal.classList.add("hidden");
+    };
+
+    btnRestart.onclick = () => {
+      sessionHandled = true;
+      clearTimeout(autoRestartTimer);
+      clearInterval(countdownInterval);
+      localStorage.removeItem(storageKeyMusic);
+      player.currentTime = 0;
+      player.play();
+      modal.classList.add("hidden");
+    };
+  }
+
+  // --- 9. PLYR EVENT LISTENERS ---
   player.on("play", () => {
     isFinished = false;
     container.classList.add("playing");
@@ -418,183 +469,147 @@ document.addEventListener("DOMContentLoaded", () => {
       if (nextTrack) window.location.href = nextTrack.href;
     }
   });
-}); // Tutup DOMContentLoaded
 
-// --- FUNGSI GLOBAL ---
-window.toggleReply = function (id) {
-  const element = document.getElementById(id);
-  if (element) {
-    element.classList.toggle("hidden");
-    const input = element.querySelector('input[type="text"]');
-    if (input && !element.classList.contains("hidden")) input.focus();
-  }
-};
-
-// === MINI PLAYER FUNCTIONALITY ===
-const miniPlayer = document.getElementById("mini-player");
-const playerContainer = document.getElementById("player-container");
-let isMiniPlayerActive = false;
-
-// Toggle mini-player dengan keyboard shortcut 'i'
-// Daftarkan event listener untuk tombol 'i' di halaman watch
-document.addEventListener("keydown", (e) => {
-  // Abaikan jika user sedang mengetik di kolom komentar/input
-  if (
-    e.target.tagName.toLowerCase() === "input" ||
-    e.target.tagName.toLowerCase() === "textarea"
-  )
-    return;
-
-  if (e.key.toLowerCase() === "i" && !e.ctrlKey && !e.altKey && !e.metaKey) {
-    e.preventDefault();
-
-    // 1. Ambil data konfigurasi dari window global milik watch.php
-    const config = window.MEEL_MUSIC_CONFIG || {};
-
-    // 2. Kemas state player saat ini ke objek state
-    const state = {
-      title: config.title || "",
-      artist: config.artist || "",
-      thumbnail: config.thumbnail || "",
-      filename: config.filename || "",
-      nextSongUrl: config.nextSongUrl || "",
-      currentTime: player ? player.currentTime : 0, // Simpan detik terakhir musik berputar
-      isPlaying: player ? !player.paused : false, // Simpan status apakah sedang play
-    };
-
-    // 3. Simpan data ke sessionStorage agar bisa langsung dibaca oleh index.php
-    sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
-
-    // 4. Hancurkan instance Plyr agar memori bersih
-    if (player) {
-      player.destroy();
-    }
-
-    // 5. Arahkan kembali ke halaman index
-    window.location.href = "index.php";
-  }
-});
-
-// Click mini-player header untuk toggle (expand/minimize)
-const miniPlayerHeader = document.querySelector(".mini-player-header");
-if (miniPlayerHeader) {
-  miniPlayerHeader.addEventListener("click", () => {
-    if (isMiniPlayerActive) {
-      toggleMiniPlayer();
-    }
-  });
-}
-
-// Toggle mini player visibility -> Pindah ke index.php
-window.toggleMiniPlayer = function () {
-  // 1. Simpan state audio (waktu dan status play)
-  saveAudioState();
-
-  // 2. Pause audio utama agar tidak double play di background
-  if (player && !player.paused) {
-    player.pause();
-  }
-
-  // 3. Load index.php menggunakan HTMX dan timpa isi <body>
-  htmx.ajax("GET", "index.php", {
-    target: "body",
-    swap: "innerHTML",
-  });
-
-  // 4. Ubah URL di address bar agar terlihat natural
-  window.history.pushState({}, "", "index.php");
-};
-
-// Save audio state to sessionStorage
-function saveAudioState() {
-  const state = {
-    musicId: window.MEEL_MUSIC_CONFIG.id,
-    currentTime: player.currentTime,
-    isPlaying: !player.paused,
-    title: window.MEEL_MUSIC_CONFIG.title,
-    artist: window.MEEL_MUSIC_CONFIG.artist,
-    thumbnail: window.MEEL_MUSIC_CONFIG.thumbnail,
-    filename: window.MEEL_MUSIC_CONFIG.filename,
-  };
-  sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
-}
-
-// Auto-save audio state setiap 5 detik
-setInterval(() => {
-  if (isMiniPlayerActive) {
+  // --- 10. MINI PLAYER FUNCTIONALITY ---
+  window.toggleMiniPlayer = function () {
     saveAudioState();
-  }
-}, 5000);
+    if (player && !player.paused) {
+      player.pause();
+    }
+    htmx.ajax("GET", "index.php", {
+      target: "body",
+      swap: "innerHTML",
+    });
+    window.history.pushState({}, "", "index.php");
+  };
 
-// Play/Pause dari mini player
-window.miniPlayPause = function () {
-  if (player.paused) {
-    player.play();
-  } else {
-    player.pause();
-  }
-  updateMiniPlayerUI();
-};
-
-// Seek dari mini player
-window.miniSeek = function (event) {
-  const bar = event.currentTarget;
-  const rect = bar.getBoundingClientRect();
-  const clickX = event.clientX - rect.left;
-  const percentage = clickX / rect.width;
-  player.currentTime = percentage * player.duration;
-};
-
-// Update mini player UI
-function updateMiniPlayerUI() {
-  if (!isMiniPlayerActive) return;
-
-  const miniPlayBtn = document.getElementById("mini-play-btn");
-  const miniProgressFill = document.getElementById("mini-progress-fill");
-  const miniCurrentTime = document.getElementById("mini-current-time");
-  const miniDuration = document.getElementById("mini-duration");
-
-  // Update play button
-  if (player.paused) {
-    miniPlayBtn.innerHTML =
-      '<i data-lucide="play" style="width: 18px; height: 18px;"></i>';
-  } else {
-    miniPlayBtn.innerHTML =
-      '<i data-lucide="pause" style="width: 18px; height: 18px;"></i>';
+  function saveAudioState() {
+    const state = {
+      musicId: window.MEEL_MUSIC_CONFIG.id,
+      currentTime: player ? player.currentTime : 0,
+      isPlaying: player ? !player.paused : false,
+      title: window.MEEL_MUSIC_CONFIG.title,
+      artist: window.MEEL_MUSIC_CONFIG.artist,
+      thumbnail: window.MEEL_MUSIC_CONFIG.thumbnail,
+      filename: window.MEEL_MUSIC_CONFIG.filename,
+    };
+    sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
   }
 
-  // Update progress bar
-  const percentage = (player.currentTime / player.duration) * 100;
-  miniProgressFill.style.width = percentage + "%";
+  setInterval(() => {
+    if (
+      typeof window.isMiniPlayerActive !== "undefined" &&
+      window.isMiniPlayerActive
+    ) {
+      saveAudioState();
+    }
+  }, 5000);
 
-  // Update time display
-  miniCurrentTime.textContent = formatTime(player.currentTime);
-  miniDuration.textContent = formatTime(player.duration);
+  window.miniPlayPause = function () {
+    if (player) {
+      if (player.paused) {
+        player.play();
+      } else {
+        player.pause();
+      }
+      updateMiniPlayerUI();
+    }
+  };
 
-  lucide.createIcons();
-}
+  window.miniSeek = function (event) {
+    if (!player) return;
+    const bar = event.currentTarget;
+    const rect = bar.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    player.currentTime = percentage * player.duration;
+  };
 
-// Helper function to format time
-function formatTime(seconds) {
-  if (!seconds || isNaN(seconds)) return "0:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
+  function updateMiniPlayerUI() {
+    if (
+      typeof window.isMiniPlayerActive === "undefined" ||
+      !window.isMiniPlayerActive
+    )
+      return;
 
-// Update mini player saat main player update
-player.on("play", () => {
-  updateMiniPlayerUI();
-});
+    const miniPlayBtn = document.getElementById("mini-play-btn");
+    const miniProgressFill = document.getElementById("mini-progress-fill");
+    const miniCurrentTime = document.getElementById("mini-current-time");
+    const miniDuration = document.getElementById("mini-duration");
 
-player.on("pause", () => {
-  updateMiniPlayerUI();
-});
+    if (player.paused) {
+      if (miniPlayBtn)
+        miniPlayBtn.innerHTML =
+          '<i data-lucide="play" style="width: 18px; height: 18px;"></i>';
+    } else {
+      if (miniPlayBtn)
+        miniPlayBtn.innerHTML =
+          '<i data-lucide="pause" style="width: 18px; height: 18px;"></i>';
+    }
 
-player.on("timeupdate", () => {
-  updateMiniPlayerUI();
-});
+    const percentage = (player.currentTime / player.duration) * 100;
+    if (miniProgressFill) miniProgressFill.style.width = percentage + "%";
 
-player.on("loadedmetadata", () => {
-  updateMiniPlayerUI();
+    if (miniCurrentTime)
+      miniCurrentTime.textContent = formatTime(player.currentTime);
+    if (miniDuration) miniDuration.textContent = formatTime(player.duration);
+
+    if (typeof lucide !== "undefined") lucide.createIcons();
+  }
+
+  function formatTime(seconds) {
+    if (!seconds || isNaN(seconds)) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  }
+
+  player.on("play", () => {
+    updateMiniPlayerUI();
+  });
+
+  player.on("pause", () => {
+    updateMiniPlayerUI();
+  });
+
+  player.on("timeupdate", () => {
+    updateMiniPlayerUI();
+  });
+
+  player.on("loadedmetadata", () => {
+    updateMiniPlayerUI();
+  });
+
+  // --- 11. KEYBOARD SHORTCUTS (In-page) ---
+  document.addEventListener("keydown", (e) => {
+    if (
+      e.target.tagName.toLowerCase() === "input" ||
+      e.target.tagName.toLowerCase() === "textarea"
+    )
+      return;
+
+    if (e.key.toLowerCase() === "i" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      const config = window.MEEL_MUSIC_CONFIG || {};
+      const state = {
+        title: config.title || "",
+        artist: config.artist || "",
+        thumbnail: config.thumbnail || "",
+        filename: config.filename || "",
+        nextSongUrl: config.nextSongUrl || "",
+        currentTime: player ? player.currentTime : 0,
+        isPlaying: player ? !player.paused : false,
+      };
+      sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
+      if (player) {
+        player.destroy();
+      }
+      window.location.href = "index.php";
+    }
+  });
+
+  // --- 12. ICONS INITIALIZATION ---
+  if (typeof lucide !== "undefined") {
+    lucide.createIcons();
+  }
 });

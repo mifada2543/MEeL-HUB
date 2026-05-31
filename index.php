@@ -256,7 +256,7 @@ $counts  = $library->getCounts();
                     </a>
                 <?php endif; ?>
             <?php endif; ?>
-            <a href="update.php" class="bottom-link">
+            <a href="index.html" class="bottom-link">
                 <i data-lucide="radio" class="w-3 h-3"></i> Changelog
             </a>
         </div>
