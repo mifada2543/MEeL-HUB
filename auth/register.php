@@ -138,7 +138,7 @@ if (isset($_POST['register'])) {
                 <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 tracking-widest">Username</label>
                 <div class="relative">
                     <i data-lucide="user" class="absolute left-4 top-3.5 w-5 h-5 text-gray-600"></i>
-                    <input name="username" placeholder="Username" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all">
+                    <input name="username" placeholder="Username" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-white transition-all">
                 </div>
             </div>
 
@@ -146,7 +146,11 @@ if (isset($_POST['register'])) {
                 <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 tracking-widest">Password</label>
                 <div class="relative">
                     <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-gray-600"></i>
-                    <input type="password" name="password" placeholder="••••••••" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all">
+                    <input type="password" id="password" name="password" placeholder="••••••••" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-white transition-all">
+                    <button type="button" id="togglePassword" class="absolute right-4 top-3.5 text-gray-600 hover:text-red-500 focus:outline-none transition-colors">
+                        <i data-lucide="eye" id="iconEye" class="w-5 h-5"></i>
+                        <i data-lucide="eye-off" id="iconEyeOff" class="w-5 h-5 hidden"></i>
+                    </button>
                 </div>
             </div>
 
@@ -161,11 +165,33 @@ if (isset($_POST['register'])) {
                 </div>
             </div>
         </form>
+
         <!-- Copyright -->
         <p class="text-center text-[10px] text-gray-600 mt-8 uppercase tracking-[0.3em]">©MEeL - 2025</p>
     </div>
+
     <script>
         lucide.createIcons();
+
+        // Fitur Toggle Password
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        const iconEye = document.getElementById('iconEye');
+        const iconEyeOff = document.getElementById('iconEyeOff');
+
+        if (togglePassword) {
+            togglePassword.addEventListener('click', function() {
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    iconEye.classList.add('hidden');
+                    iconEyeOff.classList.remove('hidden');
+                } else {
+                    passwordInput.type = 'password';
+                    iconEye.classList.remove('hidden');
+                    iconEyeOff.classList.add('hidden');
+                }
+            });
+        }
     </script>
 </body>
 

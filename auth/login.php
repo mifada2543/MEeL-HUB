@@ -39,13 +39,13 @@ if (isset($_POST['login'])) {
     } else {
         $user_input = trim($_POST['username'] ?? '');
         $pass_input = $_POST['password'] ?? '';
-        
+
         $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
         if ($stmt) {
             $stmt->bind_param("s", $user_input);
             if ($stmt->execute()) {
                 $result = $stmt->get_result();
-                
+
                 if ($u = $result->fetch_assoc()) {
                     if (password_verify($pass_input, $u['PASSWORD'] ?? $u['password'])) {
                         if ($u['is_active'] == 0 || $u['is_active'] == 2) {
@@ -58,7 +58,7 @@ if (isset($_POST['login'])) {
                             $_SESSION['username'] = $u['username'];
                             $_SESSION['role']     = $u['role'];
                             $current_sid = session_id();
-                            
+
                             $upd = $conn->prepare("UPDATE users SET last_session_id = ?, last_activity = NOW() WHERE id = ?");
                             if ($upd) {
                                 $upd->bind_param("si", $current_sid, $u['id']);
@@ -121,12 +121,13 @@ if (isset($_POST['login'])) {
         <?php if ($error_msg): ?>
             <div class="mb-6 p-4 rounded-2xl text-sm flex items-center gap-3 bg-red-500/10 text-red-400 border border-red-500/20 animate-shake"><i data-lucide="alert-circle" class="w-5 h-5"></i><?= $error_msg ?></div>
         <?php endif; ?>
-        
+
         <!-- Login -->
         <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6">
             <!-- Lockdown -->
             <?php if ($is_locked): ?>
-                <div class="text-center py-6 space-y-4"><i data-lucide="shield-alert" class="w-12 h-12 text-red-500 mx-auto animate-pulse"></i>
+                <div class="text-center py-6 space-y-4">
+                    <i data-lucide="shield-alert" class="w-12 h-12 text-red-500 mx-auto animate-pulse"></i>
                     <h3 class="text-lg font-bold text-white">Akses Ditangguhkan</h3>
                     <p class="text-xs text-gray-500 leading-relaxed">Terlalu banyak percobaan gagal. Silakan coba lagi dalam:</p>
                     <div id="countdown" class="text-4xl font-black text-blue-500 tracking-widest"><?= $remaining ?></div>
@@ -149,24 +150,65 @@ if (isset($_POST['login'])) {
                 <?php if (isset($_SESSION['csrf_token'])): ?>
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                 <?php endif; ?>
-                
+
                 <!-- Form login -->
-                <div class="space-y-2"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1 tracking-widest">Username</label>
-                    <div class="relative"><i data-lucide="user" class="absolute left-4 top-3.5 w-5 h-5 text-gray-600"></i><input name="username" placeholder="Username" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-600 text-white"></div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 tracking-widest">Username</label>
+                    <div class="relative">
+                        <i data-lucide="user" class="absolute left-4 top-3.5 w-5 h-5 text-gray-600"></i>
+                        <input name="username" placeholder="Username" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
+                    </div>
                 </div>
-                <div class="space-y-2"><label class="text-[10px] font-bold text-gray-500 uppercase ml-1 tracking-widest">Password</label>
-                    <div class="relative"><i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-gray-600"></i><input type="password" name="password" placeholder="••••••••" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-600 text-white"></div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 tracking-widest">Password</label>
+                    <div class="relative">
+                        <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-gray-600"></i>
+                        <input type="password" id="password" name="password" placeholder="••••••••" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
+                        <button type="button" id="togglePassword" class="absolute right-4 top-3.5 text-gray-600 hover:text-blue-500 focus:outline-none transition-colors">
+                            <i data-lucide="eye" id="iconEye" class="w-5 h-5"></i>
+                            <i data-lucide="eye-off" id="iconEyeOff" class="w-5 h-5 hidden"></i>
+                        </button>
+                    </div>
                 </div>
-                <button name="login" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 group">Masuk Sekarang<i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i></button>
+                <button name="login" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 group shadow-lg shadow-blue-900/20">
+                    Masuk Sekarang
+                    <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+                </button>
             <?php endif; ?>
+
             <!-- Opsi lain -->
-            <div class="flex items-center justify-between px-1"><a href="register.php" class="text-xs text-gray-500 hover:text-white transition">Belum punya akun?</a><a href="<?= htmlspecialchars($back_url) ?>" class="text-xs text-blue-500 font-bold hover:underline">Batal</a></div>
+            <div class="flex items-center justify-between px-1">
+                <a href="register.php" class="text-xs text-gray-500 hover:text-white transition">Belum punya akun?</a>
+                <a href="<?= htmlspecialchars($back_url) ?>" class="text-xs text-blue-500 font-bold hover:underline">Batal</a>
+            </div>
         </form>
+
         <!-- Copyright -->
         <p class="text-center text-[10px] text-gray-600 mt-8 uppercase tracking-[0.3em]">©MEeL - 2025</p>
     </div>
+
     <script>
         lucide.createIcons();
+
+        // Fitur Toggle Password
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        const iconEye = document.getElementById('iconEye');
+        const iconEyeOff = document.getElementById('iconEyeOff');
+
+        if (togglePassword) {
+            togglePassword.addEventListener('click', function() {
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    iconEye.classList.add('hidden');
+                    iconEyeOff.classList.remove('hidden');
+                } else {
+                    passwordInput.type = 'password';
+                    iconEye.classList.remove('hidden');
+                    iconEyeOff.classList.add('hidden');
+                }
+            });
+        }
     </script>
 </body>
 
