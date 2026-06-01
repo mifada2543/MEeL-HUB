@@ -270,7 +270,7 @@ $counts  = $library->getCounts();
                 OFF
             </button>
         </div>
-        <p class="text-[9px] text-gray-800 tracking-[0.6em] uppercase mt-8" onclick="window.location.href='about.html'">MEeL • 2025</p>
+        <p class="text-[9px] text-gray-800 tracking-[0.6em] uppercase mt-8" onclick="window.location.href='index.html'">MEeL • 2025</p>
     </div>
 
     <script>
