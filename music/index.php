@@ -423,6 +423,7 @@ if (isset($_GET['content_only'])) {
             if (!currentState || !audioPlayer) return;
             currentState.currentTime = audioPlayer.currentTime;
             currentState.isPlaying = !audioPlayer.paused;
+            currentState.isLooping = isMiniLoopIndexActive;
             sessionStorage.setItem('meel_audio_state', JSON.stringify(currentState));
         }
 
@@ -448,6 +449,19 @@ if (isset($_GET['content_only'])) {
             currentState = state;
             audioPlayer.src = `upload/file/${state.filename}`;
             audioPlayer.load();
+
+            // Restore loop state dari global key (sumber kebenaran) + state object sebagai fallback
+            const _gLoop = localStorage.getItem("meel_global_loop") === "true";
+            if (state.isLooping !== undefined && state.isLooping !== _gLoop) {
+                // state lebih baru (misalnya baru di-toggle di watch.php) — update global
+                isMiniLoopIndexActive = state.isLooping;
+                localStorage.setItem("meel_global_loop", String(state.isLooping));
+            } else {
+                isMiniLoopIndexActive = _gLoop;
+            }
+            audioPlayer.loop = isMiniLoopIndexActive;
+            updateMiniLoopUIIndex();
+
             if (autoplay) {
                 audioPlayer.currentTime = state.currentTime || 0;
                 audioPlayer.play().catch(() => {});
@@ -501,18 +515,39 @@ if (isset($_GET['content_only'])) {
                     expandPlayerFromMiniPlayer();
                 });
             }
+            // Selalu apply global loop key ke UI saat init (bahkan jika tidak ada audio state)
+            isMiniLoopIndexActive = localStorage.getItem("meel_global_loop") === "true";
+            updateMiniLoopUIIndex();
+
             const raw = sessionStorage.getItem('meel_audio_state');
             if (!raw) return;
             try {
                 const state = JSON.parse(raw);
                 isMiniPlayerIndexActive = true;
                 loadAudio(state, state.isPlaying);
+                // Prioritaskan global loop key; sinkronisasi dari sessionStorage jika lebih baru
+                const globalLoop = localStorage.getItem("meel_global_loop") === "true";
+                if (state.isLooping !== undefined) {
+                    // Sinkronisasi: jika state dan global berbeda, global key menang
+                    isMiniLoopIndexActive = globalLoop;
+                    // Tapi jika state.isLooping berbeda dari global, update global dari state
+                    // (kasus: toggle di watch.php baru saja terjadi)
+                    if (state.isLooping !== globalLoop) {
+                        isMiniLoopIndexActive = state.isLooping;
+                        localStorage.setItem("meel_global_loop", String(state.isLooping));
+                    }
+                } else {
+                    isMiniLoopIndexActive = globalLoop;
+                }
+                if (audioPlayer) audioPlayer.loop = isMiniLoopIndexActive;
+                updateMiniLoopUIIndex();
                 updateIndexUI();
                 miniPlayerIndex.classList.add('active');
             } catch (e) {
                 console.warn('Mini player init error:', e);
             }
         }
+
 
         // --- Play / Pause ---
         window.miniPlayPauseIndex = function() {
@@ -592,13 +627,17 @@ if (isset($_GET['content_only'])) {
         }
 
         // --- Loop toggle untuk mini player index ---
-        let isMiniLoopIndexActive = false;
+        // Inisialisasi dari global key agar konsisten dengan watch.php
+        let isMiniLoopIndexActive = localStorage.getItem("meel_global_loop") === "true";
 
         window.toggleMiniLoopIndex = function() {
-            if (!audioPlayer) return;
             isMiniLoopIndexActive = !isMiniLoopIndexActive;
-            audioPlayer.loop = isMiniLoopIndexActive;
+            // Simpan ke global key — ini sumber kebenaran tunggal untuk loop state
+            localStorage.setItem("meel_global_loop", String(isMiniLoopIndexActive));
+            if (audioPlayer) audioPlayer.loop = isMiniLoopIndexActive;
             updateMiniLoopUIIndex();
+            // Sinkronisasi loop state ke sessionStorage juga
+            saveIndexState();
         };
 
         function updateMiniLoopUIIndex() {
@@ -726,14 +765,23 @@ if (isset($_GET['content_only'])) {
             }, 350);
         };
 
-        // Keyboard 'i' → Pindah kembali ke full player (watch.php)
+        // Keyboard shortcuts untuk mini player index
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName.toLowerCase() === 'input' ||
                 e.target.tagName.toLowerCase() === 'textarea') return;
 
-            if (e.key.toLowerCase() === 'i' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            const key = e.key.toLowerCase();
+
+            // Keyboard 'i' → Pindah kembali ke full player (watch.php)
+            if (key === 'i' && !e.ctrlKey && !e.altKey && !e.metaKey) {
                 e.preventDefault();
                 expandPlayerFromMiniPlayer();
+            }
+
+            // Keyboard 'l' → Toggle loop mini player
+            if (key === 'l' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                e.preventDefault();
+                window.toggleMiniLoopIndex();
             }
         });
 

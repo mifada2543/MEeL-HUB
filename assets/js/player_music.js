@@ -14,12 +14,54 @@ let skipResumeModalOnce = false;
 
 // --- GLOBAL UI FUNCTIONS (Safe for event listeners) ---
 
+// Baca state loop global tanpa bergantung pada player object
+function _applyLoopUIFromGlobal() {
+  const isLoop = localStorage.getItem("meel_global_loop") === "true";
+  const btnLoop = document.getElementById("btn-loop");
+  const loopText = document.getElementById("loop-text");
+  const miniLoopBtn = document.getElementById("mini-loop-btn");
+  if (isLoop) {
+    if (btnLoop) {
+      btnLoop.classList.remove("bg-gray-800", "text-gray-400");
+      btnLoop.classList.add(
+        "bg-orange-500/10",
+        "text-orange-500",
+        "border",
+        "border-orange-500/30",
+      );
+    }
+    if (loopText) loopText.innerText = "Loop On";
+    if (miniLoopBtn) {
+      miniLoopBtn.style.color = "#f97316";
+      miniLoopBtn.style.opacity = "1";
+    }
+  } else {
+    if (btnLoop) {
+      btnLoop.classList.add("bg-gray-800", "text-gray-400");
+      btnLoop.classList.remove(
+        "bg-orange-500/10",
+        "text-orange-500",
+        "border",
+        "border-orange-500/30",
+      );
+    }
+    if (loopText) loopText.innerText = "Loop Off";
+    if (miniLoopBtn) {
+      miniLoopBtn.style.color = "";
+      miniLoopBtn.style.opacity = "0.5";
+    }
+  }
+}
+
 function updateLoopUI() {
   const btnLoop = document.getElementById("btn-loop");
   const loopText = document.getElementById("loop-text");
   const miniLoopBtn = document.getElementById("mini-loop-btn");
 
-  if (!player) return;
+  if (!player) {
+    _applyLoopUIFromGlobal();
+    return;
+  }
 
   if (player.loop) {
     if (btnLoop) {
@@ -55,9 +97,38 @@ function updateLoopUI() {
 }
 
 window.toggleLoop = function () {
-  if (!player) return;
-  player.loop = !player.loop;
-  updateLoopUI();
+  // Bisa di-toggle bahkan sebelum player siap — baca state global dulu
+  const currentLoop = localStorage.getItem("meel_global_loop") === "true";
+  const newLoop = !currentLoop;
+
+  // Simpan ke global key agar persisten lintas halaman (index ↔ watch)
+  localStorage.setItem("meel_global_loop", String(newLoop));
+
+  // Terapkan ke player jika sudah siap
+  if (player) {
+    player.loop = newLoop;
+    updateLoopUI();
+
+    // Sinkronisasi ke sessionStorage agar index.php juga membacanya
+    const state = {
+      musicId: window.MEEL_MUSIC_CONFIG ? window.MEEL_MUSIC_CONFIG.id : 0,
+      currentTime: player.currentTime,
+      isPlaying: !player.paused,
+      isLooping: newLoop,
+      title: window.MEEL_MUSIC_CONFIG ? window.MEEL_MUSIC_CONFIG.title : "",
+      artist: window.MEEL_MUSIC_CONFIG ? window.MEEL_MUSIC_CONFIG.artist : "",
+      thumbnail: window.MEEL_MUSIC_CONFIG
+        ? window.MEEL_MUSIC_CONFIG.thumbnail
+        : "",
+      filename: window.MEEL_MUSIC_CONFIG
+        ? window.MEEL_MUSIC_CONFIG.filename
+        : "",
+    };
+    sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
+  } else {
+    // Player belum siap: update UI tombol saja berdasarkan nilai baru
+    _applyLoopUIFromGlobal();
+  }
 };
 
 window.toggleVisualizer = function () {
@@ -83,7 +154,8 @@ document.addEventListener("keydown", (e) => {
 
   const key = e.key.toLowerCase();
   if (key === "l") {
-    setTimeout(updateLoopUI, 50);
+    e.preventDefault();
+    window.toggleLoop();
   }
   if (key === "v") {
     if (typeof window.toggleVisualizer === "function") {
@@ -151,7 +223,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // Update loop UI after player initialized
+  // Terapkan global loop state ke UI dan player segera saat halaman dimuat
+  const _globalLoop = localStorage.getItem("meel_global_loop") === "true";
+  if (player) player.loop = _globalLoop;
   updateLoopUI();
 
   // --- 3. AUDIO STATE RESTORATION (from mini-player) ---
@@ -159,6 +233,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let shouldRestore = false;
   let restoreTime = 0;
   let restorePlayStatus = false;
+  let restoreLooping = false;
+
+  // Selalu baca global loop key dari localStorage (persists lintas halaman)
+  restoreLooping = localStorage.getItem("meel_global_loop") === "true";
 
   if (audioState) {
     try {
@@ -167,6 +245,12 @@ document.addEventListener("DOMContentLoaded", () => {
         shouldRestore = true;
         restoreTime = state.currentTime;
         restorePlayStatus = state.isPlaying;
+        // Prioritaskan global loop key, tapi juga baca isLooping dari state sebagai fallback
+        if (state.isLooping !== undefined) {
+          restoreLooping = state.isLooping;
+          // Sinkronisasi balik ke global key jika state punya info lebih baru
+          localStorage.setItem("meel_global_loop", String(state.isLooping));
+        }
       }
     } catch (e) {
       console.log("⚠️ Error parsing audio state:", e);
@@ -359,8 +443,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // Skip modal jika navigasi berasal dari klik lagu di index.php
-      if (sessionStorage.getItem('skip_resume_once') === 'true') {
-        sessionStorage.removeItem('skip_resume_once');
+      if (sessionStorage.getItem("skip_resume_once") === "true") {
+        sessionStorage.removeItem("skip_resume_once");
         return;
       }
 
@@ -417,11 +501,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (shouldRestore) {
         player.currentTime = Math.max(0, restoreTime);
+        player.loop = restoreLooping;
+        // Sinkronisasi ke global key
+        localStorage.setItem("meel_global_loop", String(restoreLooping));
         if (restorePlayStatus) {
           player.play().catch(() => console.log("Playback dimulai..."));
         } else {
           player.pause();
         }
+        updateLoopUI();
         sessionStorage.removeItem("meel_audio_state");
       } else {
         const savedPos = localStorage.getItem(storageKeyMusic);
@@ -511,48 +599,56 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- 10. MINI PLAYER FUNCTIONALITY (SPA-style) ---
   window.toggleMiniPlayer = async function () {
-    const playerContainer = document.getElementById('player-container');
-    const mainGrid = document.querySelector('div[class*="grid-cols-1"][class*="lg:grid-cols-3"]');
+    const playerContainer = document.getElementById("player-container");
+    const mainGrid = document.querySelector(
+      'div[class*="grid-cols-1"][class*="lg:grid-cols-3"]',
+    );
     const leftColumn = mainGrid?.querySelector('div[class*="lg:col-span-2"]');
     const rightSidebar = leftColumn?.nextElementSibling;
 
     if (!isMiniPlayerActive) {
       isMiniPlayerActive = true;
       skipResumeModalOnce = true; // Abaikan resume modal saat toggle via 'i'
-      
+
       // Hide sidebar (recommendations and playlist)
-      if (rightSidebar) rightSidebar.style.display = 'none';
-      
+      if (rightSidebar) rightSidebar.style.display = "none";
+
       // Minimize player
       if (playerContainer) {
-        playerContainer.style.maxHeight = '120px';
-        playerContainer.style.overflow = 'hidden';
+        playerContainer.style.maxHeight = "120px";
+        playerContainer.style.overflow = "hidden";
       }
-      
+
       // Adjust grid layout
       if (mainGrid) {
-        mainGrid.classList.remove('grid', 'grid-cols-1', 'lg:grid-cols-3', 'gap-6', 'lg:gap-8');
-        mainGrid.style.display = 'flex';
-        mainGrid.style.flexDirection = 'column';
+        mainGrid.classList.remove(
+          "grid",
+          "grid-cols-1",
+          "lg:grid-cols-3",
+          "gap-6",
+          "lg:gap-8",
+        );
+        mainGrid.style.display = "flex";
+        mainGrid.style.flexDirection = "column";
       }
-      
+
       // Load index content into temp container
-      let tempIndex = document.getElementById('temp-index-content');
+      let tempIndex = document.getElementById("temp-index-content");
       if (!tempIndex) {
-        tempIndex = document.createElement('div');
-        tempIndex.id = 'temp-index-content';
-        tempIndex.className = 'w-full';
+        tempIndex = document.createElement("div");
+        tempIndex.id = "temp-index-content";
+        tempIndex.className = "w-full";
         if (mainGrid) mainGrid.appendChild(tempIndex);
 
         try {
-          const response = await fetch('index.php');
+          const response = await fetch("index.php");
           const html = await response.text();
-          const doc = new DOMParser().parseFromString(html, 'text/html');
-          const indexMain = doc.querySelector('main');
+          const doc = new DOMParser().parseFromString(html, "text/html");
+          const indexMain = doc.querySelector("main");
 
           if (indexMain) {
             tempIndex.innerHTML = indexMain.innerHTML;
-            window.history.pushState({ miniPlayer: true }, '', 'index.php');
+            window.history.pushState({ miniPlayer: true }, "", "index.php");
 
             if (window.lucide) window.lucide.createIcons();
             if (window.htmx) htmx.process(tempIndex);
@@ -561,33 +657,39 @@ document.addEventListener("DOMContentLoaded", () => {
           console.error("Gagal memuat index:", err);
         }
       } else {
-        tempIndex.style.display = 'block';
-        window.history.pushState({ miniPlayer: true }, '', 'index.php');
+        tempIndex.style.display = "block";
+        window.history.pushState({ miniPlayer: true }, "", "index.php");
       }
     } else {
       isMiniPlayerActive = false;
-      
+
       // Restore player
       if (playerContainer) {
-        playerContainer.style.maxHeight = '';
-        playerContainer.style.overflow = '';
+        playerContainer.style.maxHeight = "";
+        playerContainer.style.overflow = "";
       }
 
-      const tempIndex = document.getElementById('temp-index-content');
-      if (tempIndex) tempIndex.style.display = 'none';
+      const tempIndex = document.getElementById("temp-index-content");
+      if (tempIndex) tempIndex.style.display = "none";
 
       // Restore grid layout
       if (mainGrid) {
-        mainGrid.style.display = 'grid';
-        mainGrid.classList.add('grid', 'grid-cols-1', 'lg:grid-cols-3', 'gap-6', 'lg:gap-8');
+        mainGrid.style.display = "grid";
+        mainGrid.classList.add(
+          "grid",
+          "grid-cols-1",
+          "lg:grid-cols-3",
+          "gap-6",
+          "lg:gap-8",
+        );
       }
-      
-      if (leftColumn) leftColumn.classList.add('lg:col-span-2', 'space-y-5');
-      
-      // Show sidebar
-      if (rightSidebar) rightSidebar.style.display = 'block';
 
-      window.history.pushState({}, '', watchUrl);
+      if (leftColumn) leftColumn.classList.add("lg:col-span-2", "space-y-5");
+
+      // Show sidebar
+      if (rightSidebar) rightSidebar.style.display = "block";
+
+      window.history.pushState({}, "", watchUrl);
     }
   };
 
@@ -596,6 +698,7 @@ document.addEventListener("DOMContentLoaded", () => {
       musicId: window.MEEL_MUSIC_CONFIG.id,
       currentTime: player ? player.currentTime : 0,
       isPlaying: player ? !player.paused : false,
+      isLooping: player ? player.loop : false,
       title: window.MEEL_MUSIC_CONFIG.title,
       artist: window.MEEL_MUSIC_CONFIG.artist,
       thumbnail: window.MEEL_MUSIC_CONFIG.thumbnail,
@@ -723,9 +826,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // --- 11. MINI PLAYER EVENT LISTENERS ---
-  const playerContainer = document.getElementById('player-container');
+  const playerContainer = document.getElementById("player-container");
   if (playerContainer) {
-    playerContainer.addEventListener('click', (e) => {
+    playerContainer.addEventListener("click", (e) => {
       if (isMiniPlayerActive) {
         e.preventDefault();
         window.toggleMiniPlayer();
@@ -733,7 +836,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  window.addEventListener('popstate', (e) => {
+  window.addEventListener("popstate", (e) => {
     if (isMiniPlayerActive && window.location.href === watchUrl) {
       window.toggleMiniPlayer();
     }
