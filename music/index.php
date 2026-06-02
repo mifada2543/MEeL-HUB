@@ -155,10 +155,10 @@ if (isset($_GET['content_only'])) {
         </div>
     </nav>
 
-    <div id="library-container" class="max-w-7xl mx-auto px-5 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div id="library-container" class="w-full px-4 sm:px-6 xl:px-10 2xl:px-16 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
 
         <!-- SIDEBAR -->
-        <aside class="lg:col-span-3">
+        <aside class="lg:col-span-3 xl:col-span-2">
             <div class="sticky top-20 space-y-6">
 
                 <!-- FORMAT PILLS (Desktop) -->
@@ -343,7 +343,7 @@ if (isset($_GET['content_only'])) {
         </aside>
 
         <!-- MAIN -->
-        <main class="lg:col-span-9">
+        <main class="lg:col-span-9 xl:col-span-10">
             <?php renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter); ?>
         </main>
     </div>
