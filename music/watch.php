@@ -97,7 +97,6 @@ switch ($ext) {
         Lewati ke konten
     </a>
 
-    <!-- NAVBAR -->
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
 
@@ -110,7 +109,6 @@ switch ($ext) {
                 </span>
             </a>
 
-            <!-- [FIX MOBILE] Search bar disembunyikan di layar kecil -->
             <div class="hidden sm:flex flex-1 max-w-sm items-center gap-2">
                 <div class="relative flex-1 group">
                     <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-orange-500 transition-colors"></i>
@@ -147,7 +145,6 @@ switch ($ext) {
         </div>
     </nav>
 
-    <!-- [FIX MOBILE] Layout flex responsive (YouTube-style) -->
     <main id="main-content" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
         <div class="flex-1 space-y-5 px-4 sm:px-5">
             <div id="player-container" class="bg-[#0d1017] border-0 rounded-none sm:rounded-none overflow-hidden">
@@ -173,7 +170,6 @@ switch ($ext) {
                     </div>
                 </div>
 
-                <!-- [FIX MOBILE] Vinyl + info: kolom di mobile, row di md+ -->
                 <div class="flex flex-col sm:flex-row gap-5 p-4 sm:p-6 border-b border-white/[.04]">
                     <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
                         <div class="vinyl-spin vinyl-disc">
@@ -211,7 +207,6 @@ switch ($ext) {
                         </div>
                     </div>
 
-                    <!-- Visualizer -->
                     <div id="cava-container" class="hidden flex-1 min-w-[160px] bg-black/20 border border-white/[.04] rounded-xl p-3 items-end justify-center gap-[2px] min-h-[80px]"></div>
                 </div>
 
@@ -221,7 +216,6 @@ switch ($ext) {
                     </audio>
                 </div>
 
-                <!-- Uploader info + actions -->
                 <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-white/[.04] bg-black/10">
                     <div class="flex items-center gap-3">
                         <a href="../profile/?u=<?= urlencode($v['uploader']) ?>"
@@ -276,7 +270,9 @@ switch ($ext) {
                         </div>
                     <?php endif; ?>
                 </div>
-            </div> <?php if (!empty($v['description'])): ?>
+            </div>
+
+            <?php if (!empty($v['description'])): ?>
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6">
                     <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500 mb-3 flex items-center gap-2">
                         <i data-lucide="align-left" class="w-3.5 h-3.5 text-orange-500"></i> Deskripsi
@@ -310,7 +306,6 @@ switch ($ext) {
                         if (descText && btn) {
                             setTimeout(() => {
                                 const isOverflowing = descText.scrollHeight > descText.offsetHeight;
-
                                 if (isOverflowing) {
                                     btn.classList.remove('hidden');
                                 } else {
@@ -324,8 +319,8 @@ switch ($ext) {
                     window.addEventListener('resize', checkDescriptionLengthMusic);
                 </script>
             <?php endif; ?>
+
             <?php if ($is_logged_in): ?>
-                <!-- KOMENTAR -->
                 <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
                     <div class="px-4 sm:px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                         <i data-lucide="message-square" class="w-3.5 h-3.5 text-orange-500"></i>
@@ -416,7 +411,6 @@ switch ($ext) {
 
         </div>
 
-        <!-- Sidebar kanan (fixed width) -->
         <div class="w-full lg:w-80 flex-shrink-0 space-y-6 px-4 sm:px-5 lg:px-0">
 
             <?php if ($playlist_context > 0 && $queue_query && $queue_query->num_rows > 0): ?>
@@ -455,7 +449,6 @@ switch ($ext) {
                     <i data-lucide="shuffle" class="w-3.5 h-3.5 text-gray-600"></i>
                     <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Discover</span>
                 </div>
-                <!-- [MOBILE] grid 2 kolom di mobile, list di lg -->
                 <div id="music-recommendation-column" class="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-0 lg:space-y-0.5">
                     <?php while ($r = $rekom->fetch_assoc()):
                         $r_ext = strtolower(pathinfo($r['filename'], PATHINFO_EXTENSION));
@@ -486,7 +479,6 @@ switch ($ext) {
                 </div>
             </div>
 
-        </div>
         </div>
 
         <?php if (isset($_SESSION['user_id'])): ?>
@@ -538,17 +530,13 @@ switch ($ext) {
             </div>
         <?php endif; ?>
 
-        <!-- MINI PLAYER (Spotify-style) -->
         <div id="mini-player" aria-label="Mini Player">
-
-            <!-- Progress bar — paling atas, full width -->
             <div class="mp-seekbar" id="mp-seekbar" onclick="miniSeek(event)" title="Klik untuk seek">
                 <div class="mp-seekbar-fill" id="mp-seekbar-fill"></div>
                 <div class="mp-seekbar-thumb" id="mp-seekbar-thumb"></div>
             </div>
 
             <div class="mp-body">
-                <!-- Kiri: thumbnail + info -->
                 <div class="mp-track" onclick="toggleMiniPlayer()" title="Buka player penuh">
                     <div class="mp-art" onclick="event.stopPropagation(); window.goBackToLibrary();">
                         <img id="mini-thumbnail" src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> cover" width="256" height="256" loading="eager" decoding="async">
@@ -562,7 +550,6 @@ switch ($ext) {
                     </div>
                 </div>
 
-                <!-- Tengah: kontrol -->
                 <div class="mp-controls">
                     <button class="mp-btn mp-btn-ghost" id="mini-loop-btn" onclick="toggleLoop()" title="Ulang">
                         <i data-lucide="repeat" style="width:15px;height:15px;"></i>
@@ -578,7 +565,6 @@ switch ($ext) {
                     </button>
                 </div>
 
-                <!-- Kanan: waktu + tutup -->
                 <div class="mp-right">
                     <div class="mp-time">
                         <span id="mini-current-time">0:00</span>
@@ -592,8 +578,8 @@ switch ($ext) {
             </div>
         </div>
 
-        <?php include '../partials/footer.php'; ?>
-    </main>
+    </main> <?php include '../partials/footer.php'; ?>
+
     <script>
         window.MEEL_MUSIC_CONFIG = {
             id: <?= $id ?>,
