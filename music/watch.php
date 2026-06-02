@@ -95,7 +95,7 @@ switch ($ext) {
 
     <!-- NAVBAR -->
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
+        <div class="w-full px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
 
             <a href="index.php" class="flex items-center gap-2 flex-shrink-0" title="MEeL Music">
                 <div class="w-7 h-7 bg-orange-600 rounded-lg flex items-center justify-center">
@@ -143,10 +143,10 @@ switch ($ext) {
         </div>
     </nav>
 
-    <!-- [FIX MOBILE] Layout grid responsive -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-5 pt-4 sm:pt-8 pb-20 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-        <div class="lg:col-span-2 space-y-5">
-            <div id="player-container" class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
+    <!-- [FIX MOBILE] Layout flex responsive (YouTube-style) -->
+    <div class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
+        <div class="flex-1 space-y-5 px-4 sm:px-5">
+            <div id="player-container" class="bg-[#0d1017] border-0 rounded-none sm:rounded-none overflow-hidden">
                 <div id="resume-modal" class="hidden rounded-xl sm:rounded-2xl">
                     <div class="bg-[#141820] border border-orange-500/25 border-t-2 border-t-orange-500 rounded-2xl p-6 max-w-xs w-full mx-4 text-center">
                         <div class="w-11 h-11 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -370,8 +370,8 @@ switch ($ext) {
 
         </div>
 
-        <!-- Sidebar kanan -->
-        <div class="space-y-6">
+        <!-- Sidebar kanan (fixed width) -->
+        <div class="w-full lg:w-80 flex-shrink-0 space-y-6 px-4 sm:px-5 lg:px-0">
 
             <?php if ($playlist_context > 0 && $queue_query && $queue_query->num_rows > 0): ?>
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">

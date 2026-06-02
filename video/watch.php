@@ -61,7 +61,7 @@ $rekom            = $viewer->getRecommendations(15);
 <body class="text-gray-400 min-h-screen">
 
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
+        <div class="w-full px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
 
             <a href="index.php" class="flex items-center gap-2 flex-shrink-0" title="MEeL Video">
                 <div class="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center">
@@ -72,7 +72,7 @@ $rekom            = $viewer->getRecommendations(15);
                 </span>
             </a>
 
-            <div id="navbar-search-wrap" class="flex-1 max-w-sm flex items-center gap-2">
+            <div id="navbar-search-wrap" class="flex-1 max-w-md flex items-center gap-2">
                 <div class="relative flex-1 group">
                     <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-red-500 transition-colors"></i>
                     <input type="text"
@@ -135,9 +135,9 @@ $rekom            = $viewer->getRecommendations(15);
         </div>
     </div>
 
-    <div id="app-content-grid" class="max-w-7xl mx-auto px-4 sm:px-5 pt-4 sm:pt-8 pb-20 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-        <div id="left-column" class="lg:col-span-2 space-y-4 sm:space-y-5">
-            <div id="main-video-wrapper" class="relative bg-black rounded-xl sm:rounded-2xl overflow-hidden border border-white/[.06] shadow-2xl">
+    <div id="app-content-grid" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
+        <div id="left-column" class="flex-1 space-y-4 sm:space-y-5 px-4 sm:px-5">
+            <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl">
                 <?php
                 $video_src = "upload/" . $v['filename'];
                 $is_hls = (pathinfo($video_src, PATHINFO_EXTENSION) === 'm3u8');
@@ -340,7 +340,7 @@ $rekom            = $viewer->getRecommendations(15);
             </div>
         </div>
 
-        <div id="recommendation-wrapper" class="space-y-4">
+        <div id="recommendation-wrapper" class="w-full lg:w-80 flex-shrink-0 space-y-4 px-4 sm:px-5 lg:px-0">
             <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] px-1 flex items-center gap-2" id="rec-title">
                 <i data-lucide="play-circle" class="w-3 h-3 text-red-500"></i>
                 Video Lainnya
