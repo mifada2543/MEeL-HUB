@@ -329,18 +329,44 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
     function toggleNavDrawer() {
         const drawer = document.getElementById('nav-drawer');
         const overlay = document.getElementById('nav-drawer-overlay');
+
+        // Otomatis mendeteksi layout video (#app-content-grid) atau <main> halaman lain
+        const mainContent = document.getElementById('app-content-grid') || document.querySelector('main');
+
         if (!drawer) return;
         const open = drawer.style.transform === 'translateX(0px)' || drawer.classList.contains('open');
+
         if (open) {
             drawer.style.transform = '';
             overlay.classList.add('hidden');
             drawer.classList.remove('open');
             document.body.style.overflow = '';
+
+            // Kembalikan tampilan utama ke normal
+            if (mainContent) {
+                mainContent.classList.remove('blur-md');
+                // Hapus listener klik agar area main bisa berinteraksi normal kembali
+                mainContent.removeEventListener('click', closeDrawerOnMainClick);
+            }
         } else {
             drawer.style.transform = 'translateX(0)';
             overlay.classList.remove('hidden');
             drawer.classList.add('open');
             document.body.style.overflow = 'hidden';
+
+            // Berikan efek buram halus
+            if (mainContent) {
+                mainContent.classList.add('blur-md', 'transition-all', 'duration-300');
+                // Pasang listener klik untuk mendeteksi ketukan di luar laci menu
+                mainContent.addEventListener('click', closeDrawerOnMainClick);
+            }
         }
+    }
+
+    // Fungsi pembantu untuk menangani intersep klik di area utama
+    function closeDrawerOnMainClick(e) {
+        e.preventDefault();
+        e.stopPropagation(); // Menghentikan klik agar tidak menembus ke tombol/komponen di bawahnya
+        toggleNavDrawer();
     }
 </script>
