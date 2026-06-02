@@ -19,10 +19,10 @@ $counts  = $library->getCounts();
     <title>MEeL | Media Hub</title>
     <link rel="icon" type="image/png" href="assets/MEeL.png">
     <link rel="stylesheet" href="assets/css/styles.css?v=<?= filemtime('assets/css/styles.css') ?>">
-    <script src="assets/js/tailwind.js" defer></script>
-    <script src="assets/js/lucide.js" defer></script>
-    <script src="assets/js/sweetalert2.all.min.js" defer></script>
-    <script src="assets/js/script.js" defer></script>
+    <script src="assets/js/tailwind.js"></script>
+    <script src="assets/js/lucide.js"></script>
+    <script src="assets/js/sweetalert2.all.min.js"></script>
+    <script src="assets/js/script.js"></script>
     <style>
         :root {
             --font: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;

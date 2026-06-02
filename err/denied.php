@@ -25,8 +25,8 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     <meta name="viewport" content="width=device-width, initial-scale=0.7">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>Access Denied | MEeL</title>
-    <script src="../assets/js/tailwind.js" defer></script>
-    <script src="../assets/js/lucide.js" defer></script>
+    <script src="../assets/js/tailwind.js"></script>
+    <script src="../assets/js/lucide.js"></script>
     <style>
         .glass {
             background: rgba(255, 255, 255, 0.02);

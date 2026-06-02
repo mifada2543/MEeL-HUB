@@ -60,7 +60,7 @@ $result_media = $conn->query($query_media);
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL | Media Analytics</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js" defer></script>
+    <script src="../assets/js/tailwind.js"></script>
     <style>
         body { background-color: #0b0e14; }
         .glass { background: rgba(22, 27, 34, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
