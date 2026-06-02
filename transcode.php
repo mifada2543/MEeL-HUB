@@ -41,8 +41,8 @@ $video_id_value = isset($_GET['id']) ? (int)$_GET['id'] : "";
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <link rel="icon" type="image/png" href="assets/MEeL.png">
-    <script src="assets/js/tailwind.js"></script>
-    <script src="assets/js/lucide.js"></script>
+    <script src="assets/js/tailwind.js" defer></script>
+    <script src="assets/js/lucide.js" defer></script>
     <style>
         body {
             background-color: #0b0e14;

@@ -37,10 +37,10 @@ if ($user->isMember()) {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL Cloud | Dashboard</title>
     <link rel="icon" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
-    <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/tailwind.js" defer></script>
+    <script src="../assets/js/lucide.js" defer></script>
+    <script src="../assets/js/sweetalert2.all.min.js" defer></script>
+    <script src="../assets/js/script.js" defer></script>
     <link rel="stylesheet" href="../assets/css/drive.css">
     <style>
         :root {

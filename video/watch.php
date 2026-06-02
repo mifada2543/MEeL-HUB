@@ -53,10 +53,10 @@ $rekom            = $viewer->getRecommendations(15);
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <link rel="stylesheet" href="../assets/css/plyr.css">
     <link rel="stylesheet" href="../assets/css/video.css">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
-    <script src="../assets/js/htmx.js"></script>
-    <script src="../assets/js/hls.js"></script>
+    <script src="../assets/js/tailwind.js" defer></script>
+    <script src="../assets/js/lucide.js" defer></script>
+    <script src="../assets/js/htmx.js" defer></script>
+    <script src="../assets/js/hls.js" defer></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -375,9 +375,9 @@ $rekom            = $viewer->getRecommendations(15);
 
     <?php include '../partials/footer.php'; ?>
 
-    <script src="../assets/js/plyr.js"></script>
-    <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/plyr.js" defer></script>
+    <script src="../assets/js/sweetalert2.all.min.js" defer></script>
+    <script src="../assets/js/script.js" defer></script>
 
     <script>
         window.playerConfig = {
@@ -387,7 +387,7 @@ $rekom            = $viewer->getRecommendations(15);
             id: <?= json_encode($id) ?>
         };
     </script>
-    <script src="../assets/js/player_video.js"></script>
+    <script src="../assets/js/player_video.js" defer></script>
 
     <script>
         lucide.createIcons();

@@ -89,8 +89,8 @@ if ($user_role === 'admin') {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL | System Health</title>
     <link rel="icon" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
+    <script src="../assets/js/tailwind.js" defer></script>
+    <script src="../assets/js/lucide.js" defer></script>
     <style>
         @import url('../assets/css/font.css');
         

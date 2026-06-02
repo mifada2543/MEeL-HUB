@@ -43,8 +43,8 @@ if (str_contains($current_chapter, '..')) {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL Read | <?= htmlspecialchars($book['title']) ?></title>
     <link rel="icon" href="../assets/MEeL.png" type="image/png">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
+    <script src="../assets/js/tailwind.js" defer></script>
+    <script src="../assets/js/lucide.js" defer></script>
     <style>
         body {
             background-color: #05070a;
