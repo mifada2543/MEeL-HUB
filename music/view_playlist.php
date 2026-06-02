@@ -31,6 +31,7 @@ $songs_query = $conn->query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.7">
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title><?= htmlspecialchars($playlist['name']) ?> | MEeL Playlist</title>
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>

@@ -73,6 +73,7 @@ $data = $conn->query("SELECT * FROM users WHERE id = $user_id")->fetch_assoc();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>Edit Profile | MEeL</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <script src="../assets/js/tailwind.js"></script>

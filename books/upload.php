@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
 
 <head>
     <meta charset="UTF-8">
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL | Upload Book</title>
     <link rel="icon" href="../assets/logo.png" type="image/png">
     <script src="../assets/js/tailwind.js"></script>
