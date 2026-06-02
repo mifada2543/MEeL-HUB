@@ -175,7 +175,7 @@ switch ($ext) {
 
                 <!-- [FIX MOBILE] Vinyl + info: kolom di mobile, row di md+ -->
                 <div class="flex flex-col sm:flex-row gap-5 p-4 sm:p-6 border-b border-white/[.04]">
-                <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
+                    <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
                         <div class="vinyl-spin vinyl-disc">
                             <img src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> cover" width="512" height="512" class="w-full h-full object-cover" fetchpriority="high" decoding="async">
                         </div>
@@ -281,8 +281,48 @@ switch ($ext) {
                     <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500 mb-3 flex items-center gap-2">
                         <i data-lucide="align-left" class="w-3.5 h-3.5 text-orange-500"></i> Deskripsi
                     </div>
-                    <p class="text-sm text-gray-300 leading-relaxed break-words whitespace-pre-wrap"><?= htmlspecialchars($v['description']) ?></p>
+                    <div class="relative">
+                        <p id="desc-text-music" class="text-sm text-gray-300 leading-relaxed break-words whitespace-pre-wrap line-clamp-3 transition-all duration-300"><?= htmlspecialchars($v['description']) ?></p>
+                    </div>
+                    <button id="btn-read-more-music" onclick="toggleDescriptionMusic()" class="mt-3 text-[10px] font-bold uppercase tracking-wider text-orange-500 hover:text-orange-400 transition-colors cursor-pointer border-none bg-transparent p-0 hidden">
+                        Selengkapnya
+                    </button>
                 </div>
+
+                <script>
+                    function toggleDescriptionMusic() {
+                        const descText = document.getElementById('desc-text-music');
+                        const btn = document.getElementById('btn-read-more-music');
+
+                        if (descText.classList.contains('line-clamp-3')) {
+                            descText.classList.remove('line-clamp-3');
+                            btn.textContent = 'Lebih Sedikit';
+                        } else {
+                            descText.classList.add('line-clamp-3');
+                            btn.textContent = 'Selengkapnya';
+                        }
+                    }
+
+                    function checkDescriptionLengthMusic() {
+                        const descText = document.getElementById('desc-text-music');
+                        const btn = document.getElementById('btn-read-more-music');
+
+                        if (descText && btn) {
+                            setTimeout(() => {
+                                const isOverflowing = descText.scrollHeight > descText.offsetHeight;
+
+                                if (isOverflowing) {
+                                    btn.classList.remove('hidden');
+                                } else {
+                                    btn.classList.add('hidden');
+                                }
+                            }, 50);
+                        }
+                    }
+                    document.addEventListener('DOMContentLoaded', checkDescriptionLengthMusic);
+                    document.body.addEventListener('htmx:afterOnLoad', checkDescriptionLengthMusic);
+                    window.addEventListener('resize', checkDescriptionLengthMusic);
+                </script>
             <?php endif; ?>
             <?php if ($is_logged_in): ?>
                 <!-- KOMENTAR -->
@@ -328,12 +368,12 @@ switch ($ext) {
                                                 <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
                                                     <a href="../delete_comment.php?id=<?= $c['id'] ?>"
                                                         onclick="return meelConfirmLink(event, { title: 'Hapus Komentar', text: 'Hapus komentar ini?', confirmButtonText: 'HAPUS' })"
-                                                    class="text-gray-500 hover:text-red-400 transition-colors no-underline flex-shrink-0">
+                                                        class="text-gray-500 hover:text-red-400 transition-colors no-underline flex-shrink-0">
                                                         <i data-lucide="trash-2" class="w-3 h-3"></i>
                                                     </a>
                                                 <?php endif; ?>
                                             </div>
-                                                <p class="text-sm text-gray-300 leading-relaxed">
+                                            <p class="text-sm text-gray-300 leading-relaxed">
                                                 <?php if ($parent_user): ?>
                                                     <span class="text-orange-400 text-[10px] font-bold bg-orange-500/10 px-1.5 py-0.5 rounded mr-1">@<?= htmlspecialchars($parent_user) ?></span>
                                                 <?php endif; ?>
@@ -447,112 +487,112 @@ switch ($ext) {
             </div>
 
         </div>
-    </div>
-
-    <?php if (isset($_SESSION['user_id'])): ?>
-        <div id="playlist-modal" class="hidden">
-            <div class="absolute inset-0" onclick="document.getElementById('playlist-modal').classList.add('hidden')"></div>
-            <div class="relative bg-[#141820] border border-white/[.07] border-t-2 border-t-orange-500 rounded-2xl p-5 sm:p-6 max-w-sm w-full mx-4">
-                <button onclick="document.getElementById('playlist-modal').classList.add('hidden')"
-                    class="absolute top-4 right-4 text-gray-600 hover:text-white transition-colors bg-none border-none cursor-pointer">
-                    <i data-lucide="x" class="w-4 h-4"></i>
-                </button>
-                <div class="flex items-center gap-2 mb-5">
-                    <i data-lucide="list-music" class="w-4 h-4 text-orange-400"></i>
-                    <span class="text-sm font-bold text-white uppercase tracking-wider">Simpan ke Playlist</span>
-                </div>
-                <div class="space-y-1.5 mb-4 max-h-[180px] overflow-y-auto pr-1 no-scrollbar">
-                    <?php
-                    $my_playlists = $conn->query("SELECT * FROM playlists WHERE user_id = {$_SESSION['user_id']} ORDER BY id DESC");
-                    if ($my_playlists && $my_playlists->num_rows > 0):
-                        while ($pl = $my_playlists->fetch_assoc()):
-                    ?>
-                            <form action="playlist_action.php" method="POST">
-                                <input type="hidden" name="action" value="add_to_playlist">
-                                <input type="hidden" name="music_id" value="<?= $id ?>">
-                                <input type="hidden" name="playlist_id" value="<?= $pl['id'] ?>">
-                                <button type="submit"
-                                    class="w-full text-left px-4 py-2.5 rounded-xl bg-white/[.04] border border-white/[.06] text-sm text-gray-400 hover:bg-orange-500/10 hover:border-orange-500/25 hover:text-orange-400 transition-all cursor-pointer font-medium">
-                                    <?= htmlspecialchars($pl['name']) ?>
-                                </button>
-                            </form>
-                        <?php endwhile;
-                    else: ?>
-                        <p class="text-[11px] text-gray-600 text-center py-3">Belum ada playlist.</p>
-                    <?php endif; ?>
-                </div>
-                <div class="border-t border-white/[.05] pt-4">
-                    <form action="playlist_action.php" method="POST" class="flex gap-2">
-                        <input type="hidden" name="action" value="create_playlist">
-                        <input type="hidden" name="music_id" value="<?= $id ?>">
-                        <input type="text" name="playlist_name"
-                            class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 transition-all min-w-0"
-                            placeholder="Nama playlist baru..." required>
-                        <button type="submit"
-                            class="bg-orange-500 hover:bg-orange-400 text-black text-xs font-black uppercase px-4 py-2 rounded-xl border-none cursor-pointer transition-all flex-shrink-0">
-                            Buat
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <!-- MINI PLAYER (Spotify-style) -->
-    <div id="mini-player" aria-label="Mini Player">
-
-        <!-- Progress bar — paling atas, full width -->
-        <div class="mp-seekbar" id="mp-seekbar" onclick="miniSeek(event)" title="Klik untuk seek">
-            <div class="mp-seekbar-fill" id="mp-seekbar-fill"></div>
-            <div class="mp-seekbar-thumb" id="mp-seekbar-thumb"></div>
         </div>
 
-        <div class="mp-body">
-            <!-- Kiri: thumbnail + info -->
-            <div class="mp-track" onclick="toggleMiniPlayer()" title="Buka player penuh">
-                <div class="mp-art" onclick="event.stopPropagation(); window.goBackToLibrary();">
-                    <img id="mini-thumbnail" src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> cover" width="256" height="256" loading="eager" decoding="async">
-                    <div class="mp-art-overlay">
-                        <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
+        <?php if (isset($_SESSION['user_id'])): ?>
+            <div id="playlist-modal" class="hidden">
+                <div class="absolute inset-0" onclick="document.getElementById('playlist-modal').classList.add('hidden')"></div>
+                <div class="relative bg-[#141820] border border-white/[.07] border-t-2 border-t-orange-500 rounded-2xl p-5 sm:p-6 max-w-sm w-full mx-4">
+                    <button onclick="document.getElementById('playlist-modal').classList.add('hidden')"
+                        class="absolute top-4 right-4 text-gray-600 hover:text-white transition-colors bg-none border-none cursor-pointer">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                    <div class="flex items-center gap-2 mb-5">
+                        <i data-lucide="list-music" class="w-4 h-4 text-orange-400"></i>
+                        <span class="text-sm font-bold text-white uppercase tracking-wider">Simpan ke Playlist</span>
+                    </div>
+                    <div class="space-y-1.5 mb-4 max-h-[180px] overflow-y-auto pr-1 no-scrollbar">
+                        <?php
+                        $my_playlists = $conn->query("SELECT * FROM playlists WHERE user_id = {$_SESSION['user_id']} ORDER BY id DESC");
+                        if ($my_playlists && $my_playlists->num_rows > 0):
+                            while ($pl = $my_playlists->fetch_assoc()):
+                        ?>
+                                <form action="playlist_action.php" method="POST">
+                                    <input type="hidden" name="action" value="add_to_playlist">
+                                    <input type="hidden" name="music_id" value="<?= $id ?>">
+                                    <input type="hidden" name="playlist_id" value="<?= $pl['id'] ?>">
+                                    <button type="submit"
+                                        class="w-full text-left px-4 py-2.5 rounded-xl bg-white/[.04] border border-white/[.06] text-sm text-gray-400 hover:bg-orange-500/10 hover:border-orange-500/25 hover:text-orange-400 transition-all cursor-pointer font-medium">
+                                        <?= htmlspecialchars($pl['name']) ?>
+                                    </button>
+                                </form>
+                            <?php endwhile;
+                        else: ?>
+                            <p class="text-[11px] text-gray-600 text-center py-3">Belum ada playlist.</p>
+                        <?php endif; ?>
+                    </div>
+                    <div class="border-t border-white/[.05] pt-4">
+                        <form action="playlist_action.php" method="POST" class="flex gap-2">
+                            <input type="hidden" name="action" value="create_playlist">
+                            <input type="hidden" name="music_id" value="<?= $id ?>">
+                            <input type="text" name="playlist_name"
+                                class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 transition-all min-w-0"
+                                placeholder="Nama playlist baru..." required>
+                            <button type="submit"
+                                class="bg-orange-500 hover:bg-orange-400 text-black text-xs font-black uppercase px-4 py-2 rounded-xl border-none cursor-pointer transition-all flex-shrink-0">
+                                Buat
+                            </button>
+                        </form>
                     </div>
                 </div>
-                <div class="mp-meta">
-                    <div class="mp-title" id="mini-title"><?= htmlspecialchars($v['title']) ?></div>
-                    <div class="mp-artist" id="mini-artist"><?= htmlspecialchars($v['artist'] ?? 'Unknown') ?></div>
-                </div>
+            </div>
+        <?php endif; ?>
+
+        <!-- MINI PLAYER (Spotify-style) -->
+        <div id="mini-player" aria-label="Mini Player">
+
+            <!-- Progress bar — paling atas, full width -->
+            <div class="mp-seekbar" id="mp-seekbar" onclick="miniSeek(event)" title="Klik untuk seek">
+                <div class="mp-seekbar-fill" id="mp-seekbar-fill"></div>
+                <div class="mp-seekbar-thumb" id="mp-seekbar-thumb"></div>
             </div>
 
-            <!-- Tengah: kontrol -->
-            <div class="mp-controls">
-                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn" onclick="toggleLoop()" title="Ulang">
-                    <i data-lucide="repeat" style="width:15px;height:15px;"></i>
-                </button>
-                <button class="mp-btn mp-btn-ghost" onclick="miniPrev()" id="mp-prev-btn" title="Sebelumnya">
-                    <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
-                </button>
-                <button class="mp-btn mp-btn-primary" onclick="miniPlayPause()" id="mini-play-btn" title="Play / Pause">
-                    <i data-lucide="play" style="width:18px;height:18px;"></i>
-                </button>
-                <button class="mp-btn mp-btn-ghost" onclick="miniNext()" id="mp-next-btn" title="Berikutnya">
-                    <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
-                </button>
-            </div>
-
-            <!-- Kanan: waktu + tutup -->
-            <div class="mp-right">
-                <div class="mp-time">
-                    <span id="mini-current-time">0:00</span>
-                    <span class="mp-time-sep">/</span>
-                    <span id="mini-duration">0:00</span>
+            <div class="mp-body">
+                <!-- Kiri: thumbnail + info -->
+                <div class="mp-track" onclick="toggleMiniPlayer()" title="Buka player penuh">
+                    <div class="mp-art" onclick="event.stopPropagation(); window.goBackToLibrary();">
+                        <img id="mini-thumbnail" src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> cover" width="256" height="256" loading="eager" decoding="async">
+                        <div class="mp-art-overlay">
+                            <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
+                        </div>
+                    </div>
+                    <div class="mp-meta">
+                        <div class="mp-title" id="mini-title"><?= htmlspecialchars($v['title']) ?></div>
+                        <div class="mp-artist" id="mini-artist"><?= htmlspecialchars($v['artist'] ?? 'Unknown') ?></div>
+                    </div>
                 </div>
-                <button class="mp-btn mp-btn-ghost mp-close" onclick="event.stopPropagation(); closeMiniPlayer()" title="Tutup">
-                    <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
-                </button>
+
+                <!-- Tengah: kontrol -->
+                <div class="mp-controls">
+                    <button class="mp-btn mp-btn-ghost" id="mini-loop-btn" onclick="toggleLoop()" title="Ulang">
+                        <i data-lucide="repeat" style="width:15px;height:15px;"></i>
+                    </button>
+                    <button class="mp-btn mp-btn-ghost" onclick="miniPrev()" id="mp-prev-btn" title="Sebelumnya">
+                        <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
+                    </button>
+                    <button class="mp-btn mp-btn-primary" onclick="miniPlayPause()" id="mini-play-btn" title="Play / Pause">
+                        <i data-lucide="play" style="width:18px;height:18px;"></i>
+                    </button>
+                    <button class="mp-btn mp-btn-ghost" onclick="miniNext()" id="mp-next-btn" title="Berikutnya">
+                        <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
+                    </button>
+                </div>
+
+                <!-- Kanan: waktu + tutup -->
+                <div class="mp-right">
+                    <div class="mp-time">
+                        <span id="mini-current-time">0:00</span>
+                        <span class="mp-time-sep">/</span>
+                        <span id="mini-duration">0:00</span>
+                    </div>
+                    <button class="mp-btn mp-btn-ghost mp-close" onclick="event.stopPropagation(); closeMiniPlayer()" title="Tutup">
+                        <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <?php include '../partials/footer.php'; ?>
+        <?php include '../partials/footer.php'; ?>
     </main>
     <script>
         window.MEEL_MUSIC_CONFIG = {
