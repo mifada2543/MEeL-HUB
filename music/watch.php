@@ -87,12 +87,15 @@ switch ($ext) {
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <link rel="stylesheet" href="../assets/css/plyr.css">
     <link rel="stylesheet" href="../assets/css/music.css">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
-    <script src="../assets/js/htmx.js"></script>
+    <script src="../assets/js/tailwind.js" defer></script>
+    <script src="../assets/js/lucide.js" defer></script>
+    <script src="../assets/js/htmx.js" defer></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
+    <a href="#main-content" class="absolute left-3 top-3 z-[999] -translate-y-20 rounded-lg bg-orange-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-black transition-transform focus:translate-y-0 focus:outline-none">
+        Lewati ke konten
+    </a>
 
     <!-- NAVBAR -->
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
@@ -145,7 +148,7 @@ switch ($ext) {
     </nav>
 
     <!-- [FIX MOBILE] Layout flex responsive (YouTube-style) -->
-    <div class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
+    <main id="main-content" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
         <div class="flex-1 space-y-5 px-4 sm:px-5">
             <div id="player-container" class="bg-[#0d1017] border-0 rounded-none sm:rounded-none overflow-hidden">
                 <div id="resume-modal" class="hidden rounded-xl sm:rounded-2xl">
@@ -172,9 +175,9 @@ switch ($ext) {
 
                 <!-- [FIX MOBILE] Vinyl + info: kolom di mobile, row di md+ -->
                 <div class="flex flex-col sm:flex-row gap-5 p-4 sm:p-6 border-b border-white/[.04]">
-                    <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
+                <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
                         <div class="vinyl-spin vinyl-disc">
-                            <img src="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>" alt="cover" class="w-full h-full object-cover">
+                            <img src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> cover" width="512" height="512" class="w-full h-full object-cover" fetchpriority="high" decoding="async">
                         </div>
                     </div>
 
@@ -222,9 +225,11 @@ switch ($ext) {
                 <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-white/[.04] bg-black/10">
                     <div class="flex items-center gap-3">
                         <a href="../profile/?u=<?= urlencode($v['uploader']) ?>"
+                            aria-label="Profil @<?= htmlspecialchars($v['uploader']) ?>"
+                            title="Profil @<?= htmlspecialchars($v['uploader']) ?>"
                             class="w-9 h-9 rounded-full overflow-hidden border border-orange-500/25 flex-shrink-0 block">
                             <?php if (!empty($v['uploader_pfp'])): ?>
-                                <img src="../profile/upload/<?= htmlspecialchars($v['uploader_pfp']) ?>" class="w-full h-full object-cover">
+                                <img src="../profile/upload/<?= htmlspecialchars($v['uploader_pfp']) ?>" alt="Foto profil <?= htmlspecialchars($v['uploader']) ?>" class="w-full h-full object-cover">
                             <?php else: ?>
                                 <div class="w-full h-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-sm font-bold">
                                     <?= strtoupper(substr($v['uploader'], 0, 1)) ?>
@@ -236,7 +241,7 @@ switch ($ext) {
                                 class="text-[10px] font-black uppercase tracking-widest text-orange-400 hover:underline block leading-tight">
                                 <?= htmlspecialchars($v['uploader']) ?>
                             </a>
-                            <div class="text-[10px] text-gray-600 mt-0.5">
+                            <div class="text-[10px] text-gray-500 mt-0.5">
                                 <?= number_format($v['views'] ?? 0) ?> tayangan &nbsp;•&nbsp; <?= time_ago($v['upload_date']) ?>
                             </div>
                         </div>
@@ -273,10 +278,10 @@ switch ($ext) {
                 </div>
             </div> <?php if (!empty($v['description'])): ?>
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                    <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600 mb-3 flex items-center gap-2">
+                    <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500 mb-3 flex items-center gap-2">
                         <i data-lucide="align-left" class="w-3.5 h-3.5 text-orange-500"></i> Deskripsi
                     </div>
-                    <p class="text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap"><?= htmlspecialchars($v['description']) ?></p>
+                    <p class="text-sm text-gray-300 leading-relaxed break-words whitespace-pre-wrap"><?= htmlspecialchars($v['description']) ?></p>
                 </div>
             <?php endif; ?>
             <?php if ($is_logged_in): ?>
@@ -284,7 +289,7 @@ switch ($ext) {
                 <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
                     <div class="px-4 sm:px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                         <i data-lucide="message-square" class="w-3.5 h-3.5 text-orange-500"></i>
-                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600">Komentar</span>
+                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Komentar</span>
                     </div>
                     <div class="p-4 sm:p-6">
                         <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">
@@ -318,17 +323,17 @@ switch ($ext) {
                                             <div class="flex items-center justify-between gap-2 mb-1">
                                                 <div class="flex items-center gap-2 min-w-0">
                                                     <span class="text-[11px] font-bold text-gray-300 truncate">@<?= htmlspecialchars($author) ?></span>
-                                                    <span class="text-[10px] text-gray-600 flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
+                                                    <span class="text-[10px] text-gray-500 flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
                                                 </div>
                                                 <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
                                                     <a href="../delete_comment.php?id=<?= $c['id'] ?>"
                                                         onclick="return meelConfirmLink(event, { title: 'Hapus Komentar', text: 'Hapus komentar ini?', confirmButtonText: 'HAPUS' })"
-                                                        class="text-gray-600 hover:text-red-400 transition-colors no-underline flex-shrink-0">
+                                                    class="text-gray-500 hover:text-red-400 transition-colors no-underline flex-shrink-0">
                                                         <i data-lucide="trash-2" class="w-3 h-3"></i>
                                                     </a>
                                                 <?php endif; ?>
                                             </div>
-                                            <p class="text-sm text-gray-400 leading-relaxed">
+                                                <p class="text-sm text-gray-300 leading-relaxed">
                                                 <?php if ($parent_user): ?>
                                                     <span class="text-orange-400 text-[10px] font-bold bg-orange-500/10 px-1.5 py-0.5 rounded mr-1">@<?= htmlspecialchars($parent_user) ?></span>
                                                 <?php endif; ?>
@@ -378,7 +383,7 @@ switch ($ext) {
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
                     <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                         <i data-lucide="list-music" class="w-3.5 h-3.5 text-orange-500"></i>
-                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600">Up Next</span>
+                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Up Next</span>
                     </div>
                     <div class="p-3 space-y-0.5 max-h-[320px] overflow-y-auto no-scrollbar">
                         <?php
@@ -390,13 +395,13 @@ switch ($ext) {
                                 class="flex items-center gap-3 px-2 py-2 rounded-xl transition-all no-underline
                               <?= $is_pl ? 'bg-orange-500/8 border border-orange-500/20' : 'hover:bg-white/[.025] border border-transparent' ?>">
                                 <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 <?= $is_pl ? 'opacity-50' : '' ?>">
-                                    <img src="upload/thumbnail/<?= htmlspecialchars($q['thumbnail']) ?>" class="w-full h-full object-cover" loading="lazy">
+                                    <img src="<?= htmlspecialchars(music_thumbnail_url($q['thumbnail'])) ?>" alt="<?= htmlspecialchars($q['title']) ?> thumbnail" width="64" height="48" class="w-full h-full object-cover" loading="lazy" decoding="async">
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <div class="text-[11px] font-bold truncate uppercase <?= $is_pl ? 'text-orange-400' : 'text-gray-400' ?>">
                                         <?= htmlspecialchars($q['title']) ?>
                                     </div>
-                                    <div class="text-[9px] text-gray-600 uppercase tracking-wider"><?= htmlspecialchars($q['artist']) ?></div>
+                                    <div class="text-[9px] text-gray-500 uppercase tracking-wider"><?= htmlspecialchars($q['artist']) ?></div>
                                 </div>
                                 <?php if ($is_pl): ?><i data-lucide="volume-2" class="w-3.5 h-3.5 text-orange-400 flex-shrink-0"></i><?php endif; ?>
                             </a>
@@ -408,7 +413,7 @@ switch ($ext) {
             <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
                 <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                     <i data-lucide="shuffle" class="w-3.5 h-3.5 text-gray-600"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-600">Discover</span>
+                    <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Discover</span>
                 </div>
                 <!-- [MOBILE] grid 2 kolom di mobile, list di lg -->
                 <div id="music-recommendation-column" class="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-0 lg:space-y-0.5">
@@ -420,17 +425,20 @@ switch ($ext) {
                             class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 p-2 rounded-xl no-underline"
                             title="<?= htmlspecialchars($r['title']) ?>">
                             <div class="w-full lg:w-16 aspect-square lg:h-12 lg:aspect-auto rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                                <img src="upload/thumbnail/<?= htmlspecialchars($r['thumbnail']) ?>"
-                                    class="rec-thumb-img w-full h-full object-cover transition-transform duration-300" loading="lazy">
+                                <img src="<?= htmlspecialchars(music_thumbnail_url($r['thumbnail'])) ?>"
+                                    alt="<?= htmlspecialchars($r['title']) ?> thumbnail"
+                                    width="96" height="96"
+                                    class="rec-thumb-img w-full h-full object-cover transition-transform duration-300"
+                                    loading="lazy" decoding="async">
                             </div>
                             <div class="flex-1 min-w-0 flex flex-col justify-center">
-                                <div class="text-[11px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
+                                <div class="text-[11px] font-bold text-gray-300 uppercase tracking-tight leading-snug rec-title-text">
                                     <?= htmlspecialchars($r['title']) ?>
                                 </div>
-                                <div class="text-[10px] text-gray-600 mt-0.5 truncate"><?= htmlspecialchars($r['artist']) ?></div>
+                                <div class="text-[10px] text-gray-500 mt-0.5 truncate"><?= htmlspecialchars($r['artist']) ?></div>
                                 <div class="flex items-center gap-1.5 mt-1">
-                                    <span class="text-[9px] text-gray-700"><?= number_format($r['views']) ?> views</span>
-                                    <span class="text-[8px] px-1.5 py-0.5 rounded bg-white/[.04] border border-white/[.05] text-gray-600 uppercase"><?= $r_lbl ?></span>
+                                    <span class="text-[9px] text-gray-500"><?= number_format($r['views']) ?> views</span>
+                                    <span class="text-[8px] px-1.5 py-0.5 rounded bg-white/[.04] border border-white/[.05] text-gray-500 uppercase"><?= $r_lbl ?></span>
                                 </div>
                             </div>
                         </a>
@@ -503,7 +511,7 @@ switch ($ext) {
             <!-- Kiri: thumbnail + info -->
             <div class="mp-track" onclick="toggleMiniPlayer()" title="Buka player penuh">
                 <div class="mp-art" onclick="event.stopPropagation(); window.goBackToLibrary();">
-                    <img id="mini-thumbnail" src="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>" alt="cover">
+                    <img id="mini-thumbnail" src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> cover" width="256" height="256" loading="eager" decoding="async">
                     <div class="mp-art-overlay">
                         <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
                     </div>
@@ -545,6 +553,7 @@ switch ($ext) {
     </div>
 
     <?php include '../partials/footer.php'; ?>
+    </main>
     <script>
         window.MEEL_MUSIC_CONFIG = {
             id: <?= $id ?>,
@@ -553,20 +562,26 @@ switch ($ext) {
             title: '<?= htmlspecialchars(addslashes($v['title'])) ?>',
             artist: '<?= htmlspecialchars(addslashes($v['artist'] ?? '')) ?>',
             thumbnail: '<?= htmlspecialchars($v['thumbnail']) ?>',
+            thumbnailUrl: '<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>',
             filename: '<?= htmlspecialchars($v['filename']) ?>'
         };
     </script>
-    <script src="../assets/js/plyr.js"></script>
-    <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
-    <script src="../assets/js/player_music.js"></script>
-
     <script>
-        lucide.createIcons();
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+
         document.body.addEventListener('htmx:afterOnLoad', function() {
-            lucide.createIcons();
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
         });
     </script>
+    <script src="../assets/js/plyr.js"></script>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <script src="../assets/js/player_music.js"></script>
 </body>
 
 </html>

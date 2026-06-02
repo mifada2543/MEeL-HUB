@@ -101,7 +101,9 @@ $songs_query = $conn->query("
                                 $thumb = !empty($s['thumbnail']) ? $s['thumbnail'] : '';
 
                                 if ($thumb): ?>
-                                    <img src="upload/thumbnail/<?= htmlspecialchars($thumb) ?>"
+                                    <img src="<?= htmlspecialchars(music_thumbnail_url($thumb)) ?>"
+                                        alt="<?= htmlspecialchars($s['title']) ?> thumbnail"
+                                        width="96" height="96"
                                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                                 <?php else: ?>
                                     <i data-lucide="music" class="w-5 h-5 text-gray-600"></i>
@@ -143,7 +145,9 @@ $songs_query = $conn->query("
     </div>
     <?php include '../partials/footer.php'; ?>
     <script>
-        lucide.createIcons();
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
     </script>
 </body>
 

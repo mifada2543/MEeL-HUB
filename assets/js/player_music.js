@@ -120,6 +120,9 @@ window.toggleLoop = function () {
       thumbnail: window.MEEL_MUSIC_CONFIG
         ? window.MEEL_MUSIC_CONFIG.thumbnail
         : "",
+      thumbnailUrl: window.MEEL_MUSIC_CONFIG
+        ? window.MEEL_MUSIC_CONFIG.thumbnailUrl || ""
+        : "",
       filename: window.MEEL_MUSIC_CONFIG
         ? window.MEEL_MUSIC_CONFIG.filename
         : "",
@@ -702,6 +705,7 @@ document.addEventListener("DOMContentLoaded", () => {
       title: window.MEEL_MUSIC_CONFIG.title,
       artist: window.MEEL_MUSIC_CONFIG.artist,
       thumbnail: window.MEEL_MUSIC_CONFIG.thumbnail,
+      thumbnailUrl: window.MEEL_MUSIC_CONFIG.thumbnailUrl || "",
       filename: window.MEEL_MUSIC_CONFIG.filename,
     };
     sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
@@ -799,6 +803,7 @@ document.addEventListener("DOMContentLoaded", () => {
       title: config.title || "",
       artist: config.artist || "",
       thumbnail: config.thumbnail || "",
+      thumbnailUrl: config.thumbnailUrl || "",
       filename: config.filename || "",
       nextSongUrl: config.nextSongUrl || "",
       currentTime: player ? player.currentTime : 0,
@@ -855,6 +860,7 @@ document.addEventListener("DOMContentLoaded", () => {
           title: window.MEEL_MUSIC_CONFIG.title,
           artist: window.MEEL_MUSIC_CONFIG.artist,
           thumbnail: window.MEEL_MUSIC_CONFIG.thumbnail,
+          thumbnailUrl: window.MEEL_MUSIC_CONFIG.thumbnailUrl || "",
           filename: window.MEEL_MUSIC_CONFIG.filename,
         };
         sessionStorage.setItem("meel_audio_state", JSON.stringify(state));

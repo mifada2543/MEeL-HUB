@@ -362,7 +362,7 @@ if (isset($_GET['content_only'])) {
             <!-- Kiri: art + info -->
             <div class="mp-track" title="Buka player penuh">
                 <div class="mp-art" onclick="expandPlayerFromMiniPlayer()">
-                    <img id="mini-thumbnail-index" src="upload/thumbnail/default.png" alt="cover">
+                    <img id="mini-thumbnail-index" src="<?= htmlspecialchars(music_thumbnail_url('default.png')) ?>" alt="Cover lagu" width="256" height="256" loading="eager" decoding="async">
                     <div class="mp-art-overlay">
                         <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
                     </div>
@@ -491,7 +491,7 @@ if (isset($_GET['content_only'])) {
             const img = document.getElementById('mini-thumbnail-index');
             const title = document.getElementById('mini-title-index');
             const artist = document.getElementById('mini-artist-index');
-            if (img) img.src = `upload/thumbnail/${currentState.thumbnail}`;
+            if (img) img.src = currentState.thumbnailUrl || `upload/thumbnail/${currentState.thumbnail}`;
             if (title) title.textContent = currentState.title || 'Unknown';
             if (artist) artist.textContent = currentState.artist || 'Unknown';
         }
@@ -687,6 +687,7 @@ if (isset($_GET['content_only'])) {
                         title: this.dataset.title,
                         artist: this.dataset.artist,
                         thumbnail: this.dataset.thumbnail,
+                        thumbnailUrl: this.dataset.thumbnailUrl || `upload/thumbnail/${this.dataset.thumbnail}`,
                         filename: this.dataset.filename,
                         watchUrl: e.target.closest('a') ? e.target.closest('a').getAttribute('href') : `watch.php?id=${this.dataset.id}`,
                         nextSongUrl: nextSongUrl,

@@ -3,6 +3,7 @@
      data-title="<?= htmlspecialchars($v['title']) ?>"
      data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
      data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
+     data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
      data-filename="<?= htmlspecialchars($v['filename']) ?>">
     <!-- THUMBNAIL -->
     <a href="watch.php?id=<?= $v['id'] ?>" 
@@ -11,10 +12,13 @@
        data-title="<?= htmlspecialchars($v['title']) ?>"
        data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
        data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
+       data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
        data-filename="<?= htmlspecialchars($v['filename']) ?>">
         <?php if (!empty($v['thumbnail'])): ?>
-            <img src="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
-                 class="w-full h-full object-cover" loading="lazy">
+            <img src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
+                 alt="<?= htmlspecialchars($v['title']) ?> thumbnail"
+                 width="96" height="96"
+                 class="w-full h-full object-cover" loading="lazy" decoding="async">
         <?php else: ?>
             <div class="w-full h-full flex items-center justify-center">
                 <i data-lucide="music" class="w-4 h-4 text-gray-700"></i>
@@ -30,14 +34,15 @@
            data-title="<?= htmlspecialchars($v['title']) ?>"
            data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
            data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
+           data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
            data-filename="<?= htmlspecialchars($v['filename']) ?>">
             <?= htmlspecialchars($v['title']) ?>
         </a>
         <div class="flex items-center gap-2 mt-0.5">
-            <span class="text-[10px] text-gray-600 truncate">
+            <span class="text-[10px] text-gray-500 truncate">
                 <?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>
             </span>
-            <span class="text-[9px] px-1.5 py-0.5 rounded bg-white/[.04] text-gray-600 border border-white/[.05] uppercase flex-shrink-0">
+            <span class="text-[9px] px-1.5 py-0.5 rounded bg-white/[.04] text-gray-500 border border-white/[.05] uppercase flex-shrink-0">
                 <?= strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION)) ?>
             </span>
         </div>
@@ -52,6 +57,7 @@
        data-title="<?= htmlspecialchars($v['title']) ?>"
        data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
        data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
+       data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
        data-filename="<?= htmlspecialchars($v['filename']) ?>">
         Play
     </a>

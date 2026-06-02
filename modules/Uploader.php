@@ -126,10 +126,10 @@ class Uploader
         if (!empty($files['thumbnail']['name']) && !empty($files['thumbnail']['tmp_name'])) {
             // ── PRIORITAS 1: Cover art manual dari form upload ────────────────
             $t_clean         = getRomajiName(pathinfo($files['thumbnail']['name'], PATHINFO_FILENAME));
-            $thumb_candidate = $this->getUniqueFilename($t_clean, "jpg", $thumb_dir);
+            $thumb_candidate = $this->getUniqueFilename($t_clean, "thumb.webp", $thumb_dir);
             $abs_out         = $thumb_dir . $thumb_candidate;
 
-            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($files['thumbnail']['tmp_name']) . " -vf \"scale='min(1280,iw)':-1\" -q:v 5 " . escapeshellarg($abs_out) . " 2>&1");
+            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($files['thumbnail']['tmp_name']) . " -vf \"scale='min(256,iw)':-1\" -c:v libwebp -q:v 78 " . escapeshellarg($abs_out) . " 2>&1");
 
             if (file_exists($abs_out) && filesize($abs_out) > 0) {
                 $thumb_name = $thumb_candidate;
@@ -139,10 +139,10 @@ class Uploader
         if ($thumb_name === "music_default.png") {
             // ── PRIORITAS 2: Embedded thumbnail di dalam file audio (ID3/FLAC) ─
             // FFmpeg: -an abaikan audio, -vframes 1 ambil 1 frame video (= cover art)
-            $thumb_candidate = $this->getUniqueFilename($thumb_base, "jpg", $thumb_dir);
+            $thumb_candidate = $this->getUniqueFilename($thumb_base, "thumb.webp", $thumb_dir);
             $abs_out         = $thumb_dir . $thumb_candidate;
 
-            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($target_file) . " -an -vframes 1 " . escapeshellarg($abs_out) . " 2>&1");
+            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($target_file) . " -an -vframes 1 -vf \"scale='min(256,iw)':-1\" -c:v libwebp -q:v 78 " . escapeshellarg($abs_out) . " 2>&1");
 
             if (file_exists($abs_out) && filesize($abs_out) > 0) {
                 $thumb_name = $thumb_candidate;

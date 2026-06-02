@@ -18,6 +18,43 @@ function format_bytes($bytes, $precision = 2)
     $bytes /= pow(1024, $pow);
     return round($bytes, $precision) . ' ' . $units[$pow];
 }
+
+function music_thumbnail_url(?string $thumbnail): string
+{
+    $thumbnail = trim((string)$thumbnail);
+    $thumb_dir = __DIR__ . '/../music/upload/thumbnail/';
+    $fallback  = '../assets/img/music0.png';
+
+    if ($thumbnail === '') {
+        if (is_file($thumb_dir . 'default.thumb.webp')) return 'upload/thumbnail/default.thumb.webp';
+        return is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp' : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback);
+    }
+
+    $thumbnail = basename($thumbnail);
+    if (str_ends_with($thumbnail, '.thumb.webp') && is_file($thumb_dir . $thumbnail)) {
+        return 'upload/thumbnail/' . rawurlencode($thumbnail);
+    }
+
+    $filename = pathinfo($thumbnail, PATHINFO_FILENAME);
+    $base     = preg_replace('/\\.thumb$/', '', $filename) ?: $filename;
+    $thumb_webp = $base . '.thumb.webp';
+    $webp_file  = $base . '.webp';
+
+    if (is_file($thumb_dir . $thumb_webp)) {
+        return 'upload/thumbnail/' . rawurlencode($thumb_webp);
+    }
+
+    if (is_file($thumb_dir . $webp_file)) {
+        return 'upload/thumbnail/' . rawurlencode($webp_file);
+    }
+
+    if (is_file($thumb_dir . $thumbnail)) {
+        return 'upload/thumbnail/' . rawurlencode($thumbnail);
+    }
+
+    if (is_file($thumb_dir . 'default.thumb.webp')) return 'upload/thumbnail/default.thumb.webp';
+    return is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp' : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback);
+}
 // Tentukan path salah satu folder utama di HDD
 $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
 
