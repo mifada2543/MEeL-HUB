@@ -31,7 +31,7 @@ $total      = $library->countVideos();
 
     <!-- NAVBAR -->
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2 sm:gap-4">
+        <div class="w-full px-3 sm:px-6 xl:px-10 2xl:px-16 h-14 flex items-center justify-between gap-2 sm:gap-4">
             <a href="../index.php" class="flex items-center gap-1 sm:gap-2.5 flex-shrink-0" title="MEeL HUB">
                 <div class="w-6 h-6 sm:w-7 sm:h-7 bg-red-600 rounded-lg flex items-center justify-center">
                     <i data-lucide="play" class="w-3.5 h-3.5 text-white fill-current"></i>
@@ -81,7 +81,7 @@ $total      = $library->countVideos();
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto px-5 pt-8 pb-20">
+    <main class="w-full px-4 sm:px-6 xl:px-10 2xl:px-16 pt-8 pb-20">
 
         <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
             <div>
@@ -92,7 +92,7 @@ $total      = $library->countVideos();
         </div>
 
         <!-- [FIX] offset load_more sesuai $limit_init (8), bukan 10 -->
-        <div id="video-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5" title="Muat lebih banyak">
+        <div id="video-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5" title="Muat lebih banyak">
             <?php if ($data && $data->num_rows > 0): ?>
                 <?php while ($v = $data->fetch_assoc()): ?>
                     <?php include 'video_card.php'; ?>
