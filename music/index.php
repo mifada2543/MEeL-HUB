@@ -665,6 +665,8 @@ if (isset($_GET['content_only'])) {
         function setupMusicItemClicks() {
             const allItems = () => Array.from(document.querySelectorAll('.music-item'));
             document.querySelectorAll('.music-item').forEach(item => {
+                if (item.dataset.listenerAdded) return;
+                item.dataset.listenerAdded = 'true';
                 item.addEventListener('click', function(e) {
                     // Jika klik pada tombol download/share, abaikan
                     if (e.target.closest('.no-player')) return;

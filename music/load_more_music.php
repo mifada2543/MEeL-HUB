@@ -1,5 +1,6 @@
 <?php
 include '../auth/config.php';
+require_once '../modules/helpers.php';
 require_once '../modules/MediaLibrary.php';
 
 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 10;
