@@ -288,7 +288,7 @@ function triggerPremiumHealthAlert() {
   };
 
   // Simpan status fullscreen sebelum alert muncul
-  const wasFullscreen = !!document.fullscreenElement;
+  const wasFullscreen = !!document.fullscreenElement || (window.player && window.player.fullscreen && window.player.fullscreen.active);
 
   Swal.fire({
     title: "WAKTUNYA ISTIRAHATKAN MATA!",
@@ -338,8 +338,12 @@ function triggerPremiumHealthAlert() {
         lucide.createIcons();
       }
       // Exit fullscreen saat modal muncul agar user bisa interact
-      if (wasFullscreen && document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
+      if (wasFullscreen) {
+        if (window.player && window.player.fullscreen && window.player.fullscreen.active) {
+          window.player.fullscreen.exit();
+        } else if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
       }
     },
   }).then((result) => {
@@ -411,10 +415,14 @@ function triggerPremiumHealthAlert() {
         }).then(() => {
           resumeVideo();
           // Re-enter fullscreen jika sebelumnya fullscreen
-          if (wasFullscreen && mediaElement && mediaElement.requestFullscreen) {
-            mediaElement
-              .requestFullscreen()
-              .catch((err) => console.log("Fullscreen re-entry:", err));
+          if (wasFullscreen) {
+            if (window.player && window.player.fullscreen) {
+              window.player.fullscreen.enter();
+            } else if (mediaElement && mediaElement.requestFullscreen) {
+              mediaElement
+                .requestFullscreen()
+                .catch((err) => console.log("Fullscreen re-entry:", err));
+            }
           }
           scheduleNextHealthAlert();
         });
@@ -423,20 +431,28 @@ function triggerPremiumHealthAlert() {
       // PENGGUNA KLIK "LANJUT NONTON"
       resumeVideo();
       // Re-enter fullscreen jika sebelumnya fullscreen
-      if (wasFullscreen && mediaElement && mediaElement.requestFullscreen) {
-        mediaElement
-          .requestFullscreen()
-          .catch((err) => console.log("Fullscreen re-entry:", err));
+      if (wasFullscreen) {
+        if (window.player && window.player.fullscreen) {
+          window.player.fullscreen.enter();
+        } else if (mediaElement && mediaElement.requestFullscreen) {
+          mediaElement
+            .requestFullscreen()
+            .catch((err) => console.log("Fullscreen re-entry:", err));
+        }
       }
       scheduleNextHealthAlert();
     } else if (result.dismiss === Swal.DismissReason.timer) {
       // DIDIAMKAN SELAMA 5 MENIT
       resumeVideo();
       // Re-enter fullscreen jika sebelumnya fullscreen
-      if (wasFullscreen && mediaElement && mediaElement.requestFullscreen) {
-        mediaElement
-          .requestFullscreen()
-          .catch((err) => console.log("Fullscreen re-entry:", err));
+      if (wasFullscreen) {
+        if (window.player && window.player.fullscreen) {
+          window.player.fullscreen.enter();
+        } else if (mediaElement && mediaElement.requestFullscreen) {
+          mediaElement
+            .requestFullscreen()
+            .catch((err) => console.log("Fullscreen re-entry:", err));
+        }
       }
     }
   });

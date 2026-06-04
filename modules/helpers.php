@@ -68,7 +68,7 @@ if (!is_dir($hdd_check_path)) {
 }
 function get_user_usage($username)
 {
-    $path = __DIR__ . "/data_drive/private_admins/" . $username;
+    $path = dirname(__DIR__) . "/data_drive/private_admins/" . $username;
     if (!is_dir($path)) return 0;
 
     $size = 0;

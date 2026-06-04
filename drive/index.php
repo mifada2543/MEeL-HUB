@@ -190,7 +190,7 @@ if ($user->isMember()) {
                             <span class="<?= $usagePercentage > 80 ? 'text-red-500' : 'text-blue-500' ?>"><?= format_bytes($usage) ?> / 20 GB</span>
                         </div>
                         <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
-                            <div class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500" style="width: <?= $usagePercentage ?>%"></div>
+                            <div class="h-full bg-gradient-to-r from-blue-500 to-blue-500 transition-all duration-500" style="width: <?= $usagePercentage ?>%"></div>
                         </div>
                     </div>
                     <a href="index.php?scope=<?= urlencode($currentScope) ?>" class="p-2 hover:bg-gray-800 rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></a>
