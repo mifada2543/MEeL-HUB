@@ -335,12 +335,17 @@ window.toggleMiniPlayer = async function () {
 
     if (appContentGrid)
       appContentGrid.classList.remove(
-        "grid",
-        "grid-cols-1",
-        "lg:grid-cols-3",
-        "gap-8",
+        "flex",
+        "flex-col",
+        "lg:flex-row",
+        "gap-4",
       );
-    if (leftColumn) leftColumn.classList.remove("lg:col-span-2", "space-y-5");
+    if (leftColumn)
+      leftColumn.classList.remove(
+        "flex-1",
+        "space-y-4",
+        "sm:space-y-5",
+      );
 
     let tempIndex = document.getElementById("temp-index-content");
     if (!tempIndex) {
@@ -378,12 +383,17 @@ window.toggleMiniPlayer = async function () {
 
     if (appContentGrid)
       appContentGrid.classList.add(
-        "grid",
-        "grid-cols-1",
-        "lg:grid-cols-3",
-        "gap-8",
+        "flex",
+        "flex-col",
+        "lg:flex-row",
+        "gap-4",
       );
-    if (leftColumn) leftColumn.classList.add("lg:col-span-2", "space-y-5");
+    if (leftColumn)
+      leftColumn.classList.add(
+        "flex-1",
+        "space-y-4",
+        "sm:space-y-5",
+      );
 
     if (detailsWrapper) detailsWrapper.style.display = "block";
     if (recWrapper) recWrapper.style.display = "block";
