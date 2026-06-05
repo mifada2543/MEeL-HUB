@@ -161,7 +161,7 @@ include '../controllers/fun.php';
                         <p class="text-[9px] font-black text-gray-600 uppercase mb-3 tracking-tighter">Most Viewed Content</p>
                         <div class="space-y-2">
                             <?php while ($tm = $top_media->fetch_assoc()):
-                                $link = ($tm['type'] == 'video') ? "video/watch.php?id=" : "music/watch.php?id=";
+                                $link = ($tm['type'] == 'video') ? "../video/watch.php?id=" : "../music/watch.php?id=";
                                 $color = ($tm['type'] == 'video') ? "text-red-500" : "text-orange-500";
                                 $icon = ($tm['type'] == 'video') ? "play-circle" : "music-2";
                             ?>
