@@ -13,9 +13,10 @@
 
 ---
 
-MEeL adalah platform media hub pribadi berbasis PHP & MySQL yang berjalan di atas Apache (XAMPP/LAMPP). Platform ini menggabungkan modul **Video**, **Music**, **Books**, dan **Cloud Drive** ke dalam antarmuka web gelap bertema monospace yang modern. Sistem ini dilengkapi dengan streaming HLS (HTTP Live Streaming), transcoding otomatis menggunakan FFmpeg, integrasi yt-dlp untuk download via URL, serta manajemen file berbasis peran (*role-based access control*).
+MEeL adalah platform media hub pribadi berbasis PHP & MySQL yang berjalan di atas Apache (XAMPP/LAMPP). Platform ini menggabungkan modul **Video**, **Music**, **Books**, dan **Cloud Drive** ke dalam antarmuka web gelap bertema monospace yang modern. Sistem ini dilengkapi dengan streaming HLS (HTTP Live Streaming), transcoding otomatis menggunakan FFmpeg, integrasi yt-dlp untuk download via URL, serta manajemen file berbasis peran (_role-based access control_).
 
 ## Daftar Isi
+
 - [Fitur Utama](#fitur-utama)
 - [Tech Stack](#tech-stack)
 - [Struktur Proyek](#struktur-proyek)
@@ -39,34 +40,39 @@ MEeL adalah platform media hub pribadi berbasis PHP & MySQL yang berjalan di ata
 ## Fitur Utama
 
 ### 🎬 Video (Streaming HLS)
+
 - Streaming adaptif menggunakan HLS (`.m3u8` playlist dan segment `.ts`) dengan fallback MP4 otomatis.
-- Player video kustom berbasis Plyr.js dengan quality selector, subtitle/caption switching, Picture-in-Picture (PiP), dan pintasan keyboard (*keyboard shortcuts*).
+- Player video kustom berbasis Plyr.js dengan quality selector, subtitle/caption switching, Picture-in-Picture (PiP), dan pintasan keyboard (_keyboard shortcuts_).
 - **Gesture Sentuh Mobile**: double-tap area kiri (rewind 5 detik), double-tap area kanan (forward 5 detik), dan single-tap area tengah (play/pause).
-- **Seamless Video Transition**: transisi video berikutnya secara dinamis (SPA-like) tanpa reload halaman, mempertahankan status layar penuh (*fullscreen*), serta merefresh *VTT sprite preview thumbnails* agar sinkron dengan video baru.
+- **Seamless Video Transition**: transisi video berikutnya secara dinamis (SPA-like) tanpa reload halaman, mempertahankan status layar penuh (_fullscreen_), serta merefresh _VTT sprite preview thumbnails_ agar sinkron dengan video baru.
 - Resume otomatis posisi pemutaran terakhir menggunakan `localStorage`.
 
 ### 🎵 Music (Audio Platform)
+
 - Streaming audio berkualitas tinggi (MP3, FLAC, OGG/Opus).
 - Pembuatan dan manajemen playlist kustom.
 - Pengaturan antrean lagu dinamis.
 - Filter pencarian cepat berdasarkan format file dan nama artis.
 
 ### 📚 Books (Digital Library)
+
 - Pembaca buku digital (E-Book/PDF) terintegrasi langsung di browser.
-- Panel unggah buku dengan pembuatan sampul (*cover*) otomatis dan manajemen metadata buku.
+- Panel unggah buku dengan pembuatan sampul (_cover_) otomatis dan manajemen metadata buku.
 
 ### ☁️ Cloud Drive (Personal Cloud Storage)
+
 - Penyimpanan file terbagi menjadi direktori **Public** (akses umum) dan **Private** (akses personal per pengguna).
 - Pembatasan kapasitas unggah file berdasarkan kuota pengguna.
 - Manajemen file (unggah, unduh, hapus) yang disesuaikan dengan peran pengguna (`admin` / `member`).
 
 ### 🔧 Fungsionalitas Umum
+
 - Portal dashboard utama dengan statistik kapasitas disk dan ringkasan jumlah media.
 - Fitur **Transcoding & Download URL** terintegrasi menggunakan `yt-dlp` dan `FFmpeg`.
 - Kolom komentar bertingkat (nested comments) serta fitur Like/Dislike pada Video dan Musik.
 - Panel edit profil untuk memperbarui nama pengguna, kata sandi, dan foto avatar.
 - Keamanan sesi yang diperketat (Timeout 12 jam, proteksi CSRF Token, dan pemutusan sesi ganda).
-- Sistem firewall internal: pelacakan aktivitas (*activity logging*) dan pemblokiran IP (*IP banning*).
+- Sistem firewall internal: pelacakan aktivitas (_activity logging_) dan pemblokiran IP (_IP banning_).
 - **Mode Sehat 20-20-20**: notifikasi berkala untuk mengistirahatkan mata setiap 20 menit.
 - Halaman panduan interaktif (`introduction.php`) dan riwayat pembaruan aplikasi (`update.php`).
 
@@ -74,17 +80,17 @@ MEeL adalah platform media hub pribadi berbasis PHP & MySQL yang berjalan di ata
 
 ## Tech Stack
 
-| Layer | Teknologi | Keterangan |
-|-------|-----------|------------|
-| **Backend** | PHP 8.0+ | Core logic & API endpoints |
-| **Database** | MySQL 5.7+ / MariaDB | Relational storage & metadata |
-| **Web Server** | Apache 2.4+ | Menggunakan rewrite engine (`mod_rewrite`) |
-| **Styling** | TailwindCSS (CDN) & Vanilla CSS | UI/UX bergaya dark-mode & monospace |
-| **Interaktivitas** | HTMX & Vanilla JavaScript | AJAX tanpa reload halaman (SPA-like) |
-| **Media Player** | Plyr.js & HLS.js | Engine pemutaran video HLS & audio |
-| **Transcoding** | FFmpeg & FFprobe | Segmentasi HLS, kompresi, & ekstrak thumbnail |
-| **Downloader** | yt-dlp | Pengunduhan media dari URL eksternal |
-| **Transliterasi** | PHP `intl` (Transliterator) | Pembersihan nama file (Romaji conversion) |
+| Layer              | Teknologi                       | Keterangan                                    |
+| ------------------ | ------------------------------- | --------------------------------------------- |
+| **Backend**        | PHP 8.0+                        | Core logic & API endpoints                    |
+| **Database**       | MySQL 5.7+ / MariaDB            | Relational storage & metadata                 |
+| **Web Server**     | Apache 2.4+                     | Menggunakan rewrite engine (`mod_rewrite`)    |
+| **Styling**        | TailwindCSS (CDN) & Vanilla CSS | UI/UX bergaya dark-mode & monospace           |
+| **Interaktivitas** | HTMX & Vanilla JavaScript       | AJAX tanpa reload halaman (SPA-like)          |
+| **Media Player**   | Plyr.js & HLS.js                | Engine pemutaran video HLS & audio            |
+| **Transcoding**    | FFmpeg & FFprobe                | Segmentasi HLS, kompresi, & ekstrak thumbnail |
+| **Downloader**     | yt-dlp                          | Pengunduhan media dari URL eksternal          |
+| **Transliterasi**  | PHP `intl` (Transliterator)     | Pembersihan nama file (Romaji conversion)     |
 
 ---
 
@@ -213,18 +219,21 @@ MEeL/
 ## Persyaratan Sistem
 
 ### Minimum Requirements
-| Komponen | Versi | Keterangan |
-|----------|-------|------------|
-| **PHP** | 7.4+ | Versi 8.0+ sangat disarankan |
-| **MySQL** | 5.7+ / MariaDB 10.2+ | Skema mendukung encoding `utf8mb4` |
-| **Apache** | 2.4+ | Wajib mengaktifkan modul `mod_rewrite` |
-| **FFmpeg** | 6.0+ | Dibutuhkan untuk pembuatan segmen HLS dan kompresi media |
-| **yt-dlp** | Versi Terbaru | Dibutuhkan untuk fungsionalitas unduhan media via URL |
-| **RAM** | 2 GB+ | Direkomendasikan 4 GB+ agar transcoding background lancar |
-| **Storage** | 10 GB+ | Tergantung ukuran penyimpanan media yang di-mount |
+
+| Komponen    | Versi                | Keterangan                                                |
+| ----------- | -------------------- | --------------------------------------------------------- |
+| **PHP**     | 7.4+                 | Versi 8.0+ sangat disarankan                              |
+| **MySQL**   | 5.7+ / MariaDB 10.2+ | Skema mendukung encoding `utf8mb4`                        |
+| **Apache**  | 2.4+                 | Wajib mengaktifkan modul `mod_rewrite`                    |
+| **FFmpeg**  | 6.0+                 | Dibutuhkan untuk pembuatan segmen HLS dan kompresi media  |
+| **yt-dlp**  | Versi Terbaru        | Dibutuhkan untuk fungsionalitas unduhan media via URL     |
+| **RAM**     | 2 GB+                | Direkomendasikan 4 GB+ agar transcoding background lancar |
+| **Storage** | 10 GB+               | Tergantung ukuran penyimpanan media yang di-mount         |
 
 ### PHP Extensions
+
 Pastikan modul-modul PHP berikut diaktifkan pada server Anda:
+
 ```ini
 extension=mysqli
 extension=pdo_mysql
@@ -234,6 +243,7 @@ extension=json
 extension=mbstring
 extension=intl
 ```
+
 > **Penting**: Ekstensi `intl` (Internationalization) wajib aktif untuk proses pembersihan nama file (transliterasi karakter khusus Jepang/Kana ke Romaji) menggunakan class `Transliterator`.
 
 ---
@@ -241,19 +251,25 @@ extension=intl
 ## Instalasi
 
 ### 1. Kloning Repositori
+
 Masuk ke direktori web root server Apache Anda, kemudian jalankan kloning:
+
 ```bash
 cd /opt/lampp/htdocs
 git clone https://github.com/mifada2543/MEeL.git MEeL
 ```
 
 ### 2. Konfigurasi Database
+
 Buat database baru di MySQL:
+
 ```sql
 CREATE DATABASE MEeL CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
+
 Import code SQL yang disediakan dalam proyek ke database `MEeL`.
 template:
+
 ```sql
 -- phpMyAdmin SQL Dump
 -- version 5.2.1
@@ -436,22 +452,30 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 ```
-*Keterangan:* 
-*Username = Admin*
-*Password = Admin#123*
+
+_Keterangan:_
+_Username = Admin_
+_Password = Admin#123_
+
 ### 3. Konfigurasi Aplikasi
+
 Salin file konfigurasi contoh menjadi konfigurasi aktif:
+
 ```bash
 cd /opt/lampp/htdocs/MEeL/auth
 cp config.example.php config.php
 ```
+
 Buka `auth/config.php` dan sesuaikan kredensial koneksi database Anda:
+
 ```php
 $conn = new mysqli("localhost", "username_db", "password_db", "MEeL"); //sesuaikan sendiri
 ```
 
 ### 4. Buat Direktori Runtime & Perizinan File
+
 Aplikasi memerlukan beberapa folder runtime dengan akses tulis penuh oleh server web:
+
 ```bash
 cd /opt/lampp/htdocs/MEeL
 mkdir -p data_drive/public data_drive/private_admins temp profile/upload
@@ -460,11 +484,14 @@ sudo chmod -R 775 data_drive temp profile/upload
 ```
 
 ### 5. Aktifkan Modul Rewrite Apache
+
 Pastikan file `.htaccess` dibaca oleh Apache. Jika menggunakan Linux/Ubuntu, jalankan:
+
 ```bash
 sudo a2enmod rewrite
 sudo systemctl restart apache2
 ```
+
 Pastikan opsi `AllowOverride All` dikonfigurasi pada direktori web root Anda di `/etc/apache2/apache2.conf` atau konfigurasi virtual host.
 
 ---
@@ -472,13 +499,17 @@ Pastikan opsi `AllowOverride All` dikonfigurasi pada direktori web root Anda di 
 ## Konfigurasi
 
 ### Keamanan Sesi & CSRF Protection
+
 Pengaturan ini diatur dalam file `auth/config.php`:
+
 - **Session Name**: Menggunakan cookie name `meel`.
 - **Session Timeout**: Otomatis berakhir dalam `43200` detik (12 jam) tanpa aktivitas.
 - **CSRF Token**: Dibuat secara acak per sesi dan divalidasi pada setiap request berjenis POST menggunakan helper `verify_csrf()`.
 
 ### Lokasi Media Storage (HDD External Mount)
+
 Lokasi penyimpanan file video HLS dan file audio diatur di `modules/helpers.php` dan `modules/Uploader.php`:
+
 ```php
 // Di dalam modules/helpers.php
 $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
@@ -486,6 +517,7 @@ $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
 // Di dalam modules/Uploader.php
 $this->base_dir = "/media/muhammaddaffa/MEeL/media/video/upload/";
 ```
+
 > **Catatan**: Sesuaikan path absolut tersebut dengan lokasi mount penyimpanan media pada sistem Anda. Jika storage mount ini offline/tidak terbaca, aplikasi akan otomatis dialihkan ke halaman `err/maintance.php`.
 
 ---
@@ -493,28 +525,31 @@ $this->base_dir = "/media/muhammaddaffa/MEeL/media/video/upload/";
 ## Penggunaan
 
 ### Pembagian Hak Akses (Role-Based Access Control)
+
 - **Admin**: Memiliki kontrol penuh terhadap sistem, akses ke dashboard panel admin di `/admin/`, kemampuan menggunakan upload lanjutan (`upload_advanced.php`), melakukan transcode manual, menghapus akun pengguna, dan memantau status sistem.
 - **Member**: Dapat menjelajahi media, memberikan komentar, melakukan Like/Dislike, serta mengelola penyimpanan Cloud Drive pribadi (quota-limited).
 - **Guest**: Pengguna yang belum terdaftar. Hanya dapat memutar video dan lagu secara terbatas tanpa hak untuk berinteraksi (komentar/like) atau mengakses Cloud Drive.
 
 ### Pintasan Keyboard Player Video & Musik (Plyr Shortcuts)
-| Tombol | Aksi |
-|--------|------|
-| `Space` / `K` | Putar / Jeda (Play/Pause) |
-| `←` / `→` | Mundur / Maju 5 detik |
-| `↑` / `↓` | Naikkan / Turunkan volume suara |
-| `M` | Matikan / Aktifkan suara (Mute) |
-| `F` | Masuk / Keluar Layar Penuh (Fullscreen) |
-| `C` | Aktifkan / Nonaktifkan Subtitle (Caption) |
-| `L` | Ulangi Pemutaran (Looping) |
-| `I` | Aktifkan mode Mini Player (Picture-in-Picture) |
-| `0` - `9` | Melompat ke persentase durasi video (0% - 90%) |
+
+| Tombol        | Aksi                                           |
+| ------------- | ---------------------------------------------- |
+| `Space` / `K` | Putar / Jeda (Play/Pause)                      |
+| `←` / `→`     | Mundur / Maju 5 detik                          |
+| `↑` / `↓`     | Naikkan / Turunkan volume suara                |
+| `M`           | Matikan / Aktifkan suara (Mute)                |
+| `F`           | Masuk / Keluar Layar Penuh (Fullscreen)        |
+| `C`           | Aktifkan / Nonaktifkan Subtitle (Caption)      |
+| `L`           | Ulangi Pemutaran (Looping)                     |
+| `I`           | Aktifkan mode Mini Player (Picture-in-Picture) |
+| `0` - `9`     | Melompat ke persentase durasi video (0% - 90%) |
 
 ---
 
 ## Arsitektur Aplikasi & Flow Diagram
 
 ### 1. Alur Autentikasi Pengguna
+
 ```mermaid
 sequenceDiagram
     actor User as Pengguna
@@ -522,7 +557,7 @@ sequenceDiagram
     participant Config as auth/config.php
     participant Auth as auth/auth.php
     participant DB as Database
-    
+
     User->>Login: Input Username & Password
     Login->>DB: Validasi kredensial & Status Aktif
     DB-->>Login: Data Valid (Role & ID)
@@ -535,6 +570,7 @@ sequenceDiagram
 ```
 
 ### 2. Alur Unduh URL & Transcoding (yt-dlp → FFmpeg → Storage)
+
 ```mermaid
 flowchart TD
     A[Request transcode.php via URL] --> B[Transcoder::processDownload]
@@ -543,12 +579,12 @@ flowchart TD
     C -- Sukses --> E[Simpan Status Queue 'processing']
     E --> F[Jalankan yt-dlp Download]
     F --> G{Tipe Media?}
-    
+
     G -- music --> H[Simpan File Audio Sementara]
     H --> I[Ekstrak Sampul Album dari Metadata]
     I --> J[Encode ke Opus/OGG via FFmpeg]
     J --> K[Simpan ke music/upload/file/ & DB]
-    
+
     G -- video --> L[Unduh Format MP4 Terbaik]
     L --> M[Kompres Sampul Video ke JPG]
     M --> N[Transcode HLS via FFmpeg codec copy]
@@ -562,27 +598,35 @@ flowchart TD
 ## Detail Modul & Arsitektur Direktori
 
 ### 1. Panel Admin (`admin/`)
+
 Panel pemantauan sistem yang terisolasi menggunakan file konfigurasi `.htaccess` lokal (hanya mengizinkan akses ke index utama).
-- **`admin/index.php`**: Dashboard monitoring sistem. Menampilkan status kapasitas penyimpanan SSD Nvme dan HDD media, statistik performa global (views/likes), serta antrean proses transcoding yang sedang berjalan (*Active Background Tasks*). Dilengkapi tombol aksi untuk menghentikan paksa proses transcode, menendang (*kick*) pengguna yang sedang aktif, dan memblokir alamat IP.
+
+- **`admin/index.php`**: Dashboard monitoring sistem. Menampilkan status kapasitas penyimpanan SSD Nvme dan HDD media, statistik performa global (views/likes), serta antrean proses transcoding yang sedang berjalan (_Active Background Tasks_). Dilengkapi tombol aksi untuk menghentikan paksa proses transcode, menendang (_kick_) pengguna yang sedang aktif, dan memblokir alamat IP.
 - **`admin/cookies.php`**: Panel Media Analytics. Berfungsi memantau performa konten secara mendetail (pengurutan konten berdasarkan jumlah tayangan, jumlah suka, dan jenis media).
 - **`admin/edit-video.php` & `edit-music.php`**: Endpoint khusus administrator untuk memperbarui judul, deskripsi, artis, album, dan menghapus file media secara fisik dari storage.
 
 ### 2. API Controllers (`controllers/`)
+
 Direktori ini menampung endpoint pengolahan data AJAX/HTMX:
+
 - **`like.php`**: Memproses interaksi pengguna terhadap media (like/dislike).
 - **`delete_comment.php`**: Mengamankan proses penghapusan komentar (dilengkapi verifikasi kepemilikan komentar/role admin).
 - **`profile_edit.php`**: Mengatur proses pembaruan data pengguna termasuk validasi ukuran, tipe gambar avatar, dan enkripsi kata sandi baru.
-- **`proses_sidebar.php`**: Menggunakan sesi untuk menyimpan status *sidebar toggle state* agar konsisten saat berpindah halaman.
+- **`proses_sidebar.php`**: Menggunakan sesi untuk menyimpan status _sidebar toggle state_ agar konsisten saat berpindah halaman.
 - **`post_encode.php`**: Endpoint penyelesaian pengolahan berkas audio hasil unduhan yt-dlp.
 
 ### 3. Core Logic (`modules/`)
+
 Business logic layer yang modular dan berorientasi objek:
-- **`modules/System.php`**: Mengontrol antrean proses (*upload queue*). Mengelola batas maksimal proses paralel di latar belakang (maksimal 2 proses transcoding simultan) dan memvalidasi jika server dalam kondisi sibuk.
+
+- **`modules/System.php`**: Mengontrol antrean proses (_upload queue_). Mengelola batas maksimal proses paralel di latar belakang (maksimal 2 proses transcoding simultan) dan memvalidasi jika server dalam kondisi sibuk.
 - **`modules/Transcoder.php`**: Engine utama pengolah media. Mengatur integrasi wrapper `yt-dlp` dan pemanggilan biner `ffmpeg` / `ffprobe` di sistem operasi Linux. Dilengkapi visualisasi progress bar real-time yang ter-flush langsung ke browser pengguna.
 - **`modules/helpers.php`**: Menampung helper global seperti `format_bytes()` (format ukuran file), `time_ago()` (format waktu relatif), dan `hdd_check_path()` (pemeriksaan status mount point).
 
 ### 4. Cloud Drive Storage (`data_drive/`)
+
 Folder penampung file cloud drive yang diproteksi di tingkat kode script:
+
 - **`data_drive/public/`**: Folder penyimpanan dokumen atau file umum yang dapat diunduh oleh semua anggota yang login.
 - **`data_drive/private_admins/`**: Folder terenkripsi khusus untuk file pribadi milik administrator.
 
@@ -590,20 +634,21 @@ Folder penampung file cloud drive yang diproteksi di tingkat kode script:
 
 ## Helper Utilities
 
-File `modules/helpers.php` menyediakan helper fungsional yang digunakan di seluruh aplikasi. 
+File `modules/helpers.php` menyediakan helper fungsional yang digunakan di seluruh aplikasi.
 
 ### Contoh Penggunaan:
+
 ```php
 require_once __DIR__ . '/modules/helpers.php';
 
 // 1. Format Ukuran File (Bytes to Human Readable)
 $file_size = 54321098;
-echo format_bytes($file_size); 
+echo format_bytes($file_size);
 // Output: "51.80 MB"
 
 // 2. Format Waktu Relatif (Time Ago)
 $db_date = "2026-06-05 12:00:00";
-echo time_ago(strtotime($db_date)); 
+echo time_ago(strtotime($db_date));
 // Output: "1 jam yang lalu" (tergantung selisih waktu saat ini)
 
 // 3. Cek Status Kapasitas Ruang HDD Mount
@@ -617,11 +662,48 @@ if ($storage_status['status'] === 'offline') {
 
 ---
 
+## Konfigurasi manual tambahan
+
+File `modules/Transcoder.php`, `Uploader.php` dan `modules/System.php`
+Perlu di sesuaikan dengan konfigurasi server anda. Terutama pada :
+
+- Lokasi binary `ffmpeg`
+- Lokasi `yt-dlp`
+- Lokasi mount HDD
+- Lokasi folder cache
+- Alokasi CPU limit
+
+### Penyesuaian path di:
+```php
+// ─── PATH STORAGE ─────────────────────────────────────────────────────────
+private const HDD_BASE      = "/media/muhammaddaffa/MEeL/media/video/upload/";// sesuaikan sendiri
+```
+
+### Contoh Transcoder di CPU && path ffmpeg
+
+```php
+// ─── KONSTANTA HARDWARE ───────────────────────────────────────────────────
+private const FFMPEG_THREADS        = 8;
+// ffmpeg
+$this->ffmpeg_bin   = $this->resolveBinary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+$this->ffprobe_bin  = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+```
+
+### Contoh Uploader di CPU && path ffmpeg
+
+```php
+$this->ffmpeg_bin  = $this->resolveBinary(['/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
+$this->ffprobe_bin = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+```
+
+---
+
 ## Activity Logger
 
 Sistem pencatatan aktivitas terpusat (`modules/activity_logger.php`) mencatat setiap aksi penting pengguna ke dalam tabel database `activity_log` untuk mempermudah audit keamanan.
 
 ### Contoh Implementasi:
+
 ```php
 require_once __DIR__ . '/modules/activity_logger.php';
 
@@ -645,7 +727,9 @@ if (is_ip_banned($conn, $user_ip)) {
 ## Keamanan & Permissions
 
 ### Perlindungan Berkas via Konfigurasi Apache (`.htaccess`)
+
 Folder sensitif seperti `auth/`, `modules/`, dan `partials/` memiliki file `.htaccess` internal dengan aturan penolakan akses langsung dari browser:
+
 ```apache
 # Mencegah akses langsung ke file php di dalam direktori
 Order Deny,Allow
@@ -656,7 +740,9 @@ Deny from all
 ```
 
 ### Konfigurasi Hak Akses Direktori Linux (Permissions)
+
 Agar FFmpeg dapat menulis file segmen HLS (`.ts`) dan yt-dlp dapat menyimpan file unduhan sementara, folder runtime harus diberikan perizinan tulis yang tepat:
+
 ```bash
 # Ubah kepemilikan ke user Apache (www-data)
 sudo chown -R www-data:www-data /opt/lampp/htdocs/MEeL/data_drive
@@ -674,9 +760,11 @@ sudo chmod -R 775 /opt/lampp/htdocs/MEeL/profile/upload
 ## Cookies & yt-dlp Authentication
 
 File `cookies.txt` di direktori root aplikasi memainkan peran krusial dalam sistem pengunduhan via URL:
+
 1. **Fungsi `cookies.txt`**: File ini berisi cookie sesi browser (dalam format Netscape cookie) yang diekspor oleh pengguna/admin. yt-dlp menggunakan cookie ini untuk melewati batasan autentikasi (seperti login YouTube, NicoNicoVideo, atau platform lainnya) agar dapat mengunduh video dengan kualitas penuh tanpa terblokir oleh halaman verifikasi/bot-check.
-2. **Cara Memperbarui**: Ekspor cookie browser Anda menggunakan ekstensi browser (seperti *Get cookies.txt LOCALLY*) saat Anda masuk ke akun YouTube Anda, lalu simpan hasilnya ke `/opt/lampp/htdocs/MEeL/cookies.txt`.
+2. **Cara Memperbarui**: Ekspor cookie browser Anda menggunakan ekstensi browser (seperti _Get cookies.txt LOCALLY_) saat Anda masuk ke akun YouTube Anda, lalu simpan hasilnya ke `/opt/lampp/htdocs/MEeL/cookies.txt`.
 3. **Konfigurasi Path**: Diatur secara otomatis pada class `Transcoder` melalui:
+
 ```php
 $this->cookies_path = $this->base_path . "/cookies.txt";
 ```
@@ -686,6 +774,7 @@ $this->cookies_path = $this->base_path . "/cookies.txt";
 ## Troubleshooting
 
 ### 1. Muncul Pesan "Penyimpanan Offline" / Redirect ke `err/maintance.php`
+
 - Cek apakah HDD eksternal Anda sudah ter-mount dengan benar di Linux:
   ```bash
   df -h
@@ -694,6 +783,7 @@ $this->cookies_path = $this->base_path . "/cookies.txt";
 - Periksa perizinan baca pada folder mount tersebut.
 
 ### 2. Sesi Pengguna Tiba-tiba Berakhir
+
 - Sesi diatur berakhir dalam 12 jam. Periksa waktu lokal sistem operasi Anda dan sesuaikan jam server menggunakan:
   ```bash
   timedatectl status
@@ -701,6 +791,7 @@ $this->cookies_path = $this->base_path . "/cookies.txt";
 - Pastikan hak akses folder sesi PHP (`/var/lib/php/sessions` atau `/tmp`) dapat dibaca/ditulis oleh server Apache.
 
 ### 3. Proses Transcoding Menggantung (Stuck) / Kipas Server Berputar Kencang
+
 - Buka dashboard Admin di `/admin/` dan periksa tabel **Active Background Tasks**.
 - Klik tombol **Clean Stuck Queues** atau ikon silang (**Force Stop**) pada task ID yang menggantung untuk membunuh proses FFmpeg yang bermasalah.
 - Di terminal Linux, Anda dapat memantau CPU usage menggunakan perintah `htop` dan membunuh proses secara manual dengan `killall ffmpeg` jika diperlukan.
@@ -708,6 +799,7 @@ $this->cookies_path = $this->base_path . "/cookies.txt";
 ---
 
 ## Rekomendasi OS
+
 Sangat direkomendasikan untuk men-deploy MEeL di lingkungan **Linux (Ubuntu Server / Debian)**. Lingkungan Windows tidak disarankan karena adanya batasan fungsionalitas manajemen sinyal proses FFmpeg, sistem permission file yang berbeda, serta perbedaan penanganan case-sensitive path pada berkas-berkas PHP.
 
 ---
@@ -715,6 +807,7 @@ Sangat direkomendasikan untuk men-deploy MEeL di lingkungan **Linux (Ubuntu Serv
 ## Kontribusi
 
 Bagi pengembang yang ingin berkontribusi pada pengembangan MEeL, silakan ikuti checklist berikut:
+
 - [ ] Pastikan menulis query database menggunakan **Prepared Statements** (`$stmt->prepare()`) untuk menghindari celah SQL Injection.
 - [ ] Lakukan sanitasi parameter input POST/GET menggunakan helper yang relevan.
 - [ ] Jalankan pengujian upload berkas berukuran besar di server lokal untuk memastikan konfigurasi `upload_max_filesize` di php.ini sudah memadai.
@@ -736,9 +829,10 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
   • Deployment internal / offline di jaringan rumah (LAN).
 
 ⚠️ Memerlukan izin tertulis:
-  • Publikasi ulang atau redistribusi kode ke publik.
-  • Penggunaan komersial, monetisasi, atau penjualan produk turunan.
-  • Penghapusan atau modifikasi hak cipta atribusi pembuat asli (Mifada).
+• Publikasi ulang atau redistribusi kode ke publik.
+• Penggunaan komersial, monetisasi, atau penjualan produk turunan.
+• Penghapusan atau modifikasi hak cipta atribusi pembuat asli (Mifada).
+
 ```
 
 **Silakan baca file [LICENSE](LICENSE) untuk informasi lisensi selengkapnya.**
@@ -751,3 +845,4 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
   <strong>MEeL</strong> © 2025 — Mifada<br>
   <code>minecraft.daffa2501@gmail.com</code> · [github.com/mifada2543](https://github.com/mifada2543)
 </div>
+```

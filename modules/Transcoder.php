@@ -17,9 +17,6 @@ class Transcoder
     private $ffprobe_bin;
 
     // ─── KONSTANTA HARDWARE ───────────────────────────────────────────────────
-    // i3-1220P: 2 P-Core (HT=2 thread each) + 8 E-Core (1 thread each) = 12 thread total
-    // Untuk skalabilitas multi-user di masa depan, batasi per-job ke 8 thread
-    // sehingga ada ruang untuk job paralel. Ubah ke 12 jika server tetap single-user.
     private const FFMPEG_THREADS        = 8;
 
     // Sprite thumbnail: lebar & tinggi tiap tile, jumlah kolom
@@ -34,14 +31,11 @@ class Transcoder
     private const DOWNLOAD_TIMEOUT      = 900;
 
     // ─── PATH STORAGE ─────────────────────────────────────────────────────────
-    // USB HDD: rename() lintas filesystem TIDAK bisa dipakai (cross-device).
-    // Semua pemindahan file ke HDD wajib pakai moveFile() di bawah.
     private const HDD_BASE      = "/media/muhammaddaffa/MEeL/media/video/upload/";
     private const HDD_VIDEO_DIR = self::HDD_BASE . "video/";
     private const HDD_THUMB_DIR = self::HDD_BASE . "thumbnail/";
 
     // ─── ENV PREFIX ───────────────────────────────────────────────────────────
-    // Bersihkan LD_LIBRARY_PATH agar ffmpeg tidak bentrok dengan library LAMPP
     private const ENV_PREFIX = "export LD_LIBRARY_PATH=''; export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; ";
 
     public function __construct($db_connection, $session_user_id)
