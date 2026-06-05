@@ -436,7 +436,9 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 ```
-*Keterangan: Username = Admin dan password = Admin#123*
+*Keterangan:* 
+*Username = Admin*
+*Password = Admin#123*
 ### 3. Konfigurasi Aplikasi
 Salin file konfigurasi contoh menjadi konfigurasi aktif:
 ```bash
@@ -445,7 +447,7 @@ cp config.example.php config.php
 ```
 Buka `auth/config.php` dan sesuaikan kredensial koneksi database Anda:
 ```php
-$conn = new mysqli("localhost", "username_db", "password_db", "MEeL");
+$conn = new mysqli("localhost", "username_db", "password_db", "MEeL"); //sesuaikan sendiri
 ```
 
 ### 4. Buat Direktori Runtime & Perizinan File
