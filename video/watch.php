@@ -178,8 +178,15 @@ $rekom            = $viewer->getRecommendations(15);
             </div>
 
             <div id="watch-details-wrapper" class="space-y-4 sm:space-y-5">
-                <div id="video-info" class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                    <div class="video-title" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
+                    <div id="video-info" class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col gap-4">
+                        <div class="video-title w-full text-2xl font-bold text-white" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
+                    <?php if ($is_logged_in && ($_SESSION['role'] ?? '') === 'admin'): ?>
+                        <div class="flex gap-2">
+                            <a href="../admin/edit-video.php?id=<?= $id ?>" title="Edit Video" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-red-600/10 border border-red-600/20 text-red-400 hover:bg-red-600 hover:text-white no-underline">
+                                <i data-lucide="edit" class="w-3.5 h-3.5"></i> Edit Video
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <div class="h-px bg-white/[.04]"></div>
 
@@ -248,7 +255,7 @@ $rekom            = $viewer->getRecommendations(15);
                             <i data-lucide="align-left" class="w-3.5 h-3.5 text-red-500"></i> Deskripsi
                         </div>
                         <div class="relative">
-                            <p id="desc-text" class="text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap line-clamp-3 transition-all duration-300"><?= htmlspecialchars($v['description']) ?></p>
+                            <p id="desc-text" class="text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap line-clamp-5 transition-all duration-300"><?= htmlspecialchars($v['description']) ?></p>
                         </div>
                         <button id="btn-read-more" onclick="toggleDescription()" class="mt-3 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:text-red-400 transition-colors cursor-pointer border-none bg-transparent p-0 hidden">
                             Selengkapnya
@@ -261,13 +268,13 @@ $rekom            = $viewer->getRecommendations(15);
                             const descText = document.getElementById('desc-text');
                             const btn = document.getElementById('btn-read-more');
 
-                            if (descText.classList.contains('line-clamp-3')) {
+                            if (descText.classList.contains('line-clamp-5')) {
                                 // Buka deskripsi penuh
-                                descText.classList.remove('line-clamp-3');
+                                descText.classList.remove('line-clamp-5');
                                 btn.textContent = 'Lebih Sedikit';
                             } else {
                                 // Tutup/kecilkan deskripsi
-                                descText.classList.add('line-clamp-3');
+                                descText.classList.add('line-clamp-5');
                                 btn.textContent = 'Selengkapnya';
                             }
                         }
