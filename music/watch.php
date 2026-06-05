@@ -178,15 +178,12 @@ switch ($ext) {
                     </div>
 
                     <div class="flex-1 min-w-0 flex flex-col justify-center gap-3">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div class="text-center sm:text-left flex-1 min-w-0">
-                                <div class="track-title truncate" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
-                                <a href="index.php?artist=<?= urlencode($v['artist']) ?>"
-                                    class="text-orange-400 font-bold text-sm uppercase tracking-widest hover:underline block mt-2 truncate">
-                                    <?= htmlspecialchars($v['artist']) ?>
-                                </a>
-                            </div>
-
+                        <div>
+                            <div class="track-title text-center sm:text-left" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
+                            <a href="index.php?artist=<?= urlencode($v['artist']) ?>"
+                                class="text-orange-400 font-bold text-sm uppercase tracking-widest hover:underline block mt-2 truncate text-center sm:text-left">
+                                <?= htmlspecialchars($v['artist']) ?>
+                            </a>
                         </div>
                         <div class="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                             <span class="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400"
@@ -600,8 +597,6 @@ switch ($ext) {
             thumbnailUrl: '<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>',
             filename: '<?= htmlspecialchars($v['filename']) ?>'
         };
-    </script>
-    <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
