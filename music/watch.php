@@ -178,12 +178,15 @@ switch ($ext) {
                     </div>
 
                     <div class="flex-1 min-w-0 flex flex-col justify-center gap-3">
-                        <div>
-                            <div class="track-title text-center sm:text-left" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
-                            <a href="index.php?artist=<?= urlencode($v['artist']) ?>"
-                                class="text-orange-400 font-bold text-sm uppercase tracking-widest hover:underline block mt-2 truncate text-center sm:text-left">
-                                <?= htmlspecialchars($v['artist']) ?>
-                            </a>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="text-center sm:text-left flex-1 min-w-0">
+                                <div class="track-title truncate" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
+                                <a href="index.php?artist=<?= urlencode($v['artist']) ?>"
+                                    class="text-orange-400 font-bold text-sm uppercase tracking-widest hover:underline block mt-2 truncate">
+                                    <?= htmlspecialchars($v['artist']) ?>
+                                </a>
+                            </div>
+
                         </div>
                         <div class="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                             <span class="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400"
@@ -267,7 +270,12 @@ switch ($ext) {
                                 class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300">
                                 <i data-lucide="list-plus" class="w-3.5 h-3.5"></i> Simpan
                             </button>
-                            <?php if ($is_logged_in && ($_SESSION['role'] ?? '') === 'admin'): ?>
+                            <?php
+                            $can_edit = $is_logged_in && (
+                                ($_SESSION['role'] ?? '') === 'admin' ||
+                                (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === (int)($v['user_id'] ?? -1))
+                            );
+                            if ($can_edit): ?>
                                 <a href="../admin/edit-music.php?id=<?= $id ?>" title="Edit Musik"
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer no-underline bg-orange-600/10 border-orange-600/20 text-orange-400 hover:bg-orange-600 hover:text-white">
                                     <i data-lucide="edit" class="w-3.5 h-3.5"></i> Edit

@@ -6,17 +6,22 @@ include '../auth/config.php';
 include '../auth/auth.php';
 include_once '../modules/helpers.php';
 
-// Proteksi Admin
+// Proteksi: harus login
 if (!isset($_SESSION['user_id'])) {
-    die("Akses ditolak.");
+    header("Location: ../auth/login.php");
+    exit();
 }
 $user_id = $_SESSION['user_id'];
-$query_user = $conn->prepare("SELECT role FROM users WHERE id = ?");
+$query_user = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
 $query_user->bind_param("i", $user_id);
 $query_user->execute();
 $user_data = $query_user->get_result()->fetch_assoc();
 
-if (!$user_data || $user_data['role'] !== 'admin') {
+$is_admin  = ($user_data && $user_data['role'] === 'admin');
+$curr_role = $user_data['role'] ?? 'user';
+
+// Tolak guest
+if (!$user_data || $curr_role === 'guest') {
     header("Location: ../index.php");
     exit();
 }
@@ -29,7 +34,14 @@ $stmt_video->execute();
 $video = $stmt_video->get_result()->fetch_assoc();
 
 if (!$video) {
-    die("<div style='color:red; padding:20px; background:#0b0e14; min-height:100vh; font-family:sans-serif;'><h2>Error: Video tidak ditemukan!</h2><a href='index.php' style='color:#ef4444;'>Kembali ke Dashboard</a></div>");
+    die("<div style='color:red; padding:20px; background:#0b0e14; min-height:100vh; font-family:sans-serif;'><h2>Error: Video tidak ditemukan!</h2><a href='../video/index.php' style='color:#ef4444;'>Kembali ke Video</a></div>");
+}
+
+// Cek kepemilikan: admin bisa edit semua, uploader hanya miliknya
+$is_owner = ((int)$video['user_id'] === (int)$user_id);
+if (!$is_admin && !$is_owner) {
+    header("Location: ../err/denied.php");
+    exit();
 }
 
 $status = "";
@@ -747,10 +759,12 @@ $thumb_src = !empty($video['thumbnail'])
 
         <!-- Top nav -->
         <nav class="top-nav">
-            <a href="../index.php" class="nav-brand">MEeL<span>Admin</span></a>
+            <a href="../index.php" class="nav-brand">MEeL<?php if ($is_admin): ?><span>Admin</span><?php endif; ?></a>
             <div class="nav-sep"></div>
-            <a href="index.php" class="nav-crumb">Dashboard</a>
-            <span class="nav-chevron">›</span>
+            <?php if ($is_admin): ?>
+                <a href="index.php" class="nav-crumb">Dashboard</a>
+                <span class="nav-chevron">›</span>
+            <?php endif; ?>
             <a href="../video/index.php" class="nav-crumb">Video</a>
             <span class="nav-chevron">›</span>
             <span class="nav-crumb-current">Edit</span>
@@ -795,7 +809,7 @@ $thumb_src = !empty($video['thumbnail'])
                         <div class="uploader-label">Diunggah oleh</div>
                         <div class="uploader-name">@<?= htmlspecialchars($video['uploader'] ?? '—') ?></div>
                     </div>
-                    <div class="uploader-role-badge">Uploader</div>
+                    <div class="uploader-role-badge"><?= $is_admin && !$is_owner ? 'Admin Edit' : 'Uploader' ?></div>
                 </div>
 
                 <!-- Meta rows -->
@@ -841,9 +855,15 @@ $thumb_src = !empty($video['thumbnail'])
                     <a href="../video/watch.php?id=<?= $id ?>" class="btn-secondary" style="justify-content:center;">
                         <i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Lihat Video
                     </a>
-                    <a href="index.php" class="btn-secondary" style="justify-content:center;">
-                        <i data-lucide="layout-dashboard" style="width:13px;height:13px;"></i> Dashboard
-                    </a>
+                    <?php if ($is_admin): ?>
+                        <a href="index.php" class="btn-secondary" style="justify-content:center;">
+                            <i data-lucide="layout-dashboard" style="width:13px;height:13px;"></i> Dashboard Admin
+                        </a>
+                    <?php else: ?>
+                        <a href="../profile/index.php" class="btn-secondary" style="justify-content:center;">
+                            <i data-lucide="user" style="width:13px;height:13px;"></i> Profil Saya
+                        </a>
+                    <?php endif; ?>
                 </div>
             </aside>
 
@@ -852,7 +872,7 @@ $thumb_src = !empty($video['thumbnail'])
                 <div class="form-header">
                     <div>
                         <h1 class="form-title">Edit <span>Video</span></h1>
-                        <p class="form-subtitle">Ubah keterangan &amp; detail video</p>
+                        <p class="form-subtitle"><?= $is_admin && !$is_owner ? 'Edit sebagai Admin · Milik @' . htmlspecialchars($video['uploader']) : 'Ubah keterangan &amp; detail video' ?></p>
                     </div>
                     <i data-lucide="video" style="width:36px;height:36px;color:var(--accent);opacity:.3;flex-shrink:0;margin-top:4px;"></i>
                 </div>

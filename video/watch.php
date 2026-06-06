@@ -178,9 +178,14 @@ $rekom            = $viewer->getRecommendations(15);
             </div>
 
             <div id="watch-details-wrapper" class="space-y-4 sm:space-y-5">
-                    <div id="video-info" class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col gap-4">
-                        <div class="video-title w-full text-2xl font-bold text-white" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
-                    <?php if ($is_logged_in && ($_SESSION['role'] ?? '') === 'admin'): ?>
+                <div id="video-info" class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col gap-4">
+                    <div class="video-title w-full text-2xl font-bold text-white" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
+                    <?php
+                    $can_edit = $is_logged_in && (
+                        ($_SESSION['role'] ?? '') === 'admin' ||
+                        (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === (int)($v['user_id'] ?? -1))
+                    );
+                    if ($can_edit): ?>
                         <div class="flex gap-2">
                             <a href="../admin/edit-video.php?id=<?= $id ?>" title="Edit Video" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-red-600/10 border border-red-600/20 text-red-400 hover:bg-red-600 hover:text-white no-underline">
                                 <i data-lucide="edit" class="w-3.5 h-3.5"></i> Edit Video
