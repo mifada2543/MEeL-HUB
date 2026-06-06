@@ -462,7 +462,8 @@ Buka `auth/config.php` dan sesuaikan kredensial koneksi database Anda:
 ```php
 $conn = new mysqli("localhost", "username_db", "password_db", "MEeL");
 ```
-*Sesuaikan dengan database yang anda miliki*
+
+_Sesuaikan dengan database yang anda miliki_
 
 ### 4. Buat Direktori Runtime & Perizinan File
 
@@ -474,7 +475,8 @@ mkdir -p data_drive/public data_drive/private_admins temp profile/upload
 sudo chown -R www-data:www-data data_drive temp profile/upload
 sudo chmod -R 775 data_drive temp profile/upload
 ```
-*Jika www-data tidak berhasil, coba ubah ke 'daemon'*
+
+_Jika www-data tidak berhasil, coba ubah ke 'daemon'_
 
 ### 5. Aktifkan Modul Rewrite Apache
 
@@ -510,7 +512,8 @@ $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
 // Di dalam modules/Uploader.php
 $this->base_dir = "/media/muhammaddaffa/MEeL/media/video/upload/";
 ```
-*Anda harus sesuaikan dengan path yang mau, itu adalah bawaan dari Pembuat MEeL(Mifada)*
+
+_Anda harus sesuaikan dengan path yang mau, itu adalah bawaan dari Pembuat MEeL(Mifada)_
 
 > **Catatan**: Sesuaikan path absolut tersebut dengan lokasi mount penyimpanan media pada sistem Anda. Jika storage mount ini offline/tidak terbaca, aplikasi akan otomatis dialihkan ke halaman `err/maintance.php`.
 
@@ -672,7 +675,8 @@ Perlu di sesuaikan dengan konfigurasi server anda. Terutama pada :
 // ─── PATH STORAGE ─────────────────────────────────────────────────────────
 private const HDD_BASE      = "/media/muhammaddaffa/MEeL/media/video/upload/";
 ```
-*Jangan lupa untuk sesuaikan*
+
+_Jangan lupa untuk sesuaikan_
 
 ### Contoh Transcoder di CPU && path ffmpeg
 
@@ -749,7 +753,8 @@ sudo chmod -R 775 /opt/lampp/htdocs/MEeL/data_drive
 sudo chmod -R 775 /opt/lampp/htdocs/MEeL/temp
 sudo chmod -R 775 /opt/lampp/htdocs/MEeL/profile/upload
 ```
-*Jika www-data tidak berfungsi, coba 'daemon'*
+
+_Jika www-data tidak berfungsi, coba 'daemon'_
 
 ---
 
@@ -801,7 +806,8 @@ Sangat direkomendasikan untuk men-deploy MEeL di lingkungan **Linux (Ubuntu Serv
 ---
 
 ## Kontribusi
-*Saran Pengembangan*
+
+_Saran Pengembangan_
 Bagi pengembang yang ingin berkontribusi pada pengembangan MEeL, silakan ikuti checklist berikut:
 
 - [ ] Pastikan menulis query database menggunakan **Prepared Statements** (`$stmt->prepare()`) untuk menghindari celah SQL Injection.
@@ -832,7 +838,10 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
 ```
 
 **Silakan baca file [LICENSE](LICENSE) untuk informasi lisensi selengkapnya.**
-**Catatan** *Pembuat(Mifada) Tidak terlibat pada file yang di unggah dan disebarluaskan oleh pihak yang mengambil code MEeL ini, semuanya kembali ke 'penggunaan' masing-masing user*
+
+**Catatan**: *Pembuat(Mifada) Tidak terlibat pada file yang di unggah dan disebarluaskan oleh pihak yang mengambil code MEeL ini, semuanya kembali ke 'penggunaan' masing-masing user*
+*en: Domains sometimes don't work because they are running on developer devices.
+*id: Domain terkadang tidak berfungsi karena berjalan di perangkat developer
 </div>
 
 ---
@@ -841,4 +850,3 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
   <strong>MEeL</strong> © 2025 — Mifada<br>
   <code>minecraft.daffa2501@gmail.com</code> · [github.com/mifada2543](https://github.com/mifada2543)
 </div>
-```
