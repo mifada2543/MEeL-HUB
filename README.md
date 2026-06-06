@@ -832,7 +832,7 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
 ```
 
 **Silakan baca file [LICENSE](LICENSE) untuk informasi lisensi selengkapnya.**
-
+**Catatan** *Pembuat(Mifada) Tidak terlibat pada file yang di unggah dan disebarluaskan oleh pihak yang mengambil code MEeL ini, semuanya kembali ke 'penggunaan' masing-masing user*
 </div>
 
 ---
