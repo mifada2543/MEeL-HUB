@@ -157,21 +157,11 @@ $is_htmx = isset($_SERVER['HTTP_HX_REQUEST']) && $_SERVER['HTTP_HX_REQUEST'] == 
 
     <body class="bg-[#0b0e14] text-gray-300 min-h-screen font-sans">
 
-        <nav class="sticky top-0 z-50 bg-[#080b11]/90 backdrop-blur-md border-b border-white/5 px-6 h-14 flex items-center gap-3">
-            <a href="../index.php" class="font-sans text-sm font-extrabold text-white no-underline tracking-wider">
-                MEeL<span class="text-blue-600">Admin</span>
-            </a>
-            <div class="w-px h-5 bg-white/10"></div>
-            <a href="index.php" class="text-[11px] font-semibold text-gray-500 no-underline hover:text-gray-300 transition-colors">Dashboard</a>
-            <span class="text-gray-600">›</span>
-            <span class="text-[11px] font-semibold text-gray-200">Media Analytics</span>
-
-            <div class="ml-auto flex items-center gap-2">
-                <a href="<?= htmlspecialchars($back_url) ?>" class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 py-1.5 px-3.5 rounded-lg border border-white/10 bg-white/5 no-underline transition-all duration-200 hover:text-gray-200 hover:bg-white/10">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Kembali
-                </a>
-            </div>
-        </nav>
+        <?php
+        $page_title = 'Media Analytics';
+        $media_type = 'analytics';
+        include 'header-admin.php';
+        ?>
 
         <div class="max-w-6xl mx-auto px-4 md:px-6 py-8">
 

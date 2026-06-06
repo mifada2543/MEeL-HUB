@@ -26,6 +26,25 @@ if (!$user_data || $curr_role === 'guest') {
     exit();
 }
 
+// ── Back URL (smart referer) ──
+$back_url = $is_admin ? 'cookies.php' : '../video/index.php';
+if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
+    $ref      = $_SERVER['HTTP_REFERER'];
+    $host     = $_SERVER['HTTP_HOST'];
+    if (parse_url($ref, PHP_URL_HOST) === $host) {
+        $ref_path       = parse_url($ref, PHP_URL_PATH);
+        $excluded_pages = ['edit-music.php', 'edit-video.php'];
+        $should_exclude = false;
+        foreach ($excluded_pages as $page) {
+            if (strpos($ref_path, $page) !== false) {
+                $should_exclude = true;
+                break;
+            }
+        }
+        if (!$should_exclude) $back_url = $ref;
+    }
+}
+
 // Validasi ID Video
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $stmt_video = $conn->prepare("SELECT v.*, u.username AS uploader, u.profile_picture AS uploader_pfp FROM video v JOIN users u ON v.user_id = u.id WHERE v.id = ? LIMIT 1");
@@ -114,18 +133,11 @@ $thumb_src = !empty($video['thumbnail'])
     <div class="page-wrap">
 
         <!-- Top nav -->
-        <nav class="top-nav">
-            <a href="../index.php" class="nav-brand">MEeL<?php if ($is_admin): ?><span>Admin</span><?php endif; ?></a>
-            <div class="nav-sep"></div>
-            <?php if ($is_admin): ?>
-                <a href="cookies.php" class="nav-crumb">Dashboard</a>
-                <span class="nav-chevron">›</span>
-            <?php endif; ?>
-            <a href="../video/index.php" class="nav-crumb">Video</a>
-            <span class="nav-chevron">›</span>
-            <span class="nav-crumb-current">Edit</span>
-            <span class="id-chip">#<?= $id ?></span>
-        </nav>
+        <?php
+        $page_title = 'Edit Video';
+        $media_type = 'video';
+        include 'header-admin.php';
+        ?>
 
         <div class="edit-layout">
 

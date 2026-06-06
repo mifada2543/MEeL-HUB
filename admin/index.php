@@ -65,18 +65,26 @@ include '../controllers/fun.php';
     </style>
 </head>
 
-<body class="text-gray-300 p-4 md:p-8 font-sans">
-    <div class="max-w-5xl mx-auto">
+<body class="text-gray-300 font-sans min-h-screen">
 
-        <div class="flex justify-between items-center mb-10">
-            <div class="flex items-center gap-3">
-                <div class="p-3 bg-orange-500/20 rounded-2xl"><i data-lucide="activity" class="text-orange-500 w-6 h-6"></i></div>
-                <div>
-                    <h1 class="text-2xl font-bold text-white tracking-tight">System Admin</h1>
-                    <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Admin Center</p>
-                </div>
+    <?php
+    $is_admin = true;
+    $page_title = 'Dashboard';
+    $media_type = 'dashboard';
+    $back_url = '../index.php';
+    include 'header-admin.php';
+    ?>
+
+    <div class="max-w-5xl mx-auto px-4 md:px-8 py-8">
+
+        <div class="flex items-center gap-4 mb-8">
+            <div class="w-12 h-12 rounded-2xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center shrink-0">
+                <i data-lucide="activity" class="w-5 h-5 text-orange-500"></i>
             </div>
-            <a href="../index.php" class="p-2 hover:bg-gray-800 rounded-xl transition-all"><i data-lucide="x" class="w-6 h-6 text-gray-500"></i></a>
+            <div>
+                <h1 class="text-2xl font-extrabold text-white leading-tight">System Admin</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1">Admin Center</p>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

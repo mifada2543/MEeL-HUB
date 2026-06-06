@@ -27,6 +27,25 @@ if (!$user_data || $curr_role === 'guest') {
     exit();
 }
 
+// ── Back URL (smart referer) ──
+$back_url = $is_admin ? 'cookies.php' : '../music/index.php';
+if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
+    $ref      = $_SERVER['HTTP_REFERER'];
+    $host     = $_SERVER['HTTP_HOST'];
+    if (parse_url($ref, PHP_URL_HOST) === $host) {
+        $ref_path       = parse_url($ref, PHP_URL_PATH);
+        $excluded_pages = ['edit-music.php', 'edit-video.php'];
+        $should_exclude = false;
+        foreach ($excluded_pages as $page) {
+            if (strpos($ref_path, $page) !== false) {
+                $should_exclude = true;
+                break;
+            }
+        }
+        if (!$should_exclude) $back_url = $ref;
+    }
+}
+
 // Validasi ID Musik
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $stmt_music = $conn->prepare("SELECT m.*, u.username AS uploader, u.profile_picture AS uploader_pfp FROM music m JOIN users u ON m.user_id = u.id WHERE m.id = ? LIMIT 1");
@@ -128,18 +147,11 @@ $thumb_src = !empty($music['thumbnail'])
     <div class="page-wrap">
 
         <!-- Top navigation -->
-        <nav class="top-nav">
-            <a href="../index.php" class="nav-brand">MEeL<?php if ($is_admin): ?><span>Admin</span><?php endif; ?></a>
-            <div class="nav-sep"></div>
-            <?php if ($is_admin): ?>
-                <a href="cookies.php" class="nav-crumb">Dashboard</a>
-                <span class="nav-chevron">›</span>
-            <?php endif; ?>
-            <a href="../music/index.php" class="nav-crumb">Musik</a>
-            <span class="nav-chevron">›</span>
-            <span class="nav-crumb-current">Edit</span>
-            <span class="id-chip">#<?= $id ?></span>
-        </nav>
+        <?php
+        $page_title = 'Edit Musik';
+        $media_type = 'music';
+        include 'header-admin.php';
+        ?>
 
         <!-- Main edit layout -->
         <div class="edit-layout">
