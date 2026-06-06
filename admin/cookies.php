@@ -103,397 +103,340 @@ while ($rc = $r->fetch_assoc()) {
     $total_counts[$rc['t']] = (int)$rc['c'];
     $total_counts['all'] += (int)$rc['c'];
 }
+
+// ── DETEKSI HTMX ──
+$is_htmx = isset($_SERVER['HTTP_HX_REQUEST']) && $_SERVER['HTTP_HX_REQUEST'] == 'true';
 ?>
-<!DOCTYPE html>
-<html lang="id">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <title>MEeL | Media Analytics</title>
-    <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
-    <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <style>
-        body {
-            background-color: #0b0e14;
-            font-family: 'DM Sans', sans-serif;
-        }
+<?php if (!$is_htmx): // Hanya muat Header jika bukan request dari HTMX 
+?>
+    <!DOCTYPE html>
+    <html lang="id">
 
-        .glass {
-            background: rgba(14, 17, 24, 0.8);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, .06);
-        }
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+        <title>MEeL | Media Analytics</title>
+        <link rel="icon" type="image/png" href="../assets/MEeL.png">
+        <script src="../assets/js/tailwind.js"></script>
+        <script src="../assets/js/lucide.js"></script>
+        <script src="../assets/js/sweetalert2.all.min.js"></script>
+        <script src="../assets/js/htmx.js"></script>
 
-        .glass-dark {
-            background: rgba(8, 11, 17, .9);
-            border: 1px solid rgba(255, 255, 255, .05);
-        }
+        <style>
+            /* ── Animasi Transisi SPA HTMX ── */
+            #media-content {
+                transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+                opacity: 1;
+                transform: translateY(0);
+            }
 
-        /* ── Sticky nav ── */
-        .top-nav {
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            background: rgba(8, 11, 17, .92);
-            backdrop-filter: blur(16px);
-            border-bottom: 1px solid rgba(255, 255, 255, .06);
-            padding: 0 24px;
-            height: 56px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+            #media-content.htmx-swapping {
+                opacity: 0;
+                transform: translateY(10px);
+            }
 
-        /* ── Table row actions ── */
-        .row-actions {
-            opacity: 0;
-            transition: opacity .15s;
-        }
+            /* Efek Show Hover di Tabel */
+            .group:hover .row-actions {
+                opacity: 1;
+            }
 
-        tr:hover .row-actions {
-            opacity: 1;
-        }
+            /* Loading indikator untuk HTMX */
+            .htmx-indicator {
+                opacity: 0;
+                transition: opacity 200ms ease-in;
+            }
 
-        /* ── Pill badge ── */
-        .badge-video {
-            background: rgba(239, 68, 68, .1);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, .2);
-        }
+            .htmx-request .htmx-indicator,
+            .htmx-request.htmx-indicator {
+                opacity: 1;
+            }
+        </style>
+    </head>
 
-        .badge-music {
-            background: rgba(249, 115, 22, .1);
-            color: #f97316;
-            border: 1px solid rgba(249, 115, 22, .2);
-        }
+    <body class="bg-[#0b0e14] text-gray-300 min-h-screen font-sans">
 
-        /* ── Stat card hover ── */
-        .stat-card {
-            transition: border-color .2s, background .2s;
-        }
-
-        .stat-card:hover {
-            border-color: rgba(255, 255, 255, .12) !important;
-            background: rgba(255, 255, 255, .04) !important;
-        }
-
-        /* ── Delete confirm modal ── */
-        #delete-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 200;
-            background: rgba(0, 0, 0, .7);
-            backdrop-filter: blur(4px);
-            align-items: center;
-            justify-content: center;
-        }
-
-        #delete-modal.open {
-            display: flex;
-        }
-    </style>
-</head>
-
-<body class="text-gray-300 min-h-screen">
-
-    <!-- ── Top Nav ── -->
-    <nav class="top-nav">
-        <a href="../index.php" style="font-family:sans-serif;font-size:14px;font-weight:800;color:#fff;text-decoration:none;letter-spacing:.05em;">
-            MEeL<span style="color:#2563eb;">Admin</span>
-        </a>
-        <div style="width:1px;height:20px;background:rgba(255,255,255,.08);"></div>
-        <a href="index.php" style="font-size:11px;font-weight:600;color:#555e6e;text-decoration:none;">Dashboard</a>
-        <span style="color:#353d4a;">›</span>
-        <span style="font-size:11px;font-weight:600;color:#e2e6ef;">Media Analytics</span>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-            <a href="<?= htmlspecialchars($back_url) ?>"
-                style="display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#6b7280;padding:7px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);text-decoration:none;transition:all .2s;"
-                onmouseover="this.style.color='#e2e6ef';this.style.background='rgba(255,255,255,.07)'"
-                onmouseout="this.style.color='#6b7280';this.style.background='rgba(255,255,255,.03)'">
-                <i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Kembali
+        <nav class="sticky top-0 z-50 bg-[#080b11]/90 backdrop-blur-md border-b border-white/5 px-6 h-14 flex items-center gap-3">
+            <a href="../index.php" class="font-sans text-sm font-extrabold text-white no-underline tracking-wider">
+                MEeL<span class="text-blue-600">Admin</span>
             </a>
-        </div>
-    </nav>
+            <div class="w-px h-5 bg-white/10"></div>
+            <a href="index.php" class="text-[11px] font-semibold text-gray-500 no-underline hover:text-gray-300 transition-colors">Dashboard</a>
+            <span class="text-gray-600">›</span>
+            <span class="text-[11px] font-semibold text-gray-200">Media Analytics</span>
 
-    <!-- ── Page body ── -->
-    <div class="max-w-6xl mx-auto px-4 md:px-6 py-8">
-
-        <!-- Header -->
-        <div class="flex items-center gap-4 mb-8">
-            <div style="width:48px;height:48px;border-radius:16px;background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i data-lucide="bar-chart-2" style="width:22px;height:22px;color:#2563eb;"></i>
+            <div class="ml-auto flex items-center gap-2">
+                <a href="<?= htmlspecialchars($back_url) ?>" class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 py-1.5 px-3.5 rounded-lg border border-white/10 bg-white/5 no-underline transition-all duration-200 hover:text-gray-200 hover:bg-white/10">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Kembali
+                </a>
             </div>
-            <div>
-                <h1 style="font-size:22px;font-weight:800;color:#fff;line-height:1.1;">Media Analytics</h1>
-                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;color:#455060;margin-top:2px;">Monitor & Kelola Seluruh Konten</p>
-            </div>
-        </div>
+        </nav>
 
-        <?php if ($delete_msg): ?>
-            <div style="margin-bottom:20px;padding:14px 18px;border-radius:14px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:10px;
-        <?= $delete_msg['type'] === 'success'
-                ? 'background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#4ade80;'
-                : 'background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:#f87171;' ?>">
-                <i data-lucide="<?= $delete_msg['type'] === 'success' ? 'check-circle' : 'alert-triangle' ?>" style="width:15px;height:15px;flex-shrink:0;"></i>
-                <?= htmlspecialchars($delete_msg['text']) ?>
-            </div>
-        <?php endif; ?>
+        <div class="max-w-6xl mx-auto px-4 md:px-6 py-8">
 
-        <!-- Summary chips -->
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;">
-            <?php
-            $chips = [
-                'all'   => ['label' => 'Semua Media', 'color' => '#2563eb', 'bg' => 'rgba(37,99,235,.1)', 'border' => 'rgba(37,99,235,.2)', 'icon' => 'layers'],
-                'video' => ['label' => 'Video',        'color' => '#ef4444', 'bg' => 'rgba(239,68,68,.1)',  'border' => 'rgba(239,68,68,.2)',  'icon' => 'film'],
-                'music' => ['label' => 'Musik',        'color' => '#f97316', 'bg' => 'rgba(249,115,22,.1)', 'border' => 'rgba(249,115,22,.2)', 'icon' => 'music'],
-            ];
-            foreach ($chips as $key => $chip): ?>
-                <div class="stat-card" style="padding:12px 18px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;cursor:default;">
-                    <div style="width:32px;height:32px;border-radius:10px;background:<?= $chip['bg'] ?>;border:1px solid <?= $chip['border'] ?>;display:flex;align-items:center;justify-content:center;">
-                        <i data-lucide="<?= $chip['icon'] ?>" style="width:14px;height:14px;color:<?= $chip['color'] ?>;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size:18px;font-weight:800;color:<?= $chip['color'] ?>;line-height:1;"><?= number_format($total_counts[$key]) ?></div>
-                        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#455060;margin-top:2px;"><?= $chip['label'] ?></div>
-                    </div>
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 rounded-2xl bg-blue-600/15 border border-blue-600/25 flex items-center justify-center shrink-0">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5 text-blue-600"></i>
                 </div>
-            <?php endforeach; ?>
-        </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold text-white leading-tight">Media Analytics</h1>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1">Monitor & Kelola Seluruh Konten</p>
+                </div>
 
-        <!-- Filter & Sort bar -->
-        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;align-items:center;">
-            <!-- Sort -->
-            <div style="display:flex;gap:2px;background:rgba(255,255,255,.04);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,.06);">
-                <?php foreach (['views' => 'Views', 'likes' => 'Likes', 'dislikes' => 'Dislikes', 'title' => 'Nama'] as $k => $v): ?>
-                    <a href="?sort=<?= $k ?>&type=<?= $type_filter ?>"
-                        style="padding:6px 14px;border-radius:9px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;transition:all .2s;
-                   <?= $sort === $k ? 'background:#2563eb;color:#fff;' : 'color:#555e6e;' ?>">
-                        <?= $v ?>
-                    </a>
+                <div id="loading-spinner" class="htmx-indicator ml-auto flex items-center gap-2 text-sm text-blue-500">
+                    <i data-lucide="loader-2" class="animate-spin w-4.5 h-4.5"></i> Memuat...
+                </div>
+            </div>
+
+            <?php if ($delete_msg): ?>
+                <div class="mb-5 px-4.5 py-3.5 rounded-xl text-xs font-semibold flex items-center gap-2.5 <?= $delete_msg['type'] === 'success' ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400' ?>">
+                    <i data-lucide="<?= $delete_msg['type'] === 'success' ? 'check-circle' : 'alert-triangle' ?>" class="w-4 h-4 shrink-0"></i>
+                    <?= htmlspecialchars($delete_msg['text']) ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="flex flex-wrap gap-4 mb-8">
+                <?php
+                $chips = [
+                    'all'   => ['label' => 'Semua Media', 'text' => 'text-blue-500',   'bg' => 'bg-blue-500/10',   'border' => 'border-blue-500/20',   'icon' => 'layers'],
+                    'video' => ['label' => 'Video',       'text' => 'text-red-500',    'bg' => 'bg-red-500/10',    'border' => 'border-red-500/20',    'icon' => 'film'],
+                    'music' => ['label' => 'Musik',       'text' => 'text-orange-500', 'bg' => 'bg-orange-500/10', 'border' => 'border-orange-500/20', 'icon' => 'music'],
+                ];
+                foreach ($chips as $key => $chip): ?>
+                    <div class="px-6 py-4 min-w-[180px] rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4 cursor-default transition-all duration-300 ease-in-out hover:border-white/20 hover:bg-white/10 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/40">
+                        <div class="w-12 h-12 rounded-xl <?= $chip['bg'] ?> border <?= $chip['border'] ?> flex items-center justify-center shrink-0">
+                            <i data-lucide="<?= $chip['icon'] ?>" class="w-6 h-6 <?= $chip['text'] ?>"></i>
+                        </div>
+                        <div class="flex flex-col justify-center">
+                            <div class="text-3xl font-extrabold <?= $chip['text'] ?> leading-none tracking-tight"><?= number_format($total_counts[$key]) ?></div>
+                            <div class="text-[11px] font-bold uppercase tracking-widest text-gray-400 mt-1.5"><?= $chip['label'] ?></div>
+                        </div>
+                    </div>
                 <?php endforeach; ?>
             </div>
 
-            <!-- Type -->
-            <div style="display:flex;gap:2px;background:rgba(255,255,255,.04);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,.06);">
-                <?php foreach (['all' => 'Semua', 'video' => 'Video', 'music' => 'Musik'] as $k => $v): ?>
-                    <a href="?sort=<?= $sort ?>&type=<?= $k ?>"
-                        style="padding:6px 14px;border-radius:9px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;transition:all .2s;
-                   <?= $type_filter === $k ? 'background:#f97316;color:#fff;' : 'color:#555e6e;' ?>">
-                        <?= $v ?>
-                    </a>
-                <?php endforeach; ?>
+            <div id="media-content">
+            <?php endif; // Akhir dari Blok Pengecekan Non-HTMX atas 
+            ?>
+
+            <div class="flex flex-wrap items-center gap-3 mb-5">
+                <!-- Filter Views/Likes/dll -->
+                <div class="flex gap-0.5 bg-white/5 p-1 rounded-xl border border-white/10">
+                    <?php foreach (['views' => 'Views', 'likes' => 'Likes', 'dislikes' => 'Dislikes', 'title' => 'Nama'] as $k => $v): ?>
+                        <a href="javascript:void(0)"
+                            hx-get="?sort=<?= $k ?>&type=<?= $type_filter ?>"
+                            hx-target="#media-content"
+                            hx-indicator="#loading-spinner"
+                            class="py-1.5 px-3.5 rounded-lg text-[10px] font-bold uppercase tracking-widest no-underline transition-all duration-300 ease-in-out <?= $sort === $k ? 'bg-blue-600 text-white shadow-md scale-[1.03]' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5' ?>">
+                            <?= $v ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Filter All/Video/Musik -->
+                <div class="flex gap-0.5 bg-white/5 p-1 rounded-xl border border-white/10">
+                    <?php foreach (['all' => 'Semua', 'video' => 'Video', 'music' => 'Musik'] as $k => $v): ?>
+                        <a href="javascript:void(0)"
+                            hx-get="?sort=<?= $sort ?>&type=<?= $k ?>"
+                            hx-target="#media-content"
+                            hx-indicator="#loading-spinner"
+                            class="py-1.5 px-3.5 rounded-lg text-[10px] font-bold uppercase tracking-widest no-underline transition-all duration-300 ease-in-out <?= $type_filter === $k ? 'bg-orange-500 text-white shadow-md scale-[1.03]' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5' ?>">
+                            <?= $v ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="ml-auto text-[11px] font-semibold text-gray-500">
+                    <?= $result_media->num_rows ?> item ditemukan
+                </div>
             </div>
 
-            <!-- Count -->
-            <div style="margin-left:auto;font-size:11px;font-weight:600;color:#455060;">
-                <?= $result_media->num_rows ?> item ditemukan
-            </div>
-        </div>
+            <div class="rounded-2xl overflow-hidden shadow-2xl bg-[#080b11]/90 backdrop-blur-md border border-white/5">
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-left">
+                        <thead>
+                            <tr class="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-500 border-b border-white/5 bg-white/5">
+                                <th class="py-3.5 px-5">Konten</th>
+                                <th class="py-3.5 px-3 text-center">Views</th>
+                                <th class="py-3.5 px-3 text-center">Likes</th>
+                                <th class="py-3.5 px-3 text-center">Dislikes</th>
+                                <th class="py-3.5 px-3 text-center">Tipe</th>
+                                <th class="py-3.5 px-5 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($result_media->num_rows > 0):
+                                $row_i = 0;
+                                while ($row = $result_media->fetch_assoc()):
+                                    $row_i++;
+                                    $is_video   = ($row['media_type'] === 'video');
+                                    $watch_url  = $is_video ? "../video/watch.php?id={$row['id']}" : "../music/watch.php?id={$row['id']}";
+                                    $edit_url   = $is_video ? "edit-video.php?id={$row['id']}" : "edit-music.php?id={$row['id']}";
 
-        <!-- Table -->
-        <div class="glass" style="border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4);">
-            <div style="overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;text-align:left;">
-                    <thead>
-                        <tr style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#455060;border-bottom:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02);">
-                            <th style="padding:14px 20px;">Konten</th>
-                            <th style="padding:14px 12px;text-align:center;">Views</th>
-                            <th style="padding:14px 12px;text-align:center;">Likes</th>
-                            <th style="padding:14px 12px;text-align:center;">Dislikes</th>
-                            <th style="padding:14px 12px;text-align:center;">Tipe</th>
-                            <th style="padding:14px 20px;text-align:right;">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if ($result_media->num_rows > 0):
-                            $row_i = 0;
-                            while ($row = $result_media->fetch_assoc()):
-                                $row_i++;
-                                $is_video   = ($row['media_type'] === 'video');
-                                $watch_url  = $is_video ? "../video/watch.php?id={$row['id']}" : "../music/watch.php?id={$row['id']}";
-                                $edit_url   = $is_video ? "edit-video.php?id={$row['id']}" : "edit-music.php?id={$row['id']}";
-                                $type_color = $is_video ? '#ef4444' : '#f97316';
-                                $type_bg    = $is_video ? 'rgba(239,68,68,.1)' : 'rgba(249,115,22,.1)';
-                                $type_bdr   = $is_video ? 'rgba(239,68,68,.2)' : 'rgba(249,115,22,.2)';
-                        ?>
-                                <tr style="border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s;"
-                                    onmouseover="this.style.background='rgba(255,255,255,.02)'"
-                                    onmouseout="this.style.background='transparent'">
-
-                                    <!-- Title -->
-                                    <td style="padding:14px 20px;max-width:320px;">
-                                        <div style="display:flex;align-items:center;gap:10px;">
-                                            <div style="font-size:10px;font-weight:700;color:#2c3440;min-width:24px;text-align:center;"><?= $row_i ?></div>
-                                            <div>
-                                                <a href="<?= $watch_url ?>" target="_blank"
-                                                    style="font-size:13px;font-weight:600;color:#e2e6ef;text-decoration:none;display:block;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;"
-                                                    onmouseover="this.style.color='#60a5fa'"
-                                                    onmouseout="this.style.color='#e2e6ef'">
-                                                    <?= htmlspecialchars($row['title']) ?>
-                                                </a>
-                                                <span style="font-size:9px;color:#2c3440;font-weight:600;text-transform:uppercase;letter-spacing:.1em;">
-                                                    ID #<?= $row['id'] ?>
-                                                </span>
+                                    $type_text  = $is_video ? 'text-red-500' : 'text-orange-500';
+                                    $type_bg    = $is_video ? 'bg-red-500/10' : 'bg-orange-500/10';
+                                    $type_bdr   = $is_video ? 'border-red-500/20' : 'border-orange-500/20';
+                            ?>
+                                    <tr class="group border-b border-white/5 transition-colors duration-150 hover:bg-white/5">
+                                        <td class="py-3.5 px-5 max-w-[320px]">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="text-[10px] font-bold text-gray-600 min-w-[24px] text-center"><?= $row_i ?></div>
+                                                <div>
+                                                    <a href="<?= $watch_url ?>" target="_blank" class="text-[13px] font-semibold text-gray-200 no-underline block max-w-[260px] truncate transition-colors duration-150 hover:text-blue-400">
+                                                        <?= htmlspecialchars($row['title']) ?>
+                                                    </a>
+                                                    <span class="text-[9px] text-gray-600 font-semibold uppercase tracking-widest">
+                                                        ID #<?= $row['id'] ?>
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
+                                        </td>
 
-                                    <!-- Views -->
-                                    <td style="padding:14px 12px;text-align:center;font-size:12px;font-family:monospace;color:#c9cdd6;">
-                                        <?= number_format($row['views']) ?>
-                                    </td>
+                                        <td class="py-3.5 px-3 text-center text-xs font-mono text-gray-300">
+                                            <?= number_format($row['views']) ?>
+                                        </td>
 
-                                    <!-- Likes -->
-                                    <td style="padding:14px 12px;text-align:center;font-size:12px;font-family:monospace;color:#4ade80;">
-                                        <?= number_format($row['likes']) ?>
-                                    </td>
+                                        <td class="py-3.5 px-3 text-center text-xs font-mono text-green-400">
+                                            <?= number_format($row['likes']) ?>
+                                        </td>
 
-                                    <!-- Dislikes -->
-                                    <td style="padding:14px 12px;text-align:center;font-size:12px;font-family:monospace;color:#f87171;">
-                                        <?= number_format($row['dislikes']) ?>
-                                    </td>
+                                        <td class="py-3.5 px-3 text-center text-xs font-mono text-red-400">
+                                            <?= number_format($row['dislikes']) ?>
+                                        </td>
 
-                                    <!-- Type badge -->
-                                    <td style="padding:14px 12px;text-align:center;">
-                                        <span style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;padding:4px 9px;border-radius:8px;background:<?= $type_bg ?>;color:<?= $type_color ?>;border:1px solid <?= $type_bdr ?>;">
-                                            <?= strtoupper($row['media_type']) ?>
-                                        </span>
-                                    </td>
+                                        <td class="py-3.5 px-3 text-center">
+                                            <span class="text-[8px] font-extrabold uppercase tracking-widest py-1 px-2.5 rounded-lg <?= $type_bg ?> <?= $type_text ?> border <?= $type_bdr ?>">
+                                                <?= strtoupper($row['media_type']) ?>
+                                            </span>
+                                        </td>
 
-                                    <!-- Actions -->
-                                    <td style="padding:14px 20px;text-align:right;">
-                                        <div class="row-actions" style="display:inline-flex;align-items:center;gap:6px;">
-                                            <!-- Edit -->
-                                            <a href="<?= $edit_url ?>"
-                                                title="Edit"
-                                                style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:9px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.2);color:#60a5fa;transition:all .15s;"
-                                                onmouseover="this.style.background='#2563eb';this.style.color='#fff'"
-                                                onmouseout="this.style.background='rgba(37,99,235,.1)';this.style.color='#60a5fa'">
-                                                <i data-lucide="edit-2" style="width:11px;height:11px;"></i> Edit
-                                            </a>
-                                            <!-- Delete -->
-                                            <button type="button"
-                                                title="Hapus"
-                                                onclick="confirmDelete(<?= $row['id'] ?>, '<?= $row['media_type'] ?>', '<?= addslashes(htmlspecialchars($row['title'])) ?>')"
-                                                style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:9px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.18);color:#f87171;cursor:pointer;transition:all .15s;"
-                                                onmouseover="this.style.background='#ef4444';this.style.color='#fff'"
-                                                onmouseout="this.style.background='rgba(239,68,68,.08)';this.style.color='#f87171'">
-                                                <i data-lucide="trash-2" style="width:11px;height:11px;"></i> Hapus
-                                            </button>
-                                        </div>
+                                        <td class="py-3.5 px-5 text-right">
+                                            <div class="row-actions opacity-0 transition-opacity duration-150 inline-flex items-center gap-1.5 group-hover:opacity-100">
+                                                <a href="<?= $edit_url ?>" title="Edit" class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase tracking-widest no-underline bg-blue-600/10 border border-blue-600/20 text-blue-400 transition-all duration-150 hover:bg-blue-600 hover:text-white">
+                                                    <i data-lucide="edit-2" class="w-3 h-3"></i> Edit
+                                                </a>
+                                                <button type="button" title="Hapus" onclick="confirmDelete(<?= $row['id'] ?>, '<?= $row['media_type'] ?>', '<?= addslashes(htmlspecialchars($row['title'])) ?>')" class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-red-500/10 border border-red-500/20 text-red-400 cursor-pointer transition-all duration-150 hover:bg-red-500 hover:text-white">
+                                                    <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endwhile;
+                            else: ?>
+                                <tr>
+                                    <td colspan="6" class="p-16 text-center text-gray-600 text-xs italic">
+                                        Tidak ada media ditemukan.
                                     </td>
                                 </tr>
-                            <?php endwhile;
-                        else: ?>
-                            <tr>
-                                <td colspan="6" style="padding:60px;text-align:center;color:#2c3440;font-size:12px;font-style:italic;">
-                                    Tidak ada media ditemukan.
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-    </div><!-- /max-w -->
-
-    <!-- ── Delete Confirm Modal ── -->
-    <div id="delete-modal">
-        <div style="background:#0e1118;border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:32px;width:100%;max-width:400px;box-shadow:0 40px 80px rgba(0,0,0,.6);position:relative;">
-            <div style="width:52px;height:52px;border-radius:16px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.22);display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
-                <i data-lucide="trash-2" style="width:22px;height:22px;color:#ef4444;"></i>
-            </div>
-            <h3 style="font-size:18px;font-weight:800;color:#fff;margin:0 0 8px;">Hapus Konten?</h3>
-            <p style="font-size:13px;color:#6b7280;margin:0 0 6px;">Anda akan menghapus:</p>
-            <div id="modal-title" style="font-size:14px;font-weight:700;color:#e2e6ef;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 14px;margin-bottom:6px;word-break:break-word;"></div>
-            <div id="modal-type-badge" style="display:inline-block;margin-bottom:20px;"></div>
-            <p style="font-size:11px;color:#ef4444;margin:0 0 24px;padding:10px 14px;border-radius:10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);">
-                ⚠️ Tindakan ini tidak dapat dibatalkan. File dan semua data terkait akan dihapus permanen.
-            </p>
-            <form method="POST" id="delete-form">
-                <?php if (isset($_SESSION['csrf_token'])): ?>
-                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                <?php endif; ?>
-                <input type="hidden" name="action" value="delete">
-                <input type="hidden" name="media_id" id="modal-media-id">
-                <input type="hidden" name="media_type" id="modal-media-type">
-                <div style="display:flex;gap:10px;">
-                    <button type="button" onclick="closeDeleteModal()"
-                        style="flex:1;padding:12px;border-radius:12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#6b7280;cursor:pointer;transition:all .2s;"
-                        onmouseover="this.style.background='rgba(255,255,255,.09)';this.style.color='#e2e6ef'"
-                        onmouseout="this.style.background='rgba(255,255,255,.05)';this.style.color='#6b7280'">
-                        Batal
-                    </button>
-                    <button type="submit"
-                        style="flex:1;padding:12px;border-radius:12px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;background:#ef4444;border:none;color:#fff;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(239,68,68,.25);"
-                        onmouseover="this.style.background='#f87171'"
-                        onmouseout="this.style.background='#ef4444'">
-                        Ya, Hapus
-                    </button>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
-            </form>
+            </div>
+
+            <?php if (!$is_htmx): // Hanya muat Footer jika bukan request dari HTMX 
+            ?>
+            </div>
         </div>
-    </div>
 
-    <script>
-        lucide.createIcons();
+        <!-- Delete Modal -->
+        <div id="delete-modal" class="hidden fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm items-center justify-center">
+            <div class="bg-[#0e1118] border border-white/10 rounded-3xl p-8 w-full max-w-[400px] shadow-[0_40px_80px_rgba(0,0,0,0.6)] relative">
+                <div class="w-12 h-12 rounded-2xl bg-red-500/15 border border-red-500/25 flex items-center justify-center mb-5">
+                    <i data-lucide="trash-2" class="w-5 h-5 text-red-500"></i>
+                </div>
+                <h3 class="text-lg font-extrabold text-white m-0 mb-2">Hapus Konten?</h3>
+                <p class="text-[13px] text-gray-400 m-0 mb-1.5">Anda akan menghapus:</p>
+                <div id="modal-title" class="text-sm font-bold text-gray-200 bg-white/5 border border-white/10 rounded-xl py-2.5 px-3.5 mb-1.5 break-words"></div>
+                <div id="modal-type-badge" class="inline-block mb-5"></div>
+                <p class="text-[11px] text-red-500 m-0 mb-6 py-2.5 px-3.5 rounded-xl bg-red-500/10 border border-red-500/20">
+                    ⚠️ Tindakan ini tidak dapat dibatalkan. File dan semua data terkait akan dihapus permanen.
+                </p>
 
-        <?php if ($delete_msg && $delete_msg['type'] === 'success'): ?>
-            Swal.fire({
-                title: 'Berhasil!',
-                text: '<?= addslashes($delete_msg['text']) ?>',
-                icon: 'success',
-                confirmButtonColor: '#2563eb',
-                background: '#0e1118',
-                color: '#fff'
+                <form method="POST" id="delete-form">
+                    <?php if (isset($_SESSION['csrf_token'])): ?>
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                    <?php endif; ?>
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="media_id" id="modal-media-id">
+                    <input type="hidden" name="media_type" id="modal-media-type">
+                    <div class="flex gap-2.5">
+                        <button type="button" onclick="closeDeleteModal()" class="flex-1 p-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-gray-400 cursor-pointer transition-all duration-200 hover:bg-white/10 hover:text-gray-200">
+                            Batal
+                        </button>
+                        <button type="submit" class="flex-1 p-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-red-500 border-none text-white cursor-pointer transition-all duration-200 shadow-[0_4px_16px_rgba(239,68,68,0.25)] hover:bg-red-400">
+                            Ya, Hapus
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            lucide.createIcons();
+
+            <?php if ($delete_msg && $delete_msg['type'] === 'success'): ?>
+                Swal.fire({
+                    title: 'Berhasil!',
+                    text: '<?= addslashes($delete_msg['text']) ?>',
+                    icon: 'success',
+                    confirmButtonColor: '#2563eb',
+                    background: '#0e1118',
+                    color: '#fff'
+                });
+            <?php elseif ($delete_msg && $delete_msg['type'] === 'error'): ?>
+                Swal.fire({
+                    title: 'Gagal!',
+                    text: '<?= addslashes($delete_msg['text']) ?>',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444',
+                    background: '#0e1118',
+                    color: '#fff'
+                });
+            <?php endif; ?>
+
+            function confirmDelete(id, type, title) {
+                document.getElementById('modal-media-id').value = id;
+                document.getElementById('modal-media-type').value = type;
+                document.getElementById('modal-title').textContent = title;
+
+                const isVideo = type === 'video';
+                const badge = document.getElementById('modal-type-badge');
+                badge.textContent = type.toUpperCase();
+                badge.className = `text-[9px] font-extrabold uppercase tracking-[0.12em] py-1 px-2.5 rounded-lg border ` +
+                    (isVideo ?
+                        'bg-red-500/10 text-red-500 border-red-500/20' :
+                        'bg-orange-500/10 text-orange-500 border-orange-500/20');
+
+                const modal = document.getElementById('delete-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            function closeDeleteModal() {
+                const modal = document.getElementById('delete-modal');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            // Close on backdrop click
+            document.getElementById('delete-modal').addEventListener('click', function(e) {
+                if (e.target === this) closeDeleteModal();
             });
-        <?php elseif ($delete_msg && $delete_msg['type'] === 'error'): ?>
-            Swal.fire({
-                title: 'Gagal!',
-                text: '<?= addslashes($delete_msg['text']) ?>',
-                icon: 'error',
-                confirmButtonColor: '#ef4444',
-                background: '#0e1118',
-                color: '#fff'
+
+            // Close on Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeDeleteModal();
             });
-        <?php endif; ?>
 
-        function confirmDelete(id, type, title) {
-            document.getElementById('modal-media-id').value = id;
-            document.getElementById('modal-media-type').value = type;
-            document.getElementById('modal-title').textContent = title;
+            // RE-RENDER ICONS SETELAH HTMX MENYISIPKAN ELEMEN BARU KE DALAM DOM
+            document.body.addEventListener('htmx:afterSettle', function() {
+                lucide.createIcons();
+            });
+        </script>
+    </body>
 
-            const isVideo = type === 'video';
-            const badge = document.getElementById('modal-type-badge');
-            badge.textContent = type.toUpperCase();
-            badge.style.cssText = `font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;padding:3px 9px;border-radius:8px;` +
-                (isVideo ?
-                    'background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2);' :
-                    'background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2);');
-
-            document.getElementById('delete-modal').classList.add('open');
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('delete-modal').classList.remove('open');
-        }
-
-        // Close on backdrop click
-        document.getElementById('delete-modal').addEventListener('click', function(e) {
-            if (e.target === this) closeDeleteModal();
-        });
-
-        // Close on Escape
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeDeleteModal();
-        });
-    </script>
-</body>
-
-</html>
+    </html>
+<?php endif; // Akhir dari Blok Pengecekan Non-HTMX bawah 
+?>
