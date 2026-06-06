@@ -838,13 +838,14 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
 ```
 
 **Silakan baca file [LICENSE](LICENSE) untuk informasi lisensi selengkapnya.**
+</div>
 
 **Catatan**: *Pembuat(Mifada) Tidak terlibat pada file yang di unggah dan disebarluaskan oleh pihak yang mengambil code MEeL ini, semuanya kembali ke 'penggunaan' masing-masing user*
 
-*en: Domains sometimes don't work because they are running on developer devices.
+## en: Domains sometimes don't work because they are running on developer devices.
 
-*id: Domain terkadang tidak berfungsi karena berjalan di perangkat developer
-</div>
+## id: Domain terkadang tidak berfungsi karena berjalan di perangkat developer
+
 
 ---
 
