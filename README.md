@@ -6,7 +6,7 @@
 
 **Platform media cloud terpadu untuk streaming video, musik, membaca buku digital, dan penyimpanan file pribadi.**
 
-[![PHP](https://img.shields.io/badge/PHP-7.4%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
+[![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-CDN-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License](https://img.shields.io/badge/License-Custom-22c55e?style=flat-square)](LICENSE)
@@ -102,6 +102,7 @@ Berikut adalah peta struktur berkas dan direktori lengkap di dalam proyek MEeL:
 MEeL/
 ├── admin/                 # Panel Admin (Akses khusus role admin)
 │   ├── .htaccess          # Proteksi direktori admin
+|   ├── header-admin.php   # Header admin (digunakan di semua halaman admin)
 │   ├── cookies.php        # Halaman Media Analytics & Monitor
 │   ├── edit-music.php     # Form edit metadata musik
 │   ├── edit-video.php     # Form edit metadata video
@@ -112,26 +113,30 @@ MEeL/
 │   └── sidebar.php        # Navigasi sidebar anime
 ├── assets/                # Aset Statis
 │   ├── css/               # Stylesheet khusus per modul
-│   │   ├── styles.css
-│   │   ├── plyr.css
-│   │   ├── video.css
-│   │   ├── music.css
-│   │   ├── drive.css
-│   │   ├── up.css
-│   │   └── font.css
+│   │   ├── styles.css     # CSS HUB
+│   │   ├── plyr.css       # CSS Plyr custom
+│   │   ├── video.css      # CSS Video(index/watch)
+│   │   ├── em.css         # CSS edit di Admin
+│   │   ├── music.css      # CSS Music(index/watch)
+│   │   ├── drive.css      # CSS Drive
+│   │   ├── up.css         # CSS partials/ui.php
+│   │   └── font.css       # Font google API
 │   ├── js/                # Library dan skrip JS utama
-│   │   ├── tailwind.js
-│   │   ├── plyr.js
-│   │   ├── hls.js
-│   │   ├── htmx.js
-│   │   ├── lucide.js
-│   │   ├── sweetalert2.all.min.js
+│   │   ├── tailwind.js    # Tailwind
+│   │   ├── plyr.js        # PLYR
+│   │   ├── hls.js         # HLS
+│   │   ├── htmx.js        # HTMX/SPA
+│   │   ├── lucide.js      # Lucide Icon
+│   │   ├── sweetalert2.all.min.js # SweetAlert
 │   │   ├── player_video.js   # Logic gesture mobile & refresh VTT sprite
-│   │   ├── player_music.js
-│   │   └── script.js
-│   └── img/               # Gambar statis
-│       ├── MEeL.png       # Logo utama
-│       └── logo.png
+│   │   ├── player_music.js   # Logic Visualition % mini-player
+│   │   └── script.js      # Health reminder & Alert custom
+│   ├── img/               # Pendukung Introduction
+│   │   ├── music0.png
+│   │   ├── music1.png
+│   │   ├── video0.png
+│   │   └── video1.png
+│   └── MEeL.png           # Logo Utama
 ├── auth/                  # Autentikasi & Manajemen Sesi
 │   ├── .htaccess          # Proteksi direktori auth
 │   ├── auth.php           # Middleware Guard Login & Validasi Role
@@ -222,7 +227,7 @@ MEeL/
 
 | Komponen    | Versi                | Keterangan                                                |
 | ----------- | -------------------- | --------------------------------------------------------- |
-| **PHP**     | 7.4+                 | Versi 8.0+ sangat disarankan                              |
+| **PHP**     | 8.0+                 | Versi 8.0+ sangat disarankan                              |
 | **MySQL**   | 5.7+ / MariaDB 10.2+ | Skema mendukung encoding `utf8mb4`                        |
 | **Apache**  | 2.4+                 | Wajib mengaktifkan modul `mod_rewrite`                    |
 | **FFmpeg**  | 6.0+                 | Dibutuhkan untuk pembuatan segmen HLS dan kompresi media  |
@@ -262,23 +267,15 @@ git clone https://github.com/mifada2543/MEeL.git MEeL
 ### 2. Konfigurasi Database
 
 Buat database baru di MySQL:
-
-```sql
-CREATE DATABASE MEeL CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
 Import code SQL yang disediakan dalam proyek ke database `MEeL`.
 template:
 
 ```sql
--- phpMyAdmin SQL Dump
--- version 5.2.1
--- https://www.phpmyadmin.net/
---
--- Host: localhost
--- Waktu pembuatan: 05 Jun 2026 pada 13.44
--- Versi server: 10.4.32-MariaDB
--- Versi PHP: 8.0.30
+-- Membuat database jika belum ada
+CREATE DATABASE IF NOT EXISTS `MEeL` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `MEeL`;
+
+-- --------------------------------------------------------
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -290,16 +287,10 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `MEeL`
---
-
--- --------------------------------------------------------
-
---
 -- Struktur dari tabel `users`
 --
 
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL,
   `role` enum('admin','user') NOT NULL DEFAULT 'user',
@@ -318,7 +309,7 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Dumping data untuk tabel `users` (Hanya menyisakan default Admin)
+-- Data untuk tabel `users`
 --
 
 INSERT INTO `users` (`id`, `username`, `role`, `ip_address`, `password`, `created_at`, `last_activity`, `last_page`, `user_agent`, `is_active`, `bio`, `profile_picture`, `favorite_genre`, `custom_theme`) VALUES
@@ -330,7 +321,7 @@ INSERT INTO `users` (`id`, `username`, `role`, `ip_address`, `password`, `create
 -- Struktur dari tabel `books`
 --
 
-CREATE TABLE `books` (
+CREATE TABLE IF NOT EXISTS `books` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
   `author` varchar(100) DEFAULT NULL,
@@ -350,7 +341,7 @@ CREATE TABLE `books` (
 -- Struktur dari tabel `music`
 --
 
-CREATE TABLE `music` (
+CREATE TABLE IF NOT EXISTS `music` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
   `artist` varchar(100) DEFAULT NULL,
@@ -368,7 +359,7 @@ CREATE TABLE `music` (
 -- Struktur dari tabel `video`
 --
 
-CREATE TABLE `video` (
+CREATE TABLE IF NOT EXISTS `video` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
   `path_file` text NOT NULL,
@@ -384,7 +375,7 @@ CREATE TABLE `video` (
 -- Struktur dari tabel `playlists`
 --
 
-CREATE TABLE `playlists` (
+CREATE TABLE IF NOT EXISTS `playlists` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
   `user_id` int(11) DEFAULT NULL,
@@ -398,7 +389,7 @@ CREATE TABLE `playlists` (
 -- Struktur dari tabel `playlist_tracks`
 --
 
-CREATE TABLE `playlist_tracks` (
+CREATE TABLE IF NOT EXISTS `playlist_tracks` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `playlist_id` int(11) NOT NULL,
   `music_id` int(11) NOT NULL,
@@ -411,7 +402,7 @@ CREATE TABLE `playlist_tracks` (
 -- Struktur dari tabel `comments`
 --
 
-CREATE TABLE `comments` (
+CREATE TABLE IF NOT EXISTS `comments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `music_id` int(11) NOT NULL,
@@ -422,7 +413,7 @@ CREATE TABLE `comments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Indeks/Constraints untuk tabel-tabel relasi
+-- Constraints untuk tabel yang di-dump
 --
 
 ALTER TABLE `books`
@@ -469,8 +460,9 @@ cp config.example.php config.php
 Buka `auth/config.php` dan sesuaikan kredensial koneksi database Anda:
 
 ```php
-$conn = new mysqli("localhost", "username_db", "password_db", "MEeL"); //sesuaikan sendiri
+$conn = new mysqli("localhost", "username_db", "password_db", "MEeL");
 ```
+*Sesuaikan dengan database yang anda miliki*
 
 ### 4. Buat Direktori Runtime & Perizinan File
 
@@ -482,6 +474,7 @@ mkdir -p data_drive/public data_drive/private_admins temp profile/upload
 sudo chown -R www-data:www-data data_drive temp profile/upload
 sudo chmod -R 775 data_drive temp profile/upload
 ```
+*Jika www-data tidak berhasil, coba ubah ke 'daemon'*
 
 ### 5. Aktifkan Modul Rewrite Apache
 
@@ -517,6 +510,7 @@ $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
 // Di dalam modules/Uploader.php
 $this->base_dir = "/media/muhammaddaffa/MEeL/media/video/upload/";
 ```
+*Anda harus sesuaikan dengan path yang mau, itu adalah bawaan dari Pembuat MEeL(Mifada)*
 
 > **Catatan**: Sesuaikan path absolut tersebut dengan lokasi mount penyimpanan media pada sistem Anda. Jika storage mount ini offline/tidak terbaca, aplikasi akan otomatis dialihkan ke halaman `err/maintance.php`.
 
@@ -539,7 +533,6 @@ $this->base_dir = "/media/muhammaddaffa/MEeL/media/video/upload/";
 | `↑` / `↓`     | Naikkan / Turunkan volume suara                |
 | `M`           | Matikan / Aktifkan suara (Mute)                |
 | `F`           | Masuk / Keluar Layar Penuh (Fullscreen)        |
-| `C`           | Aktifkan / Nonaktifkan Subtitle (Caption)      |
 | `L`           | Ulangi Pemutaran (Looping)                     |
 | `I`           | Aktifkan mode Mini Player (Picture-in-Picture) |
 | `0` - `9`     | Melompat ke persentase durasi video (0% - 90%) |
@@ -674,10 +667,12 @@ Perlu di sesuaikan dengan konfigurasi server anda. Terutama pada :
 - Alokasi CPU limit
 
 ### Penyesuaian path di:
+
 ```php
 // ─── PATH STORAGE ─────────────────────────────────────────────────────────
-private const HDD_BASE      = "/media/muhammaddaffa/MEeL/media/video/upload/";// sesuaikan sendiri
+private const HDD_BASE      = "/media/muhammaddaffa/MEeL/media/video/upload/";
 ```
+*Jangan lupa untuk sesuaikan*
 
 ### Contoh Transcoder di CPU && path ffmpeg
 
@@ -754,6 +749,7 @@ sudo chmod -R 775 /opt/lampp/htdocs/MEeL/data_drive
 sudo chmod -R 775 /opt/lampp/htdocs/MEeL/temp
 sudo chmod -R 775 /opt/lampp/htdocs/MEeL/profile/upload
 ```
+*Jika www-data tidak berfungsi, coba 'daemon'*
 
 ---
 
@@ -805,7 +801,7 @@ Sangat direkomendasikan untuk men-deploy MEeL di lingkungan **Linux (Ubuntu Serv
 ---
 
 ## Kontribusi
-
+*Saran Pengembangan*
 Bagi pengembang yang ingin berkontribusi pada pengembangan MEeL, silakan ikuti checklist berikut:
 
 - [ ] Pastikan menulis query database menggunakan **Prepared Statements** (`$stmt->prepare()`) untuk menghindari celah SQL Injection.
