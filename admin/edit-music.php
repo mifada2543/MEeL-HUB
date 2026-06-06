@@ -192,17 +192,21 @@ $thumb_src = !empty($music['thumbnail'])
             }
         }
 
-        /* ── Cover art ── */
+        /* ── Cover art — interactive drag-drop ── */
         .cover-wrap {
             position: relative;
             width: 100%;
             max-width: 240px;
             margin: 0 auto;
+            cursor: pointer;
+            border-radius: 18px;
+            overflow: hidden;
         }
 
         @media (max-width: 899px) {
             .cover-wrap {
-                max-width: 140px;
+                max-width: 100%;
+                border-radius: 14px;
             }
         }
 
@@ -210,42 +214,111 @@ $thumb_src = !empty($music['thumbnail'])
             width: 100%;
             aspect-ratio: 1;
             object-fit: cover;
-            border-radius: 18px;
             display: block;
             border: 1px solid var(--border-strong);
             box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+            transition: transform .35s ease, filter .35s ease;
+        }
+
+        .cover-wrap:hover .cover-img,
+        .cover-wrap.drag-over .cover-img {
+            transform: scale(1.04);
+            filter: brightness(.55);
+        }
+
+        /* hidden file input wired to the whole cover */
+        .cover-file-input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+        }
+
+        /* hover / drag overlay */
+        .cover-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity .25s ease;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .cover-wrap:hover .cover-overlay,
+        .cover-wrap.drag-over .cover-overlay {
+            opacity: 1;
+        }
+
+        .cover-overlay-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(249, 115, 22, .9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, .5);
+        }
+
+        .cover-overlay-text {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .14em;
+            color: #fff;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+            text-align: center;
+            padding: 0 12px;
         }
 
         .cover-badge {
             position: absolute;
-            bottom: -10px;
-            right: -10px;
-            background: var(--accent);
-            color: #000;
-            font-family: 'Syne', sans-serif;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, .65);
+            backdrop-filter: blur(6px);
+            color: rgba(255, 255, 255, .7);
             font-size: 9px;
-            font-weight: 800;
+            font-weight: 700;
             letter-spacing: .12em;
             text-transform: uppercase;
-            padding: 5px 10px;
-            border-radius: 30px;
-            border: 2px solid var(--bg-base);
-        }
-
-        /* ── Vinyl ring deco ── */
-        .vinyl-ring {
-            position: absolute;
-            inset: -12px;
-            border-radius: 50%;
-            border: 2px dashed rgba(249, 115, 22, .15);
-            animation: spin 20s linear infinite;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, .1);
+            white-space: nowrap;
+            z-index: 1;
             pointer-events: none;
+            transition: opacity .25s;
         }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+        .cover-wrap:hover .cover-badge,
+        .cover-wrap.drag-over .cover-badge {
+            opacity: 0;
+        }
+
+        .cover-changed-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--accent);
+            color: #000;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 20px;
+            z-index: 4;
+            display: none;
         }
 
         /* ── Meta info ── */
@@ -431,32 +504,6 @@ $thumb_src = !empty($music['thumbnail'])
             resize: vertical;
             min-height: 110px;
             line-height: 1.6;
-        }
-
-        /* ── Cover upload zone ── */
-        .upload-zone {
-            border: 2px dashed rgba(255, 255, 255, .1);
-            border-radius: 14px;
-            padding: 18px;
-            text-align: center;
-            cursor: pointer;
-            transition: border-color .2s, background .2s;
-            position: relative;
-        }
-
-        .upload-zone:hover,
-        .upload-zone:focus-within {
-            border-color: var(--accent);
-            background: var(--accent-dim);
-        }
-
-        .upload-zone input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-            width: 100%;
-            height: 100%;
         }
 
         /* ── Two-col grid ── */
@@ -765,13 +812,23 @@ $thumb_src = !empty($music['thumbnail'])
 
             <!-- ── LEFT: Info sidebar ── -->
             <aside class="sidebar-panel">
-                <div class="cover-wrap">
-                    <div class="vinyl-ring"></div>
+                <!-- Cover — klik atau drag untuk ganti -->
+                <div class="cover-wrap" id="cover-wrap">
+                    <input type="file" name="thumbnail" accept="image/*"
+                        class="cover-file-input" id="cover-file-input"
+                        onchange="handleCoverChange(this)">
                     <img src="<?= $thumb_src ?>"
                         alt="Cover <?= htmlspecialchars($music['title']) ?>"
                         class="cover-img"
                         id="cover-preview">
-                    <span class="cover-badge">Cover Art</span>
+                    <div class="cover-overlay">
+                        <div class="cover-overlay-icon">
+                            <i data-lucide="image" style="width:20px;height:20px;color:#fff;"></i>
+                        </div>
+                        <div class="cover-overlay-text">Klik atau drop<br>untuk ganti cover</div>
+                    </div>
+                    <span class="cover-badge" id="cover-badge">Cover Art</span>
+                    <span class="cover-changed-badge" id="cover-changed-badge">✓ Baru</span>
                 </div>
 
                 <!-- Uploader card -->
@@ -913,25 +970,11 @@ $thumb_src = !empty($music['thumbnail'])
                     </div>
 
                     <!-- Deskripsi -->
-                    <div class="field-group">
+                    <!-- Deskripsi — mengisi sisa ruang -->
+                    <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description" placeholder="Masukkan deskripsi musik..."
-                            class="field-input"><?= htmlspecialchars($music['description'] ?? '') ?></textarea>
-                    </div>
-
-                    <div class="divider" style="margin:4px 0;"></div>
-
-                    <!-- Cover thumbnail upload -->
-                    <div class="field-group">
-                        <label class="field-label">Ganti Cover Thumbnail</label>
-                        <div class="upload-zone" id="upload-zone">
-                            <input type="file" name="thumbnail" accept="image/*" onchange="previewCover(this)">
-                            <div id="upload-zone-content">
-                                <i data-lucide="image-plus" style="width:22px;height:22px;color:#3a424f;display:block;margin:0 auto 8px;"></i>
-                                <div style="font-size:12px;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.1em;">Klik untuk unggah gambar</div>
-                                <div style="font-size:10px;color:#353d4a;margin-top:4px;">JPG, PNG, WEBP — maks. 5 MB</div>
-                            </div>
-                        </div>
+                            class="field-input" style="flex:1;min-height:120px;resize:none;"><?= htmlspecialchars($music['description'] ?? '') ?></textarea>
                     </div>
 
                     <!-- Actions -->
@@ -971,17 +1014,40 @@ $thumb_src = !empty($music['thumbnail'])
             btn.style.pointerEvents = 'none';
         }
 
-        function previewCover(input) {
+        function handleCoverChange(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     document.getElementById('cover-preview').src = e.target.result;
-                    const zone = document.getElementById('upload-zone-content');
-                    zone.innerHTML = '<div style="font-size:12px;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:.1em;">✓ ' + input.files[0].name + '</div>';
+                    document.getElementById('cover-changed-badge').style.display = 'block';
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
+
+        // Drag-and-drop onto cover
+        const coverWrap = document.getElementById('cover-wrap');
+        const coverInput = document.getElementById('cover-file-input');
+
+        coverWrap.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            coverWrap.classList.add('drag-over');
+        });
+        coverWrap.addEventListener('dragleave', function() {
+            coverWrap.classList.remove('drag-over');
+        });
+        coverWrap.addEventListener('drop', function(e) {
+            e.preventDefault();
+            coverWrap.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files && files[0] && files[0].type.startsWith('image/')) {
+                // Transfer to the actual file input
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                coverInput.files = dt.files;
+                handleCoverChange(coverInput);
+            }
+        });
 
         // Inject keyframe for spin
         const style = document.createElement('style');

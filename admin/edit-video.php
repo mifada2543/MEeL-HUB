@@ -179,7 +179,7 @@ $thumb_src = !empty($video['thumbnail'])
             }
         }
 
-        /* ── Thumbnail preview ── */
+        /* ── Thumbnail preview — interactive drag-drop ── */
         .thumb-wrap {
             position: relative;
             width: 100%;
@@ -188,14 +188,17 @@ $thumb_src = !empty($video['thumbnail'])
             background: #0a0d14;
             border: 1px solid var(--border-strong);
             box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+            cursor: pointer;
         }
 
-        .thumb-wrap::after {
-            content: '';
+        .thumb-file-input {
             position: absolute;
             inset: 0;
-            background: linear-gradient(to top, rgba(0, 0, 0, .7) 0%, transparent 50%);
-            pointer-events: none;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            z-index: 4;
         }
 
         .thumb-img {
@@ -203,46 +206,96 @@ $thumb_src = !empty($video['thumbnail'])
             aspect-ratio: 16/9;
             object-fit: cover;
             display: block;
-            transition: transform .4s ease;
+            transition: transform .35s ease, filter .35s ease;
         }
 
-        .thumb-wrap:hover .thumb-img {
-            transform: scale(1.03);
+        .thumb-wrap:hover .thumb-img,
+        .thumb-wrap.drag-over .thumb-img {
+            transform: scale(1.04);
+            filter: brightness(.45);
         }
 
-        /* Play overlay */
-        .play-overlay {
+        /* overlay — hover / drag */
+        .thumb-overlay {
             position: absolute;
             inset: 0;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 2;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity .25s ease;
+            pointer-events: none;
+            z-index: 3;
         }
 
-        .play-btn {
-            width: 52px;
-            height: 52px;
+        .thumb-wrap:hover .thumb-overlay,
+        .thumb-wrap.drag-over .thumb-overlay {
+            opacity: 1;
+        }
+
+        .thumb-overlay-icon {
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
-            background: rgba(239, 68, 68, .85);
+            background: rgba(239, 68, 68, .9);
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(4px);
-            border: 2px solid rgba(255, 255, 255, .25);
-            box-shadow: 0 4px 20px rgba(239, 68, 68, .4);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, .5);
+        }
+
+        .thumb-overlay-text {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .14em;
+            color: #fff;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, .6);
+            text-align: center;
         }
 
         .thumb-label {
             position: absolute;
             bottom: 10px;
-            left: 12px;
-            z-index: 3;
-            font-size: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            background: rgba(0, 0, 0, .6);
+            backdrop-filter: blur(6px);
+            font-size: 9px;
             font-weight: 700;
             letter-spacing: .12em;
             text-transform: uppercase;
             color: rgba(255, 255, 255, .7);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, .1);
+            white-space: nowrap;
+            pointer-events: none;
+            transition: opacity .25s;
+        }
+
+        .thumb-wrap:hover .thumb-label,
+        .thumb-wrap.drag-over .thumb-label {
+            opacity: 0;
+        }
+
+        .thumb-changed-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 20px;
+            z-index: 4;
+            display: none;
         }
 
         /* ── Meta info ── */
@@ -504,32 +557,6 @@ $thumb_src = !empty($video['thumbnail'])
             line-height: 1.6;
         }
 
-        /* ── Upload zone ── */
-        .upload-zone {
-            border: 2px dashed rgba(255, 255, 255, .1);
-            border-radius: 14px;
-            padding: 18px;
-            text-align: center;
-            cursor: pointer;
-            transition: border-color .2s, background .2s;
-            position: relative;
-        }
-
-        .upload-zone:hover,
-        .upload-zone:focus-within {
-            border-color: var(--accent);
-            background: var(--accent-dim);
-        }
-
-        .upload-zone input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-            width: 100%;
-            height: 100%;
-        }
-
         /* ── Alerts ── */
         .alert {
             padding: 14px 16px;
@@ -734,18 +761,23 @@ $thumb_src = !empty($video['thumbnail'])
 
             <!-- ── LEFT: Sidebar ── -->
             <aside class="sidebar-panel">
-                <!-- Thumbnail preview -->
-                <div class="thumb-wrap">
+                <!-- Thumbnail — klik atau drag untuk ganti -->
+                <div class="thumb-wrap" id="thumb-wrap">
+                    <input type="file" name="thumbnail" accept="image/*"
+                        class="thumb-file-input" id="thumb-file-input"
+                        onchange="handleThumbChange(this)">
                     <img src="<?= $thumb_src ?>"
                         alt="Thumbnail <?= htmlspecialchars($video['title']) ?>"
                         class="thumb-img"
                         id="thumb-preview">
-                    <div class="play-overlay">
-                        <div class="play-btn">
-                            <i data-lucide="play" style="width:22px;height:22px;color:#fff;fill:currentColor;margin-left:2px;"></i>
+                    <div class="thumb-overlay">
+                        <div class="thumb-overlay-icon">
+                            <i data-lucide="image" style="width:22px;height:22px;color:#fff;"></i>
                         </div>
+                        <div class="thumb-overlay-text">Klik atau drop<br>untuk ganti thumbnail</div>
                     </div>
-                    <div class="thumb-label">Thumbnail saat ini</div>
+                    <span class="thumb-label" id="thumb-label">Thumbnail saat ini</span>
+                    <span class="thumb-changed-badge" id="thumb-changed-badge">✓ Baru</span>
                 </div>
 
                 <!-- Uploader card -->
@@ -853,27 +885,12 @@ $thumb_src = !empty($video['thumbnail'])
                             oninput="document.getElementById('sidebar-title').textContent = this.value || '—'">
                     </div>
 
-                    <!-- Deskripsi -->
-                    <div class="field-group">
+                    <!-- Deskripsi — mengisi sisa ruang -->
+                    <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description"
                             placeholder="Masukkan deskripsi video..."
-                            class="field-input"><?= htmlspecialchars($video['description'] ?? '') ?></textarea>
-                    </div>
-
-                    <div class="divider" style="margin:4px 0;"></div>
-
-                    <!-- Thumbnail upload -->
-                    <div class="field-group">
-                        <label class="field-label">Ganti Thumbnail</label>
-                        <div class="upload-zone" id="upload-zone">
-                            <input type="file" name="thumbnail" accept="image/*" onchange="previewThumb(this)">
-                            <div id="upload-zone-content">
-                                <i data-lucide="image-plus" style="width:22px;height:22px;color:#3a424f;display:block;margin:0 auto 8px;"></i>
-                                <div style="font-size:12px;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.1em;">Klik untuk unggah gambar</div>
-                                <div style="font-size:10px;color:#353d4a;margin-top:4px;">JPG, PNG, WEBP — maks. 5 MB</div>
-                            </div>
-                        </div>
+                            class="field-input" style="flex:1;min-height:120px;resize:none;"><?= htmlspecialchars($video['description'] ?? '') ?></textarea>
                     </div>
 
                     <!-- Actions -->
@@ -913,17 +930,39 @@ $thumb_src = !empty($video['thumbnail'])
             btn.style.pointerEvents = 'none';
         }
 
-        function previewThumb(input) {
+        function handleThumbChange(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     document.getElementById('thumb-preview').src = e.target.result;
-                    const zone = document.getElementById('upload-zone-content');
-                    zone.innerHTML = '<div style="font-size:12px;font-weight:700;color:#ef4444;text-transform:uppercase;letter-spacing:.1em;">✓ ' + input.files[0].name + '</div>';
+                    document.getElementById('thumb-changed-badge').style.display = 'block';
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
+
+        // Drag-and-drop onto thumbnail
+        const thumbWrap = document.getElementById('thumb-wrap');
+        const thumbInput = document.getElementById('thumb-file-input');
+
+        thumbWrap.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            thumbWrap.classList.add('drag-over');
+        });
+        thumbWrap.addEventListener('dragleave', function() {
+            thumbWrap.classList.remove('drag-over');
+        });
+        thumbWrap.addEventListener('drop', function(e) {
+            e.preventDefault();
+            thumbWrap.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files && files[0] && files[0].type.startsWith('image/')) {
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                thumbInput.files = dt.files;
+                handleThumbChange(thumbInput);
+            }
+        });
 
         const style = document.createElement('style');
         style.textContent = '@keyframes spin2 { to { transform: rotate(360deg); } }';
