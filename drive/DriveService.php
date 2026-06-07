@@ -212,7 +212,12 @@ final class DriveStorage
             throw new RuntimeException('File tidak ditemukan.');
         }
 
-        // Validasi access control untuk private files
+        // CRITICAL: Validasi access control untuk public files - HANYA ADMIN
+        if ($safeScope === self::SCOPE_PUBLIC && !$this->user->isAdmin()) {
+            throw new RuntimeException('Hanya Admin yang dapat menghapus file di Public Space.');
+        }
+
+        // Validasi access control untuk private files - HANYA OWNER
         if ($safeScope === self::SCOPE_PRIVATE && !$this->verifyPrivateFileAccess($filePath)) {
             throw new RuntimeException('Anda tidak memiliki akses ke file ini.');
         }

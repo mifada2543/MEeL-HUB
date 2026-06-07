@@ -14,18 +14,6 @@ if (!verify_csrf()) {
     exit();
 }
 
-// Rate Limiting
-require_once '../modules/System.php';
-$sys = new System($conn);
-$user_id = $_SESSION['user_id'];
-
-$limit = $sys->checkRateLimit($user_id, 'drive_delete', 'user');
-if (!$limit['allowed']) {
-    http_response_code(429);
-    echo htmlspecialchars('Terlalu banyak penghapusan. Coba lagi dalam ' . $limit['minutes'] . ' menit.', ENT_QUOTES, 'UTF-8');
-    exit();
-}
-
 $storage = new DriveStorage(dirname(__DIR__) . '/data_drive', $user);
 
 try {
@@ -37,7 +25,7 @@ try {
 
     // Audit Logging
     log_drive_operation(
-        $user_id,
+        $_SESSION['user_id'],
         $user->username,
         'delete',
         $filename ?? 'unknown',
@@ -51,7 +39,7 @@ try {
     exit();
 } catch (RuntimeException $exception) {
     log_drive_operation(
-        $user_id,
+        $_SESSION['user_id'],
         $user->username,
         'delete',
         $_POST['file'] ?? 'unknown',
@@ -63,4 +51,5 @@ try {
     http_response_code(400);
     echo htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8');
 }
+
 
