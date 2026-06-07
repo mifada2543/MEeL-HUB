@@ -79,3 +79,52 @@ function get_user_usage($username)
     }
     return $size;
 }
+
+/**
+ * Get CSRF token dari session (sudah diinisialisasi di config.php)
+ */
+function get_csrf_token(): string
+{
+    return $_SESSION['csrf_token'] ?? '';
+}
+
+/**
+ * Verifikasi CSRF token (wrapper untuk verify_csrf dari config.php)
+ */
+function verify_csrf_token(?string $token): bool
+{
+    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
+}
+
+/**
+ * Log drive operations untuk audit trail
+ */
+function log_drive_operation(int $userId, string $username, string $operation, string $filename, string $type, string $scope, string $status = 'success'): void
+{
+    global $conn;
+    
+    $logDir = dirname(__DIR__) . '/logs';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0755, true);
+    }
+    
+    $logFile = $logDir . '/drive_audit.log';
+    $timestamp = date('Y-m-d H:i:s');
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $userAgent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 0, 200);
+    
+    $logEntry = json_encode([
+        'timestamp' => $timestamp,
+        'user_id' => $userId,
+        'username' => $username,
+        'operation' => $operation,
+        'filename' => $filename,
+        'type' => $type,
+        'scope' => $scope,
+        'status' => $status,
+        'ip' => $ip,
+        'user_agent' => $userAgent
+    ]) . "\n";
+    
+    @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
+}

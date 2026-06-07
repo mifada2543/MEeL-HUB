@@ -150,6 +150,12 @@ final class DriveStorage
             throw new RuntimeException('Gagal mengunggah file. Cek izin folder penyimpanan.');
         }
 
+        // Validasi file type menggunakan magic bytes
+        if (!$this->validateFileByMagicBytes($destination, $type)) {
+            unlink($destination);
+            throw new RuntimeException('Tipe file tidak sesuai dengan extension yang diberikan.');
+        }
+
         return [
             'scope' => $scope,
             'type' => $type,
@@ -183,6 +189,11 @@ final class DriveStorage
             throw new RuntimeException('File fisik tidak ditemukan di server.');
         }
 
+        // Validasi access control untuk private files
+        if ($safeScope === self::SCOPE_PRIVATE && !$this->verifyPrivateFileAccess($filePath)) {
+            throw new RuntimeException('Anda tidak memiliki akses ke file ini.');
+        }
+
         return [
             'name' => $safeFilename,
             'path' => $filePath,
@@ -201,9 +212,33 @@ final class DriveStorage
             throw new RuntimeException('File tidak ditemukan.');
         }
 
+        // Validasi access control untuk private files
+        if ($safeScope === self::SCOPE_PRIVATE && !$this->verifyPrivateFileAccess($filePath)) {
+            throw new RuntimeException('Anda tidak memiliki akses ke file ini.');
+        }
+
         if (!unlink($filePath)) {
             throw new RuntimeException('Gagal menghapus file. Periksa izin folder.');
         }
+    }
+
+    /**
+     * Verifikasi user dapat mengakses private file
+     */
+    private function verifyPrivateFileAccess(string $filePath): bool
+    {
+        $userPath = $this->privateRootForUser($this->user->username);
+
+        // Normalize paths untuk comparison
+        $realPath = realpath($filePath);
+        $realUserPath = realpath($userPath);
+
+        if ($realPath === false || $realUserPath === false) {
+            return false;
+        }
+
+        // Ensure file is within user's private directory
+        return strpos($realPath, $realUserPath) === 0;
     }
 
     private function buildFilePath(string $type, string $scope, string $filename, bool $forDelete = false): string
@@ -259,9 +294,56 @@ final class DriveStorage
             return;
         }
 
-        if (!mkdir($directory, 0777, true) && !is_dir($directory)) {
+        if (!mkdir($directory, 0755, true) && !is_dir($directory)) {
             throw new RuntimeException('Folder penyimpanan gagal dibuat.');
         }
+    }
+
+    /**
+     * Validasi file type menggunakan magic bytes
+     */
+    private function validateFileByMagicBytes(string $filePath, string $detectedType): bool
+    {
+        if (!is_file($filePath)) {
+            return false;
+        }
+
+        $handle = fopen($filePath, 'rb');
+        if (!$handle) {
+            return false;
+        }
+
+        $header = fread($handle, 16);
+        fclose($handle);
+
+        // Video magic bytes
+        if ($detectedType === self::TYPE_VIDEO) {
+            $videoSignatures = [
+                0x000001B3, // MPEG video
+                0x1A45DFA3, // WebM/Matroska
+                0x6674797B, // MP4/MOV
+                0x52494646, // AVI/WAV
+            ];
+            $fileSignature = unpack('N', substr($header, 0, 4))[1] ?? 0;
+            return in_array($fileSignature, $videoSignatures);
+        }
+
+        // Audio magic bytes
+        if ($detectedType === self::TYPE_AUDIO) {
+            $audioSignatures = [
+                0xFFFB, // MP3 (MPEG-3)
+                0xFFA, // MP3 (MPEG-2/2.5)
+                0x664C6143, // FLAC
+                0x4F676753, // OGG
+                0xFFFA, // MPEG-4 Audio
+                0xFFF4, // AAC
+                0xFFF5, // AAC (MPEG-4)
+            ];
+            $fileSignature = unpack('N', substr($header, 0, 4))[1] ?? 0;
+            return in_array($fileSignature, $audioSignatures);
+        }
+
+        return true;
     }
 
     private function detectTypeFromFilename(string $filename): string
@@ -316,7 +398,6 @@ final class DriveStorage
         return $candidate;
     }
 }
-
 final class DriveViewRenderer
 {
     public function renderFileGrid(array $files, string $accent, string $icon, string $type, string $scope): void
@@ -329,6 +410,8 @@ final class DriveViewRenderer
             return;
         }
 
+        $csrfToken = get_csrf_token();
+
         echo '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">';
 
         foreach ($files as $file) {
@@ -336,8 +419,9 @@ final class DriveViewRenderer
             $path = htmlspecialchars($file['path'], ENT_QUOTES, 'UTF-8');
             $size = format_bytes((int) $file['size']);
             $date = date('d M Y', (int) $file['time']);
-            $downloadUrl = 'download.php?file=' . urlencode($file['name']) . '&type=' . $type . '&scope=' . $scope;
-            $deleteUrl = 'delete.php?file=' . urlencode($file['name']) . '&type=' . $type . '&scope=' . $scope;
+            $downloadUrl = 'download.php?file=' . urlencode($file['name']) . '&type=' . rawurlencode($type) . '&scope=' . rawurlencode($scope) . '&csrf_token=' . rawurlencode($csrfToken);
+            $deleteFormId = 'delete-form-' . md5($file['name'] . $type . $scope);
+            $safeCsrfToken = htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8');
 
             echo "
         <div class='glass p-4 rounded-2xl group hover:border-blue-500/50 transition-all duration-300 transform hover:-translate-y-1 shadow-xl hover:shadow-blue-900/10'>
@@ -355,9 +439,16 @@ final class DriveViewRenderer
                         <i data-lucide='download' class='w-4 h-4'></i>
                     </a>
                     
-                    <a href='$deleteUrl' onclick=\"return meelConfirmLink(event, { title: 'Hapus File', text: 'Hapus file ini?', confirmButtonText: 'HAPUS' })\" class='p-2 hover:bg-red-500/20 rounded-lg text-red-400' title='Hapus'>
+                    <button onclick=\"if(confirm('Hapus file ini?')) document.getElementById('$deleteFormId').submit(); return false;\" class='p-2 hover:bg-red-500/20 rounded-lg text-red-400' title='Hapus'>
                         <i data-lucide='trash-2' class='w-4 h-4'></i>
-                    </a>
+                    </button>
+                    
+                    <form id='$deleteFormId' action='delete.php' method='POST' style='display:none;'>
+                        <input type='hidden' name='csrf_token' value='$safeCsrfToken'>
+                        <input type='hidden' name='file' value='" . htmlspecialchars($file['name'], ENT_QUOTES, 'UTF-8') . "'>
+                        <input type='hidden' name='type' value='" . htmlspecialchars($type, ENT_QUOTES, 'UTF-8') . "'>
+                        <input type='hidden' name='scope' value='" . htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') . "'>
+                    </form>
                 </div>
             </div>
 
