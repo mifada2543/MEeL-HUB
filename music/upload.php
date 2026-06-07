@@ -1,24 +1,38 @@
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
 include '../auth/auth.php';
 include '../modules/helpers.php';
 include '../auth/config.php';
 include '../modules/Uploader.php';
 
 set_time_limit(0);
-$status   = "";
-$user     = $_SESSION['username'];
-$user_id  = $_SESSION['user_id'];
+$status        = "";
+$user          = $_SESSION['username'];
+$user_id       = $_SESSION['user_id'];
 $alert_message = "";
 
+// Ambil role user
 $stmt_role = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
 $stmt_role->bind_param("i", $user_id);
 $stmt_role->execute();
 $user_role = $stmt_role->get_result()->fetch_assoc()['role'] ?? 'user';
+$is_admin  = ($user_role === 'admin');
 
-// Instansiasi Objek Uploader
+// Upload hari ini
+$stmt_count = $conn->prepare("SELECT COUNT(*) AS c FROM music WHERE user_id = ? AND DATE(upload_date) = CURDATE()");
+$stmt_count->bind_param("i", $user_id);
+$stmt_count->execute();
+$today_count = (int)$stmt_count->get_result()->fetch_assoc()['c'];
+
+// Total upload
+$stmt_total = $conn->prepare("SELECT COUNT(*) AS c FROM music WHERE user_id = ?");
+$stmt_total->bind_param("i", $user_id);
+$stmt_total->execute();
+$total_uploads = (int)$stmt_total->get_result()->fetch_assoc()['c'];
+
+$daily_limit = $is_admin ? '∞' : '5';
+
 $uploader = new Uploader($conn, $user_id, $user);
 
 if (isset($_POST['upload'])) {
@@ -27,6 +41,8 @@ if (isset($_POST['upload'])) {
 
     if ($result['status'] === 'success') {
         $status = "success";
+        $today_count++;
+        $total_uploads++;
     } elseif (isset($result['alert']) && $result['alert'] == true) {
         $alert_message = $result['msg'];
     } else {
@@ -40,119 +56,929 @@ if (isset($_POST['upload'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>Upload | MEeL Music</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+        :root {
+            --accent: #f97316;
+            --accent-dim: rgba(249, 115, 22, .10);
+            --accent-border: rgba(249, 115, 22, .22);
+            --bg-base: #080b11;
+            --bg-card: #0e1118;
+            --bg-panel: #131720;
+            --border: rgba(255, 255, 255, .06);
+            --border-strong: rgba(255, 255, 255, .10);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            background-color: #0b0e14;
+            background: var(--bg-base);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            color: #c9cdd6;
         }
 
-        .glass {
-            background: rgba(22, 27, 34, 0.7);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
         }
 
-        .drag-over {
-            border-color: #ea580c !important;
-            background-color: rgba(234, 88, 12, 0.1) !important;
-            transform: scale(1.02);
+        .page-wrap {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: 56px 1fr;
         }
 
-        #drop-zone {
-            transition: all 0.3s ease;
-            border: 2px dashed #374151;
+        /* ── Nav ── */
+        .top-nav {
+            height: 56px;
+            background: rgba(8, 11, 17, .9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-family: 'Syne', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+            text-decoration: none;
+            letter-spacing: .05em;
+        }
+
+        .nav-brand span {
+            color: var(--accent);
+        }
+
+        .nav-sep {
+            width: 1px;
+            height: 20px;
+            background: var(--border-strong);
+        }
+
+        .nav-crumb {
+            font-size: 11px;
+            font-weight: 600;
+            color: #555e6e;
+            text-decoration: none;
+            transition: color .2s;
+        }
+
+        .nav-crumb:hover {
+            color: var(--accent);
+        }
+
+        .nav-crumb-current {
+            font-size: 11px;
+            font-weight: 600;
+            color: #e2e6ef;
+        }
+
+        .nav-chevron {
+            color: #353d4a;
+            font-size: 14px;
+        }
+
+        /* ── Layout ── */
+        .upload-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 900px) {
+            .upload-layout {
+                grid-template-columns: 320px 1fr;
+                min-height: calc(100vh - 56px);
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .upload-layout {
+                grid-template-columns: 360px 1fr;
+            }
+        }
+
+        /* ── Sidebar ── */
+        .sidebar-panel {
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            padding: 32px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        @media (max-width: 899px) {
+            .sidebar-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 20px 16px;
+                gap: 16px;
+            }
+        }
+
+        /* ── Hero — waveform visual ── */
+        .hero-waveform {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(249, 115, 22, .14) 0%, rgba(8, 11, 17, 0) 70%);
+            border: 1px solid var(--accent-border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* animated waveform bars */
+        .waveform-bars {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .waveform-bars span {
+            display: block;
+            width: 4px;
+            border-radius: 2px;
+            background: var(--accent);
+            opacity: .6;
+            animation: wavebar 1.2s ease-in-out infinite alternate;
+        }
+
+        .waveform-bars span:nth-child(1) {
+            height: 10px;
+            animation-delay: 0s;
+        }
+
+        .waveform-bars span:nth-child(2) {
+            height: 22px;
+            animation-delay: .1s;
+        }
+
+        .waveform-bars span:nth-child(3) {
+            height: 36px;
+            animation-delay: .2s;
+        }
+
+        .waveform-bars span:nth-child(4) {
+            height: 28px;
+            animation-delay: .3s;
+        }
+
+        .waveform-bars span:nth-child(5) {
+            height: 40px;
+            animation-delay: .15s;
+        }
+
+        .waveform-bars span:nth-child(6) {
+            height: 22px;
+            animation-delay: .25s;
+        }
+
+        .waveform-bars span:nth-child(7) {
+            height: 32px;
+            animation-delay: .05s;
+        }
+
+        .waveform-bars span:nth-child(8) {
+            height: 18px;
+            animation-delay: .35s;
+        }
+
+        .waveform-bars span:nth-child(9) {
+            height: 28px;
+            animation-delay: .1s;
+        }
+
+        .waveform-bars span:nth-child(10) {
+            height: 14px;
+            animation-delay: .2s;
+        }
+
+        .waveform-bars span:nth-child(11) {
+            height: 38px;
+            animation-delay: .3s;
+        }
+
+        .waveform-bars span:nth-child(12) {
+            height: 20px;
+            animation-delay: .15s;
+        }
+
+        @keyframes wavebar {
+            from {
+                transform: scaleY(0.4);
+                opacity: .35;
+            }
+
+            to {
+                transform: scaleY(1);
+                opacity: .85;
+            }
+        }
+
+        /* ── Stats ── */
+        .stats-strip {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .stat-chip {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .03);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-family: 'Syne', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: #555e6e;
+            margin-top: 4px;
+        }
+
+        /* ── Guide ── */
+        .guide-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .guide-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .03);
+            border: 1px solid var(--border);
+        }
+
+        .guide-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .guide-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #e2e6ef;
+            margin-bottom: 2px;
+        }
+
+        .guide-desc {
+            font-size: 10px;
+            color: #555e6e;
+            line-height: 1.4;
+        }
+
+        /* ── Form panel ── */
+        .form-panel {
+            background: var(--bg-card);
+            padding: 36px 40px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (max-width: 899px) {
+            .form-panel {
+                padding: 20px 16px;
+            }
+        }
+
+        @media (max-width: 599px) {
+            .form-panel {
+                padding: 16px 14px;
+            }
+        }
+
+        @media (min-width: 900px) {
+            .form-panel {
+                overflow-y: auto;
+                max-height: calc(100vh - 56px);
+            }
+        }
+
+        /* ── Form header ── */
+        .form-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .form-title {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(22px, 4vw, 30px);
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.1;
+        }
+
+        .form-title span {
+            color: var(--accent);
+        }
+
+        .form-subtitle {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .2em;
+            color: #454e5e;
+            margin-top: 4px;
+        }
+
+        /* ── Inputs ── */
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .16em;
+            color: #4a5568;
+            padding-left: 4px;
+        }
+
+        .field-input {
+            width: 100%;
+            background: rgba(255, 255, 255, .035);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 14px;
+            padding: 14px 18px;
+            font-size: 14px;
+            font-family: 'DM Sans', sans-serif;
+            color: #e2e6ef;
+            outline: none;
+            transition: border-color .2s, background .2s, box-shadow .2s;
+        }
+
+        .field-input:focus {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, .08);
+        }
+
+        .field-input::placeholder {
+            color: #3a424f;
+        }
+
+        /* ── Two-col ── */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        @media (max-width: 480px) {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ── Drop zones ── */
+        .drop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        @media (max-width: 480px) {
+            .drop-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .drop-zone {
+            position: relative;
+            border: 2px dashed rgba(255, 255, 255, .09);
+            border-radius: 16px;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .2s, background .2s, transform .15s;
+            min-height: 130px;
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .drop-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.drag-over {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            transform: translateY(-1px);
+        }
+
+        .drop-zone-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform .2s;
+        }
+
+        .drop-zone:hover .drop-zone-icon {
+            transform: scale(1.1);
+        }
+
+        .drop-zone-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: #4a5568;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .drop-zone-sub {
+            font-size: 9px;
+            color: #353d4a;
+            font-weight: 600;
+            letter-spacing: .08em;
+        }
+
+        .drop-zone.has-file .drop-zone-label {
+            color: var(--accent);
+        }
+
+        .thumb-mini {
+            width: 56px;
+            height: 56px;
+            border-radius: 10px;
+            object-fit: cover;
+            display: none;
+            border: 1px solid var(--border-strong);
+        }
+
+        /* ── Toggle (anti-transcode) ── */
+        .toggle-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .toggle-switch input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-track {
+            width: 36px;
+            height: 20px;
+            background: rgba(255, 255, 255, .1);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, .1);
+            transition: background .2s;
+            position: relative;
+        }
+
+        .toggle-switch input:checked+.toggle-track {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .toggle-track::after {
+            content: '';
+            position: absolute;
+            left: 2px;
+            top: 2px;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform .2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+        }
+
+        .toggle-switch input:checked+.toggle-track::after {
+            transform: translateX(16px);
+        }
+
+        /* ── Alerts ── */
+        .alert {
+            padding: 14px 16px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: rgba(34, 197, 94, .08);
+            border: 1px solid rgba(34, 197, 94, .2);
+            color: #4ade80;
+        }
+
+        /* ── Buttons ── */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: #000;
+            font-family: 'Syne', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            padding: 15px 28px;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            transition: background .2s, transform .15s, box-shadow .2s;
+            box-shadow: 0 4px 20px rgba(249, 115, 22, .25);
+        }
+
+        .btn-primary:hover {
+            background: #fb923c;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 30px rgba(249, 115, 22, .35);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, .04);
+            color: #6b7280;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            padding: 10px 18px;
+            border-radius: 12px;
+            border: 1px solid var(--border-strong);
+            text-decoration: none;
+            transition: background .2s, color .2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, .08);
+            color: #e2e6ef;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 20px 0;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            margin-top: 8px;
+        }
+
+        .footer-link {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: #555e6e;
+            text-decoration: none;
+            transition: color .2s;
+        }
+
+        .footer-link:hover {
+            color: #e2e6ef;
+        }
+
+        .footer-link.accent {
+            color: var(--accent);
+        }
+
+        .footer-link.accent:hover {
+            color: #fb923c;
+        }
+
+        .admin-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            color: var(--accent);
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-left: auto;
         }
     </style>
 </head>
 
-<body class="text-gray-300 min-h-screen flex flex-col">
-    <main class="flex-grow flex items-center justify-center p-4 w-full">
-        <div class="w-full max-w-lg">
-            <div class="glass rounded-[3rem] p-10 relative overflow-hidden shadow-2xl">
-                <div class="absolute -top-20 -right-20 w-40 h-40 bg-orange-600/20 rounded-full blur-3xl"></div>
+<body>
+    <div class="page-wrap">
 
-                <div class="relative z-10">
-                    <header class="mb-10 text-center">
-                        <div class="bg-orange-500/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <i data-lucide="music-4" class="text-orange-500 w-8 h-8"></i>
+        <!-- Nav -->
+        <nav class="top-nav">
+            <a href="../index.php" class="nav-brand">MEeL<span>Music</span></a>
+            <div class="nav-sep"></div>
+            <a href="index.php" class="nav-crumb">Library</a>
+            <span class="nav-chevron">›</span>
+            <span class="nav-crumb-current">Upload</span>
+            <?php if ($is_admin): ?>
+                <span class="admin-badge"><i data-lucide="shield" style="width:10px;height:10px;"></i> Admin</span>
+            <?php endif; ?>
+        </nav>
+
+        <div class="upload-layout">
+
+            <!-- ── LEFT: Sidebar ── -->
+            <aside class="sidebar-panel">
+
+                <!-- Hero waveform -->
+                <div class="hero-waveform">
+                    <div class="waveform-bars">
+                        <span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+                    <div style="position:relative;z-index:1;text-align:center;">
+                        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#e2e6ef;text-transform:uppercase;letter-spacing:.1em;">Upload Musik</div>
+                        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;margin-top:3px;">FLAC · MP3 · WAV · OPUS</div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-strip">
+                    <div class="stat-chip">
+                        <div class="stat-number"><?= $today_count ?></div>
+                        <div class="stat-label">Hari Ini</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="stat-number"><?= $total_uploads ?></div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="stat-number" style="font-size:15px;"><?= $daily_limit ?></div>
+                        <div class="stat-label">Limit/Hari</div>
+                    </div>
+                </div>
+
+                <!-- Guide -->
+                <div class="guide-list">
+                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;padding-left:2px;">Panduan Upload</div>
+                    <div class="guide-item">
+                        <div class="guide-icon"><i data-lucide="file-audio" style="width:13px;height:13px;color:var(--accent);"></i></div>
+                        <div>
+                            <div class="guide-title">Format Audio</div>
+                            <div class="guide-desc">FLAC, MP3, WAV, OPUS, OGG, atau M4A. Auto-transcode ke Opus untuk efisiensi.</div>
                         </div>
-                        <h2 class="text-2xl font-black text-white tracking-tighter uppercase">Add New <span class="text-orange-500">Track</span></h2>
-                        <p class="text-[10px] text-gray-500 tracking-[0.3em] uppercase mt-1">Upload FLAC, MP3, or WAV</p>
-                    </header>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon"><i data-lucide="image" style="width:13px;height:13px;color:var(--accent);"></i></div>
+                        <div>
+                            <div class="guide-title">Cover Art</div>
+                            <div class="guide-desc">Opsional. Jika tidak diupload, cover diambil dari metadata file audio (ID3/FLAC).</div>
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon"><i data-lucide="clock" style="width:13px;height:13px;color:var(--accent);"></i></div>
+                        <div>
+                            <div class="guide-title">Durasi Maks.</div>
+                            <div class="guide-desc"><?= $is_admin ? 'Admin: tidak terbatas durasi.' : 'User: maksimal 5 menit (300 detik).' ?></div>
+                        </div>
+                    </div>
+                    <?php if ($is_admin): ?>
+                        <div class="guide-item" style="border-color:var(--accent-border);background:var(--accent-dim);">
+                            <div class="guide-icon"><i data-lucide="shield" style="width:13px;height:13px;color:var(--accent);"></i></div>
+                            <div>
+                                <div class="guide-title" style="color:var(--accent);">Mode Admin</div>
+                                <div class="guide-desc">Akses Anti Transcode tersedia. Simpan file audio asli tanpa kompresi Opus.</div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
 
-                    <?php if ($status === "success"): ?>
-                        <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-2xl text-xs font-bold mb-8 flex items-center gap-3 animate-bounce">
-                            <i data-lucide="check-circle" class="w-5 h-5"></i> Berhasil ditambahkan ke Library!
+                <!-- Nav buttons -->
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto;">
+                    <a href="index.php" class="btn-secondary" style="justify-content:center;">
+                        <i data-lucide="library" style="width:13px;height:13px;"></i> Music Library
+                    </a>
+                    <a href="../video/upload.php" class="btn-secondary" style="justify-content:center;color:#ef4444;border-color:rgba(239,68,68,.2);">
+                        <i data-lucide="film" style="width:13px;height:13px;"></i> Upload Video
+                    </a>
+                </div>
+
+            </aside>
+
+            <!-- ── RIGHT: Form panel ── -->
+            <section class="form-panel">
+                <div class="form-header">
+                    <div>
+                        <h1 class="form-title">Add New <span>Track</span></h1>
+                        <p class="form-subtitle">Tambahkan lagu ke music library</p>
+                    </div>
+                    <i data-lucide="music-2" style="width:36px;height:36px;color:var(--accent);opacity:.3;flex-shrink:0;margin-top:4px;"></i>
+                </div>
+
+                <?php if ($status === "success"): ?>
+                    <div class="alert alert-success">
+                        <i data-lucide="check-circle" style="width:15px;height:15px;flex-shrink:0;"></i>
+                        Berhasil ditambahkan ke Music Library!
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
+                    <?php if (isset($_SESSION['csrf_token'])): ?>
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
+                    <?php endif; ?>
+
+                    <!-- Judul -->
+                    <div class="field-group">
+                        <label class="field-label" for="f-title">Judul Lagu</label>
+                        <input type="text" id="f-title" name="title" required
+                            placeholder="Song Title..."
+                            class="field-input">
+                    </div>
+
+                    <!-- Artis & Album -->
+                    <div class="two-col">
+                        <div class="field-group">
+                            <label class="field-label" for="f-artist">Artis</label>
+                            <input type="text" id="f-artist" name="artist" required
+                                placeholder="Artist..." class="field-input">
+                        </div>
+                        <div class="field-group">
+                            <label class="field-label" for="f-album">Album</label>
+                            <input type="text" id="f-album" name="album"
+                                placeholder="Album (Opsional)..." class="field-input">
+                        </div>
+                    </div>
+
+                    <div class="divider" style="margin:0;"></div>
+
+                    <!-- Drop zones -->
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <label class="field-label">File Audio & Cover Art</label>
+                        <div class="drop-grid">
+                            <!-- Audio file -->
+                            <div class="drop-zone" id="audio-zone">
+                                <input type="file" name="media" accept="audio/*" required
+                                    id="audio-input" onchange="handleAudioFile(this)">
+                                <div class="drop-zone-icon">
+                                    <i data-lucide="file-audio" style="width:18px;height:18px;color:var(--accent);"></i>
+                                </div>
+                                <div class="drop-zone-label" id="audio-label">Drag &amp; Drop Audio</div>
+                                <div class="drop-zone-sub">FLAC · MP3 · WAV · OPUS</div>
+                            </div>
+
+                            <!-- Cover art -->
+                            <div class="drop-zone" id="cover-zone">
+                                <input type="file" name="thumbnail" accept="image/*"
+                                    id="cover-input" onchange="handleCoverFile(this)">
+                                <img id="cover-preview" class="thumb-mini" alt="preview">
+                                <div class="drop-zone-icon" id="cover-icon-wrap">
+                                    <i data-lucide="image" style="width:18px;height:18px;color:#4a5568;"></i>
+                                </div>
+                                <div class="drop-zone-label" id="cover-label">Cover Art</div>
+                                <div class="drop-zone-sub" id="cover-sub">Opsional · Auto dari ID3</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <?php if ($is_admin): ?>
+                        <!-- Anti-transcode toggle (admin only) -->
+                        <div class="toggle-card">
+                            <div>
+                                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Anti Transcode</div>
+                                <div style="font-size:10px;color:#555e6e;margin-top:2px;">Simpan file asli tanpa konversi ke Opus</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" name="skip_transcode">
+                                <div class="toggle-track"></div>
+                            </label>
                         </div>
                     <?php endif; ?>
 
-                    <form method="POST" enctype="multipart/form-data" class="space-y-6" onsubmit="startLoading()">
-                        <?php if (isset($_SESSION['csrf_token'])): ?>
-                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
-                        <?php endif; ?>
-                        <div class="space-y-4">
-                            <input type="text" name="title" placeholder="Song Title" required
-                                class="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-4 text-sm focus:border-orange-500 outline-none transition-all">
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <input type="text" name="artist" placeholder="Artist" required
-                                    class="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-4 text-sm focus:border-orange-500 outline-none transition-all">
-                                <input type="text" name="album" placeholder="Album (Optional)"
-                                    class="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-4 text-sm focus:border-orange-500 outline-none transition-all">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div id="drop-zone" class="group relative flex flex-col items-center justify-center p-6 bg-black/20 border-2 border-dashed border-white/5 rounded-3xl hover:border-orange-500/50 transition-all cursor-pointer overflow-hidden">
-                                <i id="audio-icon" data-lucide="file-audio" class="w-6 h-6 text-orange-500 mb-2 group-hover:scale-110 transition-transform"></i>
-                                <span id="audio-label" class="text-[10px] font-bold text-gray-500 uppercase truncate w-full text-center px-2">Drag & Drop Audio</span>
-
-                                <input type="file" name="media" id="file-input" accept="audio/*" required
-                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    onchange="updateLabel(this, 'audio-label')">
-                            </div>
-
-                            <label class="group flex flex-col items-center justify-center p-6 bg-black/20 border-2 border-dashed border-white/5 rounded-3xl hover:border-orange-500/50 transition-all cursor-pointer overflow-hidden">
-                                <img id="thumb-preview" class="hidden w-full h-10 object-cover rounded-lg mb-2">
-                                <i id="thumb-icon" data-lucide="image" class="w-6 h-6 text-gray-600 mb-2 group-hover:scale-110 transition-transform"></i>
-                                <span id="thumb-label" class="text-[10px] font-bold text-gray-500 uppercase truncate w-full text-center px-2">Cover Art</span>
-                                <input type="file" name="thumbnail" accept="image/*" class="hidden" onchange="previewThumbnail(this)">
-                            </label>
-                        </div>
-
-                        <?php if ($user_role === 'admin'): ?>
-                            <div class="bg-orange-500/5 border border-orange-500/10 rounded-2xl p-4 mb-4 flex items-center justify-between">
-                                <div class="flex flex-col">
-                                    <span class="text-[10px] font-bold text-orange-500 uppercase tracking-tighter">Anti Transcode</span>
-                                    <span class="text-[9px] text-gray-500 italic">Simpan file asli (Tanpa Transcode Opus)</span>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="skip_transcode" class="sr-only peer">
-                                    <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-600"></div>
-                                </label>
-                            </div>
-                        <?php endif; ?>
-
-                        <button type="submit" name="upload" id="submit-btn" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-5 rounded-2xl text-xs tracking-widest transition-all shadow-xl shadow-orange-900/20 uppercase flex items-center justify-center gap-3">
+                    <!-- Upload button -->
+                    <div style="margin-top:auto;">
+                        <button type="submit" name="upload" id="btn-upload" class="btn-primary">
+                            <i data-lucide="upload" style="width:15px;height:15px;"></i>
                             Save to MEeL Music
-                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
                         </button>
-                    </form>
+                    </div>
 
-                    <footer class="mt-10 flex justify-center gap-8 border-t border-white/5 pt-8">
-                        <a href="index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Library</a>
-                        <a href="../index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Portal</a>
-                        <a href="../video/upload.php" class="text-[10px] font-bold text-orange-600 hover:text-orange-400 uppercase tracking-widest transition">Go to Video</a>
-                        <a class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition" href="../upload_advanced.php" onclick="return meelAlertRedirect({ title: 'Upload Lanjutan', text: 'Anda dan Server memerlukan koneksi internet', icon: 'info', redirectUrl: '../upload_advanced.php' })">Upload Lanjutan</a>
-                    </footer>
-                </div>
-            </div>
+                    <!-- Footer links -->
+                    <div class="footer-links">
+                        <a href="index.php" class="footer-link">Library</a>
+                        <a href="../index.php" class="footer-link">Portal</a>
+                        <a href="../video/upload.php" class="footer-link accent">Go to Video</a>
+                        <a href="../upload_advanced.php" class="footer-link"
+                            onclick="return meelAlertRedirect({ title:'Upload Lanjutan', text:'Anda dan Server memerlukan koneksi internet', icon:'info', redirectUrl:'../upload_advanced.php' })">
+                            Upload Lanjutan
+                        </a>
+                    </div>
+                </form>
+            </section>
+
         </div>
-    </main>
+    </div>
+
+    <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
     <script src="../assets/js/script.js"></script>
     <script>
@@ -167,64 +993,95 @@ if (isset($_POST['upload'])) {
             });
         <?php endif; ?>
 
-        // [FIX #2] Hapus definisi duplikat — cukup satu versi yang lengkap (dengan warna orange)
-        function updateLabel(input, labelId) {
-            if (input.files.length > 0) {
-                const label = document.getElementById(labelId);
-                label.innerText = input.files[0].name;
-                label.classList.remove('text-gray-500');
-                label.classList.add('text-orange-500');
-            }
+        <?php if ($status === "success"): ?>
+            Swal.fire({
+                title: 'Berhasil!',
+                text: 'Lagu berhasil ditambahkan ke Music Library.',
+                icon: 'success',
+                confirmButtonColor: '#f97316',
+                background: '#0e1118',
+                color: '#fff'
+            });
+        <?php endif; ?>
+
+        function handleAudioFile(input) {
+            if (!input.files || !input.files[0]) return;
+            const zone = document.getElementById('audio-zone');
+            const label = document.getElementById('audio-label');
+            label.textContent = input.files[0].name;
+            zone.classList.add('has-file');
         }
 
-        function previewThumbnail(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    document.getElementById('thumb-preview').src = e.target.result;
-                    document.getElementById('thumb-preview').classList.remove('hidden');
-                    document.getElementById('thumb-icon').classList.add('hidden');
-                    document.getElementById('thumb-label').innerText = input.files[0].name;
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
+        function handleCoverFile(input) {
+            if (!input.files || !input.files[0]) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('cover-preview');
+                const iconWrap = document.getElementById('cover-icon-wrap');
+                const label = document.getElementById('cover-label');
+                const sub = document.getElementById('cover-sub');
+                const zone = document.getElementById('cover-zone');
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                iconWrap.style.display = 'none';
+                label.textContent = input.files[0].name;
+                sub.textContent = '';
+                zone.classList.add('has-file');
+            };
+            reader.readAsDataURL(input.files[0]);
         }
 
-        function startLoading() {
-            const btn = document.getElementById('submit-btn');
-            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...';
-            btn.classList.add('opacity-50', 'pointer-events-none');
-            lucide.createIcons();
+        function handleSubmit() {
+            const btn = document.getElementById('btn-upload');
+            btn.innerHTML = '<div style="width:16px;height:16px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;"></div> Processing...';
+            btn.style.opacity = '.6';
+            btn.style.pointerEvents = 'none';
         }
 
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                dropZone.classList.add('drag-over');
-            }, false);
+        // Drag-and-drop audio
+        const audioZone = document.getElementById('audio-zone');
+        const audioInput = document.getElementById('audio-input');
+        audioZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            audioZone.classList.add('drag-over');
         });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('drag-over');
-            }, false);
-        });
-
-        dropZone.addEventListener('drop', (e) => {
+        audioZone.addEventListener('dragleave', () => audioZone.classList.remove('drag-over'));
+        audioZone.addEventListener('drop', e => {
+            e.preventDefault();
+            audioZone.classList.remove('drag-over');
             const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                fileInput.files = files;
-                updateLabel(fileInput, 'audio-label');
-                dropZone.style.borderColor = "#10b981";
-                setTimeout(() => dropZone.style.borderColor = "", 1000);
+            if (files[0]) {
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                audioInput.files = dt.files;
+                handleAudioFile(audioInput);
             }
         });
+
+        // Drag-and-drop cover
+        const coverZone = document.getElementById('cover-zone');
+        const coverInput = document.getElementById('cover-input');
+        coverZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            coverZone.classList.add('drag-over');
+        });
+        coverZone.addEventListener('dragleave', () => coverZone.classList.remove('drag-over'));
+        coverZone.addEventListener('drop', e => {
+            e.preventDefault();
+            coverZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files[0] && files[0].type.startsWith('image/')) {
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                coverInput.files = dt.files;
+                handleCoverFile(coverInput);
+            }
+        });
+
+        const style = document.createElement('style');
+        style.textContent = '@keyframes spin { to { transform:rotate(360deg); } }';
+        document.head.appendChild(style);
     </script>
-    <?php include '../partials/footer.php'; ?>
 </body>
 
 </html>

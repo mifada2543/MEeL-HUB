@@ -7,12 +7,33 @@ include '../modules/helpers.php';
 include '../modules/Uploader.php';
 
 set_time_limit(0);
-$status  = "";
-$user    = $_SESSION['username'];
-$user_id = $_SESSION['user_id'];
+$status        = "";
+$user          = $_SESSION['username'];
+$user_id       = $_SESSION['user_id'];
 $alert_message = "";
 
-// Instansiasi Objek Uploader
+// Ambil role user
+$stmt_role = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+$stmt_role->bind_param("i", $user_id);
+$stmt_role->execute();
+$user_role = $stmt_role->get_result()->fetch_assoc()['role'] ?? 'user';
+$is_admin  = ($user_role === 'admin');
+
+// Ambil jumlah upload user hari ini
+$stmt_count = $conn->prepare("SELECT COUNT(*) AS c FROM video WHERE user_id = ? AND DATE(upload_date) = CURDATE()");
+$stmt_count->bind_param("i", $user_id);
+$stmt_count->execute();
+$today_count = (int)$stmt_count->get_result()->fetch_assoc()['c'];
+
+// Total semua upload user
+$stmt_total = $conn->prepare("SELECT COUNT(*) AS c FROM video WHERE user_id = ?");
+$stmt_total->bind_param("i", $user_id);
+$stmt_total->execute();
+$total_uploads = (int)$stmt_total->get_result()->fetch_assoc()['c'];
+
+// Limit per hari
+$daily_limit = $is_admin ? '∞' : '3';
+
 $uploader = new Uploader($conn, $user_id, $user);
 
 if (isset($_POST['upload'])) {
@@ -21,6 +42,8 @@ if (isset($_POST['upload'])) {
 
     if ($result['status'] === 'success') {
         $status = "success";
+        $today_count++;
+        $total_uploads++;
     } elseif (isset($result['alert']) && $result['alert'] == true) {
         $alert_message = $result['msg'];
     } else {
@@ -34,85 +57,770 @@ if (isset($_POST['upload'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL Video | Upload</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>
     <style>
-        body {
-            background-color: #0b0e14;
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+        :root {
+            --accent: #ef4444;
+            --accent-dim: rgba(239, 68, 68, .10);
+            --accent-border: rgba(239, 68, 68, .22);
+            --bg-base: #080b11;
+            --bg-card: #0e1118;
+            --bg-panel: #131720;
+            --border: rgba(255, 255, 255, .06);
+            --border-strong: rgba(255, 255, 255, .10);
         }
 
-        .glass-card {
-            background: rgba(22, 27, 34, 0.7);
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg-base);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            color: #c9cdd6;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .page-wrap {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: 56px 1fr;
+        }
+
+        /* ── Nav ── */
+        .top-nav {
+            height: 56px;
+            background: rgba(8, 11, 17, .9);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-family: 'Syne', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+            text-decoration: none;
+            letter-spacing: .05em;
+        }
+
+        .nav-brand span {
+            color: var(--accent);
+        }
+
+        .nav-sep {
+            width: 1px;
+            height: 20px;
+            background: var(--border-strong);
+        }
+
+        .nav-crumb {
+            font-size: 11px;
+            font-weight: 600;
+            color: #555e6e;
+            text-decoration: none;
+            transition: color .2s;
+        }
+
+        .nav-crumb:hover {
+            color: var(--accent);
+        }
+
+        .nav-crumb-current {
+            font-size: 11px;
+            font-weight: 600;
+            color: #e2e6ef;
+        }
+
+        .nav-chevron {
+            color: #353d4a;
+            font-size: 14px;
+        }
+
+        /* ── Layout ── */
+        .upload-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 900px) {
+            .upload-layout {
+                grid-template-columns: 320px 1fr;
+                min-height: calc(100vh - 56px);
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .upload-layout {
+                grid-template-columns: 360px 1fr;
+            }
+        }
+
+        /* ── Sidebar ── */
+        .sidebar-panel {
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            padding: 32px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        @media (max-width: 899px) {
+            .sidebar-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding: 20px 16px;
+                gap: 16px;
+            }
+        }
+
+        /* ── Video icon hero ── */
+        .hero-icon {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(239, 68, 68, .15) 0%, rgba(8, 11, 17, 0) 70%);
+            border: 1px solid var(--accent-border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-icon::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(0deg,
+                    transparent,
+                    transparent 28px,
+                    rgba(239, 68, 68, .04) 28px,
+                    rgba(239, 68, 68, .04) 29px);
+        }
+
+        .hero-icon-ring {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--accent-dim);
+            border: 2px solid var(--accent-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Stat chips ── */
+        .stats-strip {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .stat-chip {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .03);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-family: 'Syne', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: #555e6e;
+            margin-top: 4px;
+        }
+
+        /* ── Guide list ── */
+        .guide-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .guide-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .03);
+            border: 1px solid var(--border);
+        }
+
+        .guide-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .guide-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #e2e6ef;
+            margin-bottom: 2px;
+        }
+
+        .guide-desc {
+            font-size: 10px;
+            color: #555e6e;
+            line-height: 1.4;
+        }
+
+        /* ── Form panel ── */
+        .form-panel {
+            background: var(--bg-card);
+            padding: 36px 40px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (max-width: 899px) {
+            .form-panel {
+                padding: 20px 16px;
+            }
+        }
+
+        @media (max-width: 599px) {
+            .form-panel {
+                padding: 16px 14px;
+            }
+        }
+
+        @media (min-width: 900px) {
+            .form-panel {
+                overflow-y: auto;
+                max-height: calc(100vh - 56px);
+            }
+        }
+
+        /* ── Form header ── */
+        .form-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .form-title {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(22px, 4vw, 30px);
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.1;
+        }
+
+        .form-title span {
+            color: var(--accent);
+        }
+
+        .form-subtitle {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .2em;
+            color: #454e5e;
+            margin-top: 4px;
+        }
+
+        /* ── Inputs ── */
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .16em;
+            color: #4a5568;
+            padding-left: 4px;
+        }
+
+        .field-input {
+            width: 100%;
+            background: rgba(255, 255, 255, .035);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 14px;
+            padding: 14px 18px;
+            font-size: 14px;
+            font-family: 'DM Sans', sans-serif;
+            color: #e2e6ef;
+            outline: none;
+            transition: border-color .2s, background .2s, box-shadow .2s;
+        }
+
+        .field-input:focus {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, .08);
+        }
+
+        .field-input::placeholder {
+            color: #3a424f;
+        }
+
+        /* ── Drop zones ── */
+        .drop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        @media (max-width: 480px) {
+            .drop-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .drop-zone {
+            position: relative;
+            border: 2px dashed rgba(255, 255, 255, .09);
+            border-radius: 16px;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .2s, background .2s, transform .15s;
+            min-height: 130px;
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .drop-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.drag-over {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            transform: translateY(-1px);
+        }
+
+        .drop-zone-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform .2s;
+        }
+
+        .drop-zone:hover .drop-zone-icon {
+            transform: scale(1.1);
+        }
+
+        .drop-zone-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: #4a5568;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .drop-zone-sub {
+            font-size: 9px;
+            color: #353d4a;
+            font-weight: 600;
+            letter-spacing: .08em;
+        }
+
+        .drop-zone.has-file .drop-zone-label {
+            color: var(--accent);
+        }
+
+        /* Thumb preview inside drop zone */
+        .thumb-mini {
+            width: 56px;
+            height: 36px;
+            border-radius: 8px;
+            object-fit: cover;
+            display: none;
+            border: 1px solid var(--border-strong);
+        }
+
+        /* ── Alert banners ── */
+        .alert {
+            padding: 14px 16px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: rgba(34, 197, 94, .08);
+            border: 1px solid rgba(34, 197, 94, .2);
+            color: #4ade80;
+        }
+
+        /* ── Primary button ── */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: #fff;
+            font-family: 'Syne', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            padding: 15px 28px;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            transition: background .2s, transform .15s, box-shadow .2s;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, .22);
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: #f87171;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 30px rgba(239, 68, 68, .32);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* ── Secondary button ── */
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, .04);
+            color: #6b7280;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            padding: 10px 18px;
+            border-radius: 12px;
+            border: 1px solid var(--border-strong);
+            text-decoration: none;
+            transition: background .2s, color .2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, .08);
+            color: #e2e6ef;
+        }
+
+        /* ── Divider ── */
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 20px 0;
+        }
+
+        /* ── Footer links ── */
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            margin-top: 8px;
+        }
+
+        .footer-link {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: #555e6e;
+            text-decoration: none;
+            transition: color .2s;
+        }
+
+        .footer-link:hover {
+            color: #e2e6ef;
+        }
+
+        .footer-link.accent {
+            color: var(--accent);
+        }
+
+        .footer-link.accent:hover {
+            color: #f87171;
+        }
+
+        /* ── Admin badge ── */
+        .admin-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            color: var(--accent);
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-left: auto;
         }
     </style>
 </head>
 
-<body class="text-gray-200 min-h-screen flex flex-col">
-    <main class="flex-grow flex items-center justify-center p-4 w-full">
-        <div class="w-full max-w-lg">
-            <div class="glass-card rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
-                <div class="absolute -top-24 -right-24 w-48 h-48 bg-red-600/10 rounded-full blur-3xl"></div>
+<body>
+    <div class="page-wrap">
 
-                <div class="relative z-10">
-                    <div class="flex items-center justify-between mb-8">
-                        <div>
-                            <h2 class="text-2xl font-black text-white tracking-tight italic uppercase">Halo <?= htmlspecialchars($user) ?>, Upload <span class="text-red-600">Video</span></h2>
-                            <p class="text-[10px] text-gray-500 uppercase tracking-[0.2em]">Tambahkan Koleksi MP4 ke Library</p>
-                        </div>
-                        <i data-lucide="clapperboard" class="text-red-600 w-8 h-8 opacity-50"></i>
+        <!-- Nav -->
+        <nav class="top-nav">
+            <a href="../index.php" class="nav-brand">MEeL<span>Video</span></a>
+            <div class="nav-sep"></div>
+            <a href="index.php" class="nav-crumb">Library</a>
+            <span class="nav-chevron">›</span>
+            <span class="nav-crumb-current">Upload</span>
+            <?php if ($is_admin): ?>
+                <span class="admin-badge"><i data-lucide="shield" style="width:10px;height:10px;"></i> Admin</span>
+            <?php endif; ?>
+        </nav>
+
+        <div class="upload-layout">
+
+            <!-- ── LEFT: Sidebar ── -->
+            <aside class="sidebar-panel">
+
+                <!-- Hero visual -->
+                <div class="hero-icon">
+                    <div class="hero-icon-ring">
+                        <i data-lucide="clapperboard" style="width:28px;height:28px;color:var(--accent);"></i>
                     </div>
+                    <div style="position:relative;z-index:1;text-align:center;">
+                        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#e2e6ef;text-transform:uppercase;letter-spacing:.1em;">Upload Video</div>
+                        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;margin-top:3px;">MP4 · WEBM · MKV</div>
+                    </div>
+                </div>
 
-                    <?php if ($status === "success"): ?>
-                        <div class="bg-green-500/10 text-green-400 p-4 rounded-2xl text-xs mb-6 border border-green-500/20 flex items-center gap-3 animate-pulse">
-                            <i data-lucide="check-circle" class="w-4 h-4"></i> Video berhasil di Upload!
+                <!-- Stats -->
+                <div class="stats-strip">
+                    <div class="stat-chip">
+                        <div class="stat-number"><?= $today_count ?></div>
+                        <div class="stat-label">Hari Ini</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="stat-number"><?= $total_uploads ?></div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="stat-number" style="font-size:15px;"><?= $daily_limit ?></div>
+                        <div class="stat-label">Limit/Hari</div>
+                    </div>
+                </div>
+
+                <!-- Guide -->
+                <div class="guide-list">
+                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;padding-left:2px;">Panduan Upload</div>
+                    <div class="guide-item">
+                        <div class="guide-icon"><i data-lucide="file-video" style="width:13px;height:13px;color:var(--accent);"></i></div>
+                        <div>
+                            <div class="guide-title">Format Video</div>
+                            <div class="guide-desc">MP4, WEBM, atau MKV. Akan di-transcode otomatis ke HLS.</div>
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon"><i data-lucide="image" style="width:13px;height:13px;color:var(--accent);"></i></div>
+                        <div>
+                            <div class="guide-title">Thumbnail</div>
+                            <div class="guide-desc">Opsional. Jika tidak diupload, thumbnail digenerate otomatis dari frame video.</div>
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-icon"><i data-lucide="clock" style="width:13px;height:13px;color:var(--accent);"></i></div>
+                        <div>
+                            <div class="guide-title">Proses Upload</div>
+                            <div class="guide-desc">Video besar memerlukan waktu lebih lama. Jangan tutup tab saat proses berlangsung.</div>
+                        </div>
+                    </div>
+                    <?php if ($is_admin): ?>
+                        <div class="guide-item" style="border-color:var(--accent-border);background:var(--accent-dim);">
+                            <div class="guide-icon"><i data-lucide="shield" style="width:13px;height:13px;color:var(--accent);"></i></div>
+                            <div>
+                                <div class="guide-title" style="color:var(--accent);">Mode Admin</div>
+                                <div class="guide-desc">Tidak ada limit upload harian. Ukuran & durasi maksimum ditingkatkan.</div>
+                            </div>
                         </div>
                     <?php endif; ?>
-
-                    <form method="POST" enctype="multipart/form-data" class="space-y-6" onsubmit="load()">
-                        <?php if (isset($_SESSION['csrf_token'])): ?>
-                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
-                        <?php endif; ?>
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-600 uppercase ml-1 tracking-widest">Judul Konten</label>
-                            <input type="text" name="title" placeholder="Masukkan judul video..." title="Judul" required
-                                class="w-full bg-[#0b0e14]/50 border border-gray-800 rounded-2xl px-5 py-4 text-sm focus:border-red-600 transition-all outline-none mt-1 text-white">
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <label class="group bg-[#0b0e14]/50 p-6 rounded-[2rem] border-2 border-dashed border-gray-800 cursor-pointer text-center hover:border-red-600 transition-all flex flex-col items-center">
-                                <i data-lucide="file-video" class="w-8 h-8 text-red-600 mb-2"></i>
-                                <span id="v-txt" class="text-[10px] text-gray-400 font-bold uppercase truncate w-full">Pilih MP4</span>
-                                <input type="file" name="video" accept=".mp4,.webm,.mkv" required class="hidden" onchange="checkFile(this)">
-                            </label>
-
-                            <label class="group bg-[#0b0e14]/50 p-6 rounded-[2rem] border-2 border-dashed border-gray-800 cursor-pointer text-center hover:border-red-600 transition-all flex flex-col items-center">
-                                <i id="icon-v" data-lucide="image" class="w-8 h-8 text-gray-500 mb-2"></i>
-                                <img id="preview-v" src="" class="hidden w-10 h-10 rounded-lg object-cover mb-2">
-                                <span id="t-txt" class="text-[10px] text-gray-400 font-bold uppercase truncate w-full">Thumbnail (Opsional)</span>
-                                <input type="file" name="thumbnail" accept="image/*" class="hidden" onchange="previewThumb(this)">
-                            </label>
-                        </div>
-
-                        <button name="upload" id="btn" class="w-full bg-red-600 hover:bg-red-500 text-white py-4 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/30">
-                            MULAI SIMPAN <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                        </button>
-                    </form>
-
-                    <footer class="mt-10 flex justify-center gap-8 border-t border-white/5 pt-8">
-                        <a href="index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Library</a>
-                        <a href="../index.php" class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition">Portal</a>
-                        <a href="../music/upload.php" class="text-[10px] font-bold text-orange-600 hover:text-orange-400 uppercase tracking-widest transition">Go to Music</a>
-                        <a class="text-[10px] font-bold text-gray-600 hover:text-white uppercase tracking-widest transition" href="../upload_advanced.php" onclick="return meelAlertRedirect({ title: 'Upload Lanjutan', text: 'Anda dan Server memerlukan koneksi internet', icon: 'info', redirectUrl: '../upload_advanced.php' })">Upload Lanjutan</a>
-                    </footer>
                 </div>
-            </div>
+
+                <!-- Nav buttons -->
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto;">
+                    <a href="index.php" class="btn-secondary" style="justify-content:center;">
+                        <i data-lucide="library" style="width:13px;height:13px;"></i> Video Library
+                    </a>
+                    <a href="../music/upload.php" class="btn-secondary" style="justify-content:center;color:#f97316;border-color:rgba(249,115,22,.2);">
+                        <i data-lucide="music" style="width:13px;height:13px;"></i> Upload Musik
+                    </a>
+                </div>
+
+            </aside>
+
+            <!-- ── RIGHT: Form panel ── -->
+            <section class="form-panel">
+                <div class="form-header">
+                    <div>
+                        <h1 class="form-title">Halo, <span><?= htmlspecialchars($user) ?></span></h1>
+                        <p class="form-subtitle">Tambahkan koleksi video ke library</p>
+                    </div>
+                    <i data-lucide="upload-cloud" style="width:36px;height:36px;color:var(--accent);opacity:.3;flex-shrink:0;margin-top:4px;"></i>
+                </div>
+
+                <?php if ($status === "success"): ?>
+                    <div class="alert alert-success">
+                        <i data-lucide="check-circle" style="width:15px;height:15px;flex-shrink:0;"></i>
+                        Video berhasil diupload dan sedang diproses!
+                    </div>
+                <?php endif; ?>
+
+                <form method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
+                    <?php if (isset($_SESSION['csrf_token'])): ?>
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
+                    <?php endif; ?>
+
+                    <!-- Judul -->
+                    <div class="field-group">
+                        <label class="field-label" for="f-title">Judul Video</label>
+                        <input type="text" id="f-title" name="title" required
+                            placeholder="Masukkan judul video..."
+                            class="field-input">
+                    </div>
+
+                    <div class="divider" style="margin:0;"></div>
+
+                    <!-- Drop zones -->
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <label class="field-label">File & Thumbnail</label>
+                        <div class="drop-grid">
+                            <!-- Video file -->
+                            <div class="drop-zone" id="video-zone">
+                                <input type="file" name="video" accept=".mp4,.webm,.mkv" required
+                                    id="video-input" onchange="handleVideoFile(this)">
+                                <div class="drop-zone-icon">
+                                    <i data-lucide="file-video" style="width:18px;height:18px;color:var(--accent);"></i>
+                                </div>
+                                <div class="drop-zone-label" id="video-label">Pilih / Drop Video</div>
+                                <div class="drop-zone-sub">MP4 · WEBM · MKV</div>
+                            </div>
+
+                            <!-- Thumbnail -->
+                            <div class="drop-zone" id="thumb-zone">
+                                <input type="file" name="thumbnail" accept="image/*"
+                                    id="thumb-input" onchange="handleThumbFile(this)">
+                                <img id="thumb-preview" class="thumb-mini" alt="preview">
+                                <div class="drop-zone-icon" id="thumb-icon-wrap">
+                                    <i data-lucide="image" style="width:18px;height:18px;color:#4a5568;"></i>
+                                </div>
+                                <div class="drop-zone-label" id="thumb-label">Thumbnail</div>
+                                <div class="drop-zone-sub" id="thumb-sub">Opsional · Auto-generate</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload button -->
+                    <div style="margin-top:auto;">
+                        <button type="submit" name="upload" id="btn-upload" class="btn-primary">
+                            <i data-lucide="upload" style="width:15px;height:15px;"></i>
+                            Mulai Upload
+                        </button>
+                    </div>
+
+                    <!-- Footer links -->
+                    <div class="footer-links">
+                        <a href="index.php" class="footer-link">Library</a>
+                        <a href="../index.php" class="footer-link">Portal</a>
+                        <a href="../music/upload.php" class="footer-link accent">Go to Music</a>
+                        <a href="../upload_advanced.php" class="footer-link"
+                            onclick="return meelAlertRedirect({ title:'Upload Lanjutan', text:'Anda dan Server memerlukan koneksi internet', icon:'info', redirectUrl:'../upload_advanced.php' })">
+                            Upload Lanjutan
+                        </a>
+                    </div>
+                </form>
+            </section>
+
         </div>
-    </main>
+    </div>
+
     <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
     <script src="../assets/js/script.js"></script>
@@ -128,45 +836,106 @@ if (isset($_POST['upload'])) {
             });
         <?php endif; ?>
 
-        function checkFile(input) {
-            const file = input.files[0];
-            const fileName = file.name;
-            const fileExt = fileName.split('.').pop().toLowerCase();
-            const allowed = ['mp4', 'webm', 'mkv'];
+        <?php if ($status === "success"): ?>
+            Swal.fire({
+                title: 'Berhasil!',
+                text: 'Video telah diupload dan sedang diproses.',
+                icon: 'success',
+                confirmButtonColor: '#ef4444',
+                background: '#0e1118',
+                color: '#fff'
+            });
+        <?php endif; ?>
 
-            if (!allowed.includes(fileExt)) {
+        function handleVideoFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const ext = file.name.split('.').pop().toLowerCase();
+            const allowed = ['mp4', 'webm', 'mkv'];
+            if (!allowed.includes(ext)) {
                 meelAlert({
                     title: 'Format Ditolak',
-                    text: "File ." + fileExt + " tidak didukung browser. Silakan gunakan MP4 atau WEBM.",
+                    text: 'Gunakan MP4, WEBM, atau MKV.',
                     icon: 'error'
                 });
-                input.value = "";
-                document.getElementById('v-txt').innerText = "Pilih MP4/WEBM";
+                input.value = '';
                 return;
             }
-
-            document.getElementById('v-txt').innerText = fileName;
+            const zone = document.getElementById('video-zone');
+            const label = document.getElementById('video-label');
+            label.textContent = file.name;
+            zone.classList.add('has-file');
         }
 
-        function previewThumb(input) {
-            if (input.files && input.files[0]) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('preview-v').src = e.target.result;
-                    document.getElementById('preview-v').classList.remove('hidden');
-                    document.getElementById('icon-v').classList.add('hidden');
-                    document.getElementById('t-txt').innerText = input.files[0].name;
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
+        function handleThumbFile(input) {
+            if (!input.files || !input.files[0]) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('thumb-preview');
+                const iconWrap = document.getElementById('thumb-icon-wrap');
+                const label = document.getElementById('thumb-label');
+                const sub = document.getElementById('thumb-sub');
+                const zone = document.getElementById('thumb-zone');
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                iconWrap.style.display = 'none';
+                label.textContent = input.files[0].name;
+                sub.textContent = '';
+                zone.classList.add('has-file');
+            };
+            reader.readAsDataURL(input.files[0]);
         }
 
-        function load() {
-            const btn = document.getElementById('btn');
-            btn.innerHTML = '<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> PROSES UPLOAD...';
-            btn.style.opacity = '0.5';
+        function handleSubmit() {
+            const btn = document.getElementById('btn-upload');
+            btn.innerHTML = '<div style="width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Proses Upload...';
+            btn.style.opacity = '.6';
             btn.style.pointerEvents = 'none';
         }
+
+        // Drag-and-drop for video zone
+        const videoZone = document.getElementById('video-zone');
+        const videoInput = document.getElementById('video-input');
+        videoZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            videoZone.classList.add('drag-over');
+        });
+        videoZone.addEventListener('dragleave', () => videoZone.classList.remove('drag-over'));
+        videoZone.addEventListener('drop', e => {
+            e.preventDefault();
+            videoZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files[0]) {
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                videoInput.files = dt.files;
+                handleVideoFile(videoInput);
+            }
+        });
+
+        // Drag-and-drop for thumb zone
+        const thumbZone = document.getElementById('thumb-zone');
+        const thumbInput = document.getElementById('thumb-input');
+        thumbZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            thumbZone.classList.add('drag-over');
+        });
+        thumbZone.addEventListener('dragleave', () => thumbZone.classList.remove('drag-over'));
+        thumbZone.addEventListener('drop', e => {
+            e.preventDefault();
+            thumbZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files[0] && files[0].type.startsWith('image/')) {
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                thumbInput.files = dt.files;
+                handleThumbFile(thumbInput);
+            }
+        });
+
+        const style = document.createElement('style');
+        style.textContent = '@keyframes spin { to { transform:rotate(360deg); } }';
+        document.head.appendChild(style);
     </script>
 </body>
 
