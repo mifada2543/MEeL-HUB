@@ -195,26 +195,47 @@ document.addEventListener("DOMContentLoaded", () => {
   storageKeyMusic = "music_pos_" + window.MEEL_MUSIC_CONFIG.id;
 
   // --- 1. INISIALISASI PLYR ---
-  player = new Plyr("#main-player", {
-    controls: [
-      "play",
-      "progress",
-      "current-time",
-      "duration",
-      "mute",
-      "volume",
-      "settings",
-    ],
-    settings: ["speed"],
-    speed: {
-      selected: 1,
-      options: [0.5, 0.75, 1, 1.25, 1.5, 2],
-    },
-    keyboard: {
-      focused: true,
-      global: true,
-    },
-  });
+  if (typeof Plyr === "undefined") {
+    console.error("❌ Plyr library tidak tersedia. Pastikan plyr.js sudah dimuat.");
+    return;
+  }
+
+  try {
+    player = new Plyr(audio, {
+      iconUrl: '../assets/plyr.svg',
+      controls: [
+        "play",
+        "progress",
+        "current-time",
+        "duration",
+        "mute",
+        "volume",
+        "settings",
+      ],
+      settings: ["speed"],
+      speed: {
+        selected: 1,
+        options: [0.5, 0.75, 1, 1.25, 1.5, 2],
+      },
+      keyboard: {
+        focused: true,
+        global: true,
+      },
+      tooltips: {
+        controls: true,
+        seek: true,
+      },
+    });
+  } catch (e) {
+    console.error("❌ Error initializing Plyr:", e);
+    // Fallback ke native audio controls jika Plyr gagal
+    return;
+  }
+
+  if (!player) {
+    console.error("❌ Gagal menginisialisasi Plyr player");
+    return;
+  }
 
   // --- 2. DOM ELEMENTS (Safe retrieval) ---
   const container = document.getElementById("player-container");

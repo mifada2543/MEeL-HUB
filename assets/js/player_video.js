@@ -20,6 +20,7 @@ if (window.lucide) {
 
 // 2. Konfigurasi UI Plyr Dasar
 const plyrOptions = {
+  iconUrl: '../assets/plyr.svg',
   controls: [
     "play-large",
     "play",
