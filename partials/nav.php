@@ -23,7 +23,13 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
     str_contains($_SERVER['PHP_SELF'], '/drive/'))
     ? '../' : '';
 ?>
-
+<style>
+    /* Mengunci paksa agar web tidak pernah bisa digeser ke samping */
+    html,
+    body {
+        overflow-x: hidden !important;
+    }
+</style>
 <?php if (isset($_SESSION['username'])): ?>
 
     <!-- ── AVATAR DROPDOWN (desktop) ── -->
@@ -175,8 +181,7 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
         onclick="toggleNavDrawer()"></div>
 
     <div id="nav-drawer"
-        class="fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-[#0a0d14] border-l border-white/[.06] z-[310] transform translate-x-full transition-transform duration-300 ease-out sm:hidden flex flex-col">
-
+        class="fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-[#0a0d14] border-l border-white/[.06] z-[310] transform translate-x-full transition-transform duration-300 ease-out hidden sm:hidden flex-col">
         <!-- Drawer header -->
         <div class="flex items-center justify-between px-5 py-4 border-b border-white/[.05]">
             <div class="flex items-center gap-3">
@@ -325,39 +330,53 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
         }
     });
 
-    // ── Drawer mobile ──
     function toggleNavDrawer() {
         const drawer = document.getElementById('nav-drawer');
         const overlay = document.getElementById('nav-drawer-overlay');
-
-        // Otomatis mendeteksi layout video (#app-content-grid) atau <main> halaman lain
         const mainContent = document.getElementById('app-content-grid') || document.querySelector('main');
-
+        
         if (!drawer) return;
-        const open = drawer.style.transform === 'translateX(0px)' || drawer.classList.contains('open');
-
+        const open = drawer.classList.contains('open');
         if (open) {
+            // PROSES MENUTUP
             drawer.style.transform = '';
             overlay.classList.add('hidden');
             drawer.classList.remove('open');
-            document.body.style.overflow = '';
 
-            // Kembalikan tampilan utama ke normal
+            // Lepas kunci scroll di Body dan HTML
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+
             if (mainContent) {
                 mainContent.classList.remove('blur-md');
-                // Hapus listener klik agar area main bisa berinteraksi normal kembali
                 mainContent.removeEventListener('click', closeDrawerOnMainClick);
             }
-        } else {
-            drawer.style.transform = 'translateX(0)';
-            overlay.classList.remove('hidden');
-            drawer.classList.add('open');
-            document.body.style.overflow = 'hidden';
 
-            // Berikan efek buram halus
+            setTimeout(() => {
+                if (!drawer.classList.contains('open')) {
+                    drawer.classList.add('hidden');
+                    drawer.classList.remove('flex');
+                }
+            }, 300);
+
+        } else {
+            // PROSES MEMBUKA
+            drawer.classList.remove('hidden');
+            drawer.classList.add('flex');
+
+            setTimeout(() => {
+                drawer.style.transform = 'translateX(0)';
+                drawer.classList.add('open');
+            }, 10);
+
+            overlay.classList.remove('hidden');
+
+            // Kunci paksa scroll di Body dan HTML
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+
             if (mainContent) {
                 mainContent.classList.add('blur-md', 'transition-all', 'duration-300');
-                // Pasang listener klik untuk mendeteksi ketukan di luar laci menu
                 mainContent.addEventListener('click', closeDrawerOnMainClick);
             }
         }
