@@ -257,12 +257,6 @@ switch ($ext) {
                     </div>
 
                     <?php if (isset($_SESSION['username'])): ?>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <a href="../transcode.php?id=<?= $id ?>"
-                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline">
-                                <i data-lucide="download" class="w-3.5 h-3.5"></i> Download
-                            </a>
-                        </div>
                         <div id="like-dislike-container" class="flex items-center gap-2 flex-wrap">
                             <button
                                 hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
