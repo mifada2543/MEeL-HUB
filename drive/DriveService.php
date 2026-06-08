@@ -312,38 +312,30 @@ final class DriveStorage
         if (!is_file($filePath)) {
             return false;
         }
+        if ($detectedType === self::TYPE_DOCUMENT) {
+            return true;
+        }
 
         $handle = fopen($filePath, 'rb');
         if (!$handle) {
             return false;
         }
-
         $header = fread($handle, 16);
         fclose($handle);
 
-        // Video magic bytes
         if ($detectedType === self::TYPE_VIDEO) {
-            $videoSignatures = [
-                0x000001B3, // MPEG video
-                0x1A45DFA3, // WebM/Matroska
-                0x6674797B, // MP4/MOV
-                0x52494646, // AVI/WAV
-            ];
-            $fileSignature = unpack('N', substr($header, 0, 4))[1] ?? 0;
-            return in_array($fileSignature, $videoSignatures);
+            if (str_starts_with($header, "\x1A\x45\xDF\xA3")) { // WebM / MKV
+                return true;
+            }
+            if (substr($header, 4, 4) === 'ftyp') { // MP4 / MOV
+                return true;
+            }
+            return false;
         }
 
-        // Audio magic bytes
+        // Validasi Audio
         if ($detectedType === self::TYPE_AUDIO) {
-            $audioSignatures = [
-                0xFFFB, // MP3 (MPEG-3)
-                0xFFA, // MP3 (MPEG-2/2.5)
-                0x664C6143, // FLAC
-                0x4F676753, // OGG
-                0xFFFA, // MPEG-4 Audio
-                0xFFF4, // AAC
-                0xFFF5, // AAC (MPEG-4)
-            ];
+            $audioSignatures = [0xFFFB, 0xFFA, 0x664C6143, 0x4F676753]; // MP3, FLAC, OGG
             $fileSignature = unpack('N', substr($header, 0, 4))[1] ?? 0;
             return in_array($fileSignature, $audioSignatures);
         }

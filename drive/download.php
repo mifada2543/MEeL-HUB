@@ -45,7 +45,7 @@ try {
         $_GET['scope'] ?? 'public',
         'success'
     );
-
+    header('X-Content-Type-Options: nosniff');
     header('Content-Description: File Transfer');
     header('Content-Type: application/octet-stream');
     header('Content-Disposition: attachment; filename="' . str_replace('"', '', $file['name']) . '"');
@@ -70,4 +70,3 @@ try {
     http_response_code(404);
     echo htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8');
 }
-
