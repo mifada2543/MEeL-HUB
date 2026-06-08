@@ -909,6 +909,14 @@ if (isset($_POST['upload'])) {
                         </div>
                     </div>
 
+                    <!-- Deskripsi -->
+                    <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
+                        <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
+                        <textarea id="f-desc" name="description"
+                            placeholder="Masukkan deskripsi lagu... (opsional)"
+                            class="field-input" style="flex:1;min-height:100px;resize:none;"></textarea>
+                    </div>
+
                     <div class="divider" style="margin:0;"></div>
 
                     <!-- Drop zones -->
