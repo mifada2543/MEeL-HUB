@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MEeL-Easter Egg</title>
+    <script src="../assets/js/tailwind.js"></script>
+    <link href="../assets/css/font.css" rel="stylesheet" />
+    <style>
+      :root {
+        --theme-primary: #39c5bb;
+        --theme-glow: rgba(57, 197, 187, 0.15);
+        --theme-glow-heavy: rgba(57, 197, 187, 0.4);
+        --theme-gradient: linear-gradient(to right, #39c5bb, #ff4081);
+      }
+
+      body {
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background-color: #080b11;
+        transition: background-color 0.3s ease;
+      }
+
+      .pixel-font {
+        font-family: "Press Start 2P", monospace;
+      }
+
+      canvas {
+        image-rendering: pixelated;
+      }
+
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: rgba(15, 23, 42, 0.5);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: var(--theme-glow);
+        border-radius: 3px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--theme-glow-heavy);
+      }
+
+      .dynamic-border {
+        border-color: var(--theme-primary);
+        transition: border-color 0.3s ease;
+      }
+
+      .dynamic-text {
+        color: var(--theme-primary);
+        transition: color 0.3s ease;
+      }
+
+      .dynamic-glow {
+        box-shadow: 0 0 50px var(--theme-glow);
+        transition: box-shadow 0.3s ease;
+      }
+
+      .dynamic-bg-glow {
+        background-color: var(--theme-glow);
+        transition: background-color 0.3s ease;
+      }
+
+      /* Cheat panel animation */
+      #cheatPanel {
+        transition:
+          opacity 0.4s ease,
+          transform 0.4s ease,
+          visibility 0.4s ease;
+      }
+
+      #cheatPanel.hidden {
+        pointer-events: none;
+        visibility: hidden;
+      }
+
+      #cheatPanel.opacity-0 {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+
+      #cheatPanel.opacity-100 {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    </style>
+  </head>
+
+  <body
+    class="flex items-center justify-center min-h-screen text-gray-200 p-3 sm:p-6 overflow-x-hidden"
+  >
+    <div
+      id="mainContainer"
+      class="w-full max-w-5xl bg-slate-900/90 border dynamic-border rounded-3xl dynamic-glow p-4 sm:p-6 relative overflow-hidden backdrop-blur-lg flex flex-col lg:flex-row gap-6"
+    >
+      <div
+        id="topGradientBar"
+        class="absolute top-0 left-0 w-full h-1.5"
+        style="background: var(--theme-gradient)"
+      ></div>
+      <div
+        id="glowLeft"
+        class="absolute -top-16 -left-16 w-48 h-48 dynamic-bg-glow rounded-full blur-3xl pointer-events-none"
+      ></div>
+      <div
+        id="glowRight"
+        class="absolute -bottom-16 -right-16 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl pointer-events-none"
+      ></div>
+
+      <div class="flex-1 flex flex-col justify-between relative z-10">
+        <div
+          class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3"
+        >
+          <div>
+            <h1
+              id="gameTitle"
+              class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-teal-300 to-pink-400 tracking-tight flex items-center gap-2 transition-all duration-300"
+            >
+              <a href="../index.php" class="text-inherit no-underline"
+                >MEeL-Easter Egg</a
+              >
+            </h1>
+            <p id="gameDescription" class="text-xs text-gray-400 mt-0.5">
+              Lompati rintangan bersama sang Diva Virtual pilihanmu!
+            </p>
+          </div>
+          <div
+            class="flex gap-4 bg-slate-950/90 px-4 py-2.5 rounded-xl border border-slate-800 pixel-font text-[10px] dynamic-text shadow-inner"
+          >
+            <div>
+              HI <span id="hiScoreText" class="text-gray-400">00000</span>
+            </div>
+            <div>
+              SCORE <span id="scoreText" class="text-pink-400">00000</span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="relative bg-slate-950 rounded-2xl border border-slate-800/80 overflow-hidden shadow-[inset_0_4px_20px_rgba(0,0,0,0.8)] flex items-center justify-center"
+        >
+          <canvas
+            id="gameCanvas"
+            width="800"
+            height="250"
+            class="w-full block"
+          ></canvas>
+          <div
+            id="startScreen"
+            class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm transition-opacity duration-300 cursor-pointer select-none"
+          >
+            <div id="chibiIconContainer" class="animate-bounce mb-4"></div>
+            <h2
+              class="pixel-font text-xs sm:text-sm mb-3 text-center text-white tracking-wider"
+            >
+              TEKAN SPASI ATAU TAP UNTUK BERMAIN
+            </h2>
+            <p
+              id="controlGuideText"
+              class="text-xs dynamic-text text-center px-4 max-w-md"
+            >
+              Gunakan tombol Atas (↑) / Spasi untuk lompat, Bawah (↓) untuk
+              merunduk
+            </p>
+          </div>
+          <div
+            id="gameOverScreen"
+            class="absolute inset-0 flex flex-col items-center justify-center bg-black/80 hidden backdrop-blur-sm select-none"
+          >
+            <div
+              class="pixel-font text-pink-500 text-xl mb-4 tracking-widest animate-pulse"
+            >
+              GAME OVER
+            </div>
+            <button
+              id="restartBtn"
+              class="flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-teal-400 to-emerald-400 hover:from-teal-300 hover:to-emerald-300 text-slate-950 rounded-xl font-bold shadow-[0_0_20px_rgba(57,197,187,0.4)] transform active:scale-95 transition-all text-sm"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+              Main Lagi
+            </button>
+          </div>
+        </div>
+
+        <div
+          class="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4 border-t border-slate-800/60 pt-4"
+        >
+          <div
+            class="flex items-center gap-3 bg-slate-950/40 px-3 py-2 rounded-xl border border-slate-800"
+          >
+            <span class="text-xs font-bold text-teal-400">Miku</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="themeToggle" class="sr-only peer" />
+              <div
+                class="w-11 h-6 bg-teal-500 rounded-full peer peer-focus:ring-2 peer-focus:ring-pink-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-gray-100 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"
+              ></div>
+            </label>
+            <span class="text-xs font-bold text-rose-500">Teto</span>
+          </div>
+          <div class="flex gap-2 sm:hidden w-full sm:w-auto">
+            <button
+              id="mobileJump"
+              class="flex-1 px-5 py-3.5 bg-teal-500/10 active:bg-teal-500/30 text-teal-300 border border-teal-500/30 rounded-xl text-xs font-bold active:scale-95 select-none transition-all"
+            >
+              LOMPAT (↑)
+            </button>
+            <button
+              id="mobileDuck"
+              class="flex-1 px-5 py-3.5 bg-pink-500/10 active:bg-pink-500/30 text-pink-300 border border-pink-500/30 rounded-xl text-xs font-bold active:scale-95 select-none transition-all"
+            >
+              MERUNDUK (↓)
+            </button>
+          </div>
+          <div class="text-[11px] text-gray-500">
+            Dibuat Khusus Untuk Pawang Dino Sejati
+          </div>
+        </div>
+      </div>
+
+      <div
+        id="cheatPanel"
+        class="w-full lg:w-72 bg-slate-950/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between relative z-10 shrink-0 hidden lg:hidden transition-all duration-300 opacity-0"
+      >
+        <div>
+          <div
+            class="flex items-center gap-2.5 mb-4 pb-3 border-b border-slate-800"
+          >
+            <span class="relative flex h-3 w-3"
+              ><span
+                class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"
+              ></span
+              ><span
+                class="relative inline-flex rounded-full h-3 w-3 bg-rose-500"
+              ></span
+            ></span>
+            <h3
+              class="text-xs font-bold tracking-widest text-rose-400 pixel-font"
+            >
+              PANEL CHEAT
+            </h3>
+          </div>
+          <p class="text-[11px] text-gray-450 mb-4 leading-relaxed">
+            Menu rahasia untuk memanipulasi ruang & waktu. Aktifkan saklar di
+            bawah untuk meretas game secara instan
+          </p>
+
+          <div class="space-y-3.5">
+            <div
+              class="flex items-center justify-between bg-slate-900/90 p-3 rounded-xl border border-slate-800 hover:border-teal-500/20 transition-all"
+            >
+              <div class="flex flex-col pr-2 flex-1">
+                <span class="text-xs font-bold text-gray-200">Mode Dewa</span
+                ><span class="text-[10px] text-gray-500 mt-0.5"
+                  >Tembus rintangan & musuh bebas tabrak</span
+                >
+              </div>
+              <label
+                class="relative inline-flex items-center cursor-pointer shrink-0"
+                ><input
+                  type="checkbox"
+                  id="godModeToggle"
+                  class="sr-only peer"
+                />
+                <div
+                  class="w-11 h-6 bg-slate-800 rounded-full peer peer-focus:ring-2 peer-focus:ring-rose-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-gray-350 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"
+                ></div>
+              </label>
+            </div>
+            <div
+              class="flex items-center justify-between bg-slate-900/90 p-3 rounded-xl border border-slate-800 hover:border-teal-500/20 transition-all"
+            >
+              <div class="flex flex-col pr-2 flex-1">
+                <span class="text-xs font-bold text-gray-200"
+                  >Gravitasi Bulan</span
+                ><span class="text-[10px] text-gray-500 mt-0.5"
+                  >Melayang di udara dengan sangat anggun</span
+                >
+              </div>
+              <label
+                class="relative inline-flex items-center cursor-pointer shrink-0"
+                ><input
+                  type="checkbox"
+                  id="moonGravityToggle"
+                  class="sr-only peer"
+                />
+                <div
+                  class="w-11 h-6 bg-slate-800 rounded-full peer peer-focus:ring-2 peer-focus:ring-rose-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-gray-355 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"
+                ></div>
+              </label>
+            </div>
+            <div
+              class="flex items-center justify-between bg-slate-900/90 p-3 rounded-xl border border-slate-800 hover:border-teal-500/20 transition-all"
+            >
+              <div class="flex flex-col pr-2 flex-1">
+                <span class="text-xs font-bold text-gray-200">Hyper Speed</span
+                ><span class="text-[10px] text-gray-500 mt-0.5"
+                  >Lari super cepat bagai badai kilat</span
+                >
+              </div>
+              <label
+                class="relative inline-flex items-center cursor-pointer shrink-0"
+                ><input
+                  type="checkbox"
+                  id="hyperSpeedToggle"
+                  class="sr-only peer"
+                />
+                <div
+                  class="w-11 h-6 bg-slate-800 rounded-full peer peer-focus:ring-2 peer-focus:ring-rose-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-gray-355 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"
+                ></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mt-6 pt-4 border-t border-slate-800/80 text-[10px] text-gray-500 space-y-1.5"
+        >
+          <div class="flex justify-between">
+            <span>Status Engine:</span
+            ><span class="text-emerald-450 font-bold"
+              >MEeL Engine v1.2 (Refactored)</span
+            >
+          </div>
+          <div class="flex justify-between">
+            <span>Sync ke Akun:</span
+            ><span class="text-teal-400" id="syncStatus">Tembus Blokir ✔</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../assets/js/easter-egg/assets.js"></script>
+    <script src="../assets/js/easter-egg/game.js"></script>
+    <script>
+      // Toggle cheat panel ketika score diklik
+      const scoreText = document.getElementById("scoreText");
+      const hiScoreText = document.getElementById("hiScoreText");
+      const cheatPanel = document.getElementById("cheatPanel");
+
+      function toggleCheatPanel() {
+        cheatPanel.classList.toggle("hidden");
+        cheatPanel.classList.toggle("lg:hidden");
+        cheatPanel.classList.toggle("opacity-0");
+        cheatPanel.classList.toggle("opacity-100");
+      }
+
+      scoreText.addEventListener("click", toggleCheatPanel);
+      hiScoreText.addEventListener("click", toggleCheatPanel);
+
+      // Tambahkan cursor pointer untuk visual feedback
+      scoreText.style.cursor = "pointer";
+      hiScoreText.style.cursor = "pointer";
+      scoreText.classList.add(
+        "hover:brightness-150",
+        "transition-all",
+        "duration-200",
+      );
+      hiScoreText.classList.add(
+        "hover:brightness-150",
+        "transition-all",
+        "duration-200",
+      );
+    </script>
+  </body>
+</html>
