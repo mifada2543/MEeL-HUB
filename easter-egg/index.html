@@ -18,31 +18,12 @@
         touch-action: manipulation;
       }
 
-      /* Cheat Panel mobile styling */
-      @media (max-width: 1023px) {
-        #cheatPanel {
-          position: fixed !important;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          z-index: 50;
-          margin: 0;
-          border-radius: 0;
-          overflow-y: auto;
-          background: rgba(8, 11, 16, 0.95);
-        }
-      }
-
-      /* Memastikan canvas tetap proporsional di HP */
-      #gameCanvas {
-        max-height: 200px;
-        object-fit: contain;
-      }
       body {
         font-family: "Plus Jakarta Sans", sans-serif;
         background-color: #080b11;
         transition: background-color 0.3s ease;
+        min-height: 100dvh;
+        overflow-x: hidden;
       }
 
       .pixel-font {
@@ -51,6 +32,29 @@
 
       canvas {
         image-rendering: pixelated;
+      }
+
+      #gameCanvas {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 800 / 250;
+        display: block;
+      }
+
+      /* Cheat Panel mobile styling */
+      @media (max-width: 1023px) {
+        #cheatPanel {
+          position: fixed !important;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 50;
+          margin: 0;
+          border-radius: 0;
+          padding: 1rem;
+          overflow-y: auto;
+          background: rgba(8, 11, 16, 0.95);
+        }
       }
 
       ::-webkit-scrollbar {
@@ -116,11 +120,11 @@
   </head>
 
   <body
-    class="flex items-center justify-center min-h-screen text-gray-200 p-3 sm:p-6 overflow-x-hidden"
+    class="flex items-center justify-center min-h-dvh text-gray-200 px-3 py-4 sm:px-4 sm:py-6 lg:p-6 overflow-x-hidden"
   >
     <div
       id="mainContainer"
-      class="w-full max-w-5xl bg-slate-900/90 border dynamic-border rounded-3xl dynamic-glow p-4 sm:p-6 relative overflow-hidden backdrop-blur-lg flex flex-col lg:flex-row gap-6"
+      class="w-full max-w-5xl bg-slate-900/90 border dynamic-border rounded-3xl dynamic-glow p-4 sm:p-5 lg:p-6 relative overflow-hidden backdrop-blur-lg flex flex-col lg:flex-row gap-4 lg:gap-6"
     >
       <div
         id="topGradientBar"
@@ -143,24 +147,29 @@
           <div>
             <h1
               id="gameTitle"
-              class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-teal-300 to-pink-400 tracking-tight flex items-center gap-2 transition-all duration-300"
+              class="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-teal-300 to-pink-400 tracking-tight flex items-center gap-2 transition-all duration-300"
             >
               <a href="../index.php" class="text-inherit no-underline"
                 >MEeL-Easter Egg</a
               >
             </h1>
-            <p id="gameDescription" class="text-xs text-gray-400 mt-0.5">
+            <p
+              id="gameDescription"
+              class="text-[11px] sm:text-xs text-gray-400 mt-0.5 max-w-md"
+            >
               Lompati rintangan bersama sang Diva Virtual pilihanmu!
             </p>
           </div>
           <div
-            class="flex gap-4 bg-slate-950/90 px-4 py-2.5 rounded-xl border border-slate-800 pixel-font text-[10px] dynamic-text shadow-inner"
+            class="flex flex-wrap items-center gap-x-4 gap-y-2 bg-slate-950/90 px-4 py-2.5 rounded-xl border border-slate-800 pixel-font text-[9px] sm:text-[10px] dynamic-text shadow-inner w-full sm:w-auto justify-between sm:justify-start"
           >
-            <div>
-              HI <span id="hiScoreText" class="text-gray-400">00000</span>
-            </div>
-            <div>
-              SCORE <span id="scoreText" class="text-pink-400">00000</span>
+            <div class="flex items-center gap-4">
+              <div>
+                HI <span id="hiScoreText" class="text-gray-400">00000</span>
+              </div>
+              <div>
+                SCORE <span id="scoreText" class="text-pink-400">00000</span>
+              </div>
             </div>
           </div>
         </div>
@@ -224,10 +233,10 @@
         </div>
 
         <div
-          class="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4 border-t border-slate-800/60 pt-4"
+          class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mt-4 gap-4 border-t border-slate-800/60 pt-4"
         >
           <div
-            class="flex items-center gap-3 bg-slate-950/40 px-3 py-2 rounded-xl border border-slate-800"
+            class="flex items-center gap-3 bg-slate-950/40 px-3 py-2 rounded-xl border border-slate-800 w-full sm:w-auto justify-between sm:justify-start"
           >
             <span class="text-xs font-bold text-teal-400">Miku</span>
             <label class="relative inline-flex items-center cursor-pointer">
@@ -238,33 +247,31 @@
             </label>
             <span class="text-xs font-bold text-rose-500">Teto</span>
           </div>
-          <div class="flex gap-2 sm:hidden w-full sm:w-auto">
+          <div class="grid grid-cols-2 gap-2 sm:hidden w-full sm:w-auto">
             <button
               id="mobileJump"
-              class="flex-1 px-5 py-3.5 bg-teal-500/10 active:bg-teal-500/30 text-teal-300 border border-teal-500/30 rounded-xl text-xs font-bold active:scale-95 select-none transition-all"
+              class="px-4 py-3.5 bg-teal-500/10 active:bg-teal-500/30 text-teal-300 border border-teal-500/30 rounded-xl text-xs font-bold active:scale-95 select-none transition-all"
             >
               LOMPAT (↑)
             </button>
             <button
               id="mobileDuck"
-              class="flex-1 px-5 py-3.5 bg-pink-500/10 active:bg-pink-500/30 text-pink-300 border border-pink-500/30 rounded-xl text-xs font-bold active:scale-95 select-none transition-all"
+              class="px-4 py-3.5 bg-pink-500/10 active:bg-pink-500/30 text-pink-300 border border-pink-500/30 rounded-xl text-xs font-bold active:scale-95 select-none transition-all"
             >
               MERUNDUK (↓)
             </button>
           </div>
-          <div class="text-[11px] text-gray-500">
-            Dibuat Khusus Untuk Pawang Dino Sejati
-          </div>
+          <div class="text-[11px] text-gray-500">Dibuat Dari Kegabutan</div>
         </div>
       </div>
 
       <div
         id="cheatPanel"
-        class="w-full lg:w-72 bg-slate-950/95 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between z-50 hidden transition-all duration-300"
+        class="w-full lg:w-72 bg-slate-950/95 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between z-50 hidden transition-all duration-300 lg:max-h-[calc(100dvh-3rem)]"
       >
         <button
           onclick="toggleCheatPanel()"
-          class="absolute top-4 right-4 text-gray-500 lg:hidden"
+          class="absolute top-4 right-4 text-gray-500 lg:hidden z-10"
         >
           Tutup [X]
         </button>
@@ -365,7 +372,7 @@
           <div class="flex justify-between">
             <span>Status Engine:</span
             ><span class="text-emerald-450 font-bold"
-              >MEeL Engine v1.2 (Refactored)</span
+              >MEeL Cheat Mode</span
             >
           </div>
           <div class="flex justify-between">
@@ -380,12 +387,12 @@
     <script src="../assets/js/easter-egg/game.js"></script>
     <script>
       // Mencegah scroll saat menyentuh area game
-      const canvas = document.getElementById("gameCanvas");
+      const gameCanvasEl = document.getElementById("gameCanvas");
       document.body.addEventListener(
         "touchstart",
         function (e) {
           if (
-            e.target == canvas ||
+            e.target == gameCanvasEl ||
             e.target.id === "mobileJump" ||
             e.target.id === "mobileDuck"
           ) {
@@ -397,31 +404,41 @@
       // Toggle cheat panel ketika score diklik
       const scoreText = document.getElementById("scoreText");
       const hiScoreText = document.getElementById("hiScoreText");
+      const cheatToggleBtn = document.getElementById("cheatToggleBtn");
       const cheatPanel = document.getElementById("cheatPanel");
 
       function toggleCheatPanel() {
+        if (!cheatPanel) return;
         cheatPanel.classList.toggle("hidden");
-        cheatPanel.classList.toggle("lg:hidden");
         cheatPanel.classList.toggle("opacity-0");
         cheatPanel.classList.toggle("opacity-100");
       }
 
-      scoreText.addEventListener("click", toggleCheatPanel);
-      hiScoreText.addEventListener("click", toggleCheatPanel);
+      window.toggleCheatPanel = toggleCheatPanel;
+
+      if (scoreText) scoreText.addEventListener("click", toggleCheatPanel);
+      if (hiScoreText) hiScoreText.addEventListener("click", toggleCheatPanel);
+      if (cheatToggleBtn)
+        cheatToggleBtn.addEventListener("click", toggleCheatPanel);
 
       // Tambahkan cursor pointer untuk visual feedback
-      scoreText.style.cursor = "pointer";
-      hiScoreText.style.cursor = "pointer";
-      scoreText.classList.add(
-        "hover:brightness-150",
-        "transition-all",
-        "duration-200",
-      );
-      hiScoreText.classList.add(
-        "hover:brightness-150",
-        "transition-all",
-        "duration-200",
-      );
+      if (scoreText) {
+        scoreText.style.cursor = "pointer";
+        scoreText.classList.add(
+          "hover:brightness-150",
+          "transition-all",
+          "duration-200",
+        );
+      }
+      if (hiScoreText) {
+        hiScoreText.style.cursor = "pointer";
+        hiScoreText.classList.add(
+          "hover:brightness-150",
+          "transition-all",
+          "duration-200",
+        );
+      }
+      if (cheatToggleBtn) cheatToggleBtn.style.cursor = "pointer";
     </script>
   </body>
 </html>

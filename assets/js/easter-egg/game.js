@@ -91,7 +91,9 @@ document.getElementById("themeToggle").addEventListener("change", (e) => {
     root.style.setProperty("--theme-glow-heavy", "rgba(255, 94, 126, 0.4)");
     root.style.setProperty("--theme-gradient", "linear-gradient(to right, #FF5E7E, #FFD700)");
     title.className = "text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-pink-400 to-yellow-400 tracking-tight flex items-center gap-2 transition-all duration-300";
-    subTag.className = "text-[10px] tracking-normal px-2 py-0.5 rounded bg-rose-950/70 text-rose-300 border border-rose-500/30 font-mono";
+    if (subTag) {
+      subTag.className = "text-[10px] tracking-normal px-2 py-0.5 rounded bg-rose-950/70 text-rose-300 border border-rose-500/30 font-mono";
+    }
     desc.innerText = "Lompati Roti Baguette lezat bersama sang Diva Chimera Teto!";
     sync.className = "text-rose-400 transition-colors";
   } else {
@@ -100,7 +102,9 @@ document.getElementById("themeToggle").addEventListener("change", (e) => {
     root.style.setProperty("--theme-glow-heavy", "rgba(57, 197, 187, 0.4)");
     root.style.setProperty("--theme-gradient", "linear-gradient(to right, #39C5BB, #FF4081)");
     title.className = "text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-teal-300 to-pink-400 tracking-tight flex items-center gap-2 transition-all duration-300";
-    subTag.className = "text-[10px] tracking-normal px-2 py-0.5 rounded bg-teal-950/70 text-teal-300 border border-teal-500/30 font-mono";
+    if (subTag) {
+      subTag.className = "text-[10px] tracking-normal px-2 py-0.5 rounded bg-teal-950/70 text-teal-300 border border-teal-500/30 font-mono";
+    }
     desc.innerText = "Lompati Negi bersama Diva Virtual ter-HD abad ini!";
     sync.className = "text-teal-400 transition-colors";
   }
