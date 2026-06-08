@@ -13,7 +13,32 @@
         --theme-glow-heavy: rgba(57, 197, 187, 0.4);
         --theme-gradient: linear-gradient(to right, #39c5bb, #ff4081);
       }
+      /* Mencegah zoom saat double tap dan mempercepat respon touch */
+      html {
+        touch-action: manipulation;
+      }
 
+      /* Cheat Panel mobile styling */
+      @media (max-width: 1023px) {
+        #cheatPanel {
+          position: fixed !important;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 50;
+          margin: 0;
+          border-radius: 0;
+          overflow-y: auto;
+          background: rgba(8, 11, 16, 0.95);
+        }
+      }
+
+      /* Memastikan canvas tetap proporsional di HP */
+      #gameCanvas {
+        max-height: 200px;
+        object-fit: contain;
+      }
       body {
         font-family: "Plus Jakarta Sans", sans-serif;
         background-color: #080b11;
@@ -235,8 +260,14 @@
 
       <div
         id="cheatPanel"
-        class="w-full lg:w-72 bg-slate-950/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between relative z-10 shrink-0 hidden lg:hidden transition-all duration-300 opacity-0"
+        class="w-full lg:w-72 bg-slate-950/95 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between z-50 hidden transition-all duration-300"
       >
+        <button
+          onclick="toggleCheatPanel()"
+          class="absolute top-4 right-4 text-gray-500 lg:hidden"
+        >
+          Tutup [X]
+        </button>
         <div>
           <div
             class="flex items-center gap-2.5 mb-4 pb-3 border-b border-slate-800"
@@ -348,6 +379,21 @@
     <script src="../assets/js/easter-egg/assets.js"></script>
     <script src="../assets/js/easter-egg/game.js"></script>
     <script>
+      // Mencegah scroll saat menyentuh area game
+      const canvas = document.getElementById("gameCanvas");
+      document.body.addEventListener(
+        "touchstart",
+        function (e) {
+          if (
+            e.target == canvas ||
+            e.target.id === "mobileJump" ||
+            e.target.id === "mobileDuck"
+          ) {
+            e.preventDefault();
+          }
+        },
+        { passive: false },
+      );
       // Toggle cheat panel ketika score diklik
       const scoreText = document.getElementById("scoreText");
       const hiScoreText = document.getElementById("hiScoreText");
