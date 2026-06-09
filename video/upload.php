@@ -590,7 +590,155 @@ if (isset($_POST['upload'])) {
             margin: 20px 0;
         }
 
-        /* ── Footer links ── */
+        /* ── Upload overlay ── */
+        #upload-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            background: rgba(8, 11, 17, .92);
+            backdrop-filter: blur(18px);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        #upload-overlay.active {
+            display: flex;
+            animation: overlayIn .3s ease;
+        }
+
+        @keyframes overlayIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .overlay-card {
+            background: #0e1118;
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 28px;
+            padding: 40px 44px;
+            width: 100%;
+            max-width: 440px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            animation: cardUp .35s cubic-bezier(.34, 1.56, .64, 1);
+        }
+
+        @keyframes cardUp {
+            from {
+                transform: translateY(24px) scale(.97);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* spinning ring */
+        .upload-ring {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 3px solid rgba(239, 68, 68, .15);
+            border-top-color: var(--accent);
+            border-right-color: rgba(239, 68, 68, .5);
+            animation: ringSpin 1s linear infinite;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .upload-ring-inner {
+            position: absolute;
+            inset: 8px;
+            border-radius: 50%;
+            border: 2px solid rgba(239, 68, 68, .1);
+            border-top-color: rgba(239, 68, 68, .4);
+            animation: ringSpin .7s linear infinite reverse;
+        }
+
+        @keyframes ringSpin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .overlay-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+            text-align: center;
+        }
+
+        .overlay-filename {
+            font-size: 11px;
+            font-weight: 600;
+            color: #555e6e;
+            text-align: center;
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* progress bar */
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, .06);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #f87171);
+            border-radius: 4px;
+            width: 0%;
+            transition: width .4s ease;
+            animation: progressShimmer 1.5s ease-in-out infinite;
+            background-size: 200% 100%;
+        }
+
+        @keyframes progressShimmer {
+            0% {
+                background-position: 200% center;
+            }
+
+            100% {
+                background-position: -200% center;
+            }
+        }
+
+        .overlay-status {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .14em;
+            color: var(--accent);
+            text-align: center;
+            min-height: 16px;
+        }
+
+        .overlay-note {
+            font-size: 10px;
+            color: #353d4a;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        /* Footer links */
         .footer-links {
             display: flex;
             flex-wrap: wrap;
@@ -830,6 +978,32 @@ if (isset($_POST['upload'])) {
     </div>
 
     <?php include '../partials/footer.php'; ?>
+
+    <!-- ── Upload Overlay ── -->
+    <div id="upload-overlay">
+        <div class="overlay-card">
+            <div class="upload-ring">
+                <div class="upload-ring-inner"></div>
+            </div>
+            <div style="width:100%;text-align:center;display:flex;flex-direction:column;gap:8px;">
+                <div class="overlay-title">Mengupload Video...</div>
+                <div class="overlay-filename" id="overlay-filename">Mempersiapkan file</div>
+            </div>
+            <div style="width:100%;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div class="overlay-status" id="overlay-status">Mengirim ke server</div>
+                    <div id="overlay-pct" style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#e2e6ef;">0%</div>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+            </div>
+            <div class="overlay-note">
+                Jangan tutup atau refresh halaman ini.<br>
+                Video besar memerlukan waktu lebih lama.
+            </div>
+        </div>
+    </div>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
     <script src="../assets/js/script.js"></script>
     <script>
@@ -895,11 +1069,79 @@ if (isset($_POST['upload'])) {
         }
 
         function handleSubmit() {
+            const videoInput = document.getElementById('video-input');
+            const titleInput = document.getElementById('f-title');
+            const overlay = document.getElementById('upload-overlay');
+            const fname = document.getElementById('overlay-filename');
+            const status = document.getElementById('overlay-status');
+            const bar = document.getElementById('progress-bar');
+            const pct = document.getElementById('overlay-pct');
             const btn = document.getElementById('btn-upload');
-            btn.innerHTML = '<div style="width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> Proses Upload...';
-            btn.style.opacity = '.6';
+
+            // Tampilkan nama file
+            if (videoInput.files[0]) {
+                fname.textContent = videoInput.files[0].name;
+            } else if (titleInput.value) {
+                fname.textContent = titleInput.value;
+            }
+
+            // Nonaktifkan tombol
+            btn.style.opacity = '.5';
             btn.style.pointerEvents = 'none';
+
+            // Tampilkan overlay
+            overlay.classList.add('active');
+
+            // Status messages — cycling manual karena tidak ada real-time progress
+            // (upload biasa, bukan streaming Transcoder)
+            const phases = [{
+                    msg: 'Mengirim file ke server…',
+                    pctVal: 5
+                },
+                {
+                    msg: 'File sedang diproses…',
+                    pctVal: 30
+                },
+                {
+                    msg: 'Menyimpan ke library…',
+                    pctVal: 60
+                },
+                {
+                    msg: 'Menyelesaikan proses…',
+                    pctVal: 85
+                },
+            ];
+
+            // Estimasi waktu berdasarkan ukuran file
+            const fileSizeMB = videoInput.files[0] ? videoInput.files[0].size / 1024 / 1024 : 50;
+            const baseDelay = Math.max(3000, Math.min(fileSizeMB * 120, 20000)); // 3s–20s
+            const phaseDelay = baseDelay / phases.length;
+
+            let phaseIdx = 0;
+
+            function advancePhase() {
+                if (phaseIdx >= phases.length) return;
+                const p = phases[phaseIdx];
+                status.textContent = p.msg;
+                bar.style.width = p.pctVal + '%';
+                pct.textContent = p.pctVal + '%';
+                phaseIdx++;
+                if (phaseIdx < phases.length) {
+                    setTimeout(advancePhase, phaseDelay);
+                }
+            }
+
+            advancePhase();
+
+            // Biarkan form submit biasa berjalan — jangan intercept dengan XHR
+            // PHP akan memproses dan redirect/reload sendiri
         }
+
+        // Pastikan form submit normal (tidak diblock)
+        document.querySelector('form').addEventListener('submit', function() {
+            handleSubmit();
+            // return true — biarkan browser submit form seperti biasa
+        });
 
         // Drag-and-drop for video zone
         const videoZone = document.getElementById('video-zone');

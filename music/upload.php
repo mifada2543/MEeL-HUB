@@ -719,6 +719,202 @@ if (isset($_POST['upload'])) {
             margin: 20px 0;
         }
 
+        /* ── Upload overlay ── */
+        #upload-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            background: rgba(8, 11, 17, .92);
+            backdrop-filter: blur(18px);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        #upload-overlay.active {
+            display: flex;
+            animation: overlayIn .3s ease;
+        }
+
+        @keyframes overlayIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .overlay-card {
+            background: #0e1118;
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 28px;
+            padding: 40px 44px;
+            width: 100%;
+            max-width: 440px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            animation: cardUp .35s cubic-bezier(.34, 1.56, .64, 1);
+        }
+
+        @keyframes cardUp {
+            from {
+                transform: translateY(24px) scale(.97);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* waveform spinner — music themed */
+        .upload-wave {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            height: 56px;
+        }
+
+        .upload-wave span {
+            display: block;
+            width: 5px;
+            border-radius: 3px;
+            background: var(--accent);
+            animation: waveUp 1s ease-in-out infinite alternate;
+        }
+
+        .upload-wave span:nth-child(1) {
+            height: 14px;
+            animation-delay: 0s;
+        }
+
+        .upload-wave span:nth-child(2) {
+            height: 30px;
+            animation-delay: .1s;
+        }
+
+        .upload-wave span:nth-child(3) {
+            height: 46px;
+            animation-delay: .2s;
+        }
+
+        .upload-wave span:nth-child(4) {
+            height: 36px;
+            animation-delay: .05s;
+        }
+
+        .upload-wave span:nth-child(5) {
+            height: 56px;
+            animation-delay: .15s;
+        }
+
+        .upload-wave span:nth-child(6) {
+            height: 40px;
+            animation-delay: .25s;
+        }
+
+        .upload-wave span:nth-child(7) {
+            height: 52px;
+            animation-delay: .1s;
+        }
+
+        .upload-wave span:nth-child(8) {
+            height: 28px;
+            animation-delay: .3s;
+        }
+
+        .upload-wave span:nth-child(9) {
+            height: 44px;
+            animation-delay: .2s;
+        }
+
+        .upload-wave span:nth-child(10) {
+            height: 18px;
+            animation-delay: .05s;
+        }
+
+        @keyframes waveUp {
+            from {
+                transform: scaleY(.3);
+                opacity: .35;
+            }
+
+            to {
+                transform: scaleY(1);
+                opacity: 1;
+            }
+        }
+
+        .overlay-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+            text-align: center;
+        }
+
+        .overlay-filename {
+            font-size: 11px;
+            font-weight: 600;
+            color: #555e6e;
+            text-align: center;
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, .06);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #fb923c);
+            border-radius: 4px;
+            width: 0%;
+            transition: width .4s ease;
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% center;
+            }
+
+            100% {
+                background-position: -200% center;
+            }
+        }
+
+        .overlay-status {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .14em;
+            color: var(--accent);
+            text-align: center;
+            min-height: 16px;
+        }
+
+        .overlay-note {
+            font-size: 10px;
+            color: #353d4a;
+            text-align: center;
+            line-height: 1.5;
+        }
+
         .footer-links {
             display: flex;
             flex-wrap: wrap;
@@ -987,6 +1183,33 @@ if (isset($_POST['upload'])) {
     </div>
 
     <?php include '../partials/footer.php'; ?>
+
+    <!-- ── Upload Overlay ── -->
+    <div id="upload-overlay">
+        <div class="overlay-card">
+            <div class="upload-wave">
+                <span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div style="width:100%;text-align:center;display:flex;flex-direction:column;gap:8px;">
+                <div class="overlay-title">Mengupload Musik...</div>
+                <div class="overlay-filename" id="overlay-filename">Mempersiapkan file</div>
+            </div>
+            <div style="width:100%;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div class="overlay-status" id="overlay-status">Mengirim ke server</div>
+                    <div id="overlay-pct" style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#e2e6ef;">0%</div>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+            </div>
+            <div class="overlay-note">
+                Jangan tutup atau refresh halaman ini.<br>
+                File FLAC besar memerlukan waktu lebih lama.
+            </div>
+        </div>
+    </div>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
     <script src="../assets/js/script.js"></script>
     <script>
@@ -1040,11 +1263,66 @@ if (isset($_POST['upload'])) {
         }
 
         function handleSubmit() {
+            const audioInput = document.getElementById('audio-input');
+            const titleInput = document.getElementById('f-title');
+            const overlay = document.getElementById('upload-overlay');
+            const fname = document.getElementById('overlay-filename');
+            const status = document.getElementById('overlay-status');
+            const bar = document.getElementById('progress-bar');
+            const pct = document.getElementById('overlay-pct');
             const btn = document.getElementById('btn-upload');
-            btn.innerHTML = '<div style="width:16px;height:16px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .7s linear infinite;"></div> Processing...';
-            btn.style.opacity = '.6';
+
+            // Tampilkan nama file
+            if (audioInput.files[0]) {
+                fname.textContent = audioInput.files[0].name;
+            } else if (titleInput.value) {
+                fname.textContent = titleInput.value;
+            }
+
+            btn.style.opacity = '.5';
             btn.style.pointerEvents = 'none';
+            overlay.classList.add('active');
+
+            // Fase animasi — estimasi berdasarkan ukuran file
+            const fileSizeMB = audioInput.files[0] ? audioInput.files[0].size / 1024 / 1024 : 20;
+            const baseDelay = Math.max(2000, Math.min(fileSizeMB * 200, 18000)); // 2s–18s
+            const phases = [{
+                    msg: 'Mengirim file ke server…',
+                    pctVal: 8
+                },
+                {
+                    msg: 'Memproses audio…',
+                    pctVal: 35
+                },
+                {
+                    msg: 'Transcode ke Opus…',
+                    pctVal: 65
+                },
+                {
+                    msg: 'Menyimpan ke library…',
+                    pctVal: 88
+                },
+            ];
+            const phaseDelay = baseDelay / phases.length;
+            let phaseIdx = 0;
+
+            function advancePhase() {
+                if (phaseIdx >= phases.length) return;
+                const p = phases[phaseIdx];
+                status.textContent = p.msg;
+                bar.style.width = p.pctVal + '%';
+                pct.textContent = p.pctVal + '%';
+                phaseIdx++;
+                if (phaseIdx < phases.length) setTimeout(advancePhase, phaseDelay);
+            }
+
+            advancePhase();
+            // Form submit biasa — PHP proses & redirect sendiri
         }
+
+        document.querySelector('form').addEventListener('submit', function() {
+            handleSubmit();
+        });
 
         // Drag-and-drop audio
         const audioZone = document.getElementById('audio-zone');

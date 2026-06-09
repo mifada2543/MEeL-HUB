@@ -65,12 +65,12 @@ class Uploader
     {
         $file_name = $clean_name . "." . $ext;
         $counter = 1;
-        
+
         while (file_exists($target_dir . $file_name)) {
             $file_name = $clean_name . "-" . $counter . "." . $ext;
             $counter++;
         }
-        
+
         return $file_name;
     }
 
@@ -218,28 +218,63 @@ class Uploader
             return ['status' => 'error', 'msg' => 'Gagal menyalin file upload ke staging area.', 'alert' => true];
         }
 
-        // ── THUMBNAIL (ditulis ke work_folder dulu) ───────────────────────────
-        $thumb_name        = $clean_name . "_thumb.jpg";
-        $work_thumb        = $work_folder . $thumb_name;
+        // ── THUMBNAIL ─────────────────────────────────────────────────────────
+        // PRIORITAS 1: Thumbnail yang diupload user
+        // PRIORITAS 2: Auto-generate dari frame video (fallback)
+        $thumb_name    = "default_thumb.jpg";
+        $thumb_dir     = $this->base_dir . "thumbnail/";
+        $thumb_from_user = false;
 
-        $cmd_thumb = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i "
-            . escapeshellarg($staged_video)
-            . " -ss 00:00:05 -vframes 1 -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
-            . escapeshellarg($work_thumb) . " 2>&1";
-        exec($cmd_thumb);
+        if (
+            !empty($files['thumbnail']['tmp_name']) && is_uploaded_file($files['thumbnail']['tmp_name'])
+            && $files['thumbnail']['error'] === UPLOAD_ERR_OK
+        ) {
+            // ── PRIORITAS 1: User upload thumbnail ───────────────────────────
+            $t_ext  = strtolower(pathinfo($files['thumbnail']['name'], PATHINFO_EXTENSION));
+            $t_name = $clean_name . "_thumb." . $t_ext;
+            $t_dst  = $thumb_dir . $t_name;
 
-        // Fallback: ambil frame ke-1 kalau video < 5 detik
-        if (!file_exists($work_thumb) || filesize($work_thumb) === 0) {
-            $cmd_thumb_fallback = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i "
-                . escapeshellarg($staged_video)
-                . " -ss 00:00:01 -vframes 1 -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
-                . escapeshellarg($work_thumb) . " 2>&1";
-            exec($cmd_thumb_fallback);
+            // Konversi ke JPG via FFmpeg agar konsisten + resize max 1280px
+            $cmd_user_thumb = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin)
+                . " -y -i " . escapeshellarg($files['thumbnail']['tmp_name'])
+                . " -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
+                . escapeshellarg($t_dst) . " 2>&1";
+            exec($cmd_user_thumb);
+
+            if (file_exists($t_dst) && filesize($t_dst) > 0) {
+                $thumb_name      = $t_name;
+                $thumb_from_user = true;
+            } elseif (move_uploaded_file($files['thumbnail']['tmp_name'], $t_dst)) {
+                // Fallback: simpan apa adanya jika FFmpeg gagal convert
+                $thumb_name      = $t_name;
+                $thumb_from_user = true;
+            }
         }
 
-        $thumb_generated = file_exists($work_thumb) && filesize($work_thumb) > 0;
-        if (!$thumb_generated) {
-            $thumb_name = "default_thumb.jpg";
+        if (!$thumb_from_user) {
+            // ── PRIORITAS 2: Auto-generate dari frame video ───────────────────
+            $thumb_name  = $clean_name . "_thumb.jpg";
+            $work_thumb  = $work_folder . $thumb_name;
+
+            $cmd_thumb = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i "
+                . escapeshellarg($staged_video)
+                . " -ss 00:00:05 -vframes 1 -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
+                . escapeshellarg($work_thumb) . " 2>&1";
+            exec($cmd_thumb);
+
+            // Fallback: ambil frame ke-1 kalau video < 5 detik
+            if (!file_exists($work_thumb) || filesize($work_thumb) === 0) {
+                $cmd_thumb_fallback = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i "
+                    . escapeshellarg($staged_video)
+                    . " -ss 00:00:01 -vframes 1 -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
+                    . escapeshellarg($work_thumb) . " 2>&1";
+                exec($cmd_thumb_fallback);
+            }
+
+            $thumb_generated = file_exists($work_thumb) && filesize($work_thumb) > 0;
+            if (!$thumb_generated) {
+                $thumb_name = "default_thumb.jpg";
+            }
         }
 
         // ── TRANSCODE KE HLS (output ke work_folder) ─────────────────────────
@@ -285,8 +320,9 @@ class Uploader
         foreach (glob($work_folder . "*") as $work_file) {
             $filename = basename($work_file);
 
-            // Thumbnail dipindahkan ke folder thumbnail/ terpisah
-            if ($thumb_generated && $filename === $thumb_name) {
+            // Thumbnail auto-generated dipindahkan ke folder thumbnail/ terpisah
+            // Thumbnail dari user sudah langsung disimpan ke $thumb_dir, skip
+            if (!$thumb_from_user && $filename === $thumb_name) {
                 if (!rename($work_file, $hdd_thumb_dir . $filename)) {
                     $move_failed = true;
                     break;
@@ -308,6 +344,7 @@ class Uploader
             // Rollback: hapus file yang sudah terlanjur dipindahkan
             foreach (glob($hdd_target_folder . "*") as $f) @unlink($f);
             @rmdir($hdd_target_folder);
+            // Hapus thumbnail (baik dari user maupun auto-generated)
             @unlink($hdd_thumb_dir . $thumb_name);
             return ['status' => 'error', 'msg' => 'Gagal memindahkan file ke storage. Cek permission HDD.', 'alert' => true];
         }
