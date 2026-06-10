@@ -27,7 +27,7 @@ class MediaLibrary {
     }
 
     // ── VIDEO ─────────────────────────────────────────────────────────────────
-    public function getVideos(int $limit = 8, int $offset = 0) {
+    public function getVideos(int $limit = 15, int $offset = 0) {
         $stmt = $this->conn->prepare("SELECT * FROM video ORDER BY upload_date DESC LIMIT ? OFFSET ?");
         $stmt->bind_param("ii", $limit, $offset);
         $stmt->execute();
@@ -50,14 +50,14 @@ class MediaLibrary {
                 );
                 $stmt->bind_param("i", $exclude);
             } else {
-                $stmt = $this->conn->prepare("SELECT * FROM video ORDER BY upload_date DESC LIMIT 8");
+                $stmt = $this->conn->prepare("SELECT * FROM video ORDER BY upload_date DESC LIMIT 15");
             }
         } else {
             $like = "%$q%";
             $prefix = "$q%";
             $stmt = $this->conn->prepare(
                 "SELECT v.*, u.username AS uploader_name,
-                 (CASE WHEN v.title LIKE ? THEN 8 WHEN v.search_metadata LIKE ? THEN 5 ELSE 0 END) AS rank
+                 (CASE WHEN v.title LIKE ? THEN 15 WHEN v.search_metadata LIKE ? THEN 5 ELSE 0 END) AS rank
                  FROM video v
                  JOIN users u ON v.user_id = u.id
                  WHERE (v.title LIKE ? OR v.search_metadata LIKE ?) AND v.id != ?
@@ -127,7 +127,7 @@ class MediaLibrary {
             $prefix = "$q%";
             $stmt   = $this->conn->prepare(
                 "SELECT m.*, u.username AS uploader,
-                 (CASE WHEN m.title LIKE ? THEN 10 WHEN m.artist LIKE ? THEN 8 ELSE 0 END) AS rank
+                 (CASE WHEN m.title LIKE ? THEN 10 WHEN m.artist LIKE ? THEN 15 ELSE 0 END) AS rank
                  FROM music m
                  JOIN users u ON m.user_id = u.id
                  WHERE (m.title LIKE ? OR m.artist LIKE ? OR m.search_metadata LIKE ?) AND m.id != ?

@@ -2,8 +2,8 @@
 include '../auth/config.php';
 require_once '../modules/MediaLibrary.php';
 
-$offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 8;
-$limit  = 8;
+$offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 15;
+$limit  = 15;
 
 $library = new MediaLibrary($conn);
 $data    = $library->getVideos($limit, $offset);

@@ -8,7 +8,7 @@ include '../modules/helpers.php';
 require_once '../modules/MediaLibrary.php';
 
 $library    = new MediaLibrary($conn);
-$limit_init = 8;
+$limit_init = 15;
 $data       = $library->getVideos($limit_init, 0);
 $total      = $library->countVideos();
 ?>
