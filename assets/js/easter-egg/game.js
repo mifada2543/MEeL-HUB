@@ -15,35 +15,74 @@ const gameState = {
   gameSpeed: 6,
   baseSpeedSetting: 6,
   gravityValue: 0.6,
-  isTetoActive: false
+  isTetoActive: false,
 };
 
 const cheatState = {
   godMode: false,
   moonGravity: false,
-  hyperSpeed: false
+  hyperSpeed: false,
 };
 
 // Update Hi-Score awal
-document.getElementById("hiScoreText").innerText = String(gameState.hiScore).padStart(5, "0");
+document.getElementById("hiScoreText").innerText = String(
+  gameState.hiScore,
+).padStart(5, "0");
 
-// 2. CONFIGURATION UI CONTROLS (Single Source of Truth)
+// Daftarkan 'resetScoreBtn' di sini agar otomatis terkunci saat game dimainkan
 const GAME_CONTROLS = {
-  lockableToggles: ["themeToggle", "godModeToggle", "moonGravityToggle", "hyperSpeedToggle"]
+  lockableToggles: [
+    "themeToggle",
+    "godModeToggle",
+    "moonGravityToggle",
+    "hyperSpeedToggle",
+    "resetScoreBtn",
+  ],
 };
+// LOGIKA UNTUK RESET HIGH SCORE
+document.getElementById("resetScoreBtn").addEventListener("click", () => {
+  // Pastikan tidak sedang bermain untuk menghindari ketidaksengajaan tertekan
+  if (gameState.isPlaying) return;
 
+  const konfirmasi = confirm(
+    "Apakah kamu yakin ingin mereset High Score kembali ke nol?",
+  );
+  if (konfirmasi) {
+    localStorage.removeItem("miku_hi_score");
+    gameState.hiScore = 0;
+    document.getElementById("hiScoreText").innerText = "00000";
+  }
+});
+// LOGIKA MANUALLY STOP/RESET RUNNING GAME
+document.getElementById("resetGameBtn").addEventListener("click", () => {
+  // Validasi jika game memang sedang tidak berjalan
+  if (!gameState.isPlaying) {
+    alert("Tidak ada permainan yang sedang berjalan!");
+    return;
+  }
+
+  const konfirmasi = confirm(
+    "Apakah kamu ingin menghentikan permainan yang sedang berjalan?",
+  );
+  if (konfirmasi) {
+    endGame(); // Memicu kondisi Game Over agar panel cheat terbuka kembali
+  }
+});
 // Fungsi Helper untuk mengunci/membuka UI
 function setGameplayControlsLocked(isLocked) {
   GAME_CONTROLS.lockableToggles.forEach((id) => {
     const toggleBtn = document.getElementById(id);
     if (!toggleBtn) return;
-    
+
     toggleBtn.disabled = isLocked;
     if (isLocked) {
       toggleBtn.parentElement.classList.add("opacity-50", "cursor-not-allowed");
       toggleBtn.parentElement.classList.remove("cursor-pointer");
     } else {
-      toggleBtn.parentElement.classList.remove("opacity-50", "cursor-not-allowed");
+      toggleBtn.parentElement.classList.remove(
+        "opacity-50",
+        "cursor-not-allowed",
+      );
       toggleBtn.parentElement.classList.add("cursor-pointer");
     }
   });
@@ -71,11 +110,19 @@ function renderStartScreenChibi() {
 document.getElementById("themeToggle").addEventListener("change", (e) => {
   gameState.isTetoActive = e.target.checked;
   if (gameState.isTetoActive) {
-    activeImgRun1 = imgTetoRun1; activeImgRun2 = imgTetoRun2; activeImgJump = imgTetoJump;
-    activeImgDuck = imgTetoDuck; activeImgObstacleDarat = imgBaguette; activeImgObstacleUdara = imgSpeakerTeto;
+    activeImgRun1 = imgTetoRun1;
+    activeImgRun2 = imgTetoRun2;
+    activeImgJump = imgTetoJump;
+    activeImgDuck = imgTetoDuck;
+    activeImgObstacleDarat = imgBaguette;
+    activeImgObstacleUdara = imgSpeakerTeto;
   } else {
-    activeImgRun1 = imgMikuRun1; activeImgRun2 = imgMikuRun2; activeImgJump = imgMikuJump;
-    activeImgDuck = imgMikuDuck; activeImgObstacleDarat = imgNegi; activeImgObstacleUdara = imgSpeakerMiku;
+    activeImgRun1 = imgMikuRun1;
+    activeImgRun2 = imgMikuRun2;
+    activeImgJump = imgMikuJump;
+    activeImgDuck = imgMikuDuck;
+    activeImgObstacleDarat = imgNegi;
+    activeImgObstacleUdara = imgSpeakerMiku;
   }
 
   // Update UI Colors
@@ -89,21 +136,32 @@ document.getElementById("themeToggle").addEventListener("change", (e) => {
     root.style.setProperty("--theme-primary", "#FF5E7E");
     root.style.setProperty("--theme-glow", "rgba(255, 94, 126, 0.15)");
     root.style.setProperty("--theme-glow-heavy", "rgba(255, 94, 126, 0.4)");
-    root.style.setProperty("--theme-gradient", "linear-gradient(to right, #FF5E7E, #FFD700)");
-    title.className = "text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-pink-400 to-yellow-400 tracking-tight flex items-center gap-2 transition-all duration-300";
+    root.style.setProperty(
+      "--theme-gradient",
+      "linear-gradient(to right, #FF5E7E, #FFD700)",
+    );
+    title.className =
+      "text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-pink-400 to-yellow-400 tracking-tight flex items-center gap-2 transition-all duration-300";
     if (subTag) {
-      subTag.className = "text-[10px] tracking-normal px-2 py-0.5 rounded bg-rose-950/70 text-rose-300 border border-rose-500/30 font-mono";
+      subTag.className =
+        "text-[10px] tracking-normal px-2 py-0.5 rounded bg-rose-950/70 text-rose-300 border border-rose-500/30 font-mono";
     }
-    desc.innerText = "Lompati Roti Baguette lezat bersama sang Diva Chimera Teto!";
+    desc.innerText =
+      "Lompati Roti Baguette lezat bersama sang Diva Chimera Teto!";
     sync.className = "text-rose-400 transition-colors";
   } else {
     root.style.setProperty("--theme-primary", "#39C5BB");
     root.style.setProperty("--theme-glow", "rgba(57, 197, 187, 0.15)");
     root.style.setProperty("--theme-glow-heavy", "rgba(57, 197, 187, 0.4)");
-    root.style.setProperty("--theme-gradient", "linear-gradient(to right, #39C5BB, #FF4081)");
-    title.className = "text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-teal-300 to-pink-400 tracking-tight flex items-center gap-2 transition-all duration-300";
+    root.style.setProperty(
+      "--theme-gradient",
+      "linear-gradient(to right, #39C5BB, #FF4081)",
+    );
+    title.className =
+      "text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-teal-300 to-pink-400 tracking-tight flex items-center gap-2 transition-all duration-300";
     if (subTag) {
-      subTag.className = "text-[10px] tracking-normal px-2 py-0.5 rounded bg-teal-950/70 text-teal-300 border border-teal-500/30 font-mono";
+      subTag.className =
+        "text-[10px] tracking-normal px-2 py-0.5 rounded bg-teal-950/70 text-teal-300 border border-teal-500/30 font-mono";
     }
     desc.innerText = "Lompati Negi bersama Diva Virtual ter-HD abad ini!";
     sync.className = "text-teal-400 transition-colors";
@@ -117,12 +175,19 @@ document.getElementById("themeToggle").addEventListener("change", (e) => {
 });
 
 // Listener Cheat
-document.getElementById("godModeToggle").addEventListener("change", (e) => cheatState.godMode = e.target.checked);
-document.getElementById("hyperSpeedToggle").addEventListener("change", (e) => cheatState.hyperSpeed = e.target.checked);
+document
+  .getElementById("godModeToggle")
+  .addEventListener("change", (e) => (cheatState.godMode = e.target.checked));
+document
+  .getElementById("hyperSpeedToggle")
+  .addEventListener(
+    "change",
+    (e) => (cheatState.hyperSpeed = e.target.checked),
+  );
 document.getElementById("moonGravityToggle").addEventListener("change", (e) => {
   cheatState.moonGravity = e.target.checked;
   gameState.gravityValue = cheatState.moonGravity ? 0.25 : 0.6; // Gravitasi lebih pelan
-  if(miku) miku.gravity = gameState.gravityValue;
+  if (miku) miku.gravity = gameState.gravityValue;
 });
 
 // 5. GAME CLASSES
@@ -130,7 +195,7 @@ class Miku {
   constructor() {
     this.x = 50;
     this.y = 150;
-    this.width = 54; 
+    this.width = 54;
     this.height = 66;
     this.vy = 0;
     this.gravity = gameState.gravityValue;
@@ -203,9 +268,17 @@ class Obstacle {
       this.y = Math.random() > 0.5 ? 135 : 170;
     }
   }
-  update() { this.x -= gameState.gameSpeed; }
+  update() {
+    this.x -= gameState.gameSpeed;
+  }
   draw() {
-    ctx.drawImage(this.type === "darat" ? activeImgObstacleDarat : activeImgObstacleUdara, this.x, this.y, this.width, this.height);
+    ctx.drawImage(
+      this.type === "darat" ? activeImgObstacleDarat : activeImgObstacleUdara,
+      this.x,
+      this.y,
+      this.width,
+      this.height,
+    );
   }
 }
 
@@ -219,14 +292,30 @@ class BackgroundItem {
       this.size = 32 + Math.random() * 38;
     }
   }
-  update() { if (this.type === "cloud") this.x -= this.speed; }
+  update() {
+    if (this.type === "cloud") this.x -= this.speed;
+  }
   draw() {
     if (this.type === "cloud") {
-      ctx.fillStyle = gameState.isTetoActive ? "rgba(255, 94, 126, 0.12)" : "rgba(57, 197, 187, 0.12)";
+      ctx.fillStyle = gameState.isTetoActive
+        ? "rgba(255, 94, 126, 0.12)"
+        : "rgba(57, 197, 187, 0.12)";
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
-      ctx.arc(this.x + this.size * 0.4, this.y - this.size * 0.1, this.size / 3, 0, Math.PI * 2);
-      ctx.arc(this.x - this.size * 0.4, this.y + this.size * 0.05, this.size / 3, 0, Math.PI * 2);
+      ctx.arc(
+        this.x + this.size * 0.4,
+        this.y - this.size * 0.1,
+        this.size / 3,
+        0,
+        Math.PI * 2,
+      );
+      ctx.arc(
+        this.x - this.size * 0.4,
+        this.y + this.size * 0.05,
+        this.size / 3,
+        0,
+        Math.PI * 2,
+      );
       ctx.fill();
     }
   }
@@ -272,7 +361,9 @@ function endGame() {
   if (finalScore > gameState.hiScore) {
     gameState.hiScore = finalScore;
     localStorage.setItem("miku_hi_score", gameState.hiScore);
-    document.getElementById("hiScoreText").innerText = String(gameState.hiScore).padStart(5, "0");
+    document.getElementById("hiScoreText").innerText = String(
+      gameState.hiScore,
+    ).padStart(5, "0");
   }
 
   // Buka semua tombol kontrol UI
@@ -294,7 +385,9 @@ function gameLoop() {
   ctx.fillStyle = "#080b11";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.strokeStyle = gameState.isTetoActive ? "rgba(255, 94, 126, 0.25)" : "rgba(57, 197, 187, 0.25)";
+  ctx.strokeStyle = gameState.isTetoActive
+    ? "rgba(255, 94, 126, 0.25)"
+    : "rgba(57, 197, 187, 0.25)";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(0, 220);
@@ -302,7 +395,9 @@ function gameLoop() {
   ctx.stroke();
 
   let gridLineOffset = (Date.now() / 25) % 40;
-  ctx.strokeStyle = gameState.isTetoActive ? "rgba(255, 94, 126, 0.09)" : "rgba(57, 197, 187, 0.09)";
+  ctx.strokeStyle = gameState.isTetoActive
+    ? "rgba(255, 94, 126, 0.09)"
+    : "rgba(57, 197, 187, 0.09)";
   for (let x = -gridLineOffset; x < canvas.width; x += 40) {
     ctx.beginPath();
     ctx.moveTo(x, 220);
@@ -312,7 +407,8 @@ function gameLoop() {
 
   if (gameState.isPlaying && !gameState.isGameOver) {
     bgItems.forEach((item, index) => {
-      item.update(); item.draw();
+      item.update();
+      item.draw();
       if (item.x + 90 < 0) {
         bgItems.splice(index, 1);
         bgItems.push(new BackgroundItem("cloud"));
@@ -324,26 +420,37 @@ function gameLoop() {
       const type = Math.random() > 0.4 ? "darat" : "udara";
       obstacles.push(new Obstacle(type));
       obstacleTimer = 0;
-      let rawInterval = 100 - Math.floor(gameState.gameSpeed * 2.2) + Math.floor(Math.random() * 45);
+      let rawInterval =
+        100 -
+        Math.floor(gameState.gameSpeed * 2.2) +
+        Math.floor(Math.random() * 45);
       nextObstacleInterval = Math.max(50, rawInterval);
     }
 
     obstacles.forEach((obs, index) => {
-      obs.update(); obs.draw();
+      obs.update();
+      obs.draw();
       if (obs.x + obs.width < 0) obstacles.splice(index, 1);
-      
+
       // Implementasi tabrakan dan God Mode
       if (checkCollision(miku, obs) && !cheatState.godMode) {
         endGame();
       }
     });
 
-    miku.update(); miku.draw();
+    miku.update();
+    miku.draw();
 
     gameState.score += cheatState.hyperSpeed ? 0.45 : 0.15;
-    document.getElementById("scoreText").innerText = String(Math.floor(gameState.score)).padStart(5, "0");
+    document.getElementById("scoreText").innerText = String(
+      Math.floor(gameState.score),
+    ).padStart(5, "0");
 
-    if (!cheatState.hyperSpeed && Math.floor(gameState.score) % 100 === 0 && Math.floor(gameState.score) > 0) {
+    if (
+      !cheatState.hyperSpeed &&
+      Math.floor(gameState.score) % 100 === 0 &&
+      Math.floor(gameState.score) > 0
+    ) {
       gameState.gameSpeed += 0.18;
     }
   } else {
@@ -376,15 +483,20 @@ window.addEventListener("keyup", (e) => {
   if (e.code === "ArrowDown" && gameState.isPlaying && miku) miku.duck(false);
 });
 
-canvas.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  if (!gameState.isPlaying) resetGame();
-  else miku.jump();
-}, { passive: false });
+canvas.addEventListener(
+  "touchstart",
+  (e) => {
+    e.preventDefault();
+    if (!gameState.isPlaying) resetGame();
+    else miku.jump();
+  },
+  { passive: false },
+);
 
 document.getElementById("mobileJump").addEventListener("touchstart", (e) => {
   e.preventDefault();
-  if (!gameState.isPlaying) resetGame(); else miku.jump();
+  if (!gameState.isPlaying) resetGame();
+  else miku.jump();
 });
 
 document.getElementById("mobileDuck").addEventListener("touchstart", (e) => {

@@ -154,7 +154,7 @@ $counts  = $library->getCounts();
         <!-- HERO -->
         <div class="text-center mb-20">
             <div class="inline-block mb-6">
-                <img src="assets/MEeL.png" class="w-14 h-14 object-contain mx-auto opacity-80 hover:opacity-100 transition" alt="MEeL">
+                <img onclick="window.location.href='easter-egg/'" src="assets/MEeL.png" class="w-14 h-14 object-contain mx-auto opacity-80 hover:opacity-100 transition" alt="MEeL">
             </div>
             <div class="station-id mb-5">Local Media Station</div>
             <h1 class="hero-title">MEeL <span class="accent">HUB</span></h1>
