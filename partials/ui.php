@@ -10,7 +10,7 @@
     inset: 0;
     background: rgba(5, 7, 12, 0.96);
     z-index: 9999;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     font-family: ui-monospace, 'Cascadia Code', 'SF Mono', monospace;
@@ -25,8 +25,82 @@
   }
 
   #meel-card {
-    width: 340px;
+    width: 420px;
     text-align: center;
+  }
+
+  /* ── Download phase ── */
+  #meel-phase-download .dl-icon-wrap {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: rgba(59, 130, 246, .08);
+    border: 1px solid rgba(59, 130, 246, .18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin: 0 auto;
+  }
+
+  #meel-phase-download .dl-icon-wrap::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 20px;
+    border: 1px solid rgba(59, 130, 246, .35);
+    animation: meel-ping 2s ease-out infinite;
+  }
+
+  @keyframes meel-ping {
+
+    0%,
+    100% {
+      opacity: .4;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+  }
+
+  .dl-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, .06);
+    border-radius: 99px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .dl-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .dl-stat {
+    background: rgba(255, 255, 255, .03);
+    border: 1px solid rgba(255, 255, 255, .07);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+
+  .dl-stat-label {
+    font-size: 9px;
+    letter-spacing: .16em;
+    color: rgba(255, 255, 255, .2);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .dl-stat-val {
+    font-size: 13px;
+    color: rgba(255, 255, 255, .6);
   }
 
   .meel-phase {
@@ -194,8 +268,10 @@
   (function() {
     var _segsBuilt = false;
     var _errorTimeout = null;
-    
+
     window.meelPhase = function(phase) {
+      var overlay = document.getElementById('meel-overlay');
+      if (overlay) overlay.style.display = 'flex';
       var phases = ['download', 'transcode', 'sprite', 'done', 'error'];
       phases.forEach(function(p) {
         var el = document.getElementById('meel-phase-' + p);
@@ -216,16 +292,34 @@
         }
       }
     };
-    
-    window.meelDlPct = function(pct, eta) {
+
+    window.meelDlPct = function(pct, eta, speed, size, frag) {
       var b = document.getElementById('meel-dl-bar');
       var t = document.getElementById('meel-dl-pct');
       var e = document.getElementById('meel-dl-eta');
+      var sp = document.getElementById('meel-dl-speed');
+      var sz = document.getElementById('meel-dl-size');
+      var fr = document.getElementById('meel-dl-frag');
       if (b) b.style.width = pct + '%';
       if (t) t.textContent = pct + '%';
       if (e && eta) e.textContent = eta;
+      if (sp && speed) sp.textContent = speed;
+      if (sz && size) sz.textContent = size;
+      if (fr && frag) fr.textContent = frag;
     };
-    
+
+    window.meelDlInfo = function(url) {
+      var el = document.getElementById('meel-dl-url');
+      if (el && url) {
+        try {
+          var u = new URL(url);
+          el.textContent = u.hostname + u.pathname.slice(0, 50);
+        } catch (e) {
+          el.textContent = url.slice(0, 60);
+        }
+      }
+    };
+
     window.meelTcPct = function(pct, label) {
       var b = document.getElementById('meel-tc-bar');
       var t = document.getElementById('meel-tc-pct');
@@ -237,14 +331,14 @@
         if (s) s.classList.add('done');
       }
     };
-    
+
     window.meelSpPct = function(pct, label) {
       var b = document.getElementById('meel-sp-bar');
       var t = document.getElementById('meel-sp-pct');
       if (b) b.style.width = pct + '%';
       if (t && label) t.textContent = label;
     };
-    
+
     window.meelDone = function(title, homeUrl) {
       meelPhase('done');
       var el = document.getElementById('meel-done-title');
@@ -254,40 +348,40 @@
         if (btn) btn.href = homeUrl;
       }
     };
-    
+
     window.meelError = function(log) {
       // Clear any existing error timeout
       if (_errorTimeout) clearTimeout(_errorTimeout);
-      
+
       // Ganti fase ke error
       meelPhase('error');
-      
+
       // Set error state untuk dark background
       var overlay = document.getElementById('meel-overlay');
       if (overlay) {
         overlay.classList.add('error-state');
       }
-      
+
       // Set error message
       var el = document.getElementById('meel-error-log');
       if (el) el.textContent = log;
-      
+
       console.error('MEeL Error:', log);
     };
-    
+
     // Safety: Catch global errors dan tampilkan di overlay
     window.addEventListener('error', function(event) {
       console.error('Global JavaScript Error:', event.error);
       meelError('Kesalahan sistem: ' + (event.error?.message || 'Unknown error'));
     });
-    
+
     // Safety: Catch unhandled promise rejections
     window.addEventListener('unhandledrejection', function(event) {
       console.error('Unhandled Promise:', event.reason);
       meelError('Kesalahan sistem: ' + (event.reason?.message || String(event.reason)));
     });
   })();
-  
+
   window.meelDoneTranscode = function(title, downloadUrl) {
     // 1. Ganti state ke 'done'
     meelPhase('done');
@@ -329,18 +423,42 @@
 
     <!-- ── FASE: DOWNLOAD ── -->
     <div class="meel-phase" id="meel-phase-download">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="meel-spinner"></div>
-        <span class="meel-label" style="color:#3b82f6">Mengunduh</span>
+      <div class="dl-icon-wrap">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
       </div>
-      <div class="meel-track">
-        <div class="meel-bar" id="meel-dl-bar" style="background:#3b82f6"></div>
-        <div class="meel-scan"></div>
+      <div>
+        <div class="meel-label" style="color:#3b82f6;margin-bottom:6px;">Mengunduh</div>
+        <div id="meel-dl-url" style="font-size:11px;color:rgba(255,255,255,.28);letter-spacing:.04em;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
       </div>
-      <div class="meel-pct">
-        <span id="meel-dl-pct">0%</span>
-        <span id="meel-dl-eta" style="color:rgba(255,255,255,.15)"></span>
+      <div style="width:100%;">
+        <div class="dl-track" style="margin-bottom:10px;">
+          <div class="meel-bar" id="meel-dl-bar" style="background:#3b82f6"></div>
+          <div class="meel-scan"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.1em;color:rgba(255,255,255,.25);">
+          <span id="meel-dl-pct" style="color:rgba(255,255,255,.5);">0%</span>
+          <span id="meel-dl-eta"></span>
+        </div>
       </div>
+      <div class="dl-stats-grid">
+        <div class="dl-stat">
+          <div class="dl-stat-label">Ukuran</div>
+          <div class="dl-stat-val" id="meel-dl-size">—</div>
+        </div>
+        <div class="dl-stat">
+          <div class="dl-stat-label">Kecepatan</div>
+          <div class="dl-stat-val" id="meel-dl-speed">—</div>
+        </div>
+        <div class="dl-stat">
+          <div class="dl-stat-label">Fragmen</div>
+          <div class="dl-stat-val" id="meel-dl-frag">—</div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,.15);letter-spacing:.08em;font-style:italic;">Jangan tutup tab ini selama proses berlangsung</div>
     </div>
 
     <!-- ── FASE: TRANSCODE HLS ── -->

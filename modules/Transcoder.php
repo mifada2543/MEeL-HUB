@@ -280,6 +280,10 @@ class Transcoder
         // Tampilkan overlay sebelum eksekusi
         $this->showMEeLOverlay('download');
 
+        // Kirim URL ke overlay
+        echo "<script>meelDlInfo(" . json_encode($url) . ");</script>";
+        flush();
+
         $error_log = "";
         $start     = time();
         // Tambahkan -N 4 (4 koneksi paralel untuk mempercepat download, aman untuk server single-user)
@@ -294,6 +298,9 @@ class Transcoder
 
         echo str_repeat(' ', 1024);
 
+        // Contoh output yt-dlp:
+        // [download]  63.2% of   45.23MiB at    4.20MiB/s ETA 00:42 (frag 3/5)
+        $frag_total = 0;
         while (!feof($handle)) {
             if (time() - $start > self::DOWNLOAD_TIMEOUT) {
                 $error_log .= "\n[ERROR] Timeout exceeded";
@@ -304,8 +311,18 @@ class Transcoder
 
             $error_log .= $line;
 
-            if (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%/', $line, $m)) {
-                $pct = (int)$m[1];
+            if (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%\s+of\s+([\d.]+\s*\S+)\s+at\s+([\d.]+\s*\S+\/s)(?:\s+ETA\s+([\d:]+))?(?:\s+\(frag\s+(\d+)\/(\d+)\))?/', $line, $m)) {
+                $pct   = (int)$m[1];
+                $size  = $m[2]  ?? '';
+                $speed = $m[3]  ?? '';
+                $eta   = isset($m[4]) ? 'ETA ' . $m[4] : '';
+                $frag  = (isset($m[5], $m[6]) && $m[6]) ? $m[5] . ' / ' . $m[6] : '';
+                $args  = json_encode($pct) . ',' . json_encode($eta) . ',' . json_encode($speed) . ',' . json_encode($size) . ',' . json_encode($frag);
+                echo "<script>meelDlPct($args);</script>";
+                flush();
+            } elseif (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%/', $line, $m)) {
+                // Fallback: hanya persentase
+                $pct  = (int)$m[1];
                 echo "<script>meelDlPct($pct);</script>";
                 flush();
             }
