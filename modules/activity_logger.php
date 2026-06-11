@@ -11,7 +11,91 @@ function get_real_ip()
     return $_SERVER["REMOTE_ADDR"]; // Fallback (misal akses lokal)
 }
 
-$user_ip = get_real_ip(); // <-- Ini "Nomor KTP" yang kita cari!
+// 2. Fungsi Deteksi Tipe Akses & Validasi IP
+function validate_and_format_ip($ip)
+{
+    // Normalize: hapus whitespace
+    $ip = trim($ip);
+    
+    // Filter loopback address (IPv4: 127.x.x.x)
+    if (strpos($ip, '127.') === 0) {
+        return ['ip' => 'LOCAL', 'display' => 'Local Access (IPv4)', 'is_local' => true, 'version' => 'ipv4'];
+    }
+    
+    // Filter loopback address IPv6 (::1)
+    if ($ip === '::1') {
+        return ['ip' => 'LOCAL', 'display' => 'Local Access (IPv6)', 'is_local' => true, 'version' => 'ipv6'];
+    }
+    
+    // Handle IPv4-mapped IPv6 addresses (::ffff:192.168.1.1)
+    if (strpos($ip, '::ffff:') === 0) {
+        $ipv4 = substr($ip, 7); // Extract IPv4 part
+        if (filter_var($ipv4, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return ['ip' => $ipv4, 'display' => $ipv4 . ' (IPv4-mapped)', 'is_local' => false, 'version' => 'ipv4-mapped'];
+        }
+    }
+    
+    // Filter localhost
+    if ($ip === 'localhost') {
+        return ['ip' => 'LOCAL', 'display' => 'Local Access (localhost)', 'is_local' => true, 'version' => 'hostname'];
+    }
+    
+    // Validasi IPv6 format
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+        return ['ip' => $ip, 'display' => $ip . ' (IPv6)', 'is_local' => false, 'version' => 'ipv6'];
+    }
+    
+    // Validasi IPv4 format
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+        return ['ip' => $ip, 'display' => $ip . ' (IPv4)', 'is_local' => false, 'version' => 'ipv4'];
+    }
+    
+    return ['ip' => 'Unknown', 'display' => 'Unknown', 'is_local' => false, 'version' => 'unknown'];
+}
+
+// 3. Fungsi Deteksi Metode Akses
+function get_access_method()
+{
+    if (isset($_SERVER["HTTP_CF_CONNECTING_IP"])) {
+        // Cek apakah via Cloudflare tunnel
+        if (strpos($_SERVER["HTTP_HOST"] ?? '', 'trycloudflare.com') !== false) {
+            return 'Cloudflare Tunnel';
+        }
+        return 'Cloudflare CDN';
+    }
+    if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
+        return 'Proxy/Forwarded';
+    }
+    if (isset($_SERVER["HTTP_X_REAL_IP"])) {
+        return 'Nginx Proxy';
+    }
+    if (isset($_SERVER["HTTP_VIA"])) {
+        return 'HTTP Proxy';
+    }
+    return 'Direct';
+}
+
+// 4. Fungsi Deteksi IPv6 vs IPv4 Access
+function get_connection_protocol()
+{
+    $ip = get_real_ip();
+    
+    // Check if IPv6 (includes IPv4-mapped IPv6)
+    if (strpos($ip, ':') !== false) {
+        return 'IPv6';
+    }
+    
+    return 'IPv4';
+}
+
+$user_ip_data = validate_and_format_ip(get_real_ip());
+$user_ip = $user_ip_data['ip'];
+$access_method = get_access_method();
+$connection_protocol = get_connection_protocol();
+
+// Debug info (optional, bisa di-remove nanti)
+// Uncomment line di bawah untuk debugging
+// error_log("[MEeL-Logger] IP: $user_ip | Raw: " . get_real_ip() . " | Protocol: $connection_protocol | Method: $access_method");
 
 if (isset($conn)) {
 
@@ -73,6 +157,7 @@ if (isset($conn)) {
     }
     $ua_raw = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
     $host = $_SERVER['HTTP_HOST'] ?? 'Local';
+    $access_via = $access_method; // Gunakan metode akses, bukan hanya hostname
 
     // Deteksi Device
     $device = "Unknown";
@@ -120,7 +205,7 @@ if (isset($conn)) {
 
         // 3. UPDATE AKTIVITAS (Lanjutkan proses logger asli kamu)
         $stmt = $conn->prepare("UPDATE users SET last_page = ?, user_agent = ?, access_via = ?, ip_address = ?, last_activity = NOW() WHERE id = ?");
-        $stmt->bind_param("ssssi", $current_page, $device, $host, $user_ip, $uid);
+        $stmt->bind_param("ssssi", $current_page, $device, $access_via, $user_ip, $uid);
         $stmt->execute();
     } else {
         // ... (Logika Guest tetap sama) ...
@@ -133,12 +218,12 @@ if (isset($conn)) {
             $role = 'guest';
             // Insert Guest Baru dengan IP
             $ins = $conn->prepare("INSERT INTO users (username, role, last_page, user_agent, access_via, ip_address, last_activity) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-            $ins->bind_param("ssssss", $guest_id, $role, $current_page, $device, $host, $user_ip);
+            $ins->bind_param("ssssss", $guest_id, $role, $current_page, $device, $access_via, $user_ip);
             $ins->execute();
         } else {
             // Update Guest Lama dengan IP terbaru
             $upd = $conn->prepare("UPDATE users SET last_page = ?, user_agent = ?, access_via = ?, ip_address = ?, last_activity = NOW() WHERE username = ?");
-            $upd->bind_param("sssss", $current_page, $device, $host, $user_ip, $guest_id);
+            $upd->bind_param("sssss", $current_page, $device, $access_via, $user_ip, $guest_id);
             $upd->execute();
         }
     }

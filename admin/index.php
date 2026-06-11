@@ -428,17 +428,42 @@ include '../controllers/fun.php';
                                             <?= htmlspecialchars($row['user_agent']) ?>
                                         </span>
 
-                                        <div class="flex items-center gap-1 mt-1">
-                                            <code class="text-[10px] bg-gray-800 text-cyan-400 px-1 rounded border border-gray-700 font-mono select-all">
-                                                <?= htmlspecialchars($row['ip_address'] ?? 'Unknown') ?>
+                                        <div class="flex items-center gap-1 mt-1 flex-wrap">
+                                            <?php
+                                            $ip_display = $row['ip_address'] ?? 'Unknown';
+                                            $is_local = ($ip_display === 'LOCAL' || strpos($ip_display, 'Local') !== false);
+                                            
+                                            // Deteksi tipe IP
+                                            $ip_type = 'Unknown';
+                                            $ip_color_class = 'bg-gray-800 text-gray-400 border-gray-700';
+                                            if ($is_local) {
+                                                $ip_color_class = 'bg-amber-800 text-amber-300 border-amber-700';
+                                                $ip_type = 'Local';
+                                            } elseif (filter_var($ip_display, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                                                $ip_color_class = 'bg-blue-800 text-blue-300 border-blue-700';
+                                                $ip_type = 'IPv6';
+                                            } elseif (filter_var($ip_display, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                                                $ip_color_class = 'bg-cyan-800 text-cyan-300 border-cyan-700';
+                                                $ip_type = 'IPv4';
+                                            }
+                                            
+                                            $ip_badge_text = $is_local ? 'LOCAL' : $ip_display;
+                                            ?>
+                                            <code class="text-[10px] <?= $ip_color_class ?> px-2 py-0.5 rounded border font-mono select-all">
+                                                <?= htmlspecialchars($ip_badge_text) ?>
                                             </code>
 
-                                            <?php if (!empty($row['ip_address']) && $row['ip_address'] !== 'Unknown'): ?>
+                                            <?php if ($is_local): ?>
+                                                <span class="text-[7px] bg-amber-500/10 text-amber-500 px-1.5 rounded border border-amber-500/30 uppercase font-black tracking-wider">🏠 Lokal</span>
+                                            <?php elseif ($ip_type === 'IPv6'): ?>
+                                                <span class="text-[7px] bg-blue-500/10 text-blue-500 px-1.5 rounded border border-blue-500/30 uppercase font-black tracking-wider">🌐 IPv6</span>
+                                            <?php elseif ($ip_type === 'IPv4'): ?>
+                                                <span class="text-[7px] bg-green-500/10 text-green-500 px-1.5 rounded border border-green-500/30 uppercase font-black tracking-wider">🌐 IPv4</span>
                                             <?php endif; ?>
                                         </div>
 
-                                        <span class="text-[9px] text-gray-600">
-                                            <?= htmlspecialchars($row['access_via']) ?>
+                                        <span class="text-[9px] text-gray-500 font-semibold mt-1">
+                                            🔗 <?= htmlspecialchars($row['access_via']) ?>
                                         </span>
                                     </div>
                                 </td>
