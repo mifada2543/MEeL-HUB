@@ -146,7 +146,7 @@ switch ($ext) {
     </nav>
 
     <main id="main-content" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
-        <div class="flex-1 space-y-5 px-4 sm:px-5">
+        <div class="flex-1 min-w-0 space-y-5 px-4 sm:px-5">
             <div id="player-container" class="bg-[#0d1017] border-0 rounded-none sm:rounded-none overflow-hidden">
                 <div id="resume-modal" class="hidden rounded-xl sm:rounded-2xl">
                     <div class="bg-[#141820] border border-orange-500/25 border-t-2 border-t-orange-500 rounded-2xl p-6 max-w-xs w-full mx-4 text-center">
