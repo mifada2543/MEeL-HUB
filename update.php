@@ -2,9 +2,14 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 include 'auth/config.php';
+require_once 'controllers/UpdateManager.php';
 
-$sidebar_data   = $conn->query("SELECT * FROM sidebar_settings WHERE id = 1")->fetch_assoc();
-$result_updates = $conn->query("SELECT * FROM updates ORDER BY created_at DESC");
+$um = new UpdateManager($conn);
+$um->handle();
+
+$flash        = $um->getFlash();
+$sidebar_data = $um->getSidebarData();
+$updates      = $um->getUpdates();
 
 $is_logged_in = isset($_SESSION['user_id']);
 $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
@@ -27,7 +32,6 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
 <body>
     <div class="wrap">
 
-        <!-- MASTHEAD -->
         <header class="masthead">
             <a href="index.php" class="masthead-logo" title="Beranda">
                 <img src="assets/logo.png" alt="MEeL">
@@ -43,7 +47,6 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
             </div>
         </header>
 
-        <!-- ADMIN BAR -->
         <?php if ($is_admin): ?>
             <div class="admin-bar">
                 <span class="admin-badge">
@@ -69,32 +72,64 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
             </div>
         <?php endif; ?>
 
-        <!-- MAIN GRID -->
         <div class="main-grid">
 
-            <!-- FEED -->
             <main>
-                <?php if ($result_updates && $result_updates->num_rows > 0): ?>
-                    <?php while ($row = $result_updates->fetch_assoc()): ?>
+                <?php if ($flash): ?>
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px;margin-bottom:18px;font-size:12px;font-weight:600;
+                    <?= $flash['type'] === 'success'
+                        ? 'background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.22);color:#22c55e;'
+                        : 'background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.22);color:#ef4444;' ?>">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <?php if ($flash['type'] === 'success'): ?>
+                                <polyline points="20 6 9 17 4 12" />
+                            <?php else: ?>
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            <?php endif; ?>
+                        </svg>
+                        <?= htmlspecialchars($flash['msg']) ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($updates): ?>
+                    <?php foreach ($updates as $row): ?>
                         <article class="entry">
                             <div class="entry-header">
                                 <div style="display:flex;align-items:center;gap:.75rem">
                                     <span class="entry-version"><?= htmlspecialchars($row['version']) ?></span>
                                     <span class="entry-label">System Update</span>
                                 </div>
-                                <span class="entry-date"><?= date('d M Y', strtotime($row['created_at'])) ?></span>
+                                <div style="display:flex;align-items:center;gap:1rem">
+                                    <span class="entry-date"><?= date('d M Y', strtotime($row['created_at'])) ?></span>
+
+                                    <?php if ($is_admin): ?>
+                                        <div style="display:flex;align-items:center;gap:.5rem">
+                                            <button onclick="openEditModal(<?= htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') ?>)" style="background:none;border:none;cursor:pointer;color:#60a5fa;" title="Edit Update">
+                                                <i data-lucide="edit-2" style="width:14px;height:14px;"></i>
+                                            </button>
+                                            <form action="update.php" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus update versi <?= htmlspecialchars($row['version']) ?> ini?');" style="display:inline;">
+                                                <input type="hidden" name="action" value="delete_update">
+                                                <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                                                <button type="submit" style="background:none;border:none;cursor:pointer;color:#ef4444;" title="Hapus Update">
+                                                    <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <div class="entry-body">
                                 <?= nl2br(htmlspecialchars($row['content'])) ?>
                             </div>
                         </article>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 <?php else: ?>
                     <div class="empty">Belum ada catatan update tersedia.</div>
                 <?php endif; ?>
             </main>
 
-            <!-- SIDEBAR -->
             <aside class="sidebar">
                 <div class="sidebar-card">
                     <div class="tab-nav">
@@ -152,14 +187,13 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
         </div>
     </div>
 
-    <!-- ══════════ MODALS ══════════ -->
     <?php if ($is_admin): ?>
 
-        <!-- Modal: Tambah Update -->
         <div id="modal-add-update" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-add-update')">
             <div class="modal-box">
                 <div class="modal-title">TAMBAH <span>UPDATE</span></div>
-                <form action="proses_update.php" method="POST">
+                <form action="update.php" method="POST">
+                    <input type="hidden" name="action" value="update">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
                         <div>
                             <label class="f-label">Versi</label>
@@ -183,11 +217,39 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
             </div>
         </div>
 
-        <!-- Modal: Edit Sidebar -->
+        <div id="modal-edit-update" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-edit-update')">
+            <div class="modal-box">
+                <div class="modal-title">EDIT <span>UPDATE</span></div>
+                <form action="update.php" method="POST">
+                    <input type="hidden" name="action" value="edit_update">
+                    <input type="hidden" name="id" id="edit-id">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+                        <div>
+                            <label class="f-label">Versi</label>
+                            <input type="text" name="version" id="edit-version" class="f-input" required>
+                        </div>
+                        <div>
+                            <label class="f-label">Tanggal</label>
+                            <input type="date" name="created_at" id="edit-created-at" class="f-input" required>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:1.5rem">
+                        <label class="f-label">Catatan Perubahan</label>
+                        <textarea name="content" id="edit-content" class="f-textarea" rows="6" required></textarea>
+                    </div>
+                    <div style="display:flex;gap:.75rem">
+                        <button type="submit" class="btn-primary">SIMPAN PERUBAHAN</button>
+                        <button type="button" class="btn-ghost" onclick="closeModal('modal-edit-update')">Batal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div id="modal-edit-sidebar" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-edit-sidebar')">
             <div class="modal-box">
                 <div class="modal-title">EDIT <span>SIDEBAR</span></div>
-                <form action="proses_sidebar.php" method="POST">
+                <form action="update.php" method="POST">
+                    <input type="hidden" name="action" value="sidebar">
                     <div style="margin-bottom:1rem">
                         <label class="f-label" style="color:var(--orange)">Konten Penting</label>
                         <textarea name="important" class="f-textarea" rows="4"><?= htmlspecialchars($sidebar_data['important_content'] ?? '') ?></textarea>
@@ -240,6 +302,28 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
             Object.entries(panes).forEach(([k, el]) => el.classList.toggle('active', k === t));
             btns.important.className = 'tab-btn' + (t === 'important' ? ' active-orange' : '');
             btns.announcement.className = 'tab-btn' + (t === 'announcement' ? ' active-blue' : '');
+        }
+
+        // Fungsi JavaScript Baru untuk Mengisi Data & Membuka Modal Edit Update
+        function openEditModal(data) {
+            // Helper untuk decode HTML entities (menghindari teks mentah &lt;script&gt; ter-double encode saat di-save ulang)
+            const decodeHtml = (html) => {
+                const txt = document.createElement("textarea");
+                txt.innerHTML = html;
+                return txt.value;
+            };
+
+            document.getElementById('edit-id').value = data.id;
+            document.getElementById('edit-version').value = decodeHtml(data.version);
+            document.getElementById('edit-content').value = decodeHtml(data.content);
+
+            // Format tanggal agar sesuai dengan input type="date" (YYYY-MM-DD)
+            if (data.created_at) {
+                const dateOnly = data.created_at.split(' ')[0];
+                document.getElementById('edit-created-at').value = dateOnly;
+            }
+
+            openModal('modal-edit-update');
         }
     </script>
     <?php include 'partials/footer.php'; ?>
