@@ -138,7 +138,7 @@ $rekom            = $viewer->getRecommendations(15);
 
     <div id="app-content-grid" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
         <div id="left-column" class="flex-1 space-y-4 sm:space-y-5 px-4 sm:px-5">
-            <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl">
+            <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl aspect-video w-full">
                 <?php
                 $video_src = "upload/" . $v['filename'];
                 $is_hls = (pathinfo($video_src, PATHINFO_EXTENSION) === 'm3u8');

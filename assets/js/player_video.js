@@ -2,7 +2,7 @@
 const config = window.playerConfig || {};
 
 // 1. Deklarasi Variabel Utama
-const videoElement = document.getElementById("main-video");
+let videoElement;
 let videoSrc = config.videoSrc || "";
 let isHls = config.isHls || false;
 let vttSrc = config.vttSrc || "";
@@ -11,6 +11,21 @@ let storageKeyVideo = `video_pos_${videoId}`;
 
 let player;
 let hls;
+let isAutoRecovering = false;
+let isRecovering = false;
+let isCheckingStatus = false;
+
+// Variabel Kontrol Pemulihan & Cooldown
+let recoveryDelay = 10000; // Mulai dari 10 detik
+let lastRecoveryTime = 0;
+let recoveryTimeoutId = null;
+let playbackStartTimestamp = 0;
+
+// Detektor stuck
+let lastPlayTime = -1;
+let lastTimeUpdateTimestamp = Date.now();
+let stuckCheckInterval = null;
+
 const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
 // Inisialisasi Icon
@@ -55,55 +70,234 @@ const plyrOptions = {
   },
 };
 
-// 3. Inisialisasi Engine Pemutar
-if (isHls && window.Hls && Hls.isSupported()) {
-  hls = new Hls({
-    maxBufferLength: 30,
-    enableWorker: true,
-    backBufferLength: 60,
-  });
-
-  hls.loadSource(videoSrc);
-  hls.attachMedia(videoElement);
-
-  hls.on(Hls.Events.MANIFEST_PARSED, function () {
-    const availableQualities = hls.levels.map((l) => l.bitrate);
-
-    if (availableQualities.length > 1) {
-      plyrOptions.quality = {
-        default: availableQualities[0],
-        options: availableQualities,
-        forced: true,
-        onChange: (newBitrate) => {
-          const levelIndex = hls.levels.findIndex(
-            (l) => l.bitrate === newBitrate,
-          );
-          hls.currentLevel = levelIndex;
-        },
-      };
-
-      plyrOptions.i18n = {
-        qualityLabel: {},
-      };
-
-      hls.levels.forEach((level) => {
-        const label = level.name
-          ? level.name
-          : `${level.height}p (${Math.round(level.bitrate / 1000)}kbps)`;
-        plyrOptions.i18n.qualityLabel[level.bitrate] = label;
-      });
+function destroyPlayer() {
+  stopStuckDetector();
+  if (player) {
+    try {
+      player.destroy();
+    } catch (e) {
+      console.error("Gagal destroy player:", e);
     }
-
-    if (!player) {
-      player = new Plyr(videoElement, plyrOptions);
-      setupMeelPlayerEvents();
+    player = null;
+  }
+  if (hls) {
+    try {
+      hls.destroy();
+    } catch (e) {
+      console.error("Gagal destroy hls:", e);
     }
-  });
-} else {
-  player = new Plyr(videoElement, plyrOptions);
-  if (isHls) videoElement.src = videoSrc;
-  setupMeelPlayerEvents();
+    hls = null;
+  }
 }
+
+function showReconnectingIndicator() {
+  const container = document.getElementById("main-video-wrapper");
+  if (!container) return;
+
+  const existing = document.getElementById("meel-reconnect-indicator");
+  if (existing) existing.remove();
+
+  const indicator = document.createElement("div");
+  indicator.id = "meel-reconnect-indicator";
+  indicator.className = "absolute inset-0 bg-[#080a0f]/95 flex flex-col items-center justify-center z-[100] text-white gap-3 p-4 text-center rounded-none sm:rounded-none";
+  indicator.innerHTML = `
+    <div class="animate-spin h-8 w-8 border-4 border-red-600 border-t-transparent rounded-full"></div>
+    <div class="text-sm font-bold uppercase tracking-wider text-white">Sambungan Media Terputus</div>
+    <div class="text-xs text-gray-500">Mencoba menghubungkan kembali secara otomatis...</div>
+  `;
+  container.appendChild(indicator);
+}
+
+function checkMediaAndRecover() {
+  if (isCheckingStatus) return;
+  isCheckingStatus = true;
+
+  showReconnectingIndicator();
+
+  console.log(`Mengecek ketersediaan file media di: ${videoSrc}`);
+
+  // Gunakan AbortController untuk membatasi waktu tunggu fetch maksimal 3 detik
+  // Guna mengantisipasi OS hang yang lama saat mengakses mountpoint yang terlepas
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, 3000);
+
+  fetch(videoSrc, { method: 'HEAD', signal: controller.signal })
+    .then((response) => {
+      clearTimeout(timeoutId);
+      const contentType = response.headers.get('content-type') || '';
+      
+      // Pastikan response ok (status 2xx) DAN tipe konten bukan halaman HTML (biasanya custom error page 200 OK dari server)
+      if (response.ok && !contentType.includes('text/html')) {
+        console.log("Media terdeteksi online! Memulai pemulihan via HTMX...");
+        
+        // Simpan posisi detik terakhir sebelum swap
+        const recoveryTime = player ? player.currentTime : 0;
+        if (recoveryTime > 0) {
+          localStorage.setItem(storageKeyVideo, recoveryTime);
+        }
+
+        isRecovering = true;
+        isAutoRecovering = true;
+
+        if (window.htmx) {
+          htmx.ajax('GET', window.location.href, {
+            target: '#main-video-wrapper',
+            select: '#main-video-wrapper',
+            swap: 'outerHTML'
+          });
+        } else {
+          window.location.reload();
+        }
+        isCheckingStatus = false;
+      } else {
+        console.log("Media masih offline (kembalian server bukan file media). Menguji ulang dalam 3 detik...");
+        setTimeout(() => {
+          isCheckingStatus = false;
+          checkMediaAndRecover();
+        }, 3000);
+      }
+    })
+    .catch((error) => {
+      clearTimeout(timeoutId);
+      console.log("Koneksi media gagal/offline atau timeout. Menguji ulang dalam 3 detik...");
+      setTimeout(() => {
+        isCheckingStatus = false;
+        checkMediaAndRecover();
+      }, 3000);
+    });
+}
+
+function triggerPlayerRecovery() {
+  if (isRecovering || isCheckingStatus) return;
+
+  const now = Date.now();
+  if (now - lastRecoveryTime < recoveryDelay) {
+    console.log("Menunda pemulihan: masih dalam masa cooldown.");
+    return;
+  }
+
+  lastRecoveryTime = now;
+  stopStuckDetector();
+  checkMediaAndRecover();
+}
+
+function startStuckDetector() {
+  stopStuckDetector();
+  stuckCheckInterval = setInterval(() => {
+    if (!player || player.paused || isRecovering) return;
+
+    const currentVideoTime = player.currentTime;
+    const now = Date.now();
+
+    if (currentVideoTime === lastPlayTime) {
+      const secondsStuck = (now - lastTimeUpdateTimestamp) / 1000;
+      if (secondsStuck >= 3) {
+        triggerPlayerRecovery();
+      }
+    } else {
+      lastPlayTime = currentVideoTime;
+      lastTimeUpdateTimestamp = now;
+    }
+  }, 1000);
+}
+
+function stopStuckDetector() {
+  if (stuckCheckInterval) {
+    clearInterval(stuckCheckInterval);
+    stuckCheckInterval = null;
+  }
+}
+
+function registerHlsErrorListener(hlsInstance) {
+  hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+    if (data.fatal) {
+      console.warn("Fatal HLS error encountered:", data.type);
+      switch (data.type) {
+        case Hls.ErrorTypes.NETWORK_ERROR:
+          triggerPlayerRecovery();
+          break;
+        case Hls.ErrorTypes.MEDIA_ERROR:
+          hlsInstance.recoverMediaError();
+          break;
+        default:
+          triggerPlayerRecovery();
+          break;
+      }
+    }
+  });
+}
+
+// 3. Inisialisasi Engine Pemutar
+function initPlayer() {
+  videoElement = document.getElementById("main-video");
+  if (!videoElement) return;
+
+  if (isHls && window.Hls && Hls.isSupported()) {
+    hls = new Hls({
+      maxBufferLength: 30,
+      enableWorker: true,
+      backBufferLength: 60,
+    });
+
+    registerHlsErrorListener(hls);
+    hls.loadSource(videoSrc);
+    hls.attachMedia(videoElement);
+
+    hls.on(Hls.Events.MANIFEST_PARSED, function () {
+      const availableQualities = hls.levels.map((l) => l.bitrate);
+
+      if (availableQualities.length > 1) {
+        plyrOptions.quality = {
+          default: availableQualities[0],
+          options: availableQualities,
+          forced: true,
+          onChange: (newBitrate) => {
+            const levelIndex = hls.levels.findIndex(
+              (l) => l.bitrate === newBitrate,
+            );
+            hls.currentLevel = levelIndex;
+          },
+        };
+
+        plyrOptions.i18n = {
+          qualityLabel: {},
+        };
+
+        hls.levels.forEach((level) => {
+          const label = level.name
+            ? level.name
+            : `${level.height}p (${Math.round(level.bitrate / 1000)}kbps)`;
+          plyrOptions.i18n.qualityLabel[level.bitrate] = label;
+        });
+      }
+
+      if (!player) {
+        player = new Plyr(videoElement, plyrOptions);
+        setupMeelPlayerEvents();
+      }
+    });
+  } else {
+    player = new Plyr(videoElement, plyrOptions);
+    if (isHls) videoElement.src = videoSrc;
+    setupMeelPlayerEvents();
+  }
+}
+
+// Jalankan inisialisasi awal
+document.addEventListener("DOMContentLoaded", () => {
+  initPlayer();
+});
+
+// Listener untuk HTMX setelah swap player
+document.addEventListener("htmx:afterSwap", function (event) {
+  if (event.detail.target.id === "main-video-wrapper") {
+    destroyPlayer();
+    isRecovering = false;
+    initPlayer();
+  }
+});
 
 // 4. Kumpulan Event & Fitur Player
 function setupMeelPlayerEvents() {
@@ -117,6 +311,16 @@ function setupMeelPlayerEvents() {
 
   player.on("ready", (event) => {
     const savedPos = localStorage.getItem(storageKeyVideo);
+    
+    // Aliran auto-recovery
+    if (isAutoRecovering && savedPos) {
+      isAutoRecovering = false;
+      player.currentTime = parseFloat(savedPos);
+      player.play().catch(() => {});
+      startStuckDetector();
+      return;
+    }
+
     if (savedPos && parseFloat(savedPos) > 10) {
       const mins = Math.floor(savedPos / 60);
       const secs = Math.floor(savedPos % 60);
@@ -164,12 +368,47 @@ function setupMeelPlayerEvents() {
     }
   });
 
+  player.on("play", () => {
+    lastTimeUpdateTimestamp = Date.now();
+    if (player) lastPlayTime = player.currentTime;
+    startStuckDetector();
+  });
+
+  player.on("playing", () => {
+    playbackStartTimestamp = Date.now();
+    lastTimeUpdateTimestamp = Date.now();
+    if (player) lastPlayTime = player.currentTime;
+    startStuckDetector();
+  });
+
+  player.on("pause", () => {
+    stopStuckDetector();
+  });
+
+  player.on("seeking", () => {
+    lastTimeUpdateTimestamp = Date.now();
+  });
+
+  player.on("seeked", () => {
+    lastTimeUpdateTimestamp = Date.now();
+  });
+
   player.on("timeupdate", () => {
-    if (player.currentTime > 0)
+    if (player.currentTime > 0) {
       localStorage.setItem(storageKeyVideo, player.currentTime);
+      lastPlayTime = player.currentTime;
+      lastTimeUpdateTimestamp = Date.now();
+
+      // Jika berhasil memutar tanpa masalah selama 5 detik, reset delay pemulihan ke default
+      if (playbackStartTimestamp > 0 && Date.now() - playbackStartTimestamp > 5000) {
+        recoveryDelay = 5000;
+        playbackStartTimestamp = 0;
+      }
+    }
   });
 
   player.on("ended", async () => {
+    stopStuckDetector();
     if (player.loop) return;
     localStorage.removeItem(storageKeyVideo);
     const nextVideoLink = document.querySelector(".rekomendasi-item");
@@ -221,7 +460,12 @@ function setupMeelPlayerEvents() {
 
       if (newIsHls) {
         if (!hls && window.Hls && Hls.isSupported()) {
-          hls = new Hls();
+          hls = new Hls({
+            maxBufferLength: 30,
+            enableWorker: true,
+            backBufferLength: 60,
+          });
+          registerHlsErrorListener(hls);
           hls.attachMedia(player.media);
         } else if (hls && hls.media !== player.media) {
           hls.detachMedia();
