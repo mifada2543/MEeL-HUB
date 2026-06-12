@@ -34,7 +34,7 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
 
         <header class="masthead">
             <a href="index.php" class="masthead-logo" title="Beranda">
-                <img src="assets/logo.png" alt="MEeL">
+                <img src="assets/MEeL.png" alt="MEeL">
             </a>
             <div>
                 <div class="masthead-title">CHANGELOG <span>&</span> UPDATES</div>
