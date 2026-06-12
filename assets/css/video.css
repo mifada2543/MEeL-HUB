@@ -147,6 +147,69 @@ body {
   align-items: center;
 }
 
+/* ── VERTICAL VOLUME SLIDER OVERRIDES ── */
+.plyr__volume {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Hover bridge to keep the volume slider open when moving mouse up */
+.plyr__volume::after {
+  content: "" !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 60px !important;
+  height: 130px !important; /* Covers the area from the mute button up through the slider */
+  background: transparent !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+.plyr__volume:hover::after {
+  pointer-events: auto !important; /* Enable interaction only when hovering to prevent blocking other elements */
+}
+
+.plyr__volume input[type="range"] {
+  position: absolute !important;
+  bottom: 50% !important;
+  left: 50% !important;
+  width: 100px !important; /* Rotated height */
+  height: 32px !important;  /* Rotated width */
+  margin: 0 !important;
+  
+  /* Fully transparent backgrounds, borders, and shadows */
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  
+  /* Initial state: hidden and translated downwards */
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translate(-50%, -50px) rotate(-90deg) !important;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  z-index: 10 !important;
+}
+
+/* Hover, Focus, Active States to slide up and show */
+.plyr__volume:hover input[type="range"],
+.plyr__volume input[type="range"]:focus-visible,
+.plyr__volume input[type="range"]:active {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translate(-50%, -70px) rotate(-90deg) !important;
+}
+
+/* Hide the tooltip for the mute/unmute button to prevent overlap */
+.plyr__volume .plyr__control .plyr__tooltip {
+  display: none !important;
+}
+
+
 /* ── 7. IN-APP MINI PLAYER ── */
 .mini-player-mode {
   position: fixed !important;
