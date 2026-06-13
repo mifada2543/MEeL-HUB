@@ -266,8 +266,8 @@ document.addEventListener("DOMContentLoaded", () => {
       bars[i].style.height = `${Math.max(4, (data[idx] / 255) * 100)}%`;
     }
     if (bitrateDisplay) {
-      const label = baseBitrate >= 160 ? "HQ Transparent" : "Standard";
-      bitrateDisplay.innerText = `${baseBitrate} kbps (Opus | ${label})`;
+      const label = baseBitrate >= 160 ? "OPUS" : "Standard";
+      bitrateDisplay.innerText = `${baseBitrate} kbps ${label}`;
     }
     animationId = requestAnimationFrame(render);
   }
