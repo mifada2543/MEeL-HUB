@@ -24,17 +24,9 @@ if ($is_logged_in && isset($_POST['send'])) {
 
 $v = $viewer->getMediaData();
 $video_src = "upload/" . $v['filename'];
-$is_hls = (pathinfo($video_src, PATHINFO_EXTENSION) === 'm3u8');
+$is_hls    = (pathinfo($video_src, PATHINFO_EXTENSION) === 'm3u8');
 $video_dir = dirname($video_src);
-$vtt_path = $video_dir . "/thumbnails.vtt";
-$vtt_src = file_exists($vtt_path) ? $vtt_path : "";
-if ($is_hls) {
-    $video_dir = dirname($video_src);
-    $potential_vtt = $video_dir . "/thumbnails.vtt";
-    if (file_exists($potential_vtt)) {
-        $vtt_src = $potential_vtt;
-    }
-}
+$vtt_src   = file_exists($video_dir . "/thumbnails.vtt") ? $video_dir . "/thumbnails.vtt" : "";
 
 $user_interaction = $viewer->getUserInteraction();
 $comments_data    = $viewer->getComments();
@@ -137,10 +129,6 @@ $rekom            = $viewer->getRecommendations(15);
     <div id="app-content-grid" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
         <div id="left-column" class="flex-1 space-y-4 sm:space-y-5 px-4 sm:px-5">
             <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl aspect-video w-full">
-                <?php
-                $video_src = "upload/" . $v['filename'];
-                $is_hls = (pathinfo($video_src, PATHINFO_EXTENSION) === 'm3u8');
-                ?>
                 <video id="main-video" playsinline controls
                     data-poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
                     data-src="<?= htmlspecialchars($video_src) ?>"
@@ -264,43 +252,14 @@ $rekom            = $viewer->getRecommendations(15);
                             Selengkapnya
                         </button>
                     </div>
-
                     <script>
-                        // Fungsi untuk klik tombol
-                        function toggleDescription() {
-                            const descText = document.getElementById('desc-text');
-                            const btn = document.getElementById('btn-read-more');
-
-                            if (descText.classList.contains('line-clamp-5')) {
-                                // Buka deskripsi penuh
-                                descText.classList.remove('line-clamp-5');
-                                btn.textContent = 'Lebih Sedikit';
-                            } else {
-                                // Tutup/kecilkan deskripsi
-                                descText.classList.add('line-clamp-5');
-                                btn.textContent = 'Selengkapnya';
-                            }
-                        }
-
-                        // Fungsi untuk mengecek apakah teks lebih dari 3 baris
-                        function checkDescriptionLength() {
-                            const descText = document.getElementById('desc-text');
-                            const btn = document.getElementById('btn-read-more');
-
-                            if (descText && btn) {
-                                // Jika tinggi keseluruhan teks lebih besar dari tinggi yang ditampilkan (karena dipotong line-clamp),
-                                // maka munculkan tombol
-                                if (descText.scrollHeight > descText.clientHeight) {
-                                    btn.classList.remove('hidden');
-                                }
-                            }
-                        }
-
-                        // Jalankan saat halaman pertama kali dimuat
-                        document.addEventListener('DOMContentLoaded', checkDescriptionLength);
-                        // Jalankan juga saat ada request HTMX (karena Anda menggunakan HTMX di web ini)
-                        document.body.addEventListener('htmx:afterOnLoad', checkDescriptionLength);
+                        requestAnimationFrame(function() {
+                            var d = document.getElementById('desc-text'),
+                                b = document.getElementById('btn-read-more');
+                            if (d && b && d.scrollHeight > d.clientHeight) b.classList.remove('hidden');
+                        });
                     </script>
+
                 <?php endif; ?>
                 <?php if ($is_logged_in): ?>
                     <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">

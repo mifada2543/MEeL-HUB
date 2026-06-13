@@ -35,7 +35,7 @@ if (window.lucide) {
 
 // 2. Konfigurasi UI Plyr Dasar
 const plyrOptions = {
-  iconUrl: '../assets/plyr.svg',
+  iconUrl: "../assets/plyr.svg",
   controls: [
     "play-large",
     "play",
@@ -70,6 +70,12 @@ const plyrOptions = {
   },
 };
 
+const HLS_CONFIG = {
+  maxBufferLength: 30,
+  enableWorker: true,
+  backBufferLength: 60,
+};
+
 function destroyPlayer() {
   stopStuckDetector();
   if (player) {
@@ -99,7 +105,8 @@ function showReconnectingIndicator() {
 
   const indicator = document.createElement("div");
   indicator.id = "meel-reconnect-indicator";
-  indicator.className = "absolute inset-0 bg-[#080a0f]/95 flex flex-col items-center justify-center z-[100] text-white gap-3 p-4 text-center rounded-none sm:rounded-none";
+  indicator.className =
+    "absolute inset-0 bg-[#080a0f]/95 flex flex-col items-center justify-center z-[100] text-white gap-3 p-4 text-center rounded-none sm:rounded-none";
   indicator.innerHTML = `
     <div class="animate-spin h-8 w-8 border-4 border-red-600 border-t-transparent rounded-full"></div>
     <div class="text-sm font-bold uppercase tracking-wider text-white">Sambungan Media Terputus</div>
@@ -123,15 +130,15 @@ function checkMediaAndRecover() {
     controller.abort();
   }, 3000);
 
-  fetch(videoSrc, { method: 'HEAD', signal: controller.signal })
+  fetch(videoSrc, { method: "HEAD", signal: controller.signal })
     .then((response) => {
       clearTimeout(timeoutId);
-      const contentType = response.headers.get('content-type') || '';
-      
+      const contentType = response.headers.get("content-type") || "";
+
       // Pastikan response ok (status 2xx) DAN tipe konten bukan halaman HTML (biasanya custom error page 200 OK dari server)
-      if (response.ok && !contentType.includes('text/html')) {
+      if (response.ok && !contentType.includes("text/html")) {
         console.log("Media terdeteksi online! Memulai pemulihan via HTMX...");
-        
+
         // Simpan posisi detik terakhir sebelum swap
         const recoveryTime = player ? player.currentTime : 0;
         if (recoveryTime > 0) {
@@ -142,17 +149,19 @@ function checkMediaAndRecover() {
         isAutoRecovering = true;
 
         if (window.htmx) {
-          htmx.ajax('GET', window.location.href, {
-            target: '#main-video-wrapper',
-            select: '#main-video-wrapper',
-            swap: 'outerHTML'
+          htmx.ajax("GET", window.location.href, {
+            target: "#main-video-wrapper",
+            select: "#main-video-wrapper",
+            swap: "outerHTML",
           });
         } else {
           window.location.reload();
         }
         isCheckingStatus = false;
       } else {
-        console.log("Media masih offline (kembalian server bukan file media). Menguji ulang dalam 3 detik...");
+        console.log(
+          "Media masih offline (kembalian server bukan file media). Menguji ulang dalam 3 detik...",
+        );
         setTimeout(() => {
           isCheckingStatus = false;
           checkMediaAndRecover();
@@ -161,7 +170,9 @@ function checkMediaAndRecover() {
     })
     .catch((error) => {
       clearTimeout(timeoutId);
-      console.log("Koneksi media gagal/offline atau timeout. Menguji ulang dalam 3 detik...");
+      console.log(
+        "Koneksi media gagal/offline atau timeout. Menguji ulang dalam 3 detik...",
+      );
       setTimeout(() => {
         isCheckingStatus = false;
         checkMediaAndRecover();
@@ -235,11 +246,7 @@ function initPlayer() {
   if (!videoElement) return;
 
   if (isHls && window.Hls && Hls.isSupported()) {
-    hls = new Hls({
-      maxBufferLength: 30,
-      enableWorker: true,
-      backBufferLength: 60,
-    });
+    hls = new Hls(HLS_CONFIG);
 
     registerHlsErrorListener(hls);
     hls.loadSource(videoSrc);
@@ -311,7 +318,7 @@ function setupMeelPlayerEvents() {
 
   player.on("ready", (event) => {
     const savedPos = localStorage.getItem(storageKeyVideo);
-    
+
     // Aliran auto-recovery
     if (isAutoRecovering && savedPos) {
       isAutoRecovering = false;
@@ -368,18 +375,14 @@ function setupMeelPlayerEvents() {
     }
   });
 
-  player.on("play", () => {
-    lastTimeUpdateTimestamp = Date.now();
-    if (player) lastPlayTime = player.currentTime;
-    startStuckDetector();
-  });
-
-  player.on("playing", () => {
+  const onPlaybackStart = () => {
     playbackStartTimestamp = Date.now();
     lastTimeUpdateTimestamp = Date.now();
     if (player) lastPlayTime = player.currentTime;
     startStuckDetector();
-  });
+  };
+  player.on("play", onPlaybackStart);
+  player.on("playing", onPlaybackStart);
 
   player.on("pause", () => {
     stopStuckDetector();
@@ -400,7 +403,10 @@ function setupMeelPlayerEvents() {
       lastTimeUpdateTimestamp = Date.now();
 
       // Jika berhasil memutar tanpa masalah selama 5 detik, reset delay pemulihan ke default
-      if (playbackStartTimestamp > 0 && Date.now() - playbackStartTimestamp > 5000) {
+      if (
+        playbackStartTimestamp > 0 &&
+        Date.now() - playbackStartTimestamp > 5000
+      ) {
         recoveryDelay = 5000;
         playbackStartTimestamp = 0;
       }
@@ -460,11 +466,7 @@ function setupMeelPlayerEvents() {
 
       if (newIsHls) {
         if (!hls && window.Hls && Hls.isSupported()) {
-          hls = new Hls({
-            maxBufferLength: 30,
-            enableWorker: true,
-            backBufferLength: 60,
-          });
+          hls = new Hls(HLS_CONFIG);
           registerHlsErrorListener(hls);
           hls.attachMedia(player.media);
         } else if (hls && hls.media !== player.media) {
@@ -564,6 +566,63 @@ window.toggleLoop = function () {
 let isMiniPlayerActive = false;
 const watchUrl = window.location.href;
 
+let miniShell = null;
+
+function buildMiniShell(videoWrapper) {
+  const shell = document.createElement("div");
+  shell.id = "mini-player-shell";
+
+  // Tombol expand (kiri atas)
+  const expandBtn = document.createElement("button");
+  expandBtn.id = "mini-expand-btn";
+  expandBtn.title = "Perlebar player";
+  expandBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v2H5v5H3V3zm11 0h7v7h-2V5h-5V3zM3 14h2v5h5v2H3v-7zm16 5h-5v2h7v-7h-2v5z"/></svg>`;
+  expandBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleMiniPlayer();
+  });
+
+  // Tombol close (kanan atas)
+  const closeBtn = document.createElement("button");
+  closeBtn.id = "mini-close-btn";
+  closeBtn.title = "Tutup mini player";
+  closeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
+  closeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeMiniPlayer();
+  });
+
+  shell.appendChild(videoWrapper);
+  shell.appendChild(expandBtn);
+  shell.appendChild(closeBtn);
+
+  // Info panel (klik → kembali ke watch)
+  const titleText =
+    document.querySelector(".video-title")?.textContent?.trim() || "";
+  const uploaderText =
+    document.querySelector("#video-info .text-red-400")?.textContent?.trim() ||
+    "";
+  const infoPanel = document.createElement("div");
+  infoPanel.id = "mini-player-info";
+  infoPanel.title = "Kembali ke video";
+  infoPanel.innerHTML = `
+    <div style="flex:1;min-width:0;">
+      <div id="mini-info-title">${titleText}</div>
+      <div id="mini-info-uploader">${uploaderText}</div>
+    </div>
+  `;
+  infoPanel.addEventListener("click", () => toggleMiniPlayer());
+  shell.appendChild(infoPanel);
+
+  return shell;
+}
+
+function closeMiniPlayer() {
+  if (!isMiniPlayerActive) return;
+  if (player) player.pause();
+  window.location.href = "index.php";
+}
+
 window.toggleMiniPlayer = async function () {
   const videoWrapper = document.getElementById("main-video-wrapper");
   const detailsWrapper = document.getElementById("watch-details-wrapper");
@@ -573,42 +632,35 @@ window.toggleMiniPlayer = async function () {
 
   if (!isMiniPlayerActive) {
     isMiniPlayerActive = true;
-    if (videoWrapper) videoWrapper.classList.add("mini-player-mode");
+
+    miniShell = buildMiniShell(videoWrapper);
+    videoWrapper.classList.add("mini-player-mode");
+    // CSS handles hiding non-progress controls via .mini-player-mode .plyr__controls > *:not(.plyr__progress__container)
+
+    document.body.appendChild(miniShell);
+    document.body.style.paddingBottom = "120px";
 
     if (detailsWrapper) detailsWrapper.style.display = "none";
     if (recWrapper) recWrapper.style.display = "none";
-
-    if (appContentGrid)
-      appContentGrid.classList.remove(
-        "flex",
-        "flex-col",
-        "lg:flex-row",
-        "gap-4",
-      );
-    if (leftColumn)
-      leftColumn.classList.remove(
-        "flex-1",
-        "space-y-4",
-        "sm:space-y-5",
-      );
+    if (appContentGrid) appContentGrid.style.display = "none";
 
     let tempIndex = document.getElementById("temp-index-content");
     if (!tempIndex) {
       tempIndex = document.createElement("div");
       tempIndex.id = "temp-index-content";
-      tempIndex.className = "w-full animate-fade-in";
-      if (appContentGrid) appContentGrid.appendChild(tempIndex);
+      tempIndex.className = "w-full";
+      const footer =
+        document.querySelector("footer") ?? document.body.lastElementChild;
+      document.body.insertBefore(tempIndex, footer);
 
       try {
         const response = await fetch("index.php");
         const html = await response.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
         const indexMain = doc.querySelector("main");
-
         if (indexMain) {
-          tempIndex.innerHTML = indexMain.innerHTML;
+          tempIndex.innerHTML = indexMain.outerHTML;
           window.history.pushState({ miniPlayer: true }, "", "index.php");
-
           if (window.lucide) window.lucide.createIcons();
           if (window.htmx) htmx.process(tempIndex);
         }
@@ -621,25 +673,28 @@ window.toggleMiniPlayer = async function () {
     }
   } else {
     isMiniPlayerActive = false;
-    if (videoWrapper) videoWrapper.classList.remove("mini-player-mode");
+
+    const videoWrap = document.getElementById("main-video-wrapper");
+    if (videoWrap) {
+      videoWrap.classList.remove("mini-player-mode");
+      if (player?.elements?.controls) {
+        Array.from(player.elements.controls.children).forEach(
+          (el) => (el.style.display = ""),
+        );
+      }
+      if (leftColumn) leftColumn.insertBefore(videoWrap, leftColumn.firstChild);
+    }
+
+    if (miniShell) {
+      miniShell.remove();
+      miniShell = null;
+    }
+    document.body.style.paddingBottom = "";
 
     const tempIndex = document.getElementById("temp-index-content");
     if (tempIndex) tempIndex.style.display = "none";
 
-    if (appContentGrid)
-      appContentGrid.classList.add(
-        "flex",
-        "flex-col",
-        "lg:flex-row",
-        "gap-4",
-      );
-    if (leftColumn)
-      leftColumn.classList.add(
-        "flex-1",
-        "space-y-4",
-        "sm:space-y-5",
-      );
-
+    if (appContentGrid) appContentGrid.style.display = "";
     if (detailsWrapper) detailsWrapper.style.display = "block";
     if (recWrapper) recWrapper.style.display = "block";
 
@@ -647,25 +702,42 @@ window.toggleMiniPlayer = async function () {
   }
 };
 
-window.addEventListener("keydown", (e) => {
-  if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
-  if (e.key.toLowerCase() === "l") {
-    setTimeout(updateLoopUI, 50);
-  }
-  if (e.key.toLowerCase() === "i") {
-    toggleMiniPlayer();
-  }
-});
+window.addEventListener(
+  "keydown",
+  (e) => {
+    // CEGAH FULLSCREEN: Jika mini-player aktif dan tombol "f" ditekan, blokir sepenuhnya!
+    if (isMiniPlayerActive && e.key.toLowerCase() === "f") {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const videoWrapper = document.getElementById("main-video-wrapper");
-  if (videoWrapper) {
-    videoWrapper.addEventListener("click", (e) => {
-      if (isMiniPlayerActive) {
-        e.preventDefault();
-        toggleMiniPlayer();
+    if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+    if (e.key.toLowerCase() === "l") {
+      setTimeout(updateLoopUI, 50);
+    }
+    if (e.key.toLowerCase() === "i") {
+      toggleMiniPlayer();
+    }
+  },
+  true,
+); // <-- Parameter 'true' ini krusial agar kode kita dieksekusi LEBIH DULU dari Plyr
+
+// Menggunakan Event Delegation agar tahan terhadap pergantian DOM oleh HTMX
+document.addEventListener("click", (e) => {
+  if (isMiniPlayerActive) {
+    const videoWrapper = e.target.closest("#main-video-wrapper");
+    if (videoWrapper) {
+      // CEGAH EXPAND: Jika elemen yang diklik adalah bagian dari kontrol Plyr (seek bar), hentikan eksekusi
+      if (e.target.closest(".plyr__controls")) {
+        return;
       }
-    });
+
+      // Jika yang diklik area video selain kontrol, lakukan expand
+      e.preventDefault();
+      toggleMiniPlayer();
+    }
   }
 });
 
@@ -818,6 +890,15 @@ function tampilkanIndikator(teks) {
     setTimeout(() => ind.remove(), 500);
   }, 500);
 }
+
+// 6. Fungsi Deskripsi — didefinisikan di sini agar bisa dipanggil dari watch.php inline script
+window.toggleDescription = function () {
+  const descText = document.getElementById("desc-text");
+  const btn = document.getElementById("btn-read-more");
+  if (!descText || !btn) return;
+  const collapsed = descText.classList.toggle("line-clamp-5");
+  btn.textContent = collapsed ? "Selengkapnya" : "Lebih Sedikit";
+};
 
 window.toggleReply = function (id) {
   const element = document.getElementById(id);
