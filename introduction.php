@@ -26,6 +26,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEeL | Panduan Penggunaan</title>
+    <link rel="manifest" href="assets/manifest.json">
     <link rel="icon" type="image/png" href="assets/MEeL.png">
     <script src="assets/js/tailwind.js"></script>
     <script src="assets/js/lucide.js"></script>
