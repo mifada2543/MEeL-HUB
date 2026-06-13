@@ -503,8 +503,7 @@ if (isset($_GET['content_only'])) {
 
         // --- Init: baca sessionStorage ---
         function initMiniPlayerIndex() {
-            // Daftarkan event klik pada bar mini player agar ketika diklik langsung pindah ke watch
-            const miniPlayerBar = document.getElementById('mini-player-bar'); // Sesuaikan dengan ID elemen mini-player Anda
+            const miniPlayerBar = document.getElementById('mini-player-index'); 
             if (miniPlayerBar) {
                 miniPlayerBar.style.cursor = 'pointer';
                 miniPlayerBar.addEventListener('click', (e) => {
@@ -600,7 +599,6 @@ if (isset($_GET['content_only'])) {
             audioPlayer.currentTime = 0;
         };
 
-        // --- Perbaikan Fungsi Expand di index.php ---
         function expandPlayerFromMiniPlayer() {
             // Simpan detik terakhir di index dulu
             saveIndexState();
@@ -609,13 +607,16 @@ if (isset($_GET['content_only'])) {
             const savedState = sessionStorage.getItem('meel_audio_state');
             if (savedState) {
                 const state = JSON.parse(savedState);
-                // Pastikan saat menyimpan lagu dari klik list, Anda menyertakan ID atau URL watch-nya
+
+                // Pengecekan disempurnakan untuk membaca 'id' maupun 'musicId'
                 if (state.watchUrl) {
                     window.location.href = state.watchUrl;
                 } else if (state.id) {
                     window.location.href = `watch.php?id=${state.id}`;
+                } else if (state.musicId) { // <-- TAMBAHAN: Baca state dari player_music.js
+                    window.location.href = `watch.php?id=${state.musicId}`;
                 } else {
-                    // Fallback jika tidak ada ID (mencari link dari daftar lagu yang namanya sama)
+                    // Fallback jika tidak ada ID
                     const fallbackItem = document.querySelector(`[data-filename="${state.filename}"]`);
                     if (fallbackItem && fallbackItem.closest('a')) {
                         window.location.href = fallbackItem.closest('a').getAttribute('href');
