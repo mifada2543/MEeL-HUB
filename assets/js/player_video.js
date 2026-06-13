@@ -722,25 +722,21 @@ window.addEventListener(
     }
   },
   true,
-); // <-- Parameter 'true' ini krusial agar kode kita dieksekusi LEBIH DULU dari Plyr
-
-// Menggunakan Event Delegation agar tahan terhadap pergantian DOM oleh HTMX
-document.addEventListener("click", (e) => {
-  if (isMiniPlayerActive) {
-    const videoWrapper = e.target.closest("#main-video-wrapper");
-    if (videoWrapper) {
-      // CEGAH EXPAND: Jika elemen yang diklik adalah bagian dari kontrol Plyr (seek bar), hentikan eksekusi
-      if (e.target.closest(".plyr__controls")) {
-        return;
+);
+// Cegah fullscreen dari klik ganda (double click) saat di mode mini-player
+window.addEventListener(
+  "dblclick",
+  (e) => {
+    if (isMiniPlayerActive) {
+      const videoWrapper = e.target.closest("#main-video-wrapper");
+      if (videoWrapper) {
+        e.preventDefault();
+        e.stopPropagation();
       }
-
-      // Jika yang diklik area video selain kontrol, lakukan expand
-      e.preventDefault();
-      toggleMiniPlayer();
     }
-  }
-});
-
+  },
+  true,
+);
 window.addEventListener("popstate", (e) => {
   if (isMiniPlayerActive && window.location.href === watchUrl) {
     toggleMiniPlayer();
