@@ -22,8 +22,6 @@ $total      = $library->countVideos();
     <title>MEeL Video | Library</title>
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/video.css">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
     <script src="../assets/js/htmx.js"></script>
 </head>
 

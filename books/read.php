@@ -42,9 +42,7 @@ if (str_contains($current_chapter, '..')) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL Read | <?= htmlspecialchars($book['title']) ?></title>
-    <link rel="icon" href="../assets/MEeL.png" type="image/png">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
+    <?php include '../partials/link.php'; ?>
     <style>
         body {
             background-color: #05070a;

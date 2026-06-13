@@ -84,12 +84,10 @@ switch ($ext) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title><?= htmlspecialchars($v['title']) ?> — MEeL Music</title>
-    <link rel="icon" type="image/png" href="../assets/MEeL.png">
+    <?php include '../partials/link.php'; ?>
+    <script src="../assets/js/htmx.js"></script>
     <link rel="stylesheet" href="../assets/css/plyr.css">
     <link rel="stylesheet" href="../assets/css/music.css">
-    <script src="../assets/js/tailwind.js" defer></script>
-    <script src="../assets/js/lucide.js" defer></script>
-    <script src="../assets/js/htmx.js" defer></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -217,7 +215,7 @@ switch ($ext) {
                     <audio id="main-player" controls preload="metadata" class="w-full">
                         <?php
                         $ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
-                        $mimeType = match($ext) {
+                        $mimeType = match ($ext) {
                             'mp3' => 'audio/mpeg',
                             'm4a' => 'audio/mp4',
                             'ogg', 'opus' => 'audio/ogg',

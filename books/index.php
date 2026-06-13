@@ -24,9 +24,7 @@ $books = $repo->getBooks($filter);
     <meta name="viewport" content="width=device-width, initial-scale=0.7">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL | library</title>
-    <link rel="icon" href="../assets/MEeL.png" type="image/png">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
+    <?php include '../partials/link.php'; ?>
     <style>
         body {
             background-color: #05070a;

@@ -1,0 +1,20 @@
+{
+  "short_name": "MEeL",
+  "name": "Media Enterprice & e-Library",
+  "icons": [
+    {
+      "src": "MEeL.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "MEeL.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "index.php",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "theme_color": "#000000"
+}

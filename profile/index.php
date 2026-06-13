@@ -80,9 +80,7 @@ $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL Profile | <?= htmlspecialchars($u['username']) ?></title>
-    <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
+    <?php include '../partials/link.php'; ?>
     <style>
         body {
             background-color: #0b0e14;
