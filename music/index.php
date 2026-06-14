@@ -100,6 +100,24 @@ if (isset($_GET['content_only'])) {
             position: relative;
             z-index: 50;
         }
+
+        /* Pastikan area kosong di mini-player tidak memicu pointer tangan */
+        #mini-player-index {
+            cursor: default !important;
+        }
+
+        /* Berikan kursor pointer KHUSUS untuk thumbnail mini player */
+        #mini-player-index img,
+        .mp-thumbnail {
+            cursor: pointer !important;
+            transition: transform 0.2s ease;
+        }
+
+        /* Opsional: Beri efek sedikit membesar saat thumbnail di-hover agar user tahu itu bisa diklik */
+        #mini-player-index img:hover,
+        .mp-thumbnail:hover {
+            transform: scale(1.05);
+        }
     </style>
 </head>
 
@@ -350,16 +368,16 @@ if (isset($_GET['content_only'])) {
     <div id="mini-player-index" aria-label="Mini Player">
 
         <!-- Seekbar atas -->
-        <div class="mp-seekbar" id="mp-seekbar-index" onclick="miniSeekIndex(event)" title="Klik untuk seek">
+        <div class="mp-seekbar" id="mp-seekbar-index" onclick="event.stopPropagation(); miniSeekIndex(event);" title="Klik untuk seek">
             <div class="mp-seekbar-fill" id="mp-seekbar-fill-index"></div>
             <div class="mp-seekbar-thumb" id="mp-seekbar-thumb-index"></div>
         </div>
 
         <div class="mp-body">
             <!-- Kiri: art + info -->
-            <div class="mp-track" title="Buka player penuh">
+            <div class="mp-track">
                 <div class="mp-art" onclick="expandPlayerFromMiniPlayer()">
-                    <img id="mini-thumbnail-index" src="<?= htmlspecialchars(music_thumbnail_url('default.png')) ?>" alt="Cover lagu" width="256" height="256" loading="eager" decoding="async">
+                    <img id="mini-thumbnail-index" title="Buka player penuh" src="<?= htmlspecialchars(music_thumbnail_url('default.png')) ?>" alt="Cover lagu" width="256" height="256" loading="eager" decoding="async">
                     <div class="mp-art-overlay">
                         <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
                     </div>
@@ -503,13 +521,13 @@ if (isset($_GET['content_only'])) {
 
         // --- Init: baca sessionStorage ---
         function initMiniPlayerIndex() {
-            const miniPlayerBar = document.getElementById('mini-player-index'); 
+            const miniPlayerBar = document.getElementById('mini-player-index');
             if (miniPlayerBar) {
-                miniPlayerBar.style.cursor = 'pointer';
+                miniPlayerBar.style.cursor = 'default';
                 miniPlayerBar.addEventListener('click', (e) => {
-                    // Jangan trigger pindah halaman jika yang diklik adalah tombol play/pause mini
-                    if (e.target.closest('#mini-play-btn') || e.target.closest('.mp-close')) return;
-                    expandPlayerFromMiniPlayer();
+                    if (e.target.closest('.mp-thumbnail') || e.target.closest('#mini-player-img') || e.target.tagName === 'IMG') {
+                        expandPlayerFromMiniPlayer();
+                    }
                 });
             }
             // Selalu apply global loop key ke UI saat init (bahkan jika tidak ada audio state)
