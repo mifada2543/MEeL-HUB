@@ -267,7 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (bitrateDisplay) {
       const label = baseBitrate >= 160 ? "OPUS" : "Standard";
-      bitrateDisplay.innerText = `${baseBitrate} kbps ${label}`;
+      bitrateDisplay.innerText = `${baseBitrate} ${label}`;
     }
     animationId = requestAnimationFrame(render);
   }
@@ -619,13 +619,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Mini-player container click while active
   document
-    .getElementById("player-container")
-    ?.addEventListener("click", (e) => {
-      if (isMiniPlayerActive) {
-        e.preventDefault();
-        window.toggleMiniPlayer();
-      }
-    });
+  .getElementById("player-container")
+  ?.addEventListener("click", (e) => {
+    // If the click originates from Plyr controls, custom mini player controls, or any button, ignore the toggle.
+    if (e.target.closest('.plyr__controls') || e.target.closest('.mp-controls') || e.target.closest('button')) {
+      return;
+    }
+    if (isMiniPlayerActive) {
+      e.preventDefault();
+      window.toggleMiniPlayer();
+    }
+  });
 
   window.addEventListener("popstate", () => {
     if (isMiniPlayerActive && window.location.href === watchUrl)

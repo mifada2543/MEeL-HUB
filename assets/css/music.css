@@ -308,7 +308,6 @@ body {
   gap: 12px;
   flex: 1;
   min-width: 0;
-  cursor: pointer;
   overflow: hidden;
   user-select: none;
 }
@@ -504,7 +503,12 @@ body {
 }
 /* Nonaktifkan interaksi Plyr saat mini mode (seperti video) */
 .music-mini-player-mode .plyr {
-  pointer-events: none !important;
+  pointer-events: auto !important;
+}
+.music-mini-player-mode .plyr__controls {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 10;
 }
 
 /* Padding bawah body agar konten tidak tertutup mini player bar */
