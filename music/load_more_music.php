@@ -14,23 +14,19 @@ $total   = $library->countMusic($format, $artist);
 
 if (!$data || $data->num_rows === 0) return;
 
-while ($v = $data->fetch_assoc()) {
-    include 'music_item.php';
-}
+while ($v = $data->fetch_assoc()) include 'music_item.php';
 
-$next         = $offset + $limit;
-$hasMore      = $next < $total;
-$qFormat      = urlencode($format);
-$qArtist      = urlencode($artist);
-$sharedClass  = 'w-full py-4 border border-dashed rounded-xl text-[10px] font-bold uppercase tracking-[.25em] transition-all';
+$next    = $offset + $limit;
+$qFormat = urlencode($format);
+$qArtist = urlencode($artist);
+$base    = 'w-full py-4 border border-dashed rounded-xl text-[10px] font-bold uppercase tracking-[.25em] transition-all';
 ?>
 
-<?php if ($hasMore): ?>
+<?php if ($next < $total): ?>
     <div id="load-more-music" class="pt-4" hx-swap-oob="true">
         <button hx-get="load_more_music.php?offset=<?= $next ?>&format=<?= $qFormat ?>&artist=<?= $qArtist ?>"
-            hx-target="#music-list"
-            hx-swap="beforeend"
-            class="<?= $sharedClass ?> border-white/[.06] text-gray-700 hover:text-orange-500 hover:border-orange-500/30">
+            hx-target="#music-list" hx-swap="beforeend"
+            class="<?= $base ?> border-white/[.06] text-gray-700 hover:text-orange-500 hover:border-orange-500/30">
             Load More
         </button>
     </div>
