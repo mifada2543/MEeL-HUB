@@ -10,63 +10,8 @@
     <link rel="icon" type="image/png" href="../assets/MEeL.png" />
     <script src="../assets/js/tailwind.js"></script>
     <script src="../assets/js/lucide.js"></script>
-    <style>
-        /* Animasi tersuai untuk pergerakan dan paparan */
-        @keyframes pop {
-            0% {
-                transform: scale(0.85);
-                opacity: 0;
-            }
-
-            50% {
-                transform: scale(1.05);
-            }
-
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        .animate-pop {
-            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-
-        @keyframes placePiece {
-            0% {
-                transform: translateY(-10px) scale(1.1);
-                opacity: 0.8;
-            }
-
-            100% {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-        }
-
-        .piece-anim {
-            animation: placePiece 0.2s ease-out forwards;
-        }
-
-        /* Custom scrollbar untuk sejarah pergerakan */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(52, 211, 153, 0.4);
-            border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(52, 211, 153, 0.8);
-        }
-    </style>
+    <link rel="stylesheet" href="../assets/css/catur.css">
+    
 </head>
 
 <body
@@ -311,6 +256,8 @@
     <footer class="border-t border-slate-800/80 bg-slate-950 py-6 text-center text-xs text-slate-500 mt-auto">
         <p class="font-medium tracking-wide">© 2026 Arena Catur Pintar. Diperhalusi untuk Pengalaman Terbaik.</p>
     </footer>
+
+    <script type="module" src="../assets/js/catur/catur-main.js"></script>
 
     <script>
         // ============================================================
