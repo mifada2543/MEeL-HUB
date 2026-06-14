@@ -1,0 +1,44 @@
+<?php
+require 'db.php';
+header('Content-Type: application/json');
+
+$room = $_POST['room'] ?? '';
+
+if (!$room) {
+    die(json_encode([
+        'success' => false,
+        'message' => 'Room kosong'
+    ]));
+}
+
+$stmt = $conn->prepare("UPDATE rooms SET black_joined = 1 WHERE room_code = ?");
+
+if (!$stmt) {
+    die(json_encode([
+        'success' => false,
+        'message' => $conn->error
+    ]));
+}
+
+$stmt->bind_param("s", $room);
+$stmt->execute();
+
+if ($stmt->affected_rows > 0) {
+    echo json_encode([
+        'success' => true,
+        'room' => $room
+    ]);
+} else {
+    // affected_rows = 0 boleh jadi room tidak wujud, atau black_joined sudah 1
+    // Semak sama ada room wujud
+    $check = $conn->prepare("SELECT black_joined FROM rooms WHERE room_code = ?");
+    $check->bind_param("s", $room);
+    $check->execute();
+    $row = $check->get_result()->fetch_assoc();
+
+    if (!$row) {
+        echo json_encode(['success' => false, 'message' => 'Room tidak wujud.']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Room sudah penuh.']);
+    }
+}

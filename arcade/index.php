@@ -27,7 +27,7 @@ $games = [
     "description" => "Game strategi klasik yang membutuhkan pemikiran taktis dan perencanaan jangka panjang. Susun bidak-bidakmu dengan cermat untuk mengalahkan lawan dan menguasai papan catur.",
     "image" => "assets/img/catur.png",
     "favorite" => false,
-    "play_url" => "catur.html"
+    "play_url" => "chess.html"
   ]
 ];
 ?>

@@ -1,8 +1,7 @@
-// sound-effects.js – provides ChessSoundEffects class and a shared instance
 export class ChessSoundEffects {
     constructor() {
-        this.ctx = null;
-        this.initialized = false;
+        this.ctx = null; 
+        this.initialized = false; 
     }
 
     init() {
@@ -27,8 +26,8 @@ export class ChessSoundEffects {
             gain.connect(this.ctx.destination);
             osc.start();
             osc.stop(this.ctx.currentTime + duration);
-        } catch (e) {
-            console.warn('Audio error:', e);
+        } catch (e) { 
+            console.warn("Audio error:", e); 
         }
     }
 
@@ -38,5 +37,4 @@ export class ChessSoundEffects {
     playGameOver() { this.init(); this.playTone('triangle', 440, null, 0.5, 0.2); }
 }
 
-// Export a singleton instance for convenience
 export const sounds = new ChessSoundEffects();
