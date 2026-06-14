@@ -17,15 +17,15 @@ $games = [
   ],
   [
     "id" => 2,
-    "title" => "Street Fighter II: The World Warrior",
-    "developer" => "Capcom",
-    "year" => 1991,
-    "category" => "Fighting",
-    "controls" => "Joystick 8-Way & 6 Buttons",
-    "maxPlayers" => "2 Players (Simultaneous)",
+    "title" => "Chess",
+    "developer" => "MEeL Teams",
+    "year" => 2026,
+    "category" => "Strategy",
+    "controls" => "Pawn, Knight, Rook, Bishop, Queen, King",
+    "maxPlayers" => "2 Players",
     "rating" => 5.0,
-    "description" => "Game pertarungan legendaris yang mendefinisikan genre fighting game modern. Pilih satu dari 8 petarung dunia terkuat dan keluarkan jurus andalan seperti 'Hadouken' atau 'Shoryuken' untuk mengalahkan lawan.",
-    "image" => "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=800&q=80",
+    "description" => "Game strategi klasik yang membutuhkan pemikiran taktis dan perencanaan jangka panjang. Susun bidak-bidakmu dengan cermat untuk mengalahkan lawan dan menguasai papan catur.",
+    "image" => "assets/img/catur.png",
     "favorite" => false,
     "play_url" => "catur.html"
   ]
