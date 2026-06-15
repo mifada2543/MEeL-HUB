@@ -387,7 +387,7 @@ $games = [
   </div>
 
   <!-- Footer -->
-  <?php include "./partials/footer.php";?>
+  <?php include "../partials/footer.php";?>
 
   <!-- JavaScript Data & Logic -->
   <script>
