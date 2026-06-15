@@ -30,7 +30,7 @@ $nav_id         = $id ?? 0;
         MEeL<?php if ($is_admin): ?><span class="text-blue-600">Admin</span><?php endif; ?>
     </a>
     <div class="w-px h-5 bg-white/10"></div>
-    
+
     <?php if ($is_admin): ?>
         <?php if ($nav_media_type === 'dashboard'): ?>
             <span class="text-[11px] font-semibold text-gray-200">Dashboard</span>
@@ -63,7 +63,7 @@ $nav_id         = $id ?? 0;
 
     <div class="ml-auto flex items-center gap-2">
         <?php if ($nav_id > 0): ?>
-            <?php 
+            <?php
             $chip_color = ($nav_media_type === 'video') ? 'text-red-500 border-red-500/10 bg-red-500/5' : 'text-orange-500 border-orange-500/10 bg-orange-500/5';
             ?>
             <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest <?= $chip_color ?> py-1.5 px-3 rounded-lg border cursor-default">
@@ -72,6 +72,9 @@ $nav_id         = $id ?? 0;
         <?php endif; ?>
         <a href="<?= htmlspecialchars($back_url) ?>" class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 py-1.5 px-3.5 rounded-lg border border-white/10 bg-white/5 no-underline transition-all duration-200 hover:text-gray-200 hover:bg-white/10">
             <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Kembali
+        </a>
+        <a href="catur.php" class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 py-1.5 px-3.5 rounded-lg border border-white/10 bg-white/5 no-underline transition-all duration-200 hover:text-gray-200 hover:bg-white/10">
+            <i data-lucide="chess-board" class="w-3.5 h-3.5"></i> Catur
         </a>
     </div>
 </nav>
