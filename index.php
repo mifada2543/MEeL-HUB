@@ -95,29 +95,29 @@ $counts  = $library->getCounts();
             </div>
 
             <!-- BOOKS -->
-            <?php if($is_logged_in): ?>
-            <div class="media-card card-books flex flex-col gap-4 h-48 md:h-64"
-                onclick="window.location.href='books/index.php'"
-                title="MEeL Books">
-                <div class="flex items-start justify-between">
-                    <div class="card-icon-wrap">
-                        <i data-lucide="book-open" class="w-5 h-5" style="color:#22c55e"></i>
+            <?php if ($is_logged_in): ?>
+                <div class="media-card card-books flex flex-col gap-4 h-48 md:h-64"
+                    onclick="window.location.href='books/index.php'"
+                    title="MEeL Books">
+                    <div class="flex items-start justify-between">
+                        <div class="card-icon-wrap">
+                            <i data-lucide="book-open" class="w-5 h-5" style="color:#22c55e"></i>
+                        </div>
+                        <div class="text-right">
+                            <div class="card-count" style="color:#22c55e"><?= $counts['books'] ?></div>
+                            <div class="card-label">Books</div>
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <div class="card-count" style="color:#22c55e"><?= $counts['books'] ?></div>
-                        <div class="card-label">Books</div>
+                    <div class="mt-auto">
+                        <div class="card-name">BOOKS</div>
+                        <div class="card-desc">Komik dan buku digital.</div>
+                    </div>
+                    <div class="flex justify-end">
+                        <div class="card-arrow">
+                            <i data-lucide="arrow-right" class="w-4 h-4" style="color:#9ca3af"></i>
+                        </div>
                     </div>
                 </div>
-                <div class="mt-auto">
-                    <div class="card-name">BOOKS</div>
-                    <div class="card-desc">Komik dan buku digital.</div>
-                </div>
-                <div class="flex justify-end">
-                    <div class="card-arrow">
-                        <i data-lucide="arrow-right" class="w-4 h-4" style="color:#9ca3af"></i>
-                    </div>
-                </div>
-            </div>
             <?php endif; ?>
         </div>
 
