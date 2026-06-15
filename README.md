@@ -49,6 +49,9 @@ MEeL adalah platform media hub pribadi berbasis PHP & MySQL yang berjalan di ata
 
 ### 🎵 Music (Audio Platform)
 
+- Custom-visualizer with WebAudio
+- Mini player
+- SPA likes
 - Streaming audio berkualitas tinggi (MP3, FLAC, OGG/Opus).
 - Pembuatan dan manajemen playlist kustom.
 - Pengaturan antrean lagu dinamis.
@@ -70,11 +73,14 @@ MEeL adalah platform media hub pribadi berbasis PHP & MySQL yang berjalan di ata
 - Portal dashboard utama dengan statistik kapasitas disk dan ringkasan jumlah media.
 - Fitur **Transcoding & Download URL** terintegrasi menggunakan `yt-dlp` dan `FFmpeg`.
 - Kolom komentar bertingkat (nested comments) serta fitur Like/Dislike pada Video dan Musik.
-- Panel edit profil untuk memperbarui nama pengguna, kata sandi, dan foto avatar.
+- Panel edit profil untuk memperbarui foto avatar, dan untuk melihat jumlah upload-video-music.
 - Keamanan sesi yang diperketat (Timeout 12 jam, proteksi CSRF Token, dan pemutusan sesi ganda).
 - Sistem firewall internal: pelacakan aktivitas (_activity logging_) dan pemblokiran IP (_IP banning_).
 - **Mode Sehat 20-20-20**: notifikasi berkala untuk mengistirahatkan mata setiap 20 menit.
 - Halaman panduan interaktif (`introduction.php`) dan riwayat pembaruan aplikasi (`update.php`).
+- Admin yang mudah di kontrol
+- Mini-Game interaktif dan mendukung multiplayer
+- Upload dengan automatisasi pendukung seluruh karakter(video, music, books, drive)
 
 ---
 
@@ -111,15 +117,62 @@ MEeL/
 │   ├── index.php          # Halaman daftar anime
 │   ├── watch.php          # Halaman nonton anime
 │   └── sidebar.php        # Navigasi sidebar anime
+├──  arcade               # Arcade mode
+│   ├──  assets           # Assets
+│   │   ├──  css          # CSS
+│   │   │   ├──  chess.css
+│   │   │   └──  dino.css
+│   │   ├──  img          # Thumbnail
+│   │   │   ├──  catur.png
+│   │   │   └──  dino.png
+│   │   └──  js           # Logika permainan
+│   │       ├──  chess
+│   │       │   ├──  api.js
+│   │       │   ├──  assets.js
+│   │       │   ├──  audio.js
+│   │       │   ├──  engine.js
+│   │       │   └──  main.js
+│   │       └──  dino
+│   │           ├──  assets.js
+│   │           └──  game.js
+│   ├──  chess.html
+│   ├──  controller       # Online-mode chess
+│   │   ├──  check_room_status.php
+│   │   ├──  create_room.php
+│   │   ├──  get_move.php
+│   │   ├──  join_room.php
+│   │   └──  save_move.php
+│   ├──  dino.html
+│   └──  index.php
 ├── assets/                # Aset Statis
 │   ├── css/               # Stylesheet khusus per modul
-│   │   ├── styles.css     # CSS HUB
+│   │   ├── index(hub).css # CSS HUB
 │   │   ├── plyr.css       # CSS Plyr custom
 │   │   ├── video.css      # CSS Video(index/watch)
 │   │   ├── em.css         # CSS edit di Admin
 │   │   ├── music.css      # CSS Music(index/watch)
 │   │   ├── drive.css      # CSS Drive
 │   │   ├── up.css         # CSS partials/ui.php
+|   |   ├──  introduction.css #Introduction CSS
+│   │   ├──  font         # Pendukung font.css
+│   │   │   ├──  cyrillic-ext.woff2
+│   │   │   ├──  cyrillic-ext0.woff2
+│   │   │   ├──  cyrillic-ext1.woff2
+│   │   │   ├──  cyrillic.woff2
+│   │   │   ├──  cyrillic0.woff2
+│   │   │   ├──  cyrillic1.woff2
+│   │   │   ├──  greek.woff2
+│   │   │   ├──  greek0.woff2
+│   │   │   ├──  greek1.woff2
+│   │   │   ├──  latin-ext.woff2
+│   │   │   ├──  latin-ext0.woff2
+│   │   │   ├──  latin-ext1.woff2
+│   │   │   ├──  latin.woff2
+│   │   │   ├──  latin0.woff2
+│   │   │   ├──  latin1.woff2
+│   │   │   ├──  vietnamese.woff2
+│   │   │   ├──  vietnamese0.woff2
+│   │   │   └──  vietnamese1.woff2
 │   │   └── font.css       # Font google API
 │   ├── js/                # Library dan skrip JS utama
 │   │   ├── tailwind.js    # Tailwind
@@ -134,20 +187,25 @@ MEeL/
 │   ├── img/               # Pendukung Introduction
 │   │   ├── music0.png
 │   │   ├── music1.png
+│   │   ├── music2.png
 │   │   ├── video0.png
-│   │   └── video1.png
+│   │   ├── video1.png
+│   │   ├── video2.png
+│   │   └── video3.png
+│   ├── manifest.json      # Pendukung app
+│   ├── plyr.svg           # plyr fix
 │   └── MEeL.png           # Logo Utama
 ├── auth/                  # Autentikasi & Manajemen Sesi
 │   ├── .htaccess          # Proteksi direktori auth
 │   ├── auth.php           # Middleware Guard Login & Validasi Role
-│   ├── config.example.php # Contoh konfigurasi DB & System
-│   ├── config.php         # Konfigurasi aktif DB, Session, CSRF, Helper Transliterasi
+│   ├── config.example.php # Konfigurasi aktif DB, Session, CSRF, Helper Transliterasi        
 │   ├── login.php          # Form login user
 │   ├── logout.php         # Handler logout & hancurkan sesi
 │   └── register.php       # Form registrasi user baru
 ├── books/                 # Modul E-Book / Komik
 │   ├── index.php          # Katalog buku digital
 │   ├── read.php           # Reader PDF/Epub di browser
+│   ├── upload ⇒ /media/books # Tempat upload books
 │   └── upload.php         # Form upload buku baru
 ├── controllers/           # API Actions & Event Handler (AJAX/HTMX)
 │   ├── delete_comment.php # Hapus komentar video/musik
@@ -155,8 +213,7 @@ MEeL/
 │   ├── like.php           # Toggle like/dislike media
 │   ├── post_encode.php    # Trigger encoding musik setelah download yt-dlp
 │   ├── profile_edit.php   # Edit profil (avatar, username, password)
-│   ├── proses_sidebar.php # Update status sidebar state
-│   └── proses_update.php  # Simpan logs update aplikasi
+│   └──  UpdateManager.php# Edit manager
 ├── data_drive/            # Cloud Drive Storage (Direktori Runtime)
 │   ├── public/            # File drive yang bisa diakses siapa saja
 │   └── private_admins/    # File drive pribadi khusus admin
@@ -181,6 +238,7 @@ MEeL/
 ├── music/                 # Modul Pemutar Musik
 │   ├── index.php          # Katalog musik
 │   ├── watch.php          # Player musik utama (Plyr)
+│   ├── upload ⇒ /media/music # Upload music
 │   ├── upload.php         # Form upload lagu lokal
 │   ├── search_music.php   # Handler pencarian lagu
 │   ├── load_more_music.php# Pagination AJAX untuk musik
@@ -197,11 +255,12 @@ MEeL/
 ├── profile/               # Modul Profil User
 │   ├── index.php          # Halaman profil user
 │   └── upload/            # Uploaded avatars
+│       └── default_avatar.png # Default avatar
 ├── temp/                  # Direktori Runtime: Staging Transcoding & Download
-├── upload/                # Direktori Runtime: Upload file sementara
 ├── video/                 # Modul Pemutar Video
 │   ├── index.php          # Katalog video
 │   ├── watch.php          # Player video utama (HLS / Plyr)
+│   ├── upload ⇒ /media/video # Upload video
 │   ├── upload.php         # Form upload video lokal
 │   ├── search_video.php   # Handler pencarian video
 │   ├── load_more.php      # Pagination AJAX untuk video
@@ -268,7 +327,8 @@ git clone https://github.com/mifada2543/MEeL.git MEeL
 
 Buat database baru di MySQL:
 Import code SQL yang disediakan dalam proyek ke database `MEeL`.
-template:
+
+> **Template**
 
 ```sql
 -- Membuat database jika belum ada
@@ -523,9 +583,10 @@ _Anda harus sesuaikan dengan path yang mau, itu adalah bawaan dari Pembuat MEeL(
 
 ### Pembagian Hak Akses (Role-Based Access Control)
 
-- **Admin**: Memiliki kontrol penuh terhadap sistem, akses ke dashboard panel admin di `/admin/`, kemampuan menggunakan upload lanjutan (`upload_advanced.php`), melakukan transcode manual, menghapus akun pengguna, dan memantau status sistem.
-- **Member**: Dapat menjelajahi media, memberikan komentar, melakukan Like/Dislike, serta mengelola penyimpanan Cloud Drive pribadi (quota-limited).
-- **Guest**: Pengguna yang belum terdaftar. Hanya dapat memutar video dan lagu secara terbatas tanpa hak untuk berinteraksi (komentar/like) atau mengakses Cloud Drive.
+- **Admin**: Memiliki kontrol penuh terhadap sistem, akses ke dashboard panel admin di `/admin/`, kemampuan menggunakan upload lanjutan (`upload_advanced.php`), melakukan transcode manual, menghapus akun pengguna, dan memantau status sistem(RAJA).
+- **Member**: Dapat menjelajahi media, memberikan komentar, melakukan Like/Dislike, mengakses books, serta mengelola penyimpanan Cloud Drive pribadi (quota-limited)(P2W).
+- **User**: Dapat menjelajahi media, memberikan komentar, melakukan Like/Dislike, mengakses books, tidak memiliki Cloud Drive(Normal)
+- **Guest**: Pengguna yang belum terdaftar. Hanya dapat memutar video dan lagu secara terbatas tanpa hak untuk berinteraksi (komentar/like) atau mengakses Cloud Drive.(Paling bawah)
 
 ### Pintasan Keyboard Player Video & Musik (Plyr Shortcuts)
 
