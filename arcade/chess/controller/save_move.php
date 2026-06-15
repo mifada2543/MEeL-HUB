@@ -3,7 +3,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-require '../../auth/config.php';
+require '../../../auth/config.php';
 
 $data = json_decode(
     file_get_contents("php://input"),

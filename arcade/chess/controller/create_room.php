@@ -1,5 +1,5 @@
 <?php
-require '../../auth/config.php';
+require '../../../auth/config.php';
 
 $room = strtoupper(substr(md5(time()), 0, 6));
 $sql = "INSERT INTO rooms (room_code) VALUES (?)";

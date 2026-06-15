@@ -13,7 +13,7 @@ $games = [
     "description" => "Kendalikan Miku/Teto di track panjang yang menyenangkan dengan rintangan unik dan power-up menarik. Cocok untuk semua usia, game ini menggabungkan elemen puzzle sederhana dengan kecepatan arcade yang seru. Tantang temanmu untuk skor tertinggi atau nikmati mode solo untuk mengasah refleksmu!",
     "image" => "assets/img/dino.png",
     "favorite" => false,
-    "play_url" => "dino.html"
+    "play_url" => "dino/"
   ],
   [
     "id" => 2,
@@ -27,7 +27,7 @@ $games = [
     "description" => "Game strategi klasik yang membutuhkan pemikiran taktis dan perencanaan jangka panjang. Susun bidak-bidakmu dengan cermat untuk mengalahkan lawan dan menguasai papan catur.",
     "image" => "assets/img/catur.png",
     "favorite" => false,
-    "play_url" => "chess.html"
+    "play_url" => "chess/"
   ]
 ];
 ?>
@@ -41,58 +41,7 @@ $games = [
   <title>Koleksi Game Arcade Klasik</title>
   <?php include '../partials/link.php'; ?>
   <link href="../assets/css/font.css" rel="stylesheet" />
-  <style>
-    .font-retro {
-      font-family: "Press Start 2P", cursive;
-    }
-
-    .font-modern {
-      font-family: "Rajdhani", sans-serif;
-    }
-
-    /* Efek Neon Glow */
-    .neon-text-pink {
-      text-shadow:
-        0 0 5px rgba(244, 63, 94, 0.8),
-        0 0 20px rgba(244, 63, 94, 0.4);
-    }
-
-    .neon-text-blue {
-      text-shadow:
-        0 0 5px rgba(59, 130, 246, 0.8),
-        0 0 20px rgba(59, 130, 246, 0.4);
-    }
-
-    .neon-border-pink {
-      box-shadow:
-        0 0 10px rgba(244, 63, 94, 0.5),
-        inset 0 0 5px rgba(244, 63, 94, 0.3);
-    }
-
-    .neon-border-blue {
-      box-shadow:
-        0 0 10px rgba(59, 130, 246, 0.5),
-        inset 0 0 5px rgba(59, 130, 246, 0.3);
-    }
-
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: #0f172a;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #1e293b;
-      border-radius: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #3b82f6;
-    }
-  </style>
+  <link href="assets/css/arcade.css" rel="stylesheet" />
 </head>
 
 <body
