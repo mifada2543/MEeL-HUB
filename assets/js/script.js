@@ -239,7 +239,7 @@ function updateHealthToggleButton() {
       "text-green-500",
       "bg-red-500/20",
       "text-red-500",
-      "text-gray-700"
+      "text-gray-700",
     );
     if (active) {
       btn.classList.add("bg-green-500/20", "text-green-500");
@@ -295,9 +295,44 @@ function startHealthReminder() {
   }
 }
 
+function isPlayerActive() {
+  // Cek Plyr instance (mini player maupun full player)
+  if (window.player && !window.player.paused) {
+    return true;
+  }
+
+  // Cek elemen media HTML langsung
+  const mediaEl =
+    document.getElementById("main-video") ||
+    document.getElementById("main-player") ||
+    (document.fullscreenElement &&
+      document.fullscreenElement.querySelector("video, audio"));
+
+  if (mediaEl && !mediaEl.paused) {
+    return true;
+  }
+
+  // Cek semua elemen video/audio di halaman (misal mini player)
+  const allMedia = document.querySelectorAll("video, audio");
+  for (const m of allMedia) {
+    if (!m.paused) return true;
+  }
+
+  return false;
+}
+
 function triggerPremiumHealthAlert() {
   if (typeof Swal === "undefined") {
     console.warn("SweetAlert2 belum ter-load.");
+    return;
+  }
+
+  // Jangan tampilkan alert jika tidak ada player yang sedang aktif/playing
+  if (!isPlayerActive()) {
+    // Reschedule: pantau terus, cek lagi setelah 30 detik sampai player aktif
+    healthReminderTimer = setTimeout(() => {
+      triggerPremiumHealthAlert();
+    }, 30 * 1000);
     return;
   }
 
@@ -307,6 +342,17 @@ function triggerPremiumHealthAlert() {
 
   if (!mediaElement && document.fullscreenElement) {
     mediaElement = document.fullscreenElement.querySelector("video, audio");
+  }
+
+  // Fallback: ambil media element pertama yang sedang playing
+  if (!mediaElement) {
+    const allMedia = document.querySelectorAll("video, audio");
+    for (const m of allMedia) {
+      if (!m.paused) {
+        mediaElement = m;
+        break;
+      }
+    }
   }
 
   // --- 2. KUNCI PEMUTARAN ---
@@ -353,9 +399,9 @@ function triggerPremiumHealthAlert() {
 
     if (wasPlaying) {
       if (window.player) {
-        window.player.play().catch(() => { });
+        window.player.play().catch(() => {});
       } else if (mediaElement) {
-        mediaElement.play().catch(() => { });
+        mediaElement.play().catch(() => {});
       }
     }
   };
@@ -422,7 +468,7 @@ function triggerPremiumHealthAlert() {
         ) {
           window.player.fullscreen.exit();
         } else if (document.fullscreenElement) {
-          document.exitFullscreen().catch(() => { });
+          document.exitFullscreen().catch(() => {});
         }
       }
     },
@@ -538,16 +584,16 @@ function triggerPremiumHealthAlert() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (typeof initMeelConfirmHandlers === 'function') {
+document.addEventListener("DOMContentLoaded", () => {
+  if (typeof initMeelConfirmHandlers === "function") {
     initMeelConfirmHandlers();
   }
-  if (typeof startHealthReminder === 'function') {
+  if (typeof startHealthReminder === "function") {
     startHealthReminder();
   }
 
   // Ini kunci agar tombol mendeteksi klik sejak awal
-  if (typeof updateHealthToggleButton === 'function') {
+  if (typeof updateHealthToggleButton === "function") {
     updateHealthToggleButton();
   } else {
     console.error("Fungsi updateHealthToggleButton tidak ditemukan!");

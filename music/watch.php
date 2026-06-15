@@ -603,7 +603,7 @@ switch ($ext) {
         </div>
 
     </main> <?php include '../partials/footer.php'; ?>
-
+    <script src="../assets/js/script.js"></script>
     <script>
         window.MEEL_MUSIC_CONFIG = {
             id: <?= $id ?>,

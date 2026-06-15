@@ -417,7 +417,7 @@ if (isset($_GET['content_only'])) {
             </div>
         </div>
     </div>
-
+    <script src="../assets/js/script.js"></script>
     <script>
         lucide.createIcons();
 
