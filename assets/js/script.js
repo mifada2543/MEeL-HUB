@@ -179,6 +179,41 @@ function initMeelConfirmHandlers() {
 const HEALTH_INTERVAL_MS = 20 * 60 * 1000;
 let healthReminderTimer;
 
+// Status Global Mode Sehat (Untuk memblokir keyboard & player)
+window.meelHealthAlertActive = false;
+
+// --- 1. PENCEGAH INTERAKSI KEYBOARD GLOBAL SAAT MODE SEHAT ---
+document.addEventListener(
+  "keydown",
+  function (e) {
+    if (window.meelHealthAlertActive) {
+      // Blokir spasi, k (play/pause), j/l (rewind/forward), panah, m (mute), f (fullscreen)
+      const blockedKeys = [
+        " ",
+        "k",
+        "K",
+        "j",
+        "J",
+        "l",
+        "L",
+        "ArrowLeft",
+        "ArrowRight",
+        "ArrowUp",
+        "ArrowDown",
+        "m",
+        "M",
+        "f",
+        "F",
+      ];
+      if (blockedKeys.includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+  },
+  true,
+); // "true" membuat ini dieksekusi pada fase Capture (Mencegat sebelum sampai ke Plyr)
+
 function toggleHealth() {
   const current = localStorage.getItem("health_reminder") === "true";
   const newState = !current;
@@ -266,29 +301,70 @@ function triggerPremiumHealthAlert() {
     return;
   }
 
-  // Support both video dan audio players (music/video watch pages)
   let mediaElement =
     document.getElementById("main-video") ||
     document.getElementById("main-player");
 
-  // Jika fullscreen, cari element di fullscreen container juga
   if (!mediaElement && document.fullscreenElement) {
     mediaElement = document.fullscreenElement.querySelector("video, audio");
   }
 
+  // --- 2. KUNCI PEMUTARAN ---
+  window.meelHealthAlertActive = true;
+
+  // Handler paksa pause jika media mencoba berputar kembali
+  const forcePauseHandler = function () {
+    if (window.meelHealthAlertActive) {
+      if (window.player) {
+        window.player.pause();
+      } else if (mediaElement) {
+        mediaElement.pause();
+      }
+    }
+  };
+
+  // Daftarkan interceptor pencegah putar ulang
+  if (window.player) {
+    window.player.on("play", forcePauseHandler);
+  } else if (mediaElement) {
+    mediaElement.addEventListener("play", forcePauseHandler);
+  }
+
+  // Hentikan pemutaran yang sedang berjalan saat ini
   let wasPlaying = false;
-  if (mediaElement && !mediaElement.paused) {
+  if (window.player) {
+    if (!window.player.paused) {
+      window.player.pause();
+      wasPlaying = true;
+    }
+  } else if (mediaElement && !mediaElement.paused) {
     mediaElement.pause();
     wasPlaying = true;
   }
 
-  // Helper function untuk melanjutkan video/audio
-  const resumeVideo = () => {
-    if (wasPlaying && mediaElement) mediaElement.play();
+  // Helper function untuk melanjutkan video/audio DAN membuka kunci pengaman
+  const cleanupAndResume = () => {
+    window.meelHealthAlertActive = false;
+    if (window.player) {
+      window.player.off("play", forcePauseHandler);
+    } else if (mediaElement) {
+      mediaElement.removeEventListener("play", forcePauseHandler);
+    }
+
+    if (wasPlaying) {
+      if (window.player) {
+        window.player.play().catch(() => {});
+      } else if (mediaElement) {
+        mediaElement.play().catch(() => {});
+      }
+    }
   };
 
-  // Simpan status fullscreen sebelum alert muncul
-  const wasFullscreen = !!document.fullscreenElement || (window.player && window.player.fullscreen && window.player.fullscreen.active);
+  const wasFullscreen =
+    !!document.fullscreenElement ||
+    (window.player &&
+      window.player.fullscreen &&
+      window.player.fullscreen.active);
 
   Swal.fire({
     title: "WAKTUNYA ISTIRAHATKAN MATA!",
@@ -339,7 +415,11 @@ function triggerPremiumHealthAlert() {
       }
       // Exit fullscreen saat modal muncul agar user bisa interact
       if (wasFullscreen) {
-        if (window.player && window.player.fullscreen && window.player.fullscreen.active) {
+        if (
+          window.player &&
+          window.player.fullscreen &&
+          window.player.fullscreen.active
+        ) {
           window.player.fullscreen.exit();
         } else if (document.fullscreenElement) {
           document.exitFullscreen().catch(() => {});
@@ -413,7 +493,7 @@ function triggerPremiumHealthAlert() {
             htmlContainer: "text-[11px] text-gray-400 uppercase tracking-wider",
           },
         }).then(() => {
-          resumeVideo();
+          cleanupAndResume(); // Buka Kunci & Resume Playback
           // Re-enter fullscreen jika sebelumnya fullscreen
           if (wasFullscreen) {
             if (window.player && window.player.fullscreen) {
@@ -429,7 +509,7 @@ function triggerPremiumHealthAlert() {
       });
     } else if (result.dismiss === Swal.DismissReason.cancel) {
       // PENGGUNA KLIK "LANJUT NONTON"
-      resumeVideo();
+      cleanupAndResume(); // Buka Kunci & Resume Playback
       // Re-enter fullscreen jika sebelumnya fullscreen
       if (wasFullscreen) {
         if (window.player && window.player.fullscreen) {
@@ -443,7 +523,7 @@ function triggerPremiumHealthAlert() {
       scheduleNextHealthAlert();
     } else if (result.dismiss === Swal.DismissReason.timer) {
       // DIDIAMKAN SELAMA 5 MENIT
-      resumeVideo();
+      cleanupAndResume(); // Buka Kunci & Resume Playback
       // Re-enter fullscreen jika sebelumnya fullscreen
       if (wasFullscreen) {
         if (window.player && window.player.fullscreen) {
@@ -456,16 +536,4 @@ function triggerPremiumHealthAlert() {
       }
     }
   });
-}
-// --- FUNGSI INISIALISASI UTAMA ---
-function initAll() {
-  initMeelConfirmHandlers();
-  updateHealthToggleButton();
-  startHealthReminder();
-}
-// --- INITIALIZATION ---
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initAll);
-} else {
-  initAll();
 }

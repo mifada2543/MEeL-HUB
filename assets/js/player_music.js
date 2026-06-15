@@ -147,6 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
       keyboard: { focused: true, global: true },
       tooltips: { controls: true, seek: true },
     });
+    window.player = player;
   } catch (e) {
     console.error("❌ Plyr init error:", e);
     return;
@@ -420,6 +421,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const vinyl = () => document.querySelector(".vinyl-wrap .vinyl-spin");
 
   player.on("play", () => {
+    if (window.meelHealthAlertActive) {
+      player.pause();
+      return;
+    }
     isFinished = false;
     container.classList.add("playing");
     vinyl()?.classList.add("playing");
@@ -568,18 +573,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.miniPlayPause = function () {
     if (!player) return;
+    if (window.meelHealthAlertActive) return;
     player.paused ? player.play() : player.pause();
     updateMiniPlayerUI();
   };
 
   window.miniSeek = function (event) {
     if (!player) return;
+    if (window.meelHealthAlertActive) return;
     const rect = event.currentTarget.getBoundingClientRect();
     player.currentTime =
       ((event.clientX - rect.left) / rect.width) * player.duration;
   };
 
   window.miniNext = function () {
+    if (window.meelHealthAlertActive) return;
     const next = window.MEEL_MUSIC_CONFIG?.nextSongUrl;
     if (next) {
       saveAudioState();
@@ -592,6 +600,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.miniPrev = function () {
     if (!player) return;
+    if (window.meelHealthAlertActive) return;
     if (player.currentTime > 3) {
       player.currentTime = 0;
       return;
@@ -619,17 +628,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Mini-player container click while active
   document
-  .getElementById("player-container")
-  ?.addEventListener("click", (e) => {
-    // If the click originates from Plyr controls, custom mini player controls, or any button, ignore the toggle.
-    if (e.target.closest('.plyr__controls') || e.target.closest('.mp-controls') || e.target.closest('button')) {
-      return;
-    }
-    if (isMiniPlayerActive) {
-      e.preventDefault();
-      window.toggleMiniPlayer();
-    }
-  });
+    .getElementById("player-container")
+    ?.addEventListener("click", (e) => {
+      // If the click originates from Plyr controls, custom mini player controls, or any button, ignore the toggle.
+      if (
+        e.target.closest(".plyr__controls") ||
+        e.target.closest(".mp-controls") ||
+        e.target.closest("button")
+      ) {
+        return;
+      }
+      if (isMiniPlayerActive) {
+        e.preventDefault();
+        window.toggleMiniPlayer();
+      }
+    });
 
   window.addEventListener("popstate", () => {
     if (isMiniPlayerActive && window.location.href === watchUrl)
