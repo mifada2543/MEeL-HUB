@@ -1,0 +1,7 @@
+<FilesMatch "^(cookies\.txt|config\.php|.*\.sql|.*\.log|activity_logger\.php|auth\.php|db\.php)">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Opsional: Jangan izinkan orang melihat daftar isi folder (Directory Indexing)
+Options -Indexes
