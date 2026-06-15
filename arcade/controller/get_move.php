@@ -1,6 +1,6 @@
 <?php
 
-require 'db.php';
+require '../../auth/config.php';
 
 header('Content-Type: application/json');
 
