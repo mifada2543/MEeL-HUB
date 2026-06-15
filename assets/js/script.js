@@ -296,6 +296,17 @@ function startHealthReminder() {
 }
 
 function isPlayerActive() {
+  // Cek apakah halaman ini punya player sama sekali
+  const hasPlayerElement =
+    !!window.player ||
+    !!document.getElementById("main-video") ||
+    !!document.getElementById("main-player") ||
+    document.querySelectorAll("video, audio").length > 0;
+
+  // Jika tidak ada elemen player di halaman ini (misal HUB, Books, Drive),
+  // anggap tidak aktif — jangan ganggu user
+  if (!hasPlayerElement) return false;
+
   // Cek Plyr instance (mini player maupun full player)
   if (window.player && !window.player.paused) {
     return true;
