@@ -327,19 +327,27 @@ function triggerAiMove() {
       aiDecision.to.c,
     );
     if (result === "promotion") {
-      game.executeMove(
-        game.promotionPending.from.r,
-        game.promotionPending.from.c,
-        game.promotionPending.to.r,
-        game.promotionPending.to.c,
-        "q",
-      );
-      game.promotionPending = null;
-      updateGameStatus({ status: "success", check: game.isKingInCheck("w") });
+      const pending = game.promotionPending;
+      if (pending) {
+        const promResult = game.executeMove(
+          pending.from.r,
+          pending.from.c,
+          pending.to.r,
+          pending.to.c,
+          "q",
+        );
+        game.promotionPending = null;
+        renderBoard();
+        updateGameStatus(
+          promResult && promResult !== "promotion"
+            ? promResult
+            : { status: "success", check: game.isKingInCheck("w") },
+        );
+      }
     } else {
+      renderBoard();
       updateGameStatus(result);
     }
-    renderBoard();
   }
 }
 

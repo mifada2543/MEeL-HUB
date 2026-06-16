@@ -261,9 +261,11 @@ export class ChessGame {
         let pathSafe = true;
         const dir = move.isCastling === "k" ? 1 : -1;
         const passC = c + dir;
+        const savedKingPos = { ...this.kingPositions[piece.color] };
         const origTargetPass = this.movePiece(r, c, r, passC, true);
         if (this.isKingInCheck(piece.color)) pathSafe = false;
         this.undoMovePiece(r, c, r, passC, originalPiece, origTargetPass);
+        this.kingPositions[piece.color] = savedKingPos;
         if (!pathSafe) continue;
       }
 
@@ -450,21 +452,82 @@ export class ChessGame {
 
   evaluateBoard() {
     const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
+
+    // Piece-Square Tables (dari perspektif putih, baris 0 = belakang hitam)
+    const PST = {
+      p: [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [50, 50, 50, 50, 50, 50, 50, 50],
+        [10, 10, 20, 30, 30, 20, 10, 10],
+        [5, 5, 10, 25, 25, 10, 5, 5],
+        [0, 0, 0, 20, 20, 0, 0, 0],
+        [5, -5, -10, 0, 0, -10, -5, 5],
+        [5, 10, 10, -20, -20, 10, 10, 5],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+      ],
+      n: [
+        [-50, -40, -30, -30, -30, -30, -40, -50],
+        [-40, -20, 0, 0, 0, 0, -20, -40],
+        [-30, 0, 10, 15, 15, 10, 0, -30],
+        [-30, 5, 15, 20, 20, 15, 5, -30],
+        [-30, 0, 15, 20, 20, 15, 0, -30],
+        [-30, 5, 10, 15, 15, 10, 5, -30],
+        [-40, -20, 0, 5, 5, 0, -20, -40],
+        [-50, -40, -30, -30, -30, -30, -40, -50],
+      ],
+      b: [
+        [-20, -10, -10, -10, -10, -10, -10, -20],
+        [-10, 0, 0, 0, 0, 0, 0, -10],
+        [-10, 0, 5, 10, 10, 5, 0, -10],
+        [-10, 5, 5, 10, 10, 5, 5, -10],
+        [-10, 0, 10, 10, 10, 10, 0, -10],
+        [-10, 10, 10, 10, 10, 10, 10, -10],
+        [-10, 5, 0, 0, 0, 0, 5, -10],
+        [-20, -10, -10, -10, -10, -10, -10, -20],
+      ],
+      r: [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [5, 10, 10, 10, 10, 10, 10, 5],
+        [-5, 0, 0, 0, 0, 0, 0, -5],
+        [-5, 0, 0, 0, 0, 0, 0, -5],
+        [-5, 0, 0, 0, 0, 0, 0, -5],
+        [-5, 0, 0, 0, 0, 0, 0, -5],
+        [-5, 0, 0, 0, 0, 0, 0, -5],
+        [0, 0, 0, 5, 5, 0, 0, 0],
+      ],
+      q: [
+        [-20, -10, -10, -5, -5, -10, -10, -20],
+        [-10, 0, 0, 0, 0, 0, 0, -10],
+        [-10, 0, 5, 5, 5, 5, 0, -10],
+        [-5, 0, 5, 5, 5, 5, 0, -5],
+        [0, 0, 5, 5, 5, 5, 0, -5],
+        [-10, 5, 5, 5, 5, 5, 0, -10],
+        [-10, 0, 5, 0, 0, 0, 0, -10],
+        [-20, -10, -10, -5, -5, -10, -10, -20],
+      ],
+      k: [
+        [-30, -40, -40, -50, -50, -40, -40, -30],
+        [-30, -40, -40, -50, -50, -40, -40, -30],
+        [-30, -40, -40, -50, -50, -40, -40, -30],
+        [-30, -40, -40, -50, -50, -40, -40, -30],
+        [-20, -30, -30, -40, -40, -30, -30, -20],
+        [-10, -20, -20, -20, -20, -20, -20, -10],
+        [20, 20, 0, 0, 0, 0, 20, 20],
+        [20, 30, 10, 0, 0, 10, 30, 20],
+      ],
+    };
+
     let score = 0;
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const piece = this.board[r][c];
-        if (piece) {
-          let val = pieceValues[piece.type];
-          // Tambahan Positional Scoring
-          if (piece.type === "p")
-            val += piece.color === "w" ? (6 - r) * 10 : (r - 1) * 10;
-          else if (piece.type === "n" || piece.type === "b") {
-            const centerDist = Math.abs(3.5 - r) + Math.abs(3.5 - c);
-            val += (7 - centerDist) * 5;
-          }
-          score += piece.color === "w" ? val : -val;
-        }
+        if (!piece) continue;
+        const baseVal = pieceValues[piece.type];
+        // PST: putih baca dari bawah (baris 7), hitam dari atas (baris 0)
+        const pstRow = piece.color === "w" ? r : 7 - r;
+        const pstVal = PST[piece.type] ? PST[piece.type][pstRow][c] : 0;
+        const total = baseVal + pstVal;
+        score += piece.color === "w" ? total : -total;
       }
     }
     return score;
@@ -500,8 +563,15 @@ export class ChessGame {
       if (captures.length > 0) {
         const pVal = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 };
         captures.sort((a, b) => {
-          const valA = pVal[this.board[a.to.r][a.to.c]?.type] || 1;
-          const valB = pVal[this.board[b.to.r][b.to.c]?.type] || 1;
+          // En passant: piece ada di baris yang berbeda (fromR bukan toR)
+          const pieceA = a.to.isEnPassant
+            ? this.board[a.from.r][a.to.c]
+            : this.board[a.to.r][a.to.c];
+          const pieceB = b.to.isEnPassant
+            ? this.board[b.from.r][b.to.c]
+            : this.board[b.to.r][b.to.c];
+          const valA = pVal[pieceA?.type] || 1;
+          const valB = pVal[pieceB?.type] || 1;
           return valB - valA;
         });
         return captures[0];
@@ -522,6 +592,14 @@ export class ChessGame {
           }
         }
       }
+
+      // Move ordering: captures duluan → alpha-beta prune lebih banyak
+      const mvvLva = { q: 9, r: 5, b: 3, n: 3, p: 1, k: 0 };
+      moves.sort((a, b) => {
+        const capA = this.board[a.to.r][a.to.c];
+        const capB = this.board[b.to.r][b.to.c];
+        return (mvvLva[capB?.type] || 0) - (mvvLva[capA?.type] || 0);
+      });
 
       if (moves.length === 0)
         return this.isKingInCheck(currColor)
