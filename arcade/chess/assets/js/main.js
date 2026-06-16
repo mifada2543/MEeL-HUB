@@ -172,7 +172,9 @@ function tungguLawanBergabung(code) {
 
 // RENDERING BOARD
 function isBoardFlipped() {
-  return game.gameMode === "online" && myColor === "b";
+  if (game.gameMode === "online") return myColor === "b";
+  if (game.gameMode === "local") return game.turn === "b";
+  return false;
 }
 
 function viewToBoard(viewR, viewC) {
@@ -191,6 +193,7 @@ function createBoardCell(viewR, viewC) {
 
 function renderBoard() {
   boardEl.innerHTML = "";
+  boardEl.style.transform = isBoardFlipped() ? "rotate(180deg)" : "";
   for (let viewR = 0; viewR < 8; viewR++) {
     for (let viewC = 0; viewC < 8; viewC++) {
       const { r: boardR, c: boardC } = viewToBoard(viewR, viewC);
@@ -241,6 +244,7 @@ function renderBoard() {
           const pieceWrapper = document.createElement("div");
           pieceWrapper.className = `absolute inset-0 flex items-center justify-center z-10 select-none pointer-events-none ${isJustPlaced ? "piece-anim" : ""}`;
           pieceWrapper.innerHTML = pieceMarkup;
+          if (isBoardFlipped()) pieceWrapper.style.transform = "rotate(180deg)";
           cell.appendChild(pieceWrapper);
         }
       }
@@ -249,6 +253,7 @@ function renderBoard() {
         const rankLabel = document.createElement("span");
         rankLabel.className = `absolute top-0.5 left-1 text-[9px] font-bold z-30 pointer-events-none ${isDark ? "text-[#f0d9b5]/80" : "text-[#b58863]/80"}`;
         rankLabel.innerText = 8 - boardR;
+        if (isBoardFlipped()) rankLabel.style.transform = "rotate(180deg)";
         cell.appendChild(rankLabel);
       }
 
