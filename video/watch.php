@@ -392,14 +392,14 @@ $rekom            = $viewer->getRecommendations(15);
     <script src="../assets/js/script.js"></script>
 
     <script>
-        window.playerConfig = {
-            videoSrc: <?= json_encode($video_src) ?>,
-            isHls: <?= $is_hls ? 'true' : 'false' ?>,
-            vttSrc: <?= json_encode($vtt_src ?? '') ?>,
-            id: <?= json_encode($id) ?>,
-            title: <?= json_encode($v['title'] ?? '') ?>,
-            uploader: <?= json_encode($v['uploader'] ?? '') ?>
-        };
+        window.playerConfig = <?= json_encode([
+                                    'videoSrc' => $video_src,
+                                    'isHls' => (bool)$is_hls,
+                                    'vttSrc' => $vtt_src ?? '',
+                                    'id' => (int)$id,
+                                    'title' => $v['title'] ?? '',
+                                    'uploader' => $v['uploader'] ?? ''
+                                ]); ?>;
     </script>
     <script src="../assets/js/player_video.js"></script>
 

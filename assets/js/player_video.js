@@ -483,6 +483,37 @@ function setupMeelPlayerEvents() {
       storageKeyVideo = `video_pos_${videoId}`;
       vttSrc = newVtt;
 
+      // ─── ISI PERBAIKAN: AMBIL TITLE & UPLOADER BARU DI SINI ───
+      let fetchedConfig = {};
+      doc.querySelectorAll("script:not([src])").forEach((s) => {
+        const m = s.textContent.match(/window\.playerConfig\s*=\s*(\{[\s\S]*?\});/);
+        if (m) {
+          try {
+            fetchedConfig = new Function("return " + m[1])();
+          } catch (e) { }
+        }
+      });
+
+      // Update nilai variabel global judul & uploader
+      videoTitle = fetchedConfig.title || "";
+      videoUploader = fetchedConfig.uploader || "";
+
+      // Sinkronkan objek playerConfig global
+      window.playerConfig = {
+        videoSrc: newSrc,
+        isHls: newIsHls,
+        vttSrc: newVtt,
+        id: videoId,
+        title: videoTitle,
+        uploader: videoUploader
+      };
+
+      // Jika sedang berada di mode mini-player, langsung perbarui teks UI-nya
+      if (isMiniPlayerActive) {
+        updateMiniPlayerInfo(videoTitle, videoUploader);
+      }
+      // ─────────────────────────────────────────────────────────
+
       const swapElements = [
         "video-info",
         "comment-section",
@@ -688,7 +719,12 @@ function attachMiniPlayerVideoCardListeners(container) {
         doc.querySelectorAll("script:not([src])").forEach((s) => {
           const m = s.textContent.match(/window\.playerConfig\s*=\s*(\{[\s\S]*?\});/);
           if (m) {
-            try { fetchedConfig = JSON.parse(m[1]); } catch (e) { }
+            try {
+              // Evaluasi format JavaScript Object Literal (bukan strict JSON)
+              fetchedConfig = new Function("return " + m[1])();
+            } catch (e) {
+              console.error("Gagal parse playerConfig:", e);
+            }
           }
         });
 
@@ -717,11 +753,17 @@ function attachMiniPlayerVideoCardListeners(container) {
 
         const videoEl = document.getElementById("main-video");
         if (videoEl) {
+          videoEl.innerHTML = '';
           videoEl.dataset.src = newSrc;
           videoEl.dataset.ishls = newIsHls ? "true" : "false";
           videoEl.dataset.poster = newPoster;
           videoEl.poster = newPoster;
-          videoEl.src = "";
+          if (!newIsHls) {
+            videoEl.src = newSrc;
+          } else {
+            videoEl.removeAttribute("src");
+          }
+
           videoEl.load();
         }
 
