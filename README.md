@@ -95,8 +95,9 @@ MEeL adalah platform media hub pribadi berbasis PHP & MySQL yang berjalan di ata
 | **Interaktivitas** | HTMX & Vanilla JavaScript       | AJAX tanpa reload halaman (SPA-like)          |
 | **Media Player**   | Plyr.js & HLS.js                | Engine pemutaran video HLS & audio            |
 | **Transcoding**    | FFmpeg & FFprobe                | Segmentasi HLS, kompresi, & ekstrak thumbnail |
-| **Downloader**     | yt-dlp                          | Pengunduhan media dari URL eksternal          |
+| **Downloader**     | yt-dlp(optional)                | Pengunduhan media dari URL eksternal          |
 | **Transliterasi**  | PHP `intl` (Transliterator)     | Pembersihan nama file (Romaji conversion)     |
+| **Zip,books**      | PHP `zip` (optional)            | Pembersihan nama file (Romaji conversion)     |
 
 ---
 
