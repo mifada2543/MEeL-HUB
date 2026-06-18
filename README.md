@@ -1,4 +1,4 @@
-# MEeL — Media Hub Platform
+# MEeL-HUB — Media Hub Platform
 
 <div align="center">
   <img src="assets/MEeL.png" alt="MEeL Logo" width="500"/>
