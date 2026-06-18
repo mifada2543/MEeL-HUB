@@ -18,6 +18,7 @@ let lastMoveId = 0;
 let pollingTimer = null;
 let roomStatusTimer = null;
 let suppressNetworkSync = false;
+let localBoardFlipped = false;
 
 // DOM Elements
 const boardEl = document.getElementById("chess-board");
@@ -109,6 +110,7 @@ function startPolling() {
       suppressNetworkSync = true;
       game.muteSounds = true;
       let hasNew = false;
+      let lastResult = null;
 
       for (const move of moves) {
         lastMoveId = move.id;
@@ -117,13 +119,14 @@ function startPolling() {
             ? JSON.parse(move.move_data)
             : move.move_data;
         if (payload.color === myColor) continue;
-        game.executeMove(
+        const result = game.executeMove(
           payload.fromR,
           payload.fromC,
           payload.toR,
           payload.toC,
           payload.promotedPieceType || null,
         );
+        if (result && result !== "promotion") lastResult = result;
         hasNew = true;
       }
 
@@ -131,8 +134,9 @@ function startPolling() {
       game.muteSounds = false;
 
       if (hasNew) {
+        if (lastResult) sounds.init();
         renderBoard();
-        updateGameStatus(null);
+        updateGameStatus(lastResult);
       }
     } catch (err) {
       suppressNetworkSync = false;
@@ -173,7 +177,7 @@ function tungguLawanBergabung(code) {
 // RENDERING BOARD
 function isBoardFlipped() {
   if (game.gameMode === "online") return myColor === "b";
-  if (game.gameMode === "local") return game.turn === "b";
+  if (game.gameMode === "local") return localBoardFlipped;
   return false;
 }
 
@@ -193,7 +197,7 @@ function createBoardCell(viewR, viewC) {
 
 function renderBoard() {
   boardEl.innerHTML = "";
-  boardEl.style.transform = isBoardFlipped() ? "rotate(180deg)" : "";
+  boardEl.style.transform = "";
   for (let viewR = 0; viewR < 8; viewR++) {
     for (let viewC = 0; viewC < 8; viewC++) {
       const { r: boardR, c: boardC } = viewToBoard(viewR, viewC);
@@ -244,7 +248,6 @@ function renderBoard() {
           const pieceWrapper = document.createElement("div");
           pieceWrapper.className = `absolute inset-0 flex items-center justify-center z-10 select-none pointer-events-none ${isJustPlaced ? "piece-anim" : ""}`;
           pieceWrapper.innerHTML = pieceMarkup;
-          if (isBoardFlipped()) pieceWrapper.style.transform = "rotate(180deg)";
           cell.appendChild(pieceWrapper);
         }
       }
@@ -253,7 +256,6 @@ function renderBoard() {
         const rankLabel = document.createElement("span");
         rankLabel.className = `absolute top-0.5 left-1 text-[9px] font-bold z-30 pointer-events-none ${isDark ? "text-[#f0d9b5]/80" : "text-[#b58863]/80"}`;
         rankLabel.innerText = 8 - boardR;
-        if (isBoardFlipped()) rankLabel.style.transform = "rotate(180deg)";
         cell.appendChild(rankLabel);
       }
 
@@ -298,6 +300,9 @@ function handleCellClick(r, c) {
             if (d.success) lastMoveId = d.id;
           },
         );
+      }
+      if (game.gameMode === "local" && !game.isGameOver) {
+        localBoardFlipped = !localBoardFlipped;
       }
 
       renderBoard();
@@ -507,6 +512,7 @@ function updateGameStatus(result) {
 
 function restartGame() {
   game.reset();
+  localBoardFlipped = false;
   const overlay = document.getElementById("game-over-overlay");
   overlay.classList.add("opacity-0");
   setTimeout(() => overlay.classList.add("hidden"), 300);
@@ -703,8 +709,8 @@ document.addEventListener("DOMContentLoaded", () => {
         .querySelectorAll("[data-level]")
         .forEach(
           (b) =>
-            (b.className =
-              "py-2 text-xs font-bold rounded-lg border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200 transition-all"),
+          (b.className =
+            "py-2 text-xs font-bold rounded-lg border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200 transition-all"),
         );
       e.target.className =
         "py-2 text-xs font-bold rounded-lg border border-indigo-500/40 bg-indigo-950/30 text-indigo-300 transition-all shadow-inner";
