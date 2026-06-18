@@ -29,13 +29,16 @@ body {
 ::-webkit-scrollbar {
   width: 3px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #1f2937;
   border-radius: 10px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #374151;
 }
@@ -76,6 +79,7 @@ body {
     transform 0.25s ease,
     border-color 0.25s ease;
 }
+
 .video-card:hover {
   transform: translateY(-4px);
   border-color: rgba(220, 38, 38, 0.3) !important;
@@ -89,11 +93,13 @@ body {
     background 0.2s,
     border-color 0.2s;
 }
+
 .comment-row:hover,
 .rekomendasi-item:hover {
   background: rgba(255, 255, 255, 0.025);
   border-left-color: var(--red);
 }
+
 .rekomendasi-item:hover .rec-thumb-img {
   transform: scale(1.06);
 }
@@ -106,6 +112,7 @@ body {
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
 }
+
 #resume-modal:not(.hidden) {
   display: flex;
   align-items: center;
@@ -116,6 +123,7 @@ body {
   scrollbar-width: thin;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
 }
+
 #search-results-overlay:empty {
   display: none;
 }
@@ -133,6 +141,7 @@ body {
   gap: 0.5rem;
   align-items: center;
 }
+
 #mobile-search-overlay.open {
   display: flex;
 }
@@ -141,6 +150,7 @@ body {
 .plyr--fullscreen-fallback {
   background: #000 !important;
 }
+
 .plyr__video-wrapper {
   background: #000 !important;
   display: flex;
@@ -162,22 +172,26 @@ body {
   left: 50% !important;
   transform: translateX(-50%) !important;
   width: 60px !important;
-  height: 130px !important; /* Covers the area from the mute button up through the slider */
+  height: 130px !important;
+  /* Covers the area from the mute button up through the slider */
   background: transparent !important;
   pointer-events: none !important;
   z-index: 1 !important;
 }
 
 .plyr__volume:hover::after {
-  pointer-events: auto !important; /* Enable interaction only when hovering to prevent blocking other elements */
+  pointer-events: auto !important;
+  /* Enable interaction only when hovering to prevent blocking other elements */
 }
 
 .plyr__volume input[type="range"] {
   position: absolute !important;
   bottom: 50% !important;
   left: 50% !important;
-  width: 100px !important; /* Rotated height */
-  height: 32px !important; /* Rotated width */
+  width: 100px !important;
+  /* Rotated height */
+  height: 32px !important;
+  /* Rotated width */
   margin: 0 !important;
 
   /* Fully transparent backgrounds, borders, and shadows */
@@ -229,6 +243,7 @@ body {
     box-shadow 0.3s !important;
   cursor: default !important;
 }
+
 #mini-player-shell:hover {
   box-shadow:
     0 28px 64px rgba(0, 0, 0, 0.95),
@@ -250,6 +265,34 @@ body {
   pointer-events: auto !important;
 }
 
+/* ── Efek Gelap Lurus di Sepanjang Sisi Bawah Mini-Player ── */
+
+.mini-player-mode .plyr::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(to top,
+      rgba(0, 0, 0, 0.5) 5%,
+      /* Kegelapan menengah yang rata */
+      rgba(0, 0, 0, 0) 20%
+      /* Transparan mulai dari 20% ke atas */
+    );
+
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Tetap aktifkan saat hover */
+#mini-player-shell:hover .plyr::before,
+.mini-player-mode .plyr.plyr--pressed::before {
+  opacity: 1;
+  visibility: visible;
+}
+
 /* Sembunyikan tombol Play/Pause (kiri), tombol Play besar di tengah, PIP, Settings, dan Fullscreen */
 .mini-player-mode button[data-plyr="play"],
 .mini-player-mode button[data-plyr="pip"],
@@ -260,7 +303,8 @@ body {
 
 /* Penyesuaian jarak (padding) agar layout control bar tetap rapi setelah tombol dihapus */
 .mini-player-mode .plyr__controls {
-  padding-left: 16px !important; /* Memberi jarak di kiri karena tombol play dihapus */
+  padding-left: 16px !important;
+  /* Memberi jarak di kiri karena tombol play dihapus */
 }
 
 /* State default controls: Tersembunyi di bawah, transparan */
@@ -313,21 +357,26 @@ body {
   z-index: 20;
   pointer-events: none;
 }
+
 #mini-player-shell:hover #mini-expand-btn,
 #mini-player-shell:hover #mini-close-btn {
   opacity: 1;
   pointer-events: auto;
 }
+
 #mini-expand-btn {
   left: 8px;
 }
+
 #mini-expand-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: scale(1.1);
 }
+
 #mini-close-btn {
   right: 8px;
 }
+
 #mini-close-btn:hover {
   background: rgba(220, 38, 38, 0.75);
   transform: scale(1.1);
@@ -341,6 +390,7 @@ body {
   gap: 10px;
   cursor: pointer;
 }
+
 #mini-player-info:hover #mini-info-title {
   color: #f87171;
 }
@@ -360,6 +410,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
 #mini-info-uploader {
   font-size: 10px;
   color: #6b7280;
@@ -376,16 +427,19 @@ body {
 .htmx-added {
   animation: fadeSlideIn 0.35s ease-out both;
 }
+
 @keyframes fadeSlideIn {
   from {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
+
 .htmx-request {
   opacity: 0.5;
   transition: opacity 0.2s;
@@ -396,6 +450,7 @@ body {
   #navbar-search-wrap {
     display: none;
   }
+
   #navbar-search-icon-btn {
     display: flex !important;
   }
