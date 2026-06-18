@@ -493,10 +493,42 @@ class Transcoder
             return "";
         }
 
-        // ── Sprite & VTT ──────────────────────────────────────────────────────
+        // ── Sprite & VTT (DIOPTIMALKAN KE RAM DISK) ──────────────────────────
         echo "<script>meelPhase('sprite');meelSpPct(0,'Membuat thumbnail.vtt...');</script>";
         flush();
-        $this->generateSpriteAndVTT($staging_mp4, $work_folder);
+
+        // Buat folder kerja sementara di RAM Disk Linux (/dev/shm)
+        // Fallback ke /tmp jika /dev/shm tidak tersedia atau tidak writable
+        $shm_base   = (is_writable('/dev/shm') ? '/dev/shm' : sys_get_temp_dir());
+        $ram_folder = $shm_base . '/meel_sprite_' . uniqid() . '/';
+        if (!is_dir($ram_folder)) mkdir($ram_folder, 0777, true);
+
+        // Jalankan pembuatan sprite di dalam RAM
+        $this->generateSpriteAndVTT($staging_mp4, $ram_folder);
+
+        // Pindahkan hasil dari RAM ke work_folder — catat ke error_log jika gagal
+        $sprite_src = $ram_folder . 'thumb_sprite.jpg';
+        $vtt_src    = $ram_folder . 'thumbnails.vtt';
+
+        if (file_exists($sprite_src)) {
+            if (!$this->moveFile($sprite_src, $work_folder . 'thumb_sprite.jpg')) {
+                error_log("[MEeL] WARN: Gagal move thumb_sprite.jpg dari RAM ke: $work_folder");
+            }
+        } else {
+            error_log("[MEeL] WARN: thumb_sprite.jpg tidak terbentuk di RAM: $ram_folder");
+        }
+
+        if (file_exists($vtt_src)) {
+            if (!$this->moveFile($vtt_src, $work_folder . 'thumbnails.vtt')) {
+                error_log("[MEeL] WARN: Gagal move thumbnails.vtt dari RAM ke: $work_folder");
+            }
+        } else {
+            error_log("[MEeL] WARN: thumbnails.vtt tidak terbentuk di RAM: $ram_folder");
+        }
+
+        // Bersihkan RAM setelah semua file berhasil dipindahkan
+        $this->cleanupDir($ram_folder);
+
         echo "<script>meelSpPct(100,'Sprite & VTT selesai.');</script>";
         flush();
 
@@ -959,17 +991,22 @@ class Transcoder
         $sprite_file = $target_folder . 'thumb_sprite.jpg';
         $vtt_file    = $target_folder . 'thumbnails.vtt';
 
-        // Buat sprite — fps filter + scale + tile
-        // -threads FFMPEG_THREADS: tile filter memanfaatkan multi-thread untuk decode frame
-        $filter    = "fps=1/$interval,scale=$w:$h,tile={$cols}x{$rows}";
+        // Buat sprite — fps filter + scale + tile (CPU/software decode)
+        // VAAPI tidak dipakai: Apache tidak punya akses ke /dev/dri/renderD128
+        $filter     = "fps=1/$interval,scale=$w:$h,tile={$cols}x{$rows}";
         $cmd_sprite = self::ENV_PREFIX . escapeshellarg($this->ffmpeg_bin)
             . " -y -threads " . self::FFMPEG_THREADS
             . " -i " . escapeshellarg($video_path)
             . " -vf " . escapeshellarg($filter)
             . " " . escapeshellarg($sprite_file) . " 2>&1";
-        exec($cmd_sprite);
 
-        if (!file_exists($sprite_file) || filesize($sprite_file) === 0) return;
+        $ffmpeg_out = [];
+        exec($cmd_sprite, $ffmpeg_out);
+
+        if (!file_exists($sprite_file) || filesize($sprite_file) === 0) {
+            error_log("[MEeL] ERROR: Sprite gagal. Output: " . implode(" | ", array_slice($ffmpeg_out, -10)));
+            return;
+        }
 
         // Tulis VTT
         $vtt_content = "WEBVTT\n\n";

@@ -8,16 +8,29 @@
   #meel-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(5, 7, 12, 0.96);
+    background: rgba(5, 7, 12, 0.90);
     z-index: 9999;
     display: none;
     align-items: center;
     justify-content: center;
     font-family: ui-monospace, 'Cascadia Code', 'SF Mono', monospace;
-    /* Tambahan agar animasi lancar saat streaming */
-    backface-visibility: hidden;
-    perspective: 1000px;
-    backdrop-filter: blur(2px);
+    /* Efek Blur yang lebih kuat untuk fokus yang lebih jelas */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    /* Animasi masuk overlay yang mulus */
+    animation: meel-fade-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes meel-fade-in {
+    from {
+      opacity: 0;
+      backdrop-filter: blur(0px);
+    }
+
+    to {
+      opacity: 1;
+      backdrop-filter: blur(8px);
+    }
   }
 
   #meel-overlay.error-state {
@@ -41,6 +54,8 @@
     justify-content: center;
     position: relative;
     margin: 0 auto;
+    /* Hardware acceleration untuk kontainer icon */
+    transform: translateZ(0);
   }
 
   #meel-phase-download .dl-icon-wrap::after {
@@ -49,20 +64,20 @@
     inset: -1px;
     border-radius: 20px;
     border: 1px solid rgba(59, 130, 246, .35);
-    animation: meel-ping 2s ease-out infinite;
+    animation: meel-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+    will-change: transform, opacity;
   }
 
   @keyframes meel-ping {
-
-    0%,
-    100% {
-      opacity: .4;
+    0% {
       transform: scale(1);
+      opacity: .8;
     }
 
-    50% {
-      opacity: 1;
-      transform: scale(1.06);
+    80%,
+    100% {
+      transform: scale(1.15);
+      opacity: 0;
     }
   }
 
@@ -73,6 +88,7 @@
     border-radius: 99px;
     overflow: hidden;
     position: relative;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
   }
 
   .dl-stats-grid {
@@ -93,14 +109,15 @@
   .dl-stat-label {
     font-size: 9px;
     letter-spacing: .16em;
-    color: rgba(255, 255, 255, .2);
+    color: rgba(255, 255, 255, .3);
     text-transform: uppercase;
     margin-bottom: 5px;
   }
 
   .dl-stat-val {
     font-size: 13px;
-    color: rgba(255, 255, 255, .6);
+    color: rgba(255, 255, 255, .8);
+    font-weight: 600;
   }
 
   .meel-phase {
@@ -113,6 +130,19 @@
 
   .meel-phase.active {
     display: flex;
+    animation: meel-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes meel-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .meel-track {
@@ -124,17 +154,32 @@
     position: relative;
   }
 
+  /* Progress Bar Glow & Mulus */
   .meel-bar {
     height: 100%;
     width: 0%;
     border-radius: 99px;
-    transition: width .35s cubic-bezier(.4, 0, .2, 1);
+    /* Transisi diperlambat sedikit agar input log PHP yang tidak stabil tetap terlihat halus */
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: width;
+  }
+
+  #meel-dl-bar {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+  }
+
+  #meel-tc-bar {
+    box-shadow: 0 0 10px rgba(249, 115, 22, 0.6);
+  }
+
+  #meel-sp-bar {
+    box-shadow: 0 0 10px rgba(167, 139, 250, 0.6);
   }
 
   .meel-pct {
     font-size: 10px;
     letter-spacing: .12em;
-    color: rgba(255, 255, 255, .3);
+    color: rgba(255, 255, 255, .4);
     width: 100%;
     display: flex;
     justify-content: space-between;
@@ -144,27 +189,30 @@
     font-size: 9px;
     letter-spacing: .22em;
     text-transform: uppercase;
+    font-weight: 600;
   }
 
-  /* Animasi Scan */
+  /* Animasi Scan GPU Accelerated */
   .meel-scan {
     position: absolute;
     top: 0;
     left: 0;
     width: 30%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .18), transparent);
-    animation: meel-scan 1.4s ease-in-out infinite;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .3), transparent);
+    animation: meel-scan 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    /* Paksa render menggunakan GPU */
     will-change: transform;
+    transform: translate3d(0, 0, 0);
   }
 
   @keyframes meel-scan {
     0% {
-      transform: translateX(-100%);
+      transform: translate3d(-100%, 0, 0);
     }
 
     100% {
-      transform: translateX(450%);
+      transform: translate3d(400%, 0, 0);
     }
   }
 
@@ -174,74 +222,54 @@
     }
   }
 
-  @keyframes meel-eq1 {
-
-    0%,
-    100% {
-      transform: scaleY(.35);
-    }
-
-    50% {
-      transform: scaleY(1);
-    }
-  }
-
-  @keyframes meel-eq2 {
-
-    0%,
-    100% {
-      transform: scaleY(1);
-    }
-
-    50% {
-      transform: scaleY(.3);
-    }
-  }
-
-  .meel-spinner {
-    width: 13px;
-    height: 13px;
-    border: 1.5px solid rgba(59, 130, 246, .2);
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: meel-spin .85s linear infinite;
-    flex-shrink: 0;
-    transform: translateZ(0);
-    /* Hardware Acceleration */
-  }
-
+  /* Equalizer Animation Fix */
   .meel-eq {
     display: flex;
-    gap: 3px;
+    gap: 4px;
     align-items: flex-end;
-    height: 13px;
+    height: 14px;
   }
 
   .meel-eq span {
     width: 3px;
     border-radius: 2px;
     background: #f97316;
-    transform: translateZ(0);
+    /* PENTING: scale animasi dari bawah, bukan dari tengah */
+    transform-origin: bottom;
+    will-change: transform;
+    box-shadow: 0 0 5px rgba(249, 115, 22, 0.4);
   }
 
   .meel-eq span:nth-child(1) {
-    animation: meel-eq1 .75s ease-in-out infinite;
-    height: 6px;
+    animation: meel-eq-bounce 0.8s ease-in-out infinite;
+    height: 14px;
   }
 
   .meel-eq span:nth-child(2) {
-    animation: meel-eq2 .75s ease-in-out infinite .12s;
-    height: 10px;
+    animation: meel-eq-bounce 0.8s ease-in-out infinite 0.2s;
+    height: 14px;
   }
 
   .meel-eq span:nth-child(3) {
-    animation: meel-eq1 .75s ease-in-out infinite .25s;
-    height: 13px;
+    animation: meel-eq-bounce 0.8s ease-in-out infinite 0.4s;
+    height: 14px;
   }
 
   .meel-eq span:nth-child(4) {
-    animation: meel-eq2 .75s ease-in-out infinite .38s;
-    height: 8px;
+    animation: meel-eq-bounce 0.8s ease-in-out infinite 0.6s;
+    height: 14px;
+  }
+
+  @keyframes meel-eq-bounce {
+
+    0%,
+    100% {
+      transform: scaleY(0.3);
+    }
+
+    50% {
+      transform: scaleY(1);
+    }
   }
 
   .meel-nav-btn {
@@ -256,11 +284,47 @@
     cursor: pointer;
     text-decoration: none;
     border: 0.5px solid;
-    transition: opacity .2s;
+    transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .meel-nav-btn:hover {
-    opacity: .75;
+    opacity: 1;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Icon wrap untuk fase Done & Error */
+  .meel-icon-wrap {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Segmen HLS — blok kecil di bawah progress bar transcode */
+  .meel-segs {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    min-height: 6px;
+  }
+
+  .meel-seg {
+    width: 14px;
+    height: 6px;
+    border-radius: 2px;
+    background: rgba(249, 115, 22, .18);
+    border: 0.5px solid rgba(249, 115, 22, .25);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .meel-seg.done {
+    background: #f97316;
+    box-shadow: 0 0 5px rgba(249, 115, 22, 0.5);
   }
 </style>
 
@@ -269,6 +333,28 @@
     var _segsBuilt = false;
     var _errorTimeout = null;
 
+    // ─── KONTROL ANIMASI MERAYAP (TRICKLE EFFECT) FOR SPRITE ───
+    var meelSpriteTimer = null;
+    var meelSpriteCurrentPct = 0;
+
+    function startSpriteTrickle() {
+      var b = document.getElementById('meel-sp-bar');
+      var t = document.getElementById('meel-sp-pct');
+
+      meelSpriteCurrentPct = 0;
+      clearInterval(meelSpriteTimer);
+
+      // Bergerak otomatis ke 95% dalam durasi ~13 detik (135ms x 95 langkah)
+      meelSpriteTimer = setInterval(function() {
+        if (meelSpriteCurrentPct < 95) {
+          meelSpriteCurrentPct += 1;
+          if (b) b.style.width = meelSpriteCurrentPct + '%';
+          if (t) t.textContent = meelSpriteCurrentPct + '% — Membuat Sprite VTT...';
+        }
+      }, 135);
+    }
+
+    // ─── FASE UTAMA SCRIPT ───
     window.meelPhase = function(phase) {
       var overlay = document.getElementById('meel-overlay');
       if (overlay) overlay.style.display = 'flex';
@@ -281,6 +367,7 @@
       });
       var active = document.getElementById('meel-phase-' + phase);
       if (active) active.classList.add('active');
+
       if (phase === 'transcode' && !_segsBuilt) {
         _segsBuilt = true;
         var row = document.getElementById('meel-segs');
@@ -290,6 +377,13 @@
           s.id = 'mseg' + i;
           row.appendChild(s);
         }
+      }
+
+      // INTEGRASI: Picu animasi merayap saat masuk fase sprite
+      if (phase === 'sprite' || phase === 'sp') {
+        startSpriteTrickle();
+      } else {
+        clearInterval(meelSpriteTimer);
       }
     };
 
@@ -332,11 +426,22 @@
       }
     };
 
+    // INTEGRASI: Tangani progress sprite asli dari PHP dengan trickle effect
     window.meelSpPct = function(pct, label) {
       var b = document.getElementById('meel-sp-bar');
       var t = document.getElementById('meel-sp-pct');
-      if (b) b.style.width = pct + '%';
-      if (t && label) t.textContent = label;
+      var numericPct = parseInt(pct);
+
+      if (numericPct === 100) {
+        clearInterval(meelSpriteTimer);
+        if (b) b.style.width = '100%';
+        if (t) t.textContent = label || '100% — Selesai';
+      } else if (numericPct > meelSpriteCurrentPct) {
+        // Jika karena suatu hal backend mengirim progres lebih tinggi dari animasi palsu kita
+        meelSpriteCurrentPct = numericPct;
+        if (b) b.style.width = meelSpriteCurrentPct + '%';
+        if (t) t.textContent = label || meelSpriteCurrentPct + '%';
+      }
     };
 
     window.meelDone = function(title, homeUrl) {
@@ -350,32 +455,22 @@
     };
 
     window.meelError = function(log) {
-      // Clear any existing error timeout
       if (_errorTimeout) clearTimeout(_errorTimeout);
-
-      // Ganti fase ke error
       meelPhase('error');
-
-      // Set error state untuk dark background
       var overlay = document.getElementById('meel-overlay');
       if (overlay) {
         overlay.classList.add('error-state');
       }
-
-      // Set error message
       var el = document.getElementById('meel-error-log');
       if (el) el.textContent = log;
-
       console.error('MEeL Error:', log);
     };
 
-    // Safety: Catch global errors dan tampilkan di overlay
     window.addEventListener('error', function(event) {
       console.error('Global JavaScript Error:', event.error);
       meelError('Kesalahan sistem: ' + (event.error?.message || 'Unknown error'));
     });
 
-    // Safety: Catch unhandled promise rejections
     window.addEventListener('unhandledrejection', function(event) {
       console.error('Unhandled Promise:', event.reason);
       meelError('Kesalahan sistem: ' + (event.reason?.message || String(event.reason)));
@@ -383,14 +478,10 @@
   })();
 
   window.meelDoneTranscode = function(title, downloadUrl) {
-    // 1. Ganti state ke 'done'
     meelPhase('done');
-
-    // 2. Set Judul
     var titleEl = document.getElementById('meel-done-title');
     if (titleEl) titleEl.textContent = title;
 
-    // 3. Modifikasi Tombol "Download Lagi" agar tidak ke upload_advanced.php
     var navBtns = document.getElementById('meel-nav-btns');
     if (navBtns) {
       var btns = navBtns.getElementsByTagName('a');
@@ -403,7 +494,6 @@
       }
     }
 
-    // 4. Tombol tutup overlay
     var closeBtn = document.createElement('a');
     closeBtn.className = 'meel-nav-btn';
     closeBtn.style.cssText = 'color:rgba(255,255,255,0.5); border-color:rgba(255,255,255,0.1); background:transparent;';
