@@ -330,14 +330,10 @@ function setupMeelPlayerEvents() {
     const g = gcd(vw, vh);
     console.log(`[MEeL] Aspect ratio video: ${vw / g}:${vh / g} (${vw}x${vh})`);
 
-    wrapper.style.aspectRatio = `${vw} / ${vh}`;
-
-    // Jika mini-player aktif, sinkronkan tinggi video di dalam shell
-    const shell = document.getElementById("mini-player-shell");
-    if (shell && isMiniPlayerActive) {
-      const shellWidth = shell.offsetWidth || 360;
-      const videoHeight = Math.round(shellWidth * (vh / vw));
-      wrapper.style.height = videoHeight + "px";
+    // Saat mini-player aktif: jangan set aspect-ratio/height pada wrapper,
+    // biarkan CSS shell yang mengatur dimensi via width: 100%
+    if (!isMiniPlayerActive) {
+      wrapper.style.aspectRatio = `${vw} / ${vh}`;
     }
   }
 
@@ -798,6 +794,12 @@ window.toggleMiniPlayer = async function () {
   if (!isMiniPlayerActive) {
     isMiniPlayerActive = true;
 
+    // Reset inline style dari halaman normal sebelum masuk mini-player
+    if (videoWrapper) {
+      videoWrapper.style.removeProperty("aspect-ratio");
+      videoWrapper.style.removeProperty("height");
+    }
+
     miniShell = buildMiniShell(videoWrapper);
     videoWrapper.classList.add("mini-player-mode");
     // CSS handles hiding non-progress controls via .mini-player-mode .plyr__controls > *:not(.plyr__progress__container)
@@ -844,11 +846,24 @@ window.toggleMiniPlayer = async function () {
     const videoWrap = document.getElementById("main-video-wrapper");
     if (videoWrap) {
       videoWrap.classList.remove("mini-player-mode");
+
+      // Reset semua inline style yang diterapkan selama mode mini-player
+      videoWrap.style.removeProperty("aspect-ratio");
+      videoWrap.style.removeProperty("height");
+      videoWrap.style.removeProperty("width");
+      videoWrap.style.removeProperty("position");
+
+      // Kembalikan aspect-ratio default watch page (16/9)
+      videoWrap.style.aspectRatio = "16 / 9";
+
+      // Reset tampilan control Plyr
       if (player?.elements?.controls) {
         Array.from(player.elements.controls.children).forEach(
           (el) => (el.style.display = ""),
         );
       }
+
+      // Kembalikan wrapper ke posisi semula di left-column
       if (leftColumn) leftColumn.insertBefore(videoWrap, leftColumn.firstChild);
     }
 
@@ -864,6 +879,16 @@ window.toggleMiniPlayer = async function () {
     if (appContentGrid) appContentGrid.style.display = "";
     if (detailsWrapper) detailsWrapper.style.display = "block";
     if (recWrapper) recWrapper.style.display = "block";
+
+    // Re-apply aspect ratio native setelah kembali ke watch page
+    // (dipanggil setelah DOM ter-layout ulang)
+    requestAnimationFrame(() => {
+      if (videoElement && videoElement.videoWidth && videoElement.videoHeight) {
+        const vw = videoElement.videoWidth;
+        const vh = videoElement.videoHeight;
+        if (videoWrap) videoWrap.style.aspectRatio = `${vw} / ${vh}`;
+      }
+    });
 
     window.history.pushState({}, "", watchUrl);
   }
