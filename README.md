@@ -117,33 +117,33 @@ MEeL/
 │   ├── index.php          # Halaman daftar anime
 │   ├── watch.php          # Halaman nonton anime
 │   └── sidebar.php        # Navigasi sidebar anime
-├──  arcade               # Arcade mode
-│   ├──  assets           # Assets
-│   │   ├──  css          # CSS
-│   │   │   ├──  chess.css
-│   │   │   └──  dino.css
-│   │   ├──  img          # Thumbnail
-│   │   │   ├──  catur.png
-│   │   │   └──  dino.png
-│   │   └──  js           # Logika permainan
-│   │       ├──  chess
-│   │       │   ├──  api.js
-│   │       │   ├──  assets.js
-│   │       │   ├──  audio.js
-│   │       │   ├──  engine.js
-│   │       │   └──  main.js
-│   │       └──  dino
-│   │           ├──  assets.js
-│   │           └──  game.js
-│   ├──  chess.html
-│   ├──  controller       # Online-mode chess
-│   │   ├──  check_room_status.php
-│   │   ├──  create_room.php
-│   │   ├──  get_move.php
-│   │   ├──  join_room.php
-│   │   └──  save_move.php
-│   ├──  dino.html
-│   └──  index.php
+├── arcade               # Arcade mode
+│   ├── assets           # Assets
+│   │   ├── css          # CSS
+│   │   │   ├── chess.css
+│   │   │   └── dino.css
+│   │   ├── img          # Thumbnail
+│   │   │   ├── catur.png
+│   │   │   └── dino.png
+│   │   └── js           # Logika permainan
+│   │       ├── chess
+│   │       │   ├── api.js
+│   │       │   ├── assets.js
+│   │       │   ├── audio.js
+│   │       │   ├── engine.js
+│   │       │   └── main.js
+│   │       └── dino
+│   │           ├── assets.js
+│   │           └── game.js
+│   ├── chess.html
+│   ├── controller       # Online-mode chess
+│   │   ├── check_room_status.php
+│   │   ├── create_room.php
+│   │   ├── get_move.php
+│   │   ├── join_room.php
+│   │   └── save_move.php
+│   ├── dino.html
+│   └── index.php
 ├── assets/                # Aset Statis
 │   ├── css/               # Stylesheet khusus per modul
 │   │   ├── index(hub).css # CSS HUB
@@ -153,26 +153,26 @@ MEeL/
 │   │   ├── music.css      # CSS Music(index/watch)
 │   │   ├── drive.css      # CSS Drive
 │   │   ├── up.css         # CSS partials/ui.php
-|   |   ├──  introduction.css #Introduction CSS
-│   │   ├──  font         # Pendukung font.css
-│   │   │   ├──  cyrillic-ext.woff2
-│   │   │   ├──  cyrillic-ext0.woff2
-│   │   │   ├──  cyrillic-ext1.woff2
-│   │   │   ├──  cyrillic.woff2
-│   │   │   ├──  cyrillic0.woff2
-│   │   │   ├──  cyrillic1.woff2
-│   │   │   ├──  greek.woff2
-│   │   │   ├──  greek0.woff2
-│   │   │   ├──  greek1.woff2
-│   │   │   ├──  latin-ext.woff2
-│   │   │   ├──  latin-ext0.woff2
-│   │   │   ├──  latin-ext1.woff2
-│   │   │   ├──  latin.woff2
-│   │   │   ├──  latin0.woff2
-│   │   │   ├──  latin1.woff2
-│   │   │   ├──  vietnamese.woff2
-│   │   │   ├──  vietnamese0.woff2
-│   │   │   └──  vietnamese1.woff2
+|   |   ├── introduction.css #Introduction CSS
+│   │   ├── font         # Pendukung font.css
+│   │   │   ├── cyrillic-ext.woff2
+│   │   │   ├── cyrillic-ext0.woff2
+│   │   │   ├── cyrillic-ext1.woff2
+│   │   │   ├── cyrillic.woff2
+│   │   │   ├── cyrillic0.woff2
+│   │   │   ├── cyrillic1.woff2
+│   │   │   ├── greek.woff2
+│   │   │   ├── greek0.woff2
+│   │   │   ├── greek1.woff2
+│   │   │   ├── latin-ext.woff2
+│   │   │   ├── latin-ext0.woff2
+│   │   │   ├── latin-ext1.woff2
+│   │   │   ├── latin.woff2
+│   │   │   ├── latin0.woff2
+│   │   │   ├── latin1.woff2
+│   │   │   ├── vietnamese.woff2
+│   │   │   ├── vietnamese0.woff2
+│   │   │   └── vietnamese1.woff2
 │   │   └── font.css       # Font google API
 │   ├── js/                # Library dan skrip JS utama
 │   │   ├── tailwind.js    # Tailwind
@@ -907,6 +907,7 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
 
 ## id: Domain terkadang tidak berfungsi karena berjalan di perangkat developer
 
+## Proyek ini dikelola secara mandiri. Laporan bug melalui fitur Issues saat ini tidak dibuka.
 
 ---
 
