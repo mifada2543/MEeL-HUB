@@ -7,6 +7,8 @@ let videoSrc = config.videoSrc || "";
 let isHls = config.isHls || false;
 let vttSrc = config.vttSrc || "";
 let videoId = config.id || "";
+let videoTitle = config.title || "";
+let videoUploader = config.uploader || "";
 let storageKeyVideo = `video_pos_${videoId}`;
 
 let player;
@@ -316,14 +318,47 @@ function setupMeelPlayerEvents() {
   const displayTime = document.getElementById("resume-time");
   const countdownText = document.getElementById("resume-countdown");
 
+  // Deteksi & terapkan aspect ratio asli video ke wrapper (dan mini-player shell)
+  function applyNativeAspectRatio() {
+    const wrapper = document.getElementById("main-video-wrapper");
+    const vid = videoElement;
+    if (!wrapper || !vid || !vid.videoWidth || !vid.videoHeight) return;
+
+    const vw = vid.videoWidth;
+    const vh = vid.videoHeight;
+    const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+    const g = gcd(vw, vh);
+    console.log(`[MEeL] Aspect ratio video: ${vw / g}:${vh / g} (${vw}x${vh})`);
+
+    wrapper.style.aspectRatio = `${vw} / ${vh}`;
+
+    // Jika mini-player aktif, sinkronkan tinggi video di dalam shell
+    const shell = document.getElementById("mini-player-shell");
+    if (shell && isMiniPlayerActive) {
+      const shellWidth = shell.offsetWidth || 360;
+      const videoHeight = Math.round(shellWidth * (vh / vw));
+      wrapper.style.height = videoHeight + "px";
+    }
+  }
+
+  // Apply segera jika metadata sudah ada, atau tunggu event
+  if (videoElement.readyState >= 1 && videoElement.videoWidth) {
+    applyNativeAspectRatio();
+  } else {
+    videoElement.addEventListener("loadedmetadata", applyNativeAspectRatio, { once: true });
+  }
+
   player.on("ready", (event) => {
+    // Fallback: pastikan aspect ratio diterapkan saat player siap
+    applyNativeAspectRatio();
+
     const savedPos = localStorage.getItem(storageKeyVideo);
 
     // Aliran auto-recovery
     if (isAutoRecovering && savedPos) {
       isAutoRecovering = false;
       player.currentTime = parseFloat(savedPos);
-      player.play().catch(() => {});
+      player.play().catch(() => { });
       startStuckDetector();
       return;
     }
@@ -517,7 +552,7 @@ function setupMeelPlayerEvents() {
 
   player.on("enterfullscreen", () => {
     if (screen.orientation?.lock) {
-      screen.orientation.lock("landscape").catch(() => {});
+      screen.orientation.lock("landscape").catch(() => { });
     }
     // Re-apply VTT sprites saat masuk fullscreen (handle mobile cloning)
     if (vttSrc) {
@@ -597,11 +632,8 @@ function buildMiniShell(videoWrapper) {
   shell.appendChild(closeBtn);
 
   // Info panel (klik → kembali ke watch)
-  const titleText =
-    document.querySelector(".video-title")?.textContent?.trim() || "";
-  const uploaderText =
-    document.querySelector("#video-info .text-red-400")?.textContent?.trim() ||
-    "";
+  const titleText = videoTitle;
+  const uploaderText = videoUploader;
   const infoPanel = document.createElement("div");
   infoPanel.id = "mini-player-info";
   infoPanel.title = "Kembali ke video";
@@ -621,6 +653,97 @@ function closeMiniPlayer() {
   if (!isMiniPlayerActive) return;
   if (player) player.pause();
   window.location.href = "index.php";
+}
+
+// Update teks title & uploader di info panel mini-player
+function updateMiniPlayerInfo(title, uploader) {
+  const titleEl = document.getElementById("mini-info-title");
+  const uploaderEl = document.getElementById("mini-info-uploader");
+  if (titleEl) titleEl.textContent = title || "";
+  if (uploaderEl) uploaderEl.textContent = uploader || "";
+}
+
+// Intercept klik video card saat mini-player aktif:
+// fetch watch.php baru → update src video + title tanpa full reload
+function attachMiniPlayerVideoCardListeners(container) {
+  if (!container) return;
+
+  container.querySelectorAll('a[href*="watch.php"]').forEach((link) => {
+    if (link.dataset.miniIntercepted) return;
+    link.dataset.miniIntercepted = "1";
+
+    link.addEventListener("click", async (e) => {
+      if (!isMiniPlayerActive) return;
+      e.preventDefault();
+
+      const targetUrl = link.href;
+
+      try {
+        const res = await fetch(targetUrl);
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+
+        // Parse playerConfig dari script tag halaman yang di-fetch
+        let fetchedConfig = {};
+        doc.querySelectorAll("script:not([src])").forEach((s) => {
+          const m = s.textContent.match(/window\.playerConfig\s*=\s*(\{[\s\S]*?\});/);
+          if (m) {
+            try { fetchedConfig = JSON.parse(m[1]); } catch (e) { }
+          }
+        });
+
+        const newVideoEl = doc.getElementById("main-video");
+        const newTitle = fetchedConfig.title || "";
+        const newUploader = fetchedConfig.uploader || "";
+        const newSrc = fetchedConfig.videoSrc || newVideoEl?.dataset?.src || "";
+        const newIsHls = fetchedConfig.isHls === true || fetchedConfig.isHls === "true";
+        const newPoster = newVideoEl?.dataset?.poster || "";
+        const newId = fetchedConfig.id || new URL(targetUrl).searchParams.get("id") || "";
+        const newVttSrc = fetchedConfig.vttSrc || "";
+
+        if (!newSrc) {
+          window.location.href = targetUrl;
+          return;
+        }
+
+        // Update variabel global
+        storageKeyVideo = `video_pos_${newId}`;
+        videoSrc = newSrc;
+        isHls = newIsHls;
+        vttSrc = newVttSrc;
+        videoId = newId;
+
+        destroyPlayer();
+
+        const videoEl = document.getElementById("main-video");
+        if (videoEl) {
+          videoEl.dataset.src = newSrc;
+          videoEl.dataset.ishls = newIsHls ? "true" : "false";
+          videoEl.dataset.poster = newPoster;
+          videoEl.poster = newPoster;
+          videoEl.src = "";
+          videoEl.load();
+        }
+
+        videoTitle = newTitle;
+        videoUploader = newUploader;
+        window.playerConfig = { videoSrc: newSrc, isHls: newIsHls, vttSrc: newVttSrc, id: newId, title: newTitle, uploader: newUploader };
+        initPlayer();
+
+        // Update info panel mini-player
+        updateMiniPlayerInfo(newTitle, newUploader);
+
+        window.history.pushState({ miniPlayer: true }, "", targetUrl);
+
+        // Re-attach untuk video card yang baru dimuat (load more)
+        const tempIndex = document.getElementById("temp-index-content");
+        if (tempIndex) attachMiniPlayerVideoCardListeners(tempIndex);
+      } catch (err) {
+        console.error("Gagal ganti video di mini-player:", err);
+        window.location.href = targetUrl;
+      }
+    });
+  });
 }
 
 window.toggleMiniPlayer = async function () {
@@ -663,6 +786,7 @@ window.toggleMiniPlayer = async function () {
           window.history.pushState({ miniPlayer: true }, "", "index.php");
           if (window.lucide) window.lucide.createIcons();
           if (window.htmx) htmx.process(tempIndex);
+          attachMiniPlayerVideoCardListeners(tempIndex);
         }
       } catch (err) {
         console.error("Gagal memuat index:", err);
@@ -670,6 +794,7 @@ window.toggleMiniPlayer = async function () {
     } else {
       tempIndex.style.display = "block";
       window.history.pushState({ miniPlayer: true }, "", "index.php");
+      attachMiniPlayerVideoCardListeners(tempIndex);
     }
   } else {
     isMiniPlayerActive = false;

@@ -128,7 +128,7 @@ $rekom            = $viewer->getRecommendations(15);
 
     <div id="app-content-grid" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
         <div id="left-column" class="flex-1 space-y-4 sm:space-y-5 px-4 sm:px-5">
-            <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl aspect-video w-full">
+            <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" style="aspect-ratio: 16/9;">
                 <video id="main-video" playsinline controls
                     data-poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
                     data-src="<?= htmlspecialchars($video_src) ?>"
@@ -165,7 +165,7 @@ $rekom            = $viewer->getRecommendations(15);
 
             <div id="watch-details-wrapper" class="space-y-4 sm:space-y-5">
                 <div id="video-info" class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col gap-4">
-                    <div class="video-title w-full text-2xl font-bold text-white" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
+                    <div class="video-title w-full text-2xl font-bold text-white" id="main-video-title" title="<?= htmlspecialchars($v['title']) ?>"><?= htmlspecialchars($v['title']) ?></div>
                     <?php
                     $can_edit = $is_logged_in && (
                         ($_SESSION['role'] ?? '') === 'admin' ||
@@ -195,6 +195,7 @@ $rekom            = $viewer->getRecommendations(15);
                         </a>
                         <div>
                             <a href="../profile/?u=<?= urlencode($v['uploader']) ?>"
+                                id="main-video-uploader"
                                 class="text-[10px] font-black uppercase tracking-widest text-red-400 hover:underline block leading-tight">
                                 <?= htmlspecialchars($v['uploader']) ?>
                             </a>
@@ -395,7 +396,9 @@ $rekom            = $viewer->getRecommendations(15);
             videoSrc: <?= json_encode($video_src) ?>,
             isHls: <?= $is_hls ? 'true' : 'false' ?>,
             vttSrc: <?= json_encode($vtt_src ?? '') ?>,
-            id: <?= json_encode($id) ?>
+            id: <?= json_encode($id) ?>,
+            title: <?= json_encode($v['title'] ?? '') ?>,
+            uploader: <?= json_encode($v['uploader'] ?? '') ?>
         };
     </script>
     <script src="../assets/js/player_video.js"></script>
