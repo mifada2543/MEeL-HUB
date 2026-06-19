@@ -347,9 +347,14 @@ function setupMeelPlayerEvents() {
   }
 
   player.on("ready", (event) => {
-    // Fallback: pastikan aspect ratio diterapkan saat player siap
     applyNativeAspectRatio();
-
+    if (vttSrc) {
+      setTimeout(() => refreshVttSprites(vttSrc), 300);
+    } else {
+      player.config.previewThumbnails.enabled = false;
+      const thumbEl = document.querySelector(".plyr__preview-thumb");
+      if (thumbEl) thumbEl.style.display = "none";
+    }
     const savedPos = localStorage.getItem(storageKeyVideo);
 
     // Aliran auto-recovery
@@ -566,9 +571,8 @@ function setupMeelPlayerEvents() {
         });
       }
 
-      // Update VTT Hover Sprite secara dinamis
       if (newVtt) {
-        refreshVttSprites(newVtt);
+        setTimeout(() => refreshVttSprites(newVtt), 300);
       } else {
         player.config.previewThumbnails.enabled = false;
         const thumbEl = document.querySelector(".plyr__preview-thumb");
