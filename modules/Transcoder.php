@@ -44,18 +44,18 @@ class Transcoder
         $this->user_id      = (int)$session_user_id;
         $this->base_path    = "/opt/lampp/htdocs/MEeL";
         $this->cookies_path = $this->base_path . "/cookies.txt";
-        $this->user_agent   = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        $this->user_agent   = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
         $this->ffmpeg_bin   = $this->resolveBinary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
         $this->ffprobe_bin  = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
 
-        // base_cmd untuk yt-dlp — ENV_PREFIX tidak dipakai di sini karena
-        // yt-dlp membutuhkan PATH yang luas; ffmpeg sudah di-pass via --ffmpeg-location
         $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8;"
-            . " /usr/local/bin/yt-dlp --js-runtime node --no-warnings --restrict-filenames"
-            . " --ffmpeg-location " . escapeshellarg(dirname($this->ffmpeg_bin))
+            . " /usr/local/bin/yt-dlp --js-runtime node:/usr/bin/node"
+            . " --remote-components ejs:github"
+            . " --no-warnings --restrict-filenames"
             . " --user-agent "      . escapeshellarg($this->user_agent)
+            . " --referer "         . escapeshellarg("https://www.youtube.com/")
             . " --cookies "         . escapeshellarg($this->cookies_path) . " ";
-
+            
         $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
         $stmt->bind_param("i", $this->user_id);
         $stmt->execute();
