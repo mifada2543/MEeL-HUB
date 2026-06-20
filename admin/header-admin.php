@@ -74,7 +74,7 @@ $nav_id         = $id ?? 0;
             <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Kembali
         </a>
         <a href="catur.php" class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 py-1.5 px-3.5 rounded-lg border border-white/10 bg-white/5 no-underline transition-all duration-200 hover:text-gray-200 hover:bg-white/10">
-            <i data-lucide="chess-board" class="w-3.5 h-3.5"></i> Catur
+            <i data-lucide="chess-king" class="w-3.5 h-3.5"></i> Catur
         </a>
     </div>
 </nav>
