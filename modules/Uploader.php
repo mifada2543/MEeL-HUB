@@ -165,7 +165,7 @@ class Uploader
         $stmt = $this->conn->prepare($sql);
         $stmt->bind_param("ssssssi", $title, $artist, $meta, $album, $file_name, $thumb_name, $this->user_id);
 
-        return ($stmt->execute()) ? ['status' => 'success'] : ['status' => 'error', 'msg' => "Database error!"];
+        return ($stmt->execute()) ? ['status' => 'success'] : ['status' => 'error', 'msg' => "Database error! [" . $stmt->error . "] (errno: " . $stmt->errno . ")"];
     }
 
     // ─── VIDEO ────────────────────────────────────────────────────────────────
@@ -190,7 +190,11 @@ class Uploader
             return ['status' => 'error', 'msg' => "Format video tidak didukung! Gunakan MP4, WebM, atau MKV.", 'alert' => true];
         }
 
-        $clean_name = preg_replace('/[^A-Za-z0-9\-]/', '_', pathinfo($video_name_orig, PATHINFO_FILENAME));
+        $raw_clean_name = pathinfo($video_name_orig, PATHINFO_FILENAME);
+        $clean_name     = getRomajiName($raw_clean_name); // transliterasi ke romaji (dash-separated), konsisten dgn processMusic()
+        $clean_name     = substr($clean_name, 0, 60);     // batasi panjang biar aman utk kolom DB
+        $clean_name     = trim($clean_name, '-');         // jaga2 kalau substr motong di tengah, sisa dash di ujung dibuang
+        if ($clean_name === '') $clean_name = 'video-' . time(); // fallback kalau nama jadi kosong
 
         // ── TENTUKAN NAMA FOLDER (cek konflik di HDD tujuan) ─────────────────
         $folder_name   = $clean_name;
@@ -356,12 +360,15 @@ class Uploader
             "INSERT INTO video (title, filename, thumbnail, search_metadata, user_id, upload_date)
              VALUES (?, ?, ?, ?, ?, NOW())"
         );
+        if (!$stmt) {
+            return ['status' => 'error', 'msg' => 'Prepare gagal: ' . $this->conn->error];
+        }
         $stmt->bind_param("ssssi", $title, $db_filename, $thumb_name, $meta, $this->user_id);
 
         if ($stmt->execute()) {
             return ['status' => 'success'];
         }
-        return ['status' => 'error', 'msg' => 'Database error'];
+        return ['status' => 'error', 'msg' => 'Database error! [' . $stmt->error . '] (errno: ' . $stmt->errno . ') | title_len=' . strlen($title) . ' meta_len=' . strlen($meta) . ' filename=' . $db_filename];
     }
     // ─── MESIN PEMBUAT THUMBNAIL SPRITE & VTT ──────────────────────────────────
     private function generateSpriteAndVTT(string $staged_video, string $target_folder)
