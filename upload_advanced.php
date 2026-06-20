@@ -641,6 +641,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                                 ['icon' => 'clock', 'text' => 'Proses bisa memakan waktu cukup lama tergantung durasi dan kualitas video.'],
                                 ['icon' => 'shield-alert', 'text' => 'Jangan tutup tab ini selama proses berlangsung — overlay akan memberitahu jika selesai.'],
                                 ['icon' => 'layers', 'text' => 'Video akan otomatis di-transcode ke format HLS untuk streaming adaptif.'],
+                                ['icon' => 'circle-alert', 'text' => 'Ada beberapa video yang tidak kompatibel dengan engine ini, jika terjadi stuck harap matikan server dan hapus queue yang berjalan']
                             ];
                             foreach ($tips as $tip): ?>
                                 <div style="display:flex;align-items:flex-start;gap:.65rem;">
