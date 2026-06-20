@@ -47,7 +47,7 @@ session/*
 !schema.sql
 *.db
 *.sqlite
-
+test.php
 # ─── OS-SPECIFIC FILES ────────────────────────────────
 # macOS
 .DS_Store
