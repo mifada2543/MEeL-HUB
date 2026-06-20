@@ -99,7 +99,7 @@ include '../controllers/fun.php';
                 </div>
 
                 <div class="p-8 md:w-7/12">
-                    <div class="flex justify-between items-start mb-6">
+                    <div class="flex justify-between items-center mb-6">
                         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">MEeL Media Storage</h3>
                         <div class="flex items-baseline gap-2">
                             <span class="text-3xl font-black text-white"><?= number_format($hdd_free, 1) ?></span>
@@ -168,10 +168,22 @@ include '../controllers/fun.php';
                     <div class="pt-4 border-t border-white/5">
                         <p class="text-[9px] font-black text-gray-600 uppercase mb-3 tracking-tighter">Most Viewed Content</p>
                         <div class="space-y-2">
-                            <?php while ($tm = $top_media->fetch_assoc()):
-                                $link = ($tm['type'] == 'video') ? "../video/watch.php?id=" : "../music/watch.php?id=";
-                                $color = ($tm['type'] == 'video') ? "text-red-500" : "text-orange-500";
-                                $icon = ($tm['type'] == 'video') ? "play-circle" : "music-2";
+                            <?php
+                            // Ambil maksimal 1 video & 1 music dengan views tertinggi dari hasil $top_media
+                            $top_picks = ['video' => null, 'music' => null];
+                            while ($tm = $top_media->fetch_assoc()) {
+                                if (array_key_exists($tm['type'], $top_picks) && $top_picks[$tm['type']] === null) {
+                                    $top_picks[$tm['type']] = $tm;
+                                }
+                                if ($top_picks['video'] !== null && $top_picks['music'] !== null) {
+                                    break;
+                                }
+                            }
+                            foreach ($top_picks as $type => $tm):
+                                if ($tm === null) continue;
+                                $link = ($type == 'video') ? "../video/watch.php?id=" : "../music/watch.php?id=";
+                                $color = ($type == 'video') ? "text-red-500" : "text-orange-500";
+                                $icon = ($type == 'video') ? "play-circle" : "music-2";
                             ?>
                                 <a href="<?= $link . $tm['id'] ?>" class="flex items-center gap-3 p-2 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-all group">
                                     <div class="p-2 bg-gray-800 rounded-lg group-hover:scale-110 transition-transform">
@@ -180,12 +192,12 @@ include '../controllers/fun.php';
                                     <div class="flex-1 min-w-0">
                                         <p class="text-[10px] font-bold text-white truncate group-hover:text-blue-400"><?= htmlspecialchars($tm['title']) ?></p>
                                         <div class="flex items-center gap-2">
-                                            <span class="text-[8px] uppercase font-black <?= $color ?>"><?= $tm['type'] ?></span>
+                                            <span class="text-[8px] uppercase font-black <?= $color ?>"><?= $type ?></span>
                                             <span class="text-[8px] text-gray-600 font-mono"><?= number_format($tm['views']) ?> Views</span>
                                         </div>
                                     </div>
                                 </a>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </div>
                     </div>
                 </div>
@@ -201,7 +213,7 @@ include '../controllers/fun.php';
             $cards = [
                 ['label' => 'Video', 'val' => $stats['video'], 'icon' => 'video', 'color' => 'text-red-500'],
                 ['label' => 'Music', 'val' => $stats['music'], 'icon' => 'music', 'color' => 'text-orange-500'],
-                ['label' => 'Books', 'val' => $stats['books'], 'icon' => 'book-open', 'color' => 'text-blue-500'], // Card Baru
+                ['label' => 'Books', 'val' => $stats['books'], 'icon' => 'book-open', 'color' => 'text-blue-500'],
                 ['label' => 'Pending', 'val' => $stats['pending'], 'icon' => 'user-plus', 'color' => 'text-yellow-500']
             ];
             foreach ($cards as $c): ?>
@@ -432,7 +444,7 @@ include '../controllers/fun.php';
                                             <?php
                                             $ip_display = $row['ip_address'] ?? 'Unknown';
                                             $is_local = ($ip_display === 'LOCAL' || strpos($ip_display, 'Local') !== false);
-                                            
+
                                             // Deteksi tipe IP
                                             $ip_type = 'Unknown';
                                             $ip_color_class = 'bg-gray-800 text-gray-400 border-gray-700';
@@ -446,7 +458,7 @@ include '../controllers/fun.php';
                                                 $ip_color_class = 'bg-cyan-800 text-cyan-300 border-cyan-700';
                                                 $ip_type = 'IPv4';
                                             }
-                                            
+
                                             $ip_badge_text = $is_local ? 'LOCAL' : $ip_display;
                                             ?>
                                             <code class="text-[10px] <?= $ip_color_class ?> px-2 py-0.5 rounded border font-mono select-all">

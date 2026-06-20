@@ -86,14 +86,17 @@ if (isset($_POST['force_stop_queue'])) {
     // Load System class
     $path_modules = __DIR__ . '/../modules/System.php';
     $path_auth = __DIR__ . '/../auth/System.php';
-    if (file_exists($path_modules)) { include_once $path_modules; } 
-    elseif (file_exists($path_auth)) { include_once $path_auth; }
+    if (file_exists($path_modules)) {
+        include_once $path_modules;
+    } elseif (file_exists($path_auth)) {
+        include_once $path_auth;
+    }
 
     $sys = new System($conn);
     $sys->forceStopQueue($queue_id, $task_type);
 
     $redirect_url = "index.php?msg=Queue_Force_Stopped#queues";
-    
+
     if (!headers_sent()) {
         header("Location: " . $redirect_url);
         exit();
@@ -173,12 +176,11 @@ $stats = [
     'pending'     => get_count($conn, "SELECT COUNT(*) FROM users WHERE is_active = 2")
 ];
 
-// Ambil Top 2 Media berdasarkan Views (Gabungan Video & Music)
+// Ambil 1 Video & 1 Music dengan Views tertinggi (dijamin masing-masing 1, bukan top-2 global)
 $query_top_media = "
-    SELECT id, title, views, 'video' as type FROM video
+    (SELECT id, title, views, 'video' as type FROM video ORDER BY views DESC LIMIT 1)
     UNION ALL
-    SELECT id, title, views, 'music' as type FROM music
-    ORDER BY views DESC LIMIT 2";
+    (SELECT id, title, views, 'music' as type FROM music ORDER BY views DESC LIMIT 1)";
 $top_media = $conn->query($query_top_media);
 
 include_once __DIR__ . '/../modules/System.php';
