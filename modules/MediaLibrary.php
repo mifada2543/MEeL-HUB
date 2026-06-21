@@ -1,15 +1,18 @@
 <?php
 // File: auth/MediaLibrary.php
 
-class MediaLibrary {
+class MediaLibrary
+{
     private $conn;
 
-    public function __construct($db_connection) {
+    public function __construct($db_connection)
+    {
         $this->conn = $db_connection;
     }
 
     // ── HUB ──────────────────────────────────────────────────────────────────
-    public function getCounts(): array {
+    public function getCounts(): array
+    {
         $counts = ['music' => 0, 'video' => 0, 'books' => 0];
         // Query ini aman karena tidak ada variabel input dari user
         $sql = "SELECT 'music' AS type, COUNT(*) AS total FROM music
@@ -27,20 +30,25 @@ class MediaLibrary {
     }
 
     // ── VIDEO ─────────────────────────────────────────────────────────────────
-    public function getVideos(int $limit = 15, int $offset = 0) {
+    public function getVideos(int $limit = 15, int $offset = 0)
+    {
         $stmt = $this->conn->prepare("SELECT * FROM video ORDER BY upload_date DESC LIMIT ? OFFSET ?");
         $stmt->bind_param("ii", $limit, $offset);
         $stmt->execute();
         return $stmt->get_result();
     }
 
-    public function countVideos(): int {
+    public function countVideos(): int
+    {
         // Aman karena query statis
         $res = $this->conn->query("SELECT COUNT(*) AS total FROM video");
         return (int)$res->fetch_assoc()['total'];
     }
 
-    public function searchVideo(string $q, int $exclude = 0, bool $sidebar = false) {
+    public function searchVideo(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0)
+    {
+        $limit = 20; // selaraskan dengan $limit di search_video.php
+
         if (empty($q)) {
             if ($sidebar) {
                 $stmt = $this->conn->prepare(
@@ -50,7 +58,8 @@ class MediaLibrary {
                 );
                 $stmt->bind_param("i", $exclude);
             } else {
-                $stmt = $this->conn->prepare("SELECT * FROM video ORDER BY upload_date DESC LIMIT 15");
+                $stmt = $this->conn->prepare("SELECT * FROM video ORDER BY upload_date DESC LIMIT ? OFFSET ?");
+                $stmt->bind_param("ii", $limit, $offset);
             }
         } else {
             $like = "%$q%";
@@ -61,10 +70,10 @@ class MediaLibrary {
                  FROM video v
                  JOIN users u ON v.user_id = u.id
                  WHERE (v.title LIKE ? OR v.search_metadata LIKE ?) AND v.id != ?
-                 ORDER BY rank DESC, v.upload_date DESC LIMIT 20"
+                 ORDER BY rank DESC, v.upload_date DESC LIMIT ? OFFSET ?"
             );
-            // DIUBAH: Ditambahkan satu placeholder '?' di query asli yang tadinya kurang
-            $stmt->bind_param("ssssi", $prefix, $like, $like, $like, $exclude);
+            // DIUBAH: Ditambahkan placeholder limit & offset untuk paginasi/load-more
+            $stmt->bind_param("ssssiii", $prefix, $like, $like, $like, $exclude, $limit, $offset);
         }
         $stmt->execute();
         return $stmt->get_result();
@@ -73,44 +82,49 @@ class MediaLibrary {
     // ── MUSIC ─────────────────────────────────────────────────────────────────
 
     // DIUBAH: Fungsi ini sekarang mengirim parameter ke buildMusicWhere untuk prepared statement
-    public function getMusicList(string $format = 'all', string $artist = 'all', int $limit = 10, int $offset = 0) {
+    public function getMusicList(string $format = 'all', string $artist = 'all', int $limit = 10, int $offset = 0)
+    {
         $data = $this->buildMusicWhere($format, $artist);
         $stmt = $this->conn->prepare("SELECT * FROM music WHERE {$data['where']} ORDER BY id DESC LIMIT ? OFFSET ?");
-        
+
         // Gabungkan parameter dari buildMusicWhere dengan limit & offset
         $params = array_merge($data['params'], [$limit, $offset]);
         $types = $data['types'] . "ii";
-        
+
         $stmt->bind_param($types, ...$params);
         $stmt->execute();
         return $stmt->get_result();
     }
 
-    public function countMusic(string $format = 'all', string $artist = 'all'): int {
+    public function countMusic(string $format = 'all', string $artist = 'all'): int
+    {
         $data = $this->buildMusicWhere($format, $artist);
         $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM music WHERE {$data['where']}");
-        
+
         if (!empty($data['params'])) {
             $stmt->bind_param($data['types'], ...$data['params']);
         }
-        
+
         $stmt->execute();
         $res = $stmt->get_result();
         return (int)$res->fetch_assoc()['total'];
     }
 
-    public function getArtists() {
+    public function getArtists()
+    {
         return $this->conn->query("SELECT DISTINCT artist FROM music WHERE artist != '' ORDER BY artist ASC");
     }
 
-    public function getUserPlaylists(int $user_id) {
+    public function getUserPlaylists(int $user_id)
+    {
         $stmt = $this->conn->prepare("SELECT * FROM playlists WHERE user_id = ? ORDER BY created_at DESC");
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
         return $stmt->get_result();
     }
 
-    public function searchMusic(string $q, int $exclude = 0, bool $sidebar = false) {
+    public function searchMusic(string $q, int $exclude = 0, bool $sidebar = false)
+    {
         if (empty($q)) {
             if ($sidebar) {
                 $stmt = $this->conn->prepare(
@@ -142,7 +156,8 @@ class MediaLibrary {
     // ── PRIVATE HELPER ────────────────────────────────────────────────────────
 
     // DIUBAH: Sekarang mengembalikan array berisi string WHERE, parameter, dan tipe data
-    private function buildMusicWhere(string $format, string $artist): array {
+    private function buildMusicWhere(string $format, string $artist): array
+    {
         $allowed_formats = ['mp3', 'ogg', 'm4a', 'opus', 'flac', 'wav'];
         $parts = ["1=1"];
         $params = [];
@@ -171,17 +186,20 @@ class MediaLibrary {
 // ═══════════════════════════════════════════════════════════════════════════════
 // BookRepository — Query layer untuk tabel `books`
 // ═══════════════════════════════════════════════════════════════════════════════
-class BookRepository {
+class BookRepository
+{
     private $conn;
 
-    public function __construct($db_connection) {
+    public function __construct($db_connection)
+    {
         $this->conn = $db_connection;
     }
 
     /**
      * Ambil semua buku, atau filter berdasarkan tipe ('manga' / 'pdf' / 'all').
      */
-    public function getBooks(string $filter = 'all') {
+    public function getBooks(string $filter = 'all')
+    {
         $allowed = ['manga', 'pdf'];
 
         if (in_array($filter, $allowed, true)) {
@@ -204,7 +222,8 @@ class BookRepository {
      * Ambil satu buku berdasarkan ID.
      * Return array buku, atau null jika tidak ditemukan.
      */
-    public function getBookById(int $id): ?array {
+    public function getBookById(int $id): ?array
+    {
         $stmt = $this->conn->prepare("SELECT * FROM books WHERE id = ? LIMIT 1");
         $stmt->bind_param("i", $id);
         $stmt->execute();
@@ -216,7 +235,8 @@ class BookRepository {
      * Ambil role user berdasarkan ID.
      * Return string role ('admin' / 'member'), atau null jika user tidak ada.
      */
-    public function getUserRole(int $user_id): ?string {
+    public function getUserRole(int $user_id): ?string
+    {
         $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
@@ -229,12 +249,14 @@ class BookRepository {
 // ═══════════════════════════════════════════════════════════════════════════════
 // BookUploader — Menangani validasi, file handling, dan insert DB untuk buku
 // ═══════════════════════════════════════════════════════════════════════════════
-class BookUploader {
+class BookUploader
+{
     private $conn;
     private $base_path; // Absolute / relative base path ke direktori upload books
 
     // $base_path: path ke folder books/ (misal: __DIR__ . '/../books')
-    public function __construct($db_connection, string $base_path) {
+    public function __construct($db_connection, string $base_path)
+    {
         $this->conn = $db_connection;
         $this->base_path = rtrim($base_path, '/');
     }
@@ -243,7 +265,8 @@ class BookUploader {
      * Entry point upload buku.
      * Return array ['success' => bool, 'message' => string]
      */
-    public function handleUpload(array $post, array $files): array {
+    public function handleUpload(array $post, array $files): array
+    {
         $title    = trim($post['title'] ?? '');
         $author   = trim($post['author'] ?? 'Unknown');
         $type     = $post['type'] ?? '';
@@ -277,7 +300,8 @@ class BookUploader {
 
     // ── PRIVATE HELPERS ──────────────────────────────────────────────────────
 
-    private function handleThumbnail(array $file): string {
+    private function handleThumbnail(array $file): string
+    {
         if (!empty($file['name'])) {
             $ext  = pathinfo($file['name'], PATHINFO_EXTENSION);
             $name = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
@@ -287,7 +311,8 @@ class BookUploader {
         return 'default_cover.jpg';
     }
 
-    private function handlePdf(array $file, string $title): array {
+    private function handlePdf(array $file, string $title): array
+    {
         $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
         if ($ext !== 'pdf') {
             return ['success' => false, 'message' => 'Error: File harus berformat PDF!'];
@@ -303,7 +328,8 @@ class BookUploader {
         return ['success' => true, 'has_chapters' => 0, 'path_result' => $final];
     }
 
-    private function handleManga(array $file, string $title): array {
+    private function handleManga(array $file, string $title): array
+    {
         $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
         if ($ext !== 'zip') {
             return ['success' => false, 'message' => 'Error: Harap upload file ZIP!'];
@@ -354,7 +380,8 @@ class BookUploader {
         return ['success' => true, 'has_chapters' => $has_chapters, 'path_result' => $clean];
     }
 
-    private function insertBook(string $title, string $author, string $type, int $has_chapters, string $category, string $path_folder, string $thumbnail, int $user_id): array {
+    private function insertBook(string $title, string $author, string $type, int $has_chapters, string $category, string $path_folder, string $thumbnail, int $user_id): array
+    {
         $stmt = $this->conn->prepare(
             "INSERT INTO books (title, author, type, has_chapters, category, path_folder, thumbnail, user_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)"

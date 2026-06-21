@@ -28,6 +28,10 @@ let lastPlayTime = -1;
 let lastTimeUpdateTimestamp = Date.now();
 let stuckCheckInterval = null;
 
+// Guard untuk transisi "next video" (mencegah race condition saat tab di-background)
+let isTransitioningNext = false;
+let nextVideoTransitionId = 0;
+
 const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
 // Inisialisasi Icon
@@ -183,7 +187,7 @@ function checkMediaAndRecover() {
 }
 
 function triggerPlayerRecovery() {
-  if (isRecovering || isCheckingStatus) return;
+  if (isRecovering || isCheckingStatus || isTransitioningNext) return;
 
   const now = Date.now();
   if (now - lastRecoveryTime < recoveryDelay) {
@@ -199,7 +203,12 @@ function triggerPlayerRecovery() {
 function startStuckDetector() {
   stopStuckDetector();
   stuckCheckInterval = setInterval(() => {
-    if (!player || player.paused || isRecovering) return;
+    if (!player || player.paused || isRecovering || isTransitioningNext) return;
+
+    // Lewati pengecekan saat tab di-background: decoding frame video sering
+    // di-throttle oleh browser di tab tersembunyi sehingga currentTime tampak
+    // "macet" padahal sebenarnya tidak — ini memicu recovery palsu.
+    if (document.hidden) return;
 
     const currentVideoTime = player.currentTime;
     const now = Date.now();
@@ -215,6 +224,15 @@ function startStuckDetector() {
     }
   }, 1000);
 }
+
+// Saat tab kembali aktif, reset baseline waktu agar tidak langsung
+// dianggap "stuck" akibat throttling timer ketika di-background.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    lastTimeUpdateTimestamp = Date.now();
+    if (player) lastPlayTime = player.currentTime;
+  }
+});
 
 function stopStuckDetector() {
   if (stuckCheckInterval) {
@@ -305,6 +323,17 @@ document.addEventListener("htmx:afterSwap", function (event) {
     destroyPlayer();
     isRecovering = false;
     initPlayer();
+  }
+
+  // Saat mini-player aktif, hasil pencarian/"Muat Lebih Banyak" yang baru
+  // di-swap ke dalam #temp-index-content (mis. #video-container) berisi
+  // kartu video baru — listener intercept klik perlu dipasang ulang supaya
+  // klik tetap mengganti video di mini-player, bukan navigasi penuh.
+  if (isMiniPlayerActive) {
+    const tempIndex = document.getElementById("temp-index-content");
+    if (tempIndex && tempIndex.contains(event.detail.target)) {
+      attachMiniPlayerVideoCardListeners(event.detail.target);
+    }
   }
 });
 
@@ -454,9 +483,26 @@ function setupMeelPlayerEvents() {
   player.on("ended", async () => {
     stopStuckDetector();
     if (player.loop) return;
+
+    // Cegah dua transisi "next video" berjalan bersamaan. Tanpa guard ini,
+    // saat tab di-background, eksekusi JS bisa di-throttle/dijeda oleh browser
+    // di tengah fetch/parsing — kalau event "ended" lain sempat menyusul
+    // (mis. video pendek berikutnya langsung habis juga) atau recovery system
+    // ikut jalan, kedua proses akan saling menimpa variabel global yang sama
+    // (videoTitle, videoUploader, videoId, hls, dst), sehingga title/uploader/
+    // description yang tampil jadi tidak sinkron dengan video yang sedang main.
+    if (isTransitioningNext) return;
+    isTransitioningNext = true;
+    isRecovering = true; // blokir stuck-detector/recovery selama transisi berlangsung
+    const myTransitionId = ++nextVideoTransitionId;
+
     localStorage.removeItem(storageKeyVideo);
     const nextVideoLink = document.querySelector(".rekomendasi-item");
-    if (!nextVideoLink) return;
+    if (!nextVideoLink) {
+      isTransitioningNext = false;
+      isRecovering = false;
+      return;
+    }
 
     const wasFullscreen =
       player.fullscreen.active || !!document.fullscreenElement;
@@ -464,6 +510,14 @@ function setupMeelPlayerEvents() {
     try {
       const response = await fetch(nextVideoLink.href);
       const html = await response.text();
+
+      // Jika ada transisi "next video" lain yang sudah dimulai SETELAH ini
+      // (misal recovery/skip lain sempat jalan selagi fetch ini tertahan oleh
+      // throttling tab background), buang hasil fetch yang sudah basi ini —
+      // jangan sampai menimpa title/uploader/description video yang sedang
+      // aktif sekarang dengan data video yang lama.
+      if (myTransitionId !== nextVideoTransitionId) return;
+
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
 
@@ -592,6 +646,15 @@ function setupMeelPlayerEvents() {
     } catch (err) {
       console.error("Gagal transisi seamless, fallback ke reload:", err);
       window.location.href = nextVideoLink.href;
+    } finally {
+      // Hanya reset guard jika ini masih transisi yang aktif (bukan yang sudah
+      // ditimpa oleh transisi lebih baru), supaya transisi terbaru tidak
+      // dimatikan secara prematur oleh transisi lama yang baru selesai belakangan.
+      if (myTransitionId === nextVideoTransitionId) {
+        isTransitioningNext = false;
+        isRecovering = false;
+        startStuckDetector();
+      }
     }
   });
 
@@ -645,8 +708,24 @@ window.toggleLoop = function () {
 // --- FITUR MINI PLAYER SPA ---
 let isMiniPlayerActive = false;
 let watchUrl = window.location.href;
+let savedWatchScrollY = 0;
 
 let miniShell = null;
+
+// Saat mini-player aktif, search bar di navbar watch.php (#v-search-watch /
+// #v-search-mobile) seharusnya mencari di library index (#video-container di
+// dalam #temp-index-content), bukan ke #recommendation-column yang sedang
+// disembunyikan — sebelumnya hasil pencarian "hilang" karena nyemplung ke
+// elemen tersembunyi tersebut.
+function setNavbarSearchTarget(targetSelector) {
+  ["v-search-watch", "v-search-mobile"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute("hx-target", targetSelector);
+  });
+  document
+    .querySelectorAll('button[hx-include="#v-search-watch"]')
+    .forEach((btn) => btn.setAttribute("hx-target", targetSelector));
+}
 
 function buildMiniShell(videoWrapper) {
   const shell = document.createElement("div");
@@ -825,6 +904,13 @@ window.toggleMiniPlayer = async function () {
 
   if (!isMiniPlayerActive) {
     isMiniPlayerActive = true;
+    setNavbarSearchTarget("#video-container");
+
+    // Simpan posisi scroll halaman watch saat ini, supaya bisa dikembalikan
+    // persis seperti semula saat user kembali dari browsing index.
+    savedWatchScrollY = window.scrollY;
+    // Mulai tampilan index dari atas, bukan dari posisi scroll watch sebelumnya.
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 
     // Reset inline style dari halaman normal sebelum masuk mini-player
     if (videoWrapper) {
@@ -874,6 +960,7 @@ window.toggleMiniPlayer = async function () {
     }
   } else {
     isMiniPlayerActive = false;
+    setNavbarSearchTarget("#recommendation-column");
 
     const videoWrap = document.getElementById("main-video-wrapper");
     if (videoWrap) {
@@ -925,6 +1012,10 @@ window.toggleMiniPlayer = async function () {
           b.classList.remove("hidden");
         }
       }
+
+      // Kembalikan scroll ke posisi watch sebelum masuk mini-player, supaya
+      // tidak "nyangkut" di posisi scroll terakhir saat browsing index tadi.
+      window.scrollTo({ top: savedWatchScrollY, left: 0, behavior: "instant" });
     });
 
     window.history.pushState({}, "", watchUrl);
