@@ -1,13 +1,4 @@
 <?php
-/**
- * MediaInteraction Class
- * Menggabungkan fungsi-fungsi user interaction seperti like/dislike dan delete comment
- * 
- * Usage:
- *   $interaction = new MediaInteraction($conn, $user_id);
- *   $interaction->toggleLike($media_id, $media_type, $like_type);
- *   $interaction->deleteComment($comment_id);
- */
 
 class MediaInteraction {
     private $conn;
