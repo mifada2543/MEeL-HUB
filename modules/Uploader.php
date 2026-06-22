@@ -354,16 +354,22 @@ class Uploader
         }
 
         // ── INSERT DATABASE ───────────────────────────────────────────────────
-        $title = trim($post['title'] ?? 'Untitled Video');
-        $meta  = $this->generateMetadata($title);
+        $title       = trim($post['title'] ?? 'Untitled Video');
+        // 1. Ambil data deskripsi dari form POST
+        $description = trim($post['description'] ?? '');
+        $meta        = $this->generateMetadata($title);
+
+        // 2. Tambahkan kolom 'description' dan placeholder (?) ke dalam query SQL
         $stmt  = $this->conn->prepare(
-            "INSERT INTO video (title, filename, thumbnail, search_metadata, user_id, upload_date)
-             VALUES (?, ?, ?, ?, ?, NOW())"
+            "INSERT INTO video (title, description, filename, thumbnail, search_metadata, user_id, upload_date)
+             VALUES (?, ?, ?, ?, ?, ?, NOW())"
         );
+
         if (!$stmt) {
             return ['status' => 'error', 'msg' => 'Prepare gagal: ' . $this->conn->error];
         }
-        $stmt->bind_param("ssssi", $title, $db_filename, $thumb_name, $meta, $this->user_id);
+
+        $stmt->bind_param("sssssi", $title, $description, $db_filename, $thumb_name, $meta, $this->user_id);
 
         if ($stmt->execute()) {
             return ['status' => 'success'];
