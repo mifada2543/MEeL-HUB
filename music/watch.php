@@ -385,7 +385,7 @@ switch ($ext) {
                                                     <span class="text-[10px] text-gray-500 flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
                                                 </div>
                                                 <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
-                                                    <a href="../delete_comment.php?id=<?= $c['id'] ?>"
+                                                    <a href="../controllers/delete_comment.php?id=<?= $c['id'] ?>"
                                                         onclick="return meelConfirmLink(event, { title: 'Hapus Komentar', text: 'Hapus komentar ini?', confirmButtonText: 'HAPUS' })"
                                                         class="text-gray-500 hover:text-red-400 transition-colors no-underline flex-shrink-0">
                                                         <i data-lucide="trash-2" class="w-3 h-3"></i>
