@@ -591,17 +591,11 @@ function setupMeelPlayerEvents() {
     try {
       const response = await fetch(nextVideoLink.href);
       const html = await response.text();
-
-      // Jika ada transisi "next video" lain yang sudah dimulai SETELAH ini
-      // (misal recovery/skip lain sempat jalan selagi fetch ini tertahan oleh
-      // throttling tab background), buang hasil fetch yang sudah basi ini —
-      // jangan sampai menimpa title/uploader/description video yang sedang
-      // aktif sekarang dengan data video yang lama.
       if (myTransitionId !== nextVideoTransitionId) return;
 
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
-
+      watchUrl = nextVideoLink.href;
       window.history.pushState({}, "", nextVideoLink.href);
       document.title = doc.title;
 
@@ -966,6 +960,7 @@ function attachMiniPlayerVideoCardListeners(container) {
         });
         if (window.lucide) window.lucide.createIcons();
         if (window.htmx) htmx.process(document.body);
+        watchUrl = targetUrl;
         window.history.pushState({ miniPlayer: true }, "", targetUrl);
         const tempIndex = document.getElementById("temp-index-content");
         if (tempIndex) attachMiniPlayerVideoCardListeners(tempIndex);
