@@ -741,13 +741,163 @@ function setupMeelPlayerEvents() {
     if (vttSrc) {
       setTimeout(() => refreshVttSprites(vttSrc), 300);
     }
+
+    // ── Glow fullscreen: inject canvas ke .plyr__video-wrapper ──
+    // .plyr__video-wrapper punya background:#000 — canvas harus DI DALAM
+    // wrapper tersebut, bukan di .plyr (parent), agar tidak tertutup.
+    const plyrEl = player.elements.container;
+    const fsWrap = plyrEl ? plyrEl.querySelector(".plyr__video-wrapper") : null;
+    if (plyrEl && fsWrap && videoElement) {
+      // Guard: hapus jika sudah ada
+      const oldFs = fsWrap.querySelector("#video-glow-canvas-fs");
+      if (oldFs) oldFs.remove();
+
+      const fsCanvas = document.createElement("canvas");
+      fsCanvas.id = "video-glow-canvas-fs";
+      fsCanvas.width = 64;
+      fsCanvas.height = 36;
+      fsCanvas.style.cssText = [
+        "position:absolute",
+        "inset:0",
+        "width:100%",
+        "height:100%",
+        "pointer-events:none",
+        "z-index:0",
+        "filter:blur(60px)",
+        "opacity:0",
+        "transform:scale(1.08)",
+        "transition:opacity 0.6s ease",
+        "border-radius:50%",
+      ].join(";");
+      // Sisipkan sebelum firstChild (video) — video di atasnya via normal stacking
+      fsWrap.insertBefore(fsCanvas, fsWrap.firstChild);
+
+      const fsCtx = fsCanvas.getContext("2d", { willReadFrequently: false });
+      let fsAnimId = null;
+      let fsRunning = false;
+
+      const drawFs = () => {
+        if (!fsRunning) return;
+        if (!videoElement.paused && !videoElement.ended && !document.hidden) {
+          try {
+            fsCtx.drawImage(videoElement, 0, 0, 64, 36);
+          } catch (e) {}
+        }
+        fsAnimId = requestAnimationFrame(drawFs);
+      };
+
+      const startFs = () => {
+        if (fsRunning) return;
+        fsRunning = true;
+        fsCanvas.style.opacity = "0.5";
+        drawFs();
+      };
+
+      const stopFs = () => {
+        fsRunning = false;
+        if (fsAnimId !== null) {
+          cancelAnimationFrame(fsAnimId);
+          fsAnimId = null;
+        }
+        fsCanvas.style.opacity = "0";
+      };
+
+      // Simpan referensi handler agar bisa dilepas saat exitfullscreen
+      plyrEl._fsGlowStart = startFs;
+      plyrEl._fsGlowStop = stopFs;
+
+      player.on("play", startFs);
+      player.on("playing", startFs);
+      player.on("pause", stopFs);
+      player.on("ended", stopFs);
+
+      // Langsung aktifkan jika video sedang berjalan
+      if (!videoElement.paused && !videoElement.ended) startFs();
+    }
   });
 
   player.on("exitfullscreen", () => {
     if (screen.orientation?.unlock) {
       screen.orientation.unlock();
     }
+
+    // ── Bersihkan canvas glow fullscreen ──
+    const plyrEl = player.elements.container;
+    if (plyrEl) {
+      if (plyrEl._fsGlowStop) plyrEl._fsGlowStop();
+      if (plyrEl._fsGlowStart) player.off("play", plyrEl._fsGlowStart);
+      if (plyrEl._fsGlowStart) player.off("playing", plyrEl._fsGlowStart);
+      if (plyrEl._fsGlowStop) player.off("pause", plyrEl._fsGlowStop);
+      if (plyrEl._fsGlowStop) player.off("ended", plyrEl._fsGlowStop);
+      delete plyrEl._fsGlowStart;
+      delete plyrEl._fsGlowStop;
+
+      const fsWrapEl = plyrEl.querySelector(".plyr__video-wrapper");
+      const fsCanvas = fsWrapEl
+        ? fsWrapEl.querySelector("#video-glow-canvas-fs")
+        : null;
+      if (fsCanvas) fsCanvas.remove();
+    }
   });
+
+  // ─── FITUR CAHAYA SINEMATIK (AMBIENT MODE) ───
+  const glowCanvas = document.getElementById("video-glow-canvas");
+  if (glowCanvas && videoElement) {
+    const ctx = glowCanvas.getContext("2d", { willReadFrequently: false });
+
+    // Resolusi internal canvas sekecil mungkin — CSS blur akan menghaluskannya
+    glowCanvas.width = 64;
+    glowCanvas.height = 36;
+
+    let glowAnimationId = null;
+    let glowRunning = false;
+
+    const drawGlowFrame = () => {
+      if (!glowRunning) return;
+      if (!videoElement.paused && !videoElement.ended && !document.hidden) {
+        try {
+          ctx.drawImage(
+            videoElement,
+            0,
+            0,
+            glowCanvas.width,
+            glowCanvas.height,
+          );
+        } catch (e) {}
+      }
+      glowAnimationId = requestAnimationFrame(drawGlowFrame);
+    };
+
+    const startGlow = () => {
+      if (glowRunning) return; // Cegah double-loop
+      glowRunning = true;
+      glowCanvas.classList.add("glow-active");
+      drawGlowFrame();
+    };
+
+    const stopGlow = (clearFrame = false) => {
+      glowRunning = false;
+      if (glowAnimationId !== null) {
+        cancelAnimationFrame(glowAnimationId);
+        glowAnimationId = null;
+      }
+      glowCanvas.classList.remove("glow-active");
+      if (clearFrame) {
+        ctx.clearRect(0, 0, glowCanvas.width, glowCanvas.height);
+      }
+    };
+
+    player.on("play", startGlow);
+    player.on("playing", startGlow); // HLS resume setelah buffering
+    player.on("pause", () => stopGlow(false));
+    player.on("ended", () => stopGlow(true));
+
+    // Jika video sudah berjalan saat JS diinisialisasi (mis. auto-recovery)
+    if (!videoElement.paused && !videoElement.ended) {
+      startGlow();
+    }
+  }
+  // ─────────────────────────────────────────────
 
   setupMobileGestures();
 }
@@ -999,6 +1149,10 @@ window.toggleMiniPlayer = async function () {
     videoWrapper.classList.add("mini-player-mode");
     // CSS handles hiding non-progress controls via .mini-player-mode .plyr__controls > *:not(.plyr__progress__container)
 
+    // Sembunyikan canvas glow — video sudah keluar dari glow-container
+    const glowCanvasEl = document.getElementById("video-glow-canvas");
+    if (glowCanvasEl) glowCanvasEl.style.display = "none";
+
     document.body.appendChild(miniShell);
     document.body.style.paddingBottom = "120px";
 
@@ -1059,8 +1213,24 @@ window.toggleMiniPlayer = async function () {
         );
       }
 
-      // Kembalikan wrapper ke posisi semula di left-column
-      if (leftColumn) leftColumn.insertBefore(videoWrap, leftColumn.firstChild);
+      // Kembalikan wrapper ke posisi semula di dalam glow-container
+      const glowContainer = document.getElementById("video-glow-container");
+      if (glowContainer) {
+        // Sisipkan sebelum elemen pertama (canvas), atau append jika kosong
+        const canvas = glowContainer.querySelector("canvas");
+        if (canvas) {
+          glowContainer.insertBefore(videoWrap, canvas.nextSibling);
+        } else {
+          glowContainer.appendChild(videoWrap);
+        }
+      } else if (leftColumn) {
+        // Fallback: kembalikan ke left-column jika glow-container tidak ada
+        leftColumn.insertBefore(videoWrap, leftColumn.firstChild);
+      }
+
+      // Tampilkan kembali canvas glow (reset ke kondisi semula — visible di sm+)
+      const glowCanvasEl = document.getElementById("video-glow-canvas");
+      if (glowCanvasEl) glowCanvasEl.style.removeProperty("display");
     }
 
     if (miniShell) {

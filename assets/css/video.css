@@ -151,6 +151,15 @@ body {
   background: #000 !important;
 }
 
+/* Canvas glow di dalam .plyr saat fullscreen — di belakang video, tidak menghalangi controls */
+#video-glow-canvas-fs {
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* .plyr__video-wrapper tidak perlu z-index khusus saat fullscreen —
+   canvas glow diinsert ke dalamnya, bukan di luar */
+
 .plyr__video-wrapper {
   background: #000 !important;
   display: flex;
@@ -471,4 +480,44 @@ body {
   #main-video-wrapper .plyr__video-wrapper {
     border-radius: 2rem !important; /* Kelengkungan layar Desktop (Lebih melengkung mirip gambar) */
   }
+}
+
+/* ── 10. YOUTUBE-LIKE AMBIENT GLOW EFFECT ── */
+
+/* Container pembungkus canvas + video */
+#video-glow-container {
+  position: relative;
+  width: 100%;
+}
+
+#video-glow-canvas {
+  position: absolute;
+  top: 5%;
+  left: -5%;
+  width: 110%;
+  height: 110%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(60px);
+  opacity: 0;
+  transform: scale(1.08);
+  transition: opacity 0.6s ease;
+  border-radius: 50%;
+}
+
+/* Aktif saat video berjalan */
+#video-glow-canvas.glow-active {
+  opacity: 0.5;
+}
+
+/* main-video-wrapper harus di atas canvas */
+#video-glow-container #main-video-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* Matikan glow saat mini-player aktif */
+.mini-player-mode ~ #video-glow-canvas,
+#mini-player-shell ~ #video-glow-canvas {
+  display: none !important;
 }
