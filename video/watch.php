@@ -33,6 +33,11 @@ $comments_data    = $viewer->getComments();
 $comments_grouped = $comments_data['grouped'];
 $user_map         = $comments_data['user_map'];
 $rekom            = $viewer->getRecommendations(15);
+
+// Lepas session lock sesegera mungkin — PHP session bersifat exclusive lock.
+// Selama lock aktif, request lain dari browser yang sama (termasuk range request
+// untuk video MP4) harus antri, menyebabkan micro-stall di mobile LAN.
+session_write_close();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -129,7 +134,7 @@ $rekom            = $viewer->getRecommendations(15);
     <div id="app-content-grid" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
         <div id="left-column" class="flex-1 space-y-4 sm:space-y-5 px-4 sm:px-5">
             <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" style="aspect-ratio: 16/9;">
-                <video id="main-video" playsinline controls
+                <video id="main-video" playsinline controls preload="auto"
                     data-poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
                     data-src="<?= htmlspecialchars($video_src) ?>"
                     data-ishls="<?= $is_hls ? 'true' : 'false' ?>"

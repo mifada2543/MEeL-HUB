@@ -23,6 +23,10 @@ let lastRecoveryTime = 0;
 let recoveryTimeoutId = null;
 let playbackStartTimestamp = 0;
 
+// Throttle localStorage: simpan posisi maksimal 1x per 5 detik
+let lastLocalStorageSave = 0;
+const LOCAL_STORAGE_THROTTLE_MS = 5000;
+
 // Detektor stuck
 let lastPlayTime = -1;
 let lastTimeUpdateTimestamp = Date.now();
@@ -74,12 +78,25 @@ const plyrOptions = {
     enabled: vttSrc !== "",
     src: vttSrc,
   },
+  // Beritahu Plyr untuk tidak downgrade preload attribute yang sudah di-set di HTML
+  mediaMetadata: {},
 };
 
 const HLS_CONFIG = {
-  maxBufferLength: 30,
+  maxBufferLength: 45,
+  maxMaxBufferLength: 90,
+  maxBufferHole: 0.5,
+  nudgeMaxRetry: 5,
+  nudgeOffset: 0.1,
   enableWorker: true,
-  backBufferLength: 60,
+  backBufferLength: 10,
+  lowLatencyMode: false,
+  // Mulai dari level terendah agar buffer awal cepat penuh di WiFi lambat,
+  // ABR akan naik otomatis setelah buffer aman
+  startLevel: -1,
+  abrEwmaDefaultEstimate: 500000, // asumsi awal 500kbps (konservatif untuk WiFi lambat)
+  fragLoadingTimeOut: 20000,
+  manifestLoadingTimeOut: 10000,
 };
 
 function destroyPlayer() {
@@ -203,6 +220,7 @@ function triggerPlayerRecovery() {
 function startStuckDetector() {
   stopStuckDetector();
   stuckCheckInterval = setInterval(() => {
+    // 2 detik sudah cukup untuk deteksi stuck 3 detik
     if (!player || player.paused || isRecovering || isTransitioningNext) return;
 
     // Lewati pengecekan saat tab di-background: decoding frame video sering
@@ -215,14 +233,16 @@ function startStuckDetector() {
 
     if (currentVideoTime === lastPlayTime) {
       const secondsStuck = (now - lastTimeUpdateTimestamp) / 1000;
-      if (secondsStuck >= 3) {
+      // Threshold 6 dtk: jeda pendek (0.1-0.5 dtk) di mobile LAN adalah normal
+      // segment-boundary micro-stall, bukan hang — recovery palsu justru memperberat lag
+      if (secondsStuck >= 6) {
         triggerPlayerRecovery();
       }
     } else {
       lastPlayTime = currentVideoTime;
       lastTimeUpdateTimestamp = now;
     }
-  }, 1000);
+  }, 2000);
 }
 
 // Saat tab kembali aktif, reset baseline waktu agar tidak langsung
@@ -376,6 +396,10 @@ function setupMeelPlayerEvents() {
   }
 
   player.on("ready", (event) => {
+    // Paksa preload agresif — Plyr kadang reset ini ke "metadata"
+    if (videoElement && !isHls) {
+      videoElement.preload = "auto";
+    }
     applyNativeAspectRatio();
     if (vttSrc) {
       setTimeout(() => refreshVttSprites(vttSrc), 300);
@@ -386,7 +410,7 @@ function setupMeelPlayerEvents() {
     }
     const savedPos = localStorage.getItem(storageKeyVideo);
 
-    // Aliran auto-recovery
+    // Aliran auto-recovery: langsung play tanpa buffer gate
     if (isAutoRecovering && savedPos) {
       isAutoRecovering = false;
       player.currentTime = parseFloat(savedPos);
@@ -395,50 +419,92 @@ function setupMeelPlayerEvents() {
       return;
     }
 
-    if (savedPos && parseFloat(savedPos) > 10) {
-      const mins = Math.floor(savedPos / 60);
-      const secs = Math.floor(savedPos % 60);
-      if (displayTime)
-        displayTime.innerText = `${mins}:${secs.toString().padStart(2, "0")}`;
-      if (modal) modal.classList.remove("hidden");
+    // ── Buffer Gate ──────────────────────────────────────────────────────────
+    // Tunda autoplay sampai ada ≥ 15 detik konten terbuffer. Di WiFi lambat,
+    // HLS.js mulai play setelah ~1 segment tersedia (~2-6 dtk), lalu stutter
+    // saat segment ke-3/4 belum siap. Gate ini menghilangkan jeda awal tsb.
+    // Timeout 8 detik: jika buffer tidak terpenuhi (mis. koneksi sangat lambat),
+    // play tetap dimulai agar user tidak menunggu tanpa batas.
+    const MIN_BUFFER_SEC = 15;
+    const GATE_TIMEOUT_MS = 8000;
 
-      let timeLeft = 15;
-      const countdownInterval = setInterval(() => {
-        timeLeft--;
-        if (timeLeft > 0) {
-          if (countdownText)
-            countdownText.innerText = `Otomatis ulang dari awal dalam ${timeLeft}s...`;
-        } else {
-          clearInterval(countdownInterval);
+    function doPlayAfterReady() {
+      if (savedPos && parseFloat(savedPos) > 10) {
+        const mins = Math.floor(savedPos / 60);
+        const secs = Math.floor(savedPos % 60);
+        if (displayTime)
+          displayTime.innerText = `${mins}:${secs.toString().padStart(2, "0")}`;
+        if (modal) modal.classList.remove("hidden");
+
+        let timeLeft = 15;
+        const countdownInterval = setInterval(() => {
+          timeLeft--;
+          if (timeLeft > 0) {
+            if (countdownText)
+              countdownText.innerText = `Otomatis ulang dari awal dalam ${timeLeft}s...`;
+          } else {
+            clearInterval(countdownInterval);
+          }
+        }, 1000);
+
+        const autoRestartTimer = setTimeout(() => {
+          if (btnRestart) btnRestart.click();
+        }, 15000);
+
+        if (btnResume) {
+          btnResume.onclick = () => {
+            clearTimeout(autoRestartTimer);
+            clearInterval(countdownInterval);
+            player.currentTime = parseFloat(savedPos);
+            player.play();
+            modal.classList.add("hidden");
+          };
         }
-      }, 1000);
 
-      const autoRestartTimer = setTimeout(() => {
-        if (btnRestart) btnRestart.click();
-      }, 15000);
-
-      if (btnResume) {
-        btnResume.onclick = () => {
-          clearTimeout(autoRestartTimer);
-          clearInterval(countdownInterval);
-          player.currentTime = parseFloat(savedPos);
-          player.play();
-          modal.classList.add("hidden");
-        };
+        if (btnRestart) {
+          btnRestart.onclick = () => {
+            clearTimeout(autoRestartTimer);
+            clearInterval(countdownInterval);
+            localStorage.removeItem(storageKeyVideo);
+            player.currentTime = 0;
+            player.play();
+            modal.classList.add("hidden");
+          };
+        }
+      } else {
+        player.play().catch(() => console.log("Menunggu interaksi user..."));
       }
+    }
 
-      if (btnRestart) {
-        btnRestart.onclick = () => {
-          clearTimeout(autoRestartTimer);
-          clearInterval(countdownInterval);
-          localStorage.removeItem(storageKeyVideo);
-          player.currentTime = 0;
-          player.play();
-          modal.classList.add("hidden");
-        };
-      }
+    if (isHls && hls) {
+      let gateCleared = false;
+      const gateTimeout = setTimeout(() => {
+        if (!gateCleared) {
+          gateCleared = true;
+          doPlayAfterReady();
+        }
+      }, GATE_TIMEOUT_MS);
+
+      hls.on(Hls.Events.FRAG_BUFFERED, function checkBuffer() {
+        if (gateCleared) {
+          hls.off(Hls.Events.FRAG_BUFFERED, checkBuffer);
+          return;
+        }
+        try {
+          const buf = videoElement.buffered;
+          if (buf.length > 0) {
+            const bufferedAhead = buf.end(0) - (videoElement.currentTime || 0);
+            if (bufferedAhead >= MIN_BUFFER_SEC) {
+              clearTimeout(gateTimeout);
+              gateCleared = true;
+              hls.off(Hls.Events.FRAG_BUFFERED, checkBuffer);
+              doPlayAfterReady();
+            }
+          }
+        } catch (e) {}
+      });
     } else {
-      player.play().catch(() => console.log("Menunggu interaksi user..."));
+      doPlayAfterReady();
     }
   });
 
@@ -453,27 +519,42 @@ function setupMeelPlayerEvents() {
 
   player.on("pause", () => {
     stopStuckDetector();
+    // Flush posisi segera saat pause agar tidak kehilangan progress walau throttled
+    if (player.currentTime > 0) {
+      localStorage.setItem(storageKeyVideo, player.currentTime);
+      lastLocalStorageSave = Date.now();
+    }
   });
 
   player.on("seeking", () => {
-    lastTimeUpdateTimestamp = Date.now();
+    const now = Date.now();
+    lastTimeUpdateTimestamp = now;
+    lastLocalStorageSave = now; // flush saat seek juga
+    if (player) {
+      localStorage.setItem(storageKeyVideo, player.currentTime);
+      lastPlayTime = player.currentTime;
+    }
   });
 
   player.on("seeked", () => {
     lastTimeUpdateTimestamp = Date.now();
+    if (player) lastPlayTime = player.currentTime;
   });
 
   player.on("timeupdate", () => {
     if (player.currentTime > 0) {
-      localStorage.setItem(storageKeyVideo, player.currentTime);
+      const now = Date.now();
       lastPlayTime = player.currentTime;
-      lastTimeUpdateTimestamp = Date.now();
+      lastTimeUpdateTimestamp = now;
+
+      // Throttle localStorage writes: max 1x per 5 detik agar tidak blocking tiap frame
+      if (now - lastLocalStorageSave >= LOCAL_STORAGE_THROTTLE_MS) {
+        localStorage.setItem(storageKeyVideo, player.currentTime);
+        lastLocalStorageSave = now;
+      }
 
       // Jika berhasil memutar tanpa masalah selama 5 detik, reset delay pemulihan ke default
-      if (
-        playbackStartTimestamp > 0 &&
-        Date.now() - playbackStartTimestamp > 5000
-      ) {
+      if (playbackStartTimestamp > 0 && now - playbackStartTimestamp > 5000) {
         recoveryDelay = 5000;
         playbackStartTimestamp = 0;
       }
@@ -827,9 +908,11 @@ function attachMiniPlayerVideoCardListeners(container) {
         const newTitle = fetchedConfig.title || "";
         const newUploader = fetchedConfig.uploader || "";
         const newSrc = fetchedConfig.videoSrc || newVideoEl?.dataset?.src || "";
-        const newIsHls = fetchedConfig.isHls === true || fetchedConfig.isHls === "true";
+        const newIsHls =
+          fetchedConfig.isHls === true || fetchedConfig.isHls === "true";
         const newPoster = newVideoEl?.dataset?.poster || "";
-        const newId = fetchedConfig.id || new URL(targetUrl).searchParams.get("id") || "";
+        const newId =
+          fetchedConfig.id || new URL(targetUrl).searchParams.get("id") || "";
         updateSearchExcludeId(newId);
         const newVttSrc = fetchedConfig.vttSrc || "";
 
@@ -1142,6 +1225,9 @@ function setupMobileGestures() {
   ); // Gunakan fase capture agar dijalankan sebelum event listener bawaan Plyr
 }
 
+// Cache sprite URL per VTT agar tidak fetch ulang setiap fullscreen/transition
+const _vttSpriteCache = {};
+
 // Helper: Refresh VTT sprite images — reset cache internal Plyr dan update seluruh document
 function refreshVttSprites(vttUrl) {
   if (!player) return;
@@ -1154,15 +1240,32 @@ function refreshVttSprites(vttUrl) {
   if (player.previewThumbnails) {
     player.previewThumbnails.thumbnails = [];
     player.previewThumbnails.loaded = false;
-    // Paksa Plyr reload VTT dari URL baru
     if (typeof player.previewThumbnails.load === "function") {
       player.previewThumbnails.load();
     }
   }
 
-  // 3. Juga update elemen sprite secara manual di SELURUH document
-  //    (bukan hanya player.elements.container, karena mobile fullscreen
-  //    bisa me-render di luar container Plyr)
+  // 3. Update elemen sprite — gunakan cache jika sudah pernah fetch VTT ini
+  const applySprite = (spriteUrl) => {
+    document
+      .querySelectorAll(".plyr__preview-thumb__image-container")
+      .forEach((c) => {
+        c.style.backgroundImage = `url("${spriteUrl}")`;
+      });
+    document
+      .querySelectorAll(
+        ".plyr__preview-thumb__image-container img, .plyr__preview-scrubbing img",
+      )
+      .forEach((img) => {
+        img.src = spriteUrl;
+      });
+  };
+
+  if (_vttSpriteCache[vttUrl]) {
+    applySprite(_vttSpriteCache[vttUrl]);
+    return;
+  }
+
   fetch(vttUrl)
     .then((res) => res.text())
     .then((text) => {
@@ -1170,41 +1273,39 @@ function refreshVttSprites(vttUrl) {
       if (match) {
         const baseUrl = vttUrl.substring(0, vttUrl.lastIndexOf("/") + 1);
         const spriteUrl = baseUrl + match[1];
-
-        // Ganti background-image di semua container thumbnail di seluruh halaman
-        document
-          .querySelectorAll(".plyr__preview-thumb__image-container")
-          .forEach((c) => {
-            c.style.backgroundImage = `url("${spriteUrl}")`;
-          });
-        // Ganti src semua tag img thumbnail di seluruh halaman
-        document
-          .querySelectorAll(".plyr__preview-thumb__image-container img")
-          .forEach((img) => {
-            img.src = spriteUrl;
-          });
-        // Juga handle scrubbing images (preview saat drag progress bar)
-        document
-          .querySelectorAll(".plyr__preview-scrubbing img")
-          .forEach((img) => {
-            img.src = spriteUrl;
-          });
+        _vttSpriteCache[vttUrl] = spriteUrl; // simpan ke cache
+        applySprite(spriteUrl);
       }
     })
     .catch((e) => console.error("Gagal refresh VTT sprites:", e));
 }
 
+// Reuse satu elemen indikator (tidak buat DOM baru setiap gesture)
+let _indikatorEl = null;
+let _indikatorHideTimeout = null;
+let _indikatorRemoveTimeout = null;
+
 function tampilkanIndikator(teks) {
   const container = document.querySelector(".plyr");
   if (!container) return;
-  const ind = document.createElement("div");
-  ind.innerText = teks;
-  ind.className =
-    "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 text-white font-black py-2 px-4 rounded-full pointer-events-none z-50 transition-opacity duration-500";
-  container.appendChild(ind);
-  setTimeout(() => {
-    ind.style.opacity = "0";
-    setTimeout(() => ind.remove(), 500);
+
+  // Buat elemen sekali, reuse selanjutnya
+  if (!_indikatorEl || !_indikatorEl.parentNode) {
+    _indikatorEl = document.createElement("div");
+    _indikatorEl.className =
+      "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 text-white font-black py-2 px-4 rounded-full pointer-events-none z-50 transition-opacity duration-500";
+    container.appendChild(_indikatorEl);
+  }
+
+  // Reset timeout sebelumnya jika masih aktif
+  clearTimeout(_indikatorHideTimeout);
+  clearTimeout(_indikatorRemoveTimeout);
+
+  _indikatorEl.innerText = teks;
+  _indikatorEl.style.opacity = "1";
+
+  _indikatorHideTimeout = setTimeout(() => {
+    if (_indikatorEl) _indikatorEl.style.opacity = "0";
   }, 500);
 }
 
@@ -1236,10 +1337,12 @@ function updateSearchExcludeId(newId) {
       if (window.htmx) htmx.process(el); // Inisialisasi ulang HTMX
     }
   });
-  
+
   // Update tombol cari
-  document.querySelectorAll('button[hx-include="#v-search-watch"]').forEach((btn) => {
-    btn.setAttribute("hx-get", `search_video.php?exclude=${newId}`);
-    if (window.htmx) htmx.process(btn);
-  });
+  document
+    .querySelectorAll('button[hx-include="#v-search-watch"]')
+    .forEach((btn) => {
+      btn.setAttribute("hx-get", `search_video.php?exclude=${newId}`);
+      if (window.htmx) htmx.process(btn);
+    });
 }
