@@ -1025,15 +1025,17 @@ window.toggleMiniPlayer = async function () {
 window.addEventListener(
   "keydown",
   (e) => {
-    // CEGAH FULLSCREEN: Jika mini-player aktif dan tombol "f" ditekan, blokir sepenuhnya!
+    // 1. CEK INPUT: Izinkan semua ketikan jika user sedang berada di kolom teks/pencarian
+    if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+    // 2. CEGAH FULLSCREEN: Baru blokir tombol "f" jika bukan sedang mengetik
     if (isMiniPlayerActive && e.key.toLowerCase() === "f") {
       e.preventDefault();
       e.stopPropagation();
       return;
     }
 
-    if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
-
+    // Shortcut lainnya
     if (e.key.toLowerCase() === "l") {
       setTimeout(updateLoopUI, 50);
     }
