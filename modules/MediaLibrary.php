@@ -58,8 +58,8 @@ class MediaLibrary
                 );
                 $stmt->bind_param("i", $exclude);
             } else {
-                $stmt = $this->conn->prepare("SELECT * FROM video ORDER BY upload_date DESC LIMIT ? OFFSET ?");
-                $stmt->bind_param("ii", $limit, $offset);
+                $stmt = $this->conn->prepare("SELECT * FROM video WHERE id != ? ORDER BY upload_date DESC LIMIT ? OFFSET ?");
+                $stmt->bind_param("iii", $exclude, $limit, $offset);
             }
         } else {
             $like = "%$q%";

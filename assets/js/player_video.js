@@ -827,11 +827,10 @@ function attachMiniPlayerVideoCardListeners(container) {
         const newTitle = fetchedConfig.title || "";
         const newUploader = fetchedConfig.uploader || "";
         const newSrc = fetchedConfig.videoSrc || newVideoEl?.dataset?.src || "";
-        const newIsHls =
-          fetchedConfig.isHls === true || fetchedConfig.isHls === "true";
+        const newIsHls = fetchedConfig.isHls === true || fetchedConfig.isHls === "true";
         const newPoster = newVideoEl?.dataset?.poster || "";
-        const newId =
-          fetchedConfig.id || new URL(targetUrl).searchParams.get("id") || "";
+        const newId = fetchedConfig.id || new URL(targetUrl).searchParams.get("id") || "";
+        updateSearchExcludeId(newId);
         const newVttSrc = fetchedConfig.vttSrc || "";
 
         if (!newSrc) {
@@ -1228,3 +1227,19 @@ window.toggleReply = function (id) {
     }
   }
 };
+function updateSearchExcludeId(newId) {
+  // Update input text
+  ["v-search-watch", "v-search-mobile"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.setAttribute("hx-get", `search_video.php?exclude=${newId}`);
+      if (window.htmx) htmx.process(el); // Inisialisasi ulang HTMX
+    }
+  });
+  
+  // Update tombol cari
+  document.querySelectorAll('button[hx-include="#v-search-watch"]').forEach((btn) => {
+    btn.setAttribute("hx-get", `search_video.php?exclude=${newId}`);
+    if (window.htmx) htmx.process(btn);
+  });
+}
