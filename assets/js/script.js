@@ -176,8 +176,8 @@ function initMeelConfirmHandlers() {
 // --- LOGIKA MODE SEHAT (PERSISTEN & BEBAS BUG) ---
 
 // Konstanta durasi untuk memudahkan pengaturan (20 Menit)
-const HEALTH_INTERVAL_MS = 20 * 60 * 1000;
-let healthReminderTimer;
+var HEALTH_INTERVAL_MS = 20 * 60 * 1000;
+var healthReminderTimer;
 
 // Status Global Mode Sehat (Untuk memblokir keyboard & player)
 window.meelHealthAlertActive = false;
