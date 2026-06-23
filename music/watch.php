@@ -329,6 +329,11 @@ switch ($ext) {
 
                         if (descText && btn) {
                             setTimeout(() => {
+                                if (!descText.classList.contains('line-clamp-3')) {
+                                    btn.classList.remove('hidden');
+                                    return;
+                                }
+
                                 const isOverflowing = descText.scrollHeight > descText.offsetHeight;
                                 if (isOverflowing) {
                                     btn.classList.remove('hidden');
