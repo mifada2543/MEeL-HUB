@@ -272,16 +272,18 @@ body {
   position: absolute;
   inset: 0;
 
-  background: linear-gradient(to top,
-      rgba(0, 0, 0, 0.5) 5%,
-      /* Kegelapan menengah yang rata */
-      rgba(0, 0, 0, 0) 20%
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.5) 5%,
+    /* Kegelapan menengah yang rata */ rgba(0, 0, 0, 0) 20%
       /* Transparan mulai dari 20% ke atas */
-    );
+  );
 
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    visibility 0.3s ease;
   z-index: 1;
   pointer-events: none;
 }
@@ -453,5 +455,20 @@ body {
 
   #navbar-search-icon-btn {
     display: flex !important;
+  }
+}
+/* ── FORCE ROUNDED CORNERS FOR PLYRL PLAYER ── */
+#main-video-wrapper,
+#main-video-wrapper .plyr,
+#main-video-wrapper .plyr__video-wrapper {
+  border-radius: 1rem !important; /* Kelengkungan layar HP/Kecil */
+  overflow: hidden !important;
+}
+
+@media (min-width: 640px) {
+  #main-video-wrapper,
+  #main-video-wrapper .plyr,
+  #main-video-wrapper .plyr__video-wrapper {
+    border-radius: 2rem !important; /* Kelengkungan layar Desktop (Lebih melengkung mirip gambar) */
   }
 }
