@@ -758,8 +758,8 @@ function setupMeelPlayerEvents() {
 
       const fsCanvas = document.createElement("canvas");
       fsCanvas.id = "video-glow-canvas-fs";
-      fsCanvas.width = 64;
-      fsCanvas.height = 36;
+      fsCanvas.width = 1;
+      fsCanvas.height = 1;
       fsCanvas.style.cssText = [
         "position:absolute",
         "top:50%",
@@ -776,44 +776,83 @@ function setupMeelPlayerEvents() {
       ].join(";");
       fsWrap.insertBefore(fsCanvas, fsWrap.firstChild);
 
-      const fsCtx = fsCanvas.getContext("2d", { willReadFrequently: false });
-      let fsAnimId = null;
-      let fsRunning = false;
+      const fsCtx = fsCanvas.getContext("2d");
 
-      const drawFs = () => {
-        if (!fsRunning) return;
-        if (!videoElement.paused && !videoElement.ended && !document.hidden) {
-          try {
-            fsCtx.drawImage(videoElement, 0, 0, 64, 36);
-          } catch (e) {}
-        }
-        fsAnimId = requestAnimationFrame(drawFs);
+      // Canvas sample 20x20 — 400 pixel, lebih akurat dari 8x4
+      const fsSample = document.createElement("canvas");
+      fsSample.width = 20;
+      fsSample.height = 20;
+      const fsSampleCtx = fsSample.getContext("2d", {
+        willReadFrequently: true,
+      });
+
+      let fsTgtR = 0,
+        fsTgtG = 0,
+        fsTgtB = 0;
+      let fsCurR = 0,
+        fsCurG = 0,
+        fsCurB = 0;
+      let fsSampleInt = null,
+        fsLerpInt = null;
+
+      const fsSampleColor = () => {
+        if (videoElement.readyState < 2 || document.hidden) return;
+        try {
+          fsSampleCtx.drawImage(videoElement, 0, 0, 20, 20);
+          const data = fsSampleCtx.getImageData(0, 0, 20, 20).data;
+          let r = 0,
+            g = 0,
+            b = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            r += data[i];
+            g += data[i + 1];
+            b += data[i + 2];
+          }
+          const n = data.length / 4;
+          fsTgtR = r / n;
+          fsTgtG = g / n;
+          fsTgtB = b / n;
+        } catch (e) {}
+      };
+
+      const fsLerpDraw = () => {
+        fsCurR += (fsTgtR - fsCurR) * 0.018;
+        fsCurG += (fsTgtG - fsCurG) * 0.018;
+        fsCurB += (fsTgtB - fsCurB) * 0.018;
+        fsCtx.fillStyle = `rgb(${Math.round(fsCurR)},${Math.round(fsCurG)},${Math.round(fsCurB)})`;
+        fsCtx.fillRect(0, 0, 1, 1);
       };
 
       const startFs = () => {
-        if (fsRunning) return;
-        fsRunning = true;
-        fsCanvas.style.opacity = "0.5";
-        drawFs();
+        if (fsSampleInt) return;
+        fsCanvas.style.opacity = "0.6";
+        fsSampleColor();
+        fsSampleInt = setInterval(fsSampleColor, 300);
+        fsLerpInt = setInterval(fsLerpDraw, 30);
       };
 
       const stopFs = () => {
-        fsRunning = false;
-        if (fsAnimId !== null) {
-          cancelAnimationFrame(fsAnimId);
-          fsAnimId = null;
+        if (fsSampleInt) {
+          clearInterval(fsSampleInt);
+          fsSampleInt = null;
+        }
+        if (fsLerpInt) {
+          clearInterval(fsLerpInt);
+          fsLerpInt = null;
         }
         fsCanvas.style.opacity = "0";
       };
 
-      // Pause: stop rAF tapi opacity tetap — freeze frame glow
       const pauseFs = () => {
-        fsRunning = false;
-        if (fsAnimId !== null) {
-          cancelAnimationFrame(fsAnimId);
-          fsAnimId = null;
+        if (fsSampleInt) {
+          clearInterval(fsSampleInt);
+          fsSampleInt = null;
         }
-        // opacity TIDAK di-nol-kan
+        if (fsLerpInt) {
+          clearInterval(fsLerpInt);
+          fsLerpInt = null;
+        }
+        // opacity TIDAK di-nol-kan — warna terakhir freeze
       };
 
       // Simpan referensi handler agar bisa dilepas saat exitfullscreen
@@ -863,59 +902,106 @@ function setupMeelPlayerEvents() {
   });
 
   // ─── FITUR CAHAYA SINEMATIK (AMBIENT MODE) ───
+  // Arsitektur dua-loop terpisah:
+  //  • sampleInterval (300ms) — baca frame video ke canvas 20x20, hitung
+  //    rata-rata warna 400 pixel → simpan sebagai targetR/G/B
+  //  • lerpInterval  (30ms)  — interpolasi (lerp) currentR/G/B mendekati
+  //    target dengan faktor 0.018 per tick → transisi warna halus ~2–3 dtk
+  //    lalu fill canvas output 1x1 dengan warna hasil lerp
+  // Canvas output di-blur oleh CSS → ambient glow murni tanpa artefak video.
   const glowCanvas = document.getElementById("video-glow-canvas");
   if (glowCanvas && videoElement) {
-    const ctx = glowCanvas.getContext("2d", { willReadFrequently: false });
+    // Canvas sample — hanya untuk getImageData, tidak ditampilkan
+    const sampleCanvas = document.createElement("canvas");
+    sampleCanvas.width = 20;
+    sampleCanvas.height = 20;
+    const sampleCtx = sampleCanvas.getContext("2d", {
+      willReadFrequently: true,
+    });
 
-    // Resolusi internal canvas sekecil mungkin — CSS blur akan menghaluskannya
-    glowCanvas.width = 64;
-    glowCanvas.height = 36;
+    // Canvas output — satu warna solid, diblur CSS
+    glowCanvas.width = 1;
+    glowCanvas.height = 1;
+    const ctx = glowCanvas.getContext("2d");
 
-    let glowAnimationId = null;
-    let glowRunning = false;
+    // Warna target (dari sample) dan warna saat ini (hasil lerp)
+    let targetR = 0,
+      targetG = 0,
+      targetB = 0;
+    let curR = 0,
+      curG = 0,
+      curB = 0;
 
-    const drawGlowFrame = () => {
-      if (!glowRunning) return;
-      if (!videoElement.paused && !videoElement.ended && !document.hidden) {
-        try {
-          ctx.drawImage(
-            videoElement,
-            0,
-            0,
-            glowCanvas.width,
-            glowCanvas.height,
-          );
-        } catch (e) {}
-      }
-      glowAnimationId = requestAnimationFrame(drawGlowFrame);
+    let sampleInterval = null;
+    let lerpInterval = null;
+
+    // Baca warna dominan dari frame video saat ini → update target
+    const sampleColor = () => {
+      if (videoElement.readyState < 2 || document.hidden) return;
+      try {
+        sampleCtx.drawImage(videoElement, 0, 0, 20, 20);
+        const data = sampleCtx.getImageData(0, 0, 20, 20).data; // 400 pixel
+        let r = 0,
+          g = 0,
+          b = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          r += data[i];
+          g += data[i + 1];
+          b += data[i + 2];
+        }
+        const n = data.length / 4; // 400
+        targetR = r / n;
+        targetG = g / n;
+        targetB = b / n;
+      } catch (e) {}
+    };
+
+    // Lerp current → target, lalu gambar ke canvas output
+    const LERP = 0.06; // ~2–3 dtk untuk transisi penuh pada 30ms/tick
+    const lerpAndDraw = () => {
+      curR += (targetR - curR) * LERP;
+      curG += (targetG - curG) * LERP;
+      curB += (targetB - curB) * LERP;
+      ctx.fillStyle = `rgb(${Math.round(curR)},${Math.round(curG)},${Math.round(curB)})`;
+      ctx.fillRect(0, 0, 1, 1);
     };
 
     const startGlow = () => {
-      if (glowRunning) return; // Cegah double-loop
-      glowRunning = true;
+      if (sampleInterval) return; // Cegah double-start
       glowCanvas.classList.add("glow-active");
-      drawGlowFrame();
+      sampleColor(); // Langsung sample tanpa tunggu tick pertama
+      sampleInterval = setInterval(sampleColor, 300);
+      lerpInterval = setInterval(lerpAndDraw, 30);
     };
 
-    const stopGlow = (clearFrame = false) => {
-      glowRunning = false;
-      if (glowAnimationId !== null) {
-        cancelAnimationFrame(glowAnimationId);
-        glowAnimationId = null;
+    const stopGlow = (clearColor = false) => {
+      if (sampleInterval) {
+        clearInterval(sampleInterval);
+        sampleInterval = null;
+      }
+      if (lerpInterval) {
+        clearInterval(lerpInterval);
+        lerpInterval = null;
       }
       glowCanvas.classList.remove("glow-active");
-      if (clearFrame) {
-        ctx.clearRect(0, 0, glowCanvas.width, glowCanvas.height);
+      if (clearColor) {
+        targetR = curR = 0;
+        targetG = curG = 0;
+        targetB = curB = 0;
+        ctx.clearRect(0, 0, 1, 1);
       }
     };
 
-    // Pause: hentikan rAF loop (hemat CPU) tapi biarkan canvas & glow-active
-    // tetap tampil — frame terakhir video "freeze" sebagai ambient glow
+    // Pause: hentikan kedua interval (hemat CPU) tapi glow-active tetap —
+    // lerp berhenti, warna terakhir freeze sebagai ambient sampai play lagi
     const pauseGlow = () => {
-      glowRunning = false;
-      if (glowAnimationId !== null) {
-        cancelAnimationFrame(glowAnimationId);
-        glowAnimationId = null;
+      if (sampleInterval) {
+        clearInterval(sampleInterval);
+        sampleInterval = null;
+      }
+      if (lerpInterval) {
+        clearInterval(lerpInterval);
+        lerpInterval = null;
       }
       // glow-active TIDAK dihapus → canvas tetap terlihat
     };
@@ -923,12 +1009,9 @@ function setupMeelPlayerEvents() {
     player.on("play", startGlow);
     player.on("playing", startGlow); // HLS resume setelah buffering
     player.on("pause", pauseGlow);
-    player.on("ended", () => stopGlow(true)); // ended: hapus glow sepenuhnya
+    player.on("ended", () => stopGlow(true));
 
-    // Jika video sudah berjalan saat JS diinisialisasi (mis. auto-recovery)
-    if (!videoElement.paused && !videoElement.ended) {
-      startGlow();
-    }
+    if (!videoElement.paused && !videoElement.ended) startGlow();
   }
   // ─────────────────────────────────────────────
 
