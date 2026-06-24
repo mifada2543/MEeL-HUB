@@ -752,24 +752,28 @@ function setupMeelPlayerEvents() {
       const oldFs = fsWrap.querySelector("#video-glow-canvas-fs");
       if (oldFs) oldFs.remove();
 
+      // Paksa video element selalu di atas canvas glow
+      videoElement.style.position = "relative";
+      videoElement.style.zIndex = "2";
+
       const fsCanvas = document.createElement("canvas");
       fsCanvas.id = "video-glow-canvas-fs";
       fsCanvas.width = 64;
       fsCanvas.height = 36;
       fsCanvas.style.cssText = [
         "position:absolute",
-        "inset:0",
+        "top:50%",
+        "left:50%",
+        // Scale 1.4 → canvas lebih besar dari video, glow meluber ke letterbox/pillarbox
+        "transform:translate(-50%,-50%) scale(1.4)",
         "width:100%",
         "height:100%",
         "pointer-events:none",
-        "z-index:0",
-        "filter:blur(60px)",
+        "z-index:1", // di bawah video (z-index:2)
+        "filter:blur(40px)",
         "opacity:0",
-        "transform:scale(1.08)",
         "transition:opacity 0.6s ease",
-        "border-radius:50%",
       ].join(";");
-      // Sisipkan sebelum firstChild (video) — video di atasnya via normal stacking
       fsWrap.insertBefore(fsCanvas, fsWrap.firstChild);
 
       const fsCtx = fsCanvas.getContext("2d", { willReadFrequently: false });
@@ -802,13 +806,24 @@ function setupMeelPlayerEvents() {
         fsCanvas.style.opacity = "0";
       };
 
+      // Pause: stop rAF tapi opacity tetap — freeze frame glow
+      const pauseFs = () => {
+        fsRunning = false;
+        if (fsAnimId !== null) {
+          cancelAnimationFrame(fsAnimId);
+          fsAnimId = null;
+        }
+        // opacity TIDAK di-nol-kan
+      };
+
       // Simpan referensi handler agar bisa dilepas saat exitfullscreen
       plyrEl._fsGlowStart = startFs;
       plyrEl._fsGlowStop = stopFs;
+      plyrEl._fsGlowPause = pauseFs;
 
       player.on("play", startFs);
       player.on("playing", startFs);
-      player.on("pause", stopFs);
+      player.on("pause", pauseFs);
       player.on("ended", stopFs);
 
       // Langsung aktifkan jika video sedang berjalan
@@ -827,16 +842,23 @@ function setupMeelPlayerEvents() {
       if (plyrEl._fsGlowStop) plyrEl._fsGlowStop();
       if (plyrEl._fsGlowStart) player.off("play", plyrEl._fsGlowStart);
       if (plyrEl._fsGlowStart) player.off("playing", plyrEl._fsGlowStart);
-      if (plyrEl._fsGlowStop) player.off("pause", plyrEl._fsGlowStop);
+      if (plyrEl._fsGlowPause) player.off("pause", plyrEl._fsGlowPause);
       if (plyrEl._fsGlowStop) player.off("ended", plyrEl._fsGlowStop);
       delete plyrEl._fsGlowStart;
       delete plyrEl._fsGlowStop;
+      delete plyrEl._fsGlowPause;
 
       const fsWrapEl = plyrEl.querySelector(".plyr__video-wrapper");
       const fsCanvas = fsWrapEl
         ? fsWrapEl.querySelector("#video-glow-canvas-fs")
         : null;
       if (fsCanvas) fsCanvas.remove();
+
+      // Reset z-index video element yang dipaksa saat enterfullscreen
+      if (videoElement) {
+        videoElement.style.position = "";
+        videoElement.style.zIndex = "";
+      }
     }
   });
 
@@ -887,10 +909,21 @@ function setupMeelPlayerEvents() {
       }
     };
 
+    // Pause: hentikan rAF loop (hemat CPU) tapi biarkan canvas & glow-active
+    // tetap tampil — frame terakhir video "freeze" sebagai ambient glow
+    const pauseGlow = () => {
+      glowRunning = false;
+      if (glowAnimationId !== null) {
+        cancelAnimationFrame(glowAnimationId);
+        glowAnimationId = null;
+      }
+      // glow-active TIDAK dihapus → canvas tetap terlihat
+    };
+
     player.on("play", startGlow);
     player.on("playing", startGlow); // HLS resume setelah buffering
-    player.on("pause", () => stopGlow(false));
-    player.on("ended", () => stopGlow(true));
+    player.on("pause", pauseGlow);
+    player.on("ended", () => stopGlow(true)); // ended: hapus glow sepenuhnya
 
     // Jika video sudah berjalan saat JS diinisialisasi (mis. auto-recovery)
     if (!videoElement.paused && !videoElement.ended) {

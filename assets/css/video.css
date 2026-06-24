@@ -434,7 +434,34 @@ body {
   text-overflow: ellipsis;
 }
 
-/* ── 8. HTMX ANIMATIONS ── */
+/* ── 8. REKOMENDASI — ISOLASI DARI AMBIENT GLOW ── */
+
+/* Isolate seluruh sidebar rekomendasi agar tidak terkena bleeding
+   dari canvas ambient (baik normal maupun fullscreen glow) */
+#recommendation-wrapper {
+  isolation: isolate;
+  position: relative;
+  z-index: 10;
+}
+
+/* Thumbnail — pastikan tidak ada filter/opacity yang bocor dari parent */
+.rekomendasi-item .rec-thumb-img {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Title lebih jelas: naikkan ke gray-200 (dari gray-400), tambah contrast */
+.rec-title-text {
+  color: #e5e7eb !important; /* gray-200 */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Saat hover, title naik ke putih */
+.rekomendasi-item:hover .rec-title-text {
+  color: #ffffff !important;
+}
+
+/* ── 9. HTMX ANIMATIONS ── */
 .htmx-added {
   animation: fadeSlideIn 0.35s ease-out both;
 }
@@ -456,7 +483,7 @@ body {
   transition: opacity 0.2s;
 }
 
-/* ── 9. RESPONSIVE QUERIES ── */
+/* ── 10. RESPONSIVE QUERIES ── */
 @media (max-width: 480px) {
   #navbar-search-wrap {
     display: none;
@@ -482,7 +509,7 @@ body {
   }
 }
 
-/* ── 10. YOUTUBE-LIKE AMBIENT GLOW EFFECT ── */
+/* ── 11. YOUTUBE-LIKE AMBIENT GLOW EFFECT ── */
 
 /* Container pembungkus canvas + video */
 #video-glow-container {
