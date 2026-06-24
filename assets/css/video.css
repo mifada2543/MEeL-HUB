@@ -499,6 +499,36 @@ body {
     display: flex !important;
   }
 }
+
+/* ── NAVBAR AMBIENT GLOW ── */
+/* Navbar pakai ::before sebagai layer warna ambient.
+   Konten navbar (z-index lebih tinggi) tidak terkena efek sama sekali. */
+nav {
+  --navbar-glow-color: 0, 0, 0; /* default hitam, diupdate JS via lerp */
+  position: relative;
+  isolation: isolate;
+}
+
+nav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* Gradient dari kiri ke kanan — lebih sinematik, tidak merata */
+  background: linear-gradient(
+    to right,
+    rgba(var(--navbar-glow-color), 0.18) 0%,
+    rgba(var(--navbar-glow-color), 0.08) 50%,
+    rgba(var(--navbar-glow-color), 0.02) 100%
+  );
+  pointer-events: none;
+}
+
+/* Konten navbar harus di atas pseudo-element */
+nav > div {
+  position: relative;
+  z-index: 1;
+}
 /* ── FORCE ROUNDED CORNERS FOR PLYRL PLAYER ── */
 #main-video-wrapper,
 #main-video-wrapper .plyr,

@@ -956,14 +956,21 @@ function setupMeelPlayerEvents() {
       } catch (e) {}
     };
 
-    // Lerp current → target, lalu gambar ke canvas output
-    const LERP = 0.06; // ~2–3 dtk untuk transisi penuh pada 30ms/tick
+    // Lerp current → target, lalu gambar ke canvas output + update navbar
+    const LERP = 0.018; // ~2–3 dtk untuk transisi penuh pada 30ms/tick
+    const navbar = document.querySelector("nav");
     const lerpAndDraw = () => {
       curR += (targetR - curR) * LERP;
       curG += (targetG - curG) * LERP;
       curB += (targetB - curB) * LERP;
-      ctx.fillStyle = `rgb(${Math.round(curR)},${Math.round(curG)},${Math.round(curB)})`;
+      const r = Math.round(curR),
+        g = Math.round(curG),
+        b = Math.round(curB);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
       ctx.fillRect(0, 0, 1, 1);
+      // Update navbar ambient — CSS variable dipakai oleh nav::before
+      if (navbar)
+        navbar.style.setProperty("--navbar-glow-color", `${r},${g},${b}`);
     };
 
     const startGlow = () => {
@@ -984,6 +991,7 @@ function setupMeelPlayerEvents() {
         lerpInterval = null;
       }
       glowCanvas.classList.remove("glow-active");
+      if (navbar) navbar.style.setProperty("--navbar-glow-color", "0,0,0");
       if (clearColor) {
         targetR = curR = 0;
         targetG = curG = 0;
