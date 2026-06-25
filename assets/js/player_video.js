@@ -38,6 +38,18 @@ let nextVideoTransitionId = 0;
 
 const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
+// ── Glow ambient — state di-hoist ke module scope agar mini-player bisa akses ──
+let glowSampleInterval = null;
+let glowLerpInterval = null;
+let glowTargetR = 0,
+  glowTargetG = 0,
+  glowTargetB = 0;
+let glowCurR = 0,
+  glowCurG = 0,
+  glowCurB = 0;
+let glowStartFn = null; // referensi ke startGlow(), di-assign saat init
+let glowNavbar = null; // referensi ke <nav>, di-assign saat init
+
 // Inisialisasi Icon
 if (window.lucide) {
   lucide.createIcons();
@@ -902,16 +914,10 @@ function setupMeelPlayerEvents() {
   });
 
   // ─── FITUR CAHAYA SINEMATIK (AMBIENT MODE) ───
-  // Arsitektur dua-loop terpisah:
-  //  • sampleInterval (300ms) — baca frame video ke canvas 20x20, hitung
-  //    rata-rata warna 400 pixel → simpan sebagai targetR/G/B
-  //  • lerpInterval  (30ms)  — interpolasi (lerp) currentR/G/B mendekati
-  //    target dengan faktor 0.018 per tick → transisi warna halus ~2–3 dtk
-  //    lalu fill canvas output 1x1 dengan warna hasil lerp
-  // Canvas output di-blur oleh CSS → ambient glow murni tanpa artefak video.
+  // State di module scope (glowSampleInterval, glowLerpInterval, dll)
+  // agar mini-player bisa clear interval tanpa scope leak.
   const glowCanvas = document.getElementById("video-glow-canvas");
   if (glowCanvas && videoElement) {
-    // Canvas sample — hanya untuk getImageData, tidak ditampilkan
     const sampleCanvas = document.createElement("canvas");
     sampleCanvas.width = 20;
     sampleCanvas.height = 20;
@@ -919,28 +925,17 @@ function setupMeelPlayerEvents() {
       willReadFrequently: true,
     });
 
-    // Canvas output — satu warna solid, diblur CSS
     glowCanvas.width = 1;
     glowCanvas.height = 1;
     const ctx = glowCanvas.getContext("2d");
 
-    // Warna target (dari sample) dan warna saat ini (hasil lerp)
-    let targetR = 0,
-      targetG = 0,
-      targetB = 0;
-    let curR = 0,
-      curG = 0,
-      curB = 0;
+    glowNavbar = document.querySelector("nav");
 
-    let sampleInterval = null;
-    let lerpInterval = null;
-
-    // Baca warna dominan dari frame video saat ini → update target
     const sampleColor = () => {
       if (videoElement.readyState < 2 || document.hidden) return;
       try {
         sampleCtx.drawImage(videoElement, 0, 0, 20, 20);
-        const data = sampleCtx.getImageData(0, 0, 20, 20).data; // 400 pixel
+        const data = sampleCtx.getImageData(0, 0, 20, 20).data;
         let r = 0,
           g = 0,
           b = 0;
@@ -949,73 +944,71 @@ function setupMeelPlayerEvents() {
           g += data[i + 1];
           b += data[i + 2];
         }
-        const n = data.length / 4; // 400
-        targetR = r / n;
-        targetG = g / n;
-        targetB = b / n;
+        const n = data.length / 4;
+        glowTargetR = r / n;
+        glowTargetG = g / n;
+        glowTargetB = b / n;
       } catch (e) {}
     };
 
-    // Lerp current → target, lalu gambar ke canvas output + update navbar
-    const LERP = 0.018; // ~2–3 dtk untuk transisi penuh pada 30ms/tick
-    const navbar = document.querySelector("nav");
+    const LERP = 0.018;
     const lerpAndDraw = () => {
-      curR += (targetR - curR) * LERP;
-      curG += (targetG - curG) * LERP;
-      curB += (targetB - curB) * LERP;
-      const r = Math.round(curR),
-        g = Math.round(curG),
-        b = Math.round(curB);
+      glowCurR += (glowTargetR - glowCurR) * LERP;
+      glowCurG += (glowTargetG - glowCurG) * LERP;
+      glowCurB += (glowTargetB - glowCurB) * LERP;
+      const r = Math.round(glowCurR),
+        g = Math.round(glowCurG),
+        b = Math.round(glowCurB);
       ctx.fillStyle = `rgb(${r},${g},${b})`;
       ctx.fillRect(0, 0, 1, 1);
-      // Update navbar ambient — CSS variable dipakai oleh nav::before
-      if (navbar)
-        navbar.style.setProperty("--navbar-glow-color", `${r},${g},${b}`);
+      if (glowNavbar)
+        glowNavbar.style.setProperty("--navbar-glow-color", `${r},${g},${b}`);
     };
 
     const startGlow = () => {
-      if (sampleInterval) return; // Cegah double-start
+      if (glowSampleInterval) return; // Cegah double-start
       glowCanvas.classList.add("glow-active");
-      sampleColor(); // Langsung sample tanpa tunggu tick pertama
-      sampleInterval = setInterval(sampleColor, 300);
-      lerpInterval = setInterval(lerpAndDraw, 30);
+      sampleColor();
+      glowSampleInterval = setInterval(sampleColor, 300);
+      glowLerpInterval = setInterval(lerpAndDraw, 30);
     };
 
     const stopGlow = (clearColor = false) => {
-      if (sampleInterval) {
-        clearInterval(sampleInterval);
-        sampleInterval = null;
+      if (glowSampleInterval) {
+        clearInterval(glowSampleInterval);
+        glowSampleInterval = null;
       }
-      if (lerpInterval) {
-        clearInterval(lerpInterval);
-        lerpInterval = null;
+      if (glowLerpInterval) {
+        clearInterval(glowLerpInterval);
+        glowLerpInterval = null;
       }
       glowCanvas.classList.remove("glow-active");
-      if (navbar) navbar.style.setProperty("--navbar-glow-color", "0,0,0");
+      if (glowNavbar)
+        glowNavbar.style.setProperty("--navbar-glow-color", "0,0,0");
       if (clearColor) {
-        targetR = curR = 0;
-        targetG = curG = 0;
-        targetB = curB = 0;
+        glowTargetR = glowCurR = 0;
+        glowTargetG = glowCurG = 0;
+        glowTargetB = glowCurB = 0;
         ctx.clearRect(0, 0, 1, 1);
       }
     };
 
-    // Pause: hentikan kedua interval (hemat CPU) tapi glow-active tetap —
-    // lerp berhenti, warna terakhir freeze sebagai ambient sampai play lagi
     const pauseGlow = () => {
-      if (sampleInterval) {
-        clearInterval(sampleInterval);
-        sampleInterval = null;
+      if (glowSampleInterval) {
+        clearInterval(glowSampleInterval);
+        glowSampleInterval = null;
       }
-      if (lerpInterval) {
-        clearInterval(lerpInterval);
-        lerpInterval = null;
+      if (glowLerpInterval) {
+        clearInterval(glowLerpInterval);
+        glowLerpInterval = null;
       }
-      // glow-active TIDAK dihapus → canvas tetap terlihat
     };
 
+    // Expose ke module scope agar mini-player restore bisa restart glow
+    glowStartFn = startGlow;
+
     player.on("play", startGlow);
-    player.on("playing", startGlow); // HLS resume setelah buffering
+    player.on("playing", startGlow);
     player.on("pause", pauseGlow);
     player.on("ended", () => stopGlow(true));
 
@@ -1273,9 +1266,22 @@ window.toggleMiniPlayer = async function () {
     videoWrapper.classList.add("mini-player-mode");
     // CSS handles hiding non-progress controls via .mini-player-mode .plyr__controls > *:not(.plyr__progress__container)
 
-    // Sembunyikan canvas glow — video sudah keluar dari glow-container
+    // Sembunyikan canvas glow & hentikan interval (pakai module-scope vars)
     const glowCanvasEl = document.getElementById("video-glow-canvas");
-    if (glowCanvasEl) glowCanvasEl.style.display = "none";
+    if (glowCanvasEl) {
+      glowCanvasEl.style.display = "none";
+      glowCanvasEl.classList.remove("glow-active");
+    }
+    if (glowSampleInterval) {
+      clearInterval(glowSampleInterval);
+      glowSampleInterval = null;
+    }
+    if (glowLerpInterval) {
+      clearInterval(glowLerpInterval);
+      glowLerpInterval = null;
+    }
+    if (glowNavbar)
+      glowNavbar.style.setProperty("--navbar-glow-color", "0,0,0");
 
     document.body.appendChild(miniShell);
     document.body.style.paddingBottom = "120px";
@@ -1352,9 +1358,21 @@ window.toggleMiniPlayer = async function () {
         leftColumn.insertBefore(videoWrap, leftColumn.firstChild);
       }
 
-      // Tampilkan kembali canvas glow (reset ke kondisi semula — visible di sm+)
+      // Tampilkan kembali canvas glow & restart interval bersih
       const glowCanvasEl = document.getElementById("video-glow-canvas");
-      if (glowCanvasEl) glowCanvasEl.style.removeProperty("display");
+      if (glowCanvasEl) {
+        glowCanvasEl.style.removeProperty("display");
+        // Reset warna lerp agar tidak ada lompatan warna dari state lama
+        glowTargetR = glowCurR = 0;
+        glowTargetG = glowCurG = 0;
+        glowTargetB = glowCurB = 0;
+        if (glowNavbar)
+          glowNavbar.style.setProperty("--navbar-glow-color", "0,0,0");
+        // Restart glow hanya jika video sedang berjalan
+        if (!videoElement?.paused && !videoElement?.ended && glowStartFn) {
+          glowStartFn();
+        }
+      }
     }
 
     if (miniShell) {
