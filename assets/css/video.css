@@ -151,6 +151,21 @@ body {
   background: #000 !important;
 }
 
+/* Paksa background hitam saat fullscreen */
+.plyr--fullscreen-fallback,
+.plyr--fullscreen-fallback .plyr__video-wrapper,
+.plyr:-webkit-full-screen .plyr__video-wrapper,
+.plyr:fullscreen .plyr__video-wrapper {
+  --plyr-video-background: #000 !important;
+  background: #000 !important;
+}
+
+/* Canvas glow fullscreen — solid color 1x1, image-rendering pixelated */
+#video-glow-canvas-fs {
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
 .plyr__video-wrapper {
   background: #000 !important;
   display: flex;
@@ -425,7 +440,34 @@ body {
   text-overflow: ellipsis;
 }
 
-/* ── 8. HTMX ANIMATIONS ── */
+/* ── 8. REKOMENDASI — ISOLASI DARI AMBIENT GLOW ── */
+
+/* Isolate seluruh sidebar rekomendasi agar tidak terkena bleeding
+   dari canvas ambient (baik normal maupun fullscreen glow) */
+#recommendation-wrapper {
+  isolation: isolate;
+  position: relative;
+  z-index: 10;
+}
+
+/* Thumbnail — pastikan tidak ada filter/opacity yang bocor dari parent */
+.rekomendasi-item .rec-thumb-img {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+/* Title lebih jelas: naikkan ke gray-200 (dari gray-400), tambah contrast */
+.rec-title-text {
+  color: #e5e7eb !important; /* gray-200 */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Saat hover, title naik ke putih */
+.rekomendasi-item:hover .rec-title-text {
+  color: #ffffff !important;
+}
+
+/* ── 9. HTMX ANIMATIONS ── */
 .htmx-added {
   animation: fadeSlideIn 0.35s ease-out both;
 }
@@ -447,7 +489,7 @@ body {
   transition: opacity 0.2s;
 }
 
-/* ── 9. RESPONSIVE QUERIES ── */
+/* ── 10. RESPONSIVE QUERIES ── */
 @media (max-width: 480px) {
   #navbar-search-wrap {
     display: none;
@@ -456,6 +498,36 @@ body {
   #navbar-search-icon-btn {
     display: flex !important;
   }
+}
+
+/* ── NAVBAR AMBIENT GLOW ── */
+/* Navbar pakai ::before sebagai layer warna ambient.
+   Konten navbar (z-index lebih tinggi) tidak terkena efek sama sekali. */
+nav {
+  --navbar-glow-color: 0, 0, 0; /* default hitam, diupdate JS via lerp */
+  position: relative;
+  isolation: isolate;
+}
+
+nav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* Gradient dari kiri ke kanan — lebih sinematik, tidak merata */
+  background: linear-gradient(
+    to right,
+    rgba(var(--navbar-glow-color), 0.18) 0%,
+    rgba(var(--navbar-glow-color), 0.08) 50%,
+    rgba(var(--navbar-glow-color), 0.02) 100%
+  );
+  pointer-events: none;
+}
+
+/* Konten navbar harus di atas pseudo-element */
+nav > div {
+  position: relative;
+  z-index: 1;
 }
 /* ── FORCE ROUNDED CORNERS FOR PLYRL PLAYER ── */
 #main-video-wrapper,
@@ -471,4 +543,60 @@ body {
   #main-video-wrapper .plyr__video-wrapper {
     border-radius: 2rem !important; /* Kelengkungan layar Desktop (Lebih melengkung mirip gambar) */
   }
+}
+
+/* ── 11. YOUTUBE-LIKE AMBIENT GLOW EFFECT ── */
+
+/* Container pembungkus canvas + video */
+#video-glow-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Canvas output 1x1 solid color — di-stretch CSS, di-blur → ambient glow murni.
+   image-rendering: pixelated mencegah browser menginterpolasi warna antar pixel. */
+#video-glow-canvas {
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(80px);
+  opacity: 0;
+  image-rendering: pixelated;
+  transition: opacity 1s ease;
+}
+
+/* Aktif saat video berjalan atau pause */
+#video-glow-canvas.glow-active {
+  opacity: 0.55;
+}
+
+/* Mobile: blur lebih kecil, tidak overflow keluar viewport */
+@media (max-width: 639px) {
+  #video-glow-canvas {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    filter: blur(50px);
+  }
+
+  #video-glow-canvas.glow-active {
+    opacity: 0.38;
+  }
+}
+
+/* main-video-wrapper harus di atas canvas */
+#video-glow-container #main-video-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* Matikan glow saat mini-player aktif */
+.mini-player-mode ~ #video-glow-canvas,
+#mini-player-shell ~ #video-glow-canvas {
+  display: none !important;
 }

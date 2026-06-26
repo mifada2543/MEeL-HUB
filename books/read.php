@@ -16,11 +16,13 @@ $book = $repo->getBookById((int)$_GET['id']);
 
 if (!$book) {
     die("
-        <div style='background:#0b0e14;color:#ef4444;height:100vh;display:flex;
-                    flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;'>
-            <h1 style='font-size:4rem;font-weight:900;'>Mohon maaf</h1>
-            <p style='text-transform:uppercase;letter-spacing:4px;'>MEeL</p>
-            <p style='color:#4b5563;margin-top:10px;'>Alasan: Buku tidak ditemukan atau tidak tersedia.</p>
+        <div style='background:#080a0f;color:#ef4444;height:100vh;display:flex;
+                    flex-direction:column;align-items:center;justify-content:center;font-family:ui-monospace,monospace;'>
+            <div style='width:60px;height:60px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;margin-bottom:20px;'>
+                <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+            </div>
+            <h1 style='font-size:3rem;font-weight:900;color:#ef4444;letter-spacing:-.03em;margin:0;'>404</h1>
+            <p style='color:#4b5563;text-transform:uppercase;letter-spacing:4px;font-size:11px;font-weight:700;margin-top:4px;'>Buku tidak ditemukan</p>
         </div>
     ");
 }
@@ -28,10 +30,28 @@ if (!$book) {
 // ── Sanitasi chapter — cegah path traversal ─────────────────────────────────
 // Hanya izinkan karakter alfanumerik, spasi, strip, underscore, titik
 $raw_chapter     = $_GET['ch'] ?? '';
-$current_chapter = preg_replace('/[^a-zA-Z0-9 _.\-]/', '', $raw_chapter);
+$current_chapter = preg_replace('/[^a-zA-Z0-9 _.\\-]/', '', $raw_chapter);
 // Pastikan tidak ada komponen '..' setelah sanitasi
 if (str_contains($current_chapter, '..')) {
     $current_chapter = '';
+}
+
+// ── Hitung total halaman (manga mode) ──
+$total_pages = 0;
+if ($book['type'] !== 'pdf') {
+    $ch_base = "upload/manga/" . $book['path_folder'];
+    $target_path = $ch_base;
+
+    if ($book['has_chapters'] == 1 && !empty($current_chapter)) {
+        $target_path .= '/' . $current_chapter;
+    }
+
+    if ($book['has_chapters'] == 0 || ($book['has_chapters'] == 1 && !empty($current_chapter))) {
+        if (is_dir($target_path)) {
+            $images = glob($target_path . '/*.{jpg,jpeg,png,webp,JPG,PNG}', GLOB_BRACE);
+            $total_pages = $images ? count($images) : 0;
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -43,80 +63,206 @@ if (str_contains($current_chapter, '..')) {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL Read | <?= htmlspecialchars($book['title']) ?></title>
     <?php include '../partials/link.php'; ?>
+    <link rel="stylesheet" href="../assets/css/books.css">
     <style>
         body {
-            background-color: #05070a;
+            background-color: #080a0f;
             color: white;
         }
 
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #05070a; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-
-        /* ── Lazy-load placeholder ── */
         .manga-img {
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            display: block;
-            /* Placeholder abu-abu sebelum gambar dimuat */
-            background: #0f1318;
-            min-height: 200px;
-            transition: opacity 0.3s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
         }
 
-        /* Gambar yang belum masuk viewport disembunyikan via opacity */
+        .manga-img:last-child {
+            border-bottom: none;
+        }
+
+        /* Image loading shimmer */
         .manga-img.lazy {
+            background: linear-gradient(110deg, #0f1318 30%, #161b24 50%, #0f1318 70%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Page counter pill */
+        .page-counter {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(13, 16, 23, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 6px 16px;
+            border-radius: 99px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #6b7280;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            z-index: 40;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
             opacity: 0;
         }
 
-        .manga-img.loaded {
+        .page-counter.visible {
             opacity: 1;
+        }
+
+        .page-counter .current {
+            color: #e5e7eb;
+            display: inline-block;
+            transition: color 0.2s ease;
+            min-width: 1.2em;
+            text-align: center;
+        }
+
+        /* Smooth pop animation saat angka berganti */
+        @keyframes counter-pop {
+            0% {
+                transform: scale(1);
+                color: #e5e7eb;
+            }
+            35% {
+                transform: scale(1.35);
+                color: #22c55e;
+            }
+            70% {
+                transform: scale(0.95);
+                color: #22c55e;
+            }
+            100% {
+                transform: scale(1);
+                color: #e5e7eb;
+            }
+        }
+
+        .page-counter .current.pop {
+            animation: counter-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Navbar page indicator */
+        #nav-current-page {
+            display: inline-block;
+            min-width: 1.2em;
+            text-align: center;
+            transition: color 0.2s ease;
+        }
+
+        #nav-current-page.pop {
+            animation: counter-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Scroll to top button */
+        #scroll-top-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(13, 16, 23, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 40;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        #scroll-top-btn.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        #scroll-top-btn:hover {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+
+        /* Navbar title glow on scroll */
+        .reader-nav.scrolled {
+            background: rgba(11, 14, 20, 0.97);
         }
     </style>
 </head>
 
-<body class="flex flex-col h-screen">
-    <!-- Navbar -->
-    <div class="bg-[#0b0e14]/80 backdrop-blur-md border-b border-gray-800 p-4 flex justify-between items-center sticky top-0 z-50">
-        <div class="flex items-center gap-4">
-            <a href="index.php" class="p-2 hover:bg-gray-800 rounded-xl transition">
-                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+<body class="flex flex-col min-h-screen">
+
+    <!-- READER NAVBAR -->
+    <div class="reader-nav sticky top-0 z-50 px-3 sm:px-6 h-14 flex items-center justify-between transition-all duration-300" id="reader-navbar">
+        <div class="flex items-center gap-3 min-w-0">
+            <a href="index.php" class="p-2 hover:bg-white/[.06] rounded-xl transition-all flex-shrink-0 group">
+                <i data-lucide="arrow-left" class="w-4 h-4 text-gray-500 group-hover:text-green-500 transition-colors"></i>
             </a>
-            <div>
-                <h1 class="text-sm font-bold truncate max-w-[200px] md:max-w-md">
+            <div class="min-w-0">
+                <h1 class="text-sm font-bold truncate max-w-[180px] sm:max-w-md text-white/90">
                     <?= htmlspecialchars($book['title']) ?>
                 </h1>
-                <p class="text-[10px] text-gray-500 uppercase font-black tracking-widest">
-                    <?= htmlspecialchars($book['type']) ?> Mode
-                </p>
+                <div class="flex items-center gap-2 mt-0.5">
+                    <span class="text-[9px] text-gray-600 uppercase font-black tracking-widest">
+                        <?= htmlspecialchars($book['type']) ?>
+                    </span>
+                    <?php if ($book['has_chapters'] == 1 && !empty($current_chapter)): ?>
+                        <span class="text-[9px] text-gray-700">•</span>
+                        <span class="text-[9px] text-green-500/60 uppercase font-bold tracking-wider">
+                            <?= htmlspecialchars($current_chapter) ?>
+                        </span>
+                    <?php endif; ?>
+                    <?php if ($total_pages > 0): ?>
+                        <span class="text-[9px] text-gray-700">•</span>
+                        <span class="text-[9px] text-gray-600 uppercase tracking-wider">
+                            <?= $total_pages ?> halaman
+                        </span>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
+
         <div class="flex items-center gap-2">
+            <?php if ($book['type'] !== 'pdf'): ?>
+                <span class="text-[9px] text-gray-700 uppercase tracking-widest hidden sm:block" id="page-indicator-nav">
+                    Halaman <span id="nav-current-page">-</span>
+                </span>
+            <?php endif; ?>
             <button onclick="window.location.reload()"
-                    class="p-2 hover:bg-gray-800 rounded-xl transition">
-                <i data-lucide="refresh-cw" class="w-4 h-4 text-gray-400"></i>
+                    class="p-2 hover:bg-white/[.06] rounded-xl transition-all group">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-gray-600 group-hover:text-green-500 transition-colors"></i>
             </button>
         </div>
     </div>
 
-    <!-- Konten -->
+    <!-- KONTEN -->
     <div class="flex-grow overflow-y-auto" id="scroll-container">
         <?php if ($book['type'] === 'pdf'): ?>
-            <!-- ── MODE PDF ── -->
-            <div class="w-full h-full bg-gray-900">
+            <!-- ═══════════════ MODE PDF ═══════════════ -->
+            <div class="pdf-container">
                 <iframe
                     src="./upload/pdf/<?= htmlspecialchars($book['path_folder']) ?>#toolbar=0"
-                    class="w-full h-[calc(100vh-64px)] border-none">
+                    title="<?= htmlspecialchars($book['title']) ?>">
                 </iframe>
             </div>
 
         <?php else: ?>
-            <!-- ── MODE MANGA ── -->
-            <div class="py-4 space-y-0" id="manga-container">
+            <!-- ═══════════════ MODE MANGA ═══════════════ -->
+            <div class="py-0 space-y-0" id="manga-container">
 
                 <?php
-                // ── Chapter selector ─────────────────────────────────────────
                 $book_id   = (int)$book['id'];
                 $ch_base   = "upload/manga/" . $book['path_folder'];
 
@@ -124,17 +270,22 @@ if (str_contains($current_chapter, '..')) {
                     $chapters = array_filter(glob($ch_base . '/*'), 'is_dir');
                     natsort($chapters);
                 ?>
-                    <div class="max-w-4xl mx-auto mb-6 px-4">
-                        <select onchange="location.href='?id=<?= $book_id ?>&ch=' + encodeURIComponent(this.value)"
-                                class="w-full bg-gray-900 text-sm p-3 rounded-2xl border border-gray-800 outline-none">
-                            <option value="">-- Pilih Chapter --</option>
-                            <?php foreach ($chapters as $ch):
-                                $ch_name  = basename($ch);
-                                $selected = ($current_chapter === $ch_name) ? 'selected' : '';
-                                echo "<option value='" . htmlspecialchars($ch_name, ENT_QUOTES) . "' $selected>"
-                                   . htmlspecialchars($ch_name) . "</option>";
-                            endforeach; ?>
-                        </select>
+                    <!-- Chapter selector (atas) -->
+                    <div class="sticky top-14 z-30 py-3 px-4 bg-gradient-to-b from-[#080a0f] to-transparent">
+                        <div class="max-w-4xl mx-auto">
+                            <div class="relative">
+                                <select onchange="location.href='?id=<?= $book_id ?>&ch=' + encodeURIComponent(this.value)"
+                                        class="chapter-select">
+                                    <option value="">— Pilih Chapter —</option>
+                                    <?php foreach ($chapters as $ch):
+                                        $ch_name  = basename($ch);
+                                        $selected = ($current_chapter === $ch_name) ? 'selected' : '';
+                                        echo "<option value='" . htmlspecialchars($ch_name, ENT_QUOTES) . "' $selected>"
+                                           . htmlspecialchars($ch_name) . "</option>";
+                                    endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 <?php endif; ?>
 
@@ -144,66 +295,158 @@ if (str_contains($current_chapter, '..')) {
 
                 if ($book['has_chapters'] == 1) {
                     if (empty($current_chapter)) {
-                        // Belum pilih chapter — tampilkan prompt
-                        echo '<div class="py-20 text-center flex flex-col items-center gap-4">
-                                <i data-lucide="book-open" class="w-12 h-12 text-blue-500 opacity-50"></i>
-                                <p class="text-gray-500 font-bold uppercase tracking-widest text-xs">
-                                    Silakan pilih chapter untuk mulai membaca
-                                </p>
+                        // Belum pilih chapter — tampilkan prompt dengan cover
+                        echo '<div class="max-w-4xl mx-auto px-4 py-16">
+                                <div class="glass rounded-3xl p-12 sm:p-16 text-center border border-dashed border-white/[.06]">
+                                    <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-white/[.03] border border-white/[.06] flex items-center justify-center">
+                                        <i data-lucide="book-open" class="w-9 h-9 text-gray-700"></i>
+                                    </div>
+                                    <p class="text-gray-500 font-bold uppercase tracking-widest text-xs mb-2">
+                                        Silakan pilih chapter untuk mulai membaca
+                                    </p>
+                                    <p class="text-[10px] text-gray-700 uppercase tracking-widest">
+                                        ' . htmlspecialchars($book['title']) . '
+                                    </p>
+                                </div>
                               </div>';
-                        $target_path = null; // Tandai agar tidak render gambar
+                        $target_path = null;
                     } else {
                         $target_path .= '/' . $current_chapter;
                     }
                 }
 
-                // ── Render gambar dengan data-src (Intersection Observer) ────
-                if ($target_path !== null && is_dir($target_path)) {
+                // ── Render gambar dengan Intersection Observer ──────────────
+                if ($target_path !== null && is_dir($target_path)):
                     $images = glob($target_path . '/*.{jpg,jpeg,png,webp,JPG,PNG}', GLOB_BRACE);
                     natsort($images);
 
-                    if ($images && count($images) > 0) {
-                        foreach ($images as $img) {
-                            $safe_src = htmlspecialchars($img);
-                            // Gambar pertama dimuat langsung (eager), sisanya lazy via IO
-                            $is_first = ($img === reset($images));
-                            if ($is_first) {
-                                echo '<img src="' . $safe_src . '" '
-                                   . 'class="manga-img loaded" '
-                                   . 'alt="page" '
-                                   . 'decoding="async">' . "\n";
-                            } else {
-                                echo '<img data-src="' . $safe_src . '" '
-                                   . 'src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" '
-                                   . 'class="manga-img lazy" '
-                                   . 'alt="page" '
-                                   . 'decoding="async">' . "\n";
-                            }
-                        }
-                    } else {
-                        echo '<p class="text-center py-20 text-gray-500">'
-                           . 'Tidak ada gambar di: '
-                           . htmlspecialchars($current_chapter ?: 'Folder Utama')
-                           . '</p>';
-                    }
-                }
-                ?>
+                    if ($images && count($images) > 0):
+                        // Chapter navigation buttons
+                        if ($book['has_chapters'] == 1 && !empty($chapters)):
+                            $ch_list = array_values(array_map('basename', $chapters));
+                            $current_idx = array_search($current_chapter, $ch_list);
+                            $prev_ch = ($current_idx !== false && $current_idx > 0) ? $ch_list[$current_idx - 1] : null;
+                            $next_ch = ($current_idx !== false && $current_idx < count($ch_list) - 1) ? $ch_list[$current_idx + 1] : null;
+                        ?>
+                            <div class="max-w-4xl mx-auto px-4 mb-4 flex items-center justify-between gap-2">
+                                <?php if ($prev_ch): ?>
+                                    <a href="?id=<?= $book_id ?>&ch=<?= urlencode($prev_ch) ?>"
+                                        class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
+                                        <i data-lucide="chevron-left" class="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform"></i>
+                                        Sebelumnya
+                                    </a>
+                                <?php else: ?>
+                                    <div></div>
+                                <?php endif; ?>
 
-                <?php
-                // ── Chapter selector bawah (hanya jika ada chapter) ──────────
-                if ($book['has_chapters'] == 1 && !empty($chapters)):
-                ?>
-                    <div class="max-w-4xl mx-auto mt-6 mb-4 px-4">
-                        <select onchange="location.href='?id=<?= $book_id ?>&ch=' + encodeURIComponent(this.value)"
-                                class="w-full bg-gray-900 text-sm p-3 rounded-2xl border border-gray-800 outline-none">
-                            <option value="">-- Pilih Chapter --</option>
-                            <?php foreach ($chapters as $ch):
-                                $ch_name  = basename($ch);
-                                $selected = ($current_chapter === $ch_name) ? 'selected' : '';
-                                echo "<option value='" . htmlspecialchars($ch_name, ENT_QUOTES) . "' $selected>"
-                                   . htmlspecialchars($ch_name) . "</option>";
-                            endforeach; ?>
-                        </select>
+                                <span class="text-[9px] text-gray-700 uppercase tracking-widest">
+                                    <?= $current_idx + 1 ?> / <?= count($ch_list) ?>
+                                </span>
+
+                                <?php if ($next_ch): ?>
+                                    <a href="?id=<?= $book_id ?>&ch=<?= urlencode($next_ch) ?>"
+                                        class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
+                                        Selanjutnya
+                                        <i data-lucide="chevron-right" class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <div></div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php
+                        $page_num = 0;
+                        foreach ($images as $img):
+                            $page_num++;
+                            $safe_src = htmlspecialchars($img);
+                            $is_first = ($img === reset($images));
+                        ?>
+                            <?php if ($is_first): ?>
+                                <img src="<?= $safe_src ?>"
+                                    class="manga-img loaded"
+                                    alt="Halaman <?= $page_num ?>"
+                                    data-page="<?= $page_num ?>"
+                                    decoding="async">
+                            <?php else: ?>
+                                <img data-src="<?= $safe_src ?>"
+                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                    class="manga-img lazy"
+                                    alt="Halaman <?= $page_num ?>"
+                                    data-page="<?= $page_num ?>"
+                                    decoding="async">
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+
+                        <!-- Chapter navigation bawah -->
+                        <?php if ($book['has_chapters'] == 1 && !empty($chapters)): ?>
+                            <div class="max-w-4xl mx-auto px-4 mt-4 mb-8 flex items-center justify-between gap-2">
+                                <?php if ($prev_ch): ?>
+                                    <a href="?id=<?= $book_id ?>&ch=<?= urlencode($prev_ch) ?>"
+                                        class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
+                                        <i data-lucide="chevron-left" class="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform"></i>
+                                        Sebelumnya
+                                    </a>
+                                <?php else: ?>
+                                    <div></div>
+                                <?php endif; ?>
+
+                                <a href="index.php"
+                                    class="text-[9px] text-gray-700 hover:text-green-500 uppercase tracking-widest transition-colors">
+                                    Kembali ke Library
+                                </a>
+
+                                <?php if ($next_ch): ?>
+                                    <a href="?id=<?= $book_id ?>&ch=<?= urlencode($next_ch) ?>"
+                                        class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
+                                        Selanjutnya
+                                        <i data-lucide="chevron-right" class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <div></div>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Chapter selector (bawah) -->
+                            <div class="max-w-4xl mx-auto px-4 mb-8">
+                                <div class="relative">
+                                    <select onchange="location.href='?id=<?= $book_id ?>&ch=' + encodeURIComponent(this.value)"
+                                            class="chapter-select">
+                                        <option value="">— Pilih Chapter —</option>
+                                        <?php foreach ($chapters as $ch):
+                                            $ch_name  = basename($ch);
+                                            $selected = ($current_chapter === $ch_name) ? 'selected' : '';
+                                            echo "<option value='" . htmlspecialchars($ch_name, ENT_QUOTES) . "' $selected>"
+                                               . htmlspecialchars($ch_name) . "</option>";
+                                        endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                    <?php else: ?>
+                        <div class="max-w-4xl mx-auto px-4 py-20 text-center">
+                            <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/[.03] border border-white/[.06] flex items-center justify-center">
+                                <i data-lucide="image-off" class="w-6 h-6 text-gray-700"></i>
+                            </div>
+                            <p class="text-gray-600 font-bold uppercase tracking-widest text-xs">
+                                Tidak ada gambar
+                            </p>
+                            <p class="text-[10px] text-gray-700 mt-1 uppercase tracking-widest">
+                                <?= htmlspecialchars($current_chapter ?: 'Folder Utama') ?>
+                            </p>
+                        </div>
+                    <?php endif; ?>
+                <?php elseif ($target_path === null): ?>
+                    <!-- Already showed prompt above -->
+                <?php else: ?>
+                    <div class="max-w-4xl mx-auto px-4 py-20 text-center">
+                        <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/[.03] border border-white/[.06] flex items-center justify-center">
+                            <i data-lucide="folder-open" class="w-6 h-6 text-gray-700"></i>
+                        </div>
+                        <p class="text-gray-600 font-bold uppercase tracking-widest text-xs">
+                            Folder tidak ditemukan
+                        </p>
                     </div>
                 <?php endif; ?>
 
@@ -213,37 +456,202 @@ if (str_contains($current_chapter, '..')) {
         <?php include '../partials/footer.php'; ?>
     </div><!-- /scroll-container -->
 
+    <!-- Page counter (floating pill) -->
+    <?php if ($total_pages > 0): ?>
+    <div class="page-counter <?= $total_pages > 1 ? 'visible' : '' ?>" id="page-counter">
+        Halaman <span class="current" id="current-page-display">1</span> / <?= $total_pages ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- Scroll to top button -->
+    <button id="scroll-top-btn" onclick="scrollToTop()" title="Ke atas">
+        <i data-lucide="chevron-up" class="w-4 h-4"></i>
+    </button>
+
     <script>
         lucide.createIcons();
 
         // ── Intersection Observer — lazy load gambar manga ───────────────────
-        (function () {
+        (function() {
             const lazyImages = document.querySelectorAll('img.manga-img.lazy');
             if (!lazyImages.length) return;
 
-            const observer = new IntersectionObserver(function (entries) {
-                entries.forEach(function (entry) {
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
                     if (!entry.isIntersecting) return;
-
                     const img = entry.target;
                     const src = img.dataset.src;
                     if (!src) return;
-
                     img.src = src;
-                    img.onload  = function () { img.classList.add('loaded'); };
-                    img.onerror = function () { img.classList.add('loaded'); }; // Tetap tampil meski error
+                    img.onload = function() {
+                        img.classList.add('loaded');
+                        img.classList.remove('lazy');
+                    };
+                    img.onerror = function() {
+                        img.classList.add('loaded');
+                        img.classList.remove('lazy');
+                        img.style.background = '#0f1318';
+                        img.style.minHeight = '100px';
+                    };
                     observer.unobserve(img);
                 });
             }, {
-                // Mulai muat 400px sebelum gambar masuk viewport
                 rootMargin: '400px 0px',
                 threshold: 0
             });
 
-            lazyImages.forEach(function (img) {
+            lazyImages.forEach(function(img) {
                 observer.observe(img);
             });
         })();
+
+        // ── Track scroll position for page counter & nav indicators ─────────
+        (function() {
+            const pageDisplay = document.getElementById('current-page-display');
+            const navPage = document.getElementById('nav-current-page');
+            const scrollTopBtn = document.getElementById('scroll-top-btn');
+            const navbar = document.getElementById('reader-navbar');
+            const scrollEl = document.getElementById('scroll-container');
+            const images = document.querySelectorAll('img.manga-img');
+            let ticking = false;
+
+            // Deteksi elemen mana yang benar-benar di-scroll
+            function getScrollState() {
+                if (scrollEl && scrollEl.scrollHeight > scrollEl.clientHeight) {
+                    // Scroll terjadi di dalam scroll-container
+                    return {
+                        scrollTop: scrollEl.scrollTop,
+                        clientHeight: scrollEl.clientHeight
+                    };
+                }
+                // Scroll terjadi di body/window
+                return {
+                    scrollTop: window.scrollY || document.documentElement.scrollTop,
+                    clientHeight: window.innerHeight
+                };
+            }
+
+            function animatePop(el) {
+                if (!el) return;
+                el.classList.remove('pop');
+                void el.offsetWidth;
+                el.classList.add('pop');
+            }
+
+            function updateScrollState() {
+                const { scrollTop, clientHeight } = getScrollState();
+
+                // Navbar scroll state
+                if (navbar) {
+                    navbar.classList.toggle('scrolled', scrollTop > 10);
+                }
+
+                // Scroll to top button
+                if (scrollTopBtn) {
+                    scrollTopBtn.classList.toggle('visible', scrollTop > clientHeight * 0.5);
+                }
+
+                // Page counter — cari gambar dengan top terdekat dari navbar
+                if (images.length > 0 && pageDisplay) {
+                    let currentPage = 1;
+                    let minDist = Infinity;
+                    const navbarH = 56;
+
+                    images.forEach((img) => {
+                        const rect = img.getBoundingClientRect();
+                        const dist = Math.abs(rect.top - navbarH);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            const p = parseInt(img.dataset.page);
+                            if (p) currentPage = p;
+                        }
+                    });
+
+                    // Trigger animasi pop kalau angkanya berubah
+                    if (pageDisplay.textContent !== String(currentPage)) {
+                        pageDisplay.textContent = currentPage;
+                        animatePop(pageDisplay);
+                    }
+                    if (navPage && navPage.textContent !== String(currentPage)) {
+                        navPage.textContent = currentPage;
+                        animatePop(navPage);
+                    }
+                }
+
+                ticking = false;
+            }
+
+            function onScroll() {
+                if (!ticking) {
+                    requestAnimationFrame(updateScrollState);
+                    ticking = true;
+                }
+            }
+
+            // Listen scroll di BOTH — karena scroll bisa di container atau body
+            if (scrollEl) {
+                scrollEl.addEventListener('scroll', onScroll, { passive: true });
+            }
+            window.addEventListener('scroll', onScroll, { passive: true });
+
+            // Update ulang setelah gambar lazy selesai dimuat (ukuran elemen berubah)
+            images.forEach(function(img) {
+                img.addEventListener('load', function() {
+                    if (!ticking) {
+                        requestAnimationFrame(updateScrollState);
+                        ticking = true;
+                    }
+                });
+            });
+
+            // Initial update
+            setTimeout(updateScrollState, 300);
+        })();
+
+        // ── Scroll to top function ───────────────────────────────────────────
+        function scrollToTop() {
+            const el = document.getElementById('scroll-container');
+            if (el && el.scrollHeight > el.clientHeight) {
+                el.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        // ── Keyboard shortcuts ──────────────────────────────────────────────
+        document.addEventListener('keydown', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+
+            const key = e.key.toLowerCase();
+
+            if (key === 'arrowleft' || key === 'a') {
+                // Previous chapter
+                const prevLink = document.querySelector('a[href*="ch="]:first-child');
+                if (prevLink && prevLink.textContent.includes('Sebelumnya')) {
+                    e.preventDefault();
+                    window.location.href = prevLink.href;
+                }
+            }
+
+            if (key === 'arrowright' || key === 'd') {
+                // Next chapter
+                const links = document.querySelectorAll('a[href*="ch="]');
+                const nextLink = Array.from(links).find(el => el.textContent.includes('Selanjutnya'));
+                if (nextLink) {
+                    e.preventDefault();
+                    window.location.href = nextLink.href;
+                }
+            }
+
+            if (key === 'escape') {
+                window.location.href = 'index.php';
+            }
+        });
+
+        // Re-init after HTMX
+        document.body.addEventListener('htmx:afterOnLoad', function() {
+            lucide.createIcons();
+        });
     </script>
 </body>
 

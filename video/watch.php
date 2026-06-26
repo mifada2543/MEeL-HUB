@@ -133,40 +133,45 @@ session_write_close();
 
     <div id="app-content-grid" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
         <div id="left-column" class="flex-1 space-y-4 sm:space-y-5 px-4 sm:px-5">
-            <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" style="aspect-ratio: 16/9;">
-                <video id="main-video" playsinline controls preload="auto"
-                    data-poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
-                    data-src="<?= htmlspecialchars($video_src) ?>"
-                    data-ishls="<?= $is_hls ? 'true' : 'false' ?>"
-                    data-vtt="<?= htmlspecialchars($vtt_src ?? '') ?>"
-                    class="w-full block">
-                    <?php if (!$is_hls): ?>
-                        <source src="<?= $video_src ?>" type="video/mp4">
-                    <?php endif; ?>
-                    <?php if (!empty($vtt_src)): ?>
-                        <track kind="metadata" src="<?= $vtt_src ?>" default>
-                    <?php endif; ?>
-                </video>
-                <div id="resume-modal" class="hidden">
-                    <div class="bg-[#141820] border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl p-6 max-w-xs w-full mx-4 text-center">
-                        <div class="text-sm font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
-                        <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">
-                            Menit ke‑ <span id="resume-time" class="text-red-400 font-mono">0:00</span>
-                        </div>
-                        <p id="resume-countdown" class="text-[10px] text-gray-600 italic mb-5">Otomatis ulang dalam 15s...</p>
-                        <div class="flex gap-2">
-                            <button id="btn-resume"
-                                class="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider py-2.5 rounded-xl transition-all border-none cursor-pointer">
-                                Lanjut
-                            </button>
-                            <button id="btn-restart"
-                                class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-black uppercase tracking-wider py-2.5 rounded-xl border border-white/10 cursor-pointer transition-all">
-                                Ulang
-                            </button>
+            <!-- Container relatif agar canvas glow bisa absolute di belakang video -->
+            <div id="video-glow-container" class="relative w-full">
+                <!-- Canvas cahaya sinematik (Disembunyikan di HP demi performa baterai) -->
+                <canvas id="video-glow-canvas" class="hidden sm:block"></canvas>
+                <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" style="aspect-ratio: 16/9;">
+                    <video id="main-video" playsinline controls preload="auto"
+                        data-poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
+                        data-src="<?= htmlspecialchars($video_src) ?>"
+                        data-ishls="<?= $is_hls ? 'true' : 'false' ?>"
+                        data-vtt="<?= htmlspecialchars($vtt_src ?? '') ?>"
+                        class="w-full block">
+                        <?php if (!$is_hls): ?>
+                            <source src="<?= $video_src ?>" type="video/mp4">
+                        <?php endif; ?>
+                        <?php if (!empty($vtt_src)): ?>
+                            <track kind="metadata" src="<?= $vtt_src ?>" default>
+                        <?php endif; ?>
+                    </video>
+                    <div id="resume-modal" class="hidden">
+                        <div class="bg-[#141820] border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl p-6 max-w-xs w-full mx-4 text-center">
+                            <div class="text-sm font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
+                            <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-1">
+                                Menit ke‑ <span id="resume-time" class="text-red-400 font-mono">0:00</span>
+                            </div>
+                            <p id="resume-countdown" class="text-[10px] text-gray-600 italic mb-5">Otomatis ulang dalam 15s...</p>
+                            <div class="flex gap-2">
+                                <button id="btn-resume"
+                                    class="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider py-2.5 rounded-xl transition-all border-none cursor-pointer">
+                                    Lanjut
+                                </button>
+                                <button id="btn-restart"
+                                    class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-black uppercase tracking-wider py-2.5 rounded-xl border border-white/10 cursor-pointer transition-all">
+                                    Ulang
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </div><!-- /#main-video-wrapper -->
+            </div><!-- /#video-glow-container -->
 
             <div id="watch-details-wrapper" class="space-y-4 sm:space-y-5">
                 <div id="video-info" class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col gap-4">

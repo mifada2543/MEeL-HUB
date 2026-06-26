@@ -331,8 +331,8 @@ class BookUploader
     private function handleManga(array $file, string $title): array
     {
         $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
-        if ($ext !== 'zip') {
-            return ['success' => false, 'message' => 'Error: Harap upload file ZIP!'];
+        if (!in_array($ext, ['zip', 'cbz'], true)) {
+            return ['success' => false, 'message' => 'Error: Harap upload file ZIP atau CBZ!'];
         }
 
         $clean        = preg_replace('/[^a-zA-Z0-9]/', '_', $title);

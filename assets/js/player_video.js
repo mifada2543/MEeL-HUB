@@ -38,6 +38,18 @@ let nextVideoTransitionId = 0;
 
 const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
+// ── Glow ambient — state di-hoist ke module scope agar mini-player bisa akses ──
+let glowSampleInterval = null;
+let glowLerpInterval = null;
+let glowTargetR = 0,
+  glowTargetG = 0,
+  glowTargetB = 0;
+let glowCurR = 0,
+  glowCurG = 0,
+  glowCurB = 0;
+let glowStartFn = null; // referensi ke startGlow(), di-assign saat init
+let glowNavbar = null; // referensi ke <nav>, di-assign saat init
+
 // Inisialisasi Icon
 if (window.lucide) {
   lucide.createIcons();
@@ -741,13 +753,268 @@ function setupMeelPlayerEvents() {
     if (vttSrc) {
       setTimeout(() => refreshVttSprites(vttSrc), 300);
     }
+
+    // ── Glow fullscreen: inject canvas ke .plyr__video-wrapper ──
+    // .plyr__video-wrapper punya background:#000 — canvas harus DI DALAM
+    // wrapper tersebut, bukan di .plyr (parent), agar tidak tertutup.
+    const plyrEl = player.elements.container;
+    const fsWrap = plyrEl ? plyrEl.querySelector(".plyr__video-wrapper") : null;
+    if (plyrEl && fsWrap && videoElement) {
+      // Guard: hapus jika sudah ada
+      const oldFs = fsWrap.querySelector("#video-glow-canvas-fs");
+      if (oldFs) oldFs.remove();
+
+      // Paksa video element selalu di atas canvas glow
+      videoElement.style.position = "relative";
+      videoElement.style.zIndex = "2";
+
+      const fsCanvas = document.createElement("canvas");
+      fsCanvas.id = "video-glow-canvas-fs";
+      fsCanvas.width = 1;
+      fsCanvas.height = 1;
+      fsCanvas.style.cssText = [
+        "position:absolute",
+        "top:50%",
+        "left:50%",
+        // Scale 1.4 → canvas lebih besar dari video, glow meluber ke letterbox/pillarbox
+        "transform:translate(-50%,-50%) scale(1.4)",
+        "width:100%",
+        "height:100%",
+        "pointer-events:none",
+        "z-index:1", // di bawah video (z-index:2)
+        "filter:blur(40px)",
+        "opacity:0",
+        "transition:opacity 0.6s ease",
+      ].join(";");
+      fsWrap.insertBefore(fsCanvas, fsWrap.firstChild);
+
+      const fsCtx = fsCanvas.getContext("2d");
+
+      // Canvas sample 20x20 — 400 pixel, lebih akurat dari 8x4
+      const fsSample = document.createElement("canvas");
+      fsSample.width = 20;
+      fsSample.height = 20;
+      const fsSampleCtx = fsSample.getContext("2d", {
+        willReadFrequently: true,
+      });
+
+      let fsTgtR = 0,
+        fsTgtG = 0,
+        fsTgtB = 0;
+      let fsCurR = 0,
+        fsCurG = 0,
+        fsCurB = 0;
+      let fsSampleInt = null,
+        fsLerpInt = null;
+
+      const fsSampleColor = () => {
+        if (videoElement.readyState < 2 || document.hidden) return;
+        try {
+          fsSampleCtx.drawImage(videoElement, 0, 0, 20, 20);
+          const data = fsSampleCtx.getImageData(0, 0, 20, 20).data;
+          let r = 0,
+            g = 0,
+            b = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            r += data[i];
+            g += data[i + 1];
+            b += data[i + 2];
+          }
+          const n = data.length / 4;
+          fsTgtR = r / n;
+          fsTgtG = g / n;
+          fsTgtB = b / n;
+        } catch (e) {}
+      };
+
+      const fsLerpDraw = () => {
+        fsCurR += (fsTgtR - fsCurR) * 0.018;
+        fsCurG += (fsTgtG - fsCurG) * 0.018;
+        fsCurB += (fsTgtB - fsCurB) * 0.018;
+        fsCtx.fillStyle = `rgb(${Math.round(fsCurR)},${Math.round(fsCurG)},${Math.round(fsCurB)})`;
+        fsCtx.fillRect(0, 0, 1, 1);
+      };
+
+      const startFs = () => {
+        if (fsSampleInt) return;
+        fsCanvas.style.opacity = "0.6";
+        fsSampleColor();
+        fsSampleInt = setInterval(fsSampleColor, 300);
+        fsLerpInt = setInterval(fsLerpDraw, 30);
+      };
+
+      const stopFs = () => {
+        if (fsSampleInt) {
+          clearInterval(fsSampleInt);
+          fsSampleInt = null;
+        }
+        if (fsLerpInt) {
+          clearInterval(fsLerpInt);
+          fsLerpInt = null;
+        }
+        fsCanvas.style.opacity = "0";
+      };
+
+      const pauseFs = () => {
+        if (fsSampleInt) {
+          clearInterval(fsSampleInt);
+          fsSampleInt = null;
+        }
+        if (fsLerpInt) {
+          clearInterval(fsLerpInt);
+          fsLerpInt = null;
+        }
+        // opacity TIDAK di-nol-kan — warna terakhir freeze
+      };
+
+      // Simpan referensi handler agar bisa dilepas saat exitfullscreen
+      plyrEl._fsGlowStart = startFs;
+      plyrEl._fsGlowStop = stopFs;
+      plyrEl._fsGlowPause = pauseFs;
+
+      player.on("play", startFs);
+      player.on("playing", startFs);
+      player.on("pause", pauseFs);
+      player.on("ended", stopFs);
+
+      // Langsung aktifkan jika video sedang berjalan
+      if (!videoElement.paused && !videoElement.ended) startFs();
+    }
   });
 
   player.on("exitfullscreen", () => {
     if (screen.orientation?.unlock) {
       screen.orientation.unlock();
     }
+
+    // ── Bersihkan canvas glow fullscreen ──
+    const plyrEl = player.elements.container;
+    if (plyrEl) {
+      if (plyrEl._fsGlowStop) plyrEl._fsGlowStop();
+      if (plyrEl._fsGlowStart) player.off("play", plyrEl._fsGlowStart);
+      if (plyrEl._fsGlowStart) player.off("playing", plyrEl._fsGlowStart);
+      if (plyrEl._fsGlowPause) player.off("pause", plyrEl._fsGlowPause);
+      if (plyrEl._fsGlowStop) player.off("ended", plyrEl._fsGlowStop);
+      delete plyrEl._fsGlowStart;
+      delete plyrEl._fsGlowStop;
+      delete plyrEl._fsGlowPause;
+
+      const fsWrapEl = plyrEl.querySelector(".plyr__video-wrapper");
+      const fsCanvas = fsWrapEl
+        ? fsWrapEl.querySelector("#video-glow-canvas-fs")
+        : null;
+      if (fsCanvas) fsCanvas.remove();
+
+      // Reset z-index video element yang dipaksa saat enterfullscreen
+      if (videoElement) {
+        videoElement.style.position = "";
+        videoElement.style.zIndex = "";
+      }
+    }
   });
+
+  // ─── FITUR CAHAYA SINEMATIK (AMBIENT MODE) ───
+  // State di module scope (glowSampleInterval, glowLerpInterval, dll)
+  // agar mini-player bisa clear interval tanpa scope leak.
+  const glowCanvas = document.getElementById("video-glow-canvas");
+  if (glowCanvas && videoElement) {
+    const sampleCanvas = document.createElement("canvas");
+    sampleCanvas.width = 20;
+    sampleCanvas.height = 20;
+    const sampleCtx = sampleCanvas.getContext("2d", {
+      willReadFrequently: true,
+    });
+
+    glowCanvas.width = 1;
+    glowCanvas.height = 1;
+    const ctx = glowCanvas.getContext("2d");
+
+    glowNavbar = document.querySelector("nav");
+
+    const sampleColor = () => {
+      if (videoElement.readyState < 2 || document.hidden) return;
+      try {
+        sampleCtx.drawImage(videoElement, 0, 0, 20, 20);
+        const data = sampleCtx.getImageData(0, 0, 20, 20).data;
+        let r = 0,
+          g = 0,
+          b = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          r += data[i];
+          g += data[i + 1];
+          b += data[i + 2];
+        }
+        const n = data.length / 4;
+        glowTargetR = r / n;
+        glowTargetG = g / n;
+        glowTargetB = b / n;
+      } catch (e) {}
+    };
+
+    const LERP = 0.018;
+    const lerpAndDraw = () => {
+      glowCurR += (glowTargetR - glowCurR) * LERP;
+      glowCurG += (glowTargetG - glowCurG) * LERP;
+      glowCurB += (glowTargetB - glowCurB) * LERP;
+      const r = Math.round(glowCurR),
+        g = Math.round(glowCurG),
+        b = Math.round(glowCurB);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(0, 0, 1, 1);
+      if (glowNavbar)
+        glowNavbar.style.setProperty("--navbar-glow-color", `${r},${g},${b}`);
+    };
+
+    const startGlow = () => {
+      if (glowSampleInterval) return; // Cegah double-start
+      glowCanvas.classList.add("glow-active");
+      sampleColor();
+      glowSampleInterval = setInterval(sampleColor, 300);
+      glowLerpInterval = setInterval(lerpAndDraw, 30);
+    };
+
+    const stopGlow = (clearColor = false) => {
+      if (glowSampleInterval) {
+        clearInterval(glowSampleInterval);
+        glowSampleInterval = null;
+      }
+      if (glowLerpInterval) {
+        clearInterval(glowLerpInterval);
+        glowLerpInterval = null;
+      }
+      glowCanvas.classList.remove("glow-active");
+      if (glowNavbar)
+        glowNavbar.style.setProperty("--navbar-glow-color", "0,0,0");
+      if (clearColor) {
+        glowTargetR = glowCurR = 0;
+        glowTargetG = glowCurG = 0;
+        glowTargetB = glowCurB = 0;
+        ctx.clearRect(0, 0, 1, 1);
+      }
+    };
+
+    const pauseGlow = () => {
+      if (glowSampleInterval) {
+        clearInterval(glowSampleInterval);
+        glowSampleInterval = null;
+      }
+      if (glowLerpInterval) {
+        clearInterval(glowLerpInterval);
+        glowLerpInterval = null;
+      }
+    };
+
+    // Expose ke module scope agar mini-player restore bisa restart glow
+    glowStartFn = startGlow;
+
+    player.on("play", startGlow);
+    player.on("playing", startGlow);
+    player.on("pause", pauseGlow);
+    player.on("ended", () => stopGlow(true));
+
+    if (!videoElement.paused && !videoElement.ended) startGlow();
+  }
+  // ─────────────────────────────────────────────
 
   setupMobileGestures();
 }
@@ -999,6 +1266,23 @@ window.toggleMiniPlayer = async function () {
     videoWrapper.classList.add("mini-player-mode");
     // CSS handles hiding non-progress controls via .mini-player-mode .plyr__controls > *:not(.plyr__progress__container)
 
+    // Sembunyikan canvas glow & hentikan interval (pakai module-scope vars)
+    const glowCanvasEl = document.getElementById("video-glow-canvas");
+    if (glowCanvasEl) {
+      glowCanvasEl.style.display = "none";
+      glowCanvasEl.classList.remove("glow-active");
+    }
+    if (glowSampleInterval) {
+      clearInterval(glowSampleInterval);
+      glowSampleInterval = null;
+    }
+    if (glowLerpInterval) {
+      clearInterval(glowLerpInterval);
+      glowLerpInterval = null;
+    }
+    if (glowNavbar)
+      glowNavbar.style.setProperty("--navbar-glow-color", "0,0,0");
+
     document.body.appendChild(miniShell);
     document.body.style.paddingBottom = "120px";
 
@@ -1059,8 +1343,36 @@ window.toggleMiniPlayer = async function () {
         );
       }
 
-      // Kembalikan wrapper ke posisi semula di left-column
-      if (leftColumn) leftColumn.insertBefore(videoWrap, leftColumn.firstChild);
+      // Kembalikan wrapper ke posisi semula di dalam glow-container
+      const glowContainer = document.getElementById("video-glow-container");
+      if (glowContainer) {
+        // Sisipkan sebelum elemen pertama (canvas), atau append jika kosong
+        const canvas = glowContainer.querySelector("canvas");
+        if (canvas) {
+          glowContainer.insertBefore(videoWrap, canvas.nextSibling);
+        } else {
+          glowContainer.appendChild(videoWrap);
+        }
+      } else if (leftColumn) {
+        // Fallback: kembalikan ke left-column jika glow-container tidak ada
+        leftColumn.insertBefore(videoWrap, leftColumn.firstChild);
+      }
+
+      // Tampilkan kembali canvas glow & restart interval bersih
+      const glowCanvasEl = document.getElementById("video-glow-canvas");
+      if (glowCanvasEl) {
+        glowCanvasEl.style.removeProperty("display");
+        // Reset warna lerp agar tidak ada lompatan warna dari state lama
+        glowTargetR = glowCurR = 0;
+        glowTargetG = glowCurG = 0;
+        glowTargetB = glowCurB = 0;
+        if (glowNavbar)
+          glowNavbar.style.setProperty("--navbar-glow-color", "0,0,0");
+        // Restart glow hanya jika video sedang berjalan
+        if (!videoElement?.paused && !videoElement?.ended && glowStartFn) {
+          glowStartFn();
+        }
+      }
     }
 
     if (miniShell) {

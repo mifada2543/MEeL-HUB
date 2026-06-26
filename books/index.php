@@ -15,178 +15,243 @@ $raw_filter = $_GET['type'] ?? 'all';
 $filter     = in_array($raw_filter, ['manga', 'pdf'], true) ? $raw_filter : 'all';
 
 $books = $repo->getBooks($filter);
+$total = $books->num_rows;
 ?>
 <!DOCTYPE html>
 <html lang="id">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.7">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <title>MEeL | library</title>
+    <title>MEeL | Books</title>
     <?php include '../partials/link.php'; ?>
+    <link rel="stylesheet" href="../assets/css/books.css">
+    <script src="../assets/js/htmx.js"></script>
     <style>
         body {
-            background-color: #05070a;
-            color: #e5e7eb;
-        }
-
-        .glass {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
+            background-color: #080a0f;
         }
 
         .line-clamp-2 {
             display: -webkit-box;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
         }
     </style>
 </head>
 
-<body class="min-h-screen bg-[#05070a]">
-    <!-- Navbar -->
-    <nav class="border-b border-gray-800 bg-gradient-to-r from-green-600/20 via-[#0b0e14]/90 to-blue-600/20 sticky top-0 z-50 backdrop-blur-md w-full">
-        <div class="w-full px-4 md:px-8 h-16 flex items-center justify-between">
-            <a href="../index.php" class="flex items-center gap-2 group">
-                <div class="bg-green-600 p-1.5 rounded-lg group-hover:bg-green-500 transition-colors shadow-lg">
-                    <i data-lucide="library" class="w-5 h-5 text-white fill-current"></i>
+<body class="text-gray-400 min-h-screen">
+
+    <!-- NAVBAR -->
+    <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
+        <div class="w-full px-3 sm:px-6 xl:px-10 2xl:px-16 h-14 flex items-center justify-between gap-2 sm:gap-4">
+            <a href="../index.php" class="flex items-center gap-1 sm:gap-2.5 flex-shrink-0" title="MEeL HUB">
+                <div class="w-6 h-6 sm:w-7 sm:h-7 bg-green-600 rounded-lg flex items-center justify-center">
+                    <i data-lucide="library" class="w-3.5 h-3.5 text-white fill-current"></i>
                 </div>
-                <span class="text-xl font-black tracking-tighter text-white uppercase">MEeL<span class="text-green-600">Books</span></span>
+                <span class="text-xs sm:text-sm font-bold tracking-tight text-white uppercase hidden sm:block">
+                    MEeL<span class="text-green-500">Books</span>
+                </span>
             </a>
 
-            <div class="flex items-center gap-6 text-[11px] font-bold uppercase tracking-wider">
-                <a href="../video/index.php" class="flex items-center gap-1.5 text-gray-400 hover:text-red-500 transition-all">
-                    <i data-lucide="play" class="w-3.5 h-3.5"></i> Video
-                </a>
-                <div class="h-4 w-[1px] bg-gray-800"></div>
-                <a href="../music/index.php" class="flex items-center gap-1.5 text-gray-400 hover:text-orange-500 transition-all">
-                    <i data-lucide="music" class="w-3.5 h-3.5"></i> Music
-                </a>
-                <div class="h-4 w-[1px] bg-gray-800"></div>
+            <!-- Search -->
+            <div class="flex-1 max-w-sm flex items-center gap-1.5 sm:gap-2">
+                <div class="relative flex-1 group">
+                    <i data-lucide="search" class="absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-green-500 transition-colors"></i>
+                    <input type="text"
+                        id="b-search"
+                        name="search"
+                        placeholder="Cari buku..."
+                        class="w-full bg-white/[.04] border border-white/[.06] rounded-xl py-2 pl-8 sm:pl-9 pr-3 sm:pr-4 text-xs focus:outline-none focus:border-green-500/40 transition-all text-gray-300"
+                        autocomplete="off">
+                </div>
+                <button onclick="filterBooks(this)"
+                    class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all flex-shrink-0">
+                    <span class="hidden sm:inline">Cari</span>
+                    <i data-lucide="search" class="w-3.5 h-3.5 sm:hidden"></i>
+                </button>
+            </div>
 
-                <?php if (isset($_SESSION['user_id'])): ?>
-                    <?php if ($role === 'admin'): ?>
-                        <a href="upload.php" class="flex items-center gap-2 text-gray-400 hover:text-green-500 transition-all mr-2">
-                            <i data-lucide="upload-cloud" class="w-4 h-4"></i>Upload
-                        </a>
-                    <?php endif; ?>
-
-                    <div class="flex items-center gap-3 border-l border-gray-800 pl-4">
-                        <div class="flex flex-col items-end">
-                            <a href="../profile/?u=<?= urlencode($_SESSION['username']) ?>"
-                                class="group flex items-center gap-2 text-white font-bold">
-                                <?= htmlspecialchars($_SESSION['username']) ?>
-                            </a>
-                            <?php if ($role === 'admin'): ?>
-                                <a href="../admin/index.php" class="flex items-center gap-1.5 mt-1 hover:opacity-80 transition-opacity group">
-                                    <span class="relative flex h-2 w-2">
-                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                        <span class="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
-                                    </span>
-                                    <span class="text-[9px] text-red-600 font-black uppercase tracking-[0.2em]">Admin</span>
-                                </a>
-                            <?php else: ?>
-                                <div class="flex items-center gap-1 mt-1">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-gray-700"></span>
-                                    <span class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter">Member</span>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                        <a href="../auth/logout.php"
-                            class="bg-gray-800/50 p-2 rounded-xl hover:bg-red-600 group transition-all duration-300">
-                            <i data-lucide="log-out" class="w-4 h-4 text-gray-400 group-hover:text-white"></i>
-                        </a>
-                    </div>
-                <?php endif; ?>
-
-                <a href="../introduction.php"
-                    class="text-gray-500 hover:text-white transition-all p-2 rounded-lg hover:bg-white/5 group"
-                    title="Cara Bernavigasi">
-                    <i data-lucide="compass" class="w-4.5 h-4.5 group-hover:rotate-12 transition-transform"></i>
+            <div class="flex items-center gap-3 sm:gap-5 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
+                <a href="../video/index.php" class="flex items-center gap-1.5 text-gray-600 hover:text-red-500 transition-all">
+                    <i data-lucide="play" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Video</span>
                 </a>
+                <a href="../music/index.php" class="flex items-center gap-1.5 text-gray-600 hover:text-orange-500 transition-all">
+                    <i data-lucide="music" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Music</span>
+                </a>
+                <?php include '../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
 
-    <!-- Filter Bar -->
-    <div class="max-w-7xl mx-auto px-4 md:px-8 pt-8">
-        <div class="flex gap-3 mb-8">
+    <main class="w-full px-4 sm:px-6 xl:px-10 2xl:px-16 pt-8 pb-20">
+
+        <!-- HEADER -->
+        <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
+            <div>
+                <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Library</div>
+                <div class="section-title">BOOKS</div>
+            </div>
+            <span class="text-[10px] text-gray-700 uppercase tracking-widest"><?= $total ?> items</span>
+        </div>
+
+        <!-- FILTER PILLS -->
+        <div class="flex gap-2 mb-8 flex-wrap">
             <a href="index.php?type=all"
-                class="px-6 py-2 rounded-full text-[10px] font-black uppercase transition-all
-                       <?= $filter === 'all' ? 'bg-green-600 text-white shadow-lg shadow-green-900/40' : 'bg-white/5 text-gray-500 hover:bg-white/10' ?>">
+                class="filter-pill <?= $filter === 'all' ? 'active' : '' ?>">
                 All
             </a>
             <a href="index.php?type=manga"
-                class="px-6 py-2 rounded-full text-[10px] font-black uppercase transition-all
-                       <?= $filter === 'manga' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/40' : 'bg-white/5 text-gray-500 hover:bg-white/10' ?>">
-                Manga
+                class="filter-pill <?= $filter === 'manga' ? 'active' : '' ?>">
+                <i data-lucide="book-open" class="w-3 h-3 inline-block -ml-0.5 mr-1"></i> Manga
             </a>
             <a href="index.php?type=pdf"
-                class="px-6 py-2 rounded-full text-[10px] font-black uppercase transition-all
-                       <?= $filter === 'pdf' ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40' : 'bg-white/5 text-gray-500 hover:bg-white/10' ?>">
-                PDF
+                class="filter-pill <?= $filter === 'pdf' ? 'active' : '' ?>">
+                <i data-lucide="file-text" class="w-3 h-3 inline-block -ml-0.5 mr-1"></i> PDF
             </a>
+
+            <?php if ($role === 'admin'): ?>
+                <a href="upload.php"
+                    class="filter-pill ml-auto text-green-500 border-green-500/30 hover:border-green-500 hover:text-green-400 hover:bg-green-500/5">
+                    <i data-lucide="upload-cloud" class="w-3 h-3 inline-block -ml-0.5 mr-1"></i> Upload
+                </a>
+            <?php endif; ?>
         </div>
-    </div>
 
-    <!-- Book Grid -->
-    <div class="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
-        <?php if ($books->num_rows > 0): ?>
-            <?php while ($book = $books->fetch_assoc()): ?>
-                <div class="relative group">
+        <!-- BOOK GRID -->
+        <div id="book-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+            <?php if ($total > 0): ?>
+                <?php while ($book = $books->fetch_assoc()): ?>
+                    <div class="relative group">
+                        <?php if ($role === 'admin'): ?>
+                            <div class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                                <a href="upload.php?reup=<?= urlencode($book['title']) ?>"
+                                    class="p-1.5 bg-green-600/90 backdrop-blur-md rounded-lg text-white hover:bg-green-500 hover:scale-110 transition-all shadow-lg block"
+                                    title="Tambah Chapter">
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+
+                        <a href="read.php?id=<?= (int)$book['id'] ?>" class="block">
+                            <div class="book-card relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/[.06] bg-[#0b0e14] shadow-lg">
+                                <img src="upload/thumbnail/<?= htmlspecialchars($book['thumbnail']) ?>"
+                                    loading="lazy"
+                                    class="book-thumb w-full h-full object-cover"
+                                    alt="<?= htmlspecialchars($book['title']) ?>"
+                                    onerror="this.style.display='none'; this.parentElement.querySelector('.book-fallback')?.classList.remove('hidden')">
+                                <div class="book-fallback hidden absolute inset-0 flex items-center justify-center">
+                                    <i data-lucide="book-open" class="w-10 h-10 text-gray-700"></i>
+                                </div>
+
+                                <!-- Type badge -->
+                                <div class="absolute top-2 right-2">
+                                    <span class="type-badge <?= $book['type'] === 'manga' ? 'type-badge-manga' : 'type-badge-pdf' ?>">
+                                        <i data-lucide="<?= $book['type'] === 'manga' ? 'book-open' : 'file-text' ?>" class="w-2.5 h-2.5"></i>
+                                        <?= $book['type'] ?>
+                                    </span>
+                                </div>
+
+                                <!-- Hover overlay -->
+                                <div class="book-overlay absolute inset-0 flex flex-col justify-end p-3 sm:p-4">
+                                    <h3 class="text-sm font-bold text-white line-clamp-2 drop-shadow-lg leading-tight">
+                                        <?= htmlspecialchars($book['title']) ?>
+                                    </h3>
+                                    <p class="text-[10px] text-gray-300 mt-1 opacity-80 truncate">
+                                        <?= htmlspecialchars($book['author'] ?? 'Unknown Author') ?>
+                                    </p>
+                                    <?php if (!empty($book['category'])): ?>
+                                        <span class="text-[8px] text-green-400/70 uppercase tracking-widest mt-1.5 font-bold">
+                                            <?= htmlspecialchars($book['category']) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <!-- EMPTY STATE -->
+                <div class="col-span-full py-20 flex flex-col items-center justify-center text-center glass rounded-3xl border border-dashed border-white/[.06]">
+                    <div class="w-16 h-16 rounded-2xl bg-white/[.03] border border-white/[.06] flex items-center justify-center mb-5">
+                        <i data-lucide="book-open" class="w-7 h-7 text-gray-700"></i>
+                    </div>
+                    <p class="text-gray-600 font-bold uppercase tracking-widest text-xs mb-1">
+                        Belum ada koleksi di sini<?php if (isset($_SESSION['username'])): ?>, <?= htmlspecialchars($_SESSION['username']) ?><?php endif; ?>.
+                    </p>
+                    <p class="text-[10px] text-gray-800 uppercase tracking-widest">
+                        Pustaka masih kosong
+                    </p>
                     <?php if ($role === 'admin'): ?>
-                        <div class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">
-                            <a href="upload.php?reup=<?= urlencode($book['title']) ?>"
-                                class="p-2 bg-green-600/90 backdrop-blur-md rounded-xl text-white hover:bg-green-500 hover:scale-110 transition-all shadow-lg block">
-                                <i data-lucide="plus" class="w-4 h-4"></i>
-                            </a>
-                        </div>
+                        <a href="upload.php"
+                            class="mt-6 px-6 py-2.5 bg-green-600 hover:bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-green-900/30">
+                            Upload Sekarang
+                        </a>
                     <?php endif; ?>
-
-                    <a href="read.php?id=<?= (int)$book['id'] ?>" class="block">
-                        <div class="relative aspect-[3/4] overflow-hidden rounded-2xl border border-gray-800 shadow-lg glass
-                                    transition-all group-hover:border-blue-500 group-hover:scale-[1.04] group-hover:shadow-blue-500/20">
-                            <img src="upload/thumbnail/<?= htmlspecialchars($book['thumbnail']) ?>"
-                                loading="lazy"
-                                class="w-full h-full object-cover transition-all group-hover:brightness-50"
-                                alt="<?= htmlspecialchars($book['title']) ?>">
-
-                            <!-- Badge tipe -->
-                            <div class="absolute top-2 right-2">
-                                <span class="text-[9px] font-black px-2 py-1 rounded-lg uppercase shadow-md
-                                             <?= $book['type'] === 'manga' ? 'bg-orange-600' : 'bg-purple-600' ?>">
-                                    <i data-lucide="book-open" class="w-3 h-3 inline-block mr-1"></i><?= $book['type'] ?>
-                                </span>
-                            </div>
-
-                            <!-- Overlay info on hover -->
-                            <div class="absolute inset-0 flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100
-                                        transition-opacity bg-gradient-to-t from-black/60 via-transparent to-transparent">
-                                <h3 class="text-sm font-bold text-white line-clamp-2 drop-shadow-lg">
-                                    <?= htmlspecialchars($book['title']) ?>
-                                </h3>
-                                <p class="text-[10px] text-gray-300 mt-1 italic">
-                                    <?= htmlspecialchars($book['author'] ?? 'Unknown Author') ?>
-                                </p>
-                            </div>
-                        </div>
-                    </a>
                 </div>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <div class="col-span-full py-20 text-center glass rounded-3xl border border-dashed border-gray-800">
-                <i data-lucide="book-open" class="w-12 h-12 text-gray-700 mx-auto mb-4"></i>
-                <p class="text-gray-500 font-bold uppercase tracking-widest">
-                    Belum ada koleksi di sini, <?= htmlspecialchars($_SESSION['username'] ?? 'Guest') ?>.
-                </p>
-            </div>
-        <?php endif; ?>
-    </div>
+            <?php endif; ?>
+        </div>
+
+    </main>
 
     <?php include '../partials/footer.php'; ?>
+
     <script>
         lucide.createIcons();
+
+        // Client-side search filter (filters visible cards)
+        function filterBooks(btn) {
+            const input = document.getElementById('b-search');
+            const query = input.value.toLowerCase().trim();
+            const cards = document.querySelectorAll('#book-container > .group');
+
+            cards.forEach(card => {
+                const title = card.querySelector('h3')?.innerText.toLowerCase() || '';
+                const author = card.querySelector('p')?.innerText.toLowerCase() || '';
+                const type = card.querySelector('.type-badge')?.innerText.toLowerCase() || '';
+                const matches = !query || title.includes(query) || author.includes(query) || type.includes(query);
+                card.style.display = matches ? '' : 'none';
+            });
+
+            // Show empty message if nothing found
+            const visibleCards = document.querySelectorAll('#book-container > .group[style*=\"display: none\"]');
+            const existingEmpty = document.getElementById('search-empty-state');
+            const totalCards = document.querySelectorAll('#book-container > .group').length;
+            const visibleCount = totalCards - visibleCards.length;
+
+            if (visibleCount === 0 && query) {
+                if (!existingEmpty) {
+                    const empty = document.createElement('div');
+                    empty.id = 'search-empty-state';
+                    empty.className = 'col-span-full py-20 flex flex-col items-center justify-center text-center';
+                    empty.innerHTML = `
+                        <div class="w-14 h-14 rounded-2xl bg-white/[.02] border border-white/[.06] flex items-center justify-center mb-4">
+                            <i data-lucide="search-x" class="w-6 h-6 text-gray-700"></i>
+                        </div>
+                        <p class="text-gray-600 font-bold uppercase tracking-widest text-xs">
+                            Tidak ada hasil untuk "<span class="text-gray-500">${query}</span>"
+                        </p>
+                    `;
+                    document.getElementById('book-container').appendChild(empty);
+                    lucide.createIcons();
+                }
+            } else if (existingEmpty) {
+                existingEmpty.remove();
+            }
+        }
+
+        // Search on Enter key
+        document.getElementById('b-search')?.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') filterBooks(this);
+        });
+
+        // Re-init icons after HTMX swaps
+        document.body.addEventListener('htmx:afterOnLoad', function() {
+            lucide.createIcons();
+        });
     </script>
 </body>
 
