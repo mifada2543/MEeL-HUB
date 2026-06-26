@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
                 <div class="space-y-2">
                     <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Tipe Konten</label>
                     <select name="type" class="w-full bg-[#05070a] border border-gray-800 rounded-2xl p-3 text-sm focus:border-blue-600 outline-none">
-                        <option value="manga">Manga / Komik (ZIP)</option>
+                        <option value="manga">Manga / Komik (ZIP / CBZ)</option>
                         <option value="pdf">E-Book / Dokumen (PDF)</option>
                     </select>
                 </div>
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">File (PDF/ZIP)</label>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">File (PDF / ZIP / CBZ)</label>
                     <input type="file" name="book_file" required
                         class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0
                                   file:text-xs file:font-bold file:bg-gray-800 file:text-gray-300">

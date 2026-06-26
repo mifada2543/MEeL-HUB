@@ -9,19 +9,16 @@ if (isset($_SESSION['user_id']) && isset($conn)) {
     $_nav_pfp  = $_nav_user['profile_picture'] ?? null;
 }
 
+// ── Deteksi halaman aktif ──
+$_nav_is_books  = str_contains($_SERVER['PHP_SELF'], '/books/');
+$_nav_is_video  = str_contains($_SERVER['PHP_SELF'], '/video/');
+$_nav_is_music  = str_contains($_SERVER['PHP_SELF'], '/music/');
+$_nav_is_drive  = str_contains($_SERVER['PHP_SELF'], '/drive/');
+$_nav_in_subdir = $_nav_is_books || $_nav_is_video || $_nav_is_music || $_nav_is_drive;
+
 // ── Tentukan prefix path relatif (root vs subfolder) ──
-// Jika halaman ada di subfolder (music/, video/, dll.) → "../profile/upload/"
-// Jika di root → "profile/upload/"
-$_nav_pfp_base = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
-    str_contains($_SERVER['PHP_SELF'], '/video/') ||
-    str_contains($_SERVER['PHP_SELF'], '/books/') ||
-    str_contains($_SERVER['PHP_SELF'], '/drive/'))
-    ? '../profile/upload/' : 'profile/upload/';
-$_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
-    str_contains($_SERVER['PHP_SELF'], '/video/') ||
-    str_contains($_SERVER['PHP_SELF'], '/books/') ||
-    str_contains($_SERVER['PHP_SELF'], '/drive/'))
-    ? '../' : '';
+$_nav_pfp_base = $_nav_in_subdir ? '../profile/upload/' : 'profile/upload/';
+$_nav_root     = $_nav_in_subdir ? '../' : '';
 ?>
 <style>
     /* Mengunci paksa agar web tidak pernah bisa digeser ke samping */
@@ -112,11 +109,13 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
                     <span>Profil</span>
                 </a>
 
+                <?php if (!$_nav_is_books): ?>
                 <a href="<?= $_nav_root ?>books/index.php"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-green-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="book-open" class="w-3.5 h-3.5 flex-shrink-0"></i>
                     <span>Books</span>
                 </a>
+                <?php endif; ?>
 
                 <a href="<?= $_nav_root ?>introduction.php"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
@@ -236,11 +235,13 @@ $_nav_root     = (str_contains($_SERVER['PHP_SELF'], '/music/') ||
                 <i data-lucide="user" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Profil Saya</span>
             </a>
+            <?php if (!$_nav_is_books): ?>
             <a href="<?= $_nav_root ?>books/index.php"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-green-400 hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="book-open" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Books</span>
             </a>
+            <?php endif; ?>
             <a href="<?= $_nav_root ?>introduction.php"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="compass" class="w-5 h-5 flex-shrink-0"></i>
