@@ -1458,68 +1458,161 @@ function setupMobileGestures() {
   // Hanya aktif di perangkat sentuh (HP/tablet), tidak di desktop
   if (!isTouchDevice) return;
 
-  let lastTap = 0;
-  let lastTouchTime = 0;
   const container = document.querySelector(".plyr");
   if (!container) return;
 
-  // Lacak waktu touch terakhir dan handle double-tap untuk rewind/forward/play-pause
+  // ── State ──────────────────────────────────────────────────────────────────
+  // isStandby: true = controls sedang terlihat (mode standby), false = tersembunyi
+  let isStandby = false;
+  let standbyTimeout = null; // auto-hide timer
+  let lastTap = 0; // timestamp tap terakhir (untuk double-tap)
+  let lastTouchTime = 0; // timestamp touchstart (untuk blokir dblclick)
+  let tapCancelToken = null; // setTimeout untuk defer single-tap
+  let pendingDoubleTap = false; // flag: ada tap pertama yg menunggu konfirmasi double
+
+  // Zona berdasarkan posisi X relatif terhadap lebar container
+  // [0 – 40%] = kiri (rewind), [40% – 60%] = tengah, [60% – 100%] = kanan (skip)
+  function getZone(touchX, width) {
+    if (touchX < width * 0.4) return "left";
+    if (touchX > width * 0.6) return "right";
+    return "center";
+  }
+
+  // ── Standby (controls visibility) ─────────────────────────────────────────
+  function enterStandby() {
+    isStandby = true;
+    // Munculkan controls Plyr secara paksa via class yang sudah dihandle Plyr
+    container.classList.add("plyr--hide-controls");
+    container.classList.remove("plyr--hide-controls");
+    // Trigger Plyr internal show controls
+    if (player && player.elements && player.elements.controls) {
+      player.elements.controls.style.opacity = "";
+      player.elements.controls.style.pointerEvents = "";
+    }
+    // Tampilkan play-large jika ada
+    const playLarge = container.querySelector(".plyr__control--overlaid");
+    if (playLarge) playLarge.style.opacity = "";
+    scheduleAutoHide();
+  }
+
+  function exitStandby() {
+    isStandby = false;
+    clearTimeout(standbyTimeout);
+    if (player && player.elements && player.elements.controls) {
+      player.elements.controls.style.opacity = "0";
+      player.elements.controls.style.pointerEvents = "none";
+    }
+    const playLarge = container.querySelector(".plyr__control--overlaid");
+    if (playLarge) playLarge.style.opacity = "0";
+  }
+
+  function toggleStandby() {
+    if (isStandby) {
+      exitStandby();
+    } else {
+      enterStandby();
+    }
+  }
+
+  function scheduleAutoHide() {
+    clearTimeout(standbyTimeout);
+    standbyTimeout = setTimeout(() => {
+      if (isStandby) exitStandby();
+    }, 3000);
+  }
+
+  // ── Double-tap handler via touchstart ──────────────────────────────────────
   container.addEventListener(
     "touchstart",
     (e) => {
       const now = Date.now();
       lastTouchTime = now;
 
-      if (now - lastTap < 300) {
-        const rect = container.getBoundingClientRect();
-        const touch = e.touches[0] || e.changedTouches[0];
-        if (touch) {
-          const touchX = touch.clientX - rect.left;
-          const width = rect.width;
-
-          // Batalkan event bawaan agar tidak memicu fullscreen
-          e.preventDefault();
-          e.stopPropagation();
-
-          if (touchX < width * 0.4) {
-            // Sisi kiri: Rewind
-            if (player) player.rewind(5);
-            tampilkanIndikator("⏪ -5s");
-          } else if (touchX > width * 0.6) {
-            // Sisi kanan: Forward
-            if (player) player.forward(5);
-            tampilkanIndikator("+5s ⏩");
-          } else {
-            // Bagian tengah: Tidak lakukan apa‑apa pada double‑tap,
-            // biarkan tap pertama menangani play/pause secara default.
-          }
-        }
+      // Guard: abaikan jika sentuhan berasal dari dalam controls Plyr
+      // (progress bar, tombol play/mute/fullscreen, volume, settings, dll)
+      const touchTarget = e.target;
+      if (
+        touchTarget.closest(".plyr__controls") ||
+        touchTarget.closest(".plyr__control--overlaid") ||
+        touchTarget.closest(".plyr__menu") ||
+        touchTarget.closest(".plyr__volume") ||
+        touchTarget.closest(".plyr__progress")
+      ) {
+        // Tetap reset auto-hide agar controls tidak langsung hilang saat dipakai
+        if (isStandby) scheduleAutoHide();
+        return;
       }
+
+      const rect = container.getBoundingClientRect();
+      const touch = e.touches[0] || e.changedTouches[0];
+      if (!touch) return;
+
+      const touchX = touch.clientX - rect.left;
+      const zone = getZone(touchX, rect.width);
+
+      // Deteksi double-tap (interval < 300ms)
+      if (now - lastTap < 300 && pendingDoubleTap) {
+        // Batalkan defer single-tap
+        clearTimeout(tapCancelToken);
+        pendingDoubleTap = false;
+
+        // Cegah event bawaan (fullscreen, dll)
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (zone === "left") {
+          if (player) player.rewind(10);
+          tampilkanSisiIndikator("rewind", "-10s");
+        } else if (zone === "right") {
+          if (player) player.forward(10);
+          tampilkanSisiIndikator("forward", "+10s");
+        }
+        // Double-tap tengah: tidak ada aksi (single-tap sudah handle pause)
+
+        lastTap = 0; // reset agar triple-tap tidak trigger double lagi
+        return;
+      }
+
       lastTap = now;
+      pendingDoubleTap = true;
+
+      // Defer single-tap selama 300ms untuk menunggu kemungkinan double-tap
+      clearTimeout(tapCancelToken);
+      tapCancelToken = setTimeout(() => {
+        pendingDoubleTap = false;
+        handleSingleTap(zone);
+      }, 300);
     },
     { passive: false },
   );
 
-  // Tap tunggal di tengah untuk toggle play/pause
-  container.addEventListener("click", (e) => {
-    const rect = container.getBoundingClientRect();
-    const touchX = e.clientX - rect.left;
-    const width = rect.width;
-
-    if (touchX >= width * 0.4 && touchX <= width * 0.6) {
-      if (player) {
-        if (player.paused) {
-          player.play();
-        } else {
-          player.pause();
+  // ── Single-tap logic ───────────────────────────────────────────────────────
+  function handleSingleTap(zone) {
+    if (zone === "left" || zone === "right") {
+      // Di sisi kiri/kanan: toggle standby (show/hide controls)
+      toggleStandby();
+    } else {
+      // Zona tengah
+      if (!isStandby) {
+        // Tidak standby → masuk standby (tampilkan controls)
+        enterStandby();
+      } else {
+        // Sudah standby: cek apakah tap tepat di 20% tengah
+        // Zona "pause valid" = 40%–60% dari lebar (sudah diketahui zone === "center")
+        // Di sini kita pause/play, lalu tetap standby sementara
+        if (player) {
+          if (player.paused) {
+            player.play();
+          } else {
+            player.pause();
+          }
+          scheduleAutoHide();
         }
-        // Optional indikator
-        tampilkanIndikator(player.paused ? "⏸️ Pause" : "▶️ Play");
       }
     }
-  });
+  }
 
-  // Cegah event dblclick buatan (simulated) dari interaksi sentuh agar tidak memicu fullscreen
+  // ── Blokir dblclick simulated dari browser (mencegah fullscreen) ───────────
   container.addEventListener(
     "dblclick",
     (e) => {
@@ -1529,7 +1622,84 @@ function setupMobileGestures() {
       }
     },
     true,
-  ); // Gunakan fase capture agar dijalankan sebelum event listener bawaan Plyr
+  );
+
+  // ── Fix Volume Slider Mobile ───────────────────────────────────────────────
+  // Slider volume di-rotate -90deg via CSS sehingga terlihat vertikal,
+  // tapi browser tetap membaca drag kiri-kanan sebagai perubahan nilai.
+  // Di sini kita intercept touchmove dan konversi delta-Y → perubahan volume.
+  (function setupVolumeTouch() {
+    // Slider baru muncul saat hover (CSS), jadi pakai event delegation via document
+    let volStartY = null;
+    let volStartValue = null;
+    let activeSlider = null;
+
+    document.addEventListener(
+      "touchstart",
+      (e) => {
+        const slider = e.target.closest(".plyr__volume input[type='range']");
+        if (!slider) return;
+        // Tolak jika controls sedang tidak terlihat (isStandby false = hidden)
+        if (!isStandby) return;
+        volStartY = e.touches[0].clientY;
+        volStartValue = parseFloat(slider.value);
+        activeSlider = slider;
+        // Tahan auto-hide selama drag berlangsung
+        clearTimeout(standbyTimeout);
+        e.preventDefault();
+      },
+      { passive: false },
+    );
+
+    document.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!activeSlider || volStartY === null) return;
+        e.preventDefault();
+
+        const deltaY = volStartY - e.touches[0].clientY;
+        const range =
+          parseFloat(activeSlider.max) - parseFloat(activeSlider.min);
+        const delta = (deltaY / 120) * range;
+        const newVal = Math.min(
+          parseFloat(activeSlider.max),
+          Math.max(parseFloat(activeSlider.min), volStartValue + delta),
+        );
+
+        activeSlider.value = newVal;
+        activeSlider.dispatchEvent(new Event("input", { bubbles: true }));
+        if (player) player.volume = newVal;
+      },
+      { passive: false },
+    );
+
+    document.addEventListener("touchend", () => {
+      if (activeSlider) {
+        // Baru jadwalkan auto-hide setelah jari diangkat
+        scheduleAutoHide();
+      }
+      volStartY = null;
+      volStartValue = null;
+      activeSlider = null;
+    });
+  })();
+
+  // ── Sinkronisasi state standby saat player play/pause ─────────────────────
+  // Saat video mulai play → exit standby (hide controls) setelah delay
+  // Saat video pause → enter standby (tampilkan controls)
+  if (player) {
+    player.on("play", () => {
+      scheduleAutoHide();
+    });
+    player.on("pause", () => {
+      clearTimeout(standbyTimeout);
+      isStandby = true;
+      if (player.elements && player.elements.controls) {
+        player.elements.controls.style.opacity = "";
+        player.elements.controls.style.pointerEvents = "";
+      }
+    });
+  }
 }
 
 // Cache sprite URL per VTT agar tidak fetch ulang setiap fullscreen/transition
@@ -1587,33 +1757,56 @@ function refreshVttSprites(vttUrl) {
     .catch((e) => console.error("Gagal refresh VTT sprites:", e));
 }
 
-// Reuse satu elemen indikator (tidak buat DOM baru setiap gesture)
-let _indikatorEl = null;
-let _indikatorHideTimeout = null;
-let _indikatorRemoveTimeout = null;
+// ── Indikator Sisi (Rewind / Forward) — gaya YouTube ──────────────────────
+// Reuse dua elemen: satu untuk kiri (rewind), satu untuk kanan (forward)
+const _sisiIndicators = { rewind: null, forward: null };
+const _sisiHideTimeouts = { rewind: null, forward: null };
+const _sisiRippleCounts = { rewind: 0, forward: 0 }; // akumulasi detik per burst
 
-function tampilkanIndikator(teks) {
+/**
+ * tampilkanSisiIndikator(sisi, label)
+ * sisi  : "rewind" | "forward"
+ * label : string detik, mis. "-10s" atau "+10s"
+ */
+function tampilkanSisiIndikator(sisi, label) {
   const container = document.querySelector(".plyr");
   if (!container) return;
 
-  // Buat elemen sekali, reuse selanjutnya
-  if (!_indikatorEl || !_indikatorEl.parentNode) {
-    _indikatorEl = document.createElement("div");
-    _indikatorEl.className =
-      "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 text-white font-black py-2 px-4 rounded-full pointer-events-none z-50 transition-opacity duration-500";
-    container.appendChild(_indikatorEl);
+  // Buat elemen sekali per sisi, reuse selanjutnya
+  if (!_sisiIndicators[sisi] || !_sisiIndicators[sisi].parentNode) {
+    const el = document.createElement("div");
+    el.className = `meel-seek-indicator meel-seek-${sisi}`;
+    // Posisi: kiri untuk rewind, kanan untuk forward
+    // Animasi & style dihandle CSS (lihat video.css)
+    container.appendChild(el);
+    _sisiIndicators[sisi] = el;
   }
 
-  // Reset timeout sebelumnya jika masih aktif
-  clearTimeout(_indikatorHideTimeout);
-  clearTimeout(_indikatorRemoveTimeout);
+  const el = _sisiIndicators[sisi];
 
-  _indikatorEl.innerText = teks;
-  _indikatorEl.style.opacity = "1";
+  // Ripple icon — chevron ganda (<<  atau >>)
+  const icon =
+    sisi === "rewind"
+      ? `<svg class="meel-seek-icon" viewBox="0 0 24 24"><path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/></svg>`
+      : `<svg class="meel-seek-icon" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>`;
 
-  _indikatorHideTimeout = setTimeout(() => {
-    if (_indikatorEl) _indikatorEl.style.opacity = "0";
-  }, 500);
+  el.innerHTML = `${icon}<span class="meel-seek-label">${label}</span>`;
+
+  // Trigger animasi ulang (force reflow)
+  el.classList.remove("meel-seek-active");
+  void el.offsetWidth;
+  el.classList.add("meel-seek-active");
+
+  // Auto-hide setelah animasi selesai
+  clearTimeout(_sisiHideTimeouts[sisi]);
+  _sisiHideTimeouts[sisi] = setTimeout(() => {
+    el.classList.remove("meel-seek-active");
+  }, 800);
+}
+
+// Kompatibilitas mundur — tidak dipakai lagi tapi jaga agar tidak error
+function tampilkanIndikator(teks) {
+  // no-op: digantikan oleh tampilkanSisiIndikator
 }
 
 // 6. Fungsi Deskripsi — didefinisikan di sini agar bisa dipanggil dari watch.php inline script

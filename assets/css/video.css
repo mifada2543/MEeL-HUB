@@ -529,6 +529,150 @@ nav > div {
   position: relative;
   z-index: 1;
 }
+
+/* ── 12. MOBILE SEEK INDICATOR (Rewind / Forward) ── */
+
+/* Base: kedua sisi tersembunyi secara default */
+.meel-seek-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%; /* Sesuai zona 40% kiri/kanan */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 30;
+  opacity: 0;
+  border-radius: 0;
+  overflow: hidden;
+  color: #fff;
+  transition: none; /* Animasi dikendalikan class .meel-seek-active */
+}
+
+/* Posisi: kiri untuk rewind */
+.meel-seek-rewind {
+  left: 0;
+  border-radius: 0 999px 999px 0;
+  background: radial-gradient(
+    ellipse at 0% 50%,
+    rgba(255, 255, 255, 0.14) 0%,
+    transparent 70%
+  );
+}
+
+/* Posisi: kanan untuk forward */
+.meel-seek-forward {
+  right: 0;
+  border-radius: 999px 0 0 999px;
+  background: radial-gradient(
+    ellipse at 100% 50%,
+    rgba(255, 255, 255, 0.14) 0%,
+    transparent 70%
+  );
+}
+
+/* Aktif: fade in lalu fade out */
+.meel-seek-indicator.meel-seek-active {
+  animation: meelSeekPop 0.75s ease-out forwards;
+}
+
+@keyframes meelSeekPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+/* Ikon chevron ganda */
+.meel-seek-icon {
+  width: 36px;
+  height: 36px;
+  fill: rgba(255, 255, 255, 0.9);
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.5));
+  flex-shrink: 0;
+}
+
+/* Animasi ikon: bergerak ke arah seek */
+.meel-seek-rewind .meel-seek-icon {
+  animation: meelSeekIconLeft 0.75s ease-out forwards;
+}
+
+.meel-seek-forward .meel-seek-icon {
+  animation: meelSeekIconRight 0.75s ease-out forwards;
+}
+
+@keyframes meelSeekIconLeft {
+  0% {
+    transform: translateX(8px);
+    opacity: 0.4;
+  }
+  25% {
+    transform: translateX(0px);
+    opacity: 1;
+  }
+  75% {
+    transform: translateX(-4px);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(-8px);
+    opacity: 0;
+  }
+}
+
+@keyframes meelSeekIconRight {
+  0% {
+    transform: translateX(-8px);
+    opacity: 0.4;
+  }
+  25% {
+    transform: translateX(0px);
+    opacity: 1;
+  }
+  75% {
+    transform: translateX(4px);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(8px);
+    opacity: 0;
+  }
+}
+
+/* Label detik */
+.meel-seek-label {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Mobile Controls Visibility Override ── */
+/* Saat JS menyembunyikan controls via style.opacity, transisi halus */
+.plyr__controls {
+  transition: opacity 0.25s ease !important;
+}
+.plyr__control--overlaid {
+  transition: opacity 0.25s ease !important;
+}
 /* ── FORCE ROUNDED CORNERS FOR PLYRL PLAYER ── */
 #main-video-wrapper,
 #main-video-wrapper .plyr,
