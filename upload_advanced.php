@@ -31,8 +31,9 @@ register_shutdown_function(function () {
     }
 });
 
-$message    = "";
-$transcoder = new Transcoder($conn, $_SESSION['user_id']);
+$message        = "";
+$rate_limit_msg = "";
+$transcoder     = new Transcoder($conn, $_SESSION['user_id']);
 
 require_once 'modules/System.php';
 $sys     = new System($conn);
@@ -49,6 +50,26 @@ $is_admin  = ($user_role === 'admin');
 $q_active = $conn->query("SELECT COUNT(*) FROM upload_queue WHERE status='processing'");
 $active_count = $q_active ? (int)$q_active->fetch_row()[0] : 0;
 
+// ── Hitung sisa kuota upload per jam ──
+$quota_video_used = 0;
+$quota_music_used = 0;
+$upload_max = 2;
+
+if ($user_role !== 'admin') {
+    $q_vid = $conn->prepare("SELECT COUNT(*) FROM video WHERE user_id = ? AND upload_date > NOW() - INTERVAL 1 HOUR");
+    $q_vid->bind_param("i", $_SESSION['user_id']);
+    $q_vid->execute();
+    $quota_video_used = (int)$q_vid->get_result()->fetch_row()[0];
+
+    $q_mus = $conn->prepare("SELECT COUNT(*) FROM music WHERE user_id = ? AND upload_date > NOW() - INTERVAL 1 HOUR");
+    $q_mus->bind_param("i", $_SESSION['user_id']);
+    $q_mus->execute();
+    $quota_music_used = (int)$q_mus->get_result()->fetch_row()[0];
+}
+
+$quota_video_remaining = ($user_role === 'admin') ? -1 : $upload_max - $quota_video_used;
+$quota_music_remaining = ($user_role === 'admin') ? -1 : $upload_max - $quota_music_used;
+
 if (isset($_GET['success'])) {
     $message = 'success';
 }
@@ -58,20 +79,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     if ($is_busy) {
         $message = 'busy';
     } else {
-        try {
-            $url     = trim($_POST['url']);
-            $type    = $_POST['type'] ?? '';
-            $message = $transcoder->processDownload($url, $type);
-        } catch (Exception $e) {
-            echo "<script>meelError(" . json_encode($e->getMessage()) . ");</script>";
-            echo str_repeat(' ', 1024);
-            flush();
-            exit;
-        } catch (Throwable $e) {
-            echo "<script>meelError(" . json_encode($e->getMessage()) . ");</script>";
-            echo str_repeat(' ', 1024);
-            flush();
-            exit;
+        // ── Rate limit check (sama seperti Uploader.php) ────────────────
+        $type        = $_POST['type'] ?? '';
+        $limit_table = ($type === 'music') ? 'music' : 'video';
+        $limit       = $sys->checkRateLimit($_SESSION['user_id'], $limit_table, $user_role);
+        if (!$limit['allowed']) {
+            $message        = 'rate_limit';
+            $rate_limit_msg = "Batas upload tercapai! Tunggu {$limit['minutes']} menit lagi.";
+        } else {
+            try {
+                $url     = trim($_POST['url']);
+                $message = $transcoder->processDownload($url, $type);
+            } catch (Exception $e) {
+                echo "<script>meelError(" . json_encode($e->getMessage()) . ");</script>";
+                echo str_repeat(' ', 1024);
+                flush();
+                exit;
+            } catch (Throwable $e) {
+                echo "<script>meelError(" . json_encode($e->getMessage()) . ");</script>";
+                echo str_repeat(' ', 1024);
+                flush();
+                exit;
+            }
         }
     }
 }
@@ -549,6 +578,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                                 <div style="color:rgba(251,146,60,.7);">Sistem sedang memproses antrean lain. Coba lagi beberapa saat.</div>
                             </div>
                         </div>
+                    <?php elseif ($message === 'rate_limit'): ?>
+                        <div class="alert-banner alert-busy">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <div>
+                                <div style="font-weight:700;letter-spacing:.1em;margin-bottom:3px;">BATAS UPLOAD TERCAPAI</div>
+                                <div style="color:rgba(251,146,60,.7);"><?= htmlspecialchars($rate_limit_msg) ?></div>
+                            </div>
+                        </div>
                     <?php endif; ?>
 
                     <div class="form-card">
@@ -687,6 +728,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                                     <?= $is_busy ? 'Sibuk' : 'Siap Proses' ?>
                                 </span>
                             </div>
+
+                            <!-- ── Quota bar ── -->
+                            <div style="height:1px;background:var(--border);"></div>
+                            <div>
+                                <div style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem;">
+                                    Sisa Kuota · <?= $user_role === 'admin' ? 'Tak terbatas' : "{$upload_max} upload/jam" ?>
+                                </div>
+                                <div style="display:flex;flex-direction:column;gap:.4rem;">
+                                    <?php
+                                    $quotas = [
+                                        ['label' => 'Video', 'used' => $quota_video_used, 'remaining' => $quota_video_remaining, 'color' => '#ef4444'],
+                                        ['label' => 'Music', 'used' => $quota_music_used, 'remaining' => $quota_music_remaining, 'color' => '#f97316'],
+                                    ];
+                                    foreach ($quotas as $q):
+                                        $pct  = ($user_role !== 'admin' && $upload_max > 0) ? round(($q['used'] / $upload_max) * 100) : 0;
+                                        $stat = $user_role === 'admin' ? '∞' : ($q['remaining'] > 0 ? "{$q['used']}/{$upload_max}" : 'Penuh');
+                                        $stat_color = $user_role === 'admin' ? 'var(--muted)' : ($q['remaining'] <= 0 ? '#ef4444' : '#4ade80');
+                                    ?>
+                                        <div>
+                                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+                                                <span style="font-family:var(--font-mono);font-size:.58rem;color:<?= $q['color'] ?>;"><?= $q['label'] ?></span>
+                                                <span style="font-family:var(--font-mono);font-size:.58rem;color:<?= $stat_color ?>;"><?= $stat ?></span>
+                                            </div>
+                                            <?php if ($user_role !== 'admin'): ?>
+                                                <div style="height:3px;border-radius:3px;background:rgba(255,255,255,.04);overflow:hidden;">
+                                                    <div style="height:100%;width:<?= min($pct, 100) ?>%;border-radius:3px;background:<?= $q['remaining'] <= 0 ? '#ef4444' : $q['color'] ?>;transition:width .3s;"></div>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+
                             <?php if ($is_admin): ?>
                                 <div style="height:1px;background:var(--border);"></div>
                                 <a href="admin/index.php#queues" style="font-family:var(--font-mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);text-decoration:none;display:flex;align-items:center;gap:.4rem;opacity:.8;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
