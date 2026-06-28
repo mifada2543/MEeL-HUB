@@ -46,6 +46,8 @@ const GLOW_H = 6;
 let glowTargetData = new Float32Array(GLOW_W * GLOW_H * 4);
 let glowCurData = new Float32Array(GLOW_W * GLOW_H * 4);
 let glowStartFn = null; // referensi ke startGlow(), di-assign saat init
+let glowStopFn = null; // referensi ke stopGlow(), di-assign saat init
+let glowEnabled = localStorage.getItem("meel_glow_enabled") !== "false";
 let glowNavbar = null; // referensi ke <nav>, di-assign saat init
 
 // Inisialisasi Icon
@@ -406,6 +408,9 @@ function setupMeelPlayerEvents() {
   }
 
   player.on("ready", (event) => {
+    if (typeof window.appendCustomSettings === "function") {
+      setTimeout(window.appendCustomSettings, 0);
+    }
     // Paksa preload agresif — Plyr kadang reset ini ke "metadata"
     if (videoElement && !isHls) {
       videoElement.preload = "auto";
@@ -424,7 +429,7 @@ function setupMeelPlayerEvents() {
     if (isAutoRecovering && savedPos) {
       isAutoRecovering = false;
       player.currentTime = parseFloat(savedPos);
-      player.play().catch(() => {});
+      player.play().catch(() => { });
       startStuckDetector();
       return;
     }
@@ -511,11 +516,15 @@ function setupMeelPlayerEvents() {
               doPlayAfterReady();
             }
           }
-        } catch (e) {}
+        } catch (e) { }
       });
     } else {
       doPlayAfterReady();
     }
+  });
+
+  player.on("controlsshown", () => {
+    // appendCustomSettings dipanggil hanya via settings button listener, bukan setiap controlsshown
   });
 
   const onPlaybackStart = () => {
@@ -634,7 +643,7 @@ function setupMeelPlayerEvents() {
         if (m) {
           try {
             fetchedConfig = new Function("return " + m[1])();
-          } catch (e) {}
+          } catch (e) { }
         }
       });
 
@@ -745,7 +754,7 @@ function setupMeelPlayerEvents() {
 
   player.on("enterfullscreen", () => {
     if (screen.orientation?.lock) {
-      screen.orientation.lock("landscape").catch(() => {});
+      screen.orientation.lock("landscape").catch(() => { });
     }
     // Re-apply VTT sprites saat masuk fullscreen (handle mobile cloning)
     if (vttSrc) {
@@ -806,7 +815,7 @@ function setupMeelPlayerEvents() {
           fsSampleCtx.drawImage(videoElement, 0, 0, GLOW_W, GLOW_H);
           const data = fsSampleCtx.getImageData(0, 0, GLOW_W, GLOW_H).data;
           fsTargetData.set(data);
-        } catch (e) {}
+        } catch (e) { }
       };
 
       const fsLerpDraw = () => {
@@ -821,6 +830,7 @@ function setupMeelPlayerEvents() {
       };
 
       const startFs = () => {
+        if (!glowEnabled) return;
         if (fsSampleInt) return;
         fsCanvas.style.opacity = "0.6";
         fsSampleColor();
@@ -925,7 +935,7 @@ function setupMeelPlayerEvents() {
         sampleCtx.drawImage(videoElement, 0, 0, GLOW_W, GLOW_H);
         const data = sampleCtx.getImageData(0, 0, GLOW_W, GLOW_H).data;
         glowTargetData.set(data);
-      } catch (e) {}
+      } catch (e) { }
     };
 
     const LERP = 0.018;
@@ -956,6 +966,7 @@ function setupMeelPlayerEvents() {
     };
 
     const startGlow = () => {
+      if (!glowEnabled) return;
       if (glowSampleInterval) return; // Cegah double-start
       glowCanvas.classList.add("glow-active");
       sampleColor();
@@ -995,6 +1006,151 @@ function setupMeelPlayerEvents() {
 
     // Expose ke module scope agar mini-player restore bisa restart glow
     glowStartFn = startGlow;
+    glowStopFn = stopGlow;
+
+    const makeValueHTML = (on) =>
+      `${on ? "On" : "Off"} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display:${on ? "inline-block" : "none"};vertical-align:middle;margin-left:4px"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    const updateGlowMenuUI = () => {
+      const el = document.getElementById("plyr-setting-glow");
+      if (!el) return;
+      el.setAttribute("aria-checked", glowEnabled ? "true" : "false");
+      const val = el.querySelector(".plyr__menu__value");
+      if (val) val.innerHTML = makeValueHTML(glowEnabled);
+    };
+
+    const updateLoopMenuUI = () => {
+      const el = document.getElementById("plyr-setting-loop");
+      if (!el) return;
+      const isLoop = player ? player.loop : false;
+      el.setAttribute("aria-checked", isLoop ? "true" : "false");
+      const val = el.querySelector(".plyr__menu__value");
+      if (val) val.innerHTML = makeValueHTML(isLoop);
+    };
+
+    window.updateLoopMenuUI = updateLoopMenuUI;
+    window.updateGlowMenuUI = updateGlowMenuUI;
+
+    // Cari panel home Plyr — panel berisi daftar opsi di root settings menu
+    const getSettingsHomePanel = () => {
+      if (!player?.elements?.container) return null;
+      // Plyr 3.x: player.elements.settings.panels.home
+      const directPanel = player.elements?.settings?.panels?.home;
+      if (directPanel) return directPanel.querySelector('[role="menu"]') || directPanel;
+      // Fallback DOM search
+      const c = player.elements.container;
+      return (
+        c.querySelector('.plyr__menu__container [id$="-home"] [role="menu"]') ||
+        c.querySelector('.plyr__menu__container [id$="-home"]') ||
+        c.querySelector('.plyr__menu__container [role="menu"]') ||
+        c.querySelector('.plyr__menu [role="menu"]')
+      );
+    };
+
+    let settingsListenerAttached = false;
+
+    // Inject items ke panel — dipanggil tiap kali settings menu dibuka
+    const injectSettingsItems = () => {
+      const panel = getSettingsHomePanel();
+      if (!panel) return;
+      panel.querySelector("#plyr-setting-glow")?.remove();
+      panel.querySelector("#plyr-setting-loop")?.remove();
+
+      const glowItem = document.createElement("button");
+      glowItem.type = "button";
+      glowItem.className = "plyr__control";
+      glowItem.setAttribute("role", "menuitemcheckbox");
+      glowItem.id = "plyr-setting-glow";
+      glowItem.innerHTML = `<span>Ambient Glow</span><span class="plyr__menu__value"></span>`;
+      glowItem.addEventListener("click", (e) => { e.stopPropagation(); window.toggleGlow(); });
+
+      const loopItem = document.createElement("button");
+      loopItem.type = "button";
+      loopItem.className = "plyr__control";
+      loopItem.setAttribute("role", "menuitemcheckbox");
+      loopItem.id = "plyr-setting-loop";
+      loopItem.innerHTML = `<span>Loop Playback</span><span class="plyr__menu__value"></span>`;
+      loopItem.addEventListener("click", (e) => { e.stopPropagation(); window.toggleLoop(); });
+
+      panel.appendChild(glowItem);
+      panel.appendChild(loopItem);
+      updateGlowMenuUI();
+      updateLoopMenuUI();
+    };
+
+    // Setup listener pada settings button — dipanggil sekali di ready
+    window.appendCustomSettings = () => {
+      if (settingsListenerAttached) return;
+      if (!player?.elements?.container) return;
+      settingsListenerAttached = true;
+
+      const settingsBtn = player.elements.container.querySelector('[data-plyr="settings"]');
+      const onOpen = () => setTimeout(injectSettingsItems, 0);
+      if (settingsBtn) {
+        settingsBtn.addEventListener("click", onOpen);
+        settingsBtn.addEventListener("touchend", onOpen, { passive: true });
+      }
+    };
+
+    // ── Toast notifikasi toggle ──
+    let _toastTimeout = null;
+    const showToggleToast = (icon, label) => {
+      const container = player?.elements?.container;
+      if (!container) return;
+
+      // Hapus toast lama agar animasi restart
+      const old = container.querySelector(".meel-toggle-toast");
+      if (old) old.remove();
+      if (_toastTimeout) { clearTimeout(_toastTimeout); _toastTimeout = null; }
+
+      const toast = document.createElement("div");
+      toast.className = "meel-toggle-toast";
+      toast.innerHTML = `${icon}<span>${label}</span>`;
+      container.appendChild(toast);
+
+      _toastTimeout = setTimeout(() => toast.remove(), 1900);
+    };
+
+    window.toggleGlow = () => {
+      glowEnabled = !glowEnabled;
+      localStorage.setItem("meel_glow_enabled", glowEnabled ? "true" : "false");
+      updateGlowMenuUI();
+
+      const icon = glowEnabled
+        ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`
+        : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="2" x2="22" y2="22"/><path d="M9.58 4.18A8 8 0 0 1 20 12c0 1.49-.41 2.88-1.12 4.08M6.51 6.51A8 8 0 0 0 4 12c0 4.42 3.58 8 8 8a8 8 0 0 0 5.49-2.18"/></svg>`;
+      showToggleToast(icon, glowEnabled ? "Ambient Glow On" : "Ambient Glow Off");
+
+      if (glowEnabled) {
+        if (videoElement && !videoElement.paused && !videoElement.ended && glowStartFn) {
+          glowStartFn();
+        }
+        const plyrEl = player?.elements?.container;
+        if (plyrEl && plyrEl._fsGlowStart && !videoElement.paused && !videoElement.ended) {
+          plyrEl._fsGlowStart();
+        }
+      } else {
+        if (glowStopFn) {
+          glowStopFn(true);
+        }
+        const plyrEl = player?.elements?.container;
+        if (plyrEl && plyrEl._fsGlowStop) {
+          plyrEl._fsGlowStop();
+        }
+      }
+    };
+
+    window.toggleLoop = () => {
+      if (player) {
+        player.loop = !player.loop;
+        updateLoopMenuUI();
+        const isLoop = player.loop;
+        const icon = isLoop
+          ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`
+          : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="2" x2="22" y2="22"/><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h11"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`;
+        showToggleToast(icon, isLoop ? "Loop On" : "Loop Off");
+      }
+    };
 
     player.on("play", startGlow);
     player.on("playing", startGlow);
@@ -1009,32 +1165,7 @@ function setupMeelPlayerEvents() {
 }
 
 // 5. Fungsi Penunjang UI
-function updateLoopUI() {
-  const btnLoop = document.getElementById("btn-loop");
-  const loopText = document.getElementById("loop-text");
-  if (!btnLoop || !loopText) return;
-
-  if (player.loop) {
-    btnLoop.classList.remove("bg-gray-800", "text-gray-400");
-    btnLoop.classList.add("bg-red-500/10", "text-red-400", "border-red-600/30");
-    loopText.innerText = "Loop On";
-  } else {
-    btnLoop.classList.add("bg-gray-800", "text-gray-400");
-    btnLoop.classList.remove(
-      "bg-red-500/10",
-      "text-red-400",
-      "border-red-600/30",
-    );
-    loopText.innerText = "Loop Off";
-  }
-}
-
-window.toggleLoop = function () {
-  if (player) {
-    player.loop = !player.loop;
-    updateLoopUI();
-  }
-};
+// toggleLoop & updateLoopMenuUI didefinisikan di dalam setupMeelPlayerEvents (blok glowCanvas)
 
 // --- FITUR MINI PLAYER SPA ---
 let isMiniPlayerActive = false;
@@ -1413,9 +1544,6 @@ window.addEventListener(
     }
 
     // Shortcut lainnya
-    if (e.key.toLowerCase() === "l") {
-      setTimeout(updateLoopUI, 50);
-    }
     if (e.key.toLowerCase() === "i") {
       toggleMiniPlayer();
     }

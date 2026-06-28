@@ -287,12 +287,12 @@ body {
   position: absolute;
   inset: 0;
 
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.5) 5%,
-    /* Kegelapan menengah yang rata */ rgba(0, 0, 0, 0) 20%
+  background: linear-gradient(to top,
+      rgba(0, 0, 0, 0.5) 5%,
+      /* Kegelapan menengah yang rata */
+      rgba(0, 0, 0, 0) 20%
       /* Transparan mulai dari 20% ke atas */
-  );
+    );
 
   opacity: 0;
   visibility: hidden;
@@ -458,7 +458,8 @@ body {
 
 /* Title lebih jelas: naikkan ke gray-200 (dari gray-400), tambah contrast */
 .rec-title-text {
-  color: #e5e7eb !important; /* gray-200 */
+  color: #e5e7eb !important;
+  /* gray-200 */
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
@@ -504,7 +505,8 @@ body {
 /* Navbar pakai ::before sebagai layer warna ambient.
    Konten navbar (z-index lebih tinggi) tidak terkena efek sama sekali. */
 nav {
-  --navbar-glow-color: 0, 0, 0; /* default hitam, diupdate JS via lerp */
+  --navbar-glow-color: 0, 0, 0;
+  /* default hitam, diupdate JS via lerp */
   position: relative;
   isolation: isolate;
 }
@@ -515,17 +517,15 @@ nav::before {
   inset: 0;
   z-index: 0;
   /* Gradient dari kiri ke kanan — lebih sinematik, tidak merata */
-  background: linear-gradient(
-    to right,
-    rgba(var(--navbar-glow-color), 0.18) 0%,
-    rgba(var(--navbar-glow-color), 0.08) 50%,
-    rgba(var(--navbar-glow-color), 0.02) 100%
-  );
+  background: linear-gradient(to right,
+      rgba(var(--navbar-glow-color), 0.18) 0%,
+      rgba(var(--navbar-glow-color), 0.08) 50%,
+      rgba(var(--navbar-glow-color), 0.02) 100%);
   pointer-events: none;
 }
 
 /* Konten navbar harus di atas pseudo-element */
-nav > div {
+nav>div {
   position: relative;
   z-index: 1;
 }
@@ -537,7 +537,8 @@ nav > div {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 40%; /* Sesuai zona 40% kiri/kanan */
+  width: 40%;
+  /* Sesuai zona 40% kiri/kanan */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -549,29 +550,26 @@ nav > div {
   border-radius: 0;
   overflow: hidden;
   color: #fff;
-  transition: none; /* Animasi dikendalikan class .meel-seek-active */
+  transition: none;
+  /* Animasi dikendalikan class .meel-seek-active */
 }
 
 /* Posisi: kiri untuk rewind */
 .meel-seek-rewind {
   left: 0;
   border-radius: 0 999px 999px 0;
-  background: radial-gradient(
-    ellipse at 0% 50%,
-    rgba(255, 255, 255, 0.14) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(ellipse at 0% 50%,
+      rgba(255, 255, 255, 0.14) 0%,
+      transparent 70%);
 }
 
 /* Posisi: kanan untuk forward */
 .meel-seek-forward {
   right: 0;
   border-radius: 999px 0 0 999px;
-  background: radial-gradient(
-    ellipse at 100% 50%,
-    rgba(255, 255, 255, 0.14) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(ellipse at 100% 50%,
+      rgba(255, 255, 255, 0.14) 0%,
+      transparent 70%);
 }
 
 /* Aktif: fade in lalu fade out */
@@ -584,14 +582,17 @@ nav > div {
     opacity: 0;
     transform: scale(0.92);
   }
+
   18% {
     opacity: 1;
     transform: scale(1);
   }
+
   65% {
     opacity: 1;
     transform: scale(1);
   }
+
   100% {
     opacity: 0;
     transform: scale(1.04);
@@ -621,14 +622,17 @@ nav > div {
     transform: translateX(8px);
     opacity: 0.4;
   }
+
   25% {
     transform: translateX(0px);
     opacity: 1;
   }
+
   75% {
     transform: translateX(-4px);
     opacity: 0.8;
   }
+
   100% {
     transform: translateX(-8px);
     opacity: 0;
@@ -640,14 +644,17 @@ nav > div {
     transform: translateX(-8px);
     opacity: 0.4;
   }
+
   25% {
     transform: translateX(0px);
     opacity: 1;
   }
+
   75% {
     transform: translateX(4px);
     opacity: 0.8;
   }
+
   100% {
     transform: translateX(8px);
     opacity: 0;
@@ -670,22 +677,27 @@ nav > div {
 .plyr__controls {
   transition: opacity 0.25s ease !important;
 }
+
 .plyr__control--overlaid {
   transition: opacity 0.25s ease !important;
 }
+
 /* ── FORCE ROUNDED CORNERS FOR PLYRL PLAYER ── */
 #main-video-wrapper,
 #main-video-wrapper .plyr,
 #main-video-wrapper .plyr__video-wrapper {
-  border-radius: 1rem !important; /* Kelengkungan layar HP/Kecil */
+  border-radius: 1rem !important;
+  /* Kelengkungan layar HP/Kecil */
   overflow: hidden !important;
 }
 
 @media (min-width: 640px) {
+
   #main-video-wrapper,
   #main-video-wrapper .plyr,
   #main-video-wrapper .plyr__video-wrapper {
-    border-radius: 2rem !important; /* Kelengkungan layar Desktop (Lebih melengkung mirip gambar) */
+    border-radius: 2rem !important;
+    /* Kelengkungan layar Desktop (Lebih melengkung mirip gambar) */
   }
 }
 
@@ -740,7 +752,61 @@ nav > div {
 }
 
 /* Matikan glow saat mini-player aktif */
-.mini-player-mode ~ #video-glow-canvas,
-#mini-player-shell ~ #video-glow-canvas {
+.mini-player-mode~#video-glow-canvas,
+#mini-player-shell~#video-glow-canvas {
   display: none !important;
+}
+
+/* ── Toast Notifikasi Toggle (Loop / Glow) ── */
+.meel-toggle-toast {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.88);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 8px 12px;
+  background: rgba(10, 12, 18, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: #fff;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  z-index: 50;
+  white-space: nowrap;
+  opacity: 0;
+  animation: meelToastPop 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.meel-toggle-toast svg {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+@keyframes meelToastPop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.88);
+  }
+
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
 }

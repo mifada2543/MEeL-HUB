@@ -215,11 +215,6 @@ session_write_close();
                         </div>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
-                        <button id="btn-loop" onclick="toggleLoop()" title="Perulangan"
-                            class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 sm:px-4 py-2 rounded-xl border border-transparent transition-all cursor-pointer">
-                            <i data-lucide="repeat" class="w-3.5 h-3.5"></i>
-                            <span id="loop-text">Loop Off</span>
-                        </button>
                         <?php if (isset($_SESSION['username'])): ?>
                             <a href="../transcode.php?id=<?= $id ?>"
                                 class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline">
