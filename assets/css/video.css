@@ -146,18 +146,43 @@ body {
   display: flex;
 }
 
-/* ── 6. PLYR OVERRIDES ── */
+/* ── 6. PLYR OVERRIDES & NOTCH-SAFE FULLSCREEN ── */
+
+/* viewport-fit=cover di meta viewport memungkinkan halaman meluas ke area notch.
+   Di sini kita pastikan wrapper fullscreen melebar penuh (background hitam)
+   hingga ke notch, tanpa ada celah. Video di dalamnya tetap pakai ukuran
+   asli (contain — default), tidak di-stretch. Kontrol Plyr diberi padding
+   env(safe-area-inset-*) agar tombol tidak tertutup notch. */
+
 .plyr--fullscreen-fallback {
   background: #000 !important;
 }
 
-/* Paksa background hitam saat fullscreen */
+/* Paksa background hitam saat fullscreen — wrapper melebar penuh ke notch,
+   video di dalamnya tetap pada ukuran aslinya (contain default) */
 .plyr--fullscreen-fallback,
 .plyr--fullscreen-fallback .plyr__video-wrapper,
 .plyr:-webkit-full-screen .plyr__video-wrapper,
 .plyr:fullscreen .plyr__video-wrapper {
   --plyr-video-background: #000 !important;
   background: #000 !important;
+}
+
+/* Kontrol Plyr di fullscreen — diberi padding safe-area agar tombol tidak
+   tersembunyi di balik notch / rounded corner */
+.plyr:-webkit-full-screen .plyr__controls,
+.plyr:fullscreen .plyr__controls,
+.plyr--fullscreen-fallback .plyr__controls {
+  padding-left: env(safe-area-inset-left, 0px) !important;
+  padding-right: env(safe-area-inset-right, 0px) !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+
+/* Tombol play-large di tengah — juga aman dari notch */
+.plyr:-webkit-full-screen .plyr__control--overlaid,
+.plyr:fullscreen .plyr__control--overlaid,
+.plyr--fullscreen-fallback .plyr__control--overlaid {
+  margin-top: env(safe-area-inset-top, 0px);
 }
 
 /* Canvas glow fullscreen — solid color 1x1, image-rendering pixelated */
@@ -502,8 +527,10 @@ body {
 }
 
 /* ── NAVBAR AMBIENT GLOW ── */
-/* Navbar pakai ::before sebagai layer warna ambient.
-   Konten navbar (z-index lebih tinggi) tidak terkena efek sama sekali. */
+/* Navbar pakai ::before sebagai lapisan ambient glow yang memancar
+   dari arah video (bawah) ke atas, persis seperti efek cahaya di
+   sekitar player. Konten navbar (z-index lebih tinggi) tidak terkena
+   efek sama sekali — tetap terbaca jelas. */
 nav {
   --navbar-glow-color: 0, 0, 0;
   /* default hitam, diupdate JS via lerp */
@@ -514,13 +541,18 @@ nav {
 nav::before {
   content: "";
   position: absolute;
-  inset: 0;
   z-index: 0;
-  /* Gradient dari kiri ke kanan — lebih sinematik, tidak merata */
-  background: linear-gradient(to right,
-      rgba(var(--navbar-glow-color), 0.18) 0%,
-      rgba(var(--navbar-glow-color), 0.08) 50%,
-      rgba(var(--navbar-glow-color), 0.02) 100%);
+  /* Melebar keluar navbar agar blur tidak terpotong di tepi */
+  top: -20px;
+  left: -20px;
+  right: -20px;
+  bottom: -20px;
+  /* Radial gradient dari tengah bawah (dari arah video) */
+  background: radial-gradient(ellipse 70% 50% at 50% calc(100% - 10px),
+      rgba(var(--navbar-glow-color), 0.45) 0%,
+      rgba(var(--navbar-glow-color), 0.18) 40%,
+      transparent 70%);
+  filter: blur(20px);
   pointer-events: none;
 }
 
@@ -528,6 +560,17 @@ nav::before {
 nav>div {
   position: relative;
   z-index: 1;
+}
+
+/* Background untuk tombol avatar di navbar agar tetap terbaca
+   di atas navbar transparan — hover state tetap pakai CSS existing */
+#nav-avatar-btn {
+  background: rgba(255, 255, 255, 0.04) !important;
+  transition: background 0.15s !important;
+}
+
+#nav-avatar-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* ── 12. MOBILE SEEK INDICATOR (Rewind / Forward) ── */
