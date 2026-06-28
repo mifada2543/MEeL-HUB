@@ -41,12 +41,10 @@ const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 // ── Glow ambient — state di-hoist ke module scope agar mini-player bisa akses ──
 let glowSampleInterval = null;
 let glowLerpInterval = null;
-let glowTargetR = 0,
-  glowTargetG = 0,
-  glowTargetB = 0;
-let glowCurR = 0,
-  glowCurG = 0,
-  glowCurB = 0;
+const GLOW_W = 8;
+const GLOW_H = 6;
+let glowTargetData = new Float32Array(GLOW_W * GLOW_H * 4);
+let glowCurData = new Float32Array(GLOW_W * GLOW_H * 4);
 let glowStartFn = null; // referensi ke startGlow(), di-assign saat init
 let glowNavbar = null; // referensi ke <nav>, di-assign saat init
 
@@ -770,8 +768,8 @@ function setupMeelPlayerEvents() {
 
       const fsCanvas = document.createElement("canvas");
       fsCanvas.id = "video-glow-canvas-fs";
-      fsCanvas.width = 1;
-      fsCanvas.height = 1;
+      fsCanvas.width = GLOW_W;
+      fsCanvas.height = GLOW_H;
       fsCanvas.style.cssText = [
         "position:absolute",
         "top:50%",
@@ -790,49 +788,36 @@ function setupMeelPlayerEvents() {
 
       const fsCtx = fsCanvas.getContext("2d");
 
-      // Canvas sample 20x20 — 400 pixel, lebih akurat dari 8x4
       const fsSample = document.createElement("canvas");
-      fsSample.width = 20;
-      fsSample.height = 20;
+      fsSample.width = GLOW_W;
+      fsSample.height = GLOW_H;
       const fsSampleCtx = fsSample.getContext("2d", {
         willReadFrequently: true,
       });
 
-      let fsTgtR = 0,
-        fsTgtG = 0,
-        fsTgtB = 0;
-      let fsCurR = 0,
-        fsCurG = 0,
-        fsCurB = 0;
+      const fsTargetData = new Float32Array(GLOW_W * GLOW_H * 4);
+      const fsCurData = new Float32Array(GLOW_W * GLOW_H * 4);
       let fsSampleInt = null,
         fsLerpInt = null;
 
       const fsSampleColor = () => {
         if (videoElement.readyState < 2 || document.hidden) return;
         try {
-          fsSampleCtx.drawImage(videoElement, 0, 0, 20, 20);
-          const data = fsSampleCtx.getImageData(0, 0, 20, 20).data;
-          let r = 0,
-            g = 0,
-            b = 0;
-          for (let i = 0; i < data.length; i += 4) {
-            r += data[i];
-            g += data[i + 1];
-            b += data[i + 2];
-          }
-          const n = data.length / 4;
-          fsTgtR = r / n;
-          fsTgtG = g / n;
-          fsTgtB = b / n;
+          fsSampleCtx.drawImage(videoElement, 0, 0, GLOW_W, GLOW_H);
+          const data = fsSampleCtx.getImageData(0, 0, GLOW_W, GLOW_H).data;
+          fsTargetData.set(data);
         } catch (e) {}
       };
 
       const fsLerpDraw = () => {
-        fsCurR += (fsTgtR - fsCurR) * 0.018;
-        fsCurG += (fsTgtG - fsCurG) * 0.018;
-        fsCurB += (fsTgtB - fsCurB) * 0.018;
-        fsCtx.fillStyle = `rgb(${Math.round(fsCurR)},${Math.round(fsCurG)},${Math.round(fsCurB)})`;
-        fsCtx.fillRect(0, 0, 1, 1);
+        for (let i = 0; i < fsCurData.length; i++) {
+          fsCurData[i] += (fsTargetData[i] - fsCurData[i]) * 0.018;
+        }
+        const imgData = fsCtx.createImageData(GLOW_W, GLOW_H);
+        for (let i = 0; i < fsCurData.length; i++) {
+          imgData.data[i] = Math.round(fsCurData[i]);
+        }
+        fsCtx.putImageData(imgData, 0, 0);
       };
 
       const startFs = () => {
@@ -853,6 +838,9 @@ function setupMeelPlayerEvents() {
           fsLerpInt = null;
         }
         fsCanvas.style.opacity = "0";
+        fsTargetData.fill(0);
+        fsCurData.fill(0);
+        fsCtx.clearRect(0, 0, GLOW_W, GLOW_H);
       };
 
       const pauseFs = () => {
@@ -919,14 +907,14 @@ function setupMeelPlayerEvents() {
   const glowCanvas = document.getElementById("video-glow-canvas");
   if (glowCanvas && videoElement) {
     const sampleCanvas = document.createElement("canvas");
-    sampleCanvas.width = 20;
-    sampleCanvas.height = 20;
+    sampleCanvas.width = GLOW_W;
+    sampleCanvas.height = GLOW_H;
     const sampleCtx = sampleCanvas.getContext("2d", {
       willReadFrequently: true,
     });
 
-    glowCanvas.width = 1;
-    glowCanvas.height = 1;
+    glowCanvas.width = GLOW_W;
+    glowCanvas.height = GLOW_H;
     const ctx = glowCanvas.getContext("2d");
 
     glowNavbar = document.querySelector("nav");
@@ -934,35 +922,37 @@ function setupMeelPlayerEvents() {
     const sampleColor = () => {
       if (videoElement.readyState < 2 || document.hidden) return;
       try {
-        sampleCtx.drawImage(videoElement, 0, 0, 20, 20);
-        const data = sampleCtx.getImageData(0, 0, 20, 20).data;
-        let r = 0,
-          g = 0,
-          b = 0;
-        for (let i = 0; i < data.length; i += 4) {
-          r += data[i];
-          g += data[i + 1];
-          b += data[i + 2];
-        }
-        const n = data.length / 4;
-        glowTargetR = r / n;
-        glowTargetG = g / n;
-        glowTargetB = b / n;
+        sampleCtx.drawImage(videoElement, 0, 0, GLOW_W, GLOW_H);
+        const data = sampleCtx.getImageData(0, 0, GLOW_W, GLOW_H).data;
+        glowTargetData.set(data);
       } catch (e) {}
     };
 
     const LERP = 0.018;
     const lerpAndDraw = () => {
-      glowCurR += (glowTargetR - glowCurR) * LERP;
-      glowCurG += (glowTargetG - glowCurG) * LERP;
-      glowCurB += (glowTargetB - glowCurB) * LERP;
-      const r = Math.round(glowCurR),
-        g = Math.round(glowCurG),
-        b = Math.round(glowCurB);
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.fillRect(0, 0, 1, 1);
-      if (glowNavbar)
-        glowNavbar.style.setProperty("--navbar-glow-color", `${r},${g},${b}`);
+      for (let i = 0; i < glowCurData.length; i++) {
+        glowCurData[i] += (glowTargetData[i] - glowCurData[i]) * LERP;
+      }
+      const imgData = ctx.createImageData(GLOW_W, GLOW_H);
+      for (let i = 0; i < glowCurData.length; i++) {
+        imgData.data[i] = Math.round(glowCurData[i]);
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      if (glowNavbar) {
+        // Average the top edge of the video (row 0 of the GLOW_W x GLOW_H grid)
+        let r = 0, g = 0, b = 0;
+        for (let col = 0; col < GLOW_W; col++) {
+          const idx = col * 4;
+          r += glowCurData[idx];
+          g += glowCurData[idx + 1];
+          b += glowCurData[idx + 2];
+        }
+        const navR = Math.round(r / GLOW_W);
+        const navG = Math.round(g / GLOW_W);
+        const navB = Math.round(b / GLOW_W);
+        glowNavbar.style.setProperty("--navbar-glow-color", `${navR},${navG},${navB}`);
+      }
     };
 
     const startGlow = () => {
@@ -986,10 +976,9 @@ function setupMeelPlayerEvents() {
       if (glowNavbar)
         glowNavbar.style.setProperty("--navbar-glow-color", "0,0,0");
       if (clearColor) {
-        glowTargetR = glowCurR = 0;
-        glowTargetG = glowCurG = 0;
-        glowTargetB = glowCurB = 0;
-        ctx.clearRect(0, 0, 1, 1);
+        glowTargetData.fill(0);
+        glowCurData.fill(0);
+        ctx.clearRect(0, 0, GLOW_W, GLOW_H);
       }
     };
 
@@ -1363,9 +1352,8 @@ window.toggleMiniPlayer = async function () {
       if (glowCanvasEl) {
         glowCanvasEl.style.removeProperty("display");
         // Reset warna lerp agar tidak ada lompatan warna dari state lama
-        glowTargetR = glowCurR = 0;
-        glowTargetG = glowCurG = 0;
-        glowTargetB = glowCurB = 0;
+        glowTargetData.fill(0);
+        glowCurData.fill(0);
         if (glowNavbar)
           glowNavbar.style.setProperty("--navbar-glow-color", "0,0,0");
         // Restart glow hanya jika video sedang berjalan
