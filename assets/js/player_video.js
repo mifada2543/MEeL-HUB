@@ -665,6 +665,9 @@ function setupMeelPlayerEvents() {
       if (isMiniPlayerActive) {
         updateMiniPlayerInfo(videoTitle, videoUploader);
       }
+
+      // Perbarui parameter exclude pada search agar sesuai dengan video yang sedang diputar
+      updateSearchExcludeId(videoId);
       // ─────────────────────────────────────────────────────────
 
       // Ganti array swapElements lama kamu dengan ini
