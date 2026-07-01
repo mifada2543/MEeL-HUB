@@ -44,7 +44,7 @@ session_write_close();
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title><?= htmlspecialchars($v['title']) ?> — MEeL Video</title>
     <?php include '../partials/link.php'; ?>
@@ -56,10 +56,10 @@ session_write_close();
 
 <body class="text-gray-400 min-h-screen">
 
-    <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
+    <nav class="border-b border-white/[.04] sticky top-0 z-50">
         <div class="w-full px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
 
-            <a href="index.php" class="flex items-center gap-2 flex-shrink-0" title="MEeL Video">
+            <a href="index.php" class="flex items-center gap-2 flex-shrink-0 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] transition-all" title="MEeL Video">
                 <div class="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center">
                     <i data-lucide="play" class="w-3.5 h-3.5 text-white fill-current"></i>
                 </div>
@@ -99,11 +99,11 @@ session_write_close();
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
                 <button id="navbar-search-icon-btn"
                     onclick="document.getElementById('mobile-search-overlay').classList.toggle('open')"
-                    class="hidden items-center justify-center w-8 h-8 text-gray-500 hover:text-red-400 transition-all"
+                    class="hidden items-center justify-center w-8 h-8 text-gray-500 hover:text-red-400 bg-white/[.04] hover:bg-white/[.08] rounded-xl transition-all"
                     title="Cari">
                     <i data-lucide="search" class="w-4 h-4"></i>
                 </button>
-                <a href="../music/index.php" class="hidden sm:flex items-center gap-1.5 text-gray-600 hover:text-orange-500 transition-all">
+                <a href="../music/index.php" class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-orange-500 transition-all">
                     <i data-lucide="music" class="w-3.5 h-3.5"></i>
                     <span class="hidden md:inline">Music</span>
                 </a>
@@ -215,11 +215,6 @@ session_write_close();
                         </div>
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
-                        <button id="btn-loop" onclick="toggleLoop()" title="Perulangan"
-                            class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-3 sm:px-4 py-2 rounded-xl border border-transparent transition-all cursor-pointer">
-                            <i data-lucide="repeat" class="w-3.5 h-3.5"></i>
-                            <span id="loop-text">Loop Off</span>
-                        </button>
                         <?php if (isset($_SESSION['username'])): ?>
                             <a href="../transcode.php?id=<?= $id ?>"
                                 class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline">

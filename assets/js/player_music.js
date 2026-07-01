@@ -49,12 +49,14 @@ function updateLoopUI() {
 function saveAudioState() {
   if (!window.MEEL_MUSIC_CONFIG) return;
   const cfg = window.MEEL_MUSIC_CONFIG;
+  const plId = cfg.playlistId || 0;
   sessionStorage.setItem(
     "meel_audio_state",
     JSON.stringify({
-      id: cfg.id, // <-- TAMBAHAN: Sinkron dengan index.php
-      musicId: cfg.id, // Tetap dipertahankan agar tidak memutus fitur lain
-      watchUrl: `watch.php?id=${cfg.id}`, // <-- TAMBAHAN: Sinkron dengan index.php
+      id: cfg.id,
+      musicId: cfg.id,
+      playlistId: plId,
+      watchUrl: `watch.php?id=${cfg.id}`,
       currentTime: player ? player.currentTime : 0,
       isPlaying: player ? !player.paused : false,
       isLooping: player ? player.loop : false,
@@ -65,6 +67,11 @@ function saveAudioState() {
       filename: cfg.filename,
     }),
   );
+  if (plId > 0) {
+    localStorage.setItem("meel_last_playlist_id", String(plId));
+  } else {
+    localStorage.removeItem("meel_last_playlist_id");
+  }
 }
 
 // ─── GLOBAL API ─────────────────────────────────────────────────────────────
@@ -181,7 +188,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (rawState) {
     try {
       const state = JSON.parse(rawState);
-      if (state.musicId == window.MEEL_MUSIC_CONFIG.id) {
+      const matchedId = state.musicId ?? state.id;
+      if (matchedId == window.MEEL_MUSIC_CONFIG.id) {
         shouldRestore = true;
         restoreTime = state.currentTime;
         restorePlay = state.isPlaying;
@@ -377,12 +385,23 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (shouldRestore) {
-        player.currentTime = Math.max(0, restoreTime);
         player.loop = restoreLooping;
         localStorage.setItem("meel_global_loop", String(restoreLooping));
-        restorePlay ? player.play().catch(() => {}) : player.pause();
         updateLoopUI();
         sessionStorage.removeItem("meel_audio_state");
+
+        // Tunggu metadata audio siap sebelum seek agar benar-benar dipulihkan
+        const seekToRestore = () => {
+          player.currentTime = Math.max(0, restoreTime);
+          if (restorePlay) {
+            player.play().catch(() => {});
+          }
+        };
+        if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
+          seekToRestore();
+        } else {
+          audio.addEventListener("loadedmetadata", seekToRestore, { once: true });
+        }
       } else {
         const pos = localStorage.getItem(storageKeyMusic);
         if (
@@ -622,8 +641,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.goBackToLibrary = function () {
     saveAudioState();
+    var plId = window.MEEL_MUSIC_CONFIG?.playlistId;
     player?.destroy();
-    window.location.href = "index.php";
+    if (plId && plId > 0) {
+      window.location.href = "index.php?playlist_id=" + plId;
+    } else {
+      window.location.href = "index.php";
+    }
   };
 
   // Mini-player container click while active

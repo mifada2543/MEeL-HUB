@@ -40,9 +40,24 @@ $artists       = $library->getArtists();
 $is_logged_in  = isset($_SESSION['user_id']);
 
 // ─── Fungsi render konten utama ───────────────────────────────────────────────
-function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_query, $first_song)
+function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_query, $first_song, $include_script = true)
 {
 ?>
+    <!-- BACK TO LIBRARY (when loaded via HTMX into index.php) -->
+    <?php if (!$include_script): ?>
+        <div class="mb-6">
+            <a href="javascript:void(0)"
+                hx-get="index.php?content_only=1"
+                hx-target="main"
+                hx-swap="innerHTML"
+                hx-push-url="index.php"
+                onclick="if (typeof resetActivePlaylist === 'function') resetActivePlaylist();"
+                class="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-600 hover:text-orange-400 transition-all">
+                <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Library
+            </a>
+        </div>
+    <?php endif; ?>
+
     <!-- PLAYLIST HEADER -->
     <div class="flex items-start sm:items-end gap-5 mb-8 pb-6 border-b border-white/[.04]">
         <div class="relative flex-shrink-0">
@@ -201,6 +216,7 @@ function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_que
         </div>
     <?php endif; ?>
 
+    <?php if ($include_script): ?>
     <!-- Script: setup klik track di playlist untuk mini player (menyertakan playlist_id) -->
     <script>
         (function() {
@@ -247,6 +263,7 @@ function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_que
 
                 var state = {
                     id: musicId,
+                    musicId: musicId,
                     title: item.dataset.title,
                     artist: item.dataset.artist,
                     thumbnail: item.dataset.thumbnail,
@@ -280,12 +297,13 @@ function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_que
             document.addEventListener('htmx:afterSwap', setupPlaylistClicks);
         })();
     </script>
+    <?php endif; ?>
 <?php
 }
 
 // ─── Mode content_only untuk HTMX swap ───────────────────────────────────────
 if (isset($_GET['content_only'])) {
-    renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_query, $first_song);
+    renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_query, $first_song, false);
     exit;
 }
 ?>
