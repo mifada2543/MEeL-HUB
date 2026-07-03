@@ -137,17 +137,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// ── Logika Filter & Sorting ──
+// ── Logika Filter & Sorting & Search ──
 $sort        = $_GET['sort'] ?? 'views';
+$sort_dir    = strtolower($_GET['dir'] ?? '');
 $type_filter = $_GET['type'] ?? 'all';
+$search      = $_GET['search'] ?? '';
 
-$allowed_sort = [
-    'views'    => 'views DESC',
-    'likes'    => 'likes DESC',
-    'dislikes' => 'dislikes DESC',
-    'title'    => 'title ASC',
+$allowed_sort_columns = [
+    'views'    => 'views',
+    'likes'    => 'likes',
+    'dislikes' => 'dislikes',
+    'title'    => 'title',
 ];
-$order_by = $allowed_sort[$sort] ?? 'views DESC';
+if (!isset($allowed_sort_columns[$sort])) {
+    $sort = 'views';
+}
+if (!in_array($sort_dir, ['asc', 'desc'], true)) {
+    $sort_dir = ($sort === 'title') ? 'asc' : 'desc';
+}
+$order_by = $allowed_sort_columns[$sort] . ' ' . strtoupper($sort_dir);
+
+function getSortUrl(string $field): string {
+    global $sort, $sort_dir, $type_filter, $search;
+    $next_dir = ($field === $sort)
+        ? ($sort_dir === 'asc' ? 'desc' : 'asc')
+        : ($field === 'title' ? 'asc' : 'desc');
+    return '?sort=' . $field . '&dir=' . $next_dir . '&type=' . urlencode($type_filter) . '&search=' . urlencode($search);
+}
+
+function sortIcon(string $field): string {
+    global $sort, $sort_dir;
+    if ($field !== $sort) {
+        return '';
+    }
+    return $sort_dir === 'asc' ? '<i data-lucide="chevron-up" style="width:10px;height:10px;color:#60a5fa;"></i>' : '<i data-lucide="chevron-down" style="width:10px;height:10px;color:#60a5fa;"></i>';
+}
 
 // ── Query Utama ──
 $query_media = "
@@ -161,10 +185,18 @@ $query_media = "
             (SELECT COUNT(*) FROM interactions WHERE music_id = music.id AND type = 'like')    AS likes,
             (SELECT COUNT(*) FROM interactions WHERE music_id = music.id AND type = 'dislike') AS dislikes
         FROM music
-    ) AS combined_media";
+    ) AS combined_media
+    WHERE 1=1";
 
+// ── Search filter ──
+if (!empty($search)) {
+    $search_escaped = $conn->real_escape_string($search);
+    $query_media .= " AND (title LIKE '%{$search_escaped}%' OR id LIKE '%{$search_escaped}%')";
+}
+
+// ── Type filter ──
 if ($type_filter !== 'all') {
-    $query_media .= " WHERE media_type = '" . $conn->real_escape_string($type_filter) . "'";
+    $query_media .= " AND media_type = '" . $conn->real_escape_string($type_filter) . "'";
 }
 $query_media .= " ORDER BY $order_by";
 $result_media = $conn->query($query_media);
@@ -251,6 +283,82 @@ while ($rc = $r->fetch_assoc()) {
         .stat-card:hover {
             border-color: rgba(255, 255, 255, .12) !important;
             background: rgba(255, 255, 255, .04) !important;
+        }
+
+        /* ── Type dropdown ── */
+        .type-dropdown {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .type-trigger {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, .08);
+            background: rgba(255, 255, 255, .04);
+            color: #e2e6ef;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .type-dropdown:hover .type-trigger {
+            background: rgba(255, 255, 255, .08);
+            border-color: rgba(255, 255, 255, .12);
+        }
+
+        .type-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 0;
+            min-width: 160px;
+            background: rgba(14, 17, 24, .96);
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 16px;
+            box-shadow: 0 24px 50px rgba(0, 0, 0, .35);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: opacity .18s ease, transform .18s ease, visibility .18s ease;
+            z-index: 20;
+            overflow: hidden;
+        }
+
+        .type-dropdown:hover .type-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .type-option {
+            display: block;
+            padding: 12px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #e2e6ef;
+            text-decoration: none;
+            transition: background .15s, color .15s;
+        }
+
+        .type-option:hover {
+            background: rgba(255, 255, 255, .05);
+            color: #fff;
+        }
+
+        .type-option.active {
+            background: rgba(37, 99, 235, .14);
+            color: #60a5fa;
+        }
+
+        .type-option.active:hover {
+            background: rgba(37, 99, 235, .18);
         }
 
         /* ── Delete confirm modal ── */
@@ -341,31 +449,61 @@ while ($rc = $r->fetch_assoc()) {
 
         <!-- Filter & Sort bar -->
         <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;align-items:center;">
-            <!-- Sort -->
-            <div style="display:flex;gap:2px;background:rgba(255,255,255,.04);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,.06);">
-                <?php foreach (['views' => 'Views', 'likes' => 'Likes', 'dislikes' => 'Dislikes', 'title' => 'Nama'] as $k => $v): ?>
-                    <a href="?sort=<?= $k ?>&type=<?= $type_filter ?>"
-                        style="padding:6px 14px;border-radius:9px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;transition:all .2s;
-                   <?= $sort === $k ? 'background:#2563eb;color:#fff;' : 'color:#555e6e;' ?>">
-                        <?= $v ?>
-                    </a>
-                <?php endforeach; ?>
+            <!-- Search -->
+            <div style="position:relative;display:flex;align-items:center;">
+                <i data-lucide="search" style="position:absolute;left:12px;width:15px;height:15px;color:#455060;pointer-events:none;"></i>
+                <form method="GET" style="display:flex;gap:0;" id="search-form">
+                    <input type="hidden" name="sort" value="<?= $sort ?>">
+                    <input type="hidden" name="dir" value="<?= $sort_dir ?>">
+                    <input type="hidden" name="type" value="<?= $type_filter ?>">
+                    <input type="text" name="search" placeholder="Cari judul atau ID..." 
+                        value="<?= htmlspecialchars($search) ?>"
+                        style="padding:8px 12px 8px 36px;border-radius:11px;font-size:11px;font-weight:600;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#e2e6ef;width:200px;transition:all .2s;"
+                        onfocus="this.style.background='rgba(255,255,255,.08)';this.style.borderColor='rgba(37,99,235,.3)'"
+                        onblur="this.style.background='rgba(255,255,255,.04)';this.style.borderColor='rgba(255,255,255,.08)'"
+                    >
+                    <style>
+                        input::placeholder { color: #455060; }
+                        input::-webkit-search-cancel-button {
+                            -webkit-appearance: none;
+                        }
+                    </style>
+                </form>
             </div>
 
             <!-- Type -->
-            <div style="display:flex;gap:2px;background:rgba(255,255,255,.04);padding:4px;border-radius:12px;border:1px solid rgba(255,255,255,.06);">
-                <?php foreach (['all' => 'Semua', 'video' => 'Video', 'music' => 'Musik'] as $k => $v): ?>
-                    <a href="?sort=<?= $sort ?>&type=<?= $k ?>"
-                        style="padding:6px 14px;border-radius:9px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;transition:all .2s;
-                   <?= $type_filter === $k ? 'background:#f97316;color:#fff;' : 'color:#555e6e;' ?>">
-                        <?= $v ?>
-                    </a>
-                <?php endforeach; ?>
+            <?php
+                $type_labels = ['all' => 'Semua', 'video' => 'Video', 'music' => 'Musik'];
+                $current_type_label = $type_labels[$type_filter] ?? 'Semua';
+            ?>
+            <div class="type-dropdown">
+                <div class="type-trigger">
+                    <span><?= $current_type_label ?></span>
+                    <i data-lucide="chevron-down" style="width:12px;height:12px;color:#a5b4fc;"></i>
+                </div>
+                <div class="type-menu">
+                    <?php foreach ($type_labels as $k => $v): ?>
+                        <a href="?sort=<?= $sort ?>&dir=<?= $sort_dir ?>&type=<?= $k ?>&search=<?= urlencode($search) ?>"
+                            class="type-option<?= $type_filter === $k ? ' active' : '' ?>">
+                            <?= $v ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
             </div>
 
             <!-- Count -->
-            <div style="margin-left:auto;font-size:11px;font-weight:600;color:#455060;">
-                <?= $result_media->num_rows ?> item ditemukan
+            <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+                <div style="font-size:11px;font-weight:600;color:#455060;">
+                    <?= $result_media->num_rows ?> item ditemukan
+                </div>
+                <?php if (!empty($search)): ?>
+                    <a href="?sort=<?= $sort ?>&dir=<?= $sort_dir ?>&type=<?= $type_filter ?>" 
+                        style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;text-decoration:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;transition:all .2s;"
+                        onmouseover="this.style.background='rgba(239,68,68,.15)';this.style.borderColor='rgba(239,68,68,.3)'"
+                        onmouseout="this.style.background='rgba(239,68,68,.1)';this.style.borderColor='rgba(239,68,68,.2)'">
+                        <i data-lucide="x" style="width:12px;height:12px;"></i> Hapus Filter
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -375,10 +513,34 @@ while ($rc = $r->fetch_assoc()) {
                 <table style="width:100%;border-collapse:collapse;text-align:left;">
                     <thead>
                         <tr style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#455060;border-bottom:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02);">
-                            <th style="padding:14px 20px;">Konten</th>
-                            <th style="padding:14px 12px;text-align:center;">Views</th>
-                            <th style="padding:14px 12px;text-align:center;">Likes</th>
-                            <th style="padding:14px 12px;text-align:center;">Dislikes</th>
+                            <th style="padding:14px 20px;text-align:left;">
+                                <a href="<?= getSortUrl('title') ?>"
+                                    style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                                    Konten
+                                    <?= sortIcon('title') ?>
+                                </a>
+                            </th>
+                            <th style="padding:14px 12px;text-align:center;">
+                                <a href="<?= getSortUrl('views') ?>"
+                                    style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                                    Views
+                                    <?= sortIcon('views') ?>
+                                </a>
+                            </th>
+                            <th style="padding:14px 12px;text-align:center;">
+                                <a href="<?= getSortUrl('likes') ?>"
+                                    style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                                    Likes
+                                    <?= sortIcon('likes') ?>
+                                </a>
+                            </th>
+                            <th style="padding:14px 12px;text-align:center;">
+                                <a href="<?= getSortUrl('dislikes') ?>"
+                                    style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                                    Dislikes
+                                    <?= sortIcon('dislikes') ?>
+                                </a>
+                            </th>
                             <th style="padding:14px 12px;text-align:center;">Tipe</th>
                             <th style="padding:14px 20px;text-align:right;">Aksi</th>
                         </tr>
@@ -517,6 +679,18 @@ while ($rc = $r->fetch_assoc()) {
 
     <script>
         lucide.createIcons();
+
+        // ── Auto-submit search ──
+        let searchTimeout;
+        const searchInput = document.querySelector('input[name="search"]');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    document.getElementById('search-form').submit();
+                }, 400);
+            });
+        }
 
         <?php if ($delete_msg && $delete_msg['type'] === 'success'): ?>
             Swal.fire({
