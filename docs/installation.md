@@ -33,6 +33,11 @@ Panduan lengkap untuk menginstal dan menjalankan MEeL-HUB di server lokal Anda.
 | **RAM** | 2 GB (4 GB+) | 4 GB+ untuk transcoding |
 | **Storage** | 10 GB+ | Tergantung ukuran media |
 
+### Translator mecab
+```bash
+sudo apt install mecab mecab-ipadic-utf8 libmecab-dev
+```
+
 ### PHP Extensions yang Diperlukan
 
 ```bash
@@ -55,6 +60,7 @@ extension=zip
 
 > ⚠️ **Ekstensi `intl`** wajib untuk fitur transliterasi nama file (karakter Jepang/Kana → Romaji).
 > ⚠️ **Ekstensi `zip`** diperlukan untuk upload manga (ZIP/CBZ).
+> ⚠️ **Ekstensi `mecab`** Diperlukan untuk translate yang lebih baik
 
 ### OS yang Direkomendasikan
 

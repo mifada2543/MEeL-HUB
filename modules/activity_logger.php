@@ -154,6 +154,37 @@ if (isset($conn)) {
             $target_user = $_GET['u'] ?? 'Someone';
             $current_page = "Viewing Profile: " . htmlspecialchars($target_user);
         }
+    } elseif ($current_page == 'index.php') {
+        // --- 2. LOGIKA DETEKSI HALAMAN INDEX (BROWSING LIBRARY) ---
+        // Saat user membuka index di folder video, music, books, dll.
+        // $dir_name = basename(dirname(...)) — bisa kosong '' untuk root HUB
+        switch ($dir_name) {
+            case 'video':
+                $current_page = "Browsing Video Library";
+                break;
+            case 'music':
+                $current_page = "Browsing Music Library";
+                break;
+            case 'books':
+                $current_page = "Browsing Books Library";
+                break;
+            case 'anime':
+                $current_page = "Browsing Anime";
+                break;
+            case 'arcade':
+                $current_page = "Browsing Arcade";
+                break;
+            case 'drive':
+                $current_page = "Browsing Drive";
+                break;
+            case 'profile':
+                $current_page = "Browsing Profiles";
+                break;
+            default:
+                // Root index.php (HUB) — dir_name bisa kosong '' atau nama folder proyek
+                $current_page = "Browsing HUB";
+                break;
+        }
     }
     $ua_raw = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
     $host = $_SERVER['HTTP_HOST'] ?? 'Local';

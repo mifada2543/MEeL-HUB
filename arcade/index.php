@@ -28,6 +28,20 @@ $games = [
     "image" => "assets/img/catur.png",
     "favorite" => false,
     "play_url" => "chess/"
+  ],
+  [
+    "id" => 3,
+    "title" => "Snake",
+    "developer" => "MEeL Teams",
+    "year" => 2026,
+    "category" => "Action",
+    "controls" => "Arrow & WASD Keys",
+    "maxPlayers" => "1 Players",
+    "rating" => 4.8,
+    "description" => "Game ular klasik yang tak pernah mati. Kendalikan ular hijau, kumpulkan apel merah, dan hindari menabrak dinding atau tubuh sendiri. Semakin banyak makan, semakin cepat! Cocok untuk mengisi waktu luang dan melatih refleks.",
+    "image" => "assets/img/dino.png",
+    "favorite" => false,
+    "play_url" => "snake/"
   ]
 ];
 ?>
