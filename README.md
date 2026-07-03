@@ -72,7 +72,8 @@
 ### 🕹️ Arcade (Mini Games)
 
 - **Dino Run** — endless runner ala Chrome Dino dengan karakter Miku & Teto
-- **Chess** — permainan catur klasik dengan mode multiplayer online
+- **Chess** — permainan catur klasik dengan mode multiplayer online(LAN)
+- **Snake** — permainan Snake klasik yang nostalgia
 
 ### 🔧 Fungsionalitas Umum
 
