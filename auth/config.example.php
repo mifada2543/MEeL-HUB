@@ -40,7 +40,8 @@ if (empty($_SESSION['csrf_token'])) {
 
 // CSRF Verification Function - return status instead of die
 if (!function_exists('verify_csrf')) {
-    function verify_csrf() {
+    function verify_csrf()
+    {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
                 return false;
@@ -66,17 +67,105 @@ $_SESSION['LAST_ACTIVITY'] = time();
 // Include activity logger
 include_once __DIR__ . '/../modules/activity_logger.php';
 
-// Romaji conversion helper
+// Function to convert Japanese text to Romaji
 if (!function_exists('getRomajiName')) {
-    function getRomajiName($text) {
+    function getRomajiName($text)
+    {
         if (empty($text)) return 'untitled';
-        $rule = "Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC; Latin-ASCII; Any-Lower;";
+
+        // 1. Kamus Koreksi Karakter Spesifik & Simbol
+        $search = [
+            '×',
+            'x',
+            'X',
+            '*',
+            '&',
+            '/', // Simbol pemisah
+            '【',
+            '】',
+            '「',
+            '」',
+            '(',
+            ')', // Kurung
+            '鏡音',
+            '巡音',
+            '初音'
+        ];
+        $replace = [
+            ' ',
+            ' ',
+            ' ',
+            ' ',
+            ' ',
+            ' ',
+            ' ',
+            ' ',
+            ' ',
+            ' ',
+            ' ',
+            ' ',
+            'かがみね',
+            'めぐりね',
+            'hatsune'
+        ];
+        $text = str_replace($search, $replace, $text);
+
+        // 2. Eksekusi MeCab tanpa -Oyomi
+        $descriptorspec = [
+            0 => ["pipe", "r"],
+            1 => ["pipe", "w"]
+        ];
+
+        $process = proc_open('mecab', $descriptorspec, $pipes);
+
+        $parsedText = '';
+        if (is_resource($process)) {
+            fwrite($pipes[0], $text);
+            fclose($pipes[0]);
+
+            $output = stream_get_contents($pipes[1]);
+            fclose($pipes[1]);
+            proc_close($process);
+
+            // Parsing baris per baris hasil MeCab
+            $lines = explode("\n", trim($output));
+            foreach ($lines as $line) {
+                if ($line === 'EOS' || trim($line) === '') continue;
+
+                $parts = explode("\t", $line);
+                if (count($parts) >= 2) {
+                    $surface = $parts[0];
+                    $features = explode(',', $parts[1]);
+
+                    $yomi = '*';
+                    if (isset($features[7]) && $features[7] !== '*') {
+                        $yomi = $features[7];
+                    } elseif (isset($features[8]) && $features[8] !== '*') {
+                        $yomi = $features[8];
+                    }
+
+                    if ($yomi !== '*' && !preg_match('/[a-zA-Z]/', $yomi)) {
+                        $parsedText .= ' ' . $yomi;
+                    } else {
+                        $parsedText .= ' ' . $surface;
+                    }
+                }
+            }
+            $text = trim($parsedText);
+        }
+
+        // 3. Gunakan rule php-intl
+        $rule = "Katakana-Latin; Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC; Latin-ASCII; Any-Lower;";
         $transliterator = Transliterator::create($rule);
+
         if ($transliterator) {
             $text = $transliterator->transliterate($text);
         }
+
+        // 4. Sanitasi Akhir untuk Slug
         $clean = preg_replace('/[^a-z0-9\-]/u', '-', $text);
         $clean = preg_replace('/-+/', '-', trim($clean, '-'));
+
         return $clean ?: 'untitled-media';
     }
 }

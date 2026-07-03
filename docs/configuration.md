@@ -34,7 +34,7 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 ### Koneksi Database
 
 ```php
-// File: auth/config.php
+// File: auth/config.php bisa diambil dari example
 
 $server   = "localhost";   // Host database
 $username = "root";        // Username database
