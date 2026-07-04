@@ -8,6 +8,11 @@ let isFinished = false;
 let isMiniPlayerActive = false;
 let watchUrl;
 let skipResumeModalOnce = false;
+let eqFilters = [];
+let eqBands = [60, 170, 350, 1000, 3500, 10000];
+let eqGains = Array(eqBands.length).fill(0);
+let eqEnabled = false;
+let eqPreset = "flat";
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
@@ -88,6 +93,109 @@ window.toggleLoop = function () {
 
 window.toggleVisualizer = function () {
   /* redefined in DOMContentLoaded */
+};
+
+function normalizeEqValue(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 0;
+  return Math.max(-12, Math.min(12, num));
+}
+
+function saveEqState() {
+  try {
+    localStorage.setItem(
+      "meel_music_eq_state",
+      JSON.stringify({
+        enabled: eqEnabled,
+        preset: eqPreset,
+        gains: eqGains,
+      }),
+    );
+  } catch (e) {
+    console.warn("⚠️ Could not save EQ state:", e);
+  }
+}
+
+function loadEqState() {
+  try {
+    const raw = localStorage.getItem("meel_music_eq_state");
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    if (state && Array.isArray(state.gains)) {
+      eqGains = state.gains.map(normalizeEqValue);
+    }
+    if (typeof state?.enabled === "boolean") eqEnabled = state.enabled;
+    if (typeof state?.preset === "string") eqPreset = state.preset;
+  } catch (e) {
+    console.warn("⚠️ Bad EQ state:", e);
+  }
+}
+
+function applyEqToFilters() {
+  if (!eqFilters.length) return;
+  const gains = eqEnabled ? eqGains : Array(eqBands.length).fill(0);
+  eqFilters.forEach((filter, index) => {
+    filter.gain.value = normalizeEqValue(gains[index] ?? 0);
+  });
+}
+
+function updateEqUI() {
+  const btnEq = document.getElementById("btn-eq");
+  const eqText = document.getElementById("eq-text");
+  const eqPanel = document.getElementById("eq-panel");
+  const eqContainer = document.getElementById("eq-container");
+  const presetSelect = document.getElementById("eq-preset");
+
+  if (btnEq) {
+    btnEq.classList.toggle("bg-gray-800", !eqEnabled);
+    btnEq.classList.toggle("text-gray-400", !eqEnabled);
+    btnEq.classList.toggle("bg-orange-500/10", eqEnabled);
+    btnEq.classList.toggle("text-orange-500", eqEnabled);
+    btnEq.classList.toggle("border", eqEnabled);
+    btnEq.classList.toggle("border-orange-500/30", eqEnabled);
+  }
+  if (eqText) eqText.innerText = eqEnabled ? "EQ On" : "EQ Off";
+  if (eqPanel) {
+    eqPanel.classList.toggle("hidden", !eqEnabled);
+  }
+  if (eqContainer) {
+    eqContainer.classList.toggle("hidden", !eqEnabled);
+  }
+  if (presetSelect) presetSelect.value = eqPreset;
+
+  eqBands.forEach((_, index) => {
+    const input = document.getElementById(`eq-band-${index}`);
+    const valueEl = document.getElementById(`eq-band-value-${index}`);
+    if (input) input.value = eqGains[index] ?? 0;
+    if (valueEl) valueEl.innerText = `${normalizeEqValue(eqGains[index] ?? 0).toFixed(1)} dB`;
+  });
+}
+
+window.toggleEqualizer = function () {
+  /* redefined in DOMContentLoaded */
+};
+
+window.setEqBand = function (index, value) {
+  eqGains[index] = normalizeEqValue(value);
+  if (eqEnabled) applyEqToFilters();
+  updateEqUI();
+  saveEqState();
+};
+
+window.setEqPreset = function (preset) {
+  const presets = {
+    flat: [0, 0, 0, 0, 0, 0],
+    bass: [3, 4, 4, 2, 1, 0],
+    treble: [0, 1, 2, 2, 3, 4],
+    vocal: [2, 2, 0, 1, 2, 2],
+    rock: [3, 1, 0, -1, 2, 3],
+  };
+  const nextGains = (presets[preset] || presets.flat).map(normalizeEqValue);
+  eqPreset = preset || "flat";
+  eqGains = nextGains;
+  if (eqEnabled) applyEqToFilters();
+  updateEqUI();
+  saveEqState();
 };
 
 window.toggleReply = function (id) {
@@ -177,6 +285,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedLoop = localStorage.getItem("meel_global_loop") === "true";
   player.loop = savedLoop;
   updateLoopUI();
+  loadEqState();
+  updateEqUI();
 
   // ── 3. AUDIO STATE RESTORATION ───────────────────────────────────────────
   let shouldRestore = false;
@@ -251,9 +361,24 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       analyser = audioCtx.createAnalyser();
       source = audioCtx.createMediaElementSource(audio);
-      source.connect(analyser);
+
+      eqFilters = [];
+      let previousNode = source;
+      eqBands.forEach((freq, index) => {
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "peaking";
+        filter.frequency.value = freq;
+        filter.Q.value = 1.0;
+        filter.gain.value = normalizeEqValue(eqGains[index] ?? 0);
+        previousNode.connect(filter);
+        previousNode = filter;
+        eqFilters.push(filter);
+      });
+
+      previousNode.connect(analyser);
       analyser.connect(audioCtx.destination);
       analyser.fftSize = 256;
+      applyEqToFilters();
       isInitialized = true;
       return true;
     } catch (e) {
@@ -261,6 +386,21 @@ document.addEventListener("DOMContentLoaded", () => {
       return false;
     }
   }
+
+  window.toggleEqualizer = function () {
+    eqEnabled = !eqEnabled;
+    if (eqEnabled) {
+      if (!isInitialized) {
+        initAudio();
+      } else {
+        applyEqToFilters();
+      }
+    } else {
+      applyEqToFilters();
+    }
+    updateEqUI();
+    saveEqState();
+  };
 
   function render() {
     if (!isVisualizerEnabled || !isInitialized || player.paused) {
