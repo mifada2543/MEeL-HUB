@@ -219,14 +219,26 @@ switch ($ext) {
                 <div id="eq-container" class="px-4 sm:px-6 py-4 border-t border-white/[.04] bg-black/10 hidden">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div class="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">Equalizer</div>
-                        <select id="eq-preset" onchange="setEqPreset(this.value)"
-                            class="bg-gray-900/80 border border-white/10 text-gray-200 text-[11px] rounded-lg px-3 py-2 outline-none focus:border-orange-500/40">
-                            <option value="flat">Flat</option>
-                            <option value="bass">Bass Boost</option>
-                            <option value="treble">Treble Boost</option>
-                            <option value="vocal">Vocal Boost</option>
-                            <option value="rock">Rock</option>
-                        </select>
+                        <div id="eq-preset-dropdown" class="relative w-full sm:w-auto">
+                            <button id="eq-preset-button" type="button" onclick="toggleEqPresetDropdown()"
+                                class="w-full sm:w-auto min-w-[112px] flex items-center justify-between gap-2 bg-gray-900/80 border border-white/[.10] text-gray-200 text-[11px] rounded-lg px-3 py-2 outline-none focus:border-orange-500/40 transition-all">
+                                <span id="eq-preset-label">Flat</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
+                            </button>
+                            <div id="eq-preset-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
+                                <button type="button" data-preset="flat" onclick="selectEqPreset('flat')"
+                                    class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Flat</button>
+                                <button type="button" data-preset="bass" onclick="selectEqPreset('bass')"
+                                    class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Bass Boost</button>
+                                <button type="button" data-preset="treble" onclick="selectEqPreset('treble')"
+                                    class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Treble Boost</button>
+                                <button type="button" data-preset="vocal" onclick="selectEqPreset('vocal')"
+                                    class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Vocal Boost</button>
+                                <button type="button" data-preset="rock" onclick="selectEqPreset('rock')"
+                                    class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Rock</button>
+                            </div>
+                            <input id="eq-preset" type="hidden" value="flat">
+                        </div>
                     </div>
                     <div id="eq-panel" class="mt-3 hidden">
                         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -667,6 +679,32 @@ switch ($ext) {
                 lucide.createIcons();
             }
         });
+
+        window.toggleEqPresetDropdown = function () {
+            const options = document.getElementById('eq-preset-options');
+            if (!options) return;
+            options.classList.toggle('hidden');
+        };
+
+        function closeEqPresetDropdownOnOutside(event) {
+            const options = document.getElementById('eq-preset-options');
+            const button = document.getElementById('eq-preset-button');
+            if (!options || !button) return;
+            if (!button.contains(event.target) && !options.contains(event.target)) {
+                options.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('click', closeEqPresetDropdownOnOutside);
+
+        window.selectEqPreset = function (preset) {
+            if (!preset) return;
+            if (typeof window.setEqPreset === 'function') {
+                window.setEqPreset(preset);
+            }
+            const options = document.getElementById('eq-preset-options');
+            if (options) options.classList.add('hidden');
+        };
     </script>
     <script src="../assets/js/plyr.js"></script>
     <script src="../assets/js/sweetalert2.all.min.js"></script>

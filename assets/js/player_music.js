@@ -139,12 +139,38 @@ function applyEqToFilters() {
   });
 }
 
+function getRealtimeVbrValue(frequencyData) {
+  if (!frequencyData || !frequencyData.length) return 160;
+  const sum = frequencyData.reduce((acc, value) => acc + value, 0);
+  const avg = sum / frequencyData.length;
+  const smooth = Math.min(1, Math.max(0, avg / 255));
+  const minKbps = 96;
+  const maxKbps = 320;
+  return Math.round(minKbps + smooth * (maxKbps - minKbps));
+}
+
+function updateBitrateLabel(value, element) {
+  if (!element) return;
+  element.innerText = `${value}`;
+}
+
+function updateBarColors(value, barElements) {
+  if (!barElements || !barElements.length) return;
+  const hue = Math.round(28 + ((value - 96) / 224) * 180);
+  barElements.forEach((bar) => {
+    bar.style.background = `linear-gradient(to top, hsl(${hue}, 96%, 50%), hsl(${Math.min(360, hue + 40)}, 96%, 72%))`;
+  });
+}
+
 function updateEqUI() {
   const btnEq = document.getElementById("btn-eq");
   const eqText = document.getElementById("eq-text");
   const eqPanel = document.getElementById("eq-panel");
   const eqContainer = document.getElementById("eq-container");
   const presetSelect = document.getElementById("eq-preset");
+  const presetButton = document.getElementById("eq-preset-button");
+  const presetLabel = document.getElementById("eq-preset-label");
+  const presetOptions = document.getElementById("eq-preset-options");
 
   if (btnEq) {
     btnEq.classList.toggle("bg-gray-800", !eqEnabled);
@@ -162,6 +188,18 @@ function updateEqUI() {
     eqContainer.classList.toggle("hidden", !eqEnabled);
   }
   if (presetSelect) presetSelect.value = eqPreset;
+  if (presetLabel) presetLabel.innerText = eqPreset === 'flat' ? 'Flat' :
+    eqPreset === 'bass' ? 'Bass Boost' :
+    eqPreset === 'treble' ? 'Treble Boost' :
+    eqPreset === 'vocal' ? 'Vocal Boost' :
+    eqPreset === 'rock' ? 'Rock' : eqPreset;
+  if (presetOptions) {
+    presetOptions.querySelectorAll('button[data-preset]').forEach((button) => {
+      const isActive = button.dataset.preset === eqPreset;
+      button.classList.toggle('bg-white/[.06]', isActive);
+      button.classList.toggle('text-orange-400', isActive);
+    });
+  }
 
   eqBands.forEach((_, index) => {
     const input = document.getElementById(`eq-band-${index}`);
@@ -410,13 +448,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(data);
 
+    let peak = 0;
     for (let i = 0; i < numBars; i++) {
       const idx = Math.floor(i * (data.length / numBars) * 0.7);
-      bars[i].style.height = `${Math.max(4, (data[idx] / 255) * 100)}%`;
+      const value = Math.max(4, (data[idx] / 255) * 100);
+      bars[i].style.height = `${value}%`;
+      peak = Math.max(peak, data[idx]);
     }
     if (bitrateDisplay) {
-      const label = baseBitrate >= 160 ? "OPUS" : "Standard";
-      bitrateDisplay.innerText = `${baseBitrate} ${label}`;
+      const dynamicBitrate = getRealtimeVbrValue(data);
+      updateBitrateLabel(dynamicBitrate, bitrateDisplay);
+      updateBarColors(dynamicBitrate, bars);
     }
     animationId = requestAnimationFrame(render);
   }
