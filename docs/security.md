@@ -137,7 +137,7 @@ final class DriveUserContext {
 | Upload Musik | ✅ | ✅ (rate-limited) | ✅ (rate-limited) | ❌ |
 | Books | ✅ | ✅ | ✅ | ❌ |
 | Cloud Drive | ✅ (unlimited) | ✅ (20GB) | ❌ | ❌ |
-| Advanced Upload | ✅ | ✅ | ✅ | ❌ |
+| Advanced Upload | ✅ | ✅ (rate-limited) | ✅ (rate-limited) | ❌ |
 | Transcoder | ✅ | ✅ | ✅ | ❌ |
 | Admin Panel | ✅ | ❌ | ❌ | ❌ |
 
