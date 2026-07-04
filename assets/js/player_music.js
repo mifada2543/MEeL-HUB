@@ -20,6 +20,13 @@ const EQ_PRESET_LABELS = {
   treble: "Treble Boost",
   vocal: "Vocal Boost",
   rock: "Rock",
+  classical: "Classical",
+  pop: "Pop",
+  jazz: "Jazz",
+  electronic: "Electronic",
+  acoustic: "Acoustic",
+  gaming: "Gaming",
+  podcast: "Podcast",
 };
 const EQ_PRESETS = {
   flat: [0, 0, 0, 0, 0, 0],
@@ -27,6 +34,21 @@ const EQ_PRESETS = {
   treble: [0, 1, 2, 2, 3, 4],
   vocal: [2, 2, 0, 1, 2, 2],
   rock: [3, 1, 0, -1, 2, 3],
+  // ── presets baru ─────────────────────────────────────────────
+  // Classical: angkat low-end & high, tengah netral
+  classical: [2, 0, -1, -1, 2, 3],
+  // Pop: vokal & presence lebih menonjol
+  pop: [1, 2, 2, 1, 2, 1],
+  // Jazz: warm low-mid, sedikit air di atas
+  jazz: [2, 3, 1, 0, 1, 2],
+  // Electronic: kick kuat, sub-bass, sparkle di atas
+  electronic: [4, 2, -1, -1, 2, 4],
+  // Acoustic: mid hangat, treble natural
+  acoustic: [2, 2, 1, 0, 1, 2],
+  // Gaming: spatial clarity & sub presence
+  gaming: [3, 2, -1, 1, 3, 2],
+  // Podcast: vokal diperjelas, bass & treble dipotong sedikit
+  podcast: [0, -1, 2, 3, 1, -1],
 };
 // Cache mini-player DOM refs once the player is initialized (avoids
 // re-querying getElementById on every timeupdate/play/pause tick).
@@ -259,6 +281,9 @@ document.addEventListener("keydown", (e) => {
   if (key === "l") {
     e.preventDefault();
     window.toggleLoop();
+  } else if (key === "e") {
+    e.preventDefault();
+    window.toggleEqualizer?.();
   } else if (key === "v") {
     window.toggleVisualizer?.();
   } else if (key === "i") {

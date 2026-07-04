@@ -226,16 +226,18 @@ switch ($ext) {
                                 <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
                             </button>
                             <div id="eq-preset-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
-                                <button type="button" data-preset="flat" onclick="selectEqPreset('flat')"
-                                    class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Flat</button>
-                                <button type="button" data-preset="bass" onclick="selectEqPreset('bass')"
-                                    class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Bass Boost</button>
-                                <button type="button" data-preset="treble" onclick="selectEqPreset('treble')"
-                                    class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Treble Boost</button>
-                                <button type="button" data-preset="vocal" onclick="selectEqPreset('vocal')"
-                                    class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Vocal Boost</button>
-                                <button type="button" data-preset="rock" onclick="selectEqPreset('rock')"
-                                    class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Rock</button>
+                                <button type="button" data-preset="flat" onclick="selectEqPreset('flat')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Flat</button>
+                                <button type="button" data-preset="bass" onclick="selectEqPreset('bass')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Bass Boost</button>
+                                <button type="button" data-preset="treble" onclick="selectEqPreset('treble')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Treble Boost</button>
+                                <button type="button" data-preset="vocal" onclick="selectEqPreset('vocal')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Vocal Boost</button>
+                                <button type="button" data-preset="rock" onclick="selectEqPreset('rock')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Rock</button>
+                                <button type="button" data-preset="classical" onclick="selectEqPreset('classical')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Classical</button>
+                                <button type="button" data-preset="pop" onclick="selectEqPreset('pop')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Pop</button>
+                                <button type="button" data-preset="jazz" onclick="selectEqPreset('jazz')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Jazz</button>
+                                <button type="button" data-preset="electronic" onclick="selectEqPreset('electronic')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Electronic</button>
+                                <button type="button" data-preset="acoustic" onclick="selectEqPreset('acoustic')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Acoustic</button>
+                                <button type="button" data-preset="gaming" onclick="selectEqPreset('gaming')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Gaming</button>
+                                <button type="button" data-preset="podcast" onclick="selectEqPreset('podcast')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Podcast</button>
                             </div>
                             <input id="eq-preset" type="hidden" value="flat">
                         </div>
