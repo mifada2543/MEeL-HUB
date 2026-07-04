@@ -221,7 +221,7 @@ switch ($ext) {
                         <div class="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">Equalizer</div>
                         <div id="eq-preset-dropdown" class="relative w-full sm:w-auto">
                             <button id="eq-preset-button" type="button" onclick="toggleEqPresetDropdown()"
-                                class="w-full sm:w-auto min-w-[112px] flex items-center justify-between gap-2 bg-gray-900/80 border border-white/[.10] text-gray-200 text-[11px] rounded-lg px-3 py-2 outline-none focus:border-orange-500/40 transition-all">
+                                class="w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 bg-gray-900/80 border border-white/[.10] text-gray-200 text-[11px] rounded-lg px-3 py-2 outline-none focus:border-orange-500/40 transition-all">
                                 <span id="eq-preset-label">Flat</span>
                                 <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
                             </button>
@@ -680,7 +680,7 @@ switch ($ext) {
             }
         });
 
-        window.toggleEqPresetDropdown = function () {
+        window.toggleEqPresetDropdown = function() {
             const options = document.getElementById('eq-preset-options');
             if (!options) return;
             options.classList.toggle('hidden');
@@ -697,7 +697,7 @@ switch ($ext) {
 
         document.addEventListener('click', closeEqPresetDropdownOnOutside);
 
-        window.selectEqPreset = function (preset) {
+        window.selectEqPreset = function(preset) {
             if (!preset) return;
             if (typeof window.setEqPreset === 'function') {
                 window.setEqPreset(preset);

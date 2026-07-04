@@ -13,6 +13,24 @@ let eqBands = [60, 170, 350, 1000, 3500, 10000];
 let eqGains = Array(eqBands.length).fill(0);
 let eqEnabled = false;
 let eqPreset = "flat";
+const ZERO_GAINS = Array(eqBands.length).fill(0); // precomputed, avoid re-alloc per call
+const EQ_PRESET_LABELS = {
+  flat: "Flat",
+  bass: "Bass Boost",
+  treble: "Treble Boost",
+  vocal: "Vocal Boost",
+  rock: "Rock",
+};
+const EQ_PRESETS = {
+  flat: [0, 0, 0, 0, 0, 0],
+  bass: [3, 4, 4, 2, 1, 0],
+  treble: [0, 1, 2, 2, 3, 4],
+  vocal: [2, 2, 0, 1, 2, 2],
+  rock: [3, 1, 0, -1, 2, 3],
+};
+// Cache mini-player DOM refs once the player is initialized (avoids
+// re-querying getElementById on every timeupdate/play/pause tick).
+let miniEls = null;
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
@@ -23,20 +41,23 @@ function formatTime(seconds) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/** Shared toggle-pill styling used by loop/EQ/visualizer buttons (was duplicated 3x) */
+function _setTogglePillUI(btn, isActive) {
+  if (!btn) return;
+  btn.classList.toggle("bg-gray-800", !isActive);
+  btn.classList.toggle("text-gray-400", !isActive);
+  btn.classList.toggle("bg-orange-500/10", isActive);
+  btn.classList.toggle("text-orange-500", isActive);
+  btn.classList.toggle("border", isActive);
+  btn.classList.toggle("border-orange-500/30", isActive);
+}
+
 /** Apply loop state to all UI elements without touching player */
 function _applyLoopUI(isLoop) {
-  const btnLoop = document.getElementById("btn-loop");
+  _setTogglePillUI(document.getElementById("btn-loop"), isLoop);
   const loopText = document.getElementById("loop-text");
   const miniLoopBtn = document.getElementById("mini-loop-btn");
 
-  if (btnLoop) {
-    btnLoop.classList.toggle("bg-gray-800", !isLoop);
-    btnLoop.classList.toggle("text-gray-400", !isLoop);
-    btnLoop.classList.toggle("bg-orange-500/10", isLoop);
-    btnLoop.classList.toggle("text-orange-500", isLoop);
-    btnLoop.classList.toggle("border", isLoop);
-    btnLoop.classList.toggle("border-orange-500/30", isLoop);
-  }
   if (loopText) loopText.innerText = isLoop ? "Loop On" : "Loop Off";
   if (miniLoopBtn) {
     miniLoopBtn.style.color = isLoop ? "#f97316" : "";
@@ -133,10 +154,10 @@ function loadEqState() {
 
 function applyEqToFilters() {
   if (!eqFilters.length) return;
-  const gains = eqEnabled ? eqGains : Array(eqBands.length).fill(0);
-  eqFilters.forEach((filter, index) => {
-    filter.gain.value = normalizeEqValue(gains[index] ?? 0);
-  });
+  const gains = eqEnabled ? eqGains : ZERO_GAINS;
+  for (let i = 0; i < eqFilters.length; i++) {
+    eqFilters[i].gain.value = normalizeEqValue(gains[i] ?? 0);
+  }
 }
 
 function getRealtimeVbrValue(frequencyData) {
@@ -172,32 +193,18 @@ function updateEqUI() {
   const presetLabel = document.getElementById("eq-preset-label");
   const presetOptions = document.getElementById("eq-preset-options");
 
-  if (btnEq) {
-    btnEq.classList.toggle("bg-gray-800", !eqEnabled);
-    btnEq.classList.toggle("text-gray-400", !eqEnabled);
-    btnEq.classList.toggle("bg-orange-500/10", eqEnabled);
-    btnEq.classList.toggle("text-orange-500", eqEnabled);
-    btnEq.classList.toggle("border", eqEnabled);
-    btnEq.classList.toggle("border-orange-500/30", eqEnabled);
-  }
+  _setTogglePillUI(btnEq, eqEnabled);
   if (eqText) eqText.innerText = eqEnabled ? "EQ On" : "EQ Off";
-  if (eqPanel) {
-    eqPanel.classList.toggle("hidden", !eqEnabled);
-  }
-  if (eqContainer) {
-    eqContainer.classList.toggle("hidden", !eqEnabled);
-  }
+  if (eqPanel) eqPanel.classList.toggle("hidden", !eqEnabled);
+  if (eqContainer) eqContainer.classList.toggle("hidden", !eqEnabled);
   if (presetSelect) presetSelect.value = eqPreset;
-  if (presetLabel) presetLabel.innerText = eqPreset === 'flat' ? 'Flat' :
-    eqPreset === 'bass' ? 'Bass Boost' :
-    eqPreset === 'treble' ? 'Treble Boost' :
-    eqPreset === 'vocal' ? 'Vocal Boost' :
-    eqPreset === 'rock' ? 'Rock' : eqPreset;
+  if (presetLabel)
+    presetLabel.innerText = EQ_PRESET_LABELS[eqPreset] || eqPreset;
   if (presetOptions) {
-    presetOptions.querySelectorAll('button[data-preset]').forEach((button) => {
+    presetOptions.querySelectorAll("button[data-preset]").forEach((button) => {
       const isActive = button.dataset.preset === eqPreset;
-      button.classList.toggle('bg-white/[.06]', isActive);
-      button.classList.toggle('text-orange-400', isActive);
+      button.classList.toggle("bg-white/[.06]", isActive);
+      button.classList.toggle("text-orange-400", isActive);
     });
   }
 
@@ -205,7 +212,8 @@ function updateEqUI() {
     const input = document.getElementById(`eq-band-${index}`);
     const valueEl = document.getElementById(`eq-band-value-${index}`);
     if (input) input.value = eqGains[index] ?? 0;
-    if (valueEl) valueEl.innerText = `${normalizeEqValue(eqGains[index] ?? 0).toFixed(1)} dB`;
+    if (valueEl)
+      valueEl.innerText = `${normalizeEqValue(eqGains[index] ?? 0).toFixed(1)} dB`;
   });
 }
 
@@ -221,14 +229,9 @@ window.setEqBand = function (index, value) {
 };
 
 window.setEqPreset = function (preset) {
-  const presets = {
-    flat: [0, 0, 0, 0, 0, 0],
-    bass: [3, 4, 4, 2, 1, 0],
-    treble: [0, 1, 2, 2, 3, 4],
-    vocal: [2, 2, 0, 1, 2, 2],
-    rock: [3, 1, 0, -1, 2, 3],
-  };
-  const nextGains = (presets[preset] || presets.flat).map(normalizeEqValue);
+  const nextGains = (EQ_PRESETS[preset] || EQ_PRESETS.flat).map(
+    normalizeEqValue,
+  );
   eqPreset = preset || "flat";
   eqGains = nextGains;
   if (eqEnabled) applyEqToFilters();
@@ -244,18 +247,27 @@ window.toggleReply = function (id) {
   if (input && !el.classList.contains("hidden")) input.focus();
 };
 
-// ─── KEYBOARD SHORTCUTS (global, before player ready) ───────────────────────
+// ─── KEYBOARD SHORTCUTS (single global listener; was duplicated in two ───────
+// ─── places and both fired on "i", triggering toggleMiniPlayer AND ─────────
+// ─── goBackToLibrary at once — consolidated here to keep one clear behavior) ─
 document.addEventListener("keydown", (e) => {
   const tag = e.target.tagName.toLowerCase();
   if (tag === "input" || tag === "textarea") return;
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
 
   const key = e.key.toLowerCase();
   if (key === "l") {
     e.preventDefault();
     window.toggleLoop();
+  } else if (key === "v") {
+    window.toggleVisualizer?.();
+  } else if (key === "i") {
+    e.preventDefault();
+    // Prefer in-page "back to library" once the player has initialized it;
+    // fall back to the mini-player toggle before that point.
+    if (window.goBackToLibrary) window.goBackToLibrary();
+    else window.toggleMiniPlayer?.();
   }
-  if (key === "v") window.toggleVisualizer?.();
-  if (key === "i") window.toggleMiniPlayer?.();
 });
 
 // ========================================
@@ -361,14 +373,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const bars = [];
 
   cavaContainer.innerHTML = "";
+  const barsFragment = document.createDocumentFragment();
   for (let i = 0; i < numBars; i++) {
     const bar = document.createElement("div");
     bar.className =
       "flex-1 bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-sm transition-all duration-75";
     bar.style.cssText = "height:4px;min-width:1px";
-    cavaContainer.appendChild(bar);
+    barsFragment.appendChild(bar);
     bars.push(bar);
   }
+  cavaContainer.appendChild(barsFragment);
 
   const realFileSize = window.MEEL_MUSIC_CONFIG.fileSizeBytes;
   let baseBitrate = 160;
@@ -481,18 +495,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const visText = document.getElementById("vis-text");
     const on = isVisualizerEnabled;
 
-    if (btnVis) {
-      btnVis.classList.toggle("bg-gray-800", !on);
-      btnVis.classList.toggle("text-gray-400", !on);
-      btnVis.classList.toggle("bg-orange-500/10", on);
-      btnVis.classList.toggle("text-orange-500", on);
-      btnVis.classList.toggle("border", on);
-      btnVis.classList.toggle("border-orange-500/30", on);
-    }
+    _setTogglePillUI(btnVis, on);
     if (visText) visText.innerText = on ? "Vis On" : "Vis Off";
     cavaContainer.style.display = on ? "flex" : "none";
-    if (!on) cavaContainer.classList.add("hidden");
-    else cavaContainer.classList.remove("hidden");
+    cavaContainer.classList.toggle("hidden", !on);
   }
 
   window.toggleVisualizer = function () {
@@ -594,7 +600,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
           seekToRestore();
         } else {
-          audio.addEventListener("loadedmetadata", seekToRestore, { once: true });
+          audio.addEventListener("loadedmetadata", seekToRestore, {
+            once: true,
+          });
         }
       } else {
         const pos = localStorage.getItem(storageKeyMusic);
@@ -656,13 +664,21 @@ document.addEventListener("DOMContentLoaded", () => {
     updateMiniPlayerUI();
   });
 
+  let lastSavedSecond = -1;
   player.on("timeupdate", () => {
     if (
       !isFinished &&
       player.currentTime > 0 &&
       player.currentTime < player.duration - 1
-    )
-      localStorage.setItem(storageKeyMusic, player.currentTime);
+    ) {
+      // timeupdate can fire many times per second; only touch localStorage
+      // once per whole second instead of on every tick.
+      const sec = Math.floor(player.currentTime);
+      if (sec !== lastSavedSecond) {
+        lastSavedSecond = sec;
+        localStorage.setItem(storageKeyMusic, player.currentTime);
+      }
+    }
     updateMiniPlayerUI();
   });
 
@@ -680,27 +696,38 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ── 9. MINI PLAYER (SPA-style) ───────────────────────────────────────────
+  let lastMiniPausedState = null; // tracks last rendered icon state
   function updateMiniPlayerUI() {
     if (!isMiniPlayerActive) return;
-    const miniPlayBtn = document.getElementById("mini-play-btn");
-    const miniProgressFill = document.getElementById("mini-progress-fill");
-    const miniCurrentTime = document.getElementById("mini-current-time");
-    const miniDuration = document.getElementById("mini-duration");
+    // Elements are queried once and cached; the mini-player markup doesn't
+    // get replaced while active, so repeated getElementById calls here
+    // (previously run on every timeupdate tick) were wasted work.
+    if (!miniEls) {
+      miniEls = {
+        playBtn: document.getElementById("mini-play-btn"),
+        progressFill: document.getElementById("mini-progress-fill"),
+        currentTime: document.getElementById("mini-current-time"),
+        duration: document.getElementById("mini-duration"),
+      };
+    }
+    const { playBtn, progressFill, currentTime, duration } = miniEls;
 
-    if (miniPlayBtn)
-      miniPlayBtn.innerHTML = player.paused
+    if (playBtn && player.paused !== lastMiniPausedState) {
+      lastMiniPausedState = player.paused;
+      playBtn.innerHTML = player.paused
         ? '<i data-lucide="play"  style="width:18px;height:18px;"></i>'
         : '<i data-lucide="pause" style="width:18px;height:18px;"></i>';
+      // Only rebuild icons when the play/pause icon actually changed, not on
+      // every timeupdate tick (createIcons() re-scans/replaces DOM nodes).
+      if (typeof lucide !== "undefined") lucide.createIcons();
+    }
 
     const pct = player.duration
       ? (player.currentTime / player.duration) * 100
       : 0;
-    if (miniProgressFill) miniProgressFill.style.width = pct + "%";
-    if (miniCurrentTime)
-      miniCurrentTime.textContent = formatTime(player.currentTime);
-    if (miniDuration) miniDuration.textContent = formatTime(player.duration);
-
-    if (typeof lucide !== "undefined") lucide.createIcons();
+    if (progressFill) progressFill.style.width = pct + "%";
+    if (currentTime) currentTime.textContent = formatTime(player.currentTime);
+    if (duration) duration.textContent = formatTime(player.duration);
   }
 
   window.toggleMiniPlayer = async function () {
@@ -823,15 +850,7 @@ document.addEventListener("DOMContentLoaded", () => {
       : (player.currentTime = 0);
   };
 
-  // ── 10. KEYBOARD SHORTCUT (in-page 'i' → back to library) ───────────────
-  document.addEventListener("keydown", (e) => {
-    const tag = e.target.tagName.toLowerCase();
-    if (tag === "input" || tag === "textarea") return;
-    if (e.key.toLowerCase() === "i" && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      e.preventDefault();
-      window.goBackToLibrary();
-    }
-  });
+  // ── 10. (keyboard 'i' shortcut now handled by the single global listener) ─
 
   window.goBackToLibrary = function () {
     saveAudioState();
