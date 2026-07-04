@@ -451,14 +451,26 @@ document.addEventListener("DOMContentLoaded", () => {
     let peak = 0;
     for (let i = 0; i < numBars; i++) {
       const idx = Math.floor(i * (data.length / numBars) * 0.7);
-      const value = Math.max(4, (data[idx] / 255) * 100);
+      const raw = data[idx];
+      const value = Math.max(4, (raw / 255) * 100);
       bars[i].style.height = `${value}%`;
-      peak = Math.max(peak, data[idx]);
+
+      const normalized = raw / 255;
+      let color = "#9ca3af"; // gray
+      if (normalized > 0.75) {
+        color = "#22c55e"; // green
+      } else if (normalized > 0.5) {
+        color = "#FB923C"; // Orange
+      } else if (normalized > 0.25) {
+        color = "#eab308"; // yellow
+      }
+      bars[i].style.background = color;
+
+      peak = Math.max(peak, raw);
     }
     if (bitrateDisplay) {
       const dynamicBitrate = getRealtimeVbrValue(data);
       updateBitrateLabel(dynamicBitrate, bitrateDisplay);
-      updateBarColors(dynamicBitrate, bars);
     }
     animationId = requestAnimationFrame(render);
   }
