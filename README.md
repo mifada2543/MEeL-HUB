@@ -296,6 +296,26 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
    • Penghapusan atribusi pembuat asli
 ```
 ---
+## Q&A
+### Q: Kenapa belum ada versi docker?
+
+>A: Sulit mengkonfigurasi ulang absolut path kedalam docker(karena env nya tersendiri), udah gitu saya ingin memfokuskan ini ke performa yang maximal(tanpa penghalan/docker)
+
+
+### Q: Kenapa absolut path?
+
+>A: Lebih mudah dalam mengkonfigurasi jika anda menggunakan media eksternal seperti HDD(mengurangi memori system penuh)
+
+
+### Q: Ukuran MEeL?
+
+>A: 77MB untuk source codenya, 1-2GB untuk env(ffmpeg, yt-dlp, apache, MariaDB, php, dsb).
+
+
+### Q: System Requirement?
+
+>A: CPU 2 Core 2GHz cukup, GPU optional karena seluruh process bergantung pada CPU(anda dapat konfigurasi ulang dibagian codec jika ingin menggunakan accelerate GPU untuk transcoding), RAM 2GB cukup namun saran 4GB untuk membantu transcoding, ROM disesuaikan saja, OS ubuntu server, intinya linux dan asal ada env nya itu bisa pakai MEeL.
+---
 
 ### ⚠️ Pernyataan Penting / Disclaimer
 
