@@ -55,7 +55,7 @@ class Transcoder
             . " --user-agent "      . escapeshellarg($this->user_agent)
             . " --referer "         . escapeshellarg("https://www.youtube.com/")
             . " --cookies "         . escapeshellarg($this->cookies_path) . " ";
-            
+
         $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
         $stmt->bind_param("i", $this->user_id);
         $stmt->execute();
@@ -580,7 +580,8 @@ class Transcoder
         }
 
         $romaji   = getRomajiName($title);
-        $metadata = mb_strtolower("$title $artist $romaji", 'UTF-8');
+        $english  = getEnglishTranslation($title);
+        $metadata = mb_strtolower(trim("$title $artist $romaji $english"), 'UTF-8');
         $views    = 0;
 
         $stmt = $this->conn->prepare(
@@ -661,9 +662,11 @@ class Transcoder
             @unlink($leftover);
         }
 
-        $romaji_title  = getRomajiName($title);
-        $romaji_artist = getRomajiName($artist);
-        $metadata      = mb_strtolower("$title $artist $album $romaji_title $romaji_artist", 'UTF-8');
+        $romaji_title    = getRomajiName($title);
+        $romaji_artist   = getRomajiName($artist);
+        $english_title   = getEnglishTranslation($title);
+        $english_artist  = getEnglishTranslation($artist);
+        $metadata        = mb_strtolower(trim("$title $artist $album $romaji_title $romaji_artist $english_title $english_artist"), 'UTF-8');
 
         $stmt = $this->conn->prepare(
             "INSERT INTO music (title, artist, album, description, search_metadata, filename, thumbnail, duration, user_id, upload_date)

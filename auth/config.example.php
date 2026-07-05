@@ -66,7 +66,6 @@ $_SESSION['LAST_ACTIVITY'] = time();
 
 // Include activity logger
 include_once __DIR__ . '/../modules/activity_logger.php';
-
 // Function to convert Japanese text to Romaji
 if (!function_exists('getRomajiName')) {
     function getRomajiName($text)
@@ -167,5 +166,73 @@ if (!function_exists('getRomajiName')) {
         $clean = preg_replace('/-+/', '-', trim($clean, '-'));
 
         return $clean ?: 'untitled-media';
+    }
+}
+
+// Function to translate text (e.g. Japanese title) into English keywords for search metadata
+// 100% OFFLINE: pakai MeCab (sudah dipakai getRomajiName) + kamus lokal JMdict (SQLite).
+// Kamus perlu dibangun sekali lewat build_dict.php (lihat file terpisah) sebelum fitur ini aktif.
+if (!function_exists('getEnglishTranslation')) {
+    function getEnglishTranslation(string $text): string
+    {
+        static $pdo = null;
+        static $dict_ready = null;
+
+        if ($dict_ready === null) {
+            $dict_path = __DIR__ . '/../assets/dict/jmdict.sqlite3';
+            if (file_exists($dict_path)) {
+                try {
+                    $pdo = new PDO('sqlite:' . $dict_path);
+                    $dict_ready = true;
+                } catch (Exception $e) {
+                    $dict_ready = false;
+                }
+            } else {
+                $dict_ready = false; // Kamus belum dibuat, fitur nonaktif (fail-safe, bukan fail-error)
+            }
+        }
+
+        if (!$dict_ready || empty(trim($text))) return '';
+
+        // 1. Tokenisasi pakai MeCab (offline)
+        $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
+        $process = proc_open('mecab', $descriptorspec, $pipes);
+        if (!is_resource($process)) return '';
+
+        fwrite($pipes[0], $text);
+        fclose($pipes[0]);
+        $output = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        proc_close($process);
+
+        // 2. Lookup tiap kata (surface & base form) ke kamus lokal
+        $stmt = $pdo->prepare("SELECT glosses FROM entries WHERE reading = :w LIMIT 1");
+        $glosses = [];
+
+        $lines = explode("\n", trim($output));
+        foreach ($lines as $line) {
+            if ($line === 'EOS' || trim($line) === '') continue;
+
+            $parts = explode("\t", $line);
+            if (count($parts) < 2) continue;
+
+            $surface  = $parts[0];
+            $features = explode(',', $parts[1]);
+            $base_form = $features[6] ?? '*'; // kolom ke-7 IPADIC = bentuk dasar/lemma
+
+            foreach (array_unique([$surface, $base_form]) as $candidate) {
+                if ($candidate === '*' || $candidate === '') continue;
+
+                $stmt->execute([':w' => $candidate]);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($row && !empty($row['glosses'])) {
+                    $glosses[] = explode(';', $row['glosses'])[0]; // ambil arti pertama saja
+                    break;
+                }
+            }
+        }
+
+        return trim(implode(' ', array_unique($glosses)));
     }
 }

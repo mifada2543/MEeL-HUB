@@ -58,7 +58,10 @@ class Uploader
     {
         $original = trim("$title $artist $album");
         $romaji   = getRomajiName($original);
-        return mb_strtolower($original . " " . $romaji, 'UTF-8');
+        $english  = getEnglishTranslation($original);
+
+        $combined = trim($original . " " . $romaji . " " . $english);
+        return mb_strtolower($combined, 'UTF-8');
     }
 
     private function getUniqueFilename(string $clean_name, string $ext, string $target_dir): string
