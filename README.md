@@ -122,7 +122,7 @@ MEeL/
 ├── data_drive/            # Cloud Drive storage runtime
 ├── docs/                  # Dokumentasi proyek
 ├── drive/                 # Modul Cloud Drive
-├── err/                   # Halaman error (denied, maintenance)
+├── err/                   # Halaman error (denied, maintenance, banned, revoked)
 ├── modules/               # Core logic & business layer (OOP)
 ├── music/                 # Modul pemutar musik
 ├── partials/              # Reusable UI components
@@ -277,6 +277,7 @@ Dokumentasi proyek tersedia di direktori [`docs/`](docs/):
 | [🔒 Keamanan](docs/security.md) | Sistem keamanan & RBAC |
 | [🔧 Troubleshooting](docs/troubleshooting.md) | Pemecahan masalah umum |
 | [👨‍💻 Development](docs/development.md) | Panduan kontribusi |
+| [📥 Advanced Upload](docs/upload_issue.md) | Penanganan masalah yt-dlp & queue |
 
 ---
 

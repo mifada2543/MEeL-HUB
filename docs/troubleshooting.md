@@ -284,15 +284,23 @@ Saat metadata gagal di-parsing, Transcoder akan menampilkan debug overlay:
    sudo chmod 777 /tmp
    ```
 
-### ❌ "SESSION REVOKED" terus muncul
+### ❌ Terus menerus dialihkan ke `/err/revoked.php` (Session Revoked)
 
-**Penyebab:** Session ID berubah (biasanya karena cookie hilang atau cache)
+**Penyebab:** Session ID di browser Anda tidak cocok dengan yang terdaftar di database (misalnya karena ter-kick oleh Admin, masuk dari perangkat lain, atau cookie sesi terhapus/tidak persisten).
 
 **Solusi:**
-1. Clear browser cache & cookies untuk domain ini
-2. Jika pakai Cloudflare Tunnel, pastikan session cookie persistent
-3. Cek di mode incognito/private browser
-4. Admin bisa menonaktifkan session kick di `activity_logger.php` (tidak disarankan)
+1. Klik tombol **Kembali Ke Login** pada layar error dan lakukan login ulang.
+2. Bersihkan cache dan cookie browser Anda khusus untuk domain platform ini.
+3. Jika menggunakan Cloudflare Tunnel, pastikan pengaturan kuki sesi diatur agar tetap persisten.
+4. Coba akses menggunakan Mode Incognito / Private Window di browser Anda.
+
+### ❌ Dialihkan ke `/err/banned.php` (Access Blocked)
+
+**Penyebab:** Alamat IP Anda terdaftar pada tabel pemblokiran firewall internal (`ip_ban`).
+
+**Solusi:**
+1. Hubungi Admin MEeL-HUB untuk menghapus IP Anda dari daftar cek di Admin Panel -> **Firewall & Banned IPs**.
+2. Jika Anda adalah Admin, Anda dapat mem-bypass blokir secara default (karena role admin dikecualikan dari pengecekan ban di `activity_logger.php`), atau masuk menggunakan koneksi lokal/IP lain terlebih dahulu untuk menghapus IP tersebut melalui dashboard.
 
 ### ❌ Login Gagal Terus (Locked)
 
