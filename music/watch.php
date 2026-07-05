@@ -259,7 +259,7 @@ switch ($ext) {
                 </div>
 
                 <div class="p-4 sm:p-5">
-                    <audio id="main-player" controls preload="metadata" class="w-full">
+                    <audio id="main-player" controls preload="metadata" class="w-full" oncontextmenu="return false;">
                         <?php
                         $ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
                         $mimeType = match ($ext) {
@@ -271,7 +271,7 @@ switch ($ext) {
                             default => 'audio/ogg'
                         };
                         ?>
-                        <source src="upload/file/<?= htmlspecialchars($v['filename']) ?>" type="<?= $mimeType ?>">
+                        <source src="stream.php?id=<?= $id ?>" type="<?= $mimeType ?>">
                         Your browser does not support the audio element.
                     </audio>
                 </div>
