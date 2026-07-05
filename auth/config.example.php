@@ -66,6 +66,7 @@ $_SESSION['LAST_ACTIVITY'] = time();
 
 // Include activity logger
 include_once __DIR__ . '/../modules/activity_logger.php';
+
 // Function to convert Japanese text to Romaji
 if (!function_exists('getRomajiName')) {
     function getRomajiName($text)
@@ -169,7 +170,102 @@ if (!function_exists('getRomajiName')) {
     }
 }
 
-// Function to translate text (e.g. Japanese title) into English keywords for search metadata
+// ─── OPTIMASI: analisis gabungan (romaji + english) dalam SATU kali panggil MeCab ──
+if (!function_exists('analyzeJapaneseText')) {
+    function analyzeJapaneseText(string $text): array
+    {
+        $result = ['romaji' => 'untitled-media', 'english' => ''];
+        if (empty(trim($text))) return $result;
+
+        // 1. Preprocessing simbol/karakter khusus (sama seperti getRomajiName)
+        $search  = ['×', 'x', 'X', '*', '&', '/', '【', '】', '「', '」', '(', ')', '鏡音', '巡音', '初音'];
+        $replace = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'かがみね', 'めぐりね', 'hatsune'];
+        $clean_text = str_replace($search, $replace, $text);
+
+        // 2. Jalankan MeCab SEKALI untuk kedua kebutuhan
+        $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
+        $process = proc_open('mecab', $descriptorspec, $pipes);
+        if (!is_resource($process)) {
+            $result['romaji'] = getRomajiName($text); // fallback ke jalur lama
+            return $result;
+        }
+
+        fwrite($pipes[0], $clean_text);
+        fclose($pipes[0]);
+        $output = stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        proc_close($process);
+
+        // 3. Koneksi kamus offline — static supaya sekali connect per request, bukan per panggilan
+        static $pdo = null, $dict_ready = null, $dict_stmt = null;
+        if ($dict_ready === null) {
+            $dict_path = __DIR__ . '/../assets/dict/jmdict.sqlite3';
+            if (file_exists($dict_path)) {
+                try {
+                    $pdo        = new PDO('sqlite:' . $dict_path);
+                    $dict_stmt  = $pdo->prepare("SELECT glosses FROM entries WHERE reading = :w LIMIT 1");
+                    $dict_ready = true;
+                } catch (Exception $e) {
+                    $dict_ready = false;
+                }
+            } else {
+                $dict_ready = false;
+            }
+        }
+
+        // 4. Satu kali loop token untuk isi romaji & english sekaligus
+        $parsed_romaji = '';
+        $glosses = [];
+
+        foreach (explode("\n", trim($output)) as $line) {
+            if ($line === 'EOS' || trim($line) === '') continue;
+
+            $parts = explode("\t", $line);
+            if (count($parts) < 2) continue;
+
+            $surface  = $parts[0];
+            $features = explode(',', $parts[1]);
+
+            // -- Romaji: yomi kalau ada & bukan huruf latin, else surface --
+            $yomi = '*';
+            if (isset($features[7]) && $features[7] !== '*') {
+                $yomi = $features[7];
+            } elseif (isset($features[8]) && $features[8] !== '*') {
+                $yomi = $features[8];
+            }
+            $parsed_romaji .= ' ' . (($yomi !== '*' && !preg_match('/[a-zA-Z]/', $yomi)) ? $yomi : $surface);
+
+            // -- English: lookup kamus lokal via surface / base form --
+            if ($dict_ready) {
+                $base_form = $features[6] ?? '*';
+                foreach (array_unique([$surface, $base_form]) as $candidate) {
+                    if ($candidate === '*' || $candidate === '') continue;
+                    $dict_stmt->execute([':w' => $candidate]);
+                    $row = $dict_stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($row && !empty($row['glosses'])) {
+                        $glosses[] = explode(';', $row['glosses'])[0];
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 5. Finalisasi romaji (transliterasi + slug), identik dengan getRomajiName
+        $romaji_text = trim($parsed_romaji);
+        $rule = "Katakana-Latin; Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC; Latin-ASCII; Any-Lower;";
+        $transliterator = Transliterator::create($rule);
+        if ($transliterator) {
+            $romaji_text = $transliterator->transliterate($romaji_text);
+        }
+        $clean = preg_replace('/[^a-z0-9\-]/u', '-', $romaji_text);
+        $clean = preg_replace('/-+/', '-', trim($clean, '-'));
+
+        $result['romaji']  = $clean ?: 'untitled-media';
+        $result['english'] = trim(implode(' ', array_unique($glosses)));
+
+        return $result;
+    }
+}
 // 100% OFFLINE: pakai MeCab (sudah dipakai getRomajiName) + kamus lokal JMdict (SQLite).
 // Kamus perlu dibangun sekali lewat build_dict.php (lihat file terpisah) sebelum fitur ini aktif.
 if (!function_exists('getEnglishTranslation')) {

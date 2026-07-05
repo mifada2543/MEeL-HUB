@@ -579,9 +579,8 @@ class Transcoder
             return "";
         }
 
-        $romaji   = getRomajiName($title);
-        $english  = getEnglishTranslation($title);
-        $metadata = mb_strtolower(trim("$title $artist $romaji $english"), 'UTF-8');
+        $analysis = analyzeJapaneseText($title); // 1x MeCab, hasilkan romaji + english sekaligus
+        $metadata = mb_strtolower(trim("$title $artist {$analysis['romaji']} {$analysis['english']}"), 'UTF-8');
         $views    = 0;
 
         $stmt = $this->conn->prepare(
@@ -662,11 +661,12 @@ class Transcoder
             @unlink($leftover);
         }
 
-        $romaji_title    = getRomajiName($title);
-        $romaji_artist   = getRomajiName($artist);
-        $english_title   = getEnglishTranslation($title);
-        $english_artist  = getEnglishTranslation($artist);
-        $metadata        = mb_strtolower(trim("$title $artist $album $romaji_title $romaji_artist $english_title $english_artist"), 'UTF-8');
+        $title_analysis  = analyzeJapaneseText($title);  // 1x MeCab (romaji + english title)
+        $artist_analysis = analyzeJapaneseText($artist); // 1x MeCab (romaji + english artist)
+        $metadata        = mb_strtolower(trim(
+            "$title $artist $album {$title_analysis['romaji']} {$artist_analysis['romaji']} "
+                . "{$title_analysis['english']} {$artist_analysis['english']}"
+        ), 'UTF-8');
 
         $stmt = $this->conn->prepare(
             "INSERT INTO music (title, artist, album, description, search_metadata, filename, thumbnail, duration, user_id, upload_date)
