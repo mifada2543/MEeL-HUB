@@ -6,8 +6,8 @@ ini_set('display_errors', 0);
 session_name('meel');
 session_start();
 if (!isset($_SERVER['HTTP_REFERER']) || strpos($_SERVER['HTTP_REFERER'], 'watch.php') === false) {
-    header("HTTP/1.1 403 Forbidden");
-    exit("Akses Ditolak: Audio hanya dapat diputar melalui sistem MEeL Player.");
+    header("Location: ../err/denied.php");
+    exit;
 }
 include '../auth/config.php';
 require_once '../modules/helpers.php';
