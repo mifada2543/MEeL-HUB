@@ -5,10 +5,17 @@ ini_set('display_errors', 0);
 
 session_name('meel');
 session_start();
-if (!isset($_SERVER['HTTP_REFERER']) || strpos($_SERVER['HTTP_REFERER'], 'watch.php') === false) {
-    header("Location: ../err/denied.php");
-    exit;
+
+$referer = $_SERVER['HTTP_REFERER'] ?? '';
+if (!empty($referer)) {
+    $refererHost = parse_url($referer, PHP_URL_HOST);
+    $currentHost = $_SERVER['HTTP_HOST'] ?? '';
+    if ($refererHost && strtolower($refererHost) !== strtolower($currentHost)) {
+        header("Location: ../err/denied.php");
+        exit;
+    }
 }
+
 include '../auth/config.php';
 require_once '../modules/helpers.php';
 include '../modules/MediaViewer.php';

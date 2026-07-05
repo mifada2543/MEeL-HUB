@@ -473,7 +473,7 @@ if (isset($_GET['content_only'])) {
             }
 
             currentState = state;
-            audioPlayer.src = `upload/file/${state.filename}`;
+            audioPlayer.src = `stream.php?id=${state.id}`;
             audioPlayer.load();
 
             // Restore loop state dari global key (sumber kebenaran) + state object sebagai fallback
