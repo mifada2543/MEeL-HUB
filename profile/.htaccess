@@ -1,5 +1,6 @@
-# Security defaults for assets
+# Security defaults for profile
 Options -Indexes
+DirectoryIndex index.php index.html
 
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"

@@ -1,4 +1,4 @@
-# Security defaults for assets
+# Security defaults for modules
 Options -Indexes
 
 <IfModule mod_headers.c>
