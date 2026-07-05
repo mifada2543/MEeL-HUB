@@ -16,7 +16,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     $ref = $_SERVER['HTTP_REFERER'];
     $host = $_SERVER['HTTP_HOST'];
     if (strpos($ref, $host) !== false) {
-        if (strpos($ref, 'login.php') === false && strpos($ref, 'register.php') === false) {
+        if (strpos($ref, 'login.php') === false && strpos($ref, 'register.php') === false && strpos($ref, 'revoked.php') === false && strpos($ref, 'banned.php') === false) {
             $back_url = $ref;
         }
     }
