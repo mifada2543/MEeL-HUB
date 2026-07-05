@@ -295,6 +295,11 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
    • Penggunaan komersial atau monetisasi
    • Penghapusan atribusi pembuat asli
 ```
+**Catatan**: *Pembuat(Mifada) Tidak terlibat pada file yang di unggah dan disebarluaskan oleh pihak yang mengambil code MEeL ini, semuanya kembali ke 'penggunaan' masing-masing user*
+
+>en: Domains sometimes don't work because they are running on developer devices.
+
+>id: Domain terkadang tidak berfungsi karena berjalan di perangkat developer
 
 **Kontak:** `minecraft.daffa2501@gmail.com` · [github.com/mifada2543](https://github.com/mifada2543)
 
