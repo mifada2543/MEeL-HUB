@@ -11,12 +11,17 @@
         ?>
         <img src="<?= $thumb_src ?>"
              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-             loading="lazy">
+             loading="lazy"
+             decoding="async"
+             alt="Thumbnail video <?= htmlspecialchars($v['title']) ?>"
+             width="420"
+             height="236">
 
         <!-- PLAY OVERLAY -->
         <a href="watch.php?id=<?= $v['id'] ?>"
            class="absolute inset-0 flex items-center justify-center
-                  opacity-0 group-hover:opacity-100 bg-black/50 transition-opacity duration-300">
+                  opacity-0 group-hover:opacity-100 bg-black/50 transition-opacity duration-300"
+           aria-label="Tonton video <?= htmlspecialchars($v['title']) ?>">
             <div class="w-11 h-11 bg-red-600 rounded-full flex items-center justify-center shadow-xl
                         scale-90 group-hover:scale-100 transition-transform duration-300">
                 <i data-lucide="play" class="fill-white text-white w-5 h-5 ml-0.5"></i>
@@ -37,7 +42,7 @@
             <?= htmlspecialchars($v['title']) ?>
         </a>
         <?php if (!empty($v['upload_date'])): ?>
-        <p class="text-[9px] text-gray-700 mt-1.5 uppercase tracking-wider">
+        <p class="text-[9px] text-gray-300 mt-1.5 uppercase tracking-wider">
             <?= date('d M Y', strtotime($v['upload_date'])) ?>
         </p>
         <?php endif; ?>

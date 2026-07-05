@@ -39,7 +39,7 @@ $games = [
     "maxPlayers" => "1 Players",
     "rating" => 4.8,
     "description" => "Game ular klasik yang tak pernah mati. Kendalikan ular hijau, kumpulkan apel merah, dan hindari menabrak dinding atau tubuh sendiri. Semakin banyak makan, semakin cepat! Cocok untuk mengisi waktu luang dan melatih refleks.",
-    "image" => "assets/img/dino.png",
+    "image" => "assets/img/snake.png",
     "favorite" => false,
     "play_url" => "snake/"
   ]

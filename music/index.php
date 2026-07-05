@@ -461,7 +461,7 @@ if (isset($_GET['content_only'])) {
                 audioPlayer.preload = 'metadata';
                 document.body.appendChild(audioPlayer);
 
-                audioPlayer.addEventListener('timeupdate', updateIndexUI);
+                audioPlayer.addEventListener('timeupdate', updateIndexProgress);
                 audioPlayer.addEventListener('play', () => setPlayIcon('pause'));
                 audioPlayer.addEventListener('pause', () => setPlayIcon('play'));
                 audioPlayer.addEventListener('ended', () => miniNextIndex());
@@ -495,30 +495,54 @@ if (isset($_GET['content_only'])) {
         }
 
         // --- Update seluruh UI ---
-        function updateIndexUI() {
-            if (!audioPlayer || !currentState) return;
+        // Elemen di-cache sekali (markup mini-player-index statis, tidak
+        // pernah di-swap oleh htmx), jadi tidak perlu getElementById lagi
+        // di setiap tick timeupdate.
+        let _idxEls = null;
+
+        function _getIdxEls() {
+            if (!_idxEls) {
+                _idxEls = {
+                    fill: document.getElementById('mp-seekbar-fill-index'),
+                    thumb: document.getElementById('mp-seekbar-thumb-index'),
+                    ct: document.getElementById('mini-current-time-index'),
+                    dt: document.getElementById('mini-duration-index'),
+                    img: document.getElementById('mini-thumbnail-index'),
+                    title: document.getElementById('mini-title-index'),
+                    artist: document.getElementById('mini-artist-index'),
+                };
+            }
+            return _idxEls;
+        }
+
+        // Bagian "panas": dipanggil di setiap event timeupdate (bisa puluhan
+        // kali/detik), jadi hanya menyentuh seekbar + label waktu.
+        function updateIndexProgress() {
+            if (!audioPlayer) return;
+            const els = _getIdxEls();
             const pct = audioPlayer.duration > 0 ?
                 (audioPlayer.currentTime / audioPlayer.duration) * 100 : 0;
 
-            // Seekbar
-            const fill = document.getElementById('mp-seekbar-fill-index');
-            const thumb = document.getElementById('mp-seekbar-thumb-index');
-            if (fill) fill.style.width = pct + '%';
-            if (thumb) thumb.style.left = pct + '%';
+            if (els.fill) els.fill.style.width = pct + '%';
+            if (els.thumb) els.thumb.style.left = pct + '%';
+            if (els.ct) els.ct.textContent = fmtTime(audioPlayer.currentTime);
+            if (els.dt) els.dt.textContent = fmtTime(audioPlayer.duration);
+        }
 
-            // Waktu
-            const ct = document.getElementById('mini-current-time-index');
-            const dt = document.getElementById('mini-duration-index');
-            if (ct) ct.textContent = fmtTime(audioPlayer.currentTime);
-            if (dt) dt.textContent = fmtTime(audioPlayer.duration);
+        // Bagian "dingin": thumbnail/judul/artis hanya berubah saat lagu
+        // berganti, jadi dipisah agar tidak ikut ditulis ulang tiap tick.
+        function updateIndexMeta() {
+            if (!currentState) return;
+            const els = _getIdxEls();
+            if (els.img) els.img.src = currentState.thumbnailUrl || `upload/thumbnail/${currentState.thumbnail}`;
+            if (els.title) els.title.textContent = currentState.title || 'Unknown';
+            if (els.artist) els.artist.textContent = currentState.artist || 'Unknown';
+        }
 
-            // Thumbnail / judul / artis
-            const img = document.getElementById('mini-thumbnail-index');
-            const title = document.getElementById('mini-title-index');
-            const artist = document.getElementById('mini-artist-index');
-            if (img) img.src = currentState.thumbnailUrl || `upload/thumbnail/${currentState.thumbnail}`;
-            if (title) title.textContent = currentState.title || 'Unknown';
-            if (artist) artist.textContent = currentState.artist || 'Unknown';
+        function updateIndexUI() {
+            if (!audioPlayer || !currentState) return;
+            updateIndexProgress();
+            updateIndexMeta();
         }
 
         function setPlayIcon(icon) {
@@ -592,7 +616,9 @@ if (isset($_GET['content_only'])) {
         function loadPlaylistById(id) {
             if (!id) return;
             fetch('view_playlist.php?id=' + id + '&content_only=1')
-                .then(function(r) { return r.text(); })
+                .then(function(r) {
+                    return r.text();
+                })
                 .then(function(html) {
                     var main = document.querySelector('main');
                     if (!main) return;

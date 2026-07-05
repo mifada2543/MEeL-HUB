@@ -8,6 +8,51 @@ let isFinished = false;
 let isMiniPlayerActive = false;
 let watchUrl;
 let skipResumeModalOnce = false;
+let eqFilters = [];
+let eqBands = [60, 170, 350, 1000, 3500, 10000];
+let eqGains = Array(eqBands.length).fill(0);
+let eqEnabled = false;
+let eqPreset = "flat";
+const ZERO_GAINS = Array(eqBands.length).fill(0); // precomputed, avoid re-alloc per call
+const EQ_PRESET_LABELS = {
+  flat: "Flat",
+  bass: "Bass Boost",
+  treble: "Treble Boost",
+  vocal: "Vocal Boost",
+  rock: "Rock",
+  classical: "Classical",
+  pop: "Pop",
+  jazz: "Jazz",
+  electronic: "Electronic",
+  acoustic: "Acoustic",
+  gaming: "Gaming",
+  podcast: "Podcast",
+};
+const EQ_PRESETS = {
+  flat: [0, 0, 0, 0, 0, 0],
+  bass: [3, 4, 4, 2, 1, 0],
+  treble: [0, 1, 2, 2, 3, 4],
+  vocal: [2, 2, 0, 1, 2, 2],
+  rock: [3, 1, 0, -1, 2, 3],
+  // ── presets baru ─────────────────────────────────────────────
+  // Classical: angkat low-end & high, tengah netral
+  classical: [2, 0, -1, -1, 2, 3],
+  // Pop: vokal & presence lebih menonjol
+  pop: [1, 2, 2, 1, 2, 1],
+  // Jazz: warm low-mid, sedikit air di atas
+  jazz: [2, 3, 1, 0, 1, 2],
+  // Electronic: kick kuat, sub-bass, sparkle di atas
+  electronic: [4, 2, -1, -1, 2, 4],
+  // Acoustic: mid hangat, treble natural
+  acoustic: [2, 2, 1, 0, 1, 2],
+  // Gaming: spatial clarity & sub presence
+  gaming: [3, 2, -1, 1, 3, 2],
+  // Podcast: vokal diperjelas, bass & treble dipotong sedikit
+  podcast: [0, -1, 2, 3, 1, -1],
+};
+// Cache mini-player DOM refs once the player is initialized (avoids
+// re-querying getElementById on every timeupdate/play/pause tick).
+let miniEls = null;
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
@@ -18,20 +63,23 @@ function formatTime(seconds) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/** Shared toggle-pill styling used by loop/EQ/visualizer buttons (was duplicated 3x) */
+function _setTogglePillUI(btn, isActive) {
+  if (!btn) return;
+  btn.classList.toggle("bg-gray-800", !isActive);
+  btn.classList.toggle("text-gray-400", !isActive);
+  btn.classList.toggle("bg-orange-500/10", isActive);
+  btn.classList.toggle("text-orange-500", isActive);
+  btn.classList.toggle("border", isActive);
+  btn.classList.toggle("border-orange-500/30", isActive);
+}
+
 /** Apply loop state to all UI elements without touching player */
 function _applyLoopUI(isLoop) {
-  const btnLoop = document.getElementById("btn-loop");
+  _setTogglePillUI(document.getElementById("btn-loop"), isLoop);
   const loopText = document.getElementById("loop-text");
   const miniLoopBtn = document.getElementById("mini-loop-btn");
 
-  if (btnLoop) {
-    btnLoop.classList.toggle("bg-gray-800", !isLoop);
-    btnLoop.classList.toggle("text-gray-400", !isLoop);
-    btnLoop.classList.toggle("bg-orange-500/10", isLoop);
-    btnLoop.classList.toggle("text-orange-500", isLoop);
-    btnLoop.classList.toggle("border", isLoop);
-    btnLoop.classList.toggle("border-orange-500/30", isLoop);
-  }
   if (loopText) loopText.innerText = isLoop ? "Loop On" : "Loop Off";
   if (miniLoopBtn) {
     miniLoopBtn.style.color = isLoop ? "#f97316" : "";
@@ -90,6 +138,129 @@ window.toggleVisualizer = function () {
   /* redefined in DOMContentLoaded */
 };
 
+function normalizeEqValue(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 0;
+  return Math.max(-12, Math.min(12, num));
+}
+
+function saveEqState() {
+  try {
+    localStorage.setItem(
+      "meel_music_eq_state",
+      JSON.stringify({
+        enabled: eqEnabled,
+        preset: eqPreset,
+        gains: eqGains,
+      }),
+    );
+  } catch (e) {
+    console.warn("⚠️ Could not save EQ state:", e);
+  }
+}
+
+function loadEqState() {
+  try {
+    const raw = localStorage.getItem("meel_music_eq_state");
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    if (state && Array.isArray(state.gains)) {
+      eqGains = state.gains.map(normalizeEqValue);
+    }
+    if (typeof state?.enabled === "boolean") eqEnabled = state.enabled;
+    if (typeof state?.preset === "string") eqPreset = state.preset;
+  } catch (e) {
+    console.warn("⚠️ Bad EQ state:", e);
+  }
+}
+
+function applyEqToFilters() {
+  if (!eqFilters.length) return;
+  const gains = eqEnabled ? eqGains : ZERO_GAINS;
+  for (let i = 0; i < eqFilters.length; i++) {
+    eqFilters[i].gain.value = normalizeEqValue(gains[i] ?? 0);
+  }
+}
+
+function getRealtimeVbrValue(frequencyData) {
+  if (!frequencyData || !frequencyData.length) return 160;
+  const sum = frequencyData.reduce((acc, value) => acc + value, 0);
+  const avg = sum / frequencyData.length;
+  const smooth = Math.min(1, Math.max(0, avg / 255));
+  const minKbps = 96;
+  const maxKbps = 320;
+  return Math.round(minKbps + smooth * (maxKbps - minKbps));
+}
+
+function updateBitrateLabel(value, element) {
+  if (!element) return;
+  element.innerText = `${value}`;
+}
+
+function updateBarColors(value, barElements) {
+  if (!barElements || !barElements.length) return;
+  const hue = Math.round(28 + ((value - 96) / 224) * 180);
+  barElements.forEach((bar) => {
+    bar.style.background = `linear-gradient(to top, hsl(${hue}, 96%, 50%), hsl(${Math.min(360, hue + 40)}, 96%, 72%))`;
+  });
+}
+
+function updateEqUI() {
+  const btnEq = document.getElementById("btn-eq");
+  const eqText = document.getElementById("eq-text");
+  const eqPanel = document.getElementById("eq-panel");
+  const eqContainer = document.getElementById("eq-container");
+  const presetSelect = document.getElementById("eq-preset");
+  const presetButton = document.getElementById("eq-preset-button");
+  const presetLabel = document.getElementById("eq-preset-label");
+  const presetOptions = document.getElementById("eq-preset-options");
+
+  _setTogglePillUI(btnEq, eqEnabled);
+  if (eqText) eqText.innerText = eqEnabled ? "EQ On" : "EQ Off";
+  if (eqPanel) eqPanel.classList.toggle("hidden", !eqEnabled);
+  if (eqContainer) eqContainer.classList.toggle("hidden", !eqEnabled);
+  if (presetSelect) presetSelect.value = eqPreset;
+  if (presetLabel)
+    presetLabel.innerText = EQ_PRESET_LABELS[eqPreset] || eqPreset;
+  if (presetOptions) {
+    presetOptions.querySelectorAll("button[data-preset]").forEach((button) => {
+      const isActive = button.dataset.preset === eqPreset;
+      button.classList.toggle("bg-white/[.06]", isActive);
+      button.classList.toggle("text-orange-400", isActive);
+    });
+  }
+
+  eqBands.forEach((_, index) => {
+    const input = document.getElementById(`eq-band-${index}`);
+    const valueEl = document.getElementById(`eq-band-value-${index}`);
+    if (input) input.value = eqGains[index] ?? 0;
+    if (valueEl)
+      valueEl.innerText = `${normalizeEqValue(eqGains[index] ?? 0).toFixed(1)} dB`;
+  });
+}
+
+window.toggleEqualizer = function () {
+  /* redefined in DOMContentLoaded */
+};
+
+window.setEqBand = function (index, value) {
+  eqGains[index] = normalizeEqValue(value);
+  if (eqEnabled) applyEqToFilters();
+  updateEqUI();
+  saveEqState();
+};
+
+window.setEqPreset = function (preset) {
+  const nextGains = (EQ_PRESETS[preset] || EQ_PRESETS.flat).map(
+    normalizeEqValue,
+  );
+  eqPreset = preset || "flat";
+  eqGains = nextGains;
+  if (eqEnabled) applyEqToFilters();
+  updateEqUI();
+  saveEqState();
+};
+
 window.toggleReply = function (id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -98,18 +269,30 @@ window.toggleReply = function (id) {
   if (input && !el.classList.contains("hidden")) input.focus();
 };
 
-// ─── KEYBOARD SHORTCUTS (global, before player ready) ───────────────────────
+// ─── KEYBOARD SHORTCUTS (single global listener; was duplicated in two ───────
+// ─── places and both fired on "i", triggering toggleMiniPlayer AND ─────────
+// ─── goBackToLibrary at once — consolidated here to keep one clear behavior) ─
 document.addEventListener("keydown", (e) => {
   const tag = e.target.tagName.toLowerCase();
   if (tag === "input" || tag === "textarea") return;
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
 
   const key = e.key.toLowerCase();
   if (key === "l") {
     e.preventDefault();
     window.toggleLoop();
+  } else if (key === "e") {
+    e.preventDefault();
+    window.toggleEqualizer?.();
+  } else if (key === "v") {
+    window.toggleVisualizer?.();
+  } else if (key === "i") {
+    e.preventDefault();
+    // Prefer in-page "back to library" once the player has initialized it;
+    // fall back to the mini-player toggle before that point.
+    if (window.goBackToLibrary) window.goBackToLibrary();
+    else window.toggleMiniPlayer?.();
   }
-  if (key === "v") window.toggleVisualizer?.();
-  if (key === "i") window.toggleMiniPlayer?.();
 });
 
 // ========================================
@@ -177,6 +360,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedLoop = localStorage.getItem("meel_global_loop") === "true";
   player.loop = savedLoop;
   updateLoopUI();
+  loadEqState();
+  updateEqUI();
 
   // ── 3. AUDIO STATE RESTORATION ───────────────────────────────────────────
   let shouldRestore = false;
@@ -206,21 +391,69 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedPos = localStorage.getItem(storageKeyMusic);
   const canResume = savedPos && !isFinished && !shouldRestore;
 
-  // ── 4. VISUALIZER SETUP ───────────────────────────────────────────────────
+  // ── 4. VISUALIZER SETUP (Responsive) ──────────────────────────────────────
   let isVisualizerEnabled = window.innerWidth >= 1024;
-  const isMobile = window.innerWidth < 768;
-  const numBars = isMobile ? 20 : 40;
-  const bars = [];
+  let bars = [];
 
-  cavaContainer.innerHTML = "";
-  for (let i = 0; i < numBars; i++) {
-    const bar = document.createElement("div");
-    bar.className =
-      "flex-1 bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-sm transition-all duration-75";
-    bar.style.cssText = "height:4px;min-width:1px";
-    cavaContainer.appendChild(bar);
-    bars.push(bar);
+  /** Calculate optimal bar count based on container width.
+   *  Falls back to an estimate from window.innerWidth when the
+   *  container is still hidden (display:none → clientWidth = 0). */
+  function getOptimalBarCount() {
+    let w = cavaContainer.clientWidth;
+    if (w <= 0) {
+      // Container masih hidden — estimasi dari window width
+      // Desktop: visualizer ambil ~35% viewport (flex-1 di flex row)
+      // Mobile: ~100% viewport dikurangi padding
+      w = window.innerWidth >= 1024
+        ? window.innerWidth * 0.32
+        : window.innerWidth - 32;
+    }
+    if (w < 180) return 12;
+    if (w < 280) return 18;
+    if (w < 400) return 24;
+    if (w < 600) return 32;
+    return 40;
   }
+
+  /** Rebuild bar DOM when container width crosses a threshold */
+  function rebuildBars() {
+    const newCount = getOptimalBarCount();
+    if (bars.length === newCount) return;
+    bars = [];
+    cavaContainer.innerHTML = "";
+    const fragment = document.createDocumentFragment();
+    for (let i = 0; i < newCount; i++) {
+      const bar = document.createElement("div");
+      bar.className =
+        "flex-1 bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-sm transition-all duration-75";
+      bar.style.cssText = "height:4px;min-width:1px";
+      fragment.appendChild(bar);
+      bars.push(bar);
+    }
+    cavaContainer.appendChild(fragment);
+  }
+
+  // Initial build
+  rebuildBars();
+
+  // Debounced resize — only rebuild when bar count actually needs to change
+  let _resizeTimer;
+  function onContainerResize() {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+      const prev = bars.length;
+      const next = getOptimalBarCount();
+      if (prev !== next) {
+        rebuildBars();
+        // Re-enter render loop with new bars if active
+        if (isVisualizerEnabled && isInitialized && !player.paused) {
+          cancelAnimationFrame(animationId);
+          render();
+        }
+      }
+    }, 200);
+  }
+  window.addEventListener("resize", onContainerResize);
 
   const realFileSize = window.MEEL_MUSIC_CONFIG.fileSizeBytes;
   let baseBitrate = 160;
@@ -251,9 +484,24 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       analyser = audioCtx.createAnalyser();
       source = audioCtx.createMediaElementSource(audio);
-      source.connect(analyser);
+
+      eqFilters = [];
+      let previousNode = source;
+      eqBands.forEach((freq, index) => {
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "peaking";
+        filter.frequency.value = freq;
+        filter.Q.value = 1.0;
+        filter.gain.value = normalizeEqValue(eqGains[index] ?? 0);
+        previousNode.connect(filter);
+        previousNode = filter;
+        eqFilters.push(filter);
+      });
+
+      previousNode.connect(analyser);
       analyser.connect(audioCtx.destination);
       analyser.fftSize = 256;
+      applyEqToFilters();
       isInitialized = true;
       return true;
     } catch (e) {
@@ -261,6 +509,21 @@ document.addEventListener("DOMContentLoaded", () => {
       return false;
     }
   }
+
+  window.toggleEqualizer = function () {
+    eqEnabled = !eqEnabled;
+    if (eqEnabled) {
+      if (!isInitialized) {
+        initAudio();
+      } else {
+        applyEqToFilters();
+      }
+    } else {
+      applyEqToFilters();
+    }
+    updateEqUI();
+    saveEqState();
+  };
 
   function render() {
     if (!isVisualizerEnabled || !isInitialized || player.paused) {
@@ -270,13 +533,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(data);
 
-    for (let i = 0; i < numBars; i++) {
-      const idx = Math.floor(i * (data.length / numBars) * 0.7);
-      bars[i].style.height = `${Math.max(4, (data[idx] / 255) * 100)}%`;
+    const currentBarCount = bars.length;
+    if (currentBarCount === 0) {
+      animationId = requestAnimationFrame(render);
+      return;
+    }
+    let peak = 0;
+    for (let i = 0; i < currentBarCount; i++) {
+      const idx = Math.floor(i * (data.length / currentBarCount) * 0.7);
+      const raw = data[idx];
+      const value = Math.max(4, (raw / 255) * 100);
+      bars[i].style.height = `${value}%`;
+
+      const normalized = raw / 255;
+      let color = "#9ca3af"; // gray
+      if (normalized > 0.75) {
+        color = "#22c55e"; // green
+      } else if (normalized > 0.5) {
+        color = "#FB923C"; // Orange
+      } else if (normalized > 0.25) {
+        color = "#eab308"; // yellow
+      }
+      bars[i].style.background = color;
+
+      peak = Math.max(peak, raw);
     }
     if (bitrateDisplay) {
-      const label = baseBitrate >= 160 ? "OPUS" : "Standard";
-      bitrateDisplay.innerText = `${baseBitrate} ${label}`;
+      const dynamicBitrate = getRealtimeVbrValue(data);
+      updateBitrateLabel(dynamicBitrate, bitrateDisplay);
     }
     animationId = requestAnimationFrame(render);
   }
@@ -287,18 +571,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const visText = document.getElementById("vis-text");
     const on = isVisualizerEnabled;
 
-    if (btnVis) {
-      btnVis.classList.toggle("bg-gray-800", !on);
-      btnVis.classList.toggle("text-gray-400", !on);
-      btnVis.classList.toggle("bg-orange-500/10", on);
-      btnVis.classList.toggle("text-orange-500", on);
-      btnVis.classList.toggle("border", on);
-      btnVis.classList.toggle("border-orange-500/30", on);
-    }
+    _setTogglePillUI(btnVis, on);
     if (visText) visText.innerText = on ? "Vis On" : "Vis Off";
     cavaContainer.style.display = on ? "flex" : "none";
-    if (!on) cavaContainer.classList.add("hidden");
-    else cavaContainer.classList.remove("hidden");
+    cavaContainer.classList.toggle("hidden", !on);
   }
 
   window.toggleVisualizer = function () {
@@ -400,7 +676,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
           seekToRestore();
         } else {
-          audio.addEventListener("loadedmetadata", seekToRestore, { once: true });
+          audio.addEventListener("loadedmetadata", seekToRestore, {
+            once: true,
+          });
         }
       } else {
         const pos = localStorage.getItem(storageKeyMusic);
@@ -462,13 +740,21 @@ document.addEventListener("DOMContentLoaded", () => {
     updateMiniPlayerUI();
   });
 
+  let lastSavedSecond = -1;
   player.on("timeupdate", () => {
     if (
       !isFinished &&
       player.currentTime > 0 &&
       player.currentTime < player.duration - 1
-    )
-      localStorage.setItem(storageKeyMusic, player.currentTime);
+    ) {
+      // timeupdate can fire many times per second; only touch localStorage
+      // once per whole second instead of on every tick.
+      const sec = Math.floor(player.currentTime);
+      if (sec !== lastSavedSecond) {
+        lastSavedSecond = sec;
+        localStorage.setItem(storageKeyMusic, player.currentTime);
+      }
+    }
     updateMiniPlayerUI();
   });
 
@@ -486,27 +772,38 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ── 9. MINI PLAYER (SPA-style) ───────────────────────────────────────────
+  let lastMiniPausedState = null; // tracks last rendered icon state
   function updateMiniPlayerUI() {
     if (!isMiniPlayerActive) return;
-    const miniPlayBtn = document.getElementById("mini-play-btn");
-    const miniProgressFill = document.getElementById("mini-progress-fill");
-    const miniCurrentTime = document.getElementById("mini-current-time");
-    const miniDuration = document.getElementById("mini-duration");
+    // Elements are queried once and cached; the mini-player markup doesn't
+    // get replaced while active, so repeated getElementById calls here
+    // (previously run on every timeupdate tick) were wasted work.
+    if (!miniEls) {
+      miniEls = {
+        playBtn: document.getElementById("mini-play-btn"),
+        progressFill: document.getElementById("mini-progress-fill"),
+        currentTime: document.getElementById("mini-current-time"),
+        duration: document.getElementById("mini-duration"),
+      };
+    }
+    const { playBtn, progressFill, currentTime, duration } = miniEls;
 
-    if (miniPlayBtn)
-      miniPlayBtn.innerHTML = player.paused
+    if (playBtn && player.paused !== lastMiniPausedState) {
+      lastMiniPausedState = player.paused;
+      playBtn.innerHTML = player.paused
         ? '<i data-lucide="play"  style="width:18px;height:18px;"></i>'
         : '<i data-lucide="pause" style="width:18px;height:18px;"></i>';
+      // Only rebuild icons when the play/pause icon actually changed, not on
+      // every timeupdate tick (createIcons() re-scans/replaces DOM nodes).
+      if (typeof lucide !== "undefined") lucide.createIcons();
+    }
 
     const pct = player.duration
       ? (player.currentTime / player.duration) * 100
       : 0;
-    if (miniProgressFill) miniProgressFill.style.width = pct + "%";
-    if (miniCurrentTime)
-      miniCurrentTime.textContent = formatTime(player.currentTime);
-    if (miniDuration) miniDuration.textContent = formatTime(player.duration);
-
-    if (typeof lucide !== "undefined") lucide.createIcons();
+    if (progressFill) progressFill.style.width = pct + "%";
+    if (currentTime) currentTime.textContent = formatTime(player.currentTime);
+    if (duration) duration.textContent = formatTime(player.duration);
   }
 
   window.toggleMiniPlayer = async function () {
@@ -629,15 +926,7 @@ document.addEventListener("DOMContentLoaded", () => {
       : (player.currentTime = 0);
   };
 
-  // ── 10. KEYBOARD SHORTCUT (in-page 'i' → back to library) ───────────────
-  document.addEventListener("keydown", (e) => {
-    const tag = e.target.tagName.toLowerCase();
-    if (tag === "input" || tag === "textarea") return;
-    if (e.key.toLowerCase() === "i" && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      e.preventDefault();
-      window.goBackToLibrary();
-    }
-  });
+  // ── 10. (keyboard 'i' shortcut now handled by the single global listener) ─
 
   window.goBackToLibrary = function () {
     saveAudioState();
