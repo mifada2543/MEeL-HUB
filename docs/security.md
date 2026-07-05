@@ -173,22 +173,20 @@ if (isset($_SESSION['LAST_ACTIVITY'])) {
 }
 $_SESSION['LAST_ACTIVITY'] = time();
 
-// activity_logger.php - Kick detection
-if ($user_status['role'] !== 'admin') {
-    if (!empty($user_status['last_session_id']) && 
-        $user_status['last_session_id'] !== $current_sid) {
-        
-        session_unset();
-        session_destroy();
-        
-        die("
-            <div style='background:#0b0e14; color:#f97316; ...'>
-                <h1>SESSION REVOKED</h1>
-                <p>Akses sesi ini telah dihentikan oleh Admin 
-                   atau login dari perangkat lain.</p>
-                <a href='/MEeL/login.php'>KEMBALI KE LOGIN</a>
-            </div>
-        ");
+// activity_logger.php - Kick detection (Header Redirect)
+if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+    if ($user_status && $user_status['role'] !== 'admin') {
+        if (!empty($user_status['last_session_id']) && $user_status['last_session_id'] !== $current_sid) {
+            session_unset();
+            session_destroy();
+
+            $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
+            $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+            $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
+            $revoked_url = $relative_base . '/err/revoked.php';
+            header("Location: " . $revoked_url);
+            exit();
+        }
     }
 }
 ```
@@ -293,16 +291,20 @@ function validate_and_format_ip($ip) {
 ### Ban Check (Real-time)
 
 ```php
-// Di activity_logger.php - dijalankan di setiap halaman
-$check_ban = $conn->prepare("SELECT reason FROM ip_ban WHERE ip_address = ?");
-$check_ban->bind_param("s", $user_ip);
-$check_ban->execute();
-$ban_res = $check_ban->get_result();
-
-if ($ban_res->num_rows > 0) {
-    // Admin still allowed (for debugging)
-    if ($session_role !== 'admin') {
-        die("403 - Akses Dibatasi: " . $ban_reason);
+// Di activity_logger.php - dijalankan di setiap halaman (Header Redirect)
+$current_page = basename($_SERVER['PHP_SELF']);
+if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+    if ($ban_res->num_rows > 0) {
+        // Jika bukan admin, baru di-redirect
+        if ($session_role !== 'admin') {
+            $row = $ban_res->fetch_assoc();
+            $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
+            $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+            $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
+            $banned_url = $relative_base . '/err/banned.php';
+            header("Location: " . $banned_url . "?reason=" . urlencode($row['reason']));
+            exit();
+        }
     }
 }
 ```

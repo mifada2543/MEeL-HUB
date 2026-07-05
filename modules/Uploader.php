@@ -57,8 +57,10 @@ class Uploader
     private function generateMetadata(string $title, string $artist = "", string $album = ""): string
     {
         $original = trim("$title $artist $album");
-        $romaji   = getRomajiName($original);
-        return mb_strtolower($original . " " . $romaji, 'UTF-8');
+        $analysis = analyzeJapaneseText($original); // 1x MeCab, hasilkan romaji + english sekaligus
+
+        $combined = trim($original . " " . $analysis['romaji'] . " " . $analysis['english']);
+        return mb_strtolower($combined, 'UTF-8');
     }
 
     private function getUniqueFilename(string $clean_name, string $ext, string $target_dir): string

@@ -55,7 +55,7 @@ class Transcoder
             . " --user-agent "      . escapeshellarg($this->user_agent)
             . " --referer "         . escapeshellarg("https://www.youtube.com/")
             . " --cookies "         . escapeshellarg($this->cookies_path) . " ";
-            
+
         $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
         $stmt->bind_param("i", $this->user_id);
         $stmt->execute();
@@ -579,8 +579,8 @@ class Transcoder
             return "";
         }
 
-        $romaji   = getRomajiName($title);
-        $metadata = mb_strtolower("$title $artist $romaji", 'UTF-8');
+        $analysis = analyzeJapaneseText($title); // 1x MeCab, hasilkan romaji + english sekaligus
+        $metadata = mb_strtolower(trim("$title $artist {$analysis['romaji']} {$analysis['english']}"), 'UTF-8');
         $views    = 0;
 
         $stmt = $this->conn->prepare(
@@ -661,9 +661,12 @@ class Transcoder
             @unlink($leftover);
         }
 
-        $romaji_title  = getRomajiName($title);
-        $romaji_artist = getRomajiName($artist);
-        $metadata      = mb_strtolower("$title $artist $album $romaji_title $romaji_artist", 'UTF-8');
+        $title_analysis  = analyzeJapaneseText($title);  // 1x MeCab (romaji + english title)
+        $artist_analysis = analyzeJapaneseText($artist); // 1x MeCab (romaji + english artist)
+        $metadata        = mb_strtolower(trim(
+            "$title $artist $album {$title_analysis['romaji']} {$artist_analysis['romaji']} "
+                . "{$title_analysis['english']} {$artist_analysis['english']}"
+        ), 'UTF-8');
 
         $stmt = $this->conn->prepare(
             "INSERT INTO music (title, artist, album, description, search_metadata, filename, thumbnail, duration, user_id, upload_date)

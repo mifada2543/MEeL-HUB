@@ -549,7 +549,7 @@ if (isset($_GET['content_only'])) {
             }
             if (currentState && currentState.filename === state.filename) return;
             currentState = state;
-            audioPlayer.src = `upload/file/${state.filename}`;
+            audioPlayer.src = `stream.php?id=${state.id}`;
             audioPlayer.load();
             const _gLoop = localStorage.getItem('meel_global_loop') === 'true';
             isMiniLoopIndexActive = (state.isLooping !== undefined) ? state.isLooping : _gLoop;

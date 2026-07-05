@@ -15,6 +15,7 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 | 5 | [🔒 Keamanan](security.md) | Sistem keamanan, RBAC, CSRF, IP Banning |
 | 6 | [🔧 Troubleshooting](troubleshooting.md) | Solusi untuk masalah umum |
 | 7 | [👨‍💻 Panduan Development](development.md) | Standar koding, kontribusi, dan testing |
+| 8 | [📥 Troubleshooting Advanced Upload](upload_issue.md) | Penanganan masalah yt-dlp & background queue |
 
 ---
 

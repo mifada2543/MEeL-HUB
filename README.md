@@ -122,7 +122,7 @@ MEeL/
 ├── data_drive/            # Cloud Drive storage runtime
 ├── docs/                  # Dokumentasi proyek
 ├── drive/                 # Modul Cloud Drive
-├── err/                   # Halaman error (denied, maintenance)
+├── err/                   # Halaman error (denied, maintenance, banned, revoked)
 ├── modules/               # Core logic & business layer (OOP)
 ├── music/                 # Modul pemutar musik
 ├── partials/              # Reusable UI components
@@ -277,6 +277,7 @@ Dokumentasi proyek tersedia di direktori [`docs/`](docs/):
 | [🔒 Keamanan](docs/security.md) | Sistem keamanan & RBAC |
 | [🔧 Troubleshooting](docs/troubleshooting.md) | Pemecahan masalah umum |
 | [👨‍💻 Development](docs/development.md) | Panduan kontribusi |
+| [📥 Advanced Upload](docs/upload_issue.md) | Penanganan masalah yt-dlp & queue |
 
 ---
 
@@ -295,6 +296,36 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
    • Penggunaan komersial atau monetisasi
    • Penghapusan atribusi pembuat asli
 ```
+---
+## Q&A
+### Q: Kenapa belum ada versi docker?
+
+>A: Sulit mengkonfigurasi ulang absolut path kedalam docker(karena env nya tersendiri), udah gitu saya ingin memfokuskan ini ke performa yang maximal(tanpa penghalan/docker)
+
+
+### Q: Kenapa absolut path?
+
+>A: Lebih mudah dalam mengkonfigurasi jika anda menggunakan media eksternal seperti HDD(mengurangi memori system penuh)
+
+
+### Q: Ukuran MEeL?
+
+>A: 77MB untuk source codenya, 1-2GB untuk env(ffmpeg, yt-dlp, apache, MariaDB, php, dsb).
+
+
+### Q: System Requirement?
+
+>A: CPU 2 Core 2GHz cukup, GPU optional karena seluruh process bergantung pada CPU(anda dapat konfigurasi ulang dibagian codec jika ingin menggunakan accelerate GPU untuk transcoding), RAM 2GB cukup namun saran 4GB untuk membantu transcoding, ROM disesuaikan saja, OS ubuntu server, intinya linux dan asal ada env nya itu bisa pakai MEeL.
+---
+
+### ⚠️ Pernyataan Penting / Disclaimer
+
+> [!IMPORTANT]
+> **Catatan Hukum**: Pembuat (Mifada) tidak bertanggung jawab dan tidak terlibat atas segala jenis berkas media yang diunggah, disimpan, atau disebarluaskan oleh pihak ketiga yang menggunakan atau memodifikasi kode MEeL-HUB ini. Seluruh risiko penggunaan dan kepatuhan hak cipta kembali ke tanggung jawab masing-masing pengguna.
+
+> 🌐 **Domain Status:**
+> * **EN:** The public demo domain may occasionally be unavailable because it runs directly on the developer's local device.
+> * **ID:** Domain demo publik terkadang tidak berfungsi karena sistem berjalan langsung di perangkat lokal milik developer.
 
 **Kontak:** `minecraft.daffa2501@gmail.com` · [github.com/mifada2543](https://github.com/mifada2543)
 

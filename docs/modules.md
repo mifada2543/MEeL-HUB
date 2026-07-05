@@ -275,7 +275,7 @@ Setiap pengguna yang belum login otomatis:
 ```
 Jika last_session_id berbeda dengan session_id() saat ini:
   → Destroy session
-  → Tampilkan "SESSION REVOKED" page
+  → Redirect ke halaman /err/revoked.php
   → User harus login ulang
 ```
 
@@ -350,7 +350,7 @@ Session exists? → Tidak → Redirect ke login.php
   ↓ Ya
 Validasi last_session_id
   ↓
-Berbeda? → Ya → Session Destroy → "SESSION REVOKED"
+Berbeda? → Ya → Session Destroy → Redirect ke /err/revoked.php
   ↓ Tidak
 Update last_activity
   ↓

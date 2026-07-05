@@ -107,15 +107,19 @@ if (isset($conn)) {
     $check_ban->execute();
     $ban_res = $check_ban->get_result();
 
-    if ($ban_res->num_rows > 0) {
-        // Jika bukan admin, baru di-die
-        if ($session_role !== 'admin') {
-            $row = $ban_res->fetch_assoc();
-            die("<div style='background:#0b0e14; color:#ef4444; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif;'>
-                    <h1 style='font-size:4rem; font-weight:900;'>403</h1>
-                    <p style='text-transform:uppercase; letter-spacing:4px;'>Akses Dibatasi</p>
-                    <p style='color:#4b5563; margin-top:10px;'>Alasan: " . htmlspecialchars($row['reason']) . "</p>
-                </div>");
+    $current_page = basename($_SERVER['PHP_SELF']);
+    if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+        if ($ban_res->num_rows > 0) {
+            // Jika bukan admin, baru di-redirect
+            if ($session_role !== 'admin') {
+                $row = $ban_res->fetch_assoc();
+                $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
+                $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+                $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
+                $banned_url = $relative_base . '/err/banned.php';
+                header("Location: " . $banned_url . "?reason=" . urlencode($row['reason']));
+                exit();
+            }
         }
     }
     // Deteksi halaman dan aktivitas user
@@ -211,19 +215,19 @@ if (isset($conn)) {
         // 2. LOGIKA KICK: Jika SID di DB berbeda dengan browser, langsung tendang!
         // Kita kecualikan Admin agar admin tidak menendang dirinya sendiri secara tidak sengaja
         // HANYA kick jika last_session_id TIDAK KOSONG dan BERBEDA dengan current SID
-        if ($user_status && $user_status['role'] !== 'admin') {
-            if (!empty($user_status['last_session_id']) && $user_status['last_session_id'] !== $current_sid) {
-                session_unset();
-                session_destroy();
+        if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+            if ($user_status && $user_status['role'] !== 'admin') {
+                if (!empty($user_status['last_session_id']) && $user_status['last_session_id'] !== $current_sid) {
+                    session_unset();
+                    session_destroy();
 
-                // Tampilan layar "Kicked" yang estetik untuk user yang ditendang
-                die("<div style='background:#0b0e14; color:#f97316; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif; text-align:center;'>
-                    <div style='padding:20px; border:1px solid rgba(249,115,22,0.2); border-radius:20px; background:rgba(255,255,255,0.02);'>
-                        <h1 style='font-size:2rem; font-weight:900; margin-bottom:10px;'>SESSION REVOKED</h1>
-                        <p style='text-transform:uppercase; letter-spacing:2px; font-size:10px; color:#4b5563;'>Akses sesi ini telah dihentikan oleh Admin atau login dari perangkat lain.</p>
-                        <a href='/MEeL/login.php' style='display:inline-block; margin-top:20px; padding:10px 20px; background:#f97316; color:white; text-decoration:none; border-radius:10px; font-weight:bold; font-size:12px;'>KEMBALI KE LOGIN</a>
-                    </div>
-                </div>");
+                    $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
+                    $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+                    $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
+                    $revoked_url = $relative_base . '/err/revoked.php';
+                    header("Location: " . $revoked_url);
+                    exit();
+                }
             }
         }
         
