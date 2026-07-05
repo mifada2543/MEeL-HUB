@@ -81,6 +81,26 @@ const plyrOptions = {
     controls: true,
     seek: true,
   },
+  i18n: {
+    play: "Putar video",
+    pause: "Jeda video",
+    restart: "Putar ulang",
+    rewind: "Mundur 10 detik",
+    forward: "Maju 10 detik",
+    seek: "Cari posisi",
+    currentTime: "Waktu saat ini",
+    duration: "Durasi",
+    volume: "Volume",
+    mute: "Bisukan",
+    unmute: "Suarakan",
+    captions: "Teks",
+    settings: "Pengaturan",
+    fullscreen: "Layar penuh",
+    exitFullscreen: "Keluar layar penuh",
+    pip: "Gambar dalam gambar",
+    airplay: "AirPlay",
+    qualityLabel: {},
+  },
   clickToPlay: !isTouchDevice,
   keyboard: {
     focused: true,
@@ -321,6 +341,7 @@ function initPlayer() {
         };
 
         plyrOptions.i18n = {
+          ...plyrOptions.i18n,
           qualityLabel: {},
         };
 

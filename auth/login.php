@@ -112,12 +112,12 @@ if (isset($_POST['login'])) {
 </head>
 
 <body class="text-gray-200 min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-sm">
+    <main class="w-full max-w-sm" aria-labelledby="login-title">
         <!-- Header -->
         <div class="text-center mb-8">
             <div class="inline-flex p-4 bg-blue-600/10 rounded-3xl text-blue-500 mb-4 shadow-lg shadow-blue-900/10"><i data-lucide="log-in" class="w-10 h-10"></i></div>
-            <h2 class="text-3xl font-black text-white tracking-tighter">Login</h2>
-            <p class="text-sm text-gray-500 mt-1">Masuk ke akun <span class="text-blue-500 font-bold">MEeL</span></p>
+            <h2 id="login-title" class="text-3xl font-black text-white tracking-tighter">Login</h2>
+            <p class="text-sm text-gray-300 mt-1">Masuk ke akun <span class="text-blue-500 font-bold">MEeL</span></p>
         </div>
         <?php if ($error_msg): ?>
             <div class="mb-6 p-4 rounded-2xl text-sm flex items-center gap-3 bg-red-500/10 text-red-400 border border-red-500/20 animate-shake"><i data-lucide="alert-circle" class="w-5 h-5"></i><?= $error_msg ?></div>
@@ -130,9 +130,9 @@ if (isset($_POST['login'])) {
                 <div class="text-center py-6 space-y-4">
                     <i data-lucide="shield-alert" class="w-12 h-12 text-red-500 mx-auto animate-pulse"></i>
                     <h3 class="text-lg font-bold text-white">Akses Ditangguhkan</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed">Terlalu banyak percobaan gagal. Silakan coba lagi dalam:</p>
+                    <p class="text-xs text-gray-300 leading-relaxed">Terlalu banyak percobaan gagal. Silakan coba lagi dalam:</p>
                     <div id="countdown" class="text-4xl font-black text-blue-500 tracking-widest"><?= $remaining ?></div>
-                    <p class="text-[10px] text-gray-600 uppercase">Detik</p>
+                    <p class="text-[10px] text-gray-300 uppercase">Detik</p>
                 </div>
                 <script>
                     let seconds = <?= $remaining ?>;
@@ -154,18 +154,18 @@ if (isset($_POST['login'])) {
 
                 <!-- Form login -->
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 tracking-widest">Username</label>
+                    <label for="username" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Username</label>
                     <div class="relative">
-                        <i data-lucide="user" class="absolute left-4 top-3.5 w-5 h-5 text-gray-600"></i>
-                        <input name="username" placeholder="Username" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
+                        <i data-lucide="user" class="absolute left-4 top-3.5 w-5 h-5 text-gray-300"></i>
+                        <input id="username" name="username" placeholder="Username" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
                     </div>
                 </div>
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 tracking-widest">Password</label>
+                    <label for="password" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Password</label>
                     <div class="relative">
-                        <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-gray-600"></i>
-                        <input type="password" id="password" name="password" placeholder="••••••••" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
-                        <button type="button" id="togglePassword" class="absolute right-4 top-3.5 text-gray-600 hover:text-blue-500 focus:outline-none transition-colors">
+                        <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-gray-300"></i>
+                        <input type="password" id="password" name="password" placeholder="••••••••" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-14 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
+                        <button type="button" id="togglePassword" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full text-gray-300 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors" aria-label="Tampilkan atau sembunyikan password" aria-pressed="false">
                             <i data-lucide="eye" id="iconEye" class="w-5 h-5"></i>
                             <i data-lucide="eye-off" id="iconEyeOff" class="w-5 h-5 hidden"></i>
                         </button>
@@ -179,14 +179,14 @@ if (isset($_POST['login'])) {
 
             <!-- Opsi lain -->
             <div class="flex items-center justify-between px-1">
-                <a href="register.php" class="text-xs text-gray-500 hover:text-white transition">Belum punya akun?</a>
+                <a href="register.php" class="text-xs text-gray-300 hover:text-white transition">Belum punya akun?</a>
                 <a href="<?= htmlspecialchars($back_url) ?>" class="text-xs text-blue-500 font-bold hover:underline">Batal</a>
             </div>
         </form>
 
         <!-- Copyright -->
-        <p class="text-center text-[10px] text-gray-600 mt-8 uppercase tracking-[0.3em]">©MEeL - 2025</p>
-    </div>
+        <p class="text-center text-[10px] text-gray-300 mt-8 uppercase tracking-[0.3em]">©MEeL - 2025</p>
+    </main>
 
     <script>
         lucide.createIcons();
@@ -199,15 +199,12 @@ if (isset($_POST['login'])) {
 
         if (togglePassword) {
             togglePassword.addEventListener('click', function() {
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    iconEye.classList.add('hidden');
-                    iconEyeOff.classList.remove('hidden');
-                } else {
-                    passwordInput.type = 'password';
-                    iconEye.classList.remove('hidden');
-                    iconEyeOff.classList.add('hidden');
-                }
+                const isHidden = passwordInput.type === 'password';
+                passwordInput.type = isHidden ? 'text' : 'password';
+                togglePassword.setAttribute('aria-pressed', String(isHidden));
+                togglePassword.setAttribute('aria-label', isHidden ? 'Sembunyikan password' : 'Tampilkan password');
+                iconEye.classList.toggle('hidden', !isHidden);
+                iconEyeOff.classList.toggle('hidden', isHidden);
             });
         }
     </script>
