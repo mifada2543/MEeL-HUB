@@ -26,12 +26,12 @@ $counts  = $library->getCounts();
     <script src="assets/js/script.js"></script>
 </head>
 
-<body class="text-gray-400 min-h-screen" style="background:#05070c">
+<body class="text-gray-300 min-h-screen" style="background:#05070c">
 
     <!-- NAVBAR -->
     <?php include 'partials/navbar.php'; ?>
 
-    <div class="relative z-10 max-w-6xl mx-auto px-6 pt-32 pb-20 flex flex-col items-center">
+    <main class="relative z-10 max-w-6xl mx-auto px-6 pt-32 pb-20 flex flex-col items-center">
 
         <!-- HERO -->
         <div class="text-center mb-20">
@@ -145,15 +145,16 @@ $counts  = $library->getCounts();
 
         <!-- MODE SEHAT -->
         <div class="mt-10 flex items-center gap-3">
-            <span class="text-[10px] text-gray-700 uppercase tracking-widest">Mode 20-20-20</span>
+            <span class="text-[10px] text-gray-200 uppercase tracking-widest">Mode 20-20-20</span>
             <button id="healthToggle"
-                class="px-3 py-1 rounded-full text-[10px] font-bold border border-white/5 text-gray-700 hover:text-white transition-all"
-                title="Mode Sehat">
+                class="px-3 py-1 rounded-full text-[10px] font-bold border border-white/5 text-gray-300 hover:text-white transition-all"
+                title="Mode Sehat"
+                aria-label="Aktifkan atau nonaktifkan mode sehat 20-20-20">
                 OFF
             </button>
         </div>
-        <p class="text-[9px] text-gray-800 tracking-[0.6em] uppercase mt-8" onclick="window.location.href='index.html'">MEeL • 2025</p>
-    </div>
+        <p class="text-[9px] text-gray-300 tracking-[0.6em] uppercase mt-8" onclick="window.location.href='index.html'">MEeL • 2025</p>
+    </main>
 
     <script>
         lucide.createIcons();

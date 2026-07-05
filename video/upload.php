@@ -140,7 +140,7 @@ if (isset($_POST['upload'])) {
         .nav-crumb {
             font-size: 11px;
             font-weight: 600;
-            color: #555e6e;
+            color: #cbd5e1;
             text-decoration: none;
             transition: color .2s;
         }
@@ -268,7 +268,7 @@ if (isset($_POST['upload'])) {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: .12em;
-            color: #555e6e;
+            color: #cbd5e1;
             margin-top: 4px;
         }
 
@@ -310,7 +310,7 @@ if (isset($_POST['upload'])) {
 
         .guide-desc {
             font-size: 10px;
-            color: #555e6e;
+            color: #cbd5e1;
             line-height: 1.4;
         }
 
@@ -385,7 +385,7 @@ if (isset($_POST['upload'])) {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: .16em;
-            color: #4a5568;
+            color: #cbd5e1;
             padding-left: 4px;
         }
 
@@ -479,7 +479,7 @@ if (isset($_POST['upload'])) {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: .1em;
-            color: #4a5568;
+            color: #cbd5e1;
             max-width: 120px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -488,7 +488,7 @@ if (isset($_POST['upload'])) {
 
         .drop-zone-sub {
             font-size: 9px;
-            color: #353d4a;
+            color: #cbd5e1;
             font-weight: 600;
             letter-spacing: .08em;
         }
@@ -564,7 +564,7 @@ if (isset($_POST['upload'])) {
             justify-content: center;
             gap: 6px;
             background: rgba(255, 255, 255, .04);
-            color: #6b7280;
+            color: #cbd5e1;
             font-size: 11px;
             font-weight: 700;
             letter-spacing: .12em;
@@ -752,7 +752,7 @@ if (isset($_POST['upload'])) {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: .12em;
-            color: #555e6e;
+            color: #cbd5e1;
             text-decoration: none;
             transition: color .2s;
         }
@@ -929,7 +929,7 @@ if (isset($_POST['upload'])) {
                             <!-- Video file -->
                             <div class="drop-zone" id="video-zone">
                                 <input type="file" name="video" accept=".mp4,.webm,.mkv" required
-                                    id="video-input" onchange="handleVideoFile(this)">
+                                    id="video-input" onchange="handleVideoFile(this)" aria-label="Pilih atau drop file video (format: MP4, WEBM, MKV)">
                                 <div class="drop-zone-icon">
                                     <i data-lucide="file-video" style="width:18px;height:18px;color:var(--accent);"></i>
                                 </div>
@@ -940,7 +940,7 @@ if (isset($_POST['upload'])) {
                             <!-- Thumbnail -->
                             <div class="drop-zone" id="thumb-zone">
                                 <input type="file" name="thumbnail" accept="image/*"
-                                    id="thumb-input" onchange="handleThumbFile(this)">
+                                    id="thumb-input" onchange="handleThumbFile(this)" aria-label="Pilih atau drop file thumbnail (opsional)">
                                 <img id="thumb-preview" class="thumb-mini" alt="preview">
                                 <div class="drop-zone-icon" id="thumb-icon-wrap">
                                     <i data-lucide="image" style="width:18px;height:18px;color:#4a5568;"></i>
@@ -973,6 +973,8 @@ if (isset($_POST['upload'])) {
             </section>
 
         </div>
+        </main>
+
     </div>
 
     <?php include '../partials/footer.php'; ?>

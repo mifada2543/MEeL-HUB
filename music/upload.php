@@ -139,7 +139,7 @@ if (isset($_POST['upload'])) {
         .nav-crumb {
             font-size: 11px;
             font-weight: 600;
-            color: #555e6e;
+            color: #cbd5e1;
             text-decoration: none;
             transition: color .2s;
         }
@@ -155,7 +155,7 @@ if (isset($_POST['upload'])) {
         }
 
         .nav-chevron {
-            color: #353d4a;
+            color: #cbd5e1;
             font-size: 14px;
         }
 
@@ -334,7 +334,7 @@ if (isset($_POST['upload'])) {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: .12em;
-            color: #555e6e;
+            color: #cbd5e1;
             margin-top: 4px;
         }
 
@@ -376,7 +376,7 @@ if (isset($_POST['upload'])) {
 
         .guide-desc {
             font-size: 10px;
-            color: #555e6e;
+            color: #cbd5e1;
             line-height: 1.4;
         }
 
@@ -451,7 +451,7 @@ if (isset($_POST['upload'])) {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: .16em;
-            color: #4a5568;
+            color: #cbd5e1;
             padding-left: 4px;
         }
 
@@ -567,7 +567,7 @@ if (isset($_POST['upload'])) {
 
         .drop-zone-sub {
             font-size: 9px;
-            color: #353d4a;
+            color: #cbd5e1;
             font-weight: 600;
             letter-spacing: .08em;
         }
@@ -928,7 +928,7 @@ if (isset($_POST['upload'])) {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: .12em;
-            color: #555e6e;
+            color: #cbd5e1;
             text-decoration: none;
             transition: color .2s;
         }
@@ -978,7 +978,8 @@ if (isset($_POST['upload'])) {
             <?php endif; ?>
         </nav>
 
-        <div class="upload-layout">
+        <main>
+            <div class="upload-layout">
 
             <!-- ── LEFT: Sidebar ── -->
             <aside class="sidebar-panel">
@@ -992,7 +993,7 @@ if (isset($_POST['upload'])) {
                     </div>
                     <div style="position:relative;z-index:1;text-align:center;">
                         <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#e2e6ef;text-transform:uppercase;letter-spacing:.1em;">Upload Musik</div>
-                        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;margin-top:3px;">FLAC · MP3 · WAV · OPUS</div>
+                        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#cbd5e1;margin-top:3px;">FLAC · MP3 · WAV · OPUS</div>
                     </div>
                 </div>
 
@@ -1120,7 +1121,7 @@ if (isset($_POST['upload'])) {
                             <!-- Audio file -->
                             <div class="drop-zone" id="audio-zone">
                                 <input type="file" name="media" accept="audio/*" required
-                                    id="audio-input" onchange="handleAudioFile(this)">
+                                    id="audio-input" onchange="handleAudioFile(this)" aria-label="Pilih atau drop file audio untuk upload lagu">
                                 <div class="drop-zone-icon">
                                     <i data-lucide="file-audio" style="width:18px;height:18px;color:var(--accent);"></i>
                                 </div>
@@ -1131,7 +1132,7 @@ if (isset($_POST['upload'])) {
                             <!-- Cover art -->
                             <div class="drop-zone" id="cover-zone">
                                 <input type="file" name="thumbnail" accept="image/*"
-                                    id="cover-input" onchange="handleCoverFile(this)">
+                                    id="cover-input" onchange="handleCoverFile(this)" aria-label="Pilih atau drop cover art untuk lagu">
                                 <img id="cover-preview" class="thumb-mini" alt="preview">
                                 <div class="drop-zone-icon" id="cover-icon-wrap">
                                     <i data-lucide="image" style="width:18px;height:18px;color:#4a5568;"></i>
@@ -1147,7 +1148,7 @@ if (isset($_POST['upload'])) {
                         <div class="toggle-card">
                             <div>
                                 <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Anti Transcode</div>
-                                <div style="font-size:10px;color:#555e6e;margin-top:2px;">Simpan file asli tanpa konversi ke Opus</div>
+                                <div style="font-size:10px;color:#cbd5e1;margin-top:2px;">Simpan file asli tanpa konversi ke Opus</div>
                             </div>
                             <label class="toggle-switch">
                                 <input type="checkbox" name="skip_transcode">
@@ -1177,7 +1178,8 @@ if (isset($_POST['upload'])) {
                 </form>
             </section>
 
-        </div>
+            </div>
+        </main>
     </div>
 
     <?php include '../partials/footer.php'; ?>
