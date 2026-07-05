@@ -295,11 +295,16 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
    • Penggunaan komersial atau monetisasi
    • Penghapusan atribusi pembuat asli
 ```
-**Catatan**: *Pembuat(Mifada) Tidak terlibat pada file yang di unggah dan disebarluaskan oleh pihak yang mengambil code MEeL ini, semuanya kembali ke 'penggunaan' masing-masing user*
+---
 
->en: Domains sometimes don't work because they are running on developer devices.
+### ⚠️ Pernyataan Penting / Disclaimer
 
->id: Domain terkadang tidak berfungsi karena berjalan di perangkat developer
+> [!IMPORTANT]
+> **Catatan Hukum**: Pembuat (Mifada) tidak bertanggung jawab dan tidak terlibat atas segala jenis berkas media yang diunggah, disimpan, atau disebarluaskan oleh pihak ketiga yang menggunakan atau memodifikasi kode MEeL-HUB ini. Seluruh risiko penggunaan dan kepatuhan hak cipta kembali ke tanggung jawab masing-masing pengguna.
+
+> 🌐 **Domain Status:**
+> * **EN:** The public demo domain may occasionally be unavailable because it runs directly on the developer's local device.
+> * **ID:** Domain demo publik terkadang tidak berfungsi karena sistem berjalan langsung di perangkat lokal milik developer.
 
 **Kontak:** `minecraft.daffa2501@gmail.com` · [github.com/mifada2543](https://github.com/mifada2543)
 
