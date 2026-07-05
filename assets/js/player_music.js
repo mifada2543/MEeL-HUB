@@ -391,23 +391,69 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedPos = localStorage.getItem(storageKeyMusic);
   const canResume = savedPos && !isFinished && !shouldRestore;
 
-  // ── 4. VISUALIZER SETUP ───────────────────────────────────────────────────
+  // ── 4. VISUALIZER SETUP (Responsive) ──────────────────────────────────────
   let isVisualizerEnabled = window.innerWidth >= 1024;
-  const isMobile = window.innerWidth < 768;
-  const numBars = isMobile ? 20 : 40;
-  const bars = [];
+  let bars = [];
 
-  cavaContainer.innerHTML = "";
-  const barsFragment = document.createDocumentFragment();
-  for (let i = 0; i < numBars; i++) {
-    const bar = document.createElement("div");
-    bar.className =
-      "flex-1 bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-sm transition-all duration-75";
-    bar.style.cssText = "height:4px;min-width:1px";
-    barsFragment.appendChild(bar);
-    bars.push(bar);
+  /** Calculate optimal bar count based on container width.
+   *  Falls back to an estimate from window.innerWidth when the
+   *  container is still hidden (display:none → clientWidth = 0). */
+  function getOptimalBarCount() {
+    let w = cavaContainer.clientWidth;
+    if (w <= 0) {
+      // Container masih hidden — estimasi dari window width
+      // Desktop: visualizer ambil ~35% viewport (flex-1 di flex row)
+      // Mobile: ~100% viewport dikurangi padding
+      w = window.innerWidth >= 1024
+        ? window.innerWidth * 0.32
+        : window.innerWidth - 32;
+    }
+    if (w < 180) return 12;
+    if (w < 280) return 18;
+    if (w < 400) return 24;
+    if (w < 600) return 32;
+    return 40;
   }
-  cavaContainer.appendChild(barsFragment);
+
+  /** Rebuild bar DOM when container width crosses a threshold */
+  function rebuildBars() {
+    const newCount = getOptimalBarCount();
+    if (bars.length === newCount) return;
+    bars = [];
+    cavaContainer.innerHTML = "";
+    const fragment = document.createDocumentFragment();
+    for (let i = 0; i < newCount; i++) {
+      const bar = document.createElement("div");
+      bar.className =
+        "flex-1 bg-gradient-to-t from-orange-600 to-orange-400 rounded-t-sm transition-all duration-75";
+      bar.style.cssText = "height:4px;min-width:1px";
+      fragment.appendChild(bar);
+      bars.push(bar);
+    }
+    cavaContainer.appendChild(fragment);
+  }
+
+  // Initial build
+  rebuildBars();
+
+  // Debounced resize — only rebuild when bar count actually needs to change
+  let _resizeTimer;
+  function onContainerResize() {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+      const prev = bars.length;
+      const next = getOptimalBarCount();
+      if (prev !== next) {
+        rebuildBars();
+        // Re-enter render loop with new bars if active
+        if (isVisualizerEnabled && isInitialized && !player.paused) {
+          cancelAnimationFrame(animationId);
+          render();
+        }
+      }
+    }, 200);
+  }
+  window.addEventListener("resize", onContainerResize);
 
   const realFileSize = window.MEEL_MUSIC_CONFIG.fileSizeBytes;
   let baseBitrate = 160;
@@ -487,9 +533,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(data);
 
+    const currentBarCount = bars.length;
+    if (currentBarCount === 0) {
+      animationId = requestAnimationFrame(render);
+      return;
+    }
     let peak = 0;
-    for (let i = 0; i < numBars; i++) {
-      const idx = Math.floor(i * (data.length / numBars) * 0.7);
+    for (let i = 0; i < currentBarCount; i++) {
+      const idx = Math.floor(i * (data.length / currentBarCount) * 0.7);
       const raw = data[idx];
       const value = Math.max(4, (raw / 255) * 100);
       bars[i].style.height = `${value}%`;

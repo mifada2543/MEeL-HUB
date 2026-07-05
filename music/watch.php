@@ -213,7 +213,7 @@ switch ($ext) {
                         </div>
                     </div>
 
-                    <div id="cava-container" class="hidden flex-1 min-w-[160px] bg-black/20 border border-white/[.04] rounded-xl p-3 items-end justify-center gap-[2px] min-h-[80px]"></div>
+                    <div id="cava-container" class="hidden w-full sm:flex-1 sm:min-w-[160px] bg-black/20 border border-white/[.04] rounded-xl sm:rounded-xl p-2 sm:p-3 items-end justify-center gap-[2px]"></div>
                 </div>
 
                 <div id="eq-container" class="px-4 sm:px-6 py-4 border-t border-white/[.04] bg-black/10 hidden">
