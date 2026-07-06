@@ -95,9 +95,9 @@ if (isset($_POST['login'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL | Login</title>
-    <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
+    <link rel="icon" type="image/png" href="<?= asset_url('../assets/MEeL.png') ?>">
+    <script src="<?= asset_url('../assets/js/tailwind.js') ?>"></script>
+    <script src="<?= asset_url('../assets/js/lucide.js') ?>"></script>
     <style>
         body {
             background-color: #0b0e14;

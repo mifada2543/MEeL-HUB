@@ -1,4 +1,31 @@
 <?php
+
+/**
+ * Cache-busting: Generate asset URL dengan timestamp filemtime.
+ * Browser/CDN akan fetch ulang saat file diubah.
+ */
+function asset_url(string $relative_path): string
+{
+    static $base_dir = null;
+    if ($base_dir === null) {
+        $base_dir = dirname(__DIR__); // project root
+    }
+
+    // Normalize: buang leading ./ atau ../
+    $path = ltrim($relative_path, '.');
+    $path = ltrim($path, '/');
+
+    // Cari bagian "assets/..." untuk rebuild full path
+    if (preg_match('#(assets/.+)$#', $path, $m)) {
+        $real_path = $base_dir . '/' . $m[1];
+        if (file_exists($real_path)) {
+            return $relative_path . '?v=' . filemtime($real_path);
+        }
+    }
+
+    return $relative_path;
+}
+
 function time_ago($timestamp)
 {
     $time_diff = time() - strtotime($timestamp);

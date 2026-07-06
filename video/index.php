@@ -21,7 +21,7 @@ $total      = $library->countVideos();
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL Video | Library</title>
     <?php include '../partials/link.php'; ?>
-    <link rel="stylesheet" href="../assets/css/video.css">
+    <link rel="stylesheet" href="<?= asset_url('../assets/css/video.css') ?>">
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -116,7 +116,7 @@ $total      = $library->countVideos();
 
     <?php include '../partials/footer.php'; ?>
 
-    <script src="../assets/js/htmx.js"></script>
+    <script src="<?= asset_url('../assets/js/htmx.js') ?>"></script>
     <script>
         lucide.createIcons();
         document.body.addEventListener('htmx:afterOnLoad', function(evt) {

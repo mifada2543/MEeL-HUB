@@ -4,6 +4,7 @@ ini_set('display_errors', 1);
 
 include '../auth/config.php';
 include '../auth/auth.php';
+include_once '../modules/helpers.php';
 include_once '../modules/activity_logger.php';
 
 if (!isset($_SESSION['user_id'])) {
@@ -47,11 +48,11 @@ include '../controllers/fun.php';
     <title>MEeL | System Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
-    <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <link rel="icon" type="image/png" href="<?= asset_url('../assets/MEeL.png') ?>">
+    <script src="<?= asset_url('../assets/js/tailwind.js') ?>"></script>
+    <script src="<?= asset_url('../assets/js/lucide.js') ?>"></script>
+    <script src="<?= asset_url('../assets/js/sweetalert2.all.min.js') ?>"></script>
+    <script src="<?= asset_url('../assets/js/script.js') ?>"></script>
     <style>
         body {
             background-color: #0b0e14;

@@ -309,8 +309,8 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
     </a>
 <?php endif; ?>
 
-<script src="<?= $_nav_root ?>assets/js/sweetalert2.all.min.js"></script>
-<script src="<?= $_nav_root ?>assets/js/script.js"></script>
+<script src="<?= asset_url($_nav_root . 'assets/js/sweetalert2.all.min.js') ?>"></script>
+<script src="<?= asset_url($_nav_root . 'assets/js/script.js') ?>"></script>
 <script>
     // ── Dropdown desktop ──
     function toggleNavDropdown() {
