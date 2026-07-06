@@ -16,6 +16,14 @@ let hls;
 let isAutoRecovering = false;
 let isRecovering = false;
 let isCheckingStatus = false;
+let waitingTimeout = null;
+let recoveryRetryCount = 0;
+const MAX_RECOVERY_RETRIES = 20;
+let lastSuccessfulRecovery = 0;
+const POST_RECOVERY_COOLDOWN_MS = 5000;
+let hasEverPlayed = false;
+let playbackStartTimeout = null;
+const PLAYBACK_START_TIMEOUT_MS = 20000;
 
 // Variabel Kontrol Pemulihan & Cooldown
 let recoveryDelay = 10000; // Mulai dari 10 detik
@@ -131,8 +139,27 @@ const HLS_CONFIG = {
   manifestLoadingTimeOut: 10000,
 };
 
+function stopPlaybackStartTimeout() {
+  if (playbackStartTimeout) {
+    clearTimeout(playbackStartTimeout);
+    playbackStartTimeout = null;
+  }
+}
+
+function startPlaybackStartTimeout() {
+  stopPlaybackStartTimeout();
+  playbackStartTimeout = setTimeout(() => {
+    // Jika video belum pernah mulai putar sama sekali dalam batas waktu, trigger recovery
+    if (!hasEverPlayed) {
+      console.warn("Video tidak kunjung mulai putar (>" + (PLAYBACK_START_TIMEOUT_MS / 1000) + " detik), trigger recovery.");
+      triggerPlayerRecovery();
+    }
+  }, PLAYBACK_START_TIMEOUT_MS);
+}
+
 function destroyPlayer() {
   stopStuckDetector();
+  stopPlaybackStartTimeout();
   if (player) {
     try {
       player.destroy();
@@ -172,6 +199,25 @@ function showReconnectingIndicator() {
 
 function checkMediaAndRecover() {
   if (isCheckingStatus) return;
+
+  // Batasi jumlah percobaan agar tidak loop selamanya
+  recoveryRetryCount++;
+  if (recoveryRetryCount > MAX_RECOVERY_RETRIES) {
+    console.warn("Batas percobaan pemulihan tercapai, berhenti mencoba.");
+    isCheckingStatus = false;
+    recoveryRetryCount = 0;
+    const indicator = document.getElementById("meel-reconnect-indicator");
+    if (indicator) {
+      indicator.innerHTML = `
+        <div class="flex flex-col items-center gap-3 p-4 text-center">
+          <div class="text-xs text-gray-500">Tidak dapat terhubung ke media.</div>
+          <button onclick="window.location.reload()" class="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl transition-all border-none cursor-pointer">Muat Ulang Halaman</button>
+        </div>
+      `;
+    }
+    return;
+  }
+
   isCheckingStatus = true;
 
   showReconnectingIndicator();
@@ -193,12 +239,18 @@ function checkMediaAndRecover() {
       // Pastikan response ok (status 2xx) DAN tipe konten bukan halaman HTML (biasanya custom error page 200 OK dari server)
       if (response.ok && !contentType.includes("text/html")) {
         console.log("Media terdeteksi online! Memulai pemulihan via HTMX...");
+        recoveryRetryCount = 0; // Reset hitungan percobaan
+        lastSuccessfulRecovery = Date.now(); // Catat waktu sukses untuk cooldown
 
         // Simpan posisi detik terakhir sebelum swap
         const recoveryTime = player ? player.currentTime : 0;
         if (recoveryTime > 0) {
           localStorage.setItem(storageKeyVideo, recoveryTime);
         }
+
+        // Hapus indicator sebelum HTMX swap agar tidak sempat "terbawa"
+        const oldIndicator = document.getElementById("meel-reconnect-indicator");
+        if (oldIndicator) oldIndicator.remove();
 
         isRecovering = true;
         isAutoRecovering = true;
@@ -238,7 +290,23 @@ function checkMediaAndRecover() {
 function triggerPlayerRecovery() {
   if (isRecovering || isCheckingStatus || isTransitioningNext) return;
 
+  // Jangan trigger recovery saat video di-paused oleh user, KECUALI
+  // video belum pernah play sama sekali — dalam kasus itu, "paused" berarti
+  // video gagal memuat (bukan interaksi user).
+  if (player && player.paused && hasEverPlayed) {
+    console.log("Video sedang di-paused, skip recovery.");
+    return;
+  }
+
   const now = Date.now();
+
+  // Cooldown pasca-recovery: cegah re-trigger langsung setelah HTMX swap
+  // (mis. saat player baru diinisialisasi, event waiting/error bisa terpicu)
+  if (lastSuccessfulRecovery > 0 && now - lastSuccessfulRecovery < POST_RECOVERY_COOLDOWN_MS) {
+    console.log("Masih dalam masa cooldown pasca-recovery (" + Math.round((POST_RECOVERY_COOLDOWN_MS - (now - lastSuccessfulRecovery)) / 1000) + "s lagi), skip recovery.");
+    return;
+  }
+
   if (now - lastRecoveryTime < recoveryDelay) {
     console.log("Menunda pemulihan: masih dalam masa cooldown.");
     return;
@@ -253,7 +321,9 @@ function startStuckDetector() {
   stopStuckDetector();
   stuckCheckInterval = setInterval(() => {
     // 2 detik sudah cukup untuk deteksi stuck 3 detik
-    if (!player || player.paused || isRecovering || isTransitioningNext) return;
+    // Jika video BELUM pernah play, izinkan deteksi tetap berjalan walau player.paused
+    // (karena "paused" di sini berarti video gagal memuat, bukan interaksi user)
+    if (!player || (hasEverPlayed && player.paused) || isRecovering || isTransitioningNext) return;
 
     // Lewati pengecekan saat tab di-background: decoding frame video sering
     // di-throttle oleh browser di tab tersembunyi sehingga currentTime tampak
@@ -312,6 +382,56 @@ function registerHlsErrorListener(hlsInstance) {
   });
 }
 
+// ── HTML5 Video Error, Stalled & Waiting Listeners (non-HLS recovery) ──
+function registerVideoErrorListener(videoEl) {
+  if (!videoEl) return;
+  // Hindari double-register saat HTMX swap / re-init
+  if (videoEl.dataset.meelErrorRegistered) return;
+  videoEl.dataset.meelErrorRegistered = "1";
+
+  videoEl.addEventListener("error", () => {
+    const mediaError = videoEl.error;
+    if (!mediaError) return;
+    console.warn(
+      "HTML5 video error:",
+      mediaError.message || "Unknown",
+      "code:",
+      mediaError.code,
+    );
+    // MEDIA_ERR_NETWORK (2) — koneksi terputus
+    // MEDIA_ERR_DECODE (3) — file korup
+    // MEDIA_ERR_SRC_NOT_SUPPORTED (4) — file hilang / tidak bisa diakses
+    if (mediaError.code === 2 || mediaError.code === 3 || mediaError.code === 4) {
+      triggerPlayerRecovery();
+    }
+  });
+
+  videoEl.addEventListener("stalled", () => {
+    console.warn("Video stalled, memulai waiting timeout...");
+    startWaitingTimeout();
+  });
+
+  // suspend tidak di-handle di sini karena terlalu sering false-positive
+  // (terjadi saat browser delay loading, data saver mobile, dll).
+  // Cukup andalkan stalled + waiting event dari Plyr.
+}
+
+function startWaitingTimeout() {
+  stopWaitingTimeout();
+  waitingTimeout = setTimeout(() => {
+    console.warn("Video menunggu data terlalu lama (>10 detik), trigger recovery");
+    triggerPlayerRecovery();
+  }, 10000);
+}
+
+function stopWaitingTimeout() {
+  if (waitingTimeout) {
+    clearTimeout(waitingTimeout);
+    waitingTimeout = null;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────
+
 // 3. Inisialisasi Engine Pemutar
 function initPlayer() {
   videoElement = document.getElementById("main-video");
@@ -363,6 +483,9 @@ function initPlayer() {
     if (isHls) videoElement.src = videoSrc;
     setupMeelPlayerEvents();
   }
+
+  // Register HTML5 error/stalled listener — untuk semua tipe video
+  registerVideoListeners();
 }
 
 // Jalankan inisialisasi awal
@@ -370,11 +493,37 @@ document.addEventListener("DOMContentLoaded", () => {
   initPlayer();
 });
 
-// Listener untuk HTMX setelah swap player
+// Register HTML5 video error/stalled listener setelah player siap
+// (dipanggil juga dari setupMeelPlayerEvents untuk non-HLS)
+function registerVideoListeners() {
+  if (videoElement) registerVideoErrorListener(videoElement);
+}
+
+// Deteksi error HTMX swap recovery: jika server merespon dengan error (>= 400)
+// atau redirect ke halaman yang tidak sesuai, fallback ke reload halaman penuh.
+// Ini penting karena server bisa redirect ke maintance.php atau halaman error
+// saat media storage bermasalah.
+document.addEventListener("htmx:beforeSwap", function (event) {
+  if (event.detail.target.id === "main-video-wrapper" && isRecovering) {
+    const xhr = event.detail.xhr;
+    if (xhr && xhr.status >= 400) {
+      event.preventDefault();
+      console.warn("HTMX recovery swap gagal (status " + xhr.status + "), fallback reload.");
+      window.location.reload();
+    }
+  }
+});
+
+// Listener setelah HTMX swap berhasil
 document.addEventListener("htmx:afterSwap", function (event) {
   if (event.detail.target.id === "main-video-wrapper") {
     destroyPlayer();
     isRecovering = false;
+
+    // Hapus indicator reconnection jika masih tersisa di wrapper baru
+    const strayIndicator = document.getElementById("meel-reconnect-indicator");
+    if (strayIndicator) strayIndicator.remove();
+
     initPlayer();
   }
 
@@ -452,6 +601,7 @@ function setupMeelPlayerEvents() {
       player.currentTime = parseFloat(savedPos);
       player.play().catch(() => { });
       startStuckDetector();
+      startPlaybackStartTimeout();
       return;
     }
 
@@ -509,6 +659,10 @@ function setupMeelPlayerEvents() {
         }
       } else {
         player.play().catch(() => console.log("Menunggu interaksi user..."));
+        // Untuk aliran "putar langsung" (tanpa modal resume):
+        // jalankan stuck detector + timeout agar loading macet tetap terdeteksi
+        startStuckDetector();
+        startPlaybackStartTimeout();
       }
     }
 
@@ -548,17 +702,39 @@ function setupMeelPlayerEvents() {
     // appendCustomSettings dipanggil hanya via settings button listener, bukan setiap controlsshown
   });
 
-  const onPlaybackStart = () => {
+  // Handler untuk event "play" — dipanggil saat player.play() dipanggil,
+  // TAPI belum tentu video benar-benar mulai berputar (bisa gagal).
+  // Di sini kita reset state deteksi, tapi TIDAK set hasEverPlayed.
+  // hasEverPlayed hanya di-set di event "playing" (video benar-benar berputar).
+  // Ini penting karena: jika play() gagal (autoplay diblokir/koneksi offline),
+  // player.paused menjadi true, dan stuck detector akan skip pengecekan
+  // jika hasEverPlayed sudah true — menyebabkan recovery tidak pernah terpicu.
+  player.on("play", () => {
+    stopPlaybackStartTimeout();
     playbackStartTimestamp = Date.now();
     lastTimeUpdateTimestamp = Date.now();
     if (player) lastPlayTime = player.currentTime;
+    // Mulai stuck detector — jika play gagal dan video stuck,
+    // detektor akan trigger recovery (karena hasEverPlayed masih false)
     startStuckDetector();
-  };
-  player.on("play", onPlaybackStart);
-  player.on("playing", onPlaybackStart);
+  });
+
+  // Handler untuk event "playing" — dipanggil saat video BENAR-BENAR
+  // mulai memutar konten. Ini bukti video berfungsi normal.
+  // Reset baseline stuck detector agar dimulai dari waktu video benar-benar play,
+  // bukan dari waktu play() dipanggil (mencegah false positive jika ada jeda buffering).
+  player.on("playing", () => {
+    hasEverPlayed = true;
+    stopPlaybackStartTimeout();
+    lastTimeUpdateTimestamp = Date.now();
+    if (player) lastPlayTime = player.currentTime;
+    startStuckDetector();
+  });
 
   player.on("pause", () => {
     stopStuckDetector();
+    stopWaitingTimeout(); // Jangan trigger recovery saat user sengaja pause
+    stopPlaybackStartTimeout(); // Reset timeout jika user pause manual
     // Flush posisi segera saat pause agar tidak kehilangan progress walau throttled
     if (player.currentTime > 0) {
       localStorage.setItem(storageKeyVideo, player.currentTime);
@@ -599,7 +775,21 @@ function setupMeelPlayerEvents() {
         playbackStartTimestamp = 0;
       }
     }
+    // Reset waiting timeout — ada progress berarti tidak stuck
+    stopWaitingTimeout();
   });
+
+  // ── Waiting / stalled timeout handler ──
+  player.on("waiting", () => {
+    startWaitingTimeout();
+  });
+  player.on("playing", () => {
+    stopWaitingTimeout();
+  });
+  player.on("canplay", () => {
+    stopWaitingTimeout();
+  });
+  // ──────────────────────────────────────
 
   player.on("ended", async () => {
     stopStuckDetector();

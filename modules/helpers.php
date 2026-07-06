@@ -87,10 +87,14 @@ $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
 
 // Cek apakah folder tersebut bisa diakses
 if (!is_dir($hdd_check_path)) {
-    // Jika HDD tidak terdeteksi dan user bukan di halaman error itu sendiri
-    if (basename($_SERVER['PHP_SELF']) !== 'maintance.php') {
-        header("Location: ../err/maintance.php");
-        exit();
+    // Lewati pengecekan untuk request HTMX (mis. swap recovery).
+    // HTMX mengirim header HX-Request: true pada setiap AJAX request.
+    if (!isset($_SERVER['HTTP_HX_REQUEST'])) {
+        // Jika HDD tidak terdeteksi dan user bukan di halaman error itu sendiri
+        if (basename($_SERVER['PHP_SELF']) !== 'maintance.php') {
+            header("Location: ../err/maintance.php");
+            exit();
+        }
     }
 }
 function get_user_usage($username)
