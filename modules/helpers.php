@@ -1,4 +1,31 @@
 <?php
+
+/**
+ * Cache-busting: Generate asset URL dengan timestamp filemtime.
+ * Browser/CDN akan fetch ulang saat file diubah.
+ */
+function asset_url(string $relative_path): string
+{
+    static $base_dir = null;
+    if ($base_dir === null) {
+        $base_dir = dirname(__DIR__); // project root
+    }
+
+    // Normalize: buang leading ./ atau ../
+    $path = ltrim($relative_path, '.');
+    $path = ltrim($path, '/');
+
+    // Cari bagian "assets/..." untuk rebuild full path
+    if (preg_match('#(assets/.+)$#', $path, $m)) {
+        $real_path = $base_dir . '/' . $m[1];
+        if (file_exists($real_path)) {
+            return $relative_path . '?v=' . filemtime($real_path);
+        }
+    }
+
+    return $relative_path;
+}
+
 function time_ago($timestamp)
 {
     $time_diff = time() - strtotime($timestamp);
@@ -60,10 +87,14 @@ $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
 
 // Cek apakah folder tersebut bisa diakses
 if (!is_dir($hdd_check_path)) {
-    // Jika HDD tidak terdeteksi dan user bukan di halaman error itu sendiri
-    if (basename($_SERVER['PHP_SELF']) !== 'maintance.php') {
-        header("Location: ../err/maintance.php");
-        exit();
+    // Lewati pengecekan untuk request HTMX (mis. swap recovery).
+    // HTMX mengirim header HX-Request: true pada setiap AJAX request.
+    if (!isset($_SERVER['HTTP_HX_REQUEST'])) {
+        // Jika HDD tidak terdeteksi dan user bukan di halaman error itu sendiri
+        if (basename($_SERVER['PHP_SELF']) !== 'maintance.php') {
+            header("Location: ../err/maintance.php");
+            exit();
+        }
     }
 }
 function get_user_usage($username)

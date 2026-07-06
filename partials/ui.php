@@ -504,8 +504,8 @@
     navBtns.appendChild(closeBtn);
   };
 </script>
-<link rel="manifest" href="assets/manifest.json">
-<link rel="icon" type="image/png" href="assets/MEeL.png">
+<link rel="manifest" href="<?= asset_url('assets/manifest.json') ?>">
+<link rel="icon" type="image/png" href="<?= asset_url('assets/MEeL.png') ?>">
 <div id="meel-overlay">
   <div id="meel-card">
 

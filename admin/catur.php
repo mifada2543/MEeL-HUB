@@ -153,7 +153,7 @@ $back_url    = 'index.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess Manager · MEeL Admin</title>
-    <link rel="stylesheet" href="../assets/css/font.css">
+    <link rel="stylesheet" href="<?= asset_url('../assets/css/font.css') ?>">
     <?php include '../partials/link.php'; ?>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
     <style>

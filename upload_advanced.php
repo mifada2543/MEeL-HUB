@@ -113,11 +113,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     <title>MEeL — Advanced Upload</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <link rel="icon" type="image/png" href="assets/MEeL.png">
-    <link rel="manifest" href="assets/manifest.json">
-    <script src="assets/js/tailwind.js"></script>
-    <script src="assets/js/lucide.js"></script>
-    <link rel="stylesheet" href="assets/css/up.css">
+    <link rel="icon" type="image/png" href="<?= asset_url('assets/MEeL.png') ?>">
+    <link rel="manifest" href="<?= asset_url('assets/manifest.json') ?>">
+    <script src="<?= asset_url('assets/js/tailwind.js') ?>"></script>
+    <script src="<?= asset_url('assets/js/lucide.js') ?>"></script>
+    <link rel="stylesheet" href="<?= asset_url('assets/css/up.css') ?>">
     <style>
         /* ── Additional page-specific styles ── */
 

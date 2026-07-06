@@ -315,13 +315,13 @@ if (isset($_GET['content_only'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title><?= htmlspecialchars($playlist['name']) ?> — MEeL Playlist</title>
-    <link rel="icon" type="image/png" href="../assets/logo.png">
+    <link rel="icon" type="image/png" href="<?= asset_url('../assets/MEeL.png') ?>">
     <?php include '../partials/link.php'; ?>
-    <link rel="stylesheet" href="../assets/css/music.css">
-    <script src="../assets/js/tailwind.js"></script>
-    <script src="../assets/js/lucide.js"></script>
-    <script src="../assets/js/htmx.js"></script>
-    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <link rel="stylesheet" href="<?= asset_url('../assets/css/music.css') ?>">
+    <script src="<?= asset_url('../assets/js/tailwind.js') ?>"></script>
+    <script src="<?= asset_url('../assets/js/lucide.js') ?>"></script>
+    <script src="<?= asset_url('../assets/js/htmx.js') ?>"></script>
+    <script src="<?= asset_url('../assets/js/sweetalert2.all.min.js') ?>"></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">

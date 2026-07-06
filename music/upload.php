@@ -1210,8 +1210,8 @@ if (isset($_POST['upload'])) {
             </div>
         </div>
     </div>
-    <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="<?= asset_url('../assets/js/sweetalert2.all.min.js') ?>"></script>
+    <script src="<?= asset_url('../assets/js/script.js') ?>"></script>
     <script>
         lucide.createIcons();
 

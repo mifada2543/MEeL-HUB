@@ -85,9 +85,9 @@ switch ($ext) {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title><?= htmlspecialchars($v['title']) ?> — MEeL Music</title>
     <?php include '../partials/link.php'; ?>
-    <script src="../assets/js/htmx.js"></script>
-    <link rel="stylesheet" href="../assets/css/plyr.css">
-    <link rel="stylesheet" href="../assets/css/music.css">
+    <script src="<?= asset_url('../assets/js/htmx.js') ?>"></script>
+    <link rel="stylesheet" href="<?= asset_url('../assets/css/plyr.css') ?>">
+    <link rel="stylesheet" href="<?= asset_url('../assets/css/music.css') ?>">
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -657,7 +657,7 @@ switch ($ext) {
         </div>
 
     </main> <?php include '../partials/footer.php'; ?>
-    <script src="../assets/js/script.js"></script>
+    <script src="<?= asset_url('../assets/js/script.js') ?>"></script>
     <script>
         window.MEEL_MUSIC_CONFIG = {
             id: <?= $id ?>,
@@ -708,9 +708,9 @@ switch ($ext) {
             if (options) options.classList.add('hidden');
         };
     </script>
-    <script src="../assets/js/plyr.js"></script>
-    <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/player_music.js"></script>
+    <script src="<?= asset_url('../assets/js/plyr.js') ?>"></script>
+    <script src="<?= asset_url('../assets/js/sweetalert2.all.min.js') ?>"></script>
+    <script src="<?= asset_url('../assets/js/player_music.js') ?>"></script>
 </body>
 
 </html>

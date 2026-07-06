@@ -2,6 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 include 'auth/config.php';
+include 'modules/helpers.php';
 require_once 'controllers/UpdateManager.php';
 
 $um = new UpdateManager($conn);
@@ -22,12 +23,12 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL | Changelog</title>
-    <link rel="icon" type="image/png" href="assets/MEeL.png">
-    <link rel="manifest" href="assets/manifest.json">
-    <script src="assets/js/tailwind.js"></script>
-    <script src="assets/js/htmx.js"></script>
-    <script src="assets/js/lucide.js"></script>
-    <link rel="stylesheet" href="assets/css/up.css">
+    <link rel="icon" type="image/png" href="<?= asset_url('assets/MEeL.png') ?>">
+    <link rel="manifest" href="<?= asset_url('assets/manifest.json') ?>">
+    <script src="<?= asset_url('assets/js/tailwind.js') ?>"></script>
+    <script src="<?= asset_url('assets/js/htmx.js') ?>"></script>
+    <script src="<?= asset_url('assets/js/lucide.js') ?>"></script>
+    <link rel="stylesheet" href="<?= asset_url('assets/css/up.css') ?>">
 </head>
 
 <body>
