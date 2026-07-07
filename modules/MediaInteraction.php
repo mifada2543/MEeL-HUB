@@ -39,7 +39,6 @@ class MediaInteraction {
 
             // 1. Cek interaksi sebelumnya
             $existing = $this->getExistingInteraction($col, $media_id);
-            error_log("MediaInteraction::toggleLike - Existing: " . json_encode($existing));
 
             // 2. INSERT / UPDATE / DELETE
             $this->performInteractionOperation($existing, $col, $media_id, $like_type);
@@ -49,12 +48,9 @@ class MediaInteraction {
 
             // 4. Ambil data terbaru
             $data = $this->getLikesData($table, $media_id, $col);
-
-            error_log("MediaInteraction::toggleLike - SUCCESS: " . json_encode($data));
             return $this->getResponse(true, 'Berhasil', 200, $data);
 
         } catch (Exception $e) {
-            error_log("MediaInteraction::toggleLike - ERROR: " . $e->getMessage());
             return $this->getResponse(false, $e->getMessage(), 500);
         }
     }
@@ -130,15 +126,12 @@ class MediaInteraction {
             $stmt->close();
 
             if ($affected === 0) {
-                error_log("MediaInteraction::deleteComment - Not found or unauthorized: comment_id=$comment_id, user_id={$this->user_id}");
                 return $this->getResponse(false, 'Komentar tidak ditemukan atau Anda tidak berwenang', 404);
             }
 
-            error_log("MediaInteraction::deleteComment - SUCCESS: comment_id=$comment_id");
             return $this->getResponse(true, 'Komentar berhasil dihapus', 200);
 
         } catch (Exception $e) {
-            error_log("MediaInteraction::deleteComment - ERROR: " . $e->getMessage());
             return $this->getResponse(false, $e->getMessage(), 500);
         }
     }
@@ -188,25 +181,20 @@ class MediaInteraction {
                 // Delete: toggle OFF (same type)
                 $op = $this->conn->prepare("DELETE FROM interactions WHERE user_id = ? AND $col = ?");
                 $op->bind_param("ii", $this->user_id, $media_id);
-                error_log("MediaInteraction: DELETE operation (toggle off)");
             } else {
                 // Update: change type
                 $op = $this->conn->prepare("UPDATE interactions SET `TYPE` = ? WHERE user_id = ? AND $col = ?");
                 $op->bind_param("sii", $like_type, $this->user_id, $media_id);
-                error_log("MediaInteraction: UPDATE operation (change type)");
             }
         } else {
             // Insert: new interaction
             $op = $this->conn->prepare("INSERT INTO interactions (user_id, $col, `TYPE`) VALUES (?, ?, ?)");
             $op->bind_param("iis", $this->user_id, $media_id, $like_type);
-            error_log("MediaInteraction: INSERT operation (new interaction)");
         }
 
         if (!$op->execute()) {
             throw new Exception($this->conn->error);
         }
-
-        error_log("MediaInteraction: Operation successful, affected rows: " . $op->affected_rows);
         $op->close();
     }
 
@@ -225,8 +213,6 @@ class MediaInteraction {
         if (!$sync->execute()) {
             throw new Exception($this->conn->error);
         }
-
-        error_log("MediaInteraction: Sync completed");
         $sync->close();
     }
 

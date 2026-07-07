@@ -29,13 +29,9 @@ class MediaViewer
     public function recordView() {
         if (!$this->user_id || !$this->media_id) return false;
 
-        // PENGUBAHAN: Tambahkan 'role' ke dalam SELECT query
-        $stmt_user = $this->conn->prepare("SELECT is_active, role FROM users WHERE id = ? LIMIT 1");
-        $stmt_user->bind_param("i", $this->user_id);
-        $stmt_user->execute();
-        $user = $stmt_user->get_result()->fetch_assoc();
+        // Gunakan data user yang sudah ditarik di construct — tidak perlu query ulang
+        $user = $this->user_data;
 
-        // PENGUBAHAN: Pastikan is_active == 1 DAN role bukan 'guest'
         if ($user && $user['is_active'] == 1 && $user['role'] !== 'guest') {
             $log_column = ($this->media_type === 'video') ? 'video_id' : 'music_id';
             $stmt_log = $this->conn->prepare("INSERT IGNORE INTO view_logs (user_id, $log_column) VALUES (?, ?)");
@@ -99,11 +95,11 @@ class MediaViewer
         return $stmt->execute();
     }
 
-    public function getComments()
+    public function getComments(int $limit = 200)
     {
         $col = ($this->media_type === 'video') ? 'video_id' : 'music_id';
-        $stmt = $this->conn->prepare("SELECT c.*, u.username FROM comments c LEFT JOIN users u ON c.user_id = u.id WHERE c.$col = ? ORDER BY c.created_at ASC");
-        $stmt->bind_param("i", $this->media_id);
+        $stmt = $this->conn->prepare("SELECT c.*, u.username FROM comments c LEFT JOIN users u ON c.user_id = u.id WHERE c.$col = ? ORDER BY c.created_at ASC LIMIT ?");
+        $stmt->bind_param("ii", $this->media_id, $limit);
         $stmt->execute();
         $raw_comments = $stmt->get_result();
 

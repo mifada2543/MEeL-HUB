@@ -5,6 +5,7 @@ ini_set('display_errors', 1);
 include '../auth/config.php';
 include '../auth/auth.php';
 include_once '../modules/helpers.php';
+require_once '../modules/japanese.php';
 
 // Proteksi: harus login
 if (!isset($_SESSION['user_id'])) {

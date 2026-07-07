@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/japanese.php';
+
 class Uploader
 {
     private $conn;
@@ -210,7 +212,7 @@ class Uploader
 
         // ── DIREKTORI KERJA DI temp/ ──────────────────────────────────────────
         // Semua FFmpeg output ditulis di sini dulu
-        $meel_temp_base = "/opt/lampp/htdocs/MEeL/temp/";
+        $meel_temp_base = dirname(__DIR__) . "/temp/";
         $work_folder    = $meel_temp_base . $folder_name . "/";
 
         if (!is_dir($work_folder)) {

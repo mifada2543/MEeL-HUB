@@ -4,6 +4,8 @@
 // VA-API: Intel iHD 24.1.0 — H264/HEVC/VP9 encode+decode tersedia, tapi tidak dipakai di HLS
 //         karena pipeline ini sudah pakai -codec copy (stream copy, tanpa re-encode)
 
+require_once __DIR__ . '/japanese.php';
+
 class Transcoder
 {
     private $conn;
@@ -42,7 +44,7 @@ class Transcoder
     {
         $this->conn         = $db_connection;
         $this->user_id      = (int)$session_user_id;
-        $this->base_path    = "/opt/lampp/htdocs/MEeL";
+        $this->base_path    = dirname(__DIR__);
         $this->cookies_path = $this->base_path . "/cookies.txt";
         $this->user_agent   = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
         $this->ffmpeg_bin   = $this->resolveBinary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
