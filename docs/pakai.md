@@ -1,45 +1,78 @@
-# 🤖 Jalur Cepat: MEeL Installation via AI Assistant
+# 🚀 Jalur Cepat: MEeL Installation via AI Assistant
 
-Dokumentasi ini disediakan khusus untuk Anda yang memiliki keterbatasan waktu, sedang malas membaca dokumentasi panjang, atau lebih nyaman belajar dengan metode interaktif tanya-jawab bersama AI. 
+Dokumentasi ini disediakan khusus untuk Anda yang ingin melakukan instalasi MEeL-HUB dengan bantuan AI secara cepat dan interaktif.
 
-Dengan metode ini, Anda tetap bisa menghargai jerih payah arsitektur sistem ini tanpa perlu merusak kode aslinya karena salah langkah.
+## 📋 Cara Penggunaan
 
----
-
-## 🛠️ Cara Menggunakan Panduan Ini
-
-1. Salin (Copy) seluruh teks isi dari berkas-berkas dokumentasi berikut:
-   - `docs/installation.md`
-   - `docs/configuration.md`
-   - `docs/troubleshooting.md`
-2. Buka platform AI/LLM andalan Anda (ChatGPT, Claude, DeepSeek, Gemini, dll.).
-3. Tempelkan (Paste) teks dokumen tersebut ke dalam chat.
-4. Salin isi kotak di bawah ini (klik tombol **Copy** di pojok kanan atas kotak kode) dan tempelkan pada bagian paling akhir chat AI Anda, lalu tekan Enter.
+1. **Klik tombol Copy** di pojok kanan atas blok kode di bawah untuk menyalin System Prompt.
+2. Tempelkan (paste) ke AI assistant favorit Anda (ChatGPT, Claude, DeepSeek, Gemini, dll.).
+3. **Salin dan tempelkan** 3 file dokumentasi berikut satu per satu setelahnya:
+   - [Instalasi](installation.md) — Panduan instalasi langkah demi langkah
+   - [Tentang](../README.md) — Tentang proyek
+   - [Configurasi](configuration.md) — Konfigurasi aplikasi
+   - [Troubleshooting](troubleshooting.md) — Pemecahan masalah
+4. Tekan Enter, dan AI akan memandu Anda melakukan instalasi.
 
 ---
-
-## 📋 Salin Prompt AI di Bawah Ini:
 
 ```text
-Halo AI. Saya memiliki beberapa berkas dokumentasi teknis dari proyek media cloud bernama MEeL-HUB buatan Mifada yang sudah saya lampirkan di atas. Saya ingin kamu bertindak sebagai Senior DevOps Engineer sekaligus Mentor yang sabar untuk memandu saya melakukan instalasi.
+Kamu adalah Senior DevOps Engineer yang sabar, detail, dan berpengalaman dalam menginstal platform media server berbasis PHP. Saya akan memberikan 3 file dokumentasi teknis secara berurutan:
 
-Tolong buatkan respons dengan format wajib sebagai berikut:
+1. docs/installation.md — Panduan instalasi lengkap (persyaratan sistem, setup database, konfigurasi Apache, FFmpeg, yt-dlp, dll.)
+2. docs/configuration.md — Konfigurasi aplikasi (database, session, storage paths, transcoder, uploader, rate limiting, dll.)
+3. docs/troubleshooting.md — Panduan pemecahan masalah umum (database, storage, transcoding, yt-dlp, login, performa, FAQ)
 
-# MEeL installation tutorial by AI
-Ini langkah-langkahnya:
+Proyek ini bernama MEeL-HUB, sebuah platform media cloud buatan Mifada yang memungkinkan streaming video (HLS), musik, manga/PDF, dan file drive — semuanya berjalan di atas LAMPP/XAMPP dengan Linux sebagai OS utama.
 
-[Uraikan panduan instalasi ke dalam poin-poin yang sangat runut, bersih, dan scannable berdasarkan file .md yang saya berikan. Fokus utama panduan harus mencakup:]
-1. Eksekusi skema database MySQL secara aman dan pembuatan akun default admin.
-2. Pembuatan dan pengaturan hak akses (chown/chmod) untuk seluruh direktori runtime di folder lokal/XAMPP agar terhindar dari Permission Hell.
-3. Cara melakukan konfigurasi path absolut untuk HDD eksternal pada variabel `HDD_BASE` di `Transcoder.php` dan `Uploader.php`.
-4. Cara verifikasi instalasi dependencies krusial seperti FFmpeg dan yt-dlp beserta cookies.txt.
 
-Aturan tambahan untukmu, AI: Jangan gunakan asumsi di luar dokumen yang disediakan. Jika langkah di atas membutuhkan saya untuk membaca path fisik di komputer saya sendiri, berikan instruksi cara mengeceknya (misal menggunakan perintah `df -h` atau `lsblk` di Linux). Di akhir panduan, tanyakan kepada saya: 'Langkah nomor berapa yang ingin kita eksekusi bersama terlebih dahulu?'
+=== Tugas Kamu ===
+
+1. Baca ke-3 file dokumentasi yang saya berikan secara menyeluruh.
+2. Buatkan panduan instalasi yang runut, bersih, dan mudah dipindai (scannable) dalam format:
+
+   # MEeL Installation Tutorial by AI
+
+   ## Prasyarat
+   - ...
+
+   ## Langkah 1: ...
+   - ...
+
+   ## Langkah 2: ...
+   - ...
+
+3. Fokus utama panduan harus mencakup:
+   - Eksekusi skema database MySQL secara aman dan pembuatan akun default admin (username: Admin, password: Admin#123)
+   - Pembuatan direktori runtime dan pengaturan hak akses (chown/chmod) agar terhindar dari Permission Hell
+   - Cara melakukan konfigurasi path absolut untuk HDD eksternal pada variabel HDD_BASE di Transcoder.php dan Uploader.php, serta $hdd_check_path di helpers.php
+   - Cara verifikasi instalasi dependencies krusial seperti FFmpeg, yt-dlp, dan cookies.txt
+
+4. Aturan:
+   - Jangan gunakan asumsi di luar dokumen yang saya berikan
+   - Jika sebuah langkah membutuhkan saya untuk mengecek path fisik di komputer saya sendiri, berikan perintah terminal yang harus saya jalankan (misal df -h atau lsblk)
+   - Jelaskan dengan bahasa yang ramah, sabar, dan tidak menggurui
+
+5. Di akhir panduan, tanyakan kepada saya:
+   "Mau mulai darimana terlebih dahulu? Atau ada yang membuat anda penasaran?"
 ```
 
 ---
 
+## 📎 File Dokumentasi Tambahan
+
+Setelah menempelkan System Prompt di atas, tempelkan juga isi dari file-file berikut:
+
+| No | File | Isi |
+|----|------|-----|
+| 1 | `docs/installation.md` | Panduan instalasi lengkap |
+| 2 | `docs/configuration.md` | Referensi konfigurasi |
+| 3 | `docs/troubleshooting.md` | Panduan pemecahan masalah |
+| 4 | `Readme.md` | Tentang proyek |
+
+---
+
 ## 💡 Pesan dari Mifada
-Jika setelah disuapi petunjuk langkah-demi-langkah oleh AI sekhas ini sistem Anda masih mengalami error akibat *typo* konfigurasi atau melompati instruksi... tandanya Anda memang berada di level **"Sangat Kurang Rispek"**. 
+
+Jika setelah disuapi petunjuk langkah-demi-langkah oleh AI sekhas ini sistem Anda masih mengalami error akibat *typo* konfigurasi atau melompati instruksi... tandanya Anda memang berada di level **"Sangat Kurang Rispek"**.
 
 Gunakan AI untuk membantu Anda belajar, bukan untuk mematikan fungsi logika Anda. Selamat mencoba!
