@@ -18,13 +18,13 @@ $counts  = $library->getCounts();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL | Media Hub</title>
-    <link rel="manifest" href="<?= asset_url('assets/manifest.json') ?>">
-    <link rel="icon" type="image/png" href="<?= asset_url('assets/MEeL.png') ?>">
-    <link rel="stylesheet" href="<?= asset_url('assets/css/index(hub).css') ?>">
-    <script src="<?= asset_url('assets/js/tailwind.js') ?>"></script>
-    <script src="<?= asset_url('assets/js/lucide.js') ?>"></script>
-    <script src="<?= asset_url('assets/js/sweetalert2.all.min.js') ?>"></script>
-    <script src="<?= asset_url('assets/js/script.js') ?>"></script>
+    <link rel="manifest" href="assets/manifest.json">
+    <link rel="icon" type="image/png" href="assets/MEeL.png">
+    <link rel="stylesheet" href="assets/css/index(hub).css">
+    <script src="assets/js/tailwind.js"></script>
+    <script src="assets/js/lucide.js"></script>
+    <script src="assets/js/sweetalert2.all.min.js"></script>
+    <script src="assets/js/script.js"></script>
 </head>
 
 <body class="text-gray-300 min-h-screen" style="background:#05070c">

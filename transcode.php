@@ -53,15 +53,15 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEeL Transcoder</title>
-    <link rel="icon" type="image/png" href="<?= asset_url('assets/MEeL.png') ?>">
-    <link rel="manifest" href="<?= asset_url('assets/manifest.json') ?>">
-    <link href="<?= asset_url('assets/css/fonts.css') ?>" rel="stylesheet">
+    <link rel="icon" type="image/png" href="assets/MEeL.png">
+    <link rel="manifest" href="assets/manifest.json">
+    <link href="assets/css/fonts.css" rel="stylesheet">
 
-    <script src="<?= asset_url('assets/js/lucide.js') ?>"></script>
-    <script src="<?= asset_url('assets/js/sweetalert2.all.min.js') ?>"></script>
-    <script src="<?= asset_url('assets/js/script.js') ?>"></script>
+    <script src="assets/js/lucide.js"></script>
+    <script src="assets/js/sweetalert2.all.min.js"></script>
+    <script src="assets/js/script.js"></script>
 
-    <script src="<?= asset_url('assets/js/tailwind.js') ?>"></script>
+    <script src="assets/js/tailwind.js"></script>
     <script>
         tailwind.config = {
             theme: {

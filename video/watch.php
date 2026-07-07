@@ -48,10 +48,10 @@ session_write_close();
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title><?= htmlspecialchars($v['title']) ?> — MEeL Video</title>
     <?php include '../partials/link.php'; ?>
-    <link rel="stylesheet" href="<?= asset_url('../assets/css/plyr.css') ?>">
-    <link rel="stylesheet" href="<?= asset_url('../assets/css/video.css') ?>">
-    <script src="<?= asset_url('../assets/js/htmx.js') ?>"></script>
-    <script src="<?= asset_url('../assets/js/hls.js') ?>"></script>
+    <link rel="stylesheet" href="../assets/css/plyr.css">
+    <link rel="stylesheet" href="../assets/css/video.css">
+    <script src="../assets/js/htmx.js"></script>
+    <script src="../assets/js/hls.js"></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -395,9 +395,9 @@ session_write_close();
 
     <?php include '../partials/footer.php'; ?>
 
-    <script src="<?= asset_url('../assets/js/plyr.js') ?>"></script>
-    <script src="<?= asset_url('../assets/js/sweetalert2.all.min.js') ?>"></script>
-    <script src="<?= asset_url('../assets/js/script.js') ?>"></script>
+    <script src="../assets/js/plyr.js"></script>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <script src="../assets/js/script.js"></script>
 
     <script>
         window.playerConfig = <?= json_encode([
@@ -409,7 +409,7 @@ session_write_close();
                                     'uploader' => $v['uploader'] ?? ''
                                 ]); ?>;
     </script>
-    <script src="<?= asset_url('../assets/js/player_video.js') ?>"></script>
+    <script src="../assets/js/player_video.js"></script>
 
     <script>
         lucide.createIcons();

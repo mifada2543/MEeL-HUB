@@ -26,8 +26,8 @@ $total = $books->num_rows;
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL | Books</title>
     <?php include '../partials/link.php'; ?>
-    <link rel="stylesheet" href="<?= asset_url('../assets/css/books.css') ?>">
-    <script src="<?= asset_url('../assets/js/htmx.js') ?>"></script>
+    <link rel="stylesheet" href="../assets/css/books.css">
+    <script src="../assets/js/htmx.js"></script>
     <style>
         body {
             background-color: #080a0f;

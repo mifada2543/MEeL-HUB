@@ -80,8 +80,8 @@ if (isset($_GET['content_only'])) {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL Music | Library</title>
     <?php include '../partials/link.php'; ?>
-    <link rel="stylesheet" href="<?= asset_url('../assets/css/music.css') ?>">
-    <script src="<?= asset_url('../assets/js/htmx.js') ?>"></script>
+    <link rel="stylesheet" href="../assets/css/music.css">
+    <script src="../assets/js/htmx.js"></script>
     <style>
         .artist-dropdown-active .music-item {
             pointer-events: none !important;
@@ -427,7 +427,7 @@ if (isset($_GET['content_only'])) {
             </div>
         </div>
     </div>
-    <script src="<?= asset_url('../assets/js/script.js') ?>"></script>
+    <script src="../assets/js/script.js"></script>
     <script>
         lucide.createIcons();
 

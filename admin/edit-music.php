@@ -136,10 +136,10 @@ $thumb_src = !empty($music['thumbnail'])
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>Edit Musik | <?= $is_admin ? 'MEeL Admin' : 'MEeL' ?></title>
-    <link rel="icon" type="image/png" href="<?= asset_url('../assets/MEeL.png') ?>">
-    <link rel="stylesheet" href="<?= asset_url('../assets/css/em.css') ?>">
-    <script src="<?= asset_url('../assets/js/tailwind.js') ?>"></script>
-    <script src="<?= asset_url('../assets/js/lucide.js') ?>"></script>
+    <link rel="icon" type="image/png" href="../assets/MEeL.png">
+    <link rel="stylesheet" href="../assets/css/em.css">
+    <script src="../assets/js/tailwind.js"></script>
+    <script src="../assets/js/lucide.js"></script>
 
 </head>
 
@@ -343,8 +343,8 @@ $thumb_src = !empty($music['thumbnail'])
     </div>
 
     <?php include '../partials/footer.php'; ?>
-    <script src="<?= asset_url('../assets/js/sweetalert2.all.min.js') ?>"></script>
-    <script src="<?= asset_url('../assets/js/script.js') ?>"></script>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <script src="../assets/js/script.js"></script>
     <script>
         lucide.createIcons();
 
