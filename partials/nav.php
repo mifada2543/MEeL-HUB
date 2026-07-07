@@ -76,10 +76,12 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                     <?php endif; ?>
                 </div>
                 <div class="min-w-0">
-                    <div class="text-xs font-bold text-white truncate">@<?= htmlspecialchars($_SESSION['username']) ?></div>
+                    <div class="text-xs font-bold text-white truncate" title="@<?= htmlspecialchars($_SESSION['username']) ?>">
+                        @<?= htmlspecialchars($_SESSION['username']) ?>
+                    </div>
                     <?php if (isset($_SESSION['role'])): ?>
                         <?php if ($_SESSION['role'] === 'admin'): ?>
-                            <div class="flex items-center gap-1 mt-0.5">
+                            <div class="flex items-center gap-1 mt-0.5" title="Anda adalah administrator platform">
                                 <span class="relative flex h-1.5 w-1.5">
                                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                     <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
@@ -87,14 +89,14 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                                 <span class="text-[9px] text-red-500 font-black uppercase tracking-wider">Admin</span>
                             </div>
                         <?php elseif ($_SESSION['role'] === 'member'): ?>
-                            <div class="flex items-center gap-1 mt-0.5">
+                            <div class="flex items-center gap-1 mt-0.5" title="Anda adalah pengguna berlangganan MEeL">
                                 <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
                                 <span class="text-[9px] text-green-500 font-medium uppercase tracking-tighter">Berlangganan</span>
                             </div>
                         <?php else: ?>
                             <div class="flex items-center gap-1 mt-0.5">
                                 <span class="h-1.5 w-1.5 rounded-full bg-gray-600"></span>
-                                <span class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter">Member</span>
+                                <span class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter" title="Anda adalah pengguna biasa">User</span>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -103,28 +105,28 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
 
             <!-- Menu items -->
             <div class="py-1.5">
-                <a href="<?= $_nav_root ?>profile/?u=<?= urlencode($_SESSION['username']) ?>"
+                <a href="<?= $_nav_root ?>profile/?u=<?= urlencode($_SESSION['username']) ?>" title="Lihat profil Anda"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="user" class="w-3.5 h-3.5 flex-shrink-0"></i>
                     <span>Profil</span>
                 </a>
 
                 <?php if (!$_nav_is_books): ?>
-                <a href="<?= $_nav_root ?>books/index.php"
+                <a href="<?= $_nav_root ?>books/index.php" title="Akses MEeL Books"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-green-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="book-open" class="w-3.5 h-3.5 flex-shrink-0"></i>
                     <span>Books</span>
                 </a>
                 <?php endif; ?>
 
-                <a href="<?= $_nav_root ?>introduction.php"
+                <a href="<?= $_nav_root ?>introduction.php" title="Cara bernavigasi di MEeL"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="compass" class="w-3.5 h-3.5 flex-shrink-0"></i>
                     <span>Cara Navigasi</span>
                 </a>
 
                 <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['member', 'admin'])): ?>
-                    <a href="<?= $_nav_root ?>drive/index.php"
+                    <a href="<?= $_nav_root ?>drive/index.php" title="Akses drive Anda untuk mengelola file dan dokumen"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="hard-drive" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Drive</span>
@@ -132,7 +134,7 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                 <?php endif; ?>
 
                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                    <a href="upload.php"
+                    <a href="upload.php" title="Unggah media baru ke platform"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Upload Media</span>

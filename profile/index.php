@@ -111,7 +111,7 @@ $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
                     </div>
 
                     <?php if ($_SESSION['username'] === $u['username']): ?>
-                        <a href="../profile_edit.php" class="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 mb-2">
+                        <a href="../controllers/profile_edit.php" class="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 mb-2">
                             <i data-lucide="edit-3" class="w-4 h-4"></i> Edit Profile
                         </a>
                     <?php endif; ?>

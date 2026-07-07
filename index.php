@@ -86,7 +86,7 @@ $counts  = $library->getCounts();
                 </div>
                 <div class="mt-auto">
                     <div class="card-name">MUSIC</div>
-                    <div class="card-desc">Audio lossless. Kualitas terbaik.</div>
+                    <div class="card-desc">Audio tinggi dengan kualitas terbaik.</div>
                 </div>
                 <div class="flex justify-end">
                     <div class="card-arrow">
@@ -126,20 +126,20 @@ $counts  = $library->getCounts();
         <div class="flex flex-wrap items-center justify-center gap-3">
             <?php if ($is_logged_in && isset($_SESSION['role'])): ?>
                 <?php if ($_SESSION['role'] === 'admin'): ?>
-                    <a href="admin/index.php" class="bottom-link">
+                    <a href="admin/index.php" class="bottom-link" title="Panel Admin untuk mengelola konten dan pengguna">
                         <i data-lucide="settings" class="w-3 h-3"></i> Admin Panel
                     </a>
-                    <a href="upload_advanced.php" class="bottom-link">
+                    <a href="upload_advanced.php" class="bottom-link" title="Unggah media baru ke platform">
                         <i data-lucide="upload-cloud" class="w-3 h-3"></i> Upload Media
                     </a>
                 <?php endif; ?>
                 <?php if (in_array($_SESSION['role'], ['member', 'admin'])): ?>
-                    <a href="drive/index.php" class="bottom-link">
+                    <a href="drive/index.php" class="bottom-link" title="Akses drive Anda untuk mengelola file dan dokumen">
                         <i data-lucide="hard-drive" class="w-3 h-3"></i> Drive
                     </a>
                 <?php endif; ?>
             <?php endif; ?>
-            <a href="update.php" class="bottom-link">
+            <a href="update.php" class="bottom-link" title="Lihat perubahan terbaru dan pembaruan platform">
                 <i data-lucide="radio" class="w-3 h-3"></i> Changelog
             </a>
         </div>

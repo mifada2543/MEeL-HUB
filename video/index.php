@@ -29,7 +29,7 @@ $total      = $library->countVideos();
     <!-- NAVBAR -->
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-3 sm:px-6 xl:px-10 2xl:px-16 h-14 flex items-center justify-between gap-2 sm:gap-4">
-            <a href="../index.php" class="flex items-center gap-1 sm:gap-2.5 flex-shrink-0" title="MEeL HUB">
+            <a href="../index.php" class="flex items-center gap-1 sm:gap-2.5 flex-shrink-0" title="Kembali ke MEeL HUB">
                 <div class="w-6 h-6 sm:w-7 sm:h-7 bg-red-600 rounded-lg flex items-center justify-center">
                     <i data-lucide="play" class="w-3.5 h-3.5 text-white fill-current"></i>
                 </div>
@@ -72,7 +72,7 @@ $total      = $library->countVideos();
             </div>
 
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0" title="MEeL Music">
-                <a href="../music/index.php" class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-300 hover:text-orange-500 transition-all">
+                <a href="../music/index.php" class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-300 hover:text-orange-500 transition-all" title="MEeL Music - Streaming Audio dengan kualitas terbaik">
                     <i data-lucide="music" class="w-3.5 h-3.5"></i>
                     <span class="hidden md:inline">Music</span>
                 </a>
