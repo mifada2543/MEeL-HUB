@@ -5,6 +5,8 @@ include '../auth/auth.php';
 include '../modules/helpers.php';
 include '../auth/config.php';
 include '../modules/Uploader.php';
+require_once '../modules/GarbageCollector.php';
+GarbageCollector::run();
 
 set_time_limit(0);
 $status        = "";

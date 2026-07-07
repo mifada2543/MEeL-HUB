@@ -11,6 +11,8 @@ require_once 'auth/config.php';
 require_once 'modules/activity_logger.php';
 require_once 'modules/Transcoder.php';
 include 'modules/helpers.php';
+require_once 'modules/GarbageCollector.php';
+GarbageCollector::run();
 
 // ─── GLOBAL ERROR HANDLER ─────────────────────────────────────────────────
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
