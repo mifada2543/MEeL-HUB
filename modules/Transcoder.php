@@ -72,43 +72,72 @@ class Transcoder
     }
 
     /**
-     * Dapatkan path untuk temp/staging, prioritas RAM disk (/dev/shm) jika layak.
-     *
-     * Syarat pakai /dev/shm:
+     * Resolve path RAM disk (/dev/shm) dengan kriteria:
      * 1. Direktori /dev/shm ada
      * 2. Bisa ditulisi (writable)
-     * 3. Ruang kosong minimal 500MB (cukup untuk video 1080p ~30 menit)
+     * 3. Ruang kosong minimal 500MB
      *
-     * Jika tidak memenuhi, fallback ke temp/ project.
+     * Struktur direktori di RAM:
+     *   /dev/shm/meel/{subdir}
+     *
+     * Jika tidak memenuhi, fallback ke project temp/.
+     *
+     * @param string $subdir Subdirektori (misal: 'temp', 'upload', 'transcode')
      */
-    private function getShmTempPath(): string
+    private function resolveShmPath(string $subdir): string
     {
         // Bersihkan file sampah stale sebelum pakai temp directory
         GarbageCollector::run();
 
-        static $path = null;
-        if ($path === null) {
-            $shm_path  = '/dev/shm';
-            $use_shm   = false;
+        static $resolved = [];
+        if (!isset($resolved[$subdir])) {
+            $shm_path = '/dev/shm';
+            $use_shm  = false;
 
             if (is_dir($shm_path) && is_writable($shm_path)) {
                 $free = @disk_free_space($shm_path);
-                // Minimal 500MB free di /dev/shm (512MB = 536.870.912 bytes)
                 if ($free !== false && $free >= 512 * 1024 * 1024) {
                     $use_shm = true;
                 }
             }
 
-            if ($use_shm) {
-                $path = $shm_path . '/meel_temp';
-            } else {
-                // Fallback: project temp/ directory
-                $path = dirname(__DIR__) . '/temp';
-            }
+            $resolved[$subdir] = $use_shm
+                ? "$shm_path/meel/$subdir"
+                : dirname(__DIR__) . '/temp';
 
-            if (!is_dir($path)) @mkdir($path, 0755, true);
+            if (!is_dir($resolved[$subdir])) {
+                @mkdir($resolved[$subdir], 0755, true);
+            }
         }
-        return $path;
+        return $resolved[$subdir];
+    }
+
+    /**
+     * Dapatkan path untuk temp/staging upload/download, prioritas RAM disk.
+     * Gunakan /dev/shm/meel/temp jika layak, fallback ke project temp/.
+     */
+    private function getShmTempPath(): string
+    {
+        return $this->resolveShmPath('temp');
+    }
+
+    /**
+     * Dapatkan path untuk temp/staging transcode (ekstrak audio dari video), prioritas RAM disk.
+     * Gunakan /dev/shm/meel/transcode jika layak, fallback ke project temp/.
+     */
+    private function getShmTranscodePath(): string
+    {
+        return $this->resolveShmPath('transcode');
+    }
+
+    /**
+     * Dapatkan full path file transcode untuk didownload. Public agar bisa diakses
+     * dari download proxy controller.
+     */
+    public function getTranscodeFilePath(string $filename): ?string
+    {
+        $path = $this->getShmTranscodePath() . '/' . $filename;
+        return file_exists($path) ? $path : null;
     }
 
     // ─── BINARY RESOLVER ──────────────────────────────────────────────────────
@@ -841,11 +870,12 @@ class Transcoder
 
     public function transcodeVideo(int $video_id, string $format = 'mp3'): array
     {
-        $temp_dir = $this->getShmTempPath() . '/';
-        if (!is_dir($temp_dir)) mkdir($temp_dir, 0755, true);
+        // Output hanya di RAM disk (primer) — fallback ke project temp/
+        $output_dir = $this->getShmTranscodePath() . '/';
+        if (!is_dir($output_dir)) mkdir($output_dir, 0755, true);
 
-        // Bersihkan file temp lama (> 2 jam)
-        foreach (glob($temp_dir . "transcode_*") as $file) {
+        // Bersihkan file lama (> 2 jam)
+        foreach (glob($output_dir . "*") as $file) {
             if (time() - filemtime($file) >= 7200) @unlink($file);
         }
 
@@ -901,13 +931,13 @@ class Transcoder
         }
 
         // Cache / reuse output
-        $clean_title     = getRomajiName($v_data['title']);
-        $output_filename = $clean_title . "." . $format;
-        $output_path     = $temp_dir . $output_filename;
+        // Pakai judul asli dari database, disanitasi untuk filesystem
+        $output_filename = $this->sanitizeFilename($v_data['title']) . '.' . $format;
+        $output_path     = $output_dir . $output_filename;
 
         if (file_exists($output_path) && filesize($output_path) > 0) {
-            $download_link = "temp/" . $output_filename;
-            echo "<script>meelDoneTranscode(" . json_encode($clean_title) . ", " . json_encode($download_link) . ");</script>";
+            $download_link = "controllers/download_transcode.php?file=" . rawurlencode($output_filename);
+            echo "<script>meelDoneTranscode(" . json_encode($v_data['title']) . ", " . json_encode($download_link) . ");</script>";
             flush();
             return ['status' => 'success', 'download_link' => $download_link];
         }
@@ -929,7 +959,7 @@ class Transcoder
         $stmt_q->close();
 
         // Buat concat list
-        $concat_list_path = $temp_dir . "concat_{$video_id}_" . time() . ".txt";
+        $concat_list_path = $output_dir . "concat_{$video_id}_" . time() . ".txt";
         $concat_content   = "";
         foreach ($ts_files as $ts) {
             // Gunakan single quote yang di-escape untuk path ffmpeg concat
@@ -1008,7 +1038,7 @@ class Transcoder
             return ['status' => 'error', 'msg' => 'FFmpeg gagal menghasilkan file.'];
         }
 
-        $download_link = "temp/" . $output_filename;
+        $download_link = "controllers/download_transcode.php?file=" . rawurlencode($output_filename);
         echo "<script>meelDoneTranscode(" . json_encode($v_data['title']) . ", " . json_encode($download_link) . ");</script>";
         flush();
 
@@ -1120,6 +1150,28 @@ class Transcoder
             @unlink($f);
         }
         @rmdir($dir);
+    }
+
+    /**
+     * Sanitasi judul video untuk dijadikan nama file.
+     * Hapus karakter berbahaya, path separator, dan batasi panjang.
+     */
+    private function sanitizeFilename(string $title): string
+    {
+        $name = trim($title);
+        if (empty($name)) {
+            $name = 'untitled-media';
+        }
+
+        // Hapus karakter yang tidak aman untuk filesystem
+        $name = preg_replace('/[\\/:*?"<>|\s]+/u', '-', $name);
+        // Path traversal
+        $name = str_replace(['..', './'], '', $name);
+        // Batasi panjang
+        $name = mb_substr($name, 0, 120);
+        $name = trim($name, "- \t\n\r\0\x0B");
+
+        return $name ?: 'untitled-media';
     }
 
     /**

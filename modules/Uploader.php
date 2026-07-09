@@ -226,7 +226,7 @@ class Uploader
             }
         }
 
-        $meel_base  = $use_shm ? ($shm_path . '/meel_upload') : (dirname(__DIR__) . '/temp');
+        $meel_base  = $use_shm ? ($shm_path . '/meel/upload') : (dirname(__DIR__) . '/temp');
         if (!is_dir($meel_base)) @mkdir($meel_base, 0755, true);
         $work_folder = $meel_base . '/' . $folder_name . '/';
         @mkdir($work_folder, 0755, true);

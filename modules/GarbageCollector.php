@@ -6,9 +6,10 @@
  * Berjalan di setiap request halaman upload/transcode agar real-time.
  *
  * Target direktori:
- * - /dev/shm/meel_temp/   (Transcoder RAM disk)
- * - /dev/shm/meel_upload/  (Uploader RAM disk)
- * - {project}/temp/         (fallback disk)
+ * - /dev/shm/meel/temp/     (Transcoder RAM disk — upload/download)
+ * - /dev/shm/meel/upload/   (Uploader RAM disk)
+ * - /dev/shm/meel/transcode/ (Transcoder RAM disk — transcode audio)
+ * - {project}/temp/          (fallback disk)
  */
 
 class GarbageCollector
@@ -54,14 +55,19 @@ class GarbageCollector
             $dirs[] = $project_temp;
         }
 
-        // 2. RAM disk Transcoder
-        if (is_dir('/dev/shm/meel_temp')) {
-            $dirs[] = '/dev/shm/meel_temp';
+        // 2. RAM disk Transcoder — upload/download
+        if (is_dir('/dev/shm/meel/temp')) {
+            $dirs[] = '/dev/shm/meel/temp';
         }
 
         // 3. RAM disk Uploader
-        if (is_dir('/dev/shm/meel_upload')) {
-            $dirs[] = '/dev/shm/meel_upload';
+        if (is_dir('/dev/shm/meel/upload')) {
+            $dirs[] = '/dev/shm/meel/upload';
+        }
+
+        // 4. RAM disk Transcode (khusus ekstrak audio dari video)
+        if (is_dir('/dev/shm/meel/transcode')) {
+            $dirs[] = '/dev/shm/meel/transcode';
         }
 
         return $dirs;
