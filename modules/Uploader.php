@@ -1,5 +1,8 @@
 <?php
 
+require_once __DIR__ . '/japanese.php';
+require_once __DIR__ . '/GarbageCollector.php';
+
 class Uploader
 {
     private $conn;
@@ -80,6 +83,7 @@ class Uploader
 
     public function processMusic(array $post, array $files, string $base_dir): array
     {
+        GarbageCollector::run();
         $limit = $this->checkRateLimit('music');
         if (!$limit['allowed']) {
             return ['status' => 'error', 'msg' => "Batas upload tercapai! Tunggu {$limit['minutes']} menit lagi.", 'alert' => true];
@@ -173,6 +177,7 @@ class Uploader
     // ─── VIDEO ────────────────────────────────────────────────────────────────
     public function processVideo(array $post, array $files, string $upload_dir = ""): array
     {
+        GarbageCollector::run();
         $limit = $this->checkRateLimit('video');
         if (!$limit['allowed']) {
             return ['status' => 'error', 'msg' => "Batas upload tercapai! Tunggu {$limit['minutes']} menit lagi.", 'alert' => true];
@@ -208,14 +213,23 @@ class Uploader
             $counter++;
         }
 
-        // ── DIREKTORI KERJA DI temp/ ──────────────────────────────────────────
-        // Semua FFmpeg output ditulis di sini dulu
-        $meel_temp_base = "/opt/lampp/htdocs/MEeL/temp/";
-        $work_folder    = $meel_temp_base . $folder_name . "/";
-
-        if (!is_dir($work_folder)) {
-            mkdir($work_folder, 0755, true);
+        // ── DIREKTORI KERJA — PRIORITAS RAM DISK (/dev/shm) ────────────────
+        // Semua FFmpeg output ditulis di RAM dulu, lalu dipindahkan ke HDD.
+        // Syarat pakai /dev/shm: directory exists + writable + minimal 500MB free.
+        // Jika tidak memenuhi, fallback ke temp/ project.
+        $shm_path  = '/dev/shm';
+        $use_shm   = false;
+        if (is_dir($shm_path) && is_writable($shm_path)) {
+            $free = @disk_free_space($shm_path);
+            if ($free !== false && $free >= 512 * 1024 * 1024) {
+                $use_shm = true;
+            }
         }
+
+        $meel_base  = $use_shm ? ($shm_path . '/meel_upload') : (dirname(__DIR__) . '/temp');
+        if (!is_dir($meel_base)) @mkdir($meel_base, 0755, true);
+        $work_folder = $meel_base . '/' . $folder_name . '/';
+        @mkdir($work_folder, 0755, true);
 
         // Stage file upload ke work_folder agar ekstensi tersedia untuk FFmpeg
         $staged_video = $work_folder . $clean_name . "_staged." . $ext;

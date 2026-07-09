@@ -5,6 +5,8 @@ include '../auth/auth.php';
 include '../auth/config.php';
 include '../modules/helpers.php';
 include '../modules/Uploader.php';
+require_once '../modules/GarbageCollector.php';
+GarbageCollector::run();
 
 set_time_limit(0);
 $status        = "";
@@ -1004,8 +1006,8 @@ if (isset($_POST['upload'])) {
             </div>
         </div>
     </div>
-    <script src="<?= asset_url('../assets/js/sweetalert2.all.min.js') ?>"></script>
-    <script src="<?= asset_url('../assets/js/script.js') ?>"></script>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <script src="../assets/js/script.js"></script>
     <script>
         lucide.createIcons();
 

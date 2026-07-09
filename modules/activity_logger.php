@@ -243,23 +243,20 @@ if (isset($conn)) {
         $stmt->bind_param("ssssi", $current_page, $device, $access_via, $user_ip, $uid);
         $stmt->execute();
     } else {
-        // ... (Logika Guest tetap sama) ...
+        // LOGIKA GUEST — 1 query (INSERT ON DUPLICATE KEY) bukan 2 query (SELECT + INSERT/UPDATE)
         $guest_id = "Guest_" . substr(session_id(), 0, 6);
-        $check_guest = $conn->prepare("SELECT id FROM users WHERE username = ?");
-        $check_guest->bind_param("s", $guest_id);
-        $check_guest->execute();
-
-        if ($check_guest->get_result()->num_rows == 0) {
-            $role = 'guest';
-            // Insert Guest Baru dengan IP
-            $ins = $conn->prepare("INSERT INTO users (username, role, last_page, user_agent, access_via, ip_address, last_activity) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-            $ins->bind_param("ssssss", $guest_id, $role, $current_page, $device, $access_via, $user_ip);
-            $ins->execute();
-        } else {
-            // Update Guest Lama dengan IP terbaru
-            $upd = $conn->prepare("UPDATE users SET last_page = ?, user_agent = ?, access_via = ?, ip_address = ?, last_activity = NOW() WHERE username = ?");
-            $upd->bind_param("sssss", $current_page, $device, $access_via, $user_ip, $guest_id);
-            $upd->execute();
-        }
+        $role     = 'guest';
+        $guest_upd = $conn->prepare(
+            "INSERT INTO users (username, role, last_page, user_agent, access_via, ip_address, last_activity)
+             VALUES (?, ?, ?, ?, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE
+                last_page = VALUES(last_page),
+                user_agent = VALUES(user_agent),
+                access_via = VALUES(access_via),
+                ip_address = VALUES(ip_address),
+                last_activity = NOW()"
+        );
+        $guest_upd->bind_param("ssssss", $guest_id, $role, $current_page, $device, $access_via, $user_ip);
+        $guest_upd->execute();
     }
 }

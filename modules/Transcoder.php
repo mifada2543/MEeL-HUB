@@ -4,6 +4,9 @@
 // VA-API: Intel iHD 24.1.0 — H264/HEVC/VP9 encode+decode tersedia, tapi tidak dipakai di HLS
 //         karena pipeline ini sudah pakai -codec copy (stream copy, tanpa re-encode)
 
+require_once __DIR__ . '/japanese.php';
+require_once __DIR__ . '/GarbageCollector.php';
+
 class Transcoder
 {
     private $conn;
@@ -42,7 +45,7 @@ class Transcoder
     {
         $this->conn         = $db_connection;
         $this->user_id      = (int)$session_user_id;
-        $this->base_path    = "/opt/lampp/htdocs/MEeL";
+        $this->base_path    = dirname(__DIR__);
         $this->cookies_path = $this->base_path . "/cookies.txt";
         $this->user_agent   = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
         $this->ffmpeg_bin   = $this->resolveBinary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
@@ -66,6 +69,46 @@ class Transcoder
     public function getUserRole(): string
     {
         return $this->user_role;
+    }
+
+    /**
+     * Dapatkan path untuk temp/staging, prioritas RAM disk (/dev/shm) jika layak.
+     *
+     * Syarat pakai /dev/shm:
+     * 1. Direktori /dev/shm ada
+     * 2. Bisa ditulisi (writable)
+     * 3. Ruang kosong minimal 500MB (cukup untuk video 1080p ~30 menit)
+     *
+     * Jika tidak memenuhi, fallback ke temp/ project.
+     */
+    private function getShmTempPath(): string
+    {
+        // Bersihkan file sampah stale sebelum pakai temp directory
+        GarbageCollector::run();
+
+        static $path = null;
+        if ($path === null) {
+            $shm_path  = '/dev/shm';
+            $use_shm   = false;
+
+            if (is_dir($shm_path) && is_writable($shm_path)) {
+                $free = @disk_free_space($shm_path);
+                // Minimal 500MB free di /dev/shm (512MB = 536.870.912 bytes)
+                if ($free !== false && $free >= 512 * 1024 * 1024) {
+                    $use_shm = true;
+                }
+            }
+
+            if ($use_shm) {
+                $path = $shm_path . '/meel_temp';
+            } else {
+                // Fallback: project temp/ directory
+                $path = dirname(__DIR__) . '/temp';
+            }
+
+            if (!is_dir($path)) @mkdir($path, 0755, true);
+        }
+        return $path;
     }
 
     // ─── BINARY RESOLVER ──────────────────────────────────────────────────────
@@ -252,14 +295,16 @@ class Transcoder
         $basename    = null;
 
         if ($type === 'music') {
+            $shm_temp  = $this->getShmTempPath();
             $temp_id   = "raw_" . time();
-            $temp_path = "{$this->base_path}/temp/$temp_id.%(ext)s";
+            $temp_path = "$shm_temp/$temp_id.%(ext)s";
             $cmd_dl    = $this->base_cmd
                 . "-f bestaudio -o " . escapeshellarg($temp_path)
                 . " --write-thumbnail --convert-thumbnails jpg --embed-thumbnail"
                 . " --newline " . escapeshellarg($url) . " 2>&1";
         } else {
-            $staging_dir = "{$this->base_path}/temp/";
+            // Download staging di RAM disk (/dev/shm) — lebih cepat untuk I/O yt-dlp
+            $staging_dir = $this->getShmTempPath() . '/';
             $basename    = $clean;
 
             // Hindari konflik nama file di staging
@@ -371,7 +416,7 @@ class Transcoder
         int $duration,
         string $description = 'Upload by MEeL Engine'
     ): string {
-        $found    = glob("{$this->base_path}/temp/$temp_id.*");
+        $found    = glob($this->getShmTempPath() . "/$temp_id.*");
         $raw_file = "";
         foreach ($found as $f) {
             if (pathinfo($f, PATHINFO_EXTENSION) !== 'jpg') {
@@ -406,8 +451,9 @@ class Transcoder
         int    $duration,
         string $description = 'Upload by MEeL Engine'
     ): string {
-        $staging_mp4  = "{$this->base_path}/temp/{$basename}.mp4";
-        $dl_thumb_src = "{$this->base_path}/temp/{$basename}.jpg";
+        $shm_temp     = $this->getShmTempPath();
+        $staging_mp4  = "$shm_temp/{$basename}.mp4";
+        $dl_thumb_src = "$shm_temp/{$basename}.jpg";
 
         if (!file_exists($staging_mp4)) {
             $this->jsError("File MP4 staging tidak ditemukan: $staging_mp4");
@@ -426,8 +472,9 @@ class Transcoder
         }
 
         $db_filename = "video/{$folder_name}/{$folder_name}.m3u8";
-        $work_folder = "{$this->base_path}/temp/{$folder_name}/";
-
+        // HLS work folder di RAM disk — segmen .ts ditulis ke RAM, baru dipindah ke HDD
+        $shm_temp    = $this->getShmTempPath();
+        $work_folder = "$shm_temp/{$folder_name}/";
         if (!is_dir($work_folder)) mkdir($work_folder, 0755, true);
 
         // ── Kompres thumbnail ─────────────────────────────────────────────────
@@ -618,7 +665,8 @@ class Transcoder
         putenv("LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib");
         putenv("PATH=/usr/local/bin:/usr/bin:/bin");
 
-        $input_path = "{$this->base_path}/temp/$temp_file";
+        $shm_temp  = $this->getShmTempPath();
+        $input_path = "$shm_temp/$temp_file";
         $clean      = getRomajiName($title);
 
         // Cek konflik nama file
@@ -651,7 +699,7 @@ class Transcoder
 
         // Ekstrak thumbnail (3 strategi: yt-dlp file → audio metadata → default)
         $temp_base    = pathinfo($temp_file, PATHINFO_FILENAME);
-        $temp_dir     = "{$this->base_path}/temp";
+        $temp_dir     = $this->getShmTempPath();
         $thumb_result = $this->extractMusicThumbnail($input_path, $temp_dir, $temp_base, $thumb_name);
 
         @unlink($input_path);
@@ -793,7 +841,7 @@ class Transcoder
 
     public function transcodeVideo(int $video_id, string $format = 'mp3'): array
     {
-        $temp_dir = $this->base_path . "/temp/";
+        $temp_dir = $this->getShmTempPath() . '/';
         if (!is_dir($temp_dir)) mkdir($temp_dir, 0755, true);
 
         // Bersihkan file temp lama (> 2 jam)

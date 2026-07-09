@@ -37,9 +37,9 @@ if ($user->isMember()) {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL Cloud | Dashboard</title>
     <?php include '../partials/link.php'; ?>
-    <script src="<?= asset_url('../assets/js/sweetalert2.all.min.js') ?>"></script>
-    <script src="<?= asset_url('../assets/js/script.js') ?>"></script>
-    <link rel="stylesheet" href="<?= asset_url('../assets/css/drive.css') ?>">
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <script src="../assets/js/script.js"></script>
+    <link rel="stylesheet" href="../assets/css/drive.css">
     <style>
         :root {
             --bg-main: #0b0f1a;

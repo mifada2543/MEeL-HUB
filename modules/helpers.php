@@ -1,31 +1,5 @@
 <?php
 
-/**
- * Cache-busting: Generate asset URL dengan timestamp filemtime.
- * Browser/CDN akan fetch ulang saat file diubah.
- */
-function asset_url(string $relative_path): string
-{
-    static $base_dir = null;
-    if ($base_dir === null) {
-        $base_dir = dirname(__DIR__); // project root
-    }
-
-    // Normalize: buang leading ./ atau ../
-    $path = ltrim($relative_path, '.');
-    $path = ltrim($path, '/');
-
-    // Cari bagian "assets/..." untuk rebuild full path
-    if (preg_match('#(assets/.+)$#', $path, $m)) {
-        $real_path = $base_dir . '/' . $m[1];
-        if (file_exists($real_path)) {
-            return $relative_path . '?v=' . filemtime($real_path);
-        }
-    }
-
-    return $relative_path;
-}
-
 function time_ago($timestamp)
 {
     $time_diff = time() - strtotime($timestamp);
@@ -52,9 +26,16 @@ function music_thumbnail_url(?string $thumbnail): string
     $thumb_dir = __DIR__ . '/../music/upload/thumbnail/';
     $fallback  = '../assets/img/music0.png';
 
+    // Cache default path untuk menghindari is_file() berulang
+    static $default_thumb = null;
+
     if ($thumbnail === '') {
-        if (is_file($thumb_dir . 'default.thumb.webp')) return 'upload/thumbnail/default.thumb.webp';
-        return is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp' : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback);
+        if ($default_thumb === null) {
+            $default_thumb = is_file($thumb_dir . 'default.thumb.webp') ? 'upload/thumbnail/default.thumb.webp'
+                : (is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp'
+                : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback));
+        }
+        return $default_thumb;
     }
 
     $thumbnail = basename($thumbnail);
@@ -62,25 +43,26 @@ function music_thumbnail_url(?string $thumbnail): string
         return 'upload/thumbnail/' . rawurlencode($thumbnail);
     }
 
-    $filename = pathinfo($thumbnail, PATHINFO_FILENAME);
-    $base     = preg_replace('/\\.thumb$/', '', $filename) ?: $filename;
-    $thumb_webp = $base . '.thumb.webp';
-    $webp_file  = $base . '.webp';
+    $base = preg_replace('/\\.thumb$/', '', pathinfo($thumbnail, PATHINFO_FILENAME)) ?: pathinfo($thumbnail, PATHINFO_FILENAME);
 
-    if (is_file($thumb_dir . $thumb_webp)) {
-        return 'upload/thumbnail/' . rawurlencode($thumb_webp);
+    // Cari dalam urutan prioritas
+    $candidates = [
+        $base . '.thumb.webp',
+        $base . '.webp',
+        $thumbnail
+    ];
+    foreach ($candidates as $candidate) {
+        if (is_file($thumb_dir . $candidate)) {
+            return 'upload/thumbnail/' . rawurlencode($candidate);
+        }
     }
 
-    if (is_file($thumb_dir . $webp_file)) {
-        return 'upload/thumbnail/' . rawurlencode($webp_file);
+    if ($default_thumb === null) {
+        $default_thumb = is_file($thumb_dir . 'default.thumb.webp') ? 'upload/thumbnail/default.thumb.webp'
+            : (is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp'
+            : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback));
     }
-
-    if (is_file($thumb_dir . $thumbnail)) {
-        return 'upload/thumbnail/' . rawurlencode($thumbnail);
-    }
-
-    if (is_file($thumb_dir . 'default.thumb.webp')) return 'upload/thumbnail/default.thumb.webp';
-    return is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp' : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback);
+    return $default_thumb;
 }
 // Tentukan path salah satu folder utama di HDD
 $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
@@ -102,11 +84,23 @@ function get_user_usage($username)
     $path = dirname(__DIR__) . "/data_drive/private_admins/" . $username;
     if (!is_dir($path)) return 0;
 
+    // Pakai du -sb (jauh lebih cepat dari RecursiveIterator untuk folder besar)
+    $output = @shell_exec("du -sb " . escapeshellarg($path) . " 2>/dev/null");
+    if ($output && preg_match('/^(\d+)/', $output, $m)) {
+        return (float)$m[1];
+    }
+
+    // Fallback: RecursiveIterator jika shell_exec tidak tersedia
     $size = 0;
-    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path)) as $file) {
-        if ($file->isFile()) {
-            $size += $file->getSize();
+    try {
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path));
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $size += $file->getSize();
+            }
         }
+    } catch (Exception $e) {
+        return 0;
     }
     return $size;
 }

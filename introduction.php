@@ -27,11 +27,11 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEeL | Panduan Penggunaan</title>
-    <link rel="manifest" href="<?= asset_url('assets/manifest.json') ?>">
-    <link rel="icon" type="image/png" href="<?= asset_url('assets/MEeL.png') ?>">
-    <link rel="stylesheet" href="<?= asset_url('assets/css/introduction.css') ?>">
-    <script src="<?= asset_url('assets/js/tailwind.js') ?>"></script>
-    <script src="<?= asset_url('assets/js/lucide.js') ?>"></script>
+    <link rel="manifest" href="assets/manifest.json">
+    <link rel="icon" type="image/png" href="assets/MEeL.png">
+    <link rel="stylesheet" href="assets/css/introduction.css">
+    <script src="assets/js/tailwind.js"></script>
+    <script src="assets/js/lucide.js"></script>
 </head>
 
 <body>
