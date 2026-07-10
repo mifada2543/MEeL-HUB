@@ -39,7 +39,7 @@ if ($user->isMember()) {
     <title>MEeL Cloud | Dashboard</title>
     <?php include '../partials/link.php'; ?>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <link rel="stylesheet" href="../assets/css/drive.css">
     <style>
         :root {

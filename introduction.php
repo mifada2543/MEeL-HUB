@@ -30,7 +30,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     <link rel="manifest" href="assets/manifest.json">
     <link rel="icon" type="image/png" href="assets/MEeL.png">
     <link rel="stylesheet" href="assets/css/introduction.css">
-    <script src="assets/js/tailwind.js"></script>
+    <link href="assets/css/tailwind.min.css" rel="stylesheet">
     <script src="assets/js/lucide.js"></script>
 </head>
 
@@ -100,7 +100,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/video0.png" alt="Index Video" class="screenshot-img"
+                        <img src="assets/img/video0.webp" alt="Index Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
                     </div>
                     <div class="annotation-list">
@@ -134,11 +134,11 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/video1.png" alt="Watch Video" class="screenshot-img"
+                        <img src="assets/img/video1.webp" alt="Watch Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
-                        <img src="assets/img/video2.png" alt="Watch Video" class="screenshot-img"
+                        <img src="assets/img/video2.webp" alt="Watch Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
-                        <img src="assets/img/video3.png" alt="Watch Video" class="screenshot-img"
+                        <img src="assets/img/video3.webp" alt="Watch Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
                     </div>
                     <div class="annotation-list">
@@ -213,9 +213,9 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/music0.png" alt="Index Musik" class="screenshot-img"
+                        <img src="assets/img/music0.webp" alt="Index Musik" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
-                        <img src="assets/img/music2.png" alt="Index Musik" class="screenshot-img"
+                        <img src="assets/img/music2.webp" alt="Index Musik" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
                     </div>
                     <div class="annotation-list">
@@ -248,7 +248,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/music1.png" alt="Watch Musik" class="screenshot-img"
+                        <img src="assets/img/music1.webp" alt="Watch Musik" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
                     </div>
                     <div class="annotation-list">

@@ -419,8 +419,9 @@ class Transcoder
 
         // Validasi hasil download
         $is_success = false;
+        // 🔴 BUG SEBELUMNYA: glob() pakai `{$this->base_path}/temp/` tapi yt-dlp simpan file di `$shm_temp` (/dev/shm/meel/temp/)
         if ($type === 'music') {
-            $files      = glob("{$this->base_path}/temp/$temp_id.*");
+            $files      = glob("$shm_temp/$temp_id.*");
             $is_success = !empty($files);
         } else {
             $expected   = $staging_dir . $basename . ".mp4";
@@ -1262,6 +1263,7 @@ class Transcoder
         $name = str_replace(['..', './'], '', $name);
         // Batasi panjang
         $name = mb_substr($name, 0, 120);
+        // Hindari nama file yang hanya terdiri dari delimiter
         $name = trim($name, "- \t\n\r\0\x0B");
 
         return $name ?: 'untitled-media';

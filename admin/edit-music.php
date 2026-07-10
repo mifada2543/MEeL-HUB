@@ -128,7 +128,7 @@ if (isset($_POST['update'])) {
 // Helper thumbnail URL
 $thumb_src = !empty($music['thumbnail'])
     ? '../music/upload/thumbnail/' . htmlspecialchars($music['thumbnail'])
-    : '../assets/img/music0.png';
+    : '../assets/img/music0.webp';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -140,7 +140,7 @@ $thumb_src = !empty($music['thumbnail'])
     <title>Edit Musik | <?= $is_admin ? 'MEeL Admin' : 'MEeL' ?></title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <link rel="stylesheet" href="../assets/css/em.css">
-    <script src="../assets/js/tailwind.js"></script>
+    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/lucide.js"></script>
 
 </head>
@@ -346,7 +346,7 @@ $thumb_src = !empty($music['thumbnail'])
 
     <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <script>
         lucide.createIcons();
 

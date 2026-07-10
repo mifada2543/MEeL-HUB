@@ -117,7 +117,7 @@ $total      = $library->countVideos();
 
     <?php include '../partials/footer.php'; ?>
 
-    <script src="../assets/js/htmx.js"></script>
+    <script src="../assets/js/htmx.min.js"></script>
     <script>
         lucide.createIcons();
         document.body.addEventListener('htmx:afterOnLoad', function(evt) {

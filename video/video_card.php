@@ -8,7 +8,7 @@
         $thumb_path = "upload/thumbnail/" . $v['thumbnail'];
         $thumb_src  = (file_exists($thumb_path) && !empty($v['thumbnail']))
             ? $thumb_path
-            : '../assets/img/video0.png';
+            : '../assets/img/video0.webp';
         ?>
         <img src="<?= $thumb_src ?>"
              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
