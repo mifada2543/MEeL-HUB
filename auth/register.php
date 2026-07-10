@@ -1,6 +1,7 @@
 <?php
+// Error logging diaktifkan, tapi display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 session_name('meel');
 session_start();
 if (isset($_SESSION['user_id'])) {
@@ -67,8 +68,10 @@ if (isset($_POST['register'])) {
         // 4. Evaluasi hasil dari Database
         if ($result === false) {
             // Cek jika terjadi error pada database (query gagal dieksekusi)
-            $message = "Error database: " . $conn->error;
+            // Error database hanya dicatat di log, tidak di-expose ke user
+            $message = "Terjadi kesalahan pada database. Silakan coba lagi nanti.";
             $msg_type = "error";
+            error_log("[MEeL-Register] Database error: " . $conn->error);
         } else if ($result->num_rows > 0) {
             // Cek jika username sudah ditemukan di database
             $message = "Username sudah terdaftar!";

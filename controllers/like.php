@@ -8,6 +8,12 @@ if (session_status() === PHP_SESSION_NONE) {
 include '../auth/config.php';
 include '../modules/MediaInteraction.php';
 
+// 🔒 FIX CSRF: Verifikasi token untuk AJAX POST
+if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+    http_response_code(403);
+    exit;
+}
+
 // Get POST data
 $id         = isset($_POST['id'])         ? intval($_POST['id'])       : 0;
 $media_type = isset($_POST['media_type']) ? trim($_POST['media_type']) : '';

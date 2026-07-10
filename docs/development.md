@@ -41,9 +41,16 @@ ini_set('display_errors', 1);
 
 3. **Nonaktifkan HDD check untuk development:**
 ```php
-// modules/helpers.php - comment out
-// if (!is_dir($hdd_check_path)) { header("Location: ../err/maintance.php"); exit(); }
+// modules/helpers.php - comment out baris berikut
+// if (!is_dir($hdd_check_path)) { ... }
 ```
+
+4. **Path konfigurasi terpusat:**
+   Semua path penyimpanan dikelola dari **satu tempat** (`auth/config.php`):
+   ```php
+   define('MEEL_HDD_BASE', '/media/username/MEeL/media');
+   ```
+   Tidak perlu lagi mencari-cari path di banyak file.
 
 4. **Tools yang disarankan:**
 - Editor: VS Code dengan PHP Intelephense
@@ -155,7 +162,26 @@ private const FFMPEG_THREADS = 8;
 private const HLS_SEGMENT_DURATION = 10;
 private const DOWNLOAD_TIMEOUT = 900;
 
-// Global constants: Avoid, prefer class constants or config
+// Global constants: MEEL_HDD_* untuk path terpusat (di auth/config.php)
+define('MEEL_HDD_BASE', '/media/username/MEeL/media');
+define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+```
+
+#### 7. Type Hints
+
+Properti class dan parameter constructor **wajib** memiliki type hints (PHP 7.4+):
+
+```php
+// ✅ BENAR - Type hints
+private \mysqli $conn;
+private int $user_id;
+private string $username;
+
+public function __construct(\mysqli $db_connection, int $session_user_id, string $session_username) { ... }
+
+// ❌ SALAH - Tanpa type hint
+// private $conn;
+// public function __construct($db_connection, $session_user_id) { ... }
 ```
 
 ### JavaScript

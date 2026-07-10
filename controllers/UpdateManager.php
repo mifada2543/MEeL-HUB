@@ -25,6 +25,13 @@ class UpdateManager
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
         if (($_SESSION['role'] ?? '') !== 'admin')  return;
 
+        // 🔒 FIX CSRF: Verifikasi token
+        if (!verify_csrf()) {
+            $this->setFlash('error', 'CSRF Token tidak valid.');
+            $this->redirect();
+            return;
+        }
+
         $action = $_POST['action'] ?? '';
 
         match ($action) {

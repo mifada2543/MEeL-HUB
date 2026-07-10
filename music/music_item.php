@@ -1,3 +1,4 @@
+<?php /** @var array $v Data musik dari hasil query (music/index.php) */ ?>
 <div class="music-item flex items-center gap-3 px-3 py-2.5 rounded-xl htmx-added"
      data-id="<?= $v['id'] ?>"
      data-title="<?= htmlspecialchars($v['title']) ?>"

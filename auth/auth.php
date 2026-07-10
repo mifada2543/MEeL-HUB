@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 if (!isset($_SESSION['user_id'])) {
     $next = urlencode($_SERVER['REQUEST_URI'] ?? '/');
-    header("Location: ../auth/login.php?next={$next}");
+    header("Location: /MEeL/auth/login.php?next={$next}");
     exit;
 }
 

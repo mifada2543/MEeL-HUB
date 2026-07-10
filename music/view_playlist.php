@@ -19,14 +19,17 @@ if (!$playlist) {
     exit;
 }
 
-// Daftar lagu
-$songs_query = $conn->query("
+// Daftar lagu — prepared statement untuk keamanan
+$songs_stmt = $conn->prepare("
     SELECT m.*, pt.id as pivot_id
     FROM music m
     JOIN playlist_tracks pt ON m.id = pt.music_id
-    WHERE pt.playlist_id = $playlist_id
+    WHERE pt.playlist_id = ?
     ORDER BY pt.added_at DESC
 ");
+$songs_stmt->bind_param("i", $playlist_id);
+$songs_stmt->execute();
+$songs_query = $songs_stmt->get_result();
 $total_songs = $songs_query->num_rows;
 
 $first_song = null;
@@ -96,6 +99,7 @@ function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_que
                     onsubmit="return confirm('Hapus seluruh playlist ini?')">
                     <input type="hidden" name="action" value="delete_playlist">
                     <input type="hidden" name="playlist_id" value="<?= $playlist_id ?>">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <button type="submit"
                         class="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black
                                    uppercase tracking-widest text-red-500 hover:text-white
@@ -187,6 +191,7 @@ function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_que
                         <input type="hidden" name="action" value="remove_from_playlist">
                         <input type="hidden" name="pivot_id" value="<?= $s['pivot_id'] ?>">
                         <input type="hidden" name="playlist_id" value="<?= $playlist_id ?>">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                         <button type="submit"
                             class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-700
                                        opacity-0 group-hover:opacity-100
