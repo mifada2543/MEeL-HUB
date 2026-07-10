@@ -21,7 +21,7 @@ $counts  = $library->getCounts();
     <link rel="manifest" href="assets/manifest.json">
     <link rel="icon" type="image/png" href="assets/MEeL.png">
     <link rel="stylesheet" href="assets/css/index(hub).css">
-    <script src="assets/js/tailwind.js"></script>
+    <link href="assets/css/tailwind.min.css" rel="stylesheet">
     <script src="assets/js/lucide.js"></script>
     <script src="assets/js/sweetalert2.all.min.js"></script>
     <script src="assets/js/script.js"></script>

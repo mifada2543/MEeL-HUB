@@ -50,7 +50,7 @@ include '../controllers/fun.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
+    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/lucide.js"></script>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
     <script src="../assets/js/script.js"></script>

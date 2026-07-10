@@ -86,7 +86,7 @@ $data = $stmt_data->get_result()->fetch_assoc();
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>Edit Profile | MEeL</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
+    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/lucide.js"></script>
     <style>
         body {

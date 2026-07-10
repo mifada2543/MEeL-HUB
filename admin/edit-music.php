@@ -140,7 +140,7 @@ $thumb_src = !empty($music['thumbnail'])
     <title>Edit Musik | <?= $is_admin ? 'MEeL Admin' : 'MEeL' ?></title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <link rel="stylesheet" href="../assets/css/em.css">
-    <script src="../assets/js/tailwind.js"></script>
+    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/lucide.js"></script>
 
 </head>

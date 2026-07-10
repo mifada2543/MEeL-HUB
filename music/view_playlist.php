@@ -323,7 +323,7 @@ if (isset($_GET['content_only'])) {
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/music.css">
-    <script src="../assets/js/tailwind.js"></script>
+    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/lucide.js"></script>
     <script src="../assets/js/htmx.js"></script>
     <script src="../assets/js/sweetalert2.all.min.js"></script>

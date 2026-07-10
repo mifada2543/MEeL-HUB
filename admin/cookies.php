@@ -217,7 +217,7 @@ while ($rc = $r->fetch_assoc()) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEeL | Media Analytics</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
+    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/lucide.js"></script>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
     <style>
