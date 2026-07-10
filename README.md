@@ -117,8 +117,12 @@ MEeL/
 ├── arcade/                # Mini Games (Dino Run, Chess)
 ├── assets/                # Aset statis (CSS, JS, font, gambar)
 ├── auth/                  # Autentikasi & manajemen sesi
+│   ├── config.php         # Konfigurasi database + path terpusat (MEEL_HDD_*)
+│   └── config.example.php # Template konfigurasi
 ├── books/                 # Modul E-Book / Komik
 ├── controllers/           # API Actions & Event Handler (AJAX/HTMX)
+├── database/              # Skema database
+│   └── schema.sql         # File schema standalone (16 tabel)
 ├── data_drive/            # Cloud Drive storage runtime
 ├── docs/                  # Dokumentasi proyek
 ├── drive/                 # Modul Cloud Drive
@@ -226,26 +230,26 @@ sudo systemctl restart apache2
 
 | File | Keperluan |
 |------|-----------|
-| `auth/config.php` | Database, session, CSRF, transliterator |
-| `modules/Transcoder.php` | Path ffmpeg, yt-dlp, HDD mount, CPU threads |
-| `modules/Uploader.php` | Path ffmpeg, HDD base directory |
-| `modules/helpers.php` | HDD check path |
+| `auth/config.php` | Database, session, CSRF, **path terpusat (`MEEL_HDD_*`)** |
+| `auth/config.example.php` | Template konfigurasi (copy ke config.php) |
+| `database/schema.sql` | Skema database standalone |
+| `modules/Transcoder.php` | FFmpeg, yt-dlp, CPU threads |
+| `modules/Uploader.php` | Upload file, FFmpeg |
+| `modules/helpers.php` | HDD check path (dari `MEEL_HDD_BASE`) |
 | `modules/System.php` | Queue & rate limit config |
 
-### Variabel Environment Penting
+### Konfigurasi Path Terpusat
 
 ```php
-// auth/config.php
-$server   = "localhost";    // Database host
-$username = "root";         // Database user
-$password = "";             // Database password
-$db       = "MEeL";         // Database name
-```
+// auth/config.php — ★ Cukup ubah 1 baris ini
+define('MEEL_HDD_BASE', '/media/muhammaddaffa/MEeL/media');
 
-```php
-// modules/Transcoder.php
-private const HDD_BASE      = "/media/muhammaddaffa/MEeL/media/video/upload/";
-private const FFMPEG_THREADS = 8;
+// Semua modul otomatis mengikuti:
+define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
+define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
+// ... dan seterusnya
 ```
 
 > 📖 **Konfigurasi lengkap** → [docs/configuration.md](docs/configuration.md)

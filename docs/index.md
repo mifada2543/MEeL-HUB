@@ -19,6 +19,19 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 
 ---
 
+## 📁 File Penting Baru
+
+| File | Deskripsi |
+|------|-----------|
+| `database/schema.sql` | Skema database standalone — import langsung `mysql < database/schema.sql` |
+| `auth/config.example.php` | Template konfigurasi (copy ke `config.php`) |
+
+## 🔧 Perubahan Terbaru
+
+- **Path terpusat:** Semua path penyimpanan media (Video, Music, Books, Drive) diatur dari `MEEL_HDD_BASE` di `auth/config.php` — cukup ubah 1 baris
+- **Skema database standalone:** File `database/schema.sql` untuk import cepat
+- **Type hints:** Properti class dan parameter constructor sekarang menggunakan type hints (`\mysqli`, `int`, `string`, dll.)
+
 ## 📖 Tentang Proyek
 
 **MEeL** adalah platform media hub pribadi berbasis PHP & MySQL yang berjalan di atas Apache. Platform ini menggabungkan:

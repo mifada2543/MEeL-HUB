@@ -70,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $files_failed  = [];
 
                 if ($media_row) {
-                    // Base HDD path (sama dengan Uploader.php)
-                    $hdd_base = "/media/muhammaddaffa/MEeL/media/";
+                    // Base HDD path (dari config.php terpusat)
+                    $hdd_base = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE . '/' : "/media/muhammaddaffa/MEeL/media/";
 
                     if ($del_type === 'video') {
                         // filename = "video/FOLDER_NAME/FOLDER_NAME.m3u8"

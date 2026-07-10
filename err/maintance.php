@@ -33,6 +33,11 @@ if ($user_role === 'admin') {
     $action    = "PLEASE_WAIT";
 }
 
+// ── Path dari config.php (dideklarasikan di sini agar scope global) ──────────
+$hdd_base_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : '/media/muhammaddaffa/MEeL/media';
+$hdd_dir       = dirname($hdd_base_path);
+$media_root    = dirname($hdd_dir);
+
 // ── DEBUG DATA (admin only) ─────────────────────────────────────────────────
 $debug = [];
 if ($user_role === 'admin') {
@@ -41,16 +46,17 @@ if ($user_role === 'admin') {
     $debug['php_self']        = $_SERVER['PHP_SELF'] ?? 'N/A';
     $debug['referer']         = $_SERVER['HTTP_REFERER'] ?? '(tidak ada referer)';
 
-    // Paths to check
+    // Paths to check (dari config.php terpusat)
+    
     $paths = [
         '/media',
-        '/media/muhammaddaffa',
-        '/media/muhammaddaffa/MEeL',
-        '/media/muhammaddaffa/MEeL/media',
-        '/media/muhammaddaffa/MEeL/media/video',
-        '/media/muhammaddaffa/MEeL/media/music',
-        '/media/muhammaddaffa/MEeL/media/books',
-        '/media/muhammaddaffa/MEeL/media/drive',
+        $media_root,
+        $hdd_dir,
+        $hdd_base_path,
+        $hdd_base_path . '/video',
+        $hdd_base_path . '/music',
+        $hdd_base_path . '/books',
+        $hdd_base_path . '/drive',
     ];
 
     $debug['paths'] = [];
@@ -282,9 +288,9 @@ if ($user_role === 'admin') {
 
                 <div class="mt-4 p-3 rounded-lg" style="background:#111827;border:1px solid #1e3a5f;">
                     <p class="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-2">Cara Fix — Jalankan di terminal:</p>
-                    <pre class="text-green-400 text-[10px]">sudo setfacl -m u:daemon:rx /media/muhammaddaffa
-sudo setfacl -m u:daemon:rx /media/muhammaddaffa/MEeL
-sudo setfacl -R -m u:daemon:rx /media/muhammaddaffa/MEeL/media</pre>
+                    <pre class="text-green-400 text-[10px]">sudo setfacl -m u:daemon:rx <?= htmlspecialchars($media_root) ?>
+sudo setfacl -m u:daemon:rx <?= htmlspecialchars($hdd_dir) ?>
+sudo setfacl -R -m u:daemon:rx <?= htmlspecialchars($hdd_base_path) ?></pre>
                 </div>
             </div>
         </div>

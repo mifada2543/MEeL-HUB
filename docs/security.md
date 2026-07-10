@@ -156,6 +156,19 @@ session_name('meel');           // Cookie name: "meel"
 session_start();
 ```
 
+### Path Configuration
+
+Semua path penyimpanan media dikelola melalui konstanta terpusat:
+
+```php
+// auth/config.php
+define('MEEL_HDD_BASE', '/media/muhammaddaffa/MEeL/media');
+define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
+define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+// ... dan seterusnya
+```
+
 ### Session Hijacking Prevention
 
 **Mechanism:** Setiap user memiliki `last_session_id` di database. Jika session ID di browser berbeda dengan yang di database, session dianggap dibajak/ditendang.

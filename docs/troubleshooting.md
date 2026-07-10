@@ -49,9 +49,9 @@ mysql -u root -p -e "CREATE DATABASE MEeL DEFAULT CHARACTER SET utf8mb4 COLLATE 
 
 **Solusi:**
 ```bash
-mysql -u root -p MEeL < /path/to/schema.sql
+mysql -u root -p MEeL < database/schema.sql
 ```
-Atau jalankan SQL dari [Panduan Instalasi](installation.md#3-setup-database).
+File `database/schema.sql` berisi seluruh skema (16 tabel + admin default) — import langsung!
 
 ### ❌ "Column 'description' cannot be null" (atau error kolom lain)
 
@@ -76,7 +76,7 @@ ALTER TABLE comments ADD COLUMN comment text NOT NULL;
 
 ### ❌ Redirect ke `err/maintance.php`
 
-**Penyebab:** Path HDD di `modules/helpers.php` tidak cocok dengan mount point.
+**Penyebab:** `MEEL_HDD_BASE` di `auth/config.php` tidak cocok dengan mount point.
 
 **Solusi:**
 
@@ -86,14 +86,15 @@ ALTER TABLE comments ADD COLUMN comment text NOT NULL;
    lsblk
    ```
 
-2. Sesuaikan path di `modules/helpers.php`:
+2. Sesuaikan path di `auth/config.php` — **hanya satu baris**:
    ```php
-   $hdd_check_path = '/path/yang/benar';
+   define('MEEL_HDD_BASE', '/path/yang/benar');
    ```
+   Semua modul akan otomatis mengikuti.
 
 3. Untuk development/testing, nonaktifkan HDD check sementara:
    ```php
-   // Comment out the check
+   // modules/helpers.php - comment out the check
    // if (!is_dir($hdd_check_path)) { ... }
    ```
 
@@ -105,7 +106,7 @@ ALTER TABLE comments ADD COLUMN comment text NOT NULL;
 
 ### ❌ "File tidak ditemukan di HDD" setelah upload
 
-**Penyebab:** Permission filesystem atau path salah.
+**Penyebab:** Permission filesystem atau `MEEL_HDD_BASE` salah.
 
 **Solusi:**
 ```bash
@@ -116,7 +117,7 @@ ls -la /media/[user]/MEeL/media/video/upload/
 sudo setfacl -R -m u:daemon:rx /media/[user]/MEeL/media
 
 # Atau berikan akses penuh
-sudo chmod -R 777 /media/[user]/MEeL/media/video/upload/video/
+sudo chmod -R 777 /opt/lampp/htdocs/MEeL/temp/
 ```
 
 ### Debug Mode untuk Admin
@@ -143,8 +144,8 @@ Buka `err/maintance.php` sebagai admin untuk melihat diagnosa lengkap path stora
 ffmpeg -version
 which ffmpeg
 
-# Pastikan path di Transcoder.php sesuai
-# Cari: $this->ffmpeg_bin = $this->resolveBinary([...]);
+# Transcoder.php sudah auto-detect via resolveBinary()
+# Jika ingin custom path, ubah array candidate di constructor
 ```
 
 **Penyebab 3: Resource Limit**
@@ -184,7 +185,7 @@ killall -9 ffmpeg
 ```php
 // Sesuaikan FFMPEG_THREADS dengan CPU Anda
 // Di modules/Transcoder.php
-private const FFMPEG_THREADS = 8; // Ganti dengan jumlah core CPU
+private const FFMPEG_THREADS = 8; // Ganti dengan jumlah core CPU Anda (nproc)
 ```
 
 Cek CPU:

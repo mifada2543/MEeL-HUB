@@ -65,6 +65,8 @@ Saat memasukkan URL, sistem memanggil `yt-dlp --print-json` untuk mengekstrak in
    ```
 2. **Sesuaikan Path di PHP**:
    Buka berkas [Transcoder.php](file:///opt/lampp/htdocs/MEeL/modules/Transcoder.php) dan verifikasi pencarian path binary pada metode `resolveBinary`.
+   
+   > ⚠️ Konstanta path `HDD_BASE`/`HDD_VIDEO_DIR`/`HDD_THUMB_DIR` telah **dipindahkan** ke `auth/config.php` sebagai `MEEL_HDD_*`. Konfigurasi path storage tidak perlu diubah di Transcoder.php lagi.
 3. **Uji URL Langsung di Terminal**:
    Jalankan perintah berikut untuk melihat pesan error asli dari `yt-dlp`:
    ```bash
@@ -114,6 +116,8 @@ Terkadang file berhasil diunduh secara penuh, namun gagal saat dikonversi ke HLS
    // Ganti nilai dari 8 menjadi 4 atau 2 sesuai core CPU Anda
    private const FFMPEG_THREADS = 4;
    ```
+
+   Cek jumlah core CPU: `nproc`
 
 ---
 

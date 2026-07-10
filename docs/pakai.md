@@ -6,12 +6,13 @@ Dokumentasi ini disediakan khusus untuk Anda yang ingin melakukan instalasi MEeL
 
 1. **Klik tombol Copy** di pojok kanan atas blok kode di bawah untuk menyalin System Prompt.
 2. Tempelkan (paste) ke AI assistant favorit Anda (ChatGPT, Claude, DeepSeek, Gemini, dll.).
-3. **Salin dan tempelkan** 3 file dokumentasi berikut satu per satu setelahnya:
+3. **Salin dan tempelkan** file dokumentasi berikut satu per satu setelahnya:
    - [Instalasi](installation.md) — Panduan instalasi langkah demi langkah
    - [Tentang](../README.md) — Tentang proyek
    - [Configurasi](configuration.md) — Konfigurasi aplikasi
    - [Troubleshooting](troubleshooting.md) — Pemecahan masalah
-4. Tekan Enter, dan AI akan memandu Anda melakukan instalasi.
+4. **Catatan:** Skema database kini tersedia sebagai file standalone `database/schema.sql`. Path penyimpanan terpusat di konstanta `MEEL_HDD_BASE` (`auth/config.php`), bukan tersebar di banyak file.
+5. Tekan Enter, dan AI akan memandu Anda melakukan instalasi.
 
 ---
 
@@ -44,7 +45,7 @@ Proyek ini bernama MEeL-HUB, sebuah platform media cloud buatan Mifada yang memu
 3. Fokus utama panduan harus mencakup:
    - Eksekusi skema database MySQL secara aman dan pembuatan akun default admin (username: Admin, password: Admin#123)
    - Pembuatan direktori runtime dan pengaturan hak akses (chown/chmod) agar terhindar dari Permission Hell
-   - Cara melakukan konfigurasi path absolut untuk HDD eksternal pada variabel HDD_BASE di Transcoder.php dan Uploader.php, serta $hdd_check_path di helpers.php
+   - Cara melakukan konfigurasi path absolut untuk HDD eksternal — **cukup ubah `MEEL_HDD_BASE`** di `auth/config.php`, seluruh sistem akan mengikuti secara otomatis
    - Cara verifikasi instalasi dependencies krusial seperti FFmpeg, yt-dlp, dan cookies.txt
 
 4. Aturan:

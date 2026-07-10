@@ -1,3 +1,4 @@
+<?php /** @var array $v Data video dari hasil query (video/index.php) */ ?>
 <div class="video-card htmx-added bg-[#0d1017] border border-white/[.05] rounded-2xl overflow-hidden group"
      title="<?= htmlspecialchars($v['title']) ?>">
 

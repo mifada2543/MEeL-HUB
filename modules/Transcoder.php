@@ -4,20 +4,31 @@
 // VA-API: Intel iHD 24.1.0 — H264/HEVC/VP9 encode+decode tersedia, tapi tidak dipakai di HLS
 //         karena pipeline ini sudah pakai -codec copy (stream copy, tanpa re-encode)
 
+// Pastikan konstanta path terdefinisi (dari auth/config.php)
+if (!defined('MEEL_HDD_BASE')) {
+    define('MEEL_HDD_BASE', '/media/muhammaddaffa/MEeL/media');
+    define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+    define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
+    define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+    define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
+    define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
+    define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
+}
+
 require_once __DIR__ . '/japanese.php';
 require_once __DIR__ . '/GarbageCollector.php';
 
 class Transcoder
 {
-    private $conn;
-    private $user_id;
-    private $user_role;
-    private $base_path;
-    private $cookies_path;
-    private $user_agent;
-    private $base_cmd;
-    private $ffmpeg_bin;
-    private $ffprobe_bin;
+    private \mysqli $conn;
+    private int $user_id;
+    private string $user_role;
+    private string $base_path;
+    private string $cookies_path;
+    private string $user_agent;
+    private string $base_cmd;
+    private string $ffmpeg_bin;
+    private string $ffprobe_bin;
 
     // ─── KONSTANTA HARDWARE ───────────────────────────────────────────────────
     private const FFMPEG_THREADS        = 8;
@@ -33,15 +44,10 @@ class Transcoder
     // Download timeout (detik)
     private const DOWNLOAD_TIMEOUT      = 900;
 
-    // ─── PATH STORAGE ─────────────────────────────────────────────────────────
-    private const HDD_BASE      = "/media/muhammaddaffa/MEeL/media/video/upload/";
-    private const HDD_VIDEO_DIR = self::HDD_BASE . "video/";
-    private const HDD_THUMB_DIR = self::HDD_BASE . "thumbnail/";
-
     // ─── ENV PREFIX ───────────────────────────────────────────────────────────
     private const ENV_PREFIX = "export LD_LIBRARY_PATH=''; export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; ";
 
-    public function __construct($db_connection, $session_user_id)
+    public function __construct(\mysqli $db_connection, int $session_user_id)
     {
         $this->conn         = $db_connection;
         $this->user_id      = (int)$session_user_id;
@@ -507,7 +513,7 @@ class Transcoder
 
         $folder_name = $basename;
         $counter     = 1;
-        while (is_dir(self::HDD_VIDEO_DIR . $folder_name . "/")) {
+        while (is_dir(MEEL_HDD_VIDEO_DIR . $folder_name . "/")) {
             $folder_name = $basename . "-" . $counter;
             $counter++;
         }
@@ -640,7 +646,7 @@ class Transcoder
         // ── Pindahkan ke USB HDD ──────────────────────────────────────────────
         // Wajib pakai moveFile() karena USB HDD = filesystem berbeda dari /tmp/work
         // rename() cross-device akan selalu gagal diam-diam di Linux
-        $hdd_target_folder = self::HDD_VIDEO_DIR . $folder_name . "/";
+        $hdd_target_folder = MEEL_HDD_VIDEO_DIR . $folder_name . "/";
         if (!is_dir($hdd_target_folder)) mkdir($hdd_target_folder, 0755, true);
 
         $move_failed = false;
@@ -648,7 +654,7 @@ class Transcoder
             $filename = basename($work_file);
 
             if ($thumb_generated && $filename === $db_thumb) {
-                $dest = self::HDD_THUMB_DIR . $filename;
+                $dest = MEEL_HDD_THUMB_DIR . $filename;
             } else {
                 $dest = $hdd_target_folder . $filename;
             }
@@ -664,14 +670,14 @@ class Transcoder
         if ($move_failed) {
             // Rollback: hapus file yang sudah terlanjur dipindahkan
             $this->cleanupDir($hdd_target_folder);
-            @unlink(self::HDD_THUMB_DIR . $db_thumb);
+            @unlink(MEEL_HDD_THUMB_DIR . $db_thumb);
             $this->jsError("Gagal memindahkan file ke storage. Cek permission USB HDD.");
             return "";
         }
 
         // ── Simpan ke database ────────────────────────────────────────────────
-        $hdd_m3u8_full  = self::HDD_BASE . $db_filename;
-        $hdd_thumb_full = self::HDD_THUMB_DIR . $db_thumb;
+        $hdd_m3u8_full  = MEEL_HDD_VIDEO_UPLOAD . $db_filename;
+        $hdd_thumb_full = MEEL_HDD_THUMB_DIR . $db_thumb;
 
         if (!file_exists($hdd_m3u8_full) || filesize($hdd_m3u8_full) === 0) {
             $this->jsError("File M3U8 tidak ditemukan di HDD setelah dipindahkan: $hdd_m3u8_full");
@@ -929,7 +935,7 @@ class Transcoder
         $v_data  = $res->fetch_assoc();
         $db_file = $v_data['filename'];
 
-        $hls_base   = self::HDD_BASE;
+        $hls_base   = MEEL_HDD_VIDEO_UPLOAD;
         $m3u8_path  = $hls_base . $db_file;
         $hls_folder = dirname($m3u8_path) . "/";
 

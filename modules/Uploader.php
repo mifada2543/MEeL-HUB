@@ -5,20 +5,20 @@ require_once __DIR__ . '/GarbageCollector.php';
 
 class Uploader
 {
-    private $conn;
-    private $user_id;
-    private $username;
-    private $user_role;
-    private $base_dir;
-    private $ffmpeg_bin;
-    private $ffprobe_bin;
+    private \mysqli $conn;
+    private int $user_id;
+    private string $username;
+    private string $user_role;
+    private string $base_dir;
+    private string $ffmpeg_bin;
+    private string $ffprobe_bin;
 
-    public function __construct($db_connection, $session_user_id, $session_username)
+    public function __construct(\mysqli $db_connection, int $session_user_id, string $session_username)
     {
         $this->conn      = $db_connection;
         $this->user_id   = (int)$session_user_id;
         $this->username  = $session_username;
-        $this->base_dir  = "/media/muhammaddaffa/MEeL/media/video/upload/";
+        $this->base_dir  = defined('MEEL_HDD_VIDEO_UPLOAD') ? MEEL_HDD_VIDEO_UPLOAD : "/media/muhammaddaffa/MEeL/media/video/upload/";
         $this->ffmpeg_bin  = $this->resolveBinary(['/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
         $this->ffprobe_bin = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
 

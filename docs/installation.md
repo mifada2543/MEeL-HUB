@@ -452,11 +452,12 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
 - Coba: `mysql -u root -p -e "SHOW DATABASES;"`
 
 ### ❌ "Penyimpanan Offline" / Redirect ke maintenance
-- Periksa path HDD di `modules/helpers.php`:
+- Periksa path HDD di `auth/config.php`:
   ```php
-  $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
+  define('MEEL_HDD_BASE', '/media/[user]/MEeL/media');
   ```
-- Sesuaikan dengan mount point Anda, atau nonaktifkan sementara untuk development
+- Sesuaikan dengan mount point Anda: `df -h` untuk cek mount point
+- Atau nonaktifkan sementara untuk development
 
 ### ❌ "403 Forbidden" pada halaman
 - Periksa `.htaccess` di direktori terkait
@@ -468,7 +469,7 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
 
 ### ❌ FFmpeg/yt-dlp tidak ditemukan
 - Pastikan binary terinstall: `which ffmpeg && which yt-dlp`
-- Sesuaikan path di `modules/Transcoder.php` dan `modules/Uploader.php`
+- Transcoder dan Uploader sudah auto-detect via `resolveBinary()`
 
 ---
 
