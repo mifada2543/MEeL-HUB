@@ -27,7 +27,7 @@ $total = $books->num_rows;
     <title>MEeL | Books</title>
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/books.css">
-    <script src="../assets/js/htmx.js"></script>
+    <script src="../assets/js/htmx.min.js"></script>
     <style>
         body {
             background-color: #080a0f;

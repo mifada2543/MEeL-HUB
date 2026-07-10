@@ -53,7 +53,7 @@ include '../controllers/fun.php';
     <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/lucide.js"></script>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <style>
         body {
             background-color: #0b0e14;

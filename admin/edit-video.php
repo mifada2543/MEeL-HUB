@@ -115,7 +115,7 @@ if (isset($_POST['update'])) {
 
 $thumb_src = !empty($video['thumbnail'])
     ? '../video/upload/thumbnail/' . htmlspecialchars($video['thumbnail'])
-    : '../assets/img/video0.png';
+    : '../assets/img/video0.webp';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -298,7 +298,7 @@ $thumb_src = !empty($video['thumbnail'])
 
     <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <script>
         lucide.createIcons();
 

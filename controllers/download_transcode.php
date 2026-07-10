@@ -29,13 +29,22 @@ if (empty($filename)) {
     die('Parameter file diperlukan.');
 }
 
-// Validasi ketat: hanya karakter aman yang diizinkan
+// Validasi longgar untuk download: basename() + minimal ada ekstensi
+// Tidak pakai regex ketat karena nama file bisa mengandung Unicode (aksen, Jepang, dll)
 $safe_filename = basename($filename);
-$allowed_pattern = '/^[a-zA-Z0-9._-]+\.[a-zA-Z0-9]+$/'; // hanya huruf, angka, titik, underscore, strip + ekstensi
-if (!preg_match($allowed_pattern, $safe_filename)) {
+
+// Cegah path traversal — hanya path traversal yang perlu diblokir
+if ($safe_filename !== $filename) {
     http_response_code(400);
     die('Nama file tidak valid.');
 }
+
+// Pastikan ada ekstensi (minimal 'x.y')
+if (!preg_match('/\.[a-zA-Z0-9]+$/u', $safe_filename)) {
+    http_response_code(400);
+    die('Ekstensi file tidak valid.');
+}
+
 $filename = $safe_filename;
 
 $transcoder = new Transcoder($conn, $_SESSION['user_id']);

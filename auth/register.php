@@ -126,7 +126,7 @@ if (isset($_POST['register'])) {
         <div class="text-center mb-8">
             <div class="inline-flex p-4 bg-red-600/10 rounded-3xl text-red-600 mb-4 shadow-lg shadow-red-900/10"><i data-lucide="user-plus" class="w-10 h-10"></i></div>
             <h2 id="register-title" class="text-3xl font-black text-white tracking-tighter">Register</h2>
-            <p class="text-sm text-gray-300 mt-1">Buat akun <span class="text-red-600 font-bold">MEeL</span></p>
+            <p class="text-sm text-gray-400 mt-1">Buat akun <span class="text-red-500 font-bold">MEeL</span></p>
         </div>
         <!-- Message -->
         <?php if ($message): ?>
