@@ -364,7 +364,11 @@ class Transcoder
         $error_log = "";
         $start     = time();
         // Tambahkan -N 4 (4 koneksi paralel untuk mempercepat download, aman untuk server single-user)
-        $full_cmd  = "export PATH=/usr/local/bin:/usr/bin:/bin; timeout " . self::DOWNLOAD_TIMEOUT . " $cmd_dl";
+        // 🔒 FIX SECURITY: Set env via putenv() agar popen() tidak perlu shell metacharacters
+        putenv('PATH=/usr/local/bin:/usr/bin:/bin');
+        putenv('LC_ALL=en_US.UTF-8');
+        // $cmd_dl sudah berisi args yang di-escape dengan escapeshellarg() + filter_var() untuk URL
+        $full_cmd  = "timeout " . self::DOWNLOAD_TIMEOUT . " $cmd_dl";
         $handle    = @popen($full_cmd, 'r');
 
         if (!$handle) {
@@ -547,25 +551,34 @@ class Transcoder
         // -codec copy: stream copy (tidak re-encode), sehingga QSV tidak relevan.
         // -threads hanya berlaku untuk muxer/demuxer I/O; tetap set untuk konsistensi.
         $work_m3u8  = $work_folder . $folder_name . ".m3u8";
-        $cmd_hls = self::ENV_PREFIX . escapeshellarg($this->ffmpeg_bin)
-            . " -threads " . self::FFMPEG_THREADS
-            . " -i " . escapeshellarg($staging_mp4)
-            . " -codec copy"
-            . " -start_number 0"
-            . " -hls_time "             . self::HLS_SEGMENT_DURATION
-            . " -hls_list_size 0"
-            . " -hls_segment_filename " . escapeshellarg($work_folder . $folder_name . "_%03d.ts")
-            . " -f hls " . escapeshellarg($work_m3u8) . " 2>&1";
+        // 🔒 FIX SECURITY: proc_open dengan array arguments + env vars — bypasses shell entirely
+        $hls_env = ['LD_LIBRARY_PATH' => '', 'PATH' => '/usr/local/bin:/usr/bin:/bin', 'LC_ALL' => 'en_US.UTF-8'];
+        $hls_cmd = [
+            $this->ffmpeg_bin,
+            '-threads', (string)self::FFMPEG_THREADS,
+            '-i', $staging_mp4,
+            '-codec', 'copy',
+            '-start_number', '0',
+            '-hls_time', (string)self::HLS_SEGMENT_DURATION,
+            '-hls_list_size', '0',
+            '-hls_segment_filename', $work_folder . $folder_name . '_%03d.ts',
+            '-f', 'hls',
+            $work_m3u8,
+        ];
 
-        $handle = @popen($cmd_hls, 'r');
-        if (!$handle) {
+        $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+        $hls_proc = @proc_open($hls_cmd, $desc, $hls_pipes, null, $hls_env);
+        if (!$hls_proc || !is_resource($hls_proc)) {
             $this->cleanupDir($work_folder);
             $this->jsError("Gagal menjalankan ffmpeg untuk transcode HLS. Cek instalasi ffmpeg.");
             return "";
         }
+        @fclose($hls_pipes[0]); // stdin
+        @fclose($hls_pipes[1]); // stdout — tidak dipakai (FFmpeg output progress ke stderr)
+        $hls_out = $hls_pipes[2]; // stderr — FFmpeg tulis time=... di sini
 
-        while (!feof($handle)) {
-            $line = fgets($handle);
+        while (!feof($hls_out)) {
+            $line = fgets($hls_out);
             if (preg_match('/time=((\d+):(\d+):(\d+)\.(\d+))/', $line, $m) && $file_dur > 0) {
                 $cur = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
                 $pct = min(99, round(($cur / $file_dur) * 100));
@@ -573,7 +586,8 @@ class Transcoder
                 flush();
             }
         }
-        pclose($handle);
+        @fclose($hls_pipes[2]);
+        proc_close($hls_proc);
 
         if (!file_exists($work_m3u8) || filesize($work_m3u8) === 0) {
             $this->cleanupDir($work_folder);
@@ -1045,12 +1059,42 @@ class Transcoder
             . " -metadata artist='MEeL Transcoder'"
             . " " . escapeshellarg($output_path) . " 2>&1";
 
+        // 🔒 FIX SECURITY: proc_open dengan array arguments + env vars — bypasses shell entirely
+        // Daripada popen() yang melewati shell (rentan shell injection meski args sudah di-escape)
+        $tc_env  = ['LD_LIBRARY_PATH' => '', 'PATH' => '/usr/local/bin:/usr/bin:/bin', 'LC_ALL' => 'en_US.UTF-8'];
+        $tc_cmd  = [$this->ffmpeg_bin,
+            '-y', '-threads', (string)self::FFMPEG_THREADS,
+            '-f', 'concat', '-safe', '0', '-i', $concat_list_path,
+        ];
+        if ($use_thumb) {
+            $tc_cmd[] = '-i'; $tc_cmd[] = $thumb_path;
+        }
+        $tc_cmd[] = '-map'; $tc_cmd[] = '0:a';
+        if ($use_thumb) {
+            $tc_cmd[] = '-map'; $tc_cmd[] = '1:v';
+            $tc_cmd[] = '-c:v'; $tc_cmd[] = 'copy';
+            $tc_cmd[] = '-disposition:v:0'; $tc_cmd[] = 'attached_pic';
+            if ($format === 'mp3') { $tc_cmd[] = '-id3v2_version'; $tc_cmd[] = '3'; }
+        }
+        $tc_cmd[] = '-c:a'; $tc_cmd[] = $codec;
+        if (!empty($bitrate)) {
+            $parts = explode(' ', $bitrate);
+            foreach ($parts as $p) $tc_cmd[] = $p;
+        }
+        $tc_cmd[] = '-metadata'; $tc_cmd[] = "title=" . $v_data['title'];
+        $tc_cmd[] = '-metadata'; $tc_cmd[] = "artist=MEeL Transcoder";
+        $tc_cmd[] = $output_path;
+
         $this->showMEeLOverlay('transcode');
 
-        $handle = popen($cmd, 'r');
-        if ($handle) {
-            while (!feof($handle)) {
-                $line = fgets($handle);
+        $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+        $tc_proc = @proc_open($tc_cmd, $desc, $tc_pipes, null, $tc_env);
+        if ($tc_proc && is_resource($tc_proc)) {
+            @fclose($tc_pipes[0]); // stdin
+            @fclose($tc_pipes[1]); // stdout — tidak dipakai (FFmpeg output progress ke stderr)
+            $tc_out = $tc_pipes[2]; // stderr — FFmpeg tulis time=... di sini
+            while (!feof($tc_out)) {
+                $line = fgets($tc_out);
                 if (preg_match('/time=((\d+):(\d+):(\d+)\.(\d+))/', $line, $m) && $file_dur > 0) {
                     $cur   = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
                     $pct   = min(100, round(($cur / $file_dur) * 100));
@@ -1060,7 +1104,8 @@ class Transcoder
                     flush();
                 }
             }
-            pclose($handle);
+            @fclose($tc_pipes[2]);
+            proc_close($tc_proc);
         }
 
         @unlink($concat_list_path);
