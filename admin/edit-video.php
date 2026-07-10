@@ -77,17 +77,26 @@ if (isset($_POST['update'])) {
         $thumbnail_url = $video['thumbnail'];
 
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
-            $ext = pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION);
-            $new_name = 'thumb_' . time() . '_' . uniqid() . '.' . $ext;
+            $new_name = 'thumb_' . time() . '_' . uniqid() . '.webp';
             $target_dir = __DIR__ . '/../video/upload/thumbnail/';
             if (!is_dir($target_dir)) {
                 @mkdir($target_dir, 0755, true);
             }
             $upload_path = $target_dir . $new_name;
-            if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
+            // Konversi ke WebP — lebih kecil 30-50% dari JPG dengan kualitas setara
+            $cmd = "/usr/bin/ffmpeg -y -i " . escapeshellarg($_FILES['thumbnail']['tmp_name'])
+                . " -vf \"scale='min(1280,iw)':-1\" -c:v libwebp -q:v 78 "
+                . escapeshellarg($upload_path) . " 2>&1";
+            exec($cmd, $out, $ret);
+            if ($ret === 0 && file_exists($upload_path) && filesize($upload_path) > 0) {
                 $thumbnail_url = $new_name;
             } else {
-                $error_message = 'Gagal mengupload thumbnail ke server.';
+                // Fallback: simpan file asli jika ffmpeg gagal
+                if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
+                    $thumbnail_url = $new_name;
+                } else {
+                    $error_message = 'Gagal mengupload thumbnail ke server.';
+                }
             }
         }
 

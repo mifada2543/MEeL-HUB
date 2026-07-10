@@ -78,23 +78,35 @@ if (isset($_POST['update'])) {
         $album = trim($_POST['album'] ?? 'Single');
         $description = trim($_POST['description'] ?? '');
         $thumbnail_url = $music['thumbnail'];
-        // Handle cover thumbnail upload
+        // Handle cover thumbnail upload — konversi ke WebP
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
-            $ext = pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION);
-            $new_name = 'cover_' . time() . '_' . uniqid() . '.' . $ext;
+            $new_name = 'cover_' . time() . '_' . uniqid() . '.webp';
             $target_dir = __DIR__ . '/../music/upload/thumbnail/';
             if (!is_dir($target_dir)) {
                 @mkdir($target_dir, 0755, true);
             }
             $upload_path = $target_dir . $new_name;
-            if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
+            // Konversi ke WebP — lebih kecil 30-50% dari JPG
+            $cmd = "/usr/bin/ffmpeg -y -i " . escapeshellarg($_FILES['thumbnail']['tmp_name'])
+                . " -vf \"scale='min(500,iw)':-1\" -c:v libwebp -q:v 78 "
+                . escapeshellarg($upload_path) . " 2>&1";
+            exec($cmd, $out, $ret);
+            if ($ret === 0 && file_exists($upload_path) && filesize($upload_path) > 0) {
                 $thumbnail_url = $new_name;
                 // Update thumbnail in DB too
                 $stmt_thumb = $conn->prepare("UPDATE music SET thumbnail = ? WHERE id = ?");
                 $stmt_thumb->bind_param("si", $thumbnail_url, $id);
                 $stmt_thumb->execute();
             } else {
-                $error_message = 'Gagal mengupload cover thumbnail.';
+                // Fallback: simpan file asli jika ffmpeg gagal
+                if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
+                    $thumbnail_url = $new_name;
+                    $stmt_thumb = $conn->prepare("UPDATE music SET thumbnail = ? WHERE id = ?");
+                    $stmt_thumb->bind_param("si", $thumbnail_url, $id);
+                    $stmt_thumb->execute();
+                } else {
+                    $error_message = 'Gagal mengupload cover thumbnail.';
+                }
             }
         }
 

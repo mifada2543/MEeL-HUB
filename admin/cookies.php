@@ -89,7 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         }
 
                         // Hapus thumbnail video
-                        if (!empty($media_row['thumbnail']) && $media_row['thumbnail'] !== 'default_thumb.jpg') {
+                        if (!empty($media_row['thumbnail'])
+                            && $media_row['thumbnail'] !== 'default_thumb.jpg'
+                            && $media_row['thumbnail'] !== 'default_thumb.webp'
+                        ) {
                             $thumb_abs = $hdd_base . "video/upload/thumbnail/" . $media_row['thumbnail'];
                             if (file_exists($thumb_abs)) {
                                 if (@unlink($thumb_abs)) $files_deleted++;

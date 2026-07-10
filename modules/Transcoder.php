@@ -338,7 +338,7 @@ class Transcoder
             $temp_path = "$shm_temp/$temp_id.%(ext)s";
             $cmd_dl    = $this->base_cmd
                 . "-f bestaudio -o " . escapeshellarg($temp_path)
-                . " --write-thumbnail --convert-thumbnails jpg --embed-thumbnail"
+                . " --write-thumbnail --embed-thumbnail"
                 . " --newline " . escapeshellarg($url) . " 2>&1";
         } else {
             // Download staging di RAM disk (/dev/shm) — lebih cepat untuk I/O yt-dlp
@@ -356,7 +356,7 @@ class Transcoder
             $cmd_dl = $this->base_cmd
                 . "-f " . escapeshellarg($format)
                 . " --merge-output-format mp4 -o " . escapeshellarg($output_tpl)
-                . " --write-thumbnail --convert-thumbnails jpg --newline "
+                . " --write-thumbnail --newline "
                 . escapeshellarg($url) . " 2>&1";
         }
 
@@ -446,7 +446,7 @@ class Transcoder
         if ($type === 'music') {
             return $this->finalizeMusic($temp_id, $title, $artist, $album, $duration, $description);
         }
-        return $this->finalizeVideo($basename, $basename . ".jpg", $title, $artist, $duration, $description);
+        return $this->finalizeVideo($basename, $basename . ".webp", $title, $artist, $duration, $description);
     }
 
     // ─── FINALIZE MUSIC ───────────────────────────────────────────────────────
@@ -462,7 +462,9 @@ class Transcoder
         $found    = glob($this->getShmTempPath() . "/$temp_id.*");
         $raw_file = "";
         foreach ($found as $f) {
-            if (pathinfo($f, PATHINFO_EXTENSION) !== 'jpg') {
+            $ext = pathinfo($f, PATHINFO_EXTENSION);
+            // Skip file gambar (thumbnail), cari file audio
+            if (!in_array(strtolower($ext), ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
                 $raw_file = basename($f);
                 break;
             }
@@ -496,7 +498,16 @@ class Transcoder
     ): string {
         $shm_temp     = $this->getShmTempPath();
         $staging_mp4  = "$shm_temp/{$basename}.mp4";
-        $dl_thumb_src = "$shm_temp/{$basename}.jpg";
+
+        // Cari file thumbnail dari yt-dlp (format asli, biasanya .webp)
+        $dl_thumb_src = null;
+        foreach (glob("$shm_temp/{$basename}.*") as $f) {
+            $ext = pathinfo($f, PATHINFO_EXTENSION);
+            if (in_array(strtolower($ext), ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+                $dl_thumb_src = $f;
+                break;
+            }
+        }
 
         if (!file_exists($staging_mp4)) {
             $this->jsError("File MP4 staging tidak ditemukan: $staging_mp4");
@@ -530,26 +541,26 @@ class Transcoder
             fclose($lock_fp);
         }
 
-        // ── Kompres thumbnail ─────────────────────────────────────────────────
+        // ── Kompres thumbnail ke WebP ────────────────────────────────────────
         $work_thumb = $work_folder . $db_thumb;
-        if (file_exists($dl_thumb_src)) {
-            // Thumbnail: scale ke max 1280px, quality 5 (lebih cepat dari quality 2)
-            // -threads 1 cukup untuk operasi ringan ini — hemat core untuk HLS di bawah
+        if ($dl_thumb_src && file_exists($dl_thumb_src)) {
+            // Konversi ke WebP — scale ke max 1280px, quality 78 (balance ukuran vs kualitas)
+            // WebP rata-rata 30-50% lebih kecil dari JPG setara
             $cmd_compress = self::ENV_PREFIX . escapeshellarg($this->ffmpeg_bin)
                 . " -y -threads 1"
                 . " -i " . escapeshellarg($dl_thumb_src)
                 . " -vf " . escapeshellarg("scale='min(1280,iw)':-1")
-                . " -q:v 5 " . escapeshellarg($work_thumb) . " 2>&1";
+                . " -c:v libwebp -q:v 78 " . escapeshellarg($work_thumb) . " 2>&1";
             shell_exec($cmd_compress);
 
             if (!file_exists($work_thumb) || filesize($work_thumb) === 0) {
-                copy($dl_thumb_src, $work_thumb); // fallback
+                copy($dl_thumb_src, $work_thumb); // fallback: simpan asli sebagai .webp
             }
             @unlink($dl_thumb_src);
         }
 
         $thumb_generated = file_exists($work_thumb) && filesize($work_thumb) > 0;
-        if (!$thumb_generated) $db_thumb = "default_thumb.jpg";
+        if (!$thumb_generated) $db_thumb = "default_thumb.webp";
 
         // ── Dapatkan durasi video ─────────────────────────────────────────────
         $file_dur = $this->probeDuration($staging_mp4);
@@ -617,15 +628,15 @@ class Transcoder
         $this->generateSpriteAndVTT($staging_mp4, $ram_folder);
 
         // Pindahkan hasil dari RAM ke work_folder — catat ke error_log jika gagal
-        $sprite_src = $ram_folder . 'thumb_sprite.jpg';
+        $sprite_src = $ram_folder . 'thumb_sprite.webp';
         $vtt_src    = $ram_folder . 'thumbnails.vtt';
 
         if (file_exists($sprite_src)) {
-            if (!$this->moveFile($sprite_src, $work_folder . 'thumb_sprite.jpg')) {
-                error_log("[MEeL] WARN: Gagal move thumb_sprite.jpg dari RAM ke: $work_folder");
+            if (!$this->moveFile($sprite_src, $work_folder . 'thumb_sprite.webp')) {
+                error_log("[MEeL] WARN: Gagal move thumb_sprite.webp dari RAM ke: $work_folder");
             }
         } else {
-            error_log("[MEeL] WARN: thumb_sprite.jpg tidak terbentuk di RAM: $ram_folder");
+            error_log("[MEeL] WARN: thumb_sprite.webp tidak terbentuk di RAM: $ram_folder");
         }
 
         if (file_exists($vtt_src)) {
@@ -741,7 +752,7 @@ class Transcoder
         }
 
         $final_path = "{$this->base_path}/music/upload/file/$final_fname";
-        $thumb_name = str_replace('.ogg', '.jpg', $final_fname);
+        $thumb_name = str_replace('.ogg', '.webp', $final_fname);
 
         // Encode ke Opus/OGG
         // -compression_level 10: kualitas encoding terbaik (libopus default = 10, eksplisit untuk kejelasan)
@@ -827,21 +838,23 @@ class Transcoder
         string $target_name
     ): string {
         $target_path = "$target_dir/$target_name";
+        $src_ext     = strtolower(pathinfo($source_image, PATHINFO_EXTENSION));
 
-        // Kalau sudah jpg, langsung copy
-        if (strtolower(pathinfo($source_image, PATHINFO_EXTENSION)) === 'jpg') {
+        // Kalau sudah WebP, langsung copy (tidak perlu re-encode)
+        if ($src_ext === 'webp') {
             if (copy($source_image, $target_path)) {
                 @unlink($source_image);
                 return $target_name;
             }
         }
 
-        // Convert ke JPG via ffmpeg — scale ke max 500px, -threads 1 cukup untuk gambar kecil
+        // Konversi ke WebP via ffmpeg — scale ke max 500px, -threads 1 cukup untuk gambar kecil
+        // WebP quality 78 memberikan kualitas visual setara JPG ~85 dengan ukuran 30-50% lebih kecil
         $cmd = self::ENV_PREFIX . escapeshellarg($this->ffmpeg_bin)
             . " -y -threads 1"
             . " -i "  . escapeshellarg($source_image)
             . " -vf " . escapeshellarg("scale='min(500,iw)':-1")
-            . " -q:v 6 " . escapeshellarg($target_path) . " 2>&1";
+            . " -c:v libwebp -q:v 78 " . escapeshellarg($target_path) . " 2>&1";
         @shell_exec($cmd);
 
         if (file_exists($target_path) && filesize($target_path) > 0) {
@@ -868,14 +881,15 @@ class Transcoder
             return 'music_default.png';
         }
 
-        $temp_extracted = "$target_dir/.temp_thumb_" . time() . "_" . random_int(1000, 9999) . ".jpg";
+        $temp_extracted = "$target_dir/.temp_thumb_" . time() . "_" . random_int(1000, 9999) . ".webp";
 
+        // Ekstrak cover art dari metadata audio, simpan sebagai WebP
         $cmd = self::ENV_PREFIX . escapeshellarg($this->ffmpeg_bin)
             . " -y -threads 1"
             . " -i " . escapeshellarg($audio_file)
             . " -an -vframes 1"
             . " -vf " . escapeshellarg("scale='min(500,iw)':-1")
-            . " -q:v 6 " . escapeshellarg($temp_extracted) . " 2>&1";
+            . " -c:v libwebp -q:v 78 " . escapeshellarg($temp_extracted) . " 2>&1";
         @shell_exec($cmd);
 
         if (file_exists($temp_extracted) && filesize($temp_extracted) > 1000) {
@@ -1163,17 +1177,18 @@ class Transcoder
         $total_frames = (int)ceil($duration / $interval);
         $rows         = max(1, (int)ceil($total_frames / $cols));
 
-        $sprite_file = $target_folder . 'thumb_sprite.jpg';
+        $sprite_file = $target_folder . 'thumb_sprite.webp';
         $vtt_file    = $target_folder . 'thumbnails.vtt';
 
         // Buat sprite — fps filter + scale + tile (CPU/software decode)
         // VAAPI tidak dipakai: Apache tidak punya akses ke /dev/dri/renderD128
+        // Output WebP untuk ukuran file 30-50% lebih kecil dari JPG
         $filter     = "fps=1/$interval,scale=$w:$h,tile={$cols}x{$rows}";
         $cmd_sprite = self::ENV_PREFIX . escapeshellarg($this->ffmpeg_bin)
             . " -y -threads " . self::FFMPEG_THREADS
             . " -i " . escapeshellarg($video_path)
             . " -vf " . escapeshellarg($filter)
-            . " " . escapeshellarg($sprite_file) . " 2>&1";
+            . " -c:v libwebp -q:v 78 " . escapeshellarg($sprite_file) . " 2>&1";
 
         $ffmpeg_out = [];
         exec($cmd_sprite, $ffmpeg_out);
@@ -1196,7 +1211,7 @@ class Transcoder
             $y = (int)floor($i / $cols) * $h;
 
             $vtt_content .= "$start_time --> $end_time\n";
-            $vtt_content .= "thumb_sprite.jpg#xywh=$x,$y,$w,$h\n\n";
+            $vtt_content .= "thumb_sprite.webp#xywh=$x,$y,$w,$h\n\n";
         }
         file_put_contents($vtt_file, $vtt_content);
     }
