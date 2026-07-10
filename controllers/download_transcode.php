@@ -24,10 +24,19 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $filename = $_GET['file'] ?? '';
-if (empty($filename) || preg_match('/[\/:*?"<>|\\\\]/', $filename) || strpos($filename, '..') !== false) {
+if (empty($filename)) {
     http_response_code(400);
-    die('Invalid file name.');
+    die('Parameter file diperlukan.');
 }
+
+// Validasi ketat: hanya karakter aman yang diizinkan
+$safe_filename = basename($filename);
+$allowed_pattern = '/^[a-zA-Z0-9._-]+\.[a-zA-Z0-9]+$/'; // hanya huruf, angka, titik, underscore, strip + ekstensi
+if (!preg_match($allowed_pattern, $safe_filename)) {
+    http_response_code(400);
+    die('Nama file tidak valid.');
+}
+$filename = $safe_filename;
 
 $transcoder = new Transcoder($conn, $_SESSION['user_id']);
 $file_path = $transcoder->getTranscodeFilePath($filename);

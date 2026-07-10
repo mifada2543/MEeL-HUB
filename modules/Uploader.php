@@ -66,6 +66,85 @@ class Uploader
         return mb_strtolower($combined, 'UTF-8');
     }
 
+    /**
+     * 🔒 FIX SECURITY: Validasi magic bytes file video.
+     * Cek header file untuk memastikan benar-benar video (MP4/WebM/MKV).
+     */
+    private function validateVideoMagicBytes(string $filePath): bool
+    {
+        if (!is_file($filePath) || filesize($filePath) < 12) {
+            return false;
+        }
+
+        $handle = @fopen($filePath, 'rb');
+        if (!$handle) {
+            return false;
+        }
+        $header = fread($handle, 16);
+        fclose($handle);
+
+        if ($header === false || strlen($header) < 4) {
+            return false;
+        }
+
+        // MP4/MOV: dimulai dengan 'ftyp' di offset 4
+        if (strlen($header) >= 8 && substr($header, 4, 4) === 'ftyp') {
+            return true;
+        }
+
+        // WebM/MKV: dimulai dengan \x1A\x45\xDF\xA3 (EBML header)
+        if (str_starts_with($header, "\x1A\x45\xDF\xA3")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 🔒 FIX SECURITY: Cek jumlah upload aktif untuk mencegah overload server.
+     * Batasi maksimal 3 proses upload simultan.
+     * Dilengkapi TTL auto-reset (5 menit) untuk mencegah counter stale akibat PHP crash.
+     */
+    private function checkActiveUploadLimit(): bool
+    {
+        $lock_file    = sys_get_temp_dir() . '/meel_upload_counter.lock';
+        $counter_file = sys_get_temp_dir() . '/meel_upload_count.dat';
+
+        $fp = @fopen($lock_file, 'c');
+        if (!$fp) return true; // fallback: allow jika gagal lock
+        flock($fp, LOCK_EX);
+
+        // 🔄 TTL auto-reset: jika counter file lebih dari 5 menit, reset ke 0
+        if (file_exists($counter_file) && (time() - filemtime($counter_file)) > 300) {
+            @unlink($counter_file);
+        }
+
+        $current = (int)@file_get_contents($counter_file);
+        if ($current >= 3) {
+            flock($fp, LOCK_UN);
+            fclose($fp);
+            return false;
+        }
+
+        file_put_contents($counter_file, $current + 1);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+
+        // Register shutdown function untuk decrement
+        register_shutdown_function(function () use ($lock_file, $counter_file) {
+            $fp2 = @fopen($lock_file, 'c');
+            if ($fp2) {
+                flock($fp2, LOCK_EX);
+                $count = max(0, (int)@file_get_contents($counter_file) - 1);
+                file_put_contents($counter_file, $count);
+                flock($fp2, LOCK_UN);
+                fclose($fp2);
+            }
+        });
+
+        return true;
+    }
+
     private function getUniqueFilename(string $clean_name, string $ext, string $target_dir): string
     {
         $file_name = $clean_name . "." . $ext;
@@ -89,6 +168,11 @@ class Uploader
             return ['status' => 'error', 'msg' => "Batas upload tercapai! Tunggu {$limit['minutes']} menit lagi.", 'alert' => true];
         }
 
+        // 🔒 FIX SECURITY: Batasi proses upload simultan
+        if (!$this->checkActiveUploadLimit()) {
+            return ['status' => 'error', 'msg' => "Terlalu banyak proses upload bersamaan. Coba lagi nanti.", 'alert' => true];
+        }
+
         $title  = trim($post['title'] ?? '');
         $artist = trim($post['artist'] ?? 'Unknown Artist');
         $album  = trim($post['album']  ?? 'Single');
@@ -104,8 +188,18 @@ class Uploader
             return ['status' => 'error', 'msg' => "Security Error / Format ditolak!"];
         }
 
+        // 🔒 FIX SECURITY: Lock untuk serialisasi penamaan file — cegah TOCTOU race condition
+        $lock_file = sys_get_temp_dir() . '/meel_music_upload.lock';
+        $lock_fp   = @fopen($lock_file, 'c');
+        $locked    = $lock_fp && flock($lock_fp, LOCK_EX);
+
         $file_name   = $this->getUniqueFilename($clean_name, $ext, $base_dir . "upload/file/");
         $target_file = $base_dir . "upload/file/" . $file_name;
+
+        if ($locked) {
+            flock($lock_fp, LOCK_UN);
+            fclose($lock_fp);
+        }
 
         if (!move_uploaded_file($files['media']['tmp_name'], $target_file)) {
             return ['status' => 'upload_failed'];
@@ -119,6 +213,13 @@ class Uploader
 
         $dur_cmd  = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffprobe_bin) . " -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($target_file);
         $duration = (float)trim(shell_exec($dur_cmd));
+
+        // 🔒 FIX SECURITY: Jika ffprobe gagal (duration 0 atau negatif), reject file
+        if ($duration <= 0) {
+            unlink($target_file);
+            return ['status' => 'error', 'msg' => "Gagal memverifikasi durasi file. File mungkin korup atau tidak valid.", 'alert' => true];
+        }
+
         $max_dur  = ($this->user_role === 'admin') ? 3600 : 300;
         if ($duration > $max_dur) {
             unlink($target_file);
@@ -157,9 +258,20 @@ class Uploader
 
         $skip_transcode = (isset($post['skip_transcode']) && $this->user_role === 'admin');
         if (!$skip_transcode) {
+            // 🔒 FIX SECURITY: Gunakan flock agar dua proses tidak menulis ke file .ogg yang sama
             $opus_file = pathinfo($file_name, PATHINFO_FILENAME) . ".ogg";
             $opus_path = $base_dir . "upload/file/" . $opus_file;
+
+            $lock_tc = @fopen(sys_get_temp_dir() . '/meel_music_transcode.lock', 'c');
+            $tc_locked = $lock_tc && flock($lock_tc, LOCK_EX);
+
             exec("export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($target_file) . " -c:a libopus -vbr on -compression_level 10 " . escapeshellarg($opus_path), $out, $ret);
+
+            if ($tc_locked) {
+                flock($lock_tc, LOCK_UN);
+                fclose($lock_tc);
+            }
+
             if ($ret === 0 && file_exists($opus_path)) {
                 unlink($target_file);
                 $file_name = $opus_file;
@@ -183,6 +295,11 @@ class Uploader
             return ['status' => 'error', 'msg' => "Batas upload tercapai! Tunggu {$limit['minutes']} menit lagi.", 'alert' => true];
         }
 
+        // 🔒 FIX SECURITY: Batasi proses upload simultan
+        if (!$this->checkActiveUploadLimit()) {
+            return ['status' => 'error', 'msg' => "Terlalu banyak proses upload bersamaan. Coba lagi nanti.", 'alert' => true];
+        }
+
         if (empty($files['video']['tmp_name']) || !is_uploaded_file($files['video']['tmp_name'])) {
             return ['status' => 'error', 'msg' => 'Tidak ada file video yang diterima.', 'alert' => true];
         }
@@ -197,6 +314,11 @@ class Uploader
             return ['status' => 'error', 'msg' => "Format video tidak didukung! Gunakan MP4, WebM, atau MKV.", 'alert' => true];
         }
 
+        // 🔒 FIX SECURITY: Validasi magic bytes — cegah file non-video lolos
+        if (!$this->validateVideoMagicBytes($temp_video)) {
+            return ['status' => 'error', 'msg' => "File tidak valid sebagai video (magic bytes mismatch).", 'alert' => true];
+        }
+
         $raw_clean_name = pathinfo($video_name_orig, PATHINFO_FILENAME);
         $clean_name     = getRomajiName($raw_clean_name); // transliterasi ke romaji (dash-separated), konsisten dgn processMusic()
         $clean_name     = substr($clean_name, 0, 60);     // batasi panjang biar aman utk kolom DB
@@ -204,32 +326,42 @@ class Uploader
         if ($clean_name === '') $clean_name = 'video-' . time(); // fallback kalau nama jadi kosong
 
         // ── TENTUKAN NAMA FOLDER (cek konflik di HDD tujuan) ─────────────────
-        $folder_name   = $clean_name;
-        $hdd_video_dir = $this->base_dir . "video/";
-        $counter       = 1;
-
-        while (is_dir($hdd_video_dir . $folder_name . "/")) {
-            $folder_name = $clean_name . "-" . $counter;
-            $counter++;
+        // 🔒 FIX SECURITY: Gunakan flock() untuk serialisasi akses — cegah TOCTOU race condition
+        $lock_file = sys_get_temp_dir() . '/meel_upload_video.lock';
+        $lock_fp   = fopen($lock_file, 'c');
+        if (!$lock_fp) {
+            return ['status' => 'error', 'msg' => 'Gagal menginisialisasi lock file.', 'alert' => true];
         }
+        flock($lock_fp, LOCK_EX);
 
-        // ── DIREKTORI KERJA — PRIORITAS RAM DISK (/dev/shm) ────────────────
-        // Semua FFmpeg output ditulis di RAM dulu, lalu dipindahkan ke HDD.
-        // Syarat pakai /dev/shm: directory exists + writable + minimal 500MB free.
-        // Jika tidak memenuhi, fallback ke temp/ project.
-        $shm_path  = '/dev/shm';
-        $use_shm   = false;
-        if (is_dir($shm_path) && is_writable($shm_path)) {
-            $free = @disk_free_space($shm_path);
-            if ($free !== false && $free >= 512 * 1024 * 1024) {
-                $use_shm = true;
+        try {
+            $folder_name   = $clean_name;
+            $hdd_video_dir = $this->base_dir . "video/";
+            $counter       = 1;
+
+            while (is_dir($hdd_video_dir . $folder_name . "/")) {
+                $folder_name = $clean_name . "-" . $counter;
+                $counter++;
             }
-        }
 
-        $meel_base  = $use_shm ? ($shm_path . '/meel/upload') : (dirname(__DIR__) . '/temp');
-        if (!is_dir($meel_base)) @mkdir($meel_base, 0755, true);
-        $work_folder = $meel_base . '/' . $folder_name . '/';
-        @mkdir($work_folder, 0755, true);
+            // ── DIREKTORI KERJA — PRIORITAS RAM DISK (/dev/shm) ────────────────
+            $shm_path  = '/dev/shm';
+            $use_shm   = false;
+            if (is_dir($shm_path) && is_writable($shm_path)) {
+                $free = @disk_free_space($shm_path);
+                if ($free !== false && $free >= 512 * 1024 * 1024) {
+                    $use_shm = true;
+                }
+            }
+
+            $meel_base   = $use_shm ? ($shm_path . '/meel/upload') : (dirname(__DIR__) . '/temp');
+            if (!is_dir($meel_base)) @mkdir($meel_base, 0755, true);
+            $work_folder = $meel_base . '/' . $folder_name . '/';
+            @mkdir($work_folder, 0755, true);
+        } finally {
+            flock($lock_fp, LOCK_UN);
+            fclose($lock_fp);
+        }
 
         // Stage file upload ke work_folder agar ekstensi tersedia untuk FFmpeg
         $staged_video = $work_folder . $clean_name . "_staged." . $ext;
@@ -331,6 +463,10 @@ class Uploader
         $hdd_target_folder = $hdd_video_dir . $folder_name . "/";
         $hdd_thumb_dir     = $this->base_dir . "thumbnail/";
 
+        // 🔒 FIX SECURITY: Lock saat memindahkan file ke HDD — cegah race condition
+        $lock_move = fopen(sys_get_temp_dir() . '/meel_move_hdd.lock', 'c');
+        $move_locked = $lock_move && flock($lock_move, LOCK_EX);
+
         if (!is_dir($hdd_target_folder)) {
             mkdir($hdd_target_folder, 0755, true);
         }
@@ -358,6 +494,11 @@ class Uploader
         }
 
         // Bersihkan work_folder (seharusnya sudah kosong)
+        if ($move_locked) {
+            flock($lock_move, LOCK_UN);
+            fclose($lock_move);
+        }
+
         @rmdir($work_folder);
 
         if ($move_failed) {

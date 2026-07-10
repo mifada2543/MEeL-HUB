@@ -1,6 +1,7 @@
 <?php
+// Error logging aktif, display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 session_name('meel');
 session_start();
 
@@ -16,6 +17,10 @@ $viewer = new MediaViewer($conn, $user_id, 'video', $id);
 $viewer->recordView();
 
 if ($is_logged_in && isset($_POST['send'])) {
+    // 🔒 FIX CSRF: Verifikasi token sebelum proses komentar
+    if (!verify_csrf()) {
+        die('CSRF Token tidak valid.');
+    }
     if ($viewer->addComment($_POST)) {
         header("Location: watch.php?id=$id#comment-section");
         exit;
@@ -277,10 +282,10 @@ session_write_close();
                             <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-300">Komentar</span>
                         </div>
                         <div class="p-4 sm:p-6">
-                            <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">
-                                <textarea name="comments"
-                                    class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-red-500/40 min-h-[80px] resize-y transition-all"
-                                    placeholder="Tulis komentar..." required></textarea>
+                            <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">                                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                                        <textarea name="comments"
+                                            class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-red-500/40 min-h-[80px] resize-y transition-all"
+                                            placeholder="Tulis komentar..." required></textarea>
                                 <div class="flex justify-end mt-2">
                                     <button name="send"
                                         class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer">

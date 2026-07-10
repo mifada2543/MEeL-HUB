@@ -116,7 +116,7 @@ if (!function_exists('getRomajiName')) {
             1 => ["pipe", "w"]
         ];
 
-        $process = proc_open('mecab', $descriptorspec, $pipes);
+        $process = proc_open(escapeshellarg('mecab'), $descriptorspec, $pipes);
 
         $parsedText = '';
         if (is_resource($process)) {
@@ -184,7 +184,7 @@ if (!function_exists('analyzeJapaneseText')) {
 
         // 2. Jalankan MeCab SEKALI untuk kedua kebutuhan
         $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
-        $process = proc_open('mecab', $descriptorspec, $pipes);
+        $process = proc_open(escapeshellarg('mecab'), $descriptorspec, $pipes);
         if (!is_resource($process)) {
             $result['romaji'] = getRomajiName($text); // fallback ke jalur lama
             return $result;
@@ -292,7 +292,7 @@ if (!function_exists('getEnglishTranslation')) {
 
         // 1. Tokenisasi pakai MeCab (offline)
         $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
-        $process = proc_open('mecab', $descriptorspec, $pipes);
+        $process = proc_open(escapeshellarg('mecab'), $descriptorspec, $pipes);
         if (!is_resource($process)) return '';
 
         fwrite($pipes[0], $text);

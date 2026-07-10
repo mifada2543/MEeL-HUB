@@ -211,9 +211,12 @@ class Transcoder
             }
         }
 
-        // DEBUG MODE — sengaja aktif untuk keperluan development / pindah env
-        // Untuk menonaktifkan di production: set konstanta DEBUG_METADATA = false
-        $this->renderMetadataDebug($url, $cmd, $return_var, $output);
+        // DEBUG MODE — dinonaktifkan untuk production (data sensitif bisa bocor)
+        // Aktifkan kembali hanya untuk debugging dengan meng-uncomment baris di bawah:
+        // $this->renderMetadataDebug($url, $cmd, $return_var, $output);
+        
+        // Catat error ke log server, bukan ke browser
+        error_log("[MEeL-Transcoder] Gagal parsing metadata untuk URL: " . $url);
         return null;
     }
 
@@ -493,6 +496,11 @@ class Transcoder
         flush();
 
         // ── Tentukan nama folder unik di HDD ──────────────────────────────────
+        // 🔒 FIX SECURITY: Lock untuk serialisasi folder — cegah TOCTOU race condition
+        $flock_path = sys_get_temp_dir() . '/meel_transcode_folder.lock';
+        $lock_fp    = @fopen($flock_path, 'c');
+        $locked     = $lock_fp && flock($lock_fp, LOCK_EX);
+
         $folder_name = $basename;
         $counter     = 1;
         while (is_dir(self::HDD_VIDEO_DIR . $folder_name . "/")) {
@@ -505,6 +513,11 @@ class Transcoder
         $shm_temp    = $this->getShmTempPath();
         $work_folder = "$shm_temp/{$folder_name}/";
         if (!is_dir($work_folder)) mkdir($work_folder, 0755, true);
+
+        if ($locked) {
+            flock($lock_fp, LOCK_UN);
+            fclose($lock_fp);
+        }
 
         // ── Kompres thumbnail ─────────────────────────────────────────────────
         $work_thumb = $work_folder . $db_thumb;
@@ -935,11 +948,38 @@ class Transcoder
         $output_filename = $this->sanitizeFilename($v_data['title']) . '.' . $format;
         $output_path     = $output_dir . $output_filename;
 
+        // 🔒 FIX SECURITY: Marker file — atomic check-then-create untuk cegah duplikat transcode
+        // Pendekatan ini lebih baik dari flock() yang di-hold lama karena FFmpeg bisa memakan waktu menit.
+        $marker_file = $output_path . '.processing';
+
+        $mtx_path  = sys_get_temp_dir() . '/meel_transcode_marker.lock';
+        $mtx_fp    = @fopen($mtx_path, 'c');
+        $mtx_locked = $mtx_fp && flock($mtx_fp, LOCK_EX);
+
         if (file_exists($output_path) && filesize($output_path) > 0) {
+            if ($mtx_locked) { flock($mtx_fp, LOCK_UN); fclose($mtx_fp); }
             $download_link = "controllers/download_transcode.php?file=" . rawurlencode($output_filename);
             echo "<script>meelDoneTranscode(" . json_encode($v_data['title']) . ", " . json_encode($download_link) . ");</script>";
             flush();
             return ['status' => 'success', 'download_link' => $download_link];
+        }
+
+        // Cek marker — jika ada, proses lain sedang mengerjakan output yang sama
+        if (file_exists($marker_file)) {
+            $marker_age = time() - filemtime($marker_file);
+            if ($marker_age < 600) { // < 10 menit — masih wajar
+                if ($mtx_locked) { flock($mtx_fp, LOCK_UN); fclose($mtx_fp); }
+                return ['status' => 'error', 'msg' => 'Output sedang diproses oleh antrean lain. Tunggu beberapa saat.'];
+            }
+            // Marker > 10 menit (stale) — lanjutkan
+        }
+
+        // Buat marker file
+        @touch($marker_file);
+
+        if ($mtx_locked) {
+            flock($mtx_fp, LOCK_UN);
+            fclose($mtx_fp);
         }
 
         // Cek server busy
@@ -1033,6 +1073,8 @@ class Transcoder
         $stmt_upd->execute();
         $stmt_upd->close();
 
+        @unlink($marker_file); // Hapus marker setelah selesai
+
         if (!file_exists($output_path) || filesize($output_path) === 0) {
             $this->jsError("FFmpeg gagal menghasilkan file output.");
             return ['status' => 'error', 'msg' => 'FFmpeg gagal menghasilkan file.'];
@@ -1060,11 +1102,11 @@ class Transcoder
         $duration = $this->probeDuration($video_path);
         if ($duration <= 0) return;
 
-        // Tentukan interval dinamis berdasarkan durasi
-        if ($duration > 3600) $interval = 300;   // > 1 jam   → tiap 5 menit
-        elseif ($duration > 1800) $interval = 180;   // > 30 menit → tiap 3 menit
-        elseif ($duration > 300)  $interval = 60;    // > 5 menit  → tiap 1 menit
-        else                       $interval = 10;    // ≤ 5 menit  → tiap 10 detik
+        // Tentukan interval dinamis berdasarkan durasi            if ($duration > 3600) $interval = 300;   // > 1 jam   → tiap 5 menit
+            elseif ($duration > 1800) $interval = 180;   // > 30 menit → tiap 3 menit
+            elseif ($duration > 300)  $interval = 60;    // > 5 menit  → tiap 1 menit
+            elseif ($duration > 0)    $interval = 10;    // ≤ 5 menit  → tiap 10 detik
+            else $interval = 10;                          // fallback jika durasi 0
 
         $total_frames = (int)ceil($duration / $interval);
         $rows         = max(1, (int)ceil($total_frames / $cols));

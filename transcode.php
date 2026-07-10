@@ -12,6 +12,10 @@ $alert_message   = "";
 $video_title     = "";
 
 if (isset($_POST['start_transcode'])) {
+    // 🔒 FIX CSRF: Verifikasi token
+    if (!verify_csrf()) {
+        $alert_message = 'CSRF Token tidak valid.';
+    } else {
     $video_id = (int)($_POST['video_id'] ?? 0);
     $format   = $_POST['format'] ?? 'mp3';
 
@@ -34,6 +38,7 @@ if (isset($_POST['start_transcode'])) {
             $alert_message = $result['msg'];
         }
     }
+    } // tutup else verify_csrf
 }
 
 $video_id_value = isset($_GET['id']) ? (int)$_GET['id'] : "";
@@ -217,6 +222,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
 
                 <div class="p-7 pt-6">
                     <form method="POST" id="tc-form" onsubmit="startProcess()" class="flex flex-col gap-5">
+                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 
                         <div class="flex flex-col gap-1.5">
                             <label class="text-[9px] font-bold uppercase tracking-[.18em] text-muted pl-0.5" for="vid-id">Video ID</label>

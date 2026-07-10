@@ -6,15 +6,20 @@ ini_set('display_errors', 0);
 session_name('meel');
 session_start();
 
+// Hotlink Protection: Mencegah akses langsung ke file audio dari domain lain
+// Catatan: Referer header bisa di-spoof, ini hanya lapisan keamanan tambahan.
 $referer = $_SERVER['HTTP_REFERER'] ?? '';
-if (!empty($referer)) {
+$currentHost = $_SERVER['HTTP_HOST'] ?? '';
+if (!empty($referer) && !empty($currentHost)) {
     $refererHost = parse_url($referer, PHP_URL_HOST);
-    $currentHost = $_SERVER['HTTP_HOST'] ?? '';
     if ($refererHost && strtolower($refererHost) !== strtolower($currentHost)) {
+        // Akses dari domain lain, blokir
         header("Location: ../err/denied.php");
         exit;
     }
 }
+// Jika tidak ada Referer, tetap izinkan (karena beberapa browser/ad-blocker menghapusnya)
+// Streaming langsung dari halaman yang sama tetap bisa jalan.
 
 include '../auth/config.php';
 require_once '../modules/helpers.php';
@@ -35,7 +40,7 @@ if (!$v || empty($v['filename'])) {
     exit("Data audio tidak ditemukan.");
 }
 
-$filePath = __DIR__ . "/upload/file/" . $v['filename'];
+$filePath = __DIR__ . "/upload/file/" . basename($v['filename']);
 
 if (!file_exists($filePath)) {
     header("HTTP/1.1 404 Not Found");

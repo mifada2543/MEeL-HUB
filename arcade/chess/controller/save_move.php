@@ -1,7 +1,8 @@
 <?php
 
+// Error logging aktif, display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
 require '../../../auth/config.php';
 

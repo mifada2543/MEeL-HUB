@@ -1,6 +1,7 @@
 <?php
+// Error logging aktif, display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 session_name('meel');
 session_start();
 
@@ -17,6 +18,10 @@ $viewer = new MediaViewer($conn, $user_id, 'music', $id);
 $viewer->recordView();
 
 if ($is_logged_in && isset($_POST['send'])) {
+    // 🔒 FIX CSRF: Verifikasi token sebelum proses komentar
+    if (!verify_csrf()) {
+        die('CSRF Token tidak valid.');
+    }
     if ($viewer->addComment($_POST)) {
         header("Location: watch.php?id=$id&playlist_id=$playlist_id#comment-section");
         exit;
@@ -406,6 +411,7 @@ switch ($ext) {
                     </div>
                     <div class="p-4 sm:p-6">
                         <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">
+                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                             <textarea name="comments"
                                 class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-orange-500/40 min-h-[80px] resize-y transition-all"
                                 placeholder="Tulis komentar..." required></textarea>
@@ -460,6 +466,7 @@ switch ($ext) {
                                                 <div id="mus-<?= $c['id'] ?>" class="hidden mt-3">
                                                     <form action="watch.php?id=<?= $id ?>" method="post" class="flex gap-2">
                                                         <input type="hidden" name="parent_id" value="<?= $c['id'] ?>">
+                                                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                                         <input type="text" name="comments"
                                                             class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 min-w-0"
                                                             placeholder="Balas @<?= htmlspecialchars($author) ?>..." required>
@@ -573,7 +580,10 @@ switch ($ext) {
                     </div>
                     <div class="space-y-1.5 mb-4 max-h-[180px] overflow-y-auto pr-1 no-scrollbar">
                         <?php
-                        $my_playlists = $conn->query("SELECT * FROM playlists WHERE user_id = {$_SESSION['user_id']} ORDER BY id DESC");
+                        $stmt_pl = $conn->prepare("SELECT * FROM playlists WHERE user_id = ? ORDER BY id DESC");
+                        $stmt_pl->bind_param("i", $_SESSION['user_id']);
+                        $stmt_pl->execute();
+                        $my_playlists = $stmt_pl->get_result();
                         if ($my_playlists && $my_playlists->num_rows > 0):
                             while ($pl = $my_playlists->fetch_assoc()):
                         ?>
@@ -581,6 +591,7 @@ switch ($ext) {
                                     <input type="hidden" name="action" value="add_to_playlist">
                                     <input type="hidden" name="music_id" value="<?= $id ?>">
                                     <input type="hidden" name="playlist_id" value="<?= $pl['id'] ?>">
+                                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                     <button type="submit"
                                         class="w-full text-left px-4 py-2.5 rounded-xl bg-white/[.04] border border-white/[.06] text-sm text-gray-400 hover:bg-orange-500/10 hover:border-orange-500/25 hover:text-orange-400 transition-all cursor-pointer font-medium">
                                         <?= htmlspecialchars($pl['name']) ?>
@@ -595,6 +606,7 @@ switch ($ext) {
                         <form action="playlist_action.php" method="POST" class="flex gap-2">
                             <input type="hidden" name="action" value="create_playlist">
                             <input type="hidden" name="music_id" value="<?= $id ?>">
+                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                             <input type="text" name="playlist_name"
                                 class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 transition-all min-w-0"
                                 placeholder="Nama playlist baru..." required>

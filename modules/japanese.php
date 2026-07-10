@@ -27,7 +27,7 @@ if (!function_exists('getRomajiName')) {
 
         // 2. Eksekusi MeCab tanpa -Oyomi
         $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
-        $process = proc_open('mecab', $descriptorspec, $pipes);
+        $process = proc_open(escapeshellarg('mecab'), $descriptorspec, $pipes);
 
         $parsedText = '';
         if (is_resource($process)) {
@@ -78,7 +78,7 @@ if (!function_exists('analyzeJapaneseText')) {
 
         // 2. MeCab — 1x panggil untuk kedua kebutuhan
         $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
-        $process = proc_open('mecab', $descriptorspec, $pipes);
+        $process = proc_open(escapeshellarg('mecab'), $descriptorspec, $pipes);
         if (!is_resource($process)) {
             $result['romaji'] = getRomajiName($text);
             return $result;
@@ -173,7 +173,7 @@ if (!function_exists('getEnglishTranslation')) {
         if (!$dict_ready || empty(trim($text))) return '';
 
         $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
-        $process = proc_open('mecab', $descriptorspec, $pipes);
+        $process = proc_open(escapeshellarg('mecab'), $descriptorspec, $pipes);
         if (!is_resource($process)) return '';
 
         fwrite($pipes[0], $text);

@@ -30,8 +30,8 @@ $storage = new DriveStorage(dirname(__DIR__) . '/data_drive', $user);
 
 try {
     $file = $storage->getFileForDownload(
-        $_GET['file'] ?? null,
-        $_GET['type'] ?? null,
+        isset($_GET['file']) ? basename($_GET['file']) : null,
+        isset($_GET['type']) ? basename($_GET['type']) : null,
         $_GET['scope'] ?? DriveStorage::SCOPE_PUBLIC
     );
 
