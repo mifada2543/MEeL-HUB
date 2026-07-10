@@ -27,7 +27,7 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
     <link rel="icon" type="image/png" href="assets/MEeL.png">
     <link rel="manifest" href="assets/manifest.json">
     <link href="assets/css/tailwind.min.css" rel="stylesheet">
-    <script src="assets/js/htmx.js"></script>
+    <script src="assets/js/htmx.min.js"></script>
     <script src="assets/js/lucide.js"></script>
     <link rel="stylesheet" href="assets/css/up.css">
 </head>

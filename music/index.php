@@ -81,7 +81,7 @@ if (isset($_GET['content_only'])) {
     <title>MEeL Music | Library</title>
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/music.css">
-    <script src="../assets/js/htmx.js"></script>
+    <script src="../assets/js/htmx.min.js"></script>
     <style>
         .artist-dropdown-active .music-item {
             pointer-events: none !important;
@@ -156,6 +156,7 @@ if (isset($_GET['content_only'])) {
                     hx-include="#m-search"
                     hx-target="#music-list"
                     hx-indicator="#search-indicator"
+                    aria-label="Cari lagu"
                     class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
                     <span class="hidden sm:inline">Cari</span>
                     <i data-lucide="search" class="w-3.5 h-3.5 sm:hidden"></i>
@@ -185,25 +186,25 @@ if (isset($_GET['content_only'])) {
                 <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3">Format</div>
                     <div class="flex flex-wrap gap-2">
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
@@ -218,7 +219,7 @@ if (isset($_GET['content_only'])) {
                         <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
                     </div>
                     <div class="space-y-0.5 max-h-[45vh] overflow-y-auto no-scrollbar">
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=<?= $format_filter ?>&artist=all"
                             hx-get="index.php?format=<?= $format_filter ?>&artist=all"
                             hx-target="#library-container"
                             hx-select="#library-container"
@@ -231,7 +232,7 @@ if (isset($_GET['content_only'])) {
                         // reset pointer
                         $artists->data_seek(0);
                         while ($a = $artists->fetch_assoc()): ?>
-                            <a href="javascript:void(0)"
+                            <a href="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
                                 hx-get="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
                                 hx-target="#library-container"
                                 hx-select="#library-container"
@@ -275,25 +276,25 @@ if (isset($_GET['content_only'])) {
                 <div class="lg:hidden flex flex-col gap-4 bg-[#0d1017]/95 backdrop-blur-md p-4 rounded-xl border border-white/[.04] shadow-lg">
                     <!-- Format Pills (Mobile) -->
                     <div class="flex flex-wrap gap-2">
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
@@ -400,16 +401,16 @@ if (isset($_GET['content_only'])) {
 
             <!-- Tengah: kontrol -->
             <div class="mp-controls">
-                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulang">
+                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulang" aria-label="Ulang">
                     <i data-lucide="repeat" style="width:15px;height:15px;"></i>
                 </button>
-                <button class="mp-btn mp-btn-ghost" onclick="miniPrevIndex()" id="mp-prev-btn-index" title="Sebelumnya">
+                <button class="mp-btn mp-btn-ghost" onclick="miniPrevIndex()" id="mp-prev-btn-index" title="Sebelumnya" aria-label="Lagu Sebelumnya">
                     <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
                 </button>
-                <button class="mp-btn mp-btn-primary" onclick="miniPlayPauseIndex()" id="mini-play-btn-index" title="Play / Pause">
+                <button class="mp-btn mp-btn-primary" onclick="miniPlayPauseIndex()" id="mini-play-btn-index" title="Putar / Jeda" aria-label="Putar atau jeda">
                     <i data-lucide="play" style="width:18px;height:18px;"></i>
                 </button>
-                <button class="mp-btn mp-btn-ghost" onclick="miniNextIndex()" id="mp-next-btn-index" title="Berikutnya">
+                <button class="mp-btn mp-btn-ghost" onclick="miniNextIndex()" id="mp-next-btn-index" title="Berikutnya" aria-label="Lagu Berikutnya">
                     <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
                 </button>
             </div>
@@ -421,13 +422,13 @@ if (isset($_GET['content_only'])) {
                     <span class="mp-time-sep">/</span>
                     <span id="mini-duration-index">0:00</span>
                 </div>
-                <button class="mp-btn mp-btn-ghost mp-close" onclick="closeMiniPlayerIndex()" title="Tutup">
+                <button class="mp-btn mp-btn-ghost mp-close" onclick="closeMiniPlayerIndex()" title="Tutup" aria-label="Tutup mini player">
                     <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
                 </button>
             </div>
         </div>
     </div>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <script>
         lucide.createIcons();
 

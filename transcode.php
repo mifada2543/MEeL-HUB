@@ -64,7 +64,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
 
     <script src="assets/js/lucide.js"></script>
     <script src="assets/js/sweetalert2.all.min.js"></script>
-    <script src="assets/js/script.js"></script>
+    <script src="assets/js/script.min.js"></script>
 
     <link href="assets/css/tailwind.min.css" rel="stylesheet">
     <style>

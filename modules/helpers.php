@@ -24,7 +24,7 @@ function music_thumbnail_url(?string $thumbnail): string
 {
     $thumbnail = trim((string)$thumbnail);
     $thumb_dir = __DIR__ . '/../music/upload/thumbnail/';
-    $fallback  = '../assets/img/music0.png';
+    $fallback  = '../assets/img/music0.webp';
 
     // Cache default path untuk menghindari is_file() berulang
     static $default_thumb = null;

@@ -1214,7 +1214,7 @@ if (isset($_POST['upload'])) {
         </div>
     </div>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <script>
         lucide.createIcons();
 

@@ -94,7 +94,7 @@ switch ($ext) {
     <link rel="preconnect" href="<?= $base_url ?>/" crossorigin>
     <link rel="stylesheet" href="../assets/css/plyr.css">
     <link rel="stylesheet" href="../assets/css/music.css">
-    <script src="../assets/js/htmx.js" defer></script>
+    <script src="../assets/js/htmx.min.js" defer></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -313,7 +313,7 @@ switch ($ext) {
                             <div id="like-dislike-container" class="flex items-center gap-2 flex-wrap">
                                 <button
                                     hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
-                                    hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"like"}'
+                                    hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"like","csrf_token":"<?= $_SESSION['csrf_token'] ?>"}'
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'like'
                                         ? 'bg-orange-500/15 border-orange-500/30 text-orange-400'
@@ -323,7 +323,7 @@ switch ($ext) {
                                 </button>
                                 <button
                                     hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
-                                    hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"dislike"}'
+                                    hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"dislike","csrf_token":"<?= $_SESSION['csrf_token'] ?>"}'
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'dislike'
                                         ? 'bg-white/10 border-white/15 text-white'
@@ -671,7 +671,7 @@ switch ($ext) {
         </div>
 
     </main> <?php include '../partials/footer.php'; ?>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <script>
         window.MEEL_MUSIC_CONFIG = {
             id: <?= $id ?>,
@@ -722,9 +722,9 @@ switch ($ext) {
             if (options) options.classList.add('hidden');
         };
     </script>
-    <script src="../assets/js/plyr.js" defer></script>
+    <script src="../assets/js/plyr.min.js" defer></script>
     <script src="../assets/js/sweetalert2.all.min.js" defer></script>
-    <script src="../assets/js/player_music.js" defer></script>
+    <script src="../assets/js/player_music.min.js" defer></script>
 </body>
 
 </html>

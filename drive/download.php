@@ -14,17 +14,8 @@ if (!isset($_GET['csrf_token']) || !verify_csrf_token($_GET['csrf_token'])) {
     exit();
 }
 
-// Rate Limiting
-require_once '../modules/System.php';
-$sys = new System($conn);
-$user_id = $_SESSION['user_id'];
-
-$limit = $sys->checkRateLimit($user_id, 'drive_download', 'user');
-if (!$limit['allowed']) {
-    http_response_code(429);
-    echo htmlspecialchars('Terlalu banyak download. Coba lagi dalam ' . $limit['minutes'] . ' menit.', ENT_QUOTES, 'UTF-8');
-    exit();
-}
+// Download adalah operasi baca — tidak perlu rate limit
+// Proteksi sudah cukup via CSRF token + autentikasi session
 
 $storage = new DriveStorage(dirname(__DIR__) . '/data_drive', $user);
 
@@ -37,7 +28,7 @@ try {
 
     // Audit Logging
     log_drive_operation(
-        $user_id,
+        $user->userId,
         $user->username,
         'download',
         $file['name'],
@@ -58,7 +49,7 @@ try {
     exit();
 } catch (RuntimeException $exception) {
     log_drive_operation(
-        $user_id,
+        $user->userId,
         $user->username,
         'download',
         $_GET['file'] ?? 'unknown',

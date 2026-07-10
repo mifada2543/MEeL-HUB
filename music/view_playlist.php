@@ -324,8 +324,8 @@ if (isset($_GET['content_only'])) {
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/music.css">
     <link href="../assets/css/tailwind.min.css" rel="stylesheet">
-    <script src="../assets/js/htmx.js" defer></script>
-    <script src="../assets/js/sweetalert2.all.min.js" defer></script>
+    <script src="../assets/js/htmx.min.js"></script>
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">

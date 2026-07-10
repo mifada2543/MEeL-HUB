@@ -69,7 +69,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     <div class="absolute inset-0 pointer-events-none opacity-5 z-0" style="background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 6px 100%;"></div>
 
     <!-- Main Content Container -->
-    <div class="relative z-10 flex-grow flex items-center justify-center p-6">
+    <main class="relative z-10 flex-grow flex items-center justify-center p-6">
         <div class="max-w-md w-full glass-panel rounded-3xl p-8 text-center relative overflow-hidden">
 
             <!-- Border Glow Accent Line -->
@@ -114,7 +114,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
             </div>
 
         </div>
-    </div>
+    </main>
 
     <!-- Footer Area -->
     <div class="w-full text-center pb-6 relative z-20">
