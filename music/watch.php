@@ -90,9 +90,11 @@ switch ($ext) {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title><?= htmlspecialchars($v['title']) ?> — MEeL Music</title>
     <?php include '../partials/link.php'; ?>
-    <script src="../assets/js/htmx.js"></script>
+    <?php $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'); ?>
+    <link rel="preconnect" href="<?= $base_url ?>/" crossorigin>
     <link rel="stylesheet" href="../assets/css/plyr.css">
     <link rel="stylesheet" href="../assets/css/music.css">
+    <script src="../assets/js/htmx.js" defer></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -288,7 +290,7 @@ switch ($ext) {
                             title="Profil @<?= htmlspecialchars($v['uploader']) ?>"
                             class="w-9 h-9 rounded-full overflow-hidden border border-orange-500/25 flex-shrink-0 block">
                             <?php if (!empty($v['uploader_pfp'])): ?>
-                                <img src="../profile/upload/<?= htmlspecialchars($v['uploader_pfp']) ?>" alt="Foto profil <?= htmlspecialchars($v['uploader']) ?>" class="w-full h-full object-cover">
+                                <img src="../profile/upload/<?= htmlspecialchars($v['uploader_pfp']) ?>" alt="Foto profil <?= htmlspecialchars($v['uploader']) ?>" width="68" height="68" class="w-full h-full object-cover" loading="lazy" decoding="async">
                             <?php else: ?>
                                 <div class="w-full h-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-sm font-bold">
                                     <?= strtoupper(substr($v['uploader'], 0, 1)) ?>
@@ -351,7 +353,7 @@ switch ($ext) {
             </div>
 
             <?php if (!empty($v['description'])): ?>
-                <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6 desc-container" style="min-height:120px;contain-intrinsic-size:120px;content-visibility:auto">
                     <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500 mb-3 flex items-center gap-2">
                         <i data-lucide="align-left" class="w-3.5 h-3.5 text-orange-500"></i> Deskripsi
                     </div>
@@ -404,7 +406,7 @@ switch ($ext) {
             <?php endif; ?>
 
             <?php if ($is_logged_in): ?>
-                <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
+                <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden comment-section" id="comment-section" style="content-visibility:auto;contain-intrinsic-size:200px">
                     <div class="px-4 sm:px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                         <i data-lucide="message-square" class="w-3.5 h-3.5 text-orange-500"></i>
                         <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Komentar</span>
@@ -496,7 +498,7 @@ switch ($ext) {
 
         </div>
 
-        <div class="w-full lg:w-80 flex-shrink-0 space-y-6 px-4 sm:px-5 lg:px-0">
+        <div class="w-full lg:w-80 flex-shrink-0 space-y-6 px-4 sm:px-5 lg:px-0 rekomendasi-sidebar" style="content-visibility:auto;contain-intrinsic-size:500px;min-height:300px">
 
             <?php if ($playlist_context > 0 && $queue_query && $queue_query->num_rows > 0): ?>
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
@@ -720,9 +722,9 @@ switch ($ext) {
             if (options) options.classList.add('hidden');
         };
     </script>
-    <script src="../assets/js/plyr.js"></script>
-    <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/player_music.js"></script>
+    <script src="../assets/js/plyr.js" defer></script>
+    <script src="../assets/js/sweetalert2.all.min.js" defer></script>
+    <script src="../assets/js/player_music.js" defer></script>
 </body>
 
 </html>
