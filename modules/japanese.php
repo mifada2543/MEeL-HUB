@@ -12,6 +12,9 @@ if (!function_exists('getRomajiName')) {
     {
         if (empty($text)) return 'untitled';
 
+        // Simpan input asli sebagai cadangan jika MeCab/transliterasi gagal
+        $original_text = $text;
+
         // 1. Kamus Koreksi Karakter Spesifik & Simbol
         $search = [
             '×', 'x', 'X', '*', '&', '/',
@@ -60,7 +63,15 @@ if (!function_exists('getRomajiName')) {
         // 4. Sanitasi Slug
         $clean = preg_replace('/[^a-z0-9\-]/u', '-', $text);
         $clean = preg_replace('/-+/', '-', trim($clean, '-'));
-        return $clean ?: 'untitled-media';
+
+        // Fallback: jika hasil processing kosong, gunakan sanitasi dari teks asli
+        if (empty($clean)) {
+            $fallback = preg_replace('/[^a-z0-9\-]/u', '-', $original_text);
+            $fallback = preg_replace('/-+/', '-', trim($fallback, '-'));
+            return $fallback ?: 'untitled';
+        }
+
+        return $clean;
     }
 }
 
@@ -74,6 +85,7 @@ if (!function_exists('analyzeJapaneseText')) {
         // 1. Preprocessing
         $search  = ['×', 'x', 'X', '*', '&', '/', '【', '】', '「', '」', '(', ')', '鏡音', '巡音', '初音'];
         $replace = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'かがみね', 'めぐりね', 'hatsune'];
+        $original_text = $text; // Simpan asli untuk fallback
         $clean_text = str_replace($search, $replace, $text);
 
         // 2. MeCab — 1x panggil untuk kedua kebutuhan
@@ -144,7 +156,15 @@ if (!function_exists('analyzeJapaneseText')) {
         $clean = preg_replace('/[^a-z0-9\-]/u', '-', $romaji_text);
         $clean = preg_replace('/-+/', '-', trim($clean, '-'));
 
-        $result['romaji']  = $clean ?: 'untitled-media';
+        // Fallback: jika hasil processing kosong, gunakan sanitasi dari teks asli
+        if (empty($clean)) {
+            $fallback = preg_replace('/[^a-z0-9\-]/u', '-', $original_text);
+            $fallback = preg_replace('/-+/', '-', trim($fallback, '-'));
+            $result['romaji'] = $fallback ?: 'untitled';
+        } else {
+            $result['romaji'] = $clean;
+        }
+
         $result['english'] = trim(implode(' ', array_unique($glosses)));
         return $result;
     }
