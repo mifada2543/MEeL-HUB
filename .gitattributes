@@ -1,0 +1,59 @@
+# ===================================================
+# MEeL-HUB — Git Attributes Configuration
+# ===================================================
+# File ini mengontrol bagaimana GitHub Linguist
+# membaca dan mengkategorikan bahasa pemrograman
+# dalam repository ini.
+
+# ─── FORCE LANGUAGE DETECTION ────────────────────────────
+# GitHub Linguist kadang salah deteksi PHP sebagai Hack
+# karena keduanya punya ekstensi .php
+# https://github.com/github/linguist/blob/master/docs/overrides.md
+*.php linguist-language=PHP
+
+# ─── THIRD-PARTY / VENDORED LIBRARIES (CSS) ──────────────
+# Tailwind CSS (CDN)
+assets/css/tailwind.min.css linguist-vendored
+
+# Plyr media player styles
+assets/css/plyr.css              linguist-vendored
+
+# Font files (Google Fonts - woff2)
+assets/css/font/*.woff2          linguist-vendored
+
+# ─── THIRD-PARTY / VENDORED LIBRARIES (JS) ───────────────
+# HLS.js - HLS video streaming library
+assets/js/hls.js                 linguist-vendored
+
+# Lucide Icons (SVG icon library)
+assets/js/lucide.js              linguist-vendored
+
+# HTMX - AJAX library
+assets/js/htmx.min.js            linguist-vendored
+
+# Plyr - Media player
+assets/js/plyr.min.js            linguist-vendored
+
+# SweetAlert2 - Modal/notification library
+assets/js/sweetalert2.all.min.js linguist-vendored
+
+# ─── OTHER ASSETS ────────────────────────────────────────
+# PWA Manifest
+assets/manifest.json             linguist-vendored
+
+# MEeL Logo
+assets/MEeL.png                  linguist-vendored
+
+# ─── FORCE HTML DETECTION ─────────────────────────────────
+# Mencegah inline JS/CSS di index.html mempengaruhi statistik
+index.html                       linguist-language=HTML
+arcade/*/index.html              linguist-language=HTML
+
+# ===================================================
+# NOTES:
+# - File .min.js hasil build project sendiri
+#   (player_music.min.js, player_video.min.js,
+#    script.min.js) TIDAK ditandai sebagai vendored
+#    karena merupakan kode original project.
+# - Dokumentasi di docs/ juga tetap dihitung.
+# ===================================================
