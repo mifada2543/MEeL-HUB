@@ -131,7 +131,7 @@ Semua path penyimpanan media **terpusat** di `auth/config.php` melalui konstanta
 
 ```php
 // File: auth/config.php — ★ Cukup ubah MEEL_HDD_BASE, sisanya otomatis
-define('MEEL_HDD_BASE', '/media/muhammaddaffa/MEeL/media');
+define('MEEL_HDD_BASE', '/media/[user]/MEeL/media');
 
 // Path turunan (otomatis mengikuti MEEL_HDD_BASE)
 define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
@@ -276,7 +276,7 @@ else                       $interval = 10;    // ≤ 5 menit → tiap 10 detik
 ```php
 $this->base_dir = defined('MEEL_HDD_VIDEO_UPLOAD')
     ? MEEL_HDD_VIDEO_UPLOAD
-    : "/media/muhammaddaffa/MEeL/media/video/upload/"; // fallback
+    : "/path/to/your/media/video/upload/"; // fallback
 ```
 
 ### Upload Limits

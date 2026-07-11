@@ -37,7 +37,7 @@ if ($conn->connect_error) {
 //    Semua modul (Video, Music, Books, Drive) akan mengikuti path ini
 // ★ Untuk HDD eksternal, pastikan sudah di-mount dan writable
 
-define('MEEL_HDD_BASE', '/media/muhammaddaffa/MEeL/media');
+define('MEEL_HDD_BASE', '/path/to/your/media');
 
 // ── Path turunan (jangan diubah kecuali paham struktur folder) ──
 define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
