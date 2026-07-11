@@ -121,20 +121,6 @@ function verify_csrf_token(?string $token): bool
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
 }
 
-/**
- * Dapatkan CSP nonce untuk request saat ini.
- * Nonce digenerate sekali per request dan digunakan untuk:
- *  - Menggantikan 'unsafe-inline' di Content-Security-Policy
- *  - Ditambahkan ke setiap tag <script> dan <style> via output buffer callback
- */
-function get_nonce(): string
-{
-    if (!isset($GLOBALS['_csp_nonce'])) {
-        $GLOBALS['_csp_nonce'] = bin2hex(random_bytes(16));
-    }
-    return $GLOBALS['_csp_nonce'];
-}
-
 // ════════════════════════════════════════════════════════════════
 // PRE-FLIGHT DISK SPACE HELPERS
 // ════════════════════════════════════════════════════════════════
