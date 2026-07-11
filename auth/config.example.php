@@ -67,7 +67,14 @@ if (!headers_sent()) {
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
         header("Strict-Transport-Security: max-age=15552000; includeSubDomains");
     }
-    header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'");
+    // 🔒 CSP NONCE: generate per request untuk gantikan 'unsafe-inline'
+    $GLOBALS['_csp_nonce'] = bin2hex(random_bytes(16));
+    // Nonce mengamankan <script> inline; 'unsafe-inline' diperlukan untuk 132+ event handler
+    // (onclick, onerror, dll). Ketika nonce + unsafe-inline hadir bersamaan,
+    // nonce mengontrol <script> element, unsafe-inline mengontrol event handler.
+    // style-src juga 'unsafe-inline' karena JS library (SweetAlert2, HTMX) membuat
+    // style secara dinamis yang tidak bisa dijangkau nonce.
+    header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'nonce-{$GLOBALS['_csp_nonce']}' 'unsafe-inline' 'unsafe-eval'");
 }
 
 // ── CSRF Token ──
@@ -102,6 +109,38 @@ if (isset($_SESSION['LAST_ACTIVITY'])) {
     }
 }
 $_SESSION['LAST_ACTIVITY'] = time();
+
+// ════════════════════════════════════════════════════════════════
+// CSP NONCE OUTPUT BUFFER
+// Inject nonce="..." ke semua tag <script> dan <style> inline
+// ════════════════════════════════════════════════════════════════
+
+if (!isset($GLOBALS['_csp_ob_started'])) {
+    $GLOBALS['_csp_ob_started'] = true;
+
+    if (!isset($GLOBALS['_csp_nonce'])) {
+        $GLOBALS['_csp_nonce'] = bin2hex(random_bytes(16));
+    }
+    $_nonce = $GLOBALS['_csp_nonce'];
+
+    ob_start(function (string $html) use ($_nonce): string {
+        // Inject nonce ke <script> inline (tanpa src attribute)
+        $html = preg_replace(
+            '/<script\b(?![^>]*\bsrc\s*=)(?![^>]*\bnonce\s*=)([^>]*)>/i',
+            '<script$1 nonce="' . $_nonce . '">',
+            $html
+        );
+
+        // Inject nonce ke <style> inline
+        $html = preg_replace(
+            '/<style\b(?![^>]*\bnonce\s*=)([^>]*)>/i',
+            '<style$1 nonce="' . $_nonce . '">',
+            $html
+        );
+
+        return $html;
+    });
+}
 
 // ── Activity Logger ──
 include_once __DIR__ . '/../modules/activity_logger.php';

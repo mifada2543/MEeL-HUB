@@ -137,11 +137,20 @@ final class DriveStorage
             throw new RuntimeException('Berkas gagal diterima dari browser.');
         }
 
+        // 🟢 PRE-FLIGHT: Cek ruang disk drive — minimal 100MB free
         $scope = $this->resolveUploadScope($requestedScope);
         $cleanName = $this->sanitizeFileName((string) ($file['name'] ?? ''));
         $type = $this->detectTypeFromFilename($cleanName);
         $directory = $this->getDirectoryForType($type, $scope);
         $this->ensureDirectoryExists($directory);
+
+        $fileSize = (int) ($file['size'] ?? 0);
+        $requiredBytes = max(100 * 1024 * 1024, $fileSize * 2); // minimal 100MB atau 2x ukuran file
+        try {
+            require_disk_space($requiredBytes, $directory, 'Drive storage');
+        } catch (\RuntimeException $e) {
+            throw new RuntimeException($e->getMessage());
+        }
 
         $finalName = $this->ensureUniqueFilename($directory, $cleanName);
         $destination = $directory . '/' . $finalName;
