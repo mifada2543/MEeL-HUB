@@ -90,6 +90,16 @@
 | **Admin Panel** | Dashboard monitoring, manajemen user, queue control |
 
 ---
+## 📸 Screenshots
+
+### 🎬 Video Library
+![Video Library](assets/img/video0.webp)
+
+### 🎵 Music Discovery
+![Music Discovery](assets/img/music0.webp)
+
+> Sisanya menyusul
+---
 
 ## 🛠️ Tech Stack
 
