@@ -373,7 +373,7 @@ class Uploader
         // ── THUMBNAIL ─────────────────────────────────────────────────────────
         // PRIORITAS 1: Thumbnail yang diupload user
         // PRIORITAS 2: Auto-generate dari frame video (fallback)
-        $thumb_name    = "default_thumb.jpg";
+        $thumb_name    = "default_thumb.webp";
         $thumb_dir     = $this->base_dir . "thumbnail/";
         $thumb_from_user = false;
 
@@ -382,14 +382,13 @@ class Uploader
             && $files['thumbnail']['error'] === UPLOAD_ERR_OK
         ) {
             // ── PRIORITAS 1: User upload thumbnail ───────────────────────────
-            $t_ext  = strtolower(pathinfo($files['thumbnail']['name'], PATHINFO_EXTENSION));
-            $t_name = $clean_name . "_thumb." . $t_ext;
+            $t_name = $clean_name . "_thumb.webp";
             $t_dst  = $thumb_dir . $t_name;
 
-            // Konversi ke JPG via FFmpeg agar konsisten + resize max 1280px
+            // Konversi ke WebP via FFmpeg — lebih kecil dari JPG, kualitas tetap terjaga
             $cmd_user_thumb = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin)
                 . " -y -i " . escapeshellarg($files['thumbnail']['tmp_name'])
-                . " -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
+                . " -vf \"scale='min(1280,iw)':-1\" -c:v libwebp -q:v 78 "
                 . escapeshellarg($t_dst) . " 2>&1";
             exec($cmd_user_thumb);
 
@@ -405,12 +404,12 @@ class Uploader
 
         if (!$thumb_from_user) {
             // ── PRIORITAS 2: Auto-generate dari frame video ───────────────────
-            $thumb_name  = $clean_name . "_thumb.jpg";
+            $thumb_name  = $clean_name . "_thumb.webp";
             $work_thumb  = $work_folder . $thumb_name;
 
             $cmd_thumb = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i "
                 . escapeshellarg($staged_video)
-                . " -ss 00:00:05 -vframes 1 -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
+                . " -ss 00:00:05 -vframes 1 -vf \"scale='min(1280,iw)':-1\" -c:v libwebp -q:v 78 "
                 . escapeshellarg($work_thumb) . " 2>&1";
             exec($cmd_thumb);
 
@@ -418,14 +417,14 @@ class Uploader
             if (!file_exists($work_thumb) || filesize($work_thumb) === 0) {
                 $cmd_thumb_fallback = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i "
                     . escapeshellarg($staged_video)
-                    . " -ss 00:00:01 -vframes 1 -vf \"scale='min(1280,iw)':-1\" -q:v 5 "
+                    . " -ss 00:00:01 -vframes 1 -vf \"scale='min(1280,iw)':-1\" -c:v libwebp -q:v 78 "
                     . escapeshellarg($work_thumb) . " 2>&1";
                 exec($cmd_thumb_fallback);
             }
 
             $thumb_generated = file_exists($work_thumb) && filesize($work_thumb) > 0;
             if (!$thumb_generated) {
-                $thumb_name = "default_thumb.jpg";
+                $thumb_name = "default_thumb.webp";
             }
         }
 
@@ -558,10 +557,10 @@ class Uploader
             $rows         = ceil($total_frames / $cols);
             if ($rows < 1) $rows = 1;
 
-            $sprite_file = $target_folder . 'thumb_sprite.jpg';
+            $sprite_file = $target_folder . 'thumb_sprite.webp';
             $vtt_file    = $target_folder . 'thumbnails.vtt';
-            // Command FFMPEG
-            $cmd_sprite = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($staged_video) . " -vf \"fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}\" " . escapeshellarg($sprite_file) . " 2>&1";
+            // Command FFMPEG — sprite output ke WebP untuk ukuran lebih kecil
+            $cmd_sprite = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($staged_video) . " -vf \"fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}\" -c:v libwebp -q:v 78 " . escapeshellarg($sprite_file) . " 2>&1";
             exec($cmd_sprite);
             if (file_exists($sprite_file)) {
                 $vtt_content = "WEBVTT\n\n";
@@ -581,7 +580,7 @@ class Uploader
                     $y   = $row * $height;
                     // Konten VTT
                     $vtt_content .= "$start_time --> $end_time\n";
-                    $vtt_content .= "thumb_sprite.jpg#xywh=$x,$y,$width,$height\n\n";
+                    $vtt_content .= "thumb_sprite.webp#xywh=$x,$y,$width,$height\n\n";
                 }
                 // Taruh Konten
                 file_put_contents($vtt_file, $vtt_content);
