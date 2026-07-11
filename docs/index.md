@@ -13,9 +13,10 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 | 3 | [🏗️ Modul & Arsitektur](modules.md) | Penjelasan mendalam setiap modul dan class |
 | 4 | [🔌 API & Controller](api.md) | Dokumentasi semua endpoint AJAX/HTMX |
 | 5 | [🔒 Keamanan](security.md) | Sistem keamanan, RBAC, CSRF, IP Banning |
-| 6 | [🔧 Troubleshooting](troubleshooting.md) | Solusi untuk masalah umum |
-| 7 | [👨‍💻 Panduan Development](development.md) | Standar koding, kontribusi, dan testing |
-| 8 | [📥 Troubleshooting Advanced Upload](upload_issue.md) | Penanganan masalah yt-dlp & background queue |
+| 6 | [🌍 Problem Solved](problem-solved.md) | Masalah dunia nyata yang melatarbelakangi MEeL |
+| 7 | [🔧 Troubleshooting](troubleshooting.md) | Solusi untuk masalah umum |
+| 8 | [👨‍💻 Panduan Development](development.md) | Standar koding, kontribusi, dan testing |
+| 9 | [📥 Troubleshooting Advanced Upload](upload_issue.md) | Penanganan masalah yt-dlp & background queue |
 
 ---
 

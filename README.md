@@ -279,6 +279,7 @@ Dokumentasi proyek tersedia di direktori [`docs/`](docs/):
 | [🏗️ Modul](docs/modules.md) | Arsitektur modul & class diagram |
 | [🔌 API](docs/api.md) | Endpoint controllers |
 | [🔒 Keamanan](docs/security.md) | Sistem keamanan & RBAC |
+| [🌍 Problem Solved](docs/problem-solved.md) | Masalah dunia nyata yang MEeL selesaikan |
 | [🔧 Troubleshooting](docs/troubleshooting.md) | Pemecahan masalah umum |
 | [👨‍💻 Development](docs/development.md) | Panduan kontribusi |
 | [📥 Advanced Upload](docs/upload_issue.md) | Penanganan masalah yt-dlp & queue |
