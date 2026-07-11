@@ -34,7 +34,7 @@ if ($user_role === 'admin') {
 }
 
 // ── Path dari config.php (dideklarasikan di sini agar scope global) ──────────
-$hdd_base_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : '/media/muhammaddaffa/MEeL/media';
+$hdd_base_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : '/path/to/your/media';
 $hdd_dir       = dirname($hdd_base_path);
 $media_root    = dirname($hdd_dir);
 

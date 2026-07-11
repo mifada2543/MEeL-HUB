@@ -65,7 +65,7 @@ function music_thumbnail_url(?string $thumbnail): string
     return $default_thumb;
 }
 // Tentukan path salah satu folder utama di HDD (dari config.php)
-$hdd_check_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : '/media/muhammaddaffa/MEeL/media';
+$hdd_check_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : '/path/to/your/media';
 
 // Cek apakah folder tersebut bisa diakses
 if (!is_dir($hdd_check_path)) {

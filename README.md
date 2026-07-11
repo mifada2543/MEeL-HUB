@@ -242,7 +242,7 @@ sudo systemctl restart apache2
 
 ```php
 // auth/config.php — ★ Cukup ubah 1 baris ini
-define('MEEL_HDD_BASE', '/media/muhammaddaffa/MEeL/media');
+define('MEEL_HDD_BASE', '/media/[user]/MEeL/media');
 
 // Semua modul otomatis mengikuti:
 define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');

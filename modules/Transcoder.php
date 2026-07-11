@@ -6,7 +6,7 @@
 
 // Pastikan konstanta path terdefinisi (dari auth/config.php)
 if (!defined('MEEL_HDD_BASE')) {
-    define('MEEL_HDD_BASE', '/media/muhammaddaffa/MEeL/media');
+    define('MEEL_HDD_BASE', '/path/to/your/media');
     define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
     define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
     define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
