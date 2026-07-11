@@ -11,9 +11,9 @@
 [![MariaDB](https://img.shields.io/badge/MariaDB-10.2%2B-003545?style=flat-square&logo=mariadb&logoColor=white)](https://mariadb.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-CDN-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-6.0%2B-007808?style=flat-square&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
-[![License](https://img.shields.io/badge/License-Custom-22c55e?style=flat-square)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue?style=flat-square)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/Maintained-Yes-22c55e?style=flat-square)](https://github.com/mifada2543/MEeL)
-
+[![GitHub Stars](https://img.shields.io/github/stars/mifada2543/MEeL?style=social)](https://github.com/mifada2543/MEeL)
 ---
 
 ## 📖 Ikhtisar
@@ -288,19 +288,23 @@ Dokumentasi proyek tersedia di direktori [`docs/`](docs/):
 
 ## 📄 Lisensi
 
-Proyek ini dilisensikan di bawah **Custom License by Mifada**.
+Proyek ini dilisensikan di bawah **GNU General Public License v3.0 (GPLv3)**.
 
 ```
-✅ Diizinkan:
-   • Penggunaan, pembelajaran, & riset personal
-   • Modifikasi dan pengembangan lokal
-   • Deployment internal / offline (LAN)
+✅ Anda bebas untuk:
+   • Menggunakan, menyalin, dan mendistribusikan perangkat lunak ini
+   • Memodifikasi dan membuat karya turunan
+   • Menggunakannya untuk keperluan komersial
+   • Menjalankan untuk keperluan pribadi, pendidikan, atau publik
 
-⚠️ Memerlukan izin tertulis:
-   • Publikasi ulang atau redistribusi publik
-   • Penggunaan komersial atau monetisasi
-   • Penghapusan atribusi pembuat asli
+⚠️ Kewajiban (Copyleft):
+   • Anda harus menyertakan lisensi GPLv3 yang sama pada distribusi ulang
+   • Anda harus menyertakan kode sumber jika Anda mendistribusikan secara publik
+   • Anda harus mencantumkan perubahan yang dibuat
+   • Lisensi ini bersifat "viral" — karya turunan harus tetap GPLv3
 ```
+
+> © 2026 Mifada. Beberapa hak dilindungi. Lihat [LICENSE](LICENSE) untuk detail.
 ---
 ## Q&A
 ### Q: Kenapa belum ada versi docker?
@@ -332,11 +336,11 @@ Proyek ini dilisensikan di bawah **Custom License by Mifada**.
 > * **EN:** The public demo domain may occasionally be unavailable because it runs directly on the developer's local device.
 > * **ID:** Domain demo publik terkadang tidak berfungsi karena sistem berjalan langsung di perangkat lokal milik developer.
 
-**Kontak:** `minecraft.daffa2501@gmail.com` · [github.com/mifada2543](https://github.com/mifada2543)
+**Kontak:** `mifada2543@gmail.com` · [github.com/mifada2543](https://github.com/mifada2543)
 
 ---
 
 <div align="center">
-  <strong>MEeL</strong> © 2025 — Mifada<br>
+  <strong>MEeL</strong> © 2026 — Mifada<br>
   <sub>Dibuat dengan ❤️ untuk streaming media pribadi</sub>
 </div>
