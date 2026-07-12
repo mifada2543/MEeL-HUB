@@ -205,7 +205,7 @@ if ($user->isMember()) {
                         <label for="fileInput" class="flex items-center justify-center gap-3 p-4 bg-black/30 rounded-xl cursor-pointer hover:bg-black/50 transition border border-gray-800">
                             <i data-lucide="cloud-upload" class="w-6 h-6 text-blue-500"></i>
                             <span id="fileLabel" class="text-sm text-gray-400 font-medium">Tarik file atau klik untuk memilih</span>
-                            <input type="file" name="file_drive" id="fileInput" class="hidden" onchange="updateFileName(this)">
+                            <input type="file" name="file_drive" id="fileInput" class="hidden" onchange="updateFileName(this)" required>
                         </label>
                     </div>
 

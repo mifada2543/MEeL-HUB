@@ -360,9 +360,6 @@ if (isset($_GET['content_only'])) {
             </div>
 
             <div class="flex items-center gap-3 sm:gap-5 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <a href="../video/index.php" class="flex items-center gap-1.5 text-gray-600 hover:text-red-500 transition-all">
-                    <i data-lucide="play" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Video</span>
-                </a>
                 <?php include '../partials/nav.php'; ?>
             </div>
         </div>
