@@ -22,41 +22,41 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Browser Request                       │
+│                    Browser Request                      │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              1. Apache .htaccess Layer                   │
+│              1. Apache .htaccess Layer                  │
 │  • Block direct access to sensitive directories         │
 │  • mod_rewrite rules                                    │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              2. Session Authentication (auth.php)        │
+│              2. Session Authentication (auth.php)       │
 │  • Check user_id in session                             │
 │  • Validate last_session_id (anti-hijack)               │
 │  • Session timeout (12 jam)                             │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              3. IP Ban Check (activity_logger.php)       │
+│              3. IP Ban Check (activity_logger.php)      │
 │  • Check IP against banned list                         │
 │  • Block all non-admin users if IP is banned            │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              4. Role-Based Access (RBAC)                 │
+│              4. Role-Based Access (RBAC)                │
 │  • Admin / Member / User / Guest                        │
 │  • Feature gating per page                              │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              5. CSRF Protection                          │
-│  • Token validation on all POST requests                 │
+│              5. CSRF Protection                         │
+│  • Token validation on all POST requests                │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              6. Prepared Statements                      │
+│              6. Prepared Statements                     │
 │  • All database queries use mysqli prepared statements  │
 │  • No raw SQL concatenation with user input             │
 └─────────────────────────────────────────────────────────┘
