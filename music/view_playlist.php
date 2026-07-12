@@ -7,6 +7,7 @@ require_once '../modules/MediaLibrary.php';
 
 $playlist_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $user_id     = $_SESSION['user_id'] ?? 0;
+$format_filter = $_GET['format'] ?? 'all';
 
 // Validasi playlist milik user
 $pl_stmt = $conn->prepare("SELECT * FROM playlists WHERE id = ? AND user_id = ?");
@@ -54,7 +55,7 @@ function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_que
                 hx-target="main"
                 hx-swap="innerHTML"
                 hx-push-url="index.php"
-                onclick="if (typeof resetActivePlaylist === 'function') resetActivePlaylist();"
+                onclick="if (typeof resetActivePlaylist === 'function') resetActivePlaylist(); if (typeof resetArtistHighlight === 'function') resetArtistHighlight();"
                 class="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-600 hover:text-orange-400 transition-all">
                 <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Library
             </a>
@@ -68,10 +69,8 @@ function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_que
                         rounded-2xl shadow-2xl shadow-orange-900/40 flex items-center justify-center overflow-hidden">
                 <?php if ($first_song && !empty($first_song['thumbnail'])): ?>
                     <img src="<?= htmlspecialchars(music_thumbnail_url($first_song['thumbnail'])) ?>"
-                        alt="cover" class="w-full h-full object-cover opacity-50">
-                    <div class="absolute inset-0 bg-gradient-to-br from-orange-500/60 to-red-700/60"></div>
+                        alt="cover" class="w-full h-full object-cover">
                 <?php endif; ?>
-                <i data-lucide="list-music" class="absolute w-8 h-8 sm:w-10 sm:h-10 text-white/80 drop-shadow-lg"></i>
             </div>
             <div class="absolute -inset-2 bg-orange-500/15 rounded-3xl blur-xl -z-10"></div>
         </div>
@@ -222,86 +221,86 @@ function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_que
     <?php endif; ?>
 
     <?php if ($include_script): ?>
-    <!-- Script: setup klik track di playlist untuk mini player (menyertakan playlist_id) -->
-    <script>
-        (function() {
-            function setupPlaylistClicks() {
-                document.querySelectorAll('.music-pl-item').forEach(function(item) {
-                    if (item.dataset.plListenerAdded) return;
-                    item.dataset.plListenerAdded = 'true';
+        <!-- Script: setup klik track di playlist untuk mini player (menyertakan playlist_id) -->
+        <script>
+            (function() {
+                function setupPlaylistClicks() {
+                    document.querySelectorAll('.music-pl-item').forEach(function(item) {
+                        if (item.dataset.plListenerAdded) return;
+                        item.dataset.plListenerAdded = 'true';
 
-                    // Klik seluruh row (kecuali form hapus) → play via mini player
-                    item.addEventListener('click', function(e) {
-                        // Abaikan klik pada tombol hapus / form
-                        if (e.target.closest('form') || e.target.closest('button[type="submit"]')) return;
-                        // Kalau klik link langsung (judul/thumbnail) → biarkan navigasi biasa
-                        if (e.target.closest('a')) return;
+                        // Klik seluruh row (kecuali form hapus) → play via mini player
+                        item.addEventListener('click', function(e) {
+                            // Abaikan klik pada tombol hapus / form
+                            if (e.target.closest('form') || e.target.closest('button[type="submit"]')) return;
+                            // Kalau klik link langsung (judul/thumbnail) → biarkan navigasi biasa
+                            if (e.target.closest('a')) return;
 
-                        e.preventDefault();
-                        playViaPlayer(item);
-                    });
-
-                    // Tombol play (ikon ▶ di kolom nomor)
-                    var playBtn = item.querySelector('.pl-play-btn');
-                    if (playBtn) {
-                        playBtn.addEventListener('click', function(e) {
                             e.preventDefault();
-                            e.stopPropagation();
                             playViaPlayer(item);
                         });
+
+                        // Tombol play (ikon ▶ di kolom nomor)
+                        var playBtn = item.querySelector('.pl-play-btn');
+                        if (playBtn) {
+                            playBtn.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                playViaPlayer(item);
+                            });
+                        }
+                    });
+                }
+
+                function playViaPlayer(item) {
+                    var playlistId = item.dataset.playlistId;
+                    var musicId = item.dataset.id;
+                    var watchUrl = item.dataset.watchUrl; // sudah mengandung &playlist_id=X
+
+                    // Cari nextSong: item berikutnya di DOM
+                    var allItems = Array.from(document.querySelectorAll('.music-pl-item'));
+                    var idx = allItems.indexOf(item);
+                    var nextSongUrl = '';
+                    if (idx >= 0 && idx < allItems.length - 1) {
+                        nextSongUrl = allItems[idx + 1].dataset.watchUrl || '';
                     }
-                });
-            }
 
-            function playViaPlayer(item) {
-                var playlistId = item.dataset.playlistId;
-                var musicId = item.dataset.id;
-                var watchUrl = item.dataset.watchUrl; // sudah mengandung &playlist_id=X
+                    var state = {
+                        id: musicId,
+                        musicId: musicId,
+                        title: item.dataset.title,
+                        artist: item.dataset.artist,
+                        thumbnail: item.dataset.thumbnail,
+                        thumbnailUrl: item.dataset.thumbnailUrl,
+                        filename: item.dataset.filename,
+                        // ↓ KEY FIX: watchUrl menyertakan playlist_id
+                        watchUrl: watchUrl,
+                        nextSongUrl: nextSongUrl,
+                        playlistId: playlistId,
+                        currentTime: 0,
+                        isPlaying: true,
+                    };
 
-                // Cari nextSong: item berikutnya di DOM
-                var allItems = Array.from(document.querySelectorAll('.music-pl-item'));
-                var idx = allItems.indexOf(item);
-                var nextSongUrl = '';
-                if (idx >= 0 && idx < allItems.length - 1) {
-                    nextSongUrl = allItems[idx + 1].dataset.watchUrl || '';
+                    sessionStorage.setItem('skip_resume_once', 'true');
+                    sessionStorage.setItem('meel_audio_state', JSON.stringify(state));
+
+                    // Trigger mini player index jika ada di halaman ini
+                    if (typeof loadAudio === 'function') {
+                        loadAudio(state, true);
+                        updateIndexUI();
+                        isMiniPlayerIndexActive = true;
+                        document.getElementById('mini-player-index').classList.add('active');
+                    }
                 }
 
-                var state = {
-                    id: musicId,
-                    musicId: musicId,
-                    title: item.dataset.title,
-                    artist: item.dataset.artist,
-                    thumbnail: item.dataset.thumbnail,
-                    thumbnailUrl: item.dataset.thumbnailUrl,
-                    filename: item.dataset.filename,
-                    // ↓ KEY FIX: watchUrl menyertakan playlist_id
-                    watchUrl: watchUrl,
-                    nextSongUrl: nextSongUrl,
-                    playlistId: playlistId,
-                    currentTime: 0,
-                    isPlaying: true,
-                };
-
-                sessionStorage.setItem('skip_resume_once', 'true');
-                sessionStorage.setItem('meel_audio_state', JSON.stringify(state));
-
-                // Trigger mini player index jika ada di halaman ini
-                if (typeof loadAudio === 'function') {
-                    loadAudio(state, true);
-                    updateIndexUI();
-                    isMiniPlayerIndexActive = true;
-                    document.getElementById('mini-player-index').classList.add('active');
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', setupPlaylistClicks);
+                } else {
+                    setupPlaylistClicks();
                 }
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', setupPlaylistClicks);
-            } else {
-                setupPlaylistClicks();
-            }
-            document.addEventListener('htmx:afterSwap', setupPlaylistClicks);
-        })();
-    </script>
+                document.addEventListener('htmx:afterSwap', setupPlaylistClicks);
+            })();
+        </script>
     <?php endif; ?>
 <?php
 }
@@ -326,6 +325,37 @@ if (isset($_GET['content_only'])) {
     <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/htmx.min.js"></script>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
+    <style>
+        .artist-dropdown-active #library-container > main {
+            position: relative;
+            z-index: 10;
+            filter: blur(4px);
+            opacity: 0.45;
+            pointer-events: none !important;
+            user-select: none !important;
+        }
+        .artist-dropdown-active #library-container > aside {
+            position: relative;
+            z-index: 50;
+        }
+        .artist-dropdown-active #library-container > aside *,
+        .artist-dropdown-active #library-container > aside *::before,
+        .artist-dropdown-active #library-container > aside *::after {
+            pointer-events: auto;
+        }
+        #mini-player-index {
+            cursor: default !important;
+        }
+        #mini-player-index img,
+        .mp-thumbnail {
+            cursor: pointer !important;
+            transition: transform 0.2s ease;
+        }
+        #mini-player-index img:hover,
+        .mp-thumbnail:hover {
+            transform: scale(1.05);
+        }
+    </style>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -369,25 +399,55 @@ if (isset($_GET['content_only'])) {
     <div id="library-container"
         class="w-full px-4 sm:px-6 xl:px-10 2xl:px-16 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        <!-- SIDEBAR KIRI -->
+        <!-- SIDEBAR -->
         <aside class="lg:col-span-3 xl:col-span-2">
             <div class="sticky top-20 space-y-6">
 
-                <!-- Back ke Library (Desktop) -->
+                <!-- FORMAT PILLS (Desktop) -->
                 <div class="hidden lg:block">
-                    <a href="index.php"
-                        class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-600 hover:text-white transition-colors">
-                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Library
-                    </a>
+                    <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3">Format</div>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="index.php?format=all"
+                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
+                        <a href="index.php?format=ogg"
+                            class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
+                        <a href="index.php?format=m4a"
+                            class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
+                        <a href="index.php?format=mp3"
+                            class="format-pill <?= $format_filter === 'mp3' ? 'active-blue' : '' ?>">MP3</a>
+                    </div>
                 </div>
 
-                <!-- Daftar Playlist User (Desktop) -->
+                <!-- ARTISTS (Desktop) -->
+                <div class="hidden lg:block">
+                    <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
+                        <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
+                    </div>
+                    <div class="space-y-0.5 max-h-[45vh] overflow-y-auto no-scrollbar">
+                        <a href="index.php"
+                            class="sidebar-link flex items-center justify-between px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all
+                                 text-gray-600 hover:text-gray-300 hover:bg-white/[.03]">
+                            <span>All Collections</span>
+                        </a>
+                        <?php
+                        $artists->data_seek(0);
+                        while ($a = $artists->fetch_assoc()): ?>
+                            <a href="index.php?artist=<?= urlencode($a['artist']) ?>"
+                                class="sidebar-link flex items-center justify-between px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all
+                                     text-gray-600 hover:text-gray-300 hover:bg-white/[.03]">
+                                <span class="truncate"><?= htmlspecialchars($a['artist']) ?></span>
+                            </a>
+                        <?php endwhile; ?>
+                    </div>
+                </div>
+
+                <!-- PLAYLISTS (Desktop) -->
                 <?php if ($is_logged_in): ?>
                     <div class="hidden lg:block">
                         <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
                             <i data-lucide="list-music" class="w-3 h-3"></i> Playlists
                         </div>
-                        <div class="space-y-0.5 max-h-[40vh] overflow-y-auto no-scrollbar">
+                        <div class="space-y-0.5 max-h-[30vh] overflow-y-auto no-scrollbar">
                             <?php
                             $my_pls = $library->getUserPlaylists($user_id);
                             while ($pl = $my_pls->fetch_assoc()):
@@ -399,10 +459,13 @@ if (isset($_GET['content_only'])) {
                                     hx-swap="innerHTML"
                                     hx-push-url="view_playlist.php?id=<?= $pl['id'] ?>"
                                     class="sidebar-link flex items-center gap-2 px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all
-                                      <?= $is_active
-                                            ? 'text-orange-400 bg-orange-500/8 border border-orange-500/15'
-                                            : 'text-gray-600 hover:text-gray-300 hover:bg-white/[.03] border border-transparent' ?>">
-                                    <i data-lucide="disc-3" class="w-3 h-3 flex-shrink-0 <?= $is_active ? 'text-orange-400' : '' ?>"></i>
+                                         <?= $is_active
+                                               ? 'active'
+                                               : 'text-gray-600 hover:text-gray-300 hover:bg-white/[.03]' ?>
+                                         pl-link"
+                                    data-playlist-id="<?= $pl['id'] ?>"
+                                    onclick="setActivePlaylistSidebar(<?= $pl['id'] ?>)">
+                                    <i data-lucide="disc-3" class="w-3 h-3 flex-shrink-0"></i>
                                     <span class="truncate"><?= htmlspecialchars($pl['name']) ?></span>
                                     <?php if ($is_active): ?>
                                         <i data-lucide="volume-2" class="w-2.5 h-2.5 text-orange-400 flex-shrink-0 ml-auto animate-pulse"></i>
@@ -413,46 +476,81 @@ if (isset($_GET['content_only'])) {
                     </div>
                 <?php endif; ?>
 
-                <!-- Artists (Desktop) -->
-                <div class="hidden lg:block">
-                    <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
-                        <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
-                    </div>
-                    <div class="space-y-0.5 max-h-[30vh] overflow-y-auto no-scrollbar">
-                        <?php while ($a = $artists->fetch_assoc()): ?>
-                            <a href="index.php?artist=<?= urlencode($a['artist']) ?>"
-                                class="sidebar-link flex items-center px-3 py-2.5 rounded-lg text-[11px] font-bold
-                                      text-gray-600 hover:text-gray-300 hover:bg-white/[.03] transition-all border border-transparent">
-                                <span class="truncate"><?= htmlspecialchars($a['artist']) ?></span>
-                            </a>
-                        <?php endwhile; ?>
-                    </div>
-                </div>
+                <!-- MOBILE FILTERS & MENUS -->
+                <div class="lg:hidden flex flex-col gap-4 bg-[#0d1017]/95 backdrop-blur-md p-4 rounded-xl border border-white/[.04] shadow-lg">
 
-                <!-- Mobile: back + select playlist -->
-                <div class="lg:hidden flex flex-col gap-3 bg-[#0d1017]/95 backdrop-blur-md p-4 rounded-xl border border-white/[.04] shadow-lg">
-                    <a href="index.php"
-                        class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white transition">
-                        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Library
-                    </a>
-                    <?php if ($is_logged_in): ?>
-                        <div class="relative w-full">
-                            <select onchange="if(this.value) window.location.href='view_playlist.php?id=' + this.value"
-                                class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5
-                                       text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none cursor-pointer">
-                                <?php
-                                $my_pls2 = $library->getUserPlaylists($user_id);
-                                while ($pl = $my_pls2->fetch_assoc()): ?>
-                                    <option value="<?= $pl['id'] ?>" <?= $pl['id'] == $playlist_id ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($pl['name']) ?>
-                                    </option>
-                                <?php endwhile; ?>
-                            </select>
-                            <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-gray-500">
-                                <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                    <!-- Format Pills (Mobile) -->
+                    <div class="flex flex-wrap gap-2">
+                        <a href="index.php?format=all"
+                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
+                        <a href="index.php?format=ogg"
+                            class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
+                        <a href="index.php?format=m4a"
+                            class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
+                        <a href="index.php?format=mp3"
+                            class="format-pill <?= $format_filter === 'mp3' ? 'active-blue' : '' ?>">MP3</a>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Artists Select (Custom Dropdown) -->
+                        <div>
+                            <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
+                                <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
+                            </div>
+                            <div class="relative w-full z-[100]" id="custom-artist-dropdown-pl">
+                                <button type="button"
+                                    onclick="toggleArtistDropdownPL()"
+                                    class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
+                                    <span class="truncate">All Collections</span>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
+                                </button>
+                                <div id="artist-options-pl" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
+                                    <button onclick="navigateToArtistPL('all')"
+                                        class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[.04] transition-colors truncate">
+                                        All Collections
+                                    </button>
+                                    <?php
+                                    $artists->data_seek(0);
+                                    while ($a = $artists->fetch_assoc()): ?>
+                                        <button onclick="navigateToArtistPL('<?= htmlspecialchars($a['artist'], ENT_QUOTES) ?>')"
+                                            class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[.04] transition-colors truncate">
+                                            <?= htmlspecialchars($a['artist']) ?>
+                                        </button>
+                                    <?php endwhile; ?>
+                                </div>
                             </div>
                         </div>
-                    <?php endif; ?>
+
+                        <!-- Playlists Select (Custom Dropdown) -->
+                        <?php if ($is_logged_in): ?>
+                            <div>
+                                <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
+                                    <i data-lucide="list-music" class="w-3 h-3"></i> Playlists
+                                </div>
+                                <div class="relative w-full z-[100]" id="custom-playlist-dropdown-pl">
+                                    <button type="button"
+                                        onclick="togglePlaylistDropdownPL()"
+                                        class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
+                                        <span class="truncate" id="playlist-dropdown-label-pl"><?= htmlspecialchars($playlist['name']) ?></span>
+                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
+                                    </button>
+                                    <div id="playlist-options-pl" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
+                                        <?php
+                                        $my_pls2 = $library->getUserPlaylists($user_id);
+                                        while ($pl = $my_pls2->fetch_assoc()):
+                                            $pl_active = ($pl['id'] == $playlist_id);
+                                        ?>
+                                            <button onclick="navigateToPlaylistPL(<?= $pl['id'] ?>)"
+                                                data-playlist-id="<?= $pl['id'] ?>"
+                                                class="w-full text-left px-4 py-2.5 text-xs transition-colors truncate <?= $pl_active ? 'text-orange-500 font-bold' : 'text-gray-300 hover:bg-white/[.04]' ?>">
+                                                <?= htmlspecialchars($pl['name']) ?>
+                                            </button>
+                                        <?php endwhile; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
 
             </div>
@@ -515,6 +613,120 @@ if (isset($_GET['content_only'])) {
 
     <script>
         lucide.createIcons();
+
+        // ── Sidebar: Playlist Active Highlight ──
+        window.setActivePlaylistSidebar = function(id) {
+            document.querySelectorAll('.sidebar-link.pl-link').forEach(function(el) {
+                if (parseInt(el.dataset.playlistId) === id) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+            // Update mobile playlist dropdown label + active state
+            var label = document.getElementById('playlist-dropdown-label-pl');
+            var options = document.querySelectorAll('#playlist-options-pl button');
+            options.forEach(function(btn) {
+                btn.classList.remove('text-orange-500', 'font-bold');
+                btn.classList.add('text-gray-300', 'hover:bg-white/[.04]');
+            });
+            options.forEach(function(btn) {
+                if (parseInt(btn.dataset.playlistId) === id) {
+                    btn.classList.remove('text-gray-300', 'hover:bg-white/[.04]');
+                    btn.classList.add('text-orange-500', 'font-bold');
+                    if (label) label.textContent = btn.textContent.trim();
+                }
+            });
+        };
+
+        // ── Mobile Artist Dropdown (custom toggle) ──
+        window.toggleArtistDropdownPL = function() {
+            var dd = document.getElementById('artist-options-pl');
+            if (!dd) return;
+            var hidden = dd.classList.contains('hidden');
+            dd.classList.toggle('hidden');
+            if (hidden) {
+                document.body.classList.add('artist-dropdown-active');
+                var active = dd.querySelector('.text-orange-500');
+                if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                setTimeout(function() { document.body.classList.remove('artist-dropdown-active'); }, 350);
+            }
+        };
+
+        window.closeArtistDropdownPL = function() {
+            const dropdown = document.getElementById('artist-options-pl');
+            if (dropdown) dropdown.classList.add('hidden');
+            setTimeout(function() {
+                const artistStillOpen = document.getElementById('artist-options-pl') && !document.getElementById('artist-options-pl').classList.contains('hidden');
+                const playlistStillOpen = document.getElementById('playlist-options-pl') && !document.getElementById('playlist-options-pl').classList.contains('hidden');
+                if (!artistStillOpen && !playlistStillOpen) {
+                    document.body.classList.remove('artist-dropdown-active');
+                }
+            }, 350);
+        };
+
+        window.navigateToArtistPL = function(artist) {
+            closeArtistDropdownPL();
+            if (artist === 'all') {
+                window.location.href = 'index.php';
+            } else {
+                window.location.href = 'index.php?artist=' + encodeURIComponent(artist);
+            }
+        };
+
+        // ── Mobile Playlist Dropdown (custom toggle) ──
+        window.togglePlaylistDropdownPL = function() {
+            const dropdown = document.getElementById('playlist-options-pl');
+            if (dropdown) {
+                const isHidden = dropdown.classList.contains('hidden');
+                if (isHidden) {
+                    dropdown.classList.remove('hidden');
+                    document.body.classList.add('artist-dropdown-active');
+                } else {
+                    dropdown.classList.add('hidden');
+                    setTimeout(function() {
+                        document.body.classList.remove('artist-dropdown-active');
+                    }, 350);
+                }
+            }
+        };
+
+        window.closePlaylistDropdownPL = function() {
+            const dropdown = document.getElementById('playlist-options-pl');
+            if (dropdown) dropdown.classList.add('hidden');
+            setTimeout(function() {
+                const artistStillOpen = document.getElementById('artist-options-pl') && !document.getElementById('artist-options-pl').classList.contains('hidden');
+                const playlistStillOpen = document.getElementById('playlist-options-pl') && !document.getElementById('playlist-options-pl').classList.contains('hidden');
+                if (!artistStillOpen && !playlistStillOpen) {
+                    document.body.classList.remove('artist-dropdown-active');
+                }
+            }, 350);
+        };
+
+        window.navigateToPlaylistPL = function(id) {
+            closePlaylistDropdownPL();
+            setActivePlaylistSidebar(id);
+            htmx.ajax('GET', 'view_playlist.php?id=' + id + '&content_only=1', {
+                target: '#playlist-main',
+                swap: 'innerHTML',
+                pushUrl: 'view_playlist.php?id=' + id
+            });
+        };
+
+        // ── Close dropdowns on outside click ──
+        document.addEventListener('click', function(e) {
+            const artistDropdown = document.getElementById('artist-options-pl');
+            const artistTrigger = e.target.closest('#custom-artist-dropdown-pl');
+            if (!artistTrigger && artistDropdown && !artistDropdown.classList.contains('hidden')) {
+                closeArtistDropdownPL();
+            }
+            const playlistDropdown = document.getElementById('playlist-options-pl');
+            const playlistTrigger = e.target.closest('#custom-playlist-dropdown-pl');
+            if (!playlistTrigger && playlistDropdown && !playlistDropdown.classList.contains('hidden')) {
+                closePlaylistDropdownPL();
+            }
+        });
 
         // =============================================
         // === MINI PLAYER — identik dengan index.php ===
