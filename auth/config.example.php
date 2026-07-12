@@ -48,6 +48,34 @@ define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
 define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
 
 // ════════════════════════════════════════════════════════════════
+// X-SENDFILE (AKSELERASI STREAMING APACHE)
+// ════════════════════════════════════════════════════════════════
+// Aktifkan untuk streaming file besar (FLAC 33MB+, MKV 4K, dll)
+// tanpa beban PHP. Apache akan mengirim file langsung dari disk
+// menggunakan sistem call sendfile() (zero-copy ke socket).
+//
+// 🚀 Manfaat:
+//   - PHP tidak perlu baca file sama sekali → RAM server hemat
+//   - Proses PHP tidak terblokir → bisa layani request lain
+//   - File besar streaming 2-4x lebih cepat
+//   - Skalabel untuk banyak user concurrent
+//
+// 🔧 Cara aktivasi:
+//   1. Download & compile: https://github.com/nmaier/mod_xsendfile
+//   2. Copy mod_xsendfile.so ke direktori modules Apache
+//   3. Tambahkan di httpd.conf:
+//        LoadModule xsendfile_module modules/mod_xsendfile.so
+//        <IfModule xsendfile_module>
+//            XSendFile on
+//            XSendFilePath "/path/ke/music/upload/file"
+//        </IfModule>
+//   4. Restart Apache: sudo /opt/lampp/lampp restart
+//   5. Verifikasi: httpd -M | grep xsend
+//   6. Set konstanta di bawah menjadi true:
+
+define('MEEL_USE_XSENDFILE', false);
+
+// ════════════════════════════════════════════════════════════════
 // SESSION & SECURITY
 // ════════════════════════════════════════════════════════════════
 

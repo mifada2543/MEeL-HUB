@@ -379,6 +379,67 @@ Edit `/etc/apache2/apache2.conf`:
 </Directory>
 ```
 
+#### ⚡ Aktifkan mod_xsendfile (Opsional — untuk akselerasi streaming)
+
+mod_xsendfile mempercepat streaming file besar (FLAC 33MB+, MKV 4K) dengan
+membiarkan Apache mengirim file langsung dari disk tanpa melalui PHP.
+
+**Langkah-langkah:**
+
+1. Download source:
+   ```bash
+   git clone --depth 1 https://github.com/nmaier/mod_xsendfile.git /tmp/mod_xsendfile
+   cd /tmp/mod_xsendfile
+   ```
+
+2. Kompilasi dengan `apxs` milik server:
+   ```bash
+   # Untuk LAMPP:
+   /opt/lampp/bin/apxs -c mod_xsendfile.c
+   
+   # Untuk Apache standar:
+   sudo apxs -c mod_xsendfile.c
+   ```
+
+   > 💡 Jika `apxs` gagal dengan `libtool: compile: you must specify a compilation command`,
+   > kompilasi manual dengan gcc:
+   > ```bash
+   > gcc -c -I/opt/lampp/include -I/opt/lampp/include/apr-1 -fPIC -DPIC mod_xsendfile.c -o mod_xsendfile.o
+   > gcc -shared -o mod_xsendfile.so mod_xsendfile.o -L/opt/lampp/lib -lapr-1
+   > ```
+
+3. Install modul:
+   ```bash
+   sudo cp mod_xsendfile.so /opt/lampp/modules/  # atau direktori modules Apache Anda
+   sudo chmod 755 /opt/lampp/modules/mod_xsendfile.so
+   ```
+
+4. Tambahkan ke `httpd.conf`:
+   ```apache
+   LoadModule xsendfile_module modules/mod_xsendfile.so
+
+   <IfModule xsendfile_module>
+       XSendFile on
+       XSendFilePath "/opt/lampp/htdocs/MEeL/music/upload/file"
+   </IfModule>
+   ```
+
+5. Restart Apache:
+   ```bash
+   sudo /opt/lampp/lampp restart
+   ```
+
+6. Verifikasi:
+   ```bash
+   sudo /opt/lampp/bin/httpd -M | grep xsend
+   # Output: xsendfile_module (shared)
+   ```
+
+7. Aktifkan di aplikasi — edit `auth/config.php`:
+   ```php
+   define('MEEL_USE_XSENDFILE', true);
+   ```
+
 ### 7. Setup FFmpeg
 
 ```bash
