@@ -266,18 +266,20 @@ switch ($ext) {
                 </div>
 
                 <div class="p-4 sm:p-5">
-                    <audio id="main-player" controls preload="metadata" class="w-full" oncontextmenu="return false;">
-                        <?php
-                        $ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
-                        $mimeType = match ($ext) {
-                            'mp3' => 'audio/mpeg',
-                            'm4a' => 'audio/mp4',
-                            'ogg', 'opus' => 'audio/ogg',
-                            'flac' => 'audio/flac',
-                            'wav' => 'audio/wav',
-                            default => 'audio/ogg'
-                        };
-                        ?>
+                    <?php
+                    $ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
+                    $mimeType = match ($ext) {
+                        'mp3' => 'audio/mpeg',
+                        'm4a' => 'audio/mp4',
+                        'ogg', 'opus' => 'audio/ogg',
+                        'flac' => 'audio/flac',
+                        'wav' => 'audio/wav',
+                        default => 'audio/ogg'
+                    };
+                    // FLAC sangat besar — preload=none agar browser tidak menunggu metadata
+                    $preloadVal = ($ext === 'flac' || $ext === 'wav') ? 'none' : 'metadata';
+                    ?>
+                    <audio id="main-player" controls preload="<?= $preloadVal ?>" class="w-full" oncontextmenu="return false;">
                         <source src="stream.php?id=<?= $id ?>" type="<?= $mimeType ?>">
                         Your browser does not support the audio element.
                     </audio>

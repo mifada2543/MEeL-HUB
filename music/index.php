@@ -218,7 +218,7 @@ if (isset($_GET['content_only'])) {
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
                         <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
                     </div>
-                    <div class="space-y-0.5 max-h-[45vh] overflow-y-auto no-scrollbar">
+                    <div id="desktop-artist-list" class="space-y-0.5 max-h-[45vh] overflow-y-auto no-scrollbar">
                         <a href="index.php?format=<?= $format_filter ?>&artist=all"
                             hx-get="index.php?format=<?= $format_filter ?>&artist=all"
                             hx-target="#library-container"
@@ -459,7 +459,8 @@ if (isset($_GET['content_only'])) {
             if (!audioPlayer) {
                 audioPlayer = document.createElement('audio');
                 audioPlayer.id = 'hidden-audio-player';
-                audioPlayer.preload = 'metadata';
+                // preload=none hindari loading FLAC yg berat saat pertama kali play
+                audioPlayer.preload = 'none';
                 document.body.appendChild(audioPlayer);
 
                 audioPlayer.addEventListener('timeupdate', updateIndexProgress);
@@ -474,8 +475,9 @@ if (isset($_GET['content_only'])) {
             }
 
             currentState = state;
+            // Set src langsung memicu loading — tidak perlu panggil .load()
+            // (memanggil .load() setelah .src malah restart loading, double-load untuk file besar)
             audioPlayer.src = `stream.php?id=${state.id}`;
-            audioPlayer.load();
 
             // Restore loop state dari global key (sumber kebenaran) + state object sebagai fallback
             const _gLoop = localStorage.getItem("meel_global_loop") === "true";
@@ -857,6 +859,7 @@ if (isset($_GET['content_only'])) {
         function bootPlayerIndex() {
             initMiniPlayerIndex();
             setupMusicItemClicks();
+            scrollToActiveArtistDesktop();
         }
 
         // 1. Jalankan saat halaman pertama kali dimuat (Hard Reload / F5)
@@ -886,7 +889,24 @@ if (isset($_GET['content_only'])) {
             if (typeof setupPlaylistItemClicks === 'function') {
                 setupPlaylistItemClicks();
             }
+            // Auto-scroll sidebar desktop ke artist yg aktif jika container diganti
+            if (isContentUpdate) {
+                scrollToActiveArtistDesktop();
+            }
         });
+
+        // ── Auto-scroll sidebar desktop ke artist yg aktif ────────────
+        // Setiap kali HTMX mengganti #library-container, sidebar artist
+        // dibuat ulang oleh server dan scroll-nya reset ke 0.
+        // Fungsi ini menggeser scroll ke item yg sedang aktif/dipilih.
+        function scrollToActiveArtistDesktop() {
+            var artistList = document.getElementById('desktop-artist-list');
+            if (!artistList) return;
+            var activeItem = artistList.querySelector('.sidebar-link.active');
+            if (activeItem) {
+                activeItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
 
         // Close custom dropdown when clicking outside
         document.addEventListener('click', (e) => {
@@ -904,9 +924,16 @@ if (isset($_GET['content_only'])) {
                 if (isHidden) {
                     dropdown.classList.remove('hidden');
                     document.body.classList.add('artist-dropdown-active');
+
+                    // Auto-scroll ke artist yg sedang dipilih (highligt),
+                    // agar user tidak perlu scroll ulang ke bawah/atas
+                    var activeItem = dropdown.querySelector('.text-orange-500');
+                    if (activeItem) {
+                        activeItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    }
                 } else {
                     dropdown.classList.add('hidden');
-                    setTimeout(() => {
+                    setTimeout(function() {
                         document.body.classList.remove('artist-dropdown-active');
                     }, 350);
                 }

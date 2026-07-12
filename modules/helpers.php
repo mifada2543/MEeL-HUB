@@ -121,6 +121,70 @@ function verify_csrf_token(?string $token): bool
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
 }
 
+// ════════════════════════════════════════════════════════════════
+// PRE-FLIGHT DISK SPACE HELPERS
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Periksa apakah path memiliki ruang disk yang cukup.
+ *
+ * @param int    $required_bytes Jumlah byte yang dibutuhkan
+ * @param string $path           Path untuk diperiksa (file atau direktori)
+ * @return array ['ok' => bool, 'free' => float, 'required' => float, 'path' => string]
+ */
+function check_disk_space(int $required_bytes, string $path): array
+{
+    // Jika path bukan direktori (kemungkinan file), ambil direktori parent-nya
+    if (!is_dir($path)) {
+        $path = dirname($path);
+        // Traverse up jika parent tidak ditemukan
+        $parent = dirname($path);
+        while ($parent !== '/' && $parent !== '.' && !is_dir($parent)) {
+            $parent = dirname($parent);
+        }
+        $path = $parent;
+    }
+
+    $free_bytes = @disk_free_space($path);
+    if ($free_bytes === false) {
+        return [
+            'ok'       => false,
+            'free'     => 0,
+            'required' => $required_bytes,
+            'path'     => $path,
+            'error'    => 'Tidak dapat membaca kapasitas disk.',
+        ];
+    }
+
+    return [
+        'ok'       => ($free_bytes >= $required_bytes),
+        'free'     => $free_bytes,
+        'required' => $required_bytes,
+        'path'     => $path,
+        'error'    => null,
+    ];
+}
+
+/**
+ * Pre-flight check: lempar RuntimeException jika ruang disk tidak cukup.
+ *
+ * @param int    $required_bytes Jumlah byte minimum yang diperlukan
+ * @param string $path           Path tujuan (folder HDD, RAM disk, dll)
+ * @param string $label          Label deskriptif (contoh: 'video storage', 'RAM disk')
+ * @throws \RuntimeException Jika disk space tidak mencukupi
+ */
+function require_disk_space(int $required_bytes, string $path, string $label): void
+{
+    $result = check_disk_space($required_bytes, $path);
+    if ($result['ok']) return;
+
+    $free_gb  = sprintf('%.1f', $result['free'] / (1024 ** 3));
+    $need_gb  = sprintf('%.1f', $result['required'] / (1024 ** 3));
+    $error_ms = $result['error'] ?? "Hanya tersedia {$free_gb} GB, butuh minimal {$need_gb} GB";
+
+    throw new \RuntimeException("Ruang {$label} tidak mencukupi! {$error_ms}");
+}
+
 /**
  * Log drive operations untuk audit trail
  */

@@ -173,6 +173,13 @@ class Uploader
             return ['status' => 'error', 'msg' => "Terlalu banyak proses upload bersamaan. Coba lagi nanti.", 'alert' => true];
         }
 
+        // 🟢 PRE-FLIGHT: Cek ruang disk HDD untuk music storage
+        try {
+            require_disk_space(500 * 1024 * 1024, $base_dir . 'upload/file/', 'storage musik HDD');
+        } catch (\RuntimeException $e) {
+            return ['status' => 'error', 'msg' => $e->getMessage(), 'alert' => true];
+        }
+
         $title  = trim($post['title'] ?? '');
         $artist = trim($post['artist'] ?? 'Unknown Artist');
         $album  = trim($post['album']  ?? 'Single');
@@ -279,11 +286,34 @@ class Uploader
         }
 
         $meta = $this->generateMetadata($title, $artist, $album);
-        $sql  = "INSERT INTO music (title, artist, search_metadata, album, filename, thumbnail, user_id, upload_date) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("ssssssi", $title, $artist, $meta, $album, $file_name, $thumb_name, $this->user_id);
 
-        return ($stmt->execute()) ? ['status' => 'success'] : ['status' => 'error', 'msg' => "Database error! [" . $stmt->error . "] (errno: " . $stmt->errno . ")"];
+        // 🔒 TRANSACTION: Atomic DB insert — rollback jika gagal
+        $this->conn->begin_transaction();
+        try {
+            $sql  = "INSERT INTO music (title, artist, search_metadata, album, filename, thumbnail, user_id, upload_date) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                throw new \RuntimeException('Prepare gagal: ' . $this->conn->error);
+            }
+            $stmt->bind_param("ssssssi", $title, $artist, $meta, $album, $file_name, $thumb_name, $this->user_id);
+            if (!$stmt->execute()) {
+                throw new \RuntimeException('Execute gagal: ' . $stmt->error);
+            }
+            $this->conn->commit();
+            $stmt->close();
+            return ['status' => 'success'];
+        } catch (\Throwable $e) {
+            $this->conn->rollback();
+            // Bersihkan file yang sudah terlanjur dipindahkan
+            $target_file = $base_dir . "upload/file/" . $file_name;
+            if (file_exists($target_file)) @unlink($target_file);
+            // Hapus thumbnail juga jika bukan default
+            if ($thumb_name !== 'music_default.png') {
+                $thumb_path = $base_dir . "upload/thumbnail/" . $thumb_name;
+                if (file_exists($thumb_path)) @unlink($thumb_path);
+            }
+            return ['status' => 'error', 'msg' => "Database error! [" . $e->getMessage() . "]"];
+        }
     }
 
     // ─── VIDEO ────────────────────────────────────────────────────────────────
@@ -298,6 +328,19 @@ class Uploader
         // 🔒 FIX SECURITY: Batasi proses upload simultan
         if (!$this->checkActiveUploadLimit()) {
             return ['status' => 'error', 'msg' => "Terlalu banyak proses upload bersamaan. Coba lagi nanti.", 'alert' => true];
+        }
+
+        // 🟢 PRE-FLIGHT: Cek ruang disk untuk video storage + RAM disk untuk staging
+        try {
+            // Minimal 1GB free di HDD video storage
+            require_disk_space(1024 * 1024 * 1024, $this->base_dir . 'video/', 'storage video HDD');
+            // Minimal 512MB free di RAM disk untuk staging HLS
+            $shm_path = '/dev/shm';
+            if (is_dir($shm_path) && is_writable($shm_path)) {
+                require_disk_space(512 * 1024 * 1024, $shm_path, 'RAM disk (/dev/shm)');
+            }
+        } catch (\RuntimeException $e) {
+            return ['status' => 'error', 'msg' => $e->getMessage(), 'alert' => true];
         }
 
         if (empty($files['video']['tmp_name']) || !is_uploaded_file($files['video']['tmp_name'])) {
@@ -509,28 +552,47 @@ class Uploader
             return ['status' => 'error', 'msg' => 'Gagal memindahkan file ke storage. Cek permission HDD.', 'alert' => true];
         }
 
-        // ── INSERT DATABASE ───────────────────────────────────────────────────
+        // ── INSERT DATABASE (WITH TRANSACTION) ─────────────────────────────────
         $title       = trim($post['title'] ?? 'Untitled Video');
         // 1. Ambil data deskripsi dari form POST
         $description = trim($post['description'] ?? '');
         $meta        = $this->generateMetadata($title);
 
-        // 2. Tambahkan kolom 'description' dan placeholder (?) ke dalam query SQL
-        $stmt  = $this->conn->prepare(
-            "INSERT INTO video (title, description, filename, thumbnail, search_metadata, user_id, upload_date)
-             VALUES (?, ?, ?, ?, ?, ?, NOW())"
-        );
+        // 🔒 TRANSACTION: Atomic DB insert — rollback + cleanup jika gagal
+        $this->conn->begin_transaction();
+        try {
+            $stmt  = $this->conn->prepare(
+                "INSERT INTO video (title, description, filename, thumbnail, search_metadata, user_id, upload_date)
+                 VALUES (?, ?, ?, ?, ?, ?, NOW())"
+            );
 
-        if (!$stmt) {
-            return ['status' => 'error', 'msg' => 'Prepare gagal: ' . $this->conn->error];
-        }
+            if (!$stmt) {
+                throw new \RuntimeException('Prepare gagal: ' . $this->conn->error);
+            }
 
-        $stmt->bind_param("sssssi", $title, $description, $db_filename, $thumb_name, $meta, $this->user_id);
+            $stmt->bind_param("sssssi", $title, $description, $db_filename, $thumb_name, $meta, $this->user_id);
 
-        if ($stmt->execute()) {
+            if (!$stmt->execute()) {
+                throw new \RuntimeException('Execute gagal: ' . $stmt->error);
+            }
+
+            $this->conn->commit();
             return ['status' => 'success'];
+        } catch (\Throwable $e) {
+            $this->conn->rollback();
+
+            // Bersihkan semua file HLS yang sudah terlanjur dipindahkan ke HDD
+            $hdd_target_folder = $hdd_video_dir . $folder_name . "/";
+            if (is_dir($hdd_target_folder)) {
+                foreach (glob($hdd_target_folder . "*") as $f) @unlink($f);
+                @rmdir($hdd_target_folder);
+            }
+            // Hapus thumbnail (auto-generated atau dari user)
+            $hdd_thumb_dir = $this->base_dir . "thumbnail/";
+            @unlink($hdd_thumb_dir . $thumb_name);
+
+            return ['status' => 'error', 'msg' => 'Database error! [' . $e->getMessage() . '] | title_len=' . strlen($title) . ' meta_len=' . strlen($meta) . ' filename=' . $db_filename];
         }
-        return ['status' => 'error', 'msg' => 'Database error! [' . $stmt->error . '] (errno: ' . $stmt->errno . ') | title_len=' . strlen($title) . ' meta_len=' . strlen($meta) . ' filename=' . $db_filename];
     }
     // ─── MESIN PEMBUAT THUMBNAIL SPRITE & VTT ──────────────────────────────────
     private function generateSpriteAndVTT(string $staged_video, string $target_folder)

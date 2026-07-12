@@ -311,6 +311,24 @@ class Transcoder
             return "";
         }
 
+        // 🟢 PRE-FLIGHT: Cek ruang disk sebelum download (queue belum di-lock)
+        // yt-dlp download size tidak bisa diketahui pasti, minimal 2GB free
+        $shm_temp_path = $this->getShmTempPath();
+        $shm_free = @disk_free_space($shm_temp_path);
+        if ($shm_free !== false && $shm_free < 512 * 1024 * 1024) {
+            $free_gb = sprintf('%.1f', $shm_free / (1024 ** 3));
+            $this->jsError("RAM disk tidak mencukupi! Hanya tersedia {$free_gb} GB, butuh minimal 0.5 GB untuk staging download.");
+            return "";
+        }
+        // Cek juga HDD storage untuk final output
+        $hdd_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : dirname(__DIR__);
+        $hdd_free = @disk_free_space($hdd_path);
+        if ($hdd_free !== false && $hdd_free < 2 * 1024 * 1024 * 1024) {
+            $free_gb = sprintf('%.1f', $hdd_free / (1024 ** 3));
+            $this->jsError("Storage HDD tidak mencukupi! Hanya tersedia {$free_gb} GB, butuh minimal 2 GB untuk menyimpan hasil download.");
+            return "";
+        }
+
         $queue_id = $this->lockQueue($url, $type);
 
         $meta = $this->fetchMetadata($url);
@@ -739,6 +757,14 @@ class Transcoder
         putenv("LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib");
         putenv("PATH=/usr/local/bin:/usr/bin:/bin");
 
+        // 🟢 PRE-FLIGHT: Cek HDD untuk output encode — butuh minimal 500MB
+        $music_dir = "{$this->base_path}/music/upload/file";
+        if (!is_dir($music_dir)) @mkdir($music_dir, 0755, true);
+        $hdd_free = @disk_free_space($music_dir);
+        if ($hdd_free !== false && $hdd_free < 500 * 1024 * 1024) {
+            return ['status' => 'error', 'msg' => 'Storage HDD untuk musik tidak mencukupi (hanya ' . sprintf('%.1f', $hdd_free / (1024 ** 3)) . ' GB free).'];
+        }
+
         $shm_temp  = $this->getShmTempPath();
         $input_path = "$shm_temp/$temp_file";
         $clean      = getRomajiName($title);
@@ -921,6 +947,12 @@ class Transcoder
         // Output hanya di RAM disk (primer) — fallback ke project temp/
         $output_dir = $this->getShmTranscodePath() . '/';
         if (!is_dir($output_dir)) mkdir($output_dir, 0755, true);
+
+        // 🟢 PRE-FLIGHT: Cek RAM disk untuk output transcode — butuh minimal 256MB
+        $shm_free = @disk_free_space($output_dir);
+        if ($shm_free !== false && $shm_free < 256 * 1024 * 1024) {
+            return ['status' => 'error', 'msg' => 'RAM disk tidak mencukupi untuk transcode. Hanya tersedia ' . sprintf('%.1f', $shm_free / (1024 ** 3)) . ' GB.'];
+        }
 
         // Bersihkan file lama (> 2 jam)
         foreach (glob($output_dir . "*") as $file) {

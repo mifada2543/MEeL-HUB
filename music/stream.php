@@ -58,7 +58,18 @@ $mimeType = match ($ext) {
     default => 'audio/ogg'
 };
 
-// 4. Proses Streaming dengan dukungan HTTP Byte-Range (Sangat Krusial untuk Player Web)
+// 4. Hentikan script segera saat browser disconnect (misal user pindah lagu)
+// Ditaruh setelah semua include agar tidak di-override oleh file lain.
+ignore_user_abort(false);
+
+// Matikan output buffering — krusial untuk file besar seperti FLAC
+// Jika output_buffering aktif, seluruh file ditahan di RAM server sebelum
+// dikirim ke browser, menyebabkan browser stuck "loading" tanpa henti.
+while (ob_get_level()) {
+    ob_end_clean();
+}
+ob_implicit_flush(true);
+
 $size = filesize($filePath);
 $length = $size;
 $start = 0;
@@ -106,11 +117,16 @@ header("Content-Length: " . $length);
 $fp = fopen($filePath, 'rb');
 fseek($fp, $start);
 while (!feof($fp) && ($p = ftell($fp)) <= $end) {
+    // Jika user pindah lagu, browser putus koneksi — hentikan loop biar
+    // PHP bisa handle request baru tanpa bersaing resource dengan proses lama.
+    if (connection_aborted()) break;
+
     if ($p + 8192 > $end) {
         echo fread($fp, $end - $p + 1);
     } else {
         echo fread($fp, 8192);
     }
+    @ob_flush();
     flush();
 }
 fclose($fp);

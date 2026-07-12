@@ -16,56 +16,60 @@ if (isset($_POST['update_profile'])) {
     if (!verify_csrf()) {
         $msg = 'CSRF Token tidak valid.';
     } else {
-    $bio = mysqli_real_escape_string($conn, $_POST['bio']);
+    $bio = trim($_POST['bio'] ?? '');
 
-    // 1. UPDATE BIO & DATA TEKS
-    $stmt = $conn->prepare("UPDATE users SET bio = ? WHERE id = ?");
-    $stmt->bind_param("si", $bio, $user_id);
-    $stmt->execute();
+    // 🔒 TRANSACTION: Atomic profile update — bio + avatar adalah satu kesatuan
+    $conn->begin_transaction();
+    try {
+        // 1. UPDATE BIO
+        $stmt = $conn->prepare("UPDATE users SET bio = ? WHERE id = ?");
+        $stmt->bind_param("si", $bio, $user_id);
+        if (!$stmt->execute()) {
+            throw new \RuntimeException('Gagal memperbarui bio: ' . $stmt->error);
+        }
 
-    // 2. LOGIKA UPLOAD FOTO (BAGIAN TERTANTANG)
-    if (!empty($_FILES['avatar']['name'])) {
-        $file_name = $_FILES['avatar']['name'];
-        $file_tmp  = $_FILES['avatar']['tmp_name'];
-        $file_type = $_FILES['avatar']['type'];
+        // 2. LOGIKA UPLOAD FOTO
+        if (!empty($_FILES['avatar']['name'])) {
+            $file_name = $_FILES['avatar']['name'];
+            $file_tmp  = $_FILES['avatar']['tmp_name'];
+            $file_type = $_FILES['avatar']['type'];
 
-        // Cek apakah benar gambar
-        $allowed = ['image/jpeg', 'image/png', 'image/jpg'];
-        if (in_array($file_type, $allowed)) {
+            $allowed = ['image/jpeg', 'image/png', 'image/jpg'];
+            if (in_array($file_type, $allowed)) {
+                $new_name = "user_" . $user_id . ".jpg";
+                $upload_path = "../profile/upload/" . $new_name;
 
-            // Nama file baru yang unik
-            $new_name = "user_" . $user_id . ".jpg";
-            $upload_path = "../profile/upload/" . $new_name;
+                $source = ($file_type == 'image/png') ? imagecreatefrompng($file_tmp) : imagecreatefromjpeg($file_tmp);
+                list($width, $height) = getimagesize($file_tmp);
+                $new_width = 400;
+                $new_height = ($height / $width) * $new_width;
 
-            // --- PROSES KOMPRESI (AGAR HEMAT SSD) ---
-            $source = ($file_type == 'image/png') ? imagecreatefrompng($file_tmp) : imagecreatefromjpeg($file_tmp);
+                $tmp_img = imagecreatetruecolor($new_width, $new_height);
+                imagecopyresampled($tmp_img, $source, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
 
-            // Dapatkan dimensi asli
-            list($width, $height) = getimagesize($file_tmp);
-            $new_width = 400; // Kita paksa jadi 400px saja
-            $new_height = ($height / $width) * $new_width;
+                if (!imagejpeg($tmp_img, $upload_path, 80)) {
+                    throw new \RuntimeException('Gagal menyimpan foto profil.');
+                }
 
-            $tmp_img = imagecreatetruecolor($new_width, $new_height);
+                imagedestroy($source);
+                imagedestroy($tmp_img);
 
-            // Copy dan resize
-            imagecopyresampled($tmp_img, $source, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
-
-            // Simpan sebagai Progressive JPEG (Kualitas 80% agar ringan)
-            if (imagejpeg($tmp_img, $upload_path, 80)) {
-                // Update nama file di database dengan prepared statement
+                // Update nama file di database
                 $stmt_pic = $conn->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
                 $stmt_pic->bind_param("si", $new_name, $user_id);
-                $stmt_pic->execute();
-                $msg = "Profil berhasil diperbarui!";
+                if (!$stmt_pic->execute()) {
+                    throw new \RuntimeException('Gagal menyimpan path foto: ' . $stmt_pic->error);
+                }
+            } else {
+                throw new \RuntimeException('Format file tidak didukung! Gunakan JPG atau PNG.');
             }
-
-            imagedestroy($source);
-            imagedestroy($tmp_img);
-        } else {
-            $msg = "Format file tidak didukung!";
         }
-    } else {
-        $msg = "Data teks berhasil diperbarui!";
+
+        $msg = "Profil berhasil diperbarui!";
+        $conn->commit();
+    } catch (\Throwable $e) {
+        $conn->rollback();
+        $msg = 'Error: ' . $e->getMessage();
     }
     } // tutup else verify_csrf
 }
