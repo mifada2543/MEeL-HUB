@@ -58,7 +58,10 @@ $mimeType = match ($ext) {
     default => 'audio/ogg'
 };
 
-// 4. Hentikan script segera saat browser disconnect (misal user pindah lagu)
+// 4. Cegah timeout PHP untuk file besar (FLAC 34MB+ butuh waktu streaming lama)
+set_time_limit(0);
+
+// 5. Hentikan script segera saat browser disconnect (misal user pindah lagu)
 // Ditaruh setelah semua include agar tidak di-override oleh file lain.
 ignore_user_abort(false);
 
@@ -80,6 +83,20 @@ header("Accept-Ranges: bytes");
 header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
+
+// 5b. X-Sendfile — Apache langsung kirim file tanpa baca PHP chunk-by-chunk
+// 🚀 Jauh lebih efisien untuk file besar (FLAC 34MB+) karena tidak pakai RAM PHP.
+// Cara aktivasi:
+//   1. Install mod_xsendfile (https://github.com/nmaier/mod_xsendfile)
+//   2. Aktifkan di httpd.conf: XSendFile on
+//   3. Tambahkan: XSendFilePath "/opt/lampp/htdocs/MEeL/music/upload/file"
+//   Jika sudah aktif, hapus komentar baris define() di bawah:
+// define('MEEL_USE_XSENDFILE', true);
+if (defined('MEEL_USE_XSENDFILE') && MEEL_USE_XSENDFILE === true) {
+    header("X-Sendfile: " . $filePath);
+    header("Content-Length: " . $size);
+    exit;
+}
 
 if (isset($_SERVER['HTTP_RANGE'])) {
     $c_start = $start;
@@ -114,6 +131,10 @@ if (isset($_SERVER['HTTP_RANGE'])) {
 header("Content-Length: " . $length);
 
 // 5. Salurkan data berkas dalam bentuk chunks (hemat RAM server)
+// Chunk size = 256KB — optimal untuk file besar (8KB sebelumnya terlalu kecil,
+// menyebabkan ribuan iterasi untuk FLAC 34MB). 256KB = ~2 detik audio @1000kbps.
+define('STREAM_CHUNK_SIZE', 262144);
+
 $fp = fopen($filePath, 'rb');
 fseek($fp, $start);
 while (!feof($fp) && ($p = ftell($fp)) <= $end) {
@@ -121,10 +142,10 @@ while (!feof($fp) && ($p = ftell($fp)) <= $end) {
     // PHP bisa handle request baru tanpa bersaing resource dengan proses lama.
     if (connection_aborted()) break;
 
-    if ($p + 8192 > $end) {
+    if ($p + STREAM_CHUNK_SIZE > $end) {
         echo fread($fp, $end - $p + 1);
     } else {
-        echo fread($fp, 8192);
+        echo fread($fp, STREAM_CHUNK_SIZE);
     }
     @ob_flush();
     flush();
