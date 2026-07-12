@@ -109,10 +109,6 @@ session_write_close();
                     aria-label="Cari video">
                     <i data-lucide="search" class="w-4 h-4"></i>
                 </button>
-                <a href="../music/index.php" class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-orange-500 transition-all">
-                    <i data-lucide="music" class="w-3.5 h-3.5"></i>
-                    <span class="hidden md:inline">Music</span>
-                </a>
                 <?php include '../partials/nav.php'; ?>
             </div>
         </div>
