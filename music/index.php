@@ -576,8 +576,21 @@ if (isset($_GET['content_only'])) {
             try {
                 const state = JSON.parse(raw);
                 isMiniPlayerIndexActive = true;
+
+                // ⚠️ Update meta IMMEDIATELY dari state (sebelum setTimeout) agar
+                // title/artist/thumbnail tampil tanpa flash default "Tidak ada musik".
+                // Sebelumnya updateIndexUI() dipanggil langsung di sini tetapi
+                // currentState masih null → meta tidak terganti.
+                const els = _getIdxEls();
+                if (els.img) els.img.src = state.thumbnailUrl || `upload/thumbnail/${state.thumbnail}`;
+                if (els.title) els.title.textContent = state.title || 'Unknown';
+                if (els.artist) els.artist.textContent = state.artist || 'Unknown';
+
                 // Tunggu render selesai dulu baru load audio (hindari blocking saat navigasi dari watch.php dengan FLAC)
-                setTimeout(() => loadAudio(state, state.isPlaying), 100);
+                setTimeout(() => {
+                    loadAudio(state, state.isPlaying);
+                    updateIndexUI();
+                }, 100);
                 // Prioritaskan global loop key; sinkronisasi dari sessionStorage jika lebih baru
                 const globalLoop = localStorage.getItem("meel_global_loop") === "true";
                 if (state.isLooping !== undefined) {
@@ -594,7 +607,6 @@ if (isset($_GET['content_only'])) {
                 }
                 if (audioPlayer) audioPlayer.loop = isMiniLoopIndexActive;
                 updateMiniLoopUIIndex();
-                updateIndexUI();
                 miniPlayerIndex.classList.add('active');
 
                 // Muat konten playlist (prioritas dari state, fallback dari localStorage, lalu URL)
