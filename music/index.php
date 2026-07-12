@@ -81,7 +81,7 @@ if (isset($_GET['content_only'])) {
     <title>MEeL Music | Library</title>
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/music.css">
-    <script src="../assets/js/htmx.min.js"></script>
+    <script src="../assets/js/htmx.min.js" defer></script>
     <style>
         .artist-dropdown-active .music-item {
             pointer-events: none !important;
@@ -430,7 +430,7 @@ if (isset($_GET['content_only'])) {
     </div>
     <script src="../assets/js/script.min.js"></script>
     <script>
-        lucide.createIcons();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
 
         // =============================================
         // === MINI PLAYER INDEX (Spotify-style) ===
@@ -576,7 +576,8 @@ if (isset($_GET['content_only'])) {
             try {
                 const state = JSON.parse(raw);
                 isMiniPlayerIndexActive = true;
-                loadAudio(state, state.isPlaying);
+                // Tunggu render selesai dulu baru load audio (hindari blocking saat navigasi dari watch.php dengan FLAC)
+                setTimeout(() => loadAudio(state, state.isPlaying), 100);
                 // Prioritaskan global loop key; sinkronisasi dari sessionStorage jika lebih baru
                 const globalLoop = localStorage.getItem("meel_global_loop") === "true";
                 if (state.isLooping !== undefined) {

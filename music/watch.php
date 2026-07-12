@@ -46,8 +46,14 @@ $playlist_context = $playlist_id;
 $next_song_url    = $next_url;
 if (empty($next_song_url) && $rekom && $rekom->num_rows > 0) {
     $rekom->data_seek(0);
-    $first_rec = $rekom->fetch_assoc();
-    if ($first_rec) {
+    // Cari rekomendasi PERTAMA yang BUKAN lagu yang sedang diputar
+    while ($rec = $rekom->fetch_assoc()) {
+        if ((int)$rec['id'] !== $id) {
+            $first_rec = $rec;
+            break;
+        }
+    }
+    if (!empty($first_rec)) {
         $next_song_url = "watch.php?id=" . $first_rec['id'];
     }
     $rekom->data_seek(0);
@@ -276,8 +282,10 @@ switch ($ext) {
                         'wav' => 'audio/wav',
                         default => 'audio/ogg'
                     };
-                    // FLAC sangat besar — preload=none agar browser tidak menunggu metadata
-                    $preloadVal = ($ext === 'flac' || $ext === 'wav') ? 'none' : 'metadata';
+                    // preload=none untuk FLAC (file besar), metadata untuk format lain yang ringan
+                    // FLAC 34MB+ menyebabkan browser stuck loading saat preload=metadata karena
+                    // range request ke stream.php lambat diproses untuk file sebesar itu.
+                    $preloadVal = ($ext === 'flac') ? 'none' : 'metadata';
                     ?>
                     <audio id="main-player" controls preload="<?= $preloadVal ?>" class="w-full" oncontextmenu="return false;">
                         <source src="stream.php?id=<?= $id ?>" type="<?= $mimeType ?>">
@@ -726,7 +734,7 @@ switch ($ext) {
     </script>
     <script src="../assets/js/plyr.min.js" defer></script>
     <script src="../assets/js/sweetalert2.all.min.js" defer></script>
-    <script src="../assets/js/player_music.min.js" defer></script>
+    <script src="../assets/js/player_music.js" defer></script>
 </body>
 
 </html>
