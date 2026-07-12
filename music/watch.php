@@ -276,8 +276,8 @@ switch ($ext) {
                         'wav' => 'audio/wav',
                         default => 'audio/ogg'
                     };
-                    // FLAC sangat besar — preload=none agar browser tidak menunggu metadata
-                    $preloadVal = ($ext === 'flac' || $ext === 'wav') ? 'none' : 'metadata';
+                    // preload=metadata untuk semua format (JS sudah di-guard agar tidak seek/autoplay file besar)
+                    $preloadVal = 'metadata';
                     ?>
                     <audio id="main-player" controls preload="<?= $preloadVal ?>" class="w-full" oncontextmenu="return false;">
                         <source src="stream.php?id=<?= $id ?>" type="<?= $mimeType ?>">
@@ -726,7 +726,7 @@ switch ($ext) {
     </script>
     <script src="../assets/js/plyr.min.js" defer></script>
     <script src="../assets/js/sweetalert2.all.min.js" defer></script>
-    <script src="../assets/js/player_music.min.js" defer></script>
+    <script src="../assets/js/player_music.js" defer></script>
 </body>
 
 </html>

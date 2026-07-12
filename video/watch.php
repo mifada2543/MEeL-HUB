@@ -414,7 +414,7 @@ session_write_close();
                                     'uploader' => $v['uploader'] ?? ''
                                 ]); ?>;
     </script>
-    <script src="../assets/js/player_video.min.js"></script>
+    <script src="../assets/js/player_video.js"></script>
 
     <script>
         lucide.createIcons();
