@@ -47,6 +47,30 @@ $counts  = $library->getCounts();
         <!-- MEDIA CARDS -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mb-20">
 
+            <!-- MUSIC (diperbesar di tengah) -->
+            <div class="media-card card-music flex flex-col gap-4 h-48 md:h-64"
+                onclick="window.location.href='music/index.php'"
+                title="MEeL Music">
+                <div class="flex items-start justify-between">
+                    <div class="card-icon-wrap">
+                        <i data-lucide="music" class="w-5 h-5" style="color:#f97316"></i>
+                    </div>
+                    <div class="text-right">
+                        <div class="card-count" style="color:#f97316"><?= $counts['music'] ?></div>
+                        <div class="card-label">Tracks</div>
+                    </div>
+                </div>
+                <div class="mt-auto">
+                    <div class="card-name">MUSIC</div>
+                    <div class="card-desc">Audio tinggi dengan kualitas terbaik.</div>
+                </div>
+                <div class="flex justify-end">
+                    <div class="card-arrow">
+                        <i data-lucide="arrow-right" class="w-4 h-4" style="color:#9ca3af"></i>
+                    </div>
+                </div>
+            </div>
+
             <!-- VIDEO -->
             <div class="media-card card-video flex flex-col gap-4 h-48 md:h-64"
                 onclick="window.location.href='video/index.php'"
@@ -63,30 +87,6 @@ $counts  = $library->getCounts();
                 <div class="mt-auto">
                     <div class="card-name">VIDEO</div>
                     <div class="card-desc">Streaming lokal koleksi video.</div>
-                </div>
-                <div class="flex justify-end">
-                    <div class="card-arrow">
-                        <i data-lucide="arrow-right" class="w-4 h-4" style="color:#9ca3af"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- MUSIC (diperbesar di tengah) -->
-            <div class="media-card card-music flex flex-col gap-4 h-56 md:h-72 md:-mt-4"
-                onclick="window.location.href='music/index.php'"
-                title="MEeL Music">
-                <div class="flex items-start justify-between">
-                    <div class="card-icon-wrap">
-                        <i data-lucide="music" class="w-5 h-5" style="color:#f97316"></i>
-                    </div>
-                    <div class="text-right">
-                        <div class="card-count" style="color:#f97316"><?= $counts['music'] ?></div>
-                        <div class="card-label">Tracks</div>
-                    </div>
-                </div>
-                <div class="mt-auto">
-                    <div class="card-name">MUSIC</div>
-                    <div class="card-desc">Audio tinggi dengan kualitas terbaik.</div>
                 </div>
                 <div class="flex justify-end">
                     <div class="card-arrow">
