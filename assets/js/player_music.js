@@ -588,7 +588,7 @@ function updateEqUI() {
             : player.play().catch(() => {});
         }
       }),
-        audio.addEventListener("loadedmetadata", B),
+
         (M.onclick = () => {
           ((R = !0),
             clearTimeout(z),
@@ -604,7 +604,10 @@ function updateEqUI() {
             clearTimeout(z),
             clearInterval(G),
             localStorage.removeItem(storageKeyMusic),
-            (player.currentTime = 0),
+            // ⚡ Gunakan audio.currentTime langsung (bukan player.currentTime)
+            // karena Plyr ignore seek jika !duration — yang sering terjadi
+            // untuk FLAC dengan preload="none" (metadata belum termuat).
+            (audio.currentTime = 0),
             player.play(),
             L.classList.add("hidden"));
         }));
