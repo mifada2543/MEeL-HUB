@@ -232,6 +232,116 @@ function updateEqUI() {
       "undefined" == typeof Plyr)
     )
       return void console.error("❌ Plyr not loaded");
+
+    // ── Deteksi FLAC & tambahkan event handler error/timeout ──
+    const isFlac = audio.querySelector('source[type="audio/flac"]') !== null
+      || window.MEEL_MUSIC_CONFIG?.filename?.toLowerCase().endsWith('.flac');
+
+    // Loading state indicator untuk file besar
+    let loadingTimeout = null;
+    let secondaryTimeout = null;
+    let metadataLoaded = false;
+    let loadRetried = false;
+    const LOADING_TIMEOUT_MS = isFlac ? 20000 : 10000; // 20s untuk FLAC, 10s untuk lainnya
+
+    // Fungsi untuk membersihkan semua timeout
+    function clearAllTimeouts() {
+      if (loadingTimeout) { clearTimeout(loadingTimeout); loadingTimeout = null; }
+      if (secondaryTimeout) { clearTimeout(secondaryTimeout); secondaryTimeout = null; }
+    }
+
+    // Fungsi untuk menampilkan/tutup loading overlay
+    function showLoadingOverlay(msg) {
+      let overlay = document.getElementById('flac-loading-overlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'flac-loading-overlay';
+        overlay.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(8,10,15,.85);z-index:50;border-radius:inherit;gap:12px;padding:20px;text-align:center;';
+        const spinner = document.createElement('div');
+        spinner.className = 'animate-spin h-8 w-8 border-2 border-orange-500 border-t-transparent rounded-full';
+        const text = document.createElement('p');
+        text.id = 'flac-loading-text';
+        text.style.cssText = 'color:#9ca3af;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;';
+        overlay.appendChild(spinner);
+        overlay.appendChild(text);
+        const container = document.getElementById('player-container');
+        if (container) {
+          container.style.position = 'relative';
+          container.appendChild(overlay);
+        }
+      }
+      overlay.style.display = 'flex';
+      const txt = document.getElementById('flac-loading-text');
+      if (txt) txt.textContent = msg || 'Memuat audio...';
+    }
+
+    function hideLoadingOverlay() {
+      const overlay = document.getElementById('flac-loading-overlay');
+      if (overlay) overlay.style.display = 'none';
+    }
+
+    // ── Flag untuk mencegah redirect loop ──
+    let audioEndedNaturally = false;  // di-set true hanya jika playback mencapai akhir
+    let isNavigating = false;         // cegah navigasi ganda
+
+    // Handler error audio — tandai bahwa audio GAGAL (bukan selesai natural)
+    let errorHandled = false;
+    function onAudioError(e) {
+      if (errorHandled) return;
+      errorHandled = true;
+      audioEndedNaturally = false; // pastikan ended handler TIDAK redirect
+      clearAllTimeouts();
+      hideLoadingOverlay();
+      const errCode = audio.error ? audio.error.code : '?';
+      const errMsg = audio.error ? audio.error.message : 'Gagal memuat audio';
+      console.error('❌ Audio error [' + errCode + ']:', errMsg);
+      if (isFlac) {
+        showLoadingOverlay('⚠️ FLAC tidak dapat dimuat. Coba refresh halaman atau gunakan format lain.');
+      }
+    }
+
+    // Handler loadedmetadata — batalkan timeout
+    function onLoadedMetadata() {
+      metadataLoaded = true;
+      clearAllTimeouts();
+      hideLoadingOverlay();
+    }
+
+    // Pasang event listeners
+    audio.addEventListener('error', onAudioError);
+    audio.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
+
+    // Timeout: jika loadedmetadata tidak kunjung tiba, reset state
+    loadingTimeout = setTimeout(() => {
+      if (!metadataLoaded && !errorHandled) {
+        console.warn('⚠️ loadedmetadata timeout setelah ' + (LOADING_TIMEOUT_MS/1000) + 's.');
+        showLoadingOverlay('Memuat file besar... (' + (isFlac ? 'FLAC' : 'audio') + ')');
+        // Coba reload source sekali saja — jika masih gagal, tampilkan error final
+        if (isFlac && audio && !loadRetried) {
+          loadRetried = true;
+          audio.load();
+        }
+        // Tambahan timeout kedua: jika masih belum juga, beri pesan error
+        secondaryTimeout = setTimeout(() => {
+          if (!metadataLoaded && !errorHandled) {
+            hideLoadingOverlay();
+            showLoadingOverlay('⚠️ Waktu muat habis. Silakan refresh halaman atau coba format lain.');
+          }
+        }, LOADING_TIMEOUT_MS);
+      }
+    }, LOADING_TIMEOUT_MS);
+
+    // Cleanup pada page unload / player destroy
+    function cleanupAudioListeners() {
+      clearAllTimeouts();
+      if (audio) {
+        audio.removeEventListener('error', onAudioError);
+        audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      }
+      hideLoadingOverlay();
+    }
+    window.addEventListener('beforeunload', cleanupAudioListeners);
+
     try {
       ((player = new Plyr(audio, {
         iconUrl: "../assets/plyr.svg",
@@ -530,12 +640,33 @@ function updateEqUI() {
     }),
       player.on("loadedmetadata", C),
       player.on("ended", () => {
+        // 🛡️ Cegah redirect loop: hanya lanjut jika audio benar-benar selesai
+        // diputar sampai akhir (currentTime mendekati duration), BUKAN karena error.
+        const isGenuineEnd = audioEndedNaturally
+          || (player.duration > 0 && Math.abs(player.currentTime - player.duration) < 1.5)
+          || (player.currentTime > 0 && !audio.error && audio.ended === true);
+
+        if (!isGenuineEnd) {
+          console.warn('⚠️ ended fired tapi bukan natural end — skip redirect. err=', !!audio.error);
+          return;
+        }
+        if (isNavigating) return;
+        isNavigating = true;
+
         const e = window.MEEL_MUSIC_CONFIG.nextSongUrl;
         if (e) window.location.href = e;
         else {
           localStorage.removeItem(storageKeyMusic);
           const e = document.querySelector(".rekomendasi-item");
-          e && (window.location.href = e.href);
+          if (e) window.location.href = e.href;
+          else isNavigating = false; // reset jika tidak ada tujuan
+        }
+      }),
+      // Tandai natural end saat currentTime mendekati durasi & audio sedang diputar
+      // (jangan set flag jika user cuma seek ke akhir lalu pause)
+      player.on("timeupdate", () => {
+        if (player.duration > 0 && !player.paused && player.currentTime >= player.duration - 0.5) {
+          audioEndedNaturally = true;
         }
       }));
     let P = null;
@@ -647,12 +778,14 @@ function updateEqUI() {
         player.currentTime = ((e.clientX - t.left) / t.width) * player.duration;
       }),
       (window.miniNext = function () {
-        if (window.meelHealthAlertActive) return;
+        if (window.meelHealthAlertActive || isNavigating) return;
+        isNavigating = true;
         const e = window.MEEL_MUSIC_CONFIG?.nextSongUrl;
         if (e) (saveAudioState(), (window.location.href = e));
         else {
           const e = document.querySelector(".rekomendasi-item");
-          e && (window.location.href = e.href);
+          if (e) window.location.href = e.href;
+          else isNavigating = false; // reset jika tidak ada tujuan
         }
       }),
       (window.miniPrev = function () {

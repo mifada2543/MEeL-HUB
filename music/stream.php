@@ -58,7 +58,12 @@ $mimeType = match ($ext) {
     default => 'audio/ogg'
 };
 
-// 4. Cegah timeout PHP untuk file besar (FLAC 34MB+ butuh waktu streaming lama)
+// 4. Debug logging untuk FLAC (aktifkan dengan define('MEEL_STREAM_DEBUG', true) di config.php)
+if (defined('MEEL_STREAM_DEBUG') && MEEL_STREAM_DEBUG) {
+    error_log("[MEeL-Stream] id=$id ext=$ext size=" . (filesize($filePath) ?? 0) . " ip=" . ($_SERVER['REMOTE_ADDR'] ?? '?'));
+}
+
+// 4b. Cegah timeout PHP untuk file besar (FLAC 34MB+ butuh waktu streaming lama)
 set_time_limit(0);
 
 // 5. Hentikan script segera saat browser disconnect (misal user pindah lagu)
@@ -68,12 +73,12 @@ ignore_user_abort(false);
 // Matikan output buffering — krusial untuk file besar seperti FLAC
 // Jika output_buffering aktif, seluruh file ditahan di RAM server sebelum
 // dikirim ke browser, menyebabkan browser stuck "loading" tanpa henti.
-while (ob_get_level()) {
-    ob_end_clean();
+while (@ob_get_level()) {
+    @ob_end_clean();
 }
-ob_implicit_flush(true);
+@ob_implicit_flush(true);
 
-$size = filesize($filePath);
+$size = @filesize($filePath);
 $length = $size;
 $start = 0;
 $end = $size - 1;
@@ -88,10 +93,12 @@ header("Expires: 0");
 // 🚀 Jauh lebih efisien untuk file besar (FLAC 34MB+) karena tidak pakai RAM PHP.
 // Cara aktivasi:
 //   1. Install mod_xsendfile (https://github.com/nmaier/mod_xsendfile)
-//   2. Aktifkan di httpd.conf: XSendFile on
-//   3. Tambahkan: XSendFilePath "/opt/lampp/htdocs/MEeL/music/upload/file"
-//   Jika sudah aktif, hapus komentar baris define() di bawah:
-// define('MEEL_USE_XSENDFILE', true);
+//   2. Aktifkan di httpd.conf:
+//        XSendFile on
+//        XSendFilePath "/opt/lampp/htdocs/MEeL/music/upload/file"
+//   3. Restart Apache
+//   4. Tambahkan define berikut di auth/config.php:
+//        define('MEEL_USE_XSENDFILE', true);
 if (defined('MEEL_USE_XSENDFILE') && MEEL_USE_XSENDFILE === true) {
     header("X-Sendfile: " . $filePath);
     header("Content-Length: " . $size);
@@ -130,25 +137,33 @@ if (isset($_SERVER['HTTP_RANGE'])) {
 
 header("Content-Length: " . $length);
 
-// 5. Salurkan data berkas dalam bentuk chunks (hemat RAM server)
-// Chunk size = 256KB — optimal untuk file besar (8KB sebelumnya terlalu kecil,
-// menyebabkan ribuan iterasi untuk FLAC 34MB). 256KB = ~2 detik audio @1000kbps.
-define('STREAM_CHUNK_SIZE', 262144);
+// 6. Salurkan data berkas dalam bentuk chunks (hemat RAM server)
+// Chunk size = 512KB untuk FLAC (lebih besar dari 256KB default)
+// File besar seperti FLAC 34MB+ butuh chunk lebih besar agar jumlah iterasi
+// lebih sedikit. 512KB = ~4 detik audio @1000kbps vs 256KB = ~2 detik.
+$flacChunkSize = ($ext === 'flac') ? 524288 : 262144; // 512KB untuk FLAC, 256KB untuk lainnya
+define('STREAM_CHUNK_SIZE', $flacChunkSize);
 
-$fp = fopen($filePath, 'rb');
-fseek($fp, $start);
-while (!feof($fp) && ($p = ftell($fp)) <= $end) {
+$fp = @fopen($filePath, 'rb');
+if (!$fp) {
+    header("HTTP/1.1 500 Internal Server Error");
+    exit("Tidak bisa membaca file.");
+}
+@fseek($fp, $start);
+while (!@feof($fp) && ($p = @ftell($fp)) <= $end && $p !== false) {
     // Jika user pindah lagu, browser putus koneksi — hentikan loop biar
     // PHP bisa handle request baru tanpa bersaing resource dengan proses lama.
     if (connection_aborted()) break;
 
-    if ($p + STREAM_CHUNK_SIZE > $end) {
-        echo fread($fp, $end - $p + 1);
-    } else {
-        echo fread($fp, STREAM_CHUNK_SIZE);
-    }
+    $remaining = $end - $p + 1;
+    if ($remaining <= 0) break;
+
+    $chunkSize = ($remaining > STREAM_CHUNK_SIZE) ? STREAM_CHUNK_SIZE : $remaining;
+    $buf = @fread($fp, $chunkSize);
+    if ($buf === false || $buf === '') break;
+    echo $buf;
     @ob_flush();
-    flush();
+    @flush();
 }
-fclose($fp);
+@fclose($fp);
 exit;
