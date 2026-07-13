@@ -425,7 +425,7 @@ if (isset($_GET['content_only'])) {
                     <span id="mini-duration-index">0:00</span>
                 </div>
                 <button class="mp-btn mp-btn-ghost mp-close" onclick="closeMiniPlayerIndex()" title="Tutup" aria-label="Tutup mini player">
-                    <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+                    <i data-lucide="x" style="width:16px;height:16px;"></i>
                 </button>
             </div>
         </div>

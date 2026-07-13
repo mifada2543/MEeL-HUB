@@ -165,6 +165,29 @@ if (isset($conn)) {
                     $current_page = "Reading PDF: " . $short_title;
                 }
             }
+        } elseif ($current_page == 'stream.php' && $dir_name == 'music') {
+            // Stream.php dipanggil berkali-kali (range requests) selama playback.
+            // Throttle: hanya query DB jika lagu berganti, supaya tidak membebani
+            // server dengan query berulang untuk lagu yang sama.
+            $last_stream_id = $_SESSION['_last_stream_id'] ?? null;
+            if ($last_stream_id !== $id_get) {
+                $_SESSION['_last_stream_id'] = $id_get;
+                $get_title = $conn->prepare("SELECT title FROM music WHERE id = ?");
+                if ($get_title) {
+                    $get_title->bind_param("i", $id_get);
+                    $get_title->execute();
+                    $res = $get_title->get_result()->fetch_assoc();
+                    if ($res) {
+                        $short_title = (mb_strlen($res['title']) > 20) ? mb_substr($res['title'], 0, 17) . '...' : $res['title'];
+                        $current_page = "Streaming: " . $short_title;
+                        $_SESSION['_last_stream_page'] = $current_page;
+                    }
+                }
+            } elseif (isset($_SESSION['_last_stream_page'])) {
+                // Range request berikutnya untuk lagu yang sama — pakai title yang
+                // sudah di-cache di session, bukan query ulang ke DB.
+                $current_page = $_SESSION['_last_stream_page'];
+            }
         } elseif ($current_page == 'index.php' && $dir_name == 'profile') {
             $target_user = $_GET['u'] ?? 'Someone';
             $current_page = "Viewing Profile: " . htmlspecialchars($target_user);
