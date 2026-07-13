@@ -64,6 +64,44 @@ include '../controllers/fun.php';
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
+
+        .scrollable-table-wrap {
+            overflow: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #374151 transparent;
+        }
+        .scrollable-table-wrap::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .scrollable-table-wrap::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .scrollable-table-wrap::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 999px;
+        }
+        .scrollable-table-wrap::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        .scrollable-table-wrap thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .scrollable-table-wrap thead th {
+            background: #0b0e14;
+        }
+        .scrollable-table-wrap thead::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.03);
+            pointer-events: none;
+        }
     </style>
 </head>
 
@@ -268,9 +306,9 @@ include '../controllers/fun.php';
                 <span class="text-[9px] text-gray-600 font-mono">Total: <?= ($all_users) ? $all_users->num_rows : 0 ?> Accounts</span>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="scrollable-table-wrap" style="max-height:300px;">
                 <table class="w-full text-left text-xs">
-                    <thead class="bg-white/[0.03] text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                    <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
                         <tr>
                             <th class="py-3 px-6">ID & Username</th>
                             <th class="py-3 px-4">Role</th>
@@ -414,9 +452,9 @@ include '../controllers/fun.php';
             </div>
 
 
-            <div class="overflow-x-auto">
+            <div class="scrollable-table-wrap" style="max-height:520px;">
                 <table class="w-full text-left text-xs">
-                    <thead class="bg-white/[0.02] text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                    <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
                         <tr>
                             <th class="py-3 px-6">User</th>
                             <th class="py-3 px-4 text-center">Status</th>
