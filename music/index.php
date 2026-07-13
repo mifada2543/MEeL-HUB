@@ -338,23 +338,29 @@ if (isset($_GET['content_only'])) {
                             </div>
                         </div>
 
-                        <!-- Playlists Select -->
+                        <!-- Playlists Select (Custom Dropdown) -->
                         <?php if ($is_logged_in): ?>
                             <div>
                                 <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
                                     <i data-lucide="list-music" class="w-3 h-3"></i> Playlists
                                 </div>
-                                <div class="relative w-full">
-                                    <select onchange="loadPlaylistMobile(this.value)" class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none cursor-pointer transition-all hover:bg-white/[.05] hover:border-white/[.1]">
-                                        <option value="">Pilih Playlist...</option>
+                                <div class="relative w-full z-[100]" id="custom-playlist-dropdown">
+                                    <button type="button"
+                                        onclick="togglePlaylistDropdown()"
+                                        class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
+                                        <span class="truncate" id="playlist-dropdown-label">Pilih Playlist...</span>
+                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
+                                    </button>
+                                    <div id="playlist-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
                                         <?php
-                                        $playlists = $library->getUserPlaylists($_SESSION['user_id']);
-                                        while ($pl = $playlists->fetch_assoc()): ?>
-                                            <option value="<?= $pl['id'] ?>"><?= htmlspecialchars($pl['name']) ?></option>
+                                        $playlists_mobile = $library->getUserPlaylists($_SESSION['user_id']);
+                                        while ($pl = $playlists_mobile->fetch_assoc()): ?>
+                                            <button onclick="navigateToPlaylistMobile(<?= $pl['id'] ?>)"
+                                                data-playlist-id="<?= $pl['id'] ?>"
+                                                class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[.04] transition-colors truncate">
+                                                <?= htmlspecialchars($pl['name']) ?>
+                                            </button>
                                         <?php endwhile; ?>
-                                    </select>
-                                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-gray-500">
-                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
                                     </div>
                                 </div>
                             </div>
@@ -917,12 +923,55 @@ if (isset($_GET['content_only'])) {
             }
         }
 
+        // ── Mobile Playlist Dropdown (custom toggle) ──
+        window.togglePlaylistDropdown = function() {
+            const dropdown = document.getElementById('playlist-options');
+            if (dropdown) {
+                const isHidden = dropdown.classList.contains('hidden');
+                if (isHidden) {
+                    dropdown.classList.remove('hidden');
+                    document.body.classList.add('artist-dropdown-active');
+                } else {
+                    dropdown.classList.add('hidden');
+                    setTimeout(function() {
+                        document.body.classList.remove('artist-dropdown-active');
+                    }, 350);
+                }
+            }
+        };
+
+        window.closePlaylistDropdown = function() {
+            const dropdown = document.getElementById('playlist-options');
+            if (dropdown) dropdown.classList.add('hidden');
+            setTimeout(function() {
+                const artistStillOpen = document.getElementById('artist-options') && !document.getElementById('artist-options').classList.contains('hidden');
+                const playlistStillOpen = document.getElementById('playlist-options') && !document.getElementById('playlist-options').classList.contains('hidden');
+                if (!artistStillOpen && !playlistStillOpen) {
+                    document.body.classList.remove('artist-dropdown-active');
+                }
+            }, 350);
+        };
+
+        window.navigateToPlaylistMobile = function(id) {
+            closePlaylistDropdown();
+            loadPlaylistMobile(id);
+            // Update label
+            var label = document.getElementById('playlist-dropdown-label');
+            var activeBtn = document.querySelector('#playlist-options button[data-playlist-id="' + id + '"]');
+            if (label && activeBtn) label.textContent = activeBtn.textContent.trim();
+        };
+
         // Close custom dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            const dropdown = document.getElementById('artist-options');
-            const trigger = e.target.closest('#custom-artist-dropdown');
-            if (!trigger && dropdown && !dropdown.classList.contains('hidden')) {
+            const artistDropdown = document.getElementById('artist-options');
+            const artistTrigger = e.target.closest('#custom-artist-dropdown');
+            if (!artistTrigger && artistDropdown && !artistDropdown.classList.contains('hidden')) {
                 closeArtistDropdown();
+            }
+            const playlistDropdown = document.getElementById('playlist-options');
+            const playlistTrigger = e.target.closest('#custom-playlist-dropdown');
+            if (!playlistTrigger && playlistDropdown && !playlistDropdown.classList.contains('hidden')) {
+                closePlaylistDropdown();
             }
         });
 
@@ -953,7 +1002,11 @@ if (isset($_GET['content_only'])) {
             const dropdown = document.getElementById('artist-options');
             if (dropdown) dropdown.classList.add('hidden');
             setTimeout(() => {
-                document.body.classList.remove('artist-dropdown-active');
+                const artistStillOpen = document.getElementById('artist-options') && !document.getElementById('artist-options').classList.contains('hidden');
+                const playlistStillOpen = document.getElementById('playlist-options') && !document.getElementById('playlist-options').classList.contains('hidden');
+                if (!artistStillOpen && !playlistStillOpen) {
+                    document.body.classList.remove('artist-dropdown-active');
+                }
             }, 350);
         };
 
@@ -990,6 +1043,16 @@ if (isset($_GET['content_only'])) {
                 el.style.color = '';
                 el.style.background = '';
                 el.style.borderColor = '';
+            });
+        };
+
+        window.resetArtistHighlight = function() {
+            document.querySelectorAll('#desktop-artist-list .sidebar-link').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            var allArtistBtns = document.querySelectorAll('#artist-options button');
+            allArtistBtns.forEach(function(btn) {
+                btn.classList.remove('text-orange-500', 'font-bold');
             });
         };
 
