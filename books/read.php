@@ -15,16 +15,9 @@ $repo = new BookRepository($conn);
 $book = $repo->getBookById((int)$_GET['id']);
 
 if (!$book) {
-    die("
-        <div style='background:#080a0f;color:#ef4444;height:100vh;display:flex;
-                    flex-direction:column;align-items:center;justify-content:center;font-family:ui-monospace,monospace;'>
-            <div style='width:60px;height:60px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;margin-bottom:20px;'>
-                <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
-            </div>
-            <h1 style='font-size:3rem;font-weight:900;color:#ef4444;letter-spacing:-.03em;margin:0;'>404</h1>
-            <p style='color:#4b5563;text-transform:uppercase;letter-spacing:4px;font-size:11px;font-weight:700;margin-top:4px;'>Buku tidak ditemukan</p>
-        </div>
-    ");
+    http_response_code(404);
+    include '../err/not_found.php';
+    exit;
 }
 
 // ── Sanitasi chapter — cegah path traversal ─────────────────────────────────
