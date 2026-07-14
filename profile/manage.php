@@ -83,7 +83,7 @@ $videos = [];
 $music_list = [];
 
 if ($active_tab === 'video') {
-    $q = $conn->prepare("SELECT id, title, thumbnail, views, upload_date FROM video WHERE user_id = ? ORDER BY upload_date DESC LIMIT ? OFFSET ?");
+    $q = $conn->prepare("SELECT id, title, thumbnail, views, likes, dislikes, upload_date FROM video WHERE user_id = ? ORDER BY upload_date DESC LIMIT ? OFFSET ?");
     $q->bind_param("iii", $user_id, $page_size, $offset);
     $q->execute();
     $videos = $q->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -93,7 +93,7 @@ if ($active_tab === 'video') {
     $q_total->execute();
     $total_items = (int)$q_total->get_result()->fetch_row()[0];
 } else {
-    $q = $conn->prepare("SELECT id, title, artist, thumbnail, views, upload_date FROM music WHERE user_id = ? ORDER BY upload_date DESC LIMIT ? OFFSET ?");
+    $q = $conn->prepare("SELECT id, title, artist, thumbnail, views, likes, dislikes, upload_date FROM music WHERE user_id = ? ORDER BY upload_date DESC LIMIT ? OFFSET ?");
     $q->bind_param("iii", $user_id, $page_size, $offset);
     $q->execute();
     $music_list = $q->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -109,6 +109,7 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
 ?>
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -117,12 +118,14 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/video.css">
     <style>
-        body { background-color: #080a0f; }
+        body {
+            background-color: #080a0f;
+        }
 
         .glass-panel {
             background: rgba(13, 16, 23, 0.85);
             backdrop-filter: blur(16px);
-            border: 1px solid rgba(255,255,255,0.06);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 24px;
         }
 
@@ -130,11 +133,12 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
         .manage-tabs {
             display: flex;
             gap: 4px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 14px;
             padding: 4px;
         }
+
         .manage-tab {
             flex: 1;
             padding: 10px 20px;
@@ -148,51 +152,60 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             transition: all 0.2s;
             text-align: center;
         }
+
         .manage-tab:hover {
             color: #d1d5db;
-            background: rgba(255,255,255,0.04);
+            background: rgba(255, 255, 255, 0.04);
         }
+
         .manage-tab.active-tab {
-            background: rgba(249,115,22,0.1);
+            background: rgba(249, 115, 22, 0.1);
             color: #f97316;
-            border: 1px solid rgba(249,115,22,0.15);
+            border: 1px solid rgba(249, 115, 22, 0.15);
         }
+
         .manage-tab.active-video {
-            background: rgba(239,68,68,0.1);
+            background: rgba(239, 68, 68, 0.1);
             color: #ef4444;
-            border: 1px solid rgba(239,68,68,0.15);
+            border: 1px solid rgba(239, 68, 68, 0.15);
         }
 
         /* ── Content card ── */
         .content-card {
             background: rgba(20, 24, 32, 0.85);
-            border: 1px solid rgba(255,255,255,0.06);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 16px;
             overflow: hidden;
             transition: all 0.25s ease;
         }
+
         .content-card:hover {
-            border-color: rgba(255,255,255,0.12);
+            border-color: rgba(255, 255, 255, 0.12);
             transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
         }
+
         .content-card .card-thumb {
             aspect-ratio: 16/9;
             overflow: hidden;
             background: #0b0e14;
         }
+
         .content-card .card-thumb img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transition: transform 0.3s;
         }
+
         .content-card:hover .card-thumb img {
             transform: scale(1.05);
         }
+
         .content-card .card-body {
             padding: 12px 14px 14px;
         }
+
         .content-card .card-title {
             font-size: 12px;
             font-weight: 700;
@@ -200,9 +213,11 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             line-height: 1.3;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
+
         .content-card .card-meta {
             font-size: 10px;
             color: #6b7280;
@@ -229,23 +244,27 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             border: none;
             cursor: pointer;
         }
+
         .action-btn-edit {
-            background: rgba(59,130,246,0.1);
-            border: 1px solid rgba(59,130,246,0.2);
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
             color: #60a5fa;
         }
+
         .action-btn-edit:hover {
-            background: rgba(59,130,246,0.2);
-            border-color: rgba(59,130,246,0.3);
+            background: rgba(59, 130, 246, 0.2);
+            border-color: rgba(59, 130, 246, 0.3);
         }
+
         .action-btn-delete {
-            background: rgba(239,68,68,0.1);
-            border: 1px solid rgba(239,68,68,0.2);
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
             color: #ef4444;
         }
+
         .action-btn-delete:hover {
-            background: rgba(239,68,68,0.2);
-            border-color: rgba(239,68,68,0.3);
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.3);
         }
 
         /* ── Stats bar ── */
@@ -254,21 +273,32 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             gap: 16px;
             flex-wrap: wrap;
         }
+
         .stat-item {
             display: flex;
             align-items: center;
             gap: 6px;
             padding: 8px 16px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 12px;
             font-size: 12px;
             font-weight: 700;
             color: #9ca3af;
         }
-        .stat-item svg { width: 14px; height: 14px; }
-        .stat-video svg { color: #ef4444; }
-        .stat-music svg { color: #f97316; }
+
+        .stat-item svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .stat-video svg {
+            color: #ef4444;
+        }
+
+        .stat-music svg {
+            color: #f97316;
+        }
 
         /* ── Pagination ── */
         .pagination {
@@ -277,6 +307,7 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             gap: 4px;
             margin-top: 24px;
         }
+
         .page-link {
             padding: 8px 14px;
             border-radius: 10px;
@@ -285,15 +316,17 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             color: #6b7280;
             text-decoration: none;
             transition: all 0.2s;
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
+
         .page-link:hover {
-            background: rgba(255,255,255,0.04);
+            background: rgba(255, 255, 255, 0.04);
             color: #d1d5db;
         }
+
         .page-link.active-page {
-            background: rgba(249,115,22,0.1);
-            border-color: rgba(249,115,22,0.2);
+            background: rgba(249, 115, 22, 0.1);
+            border-color: rgba(249, 115, 22, 0.2);
             color: #f97316;
         }
 
@@ -302,6 +335,7 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             padding: 60px 20px;
             text-align: center;
         }
+
         .empty-state svg {
             width: 40px;
             height: 40px;
@@ -309,6 +343,7 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             margin: 0 auto 16px;
             display: block;
         }
+
         .empty-state p {
             font-size: 11px;
             color: #6b7280;
@@ -328,35 +363,32 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             gap: 10px;
             margin-bottom: 20px;
         }
+
         .alert-success {
-            background: rgba(34,197,94,0.08);
-            border: 1px solid rgba(34,197,94,0.2);
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.2);
             color: #4ade80;
         }
+
         .alert-error {
-            background: rgba(239,68,68,0.08);
-            border: 1px solid rgba(239,68,68,0.2);
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
             color: #ef4444;
         }
     </style>
 </head>
+
 <body class="text-gray-400 min-h-screen">
 
     <!-- NAVBAR -->
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
             <a href="<?= $back_url ?>" class="flex items-center gap-2 flex-shrink-0" title="Kembali ke Profil">
-                <div class="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <i data-lucide="user" class="w-3.5 h-3.5 text-white"></i>
-                </div>
+                <img src="../assets/MEeL.png" class="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span class="text-sm font-bold tracking-tight text-white uppercase hidden sm:block">
                     Kelola<span class="text-blue-500">Konten</span>
                 </span>
             </a>
-
-            <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <?php include '../partials/nav.php'; ?>
-            </div>
         </div>
     </nav>
 
@@ -424,7 +456,7 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
                             : '../assets/img/video0.webp';
                     ?>
                         <div class="content-card">
-                            <a href="../video/watch.php?id=<?= $v['id'] ?>" class="block card-thumb">
+                            <a href="../video/watch.php?id=<?= $v['id'] ?>" class="block card-thumb" title="<?= htmlspecialchars($v['title']) ?>">
                                 <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($v['title']) ?>" loading="lazy">
                             </a>
                             <div class="card-body">
@@ -433,6 +465,14 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
                                 </a>
                                 <div class="card-meta">
                                     <span><?= number_format($v['views']) ?> views</span>
+                                    <span class="flex items-center gap-1 text-green-500/80">
+                                        <i data-lucide="thumbs-up" class="w-3 h-3"></i>
+                                        <?= number_format($v['likes']) ?>
+                                    </span>
+                                    <span class="flex items-center gap-1 text-red-500/80">
+                                        <i data-lucide="thumbs-down" class="w-3 h-3"></i>
+                                        <?= number_format($v['dislikes']) ?>
+                                    </span>
                                     <span>•</span>
                                     <span><?= date('d M Y', strtotime($v['upload_date'])) ?></span>
                                 </div>
@@ -475,6 +515,14 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
                                     <span><?= htmlspecialchars($m['artist'] ?? 'Unknown') ?></span>
                                     <span>•</span>
                                     <span><?= number_format($m['views']) ?> views</span>
+                                    <span class="flex items-center gap-1 text-green-500/80">
+                                        <i data-lucide="thumbs-up" class="w-3 h-3"></i>
+                                        <?= number_format($m['likes']) ?>
+                                    </span>
+                                    <span class="flex items-center gap-1 text-red-500/80">
+                                        <i data-lucide="thumbs-down" class="w-3 h-3"></i>
+                                        <?= number_format($m['dislikes']) ?>
+                                    </span>
                                 </div>
                                 <div class="flex gap-2 mt-3 pt-3 border-t border-white/[.04]">
                                     <a href="../admin/edit-music.php?id=<?= $m['id'] ?>"
@@ -528,9 +576,9 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             Swal.fire({
                 title: 'Hapus ' + typeLabel + '?',
                 html: '<div style="font-size:12px;color:#9ca3af">' +
-                      '"<strong style="color:#e5e7eb">' + title + '</strong>" akan dihapus dari database.<br>' +
-                      '<span style="color:#6b7280;font-size:10px">File akan dibersihkan otomatis dalam 30 menit.</span>' +
-                      '</div>',
+                    '"<strong style="color:#e5e7eb">' + title + '</strong>" akan dihapus dari database.<br>' +
+                    '<span style="color:#6b7280;font-size:10px">File akan dibersihkan otomatis dalam 30 menit.</span>' +
+                    '</div>',
                 icon: 'warning',
                 iconColor: '#ef4444',
                 showCancelButton: true,
@@ -557,4 +605,5 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
         }
     </script>
 </body>
+
 </html>
