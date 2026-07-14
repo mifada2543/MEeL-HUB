@@ -1,6 +1,8 @@
 <?php
-// Set session name SEBELUM session_start()
+// Set session name & cookie params SEBELUM session_start()
 if (session_status() === PHP_SESSION_NONE) {
+    $timeout = 43200; // 12 jam
+    session_set_cookie_params($timeout, "/");
     session_name('meel');
     session_start();
 }
@@ -24,16 +26,96 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
 
 $error_msg = "";
 $max_login_attempts = 5;
-$lockout_time = 300;
+$lockout_time = 300; // 5 menit
 $is_locked = false;
 $remaining = 0;
 
-if (isset($_SESSION['login_locked_until']) && time() < $_SESSION['login_locked_until']) {
-    $is_locked = true;
-    $remaining = $_SESSION['login_locked_until'] - time();
+// ─── IP-BASED LOCKOUT CHECK ────────────────────────────────────
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+// Bersihkan lockout yang sudah expired (session-based)
+if (isset($_SESSION['login_locked_until'])) {
+    if (time() >= $_SESSION['login_locked_until']) {
+        unset($_SESSION['login_locked_until']);
+        $_SESSION['login_fail_count'] = 0;
+    }
 }
 
-if (isset($_POST['login'])) {
+// Cek & bersihkan lockout yang sudah expired (IP-based)
+$ip_locked = false;
+$ip_remaining = 0;
+$stmt_ip = $conn->prepare("SELECT attempts, locked_until FROM login_attempts WHERE ip_address = ?");
+if ($stmt_ip) {
+    $stmt_ip->bind_param("s", $ip_address);
+    $stmt_ip->execute();
+    $ip_result = $stmt_ip->get_result();
+    if ($ip_row = $ip_result->fetch_assoc()) {
+        if ($ip_row['locked_until'] !== null) {
+            $lock_ts = strtotime($ip_row['locked_until']);
+            if (time() < $lock_ts) {
+                $ip_locked = true;
+                $ip_remaining = $lock_ts - time();
+            } else {
+                // Lockout expired — reset
+                $stmt_del = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
+                $stmt_del->bind_param("s", $ip_address);
+                $stmt_del->execute();
+            }
+        }
+    }
+    $stmt_ip->close();
+}
+
+// Gabungan: locked jika session atau IP terkunci
+if ($ip_locked || (isset($_SESSION['login_locked_until']) && time() < $_SESSION['login_locked_until'])) {
+    $is_locked = true;
+    $remaining = max($ip_remaining, ($_SESSION['login_locked_until'] ?? 0) - time());
+}
+
+// ─── HELPER: catat percobaan gagal ─────────────────────────────
+function record_failed_attempt($conn, $ip_address, $max_login_attempts, $lockout_time) {
+    // Session-based counter
+    $_SESSION['login_fail_count'] = ($_SESSION['login_fail_count'] ?? 0) + 1;
+    if ($_SESSION['login_fail_count'] >= $max_login_attempts) {
+        $_SESSION['login_locked_until'] = time() + $lockout_time;
+        $_SESSION['login_fail_count'] = 0;
+    }
+
+    // IP-based counter (database)
+    $stmt_ups = $conn->prepare(
+        "INSERT INTO login_attempts (ip_address, attempts, last_attempt_at, locked_until)
+         VALUES (?, 1, NOW(), NULL)
+         ON DUPLICATE KEY UPDATE
+             attempts = attempts + 1,
+             last_attempt_at = NOW()"
+    );
+    if ($stmt_ups) {
+        $stmt_ups->bind_param("s", $ip_address);
+        $stmt_ups->execute();
+        $stmt_ups->close();
+    }
+
+    // Cek apakah IP sudah melebihi batas
+    $stmt_chk = $conn->prepare("SELECT attempts FROM login_attempts WHERE ip_address = ?");
+    if ($stmt_chk) {
+        $stmt_chk->bind_param("s", $ip_address);
+        $stmt_chk->execute();
+        $chk_res = $stmt_chk->get_result();
+        if ($chk_row = $chk_res->fetch_assoc()) {
+            if ($chk_row['attempts'] >= $max_login_attempts) {
+                $lock_ts = date('Y-m-d H:i:s', time() + $lockout_time);
+                $stmt_lock = $conn->prepare("UPDATE login_attempts SET locked_until = ? WHERE ip_address = ?");
+                $stmt_lock->bind_param("ss", $lock_ts, $ip_address);
+                $stmt_lock->execute();
+                $stmt_lock->close();
+            }
+        }
+        $stmt_chk->close();
+    }
+}
+
+// ─── FORM PROCESSING ───────────────────────────────────────────
+if (isset($_POST['login']) && !$is_locked) {
     if (!verify_csrf()) {
         $error_msg = "Sesi keamanan kadaluarsa. Silakan refresh halaman dan coba lagi.";
     } else {
@@ -45,6 +127,7 @@ if (isset($_POST['login'])) {
             $stmt->bind_param("s", $user_input);
             if ($stmt->execute()) {
                 $result = $stmt->get_result();
+                $login_failed = false;
 
                 if ($u = $result->fetch_assoc()) {
                     if (password_verify($pass_input, $u['PASSWORD'] ?? $u['password'])) {
@@ -53,7 +136,16 @@ if (isset($_POST['login'])) {
                                 ? "Akun Anda sedang menunggu verifikasi admin."
                                 : "Akses ditolak untuk akun Guest.";
                         } else {
+                            // ─── LOGIN BERHASIL ───────────────────────────
+                            // Reset session & IP fail count
                             unset($_SESSION['login_fail_count']);
+                            unset($_SESSION['login_locked_until']);
+
+                            $stmt_del = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
+                            $stmt_del->bind_param("s", $ip_address);
+                            $stmt_del->execute();
+                            $stmt_del->close();
+
                             $_SESSION['user_id']  = $u['id'];
                             $_SESSION['username'] = $u['username'];
                             $_SESSION['role']     = $u['role'];
@@ -68,15 +160,16 @@ if (isset($_POST['login'])) {
                             }
                         }
                     } else {
-                        $_SESSION['login_fail_count'] = ($_SESSION['login_fail_count'] ?? 0) + 1;
-                        if ($_SESSION['login_fail_count'] >= $max_login_attempts) {
-                            $_SESSION['login_locked_until'] = time() + $lockout_time;
-                            $_SESSION['login_fail_count'] = 0;
-                        }
-                        $error_msg = "Username atau password salah!";
+                        $login_failed = true;
                     }
                 } else {
+                    $login_failed = true;
+                }
+
+                // ─── TANGANI LOGIN GAGAL (sekali, tanpa duplikasi) ────
+                if ($login_failed) {
                     $error_msg = "Username atau password salah!";
+                    record_failed_attempt($conn, $ip_address, $max_login_attempts, $lockout_time);
                 }
             } else {
                 $error_msg = "Terjadi kesalahan. Silakan coba lagi.";
@@ -84,6 +177,29 @@ if (isset($_POST['login'])) {
         } else {
             $error_msg = "Terjadi kesalahan. Silakan coba lagi.";
         }
+    }
+}
+
+// Re-check lockout setelah POST processing (kalau baru kena lock)
+if (!$is_locked && isset($_SESSION['login_locked_until']) && time() < $_SESSION['login_locked_until']) {
+    $is_locked = true;
+    $remaining = $_SESSION['login_locked_until'] - time();
+}
+// Cek IP lockout lagi setelah POST (database, karena $ip_locked sudah stale)
+if (!$is_locked) {
+    $stmt_ip2 = $conn->prepare("SELECT locked_until FROM login_attempts WHERE ip_address = ? AND locked_until IS NOT NULL");
+    if ($stmt_ip2) {
+        $stmt_ip2->bind_param("s", $ip_address);
+        $stmt_ip2->execute();
+        $ip2_res = $stmt_ip2->get_result();
+        if ($ip2_row = $ip2_res->fetch_assoc()) {
+            $lock_ts = strtotime($ip2_row['locked_until']);
+            if (time() < $lock_ts) {
+                $is_locked = true;
+                $remaining = $lock_ts - time();
+            }
+        }
+        $stmt_ip2->close();
     }
 }
 ?>
@@ -135,11 +251,11 @@ if (isset($_POST['login'])) {
                     <p class="text-[10px] text-gray-300 uppercase">Detik</p>
                 </div>
                 <script>
-                    let seconds = <?= $remaining ?>;
+                    let seconds = <?= max(1, $remaining) ?>;
                     const display = document.getElementById('countdown');
                     const timer = setInterval(() => {
                         seconds--;
-                        display.innerText = seconds;
+                        display.innerText = seconds > 0 ? seconds : 0;
                         if (seconds <= 0) {
                             clearInterval(timer);
                             location.reload();
