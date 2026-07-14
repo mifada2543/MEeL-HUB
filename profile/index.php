@@ -16,7 +16,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
         
         // 2. Ambil hanya bagian path-nya saja (misal: /profile/edit.php)
         $ref_path = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages = ['profile_edit.php', 'index.php'];
+        $excluded_pages = ['profile_edit.php', 'index.php', 'manage.php'];
         
         $should_exclude = false;
         foreach ($excluded_pages as $page) {
