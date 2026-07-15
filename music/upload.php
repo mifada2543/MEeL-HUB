@@ -59,6 +59,9 @@ if (isset($_POST['upload'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Upload musik ke MEeL Music Library. Format audio didukung: FLAC, MP3, WAV, OPUS, OGG, M4A.">
+    <meta property="og:title" content="Upload | MEeL Music">
+    <meta property="og:description" content="Upload musik ke MEeL Music Library. Format audio: FLAC, MP3, WAV, OPUS, OGG, M4A.">
     <title>Upload | MEeL Music</title>
     <?php include '../partials/link.php'; ?>
     <style>

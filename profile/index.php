@@ -80,6 +80,8 @@ $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+    <meta property="og:title" content="<?= htmlspecialchars($u['username']) ?> — MEeL Profile">
+    <meta property="og:description" content="Profil <?= htmlspecialchars($u['username']) ?> di MEeL - Platform Media Hub Pribadi.">
     <title>MEeL Profile | <?= htmlspecialchars($u['username']) ?></title>
     <?php include '../partials/link.php'; ?>
     <style>

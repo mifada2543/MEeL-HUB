@@ -161,6 +161,9 @@ $back_url    = 'index.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MEeL Admin - Chess Room Manager. Monitor dan kelola sesi permainan catur, hapus room tidak aktif.">
+    <meta property="og:title" content="Chess Manager · MEeL Admin">
+    <meta property="og:description" content="Panel admin MEeL untuk memonitor dan mengelola sesi permainan catur.">
     <title>Chess Manager · MEeL Admin</title>
     <link rel="stylesheet" href="../assets/css/font.css">
     <?php include '../partials/link.php'; ?>
