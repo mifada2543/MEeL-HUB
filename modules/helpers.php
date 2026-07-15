@@ -1,5 +1,37 @@
 <?php
 
+/**
+ * Deteksi protokol HTTPS/HTTP dengan dukungan proxy/Cloudflare.
+ * Cloudflare Tunnel menghubungkan origin via HTTP, sehingga $_SERVER['HTTPS']
+ * tidak ter-set. Sebagai gantinya, Cloudflare mengirim header:
+ *   - HTTP_X_FORWARDED_PROTO: https
+ *   - HTTP_CF_VISITOR: {"scheme":"https"}
+ */
+function detectProtocol(): string
+{
+    // 1. Standard HTTPS
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return 'https';
+    }
+    // 2. Forwarded proto (Cloudflare, Nginx, Apache mod_proxy, dll)
+    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') {
+        return 'https';
+    }
+    // 3. Cloudflare CF-Visitor header
+    if (!empty($_SERVER['HTTP_CF_VISITOR'])) {
+        $cf = @json_decode($_SERVER['HTTP_CF_VISITOR'], true);
+        if (!empty($cf['scheme']) && $cf['scheme'] === 'https') {
+            return 'https';
+        }
+    }
+    // 4. Forwarded scheme
+    if (!empty($_SERVER['HTTP_X_FORWARDED_SCHEME']) && strtolower($_SERVER['HTTP_X_FORWARDED_SCHEME']) === 'https') {
+        return 'https';
+    }
+    // 5. Fallback
+    return 'http';
+}
+
 function time_ago($timestamp)
 {
     $time_diff = time() - strtotime($timestamp);

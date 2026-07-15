@@ -24,6 +24,8 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+    <meta property="og:title" content="Access Denied | MEeL">
+    <meta property="og:description" content="Akses ditolak. Anda tidak memiliki izin untuk mengakses halaman ini.">
     <title>Access Denied | MEeL</title>
     <?php include '../partials/link.php'; ?>
     <style>

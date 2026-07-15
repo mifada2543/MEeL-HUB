@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL Anime — Coming Soon. Platform Anime streaming akan segera hadir.">
+    <meta property="og:title" content="MEeL Anime | Coming Soon">
+    <meta property="og:description" content="MEeL Anime — Coming Soon. Platform Anime streaming akan segera hadir.">
     <title>MEeL Anime | Coming Soon</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <link rel="manifest" href="../assets/manifest.json">

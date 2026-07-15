@@ -114,6 +114,8 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Kelola konten Anda.">
+    <meta property="og:title" content="Kelola Konten | MEeL">
+    <meta property="og:description" content="Kelola konten video dan musik Anda di MEeL. Edit, hapus, dan pantau statistik.">
     <title>Kelola Konten | MEeL</title>
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/video.css">

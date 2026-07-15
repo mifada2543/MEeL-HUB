@@ -82,6 +82,7 @@ const plyrOptions = {
       airplay: "AirPlay",
       qualityLabel: {},
     },
+    fullscreen: { enabled: !0, fallback: !0, iosNative: !1 },
     clickToPlay: !isTouchDevice,
     keyboard: { focused: !0, global: !0 },
     previewThumbnails: { enabled: "" !== vttSrc, src: vttSrc },
@@ -655,6 +656,24 @@ function setupMeelPlayerEvents() {
       (screen.orientation?.lock &&
         screen.orientation.lock("landscape").catch(() => {}),
         vttSrc && setTimeout(() => refreshVttSprites(vttSrc), 300));
+
+      /* ── Ignore notch: force true fullscreen ── */
+      document.body.classList.add("meel-fs-active");
+      const e_fsWrap = document.getElementById("main-video-wrapper"),
+        e_fsGlow = document.getElementById("video-glow-container");
+      if (e_fsWrap) {
+        e_fsWrap._meelSavedRatio = e_fsWrap.style.aspectRatio || "";
+        e_fsWrap.style.setProperty("aspect-ratio", "unset", "important");
+        e_fsWrap.style.setProperty("height", "100dvh", "important");
+        e_fsWrap.style.setProperty("width", "100dvw", "important");
+        e_fsWrap.style.setProperty("border-radius", "0", "important");
+      }
+      if (e_fsGlow) {
+        e_fsGlow._meelSavedHeight = e_fsGlow.style.height || "";
+        e_fsGlow._meelSavedWidth = e_fsGlow.style.width || "";
+        e_fsGlow.style.setProperty("height", "100dvh", "important");
+        e_fsGlow.style.setProperty("width", "100dvw", "important");
+      }
       const e = player.elements.container,
         t = e ? e.querySelector(".plyr__video-wrapper") : null;
       if (e && t && videoElement) {
@@ -734,6 +753,26 @@ function setupMeelPlayerEvents() {
     }),
     player.on("exitfullscreen", () => {
       screen.orientation?.unlock && screen.orientation.unlock();
+
+      /* ── Restore notch-ignoring overrides ── */
+      document.body.classList.remove("meel-fs-active");
+      const e_xsWrap = document.getElementById("main-video-wrapper"),
+        e_xsGlow = document.getElementById("video-glow-container");
+      if (e_xsWrap) {
+        e_xsWrap.style.removeProperty("aspect-ratio");
+        e_xsWrap.style.removeProperty("height");
+        e_xsWrap.style.removeProperty("width");
+        e_xsWrap.style.removeProperty("border-radius");
+        if (e_xsWrap._meelSavedRatio)
+          e_xsWrap.style.aspectRatio = e_xsWrap._meelSavedRatio;
+        delete e_xsWrap._meelSavedRatio;
+      }
+      if (e_xsGlow) {
+        e_xsGlow.style.removeProperty("height");
+        e_xsGlow.style.removeProperty("width");
+        delete e_xsGlow._meelSavedHeight;
+        delete e_xsGlow._meelSavedWidth;
+      }
       const e = player.elements.container;
       if (e) {
         (e._fsGlowStop && e._fsGlowStop(),

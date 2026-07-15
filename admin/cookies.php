@@ -198,6 +198,9 @@ while ($rc = $r->fetch_assoc()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MEeL Admin - Media Analytics. Monitor dan kelola seluruh konten video dan musik, lihat statistik views, likes, dan dislikes.">
+    <meta property="og:title" content="MEeL | Media Analytics">
+    <meta property="og:description" content="Panel admin MEeL untuk memonitor dan menganalisis statistik konten video dan musik.">
     <title>MEeL | Media Analytics</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <?php include '../partials/link.php'; ?>

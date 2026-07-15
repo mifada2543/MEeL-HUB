@@ -10,6 +10,8 @@ $games = [
 <head>
   <meta charset="UTF-8" />
   <meta name="description" content="Koleksi game arcade klasik yang ikonik, lengkap dengan detail spesifikasi kabinet dan fitur favorit untuk para penggemar nostalgia." />
+  <meta property="og:title" content="Koleksi Game Arcade Klasik — MEeL Arcade" />
+  <meta property="og:description" content="Koleksi game arcade klasik untuk para penggemar nostalgia. Mainkan Miku & Teto Run, Chess, dan Snake!" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Koleksi Game Arcade Klasik</title>
   <?php include '../partials/link.php'; ?>

@@ -8,6 +8,8 @@ $reason = isset($_GET['reason']) ? $_GET['reason'] : 'Akses dibatasi oleh sistem
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+    <meta property="og:title" content="Akses Dibatasi | MEeL">
+    <meta property="og:description" content="Akses Anda ke MEeL telah dibatasi oleh sistem keamanan.">
     <title>Akses Dibatasi | MEeL</title>
     <?php include '../partials/link.php'; ?>
     <style>
