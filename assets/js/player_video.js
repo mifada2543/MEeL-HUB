@@ -370,6 +370,26 @@ function setupMeelPlayerEvents() {
         const e = document.querySelector(".plyr__preview-thumb");
         e && (e.style.display = "none");
       }
+      setTimeout(() => {
+        if (!player?.elements?.controls) return;
+        const e = player.elements.controls;
+        if (e.querySelector('[data-plyr="meel-miniplayer"]')) return;
+        const t = e.querySelector('[data-plyr="pip"]');
+        if (!t) return;
+        const n = document.createElement("button");
+        ((n.className = "plyr__control"),
+          n.setAttribute("data-plyr", "meel-miniplayer"),
+          n.setAttribute("type", "button"),
+          n.setAttribute("aria-label", "Mini Player"),
+          (n.title = "Mini Player"),
+          (n.innerHTML =
+            '<i data-lucide="shrink" style="width:18px;height:18px;"></i>'),
+          n.addEventListener("click", (e) => {
+            (e.stopPropagation(), window.toggleMiniPlayer());
+          }),
+          t.parentNode.insertBefore(n, t.nextSibling),
+          window.lucide && lucide.createIcons());
+      }, 200);
       const i = localStorage.getItem(storageKeyVideo);
       if (isAutoRecovering && i)
         return (

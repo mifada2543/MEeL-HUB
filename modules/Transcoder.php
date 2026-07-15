@@ -346,6 +346,7 @@ class Transcoder
         $description = !empty($meta['description']) ? $meta['description'] : 'Upload by MEeL Engine';
 
         // Siapkan perintah download sesuai tipe
+        $shm_temp    = null;
         $temp_id     = null;
         $staging_dir = null;
         $basename    = null;
