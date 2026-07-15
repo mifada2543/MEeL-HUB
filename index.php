@@ -14,18 +14,11 @@ $counts  = $library->getCounts();
 <html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="MEeL | Media Hub">
-    <meta property="og:description" content="Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:image" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') ?>/assets/MEeL.png">
-    <meta property="og:url" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $_SERVER['REQUEST_URI'] ?>">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
-    <title>MEeL | Media Hub</title>
-    <link rel="manifest" href="assets/manifest.json">
-    <link rel="icon" type="image/png" href="assets/MEeL.png">
+<?php
+    $_META_TITLE = 'MEeL | Media Hub';
+    $_META_DESC  = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
+    include 'partials/head.php';
+?>
     <link rel="stylesheet" href="assets/css/index(hub).css">
     <link href="assets/css/tailwind.min.css" rel="stylesheet">
     <script src="assets/js/lucide.js"></script>
