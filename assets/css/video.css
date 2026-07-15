@@ -6,10 +6,12 @@
   --font:
     ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --font-display: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  --meel-safe-top: env(safe-area-inset-top, 0px);
-  --meel-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --meel-safe-left: env(safe-area-inset-left, 0px);
-  --meel-safe-right: env(safe-area-inset-right, 0px);
+
+  /* Diubah menjadi 0px agar semua layout mengabaikan safe area/notch */
+  --meel-safe-top: 0px;
+  --meel-safe-bottom: 0px;
+  --meel-safe-left: 0px;
+  --meel-safe-right: 0px;
 }
 body {
   background-color: var(--bg);
@@ -136,22 +138,22 @@ body {
 
 /* ── True Fullscreen: ignore notch, fill entire screen ── */
 
-/* Body lock ketika fullscreen aktif (via JS) */
+/* Body lock ketika fullscreen aktif */
 body.meel-fs-active {
   overflow: hidden !important;
   position: fixed !important;
-  width: 100% !important;
-  height: 100% !important;
+  width: 100vw !important; /* Diubah ke vw agar stabil */
+  height: 100vh !important; /* Diubah ke vh agar stabil */
   overscroll-behavior: none !important;
 }
 
-/* Parent containers ikut fullscreen */
+/* Parent containers ikut fullscreen mengabaikan notch */
 body.meel-fs-active #video-glow-container,
 body.meel-fs-active #main-video-wrapper {
-  width: 100dvw !important;
-  height: 100dvh !important;
-  max-width: 100dvw !important;
-  max-height: 100dvh !important;
+  width: 100vw !important; /* Diubah ke vw */
+  height: 100vh !important; /* Diubah ke vh */
+  max-width: 100vw !important;
+  max-height: 100vh !important;
   aspect-ratio: unset !important;
   border-radius: 0 !important;
   overflow: visible !important;
@@ -169,16 +171,16 @@ body.meel-fs-active #main-video-wrapper .plyr__video-wrapper {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
-  width: 100dvw !important;
-  height: 100dvh !important;
-  max-width: 100dvw !important;
-  max-height: 100dvh !important;
+  width: 100vw !important; /* Diubah ke vw */
+  height: 100vh !important; /* Diubah ke vh */
+  max-width: 100vw !important;
+  max-height: 100vh !important;
   padding: 0 !important;
   margin: 0 !important;
   border-radius: 0 !important;
 }
 
-/* Video wrapper juga full, tanpa border-radius */
+/* Video wrapper juga full tanpa batas */
 .plyr--fullscreen-fallback .plyr__video-wrapper,
 .plyr:-webkit-full-screen .plyr__video-wrapper,
 .plyr:fullscreen .plyr__video-wrapper {
@@ -189,11 +191,11 @@ body.meel-fs-active #main-video-wrapper .plyr__video-wrapper {
   max-height: 100% !important;
 }
 
-/* Video element harus memenuhi wrapper sepenuhnya, tanpa stretch */
+/* Video tetap menggunakan "contain" agar format aslinya tidak terpotong / melar */
 .plyr--fullscreen-fallback video,
 .plyr:-webkit-full-screen video,
 .plyr:fullscreen video {
-  object-fit: contain !important;
+  object-fit: contain !important; /* Diubah kembali ke contain agar rasio asli terjaga */
   width: 100% !important;
   height: 100% !important;
 }
@@ -205,13 +207,13 @@ body.meel-fs-active #main-video-wrapper .plyr__video-wrapper {
   border-radius: 0 !important;
 }
 
-/* Controls tetap pakai safe-area agar tombol tidak terhalang notch */
+/* Controls diatur menggunakan padding statis (mengabaikan safe-area sepenuhnya) */
 .plyr--fullscreen-fallback .plyr__controls,
 .plyr:-webkit-full-screen .plyr__controls,
 .plyr:fullscreen .plyr__controls {
-  padding-left: max(env(safe-area-inset-left, 0px), 8px) !important;
-  padding-right: max(env(safe-area-inset-right, 0px), 8px) !important;
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px) !important;
+  padding-left: 12px !important; /* Menghilangkan safe-area-inset */
+  padding-right: 12px !important; /* Menghilangkan safe-area-inset */
+  padding-bottom: 8px !important; /* Menghilangkan safe-area-inset */
 }
 
 .plyr--fullscreen-fallback .plyr__control--overlaid,
@@ -726,9 +728,21 @@ body.meel-fs-active #main-video-wrapper .plyr__video-wrapper {
   border-radius: 0 !important;
 }
 
-body.meel-fs-active #video-glow-container {
-  height: 100dvh !important;
-  width: 100dvw !important;
+/* Paksa background hitam player melebar penuh tanpa memedulikan safe-area */
+body.meel-fs-active #video-glow-container,
+body.meel-fs-active #main-video-wrapper,
+body.meel-fs-active .plyr {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important; /* Diubah ke vw */
+  height: 100vh !important; /* Diubah ke vh */
+  margin: 0 !important;
+  padding: 0 !important; /* Menghapus sisa padding yang menahan dari notch */
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  background-color: #000 !important; /* Warna hitam legam akan menembus notch */
+  z-index: 999999 !important;
 }
 
 #video-glow-container {
