@@ -1,55 +1,174 @@
-/* Animasi tersuai untuk pergerakan dan paparan */
-        @keyframes pop {
-            0% {
-                transform: scale(0.85);
-                opacity: 0;
-            }
-
-            50% {
-                transform: scale(1.05);
-            }
-
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        .animate-pop {
-            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-
-        @keyframes placePiece {
-            0% {
-                transform: translateY(-10px) scale(1.1);
-                opacity: 0.8;
-            }
-
-            100% {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-        }
-
-        .piece-anim {
-            animation: placePiece 0.2s ease-out forwards;
-        }
-
-        /* Custom scrollbar untuk sejarah pergerakan */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.5);
-            border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(52, 211, 153, 0.4);
-            border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(52, 211, 153, 0.8);
-        }
+@keyframes pop {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-pop {
+  animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+@keyframes placePiece {
+  0% {
+    transform: translateY(-10px) scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+.piece-anim {
+  animation: placePiece 0.2s ease-out forwards;
+}
+@keyframes captureFade {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    filter: brightness(1);
+  }
+  30% {
+    transform: scale(1.2);
+    opacity: 0.8;
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: scale(0.1) rotate(20deg);
+    opacity: 0;
+    filter: brightness(0.5);
+  }
+}
+.piece-captured {
+  animation: captureFade 0.35s ease-out forwards;
+  z-index: 15 !important;
+}
+@keyframes captureLand {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.piece-capture-land {
+  animation: captureLand 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes castleSlide {
+  0% {
+    transform: translateX(0);
+  }
+  60% {
+    transform: translateX(5px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+.piece-castle {
+  animation: castleSlide 0.3s ease-out forwards;
+}
+@keyframes promoteGlow {
+  0% {
+    transform: scale(0.3) rotate(-15deg);
+    opacity: 0;
+    filter: brightness(2) drop-shadow(0 0 10px gold);
+  }
+  50% {
+    transform: scale(1.2) rotate(5deg);
+    opacity: 1;
+    filter: brightness(1.5) drop-shadow(0 0 8px gold);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+    filter: brightness(1) drop-shadow(0 0 4px rgba(255, 215, 0, 0.3));
+  }
+}
+.piece-promote {
+  animation: promoteGlow 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes boardFlipOut {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+}
+.board-flip-out {
+  animation: boardFlipOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none !important;
+}
+@keyframes boardFlipIn {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.board-flip-in {
+  animation: boardFlipIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  pointer-events: none !important;
+}
+#game-over-overlay {
+  transition: opacity 0.3s ease;
+}
+#chess-board {
+  perspective: 800px;
+}
+[data-lucide] {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: middle;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(52, 211, 153, 0.4);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(52, 211, 153, 0.8);
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(52, 211, 153, 0.4) rgba(15, 23, 42, 0.5);
+}
+.w-\[10px\] {
+  width: 10px;
+}
+.h-\[10px\] {
+  height: 10px;
+}
+.w-5\/6 {
+  width: 83.333333%;
+}
+.h-5\/6 {
+  height: 83.333333%;
+}
+.bg-black\/45 {
+  background-color: rgba(0, 0, 0, 0.45);
+}

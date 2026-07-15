@@ -21,6 +21,10 @@ export class ChessGame {
     this.isGameOver = false;
     this.promotionPending = null;
 
+    // Animasi tracking
+    this.lastCapturedPiece = null;     // { type, color, r, c } piece yang ditangkap
+    this.lastMoveType = null;          // 'move' | 'capture' | 'castle' | 'promotion'
+
     // Aturan Draw: 50-move rule & Threefold Repetition
     this.halfMoveClock = 0;
     this.positionHistory = {};
@@ -324,14 +328,24 @@ export class ChessGame {
       this.board[fromR][toC] = null;
     }
 
+    // Simpan data captured untuk animasi
+    this.lastCapturedPiece = captured
+      ? { type: captured.type, color: captured.color, r: moveObj.isEnPassant ? fromR : toR, c: moveObj.isEnPassant ? toC : toC }
+      : null;
+
     // Hitung Half-Move Clock
     if (isPawn || captured) this.halfMoveClock = 0;
     else this.halfMoveClock++;
 
     this.movePiece(fromR, fromC, toR, toC);
 
-    if (moveObj.isCastling === "k") this.movePiece(fromR, 7, fromR, 5);
-    else if (moveObj.isCastling === "q") this.movePiece(fromR, 0, fromR, 3);
+    if (moveObj.isCastling === "k") {
+      this.movePiece(fromR, 7, fromR, 5);
+      this.lastMoveType = "castle";
+    } else if (moveObj.isCastling === "q") {
+      this.movePiece(fromR, 0, fromR, 3);
+      this.lastMoveType = "castle";
+    }
 
     if (piece.type === "k") {
       this.castlingRights[piece.color].k = false;
@@ -348,13 +362,29 @@ export class ChessGame {
 
     if (isPawn && reachedEnd && promotedPieceType) {
       this.board[toR][toC] = { type: promotedPieceType, color: piece.color };
+      this.lastMoveType = "promotion";
     }
 
+    // Catat captured piece (selalu, walaupun sound dimute)
     if (captured) {
       this.captured[this.turn].push(captured.type);
-      if (!this.muteSounds) sounds.playCapture();
-    } else {
-      if (!this.muteSounds) sounds.playMove();
+    }
+
+    // Mainkan sound effect yang sesuai
+    if (!this.muteSounds) {
+      if (captured) {
+        this.lastMoveType = "capture";
+        sounds.playCapture();
+      } else if (moveObj.isCastling) {
+        this.lastMoveType = "castle";
+        sounds.playCastle();
+      } else if (isPawn && reachedEnd && promotedPieceType) {
+        this.lastMoveType = "promotion";
+        sounds.playPromotion();
+      } else {
+        this.lastMoveType = "move";
+        sounds.playMove();
+      }
     }
 
     let notation = this.getAlgebraicNotation(
