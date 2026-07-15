@@ -13,10 +13,25 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 | 3 | [🏗️ Modul & Arsitektur](modules.md) | Penjelasan mendalam setiap modul dan class |
 | 4 | [🔌 API & Controller](api.md) | Dokumentasi semua endpoint AJAX/HTMX |
 | 5 | [🔒 Keamanan](security.md) | Sistem keamanan, RBAC, CSRF, IP Banning |
-| 6 | [🔧 Troubleshooting](troubleshooting.md) | Solusi untuk masalah umum |
-| 7 | [👨‍💻 Panduan Development](development.md) | Standar koding, kontribusi, dan testing |
+| 6 | [🌍 Problem Solved](problem-solved.md) | Masalah dunia nyata yang melatarbelakangi MEeL |
+| 7 | [🔧 Troubleshooting](troubleshooting.md) | Solusi untuk masalah umum |
+| 8 | [👨‍💻 Panduan Development](development.md) | Standar koding, kontribusi, dan testing |
+| 9 | [📥 Troubleshooting Advanced Upload](upload_issue.md) | Penanganan masalah yt-dlp & background queue |
 
 ---
+
+## 📁 File Penting Baru
+
+| File | Deskripsi |
+|------|-----------|
+| `database/schema.sql` | Skema database standalone — import langsung `mysql < database/schema.sql` |
+| `auth/config.example.php` | Template konfigurasi (copy ke `config.php`) |
+
+## 🔧 Perubahan Terbaru
+
+- **Path terpusat:** Semua path penyimpanan media (Video, Music, Books, Drive) diatur dari `MEEL_HDD_BASE` di `auth/config.php` — cukup ubah 1 baris
+- **Skema database standalone:** File `database/schema.sql` untuk import cepat
+- **Type hints:** Properti class dan parameter constructor sekarang menggunakan type hints (`\mysqli`, `int`, `string`, dll.)
 
 ## 📖 Tentang Proyek
 

@@ -1,3 +1,4 @@
+<?php /** @var array $v Data musik dari hasil query (music/index.php) */ ?>
 <div class="music-item flex items-center gap-3 px-3 py-2.5 rounded-xl htmx-added"
      data-id="<?= $v['id'] ?>"
      data-title="<?= htmlspecialchars($v['title']) ?>"
@@ -35,14 +36,14 @@
            data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
            data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
            data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
-           data-filename="<?= htmlspecialchars($v['filename']) ?>">
+           data-filename="<?= htmlspecialchars($v['filename']) ?>" title="<?= htmlspecialchars($v['title']) ?>">
             <?= htmlspecialchars($v['title']) ?>
         </a>
         <div class="flex items-center gap-2 mt-0.5">
-            <span class="text-[10px] text-gray-500 truncate">
+            <span class="text-[10px] text-gray-500 truncate" title="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>">
                 <?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>
             </span>
-            <span class="text-[9px] px-1.5 py-0.5 rounded bg-white/[.04] text-gray-500 border border-white/[.05] uppercase flex-shrink-0">
+            <span class="text-[9px] px-1.5 py-0.5 rounded bg-white/[.04] text-gray-500 border border-white/[.05] uppercase flex-shrink-0" title="<?= strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION)) ?>">
                 <?= strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION)) ?>
             </span>
         </div>

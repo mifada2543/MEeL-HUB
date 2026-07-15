@@ -24,7 +24,7 @@ if (!isset($is_logged_in)) {
         </div>
     <?php else: ?>
         <a href="auth/login.php"
-           class="text-[11px] font-bold text-gray-600 hover:text-white transition-colors px-3 py-2">
+           class="text-[11px] font-bold text-gray-400 hover:text-white transition-colors px-3 py-2">
             Login
         </a>
         <a href="auth/register.php"

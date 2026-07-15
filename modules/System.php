@@ -175,13 +175,20 @@ class System
 
     public function cleanStuckQueues(): int
     {
-        $count = 0;
-        $this->conn->query("DELETE FROM transcode_queue WHERE status = 'processing'");
-        $count += $this->conn->affected_rows;
-        $this->conn->query("UPDATE upload_queue SET status = 'failed' WHERE status = 'processing'");
-        $count += $this->conn->affected_rows;
+        $this->conn->begin_transaction();
+        try {
+            $this->conn->query("DELETE FROM transcode_queue WHERE status = 'processing'");
+            $del_count = $this->conn->affected_rows;
 
-        return $count;
+            $this->conn->query("UPDATE upload_queue SET status = 'failed' WHERE status = 'processing'");
+            $upd_count = $this->conn->affected_rows;
+
+            $this->conn->commit();
+            return $del_count + $upd_count;
+        } catch (\Throwable $e) {
+            $this->conn->rollback();
+            return 0;
+        }
     }
     public function forceStopQueue(int $id, string $task_type): bool
     {

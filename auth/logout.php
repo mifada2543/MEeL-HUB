@@ -1,6 +1,16 @@
 <?php
 session_name('meel');
 session_start();
+include 'config.php';
+
+// Reset last_session_id agar session lama tidak trigger false kick
+// saat user login lagi dengan session ID baru
+if (isset($_SESSION['user_id'])) {
+    $stmt = $conn->prepare("UPDATE users SET last_session_id = NULL WHERE id = ?");
+    $stmt->bind_param("i", $_SESSION['user_id']);
+    $stmt->execute();
+    $stmt->close();
+}
 
 $_SESSION = array();
 

@@ -107,15 +107,19 @@ if (isset($conn)) {
     $check_ban->execute();
     $ban_res = $check_ban->get_result();
 
-    if ($ban_res->num_rows > 0) {
-        // Jika bukan admin, baru di-die
-        if ($session_role !== 'admin') {
-            $row = $ban_res->fetch_assoc();
-            die("<div style='background:#0b0e14; color:#ef4444; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif;'>
-                    <h1 style='font-size:4rem; font-weight:900;'>403</h1>
-                    <p style='text-transform:uppercase; letter-spacing:4px;'>Akses Dibatasi</p>
-                    <p style='color:#4b5563; margin-top:10px;'>Alasan: " . htmlspecialchars($row['reason']) . "</p>
-                </div>");
+    $current_page = basename($_SERVER['PHP_SELF']);
+    if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+        if ($ban_res->num_rows > 0) {
+            // Jika bukan admin, baru di-redirect
+            if ($session_role !== 'admin') {
+                $row = $ban_res->fetch_assoc();
+                $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
+                $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+                $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
+                $banned_url = $relative_base . '/err/banned.php';
+                header("Location: " . $banned_url . "?reason=" . urlencode($row['reason']));
+                exit();
+            }
         }
     }
     // Deteksi halaman dan aktivitas user
@@ -149,6 +153,40 @@ if (isset($conn)) {
                     $short_title = (mb_strlen($res['title']) > 20) ? mb_substr($res['title'], 0, 17) . '...' : $res['title'];
                     $current_page = "Reading: " . $short_title;
                 }
+            }
+        } elseif ($current_page == 'read_pdf.php' || $current_page == 'pdf.php') {
+            $get_book = $conn->prepare("SELECT title FROM books WHERE id = ?");
+            if ($get_book) {
+                $get_book->bind_param("i", $id_get);
+                $get_book->execute();
+                $res = $get_book->get_result()->fetch_assoc();
+                if ($res) {
+                    $short_title = (mb_strlen($res['title']) > 20) ? mb_substr($res['title'], 0, 17) . '...' : $res['title'];
+                    $current_page = "Reading PDF: " . $short_title;
+                }
+            }
+        } elseif ($current_page == 'stream.php' && $dir_name == 'music') {
+            // Stream.php dipanggil berkali-kali (range requests) selama playback.
+            // Throttle: hanya query DB jika lagu berganti, supaya tidak membebani
+            // server dengan query berulang untuk lagu yang sama.
+            $last_stream_id = $_SESSION['_last_stream_id'] ?? null;
+            if ($last_stream_id !== $id_get) {
+                $_SESSION['_last_stream_id'] = $id_get;
+                $get_title = $conn->prepare("SELECT title FROM music WHERE id = ?");
+                if ($get_title) {
+                    $get_title->bind_param("i", $id_get);
+                    $get_title->execute();
+                    $res = $get_title->get_result()->fetch_assoc();
+                    if ($res) {
+                        $short_title = (mb_strlen($res['title']) > 20) ? mb_substr($res['title'], 0, 17) . '...' : $res['title'];
+                        $current_page = "Streaming: " . $short_title;
+                        $_SESSION['_last_stream_page'] = $current_page;
+                    }
+                }
+            } elseif (isset($_SESSION['_last_stream_page'])) {
+                // Range request berikutnya untuk lagu yang sama — pakai title yang
+                // sudah di-cache di session, bukan query ulang ke DB.
+                $current_page = $_SESSION['_last_stream_page'];
             }
         } elseif ($current_page == 'index.php' && $dir_name == 'profile') {
             $target_user = $_GET['u'] ?? 'Someone';
@@ -211,19 +249,19 @@ if (isset($conn)) {
         // 2. LOGIKA KICK: Jika SID di DB berbeda dengan browser, langsung tendang!
         // Kita kecualikan Admin agar admin tidak menendang dirinya sendiri secara tidak sengaja
         // HANYA kick jika last_session_id TIDAK KOSONG dan BERBEDA dengan current SID
-        if ($user_status && $user_status['role'] !== 'admin') {
-            if (!empty($user_status['last_session_id']) && $user_status['last_session_id'] !== $current_sid) {
-                session_unset();
-                session_destroy();
+        if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+            if ($user_status && $user_status['role'] !== 'admin') {
+                if (!empty($user_status['last_session_id']) && $user_status['last_session_id'] !== $current_sid) {
+                    session_unset();
+                    session_destroy();
 
-                // Tampilan layar "Kicked" yang estetik untuk user yang ditendang
-                die("<div style='background:#0b0e14; color:#f97316; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif; text-align:center;'>
-                    <div style='padding:20px; border:1px solid rgba(249,115,22,0.2); border-radius:20px; background:rgba(255,255,255,0.02);'>
-                        <h1 style='font-size:2rem; font-weight:900; margin-bottom:10px;'>SESSION REVOKED</h1>
-                        <p style='text-transform:uppercase; letter-spacing:2px; font-size:10px; color:#4b5563;'>Akses sesi ini telah dihentikan oleh Admin atau login dari perangkat lain.</p>
-                        <a href='/MEeL/login.php' style='display:inline-block; margin-top:20px; padding:10px 20px; background:#f97316; color:white; text-decoration:none; border-radius:10px; font-weight:bold; font-size:12px;'>KEMBALI KE LOGIN</a>
-                    </div>
-                </div>");
+                    $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
+                    $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+                    $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
+                    $revoked_url = $relative_base . '/err/revoked.php';
+                    header("Location: " . $revoked_url);
+                    exit();
+                }
             }
         }
         
@@ -239,23 +277,20 @@ if (isset($conn)) {
         $stmt->bind_param("ssssi", $current_page, $device, $access_via, $user_ip, $uid);
         $stmt->execute();
     } else {
-        // ... (Logika Guest tetap sama) ...
+        // LOGIKA GUEST — 1 query (INSERT ON DUPLICATE KEY) bukan 2 query (SELECT + INSERT/UPDATE)
         $guest_id = "Guest_" . substr(session_id(), 0, 6);
-        $check_guest = $conn->prepare("SELECT id FROM users WHERE username = ?");
-        $check_guest->bind_param("s", $guest_id);
-        $check_guest->execute();
-
-        if ($check_guest->get_result()->num_rows == 0) {
-            $role = 'guest';
-            // Insert Guest Baru dengan IP
-            $ins = $conn->prepare("INSERT INTO users (username, role, last_page, user_agent, access_via, ip_address, last_activity) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-            $ins->bind_param("ssssss", $guest_id, $role, $current_page, $device, $access_via, $user_ip);
-            $ins->execute();
-        } else {
-            // Update Guest Lama dengan IP terbaru
-            $upd = $conn->prepare("UPDATE users SET last_page = ?, user_agent = ?, access_via = ?, ip_address = ?, last_activity = NOW() WHERE username = ?");
-            $upd->bind_param("sssss", $current_page, $device, $access_via, $user_ip, $guest_id);
-            $upd->execute();
-        }
+        $role     = 'guest';
+        $guest_upd = $conn->prepare(
+            "INSERT INTO users (username, role, last_page, user_agent, access_via, ip_address, last_activity)
+             VALUES (?, ?, ?, ?, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE
+                last_page = VALUES(last_page),
+                user_agent = VALUES(user_agent),
+                access_via = VALUES(access_via),
+                ip_address = VALUES(ip_address),
+                last_activity = NOW()"
+        );
+        $guest_upd->bind_param("ssssss", $guest_id, $role, $current_page, $device, $access_via, $user_ip);
+        $guest_upd->execute();
     }
 }

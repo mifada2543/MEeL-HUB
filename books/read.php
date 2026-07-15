@@ -15,16 +15,9 @@ $repo = new BookRepository($conn);
 $book = $repo->getBookById((int)$_GET['id']);
 
 if (!$book) {
-    die("
-        <div style='background:#080a0f;color:#ef4444;height:100vh;display:flex;
-                    flex-direction:column;align-items:center;justify-content:center;font-family:ui-monospace,monospace;'>
-            <div style='width:60px;height:60px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;margin-bottom:20px;'>
-                <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
-            </div>
-            <h1 style='font-size:3rem;font-weight:900;color:#ef4444;letter-spacing:-.03em;margin:0;'>404</h1>
-            <p style='color:#4b5563;text-transform:uppercase;letter-spacing:4px;font-size:11px;font-weight:700;margin-top:4px;'>Buku tidak ditemukan</p>
-        </div>
-    ");
+    http_response_code(404);
+    include '../err/not_found.php';
+    exit;
 }
 
 // ── Sanitasi chapter — cegah path traversal ─────────────────────────────────
@@ -35,6 +28,8 @@ $current_chapter = preg_replace('/[^a-zA-Z0-9 _.\\-]/', '', $raw_chapter);
 if (str_contains($current_chapter, '..')) {
     $current_chapter = '';
 }
+
+$book_id = (int)$book['id'];
 
 // ── Hitung total halaman (manga mode) ──
 $total_pages = 0;
@@ -247,15 +242,57 @@ if ($book['type'] !== 'pdf') {
         </div>
     </div>
 
+    <!-- Overlay blur -->
+    <div class="ch-overlay" id="chOverlay"></div>
+
     <!-- KONTEN -->
     <div class="flex-grow overflow-y-auto" id="scroll-container">
         <?php if ($book['type'] === 'pdf'): ?>
             <!-- ═══════════════ MODE PDF ═══════════════ -->
-            <div class="pdf-container">
-                <iframe
-                    src="./upload/pdf/<?= htmlspecialchars($book['path_folder']) ?>#toolbar=0"
-                    title="<?= htmlspecialchars($book['title']) ?>">
-                </iframe>
+            <?php
+            // Ambil ukuran file untuk ditampilkan
+            $pdf_path   = __DIR__ . '/upload/pdf/' . basename($book['path_folder']);
+            $pdf_size   = is_file($pdf_path) ? filesize($pdf_path) : 0;
+            $pdf_size_f = $pdf_size > 1048576
+                ? number_format($pdf_size / 1048576, 1) . ' MB'
+                : number_format($pdf_size / 1024, 1) . ' KB';
+            ?>
+            <div class="pdf-view">
+                <!-- Embedded PDF viewer (desktop) / fallback (mobile) -->
+                <embed src="../controllers/pdf.php?id=<?= (int)$book['id'] ?>#toolbar=0"
+                       type="application/pdf"
+                       class="pdf-embed" id="pdfEmbed">
+
+                <!-- Fallback center — muncul di mobile, sembunyi di desktop -->
+                <div class="pdf-fallback">
+                    <div class="pdf-fallback-inner">
+                        <div class="pdf-fallback-icon">
+                            <i data-lucide="file-text" class="w-10 h-10 sm:w-12 sm:h-12 text-purple-400"></i>
+                        </div>
+                        <h2 class="pdf-fallback-title"><?= htmlspecialchars($book['title']) ?></h2>
+                        <p class="pdf-fallback-desc">Dokumen PDF &middot; <?= $pdf_size_f ?></p>
+                        <a href="read_pdf.php?id=<?= (int)$book['id'] ?>" rel="noopener"
+                           class="pdf-open-btn">
+                            <i data-lucide="external-link" class="w-4 h-4"></i>
+                            Buka PDF
+                        </a>
+                        <p class="pdf-fallback-hint"><a href="read_pdf.php?id=<?= (int)$book['id'] ?>" target="_blank" class="underline hover:text-white transition-colors">Atau buka di tab baru</a></p>
+                    </div>
+                </div>
+
+                <!-- Bottom info bar — selalu terlihat -->
+                <div class="pdf-info-bar">
+                    <div class="pdf-info-left">
+                        <span class="pdf-info-title"><?= htmlspecialchars($book['title']) ?></span>
+                        <span class="pdf-info-meta">PDF &middot; <?= $pdf_size_f ?></span>
+                    </div>
+                    <a href="read_pdf.php?id=<?= (int)$book['id'] ?>"
+                       target="_blank" rel="noopener"
+                       class="pdf-info-btn">
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                        Buka di Tab Baru
+                    </a>
+                </div>
             </div>
 
         <?php else: ?>
@@ -263,27 +300,36 @@ if ($book['type'] !== 'pdf') {
             <div class="py-0 space-y-0" id="manga-container">
 
                 <?php
-                $book_id   = (int)$book['id'];
                 $ch_base   = "upload/manga/" . $book['path_folder'];
 
                 if ($book['has_chapters'] == 1):
                     $chapters = array_filter(glob($ch_base . '/*'), 'is_dir');
                     natsort($chapters);
                 ?>
-                    <!-- Chapter selector (atas) -->
+                    <!-- Chapter selector (atas) — custom dropdown -->
                     <div class="sticky top-14 z-30 py-3 px-4 bg-gradient-to-b from-[#080a0f] to-transparent">
-                        <div class="max-w-4xl mx-auto">
-                            <div class="relative">
-                                <select onchange="location.href='?id=<?= $book_id ?>&ch=' + encodeURIComponent(this.value)"
-                                        class="chapter-select">
-                                    <option value="">— Pilih Chapter —</option>
-                                    <?php foreach ($chapters as $ch):
-                                        $ch_name  = basename($ch);
-                                        $selected = ($current_chapter === $ch_name) ? 'selected' : '';
-                                        echo "<option value='" . htmlspecialchars($ch_name, ENT_QUOTES) . "' $selected>"
-                                           . htmlspecialchars($ch_name) . "</option>";
-                                    endforeach; ?>
-                                </select>
+                        <div class="max-w-4xl mx-auto ch-dropdown" id="ch-dropdown-top">
+                            <button type="button"
+                                onclick="toggleChDropdown('top')"
+                                class="ch-trigger">
+                                <span class="truncate"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 flex-shrink-0"></i>
+                            </button>
+                            <div id="ch-options-top" class="ch-options hidden">
+                                <button onclick="goToChapter('')"
+                                    class="ch-option <?= empty($current_chapter) ? 'active' : '' ?>">
+                                    — Pilih Chapter —
+                                </button>
+                                <?php foreach ($chapters as $ch):
+                                    $ch_name  = basename($ch);
+                                    $active   = ($current_chapter === $ch_name) ? 'active' : '';
+                                    $enc_name = htmlspecialchars($ch_name, ENT_QUOTES);
+                                ?>
+                                    <button onclick="goToChapter('<?= $enc_name ?>')"
+                                        class="ch-option <?= $active ?>">
+                                        <?= htmlspecialchars($ch_name) ?>
+                                    </button>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
@@ -407,19 +453,31 @@ if ($book['type'] !== 'pdf') {
                                 <?php endif; ?>
                             </div>
 
-                            <!-- Chapter selector (bawah) -->
+                            <!-- Chapter selector (bawah) — custom dropdown -->
                             <div class="max-w-4xl mx-auto px-4 mb-8">
-                                <div class="relative">
-                                    <select onchange="location.href='?id=<?= $book_id ?>&ch=' + encodeURIComponent(this.value)"
-                                            class="chapter-select">
-                                        <option value="">— Pilih Chapter —</option>
+                                <div class="ch-dropdown" id="ch-dropdown-bottom">
+                                    <button type="button"
+                                        onclick="toggleChDropdown('bottom')"
+                                        class="ch-trigger">
+                                        <span class="truncate"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
+                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 flex-shrink-0"></i>
+                                    </button>
+                                    <div id="ch-options-bottom" class="ch-options hidden">
+                                        <button onclick="goToChapter('')"
+                                            class="ch-option <?= empty($current_chapter) ? 'active' : '' ?>">
+                                            — Pilih Chapter —
+                                        </button>
                                         <?php foreach ($chapters as $ch):
                                             $ch_name  = basename($ch);
-                                            $selected = ($current_chapter === $ch_name) ? 'selected' : '';
-                                            echo "<option value='" . htmlspecialchars($ch_name, ENT_QUOTES) . "' $selected>"
-                                               . htmlspecialchars($ch_name) . "</option>";
-                                        endforeach; ?>
-                                    </select>
+                                            $active   = ($current_chapter === $ch_name) ? 'active' : '';
+                                            $enc_name = htmlspecialchars($ch_name, ENT_QUOTES);
+                                        ?>
+                                            <button onclick="goToChapter('<?= $enc_name ?>')"
+                                                class="ch-option <?= $active ?>">
+                                                <?= htmlspecialchars($ch_name) ?>
+                                            </button>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                             </div>
                         <?php endif; ?>
@@ -617,6 +675,57 @@ if ($book['type'] !== 'pdf') {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
+
+        // ── Chapter Custom Dropdown ────────────────────────────────────────
+        (function() {
+            var activeDropdown = null;
+
+            window.toggleChDropdown = function(which) {
+                var options = document.getElementById('ch-options-' + which);
+                var isHidden = options.classList.contains('hidden');
+
+                // Tutup semua dropdown dulu
+                document.querySelectorAll('.ch-options').forEach(function(el) {
+                    el.classList.add('hidden');
+                });
+                document.body.classList.remove('ch-dropdown-open');
+
+                if (isHidden) {
+                    options.classList.remove('hidden');
+                    document.body.classList.add('ch-dropdown-open');
+                    activeDropdown = which;
+
+                    // Auto-scroll ke item aktif
+                    var active = options.querySelector('.ch-option.active');
+                    if (active) {
+                        setTimeout(function() {
+                            active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                        }, 50);
+                    }
+                } else {
+                    activeDropdown = null;
+                }
+            };
+
+            window.goToChapter = function(ch) {
+                var url = '?id=<?= $book_id ?>';
+                if (ch) url += '&ch=' + encodeURIComponent(ch);
+                window.location.href = url;
+            };
+
+            // Tutup dropdown saat klik di luar
+            document.addEventListener('click', function(e) {
+                if (!activeDropdown) return;
+                var dropdown = document.getElementById('ch-dropdown-' + activeDropdown);
+                if (dropdown && !dropdown.contains(e.target)) {
+                    document.querySelectorAll('.ch-options').forEach(function(el) {
+                        el.classList.add('hidden');
+                    });
+                    document.body.classList.remove('ch-dropdown-open');
+                    activeDropdown = null;
+                }
+            });
+        })();
 
         // ── Keyboard shortcuts ──────────────────────────────────────────────
         document.addEventListener('keydown', function(e) {

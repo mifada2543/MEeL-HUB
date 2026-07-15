@@ -303,12 +303,22 @@ class BookUploader
     private function handleThumbnail(array $file): string
     {
         if (!empty($file['name'])) {
-            $ext  = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $name = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-            move_uploaded_file($file['tmp_name'], $this->base_path . '/upload/thumbnail/' . $name);
-            return $name;
+            $name = time() . '_' . bin2hex(random_bytes(4)) . '.webp';
+            $target_path = $this->base_path . '/upload/thumbnail/' . $name;
+            // Konversi ke WebP — lebih kecil dari JPG/PNG asli
+            $cmd = "/usr/bin/ffmpeg -y -i " . escapeshellarg($file['tmp_name'])
+                . " -vf \"scale='min(500,iw)':-1\" -c:v libwebp -q:v 78 "
+                . escapeshellarg($target_path) . " 2>&1";
+            exec($cmd, $out, $ret);
+            if ($ret === 0 && file_exists($target_path) && filesize($target_path) > 0) {
+                return $name;
+            }
+            // Fallback: simpan file asli jika ffmpeg gagal
+            if (move_uploaded_file($file['tmp_name'], $target_path)) {
+                return $name;
+            }
         }
-        return 'default_cover.jpg';
+        return 'default_cover.webp';
     }
 
     private function handlePdf(array $file, string $title): array

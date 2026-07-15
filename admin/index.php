@@ -1,9 +1,11 @@
 <?php
+// Error logging aktif, display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
 include '../auth/config.php';
 include '../auth/auth.php';
+include_once '../modules/helpers.php';
 include_once '../modules/activity_logger.php';
 
 if (!isset($_SESSION['user_id'])) {
@@ -48,10 +50,10 @@ include '../controllers/fun.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
+    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/lucide.js"></script>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <style>
         body {
             background-color: #0b0e14;
@@ -61,6 +63,44 @@ include '../controllers/fun.php';
             background: rgba(22, 27, 34, 0.7);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .scrollable-table-wrap {
+            overflow: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #374151 transparent;
+        }
+        .scrollable-table-wrap::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .scrollable-table-wrap::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .scrollable-table-wrap::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 999px;
+        }
+        .scrollable-table-wrap::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        .scrollable-table-wrap thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .scrollable-table-wrap thead th {
+            background: #0b0e14;
+        }
+        .scrollable-table-wrap thead::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.03);
+            pointer-events: none;
         }
     </style>
 </head>
@@ -251,7 +291,7 @@ include '../controllers/fun.php';
                 <div class="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl">
                     <p class="text-xs text-red-400 mb-2">Ditemukan <?= count($orphans) ?> file sampah (tidak ada di DB):</p>
                     <ul class="text-[9px] font-mono text-gray-500 max-h-24 overflow-y-auto mb-4"><?php foreach ($orphans as $o) echo "<li>- $o</li>"; ?></ul>
-                    <form method="POST"><input type="hidden" name="files_to_delete" value='<?= json_encode($orphans) ?>'><button name="clean_orphans" class="bg-red-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl hover:bg-red-700 transition-all uppercase">Bersihkan SSD Thinkpad</button></form>
+                    <form method="POST"><input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>"><input type="hidden" name="files_to_delete" value='<?= json_encode($orphans) ?>'><button name="clean_orphans" class="bg-red-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl hover:bg-red-700 transition-all uppercase">Bersihkan SSD Thinkpad</button></form>
                 </div>
             <?php else: ?>
                 <p class="text-xs text-green-500 font-bold uppercase tracking-widest flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Semua file di SSD sinkron dengan Database</p>
@@ -266,9 +306,9 @@ include '../controllers/fun.php';
                 <span class="text-[9px] text-gray-600 font-mono">Total: <?= ($all_users) ? $all_users->num_rows : 0 ?> Accounts</span>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="scrollable-table-wrap" style="max-height:300px;">
                 <table class="w-full text-left text-xs">
-                    <thead class="bg-white/[0.03] text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                    <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
                         <tr>
                             <th class="py-3 px-6">ID & Username</th>
                             <th class="py-3 px-4">Role</th>
@@ -332,6 +372,7 @@ include '../controllers/fun.php';
                     <h3 class="text-xs font-bold text-purple-500 uppercase">Active Background Tasks</h3>
                 </div>
                 <form method="POST" action="index.php" onsubmit="return meelConfirmForm(event, { title: 'Bersihkan Antrean', text: 'Bersihkan semua antrean yang stuck (> 30 menit)?', confirmButtonText: 'BERSIHKAN' });">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <button type="submit" name="clean_stuck_queues" value="1" class="flex items-center gap-2 text-[9px] bg-purple-600/10 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-xl hover:bg-purple-600 hover:text-white transition-all font-bold uppercase cursor-pointer">
                         <i data-lucide="refresh-cw" class="w-3 h-3"></i>
                         Clean Stuck Queues
@@ -371,6 +412,7 @@ include '../controllers/fun.php';
                                             <span class="text-gray-500 font-mono text-[10px]"><?= $q['created_at'] ?></span>
 
                                             <form method="POST" action="index.php" class="m-0" onsubmit="return meelConfirmForm(event, { title: 'Hentikan Proses', text: 'Hentikan paksa proses spesifik ini?', confirmButtonText: 'HENTIKAN' });">
+                                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                                 <input type="hidden" name="queue_id" value="<?= $q['id'] ?>">
                                                 <input type="hidden" name="task_type" value="<?= $q['task_type'] ?>">
 
@@ -398,6 +440,7 @@ include '../controllers/fun.php';
             <div class="p-6 border-b border-white/5 justify-between flex items-center">
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Live Activity Monitor</h3>
                 <form method="POST" action="index.php" onsubmit="return meelConfirmForm(event, { title: 'Hapus Guest', text: 'Hapus semua Guest?', confirmButtonText: 'HAPUS' });">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <button type="submit" name="clear_all_guests" value="1" class="group flex flex-col items-end gap-1 cursor-pointer">
                         <div class="flex items-center gap-2 text-[9px] bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold uppercase">
                             <i data-lucide="shield-alert" class="w-3 h-3"></i>
@@ -409,9 +452,9 @@ include '../controllers/fun.php';
             </div>
 
 
-            <div class="overflow-x-auto">
+            <div class="scrollable-table-wrap" style="max-height:520px;">
                 <table class="w-full text-left text-xs">
-                    <thead class="bg-white/[0.02] text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                    <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
                         <tr>
                             <th class="py-3 px-6">User</th>
                             <th class="py-3 px-4 text-center">Status</th>
@@ -528,6 +571,7 @@ include '../controllers/fun.php';
 
             <div class="p-6">
                 <form method="POST" class="flex flex-col gap-2 mb-6">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <div class="flex gap-2">
                         <input type="text" name="ip_target" placeholder="IP Address..."
                             class="bg-gray-800 text-white text-xs px-4 py-2 rounded-xl border border-gray-700 focus:border-red-500 outline-none w-1/3" required>

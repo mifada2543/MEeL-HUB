@@ -11,6 +11,8 @@ require_once 'auth/config.php';
 require_once 'modules/activity_logger.php';
 require_once 'modules/Transcoder.php';
 include 'modules/helpers.php';
+require_once 'modules/GarbageCollector.php';
+GarbageCollector::run();
 
 // ─── GLOBAL ERROR HANDLER ─────────────────────────────────────────────────
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
@@ -115,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <link rel="icon" type="image/png" href="assets/MEeL.png">
     <link rel="manifest" href="assets/manifest.json">
-    <script src="assets/js/tailwind.js"></script>
+    <link href="assets/css/tailwind.min.css" rel="stylesheet">
     <script src="assets/js/lucide.js"></script>
     <link rel="stylesheet" href="assets/css/up.css">
     <style>

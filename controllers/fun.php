@@ -11,6 +11,12 @@ if (!$user_data || $user_data['role'] !== 'admin') {
     exit();
 }
 
+// 🔒 FIX CSRF: Verifikasi token dulu sebelum semua action POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf()) {
+    header("Location: index.php?msg=CSRF_Token_Invalid");
+    exit();
+}
+
 // LOGIKA SECURITY (BAN/UNBAN)
 if (isset($_POST['ban_ip'])) {
     $ip_to_ban = $_POST['ip_target'];
@@ -108,13 +114,17 @@ if (isset($_POST['force_stop_queue'])) {
 // 2. Logika Aksi (Approve, Reject, Clean)
 if (isset($_GET['approve_id'])) {
     $id = (int)$_GET['approve_id'];
-    $conn->query("UPDATE users SET is_active = 1 WHERE id = $id");
+    $stmt = $conn->prepare("UPDATE users SET is_active = 1 WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
     header("Location: index.php?msg=Approved");
     exit();
 }
 if (isset($_GET['reject_id'])) {
     $id = (int)$_GET['reject_id'];
-    $conn->query("DELETE FROM users WHERE id = $id AND is_active = 2");
+    $stmt = $conn->prepare("DELETE FROM users WHERE id = ? AND is_active = 2");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
     header("Location: index.php?msg=Rejected");
     exit();
 }

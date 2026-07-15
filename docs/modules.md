@@ -157,9 +157,11 @@ toggleLike()
 
 ### 4. `Uploader.php`
 
-**Class:** `Uploader`
+**Class:** `Uploader` (dengan type hints — private `\mysqli $conn`, `int $user_id`, `string $username`, dll.)
 
 Menangani upload file lokal (bukan via URL):
+
+> ⚠️ **Perubahan:** `$base_dir` sekarang menggunakan konstanta `MEEL_HDD_VIDEO_UPLOAD` dari `auth/config.php`.
 
 ```php
 class Uploader {
@@ -191,9 +193,11 @@ Upload Music:
 
 ### 5. `Transcoder.php`
 
-**Class:** `Transcoder`
+**Class:** `Transcoder` (dengan type hints — private `\mysqli $conn`, `int $user_id`, dll.)
 
 Engine utama untuk download URL (yt-dlp) dan transcoding:
+
+> ⚠️ **Perubahan:** Konstanta path `HDD_BASE`/`HDD_VIDEO_DIR`/`HDD_THUMB_DIR` telah dipindahkan ke `auth/config.php` sebagai `MEEL_HDD_VIDEO_UPLOAD`, `MEEL_HDD_VIDEO_DIR`, `MEEL_HDD_THUMB_DIR`.
 
 ```php
 class Transcoder {
@@ -275,13 +279,15 @@ Setiap pengguna yang belum login otomatis:
 ```
 Jika last_session_id berbeda dengan session_id() saat ini:
   → Destroy session
-  → Tampilkan "SESSION REVOKED" page
+  → Redirect ke halaman /err/revoked.php
   → User harus login ulang
 ```
 
 ### 8. `helpers.php`
 
 Fungsi utilitas global:
+
+> ⚠️ **Perubahan:** `$hdd_check_path` sekarang mengambil nilai dari konstanta `MEEL_HDD_BASE` (didefinisikan di `auth/config.php`), bukan hardcoded.
 
 ```php
 function time_ago($timestamp);       // Format waktu relatif (ID)
@@ -350,7 +356,7 @@ Session exists? → Tidak → Redirect ke login.php
   ↓ Ya
 Validasi last_session_id
   ↓
-Berbeda? → Ya → Session Destroy → "SESSION REVOKED"
+Berbeda? → Ya → Session Destroy → Redirect ke /err/revoked.php
   ↓ Tidak
 Update last_activity
   ↓

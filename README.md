@@ -11,9 +11,9 @@
 [![MariaDB](https://img.shields.io/badge/MariaDB-10.2%2B-003545?style=flat-square&logo=mariadb&logoColor=white)](https://mariadb.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-CDN-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-6.0%2B-007808?style=flat-square&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
-[![License](https://img.shields.io/badge/License-Custom-22c55e?style=flat-square)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue?style=flat-square)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/Maintained-Yes-22c55e?style=flat-square)](https://github.com/mifada2543/MEeL)
-
+[![GitHub Stars](https://img.shields.io/github/stars/mifada2543/MEeL?style=social)](https://github.com/mifada2543/MEeL)
 ---
 
 ## 📖 Ikhtisar
@@ -72,7 +72,8 @@
 ### 🕹️ Arcade (Mini Games)
 
 - **Dino Run** — endless runner ala Chrome Dino dengan karakter Miku & Teto
-- **Chess** — permainan catur klasik dengan mode multiplayer online
+- **Chess** — permainan catur klasik dengan mode multiplayer online(LAN)
+- **Snake** — permainan Snake klasik yang nostalgia
 
 ### 🔧 Fungsionalitas Umum
 
@@ -88,6 +89,16 @@
 | **Activity Logger** | Firewall internal, pelacakan aktivitas, IP banning |
 | **Admin Panel** | Dashboard monitoring, manajemen user, queue control |
 
+---
+## 📸 Screenshots
+
+### 🎬 Video Library
+![Video Library](assets/img/video0.webp)
+
+### 🎵 Music Discovery
+![Music Discovery](assets/img/music0.webp)
+
+> Sisanya menyusul
 ---
 
 ## 🛠️ Tech Stack
@@ -116,12 +127,16 @@ MEeL/
 ├── arcade/                # Mini Games (Dino Run, Chess)
 ├── assets/                # Aset statis (CSS, JS, font, gambar)
 ├── auth/                  # Autentikasi & manajemen sesi
+│   ├── config.php         # Konfigurasi database + path terpusat (MEEL_HDD_*)
+│   └── config.example.php # Template konfigurasi
 ├── books/                 # Modul E-Book / Komik
 ├── controllers/           # API Actions & Event Handler (AJAX/HTMX)
+├── database/              # Skema database
+│   └── schema.sql         # File schema standalone (16 tabel)
 ├── data_drive/            # Cloud Drive storage runtime
 ├── docs/                  # Dokumentasi proyek
 ├── drive/                 # Modul Cloud Drive
-├── err/                   # Halaman error (denied, maintenance)
+├── err/                   # Halaman error (denied, maintenance, banned, revoked)
 ├── modules/               # Core logic & business layer (OOP)
 ├── music/                 # Modul pemutar musik
 ├── partials/              # Reusable UI components
@@ -225,26 +240,26 @@ sudo systemctl restart apache2
 
 | File | Keperluan |
 |------|-----------|
-| `auth/config.php` | Database, session, CSRF, transliterator |
-| `modules/Transcoder.php` | Path ffmpeg, yt-dlp, HDD mount, CPU threads |
-| `modules/Uploader.php` | Path ffmpeg, HDD base directory |
-| `modules/helpers.php` | HDD check path |
+| `auth/config.php` | Database, session, CSRF, **path terpusat (`MEEL_HDD_*`)** |
+| `auth/config.example.php` | Template konfigurasi (copy ke config.php) |
+| `database/schema.sql` | Skema database standalone |
+| `modules/Transcoder.php` | FFmpeg, yt-dlp, CPU threads |
+| `modules/Uploader.php` | Upload file, FFmpeg |
+| `modules/helpers.php` | HDD check path (dari `MEEL_HDD_BASE`) |
 | `modules/System.php` | Queue & rate limit config |
 
-### Variabel Environment Penting
+### Konfigurasi Path Terpusat
 
 ```php
-// auth/config.php
-$server   = "localhost";    // Database host
-$username = "root";         // Database user
-$password = "";             // Database password
-$db       = "MEeL";         // Database name
-```
+// auth/config.php — ★ Cukup ubah 1 baris ini
+define('MEEL_HDD_BASE', '/media/[user]/MEeL/media');
 
-```php
-// modules/Transcoder.php
-private const HDD_BASE      = "/media/muhammaddaffa/MEeL/media/video/upload/";
-private const FFMPEG_THREADS = 8;
+// Semua modul otomatis mengikuti:
+define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
+define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
+// ... dan seterusnya
 ```
 
 > 📖 **Konfigurasi lengkap** → [docs/configuration.md](docs/configuration.md)
@@ -274,32 +289,68 @@ Dokumentasi proyek tersedia di direktori [`docs/`](docs/):
 | [🏗️ Modul](docs/modules.md) | Arsitektur modul & class diagram |
 | [🔌 API](docs/api.md) | Endpoint controllers |
 | [🔒 Keamanan](docs/security.md) | Sistem keamanan & RBAC |
+| [🌍 Problem Solved](docs/problem-solved.md) | Masalah dunia nyata yang MEeL selesaikan |
 | [🔧 Troubleshooting](docs/troubleshooting.md) | Pemecahan masalah umum |
 | [👨‍💻 Development](docs/development.md) | Panduan kontribusi |
+| [📥 Advanced Upload](docs/upload_issue.md) | Penanganan masalah yt-dlp & queue |
 
 ---
 
 ## 📄 Lisensi
 
-Proyek ini dilisensikan di bawah **Custom License by Mifada**.
+Proyek ini dilisensikan di bawah **GNU General Public License v3.0 (GPLv3)**.
 
 ```
-✅ Diizinkan:
-   • Penggunaan, pembelajaran, & riset personal
-   • Modifikasi dan pengembangan lokal
-   • Deployment internal / offline (LAN)
+✅ Anda bebas untuk:
+   • Menggunakan, menyalin, dan mendistribusikan perangkat lunak ini
+   • Memodifikasi dan membuat karya turunan
+   • Menggunakannya untuk keperluan komersial
+   • Menjalankan untuk keperluan pribadi, pendidikan, atau publik
 
-⚠️ Memerlukan izin tertulis:
-   • Publikasi ulang atau redistribusi publik
-   • Penggunaan komersial atau monetisasi
-   • Penghapusan atribusi pembuat asli
+⚠️ Kewajiban (Copyleft):
+   • Anda harus menyertakan lisensi GPLv3 yang sama pada distribusi ulang
+   • Anda harus menyertakan kode sumber jika Anda mendistribusikan secara publik
+   • Anda harus mencantumkan perubahan yang dibuat
+   • Lisensi ini bersifat "viral" — karya turunan harus tetap GPLv3
 ```
 
-**Kontak:** `minecraft.daffa2501@gmail.com` · [github.com/mifada2543](https://github.com/mifada2543)
+> © 2026 Mifada. Beberapa hak dilindungi. Lihat [LICENSE](LICENSE) untuk detail.
+---
+## Q&A
+### Q: Kenapa belum ada versi docker?
+
+>A: Sulit mengkonfigurasi ulang absolut path kedalam docker(karena env nya tersendiri), udah gitu saya ingin memfokuskan ini ke performa yang maximal(tanpa penghalan/docker)
+
+
+### Q: Kenapa absolut path?
+
+>A: Lebih mudah dalam mengkonfigurasi jika anda menggunakan media eksternal seperti HDD(mengurangi memori system penuh)
+
+
+### Q: Ukuran MEeL?
+
+>A: 77MB untuk source codenya, 1-2GB untuk env(ffmpeg, yt-dlp, apache, MariaDB, php, dsb).
+
+
+### Q: System Requirement?
+
+>A: CPU 2 Core 2GHz cukup, GPU optional karena seluruh process bergantung pada CPU(anda dapat konfigurasi ulang dibagian codec jika ingin menggunakan accelerate GPU untuk transcoding), RAM 2GB cukup namun saran 4GB untuk membantu transcoding, ROM disesuaikan saja, OS ubuntu server, intinya linux dan asal ada env nya itu bisa pakai MEeL.
+---
+
+### ⚠️ Pernyataan Penting / Disclaimer
+
+> [!IMPORTANT]
+> **Catatan Hukum**: Pembuat (Mifada) tidak bertanggung jawab dan tidak terlibat atas segala jenis berkas media yang diunggah, disimpan, atau disebarluaskan oleh pihak ketiga yang menggunakan atau memodifikasi kode MEeL-HUB ini. Seluruh risiko penggunaan dan kepatuhan hak cipta kembali ke tanggung jawab masing-masing pengguna.
+
+> 🌐 **Domain Status:**
+> * **EN:** The public demo domain may occasionally be unavailable because it runs directly on the developer's local device.
+> * **ID:** Domain demo publik terkadang tidak berfungsi karena sistem berjalan langsung di perangkat lokal milik developer.
+
+**Kontak:** `mifada2543@gmail.com` · [github.com/mifada2543](https://github.com/mifada2543)
 
 ---
 
 <div align="center">
-  <strong>MEeL</strong> © 2025 — Mifada<br>
+  <strong>MEeL</strong> © 2026 — Mifada<br>
   <sub>Dibuat dengan ❤️ untuk streaming media pribadi</sub>
 </div>

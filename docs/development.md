@@ -41,9 +41,16 @@ ini_set('display_errors', 1);
 
 3. **Nonaktifkan HDD check untuk development:**
 ```php
-// modules/helpers.php - comment out
-// if (!is_dir($hdd_check_path)) { header("Location: ../err/maintance.php"); exit(); }
+// modules/helpers.php - comment out baris berikut
+// if (!is_dir($hdd_check_path)) { ... }
 ```
+
+4. **Path konfigurasi terpusat:**
+   Semua path penyimpanan dikelola dari **satu tempat** (`auth/config.php`):
+   ```php
+   define('MEEL_HDD_BASE', '/media/username/MEeL/media');
+   ```
+   Tidak perlu lagi mencari-cari path di banyak file.
 
 4. **Tools yang disarankan:**
 - Editor: VS Code dengan PHP Intelephense
@@ -155,7 +162,26 @@ private const FFMPEG_THREADS = 8;
 private const HLS_SEGMENT_DURATION = 10;
 private const DOWNLOAD_TIMEOUT = 900;
 
-// Global constants: Avoid, prefer class constants or config
+// Global constants: MEEL_HDD_* untuk path terpusat (di auth/config.php)
+define('MEEL_HDD_BASE', '/media/username/MEeL/media');
+define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+```
+
+#### 7. Type Hints
+
+Properti class dan parameter constructor **wajib** memiliki type hints (PHP 7.4+):
+
+```php
+// ✅ BENAR - Type hints
+private \mysqli $conn;
+private int $user_id;
+private string $username;
+
+public function __construct(\mysqli $db_connection, int $session_user_id, string $session_username) { ... }
+
+// ❌ SALAH - Tanpa type hint
+// private $conn;
+// public function __construct($db_connection, $session_user_id) { ... }
 ```
 
 ### JavaScript
@@ -408,6 +434,34 @@ if (!$stmt) error_log("SQL Error: " . $conn->error);
 
 ## Pull Request Guide
 
+### 📜 Lisensi & Kontribusi
+
+Proyek ini dilisensikan di bawah **GNU General Public License v3.0 (GPLv3)**. Lihat file [`LICENSE`](../LICENSE) untuk teks lengkap.
+
+> **Dengan mengirimkan Pull Request, Anda menyetujui bahwa kontribusi Anda akan dilisensikan di bawah GPL v3** — lihat [Pasal 10](https://www.gnu.org/licenses/gpl-3.0.html#section10) (Automatic Licensing of Downstream Recipients).
+
+#### Copyright Header pada File Baru
+
+Setiap file sumber baru (PHP, JavaScript, CSS) **wajib** menyertakan header copyright berikut:
+
+```php
+/**
+ * MEeL - Media Hub Platform
+ *
+ * @copyright Copyright (C) 2026 Mifada
+ * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3
+ */
+```
+
+#### Atribusi & Modified Version
+
+GPL v3 mewajibkan (Pasal 5a):
+1. Setiap file yang dimodifikasi harus diberi **notice perubahan** yang jelas
+2. File yang dimodifikasi harus tetap **mengacu pada lisensi GPL v3**
+3. **Karya turunan** (derivative work) harus dirilis di bawah **lisensi yang sama**
+
+---
+
 ### Checklist Kontribusi
 
 - [ ] Gunakan **Prepared Statements** untuk semua query database
@@ -417,6 +471,8 @@ if (!$stmt) error_log("SQL Error: " . $conn->error);
 - [ ] Update `update.php` dengan changelog
 - [ ] Test upload file besar di lokal
 - [ ] Test di mode incognito (session test)
+- [ ] Setiap file baru memiliki **copyright header GPL v3**
+- [ ] Perubahan ditandai dengan **notice modifikasi** yang jelas
 
 ### Git Commit Convention
 

@@ -19,12 +19,16 @@ $message  = '';
 $val_title = htmlspecialchars($_GET['reup'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
+    if (!verify_csrf()) {
+        $message = 'CSRF Token tidak valid.';
+    } else {
     $uploader = new BookUploader($conn, __DIR__);
     $result   = $uploader->handleUpload(
         array_merge($_POST, ['user_id' => $user_id]),
         $_FILES
     );
     $message = $result['message'];
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -61,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
         <?php endif; ?>
 
         <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
 
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">

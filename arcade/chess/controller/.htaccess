@@ -1,7 +1,17 @@
-<FilesMatch "^(cookies\.txt|config\.php|.*\.sql|.*\.log|activity_logger\.php|auth\.php|db\.php)">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
-
-# Opsional: Jangan izinkan orang melihat daftar isi folder (Directory Indexing)
+# Security defaults for chess controller
 Options -Indexes
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+<FilesMatch "^(cookies\.txt|config\.php|.*\.sql|.*\.log|activity_logger\.php|auth\.php|db\.php|\.env|\.git|\.htaccess|\.htpasswd)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

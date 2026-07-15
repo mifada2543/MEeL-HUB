@@ -22,41 +22,41 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Browser Request                       │
+│                    Browser Request                      │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              1. Apache .htaccess Layer                   │
+│              1. Apache .htaccess Layer                  │
 │  • Block direct access to sensitive directories         │
 │  • mod_rewrite rules                                    │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              2. Session Authentication (auth.php)        │
+│              2. Session Authentication (auth.php)       │
 │  • Check user_id in session                             │
 │  • Validate last_session_id (anti-hijack)               │
 │  • Session timeout (12 jam)                             │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              3. IP Ban Check (activity_logger.php)       │
+│              3. IP Ban Check (activity_logger.php)      │
 │  • Check IP against banned list                         │
 │  • Block all non-admin users if IP is banned            │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              4. Role-Based Access (RBAC)                 │
+│              4. Role-Based Access (RBAC)                │
 │  • Admin / Member / User / Guest                        │
 │  • Feature gating per page                              │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              5. CSRF Protection                          │
-│  • Token validation on all POST requests                 │
+│              5. CSRF Protection                         │
+│  • Token validation on all POST requests                │
 └──────────────────────┬──────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────┐
-│              6. Prepared Statements                      │
+│              6. Prepared Statements                     │
 │  • All database queries use mysqli prepared statements  │
 │  • No raw SQL concatenation with user input             │
 └─────────────────────────────────────────────────────────┘
@@ -137,9 +137,9 @@ final class DriveUserContext {
 | Upload Musik | ✅ | ✅ (rate-limited) | ✅ (rate-limited) | ❌ |
 | Books | ✅ | ✅ | ✅ | ❌ |
 | Cloud Drive | ✅ (unlimited) | ✅ (20GB) | ❌ | ❌ |
+| Advanced Upload | ✅ | ✅ (rate-limited) | ✅ (rate-limited) | ❌ |
+| Transcoder | ✅ | ✅ | ✅ | ❌ |
 | Admin Panel | ✅ | ❌ | ❌ | ❌ |
-| Advanced Upload | ✅ | ❌ | ❌ | ❌ |
-| Transcoder | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -154,6 +154,19 @@ ini_set('session.gc_maxlifetime', $timeout);
 session_set_cookie_params($timeout, "/");
 session_name('meel');           // Cookie name: "meel"
 session_start();
+```
+
+### Path Configuration
+
+Semua path penyimpanan media dikelola melalui konstanta terpusat:
+
+```php
+// auth/config.php
+define('MEEL_HDD_BASE', '/media/[user]/MEeL/media');
+define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
+define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+// ... dan seterusnya
 ```
 
 ### Session Hijacking Prevention
@@ -173,22 +186,20 @@ if (isset($_SESSION['LAST_ACTIVITY'])) {
 }
 $_SESSION['LAST_ACTIVITY'] = time();
 
-// activity_logger.php - Kick detection
-if ($user_status['role'] !== 'admin') {
-    if (!empty($user_status['last_session_id']) && 
-        $user_status['last_session_id'] !== $current_sid) {
-        
-        session_unset();
-        session_destroy();
-        
-        die("
-            <div style='background:#0b0e14; color:#f97316; ...'>
-                <h1>SESSION REVOKED</h1>
-                <p>Akses sesi ini telah dihentikan oleh Admin 
-                   atau login dari perangkat lain.</p>
-                <a href='/MEeL/login.php'>KEMBALI KE LOGIN</a>
-            </div>
-        ");
+// activity_logger.php - Kick detection (Header Redirect)
+if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+    if ($user_status && $user_status['role'] !== 'admin') {
+        if (!empty($user_status['last_session_id']) && $user_status['last_session_id'] !== $current_sid) {
+            session_unset();
+            session_destroy();
+
+            $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
+            $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+            $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
+            $revoked_url = $relative_base . '/err/revoked.php';
+            header("Location: " . $revoked_url);
+            exit();
+        }
     }
 }
 ```
@@ -293,16 +304,20 @@ function validate_and_format_ip($ip) {
 ### Ban Check (Real-time)
 
 ```php
-// Di activity_logger.php - dijalankan di setiap halaman
-$check_ban = $conn->prepare("SELECT reason FROM ip_ban WHERE ip_address = ?");
-$check_ban->bind_param("s", $user_ip);
-$check_ban->execute();
-$ban_res = $check_ban->get_result();
-
-if ($ban_res->num_rows > 0) {
-    // Admin still allowed (for debugging)
-    if ($session_role !== 'admin') {
-        die("403 - Akses Dibatasi: " . $ban_reason);
+// Di activity_logger.php - dijalankan di setiap halaman (Header Redirect)
+$current_page = basename($_SERVER['PHP_SELF']);
+if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+    if ($ban_res->num_rows > 0) {
+        // Jika bukan admin, baru di-redirect
+        if ($session_role !== 'admin') {
+            $row = $ban_res->fetch_assoc();
+            $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
+            $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+            $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
+            $banned_url = $relative_base . '/err/banned.php';
+            header("Location: " . $banned_url . "?reason=" . urlencode($row['reason']));
+            exit();
+        }
     }
 }
 ```

@@ -17,8 +17,8 @@ if (!verify_csrf()) {
 $storage = new DriveStorage(dirname(__DIR__) . '/data_drive', $user);
 
 try {
-    $filename = $_POST['file'] ?? null;
-    $type = $_POST['type'] ?? null;
+    $filename = isset($_POST['file']) ? basename($_POST['file']) : null;
+    $type = isset($_POST['type']) ? basename($_POST['type']) : null;
     $scope = $_POST['scope'] ?? DriveStorage::SCOPE_PUBLIC;
 
     $storage->delete($filename, $type, $scope);

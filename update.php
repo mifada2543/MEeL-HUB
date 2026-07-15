@@ -1,7 +1,9 @@
 <?php
+// Error logging aktif, display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 include 'auth/config.php';
+include 'modules/helpers.php';
 require_once 'controllers/UpdateManager.php';
 
 $um = new UpdateManager($conn);
@@ -24,8 +26,8 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
     <title>MEeL | Changelog</title>
     <link rel="icon" type="image/png" href="assets/MEeL.png">
     <link rel="manifest" href="assets/manifest.json">
-    <script src="assets/js/tailwind.js"></script>
-    <script src="assets/js/htmx.js"></script>
+    <link href="assets/css/tailwind.min.css" rel="stylesheet">
+    <script src="assets/js/htmx.min.js"></script>
     <script src="assets/js/lucide.js"></script>
     <link rel="stylesheet" href="assets/css/up.css">
 </head>
@@ -113,6 +115,7 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
                                             <form action="update.php" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus update versi <?= htmlspecialchars($row['version']) ?> ini?');" style="display:inline;">
                                                 <input type="hidden" name="action" value="delete_update">
                                                 <input type="hidden" name="id" value="<?= $row['id'] ?>">
+                                                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                                 <button type="submit" style="background:none;border:none;cursor:pointer;color:#ef4444;" title="Hapus Update">
                                                     <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
                                                 </button>
@@ -195,6 +198,7 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
                 <div class="modal-title">TAMBAH <span>UPDATE</span></div>
                 <form action="update.php" method="POST">
                     <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
                         <div>
                             <label class="f-label">Versi</label>
@@ -223,6 +227,7 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
                 <div class="modal-title">EDIT <span>UPDATE</span></div>
                 <form action="update.php" method="POST">
                     <input type="hidden" name="action" value="edit_update">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <input type="hidden" name="id" id="edit-id">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
                         <div>
@@ -251,6 +256,7 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
                 <div class="modal-title">EDIT <span>SIDEBAR</span></div>
                 <form action="update.php" method="POST">
                     <input type="hidden" name="action" value="sidebar">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <div style="margin-bottom:1rem">
                         <label class="f-label" style="color:var(--orange)">Konten Penting</label>
                         <textarea name="important" class="f-textarea" rows="4"><?= htmlspecialchars($sidebar_data['important_content'] ?? '') ?></textarea>

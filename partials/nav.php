@@ -27,6 +27,37 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
         overflow-x: hidden !important;
     }
 </style>
+
+<!-- ── Cross-link Video ↔ Music (DESKTOP) ── -->
+<?php if ($_nav_is_video): ?>
+    <a href="<?= $_nav_root ?>music/index.php"
+        class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-300 hover:text-orange-500 transition-all"
+        title="MEeL Music - Streaming Audio dengan kualitas terbaik">
+        <i data-lucide="music" class="w-3.5 h-3.5"></i>
+        <span class="hidden md:inline">Music</span>
+    </a>
+<?php elseif ($_nav_is_music): ?>
+    <a href="<?= $_nav_root ?>video/index.php"
+        class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-red-500 transition-all"
+        title="MEeL Video">
+        <i data-lucide="play" class="w-3.5 h-3.5"></i>
+        <span class="hidden md:inline">Video</span>
+    </a>
+<?php elseif ($_nav_is_books): ?>
+    <a href="<?= $_nav_root ?>video/index.php"
+        class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-red-500 transition-all"
+        title="MEeL Video">
+        <i data-lucide="play" class="w-3.5 h-3.5"></i>
+        <span class="hidden md:inline">Video</span>
+    </a>
+    <a href="<?= $_nav_root ?>music/index.php"
+        class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-orange-500 transition-all"
+        title="MEeL Music - Streaming Audio dengan kualitas terbaik">
+        <i data-lucide="music" class="w-3.5 h-3.5"></i>
+        <span class="hidden md:inline">Music</span>
+    </a>
+<?php endif; ?>
+
 <?php if (isset($_SESSION['username'])): ?>
 
     <!-- ── AVATAR DROPDOWN (desktop) ── -->
@@ -76,10 +107,12 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                     <?php endif; ?>
                 </div>
                 <div class="min-w-0">
-                    <div class="text-xs font-bold text-white truncate">@<?= htmlspecialchars($_SESSION['username']) ?></div>
+                    <div class="text-xs font-bold text-white truncate" title="@<?= htmlspecialchars($_SESSION['username']) ?>">
+                        @<?= htmlspecialchars($_SESSION['username']) ?>
+                    </div>
                     <?php if (isset($_SESSION['role'])): ?>
                         <?php if ($_SESSION['role'] === 'admin'): ?>
-                            <div class="flex items-center gap-1 mt-0.5">
+                            <div class="flex items-center gap-1 mt-0.5" title="Anda adalah administrator platform">
                                 <span class="relative flex h-1.5 w-1.5">
                                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                     <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
@@ -87,14 +120,14 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                                 <span class="text-[9px] text-red-500 font-black uppercase tracking-wider">Admin</span>
                             </div>
                         <?php elseif ($_SESSION['role'] === 'member'): ?>
-                            <div class="flex items-center gap-1 mt-0.5">
+                            <div class="flex items-center gap-1 mt-0.5" title="Anda adalah pengguna berlangganan MEeL">
                                 <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
                                 <span class="text-[9px] text-green-500 font-medium uppercase tracking-tighter">Berlangganan</span>
                             </div>
                         <?php else: ?>
                             <div class="flex items-center gap-1 mt-0.5">
                                 <span class="h-1.5 w-1.5 rounded-full bg-gray-600"></span>
-                                <span class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter">Member</span>
+                                <span class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter" title="Anda adalah pengguna biasa">User</span>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -103,28 +136,28 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
 
             <!-- Menu items -->
             <div class="py-1.5">
-                <a href="<?= $_nav_root ?>profile/?u=<?= urlencode($_SESSION['username']) ?>"
+                <a href="<?= $_nav_root ?>profile/?u=<?= urlencode($_SESSION['username']) ?>" title="Lihat profil Anda"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="user" class="w-3.5 h-3.5 flex-shrink-0"></i>
                     <span>Profil</span>
                 </a>
 
                 <?php if (!$_nav_is_books): ?>
-                <a href="<?= $_nav_root ?>books/index.php"
+                <a href="<?= $_nav_root ?>books/index.php" title="Akses MEeL Books"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-green-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="book-open" class="w-3.5 h-3.5 flex-shrink-0"></i>
                     <span>Books</span>
                 </a>
                 <?php endif; ?>
 
-                <a href="<?= $_nav_root ?>introduction.php"
+                <a href="<?= $_nav_root ?>introduction.php" title="Cara bernavigasi di MEeL"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="compass" class="w-3.5 h-3.5 flex-shrink-0"></i>
                     <span>Cara Navigasi</span>
                 </a>
 
                 <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['member', 'admin'])): ?>
-                    <a href="<?= $_nav_root ?>drive/index.php"
+                    <a href="<?= $_nav_root ?>drive/index.php" title="Akses drive Anda untuk mengelola file dan dokumen"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="hard-drive" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Drive</span>
@@ -132,7 +165,7 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                 <?php endif; ?>
 
                 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                    <a href="upload.php"
+                    <a href="upload.php" title="Unggah media baru ke platform"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Upload Media</span>
@@ -247,6 +280,30 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                 <i data-lucide="compass" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Cara Navigasi</span>
             </a>
+            <?php if ($_nav_is_video): ?>
+                <a href="<?= $_nav_root ?>music/index.php"
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
+                    <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
+                    <span>Music</span>
+                </a>
+            <?php elseif ($_nav_is_music): ?>
+                <a href="<?= $_nav_root ?>video/index.php"
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
+                    <i data-lucide="play" class="w-5 h-5 flex-shrink-0"></i>
+                    <span>Video</span>
+                </a>
+            <?php elseif ($_nav_is_books): ?>
+                <a href="<?= $_nav_root ?>video/index.php"
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
+                    <i data-lucide="play" class="w-5 h-5 flex-shrink-0"></i>
+                    <span>Video</span>
+                </a>
+                <a href="<?= $_nav_root ?>music/index.php"
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
+                    <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
+                    <span>Music</span>
+                </a>
+            <?php endif; ?>
             <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['member', 'admin'])): ?>
                 <a href="<?= $_nav_root ?>drive/index.php"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
@@ -296,21 +353,110 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
     </div>
 
 <?php else: ?>
-    <!-- Belum login -->
-    <a href="<?= $_nav_root ?>auth/login.php"
-        title="Login"
-        class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-900/40">
-        LOGIN
-    </a>
-    <a href="<?= $_nav_root ?>introduction.php"
-        class="hidden sm:flex text-gray-500 hover:text-white transition-all p-2 rounded-lg hover:bg-white/5"
-        title="Cara Bernavigasi">
-        <i data-lucide="compass" class="w-4 h-4"></i>
-    </a>
+    <!-- Belum login - DESKTOP -->
+    <div class="hidden sm:flex items-center gap-2">
+        <a href="<?= $_nav_root ?>auth/login.php"
+            title="Login"
+            class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-900/40">
+            LOGIN
+        </a>
+        <a href="<?= $_nav_root ?>auth/register.php"
+            title="Daftar"
+            class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-gray-900/30">
+            DAFTAR
+        </a>
+        <a href="<?= $_nav_root ?>introduction.php"
+            class="text-gray-500 hover:text-white transition-all p-2 rounded-lg hover:bg-white/5"
+            title="Cara Bernavigasi">
+            <i data-lucide="compass" class="w-4 h-4"></i>
+        </a>
+    </div>
+
+    <!-- Hamburger MOBILE (guest) -->
+    <button id="nav-hamburger-guest"
+        onclick="toggleNavDrawerGuest()"
+        class="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/[.04] border border-white/[.06] text-gray-500 hover:text-white transition-all"
+        title="Menu">
+        <i data-lucide="menu" class="w-6 h-6"></i>
+    </button>
+
+    <!-- MOBILE DRAWER OVERLAY (guest) -->
+    <div id="nav-drawer-guest-overlay"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[300] hidden sm:hidden"
+        onclick="toggleNavDrawerGuest()"></div>
+
+    <!-- MOBILE DRAWER (guest) -->
+    <div id="nav-drawer-guest"
+        class="fixed top-0 right-0 h-[100dvh] w-72 sm:w-80 bg-[#0a0d14] border-l border-white/[.06] z-[310] transform translate-x-full transition-transform duration-300 ease-out hidden sm:hidden flex-col">
+
+        <!-- Drawer header -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-white/[.05]">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                    <span class="text-white text-sm font-bold">?</span>
+                </div>
+                <div>
+                    <div class="text-sm font-bold text-white">Guest</div>
+                    <div class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter">Belum Login</div>
+                </div>
+            </div>
+            <button onclick="toggleNavDrawerGuest()" class="text-gray-600 hover:text-white p-1 transition-all">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- Drawer menu items -->
+        <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+            <!-- Login -->
+            <a href="<?= $_nav_root ?>auth/login.php"
+                class="flex items-center gap-4 px-6 py-4 text-base text-blue-400 hover:text-blue-300 hover:bg-blue-500/[.06] transition-all no-underline font-bold">
+                <i data-lucide="log-in" class="w-5 h-5 flex-shrink-0"></i>
+                <span>Login</span>
+            </a>
+            <!-- Daftar -->
+            <a href="<?= $_nav_root ?>auth/register.php"
+                class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
+                <i data-lucide="user-plus" class="w-5 h-5 flex-shrink-0"></i>
+                <span>Daftar</span>
+            </a>
+            
+            <?php if ($_nav_is_video): ?>
+                <a href="<?= $_nav_root ?>music/index.php"
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
+                    <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
+                    <span>Music</span>
+                </a>
+            <?php elseif ($_nav_is_music): ?>
+                <a href="<?= $_nav_root ?>video/index.php"
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
+                    <i data-lucide="play" class="w-5 h-5 flex-shrink-0"></i>
+                    <span>Video</span>
+                </a>
+            <?php elseif ($_nav_is_books): ?>
+                <a href="<?= $_nav_root ?>video/index.php"
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
+                    <i data-lucide="play" class="w-5 h-5 flex-shrink-0"></i>
+                    <span>Video</span>
+                </a>
+                <a href="<?= $_nav_root ?>music/index.php"
+                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
+                    <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
+                    <span>Music</span>
+                </a>
+            <?php endif; ?>
+            <!-- Introduction -->
+            <a href="<?= $_nav_root ?>introduction.php"
+                class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
+                <i data-lucide="compass" class="w-5 h-5 flex-shrink-0"></i>
+                <span>Introduction</span>
+            </a>
+        </nav>
+
+    </div>
 <?php endif; ?>
 
 <script src="<?= $_nav_root ?>assets/js/sweetalert2.all.min.js"></script>
-<script src="<?= $_nav_root ?>assets/js/script.js"></script>
+<script src="<?= $_nav_root ?>assets/js/script.min.js"></script>
 <script>
     // ── Dropdown desktop ──
     function toggleNavDropdown() {
@@ -388,5 +534,63 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
         e.preventDefault();
         e.stopPropagation(); // Menghentikan klik agar tidak menembus ke tombol/komponen di bawahnya
         toggleNavDrawer();
+    }
+
+    // ── Guest Drawer (mobile, belum login) ──
+    function toggleNavDrawerGuest() {
+        const drawer = document.getElementById('nav-drawer-guest');
+        const overlay = document.getElementById('nav-drawer-guest-overlay');
+        const mainContent = document.getElementById('app-content-grid') || document.querySelector('main');
+        
+        if (!drawer) return;
+        const open = drawer.classList.contains('open');
+        if (open) {
+            // PROSES MENUTUP
+            drawer.style.transform = '';
+            overlay.classList.add('hidden');
+            drawer.classList.remove('open');
+
+            // Lepas kunci scroll
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+
+            if (mainContent) {
+                mainContent.classList.remove('blur-md');
+                mainContent.removeEventListener('click', closeGuestDrawerOnMainClick);
+            }
+
+            setTimeout(() => {
+                if (!drawer.classList.contains('open')) {
+                    drawer.classList.add('hidden');
+                    drawer.classList.remove('flex');
+                }
+            }, 300);
+        } else {
+            // PROSES MEMBUKA
+            drawer.classList.remove('hidden');
+            drawer.classList.add('flex');
+
+            setTimeout(() => {
+                drawer.style.transform = 'translateX(0)';
+                drawer.classList.add('open');
+            }, 10);
+
+            overlay.classList.remove('hidden');
+
+            // Kunci scroll
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+
+            if (mainContent) {
+                mainContent.classList.add('blur-md', 'transition-all', 'duration-300');
+                mainContent.addEventListener('click', closeGuestDrawerOnMainClick);
+            }
+        }
+    }
+
+    function closeGuestDrawerOnMainClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleNavDrawerGuest();
     }
 </script>

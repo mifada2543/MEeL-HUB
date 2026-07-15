@@ -1,4 +1,5 @@
 <?php
+
 function time_ago($timestamp)
 {
     $time_diff = time() - strtotime($timestamp);
@@ -23,11 +24,18 @@ function music_thumbnail_url(?string $thumbnail): string
 {
     $thumbnail = trim((string)$thumbnail);
     $thumb_dir = __DIR__ . '/../music/upload/thumbnail/';
-    $fallback  = '../assets/img/music0.png';
+    $fallback  = '../assets/img/music0.webp';
+
+    // Cache default path untuk menghindari is_file() berulang
+    static $default_thumb = null;
 
     if ($thumbnail === '') {
-        if (is_file($thumb_dir . 'default.thumb.webp')) return 'upload/thumbnail/default.thumb.webp';
-        return is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp' : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback);
+        if ($default_thumb === null) {
+            $default_thumb = is_file($thumb_dir . 'default.thumb.webp') ? 'upload/thumbnail/default.thumb.webp'
+                : (is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp'
+                : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback));
+        }
+        return $default_thumb;
     }
 
     $thumbnail = basename($thumbnail);
@@ -35,35 +43,40 @@ function music_thumbnail_url(?string $thumbnail): string
         return 'upload/thumbnail/' . rawurlencode($thumbnail);
     }
 
-    $filename = pathinfo($thumbnail, PATHINFO_FILENAME);
-    $base     = preg_replace('/\\.thumb$/', '', $filename) ?: $filename;
-    $thumb_webp = $base . '.thumb.webp';
-    $webp_file  = $base . '.webp';
+    $base = preg_replace('/\\.thumb$/', '', pathinfo($thumbnail, PATHINFO_FILENAME)) ?: pathinfo($thumbnail, PATHINFO_FILENAME);
 
-    if (is_file($thumb_dir . $thumb_webp)) {
-        return 'upload/thumbnail/' . rawurlencode($thumb_webp);
+    // Cari dalam urutan prioritas
+    $candidates = [
+        $base . '.thumb.webp',
+        $base . '.webp',
+        $thumbnail
+    ];
+    foreach ($candidates as $candidate) {
+        if (is_file($thumb_dir . $candidate)) {
+            return 'upload/thumbnail/' . rawurlencode($candidate);
+        }
     }
 
-    if (is_file($thumb_dir . $webp_file)) {
-        return 'upload/thumbnail/' . rawurlencode($webp_file);
+    if ($default_thumb === null) {
+        $default_thumb = is_file($thumb_dir . 'default.thumb.webp') ? 'upload/thumbnail/default.thumb.webp'
+            : (is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp'
+            : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback));
     }
-
-    if (is_file($thumb_dir . $thumbnail)) {
-        return 'upload/thumbnail/' . rawurlencode($thumbnail);
-    }
-
-    if (is_file($thumb_dir . 'default.thumb.webp')) return 'upload/thumbnail/default.thumb.webp';
-    return is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp' : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback);
+    return $default_thumb;
 }
-// Tentukan path salah satu folder utama di HDD
-$hdd_check_path = '/media/muhammaddaffa/MEeL/media';
+// Tentukan path salah satu folder utama di HDD (dari config.php)
+$hdd_check_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : '/path/to/your/media';
 
 // Cek apakah folder tersebut bisa diakses
 if (!is_dir($hdd_check_path)) {
-    // Jika HDD tidak terdeteksi dan user bukan di halaman error itu sendiri
-    if (basename($_SERVER['PHP_SELF']) !== 'maintance.php') {
-        header("Location: ../err/maintance.php");
-        exit();
+    // Lewati pengecekan untuk request HTMX (mis. swap recovery).
+    // HTMX mengirim header HX-Request: true pada setiap AJAX request.
+    if (!isset($_SERVER['HTTP_HX_REQUEST'])) {
+        // Jika HDD tidak terdeteksi dan user bukan di halaman error itu sendiri
+        if (basename($_SERVER['PHP_SELF']) !== 'maintance.php') {
+            header("Location: ../err/maintance.php");
+            exit();
+        }
     }
 }
 function get_user_usage($username)
@@ -71,11 +84,23 @@ function get_user_usage($username)
     $path = dirname(__DIR__) . "/data_drive/private_admins/" . $username;
     if (!is_dir($path)) return 0;
 
+    // Pakai du -sb (jauh lebih cepat dari RecursiveIterator untuk folder besar)
+    $output = @shell_exec("du -sb " . escapeshellarg($path) . " 2>/dev/null");
+    if ($output && preg_match('/^(\d+)/', $output, $m)) {
+        return (float)$m[1];
+    }
+
+    // Fallback: RecursiveIterator jika shell_exec tidak tersedia
     $size = 0;
-    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path)) as $file) {
-        if ($file->isFile()) {
-            $size += $file->getSize();
+    try {
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path));
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $size += $file->getSize();
+            }
         }
+    } catch (Exception $e) {
+        return 0;
     }
     return $size;
 }
@@ -94,6 +119,70 @@ function get_csrf_token(): string
 function verify_csrf_token(?string $token): bool
 {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
+}
+
+// ════════════════════════════════════════════════════════════════
+// PRE-FLIGHT DISK SPACE HELPERS
+// ════════════════════════════════════════════════════════════════
+
+/**
+ * Periksa apakah path memiliki ruang disk yang cukup.
+ *
+ * @param int    $required_bytes Jumlah byte yang dibutuhkan
+ * @param string $path           Path untuk diperiksa (file atau direktori)
+ * @return array ['ok' => bool, 'free' => float, 'required' => float, 'path' => string]
+ */
+function check_disk_space(int $required_bytes, string $path): array
+{
+    // Jika path bukan direktori (kemungkinan file), ambil direktori parent-nya
+    if (!is_dir($path)) {
+        $path = dirname($path);
+        // Traverse up jika parent tidak ditemukan
+        $parent = dirname($path);
+        while ($parent !== '/' && $parent !== '.' && !is_dir($parent)) {
+            $parent = dirname($parent);
+        }
+        $path = $parent;
+    }
+
+    $free_bytes = @disk_free_space($path);
+    if ($free_bytes === false) {
+        return [
+            'ok'       => false,
+            'free'     => 0,
+            'required' => $required_bytes,
+            'path'     => $path,
+            'error'    => 'Tidak dapat membaca kapasitas disk.',
+        ];
+    }
+
+    return [
+        'ok'       => ($free_bytes >= $required_bytes),
+        'free'     => $free_bytes,
+        'required' => $required_bytes,
+        'path'     => $path,
+        'error'    => null,
+    ];
+}
+
+/**
+ * Pre-flight check: lempar RuntimeException jika ruang disk tidak cukup.
+ *
+ * @param int    $required_bytes Jumlah byte minimum yang diperlukan
+ * @param string $path           Path tujuan (folder HDD, RAM disk, dll)
+ * @param string $label          Label deskriptif (contoh: 'video storage', 'RAM disk')
+ * @throws \RuntimeException Jika disk space tidak mencukupi
+ */
+function require_disk_space(int $required_bytes, string $path, string $label): void
+{
+    $result = check_disk_space($required_bytes, $path);
+    if ($result['ok']) return;
+
+    $free_gb  = sprintf('%.1f', $result['free'] / (1024 ** 3));
+    $need_gb  = sprintf('%.1f', $result['required'] / (1024 ** 3));
+    $error_ms = $result['error'] ?? "Hanya tersedia {$free_gb} GB, butuh minimal {$need_gb} GB";
+
+    throw new \RuntimeException("Ruang {$label} tidak mencukupi! {$error_ms}");
 }
 
 /**

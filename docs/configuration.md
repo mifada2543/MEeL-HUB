@@ -21,10 +21,12 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 
 | File | Tujuan | Variabel Kunci |
 |------|--------|----------------|
-| `auth/config.php` | Database, session, CSRF | `$server`, `$username`, `$password`, `$db` |
-| `modules/Transcoder.php` | FFmpeg, yt-dlp, HDD paths | `HDD_BASE`, `FFMPEG_THREADS` |
-| `modules/Uploader.php` | Upload paths, FFmpeg | `$base_dir`, `$ffmpeg_bin` |
-| `modules/helpers.php` | HDD check path | `$hdd_check_path` |
+| `auth/config.php` | Database, session, CSRF, **path terpusat** | `$server`, `$username`, `$password`, `$db`, `MEEL_HDD_*` |
+| `auth/config.example.php` | Template konfigurasi | Sama dengan config.php |
+| `database/schema.sql` | Skema database standalone | — |
+| `modules/Transcoder.php` | FFmpeg, yt-dlp, CPU threads | `FFMPEG_THREADS` |
+| `modules/Uploader.php` | Upload paths, FFmpeg | `$ffmpeg_bin`, `$ffprobe_bin` |
+| `modules/helpers.php` | HDD check path | `$hdd_check_path` (dari `MEEL_HDD_BASE`) |
 | `modules/System.php` | Queue management | Rate limit constants |
 
 ---
@@ -120,32 +122,69 @@ function getRomajiName($text) {
 
 ---
 
-## Media Storage Paths
 
-### Base Path di Uploader
+## Media Storage Paths (TERPUSAT)
 
-```php
-// File: modules/Uploader.php
-$this->base_dir = "/media/muhammaddaffa/MEeL/media/video/upload/";
-```
+Semua path penyimpanan media **terpusat** di `auth/config.php` melalui konstanta `MEEL_HDD_*`. Cukup ubah **satu baris** untuk memindahkan lokasi penyimpanan.
 
-### Base Path di Transcoder
+### Konfigurasi Path Utama
 
 ```php
-// File: modules/Transcoder.php
-private const HDD_BASE      = "/media/muhammaddaffa/MEeL/media/video/upload/";
-private const HDD_VIDEO_DIR = self::HDD_BASE . "video/";
-private const HDD_THUMB_DIR = self::HDD_BASE . "thumbnail/";
+// File: auth/config.php — ★ Cukup ubah MEEL_HDD_BASE, sisanya otomatis
+define('MEEL_HDD_BASE', '/media/[user]/MEeL/media');
+
+// Path turunan (otomatis mengikuti MEEL_HDD_BASE)
+define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
+define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
+define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
+define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
 ```
 
-### HDD Check Path
+### Cara Mengubah
+
+1. Tentukan path mount HDD Anda: `df -h` atau `lsblk`
+2. Edit `auth/config.php`:
+   ```php
+   define('MEEL_HDD_BASE', '/media/[username]/MEeL/media');
+   ```
+3. Selesai! Semua modul (video, music, books, drive) otomatis menggunakan path baru.
+
+### Konfigurasi X-Sendfile (Akselerasi Streaming)
+
+> Tersedia di: `auth/config.php`
 
 ```php
-// File: modules/helpers.php
-$hdd_check_path = '/media/muhammaddaffa/MEeL/media';
+define('MEEL_USE_XSENDFILE', false);
 ```
 
-> ⚠️ **Penting:** Semua path di atas HARUS disesuaikan dengan konfigurasi mount HDD server Anda. Jika path tidak cocok, aplikasi akan redirect ke `err/maintance.php`.
+X-Sendfile mempercepat streaming file besar seperti FLAC (33MB+) dengan
+membiarkan Apache mengirim file langsung dari disk (zero-copy), tanpa PHP
+membaca file sama sekali.
+
+**Dampak performa berdasarkan hasil tes (FLAC 33MB):**
+
+| Metrik | Tanpa X-Sendfile (PHP chunking) | Dengan X-Sendfile |
+|--------|--------------------------------|-------------------|
+| Full file 33MB | 0.020 detik | ~0.010 detik (2x lebih cepat) |
+| Range request 256KB | 0.011 detik | ~0.003 detik (3x lebih cepat) |
+| RAM server per request | ~33MB | 0 bytes |
+| PHP process blocking | Ya, sampai stream selesai | Tidak, langsung exit |
+
+**Cara aktivasi:** Lihat panduan di `docs/installation.md` bagian "Aktifkan mod_xsendfile".
+
+### Contoh untuk Berbagai Skenario
+
+| Skenario | Nilai `MEEL_HDD_BASE` |
+|----------|----------------------|
+| HDD eksternal | `/media/username/MEeL/media` |
+| Lokal SSD | `/var/www/meel-storage/media` |
+| Development (fallback) | `__DIR__ . '/../storage/media'` |
+| Docker volume | `/data/media` |
+
+### ⚠️ Penting
+Jika `MEEL_HDD_BASE` tidak sesuai dengan mount point, aplikasi akan redirect ke `err/maintance.php`. Buka halaman tersebut sebagai admin untuk diagnosa lengkap.
 
 ### Struktur Direktori Media
 
@@ -180,6 +219,8 @@ $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
 
 ### File: `modules/Transcoder.php`
 
+> ⚠️ **Perubahan:** Konstanta `HDD_BASE`, `HDD_VIDEO_DIR`, `HDD_THUMB_DIR` telah **dipindahkan** ke `auth/config.php` menjadi `MEEL_HDD_*`.
+
 ```php
 // ─── KONSTANTA HARDWARE ───────────────────────────────────
 private const FFMPEG_THREADS        = 8;
@@ -195,8 +236,8 @@ private const HLS_SEGMENT_DURATION  = 10;
 // Download timeout (detik)
 private const DOWNLOAD_TIMEOUT      = 900;
 
-// ─── PATH STORAGE ─────────────────────────────────────────
-private const HDD_BASE      = "/media/muhammaddaffa/MEeL/media/video/upload/";
+// PATH STORAGE — sekarang lihat auth/config.php (MEEL_HDD_*)
+// private const HDD_BASE = "..."; // DIPINDAHKAN
 ```
 
 ### Binary Path Resolution
@@ -253,8 +294,12 @@ else                       $interval = 10;    // ≤ 5 menit → tiap 10 detik
 
 ### File: `modules/Uploader.php`
 
+> ⚠️ **Perubahan:** `$base_dir` sekarang mengambil path dari `MEEL_HDD_VIDEO_UPLOAD` (didefinisikan di `auth/config.php`).
+
 ```php
-$this->base_dir = "/media/muhammaddaffa/MEeL/media/video/upload/";
+$this->base_dir = defined('MEEL_HDD_VIDEO_UPLOAD')
+    ? MEEL_HDD_VIDEO_UPLOAD
+    : "/path/to/your/media/video/upload/"; // fallback
 ```
 
 ### Upload Limits

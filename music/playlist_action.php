@@ -5,6 +5,11 @@ include '../auth/config.php';
 
 if (!isset($_SESSION['user_id'])) die('Silakan login terlebih dahulu.');
 
+// 🔒 FIX CSRF: Verifikasi token untuk semua aksi playlist
+if (!verify_csrf()) {
+    die('CSRF Token tidak valid.');
+}
+
 $user_id = (int) $_SESSION['user_id'];
 $action  = $_POST['action'] ?? '';
 
@@ -20,17 +25,30 @@ if ($action === 'create_playlist') {
     $music_id = (int) ($_POST['music_id'] ?? 0);
 
     if ($name !== '') {
-        $stmt = $conn->prepare('INSERT INTO playlists (user_id, name) VALUES (?, ?)');
-        $stmt->bind_param('is', $user_id, $name);
-        $stmt->execute();
-        $new_playlist_id = $stmt->insert_id;
-        $stmt->close();
+        // 🔒 TRANSACTION: Atomic playlist + track creation
+        $conn->begin_transaction();
+        try {
+            $stmt = $conn->prepare('INSERT INTO playlists (user_id, name) VALUES (?, ?)');
+            $stmt->bind_param('is', $user_id, $name);
+            if (!$stmt->execute()) {
+                throw new \RuntimeException('Gagal membuat playlist: ' . $stmt->error);
+            }
+            $new_playlist_id = $stmt->insert_id;
+            $stmt->close();
 
-        if ($music_id > 0) {
-            $stmt2 = $conn->prepare('INSERT INTO playlist_tracks (playlist_id, music_id) VALUES (?, ?)');
-            $stmt2->bind_param('ii', $new_playlist_id, $music_id);
-            $stmt2->execute();
-            $stmt2->close();
+            if ($music_id > 0) {
+                $stmt2 = $conn->prepare('INSERT INTO playlist_tracks (playlist_id, music_id) VALUES (?, ?)');
+                $stmt2->bind_param('ii', $new_playlist_id, $music_id);
+                if (!$stmt2->execute()) {
+                    throw new \RuntimeException('Gagal menambahkan track: ' . $stmt2->error);
+                }
+                $stmt2->close();
+            }
+
+            $conn->commit();
+        } catch (\Throwable $e) {
+            $conn->rollback();
+            die('Error: ' . $e->getMessage());
         }
     }
     redirect("watch.php?id=$music_id&msg=playlist_created");
@@ -41,17 +59,28 @@ if ($action === 'add_to_playlist') {
     $playlist_id = (int) ($_POST['playlist_id'] ?? 0);
     $music_id    = (int) ($_POST['music_id']    ?? 0);
 
-    $check = $conn->prepare('SELECT id FROM playlist_tracks WHERE playlist_id = ? AND music_id = ?');
-    $check->bind_param('ii', $playlist_id, $music_id);
-    $check->execute();
-    $exists = (int) $check->get_result()->num_rows;
-    $check->close();
+    // 🔒 TRANSACTION: Atomic check + insert — cegah duplicate race condition
+    $conn->begin_transaction();
+    try {
+        $check = $conn->prepare('SELECT id FROM playlist_tracks WHERE playlist_id = ? AND music_id = ?');
+        $check->bind_param('ii', $playlist_id, $music_id);
+        $check->execute();
+        $exists = (int) $check->get_result()->num_rows;
+        $check->close();
 
-    if (!$exists) {
-        $stmt = $conn->prepare('INSERT INTO playlist_tracks (playlist_id, music_id) VALUES (?, ?)');
-        $stmt->bind_param('ii', $playlist_id, $music_id);
-        $stmt->execute();
-        $stmt->close();
+        if (!$exists) {
+            $stmt = $conn->prepare('INSERT INTO playlist_tracks (playlist_id, music_id) VALUES (?, ?)');
+            $stmt->bind_param('ii', $playlist_id, $music_id);
+            if (!$stmt->execute()) {
+                throw new \RuntimeException('Gagal menambahkan ke playlist: ' . $stmt->error);
+            }
+            $stmt->close();
+        }
+
+        $conn->commit();
+    } catch (\Throwable $e) {
+        $conn->rollback();
+        die('Error: ' . $e->getMessage());
     }
     redirect("watch.php?id=$music_id&msg=added_to_playlist");
 }
@@ -72,9 +101,27 @@ if ($action === 'remove_from_playlist') {
 if ($action === 'delete_playlist') {
     $playlist_id = (int) ($_POST['playlist_id'] ?? 0);
 
-    $stmt = $conn->prepare('DELETE FROM playlists WHERE id = ? AND user_id = ?');
-    $stmt->bind_param('ii', $playlist_id, $user_id);
-    $stmt->execute();
-    $stmt->close();
+    // 🔒 TRANSACTION: Hapus playlist beserta semua track di dalamnya
+    $conn->begin_transaction();
+    try {
+        // Hapus semua track milik playlist ini
+        $stmt_tracks = $conn->prepare('DELETE FROM playlist_tracks WHERE playlist_id = ?');
+        $stmt_tracks->bind_param('i', $playlist_id);
+        $stmt_tracks->execute();
+        $stmt_tracks->close();
+
+        // Hapus playlist (hanya milik user yang bersangkutan)
+        $stmt = $conn->prepare('DELETE FROM playlists WHERE id = ? AND user_id = ?');
+        $stmt->bind_param('ii', $playlist_id, $user_id);
+        if (!$stmt->execute()) {
+            throw new \RuntimeException('Gagal menghapus playlist: ' . $stmt->error);
+        }
+        $stmt->close();
+
+        $conn->commit();
+    } catch (\Throwable $e) {
+        $conn->rollback();
+        die('Error: ' . $e->getMessage());
+    }
     redirect('index.php?msg=playlist_deleted');
 }

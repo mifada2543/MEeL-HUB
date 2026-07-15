@@ -1,5 +1,6 @@
 <?php
 include 'auth/config.php';
+include 'modules/helpers.php';
 $back_url = 'index.php';
 
 if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
@@ -29,14 +30,25 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     <link rel="manifest" href="assets/manifest.json">
     <link rel="icon" type="image/png" href="assets/MEeL.png">
     <link rel="stylesheet" href="assets/css/introduction.css">
-    <script src="assets/js/tailwind.js"></script>
+    <link href="assets/css/tailwind.min.css" rel="stylesheet">
     <script src="assets/js/lucide.js"></script>
 </head>
 
 <body>
 
+    <!-- ── READING PROGRESS ── -->
+    <div id="reading-progress"></div>
+
+    <!-- ── MOBILE HAMBURGER ── -->
+    <button id="hamburger" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+        <i data-lucide="menu"></i>
+    </button>
+
+    <!-- ── SIDEBAR OVERLAY (mobile) ── -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
     <!-- ── SIDEBAR ── -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <a href="<?= htmlspecialchars($back_url) ?>" class="back-link">
                 <div class="back-icon">
@@ -99,7 +111,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/video0.png" alt="Index Video" class="screenshot-img"
+                        <img src="assets/img/video0.webp" alt="Index Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
                     </div>
                     <div class="annotation-list">
@@ -133,11 +145,11 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/video1.png" alt="Watch Video" class="screenshot-img"
+                        <img src="assets/img/video1.webp" alt="Watch Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
-                        <img src="assets/img/video2.png" alt="Watch Video" class="screenshot-img"
+                        <img src="assets/img/video2.webp" alt="Watch Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
-                        <img src="assets/img/video3.png" alt="Watch Video" class="screenshot-img"
+                        <img src="assets/img/video3.webp" alt="Watch Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
                     </div>
                     <div class="annotation-list">
@@ -212,9 +224,9 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/music0.png" alt="Index Musik" class="screenshot-img"
+                        <img src="assets/img/music0.webp" alt="Index Musik" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
-                        <img src="assets/img/music2.png" alt="Index Musik" class="screenshot-img"
+                        <img src="assets/img/music2.webp" alt="Index Musik" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
                     </div>
                     <div class="annotation-list">
@@ -247,7 +259,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/music1.png" alt="Watch Musik" class="screenshot-img"
+                        <img src="assets/img/music1.webp" alt="Watch Musik" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy">
                     </div>
                     <div class="annotation-list">
@@ -313,6 +325,73 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
 
     <script>
         lucide.createIcons();
+
+        // ── Mobile sidebar toggle ──
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const hamburger = document.getElementById('hamburger');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+            hamburger.classList.toggle('open');
+        }
+
+        // ── Close sidebar on nav click (mobile) ──
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    toggleSidebar();
+                }
+            });
+        });
+
+        // ── Reading progress bar ──
+        const mainEl = document.querySelector('.main');
+        const progressBar = document.getElementById('reading-progress');
+
+        function updateProgress() {
+            let scrollTop, scrollHeight, clientHeight;
+
+            if (window.innerWidth <= 768) {
+                // Mobile: body/html is the scroll container
+                scrollTop = window.scrollY || document.documentElement.scrollTop;
+                scrollHeight = document.documentElement.scrollHeight;
+                clientHeight = window.innerHeight;
+            } else if (mainEl) {
+                // Desktop: .main is the scroll container
+                scrollTop = mainEl.scrollTop;
+                scrollHeight = mainEl.scrollHeight;
+                clientHeight = mainEl.clientHeight;
+            } else {
+                return;
+            }
+
+            const maxScroll = scrollHeight - clientHeight;
+            if (maxScroll > 0) {
+                progressBar.style.width = ((scrollTop / maxScroll) * 100) + '%';
+            } else {
+                progressBar.style.width = '0%';
+            }
+        }
+
+        // Throttled scroll listener
+        let ticking = false;
+        function onScroll() {
+            if (!ticking) {
+                requestAnimationFrame(function() {
+                    updateProgress();
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        }
+
+        if (mainEl) {
+            mainEl.addEventListener('scroll', onScroll);
+        }
+        window.addEventListener('scroll', onScroll);
+        window.addEventListener('resize', updateProgress);
+        setTimeout(updateProgress, 100);
 
         function showGuide(id, btn) {
             document.querySelectorAll('.guide-section').forEach(s => s.classList.remove('active'));

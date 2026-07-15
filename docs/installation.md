@@ -379,6 +379,67 @@ Edit `/etc/apache2/apache2.conf`:
 </Directory>
 ```
 
+#### ⚡ Aktifkan mod_xsendfile (Opsional — untuk akselerasi streaming)
+
+mod_xsendfile mempercepat streaming file besar (FLAC 33MB+, MKV 4K) dengan
+membiarkan Apache mengirim file langsung dari disk tanpa melalui PHP.
+
+**Langkah-langkah:**
+
+1. Download source:
+   ```bash
+   git clone --depth 1 https://github.com/nmaier/mod_xsendfile.git /tmp/mod_xsendfile
+   cd /tmp/mod_xsendfile
+   ```
+
+2. Kompilasi dengan `apxs` milik server:
+   ```bash
+   # Untuk LAMPP:
+   /opt/lampp/bin/apxs -c mod_xsendfile.c
+   
+   # Untuk Apache standar:
+   sudo apxs -c mod_xsendfile.c
+   ```
+
+   > 💡 Jika `apxs` gagal dengan `libtool: compile: you must specify a compilation command`,
+   > kompilasi manual dengan gcc:
+   > ```bash
+   > gcc -c -I/opt/lampp/include -I/opt/lampp/include/apr-1 -fPIC -DPIC mod_xsendfile.c -o mod_xsendfile.o
+   > gcc -shared -o mod_xsendfile.so mod_xsendfile.o -L/opt/lampp/lib -lapr-1
+   > ```
+
+3. Install modul:
+   ```bash
+   sudo cp mod_xsendfile.so /opt/lampp/modules/  # atau direktori modules Apache Anda
+   sudo chmod 755 /opt/lampp/modules/mod_xsendfile.so
+   ```
+
+4. Tambahkan ke `httpd.conf`:
+   ```apache
+   LoadModule xsendfile_module modules/mod_xsendfile.so
+
+   <IfModule xsendfile_module>
+       XSendFile on
+       XSendFilePath "/opt/lampp/htdocs/MEeL/music/upload/file"
+   </IfModule>
+   ```
+
+5. Restart Apache:
+   ```bash
+   sudo /opt/lampp/lampp restart
+   ```
+
+6. Verifikasi:
+   ```bash
+   sudo /opt/lampp/bin/httpd -M | grep xsend
+   # Output: xsendfile_module (shared)
+   ```
+
+7. Aktifkan di aplikasi — edit `auth/config.php`:
+   ```php
+   define('MEEL_USE_XSENDFILE', true);
+   ```
+
 ### 7. Setup FFmpeg
 
 ```bash
@@ -452,11 +513,12 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
 - Coba: `mysql -u root -p -e "SHOW DATABASES;"`
 
 ### ❌ "Penyimpanan Offline" / Redirect ke maintenance
-- Periksa path HDD di `modules/helpers.php`:
+- Periksa path HDD di `auth/config.php`:
   ```php
-  $hdd_check_path = '/media/muhammaddaffa/MEeL/media';
+  define('MEEL_HDD_BASE', '/media/[user]/MEeL/media');
   ```
-- Sesuaikan dengan mount point Anda, atau nonaktifkan sementara untuk development
+- Sesuaikan dengan mount point Anda: `df -h` untuk cek mount point
+- Atau nonaktifkan sementara untuk development
 
 ### ❌ "403 Forbidden" pada halaman
 - Periksa `.htaccess` di direktori terkait
@@ -468,7 +530,7 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
 
 ### ❌ FFmpeg/yt-dlp tidak ditemukan
 - Pastikan binary terinstall: `which ffmpeg && which yt-dlp`
-- Sesuaikan path di `modules/Transcoder.php` dan `modules/Uploader.php`
+- Transcoder dan Uploader sudah auto-detect via `resolveBinary()`
 
 ---
 

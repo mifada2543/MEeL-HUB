@@ -81,7 +81,7 @@ if (isset($_GET['content_only'])) {
     <title>MEeL Music | Library</title>
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/music.css">
-    <script src="../assets/js/htmx.js"></script>
+    <script src="../assets/js/htmx.min.js" defer></script>
     <style>
         .artist-dropdown-active .music-item {
             pointer-events: none !important;
@@ -156,6 +156,7 @@ if (isset($_GET['content_only'])) {
                     hx-include="#m-search"
                     hx-target="#music-list"
                     hx-indicator="#search-indicator"
+                    aria-label="Cari lagu"
                     class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
                     <span class="hidden sm:inline">Cari</span>
                     <i data-lucide="search" class="w-3.5 h-3.5 sm:hidden"></i>
@@ -166,10 +167,6 @@ if (isset($_GET['content_only'])) {
             </div>
 
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <a href="../video/index.php" class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-red-500 transition-all">
-                    <i data-lucide="play" class="w-3.5 h-3.5"></i>
-                    <span class="hidden md:inline">Video</span>
-                </a>
                 <?php include '../partials/nav.php'; ?>
             </div>
         </div>
@@ -185,25 +182,25 @@ if (isset($_GET['content_only'])) {
                 <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3">Format</div>
                     <div class="flex flex-wrap gap-2">
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
@@ -217,8 +214,8 @@ if (isset($_GET['content_only'])) {
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
                         <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
                     </div>
-                    <div class="space-y-0.5 max-h-[45vh] overflow-y-auto no-scrollbar">
-                        <a href="javascript:void(0)"
+                    <div id="desktop-artist-list" class="space-y-0.5 max-h-[45vh] overflow-y-auto no-scrollbar">
+                        <a href="index.php?format=<?= $format_filter ?>&artist=all"
                             hx-get="index.php?format=<?= $format_filter ?>&artist=all"
                             hx-target="#library-container"
                             hx-select="#library-container"
@@ -231,7 +228,7 @@ if (isset($_GET['content_only'])) {
                         // reset pointer
                         $artists->data_seek(0);
                         while ($a = $artists->fetch_assoc()): ?>
-                            <a href="javascript:void(0)"
+                            <a href="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
                                 hx-get="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
                                 hx-target="#library-container"
                                 hx-select="#library-container"
@@ -275,25 +272,25 @@ if (isset($_GET['content_only'])) {
                 <div class="lg:hidden flex flex-col gap-4 bg-[#0d1017]/95 backdrop-blur-md p-4 rounded-xl border border-white/[.04] shadow-lg">
                     <!-- Format Pills (Mobile) -->
                     <div class="flex flex-wrap gap-2">
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
-                        <a href="javascript:void(0)"
+                        <a href="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
                             hx-target="#library-container"
                             hx-select="#library-container"
@@ -341,23 +338,29 @@ if (isset($_GET['content_only'])) {
                             </div>
                         </div>
 
-                        <!-- Playlists Select -->
+                        <!-- Playlists Select (Custom Dropdown) -->
                         <?php if ($is_logged_in): ?>
                             <div>
                                 <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
                                     <i data-lucide="list-music" class="w-3 h-3"></i> Playlists
                                 </div>
-                                <div class="relative w-full">
-                                    <select onchange="loadPlaylistMobile(this.value)" class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 appearance-none cursor-pointer transition-all hover:bg-white/[.05] hover:border-white/[.1]">
-                                        <option value="">Pilih Playlist...</option>
+                                <div class="relative w-full z-[100]" id="custom-playlist-dropdown">
+                                    <button type="button"
+                                        onclick="togglePlaylistDropdown()"
+                                        class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
+                                        <span class="truncate" id="playlist-dropdown-label">Pilih Playlist...</span>
+                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
+                                    </button>
+                                    <div id="playlist-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
                                         <?php
-                                        $playlists = $library->getUserPlaylists($_SESSION['user_id']);
-                                        while ($pl = $playlists->fetch_assoc()): ?>
-                                            <option value="<?= $pl['id'] ?>"><?= htmlspecialchars($pl['name']) ?></option>
+                                        $playlists_mobile = $library->getUserPlaylists($_SESSION['user_id']);
+                                        while ($pl = $playlists_mobile->fetch_assoc()): ?>
+                                            <button onclick="navigateToPlaylistMobile(<?= $pl['id'] ?>)"
+                                                data-playlist-id="<?= $pl['id'] ?>"
+                                                class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[.04] transition-colors truncate">
+                                                <?= htmlspecialchars($pl['name']) ?>
+                                            </button>
                                         <?php endwhile; ?>
-                                    </select>
-                                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-gray-500">
-                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
                                     </div>
                                 </div>
                             </div>
@@ -400,16 +403,16 @@ if (isset($_GET['content_only'])) {
 
             <!-- Tengah: kontrol -->
             <div class="mp-controls">
-                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulang">
+                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulang" aria-label="Ulang">
                     <i data-lucide="repeat" style="width:15px;height:15px;"></i>
                 </button>
-                <button class="mp-btn mp-btn-ghost" onclick="miniPrevIndex()" id="mp-prev-btn-index" title="Sebelumnya">
+                <button class="mp-btn mp-btn-ghost" onclick="miniPrevIndex()" id="mp-prev-btn-index" title="Sebelumnya" aria-label="Lagu Sebelumnya">
                     <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
                 </button>
-                <button class="mp-btn mp-btn-primary" onclick="miniPlayPauseIndex()" id="mini-play-btn-index" title="Play / Pause">
+                <button class="mp-btn mp-btn-primary" onclick="miniPlayPauseIndex()" id="mini-play-btn-index" title="Putar / Jeda" aria-label="Putar atau jeda">
                     <i data-lucide="play" style="width:18px;height:18px;"></i>
                 </button>
-                <button class="mp-btn mp-btn-ghost" onclick="miniNextIndex()" id="mp-next-btn-index" title="Berikutnya">
+                <button class="mp-btn mp-btn-ghost" onclick="miniNextIndex()" id="mp-next-btn-index" title="Berikutnya" aria-label="Lagu Berikutnya">
                     <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
                 </button>
             </div>
@@ -421,15 +424,15 @@ if (isset($_GET['content_only'])) {
                     <span class="mp-time-sep">/</span>
                     <span id="mini-duration-index">0:00</span>
                 </div>
-                <button class="mp-btn mp-btn-ghost mp-close" onclick="closeMiniPlayerIndex()" title="Tutup">
-                    <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+                <button class="mp-btn mp-btn-ghost mp-close" onclick="closeMiniPlayerIndex()" title="Tutup" aria-label="Tutup mini player">
+                    <i data-lucide="x" style="width:16px;height:16px;"></i>
                 </button>
             </div>
         </div>
     </div>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <script>
-        lucide.createIcons();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
 
         // =============================================
         // === MINI PLAYER INDEX (Spotify-style) ===
@@ -458,10 +461,11 @@ if (isset($_GET['content_only'])) {
             if (!audioPlayer) {
                 audioPlayer = document.createElement('audio');
                 audioPlayer.id = 'hidden-audio-player';
-                audioPlayer.preload = 'metadata';
+                // preload=none hindari loading FLAC yg berat saat pertama kali play
+                audioPlayer.preload = 'none';
                 document.body.appendChild(audioPlayer);
 
-                audioPlayer.addEventListener('timeupdate', updateIndexUI);
+                audioPlayer.addEventListener('timeupdate', updateIndexProgress);
                 audioPlayer.addEventListener('play', () => setPlayIcon('pause'));
                 audioPlayer.addEventListener('pause', () => setPlayIcon('play'));
                 audioPlayer.addEventListener('ended', () => miniNextIndex());
@@ -473,8 +477,9 @@ if (isset($_GET['content_only'])) {
             }
 
             currentState = state;
-            audioPlayer.src = `upload/file/${state.filename}`;
-            audioPlayer.load();
+            // Set src langsung memicu loading — tidak perlu panggil .load()
+            // (memanggil .load() setelah .src malah restart loading, double-load untuk file besar)
+            audioPlayer.src = `stream.php?id=${state.id}`;
 
             // Restore loop state dari global key (sumber kebenaran) + state object sebagai fallback
             const _gLoop = localStorage.getItem("meel_global_loop") === "true";
@@ -495,30 +500,54 @@ if (isset($_GET['content_only'])) {
         }
 
         // --- Update seluruh UI ---
-        function updateIndexUI() {
-            if (!audioPlayer || !currentState) return;
+        // Elemen di-cache sekali (markup mini-player-index statis, tidak
+        // pernah di-swap oleh htmx), jadi tidak perlu getElementById lagi
+        // di setiap tick timeupdate.
+        let _idxEls = null;
+
+        function _getIdxEls() {
+            if (!_idxEls) {
+                _idxEls = {
+                    fill: document.getElementById('mp-seekbar-fill-index'),
+                    thumb: document.getElementById('mp-seekbar-thumb-index'),
+                    ct: document.getElementById('mini-current-time-index'),
+                    dt: document.getElementById('mini-duration-index'),
+                    img: document.getElementById('mini-thumbnail-index'),
+                    title: document.getElementById('mini-title-index'),
+                    artist: document.getElementById('mini-artist-index'),
+                };
+            }
+            return _idxEls;
+        }
+
+        // Bagian "panas": dipanggil di setiap event timeupdate (bisa puluhan
+        // kali/detik), jadi hanya menyentuh seekbar + label waktu.
+        function updateIndexProgress() {
+            if (!audioPlayer) return;
+            const els = _getIdxEls();
             const pct = audioPlayer.duration > 0 ?
                 (audioPlayer.currentTime / audioPlayer.duration) * 100 : 0;
 
-            // Seekbar
-            const fill = document.getElementById('mp-seekbar-fill-index');
-            const thumb = document.getElementById('mp-seekbar-thumb-index');
-            if (fill) fill.style.width = pct + '%';
-            if (thumb) thumb.style.left = pct + '%';
+            if (els.fill) els.fill.style.width = pct + '%';
+            if (els.thumb) els.thumb.style.left = pct + '%';
+            if (els.ct) els.ct.textContent = fmtTime(audioPlayer.currentTime);
+            if (els.dt) els.dt.textContent = fmtTime(audioPlayer.duration);
+        }
 
-            // Waktu
-            const ct = document.getElementById('mini-current-time-index');
-            const dt = document.getElementById('mini-duration-index');
-            if (ct) ct.textContent = fmtTime(audioPlayer.currentTime);
-            if (dt) dt.textContent = fmtTime(audioPlayer.duration);
+        // Bagian "dingin": thumbnail/judul/artis hanya berubah saat lagu
+        // berganti, jadi dipisah agar tidak ikut ditulis ulang tiap tick.
+        function updateIndexMeta() {
+            if (!currentState) return;
+            const els = _getIdxEls();
+            if (els.img) els.img.src = currentState.thumbnailUrl || `upload/thumbnail/${currentState.thumbnail}`;
+            if (els.title) els.title.textContent = currentState.title || 'Unknown';
+            if (els.artist) els.artist.textContent = currentState.artist || 'Unknown';
+        }
 
-            // Thumbnail / judul / artis
-            const img = document.getElementById('mini-thumbnail-index');
-            const title = document.getElementById('mini-title-index');
-            const artist = document.getElementById('mini-artist-index');
-            if (img) img.src = currentState.thumbnailUrl || `upload/thumbnail/${currentState.thumbnail}`;
-            if (title) title.textContent = currentState.title || 'Unknown';
-            if (artist) artist.textContent = currentState.artist || 'Unknown';
+        function updateIndexUI() {
+            if (!audioPlayer || !currentState) return;
+            updateIndexProgress();
+            updateIndexMeta();
         }
 
         function setPlayIcon(icon) {
@@ -549,7 +578,21 @@ if (isset($_GET['content_only'])) {
             try {
                 const state = JSON.parse(raw);
                 isMiniPlayerIndexActive = true;
-                loadAudio(state, state.isPlaying);
+
+                // ⚠️ Update meta IMMEDIATELY dari state (sebelum setTimeout) agar
+                // title/artist/thumbnail tampil tanpa flash default "Tidak ada musik".
+                // Sebelumnya updateIndexUI() dipanggil langsung di sini tetapi
+                // currentState masih null → meta tidak terganti.
+                const els = _getIdxEls();
+                if (els.img) els.img.src = state.thumbnailUrl || `upload/thumbnail/${state.thumbnail}`;
+                if (els.title) els.title.textContent = state.title || 'Unknown';
+                if (els.artist) els.artist.textContent = state.artist || 'Unknown';
+
+                // Tunggu render selesai dulu baru load audio (hindari blocking saat navigasi dari watch.php dengan FLAC)
+                setTimeout(() => {
+                    loadAudio(state, state.isPlaying);
+                    updateIndexUI();
+                }, 100);
                 // Prioritaskan global loop key; sinkronisasi dari sessionStorage jika lebih baru
                 const globalLoop = localStorage.getItem("meel_global_loop") === "true";
                 if (state.isLooping !== undefined) {
@@ -566,7 +609,6 @@ if (isset($_GET['content_only'])) {
                 }
                 if (audioPlayer) audioPlayer.loop = isMiniLoopIndexActive;
                 updateMiniLoopUIIndex();
-                updateIndexUI();
                 miniPlayerIndex.classList.add('active');
 
                 // Muat konten playlist (prioritas dari state, fallback dari localStorage, lalu URL)
@@ -592,7 +634,9 @@ if (isset($_GET['content_only'])) {
         function loadPlaylistById(id) {
             if (!id) return;
             fetch('view_playlist.php?id=' + id + '&content_only=1')
-                .then(function(r) { return r.text(); })
+                .then(function(r) {
+                    return r.text();
+                })
                 .then(function(html) {
                     var main = document.querySelector('main');
                     if (!main) return;
@@ -830,6 +874,7 @@ if (isset($_GET['content_only'])) {
         function bootPlayerIndex() {
             initMiniPlayerIndex();
             setupMusicItemClicks();
+            scrollToActiveArtistDesktop();
         }
 
         // 1. Jalankan saat halaman pertama kali dimuat (Hard Reload / F5)
@@ -859,14 +904,74 @@ if (isset($_GET['content_only'])) {
             if (typeof setupPlaylistItemClicks === 'function') {
                 setupPlaylistItemClicks();
             }
+            // Auto-scroll sidebar desktop ke artist yg aktif jika container diganti
+            if (isContentUpdate) {
+                scrollToActiveArtistDesktop();
+            }
         });
+
+        // ── Auto-scroll sidebar desktop ke artist yg aktif ────────────
+        // Setiap kali HTMX mengganti #library-container, sidebar artist
+        // dibuat ulang oleh server dan scroll-nya reset ke 0.
+        // Fungsi ini menggeser scroll ke item yg sedang aktif/dipilih.
+        function scrollToActiveArtistDesktop() {
+            var artistList = document.getElementById('desktop-artist-list');
+            if (!artistList) return;
+            var activeItem = artistList.querySelector('.sidebar-link.active');
+            if (activeItem) {
+                activeItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+
+        // ── Mobile Playlist Dropdown (custom toggle) ──
+        window.togglePlaylistDropdown = function() {
+            const dropdown = document.getElementById('playlist-options');
+            if (dropdown) {
+                const isHidden = dropdown.classList.contains('hidden');
+                if (isHidden) {
+                    dropdown.classList.remove('hidden');
+                    document.body.classList.add('artist-dropdown-active');
+                } else {
+                    dropdown.classList.add('hidden');
+                    setTimeout(function() {
+                        document.body.classList.remove('artist-dropdown-active');
+                    }, 350);
+                }
+            }
+        };
+
+        window.closePlaylistDropdown = function() {
+            const dropdown = document.getElementById('playlist-options');
+            if (dropdown) dropdown.classList.add('hidden');
+            setTimeout(function() {
+                const artistStillOpen = document.getElementById('artist-options') && !document.getElementById('artist-options').classList.contains('hidden');
+                const playlistStillOpen = document.getElementById('playlist-options') && !document.getElementById('playlist-options').classList.contains('hidden');
+                if (!artistStillOpen && !playlistStillOpen) {
+                    document.body.classList.remove('artist-dropdown-active');
+                }
+            }, 350);
+        };
+
+        window.navigateToPlaylistMobile = function(id) {
+            closePlaylistDropdown();
+            loadPlaylistMobile(id);
+            // Update label
+            var label = document.getElementById('playlist-dropdown-label');
+            var activeBtn = document.querySelector('#playlist-options button[data-playlist-id="' + id + '"]');
+            if (label && activeBtn) label.textContent = activeBtn.textContent.trim();
+        };
 
         // Close custom dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            const dropdown = document.getElementById('artist-options');
-            const trigger = e.target.closest('#custom-artist-dropdown');
-            if (!trigger && dropdown && !dropdown.classList.contains('hidden')) {
+            const artistDropdown = document.getElementById('artist-options');
+            const artistTrigger = e.target.closest('#custom-artist-dropdown');
+            if (!artistTrigger && artistDropdown && !artistDropdown.classList.contains('hidden')) {
                 closeArtistDropdown();
+            }
+            const playlistDropdown = document.getElementById('playlist-options');
+            const playlistTrigger = e.target.closest('#custom-playlist-dropdown');
+            if (!playlistTrigger && playlistDropdown && !playlistDropdown.classList.contains('hidden')) {
+                closePlaylistDropdown();
             }
         });
 
@@ -877,9 +982,16 @@ if (isset($_GET['content_only'])) {
                 if (isHidden) {
                     dropdown.classList.remove('hidden');
                     document.body.classList.add('artist-dropdown-active');
+
+                    // Auto-scroll ke artist yg sedang dipilih (highligt),
+                    // agar user tidak perlu scroll ulang ke bawah/atas
+                    var activeItem = dropdown.querySelector('.text-orange-500');
+                    if (activeItem) {
+                        activeItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    }
                 } else {
                     dropdown.classList.add('hidden');
-                    setTimeout(() => {
+                    setTimeout(function() {
                         document.body.classList.remove('artist-dropdown-active');
                     }, 350);
                 }
@@ -890,7 +1002,11 @@ if (isset($_GET['content_only'])) {
             const dropdown = document.getElementById('artist-options');
             if (dropdown) dropdown.classList.add('hidden');
             setTimeout(() => {
-                document.body.classList.remove('artist-dropdown-active');
+                const artistStillOpen = document.getElementById('artist-options') && !document.getElementById('artist-options').classList.contains('hidden');
+                const playlistStillOpen = document.getElementById('playlist-options') && !document.getElementById('playlist-options').classList.contains('hidden');
+                if (!artistStillOpen && !playlistStillOpen) {
+                    document.body.classList.remove('artist-dropdown-active');
+                }
             }, 350);
         };
 
@@ -927,6 +1043,16 @@ if (isset($_GET['content_only'])) {
                 el.style.color = '';
                 el.style.background = '';
                 el.style.borderColor = '';
+            });
+        };
+
+        window.resetArtistHighlight = function() {
+            document.querySelectorAll('#desktop-artist-list .sidebar-link').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            var allArtistBtns = document.querySelectorAll('#artist-options button');
+            allArtistBtns.forEach(function(btn) {
+                btn.classList.remove('text-orange-500', 'font-bold');
             });
         };
 

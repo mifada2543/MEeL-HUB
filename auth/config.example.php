@@ -1,49 +1,117 @@
 <?php
-// Session config - hanya set jika session belum jalan
-if (session_status() === PHP_SESSION_NONE) {
-    $timeout = 43200; // 12 jam
-    ini_set('session.gc_maxlifetime', $timeout);
-    session_set_cookie_params($timeout, "/");
-    session_name('meel');
-    session_start();
-}
-// Sesuaikan sendiri dengan konfigurasi database Anda
-$server   = "";
-$username = "";
-$password = "";
-$db       = "";
+/**
+ * MEeL-HUB — Contoh Konfigurasi Aplikasi
+ * 
+ * Copy file ini ke config.php dan sesuaikan dengan environment Anda:
+ *   cp config.example.php config.php
+ * 
+ * ─── PORTABILITY TIP ───
+ * Semua path penyimpanan media terpusat di konstanta MEEL_HDD_BASE.
+ * Cukup ubah nilai MEEL_HDD_BASE, seluruh sistem akan mengikuti.
+ * 
+ * Contoh:
+ *   - HDD eksternal: /media/[user]/MEeL/media
+ *   - Lokal SSD:     /var/www/meel-storage/media
+ *   - Docker volume: /data/media
+ *   - Relative:      __DIR__ . '/../storage/media'
+ */
 
-// JALUR EDUKASI: Deteksi jika mereka malas membaca README dan langsung menjalankan kode
-if (empty($server) || empty($username) || empty($db)) {
-    die("<pre style='color: #ef4444; background: #1e1e2e; padding: 20px; border-radius: 5px; font-family: monospace;'>
-[MEeL SYSTEM ERROR]
-Wah, tampaknya kamu terlalu terburu-buru! 
-Kamu belum mengisi konfigurasi database di file 'auth/config.php'.
+// ════════════════════════════════════════════════════════════════
+// DATABASE CONFIGURATION
+// ════════════════════════════════════════════════════════════════
 
-Yang harus kamu lakukan:
-1. Isi \$server, \$username, dan \$db dengan kredensial database lokalmu.
-2. Pastikan database-nya sudah di-import.
-3. Jangan lupa baca README.md lagi ya :)
-</pre>");
-}
+$server   = "localhost";     // Host database (localhost atau IP)
+$username = "root";          // Username database
+$password = "";              // Password database
+$db       = "MEeL";          // Nama database
 
-// Database connection - ditulis langsung tanpa tanda kutip ganda ("")
 $conn = new mysqli($server, $username, $password, $db);
 if ($conn->connect_error) {
-    die("Koneksi ke database gagal: " . $conn->connect_error);
+    die("[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $conn->connect_error);
 }
 
-// CSRF Token
+// ════════════════════════════════════════════════════════════════
+// MEDIA STORAGE PATHS (TERPUSAT)
+// ════════════════════════════════════════════════════════════════
+// ★ UBAH DI SINI jika ingin memindahkan lokasi penyimpanan media
+//    Semua modul (Video, Music, Books, Drive) akan mengikuti path ini
+// ★ Untuk HDD eksternal, pastikan sudah di-mount dan writable
+
+define('MEEL_HDD_BASE', '/path/to/your/media');
+
+// ── Path turunan (jangan diubah kecuali paham struktur folder) ──
+define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
+define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
+define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
+define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
+
+// ════════════════════════════════════════════════════════════════
+// X-SENDFILE (AKSELERASI STREAMING APACHE)
+// ════════════════════════════════════════════════════════════════
+// Aktifkan untuk streaming file besar (FLAC 33MB+, MKV 4K, dll)
+// tanpa beban PHP. Apache akan mengirim file langsung dari disk
+// menggunakan sistem call sendfile() (zero-copy ke socket).
+//
+// 🚀 Manfaat:
+//   - PHP tidak perlu baca file sama sekali → RAM server hemat
+//   - Proses PHP tidak terblokir → bisa layani request lain
+//   - File besar streaming 2-4x lebih cepat
+//   - Skalabel untuk banyak user concurrent
+//
+// 🔧 Cara aktivasi:
+//   1. Download & compile: https://github.com/nmaier/mod_xsendfile
+//   2. Copy mod_xsendfile.so ke direktori modules Apache
+//   3. Tambahkan di httpd.conf:
+//        LoadModule xsendfile_module modules/mod_xsendfile.so
+//        <IfModule xsendfile_module>
+//            XSendFile on
+//            XSendFilePath "/path/ke/music/upload/file"
+//        </IfModule>
+//   4. Restart Apache: sudo /opt/lampp/lampp restart
+//   5. Verifikasi: httpd -M | grep xsend
+//   6. Set konstanta di bawah menjadi true:
+
+define('MEEL_USE_XSENDFILE', false);
+
+// ════════════════════════════════════════════════════════════════
+// SESSION & SECURITY
+// ════════════════════════════════════════════════════════════════
+
+$timeout = 43200; // 12 jam session lifetime
+ini_set('session.gc_maxlifetime', $timeout);
+session_set_cookie_params($timeout, "/");
+session_name('meel');
+session_start();
+
+// ── Security Headers ──
+if (!headers_sent()) {
+    header("X-Frame-Options: SAMEORIGIN");
+    header("X-Content-Type-Options: nosniff");
+    header("Referrer-Policy: strict-origin-when-cross-origin");
+    header("Permissions-Policy: camera=(), microphone=(), geolocation=()");
+    header("Cross-Origin-Opener-Policy: same-origin");
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        header("Strict-Transport-Security: max-age=15552000; includeSubDomains");
+    }
+    header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'self'; frame-ancestors 'self'; form-action 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'");
+}
+
+// ── CSRF Token ──
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// CSRF Verification Function - return status instead of die
+// ── CSRF Verification ──
 if (!function_exists('verify_csrf')) {
     function verify_csrf()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            if (!isset($_POST['csrf_token'])
+                || !isset($_SESSION['csrf_token'])
+                || $_POST['csrf_token'] !== $_SESSION['csrf_token']
+            ) {
                 return false;
             }
         }
@@ -51,8 +119,7 @@ if (!function_exists('verify_csrf')) {
     }
 }
 
-// Session timeout check (12 jam)
-$timeout = 43200;
+// ── Session Timeout Check ──
 if (isset($_SESSION['LAST_ACTIVITY'])) {
     $elapsed_time = time() - $_SESSION['LAST_ACTIVITY'];
     if ($elapsed_time > $timeout) {
@@ -64,108 +131,5 @@ if (isset($_SESSION['LAST_ACTIVITY'])) {
 }
 $_SESSION['LAST_ACTIVITY'] = time();
 
-// Include activity logger
+// ── Activity Logger ──
 include_once __DIR__ . '/../modules/activity_logger.php';
-
-// Function to convert Japanese text to Romaji
-if (!function_exists('getRomajiName')) {
-    function getRomajiName($text)
-    {
-        if (empty($text)) return 'untitled';
-
-        // 1. Kamus Koreksi Karakter Spesifik & Simbol
-        $search = [
-            '×',
-            'x',
-            'X',
-            '*',
-            '&',
-            '/', // Simbol pemisah
-            '【',
-            '】',
-            '「',
-            '」',
-            '(',
-            ')', // Kurung
-            '鏡音',
-            '巡音',
-            '初音'
-        ];
-        $replace = [
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            'かがみね',
-            'めぐりね',
-            'hatsune'
-        ];
-        $text = str_replace($search, $replace, $text);
-
-        // 2. Eksekusi MeCab tanpa -Oyomi
-        $descriptorspec = [
-            0 => ["pipe", "r"],
-            1 => ["pipe", "w"]
-        ];
-
-        $process = proc_open('mecab', $descriptorspec, $pipes);
-
-        $parsedText = '';
-        if (is_resource($process)) {
-            fwrite($pipes[0], $text);
-            fclose($pipes[0]);
-
-            $output = stream_get_contents($pipes[1]);
-            fclose($pipes[1]);
-            proc_close($process);
-
-            // Parsing baris per baris hasil MeCab
-            $lines = explode("\n", trim($output));
-            foreach ($lines as $line) {
-                if ($line === 'EOS' || trim($line) === '') continue;
-
-                $parts = explode("\t", $line);
-                if (count($parts) >= 2) {
-                    $surface = $parts[0];
-                    $features = explode(',', $parts[1]);
-
-                    $yomi = '*';
-                    if (isset($features[7]) && $features[7] !== '*') {
-                        $yomi = $features[7];
-                    } elseif (isset($features[8]) && $features[8] !== '*') {
-                        $yomi = $features[8];
-                    }
-
-                    if ($yomi !== '*' && !preg_match('/[a-zA-Z]/', $yomi)) {
-                        $parsedText .= ' ' . $yomi;
-                    } else {
-                        $parsedText .= ' ' . $surface;
-                    }
-                }
-            }
-            $text = trim($parsedText);
-        }
-
-        // 3. Gunakan rule php-intl
-        $rule = "Katakana-Latin; Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC; Latin-ASCII; Any-Lower;";
-        $transliterator = Transliterator::create($rule);
-
-        if ($transliterator) {
-            $text = $transliterator->transliterate($text);
-        }
-
-        // 4. Sanitasi Akhir untuk Slug
-        $clean = preg_replace('/[^a-z0-9\-]/u', '-', $text);
-        $clean = preg_replace('/-+/', '-', trim($clean, '-'));
-
-        return $clean ?: 'untitled-media';
-    }
-}

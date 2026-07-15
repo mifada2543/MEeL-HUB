@@ -6,12 +6,20 @@ if (!isset($_SESSION['user_id'])) {
     die(include '../err/denied.php');
 }
 
+// 🔴 FIX SECURITY: Proteksi role admin — hanya admin yang boleh akses
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    die(include '../err/denied.php');
+}
+
 // ── Action handler ──────────────────────────────────────────────────────────
 $message = null;
 $message_type = 'success';
 
-// Manual delete single room
+// 🔒 FIX CSRF: Verifikasi token untuk semua POST request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if (!verify_csrf()) {
+        $message = 'CSRF Token tidak valid!'; $message_type = 'error';
+    } else {
     $action = $_POST['action'];
 
     if ($action === 'delete_room' && !empty($_POST['room_code'])) {
@@ -41,7 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $result = purgeInactiveRooms($conn);
         $message = "Purge selesai: <strong>{$result['rooms']}</strong> room dan <strong>{$result['moves']}</strong> moves dihapus.";
     }
-}
+    } // tutup else dari verify_csrf
+    } // tutup if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
 // ── Auto-cleanup trigger (dipanggil via JS fetch setiap 10 menit) ──────────
 if (isset($_GET['auto_cleanup'])) {
@@ -229,6 +238,7 @@ $back_url    = 'index.php';
                 <!-- Manual purge -->
                 <form method="POST">
                     <input type="hidden" name="action" value="purge_inactive">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <button type="submit"
                         onclick="return confirm('Hapus semua room tidak aktif sekarang?')"
                         class="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors">
@@ -329,6 +339,7 @@ $back_url    = 'index.php';
                                         <form method="POST" onsubmit="return confirmDelete('<?= htmlspecialchars($room['room_code']) ?>')">
                                             <input type="hidden" name="action" value="delete_room">
                                             <input type="hidden" name="room_code" value="<?= htmlspecialchars($room['room_code']) ?>">
+                                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                             <button type="submit"
                                                 class="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-red-500/70 hover:text-red-400 border border-red-500/10 hover:border-red-500/30 bg-red-500/5 hover:bg-red-500/10 px-2.5 py-1.5 rounded-md transition-all">
                                                 <i data-lucide="trash" class="w-3 h-3"></i> Hapus

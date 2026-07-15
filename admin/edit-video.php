@@ -1,10 +1,12 @@
 <?php
+// Error logging aktif, display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
 include '../auth/config.php';
 include '../auth/auth.php';
 include_once '../modules/helpers.php';
+require_once '../modules/japanese.php';
 
 // Proteksi: harus login
 if (!isset($_SESSION['user_id'])) {
@@ -75,17 +77,26 @@ if (isset($_POST['update'])) {
         $thumbnail_url = $video['thumbnail'];
 
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
-            $ext = pathinfo($_FILES['thumbnail']['name'], PATHINFO_EXTENSION);
-            $new_name = 'thumb_' . time() . '_' . uniqid() . '.' . $ext;
+            $new_name = 'thumb_' . time() . '_' . uniqid() . '.webp';
             $target_dir = __DIR__ . '/../video/upload/thumbnail/';
             if (!is_dir($target_dir)) {
                 @mkdir($target_dir, 0755, true);
             }
             $upload_path = $target_dir . $new_name;
-            if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
+            // Konversi ke WebP — lebih kecil 30-50% dari JPG dengan kualitas setara
+            $cmd = "/usr/bin/ffmpeg -y -i " . escapeshellarg($_FILES['thumbnail']['tmp_name'])
+                . " -vf \"scale='min(1280,iw)':-1\" -c:v libwebp -q:v 78 "
+                . escapeshellarg($upload_path) . " 2>&1";
+            exec($cmd, $out, $ret);
+            if ($ret === 0 && file_exists($upload_path) && filesize($upload_path) > 0) {
                 $thumbnail_url = $new_name;
             } else {
-                $error_message = 'Gagal mengupload thumbnail ke server.';
+                // Fallback: simpan file asli jika ffmpeg gagal
+                if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
+                    $thumbnail_url = $new_name;
+                } else {
+                    $error_message = 'Gagal mengupload thumbnail ke server.';
+                }
             }
         }
 
@@ -113,7 +124,7 @@ if (isset($_POST['update'])) {
 
 $thumb_src = !empty($video['thumbnail'])
     ? '../video/upload/thumbnail/' . htmlspecialchars($video['thumbnail'])
-    : '../assets/img/video0.png';
+    : '../assets/img/video0.webp';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -125,7 +136,7 @@ $thumb_src = !empty($video['thumbnail'])
     <title>Edit Video | MEeL Admin</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <link rel="stylesheet" href="../assets/css/em.css">
-    <script src="../assets/js/tailwind.js"></script>
+    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/lucide.js"></script>
 </head>
 
@@ -296,7 +307,7 @@ $thumb_src = !empty($video['thumbnail'])
 
     <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <script>
         lucide.createIcons();
 

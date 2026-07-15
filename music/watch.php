@@ -1,6 +1,7 @@
 <?php
+// Error logging aktif, display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 session_name('meel');
 session_start();
 
@@ -17,6 +18,10 @@ $viewer = new MediaViewer($conn, $user_id, 'music', $id);
 $viewer->recordView();
 
 if ($is_logged_in && isset($_POST['send'])) {
+    // 🔒 FIX CSRF: Verifikasi token sebelum proses komentar
+    if (!verify_csrf()) {
+        die('CSRF Token tidak valid.');
+    }
     if ($viewer->addComment($_POST)) {
         header("Location: watch.php?id=$id&playlist_id=$playlist_id#comment-section");
         exit;
@@ -41,8 +46,14 @@ $playlist_context = $playlist_id;
 $next_song_url    = $next_url;
 if (empty($next_song_url) && $rekom && $rekom->num_rows > 0) {
     $rekom->data_seek(0);
-    $first_rec = $rekom->fetch_assoc();
-    if ($first_rec) {
+    // Cari rekomendasi PERTAMA yang BUKAN lagu yang sedang diputar
+    while ($rec = $rekom->fetch_assoc()) {
+        if ((int)$rec['id'] !== $id) {
+            $first_rec = $rec;
+            break;
+        }
+    }
+    if (!empty($first_rec)) {
         $next_song_url = "watch.php?id=" . $first_rec['id'];
     }
     $rekom->data_seek(0);
@@ -85,9 +96,11 @@ switch ($ext) {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title><?= htmlspecialchars($v['title']) ?> — MEeL Music</title>
     <?php include '../partials/link.php'; ?>
-    <script src="../assets/js/htmx.js"></script>
+    <?php $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'); ?>
+    <link rel="preconnect" href="<?= $base_url ?>/" crossorigin>
     <link rel="stylesheet" href="../assets/css/plyr.css">
     <link rel="stylesheet" href="../assets/css/music.css">
+    <script src="../assets/js/htmx.min.js" defer></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -107,7 +120,7 @@ switch ($ext) {
                 </span>
             </a>
 
-            <div class="hidden sm:flex flex-1 max-w-sm items-center gap-2">
+            <div class="flex flex-1 max-w-sm items-center gap-2">
                 <div class="relative flex-1 group">
                     <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-orange-500 transition-colors"></i>
                     <input type="text"
@@ -134,10 +147,6 @@ switch ($ext) {
             </div>
 
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <a href="../video/index.php" class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-red-500 transition-all">
-                    <i data-lucide="play" class="w-3.5 h-3.5"></i>
-                    <span class="hidden md:inline">Video</span>
-                </a>
                 <?php include '../partials/nav.php'; ?>
             </div>
         </div>
@@ -205,26 +214,77 @@ switch ($ext) {
                                 <i data-lucide="activity" class="w-3 h-3"></i>
                                 <span id="vis-text">Vis On</span>
                             </button>
+                            <button id="btn-eq" onclick="toggleEqualizer()"
+                                class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
+                                <i data-lucide="sliders-horizontal" class="w-3 h-3"></i>
+                                <span id="eq-text">EQ Off</span>
+                            </button>
                         </div>
                     </div>
 
-                    <div id="cava-container" class="hidden flex-1 min-w-[160px] bg-black/20 border border-white/[.04] rounded-xl p-3 items-end justify-center gap-[2px] min-h-[80px]"></div>
+                    <div id="cava-container" class="hidden w-full sm:flex-1 sm:min-w-[160px] bg-black/20 border border-white/[.04] rounded-xl sm:rounded-xl p-2 sm:p-3 items-end justify-center gap-[2px]"></div>
+                </div>
+
+                <div id="eq-container" class="px-4 sm:px-6 py-4 border-t border-white/[.04] bg-black/10 hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">Equalizer</div>
+                        <div id="eq-preset-dropdown" class="relative w-full sm:w-auto">
+                            <button id="eq-preset-button" type="button" onclick="toggleEqPresetDropdown()"
+                                class="w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 bg-gray-900/80 border border-white/[.10] text-gray-200 text-[11px] rounded-lg px-3 py-2 outline-none focus:border-orange-500/40 transition-all">
+                                <span id="eq-preset-label">Flat</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
+                            </button>
+                            <div id="eq-preset-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
+                                <button type="button" data-preset="flat" onclick="selectEqPreset('flat')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Flat</button>
+                                <button type="button" data-preset="bass" onclick="selectEqPreset('bass')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Bass Boost</button>
+                                <button type="button" data-preset="treble" onclick="selectEqPreset('treble')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Treble Boost</button>
+                                <button type="button" data-preset="vocal" onclick="selectEqPreset('vocal')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Vocal Boost</button>
+                                <button type="button" data-preset="rock" onclick="selectEqPreset('rock')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Rock</button>
+                                <button type="button" data-preset="classical" onclick="selectEqPreset('classical')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Classical</button>
+                                <button type="button" data-preset="pop" onclick="selectEqPreset('pop')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Pop</button>
+                                <button type="button" data-preset="jazz" onclick="selectEqPreset('jazz')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Jazz</button>
+                                <button type="button" data-preset="electronic" onclick="selectEqPreset('electronic')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Electronic</button>
+                                <button type="button" data-preset="acoustic" onclick="selectEqPreset('acoustic')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Acoustic</button>
+                                <button type="button" data-preset="gaming" onclick="selectEqPreset('gaming')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Gaming</button>
+                                <button type="button" data-preset="podcast" onclick="selectEqPreset('podcast')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Podcast</button>
+                            </div>
+                            <input id="eq-preset" type="hidden" value="flat">
+                        </div>
+                    </div>
+                    <div id="eq-panel" class="mt-3 hidden">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <?php
+                            $eqBands = [60, 170, 350, 1000, 3500, 10000];
+                            foreach ($eqBands as $idx => $band) {
+                                echo '<div class="rounded-xl border border-white/10 bg-black/20 p-3">';
+                                echo '<label for="eq-band-' . $idx . '" class="block text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400 mb-2">' . $band . ' Hz</label>';
+                                echo '<input id="eq-band-' . $idx . '" type="range" min="-12" max="12" step="0.5" value="0" oninput="setEqBand(' . $idx . ', this.value)" class="w-full accent-orange-500">';
+                                echo '<div id="eq-band-value-' . $idx . '" class="mt-2 text-center text-[11px] text-orange-400">0.0 dB</div>';
+                                echo '</div>';
+                            }
+                            ?>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="p-4 sm:p-5">
-                    <audio id="main-player" controls preload="metadata" class="w-full">
-                        <?php
-                        $ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
-                        $mimeType = match ($ext) {
-                            'mp3' => 'audio/mpeg',
-                            'm4a' => 'audio/mp4',
-                            'ogg', 'opus' => 'audio/ogg',
-                            'flac' => 'audio/flac',
-                            'wav' => 'audio/wav',
-                            default => 'audio/ogg'
-                        };
-                        ?>
-                        <source src="upload/file/<?= htmlspecialchars($v['filename']) ?>" type="<?= $mimeType ?>">
+                    <?php
+                    $ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
+                    $mimeType = match ($ext) {
+                        'mp3' => 'audio/mpeg',
+                        'm4a' => 'audio/mp4',
+                        'ogg', 'opus' => 'audio/ogg',
+                        'flac' => 'audio/flac',
+                        'wav' => 'audio/wav',
+                        default => 'audio/ogg'
+                    };
+                    // preload=none untuk FLAC (file besar), metadata untuk format lain yang ringan
+                    // FLAC 34MB+ menyebabkan browser stuck loading saat preload=metadata karena
+                    // range request ke stream.php lambat diproses untuk file sebesar itu.
+                    $preloadVal = ($ext === 'flac') ? 'none' : 'metadata';
+                    ?>
+                    <audio id="main-player" controls preload="<?= $preloadVal ?>" class="w-full" oncontextmenu="return false;">
+                        <source src="stream.php?id=<?= $id ?>" type="<?= $mimeType ?>">
                         Your browser does not support the audio element.
                     </audio>
                 </div>
@@ -236,7 +296,7 @@ switch ($ext) {
                             title="Profil @<?= htmlspecialchars($v['uploader']) ?>"
                             class="w-9 h-9 rounded-full overflow-hidden border border-orange-500/25 flex-shrink-0 block">
                             <?php if (!empty($v['uploader_pfp'])): ?>
-                                <img src="../profile/upload/<?= htmlspecialchars($v['uploader_pfp']) ?>" alt="Foto profil <?= htmlspecialchars($v['uploader']) ?>" class="w-full h-full object-cover">
+                                <img src="../profile/upload/<?= htmlspecialchars($v['uploader_pfp']) ?>" alt="Foto profil <?= htmlspecialchars($v['uploader']) ?>" width="68" height="68" class="w-full h-full object-cover" loading="lazy" decoding="async">
                             <?php else: ?>
                                 <div class="w-full h-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-sm font-bold">
                                     <?= strtoupper(substr($v['uploader'], 0, 1)) ?>
@@ -259,7 +319,7 @@ switch ($ext) {
                             <div id="like-dislike-container" class="flex items-center gap-2 flex-wrap">
                                 <button
                                     hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
-                                    hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"like"}'
+                                    hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"like","csrf_token":"<?= $_SESSION['csrf_token'] ?>"}'
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'like'
                                         ? 'bg-orange-500/15 border-orange-500/30 text-orange-400'
@@ -269,7 +329,7 @@ switch ($ext) {
                                 </button>
                                 <button
                                     hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
-                                    hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"dislike"}'
+                                    hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"dislike","csrf_token":"<?= $_SESSION['csrf_token'] ?>"}'
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'dislike'
                                         ? 'bg-white/10 border-white/15 text-white'
@@ -299,7 +359,7 @@ switch ($ext) {
             </div>
 
             <?php if (!empty($v['description'])): ?>
-                <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6 desc-container" style="min-height:120px;contain-intrinsic-size:120px;content-visibility:auto">
                     <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500 mb-3 flex items-center gap-2">
                         <i data-lucide="align-left" class="w-3.5 h-3.5 text-orange-500"></i> Deskripsi
                     </div>
@@ -352,13 +412,14 @@ switch ($ext) {
             <?php endif; ?>
 
             <?php if ($is_logged_in): ?>
-                <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden" id="comment-section">
+                <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden comment-section" id="comment-section" style="content-visibility:auto;contain-intrinsic-size:200px">
                     <div class="px-4 sm:px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                         <i data-lucide="message-square" class="w-3.5 h-3.5 text-orange-500"></i>
                         <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Komentar</span>
                     </div>
                     <div class="p-4 sm:p-6">
                         <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">
+                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                             <textarea name="comments"
                                 class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-orange-500/40 min-h-[80px] resize-y transition-all"
                                 placeholder="Tulis komentar..." required></textarea>
@@ -413,6 +474,7 @@ switch ($ext) {
                                                 <div id="mus-<?= $c['id'] ?>" class="hidden mt-3">
                                                     <form action="watch.php?id=<?= $id ?>" method="post" class="flex gap-2">
                                                         <input type="hidden" name="parent_id" value="<?= $c['id'] ?>">
+                                                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                                         <input type="text" name="comments"
                                                             class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 min-w-0"
                                                             placeholder="Balas @<?= htmlspecialchars($author) ?>..." required>
@@ -442,7 +504,7 @@ switch ($ext) {
 
         </div>
 
-        <div class="w-full lg:w-80 flex-shrink-0 space-y-6 px-4 sm:px-5 lg:px-0">
+        <div class="w-full lg:w-80 flex-shrink-0 space-y-6 px-4 sm:px-5 lg:px-0 rekomendasi-sidebar" style="content-visibility:auto;contain-intrinsic-size:500px;min-height:300px">
 
             <?php if ($playlist_context > 0 && $queue_query && $queue_query->num_rows > 0): ?>
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
@@ -526,7 +588,10 @@ switch ($ext) {
                     </div>
                     <div class="space-y-1.5 mb-4 max-h-[180px] overflow-y-auto pr-1 no-scrollbar">
                         <?php
-                        $my_playlists = $conn->query("SELECT * FROM playlists WHERE user_id = {$_SESSION['user_id']} ORDER BY id DESC");
+                        $stmt_pl = $conn->prepare("SELECT * FROM playlists WHERE user_id = ? ORDER BY id DESC");
+                        $stmt_pl->bind_param("i", $_SESSION['user_id']);
+                        $stmt_pl->execute();
+                        $my_playlists = $stmt_pl->get_result();
                         if ($my_playlists && $my_playlists->num_rows > 0):
                             while ($pl = $my_playlists->fetch_assoc()):
                         ?>
@@ -534,6 +599,7 @@ switch ($ext) {
                                     <input type="hidden" name="action" value="add_to_playlist">
                                     <input type="hidden" name="music_id" value="<?= $id ?>">
                                     <input type="hidden" name="playlist_id" value="<?= $pl['id'] ?>">
+                                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                     <button type="submit"
                                         class="w-full text-left px-4 py-2.5 rounded-xl bg-white/[.04] border border-white/[.06] text-sm text-gray-400 hover:bg-orange-500/10 hover:border-orange-500/25 hover:text-orange-400 transition-all cursor-pointer font-medium">
                                         <?= htmlspecialchars($pl['name']) ?>
@@ -548,6 +614,7 @@ switch ($ext) {
                         <form action="playlist_action.php" method="POST" class="flex gap-2">
                             <input type="hidden" name="action" value="create_playlist">
                             <input type="hidden" name="music_id" value="<?= $id ?>">
+                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                             <input type="text" name="playlist_name"
                                 class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 transition-all min-w-0"
                                 placeholder="Nama playlist baru..." required>
@@ -610,7 +677,7 @@ switch ($ext) {
         </div>
 
     </main> <?php include '../partials/footer.php'; ?>
-    <script src="../assets/js/script.js"></script>
+    <script src="../assets/js/script.min.js"></script>
     <script>
         window.MEEL_MUSIC_CONFIG = {
             id: <?= $id ?>,
@@ -634,10 +701,36 @@ switch ($ext) {
                 lucide.createIcons();
             }
         });
+
+        window.toggleEqPresetDropdown = function() {
+            const options = document.getElementById('eq-preset-options');
+            if (!options) return;
+            options.classList.toggle('hidden');
+        };
+
+        function closeEqPresetDropdownOnOutside(event) {
+            const options = document.getElementById('eq-preset-options');
+            const button = document.getElementById('eq-preset-button');
+            if (!options || !button) return;
+            if (!button.contains(event.target) && !options.contains(event.target)) {
+                options.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('click', closeEqPresetDropdownOnOutside);
+
+        window.selectEqPreset = function(preset) {
+            if (!preset) return;
+            if (typeof window.setEqPreset === 'function') {
+                window.setEqPreset(preset);
+            }
+            const options = document.getElementById('eq-preset-options');
+            if (options) options.classList.add('hidden');
+        };
     </script>
-    <script src="../assets/js/plyr.js"></script>
-    <script src="../assets/js/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/player_music.js"></script>
+    <script src="../assets/js/plyr.min.js" defer></script>
+    <script src="../assets/js/sweetalert2.all.min.js" defer></script>
+    <script src="../assets/js/player_music.js" defer></script>
 </body>
 
 </html>

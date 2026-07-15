@@ -1,6 +1,8 @@
 <?php
-// Set session name SEBELUM session_start()
+// Set session name & cookie params SEBELUM session_start()
 if (session_status() === PHP_SESSION_NONE) {
+    $timeout = 43200; // 12 jam
+    session_set_cookie_params($timeout, "/");
     session_name('meel');
     session_start();
 }
@@ -16,7 +18,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     $ref = $_SERVER['HTTP_REFERER'];
     $host = $_SERVER['HTTP_HOST'];
     if (strpos($ref, $host) !== false) {
-        if (strpos($ref, 'login.php') === false && strpos($ref, 'register.php') === false) {
+        if (strpos($ref, 'login.php') === false && strpos($ref, 'register.php') === false && strpos($ref, 'revoked.php') === false && strpos($ref, 'banned.php') === false) {
             $back_url = $ref;
         }
     }
@@ -24,16 +26,96 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
 
 $error_msg = "";
 $max_login_attempts = 5;
-$lockout_time = 300;
+$lockout_time = 300; // 5 menit
 $is_locked = false;
 $remaining = 0;
 
-if (isset($_SESSION['login_locked_until']) && time() < $_SESSION['login_locked_until']) {
-    $is_locked = true;
-    $remaining = $_SESSION['login_locked_until'] - time();
+// ─── IP-BASED LOCKOUT CHECK ────────────────────────────────────
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+
+// Bersihkan lockout yang sudah expired (session-based)
+if (isset($_SESSION['login_locked_until'])) {
+    if (time() >= $_SESSION['login_locked_until']) {
+        unset($_SESSION['login_locked_until']);
+        $_SESSION['login_fail_count'] = 0;
+    }
 }
 
-if (isset($_POST['login'])) {
+// Cek & bersihkan lockout yang sudah expired (IP-based)
+$ip_locked = false;
+$ip_remaining = 0;
+$stmt_ip = $conn->prepare("SELECT attempts, locked_until FROM login_attempts WHERE ip_address = ?");
+if ($stmt_ip) {
+    $stmt_ip->bind_param("s", $ip_address);
+    $stmt_ip->execute();
+    $ip_result = $stmt_ip->get_result();
+    if ($ip_row = $ip_result->fetch_assoc()) {
+        if ($ip_row['locked_until'] !== null) {
+            $lock_ts = strtotime($ip_row['locked_until']);
+            if (time() < $lock_ts) {
+                $ip_locked = true;
+                $ip_remaining = $lock_ts - time();
+            } else {
+                // Lockout expired — reset
+                $stmt_del = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
+                $stmt_del->bind_param("s", $ip_address);
+                $stmt_del->execute();
+            }
+        }
+    }
+    $stmt_ip->close();
+}
+
+// Gabungan: locked jika session atau IP terkunci
+if ($ip_locked || (isset($_SESSION['login_locked_until']) && time() < $_SESSION['login_locked_until'])) {
+    $is_locked = true;
+    $remaining = max($ip_remaining, ($_SESSION['login_locked_until'] ?? 0) - time());
+}
+
+// ─── HELPER: catat percobaan gagal ─────────────────────────────
+function record_failed_attempt($conn, $ip_address, $max_login_attempts, $lockout_time) {
+    // Session-based counter
+    $_SESSION['login_fail_count'] = ($_SESSION['login_fail_count'] ?? 0) + 1;
+    if ($_SESSION['login_fail_count'] >= $max_login_attempts) {
+        $_SESSION['login_locked_until'] = time() + $lockout_time;
+        $_SESSION['login_fail_count'] = 0;
+    }
+
+    // IP-based counter (database)
+    $stmt_ups = $conn->prepare(
+        "INSERT INTO login_attempts (ip_address, attempts, last_attempt_at, locked_until)
+         VALUES (?, 1, NOW(), NULL)
+         ON DUPLICATE KEY UPDATE
+             attempts = attempts + 1,
+             last_attempt_at = NOW()"
+    );
+    if ($stmt_ups) {
+        $stmt_ups->bind_param("s", $ip_address);
+        $stmt_ups->execute();
+        $stmt_ups->close();
+    }
+
+    // Cek apakah IP sudah melebihi batas
+    $stmt_chk = $conn->prepare("SELECT attempts FROM login_attempts WHERE ip_address = ?");
+    if ($stmt_chk) {
+        $stmt_chk->bind_param("s", $ip_address);
+        $stmt_chk->execute();
+        $chk_res = $stmt_chk->get_result();
+        if ($chk_row = $chk_res->fetch_assoc()) {
+            if ($chk_row['attempts'] >= $max_login_attempts) {
+                $lock_ts = date('Y-m-d H:i:s', time() + $lockout_time);
+                $stmt_lock = $conn->prepare("UPDATE login_attempts SET locked_until = ? WHERE ip_address = ?");
+                $stmt_lock->bind_param("ss", $lock_ts, $ip_address);
+                $stmt_lock->execute();
+                $stmt_lock->close();
+            }
+        }
+        $stmt_chk->close();
+    }
+}
+
+// ─── FORM PROCESSING ───────────────────────────────────────────
+if (isset($_POST['login']) && !$is_locked) {
     if (!verify_csrf()) {
         $error_msg = "Sesi keamanan kadaluarsa. Silakan refresh halaman dan coba lagi.";
     } else {
@@ -45,6 +127,7 @@ if (isset($_POST['login'])) {
             $stmt->bind_param("s", $user_input);
             if ($stmt->execute()) {
                 $result = $stmt->get_result();
+                $login_failed = false;
 
                 if ($u = $result->fetch_assoc()) {
                     if (password_verify($pass_input, $u['PASSWORD'] ?? $u['password'])) {
@@ -53,7 +136,16 @@ if (isset($_POST['login'])) {
                                 ? "Akun Anda sedang menunggu verifikasi admin."
                                 : "Akses ditolak untuk akun Guest.";
                         } else {
+                            // ─── LOGIN BERHASIL ───────────────────────────
+                            // Reset session & IP fail count
                             unset($_SESSION['login_fail_count']);
+                            unset($_SESSION['login_locked_until']);
+
+                            $stmt_del = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
+                            $stmt_del->bind_param("s", $ip_address);
+                            $stmt_del->execute();
+                            $stmt_del->close();
+
                             $_SESSION['user_id']  = $u['id'];
                             $_SESSION['username'] = $u['username'];
                             $_SESSION['role']     = $u['role'];
@@ -68,15 +160,16 @@ if (isset($_POST['login'])) {
                             }
                         }
                     } else {
-                        $_SESSION['login_fail_count'] = ($_SESSION['login_fail_count'] ?? 0) + 1;
-                        if ($_SESSION['login_fail_count'] >= $max_login_attempts) {
-                            $_SESSION['login_locked_until'] = time() + $lockout_time;
-                            $_SESSION['login_fail_count'] = 0;
-                        }
-                        $error_msg = "Username atau password salah!";
+                        $login_failed = true;
                     }
                 } else {
+                    $login_failed = true;
+                }
+
+                // ─── TANGANI LOGIN GAGAL (sekali, tanpa duplikasi) ────
+                if ($login_failed) {
                     $error_msg = "Username atau password salah!";
+                    record_failed_attempt($conn, $ip_address, $max_login_attempts, $lockout_time);
                 }
             } else {
                 $error_msg = "Terjadi kesalahan. Silakan coba lagi.";
@@ -84,6 +177,29 @@ if (isset($_POST['login'])) {
         } else {
             $error_msg = "Terjadi kesalahan. Silakan coba lagi.";
         }
+    }
+}
+
+// Re-check lockout setelah POST processing (kalau baru kena lock)
+if (!$is_locked && isset($_SESSION['login_locked_until']) && time() < $_SESSION['login_locked_until']) {
+    $is_locked = true;
+    $remaining = $_SESSION['login_locked_until'] - time();
+}
+// Cek IP lockout lagi setelah POST (database, karena $ip_locked sudah stale)
+if (!$is_locked) {
+    $stmt_ip2 = $conn->prepare("SELECT locked_until FROM login_attempts WHERE ip_address = ? AND locked_until IS NOT NULL");
+    if ($stmt_ip2) {
+        $stmt_ip2->bind_param("s", $ip_address);
+        $stmt_ip2->execute();
+        $ip2_res = $stmt_ip2->get_result();
+        if ($ip2_row = $ip2_res->fetch_assoc()) {
+            $lock_ts = strtotime($ip2_row['locked_until']);
+            if (time() < $lock_ts) {
+                $is_locked = true;
+                $remaining = $lock_ts - time();
+            }
+        }
+        $stmt_ip2->close();
     }
 }
 ?>
@@ -96,7 +212,7 @@ if (isset($_POST['login'])) {
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
     <title>MEeL | Login</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <script src="../assets/js/tailwind.js"></script>
+    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <script src="../assets/js/lucide.js"></script>
     <style>
         body {
@@ -112,12 +228,12 @@ if (isset($_POST['login'])) {
 </head>
 
 <body class="text-gray-200 min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-sm">
+    <main class="w-full max-w-sm" aria-labelledby="login-title">
         <!-- Header -->
         <div class="text-center mb-8">
             <div class="inline-flex p-4 bg-blue-600/10 rounded-3xl text-blue-500 mb-4 shadow-lg shadow-blue-900/10"><i data-lucide="log-in" class="w-10 h-10"></i></div>
-            <h2 class="text-3xl font-black text-white tracking-tighter">Login</h2>
-            <p class="text-sm text-gray-500 mt-1">Masuk ke akun <span class="text-blue-500 font-bold">MEeL</span></p>
+            <h2 id="login-title" class="text-3xl font-black text-white tracking-tighter">Login</h2>
+            <p class="text-sm text-gray-300 mt-1">Masuk ke akun <span class="text-blue-500 font-bold">MEeL</span></p>
         </div>
         <?php if ($error_msg): ?>
             <div class="mb-6 p-4 rounded-2xl text-sm flex items-center gap-3 bg-red-500/10 text-red-400 border border-red-500/20 animate-shake"><i data-lucide="alert-circle" class="w-5 h-5"></i><?= $error_msg ?></div>
@@ -130,16 +246,16 @@ if (isset($_POST['login'])) {
                 <div class="text-center py-6 space-y-4">
                     <i data-lucide="shield-alert" class="w-12 h-12 text-red-500 mx-auto animate-pulse"></i>
                     <h3 class="text-lg font-bold text-white">Akses Ditangguhkan</h3>
-                    <p class="text-xs text-gray-500 leading-relaxed">Terlalu banyak percobaan gagal. Silakan coba lagi dalam:</p>
+                    <p class="text-xs text-gray-300 leading-relaxed">Terlalu banyak percobaan gagal. Silakan coba lagi dalam:</p>
                     <div id="countdown" class="text-4xl font-black text-blue-500 tracking-widest"><?= $remaining ?></div>
-                    <p class="text-[10px] text-gray-600 uppercase">Detik</p>
+                    <p class="text-[10px] text-gray-300 uppercase">Detik</p>
                 </div>
                 <script>
-                    let seconds = <?= $remaining ?>;
+                    let seconds = <?= max(1, $remaining) ?>;
                     const display = document.getElementById('countdown');
                     const timer = setInterval(() => {
                         seconds--;
-                        display.innerText = seconds;
+                        display.innerText = seconds > 0 ? seconds : 0;
                         if (seconds <= 0) {
                             clearInterval(timer);
                             location.reload();
@@ -154,18 +270,18 @@ if (isset($_POST['login'])) {
 
                 <!-- Form login -->
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 tracking-widest">Username</label>
+                    <label for="username" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Username</label>
                     <div class="relative">
-                        <i data-lucide="user" class="absolute left-4 top-3.5 w-5 h-5 text-gray-600"></i>
-                        <input name="username" placeholder="Username" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
+                        <i data-lucide="user" class="absolute left-4 top-3.5 w-5 h-5 text-gray-300"></i>
+                        <input id="username" name="username" placeholder="Username" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
                     </div>
                 </div>
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 tracking-widest">Password</label>
+                    <label for="password" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Password</label>
                     <div class="relative">
-                        <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-gray-600"></i>
-                        <input type="password" id="password" name="password" placeholder="••••••••" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
-                        <button type="button" id="togglePassword" class="absolute right-4 top-3.5 text-gray-600 hover:text-blue-500 focus:outline-none transition-colors">
+                        <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-gray-300"></i>
+                        <input type="password" id="password" name="password" placeholder="••••••••" required class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-14 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
+                        <button type="button" id="togglePassword" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full text-gray-300 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors" aria-label="Tampilkan atau sembunyikan password" aria-pressed="false">
                             <i data-lucide="eye" id="iconEye" class="w-5 h-5"></i>
                             <i data-lucide="eye-off" id="iconEyeOff" class="w-5 h-5 hidden"></i>
                         </button>
@@ -179,14 +295,14 @@ if (isset($_POST['login'])) {
 
             <!-- Opsi lain -->
             <div class="flex items-center justify-between px-1">
-                <a href="register.php" class="text-xs text-gray-500 hover:text-white transition">Belum punya akun?</a>
+                <a href="register.php" class="text-xs text-gray-300 hover:text-white transition">Belum punya akun?</a>
                 <a href="<?= htmlspecialchars($back_url) ?>" class="text-xs text-blue-500 font-bold hover:underline">Batal</a>
             </div>
         </form>
 
         <!-- Copyright -->
-        <p class="text-center text-[10px] text-gray-600 mt-8 uppercase tracking-[0.3em]">©MEeL - 2025</p>
-    </div>
+        <p class="text-center text-[10px] text-gray-300 mt-8 uppercase tracking-[0.3em]">©MEeL - 2025</p>
+    </main>
 
     <script>
         lucide.createIcons();
@@ -199,15 +315,12 @@ if (isset($_POST['login'])) {
 
         if (togglePassword) {
             togglePassword.addEventListener('click', function() {
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    iconEye.classList.add('hidden');
-                    iconEyeOff.classList.remove('hidden');
-                } else {
-                    passwordInput.type = 'password';
-                    iconEye.classList.remove('hidden');
-                    iconEyeOff.classList.add('hidden');
-                }
+                const isHidden = passwordInput.type === 'password';
+                passwordInput.type = isHidden ? 'text' : 'password';
+                togglePassword.setAttribute('aria-pressed', String(isHidden));
+                togglePassword.setAttribute('aria-label', isHidden ? 'Sembunyikan password' : 'Tampilkan password');
+                iconEye.classList.toggle('hidden', !isHidden);
+                iconEyeOff.classList.toggle('hidden', isHidden);
             });
         }
     </script>
