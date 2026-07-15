@@ -19,6 +19,7 @@ let pollingTimer = null;
 let roomStatusTimer = null;
 let suppressNetworkSync = false;
 let localBoardFlipped = false;
+let pendingCaptureSvg = null; // SVG markup of piece being captured (for ghost animation)
 
 // DOM Elements
 const boardEl = document.getElementById("chess-board");
@@ -191,7 +192,8 @@ function createBoardCell(viewR, viewC) {
   cell.dataset.row = viewR;
   cell.dataset.col = viewC;
   const isDark = (viewR + viewC) % 2 === 1;
-  cell.className = `relative w-full aspect-square flex items-center justify-center transition-all duration-200 ${isDark ? "bg-[#b58863]" : "bg-[#f0d9b5]"}`;
+  cell.className = "relative w-full aspect-square flex items-center justify-center transition-all duration-200";
+  cell.style.backgroundColor = isDark ? "#769656" : "#EEEED2";
   return { cell, isDark };
 }
 
@@ -209,7 +211,7 @@ function renderBoard() {
           (from.r === boardR && from.c === boardC) ||
           (to.r === boardR && to.c === boardC)
         ) {
-          cell.classList.add(isDark ? "bg-[#aaa23a]" : "bg-[#cdd16f]");
+          cell.style.backgroundColor = isDark ? "#BACA44" : "#F6F682";
         }
       }
 
@@ -218,8 +220,7 @@ function renderBoard() {
         game.activeSquare.r === boardR &&
         game.activeSquare.c === boardC
       ) {
-        cell.classList.add("bg-[#f6f669]", "bg-opacity-60", "z-10");
-        cell.classList.remove("bg-[#aaa23a]", "bg-[#cdd16f]");
+        cell.style.backgroundColor = "#F6F669";
       }
 
       const isValidMove = game.validMoves.some(
@@ -234,7 +235,7 @@ function renderBoard() {
             "absolute w-5/6 h-5/6 border-4 border-rose-500/70 rounded-full z-20 pointer-events-none animate-pulse";
         else
           marker.className =
-            "w-4 h-4 rounded-full bg-slate-900/20 z-20 pointer-events-none";
+            "w-[10px] h-[10px] rounded-full bg-black/45 z-20 pointer-events-none";
         cell.appendChild(marker);
       }
 
@@ -245,23 +246,64 @@ function renderBoard() {
             game.lastMove &&
             game.lastMove.to.r === boardR &&
             game.lastMove.to.c === boardC;
+
+          // Determine animation class based on move type
+          let animClass = "";
+          if (isJustPlaced) {
+            if (game.lastMoveType === "capture") {
+              animClass = "piece-capture-land";
+            } else if (game.lastMoveType === "castle") {
+              animClass = "piece-castle";
+            } else if (game.lastMoveType === "promotion") {
+              animClass = "piece-promote";
+            } else {
+              animClass = "piece-anim";
+            }
+          }
+
+          // Ghost overlay: render captured piece animating away
+          if (game.lastCapturedPiece && pendingCaptureSvg) {
+            const isCapturePos =
+              game.lastCapturedPiece.r === boardR &&
+              game.lastCapturedPiece.c === boardC;
+            if (isCapturePos) {
+              const ghostEl = document.createElement("div");
+              ghostEl.className = `absolute inset-0 flex items-center justify-center z-20 select-none pointer-events-none piece-captured`;
+              ghostEl.innerHTML = pendingCaptureSvg;
+              cell.appendChild(ghostEl);
+            }
+          }
+
           const pieceWrapper = document.createElement("div");
-          pieceWrapper.className = `absolute inset-0 flex items-center justify-center z-10 select-none pointer-events-none ${isJustPlaced ? "piece-anim" : ""}`;
+          pieceWrapper.className = `absolute inset-0 flex items-center justify-center z-10 select-none pointer-events-none ${animClass}`;
           pieceWrapper.innerHTML = pieceMarkup;
           cell.appendChild(pieceWrapper);
         }
       }
 
+      // ===== NAVIGATION COORDINATES ala chess.com (4 penjuru) =====
+      // chess.com: warna kontras - terang di kotak gelap, gelap di kotak terang
       if (viewC === 0) {
         const rankLabel = document.createElement("span");
-        rankLabel.className = `absolute top-0.5 left-1 text-[9px] font-bold z-30 pointer-events-none ${isDark ? "text-[#f0d9b5]/80" : "text-[#b58863]/80"}`;
+        rankLabel.style.cssText = `position:absolute;top:2px;left:3px;font-size:10px;font-weight:700;z-index:30;pointer-events:none;user-select:none;line-height:1;color:${isDark ? "rgba(238,238,210,0.85)" : "rgba(118,150,86,0.85)"}`;
         rankLabel.innerText = 8 - boardR;
         cell.appendChild(rankLabel);
       }
-
+      if (viewC === 7) {
+        const rankLabelRight = document.createElement("span");
+        rankLabelRight.style.cssText = `position:absolute;bottom:2px;right:3px;font-size:9px;font-weight:700;z-index:30;pointer-events:none;user-select:none;line-height:1;color:${isDark ? "rgba(238,238,210,0.6)" : "rgba(118,150,86,0.6)"}`;
+        rankLabelRight.innerText = 8 - boardR;
+        cell.appendChild(rankLabelRight);
+      }
+      if (viewR === 0) {
+        const fileLabelTop = document.createElement("span");
+        fileLabelTop.style.cssText = `position:absolute;top:2px;right:3px;font-size:9px;font-weight:700;z-index:30;pointer-events:none;user-select:none;line-height:1;color:${isDark ? "rgba(238,238,210,0.6)" : "rgba(118,150,86,0.6)"}`;
+        fileLabelTop.innerText = String.fromCharCode(97 + boardC);
+        cell.appendChild(fileLabelTop);
+      }
       if (viewR === 7) {
         const fileLabel = document.createElement("span");
-        fileLabel.className = `absolute bottom-0 right-1 text-[9px] font-bold z-30 pointer-events-none ${isDark ? "text-[#f0d9b5]/80" : "text-[#b58863]/80"}`;
+        fileLabel.style.cssText = `position:absolute;bottom:2px;left:3px;font-size:10px;font-weight:700;z-index:30;pointer-events:none;user-select:none;line-height:1;color:${isDark ? "rgba(238,238,210,0.85)" : "rgba(118,150,86,0.85)"}`;
         fileLabel.innerText = String.fromCharCode(97 + boardC);
         cell.appendChild(fileLabel);
       }
@@ -270,6 +312,38 @@ function renderBoard() {
       boardEl.appendChild(cell);
     }
   }
+
+  // Hapus data animasi setelah render selesai (setelah animasi selesai)
+  clearAnimationState();
+}
+
+function flipBoardWithAnimation() {
+  // Fade out → re-render → fade in
+  boardEl.style.pointerEvents = 'none';
+  boardEl.classList.add('board-flip-out');
+
+  setTimeout(() => {
+    boardEl.classList.remove('board-flip-out');
+    renderBoard();
+
+    // Force reflow to restart animation
+    void boardEl.offsetWidth;
+
+    boardEl.classList.add('board-flip-in');
+
+    setTimeout(() => {
+      boardEl.classList.remove('board-flip-in');
+      boardEl.style.pointerEvents = '';
+    }, 280);
+  }, 200);
+}
+
+function clearAnimationState() {
+  setTimeout(() => {
+    game.lastCapturedPiece = null;
+    game.lastMoveType = null;
+    pendingCaptureSvg = null;
+  }, 500); // match CSS animation duration (promoteGlow=450ms)
 }
 
 function handleCellClick(r, c) {
@@ -282,6 +356,24 @@ function handleCellClick(r, c) {
   if (game.activeSquare) {
     const isPossibleMove = game.validMoves.some((m) => m.r === r && m.c === c);
     if (isPossibleMove) {
+      // Simpan SVG piece yang akan ditangkap SEBELUM executeMove (board berubah)
+      const fromPiece = game.getPiece(game.activeSquare.r, game.activeSquare.c);
+      const targetPiece = game.getPiece(r, c);
+      const enPassantMove = game.validMoves.find(
+        (m) => m.r === r && m.c === c && m.isEnPassant,
+      );
+      if (targetPiece) {
+        pendingCaptureSvg =
+          SVG_PIECES[targetPiece.color + targetPiece.type] || null;
+      } else if (enPassantMove) {
+        const epPiece = game.getPiece(game.activeSquare.r, c);
+        if (epPiece)
+          pendingCaptureSvg =
+            SVG_PIECES[epPiece.color + epPiece.type] || null;
+      } else {
+        pendingCaptureSvg = null;
+      }
+
       const result = game.executeMove(
         game.activeSquare.r,
         game.activeSquare.c,
@@ -303,21 +395,25 @@ function handleCellClick(r, c) {
       }
       if (game.gameMode === "local" && !game.isGameOver) {
         localBoardFlipped = !localBoardFlipped;
+        flipBoardWithAnimation();
+      } else {
+        renderBoard();
       }
-
-      renderBoard();
       if (game.gameMode === "ai" && !game.isGameOver && game.turn === "b")
         setTimeout(triggerAiMove, 800);
     } else if (clickedPiece && clickedPiece.color === game.turn) {
+      pendingCaptureSvg = null;
       game.activeSquare = { r, c };
       game.validMoves = game.getValidMoves(r, c);
       renderBoard();
     } else {
+      pendingCaptureSvg = null;
       game.activeSquare = null;
       game.validMoves = [];
       renderBoard();
     }
   } else {
+    pendingCaptureSvg = null;
     if (clickedPiece && clickedPiece.color === game.turn) {
       game.activeSquare = { r, c };
       game.validMoves = game.getValidMoves(r, c);
@@ -330,6 +426,21 @@ function triggerAiMove() {
   if (game.isGameOver || game.turn !== "b" || game.gameMode !== "ai") return;
   const aiDecision = game.getBestMove();
   if (aiDecision) {
+    // Simpan SVG piece yang ditangkap oleh AI SEBELUM executeMove
+    const aiTarget = game.getPiece(aiDecision.to.r, aiDecision.to.c);
+    const isEnPassant = aiDecision.to && aiDecision.to.isEnPassant;
+    if (aiTarget) {
+      pendingCaptureSvg =
+        SVG_PIECES[aiTarget.color + aiTarget.type] || null;
+    } else if (isEnPassant) {
+      const epPiece = game.getPiece(aiDecision.from.r, aiDecision.to.c);
+      pendingCaptureSvg = epPiece
+        ? SVG_PIECES[epPiece.color + epPiece.type] || null
+        : null;
+    } else {
+      pendingCaptureSvg = null;
+    }
+
     const result = game.executeMove(
       aiDecision.from.r,
       aiDecision.from.c,
@@ -394,7 +505,12 @@ function showPromotionModal() {
           );
         }
 
-        renderBoard();
+        if (game.gameMode === "local" && !game.isGameOver) {
+          localBoardFlipped = !localBoardFlipped;
+          flipBoardWithAnimation();
+        } else {
+          renderBoard();
+        }
         if (game.gameMode === "ai" && !game.isGameOver && game.turn === "b")
           setTimeout(triggerAiMove, 800);
       }
@@ -424,15 +540,22 @@ function updateGameStatus(result) {
   if (game.history.length === 0) placeholder.classList.remove("hidden");
   else {
     placeholder.classList.add("hidden");
+    const lastMoveIdx = game.history.length - 1;
     for (let i = 0; i < game.history.length; i += 2) {
       const wMove = game.history[i]?.algebraic || "";
       const bMove = game.history[i + 1]?.algebraic || "";
+      const moveNum = Math.floor(i / 2) + 1;
+      // Highlight the current (last) move like chess.com
+      const isCurrent = i === lastMoveIdx || i + 1 === lastMoveIdx;
+      const rowClass = isCurrent
+        ? "bg-emerald-500/10 border-l-2 border-emerald-500"
+        : "hover:bg-slate-800/30";
       moveHistoryList.innerHTML += `
-                        <tr class="hover:bg-slate-800/40 transition-colors">
-                            <td class="py-2.5 text-slate-500 font-bold">${Math.floor(i / 2) + 1}.</td>
-                            <td class="py-2.5 font-semibold text-emerald-400">${wMove}</td>
-                            <td class="py-2.5 font-semibold text-slate-300">${bMove}</td>
-                        </tr>`;
+        <tr class="${rowClass} transition-colors">
+          <td class="py-1.5 px-1 text-xs text-slate-500 font-bold text-center w-8">${moveNum}.</td>
+          <td class="py-1.5 px-2 text-sm font-semibold ${i === lastMoveIdx ? "text-emerald-300" : "text-slate-200"}">${wMove}</td>
+          <td class="py-1.5 px-2 text-sm font-semibold ${i + 1 === lastMoveIdx ? "text-emerald-300" : "text-slate-200"}">${bMove}</td>
+        </tr>`;
     }
     const container = document.getElementById("move-history-container");
     container.scrollTop = container.scrollHeight;
