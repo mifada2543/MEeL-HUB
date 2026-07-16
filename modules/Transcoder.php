@@ -1003,11 +1003,11 @@ class Transcoder
         $total_size = array_sum(array_map('filesize', $ts_files));
 
         if ($this->user_role !== 'admin') {
-            if ($total_size > 200 * 1024 * 1024) {
-                return ['status' => 'error', 'msg' => 'File terlalu besar! Maks 200MB.'];
-            }
-            if ($file_dur > 600) {
-                return ['status' => 'error', 'msg' => 'Durasi terlalu panjang! Maks 10 menit.'];
+            if ($total_size > 200 * 1024 * 1024 && $file_dur > 600) {
+                return [
+                    'status' => 'error',
+                    'msg' => 'File terlalu besar (' . round($total_size / (1024*1024), 1) . 'MB) dan durasi terlalu panjang (' . round($file_dur / 60, 1) . ' menit). Audio hanya bisa diekstrak untuk video dengan durasi ≤ 20 menit atau ukuran ≤ 200MB.'
+                ];
             }
         }
 
