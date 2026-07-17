@@ -95,6 +95,38 @@ $migrations = [
             },
         ],
     ],
+    5 => [
+        'description' => 'Ubah kolom title dari varchar(255) ke TEXT — cegah silent truncation title panjang',
+        'sql' => [
+            function($conn) {
+                $result = $conn->query("ALTER TABLE video MODIFY COLUMN title TEXT NOT NULL");
+                if (!$result) {
+                    $err = $conn->error;
+                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists')) {
+                        echo "[MEeL] ⚠ Warning (video.title): {$err}\n";
+                    }
+                }
+            },
+            function($conn) {
+                $result = $conn->query("ALTER TABLE music MODIFY COLUMN title TEXT NOT NULL");
+                if (!$result) {
+                    $err = $conn->error;
+                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists')) {
+                        echo "[MEeL] ⚠ Warning (music.title): {$err}\n";
+                    }
+                }
+            },
+            function($conn) {
+                $result = $conn->query("ALTER TABLE books MODIFY COLUMN title TEXT NOT NULL");
+                if (!$result) {
+                    $err = $conn->error;
+                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists')) {
+                        echo "[MEeL] ⚠ Warning (books.title): {$err}\n";
+                    }
+                }
+            },
+        ],
+    ],
 ];
 
 // ─── Runner ───────────────────────────────────────────────────────────────────
