@@ -22,6 +22,17 @@ if (!$result['success']) {
     $_SESSION['success'] = $result['message'];
 }
 
-// Redirect back
-header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+// Redirect back — dengan validasi HTTP_REFERER cegah open redirect
+$ref_url = $_SERVER['HTTP_REFERER'] ?? '';
+if ($ref_url !== '') {
+    $allowed_host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST);
+    $ref_host = parse_url($ref_url, PHP_URL_HOST);
+    if ($ref_host !== $allowed_host) {
+        $ref_url = 'index.php';
+    }
+}
+if ($ref_url === '') {
+    $ref_url = 'index.php';
+}
+header("Location: " . $ref_url);
 exit;

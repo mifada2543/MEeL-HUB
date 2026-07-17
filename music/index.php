@@ -1,8 +1,8 @@
 <?php
+require_once '../modules/helpers.php';
 session_name('meel');
 session_start();
 include '../auth/config.php';
-include '../modules/helpers.php';
 require_once '../modules/MediaLibrary.php';
 
 $library       = new MediaLibrary($conn);

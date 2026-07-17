@@ -48,10 +48,18 @@ $_head_host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $_head_base_path = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/\\');
 $_head_base = $_head_proto . '://' . $_head_host . $_head_base_path;
 
+// ── Project root base (untuk asset tetap seperti manifest, favicon, OG image) ─
+// $_head_base bisa mengandung subdirektori (misal /MEeL/music) yang bikin
+// path aset jadi salah. Hitung root dari lokasi file ini (partials/head.php).
+$_head_root_path = str_replace('\\', '/', dirname(__DIR__));
+$_head_doc_root  = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '/');
+$_head_root_rel  = str_replace(rtrim($_head_doc_root, '/'), '', $_head_root_path);
+$_head_root      = $_head_proto . '://' . $_head_host . rtrim($_head_root_rel, '/\\');
+
 // ── Default values ───────────────────────────────────────────
 $_META_TITLE        = $_META_TITLE        ?? 'MEeL | Media Hub';
 $_META_DESC         = $_META_DESC         ?? 'Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
-$_META_IMAGE        = $_META_IMAGE        ?? $_head_base . '/assets/MEeL.png';
+$_META_IMAGE        = $_META_IMAGE        ?? $_head_root . '/assets/MEeL.png';
 $_META_IMAGE_W      = $_META_IMAGE_W      ?? '500';
 $_META_IMAGE_H      = $_META_IMAGE_H      ?? '500';
 $_META_TYPE         = $_META_TYPE         ?? 'website';
@@ -109,11 +117,11 @@ $_e_robots   = htmlspecialchars($_META_ROBOTS, ENT_QUOTES, 'UTF-8');
 <meta name="twitter:site" content="<?= $_e_twitter ?>">
 <?php endif; ?>
 
-<!-- Icons & App -->
-<link rel="manifest" href="<?= $_head_base ?>/assets/manifest.json">
-<link rel="icon" type="image/png" sizes="32x32" href="<?= $_head_base ?>/assets/MEeL.png">
-<link rel="icon" type="image/png" sizes="16x16" href="<?= $_head_base ?>/assets/MEeL.png">
-<link rel="apple-touch-icon" sizes="180x180" href="<?= $_head_base ?>/assets/MEeL.png">
+<!-- Icons & App (pakai $_head_root agar selalu mengarah ke root project) -->
+<link rel="manifest" href="<?= $_head_root ?>/assets/manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="<?= $_head_root ?>/assets/MEeL.png">
+<link rel="icon" type="image/png" sizes="16x16" href="<?= $_head_root ?>/assets/MEeL.png">
+<link rel="apple-touch-icon" sizes="180x180" href="<?= $_head_root ?>/assets/MEeL.png">
 
 <!-- Structured Data (JSON-LD) -->
 <script type="application/ld+json">
@@ -133,7 +141,7 @@ $_e_robots   = htmlspecialchars($_META_ROBOTS, ENT_QUOTES, 'UTF-8');
     "@type": "SearchAction",
     "target": {
       "@type": "EntryPoint",
-      "urlTemplate": "<?= $_head_base ?>/search?q={search_term_string}"
+      "urlTemplate": "<?= $_head_root ?>/search?q={search_term_string}"
     },
     "query-input": "required name=search_term_string"
   }
@@ -148,6 +156,7 @@ $_e_robots   = htmlspecialchars($_META_ROBOTS, ENT_QUOTES, 'UTF-8');
 <?php
 unset(
     $_head_proto, $_head_host, $_head_base, $_head_base_path,
+    $_head_root_path, $_head_doc_root, $_head_root_rel, $_head_root,
     $_META_TITLE, $_META_DESC, $_META_IMAGE, $_META_IMAGE_W, $_META_IMAGE_H,
     $_META_TYPE, $_META_URL, $_META_SITE_NAME, $_META_LOCALE,
     $_META_TWITTER_SITE, $_META_THEME_COLOR, $_META_ROBOTS, $_META_CANONICAL,

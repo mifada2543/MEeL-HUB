@@ -87,7 +87,13 @@
 | **Profil User** | Avatar, bio, statistik upload |
 | **Mode Sehat 20-20-20** | Notifikasi istirahat mata tiap 20 menit |
 | **Activity Logger** | Firewall internal, pelacakan aktivitas, IP banning |
+| **Autoloader PSR-4** | Auto-loading class core (`MediaLibrary`, `Uploader`, etc.) tanpa require manual |
+| **Migration System** | Database schema versioning + auto-upgrade (FULLTEXT index, performance index) |
+| **Base URL Portability** | `base_url()` + `MEEL_BASE_URL` constant — path konsisten di semua subdirektori |
+| **FULLTEXT Search** | Search video/music 10-100× lebih cepat via `MATCH AGAINST` (MySQL 5.7+) |
 | **Admin Panel** | Dashboard monitoring, manajemen user, queue control |
+| **Role Helper** | `get_user_role()` — query role ter-cache, menghilangkan duplikasi di upload files |
+| **Redirect Guard** | Validasi URL redirect di playlist_action & delete_comment cegah open redirect |
 
 ---
 ## 📸 Screenshots
@@ -115,6 +121,8 @@
 | **Transcoding** | FFmpeg 6.0+ & FFprobe | HLS segmentasi, kompresi, thumbnail |
 | **Downloader** | yt-dlp (optional) | Download media dari URL eksternal |
 | **Transliterasi** | PHP `intl` (Transliterator) | Pembersihan nama file (Romaji) |
+| **Autoloader** | Manual PSR-4-like (`modules/autoload.php`) | Auto-loading 10+ class core |
+| **Migration** | PHP-based (`database/migrate.php`) | Schema versioning + FULLTEXT/perf index |
 
 ---
 
@@ -123,7 +131,10 @@
 ```
 MEeL/
 ├── admin/                 # Panel Admin (role admin only)
-├── anime/                 # Modul Anime (dalam pengembangan)
+├── anime/                 # Modul Anime (Coming Soon — placeholder page)
+│   ├── sidebar.php        # (kosong — menunggu implementasi)
+│   ├── watch.php           # Redirect ke index.php
+│   └── index.php           # Halaman Coming Soon dengan progress bar
 ├── arcade/                # Mini Games (Dino Run, Chess)
 ├── assets/                # Aset statis (CSS, JS, font, gambar)
 ├── auth/                  # Autentikasi & manajemen sesi
@@ -132,12 +143,17 @@ MEeL/
 ├── books/                 # Modul E-Book / Komik
 ├── controllers/           # API Actions & Event Handler (AJAX/HTMX)
 ├── database/              # Skema database
-│   └── schema.sql         # File schema standalone (16 tabel)
+│   ├── schema.sql         # File schema standalone (16 tabel)
+│   └── migrate.php        # 🔄 Migration system — versioned schema upgrades (FULLTEXT, index)
 ├── data_drive/            # Cloud Drive storage runtime
 ├── docs/                  # Dokumentasi proyek
 ├── drive/                 # Modul Cloud Drive
+│   ├── templates/          # Template rendering (file_grid.php)
+│   ├── DriveService.php    # OOP: DriveUserContext, DriveStorage, DriveViewRenderer
 ├── err/                   # Halaman error (denied, maintenance, banned, revoked)
 ├── modules/               # Core logic & business layer (OOP)
+│   ├── helpers.php        # Fungsi bantuan: base_url(), resolve_binary(), time_ago(), dll
+│   └── autoload.php       # 🔄 Autoloader PSR-4-like (semua class core auto-load)
 ├── music/                 # Modul pemutar musik
 ├── partials/              # Reusable UI components
 ├── profile/               # Modul profil user
@@ -261,6 +277,26 @@ define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
 define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
 // ... dan seterusnya
 ```
+
+### Base URL Portability
+
+```php
+// auth/config.php — Auto-detected dari __DIR__, bisa dioverride
+define('MEEL_BASE_URL', '/MEeL'); // Contoh jika di subdirektori
+
+// Di view/pages:
+// Otomatis konsisten, tidak peduli dari mana file di-include
+$url = base_url('/assets/css/style.css'); // → /MEeL/assets/css/style.css
+```
+
+### Migration System
+
+```bash
+# Upgrade database ke versi terbaru (FULLTEXT index, performance index, dll)
+/opt/lampp/bin/php database/migrate.php
+```
+
+Migration bersifat **idempotent** — aman dijalankan berulang kali. Setiap migrasi hanya dijalankan sekali berdasarkan versi yang tercatat di tabel `db_version`.
 
 > 📖 **Konfigurasi lengkap** → [docs/configuration.md](docs/configuration.md)
 

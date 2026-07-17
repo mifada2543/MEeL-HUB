@@ -1,8 +1,8 @@
 <?php
+require_once '../modules/helpers.php';
 session_name("meel");
 session_start();
 include '../auth/config.php';
-include __DIR__ . '/../modules/helpers.php';
 
 // ── Proteksi Admin ──
 if (!isset($_SESSION['user_id'])) {
