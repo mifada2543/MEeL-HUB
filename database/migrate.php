@@ -3,13 +3,19 @@
  * MEeL-HUB — Database Migration System
  * 
  * Simple versioned migration tanpa library eksternal.
+ * Hanya bisa dijalankan dari CLI (terminal), bukan via web browser.
  * Jalankan: php database/migrate.php
- * Atau include dari halaman admin.
  * 
  * Cara menambah migrasi baru:
  *   1. Tambah entry baru di array $migrations dengan key versi berikutnya
  *   2. Jalankan ulang migrate.php
  */
+
+// ── Keamanan: hanya dari CLI ────────────────────────────────────────────────
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    die('Access denied. Jalankan dari terminal: php database/migrate.php');
+}
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 require_once __DIR__ . '/../auth/config.php';
@@ -124,6 +130,22 @@ $migrations = [
                         echo "[MEeL] ⚠ Warning (books.title): {$err}\n";
                     }
                 }
+            },
+        ],
+    ],
+    6 => [
+        'description' => 'Buat tabel activity_log untuk audit trail — cegah crash saat prepare() gagal',
+        'sql' => [
+            function($conn) {
+                $conn->query("CREATE TABLE IF NOT EXISTS activity_log (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT DEFAULT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    media_type VARCHAR(20) DEFAULT NULL,
+                    media_id INT DEFAULT NULL,
+                    ip_address VARCHAR(45) DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
             },
         ],
     ],
