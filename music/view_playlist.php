@@ -318,6 +318,8 @@ if (isset($_GET['content_only'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+    <meta property="og:title" content="<?= htmlspecialchars($playlist['name']) ?> — MEeL Playlist">
+    <meta property="og:description" content="Dengarkan playlist <?= htmlspecialchars($playlist['name']) ?> di MEeL Music.">
     <title><?= htmlspecialchars($playlist['name']) ?> — MEeL Playlist</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <?php include '../partials/link.php'; ?>

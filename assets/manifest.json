@@ -1,6 +1,7 @@
 {
   "short_name": "MEeL",
-  "name": "MEeL-HUB",
+  "name": "MEeL - Media Hub",
+  "description": "Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.",
   "icons": [
     {
       "src": "MEeL.png",
@@ -16,5 +17,8 @@
   "start_url": "../index.php",
   "background_color": "#ffffff",
   "display": "standalone",
-  "theme_color": "#000000"
+  "theme_color": "#000000",
+  "lang": "id-ID",
+  "categories": ["entertainment", "utilities"],
+  "scope": "/"
 }

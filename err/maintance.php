@@ -95,6 +95,8 @@ if ($user_role === 'admin') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+    <meta property="og:title" content="MEeL | System Health">
+    <meta property="og:description" content="Server MEeL sedang dalam masa pemeliharaan. Mohon tunggu beberapa saat.">
     <title>MEeL | System Health</title>
     <?php include '../partials/link.php'; ?>
     <style>

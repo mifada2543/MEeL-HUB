@@ -36,6 +36,8 @@ if ($user->isMember()) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+    <meta property="og:title" content="MEeL Cloud | Dashboard">
+    <meta property="og:description" content="MEeL Cloud Drive - Kelola dan simpan file Anda dengan aman di cloud pribadi.">
     <title>MEeL Cloud | Dashboard</title>
     <?php include '../partials/link.php'; ?>
     <script src="../assets/js/sweetalert2.all.min.js"></script>

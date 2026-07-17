@@ -20,6 +20,8 @@ $total      = $library->countVideos();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+    <meta property="og:title" content="MEeL Video | Library">
+    <meta property="og:description" content="Jelajahi koleksi video di MEeL Video Library. Streaming HLS dengan kualitas terbaik.">
     <title>MEeL Video | Library</title>
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/video.css">

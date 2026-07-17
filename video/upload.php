@@ -60,6 +60,9 @@ if (isset($_POST['upload'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Upload video ke MEeL Video Library. Format video didukung: MP4, WEBM, MKV. Transcoding otomatis ke HLS.">
+    <meta property="og:title" content="MEeL Video | Upload">
+    <meta property="og:description" content="Upload video ke MEeL Video Library. Format: MP4, WEBM, MKV. Transcoding otomatis ke HLS.">
     <title>MEeL Video | Upload</title>
     <?php include '../partials/link.php'; ?>
     <style>

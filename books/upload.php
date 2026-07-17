@@ -37,6 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+    <meta property="og:title" content="MEeL | Upload Book">
+    <meta property="og:description" content="Upload buku dan dokumen ke perpustakaan digital MEeL Books.">
     <title>MEeL | Upload Book</title>
     <?php include '../partials/link.php'; ?>
     <style>
