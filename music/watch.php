@@ -159,23 +159,23 @@ switch ($ext) {
 
     <main id="main-content" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
         <div class="flex-1 min-w-0 space-y-5 px-4 sm:px-5">
-            <div id="player-container" class="bg-[#0d1017] border-0 rounded-none sm:rounded-none overflow-hidden">
+            <div id="player-container" class="bg-[#0d1017] border-0 rounded-none sm:rounded-none overflow-hidden relative">
                 <div id="resume-modal" class="hidden rounded-xl sm:rounded-2xl">
-                    <div class="bg-[#141820] border border-orange-500/25 border-t-2 border-t-orange-500 rounded-2xl p-6 max-w-xs w-full mx-4 text-center">
-                        <div class="w-11 h-11 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <i data-lucide="play-circle" class="w-5 h-5 text-orange-500"></i>
+                    <div class="bg-[#141820] border border-orange-500/25 border-t-2 border-t-orange-500 rounded-2xl text-center">
+                        <div class="bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-3" style="width:clamp(36px,8cqw,56px);height:clamp(36px,8cqw,56px)">
+                            <i data-lucide="play-circle" class="text-orange-500" style="width:clamp(18px,4cqw,28px);height:clamp(18px,4cqw,28px)"></i>
                         </div>
-                        <div class="text-sm font-black text-white uppercase tracking-wider mb-2">Lanjut Musik?</div>
+                        <div class="font-black text-white uppercase tracking-wider mb-2">Lanjut Musik?</div>
                         <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-4">
                             Menit ke‑ <span id="resume-time" class="text-orange-400 font-mono">0:00</span>
                         </div>
                         <div class="flex gap-2">
                             <button id="btn-resume"
-                                class="flex-1 bg-orange-500 hover:bg-orange-400 text-black text-xs font-black uppercase tracking-wider py-2.5 rounded-xl transition-all border-none cursor-pointer">
+                                class="flex-1 bg-orange-500 hover:bg-orange-400 text-black font-black uppercase tracking-wider rounded-xl transition-all border-none cursor-pointer">
                                 Lanjut
                             </button>
                             <button id="btn-restart"
-                                class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-black uppercase tracking-wider py-2.5 rounded-xl border border-white/10 cursor-pointer transition-all">
+                                class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black uppercase tracking-wider rounded-xl border border-white/10 cursor-pointer transition-all">
                                 Ulang
                             </button>
                         </div>
