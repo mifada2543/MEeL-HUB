@@ -225,7 +225,16 @@ function removeDirectoryRecursive(string $dir): void
 function logActivity(mysqli $conn, int $user_id, string $action, string $media_type, int $media_id): void
 {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
     $stmt = $conn->prepare("INSERT INTO activity_log (user_id, action, media_type, media_id, ip_address) VALUES (?, ?, ?, ?, ?)");
+
+    if ($stmt === false) {
+        // Gagal prepare — log ke error log saja, jangan crash
+        error_log('[MEeL] logActivity gagal: ' . $conn->error);
+        return;
+    }
+
     $stmt->bind_param("issis", $user_id, $action, $media_type, $media_id, $ip);
     $stmt->execute();
+    $stmt->close();
 }
