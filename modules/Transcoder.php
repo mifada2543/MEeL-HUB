@@ -15,6 +15,7 @@ if (!defined('MEEL_HDD_BASE')) {
     define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
 }
 
+require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/japanese.php';
 require_once __DIR__ . '/GarbageCollector.php';
 
@@ -57,6 +58,8 @@ class Transcoder
         $this->ffmpeg_bin   = $this->resolveBinary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
         $this->ffprobe_bin  = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
 
+        $this->user_role = get_user_role($this->conn, $this->user_id);
+
         $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8;"
             . " /usr/local/bin/yt-dlp --js-runtime node:/usr/bin/node"
             . " --remote-components ejs:github"
@@ -65,11 +68,6 @@ class Transcoder
             . " --referer "         . escapeshellarg("https://www.youtube.com/")
             . " --cookies "         . escapeshellarg($this->cookies_path) . " ";
 
-        $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
-        $stmt->bind_param("i", $this->user_id);
-        $stmt->execute();
-        $this->user_role = $stmt->get_result()->fetch_assoc()['role'] ?? 'user';
-        $stmt->close();
     }
 
     public function getUserRole(): string
@@ -150,15 +148,7 @@ class Transcoder
 
     private function resolveBinary(array $candidates): string
     {
-        foreach ($candidates as $candidate) {
-            if (strpos($candidate, '/') !== false) {
-                if (is_executable($candidate)) return $candidate;
-                continue;
-            }
-            $resolved = trim((string)shell_exec("command -v " . escapeshellarg($candidate) . " 2>/dev/null"));
-            if ($resolved !== '') return $resolved;
-        }
-        return $candidates[0];
+        return resolve_binary($candidates);
     }
 
     // ─── QUEUE MANAGEMENT ─────────────────────────────────────────────────────
@@ -1003,10 +993,17 @@ class Transcoder
         $total_size = array_sum(array_map('filesize', $ts_files));
 
         if ($this->user_role !== 'admin') {
-            if ($total_size > 200 * 1024 * 1024 && $file_dur > 600) {
+            if ($total_size > 200 * 1024 * 1024 || $file_dur > 600) {
+                $reasons = [];
+                if ($total_size > 200 * 1024 * 1024) {
+                    $reasons[] = 'ukuran ' . round($total_size / (1024*1024), 1) . 'MB (maks 200MB)';
+                }
+                if ($file_dur > 600) {
+                    $reasons[] = 'durasi ' . round($file_dur / 60, 1) . ' menit (maks 10 menit)';
+                }
                 return [
                     'status' => 'error',
-                    'msg' => 'File terlalu besar (' . round($total_size / (1024*1024), 1) . 'MB) dan durasi terlalu panjang (' . round($file_dur / 60, 1) . ' menit). Audio hanya bisa diekstrak untuk video dengan durasi ≤ 20 menit atau ukuran ≤ 200MB.'
+                    'msg' => 'File tidak memenuhi syarat: ' . implode(' dan ', $reasons) . '.'
                 ];
             }
         }

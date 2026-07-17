@@ -1,5 +1,49 @@
 <?php
 
+// ════════════════════════════════════════════════════════════════
+// Semua fungsi dibungkus function_exists() guard sebagai
+// defense-in-depth terhadap double-include.
+// ════════════════════════════════════════════════════════════════
+
+if (!function_exists('resolve_binary')) {
+    /**
+     * Resolve binary path dari daftar kandidat.
+     * Cek executable path absolut dulu, lalu cari via command -v.
+     */
+    function resolve_binary(array $candidates): string
+{
+    foreach ($candidates as $candidate) {
+        if (strpos($candidate, '/') !== false) {
+            if (is_executable($candidate)) return $candidate;
+            continue;
+        }
+        $resolved = trim((string)shell_exec("command -v " . escapeshellarg($candidate) . " 2>/dev/null"));
+        if ($resolved !== '') return $resolved;
+    }
+    return $candidates[0];
+}
+} // end function_exists('resolve_binary')
+
+if (!function_exists('base_url')) {
+/**
+ * Generate base URL untuk path portability.
+ * Menggantikan hardcoded /MEeL/ prefix dengan path dinamis.
+ */
+function base_url(string $path = ''): string
+{
+    static $base = null;
+    if ($base === null) {
+        // Prioritas: konstanta MEEL_BASE_URL (didefinisikan di config.php)
+        // Fallback: deteksi otomatis dari SCRIPT_NAME
+        $base = defined('MEEL_BASE_URL')
+            ? rtrim(MEEL_BASE_URL, '/')
+            : rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+    }
+    return $base . '/' . ltrim($path, '/');
+}
+} // end function_exists('base_url')
+
+if (!function_exists('detectProtocol')) {
 /**
  * Deteksi protokol HTTPS/HTTP dengan dukungan proxy/Cloudflare.
  * Cloudflare Tunnel menghubungkan origin via HTTP, sehingga $_SERVER['HTTPS']
@@ -31,7 +75,9 @@ function detectProtocol(): string
     // 5. Fallback
     return 'http';
 }
+} // end function_exists('detectProtocol')
 
+if (!function_exists('time_ago')) {
 function time_ago($timestamp)
 {
     $time_diff = time() - strtotime($timestamp);
@@ -42,6 +88,9 @@ function time_ago($timestamp)
         if ($d >= 1) return round($d) . ' ' . $str . ' yang lalu';
     }
 }
+} // end function_exists('time_ago')
+
+if (!function_exists('format_bytes')) {
 function format_bytes($bytes, $precision = 2)
 {
     $units = array('B', 'KB', 'MB', 'GB', 'TB');
@@ -51,7 +100,9 @@ function format_bytes($bytes, $precision = 2)
     $bytes /= pow(1024, $pow);
     return round($bytes, $precision) . ' ' . $units[$pow];
 }
+} // end function_exists('format_bytes')
 
+if (!function_exists('music_thumbnail_url')) {
 function music_thumbnail_url(?string $thumbnail): string
 {
     $thumbnail = trim((string)$thumbnail);
@@ -96,21 +147,19 @@ function music_thumbnail_url(?string $thumbnail): string
     }
     return $default_thumb;
 }
-// Tentukan path salah satu folder utama di HDD (dari config.php)
-$hdd_check_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : '/path/to/your/media';
+} // end function_exists('music_thumbnail_url')
 
-// Cek apakah folder tersebut bisa diakses
-if (!is_dir($hdd_check_path)) {
-    // Lewati pengecekan untuk request HTMX (mis. swap recovery).
-    // HTMX mengirim header HX-Request: true pada setiap AJAX request.
-    if (!isset($_SERVER['HTTP_HX_REQUEST'])) {
-        // Jika HDD tidak terdeteksi dan user bukan di halaman error itu sendiri
-        if (basename($_SERVER['PHP_SELF']) !== 'maintance.php') {
-            header("Location: ../err/maintance.php");
-            exit();
-        }
+// ─── HDD Check Side Effect ────────────────────────────────────
+// Versi ringan: hanya log warning, TIDAK redirect ke maintenance.
+// Redirect terlalu agresif — membuat semua page error jika HDD path belum dikonfig.
+// Cek HDD yang sesungguhnya sudah dilakukan di Uploader/Transcoder via require_disk_space().
+if (PHP_SAPI !== 'cli' && !defined('MEEL_HDD_CHECKED')) {
+    define('MEEL_HDD_CHECKED', true);
+    if (defined('MEEL_HDD_BASE') && !is_dir(MEEL_HDD_BASE)) {
+        error_log('[MEeL] Peringatan: MEEL_HDD_BASE tidak dapat diakses: ' . MEEL_HDD_BASE);
     }
 }
+if (!function_exists('get_user_usage')) {
 function get_user_usage($username)
 {
     $path = dirname(__DIR__) . "/data_drive/private_admins/" . $username;
@@ -136,22 +185,48 @@ function get_user_usage($username)
     }
     return $size;
 }
+} // end function_exists('get_user_usage')
+
+/**
+ * Get user role dari database (hasil di-cache per request untuk performa).
+ * Menghilangkan duplikasi query SELECT role di video/upload.php & music/upload.php.
+ */
+if (!function_exists('get_user_role')) {
+function get_user_role(mysqli $conn, int $user_id): string
+{
+    static $cache = [];
+    if (isset($cache[$user_id])) {
+        return $cache[$user_id];
+    }
+    $stmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $role = $stmt->get_result()->fetch_assoc()['role'] ?? 'user';
+    $stmt->close();
+    $cache[$user_id] = $role;
+    return $role;
+}
+} // end function_exists('get_user_role')
 
 /**
  * Get CSRF token dari session (sudah diinisialisasi di config.php)
  */
+if (!function_exists('get_csrf_token')) {
 function get_csrf_token(): string
 {
     return $_SESSION['csrf_token'] ?? '';
 }
+} // end function_exists('get_csrf_token')
 
 /**
  * Verifikasi CSRF token (wrapper untuk verify_csrf dari config.php)
  */
+if (!function_exists('verify_csrf_token')) {
 function verify_csrf_token(?string $token): bool
 {
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
 }
+} // end function_exists('verify_csrf_token')
 
 // ════════════════════════════════════════════════════════════════
 // PRE-FLIGHT DISK SPACE HELPERS
@@ -164,6 +239,7 @@ function verify_csrf_token(?string $token): bool
  * @param string $path           Path untuk diperiksa (file atau direktori)
  * @return array ['ok' => bool, 'free' => float, 'required' => float, 'path' => string]
  */
+if (!function_exists('check_disk_space')) {
 function check_disk_space(int $required_bytes, string $path): array
 {
     // Jika path bukan direktori (kemungkinan file), ambil direktori parent-nya
@@ -196,6 +272,7 @@ function check_disk_space(int $required_bytes, string $path): array
         'error'    => null,
     ];
 }
+} // end function_exists('check_disk_space')
 
 /**
  * Pre-flight check: lempar RuntimeException jika ruang disk tidak cukup.
@@ -205,6 +282,7 @@ function check_disk_space(int $required_bytes, string $path): array
  * @param string $label          Label deskriptif (contoh: 'video storage', 'RAM disk')
  * @throws \RuntimeException Jika disk space tidak mencukupi
  */
+if (!function_exists('require_disk_space')) {
 function require_disk_space(int $required_bytes, string $path, string $label): void
 {
     $result = check_disk_space($required_bytes, $path);
@@ -216,10 +294,12 @@ function require_disk_space(int $required_bytes, string $path, string $label): v
 
     throw new \RuntimeException("Ruang {$label} tidak mencukupi! {$error_ms}");
 }
+} // end function_exists('require_disk_space')
 
 /**
  * Log drive operations untuk audit trail
  */
+if (!function_exists('log_drive_operation')) {
 function log_drive_operation(int $userId, string $username, string $operation, string $filename, string $type, string $scope, string $status = 'success'): void
 {
     global $conn;
@@ -249,3 +329,4 @@ function log_drive_operation(int $userId, string $username, string $operation, s
     
     @file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
 }
+} // end function_exists('log_drive_operation')

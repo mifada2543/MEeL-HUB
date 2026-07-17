@@ -1,4 +1,5 @@
 <?php
+
 // 1. Fungsi Penangkap IP Asli (Anti-Cloudflare Masking)
 function get_real_ip()
 {
@@ -8,7 +9,7 @@ function get_real_ip()
     if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
         return trim(explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"])[0]);
     }
-    return $_SERVER["REMOTE_ADDR"]; // Fallback (misal akses lokal)
+    return $_SERVER["REMOTE_ADDR"] ?? '0.0.0.0'; // Fallback dengan default
 }
 
 // 2. Fungsi Deteksi Tipe Akses & Validasi IP
@@ -86,6 +87,12 @@ function get_connection_protocol()
     }
     
     return 'IPv4';
+}
+
+// CLI guard — cegah warning $_SERVER undefined saat di CLI (migration, cron, dll)
+// Fungsi-fungsi di atas tetap terdefinisi, hanya LOGIC eksekusi yang di-skip
+if (PHP_SAPI === 'cli') {
+    return;
 }
 
 $user_ip_data = validate_and_format_ip(get_real_ip());

@@ -1,6 +1,6 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 
 require_once '../auth/auth.php';
 require_once '../auth/config.php';
@@ -466,14 +466,14 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
                                     <?= htmlspecialchars($v['title']) ?>
                                 </a>
                                 <div class="card-meta">
-                                    <span><?= number_format($v['views']) ?> views</span>
+                                    <span><?= number_format($v['views'] ?? 0) ?> views</span>
                                     <span class="flex items-center gap-1 text-green-500/80">
                                         <i data-lucide="thumbs-up" class="w-3 h-3"></i>
-                                        <?= number_format($v['likes']) ?>
+                                        <?= number_format($v['likes'] ?? 0) ?>
                                     </span>
                                     <span class="flex items-center gap-1 text-red-500/80">
                                         <i data-lucide="thumbs-down" class="w-3 h-3"></i>
-                                        <?= number_format($v['dislikes']) ?>
+                                        <?= number_format($v['dislikes'] ?? 0) ?>
                                     </span>
                                     <span>•</span>
                                     <span><?= date('d M Y', strtotime($v['upload_date'])) ?></span>

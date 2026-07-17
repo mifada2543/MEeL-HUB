@@ -1,5 +1,6 @@
 <?php
 include 'config.php';
+require_once __DIR__ . '/../modules/helpers.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_name('meel');
@@ -7,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 if (!isset($_SESSION['user_id'])) {
     $next = urlencode($_SERVER['REQUEST_URI'] ?? '/');
-    header("Location: /MEeL/auth/login.php?next={$next}");
+    header("Location: " . base_url('/auth/login.php?next=' . $next));
     exit;
 }
 
@@ -24,7 +25,7 @@ if ($user_data) {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         if ($user_data['role'] !== 'admin' && !empty($user_data['last_session_id']) && $user_data['last_session_id'] !== session_id()) {
             session_destroy();
-            header("Location: /MEeL/auth/login.php?error=session_expired");
+            header("Location: " . base_url('/auth/login.php?error=session_expired'));
             exit;
         }
     }

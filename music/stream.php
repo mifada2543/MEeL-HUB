@@ -1,10 +1,14 @@
 <?php
 // Matikan penampilan error agar output binary audio tidak rusak jika ada notice
 error_reporting(0);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 
 session_name('meel');
 session_start();
+
+// Lepas session lock agar range request streaming tidak terblokir
+// File besar seperti FLAC 34MB+ butuh waktu streaming lama
+session_write_close();
 
 // Hotlink Protection: Mencegah akses langsung ke file audio dari domain lain
 // Catatan: Referer header bisa di-spoof, ini hanya lapisan keamanan tambahan.

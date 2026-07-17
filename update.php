@@ -1,9 +1,9 @@
 <?php
+require_once 'modules/helpers.php';
 // Error logging aktif, display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 include 'auth/config.php';
-include 'modules/helpers.php';
 require_once 'controllers/UpdateManager.php';
 
 $um = new UpdateManager($conn);

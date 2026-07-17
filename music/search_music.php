@@ -33,7 +33,7 @@ if ($data && $data->num_rows > 0) {
                     </div>
                     <div class="text-[10px] text-gray-500 mt-0.5 truncate"><?= htmlspecialchars($v['artist']) ?></div>
                     <div class="flex items-center gap-1.5 mt-1">
-                        <span class="text-[9px] text-gray-500"><?= number_format($v['views']) ?> views</span>
+                        <span class="text-[9px] text-gray-500"><?= number_format($v['views'] ?? 0) ?> views</span>
                         <span class="text-[8px] px-1.5 py-0.5 rounded bg-white/[.04] border border-white/[.05] text-gray-500 uppercase"><?= $v_lbl ?></span>
                     </div>
                 </div>

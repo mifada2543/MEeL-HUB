@@ -1,7 +1,7 @@
 <?php
 // Error logging diaktifkan, tapi display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 
 // Set session name & cookie params SEBELUM session_start()
 if (session_status() === PHP_SESSION_NONE) {
@@ -78,7 +78,11 @@ $session_blocked = count($_SESSION['reg_attempts']) >= $max_reg_attempts;
 
 // ─── FORM PROCESSING ───────────────────────────────────────────
 if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
-    verify_csrf();
+    if (!verify_csrf()) {
+        $message = "Sesi keamanan kadaluarsa. Silakan refresh halaman.";
+        $msg_type = "error";
+        $validation_error = true;
+    } else {
     $user = trim($_POST['username']);
     $pass_raw = $_POST['password'];
 
@@ -117,7 +121,7 @@ if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
         } else {
             // Jika belum ada, simpan ke database
             $pass_hashed = password_hash($pass_raw, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("INSERT INTO users (username, PASSWORD, role, is_active) VALUES (?, ?, 'user', 2)");
+            $stmt = $conn->prepare("INSERT INTO users (username, password, role, is_active) VALUES (?, ?, 'user', 2)");
             $stmt->bind_param("ss", $user, $pass_hashed);
 
             if ($stmt->execute()) {
@@ -168,6 +172,7 @@ if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
             $stmt_chk->close();
         }
     }
+    } // end else (CSRF valid)
 }
 
 // Re-check lockout setelah POST

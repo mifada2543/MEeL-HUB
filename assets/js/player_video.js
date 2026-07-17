@@ -401,7 +401,7 @@ function setupMeelPlayerEvents() {
           void startPlaybackStartTimeout()
         );
       function s() {
-        if (i && parseFloat(i) > 10) {
+        if (i && parseFloat(i) > 10 && (!player.duration || parseFloat(i) < player.duration - 10)) {
           const a = Math.floor(i / 60),
             r = Math.floor(i % 60);
           (o && (o.innerText = `${a}:${r.toString().padStart(2, "0")}`),
