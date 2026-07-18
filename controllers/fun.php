@@ -47,9 +47,19 @@ if (isset($_GET['unban_ip'])) {
 // Ambil data IP yang di-ban
 $banned_ips = $conn->query("SELECT * FROM ip_ban ORDER BY banned_at DESC");
 if (isset($_POST['clear_all_guests'])) {
-    // Miro memperbarui query agar hanya menghapus Guest yang tidak aktif (is_active 0)
+    // Hapus Guest yang tidak aktif (is_active 0)
     $stmt = $conn->prepare("DELETE FROM users WHERE role = 'guest' AND is_active = 0");
     if ($stmt->execute()) {
+        // ✅ Reset AUTO_INCREMENT ke MAX(id) user asli + 1 — cegah ID melonjak
+        $result_ai = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS new_ai FROM users");
+        if ($result_ai) {
+            $row_ai = $result_ai->fetch_assoc();
+            $new_ai = (int)$row_ai['new_ai'];
+            $reset = $conn->query("ALTER TABLE users AUTO_INCREMENT = {$new_ai}");
+            if (!$reset) {
+                error_log("[MEeL] Gagal reset AUTO_INCREMENT: " . $conn->error);
+            }
+        }
         header("Location: index.php?msg=Guests_Cleared_Efficiently");
     } else {
         header("Location: index.php?msg=Error_Cleaning");

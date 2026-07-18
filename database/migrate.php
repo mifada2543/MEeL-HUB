@@ -149,6 +149,39 @@ $migrations = [
             },
         ],
     ],
+    7 => [
+        'description' => 'Tambah UNIQUE KEY pada users.username — cegah bloat guest, optimasi ON DUPLICATE KEY',
+        'sql' => [
+            function($conn) {
+                // Step 1: Hapus duplikat guest — sisakan 1 baris per username (yang terbaru)
+                $conn->query("DELETE g1 FROM users g1
+                    INNER JOIN users g2
+                    WHERE g1.id < g2.id
+                    AND g1.role = 'guest'
+                    AND g2.role = 'guest'
+                    AND g1.username = g2.username");
+            },
+            function($conn) {
+                // Step 2: Reset AUTO_INCREMENT agar tidak ada gap besar
+                $result = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS new_ai FROM users");
+                if ($result) {
+                    $row = $result->fetch_assoc();
+                    $new_ai = (int)$row['new_ai'];
+                    $conn->query("ALTER TABLE users AUTO_INCREMENT = {$new_ai}");
+                }
+            },
+            function($conn) {
+                // Step 3: Tambah UNIQUE KEY pada kolom username
+                $result = $conn->query("ALTER TABLE users ADD UNIQUE INDEX idx_username_unique (username)");
+                if (!$result) {
+                    $err = $conn->error;
+                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+                        echo "[MEeL] ⚠ Warning: {$err}\n";
+                    }
+                }
+            },
+        ],
+    ],
 ];
 
 // ─── Runner ───────────────────────────────────────────────────────────────────
