@@ -115,7 +115,7 @@ $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
 
                     <?php if ($_SESSION['username'] === $u['username']): ?>
                         <div class="flex flex-col sm:flex-row gap-2 mb-2">
-                            <a href="../controllers/profile_edit.php" class="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2">
+                            <a href="../controllers/profile/profile_edit.php" class="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2">
                                 <i data-lucide="edit-3" class="w-4 h-4"></i> Edit Profile
                             </a>
                             <a href="manage.php" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-600/30 hover:border-blue-500/50 px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2">

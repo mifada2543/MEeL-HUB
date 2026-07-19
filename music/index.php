@@ -3,7 +3,7 @@ require_once '../modules/helpers.php';
 session_name('meel');
 session_start();
 include '../auth/config.php';
-require_once '../modules/MediaLibrary.php';
+require_once '../modules/media/MediaLibrary.php';
 
 $library       = new MediaLibrary($conn);
 $format_filter = $_GET['format'] ?? 'all';

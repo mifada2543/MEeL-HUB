@@ -6,7 +6,7 @@ ini_set('display_errors', 1);
 session_name('meel');
 session_start();
 include '../auth/config.php';
-require_once '../modules/MediaLibrary.php';
+require_once '../modules/media/MediaLibrary.php';
 
 $library    = new MediaLibrary($conn);
 $limit_init = 15;

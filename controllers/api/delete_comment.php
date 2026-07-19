@@ -1,6 +1,6 @@
 <?php
-include '../auth/config.php';
-include '../modules/MediaInteraction.php';
+include '../../auth/config.php';
+include '../../modules/media/MediaInteraction.php';
 
 // Get comment ID
 $comment_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;

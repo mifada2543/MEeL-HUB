@@ -488,7 +488,7 @@ class Transcoder
                 'duration'    => $duration,
                 'description' => $description,
             ]);
-            echo "<script>window.location.href = 'controllers/post_encode.php?$params';</script>";
+            echo "<script>window.location.href = 'controllers/api/post_encode.php?$params';</script>";
             exit;
         }
 
@@ -1023,7 +1023,7 @@ class Transcoder
 
         if (file_exists($output_path) && filesize($output_path) > 0) {
             if ($mtx_locked) { flock($mtx_fp, LOCK_UN); fclose($mtx_fp); }
-            $download_link = "controllers/download_transcode.php?file=" . rawurlencode($output_filename);
+            $download_link = "controllers/api/download_transcode.php?file=" . rawurlencode($output_filename);
             echo "<script>meelDoneTranscode(" . json_encode($v_data['title']) . ", " . json_encode($download_link) . ");</script>";
             flush();
             return ['status' => 'success', 'download_link' => $download_link];
@@ -1176,7 +1176,7 @@ class Transcoder
             return ['status' => 'error', 'msg' => 'FFmpeg gagal menghasilkan file.'];
         }
 
-        $download_link = "controllers/download_transcode.php?file=" . rawurlencode($output_filename);
+        $download_link = "controllers/api/download_transcode.php?file=" . rawurlencode($output_filename);
         echo "<script>meelDoneTranscode(" . json_encode($v_data['title']) . ", " . json_encode($download_link) . ");</script>";
         flush();
 

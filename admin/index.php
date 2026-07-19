@@ -13,7 +13,8 @@ if (!isset($_SESSION['user_id'])) {
     die(include '../err/denied.php');
 }
 
-include '../controllers/fun.php';
+include '../controllers/admin/admin_actions.php';
+include '../controllers/admin/admin_data.php';
 
 // Auto-cleanup guest stale (adaptive — throttle 1 jam via GarbageCollector)
 GarbageCollector::cleanGuests($conn);

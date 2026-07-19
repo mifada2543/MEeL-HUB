@@ -7,7 +7,7 @@ session_start();
 
 include '../auth/config.php';
 require_once '../modules/helpers.php';
-include '../modules/MediaViewer.php';
+include '../modules/media/MediaViewer.php';
 
 // Lepas session lock agar range request streaming tidak terblokir
 session_write_close();
@@ -323,7 +323,7 @@ switch ($ext) {
                         <div class="flex items-center gap-2 flex-wrap">
                             <div id="like-dislike-container" class="flex items-center gap-2 flex-wrap">
                                 <button
-                                    hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
+                                    hx-post="../controllers/api/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                     hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"like","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'like'
@@ -333,7 +333,7 @@ switch ($ext) {
                                     Like<?= ($v['likes'] ?? 0) > 0 ? " <span class='tabular-nums ml-0.5'>{$v['likes']}</span>" : '' ?>
                                 </button>
                                 <button
-                                    hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
+                                    hx-post="../controllers/api/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                     hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'dislike'
@@ -458,7 +458,7 @@ switch ($ext) {
                                                     <span class="text-[10px] text-gray-500 flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
                                                 </div>
                                                 <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
-                                                    <a href="../controllers/delete_comment.php?id=<?= $c['id'] ?>"
+                                                    <a href="../controllers/api/delete_comment.php?id=<?= $c['id'] ?>"
                                                         onclick="return meelConfirmLink(event, { title: 'Hapus Komentar', text: 'Hapus komentar ini?', confirmButtonText: 'HAPUS' })"
                                                         class="text-gray-500 hover:text-red-400 transition-colors no-underline flex-shrink-0">
                                                         <i data-lucide="trash-2" class="w-3 h-3"></i>

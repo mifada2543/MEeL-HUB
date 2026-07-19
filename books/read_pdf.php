@@ -6,12 +6,12 @@ require_once '../modules/helpers.php';
  * Menyajikan file PDF dalam halaman HTML yang menyertakan manifest, logo,
  * dan meta tags untuk PWA. Cocok untuk akses langsung di HP (tab baru).
  * 
- * File PDF asli di-serve oleh controllers/pdf.php (binary endpoint).
+ * File PDF asli di-serve oleh controllers/api/pdf.php (binary endpoint).
  */
 
 require_once '../auth/auth.php';
 require_once '../auth/config.php';
-require_once '../modules/MediaLibrary.php';
+require_once '../modules/media/MediaLibrary.php';
 
 // ── Validasi ID ──────────────────────────────────────────────────────────────
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -241,7 +241,7 @@ $title = htmlspecialchars($book['title']);
                 </div>
             </div>
             <div class="pdf-nav-actions">
-                <a href="../controllers/pdf.php?id=<?= $id ?>" target="_blank" rel="noopener" class="pdf-nav-btn">
+                <a href="../controllers/api/pdf.php?id=<?= $id ?>" target="_blank" rel="noopener" class="pdf-nav-btn">
                     <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
                     Buka Mentah
                 </a>
@@ -250,7 +250,7 @@ $title = htmlspecialchars($book['title']);
 
         <!-- PDF content -->
         <div class="pdf-body">
-            <embed src="../controllers/pdf.php?id=<?= $id ?>#toolbar=0"
+            <embed src="../controllers/api/pdf.php?id=<?= $id ?>#toolbar=0"
                    type="application/pdf"
                    id="pdfEmbed">
 
@@ -261,7 +261,7 @@ $title = htmlspecialchars($book['title']);
                 </div>
                 <h2><?= $title ?></h2>
                 <p>Dokumen PDF &middot; <?= $pdf_size_f ?></p>
-                <a href="../controllers/pdf.php?id=<?= $id ?>" target="_blank" rel="noopener" class="btn">
+                <a href="../controllers/api/pdf.php?id=<?= $id ?>" target="_blank" rel="noopener" class="btn">
                     <i data-lucide="external-link" class="w-4 h-4"></i>
                     Buka PDF
                 </a>

@@ -1,10 +1,10 @@
 <?php
-require_once '../auth/auth.php';
-require_once '../auth/config.php';
+require_once '../../auth/auth.php';
+require_once '../../auth/config.php';
 
 // Pastikan hanya user yang login bisa akses
 if (!isset($_SESSION['user_id'])) {
-    header("Location: ../auth/login.php");
+    header("Location: ../../auth/login.php");
     exit();
 }
 
@@ -95,9 +95,9 @@ $data = $stmt_data->get_result()->fetch_assoc();
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
     <title>Edit Profile | MEeL</title>
-    <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
-    <script src="../assets/js/lucide.js"></script>
+    <link rel="icon" type="image/png" href="../../assets/MEeL.png">
+    <link href="../../assets/css/tailwind.min.css" rel="stylesheet">
+    <script src="../../assets/js/lucide.js"></script>
     <style>
         body {
             background-color: #0b0e14;
@@ -124,7 +124,7 @@ $data = $stmt_data->get_result()->fetch_assoc();
             <form action="" method="POST" enctype="multipart/form-data" class="space-y-6">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <div class="flex flex-col items-center gap-4">
-                    <img src="../profile/upload/<?= $data['profile_picture'] ?: 'default.png' ?>" class="w-24 h-24 rounded-3xl object-cover border-2 border-blue-500/30">
+                    <img src="../../profile/upload/<?= $data['profile_picture'] ?: 'default.png' ?>" class="w-24 h-24 rounded-3xl object-cover border-2 border-blue-500/30">
                     <label class="cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-[10px] font-bold tracking-widest uppercase transition">
                         Ganti Foto
                         <input type="file" name="avatar" class="hidden" accept="image/*">
@@ -141,7 +141,7 @@ $data = $stmt_data->get_result()->fetch_assoc();
                 </button>
             </form>
 
-            <a href="../profile/?u=<?= $_SESSION['username'] ?>" class="block text-center mt-6 text-xs text-gray-600 hover:text-gray-400">Batal dan Kembali</a>
+            <a href="../../profile/?u=<?= $_SESSION['username'] ?>" class="block text-center mt-6 text-xs text-gray-600 hover:text-gray-400">Batal dan Kembali</a>
         </div>
     </div>
     <script>
