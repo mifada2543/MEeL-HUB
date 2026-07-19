@@ -690,29 +690,6 @@ if (isset($_POST['upload'])) {
             box-shadow: 0 8px 30px rgba(249, 115, 22, .35);
         }
 
-        .btn-secondary {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, .04);
-            color: #6b7280;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: .12em;
-            text-transform: uppercase;
-            padding: 10px 18px;
-            border-radius: 12px;
-            border: 1px solid var(--border-strong);
-            text-decoration: none;
-            transition: background .2s, color .2s;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, .08);
-            color: #e2e6ef;
-        }
-
         .divider {
             height: 1px;
             background: var(--border);
@@ -1048,16 +1025,6 @@ if (isset($_POST['upload'])) {
                             </div>
                         </div>
                     <?php endif; ?>
-                </div>
-
-                <!-- Nav buttons -->
-                <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto;">
-                    <a href="index.php" class="btn-secondary" style="justify-content:center;">
-                        <i data-lucide="library" style="width:13px;height:13px;"></i> Music Library
-                    </a>
-                    <a href="../video/upload.php" class="btn-secondary" style="justify-content:center;color:#ef4444;border-color:rgba(239,68,68,.2);">
-                        <i data-lucide="film" style="width:13px;height:13px;"></i> Upload Video
-                    </a>
                 </div>
 
             </aside>

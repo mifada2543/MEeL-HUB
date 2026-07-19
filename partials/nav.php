@@ -312,7 +312,7 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                 </a>
             <?php endif; ?>
             <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                <a href="<?= $_nav_root ?>upload_advanced.php"
+                <a href="upload.php"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
                     <span>Upload Media</span>
