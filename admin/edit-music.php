@@ -80,32 +80,54 @@ if (isset($_POST['update'])) {
         $thumbnail_url = $music['thumbnail'];
         // Handle cover thumbnail upload — konversi ke WebP
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
-            $new_name = 'cover_' . time() . '_' . uniqid() . '.webp';
-            $target_dir = __DIR__ . '/../music/upload/thumbnail/';
-            if (!is_dir($target_dir)) {
-                @mkdir($target_dir, 0755, true);
+            // Validasi ukuran file (maks 5MB)
+            $max_size = 5 * 1024 * 1024;
+            if ($_FILES['thumbnail']['size'] > $max_size) {
+                $error_message = 'Ukuran file cover maksimal 5MB.';
             }
-            $upload_path = $target_dir . $new_name;
-            // Konversi ke WebP — lebih kecil 30-50% dari JPG
-            $cmd = "/usr/bin/ffmpeg -y -i " . escapeshellarg($_FILES['thumbnail']['tmp_name'])
-                . " -vf \"scale='min(500,iw)':-1\" -c:v libwebp -q:v 78 "
-                . escapeshellarg($upload_path) . " 2>&1";
-            exec($cmd, $out, $ret);
-            if ($ret === 0 && file_exists($upload_path) && filesize($upload_path) > 0) {
-                $thumbnail_url = $new_name;
-                // Update thumbnail in DB too
-                $stmt_thumb = $conn->prepare("UPDATE music SET thumbnail = ? WHERE id = ?");
-                $stmt_thumb->bind_param("si", $thumbnail_url, $id);
-                $stmt_thumb->execute();
-            } else {
-                // Fallback: simpan file asli jika ffmpeg gagal
-                if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
+
+            // Validasi MIME type — finfo() cek magic bytes, lebih aman dari $_FILES['type']
+            if (empty($error_message)) {
+                $allowed_mime = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $upload_mime = finfo_file($finfo, $_FILES['thumbnail']['tmp_name']);
+                finfo_close($finfo);
+                if (!in_array($upload_mime, $allowed_mime, true)) {
+                    $error_message = 'File cover harus berupa gambar (JPEG, PNG, WebP, GIF, atau AVIF).';
+                }
+            }
+
+            // Proses thumbnail hanya jika validasi lolos
+            if (empty($error_message)) {
+                $target_dir = __DIR__ . '/../music/upload/thumbnail/';
+                if (!is_dir($target_dir)) {
+                    @mkdir($target_dir, 0755, true);
+                }
+                // Nama file berdasarkan judul lagu
+                $clean_title = getRomajiName($title);
+                if (empty($clean_title)) $clean_title = 'music-cover';
+                $new_name = $clean_title . '_cover.webp';
+                $counter = 1;
+                while (file_exists($target_dir . $new_name)) {
+                    $new_name = $clean_title . '_cover_' . $counter . '.webp';
+                    $counter++;
+                }
+                $upload_path = $target_dir . $new_name;
+                // Konversi ke WebP — 500×500 square, scale+pad agar tidak distorsi
+                $cmd = "/usr/bin/ffmpeg -y -i " . escapeshellarg($_FILES['thumbnail']['tmp_name'])
+                    . " -vf \"scale=500:500:force_original_aspect_ratio=decrease,pad=500:500:(ow-iw)/2:(oh-ih)/2\" -c:v libwebp -q:v 78 "
+                    . escapeshellarg($upload_path) . " 2>&1";
+                exec($cmd, $out, $ret);
+                if ($ret === 0 && file_exists($upload_path) && filesize($upload_path) > 0) {
                     $thumbnail_url = $new_name;
-                    $stmt_thumb = $conn->prepare("UPDATE music SET thumbnail = ? WHERE id = ?");
-                    $stmt_thumb->bind_param("si", $thumbnail_url, $id);
-                    $stmt_thumb->execute();
+                    // CATATAN: Thumbnail akan di-update bersama query utama di bawah, tidak perlu UPDATE terpisah
                 } else {
-                    $error_message = 'Gagal mengupload cover thumbnail.';
+                    // Fallback: simpan file asli jika ffmpeg gagal
+                    if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
+                        $thumbnail_url = $new_name;
+                    } else {
+                        $error_message = 'Gagal mengupload cover thumbnail.';
+                    }
                 }
             }
         }
@@ -118,8 +140,8 @@ if (isset($_POST['update'])) {
             $romaji = getRomajiName($meta_string);
             $meta = mb_strtolower($meta_string . " " . $romaji, 'UTF-8');
 
-            $stmt_update = $conn->prepare("UPDATE music SET title = ?, artist = ?, album = ?, description = ?, search_metadata = ? WHERE id = ?");
-            $stmt_update->bind_param("sssssi", $title, $artist, $album, $description, $meta, $id);
+            $stmt_update = $conn->prepare("UPDATE music SET title = ?, artist = ?, album = ?, description = ?, thumbnail = ?, search_metadata = ? WHERE id = ?");
+            $stmt_update->bind_param("ssssssi", $title, $artist, $album, $description, $thumbnail_url, $meta, $id);
             if ($stmt_update->execute()) {
                 $status = "success";
                 // Refresh data musik terupdate
@@ -180,9 +202,7 @@ $thumb_src = !empty($music['thumbnail'])
             <aside class="sidebar-panel">
                 <!-- Cover — klik atau drag untuk ganti -->
                 <div class="cover-wrap" id="cover-wrap">
-                    <input type="file" name="thumbnail" accept="image/*"
-                        class="cover-file-input" id="cover-file-input"
-                        onchange="handleCoverChange(this)">
+                    <!-- File input dipindahkan ke dalam form (ID: cover-file-hidden) -->
                     <img src="<?= $thumb_src ?>"
                         alt="Cover <?= htmlspecialchars($music['title']) ?>"
                         class="cover-img"
@@ -309,9 +329,10 @@ $thumb_src = !empty($music['thumbnail'])
                     </div>
                 <?php endif; ?>
 
-                <form method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
+                <form id="edit-form" method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
                     <?php if (isset($_SESSION['csrf_token'])): ?>
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
+                    <input type="file" name="thumbnail" accept="image/*" id="cover-file-hidden" style="display:none">
                     <?php endif; ?>
 
                     <!-- Judul -->
@@ -386,6 +407,9 @@ $thumb_src = !empty($music['thumbnail'])
             btn.style.pointerEvents = 'none';
         }
 
+        // Hidden file input di dalam form — trigger via klik/drop di sidebar
+        const coverHidden = document.getElementById('cover-file-hidden');
+
         function handleCoverChange(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
@@ -397,9 +421,19 @@ $thumb_src = !empty($music['thumbnail'])
             }
         }
 
+        // Klik pada area cover → trigger hidden input
+        document.getElementById('cover-wrap').addEventListener('click', function(e) {
+            if (e.target === coverHidden) return;
+            coverHidden.click();
+        });
+
+        // Hidden input change → preview
+        coverHidden.addEventListener('change', function() {
+            handleCoverChange(this);
+        });
+
         // Drag-and-drop onto cover
         const coverWrap = document.getElementById('cover-wrap');
-        const coverInput = document.getElementById('cover-file-input');
 
         coverWrap.addEventListener('dragover', function(e) {
             e.preventDefault();
@@ -413,11 +447,10 @@ $thumb_src = !empty($music['thumbnail'])
             coverWrap.classList.remove('drag-over');
             const files = e.dataTransfer.files;
             if (files && files[0] && files[0].type.startsWith('image/')) {
-                // Transfer to the actual file input
                 const dt = new DataTransfer();
                 dt.items.add(files[0]);
-                coverInput.files = dt.files;
-                handleCoverChange(coverInput);
+                coverHidden.files = dt.files;
+                handleCoverChange(coverHidden);
             }
         });
 

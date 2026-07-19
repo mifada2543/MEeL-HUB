@@ -163,9 +163,10 @@ class Uploader
             return ['status' => 'error', 'msg' => $e->getMessage(), 'alert' => true];
         }
 
-        $title  = trim($post['title'] ?? '');
-        $artist = trim($post['artist'] ?? 'Unknown Artist');
-        $album  = trim($post['album']  ?? 'Single');
+        $title       = trim($post['title'] ?? '');
+        $artist      = trim($post['artist'] ?? 'Unknown Artist');
+        $album       = trim($post['album']  ?? 'Single');
+        $description = trim($post['description'] ?? '');
 
         if (empty($files['media']['name'])) return ['status' => 'no_file'];
 
@@ -273,12 +274,12 @@ class Uploader
         // 🔒 TRANSACTION: Atomic DB insert — rollback jika gagal
         $this->conn->begin_transaction();
         try {
-            $sql  = "INSERT INTO music (title, artist, search_metadata, album, filename, thumbnail, user_id, upload_date) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+            $sql  = "INSERT INTO music (title, artist, description, search_metadata, album, filename, thumbnail, user_id, upload_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $stmt = $this->conn->prepare($sql);
             if (!$stmt) {
                 throw new \RuntimeException('Prepare gagal: ' . $this->conn->error);
             }
-            $stmt->bind_param("ssssssi", $title, $artist, $meta, $album, $file_name, $thumb_name, $this->user_id);
+            $stmt->bind_param("sssssssi", $title, $artist, $description, $meta, $album, $file_name, $thumb_name, $this->user_id);
             if (!$stmt->execute()) {
                 throw new \RuntimeException('Execute gagal: ' . $stmt->error);
             }
