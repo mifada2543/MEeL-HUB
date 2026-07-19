@@ -43,10 +43,11 @@ function renderLibraryContent($artist_filter, $total_music, $data_init, $format_
         <?php endif; ?>
     </div>
 
-    <!-- LOAD MORE -->
+    <!-- LOAD MORE (outside #music-list, never replaced, only URL updated via JS) -->
     <?php if ($total_music > 10): ?>
         <div id="load-more-music" class="pt-6">
-            <button hx-get="load_more_music.php?offset=10&format=<?= $format_filter ?>&artist=<?= urlencode($artist_filter) ?>"
+            <button type="button" id="load-more-btn"
+                hx-get="load_more_music.php?offset=10&format=<?= $format_filter ?>&artist=<?= urlencode($artist_filter) ?>"
                 hx-target="#music-list"
                 hx-swap="beforeend"
                 class="w-full py-4 border border-dashed border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-[.25em] text-gray-700 hover:text-orange-500 hover:border-orange-500/30 transition-all">
@@ -109,6 +110,11 @@ if (isset($_GET['content_only'])) {
         /* Pastikan area kosong di mini-player tidak memicu pointer tangan */
         #mini-player-index {
             cursor: default !important;
+        }
+
+        /* Cegah browser menggunakan tombol load-more sebagai scroll anchor */
+        #load-more-music {
+            overflow-anchor: none;
         }
 
         /* Berikan kursor pointer KHUSUS untuk thumbnail mini player */
@@ -906,8 +912,11 @@ if (isset($_GET['content_only'])) {
             if (typeof setupPlaylistItemClicks === 'function') {
                 setupPlaylistItemClicks();
             }
-            // Auto-scroll sidebar desktop ke artist yg aktif jika container diganti
-            if (isContentUpdate) {
+            // Auto-scroll sidebar desktop ke artist yg aktif HANYA ketika filter/ganti artist,
+            // BUKAN saat load-more (sidebar tidak di-render ulang, jadi tidak perlu)
+            // Cek via e.detail.elt, bukan targetId, karena load-more skrg target #music-list
+            const isFromLoadMore = e.detail?.elt?.closest?.('#load-more-music') != null;
+            if (isContentUpdate && !isFromLoadMore) {
                 scrollToActiveArtistDesktop();
             }
         });
@@ -1057,6 +1066,25 @@ if (isset($_GET['content_only'])) {
                 btn.classList.remove('text-orange-500', 'font-bold');
             });
         };
+
+        // ── Load More: handle meta div & update button URL ────────────
+        document.addEventListener('htmx:afterSwap', (e) => {
+            const meta = document.getElementById('load-more-meta');
+            if (!meta) return;
+
+            const btn = document.getElementById('load-more-btn');
+            const loadMoreDiv = document.getElementById('load-more-music');
+
+            if (meta.dataset.nextUrl && btn && loadMoreDiv) {
+                // Update button URL with new offset - button stays in DOM, never replaced
+                btn.setAttribute('hx-get', meta.dataset.nextUrl);
+            } else if (meta.dataset.end && loadMoreDiv) {
+                // End of collection - replace with end message
+                loadMoreDiv.outerHTML = '<div class="py-10 text-center text-[9px] text-gray-800 uppercase tracking-[.4em]">End of Collection</div>';
+            }
+
+            meta.remove();
+        });
 
         // Keyboard shortcuts untuk mini player index
         document.addEventListener('keydown', (e) => {
