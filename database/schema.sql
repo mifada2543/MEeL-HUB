@@ -50,7 +50,7 @@ INSERT INTO `users` (`id`, `username`, `role`, `password`, `is_active`) VALUES
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS `video` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) NOT NULL,
+  `title` text NOT NULL,
   `description` text DEFAULT NULL,
   `filename` text NOT NULL,
   `thumbnail` varchar(255) DEFAULT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS `video` (
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS `music` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) NOT NULL,
+  `title` text NOT NULL,
   `artist` varchar(100) DEFAULT NULL,
   `album` varchar(100) DEFAULT NULL,
   `description` text DEFAULT NULL,
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS `music` (
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS `books` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) NOT NULL,
+  `title` text NOT NULL,
   `author` varchar(100) DEFAULT NULL,
   `type` enum('manga','pdf') NOT NULL,
   `has_chapters` tinyint(1) DEFAULT 0,

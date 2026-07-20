@@ -1,4 +1,5 @@
 <?php
+require_once '../modules/helpers.php';
 // Pastikan session sudah dimulai jika menggunakan $_SESSION
 if (session_status() === PHP_SESSION_NONE) {
     session_name('meel');
@@ -7,7 +8,6 @@ if (session_status() === PHP_SESSION_NONE) {
 
 include '../auth/config.php';
 include '../modules/MediaInteraction.php';
-include '../modules/helpers.php';
 
 // 🔒 FIX CSRF: Verifikasi token untuk AJAX POST
 if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {

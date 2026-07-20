@@ -62,18 +62,16 @@ class MediaLibrary
                 $stmt->bind_param("iii", $exclude, $limit, $offset);
             }
         } else {
-            $like = "%$q%";
-            $prefix = "$q%";
             $stmt = $this->conn->prepare(
                 "SELECT v.*, u.username AS uploader_name,
-                 (CASE WHEN v.title LIKE ? THEN 15 WHEN v.search_metadata LIKE ? THEN 5 ELSE 0 END) AS rank
+                 MATCH(v.title, v.search_metadata) AGAINST (? IN BOOLEAN MODE) AS rank
                  FROM video v
                  JOIN users u ON v.user_id = u.id
-                 WHERE (v.title LIKE ? OR v.search_metadata LIKE ?) AND v.id != ?
+                 WHERE MATCH(v.title, v.search_metadata) AGAINST (? IN BOOLEAN MODE) AND v.id != ?
                  ORDER BY rank DESC, v.upload_date DESC LIMIT ? OFFSET ?"
             );
-            // DIUBAH: Ditambahkan placeholder limit & offset untuk paginasi/load-more
-            $stmt->bind_param("ssssiii", $prefix, $like, $like, $like, $exclude, $limit, $offset);
+            // Prepared statement handle escaping natively — aman untuk MySQL 5.7+
+            $stmt->bind_param("ssiii", $q, $q, $exclude, $limit, $offset);
         }
         $stmt->execute();
         return $stmt->get_result();
@@ -137,17 +135,16 @@ class MediaLibrary
                 $stmt = $this->conn->prepare("SELECT * FROM music ORDER BY id DESC LIMIT 10");
             }
         } else {
-            $like   = "%$q%";
-            $prefix = "$q%";
             $stmt   = $this->conn->prepare(
                 "SELECT m.*, u.username AS uploader,
-                 (CASE WHEN m.title LIKE ? THEN 10 WHEN m.artist LIKE ? THEN 15 ELSE 0 END) AS rank
+                 (MATCH(m.title, m.artist, m.search_metadata) AGAINST (? IN BOOLEAN MODE)) AS rank
                  FROM music m
                  JOIN users u ON m.user_id = u.id
-                 WHERE (m.title LIKE ? OR m.artist LIKE ? OR m.search_metadata LIKE ?) AND m.id != ?
+                 WHERE MATCH(m.title, m.artist, m.search_metadata) AGAINST (? IN BOOLEAN MODE) AND m.id != ?
                  ORDER BY rank DESC, m.title ASC LIMIT 20"
             );
-            $stmt->bind_param("sssssi", $prefix, $prefix, $like, $like, $like, $exclude);
+            // Prepared statement handle escaping natively — aman untuk MySQL 5.7+
+            $stmt->bind_param("ssi", $q, $q, $exclude);
         }
         $stmt->execute();
         return $stmt->get_result();

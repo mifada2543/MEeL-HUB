@@ -1,10 +1,9 @@
 <?php
+require_once '../modules/helpers.php';
 // Error logging aktif, display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 include '../auth/auth.php';
-include '../auth/config.php';
-include '../modules/helpers.php';
 include '../modules/Uploader.php';
 require_once '../modules/GarbageCollector.php';
 GarbageCollector::run();
@@ -15,11 +14,8 @@ $user          = $_SESSION['username'];
 $user_id       = $_SESSION['user_id'];
 $alert_message = "";
 
-// Ambil role user
-$stmt_role = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
-$stmt_role->bind_param("i", $user_id);
-$stmt_role->execute();
-$user_role = $stmt_role->get_result()->fetch_assoc()['role'] ?? 'user';
+// Ambil role user — via shared helper (cache otomatis per request)
+$user_role = get_user_role($conn, $user_id);
 $is_admin  = ($user_role === 'admin');
 
 // Ambil jumlah upload user hari ini

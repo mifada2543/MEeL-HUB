@@ -15,6 +15,18 @@ $action  = $_POST['action'] ?? '';
 
 function redirect(string $url): never
 {
+    // Validasi redirect — hanya izinkan URL relatif atau internal
+    $allowed_prefixes = ['watch.php', 'view_playlist.php', 'index.php'];
+    $safe = false;
+    foreach ($allowed_prefixes as $prefix) {
+        if (str_starts_with($url, $prefix)) {
+            $safe = true;
+            break;
+        }
+    }
+    if (!$safe) {
+        $url = 'index.php';
+    }
     header("Location: $url");
     exit;
 }

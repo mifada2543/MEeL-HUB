@@ -1,6 +1,6 @@
 <?php
+require_once 'modules/helpers.php';
 include 'auth/config.php';
-include 'modules/helpers.php';
 $back_url = 'index.php';
 
 if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {

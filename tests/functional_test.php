@@ -115,7 +115,7 @@ function testPhpSyntax(): void {
         $rel = str_replace(PROJECT_ROOT . '/', '', $path);
         $output = [];
         $exit_code = 0;
-        exec("php -l " . escapeshellarg($path) . " 2>&1", $output, $exit_code);
+        exec(PHP_BINARY . " -l " . escapeshellarg($path) . " 2>&1", $output, $exit_code);
         if ($exit_code === 0) {
             $passed++;
         } else {

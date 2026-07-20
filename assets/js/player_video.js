@@ -401,7 +401,7 @@ function setupMeelPlayerEvents() {
           void startPlaybackStartTimeout()
         );
       function s() {
-        if (i && parseFloat(i) > 10) {
+        if (i && parseFloat(i) > 10 && (!player.duration || parseFloat(i) < player.duration - 10)) {
           const a = Math.floor(i / 60),
             r = Math.floor(i % 60);
           (o && (o.innerText = `${a}:${r.toString().padStart(2, "0")}`),
@@ -664,15 +664,15 @@ function setupMeelPlayerEvents() {
       if (e_fsWrap) {
         e_fsWrap._meelSavedRatio = e_fsWrap.style.aspectRatio || "";
         e_fsWrap.style.setProperty("aspect-ratio", "unset", "important");
-        e_fsWrap.style.setProperty("height", "100dvh", "important");
-        e_fsWrap.style.setProperty("width", "100dvw", "important");
+        e_fsWrap.style.setProperty("height", "100vh", "important");
+        e_fsWrap.style.setProperty("width", "100vw", "important");
         e_fsWrap.style.setProperty("border-radius", "0", "important");
       }
       if (e_fsGlow) {
         e_fsGlow._meelSavedHeight = e_fsGlow.style.height || "";
         e_fsGlow._meelSavedWidth = e_fsGlow.style.width || "";
-        e_fsGlow.style.setProperty("height", "100dvh", "important");
-        e_fsGlow.style.setProperty("width", "100dvw", "important");
+        e_fsGlow.style.setProperty("height", "100vh", "important");
+        e_fsGlow.style.setProperty("width", "100vw", "important");
       }
       const e = player.elements.container,
         t = e ? e.querySelector(".plyr__video-wrapper") : null;

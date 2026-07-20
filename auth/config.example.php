@@ -2,6 +2,11 @@
 /**
  * MEeL-HUB — Contoh Konfigurasi Aplikasi
  * 
+ * ★ PERBAIKAN v2: Autoloader terintegrasi
+ *    Semua class (Uploader, Transcoder, MediaLibrary, dll) akan
+ *    otomatis di-load tanpa require_once manual.
+ *    Lihat modules/autoload.php untuk daftar class yang tersedia.
+ * 
  * Copy file ini ke config.php dan sesuaikan dengan environment Anda:
  *   cp config.example.php config.php
  * 
@@ -29,6 +34,17 @@ $conn = new mysqli($server, $username, $password, $db);
 if ($conn->connect_error) {
     die("[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $conn->connect_error);
 }
+
+// ════════════════════════════════════════════════════════════════
+// BASE URL (PATH PORTABILITY)
+// ════════════════════════════════════════════════════════════════
+// Gunakan untuk menggantikan hardcoded /MEeL/ prefix di redirect dan link.
+// Dihitung dari lokasi file ini (auth/config.php), sehingga konsisten
+// meskipun di-include dari berbagai kedalaman direktori.
+$project_root = str_replace('\\', '/', dirname(__DIR__));
+$doc_root     = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '/');
+$relative     = substr($project_root, strlen(rtrim($doc_root, '/')));
+define('MEEL_BASE_URL', rtrim($relative, '/'));
 
 // ════════════════════════════════════════════════════════════════
 // MEDIA STORAGE PATHS (TERPUSAT)
@@ -84,6 +100,11 @@ ini_set('session.gc_maxlifetime', $timeout);
 session_set_cookie_params($timeout, "/");
 session_name('meel');
 session_start();
+
+// ════════════════════════════════════════════════════════════════
+// AUTOLOADER
+// ════════════════════════════════════════════════════════════════
+require_once __DIR__ . '/../modules/autoload.php';
 
 // ── Security Headers ──
 if (!headers_sent()) {

@@ -1,4 +1,5 @@
 <?php
+require_once 'modules/helpers.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ignore_user_abort(true);
@@ -10,7 +11,6 @@ require_once 'auth/auth.php';
 require_once 'auth/config.php';
 require_once 'modules/activity_logger.php';
 require_once 'modules/Transcoder.php';
-include 'modules/helpers.php';
 require_once 'modules/GarbageCollector.php';
 GarbageCollector::run();
 

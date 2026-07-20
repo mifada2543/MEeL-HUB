@@ -1,7 +1,7 @@
 <?php
 // Error logging aktif, display_errors dimatikan untuk keamanan production
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
+ini_set('display_errors', 1);
 session_name('meel');
 session_start();
 
@@ -216,7 +216,7 @@ session_write_close();
                                 <?= htmlspecialchars($v['uploader']) ?>
                             </a>
                             <div class="text-[10px] text-gray-300 mt-0.5">
-                                <?= number_format($v['views']) ?> tayangan &nbsp;•&nbsp; <?= time_ago($v['upload_date']) ?>
+                                <?= number_format($v['views'] ?? 0) ?> tayangan &nbsp;•&nbsp; <?= time_ago($v['upload_date']) ?>
                             </div>
                         </div>
                     </div>
@@ -229,7 +229,7 @@ session_write_close();
                             <div id="like-dislike-container" class="flex items-center gap-2">
                                 <button
                                     hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
-                                    hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"like","csrf_token":"<?= $_SESSION['csrf_token'] ?>"}'
+                                    hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"like","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
                                     title="Suka video"
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'like'
@@ -240,7 +240,7 @@ session_write_close();
                                 </button>
                                 <button
                                     hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
-                                    hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"dislike","csrf_token":"<?= $_SESSION['csrf_token'] ?>"}'
+                                    hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
                                     title="Tidak suka video"
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'dislike'
@@ -280,7 +280,7 @@ session_write_close();
                             <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-300">Komentar</span>
                         </div>
                         <div class="p-4 sm:p-6">
-                            <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">                                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                            <form action="watch.php?id=<?= $id ?>" method="post" class="mb-6">                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                                         <textarea name="comments"
                                             class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-red-500/40 min-h-[80px] resize-y transition-all"
                                             placeholder="Tulis komentar..." required></textarea>
@@ -382,7 +382,7 @@ session_write_close();
                             <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
                                 <?= htmlspecialchars($r['title']) ?>
                             </div>
-                            <div class="text-[9px] text-gray-300 mt-1"><?= number_format($r['views']) ?> views</div>
+                            <div class="text-[9px] text-gray-300 mt-1"><?= number_format($r['views'] ?? 0) ?> views</div>
                             <?php if (!empty($r['uploader'])): ?>
                                 <div class="text-[9px] font-bold text-red-500/60 uppercase tracking-wider mt-0.5 truncate">
                                     <?= htmlspecialchars($r['uploader']) ?>

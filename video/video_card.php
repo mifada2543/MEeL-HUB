@@ -31,7 +31,7 @@
 
         <!-- VIEWS BADGE — diposisikan dengan absolute di pojok kanan bawah -->
         <div class="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] text-gray-400 font-bold">
-            <?= number_format($v['views']) ?> views
+            <?= number_format($v['views'] ?? 0) ?> views
         </div>
     </div>
 

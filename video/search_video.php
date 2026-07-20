@@ -28,7 +28,7 @@ if ($data && $data->num_rows > 0) {
                     <h5 class="text-[11px] font-bold text-gray-300 line-clamp-2 uppercase group-hover:text-red-400 transition leading-snug">
                         <?= htmlspecialchars($v['title']) ?>
                     </h5>
-                    <p class="text-[9px] text-gray-700 mt-1"><?= number_format($v['views']) ?> views</p>
+                    <p class="text-[9px] text-gray-700 mt-1"><?= number_format($v['views'] ?? 0) ?> views</p>
                     <?php if (!empty($v['uploader_name'])): ?>
                         <p class="text-[10px] font-bold text-red-600/70 uppercase tracking-widest mt-0.5 truncate">
                             <?= htmlspecialchars($v['uploader_name']) ?>

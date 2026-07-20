@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/japanese.php';
 require_once __DIR__ . '/GarbageCollector.php';
 
@@ -22,32 +23,14 @@ class Uploader
         $this->ffmpeg_bin  = $this->resolveBinary(['/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
         $this->ffprobe_bin = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
 
-        $stmt = $this->conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
-        $stmt->bind_param("i", $this->user_id);
-        $stmt->execute();
-        $res = $stmt->get_result()->fetch_assoc();
-        $this->user_role = $res['role'] ?? 'user';
+        $this->user_role = get_user_role($this->conn, $this->user_id);
     }
 
     // ─── PRIVATE HELPERS ──────────────────────────────────────────────────────
 
     private function resolveBinary(array $candidates): string
     {
-        foreach ($candidates as $candidate) {
-            if (strpos($candidate, '/') !== false) {
-                if (is_executable($candidate)) {
-                    return $candidate;
-                }
-                continue;
-            }
-
-            $resolved = trim((string)shell_exec("command -v " . escapeshellarg($candidate) . " 2>/dev/null"));
-            if ($resolved !== '') {
-                return $resolved;
-            }
-        }
-
-        return $candidates[0];
+        return resolve_binary($candidates);
     }
 
     private function checkRateLimit(string $table): array
@@ -243,7 +226,7 @@ class Uploader
             $thumb_candidate = $this->getUniqueFilename($t_clean, "thumb.webp", $thumb_dir);
             $abs_out         = $thumb_dir . $thumb_candidate;
 
-            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($files['thumbnail']['tmp_name']) . " -vf \"scale='min(256,iw)':-1\" -c:v libwebp -q:v 78 " . escapeshellarg($abs_out) . " 2>&1");
+            shell_exec("export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($files['thumbnail']['tmp_name']) . " -vf \"scale='min(256,iw)':-1\" -c:v libwebp -q:v 78 " . escapeshellarg($abs_out) . " 2>&1");
 
             if (file_exists($abs_out) && filesize($abs_out) > 0) {
                 $thumb_name = $thumb_candidate;
@@ -256,7 +239,7 @@ class Uploader
             $thumb_candidate = $this->getUniqueFilename($thumb_base, "thumb.webp", $thumb_dir);
             $abs_out         = $thumb_dir . $thumb_candidate;
 
-            shell_exec("export LD_LIBRARY_PATH=''; /usr/bin/ffmpeg -y -i " . escapeshellarg($target_file) . " -an -vframes 1 -vf \"scale='min(256,iw)':-1\" -c:v libwebp -q:v 78 " . escapeshellarg($abs_out) . " 2>&1");
+            shell_exec("export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($target_file) . " -an -vframes 1 -vf \"scale='min(256,iw)':-1\" -c:v libwebp -q:v 78 " . escapeshellarg($abs_out) . " 2>&1");
 
             if (file_exists($abs_out) && filesize($abs_out) > 0) {
                 $thumb_name = $thumb_candidate;

@@ -1,4 +1,5 @@
 <?php
+require_once '../modules/helpers.php';
 /**
  * read_pdf.php — PDF viewer dengan PWA support
  * 
@@ -11,7 +12,6 @@
 require_once '../auth/auth.php';
 require_once '../auth/config.php';
 require_once '../modules/MediaLibrary.php';
-include '../modules/helpers.php';
 
 // ── Validasi ID ──────────────────────────────────────────────────────────────
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
