@@ -233,29 +233,88 @@ function _scanSubdirs(string $dir): array {
             background: rgba(11, 14, 20, 0.97);
         }
 
-        /* PDF loading shimmer (blob fetch approach) */
+        /* ── PDF viewer: iframe (desktop) vs redirect card (mobile) ── */
         .pdf-body {
             position: relative;
             width: 100%;
             height: 100%;
         }
-        .pdf-body.loading::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            z-index: 1;
-            background:
-                linear-gradient(110deg, #0f1318 30%, #161b24 50%, #0f1318 70%);
-            background-size: 200% 100%;
-            animation: pdfShimmer 1.5s ease-in-out infinite;
-            pointer-events: none;
+        /* Desktop: iframe */
+        .pdf-iframe-wrap {
+            display: block;
+            width: 100%;
+            height: 100%;
         }
-        @keyframes pdfShimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-        .pdf-body.loaded::after {
+        /* Mobile: redirect card (hidden on desktop) */
+        .pdf-mobile-card {
             display: none;
+            width: 100%;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: #0f1318;
+        }
+        .pdf-card-inner {
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        .pdf-card-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            border-radius: 20px;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pdf-card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #f0f2f7;
+            margin-bottom: 0.3rem;
+            line-height: 1.3;
+        }
+        .pdf-card-meta {
+            font-size: 0.65rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            margin-bottom: 2rem;
+        }
+        .pdf-card-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            width: 100%;
+            padding: 0.9rem 1.8rem;
+            background: #7c3aed;
+            color: #fff;
+            border-radius: 14px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 8px 24px rgba(124,58,237,.3);
+            transition: all 0.25s;
+        }
+        .pdf-card-btn:hover {
+            background: #6d28d9;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(124,58,237,.4);
+        }
+        .pdf-card-hint {
+            font-size: 0.6rem;
+            color: #4b5563;
+            margin-top: 1rem;
+        }
+        @media (max-width: 639px) {
+            .pdf-iframe-wrap { display: none; }
+            .pdf-mobile-card { display: flex; }
+            .pdf-info-bar { display: none; }
         }
     </style>
 </head>
@@ -321,15 +380,32 @@ function _scanSubdirs(string $dir): array {
                 : number_format($pdf_size / 1024, 1) . ' KB';
             ?>
             <div class="pdf-view">
-                <!-- PDF viewer via blob fetch — works on desktop & mobile -->
-                <div class="pdf-body" id="readPdfBody">
-                    <iframe id="pdfFrame"
+                <!-- ═════ DESKTOP: iframe PDF viewer ═════ -->
+                <div class="pdf-body pdf-iframe-wrap" id="readPdfBody">
+                    <iframe src="read_pdf.php?id=<?= (int)$book['id'] ?>&raw=1"
+                            id="pdfFrame"
                             title="PDF Viewer"
                             style="width:100%;height:100%;border:none;display:block;"></iframe>
-                    <!-- Loading shimmer (CSS) & fallback (JS on error) -->
                 </div>
 
-                <!-- Bottom info bar — selalu terlihat -->
+                <!-- ═════ MOBILE: card redirect ke read_pdf.php → api/pdf.php ═════ -->
+                <div class="pdf-body pdf-mobile-card">
+                    <div class="pdf-card-inner">
+                        <div class="pdf-card-icon">
+                            <i data-lucide="file-text" class="w-10 h-10 text-purple-400"></i>
+                        </div>
+                        <h2 class="pdf-card-title"><?= htmlspecialchars($book['title']) ?></h2>
+                        <p class="pdf-card-meta">Dokumen PDF &middot; <?= $pdf_size_f ?></p>
+                        <a href="read_pdf.php?id=<?= (int)$book['id'] ?>"
+                           class="pdf-card-btn">
+                            <i data-lucide="external-link" class="w-4 h-4"></i>
+                            Buka PDF
+                        </a>
+                        <p class="pdf-card-hint">Akan dialihkan ke pembaca PDF</p>
+                    </div>
+                </div>
+
+                <!-- Bottom info bar -->
                 <div class="pdf-info-bar">
                     <div class="pdf-info-left">
                         <span class="pdf-info-title"><?= htmlspecialchars($book['title']) ?></span>
@@ -345,49 +421,16 @@ function _scanSubdirs(string $dir): array {
             </div>
 
             <script>
-            (async function() {
-                const body = document.getElementById('readPdfBody');
-                const frame = document.getElementById('pdfFrame');
-                if (!frame || !body) return;
-
-                // Loading shimmer via CSS class
-                body.classList.add('loading');
-
-                try {
-                    const pdfUrl = '../controllers/api/pdf.php?id=<?= (int)$book['id'] ?>';
-                    const res = await fetch(pdfUrl, {
-                        credentials: 'same-origin'
-                    });
-
-                    if (!res.ok) {
-                        throw new Error('HTTP ' + res.status);
-                    }
-
-                    const blob = await res.blob();
-
-                    if (!blob.type.includes('pdf')) {
-                        throw new Error('Bukan PDF');
-                    }
-
-                    const blobUrl = URL.createObjectURL(blob);
-                    frame.src = blobUrl;
-                    body.classList.remove('loading');
-                    body.classList.add('loaded');
-
-                } catch (err) {
-                    console.error('[PDF]', err);
-                    body.classList.remove('loading');
-                    var fbTitle = <?= json_encode($book['title'], JSON_HEX_TAG | JSON_HEX_APOS) ?>;
-                    var fbId    = <?= json_encode((int)$book['id']) ?>;
-                    body.innerHTML = '<div class="pdf-fallback-inner" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;z-index:2;background:#0f1318;">'
-                        + '<div class="pdf-fallback-icon"><i data-lucide="file-text" class="w-10 h-10 text-purple-400"></i></div>'
-                        + '<h2 class="pdf-fallback-title">' + fbTitle + '</h2>'
-                        + '<p class="pdf-fallback-desc">Gagal memuat PDF. Coba buka langsung:</p>'
-                        + '<a href="read_pdf.php?id=' + fbId + '" class="pdf-open-btn">'
-                        + '<i data-lucide="external-link" class="w-4 h-4"></i> Buka PDF</a>'
-                        + '</div>';
-                    lucide.createIcons();
-                }
+            // Desktop fallback: jika iframe gagal, alihkan ke read_pdf.php
+            (function() {
+                var frame = document.getElementById('pdfFrame');
+                if (!frame) return;
+                // Jika lewat 10 detik iframe masih kosong, redirect ke read_pdf.php
+                var timeout = setTimeout(function() {
+                    window.location.href = 'read_pdf.php?id=<?= (int)$book['id'] ?>';
+                }, 10000);
+                frame.addEventListener('load', function() { clearTimeout(timeout); });
+                frame.addEventListener('error', function() { clearTimeout(timeout); });
             })();
             </script>
 
