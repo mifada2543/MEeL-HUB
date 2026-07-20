@@ -22,7 +22,8 @@
         <a href="watch.php?id=<?= $v['id'] ?>"
            class="absolute inset-0 flex items-center justify-center
                   opacity-0 group-hover:opacity-100 bg-black/50 transition-opacity duration-300"
-           aria-label="Tonton video <?= htmlspecialchars($v['title']) ?>">
+           aria-label="Tonton video <?= htmlspecialchars($v['title']) ?>"
+           title="Tonton video <?= htmlspecialchars($v['title']) ?>">
             <div class="w-11 h-11 bg-red-600 rounded-full flex items-center justify-center shadow-xl
                         scale-90 group-hover:scale-100 transition-transform duration-300">
                 <i data-lucide="play" class="fill-white text-white w-5 h-5 ml-0.5"></i>
@@ -39,7 +40,8 @@
     <div class="px-3 py-3">
         <a href="watch.php?id=<?= $v['id'] ?>"
            class="block text-[12px] font-bold text-gray-300 line-clamp-2 leading-snug
-                  hover:text-red-400 transition-colors">
+                  hover:text-red-400 transition-colors"
+           title="<?= htmlspecialchars($v['title']) ?>">
             <?= htmlspecialchars($v['title']) ?>
         </a>
         <?php if (!empty($v['upload_date'])): ?>

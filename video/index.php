@@ -74,7 +74,7 @@ $total      = $library->countVideos();
                 </div>
             </div>
 
-            <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0" title="MEeL Music">
+            <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
                 <?php include '../partials/nav.php'; ?>
             </div>
         </div>

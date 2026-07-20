@@ -45,11 +45,11 @@ function renderLibraryContent($artist_filter, $total_music, $data_init, $format_
 
     <!-- LOAD MORE (outside #music-list, never replaced, only URL updated via JS) -->
     <?php if ($total_music > 10): ?>
-        <div id="load-more-music" class="pt-6">
-            <button type="button" id="load-more-btn"
+        <div id="load-more-music" class="pt-6">                <button type="button" id="load-more-btn"
                 hx-get="load_more_music.php?offset=10&format=<?= $format_filter ?>&artist=<?= urlencode($artist_filter) ?>"
                 hx-target="#music-list"
                 hx-swap="beforeend"
+                title="Muat lebih banyak lagu"
                 class="w-full py-4 border border-dashed border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-[.25em] text-gray-700 hover:text-orange-500 hover:border-orange-500/30 transition-all">
                 Load More
             </button>
@@ -164,6 +164,7 @@ if (isset($_GET['content_only'])) {
                     hx-include="#m-search"
                     hx-target="#music-list"
                     hx-indicator="#search-indicator"
+                    title="Cari lagu"
                     aria-label="Cari lagu"
                     class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
                     <span class="hidden sm:inline">Cari</span>
@@ -316,6 +317,7 @@ if (isset($_GET['content_only'])) {
 
                                 <button type="button"
                                     onclick="toggleArtistDropdown()"
+                                    title="Filter berdasarkan artis"
                                     class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
                                     <span class="truncate"><?= $artist_filter === 'all' ? 'All Collections' : htmlspecialchars($artist_filter) ?></span>
                                     <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
@@ -355,6 +357,7 @@ if (isset($_GET['content_only'])) {
                                 <div class="relative w-full z-[100]" id="custom-playlist-dropdown">
                                     <button type="button"
                                         onclick="togglePlaylistDropdown()"
+                                        title="Pilih playlist"
                                         class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
                                         <span class="truncate" id="playlist-dropdown-label">Pilih Playlist...</span>
                                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
@@ -411,7 +414,7 @@ if (isset($_GET['content_only'])) {
 
             <!-- Tengah: kontrol -->
             <div class="mp-controls">
-                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulang" aria-label="Ulang">
+                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulangi lagu" aria-label="Ulang">
                     <i data-lucide="repeat" style="width:15px;height:15px;"></i>
                 </button>
                 <button class="mp-btn mp-btn-ghost" onclick="miniPrevIndex()" id="mp-prev-btn-index" title="Sebelumnya" aria-label="Lagu Sebelumnya">
@@ -432,7 +435,7 @@ if (isset($_GET['content_only'])) {
                     <span class="mp-time-sep">/</span>
                     <span id="mini-duration-index">0:00</span>
                 </div>
-                <button class="mp-btn mp-btn-ghost mp-close" onclick="closeMiniPlayerIndex()" title="Tutup" aria-label="Tutup mini player">
+                <button class="mp-btn mp-btn-ghost mp-close" onclick="closeMiniPlayerIndex()" title="Tutup mini player" aria-label="Tutup mini player">
                     <i data-lucide="x" style="width:16px;height:16px;"></i>
                 </button>
             </div>

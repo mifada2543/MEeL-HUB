@@ -118,7 +118,7 @@ session_write_close();
 
     <div id="mobile-search-overlay">
         <button onclick="document.getElementById('mobile-search-overlay').classList.remove('open')"
-            class="text-gray-600 flex-shrink-0">
+            class="text-gray-600 flex-shrink-0" title="Tutup pencarian">
             <i data-lucide="arrow-left" class="w-5 h-5"></i>
         </button>
         <div class="relative flex-1">
@@ -165,11 +165,13 @@ session_write_close();
                             <p id="resume-countdown" class="text-[10px] text-gray-300 italic mb-5">Otomatis ulang dalam 15s...</p>
                             <div class="flex gap-2">
                                 <button id="btn-resume"
-                                    class="flex-1 bg-red-600 hover:bg-red-500 text-white font-black uppercase tracking-wider rounded-xl transition-all border-none cursor-pointer">
+                                    class="flex-1 bg-red-600 hover:bg-red-500 text-white font-black uppercase tracking-wider rounded-xl transition-all border-none cursor-pointer"
+                                    title="Lanjutkan menonton dari posisi terakhir">
                                     Lanjut
                                 </button>
                                 <button id="btn-restart"
-                                    class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black uppercase tracking-wider rounded-xl border border-white/10 cursor-pointer transition-all">
+                                    class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black uppercase tracking-wider rounded-xl border border-white/10 cursor-pointer transition-all"
+                                    title="Mulai ulang dari awal">
                                     Ulang
                                 </button>
                             </div>
@@ -223,7 +225,8 @@ session_write_close();
                     <div class="flex items-center gap-2 flex-wrap">
                         <?php if (isset($_SESSION['username'])): ?>
                             <a href="../transcode.php?id=<?= $id ?>"
-                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline">
+                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline"
+                                title="Download audio saja">
                                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Audio
                             </a>
                             <div id="like-dislike-container" class="flex items-center gap-2">
@@ -259,8 +262,7 @@ session_write_close();
                         </div>
                         <div class="relative">
                             <p id="desc-text" class="text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap line-clamp-5 transition-all duration-300"><?= htmlspecialchars($v['description']) ?></p>
-                        </div>
-                        <button id="btn-read-more" onclick="toggleDescription()" class="mt-3 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:text-red-400 transition-colors cursor-pointer border-none bg-transparent p-0 hidden">
+                        </div>                                <button id="btn-read-more" onclick="toggleDescription()" class="mt-3 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:text-red-400 transition-colors cursor-pointer border-none bg-transparent p-0 hidden" title="Tampilkan deskripsi lengkap">
                             Selengkapnya
                         </button>
                     </div>
@@ -286,7 +288,8 @@ session_write_close();
                                             placeholder="Tulis komentar..." required></textarea>
                                 <div class="flex justify-end mt-2">
                                     <button name="send"
-                                        class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer">
+                                        class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer"
+                                        title="Kirim komentar">
                                         Kirim
                                     </button>
                                 </div>
@@ -316,7 +319,8 @@ session_write_close();
                                                     <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
                                                         <a href="../controllers/api/delete_comment.php?id=<?= $c['id'] ?>"
                                                             onclick="return meelConfirmLink(event, { title: 'Hapus Komentar', text: 'Hapus komentar ini?', confirmButtonText: 'HAPUS' })"
-                                                            class="text-gray-300 hover:text-red-400 transition-colors no-underline flex-shrink-0">
+                                                            class="text-gray-300 hover:text-red-400 transition-colors no-underline flex-shrink-0"
+                                                            title="Hapus komentar">
                                                             <i data-lucide="trash-2" class="w-3 h-3"></i>
                                                         </a>
                                                     <?php endif; ?>
@@ -329,7 +333,8 @@ session_write_close();
                                                 </p>
                                                 <?php if (isset($_SESSION['user_id'])): ?>
                                                     <button onclick="toggleReply('vid-<?= $c['id'] ?>')"
-                                                        class="text-[10px] font-bold text-gray-500 hover:text-red-400 uppercase tracking-wider mt-2 bg-none border-none cursor-pointer p-0 transition-colors">
+                                                        class="text-[10px] font-bold text-gray-500 hover:text-red-400 uppercase tracking-wider mt-2 bg-none border-none cursor-pointer p-0 transition-colors"
+                                                        title="Balas komentar ini">
                                                         Balas
                                                     </button>
                                                     <div id="vid-<?= $c['id'] ?>" class="hidden mt-3">
@@ -339,7 +344,8 @@ session_write_close();
                                                                 class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-red-500/40 min-w-0"
                                                                 placeholder="Balas @<?= htmlspecialchars($author) ?>..." required>
                                                             <button name="send"
-                                                                class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase px-3 sm:px-4 py-2 rounded-xl border-none cursor-pointer transition-all flex-shrink-0">
+                                                                class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase px-3 sm:px-4 py-2 rounded-xl border-none cursor-pointer transition-all flex-shrink-0"
+                                                                title="Kirim balasan">
                                                                 Kirim
                                                             </button>
                                                         </form>

@@ -14,7 +14,8 @@
        data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
        data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
        data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
-       data-filename="<?= htmlspecialchars($v['filename']) ?>">
+       data-filename="<?= htmlspecialchars($v['filename']) ?>"
+       title="<?= htmlspecialchars($v['title']) ?> — <?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>">
         <?php if (!empty($v['thumbnail'])): ?>
             <img src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
                  alt="<?= htmlspecialchars($v['title']) ?> thumbnail"
@@ -49,17 +50,17 @@
         </div>
     </div>
 
-    <!-- PLAY BUTTON (desktop hover) -->
-    <a href="watch.php?id=<?= $v['id'] ?>"
-       class="music-item-link play-btn hidden md:flex opacity-0 -translate-x-2 transition-all duration-200
-              text-[9px] font-bold uppercase tracking-widest
-              bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-400 flex-shrink-0"
+    <!-- PLAY BUTTON (desktop hover) -->       <a href="watch.php?id=<?= $v['id'] ?>"
+          class="music-item-link play-btn hidden md:flex opacity-0 -translate-x-2 transition-all duration-200
+                 text-[9px] font-bold uppercase tracking-widest
+                 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-400 flex-shrink-0"
        data-music-id="<?= $v['id'] ?>"
        data-title="<?= htmlspecialchars($v['title']) ?>"
        data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
        data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
        data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
-       data-filename="<?= htmlspecialchars($v['filename']) ?>">
+       data-filename="<?= htmlspecialchars($v['filename']) ?>"
+       title="Putar <?= htmlspecialchars($v['title']) ?>">
         Play
     </a>
 </div>

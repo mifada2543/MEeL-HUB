@@ -85,23 +85,23 @@ if ($user->isMember()) {
 
                 <nav class="space-y-1">
                     <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Scope</p>
-                    <a href="?scope=public" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'public' ? 'nav-active' : '' ?>">
+                    <a href="?scope=public" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'public' ? 'nav-active' : '' ?>" title="File publik yang bisa diakses semua orang">
                         <i data-lucide="globe" class="w-5 h-5"></i> Public Space
                     </a>
-                    <a href="?scope=private" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'private' ? 'nav-active' : '' ?>">
+                    <a href="?scope=private" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'private' ? 'nav-active' : '' ?>" title="File pribadi Anda">
                         <i data-lucide="shield-check" class="w-5 h-5"></i> Private Cloud
                     </a>
                 </nav>
 
                 <nav class="mt-10 space-y-1">
                     <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Kategori</p>
-                    <button onclick="showSection('video', this)" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition nav-btn-desktop active">
+                    <button onclick="showSection('video', this)" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition nav-btn-desktop active" title="Tampilkan file video">
                         <i data-lucide="play-circle" class="w-5 h-5 text-red-500"></i> Video
                     </button>
-                    <button onclick="showSection('audio', this)" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition nav-btn-desktop text-gray-400">
+                    <button onclick="showSection('audio', this)" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition nav-btn-desktop text-gray-400" title="Tampilkan file audio">
                         <i data-lucide="music" class="w-5 h-5 text-orange-500"></i> Audio
                     </button>
-                    <button onclick="showSection('dokumen', this)" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition nav-btn-desktop text-gray-400">
+                    <button onclick="showSection('dokumen', this)" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition nav-btn-desktop text-gray-400" title="Tampilkan file dokumen">
                         <i data-lucide="file-text" class="w-5 h-5 text-green-500"></i> Dokumen
                     </button>
                 </nav>
@@ -123,7 +123,7 @@ if ($user->isMember()) {
         <main class="flex-1 p-4 md:p-10 w-full overflow-x-hidden">
             <!-- Mobile Header -->
             <div class="md:hidden flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
-                <div class="flex items-center gap-3" onclick="window.location.href='../index.php'" style="cursor: pointer;">
+                <div class="flex items-center gap-3" onclick="window.location.href='../index.php'" style="cursor: pointer;" title="Kembali ke MEeL HUB">
                     <img src="../assets/MEeL.png" class="w-8 h-8 rounded-lg shadow-lg shadow-blue-500/20" alt="Logo">
                     <div>
                         <h1 class="font-bold text-base leading-none">MEeL <span class="text-blue-500">Cloud</span></h1>
@@ -142,13 +142,13 @@ if ($user->isMember()) {
 
             <!-- Mobile Category Tabs -->
             <div class="md:hidden flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
-                <button onclick="showSection('video', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500 text-blue-500 whitespace-nowrap nav-btn-mobile active font-medium text-xs">
+                <button onclick="showSection('video', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500 text-blue-500 whitespace-nowrap nav-btn-mobile active font-medium text-xs" title="Tampilkan file video">
                     <i data-lucide="play-circle" class="w-4 h-4"></i> Video
                 </button>
-                <button onclick="showSection('audio', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 border border-transparent text-gray-400 whitespace-nowrap nav-btn-mobile font-medium text-xs">
+                <button onclick="showSection('audio', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 border border-transparent text-gray-400 whitespace-nowrap nav-btn-mobile font-medium text-xs" title="Tampilkan file audio">
                     <i data-lucide="music" class="w-4 h-4 text-orange-500"></i> Audio
                 </button>
-                <button onclick="showSection('dokumen', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 border border-transparent text-gray-400 whitespace-nowrap nav-btn-mobile font-medium text-xs">
+                <button onclick="showSection('dokumen', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-800 border border-transparent text-gray-400 whitespace-nowrap nav-btn-mobile font-medium text-xs" title="Tampilkan file dokumen">
                     <i data-lucide="file-text" class="w-4 h-4 text-green-500"></i> Dokumen
                 </button>
             </div>
@@ -194,7 +194,7 @@ if ($user->isMember()) {
                             <div class="h-full bg-gradient-to-r from-blue-500 to-blue-500 transition-all duration-500" style="width: <?= $usagePercentage ?>%"></div>
                         </div>
                     </div>
-                    <a href="index.php?scope=<?= urlencode($currentScope) ?>" class="p-2 hover:bg-gray-800 rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></a>
+                    <a href="index.php?scope=<?= urlencode($currentScope) ?>" class="p-2 hover:bg-gray-800 rounded-lg" title="Refresh halaman"><i data-lucide="refresh-cw" class="w-4 h-4"></i></a>
                 </div>
             <?php endif; ?>
 
@@ -204,14 +204,12 @@ if ($user->isMember()) {
                     <input type="hidden" name="scope" value="<?= htmlspecialchars($currentScope, ENT_QUOTES, 'UTF-8') ?>">
 
                     <div class="flex-1 w-full">
-                        <label for="fileInput" class="flex items-center justify-center gap-3 p-4 bg-black/30 rounded-xl cursor-pointer hover:bg-black/50 transition border border-gray-800">
+                    <label for="fileInput" class="flex items-center justify-center gap-3 p-4 bg-black/30 rounded-xl cursor-pointer hover:bg-black/50 transition border border-gray-800" title="Pilih file untuk diunggah">
                             <i data-lucide="cloud-upload" class="w-6 h-6 text-blue-500"></i>
                             <span id="fileLabel" class="text-sm text-gray-400 font-medium">Tarik file atau klik untuk memilih</span>
                             <input type="file" name="file_drive" id="fileInput" class="hidden" onchange="updateFileName(this)" required>
                         </label>
-                    </div>
-
-                    <button type="submit" name="submit_upload" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20">
+                    </div>                    <button type="submit" name="submit_upload" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20" title="Unggah file yang dipilih">
                         Unggah Berkas <i data-lucide="chevron-right" class="w-4 h-4"></i>
                     </button>
                 </form>
@@ -236,8 +234,7 @@ if ($user->isMember()) {
                 <div class="flex items-center gap-2">
                     <i data-lucide="file" class="w-4 h-4 text-blue-500"></i>
                     <h3 id="previewTitle" class="text-sm font-semibold truncate max-w-[200px] md:max-w-md text-gray-300">Nama File</h3>
-                </div>
-                <button onclick="closePreview()" class="p-2 hover:bg-red-500/20 text-gray-500 hover:text-red-500 rounded-lg transition">
+                </div>                <button onclick="closePreview()" class="p-2 hover:bg-red-500/20 text-gray-500 hover:text-red-500 rounded-lg transition" title="Tutup pratinjau">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>

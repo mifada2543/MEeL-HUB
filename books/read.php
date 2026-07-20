@@ -345,7 +345,7 @@ function _scanSubdirs(string $dir): array {
                 <i data-lucide="arrow-left" class="w-4 h-4 text-gray-500 group-hover:text-green-500 transition-colors"></i>
             </a>
             <div class="min-w-0">
-                <h1 class="text-sm font-bold truncate max-w-[180px] sm:max-w-md text-white/90">
+                <h1 class="text-sm font-bold truncate max-w-[180px] sm:max-w-md text-white/90" title="<?= htmlspecialchars($book['title']) ?>">
                     <?= htmlspecialchars($book['title']) ?>
                 </h1>
                 <div class="flex items-center gap-2 mt-0.5">
@@ -501,7 +501,7 @@ function _scanSubdirs(string $dir): array {
                             <button type="button"
                                 onclick="toggleChDropdown('top')"
                                 class="ch-trigger">
-                                <span class="truncate"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
+                                <span class="truncate" title="<?= $current_chapter ? htmlspecialchars($current_chapter) : 'Pilih chapter' ?>"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
                                 <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 flex-shrink-0"></i>
                             </button>
                             <div id="ch-options-top" class="ch-options hidden">
@@ -616,7 +616,7 @@ function _scanSubdirs(string $dir): array {
                                     <button type="button"
                                         onclick="toggleChDropdown('bottom')"
                                         class="ch-trigger">
-                                        <span class="truncate"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
+                                        <span class="truncate" title="<?= $current_chapter ? htmlspecialchars($current_chapter) : 'Pilih chapter' ?>"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
                                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 flex-shrink-0"></i>
                                     </button>
                                     <div id="ch-options-bottom" class="ch-options hidden">
