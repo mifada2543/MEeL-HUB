@@ -220,6 +220,7 @@ membiarkan Apache mengirim file langsung dari disk tanpa melalui PHP.
    <IfModule xsendfile_module>
        XSendFile on
        XSendFilePath "/opt/lampp/htdocs/MEeL/music/upload/file"
+       XSendFilePath "/opt/lampp/htdocs/MEeL/books/upload/pdf"
    </IfModule>
    ```
 
