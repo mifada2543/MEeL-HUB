@@ -866,6 +866,87 @@ function _scanSubdirs(string $dir): array {
             });
         })();
 
+        // ── Fungsi simpan progress ke localStorage (throttled) ───────────────
+        var _saveTimer = null;
+        function saveProgress(extra) {
+            if (_saveTimer) clearTimeout(_saveTimer);
+            _saveTimer = setTimeout(function() {
+                try {
+                    var pageEl = document.getElementById('current-page-display');
+                    var data = {
+                        id: <?= json_encode((int)$book['id']) ?>,
+                        title: <?= json_encode($book['title'], JSON_HEX_TAG | JSON_HEX_APOS) ?>,
+                        type: <?= json_encode($book['type'], JSON_HEX_TAG) ?>,
+                        ch: <?= json_encode($current_chapter ?: '', JSON_HEX_TAG) ?>,
+                        page: pageEl ? parseInt(pageEl.textContent) || 1 : 1,
+                        total: <?= json_encode($total_pages ?: 0) ?>,
+                        timestamp: Date.now()
+                    };
+                    if (extra) Object.assign(data, extra);
+                    localStorage.setItem('meel_book_progress', JSON.stringify(data));
+                } catch(e) {}
+            }, 3000); // throttle 3 detik
+        }
+        // Simpan saat pertama kali halaman dimuat
+        saveProgress();
+        // Juga simpan saat user meninggalkan halaman
+        window.addEventListener('beforeunload', function() {
+            if (_saveTimer) clearTimeout(_saveTimer);
+            try {
+                var pageEl = document.getElementById('current-page-display');
+                var data = {
+                    id: <?= json_encode((int)$book['id']) ?>,
+                    title: <?= json_encode($book['title'], JSON_HEX_TAG | JSON_HEX_APOS) ?>,
+                    type: <?= json_encode($book['type'], JSON_HEX_TAG) ?>,
+                    ch: <?= json_encode($current_chapter ?: '', JSON_HEX_TAG) ?>,
+                    page: pageEl ? parseInt(pageEl.textContent) || 1 : 1,
+                    total: <?= json_encode($total_pages ?: 0) ?>,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('meel_book_progress', JSON.stringify(data));
+            } catch(e) {}
+        });
+
+        // ── Auto-scroll ke halaman terakhir (dari localStorage) ────────────
+        (function() {
+            try {
+                var raw = localStorage.getItem('meel_book_progress');
+                if (!raw) return;
+                var saved = JSON.parse(raw);
+                // Cuma untuk buku yang sama
+                if (!saved || saved.id != <?= json_encode((int)$book['id']) ?>) return;
+                // Cuma untuk manga, bukan PDF
+                if (!saved.page || saved.page < 2) return;
+
+                var retries = 0;
+                var maxRetries = 20;
+                var targetPage = saved.page;
+
+                function tryScroll() {
+                    if (retries >= maxRetries) return;
+                    retries++;
+
+                    var img = document.querySelector('img.manga-img[data-page="' + targetPage + '"]');
+                    if (!img) {
+                        // Gambar belum di-render, coba lagi nanti
+                        setTimeout(tryScroll, 500);
+                        return;
+                    }
+
+                    var scrollEl = document.getElementById('scroll-container');
+                    var top = img.offsetTop - 56; // offset navbar
+                    if (scrollEl && scrollEl.scrollHeight > scrollEl.clientHeight) {
+                        scrollEl.scrollTo({ top: top, behavior: 'smooth' });
+                    } else {
+                        window.scrollTo({ top: top, behavior: 'smooth' });
+                    }
+                }
+
+                // Mulai coba setelah render awal
+                setTimeout(tryScroll, 600);
+            } catch(e) {}
+        })();
+
         // ── Keyboard shortcuts ──────────────────────────────────────────────
         document.addEventListener('keydown', function(e) {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
