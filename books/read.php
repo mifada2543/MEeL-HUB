@@ -917,6 +917,10 @@ function _scanSubdirs(string $dir): array {
                 if (!saved || saved.id != <?= json_encode((int)$book['id']) ?>) return;
                 // Cuma untuk manga, bukan PDF
                 if (!saved.page || saved.page < 2) return;
+                // Cek kesamaan chapter — kalau beda (misal klik Selanjutnya),
+                // jangan auto-scroll, biarkan mulai dari atas
+                var currentCh = <?= json_encode($current_chapter ?: '', JSON_HEX_TAG) ?>;
+                if (saved.ch !== currentCh) return;
 
                 var retries = 0;
                 var maxRetries = 20;
