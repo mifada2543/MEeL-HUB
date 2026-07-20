@@ -39,7 +39,7 @@ function handleDeleteVideo(int $id, int $user_id, mysqli $conn): array
     ];
 
     // File video (HLS folder atau file mp4 langsung)
-    $video_base = __DIR__ . '/../video/upload/video/';
+    $video_base = __DIR__ . '/../../video/upload/video/';
     $video_file = $video['filename'];
     $video_path = $video_base . $video_file;
     if (file_exists($video_path)) {
@@ -54,7 +54,7 @@ function handleDeleteVideo(int $id, int $user_id, mysqli $conn): array
 
     // Thumbnail
     if (!empty($video['thumbnail'])) {
-        $thumb_path = __DIR__ . '/../video/upload/thumbnail/' . $video['thumbnail'];
+        $thumb_path = __DIR__ . '/../../video/upload/thumbnail/' . $video['thumbnail'];
         if (file_exists($thumb_path)) {
             $pending['files'][] = $thumb_path;
         }
@@ -73,7 +73,7 @@ function handleDeleteVideo(int $id, int $user_id, mysqli $conn): array
     }
 
     // 5. Log aktivitas
-    include_once __DIR__ . '/../modules/activity_logger.php';
+    include_once __DIR__ . '/../../modules/activity_logger.php';
     logActivity($conn, $user_id, 'delete', 'video', $id);
 
     return ['success' => true, 'message' => 'Video dihapus. File akan dibersihkan otomatis.'];
@@ -103,14 +103,14 @@ function handleDeleteMusic(int $id, int $user_id, mysqli $conn): array
     ];
 
     // File audio
-    $audio_path = __DIR__ . '/../music/upload/file/' . $music['filename'];
+    $audio_path = __DIR__ . '/../../music/upload/file/' . $music['filename'];
     if (file_exists($audio_path)) {
         $pending['files'][] = $audio_path;
     }
 
     // Thumbnail
     if (!empty($music['thumbnail'])) {
-        $thumb_path = __DIR__ . '/../music/upload/thumbnail/' . $music['thumbnail'];
+        $thumb_path = __DIR__ . '/../../music/upload/thumbnail/' . $music['thumbnail'];
         if (file_exists($thumb_path)) {
             $pending['files'][] = $thumb_path;
         }
@@ -129,7 +129,7 @@ function handleDeleteMusic(int $id, int $user_id, mysqli $conn): array
     }
 
     // 5. Log aktivitas
-    include_once __DIR__ . '/../modules/activity_logger.php';
+    include_once __DIR__ . '/../../modules/activity_logger.php';
     logActivity($conn, $user_id, 'delete', 'music', $id);
 
     return ['success' => true, 'message' => 'Musik dihapus. File akan dibersihkan otomatis.'];
@@ -138,7 +138,7 @@ function handleDeleteMusic(int $id, int $user_id, mysqli $conn): array
 // ── Simpan daftar file yang akan dihapus nanti ──────────────────────────────
 function savePendingDeletions(array $pending): void
 {
-    $file = __DIR__ . '/../temp/pending_delete.json';
+    $file = __DIR__ . '/../../temp/pending_delete.json';
     $dir = dirname($file);
     if (!is_dir($dir)) {
         @mkdir($dir, 0755, true);
@@ -165,7 +165,7 @@ function savePendingDeletions(array $pending): void
 // ── Bersihkan file yang sudah >30 menit sejak dihapus ───────────────────────
 function cleanupPendingDeletions(): int
 {
-    $file = __DIR__ . '/../temp/pending_delete.json';
+    $file = __DIR__ . '/../../temp/pending_delete.json';
     if (!file_exists($file)) return 0;
 
     $content = @file_get_contents($file);
@@ -225,7 +225,16 @@ function removeDirectoryRecursive(string $dir): void
 function logActivity(mysqli $conn, int $user_id, string $action, string $media_type, int $media_id): void
 {
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
     $stmt = $conn->prepare("INSERT INTO activity_log (user_id, action, media_type, media_id, ip_address) VALUES (?, ?, ?, ?, ?)");
+
+    if ($stmt === false) {
+        // Gagal prepare — log ke error log saja, jangan crash
+        error_log('[MEeL] logActivity gagal: ' . $conn->error);
+        return;
+    }
+
     $stmt->bind_param("issis", $user_id, $action, $media_type, $media_id, $ip);
     $stmt->execute();
+    $stmt->close();
 }

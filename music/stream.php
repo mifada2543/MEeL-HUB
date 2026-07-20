@@ -27,7 +27,7 @@ if (!empty($referer) && !empty($currentHost)) {
 
 include '../auth/config.php';
 require_once '../modules/helpers.php';
-include '../modules/MediaViewer.php';
+include '../modules/media/MediaViewer.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id <= 0) {

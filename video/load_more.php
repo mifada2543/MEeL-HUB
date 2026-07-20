@@ -1,6 +1,6 @@
 <?php
 include '../auth/config.php';
-require_once '../modules/MediaLibrary.php';
+require_once '../modules/media/MediaLibrary.php';
 
 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 15;
 $limit  = 15;

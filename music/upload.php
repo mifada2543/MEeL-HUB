@@ -690,27 +690,49 @@ if (isset($_POST['upload'])) {
             box-shadow: 0 8px 30px rgba(249, 115, 22, .35);
         }
 
-        .btn-secondary {
+        /* ── Auto-metadata button ── */
+        .btn-auto {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, .04);
-            color: #6b7280;
-            font-size: 11px;
-            font-weight: 700;
+            gap: 5px;
+            background: linear-gradient(135deg, rgba(249, 115, 22, .12) 0%, rgba(168, 85, 247, .12) 100%);
+            color: var(--accent);
+            font-size: 9px;
+            font-weight: 800;
             letter-spacing: .12em;
             text-transform: uppercase;
-            padding: 10px 18px;
-            border-radius: 12px;
-            border: 1px solid var(--border-strong);
-            text-decoration: none;
-            transition: background .2s, color .2s;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(249, 115, 22, .2);
+            cursor: pointer;
+            transition: background .2s, transform .15s, box-shadow .2s, border-color .2s;
+            font-family: 'Syne', sans-serif;
         }
 
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, .08);
-            color: #e2e6ef;
+        .btn-auto:hover {
+            background: linear-gradient(135deg, rgba(249, 115, 22, .2) 0%, rgba(168, 85, 247, .2) 100%);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, .15);
+        }
+
+        .btn-auto:disabled {
+            opacity: .4;
+            pointer-events: none;
+            transform: none;
+        }
+
+        .auto-spinner {
+            width: 10px;
+            height: 10px;
+            border: 2px solid rgba(249, 115, 22, .25);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: autoSpin .7s linear infinite;
+        }
+
+        @keyframes autoSpin {
+            to { transform: rotate(360deg); }
         }
 
         .divider {
@@ -1050,16 +1072,6 @@ if (isset($_POST['upload'])) {
                     <?php endif; ?>
                 </div>
 
-                <!-- Nav buttons -->
-                <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto;">
-                    <a href="index.php" class="btn-secondary" style="justify-content:center;">
-                        <i data-lucide="library" style="width:13px;height:13px;"></i> Music Library
-                    </a>
-                    <a href="../video/upload.php" class="btn-secondary" style="justify-content:center;color:#ef4444;border-color:rgba(239,68,68,.2);">
-                        <i data-lucide="film" style="width:13px;height:13px;"></i> Upload Video
-                    </a>
-                </div>
-
             </aside>
 
             <!-- ── RIGHT: Form panel ── -->
@@ -1084,9 +1096,17 @@ if (isset($_POST['upload'])) {
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
                     <?php endif; ?>
 
-                    <!-- Judul -->
+                    <!-- Judul + Auto-fill -->
                     <div class="field-group">
-                        <label class="field-label" for="f-title">Judul Lagu</label>
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <label class="field-label" for="f-title">Judul Lagu</label>
+                            <button type="button" id="btn-auto-meta" class="btn-auto"
+                                onclick="autoFillMetadata()"
+                                title="Isi otomatis dari metadata file audio (ID3/FLAC)">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2"/><path d="M15 16V8"/><path d="M9 10V2"/><path d="M9 22V16"/><path d="M12 10h.01"/><path d="M12 16h.01"/></svg>
+                                Auto
+                            </button>
+                        </div>
                         <input type="text" id="f-title" name="title" required
                             placeholder="Song Title..."
                             class="field-input">
@@ -1365,6 +1385,111 @@ if (isset($_POST['upload'])) {
                 handleCoverFile(coverInput);
             }
         });
+
+        /**
+         * Auto-fill metadata dari file audio via ffprobe di server.
+         * Upload file ke auto_metadata.php → parse response → isi form + cover.
+         */
+        function autoFillMetadata() {
+            const audioInput = document.getElementById('audio-input');
+            if (!audioInput.files || !audioInput.files[0]) {
+                Swal.fire({
+                    title: 'Pilih file dulu!',
+                    text: 'Silakan pilih file audio terlebih dahulu sebelum menggunakan Auto-fill.',
+                    icon: 'warning',
+                    confirmButtonColor: '#f97316',
+                    background: '#0e1118',
+                    color: '#fff'
+                });
+                return;
+            }
+
+            const btn = document.getElementById('btn-auto-meta');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="auto-spinner"></div> Memproses...';
+
+            const formData = new FormData();
+            formData.append('audio', audioInput.files[0]);
+
+            fetch('../controllers/api/auto_metadata.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Isi field text
+                    const hasTitle  = data.title  && data.title.trim() !== '';
+                    const hasArtist = data.artist && data.artist.trim() !== '';
+                    const hasAlbum  = data.album  && data.album.trim() !== '';
+
+                    if (hasTitle)  document.getElementById('f-title').value   = data.title.trim();
+                    if (hasArtist) document.getElementById('f-artist').value  = data.artist.trim();
+                    if (hasAlbum)  document.getElementById('f-album').value   = data.album.trim();
+
+                    // Isi cover art dari metadata
+                    if (data.cover && data.cover.length > 0) {
+                        const preview = document.getElementById('cover-preview');
+                        const iconWrap = document.getElementById('cover-icon-wrap');
+                        const label = document.getElementById('cover-label');
+                        const sub = document.getElementById('cover-sub');
+                        const zone = document.getElementById('cover-zone');
+                        preview.src = 'data:image/jpeg;base64,' + data.cover;
+                        preview.style.display = 'block';
+                        iconWrap.style.display = 'none';
+                        label.textContent = 'Cover dari metadata';
+                        sub.textContent = '';
+                        zone.classList.add('has-file');
+                    }
+
+                    if (!hasTitle && !hasArtist && !hasAlbum && !data.cover) {
+                        Swal.fire({
+                            title: 'Metadata tidak ditemukan',
+                            text: 'File ini tidak memiliki metadata ID3/FLAC yang bisa dibaca.',
+                            icon: 'info',
+                            confirmButtonColor: '#f97316',
+                            background: '#0e1118',
+                            color: '#fff'
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Metadata ditemukan!',
+                            text: 'Formulir telah diisi otomatis dari metadata file audio.',
+                            icon: 'success',
+                            confirmButtonColor: '#f97316',
+                            background: '#0e1118',
+                            color: '#fff',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }
+                } else {
+                    Swal.fire({
+                        title: 'Gagal',
+                        text: data.message || 'Tidak dapat membaca metadata dari file ini.',
+                        icon: 'error',
+                        confirmButtonColor: '#f97316',
+                        background: '#0e1118',
+                        color: '#fff'
+                    });
+                }
+            })
+            .catch(err => {
+                console.error('Auto-metadata error:', err);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Terjadi kesalahan koneksi saat memproses metadata.',
+                    icon: 'error',
+                    confirmButtonColor: '#f97316',
+                    background: '#0e1118',
+                    color: '#fff'
+                });
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2"/><path d="M15 16V8"/><path d="M9 10V2"/><path d="M9 22V16"/><path d="M12 10h.01"/><path d="M12 16h.01"/></svg> Auto';
+            });
+        }
 
         const style = document.createElement('style');
         style.textContent = '@keyframes spin { to { transform:rotate(360deg); } }';

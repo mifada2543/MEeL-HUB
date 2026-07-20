@@ -21,11 +21,11 @@ spl_autoload_register(function (string $class) {
         'System'             => __DIR__ . '/System.php',
         'Uploader'           => __DIR__ . '/Uploader.php',
         'Transcoder'         => __DIR__ . '/Transcoder.php',
-        'MediaLibrary'       => __DIR__ . '/MediaLibrary.php',
-        'BookRepository'     => __DIR__ . '/MediaLibrary.php',
-        'BookUploader'       => __DIR__ . '/MediaLibrary.php',
-        'MediaViewer'        => __DIR__ . '/MediaViewer.php',
-        'MediaInteraction'   => __DIR__ . '/MediaInteraction.php',
+        'MediaLibrary'       => __DIR__ . '/media/MediaLibrary.php',
+        'BookRepository'     => __DIR__ . '/media/MediaLibrary.php',
+        'BookUploader'       => __DIR__ . '/media/MediaLibrary.php',
+        'MediaViewer'        => __DIR__ . '/media/MediaViewer.php',
+        'MediaInteraction'   => __DIR__ . '/media/MediaInteraction.php',
         'GarbageCollector'   => __DIR__ . '/GarbageCollector.php',
         
         // Drive service

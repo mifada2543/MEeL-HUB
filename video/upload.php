@@ -559,30 +559,6 @@ if (isset($_POST['upload'])) {
             transform: translateY(0);
         }
 
-        /* ── Secondary button ── */
-        .btn-secondary {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, .04);
-            color: #cbd5e1;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: .12em;
-            text-transform: uppercase;
-            padding: 10px 18px;
-            border-radius: 12px;
-            border: 1px solid var(--border-strong);
-            text-decoration: none;
-            transition: background .2s, color .2s;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, .08);
-            color: #e2e6ef;
-        }
-
         /* ── Divider ── */
         .divider {
             height: 1px;
@@ -870,16 +846,6 @@ if (isset($_POST['upload'])) {
                             </div>
                         </div>
                     <?php endif; ?>
-                </div>
-
-                <!-- Nav buttons -->
-                <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto;">
-                    <a href="index.php" class="btn-secondary" style="justify-content:center;">
-                        <i data-lucide="library" style="width:13px;height:13px;"></i> Video Library
-                    </a>
-                    <a href="../music/upload.php" class="btn-secondary" style="justify-content:center;color:#f97316;border-color:rgba(249,115,22,.2);">
-                        <i data-lucide="music" style="width:13px;height:13px;"></i> Upload Musik
-                    </a>
                 </div>
 
             </aside>

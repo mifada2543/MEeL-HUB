@@ -6,12 +6,14 @@ require_once '../modules/helpers.php';
  * Menyajikan file PDF dalam halaman HTML yang menyertakan manifest, logo,
  * dan meta tags untuk PWA. Cocok untuk akses langsung di HP (tab baru).
  * 
- * File PDF asli di-serve oleh controllers/pdf.php (binary endpoint).
+ * Dua mode:
+ *  - Normal (?id=X):      Tampilkan halaman HTML dengan navbar + iframe PDF
+ *  - Raw    (?id=X&raw=1): Serve file PDF langsung (digunakan oleh <iframe>)
  */
 
 require_once '../auth/auth.php';
 require_once '../auth/config.php';
-require_once '../modules/MediaLibrary.php';
+require_once '../modules/media/MediaLibrary.php';
 
 // ── Validasi ID ──────────────────────────────────────────────────────────────
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -27,6 +29,30 @@ $book  = $repo->getBookById($id);
 if (!$book || $book['type'] !== 'pdf') {
     header("Location: index.php");
     exit();
+}
+
+// ── RAW MODE: Serve PDF langsung untuk <iframe> ─────────────────────────────
+// Keuntungan:
+//   - Request via <iframe> adalah navigation request (bukan subresource),
+//     sehingga mobile browser tetap mengirim cookie session.
+//   - URL same-origin langsung (bukan blob:) → didukung PDF viewer mobile.
+//   - Tidak perlu fetch JavaScript + blob URL yang bermasalah di HP.
+if (isset($_GET['raw']) && $_GET['raw'] === '1') {
+    $pdf_path = __DIR__ . '/upload/pdf/' . basename($book['path_folder']);
+    if (!file_exists($pdf_path) || !is_readable($pdf_path)) {
+        http_response_code(404);
+        die('File not found');
+    }
+    header('X-Content-Type-Options: nosniff');
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: inline; filename="' . str_replace('"', '', $book['title']) . '.pdf"');
+    header('Content-Length: ' . filesize($pdf_path));
+    header('Cache-Control: public, max-age=86400');
+    header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
+    header('Pragma: public');
+    header('Accept-Ranges: bytes');
+    readfile($pdf_path);
+    exit;
 }
 
 // ── Ambil ukuran file ────────────────────────────────────────────────────────
@@ -152,60 +178,71 @@ $title = htmlspecialchars($book['title']);
             min-height: 0;
             position: relative;
             background: #0f1318;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
         }
-        .pdf-body embed,
-        .pdf-body iframe {
+        /* ── Branded redirect card ── */
+        .pdf-redirect-card {
+            text-align: center;
+            max-width: 420px;
             width: 100%;
-            height: 100%;
-            border: none;
-            display: block;
         }
-        .pdf-fallback-full {
-            display: none;
-        }
-        @media(max-width:639px){
-            .pdf-body embed {
-                display: none;
-            }
-            .pdf-fallback-full {
-                position: absolute;
-                inset: 0;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                background: #0f1318;
-                padding: 2rem;
-                z-index: 2;
-            }
-        }
-        .pdf-fallback-full .icon {
-            width: 72px;
-            height: 72px;
-            margin: 0 auto 1.2rem;
-            border-radius: 18px;
+        .pdf-redirect-card .pdf-redirect-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            border-radius: 20px;
             background: rgba(255,255,255,.04);
             border: 1px solid rgba(255,255,255,.08);
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .pdf-fallback-full h2 {
-            font-size: 1.1rem;
+        .pdf-redirect-card .pdf-redirect-title {
+            font-size: 1.2rem;
             font-weight: 700;
             color: #f0f2f7;
-            margin-bottom: 0.3rem;
-            text-align: center;
+            margin-bottom: .4rem;
+            line-height: 1.3;
         }
-        .pdf-fallback-full p {
-            font-size: 0.7rem;
+        .pdf-redirect-card .pdf-redirect-meta {
+            font-size: .7rem;
             color: #6b7280;
             text-transform: uppercase;
-            letter-spacing: 0.2em;
-            margin-bottom: 1.5rem;
+            letter-spacing: .2em;
+            margin-bottom: 2rem;
         }
-        .pdf-fallback-full .btn {
-            display: inline-flex;
+        /* Loading spinner */
+        .pdf-redirect-loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .loader-ring {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(124,58,237,.15);
+            border-top-color: #7c3aed;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loader-text {
+            font-size: .7rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: .15em;
+            font-weight: 600;
+        }
+        /* Tombol akses langsung (muncul jika redirect gagal) */
+        .pdf-redirect-card .btn {
+            display: none;
             align-items: center;
             gap: 0.5rem;
             padding: 0.75rem 1.8rem;
@@ -218,7 +255,7 @@ $title = htmlspecialchars($book['title']);
             box-shadow: 0 8px 24px rgba(124,58,237,.3);
             transition: all 0.25s;
         }
-        .pdf-fallback-full .btn:hover {
+        .pdf-redirect-card .btn:hover {
             background: #6d28d9;
             transform: translateY(-2px);
         }
@@ -241,27 +278,34 @@ $title = htmlspecialchars($book['title']);
                 </div>
             </div>
             <div class="pdf-nav-actions">
-                <a href="../controllers/pdf.php?id=<?= $id ?>" target="_blank" rel="noopener" class="pdf-nav-btn">
+                <a href="../controllers/api/pdf.php?id=<?= $id ?>" target="_blank" rel="noopener" class="pdf-nav-btn">
                     <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
                     Buka Mentah
                 </a>
             </div>
         </div>
 
-        <!-- PDF content -->
-        <div class="pdf-body">
-            <embed src="../controllers/pdf.php?id=<?= $id ?>#toolbar=0"
-                   type="application/pdf"
-                   id="pdfEmbed">
-
-            <!-- Fallback overlay -->
-            <div class="pdf-fallback-full" id="pdfFallback">
-                <div class="icon">
-                    <i data-lucide="file-text" class="w-8 h-8 text-purple-400"></i>
+        <!-- PDF content: MEeL branding + auto-redirect ke api/pdf.php -->
+        <!-- Untuk mobile: redirect langsung ke api/pdf.php (work di semua browser) -->
+        <!-- Untuk desktop: read.php menggunakan ?raw=1 via iframe -->
+        <div class="pdf-body" id="pdfBody">
+            <div class="pdf-redirect-card" id="redirectCard">
+                <div class="pdf-redirect-icon">
+                    <i data-lucide="file-text" class="w-10 h-10 text-purple-400"></i>
                 </div>
-                <h2><?= $title ?></h2>
-                <p>Dokumen PDF &middot; <?= $pdf_size_f ?></p>
-                <a href="../controllers/pdf.php?id=<?= $id ?>" target="_blank" rel="noopener" class="btn">
+                <h2 class="pdf-redirect-title"><?= $title ?></h2>
+                <p class="pdf-redirect-meta">Dokumen PDF &middot; <?= $pdf_size_f ?></p>
+
+                <!-- Loading spinner -->
+                <div class="pdf-redirect-loader" id="redirectLoader">
+                    <div class="loader-ring"></div>
+                    <span class="loader-text">Membuka PDF...</span>
+                </div>
+
+                <!-- Tombol akses langsung (jika redirect tidak jalan) -->
+                <a href="../controllers/api/pdf.php?id=<?= $id ?>"
+                   target="_blank" rel="noopener"
+                   class="btn" id="directBtn">
                     <i data-lucide="external-link" class="w-4 h-4"></i>
                     Buka PDF
                 </a>
@@ -269,6 +313,38 @@ $title = htmlspecialchars($book['title']);
         </div>
     </div>
 
+    <script>
+    /**
+     * PDF Redirector — untuk akses mobile via HP
+     *
+     * read.php sudah menangani PDF via iframe (?raw=1) untuk desktop.
+     * read_pdf.php (mode normal) dipakai sebagai MEeL-branded gateway
+     * yang auto-redirect ke controllers/api/pdf.php.
+     *
+     * Kenapa redirect? Karena iframe/embed untuk PDF di browser mobile
+     * bermasalah dengan cookie session (subresource tidak kirim cookie).
+     * Redirect ke api/pdf.php sebagai top-level navigation = cookie terkirim.
+     */
+    (function() {
+        var loader = document.getElementById('redirectLoader');
+        var directBtn = document.getElementById('directBtn');
+        var _redirected = false;
+
+        // Redirect ke api/pdf.php setelah 1.8 detik
+        // Top-level navigation → cookie session terkirim!
+        setTimeout(function() {
+            _redirected = true;
+            window.location.href = '../controllers/api/pdf.php?id=<?= $id ?>';
+        }, 1800);
+
+        // Backup: jika redirect gagal/tidak terjadi (5 detik), munculkan tombol
+        setTimeout(function() {
+            if (_redirected) return; // sudah redirect, skip
+            if (loader) loader.style.display = 'none';
+            if (directBtn) directBtn.style.display = 'inline-flex';
+        }, 5000);
+    })();
+    </script>
     <script src="../assets/js/lucide.js"></script>
     <script>lucide.createIcons();</script>
 </body>

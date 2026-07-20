@@ -3,7 +3,7 @@ require_once 'modules/helpers.php';
 session_name('meel');
 session_start();
 include 'auth/config.php';
-require_once 'modules/MediaLibrary.php';
+require_once 'modules/media/MediaLibrary.php';
 
 $is_logged_in = isset($_SESSION['user_id']);
 

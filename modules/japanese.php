@@ -6,6 +6,34 @@
  * Tidak dibebankan ke setiap request seperti sebelumnya di config.php.
  */
 
+// ─── HELPER: Resolve MeCab binary (static cache per request) ───────────────
+if (!function_exists('getMecabPath')) {
+    function getMecabPath(): string
+    {
+        static $path = null;
+        if ($path !== null) return $path;
+
+        // Coba gunakan resolve_binary() dari helpers.php jika tersedia
+        if (function_exists('resolve_binary')) {
+            $path = resolve_binary(['/usr/bin/mecab', '/usr/local/bin/mecab', 'mecab']);
+            return $path;
+        }
+
+        // Fallback: cek path absolut langsung
+        $candidates = ['/usr/bin/mecab', '/usr/local/bin/mecab', 'mecab'];
+        foreach ($candidates as $candidate) {
+            if (strpos($candidate, '/') !== false) {
+                if (@is_executable($candidate)) {
+                    $path = $candidate;
+                    return $path;
+                }
+            }
+        }
+        $path = 'mecab';
+        return $path;
+    }
+}
+
 // ─── ROMAJI CONVERTER ──────────────────────────────────────────────────────────
 if (!function_exists('getRomajiName')) {
     function getRomajiName($text)
@@ -28,9 +56,10 @@ if (!function_exists('getRomajiName')) {
         ];
         $text = str_replace($search, $replace, $text);
 
-        // 2. Eksekusi MeCab tanpa -Oyomi
+        // 2. Eksekusi MeCab — path absolut biar tidak bergantung PATH environment
+        $mecab_bin = getMecabPath();
         $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
-        $process = proc_open(escapeshellarg('mecab'), $descriptorspec, $pipes);
+        $process = proc_open(escapeshellarg($mecab_bin), $descriptorspec, $pipes);
 
         $parsedText = '';
         if (is_resource($process)) {
@@ -88,9 +117,10 @@ if (!function_exists('analyzeJapaneseText')) {
         $original_text = $text; // Simpan asli untuk fallback
         $clean_text = str_replace($search, $replace, $text);
 
-        // 2. MeCab — 1x panggil untuk kedua kebutuhan
+        // 2. MeCab — 1x panggil untuk kedua kebutuhan (path absolut)
+        $mecab_bin = getMecabPath();
         $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
-        $process = proc_open(escapeshellarg('mecab'), $descriptorspec, $pipes);
+        $process = proc_open(escapeshellarg($mecab_bin), $descriptorspec, $pipes);
         if (!is_resource($process)) {
             $result['romaji'] = getRomajiName($text);
             return $result;
@@ -192,8 +222,9 @@ if (!function_exists('getEnglishTranslation')) {
 
         if (!$dict_ready || empty(trim($text))) return '';
 
+        $mecab_bin = getMecabPath();
         $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
-        $process = proc_open(escapeshellarg('mecab'), $descriptorspec, $pipes);
+        $process = proc_open(escapeshellarg($mecab_bin), $descriptorspec, $pipes);
         if (!is_resource($process)) return '';
 
         fwrite($pipes[0], $text);

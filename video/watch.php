@@ -7,7 +7,7 @@ session_start();
 
 include '../auth/config.php';
 require_once '../modules/helpers.php';
-include '../modules/MediaViewer.php';
+include '../modules/media/MediaViewer.php';
 
 $id      = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
@@ -157,19 +157,19 @@ session_write_close();
                         <?php endif; ?>
                     </video>
                     <div id="resume-modal" class="hidden">
-                        <div class="bg-[#141820] border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl p-6 max-w-xs w-full mx-4 text-center">
-                            <div class="text-sm font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
+                        <div class="bg-[#141820] border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl text-center">
+                            <div class="font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
                             <div class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">
                                 Menit ke‑ <span id="resume-time" class="text-red-400 font-mono">0:00</span>
                             </div>
                             <p id="resume-countdown" class="text-[10px] text-gray-300 italic mb-5">Otomatis ulang dalam 15s...</p>
                             <div class="flex gap-2">
                                 <button id="btn-resume"
-                                    class="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider py-2.5 rounded-xl transition-all border-none cursor-pointer">
+                                    class="flex-1 bg-red-600 hover:bg-red-500 text-white font-black uppercase tracking-wider rounded-xl transition-all border-none cursor-pointer">
                                     Lanjut
                                 </button>
                                 <button id="btn-restart"
-                                    class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-black uppercase tracking-wider py-2.5 rounded-xl border border-white/10 cursor-pointer transition-all">
+                                    class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black uppercase tracking-wider rounded-xl border border-white/10 cursor-pointer transition-all">
                                     Ulang
                                 </button>
                             </div>
@@ -228,7 +228,7 @@ session_write_close();
                             </a>
                             <div id="like-dislike-container" class="flex items-center gap-2">
                                 <button
-                                    hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
+                                    hx-post="../controllers/api/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                     hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"like","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
                                     title="Suka video"
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
@@ -239,7 +239,7 @@ session_write_close();
                                     Like<?= ($v['likes'] ?? 0) > 0 ? " <span class='tabular-nums ml-0.5'>{$v['likes']}</span>" : '' ?>
                                 </button>
                                 <button
-                                    hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
+                                    hx-post="../controllers/api/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                     hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
                                     title="Tidak suka video"
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
@@ -314,7 +314,7 @@ session_write_close();
                                                         <span class="text-[10px] text-gray-300 flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
                                                     </div>
                                                     <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
-                                                        <a href="../controllers/delete_comment.php?id=<?= $c['id'] ?>"
+                                                        <a href="../controllers/api/delete_comment.php?id=<?= $c['id'] ?>"
                                                             onclick="return meelConfirmLink(event, { title: 'Hapus Komentar', text: 'Hapus komentar ini?', confirmButtonText: 'HAPUS' })"
                                                             class="text-gray-300 hover:text-red-400 transition-colors no-underline flex-shrink-0">
                                                             <i data-lucide="trash-2" class="w-3 h-3"></i>

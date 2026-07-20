@@ -7,12 +7,17 @@ include '../auth/config.php';
 include '../auth/auth.php';
 include_once '../modules/helpers.php';
 include_once '../modules/activity_logger.php';
+include_once '../modules/GarbageCollector.php';
 
 if (!isset($_SESSION['user_id'])) {
     die(include '../err/denied.php');
 }
 
-include '../controllers/fun.php';
+include '../controllers/admin/admin_actions.php';
+include '../controllers/admin/admin_data.php';
+
+// Auto-cleanup guest stale (adaptive — throttle 1 jam via GarbageCollector)
+GarbageCollector::cleanGuests($conn);
 
 /** * --- IDE Type Hinting for Intelephense ---
  * These variables are initialized in '../controllers/fun.php'

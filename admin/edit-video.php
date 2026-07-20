@@ -77,25 +77,53 @@ if (isset($_POST['update'])) {
         $thumbnail_url = $video['thumbnail'];
 
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
-            $new_name = 'thumb_' . time() . '_' . uniqid() . '.webp';
-            $target_dir = __DIR__ . '/../video/upload/thumbnail/';
-            if (!is_dir($target_dir)) {
-                @mkdir($target_dir, 0755, true);
+            // Validasi ukuran file (maks 5MB)
+            $max_size = 5 * 1024 * 1024;
+            if ($_FILES['thumbnail']['size'] > $max_size) {
+                $error_message = 'Ukuran file thumbnail maksimal 5MB.';
             }
-            $upload_path = $target_dir . $new_name;
-            // Konversi ke WebP — lebih kecil 30-50% dari JPG dengan kualitas setara
-            $cmd = "/usr/bin/ffmpeg -y -i " . escapeshellarg($_FILES['thumbnail']['tmp_name'])
-                . " -vf \"scale='min(1280,iw)':-1\" -c:v libwebp -q:v 78 "
-                . escapeshellarg($upload_path) . " 2>&1";
-            exec($cmd, $out, $ret);
-            if ($ret === 0 && file_exists($upload_path) && filesize($upload_path) > 0) {
-                $thumbnail_url = $new_name;
-            } else {
-                // Fallback: simpan file asli jika ffmpeg gagal
-                if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
+
+            // Validasi MIME type — finfo() cek magic bytes, lebih aman dari $_FILES['type']
+            if (empty($error_message)) {
+                $allowed_mime = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $upload_mime = finfo_file($finfo, $_FILES['thumbnail']['tmp_name']);
+                finfo_close($finfo);
+                if (!in_array($upload_mime, $allowed_mime, true)) {
+                    $error_message = 'File thumbnail harus berupa gambar (JPEG, PNG, WebP, GIF, atau AVIF).';
+                }
+            }
+
+            // Proses thumbnail hanya jika validasi lolos
+            if (empty($error_message)) {
+                $target_dir = __DIR__ . '/../video/upload/thumbnail/';
+                if (!is_dir($target_dir)) {
+                    @mkdir($target_dir, 0755, true);
+                }
+                // Nama file berdasarkan judul video
+                $clean_title = getRomajiName($title);
+                if (empty($clean_title)) $clean_title = 'video-thumb';
+                $new_name = $clean_title . '_thumb.webp';
+                $counter = 1;
+                while (file_exists($target_dir . $new_name)) {
+                    $new_name = $clean_title . '_thumb_' . $counter . '.webp';
+                    $counter++;
+                }
+                $upload_path = $target_dir . $new_name;
+                // Konversi ke WebP — 500×500 square, scale+pad agar tidak distorsi
+                $cmd = "/usr/bin/ffmpeg -y -i " . escapeshellarg($_FILES['thumbnail']['tmp_name'])
+                    . " -vf \"scale=500:500:force_original_aspect_ratio=decrease,pad=500:500:(ow-iw)/2:(oh-ih)/2\" -c:v libwebp -q:v 78 "
+                    . escapeshellarg($upload_path) . " 2>&1";
+                exec($cmd, $out, $ret);
+                if ($ret === 0 && file_exists($upload_path) && filesize($upload_path) > 0) {
                     $thumbnail_url = $new_name;
                 } else {
-                    $error_message = 'Gagal mengupload thumbnail ke server.';
+                    // Fallback: simpan file asli jika ffmpeg gagal
+                    if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
+                        $thumbnail_url = $new_name;
+                    } else {
+                        $error_message = 'Gagal mengupload thumbnail ke server.';
+                    }
                 }
             }
         }
@@ -162,9 +190,7 @@ $thumb_src = !empty($video['thumbnail'])
             <aside class="sidebar-panel">
                 <!-- Thumbnail — klik atau drag untuk ganti -->
                 <div class="thumb-wrap" id="thumb-wrap">
-                    <input type="file" name="thumbnail" accept="image/*"
-                        class="thumb-file-input" id="thumb-file-input"
-                        onchange="handleThumbChange(this)">
+                    <!-- File input dipindahkan ke dalam form (ID: thumb-file-hidden) -->
                     <img src="<?= $thumb_src ?>"
                         alt="Thumbnail <?= htmlspecialchars($video['title']) ?>"
                         class="thumb-img"
@@ -276,9 +302,10 @@ $thumb_src = !empty($video['thumbnail'])
                     </div>
                 <?php endif; ?>
 
-                <form method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
+                <form id="edit-form" method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
                     <?php if (isset($_SESSION['csrf_token'])): ?>
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
+                    <input type="file" name="thumbnail" accept="image/*" id="thumb-file-hidden" style="display:none">
                     <?php endif; ?>
 
                     <!-- Judul -->
@@ -335,6 +362,9 @@ $thumb_src = !empty($video['thumbnail'])
             btn.style.pointerEvents = 'none';
         }
 
+        // Hidden file input di dalam form — trigger via klik/drop di sidebar
+        const thumbHidden = document.getElementById('thumb-file-hidden');
+
         function handleThumbChange(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
@@ -346,9 +376,19 @@ $thumb_src = !empty($video['thumbnail'])
             }
         }
 
+        // Klik pada area thumbnail → trigger hidden input
+        document.getElementById('thumb-wrap').addEventListener('click', function(e) {
+            if (e.target === thumbHidden) return;
+            thumbHidden.click();
+        });
+
+        // Hidden input change → preview
+        thumbHidden.addEventListener('change', function() {
+            handleThumbChange(this);
+        });
+
         // Drag-and-drop onto thumbnail
         const thumbWrap = document.getElementById('thumb-wrap');
-        const thumbInput = document.getElementById('thumb-file-input');
 
         thumbWrap.addEventListener('dragover', function(e) {
             e.preventDefault();
@@ -364,8 +404,8 @@ $thumb_src = !empty($video['thumbnail'])
             if (files && files[0] && files[0].type.startsWith('image/')) {
                 const dt = new DataTransfer();
                 dt.items.add(files[0]);
-                thumbInput.files = dt.files;
-                handleThumbChange(thumbInput);
+                thumbHidden.files = dt.files;
+                handleThumbChange(thumbHidden);
             }
         });
 

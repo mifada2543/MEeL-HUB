@@ -4,7 +4,7 @@ require_once 'modules/helpers.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 include 'auth/config.php';
-require_once 'controllers/UpdateManager.php';
+require_once 'controllers/system/UpdateManager.php';
 
 $um = new UpdateManager($conn);
 $um->handle();

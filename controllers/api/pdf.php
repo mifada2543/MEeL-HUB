@@ -8,9 +8,9 @@
  * Aman dari path traversal karena ID buku divalidasi dari database.
  */
 
-require_once '../auth/auth.php';
-require_once '../auth/config.php';
-require_once '../modules/MediaLibrary.php';
+require_once '../../auth/auth.php';
+require_once '../../auth/config.php';
+require_once '../../modules/media/MediaLibrary.php';
 
 // ── Validasi ID ──────────────────────────────────────────────────────────────
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -29,7 +29,7 @@ if (!$book || $book['type'] !== 'pdf') {
 
 // ── Tentukan path fisik file PDF ─────────────────────────────────────────────
 $file_name = basename($book['path_folder']);
-$file_path = __DIR__ . '/../books/upload/pdf/' . $file_name;
+$file_path = __DIR__ . '/../../books/upload/pdf/' . $file_name;
 
 if (!file_exists($file_path) || !is_readable($file_path)) {
     http_response_code(404);

@@ -1,9 +1,9 @@
 <?php
-require_once '../modules/helpers.php';
-require_once '../auth/auth.php';
-require_once '../auth/config.php';
-require_once '../modules/Transcoder.php';
-require_once '../modules/GarbageCollector.php';
+require_once '../../modules/helpers.php';
+require_once '../../auth/auth.php';
+require_once '../../auth/config.php';
+require_once '../../modules/Transcoder.php';
+require_once '../../modules/GarbageCollector.php';
 GarbageCollector::run();
 
 $temp_file   = $_GET['temp_file']   ?? '';
@@ -21,7 +21,7 @@ $transcoder = new Transcoder($conn, $_SESSION['user_id']);
 $result = $transcoder->encodeMusic($temp_file, $title, $artist, $album, $duration, $description);
 
 if ($result['status'] === 'success') {
-    header("Location: ../upload_advanced.php?success=1&file=" . urlencode($result['filename']));
+    header("Location: ../../upload_advanced.php?success=1&file=" . urlencode($result['filename']));
     exit;
 } else {
     echo "<h1>FFmpeg Gagal Menghasilkan Ogg!</h1>";

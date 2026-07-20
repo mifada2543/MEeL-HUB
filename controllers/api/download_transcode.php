@@ -8,8 +8,8 @@
  * akan memecah download browser.
  */
 
-require_once __DIR__ . '/../auth/config.php';
-require_once __DIR__ . '/../modules/Transcoder.php';
+require_once __DIR__ . '/../../auth/config.php';
+require_once __DIR__ . '/../../modules/Transcoder.php';
 
 // Session check manual (tanpa redirect)
 if (session_status() === PHP_SESSION_NONE) {

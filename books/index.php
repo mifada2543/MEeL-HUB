@@ -3,7 +3,7 @@ require_once '../modules/helpers.php';
 require_once '../auth/auth.php';
 require_once '../auth/config.php';
 // activity_logger loaded via auth/config.php
-require_once '../modules/MediaLibrary.php';
+require_once '../modules/media/MediaLibrary.php';
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 $repo  = new BookRepository($conn);
@@ -41,6 +41,92 @@ $total = $books->num_rows;
             overflow: hidden;
             -webkit-line-clamp: 2;
             line-clamp: 2;
+        }
+
+        /* ── Continue Reading Banner ── */
+        .continue-banner {
+            display: none;
+            background: linear-gradient(135deg, rgba(34,197,94,.08) 0%, rgba(124,58,237,.06) 100%);
+            border: 1px solid rgba(34,197,94,.15);
+            border-radius: 14px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            transition: all 0.3s ease;
+        }
+        .continue-banner.visible {
+            display: flex;
+        }
+        .continue-banner-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 0;
+            flex: 1;
+        }
+        .continue-badge {
+            flex-shrink: 0;
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: rgba(34,197,94,.15);
+            color: #22c55e;
+        }
+        .continue-banner-text {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .continue-banner-text strong {
+            color: #e5e7eb;
+        }
+        .continue-banner-link {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.85rem;
+            background: rgba(34,197,94,.12);
+            color: #22c55e;
+            border-radius: 8px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .continue-banner-link:hover {
+            background: rgba(34,197,94,.2);
+            transform: translateY(-1px);
+        }
+        .continue-banner-close {
+            flex-shrink: 0;
+            padding: 0.3rem;
+            color: #6b7280;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .continue-banner-close:hover {
+            color: #e5e7eb;
+            background: rgba(255,255,255,.05);
+        }
+        @media (max-width: 480px) {
+            .continue-banner { flex-wrap: wrap; padding: 0.6rem 0.8rem; }
+            .continue-badge { font-size: 7px; padding: 2px 6px; }
+            .continue-banner-text { font-size: 0.7rem; }
         }
     </style>
 </head>
@@ -84,6 +170,23 @@ $total = $books->num_rows;
     </nav>
 
     <main class="w-full px-4 sm:px-6 xl:px-10 2xl:px-16 pt-8 pb-20">
+
+        <!-- CONTINUE READING BANNER (localStorage-based) -->
+        <div id="continueBanner" class="continue-banner" role="alert">
+            <div class="continue-banner-left">
+                <span class="continue-badge">📖 Lanjutkan</span>
+                <span class="continue-banner-text" id="continueText">
+                    Membaca <strong id="continueTitle">-</strong>
+                </span>
+            </div>
+            <a id="continueLink" href="#" class="continue-banner-link">
+                <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                Buka
+            </a>
+            <button id="continueClose" class="continue-banner-close" title="Tutup">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+        </div>
 
         <!-- HEADER -->
         <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
@@ -197,6 +300,52 @@ $total = $books->num_rows;
 
     <script>
         lucide.createIcons();
+
+        // ── CONTINUE READING (localStorage) ──
+        (function() {
+            var banner = document.getElementById('continueBanner');
+            var titleEl = document.getElementById('continueTitle');
+            var linkEl = document.getElementById('continueLink');
+            var closeEl = document.getElementById('continueClose');
+            if (!banner || !titleEl || !linkEl) return;
+
+            try {
+                var raw = localStorage.getItem('meel_book_progress');
+                if (!raw) return;
+
+                var data = JSON.parse(raw);
+                if (!data || !data.id || !data.title) return;
+
+                // Cek apakah masih relevan (max 7 hari)
+                var age = Date.now() - (data.timestamp || 0);
+                if (age > 7 * 24 * 60 * 60 * 1000) {
+                    localStorage.removeItem('meel_book_progress');
+                    return;
+                }
+
+                // Tampilkan banner — dengan chapter jika ada
+                var label = data.title;
+                if (data.ch) label += ' — ' + data.ch;
+                if (data.type !== 'pdf' && data.page && data.total) {
+                    label += ' (Halaman ' + data.page + '/' + data.total + ')';
+                }
+                titleEl.textContent = label;
+                linkEl.href = 'read.php?id=' + data.id + (data.ch ? '&ch=' + encodeURIComponent(data.ch) : '');
+                banner.classList.add('visible');
+
+            } catch(e) {
+                // localStorage corrupt atau tidak tersedia
+                console.warn('[Continue] Gagal baca progress:', e);
+            }
+
+            // Tombol tutup
+            if (closeEl) {
+                closeEl.addEventListener('click', function() {
+                    banner.classList.remove('visible');
+                    try { localStorage.removeItem('meel_book_progress'); } catch(e) {}
+                });
+            }
+        })();
 
         // Client-side search filter (filters visible cards)
         function filterBooks(btn) {

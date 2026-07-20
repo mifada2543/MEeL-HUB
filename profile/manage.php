@@ -37,7 +37,7 @@ if (!$has_content) {
 
 // ── Load backend functions ──
 define('MEEL_MANAGE_ACCESS', true);
-require_once '../controllers/fun-manage.php';
+require_once '../controllers/profile/fun-manage.php';
 
 // ── Cleanup files >30 menit setiap kali halaman dimuat ──
 $cleaned_count = cleanupPendingDeletions();
