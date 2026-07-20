@@ -159,7 +159,7 @@ define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
 define('MEEL_USE_XSENDFILE', false);
 ```
 
-X-Sendfile mempercepat streaming file besar seperti FLAC (33MB+) dan PDF dengan
+X-Sendfile mempercepat streaming file besar seperti FLAC (33MB+) dengan
 membiarkan Apache mengirim file langsung dari disk (zero-copy), tanpa PHP
 membaca file sama sekali.
 
@@ -171,10 +171,6 @@ membaca file sama sekali.
 | Range request 256KB | 0.011 detik | ~0.003 detik (3x lebih cepat) |
 | RAM server per request | ~33MB | 0 bytes |
 | PHP process blocking | Ya, sampai stream selesai | Tidak, langsung exit |
-
-**Endpoint yang mendukung X-Sendfile:**
-- 🎵 `music/stream.php` — Streaming audio (MP3, FLAC, OGG, dll)
-- 📄 `controllers/api/pdf.php` — Serving file PDF
 
 **Cara aktivasi:** Lihat panduan di `docs/installation.md` bagian "Aktifkan mod_xsendfile".
 
