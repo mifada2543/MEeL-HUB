@@ -21,11 +21,13 @@ if (!$book) {
 }
 
 // ── Sanitasi chapter — cegah path traversal ─────────────────────────────────
-// Hanya izinkan karakter alfanumerik, spasi, strip, underscore, titik
+// Gunakan basename() yang secara alami mencegah path traversal
+// dan tetap mempertahankan semua karakter valid dalam nama folder (termasuk
+// tanda kurung, titik dua, kurung siku, karakter multi-byte, dll.)
 $raw_chapter     = $_GET['ch'] ?? '';
-$current_chapter = preg_replace('/[^a-zA-Z0-9 _.\\-]/', '', $raw_chapter);
-// Pastikan tidak ada komponen '..' setelah sanitasi
-if (str_contains($current_chapter, '..')) {
+$current_chapter = basename($raw_chapter);
+// basename('..') returns '..' on Linux — cegah directory traversal
+if ($current_chapter === '..') {
     $current_chapter = '';
 }
 
@@ -43,10 +45,44 @@ if ($book['type'] !== 'pdf') {
 
     if ($book['has_chapters'] == 0 || ($book['has_chapters'] == 1 && !empty($current_chapter))) {
         if (is_dir($target_path)) {
-            $images = glob($target_path . '/*.{jpg,jpeg,png,webp,JPG,PNG}', GLOB_BRACE);
-            $total_pages = $images ? count($images) : 0;
+            $images = _scanImages($target_path);
+            $total_pages = count($images);
         }
     }
+}
+
+// ── Helper: scan direktori untuk file gambar ─────────────────────────────────
+// Menggantikan glob() karena glob() menginterpretasi karakter spesial
+// seperti [], {}, * sebagai pattern glob, bukan literal path.
+function _scanImages(string $dir): array {
+    if (!is_dir($dir)) return [];
+    $extensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'JPG', 'PNG'];
+    $files = scandir($dir);
+    if ($files === false) return [];
+    $images = [];
+    foreach ($files as $f) {
+        if ($f === '.' || $f === '..') continue;
+        $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
+        if (in_array($ext, $extensions, true)) {
+            $images[] = $dir . '/' . $f;
+        }
+    }
+    return $images;
+}
+
+function _scanSubdirs(string $dir): array {
+    if (!is_dir($dir)) return [];
+    $items = scandir($dir);
+    if ($items === false) return [];
+    $dirs = [];
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') continue;
+        $path = $dir . '/' . $item;
+        if (is_dir($path)) {
+            $dirs[] = $path;
+        }
+    }
+    return $dirs;
 }
 ?>
 <!DOCTYPE html>
@@ -305,7 +341,7 @@ if ($book['type'] !== 'pdf') {
                 $ch_base   = "upload/manga/" . $book['path_folder'];
 
                 if ($book['has_chapters'] == 1):
-                    $chapters = array_filter(glob($ch_base . '/*'), 'is_dir');
+                    $chapters = _scanSubdirs($ch_base);
                     natsort($chapters);
                 ?>
                     <!-- Chapter selector (atas) — custom dropdown -->
@@ -365,7 +401,7 @@ if ($book['type'] !== 'pdf') {
 
                 // ── Render gambar dengan Intersection Observer ──────────────
                 if ($target_path !== null && is_dir($target_path)):
-                    $images = glob($target_path . '/*.{jpg,jpeg,png,webp,JPG,PNG}', GLOB_BRACE);
+                    $images = _scanImages($target_path);
                     natsort($images);
 
                     if ($images && count($images) > 0):
