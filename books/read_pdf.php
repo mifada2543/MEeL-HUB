@@ -153,7 +153,6 @@ $title = htmlspecialchars($book['title']);
             position: relative;
             background: #0f1318;
         }
-        .pdf-body embed,
         .pdf-body iframe {
             width: 100%;
             height: 100%;
@@ -163,21 +162,39 @@ $title = htmlspecialchars($book['title']);
         .pdf-fallback-full {
             display: none;
         }
-        @media(max-width:639px){
-            .pdf-body embed {
-                display: none;
-            }
-            .pdf-fallback-full {
-                position: absolute;
-                inset: 0;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                background: #0f1318;
-                padding: 2rem;
-                z-index: 2;
-            }
+        /* Loading state: shimmer while JS fetches PDF */
+        .pdf-body.loading {
+            background: #0f1318;
+        }
+        .pdf-body.loading::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background:
+                linear-gradient(110deg, #0f1318 30%, #161b24 50%, #0f1318 70%);
+            background-size: 200% 100%;
+            animation: pdfShimmer 1.5s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes pdfShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .pdf-body.loaded::after {
+            display: none;
+        }
+        /* Fallback overlay — JS tampilkan hanya saat error */
+        .pdf-fallback-full.active {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #0f1318;
+            padding: 2rem;
+            z-index: 2;
         }
         .pdf-fallback-full .icon {
             width: 72px;
@@ -249,19 +266,19 @@ $title = htmlspecialchars($book['title']);
         </div>
 
         <!-- PDF content -->
-        <div class="pdf-body">
-            <embed src="../controllers/api/pdf.php?id=<?= $id ?>#toolbar=0"
-                   type="application/pdf"
-                   id="pdfEmbed">
+        <div class="pdf-body loading" id="pdfBody">
+            <!-- Iframe untuk blob URL — JS akan mengisi src-nya -->
+            <iframe id="pdfFrame"
+                    title="PDF Viewer"></iframe>
 
-            <!-- Fallback overlay -->
+            <!-- Fallback overlay — muncul hanya jika fetch gagal -->
             <div class="pdf-fallback-full" id="pdfFallback">
                 <div class="icon">
                     <i data-lucide="file-text" class="w-8 h-8 text-purple-400"></i>
                 </div>
-                <h2><?= $title ?></h2>
-                <p>Dokumen PDF &middot; <?= $pdf_size_f ?></p>
-                <a href="../controllers/api/pdf.php?id=<?= $id ?>" target="_blank" rel="noopener" class="btn">
+                <h2 id="fbTitle"><?= $title ?></h2>
+                <p id="fbDesc">Dokumen PDF &middot; <?= $pdf_size_f ?></p>
+                <a href="../controllers/api/pdf.php?id=<?= $id ?>" target="_blank" rel="noopener" class="btn" id="fbBtn">
                     <i data-lucide="external-link" class="w-4 h-4"></i>
                     Buka PDF
                 </a>
@@ -269,6 +286,75 @@ $title = htmlspecialchars($book['title']);
         </div>
     </div>
 
+    <script>
+    /**
+     * PDF Blob Loader
+     *
+     * Masalah: <embed src="api/pdf.php"> di browser mobile sering TIDAK
+     * mengirim cookie session ke api/pdf.php, sehingga auth gagal dan
+     * halaman login tampil di dalam embed ("Access Denied").
+     *
+     * Solusi: JavaScript fetch() dengan credentials: 'same-origin' yang
+     * WAJIB mengirim cookie, lalu hasil PDF dijadikan blob URL dan
+     * ditampilkan di dalam <iframe>. Semua browser modern support ini.
+     */
+    (async function() {
+        const pdfBody  = document.getElementById('pdfBody');
+        const pdfFrame = document.getElementById('pdfFrame');
+        const fallback = document.getElementById('pdfFallback');
+        const fbBtn    = document.getElementById('fbBtn');
+        const fbTitle  = document.getElementById('fbTitle');
+        const fbDesc   = document.getElementById('fbDesc');
+
+        if (!pdfFrame) return;
+
+        try {
+            // Fetch PDF DENGAN cookie — kunci utama perbaikan!
+            const pdfUrl = '../controllers/api/pdf.php?id=<?= $id ?>';
+            const res = await fetch(pdfUrl, {
+                credentials: 'same-origin'
+            });
+
+            if (!res.ok) {
+                throw new Error('HTTP ' + res.status + ' — ' + res.statusText);
+            }
+
+            const blob = await res.blob();
+
+            // Cek apakah benar PDF
+            if (blob.type !== 'application/pdf') {
+                throw new Error('Respon bukan PDF (type: ' + blob.type + ')');
+            }
+
+            const blobUrl = URL.createObjectURL(blob);
+
+            // Set iframe src ke blob URL
+            pdfFrame.src = blobUrl;
+
+            // Hapus loading state
+            pdfBody.classList.remove('loading');
+            pdfBody.classList.add('loaded');
+
+            // Pastikan iframe terlihat (override CSS mobile)
+            pdfFrame.style.display = 'block';
+
+            // Sembunyikan fallback
+            if (fallback) fallback.classList.remove('active');
+
+        } catch (err) {
+            console.error('[PDF] Gagal memuat:', err);
+
+            // Tampilkan fallback dengan pesan error
+            pdfBody.classList.remove('loading');
+            if (fallback) {
+                if (fbTitle) fbTitle.textContent = 'Gagal Memuat PDF';
+                if (fbDesc)  fbDesc.textContent  = err.message;
+                if (fbBtn)   fbBtn.textContent   = 'Coba Buka Langsung →';
+                fallback.classList.add('active');
+            }
+        }
+    })();
+    </script>
     <script src="../assets/js/lucide.js"></script>
     <script>lucide.createIcons();</script>
 </body>

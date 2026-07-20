@@ -232,6 +232,31 @@ function _scanSubdirs(string $dir): array {
         .reader-nav.scrolled {
             background: rgba(11, 14, 20, 0.97);
         }
+
+        /* PDF loading shimmer (blob fetch approach) */
+        .pdf-body {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        .pdf-body.loading::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background:
+                linear-gradient(110deg, #0f1318 30%, #161b24 50%, #0f1318 70%);
+            background-size: 200% 100%;
+            animation: pdfShimmer 1.5s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes pdfShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .pdf-body.loaded::after {
+            display: none;
+        }
     </style>
 </head>
 
@@ -296,26 +321,12 @@ function _scanSubdirs(string $dir): array {
                 : number_format($pdf_size / 1024, 1) . ' KB';
             ?>
             <div class="pdf-view">
-                <!-- Embedded PDF viewer (desktop) / fallback (mobile) -->
-                <embed src="../controllers/api/pdf.php?id=<?= (int)$book['id'] ?>#toolbar=0"
-                       type="application/pdf"
-                       class="pdf-embed" id="pdfEmbed">
-
-                <!-- Fallback center — muncul di mobile, sembunyi di desktop -->
-                <div class="pdf-fallback">
-                    <div class="pdf-fallback-inner">
-                        <div class="pdf-fallback-icon">
-                            <i data-lucide="file-text" class="w-10 h-10 sm:w-12 sm:h-12 text-purple-400"></i>
-                        </div>
-                        <h2 class="pdf-fallback-title"><?= htmlspecialchars($book['title']) ?></h2>
-                        <p class="pdf-fallback-desc">Dokumen PDF &middot; <?= $pdf_size_f ?></p>
-                        <a href="read_pdf.php?id=<?= (int)$book['id'] ?>" rel="noopener"
-                           class="pdf-open-btn">
-                            <i data-lucide="external-link" class="w-4 h-4"></i>
-                            Buka PDF
-                        </a>
-                        <p class="pdf-fallback-hint"><a href="read_pdf.php?id=<?= (int)$book['id'] ?>" target="_blank" class="underline hover:text-white transition-colors">Atau buka di tab baru</a></p>
-                    </div>
+                <!-- PDF viewer via blob fetch — works on desktop & mobile -->
+                <div class="pdf-body" id="readPdfBody">
+                    <iframe id="pdfFrame"
+                            title="PDF Viewer"
+                            style="width:100%;height:100%;border:none;display:block;"></iframe>
+                    <!-- Loading shimmer (CSS) & fallback (JS on error) -->
                 </div>
 
                 <!-- Bottom info bar — selalu terlihat -->
@@ -332,6 +343,53 @@ function _scanSubdirs(string $dir): array {
                     </a>
                 </div>
             </div>
+
+            <script>
+            (async function() {
+                const body = document.getElementById('readPdfBody');
+                const frame = document.getElementById('pdfFrame');
+                if (!frame || !body) return;
+
+                // Loading shimmer via CSS class
+                body.classList.add('loading');
+
+                try {
+                    const pdfUrl = '../controllers/api/pdf.php?id=<?= (int)$book['id'] ?>';
+                    const res = await fetch(pdfUrl, {
+                        credentials: 'same-origin'
+                    });
+
+                    if (!res.ok) {
+                        throw new Error('HTTP ' + res.status);
+                    }
+
+                    const blob = await res.blob();
+
+                    if (!blob.type.includes('pdf')) {
+                        throw new Error('Bukan PDF');
+                    }
+
+                    const blobUrl = URL.createObjectURL(blob);
+                    frame.src = blobUrl;
+                    body.classList.remove('loading');
+                    body.classList.add('loaded');
+
+                } catch (err) {
+                    console.error('[PDF]', err);
+                    body.classList.remove('loading');
+                    var fbTitle = <?= json_encode($book['title'], JSON_HEX_TAG | JSON_HEX_APOS) ?>;
+                    var fbId    = <?= json_encode((int)$book['id']) ?>;
+                    body.innerHTML = '<div class="pdf-fallback-inner" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;z-index:2;background:#0f1318;">'
+                        + '<div class="pdf-fallback-icon"><i data-lucide="file-text" class="w-10 h-10 text-purple-400"></i></div>'
+                        + '<h2 class="pdf-fallback-title">' + fbTitle + '</h2>'
+                        + '<p class="pdf-fallback-desc">Gagal memuat PDF. Coba buka langsung:</p>'
+                        + '<a href="read_pdf.php?id=' + fbId + '" class="pdf-open-btn">'
+                        + '<i data-lucide="external-link" class="w-4 h-4"></i> Buka PDF</a>'
+                        + '</div>';
+                    lucide.createIcons();
+                }
+            })();
+            </script>
 
         <?php else: ?>
             <!-- ═══════════════ MODE MANGA ═══════════════ -->
