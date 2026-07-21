@@ -14,19 +14,15 @@ $total   = $library->countMusic($format, $artist);
 
 if (!$data || $data->num_rows === 0) return;
 
-while ($v = $data->fetch_assoc()) include 'music_item.php';
-
 $next    = $offset + $limit;
 $qFormat = urlencode($format);
 $qArtist = urlencode($artist);
-?>
+
+while ($v = $data->fetch_assoc()) include 'music_item.php'; ?>
 
 <?php if ($next < $total): ?>
-    <div id="load-more-meta" hidden
-         data-next-url="load_more_music.php?offset=<?= $next ?>&format=<?= $qFormat ?>&artist=<?= $qArtist ?>"
-         hx-swap-oob="true"></div>
+    <div class="lm-meta" hidden
+         data-next-url="load_more_music.php?offset=<?= $next ?>&format=<?= $qFormat ?>&artist=<?= $qArtist ?>"></div>
 <?php else: ?>
-    <div id="load-more-meta" hidden
-         data-end="true"
-         hx-swap-oob="true"></div>
-<?php endif; ?>
+    <div class="lm-meta" hidden data-end="true"></div>
+<?php endif;

@@ -1026,9 +1026,7 @@ function setupMeelPlayerEvents() {
     }
     if (isMiniPlayerActive) {
       const t = document.getElementById("temp-index-content");
-      t &&
-        t.contains(e.detail.target) &&
-        attachMiniPlayerVideoCardListeners(e.detail.target);
+      t && attachMiniPlayerVideoCardListeners(t);
     }
   }));
 let isMiniPlayerActive = !1,

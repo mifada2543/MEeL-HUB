@@ -45,11 +45,11 @@ function renderLibraryContent($artist_filter, $total_music, $data_init, $format_
 
     <!-- LOAD MORE (outside #music-list, never replaced, only URL updated via JS) -->
     <?php if ($total_music > 10): ?>
-        <div id="load-more-music" class="pt-6">
-            <button type="button" id="load-more-btn"
+        <div id="load-more-music" class="pt-6">                <button type="button" id="load-more-btn"
                 hx-get="load_more_music.php?offset=10&format=<?= $format_filter ?>&artist=<?= urlencode($artist_filter) ?>"
                 hx-target="#music-list"
                 hx-swap="beforeend"
+                title="Muat lebih banyak lagu"
                 class="w-full py-4 border border-dashed border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-[.25em] text-gray-700 hover:text-orange-500 hover:border-orange-500/30 transition-all">
                 Load More
             </button>
@@ -164,6 +164,7 @@ if (isset($_GET['content_only'])) {
                     hx-include="#m-search"
                     hx-target="#music-list"
                     hx-indicator="#search-indicator"
+                    title="Cari lagu"
                     aria-label="Cari lagu"
                     class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
                     <span class="hidden sm:inline">Cari</span>
@@ -316,6 +317,7 @@ if (isset($_GET['content_only'])) {
 
                                 <button type="button"
                                     onclick="toggleArtistDropdown()"
+                                    title="Filter berdasarkan artis"
                                     class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
                                     <span class="truncate"><?= $artist_filter === 'all' ? 'All Collections' : htmlspecialchars($artist_filter) ?></span>
                                     <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
@@ -355,6 +357,7 @@ if (isset($_GET['content_only'])) {
                                 <div class="relative w-full z-[100]" id="custom-playlist-dropdown">
                                     <button type="button"
                                         onclick="togglePlaylistDropdown()"
+                                        title="Pilih playlist"
                                         class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
                                         <span class="truncate" id="playlist-dropdown-label">Pilih Playlist...</span>
                                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
@@ -411,7 +414,7 @@ if (isset($_GET['content_only'])) {
 
             <!-- Tengah: kontrol -->
             <div class="mp-controls">
-                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulang" aria-label="Ulang">
+                <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulangi lagu" aria-label="Ulang">
                     <i data-lucide="repeat" style="width:15px;height:15px;"></i>
                 </button>
                 <button class="mp-btn mp-btn-ghost" onclick="miniPrevIndex()" id="mp-prev-btn-index" title="Sebelumnya" aria-label="Lagu Sebelumnya">
@@ -432,7 +435,7 @@ if (isset($_GET['content_only'])) {
                     <span class="mp-time-sep">/</span>
                     <span id="mini-duration-index">0:00</span>
                 </div>
-                <button class="mp-btn mp-btn-ghost mp-close" onclick="closeMiniPlayerIndex()" title="Tutup" aria-label="Tutup mini player">
+                <button class="mp-btn mp-btn-ghost mp-close" onclick="closeMiniPlayerIndex()" title="Tutup mini player" aria-label="Tutup mini player">
                     <i data-lucide="x" style="width:16px;height:16px;"></i>
                 </button>
             </div>
@@ -641,6 +644,12 @@ if (isset($_GET['content_only'])) {
 
         function loadPlaylistById(id) {
             if (!id) return;
+
+            // Simpan state load-more SEBELUM replace <main>
+            var savedLMUrl = null;
+            var savedBtn = document.getElementById('load-more-btn');
+            if (savedBtn) savedLMUrl = savedBtn.getAttribute('hx-get');
+
             fetch('view_playlist.php?id=' + id + '&content_only=1')
                 .then(function(r) {
                     return r.text();
@@ -654,6 +663,13 @@ if (isset($_GET['content_only'])) {
                         history.pushState(null, '', 'view_playlist.php?id=' + id);
                     }
                     if (typeof lucide !== 'undefined') lucide.createIcons();
+
+                    // Pulihkan load-more URL setelah replace <main>
+                    if (savedLMUrl) {
+                        var newBtn = document.getElementById('load-more-btn');
+                        if (newBtn) newBtn.setAttribute('hx-get', savedLMUrl);
+                    }
+
                     if (typeof htmx !== 'undefined') htmx.process(main);
                     if (typeof setupPlaylistItemClicks === 'function') setupPlaylistItemClicks();
                 })
@@ -913,10 +929,10 @@ if (isset($_GET['content_only'])) {
                 setupPlaylistItemClicks();
             }
             // Auto-scroll sidebar desktop ke artist yg aktif HANYA ketika filter/ganti artist,
-            // BUKAN saat load-more (sidebar tidak di-render ulang, jadi tidak perlu)
-            // Cek via e.detail.elt, bukan targetId, karena load-more skrg target #music-list
+            // BUKAN saat load-more atau search (target #music-list).
+            // Cek via isFromLoadMore + targetId sebagai safeguard ganda.
             const isFromLoadMore = e.detail?.elt?.closest?.('#load-more-music') != null;
-            if (isContentUpdate && !isFromLoadMore) {
+            if (isContentUpdate && !isFromLoadMore && !targetId.includes('music-list')) {
                 scrollToActiveArtistDesktop();
             }
         });
@@ -1067,24 +1083,52 @@ if (isset($_GET['content_only'])) {
             });
         };
 
-        // ── Load More: handle meta div & update button URL ────────────
-        document.addEventListener('htmx:afterSwap', (e) => {
-            const meta = document.getElementById('load-more-meta');
-            if (!meta) return;
+// ── Load More: observasi .lm-meta di <main> ──
+        // (tanpa recovery — loadPlaylistById sudah handle save/restore sendiri)
+        (function(){
+            var _main = document.querySelector('main');
+            if (!_main) return;
 
-            const btn = document.getElementById('load-more-btn');
-            const loadMoreDiv = document.getElementById('load-more-music');
+            var _obs = new MutationObserver(function(muts) {
+                for (var i = 0; i < muts.length; i++) {
+                    var added = muts[i].addedNodes;
+                    for (var j = 0; j < added.length; j++) {
+                        var n = added[j];
+                        if (n.nodeType !== 1 || !n.classList || !n.classList.contains('lm-meta')) continue;
 
-            if (meta.dataset.nextUrl && btn && loadMoreDiv) {
-                // Update button URL with new offset - button stays in DOM, never replaced
-                btn.setAttribute('hx-get', meta.dataset.nextUrl);
-            } else if (meta.dataset.end && loadMoreDiv) {
-                // End of collection - replace with end message
-                loadMoreDiv.outerHTML = '<div class="py-10 text-center text-[9px] text-gray-800 uppercase tracking-[.4em]">End of Collection</div>';
-            }
+                        var nextUrl = n.getAttribute('data-next-url');
+                        var isEnd   = n.getAttribute('data-end');
+                        if (n.parentNode) n.parentNode.removeChild(n);
 
-            meta.remove();
-        });
+                        var btn = document.getElementById('load-more-btn');
+                        var ld  = document.getElementById('load-more-music');
+
+                        if (nextUrl && btn) {
+                            btn.setAttribute('hx-get', nextUrl);
+                            if (typeof htmx !== 'undefined') htmx.process(btn);
+
+                            // Auto-scroll: HANYA scroll ke BAWAH
+                            // Gunakan requestAnimationFrame agar posisi elemen sudah final
+                            // setelah browser selesai reflow/rendering.
+                            // scrollBy({top:positif}) TIDAK MUNGKIN scroll ke atas.
+                            if (ld) {
+                                requestAnimationFrame(function(){
+                                    var _r2 = ld.getBoundingClientRect();
+                                    console.log('[LM] _r2.bottom:', _r2.bottom, 'innerH:', window.innerHeight);
+                                    if (_r2.bottom > window.innerHeight) {
+                                        window.scrollBy({ top: _r2.bottom - window.innerHeight + 20, behavior: 'smooth' });
+                                    }
+                                });
+                            }
+                        } else if (isEnd && ld) {
+                            ld.outerHTML = '<div class="py-10 text-center text-[9px] text-gray-800 uppercase tracking-[.4em]">End of Collection</div>';
+                        }
+                        return;
+                    }
+                }
+            });
+            _obs.observe(_main, { childList: true, subtree: true });
+        })();
 
         // Keyboard shortcuts untuk mini player index
         document.addEventListener('keydown', (e) => {

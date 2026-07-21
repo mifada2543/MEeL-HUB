@@ -123,6 +123,23 @@ function _scanSubdirs(string $dir): array {
             100% { background-position: -200% 0; }
         }
 
+        /* ── Chapter transition animations ── */
+        #manga-container {
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #manga-container.chapter-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #manga-container.chapter-exit {
+            opacity: 0;
+            transform: translateY(-12px);
+            transition-duration: 0.25s;
+        }
+
         /* Page counter pill */
         .page-counter {
             position: fixed;
@@ -328,7 +345,7 @@ function _scanSubdirs(string $dir): array {
                 <i data-lucide="arrow-left" class="w-4 h-4 text-gray-500 group-hover:text-green-500 transition-colors"></i>
             </a>
             <div class="min-w-0">
-                <h1 class="text-sm font-bold truncate max-w-[180px] sm:max-w-md text-white/90">
+                <h1 class="text-sm font-bold truncate max-w-[180px] sm:max-w-md text-white/90" title="<?= htmlspecialchars($book['title']) ?>">
                     <?= htmlspecialchars($book['title']) ?>
                 </h1>
                 <div class="flex items-center gap-2 mt-0.5">
@@ -437,21 +454,54 @@ function _scanSubdirs(string $dir): array {
         <?php else: ?>
             <!-- ═══════════════ MODE MANGA ═══════════════ -->
             <div class="py-0 space-y-0" id="manga-container">
-
                 <?php
                 $ch_base   = "upload/manga/" . $book['path_folder'];
 
                 if ($book['has_chapters'] == 1):
                     $chapters = _scanSubdirs($ch_base);
                     natsort($chapters);
+                    // Hitung variabel navigasi chapter
+                    $ch_list = array_values(array_map('basename', $chapters));
+                    $current_idx = array_search($current_chapter, $ch_list);
+                    $prev_ch = ($current_idx !== false && $current_idx > 0) ? $ch_list[$current_idx - 1] : null;
+                    $next_ch = ($current_idx !== false && $current_idx < count($ch_list) - 1) ? $ch_list[$current_idx + 1] : null;
                 ?>
+                    <?php if ($total_pages > 0 && !empty($current_chapter)): ?>
+                    <!-- Chapter navigation (atas) — di ATAS dropdown agar tidak ketimpa -->
+                    <div class="max-w-4xl mx-auto px-4 mb-2 flex items-center justify-between gap-2">
+                        <?php if ($prev_ch): ?>
+                            <a href="?id=<?= $book_id ?>&ch=<?= urlencode($prev_ch) ?>"
+                                class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
+                                <i data-lucide="chevron-left" class="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform"></i>
+                                Sebelumnya
+                            </a>
+                        <?php else: ?>
+                            <div></div>
+                        <?php endif; ?>
+
+                        <span class="text-[9px] text-gray-700 uppercase tracking-widest">
+                            <?= $current_idx + 1 ?> / <?= count($ch_list) ?>
+                        </span>
+
+                        <?php if ($next_ch): ?>
+                            <a href="?id=<?= $book_id ?>&ch=<?= urlencode($next_ch) ?>"
+                                class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
+                                Selanjutnya
+                                <i data-lucide="chevron-right" class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform"></i>
+                            </a>
+                        <?php else: ?>
+                            <div></div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+
                     <!-- Chapter selector (atas) — custom dropdown -->
                     <div class="sticky top-14 z-30 py-3 px-4 bg-gradient-to-b from-[#080a0f] to-transparent">
                         <div class="max-w-4xl mx-auto ch-dropdown" id="ch-dropdown-top">
                             <button type="button"
                                 onclick="toggleChDropdown('top')"
                                 class="ch-trigger">
-                                <span class="truncate"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
+                                <span class="truncate" title="<?= $current_chapter ? htmlspecialchars($current_chapter) : 'Pilih chapter' ?>"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
                                 <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 flex-shrink-0"></i>
                             </button>
                             <div id="ch-options-top" class="ch-options hidden">
@@ -506,41 +556,9 @@ function _scanSubdirs(string $dir): array {
                     natsort($images);
 
                     if ($images && count($images) > 0):
-                        // Chapter navigation buttons
-                        if ($book['has_chapters'] == 1 && !empty($chapters)):
-                            $ch_list = array_values(array_map('basename', $chapters));
-                            $current_idx = array_search($current_chapter, $ch_list);
-                            $prev_ch = ($current_idx !== false && $current_idx > 0) ? $ch_list[$current_idx - 1] : null;
-                            $next_ch = ($current_idx !== false && $current_idx < count($ch_list) - 1) ? $ch_list[$current_idx + 1] : null;
-                        ?>
-                            <div class="max-w-4xl mx-auto px-4 mb-4 flex items-center justify-between gap-2">
-                                <?php if ($prev_ch): ?>
-                                    <a href="?id=<?= $book_id ?>&ch=<?= urlencode($prev_ch) ?>"
-                                        class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
-                                        <i data-lucide="chevron-left" class="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform"></i>
-                                        Sebelumnya
-                                    </a>
-                                <?php else: ?>
-                                    <div></div>
-                                <?php endif; ?>
+                        // Chapter navigation buttons sudah di-render di ATAS dropdown
+                        // (tidak perlu diulang di sini)
 
-                                <span class="text-[9px] text-gray-700 uppercase tracking-widest">
-                                    <?= $current_idx + 1 ?> / <?= count($ch_list) ?>
-                                </span>
-
-                                <?php if ($next_ch): ?>
-                                    <a href="?id=<?= $book_id ?>&ch=<?= urlencode($next_ch) ?>"
-                                        class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
-                                        Selanjutnya
-                                        <i data-lucide="chevron-right" class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform"></i>
-                                    </a>
-                                <?php else: ?>
-                                    <div></div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endif; ?>
-
-                        <?php
                         $page_num = 0;
                         foreach ($images as $img):
                             $page_num++;
@@ -598,7 +616,7 @@ function _scanSubdirs(string $dir): array {
                                     <button type="button"
                                         onclick="toggleChDropdown('bottom')"
                                         class="ch-trigger">
-                                        <span class="truncate"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
+                                        <span class="truncate" title="<?= $current_chapter ? htmlspecialchars($current_chapter) : 'Pilih chapter' ?>"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
                                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 flex-shrink-0"></i>
                                     </button>
                                     <div id="ch-options-bottom" class="ch-options hidden">
@@ -849,7 +867,7 @@ function _scanSubdirs(string $dir): array {
             window.goToChapter = function(ch) {
                 var url = '?id=<?= $book_id ?>';
                 if (ch) url += '&ch=' + encodeURIComponent(ch);
-                window.location.href = url;
+                window.navigateChapter(url);
             };
 
             // Tutup dropdown saat klik di luar
@@ -863,6 +881,48 @@ function _scanSubdirs(string $dir): array {
                     document.body.classList.remove('ch-dropdown-open');
                     activeDropdown = null;
                 }
+            });
+        })();
+
+        // ── Smooth chapter transition ──────────────────────────────────────
+        (function() {
+            var isTransitioning = false;
+
+            window.navigateChapter = function(url) {
+                if (isTransitioning) return;
+                isTransitioning = true;
+
+                var container = document.getElementById('manga-container');
+                if (container) {
+                    container.classList.remove('chapter-visible');
+                    container.classList.add('chapter-exit');
+                }
+
+                // Navigasi setelah animasi exit selesai
+                setTimeout(function() {
+                    window.location.href = url;
+                }, 250);
+            };
+
+            // Page-load enter animation
+            var mangaContainer = document.getElementById('manga-container');
+            if (mangaContainer) {
+                requestAnimationFrame(function() {
+                    mangaContainer.classList.add('chapter-visible');
+                });
+            }
+
+            // Intercept clicks on prev/next chapter links
+            document.addEventListener('click', function(e) {
+                var link = e.target.closest('a');
+                if (!link) return;
+                var href = link.getAttribute('href');
+                if (!href || !href.includes('ch=')) return;
+                var text = link.textContent.trim();
+                if (!text.includes('Selanjutnya') && !text.includes('Sebelumnya')) return;
+
+                e.preventDefault();
+                window.navigateChapter(link.href);
             });
         })();
 
@@ -917,6 +977,10 @@ function _scanSubdirs(string $dir): array {
                 if (!saved || saved.id != <?= json_encode((int)$book['id']) ?>) return;
                 // Cuma untuk manga, bukan PDF
                 if (!saved.page || saved.page < 2) return;
+                // Cek kesamaan chapter — kalau beda (misal klik Selanjutnya),
+                // jangan auto-scroll, biarkan mulai dari atas
+                var currentCh = <?= json_encode($current_chapter ?: '', JSON_HEX_TAG) ?>;
+                if (saved.ch !== currentCh) return;
 
                 var retries = 0;
                 var maxRetries = 20;
@@ -958,7 +1022,7 @@ function _scanSubdirs(string $dir): array {
                 const prevLink = document.querySelector('a[href*="ch="]:first-child');
                 if (prevLink && prevLink.textContent.includes('Sebelumnya')) {
                     e.preventDefault();
-                    window.location.href = prevLink.href;
+                    window.navigateChapter(prevLink.href);
                 }
             }
 
@@ -968,7 +1032,7 @@ function _scanSubdirs(string $dir): array {
                 const nextLink = Array.from(links).find(el => el.textContent.includes('Selanjutnya'));
                 if (nextLink) {
                     e.preventDefault();
-                    window.location.href = nextLink.href;
+                    window.navigateChapter(nextLink.href);
                 }
             }
 

@@ -34,7 +34,7 @@ if (empty($files)): ?>
     ?>
         <div class='glass p-4 rounded-2xl group hover:border-blue-500/50 transition-all duration-300 transform hover:-translate-y-1 shadow-xl hover:shadow-blue-900/10'>
             <div class='flex items-start justify-between mb-4'>
-                <div class='p-3 rounded-xl bg-gray-900 group-hover:bg-blue-500/10 transition'>
+                <div class='p-3 rounded-xl bg-gray-900 group-hover:bg-blue-500/10 transition' title='Tipe: <?= $type ?>'>
                     <i data-lucide='<?= $icon ?>' class='w-6 h-6' style='color: <?= $accent ?>'></i>
                 </div>
 

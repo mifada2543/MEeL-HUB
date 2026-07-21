@@ -6,29 +6,16 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,.45);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(0,0,0,.35);
     z-index: 20;
     pointer-events: none;
 }
-.ch-dropdown-open .reader-nav {
-    filter: blur(4px);
-    opacity: 0.5;
-    pointer-events: none;
-    transition: filter 0.2s ease, opacity 0.2s ease;
-}
-.ch-dropdown-open .page-counter {
-    filter: blur(4px);
-    opacity: 0.5;
-    pointer-events: none;
-    transition: filter 0.2s ease, opacity 0.2s ease;
-}
+.ch-dropdown-open .reader-nav,
+.ch-dropdown-open .page-counter,
 .ch-dropdown-open #scroll-top-btn {
-    filter: blur(4px);
-    opacity: 0.5;
+    opacity: 0.4;
     pointer-events: none;
-    transition: filter 0.2s ease, opacity 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 .ch-dropdown {
     position: relative;

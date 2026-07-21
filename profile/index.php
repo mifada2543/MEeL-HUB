@@ -107,7 +107,7 @@ $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
                 <div class="relative flex justify-between items-end -mt-12">
                     <div class="relative">
                         <img src="upload/<?= $u['profile_picture'] ?: 'default.png' ?>"
-                            class="w-32 h-32 rounded-3xl border-4 border-[#0b0e14] object-cover bg-gray-800 shadow-xl">
+                            class="w-32 h-32 rounded-3xl border-4 border-[#0b0e14] object-cover bg-gray-800 shadow-xl" title="Foto profil <?= htmlspecialchars($u['username']) ?>">
                         <?php if ($is_online): ?>
                             <div class="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-4 border-[#0b0e14] rounded-full"></div>
                         <?php endif; ?>
@@ -115,10 +115,10 @@ $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
 
                     <?php if ($_SESSION['username'] === $u['username']): ?>
                         <div class="flex flex-col sm:flex-row gap-2 mb-2">
-                            <a href="../controllers/profile/profile_edit.php" class="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2">
+                            <a href="../controllers/profile/profile_edit.php" class="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2" title="Edit profil dan bio Anda">
                                 <i data-lucide="edit-3" class="w-4 h-4"></i> Edit Profile
                             </a>
-                            <a href="manage.php" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-600/30 hover:border-blue-500/50 px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2">
+                            <a href="manage.php" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-600/30 hover:border-blue-500/50 px-5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2" title="Kelola konten video dan musik Anda">
                                 <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Kelola Konten
                             </a>
                         </div>
@@ -162,7 +162,7 @@ $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
         </div>
 
         <div class="text-center mt-8">
-            <a href="<?= htmlspecialchars($back_url); ?>" class="text-gray-600 hover:text-blue-500 transition text-xs flex items-center justify-center gap-2">
+            <a href="<?= htmlspecialchars($back_url); ?>" class="text-gray-600 hover:text-blue-500 transition text-xs flex items-center justify-center gap-2" title="Kembali ke halaman sebelumnya">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Kembali ke Dashboard
             </a>
         </div>
