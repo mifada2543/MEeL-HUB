@@ -18,12 +18,14 @@ if (!defined('MEEL_HDD_BASE')) {
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/japanese.php';
 require_once __DIR__ . '/GarbageCollector.php';
+require_once __DIR__ . '/transcoder/FfmpegUtils.php';
 require_once __DIR__ . '/exceptions/ProcessException.php';
 require_once __DIR__ . '/exceptions/DownloadException.php';
 require_once __DIR__ . '/exceptions/TranscodeException.php';
 
 class Transcoder
 {
+    use FfmpegUtils;
     private \mysqli $conn;
     private int $user_id;
     private string $user_role;
@@ -37,11 +39,6 @@ class Transcoder
     // ─── KONSTANTA HARDWARE ───────────────────────────────────────────────────
     private const FFMPEG_THREADS        = 8;
 
-    // Sprite thumbnail: lebar & tinggi tiap tile, jumlah kolom
-    private const SPRITE_TILE_W         = 160;
-    private const SPRITE_TILE_H         = 90;
-    private const SPRITE_COLS           = 5;
-
     // HLS: durasi tiap segment (detik)
     private const HLS_SEGMENT_DURATION  = 10;
 
@@ -49,6 +46,7 @@ class Transcoder
     private const DOWNLOAD_TIMEOUT      = 900;
 
     // ─── ENV PREFIX ───────────────────────────────────────────────────────────
+    // Didefinisikan di class (bukan trait) karena PHP 8.0 tidak support trait constants
     private const ENV_PREFIX = "export LD_LIBRARY_PATH=''; export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; ";
 
     public function __construct(\mysqli $db_connection, int $session_user_id)
@@ -1186,132 +1184,7 @@ class Transcoder
         ];
     }
 
-    // ─── SPRITE & VTT ─────────────────────────────────────────────────────────
 
-    private function generateSpriteAndVTT(string $video_path, string $target_folder): void
-    {
-        $w    = self::SPRITE_TILE_W;
-        $h    = self::SPRITE_TILE_H;
-        $cols = self::SPRITE_COLS;
-
-        $duration = $this->probeDuration($video_path);
-        if ($duration <= 0) return;
-
-        // Tentukan interval dinamis berdasarkan durasi            if ($duration > 3600) $interval = 300;   // > 1 jam   → tiap 5 menit
-            elseif ($duration > 1800) $interval = 180;   // > 30 menit → tiap 3 menit
-            elseif ($duration > 300)  $interval = 60;    // > 5 menit  → tiap 1 menit
-            elseif ($duration > 0)    $interval = 10;    // ≤ 5 menit  → tiap 10 detik
-            else $interval = 10;                          // fallback jika durasi 0
-
-        $total_frames = (int)ceil($duration / $interval);
-        $rows         = max(1, (int)ceil($total_frames / $cols));
-
-        $sprite_file = $target_folder . 'thumb_sprite.webp';
-        $vtt_file    = $target_folder . 'thumbnails.vtt';
-
-        // Buat sprite — fps filter + scale + tile (CPU/software decode)
-        // VAAPI tidak dipakai: Apache tidak punya akses ke /dev/dri/renderD128
-        // Output WebP untuk ukuran file 30-50% lebih kecil dari JPG
-        $filter     = "fps=1/$interval,scale=$w:$h,tile={$cols}x{$rows}";
-        $cmd_sprite = self::ENV_PREFIX . escapeshellarg($this->ffmpeg_bin)
-            . " -y -threads " . self::FFMPEG_THREADS
-            . " -i " . escapeshellarg($video_path)
-            . " -vf " . escapeshellarg($filter)
-            . " -c:v libwebp -q:v 78 " . escapeshellarg($sprite_file) . " 2>&1";
-
-        $ffmpeg_out = [];
-        exec($cmd_sprite, $ffmpeg_out);
-
-        if (!file_exists($sprite_file) || filesize($sprite_file) === 0) {
-            error_log("[MEeL] ERROR: Sprite gagal. Output: " . implode(" | ", array_slice($ffmpeg_out, -10)));
-            return;
-        }
-
-        // Tulis VTT
-        $vtt_content = "WEBVTT\n\n";
-        for ($i = 0; $i < $total_frames; $i++) {
-            $start = $i * $interval;
-            $end   = min(($i + 1) * $interval, $duration);
-
-            $start_time = gmdate("H:i:s", (int)$start) . ".000";
-            $end_time   = gmdate("H:i:s", (int)$end)   . ".000";
-
-            $x = ($i % $cols) * $w;
-            $y = (int)floor($i / $cols) * $h;
-
-            $vtt_content .= "$start_time --> $end_time\n";
-            $vtt_content .= "thumb_sprite.webp#xywh=$x,$y,$w,$h\n\n";
-        }
-        file_put_contents($vtt_file, $vtt_content);
-    }
-
-    // =========================================================
-    // HELPER PRIVATE
-    // =========================================================
-
-    /**
-     * Dapatkan durasi media (detik) via ffprobe.
-     */
-    private function probeDuration(string $file_path): float
-    {
-        $cmd = self::ENV_PREFIX . escapeshellarg($this->ffprobe_bin)
-            . " -v error -show_entries format=duration"
-            . " -of default=noprint_wrappers=1:nokey=1 "
-            . escapeshellarg($file_path);
-        return (float)trim((string)shell_exec($cmd));
-    }
-
-    /**
-     * Pindahkan file lintas filesystem (untuk USB HDD).
-     * PHP rename() tidak bisa lintas device — wajib copy() + unlink().
-     */
-    private function moveFile(string $src, string $dst): bool
-    {
-        // Coba rename dulu (cepat, jika sama filesystem)
-        if (@rename($src, $dst)) return true;
-
-        // Fallback: copy + unlink (untuk USB/cross-device)
-        if (copy($src, $dst)) {
-            @unlink($src);
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Hapus semua isi direktori tanpa rekursif (flat directory).
-     */
-    private function cleanupDir(string $dir): void
-    {
-        foreach (glob(rtrim($dir, '/') . "/*") as $f) {
-            @unlink($f);
-        }
-        @rmdir($dir);
-    }
-
-    /**
-     * Sanitasi judul video untuk dijadikan nama file.
-     * Hapus karakter berbahaya, path separator, dan batasi panjang.
-     */
-    private function sanitizeFilename(string $title): string
-    {
-        $name = trim($title);
-        if (empty($name)) {
-            $name = 'untitled-media';
-        }
-
-        // Hapus karakter yang tidak aman untuk filesystem
-        $name = preg_replace('/[\\/:*?"<>|\s]+/u', '-', $name);
-        // Path traversal
-        $name = str_replace(['..', './'], '', $name);
-        // Batasi panjang
-        $name = mb_substr($name, 0, 120);
-        // Hindari nama file yang hanya terdiri dari delimiter
-        $name = trim($name, "- \t\n\r\0\x0B");
-
-        return $name ?: 'untitled-media';
-    }
 
     /**
      * Emit JavaScript error ke browser.

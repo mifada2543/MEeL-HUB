@@ -3,9 +3,11 @@
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/japanese.php';
 require_once __DIR__ . '/GarbageCollector.php';
+require_once __DIR__ . '/transcoder/FfmpegUtils.php';
 
 class Uploader
 {
+    use FfmpegUtils;
     private \mysqli $conn;
     private int $user_id;
     private string $username;
@@ -202,8 +204,7 @@ class Uploader
             return ['status' => 'error', 'msg' => "File terlalu besar!", 'alert' => true];
         }
 
-        $dur_cmd  = "export LD_LIBRARY_PATH=''; " . escapeshellarg($this->ffprobe_bin) . " -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($target_file);
-        $duration = (float)trim(shell_exec($dur_cmd));
+        $duration = $this->probeDuration($target_file);
 
         // 🔒 FIX SECURITY: Jika ffprobe gagal (duration 0 atau negatif), reject file
         if ($duration <= 0) {
@@ -578,59 +579,5 @@ class Uploader
             return ['status' => 'error', 'msg' => 'Database error! [' . $e->getMessage() . '] | title_len=' . strlen($title) . ' meta_len=' . strlen($meta) . ' filename=' . $db_filename];
         }
     }
-    // ─── MESIN PEMBUAT THUMBNAIL SPRITE & VTT ──────────────────────────────────
-    private function generateSpriteAndVTT(string $staged_video, string $target_folder)
-    {
-        $width    = 160;     // Lebar per thumbnail
-        $height   = 90;      // Tinggi per thumbnail (16:9)
-        $cols     = 5;       // Jumlah kolom menyamping dalam sprite
-        // Command FFPROBE
-        $probe_cmd = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffprobe_bin) . " -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 " . escapeshellarg($staged_video);
-        $duration = (float) shell_exec($probe_cmd);
-        // Duration
-        if ($duration > 0) {
-            if ($duration > 3600) {         // Jika lebih dari 1 jam
-                $interval = 300;            // Ambil frame tiap 5 menit
-            } elseif ($duration > 1800) {   // Jika lebih dari 30 menit
-                $interval = 180;            // Ambil frame tiap 3 menit
-            } elseif ($duration > 300) {    // Jika lebih dari 5 menit
-                $interval = 60;             // Ambil frame tiap 1 menit
-            } else {                        // Jika 5 menit ke bawah
-                $interval = 20;             // Ambil frame tiap 20 detik
-            }
-            // Hasil Frame
-            $total_frames = ceil($duration / $interval);
-            $rows         = ceil($total_frames / $cols);
-            if ($rows < 1) $rows = 1;
-
-            $sprite_file = $target_folder . 'thumb_sprite.webp';
-            $vtt_file    = $target_folder . 'thumbnails.vtt';
-            // Command FFMPEG — sprite output ke WebP untuk ukuran lebih kecil
-            $cmd_sprite = "export LD_LIBRARY_PATH=; " . escapeshellarg($this->ffmpeg_bin) . " -y -i " . escapeshellarg($staged_video) . " -vf \"fps=1/$interval,scale=$width:$height,tile={$cols}x{$rows}\" -c:v libwebp -q:v 78 " . escapeshellarg($sprite_file) . " 2>&1";
-            exec($cmd_sprite);
-            if (file_exists($sprite_file)) {
-                $vtt_content = "WEBVTT\n\n";
-                for ($i = 0; $i < $total_frames; $i++) {
-                    $start = $i * $interval;
-                    $end   = ($i + 1) * $interval;
-                    if ($end > $duration) {
-                        $end = $duration;
-                    }
-                    // Perhitungan waktu
-                    $start_time = gmdate("H:i:s", $start) . ".000";
-                    $end_time   = gmdate("H:i:s", $end) . ".000";
-                    // Perhitungan Kolom dan Baris(X dan Y)
-                    $col = $i % $cols;
-                    $row = floor($i / $cols);
-                    $x   = $col * $width;
-                    $y   = $row * $height;
-                    // Konten VTT
-                    $vtt_content .= "$start_time --> $end_time\n";
-                    $vtt_content .= "thumb_sprite.webp#xywh=$x,$y,$width,$height\n\n";
-                }
-                // Taruh Konten
-                file_put_contents($vtt_file, $vtt_content);
-            }
-        }
-    }
+    // ─── SPRITE & VTT disediakan oleh FfmpegUtils trait ───────────────────────
 }
