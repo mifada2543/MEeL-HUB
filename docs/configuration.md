@@ -26,8 +26,11 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 | `database/schema.sql` | Skema database standalone | — |
 | `modules/Transcoder.php` | FFmpeg, yt-dlp, CPU threads | `FFMPEG_THREADS` |
 | `modules/Uploader.php` | Upload paths, FFmpeg | `$ffmpeg_bin`, `$ffprobe_bin` |
-| `modules/helpers.php` | HDD check path | `$hdd_check_path` (dari `MEEL_HDD_BASE`) |
+| `modules/helpers.php` | HDD check path + berbagai utilitas | `MEEL_HDD_BASE`, `get_user_role()`, `get_audio_mime_type()`, dll |
 | `modules/System.php` | Queue management | Rate limit constants |
+| `modules/GarbageCollector.php` | Auto-cleanup temp files | `STALE_SECONDS`, `GUEST_STALE_HOURS` |
+| `modules/autoload.php` | PSR-4-like autoloader | Daftar direktori yang di-scan |
+| `database/migrate.php` | Database migration | Versi skema & upgrade otomatis |
 
 ---
 

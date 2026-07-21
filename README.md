@@ -9,7 +9,7 @@
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![MariaDB](https://img.shields.io/badge/MariaDB-10.2%2B-003545?style=flat-square&logo=mariadb&logoColor=white)](https://mariadb.org/)
-[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-CDN-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-Self--hosted-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-6.0%2B-007808?style=flat-square&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue?style=flat-square)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/Maintained-Yes-22c55e?style=flat-square)](https://github.com/mifada2543/MEeL)
@@ -114,7 +114,7 @@
 | **Backend** | PHP 8.0+ | Core logic & API endpoints |
 | **Database** | MySQL 5.7+ / MariaDB 10.2+ | Relational storage & metadata |
 | **Web Server** | Apache 2.4+ | `mod_rewrite` engine |
-| **Styling** | TailwindCSS (CDN) + Vanilla CSS | Dark-mode monospace theme |
+| **Styling** | TailwindCSS (Self-hosted, Purged) + Vanilla CSS | Dark-mode monospace theme |
 | **Interaktivitas** | HTMX + Vanilla JavaScript | AJAX SPA-like tanpa reload |
 | **Media Player** | Plyr.js + HLS.js | HLS video & audio playback |
 | **Icons** | Lucide Icons | SVG icon library |

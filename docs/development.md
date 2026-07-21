@@ -234,7 +234,7 @@ window.miniPlayPauseIndex = function() {};
 
 ### CSS
 
-Proyek menggunakan **TailwindCSS via CDN** untuk styling utama, dengan CSS kustom minimal untuk efek khusus.
+Proyek menggunakan **TailwindCSS (self-hosted, purged)** untuk styling utama, dengan CSS kustom minimal untuk efek khusus.
 
 ```css
 /* CSS kustom hanya untuk efek yang tidak bisa dicapai dengan Tailwind */

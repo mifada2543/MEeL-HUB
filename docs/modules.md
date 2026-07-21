@@ -290,14 +290,128 @@ Fungsi utilitas global:
 > ⚠️ **Perubahan:** `$hdd_check_path` sekarang mengambil nilai dari konstanta `MEEL_HDD_BASE` (didefinisikan di `auth/config.php`), bukan hardcoded.
 
 ```php
-function time_ago($timestamp);       // Format waktu relatif (ID)
-function format_bytes($bytes);       // Format ukuran file
-function music_thumbnail_url($thumbnail); // Resolve thumbnail path
-function get_user_usage($username);  // Hitung usage drive user
-function get_csrf_token();           // Get CSRF token
-function verify_csrf_token($token);  // Verifikasi CSRF
-function log_drive_operation(...);   // Log operasi drive
+function time_ago($timestamp);                  // Format waktu relatif (ID)
+function format_bytes($bytes);                  // Format ukuran file
+function music_thumbnail_url($thumbnail);       // Resolve thumbnail path
+function get_user_usage($username);             // Hitung usage drive user
+function get_user_role(mysqli $conn, int $user_id): string;  // Role dengan static cache
+function get_csrf_token();                      // Get CSRF token
+function verify_csrf_token($token);             // Verifikasi CSRF
+function check_disk_space(int $required_bytes, string $path): array;  // Validasi disk
+function require_disk_space(int $required_bytes, string $path, string $label): void;
+function log_drive_operation(...);              // Log operasi drive
+
+// ─── Audio Helpers ────────────────────
+function get_audio_mime_type(string $ext): string;         // 'mp3' → 'audio/mpeg'
+function get_audio_format_label(string $ext): string;      // 'flac' → 'FLAC'
+function get_audio_format_description(string $ext): string; // 'ogg' → 'Opus ~160kbps'
 ```
+
+### 9. `CommentRenderer.php`
+
+**Fungsi:** `render_comments()`, `render_video_comments()`, `render_music_comments()`
+
+Render komentar nested dengan 2 tema (video/music):
+
+```php
+// Fungsi utama (gabungan)
+function render_comments(
+    int $parent_id,
+    array $grouped,
+    int $level = 0,
+    string $theme = 'video',  // 'video' | 'music'
+    int $playlist_context = 0
+): void;
+
+// Backward compatibility aliases (deprecated)
+function render_video_comments(int $parent_id, array $grouped, int $level = 0): void;
+function render_music_comments(int $parent_id, array $grouped, int $level = 0, int $playlist_context = 0): void;
+```
+
+### 10. `GarbageCollector.php`
+
+**Class:** `GarbageCollector` (static methods)
+
+Auto-cleanup untuk temporary files dan guest accounts:
+
+```php
+class GarbageCollector {
+    public static function cleanGuests(mysqli $conn): int;  // Hapus guest > 2 jam
+    public static function run(): void;                      // Entry point utama
+    private static function cleanDirectory(string $dir): void;
+    private static function removeDirectory(string $dir): void;
+}
+```
+
+### 11. Exception Classes (`modules/exceptions/`)
+
+```php
+class ProcessException extends \RuntimeException {     // Gagal proses eksternal (FFmpeg, yt-dlp)
+    public function getCommand(): string;
+    public function getExitCode(): int;
+    public function getOutput(): ?string;
+}
+
+class DownloadException extends \RuntimeException {     // Gagal download URL
+    public function getUrl(): string;
+    public function getStage(): ?string;
+}
+
+class TranscodeException extends \RuntimeException {    // Gagal transcoding
+    public function getInput(): string;
+    public function getOutput(): ?string;
+    public function getFfmpegLog(): ?string;
+}
+```
+
+### 12. `SearchEngine.php` (`modules/media/`)
+
+**Class:** `SearchEngine` — FULLTEXT search dengan parameter filtering:
+
+```php
+class SearchEngine {
+    public function searchVideo(array $params): array;
+    public function searchMusic(array $params): array;
+}
+```
+
+### 13. Autoloader (`modules/autoload.php`)
+
+PSR-4-like via `spl_autoload_register()`. Auto-load class dari:
+- `modules/`, `modules/media/`, `modules/exceptions/`
+- `controllers/`, `controllers/api/`, `controllers/admin/`, `controllers/profile/`, `controllers/system/`
+- `drive/`
+
+### 14. WatchController (`controllers/api/WatchController.php`)
+
+```php
+class VideoWatchController {
+    public function getViewData(): array;  // → extract() ke view template
+}
+class MusicWatchController {
+    public function getViewData(): array;
+    public function requireMedia(): void;  // Redirect if not found
+}
+```
+
+### 15. Audio Helpers (di `helpers.php`)
+
+Digunakan oleh `WatchController` dan `music/stream.php`:
+| Helper | Input | Output |
+|--------|-------|--------|
+| `get_audio_mime_type()` | `'ogg'` | `'audio/ogg'` |
+| `get_audio_format_label()` | `'flac'` | `'FLAC'` |
+| `get_audio_format_description()` | `'opus'` | `'Opus ~160kbps'` |
+
+### 16. Migration System (`database/migrate.php`)
+
+Versioned, idempotent database upgrades:
+```bash
+/opt/lampp/bin/php database/migrate.php
+```
+- v1: FULLTEXT index untuk search
+- v2: Performance index (upload_date)
+- Tracker di tabel `db_version`
 
 ---
 

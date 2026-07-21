@@ -17,7 +17,7 @@
 | **Nama** | MEeL-HUB (Media Hub Platform) |
 | **Lisensi** | GNU GPL v3 |
 | **Arsitektur** | PHP Monolith + MySQL |
-| **Frontend** | TailwindCSS (CDN) + Vanilla JS + HTMX |
+| **Frontend** | TailwindCSS (Self-hosted) + Vanilla JS + HTMX |
 | **Media Player** | Plyr.js + HLS.js |
 | **Otentikasi** | Session-based + CSRF Token |
 | **Role** | Admin, Member, User, Guest (RBAC) |
@@ -65,7 +65,7 @@ MEeL/
   - `DriveUserContext`, `DriveStorage`, `DriveViewRenderer` — Cloud Drive OOP
 - **Autoloader PSR-4-like** — `modules/autoload.php` dengan `spl_autoload_register()`
 - **HTMX-driven** — Interaktivitas AJAX tanpa framework JavaScript berat
-- **Dark-mode first** — Tema gelap monospace dengan TailwindCSS CDN
+- **Dark-mode first** — Tema gelap monospace dengan TailwindCSS (self-hosted, purged)
 
 ---
 
