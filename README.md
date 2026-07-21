@@ -355,7 +355,7 @@ Proyek ini dilisensikan di bawah **GNU General Public License v3.0 (GPLv3)**.
 ## Q&A
 ### Q: Kenapa belum ada versi docker?
 
->A: Sulit mengkonfigurasi ulang absolut path kedalam docker(karena env nya tersendiri), udah gitu saya ingin memfokuskan ini ke performa yang maximal(tanpa penghalan/docker)
+>A: Karena proyek ini mesih dalam tahap <strong>pengembangan</strong> dan <strong>debugging</strong>, jadi docker mesih kurang relevan untuk proyek ini
 
 
 ### Q: Kenapa absolut path?
