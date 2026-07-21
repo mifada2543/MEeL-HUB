@@ -26,14 +26,7 @@ define('PROJECT_ROOT', realpath(__DIR__ . '/..'));
 define('EXCLUDE_DIRS', ['vendor', 'node_modules', '.git', 'assets/dict', 'data_drive']);
 define('EXCLUDE_FILES', ['config.example.php', 'test.php', '.gitkeep']);
 
-// Color codes
-define('CLR_GREEN',  "\033[32m");
-define('CLR_RED',    "\033[31m");
-define('CLR_YELLOW', "\033[33m");
-define('CLR_CYAN',   "\033[36m");
-define('CLR_BOLD',   "\033[1m");
-define('CLR_RESET',  "\033[0m");
-define('CLR_GRAY',   "\033[90m");
+require_once __DIR__ . '/helpers.php';
 
 // Globals
 $GLOBALS['total_tests']  = 0;
@@ -42,61 +35,6 @@ $GLOBALS['warnings']     = 0;
 $GLOBALS['failed']       = 0;
 $GLOBALS['fail_details'] = [];
 $GLOBALS['test_timestamp'] = date('Y-m-d H:i:s');
-
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-
-function p(string $msg = '', string $color = ''): void {
-    $prefix = match($color) {
-        CLR_GREEN  => '  ✓ ',
-        CLR_RED    => '  ✗ ',
-        CLR_YELLOW => '  ⚠ ',
-        default    => '    '
-    };
-    echo $color . $prefix . $msg . CLR_RESET . "\n";
-}
-
-function print_header(string $title): void {
-    echo "\n" . CLR_CYAN . CLR_BOLD . "╔══ " . str_repeat('═', 60) . "╗\n";
-    echo "║   " . str_pad($title, 56) . "║\n";
-    echo "╚══ " . str_repeat('═', 60) . "╝" . CLR_RESET . "\n\n";
-}
-
-function record(string $name, bool $pass, bool $isWarning = false, string $detail = ''): void {
-    $GLOBALS['total_tests']++;
-    if ($pass && !$isWarning) {
-        $GLOBALS['passed']++;
-        p($name, CLR_GREEN);
-    } elseif ($isWarning) {
-        $GLOBALS['warnings']++;
-        p($name . ($detail ? " — {$detail}" : ''), CLR_YELLOW);
-    } else {
-        $GLOBALS['failed']++;
-        $GLOBALS['fail_details'][] = "FAIL {$name}" . ($detail ? " — {$detail}" : '');
-        p($name . ($detail ? " — {$detail}" : ''), CLR_RED);
-    }
-}
-
-function getPhpFiles(): array {
-    $files = [];
-    $it = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator(PROJECT_ROOT, RecursiveDirectoryIterator::SKIP_DOTS)
-    );
-    foreach ($it as $file) {
-        $path = $file->getPathname();
-        foreach (EXCLUDE_DIRS as $ex) {
-            if (strpos($path, '/' . $ex . '/') !== false || strpos($path, '\\' . $ex . '\\') !== false)
-                continue 2;
-        }
-        if (in_array($file->getBasename(), EXCLUDE_FILES)) continue;
-        if ($file->getExtension() === 'php') $files[] = $path;
-    }
-    sort($files);
-    return $files;
-}
-
-function countInFile(string $path, string $pattern): int {
-    return preg_match_all($pattern, file_get_contents($path));
-}
 
 // ============================================================================
 // TEST 1: PHP SYNTAX — Semua file PHP
