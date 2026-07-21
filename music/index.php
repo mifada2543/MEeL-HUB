@@ -929,10 +929,10 @@ if (isset($_GET['content_only'])) {
                 setupPlaylistItemClicks();
             }
             // Auto-scroll sidebar desktop ke artist yg aktif HANYA ketika filter/ganti artist,
-            // BUKAN saat load-more (sidebar tidak di-render ulang, jadi tidak perlu)
-            // Cek via e.detail.elt, bukan targetId, karena load-more skrg target #music-list
+            // BUKAN saat load-more atau search (target #music-list).
+            // Cek via isFromLoadMore + targetId sebagai safeguard ganda.
             const isFromLoadMore = e.detail?.elt?.closest?.('#load-more-music') != null;
-            if (isContentUpdate && !isFromLoadMore) {
+            if (isContentUpdate && !isFromLoadMore && !targetId.includes('music-list')) {
                 scrollToActiveArtistDesktop();
             }
         });
@@ -1107,9 +1107,19 @@ if (isset($_GET['content_only'])) {
                             btn.setAttribute('hx-get', nextUrl);
                             if (typeof htmx !== 'undefined') htmx.process(btn);
 
-                            // Auto-scroll ke item terakhir yang baru dimuat
-                            // Gunakan scrollIntoView di load-more button (paling bawah)
-                            if (ld) ld.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            // Auto-scroll: HANYA scroll ke BAWAH
+                            // Gunakan requestAnimationFrame agar posisi elemen sudah final
+                            // setelah browser selesai reflow/rendering.
+                            // scrollBy({top:positif}) TIDAK MUNGKIN scroll ke atas.
+                            if (ld) {
+                                requestAnimationFrame(function(){
+                                    var _r2 = ld.getBoundingClientRect();
+                                    console.log('[LM] _r2.bottom:', _r2.bottom, 'innerH:', window.innerHeight);
+                                    if (_r2.bottom > window.innerHeight) {
+                                        window.scrollBy({ top: _r2.bottom - window.innerHeight + 20, behavior: 'smooth' });
+                                    }
+                                });
+                            }
                         } else if (isEnd && ld) {
                             ld.outerHTML = '<div class="py-10 text-center text-[9px] text-gray-800 uppercase tracking-[.4em]">End of Collection</div>';
                         }
