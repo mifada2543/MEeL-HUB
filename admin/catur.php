@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $conn->commit();
             $message = "Room <strong>$code</strong> berhasil dihapus ($moved moves dihapus).";
-        } catch (Exception $e) {
+        } catch (RuntimeException $e) {
             $conn->rollback();
             $message = "Gagal menghapus room: " . $e->getMessage();
             $message_type = 'error';

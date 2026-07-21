@@ -18,6 +18,9 @@ if (!defined('MEEL_HDD_BASE')) {
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/japanese.php';
 require_once __DIR__ . '/GarbageCollector.php';
+require_once __DIR__ . '/exceptions/ProcessException.php';
+require_once __DIR__ . '/exceptions/DownloadException.php';
+require_once __DIR__ . '/exceptions/TranscodeException.php';
 
 class Transcoder
 {
@@ -196,6 +199,15 @@ class Transcoder
         exec($cmd, $output_array, $return_var);
         $output = implode("\n", $output_array);
 
+        if ($return_var !== 0) {
+            throw new ProcessException(
+                "yt-dlp gagal mengambil metadata (exit code $return_var)",
+                $cmd,
+                $return_var,
+                $output
+            );
+        }
+
         $start = strpos($output, '{');
         $end   = strrpos($output, '}');
 
@@ -207,13 +219,13 @@ class Transcoder
             }
         }
 
-        // DEBUG MODE — dinonaktifkan untuk production (data sensitif bisa bocor)
-        // Aktifkan kembali hanya untuk debugging dengan meng-uncomment baris di bawah:
-        // $this->renderMetadataDebug($url, $cmd, $return_var, $output);
-        
-        // Catat error ke log server, bukan ke browser
+        // Catat error ke log server
         error_log("[MEeL-Transcoder] Gagal parsing metadata untuk URL: " . $url);
-        return null;
+        throw new DownloadException(
+            "Gagal parsing metadata dari yt-dlp",
+            $url,
+            'metadata'
+        );
     }
 
     /**
@@ -289,43 +301,30 @@ class Transcoder
     {
         // Validasi input
         if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('/^https?:\/\//i', $url)) {
-            $this->jsError("URL tidak valid atau protokol tidak didukung.");
-            return "";
+            throw new DownloadException("URL tidak valid atau protokol tidak didukung.", $url, 'validation');
         }
         if (!in_array($type, ['video', 'music'], true)) {
-            $this->jsError("Tipe media tidak valid.");
-            return "";
+            throw new DownloadException("Tipe media tidak valid.", $url, 'validation');
         }
         if (strlen($url) > 500) {
-            $this->jsError("URL terlalu panjang.");
-            return "";
+            throw new DownloadException("URL terlalu panjang.", $url, 'validation');
         }
 
         // 🟢 PRE-FLIGHT: Cek ruang disk sebelum download (queue belum di-lock)
-        // yt-dlp download size tidak bisa diketahui pasti, minimal 2GB free
-        $shm_temp_path = $this->getShmTempPath();
-        $shm_free = @disk_free_space($shm_temp_path);
-        if ($shm_free !== false && $shm_free < 512 * 1024 * 1024) {
-            $free_gb = sprintf('%.1f', $shm_free / (1024 ** 3));
-            $this->jsError("RAM disk tidak mencukupi! Hanya tersedia {$free_gb} GB, butuh minimal 0.5 GB untuk staging download.");
-            return "";
-        }
-        // Cek juga HDD storage untuk final output
+        require_disk_space(512 * 1024 * 1024, $this->getShmTempPath(), 'RAM disk staging');
         $hdd_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : dirname(__DIR__);
-        $hdd_free = @disk_free_space($hdd_path);
-        if ($hdd_free !== false && $hdd_free < 2 * 1024 * 1024 * 1024) {
-            $free_gb = sprintf('%.1f', $hdd_free / (1024 ** 3));
-            $this->jsError("Storage HDD tidak mencukupi! Hanya tersedia {$free_gb} GB, butuh minimal 2 GB untuk menyimpan hasil download.");
-            return "";
-        }
+        require_disk_space(2 * 1024 * 1024 * 1024, $hdd_path, 'HDD storage');
 
         $queue_id = $this->lockQueue($url, $type);
 
-        $meta = $this->fetchMetadata($url);
-        if (!$meta) {
+        try {
+            $meta = $this->fetchMetadata($url);
+            if (!$meta) {
+                throw new DownloadException("Gagal ambil metadata dari yt-dlp.", $url, 'metadata');
+            }
+        } catch (Throwable $e) {
             $this->releaseQueue($queue_id, 'failed');
-            $this->jsError("Gagal ambil metadata.");
-            return "";
+            throw $e;
         }
 
         $title       = $meta['title']                                     ?? "Upload_" . time();

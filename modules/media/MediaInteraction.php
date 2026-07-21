@@ -1,12 +1,12 @@
 <?php
 
 class MediaInteraction {
-    private $conn;
-    private $user_id;
-    private $error = '';
-    private $success = false;
+    private \mysqli $conn;
+    private int $user_id;
+    private string $error = '';
+    private bool $success = false;
 
-    public function __construct($db_connection, $session_user_id) {
+    public function __construct(\mysqli $db_connection, int $session_user_id) {
         $this->conn = $db_connection;
         $this->user_id = (int)$session_user_id;
     }
@@ -23,7 +23,7 @@ class MediaInteraction {
      * @param string $like_type 'like' atau 'dislike'
      * @return array Status dan data terbaru
      */
-    public function toggleLike($media_id, $media_type, $like_type) {
+    public function toggleLike(int $media_id, string $media_type, string $like_type): array {
         // Validasi
         if (!$this->validateUser()) {
             return $this->getResponse(false, 'User tidak terautentikasi', 403);
@@ -50,7 +50,7 @@ class MediaInteraction {
             $data = $this->getLikesData($table, $media_id, $col);
             return $this->getResponse(true, 'Berhasil', 200, $data);
 
-        } catch (Exception $e) {
+        } catch (RuntimeException $e) {
             return $this->getResponse(false, $e->getMessage(), 500);
         }
     }
@@ -62,7 +62,7 @@ class MediaInteraction {
      * @param string $media_type
      * @return array|null
      */
-    public function getUserInteractionStatus($media_id, $media_type) {
+    public function getUserInteractionStatus(int $media_id, string $media_type): ?string {
         $col = ($media_type === 'music') ? 'music_id' : 'video_id';
         $existing = $this->getExistingInteraction($col, $media_id);
         return $existing ? $existing['TYPE'] : null;
@@ -75,7 +75,7 @@ class MediaInteraction {
      * @param int $media_id
      * @return array
      */
-    public function getLikesCount($table, $media_id) {
+    public function getLikesCount(string $table, int $media_id): array {
         $stmt = $this->conn->prepare("SELECT likes, dislikes FROM $table WHERE id = ?");
         $stmt->bind_param("i", $media_id);
         $stmt->execute();
@@ -99,7 +99,7 @@ class MediaInteraction {
      * @param int $comment_id
      * @return array Status response
      */
-    public function deleteComment($comment_id) {
+    public function deleteComment(int $comment_id): array {
         // Validasi
         if (!$this->validateUser()) {
             return $this->getResponse(false, 'User tidak terautentikasi', 403);
@@ -113,13 +113,13 @@ class MediaInteraction {
             // Ownership check: hanya bisa delete komentar milik sendiri
             $stmt = $this->conn->prepare("DELETE FROM comments WHERE id = ? AND user_id = ?");
             if (!$stmt) {
-                throw new Exception($this->conn->error);
+                throw new RuntimeException($this->conn->error);
             }
 
             $stmt->bind_param("ii", $comment_id, $this->user_id);
 
             if (!$stmt->execute()) {
-                throw new Exception($this->conn->error);
+                throw new RuntimeException($this->conn->error);
             }
 
             $affected = $stmt->affected_rows;
@@ -131,7 +131,7 @@ class MediaInteraction {
 
             return $this->getResponse(true, 'Komentar berhasil dihapus', 200);
 
-        } catch (Exception $e) {
+        } catch (RuntimeException $e) {
             return $this->getResponse(false, $e->getMessage(), 500);
         }
     }
@@ -140,11 +140,11 @@ class MediaInteraction {
     // PRIVATE HELPER FUNCTIONS
     // ============================================================
 
-    private function validateUser() {
+    private function validateUser(): bool {
         return $this->user_id > 0;
     }
 
-    private function validateLikeInput($media_id, $media_type, $like_type) {
+    private function validateLikeInput(int $media_id, string $media_type, string $like_type): bool {
         if ($media_id <= 0) {
             $this->error = 'Media ID tidak valid';
             return false;
@@ -160,10 +160,10 @@ class MediaInteraction {
         return true;
     }
 
-    private function getExistingInteraction($col, $media_id) {
+    private function getExistingInteraction(string $col, int $media_id): ?array {
         $stmt = $this->conn->prepare("SELECT `TYPE` FROM interactions WHERE user_id = ? AND $col = ?");
         if (!$stmt) {
-            throw new Exception($this->conn->error);
+            throw new RuntimeException($this->conn->error);
         }
 
         $stmt->bind_param("ii", $this->user_id, $media_id);
@@ -175,7 +175,7 @@ class MediaInteraction {
         return $existing;
     }
 
-    private function performInteractionOperation($existing, $col, $media_id, $like_type) {
+    private function performInteractionOperation(?array $existing, string $col, int $media_id, string $like_type): void {
         if ($existing) {
             if ($existing['TYPE'] === $like_type) {
                 // Delete: toggle OFF (same type)
@@ -193,12 +193,12 @@ class MediaInteraction {
         }
 
         if (!$op->execute()) {
-            throw new Exception($this->conn->error);
+            throw new RuntimeException($this->conn->error);
         }
         $op->close();
     }
 
-    private function syncLikesCount($table, $col, $media_id) {
+    private function syncLikesCount(string $table, string $col, int $media_id): void {
         $sync = $this->conn->prepare(
             "UPDATE $table t SET
                 likes    = (SELECT COUNT(*) FROM interactions WHERE $col = t.id AND `TYPE` = 'like'),
@@ -206,36 +206,28 @@ class MediaInteraction {
              WHERE t.id = ?"
         );
         if (!$sync) {
-            throw new Exception($this->conn->error);
+            throw new RuntimeException($this->conn->error);
         }
 
         $sync->bind_param("i", $media_id);
         if (!$sync->execute()) {
-            throw new Exception($this->conn->error);
+            throw new RuntimeException($this->conn->error);
         }
         $sync->close();
     }
 
-    private function getLikesData($table, $media_id, $col) {
-        // Get counts
-        $counts = $this->getLikesCount($table, $media_id);
-
-        // Get current user interaction status
-        $stmt = $this->conn->prepare("SELECT `TYPE` FROM interactions WHERE user_id = ? AND $col = ?");
-        $stmt->bind_param("ii", $this->user_id, $media_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $cur = $result->fetch_assoc();
-        $stmt->close();
+    private function getLikesData(string $table, int $media_id, string $col): array {
+        $counts  = $this->getLikesCount($table, $media_id);
+        $existing = $this->getExistingInteraction($col, $media_id);
 
         return [
-            'likes' => $counts['likes'],
-            'dislikes' => $counts['dislikes'],
-            'user_interaction' => $cur['TYPE'] ?? null
+            'likes'            => $counts['likes'],
+            'dislikes'         => $counts['dislikes'],
+            'user_interaction' => $existing['TYPE'] ?? null,
         ];
     }
 
-    private function getResponse($success, $message, $http_code, $data = null) {
+    private function getResponse(bool $success, string $message, int $http_code, mixed $data = null): array {
         return [
             'success' => $success,
             'message' => $message,
@@ -248,11 +240,11 @@ class MediaInteraction {
     // GETTERS
     // ============================================================
 
-    public function getError() {
+    public function getError(): string {
         return $this->error;
     }
 
-    public function getUserId() {
+    public function getUserId(): int {
         return $this->user_id;
     }
 }
