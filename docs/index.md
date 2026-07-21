@@ -84,7 +84,7 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 
 ## 👨‍💻 Kontak
 
-- **Email:** minecraft.daffa2501@gmail.com
+- **Email:** mifada2543@gmail.com
 - **GitHub:** [github.com/mifada2543](https://github.com/mifada2543)
 
 ---
