@@ -644,6 +644,12 @@ if (isset($_GET['content_only'])) {
 
         function loadPlaylistById(id) {
             if (!id) return;
+
+            // Simpan state load-more SEBELUM replace <main>
+            var savedLMUrl = null;
+            var savedBtn = document.getElementById('load-more-btn');
+            if (savedBtn) savedLMUrl = savedBtn.getAttribute('hx-get');
+
             fetch('view_playlist.php?id=' + id + '&content_only=1')
                 .then(function(r) {
                     return r.text();
@@ -657,6 +663,13 @@ if (isset($_GET['content_only'])) {
                         history.pushState(null, '', 'view_playlist.php?id=' + id);
                     }
                     if (typeof lucide !== 'undefined') lucide.createIcons();
+
+                    // Pulihkan load-more URL setelah replace <main>
+                    if (savedLMUrl) {
+                        var newBtn = document.getElementById('load-more-btn');
+                        if (newBtn) newBtn.setAttribute('hx-get', savedLMUrl);
+                    }
+
                     if (typeof htmx !== 'undefined') htmx.process(main);
                     if (typeof setupPlaylistItemClicks === 'function') setupPlaylistItemClicks();
                 })
@@ -1070,24 +1083,38 @@ if (isset($_GET['content_only'])) {
             });
         };
 
-        // ── Load More: handle meta div & update button URL ────────────
-        document.addEventListener('htmx:afterSwap', (e) => {
-            const meta = document.getElementById('load-more-meta');
-            if (!meta) return;
+// ── Load More: observasi .lm-meta di <main> ──
+        // (tanpa recovery — loadPlaylistById sudah handle save/restore sendiri)
+        (function(){
+            var _main = document.querySelector('main');
+            if (!_main) return;
 
-            const btn = document.getElementById('load-more-btn');
-            const loadMoreDiv = document.getElementById('load-more-music');
+            var _obs = new MutationObserver(function(muts) {
+                for (var i = 0; i < muts.length; i++) {
+                    var added = muts[i].addedNodes;
+                    for (var j = 0; j < added.length; j++) {
+                        var n = added[j];
+                        if (n.nodeType !== 1 || !n.classList || !n.classList.contains('lm-meta')) continue;
 
-            if (meta.dataset.nextUrl && btn && loadMoreDiv) {
-                // Update button URL with new offset - button stays in DOM, never replaced
-                btn.setAttribute('hx-get', meta.dataset.nextUrl);
-            } else if (meta.dataset.end && loadMoreDiv) {
-                // End of collection - replace with end message
-                loadMoreDiv.outerHTML = '<div class="py-10 text-center text-[9px] text-gray-800 uppercase tracking-[.4em]">End of Collection</div>';
-            }
+                        var nextUrl = n.getAttribute('data-next-url');
+                        var isEnd   = n.getAttribute('data-end');
+                        if (n.parentNode) n.parentNode.removeChild(n);
 
-            meta.remove();
-        });
+                        var btn = document.getElementById('load-more-btn');
+                        var ld  = document.getElementById('load-more-music');
+
+                        if (nextUrl && btn) {
+                            btn.setAttribute('hx-get', nextUrl);
+                            if (typeof htmx !== 'undefined') htmx.process(btn);
+                        } else if (isEnd && ld) {
+                            ld.outerHTML = '<div class="py-10 text-center text-[9px] text-gray-800 uppercase tracking-[.4em]">End of Collection</div>';
+                        }
+                        return;
+                    }
+                }
+            });
+            _obs.observe(_main, { childList: true, subtree: true });
+        })();
 
         // Keyboard shortcuts untuk mini player index
         document.addEventListener('keydown', (e) => {
