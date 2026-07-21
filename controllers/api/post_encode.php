@@ -1,4 +1,32 @@
 <?php
+/**
+ * controllers/api/post_encode.php
+ * 
+ * GET /api/post_encode — Post-processing encode hasil download yt-dlp.
+ *
+ * Dipanggil oleh upload_advanced.php setelah download selesai.
+ * Meneruskan parameter dari query string ke Transcoder::encodeMusic().
+ *
+ * Query params:
+ *   - temp_file   (string, required) Path file temp hasil download
+ *   - title       (string, optional) Judul media
+ *   - artist      (string, optional) Nama artis
+ *   - album       (string, optional) Nama album
+ *   - duration    (int,    optional) Durasi dalam detik
+ *   - description (string, optional) Deskripsi
+ *
+ * Response:
+ *   302 Redirect ke upload_advanced.php?success=1 pada sukses
+ *   HTML error page pada gagal
+ *
+ * Dependencies:
+ *   - modules/helpers.php
+ *   - auth/auth.php ($_SESSION, login check)
+ *   - auth/config.php ($conn)
+ *   - modules/Transcoder.php
+ *   - modules/GarbageCollector.php
+ */
+
 require_once '../../modules/helpers.php';
 require_once '../../auth/auth.php';
 require_once '../../auth/config.php';

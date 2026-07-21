@@ -1,4 +1,26 @@
 <?php
+/**
+ * controllers/api/like.php
+ * 
+ * POST /api/like — Toggle like/dislike untuk video atau music.
+ *
+ * Request:
+ *   - id         (int, required) ID media
+ *   - media_type (string, required) 'video' | 'music'
+ *   - type       (string, required) 'like' | 'dislike'
+ *   - csrf_token (string, required) CSRF token dari session
+ *
+ * Response (HTML partial):
+ *   - Hanya mengembalikan HTML untuk #like-dislike-container (HTMX swap)
+ *   - HTTP 403 jika CSRF invalid atau user tidak aktif/guest
+ *   - HTTP 401 jika user belum login
+ *
+ * Dependencies:
+ *   - helpers.php (verify_csrf_token)
+ *   - auth/config.php ($conn, $_SESSION)
+ *   - modules/media/MediaInteraction.php
+ */
+
 require_once '../../modules/helpers.php';
 // Pastikan session sudah dimulai jika menggunakan $_SESSION
 if (session_status() === PHP_SESSION_NONE) {

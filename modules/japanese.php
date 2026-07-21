@@ -36,7 +36,7 @@ if (!function_exists('getMecabPath')) {
 
 // ─── ROMAJI CONVERTER ──────────────────────────────────────────────────────────
 if (!function_exists('getRomajiName')) {
-    function getRomajiName($text)
+    function getRomajiName(string $text): string
     {
         if (empty($text)) return 'untitled';
 
@@ -140,7 +140,7 @@ if (!function_exists('analyzeJapaneseText')) {
                     $pdo        = new PDO('sqlite:' . $dict_path);
                     $dict_stmt  = $pdo->prepare("SELECT glosses FROM entries WHERE reading = :w LIMIT 1");
                     $dict_ready = true;
-                } catch (Exception $e) {
+                } catch (RuntimeException $e) {
                     $dict_ready = false;
                 }
             } else {
@@ -212,7 +212,7 @@ if (!function_exists('getEnglishTranslation')) {
                 try {
                     $pdo = new PDO('sqlite:' . $dict_path);
                     $dict_ready = true;
-                } catch (Exception $e) {
+                } catch (RuntimeException $e) {
                     $dict_ready = false;
                 }
             } else {

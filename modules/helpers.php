@@ -78,20 +78,21 @@ function detectProtocol(): string
 } // end function_exists('detectProtocol')
 
 if (!function_exists('time_ago')) {
-function time_ago($timestamp)
+function time_ago(string|int $timestamp): string
 {
-    $time_diff = time() - strtotime($timestamp);
+    $time_diff = time() - (is_int($timestamp) ? $timestamp : strtotime($timestamp));
     if ($time_diff < 1) return 'Baru saja';
     $condition = [31104000 => 'tahun', 2592000 => 'bulan', 86400 => 'hari', 3600 => 'jam', 60 => 'menit', 1 => 'detik'];
     foreach ($condition as $secs => $str) {
         $d = $time_diff / $secs;
         if ($d >= 1) return round($d) . ' ' . $str . ' yang lalu';
     }
+    return 'Baru saja';
 }
 } // end function_exists('time_ago')
 
 if (!function_exists('format_bytes')) {
-function format_bytes($bytes, $precision = 2)
+function format_bytes(int|float $bytes, int $precision = 2): string
 {
     $units = array('B', 'KB', 'MB', 'GB', 'TB');
     $bytes = max($bytes, 0);
@@ -160,7 +161,7 @@ if (PHP_SAPI !== 'cli' && !defined('MEEL_HDD_CHECKED')) {
     }
 }
 if (!function_exists('get_user_usage')) {
-function get_user_usage($username)
+function get_user_usage(string $username): int|float
 {
     $path = dirname(__DIR__) . "/data_drive/private_admins/" . $username;
     if (!is_dir($path)) return 0;
@@ -180,7 +181,7 @@ function get_user_usage($username)
                 $size += $file->getSize();
             }
         }
-    } catch (Exception $e) {
+    } catch (RuntimeException $e) {
         return 0;
     }
     return $size;
@@ -295,6 +296,63 @@ function require_disk_space(int $required_bytes, string $path, string $label): v
     throw new \RuntimeException("Ruang {$label} tidak mencukupi! {$error_ms}");
 }
 } // end function_exists('require_disk_space')
+
+// ════════════════════════════════════════════════════════════════
+// AUDIO MIME & FORMAT HELPERS
+// ════════════════════════════════════════════════════════════════
+
+if (!function_exists('get_audio_mime_type')) {
+/**
+ * Dapatkan MIME type untuk ekstensi file audio.
+ *
+ * @param string $ext Ekstensi file (mp3, ogg, flac, dll)
+ * @return string MIME type yang sesuai
+ */
+function get_audio_mime_type(string $ext): string
+{
+    return match (strtolower($ext)) {
+        'mp3'        => 'audio/mpeg',
+        'm4a'        => 'audio/mp4',
+        'ogg', 'opus' => 'audio/ogg',
+        'flac'       => 'audio/flac',
+        'wav'        => 'audio/wav',
+        default      => 'audio/ogg',
+    };
+}
+} // end function_exists('get_audio_mime_type')
+
+if (!function_exists('get_audio_format_label')) {
+/**
+ * Dapatkan label format audio yang user-friendly.
+ *
+ * @param string $ext Ekstensi file (mp3, ogg, flac, dll)
+ * @return string Label format (MP3, OPUS, FLAC, dll)
+ */
+function get_audio_format_label(string $ext): string
+{
+    $lower = strtolower($ext);
+    return strtoupper($lower === 'ogg' ? 'OPUS' : $lower);
+}
+} // end function_exists('get_audio_format_label')
+
+if (!function_exists('get_audio_format_description')) {
+/**
+ * Dapatkan deskripsi singkat untuk format audio.
+ *
+ * @param string $ext Ekstensi file
+ * @return string Deskripsi format
+ */
+function get_audio_format_description(string $ext): string
+{
+    return match (strtolower($ext)) {
+        'ogg', 'opus' => 'Opus adalah codec audio modern untuk web',
+        'm4a'         => 'M4a adalah codec audio terbaik dalam hal kompatibilitas',
+        'mp3'         => 'Ini adalah codec audio universal yang sangat populer',
+        'flac'        => 'Ini adalah codec audio yang memiliki kualitas audio terbaik',
+        default       => 'Format audio tidak dikenal',
+    };
+}
+} // end function_exists('get_audio_format_description')
 
 /**
  * Log drive operations untuk audit trail

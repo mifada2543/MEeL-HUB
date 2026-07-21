@@ -456,6 +456,55 @@ RewriteEngine On
 
 ---
 
+## Exception Handling
+
+### Custom Exception Classes
+
+Mulai PHP 8+, MEeL menggunakan 3 custom exception untuk error handling spesifik:
+
+```php
+// ProcessException — Gagal eksekusi proses eksternal (FFmpeg, yt-dlp)
+// Gunakan untuk: I/O errors, exec() failures, environment issues
+catch (RuntimeException $e) { /* disk space */ }
+catch (ProcessException $e) { /* ffmpeg failed */ }
+catch (TranscodeException $e) { /* HLS failed */ }
+catch (DownloadException $e) { /* yt-dlp failed */ }
+```
+
+| Exception | Extends | Digunakan Untuk |
+|-----------|---------|-----------------|
+| `ProcessException` | `\RuntimeException` | Gagal proses eksternal: FFmpeg, yt-dlp, exec() non-zero |
+| `DownloadException` | `\RuntimeException` | Gagal download URL: metadata parsing, koneksi |
+| `TranscodeException` | `\RuntimeException` | Gagal transcoding: HLS segments, codec, output hilang |
+
+### Best Practice
+```php
+try {
+    $meta = $this->fetchMetadata($url);
+} catch (ProcessException $e) {
+    // Queue release + specific error
+    $this->releaseQueue($queue_id, 'failed');
+    throw $e;
+}
+```
+
+---
+
+## Disk Space Validation
+
+Sebelum operasi download/transcoding, validasi disk space:
+```php
+function check_disk_space(int $required_bytes, string $path): array {
+    // Cek free space, return ["ok" => bool, "free" => bytes, "required" => bytes]
+}
+
+function require_disk_space(int $required_bytes, string $path, string $label): void {
+    // Throw RuntimeException jika disk tidak cukup
+}
+```
+
+---
+
 ## Input Validation
 
 ### SQL Injection Prevention

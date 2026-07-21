@@ -1,7 +1,6 @@
 <?php
 // Matikan penampilan error agar output binary audio tidak rusak jika ada notice
 error_reporting(0);
-ini_set('display_errors', 1);
 
 session_name('meel');
 session_start();
@@ -52,15 +51,8 @@ if (!file_exists($filePath)) {
 }
 
 // 3. Tentukan MIME Type yang sesuai secara dinamis
-$ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
-$mimeType = match ($ext) {
-    'mp3'  => 'audio/mpeg',
-    'm4a'  => 'audio/mp4',
-    'ogg', 'opus' => 'audio/ogg',
-    'flac' => 'audio/flac',
-    'wav'  => 'audio/wav',
-    default => 'audio/ogg'
-};
+$ext      = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
+$mimeType = get_audio_mime_type($ext);
 
 // 4. Debug logging untuk FLAC (aktifkan dengan define('MEEL_STREAM_DEBUG', true) di config.php)
 if (defined('MEEL_STREAM_DEBUG') && MEEL_STREAM_DEBUG) {

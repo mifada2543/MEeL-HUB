@@ -20,6 +20,23 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 
 ---
 
+## 📦 Daftar Modul Lengkap
+
+| Modul | File | Deskripsi |
+|-------|------|-----------|
+| **Exception Classes** | `modules/exceptions/*.php` | 3 class exception spesifik: ProcessException, DownloadException, TranscodeException |
+| **CommentRenderer** | `modules/CommentRenderer.php` | Render komentar dengan theme support (`video`/`music`) |
+| **SearchEngine** | `modules/media/SearchEngine.php` | FULLTEXT search engine untuk video & music |
+| **GarbageCollector** | `modules/GarbageCollector.php` | Auto-cleanup temporary files & guest accounts |
+| **WatchController** | `controllers/api/WatchController.php` | Controller gabungan Video + Music watch pages |
+| **UpdateManager** | `controllers/system/UpdateManager.php` | CRUD changelog entries (OOP) |
+| **DriveService** | `drive/DriveService.php` | 3 class: DriveUserContext, DriveStorage, DriveViewRenderer |
+| **Profile Manager** | `controllers/profile/fun-manage.php` | Delete media, pending deletions, cleanup |
+| **Migration System** | `database/migrate.php` | Versioned database schema upgrades (idempotent) |
+| **Autoloader** | `modules/autoload.php` | PSR-4-like autoloading via spl_autoload_register |
+
+---
+
 ## 📁 File Penting Baru
 
 | File | Deskripsi |
@@ -67,11 +84,11 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 
 ## 👨‍💻 Kontak
 
-- **Email:** minecraft.daffa2501@gmail.com
+- **Email:** mifada2543@gmail.com
 - **GitHub:** [github.com/mifada2543](https://github.com/mifada2543)
 
 ---
 
 <div align="center">
-  <sub>MEeL © 2025 — Mifada | Dokumentasi v1.0</sub>
+  <sub>MEeL © 2026 — Mifada | Dokumentasi v2.0</sub>
 </div>

@@ -7,90 +7,22 @@ session_start();
 
 include '../auth/config.php';
 require_once '../modules/helpers.php';
-include '../modules/media/MediaViewer.php';
-
-// Lepas session lock agar range request streaming tidak terblokir
-session_write_close();
+require_once '../modules/CommentRenderer.php';
+require_once '../controllers/api/WatchController.php';
 
 $id          = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $user_id     = $_SESSION['user_id'] ?? null;
-$is_logged_in = isset($_SESSION['user_id']);
 $playlist_id = isset($_GET['playlist_id']) ? (int)$_GET['playlist_id'] : 0;
 
-$viewer = new MediaViewer($conn, $user_id, 'music', $id);
-$viewer->recordView();
+$ctrl = new MusicWatchController($conn, $user_id, $id, $playlist_id);
+$ctrl->handleRequest();
 
-if ($is_logged_in && isset($_POST['send'])) {
-    // 🔒 FIX CSRF: Verifikasi token sebelum proses komentar
-    if (!verify_csrf()) {
-        die('CSRF Token tidak valid.');
-    }
-    if ($viewer->addComment($_POST)) {
-        header("Location: watch.php?id=$id&playlist_id=$playlist_id#comment-section");
-        exit;
-    }
-}
+// Semua variabel template diekstrak dari controller
+extract($ctrl->getViewData());
 
-$v = $viewer->getMediaData();
-if (!$v) {
-    header('Location: index.php');
-    exit;
-}
-
-$user_interaction = $viewer->getUserInteraction();
-$comments_data    = $viewer->getComments();
-$comments_grouped = $comments_data['grouped'];
-$user_map         = $comments_data['user_map'];
-$rekom            = $viewer->getRecommendations(15);
-$playlist_data    = $viewer->getPlaylistQueue($playlist_id);
-$queue_query      = $playlist_data['queue']    ?? null;
-$next_url         = $playlist_data['next_url'] ?? "";
-$playlist_context = $playlist_id;
-$next_song_url    = $next_url;
-if (empty($next_song_url) && $rekom && $rekom->num_rows > 0) {
-    $rekom->data_seek(0);
-    // Cari rekomendasi PERTAMA yang BUKAN lagu yang sedang diputar
-    while ($rec = $rekom->fetch_assoc()) {
-        if ((int)$rec['id'] !== $id) {
-            $first_rec = $rec;
-            break;
-        }
-    }
-    if (!empty($first_rec)) {
-        $next_song_url = "watch.php?id=" . $first_rec['id'];
-    }
-    $rekom->data_seek(0);
-}
-$file_size_bytes  = !empty($v['filename'])
-    ? (@filesize(__DIR__ . "/upload/file/" . $v['filename']) ?: 0) : 0;
-
-$ext       = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
-$fmt_label = strtoupper($ext === 'ogg' ? 'OPUS' : $ext);
-switch ($ext) {
-    case 'ogg':
-    case 'opus':
-        $fmt_label = 'OPUS';
-        $deskripsi = "Opus adalah codec audio modern untuk web";
-        break;
-    case 'm4a':
-        $fmt_label = 'M4A';
-        $deskripsi = "M4a adalah codec audio terbaik dalam hal kompatibilitas";
-        break;
-    case 'mp3':
-        $fmt_label = 'MP3';
-        $deskripsi = "Ini adalah codec audio universal yang sangat populer";
-        break;
-    case 'flac':
-        $fmt_label = 'FLAC';
-        $deskripsi = "Ini adalah codec audio yang memiliki kualitas audio terbaik";
-        break;
-    default:
-        $fmt_label = strtoupper($ext);
-        $deskripsi = "Format audio tidak dikenal";
-        break;
-}
-?>
-<!DOCTYPE html>
+// Lepas session lock agar range request streaming tidak terblokir
+session_write_close();
+?><!DOCTYPE html>
 <html lang="id">
 
 <head>
@@ -273,21 +205,6 @@ switch ($ext) {
                 </div>
 
                 <div class="p-4 sm:p-5">
-                    <?php
-                    $ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
-                    $mimeType = match ($ext) {
-                        'mp3' => 'audio/mpeg',
-                        'm4a' => 'audio/mp4',
-                        'ogg', 'opus' => 'audio/ogg',
-                        'flac' => 'audio/flac',
-                        'wav' => 'audio/wav',
-                        default => 'audio/ogg'
-                    };
-                    // preload=none untuk FLAC (file besar), metadata untuk format lain yang ringan
-                    // FLAC 34MB+ menyebabkan browser stuck loading saat preload=metadata karena
-                    // range request ke stream.php lambat diproses untuk file sebesar itu.
-                    $preloadVal = ($ext === 'flac') ? 'none' : 'metadata';
-                    ?>
                     <audio id="main-player" controls preload="<?= $preloadVal ?>" class="w-full" oncontextmenu="return false;">
                         <source src="stream.php?id=<?= $id ?>" type="<?= $mimeType ?>">
                         Your browser does not support the audio element.
@@ -438,68 +355,10 @@ switch ($ext) {
 
                         <div class="space-y-1 max-h-[500px] overflow-y-auto pr-1">
                             <?php
-                            function render_music_comments($parent_id, $grouped, $level = 0)
-                            {
-                                global $id, $user_map;
-                                if (!isset($grouped[$parent_id])) return;
-                                foreach ($grouped[$parent_id] as $c):
-                                    $author      = $c['username'] ?? 'Guest';
-                                    $parent_user = ($c['parent_id'] > 0) ? ($user_map[$c['parent_id']] ?? 'Guest') : null;
-                                    $indent      = min($level * 16, 48);
-                            ?>
-                                    <div class="comment-row flex gap-3 p-3 rounded-xl" style="margin-left:<?= $indent ?>px">
-                                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                            <?= strtoupper(substr($author, 0, 1)) ?>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <div class="flex items-center justify-between gap-2 mb-1">
-                                                <div class="flex items-center gap-2 min-w-0">
-                                                    <span class="text-[11px] font-bold text-gray-300 truncate">@<?= htmlspecialchars($author) ?></span>
-                                                    <span class="text-[10px] text-gray-500 flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
-                                                </div>
-                                                <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
-                                                    <a href="../controllers/api/delete_comment.php?id=<?= $c['id'] ?>"
-                                                        onclick="return meelConfirmLink(event, { title: 'Hapus Komentar', text: 'Hapus komentar ini?', confirmButtonText: 'HAPUS' })"
-                                                        class="text-gray-500 hover:text-red-400 transition-colors no-underline flex-shrink-0">
-                                                        <i data-lucide="trash-2" class="w-3 h-3"></i>
-                                                    </a>
-                                                <?php endif; ?>
-                                            </div>
-                                            <p class="text-sm text-gray-300 leading-relaxed">
-                                                <?php if ($parent_user): ?>
-                                                    <span class="text-orange-400 text-[10px] font-bold bg-orange-500/10 px-1.5 py-0.5 rounded mr-1">@<?= htmlspecialchars($parent_user) ?></span>
-                                                <?php endif; ?>
-                                                <?= nl2br(htmlspecialchars($c['comment'])) ?>
-                                            </p>
-                                            <?php if (isset($_SESSION['user_id'])): ?>
-                                                <button onclick="toggleReply('mus-<?= $c['id'] ?>')"
-                                                    class="text-[10px] font-bold text-orange-400 uppercase tracking-wider mt-2 bg-none border-none cursor-pointer p-0">
-                                                    Balas
-                                                </button>
-                                                <div id="mus-<?= $c['id'] ?>" class="hidden mt-3">
-                                                    <form action="watch.php?id=<?= $id ?>" method="post" class="flex gap-2">
-                                                        <input type="hidden" name="parent_id" value="<?= $c['id'] ?>">
-                                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                                                        <input type="text" name="comments"
-                                                            class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 min-w-0"
-                                                            placeholder="Balas @<?= htmlspecialchars($author) ?>..." required>
-                                                        <button name="send"
-                                                            class="bg-orange-500 text-white text-[10px] font-black uppercase px-3 sm:px-4 py-2 rounded-xl border-none cursor-pointer flex-shrink-0">
-                                                            Kirim
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                            <?php
-                                    render_music_comments($c['id'], $grouped, $level + 1);
-                                endforeach;
-                            }
                             if (empty($comments_grouped)) {
                                 echo "<div class='py-10 text-center text-[10px] text-gray-700 uppercase tracking-widest'>Belum ada komentar.</div>";
                             } else {
-                                render_music_comments(0, $comments_grouped);
+                                render_comments(0, $comments_grouped, 0, 'music', $playlist_context);
                             }
                             ?>
                         </div>
