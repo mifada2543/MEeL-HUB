@@ -1106,6 +1106,10 @@ if (isset($_GET['content_only'])) {
                         if (nextUrl && btn) {
                             btn.setAttribute('hx-get', nextUrl);
                             if (typeof htmx !== 'undefined') htmx.process(btn);
+
+                            // Auto-scroll ke item terakhir yang baru dimuat
+                            // Gunakan scrollIntoView di load-more button (paling bawah)
+                            if (ld) ld.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         } else if (isEnd && ld) {
                             ld.outerHTML = '<div class="py-10 text-center text-[9px] text-gray-800 uppercase tracking-[.4em]">End of Collection</div>';
                         }
