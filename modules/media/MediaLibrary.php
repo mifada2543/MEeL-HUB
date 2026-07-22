@@ -61,6 +61,47 @@ class MediaLibrary
         }
     }
 
+    // ── PAGINATION HELPER ─────────────────────────────────────────────────────
+    /**
+     * Bungkus result set + count menjadi array pagination metadata.
+     *
+     * @param mysqli_result|false $result   Result set dari query data
+     * @param int                 $total    Total record
+     * @param int                 $page     Halaman saat ini (1-based)
+     * @param int                 $perPage  Item per halaman
+     * @return array ['data', 'total', 'page', 'per_page', 'total_pages', 'from', 'to']
+     */
+    protected function paginateResult($result, int $total, int $page, int $perPage): array
+    {
+        $totalPages = max(1, (int)ceil($total / max($perPage, 1)));
+        $page = max(1, min($page, $totalPages));
+
+        return [
+            'data'        => $result,
+            'total'       => $total,
+            'page'        => $page,
+            'per_page'    => $perPage,
+            'total_pages' => $totalPages,
+            'from'        => ($page - 1) * $perPage + 1,
+            'to'          => min($page * $perPage, $total),
+        ];
+    }
+
+    /**
+     * Ambil video dengan pagination metadata.
+     *
+     * @param int $page    Halaman (1-based)
+     * @param int $perPage Item per halaman (default 15)
+     * @return array ['data', 'total', 'page', 'per_page', 'total_pages', 'from', 'to']
+     */
+    public function getVideosWithMeta(int $page = 1, int $perPage = 15): array
+    {
+        $offset = ($page - 1) * $perPage;
+        $total  = $this->countVideos();
+        $data   = $this->getVideos($perPage, $offset);
+        return $this->paginateResult($data, $total, $page, $perPage);
+    }
+
     // ── VIDEO ─────────────────────────────────────────────────────────────────
     public function getVideos(int $limit = 15, int $offset = 0)
     {
@@ -112,6 +153,23 @@ class MediaLibrary
     // ── MUSIC ─────────────────────────────────────────────────────────────────
 
     // DIUBAH: Fungsi ini sekarang mengirim parameter ke buildMusicWhere untuk prepared statement
+    /**
+     * Ambil musik dengan pagination metadata.
+     *
+     * @param string $format  Filter format ('all', 'mp3', 'ogg', 'm4a', 'flac', dll)
+     * @param string $artist  Filter artist ('all' atau nama artist)
+     * @param int    $page    Halaman (1-based)
+     * @param int    $perPage Item per halaman (default 10)
+     * @return array ['data', 'total', 'page', 'per_page', 'total_pages', 'from', 'to']
+     */
+    public function getMusicListWithMeta(string $format = 'all', string $artist = 'all', int $page = 1, int $perPage = 10): array
+    {
+        $offset = ($page - 1) * $perPage;
+        $total  = $this->countMusic($format, $artist);
+        $data   = $this->getMusicList($format, $artist, $perPage, $offset);
+        return $this->paginateResult($data, $total, $page, $perPage);
+    }
+
     public function getMusicList(string $format = 'all', string $artist = 'all', int $limit = 10, int $offset = 0)
     {
         $data = $this->buildMusicWhere($format, $artist);
@@ -226,25 +284,85 @@ class BookRepository
 
     /**
      * Ambil semua buku, atau filter berdasarkan tipe ('manga' / 'pdf' / 'all').
+     *
+     * @param string $filter  Filter tipe ('manga', 'pdf', 'all')
+     * @param int    $limit   Batas item (0 = no limit)
+     * @param int    $offset  Offset untuk pagination
      */
-    public function getBooks(string $filter = 'all')
+    public function getBooks(string $filter = 'all', int $limit = 0, int $offset = 0)
     {
         $allowed = ['manga', 'pdf'];
+        $limitSql = ($limit > 0) ? " LIMIT ? OFFSET ?" : "";
 
         if (in_array($filter, $allowed, true)) {
             $stmt = $this->conn->prepare(
-                "SELECT * FROM books WHERE type = ? ORDER BY upload_date DESC"
+                "SELECT * FROM books WHERE type = ? ORDER BY upload_date DESC{$limitSql}"
             );
-            $stmt->bind_param("s", $filter);
+            if ($limit > 0) {
+                $stmt->bind_param("sii", $filter, $limit, $offset);
+            } else {
+                $stmt->bind_param("s", $filter);
+            }
         } else {
             // 'all' — query statis, tidak ada input user
             $stmt = $this->conn->prepare(
-                "SELECT * FROM books ORDER BY upload_date DESC"
+                "SELECT * FROM books ORDER BY upload_date DESC{$limitSql}"
             );
+            if ($limit > 0) {
+                $stmt->bind_param("ii", $limit, $offset);
+            }
         }
 
         $stmt->execute();
         return $stmt->get_result();
+    }
+
+    /**
+     * Hitung total buku (dengan filter opsional).
+     *
+     * @param string $filter Filter tipe ('manga', 'pdf', 'all')
+     * @return int
+     */
+    public function countBooks(string $filter = 'all'): int
+    {
+        $allowed = ['manga', 'pdf'];
+
+        if (in_array($filter, $allowed, true)) {
+            $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM books WHERE type = ?");
+            $stmt->bind_param("s", $filter);
+        } else {
+            $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM books");
+        }
+
+        $stmt->execute();
+        return (int)$stmt->get_result()->fetch_assoc()['total'];
+    }
+
+    /**
+     * Ambil buku dengan pagination metadata.
+     *
+     * @param string $filter  Filter tipe ('manga', 'pdf', 'all')
+     * @param int    $page    Halaman (1-based)
+     * @param int    $perPage Item per halaman (default 24)
+     * @return array ['data', 'total', 'page', 'per_page', 'total_pages', 'from', 'to']
+     */
+    public function getBooksPaginated(string $filter = 'all', int $page = 1, int $perPage = 24): array
+    {
+        $total  = $this->countBooks($filter);
+        $totalPages = max(1, (int)ceil($total / max($perPage, 1)));
+        $page   = max(1, min($page, $totalPages));
+        $offset = ($page - 1) * $perPage;
+        $data   = $this->getBooks($filter, $perPage, $offset);
+
+        return [
+            'data'        => $data,
+            'total'       => $total,
+            'page'        => $page,
+            'per_page'    => $perPage,
+            'total_pages' => $totalPages,
+            'from'        => $offset + 1,
+            'to'          => min($page * $perPage, $total),
+        ];
     }
 
     /**
