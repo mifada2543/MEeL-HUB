@@ -21,7 +21,17 @@
  */
 
 include '../../auth/config.php';
+include '../../modules/RateLimiter.php';
 include '../../modules/media/MediaInteraction.php';
+
+// ⚡ RATE LIMIT: 10 comments per menit per user
+$rateKey = 'user_' . ($_SESSION['user_id'] ?? 0);
+$rateCheck = RateLimiter::check($rateKey, 'comment');
+if (!$rateCheck['allowed']) {
+    $_SESSION['error'] = 'Terlalu banyak request. Coba lagi dalam ' . $rateCheck['retry_after'] . ' detik.';
+    header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+    exit;
+}
 
 // Get comment ID
 $comment_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;

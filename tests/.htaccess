@@ -1,4 +1,4 @@
-# Deny all web access — PHP include-only files
+# Deny all web access — PHP CLI only
 Options -Indexes
 
 <IfModule mod_rewrite.c>
