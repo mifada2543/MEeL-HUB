@@ -69,7 +69,7 @@ GarbageCollector::cleanGuests($conn);
     <script src="../assets/js/lucide.js"></script>
     <script src="../assets/js/sweetalert2.all.min.js"></script>
     <script src="../assets/js/script.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="../assets/js/chart.umd.min.js"></script>
     <style>
         body {
             background-color: #0b0e14;
