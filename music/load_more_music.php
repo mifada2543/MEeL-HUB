@@ -25,7 +25,9 @@ while ($v = $data->fetch_assoc()) include 'music_item.php'; ?>
 
 <?php if ($next < $total): ?>
     <div class="lm-meta" hidden
-         data-next-url="load_more_music.php?offset=<?= $next ?>&page=<?= $nextPage ?>&format=<?= $qFormat ?>&artist=<?= $qArtist ?>"></div>
+         data-next-url="load_more_music.php?offset=<?= $next ?>&page=<?= $nextPage ?>&format=<?= $qFormat ?>&artist=<?= $qArtist ?>"
+         data-page="<?= $nextPage ?>"
+         data-total="<?= $totalPages ?>"></div>
 <?php else: ?>
-    <div class="lm-meta" hidden data-end="true"></div>
+    <div class="lm-meta" hidden data-end="true" data-page="<?= $page ?>" data-total="<?= $totalPages ?>"></div>
 <?php endif;

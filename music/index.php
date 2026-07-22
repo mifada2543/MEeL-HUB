@@ -1113,6 +1113,13 @@ if (isset($_GET['content_only'])) {
 
                         if (nextUrl && btn) {
                             btn.setAttribute('hx-get', nextUrl);
+                            // Update button text with current page
+                            var pg = n.getAttribute('data-page') || '';
+                            var tt = n.getAttribute('data-total') || '';
+                            if (pg && tt) {
+                                var btnText = btn.querySelector('span') || btn;
+                                btnText.textContent = 'Load More \u00b7 ' + pg + '/' + tt;
+                            }
                             if (typeof htmx !== 'undefined') htmx.process(btn);
 
                             // Auto-scroll: HANYA scroll ke BAWAH
