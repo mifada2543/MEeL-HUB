@@ -1,4 +1,4 @@
-# Security defaults for modules
+# Deny all web access — PHP include-only files
 Options -Indexes
 
 <IfModule mod_headers.c>
@@ -6,12 +6,10 @@ Options -Indexes
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-<FilesMatch "(\.env|\.git|\.htaccess|\.htpasswd|\.sql|\.log|config\.php|cookies\.txt|auth\.php|db\.php)$">
-    <IfModule mod_authz_core.c>
-        Require all denied
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Order allow,deny
-        Deny from all
-    </IfModule>
-</FilesMatch>
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
