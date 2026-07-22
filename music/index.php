@@ -19,7 +19,7 @@ $pageMusic      = $meta_music['page'];
 $totalPagesMusic = $meta_music['total_pages'];
 $is_logged_in   = isset($_SESSION['user_id']);
 
-function renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter)
+function renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter, $totalPagesMusic = 1, $pageMusic = 1, $perPageMusic = 10)
 {
 ?>
     <!-- HEADER -->
@@ -76,7 +76,7 @@ if (isset($_GET['audio_state'])) {
 }
 
 if (isset($_GET['content_only'])) {
-    renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter);
+    renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter, $totalPagesMusic, $pageMusic, $perPageMusic);
     exit;
 }
 ?>
@@ -392,7 +392,7 @@ if (isset($_GET['content_only'])) {
 
         <!-- MAIN -->
         <main class="lg:col-span-9 xl:col-span-10">
-            <?php renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter); ?>
+            <?php renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter, $totalPagesMusic, $pageMusic, $perPageMusic); ?>
         </main>
     </div>
 
