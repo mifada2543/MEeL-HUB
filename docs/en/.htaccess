@@ -1,5 +1,4 @@
 # Security defaults for docs
-DirectoryIndex index.php index.md
 Options -Indexes
 
 <IfModule mod_headers.c>
