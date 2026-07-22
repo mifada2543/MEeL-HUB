@@ -13,6 +13,18 @@ class MediaLibrary
     // ── HUB ──────────────────────────────────────────────────────────────────
     public function getCounts(): array
     {
+        $cache_file = __DIR__ . '/../../temp/cache/media_counts.json';
+        $cache_ttl  = 30; // detik — refresh maksimal tiap 30 detik
+
+        // Cek cache: jika file ada dan masih fresh, return langsung
+        if (file_exists($cache_file) && (time() - filemtime($cache_file)) < $cache_ttl) {
+            $cached = json_decode(file_get_contents($cache_file), true);
+            if (is_array($cached) && isset($cached['music'], $cached['video'], $cached['books'])) {
+                return $cached;
+            }
+        }
+
+        // Cache miss — query database
         $counts = ['music' => 0, 'video' => 0, 'books' => 0];
         // Query ini aman karena tidak ada variabel input dari user
         $sql = "SELECT 'music' AS type, COUNT(*) AS total FROM music
@@ -26,7 +38,27 @@ class MediaLibrary
                 $counts[$row['type']] = (int)$row['total'];
             }
         }
+
+        // Simpan ke cache
+        $cache_dir = dirname($cache_file);
+        if (!is_dir($cache_dir)) {
+            @mkdir($cache_dir, 0755, true);
+        }
+        @file_put_contents($cache_file, json_encode($counts, JSON_UNESCAPED_UNICODE), LOCK_EX);
+
         return $counts;
+    }
+
+    /**
+     * Hapus cache counts — panggil setelah upload/delete agar data segar.
+     * Static agar bisa dipanggil tanpa instansiasi MediaLibrary.
+     */
+    public static function clearCountsCache(): void
+    {
+        $cache_file = __DIR__ . '/../../temp/cache/media_counts.json';
+        if (file_exists($cache_file)) {
+            @unlink($cache_file);
+        }
     }
 
     // ── VIDEO ─────────────────────────────────────────────────────────────────
