@@ -253,7 +253,10 @@ GarbageCollector::cleanGuests($conn);
                     </div>
                 </div>
 
-                <a href="cookies.php" class="block mt-6 text-center text-[9px] text-blue-400 border border-blue-400/20 py-2.5 rounded-xl hover:bg-blue-400 hover:text-white font-black uppercase tracking-widest transition-all" title="Lihat laporan analitik lengkap">
+                <a href="activity_log.php" class="block mb-2 text-center text-[9px] text-blue-400 border border-blue-400/20 py-2.5 rounded-xl hover:bg-blue-400 hover:text-white font-black uppercase tracking-widest transition-all" title="Lihat trail audit aktivitas pengguna">
+                    <i data-lucide="activity" class="w-3 h-3 inline mr-1"></i> Activity Log
+                </a>
+                <a href="cookies.php" class="block text-center text-[9px] text-blue-400 border border-blue-400/20 py-2.5 rounded-xl hover:bg-blue-400 hover:text-white font-black uppercase tracking-widest transition-all" title="Lihat laporan analitik lengkap">
                     Full Reports
                 </a>
             </div>

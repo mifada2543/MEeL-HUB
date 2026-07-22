@@ -151,6 +151,8 @@ if (isset($_POST['login']) && !$is_locked) {
                             $_SESSION['role']     = $u['role'];
                             $current_sid = session_id();
 
+                            log_activity($conn, $u['id'], 'login');
+
                             $upd = $conn->prepare("UPDATE users SET last_session_id = ?, last_activity = NOW() WHERE id = ?");
                             if ($upd) {
                                 $upd->bind_param("si", $current_sid, $u['id']);
