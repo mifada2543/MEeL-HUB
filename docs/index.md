@@ -32,8 +32,10 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 | **UpdateManager** | `controllers/system/UpdateManager.php` | CRUD changelog entries (OOP) |
 | **DriveService** | `drive/DriveService.php` | 3 class: DriveUserContext, DriveStorage, DriveViewRenderer |
 | **Profile Manager** | `controllers/profile/fun-manage.php` | Delete media, pending deletions, cleanup |
-| **Migration System** | `database/migrate.php` | Versioned database schema upgrades (idempotent) |
+| **Migration System** | `database/migrate.php` | Versioned database schema upgrades v1–v7 (idempotent) |
 | **Autoloader** | `modules/autoload.php` | PSR-4-like autoloading via spl_autoload_register |
+| **RateLimiter** | `modules/RateLimiter.php` | File-based API rate limiter (30 likes/min, 10 comments/min, dll.) |
+| **Admin Activity Log** | `admin/activity_log.php` | Audit trail viewer dengan filter, pagination, cleanup |
 
 ---
 
@@ -53,6 +55,9 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 - **Admin Activity Log Viewer:** Halaman `admin/activity_log.php` untuk melihat, filter, dan cleanup trail audit
 - **Database Alignment:** `schema.sql` dan `migrate.php` tersinkronisasi (v1–v7) — UNIQUE KEY username, FK constraints, FULLTEXT index
 - **Modul Anime dihapus:** Modul placeholder "Coming Soon" yang sudah tidak relevan dihapus dari kodebase
+- **API Rate Limiting:** File-based rate limiter (`modules/RateLimiter.php`) — proteksi endpoint like, comment, upload dari abuse dengan limits per user
+- **Pagination Metadata:** `MediaLibrary` & `BookRepository` sekarang mengembalikan metadata pagination (`total_pages`, `from`, `to`) — UI menampilkan info halaman
+- **Admin Dashboard Charts:** Chart.js 7-Day Activity Chart — views, uploads, active users dalam 7 hari terakhir
 
 ## 📖 Tentang Proyek
 

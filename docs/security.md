@@ -400,6 +400,82 @@ Detil yang ditampilkan:
 
 ---
 
+## API Rate Limiting
+
+### Arsitektur
+
+`modules/RateLimiter.php` menyediakan **file-based rate limiter** yang melindungi API endpoint dari abuse:
+
+```
+Request → RateLimiter::check(key, endpoint)
+  ↓
+Baca file cache di temp/ratelimit/{md5_hash}.cache
+  ↓
+flock(LOCK_EX) → Increment counter → ftruncate + fwrite
+  ↓
+Counter > max? → Ya → HTTP 429 Too Many Requests
+  ↓ Tidak
+Allow request
+```
+
+### Storage
+
+Menggunakan file JSON di `temp/ratelimit/` (tanpa schema DB tambahan):
+- Setiap key+endpoint punya file sendiri (`md5(key_endpoint).cache`)
+- Isi: `{"count": N, "window_start": timestamp}`
+- Auto-cleanup via `GarbageCollector::run()` setiap request
+
+### Endpoint Limits
+
+| Endpoint | Max Request | Window | Respons pada Limit |
+|----------|:-----------:|:------:|--------------------|
+| **Like/Dislike** | 30 | 1 menit | HTTP 429 + HTMX HTML snippet (badge kuning "Wait Xs" + disabled buttons) |
+| **Comment** | 10 | 1 menit | Redirect dengan flash error message |
+| **Upload** (video/music/books) | 3 | 1 jam | — |
+| **Transcode** | 5 | 1 jam | — |
+| **API Generic** | 60 | 1 menit | — |
+
+### Integrasi
+
+```php
+// controllers/api/like.php — HTMX endpoint
+$rateCheck = RateLimiter::check('user_'.$userId, 'like');
+if (!$rateCheck['allowed']) {
+    http_response_code(429);
+    header('HX-Retarget: #like-dislike-container');
+    // Return HTML dengan badge "⏱️ Wait Xs"
+    exit;
+}
+
+// controllers/api/delete_comment.php — redirect-based
+$rateCheck = RateLimiter::check('user_'.$userId, 'comment');
+if (!$rateCheck['allowed']) {
+    $_SESSION['error'] = 'Terlalu banyak request.';
+    header('Location: ' . $_SERVER['HTTP_REFERER']);
+    exit;
+}
+
+// controllers/api/WatchController.php — comment rate limit
+$rateCheck = RateLimiter::check('user_'.$userId, 'comment');
+if (!$rateCheck['allowed']) {
+    $_SESSION['error'] = 'Terlalu banyak komentar.';
+    header("Location: watch.php?id={$id}#comment-section");
+    exit;
+}
+```
+
+### Admin Monitoring
+
+Rate limit status bisa dimonitor di admin dashboard:
+- **Active Keys:** Jumlah key rate limit yang sedang aktif
+- **Endpoints Protected:** 5 endpoint dengan limit berbeda
+
+### Cleanup
+
+File expired (>1 jam) otomatis dibersihkan oleh `GarbageCollector::run()` yang dipanggil di setiap request.
+
+---
+
 ## File Upload Security
 
 ### Extension Validation
