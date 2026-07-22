@@ -1,15 +1,37 @@
 <?php
 /**
- * Download proxy untuk file hasil transcode.
- * File disimpan di RAM disk (/dev/shm/meel/transcode/), tidak bisa diakses
- * langsung via web server. Controller ini membaca dan mengirimkannya ke browser.
+ * controllers/api/download_transcode.php
+ * 
+ * GET /api/download_transcode — Proxy download file hasil transcode dari RAM disk.
+ *
+ * File hasil transcode disimpan di RAM disk (/dev/shm/meel/transcode/) yang tidak
+ * bisa diakses langsung via web server. Controller ini berfungsi sebagai proxy
+ * yang membaca file dari RAM disk dan mengirimkannya ke browser.
  *
  * Tidak menggunakan auth/auth.php untuk menghindari redirect (302) yang
  * akan memecah download browser.
+ *
+ * Query params:
+ *   - file (string, required) Nama file (basename, path traversal dicegah)
+ *
+ * Response:
+ *   Binary file download dengan Content-Type & Content-Disposition sesuai
+ *   HTTP 401 jika user belum login
+ *   HTTP 400 jika parameter tidak valid atau path traversal terdeteksi
+ *   HTTP 404 jika file tidak ditemukan / expired
+ *
+ * Security:
+ *   - basename() untuk mencegah path traversal
+ *   - Validasi ekstensi dengan regex
+ *   - Session check manual tanpa redirect (agar download browser tidak pecah)
+ *
+ * Dependencies:
+ *   - auth/config.php ($conn)
+ *   - modules/Transcoder.php
  */
 
-require_once __DIR__ . '/../auth/config.php';
-require_once __DIR__ . '/../modules/Transcoder.php';
+require_once __DIR__ . '/../../auth/config.php';
+require_once __DIR__ . '/../../modules/Transcoder.php';
 
 // Session check manual (tanpa redirect)
 if (session_status() === PHP_SESSION_NONE) {

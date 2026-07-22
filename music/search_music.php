@@ -1,18 +1,15 @@
 <?php
 include '../auth/config.php';
 require_once '../modules/helpers.php';
-require_once '../modules/MediaLibrary.php';
+require_once '../modules/media/SearchEngine.php';
 
-$q       = trim($_GET['search'] ?? '');
-$exclude = isset($_GET['exclude']) ? (int)$_GET['exclude'] : 0;
-$sidebar = (isset($_SERVER['HTTP_HX_TARGET']) && $_SERVER['HTTP_HX_TARGET'] === 'music-recommendation-column');
+$engine = new SearchEngine($conn);
+$params = $engine->parseParams();
+$result = $engine->searchMusic($params);
 
-$library = new MediaLibrary($conn);
-$data    = $library->searchMusic($q, $exclude, $sidebar);
-
-if ($data && $data->num_rows > 0) {
-    while ($v = $data->fetch_assoc()) {
-        if ($sidebar) {
+if ($result['count'] > 0) {
+    foreach ($result['results'] as $v) {
+        if ($result['sidebar']) {
             // Tampilan rekomendasi di watch.php
             $v_ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
             $v_lbl = $v_ext === 'ogg' ? 'opus' : $v_ext;

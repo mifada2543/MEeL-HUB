@@ -33,7 +33,7 @@ $description = "Arena Catur Pintar - Main catur dengan teman atau AI";
           </div>
         </div>
         <div class="flex gap-2">
-          <button id="btn-restart" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-sm px-4 py-2 rounded-xl font-medium border border-slate-700 hover:border-emerald-500/50 hover:text-emerald-300 shadow-sm">
+          <button id="btn-restart" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-sm px-4 py-2 rounded-xl font-medium border border-slate-700 hover:border-emerald-500/50 hover:text-emerald-300 shadow-sm" title="Mulai ulang permainan">
             <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
             <span class="hidden sm:inline">Mula Semula</span>
           </button>
@@ -50,7 +50,7 @@ $description = "Arena Catur Pintar - Main catur dengan teman atau AI";
             <i data-lucide="settings-2" class="w-4 h-4 text-emerald-400"></i> Mode Permainan
           </h2>
           <div class="flex flex-col gap-3">
-            <button id="mode-vs-local" class="flex items-center justify-between p-3.5 rounded-xl border text-left transition-all duration-200 active:scale-[0.98] border-emerald-500/40 bg-emerald-950/30 text-emerald-300 shadow-inner">
+            <button id="mode-vs-local" class="flex items-center justify-between p-3.5 rounded-xl border text-left transition-all duration-200 active:scale-[0.98] border-emerald-500/40 bg-emerald-950/30 text-emerald-300 shadow-inner" title="Main catur dua pemain secara lokal">
               <div class="flex items-center gap-3">
                 <i data-lucide="users" class="w-5 h-5"></i>
                 <div><p class="text-sm font-bold">Lawan Rakan</p><p class="text-xs text-emerald-500/70">Dua pemain (Lokal)</p></div>
@@ -59,14 +59,14 @@ $description = "Arena Catur Pintar - Main catur dengan teman atau AI";
                 <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
               </div>
             </button>
-            <button id="mode-vs-ai" class="flex items-center justify-between p-3.5 rounded-xl border border-slate-700/80 hover:border-slate-500 hover:bg-slate-800/50 text-left transition-all duration-200 active:scale-[0.98] group">
+            <button id="mode-vs-ai" class="flex items-center justify-between p-3.5 rounded-xl border border-slate-700/80 hover:border-slate-500 hover:bg-slate-800/50 text-left transition-all duration-200 active:scale-[0.98] group" title="Main catur melawan kecerdasan buatan">
               <div class="flex items-center gap-3 text-slate-300 group-hover:text-indigo-300 transition-colors">
                 <i data-lucide="cpu" class="w-5 h-5 text-indigo-400"></i>
                 <div><p class="text-sm font-bold">Lawan Komputer</p><p class="text-xs text-slate-500 group-hover:text-indigo-400/70">Kecerdasan Buatan (AI)</p></div>
               </div>
               <div class="mode-indicator w-3.5 h-3.5 rounded-full border-2 border-slate-600 transition-colors"></div>
             </button>
-            <button id="mode-vs-online" class="flex items-center justify-between p-3.5 rounded-xl border border-slate-700/80 hover:border-slate-500 hover:bg-slate-800/50 text-left transition-all duration-200 active:scale-[0.98] group">
+            <button id="mode-vs-online" class="flex items-center justify-between p-3.5 rounded-xl border border-slate-700/80 hover:border-slate-500 hover:bg-slate-800/50 text-left transition-all duration-200 active:scale-[0.98] group" title="Main catur dengan pemain lain melalui jaringan">
               <div class="flex items-center gap-3 text-slate-300 group-hover:text-cyan-300 transition-colors">
                 <i data-lucide="globe" class="w-5 h-5 text-cyan-400"></i>
                 <div><p class="text-sm font-bold">Multiplayer LAN</p><p class="text-xs text-slate-500 group-hover:text-cyan-400/70">Main beda device (LAMPP)</p></div>
@@ -77,9 +77,9 @@ $description = "Arena Catur Pintar - Main catur dengan teman atau AI";
           <div id="ai-difficulty-container" class="mt-4 pt-4 border-t border-slate-800 hidden animate-pop">
             <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tahap Kesukaran AI</label>
             <div class="grid grid-cols-3 gap-2 mt-2.5">
-              <button data-level="easy" class="py-2 text-xs font-bold rounded-lg border border-indigo-500/40 bg-indigo-950/30 text-indigo-300 transition-all">Mudah</button>
-              <button data-level="medium" class="py-2 text-xs font-bold rounded-lg border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200 transition-all">Normal</button>
-              <button data-level="hard" class="py-2 text-xs font-bold rounded-lg border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200 transition-all">Sukar</button>
+              <button data-level="easy" class="py-2 text-xs font-bold rounded-lg border border-indigo-500/40 bg-indigo-950/30 text-indigo-300 transition-all" title="Tingkat kesukaran AI: Mudah">Mudah</button>
+              <button data-level="medium" class="py-2 text-xs font-bold rounded-lg border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200 transition-all" title="Tingkat kesukaran AI: Normal">Normal</button>
+              <button data-level="hard" class="py-2 text-xs font-bold rounded-lg border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200 transition-all" title="Tingkat kesukaran AI: Sukar">Sukar</button>
             </div>
           </div>
         </div>
@@ -107,9 +107,9 @@ $description = "Arena Catur Pintar - Main catur dengan teman atau AI";
             </div>
           </div>
           <div class="grid grid-cols-3 gap-2">
-            <button id="btn-create-room" class="px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold transition-all active:scale-95">Buat Room</button>
-            <button id="btn-join-room" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-sm font-bold transition-all active:scale-95 border border-slate-700">Join Room</button>
-            <button id="btn-leave-room" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-sm font-bold transition-all active:scale-95 border border-slate-700">Keluar</button>
+            <button id="btn-create-room" class="px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold transition-all active:scale-95" title="Buat room multiplayer baru">Buat Room</button>
+            <button id="btn-join-room" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-sm font-bold transition-all active:scale-95 border border-slate-700" title="Gabung ke room multiplayer yang sudah ada">Join Room</button>
+            <button id="btn-leave-room" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-sm font-bold transition-all active:scale-95 border border-slate-700" title="Keluar dari room multiplayer">Keluar</button>
           </div>
         </div>
 
@@ -157,7 +157,7 @@ $description = "Arena Catur Pintar - Main catur dengan teman atau AI";
               </div>
               <h3 class="text-2xl font-extrabold text-slate-100 mb-2 tracking-tight">Tamat Permainan</h3>
               <p id="game-over-result" class="text-sm font-medium text-slate-400 mb-6 bg-slate-950 py-2 px-4 rounded-lg inline-block border border-slate-800">Pemain Putih memenangi perlawanan!</p>
-              <button id="btn-restart-overlay" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-900/20 flex justify-center items-center gap-2">
+              <button id="btn-restart-overlay" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-900/20 flex justify-center items-center gap-2" title="Mulai ulang permainan dari awal">
                 <i data-lucide="play" class="w-4 h-4"></i> Main Semula
               </button>
             </div>

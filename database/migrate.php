@@ -3,13 +3,19 @@
  * MEeL-HUB — Database Migration System
  * 
  * Simple versioned migration tanpa library eksternal.
+ * Hanya bisa dijalankan dari CLI (terminal), bukan via web browser.
  * Jalankan: php database/migrate.php
- * Atau include dari halaman admin.
  * 
  * Cara menambah migrasi baru:
  *   1. Tambah entry baru di array $migrations dengan key versi berikutnya
  *   2. Jalankan ulang migrate.php
  */
+
+// ── Keamanan: hanya dari CLI ────────────────────────────────────────────────
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    die('Access denied. Jalankan dari terminal: php database/migrate.php');
+}
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 require_once __DIR__ . '/../auth/config.php';
@@ -122,6 +128,55 @@ $migrations = [
                     $err = $conn->error;
                     if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists')) {
                         echo "[MEeL] ⚠ Warning (books.title): {$err}\n";
+                    }
+                }
+            },
+        ],
+    ],
+    6 => [
+        'description' => 'Buat tabel activity_log untuk audit trail — cegah crash saat prepare() gagal',
+        'sql' => [
+            function($conn) {
+                $conn->query("CREATE TABLE IF NOT EXISTS activity_log (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT DEFAULT NULL,
+                    action VARCHAR(50) NOT NULL,
+                    media_type VARCHAR(20) DEFAULT NULL,
+                    media_id INT DEFAULT NULL,
+                    ip_address VARCHAR(45) DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+            },
+        ],
+    ],
+    7 => [
+        'description' => 'Tambah UNIQUE KEY pada users.username — cegah bloat guest, optimasi ON DUPLICATE KEY',
+        'sql' => [
+            function($conn) {
+                // Step 1: Hapus duplikat guest — sisakan 1 baris per username (yang terbaru)
+                $conn->query("DELETE g1 FROM users g1
+                    INNER JOIN users g2
+                    WHERE g1.id < g2.id
+                    AND g1.role = 'guest'
+                    AND g2.role = 'guest'
+                    AND g1.username = g2.username");
+            },
+            function($conn) {
+                // Step 2: Reset AUTO_INCREMENT agar tidak ada gap besar
+                $result = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS new_ai FROM users");
+                if ($result) {
+                    $row = $result->fetch_assoc();
+                    $new_ai = (int)$row['new_ai'];
+                    $conn->query("ALTER TABLE users AUTO_INCREMENT = {$new_ai}");
+                }
+            },
+            function($conn) {
+                // Step 3: Tambah UNIQUE KEY pada kolom username
+                $result = $conn->query("ALTER TABLE users ADD UNIQUE INDEX idx_username_unique (username)");
+                if (!$result) {
+                    $err = $conn->error;
+                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+                        echo "[MEeL] ⚠ Warning: {$err}\n";
                     }
                 }
             },

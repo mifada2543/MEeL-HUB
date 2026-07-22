@@ -21,13 +21,73 @@ Semua endpoint API berada di direktori `controllers/` dan diakses via HTTP POST/
 
 ```
 controllers/
-├── like.php            # Like/dislike toggle
-├── delete_comment.php  # Hapus komentar
-├── profile_edit.php    # Update profil user
-├── post_encode.php     # Post-encode music (after yt-dlp)
-├── fun.php             # Admin functions (ban, kick, queue, stats)
-└── UpdateManager.php   # Update changelog management (OOP)
+├── api/
+│   ├── WatchController.php   # Controller watch page (Video + Music)
+│   ├── like.php              # Like/dislike toggle
+│   ├── delete_comment.php    # Hapus komentar
+│   ├── auto_metadata.php     # Auto-fetch metadata (yt-dlp info)
+│   ├── pdf.php               # PDF viewer proxy
+│   ├── download_transcode.php# Download hasil transcode
+│   └── post_encode.php       # Post-encode music (after yt-dlp)
+├── profile/
+│   ├── fun-manage.php        # Delete media, pending deletions, cleanup
+│   └── profile_edit.php      # Update profil user
+├── admin/
+│   ├── admin_actions.php     # Admin actions (process POST)
+│   └── admin_data.php        # Admin data queries
+└── system/
+    └── UpdateManager.php     # Update changelog management (OOP)
 ```
+
+---
+
+## WatchController
+
+**File:** `controllers/api/WatchController.php`  
+**Method:** Constructor-based (bukan HTTP endpoint langsung)
+
+Controller untuk halaman watch video & music. Data diambil via `getViewData()` dan di-`extract()` ke view.
+
+### VideoWatchController
+
+```php
+$ctrl = new VideoWatchController($conn, $user_id, $id);
+$ctrl->handleRequest();  // Handle POST (komentar)
+extract($ctrl->getViewData());  // → $v, $video_src, $is_hls, $comments_grouped, dll
+```
+
+**View data yang dikembalikan:**
+| Variable | Tipe | Deskripsi |
+|----------|------|-----------|
+| `$v` | array | Data video + uploader info |
+| `$video_src` | string | Path ke file video / playlist.m3u8 |
+| `$is_hls` | bool | Apakah video HLS |
+| `$vtt_src` | string | Path ke VTT thumbnail |
+| `$comments_grouped` | array | Komentar yang sudah di-group by parent |
+| `$rekom` | mysqli_result | Rekomendasi video lain |
+| `$is_logged_in` | bool | Status login |
+| `$user_interaction` | ?string | Status like/dislike user |
+
+### MusicWatchController
+
+```php
+$ctrl = new MusicWatchController($conn, $user_id, $id, $playlist_id);
+$ctrl->handleRequest();
+extract($ctrl->getViewData());
+```
+
+**View data yang dikembalikan:**
+| Variable | Tipe | Deskripsi |
+|----------|------|-----------|
+| `$v` | array | Data audio + uploader info |
+| `$file_size` | int | Ukuran file audio (bytes) |
+| `$mime_type` | string | MIME type file |
+| `$playlist` | array | Queue playlist (jika ada) |
+| `$grouped_comments` | array | Komentar yang sudah di-group |
+| `$rekomendasi` | array | Rekomendasi musik lain |
+| `$playlist_id_in` | ?int | ID playlist aktif |
+| `$is_logged_in` | bool | Status login |
+| `$user_interaction` | ?string | Status like/dislike user |
 
 ---
 
@@ -117,13 +177,55 @@ Register → CSRF Check → Validasi → Insert DB (is_active=2)
 
 ### Delete Comment
 
-**Endpoint:** `controllers/delete_comment.php?id=123`  
+**Endpoint:** `controllers/api/delete_comment.php?id=123`  
 **Method:** GET  
 **Auth:** User (owner of comment)
 
 **Response:**
 - Success: Redirect ke referrer dengan flash message
 - Error: Redirect dengan error message
+
+### Auto Metadata
+
+**Endpoint:** `controllers/api/auto_metadata.php`  
+**Method:** POST  
+**Auth:** Admin
+
+Mengambil metadata otomatis dari URL (yt-dlp) untuk formulir upload:
+```json
+// Response
+{
+  "title": "Judul Video",
+  "description": "Deskripsi...",
+  "duration": 360,
+  "thumbnail": "https://...",
+  "uploader": "Channel Name"
+}
+```
+
+### PDF Proxy
+
+**Endpoint:** `controllers/api/pdf.php?id=123`  
+**Method:** GET  
+**Auth:** User/Admin
+
+Streaming PDF untuk viewer buku:
+```php
+// Proteksi akses file PDF — tidak bisa diakses langsung dari URL
+header("Content-Type: application/pdf");
+readfile($filePath);
+```
+
+### Download Transcode
+
+**Endpoint:** `controllers/api/download_transcode.php`  
+**Method:** POST  
+**Auth:** User/Admin
+
+Download file hasil transcoding video → audio:
+```
+POST → cek file → kirim sebagai download attachment
+```
 
 ---
 
@@ -258,11 +360,36 @@ Phase 4: Done (links to media)
 **Method:** GET  
 **Auth:** Public
 
+### Media Deletion & Cleanup
+
+**File:** `controllers/profile/fun-manage.php` (function-based)
+
+| Fungsi | Deskripsi |
+|--------|-----------|
+| `handleDeleteVideo(int $id, int $user_id, mysqli $conn): array` | Hapus video + HLS segments + DB record |
+| `handleDeleteMusic(int $id, int $user_id, mysqli $conn): array` | Hapus audio file + thumbnail + DB record |
+| `savePendingDeletions(array $pending): void` | Simpan antrian hapus (batch) |
+| `cleanupPendingDeletions(): int` | Eksekusi antrian hapus yang pending |
+| `removeDirectoryRecursive(string $dir): void` | Hapus folder rekursif (HLS segments) |
+| `logActivity(mysqli $conn, int $user_id, string $action, string $media_type, int $media_id): void` | Catat aktivitas hapus |
+
+**Flow delete video:**
+```
+handleDeleteVideo()
+  → Hapus file HLD (.m3u8, .ts) di storage
+  → Hapus thumbnail
+  → DELETE FROM video WHERE id = ?
+  → logActivity()
+```
+
 ---
 
 ## Admin Endpoints
 
-Semua endpoint admin ada di `controllers/fun.php` dan diakses via `admin/index.php`.
+Endpoint admin tersebar di beberapa file:
+- `controllers/admin/admin_actions.php` — Proses POST (ban, kick, queue, cleanup)
+- `controllers/admin/admin_data.php` — Data queries (counts, scans)
+- `admin/index.php` — UI panel
 
 ### User Management
 

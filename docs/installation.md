@@ -269,7 +269,20 @@ sudo chmod +x /usr/local/bin/yt-dlp
 yt-dlp --version
 ```
 
-### 9. Setup cookies.txt (untuk yt-dlp)
+### 10. Migration System
+
+Setelah semua setup selesai, jalankan migrasi database untuk mengoptimalkan skema:
+```bash
+# Dari root proyek
+/opt/lampp/bin/php database/migrate.php
+```
+
+Migration bersifat **idempotent** — aman dijalankan berulang kali. Yang akan ditambahkan:
+- **v1:** FULLTEXT index untuk search video & music (10-100× lebih cepat dari LIKE)
+- **v2:** Performance index (upload_date) untuk sorting
+- Tracker otomatis di tabel `db_version`
+
+### 11. Setup cookies.txt (untuk yt-dlp)
 
 Untuk download dari YouTube dan platform lain, ekspor cookie browser:
 1. Install ekstensi [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)

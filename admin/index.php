@@ -7,12 +7,17 @@ include '../auth/config.php';
 include '../auth/auth.php';
 include_once '../modules/helpers.php';
 include_once '../modules/activity_logger.php';
+include_once '../modules/GarbageCollector.php';
 
 if (!isset($_SESSION['user_id'])) {
     die(include '../err/denied.php');
 }
 
-include '../controllers/fun.php';
+include '../controllers/admin/admin_actions.php';
+include '../controllers/admin/admin_data.php';
+
+// Auto-cleanup guest stale (adaptive — throttle 1 jam via GarbageCollector)
+GarbageCollector::cleanGuests($conn);
 
 /** * --- IDE Type Hinting for Intelephense ---
  * These variables are initialized in '../controllers/fun.php'
@@ -231,7 +236,7 @@ include '../controllers/fun.php';
                                 $color = ($type == 'video') ? "text-red-500" : "text-orange-500";
                                 $icon = ($type == 'video') ? "play-circle" : "music-2";
                             ?>
-                                <a href="<?= $link . $tm['id'] ?>" class="flex items-center gap-3 p-2 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-all group">
+                                <a href="<?= $link . $tm['id'] ?>" class="flex items-center gap-3 p-2 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-all group" title="Lihat konten populer ini">
                                     <div class="p-2 bg-gray-800 rounded-lg group-hover:scale-110 transition-transform">
                                         <i data-lucide="<?= $icon ?>" class="w-3.5 h-3.5 <?= $color ?>"></i>
                                     </div>
@@ -248,7 +253,7 @@ include '../controllers/fun.php';
                     </div>
                 </div>
 
-                <a href="cookies.php" class="block mt-6 text-center text-[9px] text-blue-400 border border-blue-400/20 py-2.5 rounded-xl hover:bg-blue-400 hover:text-white font-black uppercase tracking-widest transition-all">
+                <a href="cookies.php" class="block mt-6 text-center text-[9px] text-blue-400 border border-blue-400/20 py-2.5 rounded-xl hover:bg-blue-400 hover:text-white font-black uppercase tracking-widest transition-all" title="Lihat laporan analitik lengkap">
                     Full Reports
                 </a>
             </div>
@@ -281,8 +286,8 @@ include '../controllers/fun.php';
                             <tr class="hover:bg-white/[0.02]">
                                 <td class="py-4 px-6 font-bold text-white"><?= htmlspecialchars($u['username']) ?></td>
                                 <td class="py-4 px-6 text-right space-x-2">
-                                    <a href="?approve_id=<?= $u['id'] ?>" class="bg-green-600 text-white px-4 py-1.5 rounded-xl font-bold text-[10px]">APPROVE</a>
-                                    <a href="?reject_id=<?= $u['id'] ?>" class="bg-red-600/20 text-red-500 px-4 py-1.5 rounded-xl font-bold text-[10px] border border-red-500/20">REJECT</a>
+                                    <a href="?approve_id=<?= $u['id'] ?>" class="bg-green-600 text-white px-4 py-1.5 rounded-xl font-bold text-[10px]" title="Setujui pendaftaran <?= htmlspecialchars($u['username']) ?>">APPROVE</a>
+                                    <a href="?reject_id=<?= $u['id'] ?>" class="bg-red-600/20 text-red-500 px-4 py-1.5 rounded-xl font-bold text-[10px] border border-red-500/20" title="Tolak pendaftaran <?= htmlspecialchars($u['username']) ?>">REJECT</a>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
@@ -297,7 +302,7 @@ include '../controllers/fun.php';
                 <div class="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl">
                     <p class="text-xs text-red-400 mb-2">Ditemukan <?= count($orphans) ?> file sampah (tidak ada di DB):</p>
                     <ul class="text-[9px] font-mono text-gray-500 max-h-24 overflow-y-auto mb-4"><?php foreach ($orphans as $o) echo "<li>- $o</li>"; ?></ul>
-                    <form method="POST"><input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>"><input type="hidden" name="files_to_delete" value='<?= json_encode($orphans) ?>'><button name="clean_orphans" class="bg-red-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl hover:bg-red-700 transition-all uppercase">Bersihkan SSD Thinkpad</button></form>
+                    <form method="POST"><input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>"><input type="hidden" name="files_to_delete" value='<?= json_encode($orphans) ?>'>                                <button name="clean_orphans" class="bg-red-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl hover:bg-red-700 transition-all uppercase" title="Hapus file sampah yang tidak ada di database">Bersihkan SSD Thinkpad</button></form>
                 </div>
             <?php else: ?>
                 <p class="text-xs text-green-500 font-bold uppercase tracking-widest flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Semua file di SSD sinkron dengan Database</p>
@@ -355,7 +360,7 @@ include '../controllers/fun.php';
                                         ?>
                                             <a href="?delete_user_id=<?= $u['id'] ?>"
                                                 onclick="return meelConfirmLink(event, { title: 'Hapus User', text: 'Hapus permanen user <?= htmlspecialchars($u['username'], ENT_QUOTES) ?>?', confirmButtonText: 'HAPUS' })"
-                                                class="bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold text-[10px] uppercase">
+                                                class="bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold text-[10px] uppercase" title="Hapus permanen user <?= htmlspecialchars($u['username'], ENT_QUOTES) ?>">
                                                 Delete
                                             </a>
                                         <?php else: ?>
@@ -379,7 +384,7 @@ include '../controllers/fun.php';
                 </div>
                 <form method="POST" action="index.php" onsubmit="return meelConfirmForm(event, { title: 'Bersihkan Antrean', text: 'Bersihkan semua antrean yang stuck (> 30 menit)?', confirmButtonText: 'BERSIHKAN' });">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                    <button type="submit" name="clean_stuck_queues" value="1" class="flex items-center gap-2 text-[9px] bg-purple-600/10 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-xl hover:bg-purple-600 hover:text-white transition-all font-bold uppercase cursor-pointer">
+                    <button type="submit" name="clean_stuck_queues" value="1" class="flex items-center gap-2 text-[9px] bg-purple-600/10 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-xl hover:bg-purple-600 hover:text-white transition-all font-bold uppercase cursor-pointer" title="Bersihkan semua antrean yang macet (> 30 menit)">
                         <i data-lucide="refresh-cw" class="w-3 h-3"></i>
                         Clean Stuck Queues
                     </button>
@@ -447,7 +452,7 @@ include '../controllers/fun.php';
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Live Activity Monitor</h3>
                 <form method="POST" action="index.php" onsubmit="return meelConfirmForm(event, { title: 'Hapus Guest', text: 'Hapus semua Guest?', confirmButtonText: 'HAPUS' });">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                    <button type="submit" name="clear_all_guests" value="1" class="group flex flex-col items-end gap-1 cursor-pointer">
+                    <button type="submit" name="clear_all_guests" value="1" class="group flex flex-col items-end gap-1 cursor-pointer" title="Hapus semua user guest yang tidak aktif">
                         <div class="flex items-center gap-2 text-[9px] bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold uppercase">
                             <i data-lucide="shield-alert" class="w-3 h-3"></i>
                             Clean Inactive Guests
@@ -587,7 +592,7 @@ include '../controllers/fun.php';
                     </div>
 
                     <button type="submit" name="ban_ip"
-                        class="w-full bg-red-600 hover:bg-red-700 text-white text-[10px] font-black py-2 rounded-xl transition-all uppercase tracking-widest">
+                        class="w-full bg-red-600 hover:bg-red-700 text-white text-[10px] font-black py-2 rounded-xl transition-all uppercase tracking-widest" title="Blokir alamat IP ini secara permanen">
                         EKSEKUSI BAN IP 🚫
                     </button>
                 </form>
@@ -610,7 +615,7 @@ include '../controllers/fun.php';
                                         <td class="py-3 text-gray-400"><?= $ban['reason'] ?></td>
                                         <td class="py-3 text-gray-500"><?= $ban['banned_at'] ?></td>
                                         <td class="py-3 text-right">
-                                            <a href="?unban_ip=<?= $ban['ip_address'] ?>" class="text-[9px] border border-green-500/30 text-green-500 px-3 py-1 rounded hover:bg-green-500 hover:text-white transition">UNBAN</a>
+                                            <a href="?unban_ip=<?= $ban['ip_address'] ?>" class="text-[9px] border border-green-500/30 text-green-500 px-3 py-1 rounded hover:bg-green-500 hover:text-white transition" title="Buka blokir IP <?= $ban['ip_address'] ?>">UNBAN</a>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>

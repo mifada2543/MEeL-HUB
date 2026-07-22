@@ -2,7 +2,7 @@
 require_once '../auth/auth.php';
 require_once '../auth/config.php';
 // activity_logger loaded via auth/config.php
-require_once '../modules/MediaLibrary.php';
+require_once '../modules/media/MediaLibrary.php';
 
 // ── Proteksi role admin ───────────────────────────────────────────────────────
 $repo    = new BookRepository($conn);

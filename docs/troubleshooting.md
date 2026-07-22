@@ -377,7 +377,7 @@ Tunggu hingga kuota ter-reset, atau minta admin untuk meng-upload-kan.
    ALTER TABLE music ADD INDEX idx_upload_date (upload_date);
    ```
 
-3. **Cek koneksi internet** untuk CDN assets (Tailwind, Lucide)
+3. **Cek koneksi internet** untuk asset eksternal (jika ada loading CDN seperti Google Fonts di file testing)
 
 ### ❌ CPU 100% saat Transcoding
 

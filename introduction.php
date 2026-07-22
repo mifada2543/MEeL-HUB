@@ -47,7 +47,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     <div id="reading-progress"></div>
 
     <!-- ── MOBILE HAMBURGER ── -->
-    <button id="hamburger" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+    <button id="hamburger" onclick="toggleSidebar()" aria-label="Toggle sidebar" title="Buka menu samping">
         <i data-lucide="menu"></i>
     </button>
 
@@ -71,14 +71,14 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
         <nav class="sidebar-nav">
             <div class="nav-section-label">Panduan</div>
 
-            <button class="nav-btn active-video" id="nav-video" onclick="showGuide('video', this)">
+            <button class="nav-btn active-video" id="nav-video" onclick="showGuide('video', this)" title="Panduan fitur Video">
                 <div class="nav-btn-icon">
                     <i data-lucide="play-square" style="width:15px;height:15px;color:#ef4444;"></i>
                 </div>
                 <span class="nav-btn-label">Video</span>
             </button>
 
-            <button class="nav-btn" id="nav-music" onclick="showGuide('music', this)">
+            <button class="nav-btn" id="nav-music" onclick="showGuide('music', this)" title="Panduan fitur Musik">
                 <div class="nav-btn-icon">
                     <i data-lucide="music-2" style="width:15px;height:15px;color:#f97316;"></i>
                 </div>
@@ -119,7 +119,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                     </div>
                     <div class="screenshot-wrap">
                         <img src="assets/img/video0.webp" alt="Index Video" class="screenshot-img"
-                            onclick="openLightbox(this.src)" loading="lazy">
+                            onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                     </div>
                     <div class="annotation-list">
                         <?php
@@ -153,11 +153,11 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                     </div>
                     <div class="screenshot-wrap">
                         <img src="assets/img/video1.webp" alt="Watch Video" class="screenshot-img"
-                            onclick="openLightbox(this.src)" loading="lazy">
+                            onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                         <img src="assets/img/video2.webp" alt="Watch Video" class="screenshot-img"
-                            onclick="openLightbox(this.src)" loading="lazy">
+                            onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                         <img src="assets/img/video3.webp" alt="Watch Video" class="screenshot-img"
-                            onclick="openLightbox(this.src)" loading="lazy">
+                            onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                     </div>
                     <div class="annotation-list">
                         <?php
@@ -232,9 +232,9 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                     </div>
                     <div class="screenshot-wrap">
                         <img src="assets/img/music0.webp" alt="Index Musik" class="screenshot-img"
-                            onclick="openLightbox(this.src)" loading="lazy">
+                            onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                         <img src="assets/img/music2.webp" alt="Index Musik" class="screenshot-img"
-                            onclick="openLightbox(this.src)" loading="lazy">
+                            onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                     </div>
                     <div class="annotation-list">
                         <?php
@@ -267,7 +267,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
                     </div>
                     <div class="screenshot-wrap">
                         <img src="assets/img/music1.webp" alt="Watch Musik" class="screenshot-img"
-                            onclick="openLightbox(this.src)" loading="lazy">
+                            onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                     </div>
                     <div class="annotation-list">
                         <?php
@@ -323,8 +323,8 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     </main>
 
     <!-- ── LIGHTBOX ── -->
-    <div id="lightbox" onclick="closeLightbox()">
-        <div id="lightbox-close" onclick="closeLightbox()">
+    <div id="lightbox" onclick="closeLightbox()" title="Klik untuk menutup">
+        <div id="lightbox-close" onclick="closeLightbox()" title="Tutup">
             <i data-lucide="x" style="width:14px;height:14px;color:#9ca3af;"></i>
         </div>
         <img id="lightbox-img" src="" alt="Preview" onclick="event.stopPropagation()">

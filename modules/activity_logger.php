@@ -285,7 +285,9 @@ if (isset($conn)) {
         $stmt->execute();
     } else {
         // LOGIKA GUEST — 1 query (INSERT ON DUPLICATE KEY) bukan 2 query (SELECT + INSERT/UPDATE)
-        $guest_id = "Guest_" . substr(session_id(), 0, 6);
+        // Gunakan hash dari full session_id sebagai username unik agar ON DUPLICATE KEY benar-benar bekerja
+        // saat UNIQUE KEY pada kolom username sudah ditambahkan via migrasi v7
+        $guest_id = "g_" . substr(md5(session_id()), 0, 10);
         $role     = 'guest';
         $guest_upd = $conn->prepare(
             "INSERT INTO users (username, role, last_page, user_agent, access_via, ip_address, last_activity)

@@ -1,6 +1,27 @@
 <?php
-include '../auth/config.php';
-include '../modules/MediaInteraction.php';
+/**
+ * controllers/api/delete_comment.php
+ * 
+ * GET /api/delete_comment — Hapus komentar (dengan ownership check).
+ *
+ * Query params:
+ *   - id (int, required) ID komentar yang akan dihapus
+ *
+ * Response:
+ *   302 Redirect ke HTTP_REFERER (dengan validasi host)
+ *   - Flash message disimpan di $_SESSION['success'] atau $_SESSION['error']
+ *
+ * Security:
+ *   - Ownership check via MediaInteraction::deleteComment()
+ *   - Open redirect protection via validasi HTTP_HOST
+ *
+ * Dependencies:
+ *   - auth/config.php ($conn, $_SESSION)
+ *   - modules/media/MediaInteraction.php
+ */
+
+include '../../auth/config.php';
+include '../../modules/media/MediaInteraction.php';
 
 // Get comment ID
 $comment_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;

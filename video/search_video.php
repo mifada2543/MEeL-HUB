@@ -1,21 +1,14 @@
 <?php
 include '../auth/config.php';
-require_once '../modules/MediaLibrary.php';
+require_once '../modules/media/SearchEngine.php';
 
-$q       = trim($_GET['search'] ?? '');
-$exclude = isset($_GET['exclude']) ? (int)$_GET['exclude'] : 0;
-$offset  = isset($_GET['offset']) ? max(0, (int)$_GET['offset']) : 0;
-$sidebar = (isset($_SERVER['HTTP_HX_TARGET']) && $_SERVER['HTTP_HX_TARGET'] === 'recommendation-column');
-$limit   = 20; // harus sama dengan $limit di MediaLibrary::searchVideo()
+$engine = new SearchEngine($conn);
+$params = $engine->parseParams();
+$result = $engine->searchVideo($params);
 
-$library = new MediaLibrary($conn);
-$data    = $library->searchVideo($q, $exclude, $sidebar, $offset);
-
-if ($data && $data->num_rows > 0) {
-    $count = 0;
-    while ($v = $data->fetch_assoc()) {
-        $count++;
-        if ($sidebar) {
+if ($result['count'] > 0) {
+    foreach ($result['results'] as $v) {
+        if ($result['sidebar']) {
 ?>
             <a href="watch.php?id=<?= $v['id'] ?>"
                 class="flex gap-3 group rekomendasi-item htmx-added">
@@ -42,11 +35,11 @@ if ($data && $data->num_rows > 0) {
         }
     }
 
-    if (!$sidebar && $count === $limit) {
+    if (!$result['sidebar'] && $result['hasMore']) {
         ?>
         <div id="load-more-area"
             class="aspect-video flex items-center justify-center bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl cursor-pointer hover:border-red-500/30 hover:bg-white/[.03] transition-all group"
-            hx-get="search_video.php?search=<?= urlencode($q) ?>&exclude=<?= $exclude ?>&offset=<?= $offset + $limit ?>"
+            hx-get="search_video.php?search=<?= urlencode($result['query']) ?>&exclude=<?= $result['exclude'] ?>&offset=<?= $result['offset'] + $result['limit'] ?>"
             hx-target="#load-more-area"
             hx-swap="outerHTML">
             <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-700 group-hover:text-red-500 transition-colors">
@@ -55,6 +48,6 @@ if ($data && $data->num_rows > 0) {
         </div>
 <?php
     }
-} elseif ($offset === 0) {
+} elseif ($result['offset'] === 0) {
     echo '<div class="py-12 text-center text-[10px] text-gray-700 uppercase tracking-widest">Video tidak ditemukan.</div>';
 }

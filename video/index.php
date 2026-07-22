@@ -6,7 +6,7 @@ ini_set('display_errors', 1);
 session_name('meel');
 session_start();
 include '../auth/config.php';
-require_once '../modules/MediaLibrary.php';
+require_once '../modules/media/MediaLibrary.php';
 
 $library    = new MediaLibrary($conn);
 $limit_init = 15;
@@ -74,7 +74,7 @@ $total      = $library->countVideos();
                 </div>
             </div>
 
-            <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0" title="MEeL Music">
+            <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
                 <?php include '../partials/nav.php'; ?>
             </div>
         </div>

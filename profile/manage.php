@@ -37,7 +37,7 @@ if (!$has_content) {
 
 // ── Load backend functions ──
 define('MEEL_MANAGE_ACCESS', true);
-require_once '../controllers/fun-manage.php';
+require_once '../controllers/profile/fun-manage.php';
 
 // ── Cleanup files >30 menit setiap kali halaman dimuat ──
 $cleaned_count = cleanupPendingDeletions();
@@ -386,7 +386,7 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
             <a href="<?= $back_url ?>" class="flex items-center gap-2 flex-shrink-0" title="Kembali ke Profil">
-                <img src="../assets/MEeL.png" class="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
+                <img src="../assets/MEeL.png" class="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center" title="MEeL - Kembali ke profil">
                 <span class="text-sm font-bold tracking-tight text-white uppercase hidden sm:block">
                     Kelola<span class="text-blue-500">Konten</span>
                 </span>
@@ -437,12 +437,12 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
         <!-- TABS -->
         <div class="manage-tabs mb-6 max-w-sm">
             <a href="?tab=video<?= isset($_GET['csrf_token']) ? '&csrf_token=' . urlencode($_GET['csrf_token']) : '' ?>"
-                class="manage-tab <?= $active_tab === 'video' ? 'active-video' : '' ?>">
+                class="manage-tab <?= $active_tab === 'video' ? 'active-video' : '' ?>" title="Kelola video Anda">
                 <i data-lucide="play" class="w-3.5 h-3.5 inline-block -ml-1 mr-1.5"></i>
                 Video
             </a>
             <a href="?tab=music<?= isset($_GET['csrf_token']) ? '&csrf_token=' . urlencode($_GET['csrf_token']) : '' ?>"
-                class="manage-tab <?= $active_tab === 'music' ? 'active-tab' : '' ?>">
+                class="manage-tab <?= $active_tab === 'music' ? 'active-tab' : '' ?>" title="Kelola musik Anda">
                 <i data-lucide="music" class="w-3.5 h-3.5 inline-block -ml-1 mr-1.5"></i>
                 Music
             </a>
@@ -462,7 +462,7 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
                                 <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($v['title']) ?>" loading="lazy">
                             </a>
                             <div class="card-body">
-                                <a href="../video/watch.php?id=<?= $v['id'] ?>" class="card-title no-underline hover:text-red-400 transition-colors">
+                                <a href="../video/watch.php?id=<?= $v['id'] ?>" class="card-title no-underline hover:text-red-400 transition-colors" title="<?= htmlspecialchars($v['title']) ?>">
                                     <?= htmlspecialchars($v['title']) ?>
                                 </a>
                                 <div class="card-meta">
@@ -480,12 +480,12 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
                                 </div>
                                 <div class="flex gap-2 mt-3 pt-3 border-t border-white/[.04]">
                                     <a href="../admin/edit-video.php?id=<?= $v['id'] ?>"
-                                        class="action-btn action-btn-edit">
+                                        class="action-btn action-btn-edit" title="Edit video <?= htmlspecialchars($v['title']) ?>">
                                         <i data-lucide="edit" class="w-3 h-3"></i> Edit
                                     </a>
                                     <a href="?tab=video&type=video&id=<?= $v['id'] ?>&delete=1&csrf_token=<?= $_SESSION['csrf_token'] ?>"
                                         onclick="return confirmHapus(event, '<?= htmlspecialchars(addslashes($v['title']), ENT_QUOTES) ?>', 'video')"
-                                        class="action-btn action-btn-delete">
+                                        class="action-btn action-btn-delete" title="Hapus video <?= htmlspecialchars($v['title']) ?>">
                                         <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus
                                     </a>
                                 </div>
@@ -506,11 +506,11 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
                             : '../assets/img/music0.webp';
                     ?>
                         <div class="content-card">
-                            <a href="../music/watch.php?id=<?= $m['id'] ?>" class="block card-thumb">
+                            <a href="../music/watch.php?id=<?= $m['id'] ?>" class="block card-thumb" title="<?= htmlspecialchars($m['title']) ?>">
                                 <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($m['title']) ?>" loading="lazy">
                             </a>
                             <div class="card-body">
-                                <a href="../music/watch.php?id=<?= $m['id'] ?>" class="card-title no-underline hover:text-orange-400 transition-colors">
+                                <a href="../music/watch.php?id=<?= $m['id'] ?>" class="card-title no-underline hover:text-orange-400 transition-colors" title="<?= htmlspecialchars($m['title']) ?>">
                                     <?= htmlspecialchars($m['title']) ?>
                                 </a>
                                 <div class="card-meta">
@@ -528,12 +528,12 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
                                 </div>
                                 <div class="flex gap-2 mt-3 pt-3 border-t border-white/[.04]">
                                     <a href="../admin/edit-music.php?id=<?= $m['id'] ?>"
-                                        class="action-btn action-btn-edit">
+                                        class="action-btn action-btn-edit" title="Edit musik <?= htmlspecialchars($m['title']) ?>">
                                         <i data-lucide="edit" class="w-3 h-3"></i> Edit
                                     </a>
                                     <a href="?tab=music&type=music&id=<?= $m['id'] ?>&delete=1&csrf_token=<?= $_SESSION['csrf_token'] ?>"
                                         onclick="return confirmHapus(event, '<?= htmlspecialchars(addslashes($m['title']), ENT_QUOTES) ?>', 'music')"
-                                        class="action-btn action-btn-delete">
+                                        class="action-btn action-btn-delete" title="Hapus musik <?= htmlspecialchars($m['title']) ?>">
                                         <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus
                                     </a>
                                 </div>
@@ -554,7 +554,7 @@ $back_url = "../profile/?u=" . urlencode($_SESSION['username']);
             <div class="pagination">
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                     <a href="?tab=<?= $active_tab ?>&p=<?= $i ?>"
-                        class="page-link <?= $i === $page ? 'active-page' : '' ?>">
+                        class="page-link <?= $i === $page ? 'active-page' : '' ?>" title="Halaman <?= $i ?>">
                         <?= $i ?>
                     </a>
                 <?php endfor; ?>

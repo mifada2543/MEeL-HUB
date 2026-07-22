@@ -171,6 +171,7 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                         <span>Upload Media</span>
                     </a>
                     <a href="<?= $_nav_root ?>admin/index.php"
+                        title="Panel admin untuk mengelola pengguna dan konten"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-red-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="settings" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Admin Panel</span>
@@ -178,6 +179,7 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                 <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'member'): ?>
                     <!-- Upload hanya untuk member juga (sesuai nav lama) -->
                     <a href="upload.php"
+                        title="Unggah media baru ke platform"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Upload</span>
@@ -191,6 +193,7 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                     data-meel-confirm-title="Logout"
                     data-meel-confirm-text="Yakin mau logout?"
                     data-meel-confirm-button="LOGOUT"
+                    title="Keluar dari akun Anda"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-500 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
                     <i data-lucide="log-out" class="w-3.5 h-3.5 flex-shrink-0"></i>
                     <span>Logout</span>
@@ -199,11 +202,10 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
         </div>
     </div>
 
-    <!-- ── HAMBURGER (mobile only) ── -->
-    <button id="nav-hamburger"
+    <!-- ── HAMBURGER (mobile only) ── -->        <button id="nav-hamburger"
         onclick="toggleNavDrawer()"
         class="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/[.04] border border-white/[.06] text-gray-500 hover:text-white transition-all"
-        title="Menu">
+        title="Buka menu navigasi">
         <i data-lucide="menu" class="w-6 h-6"></i>
     </button>
 
@@ -256,7 +258,7 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                     <?php endif; ?>
                 </div>
             </div>
-            <button onclick="toggleNavDrawer()" class="text-gray-600 hover:text-white p-1 transition-all">
+            <button onclick="toggleNavDrawer()" class="text-gray-600 hover:text-white p-1 transition-all" title="Tutup menu">
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
         </div>
@@ -264,18 +266,21 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
         <!-- Drawer menu items -->
         <nav class="flex-1 overflow-y-auto py-4 space-y-1">
             <a href="<?= $_nav_root ?>profile/?u=<?= urlencode($_SESSION['username']) ?>"
+                title="Lihat dan edit profil Anda"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="user" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Profil Saya</span>
             </a>
             <?php if (!$_nav_is_books): ?>
             <a href="<?= $_nav_root ?>books/index.php"
+                title="Baca manga dan PDF digital"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-green-400 hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="book-open" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Books</span>
             </a>
             <?php endif; ?>
             <a href="<?= $_nav_root ?>introduction.php"
+                title="Panduan penggunaan fitur MEeL"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="compass" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Cara Navigasi</span>
@@ -312,7 +317,7 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
                 </a>
             <?php endif; ?>
             <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                <a href="<?= $_nav_root ?>upload_advanced.php"
+                <a href="upload.php"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
                     <span>Upload Media</span>

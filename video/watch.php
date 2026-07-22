@@ -7,44 +7,21 @@ session_start();
 
 include '../auth/config.php';
 require_once '../modules/helpers.php';
-include '../modules/MediaViewer.php';
+require_once '../modules/CommentRenderer.php';
+require_once '../controllers/api/WatchController.php';
 
 $id      = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
-$is_logged_in = isset($_SESSION['user_id']);
 
-$viewer = new MediaViewer($conn, $user_id, 'video', $id);
-$viewer->recordView();
+$ctrl = new VideoWatchController($conn, $user_id, $id);
+$ctrl->handleRequest();
 
-if ($is_logged_in && isset($_POST['send'])) {
-    // 🔒 FIX CSRF: Verifikasi token sebelum proses komentar
-    if (!verify_csrf()) {
-        die('CSRF Token tidak valid.');
-    }
-    if ($viewer->addComment($_POST)) {
-        header("Location: watch.php?id=$id#comment-section");
-        exit;
-    }
-}
+// Semua variabel template diekstrak dari controller
+extract($ctrl->getViewData());
 
-$v = $viewer->getMediaData();
-$video_src = "upload/" . $v['filename'];
-$is_hls    = (pathinfo($video_src, PATHINFO_EXTENSION) === 'm3u8');
-$video_dir = dirname($video_src);
-$vtt_src   = file_exists($video_dir . "/thumbnails.vtt") ? $video_dir . "/thumbnails.vtt" : "";
-
-$user_interaction = $viewer->getUserInteraction();
-$comments_data    = $viewer->getComments();
-$comments_grouped = $comments_data['grouped'];
-$user_map         = $comments_data['user_map'];
-$rekom            = $viewer->getRecommendations(15);
-
-// Lepas session lock sesegera mungkin — PHP session bersifat exclusive lock.
-// Selama lock aktif, request lain dari browser yang sama (termasuk range request
-// untuk video MP4) harus antri, menyebabkan micro-stall di mobile LAN.
+// Lepas session lock sesegera mungkin
 session_write_close();
-?>
-<!DOCTYPE html>
+?><!DOCTYPE html>
 <html lang="id">
 
 <head>
@@ -118,7 +95,7 @@ session_write_close();
 
     <div id="mobile-search-overlay">
         <button onclick="document.getElementById('mobile-search-overlay').classList.remove('open')"
-            class="text-gray-600 flex-shrink-0">
+            class="text-gray-600 flex-shrink-0" title="Tutup pencarian">
             <i data-lucide="arrow-left" class="w-5 h-5"></i>
         </button>
         <div class="relative flex-1">
@@ -137,9 +114,7 @@ session_write_close();
 
     <main id="app-content-grid" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
         <div id="left-column" class="flex-1 space-y-4 sm:space-y-5 px-4 sm:px-5">
-            <!-- Container relatif agar canvas glow bisa absolute di belakang video -->
             <div id="video-glow-container" class="relative w-full">
-                <!-- Canvas cahaya sinematik (Disembunyikan di HP demi performa baterai) -->
                 <canvas id="video-glow-canvas" class="hidden sm:block"></canvas>
                 <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" style="aspect-ratio: 16/9;">
                     <video id="main-video" playsinline controls preload="auto"
@@ -157,26 +132,28 @@ session_write_close();
                         <?php endif; ?>
                     </video>
                     <div id="resume-modal" class="hidden">
-                        <div class="bg-[#141820] border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl p-6 max-w-xs w-full mx-4 text-center">
-                            <div class="text-sm font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
+                        <div class="bg-[#141820] border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl text-center">
+                            <div class="font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
                             <div class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">
                                 Menit ke‑ <span id="resume-time" class="text-red-400 font-mono">0:00</span>
                             </div>
                             <p id="resume-countdown" class="text-[10px] text-gray-300 italic mb-5">Otomatis ulang dalam 15s...</p>
                             <div class="flex gap-2">
                                 <button id="btn-resume"
-                                    class="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider py-2.5 rounded-xl transition-all border-none cursor-pointer">
+                                    class="flex-1 bg-red-600 hover:bg-red-500 text-white font-black uppercase tracking-wider rounded-xl transition-all border-none cursor-pointer"
+                                    title="Lanjutkan menonton dari posisi terakhir">
                                     Lanjut
                                 </button>
                                 <button id="btn-restart"
-                                    class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-black uppercase tracking-wider py-2.5 rounded-xl border border-white/10 cursor-pointer transition-all">
+                                    class="flex-1 bg-white/5 hover:bg-white/10 text-gray-400 font-black uppercase tracking-wider rounded-xl border border-white/10 cursor-pointer transition-all"
+                                    title="Mulai ulang dari awal">
                                     Ulang
                                 </button>
                             </div>
                         </div>
                     </div>
-                </div><!-- /#main-video-wrapper -->
-            </div><!-- /#video-glow-container -->
+                </div>
+            </div>
 
             <div id="watch-details-wrapper" class="space-y-4 sm:space-y-5">
                 <div id="video-info" class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6 flex flex-col gap-4">
@@ -223,12 +200,13 @@ session_write_close();
                     <div class="flex items-center gap-2 flex-wrap">
                         <?php if (isset($_SESSION['username'])): ?>
                             <a href="../transcode.php?id=<?= $id ?>"
-                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline">
+                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline"
+                                title="Download audio saja">
                                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Audio
                             </a>
                             <div id="like-dislike-container" class="flex items-center gap-2">
                                 <button
-                                    hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
+                                    hx-post="../controllers/api/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                     hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"like","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
                                     title="Suka video"
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
@@ -239,7 +217,7 @@ session_write_close();
                                     Like<?= ($v['likes'] ?? 0) > 0 ? " <span class='tabular-nums ml-0.5'>{$v['likes']}</span>" : '' ?>
                                 </button>
                                 <button
-                                    hx-post="../controllers/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
+                                    hx-post="../controllers/api/like.php" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                     hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
                                     title="Tidak suka video"
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
@@ -259,8 +237,7 @@ session_write_close();
                         </div>
                         <div class="relative">
                             <p id="desc-text" class="text-sm text-gray-400 leading-relaxed break-words whitespace-pre-wrap line-clamp-5 transition-all duration-300"><?= htmlspecialchars($v['description']) ?></p>
-                        </div>
-                        <button id="btn-read-more" onclick="toggleDescription()" class="mt-3 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:text-red-400 transition-colors cursor-pointer border-none bg-transparent p-0 hidden">
+                        </div>                                <button id="btn-read-more" onclick="toggleDescription()" class="mt-3 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:text-red-400 transition-colors cursor-pointer border-none bg-transparent p-0 hidden" title="Tampilkan deskripsi lengkap">
                             Selengkapnya
                         </button>
                     </div>
@@ -286,7 +263,8 @@ session_write_close();
                                             placeholder="Tulis komentar..." required></textarea>
                                 <div class="flex justify-end mt-2">
                                     <button name="send"
-                                        class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer">
+                                        class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer"
+                                        title="Kirim komentar">
                                         Kirim
                                     </button>
                                 </div>
@@ -294,67 +272,10 @@ session_write_close();
 
                             <div class="space-y-1 max-h-[500px] overflow-y-auto pr-1">
                                 <?php
-                                function render_video_comments($parent_id, $grouped, $level = 0)
-                                {
-                                    global $id, $user_map;
-                                    if (!isset($grouped[$parent_id])) return;
-                                    foreach ($grouped[$parent_id] as $c):
-                                        $author      = $c['username'] ?? 'Guest';
-                                        $parent_user = ($c['parent_id'] > 0) ? ($user_map[$c['parent_id']] ?? 'Guest') : null;
-                                        $indent = min($level * 16, 48);
-                                ?>
-                                        <div class="comment-row flex gap-3 p-3 rounded-xl" style="margin-left:<?= $indent ?>px">
-                                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                                                <?= strtoupper(substr($author, 0, 1)) ?>
-                                            </div>
-                                            <div class="flex-1 min-w-0">
-                                                <div class="flex items-center justify-between gap-2 mb-1">
-                                                    <div class="flex items-center gap-2 min-w-0">
-                                                        <span class="text-[11px] font-bold text-red-400 truncate">@<?= htmlspecialchars($author) ?></span>
-                                                        <span class="text-[10px] text-gray-300 flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
-                                                    </div>
-                                                    <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id']): ?>
-                                                        <a href="../controllers/delete_comment.php?id=<?= $c['id'] ?>"
-                                                            onclick="return meelConfirmLink(event, { title: 'Hapus Komentar', text: 'Hapus komentar ini?', confirmButtonText: 'HAPUS' })"
-                                                            class="text-gray-300 hover:text-red-400 transition-colors no-underline flex-shrink-0">
-                                                            <i data-lucide="trash-2" class="w-3 h-3"></i>
-                                                        </a>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <p class="text-sm text-gray-400 leading-relaxed">
-                                                    <?php if ($parent_user): ?>
-                                                        <span class="text-blue-400 text-[10px] font-bold bg-blue-500/10 px-1.5 py-0.5 rounded mr-1">@<?= htmlspecialchars($parent_user) ?></span>
-                                                    <?php endif; ?>
-                                                    <?= nl2br(htmlspecialchars($c['comment'])) ?>
-                                                </p>
-                                                <?php if (isset($_SESSION['user_id'])): ?>
-                                                    <button onclick="toggleReply('vid-<?= $c['id'] ?>')"
-                                                        class="text-[10px] font-bold text-gray-500 hover:text-red-400 uppercase tracking-wider mt-2 bg-none border-none cursor-pointer p-0 transition-colors">
-                                                        Balas
-                                                    </button>
-                                                    <div id="vid-<?= $c['id'] ?>" class="hidden mt-3">
-                                                        <form action="watch.php?id=<?= $id ?>" method="post" class="flex gap-2">
-                                                            <input type="hidden" name="parent_id" value="<?= $c['id'] ?>">
-                                                            <input type="text" name="comments"
-                                                                class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-red-500/40 min-w-0"
-                                                                placeholder="Balas @<?= htmlspecialchars($author) ?>..." required>
-                                                            <button name="send"
-                                                                class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase px-3 sm:px-4 py-2 rounded-xl border-none cursor-pointer transition-all flex-shrink-0">
-                                                                Kirim
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                <?php
-                                        render_video_comments($c['id'], $grouped, $level + 1);
-                                    endforeach;
-                                }
                                 if (empty($comments_grouped)) {
                                     echo "<div class='py-10 text-center text-[10px] text-gray-300 uppercase tracking-widest'>Belum ada komentar.</div>";
                                 } else {
-                                    render_video_comments(0, $comments_grouped);
+                                    render_comments(0, $comments_grouped, 0, 'video');
                                 }
                                 ?>
                             </div>

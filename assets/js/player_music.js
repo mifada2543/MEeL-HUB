@@ -531,11 +531,10 @@ function updateEqUI() {
       let z,
         G,
         R = !1;
+      // Bersihkan flag sisa dari navigasi index agar tidak stale
+      sessionStorage.removeItem("skip_resume_once");
       function B() {
         if (skipResumeModalOnce) return void (skipResumeModalOnce = !1);
-        if ("true" === sessionStorage.getItem("skip_resume_once"))
-          return void sessionStorage.removeItem("skip_resume_once");
-        if (o) return;
         const e = localStorage.getItem(storageKeyMusic);
         if (!e || parseFloat(e) <= 10) return;
         if (player.duration && parseFloat(e) >= player.duration - 5) return;
@@ -572,13 +571,28 @@ function updateEqUI() {
             localStorage.setItem("meel_global_loop", String(r)),
             updateLoopUI(),
             sessionStorage.removeItem("meel_audio_state"));
-          const e = () => {
-            ((player.currentTime = Math.max(0, i)),
-              l && player.play().catch(() => {}));
-          };
-          audio.readyState >= HTMLMediaElement.HAVE_METADATA
-            ? e()
-            : audio.addEventListener("loadedmetadata", e, { once: !0 });
+
+          // 🔥 FIX: Setelah restore dari audio state, tetap cek localStorage
+          // untuk resume modal (karena B() tidak pernah dipanggil dari cabang o=true)
+          const _savedPos = localStorage.getItem(storageKeyMusic);
+          if (
+            _savedPos &&
+            parseFloat(_savedPos) > 10 &&
+            (!player.duration || parseFloat(_savedPos) < player.duration - 5)
+          ) {
+            B();
+          }
+
+          // Jika B() tidak menampilkan modal (modal masih hidden), play normal
+          if (L && L.classList.contains("hidden")) {
+            const e = () => {
+              ((player.currentTime = Math.max(0, i)),
+                l && player.play().catch(() => {}));
+            };
+            audio.readyState >= HTMLMediaElement.HAVE_METADATA
+              ? e()
+              : audio.addEventListener("loadedmetadata", e, { once: !0 });
+          }
         } else {
           const e = localStorage.getItem(storageKeyMusic);
           e &&
