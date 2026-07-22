@@ -260,9 +260,6 @@ if (isset($conn)) {
             case 'books':
                 $current_page = "Browsing Books Library";
                 break;
-            case 'anime':
-                $current_page = "Browsing Anime";
-                break;
             case 'arcade':
                 $current_page = "Browsing Arcade";
                 break;

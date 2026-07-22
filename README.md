@@ -131,10 +131,6 @@
 ```
 MEeL/
 ├── admin/                 # Panel Admin (role admin only)
-├── anime/                 # Modul Anime (Coming Soon — placeholder page)
-│   ├── sidebar.php        # (kosong — menunggu implementasi)
-│   ├── watch.php           # Redirect ke index.php
-│   └── index.php           # Halaman Coming Soon dengan progress bar
 ├── arcade/                # Mini Games (Dino Run, Chess)
 ├── assets/                # Aset statis (CSS, JS, font, gambar)
 ├── auth/                  # Autentikasi & manajemen sesi

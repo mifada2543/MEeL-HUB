@@ -337,25 +337,51 @@ $stmt->bind_param("ss", $ip_to_ban, $reason);
 ### Logger Function
 
 ```php
-function log_activity($conn, $user_id, $action, $media_type, $media_id) {
-    // Mencatat aktivitas ke tabel activity_log
-}
+function log_activity(
+    mysqli $conn, 
+    int $user_id, 
+    string $action, 
+    string $media_type = '', 
+    ?int $media_id = null
+): void;
 ```
 
-### Yang Dicatat
+Mencatat aktivitas user ke tabel `activity_log` dengan prepared statement. Null `$media_id` ditangani dengan query terpisah agar NULL tersimpan di database (bukan 0).
 
-| Event | Aksi | Detail |
-|-------|------|--------|
-| Login | `login` | User login success |
-| Upload Video | `upload` | Video ditambahkan |
-| Upload Music | `upload` | Musik ditambahkan |
-| Download URL | `download` | URL diproses yt-dlp |
-| Comment | `comment` | Komentar ditambahkan |
-| Like/Dislike | `interaction` | Interaksi media |
+### Yang Dicatat (Terintegrasi)
+
+`log_activity()` sudah terintegrasi langsung di berbagai entry point aplikasi:
+
+| Event | Aksi | Lokasi Integrasi |
+|-------|------|------------------|
+| Login sukses | `login` | `auth/login.php` |
+| Logout | `logout` | `auth/logout.php` |
+| Upload video | `upload_video` | `video/upload.php` |
+| Upload musik | `upload_music` | `music/upload.php` |
+| Upload buku | `upload_book` | `books/upload.php` |
+| Download URL | `upload_url` | `upload_advanced.php` |
+| Ban IP | `ban_ip` | `controllers/admin/admin_actions.php` |
+| Unban IP | `unban_ip` | `controllers/admin/admin_actions.php` |
+| Approve user | `approve_user` | `controllers/admin/admin_actions.php` |
+| Reject user | `reject_user` | `controllers/admin/admin_actions.php` |
+| Delete user | `delete_user` | `controllers/admin/admin_actions.php` |
+| Kick user | `kick_user` | `controllers/admin/admin_actions.php` |
+
+### Admin Activity Log Viewer
+
+Halaman `admin/activity_log.php` menyediakan viewer khusus untuk audit trail:
+
+| Fitur | Detail |
+|-------|--------|
+| 🔍 **Filter** | By action type (dropdown), search username/IP, rentang waktu (7–365 hari) |
+| 📄 **Pagination** | 50 entry per halaman dengan navigasi prev/next |
+| 📊 **Stats Cards** | 7-day activity count, unique users, total entries, page info |
+| 🏷️ **Action Badges** | Color-coded: login/logout (blue), upload (green), ban (red), admin (purple) |
+| 🗑️ **Cleanup Manual** | Hapus log lama (>7, 14, 30, 90, 365 hari) dengan konfirmasi SweetAlert2 + CSRF |
 
 ### Live Activity Monitor
 
-Admin dapat melihat aktivitas real-time user di dashboard admin:
+Selain `activity_log`, admin dashboard juga menampilkan aktivitas user real-time via tabel `users`:
 
 ```php
 $result_monitor = $conn->query(

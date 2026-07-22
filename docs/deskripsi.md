@@ -38,7 +38,6 @@ MEeL/
 ├── music/         → Modul streaming audio (MP3, FLAC, OGG, M4A)
 ├── books/         → Modul e-book / manga (PDF, ZIP/CBZ)
 ├── drive/         → Cloud Drive (public + private storage)
-├── anime/         → Modul anime (Coming Soon)
 ├── arcade/        → Mini games: Dino Run, Snake, Chess
 ├── admin/         → Panel admin: manajemen user, queue, IP ban
 ├── profile/       → Profil pengguna
@@ -196,7 +195,7 @@ Tidak ada masalah high yang tersisa.
 
 | # | Masalah | Lokasi | Saran |
 |---|---------|--------|-------|
-| 4 | `anime/` module Coming Soon dengan sidebar.php kosong | `anime/` | Selesaikan atau hapus |
+| 4 | ~anime/ module Coming Soon~ | ~anime/~ | ✅ **Sudah dihapus** |
 | 5 | Tidak ada `exit()` check di beberapa header redirect | Tersebar | Sudah diverifikasi semuanya aman ✅ |
 | 6 | Tidak ada pagination metadata (total pages) | `MediaLibrary.php` | Tambah `COUNT(*)` query untuk UI pagination |
 | 7 | `users.role` enum tidak include 'member' | `database/schema.sql` | Tambah 'member' ke enum atau dokumentasikan bahwa logical check saja |
@@ -273,8 +272,8 @@ Tidak ada masalah high yang tersisa.
 ## 📈 Rekomendasi ke Depan
 
 ### Prioritas Tinggi
-1. **Tambah FK constraint** ke `upload_queue.user_id`, `transcode_queue.user_id`, `drive_files.user_id` di schema.sql
-2. **Selesaikan modul anime** atau hapus jika tidak dilanjutkan
+1. ~~Tambah FK constraint~~ ✅ **Sudah ditambahkan** (Migration v4 & schema.sql)
+2. ~~Modul anime~~ ✅ **Sudah dihapus dari kodebase**
 3. **Tambah pagination UI** — user perlu melihat "halaman 3 dari 10"
 
 ### Prioritas Menengah

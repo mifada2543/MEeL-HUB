@@ -102,12 +102,11 @@ function testFileIntegrity(): void {
         'music/index.php', 'music/upload.php', 'music/watch.php',
         'music/stream.php', 'music/playlist_action.php', 'music/view_playlist.php',
         'books/index.php', 'books/upload.php', 'books/read.php',
-        'anime/index.php', 'anime/watch.php',
         'drive/index.php', 'drive/upload.php', 'drive/download.php', 'drive/delete.php',
         // Htaccess
         'auth/.htaccess', 'admin/.htaccess', 'logs/.htaccess',
         'data_drive/.htaccess', 'video/.htaccess', 'music/.htaccess',
-        'books/.htaccess', 'drive/.htaccess', 'anime/.htaccess',
+        'books/.htaccess', 'drive/.htaccess',
         'err/.htaccess', 'profile/.htaccess',
         // Partials
         'partials/navbar.php', 'partials/footer.php', 'partials/nav.php', 'partials/ui.php',
@@ -511,7 +510,7 @@ function testHtaccessSecurity(): void {
         'drive/.htaccess'      => ['Options -Indexes'],
         'err/.htaccess'        => ['Options -Indexes'],
         'profile/.htaccess'    => ['Options -Indexes'],
-        'anime/.htaccess'      => ['Options -Indexes'],
+
     ];
 
     foreach ($htaccess_files as $file => $reqs) {
@@ -740,7 +739,6 @@ function testIndexPages(): void {
     //   - Project menggunakan 'partials/head.php' BUKAN 'partials/header.php'
     //   - Sebagian page me-load head.php secara tidak langsung via 'partials/link.php'
     //   - Admin menggunakan 'header-admin.php' dari direktori yang sama
-    //   - Anime halaman "Coming Soon" standalone, tidak butuh footer partial
     $index_pages = [
         'index.php'             => ['head', 'footer'],
         'video/index.php'       => ['head', 'footer'],
@@ -748,7 +746,6 @@ function testIndexPages(): void {
         'books/index.php'       => ['head', 'footer'],
         'drive/index.php'       => ['head', 'footer'],
         'admin/index.php'       => ['header-admin'],
-        'anime/index.php'       => ['head'],
         'profile/index.php'     => ['head', 'footer'],
     ];
 

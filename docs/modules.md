@@ -405,13 +405,31 @@ Digunakan oleh `WatchController` dan `music/stream.php`:
 
 ### 16. Migration System (`database/migrate.php`)
 
-Versioned, idempotent database upgrades:
+Versioned, idempotent database upgrades. Aman dijalankan berulang kali (idempotent):
 ```bash
 /opt/lampp/bin/php database/migrate.php
 ```
-- v1: FULLTEXT index untuk search
-- v2: Performance index (upload_date)
-- Tracker di tabel `db_version`
+
+| Versi | Perubahan |
+|-------|-----------|
+| **v1** | FULLTEXT index untuk search video, music, books |
+| **v2** | Performance index (upload_date) untuk video, music, books, drive_files |
+| **v3** | Sinkronisasi struktural (idempotent) |
+| **v4** | Foreign key constraints: upload_queue.user_id, transcode_queue.user_id, drive_files.user_id → users.id |
+| **v5** | ALTER TABLE video/music/books: title VARCHAR → TEXT |
+| **v6** | CREATE TABLE activity_log (audit trail: user_id, action, media_type, media_id, ip_address, created_at) |
+| **v7** | UNIQUE INDEX idx_username_unique on users.username (mendukung ON DUPLICATE KEY UPDATE guest registration) |
+
+Tracker di tabel `db_version`.
+
+### Admin Activity Log Viewer
+
+Halaman khusus admin di `admin/activity_log.php` untuk melihat dan mengelola trail audit:
+- Filter berdasarkan action type, username/IP, rentang waktu
+- Pagination (50 per halaman)
+- Stats cards (7-day activity, unique users, total entries)
+- Action badges color-coded (login=blue, upload=green, ban=red, dll.)
+- Manual cleanup log lama (7–365 hari) dengan CSRF protection
 
 ---
 
