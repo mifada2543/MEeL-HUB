@@ -191,7 +191,7 @@ MEeL/
 └── upload_advanced.php    # Advanced upload via URL (yt-dlp)
 ```
 
-> 📖 **Dokumentasi lengkap** tersedia di direktori [`docs/`](docs/).
+> 📖 **Dokumentasi lengkap** tersedia dalam dua bahasa: [🇮🇩 Indonesia](docs/id/index.md) · [🇬🇧 English](docs/en/index.md)
 
 ---
 
@@ -278,7 +278,7 @@ sudo systemctl restart apache2
 
 > ⚠️ **Default Login:** Username: `Admin` | Password: `Admin#123`
 
-> 📖 **Instalasi detail** → [docs/installation.md](docs/installation.md)
+> 📖 **Instalasi detail** → [docs/id/installation.md](docs/id/installation.md) | [English](docs/en/installation.md)
 
 ---
 
@@ -358,20 +358,24 @@ Migration bersifat **idempotent** — aman dijalankan berulang kali.
 
 ## 📚 Dokumentasi Lengkap
 
-Dokumentasi proyek tersedia di direktori [`docs/`](docs/):
+Dokumentasi proyek tersedia dalam dua bahasa:
 
-| Dokumen | Deskripsi |
-|---------|-----------|
-| [📖 Index](docs/index.md) | Peta dokumentasi |
-| [🚀 Instalasi](docs/installation.md) | Panduan instalasi detail |
-| [⚙️ Konfigurasi](docs/configuration.md) | Referensi konfigurasi |
-| [🏗️ Modul](docs/modules.md) | Arsitektur modul & class diagram |
-| [🔌 API](docs/api.md) | Endpoint controllers |
-| [🔒 Keamanan](docs/security.md) | Sistem keamanan, RBAC, Rate Limiting |
-| [🌍 Problem Solved](docs/problem-solved.md) | Masalah dunia nyata yang MEeL selesaikan |
-| [🔧 Troubleshooting](docs/troubleshooting.md) | Pemecahan masalah umum |
-| [👨‍💻 Development](docs/development.md) | Panduan kontribusi |
-| [📥 Advanced Upload](docs/upload_issue.md) | Penanganan masalah yt-dlp & queue |
+**🇮🇩 Bahasa Indonesia:** [`docs/id/`](docs/id/index.md)
+**🇬🇧 English:** [`docs/en/`](docs/en/index.md)
+
+| Dokumen | 🇮🇩 ID | 🇬🇧 EN |
+|---------|:-----:|:-----:|
+| 📖 Index Dokumentasi | [🇮🇩](docs/id/index.md) | [🇬🇧](docs/en/index.md) |
+| 🚀 Instalasi | [🇮🇩](docs/id/installation.md) | [🇬🇧](docs/en/installation.md) |
+| ⚙️ Konfigurasi | [🇮🇩](docs/id/configuration.md) | [🇬🇧](docs/en/configuration.md) |
+| 🏗️ Modul & Arsitektur | [🇮🇩](docs/id/modules.md) | [🇬🇧](docs/en/modules.md) |
+| 🔌 API & Controller | [🇮🇩](docs/id/api.md) | [🇬🇧](docs/en/api.md) |
+| 🔒 Keamanan | [🇮🇩](docs/id/security.md) | [🇬🇧](docs/en/security.md) |
+| 🌍 Problem Solved | [🇮🇩](docs/id/problem-solved.md) | [🇬🇧](docs/en/problem-solved.md) |
+| 🔧 Troubleshooting | [🇮🇩](docs/id/troubleshooting.md) | [🇬🇧](docs/en/troubleshooting.md) |
+| 👨‍💻 Development | [🇮🇩](docs/id/development.md) | [🇬🇧](docs/en/development.md) |
+| 📥 Advanced Upload | [🇮🇩](docs/id/upload_issue.md) | [🇬🇧](docs/en/upload_issue.md) |
+| 📋 Analisis Proyek | [🇮🇩](docs/id/deskripsi.md) | [🇬🇧](docs/en/analysis.md) |
 
 ---
 
