@@ -87,12 +87,13 @@ function testFileIntegrity(): void {
         // Modules
         'modules/helpers.php', 'modules/activity_logger.php', 'modules/System.php',
         'modules/Uploader.php', 'modules/Transcoder.php', 'modules/japanese.php',
-        'modules/MediaInteraction.php', 'modules/MediaViewer.php',
-        'modules/MediaLibrary.php', 'modules/GarbageCollector.php',
+        'modules/media/MediaInteraction.php', 'modules/media/MediaViewer.php',
+        'modules/media/MediaLibrary.php', 'modules/GarbageCollector.php',
         // Controllers
-        'controllers/fun.php', 'controllers/like.php', 'controllers/profile_edit.php',
-        'controllers/delete_comment.php', 'controllers/download_transcode.php',
-        'controllers/UpdateManager.php', 'controllers/post_encode.php',
+        'controllers/admin/admin_actions.php', 'controllers/admin/admin_data.php',
+        'controllers/api/like.php', 'controllers/profile/profile_edit.php',
+        'controllers/api/delete_comment.php', 'controllers/api/download_transcode.php',
+        'controllers/system/UpdateManager.php', 'controllers/api/post_encode.php',
         // Admin
         'admin/index.php', 'admin/catur.php', 'admin/cookies.php',
         'admin/edit-video.php', 'admin/edit-music.php',
@@ -146,14 +147,14 @@ function testClassLoading(): void {
     $classes = [
         'Uploader'           => 'modules/Uploader.php',
         'Transcoder'         => 'modules/Transcoder.php',
-        'MediaViewer'        => 'modules/MediaViewer.php',
-        'MediaLibrary'       => 'modules/MediaLibrary.php',
-        'MediaInteraction'   => 'modules/MediaInteraction.php',
+        'MediaViewer'        => 'modules/media/MediaViewer.php',
+        'MediaLibrary'       => 'modules/media/MediaLibrary.php',
+        'MediaInteraction'   => 'modules/media/MediaInteraction.php',
         'System'             => 'modules/System.php',
         'GarbageCollector'   => 'modules/GarbageCollector.php',
-        'UpdateManager'      => 'controllers/UpdateManager.php',
-        'BookRepository'     => 'modules/MediaLibrary.php',
-        'BookUploader'       => 'modules/MediaLibrary.php',
+        'UpdateManager'      => 'controllers/system/UpdateManager.php',
+        'BookRepository'     => 'modules/media/MediaLibrary.php',
+        'BookUploader'       => 'modules/media/MediaLibrary.php',
     ];
 
     // Cek class tanpa instantiation (karena constructor butuh DB)
@@ -282,15 +283,15 @@ function testSecurityCsrf(): void {
         'admin/catur.php'     => ['verify_csrf', 'csrf_token'],
         'admin/index.php'     => ['csrf_token'],
         'books/upload.php'    => ['verify_csrf', 'csrf_token'],
-        'controllers/fun.php' => ['verify_csrf'],
-        'controllers/like.php' => ['verify_csrf_token'],
-        'controllers/profile_edit.php' => ['verify_csrf', 'csrf_token'],
+        'controllers/api/WatchController.php' => ['verify_csrf'],
+        'controllers/api/like.php' => ['verify_csrf_token'],
+        'controllers/profile/profile_edit.php' => ['verify_csrf', 'csrf_token'],
         'music/playlist_action.php' => ['verify_csrf'],
         'music/view_playlist.php'   => ['csrf_token'],
-        'music/watch.php'     => ['verify_csrf', 'csrf_token'],
+        'music/watch.php'     => ['csrf_token'],
         'transcode.php'       => ['verify_csrf', 'csrf_token'],
         'update.php'          => ['csrf_token'],
-        'video/watch.php'     => ['verify_csrf', 'csrf_token'],
+        'video/watch.php'     => ['csrf_token'],
         'drive/upload.php'    => ['verify_csrf'],
         'drive/download.php'  => ['verify_csrf_token', 'csrf_token'],
         'drive/delete.php'    => ['verify_csrf'],
@@ -333,9 +334,8 @@ function testSecurityPreparedStmts(): void {
         'music/playlist_action.php',
         'music/search_music.php',
         'video/index.php',
-        'controllers/fun.php',
-        'controllers/profile_edit.php',
-        'controllers/delete_comment.php',
+        'controllers/profile/profile_edit.php',
+        'controllers/api/delete_comment.php',
         'drive/DriveService.php',
     ];
 
@@ -686,9 +686,9 @@ function testModifiedFiles(): void {
             'bind_param'    => ['pattern' => '/->bind_param\(/', 'label' => 'bind_param'],
         ],
         'modules/japanese.php' => [
-            'escapeshellarg getRomajiName' => ['pattern' => "/escapeshellarg\\('mecab'\\)/", 'label' => 'escapeshellarg mecab (getRomajiName)'],
-            'escapeshellarg analyze'       => ['pattern' => "/escapeshellarg\\('mecab'\\)/", 'label' => 'escapeshellarg mecab (analyzeJapaneseText)'],
-            'escapeshellarg translate'     => ['pattern' => "/escapeshellarg\\('mecab'\\)/", 'label' => 'escapeshellarg mecab (getEnglishTranslation)'],
+            'escapeshellarg getRomajiName' => ['pattern' => "/escapeshellarg\\(\\\$mecab_bin\\)/", 'label' => 'escapeshellarg mecab (getRomajiName)'],
+            'escapeshellarg analyze'       => ['pattern' => "/escapeshellarg\\(\\\$mecab_bin\\)/", 'label' => 'escapeshellarg mecab (analyzeJapaneseText)'],
+            'escapeshellarg translate'     => ['pattern' => "/escapeshellarg\\(\\\$mecab_bin\\)/", 'label' => 'escapeshellarg mecab (getEnglishTranslation)'],
         ],
         'music/stream.php' => [
             'basename'      => ['pattern' => '/basename\\(\\$v/', 'label' => 'basename() untuk file path'],
@@ -735,15 +735,21 @@ function testModifiedFiles(): void {
 function testIndexPages(): void {
     print_header('TEST 11: Index Pages — HTML Structure');
 
+    // Mapping: nama partial yang dicek (tanpa ekstensi .php)
+    // Catatan:
+    //   - Project menggunakan 'partials/head.php' BUKAN 'partials/header.php'
+    //   - Sebagian page me-load head.php secara tidak langsung via 'partials/link.php'
+    //   - Admin menggunakan 'header-admin.php' dari direktori yang sama
+    //   - Anime halaman "Coming Soon" standalone, tidak butuh footer partial
     $index_pages = [
-        'index.php'             => ['header', 'footer'],
-        'video/index.php'       => ['header', 'footer'],
-        'music/index.php'       => ['header', 'footer'],
-        'books/index.php'       => ['header', 'footer'],
-        'drive/index.php'       => ['header', 'footer'],
+        'index.php'             => ['head', 'footer'],
+        'video/index.php'       => ['head', 'footer'],
+        'music/index.php'       => ['head', 'footer'],
+        'books/index.php'       => ['head', 'footer'],
+        'drive/index.php'       => ['head', 'footer'],
         'admin/index.php'       => ['header-admin'],
-        'anime/index.php'       => ['header', 'footer'],
-        'profile/index.php'     => ['header', 'footer'],
+        'anime/index.php'       => ['head'],
+        'profile/index.php'     => ['head', 'footer'],
     ];
 
     foreach ($index_pages as $file => $partials) {
@@ -757,11 +763,34 @@ function testIndexPages(): void {
         $hasInclusions = true;
 
         foreach ($partials as $partial) {
-            $partialFile = PROJECT_ROOT . '/partials/' . $partial . '.php';
-            // Check if the page includes this partial (by checking the include statement)
-            if (strpos($content, "partials/{$partial}.php") === false) {
+            $found = false;
+
+            if ($partial === 'header-admin') {
+                // Admin: file header-admin.php ada di direktori admin/, bukan partials/
+                if (strpos($content, 'header-admin.php') !== false) {
+                    $found = true;
+                }
+            } elseif ($partial === 'head') {
+                // Head diterima secara langsung (head.php) atau tidak langsung (link.php)
+                // karena partials/link.php di dalamnya me-load partials/head.php
+                $found = (
+                    strpos($content, 'partials/head.php') !== false ||
+                    strpos($content, 'partials/link.php') !== false
+                );
+            } else {
+                // Partial lainnya (footer, dll) — cek langsung
+                if (strpos($content, "partials/{$partial}.php") !== false) {
+                    $found = true;
+                }
+            }
+
+            if (!$found) {
                 $hasInclusions = false;
-                record("{$file} — missing include: partials/{$partial}.php ⚠", true, true);
+                if ($partial === 'header-admin') {
+                    record("{$file} — missing include: header-admin.php (admin/) ⚠", true, true);
+                } else {
+                    record("{$file} — missing include: partials/{$partial}.php ⚠", true, true);
+                }
             }
         }
 
@@ -852,7 +881,7 @@ function run(): int {
     }
 
     // Save report
-    $reportFile = __DIR__ . '/functional_report_' . date('Ymd_His') . '.log';
+    $reportFile = PROJECT_ROOT . '/logs/functional_report_' . date('Ymd_His') . '.log';
     $report  = "MEeL Functional Test Report\n";
     $report .= "Date: " . $GLOBALS['test_timestamp'] . "\n";
     $report .= "Score: {$score}/100 ({$p} pass, {$w} warn, {$f} fail)\n\n";
