@@ -29,7 +29,7 @@ cd MEeL
 # Copy config
 cp auth/config.example.php auth/config.php
 
-# Setup database (lihat docs/installation.md)
+# Setup database (lihat installation.md)
 ```
 
 2. **Aktifkan debug mode:**

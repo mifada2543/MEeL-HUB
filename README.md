@@ -341,7 +341,7 @@ $url = base_url('/assets/css/style.css'); // → /MEeL/assets/css/style.css
 
 Migration bersifat **idempotent** — aman dijalankan berulang kali.
 
-> 📖 **Konfigurasi lengkap** → [docs/configuration.md](docs/configuration.md)
+> 📖 **Konfigurasi lengkap** → [docs/id/configuration.md](docs/id/configuration.md) | [English](docs/en/configuration.md)
 
 ---
 

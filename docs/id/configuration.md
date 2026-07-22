@@ -176,7 +176,7 @@ membaca file sama sekali.
 | RAM server per request | ~33MB | 0 bytes |
 | PHP process blocking | Ya, sampai stream selesai | Tidak, langsung exit |
 
-**Cara aktivasi:** Lihat panduan di `docs/installation.md` bagian "Aktifkan mod_xsendfile".
+**Cara aktivasi:** Lihat panduan di [`installation.md`](installation.md) bagian "Aktifkan mod_xsendfile".
 
 ### Contoh untuk Berbagai Skenario
 
