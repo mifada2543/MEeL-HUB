@@ -3,7 +3,7 @@ Options -Indexes
 DirectoryIndex index.php index.html
 
 # Custom Error Pages
-ErrorDocument 404 /MEeL/err/not_found.php
+ErrorDocument 404 /err/not_found.php
 
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"

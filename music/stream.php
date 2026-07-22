@@ -43,7 +43,10 @@ if (!$v || empty($v['filename'])) {
     exit("Data audio tidak ditemukan.");
 }
 
-$filePath = __DIR__ . "/upload/file/" . basename($v['filename']);
+$musicBase = defined('MEEL_HDD_MUSIC_UPLOAD') 
+    ? rtrim(MEEL_HDD_MUSIC_UPLOAD, '/') . '/file/'
+    : __DIR__ . '/upload/file/';
+$filePath = $musicBase . basename($v['filename']);
 
 if (!file_exists($filePath)) {
     header("HTTP/1.1 404 Not Found");
