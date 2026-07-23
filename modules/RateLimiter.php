@@ -76,6 +76,23 @@ class RateLimiter
     }
 
     /**
+     * Single source of truth untuk role-based limit adjustment.
+     *
+     * @param int    $baseLimit Limit dasar untuk user biasa
+     * @param string $role      Role user ('member', 'user', dll)
+     * @return int Limit yang sudah disesuaikan dengan role
+     */
+    public static function getRoleLimit(int $baseLimit, string $role = 'user'): int
+    {
+        // Member mendapat 2x lipat dari user biasa
+        if ($role === 'member') {
+            return $baseLimit * 2;
+        }
+        // User, guest, dan role lain pakai limit dasar
+        return $baseLimit;
+    }
+
+    /**
      * Periksa apakah request diizinkan.
      *
      * @param string $key      Identifier unik (misal: 'user_5', 'ip_192.168.1.1')
@@ -100,7 +117,7 @@ class RateLimiter
         self::init();
 
         $limitConfig = self::$limits[$endpoint] ?? self::$limits['api'];
-        $maxRequests = $limitConfig['requests'];
+        $maxRequests = self::getRoleLimit($limitConfig['requests'], $role);
         $window      = $limitConfig['window'];
         $filePath    = self::filePath($key, $endpoint);
 
@@ -122,11 +139,6 @@ class RateLimiter
         // Reset window jika sudah lewat
         if (($now - $data['window_start']) >= $window) {
             $data = ['count' => 0, 'window_start' => $now];
-        }
-
-        // ── Member mendapat 2x lipat limit dari user biasa ─────────────────
-        if ($role === 'member') {
-            $maxRequests *= 2;
         }
 
         $data['count']++;
