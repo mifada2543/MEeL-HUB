@@ -76,18 +76,48 @@ class RateLimiter
     }
 
     /**
+     * Single source of truth untuk role-based limit adjustment.
+     *
+     * @param int    $baseLimit Limit dasar untuk user biasa
+     * @param string $role      Role user ('member', 'user', dll)
+     * @return int Limit yang sudah disesuaikan dengan role
+     */
+    public static function getRoleLimit(int $baseLimit, string $role = 'user'): int
+    {
+        // Member mendapat 2x lipat dari user biasa
+        if ($role === 'member') {
+            return $baseLimit * 2;
+        }
+        // User, guest, dan role lain pakai limit dasar
+        return $baseLimit;
+    }
+
+    /**
      * Periksa apakah request diizinkan.
      *
      * @param string $key      Identifier unik (misal: 'user_5', 'ip_192.168.1.1')
      * @param string $endpoint Nama endpoint ('like', 'comment', 'api', etc.)
+     * @param string $role     Role user ('admin', 'member', 'user'). Admin bebas limit, member 2x lipat.
      * @return array ['allowed' => bool, 'remaining' => int, 'reset' => int, 'limit' => int]
      */
-    public static function check(string $key, string $endpoint = 'api'): array
+    public static function check(string $key, string $endpoint = 'api', string $role = 'user'): array
     {
+        // ── Admin bebas dari rate limiter ───────────────────────────────────
+        if ($role === 'admin') {
+            $limitConfig = self::$limits[$endpoint] ?? self::$limits['api'];
+            $window = $limitConfig['window'];
+            return [
+                'allowed'   => true,
+                'remaining' => -1,
+                'reset'     => time() + $window,
+                'limit'     => 999999,
+                'retry_after' => 0,
+            ];
+        }
         self::init();
 
         $limitConfig = self::$limits[$endpoint] ?? self::$limits['api'];
-        $maxRequests = $limitConfig['requests'];
+        $maxRequests = self::getRoleLimit($limitConfig['requests'], $role);
         $window      = $limitConfig['window'];
         $filePath    = self::filePath($key, $endpoint);
 

@@ -1,6 +1,8 @@
 <?php
 // File: auth/System.php
 
+require_once __DIR__ . '/RateLimiter.php';
+
 class System
 {
     private $conn;
@@ -154,6 +156,9 @@ class System
         if ($type === 'drive_files') {
             $max_upload = 10; // Drive biasanya lebih banyak file kecil
         }
+
+        // Gunakan method pusat dari RateLimiter untuk role-based adjustment
+        $max_upload = RateLimiter::getRoleLimit($max_upload, $user_role);
 
         $sql = "SELECT upload_date FROM $type 
                 WHERE user_id = ? AND upload_date > NOW() - INTERVAL 1 HOUR 

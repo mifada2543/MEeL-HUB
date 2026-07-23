@@ -40,7 +40,8 @@ if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
 
 // ⚡ RATE LIMIT: 30 likes per menit per user
 $rateKey = 'user_' . ($_SESSION['user_id'] ?? 0);
-$rateCheck = RateLimiter::check($rateKey, 'like');
+$rateRole = get_user_role($conn, (int)($_SESSION['user_id'] ?? 0));
+$rateCheck = RateLimiter::check($rateKey, 'like', $rateRole);
 if (!$rateCheck['allowed']) {
     http_response_code(429);
     header('HX-Retarget: #like-dislike-container');
