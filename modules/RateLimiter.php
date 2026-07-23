@@ -80,10 +80,23 @@ class RateLimiter
      *
      * @param string $key      Identifier unik (misal: 'user_5', 'ip_192.168.1.1')
      * @param string $endpoint Nama endpoint ('like', 'comment', 'api', etc.)
+     * @param string $role     Role user ('admin', 'member', 'user'). Admin bebas limit, member 2x lipat.
      * @return array ['allowed' => bool, 'remaining' => int, 'reset' => int, 'limit' => int]
      */
-    public static function check(string $key, string $endpoint = 'api'): array
+    public static function check(string $key, string $endpoint = 'api', string $role = 'user'): array
     {
+        // ── Admin bebas dari rate limiter ───────────────────────────────────
+        if ($role === 'admin') {
+            $limitConfig = self::$limits[$endpoint] ?? self::$limits['api'];
+            $window = $limitConfig['window'];
+            return [
+                'allowed'   => true,
+                'remaining' => -1,
+                'reset'     => time() + $window,
+                'limit'     => 999999,
+                'retry_after' => 0,
+            ];
+        }
         self::init();
 
         $limitConfig = self::$limits[$endpoint] ?? self::$limits['api'];
@@ -109,6 +122,11 @@ class RateLimiter
         // Reset window jika sudah lewat
         if (($now - $data['window_start']) >= $window) {
             $data = ['count' => 0, 'window_start' => $now];
+        }
+
+        // ── Member mendapat 2x lipat limit dari user biasa ─────────────────
+        if ($role === 'member') {
+            $maxRequests *= 2;
         }
 
         $data['count']++;

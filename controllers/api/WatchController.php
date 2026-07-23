@@ -51,8 +51,9 @@ class VideoWatchController
             }
 
             // ⚡ RATE LIMIT: 10 comments per menit per user
-            $rateKey = 'user_' . ($this->user_id ?? 0);
-            $rateCheck = RateLimiter::check($rateKey, 'comment');
+            $rateKey  = 'user_' . ($this->user_id ?? 0);
+            $rateRole = get_user_role($this->conn, $this->user_id ?? 0);
+            $rateCheck = RateLimiter::check($rateKey, 'comment', $rateRole);
             if (!$rateCheck['allowed']) {
                 $_SESSION['error'] = 'Terlalu banyak komentar. Coba lagi dalam ' . $rateCheck['retry_after'] . ' detik.';
                 header("Location: watch.php?id={$this->id}#comment-section");
@@ -144,8 +145,9 @@ class MusicWatchController
             }
 
             // ⚡ RATE LIMIT: 10 comments per menit per user
-            $rateKey = 'user_' . ($this->user_id ?? 0);
-            $rateCheck = RateLimiter::check($rateKey, 'comment');
+            $rateKey  = 'user_' . ($this->user_id ?? 0);
+            $rateRole = get_user_role($this->conn, $this->user_id ?? 0);
+            $rateCheck = RateLimiter::check($rateKey, 'comment', $rateRole);
             if (!$rateCheck['allowed']) {
                 $_SESSION['error'] = 'Terlalu banyak komentar. Coba lagi dalam ' . $rateCheck['retry_after'] . ' detik.';
                 header("Location: watch.php?id={$this->id}&playlist_id={$this->playlist_id}#comment-section");
