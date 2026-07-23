@@ -65,7 +65,7 @@
 
 | Fitur | Detail |
 |-------|--------|
-| **Dua Scope** | Public (semua user) & Private (per-user) |
+| **Dua Scope** | Public (semua member) & Private (per-member) |
 | **Kuota Terbatas** | 20GB per member, unlimited untuk admin |
 | **Filter Tipe** | Video, Audio, Dokumen (auto-detect) |
 | **Preview In-Browser** | Video, audio, dan gambar bisa dipratinjau |

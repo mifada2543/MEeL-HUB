@@ -54,7 +54,7 @@ Features include:
 - ZIP/CBZ support for manga, PDF for e-books
 
 ### ☁️ Cloud Drive (Personal Storage)
-- Public (all users) & Private (per-user) scopes
+- Public (all members) & Private (per-member) scopes
 - 20GB quota per member, unlimited for admin
 - Auto-type detection (Video, Audio, Documents)
 - In-browser preview for video, audio, and images
