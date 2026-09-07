@@ -170,7 +170,7 @@ define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
 
 #### 7. Type Hints
 
-Properti class dan parameter constructor **wajib** memiliki type hints (PHP 7.4+):
+Properti class dan parameter constructor **wajib** memiliki type hints (PHP 8.0+):
 
 ```php
 // ✅ BENAR - Type hints

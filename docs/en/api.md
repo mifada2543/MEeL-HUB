@@ -817,7 +817,7 @@ and the same auth helpers as the other modules).
 | `arcade/rhythm/api/delete` | POST | login + CSRF | Delete custom song — owner or admin; removes audio + cover + beatmap.json + DB record (transactional) |
 
 > ⚠️ The `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`
-> (separate from `database/schema.sql` / `database/migrate.php` v1–v12).
+> (separate from `database/schema.sql` / `database/migrate.php` v1–v14).
 
 ---
 

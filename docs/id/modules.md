@@ -410,6 +410,8 @@ class MusicWatchController { public function getViewData(): array; public functi
 | **v10** | Index komposit `(video_id, created_at)` & `(music_id, created_at)` pada `comments` |
 | **v11** | Unique key `interactions` dipecah: `(user_id, video_id)` & `(user_id, music_id)` — NULL di unique key gabungan tidak mencegah like duplikat |
 | **v12** | Ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code` |
+| **v13** | Sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log` |
+| **v14** | Index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery |
 
 > 💡 **Modul Rhythm (MEeL!Mania) TIDAK memakai migration system utama.** Tabel
 > `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
@@ -507,11 +509,35 @@ murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm (PHP + DB sendiri):
 
 > ⚠️ **Instalasi:** import tabel rhythm sekali:
 > `mysql MEeL < arcade/rhythm/migration.sql` — bukan bagian dari
-> `database/schema.sql` (20 tabel) maupun `database/migrate.php` (v1–v12).
+> `database/schema.sql` (20 tabel) maupun `database/migrate.php` (v1–v14).
 
 ### Admin Activity Log Viewer
 
-`admin/activity_log.php` — filter, pagination (50/halaman), stats cards, color-coded badges, manual cleanup.
+`admin/activity_log.php` — viewer audit trail dengan 3 tab:
+
+**Tab Activity** (tema biru-600):
+- Filter berdasarkan tipe aksi, username/IP, rentang waktu
+- Pagination (50/halaman)
+- Stats cards (aktivitas 7 hari, user unik, total entri)
+- Badge aksi berwarna (login=biru, upload=hijau, ban=merah)
+- Cleanup manual log (>7, 14, 30, 90, 365 hari) dengan CSRF
+
+**Tab Admin Actions** (tema ungu-600):
+- Filter berdasarkan username admin, tipe aksi, rentang waktu
+- Stats cards (aksi admin 7 hari, admin unik, total entri)
+- Badge berwarna (coin=kuning, reset=merah, login=biru, lainnya=abu-abu)
+- Maintenance: hapus yang lebih lama dari 7–365 hari
+
+**Tab Upload Queue** (tema hijau-600):
+- Filter berdasarkan status (pending/processing/transcoding/completed/failed), uploader, rentang waktu
+- Stats cards (total upload, selesai, gagal, aktif)
+- Badge status berwarna
+- Export CSV/JSON/XLS dengan preview modal
+- Maintenance: hapus yang selesai/gagal lebih lama dari 7–365 hari
+
+> **Catatan:** User admin dikecualikan dari dropdown MEeLCoin manual adjustment
+> (`WHERE role NOT IN ('guest', 'admin')`) — saldo admin dikelola melalui auto-refill
+> dan biaya upload saja.
 
 ### 22. PWA Service Worker (`sw.js.php` + `modules/core/SwPrecache.php`)
 

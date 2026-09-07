@@ -569,15 +569,13 @@ Mencatat aktivitas user ke tabel `activity_log` dengan prepared statement. Null 
 
 ### Admin Activity Log Viewer
 
-Halaman `admin/activity_log.php` menyediakan viewer khusus untuk audit trail:
+Halaman `admin/activity_log.php` menyediakan viewer khusus untuk audit trail dengan 3 tab:
 
-| Fitur | Detail |
-|---|---|
-| 🔍 **Filter** | By action type (dropdown), search username/IP, rentang waktu (7–365 hari) |
-| 📄 **Pagination** | 50 entry per halaman dengan navigasi prev/next |
-| 📊 **Stats Cards** | 7-day activity count, unique users, total entries, page info |
-| 🏷️ **Action Badges** | Color-coded: login/logout (blue), upload (green), ban (red), admin (purple) |
-| 🗑️ **Cleanup Manual** | Hapus log lama (>7, 14, 30, 90, 365 hari) dengan konfirmasi SweetAlert2 + CSRF |
+| Tab | Tema | Fitur |
+|-----|------|-------|
+| 📋 **Activity** | Biru-600 | Filter berdasarkan tipe aksi, username/IP, rentang waktu (7–365 hari); pagination (50/halaman); stats cards (aktivitas 7 hari, user unik, total entri); badge aksi berwarna (login=biru, upload=hijau, ban=merah); cleanup manual dengan CSRF |
+| 🛡️ **Admin Actions** | Ungu-600 | Filter berdasarkan username admin, tipe aksi, rentang waktu; stats cards (aksi admin 7 hari, admin unik, total entri); badge berwarna (coin=kuning, reset=merah, login=biru, lainnya=abu-abu); maintenance: hapus yang lebih lama dari 7–365 hari |
+| 📤 **Upload Queue** | Hijau-600 | Filter berdasarkan status (pending/processing/transcoding/completed/failed), uploader, rentang waktu; stats cards (total upload, selesai, gagal, aktif); badge status berwarna; export CSV/JSON/XLS dengan preview modal; maintenance: hapus yang selesai/gagal lebih lama dari 7–365 hari |
 
 ### Live Activity Monitor
 
