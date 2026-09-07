@@ -446,4 +446,27 @@ CREATE TABLE
     CONSTRAINT `meelcoin_log_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
+-- =============================================================================
+-- TABEL: user_notifications
+-- Sistem notifikasi untuk like, reply komentar, MEeLCoin, chat admin.
+-- =============================================================================
+CREATE TABLE
+  IF NOT EXISTS `user_notifications` (
+    `id` int (11) NOT NULL AUTO_INCREMENT,
+    `user_id` int (11) NOT NULL,
+    `type` varchar (30) NOT NULL COMMENT 'like, reply, meelcoin, admin_chat, system',
+    `title` varchar (100) NOT NULL,
+    `message` text NOT NULL,
+    `is_read` tinyint (1) DEFAULT 0,
+    `related_id` int (11) DEFAULT NULL,
+    `related_slug` varchar (255) DEFAULT NULL,
+    `actor_user_id` int (11) DEFAULT NULL,
+    `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+    PRIMARY KEY (`id`),
+    KEY `idx_un_user` (`user_id`),
+    KEY `idx_un_read` (`user_id`, `is_read`),
+    KEY `idx_un_created` (`created_at`),
+    CONSTRAINT `user_notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
 COMMIT;

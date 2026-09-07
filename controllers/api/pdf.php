@@ -1,4 +1,5 @@
 <?php
+define('MEEL_API_CONTEXT', true);
 require_once '../../auth/auth.php';
 require_once '../../auth/config.php';
 require_once '../../modules/media/MediaLibrary.php';
@@ -28,7 +29,7 @@ $file_size = filesize($file_path);
 
 header('X-Content-Type-Options: nosniff');
 header('Content-Type: application/pdf');
-header('Content-Disposition: inline; filename="' . str_replace('"', '', $book['title']) . '.pdf"');
+header('Content-Disposition: inline; filename="' . str_replace(["\r", "\n", '"'], '', $book['title']) . '.pdf"');
 header('Content-Length: ' . $file_size);
 header('Cache-Control: public, max-age=86400');
 header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');

@@ -1,4 +1,5 @@
 <?php
+define('MEEL_API_CONTEXT', true);
 require_once '../../modules/core/helpers.php';
 
 meel_boot_session();
@@ -49,6 +50,23 @@ if (!$viewer->addComment($_POST)) {
     header('HX-Reswap: innerHTML');
     echo '<div class="p-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-red-500/30 bg-red-500/10 text-red-400">Gagal mengirim komentar.</div>';
     exit;
+}
+
+$parent_id = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null;
+if ($parent_id > 0) {
+    require_once __DIR__ . '/../../modules/core/Notification.php';
+    $parent_q = $conn->query("SELECT user_id, video_id, music_id FROM comments WHERE id = $parent_id");
+    if ($parent_q && $parent_q->num_rows > 0) {
+        $parent = $parent_q->fetch_assoc();
+        if ((int)$parent['user_id'] !== $user_id) {
+            $snippet = substr(trim($_POST['comments'] ?? ''), 0, 50);
+            $media_type = !empty($parent['video_id']) ? 'video' : 'music';
+            $media_id = !empty($parent['video_id']) ? $parent['video_id'] : $parent['music_id'];
+            Notification::create($conn, (int)$parent['user_id'], 'reply', 'Balasan Komentar',
+                $_SESSION['username'] . ' membalas komentar kamu: "' . $snippet . '..."',
+                $parent_id, $media_type . ':' . $media_id, $user_id);
+        }
+    }
 }
 
 $comments_data = $viewer->getComments();

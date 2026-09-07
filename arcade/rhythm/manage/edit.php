@@ -11,6 +11,9 @@ $is_logged_in = $user_id !== null;
 $is_admin = $is_logged_in && is_admin($conn);
 
 
+require_once __DIR__ . '/../../../modules/core/base_url.php';
+$root = meel_base_url_path();
+
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -40,9 +43,10 @@ if ($edit_id > 0 && $is_logged_in) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="robots" content="noindex, nofollow">
   <title>MEeL!Mania — Beatmap Editor</title>
-  <link rel="icon" type="image/png" href="/MEeL/assets/MEeL.png">
-  <link href="/MEeL/assets/css/font.css" rel="stylesheet">
-  <link rel="stylesheet" href="/MEeL/arcade/rhythm/assets/css/editor.css">
+  <link rel="icon" type="image/png" href="<?= $root ?>/assets/MEeL.png">
+  <link href="<?= $root ?>/assets/css/font.css" rel="stylesheet">
+  <link rel="stylesheet" href="<?= $root ?>/arcade/rhythm/assets/css/editor.css">
+  <script>window.MEEL_BASE = <?= json_encode($root) ?>;</script>
 </head>
 <body>
 
@@ -52,7 +56,7 @@ if ($edit_id > 0 && $is_logged_in) {
       <div class="auth-icon">🔒</div>
       <h2>Login Diperlukan</h2>
       <p>Anda harus login untuk membuat beatmap.</p>
-      <a href="/MEeL/auth/login" class="btn btn-primary">Login</a>
+      <a href="<?= $root ?>/auth/login" class="btn btn-primary">Login</a>
       <a href="../manage/" class="btn btn-ghost">Kembali</a>
     </div>
   </div>
@@ -244,8 +248,8 @@ if ($edit_id > 0 && $is_logged_in) {
     </div>
   </div>
 
-  <script src="/MEeL/assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-  <script src="/MEeL/assets/js/compatibilitas/script.min.js"></script>
+  <script src="<?= $root ?>/assets/js/compatibilitas/sweetalert2.all.min.js"></script>
+  <script src="<?= $root ?>/assets/js/compatibilitas/script.min.js"></script>
   <script>
     const CSRF_TOKEN = '<?= $_SESSION['csrf_token'] ?>';
     const IS_ADMIN = <?= $is_admin ? 'true' : 'false' ?>;
@@ -292,7 +296,7 @@ if ($edit_id > 0 && $is_logged_in) {
       document.getElementById('uploadStatus').textContent = 'Mengirim ke server...';
 
       var xhr = new XMLHttpRequest();
-      xhr.open('POST', '/MEeL/arcade/rhythm/api/upload', true);
+      xhr.open('POST', $root + '/arcade/rhythm/api/upload', true);
       xhr.upload.onprogress = function(e) {
         if (e.lengthComputable) {
           var pct = Math.round(e.loaded / e.total * 100);
@@ -329,7 +333,7 @@ if ($edit_id > 0 && $is_logged_in) {
       var fd = new FormData();
       fd.append('song_id', id);
       fd.append('csrf_token', CSRF_TOKEN);
-      fetch('/MEeL/arcade/rhythm/api/delete', {method:'POST', body:fd})
+      fetch($root + '/arcade/rhythm/api/delete', {method:'POST', body:fd})
         .then(function(r){return r.json();})
         .then(function(res){
           if (res.success) { alert('Beatmap terhapus!'); setTimeout(function(){location.reload();}, 1000); }
@@ -340,7 +344,7 @@ if ($edit_id > 0 && $is_logged_in) {
   </script>
 
   
-  <script type="module" src="/MEeL/arcade/rhythm/assets/js/editor/main.js"></script>
+  <script type="module" src="<?= $root ?>/arcade/rhythm/assets/js/editor/main.js"></script>
   <?php endif; ?>
 </body>
 </html>

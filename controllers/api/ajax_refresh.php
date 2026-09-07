@@ -1,4 +1,5 @@
 <?php
+define('MEEL_API_CONTEXT', true);
 require '../../auth/auth.php';
 require '../../auth/config.php';
 require '../../modules/core/helpers.php';

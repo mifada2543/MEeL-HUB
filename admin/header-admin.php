@@ -14,7 +14,7 @@ if (!isset($back_url)) {
 
 $nav_page_title = $page_title ?? 'Edit';
 $nav_media_type = $media_type ?? 'music';
-$nav_id         = $id ?? 0;
+$nav_id         = $GLOBALS['id'] ?? 0;
 
 $nav_current_page = basename($_SERVER['SCRIPT_NAME'] ?? '', '.php');
 $nav_current_page = str_replace('-', '_', $nav_current_page);
@@ -27,6 +27,7 @@ $nav_page_labels = [
     'activity_log'    => 'Activity Log',
     'user_management' => 'User Management',
     'meelcoin'        => 'MEeLCoin Settings',
+    'chat'            => 'Chat Admin',
     'mfa_reset'       => 'MFA Management',
     'catur'           => 'Chess Room',
 ];
@@ -74,37 +75,41 @@ $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                 </button>
                 <div class="admin-menu-dropdown" id="admin-menu-dropdown">
-                    <a href="." class="admin-menu-item <?= $nav_current_page === 'dashboard' ? 'active' : '' ?>">
+                    <a href="<?= meel_base_url_path() ?>/admin/beranda" class="admin-menu-item <?= $nav_current_page === 'dashboard' ? 'active' : '' ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                         Dashboard
                     </a>
-                    <a href="stats.php" class="admin-menu-item <?= $nav_current_page === 'stats' || $nav_current_page === 'content' ? 'active' : '' ?>">
+                    <a href="<?= meel_base_url_path() ?>/admin/stats" class="admin-menu-item <?= $nav_current_page === 'stats' || $nav_current_page === 'content' ? 'active' : '' ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                         Media Analytics
                     </a>
-                    <a href="activity-log" class="admin-menu-item <?= $nav_current_page === 'activity_log' ? 'active' : '' ?>">
+                    <a href="<?= meel_base_url_path() ?>/admin/activity-log" class="admin-menu-item <?= $nav_current_page === 'activity_log' ? 'active' : '' ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                         Activity Log
                     </a>
 
                     <div class="admin-menu-divider"></div>
 
-                    <a href="user-management" class="admin-menu-item <?= $nav_current_page === 'user_management' ? 'active' : '' ?>">
+                    <a href="<?= meel_base_url_path() ?>/admin/user-management" class="admin-menu-item <?= $nav_current_page === 'user_management' ? 'active' : '' ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                         User Management
                     </a>
-                    <a href="meelcoin" class="admin-menu-item <?= $nav_current_page === 'meelcoin' ? 'active' : '' ?>">
+                    <a href="<?= meel_base_url_path() ?>/admin/meelcoin" class="admin-menu-item <?= $nav_current_page === 'meelcoin' ? 'active' : '' ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg>
                         MEeLCoin Settings
+                    </a>
+                    <a href="<?= meel_base_url_path() ?>/admin/chat" class="admin-menu-item <?= $nav_current_page === 'chat' ? 'active' : '' ?>">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        Chat Admin
                     </a>
 
                     <div class="admin-menu-divider"></div>
 
-                    <a href="mfa-reset" class="admin-menu-item <?= $nav_current_page === 'mfa_reset' ? 'active' : '' ?>">
+                    <a href="<?= meel_base_url_path() ?>/admin/mfa-reset" class="admin-menu-item <?= $nav_current_page === 'mfa_reset' ? 'active' : '' ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                         MFA Management
                     </a>
-                    <a href="catur" class="admin-menu-item <?= $nav_current_page === 'catur' ? 'active' : '' ?>">
+                    <a href="<?= meel_base_url_path() ?>/admin/catur" class="admin-menu-item <?= $nav_current_page === 'catur' ? 'active' : '' ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v2"></path><path d="M4 8h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"></path><path d="M10 20v-4h4v4"></path></svg>
                         Chess Room
                     </a>
@@ -118,6 +123,7 @@ $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
         <?php endif; ?>
     </div>
 </nav>
+
 
 <script>
 (function(){
