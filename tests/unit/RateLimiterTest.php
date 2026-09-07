@@ -166,8 +166,11 @@ class RateLimiterTest extends TestCase
         $this->assertTrue(RateLimiter::check('user_b', 'comment', 'user')['allowed']);
     }
 
-    public function testFallbackOnFileLockFailure(): void
+    public function testDeniesWhenStorageUnavailable(): void
     {
+        // Point storage at a regular file so it can never be used as a lock
+        // directory — check() must fail closed (deny) instead of silently
+        // allowing requests through.
         $invalidStoragePath = MEEL_ROOT . '/temp/ratelimit-test/not-a-dir.lock';
         file_put_contents($invalidStoragePath, 'lock');
 
@@ -177,6 +180,7 @@ class RateLimiterTest extends TestCase
         $prop->setValue($invalidStoragePath);
 
         $result = RateLimiter::check('fallback_user', 'api', 'user');
-        $this->assertTrue($result['allowed']);
+        $this->assertFalse($result['allowed']);
+        $this->assertSame(0, $result['remaining']);
     }
 }

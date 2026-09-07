@@ -62,7 +62,7 @@ logs/tests/
 
 | File | Test | Cakupan |
 |---|---|---|
-| `RateLimiterTest.php` | 11 | Admin bypass, role limits, blocking, cleanup, stats, fallback, independent keys |
+| `RateLimiterTest.php` | 11 | Admin bypass, role limits, blocking, cleanup, stats, fail-closed saat storage gagal, independent keys |
 | `HelpersTest.php` | 50 | format_bytes, time_ago, audio MIME, disk space, CSRF, dir_size, deteksi protokol (data provider) |
 | `JapaneseTest.php` | 15 | Romaji conversion, analyzeJapaneseText, English translation (tanpa MeCab) |
 | `GarbageCollectorTest.php` | 6 | Class existence, idempotency, graceful handling, cleanup rate-limit (dir test terisolasi) |
