@@ -14,13 +14,15 @@ if (!function_exists('auth_boot_session')) {
 if (!function_exists('auth_get_ip')) {
     function auth_get_ip(): string
     {
-        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        require_once __DIR__ . '/../modules/core/activity_logger.php';
+        return get_real_ip();
     }
 }
 if (!function_exists('auth_is_loopback')) {
     function auth_is_loopback(): bool
     {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        require_once __DIR__ . '/../modules/core/activity_logger.php';
+        $ip = get_real_ip();
         if (strpos($ip, '::ffff:') === 0) {
             $ip = substr($ip, 7);
         }

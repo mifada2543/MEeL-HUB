@@ -65,7 +65,7 @@ $ext      = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
 $mimeType = get_audio_mime_type($ext);
 
 if (defined('MEEL_STREAM_DEBUG') && MEEL_STREAM_DEBUG) {
-    error_log("[MEeL-Stream] id=$id ext=$ext size=" . (filesize($filePath) ?? 0) . " ip=" . ($_SERVER['REMOTE_ADDR'] ?? '?'));
+    error_log("[MEeL-Stream] id=$id ext=$ext size=" . (filesize($filePath) ?? 0) . " ip=" . (function_exists('get_real_ip') ? get_real_ip() : ($_SERVER['REMOTE_ADDR'] ?? '?')));
 }
 
 set_time_limit(0);

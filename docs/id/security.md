@@ -455,17 +455,26 @@ Semua endpoint `arcade/chess/controller/*.php` mewajibkan:
 ### IP Detection (Anti-Proxy)
 
 ```php
+function trust_proxy_headers(): bool {
+    return defined('MEEL_TRUST_PROXY_HEADERS') && MEEL_TRUST_PROXY_HEADERS === true;
+}
+
 function get_real_ip() {
-    // Cloudflare
-    if (isset($_SERVER["HTTP_CF_CONNECTING_IP"])) {
-        return $_SERVER["HTTP_CF_CONNECTING_IP"];
+    $valid = fn($ip) => is_string($ip) && $ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) !== false;
+
+    if (trust_proxy_headers()) {
+        // Cloudflare Tunnel / CDN
+        if (isset($_SERVER["HTTP_CF_CONNECTING_IP"]) && $valid($_SERVER["HTTP_CF_CONNECTING_IP"])) {
+            return $_SERVER["HTTP_CF_CONNECTING_IP"];
+        }
+        // X-Forwarded-For (hop pertama)
+        if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
+            $xff = trim(explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"])[0]);
+            if ($valid($xff)) return $xff;
+        }
     }
-    // X-Forwarded-For
-    if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
-        return trim(explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"])[0]);
-    }
-    // Fallback
-    return $_SERVER["REMOTE_ADDR"];
+    $remote = $_SERVER["REMOTE_ADDR"] ?? '0.0.0.0';
+    return $valid($remote) ? $remote : '0.0.0.0';
 }
 ```
 
@@ -475,11 +484,23 @@ Header proxy **hanya** boleh dipercaya jika request lewat proxy/CDN yang Anda
 kendalikan. Konfigurasi di `auth/settings.php`:
 
 ```php
-define('MEEL_TRUST_PROXY_HEADERS', false); // default aman: pakai REMOTE_ADDR saja
+// WAJIB true jika menggunakan Cloudflare Tunnel, Nginx reverse proxy, atau CDN
+define('MEEL_TRUST_PROXY_HEADERS', true);
 ```
 
 > Jika diset `true` padahal server diakses langsung, attacker bisa memalsukan
 > `X-Forwarded-For` untuk mem-bypass IP-ban atau membanjiri activity log.
+
+> **Behind cloudflared:** Tunnel selalu menghubungkan ke Apache dari localhost
+> (`REMOTE_ADDR = 127.0.0.1`). Tanpa `MEEL_TRUST_PROXY_HEADERS = true`, semua
+> IP terdeteksi sebagai localhost, rate limiting lumpuh, dan environment
+> terdeteksi sebagai "development".
+
+### Auth IP Helpers
+
+`auth_get_ip()` dan `auth_is_loopback()` di `auth/auth_helpers.php` juga menggunakan
+`get_real_ip()` — bukan `$_SERVER['REMOTE_ADDR']` langsung. Ini memastikan
+IP detection konsisten di seluruh sistem (login, rate limiting, ban check).
 
 ### IP Validation
 
