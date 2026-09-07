@@ -4,6 +4,9 @@ ini_set('display_errors', 0); ini_set('display_startup_errors', 0); error_report
 
 require_once __DIR__ . '/../../../auth/auth.php';
 require_once __DIR__ . '/../api/config.php';
+require_once __DIR__ . '/../../../modules/core/base_url.php';
+
+$root = meel_base_url_path();
 
 $user_id = $_SESSION['user_id'] ?? null;
 $username = $_SESSION['username'] ?? null;
@@ -44,9 +47,10 @@ foreach ($user_songs as $s) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <title>MEeL!Mania — Manage Beatmaps</title>
-  <link rel="icon" type="image/png" href="/MEeL/assets/MEeL.png">
-  <link href="/MEeL/assets/css/font.css" rel="stylesheet">
-  <link rel="stylesheet" href="/MEeL/arcade/rhythm/assets/css/editor.css">
+  <link rel="icon" type="image/png" href="<?= $root ?>/assets/MEeL.png">
+  <link href="<?= $root ?>/assets/css/font.css" rel="stylesheet">
+  <link rel="stylesheet" href="<?= $root ?>/arcade/rhythm/assets/css/editor.css">
+  <script>window.MEEL_BASE = <?= json_encode($root) ?>;</script>
   <style>
     .manage-layout {
       max-width: 1000px;
@@ -322,8 +326,8 @@ foreach ($user_songs as $s) {
     <div class="detail-card" id="detailContent"></div>
   </div>
 
-  <script src="/MEeL/assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-  <script src="/MEeL/assets/js/compatibilitas/script.min.js"></script>
+  <script src="<?= $root ?>/assets/js/compatibilitas/sweetalert2.all.min.js"></script>
+  <script src="<?= $root ?>/assets/js/compatibilitas/script.min.js"></script>
   <script>
     const CSRF_TOKEN = '<?= $_SESSION['csrf_token'] ?? '' ?>';
     const SONGS_DATA = <?= json_encode(array_map(function($s) {

@@ -1,4 +1,5 @@
 <?php
+define('MEEL_API_CONTEXT', true);
 
 
 

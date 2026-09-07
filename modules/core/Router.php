@@ -54,6 +54,7 @@ final class MeelRouter
         'profile/manage-action' => ['handler' => 'controllers/profile/fun-manage.php', 'script' => '/controllers/profile/fun-manage.php'],
         'profile/edit-video' => ['handler' => 'profile/edit-video.php',          'script' => '/profile/edit-video.php'],
         'profile/edit-music' => ['handler' => 'profile/edit-music.php',          'script' => '/profile/edit-music.php'],
+        'profile/notification' => ['handler' => 'profile/notification.php',       'script' => '/profile/notification.php'],
 
         'admin'             => ['handler' => 'admin/index.php',               'script' => '/admin/index.php'],
         'admin/beranda'     => ['handler' => 'admin/index.php',               'script' => '/admin/index.php'],
@@ -65,6 +66,7 @@ final class MeelRouter
         'admin/mfa-reset'   => ['handler' => 'admin/mfa_reset.php',           'script' => '/admin/mfa_reset.php'],
         'admin/user-management' => ['handler' => 'admin/user-management.php',  'script' => '/admin/user-management.php'],
         'admin/meelcoin'    => ['handler' => 'admin/meelcoin.php',             'script' => '/admin/meelcoin.php'],
+        'admin/chat'        => ['handler' => 'admin/chat.php',                 'script' => '/admin/chat.php'],
         'admin/actions'     => ['handler' => 'controllers/admin/admin_actions.php', 'script' => '/controllers/admin/admin_actions.php'],
         'admin/data'        => ['handler' => 'controllers/admin/admin_data.php',    'script' => '/controllers/admin/admin_data.php'],
 
@@ -99,6 +101,8 @@ final class MeelRouter
         'api/ajax-refresh'       => ['handler' => 'controllers/api/ajax_refresh.php',      'script' => '/controllers/api/ajax_refresh.php'],
         'api/server-stats'       => ['handler' => 'controllers/api/server_stats.php',      'script' => '/controllers/api/server_stats.php'],
         'api/server-stats-sse'   => ['handler' => 'controllers/api/server_stats_sse.php',  'script' => '/controllers/api/server_stats_sse.php'],
+        'api/notification'       => ['handler' => 'controllers/api/notification.php',      'script' => '/controllers/api/notification.php'],
+        'api/chat'               => ['handler' => 'controllers/api/chat.php',              'script' => '/controllers/api/chat.php'],
         'system/mfa'             => ['handler' => 'controllers/system/mfa.php',            'script' => '/controllers/system/mfa.php'],
     ];
 
@@ -153,6 +157,10 @@ final class MeelRouter
         if (preg_match('#^profile/([^/]+)$#', $path, $m)) {
             $_GET['u'] = $m[1];
             return self::ROUTES['profile'];
+        }
+        if (preg_match('#^admin/chat/([^/]+)$#', $path, $m)) {
+            $_GET['username'] = $m[1];
+            return self::ROUTES['admin/chat'];
         }
         return null;
     }

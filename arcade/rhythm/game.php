@@ -4,6 +4,9 @@
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 require_once __DIR__ . '/api/config.php';
+require_once __DIR__ . '/../../modules/core/base_url.php';
+
+$root = meel_base_url_path();
 
 $song_id = $_GET['id'] ?? $_GET['song'] ?? 'starlight';
 $song_type = $_GET['type'] ?? 'builtin';
@@ -106,11 +109,12 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
   <meta name="robots" content="noindex, nofollow" />
   <meta name="description" content="MEeL!Mania — <?= htmlspecialchars($song_data['title']) ?>" />
   <meta property="og:title" content="MEeL!Mania — <?= htmlspecialchars($song_data['title']) ?>" />
-  <meta property="og:image" content="/MEeL/assets/MEeL.png" />
+  <meta property="og:image" content="<?= $root ?>/assets/MEeL.png" />
   <title>MEeL!Mania — <?= htmlspecialchars($song_data['title']) ?></title>
-  <link rel="icon" type="image/png" href="/MEeL/assets/MEeL.png" />
+  <link rel="icon" type="image/png" href="<?= $root ?>/assets/MEeL.png" />
   <link href="../assets/css/font.css" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/game.css?v=<?= filemtime(__DIR__ . '/assets/css/game.css') ?>" />
+  <script>window.MEEL_BASE = <?= json_encode($root) ?>;</script>
 </head>
 <body>
 

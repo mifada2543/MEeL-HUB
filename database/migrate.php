@@ -431,6 +431,29 @@ $migrations = [
             },
         ],
     ],
+    15 => [
+        'description' => 'Buat tabel user_notifications — sistem notifikasi untuk like, reply, MEeLCoin, chat admin',
+        'sql' => [
+            function ($conn) {
+                $conn->query("CREATE TABLE IF NOT EXISTS user_notifications (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    type VARCHAR(30) NOT NULL COMMENT 'like, reply, meelcoin, admin_chat, system',
+                    title VARCHAR(100) NOT NULL,
+                    message TEXT NOT NULL,
+                    is_read TINYINT(1) DEFAULT 0,
+                    related_id INT DEFAULT NULL,
+                    related_slug VARCHAR(255) DEFAULT NULL,
+                    actor_user_id INT DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    KEY idx_un_user (user_id),
+                    KEY idx_un_read (user_id, is_read),
+                    KEY idx_un_created (created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+            },
+        ],
+    ],
 ];
 $conn->query("CREATE TABLE IF NOT EXISTS db_version (
     id INT AUTO_INCREMENT PRIMARY KEY,
