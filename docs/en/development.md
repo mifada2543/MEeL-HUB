@@ -97,7 +97,7 @@ public function toggleLike();
 
 #### 4. Type Hints
 
-Properties and constructor parameters **must** have type hints (PHP 7.4+):
+Properties and constructor parameters **must** have type hints (PHP 8.0+):
 
 ```php
 // ✅ CORRECT

@@ -509,6 +509,28 @@ Total: Rp 300.000+/bln ≠ Yang didapat: terpisah-pisah
 
 ---
 
+## 🔧 Pembersihan URL & Fitur Admin Terbaru
+
+### Migrasi URL Bersih
+
+Semua halaman watch sekarang menggunakan `watch?v=` alih-alih `watch?id=` untuk
+konsistensi dengan konvensi URL gaya YouTube. Perubahan ini diterapkan di 25+ file
+termasuk halaman PHP, modul JavaScript, controller, dan dokumentasi.
+
+### Tab Upload Queue Admin
+
+Tab "Upload Queue" baru ditambahkan ke Activity Log viewer, memungkinkan admin untuk:
+- Memantau status upload queue (pending/processing/transcoding/completed/failed)
+- Filter berdasarkan uploader, status, dan rentang waktu
+- Export data queue sebagai CSV, JSON, atau XLS dengan preview
+- Membersihkan entri lama yang selesai/gagal untuk maintenance
+
+### MEeLCoin Admin Exclusion
+
+User admin sekarang dikecualikan dari dropdown MEeLCoin manual adjustment untuk
+mencegah modifikasi saldo yang tidak disengaja. Saldo admin dikelola melalui
+auto-refill dan biaya upload saja.
+
 ---
 
 ## ⚖️ Pertimbangan Sebelum Pakai MEeL
@@ -581,5 +603,5 @@ Demi kejujuran, berikut adalah **sebab-akibat** (trade-offs) yang perlu Anda pah
 <div align="center">
   <sub><a href="index.md">← Kembali ke Index Dokumentasi</a></sub>
   <br><br>
-  <sub>MEeL © 2025 — Mifada | Dibuat dengan ❤️ untuk kemandirian digital</sub>
+  <sub>MEeL © 2026 — Mifada | Dibuat dengan ❤️ untuk kemandirian digital</sub>
 </div>

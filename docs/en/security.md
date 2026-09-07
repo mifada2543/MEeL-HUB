@@ -311,15 +311,13 @@ function log_activity(
 
 ### Admin Activity Log Viewer
 
-Page `admin/activity_log.php` provides a dedicated audit trail viewer:
+Page `admin/activity_log.php` provides a dedicated audit trail viewer with 3 tabs:
 
-| Feature | Detail |
-|---|---|
-| 🔍 **Filter** | By action type (dropdown), search username/IP, date range (7–365 days) |
-| 📄 **Pagination** | 50 entries per page with prev/next navigation |
-| 📊 **Stats Cards** | 7-day activity count, unique users, total entries, page info |
-| 🏷️ **Action Badges** | Color-coded: login/logout (blue), upload (green), ban (red), admin (purple) |
-| 🗑️ **Manual Cleanup** | Delete old logs (>7, 14, 30, 90, 365 days) with SweetAlert2 confirmation + CSRF |
+| Tab | Theme | Features |
+|-----|-------|----------|
+| 📋 **Activity** | Blue-600 | Filter by action type, username/IP, date range (7–365 days); pagination (50/page); stats cards (7-day activity, unique users, total entries); color-coded action badges (login=blue, upload=green, ban=red); manual log cleanup with CSRF |
+| 🛡️ **Admin Actions** | Purple-600 | Filter by admin username, action type, date range; stats cards (7-day admin actions, unique admins, total entries); color-coded badges (coin=yellow, reset=red, login=blue, other=gray); maintenance: clear older than 7–365 days |
+| 📤 **Upload Queue** | Green-600 | Filter by status (pending/processing/transcoding/completed/failed), uploader, date range; stats cards (total uploads, completed, failed, active); color-coded status badges; export CSV/JSON/XLS with preview modal; maintenance: clear completed/failed older than 7–365 days |
 
 ---
 
