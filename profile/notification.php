@@ -51,7 +51,7 @@ $ICONS = [
     include '../partials/link.php';
     ?>
     <style>
-        body { background: var(--meel-bg); color: var(--meel-text-primary); }
+        body { background: var(--meel-bg); color: var(--meel-text); }
         .glass {
             background: var(--meel-surface);
             border: 1px solid var(--meel-border);
@@ -64,7 +64,7 @@ $ICONS = [
             display: flex;
             align-items: flex-start;
             gap: 12px;
-            transition: background 0.15s;
+            transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
         }
         .notif-item:hover { background: var(--meel-surface-hover); cursor: default; }
         a.notif-item:hover { cursor: pointer; }
@@ -92,8 +92,43 @@ $ICONS = [
         }
         .empty-state {
             background: var(--meel-surface);
-            border: 1px solid var(--meel-border);
+            border: 1px dashed var(--meel-border-strong);
             border-radius: 16px; padding: 48px 24px; text-align: center;
+        }
+        .notif-delete {
+            background: none; border: none; cursor: pointer;
+            padding: 4px; flex-shrink: 0; border-radius: 6px;
+            color: var(--meel-text-muted);
+            transition: color 0.15s, background 0.15s;
+        }
+        .notif-delete:hover { color: var(--meel-red); background: var(--meel-surface-hover); }
+        .notif-delete:focus-visible {
+            outline: 2px solid var(--meel-blue);
+            outline-offset: 2px;
+        }
+        .notif-clear {
+            background: none; border: none; cursor: pointer;
+            font-size: 10px; font-weight: 600;
+            color: var(--meel-red);
+            padding: 4px 6px; border-radius: 6px;
+            transition: opacity 0.15s;
+        }
+        .notif-clear:hover { opacity: 0.75; text-decoration: underline; }
+        .notif-clear:focus-visible {
+            outline: 2px solid var(--meel-blue);
+            outline-offset: 2px;
+        }
+        .notif-removing {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        .notif-item,
+        .notif-delete { transition-property: opacity, transform, background, border-color, box-shadow, color; }
+        .notif-item,
+        .notif-delete { transition-duration: 0.15s; }
+        @media (prefers-reduced-motion: reduce) {
+            .notif-item, .notif-delete { transition: none !important; }
+            .notif-removing { opacity: 0; transform: none; }
         }
     </style>
 </head>
@@ -102,33 +137,33 @@ $ICONS = [
     <div class="max-w-2xl mx-auto pt-6">
         <div class="flex items-center gap-3 mb-5">
             <a href="<?= htmlspecialchars($back_url) ?>" class="p-2 rounded-lg hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" aria-label="Kembali">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
             </a>
             <h1 class="text-lg font-bold" style="color:var(--meel-text-heading)">Notifikasi</h1>
             <?php if ($unreadCount > 0): ?>
                 <span class="text-[10px] bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full font-bold"><?= $unreadCount ?> baru</span>
             <?php endif; ?>
             <?php if (!empty($notifications)): ?>
-                <button onclick="deleteAllNotif()" class="ml-auto text-[10px] text-red-400 hover:text-red-300 transition-colors" title="Hapus semua notifikasi" aria-label="Hapus semua notifikasi">Hapus semua</button>
+                <button type="button" onclick="deleteAllNotif()" class="notif-clear ml-auto" title="Hapus semua notifikasi" aria-label="Hapus semua notifikasi">Hapus semua</button>
             <?php endif; ?>
         </div>
 
         <div class="flex gap-2 mb-4 flex-wrap">
-            <a href="notification" class="filter-btn <?= !$typeFilter ? 'active' : '' ?>">Semua</a>
-            <a href="notification?type=like" class="filter-btn <?= $typeFilter === 'like' ? 'active' : '' ?>">❤️ Like</a>
-            <a href="notification?type=reply" class="filter-btn <?= $typeFilter === 'reply' ? 'active' : '' ?>">💬 Reply</a>
-            <a href="notification?type=meelcoin" class="filter-btn <?= $typeFilter === 'meelcoin' ? 'active' : '' ?>">🪙 Coin</a>
-            <a href="notification?type=admin_chat" class="filter-btn <?= $typeFilter === 'admin_chat' ? 'active' : '' ?>">✉️ Chat</a>
+            <a href="notification" class="filter-btn <?= !$typeFilter ? 'active' : '' ?>" <?= !$typeFilter ? 'aria-current="page"' : '' ?>>Semua</a>
+            <a href="notification?type=like" class="filter-btn <?= $typeFilter === 'like' ? 'active' : '' ?>" <?= $typeFilter === 'like' ? 'aria-current="page"' : '' ?>>❤️ Like</a>
+            <a href="notification?type=reply" class="filter-btn <?= $typeFilter === 'reply' ? 'active' : '' ?>" <?= $typeFilter === 'reply' ? 'aria-current="page"' : '' ?>>💬 Reply</a>
+            <a href="notification?type=meelcoin" class="filter-btn <?= $typeFilter === 'meelcoin' ? 'active' : '' ?>" <?= $typeFilter === 'meelcoin' ? 'aria-current="page"' : '' ?>>🪙 Coin</a>
+            <a href="notification?type=admin_chat" class="filter-btn <?= $typeFilter === 'admin_chat' ? 'active' : '' ?>" <?= $typeFilter === 'admin_chat' ? 'aria-current="page"' : '' ?>>✉️ Chat</a>
         </div>
 
         <?php if (empty($notifications)): ?>
             <div class="empty-state">
-                <div class="text-3xl mb-3 opacity-30">🔔</div>
+                <div class="text-3xl mb-3 opacity-30" aria-hidden="true">🔔</div>
                 <p class="text-sm font-medium" style="color:var(--meel-text-secondary)">Tidak ada notifikasi</p>
                 <p class="text-[11px] mt-1" style="color:var(--meel-text-secondary)">Notifikasi akan muncul di sini saat ada aktivitas terkait kamu</p>
             </div>
         <?php else: ?>
-            <div class="space-y-2">
+            <div class="space-y-2" id="notif-list">
                 <?php foreach ($notifications as $n):
                     $href = null;
                     if ($n['type'] === 'like' && $n['related_id'] && $n['related_slug']) {
@@ -143,16 +178,16 @@ $ICONS = [
                     <?php else: ?>
                         <div class="notif-item <?= $n['is_read'] == 0 ? 'unread' : '' ?>">
                     <?php endif; ?>
-                        <div class="notif-icon <?= htmlspecialchars($n['type']) ?>">
+                        <div class="notif-icon <?= htmlspecialchars($n['type']) ?>" aria-hidden="true">
                             <?= $ICONS[$n['type']] ?? '🔔' ?>
                         </div>
                         <div class="min-w-0 flex-1">
                             <div class="text-[13px] font-semibold mb-0.5" style="color:var(--meel-text-heading)"><?= htmlspecialchars($n['title']) ?></div>
                             <div class="text-[12px] leading-relaxed" style="color:var(--meel-text-secondary)"><?= htmlspecialchars($n['message']) ?></div>
-                            <div class="text-[10px] mt-1.5" style="color:var(--meel-text-tertiary)"><?= htmlspecialchars(time_ago($n['created_at'])) ?></div>
+                            <div class="text-[10px] mt-1.5" style="color:var(--meel-text-muted)"><?= htmlspecialchars(time_ago($n['created_at'])) ?></div>
                         </div>
-                        <button onclick="event.preventDefault(); event.stopPropagation(); deleteNotif(<?= (int)$n['id'] ?>, this)" style="background:none;border:none;color:#4b5563;cursor:pointer;padding:4px;flex-shrink:0;transition:color 0.15s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#4b5563'" title="Hapus" aria-label="Hapus notifikasi">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <button type="button" class="notif-delete" onclick="event.preventDefault(); event.stopPropagation(); deleteNotif(<?= (int)$n['id'] ?>, this)" title="Hapus" aria-label="Hapus notifikasi">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     <?php if ($href): ?>
                         </a>
@@ -162,10 +197,29 @@ $ICONS = [
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
+        <div id="notif-live" class="sr-only" aria-live="polite"></div>
     </div>
 
     <script>
     var API_ROOT = '<?= $root ?>/api/notification';
+    function announce(msg) {
+        var el = document.getElementById('notif-live');
+        if (el) el.textContent = msg;
+    }
+    function refreshEmptyState() {
+        var list = document.getElementById('notif-list');
+        if (list && list.children.length === 0) {
+            var st = document.createElement('div');
+            st.className = 'empty-state';
+            st.innerHTML = '<div class="text-3xl mb-3 opacity-30" aria-hidden="true">🔔<\/div>'
+                + '<p class="text-sm font-medium" style="color:var(--meel-text-secondary)">Tidak ada notifikasi<\/p>'
+                + '<p class="text-[11px] mt-1" style="color:var(--meel-text-secondary)">Notifikasi akan muncul di sini saat ada aktivitas terkait kamu<\/p>';
+            list.replaceWith(st);
+            var delAll = document.querySelector('button[aria-label="Hapus semua notifikasi"]');
+            if (delAll) delAll.remove();
+            announce('Semua notifikasi telah dihapus');
+        }
+    }
     function deleteNotif(id, btn) {
         var fd = new FormData();
         fd.append('action', 'delete');
@@ -176,11 +230,10 @@ $ICONS = [
             .then(function() {
                 var card = btn.closest('.notif-item');
                 if (card) {
-                    card.style.transition = 'opacity 0.2s, transform 0.2s';
-                    card.style.opacity = '0';
-                    card.style.transform = 'translateX(20px)';
-                    setTimeout(function() { card.remove(); }, 200);
+                    card.classList.add('notif-removing');
+                    setTimeout(function() { card.remove(); refreshEmptyState(); }, 200);
                 }
+                announce('Notifikasi dihapus');
             });
     }
     function deleteAllNotif() {
@@ -194,9 +247,11 @@ $ICONS = [
                 var items = document.querySelectorAll('.notif-item');
                 items.forEach(function(item, i) {
                     setTimeout(function() {
-                        item.style.transition = 'opacity 0.15s';
-                        item.style.opacity = '0';
-                        setTimeout(function() { item.remove(); }, 150);
+                        item.classList.add('notif-removing');
+                        setTimeout(function() {
+                            item.remove();
+                            if (i === items.length - 1) refreshEmptyState();
+                        }, 150);
                     }, i * 50);
                 });
             });
