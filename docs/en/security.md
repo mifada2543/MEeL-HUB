@@ -211,7 +211,7 @@ echo "<input type='hidden' name='csrf_token' value='$token'>";
 
 ### Admin Actions — POST Forms (not GET links)
 
-Admin state-changing actions (approve/reject/delete user, kick user, unban IP, force-stop queue)
+Admin state-changing actions (approve/reject/delete user, kick user, unban IP, force-stop queue, MFA reset)
 use **POST forms with CSRF token** — a GET link can be triggered by a `<img>` tag (CSRF),
 a POST form cannot:
 
@@ -231,6 +231,20 @@ chess admin `catur.php?auto_cleanup=1` endpoint requires a `csrf_token` too
 > `action="."` resolves to `/admin/`, which gets 301-redirected to `/admin/beranda` by
 > the `.htaccess` canonical rule. The 301 converts POST to GET, losing all form data.
 > Use no `action` attribute (defaults to current page URL) or `action=""`.
+
+### API Endpoints — POST Enforcement + CSRF
+
+All state-changing API endpoints now enforce **POST method** and **CSRF token verification**:
+
+| Endpoint | CSRF | Method | Notes |
+|---|---|---|---|
+| `api/notification.php` (mark_read, delete, delete_all) | `$_POST['csrf_token']` | POST only | GET returns 405 |
+| `api/chat.php` (send, delete) | `$_POST['csrf_token']` | POST only | Admin-only, GET returns 405 |
+| `api/delete_comment.php` | `$_POST['csrf_token']` | POST only | GET returns 405 |
+| `api/like.php` | `hx-vals` csrf_token | POST (HTMX) | — |
+| `api/comment.php` | `$_POST['csrf_token']` | POST (HTMX) | — |
+
+Read-only endpoints (`unread_count`, `list`, `users`, `get`) remain accessible via GET.
 
 ### Chess Multiplayer — Login + CSRF Guards
 
@@ -368,7 +382,15 @@ Allow request
 | **Comment** | 10 | 1 minute | Redirect with flash error message |
 | **Upload** (video/music/books) | 3 | 1 hour | — |
 | **Transcode** | 5 | 1 hour | — |
+| **Auto Metadata** (ffmpeg) | 5 | 1 hour | HTTP 429 + JSON error |
 | **API Generic** | 60 | 1 minute | — |
+
+### Fail-Closed Behavior
+
+When the rate limiter storage directory (`temp/ratelimit/`) is not writable or
+`flock()` fails, the rate limiter **denies all requests** (fail-closed) instead
+of silently allowing them through. This prevents a broken filesystem from
+disabling rate limiting entirely. Failures are logged via `error_log()`.
 
 ### Cleanup
 
@@ -467,6 +489,7 @@ if (isset($_SESSION['mfa_locked_until'])) {
 ### Admin Reset MFA
 
 Admins can reset a user's MFA from `admin/mfa_reset.php`:
+- **Method:** POST form (not GET link) — prevents CSRF via `<img>` tags
 - **Cannot reset another admin** — only the admin themselves can disable their own MFA
 - **Action logged** — `log_activity($conn, $admin_id, 'reset_mfa', 'user', $target_id)`
 - **User needs to re-setup** — MFA reset to default (disabled)
@@ -921,10 +944,12 @@ happens **at output time**, per context:
 - JSON/JS → `json_encode(..., JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)`
 
 The audit covers every rendered user-controlled value: profile bios, media
-title/description, comments, filenames, playlists, search results, and data
-shown in the admin panel. Regression tests (`tests/security_test.php`) verify
-payloads such as `<script>alert(1)</script>` and
-`<img src=x onerror=alert(1)>` are never executed as HTML.
+title/description, comments, filenames, playlists, search results, chat
+usernames, and data shown in the admin panel. For inline JS template literals
+(e.g. admin chat search results), a dedicated `escapeHtml()` function wraps
+user-derived values before HTML injection. Regression tests
+(`tests/security_test.php`) verify payloads such as `<script>alert(1)</script>`
+and `<img src=x onerror=alert(1)>` are never executed as HTML.
 
 ### Login Rate Limiting
 

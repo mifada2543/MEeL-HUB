@@ -339,7 +339,10 @@ File-based rate limiter with `flock()` safety. Role-based limits (admin = unlimi
 | `comment` | 10/min | Flash message redirect |
 | `upload` | 3/hour | — |
 | `transcode` | 5/hour | — |
+| `auto_metadata` | 5/hour | CPU-intensive (ffprobe + ffmpeg) |
 | `api` | 60/min | Generic fallback |
+
+**Fail-closed behavior:** When the storage directory (`temp/ratelimit/`) is not writable or `flock()` fails, the rate limiter **denies all requests** instead of silently allowing them. This prevents a broken filesystem from disabling rate limiting. Failures are logged via `error_log()`.
 
 ### 12. `modules/exceptions/`
 
@@ -703,6 +706,31 @@ User profile page with role-based visibility, theme toggle, and public channel g
 **Guest profile access:** Guests can view any user's profile (including their own synthetic Guest profile). The Guest profile is constructed in-memory (no DB query) with `id=0`, `role='guest'`.
 
 **Session initialization:** Uses `meel_boot_session()` (not raw `session_start()`) to ensure the session cookie name matches the rest of the application (`meel`).
+
+### 25. Notification Module (`modules/core/Notification.php` + `controllers/api/notification.php`)
+
+Database-backed notification system with user scoping and actor tracking.
+
+**Database:** `user_notifications` table (migration v15)
+
+```php
+class Notification {
+    public static function create(mysqli $conn, int $userId, string $type, string $title, string $message, ?int $relatedId = null, ?string $relatedSlug = null, ?int $actorUserId = null): void;
+    public static function getUnreadCount(mysqli $conn, int $userId): int;
+    public static function getList(mysqli $conn, int $userId, int $limit = 20): array;
+    public static function markRead(mysqli $conn, int $notifId, int $userId): void;
+    public static function markAllRead(mysqli $conn, int $userId): void;
+    public static function deleteOne(mysqli $conn, int $notifId, int $userId): bool;
+    public static function deleteAllByUser(mysqli $conn, int $userId): bool;
+    public static function deleteByChat(mysqli $conn, int $userId, string $message, int $actorUserId): bool;
+}
+```
+
+**Notification types:** `like`, `reply`, `admin_chat`
+
+**Link generation:** The `related_slug` column stores the media type (`video`/`music`) or a compound key (`type:id` for replies). The notification page builds links dynamically using `meel_base_url_path()` prefix.
+
+**API:** `controllers/api/notification.php` — POST-only for state-changing actions (mark_read, delete, delete_all) with CSRF verification. Read-only actions (unread_count, list) accept GET.
 
 ---
 
