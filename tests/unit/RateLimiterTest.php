@@ -168,13 +168,14 @@ class RateLimiterTest extends TestCase
 
     public function testFallbackOnFileLockFailure(): void
     {
-        
+        $invalidStoragePath = MEEL_ROOT . '/temp/ratelimit-test/not-a-dir.lock';
+        file_put_contents($invalidStoragePath, 'lock');
+
         $ref = new ReflectionClass(RateLimiter::class);
         $prop = $ref->getProperty('storageDir');
         $prop->setAccessible(true);
-        $prop->setValue('/nonexistent/path/');
+        $prop->setValue($invalidStoragePath);
 
-        
         $result = RateLimiter::check('fallback_user', 'api', 'user');
         $this->assertTrue($result['allowed']);
     }
