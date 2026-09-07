@@ -25,7 +25,7 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
     }
 </style>
 <link rel="stylesheet" href="<?= $_nav_root ?>assets/css/shared/notification.css">
-<script src="<?= $_nav_root ?>assets/js/shared/notification.js"></script>
+<script src="<?= $_nav_root ?>assets/js/shared/notification.js?v=2"></script>
 
 
 <?php if ($_nav_is_video): ?>

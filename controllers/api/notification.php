@@ -41,6 +41,10 @@ switch ($action) {
     case 'list':
         $limit = min(50, max(1, (int)($_GET['limit'] ?? 20)));
         $list = Notification::getList($conn, $userId, $limit);
+        foreach ($list as &$n) {
+            $n['time_ago'] = time_ago($n['created_at']);
+        }
+        unset($n);
         echo json_encode(['ok' => true, 'list' => $list, 'count' => count($list)]);
         break;
 

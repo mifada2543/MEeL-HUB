@@ -3,16 +3,15 @@
     let pollInterval = null;
     let ddOpen = false;
 
-    function getRoot() {
+    function apiRoot() {
         const el = document.querySelector('nav') || document.body;
         const base = el.querySelector('[data-meel-root]');
-        return base ? base.getAttribute('data-meel-root') : (window.__MEEL_ROOT || '/');
+        const root = base ? base.getAttribute('data-meel-root') : (window.MEEL_BASE || '');
+        return root ? root + '/' : '/';
     }
 
-    function apiRoot() { return getRoot(); }
-
     function fetchCount() {
-        fetch(apiRoot() + 'controllers/api/notification.php?action=unread_count', { credentials: 'same-origin' })
+        fetch(apiRoot() + 'api/notification?action=unread_count', { credentials: 'same-origin' })
             .then(r => r.json())
             .then(d => {
                 const c = d.count || 0;
@@ -23,14 +22,6 @@
                 }
             })
             .catch(() => {});
-    }
-
-    function timeAgo(ts) {
-        const diff = (Date.now() - new Date(ts).getTime()) / 1000;
-        if (diff < 60) return 'Baru saja';
-        if (diff < 3600) return Math.floor(diff / 60) + ' menit lalu';
-        if (diff < 86400) return Math.floor(diff / 3600) + ' jam lalu';
-        return Math.floor(diff / 86400) + ' hari lalu';
     }
 
     function renderList(containerId, list) {
@@ -46,7 +37,7 @@
                 <div class="notif-body">
                     <div class="notif-title">${escHtml(n.title)}</div>
                     <div class="notif-message">${escHtml(n.message)}</div>
-                    <div class="notif-time">${timeAgo(n.created_at)}</div>
+                    <div class="notif-time">${escHtml(n.time_ago || '')}</div>
                 </div>
             </a>
         `).join('');
@@ -59,7 +50,7 @@
     }
 
     function fetchList() {
-        fetch(apiRoot() + 'controllers/api/notification.php?action=list&limit=15', { credentials: 'same-origin' })
+        fetch(apiRoot() + 'api/notification?action=list&limit=15', { credentials: 'same-origin' })
             .then(r => r.json())
             .then(d => {
                 if (d.ok) {
@@ -70,10 +61,13 @@
     }
 
     function markAllRead() {
-        fetch(apiRoot() + 'controllers/api/notification.php?action=mark_all_read', {
+        const fd = new FormData();
+        fd.append('action', 'mark_all_read');
+        fd.append('csrf_token', window.MEEL_CSRF || '');
+        fetch(apiRoot() + 'api/notification', {
             method: 'POST',
             credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            body: fd
         }).then(() => {
             fetchCount();
             document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));

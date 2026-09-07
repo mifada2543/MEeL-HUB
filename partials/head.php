@@ -175,7 +175,7 @@ if ('serviceWorker' in navigator) {
 </script>
 
 
-<script>window.MEEL_BASE = <?= json_encode(rtrim($_head_root_rel, '/')) ?>;</script>
+<script>window.MEEL_BASE = <?= json_encode(rtrim($_head_root_rel, '/')) ?>;window.MEEL_CSRF = <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
 
 
 <?= $_META_EXTRA ?>
