@@ -380,7 +380,17 @@ if (!$is_guest_profile) {
 
 <body class="text-gray-300">
 
+    <?php $root = meel_base_url_path(); ?>
     <div class="max-w-5xl mx-auto mt-10 p-4">
+        <div class="flex items-center justify-between mb-4">
+            <a href="<?= htmlspecialchars($root) ?>/" class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" title="Kembali ke beranda">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                <span class="text-xs font-semibold hidden sm:inline">Beranda</span>
+            </a>
+            <a href="<?= htmlspecialchars($root) ?>/profile/notification" class="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" title="Notifikasi">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </a>
+        </div>
         <div class="glass rounded-[2.5rem] overflow-hidden shadow-2xl">
             <?php
             $banner_pic = $u['profile_picture'] ?: 'default_avatar.png';
@@ -571,12 +581,6 @@ if (!$is_guest_profile) {
             <?php endif; ?>
         </main>
         <?php endif; ?>
-
-        <div class="text-center mt-10">
-            <a href="<?= htmlspecialchars($back_url); ?>" class="text-gray-600 hover:text-blue-500 transition text-xs flex items-center justify-center gap-2" title="Kembali ke halaman sebelumnya">
-                <i data-lucide="arrow-left" class="w-4 h-4"></i> Kembali ke Dashboard
-            </a>
-        </div>
     </div>    <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
     <script src="../assets/js/shared/download-backup-codes.js"></script>

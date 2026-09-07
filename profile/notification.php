@@ -11,6 +11,20 @@ if (empty($_SESSION['user_id'])) {
 
 $userId = (int)$_SESSION['user_id'];
 
+$root = meel_base_url_path();
+$back_url = $root . '/profile/' . rawurlencode($_SESSION['username']);
+if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
+    $ref = $_SERVER['HTTP_REFERER'];
+    $ref_host = parse_url($ref, PHP_URL_HOST);
+    $current_host = $_SERVER['HTTP_HOST'] ?? '';
+    if ($ref_host === $current_host || $ref_host === 'localhost' || $ref_host === '127.0.0.1') {
+        $ref_path = parse_url($ref, PHP_URL_PATH);
+        if (strpos($ref_path, '/profile/notification') === false) {
+            $back_url = $ref;
+        }
+    }
+}
+
 $validTypes = ['like', 'reply', 'meelcoin', 'admin_chat', 'system'];
 $typeFilter = $_GET['type'] ?? null;
 if ($typeFilter && !in_array($typeFilter, $validTypes)) {
@@ -87,7 +101,7 @@ $ICONS = [
     <?php include '../partials/nav.php'; ?>
     <div class="max-w-2xl mx-auto pt-6">
         <div class="flex items-center gap-3 mb-5">
-            <a href="javascript:history.back()" class="p-2 rounded-lg hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)">
+            <a href="<?= htmlspecialchars($back_url) ?>" class="p-2 rounded-lg hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
             </a>
             <h1 class="text-lg font-bold" style="color:var(--meel-text-heading)">Notifikasi</h1>
@@ -115,7 +129,6 @@ $ICONS = [
             </div>
         <?php else: ?>
             <div class="space-y-2">
-                <?php $root = meel_base_url_path(); ?>
                 <?php foreach ($notifications as $n):
                     $href = null;
                     if ($n['type'] === 'like' && $n['related_id'] && $n['related_slug']) {
@@ -138,7 +151,7 @@ $ICONS = [
                             <div class="text-[12px] leading-relaxed" style="color:var(--meel-text-secondary)"><?= htmlspecialchars($n['message']) ?></div>
                             <div class="text-[10px] mt-1.5" style="color:#fff"><?= htmlspecialchars(time_ago($n['created_at'])) ?></div>
                         </div>
-                        <button onclick="deleteNotif(<?= (int)$n['id'] ?>, this)" style="background:none;border:none;color:#4b5563;cursor:pointer;padding:4px;flex-shrink:0;transition:color 0.15s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#4b5563'" title="Hapus">
+                        <button onclick="event.preventDefault(); event.stopPropagation(); deleteNotif(<?= (int)$n['id'] ?>, this)" style="background:none;border:none;color:#4b5563;cursor:pointer;padding:4px;flex-shrink:0;transition:color 0.15s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#4b5563'" title="Hapus">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     <?php if ($href): ?>
