@@ -51,6 +51,36 @@ if (!$viewer->addComment($_POST)) {
     exit;
 }
 
+$parent_id = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : 0;
+if ($parent_id > 0) {
+    require_once __DIR__ . '/../../modules/core/Notification.php';
+    $media_col = ($media_type === 'music') ? 'music_id' : 'video_id';
+    $parent_stmt = $conn->prepare("SELECT user_id FROM comments WHERE id = ? AND {$media_col} = ? LIMIT 1");
+    if ($parent_stmt) {
+        $parent_stmt->bind_param("ii", $parent_id, $media_id);
+        $parent_stmt->execute();
+        $parent_res = $parent_stmt->get_result();
+        if ($parent_res && $parent_res->num_rows > 0) {
+            $parent = $parent_res->fetch_assoc();
+            $parent_user_id = (int)($parent['user_id'] ?? 0);
+            if ($parent_user_id > 0 && $parent_user_id !== (int)$user_id) {
+                $snippet = substr(trim((string)($_POST['comments'] ?? '')), 0, 50);
+                Notification::create(
+                    $conn,
+                    $parent_user_id,
+                    'reply',
+                    'Balasan Komentar',
+                    $_SESSION['username'] . ' membalas komentar kamu: "' . $snippet . '..."',
+                    $parent_id,
+                    $media_type . ':' . $media_id,
+                    $user_id
+                );
+            }
+        }
+        $parent_stmt->close();
+    }
+}
+
 $comments_data = $viewer->getComments();
 $grouped       = $comments_data['grouped'];
 $user_map      = $comments_data['user_map'];

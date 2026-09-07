@@ -978,6 +978,14 @@ function testOpenRedirectHardening(): void {
                 record("{$rateFile}: tanpa include RateLimiter.php (loader.php sudah require)", true);
             }
         }
+
+        $commentApi = (string) file_get_contents(PROJECT_ROOT . '/controllers/api/comment.php');
+        if (preg_match('/->query\s*\(\s*"SELECT\s+user_id,\s*video_id,\s*music_id\s+FROM\s+comments\s+WHERE\s+id\s*=\s*\$parent_id/i', $commentApi)) {
+            record('controllers/api/comment.php: raw query parent comment terdeteksi', false, false,
+                'Gunakan prepared statement untuk lookup parent comment');
+        } else {
+            record('controllers/api/comment.php: lookup parent comment tidak pakai raw query', true);
+        }
     }
 
     
