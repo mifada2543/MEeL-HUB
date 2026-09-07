@@ -86,6 +86,9 @@ if (isset($_POST['approve_id'])) {
     $stmt->execute();
     log_activity($conn, (int)$_SESSION['user_id'], 'approve_user', 'user', (int)$_POST['approve_id']);
 
+    require_once __DIR__ . '/../../modules/core/MeelCoin.php';
+    MeelCoin::initialize($conn, (int)$_POST['approve_id'], 'user');
+
     if (function_exists('invalidate_user_role_cache')) {
         invalidate_user_role_cache();
     }

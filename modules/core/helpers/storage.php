@@ -216,7 +216,7 @@ function log_drive_operation(int $userId, string $username, string $operation, s
 
     $logFile = $logDir . '/drive_audit.log';
     $timestamp = date('Y-m-d H:i:s');
-    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $ip = (function_exists('get_real_ip') ? get_real_ip() : ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
     $userAgent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 0, 200);
 
     $logEntry = json_encode([
