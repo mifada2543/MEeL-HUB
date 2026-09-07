@@ -68,7 +68,7 @@ $ICONS = [
         }
         .notif-item:hover { background: var(--meel-surface-hover); cursor: default; }
         a.notif-item:hover { cursor: pointer; }
-        .notif-item.unread { border-left: 3px solid #3b82f6; }
+        .notif-item.unread { border-left: 3px solid var(--meel-blue); }
         .notif-icon {
             width: 36px; height: 36px; border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
@@ -83,11 +83,11 @@ $ICONS = [
             padding: 6px 14px; border-radius: 8px; font-size: 11px;
             font-weight: 600; border: 1px solid var(--meel-border);
             color: var(--meel-text-secondary); cursor: pointer;
-            transition: all 0.15s; text-decoration: none; display: inline-block;
+            transition: background 0.15s, color 0.15s, border-color 0.15s; text-decoration: none; display: inline-block;
         }
         .filter-btn:hover { background: var(--meel-surface-hover); }
         .filter-btn.active {
-            background: rgba(59, 130, 246, 0.12); color: #3b82f6;
+            background: rgba(59, 130, 246, 0.12); color: var(--meel-blue);
             border-color: rgba(59, 130, 246, 0.3);
         }
         .empty-state {
@@ -101,7 +101,7 @@ $ICONS = [
     <?php include '../partials/nav.php'; ?>
     <div class="max-w-2xl mx-auto pt-6">
         <div class="flex items-center gap-3 mb-5">
-            <a href="<?= htmlspecialchars($back_url) ?>" class="p-2 rounded-lg hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)">
+            <a href="<?= htmlspecialchars($back_url) ?>" class="p-2 rounded-lg hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" aria-label="Kembali">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
             </a>
             <h1 class="text-lg font-bold" style="color:var(--meel-text-heading)">Notifikasi</h1>
@@ -109,7 +109,7 @@ $ICONS = [
                 <span class="text-[10px] bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full font-bold"><?= $unreadCount ?> baru</span>
             <?php endif; ?>
             <?php if (!empty($notifications)): ?>
-                <button onclick="deleteAllNotif()" class="ml-auto text-[10px] text-red-400 hover:text-red-300 transition-colors" title="Hapus semua notifikasi">Hapus semua</button>
+                <button onclick="deleteAllNotif()" class="ml-auto text-[10px] text-red-400 hover:text-red-300 transition-colors" title="Hapus semua notifikasi" aria-label="Hapus semua notifikasi">Hapus semua</button>
             <?php endif; ?>
         </div>
 
@@ -149,9 +149,9 @@ $ICONS = [
                         <div class="min-w-0 flex-1">
                             <div class="text-[13px] font-semibold mb-0.5" style="color:var(--meel-text-heading)"><?= htmlspecialchars($n['title']) ?></div>
                             <div class="text-[12px] leading-relaxed" style="color:var(--meel-text-secondary)"><?= htmlspecialchars($n['message']) ?></div>
-                            <div class="text-[10px] mt-1.5" style="color:#fff"><?= htmlspecialchars(time_ago($n['created_at'])) ?></div>
+                            <div class="text-[10px] mt-1.5" style="color:var(--meel-text-tertiary)"><?= htmlspecialchars(time_ago($n['created_at'])) ?></div>
                         </div>
-                        <button onclick="event.preventDefault(); event.stopPropagation(); deleteNotif(<?= (int)$n['id'] ?>, this)" style="background:none;border:none;color:#4b5563;cursor:pointer;padding:4px;flex-shrink:0;transition:color 0.15s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#4b5563'" title="Hapus">
+                        <button onclick="event.preventDefault(); event.stopPropagation(); deleteNotif(<?= (int)$n['id'] ?>, this)" style="background:none;border:none;color:#4b5563;cursor:pointer;padding:4px;flex-shrink:0;transition:color 0.15s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#4b5563'" title="Hapus" aria-label="Hapus notifikasi">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     <?php if ($href): ?>
