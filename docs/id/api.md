@@ -444,7 +444,7 @@ Simpan di tempat yang aman!
 
 ### Admin MFA Reset (`admin/mfa-reset` + `controllers/admin/admin_actions.php`)
 
-**Method:** GET (link dengan parameter)
+**Method:** POST (form submission, bukan link GET)
 **Auth:** Admin only
 **Rate Limit:** Tidak ada
 
@@ -466,10 +466,10 @@ Halaman `admin/mfa-reset` menampilkan daftar user dengan MFA aktif:
 
 #### Reset MFA Action
 
-**Trigger:** Klik "Reset MFA" → konfirmasi SweetAlert2 → redirect
+**Trigger:** Klik "Reset MFA" → konfirmasi SweetAlert2 → submit form POST
 
 ```
-GET admin/mfa-reset?reset_mfa=1&user_id=123&csrf_token=...
+POST admin/mfa-reset (form: reset_mfa=1, user_id=123, csrf_token=...)
   ↓
 die(include admin_actions.php)
   ↓
@@ -538,21 +538,35 @@ Redirect ke admin/mfa-reset?msg=reset_ok&user={username}
 
 ### Delete Comment
 
-**Endpoint:** `api/delete-comment?id=123` (handler: `controllers/api/delete_comment.php`)
-**Method:** GET
-**Auth:** User (owner of comment)
+**Endpoint:** `api/delete-comment` (handler: `controllers/api/delete_comment.php`)
+**Method:** POST only (GET return 405)
+**Auth:** User (owner of comment, media uploader, or admin)
 **Rate Limit:** 10 requests per menit per user
 
+**Request (HTMX):**
+```html
+<form method="POST" hx-post="api/delete-comment" hx-target="#comment-section">
+  <input type="hidden" name="csrf_token" value="...">
+  <input type="hidden" name="id" value="123">
+  <input type="hidden" name="media_type" value="video">
+  <input type="hidden" name="media_id" value="456">
+  <button type="submit">Hapus</button>
+</form>
+```
+
 **Response:**
-- Success: Redirect ke referrer dengan flash message
-- Error: Redirect dengan error message
-- `429 Too Many Requests` — Redirect dengan `$_SESSION['error']` + CSRF flash message
+- Success (AJAX): HTML komentar yang sudah di-render ulang
+- Success (non-AJAX): Redirect ke referrer dengan flash message
+- Error: Pesan error dalam HTML atau redirect
+- `405 Method Not Allowed` — request non-POST
+- `429 Too Many Requests` — Rate limit exceeded
 
 ### Auto Metadata
 
 **Endpoint:** `api/auto-metadata` (handler: `controllers/api/auto_metadata.php`)
 **Method:** POST
-**Auth:** Admin
+**Auth:** User (login required)
+**Rate Limit:** 5 requests per jam per user (CPU-intensive: menjalankan ffprobe + ffmpeg)
 
 Mengambil metadata otomatis dari URL (yt-dlp) untuk formulir upload:
 ```json
@@ -932,6 +946,51 @@ dan helper auth yang sama dengan modul lain).
 
 > ⚠️ Tabel `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
 > (terpisah dari `database/schema.sql` / `database/migrate.php` v1–v14).
+
+---
+
+## Notification API
+
+### Notification Endpoints (`api/notification.php`)
+
+**Auth:** User (login required)
+
+| Aksi | Metode | CSRF | Deskripsi |
+|---|---|---|---|
+| `unread_count` | GET | Tidak | Return `{count: int}` — jumlah notifikasi belum dibaca |
+| `list` | GET | Tidak | Return `{ok, list, count}` — daftar notifikasi (limit 1–50) |
+| `mark_read` | POST | Ya | Tandai satu notifikasi sudah dibaca (param `id`) |
+| `mark_all_read` | POST | Ya | Tandai semua notifikasi sudah dibaca |
+| `delete` | POST | Ya | Hapus satu notifikasi (param `id`) |
+| `delete_all` | POST | Ya | Hapus semua notifikasi user |
+
+Aksi yang mengubah state (mark_read, mark_all_read, delete, delete_all) mewajibkan metode POST dan verifikasi CSRF token. GET request return HTTP 405.
+
+**Tipe notifikasi:**
+| Tipe | Trigger | Target Link |
+|---|---|---|
+| `like` | User like video/music Anda | `/video/watch?v=ID` atau `/music/watch?v=ID` |
+| `reply` | User reply komentar Anda | `/video/watch?v=ID` atau `/music/watch?v=ID` |
+| `admin_chat` | Admin kirim pesan chat | — |
+
+---
+
+## Chat API (Admin)
+
+### Chat Endpoints (`api/chat.php`)
+
+**Auth:** Admin only (cek `is_admin()`)
+**CSRF:** Wajib untuk aksi `send` dan `delete`
+
+| Aksi | Metode | CSRF | Deskripsi |
+|---|---|---|---|
+| `recent` | GET | Tidak | Daftar user dengan pesan chat terakhir |
+| `get` | GET | Tidak | Ambil pesan chat untuk user tertentu (param `user_id`) |
+| `users` | GET | Tidak | Cari user untuk chat (param `q`, exclude admin/guest/pending) |
+| `send` | POST | Ya | Kirim pesan ke user (`user_id`, `message`) |
+| `delete` | POST | Ya | Hapus pesan admin (`user_id`, `index`) |
+
+Penyimpanan: file JSON di `storage/chats/{user_id}/isipesan.json`
 
 ---
 

@@ -282,7 +282,7 @@ return $active >= 2; // isServerBusy()
 
 ### File: `modules/auth/RateLimiter.php`
 
-File-based rate limiter for API endpoints:
+File-based rate limiter for API endpoints (fail-closed on storage errors):
 
 | Endpoint | Limit | Window | File |
 |---|:---:|:---:|---|
@@ -290,16 +290,18 @@ File-based rate limiter for API endpoints:
 | Comment | 10 | 1 minute | `controllers/api/delete_comment.php`, `WatchController.php` |
 | Upload | 3 | 1 hour | — |
 | Transcode | 5 | 1 hour | —
+| Auto Metadata | 5 | 1 hour | `controllers/api/auto_metadata.php` |
 | API Generic | 60 | 1 minute | — |
 
 **Configuration:** Edit directly in `modules/auth/RateLimiter.php`:
 ```php
 private static array $limits = [
-    'like'      => ['requests' => 30, 'window' => 60],
-    'comment'   => ['requests' => 10, 'window' => 60],
-    'upload'    => ['requests' => 3,  'window' => 3600],
-    'transcode' => ['requests' => 5,  'window' => 3600],
-    'api'       => ['requests' => 60, 'window' => 60],
+    'like'          => ['requests' => 30, 'window' => 60],
+    'comment'       => ['requests' => 10, 'window' => 60],
+    'upload'        => ['requests' => 3,  'window' => 3600],
+    'transcode'     => ['requests' => 5,  'window' => 3600],
+    'auto_metadata' => ['requests' => 5,  'window' => 3600],
+    'api'           => ['requests' => 60, 'window' => 60],
 ];
 ```
 

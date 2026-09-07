@@ -354,6 +354,7 @@ if (isset($_SESSION['mfa_locked_until'])) {
 ### Admin Reset MFA
 
 Admin dapat mereset MFA user dari halaman `admin/mfa_reset.php`:
+- **Metode:** Form POST (bukan link GET) — mencegah CSRF via tag `<img>`
 - **Tidak bisa reset admin lain** — hanya admin yang bersangkutan bisa menonaktifkan sendiri
 - **Aksi dicatat** — `log_activity($conn, $admin_id, 'reset_mfa', 'user', $target_id)`
 - **User perlu setup ulang** — MFA di-reset ke default (nonaktif)
@@ -420,7 +421,7 @@ echo "<input type='hidden' name='csrf_token' value='$token'>";
 
 ### Admin Actions — Form POST (bukan link GET)
 
-Aksi admin yang mengubah state (approve/reject/delete user, kick user, unban IP, force-stop queue)
+Aksi admin yang mengubah state (approve/reject/delete user, kick user, unban IP, force-stop queue, MFA reset)
 menggunakan **form POST dengan token CSRF** — link GET bisa
 dipicu oleh tag `<img>` (CSRF), form POST tidak:
 
@@ -440,6 +441,20 @@ endpoint catur admin `catur.php?auto_cleanup=1` juga wajib `csrf_token`
 > `action="."` resolve ke `/admin/`, yang mendapat 301 redirect ke `/admin/beranda` oleh
 > rule canonical `.htaccess`. 301 mengubah POST menjadi GET, menghilangkan semua data form.
 > Gunakan tanpa atribut `action` (default = URL halaman saat ini) atau `action=""`.
+
+### Endpoint API — POST Enforcement + CSRF
+
+Semua endpoint API yang mengubah state kini mewajibkan **metode POST** dan **verifikasi CSRF token**:
+
+| Endpoint | CSRF | Metode | Catatan |
+|---|---|---|---|
+| `api/notification.php` (mark_read, delete, delete_all) | `$_POST['csrf_token']` | POST only | GET return 405 |
+| `api/chat.php` (send, delete) | `$_POST['csrf_token']` | POST only | Admin-only, GET return 405 |
+| `api/delete_comment.php` | `$_POST['csrf_token']` | POST only | GET return 405 |
+| `api/like.php` | `hx-vals` csrf_token | POST (HTMX) | — |
+| `api/comment.php` | `$_POST['csrf_token']` | POST (HTMX) | — |
+
+Endpoint read-only (`unread_count`, `list`, `users`, `get`) tetap bisa diakses via GET.
 
 ### Chess Multiplayer — Guard Login + CSRF
 
@@ -652,7 +667,12 @@ Menggunakan file JSON di `temp/ratelimit/` (tanpa schema DB tambahan):
 | **Comment** | 10 | 1 menit | Redirect dengan flash error message |
 | **Upload** (video/music/books) | 3 | 1 jam | — |
 | **Transcode** | 5 | 1 jam | — |
+| **Auto Metadata** (ffmpeg) | 5 | 1 jam | HTTP 429 + JSON error |
 | **API Generic** | 60 | 1 menit | — |
+
+### Fail-Closed Behavior
+
+Ketika direktori penyimpanan rate limiter (`temp/ratelimit/`) tidak writable atau `flock()` gagal, rate limiter **menolak semua request** (fail-closed) daripada diam-diam membiarkannya lewat. Ini mencegah filesystem yang rusak menonaktifkan rate limiting sepenuhnya. Kegagalan dicatat via `error_log()`.
 
 ### Integrasi
 
@@ -1163,9 +1183,11 @@ escaping dilakukan **saat output**, sesuai konteks:
 - JSON/JS → `json_encode(..., JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)`
 
 Audit mencakup seluruh nilai user-controlled yang dirender: bio profil,
-judul/deskripsi media, komentar, nama file, playlist, hasil pencarian, dan
-data yang tampil di panel admin. Regression test (`tests/security_test.php`)
-memverifikasi payload `<script>alert(1)</script>`,
+judul/deskripsi media, komentar, nama file, playlist, hasil pencarian,
+username chat, dan data yang tampil di panel admin. Untuk inline JS template
+literal (contoh: hasil pencarian chat admin), fungsi `escapeHtml()` khusus
+membungkus nilai user-derived sebelum injeksi HTML. Regression test
+(`tests/security_test.php`) memverifikasi payload `<script>alert(1)</script>`,
 `<img src=x onerror=alert(1)>`, dll. tidak pernah dieksekusi sebagai HTML.
 
 ### CSRF in All Forms
