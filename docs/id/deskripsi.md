@@ -434,6 +434,17 @@ Tidak ada masalah medium yang tersisa.
 | 133 | Fix judul/title halaman (meta & dokumen) | 🐛 Bug |
 | 134 | Redunisasi (deduplikasi) kode di beberapa modul (video, music, arcade, admin, tests) | ♻ Code |
 
+### Round 14: URL Cleanup & Admin Features (September 2026)
+
+| # | File | Perubahan | Kategori |
+|---|---|---|---|
+| 135 | 25+ file PHP/JS | Ubah `watch?id=` → `watch?v=` (konsistensi URL gaya YouTube) | ♻ Code |
+| 136 | `modules/media/AdminUploadQueueRepository.php` | **Baru!** Repository untuk query upload queue, stats & filter admin viewer | ✨ New |
+| 137 | `admin/activity_log.php` | Tambah tab "Upload Queue" (filter status, search, pagination, export CSV/JSON/XLS, maintenance) | ✨ New |
+| 138 | `admin/meelcoin.php` | Admin user dikecualikan dari dropdown manual adjustment (`WHERE role NOT IN ('guest', 'admin')`) | 🐛 Bug |
+| 139 | `sitemap.xml` | Update semua URL `watch?id=` → `watch?v=` (300+ entries) | ♻ Code |
+| 140 | 10 file dokumentasi | Update PHP 7.4+ → 8.0+, copyright 2025 → 2026, tambah v13+v14 migration | 📖 Docs |
+
 ---
 
 ## 🧪 Test Results
@@ -471,7 +482,7 @@ Tidak ada masalah medium yang tersisa.
 
 ## 🏁 Kesimpulan
 
-**MEeL** adalah platform media hub pribadi yang solid dengan arsitektur modular, keamanan berlapis, dan performa yang baik. Dari 134 item perbaikan yang diidentifikasi selama analisis, **seluruhnya telah diimplementasikan**.
+**MEeL** adalah platform media hub pribadi yang solid dengan arsitektur modular, keamanan berlapis, dan performa yang baik. Dari 140 item perbaikan yang diidentifikasi selama analisis, **seluruhnya telah diimplementasikan**.
 
 | Metrik | Nilai |
 |---|---|

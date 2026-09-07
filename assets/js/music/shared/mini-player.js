@@ -386,10 +386,10 @@ function expandPlayerFromMiniPlayer() {
     if (state.watchUrl) {
       target = withPlaylistParam(state.watchUrl, state.playlistId);
     } else if (state.id) {
-      target = withPlaylistParam(`watch?id=${state.id}`, state.playlistId);
+      target = withPlaylistParam(`watch?v=${state.id}`, state.playlistId);
     } else if (state.musicId) {
       target = withPlaylistParam(
-        `watch?id=${state.musicId}`,
+        `watch?v=${state.musicId}`,
         state.playlistId,
       );
     } else if (state.filename) {
@@ -516,7 +516,7 @@ function setupPlaylistItemClicks() {
         filename: this.dataset.filename,
         watchUrl:
           this.dataset.watchUrl ||
-          `watch?id=${this.dataset.id}&playlist_id=${this.dataset.playlistId}`,
+          `watch?v=${this.dataset.id}&playlist_id=${this.dataset.playlistId}`,
         nextSongUrl: nextSongUrl,
         playlistId: this.dataset.playlistId,
         currentTime: resumeTimeForClicked(this.dataset.id),

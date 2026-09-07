@@ -24,6 +24,8 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
         overflow-x: hidden !important;
     }
 </style>
+<link rel="stylesheet" href="<?= $_nav_root ?>assets/css/shared/notification.css">
+<script src="<?= $_nav_root ?>assets/js/shared/notification.js?v=2"></script>
 
 
 <?php if ($_nav_is_video): ?>
@@ -55,8 +57,33 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
     </a>
 <?php endif; ?>
 <?php if (isset($_SESSION['username'])): ?>
+<?php $_nav_is_notif = str_contains($_SERVER['PHP_SELF'], '/profile/notification'); ?>
     
-    <div class="relative hidden sm:block" id="nav-dropdown-wrap">
+    <?php if (!$_nav_is_notif): ?>
+    <div class="relative hidden sm:flex sm:items-center" id="nav-dropdown-wrap">
+        <div class="notif-bell-wrap relative" style="margin-right:4px;">
+            <button id="notif-bell-btn" onclick="toggleNotifDropdown()"
+                class="flex items-center justify-center w-9 h-9 rounded-xl transition-all"
+                style="color:var(--meel-text-secondary)"
+                onmouseover="this.style.background='var(--meel-surface-hover)'"
+                onmouseout="this.style.background='transparent'"
+                title="Notifikasi">
+                <i data-lucide="bell" class="w-4 h-4"></i>
+                <span id="notif-badge" class="notif-badge hidden">0</span>
+            </button>
+            <div id="notif-dropdown" class="notif-dropdown">
+                <div class="notif-dropdown-header">
+                    <span>Notifikasi</span>
+                    <button onclick="markAllNotifRead()" title="Tandai semua sudah dibaca">Tandai semua dibaca</button>
+                </div>
+                <div id="notif-list" class="notif-list">
+                    <div class="notif-empty">Memuat...</div>
+                </div>
+                <div class="notif-footer">
+                    <a href="<?= $_nav_root ?>profile/notification">Lihat Semua Notifikasi</a>
+                </div>
+            </div>
+        </div>
         <button id="nav-avatar-btn"
             onclick="toggleNavDropdown()"
             class="flex items-center gap-2 p-1 rounded-xl transition-all group"
@@ -202,13 +229,16 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
-            <button id="nav-hamburger"
+    <?php if (!$_nav_is_notif): ?>
+    <button id="nav-hamburger"
         onclick="toggleNavDrawer()"
         class="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/[.04] border border-white/[.06] text-gray-500 hover:text-white transition-all"
         title="Buka menu navigasi">
         <i data-lucide="menu" class="w-6 h-6"></i>
     </button>
+    <?php endif; ?>
 
     
     <div id="nav-drawer-overlay"
@@ -266,6 +296,12 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
 
         
         <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+            <a href="<?= $_nav_root ?>profile/notification"
+                title="Notifikasi"
+                class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
+                <i data-lucide="bell" class="w-5 h-5 flex-shrink-0"></i>
+                <span>Notifikasi</span>
+            </a>
             <a href="<?= $_nav_root ?>profile/<?= urlencode($_SESSION['username']) ?>"
                 title="Pengaturan profil dan tema"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">

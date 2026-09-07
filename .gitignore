@@ -180,5 +180,8 @@ __pycache__/
 *.key
 *.pub
 
+# ─── CHAT STORAGE (JSON files — runtime data) ────────
+storage/chats/**/*.json
+
 # ---Another----
 skills-lock.json

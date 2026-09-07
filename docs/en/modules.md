@@ -339,7 +339,10 @@ File-based rate limiter with `flock()` safety. Role-based limits (admin = unlimi
 | `comment` | 10/min | Flash message redirect |
 | `upload` | 3/hour | — |
 | `transcode` | 5/hour | — |
+| `auto_metadata` | 5/hour | CPU-intensive (ffprobe + ffmpeg) |
 | `api` | 60/min | Generic fallback |
+
+**Fail-closed behavior:** When the storage directory (`temp/ratelimit/`) is not writable or `flock()` fails, the rate limiter **denies all requests** instead of silently allowing them. This prevents a broken filesystem from disabling rate limiting. Failures are logged via `error_log()`.
 
 ### 12. `modules/exceptions/`
 
@@ -493,6 +496,8 @@ class MusicWatchController { public function getViewData(): array; public functi
 | **v10** | Composite index `(video_id, created_at)` & `(music_id, created_at)` on `comments` |
 | **v11** | `interactions` unique keys split: `(user_id, video_id)` & `(user_id, music_id)` — NULL in a combined unique key did not prevent duplicate likes |
 | **v12** | Bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code` |
+| **v13** | MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table |
+| **v14** | Indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery |
 
 > 💡 **Rhythm module (MEeL!Mania) does NOT use the main migration system.** The
 > `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`
@@ -590,16 +595,35 @@ HTML/JS, no backend) + Chess (PHP multiplayer) + Rhythm (PHP with its own DB):
 
 > ⚠️ **Installation:** import the rhythm tables once:
 > `mysql MEeL < arcade/rhythm/migration.sql` — not part of
-> `database/schema.sql` (20 tables) nor `database/migrate.php` (v1–v12).
+> `database/schema.sql` (20 tables) nor `database/migrate.php` (v1–v14).
 
 ### Admin Activity Log Viewer
 
-`admin/activity_log.php` — audit trail viewer with:
+`admin/activity_log.php` — audit trail viewer with 3 tabs:
+
+**Activity Tab** (blue-600 theme):
 - Filter by action type, username/IP, date range
 - Pagination (50/page)
 - Stats cards (7-day activity, unique users, total entries)
 - Color-coded action badges (login=blue, upload=green, ban=red)
 - Manual log cleanup (7–365 days) with CSRF
+
+**Admin Actions Tab** (purple-600 theme):
+- Filter by admin username, action type, date range
+- Stats cards (7-day admin actions, unique admins, total entries)
+- Color-coded badges (coin=yellow, reset=red, login=blue, other=gray)
+- Maintenance: clear older than 7–365 days
+
+**Upload Queue Tab** (green-600 theme):
+- Filter by status (pending/processing/transcoding/completed/failed), uploader, date range
+- Stats cards (total uploads, completed, failed, active)
+- Color-coded status badges
+- Export CSV/JSON/XLS with preview modal
+- Maintenance: clear completed/failed older than 7–365 days
+
+> **Note:** Admin users are excluded from the MEeLCoin manual adjustment dropdown
+> (`WHERE role NOT IN ('guest', 'admin')`) — admin balance is managed via auto-refill
+> and upload costs only.
 
 ### 22. PWA Service Worker (`sw.js.php` + `modules/core/SwPrecache.php`)
 
@@ -682,6 +706,31 @@ User profile page with role-based visibility, theme toggle, and public channel g
 **Guest profile access:** Guests can view any user's profile (including their own synthetic Guest profile). The Guest profile is constructed in-memory (no DB query) with `id=0`, `role='guest'`.
 
 **Session initialization:** Uses `meel_boot_session()` (not raw `session_start()`) to ensure the session cookie name matches the rest of the application (`meel`).
+
+### 25. Notification Module (`modules/core/Notification.php` + `controllers/api/notification.php`)
+
+Database-backed notification system with user scoping and actor tracking.
+
+**Database:** `user_notifications` table (migration v15)
+
+```php
+class Notification {
+    public static function create(mysqli $conn, int $userId, string $type, string $title, string $message, ?int $relatedId = null, ?string $relatedSlug = null, ?int $actorUserId = null): void;
+    public static function getUnreadCount(mysqli $conn, int $userId): int;
+    public static function getList(mysqli $conn, int $userId, int $limit = 20): array;
+    public static function markRead(mysqli $conn, int $notifId, int $userId): void;
+    public static function markAllRead(mysqli $conn, int $userId): void;
+    public static function deleteOne(mysqli $conn, int $notifId, int $userId): bool;
+    public static function deleteAllByUser(mysqli $conn, int $userId): bool;
+    public static function deleteByChat(mysqli $conn, int $userId, string $message, int $actorUserId): bool;
+}
+```
+
+**Notification types:** `like`, `reply`, `admin_chat`
+
+**Link generation:** The `related_slug` column stores the media type (`video`/`music`) or a compound key (`type:id` for replies). The notification page builds links dynamically using `meel_base_url_path()` prefix.
+
+**API:** `controllers/api/notification.php` — POST-only for state-changing actions (mark_read, delete, delete_all) with CSRF verification. Read-only actions (unread_count, list) accept GET.
 
 ---
 

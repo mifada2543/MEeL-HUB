@@ -40,7 +40,7 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 | **UpdateManager** | `controllers/system/UpdateManager.php` | CRUD changelog entries (OOP) |
 | **DriveService** | `drive/DriveService.php` | 3 class: DriveUserContext, DriveStorage, DriveViewRenderer |
 | **Profile Manager** | `controllers/profile/fun-manage.php` | Delete media, pending deletions, cleanup |
-| **Migration System** | `database/migrate.php` | Versioned database schema upgrades v1–v12 (idempotent) |
+| **Migration System** | `database/migrate.php` | Versioned database schema upgrades v1–v14 (idempotent) |
 | **PWA Precache** | `modules/core/SwPrecache.php` | Generator precache service worker dinamis — membaca `assets/css/*/manifest.php`, `SW_VERSION` otomatis dari hash konten |
 | **PWA Generator** | `sw.js.php` | Service worker dibangkitkan per request (disajikan sebagai `/sw.js` via rewrite `.htaccess`) |
 | **Autoloader** | `modules/autoload.php` | PSR-4-like autoloading |
@@ -56,7 +56,8 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 | **MediaAdminRepository** | `modules/media/MediaAdminRepository.php` | Query metadata media untuk panel admin (edit video/music) |
 | **ProfileRepository** | `modules/media/ProfileRepository.php` | Query data profil (count video, music) |
 | **AdminActivityRepository** | `modules/media/AdminActivityRepository.php` | Query & filter activity log untuk admin viewer |
-| **Admin Activity Log** | `admin/activity_log.php` | Audit trail viewer dengan filter, pagination, cleanup |
+| **AdminUploadQueueRepository** | `modules/media/AdminUploadQueueRepository.php` | Query upload queue, stats & filter untuk admin viewer |
+| **Admin Activity Log** | `admin/activity_log.php` | Audit trail viewer dengan 3 tab: Activity, Admin Actions, Upload Queue |
 
 ---
 
@@ -134,10 +135,12 @@ Request: /MEeL/music/beranda?format=ogg
 - **Type hints:** Properti class dan parameter constructor sekarang menggunakan type hints (`\mysqli`, `int`, `string`, dll.)
 - **Activity Log Integration:** `log_activity()` function + integrasi di login, logout, upload, dan admin actions — audit trail penuh ke tabel `activity_log`
 - **Admin Activity Log Viewer:** Halaman `admin/activity_log.php` untuk melihat, filter, dan cleanup trail audit
-- **Database Alignment:** `schema.sql` dan `migrate.php` tersinkronisasi (v1–v12) — FULLTEXT, FK, UNIQUE KEY, activity_log, MFA, composite index comments, unique key interactions, chess room identity
+- **Database Alignment:** `schema.sql` dan `migrate.php` tersinkronisasi (v1–v14) — FULLTEXT, FK, UNIQUE KEY, activity_log, MFA, composite index comments, unique key interactions, chess room identity
 - **Migrasi v10:** Index komposit `(video_id, created_at)` & `(music_id, created_at)` pada tabel `comments`
 - **Migrasi v11:** Unique key `interactions` dipecah menjadi `(user_id, video_id)` & `(user_id, music_id)` — NULL di unique key gabungan tidak mencegah duplikat
 - **Migrasi v12:** Ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code`
+- **Migrasi v13:** Sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log`
+- **Migrasi v14:** Index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery
 - **Modul Anime dihapus:** Modul placeholder "Coming Soon" yang sudah tidak relevan dihapus dari kodebase
 - **API Rate Limiting:** File-based rate limiter (`modules/auth/RateLimiter.php`) — proteksi endpoint like, comment, upload dari abuse dengan per-user limits dan role-based adjustment (admin=unlimited, member=2x)
 - **Security Module (`modules/auth/`):** Helper & class keamanan dikonsolidasi ke satu direktori agar mudah diaudit — `helpers/` (authz, csrf, session, stream_auth, mfa, user) + `RateLimiter.php` + `SsrfGuard.php`, dimuat lewat `modules/auth/loader.php` (shim lama `modules/core/helpers.php` tetap jalan)
@@ -150,7 +153,7 @@ Request: /MEeL/music/beranda?format=ogg
 - **Arcade Chess:** Multiplayer catur real-time via LAN — buat/gabung ruang, giliran bergantian, validasi legal move
 - **Chess Color Picker:** Di mode multiplayer, papan disembunyikan di balik overlay pilihan warna (Putih = buat room & tunggu, Hitam = join pakai kode) — papan terkunci sampai game dimulai
 - **Chess Auth & CSRF:** Controller multiplayer kini wajib login (JSON 401) dan token CSRF di semua panggilan yang mengubah state; endpoint admin `auto_cleanup` diverifikasi dengan CSRF
-- **Arcade Expansion (9 game):** Selain Dino Run, Chess & Snake — kini ada **2048**, **Tetris**, **Breakout**, **Simon Says**, **Ludo**, dan **MEeL!Mania** (rhythm game 4-lane ala osu!mania dengan beatmap editor, upload lagu custom MP3/OGG/FLAC/WAV ≤ 5 menit, tabel `arcade_song`/`arcade_score` via `arcade/rhythm/migration.sql` — terpisah dari migrasi utama v1–v12)
+- **Arcade Expansion (9 game):** Selain Dino Run, Chess & Snake — kini ada **2048**, **Tetris**, **Breakout**, **Simon Says**, **Ludo**, dan **MEeL!Mania** (rhythm game 4-lane ala osu!mania dengan beatmap editor, upload lagu custom MP3/OGG/FLAC/WAV ≤ 5 menit, tabel `arcade_song`/`arcade_score` via `arcade/rhythm/migration.sql` — terpisah dari migrasi utama v1–v14)
 - **PWA Optimization:** Service worker dinamis (`sw.js.php` + `SwPrecache`) — daftar precache otomatis dari `manifest.php`, `SW_VERSION` otomatis, ikon asli 192/512/maskable, meta iOS standalone, auto-reload saat update SW
 - **Search Improvements:** Sanitizer query (`sanitizeQuery()`), `MIN_SEARCH_QUERY = 3`, pagination search musik, search buku server-side (`BookRepository::searchBooks()`), cache key menyertakan offset, `try/catch` di sekitar query FULLTEXT
 - **Auth Hardening:** Cookie session kini `Secure` (auto-detect HTTPS) + `HttpOnly` + `SameSite=Lax`; `MEEL_TRUST_PROXY_HEADERS` (default `false`) untuk mencegah IP spoofing via header proxy; charset koneksi DB dipaksa `utf8mb4`

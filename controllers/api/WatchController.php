@@ -53,7 +53,7 @@ abstract class AbstractWatchController
 
     protected function commentRedirectUrl(): string
     {
-        return base_url("/video/watch?id={$this->id}#comment-section");
+        return base_url("/video/watch?v={$this->id}#comment-section");
     }
 
     public function isLoggedIn(): bool
@@ -163,7 +163,7 @@ class MusicWatchController extends AbstractWatchController
 
     protected function commentRedirectUrl(): string
     {
-        $url = base_url("/music/watch?id={$this->id}");
+        $url = base_url("/music/watch?v={$this->id}");
         if ($this->playlist_id > 0) {
             $url .= '&playlist_id=' . $this->playlist_id;
         }
@@ -199,15 +199,15 @@ class MusicWatchController extends AbstractWatchController
             $rekom->data_seek(0);
             while ($rec = $rekom->fetch_assoc()) {
                 if ((int)$rec['id'] !== $this->id) {
-                    $next_song_url = base_url('/music/watch?id=' . (int)$rec['id']);
+                    $next_song_url = base_url('/music/watch?v=' . (int)$rec['id']);
                     break;
                 }
             }
             $rekom->data_seek(0);
         }
 
-        if ($next_song_url !== '' && preg_match('#^watch\.php\?id=(\d+)(?:&playlist_id=(\d+))?$#', $next_song_url, $m)) {
-            $next_song_url = base_url('/music/watch?id=' . (int)$m[1] . (!empty($m[2]) ? '&playlist_id=' . (int)$m[2] : ''));
+        if ($next_song_url !== '' && preg_match('#^watch\.php\?v=(\d+)(?:&playlist_id=(\d+))?$#', $next_song_url, $m)) {
+            $next_song_url = base_url('/music/watch?v=' . (int)$m[1] . (!empty($m[2]) ? '&playlist_id=' . (int)$m[2] : ''));
         }
 
         $ext       = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));

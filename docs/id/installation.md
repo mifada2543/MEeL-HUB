@@ -584,17 +584,19 @@ Setelah semua setup selesai, jalankan migrasi database untuk mengoptimalkan skem
 ```
 
 Migration bersifat **idempotent** — aman dijalankan berulang kali. Mengelola
-**v1–v12** (tracker otomatis di tabel `db_version`):
+**v1–v14** (tracker otomatis di tabel `db_version`):
 - **v1–v5:** FULLTEXT index, performance index, sinkronisasi struktural, foreign key, tipe title
 - **v6–v7:** tabel `activity_log`, UNIQUE KEY pada username
 - **v8–v9:** sync kolom role, **kolom MFA** (`mfa_secret`, `mfa_backup_codes`, `mfa_enabled`)
 - **v10:** index komposit `comments` `(video_id, created_at)` & `(music_id, created_at)`
 - **v11:** unique key `interactions` dipecah menjadi `(user_id, video_id)` & `(user_id, music_id)`
 - **v12:** ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code`
+- **v13:** sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log`
+- **v14:** index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery
 
 > 💡 **Modul Rhythm (MEeL!Mania) punya migrasi DB sendiri** — tabel `arcade_song`
 > & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`, **bukan** bagian dari
-> `database/migrate.php` (v1–v12). Import sekali:
+> `database/migrate.php` (v1–v14). Import sekali:
 > ```bash
 > mysql MEeL < arcade/rhythm/migration.sql
 > ```

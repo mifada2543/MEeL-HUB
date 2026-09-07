@@ -103,7 +103,7 @@
 | **Light/Dark Mode** | Theme toggle via Profile page — localStorage (guest) + DB sync (logged-in) |
 | **20-20-20 Eye Care** | Eye rest notifications every 20 minutes |
 | **PSR-4 Autoloader** | Auto-loading core classes (`MediaLibrary`, `Uploader`, etc.) without manual require |
-| **Migration System v1–v12** | Database schema versioning + auto-upgrade (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, composite indexes, schema sync) |
+| **Migration System v1–v14** | Database schema versioning + auto-upgrade (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, composite indexes, schema sync) |
 | **Base URL Portability** | `base_url()` + `MEEL_BASE_URL` constant — consistent paths across all subdirectories |
 | **FULLTEXT Search** | Search video/music/books 10-100× faster via `MATCH AGAINST` — query sanitizer + pagination (MySQL 5.7+) |
 | **Admin Panel** | Dashboard monitoring, user management, queue control, activity log viewer |
@@ -147,7 +147,7 @@
 | **Downloader** | yt-dlp (optional) | External media URL downloads |
 | **Transliteration** | PHP `intl` (Transliterator) | File name sanitization (Romaji) |
 | **Autoloader** | Manual PSR-4-like (`modules/autoload.php`) | Auto-loads 10+ core classes |
-| **Migration** | PHP-based (`database/migrate.php`) | Schema versioning v1–v12 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync) |
+| **Migration** | PHP-based (`database/migrate.php`) | Schema versioning v1–v14 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync) |
 | **Rate Limiting** | `modules/auth/RateLimiter.php` | File-based rate limiter (flock safety) |
 | **PWA** | `sw.js.php` + `modules/core/SwPrecache.php` | Auto offline precache + installable |
 
@@ -176,7 +176,7 @@ MEeL/
 │   └── profile/           # profile_edit, fun-manage
 ├── database/              # Database schema
 │   ├── schema.sql         # Standalone schema file (20 tables)
-│   └── migrate.php        # 🔄 Migration system v1–v12 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync)
+│   └── migrate.php        # 🔄 Migration system v1–v14 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync)
 ├── data_drive/            # Cloud Drive runtime storage
 ├── docs/                  # Project documentation
 ├── drive/                 # Cloud Drive module
@@ -441,7 +441,7 @@ define('MEEL_YTDLP_PATH', '/usr/local/bin/yt-dlp');
 ### Migration System
 
 ```bash
-# Upgrade database to latest version (v1–v12)
+# Upgrade database to latest version (v1–v14)
 /opt/lampp/bin/php database/migrate.php
 ```
 
@@ -463,7 +463,7 @@ define('MEEL_YTDLP_PATH', '/usr/local/bin/yt-dlp');
 
 > 💡 **Rhythm module note (MEeL!Mania):** the `arcade_song` & `arcade_score` tables
 > are managed by `arcade/rhythm/migration.sql` — **separate** from the main migration
-> system (v1–v12). Import manually once: `mysql MEeL < arcade/rhythm/migration.sql`
+> system (v1–v14). Import manually once: `mysql MEeL < arcade/rhythm/migration.sql`
 > (or run the CREATE TABLE statements from that file).
 
 Migrations are **idempotent** — safe to run repeatedly.

@@ -26,7 +26,7 @@ $meelcoin_settings = [
 
 $msg = $_GET['msg'] ?? null;
 
-$all_users = $conn->query("SELECT id, username, role, meelcoin FROM users WHERE role != 'guest' ORDER BY role ASC, username ASC");
+$all_users = $conn->query("SELECT id, username, role, meelcoin FROM users WHERE role NOT IN ('guest', 'admin') ORDER BY role ASC, username ASC");
 $user_list = [];
 if ($all_users) {
     while ($u = $all_users->fetch_assoc()) {
@@ -174,7 +174,7 @@ if ($target_user_id > 0) {
                     <form method="POST" style="display:flex;flex-direction:column;gap:8px;">
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                         <div style="display:flex;gap:8px;">
-                            <select name="target_user_id" required class="admin-select" style="width:35%;" onchange="window.location.href='meelcoin.php?user_id=' + this.value">
+                            <select name="target_user_id" required class="admin-select" style="width:25%;" onchange="window.location.href='meelcoin.php?user_id=' + this.value">
                                 <option value="">Pilih User...</option>
                                 <?php foreach ($user_list as $u): ?>
                                     <option value="<?= $u['id'] ?>" <?= $target_user_id === (int)$u['id'] ? 'selected' : '' ?>>
@@ -182,11 +182,12 @@ if ($target_user_id > 0) {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <select name="coin_action" class="admin-select" style="width:25%;">
+                            <select name="coin_action" class="admin-select" style="width:15%;">
                                 <option value="add">Tambah</option>
                                 <option value="remove">Kurangi</option>
                             </select>
-                            <input type="number" name="coin_amount" placeholder="Jumlah" min="1" required class="admin-input" style="width:25%;">
+                            <input type="number" name="coin_amount" placeholder="Jumlah" min="1" required class="admin-input" style="width:15%;">
+                            <input type="text" name="coin_reason" maxlength="50" placeholder="Alasan (opsional)" class="admin-input" style="width:30%;">
                             <button type="submit" name="adjust_meelcoin_user" class="admin-btn admin-btn-primary admin-btn-sm" style="width:15%;">
                                 Apply
                             </button>

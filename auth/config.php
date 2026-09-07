@@ -67,16 +67,18 @@ if (!headers_sent()) {
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
-if (isset($_SESSION['LAST_ACTIVITY'])) {
-    $elapsed_time = time() - $_SESSION['LAST_ACTIVITY'];
-    if ($elapsed_time > 43200) {
-        session_unset();
-        session_destroy();
-        header("Location: " . base_url('/auth/login?reason=expired'));
-        exit;
+if (!defined('MEEL_API_CONTEXT')) {
+    if (isset($_SESSION['LAST_ACTIVITY'])) {
+        $elapsed_time = time() - $_SESSION['LAST_ACTIVITY'];
+        if ($elapsed_time > 43200) {
+            session_unset();
+            session_destroy();
+            header("Location: " . base_url('/auth/login?reason=expired'));
+            exit;
+        }
     }
-}
-$_SESSION['LAST_ACTIVITY'] = time();
-if (PHP_SAPI !== 'cli') {
-    include_once __DIR__ . '/../modules/core/activity_logger.php';
+    $_SESSION['LAST_ACTIVITY'] = time();
+    if (PHP_SAPI !== 'cli') {
+        include_once __DIR__ . '/../modules/core/activity_logger.php';
+    }
 }

@@ -7,11 +7,12 @@ class RateLimiter
     private static string $storageDir = '';
 
     private static array $limits = [
-        'like'        => ['requests' => 30, 'window' => 60],
-        'comment'     => ['requests' => 10, 'window' => 60],
-        'upload'      => ['requests' => 3,  'window' => 3600],
-        'transcode'   => ['requests' => 5,  'window' => 3600],
-        'api'         => ['requests' => 60, 'window' => 60],
+        'like'          => ['requests' => 30, 'window' => 60],
+        'comment'       => ['requests' => 10, 'window' => 60],
+        'upload'        => ['requests' => 3,  'window' => 3600],
+        'transcode'     => ['requests' => 5,  'window' => 3600],
+        'auto_metadata' => ['requests' => 5,  'window' => 3600],
+        'api'           => ['requests' => 60, 'window' => 60],
     ];
 
     private static function init(): void
@@ -89,12 +90,12 @@ class RateLimiter
             }
         }
         if (!$fp) {
-            return ['allowed' => true, 'remaining' => $maxRequests, 'reset' => time() + $window, 'limit' => $maxRequests];
+            return ['allowed' => false, 'remaining' => 0, 'reset' => time() + $window, 'limit' => $maxRequests];
         }
 
         if (!flock($fp, LOCK_EX)) {
             fclose($fp);
-            return ['allowed' => true, 'remaining' => $maxRequests, 'reset' => time() + $window, 'limit' => $maxRequests];
+            return ['allowed' => false, 'remaining' => 0, 'reset' => time() + $window, 'limit' => $maxRequests];
         }
 
         $data = self::readFile($filePath);

@@ -105,17 +105,18 @@
 | **Light/Dark Mode** | Toggle tema via Profile page — localStorage (guest) + DB sync (login) |
 | **Mode Sehat 20-20-20** | Notifikasi istirahat mata tiap 20 menit |
 | **Autoloader PSR-4** | Auto-loading class core (`MediaLibrary`, `Uploader`, dll.) tanpa require manual |
-| **Migration System v1–v12** | Database schema versioning + auto-upgrade (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, index komposit, schema sync) |
+| **Migration System v1–v14** | Database schema versioning + auto-upgrade (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, index komposit, schema sync) |
 | **Base URL Portability** | `base_url()` + `MEEL_BASE_URL` constant — path konsisten di semua subdirektori |
 | **FULLTEXT Search** | Search video/music/books 10-100× lebih cepat via `MATCH AGAINST` — sanitizer query + pagination (MySQL 5.7+) |
 | **Admin Panel** | Dashboard monitoring, manajemen user, queue control, activity log viewer |
+| **MEeLCoin** | Sistem kuota virtual yang dapat disesuaikan — kuota upload berbasis MEeLCoin + kuota cloud drive per member (admin dikecualikan dari manual adjustment) |
 | **Role Helper** | `get_user_role()` — query role ter-cache, menghilangkan duplikasi di upload files |
 | **Redirect Guard** | Validasi URL redirect cegah open redirect |
 | **Archive Guard (CBZ/ZIP)** | `ArchiveGuard` — ekstraksi aman tanpa `extractTo()` langsung: tolak path traversal, null byte, symlink, dan zip bomb (limit entri, ukuran, rasio kompresi, kedalaman) |
 | **Upload Atomik & Tokenisasi** | Nama file di-reserve via `fopen('x')` (anti race); `temp_file` memakai token opaque server-side + ownership sesi (post_encode POST+CSRF) |
 | **Magic Bytes Terpusat** | `meel_magic_extension_ok()` — validasi signature audio/video/gambar/PDF/arsip di semua jalur upload |
 | **Activity Log Integration** | Audit trail login, logout, upload, admin actions — tabel `activity_log` |
-| **Admin Activity Log Viewer** | Halaman `admin/activity_log.php` — filter, pagination, cleanup log |
+| **Admin Activity Log Viewer** | Halaman `admin/activity_log.php` — 3 tab: Activity, Admin Actions, Upload Queue (filter, pagination, export, cleanup) |
 | **API Rate Limiting** | Proteksi endpoint dari abuse (like: 30/menit, comment: 10/menit) |
 | **Pagination Metadata** | UI menampilkan info halaman (`total_pages`, `from`, `to`) |
 | **Admin Dashboard Charts** | Chart.js 7-Day Activity Chart — views, uploads, active users |
@@ -149,7 +150,7 @@
 | **Downloader** | yt-dlp (optional) | Download media dari URL eksternal |
 | **Transliterasi** | PHP `intl` (Transliterator) | Pembersihan nama file (Romaji) |
 | **Autoloader** | Manual PSR-4-like (`modules/autoload.php`) | Auto-loading 10+ class core |
-| **Migration** | PHP-based (`database/migrate.php`) | Schema versioning v1–v12 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync) |
+| **Migration** | PHP-based (`database/migrate.php`) | Schema versioning v1–v14 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync) |
 | **Rate Limiting** | `modules/auth/RateLimiter.php` | File-based rate limiter (flock safety) |
 | **PWA** | `sw.js.php` + `modules/core/SwPrecache.php` | Precache offline otomatis + installable |
 
@@ -178,7 +179,7 @@ MEeL/
 │   └── profile/           # profile_edit, fun-manage
 ├── database/              # Skema database
 │   ├── schema.sql         # File schema standalone (20 tabel)
-│   └── migrate.php        # 🔄 Migration system v1–v12 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync)
+│   └── migrate.php        # 🔄 Migration system v1–v14 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync)
 ├── data_drive/            # Cloud Drive storage runtime
 ├── docs/                  # Dokumentasi proyek
 ├── drive/                 # Modul Cloud Drive
@@ -215,7 +216,7 @@ MEeL/
 │   │   ├── MediaViewer.php    # View tracking, komentar, rekomendasi
 │   │   ├── MediaInteraction.php # Like/dislike
 │   │   ├── SearchEngine.php   # Mesin pencari FULLTEXT
-│   │   ├── PlaylistRepository.php / MediaAdminRepository.php / ProfileRepository.php / AdminActivityRepository.php
+│   │   ├── PlaylistRepository.php / MediaAdminRepository.php / ProfileRepository.php / AdminActivityRepository.php / AdminUploadQueueRepository.php
 │   ├── transcoder/        # Service transcoding (dipanggil facade Transcoder)
 │   │   ├── FfmpegUtils.php    # FFmpeg trait – probe, sprite, VTT, getEnvPrefix
 │   │   ├── DownloadService.php # Download yt-dlp + finalisasi HLS (finalizeVideo)
@@ -435,7 +436,7 @@ $url = base_url('/assets/css/style.css'); // → /MEeL/assets/css/style.css
 ### Migration System
 
 ```bash
-# Upgrade database ke versi terbaru (v1–v12)
+# Upgrade database ke versi terbaru (v1–v14)
 /opt/lampp/bin/php database/migrate.php
 ```
 
@@ -454,10 +455,12 @@ $url = base_url('/assets/css/style.css'); // → /MEeL/assets/css/style.css
 | **v10** | Index komposit comments `(video_id, created_at)` & `(music_id, created_at)` |
 | **v11** | Unique key `interactions` dipecah: `(user_id, video_id)` & `(user_id, music_id)` |
 | **v12** | Ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code` |
+| **v13** | MEeLCoin system — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log` |
+| **v14** | Index `video_id` & `music_id` di `view_logs` — percepat `syncViewsFromLogs` correlated subquery |
 
 > 💡 **Catatan modul Rhythm (MEeL!Mania):** tabel `arcade_song` & `arcade_score`
 > dikelola lewat `arcade/rhythm/migration.sql` — **terpisah** dari migration system
-> utama (v1–v12). Import manual sekali: `mysql MEeL < arcade/rhythm/migration.sql`
+> utama (v1–v14). Import manual sekali: `mysql MEeL < arcade/rhythm/migration.sql`
 > (atau jalankan query CREATE TABLE dari file tersebut).
 
 Migration bersifat **idempotent** — aman dijalankan berulang kali.

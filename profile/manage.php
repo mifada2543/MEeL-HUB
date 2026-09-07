@@ -422,11 +422,11 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                             : '../assets/img/video0.webp';
                     ?>
                         <div class="content-card">
-                            <a href="<?= base_url('/video/watch?id=' . (int)$v['id']) ?>" class="block card-thumb" title="<?= htmlspecialchars($v['title']) ?>">
+                            <a href="<?= base_url('/video/watch?v=' . (int)$v['id']) ?>" class="block card-thumb" title="<?= htmlspecialchars($v['title']) ?>">
                                 <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($v['title']) ?>" loading="lazy" width="640" height="360">
                             </a>
                             <div class="card-body">
-                                <a href="<?= base_url('/video/watch?id=' . (int)$v['id']) ?>" class="card-title no-underline hover:text-red-400 transition-colors" title="<?= htmlspecialchars($v['title']) ?>">
+                                <a href="<?= base_url('/video/watch?v=' . (int)$v['id']) ?>" class="card-title no-underline hover:text-red-400 transition-colors" title="<?= htmlspecialchars($v['title']) ?>">
                                     <?= htmlspecialchars($v['title']) ?>
                                 </a>
                                 <div class="card-meta">
@@ -470,11 +470,11 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                             : '../assets/img/music0.webp';
                     ?>
                         <div class="content-card">
-                            <a href="<?= base_url('/music/watch?id=' . (int)$m['id']) ?>" class="block card-thumb" title="<?= htmlspecialchars($m['title']) ?>">
+                            <a href="<?= base_url('/music/watch?v=' . (int)$m['id']) ?>" class="block card-thumb" title="<?= htmlspecialchars($m['title']) ?>">
                                 <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($m['title']) ?>" loading="lazy" width="640" height="360">
                             </a>
                             <div class="card-body">
-                                <a href="<?= base_url('/music/watch?id=' . (int)$m['id']) ?>" class="card-title no-underline hover:text-orange-400 transition-colors" title="<?= htmlspecialchars($m['title']) ?>">
+                                <a href="<?= base_url('/music/watch?v=' . (int)$m['id']) ?>" class="card-title no-underline hover:text-orange-400 transition-colors" title="<?= htmlspecialchars($m['title']) ?>">
                                     <?= htmlspecialchars($m['title']) ?>
                                 </a>
                                 <div class="card-meta">

@@ -86,7 +86,7 @@ if ($action === 'create_playlist') {
             exit;
         }
     }
-    redirect(base_url('/music/watch?id=' . (int)$music_id) . '&msg=playlist_created');
+    redirect(base_url('/music/watch?v=' . (int)$music_id) . '&msg=playlist_created');
 }
 
 if ($action === 'add_to_playlist') {
@@ -127,7 +127,7 @@ if ($action === 'add_to_playlist') {
         header('Location: ' . playlist_back_url());
         exit;
     }
-    redirect(base_url('/music/watch?id=' . (int)$music_id) . '&msg=added_to_playlist');
+    redirect(base_url('/music/watch?v=' . (int)$music_id) . '&msg=added_to_playlist');
 }
 
 if ($action === 'remove_from_playlist') {

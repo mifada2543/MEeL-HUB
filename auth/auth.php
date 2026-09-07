@@ -7,12 +7,17 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 $user_id = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT last_session_id, role FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT last_session_id, role, is_active FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user_data = $stmt->get_result()->fetch_assoc();
 
 if ($user_data) {
+    if ($user_data['is_active'] != 1) {
+        session_destroy();
+        header("Location: " . base_url('/auth/login?error=account_inactive'));
+        exit;
+    }
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         if ($user_data['role'] !== 'admin' && !empty($user_data['last_session_id']) && $user_data['last_session_id'] !== session_id()) {
             session_destroy();

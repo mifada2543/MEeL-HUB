@@ -195,7 +195,7 @@ class MediaViewer
             $next_q = $stmt_next->get_result();
 
             if ($next_d = $next_q->fetch_assoc()) {
-                $next_url = "watch.php?id=" . $next_d['music_id'] . "&playlist_id=" . $playlist_id;
+                $next_url = "watch.php?v=" . $next_d['music_id'] . "&playlist_id=" . $playlist_id;
             }
         }
         return ['queue' => $queue, 'next_url' => $next_url];
