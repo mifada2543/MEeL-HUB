@@ -55,6 +55,7 @@
         fd.append('action', 'delete');
         fd.append('user_id', currentUserId);
         fd.append('index', index);
+        fd.append('csrf_token', window.MEEL_CSRF || '');
 
         safeFetch(API_BASE, {
             method: 'POST',
@@ -81,6 +82,7 @@
         fd.append('action', 'send');
         fd.append('user_id', currentUserId);
         fd.append('message', msg);
+        fd.append('csrf_token', window.MEEL_CSRF || '');
 
         safeFetch(API_BASE, {
             method: 'POST',
