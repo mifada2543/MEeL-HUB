@@ -136,7 +136,7 @@ $ICONS = [
                         <div class="min-w-0 flex-1">
                             <div class="text-[13px] font-semibold mb-0.5" style="color:var(--meel-text-heading)"><?= htmlspecialchars($n['title']) ?></div>
                             <div class="text-[12px] leading-relaxed" style="color:var(--meel-text-secondary)"><?= htmlspecialchars($n['message']) ?></div>
-                            <div class="text-[10px] mt-1.5" style="color:#fff" data-time="<?= htmlspecialchars($n['created_at']) ?>"></div>
+                            <div class="text-[10px] mt-1.5" style="color:#fff"><?= htmlspecialchars(time_ago($n['created_at'])) ?></div>
                         </div>
                         <button onclick="deleteNotif(<?= (int)$n['id'] ?>, this)" style="background:none;border:none;color:#4b5563;cursor:pointer;padding:4px;flex-shrink:0;transition:color 0.15s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#4b5563'" title="Hapus">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -152,25 +152,12 @@ $ICONS = [
     </div>
 
     <script>
-    (function() {
-        document.querySelectorAll('[data-time]').forEach(function(el) {
-            var ts = el.getAttribute('data-time');
-            if (!ts) return;
-            var diff = (Date.now() - new Date(ts + 'Z').getTime()) / 1000;
-            var text = 'Baru saja';
-            if (diff >= 86400) text = Math.floor(diff / 86400) + ' hari lalu';
-            else if (diff >= 3600) text = Math.floor(diff / 3600) + ' jam lalu';
-            else if (diff >= 60) text = Math.floor(diff / 60) + ' menit lalu';
-            el.textContent = text;
-        });
-    })();
-    </script>
-    <script>
     var API_ROOT = '<?= $root ?>/api/notification';
     function deleteNotif(id, btn) {
         var fd = new FormData();
         fd.append('action', 'delete');
         fd.append('id', id);
+        fd.append('csrf_token', <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
         fetch(API_ROOT, { method: 'POST', body: fd, credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
             .then(function() {
@@ -185,7 +172,10 @@ $ICONS = [
     }
     function deleteAllNotif() {
         if (!confirm('Hapus semua notifikasi?')) return;
-        fetch(API_ROOT + '?action=delete_all', { method: 'POST', credentials: 'same-origin' })
+        var fd = new FormData();
+        fd.append('action', 'delete_all');
+        fd.append('csrf_token', <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+        fetch(API_ROOT, { method: 'POST', body: fd, credentials: 'same-origin' })
             .then(function(r) { return r.json(); })
             .then(function() {
                 var items = document.querySelectorAll('.notif-item');
