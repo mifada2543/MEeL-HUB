@@ -7,7 +7,7 @@ require_once '../modules/core/helpers.php';
 require_once '../modules/core/CommentRenderer.php';
 require_once '../controllers/api/WatchController.php';
 
-$id      = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$id      = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
 
 $ctrl = new VideoWatchController($conn, $user_id, $id);
@@ -318,7 +318,7 @@ $__vdir = function($dir) {
                         <div id="comment-body">
                             <div class="p-4 sm:p-6">
                                 <div id="comment-alert"></div>
-                            <form action="<?= base_url('/video/watch?id=' . (int)$id) ?>" method="post" class="mb-6"
+                            <form action="<?= base_url('/video/watch?v=' . (int)$id) ?>" method="post" class="mb-6"
                                 hx-post="../api/comment"
                                 hx-target="#comment-list"
                                 hx-swap="innerHTML"
@@ -365,7 +365,7 @@ $__vdir = function($dir) {
             </div>
             <div id="recommendation-column" class="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-0 lg:space-y-1">
                 <?php while ($r = $rekom->fetch_assoc()): ?>
-                    <a href="<?= base_url('/video/watch?id=' . (int)$r['id']) ?>"
+                    <a href="<?= base_url('/video/watch?v=' . (int)$r['id']) ?>"
                         class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline"
                         title="<?= htmlspecialchars($r['title']) ?>">
                         <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">

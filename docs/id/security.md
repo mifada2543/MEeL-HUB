@@ -659,7 +659,7 @@ if (!$rateCheck['allowed']) {
 $rateCheck = RateLimiter::check('user_'.$userId, 'comment');
 if (!$rateCheck['allowed']) {
     $_SESSION['error'] = 'Terlalu banyak komentar.';
-    header("Location: music/watch?id={$id}#comment-section");
+    header("Location: music/watch?v={$id}#comment-section");
     exit;
 }
 ```

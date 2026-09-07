@@ -528,7 +528,7 @@ if (!$is_guest_profile) {
                         $thumb = !empty($item['thumbnail'])
                             ? ($is_music ? '../music/upload/thumbnail/' : '../video/upload/thumbnail/') . htmlspecialchars($item['thumbnail'])
                             : ($is_music ? '../assets/img/music0.webp' : '../assets/img/video0.webp');
-                        $watch = base_url(($is_music ? '/music' : '/video') . '/watch?id=' . (int)$item['id']);
+                        $watch = base_url(($is_music ? '/music' : '/video') . '/watch?v=' . (int)$item['id']);
                     ?>
                         <div class="content-card">
                             <a href="<?= $watch ?>" class="block card-thumb relative" title="<?= htmlspecialchars($item['title']) ?>">

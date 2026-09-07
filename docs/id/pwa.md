@@ -139,7 +139,7 @@ Karena `SW_VERSION` diturunkan dari konten, skenario berikut terjadi otomatis:
 ### Batas ukuran cache halaman
 
 Cache halaman (`meel-pages-*`) dibatasi maksimal **100 entri** via `trimCache()`
-— halaman dinamis seperti `watch.php?id=X` tidak bisa membengkak tanpa batas.
+— halaman dinamis seperti `watch.php?v=X` tidak bisa membengkak tanpa batas.
 
 ### Navigation preload
 

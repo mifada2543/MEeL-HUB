@@ -112,7 +112,7 @@ class MediaViewerTest extends TestCase
         }
 
         
-        $this->assertSame('watch.php?id=7&playlist_id=3', $result['next_url']);
+        $this->assertSame('watch.php?v=7&playlist_id=3', $result['next_url']);
     }
 
     public function testNextUrlEmptyWhenCurrentTrackNotInPlaylist(): void

@@ -40,8 +40,8 @@ DirectoryIndex index.php index.html
 # FRONT CONTROLLER ROUTING (router.php)
 #
 # Semua halaman & API melewati satu entry point: router.php
-#   /video/watch?id=5            → router.php (route: video/watch)
-#   /music/watch?id=5            → router.php (route: music/watch)
+#   /video/watch?v=5            → router.php (route: video/watch)
+#   /music/watch?v=5            → router.php (route: music/watch)
 #   /books/read?id=3             → router.php (route: books/read)
 #   /admin/edit-video?id=5       → router.php (route: admin/edit-video)
 #   /api/like                    → router.php (route: api/like)

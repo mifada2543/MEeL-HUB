@@ -22,7 +22,7 @@
              height="236">
 
         
-        <a href="<?= base_url('/video/watch?id=' . (int)$v['id']) ?>"
+        <a href="<?= base_url('/video/watch?v=' . (int)$v['id']) ?>"
            class="absolute inset-0 flex items-center justify-center
                   opacity-0 group-hover:opacity-100 transition-opacity duration-300"
            style="background:rgba(0,0,0,0.5)"
@@ -44,7 +44,7 @@
 
     
     <div class="px-3 py-3">
-        <a href="<?= base_url('/video/watch?id=' . (int)$v['id']) ?>"
+        <a href="<?= base_url('/video/watch?v=' . (int)$v['id']) ?>"
            class="block text-[12px] font-bold line-clamp-2 leading-snug transition-colors"
            style="color:var(--meel-text)"
            onmouseover="this.style.color='var(--meel-red)'"

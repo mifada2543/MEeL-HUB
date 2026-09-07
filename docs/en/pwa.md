@@ -140,7 +140,7 @@ Because `SW_VERSION` is content-derived, these scenarios happen automatically:
 ### Page cache size limit
 
 The page cache (`meel-pages-*`) is capped at **100 entries** via `trimCache()` —
-dynamic pages such as `watch.php?id=X` cannot grow the cache without limit.
+dynamic pages such as `watch.php?v=X` cannot grow the cache without limit.
 
 ### Navigation preload
 

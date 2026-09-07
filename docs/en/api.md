@@ -86,7 +86,7 @@ abstract class AbstractWatchController
 
 - `handleRequest()` — records the view and processes comment POSTs with CSRF verification & rate limit (10/min). Redirects via the `commentRedirectUrl()` hook.
 - `baseViewData()` — returns the keys shared by every watch page: `id`, `user_id`, `is_logged_in`, `v`, `user_interaction`, `comments_grouped`, `user_map`, `rekom`.
-- `commentRedirectUrl()` — defaults to `music/watch?id=...#comment-section`; `MusicWatchController` overrides it to append `&playlist_id=...`.
+- `commentRedirectUrl()` — defaults to `music/watch?v=...#comment-section`; `MusicWatchController` overrides it to append `&playlist_id=...`.
 
 ### VideoWatchController
 

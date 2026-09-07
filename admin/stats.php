@@ -364,7 +364,7 @@ while ($rc = $r->fetch_assoc()) {
                                 while ($row = $result_media->fetch_assoc()):
                                     $row_i++;
                                     $is_video   = ($row['media_type'] === 'video');
-                                    $watch_url  = $is_video ? base_url('/video/watch?id=' . (int)$row['id']) : base_url('/music/watch?id=' . (int)$row['id']);
+                                    $watch_url  = $is_video ? base_url('/video/watch?v=' . (int)$row['id']) : base_url('/music/watch?v=' . (int)$row['id']);
                                     $edit_url   = $is_video ? base_url('/admin/edit-video?id=' . (int)$row['id']) : base_url('/admin/edit-music?id=' . (int)$row['id']);
                                     $type_color = $is_video ? '#ef4444' : '#f97316';
                                     $type_bg    = $is_video ? 'rgba(239,68,68,.1)' : 'rgba(249,115,22,.1)';
