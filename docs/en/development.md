@@ -188,12 +188,12 @@ music ──1:N── playlist_tracks
 
 Each module (video, music, books, drive) follows this pattern. Pages are reached
 via **clean URLs** (front controller `router.php` → `modules/core/Router.php`),
-e.g. `video/beranda` → `video/index.php`, `music/watch?id=X` → `music/watch.php`:
+e.g. `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch.php`:
 
 ```
 [module]/
 ├── index.php          # Catalog / listing (URL: [module]/beranda)
-├── watch.php          # Player / detail (URL: [module]/watch?id=X)
+├── watch.php          # Player / detail (URL: [module]/watch?v=X)
 ├── upload.php         # Upload form (URL: [module]/upload)
 ├── search_[module].php  # Search (HTMX) (URL: [module]/search)
 ├── load_more.php      # Pagination (HTMX) (URL: [module]/load-more)

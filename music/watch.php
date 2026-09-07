@@ -8,7 +8,7 @@ require_once '../modules/core/CommentRenderer.php';
 require_once '../modules/media/MediaLibrary.php';
 require_once '../controllers/api/WatchController.php';
 
-$id          = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$id          = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id     = $_SESSION['user_id'] ?? null;
 $playlist_id = isset($_GET['playlist_id']) ? (int)$_GET['playlist_id'] : 0;
 
@@ -406,7 +406,7 @@ $__vdir = function($dir) {
                     <div id="comment-body">
                         <div class="p-4 sm:p-6">
                             <div id="comment-alert"></div>
-                        <form action="<?= base_url('/music/watch?id=' . (int)$id . ($playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : '')) ?>" method="post" class="mb-6"                                hx-post="../api/comment"
+                        <form action="<?= base_url('/music/watch?v=' . (int)$id . ($playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : '')) ?>" method="post" class="mb-6"                                hx-post="../api/comment"
                             hx-target="#comment-list"
                             hx-swap="innerHTML"
                             hx-vals='{"id":"<?= $id ?>","media_type":"music"<?= $playlist_context > 0 ? ',"playlist_id":"' . (int)$playlist_context . '"' : '' ?>}'
@@ -457,7 +457,7 @@ $__vdir = function($dir) {
                         while ($q = $queue_query->fetch_assoc()):
                             $is_pl = ($q['id'] == $id);
                         ?>
-                            <a href="<?= base_url('/music/watch?id=' . (int)$q['id'] . '&playlist_id=' . (int)$playlist_context) ?>"
+                            <a href="<?= base_url('/music/watch?v=' . (int)$q['id'] . '&playlist_id=' . (int)$playlist_context) ?>"
                                 class="flex items-center gap-3 px-2 py-2 rounded-xl transition-all no-underline
                               <?= $is_pl ? 'bg-orange-500/8 border border-orange-500/20' : 'hover:bg-white/[.025] border border-transparent' ?>">
                                 <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 <?= $is_pl ? 'opacity-50' : '' ?>">
@@ -485,7 +485,7 @@ $__vdir = function($dir) {
                         $r_ext = strtolower(pathinfo($r['filename'], PATHINFO_EXTENSION));
                         $r_lbl = $r_ext === 'ogg' ? 'opus' : $r_ext;
                     ?>
-                        <a href="<?= base_url('/music/watch?id=' . (int)$r['id']) ?>"
+                        <a href="<?= base_url('/music/watch?v=' . (int)$r['id']) ?>"
                             class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 p-2 rounded-xl no-underline"
                             title="<?= htmlspecialchars($r['title']) ?>">
                             <div class="w-full lg:w-16 aspect-square lg:h-12 lg:aspect-auto rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">

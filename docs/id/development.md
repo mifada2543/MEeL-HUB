@@ -346,12 +346,12 @@ music ──1:N── playlist_tracks
 
 Setiap modul (video, music, books, drive) mengikuti pola. Halaman diakses via
 **URL bersih** (front controller `router.php` → `modules/core/Router.php`),
-contoh `video/beranda` → `video/index.php`, `music/watch?id=X` → `music/watch.php`:
+contoh `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch.php`:
 
 ```
 [module]/
 ├── index.php          # Katalog / daftar (URL: [module]/beranda)
-├── watch.php          # Player / detail (URL: [module]/watch?id=X)
+├── watch.php          # Player / detail (URL: [module]/watch?v=X)
 ├── upload.php         # Form upload (URL: [module]/upload)
 ├── search_[module].php  # Pencarian (HTMX) (URL: [module]/search)
 ├── load_more.php      # Pagination (HTMX) (URL: [module]/load-more)

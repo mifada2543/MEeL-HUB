@@ -26,7 +26,7 @@ $meelcoin_settings = [
 
 $msg = $_GET['msg'] ?? null;
 
-$all_users = $conn->query("SELECT id, username, role, meelcoin FROM users WHERE role != 'guest' ORDER BY role ASC, username ASC");
+$all_users = $conn->query("SELECT id, username, role, meelcoin FROM users WHERE role NOT IN ('guest', 'admin') ORDER BY role ASC, username ASC");
 $user_list = [];
 if ($all_users) {
     while ($u = $all_users->fetch_assoc()) {
