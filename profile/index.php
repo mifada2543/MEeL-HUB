@@ -133,7 +133,8 @@ if (!$is_guest_profile) {
     <meta property="og:description" content="Profil <?= htmlspecialchars($u['username']) ?> di MEeL - Platform Media Hub Pribadi.">
     <title><?= htmlspecialchars($u['username']) ?> | MEeL</title>
     <?php include '../partials/link.php'; ?>
-    <style>        body {
+    <style>
+        body {
             background-color: var(--meel-bg, #0b0e14);
         }
 
@@ -149,10 +150,11 @@ if (!$is_guest_profile) {
         }
 
         .profile-banner-gradient {
-            background: linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.3) 50%, var(--meel-bg, #0b0e14));
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.3) 50%, var(--meel-bg, #0b0e14));
         }
+
         html[data-theme="light"] .profile-banner-gradient {
-            background: linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(0,0,0,0.08) 50%, var(--meel-bg, #fafafa));
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.08) 50%, var(--meel-bg, #fafafa));
         }
 
         .mfa-switch {
@@ -167,8 +169,15 @@ if (!$is_guest_profile) {
             text-decoration: none;
             transition: opacity 0.2s;
         }
-        .mfa-switch:hover { opacity: 0.85; }
-        .mfa-switch:active { transform: scale(0.97); }
+
+        .mfa-switch:hover {
+            opacity: 0.85;
+        }
+
+        .mfa-switch:active {
+            transform: scale(0.97);
+        }
+
         .mfa-switch:focus-visible {
             outline: 2px solid #a855f7;
             outline-offset: 4px;
@@ -183,8 +192,15 @@ if (!$is_guest_profile) {
             transition: background 0.3s ease;
             flex-shrink: 0;
         }
-        .mfa-track--on  { background: #22c55e; box-shadow: 0 0 10px rgba(34,197,94,0.25); }
-        .mfa-track--off { background: #374151; }
+
+        .mfa-track--on {
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.25);
+        }
+
+        .mfa-track--off {
+            background: #374151;
+        }
 
         .mfa-knob {
             position: absolute;
@@ -194,9 +210,10 @@ if (!$is_guest_profile) {
             height: 20px;
             border-radius: 50%;
             background: #fff;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
             transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
+
         .mfa-track--on .mfa-knob {
             transform: translateX(20px);
         }
@@ -207,8 +224,14 @@ if (!$is_guest_profile) {
             letter-spacing: 0.02em;
             white-space: nowrap;
         }
-        .mfa-label--on  { color: #22c55e; }
-        .mfa-label--off { color: #6b7280; }
+
+        .mfa-label--on {
+            color: #22c55e;
+        }
+
+        .mfa-label--off {
+            color: #6b7280;
+        }
 
         .mfa-label-sub {
             font-size: 9px;
@@ -226,18 +249,22 @@ if (!$is_guest_profile) {
             text-decoration: none;
             cursor: pointer;
         }
+
         .stat-total:hover,
         .stat-video:hover,
         .stat-music:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
         }
+
         .stat-total:hover {
             border-color: rgba(59, 130, 246, 0.5) !important;
         }
+
         .stat-video:hover {
             border-color: rgba(239, 68, 68, 0.5) !important;
         }
+
         .stat-music:hover {
             border-color: rgba(249, 115, 22, 0.5) !important;
         }
@@ -247,24 +274,29 @@ if (!$is_guest_profile) {
             background: rgba(59, 130, 246, 0.08);
             text-decoration: none;
         }
+
         .stat-active-total:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
         }
+
         .stat-active-video {
             border: 1px solid rgba(239, 68, 68, 0.5) !important;
             background: rgba(239, 68, 68, 0.08);
             text-decoration: none;
         }
+
         .stat-active-video:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(239, 68, 68, 0.15);
         }
+
         .stat-active-music {
             border: 1px solid rgba(249, 115, 22, 0.5) !important;
             background: rgba(249, 115, 22, 0.08);
             text-decoration: none;
         }
+
         .stat-active-music:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(249, 115, 22, 0.15);
@@ -331,7 +363,8 @@ if (!$is_guest_profile) {
             position: absolute;
             top: 8px;
             left: 8px;
-            z-index: 2; /* tetap di atas img saat hover (img di-scale & naik layer paint) */
+            z-index: 2;
+            /* tetap di atas img saat hover (img di-scale & naik layer paint) */
             font-size: 8px;
             font-weight: 900;
             letter-spacing: 0.12em;
@@ -373,8 +406,7 @@ if (!$is_guest_profile) {
             text-transform: uppercase;
             letter-spacing: 0.15em;
         }
-
-</style>
+    </style>
     <link rel="stylesheet" href="../assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/../assets/css/shared/light-theme.css') ?>">
 </head>
 
@@ -384,12 +416,19 @@ if (!$is_guest_profile) {
     <div class="max-w-5xl mx-auto mt-10 p-4">
         <div class="flex items-center justify-between mb-4">
             <a href="<?= htmlspecialchars($root) ?>/" class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" title="Kembali ke beranda">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m15 18-6-6 6-6" />
+                </svg>
                 <span class="text-xs font-semibold hidden sm:inline">Beranda</span>
             </a>
-            <a href="<?= htmlspecialchars($root) ?>/profile/notification" class="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" title="Notifikasi">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            </a>
+            <?php if ($is_logged_in && !$is_guest_profile): ?>
+                <a href="<?= htmlspecialchars($root) ?>/profile/notification" class="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" title="Notifikasi">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                    </svg>
+                </a>
+            <?php endif; ?>
         </div>
         <div class="glass rounded-[2.5rem] overflow-hidden shadow-2xl">
             <?php
@@ -419,21 +458,21 @@ if (!$is_guest_profile) {
                     ?>
                         <div class="grid grid-cols-2 gap-3 mb-2">
                             <a href="../profile/edit"
-                               class="bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-                               title="Edit profil dan bio Anda">
+                                class="bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                                title="Edit profil dan bio Anda">
                                 <i data-lucide="edit-3" class="w-4 h-4"></i> Edit Profile
                             </a>
                             <a href="manage"
-                               class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-600/30 hover:border-blue-500/50 px-4 py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-                               title="Kelola konten video dan musik Anda">
+                                class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-600/30 hover:border-blue-500/50 px-4 py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                                title="Kelola konten video dan musik Anda">
                                 <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Kelola Konten
                             </a>
 
                             <a href="../auth/mfa-setup"
-                               class="mfa-switch justify-center"
-                               role="link"
-                               aria-label="MFA: saat ini <?= $_mfa_on ? 'aktif' : 'nonaktif' ?>. Klik untuk kelola."
-                               title="Atur autentikasi dua faktor (MFA)">
+                                class="mfa-switch justify-center"
+                                role="link"
+                                aria-label="MFA: saat ini <?= $_mfa_on ? 'aktif' : 'nonaktif' ?>. Klik untuk kelola."
+                                title="Atur autentikasi dua faktor (MFA)">
                                 <span class="mfa-track <?= $_mfa_on ? 'mfa-track--on' : 'mfa-track--off' ?>">
                                     <span class="mfa-knob"></span>
                                 </span>
@@ -444,9 +483,9 @@ if (!$is_guest_profile) {
                             </a>
 
                             <button type="button" id="theme-toggle" onclick="MEELTheme.toggle()"
-                               class="mfa-switch justify-center cursor-pointer ml-auto"
-                               style="background:none;border:none;padding:0;margin-left:auto;outline:none"
-                               title="Ganti tema tampilan">
+                                class="mfa-switch justify-center cursor-pointer ml-auto"
+                                style="background:none;border:none;padding:0;margin-left:auto;outline:none"
+                                title="Ganti tema tampilan">
                                 <span class="mfa-track mfa-track--off" id="theme-track">
                                     <span id="theme-icon" class="mfa-knob" style="font-size:14px;display:flex;align-items:center;justify-content:center;width:20px;height:20px;line-height:1">🌙</span>
                                 </span>
@@ -457,20 +496,20 @@ if (!$is_guest_profile) {
                             </button>
 
                             <?php if ($_mfa_on): ?>
-                            <button type="button" onclick="showBackupModal()"
+                                <button type="button" onclick="showBackupModal()"
                                     class="bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-400 border border-yellow-600/20 hover:border-yellow-500/40 px-4 py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2"
                                     title="Lihat atau download kode cadangan MFA">
-                                <i data-lucide="key-round" class="w-4 h-4"></i>
-                                Backup Codes
-                            </button>
+                                    <i data-lucide="key-round" class="w-4 h-4"></i>
+                                    Backup Codes
+                                </button>
                             <?php endif; ?>
                         </div>
                     <?php elseif ($is_guest_profile && !$is_logged_in): ?>
                         <div class="flex justify-end mb-2">
                             <button type="button" id="theme-toggle" onclick="MEELTheme.toggle()"
-                               class="mfa-switch justify-center cursor-pointer"
-                               style="background:none;border:none;padding:0;outline:none"
-                               title="Ganti tema tampilan">
+                                class="mfa-switch justify-center cursor-pointer"
+                                style="background:none;border:none;padding:0;outline:none"
+                                title="Ganti tema tampilan">
                                 <span class="mfa-track mfa-track--off" id="theme-track">
                                     <span id="theme-icon" class="mfa-knob" style="font-size:14px;display:flex;align-items:center;justify-content:center;width:20px;height:20px;line-height:1">🌙</span>
                                 </span>
@@ -503,85 +542,85 @@ if (!$is_guest_profile) {
                     </div>
 
                     <?php if (!$is_guest_profile): ?>
-                    <div class="flex gap-4 mt-8">
-                        <a href="?tab=all" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'all' ? 'stat-active-total' : 'stat-total' ?>">
-                            <span class="block text-xl font-bold text-white"><?= $total_uploads ?></span>
-                            <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Total Uploads</span>
-                        </a>
-                        <a href="?tab=video" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'video' ? 'stat-active-video' : 'stat-video' ?>">
-                            <span class="block text-xl font-bold text-white"><?= $total_video ?></span>
-                            <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Videos</span>
-                        </a>
-                        <a href="?tab=music" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'music' ? 'stat-active-music' : 'stat-music' ?>">
-                            <span class="block text-xl font-bold text-white"><?= $total_music ?></span>
-                            <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Music</span>
-                        </a>
-                    </div>
+                        <div class="flex gap-4 mt-8">
+                            <a href="?tab=all" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'all' ? 'stat-active-total' : 'stat-total' ?>">
+                                <span class="block text-xl font-bold text-white"><?= $total_uploads ?></span>
+                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Total Uploads</span>
+                            </a>
+                            <a href="?tab=video" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'video' ? 'stat-active-video' : 'stat-video' ?>">
+                                <span class="block text-xl font-bold text-white"><?= $total_video ?></span>
+                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Videos</span>
+                            </a>
+                            <a href="?tab=music" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'music' ? 'stat-active-music' : 'stat-music' ?>">
+                                <span class="block text-xl font-bold text-white"><?= $total_music ?></span>
+                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Music</span>
+                            </a>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
 
         <?php if (!$is_guest_profile): ?>
-        <main class="mt-8">
-            <?php if (empty($items)): ?>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <div class="empty-state">
-                        <i data-lucide="<?= $active_tab === 'music' ? 'music' : ($active_tab === 'video' ? 'play' : 'inbox') ?>" class="w-10 h-10"></i>
-                        <p><?= $active_tab === 'video' ? 'Belum ada video di sini.' : ($active_tab === 'music' ? 'Belum ada musik di sini.' : 'Belum ada konten di channel ini.') ?></p>
+            <main class="mt-8">
+                <?php if (empty($items)): ?>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div class="empty-state">
+                            <i data-lucide="<?= $active_tab === 'music' ? 'music' : ($active_tab === 'video' ? 'play' : 'inbox') ?>" class="w-10 h-10"></i>
+                            <p><?= $active_tab === 'video' ? 'Belum ada video di sini.' : ($active_tab === 'music' ? 'Belum ada musik di sini.' : 'Belum ada konten di channel ini.') ?></p>
+                        </div>
                     </div>
-                </div>
-            <?php else: ?>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <?php foreach ($items as $item):
-                        $is_music = ($item['type'] ?? $active_tab) === 'music';
-                        $thumb = !empty($item['thumbnail'])
-                            ? ($is_music ? '../music/upload/thumbnail/' : '../video/upload/thumbnail/') . htmlspecialchars($item['thumbnail'])
-                            : ($is_music ? '../assets/img/music0.webp' : '../assets/img/video0.webp');
-                        $watch = base_url(($is_music ? '/music' : '/video') . '/watch?v=' . (int)$item['id']);
-                    ?>
-                        <div class="content-card">
-                            <a href="<?= $watch ?>" class="block card-thumb relative" title="<?= htmlspecialchars($item['title']) ?>">
-                                <span class="type-badge <?= $is_music ? 'music' : 'video' ?>"><?= $is_music ? 'Music' : 'Video' ?></span>
-                                <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($item['title']) ?>" loading="lazy" width="640" height="360">
-                            </a>
-                            <div class="card-body">
-                                <a href="<?= $watch ?>" class="card-title no-underline hover:text-<?= $is_music ? 'orange' : 'red' ?>-400 transition-colors" title="<?= htmlspecialchars($item['title']) ?>">
-                                    <?= htmlspecialchars($item['title']) ?>
+                <?php else: ?>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <?php foreach ($items as $item):
+                            $is_music = ($item['type'] ?? $active_tab) === 'music';
+                            $thumb = !empty($item['thumbnail'])
+                                ? ($is_music ? '../music/upload/thumbnail/' : '../video/upload/thumbnail/') . htmlspecialchars($item['thumbnail'])
+                                : ($is_music ? '../assets/img/music0.webp' : '../assets/img/video0.webp');
+                            $watch = base_url(($is_music ? '/music' : '/video') . '/watch?v=' . (int)$item['id']);
+                        ?>
+                            <div class="content-card">
+                                <a href="<?= $watch ?>" class="block card-thumb relative" title="<?= htmlspecialchars($item['title']) ?>">
+                                    <span class="type-badge <?= $is_music ? 'music' : 'video' ?>"><?= $is_music ? 'Music' : 'Video' ?></span>
+                                    <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($item['title']) ?>" loading="lazy" width="640" height="360">
                                 </a>
-                                <div class="card-meta">
-                                    <?php if ($is_music): ?>
-                                        <span><?= htmlspecialchars($item['artist'] ?? 'Unknown') ?></span>
-                                        <span>•</span>
-                                        <span><?= number_format($item['views'] ?? 0) ?> views</span>
-                                    <?php else: ?>
-                                        <span><?= number_format($item['views'] ?? 0) ?> views</span>
-                                        <span>•</span>
-                                        <span><?= date('d M Y', strtotime($item['upload_date'])) ?></span>
-                                    <?php endif; ?>
+                                <div class="card-body">
+                                    <a href="<?= $watch ?>" class="card-title no-underline hover:text-<?= $is_music ? 'orange' : 'red' ?>-400 transition-colors" title="<?= htmlspecialchars($item['title']) ?>">
+                                        <?= htmlspecialchars($item['title']) ?>
+                                    </a>
+                                    <div class="card-meta">
+                                        <?php if ($is_music): ?>
+                                            <span><?= htmlspecialchars($item['artist'] ?? 'Unknown') ?></span>
+                                            <span>•</span>
+                                            <span><?= number_format($item['views'] ?? 0) ?> views</span>
+                                        <?php else: ?>
+                                            <span><?= number_format($item['views'] ?? 0) ?> views</span>
+                                            <span>•</span>
+                                            <span><?= date('d M Y', strtotime($item['upload_date'])) ?></span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
 
-                    <?php if ($has_more): ?>
-                    <button type="button" id="channel-more-area"
-                        class="col-span-full h-16 flex items-center justify-center gap-2 bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl cursor-pointer hover:border-white/10 hover:bg-white/[.03] transition-all group"
-                        hx-get="<?= htmlspecialchars('channel-more?u=' . rawurlencode($u['username']) . '&tab=' . $active_tab . '&offset=' . $initial_batch) ?>"
-                        hx-target="#channel-more-area"
-                        hx-swap="outerHTML"
-                        aria-label="Muat lebih banyak konten">
-                        <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300 group-hover:text-white transition-colors">
-                            <i data-lucide="chevrons-down" class="w-3.5 h-3.5 inline-block -mr-1 mr-1.5"></i>
-                            Muat Lebih Banyak <?= $active_tab === 'all' ? 'Konten' : ($active_tab === 'video' ? 'Video' : 'Musik') ?>
-                        </span>
-                    </button>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
-        </main>
+                        <?php if ($has_more): ?>
+                            <button type="button" id="channel-more-area"
+                                class="col-span-full h-16 flex items-center justify-center gap-2 bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl cursor-pointer hover:border-white/10 hover:bg-white/[.03] transition-all group"
+                                hx-get="<?= htmlspecialchars('channel-more?u=' . rawurlencode($u['username']) . '&tab=' . $active_tab . '&offset=' . $initial_batch) ?>"
+                                hx-target="#channel-more-area"
+                                hx-swap="outerHTML"
+                                aria-label="Muat lebih banyak konten">
+                                <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300 group-hover:text-white transition-colors">
+                                    <i data-lucide="chevrons-down" class="w-3.5 h-3.5 inline-block -mr-1 mr-1.5"></i>
+                                    Muat Lebih Banyak <?= $active_tab === 'all' ? 'Konten' : ($active_tab === 'video' ? 'Video' : 'Musik') ?>
+                                </span>
+                            </button>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </main>
         <?php endif; ?>
-    </div>    <?php include '../partials/footer.php'; ?>
+    </div> <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
     <script src="../assets/js/shared/download-backup-codes.js"></script>
     <script src="../assets/js/compatibilitas/htmx.min.js"></script>
@@ -589,7 +628,7 @@ if (!$is_guest_profile) {
     <script>
         lucide.createIcons();
 
-        (function(){
+        (function() {
             if (typeof MEELTheme !== 'undefined') {
                 MEELTheme.init({
                     isLoggedIn: <?= json_encode(isset($_SESSION['username'])) ?>,
@@ -602,10 +641,10 @@ if (!$is_guest_profile) {
             Swal.fire({
                 title: 'Kode Cadangan MFA',
                 html: '<div style="font-size:12px;color:#9ca3af;margin-bottom:12px">Masukkan <strong style="color:#e5e7eb">password</strong> untuk verifikasi. Kode cadangan LAMA akan <strong style="color:#fbbf24">dinonaktifkan</strong> dan diganti dengan yang baru.</div>' +
-                      '<div style="position:relative">' +
-                      '  <i data-lucide="lock" style="position:absolute;left:14px;top:13px;width:16px;height:16px;color:#6b7280"></i>' +
-                      '  <input id="backup-pwd-input" type="password" placeholder="Password Anda" style="width:100%;background:#0b0e14;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 12px 12px 42px;color:#fff;font-size:14px;outline:none">' +
-                      '</div>',
+                    '<div style="position:relative">' +
+                    '  <i data-lucide="lock" style="position:absolute;left:14px;top:13px;width:16px;height:16px;color:#6b7280"></i>' +
+                    '  <input id="backup-pwd-input" type="password" placeholder="Password Anda" style="width:100%;background:#0b0e14;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 12px 12px 42px;color:#fff;font-size:14px;outline:none">' +
+                    '</div>',
                 focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: 'VERIFIKASI',
@@ -636,61 +675,71 @@ if (!$is_guest_profile) {
             }).then(function(result) {
                 if (!result.isConfirmed || !result.value) return;
 
-                                fetch('../system/mfa', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=generate_backup&password=' + encodeURIComponent(result.value) + '&csrf_token=<?= $_SESSION['csrf_token'] ?>'
-                })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.status === 'success' && data.codes) {
-                        var codesHtml = data.codes.map(function(c) {
-                            return '<div style="font-family:monospace;background:rgba(0,0,0,0.3);padding:8px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);color:#d1d5db;text-align:center;font-size:13px;letter-spacing:0.15em;user-select:all">' + c + '</div>';
-                        }).join('');
+                fetch('../system/mfa', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: 'action=generate_backup&password=' + encodeURIComponent(result.value) + '&csrf_token=<?= $_SESSION['csrf_token'] ?>'
+                    })
+                    .then(function(r) {
+                        return r.json();
+                    })
+                    .then(function(data) {
+                        if (data.status === 'success' && data.codes) {
+                            var codesHtml = data.codes.map(function(c) {
+                                return '<div style="font-family:monospace;background:rgba(0,0,0,0.3);padding:8px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);color:#d1d5db;text-align:center;font-size:13px;letter-spacing:0.15em;user-select:all">' + c + '</div>';
+                            }).join('');
 
-                        Swal.fire({
-                            title: 'Kode Cadangan Baru',
-                            html: '<div style="font-size:11px;color:#fbbf24;margin-bottom:12px;font-weight:700">⚠️ Simpan di tempat aman. Kode TIDAK bisa ditampilkan lagi!</div>' +
-                                  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">' + codesHtml + '</div>' +
-                                  '<button onclick="downloadBackupCodes()" style="background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.2);padding:10px 20px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'rgba(251,191,36,0.2)\';" onmouseout="this.style.background=\'rgba(251,191,36,0.1)\'">' +
-                                  '  <i data-lucide="download" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px"></i> Download (.txt)' +
-                                  '</button>',
-                            showConfirmButton: true,
-                            confirmButtonText: 'SIMPAN',
-                            background: '#141820',
-                            color: '#fff',
-                            didOpen: function() { lucide.createIcons(); },
-                            customClass: {
-                                popup: 'border border-yellow-600/25 rounded-2xl shadow-2xl',
-                                title: 'text-sm font-black uppercase tracking-wider pt-4 text-yellow-400',
-                                htmlContainer: 'mt-1 mb-4',
-                                confirmButton: 'bg-yellow-600 hover:bg-yellow-500 text-black text-xs font-black uppercase tracking-wider py-2.5 px-6 rounded-xl transition-all border-none cursor-pointer'
-                            }
-                        });
+                            Swal.fire({
+                                title: 'Kode Cadangan Baru',
+                                html: '<div style="font-size:11px;color:#fbbf24;margin-bottom:12px;font-weight:700">⚠️ Simpan di tempat aman. Kode TIDAK bisa ditampilkan lagi!</div>' +
+                                    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">' + codesHtml + '</div>' +
+                                    '<button onclick="downloadBackupCodes()" style="background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.2);padding:10px 20px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'rgba(251,191,36,0.2)\';" onmouseout="this.style.background=\'rgba(251,191,36,0.1)\'">' +
+                                    '  <i data-lucide="download" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px"></i> Download (.txt)' +
+                                    '</button>',
+                                showConfirmButton: true,
+                                confirmButtonText: 'SIMPAN',
+                                background: '#141820',
+                                color: '#fff',
+                                didOpen: function() {
+                                    lucide.createIcons();
+                                },
+                                customClass: {
+                                    popup: 'border border-yellow-600/25 rounded-2xl shadow-2xl',
+                                    title: 'text-sm font-black uppercase tracking-wider pt-4 text-yellow-400',
+                                    htmlContainer: 'mt-1 mb-4',
+                                    confirmButton: 'bg-yellow-600 hover:bg-yellow-500 text-black text-xs font-black uppercase tracking-wider py-2.5 px-6 rounded-xl transition-all border-none cursor-pointer'
+                                }
+                            });
 
-                                                window._lastBackupCodes = data.codes;
-                        window._meelBackupCodes = data.codes;
-                    } else {
+                            window._lastBackupCodes = data.codes;
+                            window._meelBackupCodes = data.codes;
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                text: data.message || 'Terjadi kesalahan.',
+                                background: '#141820',
+                                color: '#fff',
+                                customClass: {
+                                    popup: 'border border-red-600/25 rounded-2xl shadow-2xl'
+                                }
+                            });
+                        }
+                    })
+                    .catch(function() {
                         Swal.fire({
                             icon: 'error',
-                            title: 'Gagal',
-                            text: data.message || 'Terjadi kesalahan.',
+                            title: 'Error',
+                            text: 'Gagal terhubung ke server.',
                             background: '#141820',
                             color: '#fff',
-                            customClass: { popup: 'border border-red-600/25 rounded-2xl shadow-2xl' }
+                            customClass: {
+                                popup: 'border border-red-600/25 rounded-2xl shadow-2xl'
+                            }
                         });
-                    }
-                })
-                .catch(function() {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Gagal terhubung ke server.',
-                        background: '#141820',
-                        color: '#fff',
-                        customClass: { popup: 'border border-red-600/25 rounded-2xl shadow-2xl' }
                     });
-                });
             });
         }
 
