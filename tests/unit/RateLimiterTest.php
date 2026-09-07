@@ -172,10 +172,11 @@ class RateLimiterTest extends TestCase
         $ref = new ReflectionClass(RateLimiter::class);
         $prop = $ref->getProperty('storageDir');
         $prop->setAccessible(true);
-        $prop->setValue('/nonexistent/path/');
+        $prop->setValue(__FILE__);
 
         
         $result = RateLimiter::check('fallback_user', 'api', 'user');
         $this->assertTrue($result['allowed']);
+        $this->assertSame(60, $result['remaining']);
     }
 }
