@@ -175,6 +175,8 @@ if (isset($_POST['save_meelcoin_settings'])) {
         'meelcoin_enabled'       => '0',
         'meelcoin_upload_cost'   => '5',
         'meelcoin_advanced_cost' => '10',
+        'meelcoin_transcode_user_cost'   => '5',
+        'meelcoin_transcode_member_cost' => '2',
         'meelcoin_user_max'      => '25',
         'meelcoin_user_refill'   => '15',
         'meelcoin_member_max'    => '50',
@@ -184,7 +186,7 @@ if (isset($_POST['save_meelcoin_settings'])) {
 
     foreach ($fields as $key => $default) {
         $value = $_POST[$key] ?? $default;
-        if (in_array($key, ['meelcoin_upload_cost', 'meelcoin_advanced_cost', 'meelcoin_user_max', 'meelcoin_user_refill', 'meelcoin_member_max', 'meelcoin_member_refill', 'meelcoin_refill_hours'])) {
+        if (in_array($key, ['meelcoin_upload_cost', 'meelcoin_advanced_cost', 'meelcoin_transcode_user_cost', 'meelcoin_transcode_member_cost', 'meelcoin_user_max', 'meelcoin_user_refill', 'meelcoin_member_max', 'meelcoin_member_refill', 'meelcoin_refill_hours'])) {
             $value = max(0, (int)$value);
         }
         set_site_setting($conn, $key, (string)$value);

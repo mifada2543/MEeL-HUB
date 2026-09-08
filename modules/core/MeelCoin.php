@@ -14,6 +14,8 @@ class MeelCoin
             'meelcoin_enabled'       => '1',
             'meelcoin_upload_cost'   => '5',
             'meelcoin_advanced_cost' => '10',
+            'meelcoin_transcode_user_cost'   => '5',
+            'meelcoin_transcode_member_cost' => '2',
             'meelcoin_user_max'      => '25',
             'meelcoin_user_refill'   => '15',
             'meelcoin_member_max'    => '50',
@@ -48,6 +50,12 @@ class MeelCoin
     {
         $s = self::loadSettings($conn);
         return (int)($type === 'advanced' ? $s['meelcoin_advanced_cost'] : $s['meelcoin_upload_cost']);
+    }
+
+    public static function getTranscodeCost(\mysqli $conn, string $role): int
+    {
+        $s = self::loadSettings($conn);
+        return (int)($role === 'member' ? $s['meelcoin_transcode_member_cost'] : $s['meelcoin_transcode_user_cost']);
     }
 
     public static function getMax(\mysqli $conn, string $role): int

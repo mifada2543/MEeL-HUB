@@ -17,6 +17,8 @@ $meelcoin_settings = [
     'meelcoin_enabled'       => get_site_setting($conn, 'meelcoin_enabled', '1'),
     'meelcoin_upload_cost'   => get_site_setting($conn, 'meelcoin_upload_cost', '5'),
     'meelcoin_advanced_cost' => get_site_setting($conn, 'meelcoin_advanced_cost', '10'),
+    'meelcoin_transcode_user_cost'   => get_site_setting($conn, 'meelcoin_transcode_user_cost', '5'),
+    'meelcoin_transcode_member_cost' => get_site_setting($conn, 'meelcoin_transcode_member_cost', '2'),
     'meelcoin_user_max'      => get_site_setting($conn, 'meelcoin_user_max', '25'),
     'meelcoin_user_refill'   => get_site_setting($conn, 'meelcoin_user_refill', '15'),
     'meelcoin_member_max'    => get_site_setting($conn, 'meelcoin_member_max', '50'),
@@ -121,6 +123,22 @@ if ($target_user_id > 0) {
                                 </div>
                             </div>
 
+                            <div style="padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
+                                <div class="admin-label" style="margin-bottom:12px;">Biaya Transcode</div>
+                                <div style="display:flex;flex-direction:column;gap:12px;">
+                                    <div class="admin-field">
+                                        <label class="admin-label">User (coin)</label>
+                                        <input type="number" name="meelcoin_transcode_user_cost" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_transcode_user_cost']) ?>" min="0" class="admin-input">
+                                    </div>
+                                    <div class="admin-field">
+                                        <label class="admin-label">Member (coin)</label>
+                                        <input type="number" name="meelcoin_transcode_member_cost" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_transcode_member_cost']) ?>" min="0" class="admin-input">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
                             <div style="padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
                                 <div class="admin-label" style="margin-bottom:12px;">Refill Settings</div>
                                 <div style="display:flex;flex-direction:column;gap:12px;">

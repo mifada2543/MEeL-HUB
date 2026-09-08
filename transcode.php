@@ -9,6 +9,7 @@ require_once 'auth/auth.php';
 require_once 'auth/config.php';
 require_once 'modules/core/Transcoder.php';
 require_once 'modules/core/BrowserProgressObserver.php';
+require_once 'modules/core/MeelCoin.php';
 
 
 $transcoder      = new Transcoder($conn, $_SESSION['user_id'], new BrowserProgressObserver());
@@ -35,13 +36,33 @@ if (isset($_POST['start_transcode'])) {
             $title_row  = $stmt_title->get_result()->fetch_assoc();
             $video_title = $title_row['title'] ?? "Video #$video_id";
 
-            $result = $transcoder->transcodeVideo($video_id, $format);
+            $coin_spent = false;
+            $coin_cost  = 0;
+            if (MeelCoin::isEnabled($conn)) {
+                $user_role = $_SESSION['user_role'] ?? 'user';
+                $coin_cost = MeelCoin::getTranscodeCost($conn, $user_role);
+                if ($coin_cost > 0) {
+                    [$ok, $err] = MeelCoin::spend($conn, (int)$_SESSION['user_id'], $coin_cost, 'transcode');
+                    if (!$ok) {
+                        $alert_message = $err;
+                    } else {
+                        $coin_spent = true;
+                    }
+                }
+            }
 
-            if ($result['status'] === 'success') {
-                $download_link   = $result['download_link'];
-                $output_filename = $result['output_filename'];
-            } else {
-                $alert_message = $result['msg'];
+            if (empty($alert_message)) {
+                $result = $transcoder->transcodeVideo($video_id, $format);
+
+                if ($result['status'] === 'success') {
+                    $download_link   = $result['download_link'];
+                    $output_filename = $result['output_filename'];
+                } else {
+                    $alert_message = $result['msg'];
+                    if ($coin_spent) {
+                        MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'transcode_refund');
+                    }
+                }
             }
         }
     } 
