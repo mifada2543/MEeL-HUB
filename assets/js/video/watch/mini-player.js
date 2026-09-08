@@ -507,8 +507,12 @@ function attachMiniPlayerVideoCardListeners(e) {
     if (e) {
       (e.classList.remove("mini-player-mode"),
         e.style.removeProperty("aspect-ratio"),
+        e.style.removeProperty("max-width"),
+        e.style.removeProperty("max-height"),
         e.style.removeProperty("height"),
         e.style.removeProperty("width"),
+        e.style.removeProperty("margin-left"),
+        e.style.removeProperty("margin-right"),
         e.style.removeProperty("position"),
         (e.style.aspectRatio = "16 / 9"),
         player?.elements?.controls &&
@@ -545,9 +549,7 @@ function attachMiniPlayerVideoCardListeners(e) {
           videoElement.videoWidth &&
           videoElement.videoHeight
         ) {
-          const t = videoElement.videoWidth,
-            n = videoElement.videoHeight;
-          e && (e.style.aspectRatio = `${t} / ${n}`);
+          window.applyMeelVideoAspect?.(e, videoElement.videoWidth, videoElement.videoHeight);
         }
         const t = document.getElementById("desc-text"),
           n = document.getElementById("btn-read-more");
@@ -577,6 +579,9 @@ function attachMiniPlayerVideoCardListeners(e) {
         videoWrapper.classList.add("mini-player-mode"),
         shell.insertBefore(videoWrapper, shell.firstChild),
         applyMiniPlayerPos(shell);
+      if (videoElement && videoElement.videoWidth && videoElement.videoHeight) {
+        videoWrapper.style.aspectRatio = `${videoElement.videoWidth} / ${videoElement.videoHeight}`;
+      }
       const l = document.getElementById("video-glow-canvas");
       (l && ((l.style.display = "none"), l.classList.remove("glow-active")),
         glowRAF && (cancelAnimationFrame(glowRAF), (glowRAF = null)),

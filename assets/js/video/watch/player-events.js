@@ -23,6 +23,7 @@ function setupMeelPlayerEvents() {
       wrapper.style.marginRight = "";
     }
   }
+  window.applyMeelVideoAspect = applyMeelVideoAspect;
   function a() {
     const e = document.getElementById("main-video-wrapper"),
       t = videoElement;
