@@ -103,6 +103,7 @@ final class MeelRouter
         'api/server-stats-sse'   => ['handler' => 'controllers/api/server_stats_sse.php',  'script' => '/controllers/api/server_stats_sse.php'],
         'api/notification'       => ['handler' => 'controllers/api/notification.php',      'script' => '/controllers/api/notification.php'],
         'api/chat'               => ['handler' => 'controllers/api/chat.php',              'script' => '/controllers/api/chat.php'],
+        'api/meelcoin'           => ['handler' => 'controllers/api/meelcoin.php',           'script' => '/controllers/api/meelcoin.php'],
         'system/mfa'             => ['handler' => 'controllers/system/mfa.php',            'script' => '/controllers/system/mfa.php'],
     ];
 

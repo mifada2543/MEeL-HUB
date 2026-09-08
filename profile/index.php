@@ -3,6 +3,8 @@ require_once '../modules/auth/helpers/session.php';
 meel_boot_session();
 require_once '../auth/config.php';
 require_once '../modules/media/ProfileRepository.php';
+require_once '../modules/core/MeelCoin.php';
+require_once '../modules/auth/helpers/user.php';
 $back_url = '../';
 $is_logged_in = isset($_SESSION['user_id']);
 $is_guest_profile = false;
@@ -94,6 +96,28 @@ if (empty($target_user)) {
 
     $total_uploads = $total_video + $total_music;
     $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
+}
+
+// MEeLCoin data (hanya untuk profil sendiri)
+$coin_enabled = false;
+$coin_balance = 0;
+$coin_max = 0;
+$coin_countdown = 0;
+$coin_refill_hours = 5;
+$coin_is_owner = $is_logged_in && !empty($u['id']) && ($_SESSION['username'] === $u['username']);
+
+if ($coin_is_owner) {
+    $user_role = get_user_role($conn, (int)$_SESSION['user_id']);
+    $coin_enabled = MeelCoin::isEnabled($conn);
+    if ($coin_enabled) {
+        if ($user_role !== 'admin') {
+            MeelCoin::refill($conn, (int)$_SESSION['user_id'], $user_role);
+            $coin_balance = MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
+            $coin_max = MeelCoin::getMax($conn, $user_role);
+            $coin_countdown = MeelCoin::getRefillCountdown($conn, (int)$_SESSION['user_id'], $user_role);
+        }
+        $coin_refill_hours = MeelCoin::getRefillHours($conn);
+    }
 }
 
 // Tab konten: all | video | music (default all — halaman profil sekaligus channel)
@@ -385,6 +409,104 @@ if (!$is_guest_profile) {
             border: 1px solid rgba(249, 115, 22, 0.4);
         }
 
+        .coin-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: rgba(250, 204, 21, 0.08);
+            border: 1px solid rgba(250, 204, 21, 0.15);
+            font-size: 11px;
+            font-weight: 700;
+            color: #facc15;
+            white-space: nowrap;
+            transition: background 0.2s, border-color 0.2s;
+            user-select: none;
+        }
+
+        .coin-indicator:hover {
+            background: rgba(250, 204, 21, 0.12);
+            border-color: rgba(250, 204, 21, 0.25);
+        }
+
+        html[data-theme="light"] .coin-indicator {
+            background: rgba(250, 204, 21, 0.1);
+            border: 1px solid rgba(250, 204, 21, 0.2);
+            color: #b45309;
+        }
+
+        html[data-theme="light"] .coin-indicator:hover {
+            background: rgba(250, 204, 21, 0.15);
+            border-color: rgba(250, 204, 21, 0.35);
+        }
+
+        .coin-indicator .coin-icon {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .coin-indicator .coin-balance {
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
+
+        .coin-indicator .coin-sep {
+            color: rgba(250, 204, 21, 0.35);
+            font-weight: 400;
+        }
+
+        html[data-theme="light"] .coin-indicator .coin-sep {
+            color: rgba(180, 83, 9, 0.35);
+        }
+
+        .coin-indicator .coin-countdown {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding-left: 6px;
+            margin-left: 2px;
+            border-left: 1px solid rgba(250, 204, 21, 0.2);
+            font-size: 10px;
+            font-weight: 600;
+            color: rgba(250, 204, 21, 0.7);
+            font-variant-numeric: tabular-nums;
+        }
+
+        html[data-theme="light"] .coin-indicator .coin-countdown {
+            border-left-color: rgba(180, 83, 9, 0.2);
+            color: rgba(180, 83, 9, 0.7);
+        }
+
+        .coin-indicator .coin-countdown svg {
+            width: 10px;
+            height: 10px;
+            opacity: 0.7;
+        }
+
+        .coin-indicator.coin-maxed .coin-countdown {
+            color: #22c55e;
+            border-left-color: rgba(34, 197, 94, 0.2);
+        }
+
+        html[data-theme="light"] .coin-indicator.coin-maxed .coin-countdown {
+            color: #16a34a;
+            border-left-color: rgba(22, 163, 74, 0.2);
+        }
+
+        .coin-indicator.coin-admin {
+            background: rgba(59, 130, 246, 0.08);
+            border-color: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+
+        html[data-theme="light"] .coin-indicator.coin-admin {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.2);
+            color: #2563eb;
+        }
+
         .empty-state {
             grid-column: 1 / -1;
             padding: 60px 20px;
@@ -421,6 +543,35 @@ if (!$is_guest_profile) {
                 </svg>
                 <span class="text-xs font-semibold hidden sm:inline">Beranda</span>
             </a>
+            <?php if ($coin_enabled && $coin_is_owner): ?>
+                <div class="coin-indicator <?= ($u['role'] === 'admin') ? 'coin-admin' : ($coin_balance >= $coin_max ? 'coin-maxed' : '') ?>"
+                     id="coin-indicator"
+                     data-countdown="<?= (int)$coin_countdown ?>"
+                     data-max="<?= ($u['role'] === 'admin') ? -1 : (int)$coin_max ?>"
+                     data-role="<?= htmlspecialchars($u['role']) ?>"
+                     title="MEeLCoin saldo Anda">
+                    <svg class="coin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v12M8 10h8M8 14h8"/>
+                    </svg>
+                    <span class="coin-balance">
+                        <?php if ($u['role'] === 'admin'): ?>
+                            ∞
+                        <?php else: ?>
+                            <span id="coin-current"><?= (int)$coin_balance ?></span><span class="coin-sep">/</span><span id="coin-max"><?= (int)$coin_max ?></span>
+                        <?php endif; ?>
+                    </span>
+                    <?php if ($u['role'] !== 'admin'): ?>
+                        <span class="coin-countdown" id="coin-countdown-wrap">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            <span id="coin-countdown"><?= $coin_countdown > 0 ? gmdate('H:i:s', $coin_countdown) : 'Siap' ?></span>
+                        </span>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
             <?php if ($is_logged_in && !$is_guest_profile): ?>
                 <a href="<?= htmlspecialchars($root) ?>/profile/notification" class="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" title="Notifikasi">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -634,6 +785,75 @@ if (!$is_guest_profile) {
                     isLoggedIn: <?= json_encode(isset($_SESSION['username'])) ?>,
                     csrfToken: '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>'
                 });
+            }
+        })();
+
+        // MEeLCoin real-time countdown
+        (function() {
+            var el = document.getElementById('coin-indicator');
+            if (!el) return;
+
+            var countdownEl = document.getElementById('coin-countdown');
+            var countdownWrap = document.getElementById('coin-countdown-wrap');
+            var currentEl = document.getElementById('coin-current');
+            var maxEl = document.getElementById('coin-max');
+            var role = el.getAttribute('data-role');
+            if (role === 'admin') return;
+
+            var remaining = parseInt(el.getAttribute('data-countdown'), 10) || 0;
+            var maxCoins = parseInt(el.getAttribute('data-max'), 10) || 0;
+            var userId = <?= json_encode((int)($_SESSION['user_id'] ?? 0)) ?>;
+            var interval = null;
+
+            function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+            function formatTime(s) {
+                var h = Math.floor(s / 3600);
+                var m = Math.floor((s % 3600) / 60);
+                var sec = s % 60;
+                if (h > 0) return pad(h) + ':' + pad(m) + ':' + pad(sec);
+                return pad(m) + ':' + pad(sec);
+            }
+
+            function tick() {
+                if (remaining <= 0) {
+                    if (interval) clearInterval(interval);
+                    fetchBalance();
+                    return;
+                }
+                remaining--;
+                if (countdownEl) countdownEl.textContent = formatTime(remaining);
+            }
+
+            function fetchBalance() {
+                fetch('<?= htmlspecialchars(base_url('/api/meelcoin')) ?>?user_id=' + userId)
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.enabled && !data.is_admin) {
+                            if (currentEl) currentEl.textContent = data.balance;
+                            if (maxEl) maxEl.textContent = data.max;
+
+                            if (data.balance >= data.max) {
+                                el.classList.add('coin-maxed');
+                                remaining = 0;
+                                if (interval) { clearInterval(interval); interval = null; }
+                                if (countdownEl) countdownEl.textContent = 'Siap';
+                            } else {
+                                el.classList.remove('coin-maxed');
+                                remaining = data.countdown || 0;
+                                if (countdownEl) countdownEl.textContent = remaining > 0 ? formatTime(remaining) : 'Siap';
+                                if (remaining > 0 && !interval) {
+                                    interval = setInterval(tick, 1000);
+                                }
+                            }
+                        }
+                    })
+                    .catch(function() {});
+            }
+
+            if (remaining > 0 && countdownEl) {
+                countdownEl.textContent = formatTime(remaining);
+                interval = setInterval(tick, 1000);
             }
         })();
 
