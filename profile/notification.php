@@ -47,7 +47,7 @@ $ICONS = [
 <html lang="id">
 <head>
     <?php
-    $_META_TITLE = 'Notifikasi — MEeL';
+    $_META_TITLE = 'Notifikasi | MEeL';
     include '../partials/link.php';
     ?>
     <style>

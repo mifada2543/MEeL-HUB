@@ -58,7 +58,7 @@ if (isset($_POST['upload'])) {
                     $new_balance = MeelCoin::getBalance($conn, $user_id);
                     Notification::create($conn, $user_id, 'meelcoin',
                         'Penggunaan MEeLCoin',
-                        'Upload video berhasil — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
+                        'Upload video "' . htmlspecialchars(trim($_POST['title'])) . '" — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
                     );
                 }
             }
