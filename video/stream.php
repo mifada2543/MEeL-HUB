@@ -13,7 +13,4 @@ if ($f === '') {
     exit('Parameter f wajib diisi.');
 }
 
-meel_serve_media_file('video', $f, [
-    'hls_gate' => true,
-    'hls_gate_allow_empty_referer' => true,
-]);
+meel_serve_media_file('video', $f, ['hls_gate' => true]);
