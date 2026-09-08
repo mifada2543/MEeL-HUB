@@ -9,18 +9,31 @@ require_once __DIR__ . '/../../modules/core/Notification.php';
 header('Content-Type: application/json; charset=utf-8');
 
 if (empty($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Unauthorized']);
+    $action = $_GET['action'] ?? $_POST['action'] ?? '';
+    if (in_array($action, ['mark_read', 'mark_all_read', 'delete', 'delete_all'], true)) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    if ($action === 'unread_count') {
+        echo json_encode(['count' => 0]);
+        exit;
+    }
+    if ($action === 'list') {
+        echo json_encode(['ok' => true, 'list' => [], 'count' => 0]);
+        exit;
+    }
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid action']);
     exit;
 }
 
 $userId = (int)$_SESSION['user_id'];
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-$readActions = ['unread_count', 'list'];
 $writeActions = ['mark_read', 'mark_all_read', 'delete', 'delete_all'];
 
-if (in_array($action, $writeActions)) {
+if (in_array($action, $writeActions, true)) {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
         echo json_encode(['error' => 'Method not allowed']);
