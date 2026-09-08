@@ -295,20 +295,39 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
     
     
     if (!empty($opts['hls_gate']) && (str_starts_with($relPath, 'video/') || str_contains($relPath, '/video/'))) {
-        $referer = $_SERVER['HTTP_REFERER'] ?? '';
         $host    = $_SERVER['HTTP_HOST'] ?? '';
-        $refOk   = false;
-        if ($referer !== '' && $host !== '') {
+        $hostOk  = ($host !== '');
+        $referer = $_SERVER['HTTP_REFERER'] ?? '';
+
+        // Default: belum tentu boleh — ditentukan oleh referensi yang datang.
+        $allowed = false;
+
+        // 1) Request dari halaman MEeL video (browser/HLS.js/Plyr).
+        if ($hostOk && $referer !== '') {
             $parts = parse_url($referer);
-            $hostNorm = strtolower(parse_url('http://' . $host, PHP_URL_HOST) ?: $host);
-            if ($parts && isset($parts['host']) && strtolower($parts['host']) === $hostNorm) {
-                $refPath = $parts['path'] ?? '';
-                if (preg_match('#/video(?:/(?:watch(?:\.php)?|index(?:\.php)?|beranda))?(?:[?\#]|/?$)#i', $refPath)) {
-                    $refOk = true;
+            if ($parts && isset($parts['host'])) {
+                $refHost = strtolower($parts['host']);
+                $hostNorm = strtolower(parse_url('http://' . $host, PHP_URL_HOST) ?: $host);
+                if ($refHost === $hostNorm) {
+                    $refPath = $parts['path'] ?? '';
+                    if (preg_match('#^/video(?:/(?:watch(?:\.php)?|index(?:\.php)?|beranda))?(?:\?|#|$)#i', $refPath)) {
+                        $allowed = true;
+                    }
                 }
             }
         }
-        if (!$refOk) {
+
+        // 2) Izinkan external player yang tidak mengirim Referer sama sekali
+        //    (MPV, ffplay, CLI, embed player pihak ketiga yang gekonfigurasi).
+        //    Ini tetap aman karena akses tetap melewati endpoint kontrol ini,
+        //    file hanya tersedia untuk pola path yang diizinkan.
+        if (!$allowed && isset($opts['hls_gate_allow_empty_referer']) && $opts['hls_gate_allow_empty_referer']) {
+            $allowed = true;
+        }
+
+        // 3) Empty Referer dari host berbeda tetap ditolak (hotlink murni).
+
+        if (!$allowed) {
             $script = $_SERVER['SCRIPT_NAME'] ?? '';
             $basePath = rtrim(dirname(dirname($script)), '/');
             header('Location: ' . $basePath . '/err/?code=denied');
