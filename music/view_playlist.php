@@ -243,37 +243,8 @@ $__v = function($f) {
     <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= $__v('assets/css/music/' . $__f) ?>">
     <?php endforeach; ?>
     <link href="../assets/css/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/music/playlist.css?v=<?= filemtime(__DIR__ . '/../assets/css/music/playlist.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js"></script>
-    <style>        .artist-dropdown-active #library-container > main {
-            position: relative;
-            z-index: 10;
-            filter: blur(4px);
-            opacity: 0.45;
-            pointer-events: none !important;
-            user-select: none !important;
-        }
-        .artist-dropdown-active #library-container > aside {
-            position: relative;
-            z-index: 50;
-        }
-        .artist-dropdown-active #library-container > aside *,
-        .artist-dropdown-active #library-container > aside *::before,
-        .artist-dropdown-active #library-container > aside *::after {
-            pointer-events: auto;
-        }
-        #mini-player-index {
-            cursor: default !important;
-        }
-        #mini-player-index img,
-        .mp-thumbnail {
-            cursor: pointer !important;
-            transition: transform 0.2s ease;
-        }
-        #mini-player-index img:hover,
-        .mp-thumbnail:hover {
-            transform: scale(1.05);
-        }
-</style>
 </head>
 
 <body class="text-gray-400 min-h-screen">

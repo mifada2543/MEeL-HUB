@@ -325,55 +325,7 @@ $__vdir = function($dir) {
                     </button>
                 </div>
 
-                <script>                    function toggleDescriptionMusic() {
-                        const descText = document.getElementById('desc-text-music');
-                        const btn = document.getElementById('btn-read-more-music');
-
-                        if (descText.classList.contains('line-clamp-3')) {
-                            descText.classList.remove('line-clamp-3');
-                            btn.textContent = 'Lebih Sedikit';
-                        } else {
-                            descText.classList.add('line-clamp-3');
-                            btn.textContent = 'Selengkapnya';
-                        }
-                    }
-
-                    function checkDescriptionLengthMusic() {
-                        const descText = document.getElementById('desc-text-music');
-                        const btn = document.getElementById('btn-read-more-music');
-
-                        if (descText && btn) {
-                            setTimeout(() => {
-                                if (!descText.classList.contains('line-clamp-3')) {
-                                    btn.classList.remove('hidden');
-                                    return;
-                                }
-
-                                const isOverflowing = descText.scrollHeight > descText.offsetHeight;
-                                if (isOverflowing) {
-                                    btn.classList.remove('hidden');
-                                } else {
-                                    btn.classList.add('hidden');
-                                }
-                            }, 50);
-                        }
-                    }
-                    document.addEventListener('DOMContentLoaded', checkDescriptionLengthMusic);
-                    document.body.addEventListener('htmx:afterOnLoad', checkDescriptionLengthMusic);
-                    window.addEventListener('resize', checkDescriptionLengthMusic);
-                    const descContainer = document.querySelector('.desc-container');
-                    if (descContainer && 'IntersectionObserver' in window) {
-                        const descObserver = new IntersectionObserver((entries) => {
-                            entries.forEach((entry) => {
-                                if (entry.isIntersecting) {
-                                    descObserver.disconnect();
-                                    checkDescriptionLengthMusic();
-                                }
-                            });
-                        });
-                        descObserver.observe(descContainer);
-                    }
-</script>
+                <script src="../assets/js/music/watch/description-toggle.js?v=<?= filemtime(__DIR__ . '/../assets/js/music/watch/description-toggle.js') ?>"></script>
             <?php endif; ?>
             <?php if ($is_logged_in): ?>
                 <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden comment-section" id="comment-section">
@@ -436,10 +388,8 @@ $__vdir = function($dir) {
                             </div>
                         </div>
                     </section>
-                    <script>                        document.getElementById('comment-body')?.classList.add('collapsed');
-</script>
-                    <noscript><style>#comment-preview{display:none}
-</style></noscript>
+                    <script>document.getElementById('comment-body')?.classList.add('collapsed');</script>
+                    <noscript><style>#comment-preview{display:none}</style></noscript>
                 <?php endif; ?>
         </div>
 

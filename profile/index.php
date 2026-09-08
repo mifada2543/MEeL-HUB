@@ -203,7 +203,7 @@ if (!$is_guest_profile) {
                         <?php if ($u['role'] === 'admin'): ?>
                             ∞
                         <?php else: ?>
-                            <span id="coin-current"><?= (int)$coin_balance ?></span><span class="coin-sep">/</span><span id="coin-max"><?= (int)$coin_max ?></span>
+                            <span class="coin-label-text">Saat ini</span> <span id="coin-current"><?= (int)$coin_balance ?></span><span class="coin-sep">/</span><span id="coin-max"><?= (int)$coin_max ?></span> <span class="coin-label-text">Max</span>
                         <?php endif; ?>
                     </span>
                     <?php if ($u['role'] !== 'admin'): ?>
@@ -324,7 +324,7 @@ if (!$is_guest_profile) {
                         <?php if ($u['role'] === 'admin'): ?>
                             <span class="ml-2 text-[10px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-lg uppercase tracking-widest border border-blue-500/30">Staff</span>
                         <?php elseif ($u['role'] === 'member'): ?>
-                            <span class="ml-2 text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded-lg uppercase tracking-widest border border-green-500/30" title="Jadilah member untuk mendapatkan benefit berupa akses Drive">Berlangganan</span>
+                            <span class="ml-2 text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded-lg uppercase tracking-widest border border-green-500/30" title="Jadilah member untuk mendapatkan benefit berupa akses Drive dan batasan yang lebih banyak">Berlangganan</span>
                         <?php elseif ($is_guest_profile): ?>
                             <span class="ml-2 text-[10px] bg-gray-500/20 text-gray-400 px-2 py-1 rounded-lg uppercase tracking-widest border border-gray-500/30">Guest</span>
                         <?php endif; ?>

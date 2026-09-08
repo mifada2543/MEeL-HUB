@@ -39,6 +39,17 @@ html[data-theme="light"] .coin-indicator:hover {
 .coin-indicator .coin-balance {
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.coin-indicator .coin-label-text {
+    font-size: 9px;
+    font-weight: 600;
+    opacity: 0.6;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
 }
 
 .coin-indicator .coin-sep {

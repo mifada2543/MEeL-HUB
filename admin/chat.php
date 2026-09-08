@@ -51,71 +51,8 @@ if ($chat_username !== '' && !$chat_user) {
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
         <link href="<?= $root ?>/assets/css/admin/<?= $__f ?>" rel="stylesheet">
     <?php endforeach; ?>
-    <style>
-        .glass {
-            background: var(--meel-surface, rgba(22, 27, 34, 0.7));
-            border: 1px solid var(--meel-border, rgba(255, 255, 255, 0.05));
-        }
-        .chat-bubble-admin {
-            background: rgba(139, 92, 246, 0.15);
-            border: 1px solid rgba(139, 92, 246, 0.2);
-            border-radius: 16px 16px 4px 16px;
-            padding: 10px 14px;
-            color: #c4b5fd;
-            font-size: 12px;
-            line-height: 1.5;
-            max-width: 75%;
-        }
-        .chat-bubble-user {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px 16px 16px 4px;
-            padding: 10px 14px;
-            color: #d1d5db;
-            font-size: 12px;
-            line-height: 1.5;
-            max-width: 75%;
-        }
-        .chat-user-card {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            border-radius: 12px;
-            transition: background 0.15s;
-            text-decoration: none;
-            color: inherit;
-        }
-        .chat-user-card:hover { background: var(--meel-surface-hover, rgba(255,255,255,0.03)); }
-        .chat-avatar {
-            width: 36px; height: 36px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; font-size: 13px; font-weight: 700; color: #fff;
-        }
-        .chat-input {
-            background: var(--meel-surface, rgba(22, 27, 34, 0.7));
-            border: 1px solid var(--meel-border, rgba(255, 255, 255, 0.08));
-            border-radius: 12px;
-            padding: 10px 14px;
-            color: var(--meel-text-primary, #f3f4f6);
-            font-size: 12px;
-            resize: none;
-            outline: none;
-            width: 100%;
-        }
-        .chat-input:focus { border-color: rgba(139, 92, 246, 0.4); }
-        .chat-send-btn {
-            background: rgba(139, 92, 246, 0.2);
-            border: 1px solid rgba(139, 92, 246, 0.3);
-            border-radius: 10px;
-            padding: 10px 14px;
-            color: #a78bfa;
-            cursor: pointer;
-            transition: all 0.15s;
-            flex-shrink: 0;
-        }
-        .chat-send-btn:hover { background: rgba(139, 92, 246, 0.3); }
-    </style>
+    <link rel="stylesheet" href="<?= $root ?>/assets/css/admin/chat.css?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/css/admin/chat.css') ?>">
+    <div id="admin-chat-data" data-api-base="<?= htmlspecialchars($root) ?>/api/chat" data-chat-root="<?= htmlspecialchars($root) ?>/admin/chat" style="display:none;"></div>
 </head>
 <body class="bg-[#0b0e14] min-h-screen">
     <?php
@@ -179,61 +116,7 @@ if ($chat_username !== '' && !$chat_user) {
         loadChatMessages(<?= $chat_user_id ?>);
     </script>
     <?php else: ?>
-    <script>
-        var API_BASE = '<?= $root ?>/api/chat';
-        var ADMIN_CHAT_ROOT = '<?= $root ?>/admin/chat';
-        function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-        function searchUsers(q) {
-            if (q.length < 1) { document.getElementById('user-results').innerHTML = ''; return; }
-            fetch(API_BASE + '?action=users&q=' + encodeURIComponent(q), { credentials: 'same-origin' })
-                .then(r => r.json())
-                .then(d => {
-                    if (!d.ok) return;
-                    document.getElementById('user-results').innerHTML = d.list.map(u => `
-                        <a href="${ADMIN_CHAT_ROOT}/${u.username}" class="glass chat-user-card">
-                            <div class="chat-avatar" style="background:linear-gradient(135deg,#f97316,#dc2626);">${u.username.charAt(0).toUpperCase()}</div>
-                            <div>
-                                <div style="font-size:13px;font-weight:700;color:var(--meel-text-heading,#f3f4f6);">@${escapeHtml(u.username)}</div>
-                                <div style="font-size:10px;color:#6b7280;">${u.role}</div>
-                            </div>
-                        </a>
-                    `).join('');
-                });
-        }
-
-        function loadRecent() {
-            fetch(API_BASE + '?action=recent', { credentials: 'same-origin' })
-                .then(r => r.json())
-                .then(d => {
-                    if (!d.ok || d.list.length === 0) {
-                        document.getElementById('recent-list').innerHTML = '<div style="text-align:center;color:#6b7280;font-size:11px;padding:16px 0;">Belum ada percakapan</div>';
-                        return;
-                    }
-                    document.getElementById('recent-list').innerHTML = d.list.map(c => `
-                        <a href="${ADMIN_CHAT_ROOT}/${c.username}" class="chat-user-card glass" style="border:none;">
-                            <div class="chat-avatar" style="background:linear-gradient(135deg,#f97316,#dc2626);">${c.username.charAt(0).toUpperCase()}</div>
-                            <div style="min-width:0;flex:1;">
-                                <div style="font-size:12px;font-weight:700;color:var(--meel-text-heading,#f3f4f6);">@${c.username}</div>
-                                <div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(c.last_message)}</div>
-                            </div>
-                            <div style="font-size:9px;color:#4b5563;flex-shrink:0;">${timeAgo(c.last_at)}</div>
-                        </a>
-                    `).join('');
-                });
-        }
-
-        function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-        function timeAgo(ts) {
-            const diff = (Date.now() - new Date(ts).getTime()) / 1000;
-            if (diff < 60) return 'Baru saja';
-            if (diff < 3600) return Math.floor(diff / 60) + 'm lalu';
-            if (diff < 86400) return Math.floor(diff / 3600) + 'j lalu';
-            return Math.floor(diff / 86400) + 'h lalu';
-        }
-
-        loadRecent();
-        setInterval(loadRecent, 15000);
-    </script>
+    <script src="<?= $root ?>/assets/js/admin/chat/list.js?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/js/admin/chat/list.js') ?>"></script>
     <?php endif; ?>
 </body>
 </html>

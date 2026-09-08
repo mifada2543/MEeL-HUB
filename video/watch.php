@@ -279,7 +279,8 @@ $__vdir = function($dir) {
                             Selengkapnya
                         </button>
                     </div>
-                    <script>                        requestAnimationFrame(function() {
+                    <script>
+                        requestAnimationFrame(function() {
                             var d = document.getElementById('desc-text'),
                                 b = document.getElementById('btn-read-more');
                             if (d && b && d.scrollHeight > d.clientHeight) b.classList.remove('hidden');
@@ -350,10 +351,8 @@ $__vdir = function($dir) {
                             </div>
                         </div>
                     </section>
-                    <script>                        document.getElementById('comment-body')?.classList.add('collapsed');
-</script>
-                    <noscript><style>#comment-preview{display:none}
-</style></noscript>
+                    <script>document.getElementById('comment-body')?.classList.add('collapsed');</script>
+                    <noscript><style>#comment-preview{display:none}</style></noscript>
                 <?php endif; ?>
             </div>
         </div>
@@ -414,22 +413,7 @@ $__vdir = function($dir) {
     <script src="../assets/js/shared/comment.js<?= $__v('assets/js/shared/comment.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js<?= $__v('assets/js/shared/htmx-lucide.js') ?>"></script>
 
-    <script>        
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInputs = ['v-search-watch', 'v-search-mobile'];
-            searchInputs.forEach(id => {
-                const input = document.getElementById(id);
-                if (input) {
-                    input.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            document.getElementById('v-search-btn')?.click();
-                        }
-                    });
-                }
-            });
-        });
-</script>
+    <script src="../assets/js/video/watch/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/video/watch/search.js') ?>"></script>
 </body>
 
 </html>

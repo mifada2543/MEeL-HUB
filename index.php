@@ -29,6 +29,7 @@ $counts  = $library->getCounts();
     <script src="assets/js/shared/state-keys.js?v=<?= filemtime(__DIR__ . '/assets/js/shared/state-keys.js') ?>"></script>
     <script src="assets/js/shared/health-reminder.js?v=<?= filemtime(__DIR__ . '/assets/js/shared/health-reminder.js') ?>"></script>
     <script src="assets/js/shared/theme.js?v=<?= @filemtime(__DIR__ . '/assets/js/shared/theme.js') ?>"></script>
+    <div id="index-data" data-logged-in="<?= $is_logged_in ? '1' : '0' ?>" data-csrf-token="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>" style="display:none;"></div>
 </head>
 
 <body class="text-gray-300 min-h-screen" style="background:#05070c">
@@ -178,82 +179,7 @@ $counts  = $library->getCounts();
         </div>
     </div>
 
-    <script>
-        lucide.createIcons();
-
-        if (typeof MEELTheme !== 'undefined') {
-            MEELTheme.init({
-                isLoggedIn: <?= json_encode($is_logged_in) ?>,
-                csrfToken: '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>'
-            });
-        }
-
-        (function() {
-            const banner = document.getElementById('demoBanner');
-            const closeBtn = document.getElementById('demoBannerClose');
-
-            if (banner) {
-                banner.style.visibility = 'hidden';
-                banner.style.display = 'block';
-                const h = banner.scrollHeight;
-                document.body.style.setProperty('--demo-banner-h', h + 'px');
-                banner.style.visibility = '';
-                banner.style.display = '';
-
-                document.body.classList.add('demo-banner-active');
-                requestAnimationFrame(() => {
-                    banner.classList.add('demo-banner-visible');
-                });
-            }
-
-            if (closeBtn && banner) {
-                closeBtn.addEventListener('click', function() {
-                    document.body.classList.remove('demo-banner-active');
-                    banner.classList.remove('demo-banner-visible');
-                    banner.classList.add('demo-banner-hiding');
-
-                    setTimeout(() => {
-                        banner.style.display = 'none';
-                    }, 400);
-                });
-            }
-        })();
-
-        (function() {
-            if (sessionStorage.getItem('meelDemoAlertShown')) return;
-            sessionStorage.setItem('meelDemoAlertShown', '1');
-
-            setTimeout(() => {
-                Swal.fire({
-                    icon: 'warning',
-                    iconHtml: '<div style="font-size:1.8rem">⚠️</div>',
-                    title: '<span style="font-size:0.9rem;font-weight:800;letter-spacing:0.08em;color:#fbbf24">⚠️ INI WEBSITE DEMO</span>',
-                    html: `
-                        <div style="text-align:center;font-size:0.8rem;color:#94a3b8;line-height:1.6">
-                            <strong style="color:#f97316;font-size:0.95rem">MEeL Hub</strong><br>
-                            adalah <strong>demo project</strong> pribadi.<br><br>
-                            Konten &amp; data di sini <strong style="color:#f87171" title="diperuntukan untuk penggunaan pribadi">tidak nyata</strong>.<br>
-                            Hanya untuk <em style="color:#fde68a">showcase &amp; uji coba</em>.
-                        </div>
-                    `,
-                    confirmButtonText: 'Saya Mengerti',
-                    confirmButtonColor: '#f97316',
-                    timer: 120000,
-                    timerProgressBar: true,
-                    background: '#0f172a',
-                    color: '#e2e8f0',
-                    backdrop: 'rgba(5, 7, 12, 0.7)',
-                    customClass: {
-                        popup: 'demo-modal-popup'
-                    },
-                    didOpen: (modal) => {
-                        modal.addEventListener('mouseenter', () => Swal.stopTimer());
-                        modal.addEventListener('mouseleave', () => Swal.resumeTimer());
-                    }
-                });
-            }, 800);
-        })();
-    </script>
+    <script src="assets/js/shared/index-hub.js?v=<?= filemtime(__DIR__ . '/assets/js/shared/index-hub.js') ?>"></script>
 </body>
 
 </html>

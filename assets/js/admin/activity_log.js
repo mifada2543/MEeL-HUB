@@ -42,6 +42,20 @@
         }
       });
     }
+
+    var uqSearch = document.getElementById("uq-search-input");
+    if (uqSearch) {
+      uqSearch.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { e.preventDefault(); submitUqFilters(); }
+      });
+    }
+    document.addEventListener("click", function (e) {
+      var uqPanel = document.getElementById("uq-status-dropdown-panel");
+      var uqTrigger = document.getElementById("uq-status-dropdown-trigger");
+      if (uqPanel && uqTrigger && !uqPanel.contains(e.target) && !uqTrigger.contains(e.target)) {
+        uqPanel.classList.add("hidden");
+      }
+    });
   });
   
   window.selectDays = function (val) {
@@ -95,6 +109,51 @@
   };
   
   
+  window.toggleUqStatusDropdown = function () {
+    var panel = document.getElementById("uq-status-dropdown-panel");
+    if (panel) panel.classList.toggle("hidden");
+  };
+
+  window.selectUqStatus = function (val) {
+    var input = document.getElementById("uq-status-input");
+    var label = document.getElementById("uq-status-dropdown-label");
+    var labels = {"": "Semua Status", processing: "Processing", completed: "Completed", failed: "Failed"};
+    if (input) input.value = val;
+    if (label) label.textContent = labels[val] || "Semua Status";
+    var panel = document.getElementById("uq-status-dropdown-panel");
+    if (panel) {
+      panel.querySelectorAll(".action-dropdown-option").forEach(function (o) {
+        o.classList.toggle("active", o.dataset.value === val);
+      });
+      panel.classList.add("hidden");
+    }
+  };
+
+  window.selectUqDays = function (val) {
+    var input = document.getElementById("uq-days-input");
+    if (input) input.value = val;
+    document.querySelectorAll("#uq-days-input ~ .flex .pill-btn[data-days]").forEach(function (btn) {
+      btn.classList.toggle("active-green", parseInt(btn.dataset.days) === val);
+    });
+  };
+
+  window.selectUqClearDays = function (val) {
+    var input = document.getElementById("uq-clear-days-input");
+    if (input) input.value = val;
+  };
+
+  window.submitUqFilters = function () {
+    var status = document.getElementById("uq-status-input");
+    var q = document.getElementById("uq-search-input");
+    var days = document.getElementById("uq-days-input");
+    var params = new URLSearchParams();
+    params.set("tab", "uploads");
+    if (status && status.value) params.set("status", status.value);
+    if (q && q.value.trim()) params.set("q", q.value.trim());
+    if (days && days.value) params.set("days", days.value);
+    window.location.href = "activity-log?" + params.toString();
+  };
+
   window.previewExport = function (format) {
     var params = new URLSearchParams(window.location.search);
     params.set("preview", "1");

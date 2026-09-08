@@ -50,87 +50,8 @@ $ICONS = [
     $_META_TITLE = 'Notifikasi | MEeL';
     include '../partials/link.php';
     ?>
-    <style>
-        body { background: var(--meel-bg); color: var(--meel-text); }
-        .glass {
-            background: var(--meel-surface);
-            border: 1px solid var(--meel-border);
-        }
-        .notif-item {
-            background: var(--meel-surface);
-            border: 1px solid var(--meel-border);
-            border-radius: 12px;
-            padding: 12px 16px;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-        }
-        .notif-item:hover { background: var(--meel-surface-hover); cursor: default; }
-        a.notif-item:hover { cursor: pointer; }
-        .notif-item.unread { border-left: 3px solid var(--meel-blue); }
-        .notif-icon {
-            width: 36px; height: 36px; border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; font-size: 16px;
-        }
-        .notif-icon.like { background: rgba(239, 68, 68, 0.12); }
-        .notif-icon.reply { background: rgba(59, 130, 246, 0.12); }
-        .notif-icon.meelcoin { background: rgba(234, 179, 8, 0.12); }
-        .notif-icon.admin_chat { background: rgba(168, 85, 247, 0.12); }
-        .notif-icon.system { background: rgba(107, 114, 128, 0.12); }
-        .filter-btn {
-            padding: 6px 14px; border-radius: 8px; font-size: 11px;
-            font-weight: 600; border: 1px solid var(--meel-border);
-            color: var(--meel-text-secondary); cursor: pointer;
-            transition: background 0.15s, color 0.15s, border-color 0.15s; text-decoration: none; display: inline-block;
-        }
-        .filter-btn:hover { background: var(--meel-surface-hover); }
-        .filter-btn.active {
-            background: rgba(59, 130, 246, 0.12); color: var(--meel-blue);
-            border-color: rgba(59, 130, 246, 0.3);
-        }
-        .empty-state {
-            background: var(--meel-surface);
-            border: 1px dashed var(--meel-border-strong);
-            border-radius: 16px; padding: 48px 24px; text-align: center;
-        }
-        .notif-delete {
-            background: none; border: none; cursor: pointer;
-            padding: 4px; flex-shrink: 0; border-radius: 6px;
-            color: var(--meel-text-muted);
-            transition: color 0.15s, background 0.15s;
-        }
-        .notif-delete:hover { color: var(--meel-red); background: var(--meel-surface-hover); }
-        .notif-delete:focus-visible {
-            outline: 2px solid var(--meel-blue);
-            outline-offset: 2px;
-        }
-        .notif-clear {
-            background: none; border: none; cursor: pointer;
-            font-size: 10px; font-weight: 600;
-            color: var(--meel-red);
-            padding: 4px 6px; border-radius: 6px;
-            transition: opacity 0.15s;
-        }
-        .notif-clear:hover { opacity: 0.75; text-decoration: underline; }
-        .notif-clear:focus-visible {
-            outline: 2px solid var(--meel-blue);
-            outline-offset: 2px;
-        }
-        .notif-removing {
-            opacity: 0;
-            transform: translateX(20px);
-        }
-        .notif-item,
-        .notif-delete { transition-property: opacity, transform, background, border-color, box-shadow, color; }
-        .notif-item,
-        .notif-delete { transition-duration: 0.15s; }
-        @media (prefers-reduced-motion: reduce) {
-            .notif-item, .notif-delete { transition: none !important; }
-            .notif-removing { opacity: 0; transform: none; }
-        }
-    </style>
+    <link rel="stylesheet" href="../assets/css/profile/notification.css?v=<?= filemtime(__DIR__ . '/../assets/css/profile/notification.css') ?>">
+    <div id="notif-data" data-api-root="<?= htmlspecialchars($root) ?>/api/notification" data-csrf-token="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>" style="display:none;"></div>
 </head>
 <body class="min-h-screen p-4 md:p-8">
     <?php include '../partials/nav.php'; ?>
@@ -200,63 +121,7 @@ $ICONS = [
         <div id="notif-live" class="sr-only" aria-live="polite"></div>
     </div>
 
-    <script>
-    var API_ROOT = '<?= $root ?>/api/notification';
-    function announce(msg) {
-        var el = document.getElementById('notif-live');
-        if (el) el.textContent = msg;
-    }
-    function refreshEmptyState() {
-        var list = document.getElementById('notif-list');
-        if (list && list.children.length === 0) {
-            var st = document.createElement('div');
-            st.className = 'empty-state';
-            st.innerHTML = '<div class="text-3xl mb-3 opacity-30" aria-hidden="true">🔔<\/div>'
-                + '<p class="text-sm font-medium" style="color:var(--meel-text-secondary)">Tidak ada notifikasi<\/p>'
-                + '<p class="text-[11px] mt-1" style="color:var(--meel-text-secondary)">Notifikasi akan muncul di sini saat ada aktivitas terkait kamu<\/p>';
-            list.replaceWith(st);
-            var delAll = document.querySelector('button[aria-label="Hapus semua notifikasi"]');
-            if (delAll) delAll.remove();
-            announce('Semua notifikasi telah dihapus');
-        }
-    }
-    function deleteNotif(id, btn) {
-        var fd = new FormData();
-        fd.append('action', 'delete');
-        fd.append('id', id);
-        fd.append('csrf_token', <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
-        fetch(API_ROOT, { method: 'POST', body: fd, credentials: 'same-origin' })
-            .then(function(r) { return r.json(); })
-            .then(function() {
-                var card = btn.closest('.notif-item');
-                if (card) {
-                    card.classList.add('notif-removing');
-                    setTimeout(function() { card.remove(); refreshEmptyState(); }, 200);
-                }
-                announce('Notifikasi dihapus');
-            });
-    }
-    function deleteAllNotif() {
-        if (!confirm('Hapus semua notifikasi?')) return;
-        var fd = new FormData();
-        fd.append('action', 'delete_all');
-        fd.append('csrf_token', <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
-        fetch(API_ROOT, { method: 'POST', body: fd, credentials: 'same-origin' })
-            .then(function(r) { return r.json(); })
-            .then(function() {
-                var items = document.querySelectorAll('.notif-item');
-                items.forEach(function(item, i) {
-                    setTimeout(function() {
-                        item.classList.add('notif-removing');
-                        setTimeout(function() {
-                            item.remove();
-                            if (i === items.length - 1) refreshEmptyState();
-                        }, 150);
-                    }, i * 50);
-                });
-            });
-    }
-    </script>
+    <script src="../assets/js/profile/notification/interactions.js?v=<?= filemtime(__DIR__ . '/../assets/js/profile/notification/interactions.js') ?>"></script>
     <?php include '../partials/footer.php'; ?>
 </body>
 </html>
