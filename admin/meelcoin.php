@@ -36,15 +36,7 @@ if ($all_users) {
     }
 }
 
-$target_user_id = (int)($_GET['user_id'] ?? $_POST['target_user_id'] ?? 0);
-$target_user = null;
-if ($target_user_id > 0) {
-    $stmt = $conn->prepare("SELECT id, username, role, meelcoin FROM users WHERE id = ?");
-    $stmt->bind_param("i", $target_user_id);
-    $stmt->execute();
-    $target_user = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-}
+$user_list_json = json_encode($user_list);
 ?>
 <!DOCTYPE html>
 <html lang="id" class="dark">
@@ -192,10 +184,10 @@ if ($target_user_id > 0) {
                     <form method="POST" style="display:flex;flex-direction:column;gap:8px;">
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                         <div style="display:flex;gap:8px;">
-                            <select name="target_user_id" required class="admin-select" style="width:25%;" onchange="window.location.href='meelcoin.php?user_id=' + this.value + '#manual-coin'">
+                            <select name="target_user_id" required class="admin-select" style="width:25%;" id="coin-user-select">
                                 <option value="">Pilih User...</option>
                                 <?php foreach ($user_list as $u): ?>
-                                    <option value="<?= $u['id'] ?>" <?= $target_user_id === (int)$u['id'] ? 'selected' : '' ?>>
+                                    <option value="<?= $u['id'] ?>">
                                         #<?= $u['id'] ?> — <?= htmlspecialchars($u['username']) ?> (<?= ucfirst($u['role']) ?>) — <?= $u['meelcoin'] ?> coin
                                     </option>
                                 <?php endforeach; ?>
@@ -211,11 +203,7 @@ if ($target_user_id > 0) {
                             </button>
                         </div>
                     </form>
-                    <?php if ($target_user): ?>
-                        <div style="margin-top:10px;padding:10px 14px;border-radius:10px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.15);font-size:11px;color:#fbbf24;">
-                            <strong><?= htmlspecialchars($target_user['username']) ?></strong> — ID: #<?= $target_user['id'] ?> — Role: <?= ucfirst($target_user['role']) ?> — Coin saat ini: <strong><?= $target_user['meelcoin'] ?></strong>
-                        </div>
-                    <?php endif; ?>
+                    <div id="target-user-info" style="margin-top:10px;padding:10px 14px;border-radius:10px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.15);font-size:11px;color:#fbbf24;display:none;"></div>
                 </div>
             </div>
         </div>
@@ -225,6 +213,8 @@ if ($target_user_id > 0) {
     <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime('../assets/js/admin/shared/hover-effects.js') ?>"></script>
     <script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
     <script>
+    var __userList = <?= $user_list_json ?>;
+
     function toggleMeelCoinConfig(enabled) {
         var cfg = document.getElementById('meelcoin-config');
         var manual = document.getElementById('manual-coin');
@@ -245,6 +235,16 @@ if ($target_user_id > 0) {
             manual.style.pointerEvents = 'none';
         }
     }
+
+    document.getElementById('coin-user-select').addEventListener('change', function() {
+        var info = document.getElementById('target-user-info');
+        var val = parseInt(this.value);
+        if (!val) { info.style.display = 'none'; return; }
+        var u = __userList.find(function(x){ return x.id === val; });
+        if (!u) { info.style.display = 'none'; return; }
+        info.innerHTML = '<strong>' + u.username + '</strong> — ID: #' + u.id + ' — Role: ' + u.role.charAt(0).toUpperCase() + u.role.slice(1) + ' — Coin saat ini: <strong>' + u.meelcoin + '</strong>';
+        info.style.display = '';
+    });
     </script>
 </body>
 </html>

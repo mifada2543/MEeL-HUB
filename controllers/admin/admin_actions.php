@@ -227,7 +227,7 @@ if (isset($_POST['adjust_meelcoin_user'])) {
         }
 
         if ($actual <= 0 && $action === 'add') {
-            header("Location: meelcoin.php?msg=Balance_at_max&user_id=" . $target_id);
+            header("Location: meelcoin.php?msg=Balance_at_max#manual-coin");
             exit();
         }
 
@@ -258,7 +258,7 @@ if (isset($_POST['adjust_meelcoin_user'])) {
         );
     }
 
-    header("Location: meelcoin.php?msg=Coin_Adjusted&user_id=" . $target_id);
+    header("Location: meelcoin.php?msg=Coin_Adjusted#manual-coin");
     exit();
 }
 
