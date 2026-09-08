@@ -198,6 +198,7 @@ if (isset($_POST['save_meelcoin_settings'])) {
 
 if (isset($_POST['adjust_meelcoin_user'])) {
     require_once __DIR__ . '/../../modules/core/MeelCoin.php';
+    require_once __DIR__ . '/../../modules/core/Notification.php';
 
     $target_id = (int)($_POST['target_user_id'] ?? 0);
     $amount    = (int)($_POST['coin_amount'] ?? 0);
@@ -219,6 +220,19 @@ if (isset($_POST['adjust_meelcoin_user'])) {
 
         MeelCoin::log($conn, $target_id, $action === 'add' ? $amount : -$amount, $new, $reason);
         MeelCoin::clearCache();
+
+        $admin_id   = (int)($_SESSION['user_id'] ?? 0);
+        $action_lbl = $action === 'add' ? 'ditambahkan' : 'dikurangi';
+        Notification::create(
+            $conn,
+            $target_id,
+            'meelcoin',
+            'Penyesuaian MEeLCoin',
+            'Admin telah ' . $action_lbl . ' ' . $amount . ' MEeLCoin dari akun Anda. Alasan: ' . $reason,
+            null,
+            null,
+            $admin_id
+        );
     }
 
     header("Location: meelcoin.php?msg=Coin_Adjusted&user_id=" . $target_id);

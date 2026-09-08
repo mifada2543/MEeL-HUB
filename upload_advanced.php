@@ -57,6 +57,16 @@ $active_count = $q_active ? (int)$q_active->fetch_row()[0] : 0;
 
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 
+$coin_balance   = 0;
+$coin_max       = 0;
+$coin_cost      = 0;
+$coin_countdown = 0;
+$upload_max     = 0;
+$quota_video_used      = 0;
+$quota_music_used      = 0;
+$quota_video_remaining = 0;
+$quota_music_remaining = 0;
+
 if ($meelcoin_enabled) {
     if (!$is_admin) {
         MeelCoin::refill($conn, (int)$_SESSION['user_id'], $user_role);
@@ -203,12 +213,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                     exit;
                 }
 
-                if ($message !== '' && ($coin_deducted ?? false)) {
+                if ($coin_deducted ?? false) {
                     MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_download_refund');
-                    $err_msg = json_encode($message);
+                    $err_msg = $message !== '' ? json_encode($message) : '"Download gagal: media tidak tersimpan di server."';
+                    $err_label = $message !== '' ? 'Download Gagal' : 'Download Gagal';
                     echo '<script>'
                        . 'if(typeof meelError==="function"){meelError(' . $err_msg . ');}'
-                       . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ Download Gagal</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
+                       . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ ' . $err_label . '</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
                        . '</script>';
                     echo str_repeat(' ', 1024);
                     flush();
