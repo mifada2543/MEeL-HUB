@@ -9,7 +9,14 @@ function setupMeelPlayerEvents() {
       wrapper.style.width = "auto";
       wrapper.style.marginLeft = "auto";
       wrapper.style.marginRight = "auto";
+    } else if (videoW / videoH < 16 / 9) {
+      wrapper.style.maxWidth = `calc(100% * 9 * ${videoW} / (16 * ${videoH}))`;
+      wrapper.style.maxHeight = "";
+      wrapper.style.width = "";
+      wrapper.style.marginLeft = "auto";
+      wrapper.style.marginRight = "auto";
     } else {
+      wrapper.style.maxWidth = "";
       wrapper.style.maxHeight = "";
       wrapper.style.width = "";
       wrapper.style.marginLeft = "";
