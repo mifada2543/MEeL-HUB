@@ -100,9 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                     $rate_limit_msg = $spent_err;
                 } else {
                     $new_balance = MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
+                    $clean_url = parse_url(trim($_POST['url']), PHP_URL_URL) ?: trim($_POST['url']);
                     Notification::create($conn, (int)$_SESSION['user_id'], 'meelcoin',
                         'Penggunaan MEeLCoin',
-                        'Upload URL berhasil. URL: ' . htmlspecialchars(trim($_POST['url'])) . ' — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
+                        'Upload URL berhasil. URL: ' . htmlspecialchars($clean_url) . ' — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
                     );
                 }
             }
