@@ -178,26 +178,10 @@ class MeelCoin
         if ($role === 'admin') return 0;
 
         $refillHours = self::getRefillHours($conn);
+        $cycleSeconds = $refillHours * 3600;
 
-        $stmt = $conn->prepare("SELECT meelcoin, meelcoin_last_refill FROM users WHERE id = ?");
-        $stmt->bind_param("i", $userId);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-
-        if (!$row) return 0;
-
-        $current    = (int)$row['meelcoin'];
-        $maxCoins   = self::getMax($conn, $role);
-        $lastRefill = $row['meelcoin_last_refill'];
-
-        if ($current >= $maxCoins) return 0;
-
-        if ($lastRefill === null) return 0;
-
-        $elapsed   = time() - strtotime($lastRefill);
-        $remaining = ($refillHours * 3600) - $elapsed;
-        return max(0, $remaining);
+        // Siklus global — semua user countdown yang sama
+        return $cycleSeconds - (time() % $cycleSeconds);
     }
 
     public static function initialize(\mysqli $conn, int $userId, string $role): void

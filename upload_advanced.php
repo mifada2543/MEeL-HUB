@@ -15,6 +15,7 @@ require_once 'modules/core/BrowserProgressObserver.php';
 require_once 'modules/core/GarbageCollector.php';
 require_once 'modules/media/MediaLibrary.php';
 require_once 'modules/core/MeelCoin.php';
+require_once 'modules/core/Notification.php';
 GarbageCollector::run();
 
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
@@ -97,6 +98,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 if (!$spent_ok) {
                     $message = 'rate_limit';
                     $rate_limit_msg = $spent_err;
+                } else {
+                    $new_balance = MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
+                    Notification::create($conn, (int)$_SESSION['user_id'], 'meelcoin',
+                        'Penggunaan MEeLCoin',
+                        'Upload URL berhasil. URL: ' . htmlspecialchars(trim($_POST['url'])) . ' — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
+                    );
                 }
             }
         }

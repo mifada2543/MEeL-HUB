@@ -549,6 +549,7 @@ if (!$is_guest_profile) {
                      data-countdown="<?= (int)$coin_countdown ?>"
                      data-max="<?= ($u['role'] === 'admin') ? -1 : (int)$coin_max ?>"
                      data-role="<?= htmlspecialchars($u['role']) ?>"
+                     data-refill-hours="<?= (int)$coin_refill_hours ?>"
                      title="MEeLCoin saldo Anda">
                     <svg class="coin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
@@ -802,6 +803,7 @@ if (!$is_guest_profile) {
 
             var remaining = parseInt(el.getAttribute('data-countdown'), 10) || 0;
             var maxCoins = parseInt(el.getAttribute('data-max'), 10) || 0;
+            var refillHours = parseInt(el.getAttribute('data-refill-hours'), 10) || 5;
             var userId = <?= json_encode((int)($_SESSION['user_id'] ?? 0)) ?>;
             var interval = null;
 
@@ -817,8 +819,9 @@ if (!$is_guest_profile) {
 
             function tick() {
                 if (remaining <= 0) {
-                    if (interval) clearInterval(interval);
-                    fetchBalance();
+                    // Reset ke siklus berikutnya (global, tanpa refill coin)
+                    remaining = refillHours * 3600;
+                    if (countdownEl) countdownEl.textContent = formatTime(remaining);
                     return;
                 }
                 remaining--;
@@ -835,16 +838,14 @@ if (!$is_guest_profile) {
 
                             if (data.balance >= data.max) {
                                 el.classList.add('coin-maxed');
-                                remaining = 0;
-                                if (interval) { clearInterval(interval); interval = null; }
-                                if (countdownEl) countdownEl.textContent = 'Siap';
                             } else {
                                 el.classList.remove('coin-maxed');
-                                remaining = data.countdown || 0;
-                                if (countdownEl) countdownEl.textContent = remaining > 0 ? formatTime(remaining) : 'Siap';
-                                if (remaining > 0 && !interval) {
-                                    interval = setInterval(tick, 1000);
-                                }
+                            }
+
+                            remaining = data.countdown || refillHours * 3600;
+                            if (countdownEl) countdownEl.textContent = formatTime(remaining);
+                            if (!interval) {
+                                interval = setInterval(tick, 1000);
                             }
                         }
                     })
@@ -853,6 +854,11 @@ if (!$is_guest_profile) {
 
             if (remaining > 0 && countdownEl) {
                 countdownEl.textContent = formatTime(remaining);
+                interval = setInterval(tick, 1000);
+            } else {
+                // Mulai siklus baru
+                remaining = refillHours * 3600;
+                if (countdownEl) countdownEl.textContent = formatTime(remaining);
                 interval = setInterval(tick, 1000);
             }
         })();
