@@ -792,6 +792,16 @@ if (!headers_sent()) {
 | `assets/js/music/watch/mini-player.js` | Mode mini-player music (Spotify-style) — dipisah dari player-core.js |
 | `assets/js/music/watch/player-core.js` | Inti player music (visualizer, EQ, bitrate, logika resume-modal & sesi) |
 | `assets/js/music/watch/state.js` | Music player state, preset equalizer & marker sesi resume (`window.__meelResumeSessionActive`) |
+| `assets/js/profile/manage.js` | Profile management (edit, delete media) |
+| `assets/js/profile/avatar-crop.js` | Avatar cropping tool |
+| `assets/js/profile/coin-countdown.js` | MEeLCoin refill countdown |
+| `assets/js/profile/theme-init.js` | Theme initialization on profile page |
+| `assets/js/admin/activity_log.js` | Activity log viewer with 3 tabs |
+| `assets/js/shared/nav.js` | Navigation bar behavior |
+| `assets/js/shared/theme.js` | Theme toggle logic |
+| `assets/js/shared/notification.js` | Notification polling system |
+| `assets/css/video/player.css` | Plyr video player overrides (object-fit: contain) |
+| `assets/css/profile/*.css` | Profile module CSS (10 files: base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state) |
 
 ### Musik — Perilaku Resume Modal
 

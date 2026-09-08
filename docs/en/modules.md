@@ -734,6 +734,203 @@ class Notification {
 
 ---
 
+## 26. JS/CSS Modularization
+
+MEeL uses a modular approach for JavaScript and CSS — each module has separate files that are loaded dynamically.
+
+### Directory Structure
+
+```
+assets/
+├── css/
+│   ├── video/           # Video module CSS
+│   │   ├── base.css     # Base styles
+│   │   ├── cards.css    # Video card styles
+│   │   ├── fullscreen.css # Fullscreen player
+│   │   ├── glow.css     # Ambient glow effect
+│   │   ├── layout.css   # Player layout
+│   │   ├── mini-player.css # Floating mini player
+│   │   ├── navbar.css   # Video navbar
+│   │   ├── player.css   # Plyr overrides
+│   │   ├── seek.css     # Seek indicator
+│   │   ├── toast.css    # Toast notifications
+│   │   └── watch/       # Watch page specific
+│   ├── profile/         # Profile module CSS
+│   │   ├── base.css     # Base profile styles
+│   │   ├── cards.css    # Media cards
+│   │   ├── coin.css     # MEeLCoin display
+│   │   ├── edit.css     # Edit profile
+│   │   ├── manage.css   # Profile management
+│   │   ├── notification.css # Notification settings
+│   │   ├── stat.css     # Statistics
+│   │   ├── mfa-switch.css # MFA toggle
+│   │   ├── type-badge.css # User role badges
+│   │   └── empty-state.css # Empty state displays
+│   ├── admin/           # Admin module CSS
+│   │   └── chat.css     # Admin chat styles
+│   ├── music/           # Music module CSS
+│   │   ├── watch.css    # Music watch page
+│   │   └── playlist.css # Playlist styles
+│   ├── books/           # Books module CSS
+│   │   └── read.css     # Book reader
+│   └── shared/          # Shared CSS
+│       ├── comment.css  # Comment section
+│       └── nav.css      # Navigation bar
+├── js/
+│   ├── video/watch/     # Video watch page JS (12 files)
+│   │   ├── state.js     # Global state variables
+│   │   ├── lifecycle.js # Page lifecycle management
+│   │   ├── player-init.js # Player initialization
+│   │   ├── player-events.js # Player event handlers + aspect ratio
+│   │   ├── recovery.js  # Error recovery & stuck detector
+│   │   ├── mini-player.js # Floating mini player
+│   │   ├── gestures.js  # Touch gestures
+│   │   ├── search.js    # Search functionality
+│   │   ├── seek-indicator.js # Seek visual feedback
+│   │   ├── vtt-sprites.js # VTT sprite thumbnails
+│   │   └── misc.js      # Miscellaneous utilities
+│   ├── shared/          # Shared JS (19 files)
+│   │   ├── nav.js       # Navigation behavior
+│   │   ├── theme.js     # Theme toggle
+│   │   ├── keyboard.js  # Keyboard shortcuts
+│   │   ├── comment.js   # Comment section
+│   │   ├── notification.js # Notification system
+│   │   ├── plyr-config.js # Plyr configuration
+│   │   ├── format-time.js # Time formatting
+│   │   ├── resume-modal.js # Resume playback modal
+│   │   ├── index-hub.js # Homepage hub
+│   │   └── ...          # Other shared utilities
+│   ├── profile/         # Profile JS (5 files)
+│   │   ├── manage.js    # Profile management
+│   │   ├── avatar-crop.js # Avatar cropping
+│   │   ├── coin-countdown.js # MEeLCoin countdown
+│   │   └── theme-init.js # Theme initialization
+│   ├── admin/           # Admin JS (3 files)
+│   │   ├── activity_log.js # Activity log viewer
+│   │   └── chat/        # Admin chat
+│   ├── music/           # Music JS
+│   └── books/           # Books JS
+│       └── read/reader.js # Book reader
+```
+
+### CSS Mapping per Module
+
+Each CSS module has a `manifest.php` that registers its CSS files. `SwPrecache` reads these manifests to automatically generate service worker precache lists.
+
+```php
+// assets/css/video/manifest.php
+return ['base.css', 'cards.css', 'fullscreen.css', 'glow.css', 'layout.css',
+        'mini-player.css', 'navbar.css', 'player.css', 'seek.css', 'toast.css'];
+```
+
+### Dynamic Loader
+
+JavaScript is loaded dynamically by `main.js` on each module page. JS files are loaded sequentially according to dependencies:
+
+```javascript
+// Example: video/watch/main.js loads scripts sequentially
+const scripts = [
+    'state.js', 'recovery.js', 'player-init.js', 'player-events.js',
+    'lifecycle.js', 'mini-player.js', 'gestures.js', 'vtt-sprites.js',
+    'seek-indicator.js', 'misc.js'
+];
+```
+
+---
+
+## 27. Adaptive Aspect Ratio Player
+
+MEeL's video player supports adaptive aspect ratio for various video formats (4:3, 16:9, 21:9, portrait).
+
+### How It Works
+
+1. **Placeholder:** Server renders wrapper with `style="aspect-ratio: 16/9;"` as default
+2. **Runtime:** When video metadata loads, JavaScript `applyMeelVideoAspect()` changes aspect ratio to match actual dimensions
+3. **Constraint:** Non-16:9 videos get proportional `max-width` to equalize height with 16:9
+
+### `applyMeelVideoAspect(wrapper, videoW, videoH)` Logic
+
+| Condition | Behavior |
+|---|---|
+| Portrait (videoW < videoH) | `max-height: 80vh`, width auto, center horizontally |
+| Landscape < 16:9 (4:3, 5:4, 1:1) | `max-width: calc(100% × 9 × videoW / (16 × videoH))`, center |
+| 16:9 or wider (21:9) | Full width, natural height |
+
+### Calculation Example for 4:3
+
+```
+max-width = calc(100% × 9 × 4 / (16 × 3))
+         = calc(100% × 36/48)
+         = 75% of parent width
+```
+
+At 1000px parent width:
+- **4:3:** 750px × 562.5px (centered)
+- **16:9:** 1000px × 562.5px (full width)
+
+Both have the same height — the 4:3 video is smaller and centered, just like YouTube.
+
+### CSS Support
+
+```css
+/* player.css — prevents stretching */
+.plyr__video-wrapper video {
+    object-fit: contain;
+}
+```
+
+### Related Files
+
+| File | Role |
+|---|---|
+| `assets/js/video/watch/player-events.js` | `applyMeelVideoAspect()` function |
+| `assets/css/video/player.css` | `object-fit: contain` for video |
+| `assets/css/video/watch/main.css` | Mobile max-height constraint |
+
+---
+
+## 28. Chat API
+
+Real-time chat system between users with HTMX polling.
+
+### Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/chat` | GET | Get chat messages (params: `after_id`, `limit`) |
+| `/api/chat` | POST | Send chat message (params: `message`, `csrf_token`) |
+
+### Database Schema
+
+```sql
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+### Features
+
+- Messages ordered by `created_at` ASC
+- HTMX polling every 3 seconds for new messages
+- Delete own messages (with ownership validation)
+- `admin_chat` notification type for messages to admin
+- Rate limiting: 30 messages per minute per user
+
+### Related Files
+
+| File | Role |
+|---|---|
+| `controllers/api/chat.php` | Chat API endpoint |
+| `admin/chat.php` | Admin chat interface |
+| `assets/js/shared/notification.js` | Notification polling including chat |
+| `assets/css/admin/chat.css` | Admin chat styles |
+
+---
+
 ## ProgressObserver Architecture
 
 `Transcoder` is a **pure business-layer** class — it never echoes HTML/JS. Progress

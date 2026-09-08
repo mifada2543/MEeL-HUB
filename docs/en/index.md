@@ -105,7 +105,7 @@ Request: /MEeL/music/beranda?format=ogg
 | `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
 | `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` |
 | `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) |
-| `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse` | `controllers/api/*.php` |
+| `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/chat` | `controllers/api/*.php` |
 | `/system/mfa` | `controllers/system/mfa.php` |
 
 > **Playlist slug route:** playlists have name-based URLs — `/music/<playlist-name>`
@@ -159,6 +159,13 @@ Request: /MEeL/music/beranda?format=ogg
 - **Auth Hardening:** Session cookies now `Secure` (auto-detect HTTPS) + `HttpOnly` + `SameSite=Lax`; `MEEL_TRUST_PROXY_HEADERS` (default `false`) to prevent IP spoofing via proxy headers; DB connection charset forced to `utf8mb4`
 - **Admin CSRF:** Approve/reject/delete/kick/unban actions moved from GET links to POST forms with CSRF token
 - **Centralized Session Bootstrap:** New file `modules/auth/helpers/session.php` with `meel_boot_session()` — every entry point (index, video, music, auth, controllers/api, err, admin) now calls this single function instead of scattered manual `session_name('meel'); session_start();`. The session cookie is guaranteed `HttpOnly` + `SameSite=Lax` + `Secure` (auto-detect HTTPS), 12-hour timeout, and idempotent (no-op if the session is already active)
+- **JS/CSS Modularization:** JavaScript & CSS split per module — video (12 files: state, lifecycle, player-init, player-events, recovery, mini-player, gestures, search, seek-indicator, vtt-sprites, misc), shared (19 files: nav, theme, keyboard, comment, notification, plyr-config, format-time, resume-modal, etc.), profile (5 files: manage, avatar-crop, coin-countdown, theme-init), admin (3 files: activity_log, chat), with dynamic loader per module
+- **Adaptive Aspect Ratio Player:** Video player automatically adapts to video aspect ratio — for non-16:9 videos (like 4:3), max-height is equalized to 16:9 equivalent, width shrinks proportionally and is centered (similar to YouTube)
+- **Chat API:** New `/api/chat` endpoint for real-time chat between users with HTMX polling
+- **Notification Update:** Notification system updated with modularization — `notification.js` in shared, `notification.css` in profile
+- **Profile Modularization:** Profile page split into separate components — `manage.js`, `avatar-crop.js`, `coin-countdown.js`, `theme-init.js` + modular CSS (base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state)
+- **Admin Chat:** New admin chat interface at `admin/chat.php` with modular CSS & JS
+- **URL Cleanup:** URL routing normalization — all clean URLs without `.php` extension, 301 redirects from legacy URLs
 
 ## 📖 About the Project
 

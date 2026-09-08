@@ -861,12 +861,36 @@ State-changing actions (mark_read, mark_all_read, delete, delete_all) enforce PO
 
 ---
 
-## Chat API (Admin)
+## Chat API
 
 ### Chat Endpoints (`api/chat.php`)
 
+#### User Chat (Real-time)
+
+**Auth:** User (login required)
+
+| Action | Method | CSRF | Description |
+|---|---|---|---|
+| `list` | GET | No | Get chat messages (params: `after_id`, `limit`) |
+| `send` | POST | Yes | Send chat message (params: `message`, `csrf_token`) |
+| `delete` | POST | Yes | Delete own message (params: `id`) — ownership validation |
+
+**Database Schema:**
+```sql
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+**HTMX Polling:** Client polls every 3 seconds for new messages using `HX-Get` with `after_id` parameter.
+
+#### Admin Chat
+
 **Auth:** Admin only (`is_admin()` check)
-**CSRF:** Required for `send` and `delete` actions
 
 | Action | Method | CSRF | Description |
 |---|---|---|---|
@@ -876,7 +900,9 @@ State-changing actions (mark_read, mark_all_read, delete, delete_all) enforce PO
 | `send` | POST | Yes | Send message to user (`user_id`, `message`) |
 | `delete` | POST | Yes | Delete admin message (`user_id`, `index`) |
 
-Storage: JSON files in `storage/chats/{user_id}/isipesan.json`
+Admin chat storage: JSON files in `storage/chats/{user_id}/isipesan.json`
+
+**Rate Limiting:** 30 messages per minute per user.
 
 ---
 

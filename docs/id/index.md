@@ -105,7 +105,7 @@ Request: /MEeL/music/beranda?format=ogg
 | `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
 | `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` |
 | `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) |
-| `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse` | `controllers/api/*.php` |
+| `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/chat` | `controllers/api/*.php` |
 | `/system/mfa` | `controllers/system/mfa.php` |
 
 > **Route slug playlist:** playlist punya URL berbasis nama — `/music/<nama-playlist>`
@@ -159,6 +159,13 @@ Request: /MEeL/music/beranda?format=ogg
 - **Auth Hardening:** Cookie session kini `Secure` (auto-detect HTTPS) + `HttpOnly` + `SameSite=Lax`; `MEEL_TRUST_PROXY_HEADERS` (default `false`) untuk mencegah IP spoofing via header proxy; charset koneksi DB dipaksa `utf8mb4`
 - **Admin CSRF:** Aksi approve/reject/delete/kick/unban dipindah dari link GET ke form POST dengan token CSRF
 - **Session Bootstrap Terpusat:** File baru `modules/auth/helpers/session.php` berisi `meel_boot_session()` — semua entry point (index, video, music, auth, controllers/api, err, admin) kini memanggil satu fungsi ini menggantikan pola lama `session_name('meel'); session_start();` yang tersebar. Cookie sesi dijamin selalu `HttpOnly` + `SameSite=Lax` + `Secure` (auto-detect HTTPS), timeout 12 jam, dan idempotent (no-op jika session sudah aktif)
+- **Modularisasi JS/CSS:** JavaScript & CSS dipecah per modul — video (12 file: state, lifecycle, player-init, player-events, recovery, mini-player, gestures, search, seek-indicator, vtt-sprites, misc), shared (19 file: nav, theme, keyboard, comment, notification, plyr-config, format-time, resume-modal, dll.), profile (5 file: manage, avatar-crop, coin-countdown, theme-init), admin (3 file: activity_log, chat), dengan loader dinamis per module
+- **Adaptive Aspect Ratio Player:** Player video otomatis menyesuaikan aspect ratio — untuk video non-16:9 (seperti 4:3), max-height disetarakan dengan 16:9 equivalent, lebar mengecil secara proporsional dan di-center (mirip YouTube)
+- **Chat API:** Endpoint baru `/api/chat` untuk real-time chat antar user dengan HTMX polling
+- **Notification Update:** Sistem notifikasi diperbarui dengan modularisasi — file `notification.js` di shared, `notification.css` di profile
+- **Profile Modularisasi:** Halaman profile dipecah menjadi komponen terpisah — `manage.js`, `avatar-crop.js`, `coin-countdown.js`, `theme-init.js` + CSS modular (base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state)
+- **Admin Chat:** Interface admin chat baru di `admin/chat.php` dengan CSS & JS modular
+- **URL Cleanup:** Normalisasi URL routing — semua URL bersih tanpa ekstensi `.php`, redirect 301 dari URL lama
 
 ## 📖 Tentang Proyek
 

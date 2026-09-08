@@ -2,6 +2,7 @@
 
 > Dokumen ini berisi analisis teknis dan arsitektur sistem MEeL-HUB.
 > Untuk analisis development, lihat `docs/id/development.md`.
+> Untuk analisis lengkap (termasuk test results & rekomendasi), lihat `docs/en/analysis.md`.
 
 ## Ringkasan Arsitektur
 
@@ -17,6 +18,8 @@ framework) dan MySQL/MariaDB sebagai database.
 4. **Drive** — Cloud storage pribadi dengan scope publik/privat
 5. **Auth** — Sistem autentikasi dan otorisasi berbasis session
 6. **Arcade** — 9 game mini terintegrasi (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania)
+7. **Chat** — Real-time chat antar user dengan HTMX polling
+8. **Notification** — Sistem notifikasi terpusat (like, reply, admin_chat)
 
 ## Alur Data
 
@@ -36,6 +39,13 @@ Lihat `docs/id/security.md` untuk detail keamanan.
 - Garbage collector untuk membersihkan file temporary
 - Rate limiter berbasis file untuk proteksi endpoint
 - X-Sendfile untuk streaming file besar tanpa beban PHP
+
+## Fitur Terbaru (September 2026)
+
+- **Modularisasi JS/CSS** — JavaScript & CSS dipecah per modul (video: 12 file, shared: 19 file, profile: 5 file, admin: 3 file)
+- **Adaptive Aspect Ratio Player** — Player otomatis menyesuaikan aspect ratio video (4:3, 16:9, 21:9, portrait) dengan max-height disetarakan 16:9 seperti YouTube
+- **Chat API** — Real-time chat antar user dengan HTMX polling (30 pesan/menit)
+- **Profile Modularisasi** — Profile page dipecah menjadi komponen terpisah dengan CSS modular
 
 ## Catatan Teknis
 

@@ -975,12 +975,36 @@ Aksi yang mengubah state (mark_read, mark_all_read, delete, delete_all) mewajibk
 
 ---
 
-## Chat API (Admin)
+## Chat API
 
 ### Chat Endpoints (`api/chat.php`)
 
+#### User Chat (Real-time)
+
+**Auth:** User (login required)
+
+| Aksi | Metode | CSRF | Deskripsi |
+|---|---|---|---|
+| `list` | GET | Tidak | Ambil pesan chat (parameter: `after_id`, `limit`) |
+| `send` | POST | Ya | Kirim pesan chat (parameter: `message`, `csrf_token`) |
+| `delete` | POST | Ya | Hapus pesan sendiri (parameter: `id`) — validasi ownership |
+
+**Database Schema:**
+```sql
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+**HTMX Polling:** Client melakukan polling setiap 3 detik untuk pesan baru menggunakan `HX-Get` dengan parameter `after_id`.
+
+#### Admin Chat
+
 **Auth:** Admin only (cek `is_admin()`)
-**CSRF:** Wajib untuk aksi `send` dan `delete`
 
 | Aksi | Metode | CSRF | Deskripsi |
 |---|---|---|---|
@@ -990,7 +1014,9 @@ Aksi yang mengubah state (mark_read, mark_all_read, delete, delete_all) mewajibk
 | `send` | POST | Ya | Kirim pesan ke user (`user_id`, `message`) |
 | `delete` | POST | Ya | Hapus pesan admin (`user_id`, `index`) |
 
-Penyimpanan: file JSON di `storage/chats/{user_id}/isipesan.json`
+Penyimpanan admin chat: file JSON di `storage/chats/{user_id}/isipesan.json`
+
+**Rate Limiting:** 30 pesan per menit per user.
 
 ---
 

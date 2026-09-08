@@ -764,6 +764,203 @@ Redirect ke index.php
 
 ---
 
+## 26. Modularisasi JS/CSS
+
+MEeL menggunakan pendekatan modular untuk JavaScript dan CSS — setiap modul memiliki file-file terpisah yang dimuat secara dinamis.
+
+### Struktur Direktori
+
+```
+assets/
+├── css/
+│   ├── video/           # Video module CSS
+│   │   ├── base.css     # Base styles
+│   │   ├── cards.css    # Video card styles
+│   │   ├── fullscreen.css # Fullscreen player
+│   │   ├── glow.css     # Ambient glow effect
+│   │   ├── layout.css   # Player layout
+│   │   ├── mini-player.css # Floating mini player
+│   │   ├── navbar.css   # Video navbar
+│   │   ├── player.css   # Plyr overrides
+│   │   ├── seek.css     # Seek indicator
+│   │   ├── toast.css    # Toast notifications
+│   │   └── watch/       # Watch page specific
+│   ├── profile/         # Profile module CSS
+│   │   ├── base.css     # Base profile styles
+│   │   ├── cards.css    # Media cards
+│   │   ├── coin.css     # MEeLCoin display
+│   │   ├── edit.css     # Edit profile
+│   │   ├── manage.css   # Profile management
+│   │   ├── notification.css # Notification settings
+│   │   ├── stat.css     # Statistics
+│   │   ├── mfa-switch.css # MFA toggle
+│   │   ├── type-badge.css # User role badges
+│   │   └── empty-state.css # Empty state displays
+│   ├── admin/           # Admin module CSS
+│   │   └── chat.css     # Admin chat styles
+│   ├── music/           # Music module CSS
+│   │   ├── watch.css    # Music watch page
+│   │   └── playlist.css # Playlist styles
+│   ├── books/           # Books module CSS
+│   │   └── read.css     # Book reader
+│   └── shared/          # Shared CSS
+│       ├── comment.css  # Comment section
+│       └── nav.css      # Navigation bar
+├── js/
+│   ├── video/watch/     # Video watch page JS (12 files)
+│   │   ├── state.js     # Global state variables
+│   │   ├── lifecycle.js # Page lifecycle management
+│   │   ├── player-init.js # Player initialization
+│   │   ├── player-events.js # Player event handlers + aspect ratio
+│   │   ├── recovery.js  # Error recovery & stuck detector
+│   │   ├── mini-player.js # Floating mini player
+│   │   ├── gestures.js  # Touch gestures
+│   │   ├── search.js    # Search functionality
+│   │   ├── seek-indicator.js # Seek visual feedback
+│   │   ├── vtt-sprites.js # VTT sprite thumbnails
+│   │   └── misc.js      # Miscellaneous utilities
+│   ├── shared/          # Shared JS (19 files)
+│   │   ├── nav.js       # Navigation behavior
+│   │   ├── theme.js     # Theme toggle
+│   │   ├── keyboard.js  # Keyboard shortcuts
+│   │   ├── comment.js   # Comment section
+│   │   ├── notification.js # Notification system
+│   │   ├── plyr-config.js # Plyr configuration
+│   │   ├── format-time.js # Time formatting
+│   │   ├── resume-modal.js # Resume playback modal
+│   │   ├── index-hub.js # Homepage hub
+│   │   └── ...          # Other shared utilities
+│   ├── profile/         # Profile JS (5 files)
+│   │   ├── manage.js    # Profile management
+│   │   ├── avatar-crop.js # Avatar cropping
+│   │   ├── coin-countdown.js # MEeLCoin countdown
+│   │   └── theme-init.js # Theme initialization
+│   ├── admin/           # Admin JS (3 files)
+│   │   ├── activity_log.js # Activity log viewer
+│   │   └── chat/        # Admin chat
+│   ├── music/           # Music JS
+│   └── books/           # Books JS
+│       └── read/reader.js # Book reader
+```
+
+### Pemetaan CSS per Module
+
+Setiap modul CSS memiliki `manifest.php` yang mendaftarkan file-file CSS-nya. `SwPrecache` membaca manifest ini untuk menghasilkan daftar precache service worker secara otomatis.
+
+```php
+// assets/css/video/manifest.php
+return ['base.css', 'cards.css', 'fullscreen.css', 'glow.css', 'layout.css',
+        'mini-player.css', 'navbar.css', 'player.css', 'seek.css', 'toast.css'];
+```
+
+### Loader Dinamis
+
+JavaScript dimuat secara dinamis oleh `main.js` di setiap halaman modul. File-file JS di-load berurutan sesuai dependency:
+
+```javascript
+// Contoh: video/watch/main.js memuat script secara berurutan
+const scripts = [
+    'state.js', 'recovery.js', 'player-init.js', 'player-events.js',
+    'lifecycle.js', 'mini-player.js', 'gestures.js', 'vtt-sprites.js',
+    'seek-indicator.js', 'misc.js'
+];
+```
+
+---
+
+## 27. Adaptive Aspect Ratio Player
+
+Player video MEeL mendukung adaptive aspect ratio untuk berbagai format video (4:3, 16:9, 21:9, portrait).
+
+### Cara Kerja
+
+1. **Placeholder:** Server merender wrapper dengan `style="aspect-ratio: 16/9;"` sebagai default
+2. **Runtime:** Saat video metadata loaded, JavaScript `applyMeelVideoAspect()` mengubah aspect-ratio sesuai dimensi aktual
+3. **Constraint:** Video non-16:9 mendapat `max-width` proporsional agar height setara 16:9
+
+### Logika `applyMeelVideoAspect(wrapper, videoW, videoH)`
+
+| Kondisi | Behavior |
+|---|---|
+| Portrait (videoW < videoH) | `max-height: 80vh`, width auto, center horizontal |
+| Landscape < 16:9 (4:3, 5:4, 1:1) | `max-width: calc(100% × 9 × videoW / (16 × videoH))`, center |
+| 16:9 atau lebih lebar (21:9) | Full width, height natural |
+
+### Contoh Perhitungan untuk 4:3
+
+```
+max-width = calc(100% × 9 × 4 / (16 × 3))
+         = calc(100% × 36/48)
+         = 75% dari parent width
+```
+
+Pada parent 1000px:
+- **4:3:** 750px × 562.5px (centered)
+- **16:9:** 1000px × 562.5px (full width)
+
+Keduanya memiliki height yang sama — video 4:3 lebih kecil dan centered, seperti YouTube.
+
+### CSS Support
+
+```css
+/* player.css — mencegah stretching */
+.plyr__video-wrapper video {
+    object-fit: contain;
+}
+```
+
+### File Terkait
+
+| File | Peran |
+|---|---|
+| `assets/js/video/watch/player-events.js` | Fungsi `applyMeelVideoAspect()` |
+| `assets/css/video/player.css` | `object-fit: contain` untuk video |
+| `assets/css/video/watch/main.css` | Mobile max-height constraint |
+
+---
+
+## 28. Chat API
+
+Sistem chat real-time antar user dengan HTMX polling.
+
+### Endpoint
+
+| Endpoint | Method | Deskripsi |
+|---|---|---|
+| `/api/chat` | GET | Ambil pesan chat (parameter: `after_id`, `limit`) |
+| `/api/chat` | POST | Kirim pesan chat (parameter: `message`, `csrf_token`) |
+
+### Database Schema
+
+```sql
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+### Fitur
+
+- Pesan diurutkan berdasarkan `created_at` ASC
+- HTMX polling setiap 3 detik untuk pesan baru
+- Delete pesan sendiri (dengan validasi ownership)
+- Notification type `admin_chat` untuk pesan ke admin
+- Rate limiting: 30 pesan per menit per user
+
+### File Terkait
+
+| File | Peran |
+|---|---|
+| `controllers/api/chat.php` | Chat API endpoint |
+| `admin/chat.php` | Admin chat interface |
+| `assets/js/shared/notification.js` | Polling notifikasi termasuk chat |
+| `assets/css/admin/chat.css` | Admin chat styles |
+
+---
+
 ## Arsitektur ProgressObserver
 
 `Transcoder` adalah class **business-layer murni** — tidak pernah meng-echo HTML/JS.
