@@ -207,10 +207,26 @@ if (isset($_POST['adjust_meelcoin_user'])) {
 
     if ($target_id > 0 && $amount > 0) {
         $current = MeelCoin::getBalance($conn, $target_id);
+
+        $role_stmt = $conn->prepare("SELECT role FROM users WHERE id = ?");
+        $role_stmt->bind_param("i", $target_id);
+        $role_stmt->execute();
+        $target_role = $role_stmt->get_result()->fetch_assoc()['role'] ?? 'user';
+        $role_stmt->close();
+
+        $coin_max = MeelCoin::getMax($conn, $target_role);
+
         if ($action === 'add') {
-            $new = $current + $amount;
+            $new = min($current + $amount, $coin_max);
+            $actual = max(0, $new - $current);
         } else {
             $new = max(0, $current - $amount);
+            $actual = $amount;
+        }
+
+        if ($actual <= 0 && $action === 'add') {
+            header("Location: meelcoin.php?msg=Balance_at_max&user_id=" . $target_id);
+            exit();
         }
 
         $stmt = $conn->prepare("UPDATE users SET meelcoin = ? WHERE id = ?");
@@ -218,17 +234,22 @@ if (isset($_POST['adjust_meelcoin_user'])) {
         $stmt->execute();
         $stmt->close();
 
-        MeelCoin::log($conn, $target_id, $action === 'add' ? $amount : -$amount, $new, $reason);
+        MeelCoin::log($conn, $target_id, $action === 'add' ? $actual : -$amount, $new, $reason);
         MeelCoin::clearCache();
 
         $admin_id   = (int)($_SESSION['user_id'] ?? 0);
         $action_lbl = $action === 'add' ? 'ditambahkan' : 'dikurangi';
+        $coin_msg   = 'Admin telah ' . $action_lbl . ' ' . $actual . ' MEeLCoin dari akun Anda.';
+        if ($action === 'add' && $actual < $amount) {
+            $coin_msg .= ' (Dibatasi max ' . $coin_max . ' coin)';
+        }
+        $coin_msg .= ' Alasan: ' . $reason;
         Notification::create(
             $conn,
             $target_id,
             'meelcoin',
             'Penyesuaian MEeLCoin',
-            'Admin telah ' . $action_lbl . ' ' . $amount . ' MEeLCoin dari akun Anda. Alasan: ' . $reason,
+            $coin_msg,
             null,
             null,
             $admin_id

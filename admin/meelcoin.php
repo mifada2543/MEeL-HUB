@@ -169,12 +169,12 @@ if ($target_user_id > 0) {
                     </button>
                 </form>
 
-                <div id="meelcoin-manual" style="margin-top:24px;padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);<?= $meelcoin_settings['meelcoin_enabled'] !== '1' ? 'display:none;opacity:0.3;pointer-events:none;' : '' ?>">
+                <div id="manual-coin" style="margin-top:24px;padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);<?= $meelcoin_settings['meelcoin_enabled'] !== '1' ? 'display:none;opacity:0.3;pointer-events:none;' : '' ?>">
                     <div class="admin-label" style="margin-bottom:12px;">Manual Coin Adjustment</div>
                     <form method="POST" style="display:flex;flex-direction:column;gap:8px;">
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                         <div style="display:flex;gap:8px;">
-                            <select name="target_user_id" required class="admin-select" style="width:25%;" onchange="window.location.href='meelcoin.php?user_id=' + this.value">
+                            <select name="target_user_id" required class="admin-select" style="width:25%;" onchange="window.location.href='meelcoin.php?user_id=' + this.value + '#manual-coin'">
                                 <option value="">Pilih User...</option>
                                 <?php foreach ($user_list as $u): ?>
                                     <option value="<?= $u['id'] ?>" <?= $target_user_id === (int)$u['id'] ? 'selected' : '' ?>>
@@ -209,7 +209,7 @@ if ($target_user_id > 0) {
     <script>
     function toggleMeelCoinConfig(enabled) {
         var cfg = document.getElementById('meelcoin-config');
-        var manual = document.getElementById('meelcoin-manual');
+        var manual = document.getElementById('manual-coin');
         if (!cfg) return;
         if (enabled) {
             cfg.style.display = '';
