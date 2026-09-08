@@ -39,7 +39,6 @@ if (isset($_POST['start_transcode'])) {
             $coin_spent = false;
             $coin_cost  = 0;
             if (MeelCoin::isEnabled($conn)) {
-                $user_role = $_SESSION['user_role'] ?? 'user';
                 $coin_cost = MeelCoin::getTranscodeCost($conn, $user_role);
                 if ($coin_cost > 0) {
                     [$ok, $err] = MeelCoin::spend($conn, (int)$_SESSION['user_id'], $coin_cost, 'transcode');
@@ -69,6 +68,19 @@ if (isset($_POST['start_transcode'])) {
 }
 
 $video_id_value = isset($_GET['id']) ? (int)$_GET['id'] : "";
+
+$user_role      = get_user_role($conn, (int)$_SESSION['user_id']);
+$is_admin       = ($user_role === 'admin');
+$meelcoin_enabled = MeelCoin::isEnabled($conn);
+
+if ($meelcoin_enabled) {
+    if (!$is_admin) {
+        MeelCoin::refill($conn, (int)$_SESSION['user_id'], $user_role);
+    }
+    $coin_balance   = $is_admin ? -1 : MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
+    $coin_cost      = $is_admin ? 0 : MeelCoin::getTranscodeCost($conn, $user_role);
+    $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, (int)$_SESSION['user_id'], $user_role);
+}
 
 $format_meta = [
     'mp3' => ['label' => 'MP3',  'desc' => '128 kbps · MPEG Audio',    'color' => '#ef4444', 'dim' => 'rgba(239,68,68,.12)',  'icon' => 'music', 'textClass' => 'text-red-500'],
@@ -261,6 +273,30 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
                                 <?php endforeach; ?>
                             </div>
                         </div>
+
+                        <?php if ($meelcoin_enabled): ?>
+                            <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/[.03] border border-white/[.06]">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.2);">
+                                        <i data-lucide="coin" class="w-3.5 h-3.5 text-yellow-400"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-[9px] font-bold uppercase tracking-[.15em] text-muted">MEeLCoin</div>
+                                        <div class="text-[13px] font-syne font-extrabold text-yellow-400"
+                                            <?php if (!$is_admin): ?>
+                                                title="Refill berikutnya: <?= $coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill' ?>"
+                                            <?php endif; ?>
+                                        ><?= $is_admin ? '∞' : $coin_balance ?></div>
+                                    </div>
+                                </div>
+                                <?php if (!$is_admin && $coin_cost > 0): ?>
+                                    <div class="text-right">
+                                        <div class="text-[9px] font-bold uppercase tracking-[.15em] text-muted">Biaya</div>
+                                        <div class="text-[13px] font-syne font-extrabold text-orange-400"><?= $coin_cost ?></div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
 
                         <div id="progress-strip" class="hidden w-full h-[3px] bg-white/5 rounded-full overflow-hidden">
                             <div class="h-full w-0 bg-gradient-to-r from-red-500 to-red-400 rounded-full animate-indeterminate"></div>
