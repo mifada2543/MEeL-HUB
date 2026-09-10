@@ -573,7 +573,12 @@ function attachMiniPlayerVideoCardListeners(e) {
         window.scrollTo({ top: 0, left: 0, behavior: "instant" }),
         videoWrapper &&
           (videoWrapper.style.removeProperty("aspect-ratio"),
-          videoWrapper.style.removeProperty("height")));
+          videoWrapper.style.removeProperty("height"),
+          videoWrapper.style.removeProperty("max-width"),
+          videoWrapper.style.removeProperty("max-height"),
+          videoWrapper.style.removeProperty("margin-left"),
+          videoWrapper.style.removeProperty("margin-right"),
+          videoWrapper.style.removeProperty("width")));
       const shell = getMiniShell();
       (shell.style.display = ""),
         videoWrapper.classList.add("mini-player-mode"),

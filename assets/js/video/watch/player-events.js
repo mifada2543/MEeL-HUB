@@ -33,7 +33,11 @@ function setupMeelPlayerEvents() {
       l = (e, t) => (0 === t ? e : l(t, e % t)),
       a = l(n, o);
     console.log(`[MEeL] Aspect ratio video: ${n / a}:${o / a} (${n}x${o})`);
-    if (!isMiniPlayerActive) applyMeelVideoAspect(e, n, o);
+    if (!isMiniPlayerActive) {
+      applyMeelVideoAspect(e, n, o);
+    } else {
+      e.style.aspectRatio = `${n} / ${o}`;
+    }
   }
   
   const AUTONEXT_COUNTDOWN = 5;
