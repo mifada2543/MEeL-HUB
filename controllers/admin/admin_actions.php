@@ -1,21 +1,21 @@
 <?php
-// ─── Guard Direct Access ───
+
 if (!defined('MEEL_ADMIN_CONTEXT')) {
-    die(include __DIR__ . '/../../err/denied.php');
+    $_GET['code'] = 'denied';
+    die(include __DIR__ . '/../../err/index.php');
 }
 
-// ─── Verifikasi Role Admin ───
 if (!is_admin($conn)) {
-    die(include __DIR__ . '/../../err/denied.php');
+    $_GET['code'] = 'denied';
+    die(include __DIR__ . '/../../err/index.php');
 }
 
-// ─── CSRF Guard ───
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token($_POST['csrf_token'] ?? null)) {
-    header("Location: index.php?msg=CSRF_Token_Invalid");
+    header("Location: .?msg=CSRF_Token_Invalid");
     exit();
 }
 
-// ─── BAN IP ───
 if (isset($_POST['ban_ip'])) {
     $ip   = $_POST['ip_target'];
     $reason = !empty($_POST['ban_reason']) ? $_POST['ban_reason'] : "Manual Ban by Admin";
@@ -23,22 +23,20 @@ if (isset($_POST['ban_ip'])) {
     $stmt = $conn->prepare("INSERT IGNORE INTO ip_ban (ip_address, reason) VALUES (?, ?)");
     $stmt->bind_param("ss", $ip, $reason);
     $stmt->execute();
-    log_activity($conn, (int)$_SESSION['user_id'], 'ban_ip', 'ip', 0, $ip);
-    header("Location: index.php?msg=IP_Banned");
+    log_activity($conn, (int)$_SESSION['user_id'], 'ban_ip', 'ip', 0);
+    header("Location: user-management.php?msg=IP_Banned");
     exit();
 }
 
-// ─── UNBAN IP ───
 if (isset($_POST['unban_ip'])) {
     $stmt = $conn->prepare("DELETE FROM ip_ban WHERE ip_address = ?");
     $stmt->bind_param("s", $_POST['unban_ip']);
     $stmt->execute();
-    log_activity($conn, (int)$_SESSION['user_id'], 'unban_ip', 'ip', 0, $_POST['unban_ip']);
-    header("Location: index.php?msg=IP_Unbanned#unban");
+    log_activity($conn, (int)$_SESSION['user_id'], 'unban_ip', 'ip', 0);
+    header("Location: user-management.php?msg=IP_Unbanned#unban");
     exit();
 }
 
-// ─── CLEAR INACTIVE GUESTS ───
 if (isset($_POST['clear_all_guests'])) {
     $stmt = $conn->prepare("DELETE FROM users WHERE role = 'guest' AND is_active = 0");
     if ($stmt->execute()) {
@@ -47,14 +45,13 @@ if (isset($_POST['clear_all_guests'])) {
             $new_ai = (int)$result_ai->fetch_assoc()['new_ai'];
             $conn->query("ALTER TABLE users AUTO_INCREMENT = " . (int)$new_ai);
         }
-        header("Location: index.php?msg=Guests_Cleared_Efficiently");
+        header("Location: user-management.php?msg=Guests_Cleared#monitor");
     } else {
-        header("Location: index.php?msg=Error_Cleaning");
+        header("Location: user-management.php?msg=Error_Cleaning");
     }
     exit();
 }
 
-// ─── CLEAN STUCK QUEUES ───
 if (isset($_POST['clean_stuck_queues'])) {
     require_once __DIR__ . '/../../modules/core/System.php';
     $sys     = new System($conn);
@@ -69,7 +66,6 @@ if (isset($_POST['clean_stuck_queues'])) {
     exit();
 }
 
-// ─── FORCE STOP QUEUE ───
 if (isset($_POST['force_stop_queue'])) {
     require_once __DIR__ . '/../../modules/core/System.php';
     $sys = new System($conn);
@@ -84,7 +80,6 @@ if (isset($_POST['force_stop_queue'])) {
     exit();
 }
 
-// ─── APPROVE USER ───
 if (isset($_POST['approve_id'])) {
     $stmt = $conn->prepare("UPDATE users SET is_active = 1 WHERE id = ?");
     $stmt->bind_param("i", $_POST['approve_id']);
@@ -94,36 +89,29 @@ if (isset($_POST['approve_id'])) {
     if (function_exists('invalidate_user_role_cache')) {
         invalidate_user_role_cache();
     }
-    header("Location: index.php?msg=Approved");
+    header("Location: user-management.php?msg=Approved");
     exit();
 }
 
-// ─── REJECT USER ───
 if (isset($_POST['reject_id'])) {
     $stmt = $conn->prepare("DELETE FROM users WHERE id = ? AND is_active = 2");
     $stmt->bind_param("i", $_POST['reject_id']);
     $stmt->execute();
     log_activity($conn, (int)$_SESSION['user_id'], 'reject_user', 'user', (int)$_POST['reject_id']);
-    header("Location: index.php?msg=Rejected");
+    header("Location: user-management.php?msg=Rejected");
     exit();
 }
 
-// ─── DELETE USER ───
 if (isset($_POST['delete_user_id'])) {
     $id = (int)$_POST['delete_user_id'];
 
     if ($id === (int)($_SESSION['user_id'] ?? 0)) {
-        header("Location: index.php?msg=Cannot_Delete_Self");
+        header("Location: user-management.php?msg=Cannot_Delete_Self");
         exit();
     }
 
-    $check = $conn->prepare("SELECT role FROM users WHERE id = ?");
-    $check->bind_param("i", $id);
-    $check->execute();
-    $target = $check->get_result()->fetch_assoc();
-
-    if ($target && $target['role'] === 'admin') {
-        header("Location: index.php?msg=Cannot_Delete_Admin");
+    if (get_user_role($conn, $id) === 'admin') {
+        header("Location: user-management.php?msg=Cannot_Delete_Admin");
         exit();
     }
 
@@ -131,39 +119,100 @@ if (isset($_POST['delete_user_id'])) {
     $stmt->bind_param("i", $id);
     $stmt->execute();
     log_activity($conn, (int)$_SESSION['user_id'], 'delete_user', 'user', $id);
-    header("Location: index.php?msg=User_Deleted");
+    header("Location: user-management.php?msg=User_Deleted");
     exit();
 }
 
-// ─── CLEAN ORPHAN FILES ───
 if (isset($_POST['clean_orphans'])) {
     $files = json_decode($_POST['files_to_delete'], true);
     foreach ((array)$files as $f) {
         if (file_exists($f)) @unlink($f);
     }
-    header("Location: index.php?status=cleaned#system_check");
+    @unlink(dirname(__DIR__, 2) . '/temp/cache/admin_orphans.json');
+    header("Location: .?status=cleaned#system_check");
     exit();
 }
 
-// ─── KICK USER ───
+if (isset($_POST['recheck_orphans'])) {
+    @unlink(dirname(__DIR__, 2) . '/temp/cache/admin_orphans.json');
+    header("Location: .?msg=Orphan_Rechecked#system_check");
+    exit();
+}
+
 if (isset($_POST['kick_user'])) {
-    $stmt = $conn->prepare("UPDATE users SET 
+    $stmt = $conn->prepare("UPDATE users SET
         last_session_id = 'KICKED',
         last_page       = 'KICKED BY ADMIN',
         last_activity   = DATE_SUB(NOW(), INTERVAL 10 MINUTE)
         WHERE username = ?");
     $stmt->bind_param("s", $_POST['kick_user']);
     $stmt->execute();
-    log_activity($conn, (int)$_SESSION['user_id'], 'kick_user', 'user', 0, $_POST['kick_user']);
-    header("Location: index.php?msg=Kicked_Success#monitor");
+    log_activity($conn, (int)$_SESSION['user_id'], 'kick_user', 'user', 0);
+    header("Location: user-management.php?msg=Kicked#monitor");
     exit();
 }
 
-// ─── RESET MFA USER ───
+if (isset($_POST['save_meelcoin_settings'])) {
+    require_once __DIR__ . '/../../modules/core/helpers/settings.php';
+    require_once __DIR__ . '/../../modules/core/MeelCoin.php';
+
+    $fields = [
+        'meelcoin_enabled'       => '0',
+        'meelcoin_upload_cost'   => '5',
+        'meelcoin_advanced_cost' => '10',
+        'meelcoin_user_max'      => '25',
+        'meelcoin_user_refill'   => '15',
+        'meelcoin_member_max'    => '50',
+        'meelcoin_member_refill' => '25',
+        'meelcoin_refill_hours'  => '5',
+    ];
+
+    foreach ($fields as $key => $default) {
+        $value = $_POST[$key] ?? $default;
+        if (in_array($key, ['meelcoin_upload_cost', 'meelcoin_advanced_cost', 'meelcoin_user_max', 'meelcoin_user_refill', 'meelcoin_member_max', 'meelcoin_member_refill', 'meelcoin_refill_hours'])) {
+            $value = max(0, (int)$value);
+        }
+        set_site_setting($conn, $key, (string)$value);
+    }
+
+    MeelCoin::clearCache();
+    log_activity($conn, (int)$_SESSION['user_id'], 'update_meelcoin_settings', 'settings', 0);
+    header("Location: meelcoin.php?msg=MeelCoin_Updated");
+    exit();
+}
+
+if (isset($_POST['adjust_meelcoin_user'])) {
+    require_once __DIR__ . '/../../modules/core/MeelCoin.php';
+
+    $target_id = (int)($_POST['target_user_id'] ?? 0);
+    $amount    = (int)($_POST['coin_amount'] ?? 0);
+    $action    = $_POST['coin_action'] ?? 'add';
+
+    if ($target_id > 0 && $amount > 0) {
+        $current = MeelCoin::getBalance($conn, $target_id);
+        if ($action === 'add') {
+            $new = $current + $amount;
+        } else {
+            $new = max(0, $current - $amount);
+        }
+
+        $stmt = $conn->prepare("UPDATE users SET meelcoin = ? WHERE id = ?");
+        $stmt->bind_param("ii", $new, $target_id);
+        $stmt->execute();
+        $stmt->close();
+
+        MeelCoin::log($conn, $target_id, $action === 'add' ? $amount : -$amount, $new, 'admin_adjust');
+        MeelCoin::clearCache();
+    }
+
+    header("Location: meelcoin.php?msg=Coin_Adjusted&user_id=" . $target_id);
+    exit();
+}
+
 if (isset($_GET['reset_mfa']) && isset($_GET['user_id'])) {
-    // CSRF guard
+    
     if (!verify_csrf_token($_GET['csrf_token'] ?? null)) {
-        header("Location: ../admin/mfa_reset.php?msg=csrf_invalid");
+        header("Location: ../admin/mfa-reset?msg=csrf_invalid");
         exit;
     }
 
@@ -176,23 +225,22 @@ if (isset($_GET['reset_mfa']) && isset($_GET['user_id'])) {
     $check->close();
 
     if (!$target) {
-        header("Location: ../admin/mfa_reset.php?msg=user_not_found");
+        header("Location: ../admin/mfa-reset?msg=user_not_found");
         exit;
     }
 
     if ($target['role'] === 'admin') {
-        header("Location: ../admin/mfa_reset.php?msg=cannot_reset_admin");
+        header("Location: ../admin/mfa-reset?msg=cannot_reset_admin");
         exit;
     }
 
-    // Reset MFA
     $stmt = $conn->prepare("UPDATE users SET mfa_enabled = 0, mfa_secret = NULL, mfa_backup_codes = NULL WHERE id = ?");
     $stmt->bind_param("i", $target_id);
     if ($stmt->execute()) {
         log_activity($conn, (int)$_SESSION['user_id'], 'reset_mfa', 'user', $target_id);
-        header("Location: ../admin/mfa_reset.php?msg=reset_ok&user=" . urlencode($target['username']));
+        header("Location: ../admin/mfa-reset?msg=reset_ok&user=" . urlencode($target['username']));
     } else {
-        header("Location: ../admin/mfa_reset.php?msg=reset_failed");
+        header("Location: ../admin/mfa-reset?msg=reset_failed");
     }
     $stmt->close();
     exit;

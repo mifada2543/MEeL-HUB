@@ -56,29 +56,43 @@ modules/
 ├── core/                   # Core business logic
 │   ├── System.php          # Queue management, storage monitoring
 │   ├── Uploader.php        # Local file upload (video + music)
-│   ├── Transcoder.php      # yt-dlp download & transcoding engine
-│   ├── helpers.php         # Global utility functions
+│   ├── Transcoder.php      # Facade: yt-dlp download & transcoding → delegates to modules/transcoder/
+│   ├── TranscoderBase.php  # Base class: shared constants, process/PID management, path resolution
+│   ├── helpers.php         # Backward-compat shim → requires helpers/main.php + auth/loader.php
+│   ├── helpers/            # Per-domain utilities: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php
+│   ├── Router.php          # MeelRouter — front-controller route table (routeFor/url/dispatch)
 │   ├── bootstrap.php       # Environment detection & error reporting
 │   ├── base_url.php        # Centralized base URL computation (meel_base_url_path)
 │   ├── activity_logger.php # Activity logging, IP banning, session kick
 │   ├── GarbageCollector.php# Auto-cleanup temp files & guests
-│   ├── RateLimiter.php     # File-based API rate limiter
 │   ├── ProgressObserver.php# Progress event contract (interface + callable adapter)
 │   ├── BrowserProgressObserver.php # Browser presenter — progress events → overlay/JS
 │   ├── CommentRenderer.php # Nested comment rendering
 │   ├── japanese.php        # Japanese text processing (MeCab)
 │   └── SwPrecache.php      # PWA precache generator (service worker)
+├── auth/                   # Centralized security infrastructure (loaded via loader.php)
+│   ├── RateLimiter.php     # File-based API rate limiter
+│   ├── SsrfGuard.php       # SSRF-safe URL validation
+│   ├── ValidatingProxy.php # SSRF-defense forward proxy
+│   └── helpers/            # authz.php, csrf.php, session.php, stream_auth.php, mfa.php, user.php
 ├── media/                  # Media query modules
 │   ├── MediaLibrary.php    # DB queries, pagination, BookRepository, BookUploader
 │   ├── MediaViewer.php     # View tracking, comments, recommendations
 │   ├── MediaInteraction.php# Like/dislike, comment deletion
-│   └── SearchEngine.php    # FULLTEXT search with sanitizer + parameter filtering
+│   ├── SearchEngine.php    # FULLTEXT search with sanitizer + parameter filtering
+│   ├── PlaylistRepository.php # Playlist queries & playlist slug routes
+│   ├── MediaAdminRepository.php # Media metadata queries for the admin panel (edit video/music)
+│   ├── ProfileRepository.php # Profile data queries (video/music counts)
+│   └── AdminActivityRepository.php # Activity-log queries & filters for the admin viewer
 ├── exceptions/             # Exception classes
 │   ├── ProcessException.php
 │   ├── DownloadException.php
 │   └── TranscodeException.php
-├── transcoder/
-│   └── FfmpegUtils.php     # Trait: probeDuration(), generateSpriteAndVTT()
+├── transcoder/             # Services extracted from Transcoder (extend TranscoderBase)
+│   ├── EncodeService.php   # encodeMusic() — download → Opus encode → thumbnail → INSERT music
+│   ├── DownloadService.php # processDownload() — URL download (yt-dlp) + video HLS finalization
+│   ├── TranscodeService.php# transcodeVideo() + ownsTranscodeFile() — audio/video transcode
+│   └── FfmpegUtils.php     # Trait: probeDuration(), generateSpriteAndVTT(), filesystem helpers
 └── autoload.php            # PSR-4-like autoloader
 
 # ── Di ROOT PROJECT (bukan di modules/) ────────────────────────────────
@@ -158,6 +172,17 @@ class MediaViewer {
 - RAM disk staging (`/dev/shm`) for HLS transcoding
 - Atomic DB transaction with rollback + file cleanup
 
+**Delegation to shared helpers (`helpers/upload.php`)** — to avoid duplication,
+`Uploader`, `EncodeService`, `DownloadService`, and the admin editors all use the
+same global functions:
+- `meel_reserve_unique_filename()` — atomic `fopen(..., 'x')` name reservation (race-safe)
+- `meel_allocate_unique_dir()` — unique directory allocation without overwrites
+- `meel_sanitize_clean_name()` / `meel_sanitize_upload_filename()` — name sanitization
+- `meel_ffmpeg_thumbnail_webp()` — single image → WebP conversion path (`libwebp`)
+- `meel_ffmpeg_encode_opus()` — single audio → Ogg/Opus encode path
+- `meel_insert_music_row()` — single INSERT path for the `music` table
+- `meel_magic_extension_ok()` — magic-bytes + extension validation per media kind
+
 ```php
 class Uploader {
     public function processMusic($post, $files, $base_dir);
@@ -165,13 +190,37 @@ class Uploader {
 }
 ```
 
-### 5. `modules/core/Transcoder.php`
+### 5. `modules/core/Transcoder.php` — facade + split services
 
-**Class:** `Transcoder` (uses `FfmpegUtils` trait) — URL download & transcoding engine.
+**Class:** `Transcoder` — **facade** that keeps the legacy public contract
+(constructor, `processDownload`, `encodeMusic`, `transcodeVideo`) while delegating
+implementation to the services in `modules/transcoder/` (all `extends TranscoderBase`):
+
+```
+Existing caller
+    ↓
+Transcoder (facade, modules/core/Transcoder.php)
+    ↓
+├── EncodeService    (modules/transcoder/EncodeService.php)    encodeMusic()
+├── DownloadService  (modules/transcoder/DownloadService.php)  processDownload() + video finalization
+└── TranscodeService (modules/transcoder/TranscodeService.php) transcodeVideo() + ownsTranscodeFile()
+    ↓
+TranscoderBase (modules/core/TranscoderBase.php) — shared constants, processes/PID, path resolution
+```
+
+**`TranscoderBase`** holds the shared responsibilities: configuration constants
+(`FFMPEG_THREADS=8`, `HLS_SEGMENT_DURATION=10`, `DOWNLOAD_TIMEOUT=900`,
+`TRANSCODE_AUDIO_TIMEOUT=600`, `PID_DIR`, `FFMPEG_LIB_PATH`, `ENV_PREFIX` — all
+`protected` so child services can resolve them), the `ProgressObserver` constructor,
+process management (`terminateAllProcesses()`, static `killByPidFile()`,
+`cleanupStalePidFiles()`), and safe path resolution (`getTranscodeFilePath()`,
+`resolveMusicInputPath()` — server-side paths, never client input).
+
 **Pure business logic — no HTML/JS output:** progress is reported through a
 `ProgressObserver` (see [ProgressObserver Architecture](#progressobserver-architecture)),
 so the same engine runs cleanly in browsers, CLI scripts, cron jobs, and API endpoints.
 
+Public facade contract:
 ```php
 class Transcoder {
     public function __construct(\mysqli $db_connection, int $session_user_id,
@@ -197,12 +246,23 @@ Features:
   via `proc_open()` and tracked by PID/process-group; timeout aborts use
   `posix_kill()` (SIGTERM → grace period → SIGKILL) instead of `pkill -f` string
   matching. Callers register `terminateAllProcesses()` as a shutdown function
+- **PID file management** — each spawned process writes its PID to `/tmp/meel_pids/{type}_{id}.pid`, enabling the admin panel to kill processes across requests via `killByPidFile()`
+- **FFmpeg library path** — `proc_open()` env sets `LD_LIBRARY_PATH` explicitly to prevent FFmpeg hangs when the parent process env differs from the child
+- **Transcode timeout** — audio transcode has a 600-second max (`TRANSCODE_AUDIO_TIMEOUT`); HLS remux has a 120-second max; stream reads use `stream_set_timeout(30)` to detect pipe stalls
+- **Cache validation** — transcoded files are validated by both `filesize > 10KB` and `duration ≥ 50%` of source duration to reject corrupt/stub files
+- **FFmpeg exit code check** — `proc_close()` exit code is verified; non-zero exits are logged with the last 15 lines of stderr and the queue status is set to `failed`
+- **Filename sanitization** — whitelist regex (`[^a-zA-Z0-9_\x{3000}-\x{9fff}...]`) preserves CJK characters while preventing path traversal
 - Cached directory size via `dir_size()`
 - Thumbnail sprite + VTT generation
 
 ### 6. `modules/core/System.php`
 
 **Class:** `System` — queue management, monitoring, rate limiting.
+
+Key method — `forceStopQueue(int $id, string $task_type): bool`:
+- **Inline PID kill** — reads PID file from `/tmp/meel_pids/` and sends `SIGTERM` → `SIGKILL` directly (no `Transcoder.php` dependency, avoiding output-before-headers issues in the admin panel)
+- Deletes the queue record from `upload_queue` or `transcode_queue`
+- Returns `true` on success, `false` on failure
 
 ### 7. `modules/core/activity_logger.php`
 
@@ -224,9 +284,10 @@ function log_activity(...);          // INSERT INTO activity_log (audit trail)
 - IP ban check with admin bypass
 - IPv4-mapped IPv6 support (`::ffff:192.168.x.x`)
 
-### 8. `modules/core/helpers.php`
+### 8. `modules/core/helpers/` (global utilities)
 
-Global utility functions — all wrapped in `function_exists()` guard:
+`helpers.php` is now a shim that requires `helpers/main.php` + `modules/auth/loader.php`.
+Functions are wrapped in `function_exists()` guard and split across per-domain subfolders:
 
 ```php
 function resolve_binary(array $candidates): string;     // Binary path discovery (with MEEL_*_PATH constant override)
@@ -268,12 +329,12 @@ function log_drive_operation(...);                       // Drive audit trail
   guards — subtrees owned by other users (e.g. `temp/cache/` owned by another
   process) are skipped with an error log instead of a PHP warning
 
-### 11. `modules/core/RateLimiter.php`
+### 11. `modules/auth/RateLimiter.php`
 
 File-based rate limiter with `flock()` safety. Role-based limits (admin = unlimited, member = 2x).
 
 | Endpoint | Max/Window | Notes |
-|----------|:----------:|-------|
+|---|:---:|---|
 | `like` | 30/min | HTMX 429 HTML response |
 | `comment` | 10/min | Flash message redirect |
 | `upload` | 3/hour | — |
@@ -305,7 +366,7 @@ class TranscodeException extends \RuntimeException {    // FFmpeg transcoding fa
 
 ### 13. `modules/transcoder/FfmpegUtils.php` (Trait)
 
-Used by both `Uploader` and `Transcoder`:
+Used by `Uploader`, `TranscoderBase`, and the `modules/transcoder/` services:
 
 ```php
 trait FfmpegUtils {
@@ -318,9 +379,11 @@ trait FfmpegUtils {
     protected function removeFile(string $path): void;
     protected function removeDir(string $dir): void;
     protected function moveFile(string $src, string $dst): bool;  // Cross-device safe (RAM → HDD)
-    protected function cleanupDir(string $dir): void;             // Alias of removeDir() (backward compat)
 }
 ```
+
+> Note: `cleanupDir()` (alias of `removeDir()`) has been **removed** — it had no
+> callers anywhere in the project; use `removeDir()` directly.
 
 The `moveFile()` helper compares `stat()` device IDs before attempting
 `rename()`: moving from the RAM disk (`/dev/shm`) to the USB HDD is the *normal*
@@ -356,6 +419,25 @@ function meel_base_url_path(): string;   // Project root relative to DOCUMENT_RO
 ```
 
 Used by `bootstrap.php` (`MEEL_BASE_URL` fallback), `auth/config.php`, `auth/config.example.php`, and the `base_url()` fallback in `helpers.php`. Computed from this file's location (`dirname(__DIR__, 2)`) rather than `dirname(SCRIPT_NAME)` — consistent for all pages in subdirectories (admin/, video/, etc.).
+
+### 15b. Error Pages (`err/`)
+
+Error handling is centralized in one dynamic page `err/index.php` — content & theme adapt to the error source:
+
+| File | Purpose |
+|---|---|
+| `err/index.php` | Unified dynamic error page — invoked via `?code=...` |
+| `err/offline.php` | PWA offline page (service worker fallback) — must be kept |
+
+**`err/index.php` parameters:**
+
+| Param | Values | Effect |
+|---|---|---|
+| `code` | `denied` / `not_found` / `banned` / `revoked` / `maintance` | Error type + HTTP status (403 / 404 / 403 / 401 / 503). Default `not_found` |
+| `reason` | text | Extra reason line (used by IP-ban redirect) |
+| `back` | relative path | Overrides the "Back" button target |
+
+**Source adaptation:** the origin module is detected from `HTTP_REFERER` (video/music/books/drive/admin/profile) → accent color & back-button label change automatically. Back-button priority: `?back=` → referer (GET page) → module home → hub (`index.php`).
 
 ### 16. `modules/media/SearchEngine.php`
 
@@ -398,7 +480,7 @@ class MusicWatchController { public function getViewData(): array; public functi
 ### 19. Migration System (`database/migrate.php`)
 
 | Version | Changes |
-|-------|-----------|
+|---|---|
 | **v1** | FULLTEXT index for video, music, books search |
 | **v2** | Performance index (upload_date) |
 | **v3** | Structural synchronization (idempotent) |
@@ -410,13 +492,18 @@ class MusicWatchController { public function getViewData(): array; public functi
 | **v9** | **MFA columns:** `mfa_secret`, `mfa_backup_codes`, `mfa_enabled` |
 | **v10** | Composite index `(video_id, created_at)` & `(music_id, created_at)` on `comments` |
 | **v11** | `interactions` unique keys split: `(user_id, video_id)` & `(user_id, music_id)` — NULL in a combined unique key did not prevent duplicate likes |
+| **v12** | Bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code` |
+
+> 💡 **Rhythm module (MEeL!Mania) does NOT use the main migration system.** The
+> `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`
+> (import once manually — see [Arcade Collection](#21a-arcade-collection-arcade)).
 
 ### 20. MFA System
 
 Multi-Factor Authentication (TOTP) protects user accounts:
 
 | File | Function |
-|------|--------|
+|---|---|
 | `auth/mfa_setup.php` | MFA Setup — generate secret, scan QR/barcode, verify TOTP, backup codes |
 | `auth/mfa_verify.php` | TOTP verification after login — rate limit 10 failed attempts, lock 5 minutes |
 | `admin/mfa_reset.php` | Admin reset MFA for users who lost Authenticator access |
@@ -424,12 +511,12 @@ Multi-Factor Authentication (TOTP) protects user accounts:
 
 **Flow:** `login.php` → check `mfa_enabled` → redirect `mfa_verify.php` → valid TOTP → set full session
 
-**Helper functions** (in `modules/core/helpers.php`):
+**Helper functions** (in `modules/auth/helpers/mfa.php`):
 ```php
 function generate_mfa_secret(): string;      // Base32 random secret
 function generate_totp(string $secret): string;// TOTP 6-digit code
 function verify_totp(string $secret, string $code): bool; // Verify with window ±1
-function generate_backup_codes(): array;      // 8 backup codes (SHA256 hashed)
+function generate_backup_codes(): array;      // 8 backup codes (6 digits, password_hash/bcrypt)
 function verify_backup_code(string $stored, string $code): array; // Verify + consume code
 ```
 
@@ -438,7 +525,7 @@ function verify_backup_code(string $stored, string $code): array; // Verify + co
 Real-time LAN multiplayer chess:
 
 | File | Function |
-|------|--------|
+|---|---|
 | `index.php` | Chess board with drag-and-drop, timer, chat, sound effects |
 | `controller/create_room.php` | Create new room, return room code |
 | `controller/join_room.php` | Join room with code |
@@ -465,10 +552,45 @@ Klik "Multiplayer LAN" → konfirmasi SweetAlert
 - `game_action.php` action `game_over`: client records checkmate/stalemate (only detectable client-side) so the GC preserves finished games.
 
 **Security guards (all controllers):**
-- Wajib login — respons JSON `401` + `login_required: true` (JS `api.js` redirects to login).
+- Wajib login — respons JSON `401` + `login_required: true` (JS `arcade/chess/assets/js/api.js` redirects to login).
 - Semua aksi POST wajib `csrf_token` valid (403 jika tidak).
 - Token CSRF tidak pernah disimpan ke `moves.move_data`.
 - `admin/catur.php?auto_cleanup=1` juga wajib `csrf_token` (dikirim JS via `window.MEEL_ADMIN_CSRF`).
+
+### 21a. Arcade Collection (`arcade/`)
+
+Beyond multiplayer chess, MEeL now ships **9 arcade games** — 7 static games (pure
+HTML/JS, no backend) + Chess (PHP multiplayer) + Rhythm (PHP with its own DB):
+
+| Game | Folder | Type | Description |
+|---|---|---|---|
+| Miku & Teto Run | `arcade/dino/` | Static | Endless runner inspired by Chrome Dino |
+| Snake | `arcade/snake/` | Static | Classic Snake |
+| 2048 | `arcade/2048/` | Static | Tile-merging puzzle |
+| Tetris | `arcade/tetris/` | Static | Legendary tetromino game |
+| Breakout | `arcade/breakout/` | Static | Bouncing ball & bricks |
+| Simon Says | `arcade/simon-says/` | Static | Memory game |
+| Ludo | `arcade/ludo/` | Static | 2–4 player board game / vs Bot |
+| Chess | `arcade/chess/` | PHP + DB | Real-time LAN multiplayer (see §21) |
+| **MEeL!Mania** | `arcade/rhythm/` | PHP + DB | 4-lane rhythm game inspired by osu!mania |
+
+**Rhythm module (`arcade/rhythm/`):**
+
+| File | Function |
+|---|---|
+| `index.php` | Lobby — song list (builtin + custom), filter/sort/search |
+| `game.php` | 4-lane gameplay — A/S/K/L or touch, 4 speed levels |
+| `editor/` | Beatmap editor — create/save beatmaps in the browser (localStorage) |
+| `manage/` | Custom song management (list, edit, delete) |
+| `api/songs.php` | GET — song list (builtin + custom, sort/filter/search, limit 100) |
+| `api/beatmap.php` | GET — fetch beatmap per song (builtin via slug, custom via numeric ID; increments `play_count`) |
+| `api/upload.php` | POST — upload custom song (auth + CSRF; non-admin 10/hour; MP3/OGG/OPUS/FLAC/WAV ≤ 20MB & ≤ 5 min; beatmap 10–5000 notes; FLAC auto-transcoded to Opus; cover → WebP) |
+| `api/delete.php` | POST — delete custom song (owner/admin only) |
+| `migration.sql` | **Separate DB tables** — `arcade_song` & `arcade_score` (FK to `users`) |
+
+> ⚠️ **Installation:** import the rhythm tables once:
+> `mysql MEeL < arcade/rhythm/migration.sql` — not part of
+> `database/schema.sql` (20 tables) nor `database/migrate.php` (v1–v12).
 
 ### Admin Activity Log Viewer
 
@@ -485,13 +607,81 @@ The service worker is **generated dynamically by PHP** — see the full guide in
 [`pwa.md`](pwa.md).
 
 | Component | Role |
-|-----------|------|
+|---|---|
 | `modules/core/SwPrecache.php` | `baseAssets()` + `moduleAssets()` (all `assets/css/*/manifest.php`) → `all()`; `version()` = content hash → auto SW update |
 | `sw.js.php` | Full SW script, `Content-Type: application/javascript`, deterministic output |
 | `.htaccess` | `RewriteRule ^sw\.js$ sw.js.php [L]` — URL `/sw.js` preserved |
 
 Adding a new module folder (`assets/css/<folder>/manifest.php`) automatically
 adds its CSS to the precache — **no manual SW changes needed**.
+
+### 23. Theme System (`assets/css/shared/theme-tokens.css` + `light-theme.css` + `assets/js/shared/theme.js`)
+
+Light/dark mode system with CSS variables and JavaScript toggle.
+
+| Component | Role |
+|---|---|
+| `assets/css/shared/theme-tokens.css` | CSS variables for dark mode (default) — `--meel-bg`, `--meel-surface`, `--meel-text`, etc. |
+| `assets/css/shared/light-theme.css` | Override Tailwind utilities when `html[data-theme="light"]` — 500+ lines of overrides |
+| `assets/js/shared/theme.js` | `MEELTheme` — toggle manager, localStorage + DB sync, smooth transition |
+| `controllers/api/theme.php` | REST API (GET/POST) for theme preference |
+| `database/schema.sql` | `custom_theme` column in `users` table |
+
+**Architecture:**
+```
+theme-tokens.css (variables)
+       ↓
+light-theme.css (overrides when data-theme="light")
+       ↓
+theme.js (toggle + persist)
+       ↓
+localStorage (source of truth, anti-flash, guest-only)
++ DB custom_theme (sync for logged-in users)
+```
+
+**Guest behavior:** Theme preference is stored in `localStorage` only (no DB write). `MEELTheme.init({ isLoggedIn: false })` → `toggle()` saves to localStorage without calling the API.
+
+**Logged-in behavior:** Theme is saved to both `localStorage` and `users.custom_theme` (DB). On page load, localStorage is applied first (anti-flash), then synced with DB if different.
+
+### 24. Profile Module (`profile/index.php` + `controllers/profile/`)
+
+User profile page with role-based visibility, theme toggle, and public channel grid.
+
+| Component | Role |
+|---|---|
+| `profile/index.php` | Profile page — displays avatar, bio, stats, action buttons, content channel grid |
+| `profile/channel_more.php` | HTMX fragment for infinite scroll load-more on profile channel |
+| `controllers/profile/profile_edit.php` | Profile edit handler |
+| `controllers/profile/manage.php` | Content management (video/music) |
+| `modules/media/ProfileRepository.php` | Profile data queries (count video, music, paginated feed) |
+
+**Key variables:**
+- `$is_logged_in` — whether the visitor has an active session
+- `$is_guest_profile` — whether the profile being viewed is the synthetic "Guest" profile
+- `$is_owner` — whether the visitor is viewing their own profile
+- `$active_tab` — content filter tab (`all`, `video`, `music`)
+
+**Visibility rules:**
+
+| Element | Owner | Visitor (logged-in) | Guest |
+|---|:---:|:---:|:---:|
+| Edit Profile, Kelola Konten, MFA | ✅ | ❌ | ❌ |
+| Theme Toggle | ✅ | ❌ | ✅ (own profile only) |
+| Upload Stats | ✅ | ✅ | ❌ |
+| Channel Tabs (All/Video/Music) | ✅ | ✅ | ❌ |
+| Content Grid + Load More | ✅ | ✅ | ❌ |
+| Bio | from DB | from DB | "Akun Guest" |
+| Badge | Staff/Member | Staff/Member | Guest |
+
+**Profile as Channel:** The profile page doubles as a public channel. For logged-in users, it renders a content grid with initial batch of 12 items. HTMX-powered infinite scroll loads more via `profile/channel-more`. Guest profiles only show the profile card — tabs and content grid are hidden.
+
+**Canonical redirects:**
+- `profile/?u=X` → 301 → `profile/X`
+- `profile/<user>/<all|video|music>` → 301 → `profile/<user>?tab=<type>`
+
+**Guest profile access:** Guests can view any user's profile (including their own synthetic Guest profile). The Guest profile is constructed in-memory (no DB query) with `id=0`, `role='guest'`.
+
+**Session initialization:** Uses `meel_boot_session()` (not raw `session_start()`) to ensure the session cookie name matches the rest of the application (`meel`).
 
 ---
 
@@ -505,7 +695,7 @@ output buffers.
 ### Files
 
 | File | Role |
-|------|------|
+|---|---|
 | `modules/core/ProgressObserver.php` | `ProgressObserver` interface + `CallableProgressObserver` adapter |
 | `modules/core/BrowserProgressObserver.php` | Browser presenter: maps events to the MEeL overlay (`partials/ui.php`) + `meel*` JS calls |
 
@@ -528,7 +718,7 @@ $tc = new Transcoder($conn, $uid, function (string $stage, array $data): void {
 ### Event contract — `ProgressObserver::onProgress(string $stage, array $data)`
 
 | Stage | Payload | Meaning |
-|-------|---------|---------|
+|---|---|---|
 | `download_start` | `['url' => string]` | Download begins (overlay injection point) |
 | `transcode_start` | `[]` | Transcode begins (overlay injection point) |
 | `phase` | `['phase' => string]` | Overlay phase switch (`transcode`, `sprite`, ...) |
@@ -570,12 +760,11 @@ Every filesystem access follows three rules:
 ### Shared filesystem helpers
 
 | Helper | Location | Purpose |
-|--------|----------|---------|
+|---|---|---|
 | `ensureDir()` | `FfmpegUtils` trait | `mkdir -p`-style creation with logging |
 | `removeFile()` | `FfmpegUtils` trait | Guarded unlink (existence + writable parent) |
 | `removeDir()` | `FfmpegUtils` trait | Flat-dir cleanup (glob → removeFile → rmdir) |
 | `moveFile()` | `FfmpegUtils` trait | Cross-device move with `stat()` device check |
-| `cleanupDir()` | `FfmpegUtils` trait | Alias of `removeDir()` (backward compat) |
 | `GarbageCollector::removeFile()` | `GarbageCollector.php` | Static guarded unlink |
 | `GarbageCollector::removeDirectory()` | `GarbageCollector.php` | Recursive guarded cleanup (skips non-writable subtrees, `rmdir` only when empty) |
 | `meel_write_cache_file()` | `helpers/storage.php` | Guarded cache write with `LOCK_EX` |

@@ -1,5 +1,14 @@
-/* player-init.js — Inisialisasi instance Plyr + HLS.js. */
+
 function initPlayer() {
+  
+
+  if (window.playerConfig) {
+    videoSrc = window.playerConfig.videoSrc || videoSrc;
+    isHls = window.playerConfig.isHls || !1;
+    vttSrc = window.playerConfig.vttSrc || "";
+    videoId = window.playerConfig.id || videoId;
+    storageKeyVideo = `video_pos_${videoId}`;
+  }
   ((videoElement = document.getElementById("main-video")),
     videoElement &&
       (isHls && window.Hls && Hls.isSupported()

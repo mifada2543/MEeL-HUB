@@ -1,8 +1,12 @@
-/* mini-player.css — Mini player shell, info, responsive */
+
 #mini-player-shell {
   position: fixed !important;
-  bottom: 24px !important;
-  right: 24px !important;
+  
+
+
+
+  bottom: 24px;
+  right: 24px;
   width: 360px !important;
   z-index: 9999 !important;
   border-radius: 12px !important;
@@ -11,18 +15,73 @@
   box-shadow:
     0 20px 50px rgba(0, 0, 0, 0.85),
     0 0 0 1px rgba(255, 255, 255, 0.07) !important;
+  
+
+
+
+
+  transition: box-shadow 0.3s;
+  cursor: grab !important;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#mini-player-shell.mini-dragging {
+  cursor: grabbing !important;
+  transition: none !important;
+  will-change: transform;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.95),
+    0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+}
+
+
+
+
+
+#mini-player-shell .plyr__video-wrapper,
+#mini-player-shell .plyr__video-wrapper video {
+  touch-action: none;
+}
+
+#mini-player-shell #main-video-wrapper,
+#mini-player-shell #main-video-wrapper .plyr,
+#mini-player-shell #main-video-wrapper .plyr__video-wrapper {
+  border-radius: 0 !important;
+}
+#mini-player-shell #main-video-wrapper .plyr__video-wrapper video {
+  object-fit: cover !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+#mini-player-shell.mini-dragging * {
+  cursor: grabbing !important;
+}
+#mini-player-shell.mini-snapping {
+  
+
+
   transition:
-    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.3s !important;
-  cursor: default !important;
+}
+
+#mini-player-shell.mini-dragging .plyr__controls {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+
+#mini-player-shell .plyr__video-wrapper {
+  max-height: 60vh;
 }
 #mini-player-shell:hover {
   box-shadow:
     0 28px 64px rgba(0, 0, 0, 0.95),
     0 0 0 1px rgba(220, 38, 38, 0.35) !important;
 }
-/* ─── Mini-player mode (inside shell) ─── */
-.mini-player-mode {
+
+#mini-player-shell #main-video-wrapper {
   position: relative !important;
   width: 100% !important;
   height: auto !important;
@@ -30,10 +89,10 @@
   box-shadow: none !important;
   cursor: default !important;
 }
-.mini-player-mode .plyr {
+#mini-player-shell .plyr {
   pointer-events: auto !important;
 }
-.mini-player-mode .plyr::before {
+#mini-player-shell .plyr::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -51,18 +110,18 @@
   pointer-events: none;
 }
 #mini-player-shell:hover .plyr::before,
-.mini-player-mode .plyr.plyr--pressed::before {
+#mini-player-shell .plyr.plyr--pressed::before {
   opacity: 1;
   visibility: visible;
 }
-.mini-player-mode button[data-plyr="fullscreen"],
-.mini-player-mode button[data-plyr="pip"],
-.mini-player-mode button[data-plyr="play"],
-.mini-player-mode button[data-plyr="settings"],
-.mini-player-mode button[data-plyr="meel-miniplayer"] {
+#mini-player-shell button[data-plyr="fullscreen"],
+#mini-player-shell button[data-plyr="pip"],
+#mini-player-shell button[data-plyr="play"],
+#mini-player-shell button[data-plyr="settings"],
+#mini-player-shell button[data-plyr="meel-miniplayer"] {
   display: none !important;
 }
-.mini-player-mode .plyr__controls {
+#mini-player-shell .plyr__controls {
   padding-left: 16px !important;
   background: 0 0 !important;
   padding: 10px 12px !important;
@@ -77,14 +136,14 @@
   right: 0 !important;
 }
 #mini-player-shell:hover .plyr__controls,
-.mini-player-mode .plyr.plyr--pressed .plyr__controls {
+#mini-player-shell .plyr.plyr--pressed .plyr__controls {
   opacity: 1 !important;
   visibility: visible !important;
 }
-.mini-player-mode .plyr__progress input[type="range"] {
+#mini-player-shell .plyr__progress input[type="range"] {
   cursor: pointer !important;
 }
-/* ─── Close & Expand buttons ─── */
+
 #mini-close-btn,
 #mini-expand-btn {
   position: absolute;
@@ -105,12 +164,11 @@
     background 0.15s,
     transform 0.15s;
   z-index: 20;
-  pointer-events: none;
+  pointer-events: auto;
 }
 #mini-player-shell:hover #mini-close-btn,
 #mini-player-shell:hover #mini-expand-btn {
   opacity: 1;
-  pointer-events: auto;
 }
 #mini-expand-btn {
   left: 8px;
@@ -126,13 +184,36 @@
   background: rgba(220, 38, 38, 0.75);
   transform: scale(1.1);
 }
-/* ─── Mini-player info ─── */
+
 #mini-player-info {
   padding: 10px 12px 12px;
   display: flex;
   align-items: center;
   gap: 10px;
   cursor: pointer;
+}
+#mini-mute-btn {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  border-radius: 50%;
+  color: #e5e7eb;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.15s;
+}
+#mini-mute-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #f87171;
+  transform: scale(1.08);
 }
 #mini-player-info:hover #mini-info-title {
   color: #f87171;
@@ -163,12 +244,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* ─── Responsive: 640px ─── */
+
 @media (max-width: 640px) {
   #mini-player-shell {
     width: 280px !important;
-    right: 12px !important;
-    bottom: 16px !important;
+    right: 12px;
+    bottom: 16px;
     border-radius: 10px !important;
   }
   #mini-player-shell #mini-close-btn,
@@ -193,13 +274,17 @@
   #mini-player-shell #mini-info-uploader {
     font-size: 9px;
   }
+  #mini-player-shell #mini-mute-btn {
+    width: 24px;
+    height: 24px;
+  }
 }
-/* ─── Responsive: 480px ─── */
+
 @media (max-width: 480px) {
   #mini-player-shell {
     width: 240px !important;
-    right: 8px !important;
-    bottom: 12px !important;
+    right: 8px;
+    bottom: 12px;
     border-radius: 8px !important;
   }
   #mini-player-shell #mini-close-btn,
@@ -226,5 +311,9 @@
   #mini-player-shell #mini-info-uploader {
     font-size: 8px;
     margin-top: 1px;
+  }
+  #mini-player-shell #mini-mute-btn {
+    width: 22px;
+    height: 22px;
   }
 }

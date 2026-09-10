@@ -25,11 +25,16 @@ controllers/
 ├── api/
 │   ├── WatchController.php   # Controller watch page (Video + Music)
 │   ├── like.php              # Like/dislike toggle
+│   ├── comment.php           # Tambah komentar (HTMX/AJAX)
 │   ├── delete_comment.php    # Hapus komentar
 │   ├── auto_metadata.php     # Auto-fetch metadata (yt-dlp info)
 │   ├── pdf.php               # PDF viewer proxy
 │   ├── download_transcode.php# Download hasil transcode
-│   └── post_encode.php       # Post-encode music (after yt-dlp)
+│   ├── post_encode.php       # Post-encode music (after yt-dlp)
+│   ├── theme.php             # Theme preference (GET/POST) — light/dark
+│   ├── ajax_refresh.php      # Refresh fragment AJAX (search, dll.)
+│   ├── server_stats.php      # Statistik server (JSON)
+│   └── server_stats_sse.php  # Statistik server via Server-Sent Events
 ├── profile/
 │   ├── fun-manage.php        # Delete media, pending deletions, cleanup
 │   └── profile_edit.php      # Update profil user
@@ -44,7 +49,7 @@ controllers/
 ### MFA Pages (di `auth/` & `admin/`)
 
 | File | Fungsi |
-|------|--------|
+|---|---|
 | `auth/mfa_setup.php` | Setup MFA — generate secret, verifikasi TOTP, backup codes |
 | `auth/mfa_verify.php` | Verifikasi TOTP setelah login |
 | `admin/mfa_reset.php` | Admin reset MFA user yang kehilangan akses Authenticator |
@@ -53,7 +58,7 @@ controllers/
 
 ## WatchController
 
-**File:** `controllers/api/WatchController.php`  
+**File:** `controllers/api/WatchController.php`
 **Method:** Constructor-based (bukan HTTP endpoint langsung)
 
 Controller untuk halaman watch video & music. Data diambil via `getViewData()` dan di-`extract()` ke view.
@@ -80,7 +85,7 @@ abstract class AbstractWatchController
 
 - `handleRequest()` — catat view + proses POST komentar dengan verifikasi CSRF & rate limit (10/menit). Redirect memakai hook `commentRedirectUrl()`.
 - `baseViewData()` — mengembalikan key yang sama di semua halaman watch: `id`, `user_id`, `is_logged_in`, `v`, `user_interaction`, `comments_grouped`, `user_map`, `rekom`.
-- `commentRedirectUrl()` — default `watch.php?id=...#comment-section`; `MusicWatchController` me-*override* untuk menambah `&playlist_id=...`.
+- `commentRedirectUrl()` — default `music/watch?id=...#comment-section`; `MusicWatchController` me-*override* untuk menambah `&playlist_id=...`.
 
 ### VideoWatchController
 
@@ -92,7 +97,7 @@ extract($ctrl->getViewData());  // → $v, $video_src, $is_hls, $subtitles, dll
 
 **View data yang dikembalikan:**
 | Variable | Tipe | Deskripsi |
-|----------|------|-----------|
+|---|---|---|
 | `$v` | array | Data video + uploader info |
 | `$video_src` | string | Path ke file video / playlist.m3u8 |
 | `$is_hls` | bool | Apakah video HLS |
@@ -114,7 +119,7 @@ extract($ctrl->getViewData());  // getViewData() memanggil requireMedia() intern
 
 **View data yang dikembalikan:**
 | Variable | Tipe | Deskripsi |
-|----------|------|-----------|
+|---|---|---|
 | `$v` | array | Data audio + uploader info |
 | `$playlist_id` | int | ID playlist aktif |
 | `$playlist_context` | int | ID playlist untuk link navigasi |
@@ -135,7 +140,7 @@ extract($ctrl->getViewData());  // getViewData() memanggil requireMedia() intern
 Helper komentar yang dipakai bersama halaman watch & endpoint AJAX:
 
 | Fungsi | Deskripsi |
-|--------|-----------|
+|---|---|
 | `render_comments($parent_id, $grouped, $level, $theme, $playlist_context)` | Render komentar nested dengan 2 tema (video/music) |
 | `comment_preview($grouped, $limit = 4): array` | Preview komentar terbaru → `['text' => ..., 'latest_comment' => ?array, 'items' => array]` (hingga `$limit` komentar terbaru) |
 | `render_comment_empty_state($theme): void` | Empty state "Jadilah komentar pertama" theme-aware (video=gray-300, music=gray-700) |
@@ -146,13 +151,13 @@ Helper komentar yang dipakai bersama halaman watch & endpoint AJAX:
 
 ### Login
 
-**Endpoint:** `auth/login.php`  
-**Method:** POST  
+**Endpoint:** `auth/login` (handler: `auth/login.php`)
+**Method:** POST
 **Auth:** None (public)
 
 **Request:**
 ```html
-<form method="POST" action="auth/login.php">
+<form method="POST" action="auth/login">
   <input type="hidden" name="csrf_token" value="...">
   <input type="text" name="username" required>
   <input type="password" name="password" required>
@@ -167,8 +172,8 @@ Helper komentar yang dipakai bersama halaman watch & endpoint AJAX:
 
 ### Logout
 
-**Endpoint:** `auth/logout.php`  
-**Method:** GET  
+**Endpoint:** `auth/logout` (handler: `auth/logout.php`)
+**Method:** GET
 **Auth:** Required
 
 ### MFA Verification Flow
@@ -180,25 +185,25 @@ Cek users.mfa_enabled == 1 && users.mfa_secret IS NOT NULL?
   ↓ Ya                             ↓ Tidak
 Simpan mfa_temp_uid ke session    Set session langsung
   ↓                                ↓
-Redirect ke mfa_verify.php       Redirect ke index.php
+Redirect ke auth/mfa-verify       Redirect ke index.php
   ↓
 User input TOTP 6 digit
   ↓
 Verify via TOTP (HMAC-SHA1, 30s step, window ±1)
   ↓ Gagal
-Coba backup code (SHA256 hash, sekali pakai)
+Coba backup code (password_hash/bcrypt, sekali pakai)
   ↓ Gagal total
 Increment fail count → max 10 → Lock 5 menit
   ↓ Valid
 Set session penuh (user_id, username, role) + mfa_verified
   ↓
-Hapus mfa_temp_uid → Redirect ke index.php
+Hapus mfa_temp_uid → Redirect ke index.php (hub)
 ```
 
 ### Registrasi
 
-**Endpoint:** `auth/register.php`  
-**Method:** POST  
+**Endpoint:** `auth/register` (handler: `auth/register.php`)
+**Method:** POST
 **Auth:** None (public)
 
 **Validasi:**
@@ -217,10 +222,10 @@ Register → CSRF Check → Validasi → Insert DB (is_active=2)
 
 ## MFA Endpoints
 
-### MFA Setup (`auth/mfa_setup.php`)
+### MFA Setup (`auth/mfa-setup`)
 
-**Method:** POST  
-**Auth:** User (login required)  
+**Method:** POST
+**Auth:** User (login required)
 **Rate Limit:** Tidak ada (hanya untuk user sendiri)
 
 Halaman multi-step untuk mengaktifkan, mengelola, atau menonaktifkan MFA.
@@ -228,7 +233,7 @@ Halaman multi-step untuk mengaktifkan, mengelola, atau menonaktifkan MFA.
 #### Step 1: Generate Secret
 
 ```html
-<form method="POST" action="auth/mfa_setup.php">
+<form method="POST" action="auth/mfa-setup">
   <input type="hidden" name="csrf_token" value="...">
   <button name="generate_secret" value="1">Mulai Setup MFA</button>
 </form>
@@ -243,7 +248,7 @@ Halaman multi-step untuk mengaktifkan, mengelola, atau menonaktifkan MFA.
 #### Step 2: Verify Code
 
 ```html
-<form method="POST" action="auth/mfa_setup.php">
+<form method="POST" action="auth/mfa-setup">
   <input type="hidden" name="csrf_token" value="...">
   <input type="hidden" name="verify_code" value="1">
   <input type="text" name="code" maxlength="6" inputmode="numeric" placeholder="000000" required>
@@ -260,7 +265,7 @@ Halaman multi-step untuk mengaktifkan, mengelola, atau menonaktifkan MFA.
 - `verify_totp($secret, $code)` — TOTP dengan toleransi window ±1 (90 detik)
 
 | Error | Penyebab |
-|-------|----------|
+|---|---|
 | `Sesi keamanan kadaluarsa` | CSRF token tidak valid |
 | `Sesi setup MFA tidak ditemukan` | Session expired, mulai ulang |
 | `Kode harus 6 digit angka` | Input tidak sesuai format |
@@ -268,11 +273,11 @@ Halaman multi-step untuk mengaktifkan, mengelola, atau menonaktifkan MFA.
 
 #### Step 3: Backup Codes
 
-Setelah verifikasi berhasil, 8 backup codes (masing-masing 8 karakter hex) ditampilkan **sekali saja**:
+Setelah verifikasi berhasil, 8 backup codes (masing-masing 6 digit angka) ditampilkan **sekali saja**:
 
 ```html
-<div class="backup-code">a1b2c3d4</div>
-<div class="backup-code">e5f6g7h8</div>
+<div class="backup-code">483920</div>
+<div class="backup-code">710265</div>
 <!-- ... 8 codes total -->
 
 <button onclick="downloadBackupCodes()">Download Backup Codes (.txt)</button>
@@ -283,7 +288,7 @@ Setelah verifikasi berhasil, 8 backup codes (masing-masing 8 karakter hex) ditam
 ```
 
 **Backup codes disimpan sebagai:**
-- Database: `JSON array of SHA256 hashes`
+- Database: `JSON array` berisi hash `password_hash()` (bcrypt) dari tiap kode
 - Tidak bisa dibaca balik (one-way hash)
 - Setelah dipakai, hash dihapus dari array
 
@@ -292,7 +297,7 @@ Setelah verifikasi berhasil, 8 backup codes (masing-masing 8 karakter hex) ditam
 Jika MFA sudah aktif, halaman menampilkan opsi untuk menonaktifkan:
 
 ```html
-<form method="POST" action="auth/mfa_setup.php">
+<form method="POST" action="auth/mfa-setup">
   <input type="hidden" name="csrf_token" value="...">
   <button name="disable_mfa" value="1">Nonaktifkan MFA</button>
 </form>
@@ -302,17 +307,17 @@ Jika MFA sudah aktif, halaman menampilkan opsi untuk menonaktifkan:
 
 ---
 
-### MFA Verify (`auth/mfa_verify.php`)
+### MFA Verify (`auth/mfa-verify`)
 
-**Method:** POST  
-**Auth:** Session temp (`mfa_temp_uid`)  
+**Method:** POST
+**Auth:** Session temp (`mfa_temp_uid`)
 **Rate Limit:** 10 percobaan gagal → lock 5 menit
 
 Halaman verifikasi TOTP yang muncul setelah login jika user memiliki MFA aktif.
 
 **Request:**
 ```html
-<form method="POST" action="auth/mfa_verify.php">
+<form method="POST" action="auth/mfa-verify">
   <input type="hidden" name="csrf_token" value="...">
   <input type="hidden" name="verify" value="1">
   <input type="text" name="code" maxlength="6" inputmode="numeric"
@@ -337,7 +342,7 @@ Halaman verifikasi TOTP yang muncul setelah login jika user memiliki MFA aktif.
 
 **Error Responses:**
 | Kondisi | Respon |
-|---------|--------|
+|---|---|
 | `mfa_temp_uid` tidak ada + belum login penuh | Redirect ke `login.php` |
 | `mfa_temp_uid` tidak ada + sudah login penuh | Redirect ke `index.php` |
 | Max 10 percobaan gagal | Lock 5 menit — render halaman dengan countdown + auto-refresh |
@@ -352,8 +357,8 @@ Halaman verifikasi TOTP yang muncul setelah login jika user memiliki MFA aktif.
 
 ### MFA Backend Controller (`controllers/system/mfa.php`)
 
-**Method:** POST  
-**Auth:** User (login required)  
+**Method:** POST
+**Auth:** User (login required)
 **Rate Limit:** Password verify: 5 percobaan → lock 5 menit (session-based)
 
 Endpoint AJAX untuk operasi MFA backend. Semua request via `fetch()` + JSON.
@@ -378,7 +383,7 @@ fetch('../controllers/system/mfa.php', {
 {
   "status": "success",
   "message": "Kode cadangan baru berhasil dibuat.",
-  "codes": ["a1b2c3d4", "e5f6g7h8", ...]  // 8 codes
+  "codes": ["483920", "710265", ...]  // 8 kode (6 digit)
 }
 ```
 
@@ -418,14 +423,14 @@ Generated: 2026-01-15 14:30:00
 Setiap kode hanya bisa digunakan SEKALI.
 Simpan di tempat yang aman!
 
-  a1b2c3d4
-  e5f6g7h8
+  483920
+  710265
   ...
 ```
 
 **Error Responses (JSON):**
 | Status | Penyebab |
-|--------|----------|
+|---|---|
 | `401` | User tidak login |
 | `Silakan login terlebih dahulu.` | Session expired |
 | `Sesi keamanan kadaluarsa.` | CSRF token tidak valid |
@@ -437,20 +442,20 @@ Simpan di tempat yang aman!
 
 ---
 
-### Admin MFA Reset (`admin/mfa_reset.php` + `controllers/admin/admin_actions.php`)
+### Admin MFA Reset (`admin/mfa-reset` + `controllers/admin/admin_actions.php`)
 
-**Method:** GET (link dengan parameter)  
-**Auth:** Admin only  
+**Method:** GET (link dengan parameter)
+**Auth:** Admin only
 **Rate Limit:** Tidak ada
 
 Admin dapat mereset MFA user yang kehilangan akses ke aplikasi Authenticator.
 
 #### View Users with MFA
 
-Halaman `admin/mfa_reset.php` menampilkan daftar user dengan MFA aktif:
+Halaman `admin/mfa-reset` menampilkan daftar user dengan MFA aktif:
 
 | Kolom | Deskripsi |
-|-------|-----------|
+|---|---|
 | Username | Nama user + ID |
 | Role | Admin/Member/User (badge warna) |
 | Status | Active/Pending |
@@ -464,7 +469,7 @@ Halaman `admin/mfa_reset.php` menampilkan daftar user dengan MFA aktif:
 **Trigger:** Klik "Reset MFA" → konfirmasi SweetAlert2 → redirect
 
 ```
-GET admin/mfa_reset.php?reset_mfa=1&user_id=123&csrf_token=...
+GET admin/mfa-reset?reset_mfa=1&user_id=123&csrf_token=...
   ↓
 die(include admin_actions.php)
   ↓
@@ -474,12 +479,12 @@ UPDATE users SET mfa_enabled=0, mfa_secret=NULL, mfa_backup_codes=NULL WHERE id=
   ↓
 log_activity(admin_id, 'reset_mfa', 'user', target_id)
   ↓
-Redirect ke mfa_reset.php?msg=reset_ok&user={username}
+Redirect ke admin/mfa-reset?msg=reset_ok&user={username}
 ```
 
 **Response Messages:**
 | Message | Deskripsi |
-|---------|-----------|
+|---|---|
 | `reset_ok` | ✅ MFA berhasil di-reset |
 | `csrf_invalid` | ❌ CSRF token tidak valid |
 | `user_not_found` | ❌ User ID tidak ditemukan |
@@ -498,9 +503,9 @@ Redirect ke mfa_reset.php?msg=reset_ok&user={username}
 
 ### Like/Dislike
 
-**Endpoint:** `controllers/like.php`  
-**Method:** POST (via HTMX)  
-**Auth:** User (non-guest, active)  
+**Endpoint:** `api/like` (handler: `controllers/api/like.php`)
+**Method:** POST (via HTMX)
+**Auth:** User (non-guest, active)
 **Rate Limit:** 30 requests per menit per user
 
 **Request (via HTMX hx-vals):**
@@ -513,7 +518,7 @@ Redirect ke mfa_reset.php?msg=reset_ok&user={username}
 ```
 
 | Parameter | Tipe | Deskripsi |
-|-----------|------|-----------|
+|---|---|---|
 | `id` | int | ID media (video/music) |
 | `media_type` | string | `video` atau `music` |
 | `type` | string | `like` atau `dislike` |
@@ -533,9 +538,9 @@ Redirect ke mfa_reset.php?msg=reset_ok&user={username}
 
 ### Delete Comment
 
-**Endpoint:** `controllers/api/delete_comment.php?id=123`  
-**Method:** GET  
-**Auth:** User (owner of comment)  
+**Endpoint:** `api/delete-comment?id=123` (handler: `controllers/api/delete_comment.php`)
+**Method:** GET
+**Auth:** User (owner of comment)
 **Rate Limit:** 10 requests per menit per user
 
 **Response:**
@@ -545,8 +550,8 @@ Redirect ke mfa_reset.php?msg=reset_ok&user={username}
 
 ### Auto Metadata
 
-**Endpoint:** `controllers/api/auto_metadata.php`  
-**Method:** POST  
+**Endpoint:** `api/auto-metadata` (handler: `controllers/api/auto_metadata.php`)
+**Method:** POST
 **Auth:** Admin
 
 Mengambil metadata otomatis dari URL (yt-dlp) untuk formulir upload:
@@ -563,8 +568,8 @@ Mengambil metadata otomatis dari URL (yt-dlp) untuk formulir upload:
 
 ### PDF Proxy
 
-**Endpoint:** `controllers/api/pdf.php?id=123`  
-**Method:** GET  
+**Endpoint:** `api/pdf?id=123` (handler: `controllers/api/pdf.php`)
+**Method:** GET
 **Auth:** User/Admin
 
 Streaming PDF untuk viewer buku:
@@ -576,14 +581,36 @@ readfile($filePath);
 
 ### Download Transcode
 
-**Endpoint:** `controllers/api/download_transcode.php`  
-**Method:** POST  
-**Auth:** User/Admin
+**Endpoint:** `api/download-transcode` (handler: `controllers/api/download_transcode.php`)
+**Method:** GET
+**Auth:** User (login required)
 
-Download file hasil transcoding video → audio:
-```
-POST → cek file → kirim sebagai download attachment
-```
+Download file hasil transcoding video → audio dengan header Content-Disposition yang benar.
+
+**Parameter:**
+| Parameter | Tipe | Deskripsi |
+|---|---|---|
+| `file` | string | Nama file transcode (mis. `song-title.mp3`) |
+| `title` | string | Judul media asli (untuk nama file download) |
+
+**Validasi file:**
+- Whitelist ekstensi: `mp3`, `ogg`, `m4a`, `opus`
+- Ukuran minimum: 10KB (menolak file corrupt/stub)
+- `basename()` proteksi path traversal
+
+**Response headers:**
+- `Content-Type`: MIME type yang benar untuk format
+- `Content-Disposition`: `attachment` dengan nama file UTF-8 (RFC 5987)
+- `X-Accel-Buffering: no` (nonaktifkan buffering proxy)
+
+**Kode error:**
+| Kode | Arti |
+|---|---|
+| `400` | Parameter tidak valid/tidak ada |
+| `401` | Belum login |
+| `404` | File tidak ditemukan atau expired |
+| `410` | File tidak valid/terlalu kecil (cache corrupt — transcode ulang) |
+| `500` | Error database |
 
 ---
 
@@ -591,8 +618,8 @@ POST → cek file → kirim sebagai download attachment
 
 ### Upload Video (Lokal)
 
-**Endpoint:** `video/upload.php`  
-**Method:** POST  
+**Endpoint:** `video/upload` (handler: `video/upload.php`)
+**Method:** POST
 **Auth:** User/Admin
 
 **Form Data:**
@@ -607,8 +634,8 @@ POST → cek file → kirim sebagai download attachment
 
 ### Upload Music (Lokal)
 
-**Endpoint:** `music/upload.php`  
-**Method:** POST  
+**Endpoint:** `music/upload` (handler: `music/upload.php`)
+**Method:** POST
 **Auth:** User/Admin
 
 **Form Data:**
@@ -624,8 +651,8 @@ POST → cek file → kirim sebagai download attachment
 
 ### Upload Buku
 
-**Endpoint:** `books/upload.php`  
-**Method:** POST  
+**Endpoint:** `books/upload` (handler: `books/upload.php`)
+**Method:** POST
 **Auth:** User/Admin
 
 **Form Data:**
@@ -644,8 +671,8 @@ POST → cek file → kirim sebagai download attachment
 
 ### Advanced Upload (yt-dlp URL)
 
-**Endpoint:** `upload_advanced.php`  
-**Method:** POST  
+**Endpoint:** `upload` (handler: `upload_advanced.php`)
+**Method:** POST
 **Auth:** Admin
 
 **Form Data:**
@@ -669,8 +696,8 @@ Phase 4: Done (links to media)
 
 ### Transcode Video → Audio
 
-**Endpoint:** `transcode.php`  
-**Method:** POST  
+**Endpoint:** `transcode.php`
+**Method:** POST
 **Auth:** User/Admin
 
 **Form Data:**
@@ -694,8 +721,8 @@ Phase 4: Done (links to media)
 
 ### Edit Profile
 
-**Endpoint:** `controllers/profile_edit.php`  
-**Method:** POST  
+**Endpoint:** `profile/edit` (handler: `controllers/profile/profile_edit.php`)
+**Method:** POST
 **Auth:** User
 
 **Form Data:**
@@ -714,16 +741,41 @@ Phase 4: Done (links to media)
 
 ### View Profile
 
-**Endpoint:** `profile/index.php?u=username`  
-**Method:** GET  
+**Endpoint:** `profile/{username}` (handler: `profile/index.php`; `profile/?u=username` lama di-301 ke URL bersih)
+**Method:** GET
 **Auth:** Public
+
+**Query Parameters:**
+| Parameter | Nilai | Default | Deskripsi |
+|---|---|---|---|
+| `tab` | `all`, `video`, `music` | `all` | Tab filter konten |
+
+**Profile sebagai Channel:** Halaman profil sekaligus channel publik. Untuk user yang login, menampilkan grid konten (batch awal: 12 item) dengan infinite scroll via HTMX. Profil guest hanya menampilkan card profil tanpa tab atau grid konten.
+
+**Canonical Redirects:**
+- `profile/?u=X` → 301 → `profile/X`
+- `profile/<user>/<all|video|music>` → 301 → `profile/<user>?tab=<type>`
+
+### Profile Channel (HTMX Load More)
+
+**Endpoint:** `profile/channel-more` (handler: `profile/channel_more.php`)
+**Method:** GET
+**Auth:** Public
+
+| Parameter | Wajib | Deskripsi |
+|---|---|---|
+| `u` | Ya | Username target |
+| `tab` | Tidak | `all` (default), `video`, `music` |
+| `offset` | Ya | Offset paginasi (mulai dari 12) |
+
+Mengembalikan fragment HTML (kartu konten + tombol load more atau penanda "Semua Konten Dimuat"). Digunakan oleh `profile/index.php` via `hx-get` untuk infinite scroll.
 
 ### Media Deletion & Cleanup
 
 **File:** `controllers/profile/fun-manage.php` (function-based)
 
 | Fungsi | Deskripsi |
-|--------|-----------|
+|---|---|
 | `handleDeleteVideo(int $id, int $user_id, mysqli $conn): array` | Hapus video + HLS segments + DB record |
 | `handleDeleteMusic(int $id, int $user_id, mysqli $conn): array` | Hapus audio file + thumbnail + DB record |
 | `savePendingDeletions(array $pending): void` | Simpan antrian hapus (batch) |
@@ -755,7 +807,7 @@ Endpoint admin tersebar di beberapa file:
 > link GET — link GET bisa dipicu tag `<img>`).
 
 | Action | Parameter | Method | Deskripsi |
-|--------|-----------|--------|-----------|
+|---|---|---|---|
 | Approve User | `approve_id` | POST | Set `is_active=1` |
 | Reject User | `reject_id` | POST | Delete user (pending) |
 | Delete User | `delete_user_id` | POST | Delete user (non-admin) |
@@ -764,7 +816,7 @@ Endpoint admin tersebar di beberapa file:
 ### IP Ban Management
 
 | Action | Parameter | Method | Deskripsi |
-|--------|-----------|--------|-----------|
+|---|---|---|---|
 | Ban IP | `ban_ip=1` + `ip_target` + `ban_reason` | POST | Insert ke ip_ban |
 | Unban IP | `unban_ip` | POST | Delete dari ip_ban |
 
@@ -773,28 +825,28 @@ Setiap POST wajib menyertakan `csrf_token`.
 ### Queue Management
 
 | Action | Parameter | Method | Deskripsi |
-|--------|-----------|--------|-----------|
+|---|---|---|---|
 | Clean Stuck | `clean_stuck_queues=1` | POST | Delete all stuck queues |
 | Force Stop | `force_stop_queue=1` + `queue_id` + `task_type` | POST | Stop specific queue |
 
 ### Orphan File Cleanup
 
 | Action | Parameter | Method | Deskripsi |
-|--------|-----------|--------|-----------|
+|---|---|---|---|
 | Clean Orphans | `clean_orphans=1` + `files_to_delete` (JSON) | POST | Delete files not in DB |
 
 ### Guest Cleanup
 
 | Action | Parameter | Method | Deskripsi |
-|--------|-----------|--------|-----------|
+|---|---|---|---|
 | Clear Guests | `clear_all_guests=1` | POST | Delete inactive guests |
 
 ### Content Management
 
 | Action | Endpoint | Deskripsi |
-|--------|----------|-----------|
-| Edit Video | `admin/edit-video.php?id=123` | Edit title, description, delete |
-| Edit Music | `admin/edit-music.php?id=123` | Edit title, artist, album, delete |
+|---|---|---|
+| Edit Video | `admin/edit-video?id=123` (admin) / `profile/edit-video?id=123` (pemilik non-admin) | Edit title, description, delete |
+| Edit Music | `admin/edit-music?id=123` (admin) / `profile/edit-music?id=123` (pemilik non-admin) | Edit title, artist, album, delete |
 | Update Log | `controllers/UpdateManager.php` | CRUD changelog entries |
 
 ---
@@ -803,46 +855,46 @@ Setiap POST wajib menyertakan `csrf_token`.
 
 ### Video Search
 
-**Trigger:** Enter key on search input  
-**Request:** `video/search_video.php?q=keyword`  
-**Target:** `#video-container`  
+**Trigger:** Enter key on search input
+**Request:** `video/search?q=keyword` (handler: `video/search_video.php`)
+**Target:** `#video-container`
 **Swap:** `innerHTML`
 
 ### Video Load More
 
-**Trigger:** Click "Muat Lebih Banyak"  
-**Request:** `video/load_more.php?offset=15`  
-**Target:** `#load-more-area`  
+**Trigger:** Click "Muat Lebih Banyak"
+**Request:** `video/load-more?offset=15` (handler: `video/load_more.php`)
+**Target:** `#load-more-area`
 **Swap:** `outerHTML`
 
 ### Music Search
 
-**Trigger:** Enter key on search input  
-**Request:** `music/search_music.php?q=keyword`  
-**Target:** `#music-list`  
+**Trigger:** Enter key on search input
+**Request:** `music/search?q=keyword` (handler: `music/search_music.php`)
+**Target:** `#music-list`
 **Swap:** `innerHTML`
 
 ### Music Load More
 
-**Trigger:** Click "Load More"  
-**Request:** `music/load_more_music.php?offset=10&format=all&artist=all`  
-**Target:** `#music-list`  
-**Swap:** `beforeend`  
+**Trigger:** Click "Load More"
+**Request:** `music/load-more?offset=10&format=all&artist=all` (handler: `music/load_more_music.php`)
+**Target:** `#music-list`
+**Swap:** `beforeend`
 **Pagination server-side** — search musik kini punya pagination (offset).
 
 ### Books Search
 
-**Trigger:** Input pencarian  
-**Request:** `books/search_books.php?q=keyword&type=all&offset=0`  
-**Target:** `#book-grid`  
-**Swap:** `innerHTML`  
+**Trigger:** Input pencarian
+**Request:** `books/search?q=keyword&type=all&offset=0` (handler: `books/search_books.php`)
+**Target:** `#book-grid`
+**Swap:** `innerHTML`
 **Pagination server-side** via `BookRepository::searchBooks()` (24 per halaman).
 
 ### Like/Dislike
 
-**Trigger:** Click like/dislike button  
-**Request:** `controllers/like.php` with `hx-vals`  
-**Target:** `#like-dislike-container`  
+**Trigger:** Click like/dislike button
+**Request:** `api/like` (handler: `controllers/api/like.php`) with `hx-vals`
+**Target:** `#like-dislike-container`
 **Swap:** `outerHTML`
 
 ---
@@ -853,7 +905,7 @@ API polling catur real-time via LAN. **Semua endpoint wajib login** (JSON `401` 
 `login_required: true`) dan **CSRF** pada panggilan yang mengubah state.
 
 | Endpoint | Method | Auth | Deskripsi |
-|----------|--------|------|-----------|
+|---|---|---|---|
 | `create_room.php` | POST | login + CSRF | Buat room, return kode 6 karakter + warna `white` |
 | `join_room.php` | POST | login + CSRF | Gabung room pakai kode (`room` + `csrf_token` di FormData) |
 | `save_move.php` | POST | login + CSRF (body JSON) | Simpan langkah dengan validasi legal move; token tidak pernah disimpan di `move_data` |
@@ -865,12 +917,30 @@ Helper client di `arcade/chess/assets/js/api.js` — saat `401` redirect ke logi
 
 ---
 
+## Rhythm Game Endpoints (MEeL!Mania, `arcade/rhythm/api/`)
+
+API rhythm game 4-lane (osu!mania-inspired). Semua endpoint JSON; endpoint
+upload/delete wajib **login + CSRF** (`config.php` memanggil `meel_boot_session()`
+dan helper auth yang sama dengan modul lain).
+
+| Endpoint | Method | Auth | Deskripsi |
+|---|---|---|---|
+| `arcade/rhythm/api/songs` | GET | publik | Daftar lagu (builtin + custom) — `sort` (`bpm`/`difficulty`/`newest`/`plays`/`default`), `user_id`, `search`; limit 100; respons `{songs, total, builtin_count, custom_count}` |
+| `arcade/rhythm/api/beatmap?id=X` | GET | publik | Ambil beatmap — slug builtin (`songs/<id>/beatmap.json`) atau ID numerik lagu custom (increment `play_count`); respons `{id, type, title, artist, bpm, difficulty, duration, note_count, beatmap, audio_url, cover_url}` |
+| `arcade/rhythm/api/upload` | POST | login + CSRF | Upload lagu custom — non-admin max **10/jam**; MP3/OGG/OPUS/FLAC/WAV ≤ 20MB & ≤ 5 menit; beatmap 10–5000 notes (validasi `t`/`l`/`e`, di-sort by time); FLAC di-transcode ke Opus; cover (JPG/PNG/GIF/WebP ≤ 5MB) → WebP 512px; mendukung edit (`song_id`) |
+| `arcade/rhythm/api/delete` | POST | login + CSRF | Hapus lagu custom — owner atau admin; hapus audio + cover + beatmap.json + record DB (transaksional) |
+
+> ⚠️ Tabel `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
+> (terpisah dari `database/schema.sql` / `database/migrate.php` v1–v12).
+
+---
+
 ## Drive API
 
 ### Upload File
 
-**Endpoint:** `drive/upload.php`  
-**Method:** POST  
+**Endpoint:** `drive/upload` (handler: `drive/upload.php`)
+**Method:** POST
 **Auth:** Member/Admin
 
 **Form Data:**
@@ -885,14 +955,14 @@ Helper client di `arcade/chess/assets/js/api.js` — saat `401` redirect ke logi
 
 ### Download File
 
-**Endpoint:** `drive/download.php?file=xxx&type=video&scope=public&csrf_token=...`  
-**Method:** GET  
+**Endpoint:** `drive/download?file=xxx&type=video&scope=public&csrf_token=...` (handler: `drive/download.php`)
+**Method:** GET
 **Auth:** Member/Admin
 
 ### Delete File
 
-**Endpoint:** `drive/delete.php`  
-**Method:** POST  
+**Endpoint:** `drive/delete` (handler: `drive/delete.php`)
+**Method:** POST
 **Auth:** Member/Admin
 
 **Form Data:**
@@ -908,13 +978,55 @@ Helper client di `arcade/chess/assets/js/api.js` — saat `401` redirect ke logi
 
 ---
 
+## Theme Endpoints
+
+### Theme Preference
+
+**Endpoint:** `api/theme.php`
+**Method:** GET / POST
+**Auth:** User (login required)
+
+#### GET — Baca Preferensi
+
+**Response:**
+```json
+{
+  "theme": "dark"
+}
+```
+
+#### POST — Update Preferensi
+
+**Request Body:**
+```json
+{
+  "theme": "light",
+  "csrf_token": "..."
+}
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "theme": "light"
+}
+```
+
+**Storage:**
+- Client: `localStorage` (source of truth, anti-flash)
+- Server: `users.custom_theme` column (sync untuk logged-in user)
+
+---
+
 ## Error Response Codes
 
 | Kode | Deskripsi | Penyebab |
-|------|-----------|----------|
+|---|---|---|
 | 401 | Unauthorized | User belum login |
 | 403 | Forbidden | User inactive/guest, IP banned |
 | 404 | Not Found | Media/komentar tidak ditemukan |
+| 405 | Method Not Allowed | HTTP method tidak didukung |
 | 429 | Too Many Requests | Rate limit exceeded (like: 30/menit, comment: 10/menit) |
 | 500 | Server Error | Database error, FFmpeg failure |
 | 503 | Service Unavailable | HDD offline, server busy |

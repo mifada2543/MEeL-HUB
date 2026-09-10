@@ -1,5 +1,5 @@
 <?php
-/* @package MEeL\Transcoder */
+
 
 require_once __DIR__ . '/../core/helpers.php';
 
@@ -11,8 +11,7 @@ trait FfmpegUtils
         return "export LD_LIBRARY_PATH=''; export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; ";
     }
 
-    // DURATION PROBE
-    /* @param string $file_path Path ke file media; @return float Durasi dalam detik */
+    
     protected function probeDuration(string $file_path): float
     {
         $cmd = $this->getEnvPrefix() . escapeshellarg($this->ffprobe_bin)
@@ -22,12 +21,8 @@ trait FfmpegUtils
         return (float)trim((string)shell_exec($cmd));
     }
 
-    // FILE SYSTEM HELPERS
-    /**
-     * @param string $dir Path direktori yang akan dibuat
-     * @param int $perms Permission (default 0755)
-     * @return bool True jika direktori ada / berhasil dibuat
-     */
+    
+
     protected function ensureDir(string $dir, int $perms = 0755): bool
     {
         if (is_dir($dir)) {
@@ -40,7 +35,7 @@ trait FfmpegUtils
         return true;
     }
 
-    /* @param string $path Path file */
+    
     protected function removeFile(string $path): void
     {
         if (!is_file($path) && !is_link($path)) {
@@ -51,7 +46,7 @@ trait FfmpegUtils
         }
     }
 
-    /* @param string $dir Path direktori */
+    
     protected function removeDir(string $dir): void
     {
         if (!is_dir($dir)) {
@@ -65,7 +60,7 @@ trait FfmpegUtils
         }
     }
 
-    /* @param string $src Path sumber; @param string $dst Path tujuan; @return bool True jika sukses */
+    
     protected function moveFile(string $src, string $dst): bool
     {
         if (!is_file($src)) {
@@ -88,7 +83,6 @@ trait FfmpegUtils
             && ($src_stat['dev'] ?? 0) !== ($dst_stat['dev'] ?? 0);
 
         if (!$crossDevice) {
-            // Coba rename dulu (cepat, jika sama filesystem)
             error_clear_last();
             if (rename($src, $dst)) return true;
 
@@ -98,7 +92,6 @@ trait FfmpegUtils
             $rename_msg = 'skipped (cross-device: src/dst berbeda filesystem) — langsung copy';
         }
 
-        // Fallback: copy + unlink (untuk USB/cross-device)
         error_clear_last();
         if (copy($src, $dst)) {
             if (!unlink($src)) {
@@ -120,13 +113,7 @@ trait FfmpegUtils
         return false;
     }
 
-    /* @param string $dir Path direktori */
-    protected function cleanupDir(string $dir): void
-    {
-        $this->removeDir($dir);
-    }
-
-    /* @param string $title Judul yang akan disanitasi; @return string Nama file yang aman */
+    
     protected function sanitizeFilename(string $title): string
     {
         $name = trim($title);
@@ -134,40 +121,35 @@ trait FfmpegUtils
             $name = 'untitled-media';
         }
 
-        // Hapus karakter yang tidak aman untuk filesystem
-        $name = preg_replace('/[\\\\/:*?"<>|\s]+/u', '-', $name);
-        // Path traversal
+        $name = preg_replace("/[^a-zA-Z0-9_\x{3000}-\x{9fff}\x{30a0}-\x{30ff}\x{3040}-\x{309f}\x{ff00}-\x{ffef}]+/u", "-", $name);
         $name = str_replace(['..', './'], '', $name);
-        // Batasi panjang
         $name = mb_substr($name, 0, 120);
-        // Hindari nama file yang hanya terdiri dari delimiter
+        
         $name = trim($name, "- \t\n\r\0\x0B");
 
         return $name ?: 'untitled-media';
     }
 
-    // SPRITE & VTT GENERATOR
-    /* @param string $video_path Path ke file video sumber; @param string $target_folder Folder tujuan untuk sprite .webp dan .vtt */
+    
     protected function generateSpriteAndVTT(string $video_path, string $target_folder): void
     {
-        $w    = 160;  // Lebar per thumbnail
-        $h    = 90;   // Tinggi per thumbnail (16:9)
-        $cols = 5;    // Jumlah kolom dalam sprite
+        $w    = 160;
+        $h    = 90;
+        $cols = 5;
 
         $duration = $this->probeDuration($video_path);
         if ($duration <= 0) return;
 
-        // Tentukan interval dinamis berdasarkan durasi
         if ($duration > 3600) {
-            $interval = 300;   // > 1 jam → tiap 5 menit
+            $interval = 300;
         } elseif ($duration > 1800) {
-            $interval = 180;   // > 30 menit → tiap 3 menit
+            $interval = 180;
         } elseif ($duration > 300) {
-            $interval = 60;    // > 5 menit → tiap 1 menit
+            $interval = 60;
         } elseif ($duration > 0) {
-            $interval = 10;    // ≤ 5 menit → tiap 10 detik
+            $interval = 10;
         } else {
-            $interval = 10;    // fallback jika durasi 0
+            $interval = 10;
         }
 
         $total_frames = (int)ceil($duration / $interval);
@@ -191,7 +173,6 @@ trait FfmpegUtils
             return;
         }
 
-        // Tulis VTT
         $vtt_content = "WEBVTT\n\n";
         for ($i = 0; $i < $total_frames; $i++) {
             $start = $i * $interval;

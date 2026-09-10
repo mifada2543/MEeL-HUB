@@ -1,20 +1,34 @@
 <?php
-// ─── Keamanan: hanya dari CLI ───
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
     die('Access denied. Jalankan dari terminal: php database/migrate.php');
 }
 
-// ─── Bootstrap ───
 require_once __DIR__ . '/../auth/config.php';
 
-// Validasi koneksi database
 if (!isset($conn) || !$conn instanceof \mysqli || $conn->connect_error) {
     echo "[MEeL] ❌ Gagal terhubung ke database. Periksa auth/config.php.\n";
     exit(1);
 }
 
-// ─── Migration Registry ───
+function meel_mig_has_column(\mysqli $conn, string $table, string $col): bool
+{
+    // Identifiers berasal dari daftar migrasi internal (hardcoded, bukan input
+    // user); nilai dicari memakai LIKE yang di-escape penuh.
+    $sql = "SHOW COLUMNS FROM `" . $conn->real_escape_string($table)
+         . "` LIKE '" . $conn->real_escape_string($col) . "'";
+    $r = $conn->query($sql);
+    return $r && $r->num_rows > 0;
+}
+
+function meel_mig_has_index(\mysqli $conn, string $table, string $index): bool
+{
+    $sql = "SHOW INDEX FROM `" . $conn->real_escape_string($table)
+         . "` WHERE Key_name = '" . $conn->real_escape_string($index) . "'";
+    $r = $conn->query($sql);
+    return $r && $r->num_rows > 0;
+}
+
 $migrations = [
     1 => [
         'description' => 'Tambah FULLTEXT index untuk pencarian',
@@ -49,13 +63,12 @@ $migrations = [
     ],
     3 => [
         'description' => 'Catatan: db_version dibuat otomatis oleh runner',
-        'sql' => [], // runner sudah buat db_version otomatis
+        'sql' => [], 
     ],
     4 => [
         'description' => 'Tambah FK constraint untuk tabel tanpa referensi',
         'sql' => [
             function ($conn) {
-
                 $conn->query("DELETE FROM upload_queue WHERE user_id NOT IN (SELECT id FROM users)");
                 $result = $conn->query("ALTER TABLE upload_queue ADD CONSTRAINT fk_upload_queue_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE");
                 if (!$result) {
@@ -139,7 +152,6 @@ $migrations = [
         'description' => 'Tambah UNIQUE KEY pada users.username — cegah bloat guest, optimasi ON DUPLICATE KEY',
         'sql' => [
             function ($conn) {
-
                 $conn->query("DELETE g1 FROM users g1
                     INNER JOIN users g2
                     WHERE g1.id < g2.id
@@ -148,7 +160,7 @@ $migrations = [
                     AND g1.username = g2.username");
             },
             function ($conn) {
-                // Step 2: Reset AUTO_INCREMENT agar tidak ada gap besar
+                
                 $result = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS new_ai FROM users");
                 if ($result) {
                     $row = $result->fetch_assoc();
@@ -157,7 +169,7 @@ $migrations = [
                 }
             },
             function ($conn) {
-                // Step 3: Tambah UNIQUE KEY pada kolom username
+                
                 $result = $conn->query("ALTER TABLE users ADD UNIQUE INDEX idx_username_unique (username)");
                 if (!$result) {
                     $err = $conn->error;
@@ -172,7 +184,6 @@ $migrations = [
         'description' => 'Sinkronisasi kolom & default values dengan actual DB — role→varchar(20), hapus duplicate UNIQUE KEY, defaults konsisten',
         'sql' => [
             function ($conn) {
-
                 $result = $conn->query("ALTER TABLE users MODIFY COLUMN role varchar(20) DEFAULT 'user'");
                 if (!$result) {
                     $err = $conn->error;
@@ -182,14 +193,13 @@ $migrations = [
                 }
             },
             function ($conn) {
-
                 $check = $conn->query("SHOW INDEX FROM users WHERE Key_name = 'username'");
                 if ($check && $check->num_rows > 0) {
                     $conn->query("ALTER TABLE users DROP INDEX username");
                 }
             },
             function ($conn) {
-                // Step 3: Sync default values users table
+                
                 $conn->query("ALTER TABLE users ALTER COLUMN is_active SET DEFAULT 0");
             },
             function ($conn) {
@@ -199,7 +209,7 @@ $migrations = [
                 $conn->query("ALTER TABLE users ALTER COLUMN last_page SET DEFAULT 'Index'");
             },
             function ($conn) {
-                // Step 4: Sync default value activity_log table
+                
                 $conn->query("ALTER TABLE activity_log ALTER COLUMN ip_address SET DEFAULT 'Unknown'");
             },
         ],
@@ -208,30 +218,18 @@ $migrations = [
         'description' => 'Tambah kolom MFA (multi-factor authentication) ke tabel users',
         'sql' => [
             function ($conn) {
-                $result = $conn->query("ALTER TABLE users ADD COLUMN mfa_secret VARCHAR(64) DEFAULT NULL AFTER last_session_id");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'Duplicate column')) {
-                        echo "[MEeL] ⚠ Warning (mfa_secret): {$err}\n";
-                    }
+                if (!meel_mig_has_column($conn, 'users', 'mfa_secret')) {
+                    $conn->query("ALTER TABLE users ADD COLUMN mfa_secret VARCHAR(64) DEFAULT NULL AFTER last_session_id");
                 }
             },
             function ($conn) {
-                $result = $conn->query("ALTER TABLE users ADD COLUMN mfa_backup_codes TEXT DEFAULT NULL AFTER mfa_secret");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'Duplicate column')) {
-                        echo "[MEeL] ⚠ Warning (mfa_backup_codes): {$err}\n";
-                    }
+                if (!meel_mig_has_column($conn, 'users', 'mfa_backup_codes')) {
+                    $conn->query("ALTER TABLE users ADD COLUMN mfa_backup_codes TEXT DEFAULT NULL AFTER mfa_secret");
                 }
             },
             function ($conn) {
-                $result = $conn->query("ALTER TABLE users ADD COLUMN mfa_enabled TINYINT(1) DEFAULT 0 AFTER mfa_backup_codes");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'Duplicate column')) {
-                        echo "[MEeL] ⚠ Warning (mfa_enabled): {$err}\n";
-                    }
+                if (!meel_mig_has_column($conn, 'users', 'mfa_enabled')) {
+                    $conn->query("ALTER TABLE users ADD COLUMN mfa_enabled TINYINT(1) DEFAULT 0 AFTER mfa_backup_codes");
                 }
             },
         ],
@@ -251,7 +249,7 @@ $migrations = [
         'description' => 'Perbaiki unique key tabel interactions — pisah jadi (user_id, video_id) & (user_id, music_id) karena NULL di unique key gabungan tidak mencegah duplikat',
         'sql' => [
             function ($conn) {
-                // Sisakan baris dengan id terbesar.
+                
                 $conn->query("DELETE i1 FROM interactions i1
                     INNER JOIN interactions i2
                     WHERE i1.id < i2.id
@@ -261,7 +259,6 @@ $migrations = [
                     AND i2.video_id IS NOT NULL");
             },
             function ($conn) {
-
                 $conn->query("DELETE i1 FROM interactions i1
                     INNER JOIN interactions i2
                     WHERE i1.id < i2.id
@@ -271,17 +268,11 @@ $migrations = [
                     AND i2.music_id IS NOT NULL");
             },
             function ($conn) {
-                // Step 3: Drop unique key lama (jika masih ada)
-                $result = $conn->query("ALTER TABLE interactions DROP INDEX unique_interaction");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'drop index') && !str_contains($err, "can't DROP") && !str_contains($err, 'check that column/key exists')) {
-                        echo "[MEeL] ⚠ Warning (drop unique_interaction): {$err}\n";
-                    }
+                if (meel_mig_has_index($conn, 'interactions', 'unique_interaction')) {
+                    $conn->query("ALTER TABLE interactions DROP INDEX unique_interaction");
                 }
             },
             function ($conn) {
-
                 $result = $conn->query("ALTER TABLE interactions ADD UNIQUE INDEX unique_interaction_video (user_id, video_id)");
                 if (!$result) {
                     $err = $conn->error;
@@ -305,21 +296,13 @@ $migrations = [
         'description' => 'Ikat identitas user ke room catur (white_user_id, black_user_id) — sebelumnya server tidak pernah memverifikasi siapa pemain putih/hitam, sehingga siapa pun yang tahu room_code bisa mengirim/melihat langkah game orang lain.',
         'sql' => [
             function ($conn) {
-                $result = $conn->query("ALTER TABLE rooms ADD COLUMN white_user_id INT NULL AFTER room_code");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate column')) {
-                        echo "[MEeL] ⚠ Warning (white_user_id): {$err}\n";
-                    }
+                if (!meel_mig_has_column($conn, 'rooms', 'white_user_id')) {
+                    $conn->query("ALTER TABLE rooms ADD COLUMN white_user_id INT NULL AFTER room_code");
                 }
             },
             function ($conn) {
-                $result = $conn->query("ALTER TABLE rooms ADD COLUMN black_user_id INT NULL AFTER white_user_id");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate column')) {
-                        echo "[MEeL] ⚠ Warning (black_user_id): {$err}\n";
-                    }
+                if (!meel_mig_has_column($conn, 'rooms', 'black_user_id')) {
+                    $conn->query("ALTER TABLE rooms ADD COLUMN black_user_id INT NULL AFTER white_user_id");
                 }
             },
             function ($conn) {
@@ -342,15 +325,119 @@ $migrations = [
             },
         ],
     ],
+    13 => [
+        'description' => 'MEeLCoin system — tambah kolom coin di users, tabel site_settings, dan meelcoin_log',
+        'sql' => [
+            // Tambah kolom meelcoin ke tabel users
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'users', 'meelcoin')) {
+                    $result = $conn->query("ALTER TABLE users ADD COLUMN meelcoin INT(11) NOT NULL DEFAULT 0 AFTER mfa_enabled");
+                    if (!$result) {
+                        $err = $conn->error;
+                        if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists')) {
+                            echo "[MEeL] ⚠ Warning (users.meelcoin): {$err}\n";
+                        }
+                    }
+                }
+            },
+            // Tambah kolom meelcoin_last_refill ke tabel users
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'users', 'meelcoin_last_refill')) {
+                    $result = $conn->query("ALTER TABLE users ADD COLUMN meelcoin_last_refill TIMESTAMP NULL DEFAULT NULL AFTER meelcoin");
+                    if (!$result) {
+                        $err = $conn->error;
+                        if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists')) {
+                            echo "[MEeL] ⚠ Warning (users.meelcoin_last_refill): {$err}\n";
+                        }
+                    }
+                }
+            },
+            // Tambah index pada kolom meelcoin
+            function ($conn) {
+                $result = $conn->query("ALTER TABLE users ADD INDEX idx_meelcoin (meelcoin)");
+                if (!$result) {
+                    $err = $conn->error;
+                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+                        echo "[MEeL] ⚠ Warning (idx_meelcoin): {$err}\n";
+                    }
+                }
+            },
+            // Buat tabel site_settings
+            function ($conn) {
+                $conn->query("CREATE TABLE IF NOT EXISTS site_settings (
+                    setting_key VARCHAR(50) NOT NULL,
+                    setting_value TEXT NOT NULL,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (setting_key),
+                    KEY idx_setting_key (setting_key)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+            },
+            // Insert default MEeLCoin settings
+            function ($conn) {
+                $defaults = [
+                    'meelcoin_enabled'       => '1',
+                    'meelcoin_upload_cost'   => '5',
+                    'meelcoin_advanced_cost' => '10',
+                    'meelcoin_user_max'      => '25',
+                    'meelcoin_user_refill'   => '15',
+                    'meelcoin_member_max'    => '50',
+                    'meelcoin_member_refill' => '25',
+                    'meelcoin_refill_hours'  => '5',
+                ];
+                $stmt = $conn->prepare("INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES (?, ?)");
+                foreach ($defaults as $key => $value) {
+                    $stmt->bind_param("ss", $key, $value);
+                    $stmt->execute();
+                }
+                $stmt->close();
+            },
+            // Buat tabel meelcoin_log
+            function ($conn) {
+                $conn->query("CREATE TABLE IF NOT EXISTS meelcoin_log (
+                    id INT(11) NOT NULL AUTO_INCREMENT,
+                    user_id INT(11) NOT NULL,
+                    amount INT(11) NOT NULL COMMENT 'Positive=credit, Negative=debit',
+                    balance_after INT(11) NOT NULL,
+                    reason VARCHAR(50) NOT NULL COMMENT 'refill, upload, upload_advanced, admin_adjust, init',
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY idx_mcl_user (user_id),
+                    KEY idx_mcl_created (created_at),
+                    CONSTRAINT meelcoin_log_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+            },
+        ],
+    ],
+    14 => [
+        'description' => 'Tambah index video_id & music_id di view_logs — percepat syncViewsFromLogs correlated subquery',
+        'sql' => [
+            function ($conn) {
+                $result = $conn->query("ALTER TABLE view_logs ADD INDEX idx_vl_video_id (video_id)");
+                if (!$result) {
+                    $err = $conn->error;
+                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+                        echo "[MEeL] ⚠ Warning (idx_vl_video_id): {$err}\n";
+                    }
+                }
+            },
+            function ($conn) {
+                $result = $conn->query("ALTER TABLE view_logs ADD INDEX idx_vl_music_id (music_id)");
+                if (!$result) {
+                    $err = $conn->error;
+                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+                        echo "[MEeL] ⚠ Warning (idx_vl_music_id): {$err}\n";
+                    }
+                }
+            },
+        ],
+    ],
 ];
-// Catatan Sinkronisasi
 $conn->query("CREATE TABLE IF NOT EXISTS db_version (
     id INT AUTO_INCREMENT PRIMARY KEY,
     version INT NOT NULL,
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
-// Ambil versi terakhir yang sudah dijalankan
 $result = $conn->query("SELECT MAX(version) AS current_version FROM db_version");
 $row = $result->fetch_assoc();
 $current_version = (int)($row['current_version'] ?? 0);
@@ -363,7 +450,6 @@ foreach ($migrations as $version => $migration) {
 
         foreach ($migration['sql'] as $migration_step) {
             if (is_callable($migration_step)) {
-
                 try {
                     $migration_step($conn);
                     $err = $conn->error;
@@ -374,7 +460,6 @@ foreach ($migrations as $version => $migration) {
                     echo "[MEeL] ⚠ Warning: " . $e->getMessage() . "\n";
                 }
             } else {
-                // Raw SQL string
                 $sql = $migration_step;
                 try {
                     if ($conn->query($sql) === false) {
@@ -389,7 +474,6 @@ foreach ($migrations as $version => $migration) {
             }
         }
 
-        // Catat migrasi sukses
         $stmt = $conn->prepare("INSERT INTO db_version (version) VALUES (?)");
         $stmt->bind_param("i", $version);
         $stmt->execute();

@@ -9,4 +9,6 @@ return [
     'visualizer.css',
     'playlist-modal.css',
     'utility.css',
+    
+    '../shared/light-theme.css',
 ];

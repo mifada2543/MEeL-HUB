@@ -1,5 +1,5 @@
 if (typeof lucide !== "undefined") lucide.createIcons();
-// ─── Sidebar: Playlist Active Highlight ───
+
 window.setActivePlaylistSidebar = function (id) {
   document.querySelectorAll(".sidebar-link.pl-link").forEach(function (el) {
     if (parseInt(el.dataset.playlistId) === id) {
@@ -22,7 +22,7 @@ window.setActivePlaylistSidebar = function (id) {
     }
   });
 };
-// ─── Mobile Artist Dropdown ───
+
 window.toggleArtistDropdownPL = function () {
   var dd = document.getElementById("artist-options-pl");
   if (!dd) return;
@@ -60,12 +60,12 @@ window.closeArtistDropdownPL = function () {
 window.navigateToArtistPL = function (artist) {
   closeArtistDropdownPL();
   if (artist === "all") {
-    window.location.href = "index.php";
+    window.location.href = "beranda";
   } else {
-    window.location.href = "index.php?artist=" + encodeURIComponent(artist);
+    window.location.href = "beranda?artist=" + encodeURIComponent(artist);
   }
 };
-// ─── Mobile Playlist Dropdown ───
+
 window.togglePlaylistDropdownPL = function () {
   const dropdown = document.getElementById("playlist-options-pl");
   if (dropdown) {
@@ -103,13 +103,19 @@ window.closePlaylistDropdownPL = function () {
 window.navigateToPlaylistPL = function (id) {
   closePlaylistDropdownPL();
   setActivePlaylistSidebar(id);
-  htmx.ajax("GET", "view_playlist.php?id=" + id + "&content_only=1", {
+  var plEl = document.querySelector('[data-playlist-id="' + id + '"]');
+  var url =
+    plEl && plEl.dataset.playlistUrl
+      ? plEl.dataset.playlistUrl
+      : "playlist?id=" + id;
+  var sep = url.indexOf("?") === -1 ? "?" : "&";
+  htmx.ajax("GET", url + sep + "content_only=1", {
     target: "#playlist-main",
     swap: "innerHTML",
-    pushUrl: "view_playlist.php?id=" + id,
+    pushUrl: url,
   });
 };
-// ─── Close dropdowns on outside click ───
+
 document.addEventListener("click", function (e) {
   const artistDropdown = document.getElementById("artist-options-pl");
   const artistTrigger = e.target.closest("#custom-artist-dropdown-pl");
@@ -130,7 +136,7 @@ document.addEventListener("click", function (e) {
     closePlaylistDropdownPL();
   }
 });
-// ─── Boot: mini player (shared) + klik track playlist ───
+
 function bootPlaylistPage() {
   initMiniPlayerIndex();
   setupPlaylistItemClicks();

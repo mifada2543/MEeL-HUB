@@ -6,18 +6,16 @@ $back_url = auth_back_url(['login.php', 'register.php']);
 $message = "";
 $msg_type = "";
 $max_reg_attempts = 3;
-$reg_time_window = 3600; // 1 jam
+$reg_time_window = 3600;
 $max_ip_attempts = 10;
-$ip_lockout_time = 300; // 5 menit
+$ip_lockout_time = 300;
 $is_locked = false;
 $remaining = 0;
-// ─── IP-BASED LOCKOUT CHECK (shared helper) ───
 $ip_address  = auth_get_ip();
 $is_loopback = auth_is_loopback();
 $ip_lock     = $is_loopback ? ['locked' => false, 'remaining' => 0] : auth_ip_lockout_status($conn, $ip_address);
 $is_locked   = $ip_lock['locked'];
 $remaining   = $ip_lock['remaining'];
-// ─── SESSION-BASED RATE LIMIT (registrasi berhasil) — khusus register ───
 if (!isset($_SESSION['reg_attempts'])) {
     $_SESSION['reg_attempts'] = [];
 }
@@ -25,7 +23,6 @@ $_SESSION['reg_attempts'] = array_filter($_SESSION['reg_attempts'], function ($t
     return $timestamp > (time() - $reg_time_window);
 });
 $session_blocked = !$is_loopback && count($_SESSION['reg_attempts']) >= $max_reg_attempts;
-// ─── FORM PROCESSING ───
 if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $message = "Sesi keamanan kadaluarsa. Silakan refresh halaman.";
@@ -35,7 +32,6 @@ if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
         $user = trim($_POST['username']);
         $pass_raw = $_POST['password'];
         $validation_error = false;
-        // Validasi (shared helper)
         $val_error = auth_validate_credentials($user, $pass_raw);
         if ($val_error !== null) {
             $message = $val_error;
@@ -60,6 +56,12 @@ if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
                 $stmt = $conn->prepare("INSERT INTO users (username, password, role, is_active) VALUES (?, ?, 'user', 2)");
                 $stmt->bind_param("ss", $user, $pass_hashed);
                 if ($stmt->execute()) {
+                    $new_user_id = $stmt->insert_id;
+                    $stmt->close();
+
+                    require_once __DIR__ . '/../modules/core/MeelCoin.php';
+                    MeelCoin::initialize($conn, $new_user_id, 'user');
+
                     $_SESSION['reg_attempts'][] = time();
                     $message = "Registrasi berhasil! Silakan tunggu verifikasi admin.";
                     $msg_type = "success";
@@ -70,7 +72,6 @@ if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
                 }
             }
         }
-        // ─── CATAT PERCOBAAN GAGAL KE IP (shared helper) ───
         if ($validation_error) {
             $just_locked = auth_record_failed_attempt($conn, $ip_address, $max_ip_attempts, $ip_lockout_time);
             if ($just_locked) {
@@ -80,7 +81,6 @@ if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
         }
     }
 }
-// Re-check lockout setelah POST
 if (!$is_loopback && !$is_locked && !$session_blocked) {
     $recheck = auth_recheck_lockout($conn, $ip_address);
     if ($recheck['locked']) {
@@ -88,7 +88,6 @@ if (!$is_loopback && !$is_locked && !$session_blocked) {
         $remaining = $recheck['remaining'];
     }
 }
-// ─── HTML (shell bersama via partials) ───
 $auth_title       = "MEeL | Register";
 $auth_description = "MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.";
 $auth_og_title    = "MEeL | Register";
@@ -96,41 +95,41 @@ $auth_og_desc     = "Buat akun MEeL dan nikmati streaming video, musik, dan akse
 include __DIR__ . '/partials/auth_head.php';
 ?>
 <main class="w-full max-w-sm" aria-labelledby="register-title">
-    <!-- Header -->
+    
     <div class="text-center mb-8">
         <div class="inline-flex p-4 bg-red-600/10 rounded-3xl text-red-600 mb-4 shadow-lg shadow-red-900/10"><i data-lucide="user-plus" class="w-10 h-10"></i></div>
         <h2 id="register-title" class="text-3xl font-black text-white tracking-tighter">Register</h2>
         <p class="text-sm text-gray-400 mt-1">Buat akun <span class="text-red-500 font-bold">MEeL</span></p>
     </div>
-    <!-- Message -->
+    
     <?php if ($message): ?>
         <div class="mb-6 p-4 rounded-2xl text-sm flex items-center gap-3 animate-pulse <?= $msg_type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : ($msg_type === 'warning' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20') ?>" role="alert"><i data-lucide="<?= $msg_type === 'success' ? 'check-circle' : 'alert-circle' ?>" class="w-5 h-5"></i><?= $message ?></div>
     <?php endif; ?>
-    <!-- Form -->
+    
     <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6">
         <?php if ($session_blocked && !$is_locked): ?>
-            <!-- Session rate-limit tercapai -->
+            
             <div class="text-center py-6 space-y-4">
                 <i data-lucide="timer-reset" class="w-12 h-12 text-orange-500 mx-auto animate-pulse"></i>
                 <h3 class="text-lg font-bold text-white">Batas Pendaftaran</h3>
                 <p class="text-xs text-gray-300 leading-relaxed">Anda telah mencapai batas maksimal pendaftaran (<?= $max_reg_attempts ?> akun per jam). Silakan coba lagi nanti.</p>
                 <div class="flex justify-center gap-3 pt-2">
-                    <a href="login.php" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all" title="Login ke akun yang sudah ada">Login</a>
-                    <a href="../index.php" class="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-bold rounded-xl transition-all" title="Kembali ke beranda">Kembali</a>
+                    <a href="login" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all" title="Login ke akun yang sudah ada">Login</a>
+                    <a href="../" class="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-bold rounded-xl transition-all" title="Kembali ke beranda">Kembali</a>
                 </div>
             </div>
         <?php elseif ($is_locked): ?>
-            <!-- IP Lockout -->
+            
             <?php
             $countdown_seconds = $remaining;
             $countdown_color   = 'text-red-500';
             $countdown_extra   = '<div class="pt-2">
-                    <a href="login.php" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all" title="Pergi ke halaman login">Ke Halaman Login</a>
+                    <a href="login" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all" title="Pergi ke halaman login">Ke Halaman Login</a>
                 </div>';
             include __DIR__ . '/partials/auth_countdown.php';
             ?>
         <?php else: ?>
-            <!-- CSRF Token -->
+            
             <?php if (isset($_SESSION['csrf_token'])): ?>
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
             <?php endif; ?>
@@ -158,8 +157,8 @@ include __DIR__ . '/partials/auth_head.php';
                     <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
                 </button>
                 <div class="flex items-center justify-between px-1">
-                    <a href="login.php" class="text-xs text-gray-300 hover:text-white transition" title="Login ke akun yang sudah ada">Sudah punya akun?</a>
-                    <a href="../index.php" class="text-xs text-red-500 font-bold hover:underline" title="Kembali ke beranda">Kembali</a>
+                    <a href="login" class="text-xs text-gray-300 hover:text-white transition" title="Login ke akun yang sudah ada">Sudah punya akun?</a>
+                    <a href="../" class="text-xs text-red-500 font-bold hover:underline" title="Kembali ke beranda">Kembali</a>
                 </div>
             </div>
         <?php endif; ?>

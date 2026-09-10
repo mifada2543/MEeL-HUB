@@ -2,9 +2,8 @@
 require_once '../../auth/auth.php';
 require_once '../../auth/config.php';
 
-// Pastikan hanya user yang login bisa akses
 if (!isset($_SESSION['user_id'])) {
-    header("Location: ../../auth/login.php");
+    header("Location: ../auth/login");
     exit();
 }
 
@@ -12,7 +11,6 @@ $user_id = $_SESSION['user_id'];
 $msg = "";
 
 if (isset($_POST['update_profile'])) {
-    // Verifikasi token
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $msg = 'CSRF Token tidak valid.';
     } else {
@@ -20,14 +18,12 @@ if (isset($_POST['update_profile'])) {
 
     $conn->begin_transaction();
     try {
-        // 1. UPDATE BIO
         $stmt = $conn->prepare("UPDATE users SET bio = ? WHERE id = ?");
         $stmt->bind_param("si", $bio, $user_id);
         if (!$stmt->execute()) {
             throw new \RuntimeException('Gagal memperbarui bio: ' . $stmt->error);
         }
 
-        // 2. LOGIKA UPLOAD FOTO
         if (!empty($_FILES['avatar']['name'])) {
             $file_tmp  = $_FILES['avatar']['tmp_name'];
 
@@ -77,7 +73,6 @@ if (isset($_POST['update_profile'])) {
             $new_name = "user_" . $user_id . ".webp";
             $upload_dir = __DIR__ . '/../../profile/upload/';
 
-            // Pastikan direktori upload ada & writable sebelum menulis
             if (!is_dir($upload_dir)) {
                 if (!@mkdir($upload_dir, 0755, true) && !is_dir($upload_dir)) {
                     throw new \RuntimeException('Direktori upload tidak ditemukan.');
@@ -94,7 +89,6 @@ if (isset($_POST['update_profile'])) {
                 : resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
             $ffmpeg_ok = $ffmpeg_bin !== '' && is_executable($ffmpeg_bin);
 
-            // ─── INPUT WEBP: langsung crop/resize ke 400x400, TANPA transcode format ───
             if ($real_mime === 'image/webp') {
                 if (!$ffmpeg_ok) {
                     throw new \RuntimeException('Format WebP membutuhkan ffmpeg untuk diproses.');
@@ -118,7 +112,6 @@ if (isset($_POST['update_profile'])) {
                     throw new \RuntimeException('Gagal menyimpan foto profil.');
                 }
             } else {
-                // ─── INPUT JPG/PNG: GD center-crop 400x400 lalu transcode ke WebP ───
                 $source = null;
                 $tmp_img = null;
                 $tmp_png = null;
@@ -129,8 +122,8 @@ if (isset($_POST['update_profile'])) {
                     }
 
                     $target = 400;
-                    $crop   = $crop_size;  // sisi persegi terbesar
-                    $src_x  = $crop_x;     // posisi crop dari drag user
+                    $crop   = $crop_size;
+                    $src_x  = $crop_x;
                     $src_y  = $crop_y;
 
                     $tmp_img = imagecreatetruecolor($target, $target);
@@ -154,7 +147,6 @@ if (isset($_POST['update_profile'])) {
                             $cmd_out = [];
                             exec($cmd, $cmd_out, $ret);
                             if (($ret === 0) && is_file($tmp_out) && filesize($tmp_out) > 0) {
-                                // rename atomik — aman menimpa file milik user lain
                                 $webp_ok = @rename($tmp_out, $upload_path);
                             }
                             @unlink($tmp_out);
@@ -185,7 +177,6 @@ if (isset($_POST['update_profile'])) {
                 }
             }
 
-            // Update nama file di database
             $stmt_pic = $conn->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
             $stmt_pic->bind_param("si", $new_name, $user_id);
             if (!$stmt_pic->execute()) {
@@ -207,7 +198,7 @@ if (isset($_POST['update_profile'])) {
         $conn->rollback();
         $msg = 'Error: ' . $e->getMessage();
     }
-    } // tutup else verify_csrf
+    } 
 }
 
 $stmt_data = $conn->prepare("SELECT * FROM users WHERE id = ?");
@@ -219,19 +210,13 @@ $data = $stmt_data->get_result()->fetch_assoc();
 <html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="Edit Profile | MEeL">
-    <meta property="og:description" content="Edit profil Anda di MEeL. Ubah bio dan foto profil.">
-    <meta property="og:image" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') ?>/assets/MEeL.png">
-    <meta property="og:url" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $_SERVER['REQUEST_URI'] ?>">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
-    <title>Edit Profile | MEeL</title>
-    <link rel="icon" type="image/png" href="../../assets/MEeL.png">
-    <link href="../../assets/css/tailwind.min.css" rel="stylesheet">
-    <script src="../../assets/js/compatibilitas/lucide.js"></script>
+<?php
+$_META_TITLE = 'Edit Profile | MEeL';
+$_META_DESC  = 'Edit profil Anda di MEeL. Ubah bio dan foto profil.';
+include __DIR__ . '/../../partials/link.php';
+$scripts_root = '../';
+include __DIR__ . '/../../partials/scripts.php';
+?>
     <style>        body {
             background-color: #0b0e14;
         }
@@ -240,7 +225,12 @@ $data = $stmt_data->get_result()->fetch_assoc();
             background: rgba(22, 27, 34, 0.7);
             backdrop-filter: blur(10px);
         }
+
+        .crop-guide {
+            background-color: rgba(255, 255, 255, 0.35);
+        }
 </style>
+    <link rel="stylesheet" href="<?= meel_base_url_path() ?>/assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/../../assets/css/shared/light-theme.css') ?>">
 </head>
 
 <body class="text-gray-300 p-6">
@@ -250,13 +240,13 @@ $data = $stmt_data->get_result()->fetch_assoc();
 
             <?php if ($msg): ?>
                 <div class="bg-blue-500/10 border border-blue-500/50 text-blue-400 p-3 rounded-xl text-xs mb-4">
-                    <?= $msg ?>
+                    <?= htmlspecialchars($msg, ENT_QUOTES, 'UTF-8') ?>
                 </div>
             <?php endif; ?>
             <form action="" method="POST" enctype="multipart/form-data" class="space-y-6">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <div class="flex flex-col items-center gap-4">
-                    <img id="avatarPreview" src="../../profile/upload/<?= htmlspecialchars($data['profile_picture'] ?: 'default_avatar.png', ENT_QUOTES, 'UTF-8') ?>" class="w-24 h-24 rounded-3xl object-cover border-2 border-blue-500/30" alt="Foto profil">
+                    <img id="avatarPreview" src="../profile/upload/<?= htmlspecialchars($data['profile_picture'] ?: 'default_avatar.png', ENT_QUOTES, 'UTF-8') ?>" class="w-24 h-24 rounded-3xl object-cover border-2 border-blue-500/30" alt="Foto profil">
                     <label class="cursor-pointer bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-[10px] font-bold tracking-widest uppercase transition">
                         Ganti Foto
                         <input id="avatarInput" type="file" name="avatar" class="hidden" accept="image/jpeg,image/png,image/jpg,image/webp">
@@ -264,18 +254,18 @@ $data = $stmt_data->get_result()->fetch_assoc();
                     <p id="avatarStatus" class="hidden text-[10px] text-red-400 text-center"></p>
                 </div>
 
-                <!-- Modal Preview Foto Profil -->
+                
                 <div id="avatarModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="batalPreview()"></div>
                     <div class="relative glass rounded-[2rem] border border-white/10 shadow-2xl w-full max-w-xs p-8 text-center">
-                        <img src="../../profile/upload/<?= htmlspecialchars($data['profile_picture'] ?: 'default_avatar.png', ENT_QUOTES, 'UTF-8') ?>" alt="Foto profil saat ini" class="w-16 h-16 mx-auto mb-2 rounded-2xl object-cover border-2 border-white/10 shadow-lg" title="Foto profil Anda saat ini">
+                        <img src="../profile/upload/<?= htmlspecialchars($data['profile_picture'] ?: 'default_avatar.png', ENT_QUOTES, 'UTF-8') ?>" alt="Foto profil saat ini" class="w-16 h-16 mx-auto mb-2 rounded-2xl object-cover border-2 border-white/10 shadow-lg" title="Foto profil Anda saat ini">
                         <p class="text-xs text-gray-500 uppercase tracking-widest mb-4">Foto Saat Ini</p>
                         <h3 class="text-sm font-black text-white uppercase tracking-widest mb-4">Pratinjau Foto</h3>
                         <p class="text-[10px] text-gray-500 mb-4">Geser foto untuk memilih bagian yang dipakai</p>
                         <div id="cropFrame" class="relative h-56 mx-auto mb-4 rounded-2xl overflow-hidden border-2 border-blue-500/30 select-none" style="width:224px;touch-action:none;cursor:grab;background-color:#0b0e14">
                             <img id="modalAvatarPreview" class="absolute select-none" style="max-width:none;top:0;left:0" alt="Preview" draggable="false">
-                            <div class="pointer-events-none absolute top-0 bottom-0 left-1/2 w-px" style="background-color:rgba(255,255,255,0.35);transform:translateX(-50%)"></div>
-                            <div class="pointer-events-none absolute left-0 right-0 top-1/2 h-px" style="background-color:rgba(255,255,255,0.35);transform:translateY(-50%)"></div>
+                            <div class="pointer-events-none absolute top-0 bottom-0 left-1/2 w-px crop-guide" style="transform:translateX(-50%)"></div>
+                            <div class="pointer-events-none absolute left-0 right-0 top-1/2 h-px crop-guide" style="transform:translateY(-50%)"></div>
                         </div>
                         <input type="hidden" name="crop_x" id="cropX" value="">
                         <input type="hidden" name="crop_y" id="cropY" value="">
@@ -296,12 +286,11 @@ $data = $stmt_data->get_result()->fetch_assoc();
                 </button>
             </form>
 
-            <a href="../../profile/?u=<?= $_SESSION['username'] ?>" class="block text-center mt-6 text-xs text-gray-600 hover:text-gray-400">Batal dan Kembali</a>
+            <a href="../profile/<?= $_SESSION['username'] ?>" class="block text-center mt-6 text-xs text-gray-600 hover:text-gray-400">Batal dan Kembali</a>
         </div>
     </div>
     <script>        lucide.createIcons();
 
-        // ─── Modal preview foto profil + atur posisi crop ───
         var avatarInput        = document.getElementById('avatarInput');
         var avatarPreview      = document.getElementById('avatarPreview');
         var avatarModal        = document.getElementById('avatarModal');
@@ -314,7 +303,6 @@ $data = $stmt_data->get_result()->fetch_assoc();
         var cropYInput         = document.getElementById('cropY');
         var pendingAvatarUrl   = null;
 
-        // State crop: dimensi natural + offset tampilan saat ini
         var cropState = { W: 0, H: 0, D: 0, scale: 1, ox: 0, oy: 0 };
 
         function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -322,18 +310,16 @@ $data = $stmt_data->get_result()->fetch_assoc();
         function initCrop(img) {
             var W = img.naturalWidth, H = img.naturalHeight;
             if (!W || !H) {
-                // Gambar tidak valid — tutup modal agar tidak macet
                 avatarModal.classList.add('hidden');
                 return;
             }
-            var D = Math.min(W, H);                 // sisi persegi terbesar
-            var frameSize = cropFrame.clientWidth;  // ukuran bingkai (px)
-            var scale = frameSize / D;              // cover: sisi pendek memenuhi bingkai
+            var D = Math.min(W, H);
+            var frameSize = cropFrame.clientWidth;
+            var scale = frameSize / D;
             cropState = { W: W, H: H, D: D, scale: scale, ox: 0, oy: 0 };
             modalAvatarPreview.style.width  = Math.round(W * scale) + 'px';
             modalAvatarPreview.style.height = Math.round(H * scale) + 'px';
             modalAvatarPreview.src = pendingAvatarUrl;
-            // Mulai dari tengah (center crop)
             setCropOffset((frameSize - W * scale) / 2, (frameSize - H * scale) / 2);
         }
 
@@ -341,12 +327,10 @@ $data = $stmt_data->get_result()->fetch_assoc();
             var s = cropState.scale;
             var frameSize = cropFrame.clientWidth;
             var dispW = cropState.W * s, dispH = cropState.H * s;
-            // Clamp: bingkai selalu menampilkan area gambar yang valid
             ox = clamp(ox, frameSize - dispW, 0);
             oy = clamp(oy, frameSize - dispH, 0);
             cropState.ox = ox; cropState.oy = oy;
             modalAvatarPreview.style.transform = 'translate3d(' + ox + 'px,' + oy + 'px,0)';
-            // Simpan koordinat crop dalam pixel natural (persegi D x D)
             var cx = clamp(Math.round(-ox / s), 0, cropState.W - cropState.D);
             var cy = clamp(Math.round(-oy / s), 0, cropState.H - cropState.D);
             if (cropXInput) cropXInput.value = cx;
@@ -382,7 +366,6 @@ $data = $stmt_data->get_result()->fetch_assoc();
                 if (cropXInput) cropXInput.value = '';
                 if (cropYInput) cropYInput.value = '';
 
-                // Baca file lokal, ukur dimensi natural, siapkan bingkai crop
                 var reader = new FileReader();
                 reader.onload = function (e) {
                     pendingAvatarUrl = e.target.result;
@@ -397,7 +380,6 @@ $data = $stmt_data->get_result()->fetch_assoc();
                 reader.readAsDataURL(file);
             });
 
-            // Drag untuk memilih posisi crop (pointer events)
             var dragging = null;
             if (cropFrame) {
                 cropFrame.addEventListener('pointerdown', function (e) {
@@ -436,7 +418,6 @@ $data = $stmt_data->get_result()->fetch_assoc();
                 });
             }
 
-            // Batal → tutup modal & reset file input
             if (avatarCancelBtn) {
                 avatarCancelBtn.addEventListener('click', batalPreview);
             }

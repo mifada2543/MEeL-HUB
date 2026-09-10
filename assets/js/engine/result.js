@@ -1,7 +1,11 @@
-/** MEeL - Media Hub Platform
- * @copyright Copyright (C) 2026 Mifada
- * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
-/* engine/result.js — Fase selesai & error overlay + penangkap error */
+
+var _meelRedirectFired = false;
+window.meelRedirect = function (url) {
+  if (_meelRedirectFired) return;
+  _meelRedirectFired = true;
+  window.location.replace(url);
+};
+
 window.meelDone = function (title, homeUrl) {
   meelPhase("done");
   var el = document.getElementById("meel-done-title");

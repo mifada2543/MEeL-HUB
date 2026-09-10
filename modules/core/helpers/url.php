@@ -1,11 +1,5 @@
 <?php
-// helpers/url.php — URL, Protocol & Format Helpers
-// Bagian dari pecahan modules/core/helpers.php.
-// hanya butuh fungsi di file ini).
-// Semua fungsi dibungkus function_exists() guard sebagai
-// defense-in-depth terhadap double-include.
 if (!function_exists('resolve_binary')) {
-    /* @param array $candidates Daftar kandidat path binary; @return string Path binary yang ditemukan */
     function resolve_binary(array $candidates): string
 {
 
@@ -27,7 +21,6 @@ if (!function_exists('resolve_binary')) {
         }
     }
 
-    // Level 2: Cek executable path absolut
     foreach ($candidates as $candidate) {
         if (strpos($candidate, '/') !== false) {
             if (is_executable($candidate)) return $candidate;
@@ -38,7 +31,7 @@ if (!function_exists('resolve_binary')) {
     }
     return $candidates[0];
 }
-} // end function_exists('resolve_binary')
+}
 
 if (!function_exists('base_url')) {
 
@@ -46,7 +39,6 @@ function base_url(string $path = ''): string
 {
     static $base = null;
     if ($base === null) {
-        // subdirektori (admin/, video/, dll).
         if (defined('MEEL_BASE_URL')) {
             $base = rtrim(MEEL_BASE_URL, '/');
         } else {
@@ -57,13 +49,12 @@ function base_url(string $path = ''): string
     }
     return $base . '/' . ltrim($path, '/');
 }
-} // end function_exists('base_url')
+}
 
 if (!function_exists('detectProtocol')) {
 
 function detectProtocol(): string
 {
-    // 1. Standard HTTPS
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
         return 'https';
     }
@@ -71,21 +62,21 @@ function detectProtocol(): string
     if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') {
         return 'https';
     }
-    // 3. Cloudflare CF-Visitor header
+
     if (!empty($_SERVER['HTTP_CF_VISITOR'])) {
         $cf = @json_decode($_SERVER['HTTP_CF_VISITOR'], true);
         if (!empty($cf['scheme']) && $cf['scheme'] === 'https') {
             return 'https';
         }
     }
-    // 4. Forwarded scheme
+
     if (!empty($_SERVER['HTTP_X_FORWARDED_SCHEME']) && strtolower($_SERVER['HTTP_X_FORWARDED_SCHEME']) === 'https') {
         return 'https';
     }
-    // 5. Fallback
+
     return 'http';
 }
-} // end function_exists('detectProtocol')
+}
 
 if (!function_exists('time_ago')) {
 function time_ago(string|int $timestamp): string
@@ -99,7 +90,7 @@ function time_ago(string|int $timestamp): string
     }
     return 'Baru saja';
 }
-} // end function_exists('time_ago')
+}
 
 if (!function_exists('format_bytes')) {
 function format_bytes(int|float $bytes, int $precision = 2): string
@@ -111,4 +102,4 @@ function format_bytes(int|float $bytes, int $precision = 2): string
     $bytes /= pow(1024, $pow);
     return round($bytes, $precision) . ' ' . $units[$pow];
 }
-} // end function_exists('format_bytes')
+}

@@ -13,4 +13,6 @@ return [
     'seek.css',
     'toast.css',
     'utility.css',
+    
+    '../shared/light-theme.css',
 ];

@@ -1,4 +1,4 @@
-/* shared/comment.js — JS bersama untuk section komentar. */
+
 window.toggleReply = function (e) {
   const t = document.getElementById(e);
   if (!t) return;
@@ -72,68 +72,75 @@ window.meelConfirmHtmx = function (e) {
   if (!window.htmx) return;
   document.body.addEventListener("htmx:confirm", window.meelConfirmHtmx);
 })();
+
+
+
+window.meelRebuildCommentPreview = function () {
+  const list = document.getElementById("comment-list"),
+    txt = document.getElementById("comment-preview-text");
+  if (!txt || !list) return;
+  const rows = Array.from(list.querySelectorAll(".comment-row"));
+  if (rows.length > 0) {
+    rows.sort((a, b) => {
+      const aid = parseInt(a.getAttribute("data-id") || "0", 10),
+        bid = parseInt(b.getAttribute("data-id") || "0", 10);
+      return bid - aid;
+    });
+    const top = rows.slice(0, 4);
+    txt.replaceChildren();
+    txt.classList.remove("italic");
+    top.forEach((row) => {
+      const nameEl = row.querySelector("span[class*='font-bold']"),
+        bodyEl = row.querySelector("p");
+      const name = nameEl ? nameEl.textContent.trim() : "Guest";
+      const colorMatch = nameEl
+        ? nameEl.className.match(
+            /text-(red|orange|gray|blue|green|yellow|white|purple)-\d+/,
+          )
+        : null;
+      const nameColor = colorMatch ? colorMatch[0] : "";
+      let body = "";
+      if (bodyEl) {
+        const clone = bodyEl.cloneNode(true);
+        const badge = clone.querySelector("span");
+        if (badge) badge.remove();
+        body = clone.textContent.trim().replace(/\s+/g, " ");
+      }
+      const line = document.createElement("div");
+      line.className = "line-clamp-1";
+      const nm = document.createElement("span");
+      nm.className = "font-bold " + nameColor;
+      nm.textContent = name + ": ";
+      line.appendChild(nm);
+      line.append(body);
+      line.title = line.textContent;
+      txt.appendChild(line);
+    });
+  } else {
+    txt.replaceChildren();
+    txt.classList.add("italic");
+    const empty = document.createElement("span");
+    empty.textContent = "Jadilah komentar pertama";
+    txt.appendChild(empty);
+  }
+};
 window.toggleCommentSection = (function () {
   let focusTimer = null;
   return function () {
     const body = document.getElementById("comment-body"),
-      chevron = document.getElementById("comment-chevron"),
+      chevronOpen = document.getElementById("comment-chevron-open"),
+      chevronClosed = document.getElementById("comment-chevron-closed"),
       preview = document.getElementById("comment-preview"),
       toggle = document.getElementById("comment-toggle");
     if (!body) return;
     const closed = body.classList.toggle("collapsed");
     if (closed) clearTimeout(focusTimer);
-    if (chevron) chevron.classList.toggle("rotate-180", !closed);
+    if (chevronOpen) chevronOpen.classList.toggle("hidden", closed);
+    if (chevronClosed) chevronClosed.classList.toggle("hidden", !closed);
     if (toggle) toggle.setAttribute("aria-expanded", closed ? "false" : "true");
     if (preview) preview.classList.toggle("preview-closed", !closed);
     if (closed) {
-      const list = document.getElementById("comment-list"),
-        txt = document.getElementById("comment-preview-text");
-      if (txt && list) {
-        const rows = Array.from(list.querySelectorAll(".comment-row"));
-        if (rows.length > 0) {
-          rows.sort((a, b) => {
-            const aid = parseInt(a.getAttribute("data-id") || "0", 10),
-              bid = parseInt(b.getAttribute("data-id") || "0", 10);
-            return bid - aid;
-          });
-          const top = rows.slice(0, 4);
-          txt.replaceChildren();
-          txt.classList.remove("italic");
-          top.forEach((row) => {
-            const nameEl = row.querySelector("span[class*='font-bold']"),
-              bodyEl = row.querySelector("p");
-            const name = nameEl ? nameEl.textContent.trim() : "Guest";
-            const colorMatch = nameEl
-              ? nameEl.className.match(
-                  /text-(red|orange|gray|blue|green|yellow|white|purple)-\d+/,
-                )
-              : null;
-            const nameColor = colorMatch ? colorMatch[0] : "";
-            let body = "";
-            if (bodyEl) {
-              const clone = bodyEl.cloneNode(true);
-              const badge = clone.querySelector("span");
-              if (badge) badge.remove();
-              body = clone.textContent.trim().replace(/\s+/g, " ");
-            }
-            const line = document.createElement("div");
-            line.className = "text-[10px] text-gray-500 line-clamp-1";
-            const nm = document.createElement("span");
-            nm.className = "font-bold " + nameColor;
-            nm.textContent = name + ": ";
-            line.appendChild(nm);
-            line.append(body);
-            line.title = line.textContent;
-            txt.appendChild(line);
-          });
-        } else {
-          txt.replaceChildren();
-          txt.classList.add("italic");
-          const empty = document.createElement("span");
-          empty.textContent = "Jadilah komentar pertama";
-          txt.appendChild(empty);
-        }
-      }
+      window.meelRebuildCommentPreview();
     } else {
       const ta = body.querySelector('textarea[name="comments"]');
       ta && (focusTimer = setTimeout(() => ta.focus(), 360));

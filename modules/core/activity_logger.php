@@ -6,7 +6,6 @@ function trust_proxy_headers(): bool
 
 function get_real_ip()
 {
-    // Format IP yang valid (IPv4 atau IPv6)
     $valid = function ($ip) {
         return is_string($ip) && $ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) !== false;
     };
@@ -25,7 +24,6 @@ function get_real_ip()
     $remote = $_SERVER["REMOTE_ADDR"] ?? '0.0.0.0';
     return $valid($remote) ? $remote : '0.0.0.0';
 }
-// 2. Fungsi Deteksi Tipe Akses & Validasi IP
 function validate_and_format_ip($ip)
 {
     $ip = trim($ip);
@@ -36,25 +34,21 @@ function validate_and_format_ip($ip)
         return ['ip' => 'LOCAL', 'display' => 'Local Access (IPv6)', 'is_local' => true, 'version' => 'ipv6'];
     }
 
-    // Handle IPv4-mapped IPv6 addresses (::ffff:192.168.1.1)
     if (strpos($ip, '::ffff:') === 0) {
-        $ipv4 = substr($ip, 7); // Extract IPv4 part
+        $ipv4 = substr($ip, 7);
         if (filter_var($ipv4, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             return ['ip' => $ipv4, 'display' => $ipv4 . ' (IPv4-mapped)', 'is_local' => false, 'version' => 'ipv4-mapped'];
         }
     }
 
-    // Filter localhost
     if ($ip === 'localhost') {
         return ['ip' => 'LOCAL', 'display' => 'Local Access (localhost)', 'is_local' => true, 'version' => 'hostname'];
     }
 
-    // Validasi IPv6 format
     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
         return ['ip' => $ip, 'display' => $ip . ' (IPv6)', 'is_local' => false, 'version' => 'ipv6'];
     }
 
-    // Validasi IPv4 format
     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
         return ['ip' => $ip, 'display' => $ip . ' (IPv4)', 'is_local' => false, 'version' => 'ipv4'];
     }
@@ -62,7 +56,6 @@ function validate_and_format_ip($ip)
     return ['ip' => 'Unknown', 'display' => 'Unknown', 'is_local' => false, 'version' => 'unknown'];
 }
 
-// 3. Fungsi Deteksi Metode Akses
 function get_access_method()
 {
     $trusted = trust_proxy_headers();
@@ -84,12 +77,10 @@ function get_access_method()
     return 'Direct';
 }
 
-// 4. Fungsi Deteksi IPv6 vs IPv4 Access
 function get_connection_protocol()
 {
     $ip = get_real_ip();
 
-    // Check if IPv6 (includes IPv4-mapped IPv6)
     if (strpos($ip, ':') !== false) {
         return 'IPv6';
     }
@@ -98,13 +89,8 @@ function get_connection_protocol()
 }
 
 if (!function_exists('log_activity')) {
-    /**
-     * @param mysqli $conn Koneksi database
-     * @param int $user_id ID user (0 untuk guest)
-     * @param string $action Tipe aksi (login, logout, upload_video, etc)
-     * @param string $media_type Tipe media (video, music, books, user, dll) — opsional
-     * @param int|null $media_id ID media terkait — opsional
-     */
+    
+
     function log_activity(mysqli $conn, int $user_id, string $action, string $media_type = '', ?int $media_id = null): void
     {
         $ip = '0.0.0.0';
@@ -147,38 +133,33 @@ $user_ip = $user_ip_data['ip'];
 $access_method = get_access_method();
 $connection_protocol = get_connection_protocol();
 
-// Debug info (optional, bisa di-remove nanti)
-// Uncomment line di bawah untuk debugging
 if (isset($conn)) {
 
     $session_role = $_SESSION['role'] ?? null;
-    // Cek apakah IP user masuk dalam daftar ban
     $check_ban = $conn->prepare("SELECT reason FROM ip_ban WHERE ip_address = ?");
     $check_ban->bind_param("s", $user_ip);
     $check_ban->execute();
     $ban_res = $check_ban->get_result();
 
     $current_page = basename($_SERVER['PHP_SELF']);
-    if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+    $current_dir  = basename(dirname($_SERVER['PHP_SELF']));
+    if ($current_dir !== 'err') {
         if ($ban_res->num_rows > 0) {
-            // Jika bukan admin, baru di-redirect
             if ($session_role !== 'admin') {
                 $row = $ban_res->fetch_assoc();
                 $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
                 $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
                 $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
-                $banned_url = $relative_base . '/err/banned.php';
-                header("Location: " . $banned_url . "?reason=" . urlencode($row['reason']));
+                $banned_url = $relative_base . '/err/?code=banned';
+                header("Location: " . $banned_url . "&reason=" . urlencode($row['reason']));
                 exit();
             }
         }
     }
-    // Deteksi halaman dan aktivitas user
     $current_page = basename($_SERVER['PHP_SELF']);
     $dir_name = basename(dirname($_SERVER['PHP_SELF']));
     $id_get = isset($_GET['id']) ? $_GET['id'] : null;
 
-    // ─── 1. LOGIKA DETEKSI JUDUL KONTEN ───
     if ($id_get) {
         if ($current_page == 'watch.php') {
             $table = ($dir_name == 'music') ? 'music' : 'video';
@@ -217,7 +198,6 @@ if (isset($conn)) {
                 }
             }
         } elseif ($current_page == 'stream.php' && $dir_name == 'music') {
-            // server dengan query berulang untuk lagu yang sama.
             $last_stream_id = $_SESSION['_last_stream_id'] ?? null;
             if ($last_stream_id !== $id_get) {
                 $_SESSION['_last_stream_id'] = $id_get;
@@ -233,7 +213,6 @@ if (isset($conn)) {
                     }
                 }
             } elseif (isset($_SESSION['_last_stream_page'])) {
-                // sudah di-cache di session, bukan query ulang ke DB.
                 $current_page = $_SESSION['_last_stream_page'];
             }
         } elseif ($current_page == 'index.php' && $dir_name == 'profile') {
@@ -241,7 +220,6 @@ if (isset($conn)) {
             $current_page = "Viewing Profile: " . htmlspecialchars($target_user);
         }
     } elseif ($current_page == 'index.php') {
-        // ─── 2. LOGIKA DETEKSI HALAMAN INDEX (BROWSING LIBRARY) ───
         switch ($dir_name) {
             case 'video':
                 $current_page = "Browsing Video Library";
@@ -269,9 +247,8 @@ if (isset($conn)) {
     }
     $ua_raw = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
     $host = $_SERVER['HTTP_HOST'] ?? 'Local';
-    $access_via = $access_method; // Gunakan metode akses, bukan hanya hostname
+    $access_via = $access_method;
 
-    // Deteksi Device
     $device = "Unknown";
     if (strpos($ua_raw, 'Android') !== false) $device = "Smartphone";
     elseif (strpos($ua_raw, 'Linux') !== false) $device = "Linux PC";
@@ -283,13 +260,12 @@ if (isset($conn)) {
         $uid = $_SESSION['user_id'];
         $current_sid = session_id();
 
-        // 1. MIRO: AMBIL DATA SESI & STATUS DARI DB SEKALIGUS
         $stmt_check = $conn->prepare("SELECT last_session_id, role FROM users WHERE id = ?");
         $stmt_check->bind_param("i", $uid);
         $stmt_check->execute();
         $user_status = $stmt_check->get_result()->fetch_assoc();
 
-        if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+        if ($current_dir !== 'err') {
             if ($user_status && $user_status['role'] !== 'admin') {
                 if (!empty($user_status['last_session_id']) && $user_status['last_session_id'] !== $current_sid) {
                     session_unset();
@@ -298,7 +274,7 @@ if (isset($conn)) {
                     $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
                     $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
                     $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
-                    $revoked_url = $relative_base . '/err/revoked.php';
+                    $revoked_url = $relative_base . '/err/?code=revoked';
                     header("Location: " . $revoked_url);
                     exit();
                 }
@@ -311,7 +287,6 @@ if (isset($conn)) {
             $stmt_update_sid->execute();
         }
 
-        // 3. UPDATE AKTIVITAS (Lanjutkan proses logger asli kamu)
         $stmt = $conn->prepare("UPDATE users SET last_page = ?, user_agent = ?, access_via = ?, ip_address = ?, last_activity = NOW() WHERE id = ?");
         $stmt->bind_param("ssssi", $current_page, $device, $access_via, $user_ip, $uid);
         $stmt->execute();
@@ -319,9 +294,11 @@ if (isset($conn)) {
 
         $guest_id = "g_" . substr(md5(session_id()), 0, 10);
         $role     = 'guest';
+        $guest_pass = bin2hex(random_bytes(24));
+
         $guest_upd = $conn->prepare(
-            "INSERT INTO users (username, role, last_page, user_agent, access_via, ip_address, last_activity)
-             VALUES (?, ?, ?, ?, ?, ?, NOW())
+            "INSERT INTO users (username, password, role, last_page, user_agent, access_via, ip_address, last_activity)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
              ON DUPLICATE KEY UPDATE
                 last_page = VALUES(last_page),
                 user_agent = VALUES(user_agent),
@@ -329,7 +306,7 @@ if (isset($conn)) {
                 ip_address = VALUES(ip_address),
                 last_activity = NOW()"
         );
-        $guest_upd->bind_param("ssssss", $guest_id, $role, $current_page, $device, $access_via, $user_ip);
+        $guest_upd->bind_param("sssssss", $guest_id, $guest_pass, $role, $current_page, $device, $access_via, $user_ip);
         $guest_upd->execute();
     }
 }

@@ -1,15 +1,26 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/* @coversNothing */
+/**
+ * @coversNothing
+ */
 class JapaneseTest extends TestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Load japanese.php (guarded by function_exists)
+        
         require_once MEEL_ROOT . '/modules/core/japanese.php';
+    }
+
+    
+
+    protected function skipIfNoMecab(): void
+    {
+        if (!function_exists('meel_mecab_available') || !meel_mecab_available()) {
+            $this->markTestSkipped('mecab tidak tersedia — test romaji di-skip');
+        }
     }
 
     public function testGetRomajiNameEmptyString(): void
@@ -19,16 +30,17 @@ class JapaneseTest extends TestCase
 
     public function testGetRomajiNameWithLatinText(): void
     {
-        // Pure ASCII text should pass through
+        
         $result = getRomajiName('hello world');
         $this->assertStringContainsString('hello', $result);
     }
 
     public function testGetRomajiNameWithSpecialChars(): void
     {
-        // Special chars should be replaced
+        $this->skipIfNoMecab();
+        
         $result = getRomajiName('初音ミク【テスト】');
-        // Should contain 'hatsune' (replacement for 初音)
+        
         $this->assertStringContainsString('hatsune', $result);
     }
 
@@ -50,12 +62,13 @@ class JapaneseTest extends TestCase
 
     public function testAnalyzeJapaneseTextWithAlias(): void
     {
+        $this->skipIfNoMecab();
         $result = analyzeJapaneseText('プロジェクトセカイ カラフルステージ!');
         $this->assertStringContainsString('Project Sekai', $result['english']);
         $this->assertStringContainsString('Colorful Stage', $result['english']);
     }
 
-    // ─── Alias baru (japanese_aliases.php) ───
+    
 
     public function testAnalyzeJapaneseTextWithTouhouAlias(): void
     {
@@ -78,7 +91,7 @@ class JapaneseTest extends TestCase
 
     public function testAnalyzeJapaneseTextWithNicknameAlias(): void
     {
-        // Nickname プロセカ / ワンオポ juga harus dikenali
+        
         $result = analyzeJapaneseText('プロセカ ワンオポ');
         $this->assertStringContainsString('Project Sekai', $result['english']);
         $this->assertStringContainsString('Wonderlands x Showtime', $result['english']);
@@ -88,6 +101,40 @@ class JapaneseTest extends TestCase
     {
         $result = analyzeJapaneseText('あんさんぶるスターズ コラボ');
         $this->assertStringContainsString('Ensemble Stars', $result['english']);
+    }
+
+    
+    public function testAnalyzeJapaneseTextDoesNotGlossParticlesAsHomophones(): void
+    {
+        $this->skipIfNoMecab();
+        
+        $result = analyzeJapaneseText('君が飛び降りるのならば');
+        $this->assertStringContainsString('kimi-ga-tobioriru-no-nara-ba', $result['romaji']);
+        $this->assertStringNotContainsString('moth', $result['english']);
+        $this->assertStringNotContainsString('indicates possessive', $result['english']);
+        $this->assertStringNotContainsString('place', $result['english']);
+    }
+
+    public function testAnalyzeJapaneseTextFullCoverAliasWins(): void
+    {
+        
+        $result = analyzeJapaneseText('君が飛び降りるのならば');
+        $this->assertSame("In case you're gonna jump", $result['english']);
+    }
+
+    public function testAnalyzeJapaneseTextConditionalPatternAlias(): void
+    {
+        
+        $result = analyzeJapaneseText('跳べるならば');
+        $this->assertStringContainsString('if', $result['english']);
+    }
+
+    public function testAnalyzeJapaneseTextVoicebankAliasSkipsTokenGloss(): void
+    {
+        $result = analyzeJapaneseText('プロポーズ / 可不');
+        $this->assertStringContainsString('Kafu', $result['english']);
+        $this->assertStringNotContainsString('acceptable', $result['english']);
+        $this->assertStringNotContainsString('un-', $result['english']);
     }
 
 }

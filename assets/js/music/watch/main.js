@@ -1,10 +1,9 @@
-/** MEeL - Media Hub Platform
- * @copyright Copyright (C) 2026 Mifada
- * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
-/* watch/main.js — Entry point folder watch/ (halaman music/watch.php). */
+
+
+
+
 (function () {
   "use strict";
-  if (document.readyState !== "loading") return;
   var src =
     (document.currentScript && document.currentScript.src) ||
     (function () {
@@ -23,6 +22,16 @@
     "mini-player.js",
     "player-core.js",
   ];
+  
+  
+  window.MEEL_WATCH_BUNDLE = {
+    base: base,
+    qs: qs,
+    files: files.map(function (f) {
+      return base + f + qs;
+    }),
+  };
+  if (document.readyState !== "loading") return;
   for (var i = 0; i < files.length; i++) {
     document.write('<script src="' + base + files[i] + qs + '"><\/script>');
   }

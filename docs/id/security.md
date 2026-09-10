@@ -14,6 +14,8 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 - [Activity Logging](#activity-logging)
 - [File Upload Security](#file-upload-security)
 - [Apache .htaccess Protection](#apache-htaccess-protection)
+- [Proteksi SSRF (Advanced Upload)](#proteksi-ssrf-advanced-upload)
+- [Proteksi Private Drive](#proteksi-private-drive)
 - [Multi-Factor Authentication (MFA)](#multi-factor-authentication-mfa)
 - [Input Validation](#input-validation)
 
@@ -77,7 +79,7 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 ### Definisi Role
 
 | Role | Level | Hak Akses |
-|------|-------|-----------|
+|---|---|---|
 | **Admin** | 100 | Kontrol penuh sistem |
 | **Member** | 50 | Media + Cloud Drive (quota 20GB) |
 | **User** | 30 | Media + komentar (tanpa Drive) |
@@ -90,7 +92,7 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 // Proteksi halaman - redirect jika belum login
 if (!isset($_SESSION['user_id'])) {
     $next = urlencode($_SERVER['REQUEST_URI'] ?? '/');
-    header("Location: ../auth/login.php?next={$next}");
+    header("Location: ../auth/login?next={$next}");
     exit;
 }
 ```
@@ -104,7 +106,7 @@ $stmt->execute();
 $user_role = $stmt->get_result()->fetch_assoc()['role'] ?? 'user';
 
 if ($user_role !== 'admin') {
-    header("Location: ../index.php?error=ditolak");
+    header("Location: ../?error=ditolak");
     exit();
 }
 ```
@@ -123,7 +125,8 @@ if ($user['is_active'] != 1 || $user['role'] === 'guest') {
 final class DriveUserContext {
     public function authorize(): void {
         if (!$this->isAllowedRole()) {
-            die(include __DIR__ . '/../err/denied.php');
+            $_GET['code'] = 'denied';
+            die(include __DIR__ . '/../err/index.php');
         }
     }
     
@@ -136,7 +139,7 @@ final class DriveUserContext {
 ### Feature Gating per Role
 
 | Fitur | Admin | Member | User | Guest |
-|-------|-------|--------|------|-------|
+|---|---|---|---|---|
 | Nonton Video | ✅ | ✅ | ✅ | ✅ |
 | Dengar Musik | ✅ | ✅ | ✅ | ✅ |
 | Like/Dislike | ✅ | ✅ | ✅ | ❌ |
@@ -157,7 +160,8 @@ final class DriveUserContext {
 ### Session Configuration
 
 ```php
-// auth/config.php
+// modules/auth/helpers/session.php — meel_boot_session()
+// (auth/config.php & auth/auth_helpers.php mendelegasikan ke fungsi ini)
 $timeout = 43200;              // 12 jam
 ini_set('session.gc_maxlifetime', $timeout);
 
@@ -177,12 +181,24 @@ session_start();
 ```
 
 | Flag | Nilai | Proteksi |
-|------|-------|----------|
+|---|---|---|
 | `Secure` | auto (HTTPS) | Cookie tidak pernah terkirim lewat HTTP polos — cegah sniffing |
 | `HttpOnly` | `true` | XSS tidak bisa mencuri session cookie via JavaScript |
 | `SameSite` | `Lax` | Request POST lintas-situs tidak membawa cookie (CSRF layer 1) |
 
-Diterapkan di `auth/config.php` dan `auth/auth_helpers.php` (`auth_boot_session()`).
+Konfigurasi di atas kini **dipusatkan** di `modules/auth/helpers/session.php` sebagai fungsi
+`meel_boot_session()` — satu-satunya sumber kebenaran inisialisasi session. Semua entry point
+(index, video, music, auth, controllers/api, err, admin) memanggilnya menggantikan pola lama
+`session_name('meel'); session_start();` yang tersebar di banyak file, sehingga cookie sesi
+dijamin selalu memakai flag aman. Fungsi ini **idempotent** (no-op jika session sudah aktif),
+`auth/config.php` dan `auth_boot_session()` di `auth/auth_helpers.php` kini mendelegasikan
+ke fungsi ini:
+
+```php
+// Cara pakai di entry point baru
+require_once __DIR__ . '/../modules/core/helpers.php';
+meel_boot_session();
+```
 
 ### Path Configuration
 
@@ -208,14 +224,14 @@ if (isset($_SESSION['LAST_ACTIVITY'])) {
     if ($elapsed_time > $timeout) {
         session_unset();
         session_destroy();
-        header("Location: ../auth/login.php?reason=expired");
+        header("Location: ../auth/login?reason=expired");
         exit;
     }
 }
 $_SESSION['LAST_ACTIVITY'] = time();
 
 // activity_logger.php - Kick detection (Header Redirect)
-if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+if ($current_dir !== 'err') {
     if ($user_status && $user_status['role'] !== 'admin') {
         if (!empty($user_status['last_session_id']) && $user_status['last_session_id'] !== $current_sid) {
             session_unset();
@@ -224,7 +240,7 @@ if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
             $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
             $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
             $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
-            $revoked_url = $relative_base . '/err/revoked.php';
+            $revoked_url = $relative_base . '/err/?code=revoked';
             header("Location: " . $revoked_url);
             exit();
         }
@@ -259,7 +275,7 @@ Login Flow:
     ↓ Ya                             ↓ Tidak
   Simpan mfa_temp_uid ke session    Set session langsung
     ↓                                ↓
-  Redirect ke mfa_verify.php       Redirect ke index
+  Redirect ke auth/mfa-verify       Redirect ke index
 ```
 
 ### TOTP Implementation
@@ -273,7 +289,7 @@ MEeL menggunakan **TOTP (Time-based One-Time Password)** dengan algoritma:
 ### Secret Generation
 
 ```php
-// modules/core/helpers.php
+// modules/auth/helpers/mfa.php
 function generate_mfa_secret(): string {
     $random = random_bytes(20);  // 160-bit random
     $base32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -290,26 +306,26 @@ Secret disimpan di kolom `mfa_secret` (VARCHAR(64)) di tabel `users`, di-hash? *
 
 ### Backup Codes
 
-- **8 backup codes** — masing-masing 8 karakter alfanumerik
-- **Disimpan sebagai SHA256 hash** — tidak bisa dibaca balik
+- **8 backup codes** — masing-masing 6 digit angka
+- **Disimpan sebagai hash `password_hash()` (bcrypt)** — tidak bisa dibaca balik
 - **Sekali pakai** — setelah digunakan, hash dihapus dari daftar
 
 ```php
 function generate_backup_codes(): array {
-    $codes = [];
-    $hashes = [];
+    $plain = [];
+    $hashed = [];
     for ($i = 0; $i < 8; $i++) {
-        $plain = bin2hex(random_bytes(4)); // 8 karakter hex
-        $codes[] = $plain;
-        $hashes[] = hash('sha256', $plain);
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT); // 6 digit
+        $plain[] = $code;
+        $hashed[] = password_hash($code, PASSWORD_DEFAULT); // bcrypt
     }
-    return ['plain' => $codes, 'hashed' => $hashes];
+    return ['plain' => $plain, 'hashed' => $hashed];
 }
 
 function verify_backup_code(string $hashedCodes, string $code): array {
     $codes = json_decode($hashedCodes, true) ?? [];
     foreach ($codes as $i => $hash) {
-        if (hash_equals($hash, hash('sha256', $code))) {
+        if (password_verify($code, $hash)) {
             array_splice($codes, $i, 1); // Hapus yang sudah dipakai
             return ['valid' => true, 'remaining' => $codes];
         }
@@ -345,9 +361,19 @@ Admin dapat mereset MFA user dari halaman `admin/mfa_reset.php`:
 ### MFA di Profile
 
 Halaman `profile/index.php` menampilkan status MFA dengan toggle switch visual:
-- Hijau "Aktif" → link ke `auth/mfa_setup.php` untuk kelola/disable
-- Abu-abu "Nonaktif" → link ke `auth/mfa_setup.php` untuk setup
+- Hijau "Aktif" → link ke `auth/mfa-setup` untuk kelola/disable
+- Abu-abu "Nonaktif" → link ke `auth/mfa-setup` untuk setup
 - Jika aktif, backup codes juga ditampilkan di profil
+
+### Akses Profil Guest
+
+Guest (pengguna tanpa autentikasi) bisa melihat halaman profil pengguna lain tanpa login. Halaman profil menggunakan `meel_boot_session()` (bukan `session_start()` mentah) untuk memastikan nama cookie session cocok dengan seluruh aplikasi (`meel`).
+
+- **Guest melihat profil sendiri:** Profil sintetis dengan `id=0`, `role='guest'`, bio="Akun Guest" — theme toggle tersedia
+- **Guest melihat profil lain:** Profil nyata dari DB — bio, statistik, badge ditampilkan dengan benar; tidak ada tombol Edit/Manage/MFA; tidak ada theme toggle
+- **User login melihat profil sendiri:** Akses penuh — Edit Profile, Kelola Konten, MFA, Backup Codes, Theme Toggle
+
+Inisialisasi session menggunakan `meel_boot_session()` untuk mengatur `session_name('meel')` dan cookie flags yang di-hardened. Menggunakan `session_start()` mentah akan mencari cookie `PHPSESSID` bukan `meel`, menyebabkan session terlihat kosong.
 
 ---
 
@@ -365,7 +391,7 @@ if (empty($_SESSION['csrf_token'])) {
 ### Token Validation
 
 ```php
-// verify_csrf_token() — didefinisikan di modules/core/helpers.php
+// verify_csrf_token() — didefinisikan di modules/auth/helpers/csrf.php
 // Menggunakan hash_equals() untuk timing-attack safety
 function verify_csrf_token(?string $token = null): bool
 {
@@ -394,8 +420,8 @@ echo "<input type='hidden' name='csrf_token' value='$token'>";
 
 ### Admin Actions — Form POST (bukan link GET)
 
-Aksi admin yang mengubah state (approve/reject/delete user, kick user, unban IP)
-telah dipindah dari link GET ke **form POST dengan token CSRF** — link GET bisa
+Aksi admin yang mengubah state (approve/reject/delete user, kick user, unban IP, force-stop queue)
+menggunakan **form POST dengan token CSRF** — link GET bisa
 dipicu oleh tag `<img>` (CSRF), form POST tidak:
 
 ```html
@@ -410,10 +436,15 @@ Handler di `controllers/admin/admin_actions.php` kini membaca `$_POST`, dan
 endpoint catur admin `catur.php?auto_cleanup=1` juga wajib `csrf_token`
 (bridge `window.MEEL_ADMIN_CSRF`).
 
+> ⚠️ **Form action tidak boleh menggunakan `action="."`** — ketika URL halaman adalah `/admin/beranda`,
+> `action="."` resolve ke `/admin/`, yang mendapat 301 redirect ke `/admin/beranda` oleh
+> rule canonical `.htaccess`. 301 mengubah POST menjadi GET, menghilangkan semua data form.
+> Gunakan tanpa atribut `action` (default = URL halaman saat ini) atau `action=""`.
+
 ### Chess Multiplayer — Guard Login + CSRF
 
 Semua endpoint `arcade/chess/controller/*.php` mewajibkan:
-- **Login** — JSON `401` + `login_required: true` (client `api.js` redirect ke login).
+- **Login** — JSON `401` + `login_required: true` (client `arcade/chess/assets/js/api.js` redirect ke login).
 - **CSRF** — setiap POST yang mengubah state membawa `csrf_token` (body JSON untuk `save_move`, `FormData` untuk `create_room`/`join_room`).
 - Token **tidak pernah disimpan** di `moves.move_data` (tidak ter-expose ke lawan).
 
@@ -474,7 +505,8 @@ function validate_and_format_ip($ip) {
 ```php
 // Di activity_logger.php - dijalankan di setiap halaman (Header Redirect)
 $current_page = basename($_SERVER['PHP_SELF']);
-if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
+$current_dir  = basename(dirname($_SERVER['PHP_SELF']));
+if ($current_dir !== 'err') {
     if ($ban_res->num_rows > 0) {
         // Jika bukan admin, baru di-redirect
         if ($session_role !== 'admin') {
@@ -482,8 +514,8 @@ if ($current_page !== 'banned.php' && $current_page !== 'revoked.php') {
             $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/..'));
             $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
             $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
-            $banned_url = $relative_base . '/err/banned.php';
-            header("Location: " . $banned_url . "?reason=" . urlencode($row['reason']));
+            $banned_url = $relative_base . '/err/?code=banned';
+            header("Location: " . $banned_url . "&reason=" . urlencode($row['reason']));
             exit();
         }
     }
@@ -521,7 +553,7 @@ Mencatat aktivitas user ke tabel `activity_log` dengan prepared statement. Null 
 `log_activity()` sudah terintegrasi langsung di berbagai entry point aplikasi:
 
 | Event | Aksi | Lokasi Integrasi |
-|-------|------|------------------|
+|---|---|---|
 | Login sukses | `login` | `auth/login.php` |
 | Logout | `logout` | `auth/logout.php` |
 | Upload video | `upload_video` | `video/upload.php` |
@@ -540,7 +572,7 @@ Mencatat aktivitas user ke tabel `activity_log` dengan prepared statement. Null 
 Halaman `admin/activity_log.php` menyediakan viewer khusus untuk audit trail:
 
 | Fitur | Detail |
-|-------|--------|
+|---|---|
 | 🔍 **Filter** | By action type (dropdown), search username/IP, rentang waktu (7–365 hari) |
 | 📄 **Pagination** | 50 entry per halaman dengan navigasi prev/next |
 | 📊 **Stats Cards** | 7-day activity count, unique users, total entries, page info |
@@ -572,7 +604,7 @@ Detil yang ditampilkan:
 
 ### Arsitektur
 
-`modules/core/RateLimiter.php` menyediakan **file-based rate limiter** yang melindungi API endpoint dari abuse:
+`modules/auth/RateLimiter.php` menyediakan **file-based rate limiter** yang melindungi API endpoint dari abuse:
 
 ```
 Request → RateLimiter::check(key, endpoint)
@@ -596,7 +628,7 @@ Menggunakan file JSON di `temp/ratelimit/` (tanpa schema DB tambahan):
 ### Endpoint Limits
 
 | Endpoint | Max Request | Window | Respons pada Limit |
-|----------|:-----------:|:------:|--------------------|
+|---|:---:|:---:|---|
 | **Like/Dislike** | 30 | 1 menit | HTTP 429 + HTMX HTML snippet (badge kuning "Wait Xs" + disabled buttons) |
 | **Comment** | 10 | 1 menit | Redirect dengan flash error message |
 | **Upload** (video/music/books) | 3 | 1 jam | — |
@@ -627,7 +659,7 @@ if (!$rateCheck['allowed']) {
 $rateCheck = RateLimiter::check('user_'.$userId, 'comment');
 if (!$rateCheck['allowed']) {
     $_SESSION['error'] = 'Terlalu banyak komentar.';
-    header("Location: watch.php?id={$id}#comment-section");
+    header("Location: music/watch?id={$id}#comment-section");
     exit;
 }
 ```
@@ -692,6 +724,81 @@ if ($detectedType === 'audio') {
 $max_dur = ($this->user_role === 'admin') ? 3600 : 300;
 ```
 
+### Validasi Magic Bytes Terpusat (`meel_magic_extension_ok`)
+
+Satu-satunya sumber kebenaran validasi signature file (server-side) — semua
+jalur upload (Uploader video/music, thumbnail, BookUploader, DriveStorage)
+memakainya, menggantikan cek inline yang diduplikasi:
+
+```php
+// modules/core/helpers/upload.php
+meel_magic_extension_ok(string $path, string $ext, string $mediaKind): string
+// mediaKind: 'audio' | 'video' | 'image' | 'pdf' | 'archive'
+// return '' jika cocok, pesan error jika tidak
+```
+
+Jenis yang dikenali: Ogg/Opus, FLAC, WAV/RIFF, MP3 (ID3/frame sync), MP4/M4A
+(ftyp), Matroska/WebM, JPEG/PNG/WebP/GIF, PDF, dan arsip ZIP. Validasi tidak
+pernah mengandalkan `$_FILES['type']` atau ekstensi saja.
+
+### Alokasi Nama File Atomik (anti race condition)
+
+Nama file fisik tidak lagi dialokasikan dengan pola check-then-move
+(`while (file_exists(...))`). Semua nama media di-reserve **atomik** via
+`meel_reserve_unique_filename()` (placeholder `fopen(..., 'x')` / O_EXCL):
+
+```php
+// modules/core/helpers/upload.php — dipakai Uploader, EncodeService,
+// admin editors, dan arcade rhythm
+meel_reserve_unique_filename(string $dir, string $clean_name, string $ext): ?string
+```
+
+Dua request bersamaan tidak mungkin menerima nama yang sama; pemanggil menimpa
+placeholder dengan `move_uploaded_file()` / ffmpeg `-y`. Nama folder kerja video
+dialokasikan lewat helper serupa (`meel_allocate_unique_dir()`).
+
+### Proteksi Arsip ZIP/CBZ (`ArchiveGuard`)
+
+Ekstraksi manga/book **tidak pernah** memakai `ZipArchive::extractTo()`
+langsung ke folder final. `modules/media/ArchiveGuard.php` menjalankan pipeline
+validasi → staging → move:
+
+```
+buka arsip
+  → inspeksi tiap entry (traversal, null byte, count, ukuran, rasio,
+    kedalaman, symlink, ekstensi)
+  → ekstrak satu-per-satu ke staging server-generated (nama acak)
+  → validasi hasil
+  → pindahkan ke folder final (rename; file yang sudah ada TIDAK ditimpa;
+    symlink tidak pernah dipindahkan)
+```
+
+Limit dikonfigurasi via konstanta (default):
+
+| Konstanta | Default | Arti |
+|---|---|---|
+| `MAX_ARCHIVE_ENTRIES` | 5000 | Jumlah entry maksimum |
+| `MAX_ARCHIVE_UNCOMPRESSED_BYTES` | 2 GiB | Total ukuran setelah ekstraksi |
+| `MAX_ARCHIVE_ENTRY_BYTES` | 200 MiB | Ukuran satu file |
+| `MAX_ARCHIVE_COMPRESSION_RATIO` | 300 | Rasio kompresi per-entry (zip bomb) |
+| `MAX_ARCHIVE_PATH_DEPTH` | 16 | Kedalaman direktori maksimum |
+
+Ditolak: absolute path, `../`, `..\`, null byte, symlink, kedalaman berlebihan,
+entri non-gambar (hanya `jpg/jpeg/png/webp/gif/bmp/avif` untuk CBZ/manga), dan
+count/ukuran/rasio melebihi batas. Kejadian ditolak dicatat ke error log tanpa
+menyimpan isi arsip.
+
+### Quota & Resource Limits
+
+- **Disk pre-flight** — `require_disk_space()` menolak upload sebelum menulis
+  byte pertama (music 500MB, video 1GB + `/dev/shm` 512MB).
+- **Upload simultan** — maksimal 3 upload bersamaan (counter file ber-`flock` +
+  TTL 5 menit + auto-decrement di shutdown).
+- **Rate limit** — upload dibatasi per jam berbasis role (admin unlimited).
+- **Arsip** — limit entri/ukuran/rasio di atas (anti zip bomb).
+- **Transcode** — timeout audio 600s (`TRANSCODE_AUDIO_TIMEOUT`), HLS remux
+  120s, `stream_set_timeout(30)`, durasi hasil divalidasi ≥ 50% sumber.
+
 ---
 
 ## Apache .htaccess Protection
@@ -712,9 +819,29 @@ Direktori yang diproteksi:
 - `modules/` — Core business logic
 - `partials/` — UI components (include-only)
 - `admin/` — Admin panel (hanya index)
-- `books/upload/` — File buku
+- `books/upload/` — File buku (disajikan via `books/file.php` — **wajib login**, lihat catatan di bawah)
 - `music/upload/` — File musik
 - `video/upload/` — File video
+
+> **File upload tidak disajikan langsung oleh web server.** Sejak refactor
+> portabilitas, `books/upload/`, `music/upload/`, dan `video/upload/` adalah
+> folder nyata ter-track (placeholder `.gitkeep` + `.htaccess` hardening) yang
+> isinya disajikan lewat endpoint PHP yang dipetakan internal rewrite di
+> `.htaccess` root: `video/upload/...` → `video/stream.php`,
+> `music/upload/...` → `music/file.php`, `books/upload/...` → `books/file.php`
+> (lihat [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
+> Endpoint ini menerapkan proteksi path traversal, whitelist ekstensi, dan
+> dukungan HTTP Range.
+>
+> **`books/file.php` wajib login** (`auth/auth.php`), konsisten dengan seluruh
+> modul Books — `index.php`, `read.php`, `read_pdf.php`, dan
+> `controllers/api/pdf.php` semuanya login-gated. Tanpa ini, gambar manga dan
+> PDF bisa diunduh langsung tanpa autentikasi (path mentah sebelumnya dapat
+> diakses dengan `HTTP 200`). Audio musik tetap di belakang `music/stream.php`
+> (marker session + referer gate ketat); `music/file.php` dan
+> `video/stream.php` sengaja **tanpa** login gate karena halaman index/watch
+> Music & Video memang publik by design (thumbnail harus tampil untuk
+> pengunjung anonim).
 
 ### Root .htaccess
 
@@ -723,6 +850,215 @@ Direktori yang diproteksi:
 RewriteEngine On
 # Custom rules here
 ```
+
+Direktori private Drive juga di-deny untuk akses HTTP langsung — lihat [Proteksi Private Drive](#proteksi-private-drive).
+
+---
+
+## Proteksi SSRF (Advanced Upload)
+
+Fitur Advanced Upload (`upload_advanced.php`) mengizinkan user terautentikasi mengunduh media dari URL eksternal melalui yt-dlp. Karena yt-dlp berjalan **di server**, URL yang di-supply attacker dan me-resolve ke alamat internal bisa disalahgunakan sebagai vektor Server-Side Request Forgery (SSRF) — memindai layanan loopback, endpoint metadata cloud (`169.254.169.254`), atau mesin lain di jaringan lokal.
+
+### Arsitektur
+
+`modules/auth/SsrfGuard.php` adalah **satu-satunya sumber kebenaran** untuk setiap request keluar yang dibuat atas nama user:
+
+```
+User URL → SsrfGuard::validate()
+    ↓
+Allowlist protokol (hanya http/https)
+    ↓
+Denylist hostname (defense-in-depth: localhost, .local, .internal, …)
+    ↓
+Resolusi DNS → SEMUA record A/AAAA dicek terhadap range IPv4/IPv6
+private/reserved secara eksplisit (satu record buruk = tolak)
+    ↓
+Transcoder::processDownload() me-pin koneksi HTTP ke IP publik yang
+sudah divalidasi + memaksa Host header asli
+```
+
+### Aturan Validasi
+
+| Aturan | Detail |
+|---|---|
+| **Protokol** | Hanya `http` dan `https`. URL tanpa skema, protocol-relative (`//host/…`), dan skema lain ditolak |
+| **Kredensial** | `user:pass@` yang disematkan di URL ditolak (sering dipakai untuk menyembunyikan host tujuan) |
+| **Denylist hostname** | `localhost`, `*.local`, `*.internal`, `*.lan`, `*.test`, `*.onion`, … (hanya defense-in-depth) |
+| **DNS** | Setiap record A/AAAA yang dikembalikan divalidasi — satu record non-publik menolak URL (memblokir trik DNS mixed-answer) |
+| **IP literal** | Literal IPv4 & IPv6 divalidasi langsung tanpa round-trip DNS |
+| **Fail closed** | Host yang tidak bisa di-resolve, host IDN/punycode, dan IP yang tidak bisa di-parse ditolak |
+| **Batas panjang** | URL lebih dari 2048 karakter ditolak |
+
+### Range IP yang Diblokir
+
+**IPv4:** `0.0.0.0/8`, `10.0.0.0/8`, `100.64.0.0/10` (CGNAT), `127.0.0.0/8`, `169.254.0.0/16` (link-local), `172.16.0.0/12`, `192.0.0.0/24`, `192.0.2.0/24` (TEST-NET-1), `192.168.0.0/16`, `198.18.0.0/15`, `198.51.100.0/24` (TEST-NET-2), `203.0.113.0/24` (TEST-NET-3), multicast/reserved `224.0.0.0/4`.
+
+**IPv6:** `::/128`, `::1/128`, `::ffff:0:0/96` (IPv4-mapped — dicek ulang dengan logika IPv4), `64:ff9b::/96` (NAT64), `100::/64` (discard-only), `2001:db8::/32`, `2001:10::/28` (ORCHID), `2002::/16` (6to4), `3fff::/20`, `fc00::/7` (unique-local), `fe80::/10` (link-local), `fec0::/10` (site-local), `ff00::/8` (multicast).
+
+### DNS Rebinding & HTTP Pinning
+
+Alur "validasi sekali, lalu request" yang naif rentan terhadap **DNS rebinding**: hostname me-resolve ke IP publik saat validasi, lalu ke IP private saat request sungguhan dilakukan. Untuk menutup celah ini, `SsrfGuard::pinHttpUrl()` menulis ulang URL `http://` yang sudah divalidasi agar koneksi langsung ke **IP publik yang sudah divalidasi**, sementara yt-dlp menerima `--add-header Host: <hostname-asli>`:
+
+```php
+[$dl_url, $dl_extra] = $ssrf->pinHttpUrl($url);
+// $dl_url   = http://<ip-publik>[:port]/path  (tidak ada DNS lookup kedua yang dipengaruhi attacker)
+// $dl_extra = --add-header 'Host: example.com'
+```
+
+URL `https://` dikembalikan apa adanya — validasi SNI dan sertifikat TLS membutuhkan hostname.
+
+### Validating Forward Proxy (penegakan per-redirect)
+
+Validasi awal sekali tidak bisa melindungi dari **open redirect**: yt-dlp mengikuti redirect sendiri dan me-resolve ulang setiap target tanpa mengembalikannya ke `SsrfGuard`. Untuk menutup celah ini, pipeline download mengarahkan **semua** trafik yt-dlp (metadata + download + setiap hop redirect) melalui validating forward proxy:
+
+```
+URL → SsrfGuard::validate() + pinHttpUrl()   (pre-flight, fast fail)
+   ↓
+yt-dlp --proxy http://127.0.0.1:<ephemeral>  (di-spawn per Transcoder)
+   ↓
+Validating forward proxy (validating_proxy_server.php)
+   • HTTP  absolute-URI → validasi host → tulis ulang origin-form → teruskan
+   • HTTPS CONNECT host:port → validasi host → tunnel 200 → relay byte
+   • Target ditolak (IP private/reserved, hostname diblokir, host tidak bisa
+     di-resolve, request cacat) → 502, tidak pernah diteruskan
+   ↓
+Stream diteruskan kembali ke yt-dlp
+```
+
+Properti kunci:
+
+| Properti | Detail |
+|---|---|
+| **Setiap hop divalidasi** | Redirect ke `127.0.0.1`, `10.x`, metadata cloud, dsb. menjadi request CONNECT/absolute-URI baru ke proxy, yang menerapkan `SsrfGuard::resolvePublicAddresses()` ke **tujuan hop tersebut** dan menolaknya |
+| **Loopback-only** | Proxy bind ke `127.0.0.1` pada port ephemeral — tidak ada pihak eksternal yang bisa memakainya sebagai open proxy |
+| **DNS-rebinding aman per hop** | Setiap hop di-resolve sekali dan koneksi menuju IP publik yang sudah divalidasi (tidak ada lookup terpisah belakangan) |
+| **Host header dipertahankan** | Header `Host:` dari client dipertahankan untuk request upstream, sehingga routing virtual-host dan SNI TLS tidak terganggu |
+| **Fail closed** | Jika proxy tidak bisa dijalankan, download **ditolak** — tidak ada fallback tanpa proteksi |
+| **Siklus hidup** | Di-spawn lazy saat download pertama via `ValidatingProxy` (proc_open script CLI), di-terminate oleh destructor `Transcoder` — tidak ada proses yatim |
+
+Keterbatasan `https://` dengan demikian teratasi: meskipun URL HTTPS asli tidak bisa di-pin (SNI TLS), setiap tujuan redirect tetap divalidasi ulang oleh proxy sebelum koneksi dibuka.
+
+### Defense in Depth
+
+`Transcoder::fetchMetadata()` juga memanggil `SsrfGuard::validate()` secara independen dan memaksa flag proxy, sehingga calon pemanggil lain yang melewati `processDownload()` pun tidak bisa meneruskan URL yang belum divalidasi — atau hop yang tidak terlindungi — ke yt-dlp.
+
+### Titik Integrasi
+
+| File | Peran |
+|---|---|
+| `modules/auth/SsrfGuard.php` | Validasi sentral: allowlist protokol, cek range IPv4/IPv6 eksplisit, validasi semua record DNS, HTTP pinning |
+| `modules/auth/ValidatingProxy.php` | Spawn/terminate proses proxy, expose URL `--proxy` (loopback-only) |
+| `modules/auth/validating_proxy_server.php` | CLI forward proxy: SsrfGuard di setiap hop (HTTP absolute-URI + CONNECT tunnel) |
+| `modules/core/Transcoder.php` (facade → `modules/transcoder/DownloadService.php`) | `processDownload()` / `fetchMetadata()` memanggil guard dan mengarahkan yt-dlp lewat `--proxy`; fail closed jika proxy tidak bisa start |
+| `modules/autoload.php` | Mengautoload kelas `SsrfGuard` |
+
+### Keamanan `temp_file` & `post_encode`
+
+`temp_file` tidak pernah menerima path filesystem dari client. Alur
+download-music:
+
+```
+yt-dlp download → staging di RAM disk (`/dev/shm/meel/`) dengan nama token
+  opaque (uniqid server-side)
+  → nama + metadata disimpan di sesi (`meel_pending_music`, expiry 1 jam)
+  → browser POST ke `controllers/api/post_encode.php` hanya membawa token
+```
+
+`post_encode.php`:
+- **Method POST** + verifikasi CSRF (endpoint state-changing)
+- Validasi token: regex `[A-Za-z0-9._-]+`, tolak `..`, path absolut, dan null byte
+- `pathinfo()` + pencocokan sesi → **ownership** (user A tidak bisa memakai
+  token milik user B) + cek eksistensi + expiry 1 jam
+- Input encode dikunci ke direktori temp server (`getShmTempPath()`)
+
+Download hasil transcode (`download_transcode.php`) memakai
+`Transcoder::ownsTranscodeFile()` — binding ke sesi — plus allowlist regex
+nama file, sehingga file transcode milik user lain tidak bisa ditebak/unduh.
+
+---
+
+## Proteksi Private Drive
+
+Cloud Drive MEeL menyimpan file private user di bawah
+`<MEEL_HDD_DRIVE>/private_admins/<username>/...` saat `MEEL_HDD_DRIVE` di-set di
+`auth/settings.php`, atau folder fallback ter-track repo
+`data_drive/private_admins/<username>/...` saat tidak (lihat
+[Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
+Selama subtree private dapat dijangkau dari web server (folder fallback berada di
+document root; deployment HDD bisa mengeksposnya lewat symlink saat deploy), web
+server bisa melayani file secara langsung — melewati otorisasi level aplikasi.
+Dua lapisan kontrol menutup celah ini.
+
+### Lapisan 1 — Deny Web Server (ter-track di repo)
+
+`data_drive/.htaccess` ter-commit di repository, sehingga aturan deny berlaku di **semua deployment** — baik saat `private_admins/` adalah folder fallback ter-track maupun symlink ke storage eksternal saat deploy:
+
+```apache
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^private_admins/ - [F,L]
+</IfModule>
+```
+
+Request langsung apa pun ke `data_drive/private_admins/...` mengembalikan **HTTP 403**, apa pun tipe filenya (mp3/mp4/jpg/png/pdf/zip — semuanya) atau metode HTTP-nya. `Options -Indexes` saja TIDAK cukup — itu hanya menyembunyikan daftar direktori, tidak memblokir akses langsung ke file yang nama persisnya diketahui.
+
+### Lapisan 2 — Hard Deny di Root Storage
+
+`data_drive/private_admins/.htaccess` (ter-track di folder fallback repo; dibuat ulang saat deploy pada target storage eksternal):
+
+```apache
+Options -Indexes
+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
+```
+
+### Jalur Akses yang Ber-otorisasi
+
+File private hanya disajikan lewat endpoint terautentikasi:
+
+| Endpoint | Fungsi | Pemeriksaan |
+|---|---|---|
+| `drive/stream.php` | Preview / streaming inline (video, audio, gambar, PDF) | session + CSRF + kepemilikan |
+| `drive/download.php` | Unduh file private | session + CSRF + kepemilikan |
+
+Kedua endpoint me-resolve file melalui `DriveStorage::getFileForDownload()`, yang:
+
+1. **Menormalkan** scope (`public`/`private`) dan tipe (`video`/`audio`/`dokumen`)
+2. Menerapkan `basename()` — menghapus komponen path-traversal
+3. Memanggil `verifyPrivateFileAccess()` — membandingkan `realpath()` file dengan `realpath()` root private peminta, sehingga file harus berada di dalam direktori milik peminta sendiri (symlink escape dan traversal `..` gagal)
+
+`stream.php` juga mendukung HTTP `Range` agar seeking video/audio tetap berfungsi.
+
+### URL Preview
+
+`DriveStorage::listFilesByType()` tidak pernah mengeluarkan path web langsung untuk file private. Sebagai gantinya ia membangun URL `stream?file=…&type=…&scope=private&csrf_token=…` (rute bersih — `stream.php?file=…` juga tetap diterima via 301), sehingga browser tidak pernah menyentuh path storage mentah (yang juga membocorkan struktur filesystem).
+
+### Hardening Race Condition (Upload Drive)
+
+Dua race TOCTOU ditutup di `DriveStorage::upload()`:
+
+- **Kuota** — rangkaian "cek usage → cek kuota → tulis file" berjalan di dalam `flock()` per-user (lock file `temp/drive_quota_<md5(username)>.lock`) dengan usage dihitung segar (melewati cache 5 menit), sehingga upload berbarengan tidak bisa melewati kuota member secara kolektif. Jika lock tidak bisa dibuat, pengecekan kuota tetap berjalan non-atomik — tidak pernah dilewati.
+- **Bentrok nama file** — `fopen($path, 'x')` (O_CREAT|O_EXCL) mengklaim nama file unik secara atomik sebelum `move_uploaded_file()`, sehingga dua upload bersamaan dengan nama sama tidak bisa sama-sama menang (menutup TOCTOU `file_exists()` → move).
+
+### Test Regresi
+
+| File test | Cakupan |
+|---|---|
+| `tests/unit/SsrfGuardTest.php` | Allowlist protokol, range IP private/publik (v4 & v6), resolusi DNS termasuk record campuran, denylist hostname, HTTP pinning |
+| `tests/unit/ValidatingProxyTest.php` | Probe proxy nyata: CONNECT/GET ke target private ditolak, target publik di-tunnel, bind loopback-only, siklus hidup proses |
+| `tests/unit/DriveSecurityTest.php` | Akses cross-user, path traversal, symlink escape, boundary realpath, penegakan kuota, reservasi nama atomik |
+| `tests/security_test.php` / `tests/functional_test.php` | Pemeriksaan statis wiring: guard dipanggil, flag proxy ter-wire, aturan deny `.htaccess` ada, endpoint stream dipakai untuk preview private |
+
+**Jalankan semuanya dengan satu perintah:** `scripts/verify_security.sh`
+menjalankan ketiga suite keamanan (subset PHPUnit keamanan,
+`security_test.php`, `functional_test.php`) plus probe live 403 Private Drive
+dan keluar dengan exit code ramah-CI (lihat [test.md](test.md)).
 
 ---
 
@@ -742,12 +1078,13 @@ catch (DownloadException $e) { /* yt-dlp failed */ }
 ```
 
 | Exception | Extends | Digunakan Untuk |
-|-----------|---------|-----------------|
+|---|---|---|
 | `ProcessException` | `\RuntimeException` | Gagal proses eksternal: FFmpeg, yt-dlp, exec() non-zero |
 | `DownloadException` | `\RuntimeException` | Gagal download URL: metadata parsing, koneksi |
 | `TranscodeException` | `\RuntimeException` | Gagal transcoding: HLS segments, codec, output hilang |
 
 ### Best Practice
+
 ```php
 try {
     $meta = $this->fetchMetadata($url);
@@ -799,6 +1136,19 @@ Output selalu di-escape dengan `htmlspecialchars()`:
 echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
 ```
 
+**Stored XSS (hardening):** database menyimpan data mentah (canonical);
+escaping dilakukan **saat output**, sesuai konteks:
+
+- Plain text HTML → `htmlspecialchars($v, ENT_QUOTES, 'UTF-8')`
+- Attribute/URL → escaping konteks attribute + `urlencode`/whitelist
+- JSON/JS → `json_encode(..., JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)`
+
+Audit mencakup seluruh nilai user-controlled yang dirender: bio profil,
+judul/deskripsi media, komentar, nama file, playlist, hasil pencarian, dan
+data yang tampil di panel admin. Regression test (`tests/security_test.php`)
+memverifikasi payload `<script>alert(1)</script>`,
+`<img src=x onerror=alert(1)>`, dll. tidak pernah dieksekusi sebagai HTML.
+
 ### CSRF in All Forms
 
 ```php
@@ -849,6 +1199,17 @@ $reg_time_window = 3600; // 1 jam
 - [ ] IP banning system aktif
 - [ ] File upload validation (tipe, ukuran, magic bytes)
 - [ ] Role checking sebelum aksi sensitif
+- [ ] Theme preference tidak menyimpan data sensitif
+
+### Theme System Security
+
+Theme preference disimpan dengan aman:
+
+1. **Client-side:** `localStorage` — tidak ada data sensitif, hanya string 'light'/'dark'
+2. **Server-side:** `users.custom_theme` — varchar(50), hanya menerima 'light' atau 'dark'
+3. **API validation:** `in_array($theme, ['light', 'dark'], true)` — reject invalid values
+4. **CSRF protection:** POST memerlukan valid CSRF token
+5. **No XSS risk:** Theme value tidak di-escape ke HTML, hanya digunakan untuk `data-theme` attribute
 
 ---
 

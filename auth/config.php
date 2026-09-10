@@ -2,16 +2,16 @@
 /**
  * MEeL-HUB — Konfigurasi Aplikasi (Entry Point)
  *
- * ═══════════════════════════════════════════════════════════════════
+ *
  * PENTING — Jangan hapus guard !defined() di sekitar konstanta.
- *   File ini bisa di-include dari berbagai entry point (index.php,
- *   auth/auth.php, file admin, dll), guard mencegah redeclare error.
+ * File ini bisa di-include dari berbagai entry point (index.php,
+ * auth/auth.php, file admin, dll), guard mencegah redeclare error.
  *
  * File ini HANYA memuat logic inisialisasi. Semua DATA konfigurasi
- *   (DB credentials + MEEL_* constants) sudah dipindah ke settings.php:
- *     require __DIR__ . '/settings.php';
- *   Ubah nilai server di settings.php, JANGAN di file ini.
- * ═══════════════════════════════════════════════════════════════════
+ * (DB credentials + MEEL_* constants) sudah dipindah ke settings.php:
+ * require __DIR__ . '/settings.php';
+ * Ubah nilai server di settings.php, JANGAN di file ini.
+ *
  */
 
 // PURE CONFIG (DATA) — DB credentials + MEEL_* constants
@@ -22,9 +22,7 @@ if (!file_exists($meel_settings)) {
         . "  cp auth/settings.example.php auth/settings.php");
 }
 require_once $meel_settings;
-// BOOTSTRAP (Error Handling)
 require_once __DIR__ . '/../modules/core/bootstrap.php';
-// DATABASE CONNECTION
 // Hanya connect jika $conn belum ada — aman di-include berkali-kali
 // Credentials diambil dari settings.php ($server, $username, dll.)
 /** @var string $server   Host DB (dari settings.php) */
@@ -36,36 +34,19 @@ if (!isset($conn) || $conn === null) {
     if ($conn->connect_error) {
         die("[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $conn->connect_error);
     }
-    // Charset koneksi harus utf8mb4 agar cocok dengan schema (emoji, aksara
-    // Jepang, dll. tersimpan/terbaca dengan benar).
     $conn->set_charset('utf8mb4');
 }
-// BASE URL (PATH PORTABILITY)
 if (!defined('MEEL_BASE_URL')) {
     require_once __DIR__ . '/../modules/core/base_url.php';
     define('MEEL_BASE_URL', meel_base_url_path());
 }
-// SESSION CONFIGURATION
-if (session_status() === PHP_SESSION_NONE) {
-    $timeout = 43200; // 12 jam
-    ini_set('session.gc_maxlifetime', $timeout);
-    $secure_cookie = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
-    session_set_cookie_params([
-        'lifetime' => $timeout,
-        'path'     => '/',
-        'secure'   => $secure_cookie,
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
-    session_name('meel');
-    session_start();
-}
-// AUTOLOADER & HELPERS
+// SESSION CONFIGURATION (terpusat di modules/auth/helpers/session.php — satu sumber kebenaran)
+require_once __DIR__ . '/../modules/auth/helpers/session.php';
+meel_boot_session();
 require_once __DIR__ . '/../modules/autoload.php';
 // Helper functions (verify_csrf_token, get_csrf_token, base_url, dll.)
 require_once __DIR__ . '/../modules/core/helpers.php';
-// ─── Security Headers ───
+// Security Headers
 if (!headers_sent()) {
     header("X-Frame-Options: SAMEORIGIN");
     header("X-Content-Type-Options: nosniff");
@@ -82,22 +63,20 @@ if (!headers_sent()) {
     $csp_worker_src = "worker-src 'self' blob:";
     header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'self'; frame-src 'self' blob:; frame-ancestors 'self'; form-action 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; style-src 'self' 'unsafe-inline'; {$csp_script_src}; {$csp_worker_src}");
 }
-// ─── CSRF Token ───
+// CSRF Token
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
-// ─── Session Timeout Check (12 jam) ───
 if (isset($_SESSION['LAST_ACTIVITY'])) {
     $elapsed_time = time() - $_SESSION['LAST_ACTIVITY'];
     if ($elapsed_time > 43200) {
         session_unset();
         session_destroy();
-        header("Location: ../auth/login.php?reason=expired");
+        header("Location: " . base_url('/auth/login?reason=expired'));
         exit;
     }
 }
 $_SESSION['LAST_ACTIVITY'] = time();
-// ─── Activity Logger (skip di CLI — tidak ada HTTP request) ───
 if (PHP_SAPI !== 'cli') {
     include_once __DIR__ . '/../modules/core/activity_logger.php';
 }

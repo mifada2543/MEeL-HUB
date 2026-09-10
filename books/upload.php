@@ -1,20 +1,18 @@
 <?php
 require_once '../auth/auth.php';
 require_once '../auth/config.php';
-// activity_logger loaded via auth/config.php
+
 require_once '../modules/media/MediaLibrary.php';
 
-// ─── Proteksi role admin ───
 $repo    = new BookRepository($conn);
 $user_id = (int)$_SESSION['user_id'];
 $role    = $repo->getUserRole($user_id);
 
 if ($role !== 'admin') {
-    header("Location: index.php?error=unauthorized");
+    header("Location: ..?error=unauthorized");
     exit();
 }
 
-// ─── Handle POST upload ───
 $message  = '';
 $val_title = htmlspecialchars($_GET['reup'] ?? '');
 
@@ -22,7 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $message = 'CSRF Token tidak valid.';
     } else {
-    $uploader = new BookUploader($conn, __DIR__);
+    $books_base = dirname(meel_media_base_path('books'));
+    $uploader = new BookUploader($conn, $books_base);
     $result   = $uploader->handleUpload(
         array_merge($_POST, ['user_id' => $user_id]),
         $_FILES
@@ -56,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
 
         <div class="flex justify-between items-center mb-8">
             <h1 class="text-2xl font-black">Upload to Library</h1>
-            <a href="index.php" class="text-gray-500 hover:text-white transition">
+            <a href="beranda" class="text-gray-500 hover:text-white transition">
                 <i data-lucide="x"></i>
             </a>
         </div>

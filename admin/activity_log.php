@@ -1,51 +1,61 @@
 <?php
-/* MEeL Admin — Activity Log Viewer */
+
 
 include '../auth/config.php';
 include '../auth/auth.php';
 include_once '../modules/core/helpers.php';
 
-// Guard terpusat: harus login + role admin
-require_admin($conn);
 
-// ─── Filter & Pagination ───
+require_admin($conn);
+require_once __DIR__ . '/../modules/media/AdminActivityRepository.php';
+
+$logRepo = new AdminActivityRepository($conn);
+$active_tab = ($_GET['tab'] ?? 'log') === 'views' ? 'views' : 'log';
+
+$sync_msg = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sync_views_now'])) {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        $sync_msg = 'CSRF Token tidak valid.';
+    } else {
+        require_once __DIR__ . '/../modules/media/MediaViewer.php';
+        MediaViewer::syncViewsFromLogs($conn);
+        $throttleFile = dirname(__DIR__, 2) . '/temp/gc_views_sync_last_run.txt';
+        @file_put_contents($throttleFile, time());
+        $sync_msg = 'Views counter berhasil disinkronkan dari view_logs.';
+    }
+}
+
+
 $action_filter = $_GET['action'] ?? '';
 $search_q     = trim($_GET['q'] ?? '');
 $days         = max(1, min(365, (int)($_GET['days'] ?? 7)));
 $page         = max(1, (int)($_GET['page'] ?? 1));
 $per_page     = 50;
-$offset       = ($page - 1) * $per_page;
 
-// ─── Clear Old Logs (POST) ───
+
 $clear_msg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['clear_older_than'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $clear_msg = 'CSRF Token tidak valid.';
     } else {
         $clear_days = max(1, (int)($_POST['clear_days'] ?? 30));
-        $stmt_del = $conn->prepare("DELETE FROM activity_log WHERE created_at < NOW() - INTERVAL ? DAY");
-        $stmt_del->bind_param("i", $clear_days);
-        $stmt_del->execute();
-        $deleted = $stmt_del->affected_rows;
-        $next_id = 1;
-        $max_res = $conn->query("SELECT MAX(id) AS max_id FROM activity_log");
+        $deleted    = $logRepo->clearOlderThan($clear_days);
+        $next_id    = 1;
+        $max_res    = $conn->query('SELECT MAX(id) AS max_id FROM activity_log');
         if ($max_res) {
             $max_row = $max_res->fetch_assoc();
             $next_id = $max_row['max_id'] ? (int)$max_row['max_id'] + 1 : 1;
-            $conn->query("ALTER TABLE activity_log AUTO_INCREMENT = " . (int)$next_id);
         }
-
         $clear_msg = "Berhasil menghapus {$deleted} log lebih dari {$clear_days} hari. Auto-increment di-reset ke {$next_id}.";
-        $stmt_del->close();
     }
 }
 
-// ─── Clear All Logs (POST) ───
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['clear_all_logs'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $clear_msg = 'CSRF Token tidak valid.';
     } else {
-        if ($conn->query("TRUNCATE TABLE activity_log")) {
+        if ($logRepo->clearAll()) {
             $clear_msg = 'Semua log aktivitas berhasil dihapus. Auto-increment telah di-reset ke 1.';
         } else {
             $clear_msg = 'Gagal menghapus log: ' . $conn->error;
@@ -53,109 +63,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['clear_all_logs'])) {
     }
 }
 
-// ─── Build Query ───
-$where_conditions = ["1=1"];
-$params = [];
-$types  = "";
 
-if (!empty($action_filter)) {
-    $where_conditions[] = "al.action = ?";
-    $params[] = $action_filter;
-    $types .= "s";
-}
+$logRepo->buildFilter($action_filter, $search_q, $days);
 
-if (!empty($search_q)) {
-    $where_conditions[] = "(u.username LIKE ? OR al.ip_address LIKE ?)";
-    $search_like = "%{$search_q}%";
-    $params[] = $search_like;
-    $params[] = $search_like;
-    $types .= "ss";
-}
-
-// Batasi default ke N hari terakhir
-$where_conditions[] = "al.created_at >= NOW() - INTERVAL ? DAY";
-$params[] = $days;
-$types .= "i";
-
-$where_sql = implode(" AND ", $where_conditions);
-
-// ─── Count total ───
-$stmt_count = $conn->prepare("SELECT COUNT(*) AS total FROM activity_log al LEFT JOIN users u ON al.user_id = u.id WHERE {$where_sql}");
-if (!empty($params)) {
-    $stmt_count->bind_param($types, ...$params);
-}
-$stmt_count->execute();
-$total_rows = (int)$stmt_count->get_result()->fetch_assoc()['total'];
-$stmt_count->close();
+$total_rows = $logRepo->countFiltered();
 $total_pages = max(1, (int)ceil($total_rows / $per_page));
-$page = min($page, $total_pages); // Cegah offset tak berguna
+$page = min($page, $total_pages); 
 $offset = ($page - 1) * $per_page;
 
-// ─── Fetch rows ───
-$stmt_rows = $conn->prepare(
-    "SELECT al.*, u.username
-     FROM activity_log al
-     LEFT JOIN users u ON al.user_id = u.id
-     WHERE {$where_sql}
-     ORDER BY al.created_at DESC
-     LIMIT ? OFFSET ?"
-);
-$all_params = array_merge($params, [$per_page, $offset]);
-$all_types  = $types . "ii";
-$stmt_rows->bind_param($all_types, ...$all_params);
-$stmt_rows->execute();
-$rows = $stmt_rows->get_result();
-$stmt_rows->close();
+$rows       = $logRepo->fetchPage($per_page, $offset);
+$all_actions = $logRepo->getDistinctActions();
+$stats      = $logRepo->getWeeklyStats();
 
-// ─── Get distinct actions for filter dropdown ───
-$actions_res = $conn->query("SELECT DISTINCT action FROM activity_log ORDER BY action ASC");
-$all_actions = [];
-if ($actions_res) {
-    while ($a = $actions_res->fetch_assoc()) {
-        $all_actions[] = $a['action'];
-    }
-}
-
-// ─── Stats ───
-$stats_res = $conn->query("SELECT COUNT(*) AS total, COUNT(DISTINCT user_id) AS unique_users FROM activity_log WHERE created_at >= NOW() - INTERVAL 7 DAY");
-$stats = $stats_res ? $stats_res->fetch_assoc() : ['total' => 0, 'unique_users' => 0]; // ─── Helper: Export Query ───
-function export_query_data(mysqli $conn, string $where_sql, array $params, string $types): array
-{
-    $stmt = $conn->prepare(
-        "SELECT al.*, u.username
-         FROM activity_log al
-         LEFT JOIN users u ON al.user_id = u.id
-         WHERE {$where_sql}
-         ORDER BY al.created_at DESC"
-    );
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $rows = [];
-    while ($r = $result->fetch_assoc()) {
-        $rows[] = $r;
-    }
-    $stmt->close();
-    return $rows;
-}
-
-// ─── Multi-Format Export ───
 $export_format = $_GET['export'] ?? '';
 if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
     $timestamp = date('Y-m-d_H-i-s');
     $filename_base = "activity-log-export-{$timestamp}";
-    $rows = export_query_data($conn, $where_sql, $params, $types);
+    $rows = $logRepo->fetchAll();
 
     switch ($export_format) {
-        // ─── CSV ───
         case 'csv':
             header('Content-Type: text/csv; charset=utf-8');
             header("Content-Disposition: attachment; filename=\"{$filename_base}.csv\"");
 
             $output = fopen('php://output', 'w');
-            fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8
+            fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF)); 
             fputcsv($output, ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'IP Address', 'Waktu']);
 
             foreach ($rows as $row) {
@@ -173,7 +105,7 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
             fclose($output);
             break;
 
-        // ─── JSON ───
+        
         case 'json':
             header('Content-Type: application/json; charset=utf-8');
             header("Content-Disposition: attachment; filename=\"{$filename_base}.json\"");
@@ -194,7 +126,7 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
             echo json_encode($json_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             break;
 
-        // ─── XLS (XML Spreadsheet 2003) ───
+        
         case 'xls':
             header('Content-Type: application/vnd.ms-excel; charset=utf-8');
             header("Content-Disposition: attachment; filename=\"{$filename_base}.xls\"");
@@ -212,7 +144,6 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
             echo '  <Worksheet ss:Name="Activity Log">' . "\n";
             echo '    <Table>' . "\n";
 
-            // Header row
             $headers = ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'IP Address', 'Waktu'];
             echo '      <Row>' . "\n";
             foreach ($headers as $h) {
@@ -229,7 +160,6 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
                 return '        <Cell><Data ss:Type="String">' . htmlspecialchars((string)$val) . '</Data></Cell>' . "\n";
             };
 
-            // Data rows
             foreach ($rows as $row) {
                 echo '      <Row>' . "\n";
                 echo $xls_cell($row['id'], 'Number');
@@ -251,10 +181,10 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
     exit;
 }
 
-// ─── Preview Handler ───
+
 if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['format'] ?? '', ['csv', 'json', 'xls'], true)) {
     $preview_format = $_GET['format'];
-    $all_rows = export_query_data($conn, $where_sql, $params, $types);
+    $all_rows = $logRepo->fetchAll();
     $preview_total = count($all_rows);
     $preview_limit = 15;
     $preview_rows = array_slice($all_rows, 0, $preview_limit);
@@ -337,19 +267,17 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
 <html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MEeL | Activity Log</title>
-    <meta name="description" content="MEeL Activity Log — Audit trail untuk monitoring aktivitas pengguna.">
-    <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
+<?php
+$_META_TITLE = 'MEeL | Activity Log';
+$_META_DESC  = 'MEeL Activity Log — Audit trail untuk monitoring aktivitas pengguna.';
+include __DIR__ . '/../partials/link.php';
+$scripts_root = '../';
+include __DIR__ . '/../partials/scripts.php';
+?>
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
+        <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
     <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/admin/activity_log.css?v=<?= filemtime('../assets/css/admin/activity_log.css') ?>">
-    <script src="../assets/js/compatibilitas/lucide.js"></script>
-    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/compatibilitas/script.min.js"></script>
 </head>
 
 <body class="text-gray-300 min-h-screen">
@@ -360,9 +288,23 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
     $back_url = 'index.php';
     include 'header-admin.php';
     ?>
-    <div class="max-w-7xl mx-auto px-6 md:px-10 xl:px-16 py-8">
+    <div class="max-w-7xl mx-auto px-6 md:px-10 xl:px-16 pt-4">
+        <div class="flex gap-0 rounded-xl overflow-hidden border border-white/10 mb-6">
+            <a href="activity-log" 
+               class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all border-r border-white/10 <?= $active_tab === 'log' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5' ?>">
+                <i data-lucide="activity" class="w-3 h-3 inline mr-1.5"></i> Activity Log
+            </a>
+            <a href="activity-log?tab=views" 
+               class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all <?= $active_tab === 'views' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5' ?>">
+                <i data-lucide="bar-chart-3" class="w-3 h-3 inline mr-1.5"></i> View Analytics
+            </a>
+        </div>
+    </div>
 
-        <!-- Header -->
+    <?php if ($active_tab === 'log'): ?>
+    <div class="max-w-7xl mx-auto px-6 md:px-10 xl:px-16 pb-8">
+
+        
         <div class="flex items-center gap-5 mb-10">
             <div class="w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center shrink-0">
                 <i data-lucide="activity" class="w-6 h-6 text-blue-500"></i>
@@ -373,7 +315,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             </div>
         </div>
 
-        <!-- Stats Cards -->
+        
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-8">
             <div class="glass p-5 rounded-2xl border-l-4 border-blue-500">
                 <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">7 Hari Terakhir</p>
@@ -396,14 +338,14 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             </div>
         </div>
 
-        <!-- Clear Message -->
+        
         <?php if ($clear_msg): ?>
             <div class="mb-8 p-5 rounded-2xl text-sm flex items-center gap-3 bg-green-500/10 text-green-400 border border-green-500/20">
                 <i data-lucide="check-circle" class="w-5 h-5 shrink-0"></i>
                 <?= htmlspecialchars($clear_msg) ?>
             </div>
         <?php endif; ?>
-        <!-- Filters -->
+        
         <div class="glass p-6 md:p-8 rounded-2xl mb-8 filter-section relative z-40 overflow-visible" id="filter-section">
             <div class="flex flex-col lg:flex-row items-start justify-between gap-6 w-full min-w-0">
                 <div class="w-full lg:w-1/4 min-w-0 relative z-30">
@@ -422,7 +364,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                             <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 shrink-0"></i>
                         </button>
 
-                        <!-- Dropdown Panel (diberi z-50 dan shadow-2xl agar melayang sempurna di atas elemen lain) -->
+                        
                         <div id="action-dropdown-panel"
                             class="action-dropdown-panel hidden absolute left-0 right-0 mt-1.5 rounded-xl z-50 py-1 shadow-2xl bg-[#131720]">
                             <button type="button"
@@ -449,7 +391,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     </div>
                 </div>
 
-                <!-- Search -->
+                
                 <div class="w-full lg:w-1/4 min-w-0 relative z-10">
                     <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2.5 block">
                         <i data-lucide="search" class="w-3 h-3 inline mr-1.5"></i> Cari Username / IP
@@ -461,7 +403,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     </div>
                 </div>
 
-                <!-- Days (Pill Buttons) -->
+                
                 <div class="w-full lg:flex-1 min-w-0 relative z-10">
                     <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2.5 block">
                         <i data-lucide="calendar" class="w-3 h-3 inline mr-1.5"></i> Rentang
@@ -481,64 +423,24 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
 
             </div>
 
-            <!-- Action Buttons -->
+            
             <div class="flex items-center gap-4 mt-6 pt-5 border-t border-white/[.04]">
                 <button type="button" onclick="submitFilters()"
                     class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-6 py-3 rounded-xl transition-all uppercase tracking-wider inline-flex items-center gap-2">
                     <i data-lucide="filter" class="w-3.5 h-3.5"></i>
                     Terapkan
                 </button>
-                <a href="activity_log.php"
+                <a href="activity-log"
                     class="text-[10px] text-gray-500 hover:text-white px-4 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-2 rounded-xl hover:bg-white/[.03]">
                     <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
                     Reset
-                </a><span class="text-white/10 text-[10px]">|</span>
-                <div class="flex items-center gap-1">
-                    <button type="button" onclick="previewExport('csv')"
-                        class="text-[10px] text-emerald-500 hover:text-emerald-400 px-2.5 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-1 rounded-xl hover:bg-emerald-500/[.06] border border-transparent hover:border-emerald-500/20 font-bold"
-                        title="Preview CSV">
-                        <i data-lucide="eye" class="w-3 h-3"></i>
-                    </button>
-                    <span class="text-white/10 text-[10px]">|</span>
-                    <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'csv'])) ?>"
-                        class="text-[10px] text-emerald-500 hover:text-emerald-400 px-2.5 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-1.5 rounded-xl hover:bg-emerald-500/[.06] border border-transparent hover:border-emerald-500/20 font-bold"
-                        title="Download CSV">
-                        <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
-                        CSV
-                    </a>
-                    <span class="text-white/10 text-[10px]">|</span>
-                    <button type="button" onclick="previewExport('json')"
-                        class="text-[10px] text-sky-500 hover:text-sky-400 px-2.5 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-1 rounded-xl hover:bg-sky-500/[.06] border border-transparent hover:border-sky-500/20 font-bold"
-                        title="Preview JSON">
-                        <i data-lucide="eye" class="w-3 h-3"></i>
-                    </button>
-                    <span class="text-white/10 text-[10px]">|</span>
-                    <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'json'])) ?>"
-                        class="text-[10px] text-sky-500 hover:text-sky-400 px-2.5 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-1.5 rounded-xl hover:bg-sky-500/[.06] border border-transparent hover:border-sky-500/20 font-bold"
-                        title="Download JSON">
-                        <i data-lucide="file-code" class="w-3.5 h-3.5"></i>
-                        JSON
-                    </a>
-                    <span class="text-white/10 text-[10px]">|</span>
-                    <button type="button" onclick="previewExport('xls')"
-                        class="text-[10px] text-violet-500 hover:text-violet-400 px-2.5 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-1 rounded-xl hover:bg-violet-500/[.06] border border-transparent hover:border-violet-500/20 font-bold"
-                        title="Preview XLS">
-                        <i data-lucide="eye" class="w-3 h-3"></i>
-                    </button>
-                    <span class="text-white/10 text-[10px]">|</span>
-                    <a href="?<?= http_build_query(array_merge($_GET, ['export' => 'xls'])) ?>"
-                        class="text-[10px] text-violet-500 hover:text-violet-400 px-2.5 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-1.5 rounded-xl hover:bg-violet-500/[.06] border border-transparent hover:border-violet-500/20 font-bold"
-                        title="Download XLS">
-                        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
-                        XLS
-                    </a>
-                </div>
+                </a>
             </div>
         </div>
 
         <script src="../assets/js/admin/activity_log.js?v=<?= filemtime('../assets/js/admin/activity_log.js') ?>"></script>
 
-        <!-- Table -->
+        
         <div class="glass rounded-2xl overflow-hidden relative z-0">
             <div class="scroll-table" style="max-height:70vh;">
                 <table class="w-full text-left text-[11px]">
@@ -556,7 +458,6 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     <tbody class="divide-y divide-gray-800">
                         <?php if ($rows && $rows->num_rows > 0): ?>
                             <?php while ($row = $rows->fetch_assoc()):
-                                // Color-code by action type
                                 $action = $row['action'];
                                 if (str_contains($action, 'login') || str_contains($action, 'logout')) {
                                     $ac_color = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
@@ -621,7 +522,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             </div>
         </div>
 
-        <!-- Pagination -->
+        
         <?php if ($total_pages > 1): ?>
             <div class="flex items-center justify-center gap-2 mt-6">
                 <?php if ($page > 1): ?>
@@ -648,7 +549,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 <?php endif; ?>
             </div>
         <?php endif; ?>
-        <!-- Clear Old Logs -->
+        
         <div class="glass p-6 rounded-2xl mt-8 border border-red-500/20">
             <div class="flex items-center gap-3 mb-4">
                 <div class="p-2 rounded-xl bg-red-500/10 border border-red-500/20">
@@ -681,7 +582,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             </form>
         </div>
         <br>
-        <!-- Clear ALL Logs -->
+        
         <div class="glass p-6 rounded-2xl mt-5 border border-red-500/30">
             <div class="flex items-center gap-3 mb-4">
                 <div class="p-2 rounded-xl bg-red-600/15 border border-red-500/30">
@@ -693,7 +594,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 </div>
             </div>
 
-            <!-- Backup sebelum hapus -->
+            
             <div class="flex items-center gap-3 flex-wrap mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
                 <i data-lucide="info" class="w-4 h-4 text-amber-400 shrink-0"></i>
                 <p class="text-[10px] text-amber-300 flex-1">
@@ -705,39 +606,18 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                         title="Preview CSV">
                         <i data-lucide="eye" class="w-3 h-3"></i>
                     </button>
-                    <a href="?export=csv"
-                        class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 px-2.5 py-2 rounded-xl border border-amber-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1.5"
-                        onclick="return meelConfirmLink(event, { title:'Backup CSV', text:'Download backup seluruh log aktivitas sebagai CSV?', confirmButtonText:'DOWNLOAD', icon:'question' })"
-                        title="Download CSV">
-                        <i data-lucide="file-down" class="w-3 h-3"></i>
-                        CSV
-                    </a>
                     <span class="text-amber-500/20">|</span>
                     <button type="button" onclick="previewExport('json')"
                         class="text-[10px] font-bold text-sky-400 hover:text-sky-300 px-2 py-2 rounded-xl border border-amber-500/30 hover:bg-sky-500/10 hover:border-sky-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1"
                         title="Preview JSON">
                         <i data-lucide="eye" class="w-3 h-3"></i>
                     </button>
-                    <a href="?export=json"
-                        class="text-[10px] font-bold text-sky-400 hover:text-sky-300 px-2.5 py-2 rounded-xl border border-amber-500/30 hover:bg-sky-500/10 hover:border-sky-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1.5"
-                        onclick="return meelConfirmLink(event, { title:'Backup JSON', text:'Download backup seluruh log aktivitas sebagai JSON?', confirmButtonText:'DOWNLOAD', icon:'question' })"
-                        title="Download JSON">
-                        <i data-lucide="file-code" class="w-3 h-3"></i>
-                        JSON
-                    </a>
                     <span class="text-amber-500/20">|</span>
                     <button type="button" onclick="previewExport('xls')"
                         class="text-[10px] font-bold text-violet-400 hover:text-violet-300 px-2 py-2 rounded-xl border border-amber-500/30 hover:bg-violet-500/10 hover:border-violet-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1"
                         title="Preview XLS">
                         <i data-lucide="eye" class="w-3 h-3"></i>
                     </button>
-                    <a href="?export=xls"
-                        class="text-[10px] font-bold text-violet-400 hover:text-violet-300 px-2.5 py-2 rounded-xl border border-amber-500/30 hover:bg-violet-500/10 hover:border-violet-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1.5"
-                        onclick="return meelConfirmLink(event, { title:'Backup Excel', text:'Download backup seluruh log aktivitas sebagai Excel?', confirmButtonText:'DOWNLOAD', icon:'question' })"
-                        title="Download Excel">
-                        <i data-lucide="file-spreadsheet" class="w-3 h-3"></i>
-                        XLS
-                    </a>
                 </div>
             </div>
 
@@ -753,8 +633,157 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
         </div>
 
     </div>
+    <?php endif; ?>
+
+    <?php if ($active_tab === 'views'):
+        require_once __DIR__ . '/../modules/media/MediaViewer.php';
+        $view_stats = MediaViewer::getViewStats($conn);
+    ?>
+    <div class="max-w-7xl mx-auto px-6 md:px-10 xl:px-16 pb-8">
+        <div class="flex items-center gap-5 mb-8">
+            <div class="w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center shrink-0">
+                <i data-lucide="bar-chart-3" class="w-6 h-6 text-purple-500"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight">View Analytics</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">Monitoring View Logs</p>
+            </div>
+        </div>
+
+        <?php if ($sync_msg): ?>
+            <div class="mb-6 p-5 rounded-2xl text-sm flex items-center gap-3 bg-green-500/10 text-green-400 border border-green-500/20">
+                <i data-lucide="check-circle" class="w-5 h-5 shrink-0"></i>
+                <?= htmlspecialchars($sync_msg) ?>
+            </div>
+        <?php endif; ?>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-8">
+            <div class="glass p-5 rounded-2xl border-l-4 border-purple-500">
+                <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Total Log Rows</p>
+                <span class="text-2xl font-bold text-white"><?= number_format($view_stats['total_log_rows']) ?></span>
+                <span class="text-[10px] text-gray-500 ml-1.5">rows</span>
+            </div>
+            <div class="glass p-5 rounded-2xl border-l-4 border-red-500">
+                <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Video Log Rows</p>
+                <span class="text-2xl font-bold text-white"><?= number_format($view_stats['video_log_rows']) ?></span>
+                <span class="text-[10px] text-gray-500 ml-1.5">rows</span>
+            </div>
+            <div class="glass p-5 rounded-2xl border-l-4 border-orange-500">
+                <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Music Log Rows</p>
+                <span class="text-2xl font-bold text-white"><?= number_format($view_stats['music_log_rows']) ?></span>
+                <span class="text-[10px] text-gray-500 ml-1.5">rows</span>
+            </div>
+            <div class="glass p-5 rounded-2xl border-l-4 border-green-500">
+                <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Sync Status</p>
+                <?php
+                $synced = ($view_stats['video_views_counter'] + $view_stats['music_views_counter']) > 0;
+                ?>
+                <?php if ($synced): ?>
+                    <span class="text-lg font-bold text-green-400"><i data-lucide="check-circle" class="w-5 h-5 inline"></i> Synced</span>
+                <?php else: ?>
+                    <span class="text-lg font-bold text-gray-500"><i data-lucide="minus-circle" class="w-5 h-5 inline"></i> No Data</span>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8">
+            <div class="glass p-5 rounded-2xl border-l-4 border-red-500">
+                <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Video Views Counter</p>
+                <span class="text-2xl font-bold text-white"><?= number_format($view_stats['video_views_counter']) ?></span>
+                <span class="text-[10px] text-gray-500 ml-1.5">views</span>
+            </div>
+            <div class="glass p-5 rounded-2xl border-l-4 border-orange-500">
+                <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Music Views Counter</p>
+                <span class="text-2xl font-bold text-white"><?= number_format($view_stats['music_views_counter']) ?></span>
+                <span class="text-[10px] text-gray-500 ml-1.5">views</span>
+            </div>
+        </div>
+
+        <div class="glass p-6 rounded-2xl mb-8 border border-purple-500/20">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 text-purple-400"></i>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-gray-300">Manual Sync</h3>
+                    <p class="text-[9px] text-gray-500">Sinkronkan views counter dari view_logs sekarang. Auto-sync berjalan setiap 1 jam.</p>
+                </div>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                <input type="hidden" name="sync_views_now" value="1">
+                <button type="submit"
+                    class="bg-purple-600/10 text-purple-400 border border-purple-500/20 hover:bg-purple-600 hover:text-white text-[10px] font-bold px-6 py-3 rounded-xl transition-all uppercase tracking-wider inline-flex items-center gap-2">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    Sync Now
+                </button>
+            </form>
+        </div>
+
+        <?php if (!empty($view_stats['chart'])): ?>
+        <div class="glass p-6 rounded-2xl mb-8">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                    <i data-lucide="trending-up" class="w-4 h-4 text-purple-400"></i>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-gray-300">View Logs Growth (30 Hari)</h3>
+                    <p class="text-[9px] text-gray-500">Pertumbuhan jumlah view_logs per hari.</p>
+                </div>
+            </div>
+            <div id="view-chart" class="w-full" style="height:280px;"></div>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+            <script>
+            (function() {
+                const data = <?= json_encode($view_stats['chart']) ?>;
+                const labels = data.map(d => {
+                    const dt = new Date(d.date);
+                    return dt.toLocaleDateString('id-ID', { day:'numeric', month:'short' });
+                });
+                const values = data.map(d => d.views);
+
+                const ctx = document.getElementById('view-chart');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Views',
+                            data: values,
+                            backgroundColor: 'rgba(168,85,247,0.4)',
+                            borderColor: 'rgba(168,85,247,1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255,255,255,0.03)' },
+                                ticks: { color: '#6b7280', font: { size: 9 } }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255,255,255,0.03)' },
+                                ticks: { color: '#6b7280', font: { size: 9 }, precision: 0 }
+                            }
+                        }
+                    }
+                });
+            })();
+            </script>
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
     <script>
+        if (typeof lucide !== 'undefined') lucide.createIcons();
         <?php if ($clear_msg): ?>
             Swal.fire({
                 title: 'Selesai!',

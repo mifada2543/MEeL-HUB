@@ -1,5 +1,4 @@
 <?php
-// Chess game - PHP wrapper
 require_once __DIR__ . '/../../auth/config.php';
 require_once __DIR__ . '/../../modules/core/helpers.php';
 $title = "Arena Catur Pintar";
@@ -10,24 +9,15 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="<?= $description ?>" />
-  <meta property="og:title" content="<?= $title ?>">
-  <meta property="og:description" content="<?= $description ?>">
-  <meta property="og:image" content="<?= ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') ?>/assets/MEeL.png">
-  <meta property="og:url" content="<?= ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $_SERVER['REQUEST_URI'] ?>">
-  <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary_large_image">
-  <title><?= $title ?></title>
-  <link rel="manifest" href="../../assets/manifest.json" />
-  <link rel="icon" type="image/png" href="../../assets/MEeL.png" />
-  <link href="../../assets/css/tailwind.min.css" rel="stylesheet" />
-  <script src="../../assets/js/compatibilitas/lucide.js"></script>
-  <script src="../../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-  <script src="../../assets/js/compatibilitas/script.min.js"></script>
-  <!-- Cache-busting (?v=filemtime): service worker cache-first TIDAK boleh
-       mengunci versi lama aset ini — lihat kasus hard-refresh 2026-08-05. -->
+<?php
+$_META_TITLE = $title;
+$_META_DESC  = $description;
+include __DIR__ . '/../../partials/link.php';
+$scripts_root = '../../';
+include __DIR__ . '/../../partials/scripts.php';
+?>
+  
+
   <link href="assets/css/chess.css?v=<?= @filemtime(__DIR__ . '/assets/css/chess.css') ?>" rel="stylesheet" />
 </head>
 
@@ -35,7 +25,7 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
   <header class="border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 px-4 py-3 shadow-lg shadow-slate-900/20">
     <div class="max-w-6xl mx-auto flex justify-between items-center">
       <div class="flex items-center gap-3">
-        <img src="../../assets/MEeL.png" class="w-6 h-6 cursor-pointer" alt="logo catur" onclick="window.location.href='../index.php'" title="Kembali ke arcade" />
+        <img src="../../assets/MEeL.png" class="w-6 h-6 cursor-pointer" alt="logo catur" onclick="window.location.href='../'" title="Kembali ke arcade" />
         <div>
           <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">MEeL-Chess</h1>
           <p class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Klasik & Interaktif</p>
@@ -50,9 +40,9 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
     </div>
   </header>
   <main class="flex-1 max-w-6xl w-full mx-auto p-4 flex flex-col lg:flex-row gap-6 items-start justify-center mt-4">
-    <!-- Left Panel: Game Modes & Status -->
+    
     <section class="w-full lg:w-80 flex flex-col gap-4 shrink-0 order-2 lg:order-1">
-      <!-- Mode Selection -->
+      
       <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl">
         <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 mb-4 flex items-center gap-2">
           <i data-lucide="settings-2" class="w-4 h-4 text-emerald-400"></i> Mode Permainan
@@ -100,7 +90,7 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
           </div>
         </div>
       </div>
-      <!-- Multiplayer Panel -->
+      
       <div id="multiplayer-panel" class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col gap-4 shadow-xl hidden">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <span class="text-sm text-slate-300 font-bold flex items-center gap-2"><i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i> Multiplayer</span>
@@ -128,7 +118,7 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
         </div>
         <button id="btn-leave-room" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-sm font-bold transition-all active:scale-95 border border-slate-700" title="Keluar dari mode multiplayer">Keluar</button>
       </div>
-      <!-- Status Panel -->
+      
       <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col gap-4 shadow-xl">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <span class="text-sm text-slate-300 font-bold flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i> Status</span>
@@ -155,7 +145,7 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
         </div>
       </div>
     </section>
-    <!-- Center: Chess Board -->
+    
     <section class="flex-1 flex flex-col items-center justify-center w-full max-w-[520px] order-1 lg:order-2 self-center">
       <div class="w-full flex justify-between items-center mb-3 px-2">
         <div id="check-alert-black" class="hidden px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/30 rounded-lg text-xs font-bold uppercase tracking-wider animate-pulse flex items-center gap-1.5">
@@ -171,7 +161,7 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
             </div>
             <h3 class="text-2xl font-extrabold text-slate-100 mb-2 tracking-tight">Tamat Permainan</h3>
             <p id="game-over-result" class="text-sm font-medium text-slate-400 mb-6 bg-slate-950 py-2 px-4 rounded-lg inline-block border border-slate-800">Pemain Putih memenangi perlawanan!</p>
-            <!-- Aksi pasca-game multiplayer: tanding ulang atau keluar ke mode Lawan Rakan -->
+            
             <div id="rematch-actions" class="hidden flex flex-col gap-2 w-full">
               <button id="btn-rematch" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-900/20 flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed" title="Minta tanding ulang kepada lawan">
                 <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Tanding Lagi?
@@ -185,9 +175,9 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
             </button>
           </div>
         </div>
-        <!-- COLOR PICKER OVERLAY (multiplayer: pilih warna sebelum game dimulai) -->
+        
         <div id="color-picker-overlay" class="absolute inset-0 bg-slate-950/95 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center p-4 text-center z-40 hidden opacity-0 transition-opacity duration-300">
-          <!-- State 1: pilih warna -->
+          
           <div id="cp-pick" class="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-sm w-full shadow-2xl animate-pop">
             <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-indigo-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg ring-4 ring-cyan-500/10">
               <i data-lucide="globe" class="w-7 h-7"></i>
@@ -207,7 +197,7 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
               </button>
             </div>
           </div>
-          <!-- State 2: menunggu lawan (setelah pilih Putih & buat room) -->
+          
           <div id="cp-waiting" class="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-sm w-full shadow-2xl animate-pop hidden">
             <div class="w-10 h-10 mx-auto mb-4 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin"></div>
             <h3 class="text-lg font-extrabold text-slate-100 mb-1 tracking-tight">Menunggu Lawan</h3>
@@ -223,7 +213,7 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
         </div>
       </div>
     </section>
-    <!-- Right Panel: Move History -->
+    
     <section class="w-full lg:w-72 flex flex-col gap-4 shrink-0 order-3">
       <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col h-[350px] lg:h-[580px] shadow-xl">
         <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 mb-4 flex items-center gap-2 border-b border-slate-800 pb-3">
@@ -250,7 +240,7 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
       </div>
     </section>
   </main>
-  <!-- Promotion Modal -->
+  
   <div id="promotion-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-[100] hidden">
     <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl max-w-xs w-full text-center shadow-2xl animate-pop">
       <div class="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -267,8 +257,7 @@ $chess_csrf = $_SESSION['csrf_token'] ?? '';
   </footer>
   <script type="module" src="assets/js/main.js?v=<?= @filemtime(__DIR__ . '/assets/js/main.js') ?>"></script>
   <script>
-    // Bridge PHP → JS: token CSRF untuk endpoint multiplayer
-    // (status login ditangani api.js: respon 401 dari controller → redirect ke login)
+    
     window.MEEL_CSRF = <?= json_encode($chess_csrf, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
   </script>
 </body>

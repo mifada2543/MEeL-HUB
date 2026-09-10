@@ -1,4 +1,4 @@
-/* state.js — State global player musik & data preset EQ. */
+
 let player,
   audio,
   storageKeyMusic,
@@ -42,3 +42,12 @@ const ZERO_GAINS = Array(eqBands.length).fill(0),
     podcast: [0, -1, 2, 3, 1, -1],
   };
 let miniEls = null;
+
+
+
+
+
+
+
+
+window.__meelResumeSessionActive = !1;

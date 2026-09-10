@@ -7,4 +7,6 @@ return [
     'upload.css',
     'utility.css',
     'index/main.css',
+    
+    '../shared/light-theme.css',
 ];

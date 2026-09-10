@@ -1,16 +1,21 @@
 function saveAudioState() {
+  
+  
+  
+  
+  if (window.__meelCurrentView !== "watch") return;
   if (!window.MEEL_MUSIC_CONFIG) return;
   const e = window.MEEL_MUSIC_CONFIG,
     t = e.playlistId || 0;
-  // watchUrl HARUS membawa playlist_id (kalau ada) — dipakai expandPlayerFromMiniPlayer()
-  // di index.php untuk kembali ke full player. Tanpa ini, konteks playlist hilang
-  // saat bolak-balik watch.php <-> mini-player index.php. `watchUrl` (global dari
-  // state.js, = window.location.href di player-core.js) sudah memuat query string asli.
+  
+  
+  
+  
   const url =
     (typeof watchUrl === "string" && watchUrl ? watchUrl : "") ||
-    `watch.php?id=${e.id}`;
+    `watch?id=${e.id}`;
   (sessionStorage.setItem(
-    "meel_audio_state",
+    MEEL_KEYS.AUDIO_STATE,
     JSON.stringify({
       id: e.id,
       musicId: e.id,
@@ -27,6 +32,6 @@ function saveAudioState() {
     }),
   ),
     t > 0
-      ? localStorage.setItem("meel_last_playlist_id", String(t))
-      : localStorage.removeItem("meel_last_playlist_id"));
+      ? localStorage.setItem(MEEL_KEYS.LAST_PLAYLIST_ID, String(t))
+      : localStorage.removeItem(MEEL_KEYS.LAST_PLAYLIST_ID));
 }

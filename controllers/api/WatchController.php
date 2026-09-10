@@ -1,11 +1,10 @@
 <?php
-/* @package MEeL\Controllers */
+
 
 require_once __DIR__ . '/../../modules/core/helpers.php';
-require_once __DIR__ . '/../../modules/core/RateLimiter.php';
+require_once __DIR__ . '/../../modules/auth/RateLimiter.php';
 require_once __DIR__ . '/../../modules/media/MediaViewer.php';
 
-// ABSTRACT BASE: WATCH CONTROLLER
 abstract class AbstractWatchController
 {
     protected \mysqli $conn;
@@ -25,17 +24,17 @@ abstract class AbstractWatchController
         $this->viewer  = new MediaViewer($conn, $user_id, $media_type, $id);
     }
 
-    /* Catat view + handle comment POST. Panggil sebelum output apapun. */
     public function handleRequest(): void
     {
         $this->viewer->recordView();
 
         if ($this->isLoggedIn() && isset($_POST['send'])) {
             if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
-                die('CSRF Token tidak valid.');
+                $_SESSION['error'] = 'CSRF Token tidak valid.';
+                header('Location: ' . $this->commentRedirectUrl());
+                exit;
             }
 
-            // RATE LIMIT: 10 comments per menit per user
             $rateKey  = 'user_' . ($this->user_id ?? 0);
             $rateRole = get_user_role($this->conn, $this->user_id ?? 0);
             $rateCheck = RateLimiter::check($rateKey, 'comment', $rateRole);
@@ -54,7 +53,7 @@ abstract class AbstractWatchController
 
     protected function commentRedirectUrl(): string
     {
-        return "watch.php?id={$this->id}#comment-section";
+        return base_url("/video/watch?id={$this->id}#comment-section");
     }
 
     public function isLoggedIn(): bool
@@ -62,7 +61,7 @@ abstract class AbstractWatchController
         return isset($this->user_id);
     }
 
-    /* @param mixed $rekom Result rekomendasi yang sudah di-fetch (opsional, */
+    
     protected function baseViewData(array $v, $rekom = null): array
     {
 
@@ -83,7 +82,6 @@ abstract class AbstractWatchController
     }
 }
 
-// VIDEO WATCH CONTROLLER
 class VideoWatchController extends AbstractWatchController
 {
     private ?array $mediaData = null;
@@ -93,37 +91,34 @@ class VideoWatchController extends AbstractWatchController
         parent::__construct($conn, $user_id, $id, 'video');
     }
 
-    /* Ambil media data, redirect jika tidak ditemukan. */
     public function requireMedia(): void
     {
         $v = $this->viewer->getMediaData();
         if (!$v) {
-            header('Location: index.php');
+            header('Location: ..');
             exit;
         }
         $this->mediaData = $v;
     }
 
-    /* @return array Semua variabel untuk template */
+    
     public function getViewData(): array
     {
         $this->requireMedia();
         $v = $this->mediaData;
-
         $video_src = 'upload/' . $v['filename'];
         $is_hls    = (pathinfo($video_src, PATHINFO_EXTENSION) === 'm3u8');
         $video_dir = dirname($video_src);
-        $vtt_src   = file_exists($video_dir . '/thumbnails.vtt')
+        $fs_dir    = meel_media_base_path('video') . '/' . dirname($v['filename']);
+        $vtt_src   = is_file($fs_dir . '/thumbnails.vtt')
             ? $video_dir . '/thumbnails.vtt'
             : '';
 
-        // ─── Subtitle: deteksi semua file .vtt di folder video ───
         $subtitles = [];
-        foreach (glob($video_dir . '/*.vtt') ?: [] as $sub_file) {
+        foreach (glob($fs_dir . '/*.vtt') ?: [] as $sub_file) {
             $sub_base = basename($sub_file);
             if ($sub_base === 'thumbnails.vtt') continue;
-
-            // Ekstrak kode bahasa dari pola {folder}.{lang}.vtt
+            
             $lang = 'und';
             if (preg_match('/\.([a-z]{2,3}(?:-[a-z]{2,8})?)\.vtt$/i', $sub_base, $m)) {
                 $lang = strtolower($m[1]);
@@ -135,8 +130,6 @@ class VideoWatchController extends AbstractWatchController
                 'label' => subtitle_lang_label($lang),
             ];
         }
-
-        // Urutkan: 'id' (default) di depan, lalu alfabetis
         usort($subtitles, function ($a, $b) {
             if ($a['lang'] === 'id') return -1;
             if ($b['lang'] === 'id') return 1;
@@ -152,7 +145,7 @@ class VideoWatchController extends AbstractWatchController
     }
 }
 
-// MUSIC WATCH CONTROLLER
+
 class MusicWatchController extends AbstractWatchController
 {
     private int $playlist_id;
@@ -170,21 +163,25 @@ class MusicWatchController extends AbstractWatchController
 
     protected function commentRedirectUrl(): string
     {
-        return "watch.php?id={$this->id}&playlist_id={$this->playlist_id}#comment-section";
+        $url = base_url("/music/watch?id={$this->id}");
+        if ($this->playlist_id > 0) {
+            $url .= '&playlist_id=' . $this->playlist_id;
+        }
+        return $url . '#comment-section';
     }
 
-    /* Ambil media data, redirect jika tidak ditemukan. */
+    
     public function requireMedia(): void
     {
         $v = $this->viewer->getMediaData();
         if (!$v) {
-            header('Location: index.php');
+            header('Location: ..');
             exit;
         }
         $this->mediaData = $v;
     }
 
-    /* @return array Semua variabel untuk template */
+    
     public function getViewData(): array
     {
         $this->requireMedia();
@@ -197,20 +194,22 @@ class MusicWatchController extends AbstractWatchController
 
         $rekom = $this->viewer->getRecommendations(15);
 
-        // Compute next song URL
-        $next_song_url = $next_url;
+                $next_song_url = $next_url;
         if (empty($next_song_url) && $rekom && $rekom->num_rows > 0) {
             $rekom->data_seek(0);
             while ($rec = $rekom->fetch_assoc()) {
                 if ((int)$rec['id'] !== $this->id) {
-                    $next_song_url = "watch.php?id=" . $rec['id'];
+                    $next_song_url = base_url('/music/watch?id=' . (int)$rec['id']);
                     break;
                 }
             }
             $rekom->data_seek(0);
         }
 
-        // Format detection (via centralized helpers)
+        if ($next_song_url !== '' && preg_match('#^watch\.php\?id=(\d+)(?:&playlist_id=(\d+))?$#', $next_song_url, $m)) {
+            $next_song_url = base_url('/music/watch?id=' . (int)$m[1] . (!empty($m[2]) ? '&playlist_id=' . (int)$m[2] : ''));
+        }
+
         $ext       = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
         $fmt_label = get_audio_format_label($ext);
         $deskripsi = get_audio_format_description($ext);
@@ -218,7 +217,7 @@ class MusicWatchController extends AbstractWatchController
 
         $preloadVal       = ($ext === 'flac') ? 'none' : 'metadata';
         $file_size_bytes  = !empty($v['filename'])
-            ? (@filesize(__DIR__ . '/../../music/upload/file/' . $v['filename']) ?: 0)
+            ? (@filesize(meel_media_base_path('music') . '/file/' . $v['filename']) ?: 0)
             : 0;
 
         return array_merge($this->baseViewData($v, $rekom), [

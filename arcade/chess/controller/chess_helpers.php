@@ -3,11 +3,6 @@ if (!defined('CHESS_OPPONENT_OFFLINE_SECONDS')) {
     define('CHESS_OPPONENT_OFFLINE_SECONDS', 90);
 }
 
-/**
- * @param \mysqli $conn Koneksi database aktif
- * @param int $opponentId user_id lawan (0 = lawan belum ada)
- * @return bool true jika last_activity < CHESS_OPPONENT_OFFLINE_SECONDS
- */
 function chess_opponent_online(\mysqli $conn, int $opponentId): bool
 {
     if ($opponentId <= 0) {
@@ -28,7 +23,6 @@ function chess_opponent_online(\mysqli $conn, int $opponentId): bool
     return (time() - strtotime($row['last_activity'])) < CHESS_OPPONENT_OFFLINE_SECONDS;
 }
 
-/* @param \mysqli $conn Koneksi database aktif; @param string $room Room code; @return bool true jika sudah ada event terminal */
 function chess_has_terminal_event(\mysqli $conn, string $room): bool
 {
     $stmt = $conn->prepare(
@@ -47,7 +41,7 @@ function chess_has_terminal_event(\mysqli $conn, string $room): bool
     return $found;
 }
 
-/* @param \mysqli $conn Koneksi database aktif; @param string $room Room code; @return string|null 'w'/'b', atau null bila belum ada langkah sama sekali */
+
 function chess_last_move_color(\mysqli $conn, string $room): ?string
 {
     $stmt = $conn->prepare(
@@ -66,13 +60,7 @@ function chess_last_move_color(\mysqli $conn, string $room): ?string
     return $row ? $row['color'] : null;
 }
 
-/**
- * @param \mysqli $conn Koneksi database aktif
- * @param string $room Room code
- * @param string $loserColor Warna PECUNDANG ('w'/'b') — dikirim client
- * @param string $reason 'checkmate' | 'stalemate'
- * @return array{success:bool, message?:string, id?:int}
- */
+
 function chess_record_game_over(\mysqli $conn, string $room, string $loserColor, string $reason): array
 {
     if (!in_array($reason, ['checkmate', 'stalemate'], true)) {
@@ -81,11 +69,9 @@ function chess_record_game_over(\mysqli $conn, string $room, string $loserColor,
     if (!in_array($loserColor, ['w', 'b'], true)) {
         return ["success" => false, "message" => "Warna tidak valid."];
     }
-    // Dedup: game sudah berakhir (termasuk game_over sebelumnya).
     if (chess_has_terminal_event($conn, $room)) {
         return ["success" => false, "message" => "Permainan sudah berakhir."];
     }
-    // Validasi pecundang vs langkah terakhir.
     $lastMoveColor = chess_last_move_color($conn, $room);
     if ($lastMoveColor === null) {
         return ["success" => false, "message" => "Belum ada langkah — game over tidak valid."];
@@ -115,11 +101,8 @@ function insertGameEvent(\mysqli $conn, string $room, string $color, string $typ
     }
 }
 
-/**
- * @param \mysqli $conn Koneksi database aktif
- * @param string $room Room code
- * @return array{type: string|null, color: string|null}|null null bila belum ada event
- */
+
+
 function chess_last_event(\mysqli $conn, string $room): ?array
 {
     $stmt = $conn->prepare(
@@ -145,7 +128,7 @@ function chess_last_event(\mysqli $conn, string $room): ?array
     ];
 }
 
-/* @param \mysqli $conn Koneksi database aktif; @param string $room Room code */
+
 function chess_reset_room_game(\mysqli $conn, string $room): void
 {
     $stmt = $conn->prepare("DELETE FROM moves WHERE room_code = ?");
@@ -159,14 +142,8 @@ function chess_reset_room_game(\mysqli $conn, string $room): void
     $stmt->close();
 }
 
-/**
- * @param \mysqli $conn Koneksi database aktif
- * @param string $room Room code
- * @param string $color Warna pemain yang mengirim aksi ('w'/'b')
- * @param string $action rematch_offer | rematch_accept | rematch_decline
- * @param int|null $opponentId user_id lawan untuk validasi kehadiran; null =
- * @return array{success:bool, message?:string, id?:int, opponent_gone?:bool}
- */
+
+
 function chess_rematch(\mysqli $conn, string $room, string $color, string $action, ?int $opponentId = null): array
 {
 
@@ -184,7 +161,6 @@ function chess_rematch(\mysqli $conn, string $room, string $color, string $actio
         ];
     }
 
-    // Tawaran pending = event terakhir bertipe rematch_offer.
     $lastEvent = chess_last_event($conn, $room);
     $pending   = $lastEvent !== null && $lastEvent['type'] === 'rematch_offer';
     $pendingBy = $pending ? $lastEvent['color'] : null;
@@ -204,8 +180,6 @@ function chess_rematch(\mysqli $conn, string $room, string $color, string $actio
         if ($pendingBy === $color) {
             return ["success" => false, "message" => "Anda tidak dapat menjawab tawaran anda sendiri."];
         }
-        // client penawar ikut me-reset papannya (sinkron via polling).
-        // setelah game selesai (UI memblokir).
         chess_reset_room_game($conn, $room);
         insertGameEvent($conn, $room, $color, 'rematch_accept');
         return ["success" => true, "id" => $conn->insert_id];
@@ -215,7 +189,6 @@ function chess_rematch(\mysqli $conn, string $room, string $color, string $actio
         if (!$pending) {
             return ["success" => false, "message" => "Tidak ada tawaran tanding ulang yang menunggu."];
         }
-        // Boleh dari lawan (menolak) ATAU dari pengirim (membatalkan).
         insertGameEvent($conn, $room, $color, 'rematch_decline');
         return ["success" => true, "id" => $conn->insert_id];
     }

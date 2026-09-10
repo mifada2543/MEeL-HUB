@@ -1,5 +1,6 @@
 <?php
 require_once MEEL_ROOT . '/arcade/chess/controller/chess_helpers.php';
+require_once __DIR__ . '/ChessTestCase.php';
 
 use PHPUnit\Framework\TestCase;
 
@@ -8,24 +9,8 @@ use PHPUnit\Framework\TestCase;
  * @group integration
  * @covers chess_opponent_online
  */
-class ChessHelpersIntegrationTest extends TestCase
+class ChessHelpersIntegrationTest extends ChessTestCase
 {
-    private DbTestHelper $dbHelper;
-    private mysqli $conn;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->dbHelper = new DbTestHelper();
-        $this->conn = $this->dbHelper->getConnection();
-    }
-
-    protected function tearDown(): void
-    {
-        $this->dbHelper->rollback();
-        $this->dbHelper->close();
-        parent::tearDown();
-    }
 
     public function testRecentlyActiveUserIsOnline(): void
     {
@@ -39,7 +24,7 @@ class ChessHelpersIntegrationTest extends TestCase
 
     public function testStaleUserIsOffline(): void
     {
-        // last_activity 10 menit lalu → lewat ambang → offline.
+        
         $this->conn->query(
             "UPDATE users SET last_activity = DATE_SUB(NOW(), INTERVAL 10 MINUTE)
              WHERE id = " . DbTestHelper::REGULAR_USER_ID
@@ -50,7 +35,7 @@ class ChessHelpersIntegrationTest extends TestCase
 
     public function testBoundaryJustUnderThresholdIsOnline(): void
     {
-        // 60 detik lalu (< 90) → masih dianggap online.
+        
         $this->conn->query(
             "UPDATE users SET last_activity = DATE_SUB(NOW(), INTERVAL 60 SECOND)
              WHERE id = " . DbTestHelper::REGULAR_USER_ID
@@ -66,7 +51,7 @@ class ChessHelpersIntegrationTest extends TestCase
 
     public function testZeroIdIsOffline(): void
     {
-        // black_user_id NULL → (int)null = 0 → tidak boleh "online".
+        
         $this->assertFalse(chess_opponent_online($this->conn, 0));
     }
 

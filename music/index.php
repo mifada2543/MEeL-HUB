@@ -1,12 +1,13 @@
 <?php
 require_once '../modules/core/helpers.php';
-session_name('meel');
-session_start();
+meel_boot_session();
 include '../auth/config.php';
 require_once '../modules/media/MediaLibrary.php';
 
 $library       = new MediaLibrary($conn);
-$format_filter = $_GET['format'] ?? 'all';
+$format_raw    = $_GET['format'] ?? 'all';
+$allowed_formats = ['all', 'mp3', 'ogg', 'm4a', 'opus', 'flac', 'wav'];
+$format_filter = in_array($format_raw, $allowed_formats, true) ? $format_raw : 'all';
 $artist_filter = $_GET['artist'] ?? 'all';
 $perPageMusic  = 10;
 $pageMusic     = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -22,7 +23,7 @@ $is_logged_in   = isset($_SESSION['user_id']);
 function renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter, $totalPagesMusic = 1, $pageMusic = 1, $perPageMusic = 10)
 {
 ?>
-    <!-- HEADER -->
+    
     <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
         <div>
             <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Library</div>
@@ -35,7 +36,7 @@ function renderLibraryContent($artist_filter, $total_music, $data_init, $format_
         </span>
     </div>
 
-    <!-- MUSIC LIST -->
+    
     <div id="music-list" class="space-y-1">
         <?php if ($data_init && $data_init->num_rows > 0): ?>
             <?php while ($v = $data_init->fetch_assoc()): ?>
@@ -48,10 +49,9 @@ function renderLibraryContent($artist_filter, $total_music, $data_init, $format_
         <?php endif; ?>
     </div>
 
-    <!-- LOAD MORE (outside #music-list, never replaced, only URL updated via JS) -->
+    
     <?php if ($total_music > $perPageMusic): ?>
-        <div id="load-more-music" class="pt-6">                <button type="button" id="load-more-btn"
-                hx-get="load_more_music.php?offset=<?= $perPageMusic ?>&page=<?= $pageMusic ?>&format=<?= $format_filter ?>&artist=<?= urlencode($artist_filter) ?>"
+        <div id="load-more-music" class="pt-6">                <button type="button" id="load-more-btn"                    hx-get="load-more?offset=<?= $perPageMusic ?>&page=<?= $pageMusic ?>&format=<?= urlencode($format_filter) ?>&artist=<?= urlencode($artist_filter) ?>"
                 hx-target="#music-list"
                 hx-swap="beforeend"
                 title="Muat lebih banyak lagu"
@@ -65,7 +65,6 @@ function renderLibraryContent($artist_filter, $total_music, $data_init, $format_
 
 $playlist_id_from_url = isset($_GET['playlist_id']) ? (int)$_GET['playlist_id'] : 0;
 
-// Check audio state dari sessionStorage (via hidden input)
 $audio_state = null;
 if (isset($_GET['audio_state'])) {
     $audio_state = json_decode($_GET['audio_state'], true);
@@ -118,42 +117,46 @@ $__vdir = function($dir) {
 
 <body class="text-gray-400 min-h-screen">
 
-    <!-- NAVBAR -->
-    <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
+    
+    <nav class="meel-nav sticky top-0 z-50" style="border-bottom:1px solid var(--meel-nav-border)">
         <div class="w-full px-3 sm:px-6 xl:px-10 2xl:px-16 h-14 flex items-center justify-between gap-2 sm:gap-4">
-            <a href="../index.php" class="flex items-center gap-1 sm:gap-2.5 flex-shrink-0" title="MEeL HUB">
-                <div class="w-6 h-6 sm:w-7 sm:h-7 bg-orange-600 rounded-lg flex items-center justify-center">
-                    <i data-lucide="music" class="w-3.5 h-3.5 text-white fill-current"></i>
+            <a href="../" class="flex items-center gap-1 sm:gap-2.5 flex-shrink-0" title="MEeL HUB">
+                <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center" style="background:var(--meel-orange)">
+                    <i data-lucide="music" class="nav-logo-icon w-3.5 h-3.5"></i>
                 </div>
-                <span class="text-xs sm:text-sm font-bold tracking-tight text-white uppercase hidden sm:block">
-                    MEeL<span class="text-orange-500">Music</span>
+                <span class="nav-logo-text text-xs sm:text-sm font-bold tracking-tight uppercase hidden sm:block">
+                    MEeL<span style="color:var(--meel-orange)">Music</span>
                 </span>
             </a>
 
             <form
-                    hx-get="search_music.php"
+                    hx-get="search"
                     hx-trigger="submit"
                     hx-target="#music-list"
                     hx-indicator="#search-indicator"
                     class="flex-1 max-w-sm flex items-center gap-1.5 sm:gap-2">
                 <div class="relative flex-1 group">
-                    <i data-lucide="search" class="absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-orange-500 transition-colors"></i>
+                    <i data-lucide="search" class="absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 transition-colors" style="color:var(--meel-text-muted)"></i>
                     <input type="text"
                         id="m-search"
                         name="search"
                         placeholder="Cari lagu..."
-                        class="w-full bg-white/[.04] border border-white/[.06] rounded-xl py-2 pl-8 sm:pl-9 pr-3 sm:pr-4 text-xs focus:outline-none focus:border-orange-500/40 transition-all text-gray-300"
-                        autocomplete="off">
+                        class="meel-input w-full rounded-xl py-2 pl-8 sm:pl-9 pr-3 sm:pr-4 text-xs transition-all"
+                        autocomplete="off"
+                        enterkeyhint="search">
                 </div>
                 <button type="submit"
                     title="Cari lagu"
                     aria-label="Cari lagu"
-                    class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
+                    class="meel-input px-2.5 sm:px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all flex-shrink-0"
+                    style="color:var(--meel-text-secondary)"
+                    onmouseover="this.style.color='var(--meel-orange)'"
+                    onmouseout="this.style.color='var(--meel-text-secondary)'">
                     <span class="hidden sm:inline">Cari</span>
                     <i data-lucide="search" class="w-3.5 h-3.5 sm:hidden"></i>
                 </button>
                 <div id="search-indicator" class="htmx-indicator ml-1 sm:ml-2">
-                    <div class="animate-spin h-3 w-3 border-2 border-orange-500 border-t-transparent rounded-full"></div>
+                    <div class="animate-spin h-3 w-3 border-2 border-t-transparent rounded-full" style="border-color:var(--meel-orange); border-top-color:transparent"></div>
                 </div>
             </form>
 
@@ -165,34 +168,34 @@ $__vdir = function($dir) {
 
     <div id="library-container" class="w-full px-4 sm:px-6 xl:px-10 2xl:px-16 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        <!-- SIDEBAR -->
+        
         <aside class="lg:col-span-3 xl:col-span-2">
             <div class="sticky top-20 space-y-6">
 
-                <!-- FORMAT PILLS (Desktop) -->
+                
                 <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3">Format</div>
                     <div class="flex flex-wrap gap-2">
-                        <a href="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
-                            hx-get="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="beranda?format=all&artist=<?= urlencode($artist_filter) ?>"
+                            hx-get="beranda?format=all&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
-                        <a href="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
-                            hx-get="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="beranda?format=ogg&artist=<?= urlencode($artist_filter) ?>"
+                            hx-get="beranda?format=ogg&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
-                        <a href="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
-                            hx-get="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="beranda?format=m4a&artist=<?= urlencode($artist_filter) ?>"
+                            hx-get="beranda?format=m4a&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
-                        <a href="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
-                            hx-get="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="beranda?format=mp3&artist=<?= urlencode($artist_filter) ?>"
+                            hx-get="beranda?format=mp3&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
@@ -200,14 +203,14 @@ $__vdir = function($dir) {
                     </div>
                 </div>
 
-                <!-- ARTISTS (Desktop) -->
+                
                 <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
                         <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
                     </div>
                     <div id="desktop-artist-list" class="space-y-0.5 max-h-[45vh] overflow-y-auto no-scrollbar">
-                        <a href="index.php?format=<?= $format_filter ?>&artist=all"
-                            hx-get="index.php?format=<?= $format_filter ?>&artist=all"
+                        <a href="beranda?format=<?= urlencode($format_filter) ?>&artist=all"
+                            hx-get="beranda?format=<?= urlencode($format_filter) ?>&artist=all" hx-push-url="true"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
@@ -216,11 +219,10 @@ $__vdir = function($dir) {
                             <span>All Collections</span>
                         </a>
                         <?php
-                        // reset pointer
                         $artists->data_seek(0);
                         while ($a = $artists->fetch_assoc()): ?>
-                            <a href="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
-                                hx-get="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
+                            <a href="beranda?format=<?= urlencode($format_filter) ?>&artist=<?= urlencode($a['artist']) ?>"
+                                hx-get="beranda?format=<?= urlencode($format_filter) ?>&artist=<?= urlencode($a['artist']) ?>" hx-push-url="true"
                                 hx-target="#library-container"
                                 hx-select="#library-container"
                                 hx-swap="outerHTML"
@@ -232,7 +234,7 @@ $__vdir = function($dir) {
                     </div>
                 </div>
 
-                <!-- PLAYLISTS (Desktop) -->
+                
                 <?php if ($is_logged_in): ?>
                     <div class="hidden lg:block">
                         <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
@@ -240,17 +242,21 @@ $__vdir = function($dir) {
                         </div>
                         <div class="space-y-0.5 max-h-[30vh] overflow-y-auto no-scrollbar">
                             <?php
-                            $playlists = $library->getUserPlaylists($_SESSION['user_id']);
+                            $pl_routes  = $library->getUserPlaylistRoutes($_SESSION['user_id']);
+                            $playlists  = $library->getUserPlaylists($_SESSION['user_id']);
                             while ($pl = $playlists->fetch_assoc()):
+                                $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
+                                $pl_sep   = str_contains($pl_route, '?') ? '&' : '?';
                             ?>
-                                <a href="javascript:void(0)"
-                                    hx-get="view_playlist.php?id=<?= $pl['id'] ?>&content_only=1"
+                                <a href="<?= $pl_route ?>"
+                                    hx-get="<?= $pl_route . $pl_sep ?>content_only=1"
                                     hx-target="main"
                                     hx-swap="innerHTML"
-                                    hx-push-url="view_playlist.php?id=<?= $pl['id'] ?>"
+                                    hx-push-url="<?= $pl_route ?>"
                                     class="sidebar-link flex items-center gap-2 px-3 py-2.5 rounded-lg text-[11px] font-bold text-gray-600 hover:text-gray-300 hover:bg-white/[.03] transition-all pl-link"
                                     data-playlist-id="<?= $pl['id'] ?>"
-                                    onclick="setActivePlaylist(<?= $pl['id'] ?>)">
+                                    data-playlist-url="<?= $pl_route ?>"
+                                    onclick="setActivePlaylist(<?= $pl['id'] ?>); if (typeof resetLibraryFilters === 'function') resetLibraryFilters()">
                                     <i data-lucide="disc-3" class="w-3 h-3 flex-shrink-0"></i>
                                     <span class="truncate"><?= htmlspecialchars($pl['name']) ?></span>
                                 </a>
@@ -258,30 +264,30 @@ $__vdir = function($dir) {
                         </div>
                     </div>
                 <?php endif; ?>
-                <!-- MOBILE FILTERS & MENUS (Select/Dropdowns) -->
-                <div class="lg:hidden flex flex-col gap-4 bg-[#0d1017]/95 backdrop-blur-md p-4 rounded-xl border border-white/[.04] shadow-lg">
-                    <!-- Format Pills (Mobile) -->
+                
+                <div id="mobile-filters" class="lg:hidden flex flex-col gap-4 bg-[#0d1017]/70 backdrop-blur-xl p-4 rounded-xl border border-white/[.04] shadow-lg" style="backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5);">
+                    
                     <div class="flex flex-wrap gap-2">
-                        <a href="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
-                            hx-get="index.php?format=all&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="beranda?format=all&artist=<?= urlencode($artist_filter) ?>"
+                            hx-get="beranda?format=all&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
-                        <a href="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
-                            hx-get="index.php?format=ogg&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="beranda?format=ogg&artist=<?= urlencode($artist_filter) ?>"
+                            hx-get="beranda?format=ogg&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
-                        <a href="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
-                            hx-get="index.php?format=m4a&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="beranda?format=m4a&artist=<?= urlencode($artist_filter) ?>"
+                            hx-get="beranda?format=m4a&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
                             class="format-pill <?= $format_filter === 'm4a' ? 'active-green' : '' ?>">M4A</a>
-                        <a href="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
-                            hx-get="index.php?format=mp3&artist=<?= urlencode($artist_filter) ?>"
+                        <a href="beranda?format=mp3&artist=<?= urlencode($artist_filter) ?>"
+                            hx-get="beranda?format=mp3&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
@@ -289,7 +295,7 @@ $__vdir = function($dir) {
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <!-- Artists Select (Custom Dropdown) -->
+                        
                         <div>
                             <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
                                 <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
@@ -305,7 +311,7 @@ $__vdir = function($dir) {
                                 </button>
 
                                 <div id="artist-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
-                                    <button hx-get="index.php?format=<?= $format_filter ?>&artist=all"
+                                    <button hx-get="beranda?format=<?= $format_filter ?>&artist=all" hx-push-url="true"
                                         hx-target="#library-container"
                                         hx-select="#library-container"
                                         hx-swap="outerHTML"
@@ -316,7 +322,7 @@ $__vdir = function($dir) {
                                     <?php
                                     $artists->data_seek(0);
                                     while ($a = $artists->fetch_assoc()): ?>
-                                        <button hx-get="index.php?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>"
+                                        <button hx-get="beranda?format=<?= $format_filter ?>&artist=<?= urlencode($a['artist']) ?>" hx-push-url="true"
                                             hx-target="#library-container"
                                             hx-select="#library-container"
                                             hx-swap="outerHTML"
@@ -329,7 +335,7 @@ $__vdir = function($dir) {
                             </div>
                         </div>
 
-                        <!-- Playlists Select (Custom Dropdown) -->
+                        
                         <?php if ($is_logged_in): ?>
                             <div>
                                 <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
@@ -346,9 +352,13 @@ $__vdir = function($dir) {
                                     <div id="playlist-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
                                         <?php
                                         $playlists_mobile = $library->getUserPlaylists($_SESSION['user_id']);
-                                        while ($pl = $playlists_mobile->fetch_assoc()): ?>
+                                        while ($pl = $playlists_mobile->fetch_assoc()):
+                                            $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
+                                            $pl_sep   = str_contains($pl_route, '?') ? '&' : '?';
+                                        ?>
                                             <button onclick="navigateToPlaylistMobile(<?= $pl['id'] ?>)"
                                                 data-playlist-id="<?= $pl['id'] ?>"
+                                                data-playlist-url="<?= $pl_route ?>"
                                                 class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[.04] transition-colors truncate">
                                                 <?= htmlspecialchars($pl['name']) ?>
                                             </button>
@@ -363,23 +373,23 @@ $__vdir = function($dir) {
             </div>
         </aside>
 
-        <!-- MAIN -->
+        
         <main class="lg:col-span-9 xl:col-span-10">
             <?php renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter, $totalPagesMusic, $pageMusic, $perPageMusic); ?>
         </main>
     </div>
 
-    <!-- MINI PLAYER INDEX (Spotify-style) -->
+    
     <div id="mini-player-index" aria-label="Mini Player">
 
-        <!-- Seekbar atas -->
+        
         <div class="mp-seekbar" id="mp-seekbar-index" onclick="event.stopPropagation(); miniSeekIndex(event);" title="Klik untuk seek">
             <div class="mp-seekbar-fill" id="mp-seekbar-fill-index"></div>
             <div class="mp-seekbar-thumb" id="mp-seekbar-thumb-index"></div>
         </div>
 
         <div class="mp-body">
-            <!-- Kiri: art + info -->
+            
             <div class="mp-track">
                 <div class="mp-art" onclick="expandPlayerFromMiniPlayer()">
                     <img id="mini-thumbnail-index" title="Buka player penuh" src="<?= htmlspecialchars(music_thumbnail_url('default.png')) ?>" alt="Cover lagu" width="256" height="256" loading="eager" decoding="async">
@@ -393,7 +403,7 @@ $__vdir = function($dir) {
                 </div>
             </div>
 
-            <!-- Tengah: kontrol -->
+            
             <div class="mp-controls">
                 <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulangi lagu" aria-label="Ulang">
                     <i data-lucide="repeat" style="width:15px;height:15px;"></i>
@@ -409,7 +419,7 @@ $__vdir = function($dir) {
                 </button>
             </div>
 
-            <!-- Kanan: waktu + tutup -->
+            
             <div class="mp-right">
                 <div class="mp-time">
                     <span id="mini-current-time-index">0:00</span>
@@ -427,8 +437,13 @@ $__vdir = function($dir) {
             playlistId: <?= (int)$playlist_id_from_url ?>
         };
     </script>
+    <script src="../assets/js/shared/state-keys.js<?= $__v('assets/js/shared/state-keys.js') ?>"></script>
     <script src="../assets/js/shared/format-time.js<?= $__v('assets/js/shared/format-time.js') ?>"></script>
     <script src="../assets/js/shared/keyboard.js<?= $__v('assets/js/shared/keyboard.js') ?>"></script>
+    <script src="../assets/js/compatibilitas/plyr.min.js"></script>
+    <script src="../assets/js/shared/plyr-config.js<?= $__v('assets/js/shared/plyr-config.js') ?>"></script>
+    <script src="../assets/js/shared/audio-engine.js<?= $__v('assets/js/shared/audio-engine.js') ?>"></script>
+    <script src="../assets/js/shared/view-router.js<?= $__v('assets/js/shared/view-router.js') ?>"></script>
     <script src="../assets/js/music/shared/mini-player.js<?= $__v('assets/js/music/shared/mini-player.js') ?>"></script>
     <script src="../assets/js/music/index/main.js<?= $__vdir('assets/js/music/index') ?>"></script>
     <?php include '../partials/footer.php'; ?>

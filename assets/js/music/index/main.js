@@ -1,10 +1,5 @@
-/** MEeL - Media Hub Platform
- * @copyright Copyright (C) 2026 Mifada
- * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
-/* index/main.js — Entry point folder index/ (halaman music/index.php). */
 (function () {
   'use strict';
-  if (document.readyState !== 'loading') return;
   var src =
     (document.currentScript && document.currentScript.src) ||
     (function () {
@@ -19,6 +14,15 @@
     'load-more.js',
     'index.js'
   ];
+  
+  window.MEEL_INDEX_BUNDLE = {
+    base: base,
+    qs: qs,
+    files: files.map(function (f) {
+      return base + f + qs;
+    }),
+  };
+  if (document.readyState !== 'loading') return;
   for (var i = 0; i < files.length; i++) {
     document.write('<script src="' + base + files[i] + qs + '"><\/script>');
   }

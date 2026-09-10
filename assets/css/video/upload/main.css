@@ -45,7 +45,7 @@ body::before {
 .page-wrap {
   grid-template-columns: 1fr;
 }
-/* ── Layout ── */
+/* Layout */
 .upload-layout {
   display: grid;
   grid-template-columns: 1fr;
@@ -61,7 +61,7 @@ body::before {
     grid-template-columns: 360px 1fr;
   }
 }
-/* ── Video icon hero ── */
+/* Video icon hero */
 .hero-icon {
   width: 100%;
   aspect-ratio: 16/9;
@@ -104,7 +104,7 @@ body::before {
   position: relative;
   z-index: 1;
 }
-/* ── Guide list ── */
+/* Guide list */
 .guide-list {
   display: flex;
   flex-direction: column;
@@ -141,7 +141,7 @@ body::before {
   color: #cbd5e1;
   line-height: 1.4;
 }
-/* ── Drop zones ── */
+/* Drop zones */
 .drop-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -219,7 +219,7 @@ body::before {
 .drop-zone.has-file .drop-zone-label {
   color: var(--accent);
 }
-/* ── Subtitle drop zone: memanjang satu baris (bukan grid) ── */
+/* Subtitle drop zone: memanjang satu baris (bukan grid) */
 .drop-zone-subtitle {
   flex-direction: row;
   justify-content: flex-start;
@@ -244,7 +244,7 @@ body::before {
 .drop-zone-subtitle .drop-zone-sub {
   margin-top: 2px;
 }
-/* ── Custom dropdown bahasa — meniru .ch-trigger/.ch-options di books/read.php ── */
+/* Custom dropdown bahasa — meniru .ch-trigger/.ch-options di books/read.php */
 .lang-dropdown {
   position: relative;
   z-index: 60;
@@ -336,7 +336,6 @@ body::before {
   font-weight: 700;
   background: var(--accent-dim, rgba(34, 197, 94, 0.06));
 }
-/* Thumb preview */
 .thumb-mini {
   width: 56px;
   height: 36px;
@@ -345,7 +344,61 @@ body::before {
   display: none;
   border: 1px solid var(--border-strong);
 }
-/* ── Upload overlay ── */
+/* Auto-fill metadata button */
+.btn-auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.12) 0%,
+    rgba(168, 85, 247, 0.12) 100%
+  );
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.15s,
+    box-shadow 0.2s,
+    border-color 0.2s;
+  font-family: "Syne", sans-serif;
+}
+.btn-auto:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.2) 0%,
+    rgba(168, 85, 247, 0.2) 100%
+  );
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+.btn-auto:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  transform: none;
+}
+.auto-spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(239, 68, 68, 0.25);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: autoSpin 0.7s linear infinite;
+}
+@keyframes autoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* Upload overlay */
 #upload-overlay {
   display: none;
   position: fixed;
@@ -393,7 +446,6 @@ body::before {
     opacity: 1;
   }
 }
-/* spinning ring */
 .upload-ring {
   width: 72px;
   height: 72px;
@@ -435,7 +487,6 @@ body::before {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* progress bar */
 .progress-track {
   width: 100%;
   height: 4px;
@@ -475,7 +526,6 @@ body::before {
   text-align: center;
   line-height: 1.5;
 }
-/* Footer links */
 .footer-links {
   display: flex;
   flex-wrap: wrap;
@@ -503,11 +553,11 @@ body::before {
 .footer-link.accent:hover {
   color: #f87171;
 }
-/* ── Alert upload ── */
+/* Alert upload */
 .alert {
   margin-bottom: 20px;
 }
-/* ── Primary button ── */
+/* Primary button */
 .btn-primary {
   width: 100%;
   padding-top: 15px;

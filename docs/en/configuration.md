@@ -20,18 +20,20 @@ Reference guide for all configuration files and parameters in MEeL-HUB.
 ## Main Configuration Files
 
 | File | Purpose | Key Variables |
-|------|--------|----------------|
+|---|---|---|
 | `auth/config.php` | Entry point: bootstrap, session, CSRF, headers | (init logic only) |
 | `auth/settings.php` | **Pure data**: DB credentials + **centralized paths** | `$server`, `$username`, `$password`, `$db`, `MEEL_HDD_*` |
 | `auth/config.example.php` | Entry point template (copy to config.php) | Same as config.php |
 | `auth/settings.example.php` | Config data template (copy to settings.php) | Same as settings.php |
 | `database/schema.sql` | Standalone database schema | — |
-| `modules/core/Transcoder.php` | FFmpeg, yt-dlp, CPU threads | `FFMPEG_THREADS` |
+| `modules/core/TranscoderBase.php` | FFmpeg, yt-dlp, CPU threads | `FFMPEG_THREADS`, `DOWNLOAD_TIMEOUT`, `TRANSCODE_AUDIO_TIMEOUT` |
 | `modules/core/Uploader.php` | Upload paths, FFmpeg | `$ffmpeg_bin`, `$ffprobe_bin` |
-| `modules/core/helpers.php` | HDD check path + various utilities | `MEEL_HDD_BASE`, `get_user_role()`, `get_audio_mime_type()`, `resolve_binary()`, `dir_size()`, `check_disk_space()`, etc. |
+| `modules/core/helpers.php` | **Shim** — requires `helpers/main.php` + `modules/auth/loader.php` (backward-compat) | — |
+| `modules/core/helpers/*.php` | Per-domain utilities (main, storage, audio, url) | `dir_size()`, `check_disk_space()`, `get_audio_mime_type()`, `resolve_binary()`, `log_drive_operation()` |
+| `modules/auth/helpers/user.php` | User & role helpers | `get_user_role()`, `get_user_usage()`, `invalidate_user_role_cache()` |
 | `modules/core/System.php` | Queue management | Rate limit constants |
 | `modules/core/GarbageCollector.php` | Auto-cleanup temp files + guests + chess rooms + rate limits | `STALE_SECONDS`, `GUEST_STALE_HOURS`, `ROOM_LOBBY_STALE_HOURS`, `ROOM_GAME_STALE_HOURS`, `CHESS_CLEANUP_INTERVAL` |
-| `modules/core/RateLimiter.php` | File-based API rate limiter | Per-endpoint limits (30 likes/min, 10 comments/min, etc.) |
+| `modules/auth/RateLimiter.php` | File-based API rate limiter | Per-endpoint limits (30 likes/min, 10 comments/min, etc.) |
 | `modules/core/japanese.php` | Japanese text processing (MeCab + transliterator) | `getRomajiName()`, `analyzeJapaneseText()` |
 | `modules/core/activity_logger.php` | Activity logging, IP banning, session kick | `get_real_ip()`, `log_activity()`, `validate_and_format_ip()` |
 | `modules/core/bootstrap.php` | Bootstrap (env detection, error reporting, timezone) | `MEEL_ENV`, error log config |
@@ -40,7 +42,7 @@ Reference guide for all configuration files and parameters in MEeL-HUB.
 | `modules/autoload.php` | PSR-4-like autoloader | List of scanned directories |
 | `modules/core/SwPrecache.php` | PWA precache generator (service worker) | `baseAssets()`, `moduleAssets()`, `all()`, `version()` |
 | `sw.js.php` | Dynamic service worker generator (served as `/sw.js`) | `SW_VERSION`, `PRECACHE_URLS` (auto) |
-| `database/migrate.php` | Database migration v1–v11 | FULLTEXT index, FK, activity_log, UNIQUE KEY, MFA, comments indexes, interactions unique keys |
+| `database/migrate.php` | Database migration v1–v12 | FULLTEXT index, FK, activity_log, UNIQUE KEY, MFA, comments indexes, interactions unique keys, chess room identity |
 
 ---
 
@@ -126,7 +128,7 @@ Jepang, dan teks multibyte tersimpan/terbaca dengan benar.
 // Auto-generated token
 $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
-// Verification function (defined in modules/core/helpers.php)
+// Verification function (defined in modules/auth/helpers/csrf.php)
 // Uses hash_equals() for timing-attack safety
 function verify_csrf_token(?string $token = null): bool
 {
@@ -204,23 +206,29 @@ define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
 
 ## Transcoder Configuration
 
-### File: `modules/core/Transcoder.php`
+### File: `modules/core/TranscoderBase.php`
+
+> ⚠️ **Change:** Transcoding constants now live in `TranscoderBase` as `protected const`
+> (inherited by `EncodeService`, `DownloadService`, `TranscodeService` — no longer `private`
+> in `Transcoder.php`, since child services must access them).
 
 ```php
-// ─── HARDWARE CONSTANTS ───────────────────────────────────
-private const FFMPEG_THREADS        = 8;
-
-// Sprite thumbnail dimensions
-private const SPRITE_TILE_W         = 160;
-private const SPRITE_TILE_H         = 90;
-private const SPRITE_COLS           = 5;
+// ─── HARDWARE CONSTANTS (modules/core/TranscoderBase.php) ──
+protected const FFMPEG_THREADS        = 8;
 
 // HLS segment duration (seconds)
-private const HLS_SEGMENT_DURATION  = 10;
+protected const HLS_SEGMENT_DURATION  = 10;
 
 // Download timeout (seconds)
-private const DOWNLOAD_TIMEOUT      = 900;
+protected const DOWNLOAD_TIMEOUT      = 900;
+
+// Audio transcode timeout (seconds)
+protected const TRANSCODE_AUDIO_TIMEOUT = 600;
 ```
+
+> ⚠️ **Change:** Sprite constants `SPRITE_TILE_W/H/COLS` have been **removed**.
+> Sprite dimensions (160×90, 5 columns) are now hardcoded in `modules/transcoder/FfmpegUtils.php`
+> (`generateSpriteAndVTT()`: `$w = 160; $h = 90; $cols = 5;`) together with the dynamic interval.
 
 ### Sprite Interval (Dynamic)
 
@@ -272,19 +280,19 @@ return $active >= 2; // isServerBusy()
 
 ## Rate Limiting
 
-### File: `modules/core/RateLimiter.php`
+### File: `modules/auth/RateLimiter.php`
 
 File-based rate limiter for API endpoints:
 
 | Endpoint | Limit | Window | File |
-|----------|:-----:|:------:|------|
+|---|:---:|:---:|---|
 | Like/Dislike | 30 | 1 minute | `controllers/api/like.php` |
 | Comment | 10 | 1 minute | `controllers/api/delete_comment.php`, `WatchController.php` |
 | Upload | 3 | 1 hour | — |
 | Transcode | 5 | 1 hour | —
 | API Generic | 60 | 1 minute | — |
 
-**Configuration:** Edit directly in `modules/core/RateLimiter.php`:
+**Configuration:** Edit directly in `modules/auth/RateLimiter.php`:
 ```php
 private static array $limits = [
     'like'      => ['requests' => 30, 'window' => 60],

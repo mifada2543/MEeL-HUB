@@ -1,6 +1,6 @@
-/** MEeL - Media Hub Platform
- * @copyright Copyright (C) 2026 Mifada
- * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
+
+
+
 
 window.meelLoadTempIndex = async function (options) {
   const opts = options || {};
@@ -10,7 +10,7 @@ window.meelLoadTempIndex = async function (options) {
   let el = document.getElementById("temp-index-content");
   if (el) {
     el.style.display = "block";
-    window.history.pushState({ miniPlayer: true }, "", "index.php");
+    window.history.pushState({ miniPlayer: true }, "", "beranda");
     onLoad && onLoad(el);
     return el;
   }
@@ -25,14 +25,19 @@ window.meelLoadTempIndex = async function (options) {
     document.body.insertBefore(el, ref);
   }
   try {
-    const res = await fetch("index.php");
+    
+    
+    
+    const res = await fetch("beranda");
     const html = await res.text();
-    const main = new DOMParser()
-      .parseFromString(html, "text/html")
-      .querySelector("main");
+    const parsed = new DOMParser().parseFromString(html, "text/html");
+    
+    
+    window.__meelTempIndexTitle = parsed.title;
+    const main = parsed.querySelector("main");
     if (main) {
       el.innerHTML = useOuterHTML ? main.outerHTML : main.innerHTML;
-      window.history.pushState({ miniPlayer: true }, "", "index.php");
+      window.history.pushState({ miniPlayer: true }, "", "beranda");
       window.lucide && window.lucide.createIcons();
       window.htmx && htmx.process(el);
       onLoad && onLoad(el);

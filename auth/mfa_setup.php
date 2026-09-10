@@ -3,22 +3,20 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../modules/core/helpers.php';
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: login");
     exit;
 }
 $user_id   = (int)$_SESSION['user_id'];
 $username  = $_SESSION['username'] ?? '';
-// ─── Cek apakah MFA sudah di-set sebelumnya ───
 $stmt = $conn->prepare("SELECT mfa_enabled FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $mfa_enabled = (int)$stmt->get_result()->fetch_assoc()['mfa_enabled'] ?? 0;
 $stmt->close();
-$step = 'setup'; // setup | verify | backup | done
+$step = 'setup'; 
 $error = '';
 $secret = '';
 $otpauth = '';
-// ─── HANDLE DISABLE MFA ───
 if (isset($_POST['disable_mfa']) && $mfa_enabled) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error = 'Sesi keamanan kadaluarsa. Silakan refresh halaman.';
@@ -32,7 +30,6 @@ if (isset($_POST['disable_mfa']) && $mfa_enabled) {
         $step = 'setup';
     }
 }
-// ─── STEP 1: GENERATE SECRET ───
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_secret']) && !$mfa_enabled) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error = 'Sesi keamanan kadaluarsa. Silakan refresh halaman.';
@@ -44,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_secret']) &&
         $step = 'verify';
     }
 }
-// ─── STEP 2: VERIFY WITH CODE ───
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_code']) && !$mfa_enabled) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error = 'Sesi keamanan kadaluarsa. Silakan refresh halaman.';
@@ -79,13 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_code']) && !$m
         }
     }
 }
-// ─── STEP 3: BACKUP CODES (once) ───
 $backup_codes = $_SESSION['mfa_backup_codes_show'] ?? [];
 if ($step === 'backup' && isset($_POST['backup_done'])) {
     unset($_SESSION['mfa_backup_codes_show']);
     $step = 'done';
 }
-// ─── QR CODE ───
 if ($mfa_enabled && $step === 'setup') {
     $stmt = $conn->prepare("SELECT mfa_secret FROM users WHERE id = ?");
     $stmt->bind_param("i", $user_id);
@@ -96,7 +90,6 @@ if ($mfa_enabled && $step === 'setup') {
         $otpauth = generate_otpauth_url($existing_secret, $username);
     }
 }
-// ─── HTML ───
 $auth_title       = "Keamanan Akun | MEeL";
 $auth_description = "MEeL - Kelola autentikasi dua faktor (MFA) akun Anda.";
 $auth_og_title    = "Keamanan Akun | MEeL";
@@ -148,7 +141,7 @@ include __DIR__ . '/partials/auth_head.php';
     <?php endif; ?>
     <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6 anim-fade">
         <?php if ($mfa_enabled && $step === 'setup'): ?>
-            <!-- ─── MFA SUDAH AKTIF ─── -->
+            
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-green-500/10 rounded-full text-green-400">
                     <i data-lucide="check-circle" class="w-10 h-10"></i>
@@ -177,7 +170,7 @@ include __DIR__ . '/partials/auth_head.php';
                         });
                     </script>
                 <?php endif; ?>
-                <!-- Reset MFA -->
+                
                 <div class="pt-4 border-t border-white/5 space-y-4">
                     <p class="text-[10px] text-gray-600 uppercase tracking-widest">Ingin mengganti / menonaktifkan MFA?</p>
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -191,7 +184,7 @@ include __DIR__ . '/partials/auth_head.php';
                     function confirmDisable() {
                         Swal.fire({
                             title: 'Nonaktifkan MFA?',
-                            html: '<div style="font-size:12px;color:#9ca3af">Akun Anda akan kembali hanya menggunakan <strong style="color:#e5e7eb">password</strong> untuk login. Ini mengurangi keamanan akun.</div>',
+                            html: '<div style="font-size:12px;color:var(--meel-text)">Akun Anda akan kembali hanya menggunakan <strong style="color:var(--meel-text-heading)">password</strong> untuk login. Ini mengurangi keamanan akun.</div>',
                             icon: 'warning',
                             iconColor: '#ef4444',
                             showCancelButton: true,
@@ -220,7 +213,7 @@ include __DIR__ . '/partials/auth_head.php';
                 </script>
             </div>
         <?php elseif ($step === 'verify'): ?>
-            <!-- ─── VERIFY QR CODE ─── -->
+            
             <input type="hidden" name="verify_code" value="1">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <div class="text-center space-y-4">
@@ -229,7 +222,7 @@ include __DIR__ . '/partials/auth_head.php';
                     Buka aplikasi <strong class="text-white">Google Authenticator</strong> atau <strong class="text-white">Authy</strong>,
                     lalu scan QR Code di bawah ini.
                 </p>
-                <!-- QR Code (local canvas — 100% offline) -->
+                
                 <div class="flex justify-center">
                     <div id="mfa-qr-canvas" class="inline-flex items-center justify-center w-48 h-48 rounded-2xl bg-white p-2 shadow-lg"></div>
                 </div>
@@ -239,7 +232,7 @@ include __DIR__ . '/partials/auth_head.php';
                     <i data-lucide="download" class="w-4 h-4"></i>
                     Download QR Code
                 </button>
-                <!-- Manual entry -->
+                
                 <details class="text-left cursor-pointer group">
                     <summary class="text-[11px] text-gray-500 hover:text-gray-300 transition font-bold tracking-wider">
                         Tidak bisa scan? Masukkan manual
@@ -277,7 +270,7 @@ include __DIR__ . '/partials/auth_head.php';
             </div>
 
         <?php elseif ($step === 'backup'): ?>
-            <!-- ─── BACKUP CODES ─── -->
+            
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-yellow-500/10 rounded-full text-yellow-400">
                     <i data-lucide="alert-triangle" class="w-10 h-10"></i>
@@ -309,7 +302,7 @@ include __DIR__ . '/partials/auth_head.php';
                 <i data-lucide="check" class="w-4 h-4"></i>
             </button>
         <?php elseif ($step === 'done'): ?>
-            <!-- ─── MFA BERHASIL DIAKTIFKAN ─── -->
+            
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-green-500/10 rounded-full text-green-400">
                     <i data-lucide="shield-check" class="w-10 h-10"></i>
@@ -319,13 +312,13 @@ include __DIR__ . '/partials/auth_head.php';
                     Akun Anda sekarang lebih aman dengan autentikasi dua faktor.
                     Setiap login akan meminta kode 6-digit dari aplikasi Authenticator.
                 </p>
-                <a href="../index.php"
+                <a href="../"
                     class="inline-block mt-4 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all">
                     Kembali ke Beranda
                 </a>
             </div>
         <?php else: ?>
-            <!-- ─── SETUP (PERTAMA KALI) ─── -->
+            
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-purple-500/10 rounded-full text-purple-400">
                     <i data-lucide="smartphone" class="w-10 h-10"></i>
@@ -362,17 +355,17 @@ include __DIR__ . '/partials/auth_head.php';
                 <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
             </button>
         <?php endif; ?>
-        <!-- Kembali -->
+        
         <div class="text-center pt-2">
             <a href="../index.php" class="text-xs text-gray-500 hover:text-gray-300 transition">
                 <i data-lucide="arrow-left" class="w-3 h-3 inline-block mr-1"></i> Kembali ke Beranda
             </a>
         </div>
     </form>
-    <!-- JS spesifik halaman: backup codes untuk download -->
+    
+    <script src="../assets/js/shared/download-backup-codes.js"></script>
     <script>
         var _backupCodes = <?= json_encode($backup_codes) ?>;
-        // ── Generate QR Code menggunakan library lokal (offline) ──
         document.addEventListener('DOMContentLoaded', function() {
             var qrContainer = document.getElementById('mfa-qr-canvas');
             if (qrContainer && typeof QRCode !== 'undefined') {
@@ -384,7 +377,6 @@ include __DIR__ . '/partials/auth_head.php';
                 });
             }
         });
-        // ── Download QR Code sebagai PNG ──
         function downloadQR() {
             var qrContainer = document.getElementById('mfa-qr-canvas');
             if (!qrContainer) return;
@@ -396,37 +388,9 @@ include __DIR__ . '/partials/auth_head.php';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        } // ── Download Backup Codes sebagai TXT ──
-        function downloadBackupCodes() {
-            var codes = window._backupCodes || [];
-            if (!codes.length) return;
-            var username = '<?= htmlspecialchars($username) ?>';
-            var dateStr = new Date().toISOString().replace(/T/, ' ').slice(0, 19);
-            var lines = [
-                'MEeL — MFA Backup Codes',
-                'User: ' + username,
-                'Generated: ' + dateStr,
-                '',
-                'Setiap kode hanya bisa digunakan SEKALI.',
-                'Simpan di tempat yang aman!',
-                '',
-            ];
-            codes.forEach(function(c) {
-                lines.push('  ' + c);
-            });
-
-            var blob = new Blob([lines.join('\n') + '\n'], {
-                type: 'text/plain;charset=utf-8'
-            });
-            var link = document.createElement('a');
-            link.download = 'MEeL-backup-codes-' + username + '.txt';
-            link.href = URL.createObjectURL(blob);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
         }
-        // Copy secret to clipboard
+        window._meelBackupCodes = window._backupCodes || [];
+        window._meelBackupUser = '<?= htmlspecialchars($username) ?>';
         function copySecret() {
             const text = document.getElementById('mfa-secret-text');
             if (text) {

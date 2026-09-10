@@ -1,4 +1,4 @@
-/* MEeL Drive — Upload Progress (XHR, Drag & Drop, Confetti, Minimize Card) */
+
 (function () {
   "use strict";
   var form = document.getElementById("uploadForm");
@@ -23,7 +23,7 @@
   var pendingProgress = null;
   var rafId = null;
   var currentXhr = null;
-  // ─── Helper: format bytes ───
+  
   function formatBytes(bytes) {
     if (bytes === 0) return "0 B";
     var units = ["B", "KB", "MB", "GB"];
@@ -32,12 +32,12 @@
       (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + " " + units[i]
     );
   }
-  // ─── Helper: format speed ───
+  
   function formatSpeed(bytesPerSec) {
     if (bytesPerSec < 0) return "\u2014";
     return formatBytes(bytesPerSec) + "/s";
   }
-  // ─── Helper: format duration ───
+  
   function formatDuration(seconds) {
     if (!seconds || seconds < 0) return "\u2014";
     var h = Math.floor(seconds / 3600);
@@ -49,7 +49,7 @@
       );
     return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
   }
-  // ─── Raf commit ───
+  
   function commitProgress() {
     rafId = null;
     if (!pendingProgress) return;
@@ -60,14 +60,14 @@
     speedEl.textContent = pp.speed;
     durationEl.textContent = pp.duration;
   }
-  // ─── Throttled progress update via requestAnimationFrame ───
+  
   function scheduleProgress(data) {
     pendingProgress = data;
     if (!rafId) {
       rafId = requestAnimationFrame(commitProgress);
     }
   }
-  // ─── Show card ───
+  
   function showCard(filename) {
     if (rafId) cancelAnimationFrame(rafId);
     rafId = null;
@@ -104,7 +104,7 @@
       autoHideTimer = null;
     }
   }
-  // ─── Reset button ───
+  
   function resetButton() {
     var fi = document.getElementById("fileInput");
     submitBtn.disabled = false;
@@ -119,7 +119,7 @@
       } catch (e) {}
     }, 50);
   }
-  // ─── Spawn confetti (burst up & outward) ───
+  
   function spawnConfetti() {
     var container = document.getElementById("uploadConfetti");
     if (!container) return;
@@ -158,7 +158,6 @@
       container.appendChild(piece);
       pieces.push(piece);
     }
-    // Cleanup setelah animasi selesai
     setTimeout(function () {
       pieces.forEach(function (p) {
         if (p.parentNode) p.parentNode.removeChild(p);
@@ -166,7 +165,7 @@
       container.classList.add("hidden");
     }, 4000);
   }
-  // ─── Minimize card (compact view) ───
+  
   function minimizeCard() {
     card.classList.add("minimized");
     card.classList.remove("hidden");
@@ -176,18 +175,17 @@
       autoHideTimer = null;
     }
   }
-  // ─── Toggle expand/collapse ───
+  
   function toggleCard() {
     if (card.classList.contains("minimized")) {
       card.classList.remove("minimized");
     } else {
-      // Hanya bisa minimize kalau upload sudah complete
-      if (card.classList.contains("upload-prog-complete")) {
+    if (card.classList.contains("upload-prog-complete")) {
         card.classList.add("minimized");
       }
     }
   }
-  // ─── Show success ───
+  
   function showSuccess() {
     if (rafId) {
       cancelAnimationFrame(rafId);
@@ -208,7 +206,7 @@
       minimizeCard();
     }, 2500);
   }
-  // ─── Show error ───
+  
   function showError(msg) {
     if (rafId) {
       cancelAnimationFrame(rafId);
@@ -222,7 +220,7 @@
     card.classList.remove("upload-prog-success");
     resetButton();
   }
-  // ─── Reset form upload untuk upload berikutnya ───
+  
   function resetUploadForm(newToken) {
     var fi = document.getElementById("fileInput");
     var label = document.getElementById("fileLabel");
@@ -236,12 +234,12 @@
     if (tokenInput && newToken) tokenInput.value = newToken;
     resetButton();
   }
-  // ─── Update storage usage bar ───
+  
   function updateStorageBar(usageBytes, usagePct) {
     var textEl = document.getElementById("storageUsageText");
     var barEl = document.getElementById("storageUsageBar");
     if (!textEl || !barEl) return;
-    var limit = 20 * 1024 * 1024 * 1024; // 20 GB
+    var limit = 20 * 1024 * 1024 * 1024; 
     usagePct =
       usagePct !== undefined
         ? usagePct
@@ -256,7 +254,7 @@
       textEl.classList.add("text-blue-500");
     }
   }
-  // ─── Refresh file grids via fetch tanpa reload ───
+  
   function refreshFileGrids() {
     fetch(window.location.href)
       .then(function (r) {
@@ -289,7 +287,7 @@
       .catch(function () {
       });
   }
-  // ─── Close card ───
+  
   function closeCard() {
     card.classList.remove("upload-prog-visible");
     card.classList.add("hidden");
@@ -305,14 +303,14 @@
     if (submitBtn.disabled) resetButton();
   }
   closeBtn.addEventListener("click", closeCard);
-  // ─── Toggle expand/minimize ───
+  
   if (toggleBtn) {
     toggleBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       toggleCard();
     });
   }
-  // ─── Drag & Drop ───
+  
   var dropzone = document.getElementById("uploadDropzone");
   var dragCounter = 0;
   if (dropzone) {
@@ -351,8 +349,7 @@
         label.classList.remove("text-gray-400", "font-medium");
         label.classList.add("text-blue-400", "font-bold");
       }
-      // Build FormData manual
-      var fd = new FormData(form);
+    var fd = new FormData(form);
       fd.delete("file_drive");
       fd.append("file_drive", file, file.name);
       if (!fd.has("submit_upload")) {
@@ -361,9 +358,8 @@
       startUpload(fd, file.name, file.size);
     });
   }
-  // ─── XHR Upload (reusable) ───
+  
   function startUpload(formData, fileName, totalSize) {
-    // Abort upload sebelumnya jika masih jalan
     if (currentXhr) {
       try {
         currentXhr.abort();
@@ -433,7 +429,7 @@
     xhr.open("POST", form.getAttribute("action"));
     xhr.send(formData);
   }
-  // ─── Handle form submit ───
+  
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     var fileInput = document.getElementById("fileInput");
@@ -442,12 +438,12 @@
     var formData = new FormData(form);
     startUpload(formData, file.name, file.size);
   });
-  // ─── Refresh Drive (tombol) ───
+  
   window.refreshDrive = function () {
     var btn = document.getElementById("refreshBtn");
     var icon = btn ? btn.querySelector("i") : null;
     if (icon) icon.classList.add("animate-spin");
-    // invalidate cache & ambil storage data fresh dari server
+    
     fetch("../controllers/api/ajax_refresh.php?_=" + Date.now())
       .then(function (r) {
         return r.json();

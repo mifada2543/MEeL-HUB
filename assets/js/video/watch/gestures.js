@@ -1,155 +1,219 @@
-/* gestures.js — Gestur mobile: tap untuk show/hide kontrol, */
+
 function setupMobileGestures() {
   if (!isTouchDevice) return;
-  const e = document.querySelector(".plyr");
-  if (!e) return;
-  let t = !1,
-    n = null,
-    o = 0,
-    l = 0,
-    a = null,
-    r = !1;
-  function i() {
-    ((t = !0),
-      e.classList.add("plyr--hide-controls"),
-      e.classList.remove("plyr--hide-controls"),
-      player &&
-        player.elements &&
-        player.elements.controls &&
-        ((player.elements.controls.style.opacity = ""),
-        (player.elements.controls.style.pointerEvents = "")));
-    const n = e.querySelector(".plyr__control--overlaid");
-    (n && (n.style.opacity = ""), c());
+  var plyr = document.querySelector(".plyr");
+  if (!plyr) return;
+
+  
+  var controlsVisible = false,
+    hideTimer = null,
+    lastTapTime = 0,
+    tapPending = false,
+    tapTimer = null,
+    tapZone = null;
+
+  
+  var ddStreak = 0,
+    ddSide = null,
+    ddResetTimer = null,
+    ddLastTapTime = 0,
+    DD_WINDOW = 600,
+    DD_SEEK_STEP = 10;
+
+  
+  function showControls() {
+    controlsVisible = true;
+    plyr.classList.add("plyr--hide-controls");
+    plyr.classList.remove("plyr--hide-controls");
+    if (player && player.elements && player.elements.controls) {
+      player.elements.controls.style.opacity = "";
+      player.elements.controls.style.pointerEvents = "";
+    }
+    var overlay = plyr.querySelector(".plyr__control--overlaid");
+    if (overlay) overlay.style.opacity = "";
+    resetHideTimer();
   }
-  function s() {
-    ((t = !1),
-      clearTimeout(n),
-      player &&
-        player.elements &&
-        player.elements.controls &&
-        ((player.elements.controls.style.opacity = "0"),
-        (player.elements.controls.style.pointerEvents = "none")));
-    const o = e.querySelector(".plyr__control--overlaid");
-    o && (o.style.opacity = "0");
+
+  function hideControls() {
+    controlsVisible = false;
+    clearTimeout(hideTimer);
+    if (player && player.elements && player.elements.controls) {
+      player.elements.controls.style.opacity = "0";
+      player.elements.controls.style.pointerEvents = "none";
+    }
+    var overlay = plyr.querySelector(".plyr__control--overlaid");
+    if (overlay) overlay.style.opacity = "0";
   }
-  function c() {
-    (clearTimeout(n),
-      (n = setTimeout(() => {
-        t && s();
-      }, 3e3)));
+
+  function resetHideTimer() {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(function () {
+      if (controlsVisible) hideControls();
+    }, 3000);
   }
-  (e.addEventListener(
+
+  
+  function handleDoubleTap(x, y, side) {
+    var now = Date.now();
+
+    if (ddSide !== side || now - ddLastTapTime > DD_WINDOW) {
+      ddStreak = 0;
+    }
+
+    ddStreak++;
+    ddSide = side;
+    ddLastTapTime = now;
+
+    var seekAmount = ddStreak * DD_SEEK_STEP;
+    var seekLabel = (side === "rewind" ? "-" : "+") + seekAmount + "s";
+
+    if (player) {
+      if (side === "rewind") player.rewind(seekAmount);
+      else player.forward(seekAmount);
+    }
+
+    
+    tampilkanSisiIndikator(side, seekLabel);
+
+    clearTimeout(ddResetTimer);
+    ddResetTimer = setTimeout(function () {
+      ddStreak = 0;
+      ddSide = null;
+    }, DD_WINDOW);
+  }
+
+
+
+  
+  plyr.addEventListener(
     "touchstart",
-    (n) => {
-      const d = Date.now();
-      l = d;
-      const p = n.target;
+    function (ev) {
+      var now = Date.now();
+      var target = ev.target;
+
       if (
-        p.closest(".plyr__controls") ||
-        p.closest(".plyr__control--overlaid") ||
-        p.closest(".plyr__menu") ||
-        p.closest(".plyr__volume") ||
-        p.closest(".plyr__progress")
-      )
-        return void (t && c());
-      const u = e.getBoundingClientRect(),
-        m = n.touches[0] || n.changedTouches[0];
-      if (!m) return;
-      const y =
-        ((v = m.clientX - u.left),
-        (g = u.width),
-        v < 0.4 * g ? "left" : v > 0.6 * g ? "right" : "center");
-      var v, g;
-      if (d - o < 300 && r)
-        return (
-          clearTimeout(a),
-          (r = !1),
-          n.preventDefault(),
-          n.stopPropagation(),
-          "left" === y
-            ? (player && player.rewind(10),
-              tampilkanSisiIndikator("rewind", "-10s"))
-            : "right" === y &&
-              (player && player.forward(10),
-              tampilkanSisiIndikator("forward", "+10s")),
-          void (o = 0)
-        );
-      ((o = d),
-        (r = !0),
-        clearTimeout(a),
-        (a = setTimeout(() => {
-          ((r = !1),
-            (function (e) {
-              "left" === e || "right" === e
-                ? t
-                  ? s()
-                  : i()
-                : t
-                  ? player &&
-                    (player.paused ? player.play() : player.pause(), c())
-                  : i();
-            })(y));
-        }, 300)));
+        target.closest(".plyr__controls") ||
+        target.closest(".plyr__control--overlaid") ||
+        target.closest(".plyr__menu") ||
+        target.closest(".plyr__volume") ||
+        target.closest(".plyr__progress")
+      ) {
+        if (controlsVisible) resetHideTimer();
+        return;
+      }
+
+      var touch = ev.touches[0] || ev.changedTouches[0];
+      if (!touch) return;
+
+      var rect = plyr.getBoundingClientRect();
+      var x = touch.clientX;
+      var y = touch.clientY;
+      var relX = x - rect.left;
+      var zone = relX < 0.4 * rect.width ? "left" : relX > 0.6 * rect.width ? "right" : "center";
+
+      
+      if (now - lastTapTime < 300 && tapPending) {
+        clearTimeout(tapTimer);
+        tapPending = false;
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        if (zone === "left") handleDoubleTap(x, y, "rewind");
+        else if (zone === "right") handleDoubleTap(x, y, "forward");
+        lastTapTime = 0;
+        return;
+      }
+
+      
+      lastTapTime = now;
+      tapPending = true;
+      tapZone = zone;
+      clearTimeout(tapTimer);
+      tapTimer = setTimeout(function () {
+        if (!tapPending) return;
+        tapPending = false;
+
+        if (tapZone === "left" || tapZone === "right") {
+          controlsVisible ? hideControls() : showControls();
+        } else {
+          if (controlsVisible) {
+            if (player) {
+              player.paused ? player.play() : player.pause();
+              resetHideTimer();
+            }
+          } else {
+            showControls();
+          }
+        }
+      }, 300);
     },
-    { passive: !1 },
-  ),
-    e.addEventListener(
-      "dblclick",
-      (e) => {
-        Date.now() - l < 1e3 && (e.preventDefault(), e.stopPropagation());
+    { passive: false },
+  );
+
+  plyr.addEventListener(
+    "dblclick",
+    function (ev) {
+      if (Date.now() - lastTapTime < 1000) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+    },
+    true,
+  );
+
+  
+  (function () {
+    var startY = null,
+      startVal = null,
+      slider = null;
+    document.addEventListener(
+      "touchstart",
+      function (ev) {
+        var s = ev.target.closest(".plyr__volume input[type='range']");
+        if (s && controlsVisible) {
+          startY = ev.touches[0].clientY;
+          startVal = parseFloat(s.value);
+          slider = s;
+          clearTimeout(hideTimer);
+          ev.preventDefault();
+        }
       },
-      !0,
-    ),
-    (function () {
-      let e = null,
-        o = null,
-        l = null;
-      (document.addEventListener(
-        "touchstart",
-        (a) => {
-          const r = a.target.closest(".plyr__volume input[type='range']");
-          r &&
-            t &&
-            ((e = a.touches[0].clientY),
-            (o = parseFloat(r.value)),
-            (l = r),
-            clearTimeout(n),
-            a.preventDefault());
-        },
-        { passive: !1 },
-      ),
-        document.addEventListener(
-          "touchmove",
-          (t) => {
-            if (!l || null === e) return;
-            t.preventDefault();
-            const n =
-                ((e - t.touches[0].clientY) / 120) *
-                (parseFloat(l.max) - parseFloat(l.min)),
-              a = Math.min(
-                parseFloat(l.max),
-                Math.max(parseFloat(l.min), o + n),
-              );
-            ((l.value = a),
-              l.dispatchEvent(new Event("input", { bubbles: !0 })),
-              player && (player.volume = a));
-          },
-          { passive: !1 },
-        ),
-        document.addEventListener("touchend", () => {
-          (l && c(), (e = null), (o = null), (l = null));
-        }));
-    })(),
-    player &&
-      (player.on("play", () => {
-        c();
-      }),
-      player.on("pause", () => {
-        (clearTimeout(n),
-          (t = !0),
-          player.elements &&
-            player.elements.controls &&
-            ((player.elements.controls.style.opacity = ""),
-            (player.elements.controls.style.pointerEvents = "")));
-      })));
+      { passive: false },
+    );
+    document.addEventListener(
+      "touchmove",
+      function (ev) {
+        if (!slider || startY === null) return;
+        ev.preventDefault();
+        var delta = ((startY - ev.touches[0].clientY) / 120) * (parseFloat(slider.max) - parseFloat(slider.min));
+        var val = Math.min(parseFloat(slider.max), Math.max(parseFloat(slider.min), startVal + delta));
+        slider.value = val;
+        slider.dispatchEvent(new Event("input", { bubbles: true }));
+        if (player) player.volume = val;
+      },
+      { passive: false },
+    );
+    document.addEventListener("touchend", function () {
+      if (slider) resetHideTimer();
+      startY = null;
+      startVal = null;
+      slider = null;
+    });
+  })();
+
+  
+  if (player) {
+    player.on("play", function () {
+      resetHideTimer();
+    });
+    player.on("pause", function () {
+      clearTimeout(hideTimer);
+      controlsVisible = true;
+      if (player.elements && player.elements.controls) {
+        player.elements.controls.style.opacity = "";
+        player.elements.controls.style.pointerEvents = "";
+      }
+    });
+  }
 }
+

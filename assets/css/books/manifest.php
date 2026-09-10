@@ -6,4 +6,6 @@ return [
     'reader.css',
     'pdf.css',
     'utility.css',
+    
+    '../shared/light-theme.css',
 ];

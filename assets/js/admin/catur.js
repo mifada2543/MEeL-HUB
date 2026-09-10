@@ -1,10 +1,10 @@
-/* MEeL Admin — Chess (catur.php) */
+
 (function () {
   'use strict';
   document.addEventListener('DOMContentLoaded', function () {
     if (typeof lucide !== 'undefined') lucide.createIcons();
-    // ─── Countdown & Auto-cleanup ───
-    var INTERVAL_MS = 10 * 60 * 1000; // 10 menit
+    
+    var INTERVAL_MS = 10 * 60 * 1000; 
     var remaining = INTERVAL_MS / 1000;
     var countdownEl = document.getElementById('countdown');
     var liveLog = document.getElementById('live-log');
@@ -25,7 +25,7 @@
       try {
 
         var csrf = encodeURIComponent(window.MEEL_ADMIN_CSRF || '');
-        var res = await fetch('catur.php?auto_cleanup=1&csrf_token=' + csrf);
+        var res = await fetch('catur?auto_cleanup=1&csrf_token=' + csrf);
         var data = await res.json();
         if (data.success) {
           if (liveLog) {

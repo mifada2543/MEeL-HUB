@@ -7,7 +7,6 @@ require __DIR__ . '/DriveService.php';
 $user = DriveUserContext::fromSession($_SESSION);
 $user->authorize();
 
-// Detect AJAX request
 $isAjax = (isset($_GET['ajax']) && $_GET['ajax'] === '1');
 
 if ($isAjax) {
@@ -19,14 +18,12 @@ if ($isAjax) {
         exit();
     }
 } else {
-    // Non-AJAX: Form submit klik tombol — submit_upload WAJIB ada
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['submit_upload'], $_FILES['file_drive'])) {
-        header('Location: index.php');
+        header('Location: .');
         exit();
     }
 }
 
-// CSRF Token Validation
 if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
     if ($isAjax) {
         http_response_code(403);
@@ -39,20 +36,13 @@ if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
     exit();
 }
 
-$storage = new DriveStorage(dirname(__DIR__) . '/data_drive', $user);
+$storage = new DriveStorage(DriveStorage::defaultBasePath(), $user);
 
 require_once '../modules/core/System.php';
 $sys = new System($conn);
 $user_id = $_SESSION['user_id'];
 
-// Gunakan prepared statement untuk SQL query
-$stmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$user_data = $result->fetch_assoc();
-$user_role = $user_data['role'] ?? 'user';
-$stmt->close();
+$user_role = get_user_role($conn, (int)$user_id);
 
 $limit = $sys->checkRateLimit($user_id, 'drive_files', $user_role);
 if (!$limit['allowed']) {
@@ -62,15 +52,17 @@ if (!$limit['allowed']) {
         echo json_encode(['status' => 'error', 'message' => 'Batas unggah terlampaui. Coba lagi dalam ' . $limit['minutes'] . ' menit.']);
         exit();
     }
-    header('Location: index.php?status=rate_limit&minutes=' . $limit['minutes']);
+    header('Location: .?status=rate_limit&minutes=' . $limit['minutes']);
     exit();
 }
 
 try {
-    $storage->enforceQuota($_FILES['file_drive'], 20 * 1024 * 1024 * 1024);
-    $result = $storage->upload($_FILES['file_drive'], $_POST['scope'] ?? DriveStorage::SCOPE_PRIVATE);
+    $result = $storage->upload(
+        $_FILES['file_drive'],
+        $_POST['scope'] ?? DriveStorage::SCOPE_PRIVATE,
+        20 * 1024 * 1024 * 1024
+    );
 
-    // Audit Logging
     log_drive_operation(
         $user_id,
         $user->username,
@@ -82,7 +74,6 @@ try {
     );
 
     if ($isAjax) {
-        // Hitung storage usage terkini untuk update bar
         $storageUsage = 0;
         $storagePct = 0;
         if ($user->isMember()) {
@@ -106,10 +97,9 @@ try {
         exit();
     }
 
-    header('Location: index.php?scope=' . urlencode($result['scope']) . '&status=success');
+    header('Location: .?scope=' . urlencode($result['scope']) . '&status=success');
     exit();
 } catch (RuntimeException $exception) {
-    // Log failed upload
     log_drive_operation(
         $user_id,
         $user->username,
@@ -132,7 +122,7 @@ try {
     }
 
     if ($errMsg === 'quota_full') {
-        header('Location: index.php?status=quota_full');
+        header('Location: .?status=quota_full');
         exit();
     }
 

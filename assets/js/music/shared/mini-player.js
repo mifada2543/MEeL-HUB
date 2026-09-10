@@ -1,49 +1,90 @@
-/* mini-player.js — Mini player (Spotify-style) yang dipakai */
-const miniPlayerIndex = document.getElementById("mini-player-index");
+
+
+
+
+
+
+
+
+
+
+
+
 let audioPlayer = null;
 let isMiniPlayerIndexActive = false;
 let currentState = null;
-// ─── Helpers ───
+
+function getMiniPlayerIndexEl() {
+  return document.getElementById("mini-player-index");
+}
+
+
 function saveIndexState() {
+  
+  
+  if (window.__meelCurrentView !== "index") return;
   if (!currentState || !audioPlayer) return;
   currentState.currentTime = audioPlayer.currentTime;
   currentState.isPlaying = !audioPlayer.paused;
   currentState.isLooping = isMiniLoopIndexActive;
-  sessionStorage.setItem("meel_audio_state", JSON.stringify(currentState));
+  sessionStorage.setItem(MEEL_KEYS.AUDIO_STATE, JSON.stringify(currentState));
 }
-// ─── Buat / ganti audio element ───
+
+
+
+function ensureIndexAudioListeners(audio) {
+  if (audio.__meelIndexListenersBound) return;
+  audio.__meelIndexListenersBound = true;
+  audio.addEventListener("timeupdate", updateIndexProgress);
+  audio.addEventListener("play", () => setPlayIcon("pause"));
+  audio.addEventListener("pause", () => setPlayIcon("play"));
+  audio.addEventListener("ended", () => miniNextIndex());
+}
+
+
 function loadAudio(state, autoplay) {
-  if (!audioPlayer) {
-    audioPlayer = document.createElement("audio");
-    audioPlayer.id = "hidden-audio-player";
-    // preload=none untuk FLAC
-    audioPlayer.preload = "none";
-    document.body.appendChild(audioPlayer);
-    audioPlayer.addEventListener("timeupdate", updateIndexProgress);
-    audioPlayer.addEventListener("play", () => setPlayIcon("pause"));
-    audioPlayer.addEventListener("pause", () => setPlayIcon("play"));
-    audioPlayer.addEventListener("ended", () => miniNextIndex());
-  }
-  if (currentState && currentState.filename === state.filename) {
-    return;
-  }
-  currentState = state;
-  audioPlayer.src = `stream.php?id=${state.id}`;
-  const _gLoop = localStorage.getItem("meel_global_loop") === "true";
+  const engine = window.meelGetAudioEngine();
+  if (!audioPlayer) audioPlayer = engine.audio;
+  ensureIndexAudioListeners(audioPlayer);
+
+  const trackId = state.id || state.musicId;
+  const _gLoop = localStorage.getItem(MEEL_KEYS.GLOBAL_LOOP) === "true";
+  let loopVal;
   if (state.isLooping !== undefined && state.isLooping !== _gLoop) {
-    isMiniLoopIndexActive = state.isLooping;
-    localStorage.setItem("meel_global_loop", String(state.isLooping));
+    loopVal = state.isLooping;
+    localStorage.setItem(MEEL_KEYS.GLOBAL_LOOP, String(state.isLooping));
   } else {
-    isMiniLoopIndexActive = _gLoop;
+    loopVal = _gLoop;
   }
-  audioPlayer.loop = isMiniLoopIndexActive;
+  isMiniLoopIndexActive = loopVal;
+  
+  engine.setLoop(loopVal);
+
+  
+  const didLoad = engine.loadTrack(
+    { id: trackId, streamUrl: `stream?id=${trackId}`, isLooping: loopVal },
+    { autoplay: !!autoplay, startTime: state.currentTime || 0 },
+  );
+  
+  
+  
+  
+  if (!didLoad && autoplay) {
+    const want = state.currentTime || 0;
+    if (Math.abs(audioPlayer.currentTime - want) > 1.5) {
+      audioPlayer.currentTime = want;
+    }
+    if (audioPlayer.paused) audioPlayer.play().catch(function () {});
+  }
+
+  currentState = state;
   updateMiniLoopUIIndex();
-  if (autoplay) {
-    audioPlayer.currentTime = state.currentTime || 0;
-    audioPlayer.play().catch(() => {});
-  }
+  
+  
+  setPlayIcon(audioPlayer.paused ? "play" : "pause");
 }
-// ─── Update seluruh UI ───
+
+
 let _idxEls = null;
 function _getIdxEls() {
   if (!_idxEls) {
@@ -58,6 +99,11 @@ function _getIdxEls() {
     };
   }
   return _idxEls;
+}
+
+
+function _resetIdxEls() {
+  _idxEls = null;
 }
 function updateIndexProgress() {
   if (!audioPlayer) return;
@@ -90,15 +136,49 @@ function setPlayIcon(icon) {
   const btn = document.getElementById("mini-play-btn-index");
   if (btn) {
     btn.innerHTML = `<i data-lucide="${icon}" style="width:18px;height:18px;"></i>`;
-    lucide.createIcons();
+    if (typeof lucide !== "undefined") lucide.createIcons();
   }
 }
-// ─── Init: baca sessionStorage ───
+
+
+
+
 function initMiniPlayerIndex() {
-  const miniPlayerBar = document.getElementById("mini-player-index");
-  if (miniPlayerBar) {
+  window.__meelCurrentView = "index";
+  _resetIdxEls();
+
+  const engine = window.meelGetAudioEngine();
+  const slot = getMiniPlayerIndexEl();
+  if (slot && engine) engine.mount(slot, { compact: true });
+  audioPlayer = engine.audio;
+  ensureIndexAudioListeners(audioPlayer);
+
+  
+  
+  const _engIdNow = engine.getCurrentTrackId();
+  if (_engIdNow != null) {
+    const _sRaw = sessionStorage.getItem(MEEL_KEYS.AUDIO_STATE);
+    if (_sRaw) {
+      try {
+        const _s = JSON.parse(_sRaw);
+        if (
+          _s &&
+          (_s.musicId ?? _s.id) != null &&
+          String(_s.musicId ?? _s.id) === String(_engIdNow)
+        ) {
+          currentState = _s;
+        }
+      } catch (e) {}
+    }
+  }
+
+  const miniPlayerBar = getMiniPlayerIndexEl();
+  if (miniPlayerBar && !miniPlayerBar.__meelClickBound) {
+    miniPlayerBar.__meelClickBound = true;
     miniPlayerBar.style.cursor = "default";
     miniPlayerBar.addEventListener("click", (e) => {
+      
+      if (e.target.closest(".mp-art")) return;
       if (
         e.target.closest(".mp-thumbnail") ||
         e.target.closest("#mini-player-img") ||
@@ -108,9 +188,50 @@ function initMiniPlayerIndex() {
       }
     });
   }
-  isMiniLoopIndexActive = localStorage.getItem("meel_global_loop") === "true";
+  isMiniLoopIndexActive = localStorage.getItem(MEEL_KEYS.GLOBAL_LOOP) === "true";
   updateMiniLoopUIIndex();
-  const raw = sessionStorage.getItem("meel_audio_state");
+  
+  engine.setLoop(isMiniLoopIndexActive);
+  if (engine.getCurrentTrackId() != null && currentState) {
+    isMiniPlayerIndexActive = true;
+    updateIndexUI();
+    setPlayIcon(audioPlayer.paused ? "play" : "pause");
+    
+    
+    const wantId = String(currentState.id ?? currentState.musicId);
+    const wantStream =
+      currentState.streamUrl || `stream?id=${wantId}`;
+    const haveSrc = audioPlayer.currentSrc || audioPlayer.src || "";
+    let haveId = null;
+    try {
+      haveId = new URL(haveSrc, window.location.href).searchParams.get("id");
+    } catch (e) {}
+    if (haveSrc && haveId !== null && haveId !== wantId) {
+      audioPlayer.src = wantStream;
+      audioPlayer.load();
+      if (currentState.isPlaying) {
+        const onReloadReady = function () {
+          if ((currentState.currentTime || 0) > 5) {
+            audioPlayer.currentTime = currentState.currentTime;
+          }
+          audioPlayer.play().catch(function () {});
+        };
+        if (audioPlayer.readyState >= HTMLMediaElement.HAVE_METADATA)
+          onReloadReady();
+        else
+          audioPlayer.addEventListener("loadedmetadata", onReloadReady, {
+            once: true,
+          });
+      }
+    } else if (currentState.isPlaying && audioPlayer.paused) {
+      
+      audioPlayer.play().catch(function () {});
+    }
+    const bar = getMiniPlayerIndexEl();
+    if (bar) bar.classList.add("active");
+    return;
+  }
+  const raw = sessionStorage.getItem(MEEL_KEYS.AUDIO_STATE);
   if (!raw) return;
   try {
     const state = JSON.parse(raw);
@@ -120,27 +241,29 @@ function initMiniPlayerIndex() {
       els.img.src = state.thumbnailUrl || `upload/thumbnail/${state.thumbnail}`;
     if (els.title) els.title.textContent = state.title || "Unknown";
     if (els.artist) els.artist.textContent = state.artist || "Unknown";
-    setTimeout(() => {
-      loadAudio(state, state.isPlaying);
-      updateIndexUI();
-    }, 100);
-    const globalLoop = localStorage.getItem("meel_global_loop") === "true";
+    
+    
+    loadAudio(state, state.isPlaying);
+    updateIndexUI();
+    const globalLoop = localStorage.getItem(MEEL_KEYS.GLOBAL_LOOP) === "true";
     if (state.isLooping !== undefined) {
       isMiniLoopIndexActive = globalLoop;
       if (state.isLooping !== globalLoop) {
         isMiniLoopIndexActive = state.isLooping;
-        localStorage.setItem("meel_global_loop", String(state.isLooping));
+        localStorage.setItem(MEEL_KEYS.GLOBAL_LOOP, String(state.isLooping));
       }
     } else {
       isMiniLoopIndexActive = globalLoop;
     }
-    if (audioPlayer) audioPlayer.loop = isMiniLoopIndexActive;
+    
+    engine.setLoop(isMiniLoopIndexActive);
     updateMiniLoopUIIndex();
-    miniPlayerIndex.classList.add("active");
+    const bar = getMiniPlayerIndexEl();
+    if (bar) bar.classList.add("active");
     if (!window._playlistLoaded && typeof loadPlaylistById === "function") {
       var plId = state.playlistId;
       if (!plId || plId <= 0) {
-        var lastPl = localStorage.getItem("meel_last_playlist_id");
+        var lastPl = localStorage.getItem(MEEL_KEYS.LAST_PLAYLIST_ID);
         plId = lastPl ? parseInt(lastPl) : 0;
       }
       if (!plId || plId <= 0) {
@@ -155,14 +278,22 @@ function initMiniPlayerIndex() {
     console.warn("Mini player init error:", e);
   }
 }
-// ─── Play / Pause ───
+
 window.miniPlayPauseIndex = function () {
   if (!audioPlayer) return;
 
   if (window.meelHealthAlertActive && audioPlayer.paused) return;
-  audioPlayer.paused ? audioPlayer.play() : audioPlayer.pause();
+  if (audioPlayer.paused) {
+    audioPlayer.play();
+  } else {
+    
+    
+    sessionStorage.removeItem(MEEL_KEYS.SKIP_RESUME_ONCE);
+    window.__meelResumeSessionActive = false;
+    audioPlayer.pause();
+  }
 };
-// ─── Seek ───
+
 window.miniSeekIndex = function (event) {
   if (!audioPlayer) return;
   const rect = event.currentTarget.getBoundingClientRect();
@@ -172,7 +303,7 @@ window.miniSeekIndex = function (event) {
     Math.min(pct * audioPlayer.duration, audioPlayer.duration),
   );
 };
-// ─── Next: Cari lagu berikutnya ───
+
 window.miniNextIndex = function () {
   if (!audioPlayer) return;
 
@@ -198,7 +329,7 @@ window.miniNextIndex = function () {
     if (typeof lucide !== "undefined") lucide.createIcons();
   }
 };
-// ─── Prev: restart jika > 3 detik ───
+
 window.miniPrevIndex = function () {
   if (!audioPlayer) return;
   if (audioPlayer.currentTime > 3) {
@@ -219,12 +350,12 @@ window.miniPrevIndex = function () {
   }
   audioPlayer.currentTime = 0;
 };
-// Tambahkan playlist_id ke URL bila belum ada — konteks playlist TIDAK boleh
-// hilang saat kembali ke full player dari mini-player index.php.
+
 function withPlaylistParam(url, playlistId) {
   if (!url || !playlistId || playlistId <= 0) return url;
-  if (url.indexOf("playlist_id=") !== -1) return url;
-  // Sisipkan parameter sebelum fragment (#...), supaya URL tetap valid
+  
+  if (url.indexOf("playlist_id=") !== -1 || /\/playlist\/\d+/.test(url)) return url;
+  
   const hashIdx = url.indexOf("#");
   const base = hashIdx === -1 ? url : url.substring(0, hashIdx);
   const hash = hashIdx === -1 ? "" : url.substring(hashIdx);
@@ -236,24 +367,29 @@ function withPlaylistParam(url, playlistId) {
     hash
   );
 }
+
+
+let _expandInFlight = false;
 function expandPlayerFromMiniPlayer() {
+  if (_expandInFlight) return;
+  _expandInFlight = true;
   saveIndexState();
-  sessionStorage.setItem("skip_resume_once", "true");
-  const savedState = sessionStorage.getItem("meel_audio_state");
-  if (!savedState) return;
+  sessionStorage.setItem(MEEL_KEYS.SKIP_RESUME_ONCE, "true");
+  const savedState = sessionStorage.getItem(MEEL_KEYS.AUDIO_STATE);
+  if (!savedState) {
+    _expandInFlight = false;
+    return;
+  }
   try {
     const state = JSON.parse(savedState);
     let target = "";
     if (state.watchUrl) {
       target = withPlaylistParam(state.watchUrl, state.playlistId);
     } else if (state.id) {
-      target = withPlaylistParam(
-        `watch.php?id=${state.id}`,
-        state.playlistId,
-      );
+      target = withPlaylistParam(`watch?id=${state.id}`, state.playlistId);
     } else if (state.musicId) {
       target = withPlaylistParam(
-        `watch.php?id=${state.musicId}`,
+        `watch?id=${state.musicId}`,
         state.playlistId,
       );
     } else if (state.filename) {
@@ -266,17 +402,52 @@ function expandPlayerFromMiniPlayer() {
           : "";
       target = withPlaylistParam(href, state.playlistId);
     }
-    if (target) window.location.href = target;
+    if (!target) {
+      _expandInFlight = false;
+      return;
+    }
+    
+    isMiniPlayerIndexActive = false;
+    if (window.meelNavigateView) {
+      
+      
+      Promise.resolve(
+        window.meelNavigateView(target, "watch", {
+          onAfterSwap: function () {
+            const engine = window.meelGetAudioEngine();
+            const slot = document.getElementById("player-audio-slot");
+            if (slot && engine) engine.mount(slot, { compact: false });
+            if (typeof window.meelInitWatchPlayer === "function") {
+              window.meelInitWatchPlayer();
+            }
+          },
+        }),
+      ).then(
+          function () {
+            _expandInFlight = false;
+          },
+          function () {
+            _expandInFlight = false;
+          },
+        );
+    } else {
+      
+      _expandInFlight = false;
+      window.location.href = target;
+    }
   } catch (err) {
+    _expandInFlight = false;
     console.warn("Mini player expand error:", err);
   }
 }
-// ─── Loop toggle untuk mini player ───
-let isMiniLoopIndexActive = localStorage.getItem("meel_global_loop") === "true";
+
+let isMiniLoopIndexActive = localStorage.getItem(MEEL_KEYS.GLOBAL_LOOP) === "true";
 window.toggleMiniLoopIndex = function () {
   isMiniLoopIndexActive = !isMiniLoopIndexActive;
-  localStorage.setItem("meel_global_loop", String(isMiniLoopIndexActive));
-  if (audioPlayer) audioPlayer.loop = isMiniLoopIndexActive;
+  
+  const engine = window.meelGetAudioEngine ? window.meelGetAudioEngine() : null;
+  if (engine) engine.setLoop(isMiniLoopIndexActive);
+  else localStorage.setItem(MEEL_KEYS.GLOBAL_LOOP, String(isMiniLoopIndexActive));
   updateMiniLoopUIIndex();
   saveIndexState();
 };
@@ -284,22 +455,41 @@ function updateMiniLoopUIIndex() {
   const btn = document.getElementById("mini-loop-btn-index");
   if (!btn) return;
   if (isMiniLoopIndexActive) {
+    
+    
+    btn.classList.add("mp-loop-active");
     btn.style.color = "#f97316";
     btn.style.opacity = "1";
   } else {
+    btn.classList.remove("mp-loop-active");
     btn.style.color = "";
     btn.style.opacity = "0.5";
   }
 }
-// ─── Tutup ───
+
 window.closeMiniPlayerIndex = function () {
   if (audioPlayer) audioPlayer.pause();
-  miniPlayerIndex.classList.remove("active");
-  sessionStorage.removeItem("meel_audio_state");
+  const bar = getMiniPlayerIndexEl();
+  if (bar) bar.classList.remove("active");
+  sessionStorage.removeItem(MEEL_KEYS.AUDIO_STATE);
+  
+  
+  sessionStorage.removeItem(MEEL_KEYS.SKIP_RESUME_ONCE);
+  window.__meelResumeSessionActive = false;
   isMiniPlayerIndexActive = false;
   currentState = null;
 };
-// ─── Setup playlist items (dipakai index & view_playlist) ───
+
+
+
+function resumeTimeForClicked(id) {
+  const engine = window.meelGetAudioEngine ? window.meelGetAudioEngine() : null;
+  if (engine && String(engine.getCurrentTrackId()) === String(id)) {
+    return engine.audio.currentTime || 0;
+  }
+  return 0;
+}
+
 function setupPlaylistItemClicks() {
   document.querySelectorAll(".music-pl-item").forEach(function (item) {
     if (item.dataset.plListenerAdded) return;
@@ -307,7 +497,7 @@ function setupPlaylistItemClicks() {
     item.addEventListener("click", function (e) {
       if (e.target.closest("form") || e.target.closest("a")) return;
       e.preventDefault();
-      sessionStorage.setItem("skip_resume_once", "true");
+      sessionStorage.setItem(MEEL_KEYS.SKIP_RESUME_ONCE, "true");
       var allItems = Array.from(document.querySelectorAll(".music-pl-item"));
       var idx = allItems.indexOf(this);
       var nextSongUrl = "";
@@ -326,27 +516,27 @@ function setupPlaylistItemClicks() {
         filename: this.dataset.filename,
         watchUrl:
           this.dataset.watchUrl ||
-          `watch.php?id=${this.dataset.id}&playlist_id=${this.dataset.playlistId}`,
+          `watch?id=${this.dataset.id}&playlist_id=${this.dataset.playlistId}`,
         nextSongUrl: nextSongUrl,
         playlistId: this.dataset.playlistId,
-        currentTime: 0,
+        currentTime: resumeTimeForClicked(this.dataset.id),
         isPlaying: true,
       };
       loadAudio(state, true);
       updateIndexUI();
-      sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
-      // Jaga fallback meel_last_playlist_id tetap sinkron dengan playlist yang
-      // sedang diputar, supaya initMiniPlayerIndex() tidak memakai nilai stale.
+      sessionStorage.setItem(MEEL_KEYS.AUDIO_STATE, JSON.stringify(state));
+      
       var plIdNow = parseInt(this.dataset.playlistId || "0", 10);
       if (plIdNow > 0) {
-        localStorage.setItem("meel_last_playlist_id", String(plIdNow));
+        localStorage.setItem(MEEL_KEYS.LAST_PLAYLIST_ID, String(plIdNow));
       } else {
-        localStorage.removeItem("meel_last_playlist_id");
+        localStorage.removeItem(MEEL_KEYS.LAST_PLAYLIST_ID);
       }
       isMiniPlayerIndexActive = true;
-      miniPlayerIndex.classList.add("active");
+      const bar = getMiniPlayerIndexEl();
+      if (bar) bar.classList.add("active");
     });
-    // Tombol play
+
     var playBtn = item.querySelector(".pl-play-btn");
     if (playBtn) {
       playBtn.addEventListener("click", function (e) {
@@ -357,22 +547,45 @@ function setupPlaylistItemClicks() {
     }
   });
 }
-// Keyboard shortcuts mini player
 document.addEventListener("keydown", (e) => {
   if (window.meelKeyShortcutIgnored?.(e)) return;
+  if (window.__meelCurrentView !== "index") return;
   const key = e.key.toLowerCase();
-  // Keyboard 'i' → Pindah kembali ke full player (watch.php)
+  
   if (key === "i") {
     e.preventDefault();
     expandPlayerFromMiniPlayer();
   }
-  // Keyboard 'l' → Toggle loop mini player
+  
   if (key === "l") {
     e.preventDefault();
     window.toggleMiniLoopIndex();
   }
 });
-// Auto-save tiap 5 detik
+
 setInterval(() => {
   if (isMiniPlayerIndexActive) saveIndexState();
 }, 5000);
+
+
+
+const meelLibTitle =
+  document.title.indexOf("| Library") !== -1
+    ? document.title
+    : "MEeL Music | Library";
+window.meelSyncViewTitle = function () {
+  const main = document.querySelector("main");
+  if (!main) return;
+  const h1 = main.querySelector("h1");
+  const name = h1 ? (h1.textContent || "").trim() : "";
+  if (name) {
+    document.title = name + " — MEeL Playlist";
+  } else if (main.querySelector(".section-title")) {
+    document.title = meelLibTitle;
+  }
+};
+document.addEventListener("htmx:afterSwap", function () {
+  if (typeof window.meelSyncViewTitle === "function") {
+    window.meelSyncViewTitle();
+  }
+});

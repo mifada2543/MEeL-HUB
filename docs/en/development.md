@@ -153,7 +153,7 @@ music ──1:N── playlist_tracks
 ### Key Relationships
 
 | Table | Foreign Key | References | Type |
-|-------|-------------|-----------|------|
+|---|---|---|---|
 | `video` | `user_id` | `users.id` | CASCADE |
 | `music` | `user_id` | `users.id` | CASCADE |
 | `books` | `user_id` | `users.id` | SET NULL |
@@ -179,18 +179,69 @@ music ──1:N── playlist_tracks
    `is_readable()`/`is_writable()` guards, check return values, and reuse the shared
    helpers (`FfmpegUtils` trait, `GarbageCollector::removeFile()`/`removeDirectory()`,
    `meel_write_cache_file()`). See the [Filesystem Safety Convention](modules.md#filesystem-safety-convention-no--suppression).
+7. **Centralized Session Boot** — Every entry point must call `meel_boot_session()`
+   (from `modules/auth/helpers/session.php`) — never raw `session_name()` + `session_start()`.
+   This function guarantees the session cookie uses `HttpOnly`/`SameSite=Lax`/`Secure`
+   (auto-detect HTTPS) flags and the 12-hour timeout consistently.
 
 ### File Structure per Module
 
+Each module (video, music, books, drive) follows this pattern. Pages are reached
+via **clean URLs** (front controller `router.php` → `modules/core/Router.php`),
+e.g. `video/beranda` → `video/index.php`, `music/watch?id=X` → `music/watch.php`:
+
 ```
 [module]/
-├── index.php          # Catalog / listing
-├── watch.php          # Player / detail
-├── upload.php         # Upload form
-├── search_[module].php  # Search (HTMX)
-├── load_more.php      # Pagination (HTMX)
+├── index.php          # Catalog / listing (URL: [module]/beranda)
+├── watch.php          # Player / detail (URL: [module]/watch?id=X)
+├── upload.php         # Upload form (URL: [module]/upload)
+├── search_[module].php  # Search (HTMX) (URL: [module]/search)
+├── load_more.php      # Pagination (HTMX) (URL: [module]/load-more)
 └── [module]_item.php  # Card component
 ```
+
+### HTMX Pattern
+
+```php
+<!-- Trigger -->
+<input type="text" name="search"
+    hx-get="video/search"
+    hx-trigger="keyup[key=='Enter']"
+    hx-target="#video-container"
+    hx-indicator="#search-indicator">
+
+<!-- Target -->
+<div id="video-container">
+    <!-- Results loaded here -->
+</div>
+
+<!-- Indicator -->
+<div id="search-indicator" class="htmx-indicator">
+    <div class="animate-spin">⏳</div>
+</div>
+```
+
+### Theme System (Light/Dark Mode)
+
+MEeL supports light and dark mode with CSS variables architecture:
+
+```
+assets/css/shared/
+├── theme-tokens.css    # CSS variables (meel-bg, meel-surface, meel-text, etc.)
+├── light-theme.css     # Light mode overrides for Tailwind utilities
+└── design-tokens.php   # Shared tokens for upload forms
+```
+
+**How it works:**
+1. `theme-tokens.css` defines CSS variables for dark mode (default)
+2. `light-theme.css` overrides variables when `html[data-theme="light"]`
+3. `theme.js` manages toggle, localStorage, and DB sync
+4. Toggle is only available on the Profile page
+
+**Adding Light Mode Support:**
+- Use CSS variables (`var(--meel-bg)`, `var(--meel-surface)`, etc.) instead of hardcoded colors
+- If you must use Tailwind hardcoded (`bg-[#0d1017]`), add override in `light-theme.css`
+- Logo/icons must be excluded from color overrides (use `:not(.nav-logo-text)`)
 
 ---
 
@@ -221,14 +272,14 @@ music ──1:N── playlist_tracks
 MEeL implements TOTP per [RFC 6238](https://datatracker.ietf.org/doc/html/rfc6238):
 
 | Parameter | Value |
-|-----------|-------|
+|---|---|
 | Algorithm | HMAC-SHA1 |
 | Digits | 6 digits |
 | Time Step | 30 seconds |
 | Window | ±1 (90 seconds tolerance) |
 | Encoding | Base32 |
 
-### Helper Functions (in `modules/core/helpers.php`)
+### Helper Functions (in `modules/auth/helpers/mfa.php`)
 
 ```php
 // ─── GENERATE SECRET ───────────────────────────────────────
@@ -283,9 +334,9 @@ function generate_backup_codes(): array {
     $plain = [];
     $hashed = [];
     for ($i = 0; $i < 8; $i++) {
-        $code = bin2hex(random_bytes(4));  // 8 hex characters
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);  // 6 digits
         $plain[] = $code;
-        $hashed[] = hash('sha256', $code);
+        $hashed[] = password_hash($code, PASSWORD_DEFAULT);  // bcrypt
     }
     return ['plain' => $plain, 'hashed' => $hashed];
 }
@@ -294,7 +345,7 @@ function generate_backup_codes(): array {
 function verify_backup_code(string $hashedJson, string $code): array {
     $codes = json_decode($hashedJson, true) ?? [];
     foreach ($codes as $i => $hash) {
-        if (hash_equals($hash, hash('sha256', $code))) {
+        if (password_verify($code, $hash)) {
             array_splice($codes, $i, 1);  // Remove used code
             return ['valid' => true, 'remaining' => $codes];
         }
@@ -321,7 +372,7 @@ ALTER TABLE users
 2. Yes → Save $_SESSION['mfa_temp_uid'] = user_id
           Save $_SESSION['mfa_temp_username']
           Save $_SESSION['mfa_temp_role']
-3. Redirect to mfa_verify.php
+3. Redirect to auth/mfa-verify
 4. User inputs 6-digit code
 5. Valid → Set $_SESSION['user_id', 'username', 'role']
           Set $_SESSION['mfa_verified'] = true
@@ -333,14 +384,14 @@ ALTER TABLE users
 ### Rate Limiting
 
 | Endpoint | Limit | Mechanism |
-|----------|:-----:|-----------|
+|---|:---:|---|
 | MFA Verify | 10 failures → lock 5 minutes | Session-based `mfa_fail_count` + `mfa_locked_until` |
 | Backup Password | 5 failures → lock 5 minutes | Session-based `backup_pwd_attempts` + `backup_pwd_lock_until` |
 
 ### Security Considerations
 
 1. **TOTP Secret** — Stored plaintext in DB (TOTP secrets must be readable)
-2. **Backup Codes** — Stored as SHA256 hash (one-way, cannot be reversed)
+2. **Backup Codes** — Stored as password_hash()/bcrypt hashes (one-way, cannot be reversed)
 3. **Session Temp** — `mfa_temp_uid` only exists in session, not in cookies
 4. **Brute Force** — 10 failed MFA attempts → lock 5 minutes
 5. **QR Code** — 100% offline (local qrcode.min.js library, no data sent to external server)
@@ -398,7 +449,7 @@ This project is licensed under **GNU General Public License v3.0 (GPLv3)**. See 
 
 **Types:**
 | Type | Usage |
-|------|------------|
+|---|---|
 | `feat` | New feature |
 | `fix` | Bug fix |
 | `security` | Security fix |
@@ -423,14 +474,14 @@ main (stable)
 ### Key Files to Understand
 
 | File | Reason |
-|------|--------|
+|---|---|
 | `auth/config.php` | Configuration entry point |
 | `auth/auth.php` | Authentication middleware |
 | `modules/core/helpers.php` | Global utility functions |
-| `modules/core/Transcoder.php` | Main engine (most complex) |
+| `modules/core/Transcoder.php` + `modules/transcoder/` | Facade + split services: `EncodeService`, `DownloadService`, `TranscodeService` (extend `TranscoderBase`) |
 | `modules/core/Uploader.php` | File upload process |
 | `modules/core/System.php` | Queue & monitoring |
-| `modules/core/RateLimiter.php` | API Rate Limiter |
+| `modules/auth/RateLimiter.php` | API Rate Limiter |
 | `modules/core/ProgressObserver.php` | Progress event contract (interface + callable adapter) — see `modules.md` |
 | `modules/core/BrowserProgressObserver.php` | Browser presenter — maps engine events to the overlay/`meel*` JS |
 | `modules/core/GarbageCollector.php` | Auto-cleanup |
@@ -460,8 +511,43 @@ main (stable)
 | `assets/js/video/watch/gestures.js` | Mobile touch gestures |
 | `assets/js/music/watch/main.js` | Entry point folder watch/ — loads siblings synchronously (document.write) |
 | `assets/js/music/watch/mini-player.js` | Music mini-player mode (Spotify-style) — separated from player-core.js |
-| `assets/js/music/watch/player-core.js` | Music player core (visualizer, EQ, bitrate, resume) |
-| `assets/js/music/watch/state.js` | Music player state & equalizer presets |
+| `assets/js/music/watch/player-core.js` | Music player core (visualizer, EQ, bitrate, resume-modal & session logic) |
+| `assets/js/music/watch/state.js` | Music player state, equalizer presets & resume-session marker (`window.__meelResumeSessionActive`) |
+
+### Music Player — Resume Modal Behavior
+
+The music player shows the **"Lanjut Musik?"** resume modal when a song has a
+saved playback position (`music_pos_<id>` in `localStorage`) and the user did
+**not** arrive from an active mini-player session.
+
+| Context | Behavior |
+|---|---|
+| **Mini-player session** — user tapped a card / playlist item or expanded the mini-player on `index.php`, and is still listening | 🎧 **Auto-continue** — no modal; every following song in the session plays automatically |
+| **Cold visit** — direct `watch.php` open, page reload, or after an explicit pause/close of the mini-player | ❓ **Modal shown** — "Lanjut Musik?" asks whether to resume from the saved position |
+
+**Mechanisms:**
+
+- **One-shot flag `skip_resume_once`** (`sessionStorage`) — set by the index
+  side on card/playlist tap and in `expandPlayerFromMiniPlayer()`. It is read
+  and removed at **every** `meelInitWatchPlayer()` call (including gapless
+  transitions), so it never leaks or sticks in storage.
+- **Session marker `window.__meelResumeSessionActive`** (in-memory, declared in
+  `assets/js/music/watch/state.js`) — activated when the one-shot flag is
+  consumed. It lives for the whole SPA document, so **all** subsequent
+  in-watch track changes (auto-next, song switch) skip the modal.
+- **Explicit end of session** — `miniPlayPauseIndex()` (pause) and
+  `closeMiniPlayerIndex()` on `index.php` clear both the one-shot flag and the
+  session marker (`assets/js/music/shared/mini-player.js`). After that, opening
+  a song from a link shows the modal again.
+- **Cold visits** — a full page load creates a new document where the in-memory
+  marker is gone, so the modal can appear (`skipOnce` in `player-core.js`
+  checks `skipResumeModalOnce || window.__meelResumeSessionActive`).
+- **Stuck-paused guard** — if the modal is suppressed but the song has a saved
+  position, `onFreshTrackReady()` auto-plays from the beginning instead of
+  leaving the song silent.
+
+> **Design decision (2026-08):** active listening sessions auto-continue
+> without interruption; only cold visits ask to resume.
 
 ### Key Processes
 
@@ -470,6 +556,7 @@ main (stable)
 3. **Auth Flow** — Login → Session → RBAC → Activity Log
 4. **HTMX Flow** — Event → Request → Server → Response → DOM swap
 5. **MFA Flow** — Login password valid → Check mfa_enabled → Redirect mfa_verify.php → Verify TOTP → Set full session
+6. **Music Player Session & Resume** — Card/playlist tap → mini-player (sets `skip_resume_once`) → expand → watch (consumes flag, activates session marker) → auto-continue; cold visits show the resume modal
 
 ---
 

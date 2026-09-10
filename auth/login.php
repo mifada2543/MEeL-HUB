@@ -5,19 +5,16 @@ include 'config.php';
 $back_url = auth_back_url(['login.php', 'register.php', 'revoked.php', 'banned.php']);
 $error_msg = "";
 $max_login_attempts = 5;
-$lockout_time = 300; // 5 menit
+$lockout_time = 300;
 $is_locked = false;
 $remaining = 0;
-// ─── LOOPBACK (localhost) — bebas rate-limit untuk debugging ───
 $is_loopback = auth_is_loopback();
-// ─── SESSION-BASED LOCKOUT (expired cleanup) — khusus login ───
 if (isset($_SESSION['login_locked_until'])) {
     if (time() >= $_SESSION['login_locked_until']) {
         unset($_SESSION['login_locked_until']);
         $_SESSION['login_fail_count'] = 0;
     }
 }
-// ─── IP-BASED LOCKOUT CHECK (shared helper) ───
 $ip_address  = auth_get_ip();
 $ip_lock     = $is_loopback ? ['locked' => false, 'remaining' => 0] : auth_ip_lockout_status($conn, $ip_address);
 $ip_locked   = $ip_lock['locked'];
@@ -26,13 +23,11 @@ if (!$is_loopback && ($ip_locked || (isset($_SESSION['login_locked_until']) && t
     $is_locked = true;
     $remaining = max($ip_remaining, ($_SESSION['login_locked_until'] ?? 0) - time());
 }
-// ─── HELPER: catat percobaan gagal (session-based + IP via helper) ───
 function record_failed_attempt($conn, $ip_address, $max_login_attempts, $lockout_time)
 {
     if (auth_is_loopback()) {
         return;
     }
-    // Session-based counter (khusus login)
     $_SESSION['login_fail_count'] = ($_SESSION['login_fail_count'] ?? 0) + 1;
     if ($_SESSION['login_fail_count'] >= $max_login_attempts) {
         $_SESSION['login_locked_until'] = time() + $lockout_time;
@@ -40,7 +35,6 @@ function record_failed_attempt($conn, $ip_address, $max_login_attempts, $lockout
     }
     auth_record_failed_attempt($conn, $ip_address, $max_login_attempts, $lockout_time);
 }
-// ─── FORM PROCESSING ───
 if (isset($_POST['login']) && !$is_locked) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error_msg = "Sesi keamanan kadaluarsa. Silakan refresh halaman dan coba lagi.";
@@ -60,14 +54,12 @@ if (isset($_POST['login']) && !$is_locked) {
                                 ? "Akun Anda sedang menunggu verifikasi admin."
                                 : "Akses ditolak untuk akun Guest.";
                         } else {
-                            // ─── LOGIN BERHASIL ───
                             unset($_SESSION['login_fail_count']);
                             unset($_SESSION['login_locked_until']);
                             $stmt_del = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
                             $stmt_del->bind_param("s", $ip_address);
                             $stmt_del->execute();
                             $stmt_del->close();
-                            // ─── CEK MFA ───
                             if (!empty($u['mfa_secret']) && $u['mfa_enabled'] == 1) {
                                 $_SESSION['mfa_temp_uid']      = (int)$u['id'];
                                 $_SESSION['mfa_temp_username'] = $u['username'];
@@ -77,10 +69,9 @@ if (isset($_POST['login']) && !$is_locked) {
                                 $upd->bind_param("i", $u['id']);
                                 $upd->execute();
                                 $upd->close();
-                                header("Location: mfa_verify.php");
+                                header("Location: mfa-verify");
                                 exit;
                             }
-                            // ─── LOGIN LENGKAP (tanpa MFA) ───
                             session_regenerate_id(true);
                             $current_sid = session_id();
                             $_SESSION['user_id']  = $u['id'];
@@ -93,7 +84,7 @@ if (isset($_POST['login']) && !$is_locked) {
                             if ($upd) {
                                 $upd->bind_param("si", $current_sid, $u['id']);
                                 $upd->execute();
-                                header("Location: ../index.php");
+                                header("Location: ../");
                                 exit;
                             }
                         }
@@ -103,7 +94,6 @@ if (isset($_POST['login']) && !$is_locked) {
                 } else {
                     $login_failed = true;
                 }
-                // ─── TANGANI LOGIN GAGAL ───
                 if ($login_failed) {
                     $error_msg = "Username atau password salah!";
                     record_failed_attempt($conn, $ip_address, $max_login_attempts, $lockout_time);
@@ -127,7 +117,6 @@ if (!$is_loopback && !$is_locked) {
         $remaining = $recheck['remaining'];
     }
 }
-// ─── HTML (shell bersama via partials) ───
 $auth_title       = "MEeL | Login";
 $auth_description = "MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.";
 $auth_og_title    = "MEeL | Login";
@@ -135,7 +124,7 @@ $auth_og_desc     = "Masuk ke akun MEeL untuk streaming video, musik, dan mengak
 include __DIR__ . '/partials/auth_head.php';
 ?>
 <main class="w-full max-w-sm" aria-labelledby="login-title">
-    <!-- Header -->
+    
     <div class="text-center mb-8">
         <div class="inline-flex p-4 bg-blue-600/10 rounded-3xl text-blue-500 mb-4 shadow-lg shadow-blue-900/10"><i data-lucide="log-in" class="w-10 h-10"></i></div>
         <h2 id="login-title" class="text-3xl font-black text-white tracking-tighter">Login</h2>
@@ -144,9 +133,9 @@ include __DIR__ . '/partials/auth_head.php';
     <?php if ($error_msg): ?>
         <div class="mb-6 p-4 rounded-2xl text-sm flex items-center gap-3 bg-red-500/10 text-red-400 border border-red-500/20 animate-shake"><i data-lucide="alert-circle" class="w-5 h-5"></i><?= $error_msg ?></div>
     <?php endif; ?>
-    <!-- Login -->
+    
     <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6">
-        <!-- Lockdown -->
+        
         <?php if ($is_locked): ?>
             <?php
             $countdown_seconds = $remaining;
@@ -155,11 +144,11 @@ include __DIR__ . '/partials/auth_head.php';
             include __DIR__ . '/partials/auth_countdown.php';
             ?>
         <?php else: ?>
-            <!-- CSRF Token -->
+            
             <?php if (isset($_SESSION['csrf_token'])): ?>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             <?php endif; ?>
-            <!-- Form login -->
+            
             <div class="space-y-2">
                 <label for="username" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Username</label>
                 <div class="relative">
@@ -183,9 +172,9 @@ include __DIR__ . '/partials/auth_head.php';
                 <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
             </button>
         <?php endif; ?>
-        <!-- Opsi lain -->
+        
         <div class="flex items-center justify-between px-1">
-            <a href="register.php" class="text-xs text-gray-300 hover:text-white transition" title="Daftar untuk mendapatkan akun">
+            <a href="register" class="text-xs text-gray-300 hover:text-white transition" title="Daftar untuk mendapatkan akun">
                 Belum punya akun?
             </a>
             <a href="<?= htmlspecialchars($back_url) ?>" class="text-xs text-blue-500 font-bold hover:underline" title="Kembali">

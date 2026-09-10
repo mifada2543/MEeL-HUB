@@ -3,22 +3,10 @@ if (!function_exists('auth_boot_session')) {
 
     function auth_boot_session(): void
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            $timeout = 43200; // 12 jam
-            $secure_cookie = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-                || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
-            session_set_cookie_params([
-                'lifetime' => $timeout,
-                'path'     => '/',
-                'secure'   => $secure_cookie,
-                'httponly' => true,
-                'samesite' => 'Lax',
-            ]);
-            session_name('meel');
-            session_start();
-        }
+        require_once __DIR__ . '/../modules/auth/helpers/session.php';
+        meel_boot_session();
         if (isset($_SESSION['user_id'])) {
-            header("Location: ../index.php");
+            header("Location: ../");
             exit;
         }
     }
@@ -41,10 +29,10 @@ if (!function_exists('auth_is_loopback')) {
     }
 }
 if (!function_exists('auth_back_url')) {
-    /* @param string[] $exclude Nama file yang tidak boleh menjadi back_url */
+    
     function auth_back_url(array $exclude = ['login.php', 'register.php']): string
     {
-        $back_url = '../index.php';
+        $back_url = '../';
         if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
             $ref  = $_SERVER['HTTP_REFERER'];
             $host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST);
@@ -55,7 +43,8 @@ if (!function_exists('auth_back_url')) {
                 $refPath    = parse_url($ref, PHP_URL_PATH) ?? '';
                 $isExcluded = false;
                 foreach ($exclude as $file) {
-                    if (strpos($refPath, $file) !== false) {
+                    if (strpos($refPath, $file) !== false
+                        || strpos($refPath, pathinfo($file, PATHINFO_FILENAME)) !== false) {
                         $isExcluded = true;
                         break;
                     }
@@ -71,7 +60,7 @@ if (!function_exists('auth_back_url')) {
 }
 
 if (!function_exists('auth_ip_lockout_status')) {
-    /* @return array{locked: bool, remaining: int} */
+    
     function auth_ip_lockout_status(mysqli $conn, string $ip): array
     {
         $locked    = false;
@@ -89,7 +78,6 @@ if (!function_exists('auth_ip_lockout_status')) {
                         $locked    = true;
                         $remaining = $lock_ts - time();
                     } else {
-                        // Lockout expired — reset
                         $stmt_del = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
                         $stmt_del->bind_param("s", $ip);
                         $stmt_del->execute();
@@ -105,7 +93,7 @@ if (!function_exists('auth_ip_lockout_status')) {
 }
 
 if (!function_exists('auth_record_failed_attempt')) {
-    /* @return bool true jika lockout BARU diterapkan pada pemanggilan ini */
+    
     function auth_record_failed_attempt(mysqli $conn, string $ip, int $max_attempts, int $lockout_time): bool
     {
 
@@ -147,7 +135,7 @@ if (!function_exists('auth_record_failed_attempt')) {
 }
 
 if (!function_exists('auth_recheck_lockout')) {
-    /* @return array{locked: bool, remaining: int} */
+    
     function auth_recheck_lockout(mysqli $conn, string $ip): array
     {
         $locked    = false;
@@ -171,18 +159,15 @@ if (!function_exists('auth_recheck_lockout')) {
 }
 
 if (!function_exists('auth_validate_credentials')) {
-    /* @return string|null Pesan error, atau null jika valid */
+    
     function auth_validate_credentials(string $user, string $pass): ?string
     {
-        // 1. Validasi Panjang Karakter
         if (strlen($user) < 8 || strlen($pass) < 8) {
             return "Username min 8 karakter, Password min 8 karakter!";
         }
-        // 2. Hanya huruf, angka, underscore
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $user)) {
             return "Username hanya boleh berisi huruf, angka, dan underscore (_)!";
         }
-        // 3. Blacklist username 'Guest' (dicadangkan sistem)
         if (stripos($user, 'guest') !== false) {
             return "Username 'Guest' tidak dapat didaftarkan karena dicadangkan untuk sistem!";
         }

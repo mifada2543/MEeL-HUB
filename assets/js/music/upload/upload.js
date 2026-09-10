@@ -1,10 +1,10 @@
 /** MEeL - Media Hub Platform
  * @copyright Copyright (C) 2026 Mifada
  * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
-/* ────────────────────────────────────────────────────────────────
+/*
  * upload/upload.js — JS halaman music/upload.php: drop-zone handler (audio & cover), overlay upload (progress manual), drag-and-drop, dan auto-fill metadata dari file audio via auto_metadata.php.
  * Depends on: shared/upload-progress.js (meelUploadProgress)
- * ──────────────────────────────────────────────────────────────── */
+ * */
 // True jika user memilih cover manual — Auto-fill TIDAK menimpa cover manual
 // (konsisten dgn prioritas cover di Uploader::processMusic: manual > embedded).
 let coverManual = false;
@@ -75,7 +75,6 @@ function handleSubmit() {
     baseDelay: baseDelay,
   });
 }
-// Drag-and-drop audio
 const audioZone = document.getElementById("audio-zone");
 const audioInput = document.getElementById("audio-input");
 audioZone.addEventListener("dragover", (e) => {
@@ -96,7 +95,6 @@ audioZone.addEventListener("drop", (e) => {
     handleAudioFile(audioInput);
   }
 });
-// Drag-and-drop cover
 const coverZone = document.getElementById("cover-zone");
 const coverInput = document.getElementById("cover-input");
 coverZone.addEventListener("dragover", (e) => {
@@ -155,7 +153,7 @@ function autoFillMetadata() {
   if (csrfInput && csrfInput.value) {
     formData.append("csrf_token", csrfInput.value);
   }
-  fetch("../controllers/api/auto_metadata.php", {
+  fetch("../api/auto-metadata", {
     method: "POST",
     body: formData,
   })

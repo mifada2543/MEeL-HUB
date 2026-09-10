@@ -19,13 +19,23 @@ function destroyPlayer() {
     cancelAnimationFrame(glowRAF);
     glowRAF = null;
   }
-  if ((stopStuckDetector(), stopPlaybackStartTimeout(), player)) {
+  if (
+    (stopStuckDetector(),
+    stopPlaybackStartTimeout(),
+    stopWaitingTimeout(),
+    player)
+  ) {
     try {
       player.destroy();
     } catch (e) {
       console.error("Gagal destroy player:", e);
     }
     player = null;
+    
+
+
+
+    videoElement && videoElement.removeAttribute("controls");
   }
   if (hls) {
     try {
@@ -51,6 +61,14 @@ function showReconnectingIndicator() {
 }
 function checkMediaAndRecover() {
   if (isCheckingStatus) return;
+  
+  
+  
+  if (!document.getElementById("main-video-wrapper")) {
+    isCheckingStatus = !1;
+    isRecovering = !1;
+    return;
+  }
   if ((recoveryRetryCount++, recoveryRetryCount > MAX_RECOVERY_RETRIES)) {
     (console.warn("Batas percobaan pemulihan tercapai, berhenti mencoba."),
       (isCheckingStatus = !1),
@@ -111,6 +129,7 @@ function checkMediaAndRecover() {
 }
 function triggerPlayerRecovery() {
   if (isRecovering || isCheckingStatus || isTransitioningNext) return;
+  if (!document.getElementById("main-video-wrapper")) return;
   if (player && player.paused && hasEverPlayed)
     return void console.log("Video sedang di-paused, skip recovery.");
   const e = Date.now();

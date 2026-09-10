@@ -1,5 +1,5 @@
-/* library-ui.js — UI interaksi halaman Music Library (index.php): */
-// ─── Setup klik item musik di library (dimuat via HTMX) ───
+
+
 function setupMusicItemClicks() {
   const allItems = () => Array.from(document.querySelectorAll(".music-item"));
   document.querySelectorAll(".music-item").forEach((item) => {
@@ -7,16 +7,16 @@ function setupMusicItemClicks() {
     item.dataset.listenerAdded = "true";
     item.addEventListener("click", function (e) {
       if (e.target.closest(".no-player")) return;
-      sessionStorage.setItem("skip_resume_once", "true");
+      sessionStorage.setItem(MEEL_KEYS.SKIP_RESUME_ONCE, "true");
       const items = allItems();
       const idx = items.indexOf(this);
       let nextSongUrl = "";
       if (idx >= 0 && idx < items.length - 1) {
         const nextItem = items[idx + 1];
         const nextId = nextItem.dataset.id;
-        if (nextId) nextSongUrl = `watch.php?id=${nextId}`;
+        if (nextId) nextSongUrl = `watch?id=${nextId}`;
       }
-      localStorage.removeItem("meel_last_playlist_id");
+      localStorage.removeItem(MEEL_KEYS.LAST_PLAYLIST_ID);
       const state = {
         id: this.dataset.id,
         musicId: this.dataset.id,
@@ -29,27 +29,35 @@ function setupMusicItemClicks() {
         filename: this.dataset.filename,
         watchUrl: e.target.closest("a")
           ? e.target.closest("a").getAttribute("href")
-          : `watch.php?id=${this.dataset.id}`,
+          : `watch?id=${this.dataset.id}`,
         nextSongUrl: nextSongUrl,
-        currentTime: 0,
+        currentTime:
+          typeof resumeTimeForClicked === "function"
+            ? resumeTimeForClicked(this.dataset.id)
+            : 0,
         isPlaying: true,
       };
       loadAudio(state, true);
       updateIndexUI();
-      sessionStorage.setItem("meel_audio_state", JSON.stringify(state));
+      sessionStorage.setItem(MEEL_KEYS.AUDIO_STATE, JSON.stringify(state));
       isMiniPlayerIndexActive = true;
-      miniPlayerIndex.classList.add("active");
+      getMiniPlayerIndexEl()?.classList.add("active");
     });
   });
 }
-// ─── Muat konten playlist ───
+
 function loadPlaylistById(id) {
   if (!id) return;
-  // Simpan state load-more
   var savedLMUrl = null;
   var savedBtn = document.getElementById("load-more-btn");
   if (savedBtn) savedLMUrl = savedBtn.getAttribute("hx-get");
-  fetch("view_playlist.php?id=" + id + "&content_only=1")
+  var plEl = document.querySelector('[data-playlist-id="' + id + '"]');
+  var url =
+    plEl && plEl.dataset.playlistUrl
+      ? plEl.dataset.playlistUrl
+      : "playlist?id=" + id;
+  var sep = url.indexOf("?") === -1 ? "?" : "&";
+  fetch(url + sep + "content_only=1")
     .then(function (r) {
       return r.text();
     })
@@ -58,8 +66,11 @@ function loadPlaylistById(id) {
       if (!main) return;
       main.innerHTML = html;
       setActivePlaylist(id);
+      if (typeof resetLibraryFilters === "function") resetLibraryFilters();
+      if (typeof window.meelSyncViewTitle === "function")
+        window.meelSyncViewTitle();
       if (typeof history !== "undefined") {
-        history.pushState(null, "", "view_playlist.php?id=" + id);
+        history.pushState(null, "", url);
       }
       if (typeof lucide !== "undefined") lucide.createIcons();
       if (savedLMUrl) {
@@ -74,13 +85,13 @@ function loadPlaylistById(id) {
       console.warn("Gagal load playlist:", err);
     });
 }
-// ─── Boot & Perbaikan Sinkronisasi ───
+
 function bootPlayerIndex() {
   initMiniPlayerIndex();
   setupMusicItemClicks();
   scrollToActiveArtistDesktop();
 }
-// ─── Auto-scroll sidebar desktop ke artist yg aktif ───
+
 function scrollToActiveArtistDesktop() {
   var artistList = document.getElementById("desktop-artist-list");
   if (!artistList) return;
@@ -89,16 +100,30 @@ function scrollToActiveArtistDesktop() {
     activeItem.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 }
-// ─── Mobile Playlist Dropdown (custom toggle) ───
+
 window.togglePlaylistDropdown = function () {
   const dropdown = document.getElementById("playlist-options");
   if (dropdown) {
     const isHidden = dropdown.classList.contains("hidden");
     if (isHidden) {
+      
+      var artistDrop = document.getElementById("artist-options");
+      if (artistDrop && !artistDrop.classList.contains("hidden")) {
+        artistDrop.classList.add("hidden");
+        
+        var artistContainer = document.getElementById("custom-artist-dropdown");
+        if (artistContainer) artistContainer.style.zIndex = '';
+      }
       dropdown.classList.remove("hidden");
+      
+      var plContainer = document.getElementById("custom-playlist-dropdown");
+      if (plContainer) plContainer.style.zIndex = '110';
       document.body.classList.add("artist-dropdown-active");
     } else {
       dropdown.classList.add("hidden");
+      
+      var plContainer = document.getElementById("custom-playlist-dropdown");
+      if (plContainer) plContainer.style.zIndex = '';
       setTimeout(function () {
         document.body.classList.remove("artist-dropdown-active");
       }, 350);
@@ -108,6 +133,9 @@ window.togglePlaylistDropdown = function () {
 window.closePlaylistDropdown = function () {
   const dropdown = document.getElementById("playlist-options");
   if (dropdown) dropdown.classList.add("hidden");
+  
+  var plContainer = document.getElementById("custom-playlist-dropdown");
+  if (plContainer) plContainer.style.zIndex = '';
   setTimeout(function () {
     const artistStillOpen =
       document.getElementById("artist-options") &&
@@ -129,7 +157,6 @@ window.navigateToPlaylistMobile = function (id) {
   );
   if (label && activeBtn) label.textContent = activeBtn.textContent.trim();
 };
-// Close dropdown ketika klik di luar
 document.addEventListener("click", (e) => {
   const artistDropdown = document.getElementById("artist-options");
   const artistTrigger = e.target.closest("#custom-artist-dropdown");
@@ -155,7 +182,18 @@ window.toggleArtistDropdown = function () {
   if (dropdown) {
     const isHidden = dropdown.classList.contains("hidden");
     if (isHidden) {
+      
+      var playlistDrop = document.getElementById("playlist-options");
+      if (playlistDrop && !playlistDrop.classList.contains("hidden")) {
+        playlistDrop.classList.add("hidden");
+        
+        var plContainer = document.getElementById("custom-playlist-dropdown");
+        if (plContainer) plContainer.style.zIndex = '';
+      }
       dropdown.classList.remove("hidden");
+      
+      var artistContainer = document.getElementById("custom-artist-dropdown");
+      if (artistContainer) artistContainer.style.zIndex = '110';
       document.body.classList.add("artist-dropdown-active");
       var activeItem = dropdown.querySelector(".text-orange-500");
       if (activeItem) {
@@ -163,6 +201,9 @@ window.toggleArtistDropdown = function () {
       }
     } else {
       dropdown.classList.add("hidden");
+      
+      var artistContainer = document.getElementById("custom-artist-dropdown");
+      if (artistContainer) artistContainer.style.zIndex = '';
       setTimeout(function () {
         document.body.classList.remove("artist-dropdown-active");
       }, 350);
@@ -172,6 +213,9 @@ window.toggleArtistDropdown = function () {
 window.closeArtistDropdown = function () {
   const dropdown = document.getElementById("artist-options");
   if (dropdown) dropdown.classList.add("hidden");
+  
+  var artistContainer = document.getElementById("custom-artist-dropdown");
+  if (artistContainer) artistContainer.style.zIndex = '';
   setTimeout(() => {
     const artistStillOpen =
       document.getElementById("artist-options") &&
@@ -184,7 +228,7 @@ window.closeArtistDropdown = function () {
     }
   }, 350);
 };
-// ─── Fungsi navigasi playlist ───
+
 function setActivePlaylist(id) {
   document.querySelectorAll(".pl-link").forEach(function (el) {
     if (el.dataset.playlistId == id) {
@@ -202,12 +246,19 @@ function setActivePlaylist(id) {
 }
 window.loadPlaylistMobile = function (id) {
   if (!id) return;
-  htmx.ajax("GET", "view_playlist.php?id=" + id + "&content_only=1", {
+  var plEl = document.querySelector('[data-playlist-id="' + id + '"]');
+  var url =
+    plEl && plEl.dataset.playlistUrl
+      ? plEl.dataset.playlistUrl
+      : "playlist?id=" + id;
+  var sep = url.indexOf("?") === -1 ? "?" : "&";
+  htmx.ajax("GET", url + sep + "content_only=1", {
     target: "main",
     swap: "innerHTML",
-    pushUrl: "view_playlist.php?id=" + id,
+    pushUrl: url,
   });
   setActivePlaylist(id);
+  if (typeof resetLibraryFilters === "function") resetLibraryFilters();
 };
 window.resetActivePlaylist = function () {
   document.querySelectorAll(".pl-link").forEach(function (el) {
@@ -227,4 +278,22 @@ window.resetArtistHighlight = function () {
   allArtistBtns.forEach(function (btn) {
     btn.classList.remove("text-orange-500", "font-bold");
   });
+};
+
+
+window.resetFormatPills = function () {
+  document.querySelectorAll(".format-pill").forEach(function (el) {
+    el.classList.remove("active-orange", "active-green", "active-blue");
+  });
+  document
+    .querySelectorAll('a.format-pill[href*="format=all"]')
+    .forEach(function (el) {
+      el.classList.add("active-orange");
+    });
+};
+
+
+window.resetLibraryFilters = function () {
+  if (typeof resetArtistHighlight === "function") resetArtistHighlight();
+  if (typeof resetFormatPills === "function") resetFormatPills();
 };

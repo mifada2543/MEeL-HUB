@@ -1,17 +1,12 @@
 <?php
 require_once '../../modules/core/helpers.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_name('meel');
-    session_start();
-}
+meel_boot_session();
 
 include '../../auth/config.php';
-include '../../modules/core/RateLimiter.php';
 require_once __DIR__ . '/../../modules/media/MediaViewer.php';
 require_once __DIR__ . '/../../modules/core/CommentRenderer.php';
 
-// CSRF: verifikasi token untuk AJAX POST
 if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
     http_response_code(403);
     header('HX-Retarget: #comment-alert');
@@ -36,7 +31,6 @@ if ($media_id <= 0) {
     exit;
 }
 
-// RATE LIMIT: 10 komentar per menit per user
 $rateKey   = 'user_' . $user_id;
 $rateRole  = get_user_role($conn, $user_id);
 $rateCheck = RateLimiter::check($rateKey, 'comment', $rateRole);
@@ -48,7 +42,6 @@ if (!$rateCheck['allowed']) {
     exit;
 }
 
-// Simpan komentar
 $viewer = new MediaViewer($conn, $user_id, $media_type, $media_id);
 if (!$viewer->addComment($_POST)) {
     http_response_code(400);
@@ -58,7 +51,36 @@ if (!$viewer->addComment($_POST)) {
     exit;
 }
 
-// sesuai urutan ASC created_at pada getComments())
+$parent_id = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : 0;
+if ($parent_id > 0) {
+    require_once __DIR__ . '/../../modules/core/Notification.php';
+    $media_col = ($media_type === 'music') ? 'music_id' : 'video_id';
+    $parent_stmt = $conn->prepare("SELECT user_id FROM comments WHERE id = ? AND {$media_col} = ? LIMIT 1");
+    if ($parent_stmt) {
+        $parent_stmt->bind_param("ii", $parent_id, $media_id);
+        $parent_stmt->execute();
+        $parent_res = $parent_stmt->get_result();
+        if ($parent_res && $parent_res->num_rows > 0) {
+            $parent = $parent_res->fetch_assoc();
+            $parent_user_id = (int)($parent['user_id'] ?? 0);
+            if ($parent_user_id > 0 && $parent_user_id !== (int)$user_id) {
+                $snippet = substr(trim((string)($_POST['comments'] ?? '')), 0, 50);
+                Notification::create(
+                    $conn,
+                    $parent_user_id,
+                    'reply',
+                    'Balasan Komentar',
+                    $_SESSION['username'] . ' membalas komentar kamu: "' . $snippet . '..."',
+                    $parent_id,
+                    $media_type . ':' . $media_id,
+                    $user_id
+                );
+            }
+        }
+        $parent_stmt->close();
+    }
+}
+
 $comments_data = $viewer->getComments();
 $grouped       = $comments_data['grouped'];
 $user_map      = $comments_data['user_map'];

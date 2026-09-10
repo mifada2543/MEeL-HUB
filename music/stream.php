@@ -1,13 +1,11 @@
 <?php
 error_reporting(0);
 
-session_name('meel');
-session_start();
+require_once __DIR__ . '/../modules/core/helpers.php';
+meel_boot_session();
 
-// File besar seperti FLAC 34MB+ butuh waktu streaming lama
 session_write_close();
 
-// ─── Referer Gate (ketat): stream HANYA boleh diminta DARI halaman musik MEeL ───
 $referer = $_SERVER['HTTP_REFERER'] ?? '';
 $currentHost = $_SERVER['HTTP_HOST'] ?? '';
 $refererOk = false;
@@ -19,21 +17,18 @@ if ($referer !== '' && $currentHost !== '') {
         $currentHostNorm = strtolower(parse_url('http://' . $currentHost, PHP_URL_HOST) ?: $currentHost);
         if (strtolower($refParts['host']) === $currentHostNorm) {
 
-            $refPath      = $refParts['path'] ?? '';
-            $refPage      = basename($refPath);
-            $allowedPages = ['watch.php', 'index.php', 'view_playlist.php'];
-            if (strpos($refPath, '/music/') !== false && in_array($refPage, $allowedPages, true)) {
+            $refPath = $refParts['path'] ?? '';
+            if (preg_match('#/music(?:/|$)#i', $refPath)) {
                 $refererOk = true;
             }
         }
     }
 }
 if (!$refererOk) {
-    header("Location: ../err/denied.php");
+    header("Location: ../err/?code=denied");
     exit;
 }
 
-// ─── Fail-fast: otorisasi session SEBELUM include config.php / koneksi DB ───
 require_once __DIR__ . '/../modules/core/helpers.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -43,7 +38,7 @@ if ($id <= 0) {
 }
 
 if (!is_stream_authorized($id)) {
-    header("Location: ../err/denied.php");
+    header("Location: ../err/?code=denied");
     exit;
 }
 
@@ -59,23 +54,13 @@ if (!$v || empty($v['filename'])) {
     exit("Data audio tidak ditemukan.");
 }
 
-// dan menyebabkan mod_xsendfile return 404.
-$filePath = __DIR__ . '/upload/file/' . basename($v['filename']);
+$filePath = meel_media_base_path('music') . '/file/' . basename($v['filename']);
 
-if (!file_exists($filePath)) {
-    // Fallback: coba HDD path langsung jika symlink tidak tersedia
-    $altPath = defined('MEEL_HDD_MUSIC_UPLOAD')
-        ? rtrim(MEEL_HDD_MUSIC_UPLOAD, '/') . '/file/' . basename($v['filename'])
-        : null;
-    if ($altPath && file_exists($altPath)) {
-        $filePath = $altPath;
-    } else {
-        header("HTTP/1.1 404 Not Found");
-        exit("File fisik tidak tersedia di server.");
-    }
+if (!file_exists($filePath) || !is_readable($filePath)) {
+    header("HTTP/1.1 404 Not Found");
+    exit("File fisik tidak tersedia di server.");
 }
 
-// 3. Tentukan MIME Type yang sesuai secara dinamis
 $ext      = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
 $mimeType = get_audio_mime_type($ext);
 
@@ -103,13 +88,6 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// Cara aktivasi:
-// 2. Aktifkan di httpd.conf:
-// XSendFile on
-// XSendFilePath "/opt/lampp/htdocs/MEeL/music/upload/file"
-// 3. Restart Apache
-// 4. Tambahkan define berikut di auth/config.php:
-// define('MEEL_USE_XSENDFILE', true);
 if (defined('MEEL_USE_XSENDFILE') && MEEL_USE_XSENDFILE === true) {
     header("X-Sendfile: " . $filePath);
     header("Content-Length: " . $size);
@@ -148,7 +126,7 @@ if (isset($_SERVER['HTTP_RANGE'])) {
 
 header("Content-Length: " . $length);
 
-$flacChunkSize = ($ext === 'flac') ? 524288 : 262144; // 512KB untuk FLAC, 256KB untuk lainnya
+$flacChunkSize = ($ext === 'flac') ? 524288 : 262144; 
 define('STREAM_CHUNK_SIZE', $flacChunkSize);
 
 $fp = @fopen($filePath, 'rb');

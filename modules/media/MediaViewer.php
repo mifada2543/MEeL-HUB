@@ -3,7 +3,7 @@ class MediaViewer
 {
     private $conn;
     private $user_id;
-    private $user_data; // Menyimpan data user agar tidak perlu query berulang
+    private $user_data;
     private $media_type;
     private $media_id;
     private $table;
@@ -14,9 +14,12 @@ class MediaViewer
         $this->user_id = $session_user_id;
         $this->media_type = $media_type;
         $this->media_id = (int)$media_id;
+        $allowed_tables = ['video', 'music'];
         $this->table = ($media_type === 'video') ? 'video' : 'music';
+        if (!in_array($this->table, $allowed_tables, true)) {
+            throw new InvalidArgumentException('Invalid media type');
+        }
 
-        // Tarik data user SATU KALI SAJA saat class dipanggil
         if ($this->user_id) {
             $stmt_user = $this->conn->prepare("SELECT is_active, role FROM users WHERE id = ? LIMIT 1");
             $stmt_user->bind_param("i", $this->user_id);
@@ -25,7 +28,6 @@ class MediaViewer
         }
     }
 
-    // ─── 1. LOGIKA VIEWS ───
     public function recordView() {
         if (!$this->user_id || !$this->media_id) return false;
 
@@ -38,7 +40,6 @@ class MediaViewer
             $stmt_log->execute();
 
             if ($stmt_log->affected_rows > 0) {
-                // Menggunakan prepared statement untuk update views
                 $stmt_upd = $this->conn->prepare("UPDATE {$this->table} SET views = views + 1 WHERE id = ?");
                 $stmt_upd->bind_param("i", $this->media_id);
                 $stmt_upd->execute();
@@ -48,13 +49,11 @@ class MediaViewer
         return false;
     }
 
-    // ─── 2. AMBIL DATA MEDIA UTAMA ───
     public function getMediaData()
     {
-        // DIUBAH: Menggunakan prepared statement untuk m.id
-        $sql = "SELECT m.*, u.username as uploader, u.profile_picture as uploader_pfp 
-                FROM {$this->table} m 
-                JOIN users u ON m.user_id = u.id 
+        $sql = "SELECT m.*, u.username as uploader, u.profile_picture as uploader_pfp
+                FROM {$this->table} m
+                JOIN users u ON m.user_id = u.id
                 WHERE m.id = ?";
         $stmt = $this->conn->prepare($sql);
         $stmt->bind_param("i", $this->media_id);
@@ -63,7 +62,6 @@ class MediaViewer
         return ($result && $result->num_rows > 0) ? $result->fetch_assoc() : null;
     }
 
-    // ─── 3. LOGIKA INTERAKSI (LIKE/DISLIKE) ───
     public function getUserInteraction()
     {
         if (!$this->user_id) return null;
@@ -75,12 +73,10 @@ class MediaViewer
         return ($row = $res->fetch_assoc()) ? $row['type'] : null;
     }
 
-    // ─── 4. MANAJEMEN KOMENTAR ───
     public function addComment($post_data)
     {
         if (!$this->user_id || empty(trim($post_data['comments']))) return false;
 
-        // Gunakan data yang sudah ditarik di construct (Lebih ringan!)
         if (!$this->user_data || $this->user_data['is_active'] != 1 || $this->user_data['role'] === 'guest') {
             return false;
         }
@@ -113,14 +109,12 @@ class MediaViewer
         return ['grouped' => $grouped, 'user_map' => $user_map];
     }
 
-    // ─── 5. REKOMENDASI ───
     public function getRecommendations($limit = 10)
     {
 
         $limit = (int)$limit;
-        $table = $this->table; // sudah tervalidasi di constructor: 'video' | 'music'
+        $table = $this->table;
 
-        // Ambil MAX(id) — murah, pakai indeks PRIMARY
         $max_res = $this->conn->query("SELECT MAX(id) AS max_id FROM {$table}");
         $max_id  = (int)($max_res ? $max_res->fetch_assoc()['max_id'] : 0);
 
@@ -146,25 +140,48 @@ class MediaViewer
         return $stmt->get_result();
     }
 
-    // ─── 6. KHUSUS MUSIC: PLAYLIST QUEUE ───
+    public static function syncViewsFromLogs(\mysqli $conn): int
+    {
+        $conn->query("UPDATE video v SET views = (SELECT COUNT(DISTINCT user_id) FROM view_logs WHERE video_id = v.id)");
+        $conn->query("UPDATE music m SET views = (SELECT COUNT(DISTINCT user_id) FROM view_logs WHERE music_id = m.id)");
+        return $conn->affected_rows;
+    }
+
+    public static function getViewStats(\mysqli $conn): array
+    {
+        $video_logs = $conn->query("SELECT COUNT(*) AS c FROM view_logs WHERE video_id IS NOT NULL")->fetch_assoc()['c'];
+        $music_logs = $conn->query("SELECT COUNT(*) AS c FROM view_logs WHERE music_id IS NOT NULL")->fetch_assoc()['c'];
+        $total_video_views = $conn->query("SELECT COALESCE(SUM(views),0) AS c FROM video")->fetch_assoc()['c'];
+        $total_music_views = $conn->query("SELECT COALESCE(SUM(views),0) AS c FROM music")->fetch_assoc()['c'];
+
+        $chart = [];
+        $chart_result = $conn->query("SELECT DATE(viewed_at) AS day, COUNT(*) AS views FROM view_logs WHERE viewed_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) GROUP BY DATE(viewed_at) ORDER BY day ASC");
+        if ($chart_result) {
+            while ($row = $chart_result->fetch_assoc()) {
+                $chart[] = ['date' => $row['day'], 'views' => (int)$row['views']];
+            }
+        }
+
+        return [
+            'video_log_rows' => (int)$video_logs,
+            'music_log_rows' => (int)$music_logs,
+            'total_log_rows' => (int)$video_logs + (int)$music_logs,
+            'video_views_counter' => (int)$total_video_views,
+            'music_views_counter' => (int)$total_music_views,
+            'chart' => $chart,
+        ];
+    }
+
     public function getPlaylistQueue($playlist_id)
     {
         if ($this->media_type !== 'music' || !$playlist_id) return null;
         $playlist_id = (int)$playlist_id;
 
-        // DIUBAH: Semua query di bawah menggunakan Prepared Statements
-        // 1. Ambil list antrean
-        // NOTE: added_at bertipe TIMESTAMP presisi detik, jadi track yang ditambahkan
-        // dalam detik yang sama punya nilai identik. Tie-breaker pt.id (AUTO_INCREMENT,
-        // urut insert) dipakai agar urutan SELALU deterministik & identik dengan
-        // music/view_playlist.php (ORDER BY yang sama persis).
         $stmt_q = $this->conn->prepare("SELECT m.*, pt.added_at FROM music m JOIN playlist_tracks pt ON m.id = pt.music_id WHERE pt.playlist_id = ? ORDER BY pt.added_at DESC, pt.id DESC");
         $stmt_q->bind_param("i", $playlist_id);
         $stmt_q->execute();
         $queue = $stmt_q->get_result();
 
-        // 2. Ambil posisi (added_at + id) track saat ini — id diambil sebagai
-        //    tie-breaker untuk row-value comparison di query "next"
         $stmt_curr = $this->conn->prepare("SELECT added_at, id FROM playlist_tracks WHERE playlist_id = ? AND music_id = ? ORDER BY id DESC LIMIT 1");
         $stmt_curr->bind_param("ii", $playlist_id, $this->media_id);
         $stmt_curr->execute();
@@ -172,10 +189,6 @@ class MediaViewer
 
         $next_url = "";
         if ($current) {
-            // 3. Cari lagu berikutnya: baris terbesar yang masih "di bawah" track saat
-            //    ini dalam urutan (added_at DESC, id DESC). Row-value comparison
-            //    (added_at, id) < (?, ?) dipakai agar track yang added_at-nya SAMA
-            //    persis (detik yang sama) tidak terlewat.
             $stmt_next = $this->conn->prepare("SELECT music_id FROM playlist_tracks WHERE playlist_id = ? AND (added_at, id) < (?, ?) ORDER BY added_at DESC, id DESC LIMIT 1");
             $stmt_next->bind_param("isi", $playlist_id, $current['added_at'], $current['id']);
             $stmt_next->execute();

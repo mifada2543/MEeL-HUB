@@ -1,6 +1,6 @@
 function setupMeelPlayerEvents() {
   window.player = player;
-  /* ─── Helper terpusat: apply aspect-ratio + cap video portrait ─── */
+  
   function applyMeelVideoAspect(wrapper, videoW, videoH) {
     if (!wrapper || !videoW || !videoH) return;
     wrapper.style.aspectRatio = `${videoW} / ${videoH}`;
@@ -27,14 +27,14 @@ function setupMeelPlayerEvents() {
     console.log(`[MEeL] Aspect ratio video: ${n / a}:${o / a} (${n}x${o})`);
     if (!isMiniPlayerActive) applyMeelVideoAspect(e, n, o);
   }
-  /* ─── Auto-Next Overlay Card ─── */
+  
   const AUTONEXT_COUNTDOWN = 5;
   function showAutoNextOverlay(e) {
     return new Promise((t) => {
       try {
         const n = document.getElementById("autonext-overlay");
         n && n.remove();
-        /* ─── Ekstrak title ─── */
+        
         const o =
           e
             .querySelector(".rec-title-text, .line-clamp-2, h5")
@@ -42,13 +42,13 @@ function setupMeelPlayerEvents() {
           e.querySelector('[class*="line-clamp"]')?.textContent?.trim() ||
           e.querySelector("a[title]")?.getAttribute("title")?.trim() ||
           "";
-        /* ─── Ekstrak thumbnail src ─── */
+        
         const l =
           e.querySelector(".rec-thumb-img")?.src ||
           e.querySelector('img[src*="thumbnail"]')?.src ||
           e.querySelector("img")?.src ||
           "";
-        /* ─── Ekstrak uploader ─── */
+        
         const a =
           e
             .querySelector('[class*="text-red-500"], [class*="text-red-600"]')
@@ -114,7 +114,7 @@ function setupMeelPlayerEvents() {
       }
     });
   }
-  /* ─── Ensure custom Plyr controls exist ─── */
+  
   function ensureCustomControls() {
     if (!player?.elements?.controls) return;
     const e = player.elements.controls;
@@ -151,14 +151,14 @@ function setupMeelPlayerEvents() {
       n.parentNode.insertBefore(o, n.nextSibling));
     window.lucide && window.lucide.createIcons();
   }
-  /* ─── Skip to Next Video ─── */
+  
   window.skipToNextVideo = async function (e, isManual = !0) {
     if (window.meelHealthAlertActive) return !1;
     const t = e || document.querySelector(".rekomendasi-item");
     if (!t) return !1;
     isManual &&
       ((autoNextEnabled = !1),
-      localStorage.setItem("meel_autonext_enabled", "false"),
+      localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false"),
       window.updateAutoNextMenuUI && window.updateAutoNextMenuUI());
     ((isTransitioningNext = !0), (isRecovering = !0));
     const n = ++nextVideoTransitionId;
@@ -166,7 +166,7 @@ function setupMeelPlayerEvents() {
     const o = player
       ? player.fullscreen.active || !!document.fullscreenElement
       : !1;
-    sessionStorage.setItem("meel_autonav", "1");
+    sessionStorage.setItem(MEEL_KEYS.AUTONAV, "1");
     try {
       const l = await fetch(t.href),
         a = await l.text();
@@ -181,7 +181,7 @@ function setupMeelPlayerEvents() {
         c = "true" === i.getAttribute("data-ishls"),
         d = i.getAttribute("data-poster"),
         p = i.getAttribute("data-vtt");
-      /* ─── Subtitle: baca track captions dari halaman baru ─── */
+      
       const subTracks = Array.from(
         i.querySelectorAll('track[kind="captions"]'),
       ).map((t) => ({
@@ -189,11 +189,6 @@ function setupMeelPlayerEvents() {
         lang: t.getAttribute("srclang") || "und",
         label: t.getAttribute("label") || "",
       }));
-      ((videoId =
-        new URL(t.href, window.location.href).searchParams.get("id") ||
-        videoId),
-        (storageKeyVideo = `video_pos_${videoId}`),
-        (vttSrc = p));
       let u = {};
       (r.querySelectorAll("script:not([src])").forEach((e) => {
         const t = e.textContent.match(
@@ -204,6 +199,14 @@ function setupMeelPlayerEvents() {
             u = JSON.parse(t[1]);
           } catch (e) {}
       }),
+        (videoId =
+          u.id ||
+          new URL(t.href, window.location.href).searchParams.get("id") ||
+          (new URL(t.href, window.location.href).href.match(
+            /[?&]id=(\d+)/,
+          ) || [])[1] ||
+          videoId),
+        (storageKeyVideo = `video_pos_${videoId}`),
         (videoTitle = u.title || ""),
         (videoUploader = u.uploader || ""),
         (window.playerConfig = {
@@ -214,6 +217,9 @@ function setupMeelPlayerEvents() {
           title: videoTitle,
           uploader: videoUploader,
         }),
+        (videoSrc = s),
+        (isHls = c),
+        (vttSrc = p),
         isMiniPlayerActive && updateMiniPlayerInfo(videoTitle, videoUploader),
         updateSearchExcludeId(videoId),
         ["watch-details-wrapper", "recommendation-column"].forEach((e) => {
@@ -277,7 +283,7 @@ function setupMeelPlayerEvents() {
               },
               { once: !0 },
             )));
-      /* ─── Subtitle: sinkronkan track captions ─── */
+      
       if (videoElement) {
         videoElement
           .querySelectorAll('track[kind="captions"]')
@@ -354,14 +360,40 @@ function setupMeelPlayerEvents() {
       }
       setTimeout(ensureCustomControls, 200);
       const i = localStorage.getItem(storageKeyVideo);
-      if (isAutoRecovering && i)
-        return (
-          (isAutoRecovering = !1),
-          (player.currentTime = parseFloat(i)),
-          player.play().catch(() => {}),
-          startStuckDetector(),
-          void startPlaybackStartTimeout()
-        );
+      if (isAutoRecovering && i) {
+        const savedPos = parseFloat(i);
+        isAutoRecovering = !1;
+        
+
+
+        function doRestore() {
+          player.currentTime = savedPos;
+          player.play().catch(() => {});
+          startStuckDetector();
+          startPlaybackStartTimeout();
+        }
+        if (isHls && hls) {
+          let restored = !1;
+          const restoreTimeout = setTimeout(() => {
+            restored || ((restored = !0), doRestore());
+          }, 1e4);
+          hls.on(Hls.Events.FRAG_BUFFERED, function onBuf() {
+            if (restored) { hls.off(Hls.Events.FRAG_BUFFERED, onBuf); return; }
+            try {
+              const buf = videoElement.buffered;
+              if (buf.length > 0 && buf.end(0) - (videoElement.currentTime || 0) >= 5) {
+                clearTimeout(restoreTimeout);
+                restored = !0;
+                hls.off(Hls.Events.FRAG_BUFFERED, onBuf);
+                doRestore();
+              }
+            } catch (_) {}
+          });
+          return;
+        }
+        doRestore();
+        return;
+      }
       function s() {
         7;
         if (
@@ -464,7 +496,7 @@ function setupMeelPlayerEvents() {
       stopWaitingTimeout();
     }),
     player.on("ended", async () => {
-      // Jeda kesehatan (20-20-20) aktif
+      
       if (window.meelHealthAlertActive) return;
       if ((stopStuckDetector(), player.loop)) return;
       if (isTransitioningNext) return;
@@ -477,16 +509,16 @@ function setupMeelPlayerEvents() {
       localStorage.removeItem(storageKeyVideo);
       const t = document.querySelector(".rekomendasi-item");
       if (!t) return ((isTransitioningNext = !1), void (isRecovering = !1));
-      /* ─── Tampilkan overlay countdown ─── */
+      
       const g = await showAutoNextOverlay(t);
       if (!g) {
         autoNextEnabled = !1;
-        localStorage.setItem("meel_autonext_enabled", "false");
+        localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false");
         ((isTransitioningNext = !1), (isRecovering = !1));
         stopPlaybackStartTimeout();
         return;
       }
-      /* ─── Delegasi ke skipToNextVideo ─── */
+      
       await window.skipToNextVideo(t, !1);
     }),
     player.on("enterfullscreen", () => {
@@ -572,6 +604,7 @@ function setupMeelPlayerEvents() {
           },
           m = () => {
             if (!glowEnabled || c) return;
+            if (document.documentElement.getAttribute("data-theme") === "light") return;
             o.style.opacity = "0.6";
             p();
             d = 0;
@@ -605,7 +638,7 @@ function setupMeelPlayerEvents() {
     }),
     player.on("exitfullscreen", () => {
       screen.orientation?.unlock && screen.orientation.unlock();
-      /* ─── Restore notch-ignoring overrides ─── */
+      
       document.body.classList.remove("meel-fs-active");
       const e_xsWrap = document.getElementById("main-video-wrapper"),
         e_xsGlow = document.getElementById("video-glow-container");
@@ -681,6 +714,10 @@ function setupMeelPlayerEvents() {
       },
       a = (timestamp) => {
         if (!glowRAF) return;
+        if (document.documentElement.getAttribute("data-theme") === "light") {
+          s();
+          return;
+        }
         if (r.offsetParent === null) {
           glowRAF = requestAnimationFrame(a);
           return;
@@ -717,6 +754,7 @@ function setupMeelPlayerEvents() {
       i = () => {
         if (!glowEnabled || glowRAF) return;
         if (player && player.fullscreen && player.fullscreen.active) return;
+        if (document.documentElement.getAttribute("data-theme") === "light") return;
         r.classList.add("glow-active");
         o();
         glowLastSampleTime = 0;
@@ -760,7 +798,7 @@ function setupMeelPlayerEvents() {
         n && (n.innerHTML = d(t));
       };
     ((window.updateLoopMenuUI = u), (window.updateGlowMenuUI = p));
-    /* ─── AUTO-NEXT TOGGLE ─── */
+    
     const S = (e) =>
       `${e ? "On" : "Off"} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display:${e ? "inline-block" : "none"};vertical-align:middle;margin-left:4px"><polyline points="20 6 9 17 4 12"/></svg>`;
     window.updateAutoNextMenuUI = () => {
@@ -773,7 +811,7 @@ function setupMeelPlayerEvents() {
     window.toggleAutoNext = () => {
       ((autoNextEnabled = !autoNextEnabled),
         localStorage.setItem(
-          "meel_autonext_enabled",
+          MEEL_KEYS.AUTONEXT_ENABLED,
           autoNextEnabled ? "true" : "false",
         ),
         window.updateAutoNextMenuUI(),
@@ -873,7 +911,7 @@ function setupMeelPlayerEvents() {
       if (
         ((glowEnabled = !glowEnabled),
         localStorage.setItem(
-          "meel_glow_enabled",
+          MEEL_KEYS.GLOW_ENABLED,
           glowEnabled ? "true" : "false",
         ),
         p(),
@@ -907,7 +945,7 @@ function setupMeelPlayerEvents() {
           ((player.loop = !player.loop),
             player.loop &&
               ((autoNextEnabled = false),
-              localStorage.setItem("meel_autonext_enabled", "false"),
+              localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false"),
               window.updateAutoNextMenuUI && window.updateAutoNextMenuUI()),
             u());
           const e = player.loop;
@@ -925,7 +963,7 @@ function setupMeelPlayerEvents() {
       player.on("ended", () => s(!0)),
       videoElement.paused || videoElement.ended || i());
   }
-  /* ─── Click rekomendasi → auto-next OFF ─── */
+  
   if (!window._meelClickRekomGuard) {
     window._meelClickRekomGuard = !0;
     document.addEventListener("click", function (e) {
@@ -933,7 +971,7 @@ function setupMeelPlayerEvents() {
       if (!link || !link.href) return;
       if (link.href === window.location.href) return;
       autoNextEnabled = false;
-      localStorage.setItem("meel_autonext_enabled", "false");
+      localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false");
     });
   }
 

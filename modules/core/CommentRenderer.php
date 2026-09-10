@@ -1,21 +1,15 @@
 <?php
-/* @package MEeL */
+
 
 if (!function_exists('render_comments')) {
-/**
- * @param int $parent_id ID parent comment (0 untuk root)
- * @param array $grouped Comments yang sudah dikelompokkan per parent
- * @param int $level Level nesting (internal, untuk rekursi)
- * @param string $theme 'video' (merah) atau 'music' (oranye)
- * @param int $playlist_context ID playlist untuk link navigasi (0 jika tidak ada)
- */
+
+
 function render_comments(int $parent_id, array $grouped, int $level = 0, string $theme = 'video', int $playlist_context = 0): void
 {
     global $id, $user_map, $uploader_id;
     $uploader_id = (int)($uploader_id ?? 0);
     if (!isset($grouped[$parent_id])) return;
 
-    // ─── Theme color mapping ───
     $is_video = ($theme === 'video');
 
     $c_avatar_from    = $is_video ? 'from-red-600' : 'from-orange-500';
@@ -31,7 +25,7 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
     $c_reply_btn_text   = $is_video ? 'text-white' : 'text-black';
     $reply_prefix       = $is_video ? 'vid-' : 'mus-';
     $author_time_color  = $is_video ? 'text-gray-300' : 'text-gray-500';
-    $playlist_qs        = (!$is_video && $playlist_context > 0) ? '&amp;playlist_id=' . $playlist_context : '';
+    $form_action_url   = base_url(($is_video ? '/video/watch' : '/music/watch') . '?id=' . (int)$id . (!$is_video && $playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : ''));
 
     foreach ($grouped[$parent_id] as $c):
         $author      = $c['username'] ?? 'Guest';
@@ -47,7 +41,6 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
                     <div class="flex items-center gap-2 min-w-0">
                         <span class="text-[11px] font-bold <?= $c_author ?> truncate">@<?= htmlspecialchars($author) ?></span>
                         <?php
-                        // ─── Badge role: admin (merah) / member (biru) ───
                         $_c_role = $c['role'] ?? '';
                         if ($_c_role === 'admin' || $_c_role === 'member'):
                             $_badge_color = ($_c_role === 'admin')
@@ -62,14 +55,12 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
                         <span class="text-[10px] <?= $author_time_color ?> flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
                     </div>
                     <?php
-                        // ─── Hak hapus: pemilik komentar ATAU uploader media ATAU admin ───
                         $is_owner   = (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === (int)$c['user_id']);
                         $is_uploader = ($uploader_id > 0 && isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === $uploader_id);
                         $is_admin    = (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'admin');
                         $can_delete = $is_owner || $is_uploader || $is_admin;
 
                         if ($can_delete):
-                        // ─── Teks konfirmasi dinamis: sertakan isi komentar (di-truncate agar rapi) ───
                         $_c_snippet = trim(preg_replace('/\s+/', ' ', (string)($c['comment'] ?? '')));
                         if (function_exists('mb_strlen') && mb_strlen($_c_snippet) > 60) {
                             $_c_snippet = mb_substr($_c_snippet, 0, 60) . '…';
@@ -77,8 +68,6 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
                             $_c_snippet = substr($_c_snippet, 0, 60) . '…';
                         }
 
-                        // Hapus komentar sendiri → cukup isi komentar;
-                        // hapus komentar orang lain (uploader) → sertakan @author.
                         if ($_c_snippet === '') {
                             $delete_text = $is_owner
                                 ? 'Yakin ingin menghapus komentar ini?'
@@ -95,8 +84,8 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
                             'confirmButtonText' => 'HAPUS',
                         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
                     ?>
-                        <a href="../controllers/api/delete_comment.php?id=<?= (int)$c['id'] ?>"
-                            hx-post="../controllers/api/delete_comment.php"
+                        <a href="<?= base_url('/api/delete-comment') ?>?id=<?= (int)$c['id'] ?>"
+                            hx-post="<?= base_url('/api/delete-comment') ?>"
                             hx-vals='{"id":"<?= (int)$c['id'] ?>","media_type":"<?= $is_video ? 'video' : 'music' ?>","media_id":"<?= (int)$id ?>"<?= (!$is_video && $playlist_context > 0) ? ',"playlist_id":"' . (int)$playlist_context . '"' : '' ?>,"csrf_token":"<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>"}'
                             hx-target="#comment-list"
                             hx-swap="innerHTML"
@@ -121,8 +110,8 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
                         Balas
                     </button>
                     <div id="<?= $reply_prefix . $c['id'] ?>" class="hidden mt-3">
-                        <form action="watch.php?id=<?= $id ?><?= $playlist_qs ?>" method="post" class="flex gap-2"
-                            hx-post="../controllers/api/comment.php"
+                        <form action="<?= $form_action_url ?>" method="post" class="flex gap-2"
+                            hx-post="<?= base_url('/api/comment') ?>"
                             hx-target="#comment-list"
                             hx-swap="innerHTML"
                             hx-vals='{"id":"<?= $id ?>","media_type":"<?= $is_video ? 'video' : 'music' ?>"<?= (!$is_video && $playlist_context > 0) ? ',"playlist_id":"' . (int)$playlist_context . '"' : '' ?>}'
@@ -146,14 +135,11 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
         render_comments((int)$c['id'], $grouped, $level + 1, $theme, $playlist_context);
     endforeach;
 }
-} // end function_exists('render_comments')
+}
 
 if (!function_exists('comment_preview')) {
-/**
- * @param array $grouped Comments yang sudah dikelompokkan per parent
- * @param int $limit Berapa komentar terbaru yang dikembalikan (default 4)
- * @return array{text: string, latest_comment: ?array, items: array}
- */
+
+
 function comment_preview(array $grouped, int $limit = 4): array
 {
     $preview_txt    = 'Jadilah komentar pertama';
@@ -179,13 +165,13 @@ function comment_preview(array $grouped, int $limit = 4): array
 
     return ['text' => $preview_txt, 'latest_comment' => $latest_comment, 'items' => $items];
 }
-} // end function_exists('comment_preview')
+}
 
 if (!function_exists('render_comment_empty_state')) {
-/* @param string $theme 'video' (merah) atau 'music' (oranye) */
+
 function render_comment_empty_state(string $theme = 'video'): void
 {
     $color = ($theme === 'music') ? 'text-gray-700' : 'text-gray-300';
     echo "<div class='py-10 text-center text-[10px] $color uppercase tracking-widest'>Jadilah komentar pertama.</div>";
 }
-} // end function_exists('render_comment_empty_state')
+}

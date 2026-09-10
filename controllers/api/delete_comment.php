@@ -2,16 +2,30 @@
 define('ACCESS_GRANTED', true);
 require_once '../../modules/core/helpers.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_name('meel');
-    session_start();
-}
+meel_boot_session();
 
 include '../../auth/config.php';
-include '../../modules/core/RateLimiter.php';
 include '../../modules/media/MediaInteraction.php';
 
 $is_ajax = !empty($_SERVER['HTTP_HX_REQUEST']);
+
+
+
+
+if (!function_exists('safe_comment_back_url')) {
+    function safe_comment_back_url(): string
+    {
+        $ref_url = $_SERVER['HTTP_REFERER'] ?? '';
+        if ($ref_url !== '') {
+            $allowed_host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST);
+            $ref_host     = parse_url($ref_url, PHP_URL_HOST);
+            if ($ref_host !== $allowed_host) {
+                $ref_url = '';
+            }
+        }
+        return $ref_url !== '' ? $ref_url : 'index.php';
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
@@ -22,13 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo '<div class="p-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-red-500/30 bg-red-500/10 text-red-400">CSRF Token tidak valid. Muat ulang halaman.</div>';
         } else {
             $_SESSION['error'] = 'CSRF Token tidak valid.';
-            header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+            header('Location: ' . safe_comment_back_url());
         }
         exit;
     }
 }
 
-// RATE LIMIT: 10 comments per menit per user
 $rateKey  = 'user_' . ($_SESSION['user_id'] ?? 0);
 $rateRole = get_user_role($conn, (int)($_SESSION['user_id'] ?? 0));
 $rateCheck = RateLimiter::check($rateKey, 'comment', $rateRole);
@@ -40,24 +53,20 @@ if (!$rateCheck['allowed']) {
         echo '<div class="p-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-yellow-500/30 bg-yellow-500/10 text-yellow-500">⏱️ Terlalu banyak request. Coba lagi dalam ' . (int)$rateCheck['retry_after'] . ' detik.</div>';
     } else {
         $_SESSION['error'] = 'Terlalu banyak request. Coba lagi dalam ' . $rateCheck['retry_after'] . ' detik.';
-        header('Location: ' . ($_SERVER['HTTP_REFERER'] ?? 'index.php'));
+        header('Location: ' . safe_comment_back_url());
     }
     exit;
 }
 
-// Get comment ID (POST untuk AJAX, GET untuk fallback)
 $comment_id = (int)($_POST['id'] ?? ($_GET['id'] ?? 0));
 
 if (defined('APP_DEBUG') && APP_DEBUG) { error_log("DELETE_COMMENT.PHP - ID: $comment_id"); }
 
-// Gunakan MediaInteraction class
 $interaction = new MediaInteraction($conn, $_SESSION['user_id'] ?? null);
 $result = $interaction->deleteComment($comment_id);
 
-// Log result
 if (defined('APP_DEBUG') && APP_DEBUG) { error_log("DELETE_COMMENT.PHP - Result: " . json_encode($result)); }
 
-// Handle response
 if (!$result['success']) {
     if (defined('APP_DEBUG') && APP_DEBUG) { error_log("DELETE_COMMENT - ERROR: {$result['message']}"); }
     if ($is_ajax) {
@@ -67,23 +76,11 @@ if (!$result['success']) {
         echo '<div class="p-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-red-500/30 bg-red-500/10 text-red-400">' . htmlspecialchars($result['message'], ENT_QUOTES) . '</div>';
     } else {
         $_SESSION['error'] = $result['message'];
-        $ref_url = $_SERVER['HTTP_REFERER'] ?? '';
-        if ($ref_url !== '') {
-            $allowed_host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST);
-            $ref_host = parse_url($ref_url, PHP_URL_HOST);
-            if ($ref_host !== $allowed_host) {
-                $ref_url = 'index.php';
-            }
-        }
-        if ($ref_url === '') {
-            $ref_url = 'index.php';
-        }
-        header("Location: " . $ref_url);
+        header('Location: ' . safe_comment_back_url());
     }
     exit;
 }
 
-// ─── Mode AJAX: render ulang daftar komentar ───
 if ($is_ajax) {
     require_once __DIR__ . '/../../modules/media/MediaViewer.php';
     require_once __DIR__ . '/../../modules/core/CommentRenderer.php';
@@ -119,19 +116,6 @@ if ($is_ajax) {
     exit;
 }
 
-// ─── Fallback non-JS: flash message + redirect balik (dengan validasi host) ───
 $_SESSION['success'] = $result['message'];
-
-$ref_url = $_SERVER['HTTP_REFERER'] ?? '';
-if ($ref_url !== '') {
-    $allowed_host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST);
-    $ref_host = parse_url($ref_url, PHP_URL_HOST);
-    if ($ref_host !== $allowed_host) {
-        $ref_url = 'index.php';
-    }
-}
-if ($ref_url === '') {
-    $ref_url = 'index.php';
-}
-header("Location: " . $ref_url);
+header('Location: ' . safe_comment_back_url());
 exit;

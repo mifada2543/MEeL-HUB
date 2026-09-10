@@ -1,12 +1,5 @@
-/** MEeL - Media Hub Platform
- * @copyright Copyright (C) 2026 Mifada
- * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
-/* engine/core.js — State bersama & kontrol fase utama overlay. */
-
-// State bersama overlay (global — dipakai modul sibling)
 var _segsBuilt = false;
 var _errorTimeout = null;
-// ─── KONTROL ANIMASI MERAYAP (TRICKLE EFFECT) FOR SPRITE ───
 var meelSpriteTimer = null;
 var meelSpriteCurrentPct = 0;
 function startSpriteTrickle() {
@@ -23,7 +16,7 @@ function startSpriteTrickle() {
     }
   }, 135);
 }
-// ─── FASE UTAMA SCRIPT ───
+
 window.meelPhase = function (phase) {
   var overlay = document.getElementById("meel-overlay");
   if (overlay) overlay.style.display = "flex";
@@ -46,7 +39,7 @@ window.meelPhase = function (phase) {
       row.appendChild(s);
     }
   }
-  // Picu animasi merayap saat masuk fase sprite
+  
   if (phase === "sprite" || phase === "sp") {
     startSpriteTrickle();
   } else {

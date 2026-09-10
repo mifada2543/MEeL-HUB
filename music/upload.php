@@ -4,6 +4,7 @@ include '../auth/auth.php';
 include '../modules/core/Uploader.php';
 require_once '../modules/core/GarbageCollector.php';
 require_once '../modules/media/MediaLibrary.php';
+require_once '../modules/core/MeelCoin.php';
 GarbageCollector::run();
 
 set_time_limit(0);
@@ -15,39 +16,68 @@ $alert_message = "";
 $user_role = get_user_role($conn, $user_id);
 $is_admin  = ($user_role === 'admin');
 
-// Upload hari ini
-$stmt_count = $conn->prepare("SELECT COUNT(*) AS c FROM music WHERE user_id = ? AND DATE(upload_date) = CURDATE()");
-$stmt_count->bind_param("i", $user_id);
-$stmt_count->execute();
-$today_count = (int)$stmt_count->get_result()->fetch_assoc()['c'];
+$meelcoin_enabled = MeelCoin::isEnabled($conn);
 
-// Total upload
-$stmt_total = $conn->prepare("SELECT COUNT(*) AS c FROM music WHERE user_id = ?");
-$stmt_total->bind_param("i", $user_id);
-$stmt_total->execute();
-$total_uploads = (int)$stmt_total->get_result()->fetch_assoc()['c'];
+if ($meelcoin_enabled) {
+    if (!$is_admin) {
+        MeelCoin::refill($conn, $user_id, $user_role);
+    }
+    $coin_balance   = $is_admin ? -1 : MeelCoin::getBalance($conn, $user_id);
+    $coin_max       = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
+    $coin_cost      = MeelCoin::getCost($conn, 'upload');
+    $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, $user_id, $user_role);
+} else {
+    $hour_count     = get_hourly_upload_count($conn, $user_id, 'music');
+    $hourly_limit   = $is_admin ? '∞' : get_upload_hourly_limit($user_role);
+}
 
-$daily_limit = $is_admin ? '∞' : '5';
+$total_uploads = get_total_upload_count($conn, $user_id, 'music');
 
 $uploader = new Uploader($conn, $user_id, $user);
 
 if (isset($_POST['upload'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
-        http_response_code(403);
-        die('CSRF token tidak valid.');
-    }
-    $result = $uploader->processMusic($_POST, $_FILES, __DIR__ . "/");
-
-    if ($result['status'] === 'success') {
-        $status = "success";
-        $today_count++;
-        $total_uploads++;
-        MediaLibrary::clearCountsCache();
-        log_activity($conn, $user_id, 'upload_music', 'music', (int)($result['id'] ?? 0));
-    } elseif (isset($result['alert']) && $result['alert'] == true) {
-        $alert_message = $result['msg'];
+        $alert_message = 'CSRF token tidak valid.';
     } else {
-        die("<div style='color:red;'>Error: {$result['msg']}</div>");
+        if ($meelcoin_enabled && !$is_admin) {
+            if (!MeelCoin::canAfford($conn, $user_id, $coin_cost)) {
+                $alert_message = "MEeLCoin tidak cukup! Dibutuhkan {$coin_cost} coin, saldo Anda: {$coin_balance}.";
+            }
+        }
+
+        if ($alert_message === '') {
+            $coin_deducted = false;
+            if ($meelcoin_enabled && !$is_admin) {
+                [$spent_ok, $spent_err] = MeelCoin::spend($conn, $user_id, $coin_cost, 'upload');
+                if (!$spent_ok) {
+                    $alert_message = $spent_err;
+                } else {
+                    $coin_deducted = true;
+                }
+            }
+
+            if ($alert_message === '') {
+                $music_base = dirname(meel_media_base_path('music')) . '/';
+                $result = $uploader->processMusic($_POST, $_FILES, $music_base);
+
+                if ($result['status'] === 'success') {
+                    $status = "success";
+                    if ($meelcoin_enabled && !$is_admin) {
+                        $coin_balance = MeelCoin::getBalance($conn, $user_id);
+                    } else {
+                        $hour_count++;
+                    }
+                    $total_uploads++;
+                    MediaLibrary::clearCountsCache();
+                    log_activity($conn, $user_id, 'upload_music', 'music', (int)($result['id'] ?? 0));
+                } else {
+                    $alert_message = $result['msg'];
+                    if ($coin_deducted) {
+                        MeelCoin::refund($conn, $user_id, $coin_cost, 'upload_failed_refund');
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -83,11 +113,11 @@ $__v = function($f) {
 <body>
     <div class="page-wrap">
 
-        <!-- Nav -->
+        
         <nav class="top-nav">
-            <a href="../index.php" class="nav-brand">MEeL<span>Music</span></a>
+            <a href="../" class="nav-brand">MEeL<span>Music</span></a>
             <div class="nav-sep"></div>
-            <a href="index.php" class="nav-crumb">Library</a>
+            <a href="beranda" class="nav-crumb">Library</a>
             <span class="nav-chevron">›</span>
             <span class="nav-crumb-current">Upload</span>
             <?php if ($is_admin): ?>
@@ -98,10 +128,10 @@ $__v = function($f) {
         <main>
             <div class="upload-layout">
 
-            <!-- ── LEFT: Sidebar ── -->
+            
             <aside class="sidebar-panel">
 
-                <!-- Hero waveform -->
+                
                 <div class="hero-waveform">
                     <div class="waveform-bars">
                         <span></span><span></span><span></span><span></span>
@@ -114,23 +144,44 @@ $__v = function($f) {
                     </div>
                 </div>
 
-                <!-- Stats -->
+                
                 <div class="stats-strip">
-                    <div class="stat-chip">
-                        <div class="stat-number"><?= $today_count ?></div>
-                        <div class="stat-label">Hari Ini</div>
-                    </div>
-                    <div class="stat-chip">
-                        <div class="stat-number"><?= $total_uploads ?></div>
-                        <div class="stat-label">Total</div>
-                    </div>
-                    <div class="stat-chip">
-                        <div class="stat-number" style="font-size:15px;"><?= $daily_limit ?></div>
-                        <div class="stat-label">Limit/Hari</div>
-                    </div>
+                    <?php if ($meelcoin_enabled): ?>
+                        <div class="stat-chip" style="grid-column:1/-1;">
+                            <div class="stat-number" style="font-size:15px;color:#facc15;<?= $is_admin ? '' : 'cursor:help;' ?>"
+                                <?php if (!$is_admin): ?>
+                                    title="Refill berikutnya: <?= $coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill' ?>"
+                                <?php endif; ?>
+                            ><?= $is_admin ? '∞' : $coin_balance ?></div>
+                            <div class="stat-label">MEeLCoin</div>
+                        </div>
+                        <?php if (!$is_admin): ?>
+                            <div class="stat-chip">
+                                <div class="stat-number" style="font-size:11px;color:#f97316;"><?= $coin_cost ?></div>
+                                <div class="stat-label">Biaya</div>
+                            </div>
+                            <div class="stat-chip">
+                                <div class="stat-number" style="font-size:11px;"><?= $total_uploads ?></div>
+                                <div class="stat-label">Total</div>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div class="stat-chip">
+                            <div class="stat-number"><?= $hour_count ?></div>
+                            <div class="stat-label">Jam Ini</div>
+                        </div>
+                        <div class="stat-chip">
+                            <div class="stat-number"><?= $total_uploads ?></div>
+                            <div class="stat-label">Total</div>
+                        </div>
+                        <div class="stat-chip">
+                            <div class="stat-number" style="font-size:15px;"><?= $hourly_limit ?></div>
+                            <div class="stat-label">Limit/Jam</div>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
-                <!-- Guide -->
+                
                 <div class="guide-list">
                     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;padding-left:2px;">Panduan Upload</div>
                     <div class="guide-item">
@@ -167,7 +218,7 @@ $__v = function($f) {
 
             </aside>
 
-            <!-- ── RIGHT: Form panel ── -->
+            
             <section class="form-panel">
                 <div class="form-header">
                     <div>
@@ -187,7 +238,7 @@ $__v = function($f) {
                     <?php if (isset($_SESSION['csrf_token'])): ?>
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
                     <?php endif; ?>
-                    <!-- Judul + Auto-fill -->
+                    
                     <div class="field-group">
                         <div style="display:flex;align-items:center;justify-content:space-between;">
                             <label class="field-label" for="f-title">Judul Lagu</label>
@@ -203,7 +254,7 @@ $__v = function($f) {
                             class="field-input">
                     </div>
 
-                    <!-- Artis & Album -->
+                    
                     <div class="two-col">
                         <div class="field-group">
                             <label class="field-label" for="f-artist">Artis</label>
@@ -217,7 +268,7 @@ $__v = function($f) {
                         </div>
                     </div>
 
-                    <!-- Deskripsi -->
+                    
                     <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description"
@@ -227,11 +278,11 @@ $__v = function($f) {
 
                     <div class="divider" style="margin:0;"></div>
 
-                    <!-- Drop zones -->
+                    
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <label class="field-label">File Audio & Cover Art</label>
                         <div class="drop-grid">
-                            <!-- Audio file -->
+                            
                             <div class="drop-zone" id="audio-zone">
                                 <input type="file" name="media" accept="audio/*" required
                                     id="audio-input" onchange="handleAudioFile(this)" aria-label="Pilih atau drop file audio untuk upload lagu">
@@ -242,7 +293,7 @@ $__v = function($f) {
                                 <div class="drop-zone-sub">FLAC · MP3 · WAV · OPUS</div>
                             </div>
 
-                            <!-- Cover art -->
+                            
                             <div class="drop-zone" id="cover-zone">
                                 <input type="file" name="thumbnail" accept="image/*"
                                     id="cover-input" onchange="handleCoverFile(this)" aria-label="Pilih atau drop cover art untuk lagu">
@@ -257,7 +308,7 @@ $__v = function($f) {
                     </div>
 
                     <?php if ($is_admin): ?>
-                        <!-- Anti-transcode toggle (admin only) -->
+                        
                         <div class="toggle-card">
                             <div>
                                 <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Anti Transcode</div>
@@ -269,7 +320,7 @@ $__v = function($f) {
                             </label>
                         </div>
                     <?php endif; ?>
-                    <!-- Upload button -->
+                    
                     <div style="margin-top:auto;">
                         <button type="submit" name="upload" id="btn-upload" class="btn-primary">
                             <i data-lucide="upload" style="width:15px;height:15px;"></i>
@@ -277,13 +328,13 @@ $__v = function($f) {
                         </button>
                     </div>
 
-                    <!-- Footer links -->
+                    
                     <div class="footer-links">
-                        <a href="index.php" class="footer-link">Library</a>
-                        <a href="../index.php" class="footer-link">Portal</a>
-                        <a href="../video/upload.php" class="footer-link accent">Go to Video</a>
-                        <a href="../upload_advanced.php" class="footer-link"
-                            onclick="return meelAlertRedirect({ title:'Upload Lanjutan', text:'Anda dan Server memerlukan koneksi internet', icon:'info', redirectUrl:'../upload_advanced.php' })">
+                        <a href="beranda" class="footer-link">Library</a>
+                        <a href="../" class="footer-link">Portal</a>
+                        <a href="../video/upload" class="footer-link accent">Go to Video</a>
+                        <a href="../upload" class="footer-link"
+                            onclick="return meelAlertRedirect({ title:'Upload Lanjutan', text:'Anda dan Server memerlukan koneksi internet', icon:'info', redirectUrl:'../upload' })">
                             Upload Lanjutan
                         </a>
                     </div>
@@ -295,7 +346,7 @@ $__v = function($f) {
     </div>
 
     <?php include '../partials/footer.php'; ?>
-    <!-- ── Upload Overlay ── -->
+    
     <div id="upload-overlay">
         <div class="overlay-card">
             <div class="upload-wave">
@@ -330,7 +381,7 @@ $__v = function($f) {
                 title: 'Upload Music',
                 text: <?= json_encode($alert_message) ?>,
                 icon: 'warning',
-                redirectUrl: 'upload.php'
+                redirectUrl: 'upload'
             });
         <?php endif; ?>
         <?php if ($status === "success"): ?>

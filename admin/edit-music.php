@@ -4,9 +4,10 @@ include '../auth/auth.php';
 include_once '../modules/core/helpers.php';
 require_once '../modules/core/japanese.php';
 
-// Proteksi: harus login
+$_EDIT_CONTEXT = $_EDIT_CONTEXT ?? 'admin';
+
 if (!isset($_SESSION['user_id'])) {
-    header("Location: ../auth/login.php");
+    header("Location: ../auth/login");
     exit();
 }
 
@@ -14,20 +15,30 @@ $user_id = $_SESSION['user_id'];
 $curr_role = get_user_role($conn, (int)$user_id);
 $is_admin   = is_admin($conn);
 
-// Tolak guest
 if ($curr_role === 'guest') {
-    header("Location: ../index.php");
+    header("Location: ../");
     exit();
 }
 
-// ─── Back URL (smart referer) ───
-$back_url = $is_admin ? 'cookies.php' : '../music/index.php';
+// Routing berbasis role: /admin/edit-* khusus admin, /profile/edit-* khusus pemilik (non-admin).
+$edit_id = (int)($_GET['id'] ?? 0);
+if ($_EDIT_CONTEXT === 'admin') {
+    if (!$is_admin) {
+        header('Location: ' . base_url('/profile/edit-music?id=' . $edit_id));
+        exit;
+    }
+} elseif ($is_admin) {
+    header('Location: ' . base_url('/admin/edit-music?id=' . $edit_id));
+    exit;
+}
+
+$back_url = $is_admin ? 'stats.php' : '../music/beranda';
 if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     $ref      = $_SERVER['HTTP_REFERER'];
     $host     = $_SERVER['HTTP_HOST'];
     if (parse_url($ref, PHP_URL_HOST) === $host) {
         $ref_path       = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages = ['edit-music.php', 'edit-video.php'];
+        $excluded_pages = ['edit-music.php', 'edit-music', 'edit-video.php', 'edit-video'];
         $should_exclude = false;
         foreach ($excluded_pages as $page) {
             if (strpos($ref_path, $page) !== false) {
@@ -38,18 +49,19 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
         if (!$should_exclude) $back_url = $ref;
     }
 }
+require_once __DIR__ . '/../modules/media/MediaAdminRepository.php';
+$adminMedia = new MediaAdminRepository($conn);
+
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$stmt_music = $conn->prepare("SELECT m.*, u.username AS uploader, u.profile_picture AS uploader_pfp FROM music m JOIN users u ON m.user_id = u.id WHERE m.id = ? LIMIT 1");
-$stmt_music->bind_param("i", $id);
-$stmt_music->execute();
-$music = $stmt_music->get_result()->fetch_assoc();
+$music = $adminMedia->getMedia('music', $id);
 if (!$music) {
-    die("<div style='color:orange; padding:20px; background:#0b0e14; min-height:100vh; font-family:sans-serif;'><h2>Error: Musik tidak ditemukan!</h2><a href='../music/index.php' style='color:#f97316;'>Kembali ke Musik</a></div>");
+    header("Location: ../err/?code=not_found");
+    exit;
 }
 
 $is_owner = ((int)$music['user_id'] === (int)$user_id);
 if (!$is_admin && !$is_owner) {
-    header("Location: ../err/denied.php");
+    header("Location: ../err/?code=denied");
     exit();
 }
 $status = "";
@@ -63,14 +75,11 @@ if (isset($_POST['update'])) {
         $album = trim($_POST['album'] ?? 'Single');
         $description = trim($_POST['description'] ?? '');
         $thumbnail_url = $music['thumbnail'];
-        // Handle cover thumbnail upload — konversi ke WebP
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
-            // Validasi ukuran file (maks 5MB)
             $max_size = 5 * 1024 * 1024;
             if ($_FILES['thumbnail']['size'] > $max_size) {
                 $error_message = 'Ukuran file cover maksimal 5MB.';
             }
-            // Validasi MIME type — finfo() cek magic bytes
             if (empty($error_message)) {
                 $allowed_mime = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
                 $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -80,22 +89,18 @@ if (isset($_POST['update'])) {
                     $error_message = 'File cover harus berupa gambar (JPEG, PNG, WebP, GIF, atau AVIF).';
                 }
             }
-            // Proses thumbnail lolos
             if (empty($error_message)) {
-                $target_dir = __DIR__ . '/../music/upload/thumbnail/';
+                $target_dir = meel_media_base_path('music') . '/thumbnail/';
                 if (!is_dir($target_dir)) {
                     @mkdir($target_dir, 0755, true);
                 }
-                // Nama file berdasarkan judul lagu
                 $clean_title = getRomajiName($title);
                 if (empty($clean_title)) $clean_title = 'music-cover';
-                $new_name = $clean_title . '_cover.webp';
-                $counter = 1;
-                while (file_exists($target_dir . $new_name)) {
-                    $new_name = $clean_title . '_cover_' . $counter . '.webp';
-                    $counter++;
-                }
-                $upload_path = $target_dir . $new_name;
+                
+                // Reservasi nama atomik via helper bersama (fopen x) — dua
+                // request bersamaan tidak boleh memilih nama yang sama.
+                $new_name    = meel_reserve_unique_filename($target_dir, $clean_title . '_cover', 'webp', 200, '_');
+                $upload_path = $new_name !== null ? $target_dir . $new_name : null;
                 $ffmpeg_bin = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
 
                 $cmd = escapeshellarg($ffmpeg_bin) . " -y -i " . escapeshellarg($_FILES['thumbnail']['tmp_name'])
@@ -108,6 +113,7 @@ if (isset($_POST['update'])) {
                     if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
                         $thumbnail_url = $new_name;
                     } else {
+                        @unlink($upload_path);
                         $error_message = 'Gagal mengupload cover thumbnail.';
                     }
                 }
@@ -118,11 +124,8 @@ if (isset($_POST['update'])) {
         } else {
 
             $meta = generate_search_metadata($title, $artist, $album);
-            $stmt_update = $conn->prepare("UPDATE music SET title = ?, artist = ?, album = ?, description = ?, thumbnail = ?, search_metadata = ? WHERE id = ?");
-            $stmt_update->bind_param("ssssssi", $title, $artist, $album, $description, $thumbnail_url, $meta, $id);
-            if ($stmt_update->execute()) {
+            if ($adminMedia->updateMusic($id, $title, $artist, $album, $description, $thumbnail_url, $meta)) {
                 $status = "success";
-                // Refresh data musik terupdate
                 $music['title'] = $title;
                 $music['artist'] = $artist;
                 $music['album'] = $album;
@@ -137,7 +140,6 @@ if (isset($_POST['update'])) {
     }
 }
 
-// Helper thumbnail URL
 $thumb_src = !empty($music['thumbnail'])
     ? '../music/upload/thumbnail/' . htmlspecialchars($music['thumbnail'])
     : '../assets/img/music0.webp';
@@ -146,43 +148,34 @@ $thumb_src = !empty($music['thumbnail'])
 <html lang="id">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="Edit Musik | MEeL Admin">
-    <meta property="og:description" content="Edit detail musik di MEeL. Ubah judul, artis, album, deskripsi, dan cover art.">
-    <meta property="og:image" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') ?>/assets/MEeL.png">
-    <meta property="og:url" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $_SERVER['REQUEST_URI'] ?>">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
-    <title>Edit Musik | MEeL Admin</title>
-    <link rel="icon" type="image/png" href="../assets/MEeL.png">
+<?php
+$_META_TITLE = 'Edit Musik | MEeL Admin';
+$_META_DESC  = 'Edit detail musik di MEeL. Ubah judul, artis, album, deskripsi, dan cover art.';
+include __DIR__ . '/../partials/link.php';
+?>
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">
     <link rel="stylesheet" href="../assets/css/admin/edit/shared/main.css?v=<?= filemtime('../assets/css/admin/edit/shared/main.css') ?>">
     <link rel="stylesheet" href="../assets/css/admin/edit/music/main.css?v=<?= filemtime('../assets/css/admin/edit/music/main.css') ?>">
-    <link href="../assets/css/tailwind.min.css?v=<?= filemtime('../assets/css/tailwind.min.css') ?>" rel="stylesheet">
-    <script src="../assets/js/compatibilitas/lucide.js"></script>
-
 </head>
 
 <body class="theme-music">
     <div class="page-wrap">
 
-        <!-- Top navigation -->
+        
         <?php
         $page_title = 'Edit Musik';
         $media_type = 'music';
-        include 'header-admin.php';
+        include __DIR__ . '/header-admin.php';
         ?>
-        <!-- Main edit layout -->
+        
         <div class="edit-layout">
 
-            <!-- ── LEFT: Info sidebar ── -->
+            
             <aside class="sidebar-panel">
-                <!-- Cover — klik atau drag untuk ganti -->
+                
                 <div class="cover-wrap" id="cover-wrap">
-                    <!-- File input (ID: cover-file-hidden) -->
+                    
                     <img src="<?= $thumb_src ?>"
                         alt="Cover <?= htmlspecialchars($music['title']) ?>"
                         class="cover-img"
@@ -197,7 +190,7 @@ $thumb_src = !empty($music['thumbnail'])
                     <span class="cover-changed-badge" id="cover-changed-badge">✓ Baru</span>
                 </div>
 
-                <!-- Uploader card -->
+                
                 <div class="uploader-card">
                     <?php if (!empty($music['uploader_pfp'])): ?>
                         <img src="../profile/upload/<?= htmlspecialchars($music['uploader_pfp']) ?>"
@@ -270,22 +263,22 @@ $thumb_src = !empty($music['thumbnail'])
                 </div>
 
                 <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
-                    <a href="../music/watch.php?id=<?= $id ?>" class="btn-secondary" style="justify-content:center;">
+                    <a href="<?= base_url('/music/watch?id=' . (int)$id) ?>" class="btn-secondary" style="justify-content:center;">
                         <i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Lihat Musik
                     </a>
                     <?php if ($is_admin): ?>
-                        <a href="index.php" class="btn-secondary" style="justify-content:center;">
+                        <a href="." class="btn-secondary" style="justify-content:center;">
                             <i data-lucide="layout-dashboard" style="width:13px;height:13px;"></i> Dashboard Admin
                         </a>
                     <?php else: ?>
-                        <a href="../profile/index.php" class="btn-secondary" style="justify-content:center;">
+                        <a href="../profile/" class="btn-secondary" style="justify-content:center;">
                             <i data-lucide="user" style="width:13px;height:13px;"></i> Profil Saya
                         </a>
                     <?php endif; ?>
                 </div>
             </aside>
 
-            <!-- ── RIGHT: Form panel ── -->
+            
             <section class="form-panel">
                 <div class="form-header">
                     <div>
@@ -312,7 +305,7 @@ $thumb_src = !empty($music['thumbnail'])
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
                         <input type="file" name="thumbnail" accept="image/*" id="cover-file-hidden" style="display:none">
                     <?php endif; ?>
-                    <!-- Judul -->
+                    
                     <div class="field-group">
                         <label class="field-label" for="f-title">Judul Lagu</label>
                         <input type="text" id="f-title" name="title" placeholder="Masukkan judul lagu..."
@@ -321,7 +314,7 @@ $thumb_src = !empty($music['thumbnail'])
                             oninput="document.getElementById('sidebar-title').textContent = this.value || '—'">
                     </div>
 
-                    <!-- Artis & Album -->
+                    
                     <div class="two-col">
                         <div class="field-group">
                             <label class="field-label" for="f-artist">Artis</label>
@@ -339,14 +332,14 @@ $thumb_src = !empty($music['thumbnail'])
                         </div>
                     </div>
 
-                    <!-- Deskripsi -->
+                    
                     <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description" placeholder="Masukkan deskripsi musik..."
                             class="field-input" style="flex:1;min-height:120px;resize:none;"><?= htmlspecialchars($music['description'] ?? '') ?></textarea>
                     </div>
 
-                    <!-- Actions -->
+                    
                     <div class="form-actions">
                         <button type="submit" name="update" id="btn-save" class="btn-primary">
                             <i data-lucide="save" style="width:15px;height:15px;"></i>
@@ -360,8 +353,7 @@ $thumb_src = !empty($music['thumbnail'])
     </div>
 
     <?php include '../partials/footer.php'; ?>
-    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/compatibilitas/script.min.js"></script>
+    <?php $scripts_root = '../'; include __DIR__ . '/../partials/scripts.php'; ?>
     <script src="../assets/js/admin/edit/shared/form.js?v=<?= filemtime('../assets/js/admin/edit/shared/form.js') ?>"></script>
     <script src="../assets/js/admin/edit/shared/thumbnail.js?v=<?= filemtime('../assets/js/admin/edit/shared/thumbnail.js') ?>"></script>
     <script src="../assets/js/admin/edit/shared/dragdrop.js?v=<?= filemtime('../assets/js/admin/edit/shared/dragdrop.js') ?>"></script>
