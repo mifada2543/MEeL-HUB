@@ -4,6 +4,9 @@
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 require_once __DIR__ . '/api/config.php';
+require_once __DIR__ . '/../../modules/core/base_url.php';
+
+$root = meel_base_url_path();
 
 
 if (!isset($_SESSION['csrf_token'])) {
@@ -96,13 +99,14 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
   <meta name="description" content="MEeL!Mania — Rhythm game 4-lane. Pilih lagu, atur kecepatan, dan mainkan!" />
   <meta property="og:title" content="MEeL!Mania — Rhythm Arcade" />
   <meta property="og:description" content="Rhythm game 4-lane terinspirasi osu!mania. Tangkap note, raih skor tertinggi!" />
-  <meta property="og:image" content="/MEeL/assets/MEeL.png" />
+  <meta property="og:image" content="<?= $root ?>/assets/MEeL.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="manifest" href="../assets/manifest.json" />
   <title>MEeL!Mania</title>
-  <link rel="icon" type="image/png" href="/MEeL/assets/MEeL.png" />
+  <link rel="icon" type="image/png" href="<?= $root ?>/assets/MEeL.png" />
   <link href="../assets/css/font.css" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/lobby.css?v=<?= filemtime(__DIR__ . '/assets/css/lobby.css') ?>" />
+  <script>window.MEEL_BASE = <?= json_encode($root) ?>;</script>
 </head>
 <body>
 

@@ -13,7 +13,7 @@ if ($result['count'] > 0) {
             $v_ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
             $v_lbl = $v_ext === 'ogg' ? 'opus' : $v_ext;
             ?>
-            <a href="<?= base_url('/music/watch?id=' . (int)$v['id']) ?>"
+            <a href="<?= base_url('/music/watch?v=' . (int)$v['id']) ?>"
                class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 p-2 rounded-xl no-underline htmx-added"
                title="<?= htmlspecialchars($v['title']) ?>">
                 <div class="w-full lg:w-16 aspect-square lg:h-12 lg:aspect-auto rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
@@ -40,7 +40,19 @@ if ($result['count'] > 0) {
         }
     }
 
-    if (!$result['sidebar'] && $result['hasMore']) {
+    if ($result['sidebar'] && ($result['hasMore'] || empty($result['query']))) {
+        $nextOffset = $result['offset'] + $result['limit'];
+        ?>
+        <div class="py-3 text-center rec-sentinel"
+            hx-get="search?search=<?= urlencode($result['query']) ?>&exclude=<?= $result['exclude'] ?>&offset=<?= $nextOffset ?>"
+            hx-target="#music-recommendation-column"
+            hx-swap="beforeend"
+            hx-trigger="revealed"
+            hx-indicator="#music-search-indicator">
+            <div class="rec-spinner animate-spin h-3 w-3 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"></div>
+        </div>
+        <?php
+    } elseif (!$result['sidebar'] && $result['hasMore']) {
         $curPage    = (int)((int)$result['offset'] / max((int)$result['limit'], 1)) + 1;
         $totalPages = max(1, (int)$result['total_pages']);
         ?>

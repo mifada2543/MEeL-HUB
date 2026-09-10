@@ -354,6 +354,7 @@ if (isset($_SESSION['mfa_locked_until'])) {
 ### Admin Reset MFA
 
 Admin dapat mereset MFA user dari halaman `admin/mfa_reset.php`:
+- **Metode:** Form POST (bukan link GET) — mencegah CSRF via tag `<img>`
 - **Tidak bisa reset admin lain** — hanya admin yang bersangkutan bisa menonaktifkan sendiri
 - **Aksi dicatat** — `log_activity($conn, $admin_id, 'reset_mfa', 'user', $target_id)`
 - **User perlu setup ulang** — MFA di-reset ke default (nonaktif)
@@ -420,7 +421,7 @@ echo "<input type='hidden' name='csrf_token' value='$token'>";
 
 ### Admin Actions — Form POST (bukan link GET)
 
-Aksi admin yang mengubah state (approve/reject/delete user, kick user, unban IP, force-stop queue)
+Aksi admin yang mengubah state (approve/reject/delete user, kick user, unban IP, force-stop queue, MFA reset)
 menggunakan **form POST dengan token CSRF** — link GET bisa
 dipicu oleh tag `<img>` (CSRF), form POST tidak:
 
@@ -441,6 +442,20 @@ endpoint catur admin `catur.php?auto_cleanup=1` juga wajib `csrf_token`
 > rule canonical `.htaccess`. 301 mengubah POST menjadi GET, menghilangkan semua data form.
 > Gunakan tanpa atribut `action` (default = URL halaman saat ini) atau `action=""`.
 
+### Endpoint API — POST Enforcement + CSRF
+
+Semua endpoint API yang mengubah state kini mewajibkan **metode POST** dan **verifikasi CSRF token**:
+
+| Endpoint | CSRF | Metode | Catatan |
+|---|---|---|---|
+| `api/notification.php` (mark_read, delete, delete_all) | `$_POST['csrf_token']` | POST only | GET return 405 |
+| `api/chat.php` (send, delete) | `$_POST['csrf_token']` | POST only | Admin-only, GET return 405 |
+| `api/delete_comment.php` | `$_POST['csrf_token']` | POST only | GET return 405 |
+| `api/like.php` | `hx-vals` csrf_token | POST (HTMX) | — |
+| `api/comment.php` | `$_POST['csrf_token']` | POST (HTMX) | — |
+
+Endpoint read-only (`unread_count`, `list`, `users`, `get`) tetap bisa diakses via GET.
+
 ### Chess Multiplayer — Guard Login + CSRF
 
 Semua endpoint `arcade/chess/controller/*.php` mewajibkan:
@@ -455,17 +470,26 @@ Semua endpoint `arcade/chess/controller/*.php` mewajibkan:
 ### IP Detection (Anti-Proxy)
 
 ```php
+function trust_proxy_headers(): bool {
+    return defined('MEEL_TRUST_PROXY_HEADERS') && MEEL_TRUST_PROXY_HEADERS === true;
+}
+
 function get_real_ip() {
-    // Cloudflare
-    if (isset($_SERVER["HTTP_CF_CONNECTING_IP"])) {
-        return $_SERVER["HTTP_CF_CONNECTING_IP"];
+    $valid = fn($ip) => is_string($ip) && $ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) !== false;
+
+    if (trust_proxy_headers()) {
+        // Cloudflare Tunnel / CDN
+        if (isset($_SERVER["HTTP_CF_CONNECTING_IP"]) && $valid($_SERVER["HTTP_CF_CONNECTING_IP"])) {
+            return $_SERVER["HTTP_CF_CONNECTING_IP"];
+        }
+        // X-Forwarded-For (hop pertama)
+        if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
+            $xff = trim(explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"])[0]);
+            if ($valid($xff)) return $xff;
+        }
     }
-    // X-Forwarded-For
-    if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
-        return trim(explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"])[0]);
-    }
-    // Fallback
-    return $_SERVER["REMOTE_ADDR"];
+    $remote = $_SERVER["REMOTE_ADDR"] ?? '0.0.0.0';
+    return $valid($remote) ? $remote : '0.0.0.0';
 }
 ```
 
@@ -475,11 +499,23 @@ Header proxy **hanya** boleh dipercaya jika request lewat proxy/CDN yang Anda
 kendalikan. Konfigurasi di `auth/settings.php`:
 
 ```php
-define('MEEL_TRUST_PROXY_HEADERS', false); // default aman: pakai REMOTE_ADDR saja
+// WAJIB true jika menggunakan Cloudflare Tunnel, Nginx reverse proxy, atau CDN
+define('MEEL_TRUST_PROXY_HEADERS', true);
 ```
 
 > Jika diset `true` padahal server diakses langsung, attacker bisa memalsukan
 > `X-Forwarded-For` untuk mem-bypass IP-ban atau membanjiri activity log.
+
+> **Behind cloudflared:** Tunnel selalu menghubungkan ke Apache dari localhost
+> (`REMOTE_ADDR = 127.0.0.1`). Tanpa `MEEL_TRUST_PROXY_HEADERS = true`, semua
+> IP terdeteksi sebagai localhost, rate limiting lumpuh, dan environment
+> terdeteksi sebagai "development".
+
+### Auth IP Helpers
+
+`auth_get_ip()` dan `auth_is_loopback()` di `auth/auth_helpers.php` juga menggunakan
+`get_real_ip()` — bukan `$_SERVER['REMOTE_ADDR']` langsung. Ini memastikan
+IP detection konsisten di seluruh sistem (login, rate limiting, ban check).
 
 ### IP Validation
 
@@ -569,15 +605,13 @@ Mencatat aktivitas user ke tabel `activity_log` dengan prepared statement. Null 
 
 ### Admin Activity Log Viewer
 
-Halaman `admin/activity_log.php` menyediakan viewer khusus untuk audit trail:
+Halaman `admin/activity_log.php` menyediakan viewer khusus untuk audit trail dengan 3 tab:
 
-| Fitur | Detail |
-|---|---|
-| 🔍 **Filter** | By action type (dropdown), search username/IP, rentang waktu (7–365 hari) |
-| 📄 **Pagination** | 50 entry per halaman dengan navigasi prev/next |
-| 📊 **Stats Cards** | 7-day activity count, unique users, total entries, page info |
-| 🏷️ **Action Badges** | Color-coded: login/logout (blue), upload (green), ban (red), admin (purple) |
-| 🗑️ **Cleanup Manual** | Hapus log lama (>7, 14, 30, 90, 365 hari) dengan konfirmasi SweetAlert2 + CSRF |
+| Tab | Tema | Fitur |
+|-----|------|-------|
+| 📋 **Activity** | Biru-600 | Filter berdasarkan tipe aksi, username/IP, rentang waktu (7–365 hari); pagination (50/halaman); stats cards (aktivitas 7 hari, user unik, total entri); badge aksi berwarna (login=biru, upload=hijau, ban=merah); cleanup manual dengan CSRF |
+| 🛡️ **Admin Actions** | Ungu-600 | Filter berdasarkan username admin, tipe aksi, rentang waktu; stats cards (aksi admin 7 hari, admin unik, total entri); badge berwarna (coin=kuning, reset=merah, login=biru, lainnya=abu-abu); maintenance: hapus yang lebih lama dari 7–365 hari |
+| 📤 **Upload Queue** | Hijau-600 | Filter berdasarkan status (pending/processing/transcoding/completed/failed), uploader, rentang waktu; stats cards (total upload, selesai, gagal, aktif); badge status berwarna; export CSV/JSON/XLS dengan preview modal; maintenance: hapus yang selesai/gagal lebih lama dari 7–365 hari |
 
 ### Live Activity Monitor
 
@@ -633,7 +667,12 @@ Menggunakan file JSON di `temp/ratelimit/` (tanpa schema DB tambahan):
 | **Comment** | 10 | 1 menit | Redirect dengan flash error message |
 | **Upload** (video/music/books) | 3 | 1 jam | — |
 | **Transcode** | 5 | 1 jam | — |
+| **Auto Metadata** (ffmpeg) | 5 | 1 jam | HTTP 429 + JSON error |
 | **API Generic** | 60 | 1 menit | — |
+
+### Fail-Closed Behavior
+
+Ketika direktori penyimpanan rate limiter (`temp/ratelimit/`) tidak writable atau `flock()` gagal, rate limiter **menolak semua request** (fail-closed) daripada diam-diam membiarkannya lewat. Ini mencegah filesystem yang rusak menonaktifkan rate limiting sepenuhnya. Kegagalan dicatat via `error_log()`.
 
 ### Integrasi
 
@@ -659,7 +698,7 @@ if (!$rateCheck['allowed']) {
 $rateCheck = RateLimiter::check('user_'.$userId, 'comment');
 if (!$rateCheck['allowed']) {
     $_SESSION['error'] = 'Terlalu banyak komentar.';
-    header("Location: music/watch?id={$id}#comment-section");
+    header("Location: music/watch?v={$id}#comment-section");
     exit;
 }
 ```
@@ -1144,9 +1183,11 @@ escaping dilakukan **saat output**, sesuai konteks:
 - JSON/JS → `json_encode(..., JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)`
 
 Audit mencakup seluruh nilai user-controlled yang dirender: bio profil,
-judul/deskripsi media, komentar, nama file, playlist, hasil pencarian, dan
-data yang tampil di panel admin. Regression test (`tests/security_test.php`)
-memverifikasi payload `<script>alert(1)</script>`,
+judul/deskripsi media, komentar, nama file, playlist, hasil pencarian,
+username chat, dan data yang tampil di panel admin. Untuk inline JS template
+literal (contoh: hasil pencarian chat admin), fungsi `escapeHtml()` khusus
+membungkus nilai user-derived sebelum injeksi HTML. Regression test
+(`tests/security_test.php`) memverifikasi payload `<script>alert(1)</script>`,
 `<img src=x onerror=alert(1)>`, dll. tidak pernah dieksekusi sebagai HTML.
 
 ### CSRF in All Forms

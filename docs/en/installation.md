@@ -584,17 +584,19 @@ After all setup is complete, run the database migration to optimize the schema:
 ```
 
 The migration is **idempotent** — safe to run multiple times. It manages
-**v1–v12** (automatic tracker in the `db_version` table):
+**v1–v14** (automatic tracker in the `db_version` table):
 - **v1–v5:** FULLTEXT indexes, performance indexes, structural sync, foreign keys, title type
 - **v6–v7:** `activity_log` table, UNIQUE KEY on username
 - **v8–v9:** role column sync, **MFA columns** (`mfa_secret`, `mfa_backup_codes`, `mfa_enabled`)
 - **v10:** composite indexes on `comments` `(video_id, created_at)` & `(music_id, created_at)`
 - **v11:** `interactions` unique keys split into `(user_id, video_id)` & `(user_id, music_id)`
 - **v12:** bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code`
+- **v13:** MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table
+- **v14:** indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery
 
 > 💡 **Rhythm module (MEeL!Mania) has its own DB migration** — the `arcade_song`
 > & `arcade_score` tables come from `arcade/rhythm/migration.sql`, **not** part of
-> `database/migrate.php` (v1–v12). Import once:
+> `database/migrate.php` (v1–v14). Import once:
 > ```bash
 > mysql MEeL < arcade/rhythm/migration.sql
 > ```

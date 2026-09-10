@@ -41,19 +41,8 @@ $auth_extra_head  = $auth_extra_head ?? '';
     <link rel="stylesheet" href="../assets/css/shared/theme-tokens.css?v=<?= @filemtime(__DIR__ . '/../../assets/css/shared/theme-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/../../assets/css/shared/light-theme.css') ?>">
     <script src="../assets/js/compatibilitas/lucide.js"></script>
-    <style>
-        body {
-            background-color: #0b0e14;
-        }
-
-        .glass-effect {
-            background: rgba(22, 27, 34, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        <?= $auth_extra_style ?>
-    </style>
+    <link rel="stylesheet" href="../assets/css/auth/base.css?v=<?= @filemtime(__DIR__ . '/../../assets/css/auth/base.css') ?>">
+    <style><?= $auth_extra_style ?></style>
     <?= $auth_extra_head ?>
 </head>
 

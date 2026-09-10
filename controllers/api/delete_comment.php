@@ -1,4 +1,5 @@
 <?php
+define('MEEL_API_CONTEXT', true);
 define('ACCESS_GRANTED', true);
 require_once '../../modules/core/helpers.php';
 
@@ -27,19 +28,29 @@ if (!function_exists('safe_comment_back_url')) {
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
-        if ($is_ajax) {
-            http_response_code(403);
-            header('HX-Retarget: #comment-alert');
-            header('HX-Reswap: innerHTML');
-            echo '<div class="p-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-red-500/30 bg-red-500/10 text-red-400">CSRF Token tidak valid. Muat ulang halaman.</div>';
-        } else {
-            $_SESSION['error'] = 'CSRF Token tidak valid.';
-            header('Location: ' . safe_comment_back_url());
-        }
-        exit;
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    if ($is_ajax) {
+        header('HX-Retarget: #comment-alert');
+        header('HX-Reswap: innerHTML');
+        echo '<div class="p-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-red-500/30 bg-red-500/10 text-red-400">Method not allowed.</div>';
+    } else {
+        header('Location: ' . safe_comment_back_url());
     }
+    exit;
+}
+
+if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+    if ($is_ajax) {
+        http_response_code(403);
+        header('HX-Retarget: #comment-alert');
+        header('HX-Reswap: innerHTML');
+        echo '<div class="p-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-red-500/30 bg-red-500/10 text-red-400">CSRF Token tidak valid. Muat ulang halaman.</div>';
+    } else {
+        $_SESSION['error'] = 'CSRF Token tidak valid.';
+        header('Location: ' . safe_comment_back_url());
+    }
+    exit;
 }
 
 $rateKey  = 'user_' . ($_SESSION['user_id'] ?? 0);

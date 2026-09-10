@@ -42,7 +42,7 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 | `modules/autoload.php` | PSR-4-like autoloader | Daftar direktori yang di-scan |
 | `modules/core/SwPrecache.php` | Generator precache PWA (service worker) | `baseAssets()`, `moduleAssets()`, `all()`, `version()` |
 | `sw.js.php` | Generator service worker dinamis (disajikan sebagai `/sw.js`) | `SW_VERSION`, `PRECACHE_URLS` (otomatis) |
-| `database/migrate.php` | Database migration v1–v12 | FULLTEXT index, FK, activity_log, UNIQUE KEY, MFA, index comments, unique key interactions, chess room identity |
+| `database/migrate.php` | Database migration v1–v14 | FULLTEXT index, FK, activity_log, UNIQUE KEY, MFA, index comments, unique key interactions, chess room identity |
 
 ---
 
@@ -411,7 +411,7 @@ if ($user_role === 'admin') return ['allowed' => true];
 
 ### API Rate Limiting (RateLimiter.php)
 
-`modules/auth/RateLimiter.php` — file-based rate limiter untuk endpoint API:
+`modules/auth/RateLimiter.php` — file-based rate limiter untuk endpoint API (fail-closed pada storage error):
 
 | Endpoint | Limit | Window | File |
 |---|:---:|:---:|---|
@@ -419,16 +419,18 @@ if ($user_role === 'admin') return ['allowed' => true];
 | Comment | 10 | 1 menit | `controllers/api/delete_comment.php`, `WatchController.php` |
 | Upload | 3 | 1 jam | — |
 | Transcode | 5 | 1 jam | — |
+| Auto Metadata | 5 | 1 jam | `controllers/api/auto_metadata.php` |
 | API Generic | 60 | 1 menit | — |
 
 **Konfigurasi:** Edit langsung di `modules/auth/RateLimiter.php`:
 ```php
 private static array $limits = [
-    'like'    => ['requests' => 30, 'window' => 60],
-    'comment' => ['requests' => 10, 'window' => 60],
-    'upload'  => ['requests' => 3,  'window' => 3600],
-    'transcode' => ['requests' => 5, 'window' => 3600],
-    'api'     => ['requests' => 60, 'window' => 60],
+    'like'          => ['requests' => 30, 'window' => 60],
+    'comment'       => ['requests' => 10, 'window' => 60],
+    'upload'        => ['requests' => 3,  'window' => 3600],
+    'transcode'     => ['requests' => 5,  'window' => 3600],
+    'auto_metadata' => ['requests' => 5,  'window' => 3600],
+    'api'           => ['requests' => 60, 'window' => 60],
 ];
 ```
 

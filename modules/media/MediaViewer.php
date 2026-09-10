@@ -109,33 +109,85 @@ class MediaViewer
         return ['grouped' => $grouped, 'user_map' => $user_map];
     }
 
+    public function getMediaType(): string
+    {
+        return $this->media_type;
+    }
+
     public function getRecommendations($limit = 10)
     {
-
         $limit = (int)$limit;
         $table = $this->table;
 
-        $max_res = $this->conn->query("SELECT MAX(id) AS max_id FROM {$table}");
-        $max_id  = (int)($max_res ? $max_res->fetch_assoc()['max_id'] : 0);
+        $count_res = $this->conn->query("SELECT COUNT(*) AS total FROM {$table}");
+        $total = (int)($count_res ? $count_res->fetch_assoc()['total'] : 0);
 
-        if ($max_id <= 1) {
-
+        if ($total <= 1) {
             return $this->conn->query(
                 "SELECT m.*, u.username AS uploader FROM {$table} m
                  JOIN users u ON m.user_id = u.id WHERE 1 = 0"
             );
         }
 
-        $random_offset = rand(0, max(0, $max_id - $limit));
+        $exclude_ids = $_SESSION["seen_{$table}_ids"] ?? [];
+        $exclude_ids[] = $this->media_id;
 
-        $stmt = $this->conn->prepare(
-            "SELECT m.*, u.username AS uploader
-             FROM {$table} m
-             JOIN users u ON m.user_id = u.id
-             WHERE m.id != ? AND m.id > ?
-             ORDER BY m.id ASC LIMIT ?"
-        );
-        $stmt->bind_param("iii", $this->media_id, $random_offset, $limit);
+        if ($total < 1000) {
+            $id_result = $this->conn->query("SELECT id FROM {$table} WHERE id != {$this->media_id}");
+            $all_ids = [];
+            if ($id_result) {
+                while ($row = $id_result->fetch_assoc()) {
+                    $all_ids[] = (int)$row['id'];
+                }
+            }
+            $available = array_values(array_diff($all_ids, $exclude_ids));
+            if (empty($available)) {
+                $_SESSION["seen_{$table}_ids"] = [];
+                $available = array_values(array_diff($all_ids, [$this->media_id]));
+            }
+            shuffle($available);
+            $picked_ids = array_slice($available, 0, $limit);
+        } else {
+            $sql = "SELECT id FROM {$table} WHERE id != ? ORDER BY RAND() LIMIT ?";
+            $extra = min($limit * 2, 40);
+            $stmt_ids = $this->conn->prepare($sql);
+            $stmt_ids->bind_param("ii", $this->media_id, $extra);
+            $stmt_ids->execute();
+            $id_result = $stmt_ids->get_result();
+            $candidate_ids = [];
+            if ($id_result) {
+                while ($row = $id_result->fetch_assoc()) {
+                    $candidate_ids[] = (int)$row['id'];
+                }
+            }
+            $available = array_values(array_diff($candidate_ids, $exclude_ids));
+            if (empty($available)) {
+                $_SESSION["seen_{$table}_ids"] = [];
+                $available = array_values(array_diff($candidate_ids, [$this->media_id]));
+            }
+            shuffle($available);
+            $picked_ids = array_slice($available, 0, $limit);
+        }
+
+        if (empty($picked_ids)) {
+            return $this->conn->query(
+                "SELECT m.*, u.username AS uploader FROM {$table} m
+                 JOIN users u ON m.user_id = u.id WHERE 1 = 0"
+            );
+        }
+
+        $placeholders = implode(',', array_fill(0, count($picked_ids), '?'));
+        $types = str_repeat('i', count($picked_ids));
+        $sql = "SELECT m.*, u.username AS uploader
+                FROM {$table} m
+                JOIN users u ON m.user_id = u.id
+                WHERE m.id IN ({$placeholders})
+                ORDER BY FIELD(m.id, {$placeholders})";
+        $all_params = array_merge($picked_ids, $picked_ids);
+        $all_types = $types . $types;
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param($all_types, ...$all_params);
         $stmt->execute();
         return $stmt->get_result();
     }
@@ -195,7 +247,7 @@ class MediaViewer
             $next_q = $stmt_next->get_result();
 
             if ($next_d = $next_q->fetch_assoc()) {
-                $next_url = "watch.php?id=" . $next_d['music_id'] . "&playlist_id=" . $playlist_id;
+                $next_url = "watch.php?v=" . $next_d['music_id'] . "&playlist_id=" . $playlist_id;
             }
         }
         return ['queue' => $queue, 'next_url' => $next_url];

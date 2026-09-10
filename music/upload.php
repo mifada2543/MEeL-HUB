@@ -5,6 +5,7 @@ include '../modules/core/Uploader.php';
 require_once '../modules/core/GarbageCollector.php';
 require_once '../modules/media/MediaLibrary.php';
 require_once '../modules/core/MeelCoin.php';
+require_once '../modules/core/Notification.php';
 GarbageCollector::run();
 
 set_time_limit(0);
@@ -53,6 +54,11 @@ if (isset($_POST['upload'])) {
                     $alert_message = $spent_err;
                 } else {
                     $coin_deducted = true;
+                    $new_balance = MeelCoin::getBalance($conn, $user_id);
+                    Notification::create($conn, $user_id, 'meelcoin',
+                        'Penggunaan MEeLCoin',
+                        'Upload musik "' . htmlspecialchars(trim($_POST['title'])) . '" — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
+                    );
                 }
             }
 

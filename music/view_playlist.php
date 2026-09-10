@@ -77,7 +77,7 @@ function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_que
             </div>
             <div class="flex flex-wrap items-center gap-2 mt-4">
                 <?php if ($first_song): ?>
-                    <a href="<?= base_url('/music/watch?id=' . (int)$first_song['id'] . '&playlist_id=' . (int)$playlist_id) ?>"
+                    <a href="<?= base_url('/music/watch?v=' . (int)$first_song['id'] . '&playlist_id=' . (int)$playlist_id) ?>"
                         class="flex items-center gap-2 bg-orange-600 hover:bg-orange-500 text-white
                               px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest
                               transition-all shadow-lg shadow-orange-600/20 border border-orange-500/20">
@@ -117,7 +117,7 @@ function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_que
                 authorize_stream((int)$s['id']);
                 $s_ext   = strtolower(pathinfo($s['filename'], PATHINFO_EXTENSION));
                 $s_lbl   = $s_ext === 'ogg' ? 'opus' : $s_ext;
-                $watch_url = base_url('/music/watch?id=' . (int)$s['id'] . '&playlist_id=' . (int)$playlist_id);
+                $watch_url = base_url('/music/watch?v=' . (int)$s['id'] . '&playlist_id=' . (int)$playlist_id);
             ?>
                 <div class="group grid grid-cols-[2rem_1fr_auto_2rem] items-center gap-4 px-3 py-2 rounded-xl
                             hover:bg-white/[.04] border border-transparent hover:border-white/[.05] transition-all duration-150
@@ -243,37 +243,8 @@ $__v = function($f) {
     <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= $__v('assets/css/music/' . $__f) ?>">
     <?php endforeach; ?>
     <link href="../assets/css/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/music/playlist.css?v=<?= filemtime(__DIR__ . '/../assets/css/music/playlist.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js"></script>
-    <style>        .artist-dropdown-active #library-container > main {
-            position: relative;
-            z-index: 10;
-            filter: blur(4px);
-            opacity: 0.45;
-            pointer-events: none !important;
-            user-select: none !important;
-        }
-        .artist-dropdown-active #library-container > aside {
-            position: relative;
-            z-index: 50;
-        }
-        .artist-dropdown-active #library-container > aside *,
-        .artist-dropdown-active #library-container > aside *::before,
-        .artist-dropdown-active #library-container > aside *::after {
-            pointer-events: auto;
-        }
-        #mini-player-index {
-            cursor: default !important;
-        }
-        #mini-player-index img,
-        .mp-thumbnail {
-            cursor: pointer !important;
-            transition: transform 0.2s ease;
-        }
-        #mini-player-index img:hover,
-        .mp-thumbnail:hover {
-            transform: scale(1.05);
-        }
-</style>
 </head>
 
 <body class="text-gray-400 min-h-screen">

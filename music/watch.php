@@ -8,7 +8,7 @@ require_once '../modules/core/CommentRenderer.php';
 require_once '../modules/media/MediaLibrary.php';
 require_once '../controllers/api/WatchController.php';
 
-$id          = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$id          = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id     = $_SESSION['user_id'] ?? null;
 $playlist_id = isset($_GET['playlist_id']) ? (int)$_GET['playlist_id'] : 0;
 
@@ -325,55 +325,7 @@ $__vdir = function($dir) {
                     </button>
                 </div>
 
-                <script>                    function toggleDescriptionMusic() {
-                        const descText = document.getElementById('desc-text-music');
-                        const btn = document.getElementById('btn-read-more-music');
-
-                        if (descText.classList.contains('line-clamp-3')) {
-                            descText.classList.remove('line-clamp-3');
-                            btn.textContent = 'Lebih Sedikit';
-                        } else {
-                            descText.classList.add('line-clamp-3');
-                            btn.textContent = 'Selengkapnya';
-                        }
-                    }
-
-                    function checkDescriptionLengthMusic() {
-                        const descText = document.getElementById('desc-text-music');
-                        const btn = document.getElementById('btn-read-more-music');
-
-                        if (descText && btn) {
-                            setTimeout(() => {
-                                if (!descText.classList.contains('line-clamp-3')) {
-                                    btn.classList.remove('hidden');
-                                    return;
-                                }
-
-                                const isOverflowing = descText.scrollHeight > descText.offsetHeight;
-                                if (isOverflowing) {
-                                    btn.classList.remove('hidden');
-                                } else {
-                                    btn.classList.add('hidden');
-                                }
-                            }, 50);
-                        }
-                    }
-                    document.addEventListener('DOMContentLoaded', checkDescriptionLengthMusic);
-                    document.body.addEventListener('htmx:afterOnLoad', checkDescriptionLengthMusic);
-                    window.addEventListener('resize', checkDescriptionLengthMusic);
-                    const descContainer = document.querySelector('.desc-container');
-                    if (descContainer && 'IntersectionObserver' in window) {
-                        const descObserver = new IntersectionObserver((entries) => {
-                            entries.forEach((entry) => {
-                                if (entry.isIntersecting) {
-                                    descObserver.disconnect();
-                                    checkDescriptionLengthMusic();
-                                }
-                            });
-                        });
-                        descObserver.observe(descContainer);
-                    }
-</script>
+                <script src="../assets/js/music/watch/description-toggle.js?v=<?= filemtime(__DIR__ . '/../assets/js/music/watch/description-toggle.js') ?>"></script>
             <?php endif; ?>
             <?php if ($is_logged_in): ?>
                 <section class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden comment-section" id="comment-section">
@@ -406,7 +358,7 @@ $__vdir = function($dir) {
                     <div id="comment-body">
                         <div class="p-4 sm:p-6">
                             <div id="comment-alert"></div>
-                        <form action="<?= base_url('/music/watch?id=' . (int)$id . ($playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : '')) ?>" method="post" class="mb-6"                                hx-post="../api/comment"
+                        <form action="<?= base_url('/music/watch?v=' . (int)$id . ($playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : '')) ?>" method="post" class="mb-6"                                hx-post="../api/comment"
                             hx-target="#comment-list"
                             hx-swap="innerHTML"
                             hx-vals='{"id":"<?= $id ?>","media_type":"music"<?= $playlist_context > 0 ? ',"playlist_id":"' . (int)$playlist_context . '"' : '' ?>}'
@@ -436,10 +388,8 @@ $__vdir = function($dir) {
                             </div>
                         </div>
                     </section>
-                    <script>                        document.getElementById('comment-body')?.classList.add('collapsed');
-</script>
-                    <noscript><style>#comment-preview{display:none}
-</style></noscript>
+                    <script>document.getElementById('comment-body')?.classList.add('collapsed');</script>
+                    <noscript><style>#comment-preview{display:none}</style></noscript>
                 <?php endif; ?>
         </div>
 
@@ -457,7 +407,7 @@ $__vdir = function($dir) {
                         while ($q = $queue_query->fetch_assoc()):
                             $is_pl = ($q['id'] == $id);
                         ?>
-                            <a href="<?= base_url('/music/watch?id=' . (int)$q['id'] . '&playlist_id=' . (int)$playlist_context) ?>"
+                            <a href="<?= base_url('/music/watch?v=' . (int)$q['id'] . '&playlist_id=' . (int)$playlist_context) ?>"
                                 class="flex items-center gap-3 px-2 py-2 rounded-xl transition-all no-underline
                               <?= $is_pl ? 'bg-orange-500/8 border border-orange-500/20' : 'hover:bg-white/[.025] border border-transparent' ?>">
                                 <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 <?= $is_pl ? 'opacity-50' : '' ?>">
@@ -476,16 +426,16 @@ $__vdir = function($dir) {
                 </div>
             <?php endif; ?>
             <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
-                <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
-                    <i data-lucide="shuffle" class="w-3.5 h-3.5 text-gray-600"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Discover</span>
+                <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2 min-w-0">
+                    <i data-lucide="shuffle" class="w-3 h-3 text-orange-500 flex-shrink-0"></i>
+                    <span id="rec-title-text" class="text-[9px] font-bold uppercase tracking-[.25em] text-gray-300 truncate" title="Discover">Discover</span>
                 </div>
                 <div id="music-recommendation-column" class="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-0 lg:space-y-0.5">
                     <?php while ($r = $rekom->fetch_assoc()):
                         $r_ext = strtolower(pathinfo($r['filename'], PATHINFO_EXTENSION));
                         $r_lbl = $r_ext === 'ogg' ? 'opus' : $r_ext;
                     ?>
-                        <a href="<?= base_url('/music/watch?id=' . (int)$r['id']) ?>"
+                        <a href="<?= base_url('/music/watch?v=' . (int)$r['id']) ?>"
                             class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 p-2 rounded-xl no-underline"
                             title="<?= htmlspecialchars($r['title']) ?>">
                             <div class="w-full lg:w-16 aspect-square lg:h-12 lg:aspect-auto rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
@@ -507,6 +457,16 @@ $__vdir = function($dir) {
                             </div>
                         </a>
                     <?php endwhile; ?>
+                    <?php if ($rekom->num_rows >= 15): ?>
+                        <div class="py-3 text-center rec-sentinel"
+                            hx-get="search?exclude=<?= (int)$id ?>"
+                            hx-target="#music-recommendation-column"
+                            hx-swap="beforeend"
+                            hx-trigger="revealed"
+                            hx-indicator="#music-search-indicator">
+                            <div class="rec-spinner animate-spin h-3 w-3 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"></div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -688,6 +648,28 @@ $__vdir = function($dir) {
     <script src="../assets/js/shared/view-router.js<?= $__v('assets/js/shared/view-router.js') ?>"></script>
     <script src="../assets/js/music/watch/main.js<?= $__vdir('assets/js/music/watch') ?>"></script>
     <script src="../assets/js/shared/comment.js<?= $__v('assets/js/shared/comment.js') ?>"></script>
+    <script>
+        document.addEventListener('htmx:beforeRequest', function(e) {
+            var btn = e.target.closest('#m-search-btn');
+            if (!btn) return;
+            var input = document.getElementById('m-search-watch');
+            var query = (input ? input.value : '').trim();
+            var titleEl = document.getElementById('rec-title-text');
+            if (!titleEl) return;
+            if (query.length > 0) {
+                var label = 'Hasil pencarian \u201c' + query + '\u201d';
+                titleEl.textContent = label;
+                titleEl.title = label;
+            } else {
+                titleEl.textContent = 'Discover';
+                titleEl.title = 'Discover';
+            }
+        });
+        document.addEventListener('htmx:afterRequest', function(e) {
+            var sentinel = e.target.closest('.rec-sentinel');
+            if (sentinel) sentinel.style.display = 'none';
+        });
+    </script>
 </body>
 
 </html>

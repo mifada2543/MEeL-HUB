@@ -85,7 +85,7 @@ abstract class AbstractWatchController
 
 - `handleRequest()` — catat view + proses POST komentar dengan verifikasi CSRF & rate limit (10/menit). Redirect memakai hook `commentRedirectUrl()`.
 - `baseViewData()` — mengembalikan key yang sama di semua halaman watch: `id`, `user_id`, `is_logged_in`, `v`, `user_interaction`, `comments_grouped`, `user_map`, `rekom`.
-- `commentRedirectUrl()` — default `music/watch?id=...#comment-section`; `MusicWatchController` me-*override* untuk menambah `&playlist_id=...`.
+- `commentRedirectUrl()` — default `music/watch?v=...#comment-section`; `MusicWatchController` me-*override* untuk menambah `&playlist_id=...`.
 
 ### VideoWatchController
 
@@ -444,7 +444,7 @@ Simpan di tempat yang aman!
 
 ### Admin MFA Reset (`admin/mfa-reset` + `controllers/admin/admin_actions.php`)
 
-**Method:** GET (link dengan parameter)
+**Method:** POST (form submission, bukan link GET)
 **Auth:** Admin only
 **Rate Limit:** Tidak ada
 
@@ -466,10 +466,10 @@ Halaman `admin/mfa-reset` menampilkan daftar user dengan MFA aktif:
 
 #### Reset MFA Action
 
-**Trigger:** Klik "Reset MFA" → konfirmasi SweetAlert2 → redirect
+**Trigger:** Klik "Reset MFA" → konfirmasi SweetAlert2 → submit form POST
 
 ```
-GET admin/mfa-reset?reset_mfa=1&user_id=123&csrf_token=...
+POST admin/mfa-reset (form: reset_mfa=1, user_id=123, csrf_token=...)
   ↓
 die(include admin_actions.php)
   ↓
@@ -538,21 +538,35 @@ Redirect ke admin/mfa-reset?msg=reset_ok&user={username}
 
 ### Delete Comment
 
-**Endpoint:** `api/delete-comment?id=123` (handler: `controllers/api/delete_comment.php`)
-**Method:** GET
-**Auth:** User (owner of comment)
+**Endpoint:** `api/delete-comment` (handler: `controllers/api/delete_comment.php`)
+**Method:** POST only (GET return 405)
+**Auth:** User (owner of comment, media uploader, or admin)
 **Rate Limit:** 10 requests per menit per user
 
+**Request (HTMX):**
+```html
+<form method="POST" hx-post="api/delete-comment" hx-target="#comment-section">
+  <input type="hidden" name="csrf_token" value="...">
+  <input type="hidden" name="id" value="123">
+  <input type="hidden" name="media_type" value="video">
+  <input type="hidden" name="media_id" value="456">
+  <button type="submit">Hapus</button>
+</form>
+```
+
 **Response:**
-- Success: Redirect ke referrer dengan flash message
-- Error: Redirect dengan error message
-- `429 Too Many Requests` — Redirect dengan `$_SESSION['error']` + CSRF flash message
+- Success (AJAX): HTML komentar yang sudah di-render ulang
+- Success (non-AJAX): Redirect ke referrer dengan flash message
+- Error: Pesan error dalam HTML atau redirect
+- `405 Method Not Allowed` — request non-POST
+- `429 Too Many Requests` — Rate limit exceeded
 
 ### Auto Metadata
 
 **Endpoint:** `api/auto-metadata` (handler: `controllers/api/auto_metadata.php`)
 **Method:** POST
-**Auth:** Admin
+**Auth:** User (login required)
+**Rate Limit:** 5 requests per jam per user (CPU-intensive: menjalankan ffprobe + ffmpeg)
 
 Mengambil metadata otomatis dari URL (yt-dlp) untuk formulir upload:
 ```json
@@ -931,7 +945,78 @@ dan helper auth yang sama dengan modul lain).
 | `arcade/rhythm/api/delete` | POST | login + CSRF | Hapus lagu custom — owner atau admin; hapus audio + cover + beatmap.json + record DB (transaksional) |
 
 > ⚠️ Tabel `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
-> (terpisah dari `database/schema.sql` / `database/migrate.php` v1–v12).
+> (terpisah dari `database/schema.sql` / `database/migrate.php` v1–v14).
+
+---
+
+## Notification API
+
+### Notification Endpoints (`api/notification.php`)
+
+**Auth:** User (login required)
+
+| Aksi | Metode | CSRF | Deskripsi |
+|---|---|---|---|
+| `unread_count` | GET | Tidak | Return `{count: int}` — jumlah notifikasi belum dibaca |
+| `list` | GET | Tidak | Return `{ok, list, count}` — daftar notifikasi (limit 1–50) |
+| `mark_read` | POST | Ya | Tandai satu notifikasi sudah dibaca (param `id`) |
+| `mark_all_read` | POST | Ya | Tandai semua notifikasi sudah dibaca |
+| `delete` | POST | Ya | Hapus satu notifikasi (param `id`) |
+| `delete_all` | POST | Ya | Hapus semua notifikasi user |
+
+Aksi yang mengubah state (mark_read, mark_all_read, delete, delete_all) mewajibkan metode POST dan verifikasi CSRF token. GET request return HTTP 405.
+
+**Tipe notifikasi:**
+| Tipe | Trigger | Target Link |
+|---|---|---|
+| `like` | User like video/music Anda | `/video/watch?v=ID` atau `/music/watch?v=ID` |
+| `reply` | User reply komentar Anda | `/video/watch?v=ID` atau `/music/watch?v=ID` |
+| `admin_chat` | Admin kirim pesan chat | — |
+
+---
+
+## Chat API
+
+### Chat Endpoints (`api/chat.php`)
+
+#### User Chat (Real-time)
+
+**Auth:** User (login required)
+
+| Aksi | Metode | CSRF | Deskripsi |
+|---|---|---|---|
+| `list` | GET | Tidak | Ambil pesan chat (parameter: `after_id`, `limit`) |
+| `send` | POST | Ya | Kirim pesan chat (parameter: `message`, `csrf_token`) |
+| `delete` | POST | Ya | Hapus pesan sendiri (parameter: `id`) — validasi ownership |
+
+**Database Schema:**
+```sql
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+**HTMX Polling:** Client melakukan polling setiap 3 detik untuk pesan baru menggunakan `HX-Get` dengan parameter `after_id`.
+
+#### Admin Chat
+
+**Auth:** Admin only (cek `is_admin()`)
+
+| Aksi | Metode | CSRF | Deskripsi |
+|---|---|---|---|
+| `recent` | GET | Tidak | Daftar user dengan pesan chat terakhir |
+| `get` | GET | Tidak | Ambil pesan chat untuk user tertentu (param `user_id`) |
+| `users` | GET | Tidak | Cari user untuk chat (param `q`, exclude admin/guest/pending) |
+| `send` | POST | Ya | Kirim pesan ke user (`user_id`, `message`) |
+| `delete` | POST | Ya | Hapus pesan admin (`user_id`, `index`) |
+
+Penyimpanan admin chat: file JSON di `storage/chats/{user_id}/isipesan.json`
+
+**Rate Limiting:** 30 pesan per menit per user.
 
 ---
 

@@ -86,6 +86,9 @@ if (isset($_POST['approve_id'])) {
     $stmt->execute();
     log_activity($conn, (int)$_SESSION['user_id'], 'approve_user', 'user', (int)$_POST['approve_id']);
 
+    require_once __DIR__ . '/../../modules/core/MeelCoin.php';
+    MeelCoin::initialize($conn, (int)$_POST['approve_id'], 'user');
+
     if (function_exists('invalidate_user_role_cache')) {
         invalidate_user_role_cache();
     }
@@ -125,8 +128,20 @@ if (isset($_POST['delete_user_id'])) {
 
 if (isset($_POST['clean_orphans'])) {
     $files = json_decode($_POST['files_to_delete'], true);
+    $valid_dirs = [
+        dirname(__DIR__, 2) . '/storage/media/video/',
+        dirname(__DIR__, 2) . '/storage/media/music/',
+        dirname(__DIR__, 2) . '/storage/media/books/',
+        dirname(__DIR__, 2) . '/temp/uploads/',
+    ];
     foreach ((array)$files as $f) {
-        if (file_exists($f)) @unlink($f);
+        $real = realpath($f);
+        if ($real === false) continue;
+        $valid = false;
+        foreach ($valid_dirs as $dir) {
+            if (strpos($real, $dir) === 0) { $valid = true; break; }
+        }
+        if ($valid && file_exists($real)) @unlink($real);
     }
     @unlink(dirname(__DIR__, 2) . '/temp/cache/admin_orphans.json');
     header("Location: .?status=cleaned#system_check");
@@ -160,6 +175,8 @@ if (isset($_POST['save_meelcoin_settings'])) {
         'meelcoin_enabled'       => '0',
         'meelcoin_upload_cost'   => '5',
         'meelcoin_advanced_cost' => '10',
+        'meelcoin_transcode_user_cost'   => '5',
+        'meelcoin_transcode_member_cost' => '2',
         'meelcoin_user_max'      => '25',
         'meelcoin_user_refill'   => '15',
         'meelcoin_member_max'    => '50',
@@ -169,7 +186,7 @@ if (isset($_POST['save_meelcoin_settings'])) {
 
     foreach ($fields as $key => $default) {
         $value = $_POST[$key] ?? $default;
-        if (in_array($key, ['meelcoin_upload_cost', 'meelcoin_advanced_cost', 'meelcoin_user_max', 'meelcoin_user_refill', 'meelcoin_member_max', 'meelcoin_member_refill', 'meelcoin_refill_hours'])) {
+        if (in_array($key, ['meelcoin_upload_cost', 'meelcoin_advanced_cost', 'meelcoin_transcode_user_cost', 'meelcoin_transcode_member_cost', 'meelcoin_user_max', 'meelcoin_user_refill', 'meelcoin_member_max', 'meelcoin_member_refill', 'meelcoin_refill_hours'])) {
             $value = max(0, (int)$value);
         }
         set_site_setting($conn, $key, (string)$value);
@@ -183,17 +200,35 @@ if (isset($_POST['save_meelcoin_settings'])) {
 
 if (isset($_POST['adjust_meelcoin_user'])) {
     require_once __DIR__ . '/../../modules/core/MeelCoin.php';
+    require_once __DIR__ . '/../../modules/core/Notification.php';
 
     $target_id = (int)($_POST['target_user_id'] ?? 0);
     $amount    = (int)($_POST['coin_amount'] ?? 0);
     $action    = $_POST['coin_action'] ?? 'add';
+    $reason    = !empty($_POST['coin_reason']) ? substr(trim($_POST['coin_reason']), 0, 50) : 'admin_adjust';
 
     if ($target_id > 0 && $amount > 0) {
         $current = MeelCoin::getBalance($conn, $target_id);
+
+        $role_stmt = $conn->prepare("SELECT role FROM users WHERE id = ?");
+        $role_stmt->bind_param("i", $target_id);
+        $role_stmt->execute();
+        $target_role = $role_stmt->get_result()->fetch_assoc()['role'] ?? 'user';
+        $role_stmt->close();
+
+        $coin_max = MeelCoin::getMax($conn, $target_role);
+
         if ($action === 'add') {
-            $new = $current + $amount;
+            $new = min($current + $amount, $coin_max);
+            $actual = max(0, $new - $current);
         } else {
             $new = max(0, $current - $amount);
+            $actual = $amount;
+        }
+
+        if ($actual <= 0 && $action === 'add') {
+            header("Location: meelcoin.php?msg=Balance_at_max#manual-coin");
+            exit();
         }
 
         $stmt = $conn->prepare("UPDATE users SET meelcoin = ? WHERE id = ?");
@@ -201,22 +236,39 @@ if (isset($_POST['adjust_meelcoin_user'])) {
         $stmt->execute();
         $stmt->close();
 
-        MeelCoin::log($conn, $target_id, $action === 'add' ? $amount : -$amount, $new, 'admin_adjust');
+        MeelCoin::log($conn, $target_id, $action === 'add' ? $actual : -$amount, $new, $reason);
         MeelCoin::clearCache();
+
+        $admin_id   = (int)($_SESSION['user_id'] ?? 0);
+        $action_lbl = $action === 'add' ? 'ditambahkan' : 'dikurangi';
+        $coin_msg   = 'Admin telah ' . $action_lbl . ' ' . $actual . ' MEeLCoin dari akun Anda.';
+        if ($action === 'add' && $actual < $amount) {
+            $coin_msg .= ' (Dibatasi max ' . $coin_max . ' coin)';
+        }
+        $coin_msg .= ' Alasan: ' . $reason;
+        Notification::create(
+            $conn,
+            $target_id,
+            'meelcoin',
+            'Penyesuaian MEeLCoin',
+            $coin_msg,
+            null,
+            null,
+            $admin_id
+        );
     }
 
-    header("Location: meelcoin.php?msg=Coin_Adjusted&user_id=" . $target_id);
+    header("Location: meelcoin.php?msg=Coin_Adjusted#manual-coin");
     exit();
 }
 
-if (isset($_GET['reset_mfa']) && isset($_GET['user_id'])) {
-    
-    if (!verify_csrf_token($_GET['csrf_token'] ?? null)) {
-        header("Location: ../admin/mfa-reset?msg=csrf_invalid");
+if (isset($_POST['reset_mfa']) && isset($_POST['user_id'])) {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        header("Location: " . meel_base_url_path() . "/admin/mfa-reset?msg=csrf_invalid");
         exit;
     }
 
-    $target_id = (int)$_GET['user_id'];
+    $target_id = (int)$_POST['user_id'];
 
     $check = $conn->prepare("SELECT id, username, role FROM users WHERE id = ?");
     $check->bind_param("i", $target_id);
@@ -225,12 +277,12 @@ if (isset($_GET['reset_mfa']) && isset($_GET['user_id'])) {
     $check->close();
 
     if (!$target) {
-        header("Location: ../admin/mfa-reset?msg=user_not_found");
+        header("Location: " . meel_base_url_path() . "/admin/mfa-reset?msg=user_not_found");
         exit;
     }
 
     if ($target['role'] === 'admin') {
-        header("Location: ../admin/mfa-reset?msg=cannot_reset_admin");
+        header("Location: " . meel_base_url_path() . "/admin/mfa-reset?msg=cannot_reset_admin");
         exit;
     }
 
@@ -238,9 +290,9 @@ if (isset($_GET['reset_mfa']) && isset($_GET['user_id'])) {
     $stmt->bind_param("i", $target_id);
     if ($stmt->execute()) {
         log_activity($conn, (int)$_SESSION['user_id'], 'reset_mfa', 'user', $target_id);
-        header("Location: ../admin/mfa-reset?msg=reset_ok&user=" . urlencode($target['username']));
+        header("Location: " . meel_base_url_path() . "/admin/mfa-reset?msg=reset_ok&user=" . urlencode($target['username']));
     } else {
-        header("Location: ../admin/mfa-reset?msg=reset_failed");
+        header("Location: " . meel_base_url_path() . "/admin/mfa-reset?msg=reset_failed");
     }
     $stmt->close();
     exit;

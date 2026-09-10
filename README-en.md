@@ -39,6 +39,7 @@
 |---------|--------|
 | **Adaptive Streaming** | HLS (`.m3u8` playlist + `.ts` segments) with automatic MP4 fallback |
 | **Custom Player** | Based on Plyr.js with quality selector, subtitles, PiP, keyboard shortcuts |
+| **Adaptive Aspect Ratio** | Player automatically adapts to video aspect ratio (4:3, 16:9, 21:9, portrait) — max-height equalized to 16:9 like YouTube |
 | **Touch Gestures** | Double-tap left (rewind 5s), right (forward 5s), center (play/pause) |
 | **Smooth Transitions** | Next video loads SPA-like without page reload, preserves fullscreen |
 | **Auto Resume** | Last position saved via `localStorage` |
@@ -98,12 +99,13 @@
 | **Transcoder** | Extract audio from video (MP3/OGG/M4A) |
 | **URL Downloader** | yt-dlp + FFmpeg for downloads from YouTube and others |
 | **Comments** | Nested comments on video & music |
+| **Chat** | Real-time chat between users with HTMX polling |
 | **Like/Dislike** | Social interaction on media content |
 | **User Profiles** | Avatar, bio, upload statistics, **Preference page** (theme toggle) |
 | **Light/Dark Mode** | Theme toggle via Profile page — localStorage (guest) + DB sync (logged-in) |
 | **20-20-20 Eye Care** | Eye rest notifications every 20 minutes |
 | **PSR-4 Autoloader** | Auto-loading core classes (`MediaLibrary`, `Uploader`, etc.) without manual require |
-| **Migration System v1–v12** | Database schema versioning + auto-upgrade (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, composite indexes, schema sync) |
+| **Migration System v1–v14** | Database schema versioning + auto-upgrade (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, composite indexes, schema sync) |
 | **Base URL Portability** | `base_url()` + `MEEL_BASE_URL` constant — consistent paths across all subdirectories |
 | **FULLTEXT Search** | Search video/music/books 10-100× faster via `MATCH AGAINST` — query sanitizer + pagination (MySQL 5.7+) |
 | **Admin Panel** | Dashboard monitoring, user management, queue control, activity log viewer |
@@ -119,6 +121,7 @@
 | **Admin Dashboard Charts** | Chart.js 7-Day Activity Chart — views, uploads, active users |
 | **PWA Offline** | Dynamic service worker (`sw.js.php` + `SwPrecache`) — auto precache per module via `manifest.php`, installable + offline support |
 | **Deployment Health Check** | `tests/check_deploy.php` — verifies MEEL_HDD_BASE, upload dirs/subdirectories, upload .htaccess, data_drive symlink guard, PWA mod_rewrite |
+| **JS/CSS Modularization** | JavaScript & CSS split per module — video (12 files), shared (19 files), profile (5 files), admin (3 files), with dynamic loader |
 
 ---
 
@@ -147,7 +150,7 @@
 | **Downloader** | yt-dlp (optional) | External media URL downloads |
 | **Transliteration** | PHP `intl` (Transliterator) | File name sanitization (Romaji) |
 | **Autoloader** | Manual PSR-4-like (`modules/autoload.php`) | Auto-loads 10+ core classes |
-| **Migration** | PHP-based (`database/migrate.php`) | Schema versioning v1–v12 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync) |
+| **Migration** | PHP-based (`database/migrate.php`) | Schema versioning v1–v14 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync) |
 | **Rate Limiting** | `modules/auth/RateLimiter.php` | File-based rate limiter (flock safety) |
 | **PWA** | `sw.js.php` + `modules/core/SwPrecache.php` | Auto offline precache + installable |
 
@@ -159,11 +162,28 @@
 MEeL/
 ├── admin/                 # Admin Panel (admin role only)
 │   ├── index.php          # Dashboard with Chart.js activity chart
-│   ├── activity_log.php   # Audit trail viewer
+│   ├── activity_log.php   # Audit trail viewer (3 tabs: Activity, Admin Actions, Upload Queue)
+│   ├── chat.php           # Admin chat interface
 │   ├── edit-video.php     # Edit video metadata (admin only)
 │   └── edit-music.php     # Edit music metadata (admin only)
 ├── arcade/                # Mini Games (9 games: Dino, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, Rhythm)
-├── assets/                # Static assets (CSS, JS, fonts, images)
+│   └── rhythm/            # MEeL!Mania rhythm game (manage, upload, assets)
+├── assets/                # Static assets — fully modularized
+│   ├── css/               # CSS modular per module
+│   │   ├── video/         # Video CSS: base, cards, fullscreen, glow, layout, mini-player, navbar, player, seek, toast
+│   │   ├── music/         # Music CSS: watch, playlist
+│   │   ├── profile/       # Profile CSS: base, cards, coin, edit, manage, notification, stat, mfa-switch
+│   │   ├── books/         # Books CSS: read (reader)
+│   │   ├── admin/         # Admin CSS: chat
+│   │   └── shared/        # Shared CSS: comment, nav
+│   ├── js/                # JavaScript modular
+│   │   ├── video/watch/   # Video JS: state, lifecycle, player-init, player-events, recovery, mini-player, gestures, search, seek-indicator, vtt-sprites, misc
+│   │   ├── shared/        # Shared JS: nav, theme, keyboard, comment, notification, plyr-config, format-time, resume-modal, etc.
+│   │   ├── profile/       # Profile JS: manage, avatar-crop, coin-countdown, theme-init
+│   │   ├── admin/         # Admin JS: activity_log, chat
+│   │   ├── music/         # Music JS: watch, playlist
+│   │   └── books/         # Books JS: reader
+│   └── img/               # Images & screenshots
 ├── auth/                  # Authentication & session management
 │   ├── config.php         # Entry point: bootstrap + requires settings.php
 │   ├── settings.php       # Pure data: DB + paths (MEEL_HDD_*)
@@ -171,67 +191,63 @@ MEeL/
 │   └── config.example.php # Configuration template
 ├── books/                 # E-Book / Comic module
 ├── controllers/           # API Actions & Event Handlers (AJAX/HTMX)
-│   ├── api/               # WatchController, like, comment, transcode
+│   ├── api/               # WatchController, like, comment, transcode, chat, notification, meelcoin
 │   ├── admin/             # admin_actions, admin_data
 │   └── profile/           # profile_edit, fun-manage
 ├── database/              # Database schema
 │   ├── schema.sql         # Standalone schema file (20 tables)
-│   └── migrate.php        # 🔄 Migration system v1–v12 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync)
+│   └── migrate.php        # Migration system v1–v14
 ├── data_drive/            # Cloud Drive runtime storage
-├── docs/                  # Project documentation
+├── docs/                  # Project documentation (id + en)
 ├── drive/                 # Cloud Drive module
 │   ├── templates/         # Template rendering (file_grid.php)
 │   └── DriveService.php   # OOP: DriveUserContext, DriveStorage, DriveViewRenderer
-├── err/                   # Error pages (denied, maintenance, banned, revoked)
+├── err/                   # Error pages (denied, maintenance, banned, revoked, offline)
 ├── modules/               # Core logic & business layer (OOP)
-│   ├── core/              # All core modules (moved from modules/ root)
+│   ├── autoload.php       # PSR-4-like autoloader (all core classes auto-load)
+│   ├── core/              # All core modules
 │   │   ├── helpers.php    # Backward-compat shim → helpers/main.php + auth/loader.php
 │   │   ├── helpers/       # Per-domain utilities: main, storage, audio, url, metadata, subtitle, upload
 │   │   ├── Router.php     # MeelRouter — front controller & clean-URL route table
 │   │   ├── base_url.php   # base_url() — consistent paths (MEEL_BASE_URL)
 │   │   ├── System.php     # Queue management & monitoring
-│   │   ├── Transcoder.php # Facade orchestrator — processDownload / encodeMusic / transcodeVideo
-│   │   ├── TranscoderBase.php # Transcoder service base — constants + process/PID management
+│   │   ├── Transcoder.php # Facade orchestrator
+│   │   ├── TranscoderBase.php # Transcoder service base
 │   │   ├── Uploader.php   # File upload & validation
 │   │   ├── GarbageCollector.php # Auto-cleanup temp files + guests + chess rooms + rate limits
-│   │   ├── ProgressObserver.php / BrowserProgressObserver.php # Progress event contract & browser presenter
 │   │   ├── CommentRenderer.php # Nested comment rendering
 │   │   ├── activity_logger.php # Activity logging & IP ban check
-│   │   ├── japanese.php   # Japanese text analysis (MeCab/Romaji)
-│   │   ├── japanese_aliases.php # Japanese text alias dictionary
-│   │   ├── SwPrecache.php # PWA precache generator (dynamic sw.js)
+│   │   ├── MeelCoin.php   # MEeLCoin system — virtual quota
+│   │   ├── SwPrecache.php # PWA precache generator
 │   │   └── bootstrap.php  # Centralized error handling bootstrap
-│   ├── autoload.php       # 🔄 PSR-4-like autoloader (all core classes auto-load)
-│   ├── auth/              # Centralized security infrastructure (via loader.php)
-│   │   ├── RateLimiter.php # ⚡ File-based API rate limiter
+│   ├── auth/              # Centralized security infrastructure
+│   │   ├── RateLimiter.php # File-based API rate limiter
 │   │   ├── SsrfGuard.php  # SSRF-safe URL validation
 │   │   ├── ValidatingProxy.php # SSRF-defense forward proxy
 │   │   └── helpers/       # authz, csrf, session, stream_auth, mfa, user
 │   ├── media/             # Media library classes
-│   │   ├── MediaLibrary.php   # Database queries, search, pagination metadata (+ BookRepository/BookUploader)
-│   │   ├── ArchiveGuard.php   # Safe ZIP/CBZ extraction — path traversal & zip bomb protection
-│   │   ├── MediaViewer.php    # View tracking, comments, recommendations
-│   │   ├── MediaInteraction.php # Like/dislike
-│   │   ├── SearchEngine.php   # FULLTEXT search engine
-│   │   ├── PlaylistRepository.php / MediaAdminRepository.php / ProfileRepository.php / AdminActivityRepository.php
-│   ├── transcoder/        # Transcoding services (called by the Transcoder facade)
-│   │   ├── FfmpegUtils.php    # FFmpeg trait – probe, sprite, VTT, getEnvPrefix
-│   │   ├── DownloadService.php # yt-dlp download + HLS finalization (finalizeVideo)
-│   │   ├── EncodeService.php   # encodeMusic (Opus) + thumbnail
-│   │   └── TranscodeService.php# transcodeVideo + transcode file ownership
+│   │   ├── MediaLibrary.php
+│   │   ├── ArchiveGuard.php
+│   │   ├── MediaViewer.php
+│   │   ├── MediaInteraction.php
+│   │   ├── SearchEngine.php
+│   │   └── *Repository.php # PlaylistRepository, MediaAdminRepository, ProfileRepository, etc.
+│   ├── transcoder/        # Transcoding services
+│   │   ├── FfmpegUtils.php
+│   │   ├── DownloadService.php
+│   │   ├── EncodeService.php
+│   │   └── TranscodeService.php
 │   └── exceptions/        # Custom exception classes
-│       ├── TranscodeException.php
-│       ├── ProcessException.php
-│       └── DownloadException.php
 ├── music/                 # Music player module
 ├── partials/              # Reusable UI components (navbar, footer, head, nav)
-├── profile/               # User profile module
-│   ├── edit-video.php     # Edit video metadata (non-admin owner)
-│   └── edit-music.php     # Edit music metadata (non-admin owner)
+├── profile/               # User profile module (modularized)
+│   ├── index.php          # Public profile
+│   ├── manage.php         # Profile management
+│   └── notification.php   # Notification settings
 ├── temp/                  # Runtime staging transcoding + rate limit cache
 ├── video/                 # Video player module
 ├── .htaccess              # Apache rewrite rules
-├── sw.js.php              # Dynamic service worker (PWA) — auto precache
+├── sw.js.php              # Dynamic service worker (PWA)
 ├── index.php              # Homepage Hub / module portal
 ├── introduction.php       # Interactive walkthrough guide
 ├── transcode.php          # Video→audio transcoding entry point
@@ -441,7 +457,7 @@ define('MEEL_YTDLP_PATH', '/usr/local/bin/yt-dlp');
 ### Migration System
 
 ```bash
-# Upgrade database to latest version (v1–v12)
+# Upgrade database to latest version (v1–v14)
 /opt/lampp/bin/php database/migrate.php
 ```
 
@@ -460,10 +476,12 @@ define('MEEL_YTDLP_PATH', '/usr/local/bin/yt-dlp');
 | **v10** | Composite index on comments `(video_id, created_at)` & `(music_id, created_at)` |
 | **v11** | `interactions` unique keys split: `(user_id, video_id)` & `(user_id, music_id)` |
 | **v12** | Bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code` |
+| **v13** | MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table |
+| **v14** | Index `video_id` & `music_id` on `view_logs` — speeds up `syncViewsFromLogs` correlated subquery |
 
 > 💡 **Rhythm module note (MEeL!Mania):** the `arcade_song` & `arcade_score` tables
 > are managed by `arcade/rhythm/migration.sql` — **separate** from the main migration
-> system (v1–v12). Import manually once: `mysql MEeL < arcade/rhythm/migration.sql`
+> system (v1–v14). Import manually once: `mysql MEeL < arcade/rhythm/migration.sql`
 > (or run the CREATE TABLE statements from that file).
 
 Migrations are **idempotent** — safe to run repeatedly.
@@ -580,7 +598,7 @@ This project is licensed under the **GNU General Public License v3.0 (GPLv3)**.
 
 **Contact:** `mifada2543@gmail.com` · [github.com/mifada2543](https://github.com/mifada2543)
 
-*Last synced with README.md: September 3, 2026*
+*Last synced with README.md: September 8, 2026*
 
 ---
 

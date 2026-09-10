@@ -339,7 +339,10 @@ File-based rate limiter with `flock()` safety. Role-based limits (admin = unlimi
 | `comment` | 10/min | Flash message redirect |
 | `upload` | 3/hour | — |
 | `transcode` | 5/hour | — |
+| `auto_metadata` | 5/hour | CPU-intensive (ffprobe + ffmpeg) |
 | `api` | 60/min | Generic fallback |
+
+**Fail-closed behavior:** When the storage directory (`temp/ratelimit/`) is not writable or `flock()` fails, the rate limiter **denies all requests** instead of silently allowing them. This prevents a broken filesystem from disabling rate limiting. Failures are logged via `error_log()`.
 
 ### 12. `modules/exceptions/`
 
@@ -493,6 +496,8 @@ class MusicWatchController { public function getViewData(): array; public functi
 | **v10** | Composite index `(video_id, created_at)` & `(music_id, created_at)` on `comments` |
 | **v11** | `interactions` unique keys split: `(user_id, video_id)` & `(user_id, music_id)` — NULL in a combined unique key did not prevent duplicate likes |
 | **v12** | Bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code` |
+| **v13** | MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table |
+| **v14** | Indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery |
 
 > 💡 **Rhythm module (MEeL!Mania) does NOT use the main migration system.** The
 > `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`
@@ -590,16 +595,35 @@ HTML/JS, no backend) + Chess (PHP multiplayer) + Rhythm (PHP with its own DB):
 
 > ⚠️ **Installation:** import the rhythm tables once:
 > `mysql MEeL < arcade/rhythm/migration.sql` — not part of
-> `database/schema.sql` (20 tables) nor `database/migrate.php` (v1–v12).
+> `database/schema.sql` (20 tables) nor `database/migrate.php` (v1–v14).
 
 ### Admin Activity Log Viewer
 
-`admin/activity_log.php` — audit trail viewer with:
+`admin/activity_log.php` — audit trail viewer with 3 tabs:
+
+**Activity Tab** (blue-600 theme):
 - Filter by action type, username/IP, date range
 - Pagination (50/page)
 - Stats cards (7-day activity, unique users, total entries)
 - Color-coded action badges (login=blue, upload=green, ban=red)
 - Manual log cleanup (7–365 days) with CSRF
+
+**Admin Actions Tab** (purple-600 theme):
+- Filter by admin username, action type, date range
+- Stats cards (7-day admin actions, unique admins, total entries)
+- Color-coded badges (coin=yellow, reset=red, login=blue, other=gray)
+- Maintenance: clear older than 7–365 days
+
+**Upload Queue Tab** (green-600 theme):
+- Filter by status (pending/processing/transcoding/completed/failed), uploader, date range
+- Stats cards (total uploads, completed, failed, active)
+- Color-coded status badges
+- Export CSV/JSON/XLS with preview modal
+- Maintenance: clear completed/failed older than 7–365 days
+
+> **Note:** Admin users are excluded from the MEeLCoin manual adjustment dropdown
+> (`WHERE role NOT IN ('guest', 'admin')`) — admin balance is managed via auto-refill
+> and upload costs only.
 
 ### 22. PWA Service Worker (`sw.js.php` + `modules/core/SwPrecache.php`)
 
@@ -682,6 +706,228 @@ User profile page with role-based visibility, theme toggle, and public channel g
 **Guest profile access:** Guests can view any user's profile (including their own synthetic Guest profile). The Guest profile is constructed in-memory (no DB query) with `id=0`, `role='guest'`.
 
 **Session initialization:** Uses `meel_boot_session()` (not raw `session_start()`) to ensure the session cookie name matches the rest of the application (`meel`).
+
+### 25. Notification Module (`modules/core/Notification.php` + `controllers/api/notification.php`)
+
+Database-backed notification system with user scoping and actor tracking.
+
+**Database:** `user_notifications` table (migration v15)
+
+```php
+class Notification {
+    public static function create(mysqli $conn, int $userId, string $type, string $title, string $message, ?int $relatedId = null, ?string $relatedSlug = null, ?int $actorUserId = null): void;
+    public static function getUnreadCount(mysqli $conn, int $userId): int;
+    public static function getList(mysqli $conn, int $userId, int $limit = 20): array;
+    public static function markRead(mysqli $conn, int $notifId, int $userId): void;
+    public static function markAllRead(mysqli $conn, int $userId): void;
+    public static function deleteOne(mysqli $conn, int $notifId, int $userId): bool;
+    public static function deleteAllByUser(mysqli $conn, int $userId): bool;
+    public static function deleteByChat(mysqli $conn, int $userId, string $message, int $actorUserId): bool;
+}
+```
+
+**Notification types:** `like`, `reply`, `admin_chat`
+
+**Link generation:** The `related_slug` column stores the media type (`video`/`music`) or a compound key (`type:id` for replies). The notification page builds links dynamically using `meel_base_url_path()` prefix.
+
+**API:** `controllers/api/notification.php` — POST-only for state-changing actions (mark_read, delete, delete_all) with CSRF verification. Read-only actions (unread_count, list) accept GET.
+
+---
+
+## 26. JS/CSS Modularization
+
+MEeL uses a modular approach for JavaScript and CSS — each module has separate files that are loaded dynamically.
+
+### Directory Structure
+
+```
+assets/
+├── css/
+│   ├── video/           # Video module CSS
+│   │   ├── base.css     # Base styles
+│   │   ├── cards.css    # Video card styles
+│   │   ├── fullscreen.css # Fullscreen player
+│   │   ├── glow.css     # Ambient glow effect
+│   │   ├── layout.css   # Player layout
+│   │   ├── mini-player.css # Floating mini player
+│   │   ├── navbar.css   # Video navbar
+│   │   ├── player.css   # Plyr overrides
+│   │   ├── seek.css     # Seek indicator
+│   │   ├── toast.css    # Toast notifications
+│   │   └── watch/       # Watch page specific
+│   ├── profile/         # Profile module CSS
+│   │   ├── base.css     # Base profile styles
+│   │   ├── cards.css    # Media cards
+│   │   ├── coin.css     # MEeLCoin display
+│   │   ├── edit.css     # Edit profile
+│   │   ├── manage.css   # Profile management
+│   │   ├── notification.css # Notification settings
+│   │   ├── stat.css     # Statistics
+│   │   ├── mfa-switch.css # MFA toggle
+│   │   ├── type-badge.css # User role badges
+│   │   └── empty-state.css # Empty state displays
+│   ├── admin/           # Admin module CSS
+│   │   └── chat.css     # Admin chat styles
+│   ├── music/           # Music module CSS
+│   │   ├── watch.css    # Music watch page
+│   │   └── playlist.css # Playlist styles
+│   ├── books/           # Books module CSS
+│   │   └── read.css     # Book reader
+│   └── shared/          # Shared CSS
+│       ├── comment.css  # Comment section
+│       └── nav.css      # Navigation bar
+├── js/
+│   ├── video/watch/     # Video watch page JS (12 files)
+│   │   ├── state.js     # Global state variables
+│   │   ├── lifecycle.js # Page lifecycle management
+│   │   ├── player-init.js # Player initialization
+│   │   ├── player-events.js # Player event handlers + aspect ratio
+│   │   ├── recovery.js  # Error recovery & stuck detector
+│   │   ├── mini-player.js # Floating mini player
+│   │   ├── gestures.js  # Touch gestures
+│   │   ├── search.js    # Search functionality
+│   │   ├── seek-indicator.js # Seek visual feedback
+│   │   ├── vtt-sprites.js # VTT sprite thumbnails
+│   │   └── misc.js      # Miscellaneous utilities
+│   ├── shared/          # Shared JS (19 files)
+│   │   ├── nav.js       # Navigation behavior
+│   │   ├── theme.js     # Theme toggle
+│   │   ├── keyboard.js  # Keyboard shortcuts
+│   │   ├── comment.js   # Comment section
+│   │   ├── notification.js # Notification system
+│   │   ├── plyr-config.js # Plyr configuration
+│   │   ├── format-time.js # Time formatting
+│   │   ├── resume-modal.js # Resume playback modal
+│   │   ├── index-hub.js # Homepage hub
+│   │   └── ...          # Other shared utilities
+│   ├── profile/         # Profile JS (5 files)
+│   │   ├── manage.js    # Profile management
+│   │   ├── avatar-crop.js # Avatar cropping
+│   │   ├── coin-countdown.js # MEeLCoin countdown
+│   │   └── theme-init.js # Theme initialization
+│   ├── admin/           # Admin JS (3 files)
+│   │   ├── activity_log.js # Activity log viewer
+│   │   └── chat/        # Admin chat
+│   ├── music/           # Music JS
+│   └── books/           # Books JS
+│       └── read/reader.js # Book reader
+```
+
+### CSS Mapping per Module
+
+Each CSS module has a `manifest.php` that registers its CSS files. `SwPrecache` reads these manifests to automatically generate service worker precache lists.
+
+```php
+// assets/css/video/manifest.php
+return ['base.css', 'cards.css', 'fullscreen.css', 'glow.css', 'layout.css',
+        'mini-player.css', 'navbar.css', 'player.css', 'seek.css', 'toast.css'];
+```
+
+### Dynamic Loader
+
+JavaScript is loaded dynamically by `main.js` on each module page. JS files are loaded sequentially according to dependencies:
+
+```javascript
+// Example: video/watch/main.js loads scripts sequentially
+const scripts = [
+    'state.js', 'recovery.js', 'player-init.js', 'player-events.js',
+    'lifecycle.js', 'mini-player.js', 'gestures.js', 'vtt-sprites.js',
+    'seek-indicator.js', 'misc.js'
+];
+```
+
+---
+
+## 27. Adaptive Aspect Ratio Player
+
+MEeL's video player supports adaptive aspect ratio for various video formats (4:3, 16:9, 21:9, portrait).
+
+### How It Works
+
+1. **Placeholder:** Server renders wrapper with `style="aspect-ratio: 16/9;"` as default
+2. **Runtime:** When video metadata loads, JavaScript `applyMeelVideoAspect()` changes aspect ratio to match actual dimensions
+3. **Constraint:** Non-16:9 videos get proportional `max-width` to equalize height with 16:9
+
+### `applyMeelVideoAspect(wrapper, videoW, videoH)` Logic
+
+| Condition | Behavior |
+|---|---|
+| Portrait (videoW < videoH) | `max-height: 80vh`, width auto, center horizontally |
+| Landscape < 16:9 (4:3, 5:4, 1:1) | `max-width: calc(100% × 9 × videoW / (16 × videoH))`, center |
+| 16:9 or wider (21:9) | Full width, natural height |
+
+### Calculation Example for 4:3
+
+```
+max-width = calc(100% × 9 × 4 / (16 × 3))
+         = calc(100% × 36/48)
+         = 75% of parent width
+```
+
+At 1000px parent width:
+- **4:3:** 750px × 562.5px (centered)
+- **16:9:** 1000px × 562.5px (full width)
+
+Both have the same height — the 4:3 video is smaller and centered, just like YouTube.
+
+### CSS Support
+
+```css
+/* player.css — prevents stretching */
+.plyr__video-wrapper video {
+    object-fit: contain;
+}
+```
+
+### Related Files
+
+| File | Role |
+|---|---|
+| `assets/js/video/watch/player-events.js` | `applyMeelVideoAspect()` function |
+| `assets/css/video/player.css` | `object-fit: contain` for video |
+| `assets/css/video/watch/main.css` | Mobile max-height constraint |
+
+---
+
+## 28. Chat API
+
+Real-time chat system between users with HTMX polling.
+
+### Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/chat` | GET | Get chat messages (params: `after_id`, `limit`) |
+| `/api/chat` | POST | Send chat message (params: `message`, `csrf_token`) |
+
+### Database Schema
+
+```sql
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+### Features
+
+- Messages ordered by `created_at` ASC
+- HTMX polling every 3 seconds for new messages
+- Delete own messages (with ownership validation)
+- `admin_chat` notification type for messages to admin
+- Rate limiting: 30 messages per minute per user
+
+### Related Files
+
+| File | Role |
+|---|---|
+| `controllers/api/chat.php` | Chat API endpoint |
+| `admin/chat.php` | Admin chat interface |
+| `assets/js/shared/notification.js` | Notification polling including chat |
+| `assets/css/admin/chat.css` | Admin chat styles |
 
 ---
 

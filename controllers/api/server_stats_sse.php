@@ -1,4 +1,5 @@
 <?php
+define('MEEL_API_CONTEXT', true);
 require_once '../../modules/core/helpers.php';
 meel_boot_session();
 

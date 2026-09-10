@@ -240,6 +240,30 @@ SAVINGS:             $1,850 - $3,600 in 5 years!
 
 ---
 
+## URL Cleanup & Admin Features
+
+### Clean URL Migration
+
+All watch pages now use `watch?v=` instead of `watch?id=` for consistency with
+YouTube-style URL conventions. This change was applied across 25+ files including
+PHP pages, JavaScript modules, controllers, and documentation.
+
+### Upload Queue Admin Tab
+
+A new "Upload Queue" tab was added to the Activity Log viewer, allowing admins to:
+- Monitor upload queue status (pending/processing/transcoding/completed/failed)
+- Filter by uploader, status, and date range
+- Export queue data as CSV, JSON, or XLS with preview
+- Clear old completed/failed entries for maintenance
+
+### MEeLCoin Admin Exclusion
+
+Admin users are now excluded from the MEeLCoin manual adjustment dropdown to prevent
+accidental balance modifications. Admin coin balance is managed through auto-refill
+and upload costs only.
+
+---
+
 ## Quick Summary
 
 | Real World Problem | Impact | MEeL Solution |

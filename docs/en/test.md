@@ -62,7 +62,7 @@ logs/tests/
 
 | File | Tests | Coverage |
 |---|---|---|
-| `RateLimiterTest.php` | 11 | Admin bypass, role limits, blocking, cleanup, stats, fallback, independent keys |
+| `RateLimiterTest.php` | 11 | Admin bypass, role limits, blocking, cleanup, stats, fail-closed on storage failure, independent keys |
 | `HelpersTest.php` | 50 | format_bytes, time_ago, audio MIME types, disk space, CSRF, dir_size, protocol detection (data providers) |
 | `JapaneseTest.php` | 15 | Romaji conversion, analyzeJapaneseText, English translation (MeCab-optional) |
 | `GarbageCollectorTest.php` | 6 | Class existence, idempotency, graceful handling, rate-limit cleanup (isolated test dir) |

@@ -169,7 +169,7 @@ $msg = $_GET['msg'] ?? null;
                             <i data-lucide="shield-alert" class="w-3 h-3"></i>
                             Clean Inactive Guests
                         </div>
-                        <span class="text-[8px] text-gray-600 font-mono tracking-tighter uppercase pr-1">Target: is_active = 0</span>
+                        <span class="text-[8px] text-gray-600 font-mono tracking-tighter uppercase pr-1" id="live-clock">--:--:--</span>
                     </button>
                 </form>
             </div>
@@ -184,7 +184,7 @@ $msg = $_GET['msg'] ?? null;
                             <th class="py-3 px-6 text-right">Activity</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-800">
+                    <tbody class="divide-y divide-gray-800" id="monitor-tbody">
                         <?php while ($row = $result_monitor->fetch_assoc()):
                             $is_online = (time() - strtotime($row['last_activity'])) < 300;
                             $is_cloud = strpos($row['access_via'] ?? '', 'trycloudflare.com') !== false;
@@ -194,7 +194,7 @@ $msg = $_GET['msg'] ?? null;
                                 <td class="py-4 px-2">
                                     <div class="flex items-center gap-2">
                                         <span class="text-sm font-bold <?= $row['role'] === 'guest' ? 'text-gray-500 italic' : 'text-white' ?>">
-                                            <a href="profile/<?= htmlspecialchars($row['username'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($row['username']) ?></a>
+                                            <a href="<?= meel_base_url_path() ?>/profile/<?= htmlspecialchars($row['username'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($row['username']) ?></a>
                                         </span>
                                         <?php if ($row['role'] === 'guest'): ?>
                                             <span class="text-[7px] bg-white/5 text-gray-500 px-1 rounded border border-white/10 uppercase font-black">Guest</span>
@@ -348,5 +348,35 @@ $msg = $_GET['msg'] ?? null;
     <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime('../assets/js/admin/shared/hover-effects.js') ?>"></script>
     <script src="../assets/js/admin/shared/search.js?v=<?= filemtime('../assets/js/admin/shared/search.js') ?>"></script>
     <script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
+    <script>
+    (function() {
+        var clock = document.getElementById('live-clock');
+        function updateClock() {
+            var now = new Date();
+            var h = String(now.getHours()).padStart(2, '0');
+            var m = String(now.getMinutes()).padStart(2, '0');
+            var s = String(now.getSeconds()).padStart(2, '0');
+            if (clock) clock.textContent = h + ':' + m + ':' + s;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        var tbody = document.getElementById('monitor-tbody');
+        if (!tbody) return;
+        function pollMonitor() {
+            var url = 'partials/live-monitor-manage.php?t=' + Date.now();
+            fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+                .then(function(r) { return r.ok ? r.text() : ''; })
+                .then(function(html) {
+                    if (html) {
+                        tbody.innerHTML = html;
+                        if (typeof lucide !== 'undefined') lucide.createIcons();
+                    }
+                })
+                .catch(function() {});
+        }
+        setInterval(pollMonitor, 10000);
+    })();
+    </script>
 </body>
 </html>
