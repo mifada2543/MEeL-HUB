@@ -358,9 +358,9 @@ $__vdir = function($dir) {
         </div>
 
         <div id="recommendation-wrapper" class="w-full lg:w-80 flex-shrink-0 space-y-4 px-4 sm:px-5 lg:px-0">
-            <div class="text-[9px] text-gray-300 uppercase tracking-[.25em] px-1 flex items-center gap-2" id="rec-title">
-                <i data-lucide="play-circle" class="w-3 h-3 text-red-500"></i>
-                Video Lainnya
+            <div class="text-[9px] text-gray-300 uppercase tracking-[.25em] px-1 flex items-center gap-2 min-w-0" id="rec-title">
+                <i data-lucide="play-circle" class="w-3 h-3 text-red-500 flex-shrink-0"></i>
+                <span id="rec-title-text" class="truncate" title="Video Lainnya">Video Lainnya</span>
             </div>
             <div id="recommendation-column" class="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-0 lg:space-y-1">
                 <?php while ($r = $rekom->fetch_assoc()): ?>
@@ -425,12 +425,25 @@ $__vdir = function($dir) {
 
     <script src="../assets/js/video/watch/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/video/watch/search.js') ?>"></script>
     <script>
+        document.addEventListener('htmx:beforeRequest', function(e) {
+            var btn = e.target.closest('#v-search-btn, #v-search-mobile');
+            if (!btn) return;
+            var input = document.getElementById('v-search-watch') || document.getElementById('v-search-mobile');
+            var query = (input ? input.value : '').trim();
+            var titleEl = document.getElementById('rec-title-text');
+            if (!titleEl) return;
+            if (query.length > 0) {
+                var label = 'Hasil pencarian \u201c' + query + '\u201d';
+                titleEl.textContent = label;
+                titleEl.title = label;
+            } else {
+                titleEl.textContent = 'Video Lainnya';
+                titleEl.title = 'Video Lainnya';
+            }
+        });
         document.addEventListener('htmx:afterRequest', function(e) {
             var sentinel = e.target.closest('.rec-sentinel');
-            if (sentinel) {
-                var spinner = sentinel.querySelector('.rec-spinner');
-                if (spinner) spinner.style.display = 'none';
-            }
+            if (sentinel) sentinel.style.display = 'none';
         });
     </script>
 </body>

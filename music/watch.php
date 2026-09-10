@@ -426,9 +426,9 @@ $__vdir = function($dir) {
                 </div>
             <?php endif; ?>
             <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
-                <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
-                    <i data-lucide="shuffle" class="w-3.5 h-3.5 text-gray-600"></i>
-                    <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Discover</span>
+                <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2 min-w-0">
+                    <i data-lucide="shuffle" class="w-3.5 h-3.5 text-gray-600 flex-shrink-0"></i>
+                    <span id="rec-title-text" class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500 truncate" title="Discover">Discover</span>
                 </div>
                 <div id="music-recommendation-column" class="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-0 lg:space-y-0.5">
                     <?php while ($r = $rekom->fetch_assoc()):
@@ -649,12 +649,25 @@ $__vdir = function($dir) {
     <script src="../assets/js/music/watch/main.js<?= $__vdir('assets/js/music/watch') ?>"></script>
     <script src="../assets/js/shared/comment.js<?= $__v('assets/js/shared/comment.js') ?>"></script>
     <script>
+        document.addEventListener('htmx:beforeRequest', function(e) {
+            var btn = e.target.closest('#m-search-btn');
+            if (!btn) return;
+            var input = document.getElementById('m-search-watch');
+            var query = (input ? input.value : '').trim();
+            var titleEl = document.getElementById('rec-title-text');
+            if (!titleEl) return;
+            if (query.length > 0) {
+                var label = 'Hasil pencarian \u201c' + query + '\u201d';
+                titleEl.textContent = label;
+                titleEl.title = label;
+            } else {
+                titleEl.textContent = 'Discover';
+                titleEl.title = 'Discover';
+            }
+        });
         document.addEventListener('htmx:afterRequest', function(e) {
             var sentinel = e.target.closest('.rec-sentinel');
-            if (sentinel) {
-                var spinner = sentinel.querySelector('.rec-spinner');
-                if (spinner) spinner.style.display = 'none';
-            }
+            if (sentinel) sentinel.style.display = 'none';
         });
     </script>
 </body>
