@@ -256,6 +256,49 @@ function setupMeelPlayerEvents() {
                 hls.media !== player.media &&
                 (hls.detachMedia(), hls.attachMedia(player.media)),
             hls.loadSource(s),
+            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+              var bitrates = hls.levels.map(function (e) { return e.bitrate; });
+              var needsRebuild = !1;
+              if (bitrates.length > 1) {
+                plyrOptions.quality = {
+                  default: bitrates[0],
+                  options: bitrates,
+                  forced: !0,
+                  onChange: function (e) {
+                    var t = hls.levels.findIndex(function (t) { return t.bitrate === e; });
+                    hls.currentLevel = t;
+                  },
+                };
+                plyrOptions.i18n = Object.assign({}, plyrOptions.i18n, { qualityLabel: {} });
+                hls.levels.forEach(function (e) {
+                  var t = e.name
+                    ? e.name
+                    : e.height + "p (" + Math.round(e.bitrate / 1e3) + "kbps)";
+                  plyrOptions.i18n.qualityLabel[e.bitrate] = t;
+                });
+                needsRebuild = !0;
+              } else if (plyrOptions.quality) {
+                delete plyrOptions.quality;
+                needsRebuild = !0;
+              }
+              if (needsRebuild) {
+                if (player) {
+                  player.destroy();
+                  player = null;
+                }
+                player = new Plyr(videoElement, plyrOptions);
+                setupMeelPlayerEvents();
+                window.appendCustomSettings && setTimeout(window.appendCustomSettings, 0);
+                if (videoElement.paused === !1) {
+                  var playPromise = player.play();
+                  if (void 0 !== playPromise) {
+                    playPromise.catch(function (e) {
+                      console.error("[MEeL] autoplay dicegah:", e);
+                    });
+                  }
+                }
+              }
+            }),
             videoElement.addEventListener(
               "loadedmetadata",
               function () {
