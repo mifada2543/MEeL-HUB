@@ -35,7 +35,19 @@ if ($result['count'] > 0) {
         }
     }
 
-    if (!$result['sidebar']) {
+    if ($result['sidebar'] && $result['hasMore'] && !empty($result['query'])) {
+        $nextOffset = $result['offset'] + $result['limit'];
+        ?>
+        <div class="py-3 text-center"
+            hx-get="search?search=<?= urlencode($result['query']) ?>&exclude=<?= $result['exclude'] ?>&offset=<?= $nextOffset ?>"
+            hx-target="#recommendation-column"
+            hx-swap="beforeend"
+            hx-trigger="revealed"
+            hx-indicator="#search-indicator">
+            <div class="animate-spin h-3 w-3 border-2 border-red-500 border-t-transparent rounded-full mx-auto"></div>
+        </div>
+        <?php
+    } elseif (!$result['sidebar']) {
         $curPage    = (int)((int)$result['offset'] / max((int)$result['limit'], 1)) + 1;
         $totalPages = max(1, (int)$result['total_pages']);
 

@@ -69,6 +69,25 @@ abstract class AbstractWatchController
             ? $this->viewer->getComments()
             : ['grouped' => [], 'user_map' => []];
 
+        $recommendations = $rekom ?? $this->viewer->getRecommendations(15);
+
+        if ($recommendations && $recommendations->num_rows > 0) {
+            $type = $this->viewer->getMediaType();
+            $key = "seen_{$type}_ids";
+            if (!isset($_SESSION[$key])) {
+                $_SESSION[$key] = [];
+            }
+            $recommendations->data_seek(0);
+            while ($row = $recommendations->fetch_assoc()) {
+                $_SESSION[$key][] = (int)$row['id'];
+            }
+            $_SESSION[$key] = array_unique($_SESSION[$key]);
+            if (count($_SESSION[$key]) > 100) {
+                $_SESSION[$key] = array_slice(array_values($_SESSION[$key]), -100);
+            }
+            $recommendations->data_seek(0);
+        }
+
         return [
             'id'               => $this->id,
             'user_id'          => $this->user_id,
@@ -77,7 +96,7 @@ abstract class AbstractWatchController
             'user_interaction' => $this->viewer->getUserInteraction(),
             'comments_grouped' => $comments_data['grouped'],
             'user_map'         => $comments_data['user_map'],
-            'rekom'            => $rekom ?? $this->viewer->getRecommendations(15),
+            'rekom'            => $recommendations,
         ];
     }
 }
