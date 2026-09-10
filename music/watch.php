@@ -457,6 +457,16 @@ $__vdir = function($dir) {
                             </div>
                         </a>
                     <?php endwhile; ?>
+                    <?php if ($rekom->num_rows >= 15): ?>
+                        <div class="py-3 text-center rec-sentinel"
+                            hx-get="search?exclude=<?= (int)$id ?>"
+                            hx-target="#music-recommendation-column"
+                            hx-swap="beforeend"
+                            hx-trigger="revealed"
+                            hx-indicator="#music-search-indicator">
+                            <div class="rec-spinner animate-spin h-3 w-3 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"></div>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -638,6 +648,15 @@ $__vdir = function($dir) {
     <script src="../assets/js/shared/view-router.js<?= $__v('assets/js/shared/view-router.js') ?>"></script>
     <script src="../assets/js/music/watch/main.js<?= $__vdir('assets/js/music/watch') ?>"></script>
     <script src="../assets/js/shared/comment.js<?= $__v('assets/js/shared/comment.js') ?>"></script>
+    <script>
+        document.addEventListener('htmx:afterRequest', function(e) {
+            var sentinel = e.target.closest('.rec-sentinel');
+            if (sentinel) {
+                var spinner = sentinel.querySelector('.rec-spinner');
+                if (spinner) spinner.style.display = 'none';
+            }
+        });
+    </script>
 </body>
 
 </html>

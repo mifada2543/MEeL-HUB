@@ -35,16 +35,16 @@ if ($result['count'] > 0) {
         }
     }
 
-    if ($result['sidebar'] && $result['hasMore'] && !empty($result['query'])) {
+    if ($result['sidebar'] && ($result['hasMore'] || empty($result['query']))) {
         $nextOffset = $result['offset'] + $result['limit'];
         ?>
-        <div class="py-3 text-center"
+        <div class="py-3 text-center rec-sentinel"
             hx-get="search?search=<?= urlencode($result['query']) ?>&exclude=<?= $result['exclude'] ?>&offset=<?= $nextOffset ?>"
             hx-target="#recommendation-column"
             hx-swap="beforeend"
             hx-trigger="revealed"
             hx-indicator="#search-indicator">
-            <div class="animate-spin h-3 w-3 border-2 border-red-500 border-t-transparent rounded-full mx-auto"></div>
+            <div class="rec-spinner animate-spin h-3 w-3 border-2 border-red-500 border-t-transparent rounded-full mx-auto"></div>
         </div>
         <?php
     } elseif (!$result['sidebar']) {

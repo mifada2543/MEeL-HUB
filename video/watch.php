@@ -384,6 +384,16 @@ $__vdir = function($dir) {
                         </div>
                     </a>
                 <?php endwhile; ?>
+                <?php if ($rekom->num_rows >= 15): ?>
+                    <div class="py-3 text-center rec-sentinel"
+                        hx-get="search?exclude=<?= (int)$id ?>"
+                        hx-target="#recommendation-column"
+                        hx-swap="beforeend"
+                        hx-trigger="revealed"
+                        hx-indicator="#search-indicator">
+                        <div class="rec-spinner animate-spin h-3 w-3 border-2 border-red-500 border-t-transparent rounded-full mx-auto"></div>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -414,6 +424,15 @@ $__vdir = function($dir) {
     <script src="../assets/js/shared/htmx-lucide.js<?= $__v('assets/js/shared/htmx-lucide.js') ?>"></script>
 
     <script src="../assets/js/video/watch/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/video/watch/search.js') ?>"></script>
+    <script>
+        document.addEventListener('htmx:afterRequest', function(e) {
+            var sentinel = e.target.closest('.rec-sentinel');
+            if (sentinel) {
+                var spinner = sentinel.querySelector('.rec-spinner');
+                if (spinner) spinner.style.display = 'none';
+            }
+        });
+    </script>
 </body>
 
 </html>
