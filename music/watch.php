@@ -427,8 +427,8 @@ $__vdir = function($dir) {
             <?php endif; ?>
             <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
                 <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2 min-w-0">
-                    <i data-lucide="shuffle" class="w-3.5 h-3.5 text-gray-600 flex-shrink-0"></i>
-                    <span id="rec-title-text" class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500 truncate" title="Discover">Discover</span>
+                    <i data-lucide="shuffle" class="w-3 h-3 text-orange-500 flex-shrink-0"></i>
+                    <span id="rec-title-text" class="text-[9px] font-bold uppercase tracking-[.25em] text-gray-300 truncate" title="Discover">Discover</span>
                 </div>
                 <div id="music-recommendation-column" class="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-0 lg:space-y-0.5">
                     <?php while ($r = $rekom->fetch_assoc()):
