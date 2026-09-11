@@ -737,6 +737,112 @@ class Notification {
 
 ---
 
+## Media Pipeline
+
+### Video Pipeline
+
+```
+Upload → FFmpeg Transcode → HLS (.m3u8 + .ts)
+                                ↓
+                          Sprite Generator
+                                ↓
+                         VTT Thumbnails
+                                ↓
+                         Move to HDD
+                                ↓
+                          DB Insert
+```
+
+### Audio Pipeline
+
+```
+Upload/Download → FFmpeg Encode → Opus (.ogg)
+                                      ↓
+                            Thumbnail Extraction
+                                (ID3 → JPG)
+                                      ↓
+                               DB Insert
+```
+
+### Download URL Pipeline
+
+```
+URL Input → yt-dlp Metadata → Download → Type Check
+                                            ↓
+                              ┌──────────────┴──────────────┐
+                              ↓                             ↓
+                          Video                         Music
+                              ↓                             ↓
+                     FFmpeg HLS                    FFmpeg Opus
+                     (codec copy)                   (libopus)
+                              ↓                             ↓
+                      Sprite + VTT                  Cover Art
+                              ↓                             ↓
+                         DB Insert                    DB Insert
+```
+
+---
+
+## Authentication Flow
+
+```
+Request → auth.php
+  ↓
+Session exists? → No → Redirect to login.php
+  ↓ Yes
+Validate last_session_id
+  ↓
+Different? → Yes → Session Destroy → Redirect to /err/?code=revoked
+  ↓ No
+Update last_activity
+  ↓
+Continue to requested page
+```
+
+### Login Flow
+
+```
+POST login
+  ↓
+Verify CSRF token
+  ↓
+Validate username & password
+  ↓
+Failed 5x? → Lock 5 minutes
+  ↓ Success
+Check MFA (mfa_enabled)
+  ↓
+Active? → Save mfa_temp_uid → Redirect to mfa_verify.php
+  ↓ No
+Set session variables (user_id, username, role)
+  ↓
+Update last_session_id
+  ↓
+Redirect to index.php
+```
+
+### MFA Verification Flow
+
+```
+POST mfa_verify.php
+  ↓
+Rate limit: max 10 failures, lock 5 minutes
+  ↓
+Verify TOTP 6-digit code
+  ↓
+Failed? → Increment fail count
+  ↓ Valid
+Set full session (user_id, username, role)
+  ↓
+Set mfa_verified = true
+  ↓
+Remove mfa_temp_uid from session
+  ↓
+Redirect to index.php
+```
+
+---
+
 ## 26. JS/CSS Modularization
 
 MEeL uses a modular approach for JavaScript and CSS — each module has separate files that are loaded dynamically.

@@ -167,7 +167,7 @@ MEeL/
 | API | [ID](docs/id/api.md) | [EN](docs/en/api.md) |
 | Security | [ID](docs/id/security.md) | [EN](docs/en/security.md) |
 | Development | [ID](docs/id/development.md) | [EN](docs/en/development.md) |
-| Testing | [ID](docs/id/test.md) | [EN](docs/en/test.md) |
+| Testing | [ID](docs/id/testing.md) | [EN](docs/en/testing.md) |
 | Troubleshooting | [ID](docs/id/troubleshooting.md) | [EN](docs/en/troubleshooting.md) |
 | PWA | [ID](docs/id/pwa.md) | [EN](docs/en/pwa.md) |
 

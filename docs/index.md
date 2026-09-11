@@ -23,7 +23,7 @@ Choose your language / Pilih bahasa:
 - [🌍 Problem Solved](en/problem-solved.md) — Real-world problems MEeL solves
 - [🔧 Troubleshooting](en/troubleshooting.md) — Common issue solutions
 - [👨‍💻 Development Guide](en/development.md) — Coding standards & contribution
-- [📥 Advanced Upload Issues](en/upload_issue.md) — yt-dlp & queue issues
+- [📥 Advanced Upload Issues](en/upload-issues.md) — yt-dlp & queue issues
 - [📱 PWA](en/pwa.md) — Progressive Web App: dynamic service worker, offline
 - [📋 Project Analysis](en/analysis.md) — Full project analysis & metrics
 
@@ -38,9 +38,9 @@ Choose your language / Pilih bahasa:
 - [🌍 Problem Solved](id/problem-solved.md) — Masalah dunia nyata yang dipecahkan
 - [🔧 Troubleshooting](id/troubleshooting.md) — Solusi masalah umum
 - [👨‍💻 Panduan Development](id/development.md) — Standar koding & kontribusi
-- [📥 Advanced Upload Issues](id/upload_issue.md) — Masalah yt-dlp & queue
+- [📥 Advanced Upload Issues](id/upload-issues.md) — Masalah yt-dlp & queue
 - [📱 PWA](id/pwa.md) — Progressive Web App: service worker dinamis, offline
-- [📋 Analisis Proyek](id/deskripsi.md) — Analisis & metrik proyek
+- [📋 Analisis Proyek](id/analysis.md) — Analisis & metrik proyek
 
 ---
 

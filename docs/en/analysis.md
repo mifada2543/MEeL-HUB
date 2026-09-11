@@ -60,6 +60,56 @@ MEeL/
 
 ---
 
+## 🗄️ Database Schema Verification
+
+### 20 Tables
+
+| # | Table | Function | Status |
+|---|---|---|---|
+| 1 | `users` | Users, roles, sessions, profile | ✅ |
+| 2 | `video` | Video metadata (HLS/MP4) | ✅ |
+| 3 | `music` | Audio metadata (MP3/FLAC/OGG/M4A) | ✅ |
+| 4 | `books` | E-book/manga metadata (PDF/ZIP) | ✅ |
+| 5 | `comments` | Nested comments | ✅ |
+| 6 | `interactions` | Like/dislike per user per content | ✅ |
+| 7 | `playlists` | Music playlists | ✅ |
+| 8 | `playlist_tracks` | Playlist ↔ music relations | ✅ |
+| 9 | `upload_queue` | yt-dlp download queue | ✅ |
+| 10 | `transcode_queue` | Video→audio transcode queue | ✅ |
+| 11 | `view_logs` | Prevent view inflation | ✅ |
+| 12 | `ip_ban` | Blocked IP list | ✅ |
+| 13 | `updates` | System changelog | ✅ |
+| 14 | `sidebar_settings` | Sidebar announcement content | ✅ |
+| 15 | `activity_log` | Activity log for auditing | ✅ |
+| 16 | `drive_files` | Cloud Drive files | ✅ |
+| 17 | `db_version` | **Migration tracker** | ✅ |
+| 18 | `login_attempts` | Prevent brute force login | ✅ |
+| 19 | `rooms` | Multiplayer chess rooms (LAN) | ✅ |
+| 20 | `moves` | Chess move history | ✅ |
+
+### Indexes
+
+| Table | Index | Type | Status |
+|---|---|---|---|
+| `video` | `ft_video_search` (title, search_metadata) | **FULLTEXT** | ✅ Migration v1 |
+| `music` | `ft_music_search` (title, artist, search_metadata) | **FULLTEXT** | ✅ Migration v1 |
+| `books` | `ft_books_search` (title, author) | **FULLTEXT** | ✅ Migration v1 |
+| `video` | `idx_video_upload_date` (upload_date) | BTREE | ✅ Migration v2 |
+| `music` | `idx_music_upload_date` (upload_date) | BTREE | ✅ Migration v2 |
+| `books` | `idx_books_upload_date` (upload_date) | BTREE | ✅ Migration v2 |
+| `drive_files` | `idx_drive_upload_date` (upload_date) | BTREE | ✅ Migration v2 |
+
+### Key Notes
+
+1. **✅ FULLTEXT Search** — `LIKE %...%` queries replaced with `MATCH ... AGAINST` in `MediaLibrary.php` for video & music (10-100× faster)
+2. **✅ Foreign Keys** — All main tables (video, music, books, comments, playlists, upload_queue, drive_files) have FK with `ON DELETE CASCADE`
+3. **✅ FK Constraints** — `upload_queue.user_id`, `transcode_queue.user_id`, `drive_files.user_id` have FK to `users.id` (Migration v4)
+4. **✅ Role Column** — `users.role` is `varchar(20)` (not enum) — supports all roles: `admin`, `member`, `user`, `guest`. Synced via Migration v8
+5. **✅ Unique Constraints** — `interactions` (prevent duplicate likes), `view_logs` (prevent view inflation), `ip_ban` (prevent duplicate IPs), `users.username` (prevent duplicate guests)
+6. **✅ Migration System** — `database/migrate.php` handles idempotent schema upgrades (FULLTEXT index, performance index, FK, activity_log, UNIQUE KEY, schema sync)
+
+---
+
 ## 🔒 Security Assessment
 
 ### Security Test: ✅ 99/100 — Score: 99/100 (A) (3 non-critical warnings, 0 fails)
@@ -104,6 +154,29 @@ MEeL/
 | `LIKE` → `MATCH AGAINST` FULLTEXT | 10-100× faster search | `modules/media/MediaLibrary.php` |
 | `session_write_close()` | No more blocked range requests | `music/stream.php` |
 | File-based cache `getCounts()` | 60-second count cache, no DB hits | `modules/media/MediaLibrary.php` |
+
+---
+
+## 🔍 Issues Identified
+
+### Critical (0)
+
+No critical issues remaining.
+
+### High (0)
+
+No high issues remaining.
+
+### Medium (0)
+
+No medium issues remaining.
+
+### Low (0 ✅ — All Fixed)
+
+| # | Issue | Status | Fix |
+|---|---|---|---|
+| 1 | `users.role` enum doesn't include 'member' | ✅ **Done** | Role changed to `varchar(20)` — supports `admin`, `member`, `user`, `guest` |
+| 2 | No `db_version` table in schema.sql | ✅ **Done** | Added to schema.sql + Migration v8 sync for existing DB |
 
 ---
 

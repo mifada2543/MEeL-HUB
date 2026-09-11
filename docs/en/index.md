@@ -16,8 +16,8 @@ Welcome to the official **MEeL** documentation — A Personal Media Hub Platform
 | 6 | [🌍 Problem Solved](problem-solved.md) | Real-world problems that inspired MEeL |
 | 7 | [🔧 Troubleshooting](troubleshooting.md) | Solutions for common issues |
 | 8 | [👨‍💻 Development Guide](development.md) | Coding standards, contributions, and testing |
-| 9 | [📥 Advanced Upload Issues](upload_issue.md) | Handling yt-dlp & background queue problems |
-| 10 | [🧪 Testing Guide](test.md) | PHPUnit, Functional, Security test — complete guide |
+| 9 | [📥 Advanced Upload Issues](upload-issues.md) | Handling yt-dlp & background queue problems |
+| 10 | [🧪 Testing Guide](testing.md) | PHPUnit, Functional, Security test — complete guide |
 | 11 | [📱 PWA](pwa.md) | Progressive Web App: dynamic service worker, cache strategies, offline |
 
 ---
