@@ -2,13 +2,13 @@
 class MediaViewer
 {
     private \mysqli $conn;
-    private int $user_id;
-    private array $user_data;
+    private ?int $user_id;
+    private ?array $user_data = null;
     private string $media_type;
     private int $media_id;
     private string $table;
 
-    public function __construct(\mysqli $db_connection, int $session_user_id, string $media_type, int $media_id)
+    public function __construct(\mysqli $db_connection, ?int $session_user_id, string $media_type, int $media_id)
     {
         $this->conn = $db_connection;
         $this->user_id = $session_user_id;

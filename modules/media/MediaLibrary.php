@@ -53,7 +53,7 @@ class MediaLibrary
 
     
 
-    protected function paginateResult(\mysqli_result $result, int $total, int $page, int $perPage): array
+    protected function paginateResult(\mysqli_result|null $result, int $total, int $page, int $perPage): array
     {
         $totalPages = max(1, (int)ceil($total / max($perPage, 1)));
         $page = max(1, min($page, $totalPages));
