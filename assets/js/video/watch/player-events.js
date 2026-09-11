@@ -252,15 +252,18 @@ function setupMeelPlayerEvents() {
           }),
         (player.poster = d),
         c
-          ? (!hls && window.Hls && Hls.isSupported()
-              ? ((hls = new Hls(HLS_CONFIG)),
+          ? (window.Hls && Hls.isSupported()
+              ? (hls && (hls.destroy(), (hls = null)),
+                (hls = new Hls(HLS_CONFIG)),
                 registerHlsErrorListener(hls),
                 hls.attachMedia(player.media))
               : hls &&
                 hls.media !== player.media &&
                 (hls.detachMedia(), hls.attachMedia(player.media)),
             hls.loadSource(s),
-            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+            (window._meelSkipManifestHandler &&
+              hls.off(Hls.Events.MANIFEST_PARSED, window._meelSkipManifestHandler),
+            (window._meelSkipManifestHandler = function () {
               var bitrates = hls.levels.map(function (e) { return e.bitrate; });
               var needsRebuild = !1;
               if (bitrates.length > 1) {
@@ -287,22 +290,26 @@ function setupMeelPlayerEvents() {
               }
               if (needsRebuild) {
                 if (player) {
+                  hls.detachMedia();
                   player.destroy();
                   player = null;
+                }
+                videoElement = document.getElementById("main-video");
+                if (videoElement && hls) {
+                  hls.attachMedia(videoElement);
                 }
                 player = new Plyr(videoElement, plyrOptions);
                 setupMeelPlayerEvents();
                 window.appendCustomSettings && setTimeout(window.appendCustomSettings, 0);
-                if (videoElement.paused === !1) {
-                  var playPromise = player.play();
-                  if (void 0 !== playPromise) {
-                    playPromise.catch(function (e) {
-                      console.error("[MEeL] autoplay dicegah:", e);
-                    });
-                  }
+                var playPromise = player.play();
+                if (void 0 !== playPromise) {
+                  playPromise.catch(function (e) {
+                    console.error("[MEeL] autoplay dicegah:", e);
+                  });
                 }
               }
             }),
+            hls.on(Hls.Events.MANIFEST_PARSED, window._meelSkipManifestHandler)),
             videoElement.addEventListener(
               "loadedmetadata",
               function () {
