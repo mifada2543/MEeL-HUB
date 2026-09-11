@@ -4,7 +4,7 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [Arsitektur Keamanan](#arsitektur-keamanan)
 - [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
@@ -459,9 +459,9 @@ Endpoint read-only (`unread_count`, `list`, `users`, `get`) tetap bisa diakses v
 ### Chess Multiplayer — Guard Login + CSRF
 
 Semua endpoint `arcade/chess/controller/*.php` mewajibkan:
-- **Login** — JSON `401` + `login_required: true` (client `arcade/chess/assets/js/api.js` redirect ke login).
-- **CSRF** — setiap POST yang mengubah state membawa `csrf_token` (body JSON untuk `save_move`, `FormData` untuk `create_room`/`join_room`).
-- Token **tidak pernah disimpan** di `moves.move_data` (tidak ter-expose ke lawan).
+- **Login** — JSON `401` + `login_required: true` (client `arcade/chess/assets/js/api.js` redirect ke login)
+- **CSRF** — setiap POST yang mengubah state membawa `csrf_token` (body JSON untuk `save_move`, `FormData` untuk `create_room`/`join_room`)
+- Token **tidak pernah disimpan** di `moves.move_data` (tidak ter-expose ke lawan)
 
 ---
 
@@ -495,27 +495,20 @@ function get_real_ip() {
 
 ### Gerbang Trusted Proxy (`MEEL_TRUST_PROXY_HEADERS`)
 
-Header proxy **hanya** boleh dipercaya jika request lewat proxy/CDN yang Anda
-kendalikan. Konfigurasi di `auth/settings.php`:
+Header proxy **hanya** boleh dipercaya jika request lewat proxy/CDN yang Anda kendalikan. Konfigurasi di `auth/settings.php`:
 
 ```php
 // WAJIB true jika menggunakan Cloudflare Tunnel, Nginx reverse proxy, atau CDN
 define('MEEL_TRUST_PROXY_HEADERS', true);
 ```
 
-> Jika diset `true` padahal server diakses langsung, attacker bisa memalsukan
-> `X-Forwarded-For` untuk mem-bypass IP-ban atau membanjiri activity log.
+> Jika diset `true` padahal server diakses langsung, attacker bisa memalsukan `X-Forwarded-For` untuk mem-bypass IP-ban atau membanjiri activity log.
 
-> **Behind cloudflared:** Tunnel selalu menghubungkan ke Apache dari localhost
-> (`REMOTE_ADDR = 127.0.0.1`). Tanpa `MEEL_TRUST_PROXY_HEADERS = true`, semua
-> IP terdeteksi sebagai localhost, rate limiting lumpuh, dan environment
-> terdeteksi sebagai "development".
+> **Behind cloudflared:** Tunnel selalu menghubungkan ke Apache dari localhost (`REMOTE_ADDR = 127.0.0.1`). Tanpa `MEEL_TRUST_PROXY_HEADERS = true`, semua IP terdeteksi sebagai localhost, rate limiting lumpuh, dan environment terdeteksi sebagai "development".
 
 ### Auth IP Helpers
 
-`auth_get_ip()` dan `auth_is_loopback()` di `auth/auth_helpers.php` juga menggunakan
-`get_real_ip()` — bukan `$_SERVER['REMOTE_ADDR']` langsung. Ini memastikan
-IP detection konsisten di seluruh sistem (login, rate limiting, ban check).
+`auth_get_ip()` dan `auth_is_loopback()` di `auth/auth_helpers.php` juga menggunakan `get_real_ip()` — bukan `$_SERVER['REMOTE_ADDR']` langsung. Ini memastikan IP detection konsisten di seluruh sistem (login, rate limiting, ban check).
 
 ### IP Validation
 
@@ -608,7 +601,7 @@ Mencatat aktivitas user ke tabel `activity_log` dengan prepared statement. Null 
 Halaman `admin/activity_log.php` menyediakan viewer khusus untuk audit trail dengan 3 tab:
 
 | Tab | Tema | Fitur |
-|-----|------|-------|
+|---|---|---|
 | 📋 **Activity** | Biru-600 | Filter berdasarkan tipe aksi, username/IP, rentang waktu (7–365 hari); pagination (50/halaman); stats cards (aktivitas 7 hari, user unik, total entri); badge aksi berwarna (login=biru, upload=hijau, ban=merah); cleanup manual dengan CSRF |
 | 🛡️ **Admin Actions** | Ungu-600 | Filter berdasarkan username admin, tipe aksi, rentang waktu; stats cards (aksi admin 7 hari, admin unik, total entri); badge berwarna (coin=kuning, reset=merah, login=biru, lainnya=abu-abu); maintenance: hapus yang lebih lama dari 7–365 hari |
 | 📤 **Upload Queue** | Hijau-600 | Filter berdasarkan status (pending/processing/transcoding/completed/failed), uploader, rentang waktu; stats cards (total upload, selesai, gagal, aktif); badge status berwarna; export CSV/JSON/XLS dengan preview modal; maintenance: hapus yang selesai/gagal lebih lama dari 7–365 hari |
@@ -765,9 +758,7 @@ $max_dur = ($this->user_role === 'admin') ? 3600 : 300;
 
 ### Validasi Magic Bytes Terpusat (`meel_magic_extension_ok`)
 
-Satu-satunya sumber kebenaran validasi signature file (server-side) — semua
-jalur upload (Uploader video/music, thumbnail, BookUploader, DriveStorage)
-memakainya, menggantikan cek inline yang diduplikasi:
+Satu-satunya sumber kebenaran validasi signature file (server-side) — semua jalur upload (Uploader video/music, thumbnail, BookUploader, DriveStorage) memakainya, menggantikan cek inline yang diduplikasi:
 
 ```php
 // modules/core/helpers/upload.php
@@ -776,15 +767,11 @@ meel_magic_extension_ok(string $path, string $ext, string $mediaKind): string
 // return '' jika cocok, pesan error jika tidak
 ```
 
-Jenis yang dikenali: Ogg/Opus, FLAC, WAV/RIFF, MP3 (ID3/frame sync), MP4/M4A
-(ftyp), Matroska/WebM, JPEG/PNG/WebP/GIF, PDF, dan arsip ZIP. Validasi tidak
-pernah mengandalkan `$_FILES['type']` atau ekstensi saja.
+Jenis yang dikenali: Ogg/Opus, FLAC, WAV/RIFF, MP3 (ID3/frame sync), MP4/M4A (ftyp), Matroska/WebM, JPEG/PNG/WebP/GIF, PDF, dan arsip ZIP. Validasi tidak pernah mengandalkan `$_FILES['type']` atau ekstensi saja.
 
 ### Alokasi Nama File Atomik (anti race condition)
 
-Nama file fisik tidak lagi dialokasikan dengan pola check-then-move
-(`while (file_exists(...))`). Semua nama media di-reserve **atomik** via
-`meel_reserve_unique_filename()` (placeholder `fopen(..., 'x')` / O_EXCL):
+Nama file fisik tidak lagi dialokasikan dengan pola check-then-move (`while (file_exists(...))`). Semua nama media di-reserve **atomik** via `meel_reserve_unique_filename()` (placeholder `fopen(..., 'x')` / O_EXCL):
 
 ```php
 // modules/core/helpers/upload.php — dipakai Uploader, EncodeService,
@@ -792,15 +779,11 @@ Nama file fisik tidak lagi dialokasikan dengan pola check-then-move
 meel_reserve_unique_filename(string $dir, string $clean_name, string $ext): ?string
 ```
 
-Dua request bersamaan tidak mungkin menerima nama yang sama; pemanggil menimpa
-placeholder dengan `move_uploaded_file()` / ffmpeg `-y`. Nama folder kerja video
-dialokasikan lewat helper serupa (`meel_allocate_unique_dir()`).
+Dua request bersamaan tidak mungkin menerima nama yang sama; pemanggil menimpa placeholder dengan `move_uploaded_file()` / ffmpeg `-y`. Nama folder kerja video dialokasikan lewat helper serupa (`meel_allocate_unique_dir()`).
 
 ### Proteksi Arsip ZIP/CBZ (`ArchiveGuard`)
 
-Ekstraksi manga/book **tidak pernah** memakai `ZipArchive::extractTo()`
-langsung ke folder final. `modules/media/ArchiveGuard.php` menjalankan pipeline
-validasi → staging → move:
+Ekstraksi manga/book **tidak pernah** memakai `ZipArchive::extractTo()` langsung ke folder final. `modules/media/ArchiveGuard.php` menjalankan pipeline validasi → staging → move:
 
 ```
 buka arsip
@@ -822,21 +805,15 @@ Limit dikonfigurasi via konstanta (default):
 | `MAX_ARCHIVE_COMPRESSION_RATIO` | 300 | Rasio kompresi per-entry (zip bomb) |
 | `MAX_ARCHIVE_PATH_DEPTH` | 16 | Kedalaman direktori maksimum |
 
-Ditolak: absolute path, `../`, `..\`, null byte, symlink, kedalaman berlebihan,
-entri non-gambar (hanya `jpg/jpeg/png/webp/gif/bmp/avif` untuk CBZ/manga), dan
-count/ukuran/rasio melebihi batas. Kejadian ditolak dicatat ke error log tanpa
-menyimpan isi arsip.
+Ditolak: absolute path, `../`, `..\`, null byte, symlink, kedalaman berlebihan, entri non-gambar (hanya `jpg/jpeg/png/webp/gif/bmp/avif` untuk CBZ/manga), dan count/ukuran/rasio melebihi batas. Kejadian ditolak dicatat ke error log tanpa menyimpan isi arsip.
 
 ### Quota & Resource Limits
 
-- **Disk pre-flight** — `require_disk_space()` menolak upload sebelum menulis
-  byte pertama (music 500MB, video 1GB + `/dev/shm` 512MB).
-- **Upload simultan** — maksimal 3 upload bersamaan (counter file ber-`flock` +
-  TTL 5 menit + auto-decrement di shutdown).
-- **Rate limit** — upload dibatasi per jam berbasis role (admin unlimited).
-- **Arsip** — limit entri/ukuran/rasio di atas (anti zip bomb).
-- **Transcode** — timeout audio 600s (`TRANSCODE_AUDIO_TIMEOUT`), HLS remux
-  120s, `stream_set_timeout(30)`, durasi hasil divalidasi ≥ 50% sumber.
+- **Disk pre-flight** — `require_disk_space()` menolak upload sebelum menulis byte pertama (music 500MB, video 1GB + `/dev/shm` 512MB)
+- **Upload simultan** — maksimal 3 upload bersamaan (counter file ber-`flock` + TTL 5 menit + auto-decrement di shutdown)
+- **Rate limit** — upload dibatasi per jam berbasis role (admin unlimited)
+- **Arsip** — limit entri/ukuran/rasio di atas (anti zip bomb)
+- **Transcode** — timeout audio 600s (`TRANSCODE_AUDIO_TIMEOUT`), HLS remux 120s, `stream_set_timeout(30)`, durasi hasil divalidasi ≥ 50% sumber
 
 ---
 
@@ -862,25 +839,9 @@ Direktori yang diproteksi:
 - `music/upload/` — File musik
 - `video/upload/` — File video
 
-> **File upload tidak disajikan langsung oleh web server.** Sejak refactor
-> portabilitas, `books/upload/`, `music/upload/`, dan `video/upload/` adalah
-> folder nyata ter-track (placeholder `.gitkeep` + `.htaccess` hardening) yang
-> isinya disajikan lewat endpoint PHP yang dipetakan internal rewrite di
-> `.htaccess` root: `video/upload/...` → `video/stream.php`,
-> `music/upload/...` → `music/file.php`, `books/upload/...` → `books/file.php`
-> (lihat [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
-> Endpoint ini menerapkan proteksi path traversal, whitelist ekstensi, dan
-> dukungan HTTP Range.
+> **File upload tidak disajikan langsung oleh web server.** Sejak refactor portabilitas, `books/upload/`, `music/upload/`, dan `video/upload/` adalah folder nyata ter-track (placeholder `.gitkeep` + `.htaccess` hardening) yang isinya disajikan lewat endpoint PHP yang dipetakan internal rewrite di `.htaccess` root: `video/upload/...` → `video/stream.php`, `music/upload/...` → `music/file.php`, `books/upload/...` → `books/file.php` (lihat [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)). Endpoint ini menerapkan proteksi path traversal, whitelist ekstensi, dan dukungan HTTP Range.
 >
-> **`books/file.php` wajib login** (`auth/auth.php`), konsisten dengan seluruh
-> modul Books — `index.php`, `read.php`, `read_pdf.php`, dan
-> `controllers/api/pdf.php` semuanya login-gated. Tanpa ini, gambar manga dan
-> PDF bisa diunduh langsung tanpa autentikasi (path mentah sebelumnya dapat
-> diakses dengan `HTTP 200`). Audio musik tetap di belakang `music/stream.php`
-> (marker session + referer gate ketat); `music/file.php` dan
-> `video/stream.php` sengaja **tanpa** login gate karena halaman index/watch
-> Music & Video memang publik by design (thumbnail harus tampil untuk
-> pengunjung anonim).
+> **`books/file.php` wajib login** (`auth/auth.php`), konsisten dengan seluruh modul Books — `index.php`, `read.php`, `read_pdf.php`, dan `controllers/api/pdf.php` semuanya login-gated. Tanpa ini, gambar manga dan PDF bisa diunduh langsung tanpa autentikasi (path mentah sebelumnya dapat diakses dengan `HTTP 200`). Audio musik tetap di belakang `music/stream.php` (marker session + referer gate ketat); `music/file.php` dan `video/stream.php` sengaja **tanpa** login gate karena halaman index/watch Music & Video memang publik by design (thumbnail harus tampil untuk pengunjung anonim).
 
 ### Root .htaccess
 
@@ -993,8 +954,7 @@ Keterbatasan `https://` dengan demikian teratasi: meskipun URL HTTPS asli tidak 
 
 ### Keamanan `temp_file` & `post_encode`
 
-`temp_file` tidak pernah menerima path filesystem dari client. Alur
-download-music:
+`temp_file` tidak pernah menerima path filesystem dari client. Alur download-music:
 
 ```
 yt-dlp download → staging di RAM disk (`/dev/shm/meel/`) dengan nama token
@@ -1006,27 +966,16 @@ yt-dlp download → staging di RAM disk (`/dev/shm/meel/`) dengan nama token
 `post_encode.php`:
 - **Method POST** + verifikasi CSRF (endpoint state-changing)
 - Validasi token: regex `[A-Za-z0-9._-]+`, tolak `..`, path absolut, dan null byte
-- `pathinfo()` + pencocokan sesi → **ownership** (user A tidak bisa memakai
-  token milik user B) + cek eksistensi + expiry 1 jam
+- `pathinfo()` + pencocokan sesi → **ownership** (user A tidak bisa memakai token milik user B) + cek eksistensi + expiry 1 jam
 - Input encode dikunci ke direktori temp server (`getShmTempPath()`)
 
-Download hasil transcode (`download_transcode.php`) memakai
-`Transcoder::ownsTranscodeFile()` — binding ke sesi — plus allowlist regex
-nama file, sehingga file transcode milik user lain tidak bisa ditebak/unduh.
+Download hasil transcode (`download_transcode.php`) memakai `Transcoder::ownsTranscodeFile()` — binding ke sesi — plus allowlist regex nama file, sehingga file transcode milik user lain tidak bisa ditebak/unduh.
 
 ---
 
 ## Proteksi Private Drive
 
-Cloud Drive MEeL menyimpan file private user di bawah
-`<MEEL_HDD_DRIVE>/private_admins/<username>/...` saat `MEEL_HDD_DRIVE` di-set di
-`auth/settings.php`, atau folder fallback ter-track repo
-`data_drive/private_admins/<username>/...` saat tidak (lihat
-[Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
-Selama subtree private dapat dijangkau dari web server (folder fallback berada di
-document root; deployment HDD bisa mengeksposnya lewat symlink saat deploy), web
-server bisa melayani file secara langsung — melewati otorisasi level aplikasi.
-Dua lapisan kontrol menutup celah ini.
+Cloud Drive MEeL menyimpan file private user di bawah `<MEEL_HDD_DRIVE>/private_admins/<username>/...` saat `MEEL_HDD_DRIVE` di-set di `auth/settings.php`, atau folder fallback ter-track repo `data_drive/private_admins/<username>/...` saat tidak (lihat [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)). Selama subtree private dapat dijangkau dari web server (folder fallback berada di document root; deployment HDD bisa mengeksposnya lewat symlink saat deploy), web server bisa melayani file secara langsung — melewati otorisasi level aplikasi. Dua lapisan kontrol menutup celah ini.
 
 ### Lapisan 1 — Deny Web Server (ter-track di repo)
 
@@ -1082,8 +1031,8 @@ Kedua endpoint me-resolve file melalui `DriveStorage::getFileForDownload()`, yan
 
 Dua race TOCTOU ditutup di `DriveStorage::upload()`:
 
-- **Kuota** — rangkaian "cek usage → cek kuota → tulis file" berjalan di dalam `flock()` per-user (lock file `temp/drive_quota_<md5(username)>.lock`) dengan usage dihitung segar (melewati cache 5 menit), sehingga upload berbarengan tidak bisa melewati kuota member secara kolektif. Jika lock tidak bisa dibuat, pengecekan kuota tetap berjalan non-atomik — tidak pernah dilewati.
-- **Bentrok nama file** — `fopen($path, 'x')` (O_CREAT|O_EXCL) mengklaim nama file unik secara atomik sebelum `move_uploaded_file()`, sehingga dua upload bersamaan dengan nama sama tidak bisa sama-sama menang (menutup TOCTOU `file_exists()` → move).
+- **Kuota** — rangkaian "cek usage → cek kuota → tulis file" berjalan di dalam `flock()` per-user (lock file `temp/drive_quota_<md5(username)>.lock`) dengan usage dihitung segar (melewati cache 5 menit), sehingga upload berbarengan tidak bisa melewati kuota member secara kolektif. Jika lock tidak bisa dibuat, pengecekan kuota tetap berjalan non-atomik — tidak pernah dilewati
+- **Bentrok nama file** — `fopen($path, 'x')` (O_CREAT|O_EXCL) mengklaim nama file unik secara atomik sebelum `move_uploaded_file()`, sehingga dua upload bersamaan dengan nama sama tidak bisa sama-sama menang (menutup TOCTOU `file_exists()` → move)
 
 ### Test Regresi
 
@@ -1094,10 +1043,7 @@ Dua race TOCTOU ditutup di `DriveStorage::upload()`:
 | `tests/unit/DriveSecurityTest.php` | Akses cross-user, path traversal, symlink escape, boundary realpath, penegakan kuota, reservasi nama atomik |
 | `tests/security_test.php` / `tests/functional_test.php` | Pemeriksaan statis wiring: guard dipanggil, flag proxy ter-wire, aturan deny `.htaccess` ada, endpoint stream dipakai untuk preview private |
 
-**Jalankan semuanya dengan satu perintah:** `scripts/verify_security.sh`
-menjalankan ketiga suite keamanan (subset PHPUnit keamanan,
-`security_test.php`, `functional_test.php`) plus probe live 403 Private Drive
-dan keluar dengan exit code ramah-CI (lihat [testing.md](testing.md)).
+**Jalankan semuanya dengan satu perintah:** `scripts/verify_security.sh` menjalankan ketiga suite keamanan (subset PHPUnit keamanan, `security_test.php`, `functional_test.php`) plus probe live 403 Private Drive dan keluar dengan exit code ramah-CI (lihat [testing.md](testing.md)).
 
 ---
 
@@ -1175,20 +1121,13 @@ Output selalu di-escape dengan `htmlspecialchars()`:
 echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
 ```
 
-**Stored XSS (hardening):** database menyimpan data mentah (canonical);
-escaping dilakukan **saat output**, sesuai konteks:
+**Stored XSS (hardening):** database menyimpan data mentah (canonical); escaping dilakukan **saat output**, sesuai konteks:
 
 - Plain text HTML → `htmlspecialchars($v, ENT_QUOTES, 'UTF-8')`
 - Attribute/URL → escaping konteks attribute + `urlencode`/whitelist
 - JSON/JS → `json_encode(..., JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)`
 
-Audit mencakup seluruh nilai user-controlled yang dirender: bio profil,
-judul/deskripsi media, komentar, nama file, playlist, hasil pencarian,
-username chat, dan data yang tampil di panel admin. Untuk inline JS template
-literal (contoh: hasil pencarian chat admin), fungsi `escapeHtml()` khusus
-membungkus nilai user-derived sebelum injeksi HTML. Regression test
-(`tests/security_test.php`) memverifikasi payload `<script>alert(1)</script>`,
-`<img src=x onerror=alert(1)>`, dll. tidak pernah dieksekusi sebagai HTML.
+Audit mencakup seluruh nilai user-controlled yang dirender: bio profil, judul/deskripsi media, komentar, nama file, playlist, hasil pencarian, username chat, dan data yang tampil di panel admin. Untuk inline JS template literal (contoh: hasil pencarian chat admin), fungsi `escapeHtml()` khusus membungkus nilai user-derived sebelum injeksi HTML. Regression test (`tests/security_test.php`) memverifikasi payload `<script>alert(1)</script>`, `<img src=x onerror=alert(1)>`, dll. tidak pernah dieksekusi sebagai HTML.
 
 ### CSRF in All Forms
 

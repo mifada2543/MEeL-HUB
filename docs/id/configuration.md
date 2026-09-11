@@ -4,7 +4,7 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [File Konfigurasi Utama](#file-konfigurasi-utama)
 - [Database (`auth/settings.php`)](#database-authsettingsphp)

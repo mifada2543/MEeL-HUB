@@ -4,7 +4,7 @@ Dokumentasi penanganan masalah khusus untuk fitur **Advanced Upload (yt-dlp)** d
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [Gejala & Masalah Umum](#gejala--masalah-umum)
 - [Masalah 1: Antrean (Queue) Stuck / Server Sibuk](#masalah-1-antrean-queue-stuck--server-sibuk)

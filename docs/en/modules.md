@@ -4,7 +4,7 @@ In-depth documentation of module architecture, class diagrams, and business logi
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Application Architecture](#application-architecture)
 - [Core Modules (`modules/`)](#core-modules-modules)
@@ -97,7 +97,7 @@ modules/
 │   └── FfmpegUtils.php     # Trait: probeDuration(), generateSpriteAndVTT(), filesystem helpers
 └── autoload.php            # Class-map autoloader
 
-# ── Di ROOT PROJECT (bukan di modules/) ────────────────────────────────
+# ── IN ROOT PROJECT (not in modules/) ────────────────────────────────
 sw.js.php                   # Service worker generator — served as /sw.js via .htaccess rewrite
 ```
 
@@ -452,12 +452,12 @@ Error handling is centralized in one dynamic page `err/index.php` — content & 
 class SearchEngine {
     public const VIDEO_LIMIT    = 20;
     public const MUSIC_LIMIT    = 20;
-    public const MIN_SEARCH_QUERY = 3;   // Query pendek (< 3) tidak diproses
-    public const MAX_SEARCH_QUERY = 255; // Batas panjang query
+    public const MIN_SEARCH_QUERY = 3;   // Short queries (< 3) are ignored
+    public const MAX_SEARCH_QUERY = 255; // Maximum query length
 
     public function __construct(mysqli $db_connection);
-    public function parseParams(): array;                    // q (sanitized), offset, dll.
-    public static function sanitizeQuery(string $q): string; // FULLTEXT-safe: buang operator murni, seimbangkan kutip, buang asterisk di awal token
+    public function parseParams(): array;                    // q (sanitized), offset, etc.
+    public static function sanitizeQuery(string $q): string; // FULLTEXT-safe: strip bare operators, balance quotes, strip leading asterisks from tokens
     public function searchVideo(array $params): array;
     public function searchMusic(array $params): array;
     public static function clearCache(): void;
@@ -469,7 +469,7 @@ class SearchEngine {
   the FULLTEXT syntax is always valid (no `mysqli_sql_exception` on malformed input).
 - `parseParams()` reads `$_GET['search']` + `$_GET['offset']`; offset is included
   in the **cache key**, so pagination never serves a stale page.
-- `MIN_SEARCH_QUERY = 3` — shorter queries are ignored (index efficiency).
+- `MIN_SEARCH_QUERY = 3` — shorter queries are ignored (index efficiency)
 
 ### 17. `modules/autoload.php`
 
@@ -554,16 +554,16 @@ Klik "Multiplayer LAN" → konfirmasi SweetAlert
 ```
 
 **Disconnect detection:**
-- `get_move.php` returns `opponent_online` based on `users.last_activity` (updated on every request by `activity_logger`).
-- Offline threshold: `CHESS_OPPONENT_OFFLINE_SECONDS` (default 90s) — above background-tab timer throttling.
-- `game_action.php` action `disconnect_win`: claim win, **server re-verifies** the opponent is actually offline before recording a `disconnect` terminal event.
-- `game_action.php` action `game_over`: client records checkmate/stalemate (only detectable client-side) so the GC preserves finished games.
+- `get_move.php` returns `opponent_online` based on `users.last_activity` (updated on every request by `activity_logger`)
+- Offline threshold: `CHESS_OPPONENT_OFFLINE_SECONDS` (default 90s) — above background-tab timer throttling
+- `game_action.php` action `disconnect_win`: claim win, **server re-verifies** the opponent is actually offline before recording a `disconnect` terminal event
+- `game_action.php` action `game_over`: client records checkmate/stalemate (only detectable client-side) so the GC preserves finished games
 
 **Security guards (all controllers):**
-- Wajib login — respons JSON `401` + `login_required: true` (JS `arcade/chess/assets/js/api.js` redirects to login).
-- Semua aksi POST wajib `csrf_token` valid (403 jika tidak).
-- Token CSRF tidak pernah disimpan ke `moves.move_data`.
-- `admin/catur.php?auto_cleanup=1` juga wajib `csrf_token` (dikirim JS via `window.MEEL_ADMIN_CSRF`).
+- Login required — JSON response `401` + `login_required: true` (JS `arcade/chess/assets/js/api.js` redirects to login)
+- All POST actions require a valid `csrf_token` (403 otherwise)
+- CSRF tokens are never stored in `moves.move_data`
+- `admin/catur.php?auto_cleanup=1` also requires `csrf_token` (sent by JS via `window.MEEL_ADMIN_CSRF`)
 
 ### 21a. Arcade Collection (`arcade/`)
 
@@ -1114,7 +1114,7 @@ $tc = new Transcoder($conn, $uid, function (string $stage, array $data): void {
 **Guarantees:**
 - An observer exception is caught and logged inside `emit()` — it never propagates
   into the media pipeline (no orphaned processes or half-moved files).
-- With no observer attached, `emit()` is a no-op — zero output-buffer pollution.
+- With no observer attached, `emit()` is a no-op — zero output-buffer pollution
 - Music downloads return a `REDIRECT:`-prefixed string so the *caller* decides how
   to continue (no `exit` call in the business layer).
 

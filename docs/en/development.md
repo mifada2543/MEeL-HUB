@@ -4,7 +4,7 @@ Guide for developers who want to contribute or understand coding standards in ME
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Development Environment](#development-environment)
 - [Coding Standards](#coding-standards)

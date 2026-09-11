@@ -5,7 +5,7 @@
 
 ---
 
-## 📋 Ikhtisar
+## Ikhtisar
 
 MEeL menggunakan pendekatan testing berlapis:
 
@@ -233,7 +233,7 @@ class MyIntegrationTest extends TestCase
 
 ---
 
-## 📋 Functional Test (`tests/functional_test.php`)
+## Functional Test (`tests/functional_test.php`)
 
 Skrip test kustom yang memvalidasi alur kerja aplikasi:
 

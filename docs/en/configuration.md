@@ -4,7 +4,7 @@ Reference guide for all configuration files and parameters in MEeL-HUB.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Main Configuration Files](#main-configuration-files)
 - [Database (`auth/settings.php`)](#database-authsettingsphp)
@@ -64,7 +64,7 @@ $db       = "MEeL";        // Database name
 
 // auth/config.php — entry point creates the connection:
 $conn = new mysqli($server, $username, $password, $db);
-$conn->set_charset('utf8mb4'); // charset koneksi dipaksa utf8mb4
+$conn->set_charset('utf8mb4'); // charset forced to utf8mb4
 ```
 
 ### Error Handling
@@ -89,40 +89,36 @@ $secure_cookie = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
 session_set_cookie_params([
     'lifetime' => $timeout,
     'path'     => '/',
-    'secure'   => $secure_cookie,  // hanya terkirim via HTTPS
-    'httponly' => true,            // tidak bisa dibaca JavaScript
-    'samesite' => 'Lax',           // proteksi CSRF level-1
+    'secure'   => $secure_cookie,  // only sent via HTTPS
+    'httponly' => true,            // not readable by JavaScript
+    'samesite' => 'Lax',           // CSRF level-1 protection
 ]);
 session_name('meel');  // Session cookie name: "meel"
 session_start();
 ```
 
-> `auth/auth_helpers.php` (`auth_boot_session()`) menggunakan parameter cookie yang sama.
+> `auth/auth_helpers.php` (`auth_boot_session()`) uses the same cookie parameters.
 
 ### Trusted Proxy (`MEEL_TRUST_PROXY_HEADERS`)
 
-**File:** `auth/settings.example.php` (dan `auth/settings.php`)
+**File:** `auth/settings.example.php` (and `auth/settings.php`)
 
 ```php
-// false = (default, aman) hanya pakai REMOTE_ADDR
-// true  = percaya header proxy (hanya jika di belakang proxy terpercaya)
+// false = (default, safe) use only REMOTE_ADDR
+// true  = trust proxy headers (only if behind a trusted proxy)
 define('MEEL_TRUST_PROXY_HEADERS', false);
 ```
 
-Header `HTTP_X_FORWARDED_FOR` / `HTTP_CF_CONNECTING_IP` hanya boleh dipercaya
-jika request benar-benar lewat proxy/CDN yang Anda kendalikan (Cloudflare,
-Nginx reverse proxy). Jika diset `true` padahal server diakses langsung,
-attacker bisa memalsukan IP untuk mem-bypass IP-ban atau membanjiri activity log.
+Header `HTTP_X_FORWARDED_FOR` / `HTTP_CF_CONNECTING_IP` should only be trusted if the request actually goes through a proxy/CDN you control (Cloudflare, Nginx reverse proxy). If set to `true` while the server is accessed directly, an attacker can spoof IPs to bypass IP bans or flood the activity log.
 
-### Charset Koneksi (`utf8mb4`)
+### Connection Charset (`utf8mb4`)
 
 ```php
 // auth/config.php & auth/config.example.php
 $conn->set_charset('utf8mb4');
 ```
 
-Koneksi MySQL dipaksa `utf8mb4` agar cocok dengan schema — emoji, aksara
-Jepang, dan teks multibyte tersimpan/terbaca dengan benar.
+MySQL connection is forced to `utf8mb4` to match the schema — emoji, Japanese scripts, and multibyte text store/retrieve correctly.
 
 ### CSRF Protection
 

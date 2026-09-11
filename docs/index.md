@@ -7,7 +7,7 @@
 Choose your language / Pilih bahasa:
 
 | 🇬🇧 **English** | 🇮🇩 **Bahasa Indonesia** |
-|:---------------:|:------------------------:|
+|:---:|:---:|
 | [![English](https://img.shields.io/badge/EN-English-blue?style=for-the-badge)](en/index.md) | [![Indonesia](https://img.shields.io/badge/ID-Indonesia-red?style=for-the-badge)](id/index.md) |
 
 ---
@@ -47,7 +47,7 @@ Choose your language / Pilih bahasa:
 ## 🔗 Quick Links / Tautan Cepat
 
 | Resource | Link |
-|----------|------|
+|---|---|
 | Project README (ID) | [🇮🇩](../README.md) |
 | Project README (EN) | [🇬🇧](../README-en.md) |
 | GitHub Repository | [github.com/mifada2543/MEeL](https://github.com/mifada2543/MEeL) |

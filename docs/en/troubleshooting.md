@@ -4,7 +4,7 @@ Solutions for common issues encountered while using MEeL-HUB.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [HLS Streaming Issues](#hls-streaming-issues)
 - [Upload Problems](#upload-problems)
@@ -281,7 +281,7 @@ $timeout = 43200; // 12 hours in seconds
 
 ## Storage & Disk Issues
 
-### ❌ Drive module crashes: "Folder penyimpanan gagal dibuat" (RuntimeException)
+### ❌ Drive module crashes: "Storage folder creation failed" (RuntimeException)
 
 **Symptoms:**
 - Opening `drive/index.php`, uploading, downloading or streaming throws
@@ -408,10 +408,10 @@ du -sh /media/[user]/MEeL/
 | Message | Meaning | Solution |
 |---|---|---|
 | "Storage Offline" | External HDD not mounted | Check `df -h` and path in `helpers.php` |
-| "Server sedang sibuk" | Queue full (max 2) | Wait or clean stuck queues |
-| "Batas upload tercapai!" | Rate limit active | Wait 1 hour or ask admin |
-| "File terlalu besar!" | Exceeds quota | Upload smaller file |
-| "Durasi terlalu panjang!" | Exceeds duration limit | Use shorter video |
+| "Server sedang sibuk" (Server is busy) | Queue full (max 2) | Wait or clean stuck queues |
+| "Batas upload tercapai!" (Upload limit reached) | Rate limit active | Wait 1 hour or ask admin |
+| "File terlalu besar!" (File too large) | Exceeds quota | Upload smaller file |
+| "Durasi terlalu panjang!" (Duration too long) | Exceeds duration limit | Use shorter video |
 | "Security Error" | Suspicious file | Upload file with correct format |
 
 ---

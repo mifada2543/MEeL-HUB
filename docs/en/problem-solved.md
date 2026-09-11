@@ -1,10 +1,8 @@
 # 🌍 Real World Problems MEeL Solves
 
-> *"Why pay for multiple platforms when everything can be in one place, free, and self-owned?"*
-
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [The Story Behind MEeL](#the-story-behind-meel)
 - [Subscription Costs Adding Up](#subscription-costs-adding-up)
@@ -27,24 +25,22 @@
 
 ### The Creator
 
-Hello, I'm **Mifada** — a developer who enjoys watching anime, listening to music, reading manga, and playing games.
+I'm **Mifada** — a developer who uses MEeL for personal media management.
 
-One day I sat down and calculated my monthly spending on digital services. The result? **Millions of rupiah per year** — just to enjoy the content I love.
+After calculating monthly spending on digital services, the total reached millions of rupiah per year. Most of that budget went to content that could be self-managed.
 
-I asked myself:
-> *"Why should I pay for Netflix, Spotify, YouTube Premium, Google Drive, and other subscriptions — when I can build everything myself?"*
+The question that arose:
+> *"Why pay for Netflix, Spotify, YouTube Premium, Google Drive, and other services — when everything can be handled independently?"*
 
-### MEeL Was Born
+### Why MEeL Was Created
 
-MEeL is the answer to that question. It's not just a coding project — it's a **solution to personal frustrations**:
+MEeL was built to address several practical issues:
 
-- Frustration watching subscription bills pile up every month
-- Frustration when content suddenly disappears because licenses expire
-- Frustration when personal data is sold to advertisers
-- Frustration when media collections are scattered across 5 different platforms
-- Frustration when streaming quality is determined by algorithms (not your own choice)
-
-> **Bottom line:** MEeL was born from being tired of paying for multiple platforms, having no control over your own content, and wanting a free, private, ad-free media streaming experience — directly from your personal server.
+- Subscription costs that increase annually
+- Content disappearing due to expired licenses
+- Personal data collected and sold to third parties
+- Media collections scattered across platforms
+- Streaming quality determined by platform algorithms
 
 ---
 
@@ -52,19 +48,19 @@ MEeL is the answer to that question. It's not just a coding project — it's a *
 
 ### ❌ The Problem
 
-Take a look at average monthly digital spending:
+Average monthly digital spending breakdown:
 
 | Service | Monthly Cost (USD) | Purpose | Usage Frequency |
 |---|---|---|---|
-| Netflix | $10 - $20 | Movies & Series | ⭐⭐⭐ Daily |
-| Spotify / Apple Music | $10 | Music | ⭐⭐⭐ Daily |
-| YouTube Premium | $12 | Ad-free video | ⭐⭐⭐ Daily |
-| Google Drive (100GB) | $2 | Cloud storage | ⭐⭐ Sometimes |
-| iCloud / Dropbox | $3 - $10 | Data backup | ⭐⭐ Sometimes |
-| Disney+ / HBO Go | $8 - $15 | Entertainment | ⭐ Weekly |
+| Netflix | $3 - $11 | Movies & Series | ⭐⭐⭐ Daily |
+| Spotify / Apple Music | $3.35 | Music | ⭐⭐⭐ Daily |
+| YouTube Premium | $3.50 | Ad-free video | ⭐⭐⭐ Daily |
+| Google One (100GB) | $1.60 | Cloud storage | ⭐⭐ Sometimes |
+| iCloud / Dropbox | $1 - $10 | Data backup | ⭐⭐ Sometimes |
+| Max (HBO Max) | $4.70 | Entertainment | ⭐ Weekly |
 
-**Total per month: $30 - $60+**
-**Total per year: $360 - $720+**
+**Total per month: $17 - $33+**
+**Total per year: $204 - $396+**
 
 And that's **not including**:
 - Annual price increases
@@ -74,7 +70,7 @@ And that's **not including**:
 
 ### ✅ MEeL Solution
 
-**MEeL combines everything in ONE free platform:**
+**MEeL combines all services into one platform:**
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -90,7 +86,7 @@ And that's **not including**:
 └─────────────────────────────────────────────────────────┘
 ```
 
-> **Total savings: $360 - $720+ per year.**
+> **Total savings: $204 - $396+ per year.**
 
 ---
 
@@ -98,18 +94,18 @@ And that's **not including**:
 
 ### ❌ The Problem
 
-Commercial platforms make money from your data. That's their business model.
+Commercial platforms generate revenue from user data. This business model has become industry standard.
 
 ```
 You → [ Platform ] → Collect data → Analyze → Sell to advertisers → 💰
 ```
 
-**Consequences:**
+**Consequences of this model:**
 - Data sold to advertisers and third parties
-- Your content can be deleted without clear notice
+- Content can be removed without notice
 - Music/video licenses can be revoked at any time
-- Ads are targeted using your personal data
-- Algorithms manipulate what you watch
+- Ads are targeted based on personal data
+- Algorithms determine what is displayed
 
 ### ✅ MEeL Solution
 
@@ -118,11 +114,11 @@ You → [ 🖥️ MEeL (Local Server) ] → 100% Your data → 🔒
 ```
 
 **MEeL runs on your private server:**
-- ✅ **Zero data collection** — No data leaves your server
-- ✅ **Zero ads** — No advertising, no tracking
-- ✅ **Zero scanning** — Nobody scans your files
-- ✅ **100% ownership** — Your content is entirely yours
-- ✅ **No licensing BS** — Nobody can revoke access to your collection
+- ✅ **Zero data collection** — Data does not leave the server
+- ✅ **Zero ads** — No advertising or tracking
+- ✅ **Zero scanning** — Files are not scanned by any party
+- ✅ **100% ownership** — Content is entirely owned by the user
+- ✅ **No licensing BS** — Access to collection cannot be revoked
 
 ---
 
@@ -140,16 +136,16 @@ Average person's digital collection:
 | 📄 Documents | Email | Google Drive | Flash drive |
 | 🖼️ Photos | Phone | iCloud | Google Photos |
 
-Looking for one file? **Open 3-4 different apps** and check one by one.
+Looking for one file requires opening multiple applications sequentially.
 
 ### ✅ MEeL Solution
 
-**All media in ONE HUB:**
+**All media in one dashboard:**
 
-- ✅ Central dashboard showing **statistics for all media**
-- ✅ Integrated search per module
+- ✅ Dashboard displaying statistics across all media modules
+- ✅ Integrated search across all modules
 - ✅ Quick navigation between modules via navbar
-- ✅ Consistent dark monospace theme across all pages
+- ✅ Consistent dark theme across all pages
 
 ---
 
@@ -157,23 +153,24 @@ Looking for one file? **Open 3-4 different apps** and check one by one.
 
 ### ❌ The Problem
 
-Commercial platforms force you to use their formats:
+Commercial platforms restrict supported formats:
 
 | Platform | Format | Quality | Notes |
 |---|---|---|---|
-| YouTube | H.264/AAC | 👍 Good but compressed | 4K video gets re-encoded |
-| Spotify | Ogg Vorbis 320kbps | 👌 Decent | But not lossless |
-| Netflix | H.264/H.265 | 👍 Good | Depends on connection |
-| Google Drive | Depends on upload | 👎 Quality often drops | Video gets re-compressed |
+| YouTube | H.264/VP9/AV1 | 👍 Good | Videos re-encoded to multiple codecs |
+| Spotify | Lossless 24-bit/44.1kHz FLAC | 🔥 Great | Requires stable connection & compatible device |
+| Netflix | H.264/H.265/AV1 | 👍 Good | Depends on connection & plan |
+| Google Drive | Depends on upload | 👌 Original preserved | Browser preview streams at 1080p |
 
-**Other issues:**
-- Can't play FLAC on YouTube
-- Can't stream MKV in regular browsers
-- ZIP/CBZ (manga) can't be read by regular platforms
+**Other limitations:**
+- FLAC cannot be played directly on YouTube (re-encoded to AAC/Opus)
+- MKV cannot be streamed in standard browsers (without transcoding)
+- HEVC/x265 has limited browser support (Safari native, Chrome/Firefox limited)
+- ZIP/CBZ (manga) not supported by mainstream platforms
 
 ### ✅ MEeL Solution
 
-**Automatic transcoding without quality compromise:**
+**Automatic transcoding with FFmpeg:**
 
 | Input → Output | Engine |
 |---|---|
@@ -181,9 +178,9 @@ Commercial platforms force you to use their formats:
 | MP3, FLAC, WAV, M4A, OGG → **Opus/OGG** | FFmpeg |
 | PDF, ZIP, CBZ → **In-browser Viewer** | PHP |
 
-- Original quality is preserved — **no forced compression**
-- You choose the output format
-- Transcoding runs automatically in the background
+- Original quality preserved — no forced compression
+- Output format selectable by user
+- Transcoding runs automatically in background
 
 ---
 
@@ -191,14 +188,14 @@ Commercial platforms force you to use their formats:
 
 ### ❌ The Problem
 
-Commercial streaming platforms **REQUIRE internet**. If it's down, you can't access content.
+Commercial streaming platforms require internet connectivity. Without internet, content is inaccessible.
 
 **Impact:**
 - Constant buffering on slow connections
-- Can't watch when internet is down
+- Cannot watch when internet is down
 - Data quota drains fast (1 hour streaming = 1-3GB)
-- High latency (overseas servers)
-- Expensive/slow internet in rural areas
+- High latency to overseas servers
+- Expensive or slow internet in rural areas
 
 ### ✅ MEeL Solution
 
@@ -222,14 +219,14 @@ Commercial streaming platforms **REQUIRE internet**. If it's down, you can't acc
 
 ### ❌ The Problem
 
-Try sending a 2GB movie to a friend:
+Conventional file sharing methods have limitations:
 
 | Method | Time | Quality | Limitations |
 |---|---|---|---|
-| WhatsApp | ⏳ 30 min upload | 📉 Compressed to 16MB | Max 2GB |
+| WhatsApp | ⏳ 30 min upload | 📉 Compressed to 16MB | Max 2GB (as document) |
 | Email | ⏳ 15 min | ✅ Original | Max 25MB |
 | Google Drive | ⏳ 20 min | ✅ Original | Requires Google account |
-| Discord | ⏳ 10 min | 📉 Quality drops | Max 25MB (free) |
+| Discord | ⏳ 10 min | 📉 Quality drops | Max 20MB (free) |
 | USB Flash drive | 🚗 10 min drive | ✅ Original | Must meet in person |
 
 ### ✅ MEeL Solution
@@ -254,7 +251,7 @@ Admin upload ──▶ [MEeL] ──share link──▶ 👨 Dad (member)  ✅
 
 ### ❌ The Problem
 
-Commercial platforms control your content ecosystem:
+Commercial platforms control the content ecosystem through their respective policies:
 
 ```
 YouTube can:
@@ -269,14 +266,14 @@ Netflix can:
 └── Limit streaming quality based on plan
 
 Google Drive can:
-├── Block files that "violate ToS"
 ├── Limit storage quota
-└── Scan your files for ads
+├── Scan files for malware and copyright
+└── Restrict access if ToS is violated
 ```
 
 ### ✅ MEeL Solution
 
-**You're in full control:**
+**Full control over content and infrastructure:**
 
 | Aspect | Commercial Platforms | MEeL |
 |---|---|---|
@@ -287,7 +284,7 @@ Google Drive can:
 | Price | Increases yearly | **Free forever** |
 | Quality | They decide | **You choose** |
 
-> **Bottom line:** MEeL isn't just a streaming tool — it's a declaration of **digital independence**.
+> **Conclusion:** MEeL is not just a streaming tool — it represents digital independence.
 
 ---
 
@@ -295,7 +292,7 @@ Google Drive can:
 
 ### ❌ The Problem
 
-Commercial platform users = tenants, not owners.
+Commercial platform users do not have full ownership of content.
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -316,18 +313,18 @@ Commercial platform users = tenants, not owners.
 ┌──────────────────────────────────────────────┐
 │         YOU ARE THE OWNER                    │
 ├──────────────────────────────────────────────┤
-│ ✅ Content safe — as long as your HDD is     │
+│ ✅ Content safe while HDD functions properly │
 │ ✅ Choose quality yourself (HLS adaptive)    │
-│ ✅ No duration limits (as long as storage)   │
+│ ✅ No duration limits (storage permitting)   │
 │ ✅ Transcode to any format                   │
-│ ✅ Full backup — HDD + DB backup yourself    │
+│ ✅ Full backup — media + database            │
 │ ✅ Healthy mode 20-20-20 (eye rest reminder) │
 └──────────────────────────────────────────────┘
 ```
 
 ### How to Backup Data
 
-This is what you CAN'T do on commercial platforms:
+Backup functionality not available on commercial platforms:
 
 ```bash
 # Backup database
@@ -347,21 +344,21 @@ tar -czf meel_media_backup_$(date +%Y%m%d).tar.gz /media/username/MEeL/media/
 
 | Item | Commercial Platforms | MEeL |
 |---|---|---|
-| Streaming subscriptions | $360 - $600/year | **$0** |
-| Cloud storage | $25 - $120/year | **$0** |
+| Streaming subscriptions | $200 - $385/year | **$0** |
+| Cloud storage | $19 - $120/year | **$0** |
 | Converter software | $20 - $50/year | **$0** |
-| Server electricity | — | $20 - $50/year ⚡ |
+| Server electricity | — | $11 - $75/year ⚡ |
 | HDD purchase (one-time) | — | $30 - $100 (once) |
-| **Total first year** | **$400 - $800** | **$50 - $150** 🔥 |
-| **Total second year+** | **$400 - $800** | **$20 - $50** 🔥🔥 |
+| **Total first year** | **$240 - $555** | **$40 - $185** 🔥 |
+| **Total second year+** | **$240 - $555** | **$11 - $75** 🔥🔥 |
 
 ### 5-Year Projection
 
 ```
-Commercial platforms: $2,000 - $4,000
-MEeL:                 $150 - $400
+Commercial platforms: $1,200 - $2,775
+MEeL:                 $85 - $460
 
-SAVINGS:             $1,850 - $3,600 in 5 years!
+SAVINGS:             $1,115 - $2,315 in 5 years!
 ```
 
 ---
@@ -370,9 +367,7 @@ SAVINGS:             $1,850 - $3,600 in 5 years!
 
 ### Clean URL Migration
 
-All watch pages now use `watch?v=` instead of `watch?id=` for consistency with
-YouTube-style URL conventions. This change was applied across 25+ files including
-PHP pages, JavaScript modules, controllers, and documentation.
+All watch pages now use `watch?v=` instead of `watch?id=` for consistency with YouTube-style URL conventions. This change was applied across 25+ files including PHP pages, JavaScript modules, controllers, and documentation.
 
 ### Upload Queue Admin Tab
 
@@ -384,23 +379,21 @@ A new "Upload Queue" tab was added to the Activity Log viewer, allowing admins t
 
 ### MEeLCoin Admin Exclusion
 
-Admin users are now excluded from the MEeLCoin manual adjustment dropdown to prevent
-accidental balance modifications. Admin coin balance is managed through auto-refill
-and upload costs only.
+Admin users are now excluded from the MEeLCoin manual adjustment dropdown to prevent accidental balance modifications. Admin coin balance is managed through auto-refill and upload costs only.
 
 ---
 
 ## Testimonials
 
-> *"After using MEeL, I cancelled all my subscriptions. Monthly bills dropped dramatically, and I now have full control over my media collection. Best decision ever."*
+> *"After using MEeL, I cancelled all subscriptions. Monthly bills dropped significantly, and I have full control over my media collection."*
 >
 > — **Mifada**, Creator of MEeL
 
-> *"I was shocked to see how much I spent on streaming services. Now everything is on MEeL, accessed via TV from the server in the living room. The whole family loves it."*
+> *"I was surprised by how much I spent on streaming services. Now everything is on MEeL, accessed via TV from the server in the living room."*
 >
 > — **Early Adopter**, Anonymous User
 
-> *"No more worrying about data breaches or content suddenly disappearing. Everything is safe on my own server. This is the future of personal media."*
+> *"Data is safe on my own server. No need to worry about content disappearing or data breaches."*
 >
 > — **Beta Tester**, Anonymous User
 
@@ -408,9 +401,7 @@ and upload costs only.
 
 ## Considerations Before Using MEeL
 
-> *"Nothing in this world is truly free. MEeL is free in cost, but it requires time, effort, and patience."*
-
-To be honest, here are the **trade-offs** you need to understand before deciding to use MEeL:
+MEeL is free in cost, but requires time, effort, and patience for setup and maintenance. Here are the trade-offs to consider:
 
 ### ❓ What Do You Need to Prepare?
 
@@ -441,7 +432,7 @@ To be honest, here are the **trade-offs** you need to understand before deciding
 | Aspect | Commercial Platforms | MEeL |
 |---|---|---|
 | **Convenience** | ✅ Install app, login, use immediately | ❌ Need to set up your own server |
-| **Monthly cost** | ❌ $30-60/month | ✅ $0 — just electricity |
+| **Monthly cost** | ❌ $17-33/month | ✅ $0 — just electricity |
 | **Content library** | ✅ Millions of titles ready to use | ❌ You must upload yourself |
 | **Maintenance** | ✅ Managed by company | ❌ You handle it yourself |
 | **Customization** | ❌ Limited | ✅ Full control |
@@ -460,7 +451,7 @@ To be honest, here are the **trade-offs** you need to understand before deciding
 | ✅ People with **spare devices** for a server | ❌ People with **no extra devices** |
 | ✅ **Families** who want to share media at home | ❌ Those who need **millions of ready-to-watch titles** (like Netflix) |
 
-> **Bottom line:** MEeL is like **owning your own house** — it takes effort to build and maintain, but once it's done, you can live in it freely, safely, and without paying rent every month. 🏠
+> **Conclusion:** MEeL is like owning a house — it takes effort to build and maintain, but once done, you can live in it freely, safely, and without monthly rent. 🏠
 
 ---
 
@@ -477,8 +468,8 @@ To be honest, here are the **trade-offs** you need to understand before deciding
 
 | Real World Problem | Impact | MEeL Solution |
 |---|---|---|
-| 💸 Subscription costs | $360 - $720+/year | **Free — just electricity + HDD** |
-| 🔒 Data privacy | Data sold to advertisers | **Private server, 100% your data** |
+| 💸 Subscription costs | $204 - $396/year | **Free — just electricity + HDD** |
+| 🔒 Data privacy | Data used for ads | **Private server, 100% your data** |
 | 📂 Scattered collections | 5+ different platforms | **One integrated hub for all media** |
 | 🎞️ Limited formats | Can't play FLAC/MKV/CBZ | **Automatic FFmpeg transcoding** |
 | 🌐 Requires internet | Buffering & data quota | **LAN streaming — zero internet** |

@@ -1,10 +1,10 @@
 # 📚 MEeL-HUB Documentation
 
-Welcome to the official **MEeL** documentation — A Personal Media Hub Platform for video streaming, music, digital books, and cloud storage.
+Official documentation for **MEeL** — A Personal Media Hub Platform for video streaming, music, digital books, and cloud storage.
 
 ---
 
-## 📋 Documentation Map
+## Documentation Map
 
 | # | Document | Description |
 |---|---|---|
@@ -64,9 +64,7 @@ Welcome to the official **MEeL** documentation — A Personal Media Hub Platform
 
 ## 🧭 Routing System (Front Controller)
 
-Since the routing migration, all public URLs use **clean URLs** (no `.php` extension).
-Every request goes through the `router.php` front controller, which resolves the path
-back to the real handler file via the route table in `modules/core/Router.php`.
+Since the routing migration, all public URLs use clean URLs (no `.php` extension). Requests are handled by the `router.php` front controller, which resolves paths to handler files via the route table in `modules/core/Router.php`.
 
 **How it works:**
 
@@ -171,7 +169,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 ## 📖 About the Project
 
-**MEeL** is a personal media hub platform built with PHP & MySQL running on Apache. It combines:
+**MEeL** is a personal media hub platform built with PHP & MySQL running on Apache. It includes:
 
 - **🎬 Video** — Adaptive HLS streaming with Plyr.js
 - **🎵 Music** — Audio streaming with visualizer & mini player

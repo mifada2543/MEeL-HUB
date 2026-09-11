@@ -4,7 +4,7 @@ Dokumentasi lapisan PWA MEeL: service worker dinamis, strategi cache, web app ma
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [Ringkasan Arsitektur](#ringkasan-arsitektur)
 - [Service Worker Dinamis (`sw.js.php`)](#service-worker-dinamis-swjphp)
@@ -217,9 +217,9 @@ convert MEeL.png -resize 180x180 MEeL-180.png
 
 ## Dukungan Offline
 
-- Halaman yang pernah dikunjungi saat online di-cache (network-first) → tersedia offline.
-- Aset ter-precache (semua modul CSS + JS inti) bekerja offline.
-- `err/offline.php` di-precache dan disajikan saat halaman yang diminta tidak punya cache.
+- Halaman yang pernah dikunjungi saat online di-cache (network-first) → tersedia offline
+- Aset ter-precache (semua modul CSS + JS inti) bekerja offline
+- `err/offline.php` di-precache dan disajikan saat halaman yang diminta tidak punya cache
 - URL fallback offline dihitung dari `self.registration.scope` (`OFFLINE_URL`),
   sehingga bekerja baik di root maupun deployment sub-folder.
 
@@ -247,9 +247,9 @@ berikutnya — tanpa refresh manual, tanpa mismatch JS lama vs HTML baru.
 
 Karena `sw.js` dibangkitkan oleh PHP, hosting harus:
 
-- Mengaktifkan `mod_rewrite` (Apache) atau dukungan rewrite setara.
-- Memproses `.htaccess` (`AllowOverride All` atau minimal `FileInfo`).
-- Menjalankan `sw.js.php` dengan PHP.
+- Mengaktifkan `mod_rewrite` (Apache) atau dukungan rewrite setara
+- Memproses `.htaccess` (`AllowOverride All` atau minimal `FileInfo`)
+- Menjalankan `sw.js.php` dengan PHP
 
 Jika `.htaccess` dinonaktifkan di host, `/sw.js` mengembalikan 404, SW tidak
 terdaftar, dan situs tetap berfungsi — tetapi fitur PWA (install, offline) menurun.
@@ -275,7 +275,7 @@ curl -sI http://host-anda/MEeL/sw.js | grep -i content-type
   ```bash
   curl -s http://localhost/MEeL/sw.js | md5sum
   ```
-- Di Chrome DevTools → Application → Service Workers → "Update on reload".
+- Di Chrome DevTools → Application → Service Workers → "Update on reload"
 
 ### Instalasi precache gagal
 

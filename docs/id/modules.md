@@ -1,10 +1,10 @@
 # 🏗️ Modul & Arsitektur
 
-Dokumentasi mendalam tentang arsitektur modul, class diagram, dan business logic layer MEeL-HUB.
+Dokumentasi detail tentang arsitektur modul, class diagram, dan business logic layer MEeL-HUB.
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [Arsitektur Aplikasi](#arsitektur-aplikasi)
 - [Core Modules (`modules/`)](#core-modules-modules)
@@ -252,11 +252,11 @@ Fungsi-fungsi dibungkus `function_exists()` guard dan tersebar di subfolder per 
 
 ### 9. `modules/core/CommentRenderer.php`
 
-**Fungsi:** `render_comments()` — render komentar nested dengan 2 tema (video/music); `comment_preview()` — preview komentar terbaru untuk header kolom komentar.
+`render_comments()` — render komentar nested dengan 2 tema (video/music); `comment_preview()` — preview komentar terbaru untuk header kolom komentar.
 
 ### 10. `modules/core/GarbageCollector.php`
 
-**Class:** `GarbageCollector` (static methods) — auto-cleanup:
+`GarbageCollector` (static methods) — auto-cleanup:
 - Temp files di RAM disk (`/dev/shm/meel/*`) dan project `temp/`
 - Guest accounts (>2 jam) dengan throttle (1x/jam)
 - Room catur multiplayer terbengkalai via `cleanChessRooms()` (throttle 1x/jam):
@@ -265,9 +265,7 @@ Fungsi-fungsi dibungkus `function_exists()` guard dan tersebar di subfolder per 
   - **Game yang sudah selesai TIDAK pernah dihapus** — riwayatnya dipertahankan
 - Expired rate limit cache via `RateLimiter::cleanup()`
 - Timeboxed execution (max 3 detik)
-- Static helper `removeFile()`/`removeDirectory()` dengan guard `is_writable()`
-  proaktif — subtree milik user lain (mis. `temp/cache/` milik proses lain)
-  dilewati dengan error log, bukan warning PHP
+- `removeFile()`/`removeDirectory()` helper dengan guard `is_writable()` proaktif — subtree milik user lain dilewati dengan error log, bukan warning PHP
 
 ### 11. `modules/auth/RateLimiter.php`
 
@@ -311,13 +309,9 @@ trait FfmpegUtils {
 }
 ```
 
-> Catatan: `cleanupDir()` (alias `removeDir()`) telah dihapus — tidak ada pemanggilnya
-> di seluruh project; gunakan `removeDir()` langsung.
+> Catatan: `cleanupDir()` (alias `removeDir()`) telah dihapus — tidak ada pemanggilnya di seluruh project; gunakan `removeDir()` langsung.
 
-Helper `moveFile()` membandingkan device ID `stat()` sebelum mencoba
-`rename()`: pemindahan dari RAM disk (`/dev/shm`) ke USB HDD adalah kasus
-lintas-device yang *normal*, sehingga kegagalan `EXDEV` yang diduga dilewati
-sama sekali dan fallback copy+unlink berjalan tanpa warning menyesatkan.
+Helper `moveFile()` membandingkan device ID `stat()` sebelum mencoba `rename()`: pemindahan dari RAM disk (`/dev/shm`) ke USB HDD adalah kasus lintas-device yang normal, sehingga kegagalan `EXDEV` yang diduga dilewati sama sekali dan fallback copy+unlink berjalan tanpa warning menyesatkan.
 
 ### 14. `modules/core/japanese.php`
 
@@ -386,7 +380,7 @@ class SearchEngine {
   sehingga sintaks FULLTEXT selalu valid (tidak ada `mysqli_sql_exception` pada input malformed).
 - `parseParams()` membaca `$_GET['search']` + `$_GET['offset']`; offset ikut
   dalam **cache key**, sehingga pagination tidak pernah menyajikan halaman basi.
-- `MIN_SEARCH_QUERY = 3` — query lebih pendek diabaikan (efisiensi index).
+- `MIN_SEARCH_QUERY = 3` — query lebih pendek diabaikan (efisiensi index)
 
 ### 17. `modules/autoload.php`
 
@@ -471,16 +465,16 @@ Klik "Multiplayer LAN" → konfirmasi SweetAlert
 ```
 
 **Deteksi disconnect lawan:**
-- `get_move.php` mengembalikan `opponent_online` berdasarkan `users.last_activity` (diperbarui di setiap request oleh `activity_logger`).
-- Ambang offline: `CHESS_OPPONENT_OFFLINE_SECONDS` (default 90 detik) — di atas throttle timer tab background browser.
-- Aksi `disconnect_win` di `game_action.php`: klaim kemenangan, **server memverifikasi ulang** lawan benar-benar offline sebelum mencatat event terminal `disconnect`.
-- Aksi `game_over` di `game_action.php`: client mencatat checkmate/stalemate (hanya bisa dideteksi di sisi client) agar GC mempertahankan game yang sudah selesai.
+- `get_move.php` mengembalikan `opponent_online` berdasarkan `users.last_activity` (diperbarui di setiap request oleh `activity_logger`)
+- Ambang offline: `CHESS_OPPONENT_OFFLINE_SECONDS` (default 90 detik) — di atas throttle timer tab background browser
+- Aksi `disconnect_win` di `game_action.php`: klaim kemenangan, **server memverifikasi ulang** lawan benar-benar offline sebelum mencatat event terminal `disconnect`
+- Aksi `game_over` di `game_action.php`: client mencatat checkmate/stalemate (hanya bisa dideteksi di sisi client) agar GC mempertahankan game yang sudah selesai
 
 **Security guards (semua controller):**
-- Wajib login — respons JSON `401` + `login_required: true` (JS `arcade/chess/assets/js/api.js` redirect ke login).
-- Semua aksi POST wajib `csrf_token` valid (403 jika tidak).
-- Token CSRF tidak pernah disimpan ke `moves.move_data`.
-- `admin/catur.php?auto_cleanup=1` juga wajib `csrf_token` (dikirim JS via `window.MEEL_ADMIN_CSRF`).
+- Wajib login — respons JSON `401` + `login_required: true` (JS `arcade/chess/assets/js/api.js` redirect ke login)
+- Semua aksi POST wajib `csrf_token` valid (403 jika tidak)
+- Token CSRF tidak pernah disimpan ke `moves.move_data`
+- `admin/catur.php?auto_cleanup=1` juga wajib `csrf_token` (dikirim JS via `window.MEEL_ADMIN_CSRF`)
 
 ### 21a. Arcade Collection (`arcade/`)
 
@@ -556,8 +550,7 @@ Service worker **dibangkitkan dinamis oleh PHP** — panduan lengkap di
 | `sw.js.php` | Skrip SW lengkap, `Content-Type: application/javascript`, output deterministik |
 | `.htaccess` | `RewriteRule ^sw\.js$ sw.js.php [L]` — URL `/sw.js` dipertahankan |
 
-Menambah folder modul baru (`assets/css/<folder>/manifest.php`) otomatis
-menambahkan CSS-nya ke precache — **tanpa perubahan SW manual**.
+Menambah folder modul baru (`assets/css/<folder>/manifest.php`) otomatis menambahkan CSS-nya ke precache — **tanpa perubahan SW manual**.
 
 ### 23. Theme System (`assets/css/shared/theme-tokens.css` + `light-theme.css` + `assets/js/shared/theme.js`)
 
@@ -992,10 +985,7 @@ CREATE TABLE chat_messages (
 
 ## Arsitektur ProgressObserver
 
-`Transcoder` adalah class **business-layer murni** — tidak pernah meng-echo HTML/JS.
-Progress dilaporkan sebagai event terstruktur ke `ProgressObserver`, sehingga engine
-yang sama berjalan bersih di browser, script CLI, cron, maupun endpoint API tanpa
-mencemari output buffer.
+`Transcoder` adalah class **business-layer murni** — tidak pernah meng-echo HTML/JS. Progress dilaporkan sebagai event terstruktur ke `ProgressObserver`, sehingga engine yang sama berjalan bersih di browser, script CLI, cron, maupun endpoint API tanpa mencemari output buffer.
 
 ### File
 
@@ -1035,33 +1025,24 @@ $tc = new Transcoder($conn, $uid, function (string $stage, array $data): void {
 | `redirect` | `['url' => string]` | Navigasi browser (music → `post_encode.php`) |
 | `error` | `['message' => string]` | Error fatal yang ditampilkan ke user |
 
+### Jaminan
+
 **Jaminan:**
-- Exception observer ditangkap dan di-log di dalam `emit()` — tidak pernah merambat
-  ke pipeline media (tidak ada proses yatim atau file setengah pindah).
-- Tanpa observer terpasang, `emit()` adalah no-op — nol polusi output buffer.
-- Download musik mengembalikan string berawalan `REDIRECT:` sehingga *caller* yang
-  memutuskan kelanjutan (tidak ada `exit` di business layer).
+- Exception observer ditangkap dan di-log di dalam `emit()` — tidak pernah merambat ke pipeline media (tidak ada proses yatim atau file setengah pindah)
+- Tanpa observer terpasang, `emit()` adalah no-op — nol polusi output buffer
+- Download musik mengembalikan string berawalan `REDIRECT:` sehingga *caller* yang memutuskan kelanjutan (tidak ada `exit` di business layer)
 
 ---
 
 ## Konvensi Keamanan Filesystem (tanpa @)
 
-Setelah audit engine pemrosesan media, codebase **tidak pernah memakai operator
-`@` (error suppression) pada operasi filesystem** (`unlink`, `rmdir`, `mkdir`,
-`copy`, `rename`, `fopen`, `scandir`, `file_put_contents`, ...). `@` yang serampangan
-menyembunyikan kegagalan permission/IO yang nyata — mis. USB HDD yang ter-mount
-read-only, atau folder temp milik proses lain — dan membuat debugging mustahil.
+Setelah audit engine pemrosesan media, codebase **tidak pernah memakai operator `@` (error suppression) pada operasi filesystem** (`unlink`, `rmdir`, `mkdir`, `copy`, `rename`, `fopen`, `scandir`, `file_put_contents`, ...). `@` yang serampangan menyembunyikan kegagalan permission/IO yang nyata — mis. USB HDD yang ter-mount read-only, atau folder temp milik proses lain — dan membuat debugging mustahil.
 
 Setiap akses filesystem mengikuti tiga aturan:
 
-1. **Cek keberadaan & permission secara proaktif** — guard dengan `is_file()`,
-   `is_dir()`, `is_readable()`, `is_writable()` sebelum menyentuh filesystem.
-   Ingat: `unlink`/`rmdir` butuh **parent directory yang writable**, bukan hanya
-   file yang ada.
-2. **Cek nilai balik** — perlakukan `false`/`null` sebagai kegagalan dan log via
-   `error_log()` (atau logger khusus) termasuk path yang terlibat.
-3. **Pakai helper bersama, bukan `@` inline** — gunakan helper terpusat di bawah
-   daripada menebar suppression ad-hoc.
+1. **Cek keberadaan & permission secara proaktif** — guard dengan `is_file()`, `is_dir()`, `is_readable()`, `is_writable()` sebelum menyentuh filesystem. Ingat: `unlink`/`rmdir` butuh **parent directory yang writable**, bukan hanya file yang ada.
+2. **Cek nilai balik** — perlakukan `false`/`null` sebagai kegagalan dan log via `error_log()` (atau logger khusus) termasuk path yang terlibat.
+3. **Pakai helper bersama, bukan `@` inline** — gunakan helper terpusat di bawah daripada menebar suppression ad-hoc.
 
 ### Helper filesystem bersama
 

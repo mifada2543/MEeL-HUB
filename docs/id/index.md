@@ -1,16 +1,16 @@
 # 📚 Dokumentasi MEeL-HUB
 
-Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untuk streaming video, musik, buku digital, dan cloud storage.
+Dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untuk streaming video, musik, buku digital, dan cloud storage.
 
 ---
 
-## 📋 Peta Dokumentasi
+## Peta Dokumentasi
 
 | # | Dokumen | Deskripsi |
 |---|---|---|
 | 1 | [🚀 Instalasi](installation.md) | Panduan instalasi lengkap dari awal hingga aplikasi berjalan |
 | 2 | [⚙️ Konfigurasi](configuration.md) | Referensi semua file konfigurasi dan parameter |
-| 3 | [🏗️ Modul & Arsitektur](modules.md) | Penjelasan mendalam setiap modul dan class |
+| 3 | [🏗️ Modul & Arsitektur](modules.md) | Penjelasan detail setiap modul dan class |
 | 4 | [🔌 API & Controller](api.md) | Dokumentasi semua endpoint AJAX/HTMX |
 | 5 | [🔒 Keamanan](security.md) | Sistem keamanan, RBAC, CSRF, IP Banning |
 | 6 | [🌍 Problem Solved](problem-solved.md) | Masalah dunia nyata yang melatarbelakangi MEeL |
@@ -64,9 +64,7 @@ Selamat datang di dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untu
 
 ## 🧭 Sistem Routing (Front Controller)
 
-Sejak migrasi routing, semua URL publik memakai **URL bersih** (tanpa ekstensi `.php`).
-Setiap request masuk ke front controller `router.php` yang me-resolve path ke file handler
-asli lewat tabel rute di `modules/core/Router.php`.
+Sejak migrasi routing, semua URL publik menggunakan URL bersih (tanpa ekstensi `.php`). Request masuk ke front controller `router.php` yang me-resolve path ke file handler melalui tabel rute di `modules/core/Router.php`.
 
 **Cara kerja:**
 
@@ -171,7 +169,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 ## 📖 Tentang Proyek
 
-**MEeL** adalah platform media hub pribadi berbasis PHP & MySQL yang berjalan di atas Apache. Platform ini menggabungkan:
+**MEeL** adalah platform media hub pribadi berbasis PHP & MySQL yang berjalan di atas Apache. Platform ini mencakup:
 
 - **🎬 Video** — Streaming adaptif HLS dengan Plyr.js
 - **🎵 Music** — Audio streaming dengan visualizer & mini player

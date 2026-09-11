@@ -4,7 +4,7 @@ Panduan untuk pengembang yang ingin berkontribusi atau memahami standar koding d
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [Lingkungan Development](#lingkungan-development)
 - [Standar Koding](#standar-koding)

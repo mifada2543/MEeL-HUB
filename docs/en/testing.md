@@ -5,7 +5,7 @@
 
 ---
 
-## 📋 Overview
+## Overview
 
 MEeL uses a multi-layered testing approach:
 
@@ -121,10 +121,10 @@ Three dedicated test classes cover the security boundaries implemented in the
 security-hardening pass. Run them together or individually:
 
 ```bash
-# Semua test keamanan (SSRF + Drive + proxy) sekaligus
+# All security tests (SSRF + Drive + proxy) at once
 vendor/bin/phpunit --no-coverage --filter 'SsrfGuardTest|DriveSecurityTest|ValidatingProxyTest'
 
-# Atau per file:
+# Or per file:
 vendor/bin/phpunit --no-coverage tests/unit/SsrfGuardTest.php
 vendor/bin/phpunit --no-coverage tests/unit/DriveSecurityTest.php
 vendor/bin/phpunit --no-coverage tests/unit/ValidatingProxyTest.php
@@ -232,7 +232,7 @@ class MyIntegrationTest extends TestCase
 
 ---
 
-## 📋 Functional Tests (`tests/functional_test.php`)
+## Functional Tests (`tests/functional_test.php`)
 
 Custom test script that validates application workflows:
 
@@ -364,24 +364,24 @@ not proof. Use a throwaway probe file, then remove it:
 ```bash
 cd /path/to/MEeL
 
-# 1. Buat file probe di storage private Drive.
-#    Lokasi storage mengikuti MEEL_HDD_DRIVE (auth/settings.php); fallback ke
-#    folder nyata ter-track data_drive/private_admins bila konstanta tidak ada
-#    (modul Drive tidak lagi memakai symlink untuk storage — lihat installation.md).
+# 1. Create probe file in private Drive storage.
+#    Storage location follows MEEL_HDD_DRIVE (auth/settings.php); falls back to
+#    the tracked real folder data_drive/private_admins if the constant is not set
+#    (Drive module no longer uses symlinks for storage — see installation.md).
 BASE=$(php -r 'require "modules/core/helpers.php"; echo meel_drive_base_path();')
 TARGET="$BASE/private_admins"
 mkdir -p "$TARGET/zz_403_probe/video"
 echo 'PROBE' > "$TARGET/zz_403_probe/video/probe.mp4"
 
-# 2. Akses langsung → HARUS 403 (bukan 200/404 dari web server)
+# 2. Direct access → MUST be 403 (not 200/404 from web server)
 curl -s -o /dev/null -w 'file: %{http_code}\n' \
   'http://localhost/MEeL/data_drive/private_admins/zz_403_probe/video/probe.mp4'
 
-# 3. Directory listing → HARUS 403
+# 3. Directory listing → MUST be 403
 curl -s -o /dev/null -w 'dir:  %{http_code}\n' \
   'http://localhost/MEeL/data_drive/private_admins/zz_403_probe/'
 
-# 4. Bersihkan probe
+# 4. Clean up probe
 rm -rf "$TARGET/zz_403_probe"
 ```
 
