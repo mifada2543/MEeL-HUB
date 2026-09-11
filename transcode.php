@@ -19,6 +19,7 @@ $output_filename = "";
 $format          = "mp3";
 $alert_message   = "";
 $video_title     = "";
+$user_role       = get_user_role($conn, $_SESSION['user_id']);
 
 if (isset($_POST['start_transcode'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
