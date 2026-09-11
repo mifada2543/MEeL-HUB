@@ -1,4 +1,9 @@
 <?php
+/** @var array<string, mixed> $playlist Data playlist dari PlaylistRepository */
+/** @var int $playlist_id ID playlist aktif */
+/** @var int $total_songs Jumlah lagu dalam playlist */
+/** @var \mysqli_result $songs_query Query result lagu */
+/** @var array<string, mixed>|null $first_song Data lagu pertama */
 require_once '../modules/core/helpers.php';
 meel_boot_session();
 include '../auth/config.php';
@@ -35,7 +40,7 @@ if ($total_songs > 0) {
 $artists       = $library->getArtists();
 $is_logged_in  = isset($_SESSION['user_id']);
 
-function renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_query, $first_song, $include_script = true)
+function renderPlaylistContent(array $playlist, int $playlist_id, int $total_songs, \mysqli_result $songs_query, ?array $first_song, bool $include_script = true): void
 {
 ?>
     

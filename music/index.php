@@ -1,4 +1,8 @@
 <?php
+/** @var string $artist_filter Filter artis dari query string */
+/** @var int $total_music Total jumlah music */
+/** @var \mysqli_result $data_init Data music dari library */
+/** @var string $format_filter Filter format dari query string */
 require_once '../modules/core/helpers.php';
 meel_boot_session();
 include '../auth/config.php';
@@ -20,7 +24,7 @@ $pageMusic      = $meta_music['page'];
 $totalPagesMusic = $meta_music['total_pages'];
 $is_logged_in   = isset($_SESSION['user_id']);
 
-function renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter, $totalPagesMusic = 1, $pageMusic = 1, $perPageMusic = 10)
+function renderLibraryContent(string $artist_filter, int $total_music, \mysqli_result $data_init, string $format_filter, int $totalPagesMusic = 1, int $pageMusic = 1, int $perPageMusic = 10): void
 {
 ?>
     

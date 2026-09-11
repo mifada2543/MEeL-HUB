@@ -1,14 +1,14 @@
 <?php
 class MediaViewer
 {
-    private $conn;
-    private $user_id;
-    private $user_data;
-    private $media_type;
-    private $media_id;
-    private $table;
+    private \mysqli $conn;
+    private int $user_id;
+    private array $user_data;
+    private string $media_type;
+    private int $media_id;
+    private string $table;
 
-    public function __construct($db_connection, $session_user_id, $media_type, $media_id)
+    public function __construct(\mysqli $db_connection, int $session_user_id, string $media_type, int $media_id)
     {
         $this->conn = $db_connection;
         $this->user_id = $session_user_id;
@@ -73,7 +73,7 @@ class MediaViewer
         return ($row = $res->fetch_assoc()) ? $row['type'] : null;
     }
 
-    public function addComment($post_data)
+    public function addComment(array $post_data): bool
     {
         if (!$this->user_id || empty(trim($post_data['comments']))) return false;
 
@@ -224,7 +224,7 @@ class MediaViewer
         ];
     }
 
-    public function getPlaylistQueue($playlist_id)
+    public function getPlaylistQueue(int $playlist_id): ?array
     {
         if ($this->media_type !== 'music' || !$playlist_id) return null;
         $playlist_id = (int)$playlist_id;
