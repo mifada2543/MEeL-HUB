@@ -9,9 +9,9 @@
 <div align="center">
   <img src="assets/MEeL.png" alt="MEeL Logo" width="420"/>
   <br><br>
-  <strong>Your personal Netflix + Spotify + Dropbox — self-hosted, open source.</strong>
+  <strong>Self-hosted media platform — open source, no subscription fees.</strong>
   <br>
-  <sub>Streaming video & music, reading books, storing files, playing games — all in one place.</sub>
+  <sub>Video streaming, music playback, e-book reader, file storage, and arcade games — all from your own server.</sub>
   <br><br>
 
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
@@ -40,27 +40,27 @@
 
 ---
 
-## ✨ What can MEeL do?
+## ✨ Features
 
 <table>
   <tr>
     <td width="50%">
       <h3>🎬 Video</h3>
-      <p>Adaptive HLS streaming with a custom player. Subtitles, quality selector, PiP, auto-resume, thumbnail previews, auto-next countdown, ambient glow, and seamless recovery.</p>
+      <p>HLS adaptive streaming player with subtitle support, resolution switching, picture-in-picture, auto-resume, thumbnail previews, auto-next countdown, ambient glow, and connection recovery.</p>
     </td>
     <td width="50%">
       <h3>🎵 Music</h3>
-      <p>Audio streaming (MP3, FLAC, OGG, M4A) with WebAudio visualizer, custom playlists, smart queue, and a persistent Spotify-style mini-player.</p>
+      <p>Audio playback for MP3, FLAC, OGG, and M4A with a WebAudio visualizer. Playlist creation, smart queue management, and a persistent mini-player anchored at the bottom of the screen.</p>
     </td>
   </tr>
   <tr>
     <td width="50%">
       <h3>📚 Books</h3>
-      <p>In-browser reader for manga (ZIP/CBZ) and PDF. Auto-thumbnail on upload, metadata management, and clean reading interface.</p>
+      <p>In-browser reader for manga (ZIP/CBZ) and PDF documents. Thumbnails generated automatically on upload, structured metadata, distraction-free reading interface.</p>
     </td>
     <td width="50%">
       <h3>☁️ Cloud Drive</h3>
-      <p>Personal file storage with public & private scopes, per-member quota, type filtering, in-browser preview, and magic byte validation.</p>
+      <p>File storage with public and private directories. Per-member quotas, automatic type filtering, in-browser preview, and magic byte validation to prevent corrupted uploads.</p>
     </td>
   </tr>
   <tr>
@@ -73,7 +73,9 @@
   </tr>
 </table>
 
-**And more:** Admin dashboard · Transcoder · URL downloader (yt-dlp) · Comments & chat · Like/dislike · User profiles · Light/Dark mode · PWA offline · MFA (TOTP) · Audit trail · MEeLCoin quota system · Rate limiting
+**Additional features:** Admin dashboard · Transcoder · Video download from URL (yt-dlp) · Comments & chat · Like/dislike · User profiles · Light/dark mode · PWA offline · MFA (TOTP) · Audit trail · MEeLCoin quota system · Rate limiting
+
+> 🔒 **Built without frameworks** — the router, autoloader, and anti-SSRF validating proxy were all developed in-house. Refer to [docs/en/security.md](docs/en/security.md) for technical details.
 
 ---
 
@@ -86,7 +88,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-That's it. The installer handles everything: database, config, storage, Apache, migrations, and verification.
+A single command to set up everything — database, configuration, storage directories, Apache, migrations, and verification.
 
 <details>
 <summary><strong>Manual installation (7 steps)</strong></summary>
@@ -128,14 +130,14 @@ php tests/check_deploy.php
 
 ## 🛠️ Tech Stack
 
-| | |
-|---|---|
-| **Backend** | PHP 8.0+ · MySQL/MariaDB · Apache |
-| **Frontend** | TailwindCSS · HTMX · Vanilla JS |
-| **Media** | Plyr.js · HLS.js · FFmpeg · yt-dlp |
-| **Testing** | PHPUnit 9.6 · GitHub Actions CI |
+|              |                                               |
+| ------------ | --------------------------------------------- |
+| **Backend**  | PHP 8.0+ · MySQL/MariaDB · Apache             |
+| **Frontend** | TailwindCSS · HTMX · Vanilla JS               |
+| **Media**    | Plyr.js · HLS.js · FFmpeg · yt-dlp            |
+| **Testing**  | PHPUnit 9.6 · GitHub Actions CI               |
 | **Security** | CSRF · Rate Limiting · MFA · Audit Log · RBAC |
-| **Extras** | PWA · Service Worker · Class-Map Autoloader |
+| **Extras**   | PWA · Service Worker · Class-Map Autoloader   |
 
 > Requires: PHP 8.0+ with `mysqli`, `pdo_mysql`, `gd`, `intl`, `zip`, `curl` · FFmpeg 6.0+ · Apache 2.4+ with `mod_rewrite`
 
@@ -165,21 +167,23 @@ MEeL/
 
 ## 📚 Documentation
 
-| | 🇮🇩 ID | 🇬🇧 EN |
-|---|:---:|:---:|
-| Installation | [ID](docs/id/installation.md) | [EN](docs/en/installation.md) |
-| Configuration | [ID](docs/id/configuration.md) | [EN](docs/en/configuration.md) |
-| Modules & Architecture | [ID](docs/id/modules.md) | [EN](docs/en/modules.md) |
-| API | [ID](docs/id/api.md) | [EN](docs/en/api.md) |
-| Security | [ID](docs/id/security.md) | [EN](docs/en/security.md) |
-| Development | [ID](docs/id/development.md) | [EN](docs/en/development.md) |
-| Testing | [ID](docs/id/testing.md) | [EN](docs/en/testing.md) |
-| Troubleshooting | [ID](docs/id/troubleshooting.md) | [EN](docs/en/troubleshooting.md) |
-| PWA | [ID](docs/id/pwa.md) | [EN](docs/en/pwa.md) |
+|                        |              🇮🇩 ID               |              🇬🇧 EN               |
+| ---------------------- | :------------------------------: | :------------------------------: |
+| Installation           |  [ID](docs/id/installation.md)   |  [EN](docs/en/installation.md)   |
+| Configuration          |  [ID](docs/id/configuration.md)  |  [EN](docs/en/configuration.md)  |
+| Modules & Architecture |     [ID](docs/id/modules.md)     |     [EN](docs/en/modules.md)     |
+| API                    |       [ID](docs/id/api.md)       |       [EN](docs/en/api.md)       |
+| Security               |    [ID](docs/id/security.md)     |    [EN](docs/en/security.md)     |
+| Development            |   [ID](docs/id/development.md)   |   [EN](docs/en/development.md)   |
+| Testing                |     [ID](docs/id/testing.md)     |     [EN](docs/en/testing.md)     |
+| Troubleshooting        | [ID](docs/id/troubleshooting.md) | [EN](docs/en/troubleshooting.md) |
+| PWA                    |       [ID](docs/id/pwa.md)       |       [EN](docs/en/pwa.md)       |
 
 ---
 
 ## 🧪 Testing
+
+> 258+ test cases (unit, integration, functional, security) — executed automatically on every push via GitHub Actions CI.
 
 ```bash
 composer install
@@ -194,18 +198,18 @@ php tests/check_deploy.php                                 # Deployment
 
 ## 👥 Roles
 
-| Role | Access |
-|------|--------|
-| **Admin** | Full control — all modules, admin panel, user management, transcode, audit log |
-| **Member** | All media, comments, books, cloud drive (20 GB) |
-| **User** | All media, comments, books (no drive) |
-| **Guest** | Watch/listen only, theme toggle |
+| Role       | Access                                                                          |
+| ---------- | ------------------------------------------------------------------------------- |
+| **Admin**  | Full control over all modules, admin panel, user management, transcode, audit log |
+| **Member** | All media, comments, books, cloud drive (20 GB)                                 |
+| **User**   | All media, comments, books (no drive)                                           |
+| **Guest**  | View/listen only, theme toggle                                                  |
 
 ---
 
 ## 🤝 Contributing
 
-Contributions, bug reports, and feature suggestions are welcome. See the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md).
+Contributions in the form of bug reports, feature suggestions, or pull requests are welcome. Refer to the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md).
 
 ---
 
@@ -218,7 +222,7 @@ Contributions, bug reports, and feature suggestions are welcome. See the [bug re
 ## ⚠️ Disclaimer
 
 > [!IMPORTANT]
-> The creator (Mifada) is not responsible for media files uploaded, stored, or distributed by third parties using or modifying MEeL-HUB. All usage risks and copyright compliance are each user's responsibility.
+> Mifada (the developer) assumes no responsibility for media content uploaded, stored, or distributed by third parties who use or modify MEeL-HUB. All usage risks and copyright compliance obligations rest with each individual user.
 
 ## 📬 Contact
 

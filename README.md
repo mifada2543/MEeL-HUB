@@ -9,9 +9,9 @@
 <div align="center">
   <img src="assets/MEeL.png" alt="MEeL Logo" width="420"/>
   <br><br>
-  <strong>Netflix + Spotify + Dropbox pribadi kamu — self-hosted, open source.</strong>
+  <strong>Platform media pribadi — self-hosted, open source, tanpa biaya langganan.</strong>
   <br>
-  <sub>Streaming video & musik, baca buku, simpan file, main game — semuanya dalam satu tempat.</sub>
+  <sub>Video streaming, musik, e-book, file storage, dan game arcade — semuanya dari server Anda sendiri.</sub>
   <br><br>
 
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
@@ -40,27 +40,27 @@
 
 ---
 
-## ✨ MEeL bisa apa aja?
+## ✨ Fitur
 
 <table>
   <tr>
     <td width="50%">
       <h3>🎬 Video</h3>
-      <p>Streaming HLS adaptif dengan player kustom. Subtitle, quality selector, PiP, resume otomatis, thumbnail preview, auto-next countdown, ambient glow, dan recovery otomatis.</p>
+      <p>Pemain video berbasis HLS adaptive streaming. Mendukung subtitle, pemilihan resolusi, picture-in-picture, resume otomatis, pratinjau thumbnail, countdown auto-next, ambient glow, dan pemulihanoneksi.</p>
     </td>
     <td width="50%">
       <h3>🎵 Musik</h3>
-      <p>Audio streaming (MP3, FLAC, OGG, M4A) dengan visualizer WebAudio, playlist kustom, smart queue, dan mini-player persisten ala Spotify.</p>
+      <p>Pemutar audio untuk MP3, FLAC, OGG, M4A dengan visualizer WebAudio. Pembuatan playlist, antrean cerdas, dan mini-player persisten di bagian bawah layar.</p>
     </td>
   </tr>
   <tr>
     <td width="50%">
       <h3>📚 Buku</h3>
-      <p>Pembaca buku digital di browser — support manga (ZIP/CBZ) dan PDF. Auto-thumbnail saat upload, manajemen metadata, dan antarmuka baca yang bersih.</p>
+      <p>Pembaca manga (ZIP/CBZ) dan PDF langsung di peramban. Thumbnail dihasilkan otomatis saat unggah, metadata terkelola dengan baik, antarmuka baca yang bersih.</p>
     </td>
     <td width="50%">
       <h3>☁️ Cloud Drive</h3>
-      <p>Penyimpanan file pribadi dengan scope public & private, kuota per member, filter tipe otomatis, preview di browser, dan validasi magic bytes.</p>
+      <p>Penyimpanan file dengan direktori publik dan privat. Kuota per anggota, penyaringan otomatis berdasarkan tipe, pratinjau di peramban, validasi magic bytes.</p>
     </td>
   </tr>
   <tr>
@@ -73,7 +73,9 @@
   </tr>
 </table>
 
-**Dan lainnya:** Dashboard admin · Transcoder · Downloader URL (yt-dlp) · Komentar & chat · Like/dislike · Profil user · Light/Dark mode · PWA offline · MFA (TOTP) · Audit trail · Sistem kuota MEeLCoin · Rate limiting
+**Fitur tambahan:** Dashboard admin · Transcoder · Pengunduh video dari URL (yt-dlp) · Komentar & obrolan · Like/dislike · Profil pengguna · Mode terang/gelap · PWA offline · MFA (TOTP) · Jejak audit · Sistem kuota MEeLCoin · Pembatasan laju
+
+> 🔒 **Tanpa framework** — router, autoloader, dan proxy validasi anti-SSRF semuanya dikembangkan secara mandiri. Lihat [docs/id/security.md](docs/id/security.md) untuk informasi lebih lanjut.
 
 ---
 
@@ -86,7 +88,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-Selesai. Installer menangani semuanya: database, konfigurasi, storage, Apache, migrasi, dan verifikasi.
+Satu perintah untuk menyiapkan semuanya — basis data, konfigurasi, folder penyimpanan, Apache, migrasi, dan verifikasi.
 
 <details>
 <summary><strong>Instalasi manual (7 langkah)</strong></summary>
@@ -128,14 +130,14 @@ php tests/check_deploy.php
 
 ## 🛠️ Tech Stack
 
-| | |
-|---|---|
-| **Backend** | PHP 8.0+ · MySQL/MariaDB · Apache |
-| **Frontend** | TailwindCSS · HTMX · Vanilla JS |
-| **Media** | Plyr.js · HLS.js · FFmpeg · yt-dlp |
-| **Testing** | PHPUnit 9.6 · GitHub Actions CI |
+|              |                                               |
+| ------------ | --------------------------------------------- |
+| **Backend**  | PHP 8.0+ · MySQL/MariaDB · Apache             |
+| **Frontend** | TailwindCSS · HTMX · Vanilla JS               |
+| **Media**    | Plyr.js · HLS.js · FFmpeg · yt-dlp            |
+| **Testing**  | PHPUnit 9.6 · GitHub Actions CI               |
 | **Keamanan** | CSRF · Rate Limiting · MFA · Audit Log · RBAC |
-| **Lainnya** | PWA · Service Worker · Class-Map Autoloader |
+| **Lainnya**  | PWA · Service Worker · Class-Map Autoloader   |
 
 > Butuh: PHP 8.0+ dengan ekstensi `mysqli`, `pdo_mysql`, `gd`, `intl`, `zip`, `curl` · FFmpeg 6.0+ · Apache 2.4+ dengan `mod_rewrite`
 
@@ -165,21 +167,23 @@ MEeL/
 
 ## 📚 Dokumentasi
 
-| | 🇮🇩 ID | 🇬🇧 EN |
-|---|:---:|:---:|
-| Instalasi | [ID](docs/id/installation.md) | [EN](docs/en/installation.md) |
-| Konfigurasi | [ID](docs/id/configuration.md) | [EN](docs/en/configuration.md) |
-| Modul & Arsitektur | [ID](docs/id/modules.md) | [EN](docs/en/modules.md) |
-| API | [ID](docs/id/api.md) | [EN](docs/en/api.md) |
-| Keamanan | [ID](docs/id/security.md) | [EN](docs/en/security.md) |
-| Development | [ID](docs/id/development.md) | [EN](docs/en/development.md) |
-| Testing | [ID](docs/id/testing.md) | [EN](docs/en/testing.md) |
-| Troubleshooting | [ID](docs/id/troubleshooting.md) | [EN](docs/en/troubleshooting.md) |
-| PWA | [ID](docs/id/pwa.md) | [EN](docs/en/pwa.md) |
+|                    |              🇮🇩 ID               |              🇬🇧 EN               |
+| ------------------ | :------------------------------: | :------------------------------: |
+| Instalasi          |  [ID](docs/id/installation.md)   |  [EN](docs/en/installation.md)   |
+| Konfigurasi        |  [ID](docs/id/configuration.md)  |  [EN](docs/en/configuration.md)  |
+| Modul & Arsitektur |     [ID](docs/id/modules.md)     |     [EN](docs/en/modules.md)     |
+| API                |       [ID](docs/id/api.md)       |       [EN](docs/en/api.md)       |
+| Keamanan           |    [ID](docs/id/security.md)     |    [EN](docs/en/security.md)     |
+| Development        |   [ID](docs/id/development.md)   |   [EN](docs/en/development.md)   |
+| Testing            |     [ID](docs/id/testing.md)     |     [EN](docs/en/testing.md)     |
+| Troubleshooting    | [ID](docs/id/troubleshooting.md) | [EN](docs/en/troubleshooting.md) |
+| PWA                |       [ID](docs/id/pwa.md)       |       [EN](docs/en/pwa.md)       |
 
 ---
 
 ## 🧪 Testing
+
+> 258+ kasus uji (unit, integrasi, fungsional, keamanan) — dijalankan secara otomatis pada setiap push melalui GitHub Actions CI.
 
 ```bash
 composer install
@@ -194,18 +198,18 @@ php tests/check_deploy.php                                 # Deployment
 
 ## 👥 Role-Based Access Control
 
-| Role | Akses |
-|------|-------|
-| **Admin** | Kontrol penuh — semua modul, admin panel, manajemen user, transcode, audit log |
-| **Member** | Semua media, komentar, buku, cloud drive (20 GB) |
-| **User** | Semua media, komentar, buku (tanpa drive) |
-| **Guest** | Tonton/dengar saja, theme toggle |
+| Role       | Akses                                                                          |
+| ---------- | ------------------------------------------------------------------------------ |
+| **Admin**  | Kendali penuh atas semua modul, panel admin, manajemen pengguna, transcode, log audit |
+| **Member** | Semua media, komentar, buku, cloud drive (20 GB)                               |
+| **User**   | Semua media, komentar, buku (tanpa drive)                                      |
+| **Guest**  | Menonton/mendengarkan saja, pengaturan tema                                    |
 
 ---
 
 ## 🤝 Contributing
 
-Kontribusi, bug report, dan saran fitur dipersilakan. Lihat [template bug report](.github/ISSUE_TEMPLATE/bug_report.md).
+Kontribusi dalam bentuk laporan bug, saran fitur, atau pull request sangat diterima. Lihat [template laporan bug](.github/ISSUE_TEMPLATE/bug_report.md).
 
 ---
 
@@ -218,7 +222,7 @@ Kontribusi, bug report, dan saran fitur dipersilakan. Lihat [template bug report
 ## ⚠️ Disclaimer
 
 > [!IMPORTANT]
-> Pembuat (Mifada) tidak bertanggung jawab atas berkas media yang diunggah, disimpan, atau disebarluaskan oleh pihak ketiga yang menggunakan atau memodifikasi MEeL-HUB. Seluruh risiko penggunaan dan kepatuhan hak cipta menjadi tanggung jawab masing-masing pengguna.
+> Mifada (pengembang) tidak bertanggung jawab atas konten media yang diunggah, disimpan, atau didistribusikan oleh pihak ketiga yang menggunakan atau memodifikasi MEeL-HUB. Segala risiko penggunaan dan kepatuhan hak cipta merupakan tanggung jawab masing-masing pengguna.
 
 ## 📬 Kontak
 
