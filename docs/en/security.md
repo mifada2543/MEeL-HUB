@@ -21,6 +21,7 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [Exception Handling](#exception-handling)
 - [Disk Space Validation](#disk-space-validation)
 - [Input Validation](#input-validation)
+- [Best Practices](#best-practices)
 
 ---
 
@@ -857,7 +858,7 @@ Two TOCTOU races were closed in `DriveStorage::upload()`:
 **Run everything with one command:** `scripts/verify_security.sh` runs the
 three security suites (PHPUnit security subset, `security_test.php`,
 `functional_test.php`) plus a live Private Drive 403 probe and exits with a
-CI-friendly code (see [test.md](test.md)).
+CI-friendly code (see [testing.md](testing.md)).
 
 ---
 
@@ -967,6 +968,31 @@ Theme preference is stored securely:
 3. **API validation:** `in_array($theme, ['light', 'dark'], true)` — rejects invalid values
 4. **CSRF protection:** POST requires valid CSRF token
 5. **No XSS risk:** Theme value is not escaped to HTML, only used for `data-theme` attribute
+
+---
+
+## Best Practices
+
+### For Developers
+
+1. **Always use Prepared Statements** for database queries
+2. **Sanitize all input** POST/GET
+3. **Verify CSRF token** on every form POST
+4. **Don't trust user input** — validate file type, size, and content
+5. **Escape output** with `htmlspecialchars()`
+6. **Don't expose error details** to non-admin users
+
+### Security Checklist
+
+- [ ] Database credentials only in `auth/settings.php`
+- [ ] All `.htaccess` files installed in sensitive directories
+- [ ] Prepared statements in all SQL queries
+- [ ] CSRF token in all POST forms
+- [ ] Session timeout active (12 hours)
+- [ ] IP banning system active
+- [ ] File upload validation (type, size, magic bytes)
+- [ ] Role checking before sensitive actions
+- [ ] Theme preference doesn't store sensitive data
 
 ---
 

@@ -8,7 +8,7 @@ interface ProgressObserver
 final class CallableProgressObserver implements ProgressObserver
 {
     
-    private $handler;
+    private \Closure $handler;
 
     public function __construct(callable $handler)
     {

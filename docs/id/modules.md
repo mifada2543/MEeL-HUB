@@ -59,7 +59,7 @@ modules/
 │   ├── Transcoder.php      # Facade download yt-dlp & transcoding → delegasi ke modules/transcoder/
 │   ├── TranscoderBase.php  # Base class: konstanta bersama, manajemen proses/PID, resolusi path
 │   ├── helpers.php         # Shim backward-compat → require helpers/main.php + auth/loader.php
-│   ├── helpers/            # Utilitas per domain: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php
+│   ├── helpers/            # Utilitas per domain: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php, settings.php
 │   ├── Router.php          # MeelRouter — tabel rute front controller (routeFor/url/dispatch)
 │   ├── bootstrap.php       # Environment detection & error reporting
 │   ├── base_url.php        # Perhitungan base URL terpusat (meel_base_url_path)
@@ -80,10 +80,12 @@ modules/
 │   ├── MediaViewer.php     # View tracking, komentar, rekomendasi
 │   ├── MediaInteraction.php# Like/dislike, hapus komentar
 │   ├── SearchEngine.php    # FULLTEXT search dengan sanitizer + filtering
+│   ├── ArchiveGuard.php    # Ekstraksi aman ZIP/CBZ — limit anti zip-bomb
 │   ├── PlaylistRepository.php # Query playlist & route slug playlist
 │   ├── MediaAdminRepository.php # Query metadata media untuk panel admin (edit video/music)
 │   ├── ProfileRepository.php # Query data profil (count video, music)
-│   └── AdminActivityRepository.php # Query & filter activity log untuk admin viewer
+│   ├── AdminActivityRepository.php # Query & filter activity log untuk admin viewer
+│   └── AdminUploadQueueRepository.php # Query upload queue, stats & filter untuk admin viewer
 ├── exceptions/             # Class exception
 │   ├── ProcessException.php
 │   ├── DownloadException.php
@@ -93,7 +95,7 @@ modules/
 │   ├── DownloadService.php # processDownload() — unduh URL (yt-dlp) + finalisasi video HLS
 │   ├── TranscodeService.php# transcodeVideo() + ownsTranscodeFile() — transcode audio/video
 │   └── FfmpegUtils.php     # Trait: probeDuration(), generateSpriteAndVTT(), helper filesystem
-└── autoload.php            # PSR-4-like autoloader
+└── autoload.php            # Class-map autoloader
 
 # ── Di ROOT PROJECT (bukan di modules/) ────────────────────────────────
 sw.js.php                   # Generator service worker — disajikan sebagai /sw.js via rewrite .htaccess
@@ -388,7 +390,7 @@ class SearchEngine {
 
 ### 17. `modules/autoload.php`
 
-PSR-4-like via `spl_autoload_register()`. Auto-load class dari `modules/core/`, `modules/media/`, `drive/`, dll.
+Class-map via `spl_autoload_register()`. Auto-load 19 class dari `modules/core/`, `modules/media/`, `modules/transcoder/`, `modules/auth/`, `drive/`, dll.
 
 ### 18. WatchController (`controllers/api/WatchController.php`)
 
@@ -415,6 +417,7 @@ class MusicWatchController { public function getViewData(): array; public functi
 | **v12** | Ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code` |
 | **v13** | Sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log` |
 | **v14** | Index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery |
+| **v15** | Tabel `user_notifications` — sistem notifikasi untuk like, reply, MEeLCoin, chat admin |
 
 > 💡 **Modul Rhythm (MEeL!Mania) TIDAK memakai migration system utama.** Tabel
 > `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
@@ -512,7 +515,7 @@ murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm (PHP + DB sendiri):
 
 > ⚠️ **Instalasi:** import tabel rhythm sekali:
 > `mysql MEeL < arcade/rhythm/migration.sql` — bukan bagian dari
-> `database/schema.sql` (20 tabel) maupun `database/migrate.php` (v1–v14).
+> `database/schema.sql` (23 tabel) maupun `database/migrate.php` (v1–v15).
 
 ### Admin Activity Log Viewer
 
@@ -773,7 +776,8 @@ MEeL menggunakan pendekatan modular untuk JavaScript dan CSS — setiap modul me
 ```
 assets/
 ├── css/
-│   ├── video/           # Video module CSS
+│   ├── video/           # Video module CSS (13 file)
+│   │   ├── autonext.css   # Overlay auto-next
 │   │   ├── base.css     # Base styles
 │   │   ├── cards.css    # Video card styles
 │   │   ├── fullscreen.css # Fullscreen player
@@ -782,10 +786,12 @@ assets/
 │   │   ├── mini-player.css # Floating mini player
 │   │   ├── navbar.css   # Video navbar
 │   │   ├── player.css   # Plyr overrides
+│   │   ├── resume-modal.css # Modal resume playback
 │   │   ├── seek.css     # Seek indicator
 │   │   ├── toast.css    # Toast notifications
+│   │   ├── utility.css  # Utility classes
 │   │   └── watch/       # Watch page specific
-│   ├── profile/         # Profile module CSS
+│   ├── profile/         # Profile module CSS (10 file)
 │   │   ├── base.css     # Base profile styles
 │   │   ├── cards.css    # Media cards
 │   │   ├── coin.css     # MEeLCoin display
@@ -796,16 +802,39 @@ assets/
 │   │   ├── mfa-switch.css # MFA toggle
 │   │   ├── type-badge.css # User role badges
 │   │   └── empty-state.css # Empty state displays
-│   ├── admin/           # Admin module CSS
-│   │   └── chat.css     # Admin chat styles
-│   ├── music/           # Music module CSS
-│   │   ├── watch.css    # Music watch page
-│   │   └── playlist.css # Playlist styles
-│   ├── books/           # Books module CSS
-│   │   └── read.css     # Book reader
-│   └── shared/          # Shared CSS
+│   ├── admin/           # Admin module CSS (6 file)
+│   │   ├── activity_log.css # Activity log viewer
+│   │   ├── chat.css     # Admin chat styles
+│   │   ├── catur.css    # Chess admin
+│   │   ├── index.css    # Admin dashboard
+│   │   ├── mfa_reset.css # Halaman reset MFA
+│   │   └── stats.css    # Halaman statistik
+│   ├── music/           # Music module CSS (10 file)
+│   │   ├── base.css     # Base music styles
+│   │   ├── cards.css    # Music card styles
+│   │   ├── layout.css   # Music layout
+│   │   ├── mini-player.css # Music mini player
+│   │   ├── player.css   # Music player
+│   │   ├── playlist.css # Playlist styles
+│   │   ├── playlist-modal.css # Modal playlist
+│   │   ├── resume-modal.css # Modal resume playback
+│   │   ├── utility.css  # Utility classes
+│   │   └── visualizer.css # Audio visualizer
+│   ├── books/           # Books module CSS (6 file)
+│   │   ├── base.css     # Base books styles
+│   │   ├── cards.css    # Book card styles
+│   │   ├── manga.css    # Manga reader
+│   │   ├── pdf.css      # PDF reader
+│   │   ├── reader.css   # Book reader base
+│   │   └── utility.css  # Utility classes
+│   └── shared/          # Shared CSS (7 file)
 │       ├── comment.css  # Comment section
-│       └── nav.css      # Navigation bar
+│       ├── design-tokens.css # Design tokens
+│       ├── light-theme.css  # Light mode overrides
+│       ├── nav.css      # Navigation bar
+│       ├── notification.css # Notification styles
+│       ├── theme-tokens.css # Theme CSS variables
+│       └── upload-form.css  # Upload form styles
 ├── js/
 │   ├── video/watch/     # Video watch page JS (12 files)
 │   │   ├── state.js     # Global state variables

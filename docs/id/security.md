@@ -1097,7 +1097,7 @@ Dua race TOCTOU ditutup di `DriveStorage::upload()`:
 **Jalankan semuanya dengan satu perintah:** `scripts/verify_security.sh`
 menjalankan ketiga suite keamanan (subset PHPUnit keamanan,
 `security_test.php`, `functional_test.php`) plus probe live 403 Private Drive
-dan keluar dengan exit code ramah-CI (lihat [test.md](test.md)).
+dan keluar dengan exit code ramah-CI (lihat [testing.md](testing.md)).
 
 ---
 

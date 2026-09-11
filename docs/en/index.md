@@ -16,8 +16,8 @@ Welcome to the official **MEeL** documentation — A Personal Media Hub Platform
 | 6 | [🌍 Problem Solved](problem-solved.md) | Real-world problems that inspired MEeL |
 | 7 | [🔧 Troubleshooting](troubleshooting.md) | Solutions for common issues |
 | 8 | [👨‍💻 Development Guide](development.md) | Coding standards, contributions, and testing |
-| 9 | [📥 Advanced Upload Issues](upload_issue.md) | Handling yt-dlp & background queue problems |
-| 10 | [🧪 Testing Guide](test.md) | PHPUnit, Functional, Security test — complete guide |
+| 9 | [📥 Advanced Upload Issues](upload-issues.md) | Handling yt-dlp & background queue problems |
+| 10 | [🧪 Testing Guide](testing.md) | PHPUnit, Functional, Security test — complete guide |
 | 11 | [📱 PWA](pwa.md) | Progressive Web App: dynamic service worker, cache strategies, offline |
 
 ---
@@ -31,6 +31,7 @@ Welcome to the official **MEeL** documentation — A Personal Media Hub Platform
 | **Bootstrap** | `modules/core/bootstrap.php` | Environment detection (dev/prod), error reporting, timezone |
 | **CommentRenderer** | `modules/core/CommentRenderer.php` | Comment rendering with theme support (`video`/`music`) |
 | **SearchEngine** | `modules/media/SearchEngine.php` | FULLTEXT search engine for video, music & books — with query sanitizer (`sanitizeQuery()`), min query length 3, offset cache key |
+| **ArchiveGuard** | `modules/media/ArchiveGuard.php` | Safe ZIP/CBZ extraction — anti zip-bomb limits (entry/size/ratio/depth) |
 | **GarbageCollector** | `modules/core/GarbageCollector.php` | Auto-cleanup of temporary files, guest accounts & expired rate limit cache |
 | **RateLimiter** | `modules/auth/RateLimiter.php` | File-based API rate limiter (30 likes/min, 10 comments/min, etc.) |
 | **SsrfGuard** | `modules/auth/SsrfGuard.php` | SSRF-safe URL validation for outbound requests (yt-dlp pipeline) |
@@ -40,10 +41,10 @@ Welcome to the official **MEeL** documentation — A Personal Media Hub Platform
 | **UpdateManager** | `controllers/system/UpdateManager.php` | CRUD changelog entries (OOP) |
 | **DriveService** | `drive/DriveService.php` | 3 classes: DriveUserContext, DriveStorage, DriveViewRenderer |
 | **Profile Manager** | `controllers/profile/fun-manage.php` | Delete media, pending deletions, cleanup |
-| **Migration System** | `database/migrate.php` | Versioned database schema upgrades v1–v14 (idempotent) |
+| **Migration System** | `database/migrate.php` | Versioned database schema upgrades v1–v15 (idempotent) |
 | **PWA Precache** | `modules/core/SwPrecache.php` | Dynamic service worker precache generator — reads `assets/css/*/manifest.php`, auto `SW_VERSION` from content hash |
 | **PWA Generator** | `sw.js.php` | Service worker generated per request (served as `/sw.js` via `.htaccess` rewrite) |
-| **Autoloader** | `modules/autoload.php` | PSR-4-like autoloading |
+| **Autoloader** | `modules/autoload.php` | Class-map autoloading |
 | **Activity Logger** | `modules/core/activity_logger.php` | IP detection, session kick, guest auto-registration |
 | **MFA System** | `controllers/system/mfa.php` | MFA backend controller (TOTP verify, backup codes, email) |
 | **MFA Setup** | `auth/mfa_setup.php` | MFA setup (generate secret, scan QR, verify TOTP, backup codes) |
@@ -100,12 +101,12 @@ Request: /MEeL/music/beranda?format=ogg
 | `/music/<playlist-name>` | `music/view_playlist.php` (playlist slug route — see below) |
 | `/books/beranda`, `/books/read`, `/books/read-pdf`, `/books/search`, `/books/upload`, `/books/file` | `books/*.php` |
 | `/drive/beranda`, `/drive/upload`, `/drive/delete`, `/drive/download`, `/drive/stream` | `drive/*.php` |
-| `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/manage-action`, `/profile/edit-video`, `/profile/edit-music` | `profile/index.php` (profile + public channel grid, tab via query), `profile/channel_more.php` (HTMX fragment), `profile/edit-video.php` (owner, non-admin), `profile/edit-music.php` (owner, non-admin), `controllers/profile/*.php` |
-| `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/actions`, `/admin/data` | `admin/*.php` (edit-video/edit-music admin-only), `controllers/admin/*.php` |
+| `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/manage-action`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profile + public channel grid, tab via query), `profile/channel_more.php` (HTMX fragment), `profile/edit-video.php` (owner, non-admin), `profile/edit-music.php` (owner, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
+| `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat`, `/admin/actions`, `/admin/data` | `admin/*.php` (edit-video/edit-music admin-only), `controllers/admin/*.php` |
 | `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
 | `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` |
 | `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) |
-| `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/chat` | `controllers/api/*.php` |
+| `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/notification`, `/api/chat`, `/api/meelcoin` | `controllers/api/*.php` |
 | `/system/mfa` | `controllers/system/mfa.php` |
 
 > **Playlist slug route:** playlists have name-based URLs — `/music/<playlist-name>`
@@ -135,12 +136,13 @@ Request: /MEeL/music/beranda?format=ogg
 - **Type hints:** Class properties and constructor parameters now use type hints (`\mysqli`, `int`, `string`, etc.)
 - **Activity Log Integration:** `log_activity()` function integrated at login, logout, upload, and admin actions — full audit trail to `activity_log` table
 - **Admin Activity Log Viewer:** `admin/activity_log.php` page for viewing, filtering, and cleaning audit trails
-- **Database Alignment:** `schema.sql` and `migrate.php` are synchronized (v1–v14) — FULLTEXT, FK, UNIQUE KEY, activity_log, MFA, comments composite indexes, interactions unique keys, chess room identity
+- **Database Alignment:** `schema.sql` and `migrate.php` are synchronized (v1–v15) — FULLTEXT, FK, UNIQUE KEY, activity_log, MFA, comments composite indexes, interactions unique keys, chess room identity, user_notifications
 - **Migration v10:** Composite index `(video_id, created_at)` & `(music_id, created_at)` on `comments`
 - **Migration v11:** `interactions` unique keys split into `(user_id, video_id)` & `(user_id, music_id)` — NULL in a combined unique key did not prevent duplicates
 - **Migration v12:** Bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code`
 - **Migration v13:** MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table
 - **Migration v14:** Indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery
+- **Migration v15:** `user_notifications` table — notification system for likes, replies, MEeLCoin, admin chat
 - **Anime Module Removed:** The "Coming Soon" placeholder module has been removed from the codebase
 - **API Rate Limiting:** File-based rate limiter (`modules/auth/RateLimiter.php`) — protects like, comment, upload endpoints from abuse with per-user limits with role-based adjustment (admin=unlimited, member=2x)
 - **Security Module (`modules/auth/`):** Security helpers & classes consolidated into one directory for easy auditing — `helpers/` (authz, csrf, session, stream_auth, mfa, user) + `RateLimiter.php` + `SsrfGuard.php`, loaded via `modules/auth/loader.php` (the legacy `modules/core/helpers.php` shim still works)
@@ -153,13 +155,13 @@ Request: /MEeL/music/beranda?format=ogg
 - **Arcade Chess:** Real-time LAN multiplayer chess — create/join room, turn-based, legal move validation
 - **Chess Color Picker:** In multiplayer mode the board is hidden behind a color picker overlay (White = create room & wait, Black = join with code) — board locked until the game starts
 - **Chess Auth & CSRF:** Multiplayer controllers now require login (JSON 401) and CSRF token on all state-changing calls; admin `auto_cleanup` endpoint verified with CSRF
-- **Arcade Expansion (9 games):** besides Dino Run, Chess & Snake — now **2048**, **Tetris**, **Breakout**, **Simon Says**, **Ludo**, and **MEeL!Mania** (4-lane rhythm game inspired by osu!mania with a beatmap editor and custom song uploads MP3/OGG/FLAC/WAV ≤ 5 min; the `arcade_song`/`arcade_score` tables come from `arcade/rhythm/migration.sql` — separate from the main v1–v14 migrations)
+- **Arcade Expansion (9 games):** besides Dino Run, Chess & Snake — now **2048**, **Tetris**, **Breakout**, **Simon Says**, **Ludo**, and **MEeL!Mania** (4-lane rhythm game inspired by osu!mania with a beatmap editor and custom song uploads MP3/OGG/FLAC/WAV ≤ 5 min; the `arcade_song`/`arcade_score` tables come from `arcade/rhythm/migration.sql` — separate from the main v1–v15 migrations)
 - **PWA Optimization:** Dynamic service worker (`sw.js.php` + `SwPrecache`) — precache list auto-generated from `manifest.php`, auto `SW_VERSION`, real 192/512/maskable icons, iOS standalone meta, auto-reload on SW update
 - **Search Improvements:** Query sanitizer (`sanitizeQuery()`), `MIN_SEARCH_QUERY = 3`, music search pagination, server-side books search (`BookRepository::searchBooks()`), cache key includes offset, `try/catch` around FULLTEXT queries
 - **Auth Hardening:** Session cookies now `Secure` (auto-detect HTTPS) + `HttpOnly` + `SameSite=Lax`; `MEEL_TRUST_PROXY_HEADERS` (default `false`) to prevent IP spoofing via proxy headers; DB connection charset forced to `utf8mb4`
 - **Admin CSRF:** Approve/reject/delete/kick/unban actions moved from GET links to POST forms with CSRF token
 - **Centralized Session Bootstrap:** New file `modules/auth/helpers/session.php` with `meel_boot_session()` — every entry point (index, video, music, auth, controllers/api, err, admin) now calls this single function instead of scattered manual `session_name('meel'); session_start();`. The session cookie is guaranteed `HttpOnly` + `SameSite=Lax` + `Secure` (auto-detect HTTPS), 12-hour timeout, and idempotent (no-op if the session is already active)
-- **JS/CSS Modularization:** JavaScript & CSS split per module — video (12 files: state, lifecycle, player-init, player-events, recovery, mini-player, gestures, search, seek-indicator, vtt-sprites, misc), shared (19 files: nav, theme, keyboard, comment, notification, plyr-config, format-time, resume-modal, etc.), profile (5 files: manage, avatar-crop, coin-countdown, theme-init), admin (3 files: activity_log, chat), with dynamic loader per module
+- **JS/CSS Modularization:** JavaScript & CSS split per module — video (12 files: state, lifecycle, player-init, player-events, recovery, mini-player, gestures, search, seek-indicator, vtt-sprites, misc), shared (19 files: nav, theme, keyboard, comment, notification, plyr-config, format-time, resume-modal, etc.), profile (4 files: manage, avatar-crop, coin-countdown, theme-init), admin (6 files: activity_log, chat, catur, index, mfa_reset, stats), with dynamic loader per module
 - **Adaptive Aspect Ratio Player:** Video player automatically adapts to video aspect ratio — for non-16:9 videos (like 4:3), max-height is equalized to 16:9 equivalent, width shrinks proportionally and is centered (similar to YouTube)
 - **Chat API:** New `/api/chat` endpoint for real-time chat between users with HTMX polling
 - **Notification Update:** Notification system updated with modularization — `notification.js` in shared, `notification.css` in profile

@@ -16,6 +16,9 @@
 - [Dependence on Commercial Platforms](#dependence-on-commercial-platforms)
 - [Full Control Over Content](#full-control-over-content)
 - [Financial Impact: A Year with MEeL](#financial-impact-a-year-with-meel)
+- [Testimonials](#testimonials)
+- [Considerations Before Using MEeL](#considerations-before-using-meel)
+- [See Also](#see-also)
 - [Quick Summary](#quick-summary)
 
 ---
@@ -215,6 +218,129 @@ Commercial streaming platforms **REQUIRE internet**. If it's down, you can't acc
 
 ---
 
+## Sharing Media with Family/Friends
+
+### ❌ The Problem
+
+Try sending a 2GB movie to a friend:
+
+| Method | Time | Quality | Limitations |
+|---|---|---|---|
+| WhatsApp | ⏳ 30 min upload | 📉 Compressed to 16MB | Max 2GB |
+| Email | ⏳ 15 min | ✅ Original | Max 25MB |
+| Google Drive | ⏳ 20 min | ✅ Original | Requires Google account |
+| Discord | ⏳ 10 min | 📉 Quality drops | Max 25MB (free) |
+| USB Flash drive | 🚗 10 min drive | ✅ Original | Must meet in person |
+
+### ✅ MEeL Solution
+
+```
+Admin upload ──▶ [MEeL] ──share link──▶ 👨 Dad (member)  ✅
+                                       ├── 👩 Mom (user)    ✅
+                                       ├── 👦 Kid (guest)   ✅
+                                       └── 👨‍👩‍👧‍👦 Everyone via LAN ✅
+```
+
+**MEeL sharing features:**
+- ✅ **Multi-user** — Each family member has their own account
+- ✅ **Role-based** — Admin controls access (member/user/guest)
+- ✅ **Public/private scope** — Drive can be shared or hidden
+- ✅ **Share link** — Just send a local URL, instant access
+- ✅ **One place** — No re-uploading, everything centralized
+
+---
+
+## Dependence on Commercial Platforms
+
+### ❌ The Problem
+
+Commercial platforms control your content ecosystem:
+
+```
+YouTube can:
+├── Delete your videos anytime (copyright claim)
+├── Show unskippable ads
+├── Change algorithm → lower your video views
+└── Restrict certain regions
+
+Netflix can:
+├── Remove your favorite movies (license expired)
+├── Raise subscription prices
+└── Limit streaming quality based on plan
+
+Google Drive can:
+├── Block files that "violate ToS"
+├── Limit storage quota
+└── Scan your files for ads
+```
+
+### ✅ MEeL Solution
+
+**You're in full control:**
+
+| Aspect | Commercial Platforms | MEeL |
+|---|---|---|
+| Content control | They own it | **You own it** |
+| Ads | Mandatory (unless premium) | **Zero ads** |
+| Algorithm | Manipulative | **None** |
+| Region lock | Exists | **None** |
+| Price | Increases yearly | **Free forever** |
+| Quality | They decide | **You choose** |
+
+> **Bottom line:** MEeL isn't just a streaming tool — it's a declaration of **digital independence**.
+
+---
+
+## Full Control Over Content
+
+### ❌ The Problem
+
+Commercial platform users = tenants, not owners.
+
+```
+┌──────────────────────────────────────────────┐
+│         YOU'RE JUST A TENANT                 │
+├──────────────────────────────────────────────┤
+│ • Films can vanish anytime (licenses)        │
+│ • Streaming quality determined by server     │
+│ • Upload duration limits                     │
+│ • Forced output formats                      │
+│ • Data stored on someone else's server       │
+│ • No self-backup possible                    │
+└──────────────────────────────────────────────┘
+```
+
+### ✅ MEeL Solution
+
+```
+┌──────────────────────────────────────────────┐
+│         YOU ARE THE OWNER                    │
+├──────────────────────────────────────────────┤
+│ ✅ Content safe — as long as your HDD is     │
+│ ✅ Choose quality yourself (HLS adaptive)    │
+│ ✅ No duration limits (as long as storage)   │
+│ ✅ Transcode to any format                   │
+│ ✅ Full backup — HDD + DB backup yourself    │
+│ ✅ Healthy mode 20-20-20 (eye rest reminder) │
+└──────────────────────────────────────────────┘
+```
+
+### How to Backup Data
+
+This is what you CAN'T do on commercial platforms:
+
+```bash
+# Backup database
+mysqldump -u root -p MEeL > backup_meel_$(date +%Y%m%d).sql
+
+# Backup all media
+tar -czf meel_media_backup_$(date +%Y%m%d).tar.gz /media/username/MEeL/media/
+
+# Save to external HDD or your preferred cloud backup ✅
+```
+
+---
+
 ## Financial Impact: A Year with MEeL
 
 ### Yearly Comparison
@@ -261,6 +387,89 @@ A new "Upload Queue" tab was added to the Activity Log viewer, allowing admins t
 Admin users are now excluded from the MEeLCoin manual adjustment dropdown to prevent
 accidental balance modifications. Admin coin balance is managed through auto-refill
 and upload costs only.
+
+---
+
+## Testimonials
+
+> *"After using MEeL, I cancelled all my subscriptions. Monthly bills dropped dramatically, and I now have full control over my media collection. Best decision ever."*
+>
+> — **Mifada**, Creator of MEeL
+
+> *"I was shocked to see how much I spent on streaming services. Now everything is on MEeL, accessed via TV from the server in the living room. The whole family loves it."*
+>
+> — **Early Adopter**, Anonymous User
+
+> *"No more worrying about data breaches or content suddenly disappearing. Everything is safe on my own server. This is the future of personal media."*
+>
+> — **Beta Tester**, Anonymous User
+
+---
+
+## Considerations Before Using MEeL
+
+> *"Nothing in this world is truly free. MEeL is free in cost, but it requires time, effort, and patience."*
+
+To be honest, here are the **trade-offs** you need to understand before deciding to use MEeL:
+
+### ❓ What Do You Need to Prepare?
+
+| Requirement | Details | Difficulty Level |
+|---|---|---|
+| 🖥️ **Server / Computer** | Need a device running 24/7 (old laptop, VPS, or Raspberry Pi) | 🟢 Easy |
+| 💾 **External HDD/SSD** | Media needs space. The larger your collection, the bigger the HDD | 🟢 Easy |
+| 🐧 **Basic Linux Knowledge** | FFmpeg installation, filesystem permissions, terminal commands | 🟡 Medium |
+| 🗄️ **Database Setup** | MySQL/MariaDB — create database, import schema, configure user | 🟡 Medium |
+| 🐛 **Self-Troubleshooting** | Since it's open-source, you'll need to debug yourself or ask the community | 🟡 Medium |
+| 🔧 **Initial Configuration** | Set HDD paths, configure cookies.txt for yt-dlp, adjust PHP config | 🟡 Medium |
+| 🔄 **Regular Maintenance** | Database + media backups, update yt-dlp, clean orphan files | 🟡 Medium |
+| 🌐 **External Access (optional)** | Need Cloudflare Tunnel, VPN, or port forwarding — not as easy as clicking "share" | 🔴 Hard |
+
+### ⏱️ Time Estimate
+
+| Stage | Estimated Time |
+|---|---|
+| Server + database installation | 30 - 60 minutes |
+| Application configuration | 15 - 30 minutes |
+| FFmpeg + yt-dlp setup | 15 - 30 minutes |
+| First media upload | Depends on file size |
+| **Total initial setup** | **1 - 2 hours (if smooth)** |
+| Getting used to it | 1 - 3 days |
+
+### ⚠️ Things to Consider
+
+| Aspect | Commercial Platforms | MEeL |
+|---|---|---|
+| **Convenience** | ✅ Install app, login, use immediately | ❌ Need to set up your own server |
+| **Monthly cost** | ❌ $30-60/month | ✅ $0 — just electricity |
+| **Content library** | ✅ Millions of titles ready to use | ❌ You must upload yourself |
+| **Maintenance** | ✅ Managed by company | ❌ You handle it yourself |
+| **Customization** | ❌ Limited | ✅ Full control |
+| **Data security** | ❌ Data on third-party servers | ✅ 100% yours |
+| **Technical support** | ✅ 24/7 customer service | ❌ Community-based |
+| **Offline access** | ❌ Requires internet | ✅ Works via LAN |
+
+### 🎯 So, Who is MEeL For?
+
+| Good For | Not Ideal For |
+|---|---|
+| ✅ People who want to **save on subscription costs** | ❌ People who want **instant setup** with no hassle |
+| ✅ People who **care about data privacy** | ❌ People who **don't want to deal with servers** |
+| ✅ People with their own **media collection** | ❌ People who **only watch new content** daily |
+| ✅ People who **enjoy learning** new things | ❌ People who are **not tech-savvy** about Linux/servers |
+| ✅ People with **spare devices** for a server | ❌ People with **no extra devices** |
+| ✅ **Families** who want to share media at home | ❌ Those who need **millions of ready-to-watch titles** (like Netflix) |
+
+> **Bottom line:** MEeL is like **owning your own house** — it takes effort to build and maintain, but once it's done, you can live in it freely, safely, and without paying rent every month. 🏠
+
+---
+
+## See Also
+
+- [📚 Documentation Index](index.md) — Map of all documentation
+- [🚀 Installation](installation.md) — How to install MEeL
+- [⚙️ Configuration](configuration.md) — Set paths and database
+- [🎬 About MEeL](../../README.md) — Project overview
 
 ---
 

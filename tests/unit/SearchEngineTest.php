@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
  */
 class SearchEngineTest extends TestCase
 {
-    private $mockConn;
+    private \mysqli $mockConn;
     private SearchEngine $searchEngine;
 
     protected function setUp(): void

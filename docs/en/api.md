@@ -35,7 +35,10 @@ controllers/
 │   ├── theme.php             # Theme preference (GET/POST) — light/dark
 │   ├── ajax_refresh.php      # AJAX fragment refresh (search, etc.)
 │   ├── server_stats.php      # Server statistics (JSON)
-│   └── server_stats_sse.php  # Server statistics via Server-Sent Events
+│   ├── server_stats_sse.php  # Server statistics via Server-Sent Events
+│   ├── notification.php      # User notifications (mark read, get count)
+│   ├── chat.php              # Real-time chat between users
+│   └── meelcoin.php          # MEeLCoin balance & operations
 ├── profile/
 │   ├── fun-manage.php        # Delete media, pending deletions, cleanup
 │   └── profile_edit.php      # Update user profile
@@ -831,7 +834,7 @@ and the same auth helpers as the other modules).
 | `arcade/rhythm/api/delete` | POST | login + CSRF | Delete custom song — owner or admin; removes audio + cover + beatmap.json + DB record (transactional) |
 
 > ⚠️ The `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`
-> (separate from `database/schema.sql` / `database/migrate.php` v1–v14).
+> (separate from `database/schema.sql` / `database/migrate.php` v1–v15).
 
 ---
 

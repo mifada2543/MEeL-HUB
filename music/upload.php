@@ -18,6 +18,8 @@ $user_role = get_user_role($conn, $user_id);
 $is_admin  = ($user_role === 'admin');
 
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
+$hour_count = 0;
+$hourly_limit = '∞';
 
 if ($meelcoin_enabled) {
     if (!$is_admin) {

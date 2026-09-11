@@ -2,9 +2,9 @@
 
 class MediaLibrary
 {
-    private $conn;
+    private \mysqli $conn;
 
-    public function __construct($db_connection)
+    public function __construct(\mysqli $db_connection)
     {
         $this->conn = $db_connection;
     }
@@ -53,7 +53,7 @@ class MediaLibrary
 
     
 
-    protected function paginateResult($result, int $total, int $page, int $perPage): array
+    protected function paginateResult(\mysqli_result|null $result, int $total, int $page, int $perPage): array
     {
         $totalPages = max(1, (int)ceil($total / max($perPage, 1)));
         $page = max(1, min($page, $totalPages));
@@ -466,9 +466,9 @@ class MediaLibrary
 
 class BookRepository
 {
-    private $conn;
+    private \mysqli $conn;
 
-    public function __construct($db_connection)
+    public function __construct(\mysqli $db_connection)
     {
         $this->conn = $db_connection;
     }
@@ -595,10 +595,10 @@ class BookRepository
 
 class BookUploader
 {
-    private $conn;
-    private $base_path;
+    private \mysqli $conn;
+    private string $base_path;
 
-    public function __construct($db_connection, string $base_path)
+    public function __construct(\mysqli $db_connection, string $base_path)
     {
         $this->conn = $db_connection;
         $this->base_path = rtrim($base_path, '/');

@@ -34,7 +34,10 @@ controllers/
 │   ├── theme.php             # Theme preference (GET/POST) — light/dark
 │   ├── ajax_refresh.php      # Refresh fragment AJAX (search, dll.)
 │   ├── server_stats.php      # Statistik server (JSON)
-│   └── server_stats_sse.php  # Statistik server via Server-Sent Events
+│   ├── server_stats_sse.php  # Statistik server via Server-Sent Events
+│   ├── notification.php      # Notifikasi user (tandai sudah dibaca, jumlah)
+│   ├── chat.php              # Chat real-time antar user
+│   └── meelcoin.php          # Saldo & operasi MEeLCoin
 ├── profile/
 │   ├── fun-manage.php        # Delete media, pending deletions, cleanup
 │   └── profile_edit.php      # Update profil user
@@ -945,7 +948,7 @@ dan helper auth yang sama dengan modul lain).
 | `arcade/rhythm/api/delete` | POST | login + CSRF | Hapus lagu custom — owner atau admin; hapus audio + cover + beatmap.json + record DB (transaksional) |
 
 > ⚠️ Tabel `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
-> (terpisah dari `database/schema.sql` / `database/migrate.php` v1–v14).
+> (terpisah dari `database/schema.sql` / `database/migrate.php` v1–v15).
 
 ---
 

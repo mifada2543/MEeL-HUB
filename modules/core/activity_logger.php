@@ -24,7 +24,7 @@ function get_real_ip()
     $remote = $_SERVER["REMOTE_ADDR"] ?? '0.0.0.0';
     return $valid($remote) ? $remote : '0.0.0.0';
 }
-function validate_and_format_ip($ip)
+function validate_and_format_ip(string $ip): array
 {
     $ip = trim($ip);
     if (strpos($ip, '127.') === 0) {

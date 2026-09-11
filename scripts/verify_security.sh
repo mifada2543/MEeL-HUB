@@ -119,7 +119,7 @@ probe_403() {
     warn "curl tidak dapat menjangkau server (dir=$dir_code file=$file_code) — probe tidak konklusif, dilewati (pakai --url=... atau --skip-403)"
   elif [ "$dir_code" = "404" ] || [ "$file_code" = "404" ] \
     || [ "$dir_code" = "301" ] || [ "$dir_code" = "302" ]; then
-    warn "HTTP dir=$dir_code file=$file_code — storage belum ter-mount ATAU AllowOverride/mod_rewrite tidak aktif (lihat docs/en/test.md)"
+    warn "HTTP dir=$dir_code file=$file_code — storage belum ter-mount ATAU AllowOverride/mod_rewrite tidak aktif (lihat docs/en/testing.md)"
   else
     echo "${C_RED}✘ FAIL${C_RESET} — HTTP dir=$dir_code file=$file_code — akses langsung TIDAK diblokir!"
     FAIL=$((FAIL + 1))

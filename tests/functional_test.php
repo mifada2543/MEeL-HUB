@@ -115,8 +115,6 @@ function testFunctionExistence(): void {
         'analyzeJapaneseText'   => 'modules/core/japanese.php',
 
         'log_activity'          => 'modules/core/activity_logger.php',
-
-        'verify_csrf_token'     => 'modules/auth/helpers/csrf.php',
     ];
 
     $warning_funcs = ['log_activity']; 

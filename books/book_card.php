@@ -1,4 +1,6 @@
-<?php ?>
+<?php
+/** @var array<string, mixed> $book Baris data buku dari loop pemanggil (books/index.php, load_more.php, search_books.php). */
+?>
 <div class="relative group">
     <?php if (isset($role) && $role === 'admin'): ?>
         <div class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">

@@ -13,6 +13,8 @@ Reference guide for all configuration files and parameters in MEeL-HUB.
 - [Transcoder Configuration](#transcoder-configuration)
 - [Uploader Configuration](#uploader-configuration)
 - [System Configuration](#system-configuration)
+- [Cookies & yt-dlp Authentication](#cookies--yt-dlp-authentication)
+- [Environment Variables](#environment-variables)
 - [Rate Limiting](#rate-limiting)
 
 ---
@@ -39,10 +41,10 @@ Reference guide for all configuration files and parameters in MEeL-HUB.
 | `modules/core/bootstrap.php` | Bootstrap (env detection, error reporting, timezone) | `MEEL_ENV`, error log config |
 | `modules/core/base_url.php` | Centralized base URL computation (`meel_base_url_path()`) | `MEEL_BASE_URL` (via `bootstrap.php`/`config.php`) |
 | `modules/transcoder/FfmpegUtils.php` | **Trait** for FFmpeg utilities | `resolveBinary()`, `probeDuration()`, `generateSpriteAndVTT()` |
-| `modules/autoload.php` | PSR-4-like autoloader | List of scanned directories |
+| `modules/autoload.php` | Class-map autoloader | List of scanned directories |
 | `modules/core/SwPrecache.php` | PWA precache generator (service worker) | `baseAssets()`, `moduleAssets()`, `all()`, `version()` |
 | `sw.js.php` | Dynamic service worker generator (served as `/sw.js`) | `SW_VERSION`, `PRECACHE_URLS` (auto) |
-| `database/migrate.php` | Database migration v1–v14 | FULLTEXT index, FK, activity_log, UNIQUE KEY, MFA, comments indexes, interactions unique keys, chess room identity |
+| `database/migrate.php` | Database migration v1–v15 | FULLTEXT index, FK, activity_log, UNIQUE KEY, MFA, comments indexes, interactions unique keys, chess room identity, user_notifications |
 
 ---
 
@@ -139,6 +141,21 @@ function verify_csrf_token(?string $token = null): bool
 }
 ```
 
+### Session Timeout Check
+
+```php
+if (isset($_SESSION['LAST_ACTIVITY'])) {
+    $elapsed_time = time() - $_SESSION['LAST_ACTIVITY'];
+    if ($elapsed_time > $timeout) {  // 12 hours
+        session_unset();
+        session_destroy();
+        header("Location: ../auth/login?reason=expired");
+        exit;
+    }
+}
+$_SESSION['LAST_ACTIVITY'] = time();
+```
+
 ### Transliterator (Romaji Conversion)
 
 ```php
@@ -174,6 +191,49 @@ define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
 define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
 define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
 ```
+
+### How to Change
+
+1. Determine your HDD mount path: `df -h` or `lsblk`
+2. Edit `auth/settings.php`:
+   ```php
+   define('MEEL_HDD_BASE', '/media/[username]/MEeL/media');
+   ```
+3. Done! All modules (video, music, books, drive) automatically use the new path.
+
+### X-Sendfile Configuration (Streaming Acceleration)
+
+> Available in: `auth/settings.php`
+
+```php
+define('MEEL_USE_XSENDFILE', false);
+```
+
+X-Sendfile speeds up streaming of large files like FLAC (33MB+) by letting Apache serve files directly from disk (zero-copy), without PHP reading the file at all.
+
+**Performance impact based on testing (FLAC 33MB):**
+
+| Metric | Without X-Sendfile (PHP chunking) | With X-Sendfile |
+|---|---|---|
+| Full file 33MB | 0.020 seconds | ~0.010 seconds (2× faster) |
+| Range request 256KB | 0.011 seconds | ~0.003 seconds (3× faster) |
+| Server RAM per request | ~33MB | 0 bytes |
+| PHP process blocking | Yes, until stream finishes | No, exits immediately |
+
+**Activation:** See the guide in [`installation.md`](installation.md) section "Enable mod_xsendfile".
+
+### Examples for Different Scenarios
+
+| Scenario | `MEEL_HDD_BASE` Value |
+|---|---|
+| External HDD | `/media/username/MEeL/media` |
+| Local SSD | `/var/www/meel-storage/media` |
+| Development (fallback) | `__DIR__ . '/../storage/media'` |
+| Docker volume | `/data/media` |
+
+### ⚠️ Important
+
+If `MEEL_HDD_BASE` doesn't match the mount point, the maintenance page `err/?code=maintance` (HTTP 503) may be displayed.
 
 ### Storage Directory Structure
 
@@ -230,6 +290,45 @@ protected const TRANSCODE_AUDIO_TIMEOUT = 600;
 > Sprite dimensions (160×90, 5 columns) are now hardcoded in `modules/transcoder/FfmpegUtils.php`
 > (`generateSpriteAndVTT()`: `$w = 160; $h = 90; $cols = 5;`) together with the dynamic interval.
 
+### Binary Path Resolution
+
+```php
+// Trait modules/transcoder/FfmpegUtils.php - Auto-detect FFmpeg path (resolveBinary)
+$this->ffmpeg_bin  = $this->resolveBinary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+$this->ffprobe_bin = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+
+// Uploader.php
+$this->ffmpeg_bin  = $this->resolveBinary(['/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
+$this->ffprobe_bin = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+```
+
+### yt-dlp Configuration
+
+```php
+$this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; "
+    . " /usr/local/bin/yt-dlp --js-runtime node:/usr/bin/node"
+    . " --no-warnings --restrict-filenames"
+    . " --user-agent " . escapeshellarg($this->user_agent)
+    . " --referer " . escapeshellarg("https://www.youtube.com/")
+    . " --cookies " . escapeshellarg($this->cookies_path) . " ";
+```
+
+### Video Format Resolution
+
+```php
+// YouTube: prefer H.264 + AAC/M4A for stream-copy
+return "bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=m4a]/best[height<=1080][vcodec^=avc1]";
+
+// NicoNico: standard format
+return "bestvideo[height<=1080]+bestaudio/best";
+
+// TikTok/others
+return "bestvideo+bestaudio/best";
+
+// Fallback
+return "bestvideo[height<=1080]+bestaudio/best";
+```
+
 ### Sprite Interval (Dynamic)
 
 ```php
@@ -274,6 +373,41 @@ $allowed_ext = ['mp3', 'opus', 'ogg', 'm4a', 'wav', 'flac'];
 // Maximum 2 simultaneous processes (download + transcode)
 $active = count($this->getActiveQueues());
 return $active >= 2; // isServerBusy()
+```
+
+---
+
+## Cookies & yt-dlp Authentication
+
+The `cookies.txt` file in the project root is used for yt-dlp authentication:
+
+```php
+// Path: /opt/lampp/htdocs/MEeL/cookies.txt
+$this->cookies_path = $this->base_path . "/cookies.txt";
+```
+
+### How to Get cookies.txt
+
+1. Install browser extension "Get cookies.txt LOCALLY"
+2. Log in to YouTube (or other platform) in your browser
+3. Click the extension → Export cookies
+4. Save the file as `cookies.txt` in the project root
+
+---
+
+## Environment Variables
+
+```php
+// In upload_advanced.php (override environment)
+putenv("LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib");
+putenv("PATH=/usr/local/bin:/usr/bin:/bin");
+```
+
+```php
+// In modules/core/TranscoderBase.php (used by child services EncodeService/DownloadService/TranscodeService)
+protected const ENV_PREFIX = "export LD_LIBRARY_PATH='/usr/lib/x86_64-linux-gnu:/usr/local/lib'; "
+    . "export PATH=/usr/local/bin:/usr/bin:/bin; "
+    . "export LC_ALL=en_US.UTF-8; ";
 ```
 
 ---

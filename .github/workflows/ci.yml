@@ -202,7 +202,7 @@ jobs:
         run: |
           if [ -f vendor/bin/phpunit ]; then
             # Hanya suite unit: integration tests membutuhkan MySQL + data nyata
-            # yang tidak tersedia di runner (lihat docs/en/test.md).
+            # yang tidak tersedia di runner (lihat docs/en/testing.md).
             php vendor/bin/phpunit --no-coverage --verbose --testsuite='MEeL Core Unit Tests'
           else
             echo "⚠️  PHPUnit not installed, skipping."

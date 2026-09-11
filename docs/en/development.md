@@ -469,6 +469,54 @@ main (stable)
 
 ---
 
+## Troubleshooting Development
+
+### ❌ HTMX not working
+
+**Check:**
+1. File `assets/js/compatibilitas/htmx.min.js` is loaded (check Network tab)
+2. Target element (`hx-target`) exists in DOM
+3. No JavaScript errors in console
+4. Server response is valid HTML
+
+### ❌ "Headers already sent" error
+
+**Cause:** Output before `header()` or `session_start()`.
+
+**Solution:**
+```php
+// Output buffering at the top
+ob_start();
+
+// Or move session_start() to the very top
+session_name('meel');
+session_start();
+
+// Redirect with JavaScript fallback
+if (!headers_sent()) {
+    header("Location: index.php");
+} else {
+    echo "<script>window.location.href='index.php';</script>";
+}
+```
+
+### ❌ Session not saving
+
+**Check:**
+1. `session_name('meel')` is called BEFORE `session_start()`
+2. `auth/config.php` is included on every page
+3. No output before `session_start()`
+4. Session folder is writable
+
+### ❌ SweetAlert2 not showing
+
+**Check:**
+1. File `assets/js/compatibilitas/sweetalert2.all.min.js` is loaded
+2. Function `meelAlertRedirect()` is defined in `assets/js/compatibilitas/script.min.js`
+3. No CSS conflicts
+
+---
+
 ## Resource for Developers
 
 ### Key Files to Understand

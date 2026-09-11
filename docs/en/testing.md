@@ -303,8 +303,10 @@ PHP Syntax (8.1, 8.2, 8.3)
     ├── Functional Tests          → php tests/functional_test.php
     ├── Security Tests            → php tests/security_test.php
     ├── PHPUnit Unit Tests        → php vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'
+    ├── PHPUnit Integration Tests → php vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests' (MySQL service)
     ├── HTACCESS & Integrity      → .htaccess presence + permissions
-    └── Deployment Check         → php tests/check_deploy.php --no-color --hdd=…
+    ├── Deployment Check         → php tests/check_deploy.php --no-color --hdd=…
+    └── Drive Storage Integrity   → storage path verification
             └── CI Summary
 ```
 
@@ -319,17 +321,13 @@ cases run for real because GitHub Actions runners have a resolver;
 `ValidatingProxyTest` passes because the runner has PHP CLI with
 pcntl/stream sockets.
 
-> **CI runs only the unit suite.** The `tests/integration/` suite needs a real
-> MySQL database with seed data (`DbTestHelper` connects to `localhost` with
-> hardcoded user/media IDs), which the CI runner does not provide — running it
-> there produces 70+ `mysqli` connection errors. Run it locally:
-> `vendor/bin/phpunit --testsuite='MEeL Integration Tests'`.
->
-> The Japanese/romaji tests (`JapaneseTest`, parts of `HelpersTest`) call
-> **MeCab** via `proc_open`. CI installs it (`apt-get install mecab
-> mecab-ipadic-utf8`), and when MeCab is unavailable the affected tests
-> degrade to `markTestSkipped()` via `meel_mecab_available()` — so a
-> machine without mecab still gets a green suite, not failures.
+> **CI runs both unit and integration suites.** The `phpunit-tests` job runs the
+> unit suite, while `phpunit-integration-tests` runs integration tests against a
+> real MySQL 8.0 service container. The Japanese/romaji tests (`JapaneseTest`,
+> parts of `HelpersTest`) call **MeCab** via `proc_open`. CI installs it
+> (`apt-get install mecab mecab-ipadic-utf8`), and when MeCab is unavailable the
+> affected tests degrade to `markTestSkipped()` via `meel_mecab_available()` — so
+> a machine without mecab still gets a green suite, not failures.
 
 The **static wiring checks** for the same boundaries are exercised by the
 `security-tests` job (TEST 13 in `tests/security_test.php`) and the
