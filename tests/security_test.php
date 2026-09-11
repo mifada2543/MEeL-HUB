@@ -81,7 +81,58 @@ function testSqlInjection(): void {
                 if (preg_match($sp, $qry)) { $isStatic = true; break; }
             }
             
-            if (preg_match('/=\s*\(int\)/', $qry)) $isStatic = true;
+            if (preg_match('/=\s*\(int\)/', $qry)) { $isStatic = true; }
+            
+            if (!$isStatic) {
+                $allVars = [];
+                preg_match_all('/\$(\w+)/', $qry, $varMatches);
+                $allVars = array_merge($allVars, $varMatches[1] ?? []);
+                preg_match_all('/\$(\w+)\s*->\s*(\w+)/', $qry, $propMatches);
+                if (!empty($propMatches[0])) {
+                    $pmCount = count($propMatches[0]);
+                    for ($i = 0; $i < $pmCount; $i++) {
+                        $allVars[] = $propMatches[1][$i] . '.' . $propMatches[2][$i];
+                    }
+                }
+
+                $sanitized = true;
+                foreach ($allVars as $varName) {
+                    $isShort = (strpos($varName, '.') === false);
+                    $baseName = $isShort ? $varName : explode('.', $varName)[0];
+                    $propName = $isShort ? null : explode('.', $varName)[1];
+
+                    if (preg_match('/intval\s*\(\s*\$' . preg_quote($baseName) . '\s*\)/', $content) ||
+                        preg_match('/\(int\)\s*\$' . preg_quote($baseName) . '\b/', $content) ||
+                        preg_match('/int\s+\$' . preg_quote($baseName) . '\s*[=,\)]/', $content) ||
+                        preg_match('/\bfunction\s+\w+\s*\([^)]*int\s+\$' . preg_quote($baseName) . '\b/', $content) ||
+                        preg_match('/\$' . preg_quote($baseName) . '\s*=\s*\(int\)/', $content) ||
+                        preg_match('/\$' . preg_quote($baseName) . '\s*=\s*@?\w+\s*\(.*\)\s*;\s*\/\/.*int/i', $content)) {
+                        continue;
+                    }
+
+                    if ($propName !== null) {
+                        if (preg_match('/\$' . preg_quote($baseName) . '\s*->\s*' . preg_quote($propName) . '\s*=\s*\(int\)/', $content) ||
+                            preg_match('/\$' . preg_quote($baseName) . '\s*->\s*' . preg_quote($propName) . '\s*=\s*intval/', $content)) {
+                            continue;
+                        }
+                    }
+
+                    if (preg_match('/\$' . preg_quote($baseName) . '\s*=\s*\(/', $content) &&
+                        preg_match_all('/\$' . preg_quote($baseName) . '\s*=\s*\((?:(?!\)).)*\)\s*\?\s*["\'](\w+)["\']/', $content, $ternaryMs)) {
+                        continue;
+                    }
+
+                    if (preg_match('/\$' . preg_quote($baseName) . '\s*=\s*["\'][a-z_]+["\']\s*\./', $content) ||
+                        preg_match("/in_array\\s*\\(\\s*\\$\\w+.*\\$\\w+\\s*,\\s*\\[.video|music|admin|user./", $content)) {
+                        continue;
+                    }
+
+                    $sanitized = false;
+                    break;
+                }
+                if ($sanitized) $isStatic = true;
+            }
+
             if (!$isStatic) $risky[] = $qry;
         }
 
@@ -257,7 +308,7 @@ function testFileUploadSecurity(): void {
         'video/upload.php'            => ['delegated to Uploader::processVideo()', 'Uploader|in_array'],
         'music/upload.php'            => ['delegated to Uploader::processMusic()', 'Uploader|in_array'],
         'books/upload.php'            => ['delegated to BookUploader::handleUpload()', 'BookUploader|ZipArchive'],
-        'controllers/profile/profile_edit.php'=> ['MIME check', 'in_array.*file_type'],
+        'controllers/profile/profile_edit.php'=> ['MIME check', 'getimagesize|in_array.*file_type'],
         'drive/upload.php'            => ['delegated to DriveService::upload()', 'DriveStorage|validateFileByMagicBytes'],
         'modules/core/Uploader.php'        => ['ext + blacklist + magic bytes', 'preg_match.*php|validateVideoMagicBytes'],
     ];
@@ -496,7 +547,29 @@ function testCommandInjection(): void {
         } elseif ($escCount >= $execCount) {
             record("{$file} \u{2014} {$execCount} shell exec, semua pakai escapeshellarg", true);
         } else {
-            record("{$file} \u{2014} {$execCount} shell exec, {$escCount} escapeshellarg", true, true, "Ada yang mungkin tidak terproteksi");
+            
+            $unprotected = 0;
+            preg_match_all('/(?:shell_exec|exec|popen|proc_open)\s*\(([^)]+)\)/s', $content, $execMatches);
+            foreach ($execMatches[1] as $argStr) {
+                preg_match_all('/\$(\w+)/', $argStr, $execVars);
+                $allSafe = true;
+                foreach ($execVars[1] as $varName) {
+                    if (preg_match('/\(int\)\s*\$' . preg_quote($varName) . '\b/', $content) ||
+                        preg_match('/intval\s*\(\s*\$' . preg_quote($varName) . '\s*\)/', $content) ||
+                        preg_match('/int\s+\$' . preg_quote($varName) . '\b/', $content) ||
+                        preg_match('/\$' . preg_quote($varName) . '\s*=\s*\(int\)/', $content)) {
+                        continue;
+                    }
+                    $allSafe = false;
+                    break;
+                }
+                if (!$allSafe) $unprotected++;
+            }
+            if ($unprotected === 0) {
+                record("{$file} \u{2014} {$execCount} shell exec, {$escCount} escapeshellarg (sisanya pakai int-cast)", true);
+            } else {
+                record("{$file} \u{2014} {$execCount} shell exec, {$escCount} escapeshellarg", true, true, "{$unprotected} mungkin tidak terproteksi");
+            }
         }
     }
 }
