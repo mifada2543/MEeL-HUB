@@ -252,8 +252,9 @@ function setupMeelPlayerEvents() {
           }),
         (player.poster = d),
         c
-          ? (!hls && window.Hls && Hls.isSupported()
-              ? ((hls = new Hls(HLS_CONFIG)),
+          ? (window.Hls && Hls.isSupported()
+              ? (hls && (hls.destroy(), (hls = null)),
+                (hls = new Hls(HLS_CONFIG)),
                 registerHlsErrorListener(hls),
                 hls.attachMedia(player.media))
               : hls &&
@@ -289,8 +290,13 @@ function setupMeelPlayerEvents() {
               }
               if (needsRebuild) {
                 if (player) {
+                  hls.detachMedia();
                   player.destroy();
                   player = null;
+                }
+                videoElement = document.getElementById("main-video");
+                if (videoElement && hls) {
+                  hls.attachMedia(videoElement);
                 }
                 player = new Plyr(videoElement, plyrOptions);
                 setupMeelPlayerEvents();
