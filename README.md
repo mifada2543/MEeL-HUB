@@ -1,6 +1,12 @@
 # MEeL-HUB
 
 <div align="center">
+
+[🇬🇧 English](README-en.md)
+
+</div>
+
+<div align="center">
   <img src="assets/MEeL.png" alt="MEeL Logo" width="420"/>
   <br><br>
   <strong>Netflix + Spotify + Dropbox pribadi kamu — self-hosted, open source.</strong>
