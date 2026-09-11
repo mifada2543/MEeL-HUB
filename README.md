@@ -106,8 +106,8 @@
 | **Profil User** | Avatar, bio, statistik upload, **Preference page** (theme toggle) |
 | **Light/Dark Mode** | Toggle tema via Profile page — localStorage (guest) + DB sync (login) |
 | **Mode Sehat 20-20-20** | Notifikasi istirahat mata tiap 20 menit |
-| **Autoloader PSR-4** | Auto-loading class core (`MediaLibrary`, `Uploader`, dll.) tanpa require manual |
-| **Migration System v1–v14** | Database schema versioning + auto-upgrade (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, index komposit, schema sync) |
+| **Autoloader Class-Map** | Auto-loading class core (`MediaLibrary`, `Uploader`, dll.) tanpa require manual |
+| **Migration System v1–v15** | Database schema versioning + auto-upgrade (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, index komposit, schema sync, notifikasi) |
 | **Base URL Portability** | `base_url()` + `MEEL_BASE_URL` constant — path konsisten di semua subdirektori |
 | **FULLTEXT Search** | Search video/music/books 10-100× lebih cepat via `MATCH AGAINST` — sanitizer query + pagination (MySQL 5.7+) |
 | **Admin Panel** | Dashboard monitoring, manajemen user, queue control, activity log viewer |
@@ -152,8 +152,8 @@
 | **Transcoding** | FFmpeg 6.0+ & FFprobe | HLS segmentasi, kompresi, thumbnail |
 | **Downloader** | yt-dlp (optional) | Download media dari URL eksternal |
 | **Transliterasi** | PHP `intl` (Transliterator) | Pembersihan nama file (Romaji) |
-| **Autoloader** | Manual PSR-4-like (`modules/autoload.php`) | Auto-loading 10+ class core |
-| **Migration** | PHP-based (`database/migrate.php`) | Schema versioning v1–v14 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync) |
+| **Autoloader** | Class-Map (`modules/autoload.php`) | Auto-loading 19 class core |
+| **Migration** | PHP-based (`database/migrate.php`) | Schema versioning v1–v15 (FULLTEXT, FK, activity_log, UNIQUE KEY, MFA, schema sync, notifikasi) |
 | **Rate Limiting** | `modules/auth/RateLimiter.php` | File-based rate limiter (flock safety) |
 | **PWA** | `sw.js.php` + `modules/core/SwPrecache.php` | Precache offline otomatis + installable |
 
@@ -198,8 +198,8 @@ MEeL/
 │   ├── admin/             # admin_actions, admin_data
 │   └── profile/           # profile_edit, fun-manage
 ├── database/              # Skema database
-│   ├── schema.sql         # File schema standalone (20 tabel)
-│   └── migrate.php        # Migration system v1–v14
+│   ├── schema.sql         # File schema standalone (23 tabel)
+│   └── migrate.php        # Migration system v1–v15
 ├── data_drive/            # Cloud Drive storage runtime
 ├── docs/                  # Dokumentasi proyek (id + en)
 ├── drive/                 # Modul Cloud Drive
@@ -207,7 +207,7 @@ MEeL/
 │   └── DriveService.php   # OOP: DriveUserContext, DriveStorage, DriveViewRenderer
 ├── err/                   # Halaman error (denied, maintenance, banned, revoked, offline)
 ├── modules/               # Core logic & business layer (OOP)
-│   ├── autoload.php       # Autoloader PSR-4-like (semua class core auto-load)
+│   ├── autoload.php       # Autoloader class-map (semua class core auto-load)
 │   ├── core/              # Semua file core dipindah ke sini
 │   │   ├── helpers.php    # Shim backward-compat → helpers/main.php + auth/loader.php
 │   │   ├── helpers/       # Utilitas per domain: main, storage, audio, url, metadata, subtitle, upload
@@ -452,7 +452,7 @@ $url = base_url('/assets/css/style.css'); // → /MEeL/assets/css/style.css
 ### Migration System
 
 ```bash
-# Upgrade database ke versi terbaru (v1–v14)
+# Upgrade database ke versi terbaru (v1–v15)
 /opt/lampp/bin/php database/migrate.php
 ```
 
@@ -473,10 +473,11 @@ $url = base_url('/assets/css/style.css'); // → /MEeL/assets/css/style.css
 | **v12** | Ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code` |
 | **v13** | MEeLCoin system — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log` |
 | **v14** | Index `video_id` & `music_id` di `view_logs` — percepat `syncViewsFromLogs` correlated subquery |
+| **v15** | Tabel `user_notifications` — sistem notifikasi untuk like, reply, MEeLCoin, chat admin |
 
 > 💡 **Catatan modul Rhythm (MEeL!Mania):** tabel `arcade_song` & `arcade_score`
 > dikelola lewat `arcade/rhythm/migration.sql` — **terpisah** dari migration system
-> utama (v1–v14). Import manual sekali: `mysql MEeL < arcade/rhythm/migration.sql`
+> utama (v1–v15). Import manual sekali: `mysql MEeL < arcade/rhythm/migration.sql`
 > (atau jalankan query CREATE TABLE dari file tersebut).
 
 Migration bersifat **idempotent** — aman dijalankan berulang kali.

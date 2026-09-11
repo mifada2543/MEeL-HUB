@@ -39,10 +39,10 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 | `modules/core/bootstrap.php` | Bootstrap (env detection, error reporting, timezone) | `MEEL_ENV`, log error config |
 | `modules/core/base_url.php` | Perhitungan base URL terpusat (`meel_base_url_path()`) | `MEEL_BASE_URL` (via `bootstrap.php`/`config.php`) |
 | `modules/transcoder/FfmpegUtils.php` | **Trait** utilitas FFmpeg | `resolveBinary()`, `probeDuration()`, `generateSpriteAndVTT()` |
-| `modules/autoload.php` | PSR-4-like autoloader | Daftar direktori yang di-scan |
+| `modules/autoload.php` | Class-map autoloader | Daftar direktori yang di-scan |
 | `modules/core/SwPrecache.php` | Generator precache PWA (service worker) | `baseAssets()`, `moduleAssets()`, `all()`, `version()` |
 | `sw.js.php` | Generator service worker dinamis (disajikan sebagai `/sw.js`) | `SW_VERSION`, `PRECACHE_URLS` (otomatis) |
-| `database/migrate.php` | Database migration v1–v14 | FULLTEXT index, FK, activity_log, UNIQUE KEY, MFA, index comments, unique key interactions, chess room identity |
+| `database/migrate.php` | Database migration v1–v15 | FULLTEXT index, FK, activity_log, UNIQUE KEY, MFA, index comments, unique key interactions, chess room identity, user_notifications |
 
 ---
 

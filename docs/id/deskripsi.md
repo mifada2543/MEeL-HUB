@@ -73,7 +73,7 @@ MEeL/
   - `modules/exceptions/DownloadException.php` — Error download URL
   - `modules/exceptions/TranscodeException.php` — Error transcoding FFmpeg
   - `drive/DriveService.php` — DriveUserContext, DriveStorage, DriveViewRenderer (Cloud Drive OOP)
-- **Autoloader PSR-4-like** — `modules/autoload.php` dengan `spl_autoload_register()`
+- **Autoloader Class-Map** — `modules/autoload.php` dengan `spl_autoload_register()`
 - **HTMX-driven** — Interaktivitas AJAX tanpa framework JavaScript berat
 - **Dark/Light Mode** — Tema gelap monospace dengan TailwindCSS (self-hosted, purged) + light mode via CSS variables
   - `assets/css/shared/theme-tokens.css` — CSS variables untuk dark mode
@@ -239,7 +239,7 @@ Tidak ada masalah medium yang tersisa.
 | 4 | `modules/core/Transcoder.php` | resolveBinary → shared function | ♻ Code |
 | 5 | `modules/core/Uploader.php` | resolveBinary → shared function | ♻ Code |
 | 6 | `modules/core/helpers.php` | `resolve_binary()` + `base_url()` functions | ✨ New |
-| 7 | `modules/autoload.php` | Autoloader PSR-4-like (new file) | ✨ New |
+| 7 | `modules/autoload.php` | Autoloader class-map (new file) | ✨ New |
 | 8 | `auth/config.example.php` | Autoloader + MEEL_BASE_URL constant | 🔌 Portability |
 | 9 | `database/migrate.php` | Migration system (new file) | 🗄 Database |
 | 10 | `music/watch.php` | `session_write_close()` | ⚡ Performance |

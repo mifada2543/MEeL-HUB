@@ -54,7 +54,7 @@ MEeL/
 
 - **PHP Monolith** — All logic in one codebase, no microservices
 - **OOP Modular** — Core business logic in classes under `modules/`
-- **Autoloader PSR-4-like** — `modules/autoload.php` with `spl_autoload_register()`
+- **Class-Map Autoloader** — `modules/autoload.php` with `spl_autoload_register()`
 - **HTMX-driven** — AJAX interactivity without heavy JavaScript frameworks
 - **Dark-mode first** — Monospace dark theme with TailwindCSS (self-hosted, purged)
 
