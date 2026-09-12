@@ -178,6 +178,16 @@ function setupMeelPlayerEvents() {
     const o = player
       ? player.fullscreen.active || !!document.fullscreenElement
       : !1;
+    if (o) {
+      var _fsw = document.getElementById("main-video-wrapper");
+      if (_fsw) {
+        delete _fsw._meelSavedRatio;
+        delete _fsw._meelSavedMaxHeight;
+        delete _fsw._meelSavedWidth;
+        delete _fsw._meelSavedMarginL;
+        delete _fsw._meelSavedMarginR;
+      }
+    }
     sessionStorage.setItem(MEEL_KEYS.AUTONAV, "1");
     try {
       const l = await fetch(t.href),
@@ -322,11 +332,17 @@ function setupMeelPlayerEvents() {
                   videoElement &&
                   videoElement.videoWidth &&
                   videoElement.videoHeight &&
-                  applyMeelVideoAspect(
+                  (applyMeelVideoAspect(
                     e,
                     videoElement.videoWidth,
                     videoElement.videoHeight,
-                  );
+                  ),
+                  (player.fullscreen.active || document.fullscreenElement) &&
+                    ((e._meelSavedRatio = videoElement.videoWidth + " / " + videoElement.videoHeight),
+                    (e._meelSavedMaxHeight = ""),
+                    (e._meelSavedWidth = ""),
+                    (e._meelSavedMarginL = ""),
+                    (e._meelSavedMarginR = "")));
               },
               { once: !0 },
             ))
@@ -341,11 +357,17 @@ function setupMeelPlayerEvents() {
                   videoElement &&
                   videoElement.videoWidth &&
                   videoElement.videoHeight &&
-                  applyMeelVideoAspect(
+                  (applyMeelVideoAspect(
                     e,
                     videoElement.videoWidth,
                     videoElement.videoHeight,
-                  );
+                  ),
+                  (player.fullscreen.active || document.fullscreenElement) &&
+                    ((e._meelSavedRatio = videoElement.videoWidth + " / " + videoElement.videoHeight),
+                    (e._meelSavedMaxHeight = ""),
+                    (e._meelSavedWidth = ""),
+                    (e._meelSavedMarginL = ""),
+                    (e._meelSavedMarginR = "")));
               },
               { once: !0 },
             )));
