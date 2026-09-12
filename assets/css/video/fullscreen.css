@@ -112,3 +112,34 @@ body.meel-fs-active .plyr {
 body.meel-fs-active #autonext-overlay {
   z-index: 100 !important;
 }
+
+.meel-fs-title {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000000;
+  padding: 16px 20px;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.meel-fs-title.visible {
+  opacity: 1;
+}
+.meel-fs-title-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80%;
+}
+@media (min-width: 768px) {
+  .meel-fs-title-text {
+    font-size: 16px;
+  }
+}

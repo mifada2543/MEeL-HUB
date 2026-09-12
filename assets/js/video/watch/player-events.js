@@ -233,6 +233,10 @@ function setupMeelPlayerEvents() {
         (isHls = c),
         (vttSrc = p),
         isMiniPlayerActive && updateMiniPlayerInfo(videoTitle, videoUploader),
+        (function () {
+          var fsT = document.querySelector(".meel-fs-title-text");
+          if (fsT) { fsT.textContent = videoTitle || ""; fsT.title = videoTitle || ""; }
+        })(),
         updateSearchExcludeId(videoId),
         ["watch-details-wrapper", "recommendation-column"].forEach((e) => {
           const t = document.getElementById(e),
@@ -697,6 +701,24 @@ function setupMeelPlayerEvents() {
           player.on("ended", y),
           videoElement.paused || videoElement.ended || m());
       }
+      var fsTitle = document.querySelector(".meel-fs-title");
+      if (!fsTitle) {
+        fsTitle = document.createElement("div");
+        fsTitle.className = "meel-fs-title";
+        fsTitle.innerHTML = '<div class="meel-fs-title-text"></div>';
+        var fsTitleText = fsTitle.querySelector(".meel-fs-title-text");
+        var cfg = window.playerConfig || {};
+        fsTitleText.textContent = cfg.title || document.title.split("|")[0].trim() || "";
+        fsTitleText.title = fsTitleText.textContent;
+        var plyrContainer = player && player.elements && player.elements.container;
+        if (plyrContainer) plyrContainer.appendChild(fsTitle);
+      }
+      player.on("controlsshown", function () {
+        fsTitle && fsTitle.classList.add("visible");
+      });
+      player.on("controlshidden", function () {
+        fsTitle && fsTitle.classList.remove("visible");
+      });
     }),
     player.on("exitfullscreen", () => {
       screen.orientation?.unlock && screen.orientation.unlock();
@@ -749,6 +771,8 @@ function setupMeelPlayerEvents() {
             ((videoElement.style.position = ""),
             (videoElement.style.zIndex = "")));
       }
+      var fsTitleRemove = document.querySelector(".meel-fs-title");
+      if (fsTitleRemove) fsTitleRemove.remove();
       glowEnabled &&
         videoElement &&
         !videoElement.paused &&
