@@ -65,9 +65,10 @@
   </tr>
   <tr>
     <td colspan="2">
-      <h3>🕹️ Arcade — 9 Game Built-in</h3>
+      <h3>🕹️ Arcade — 9 Game Built-in <sup>(modul opsional)</sup></h3>
       <p>
         <strong>Miku & Teto Run</strong> · <strong>Catur</strong> (multiplayer) · <strong>Snake</strong> · <strong>2048</strong> · <strong>Tetris</strong> · <strong>Breakout</strong> · <strong>Simon Says</strong> · <strong>Ludo</strong> · <strong>MEeL!Mania</strong> (rhythm)
+        <br><sub>Opsional — bisa dimatikan dari <a href="docs/id/arcade-optional.md">Admin → Modules</a> atau dihapus tanpa memengaruhi HUB.</sub>
       </p>
     </td>
   </tr>
@@ -148,7 +149,7 @@ php tests/check_deploy.php
 ```
 MEeL/
 ├── admin/          # Panel admin
-├── arcade/         # 9 mini-game
+├── arcade/         # 9 mini-game (MODUL OPSIONAL — lihat docs/id/arcade-optional.md)
 ├── assets/         # CSS, JS, gambar
 ├── auth/           # Autentikasi & config
 ├── books/          # Pembaca buku digital

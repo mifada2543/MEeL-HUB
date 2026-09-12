@@ -18,6 +18,15 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Arcade = modul opsional (modules/core/Modules.php) — cleanChessRooms()
+        // menjadi no-op saat modul nonaktif, jadi lewati suite agar test tidak
+        // gagal semu di environment tanpa arcade.
+        require_once MEEL_ROOT . '/modules/core/Modules.php';
+        if (!Modules::enabled('arcade')) {
+            $this->markTestSkipped('Arcade (modul opsional) sedang dinonaktifkan.');
+        }
+
         $this->dbHelper = new DbTestHelper();
         $this->conn = $this->dbHelper->getConnection();
         $this->conn->query('DELETE FROM moves');

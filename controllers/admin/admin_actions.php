@@ -200,7 +200,7 @@ if (isset($_POST['clean_orphans'])) {
         }
 
         if (is_dir($real)) {
-            $meel_admin_remove_dir($real, $deleted_count, $failed_count);
+            meel_admin_remove_dir($real, $deleted_count, $failed_count);
             $deleted_dirs[] = $real;
         } elseif (file_exists($real)) {
             if (@unlink($real)) {
@@ -214,7 +214,7 @@ if (isset($_POST['clean_orphans'])) {
     }
 
     foreach ($deleted_dirs as $d) {
-        $meel_admin_clean_empty_parents($d, $valid_dirs);
+        meel_admin_clean_empty_parents($d, $valid_dirs);
     }
 
     @unlink(dirname(__DIR__, 2) . '/temp/cache/admin_orphans.json');
@@ -371,4 +371,26 @@ if (isset($_POST['reset_mfa']) && isset($_POST['user_id'])) {
     }
     $stmt->close();
     exit;
+}
+
+if (isset($_POST['toggle_module'])) {
+    require_once __DIR__ . '/../../modules/core/helpers/settings.php';
+    require_once __DIR__ . '/../../modules/core/Modules.php';
+
+    // Whitelist key modul dari daftar internal Modules (anti input liar).
+    $known = ['arcade' => 'modules_arcade'];
+    $module_key = (string)($_POST['module_key'] ?? '');
+
+    if (!isset($known[$module_key])) {
+        header("Location: " . meel_base_url_path() . "/admin/modules?msg=Module_Tidak_Dikenal");
+        exit();
+    }
+
+    $value = ($_POST['module_enabled'] ?? '0') === '1' ? '1' : '0';
+    set_site_setting($conn, $known[$module_key], $value);
+
+    log_activity($conn, (int)$_SESSION['user_id'], 'toggle_module_' . $module_key . '_' . $value, 'settings', 0);
+
+    header("Location: " . meel_base_url_path() . "/admin/modules?msg=Module_Updated");
+    exit();
 }

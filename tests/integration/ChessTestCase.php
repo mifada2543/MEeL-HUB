@@ -11,6 +11,14 @@ abstract class ChessTestCase extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Arcade = modul opsional (modules/core/Modules.php) — lewati suite
+        // saat modul dinonaktifkan agar hasil test tetap informatif.
+        require_once MEEL_ROOT . '/modules/core/Modules.php';
+        if (!Modules::enabled('arcade')) {
+            $this->markTestSkipped('Arcade (modul opsional) sedang dinonaktifkan.');
+        }
+
         $this->dbHelper = new DbTestHelper();
         $this->conn = $this->dbHelper->getConnection();
     }

@@ -1,5 +1,6 @@
 <?php
 require_once 'modules/core/helpers.php';
+require_once 'modules/core/Modules.php';
 meel_boot_session();
 include 'auth/config.php';
 require_once 'modules/media/MediaLibrary.php';
@@ -41,7 +42,12 @@ $counts  = $library->getCounts();
         
         <div class="text-center mb-20">
             <div class="inline-block mb-6">
-                <img onclick="window.location.href='arcade/'" src="assets/MEeL.png" class="w-14 h-14 object-contain mx-auto opacity-80 hover:opacity-100 transition" alt="MEeL" title="MEeL Arcade">
+                <?php if (Modules::enabled('arcade')): ?>
+                    <!-- Arcade opsional: link hanya dirender saat modul aktif -->
+                    <img onclick="window.location.href='arcade/'" src="assets/MEeL.png" class="w-14 h-14 object-contain mx-auto opacity-80 hover:opacity-100 transition cursor-pointer" alt="MEeL" title="MEeL Arcade">
+                <?php else: ?>
+                    <img src="assets/MEeL.png" class="w-14 h-14 object-contain mx-auto opacity-80" alt="MEeL" title="MEeL">
+                <?php endif; ?>
             </div>
             <div class="station-id mb-5">Local Media Station</div>
             <h1 class="hero-title">MEeL <span class="accent">HUB</span></h1>

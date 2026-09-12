@@ -293,36 +293,10 @@ $migrations = [
         ],
     ],
     12 => [
-        'description' => 'Ikat identitas user ke room catur (white_user_id, black_user_id) — sebelumnya server tidak pernah memverifikasi siapa pemain putih/hitam, sehingga siapa pun yang tahu room_code bisa mengirim/melihat langkah game orang lain.',
+        'description' => '(legacy) Chess rooms white/black user columns — dipindah ke arcade/migrate.php v1.',
         'sql' => [
-            function ($conn) {
-                if (!meel_mig_has_column($conn, 'rooms', 'white_user_id')) {
-                    $conn->query("ALTER TABLE rooms ADD COLUMN white_user_id INT NULL AFTER room_code");
-                }
-            },
-            function ($conn) {
-                if (!meel_mig_has_column($conn, 'rooms', 'black_user_id')) {
-                    $conn->query("ALTER TABLE rooms ADD COLUMN black_user_id INT NULL AFTER white_user_id");
-                }
-            },
-            function ($conn) {
-                $result = $conn->query("ALTER TABLE rooms ADD INDEX idx_rooms_white_user (white_user_id)");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists')) {
-                        echo "[MEeL] ⚠ Warning (idx_rooms_white_user): {$err}\n";
-                    }
-                }
-            },
-            function ($conn) {
-                $result = $conn->query("ALTER TABLE rooms ADD INDEX idx_rooms_black_user (black_user_id)");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists')) {
-                        echo "[MEeL] ⚠ Warning (idx_rooms_black_user): {$err}\n";
-                    }
-                }
-            },
+            // No-op: tabel rooms sekarang di arcade/schema.sql dengan kolom white_user_id/black_user_id
+            // sudah termasuk sejak awal. Migration ini dipertahankan untuk menjaga numbering v1-v15.
         ],
     ],
     13 => [

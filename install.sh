@@ -671,6 +671,20 @@ else
     warn "Migration selesai dengan warning — cek output di atas."
 fi
 
+# ── Arcade migration (opsional) ──
+if [ -d "arcade" ] && [ -f "arcade/migrate.php" ]; then
+    if confirm "Aktifkan modul Arcade? (akan membuat tabel rooms, moves, arcade_song, arcade_score)" N; then
+        step "6b — Jalankan migration arcade"
+        if php arcade/migrate.php; then
+            ok "Arcade migration selesai."
+        else
+            warn "Arcade migration selesai dengan warning — cek output di atas."
+        fi
+    else
+        ok "Arcade dilewati — modul tidak diaktifkan. MEeL-HUB berjalan tanpa arcade."
+    fi
+fi
+
 # ─────────────────────────────────────────────────────────────────────────
 # 7. Verifikasi akhir via check_deploy.php
 # ─────────────────────────────────────────────────────────────────────────

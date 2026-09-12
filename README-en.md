@@ -65,9 +65,10 @@
   </tr>
   <tr>
     <td colspan="2">
-      <h3>🕹️ Arcade — 9 Built-in Games</h3>
+      <h3>🕹️ Arcade — 9 Built-in Games <sup>(optional module)</sup></h3>
       <p>
         <strong>Miku & Teto Run</strong> · <strong>Chess</strong> (multiplayer) · <strong>Snake</strong> · <strong>2048</strong> · <strong>Tetris</strong> · <strong>Breakout</strong> · <strong>Simon Says</strong> · <strong>Ludo</strong> · <strong>MEeL!Mania</strong> (rhythm)
+        <br><sub>Optional — disable it from <a href="docs/en/arcade-optional.md">Admin → Modules</a> or remove it entirely without affecting the HUB.</sub>
       </p>
     </td>
   </tr>
@@ -148,7 +149,7 @@ php tests/check_deploy.php
 ```
 MEeL/
 ├── admin/          # Admin panel
-├── arcade/         # 9 mini-games
+├── arcade/         # 9 mini-games (OPTIONAL MODULE — see docs/en/arcade-optional.md)
 ├── assets/         # CSS, JS, images
 ├── auth/           # Authentication & config
 ├── books/          # Digital book reader

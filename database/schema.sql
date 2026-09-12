@@ -361,46 +361,9 @@ CREATE TABLE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =============================================================================
--- TABEL: rooms
--- Ruang permainan catur online (multiplayer LAN).
+-- TABEL: rooms & moves (chess) → dipindah ke arcade/schema.sql
+-- Jalankan: php arcade/migrate.php
 -- =============================================================================
-CREATE TABLE
-  IF NOT EXISTS `rooms` (
-    `id` int (11) NOT NULL AUTO_INCREMENT,
-    `room_code` varchar(10) NOT NULL,
-    `white_user_id` int (11) DEFAULT NULL,
-    `black_user_id` int (11) DEFAULT NULL,
-    `black_joined` tinyint (1) NOT NULL DEFAULT 0,
-    `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `room_code` (`room_code`),
-    KEY `idx_rooms_white_user` (`white_user_id`),
-    KEY `idx_rooms_black_user` (`black_user_id`)
-  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- =============================================================================
--- TABEL: moves
--- Riwayat langkah permainan catur.
--- =============================================================================
-CREATE TABLE
-  IF NOT EXISTS `moves` (
-    `id` int (11) NOT NULL AUTO_INCREMENT,
-    `room_code` varchar(10) NOT NULL,
-    `from_r` tinyint (3) unsigned NOT NULL,
-    `from_c` tinyint (3) unsigned NOT NULL,
-    `to_r` tinyint (3) unsigned NOT NULL,
-    `to_c` tinyint (3) unsigned NOT NULL,
-    `piece` char(1) NOT NULL,
-    `color` char(1) NOT NULL,
-    `captured` char(1) DEFAULT NULL,
-    `promoted_piece_type` char(1) DEFAULT NULL,
-    `move_data` longtext CHARACTER
-    SET
-      utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid (`move_data`)),
-      `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-      PRIMARY KEY (`id`),
-      KEY `idx_room_id` (`room_code`, `id`)
-  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =============================================================================
 -- TABEL: site_settings
