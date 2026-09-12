@@ -178,18 +178,45 @@ class GarbageCollector
         self::$hasRun = true;
 
         $directories = self::getTargetDirectories();
-        if (empty($directories)) return;
-
-        $timeout = microtime(true) + 3;
-
-        foreach ($directories as $dir) {
-            if (microtime(true) >= $timeout) break;
-            self::cleanDirectory($dir);
+        if (!empty($directories)) {
+            $timeout = microtime(true) + 3;
+            foreach ($directories as $dir) {
+                if (microtime(true) >= $timeout) break;
+                self::cleanDirectory($dir);
+            }
         }
+
+        self::cleanPendingFileDeletions();
 
         if (class_exists('RateLimiter')) {
             RateLimiter::cleanup();
         }
+    }
+
+    private static function cleanPendingFileDeletions(): void
+    {
+        $throttleFile = dirname(__DIR__, 2) . '/temp/gc_pending_delete_last_run.txt';
+        $interval = 300;
+
+        if (is_readable($throttleFile)) {
+            $lastRun = (int) file_get_contents($throttleFile);
+            if ($lastRun > 0 && (time() - $lastRun) < $interval) return;
+        }
+
+        $pendingFile = dirname(__DIR__, 2) . '/temp/pending_delete.json';
+        if (!file_exists($pendingFile)) {
+            self::writeThrottleFile($throttleFile);
+            return;
+        }
+
+        require_once dirname(__DIR__, 2) . '/controllers/profile/fun-manage.php';
+        $cleaned = cleanupPendingDeletions();
+
+        if ($cleaned > 0) {
+            error_log("[MEeL] GarbageCollector: cleaned {$cleaned} pending file deletion(s) from queue.");
+        }
+
+        self::writeThrottleFile($throttleFile);
     }
 
     private static function getTargetDirectories(): array

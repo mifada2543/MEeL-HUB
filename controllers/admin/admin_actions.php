@@ -126,25 +126,100 @@ if (isset($_POST['delete_user_id'])) {
     exit();
 }
 
+function meel_admin_remove_dir(string $dir, int &$counter, int &$failed): void
+{
+    if (!is_dir($dir)) return;
+    $items = @scandir($dir);
+    if ($items === false) return;
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') continue;
+        $path = rtrim($dir, '/') . '/' . $item;
+        if (is_dir($path)) {
+            meel_admin_remove_dir($path, $counter, $failed);
+        } elseif (is_file($path) || is_link($path)) {
+            if (@unlink($path)) {
+                $counter++;
+            } else {
+                $failed++;
+                error_log("[MEeL] Orphan cleaner: gagal hapus file: {$path}");
+            }
+        }
+    }
+    $remaining = @scandir($dir);
+    if ($remaining !== false && count($remaining) <= 2) {
+        if (!@rmdir($dir)) {
+            error_log("[MEeL] Orphan cleaner: gagal hapus direktori kosong: {$dir}");
+        }
+    }
+}
+
+function meel_admin_clean_empty_parents(string $path, array $stop_dirs): void
+{
+    $parent = dirname($path);
+    foreach ($stop_dirs as $stop) {
+        if ($parent === rtrim($stop, '/') || $parent === $stop) return;
+    }
+    if (!is_dir($parent)) return;
+    $items = @scandir($parent);
+    if ($items !== false && count($items) <= 2) {
+        @rmdir($parent);
+        meel_admin_clean_empty_parents($parent, $stop_dirs);
+    }
+}
+
 if (isset($_POST['clean_orphans'])) {
     $files = json_decode($_POST['files_to_delete'], true);
     $valid_dirs = [
-        dirname(__DIR__, 2) . '/storage/media/video/',
-        dirname(__DIR__, 2) . '/storage/media/music/',
-        dirname(__DIR__, 2) . '/storage/media/books/',
+        meel_media_base_path('video') . '/',
+        meel_media_base_path('music') . '/',
+        meel_media_base_path('books') . '/',
         dirname(__DIR__, 2) . '/temp/uploads/',
     ];
+    $deleted_count = 0;
+    $failed_count  = 0;
+    $skipped_count = 0;
+    $deleted_dirs  = [];
+
+    error_log("[MEeL] Orphan cleaner: mulai, " . count((array)$files) . " file diproses, valid_dirs: " . implode(', ', $valid_dirs));
+
     foreach ((array)$files as $f) {
         $real = realpath($f);
-        if ($real === false) continue;
+        if ($real === false) {
+            $skipped_count++;
+            error_log("[MEeL] Orphan cleaner: realpath=false, skip: {$f}");
+            continue;
+        }
         $valid = false;
         foreach ($valid_dirs as $dir) {
             if (strpos($real, $dir) === 0) { $valid = true; break; }
         }
-        if ($valid && file_exists($real)) @unlink($real);
+        if (!$valid) {
+            $skipped_count++;
+            error_log("[MEeL] Orphan cleaner: path tidak valid, skip: {$real}");
+            continue;
+        }
+
+        if (is_dir($real)) {
+            $meel_admin_remove_dir($real, $deleted_count, $failed_count);
+            $deleted_dirs[] = $real;
+        } elseif (file_exists($real)) {
+            if (@unlink($real)) {
+                $deleted_count++;
+                error_log("[MEeL] Orphan cleaner: berhasil hapus: {$real}");
+            } else {
+                $failed_count++;
+                error_log("[MEeL] Orphan cleaner: gagal hapus: {$real} (perms=" . substr(sprintf('%o', fileperms($real)), -4) . ")");
+            }
+        }
     }
+
+    foreach ($deleted_dirs as $d) {
+        $meel_admin_clean_empty_parents($d, $valid_dirs);
+    }
+
     @unlink(dirname(__DIR__, 2) . '/temp/cache/admin_orphans.json');
-    header("Location: .?status=cleaned#system_check");
+    error_log("[MEeL] Orphan cleaner: selesai, deleted={$deleted_count}, failed={$failed_count}, skipped={$skipped_count}");
+    header("Location: .?status=cleaned&deleted={$deleted_count}&failed={$failed_count}#system_check");
     exit();
 }
 

@@ -88,31 +88,52 @@ if ($orphan_checked_at === null) {
 $check_map = [
     'video/upload/video/'       => 'video',
     'music/upload/file/'        => 'music',
-    'video/upload/thumbnail/'   => 'video',
-    'music/upload/thumbnail/'   => 'music',
+    'video/upload/thumbnail/'   => 'video_thumb',
+    'music/upload/thumbnail/'   => 'music_thumb',
     'books/upload/manga/'       => 'books',
     'books/upload/pdf/'         => 'books',
-    'books/upload/thumbnail/'   => 'books',
+    'books/upload/thumbnail/'   => 'books_thumb',
 ];
 
-$db_data = ['video_files' => [], 'video_thumbs' => [], 'music_files' => [], 'books_folders' => [], 'books_thumbs' => []];
+$db_data = [
+    'video_folders'  => [],
+    'video_thumbs'   => [],
+    'music_files'    => [],
+    'music_thumbs'   => [],
+    'books_folders'  => [],
+    'books_thumbs'   => [],
+];
 
 $res = $conn->query("SELECT filename, thumbnail FROM video");
 while ($row = $res->fetch_assoc()) {
-    $db_data['video_files'][]  = $row['filename'];
-    if (!empty($row['thumbnail'])) $db_data['video_thumbs'][] = $row['thumbnail'];
+    $fn = $row['filename'];
+    $folder = basename(dirname($fn));
+    if ($folder !== '.' && $folder !== '') {
+        $db_data['video_folders'][$folder] = $fn;
+    }
+    if (!empty($row['thumbnail'])) {
+        $db_data['video_thumbs'][$row['thumbnail']] = true;
+    }
 }
 
 $res = $conn->query("SELECT filename, thumbnail FROM music");
 while ($row = $res->fetch_assoc()) {
-    $db_data['music_files'][] = $row['filename'];
-    $db_data['music_files'][] = $row['thumbnail'];
+    if (!empty($row['filename'])) {
+        $db_data['music_files'][$row['filename']] = true;
+    }
+    if (!empty($row['thumbnail'])) {
+        $db_data['music_thumbs'][$row['thumbnail']] = true;
+    }
 }
 
 $res = $conn->query("SELECT path_folder, thumbnail FROM books");
 while ($row = $res->fetch_assoc()) {
-    $db_data['books_folders'][] = $row['path_folder'];
-    $db_data['books_thumbs'][]  = $row['thumbnail'];
+    if (!empty($row['path_folder'])) {
+        $db_data['books_folders'][$row['path_folder']] = true;
+    }
+    if (!empty($row['thumbnail'])) {
+        $db_data['books_thumbs'][$row['thumbnail']] = true;
+    }
 }
 
 if (!function_exists('__admin_scan_files')) {
@@ -133,15 +154,8 @@ if (!function_exists('__admin_scan_files')) {
     }
 }
 
-$ignored_files = ['.htaccess', 'default_video.png', 'music_default.png', 'default_cover.jpg'];
-
-$__video_files_flip   = array_flip($db_data['video_files']);
-$__video_thumbs_flip  = array_flip($db_data['video_thumbs']);
-$__music_files_flip   = array_flip($db_data['music_files']);
-$__books_folders_flip = array_flip($db_data['books_folders']);
-$__books_thumbs_flip  = array_flip($db_data['books_thumbs']);
-$__ignored_flip       = array_flip($ignored_files);
-$__all_video_files    = implode("\n", $db_data['video_files']);
+$ignored_files = ['.htaccess', 'default_video.png', 'music_default.png', 'default_cover.jpg', 'default.thumb.webp'];
+$__ignored_flip = array_flip($ignored_files);
 
 $base_dirs = [
     'video/upload/video/'       => meel_media_base_path('video') . '/video/',
@@ -163,37 +177,49 @@ foreach ($check_map as $rel_path => $table) {
 
         $is_orphan = true;
 
-        if (str_contains($full_path, '/books/upload/manga/')) {
-            $relative = substr($full_path, strlen($abs_path));
-            $folder   = explode('/', $relative)[0];
-            if (isset($__books_folders_flip[$folder])) $is_orphan = false;
-        }
-        elseif ($table === 'video') {
-            if (str_contains($full_path, '/thumbnail/')) {
-                if (isset($__video_thumbs_flip[$fname])) $is_orphan = false;
-            } else {
-                if (isset($__video_files_flip[$fname])) {
+        if ($table === 'video') {
+            $parts = explode('/', str_replace('\\', '/', $full_path));
+            $video_base = rtrim($base_dirs[$rel_path], '/');
+            $rel = str_replace($video_base . '/', '', implode('/', $parts));
+            $rel_parts = explode('/', $rel);
+            foreach ($rel_parts as $idx => $seg) {
+                if ($seg === '' || $seg === '.') continue;
+                if (isset($db_data['video_folders'][$seg])) {
                     $is_orphan = false;
-                } else {
-                    $segments = explode('/', str_replace('\\', '/', $full_path));
-                    $parent   = count($segments) >= 2 ? $segments[count($segments) - 2] : '';
-                    if (!empty($parent) && !in_array($parent, ['video', 'upload'], true)
-                        && str_contains($__all_video_files, $parent)) {
-                        $is_orphan = false;
-                    }
-                    if ($is_orphan) {
-                        foreach ($segments as $seg) {
-                            if (empty($seg) || in_array($seg, ['video', 'upload'], true)) continue;
-                            if (str_contains($__all_video_files, $seg)) { $is_orphan = false; break; }
-                        }
-                    }
+                    break;
                 }
             }
         }
-        else {
-            if ($table === 'books' && (isset($__books_folders_flip[$fname]) || isset($__books_thumbs_flip[$fname]))) {
+        elseif ($table === 'video_thumb') {
+            if (isset($db_data['video_thumbs'][$fname])) {
                 $is_orphan = false;
-            } elseif ($table === 'music' && isset($__music_files_flip[$fname])) {
+            }
+        }
+        elseif ($table === 'music') {
+            if (isset($db_data['music_files'][$fname])) {
+                $is_orphan = false;
+            }
+        }
+        elseif ($table === 'music_thumb') {
+            if (isset($db_data['music_thumbs'][$fname])) {
+                $is_orphan = false;
+            }
+        }
+        elseif ($table === 'books') {
+            $parts = explode('/', str_replace('\\', '/', $full_path));
+            $books_base = rtrim($base_dirs[$rel_path], '/');
+            $rel = str_replace($books_base . '/', '', implode('/', $parts));
+            $rel_parts = explode('/', $rel);
+            foreach ($rel_parts as $seg) {
+                if ($seg === '' || $seg === '.') continue;
+                if (isset($db_data['books_folders'][$seg])) {
+                    $is_orphan = false;
+                    break;
+                }
+            }
+        }
+        elseif ($table === 'books_thumb') {
+            if (isset($db_data['books_thumbs'][$fname])) {
                 $is_orphan = false;
             }
         }
