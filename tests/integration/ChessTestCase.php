@@ -12,15 +12,16 @@ abstract class ChessTestCase extends TestCase
     {
         parent::setUp();
 
-        // Arcade = modul opsional (modules/core/Modules.php) — lewati suite
-        // saat modul dinonaktifkan agar hasil test tetap informatif.
+        // Arcade extension manages its own DB (rooms/moves tables).
+        // Skip if tables don't exist in this environment.
         require_once MEEL_ROOT . '/modules/core/Modules.php';
-        if (!Modules::enabled('arcade')) {
-            $this->markTestSkipped('Arcade (modul opsional) sedang dinonaktifkan.');
-        }
-
         $this->dbHelper = new DbTestHelper();
         $this->conn = $this->dbHelper->getConnection();
+
+        $res = $this->conn->query("SHOW TABLES LIKE 'rooms'");
+        if (!$res || $res->num_rows === 0) {
+            $this->markTestSkipped('Arcade tables (rooms/moves) not found — arcade extension not installed.');
+        }
     }
 
     protected function tearDown(): void
