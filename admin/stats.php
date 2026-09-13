@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         $folder_name = ($folder_rel !== '.' && $folder_rel !== '') ? basename($folder_rel) : '';
                         $folder_abs  = $video_base . '/video/' . $folder_name;
                         if ($folder_name !== '' && $folder_name !== '..' && is_dir($folder_abs)) {
-                            $meel_remove_media_dir($folder_abs, $files_deleted, $files_failed);
+                            meel_remove_media_dir($folder_abs, $files_deleted, $files_failed);
                         } elseif ($folder_name !== '' && $folder_name !== '..') {
                             $files_failed[] = "folder/" . $folder_name;
                         }
@@ -176,12 +176,12 @@ $order_by = $allowed_sort_columns[$sort] . ' ' . strtoupper($sort_dir);
 
 $query_media = "
     SELECT * FROM (
-        SELECT id, title, search_metadata, 'video' AS media_type, views,
+        SELECT id, title, thumbnail, search_metadata, 'video' AS media_type, views,
             (SELECT COUNT(*) FROM interactions WHERE video_id = video.id AND type = 'like')    AS likes,
             (SELECT COUNT(*) FROM interactions WHERE video_id = video.id AND type = 'dislike') AS dislikes
         FROM video
         UNION ALL
-        SELECT id, title, search_metadata, 'music' AS media_type, views,
+        SELECT id, title, thumbnail, search_metadata, 'music' AS media_type, views,
             (SELECT COUNT(*) FROM interactions WHERE music_id = music.id AND type = 'like')    AS likes,
             (SELECT COUNT(*) FROM interactions WHERE music_id = music.id AND type = 'dislike') AS dislikes
         FROM music
@@ -398,9 +398,26 @@ while ($rc = $r->fetch_assoc()) {
                                     $type_bdr   = $is_video ? 'rgba(239,68,68,.2)' : 'rgba(249,115,22,.2)';
                             ?>
                                     <tr title="<?= htmlspecialchars($row['title']) ?>">
-                                        <td class="td-left" style="max-width:320px;">
+                                        <td class="td-left" style="max-width:400px;">
                                             <div class="flex items-center gap-2.5">
                                                 <span class="row-num"><?= $row_i ?></span>
+                                                <?php
+                                                $thumb_val = $row['thumbnail'] ?? '';
+                                                if ($is_video) {
+                                                    $media_thumb = !empty($thumb_val)
+                                                        ? '../video/upload/thumbnail/' . rawurlencode($thumb_val)
+                                                        : '../assets/img/video0.webp';
+                                                } else {
+                                                    $media_thumb = !empty($thumb_val)
+                                                        ? '../music/upload/thumbnail/' . rawurlencode($thumb_val)
+                                                        : '../assets/img/music0.webp';
+                                                }
+                                                ?>
+                                                <img src="<?= htmlspecialchars($media_thumb) ?>"
+                                                     alt=""
+                                                     class="media-thumb"
+                                                     loading="lazy"
+                                                     width="40" height="40">
                                                 <div>
                                                     <a href="<?= $watch_url ?>" target="_blank" class="content-title">
                                                         <?= htmlspecialchars($row['title']) ?>
@@ -429,7 +446,7 @@ while ($rc = $r->fetch_assoc()) {
                                                     <i data-lucide="edit-2" class="w-2.5 h-2.5"></i> Edit
                                                 </a>
                                                 <button type="button" title="Hapus"
-                                                    onclick="confirmDelete(<?= (int)$row['id'] ?>, '<?= htmlspecialchars($row['media_type'], ENT_QUOTES, 'UTF-8') ?>', '<?= addslashes(htmlspecialchars($row['title'])) ?>')"
+                                                    onclick="confirmDelete(<?= (int)$row['id'] ?>, '<?= htmlspecialchars($row['media_type'], ENT_QUOTES, 'UTF-8') ?>', '<?= addslashes(htmlspecialchars($row['title'])) ?>', <?= (int)($row['views'] ?? 0) ?>, <?= (int)($row['likes'] ?? 0) ?>, <?= (int)($row['dislikes'] ?? 0) ?>, '<?= htmlspecialchars($media_thumb, ENT_QUOTES, 'UTF-8') ?>')"
                                                     class="action-btn action-btn-delete border-0 cursor-pointer">
                                                     <i data-lucide="trash-2" class="w-2.5 h-2.5"></i> Hapus
                                                 </button>
@@ -450,14 +467,33 @@ while ($rc = $r->fetch_assoc()) {
     </div>
 
     <div id="delete-modal">
-        <div class="modal-box">
+        <div class="modal-box" style="max-width:440px;">
             <div class="modal-icon-wrap">
                 <i data-lucide="trash-2" class="text-red-500" style="width:22px;height:22px;"></i>
             </div>
             <h3 class="modal-title">Hapus Konten?</h3>
-            <p style="font-size:13px;color:#6b7280;margin:0 0 6px;">Anda akan menghapus:</p>
-            <div id="modal-title-display" class="modal-title-display"></div>
-            <div id="modal-type-badge" class="modal-type-badge"></div>
+            <p style="font-size:13px;color:#6b7280;margin:0 0 10px;">Anda akan menghapus:</p>
+            <div class="modal-media-preview">
+                <img id="modal-thumb" src="" alt="" class="modal-thumb-img">
+                <div class="modal-media-info">
+                    <div id="modal-title-display" class="modal-title-display"></div>
+                    <div id="modal-type-badge" class="modal-type-badge"></div>
+                    <div class="modal-stats" id="modal-stats">
+                        <div class="modal-stat">
+                            <i data-lucide="eye" class="modal-stat-icon"></i>
+                            <span id="modal-views">0</span> views
+                        </div>
+                        <div class="modal-stat">
+                            <i data-lucide="thumbs-up" class="modal-stat-icon" style="color:#22c55e;"></i>
+                            <span id="modal-likes">0</span> likes
+                        </div>
+                        <div class="modal-stat">
+                            <i data-lucide="thumbs-down" class="modal-stat-icon" style="color:#ef4444;"></i>
+                            <span id="modal-dislikes">0</span> dislikes
+                        </div>
+                    </div>
+                </div>
+            </div>
             <p class="modal-warning">Tindakan ini tidak dapat dibatalkan. File dan semua data terkait akan dihapus permanen.</p>
             <form method="POST" id="delete-form">
                 <?php if (isset($_SESSION['csrf_token'])): ?>
