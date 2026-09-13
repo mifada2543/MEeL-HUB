@@ -70,7 +70,8 @@ if (isset($_POST['update'])) {
     } else {
         $title = trim($_POST['title'] ?? '');
         $description = trim($_POST['description'] ?? '');
-        $thumbnail_url = $video['thumbnail'];
+        $old_thumb_name = $video['thumbnail'];
+        $thumbnail_url = $old_thumb_name;
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
             $max_size = 5 * 1024 * 1024;
             if ($_FILES['thumbnail']['size'] > $max_size) {
@@ -157,6 +158,12 @@ if (isset($_POST['update'])) {
                 $video['title'] = $title;
                 $video['description'] = $description;
                 $video['thumbnail'] = $thumbnail_url;
+                if ($thumbnail_url !== $old_thumb_name
+                    && !empty($old_thumb_name)
+                    && !in_array($old_thumb_name, ['default_thumb.jpg', 'default_thumb.webp'])) {
+                    $old_path = meel_media_base_path('video') . '/thumbnail/' . basename($old_thumb_name);
+                    if (is_file($old_path)) @unlink($old_path);
+                }
             } else {
                 $error_message = "Gagal menyimpan perubahan ke database.";
             }

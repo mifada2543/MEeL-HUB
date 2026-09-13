@@ -74,7 +74,8 @@ if (isset($_POST['update'])) {
         $artist = trim($_POST['artist'] ?? 'Unknown Artist');
         $album = trim($_POST['album'] ?? 'Single');
         $description = trim($_POST['description'] ?? '');
-        $thumbnail_url = $music['thumbnail'];
+        $old_thumb_name = $music['thumbnail'];
+        $thumbnail_url = $old_thumb_name;
         if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
             $max_size = 5 * 1024 * 1024;
             if ($_FILES['thumbnail']['size'] > $max_size) {
@@ -130,8 +131,12 @@ if (isset($_POST['update'])) {
                 $music['artist'] = $artist;
                 $music['album'] = $album;
                 $music['description'] = $description;
-                if ($thumbnail_url !== $music['thumbnail']) {
+                if ($thumbnail_url !== $old_thumb_name) {
                     $music['thumbnail'] = $thumbnail_url;
+                    if (!empty($old_thumb_name) && $old_thumb_name !== 'music_default.png') {
+                        $old_path = meel_media_base_path('music') . '/thumbnail/' . basename($old_thumb_name);
+                        if (is_file($old_path)) @unlink($old_path);
+                    }
                 }
             } else {
                 $error_message = "Gagal menyimpan perubahan ke database.";
