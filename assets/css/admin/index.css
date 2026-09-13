@@ -36,3 +36,10 @@
   background: rgba(255, 255, 255, 0.03);
   pointer-events: none;
 }
+
+/* Server stat bars */
+#stat-cpu-bar,
+#stat-ram-bar,
+#stat-swap-bar {
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1));
+}

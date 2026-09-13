@@ -231,8 +231,8 @@ include __DIR__ . '/../partials/scripts.php';
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <?php
                 $cpu_color = $server_stats['cpu']['usage_perc'] > 80 ? 'red' : ($server_stats['cpu']['usage_perc'] > 50 ? 'yellow' : 'green');
-                $ram_color = $server_stats['ram']['usage_perc'] > 80 ? 'red' : ($server_stats['ram']['usage_perc'] > 50 ? 'yellow' : 'cyan');
-                $swap_color = $server_stats['swap']['usage_perc'] > 50 ? 'red' : 'gray';
+                $ram_color = $server_stats['ram']['usage_perc'] > 80 ? 'red' : ($server_stats['ram']['usage_perc'] > 50 ? 'yellow' : 'blue');
+                $swap_color = $server_stats['swap']['usage_perc'] > 50 ? 'red' : 'blue-dark';
                 $net_rx = $server_stats['network']['rx'];
                 $net_tx = $server_stats['network']['tx'];
                 $net_fmt = function ($bytes) {
@@ -283,20 +283,22 @@ include __DIR__ . '/../partials/scripts.php';
 
                 foreach ($stat_cards as $c):
                     $bar_color = match($c['color']) {
-                        'red'    => 'bg-red-500',
-                        'yellow' => 'bg-yellow-500',
-                        'green'  => 'bg-green-500',
-                        'cyan'   => 'bg-cyan-500',
-                        'blue'   => 'bg-blue-500',
-                        default  => 'bg-gray-500',
+                        'red'       => 'bg-red-500',
+                        'yellow'    => 'bg-yellow-500',
+                        'green'     => 'bg-green-500',
+                        'cyan'      => 'bg-cyan-500',
+                        'blue'      => 'bg-blue-500',
+                        'blue-dark' => 'bg-blue-800',
+                        default     => 'bg-gray-500',
                     };
                     $text_color = match($c['color']) {
-                        'red'    => 'text-red-400',
-                        'yellow' => 'text-yellow-400',
-                        'green'  => 'text-green-400',
-                        'cyan'   => 'text-cyan-400',
-                        'blue'   => 'text-blue-400',
-                        default  => 'text-gray-400',
+                        'red'       => 'text-red-400',
+                        'yellow'    => 'text-yellow-400',
+                        'green'     => 'text-green-400',
+                        'cyan'      => 'text-cyan-400',
+                        'blue'      => 'text-blue-400',
+                        'blue-dark' => 'text-blue-400',
+                        default     => 'text-gray-400',
                     };
                 ?>
                     <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4<?= $c['id'] === 'net' ? ' md:col-span-4' : '' ?>">
@@ -310,7 +312,7 @@ include __DIR__ . '/../partials/scripts.php';
                         <p id="stat-<?= $c['id'] ?>-value" class="text-xl font-black text-white mb-1"><?= $c['value'] ?></p>
                         <p id="stat-<?= $c['id'] ?>-sub" class="text-[10px] text-gray-500 font-medium mb-3"<?= $c['id'] === 'net' ? ' title="Total: ↓ ' . $net_fmt($net_rx) . ' / ↑ ' . $net_fmt($net_tx) . '"' : '' ?>><?= $c['sub'] ?></p>
                         <?php if ($c['bar'] > 0): ?>
-                            <div class="w-full bg-gray-800/80 h-1.5 rounded-full">
+                            <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div id="stat-<?= $c['id'] ?>-bar" class="<?= $bar_color ?> h-full rounded-full transition-all" style="width:<?= $c['bar'] ?>%"></div>
                             </div>
                         <?php endif; ?>
