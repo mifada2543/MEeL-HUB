@@ -1,1 +1,10 @@
-/* stats.css — Media Analytics page-specific styles (currently using shared CSS) */
+/* stats.css — Media Analytics page-specific styles */
+
+.media-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+}

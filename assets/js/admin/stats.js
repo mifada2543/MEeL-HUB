@@ -7,15 +7,27 @@
     }
 
     /* ── Delete Modal ── */
-    window.confirmDelete = function(id, type, title) {
-        var idEl    = document.getElementById('modal-media-id');
-        var typeEl  = document.getElementById('modal-media-type');
-        var titleEl = document.getElementById('modal-title-display');
-        var badge   = document.getElementById('modal-type-badge');
-        var modal   = document.getElementById('delete-modal');
+    window.confirmDelete = function(id, type, title, views, likes, dislikes, thumbUrl) {
+        var idEl      = document.getElementById('modal-media-id');
+        var typeEl    = document.getElementById('modal-media-type');
+        var titleEl   = document.getElementById('modal-title-display');
+        var badge     = document.getElementById('modal-type-badge');
+        var modal     = document.getElementById('delete-modal');
+        var thumbEl   = document.getElementById('modal-thumb');
+        var viewsEl   = document.getElementById('modal-views');
+        var likesEl   = document.getElementById('modal-likes');
+        var dislEl    = document.getElementById('modal-dislikes');
+        var statsEl   = document.getElementById('modal-stats');
         if (idEl) idEl.value = id;
         if (typeEl) typeEl.value = type;
         if (titleEl) titleEl.textContent = title;
+        if (thumbEl) {
+            thumbEl.src = thumbUrl || '';
+            thumbEl.alt = title;
+        }
+        if (viewsEl) viewsEl.textContent = (views || 0).toLocaleString('id-ID');
+        if (likesEl) likesEl.textContent = (likes || 0).toLocaleString('id-ID');
+        if (dislEl) dislEl.textContent = (dislikes || 0).toLocaleString('id-ID');
         if (badge) {
             var isVideo = type === 'video';
             badge.textContent = type.toUpperCase();
@@ -25,6 +37,7 @@
                     ? 'background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2);'
                     : 'background:rgba(249,115,22,.1);color:#f97316;border:1px solid rgba(249,115,22,.2);');
         }
+        if (statsEl) statsEl.style.display = 'flex';
         if (modal) modal.classList.add('open');
     };
     window.closeDeleteModal = function() {
