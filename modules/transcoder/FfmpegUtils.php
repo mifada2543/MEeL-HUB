@@ -130,15 +130,11 @@ trait FfmpegUtils
         return $name ?: 'untitled-media';
     }
 
-    
-    protected function generateSpriteAndVTT(string $video_path, string $target_folder): void
+    protected function calculateSpriteParams(float $duration): array
     {
         $w    = 160;
         $h    = 90;
         $cols = 5;
-
-        $duration = $this->probeDuration($video_path);
-        if ($duration <= 0) return;
 
         if ($duration > 3600) {
             $interval = 300;
@@ -146,8 +142,6 @@ trait FfmpegUtils
             $interval = 180;
         } elseif ($duration > 300) {
             $interval = 60;
-        } elseif ($duration > 0) {
-            $interval = 10;
         } else {
             $interval = 10;
         }
@@ -155,24 +149,36 @@ trait FfmpegUtils
         $total_frames = (int)ceil($duration / $interval);
         $rows         = max(1, (int)ceil($total_frames / $cols));
 
-        $sprite_file = $target_folder . 'thumb_sprite.webp';
-        $vtt_file    = $target_folder . 'thumbnails.vtt';
+        return compact('w', 'h', 'cols', 'rows', 'interval', 'total_frames');
+    }
 
-        $filter     = "fps=1/$interval,scale=$w:$h,tile={$cols}x{$rows}";
-        $cmd_sprite = $this->getEnvPrefix() . escapeshellarg($this->ffmpeg_bin)
-            . " -y -threads 8"
-            . " -i " . escapeshellarg($video_path)
-            . " -vf " . escapeshellarg($filter)
-            . " -c:v libwebp -q:v 78 " . escapeshellarg($sprite_file) . " 2>&1";
+    protected function buildSpriteCommand(string $video_path, string $sprite_output): ?array
+    {
+        $duration = $this->probeDuration($video_path);
+        if ($duration <= 0) return null;
 
-        $ffmpeg_out = [];
-        exec($cmd_sprite, $ffmpeg_out);
+        $p   = $this->calculateSpriteParams($duration);
+        $filter = "fps=1/{$p['interval']},scale={$p['w']}:{$p['h']},tile={$p['cols']}x{$p['rows']}";
 
-        if (!file_exists($sprite_file) || filesize($sprite_file) === 0) {
-            error_log("[MEeL] ERROR: Sprite gagal. Output: " . implode(" | ", array_slice($ffmpeg_out, -10)));
-            return;
-        }
+        $lib_path = '/usr/lib/x86_64-linux-gnu:/usr/local/lib';
+        $env = ['LD_LIBRARY_PATH' => $lib_path, 'PATH' => '/usr/local/bin:/usr/bin:/bin', 'LC_ALL' => 'en_US.UTF-8'];
 
+        $cmd = [
+            $this->ffmpeg_bin,
+            '-y',
+            '-threads', '8',
+            '-i', $video_path,
+            '-vf', $filter,
+            '-c:v', 'libwebp',
+            '-q:v', '78',
+            $sprite_output,
+        ];
+
+        return ['cmd' => $cmd, 'env' => $env, 'duration' => $duration] + $p;
+    }
+
+    protected function generateVTT(string $vtt_path, int $total_frames, int $interval, float $duration, int $w, int $cols): void
+    {
         $vtt_content = "WEBVTT\n\n";
         for ($i = 0; $i < $total_frames; $i++) {
             $start = $i * $interval;
@@ -182,11 +188,38 @@ trait FfmpegUtils
             $end_time   = gmdate("H:i:s", (int)$end)   . ".000";
 
             $x = ($i % $cols) * $w;
-            $y = (int)floor($i / $cols) * $h;
+            $y = (int)floor($i / $cols) * 90;
 
             $vtt_content .= "$start_time --> $end_time\n";
-            $vtt_content .= "thumb_sprite.webp#xywh=$x,$y,$w,$h\n\n";
+            $vtt_content .= "thumb_sprite.webp#xywh=$x,$y,$w,90\n\n";
         }
-        file_put_contents($vtt_file, $vtt_content);
+        file_put_contents($vtt_path, $vtt_content);
+    }
+
+    protected function generateSpriteAndVTT(string $video_path, string $target_folder): void
+    {
+        $sprite_file = $target_folder . 'thumb_sprite.webp';
+        $data = $this->buildSpriteCommand($video_path, $sprite_file);
+        if (!$data) return;
+
+        $ffmpeg_out = [];
+        exec($this->getEnvPrefix() . escapeshellarg($this->ffmpeg_bin) . ' '
+            . implode(' ', array_map('escapeshellarg', array_slice($data['cmd'], 1))) . ' 2>&1',
+            $ffmpeg_out
+        );
+
+        if (!file_exists($sprite_file) || filesize($sprite_file) === 0) {
+            error_log("[MEeL] ERROR: Sprite gagal. Output: " . implode(" | ", array_slice($ffmpeg_out, -10)));
+            return;
+        }
+
+        $this->generateVTT(
+            $target_folder . 'thumbnails.vtt',
+            $data['total_frames'],
+            $data['interval'],
+            $data['duration'],
+            $data['w'],
+            $data['cols']
+        );
     }
 }

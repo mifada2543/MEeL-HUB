@@ -213,6 +213,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                     exit;
                 }
 
+                if (is_string($message) && str_starts_with($message, 'DONE:')) {
+                    $done_title = substr($message, strlen('DONE:'));
+                    MediaLibrary::clearCountsCache();
+                    log_activity($conn, (int)$_SESSION['user_id'], 'upload_video', 'video');
+                    while (ob_get_level()) {
+                        ob_end_clean();
+                    }
+                    $done_title_js = json_encode($done_title, JSON_HEX_TAG | JSON_HEX_AMP);
+                    echo '<script>'
+                       . 'if(typeof meelDone==="function"){meelDone(' . $done_title_js . ',"video/index.php");}'
+                       . 'else{window.location.href="upload?success=1";}'
+                       . '</script>';
+                    echo str_repeat(' ', 1024);
+                    flush();
+                    exit;
+                }
+
                 if ($coin_deducted ?? false) {
                     MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_download_refund');
                     $err_msg = $message !== '' ? json_encode($message, JSON_HEX_TAG | JSON_HEX_AMP) : '"Download gagal: media tidak tersimpan di server."';
