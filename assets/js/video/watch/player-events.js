@@ -253,6 +253,10 @@ function setupMeelPlayerEvents() {
             n = r.getElementById(e);
           t && n && (t.innerHTML = n.innerHTML);
         }),
+        (() => {
+          const el = document.getElementById("rec-title-text");
+          if (el) { el.textContent = "Video Lainnya"; el.title = "Video Lainnya"; }
+        })(),
         window.lucide && window.lucide.createIcons(),
         window.htmx && htmx.process(document.body),
         isMiniPlayerActive ||
