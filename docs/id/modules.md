@@ -408,14 +408,15 @@ class MusicWatchController { public function getViewData(): array; public functi
 | **v9** | **MFA columns:** `mfa_secret`, `mfa_backup_codes`, `mfa_enabled` |
 | **v10** | Index komposit `(video_id, created_at)` & `(music_id, created_at)` pada `comments` |
 | **v11** | Unique key `interactions` dipecah: `(user_id, video_id)` & `(user_id, music_id)` — NULL di unique key gabungan tidak mencegah like duplikat |
-| **v12** | Ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code` |
+| **v12** | No-op — kolom chess room (`white_user_id`, `black_user_id`) dipindahkan ke ekstensi arcade |
 | **v13** | Sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log` |
 | **v14** | Index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery |
 | **v15** | Tabel `user_notifications` — sistem notifikasi untuk like, reply, MEeLCoin, chat admin |
 
 > 💡 **Modul Rhythm (MEeL!Mania) TIDAK memakai migration system utama.** Tabel
-> `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
-> (import manual sekali — lihat [Arcade Collection](#21a-arcade-collection-arcade)).
+> `rooms`, `moves`, `arcade_song`, & `arcade_score` dibuat lewat
+> `arcade/schema.sql` + `arcade/migrate.php` (ekstensi terpisah —
+> lihat [Arcade Collection](#21a-ekstensi-arcade-arcade)).
 
 ### 20. MFA System
 
@@ -439,7 +440,10 @@ function generate_backup_codes(): array;      // 8 backup codes (6 digit, passwo
 function verify_backup_code(string $stored, string $code): array; // Verify + consume code
 ```
 
-### 21. Chess Multiplayer (`arcade/chess/`)
+### 21. Chess Multiplayer (`arcade/chess/`) — Ekstensi Arcade
+
+> ⚠️ **Bagian dari ekstensi arcade** — tidak ada di MEeL-HUB core. Folder
+> `arcade/` diinstal secara terpisah. Lihat [§21a](#21a-ekstensi-arcade-arcade).
 
 Multiplayer catur real-time via LAN:
 
@@ -476,10 +480,15 @@ Klik "Multiplayer LAN" → konfirmasi SweetAlert
 - Token CSRF tidak pernah disimpan ke `moves.move_data`
 - `admin/catur.php?auto_cleanup=1` juga wajib `csrf_token` (dikirim JS via `window.MEEL_ADMIN_CSRF`)
 
-### 21a. Arcade Collection (`arcade/`)
+### 21a. Ekstensi Arcade (`arcade/`)
 
-Selain catur multiplayer, MEeL kini punya **9 game arcade** — 7 game statis (HTML/JS
-murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm (PHP + DB sendiri):
+Ekstensi arcade adalah **modul terpisah** dari MEeL-HUB core. Folder `arcade/`
+bisa diinstal atau dihapus tanpa memengaruhi fungsi HUB. Ekstensi ini
+mengelola database sendiri (`arcade/schema.sql` + `arcade/migrate.php`).
+
+Selain catur multiplayer, ekstensi arcade menyediakan **9 game** — 7 game
+statis (HTML/JS murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm
+(PHP + DB sendiri):
 
 | Game | Folder | Tipe | Deskripsi |
 |---|---|---|---|
@@ -505,11 +514,12 @@ murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm (PHP + DB sendiri):
 | `api/beatmap.php` | GET — ambil beatmap per lagu (builtin via slug, custom via ID numerik; increment `play_count`) |
 | `api/upload.php` | POST — upload lagu custom (auth + CSRF; non-admin 10/jam; MP3/OGG/OPUS/FLAC/WAV ≤ 20MB & ≤ 5 menit; beatmap 10–5000 notes; FLAC otomatis di-transcode ke Opus; cover → WebP) |
 | `api/delete.php` | POST — hapus lagu custom (owner/admin saja) |
-| `migration.sql` | **Tabel DB terpisah** — `arcade_song` & `arcade_score` (FK ke `users`) |
+| `migration.sql` | **Tabel DB ekstensi** — `rooms`, `moves`, `arcade_song` & `arcade_score` |
 
-> ⚠️ **Instalasi:** import tabel rhythm sekali:
-> `mysql MEeL < arcade/rhythm/migration.sql` — bukan bagian dari
-> `database/schema.sql` (23 tabel) maupun `database/migrate.php` (v1–v15).
+> ⚠️ **Instalasi:** jalankan migrasi arcade sekali:
+> `php arcade/migrate.php` — bukan bagian dari `database/schema.sql`
+> (23 tabel) maupun `database/migrate.php` (v1–v15). Atau gunakan
+> `install.sh` yang menawarkan instalasi arcade secara interaktif.
 
 ### Admin Activity Log Viewer
 

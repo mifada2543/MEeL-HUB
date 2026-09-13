@@ -497,14 +497,15 @@ class MusicWatchController { public function getViewData(): array; public functi
 | **v9** | **MFA columns:** `mfa_secret`, `mfa_backup_codes`, `mfa_enabled` |
 | **v10** | Composite index `(video_id, created_at)` & `(music_id, created_at)` on `comments` |
 | **v11** | `interactions` unique keys split: `(user_id, video_id)` & `(user_id, music_id)` — NULL in a combined unique key did not prevent duplicate likes |
-| **v12** | Bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code` |
+| **v12** | No-op — chess room columns (`white_user_id`, `black_user_id`) moved to arcade extension |
 | **v13** | MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table |
 | **v14** | Indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery |
 | **v15** | `user_notifications` table — notification system for likes, replies, MEeLCoin, admin chat |
 
 > 💡 **Rhythm module (MEeL!Mania) does NOT use the main migration system.** The
-> `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`
-> (import once manually — see [Arcade Collection](#21a-arcade-collection-arcade)).
+> `rooms`, `moves`, `arcade_song`, & `arcade_score` tables come from
+> `arcade/schema.sql` + `arcade/migrate.php` (separate extension —
+> see [Arcade Collection](#21a-arcade-extension-arcade)).
 
 ### 20. MFA System
 
@@ -528,7 +529,10 @@ function generate_backup_codes(): array;      // 8 backup codes (6 digits, passw
 function verify_backup_code(string $stored, string $code): array; // Verify + consume code
 ```
 
-### 21. Chess Multiplayer (`arcade/chess/`)
+### 21. Chess Multiplayer (`arcade/chess/`) — Arcade Extension
+
+> ⚠️ **Part of the arcade extension** — not included in MEeL-HUB core. The
+> `arcade/` folder is installed separately. See [§21a](#21a-arcade-extension-arcade).
 
 Real-time LAN multiplayer chess:
 
@@ -565,10 +569,15 @@ Klik "Multiplayer LAN" → konfirmasi SweetAlert
 - CSRF tokens are never stored in `moves.move_data`
 - `admin/catur.php?auto_cleanup=1` also requires `csrf_token` (sent by JS via `window.MEEL_ADMIN_CSRF`)
 
-### 21a. Arcade Collection (`arcade/`)
+### 21a. Arcade Extension (`arcade/`)
 
-Beyond multiplayer chess, MEeL now ships **9 arcade games** — 7 static games (pure
-HTML/JS, no backend) + Chess (PHP multiplayer) + Rhythm (PHP with its own DB):
+The arcade extension is a **separate module** from MEeL-HUB core. The `arcade/`
+folder can be installed or removed without affecting HUB functionality. This
+extension manages its own database (`arcade/schema.sql` + `arcade/migrate.php`).
+
+Beyond multiplayer chess, the arcade extension provides **9 games** — 7 static
+games (pure HTML/JS, no backend) + Chess (PHP multiplayer) + Rhythm (PHP with
+its own DB):
 
 | Game | Folder | Type | Description |
 |---|---|---|---|
@@ -594,11 +603,12 @@ HTML/JS, no backend) + Chess (PHP multiplayer) + Rhythm (PHP with its own DB):
 | `api/beatmap.php` | GET — fetch beatmap per song (builtin via slug, custom via numeric ID; increments `play_count`) |
 | `api/upload.php` | POST — upload custom song (auth + CSRF; non-admin 10/hour; MP3/OGG/OPUS/FLAC/WAV ≤ 20MB & ≤ 5 min; beatmap 10–5000 notes; FLAC auto-transcoded to Opus; cover → WebP) |
 | `api/delete.php` | POST — delete custom song (owner/admin only) |
-| `migration.sql` | **Separate DB tables** — `arcade_song` & `arcade_score` (FK to `users`) |
+| `migration.sql` | **Extension DB tables** — `rooms`, `moves`, `arcade_song` & `arcade_score` |
 
-> ⚠️ **Installation:** import the rhythm tables once:
-> `mysql MEeL < arcade/rhythm/migration.sql` — not part of
-> `database/schema.sql` (23 tables) nor `database/migrate.php` (v1–v15).
+> ⚠️ **Installation:** run the arcade migration once:
+> `php arcade/migrate.php` — not part of `database/schema.sql`
+> (23 tables) nor `database/migrate.php` (v1–v15). Alternatively,
+> `install.sh` offers interactive arcade installation.
 
 ### Admin Activity Log Viewer
 

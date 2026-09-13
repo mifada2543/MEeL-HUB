@@ -1,8 +1,8 @@
-# 🕹️ Arcade as an Optional Module
+# 🕹️ Arcade as a Separate Extension
 
-> **Principle:** MEeL-HUB must keep working 100% even if Arcade is missing,
-> disabled, or deleted — no errors, no broken links, no leftovers. Arcade is
-> an *add-on*, not a dependency.
+> **Principle:** MEeL-HUB must keep working 100% without Arcade — no errors,
+> no broken links, no leftovers. Arcade is a *separate extension*, not a
+> core dependency.
 
 > 🇮🇩 Versi Bahasa Indonesia: [docs/id/arcade-optional.md](arcade-optional.md)
 
@@ -11,27 +11,36 @@
 ## Contents
 
 - [Overview](#overview)
+- [What Changed](#what-changed)
 - [Three Decision Layers](#three-decision-layers)
-- [How to Disable / Enable](#how-to-disable--enable)
-- [Behavior When Disabled](#behavior-when-disabled)
+- [How to Install / Remove](#how-to-install--remove)
+- [Behavior When Not Installed](#behavior-when-not-installed)
+- [Arcade Database](#arcade-database)
 - [Integration Points](#integration-points)
-- [Database](#database)
+- [FAQ](#faq)
 
 ---
 
 ## Overview
 
 Arcade (9 mini-games: Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout,
-Simon Says, Ludo, MEeL!Mania) is no longer a mandatory part of the platform.
-Every access, view, and maintenance path goes through one central gate:
+Simon Says, Ludo, MEeL!Mania) is a **separate extension** from MEeL-HUB.
+The `arcade/` folder is not required — it can be installed at any time or
+removed entirely without affecting the HUB.
 
-```
-modules/core/Modules.php   ← single source of truth
-```
+The arcade extension manages its **own database** (`arcade/schema.sql` +
+`arcade/migrate.php`) — the `rooms`, `moves`, `arcade_song`, and
+`arcade_score` tables are not part of the core HUB schema.
 
-The class is self-contained: no autoloader, no session, no hard dependencies —
-safe to call from `router.php`, `sitemap.php`, core pages, and arcade
-controllers alike.
+### What Changed
+
+| Aspect | Previously (built-in) | Now (extension) |
+|---|---|---|
+| `arcade/` folder | Part of HUB repo | Separate extension, can be absent |
+| DB `rooms`, `moves` | In `database/schema.sql` | In `arcade/schema.sql` |
+| DB `arcade_song`, `arcade_score` | In `arcade/rhythm/migration.sql` | In `arcade/schema.sql` |
+| Migration | `php database/migrate.php` (v12) | `php arcade/migrate.php` (separate) |
+| install.sh | Core migration only | Optional arcade prompts (step 6b) |
 
 ## Three Decision Layers
 
@@ -40,7 +49,7 @@ Every failure is fail-closed (unreadable → treated as disabled):
 
 | Layer | Check | Control |
 |---|---|---|
-| 1. **Physical** | `arcade/index.php` exists on disk | Deleting the folder removes the module |
+| 1. **Physical** | `arcade/index.php` exists on disk | Absent folder = extension not installed |
 | 2. **Flag** | `arcade/.disabled` file exists (ignored when `MEEL_ENV=development`) | Deploy-level kill switch |
 | 3. **Toggle** | `site_settings.modules_arcade` ≠ `'0'` | Admin panel (runtime, persistent) |
 
@@ -48,9 +57,18 @@ The DB connection for layer 3 reuses the global `$conn` when available or
 creates its own from `auth/settings.php` — and **never throws**: without a
 DB/table the module counts as enabled (layers 1 & 2 are enough).
 
-## How to Disable / Enable
+## How to Install / Remove
 
-### Option 1 — Admin panel (recommended)
+### Installing Arcade
+
+1. Copy the `arcade/` folder to the HUB project root.
+2. Run the arcade migration:
+   ```bash
+   php arcade/migrate.php
+   ```
+   Or use `install.sh` which offers interactive arcade installation.
+
+### Disabling — Admin Panel (recommended)
 
 1. Log in as admin → menu **☰ Modules** (or open `/admin/modules`).
 2. **MEeL Arcade** card → flip the toggle.
@@ -59,7 +77,7 @@ DB/table the module counts as enabled (layers 1 & 2 are enough).
 Stored in `site_settings` (key `modules_arcade`) and recorded in the activity
 log (`toggle_module_arcade_1` / `toggle_module_arcade_0`).
 
-### Option 2 — Flag file (deploy/CLI level)
+### Disabling — Flag file (deploy/CLI level)
 
 ```bash
 # disable
@@ -69,31 +87,55 @@ touch arcade/.disabled
 rm arcade/.disabled
 ```
 
-The flag is ignored automatically in `development` environments. Ideal for
-deploy pipelines that must guarantee arcade stays off on public servers
-without touching the DB.
+The flag is ignored automatically in `development` environments.
 
-### Option 3 — Delete the folder
+### Removing Arcade Completely
 
 ```bash
 rm -rf arcade/
 ```
 
-No further steps required — no code edits needed anywhere.
+No further steps required:
 
-## Behavior When Disabled
+- Router moves all arcade routes to the optional route map — missing
+  routes are automatically served with a 302 redirect to the HUB.
+- All links/menus/sitemap depend on `Modules::enabled()` → automatically
+  not rendered.
+- `GarbageCollector::cleanChessRooms()` becomes a no-op.
+
+## Behavior When Not Installed
 
 | Surface | Behavior |
 |---|---|
-| `/arcade/*` pages | **302 → HUB** (`/`) — 302, not 301, so nothing is cached permanently and arcade can come back anytime |
+| `/arcade/*` pages | **302 → HUB** (`/`) — 302, not 301, so arcade can be re-enabled anytime |
 | `/arcade/rhythm/api/*` + all `arcade/chess/controller/*.php` endpoints | **JSON 404** `{"error": "Module not available"}` |
-| Physical files under `arcade/` | Gated by `arcade/.htaccess` **only** while the `.disabled` flag exists |
+| Physical files under `arcade/` | Gated by `arcade/.htaccess` when `.disabled` flag exists or folder is absent |
 | MEeL logo on the HUB home | Rendered as a plain image (no arcade link) |
 | Admin menu "Chess Room" | Not rendered |
 | `sitemap.xml` | `/arcade/beranda` + 8 game pages excluded |
 | Garbage Collector | `cleanChessRooms()` returns 0 without querying |
 | PHPUnit | Chess & chess-GC suites auto-**skipped** |
-| Database | **No changes** — data is preserved; re-enabling restores everything |
+| Database | **No changes** — no arcade tables in core schema |
+
+## Arcade Database
+
+The arcade extension manages its own database — **no arcade tables exist in
+`database/schema.sql`** or `database/migrate.php`:
+
+| Table | Origin | Description |
+|---|---|---|
+| `rooms` | `arcade/schema.sql` | Chess multiplayer rooms |
+| `moves` | `arcade/schema.sql` | Chess moves |
+| `arcade_song` | `arcade/schema.sql` | Rhythm songs (builtin + custom) |
+| `arcade_score` | `arcade/schema.sql` | Rhythm scores |
+
+Migration is run separately:
+```bash
+php arcade/migrate.php
+```
+
+The arcade migration uses an `arcade_db_version` table for version tracking
+(equivalent to `db_version` in core). Currently only v1 creates all tables.
 
 ## Integration Points
 
@@ -102,6 +144,7 @@ No further steps required — no code edits needed anywhere.
 | `modules/core/Modules.php` | Central gate: `exists()`, `enabled()`, `guardRedirect()`, `guardJson()`, `guardJson404()` |
 | `modules/core/Router.php` | `OPTIONAL_ROUTES` (separate from core `ROUTES`) + redirect/JSON-404 in `dispatch()` |
 | `arcade/.htaccess` | Static gate for physical files while `.disabled` exists |
+| `arcade/_gate.php` | PHP guard — optional module, page path → 302, API path → JSON 404 |
 | `arcade/chess/controller/chess_helpers.php` | JSON 404 guard for all chess endpoints (skipped for CLI/PHPUnit) |
 | `index.php` | Conditional HUB logo |
 | `admin/header-admin.php` | Conditional "Chess Room" menu + new "Modules" menu |
@@ -110,11 +153,25 @@ No further steps required — no code edits needed anywhere.
 | `sitemap.php` | Conditional arcade entries |
 | `tests/integration/Chess*Test.php`, `GarbageCollectorChessRoomsIntegrationTest.php` | Skip guards |
 
-## Database
+## FAQ
 
-No schema changes. The following tables remain and are idempotent:
+**Does removing arcade delete data?**
+No. Arcade data is stored in extension DB tables (`rooms`, `moves`,
+`arcade_song`, `arcade_score`). Removing the `arcade/` folder only removes
+the PHP/JS code — data stays safe in the DB.
 
-| Table | Origin | State when module is gone |
-|---|---|---|
-| `rooms`, `moves` | `database/schema.sql` (core) | Left in place — legacy GC keeps them clean |
-| `arcade_song`, `arcade_score` | `arcade/rhythm/migration.sql` | Import **optional** — only needed for MEeL!Mania |
+**How do I install arcade after HUB is running?**
+1. Copy the `arcade/` folder to the project root
+2. Run `php arcade/migrate.php`
+3. Enable from Admin → Modules (toggle)
+
+**Why is the redirect 302 and not 301?**
+301 is cached permanently by browsers; 302 allows arcade to be re-enabled without cache issues.
+
+**What happens if the DB goes down?**
+The gate still works from physical detection + flag. DB toggle read failure → module treated as enabled (fail-open only on the toggle layer; never blocks the HUB).
+
+**How to add a new optional module?**
+Add a new entry in `Modules::OPTIONAL` (marker, flag_file, setting,
+home_route), move its routes to `OPTIONAL_ROUTES` if using the router, then
+add its module card in `admin/modules.php`.

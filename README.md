@@ -11,7 +11,7 @@
   <br><br>
   <strong>Platform media pribadi — self-hosted, open source, tanpa biaya langganan.</strong>
   <br>
-  <sub>Video streaming, musik, e-book, file storage, dan game arcade — semuanya dari server Anda sendiri.</sub>
+  <sub>Video streaming, musik, e-book, dan file storage — semuanya dari server Anda sendiri. <a href="docs/id/arcade-optional.md">Arcade</a> tersedia sebagai ekstensi terpisah.</sub>
   <br><br>
 
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
@@ -65,10 +65,10 @@
   </tr>
   <tr>
     <td colspan="2">
-      <h3>🕹️ Arcade — 9 Game Built-in <sup>(modul opsional)</sup></h3>
+      <h3>🕹️ Arcade <sup>(ekstensi terpisah)</sup></h3>
       <p>
-        <strong>Miku & Teto Run</strong> · <strong>Catur</strong> (multiplayer) · <strong>Snake</strong> · <strong>2048</strong> · <strong>Tetris</strong> · <strong>Breakout</strong> · <strong>Simon Says</strong> · <strong>Ludo</strong> · <strong>MEeL!Mania</strong> (rhythm)
-        <br><sub>Opsional — bisa dimatikan dari <a href="docs/id/arcade-optional.md">Admin → Modules</a> atau dihapus tanpa memengaruhi HUB.</sub>
+        9 mini-game: <strong>Miku & Teto Run</strong> · <strong>Catur</strong> (multiplayer) · <strong>Snake</strong> · <strong>2048</strong> · <strong>Tetris</strong> · <strong>Breakout</strong> · <strong>Simon Says</strong> · <strong>Ludo</strong> · <strong>MEeL!Mania</strong> (rhythm)
+        <br><sub>Ekstensi opsional — diinstal terpisah dari HUB. Lihat <a href="docs/id/arcade-optional.md">Panduan Arcade</a>.</sub>
       </p>
     </td>
   </tr>
@@ -149,7 +149,7 @@ php tests/check_deploy.php
 ```
 MEeL/
 ├── admin/          # Panel admin
-├── arcade/         # 9 mini-game (MODUL OPSIONAL — lihat docs/id/arcade-optional.md)
+├── arcade/         # Ekstensi arcade (terpisah — lihat docs/id/arcade-optional.md)
 ├── assets/         # CSS, JS, gambar
 ├── auth/           # Autentikasi & config
 ├── books/          # Pembaca buku digital

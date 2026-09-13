@@ -484,15 +484,16 @@ Migration bersifat **idempotent** — aman dijalankan berulang kali. Mengelola v
 - **v8–v9:** sync kolom role, **kolom MFA** (`mfa_secret`, `mfa_backup_codes`, `mfa_enabled`)
 - **v10:** index komposit `comments` `(video_id, created_at)` & `(music_id, created_at)`
 - **v11:** unique key `interactions` dipecah menjadi `(user_id, video_id)` & `(user_id, music_id)`
-- **v12:** ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code`
+- **v12:** No-op — kolom chess room (`white_user_id`, `black_user_id`) dipindahkan ke ekstensi arcade
 - **v13:** sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log`
 - **v14:** index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery
 - **v15:** tabel `user_notifications` — sistem notifikasi untuk like, reply, MEeLCoin, chat admin
 
-> 💡 **Modul Rhythm (MEeL!Mania) punya migrasi DB sendiri** — tabel `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`, **bukan** bagian dari `database/migrate.php` (v1–v15). Import sekali:
+> 💡 **Ekstensi Arcade (MEeL!Mania, Chess, dll.) punya migrasi DB sendiri** — tabel `rooms`, `moves`, `arcade_song` & `arcade_score` dibuat lewat `arcade/migrate.php`, **bukan** bagian dari `database/migrate.php` (v1–v15). Install opsional:
 > ```bash
-> mysql MEeL < arcade/rhythm/migration.sql
+> php arcade/migrate.php
 > ```
+> Lihat [Panduan Arcade](arcade-optional.md) untuk detail.
 
 ### 11. Setup cookies.txt (untuk yt-dlp)
 

@@ -484,15 +484,16 @@ The migration is **idempotent** — safe to run multiple times. It manages v1–
 - **v8–v9:** role column sync, **MFA columns** (`mfa_secret`, `mfa_backup_codes`, `mfa_enabled`)
 - **v10:** composite indexes on `comments` `(video_id, created_at)` & `(music_id, created_at)`
 - **v11:** `interactions` unique keys split into `(user_id, video_id)` & `(user_id, music_id)`
-- **v12:** bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code`
+- **v12:** No-op — chess room columns (`white_user_id`, `black_user_id`) moved to arcade extension
 - **v13:** MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table
 - **v14:** indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery
 - **v15:** `user_notifications` table — notification system for likes, replies, MEeLCoin, admin chat
 
-> 💡 **Rhythm module (MEeL!Mania) has its own DB migration** — the `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`, **not** part of `database/migrate.php` (v1–v15). Import once:
+> 💡 **Arcade extension (MEeL!Mania, Chess, etc.) has its own DB migration** — the `rooms`, `moves`, `arcade_song` & `arcade_score` tables come from `arcade/migrate.php`, **not** part of `database/migrate.php` (v1–v15). Optional install:
 > ```bash
-> mysql MEeL < arcade/rhythm/migration.sql
+> php arcade/migrate.php
 > ```
+> See [Arcade Guide](arcade-optional.md) for details.
 
 ### 11. Setup cookies.txt (for yt-dlp)
 
