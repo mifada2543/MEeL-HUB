@@ -50,8 +50,8 @@ Dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untuk streaming video,
 | **MFA Setup** | `auth/mfa_setup.php` | Setup MFA (generate secret, verify TOTP, backup codes) |
 | **MFA Verify** | `auth/mfa_verify.php` | Halaman verifikasi TOTP setelah login |
 | **MFA Reset (Admin)** | `admin/mfa_reset.php` | Admin reset MFA user jika kehilangan akses Authenticator |
-| **Chess Multiplayer** | `arcade/chess/` | Catur real-time via LAN — buat/gabung ruang, giliran, legal move validation |
-| **Rhythm Module (MEeL!Mania)** | `arcade/rhythm/` | Rhythm game 4-lane ala osu!mania — beatmap editor, upload lagu custom (tabel `arcade_song`/`arcade_score` via `arcade/rhythm/migration.sql`) |
+| **Chess Multiplayer** | `arcade/chess/` | Catur real-time via LAN — buat/gabung ruang, giliran, legal move validation *(ekstensi arcade)* |
+| **Rhythm Module (MEeL!Mania)** | `arcade/rhythm/` | Rhythm game 4-lane ala osu!mania — beatmap editor, upload lagu custom *(ekstensi arcade, tabel via `arcade/schema.sql` + `arcade/migrate.php`)* |
 | **FfmpegUtils Trait** | `modules/transcoder/FfmpegUtils.php` | Shared trait: probeDuration(), generateSpriteAndVTT() |
 | **PlaylistRepository** | `modules/media/PlaylistRepository.php` | Query playlist & route slug playlist |
 | **MediaAdminRepository** | `modules/media/MediaAdminRepository.php` | Query metadata media untuk panel admin (edit video/music) |
@@ -102,8 +102,8 @@ Request: /MEeL/music/beranda?format=ogg
 | `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/manage-action`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profil + grid channel publik, tab via query), `profile/channel_more.php` (fragment HTMX), `profile/edit-video.php` (pemilik, non-admin), `profile/edit-music.php` (pemilik, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
 | `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat`, `/admin/actions`, `/admin/data` | `admin/*.php` (edit-video/edit-music khusus admin), `controllers/admin/*.php` |
 | `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
-| `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` |
-| `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) |
+| `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` *(ekstensi — memerlukan folder arcade terpasang)* |
+| `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) *(ekstensi)* |
 | `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/notification`, `/api/chat`, `/api/meelcoin` | `controllers/api/*.php` |
 | `/system/mfa` | `controllers/system/mfa.php` |
 
@@ -153,7 +153,8 @@ Request: /MEeL/music/beranda?format=ogg
 - **Arcade Chess:** Multiplayer catur real-time via LAN — buat/gabung ruang, giliran bergantian, validasi legal move
 - **Chess Color Picker:** Di mode multiplayer, papan disembunyikan di balik overlay pilihan warna (Putih = buat room & tunggu, Hitam = join pakai kode) — papan terkunci sampai game dimulai
 - **Chess Auth & CSRF:** Controller multiplayer kini wajib login (JSON 401) dan token CSRF di semua panggilan yang mengubah state; endpoint admin `auto_cleanup` diverifikasi dengan CSRF
-- **Arcade Expansion (9 game):** Selain Dino Run, Chess & Snake — kini ada **2048**, **Tetris**, **Breakout**, **Simon Says**, **Ludo**, dan **MEeL!Mania** (rhythm game 4-lane ala osu!mania dengan beatmap editor, upload lagu custom MP3/OGG/FLAC/WAV ≤ 5 menit, tabel `arcade_song`/`arcade_score` via `arcade/rhythm/migration.sql` — terpisah dari migrasi utama v1–v15)
+- **Arcade Expansion (9 game):** Selain Dino Run, Chess & Snake — kini ada **2048**, **Tetris**, **Breakout**, **Simon Says**, **Ludo**, dan **MEeL!Mania** (rhythm game 4-lane ala osu!mania dengan beatmap editor, upload lagu custom MP3/OGG/FLAC/WAV ≤ 5 menit)
+- **Arcade menjadi Ekstensi Terpisah:** Modul arcade di-extract dari HUB core — folder `arcade/` kini ekstensi opsional dengan database sendiri (`arcade/schema.sql` + `arcade/migrate.php`). Tabel `rooms`, `moves`, `arcade_song`, `arcade_score` tidak lagi di `database/schema.sql`. HUB berfungsi 100% tanpa arcade
 - **PWA Optimization:** Service worker dinamis (`sw.js.php` + `SwPrecache`) — daftar precache otomatis dari `manifest.php`, `SW_VERSION` otomatis, ikon asli 192/512/maskable, meta iOS standalone, auto-reload saat update SW
 - **Search Improvements:** Sanitizer query (`sanitizeQuery()`), `MIN_SEARCH_QUERY = 3`, pagination search musik, search buku server-side (`BookRepository::searchBooks()`), cache key menyertakan offset, `try/catch` di sekitar query FULLTEXT
 - **Auth Hardening:** Cookie session kini `Secure` (auto-detect HTTPS) + `HttpOnly` + `SameSite=Lax`; `MEEL_TRUST_PROXY_HEADERS` (default `false`) untuk mencegah IP spoofing via header proxy; charset koneksi DB dipaksa `utf8mb4`
@@ -175,7 +176,7 @@ Request: /MEeL/music/beranda?format=ogg
 - **🎵 Music** — Audio streaming dengan visualizer & mini player
 - **📚 Books** — Pembaca manga/PDF digital
 - **☁️ Cloud Drive** — Penyimpanan file pribadi dengan RBAC
-- **🕹️ Arcade** — 9 mini-game (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania)
+- **🕹️ Arcade** — 9 mini-game (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania) *(ekstensi terpisah)*
 
 ### Tech Stack Utama
 

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../modules/core/Modules.php';
+
 if (!isset($is_admin)) {
     $is_admin = (isset($_SESSION['user_id']) && isset($conn)
         && function_exists('is_admin') && is_admin($conn));
@@ -98,6 +100,10 @@ $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg>
                         MEeLCoin Settings
                     </a>
+                    <a href="<?= meel_base_url_path() ?>/admin/modules" class="admin-menu-item <?= $nav_current_page === 'modules' ? 'active' : '' ?>">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        Modules
+                    </a>
                     <a href="<?= meel_base_url_path() ?>/admin/chat" class="admin-menu-item <?= $nav_current_page === 'chat' ? 'active' : '' ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                         Chat Admin
@@ -109,10 +115,13 @@ $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                         MFA Management
                     </a>
+                    <?php if (Modules::enabled('arcade')): ?>
+                    <!-- Arcade opsional: menu hanya tampil saat modul aktif -->
                     <a href="<?= meel_base_url_path() ?>/admin/catur" class="admin-menu-item <?= $nav_current_page === 'catur' ? 'active' : '' ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v2"></path><path d="M4 8h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"></path><path d="M10 20v-4h4v4"></path></svg>
                         Chess Room
                     </a>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php else: ?>

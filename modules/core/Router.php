@@ -1,9 +1,6 @@
 <?php
-
-
 final class MeelRouter
 {
-    
     private const ROUTES = [
         ''                => ['handler' => 'index.php',           'script' => '/index.php'],
         'introduction'    => ['handler' => 'introduction.php',    'script' => '/introduction.php'],
@@ -76,19 +73,10 @@ final class MeelRouter
         'auth/mfa-setup'=> ['handler' => 'auth/mfa_setup.php','script' => '/auth/mfa_setup.php'],
         'auth/mfa-verify' => ['handler' => 'auth/mfa_verify.php','script' => '/auth/mfa_verify.php'],
 
-        'arcade'           => ['handler' => 'arcade/index.php',          'script' => '/arcade/index.php'],
-        'arcade/beranda'   => ['handler' => 'arcade/index.php',          'script' => '/arcade/index.php'],
-        'arcade/chess'     => ['handler' => 'arcade/chess/index.php',    'script' => '/arcade/chess/index.php'],
-        'arcade/rhythm'    => ['handler' => 'arcade/rhythm/index.php',   'script' => '/arcade/rhythm/index.php'],
-        'arcade/rhythm/game'=> ['handler' => 'arcade/rhythm/game.php',   'script' => '/arcade/rhythm/game.php'],
-        'arcade/rhythm/editor' => ['handler' => 'arcade/rhythm/editor/index.php', 'script' => '/arcade/rhythm/editor/index.php'],
-        'arcade/rhythm/manage' => ['handler' => 'arcade/rhythm/manage/index.php', 'script' => '/arcade/rhythm/manage/index.php'],
-        'arcade/rhythm/edit'   => ['handler' => 'arcade/rhythm/manage/edit.php',  'script' => '/arcade/rhythm/manage/edit.php'],
-        'arcade/rhythm/manage/edit' => ['handler' => 'arcade/rhythm/manage/edit.php', 'script' => '/arcade/rhythm/manage/edit.php'],
-        'arcade/rhythm/api/upload'   => ['handler' => 'arcade/rhythm/api/upload.php',   'script' => '/arcade/rhythm/api/upload.php'],
-        'arcade/rhythm/api/delete'   => ['handler' => 'arcade/rhythm/api/delete.php',   'script' => '/arcade/rhythm/api/delete.php'],
-        'arcade/rhythm/api/songs'    => ['handler' => 'arcade/rhythm/api/songs.php',    'script' => '/arcade/rhythm/api/songs.php'],
-        'arcade/rhythm/api/beatmap'  => ['handler' => 'arcade/rhythm/api/beatmap.php',  'script' => '/arcade/rhythm/api/beatmap.php'],
+        // (Rute arcade pindah ke OPTIONAL_ROUTES — modul opsional, gate via
+        //  modules/core/Modules.php. Lihat docs/id/arcade-optional.md.)
+
+        'admin/modules'     => ['handler' => 'admin/modules.php',             'script' => '/admin/modules.php'],
 
         'api/like'               => ['handler' => 'controllers/api/like.php',              'script' => '/controllers/api/like.php'],
         'api/comment'            => ['handler' => 'controllers/api/comment.php',           'script' => '/controllers/api/comment.php'],
@@ -106,6 +94,28 @@ final class MeelRouter
         'api/meelcoin'           => ['handler' => 'controllers/api/meelcoin.php',           'script' => '/controllers/api/meelcoin.php'],
         'system/mfa'             => ['handler' => 'controllers/system/mfa.php',            'script' => '/controllers/system/mfa.php'],
     ];
+
+    // Rute modul OPSIONAL (mis. Arcade) — dipisah agar modul bisa hilang
+    // tanpa merusak HUB (lihat modules/core/Modules.php). Saat modul
+    // nonaktif: halaman → 302 ke HUB, API → JSON 404.
+    private const OPTIONAL_ROUTES = [
+        'arcade'           => ['handler' => 'arcade/index.php',          'script' => '/arcade/index.php'],
+        'arcade/beranda'   => ['handler' => 'arcade/index.php',          'script' => '/arcade/index.php'],
+        'arcade/chess'     => ['handler' => 'arcade/chess/index.php',    'script' => '/arcade/chess/index.php'],
+        'arcade/rhythm'    => ['handler' => 'arcade/rhythm/index.php',   'script' => '/arcade/rhythm/index.php'],
+        'arcade/rhythm/game'=> ['handler' => 'arcade/rhythm/game.php',   'script' => '/arcade/rhythm/game.php'],
+        'arcade/rhythm/editor' => ['handler' => 'arcade/rhythm/editor/index.php', 'script' => '/arcade/rhythm/editor/index.php'],
+        'arcade/rhythm/manage' => ['handler' => 'arcade/rhythm/manage/index.php', 'script' => '/arcade/rhythm/manage/index.php'],
+        'arcade/rhythm/edit'   => ['handler' => 'arcade/rhythm/manage/edit.php',  'script' => '/arcade/rhythm/manage/edit.php'],
+        'arcade/rhythm/manage/edit' => ['handler' => 'arcade/rhythm/manage/edit.php', 'script' => '/arcade/rhythm/manage/edit.php'],
+        'arcade/rhythm/api/upload'   => ['handler' => 'arcade/rhythm/api/upload.php',   'script' => '/arcade/rhythm/api/upload.php'],
+        'arcade/rhythm/api/delete'   => ['handler' => 'arcade/rhythm/api/delete.php',   'script' => '/arcade/rhythm/api/delete.php'],
+        'arcade/rhythm/api/songs'    => ['handler' => 'arcade/rhythm/api/songs.php',    'script' => '/arcade/rhythm/api/songs.php'],
+        'arcade/rhythm/api/beatmap'  => ['handler' => 'arcade/rhythm/api/beatmap.php',  'script' => '/arcade/rhythm/api/beatmap.php'],
+    ];
+
+    /** Prefix rute opsional yang merupakan API (JSON 404 saat modul nonaktif). */
+    private const OPTIONAL_API_PREFIXES = ['arcade/rhythm/api/'];
 
     
     private static ?string $base = null;
@@ -147,6 +157,14 @@ final class MeelRouter
     {
         if (isset(self::ROUTES[$path])) {
             return self::ROUTES[$path];
+        }
+        // Rute modul opsional — hanya valid saat modulnya aktif.
+        if (isset(self::OPTIONAL_ROUTES[$path])) {
+            require_once __DIR__ . '/Modules.php';
+            if (Modules::enabled('arcade')) {
+                return self::OPTIONAL_ROUTES[$path];
+            }
+            return null; // ditangani dispatch → 302 HUB / JSON 404
         }
         if (preg_match('#^music/([^/]+)$#', $path, $m)) {
             $_GET['slug'] = $m[1];
@@ -190,6 +208,18 @@ final class MeelRouter
         $route = self::routeFor($path);
 
         if ($route === null) {
+            // Modul opsional nonaktif (rutenya dikenal): halaman → 302 HUB,
+            // API → JSON 404. Bukan error 404 generik.
+            if (isset(self::OPTIONAL_ROUTES[$path])) {
+                require_once __DIR__ . '/Modules.php';
+                foreach (self::OPTIONAL_API_PREFIXES as $prefix) {
+                    if (str_starts_with($path, $prefix)) {
+                        Modules::guardJson404();
+                    }
+                }
+                Modules::guardRedirect('arcade');
+            }
+
             http_response_code(404);
             $_GET['code'] = 'not_found';
             require dirname(__DIR__, 2) . '/err/index.php';

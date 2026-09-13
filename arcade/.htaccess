@@ -2,6 +2,32 @@
 Options -Indexes
 DirectoryIndex index.php index.html
 
+# ── GATE MODUL OPSIONAL — auto_prepend (admin toggle via DB) ──────
+# Semua file PHP di bawah arcade/ otomatis memuat _gate.php sebelum
+# eksekusi. Saat modul nonaktif: halaman → 302, API → JSON 404.
+php_value auto_prepend_file /opt/lampp/htdocs/MEeL/arcade/_gate.php
+
+# ── GATE MODUL OPSIONAL (lihat modules/core/Modules.php) ──────────
+# Jika file flag .disabled ADA, semua request di bawah arcade/
+# di-302 ke HUB (nonaktif). Tanpa flag → berperilaku normal.
+# (Modul yang aktif/dinonaktifkan lewat admin panel tetap di-handle
+#  oleh router PHP; flag ini untuk penonaktifan di tingkat disk/deploy.)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Disk-level kill switch: .disabled → redirect 302 ke HUB
+    RewriteCond %{DOCUMENT_ROOT}/arcade/.disabled -f
+    RewriteRule ^ /MEeL/ [R=302,L]
+
+    # Forward path virtual (mis. /arcade/beranda) ke front controller.
+    # Tanpa blok ini, RewriteEngine On di atas mengambil alih rewrite
+    # context sehingga catch-all di root .htaccess tidak tercapai untuk
+    # request di bawah /arcade/.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ ../router.php [END,QSA]
+</IfModule>
+
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"

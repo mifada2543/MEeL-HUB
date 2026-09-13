@@ -50,8 +50,8 @@ Official documentation for **MEeL** — A Personal Media Hub Platform for video 
 | **MFA Setup** | `auth/mfa_setup.php` | MFA setup (generate secret, scan QR, verify TOTP, backup codes) |
 | **MFA Verify** | `auth/mfa_verify.php` | TOTP verification page after login |
 | **MFA Reset (Admin)** | `admin/mfa_reset.php` | Admin reset MFA for users who lost Authenticator access |
-| **Chess Multiplayer** | `arcade/chess/` | Real-time LAN chess — create/join room, turn-based, legal move validation |
-| **Rhythm Module (MEeL!Mania)** | `arcade/rhythm/` | 4-lane rhythm game inspired by osu!mania — beatmap editor, custom song uploads (`arcade_song`/`arcade_score` tables via `arcade/rhythm/migration.sql`) |
+| **Chess Multiplayer** | `arcade/chess/` | Real-time LAN chess — create/join room, turn-based, legal move validation *(arcade extension)* |
+| **Rhythm Module (MEeL!Mania)** | `arcade/rhythm/` | 4-lane rhythm game inspired by osu!mania — beatmap editor, custom song uploads *(arcade extension, tables via `arcade/schema.sql` + `arcade/migrate.php`)* |
 | **FfmpegUtils Trait** | `modules/transcoder/FfmpegUtils.php` | Shared trait: probeDuration(), generateSpriteAndVTT() |
 | **PlaylistRepository** | `modules/media/PlaylistRepository.php` | Playlist queries & playlist slug routes |
 | **MediaAdminRepository** | `modules/media/MediaAdminRepository.php` | Media metadata queries for the admin panel (edit video/music) |
@@ -102,8 +102,8 @@ Request: /MEeL/music/beranda?format=ogg
 | `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/manage-action`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profile + public channel grid, tab via query), `profile/channel_more.php` (HTMX fragment), `profile/edit-video.php` (owner, non-admin), `profile/edit-music.php` (owner, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
 | `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat`, `/admin/actions`, `/admin/data` | `admin/*.php` (edit-video/edit-music admin-only), `controllers/admin/*.php` |
 | `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
-| `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` |
-| `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) |
+| `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` *(extension — requires arcade folder installed)* |
+| `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) *(extension)* |
 | `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/notification`, `/api/chat`, `/api/meelcoin` | `controllers/api/*.php` |
 | `/system/mfa` | `controllers/system/mfa.php` |
 
@@ -153,7 +153,8 @@ Request: /MEeL/music/beranda?format=ogg
 - **Arcade Chess:** Real-time LAN multiplayer chess — create/join room, turn-based, legal move validation
 - **Chess Color Picker:** In multiplayer mode the board is hidden behind a color picker overlay (White = create room & wait, Black = join with code) — board locked until the game starts
 - **Chess Auth & CSRF:** Multiplayer controllers now require login (JSON 401) and CSRF token on all state-changing calls; admin `auto_cleanup` endpoint verified with CSRF
-- **Arcade Expansion (9 games):** besides Dino Run, Chess & Snake — now **2048**, **Tetris**, **Breakout**, **Simon Says**, **Ludo**, and **MEeL!Mania** (4-lane rhythm game inspired by osu!mania with a beatmap editor and custom song uploads MP3/OGG/FLAC/WAV ≤ 5 min; the `arcade_song`/`arcade_score` tables come from `arcade/rhythm/migration.sql` — separate from the main v1–v15 migrations)
+- **Arcade Expansion (9 games):** besides Dino Run, Chess & Snake — now **2048**, **Tetris**, **Breakout**, **Simon Says**, **Ludo**, and **MEeL!Mania** (4-lane rhythm game inspired by osu!mania with a beatmap editor and custom song uploads MP3/OGG/FLAC/WAV ≤ 5 min)
+- **Arcade Extracted to Separate Extension:** Arcade module extracted from HUB core — the `arcade/` folder is now an optional extension with its own database (`arcade/schema.sql` + `arcade/migrate.php`). The `rooms`, `moves`, `arcade_song`, `arcade_score` tables are no longer in `database/schema.sql`. HUB works 100% without arcade
 - **PWA Optimization:** Dynamic service worker (`sw.js.php` + `SwPrecache`) — precache list auto-generated from `manifest.php`, auto `SW_VERSION`, real 192/512/maskable icons, iOS standalone meta, auto-reload on SW update
 - **Search Improvements:** Query sanitizer (`sanitizeQuery()`), `MIN_SEARCH_QUERY = 3`, music search pagination, server-side books search (`BookRepository::searchBooks()`), cache key includes offset, `try/catch` around FULLTEXT queries
 - **Auth Hardening:** Session cookies now `Secure` (auto-detect HTTPS) + `HttpOnly` + `SameSite=Lax`; `MEEL_TRUST_PROXY_HEADERS` (default `false`) to prevent IP spoofing via proxy headers; DB connection charset forced to `utf8mb4`
@@ -175,7 +176,7 @@ Request: /MEeL/music/beranda?format=ogg
 - **🎵 Music** — Audio streaming with visualizer & mini player
 - **📚 Books** — Manga/PDF digital reader
 - **☁️ Cloud Drive** — Personal file storage with RBAC
-- **🕹️ Arcade** — 9 mini-games (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania)
+- **🕹️ Arcade** — 9 mini-games (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania) *(separate extension)*
 
 ### Core Tech Stack
 

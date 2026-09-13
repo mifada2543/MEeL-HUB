@@ -81,6 +81,15 @@ class GarbageCollector
 
     public static function cleanChessRooms(\mysqli $conn): int
     {
+        // Arcade adalah modul opsional (lihat modules/core/Modules.php).
+        // Tanpa arcade aktif tidak ada room baru dibuat — pembersihan di-skip
+        // agar tabel legacy (rooms/moves) tidak disentuh dan caller (admin
+        // dashboard, chess controller) tetap berjalan normal tanpa error.
+        require_once __DIR__ . '/Modules.php';
+        if (!Modules::enabled('arcade')) {
+            return 0;
+        }
+
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_chess_last_run.txt';
 
         if (is_readable($throttleFile)) {

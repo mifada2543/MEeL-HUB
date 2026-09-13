@@ -11,7 +11,7 @@
   <br><br>
   <strong>Self-hosted media platform — open source, no subscription fees.</strong>
   <br>
-  <sub>Video streaming, music playback, e-book reader, file storage, and arcade games — all from your own server.</sub>
+  <sub>Video streaming, music playback, e-book reader, and file storage — all from your own server. <a href="docs/en/arcade-optional.md">Arcade</a> is available as a separate extension.</sub>
   <br><br>
 
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
@@ -65,9 +65,10 @@
   </tr>
   <tr>
     <td colspan="2">
-      <h3>🕹️ Arcade — 9 Built-in Games</h3>
+      <h3>🕹️ Arcade <sup>(separate extension)</sup></h3>
       <p>
-        <strong>Miku & Teto Run</strong> · <strong>Chess</strong> (multiplayer) · <strong>Snake</strong> · <strong>2048</strong> · <strong>Tetris</strong> · <strong>Breakout</strong> · <strong>Simon Says</strong> · <strong>Ludo</strong> · <strong>MEeL!Mania</strong> (rhythm)
+        9 mini-games: <strong>Miku & Teto Run</strong> · <strong>Chess</strong> (multiplayer) · <strong>Snake</strong> · <strong>2048</strong> · <strong>Tetris</strong> · <strong>Breakout</strong> · <strong>Simon Says</strong> · <strong>Ludo</strong> · <strong>MEeL!Mania</strong> (rhythm)
+        <br><sub>Optional extension — installed separately from the HUB. See <a href="docs/en/arcade-optional.md">Arcade Guide</a>.</sub>
       </p>
     </td>
   </tr>
@@ -148,7 +149,7 @@ php tests/check_deploy.php
 ```
 MEeL/
 ├── admin/          # Admin panel
-├── arcade/         # 9 mini-games
+├── arcade/         # Arcade extension (separate — see docs/en/arcade-optional.md)
 ├── assets/         # CSS, JS, images
 ├── auth/           # Authentication & config
 ├── books/          # Digital book reader

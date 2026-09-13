@@ -1,4 +1,13 @@
 <?php
+// Guard modul opsional (arcade): jika modul dinonaktifkan lewat admin panel
+// (site_settings via modules/core/Modules.php), semua endpoint HTTP di folder
+// ini balas JSON 404 — bukan fatal error "class not found".
+// CLI (migrasi/CLI tooling) & PHPUnit tetap boleh me-load helper untuk test.
+require_once __DIR__ . '/../../../modules/core/Modules.php';
+if (PHP_SAPI !== 'cli' && !defined('PHPUNIT_COMPOSER_INSTALL')) {
+    Modules::guardJson('arcade');
+}
+
 if (!defined('CHESS_OPPONENT_OFFLINE_SECONDS')) {
     define('CHESS_OPPONENT_OFFLINE_SECONDS', 90);
 }

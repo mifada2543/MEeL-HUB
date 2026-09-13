@@ -11,8 +11,17 @@ abstract class ChessTestCase extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Arcade extension manages its own DB (rooms/moves tables).
+        // Skip if tables don't exist in this environment.
+        require_once MEEL_ROOT . '/modules/core/Modules.php';
         $this->dbHelper = new DbTestHelper();
         $this->conn = $this->dbHelper->getConnection();
+
+        $res = $this->conn->query("SHOW TABLES LIKE 'rooms'");
+        if (!$res || $res->num_rows === 0) {
+            $this->markTestSkipped('Arcade tables (rooms/moves) not found — arcade extension not installed.');
+        }
     }
 
     protected function tearDown(): void
