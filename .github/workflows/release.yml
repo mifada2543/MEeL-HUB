@@ -1,0 +1,142 @@
+name: MEeL Release
+
+# ─── Trigger hanya dari tag versi ───
+# core-v*    → rilis UTAMA (HUB core)
+# arcade-v*  → rilis modul Arcade
+on:
+  push:
+    tags:
+      - "core-v*"
+      - "arcade-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag yang mau dirilis ulang (mis. core-v1.2.0-beta.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ─── Job 1: Tentukan track (core/arcade), versi, dan status pre-release ───
+  resolve:
+    name: Resolve release metadata
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      track: ${{ steps.meta.outputs.track }}
+      version: ${{ steps.meta.outputs.version }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - name: Resolve metadata from tag name
+        id: meta
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          if [[ "$TAG" == core-v* ]]; then
+            TRACK="core"
+            VERSION="${TAG#core-v}"
+          elif [[ "$TAG" == arcade-v* ]]; then
+            TRACK="arcade"
+            VERSION="${TAG#arcade-v}"
+          else
+            echo "❌ Tag '$TAG' tidak cocok pola core-v* atau arcade-v*"
+            exit 1
+          fi
+
+          PRERELEASE="false"
+          if [[ "$VERSION" == *-beta.* || "$VERSION" == *-rc.* || "$VERSION" == *-alpha.* ]]; then
+            PRERELEASE="true"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "track=$TRACK" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+          echo "▶️  Track: $TRACK | Versi: $VERSION | Pre-release: $PRERELEASE"
+
+  # ─── Job 2: Jalankan test suite penuh sebelum build paket rilis ───
+  test-gate:
+    name: Test gate sebelum release
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+          fetch-depth: 1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist
+
+      - name: Run full test suite (unit + integration)
+        run: vendor/bin/phpunit
+
+      - name: Run arcade-specific integration tests
+        if: needs.resolve.outputs.track == 'arcade'
+        run: vendor/bin/phpunit --filter Chess
+
+  # ─── Job 3: Build paket zip & publish GitHub Release ───
+  build-and-release:
+    name: Build & publish release
+    needs: [resolve, test-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+          fetch-depth: 1
+
+      - name: Prepare clean export (tanpa file dev/test)
+        run: |
+          mkdir -p /tmp/export
+          rsync -a --exclude-from='.github/release-exclude.txt' ./ /tmp/export/
+
+      - name: Build package — Arcade addon (arcade/ saja)
+        if: needs.resolve.outputs.track == 'arcade'
+        run: |
+          cd /tmp/export
+          zip -r "$GITHUB_WORKSPACE/MEeL-Arcade-v${{ needs.resolve.outputs.version }}.zip" arcade/
+
+      - name: Build package — Core only (tanpa folder arcade/)
+        if: needs.resolve.outputs.track == 'core'
+        run: |
+          rm -rf /tmp/export/arcade
+          cd /tmp/export
+          zip -r "$GITHUB_WORKSPACE/MEeL-HUB-core-v${{ needs.resolve.outputs.version }}.zip" .
+
+      - name: Build package — Full (core + arcade, default download)
+        run: |
+          # Rebuild export penuh (dengan arcade) khusus untuk paket "full"
+          rm -rf /tmp/export-full && mkdir -p /tmp/export-full
+          rsync -a --exclude-from='.github/release-exclude.txt' ./ /tmp/export-full/
+          cd /tmp/export-full
+          zip -r "$GITHUB_WORKSPACE/MEeL-HUB-full-v${{ needs.resolve.outputs.version }}.zip" .
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve.outputs.tag }}
+          name: >-
+            ${{ needs.resolve.outputs.track == 'core' && 'MEeL-HUB Core' || 'MEeL Arcade' }}
+            v${{ needs.resolve.outputs.version }}
+          prerelease: ${{ needs.resolve.outputs.prerelease == 'true' }}
+          generate_release_notes: true
+          files: |
+            MEeL-HUB-full-v*.zip
+            MEeL-HUB-core-v*.zip
+            MEeL-Arcade-v*.zip
