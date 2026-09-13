@@ -199,6 +199,10 @@ include __DIR__ . '/../partials/scripts.php';
                                 </a>
                             <?php endforeach; ?>
                         </div>
+                        <a href="stats" class="flex items-center justify-center gap-2 mt-3 p-2 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-all group text-center" title="Lihat seluruh statistik konten">
+                            <i data-lucide="bar-chart-2" class="w-3 h-3 text-gray-500 group-hover:text-blue-400 transition-colors"></i>
+                            <span class="text-[9px] font-bold text-gray-500 group-hover:text-blue-400 uppercase tracking-widest transition-colors">Lihat Semua Statistik</span>
+                        </a>
                     </div>
                 </div>
 
@@ -231,8 +235,8 @@ include __DIR__ . '/../partials/scripts.php';
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <?php
                 $cpu_color = $server_stats['cpu']['usage_perc'] > 80 ? 'red' : ($server_stats['cpu']['usage_perc'] > 50 ? 'yellow' : 'green');
-                $ram_color = $server_stats['ram']['usage_perc'] > 80 ? 'red' : ($server_stats['ram']['usage_perc'] > 50 ? 'yellow' : 'cyan');
-                $swap_color = $server_stats['swap']['usage_perc'] > 50 ? 'red' : 'gray';
+                $ram_color = $server_stats['ram']['usage_perc'] > 80 ? 'red' : ($server_stats['ram']['usage_perc'] > 50 ? 'yellow' : 'blue');
+                $swap_color = $server_stats['swap']['usage_perc'] > 50 ? 'red' : 'blue-dark';
                 $net_rx = $server_stats['network']['rx'];
                 $net_tx = $server_stats['network']['tx'];
                 $net_fmt = function ($bytes) {
@@ -283,20 +287,22 @@ include __DIR__ . '/../partials/scripts.php';
 
                 foreach ($stat_cards as $c):
                     $bar_color = match($c['color']) {
-                        'red'    => 'bg-red-500',
-                        'yellow' => 'bg-yellow-500',
-                        'green'  => 'bg-green-500',
-                        'cyan'   => 'bg-cyan-500',
-                        'blue'   => 'bg-blue-500',
-                        default  => 'bg-gray-500',
+                        'red'       => 'bg-red-500',
+                        'yellow'    => 'bg-yellow-500',
+                        'green'     => 'bg-green-500',
+                        'cyan'      => 'bg-cyan-500',
+                        'blue'      => 'bg-blue-500',
+                        'blue-dark' => 'bg-blue-800',
+                        default     => 'bg-gray-500',
                     };
                     $text_color = match($c['color']) {
-                        'red'    => 'text-red-400',
-                        'yellow' => 'text-yellow-400',
-                        'green'  => 'text-green-400',
-                        'cyan'   => 'text-cyan-400',
-                        'blue'   => 'text-blue-400',
-                        default  => 'text-gray-400',
+                        'red'       => 'text-red-400',
+                        'yellow'    => 'text-yellow-400',
+                        'green'     => 'text-green-400',
+                        'cyan'      => 'text-cyan-400',
+                        'blue'      => 'text-blue-400',
+                        'blue-dark' => 'text-blue-400',
+                        default     => 'text-gray-400',
                     };
                 ?>
                     <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4<?= $c['id'] === 'net' ? ' md:col-span-4' : '' ?>">
@@ -310,7 +316,7 @@ include __DIR__ . '/../partials/scripts.php';
                         <p id="stat-<?= $c['id'] ?>-value" class="text-xl font-black text-white mb-1"><?= $c['value'] ?></p>
                         <p id="stat-<?= $c['id'] ?>-sub" class="text-[10px] text-gray-500 font-medium mb-3"<?= $c['id'] === 'net' ? ' title="Total: ↓ ' . $net_fmt($net_rx) . ' / ↑ ' . $net_fmt($net_tx) . '"' : '' ?>><?= $c['sub'] ?></p>
                         <?php if ($c['bar'] > 0): ?>
-                            <div class="w-full bg-gray-800/80 h-1.5 rounded-full">
+                            <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div id="stat-<?= $c['id'] ?>-bar" class="<?= $bar_color ?> h-full rounded-full transition-all" style="width:<?= $c['bar'] ?>%"></div>
                             </div>
                         <?php endif; ?>
@@ -391,6 +397,33 @@ include __DIR__ . '/../partials/scripts.php';
                 <div>
                     <h4>Activity Log</h4>
                     <p>Audit trail dan view analytics</p>
+                </div>
+            </a>
+            <a href="mfa-reset" class="admin-shortcut-card border-cyan-500/20 hover:border-cyan-500/40" title="Reset MFA/2FA pengguna yang kehilangan akses">
+                <div class="admin-shortcut-icon" style="background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.25);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+                </div>
+                <div>
+                    <h4>MFA Reset</h4>
+                    <p>Reset autentikasi dua faktor user</p>
+                </div>
+            </a>
+            <a href="chat" class="admin-shortcut-card border-emerald-500/20 hover:border-emerald-500/40" title="Kirim pesan langsung ke pengguna">
+                <div class="admin-shortcut-icon" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </div>
+                <div>
+                    <h4>Chat Admin</h4>
+                    <p>Pesan langsung ke pengguna</p>
+                </div>
+            </a>
+            <a href="modules" class="admin-shortcut-card border-pink-500/20 hover:border-pink-500/40" title="Kelola modul opsional platform">
+                <div class="admin-shortcut-icon" style="background:rgba(236,72,153,0.12);border:1px solid rgba(236,72,153,0.25);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                </div>
+                <div>
+                    <h4>Modules</h4>
+                    <p>Toggle modul opsional platform</p>
                 </div>
             </a>
         </div>

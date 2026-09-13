@@ -285,10 +285,12 @@ if (isset($_POST['adjust_meelcoin_user'])) {
     if ($target_id > 0 && $amount > 0) {
         $current = MeelCoin::getBalance($conn, $target_id);
 
-        $role_stmt = $conn->prepare("SELECT role FROM users WHERE id = ?");
+        $role_stmt = $conn->prepare("SELECT role, username FROM users WHERE id = ?");
         $role_stmt->bind_param("i", $target_id);
         $role_stmt->execute();
-        $target_role = $role_stmt->get_result()->fetch_assoc()['role'] ?? 'user';
+        $target_row = $role_stmt->get_result()->fetch_assoc();
+        $target_role = $target_row['role'] ?? 'user';
+        $target_username = $target_row['username'] ?? 'unknown';
         $role_stmt->close();
 
         $coin_max = MeelCoin::getMax($conn, $target_role);
@@ -315,6 +317,10 @@ if (isset($_POST['adjust_meelcoin_user'])) {
         MeelCoin::clearCache();
 
         $admin_id   = (int)($_SESSION['user_id'] ?? 0);
+
+        $action_label = $action === 'add' ? 'tambah' : 'kurang';
+        log_activity($conn, $admin_id, $action_label . '-' . $actual . 'coin-' . $target_username, 'user', $target_id);
+
         $action_lbl = $action === 'add' ? 'ditambahkan' : 'dikurangi';
         $coin_msg   = 'Admin telah ' . $action_lbl . ' ' . $actual . ' MEeLCoin dari akun Anda.';
         if ($action === 'add' && $actual < $amount) {
