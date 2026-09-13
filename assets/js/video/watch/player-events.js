@@ -9,13 +9,21 @@ function setupMeelPlayerEvents() {
       wrapper.style.width = "auto";
       wrapper.style.marginLeft = "auto";
       wrapper.style.marginRight = "auto";
+    } else if (videoW / videoH < 16 / 9) {
+      wrapper.style.maxWidth = `calc(100% * 9 * ${videoW} / (16 * ${videoH}))`;
+      wrapper.style.maxHeight = "";
+      wrapper.style.width = "";
+      wrapper.style.marginLeft = "auto";
+      wrapper.style.marginRight = "auto";
     } else {
+      wrapper.style.maxWidth = "";
       wrapper.style.maxHeight = "";
       wrapper.style.width = "";
       wrapper.style.marginLeft = "";
       wrapper.style.marginRight = "";
     }
   }
+  window.applyMeelVideoAspect = applyMeelVideoAspect;
   function a() {
     const e = document.getElementById("main-video-wrapper"),
       t = videoElement;
@@ -25,7 +33,11 @@ function setupMeelPlayerEvents() {
       l = (e, t) => (0 === t ? e : l(t, e % t)),
       a = l(n, o);
     console.log(`[MEeL] Aspect ratio video: ${n / a}:${o / a} (${n}x${o})`);
-    if (!isMiniPlayerActive) applyMeelVideoAspect(e, n, o);
+    if (!isMiniPlayerActive) {
+      applyMeelVideoAspect(e, n, o);
+    } else {
+      e.style.aspectRatio = `${n} / ${o}`;
+    }
   }
   
   const AUTONEXT_COUNTDOWN = 5;
@@ -166,6 +178,16 @@ function setupMeelPlayerEvents() {
     const o = player
       ? player.fullscreen.active || !!document.fullscreenElement
       : !1;
+    if (o) {
+      var _fsw = document.getElementById("main-video-wrapper");
+      if (_fsw) {
+        delete _fsw._meelSavedRatio;
+        delete _fsw._meelSavedMaxHeight;
+        delete _fsw._meelSavedWidth;
+        delete _fsw._meelSavedMarginL;
+        delete _fsw._meelSavedMarginR;
+      }
+    }
     sessionStorage.setItem(MEEL_KEYS.AUTONAV, "1");
     try {
       const l = await fetch(t.href),
@@ -221,6 +243,10 @@ function setupMeelPlayerEvents() {
         (isHls = c),
         (vttSrc = p),
         isMiniPlayerActive && updateMiniPlayerInfo(videoTitle, videoUploader),
+        (function () {
+          var fsT = document.querySelector(".meel-fs-title-text");
+          if (fsT) { fsT.textContent = videoTitle || ""; fsT.title = videoTitle || ""; }
+        })(),
         updateSearchExcludeId(videoId),
         ["watch-details-wrapper", "recommendation-column"].forEach((e) => {
           const t = document.getElementById(e),
@@ -240,14 +266,64 @@ function setupMeelPlayerEvents() {
           }),
         (player.poster = d),
         c
-          ? (!hls && window.Hls && Hls.isSupported()
-              ? ((hls = new Hls(HLS_CONFIG)),
+          ? (window.Hls && Hls.isSupported()
+              ? (hls && (hls.destroy(), (hls = null)),
+                (hls = new Hls(HLS_CONFIG)),
                 registerHlsErrorListener(hls),
                 hls.attachMedia(player.media))
               : hls &&
                 hls.media !== player.media &&
                 (hls.detachMedia(), hls.attachMedia(player.media)),
             hls.loadSource(s),
+            (window._meelSkipManifestHandler &&
+              hls.off(Hls.Events.MANIFEST_PARSED, window._meelSkipManifestHandler),
+            (window._meelSkipManifestHandler = function () {
+              var bitrates = hls.levels.map(function (e) { return e.bitrate; });
+              var needsRebuild = !1;
+              if (bitrates.length > 1) {
+                plyrOptions.quality = {
+                  default: bitrates[0],
+                  options: bitrates,
+                  forced: !0,
+                  onChange: function (e) {
+                    var t = hls.levels.findIndex(function (t) { return t.bitrate === e; });
+                    hls.currentLevel = t;
+                  },
+                };
+                plyrOptions.i18n = Object.assign({}, plyrOptions.i18n, { qualityLabel: {} });
+                hls.levels.forEach(function (e) {
+                  var t = e.name
+                    ? e.name
+                    : e.height + "p (" + Math.round(e.bitrate / 1e3) + "kbps)";
+                  plyrOptions.i18n.qualityLabel[e.bitrate] = t;
+                });
+                needsRebuild = !0;
+              } else if (plyrOptions.quality) {
+                delete plyrOptions.quality;
+                needsRebuild = !0;
+              }
+              if (needsRebuild) {
+                if (player) {
+                  hls.detachMedia();
+                  player.destroy();
+                  player = null;
+                }
+                videoElement = document.getElementById("main-video");
+                if (videoElement && hls) {
+                  hls.attachMedia(videoElement);
+                }
+                player = new Plyr(videoElement, plyrOptions);
+                setupMeelPlayerEvents();
+                window.appendCustomSettings && setTimeout(window.appendCustomSettings, 0);
+                var playPromise = player.play();
+                if (void 0 !== playPromise) {
+                  playPromise.catch(function (e) {
+                    console.error("[MEeL] autoplay dicegah:", e);
+                  });
+                }
+              }
+            }),
+            hls.on(Hls.Events.MANIFEST_PARSED, window._meelSkipManifestHandler)),
             videoElement.addEventListener(
               "loadedmetadata",
               function () {
@@ -256,11 +332,17 @@ function setupMeelPlayerEvents() {
                   videoElement &&
                   videoElement.videoWidth &&
                   videoElement.videoHeight &&
-                  applyMeelVideoAspect(
+                  (applyMeelVideoAspect(
                     e,
                     videoElement.videoWidth,
                     videoElement.videoHeight,
-                  );
+                  ),
+                  (player.fullscreen.active || document.fullscreenElement) &&
+                    ((e._meelSavedRatio = videoElement.videoWidth + " / " + videoElement.videoHeight),
+                    (e._meelSavedMaxHeight = ""),
+                    (e._meelSavedWidth = ""),
+                    (e._meelSavedMarginL = ""),
+                    (e._meelSavedMarginR = "")));
               },
               { once: !0 },
             ))
@@ -275,11 +357,17 @@ function setupMeelPlayerEvents() {
                   videoElement &&
                   videoElement.videoWidth &&
                   videoElement.videoHeight &&
-                  applyMeelVideoAspect(
+                  (applyMeelVideoAspect(
                     e,
                     videoElement.videoWidth,
                     videoElement.videoHeight,
-                  );
+                  ),
+                  (player.fullscreen.active || document.fullscreenElement) &&
+                    ((e._meelSavedRatio = videoElement.videoWidth + " / " + videoElement.videoHeight),
+                    (e._meelSavedMaxHeight = ""),
+                    (e._meelSavedWidth = ""),
+                    (e._meelSavedMarginL = ""),
+                    (e._meelSavedMarginR = "")));
               },
               { once: !0 },
             )));
@@ -635,6 +723,24 @@ function setupMeelPlayerEvents() {
           player.on("ended", y),
           videoElement.paused || videoElement.ended || m());
       }
+      var fsTitle = document.querySelector(".meel-fs-title");
+      if (!fsTitle) {
+        fsTitle = document.createElement("div");
+        fsTitle.className = "meel-fs-title";
+        fsTitle.innerHTML = '<div class="meel-fs-title-text"></div>';
+        var fsTitleText = fsTitle.querySelector(".meel-fs-title-text");
+        var cfg = window.playerConfig || {};
+        fsTitleText.textContent = cfg.title || document.title.split("|")[0].trim() || "";
+        fsTitleText.title = fsTitleText.textContent;
+        var plyrContainer = player && player.elements && player.elements.container;
+        if (plyrContainer) plyrContainer.appendChild(fsTitle);
+      }
+      player.on("controlsshown", function () {
+        fsTitle && fsTitle.classList.add("visible");
+      });
+      player.on("controlshidden", function () {
+        fsTitle && fsTitle.classList.remove("visible");
+      });
     }),
     player.on("exitfullscreen", () => {
       screen.orientation?.unlock && screen.orientation.unlock();
@@ -687,6 +793,8 @@ function setupMeelPlayerEvents() {
             ((videoElement.style.position = ""),
             (videoElement.style.zIndex = "")));
       }
+      var fsTitleRemove = document.querySelector(".meel-fs-title");
+      if (fsTitleRemove) fsTitleRemove.remove();
       glowEnabled &&
         videoElement &&
         !videoElement.paused &&

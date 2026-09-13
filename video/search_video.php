@@ -10,22 +10,23 @@ if ($result['count'] > 0) {
     foreach ($result['results'] as $v) {
         if ($result['sidebar']) {
 ?>
-            <a href="<?= base_url('/video/watch?id=' . (int)$v['id']) ?>"
-                class="flex gap-3 group rekomendasi-item htmx-added">
-                <div class="w-28 h-[4.5rem] bg-black rounded-xl overflow-hidden flex-shrink-0 border border-white/[.05]">
+            <a href="<?= base_url('/video/watch?v=' . (int)$v['id']) ?>"
+                class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline htmx-added"
+                title="<?= htmlspecialchars($v['title']) ?>">
+                <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
                     <img src="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
-                        class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        class="rec-thumb-img w-full h-full object-cover transition-transform duration-300"
                         loading="lazy">
                 </div>
-                <div class="flex-1 min-w-0">
-                    <h5 class="text-[11px] font-bold text-gray-300 line-clamp-2 uppercase group-hover:text-red-400 transition leading-snug">
+                <div class="flex-1 min-w-0 flex flex-col justify-center">
+                    <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
                         <?= htmlspecialchars($v['title']) ?>
-                    </h5>
-                    <p class="text-[9px] text-gray-700 mt-1"><?= number_format($v['views'] ?? 0) ?> views</p>
+                    </div>
+                    <div class="text-[9px] text-gray-300 mt-1"><?= number_format($v['views'] ?? 0) ?> views</div>
                     <?php if (!empty($v['uploader_name'])): ?>
-                        <p class="text-[10px] font-bold text-red-600/70 uppercase tracking-widest mt-0.5 truncate">
+                        <div class="text-[9px] font-bold text-red-500/60 uppercase tracking-wider mt-0.5 truncate">
                             <?= htmlspecialchars($v['uploader_name']) ?>
-                        </p>
+                        </div>
                     <?php endif; ?>
                 </div>
             </a>
@@ -35,7 +36,19 @@ if ($result['count'] > 0) {
         }
     }
 
-    if (!$result['sidebar']) {
+    if ($result['sidebar'] && ($result['hasMore'] || empty($result['query']))) {
+        $nextOffset = $result['offset'] + $result['limit'];
+        ?>
+        <div class="py-3 text-center rec-sentinel"
+            hx-get="search?search=<?= urlencode($result['query']) ?>&exclude=<?= $result['exclude'] ?>&offset=<?= $nextOffset ?>"
+            hx-target="#recommendation-column"
+            hx-swap="beforeend"
+            hx-trigger="revealed"
+            hx-indicator="#search-indicator">
+            <div class="rec-spinner animate-spin h-3 w-3 border-2 border-red-500 border-t-transparent rounded-full mx-auto"></div>
+        </div>
+        <?php
+    } elseif (!$result['sidebar']) {
         $curPage    = (int)((int)$result['offset'] / max((int)$result['limit'], 1)) + 1;
         $totalPages = max(1, (int)$result['total_pages']);
 

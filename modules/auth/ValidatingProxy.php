@@ -16,6 +16,7 @@ final class ValidatingProxy
     private const START_TIMEOUT_SECONDS = 8;
 
     private ?int $port = null;
+    /** @var resource|null $process proc_open resource */
     private $process = null;
     
     private array $pipes = [];

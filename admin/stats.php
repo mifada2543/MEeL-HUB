@@ -33,6 +33,31 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     }
 }
 
+function meel_remove_media_dir(string $dir, int &$counter, array &$failed): void
+{
+    if (!is_dir($dir)) return;
+    $items = @scandir($dir);
+    if ($items === false) return;
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') continue;
+        $path = rtrim($dir, '/') . '/' . $item;
+        if (is_dir($path)) {
+            meel_remove_media_dir($path, $counter, $failed);
+        } elseif (is_file($path) || is_link($path)) {
+            if (@unlink($path)) {
+                $counter++;
+            } else {
+                $failed[] = $item;
+                error_log("[MEeL] Admin delete: gagal hapus file: {$path}");
+            }
+        }
+    }
+    $remaining = @scandir($dir);
+    if ($remaining !== false && count($remaining) <= 2 && !@rmdir($dir)) {
+        error_log("[MEeL] Admin delete: gagal hapus direktori kosong: {$dir}");
+    }
+}
+
 $delete_msg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
@@ -57,47 +82,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $files_deleted = 0;
                 $files_failed  = [];
                 if ($media_row) {
-                    $hdd_base = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE . '/' : "/path/to/your/media/";
                     if ($del_type === 'video') {
+                        $video_base  = meel_media_base_path('video');
                         $filename    = $media_row['filename'];
                         $folder_rel  = dirname($filename);
                         $folder_name = ($folder_rel !== '.' && $folder_rel !== '') ? basename($folder_rel) : '';
-                        $video_dir   = defined('MEEL_HDD_VIDEO_DIR') ? MEEL_HDD_VIDEO_DIR : $hdd_base . "video/upload/video/";
-                        $folder_abs  = $video_dir . $folder_name . "/";
+                        $folder_abs  = $video_base . '/video/' . $folder_name;
                         if ($folder_name !== '' && $folder_name !== '..' && is_dir($folder_abs)) {
-                            foreach (glob($folder_abs . "*") as $f) {
-                                if (@unlink($f)) $files_deleted++;
-                                else $files_failed[] = basename($f);
-                            }
-                            @rmdir($folder_abs);
+                            $meel_remove_media_dir($folder_abs, $files_deleted, $files_failed);
                         } elseif ($folder_name !== '' && $folder_name !== '..') {
                             $files_failed[] = "folder/" . $folder_name;
                         }
-                        $thumb_dir = defined('MEEL_HDD_THUMB_DIR') ? MEEL_HDD_THUMB_DIR : $hdd_base . "video/upload/thumbnail/";
                         if (
                             !empty($media_row['thumbnail'])
                             && $media_row['thumbnail'] !== 'default_thumb.jpg'
                             && $media_row['thumbnail'] !== 'default_thumb.webp'
                         ) {
-                            $thumb_abs = $thumb_dir . $media_row['thumbnail'];
+                            $thumb_abs = $video_base . '/thumbnail/' . $media_row['thumbnail'];
                             if (file_exists($thumb_abs)) {
                                 if (@unlink($thumb_abs)) $files_deleted++;
-                                else $files_failed[] = $media_row['thumbnail'];
+                                else {
+                                    $files_failed[] = $media_row['thumbnail'];
+                                    error_log("[MEeL] Admin delete: gagal hapus thumbnail video: {$thumb_abs}");
+                                }
                             }
                         }
                     } elseif ($del_type === 'music') {
-                        $music_upload    = defined('MEEL_HDD_MUSIC_UPLOAD') ? MEEL_HDD_MUSIC_UPLOAD : $hdd_base . "music/upload/";
-                        $music_file_abs  = $music_upload . "file/" . $media_row['filename'];
-                        $music_thumb_dir = $music_upload . "thumbnail/";
+                        $music_base     = meel_media_base_path('music');
+                        $music_file_abs = $music_base . '/file/' . $media_row['filename'];
                         if (file_exists($music_file_abs)) {
                             if (@unlink($music_file_abs)) $files_deleted++;
-                            else $files_failed[] = $media_row['filename'];
+                            else {
+                                $files_failed[] = $media_row['filename'];
+                                error_log("[MEeL] Admin delete: gagal hapus file music: {$music_file_abs}");
+                            }
                         }
                         if (!empty($media_row['thumbnail']) && $media_row['thumbnail'] !== 'music_default.png') {
-                            $thumb_abs = $music_thumb_dir . $media_row['thumbnail'];
+                            $thumb_abs = $music_base . '/thumbnail/' . $media_row['thumbnail'];
                             if (file_exists($thumb_abs)) {
                                 if (@unlink($thumb_abs)) $files_deleted++;
-                                else $files_failed[] = $media_row['thumbnail'];
+                                else {
+                                    $files_failed[] = $media_row['thumbnail'];
+                                    error_log("[MEeL] Admin delete: gagal hapus thumbnail music: {$thumb_abs}");
+                                }
                             }
                         }
                     }
@@ -364,7 +391,7 @@ while ($rc = $r->fetch_assoc()) {
                                 while ($row = $result_media->fetch_assoc()):
                                     $row_i++;
                                     $is_video   = ($row['media_type'] === 'video');
-                                    $watch_url  = $is_video ? base_url('/video/watch?id=' . (int)$row['id']) : base_url('/music/watch?id=' . (int)$row['id']);
+                                    $watch_url  = $is_video ? base_url('/video/watch?v=' . (int)$row['id']) : base_url('/music/watch?v=' . (int)$row['id']);
                                     $edit_url   = $is_video ? base_url('/admin/edit-video?id=' . (int)$row['id']) : base_url('/admin/edit-music?id=' . (int)$row['id']);
                                     $type_color = $is_video ? '#ef4444' : '#f97316';
                                     $type_bg    = $is_video ? 'rgba(239,68,68,.1)' : 'rgba(249,115,22,.1)';

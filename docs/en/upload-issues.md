@@ -4,7 +4,7 @@ Troubleshooting guide for yt-dlp downloads and background queue processing.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Download Queue System](#download-queue-system)
 - [Common Download Issues](#common-download-issues)

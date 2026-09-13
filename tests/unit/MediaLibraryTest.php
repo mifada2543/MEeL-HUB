@@ -7,7 +7,8 @@ use PHPUnit\Framework\TestCase;
  */
 class MediaLibraryTest extends TestCase
 {
-    private $mockConn;
+    /** @var \PHPUnit\Framework\MockObject\MockObject&\mysqli $mockConn */
+    private \mysqli $mockConn;
     private MediaLibrary $library;
 
     protected function setUp(): void

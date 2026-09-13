@@ -1,0 +1,21 @@
+.empty-state {
+    grid-column: 1 / -1;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.empty-state i {
+    width: 40px;
+    height: 40px;
+    color: #374151;
+    margin: 0 auto 16px;
+    display: block;
+}
+
+.empty-state p {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+}

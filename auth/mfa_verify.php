@@ -77,7 +77,7 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
                 $upd->execute();
                 $upd->close();
                 $stmt = $conn->prepare("INSERT INTO activity_log (user_id, action, media_type, ip_address) VALUES (?, 'mfa_verify', 'totp', ?)");
-                $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+                $ip = (function_exists('get_real_ip') ? get_real_ip() : ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'));
                 $stmt->bind_param("is", $temp_id, $ip);
                 $stmt->execute();
                 $stmt->close();
@@ -86,7 +86,7 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
             } else {
                 $error = 'Kode tidak valid. Periksa aplikasi Authenticator atau gunakan kode cadangan.';
                 $stmt = $conn->prepare("INSERT INTO activity_log (user_id, action, media_type, ip_address) VALUES (?, 'mfa_verify_failed', 'totp', ?)");
-                $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+                $ip = (function_exists('get_real_ip') ? get_real_ip() : ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'));
                 $stmt->bind_param("is", $temp_id, $ip);
                 $stmt->execute();
                 $stmt->close();

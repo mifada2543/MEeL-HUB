@@ -4,7 +4,7 @@ Dokumentasi penanganan masalah khusus untuk fitur **Advanced Upload (yt-dlp)** d
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [Gejala & Masalah Umum](#gejala--masalah-umum)
 - [Masalah 1: Antrean (Queue) Stuck / Server Sibuk](#masalah-1-antrean-queue-stuck--server-sibuk)
@@ -125,6 +125,16 @@ Terkadang file berhasil diunduh secara penuh, namun gagal saat dikonversi ke HLS
    ```
 
    Cek jumlah core CPU: `nproc`
+
+---
+
+## Tips Pencegahan
+
+1. **Update yt-dlp secara berkala:** `sudo yt-dlp -U`
+2. **Jaga cookies tetap segar:** Export ulang setiap bulan
+3. **Pantau ruang disk:** Siapkan peringatan di 80% penggunaan
+4. **Gunakan koneksi kabel:** WiFi bisa menyebabkan timeout untuk unduhan besar
+5. **Jangan antre terlalu banyak item:** Maksimal 2 unduhan simultan
 
 ---
 

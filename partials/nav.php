@@ -18,12 +18,9 @@ $_nav_in_subdir = $_nav_is_books || $_nav_is_video || $_nav_is_music || $_nav_is
 $_nav_pfp_base = $_nav_in_subdir ? '../profile/upload/' : 'profile/upload/';
 $_nav_root     = $_nav_in_subdir ? '../' : '';
 ?>
-<style>
-    html,
-    body {
-        overflow-x: hidden !important;
-    }
-</style>
+<link rel="stylesheet" href="<?= $_nav_root ?>assets/css/shared/nav.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/nav.css') ?>">
+<link rel="stylesheet" href="<?= $_nav_root ?>assets/css/shared/notification.css">
+<script src="<?= $_nav_root ?>assets/js/shared/notification.js?v=2"></script>
 
 
 <?php if ($_nav_is_video): ?>
@@ -55,8 +52,33 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
     </a>
 <?php endif; ?>
 <?php if (isset($_SESSION['username'])): ?>
+<?php $_nav_is_notif = str_contains($_SERVER['PHP_SELF'], '/profile/notification'); ?>
     
-    <div class="relative hidden sm:block" id="nav-dropdown-wrap">
+    <?php if (!$_nav_is_notif): ?>
+    <div class="relative hidden sm:flex sm:items-center" id="nav-dropdown-wrap">
+        <div class="notif-bell-wrap relative" style="margin-right:4px;">
+            <button id="notif-bell-btn" onclick="toggleNotifDropdown()"
+                class="flex items-center justify-center w-9 h-9 rounded-xl transition-all"
+                style="color:var(--meel-text-secondary)"
+                onmouseover="this.style.background='var(--meel-surface-hover)'"
+                onmouseout="this.style.background='transparent'"
+                title="Notifikasi">
+                <i data-lucide="bell" class="w-4 h-4"></i>
+                <span id="notif-badge" class="notif-badge hidden">0</span>
+            </button>
+            <div id="notif-dropdown" class="notif-dropdown">
+                <div class="notif-dropdown-header">
+                    <span>Notifikasi</span>
+                    <button onclick="markAllNotifRead()" title="Tandai semua sudah dibaca">Tandai semua dibaca</button>
+                </div>
+                <div id="notif-list" class="notif-list">
+                    <div class="notif-empty">Memuat...</div>
+                </div>
+                <div class="notif-footer">
+                    <a href="<?= $_nav_root ?>profile/notification">Lihat Semua Notifikasi</a>
+                </div>
+            </div>
+        </div>
         <button id="nav-avatar-btn"
             onclick="toggleNavDropdown()"
             class="flex items-center gap-2 p-1 rounded-xl transition-all group"
@@ -202,13 +224,16 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
-            <button id="nav-hamburger"
+    <?php if (!$_nav_is_notif): ?>
+    <button id="nav-hamburger"
         onclick="toggleNavDrawer()"
         class="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/[.04] border border-white/[.06] text-gray-500 hover:text-white transition-all"
         title="Buka menu navigasi">
         <i data-lucide="menu" class="w-6 h-6"></i>
     </button>
+    <?php endif; ?>
 
     
     <div id="nav-drawer-overlay"
@@ -266,6 +291,12 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
 
         
         <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+            <a href="<?= $_nav_root ?>profile/notification"
+                title="Notifikasi"
+                class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
+                <i data-lucide="bell" class="w-5 h-5 flex-shrink-0"></i>
+                <span>Notifikasi</span>
+            </a>
             <a href="<?= $_nav_root ?>profile/<?= urlencode($_SESSION['username']) ?>"
                 title="Pengaturan profil dan tema"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
@@ -468,139 +499,6 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
     </div>
 <?php endif; ?>
 <?php $scripts_root = $_nav_root; include __DIR__ . '/scripts.php'; ?>
-<script>
-    function toggleNavDropdown() {
-        const dd = document.getElementById('nav-dropdown');
-        const ch = document.getElementById('nav-chevron');
-        if (!dd) return;
-        dd.classList.toggle('hidden');
-        if (ch) ch.style.transform = dd.classList.contains('hidden') ? '' : 'rotate(180deg)';
-    }
-    document.addEventListener('click', function(e) {
-        const wrap = document.getElementById('nav-dropdown-wrap');
-        if (wrap && !wrap.contains(e.target)) {
-            const dd = document.getElementById('nav-dropdown');
-            const ch = document.getElementById('nav-chevron');
-            if (dd) dd.classList.add('hidden');
-            if (ch) ch.style.transform = '';
-        }
-    });
-
-    function toggleNavDrawer() {
-        const drawer = document.getElementById('nav-drawer');
-        const overlay = document.getElementById('nav-drawer-overlay');
-        const mainContent = document.getElementById('app-content-grid') || document.querySelector('main');
-
-        if (!drawer) return;
-        const open = drawer.classList.contains('open');
-        if (open) {
-            drawer.style.transform = '';
-            overlay.classList.add('hidden');
-            drawer.classList.remove('open');
-
-            document.body.style.overflow = '';
-            document.documentElement.style.overflow = '';
-            document.body.classList.remove('nav-drawer-open');
-
-            if (mainContent) {
-                mainContent.classList.remove('blur-md');
-                mainContent.removeEventListener('click', closeDrawerOnMainClick);
-            }
-
-            setTimeout(() => {
-                if (!drawer.classList.contains('open')) {
-                    drawer.classList.add('hidden');
-                    drawer.classList.remove('flex');
-                }
-            }, 300);
-
-        } else {
-            drawer.classList.remove('hidden');
-            drawer.classList.add('flex');
-
-            setTimeout(() => {
-                drawer.style.transform = 'translateX(0)';
-                drawer.classList.add('open');
-            }, 10);
-
-            overlay.classList.remove('hidden');
-
-            document.body.style.overflow = 'hidden';
-            document.documentElement.style.overflow = 'hidden';
-            document.body.classList.add('nav-drawer-open');
-
-            if (mainContent) {
-                mainContent.classList.add('blur-md', 'transition-all', 'duration-300');
-                mainContent.addEventListener('click', closeDrawerOnMainClick);
-            }
-        }
-    }
-
-    function closeDrawerOnMainClick(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleNavDrawer();
-    }
-
-    function toggleNavDrawerGuest() {
-        const drawer = document.getElementById('nav-drawer-guest');
-        const overlay = document.getElementById('nav-drawer-guest-overlay');
-        const mainContent = document.getElementById('app-content-grid') || document.querySelector('main');
-
-        if (!drawer) return;
-        const open = drawer.classList.contains('open');
-        if (open) {
-            drawer.style.transform = '';
-            overlay.classList.add('hidden');
-            drawer.classList.remove('open');
-
-            document.body.style.overflow = '';
-            document.documentElement.style.overflow = '';
-
-            if (mainContent) {
-                mainContent.classList.remove('blur-md');
-                mainContent.removeEventListener('click', closeGuestDrawerOnMainClick);
-            }
-
-            setTimeout(() => {
-                if (!drawer.classList.contains('open')) {
-                    drawer.classList.add('hidden');
-                    drawer.classList.remove('flex');
-                }
-            }, 300);
-        } else {
-            drawer.classList.remove('hidden');
-            drawer.classList.add('flex');
-
-            setTimeout(() => {
-                drawer.style.transform = 'translateX(0)';
-                drawer.classList.add('open');
-            }, 10);
-
-            overlay.classList.remove('hidden');
-
-            document.body.style.overflow = 'hidden';
-            document.documentElement.style.overflow = 'hidden';
-
-            if (mainContent) {
-                mainContent.classList.add('blur-md', 'transition-all', 'duration-300');
-                mainContent.addEventListener('click', closeGuestDrawerOnMainClick);
-            }
-        }
-    }
-
-    function closeGuestDrawerOnMainClick(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleNavDrawerGuest();
-    }
-
-    (function(){
-        if (typeof MEELTheme !== 'undefined') {
-            MEELTheme.init({
-                isLoggedIn: <?= json_encode(isset($_SESSION['username'])) ?>,
-                csrfToken: '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>'
-            });
-        }
-    })();
-</script>
+<link rel="stylesheet" href="<?= $_nav_root ?>assets/css/shared/nav.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/nav.css') ?>">
+<div id="nav-data" data-logged-in="<?= isset($_SESSION['username']) ? '1' : '0' ?>" data-csrf-token="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>" style="display:none;"></div>
+<script src="<?= $_nav_root ?>assets/js/shared/nav.js?v=<?= filemtime(__DIR__ . '/../assets/js/shared/nav.js') ?>"></script>

@@ -2,9 +2,9 @@
 
 class MediaLibrary
 {
-    private $conn;
+    private \mysqli $conn;
 
-    public function __construct($db_connection)
+    public function __construct(\mysqli $db_connection)
     {
         $this->conn = $db_connection;
     }
@@ -53,7 +53,7 @@ class MediaLibrary
 
     
 
-    protected function paginateResult($result, int $total, int $page, int $perPage): array
+    protected function paginateResult(\mysqli_result|null $result, int $total, int $page, int $perPage): array
     {
         $totalPages = max(1, (int)ceil($total / max($perPage, 1)));
         $page = max(1, min($page, $totalPages));
@@ -99,21 +99,65 @@ class MediaLibrary
 
         if (empty($q)) {
             if ($sidebar) {
-                $max_id_res = $this->conn->query("SELECT MAX(id) AS max_id FROM video");
-                $max_id = (int)$max_id_res?->fetch_assoc()['max_id'] ?? 0;
+                $sidebar_limit = 15;
+                $count_res = $this->conn->query("SELECT COUNT(*) AS total FROM video");
+                $total = (int)($count_res ? $count_res->fetch_assoc()['total'] : 0);
 
-                if ($max_id > 15) {
-                    $random_offset = rand(0, max(0, $max_id - 15));
+                $seen_ids = $_SESSION['seen_video_ids'] ?? [];
+                $exclude_ids = array_merge([$exclude], $seen_ids);
+
+                if ($total < 1000) {
+                    $id_result = $this->conn->query("SELECT id FROM video WHERE id != {$exclude}");
+                    $all_ids = [];
+                    if ($id_result) {
+                        while ($row = $id_result->fetch_assoc()) {
+                            $all_ids[] = (int)$row['id'];
+                        }
+                    }
+                    $available = array_values(array_diff($all_ids, $exclude_ids));
+                    if (empty($available)) {
+                        $_SESSION['seen_video_ids'] = [];
+                        $available = array_values(array_diff($all_ids, [$exclude]));
+                    }
+                    shuffle($available);
+                    $picked_ids = array_slice($available, 0, $sidebar_limit);
                 } else {
-                    $random_offset = 0;
+                    $extra = min($sidebar_limit * 2, 40);
+                    $sql = "SELECT id FROM video WHERE id != ? ORDER BY RAND() LIMIT ?";
+                    $stmt_ids = $this->conn->prepare($sql);
+                    $stmt_ids->bind_param("ii", $exclude, $extra);
+                    $stmt_ids->execute();
+                    $id_result = $stmt_ids->get_result();
+                    $candidate_ids = [];
+                    if ($id_result) {
+                        while ($row = $id_result->fetch_assoc()) {
+                            $candidate_ids[] = (int)$row['id'];
+                        }
+                    }
+                    $available = array_values(array_diff($candidate_ids, $exclude_ids));
+                    if (empty($available)) {
+                        $_SESSION['seen_video_ids'] = [];
+                        $available = array_values(array_diff($candidate_ids, [$exclude]));
+                    }
+                    shuffle($available);
+                    $picked_ids = array_slice($available, 0, $sidebar_limit);
                 }
 
-                $stmt = $this->conn->prepare(
-                    "SELECT v.*, u.username AS uploader_name FROM video v
-                     JOIN users u ON v.user_id = u.id
-                     WHERE v.id != ? AND v.id > ? ORDER BY v.id ASC LIMIT 15"
-                );
-                $stmt->bind_param("ii", $exclude, $random_offset);
+                if (empty($picked_ids)) {
+                    $stmt = $this->conn->prepare(
+                        "SELECT v.*, u.username AS uploader_name FROM video v
+                         JOIN users u ON v.user_id = u.id WHERE 1 = 0"
+                    );
+                } else {
+                    $placeholders = implode(',', array_fill(0, count($picked_ids), '?'));
+                    $types = str_repeat('i', count($picked_ids));
+                    $sql = "SELECT v.*, u.username AS uploader_name FROM video v
+                            JOIN users u ON v.user_id = u.id
+                            WHERE v.id IN ({$placeholders}) ORDER BY FIELD(v.id, {$placeholders})";
+                    $all_params = array_merge($picked_ids, $picked_ids);
+                    $stmt = $this->conn->prepare($sql);
+                    $stmt->bind_param($types . $types, ...$all_params);
+                }
             } else {
                 
                 $stmt = $this->conn->prepare(
@@ -277,21 +321,65 @@ class MediaLibrary
 
         if (empty($q)) {
             if ($sidebar) {
-                $max_id_res = $this->conn->query("SELECT MAX(id) AS max_id FROM music");
-                $max_id = (int)$max_id_res?->fetch_assoc()['max_id'] ?? 0;
+                $sidebar_limit = 15;
+                $count_res = $this->conn->query("SELECT COUNT(*) AS total FROM music");
+                $total = (int)($count_res ? $count_res->fetch_assoc()['total'] : 0);
 
-                if ($max_id > 15) {
-                    $random_offset = rand(0, max(0, $max_id - 15));
+                $seen_ids = $_SESSION['seen_music_ids'] ?? [];
+                $exclude_ids = array_merge([$exclude], $seen_ids);
+
+                if ($total < 1000) {
+                    $id_result = $this->conn->query("SELECT id FROM music WHERE id != {$exclude}");
+                    $all_ids = [];
+                    if ($id_result) {
+                        while ($row = $id_result->fetch_assoc()) {
+                            $all_ids[] = (int)$row['id'];
+                        }
+                    }
+                    $available = array_values(array_diff($all_ids, $exclude_ids));
+                    if (empty($available)) {
+                        $_SESSION['seen_music_ids'] = [];
+                        $available = array_values(array_diff($all_ids, [$exclude]));
+                    }
+                    shuffle($available);
+                    $picked_ids = array_slice($available, 0, $sidebar_limit);
                 } else {
-                    $random_offset = 0;
+                    $extra = min($sidebar_limit * 2, 40);
+                    $sql = "SELECT id FROM music WHERE id != ? ORDER BY RAND() LIMIT ?";
+                    $stmt_ids = $this->conn->prepare($sql);
+                    $stmt_ids->bind_param("ii", $exclude, $extra);
+                    $stmt_ids->execute();
+                    $id_result = $stmt_ids->get_result();
+                    $candidate_ids = [];
+                    if ($id_result) {
+                        while ($row = $id_result->fetch_assoc()) {
+                            $candidate_ids[] = (int)$row['id'];
+                        }
+                    }
+                    $available = array_values(array_diff($candidate_ids, $exclude_ids));
+                    if (empty($available)) {
+                        $_SESSION['seen_music_ids'] = [];
+                        $available = array_values(array_diff($candidate_ids, [$exclude]));
+                    }
+                    shuffle($available);
+                    $picked_ids = array_slice($available, 0, $sidebar_limit);
                 }
 
-                $stmt = $this->conn->prepare(
-                    "SELECT m.*, u.username AS uploader FROM music m
-                     JOIN users u ON m.user_id = u.id
-                     WHERE m.id != ? AND m.id > ? ORDER BY m.id ASC LIMIT 15"
-                );
-                $stmt->bind_param("ii", $exclude, $random_offset);
+                if (empty($picked_ids)) {
+                    $stmt = $this->conn->prepare(
+                        "SELECT m.*, u.username AS uploader FROM music m
+                         JOIN users u ON m.user_id = u.id WHERE 1 = 0"
+                    );
+                } else {
+                    $placeholders = implode(',', array_fill(0, count($picked_ids), '?'));
+                    $types = str_repeat('i', count($picked_ids));
+                    $sql = "SELECT m.*, u.username AS uploader FROM music m
+                            JOIN users u ON m.user_id = u.id
+                            WHERE m.id IN ({$placeholders}) ORDER BY FIELD(m.id, {$placeholders})";
+                    $all_params = array_merge($picked_ids, $picked_ids);
+                    $stmt = $this->conn->prepare($sql);
+                    $stmt->bind_param($types . $types, ...$all_params);
+                }
             } else {
 
                 $stmt = $this->conn->prepare(
@@ -378,9 +466,9 @@ class MediaLibrary
 
 class BookRepository
 {
-    private $conn;
+    private \mysqli $conn;
 
-    public function __construct($db_connection)
+    public function __construct(\mysqli $db_connection)
     {
         $this->conn = $db_connection;
     }
@@ -507,10 +595,10 @@ class BookRepository
 
 class BookUploader
 {
-    private $conn;
-    private $base_path;
+    private \mysqli $conn;
+    private string $base_path;
 
-    public function __construct($db_connection, string $base_path)
+    public function __construct(\mysqli $db_connection, string $base_path)
     {
         $this->conn = $db_connection;
         $this->base_path = rtrim($base_path, '/');

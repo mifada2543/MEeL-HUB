@@ -23,7 +23,7 @@ if (!$is_loopback && ($ip_locked || (isset($_SESSION['login_locked_until']) && t
     $is_locked = true;
     $remaining = max($ip_remaining, ($_SESSION['login_locked_until'] ?? 0) - time());
 }
-function record_failed_attempt($conn, $ip_address, $max_login_attempts, $lockout_time)
+function record_failed_attempt(\mysqli $conn, string $ip_address, int $max_login_attempts, int $lockout_time): void
 {
     if (auth_is_loopback()) {
         return;

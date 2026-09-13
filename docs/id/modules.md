@@ -1,10 +1,10 @@
 # 🏗️ Modul & Arsitektur
 
-Dokumentasi mendalam tentang arsitektur modul, class diagram, dan business logic layer MEeL-HUB.
+Dokumentasi detail tentang arsitektur modul, class diagram, dan business logic layer MEeL-HUB.
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [Arsitektur Aplikasi](#arsitektur-aplikasi)
 - [Core Modules (`modules/`)](#core-modules-modules)
@@ -59,7 +59,7 @@ modules/
 │   ├── Transcoder.php      # Facade download yt-dlp & transcoding → delegasi ke modules/transcoder/
 │   ├── TranscoderBase.php  # Base class: konstanta bersama, manajemen proses/PID, resolusi path
 │   ├── helpers.php         # Shim backward-compat → require helpers/main.php + auth/loader.php
-│   ├── helpers/            # Utilitas per domain: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php
+│   ├── helpers/            # Utilitas per domain: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php, settings.php
 │   ├── Router.php          # MeelRouter — tabel rute front controller (routeFor/url/dispatch)
 │   ├── bootstrap.php       # Environment detection & error reporting
 │   ├── base_url.php        # Perhitungan base URL terpusat (meel_base_url_path)
@@ -80,10 +80,12 @@ modules/
 │   ├── MediaViewer.php     # View tracking, komentar, rekomendasi
 │   ├── MediaInteraction.php# Like/dislike, hapus komentar
 │   ├── SearchEngine.php    # FULLTEXT search dengan sanitizer + filtering
+│   ├── ArchiveGuard.php    # Ekstraksi aman ZIP/CBZ — limit anti zip-bomb
 │   ├── PlaylistRepository.php # Query playlist & route slug playlist
 │   ├── MediaAdminRepository.php # Query metadata media untuk panel admin (edit video/music)
 │   ├── ProfileRepository.php # Query data profil (count video, music)
-│   └── AdminActivityRepository.php # Query & filter activity log untuk admin viewer
+│   ├── AdminActivityRepository.php # Query & filter activity log untuk admin viewer
+│   └── AdminUploadQueueRepository.php # Query upload queue, stats & filter untuk admin viewer
 ├── exceptions/             # Class exception
 │   ├── ProcessException.php
 │   ├── DownloadException.php
@@ -93,7 +95,7 @@ modules/
 │   ├── DownloadService.php # processDownload() — unduh URL (yt-dlp) + finalisasi video HLS
 │   ├── TranscodeService.php# transcodeVideo() + ownsTranscodeFile() — transcode audio/video
 │   └── FfmpegUtils.php     # Trait: probeDuration(), generateSpriteAndVTT(), helper filesystem
-└── autoload.php            # PSR-4-like autoloader
+└── autoload.php            # Class-map autoloader
 
 # ── Di ROOT PROJECT (bukan di modules/) ────────────────────────────────
 sw.js.php                   # Generator service worker — disajikan sebagai /sw.js via rewrite .htaccess
@@ -250,11 +252,11 @@ Fungsi-fungsi dibungkus `function_exists()` guard dan tersebar di subfolder per 
 
 ### 9. `modules/core/CommentRenderer.php`
 
-**Fungsi:** `render_comments()` — render komentar nested dengan 2 tema (video/music); `comment_preview()` — preview komentar terbaru untuk header kolom komentar.
+`render_comments()` — render komentar nested dengan 2 tema (video/music); `comment_preview()` — preview komentar terbaru untuk header kolom komentar.
 
 ### 10. `modules/core/GarbageCollector.php`
 
-**Class:** `GarbageCollector` (static methods) — auto-cleanup:
+`GarbageCollector` (static methods) — auto-cleanup:
 - Temp files di RAM disk (`/dev/shm/meel/*`) dan project `temp/`
 - Guest accounts (>2 jam) dengan throttle (1x/jam)
 - Room catur multiplayer terbengkalai via `cleanChessRooms()` (throttle 1x/jam):
@@ -263,9 +265,7 @@ Fungsi-fungsi dibungkus `function_exists()` guard dan tersebar di subfolder per 
   - **Game yang sudah selesai TIDAK pernah dihapus** — riwayatnya dipertahankan
 - Expired rate limit cache via `RateLimiter::cleanup()`
 - Timeboxed execution (max 3 detik)
-- Static helper `removeFile()`/`removeDirectory()` dengan guard `is_writable()`
-  proaktif — subtree milik user lain (mis. `temp/cache/` milik proses lain)
-  dilewati dengan error log, bukan warning PHP
+- `removeFile()`/`removeDirectory()` helper dengan guard `is_writable()` proaktif — subtree milik user lain dilewati dengan error log, bukan warning PHP
 
 ### 11. `modules/auth/RateLimiter.php`
 
@@ -277,7 +277,10 @@ File-based rate limiter dengan `flock()` safety. Role-based (admin = unlimited, 
 | `comment` | 10/menit | Flash message redirect |
 | `upload` | 3/jam | — |
 | `transcode` | 5/jam | — |
+| `auto_metadata` | 5/jam | CPU-intensive (ffprobe + ffmpeg) |
 | `api` | 60/menit | Generic fallback |
+
+**Fail-closed behavior:** Ketika direktori penyimpanan (`temp/ratelimit/`) tidak writable atau `flock()` gagal, rate limiter **menolak semua request** (fail-closed) daripada diam-diam membiarkannya lewat. Kegagalan dicatat via `error_log()`.
 
 ### 12. `modules/exceptions/`
 
@@ -306,13 +309,9 @@ trait FfmpegUtils {
 }
 ```
 
-> Catatan: `cleanupDir()` (alias `removeDir()`) telah dihapus — tidak ada pemanggilnya
-> di seluruh project; gunakan `removeDir()` langsung.
+> Catatan: `cleanupDir()` (alias `removeDir()`) telah dihapus — tidak ada pemanggilnya di seluruh project; gunakan `removeDir()` langsung.
 
-Helper `moveFile()` membandingkan device ID `stat()` sebelum mencoba
-`rename()`: pemindahan dari RAM disk (`/dev/shm`) ke USB HDD adalah kasus
-lintas-device yang *normal*, sehingga kegagalan `EXDEV` yang diduga dilewati
-sama sekali dan fallback copy+unlink berjalan tanpa warning menyesatkan.
+Helper `moveFile()` membandingkan device ID `stat()` sebelum mencoba `rename()`: pemindahan dari RAM disk (`/dev/shm`) ke USB HDD adalah kasus lintas-device yang normal, sehingga kegagalan `EXDEV` yang diduga dilewati sama sekali dan fallback copy+unlink berjalan tanpa warning menyesatkan.
 
 ### 14. `modules/core/japanese.php`
 
@@ -381,11 +380,11 @@ class SearchEngine {
   sehingga sintaks FULLTEXT selalu valid (tidak ada `mysqli_sql_exception` pada input malformed).
 - `parseParams()` membaca `$_GET['search']` + `$_GET['offset']`; offset ikut
   dalam **cache key**, sehingga pagination tidak pernah menyajikan halaman basi.
-- `MIN_SEARCH_QUERY = 3` — query lebih pendek diabaikan (efisiensi index).
+- `MIN_SEARCH_QUERY = 3` — query lebih pendek diabaikan (efisiensi index)
 
 ### 17. `modules/autoload.php`
 
-PSR-4-like via `spl_autoload_register()`. Auto-load class dari `modules/core/`, `modules/media/`, `drive/`, dll.
+Class-map via `spl_autoload_register()`. Auto-load 19 class dari `modules/core/`, `modules/media/`, `modules/transcoder/`, `modules/auth/`, `drive/`, dll.
 
 ### 18. WatchController (`controllers/api/WatchController.php`)
 
@@ -410,6 +409,9 @@ class MusicWatchController { public function getViewData(): array; public functi
 | **v10** | Index komposit `(video_id, created_at)` & `(music_id, created_at)` pada `comments` |
 | **v11** | Unique key `interactions` dipecah: `(user_id, video_id)` & `(user_id, music_id)` — NULL di unique key gabungan tidak mencegah like duplikat |
 | **v12** | Ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code` |
+| **v13** | Sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log` |
+| **v14** | Index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery |
+| **v15** | Tabel `user_notifications` — sistem notifikasi untuk like, reply, MEeLCoin, chat admin |
 
 > 💡 **Modul Rhythm (MEeL!Mania) TIDAK memakai migration system utama.** Tabel
 > `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
@@ -463,16 +465,16 @@ Klik "Multiplayer LAN" → konfirmasi SweetAlert
 ```
 
 **Deteksi disconnect lawan:**
-- `get_move.php` mengembalikan `opponent_online` berdasarkan `users.last_activity` (diperbarui di setiap request oleh `activity_logger`).
-- Ambang offline: `CHESS_OPPONENT_OFFLINE_SECONDS` (default 90 detik) — di atas throttle timer tab background browser.
-- Aksi `disconnect_win` di `game_action.php`: klaim kemenangan, **server memverifikasi ulang** lawan benar-benar offline sebelum mencatat event terminal `disconnect`.
-- Aksi `game_over` di `game_action.php`: client mencatat checkmate/stalemate (hanya bisa dideteksi di sisi client) agar GC mempertahankan game yang sudah selesai.
+- `get_move.php` mengembalikan `opponent_online` berdasarkan `users.last_activity` (diperbarui di setiap request oleh `activity_logger`)
+- Ambang offline: `CHESS_OPPONENT_OFFLINE_SECONDS` (default 90 detik) — di atas throttle timer tab background browser
+- Aksi `disconnect_win` di `game_action.php`: klaim kemenangan, **server memverifikasi ulang** lawan benar-benar offline sebelum mencatat event terminal `disconnect`
+- Aksi `game_over` di `game_action.php`: client mencatat checkmate/stalemate (hanya bisa dideteksi di sisi client) agar GC mempertahankan game yang sudah selesai
 
 **Security guards (semua controller):**
-- Wajib login — respons JSON `401` + `login_required: true` (JS `arcade/chess/assets/js/api.js` redirect ke login).
-- Semua aksi POST wajib `csrf_token` valid (403 jika tidak).
-- Token CSRF tidak pernah disimpan ke `moves.move_data`.
-- `admin/catur.php?auto_cleanup=1` juga wajib `csrf_token` (dikirim JS via `window.MEEL_ADMIN_CSRF`).
+- Wajib login — respons JSON `401` + `login_required: true` (JS `arcade/chess/assets/js/api.js` redirect ke login)
+- Semua aksi POST wajib `csrf_token` valid (403 jika tidak)
+- Token CSRF tidak pernah disimpan ke `moves.move_data`
+- `admin/catur.php?auto_cleanup=1` juga wajib `csrf_token` (dikirim JS via `window.MEEL_ADMIN_CSRF`)
 
 ### 21a. Arcade Collection (`arcade/`)
 
@@ -507,11 +509,35 @@ murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm (PHP + DB sendiri):
 
 > ⚠️ **Instalasi:** import tabel rhythm sekali:
 > `mysql MEeL < arcade/rhythm/migration.sql` — bukan bagian dari
-> `database/schema.sql` (20 tabel) maupun `database/migrate.php` (v1–v12).
+> `database/schema.sql` (23 tabel) maupun `database/migrate.php` (v1–v15).
 
 ### Admin Activity Log Viewer
 
-`admin/activity_log.php` — filter, pagination (50/halaman), stats cards, color-coded badges, manual cleanup.
+`admin/activity_log.php` — viewer audit trail dengan 3 tab:
+
+**Tab Activity** (tema biru-600):
+- Filter berdasarkan tipe aksi, username/IP, rentang waktu
+- Pagination (50/halaman)
+- Stats cards (aktivitas 7 hari, user unik, total entri)
+- Badge aksi berwarna (login=biru, upload=hijau, ban=merah)
+- Cleanup manual log (>7, 14, 30, 90, 365 hari) dengan CSRF
+
+**Tab Admin Actions** (tema ungu-600):
+- Filter berdasarkan username admin, tipe aksi, rentang waktu
+- Stats cards (aksi admin 7 hari, admin unik, total entri)
+- Badge berwarna (coin=kuning, reset=merah, login=biru, lainnya=abu-abu)
+- Maintenance: hapus yang lebih lama dari 7–365 hari
+
+**Tab Upload Queue** (tema hijau-600):
+- Filter berdasarkan status (pending/processing/transcoding/completed/failed), uploader, rentang waktu
+- Stats cards (total upload, selesai, gagal, aktif)
+- Badge status berwarna
+- Export CSV/JSON/XLS dengan preview modal
+- Maintenance: hapus yang selesai/gagal lebih lama dari 7–365 hari
+
+> **Catatan:** User admin dikecualikan dari dropdown MEeLCoin manual adjustment
+> (`WHERE role NOT IN ('guest', 'admin')`) — saldo admin dikelola melalui auto-refill
+> dan biaya upload saja.
 
 ### 22. PWA Service Worker (`sw.js.php` + `modules/core/SwPrecache.php`)
 
@@ -524,8 +550,7 @@ Service worker **dibangkitkan dinamis oleh PHP** — panduan lengkap di
 | `sw.js.php` | Skrip SW lengkap, `Content-Type: application/javascript`, output deterministik |
 | `.htaccess` | `RewriteRule ^sw\.js$ sw.js.php [L]` — URL `/sw.js` dipertahankan |
 
-Menambah folder modul baru (`assets/css/<folder>/manifest.php`) otomatis
-menambahkan CSS-nya ke precache — **tanpa perubahan SW manual**.
+Menambah folder modul baru (`assets/css/<folder>/manifest.php`) otomatis menambahkan CSS-nya ke precache — **tanpa perubahan SW manual**.
 
 ### 23. Theme System (`assets/css/shared/theme-tokens.css` + `light-theme.css` + `assets/js/shared/theme.js`)
 
@@ -594,6 +619,31 @@ Halaman profil pengguna dengan visibilitas berbasis role, theme toggle, dan grid
 **Akses profil guest:** Guest bisa melihat profil pengguna lain (termasuk profil Guest sintetis mereka sendiri). Profil Guest dibangun di-memory (tanpa query DB) dengan `id=0`, `role='guest'`.
 
 **Inisialisasi session:** Menggunakan `meel_boot_session()` (bukan `session_start()` mentah) untuk memastikan nama cookie session cocok dengan seluruh aplikasi (`meel`).
+
+### 25. Notification Module (`modules/core/Notification.php` + `controllers/api/notification.php`)
+
+Sistem notifikasi berbasis database dengan user scoping dan actor tracking.
+
+**Database:** tabel `user_notifications` (migration v15)
+
+```php
+class Notification {
+    public static function create(mysqli $conn, int $userId, string $type, string $title, string $message, ?int $relatedId = null, ?string $relatedSlug = null, ?int $actorUserId = null): void;
+    public static function getUnreadCount(mysqli $conn, int $userId): int;
+    public static function getList(mysqli $conn, int $userId, int $limit = 20): array;
+    public static function markRead(mysqli $conn, int $notifId, int $userId): void;
+    public static function markAllRead(mysqli $conn, int $userId): void;
+    public static function deleteOne(mysqli $conn, int $notifId, int $userId): bool;
+    public static function deleteAllByUser(mysqli $conn, int $userId): bool;
+    public static function deleteByChat(mysqli $conn, int $userId, string $message, int $actorUserId): bool;
+}
+```
+
+**Tipe notifikasi:** `like`, `reply`, `admin_chat`
+
+**Generasi link:** Kolom `related_slug` menyimpan tipe media (`video`/`music`) atau key kompon (`type:id` untuk reply). Halaman notifikasi membangun link secara dinamis menggunakan prefix `meel_base_url_path()`.
+
+**API:** `controllers/api/notification.php` — POST only untuk aksi yang mengubah state (mark_read, delete, delete_all) dengan verifikasi CSRF. Aksi read-only (unread_count, list) menerima GET.
 
 ---
 
@@ -710,12 +760,232 @@ Redirect ke index.php
 
 ---
 
+## 26. Modularisasi JS/CSS
+
+MEeL menggunakan pendekatan modular untuk JavaScript dan CSS — setiap modul memiliki file-file terpisah yang dimuat secara dinamis.
+
+### Struktur Direktori
+
+```
+assets/
+├── css/
+│   ├── video/           # Video module CSS (13 file)
+│   │   ├── autonext.css   # Overlay auto-next
+│   │   ├── base.css     # Base styles
+│   │   ├── cards.css    # Video card styles
+│   │   ├── fullscreen.css # Fullscreen player
+│   │   ├── glow.css     # Ambient glow effect
+│   │   ├── layout.css   # Player layout
+│   │   ├── mini-player.css # Floating mini player
+│   │   ├── navbar.css   # Video navbar
+│   │   ├── player.css   # Plyr overrides
+│   │   ├── resume-modal.css # Modal resume playback
+│   │   ├── seek.css     # Seek indicator
+│   │   ├── toast.css    # Toast notifications
+│   │   ├── utility.css  # Utility classes
+│   │   └── watch/       # Watch page specific
+│   ├── profile/         # Profile module CSS (10 file)
+│   │   ├── base.css     # Base profile styles
+│   │   ├── cards.css    # Media cards
+│   │   ├── coin.css     # MEeLCoin display
+│   │   ├── edit.css     # Edit profile
+│   │   ├── manage.css   # Profile management
+│   │   ├── notification.css # Notification settings
+│   │   ├── stat.css     # Statistics
+│   │   ├── mfa-switch.css # MFA toggle
+│   │   ├── type-badge.css # User role badges
+│   │   └── empty-state.css # Empty state displays
+│   ├── admin/           # Admin module CSS (6 file)
+│   │   ├── activity_log.css # Activity log viewer
+│   │   ├── chat.css     # Admin chat styles
+│   │   ├── catur.css    # Chess admin
+│   │   ├── index.css    # Admin dashboard
+│   │   ├── mfa_reset.css # Halaman reset MFA
+│   │   └── stats.css    # Halaman statistik
+│   ├── music/           # Music module CSS (10 file)
+│   │   ├── base.css     # Base music styles
+│   │   ├── cards.css    # Music card styles
+│   │   ├── layout.css   # Music layout
+│   │   ├── mini-player.css # Music mini player
+│   │   ├── player.css   # Music player
+│   │   ├── playlist.css # Playlist styles
+│   │   ├── playlist-modal.css # Modal playlist
+│   │   ├── resume-modal.css # Modal resume playback
+│   │   ├── utility.css  # Utility classes
+│   │   └── visualizer.css # Audio visualizer
+│   ├── books/           # Books module CSS (6 file)
+│   │   ├── base.css     # Base books styles
+│   │   ├── cards.css    # Book card styles
+│   │   ├── manga.css    # Manga reader
+│   │   ├── pdf.css      # PDF reader
+│   │   ├── reader.css   # Book reader base
+│   │   └── utility.css  # Utility classes
+│   └── shared/          # Shared CSS (7 file)
+│       ├── comment.css  # Comment section
+│       ├── design-tokens.css # Design tokens
+│       ├── light-theme.css  # Light mode overrides
+│       ├── nav.css      # Navigation bar
+│       ├── notification.css # Notification styles
+│       ├── theme-tokens.css # Theme CSS variables
+│       └── upload-form.css  # Upload form styles
+├── js/
+│   ├── video/watch/     # Video watch page JS (12 files)
+│   │   ├── state.js     # Global state variables
+│   │   ├── lifecycle.js # Page lifecycle management
+│   │   ├── player-init.js # Player initialization
+│   │   ├── player-events.js # Player event handlers + aspect ratio
+│   │   ├── recovery.js  # Error recovery & stuck detector
+│   │   ├── mini-player.js # Floating mini player
+│   │   ├── gestures.js  # Touch gestures
+│   │   ├── search.js    # Search functionality
+│   │   ├── seek-indicator.js # Seek visual feedback
+│   │   ├── vtt-sprites.js # VTT sprite thumbnails
+│   │   └── misc.js      # Miscellaneous utilities
+│   ├── shared/          # Shared JS (19 files)
+│   │   ├── nav.js       # Navigation behavior
+│   │   ├── theme.js     # Theme toggle
+│   │   ├── keyboard.js  # Keyboard shortcuts
+│   │   ├── comment.js   # Comment section
+│   │   ├── notification.js # Notification system
+│   │   ├── plyr-config.js # Plyr configuration
+│   │   ├── format-time.js # Time formatting
+│   │   ├── resume-modal.js # Resume playback modal
+│   │   ├── index-hub.js # Homepage hub
+│   │   └── ...          # Other shared utilities
+│   ├── profile/         # Profile JS (5 files)
+│   │   ├── manage.js    # Profile management
+│   │   ├── avatar-crop.js # Avatar cropping
+│   │   ├── coin-countdown.js # MEeLCoin countdown
+│   │   └── theme-init.js # Theme initialization
+│   ├── admin/           # Admin JS (3 files)
+│   │   ├── activity_log.js # Activity log viewer
+│   │   └── chat/        # Admin chat
+│   ├── music/           # Music JS
+│   └── books/           # Books JS
+│       └── read/reader.js # Book reader
+```
+
+### Pemetaan CSS per Module
+
+Setiap modul CSS memiliki `manifest.php` yang mendaftarkan file-file CSS-nya. `SwPrecache` membaca manifest ini untuk menghasilkan daftar precache service worker secara otomatis.
+
+```php
+// assets/css/video/manifest.php
+return ['base.css', 'cards.css', 'fullscreen.css', 'glow.css', 'layout.css',
+        'mini-player.css', 'navbar.css', 'player.css', 'seek.css', 'toast.css'];
+```
+
+### Loader Dinamis
+
+JavaScript dimuat secara dinamis oleh `main.js` di setiap halaman modul. File-file JS di-load berurutan sesuai dependency:
+
+```javascript
+// Contoh: video/watch/main.js memuat script secara berurutan
+const scripts = [
+    'state.js', 'recovery.js', 'player-init.js', 'player-events.js',
+    'lifecycle.js', 'mini-player.js', 'gestures.js', 'vtt-sprites.js',
+    'seek-indicator.js', 'misc.js'
+];
+```
+
+---
+
+## 27. Adaptive Aspect Ratio Player
+
+Player video MEeL mendukung adaptive aspect ratio untuk berbagai format video (4:3, 16:9, 21:9, portrait).
+
+### Cara Kerja
+
+1. **Placeholder:** Server merender wrapper dengan `style="aspect-ratio: 16/9;"` sebagai default
+2. **Runtime:** Saat video metadata loaded, JavaScript `applyMeelVideoAspect()` mengubah aspect-ratio sesuai dimensi aktual
+3. **Constraint:** Video non-16:9 mendapat `max-width` proporsional agar height setara 16:9
+
+### Logika `applyMeelVideoAspect(wrapper, videoW, videoH)`
+
+| Kondisi | Behavior |
+|---|---|
+| Portrait (videoW < videoH) | `max-height: 80vh`, width auto, center horizontal |
+| Landscape < 16:9 (4:3, 5:4, 1:1) | `max-width: calc(100% × 9 × videoW / (16 × videoH))`, center |
+| 16:9 atau lebih lebar (21:9) | Full width, height natural |
+
+### Contoh Perhitungan untuk 4:3
+
+```
+max-width = calc(100% × 9 × 4 / (16 × 3))
+         = calc(100% × 36/48)
+         = 75% dari parent width
+```
+
+Pada parent 1000px:
+- **4:3:** 750px × 562.5px (centered)
+- **16:9:** 1000px × 562.5px (full width)
+
+Keduanya memiliki height yang sama — video 4:3 lebih kecil dan centered, seperti YouTube.
+
+### CSS Support
+
+```css
+/* player.css — mencegah stretching */
+.plyr__video-wrapper video {
+    object-fit: contain;
+}
+```
+
+### File Terkait
+
+| File | Peran |
+|---|---|
+| `assets/js/video/watch/player-events.js` | Fungsi `applyMeelVideoAspect()` |
+| `assets/css/video/player.css` | `object-fit: contain` untuk video |
+| `assets/css/video/watch/main.css` | Mobile max-height constraint |
+
+---
+
+## 28. Chat API
+
+Sistem chat real-time antar user dengan HTMX polling.
+
+### Endpoint
+
+| Endpoint | Method | Deskripsi |
+|---|---|---|
+| `/api/chat` | GET | Ambil pesan chat (parameter: `after_id`, `limit`) |
+| `/api/chat` | POST | Kirim pesan chat (parameter: `message`, `csrf_token`) |
+
+### Database Schema
+
+```sql
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+### Fitur
+
+- Pesan diurutkan berdasarkan `created_at` ASC
+- HTMX polling setiap 3 detik untuk pesan baru
+- Delete pesan sendiri (dengan validasi ownership)
+- Notification type `admin_chat` untuk pesan ke admin
+- Rate limiting: 30 pesan per menit per user
+
+### File Terkait
+
+| File | Peran |
+|---|---|
+| `controllers/api/chat.php` | Chat API endpoint |
+| `admin/chat.php` | Admin chat interface |
+| `assets/js/shared/notification.js` | Polling notifikasi termasuk chat |
+| `assets/css/admin/chat.css` | Admin chat styles |
+
+---
+
 ## Arsitektur ProgressObserver
 
-`Transcoder` adalah class **business-layer murni** — tidak pernah meng-echo HTML/JS.
-Progress dilaporkan sebagai event terstruktur ke `ProgressObserver`, sehingga engine
-yang sama berjalan bersih di browser, script CLI, cron, maupun endpoint API tanpa
-mencemari output buffer.
+`Transcoder` adalah class **business-layer murni** — tidak pernah meng-echo HTML/JS. Progress dilaporkan sebagai event terstruktur ke `ProgressObserver`, sehingga engine yang sama berjalan bersih di browser, script CLI, cron, maupun endpoint API tanpa mencemari output buffer.
 
 ### File
 
@@ -755,33 +1025,24 @@ $tc = new Transcoder($conn, $uid, function (string $stage, array $data): void {
 | `redirect` | `['url' => string]` | Navigasi browser (music → `post_encode.php`) |
 | `error` | `['message' => string]` | Error fatal yang ditampilkan ke user |
 
+### Jaminan
+
 **Jaminan:**
-- Exception observer ditangkap dan di-log di dalam `emit()` — tidak pernah merambat
-  ke pipeline media (tidak ada proses yatim atau file setengah pindah).
-- Tanpa observer terpasang, `emit()` adalah no-op — nol polusi output buffer.
-- Download musik mengembalikan string berawalan `REDIRECT:` sehingga *caller* yang
-  memutuskan kelanjutan (tidak ada `exit` di business layer).
+- Exception observer ditangkap dan di-log di dalam `emit()` — tidak pernah merambat ke pipeline media (tidak ada proses yatim atau file setengah pindah)
+- Tanpa observer terpasang, `emit()` adalah no-op — nol polusi output buffer
+- Download musik mengembalikan string berawalan `REDIRECT:` sehingga *caller* yang memutuskan kelanjutan (tidak ada `exit` di business layer)
 
 ---
 
 ## Konvensi Keamanan Filesystem (tanpa @)
 
-Setelah audit engine pemrosesan media, codebase **tidak pernah memakai operator
-`@` (error suppression) pada operasi filesystem** (`unlink`, `rmdir`, `mkdir`,
-`copy`, `rename`, `fopen`, `scandir`, `file_put_contents`, ...). `@` yang serampangan
-menyembunyikan kegagalan permission/IO yang nyata — mis. USB HDD yang ter-mount
-read-only, atau folder temp milik proses lain — dan membuat debugging mustahil.
+Setelah audit engine pemrosesan media, codebase **tidak pernah memakai operator `@` (error suppression) pada operasi filesystem** (`unlink`, `rmdir`, `mkdir`, `copy`, `rename`, `fopen`, `scandir`, `file_put_contents`, ...). `@` yang serampangan menyembunyikan kegagalan permission/IO yang nyata — mis. USB HDD yang ter-mount read-only, atau folder temp milik proses lain — dan membuat debugging mustahil.
 
 Setiap akses filesystem mengikuti tiga aturan:
 
-1. **Cek keberadaan & permission secara proaktif** — guard dengan `is_file()`,
-   `is_dir()`, `is_readable()`, `is_writable()` sebelum menyentuh filesystem.
-   Ingat: `unlink`/`rmdir` butuh **parent directory yang writable**, bukan hanya
-   file yang ada.
-2. **Cek nilai balik** — perlakukan `false`/`null` sebagai kegagalan dan log via
-   `error_log()` (atau logger khusus) termasuk path yang terlibat.
-3. **Pakai helper bersama, bukan `@` inline** — gunakan helper terpusat di bawah
-   daripada menebar suppression ad-hoc.
+1. **Cek keberadaan & permission secara proaktif** — guard dengan `is_file()`, `is_dir()`, `is_readable()`, `is_writable()` sebelum menyentuh filesystem. Ingat: `unlink`/`rmdir` butuh **parent directory yang writable**, bukan hanya file yang ada.
+2. **Cek nilai balik** — perlakukan `false`/`null` sebagai kegagalan dan log via `error_log()` (atau logger khusus) termasuk path yang terlibat.
+3. **Pakai helper bersama, bukan `@` inline** — gunakan helper terpusat di bawah daripada menebar suppression ad-hoc.
 
 ### Helper filesystem bersama
 

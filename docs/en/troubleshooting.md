@@ -4,7 +4,7 @@ Solutions for common issues encountered while using MEeL-HUB.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [HLS Streaming Issues](#hls-streaming-issues)
 - [Upload Problems](#upload-problems)
@@ -15,6 +15,9 @@ Solutions for common issues encountered while using MEeL-HUB.
 - [Session & Auth Issues](#session--auth-issues)
 - [Storage & Disk Issues](#storage--disk-issues)
 - [HTMX/AJAX Issues](#htmxajax-issues)
+- [Performance Issues](#performance-issues)
+- [Error Codes](#error-codes)
+- [FAQ](#faq)
 
 ---
 
@@ -278,7 +281,7 @@ $timeout = 43200; // 12 hours in seconds
 
 ## Storage & Disk Issues
 
-### ❌ Drive module crashes: "Folder penyimpanan gagal dibuat" (RuntimeException)
+### ❌ Drive module crashes: "Storage folder creation failed" (RuntimeException)
 
 **Symptoms:**
 - Opening `drive/index.php`, uploading, downloading or streaming throws
@@ -336,6 +339,119 @@ du -sh /media/[user]/MEeL/
 - Delete unnecessary files
 - Move storage to larger HDD
 - Run orphan cleanup from admin panel
+
+---
+
+## Performance Issues
+
+### ❌ Slow Pages
+
+**Optimizations:**
+1. **Enable OPcache** in `php.ini`:
+   ```ini
+   opcache.enable=1
+   opcache.memory_consumption=128
+   opcache.max_accelerated_files=4000
+   ```
+
+2. **Monitor database:**
+   ```sql
+   SHOW PROCESSLIST;
+   EXPLAIN SELECT * FROM video ORDER BY upload_date DESC;
+   ```
+   Add indexes if needed:
+   ```sql
+   ALTER TABLE video ADD INDEX idx_upload_date (upload_date);
+   ALTER TABLE music ADD INDEX idx_upload_date (upload_date);
+   ```
+
+### ❌ CPU 100% during Transcoding
+
+**Cause:** HLS transcoding or sprite generation
+
+**Solution:**
+1. Lower `FFMPEG_THREADS`:
+   ```php
+   protected const FFMPEG_THREADS = 4; // From 8
+   ```
+2. Limit concurrent processes (already implemented: max 2)
+3. Schedule transcoding during off-peak hours using cron
+
+### ❌ HDD/SSD Full
+
+**Routine cleanup:**
+1. Admin Panel → **Database Sync Check** → Clean orphan files
+2. Delete temporary files:
+   ```bash
+   rm -rf /opt/lampp/htdocs/MEeL/temp/*
+   ```
+3. Clean inactive guests: Admin Panel → **Clean Inactive Guests**
+4. Delete stuck queues: Admin Panel → **Clean Stuck Queues**
+5. Delete unnecessary drive files
+
+---
+
+## Error Codes
+
+### HTTP Status Codes
+
+| Code | Meaning | Common Cause |
+|---|---|---|
+| **401** | Unauthorized | User not logged in |
+| **403** | Forbidden | IP banned, user inactive, insufficient role |
+| **404** | Not Found | Media doesn't exist, file missing |
+| **500** | Internal Server Error | Database error, PHP error |
+| **503** | Service Unavailable | HDD offline, server busy |
+
+### System Error Messages
+
+| Message | Meaning | Solution |
+|---|---|---|
+| "Storage Offline" | External HDD not mounted | Check `df -h` and path in `helpers.php` |
+| "Server sedang sibuk" (Server is busy) | Queue full (max 2) | Wait or clean stuck queues |
+| "Batas upload tercapai!" (Upload limit reached) | Rate limit active | Wait 1 hour or ask admin |
+| "File terlalu besar!" (File too large) | Exceeds quota | Upload smaller file |
+| "Durasi terlalu panjang!" (Duration too long) | Exceeds duration limit | Use shorter video |
+| "Security Error" | Suspicious file | Upload file with correct format |
+
+---
+
+## FAQ
+
+### Q: Can MEeL be accessed from the internet?
+
+**A:** Yes, but it's recommended to use Cloudflare Tunnel or VPN. Don't expose directly without HTTPS.
+
+### Q: How to backup data?
+
+**A:** Backup database + media folder:
+```bash
+mysqldump -u root -p MEeL > backup_meel.sql
+tar -czf media_backup.tar.gz /media/[user]/MEeL/
+```
+
+### Q: Why doesn't the video show a thumbnail?
+
+**A:** Thumbnails are automatically generated from the 5th frame of the video. Make sure FFmpeg is installed.
+
+### Q: What music formats are supported?
+
+**A:** MP3, OGG/Opus, M4A/AAC, FLAC, WAV. All will be transcoded to Opus/OGG.
+
+### Q: How to add a new admin?
+
+**A:** Register a regular user, then change the role in the database:
+```sql
+UPDATE users SET role = 'admin', is_active = 1 WHERE id = [user_id];
+```
+
+### Q: Can I stream 4K video?
+
+**A:** Technically yes, but bandwidth and storage are limiting factors. 1080p is recommended.
+
+### Q: Why is the guest session invalid?
+
+**A:** Guests are automatically created on first access. If there are issues, delete inactive guests via Admin Panel.
 
 ---
 

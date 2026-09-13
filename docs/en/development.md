@@ -4,7 +4,7 @@ Guide for developers who want to contribute or understand coding standards in ME
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Development Environment](#development-environment)
 - [Coding Standards](#coding-standards)
@@ -97,7 +97,7 @@ public function toggleLike();
 
 #### 4. Type Hints
 
-Properties and constructor parameters **must** have type hints (PHP 7.4+):
+Properties and constructor parameters **must** have type hints (PHP 8.0+):
 
 ```php
 // ✅ CORRECT
@@ -188,12 +188,12 @@ music ──1:N── playlist_tracks
 
 Each module (video, music, books, drive) follows this pattern. Pages are reached
 via **clean URLs** (front controller `router.php` → `modules/core/Router.php`),
-e.g. `video/beranda` → `video/index.php`, `music/watch?id=X` → `music/watch.php`:
+e.g. `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch.php`:
 
 ```
 [module]/
 ├── index.php          # Catalog / listing (URL: [module]/beranda)
-├── watch.php          # Player / detail (URL: [module]/watch?id=X)
+├── watch.php          # Player / detail (URL: [module]/watch?v=X)
 ├── upload.php         # Upload form (URL: [module]/upload)
 ├── search_[module].php  # Search (HTMX) (URL: [module]/search)
 ├── load_more.php      # Pagination (HTMX) (URL: [module]/load-more)
@@ -469,6 +469,54 @@ main (stable)
 
 ---
 
+## Troubleshooting Development
+
+### ❌ HTMX not working
+
+**Check:**
+1. File `assets/js/compatibilitas/htmx.min.js` is loaded (check Network tab)
+2. Target element (`hx-target`) exists in DOM
+3. No JavaScript errors in console
+4. Server response is valid HTML
+
+### ❌ "Headers already sent" error
+
+**Cause:** Output before `header()` or `session_start()`.
+
+**Solution:**
+```php
+// Output buffering at the top
+ob_start();
+
+// Or move session_start() to the very top
+session_name('meel');
+session_start();
+
+// Redirect with JavaScript fallback
+if (!headers_sent()) {
+    header("Location: index.php");
+} else {
+    echo "<script>window.location.href='index.php';</script>";
+}
+```
+
+### ❌ Session not saving
+
+**Check:**
+1. `session_name('meel')` is called BEFORE `session_start()`
+2. `auth/config.php` is included on every page
+3. No output before `session_start()`
+4. Session folder is writable
+
+### ❌ SweetAlert2 not showing
+
+**Check:**
+1. File `assets/js/compatibilitas/sweetalert2.all.min.js` is loaded
+2. Function `meelAlertRedirect()` is defined in `assets/js/compatibilitas/script.min.js`
+3. No CSS conflicts
+
+---
+
 ## Resource for Developers
 
 ### Key Files to Understand
@@ -513,6 +561,16 @@ main (stable)
 | `assets/js/music/watch/mini-player.js` | Music mini-player mode (Spotify-style) — separated from player-core.js |
 | `assets/js/music/watch/player-core.js` | Music player core (visualizer, EQ, bitrate, resume-modal & session logic) |
 | `assets/js/music/watch/state.js` | Music player state, equalizer presets & resume-session marker (`window.__meelResumeSessionActive`) |
+| `assets/js/profile/manage.js` | Profile management (edit, delete media) |
+| `assets/js/profile/avatar-crop.js` | Avatar cropping tool |
+| `assets/js/profile/coin-countdown.js` | MEeLCoin refill countdown |
+| `assets/js/profile/theme-init.js` | Theme initialization on profile page |
+| `assets/js/admin/activity_log.js` | Activity log viewer with 3 tabs |
+| `assets/js/shared/nav.js` | Navigation bar behavior |
+| `assets/js/shared/theme.js` | Theme toggle logic |
+| `assets/js/shared/notification.js` | Notification polling system |
+| `assets/css/video/player.css` | Plyr video player overrides (object-fit: contain) |
+| `assets/css/profile/*.css` | Profile module CSS (10 files: base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state) |
 
 ### Music Player — Resume Modal Behavior
 

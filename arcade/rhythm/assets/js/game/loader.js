@@ -4,7 +4,7 @@
 
 import { S, songId, phpSong, phpBeatmap, speedMult, audioElement } from "./state.js";
 
-const SONGS_BASE = "/MEeL/arcade/rhythm/songs";
+const SONGS_BASE = window.MEEL_BASE + "/arcade/rhythm/songs";
 
 export async function loadSongData() {
   if (phpSong) {

@@ -17,6 +17,8 @@ $meelcoin_settings = [
     'meelcoin_enabled'       => get_site_setting($conn, 'meelcoin_enabled', '1'),
     'meelcoin_upload_cost'   => get_site_setting($conn, 'meelcoin_upload_cost', '5'),
     'meelcoin_advanced_cost' => get_site_setting($conn, 'meelcoin_advanced_cost', '10'),
+    'meelcoin_transcode_user_cost'   => get_site_setting($conn, 'meelcoin_transcode_user_cost', '5'),
+    'meelcoin_transcode_member_cost' => get_site_setting($conn, 'meelcoin_transcode_member_cost', '2'),
     'meelcoin_user_max'      => get_site_setting($conn, 'meelcoin_user_max', '25'),
     'meelcoin_user_refill'   => get_site_setting($conn, 'meelcoin_user_refill', '15'),
     'meelcoin_member_max'    => get_site_setting($conn, 'meelcoin_member_max', '50'),
@@ -26,7 +28,7 @@ $meelcoin_settings = [
 
 $msg = $_GET['msg'] ?? null;
 
-$all_users = $conn->query("SELECT id, username, role, meelcoin FROM users WHERE role != 'guest' ORDER BY role ASC, username ASC");
+$all_users = $conn->query("SELECT id, username, role, meelcoin FROM users WHERE role NOT IN ('guest', 'admin') ORDER BY role ASC, username ASC");
 $user_list = [];
 if ($all_users) {
     while ($u = $all_users->fetch_assoc()) {
@@ -34,15 +36,7 @@ if ($all_users) {
     }
 }
 
-$target_user_id = (int)($_GET['user_id'] ?? $_POST['target_user_id'] ?? 0);
-$target_user = null;
-if ($target_user_id > 0) {
-    $stmt = $conn->prepare("SELECT id, username, role, meelcoin FROM users WHERE id = ?");
-    $stmt->bind_param("i", $target_user_id);
-    $stmt->execute();
-    $target_user = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-}
+$user_list_json = json_encode($user_list);
 ?>
 <!DOCTYPE html>
 <html lang="id" class="dark">
@@ -122,6 +116,22 @@ if ($target_user_id > 0) {
                             </div>
 
                             <div style="padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
+                                <div class="admin-label" style="margin-bottom:12px;">Biaya Transcode</div>
+                                <div style="display:flex;flex-direction:column;gap:12px;">
+                                    <div class="admin-field">
+                                        <label class="admin-label">User (coin)</label>
+                                        <input type="number" name="meelcoin_transcode_user_cost" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_transcode_user_cost']) ?>" min="0" class="admin-input">
+                                    </div>
+                                    <div class="admin-field">
+                                        <label class="admin-label">Member (coin)</label>
+                                        <input type="number" name="meelcoin_transcode_member_cost" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_transcode_member_cost']) ?>" min="0" class="admin-input">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+                            <div style="padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
                                 <div class="admin-label" style="margin-bottom:12px;">Refill Settings</div>
                                 <div style="display:flex;flex-direction:column;gap:12px;">
                                     <div class="admin-field">
@@ -169,34 +179,31 @@ if ($target_user_id > 0) {
                     </button>
                 </form>
 
-                <div id="meelcoin-manual" style="margin-top:24px;padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);<?= $meelcoin_settings['meelcoin_enabled'] !== '1' ? 'display:none;opacity:0.3;pointer-events:none;' : '' ?>">
+                <div id="manual-coin" style="margin-top:24px;padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);<?= $meelcoin_settings['meelcoin_enabled'] !== '1' ? 'display:none;opacity:0.3;pointer-events:none;' : '' ?>">
                     <div class="admin-label" style="margin-bottom:12px;">Manual Coin Adjustment</div>
                     <form method="POST" style="display:flex;flex-direction:column;gap:8px;">
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                         <div style="display:flex;gap:8px;">
-                            <select name="target_user_id" required class="admin-select" style="width:35%;" onchange="window.location.href='meelcoin.php?user_id=' + this.value">
+                            <select name="target_user_id" required class="admin-select" style="width:25%;" id="coin-user-select">
                                 <option value="">Pilih User...</option>
                                 <?php foreach ($user_list as $u): ?>
-                                    <option value="<?= $u['id'] ?>" <?= $target_user_id === (int)$u['id'] ? 'selected' : '' ?>>
+                                    <option value="<?= $u['id'] ?>">
                                         #<?= $u['id'] ?> — <?= htmlspecialchars($u['username']) ?> (<?= ucfirst($u['role']) ?>) — <?= $u['meelcoin'] ?> coin
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <select name="coin_action" class="admin-select" style="width:25%;">
+                            <select name="coin_action" class="admin-select" style="width:15%;">
                                 <option value="add">Tambah</option>
                                 <option value="remove">Kurangi</option>
                             </select>
-                            <input type="number" name="coin_amount" placeholder="Jumlah" min="1" required class="admin-input" style="width:25%;">
+                            <input type="number" name="coin_amount" placeholder="Jumlah" min="1" required class="admin-input" style="width:15%;">
+                            <input type="text" name="coin_reason" maxlength="50" placeholder="Alasan (opsional)" class="admin-input" style="width:30%;">
                             <button type="submit" name="adjust_meelcoin_user" class="admin-btn admin-btn-primary admin-btn-sm" style="width:15%;">
                                 Apply
                             </button>
                         </div>
                     </form>
-                    <?php if ($target_user): ?>
-                        <div style="margin-top:10px;padding:10px 14px;border-radius:10px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.15);font-size:11px;color:#fbbf24;">
-                            <strong><?= htmlspecialchars($target_user['username']) ?></strong> — ID: #<?= $target_user['id'] ?> — Role: <?= ucfirst($target_user['role']) ?> — Coin saat ini: <strong><?= $target_user['meelcoin'] ?></strong>
-                        </div>
-                    <?php endif; ?>
+                    <div id="target-user-info" style="margin-top:10px;padding:10px 14px;border-radius:10px;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.15);font-size:11px;color:#fbbf24;display:none;"></div>
                 </div>
             </div>
         </div>
@@ -206,9 +213,11 @@ if ($target_user_id > 0) {
     <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime('../assets/js/admin/shared/hover-effects.js') ?>"></script>
     <script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
     <script>
+    var __userList = <?= $user_list_json ?>;
+
     function toggleMeelCoinConfig(enabled) {
         var cfg = document.getElementById('meelcoin-config');
-        var manual = document.getElementById('meelcoin-manual');
+        var manual = document.getElementById('manual-coin');
         if (!cfg) return;
         if (enabled) {
             cfg.style.display = '';
@@ -226,6 +235,16 @@ if ($target_user_id > 0) {
             manual.style.pointerEvents = 'none';
         }
     }
+
+    document.getElementById('coin-user-select').addEventListener('change', function() {
+        var info = document.getElementById('target-user-info');
+        var val = parseInt(this.value);
+        if (!val) { info.style.display = 'none'; return; }
+        var u = __userList.find(function(x){ return x.id === val; });
+        if (!u) { info.style.display = 'none'; return; }
+        info.innerHTML = '<strong>' + u.username + '</strong> — ID: #' + u.id + ' — Role: ' + u.role.charAt(0).toUpperCase() + u.role.slice(1) + ' — Coin saat ini: <strong>' + u.meelcoin + '</strong>';
+        info.style.display = '';
+    });
     </script>
 </body>
 </html>

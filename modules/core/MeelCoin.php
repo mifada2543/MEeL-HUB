@@ -14,6 +14,8 @@ class MeelCoin
             'meelcoin_enabled'       => '1',
             'meelcoin_upload_cost'   => '5',
             'meelcoin_advanced_cost' => '10',
+            'meelcoin_transcode_user_cost'   => '5',
+            'meelcoin_transcode_member_cost' => '2',
             'meelcoin_user_max'      => '25',
             'meelcoin_user_refill'   => '15',
             'meelcoin_member_max'    => '50',
@@ -48,6 +50,12 @@ class MeelCoin
     {
         $s = self::loadSettings($conn);
         return (int)($type === 'advanced' ? $s['meelcoin_advanced_cost'] : $s['meelcoin_upload_cost']);
+    }
+
+    public static function getTranscodeCost(\mysqli $conn, string $role): int
+    {
+        $s = self::loadSettings($conn);
+        return (int)($role === 'member' ? $s['meelcoin_transcode_member_cost'] : $s['meelcoin_transcode_user_cost']);
     }
 
     public static function getMax(\mysqli $conn, string $role): int
@@ -178,26 +186,10 @@ class MeelCoin
         if ($role === 'admin') return 0;
 
         $refillHours = self::getRefillHours($conn);
+        $cycleSeconds = $refillHours * 3600;
 
-        $stmt = $conn->prepare("SELECT meelcoin, meelcoin_last_refill FROM users WHERE id = ?");
-        $stmt->bind_param("i", $userId);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-
-        if (!$row) return 0;
-
-        $current    = (int)$row['meelcoin'];
-        $maxCoins   = self::getMax($conn, $role);
-        $lastRefill = $row['meelcoin_last_refill'];
-
-        if ($current >= $maxCoins) return 0;
-
-        if ($lastRefill === null) return 0;
-
-        $elapsed   = time() - strtotime($lastRefill);
-        $remaining = ($refillHours * 3600) - $elapsed;
-        return max(0, $remaining);
+        // Siklus global — semua user countdown yang sama
+        return $cycleSeconds - (time() % $cycleSeconds);
     }
 
     public static function initialize(\mysqli $conn, int $userId, string $role): void

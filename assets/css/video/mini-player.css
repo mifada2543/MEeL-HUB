@@ -50,9 +50,9 @@
   border-radius: 0 !important;
 }
 #mini-player-shell #main-video-wrapper .plyr__video-wrapper video {
-  object-fit: cover !important;
+  object-fit: contain !important;
   width: 100% !important;
-  height: 100% !important;
+  height: auto !important;
 }
 #mini-player-shell.mini-dragging * {
   cursor: grabbing !important;
@@ -73,7 +73,7 @@
 
 
 #mini-player-shell .plyr__video-wrapper {
-  max-height: 60vh;
+  max-height: none;
 }
 #mini-player-shell:hover {
   box-shadow:
@@ -85,6 +85,7 @@
   position: relative !important;
   width: 100% !important;
   height: auto !important;
+  max-width: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   cursor: default !important;

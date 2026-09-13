@@ -217,6 +217,7 @@ include __DIR__ . '/../partials/link.php';
 ?>
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin/shared/utility.css?v=<?= filemtime('../assets/css/admin/shared/utility.css') ?>">
     <link rel="stylesheet" href="../assets/css/admin/edit/shared/main.css?v=<?= filemtime('../assets/css/admin/edit/shared/main.css') ?>">
     <link rel="stylesheet" href="../assets/css/admin/edit/video/main.css?v=<?= filemtime('../assets/css/admin/edit/video/main.css') ?>">
 </head>
@@ -309,7 +310,7 @@ include __DIR__ . '/../partials/link.php';
 
                 
                 <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto;">
-                    <a href="<?= base_url('/video/watch?id=' . (int)$id) ?>" class="btn-secondary" style="justify-content:center;">
+                    <a href="<?= base_url('/video/watch?v=' . (int)$id) ?>" class="btn-secondary" style="justify-content:center;">
                         <i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Lihat Video
                     </a>
                     <?php if ($is_admin): ?>

@@ -5,7 +5,7 @@
 
 ---
 
-## 📋 Overview
+## Overview
 
 MEeL uses a multi-layered testing approach:
 
@@ -62,7 +62,7 @@ logs/tests/
 
 | File | Tests | Coverage |
 |---|---|---|
-| `RateLimiterTest.php` | 11 | Admin bypass, role limits, blocking, cleanup, stats, fallback, independent keys |
+| `RateLimiterTest.php` | 11 | Admin bypass, role limits, blocking, cleanup, stats, fail-closed on storage failure, independent keys |
 | `HelpersTest.php` | 50 | format_bytes, time_ago, audio MIME types, disk space, CSRF, dir_size, protocol detection (data providers) |
 | `JapaneseTest.php` | 15 | Romaji conversion, analyzeJapaneseText, English translation (MeCab-optional) |
 | `GarbageCollectorTest.php` | 6 | Class existence, idempotency, graceful handling, rate-limit cleanup (isolated test dir) |
@@ -121,10 +121,10 @@ Three dedicated test classes cover the security boundaries implemented in the
 security-hardening pass. Run them together or individually:
 
 ```bash
-# Semua test keamanan (SSRF + Drive + proxy) sekaligus
+# All security tests (SSRF + Drive + proxy) at once
 vendor/bin/phpunit --no-coverage --filter 'SsrfGuardTest|DriveSecurityTest|ValidatingProxyTest'
 
-# Atau per file:
+# Or per file:
 vendor/bin/phpunit --no-coverage tests/unit/SsrfGuardTest.php
 vendor/bin/phpunit --no-coverage tests/unit/DriveSecurityTest.php
 vendor/bin/phpunit --no-coverage tests/unit/ValidatingProxyTest.php
@@ -232,7 +232,7 @@ class MyIntegrationTest extends TestCase
 
 ---
 
-## 📋 Functional Tests (`tests/functional_test.php`)
+## Functional Tests (`tests/functional_test.php`)
 
 Custom test script that validates application workflows:
 
@@ -303,8 +303,10 @@ PHP Syntax (8.1, 8.2, 8.3)
     ├── Functional Tests          → php tests/functional_test.php
     ├── Security Tests            → php tests/security_test.php
     ├── PHPUnit Unit Tests        → php vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'
+    ├── PHPUnit Integration Tests → php vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests' (MySQL service)
     ├── HTACCESS & Integrity      → .htaccess presence + permissions
-    └── Deployment Check         → php tests/check_deploy.php --no-color --hdd=…
+    ├── Deployment Check         → php tests/check_deploy.php --no-color --hdd=…
+    └── Drive Storage Integrity   → storage path verification
             └── CI Summary
 ```
 
@@ -319,17 +321,13 @@ cases run for real because GitHub Actions runners have a resolver;
 `ValidatingProxyTest` passes because the runner has PHP CLI with
 pcntl/stream sockets.
 
-> **CI runs only the unit suite.** The `tests/integration/` suite needs a real
-> MySQL database with seed data (`DbTestHelper` connects to `localhost` with
-> hardcoded user/media IDs), which the CI runner does not provide — running it
-> there produces 70+ `mysqli` connection errors. Run it locally:
-> `vendor/bin/phpunit --testsuite='MEeL Integration Tests'`.
->
-> The Japanese/romaji tests (`JapaneseTest`, parts of `HelpersTest`) call
-> **MeCab** via `proc_open`. CI installs it (`apt-get install mecab
-> mecab-ipadic-utf8`), and when MeCab is unavailable the affected tests
-> degrade to `markTestSkipped()` via `meel_mecab_available()` — so a
-> machine without mecab still gets a green suite, not failures.
+> **CI runs both unit and integration suites.** The `phpunit-tests` job runs the
+> unit suite, while `phpunit-integration-tests` runs integration tests against a
+> real MySQL 8.0 service container. The Japanese/romaji tests (`JapaneseTest`,
+> parts of `HelpersTest`) call **MeCab** via `proc_open`. CI installs it
+> (`apt-get install mecab mecab-ipadic-utf8`), and when MeCab is unavailable the
+> affected tests degrade to `markTestSkipped()` via `meel_mecab_available()` — so
+> a machine without mecab still gets a green suite, not failures.
 
 The **static wiring checks** for the same boundaries are exercised by the
 `security-tests` job (TEST 13 in `tests/security_test.php`) and the
@@ -366,24 +364,24 @@ not proof. Use a throwaway probe file, then remove it:
 ```bash
 cd /path/to/MEeL
 
-# 1. Buat file probe di storage private Drive.
-#    Lokasi storage mengikuti MEEL_HDD_DRIVE (auth/settings.php); fallback ke
-#    folder nyata ter-track data_drive/private_admins bila konstanta tidak ada
-#    (modul Drive tidak lagi memakai symlink untuk storage — lihat installation.md).
+# 1. Create probe file in private Drive storage.
+#    Storage location follows MEEL_HDD_DRIVE (auth/settings.php); falls back to
+#    the tracked real folder data_drive/private_admins if the constant is not set
+#    (Drive module no longer uses symlinks for storage — see installation.md).
 BASE=$(php -r 'require "modules/core/helpers.php"; echo meel_drive_base_path();')
 TARGET="$BASE/private_admins"
 mkdir -p "$TARGET/zz_403_probe/video"
 echo 'PROBE' > "$TARGET/zz_403_probe/video/probe.mp4"
 
-# 2. Akses langsung → HARUS 403 (bukan 200/404 dari web server)
+# 2. Direct access → MUST be 403 (not 200/404 from web server)
 curl -s -o /dev/null -w 'file: %{http_code}\n' \
   'http://localhost/MEeL/data_drive/private_admins/zz_403_probe/video/probe.mp4'
 
-# 3. Directory listing → HARUS 403
+# 3. Directory listing → MUST be 403
 curl -s -o /dev/null -w 'dir:  %{http_code}\n' \
   'http://localhost/MEeL/data_drive/private_admins/zz_403_probe/'
 
-# 4. Bersihkan probe
+# 4. Clean up probe
 rm -rf "$TARGET/zz_403_probe"
 ```
 

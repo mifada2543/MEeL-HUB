@@ -115,8 +115,6 @@ function testFunctionExistence(): void {
         'analyzeJapaneseText'   => 'modules/core/japanese.php',
 
         'log_activity'          => 'modules/core/activity_logger.php',
-
-        'verify_csrf_token'     => 'modules/auth/helpers/csrf.php',
     ];
 
     $warning_funcs = ['log_activity']; 
@@ -207,10 +205,12 @@ function testConfigCheck(): void {
     
     $sessionFile = PROJECT_ROOT . '/modules/auth/helpers/session.php';
     $sessionContent = file_exists($sessionFile) ? file_get_contents($sessionFile) : '';
+    $csrfFile = PROJECT_ROOT . '/modules/auth/helpers/csrf.php';
+    $csrfContent = file_exists($csrfFile) ? file_get_contents($csrfFile) : '';
 
     foreach ($checks as $name => $pattern) {
         
-        if (preg_match($pattern, $content) || preg_match($pattern, $sessionContent)) {
+        if (preg_match($pattern, $content) || preg_match($pattern, $sessionContent) || preg_match($pattern, $csrfContent)) {
             record("{$name} ✓", true);
         } else {
             record("{$name} — tidak ditemukan ⚠", true, true, "Lihat config.example.php atau modules/auth/helpers/session.php");

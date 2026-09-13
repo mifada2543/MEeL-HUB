@@ -181,7 +181,7 @@ include __DIR__ . '/../partials/scripts.php';
                             }
                             foreach ($top_picks as $type => $tm):
                                 if ($tm === null) continue;
-                                $link = ($type == 'video') ? base_url('/video/watch?id=') : base_url('/music/watch?id=');
+                                $link = ($type == 'video') ? base_url('/video/watch?v=') : base_url('/music/watch?v=');
                                 $color = ($type == 'video') ? "text-red-500" : "text-orange-500";
                                 $icon = ($type == 'video') ? "play-circle" : "music-2";
                             ?>
@@ -395,6 +395,36 @@ include __DIR__ . '/../partials/scripts.php';
             </a>
         </div>
         <div class="glass p-6 rounded-3xl mb-8" id="system_check">
+            <?php if (isset($_GET['status']) && $_GET['status'] === 'cleaned'): ?>
+                <?php
+                $clean_deleted = (int)($_GET['deleted'] ?? 0);
+                $clean_failed  = (int)($_GET['failed'] ?? 0);
+                ?>
+                <?php if ($clean_failed > 0): ?>
+                    <div class="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-xl mb-4 flex items-center gap-2" id="orphan-clean-msg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        <span class="text-[10px] font-bold text-yellow-400">Bersihkan selesai: <?= $clean_deleted ?> file dihapus, <?= $clean_failed ?> file gagal dihapus.</span>
+                    </div>
+                <?php elseif ($clean_deleted > 0): ?>
+                    <div class="bg-green-500/10 border border-green-500/20 p-3 rounded-xl mb-4 flex items-center gap-2" id="orphan-clean-msg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <span class="text-[10px] font-bold text-green-400">Bersihkan selesai: <?= $clean_deleted ?> file sampah berhasil dihapus dari SSD.</span>
+                    </div>
+                <?php else: ?>
+                    <div class="bg-blue-500/10 border border-blue-500/20 p-3 rounded-xl mb-4 flex items-center gap-2" id="orphan-clean-msg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        <span class="text-[10px] font-bold text-blue-400">Tidak ada file yang perlu dihapus — semua file sudah tidak ada di disk.</span>
+                    </div>
+                <?php endif; ?>
+                <script>setTimeout(function(){var el=document.getElementById('orphan-clean-msg');if(el){el.style.transition='opacity 0.4s';el.style.opacity='0';setTimeout(function(){el.remove();},400);}},5000);</script>
+            <?php endif; ?>
+            <?php if (isset($_GET['msg']) && $_GET['msg'] === 'Orphan_Rechecked'): ?>
+                <div class="bg-green-500/10 border border-green-500/20 p-3 rounded-xl mb-4 flex items-center gap-2" id="orphan-recheck-msg">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span class="text-[10px] font-bold text-green-400">Scan ulang selesai — hasil terbaru ditampilkan di bawah.</span>
+                </div>
+                <script>setTimeout(function(){var el=document.getElementById('orphan-recheck-msg');if(el)el.remove();},4000);</script>
+            <?php endif; ?>
             <div class="flex items-center gap-3 mb-4">
                 <h3 class="text-xs font-bold text-gray-500 uppercase">Database Sync Check</h3>
                 <span class="text-[9px] text-gray-600 font-mono" title="Hasil scan storage di-cache 10 menit agar halaman tetap responsif">Dicek: <?= $orphan_checked_at ? date('d/m/Y H:i:s', $orphan_checked_at) : '—' ?></span>

@@ -354,7 +354,7 @@ window.quitToLobby = function () {
   S.gameState = "start";
   stopBGM();
   if (S.animFrame) cancelAnimationFrame(S.animFrame);
-  window.location.href = "/MEeL/arcade/rhythm/";
+  window.location.href = window.MEEL_BASE + "/arcade/rhythm/";
 };
 
 

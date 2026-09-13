@@ -4,6 +4,9 @@
   display: flex;
   align-items: center;
 }
+.plyr__video-wrapper video {
+  object-fit: contain;
+}
 .plyr__controls {
   transition: opacity 0.25s ease !important;
 }

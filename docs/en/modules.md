@@ -4,7 +4,7 @@ In-depth documentation of module architecture, class diagrams, and business logi
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Application Architecture](#application-architecture)
 - [Core Modules (`modules/`)](#core-modules-modules)
@@ -59,7 +59,7 @@ modules/
 │   ├── Transcoder.php      # Facade: yt-dlp download & transcoding → delegates to modules/transcoder/
 │   ├── TranscoderBase.php  # Base class: shared constants, process/PID management, path resolution
 │   ├── helpers.php         # Backward-compat shim → requires helpers/main.php + auth/loader.php
-│   ├── helpers/            # Per-domain utilities: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php
+│   ├── helpers/            # Per-domain utilities: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php, settings.php
 │   ├── Router.php          # MeelRouter — front-controller route table (routeFor/url/dispatch)
 │   ├── bootstrap.php       # Environment detection & error reporting
 │   ├── base_url.php        # Centralized base URL computation (meel_base_url_path)
@@ -80,10 +80,12 @@ modules/
 │   ├── MediaViewer.php     # View tracking, comments, recommendations
 │   ├── MediaInteraction.php# Like/dislike, comment deletion
 │   ├── SearchEngine.php    # FULLTEXT search with sanitizer + parameter filtering
+│   ├── ArchiveGuard.php    # Safe ZIP/CBZ extraction — anti zip-bomb limits
 │   ├── PlaylistRepository.php # Playlist queries & playlist slug routes
 │   ├── MediaAdminRepository.php # Media metadata queries for the admin panel (edit video/music)
 │   ├── ProfileRepository.php # Profile data queries (video/music counts)
-│   └── AdminActivityRepository.php # Activity-log queries & filters for the admin viewer
+│   ├── AdminActivityRepository.php # Activity-log queries & filters for the admin viewer
+│   └── AdminUploadQueueRepository.php # Upload-queue queries, stats & filters for the admin viewer
 ├── exceptions/             # Exception classes
 │   ├── ProcessException.php
 │   ├── DownloadException.php
@@ -93,9 +95,9 @@ modules/
 │   ├── DownloadService.php # processDownload() — URL download (yt-dlp) + video HLS finalization
 │   ├── TranscodeService.php# transcodeVideo() + ownsTranscodeFile() — audio/video transcode
 │   └── FfmpegUtils.php     # Trait: probeDuration(), generateSpriteAndVTT(), filesystem helpers
-└── autoload.php            # PSR-4-like autoloader
+└── autoload.php            # Class-map autoloader
 
-# ── Di ROOT PROJECT (bukan di modules/) ────────────────────────────────
+# ── IN ROOT PROJECT (not in modules/) ────────────────────────────────
 sw.js.php                   # Service worker generator — served as /sw.js via .htaccess rewrite
 ```
 
@@ -339,7 +341,10 @@ File-based rate limiter with `flock()` safety. Role-based limits (admin = unlimi
 | `comment` | 10/min | Flash message redirect |
 | `upload` | 3/hour | — |
 | `transcode` | 5/hour | — |
+| `auto_metadata` | 5/hour | CPU-intensive (ffprobe + ffmpeg) |
 | `api` | 60/min | Generic fallback |
+
+**Fail-closed behavior:** When the storage directory (`temp/ratelimit/`) is not writable or `flock()` fails, the rate limiter **denies all requests** instead of silently allowing them. This prevents a broken filesystem from disabling rate limiting. Failures are logged via `error_log()`.
 
 ### 12. `modules/exceptions/`
 
@@ -447,12 +452,12 @@ Error handling is centralized in one dynamic page `err/index.php` — content & 
 class SearchEngine {
     public const VIDEO_LIMIT    = 20;
     public const MUSIC_LIMIT    = 20;
-    public const MIN_SEARCH_QUERY = 3;   // Query pendek (< 3) tidak diproses
-    public const MAX_SEARCH_QUERY = 255; // Batas panjang query
+    public const MIN_SEARCH_QUERY = 3;   // Short queries (< 3) are ignored
+    public const MAX_SEARCH_QUERY = 255; // Maximum query length
 
     public function __construct(mysqli $db_connection);
-    public function parseParams(): array;                    // q (sanitized), offset, dll.
-    public static function sanitizeQuery(string $q): string; // FULLTEXT-safe: buang operator murni, seimbangkan kutip, buang asterisk di awal token
+    public function parseParams(): array;                    // q (sanitized), offset, etc.
+    public static function sanitizeQuery(string $q): string; // FULLTEXT-safe: strip bare operators, balance quotes, strip leading asterisks from tokens
     public function searchVideo(array $params): array;
     public function searchMusic(array $params): array;
     public static function clearCache(): void;
@@ -464,11 +469,11 @@ class SearchEngine {
   the FULLTEXT syntax is always valid (no `mysqli_sql_exception` on malformed input).
 - `parseParams()` reads `$_GET['search']` + `$_GET['offset']`; offset is included
   in the **cache key**, so pagination never serves a stale page.
-- `MIN_SEARCH_QUERY = 3` — shorter queries are ignored (index efficiency).
+- `MIN_SEARCH_QUERY = 3` — shorter queries are ignored (index efficiency)
 
 ### 17. `modules/autoload.php`
 
-PSR-4-like autoloader via `spl_autoload_register()`. Auto-loads classes from `modules/core/`, `modules/media/`, `drive/`, etc.
+Class-map autoloader via `spl_autoload_register()`. Auto-loads 19 classes from `modules/core/`, `modules/media/`, `modules/transcoder/`, `modules/auth/`, `drive/`, etc.
 
 ### 18. WatchController (`controllers/api/WatchController.php`)
 
@@ -493,6 +498,9 @@ class MusicWatchController { public function getViewData(): array; public functi
 | **v10** | Composite index `(video_id, created_at)` & `(music_id, created_at)` on `comments` |
 | **v11** | `interactions` unique keys split: `(user_id, video_id)` & `(user_id, music_id)` — NULL in a combined unique key did not prevent duplicate likes |
 | **v12** | Bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code` |
+| **v13** | MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table |
+| **v14** | Indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery |
+| **v15** | `user_notifications` table — notification system for likes, replies, MEeLCoin, admin chat |
 
 > 💡 **Rhythm module (MEeL!Mania) does NOT use the main migration system.** The
 > `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`
@@ -546,16 +554,16 @@ Klik "Multiplayer LAN" → konfirmasi SweetAlert
 ```
 
 **Disconnect detection:**
-- `get_move.php` returns `opponent_online` based on `users.last_activity` (updated on every request by `activity_logger`).
-- Offline threshold: `CHESS_OPPONENT_OFFLINE_SECONDS` (default 90s) — above background-tab timer throttling.
-- `game_action.php` action `disconnect_win`: claim win, **server re-verifies** the opponent is actually offline before recording a `disconnect` terminal event.
-- `game_action.php` action `game_over`: client records checkmate/stalemate (only detectable client-side) so the GC preserves finished games.
+- `get_move.php` returns `opponent_online` based on `users.last_activity` (updated on every request by `activity_logger`)
+- Offline threshold: `CHESS_OPPONENT_OFFLINE_SECONDS` (default 90s) — above background-tab timer throttling
+- `game_action.php` action `disconnect_win`: claim win, **server re-verifies** the opponent is actually offline before recording a `disconnect` terminal event
+- `game_action.php` action `game_over`: client records checkmate/stalemate (only detectable client-side) so the GC preserves finished games
 
 **Security guards (all controllers):**
-- Wajib login — respons JSON `401` + `login_required: true` (JS `arcade/chess/assets/js/api.js` redirects to login).
-- Semua aksi POST wajib `csrf_token` valid (403 jika tidak).
-- Token CSRF tidak pernah disimpan ke `moves.move_data`.
-- `admin/catur.php?auto_cleanup=1` juga wajib `csrf_token` (dikirim JS via `window.MEEL_ADMIN_CSRF`).
+- Login required — JSON response `401` + `login_required: true` (JS `arcade/chess/assets/js/api.js` redirects to login)
+- All POST actions require a valid `csrf_token` (403 otherwise)
+- CSRF tokens are never stored in `moves.move_data`
+- `admin/catur.php?auto_cleanup=1` also requires `csrf_token` (sent by JS via `window.MEEL_ADMIN_CSRF`)
 
 ### 21a. Arcade Collection (`arcade/`)
 
@@ -590,16 +598,35 @@ HTML/JS, no backend) + Chess (PHP multiplayer) + Rhythm (PHP with its own DB):
 
 > ⚠️ **Installation:** import the rhythm tables once:
 > `mysql MEeL < arcade/rhythm/migration.sql` — not part of
-> `database/schema.sql` (20 tables) nor `database/migrate.php` (v1–v12).
+> `database/schema.sql` (23 tables) nor `database/migrate.php` (v1–v15).
 
 ### Admin Activity Log Viewer
 
-`admin/activity_log.php` — audit trail viewer with:
+`admin/activity_log.php` — audit trail viewer with 3 tabs:
+
+**Activity Tab** (blue-600 theme):
 - Filter by action type, username/IP, date range
 - Pagination (50/page)
 - Stats cards (7-day activity, unique users, total entries)
 - Color-coded action badges (login=blue, upload=green, ban=red)
 - Manual log cleanup (7–365 days) with CSRF
+
+**Admin Actions Tab** (purple-600 theme):
+- Filter by admin username, action type, date range
+- Stats cards (7-day admin actions, unique admins, total entries)
+- Color-coded badges (coin=yellow, reset=red, login=blue, other=gray)
+- Maintenance: clear older than 7–365 days
+
+**Upload Queue Tab** (green-600 theme):
+- Filter by status (pending/processing/transcoding/completed/failed), uploader, date range
+- Stats cards (total uploads, completed, failed, active)
+- Color-coded status badges
+- Export CSV/JSON/XLS with preview modal
+- Maintenance: clear completed/failed older than 7–365 days
+
+> **Note:** Admin users are excluded from the MEeLCoin manual adjustment dropdown
+> (`WHERE role NOT IN ('guest', 'admin')`) — admin balance is managed via auto-refill
+> and upload costs only.
 
 ### 22. PWA Service Worker (`sw.js.php` + `modules/core/SwPrecache.php`)
 
@@ -683,6 +710,360 @@ User profile page with role-based visibility, theme toggle, and public channel g
 
 **Session initialization:** Uses `meel_boot_session()` (not raw `session_start()`) to ensure the session cookie name matches the rest of the application (`meel`).
 
+### 25. Notification Module (`modules/core/Notification.php` + `controllers/api/notification.php`)
+
+Database-backed notification system with user scoping and actor tracking.
+
+**Database:** `user_notifications` table (migration v15)
+
+```php
+class Notification {
+    public static function create(mysqli $conn, int $userId, string $type, string $title, string $message, ?int $relatedId = null, ?string $relatedSlug = null, ?int $actorUserId = null): void;
+    public static function getUnreadCount(mysqli $conn, int $userId): int;
+    public static function getList(mysqli $conn, int $userId, int $limit = 20): array;
+    public static function markRead(mysqli $conn, int $notifId, int $userId): void;
+    public static function markAllRead(mysqli $conn, int $userId): void;
+    public static function deleteOne(mysqli $conn, int $notifId, int $userId): bool;
+    public static function deleteAllByUser(mysqli $conn, int $userId): bool;
+    public static function deleteByChat(mysqli $conn, int $userId, string $message, int $actorUserId): bool;
+}
+```
+
+**Notification types:** `like`, `reply`, `admin_chat`
+
+**Link generation:** The `related_slug` column stores the media type (`video`/`music`) or a compound key (`type:id` for replies). The notification page builds links dynamically using `meel_base_url_path()` prefix.
+
+**API:** `controllers/api/notification.php` — POST-only for state-changing actions (mark_read, delete, delete_all) with CSRF verification. Read-only actions (unread_count, list) accept GET.
+
+---
+
+## Media Pipeline
+
+### Video Pipeline
+
+```
+Upload → FFmpeg Transcode → HLS (.m3u8 + .ts)
+                                ↓
+                          Sprite Generator
+                                ↓
+                         VTT Thumbnails
+                                ↓
+                         Move to HDD
+                                ↓
+                          DB Insert
+```
+
+### Audio Pipeline
+
+```
+Upload/Download → FFmpeg Encode → Opus (.ogg)
+                                      ↓
+                            Thumbnail Extraction
+                                (ID3 → JPG)
+                                      ↓
+                               DB Insert
+```
+
+### Download URL Pipeline
+
+```
+URL Input → yt-dlp Metadata → Download → Type Check
+                                            ↓
+                              ┌──────────────┴──────────────┐
+                              ↓                             ↓
+                          Video                         Music
+                              ↓                             ↓
+                     FFmpeg HLS                    FFmpeg Opus
+                     (codec copy)                   (libopus)
+                              ↓                             ↓
+                      Sprite + VTT                  Cover Art
+                              ↓                             ↓
+                         DB Insert                    DB Insert
+```
+
+---
+
+## Authentication Flow
+
+```
+Request → auth.php
+  ↓
+Session exists? → No → Redirect to login.php
+  ↓ Yes
+Validate last_session_id
+  ↓
+Different? → Yes → Session Destroy → Redirect to /err/?code=revoked
+  ↓ No
+Update last_activity
+  ↓
+Continue to requested page
+```
+
+### Login Flow
+
+```
+POST login
+  ↓
+Verify CSRF token
+  ↓
+Validate username & password
+  ↓
+Failed 5x? → Lock 5 minutes
+  ↓ Success
+Check MFA (mfa_enabled)
+  ↓
+Active? → Save mfa_temp_uid → Redirect to mfa_verify.php
+  ↓ No
+Set session variables (user_id, username, role)
+  ↓
+Update last_session_id
+  ↓
+Redirect to index.php
+```
+
+### MFA Verification Flow
+
+```
+POST mfa_verify.php
+  ↓
+Rate limit: max 10 failures, lock 5 minutes
+  ↓
+Verify TOTP 6-digit code
+  ↓
+Failed? → Increment fail count
+  ↓ Valid
+Set full session (user_id, username, role)
+  ↓
+Set mfa_verified = true
+  ↓
+Remove mfa_temp_uid from session
+  ↓
+Redirect to index.php
+```
+
+---
+
+## 26. JS/CSS Modularization
+
+MEeL uses a modular approach for JavaScript and CSS — each module has separate files that are loaded dynamically.
+
+### Directory Structure
+
+```
+assets/
+├── css/
+│   ├── video/           # Video module CSS (13 files)
+│   │   ├── autonext.css   # Auto-next overlay
+│   │   ├── base.css     # Base styles
+│   │   ├── cards.css    # Video card styles
+│   │   ├── fullscreen.css # Fullscreen player
+│   │   ├── glow.css     # Ambient glow effect
+│   │   ├── layout.css   # Player layout
+│   │   ├── mini-player.css # Floating mini player
+│   │   ├── navbar.css   # Video navbar
+│   │   ├── player.css   # Plyr overrides
+│   │   ├── resume-modal.css # Resume playback modal
+│   │   ├── seek.css     # Seek indicator
+│   │   ├── toast.css    # Toast notifications
+│   │   ├── utility.css  # Utility classes
+│   │   └── watch/       # Watch page specific
+│   ├── profile/         # Profile module CSS (10 files)
+│   │   ├── base.css     # Base profile styles
+│   │   ├── cards.css    # Media cards
+│   │   ├── coin.css     # MEeLCoin display
+│   │   ├── edit.css     # Edit profile
+│   │   ├── manage.css   # Profile management
+│   │   ├── notification.css # Notification settings
+│   │   ├── stat.css     # Statistics
+│   │   ├── mfa-switch.css # MFA toggle
+│   │   ├── type-badge.css # User role badges
+│   │   └── empty-state.css # Empty state displays
+│   ├── admin/           # Admin module CSS (6 files)
+│   │   ├── activity_log.css # Activity log viewer
+│   │   ├── chat.css     # Admin chat styles
+│   │   ├── catur.css    # Chess admin
+│   │   ├── index.css    # Admin dashboard
+│   │   ├── mfa_reset.css # MFA reset page
+│   │   └── stats.css    # Statistics page
+│   ├── music/           # Music module CSS (10 files)
+│   │   ├── base.css     # Base music styles
+│   │   ├── cards.css    # Music card styles
+│   │   ├── layout.css   # Music layout
+│   │   ├── mini-player.css # Music mini player
+│   │   ├── player.css   # Music player
+│   │   ├── playlist.css # Playlist styles
+│   │   ├── playlist-modal.css # Playlist modal
+│   │   ├── resume-modal.css # Resume playback modal
+│   │   ├── utility.css  # Utility classes
+│   │   └── visualizer.css # Audio visualizer
+│   ├── books/           # Books module CSS (6 files)
+│   │   ├── base.css     # Base books styles
+│   │   ├── cards.css    # Book card styles
+│   │   ├── manga.css    # Manga reader
+│   │   ├── pdf.css      # PDF reader
+│   │   ├── reader.css   # Book reader base
+│   │   └── utility.css  # Utility classes
+│   └── shared/          # Shared CSS (7 files)
+│       ├── comment.css  # Comment section
+│       ├── design-tokens.css # Design tokens
+│       ├── light-theme.css  # Light mode overrides
+│       ├── nav.css      # Navigation bar
+│       ├── notification.css # Notification styles
+│       ├── theme-tokens.css # Theme CSS variables
+│       └── upload-form.css  # Upload form styles
+├── js/
+│   ├── video/watch/     # Video watch page JS (12 files)
+│   │   ├── state.js     # Global state variables
+│   │   ├── lifecycle.js # Page lifecycle management
+│   │   ├── player-init.js # Player initialization
+│   │   ├── player-events.js # Player event handlers + aspect ratio
+│   │   ├── recovery.js  # Error recovery & stuck detector
+│   │   ├── mini-player.js # Floating mini player
+│   │   ├── gestures.js  # Touch gestures
+│   │   ├── search.js    # Search functionality
+│   │   ├── seek-indicator.js # Seek visual feedback
+│   │   ├── vtt-sprites.js # VTT sprite thumbnails
+│   │   └── misc.js      # Miscellaneous utilities
+│   ├── shared/          # Shared JS (19 files)
+│   │   ├── nav.js       # Navigation behavior
+│   │   ├── theme.js     # Theme toggle
+│   │   ├── keyboard.js  # Keyboard shortcuts
+│   │   ├── comment.js   # Comment section
+│   │   ├── notification.js # Notification system
+│   │   ├── plyr-config.js # Plyr configuration
+│   │   ├── format-time.js # Time formatting
+│   │   ├── resume-modal.js # Resume playback modal
+│   │   ├── index-hub.js # Homepage hub
+│   │   └── ...          # Other shared utilities
+│   ├── profile/         # Profile JS (5 files)
+│   │   ├── manage.js    # Profile management
+│   │   ├── avatar-crop.js # Avatar cropping
+│   │   ├── coin-countdown.js # MEeLCoin countdown
+│   │   └── theme-init.js # Theme initialization
+│   ├── admin/           # Admin JS (3 files)
+│   │   ├── activity_log.js # Activity log viewer
+│   │   └── chat/        # Admin chat
+│   ├── music/           # Music JS
+│   └── books/           # Books JS
+│       └── read/reader.js # Book reader
+```
+
+### CSS Mapping per Module
+
+Each CSS module has a `manifest.php` that registers its CSS files. `SwPrecache` reads these manifests to automatically generate service worker precache lists.
+
+```php
+// assets/css/video/manifest.php
+return ['base.css', 'cards.css', 'fullscreen.css', 'glow.css', 'layout.css',
+        'mini-player.css', 'navbar.css', 'player.css', 'seek.css', 'toast.css'];
+```
+
+### Dynamic Loader
+
+JavaScript is loaded dynamically by `main.js` on each module page. JS files are loaded sequentially according to dependencies:
+
+```javascript
+// Example: video/watch/main.js loads scripts sequentially
+const scripts = [
+    'state.js', 'recovery.js', 'player-init.js', 'player-events.js',
+    'lifecycle.js', 'mini-player.js', 'gestures.js', 'vtt-sprites.js',
+    'seek-indicator.js', 'misc.js'
+];
+```
+
+---
+
+## 27. Adaptive Aspect Ratio Player
+
+MEeL's video player supports adaptive aspect ratio for various video formats (4:3, 16:9, 21:9, portrait).
+
+### How It Works
+
+1. **Placeholder:** Server renders wrapper with `style="aspect-ratio: 16/9;"` as default
+2. **Runtime:** When video metadata loads, JavaScript `applyMeelVideoAspect()` changes aspect ratio to match actual dimensions
+3. **Constraint:** Non-16:9 videos get proportional `max-width` to equalize height with 16:9
+
+### `applyMeelVideoAspect(wrapper, videoW, videoH)` Logic
+
+| Condition | Behavior |
+|---|---|
+| Portrait (videoW < videoH) | `max-height: 80vh`, width auto, center horizontally |
+| Landscape < 16:9 (4:3, 5:4, 1:1) | `max-width: calc(100% × 9 × videoW / (16 × videoH))`, center |
+| 16:9 or wider (21:9) | Full width, natural height |
+
+### Calculation Example for 4:3
+
+```
+max-width = calc(100% × 9 × 4 / (16 × 3))
+         = calc(100% × 36/48)
+         = 75% of parent width
+```
+
+At 1000px parent width:
+- **4:3:** 750px × 562.5px (centered)
+- **16:9:** 1000px × 562.5px (full width)
+
+Both have the same height — the 4:3 video is smaller and centered, just like YouTube.
+
+### CSS Support
+
+```css
+/* player.css — prevents stretching */
+.plyr__video-wrapper video {
+    object-fit: contain;
+}
+```
+
+### Related Files
+
+| File | Role |
+|---|---|
+| `assets/js/video/watch/player-events.js` | `applyMeelVideoAspect()` function |
+| `assets/css/video/player.css` | `object-fit: contain` for video |
+| `assets/css/video/watch/main.css` | Mobile max-height constraint |
+
+---
+
+## 28. Chat API
+
+Real-time chat system between users with HTMX polling.
+
+### Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/chat` | GET | Get chat messages (params: `after_id`, `limit`) |
+| `/api/chat` | POST | Send chat message (params: `message`, `csrf_token`) |
+
+### Database Schema
+
+```sql
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+### Features
+
+- Messages ordered by `created_at` ASC
+- HTMX polling every 3 seconds for new messages
+- Delete own messages (with ownership validation)
+- `admin_chat` notification type for messages to admin
+- Rate limiting: 30 messages per minute per user
+
+### Related Files
+
+| File | Role |
+|---|---|
+| `controllers/api/chat.php` | Chat API endpoint |
+| `admin/chat.php` | Admin chat interface |
+| `assets/js/shared/notification.js` | Notification polling including chat |
+| `assets/css/admin/chat.css` | Admin chat styles |
+
 ---
 
 ## ProgressObserver Architecture
@@ -733,7 +1114,7 @@ $tc = new Transcoder($conn, $uid, function (string $stage, array $data): void {
 **Guarantees:**
 - An observer exception is caught and logged inside `emit()` — it never propagates
   into the media pipeline (no orphaned processes or half-moved files).
-- With no observer attached, `emit()` is a no-op — zero output-buffer pollution.
+- With no observer attached, `emit()` is a no-op — zero output-buffer pollution
 - Music downloads return a `REDIRECT:`-prefixed string so the *caller* decides how
   to continue (no `exit` call in the business layer).
 

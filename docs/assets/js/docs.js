@@ -13,10 +13,10 @@ const DOCS = {
             ['api',               '🔌 API'],
             ['security',          '🔒 Security'],
             ['development',       '👨‍💻 Dev'],
+            ['testing',           '🧪 Test'],
             ['troubleshooting',   '🔧 Troubleshoot'],
             ['problem-solved',    '🌍 Problems'],
-            ['upload_issue',      '📥 Upload'],
-            ['test',              '🧪 Test'],
+            ['upload-issues',     '📥 Upload'],
             ['pwa',               '📱 PWA'],
             ['analysis',          '📋 Analysis'],
         ]
@@ -32,12 +32,12 @@ const DOCS = {
             ['api',               '🔌 API'],
             ['security',          '🔒 Keamanan'],
             ['development',       '👨‍💻 Dev'],
+            ['testing',           '🧪 Test'],
             ['troubleshooting',   '🔧 Troubleshoot'],
             ['problem-solved',    '🌍 Masalah'],
-            ['upload_issue',      '📥 Upload'],
-            ['test',              '🧪 Test'],
+            ['upload-issues',     '📥 Upload'],
             ['pwa',               '📱 PWA'],
-            ['deskripsi',         '📋 Analisis'],
+            ['analysis',          '📋 Analisis'],
         ]
     }
 };

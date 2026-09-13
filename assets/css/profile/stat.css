@@ -1,0 +1,58 @@
+.stat-total,
+.stat-video,
+.stat-music {
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.stat-total:hover,
+.stat-video:hover,
+.stat-music:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.stat-total:hover {
+    border-color: rgba(59, 130, 246, 0.5) !important;
+}
+
+.stat-video:hover {
+    border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.stat-music:hover {
+    border-color: rgba(249, 115, 22, 0.5) !important;
+}
+
+.stat-active-total {
+    border: 1px solid rgba(59, 130, 246, 0.5) !important;
+    background: rgba(59, 130, 246, 0.08);
+    text-decoration: none;
+}
+
+.stat-active-total:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15);
+}
+
+.stat-active-video {
+    border: 1px solid rgba(239, 68, 68, 0.5) !important;
+    background: rgba(239, 68, 68, 0.08);
+    text-decoration: none;
+}
+
+.stat-active-video:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.15);
+}
+
+.stat-active-music {
+    border: 1px solid rgba(249, 115, 22, 0.5) !important;
+    background: rgba(249, 115, 22, 0.08);
+    text-decoration: none;
+}
+
+.stat-active-music:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(249, 115, 22, 0.15);
+}

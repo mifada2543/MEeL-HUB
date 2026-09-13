@@ -1,0 +1,85 @@
+.mfa-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 0;
+    background: none;
+    border: none;
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.mfa-switch:hover {
+    opacity: 0.85;
+}
+
+.mfa-switch:active {
+    transform: scale(0.97);
+}
+
+.mfa-switch:focus-visible {
+    outline: 2px solid #a855f7;
+    outline-offset: 4px;
+    border-radius: 6px;
+}
+
+.mfa-track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    border-radius: 99px;
+    transition: background 0.3s ease;
+    flex-shrink: 0;
+}
+
+.mfa-track--on {
+    background: #22c55e;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.25);
+}
+
+.mfa-track--off {
+    background: #374151;
+}
+
+.mfa-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mfa-track--on .mfa-knob {
+    transform: translateX(20px);
+}
+
+.mfa-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.mfa-label--on {
+    color: #22c55e;
+}
+
+.mfa-label--off {
+    color: #6b7280;
+}
+
+.mfa-label-sub {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #6b7280;
+    display: block;
+    margin-top: -1px;
+}

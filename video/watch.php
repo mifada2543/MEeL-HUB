@@ -7,7 +7,7 @@ require_once '../modules/core/helpers.php';
 require_once '../modules/core/CommentRenderer.php';
 require_once '../controllers/api/WatchController.php';
 
-$id      = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$id      = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
 
 $ctrl = new VideoWatchController($conn, $user_id, $id);
@@ -279,7 +279,8 @@ $__vdir = function($dir) {
                             Selengkapnya
                         </button>
                     </div>
-                    <script>                        requestAnimationFrame(function() {
+                    <script>
+                        requestAnimationFrame(function() {
                             var d = document.getElementById('desc-text'),
                                 b = document.getElementById('btn-read-more');
                             if (d && b && d.scrollHeight > d.clientHeight) b.classList.remove('hidden');
@@ -318,7 +319,7 @@ $__vdir = function($dir) {
                         <div id="comment-body">
                             <div class="p-4 sm:p-6">
                                 <div id="comment-alert"></div>
-                            <form action="<?= base_url('/video/watch?id=' . (int)$id) ?>" method="post" class="mb-6"
+                            <form action="<?= base_url('/video/watch?v=' . (int)$id) ?>" method="post" class="mb-6"
                                 hx-post="../api/comment"
                                 hx-target="#comment-list"
                                 hx-swap="innerHTML"
@@ -350,22 +351,20 @@ $__vdir = function($dir) {
                             </div>
                         </div>
                     </section>
-                    <script>                        document.getElementById('comment-body')?.classList.add('collapsed');
-</script>
-                    <noscript><style>#comment-preview{display:none}
-</style></noscript>
+                    <script>document.getElementById('comment-body')?.classList.add('collapsed');</script>
+                    <noscript><style>#comment-preview{display:none}</style></noscript>
                 <?php endif; ?>
             </div>
         </div>
 
         <div id="recommendation-wrapper" class="w-full lg:w-80 flex-shrink-0 space-y-4 px-4 sm:px-5 lg:px-0">
-            <div class="text-[9px] text-gray-300 uppercase tracking-[.25em] px-1 flex items-center gap-2" id="rec-title">
-                <i data-lucide="play-circle" class="w-3 h-3 text-red-500"></i>
-                Video Lainnya
+            <div class="text-[9px] text-gray-300 uppercase tracking-[.25em] px-1 flex items-center gap-2 min-w-0" id="rec-title">
+                <i data-lucide="play-circle" class="w-3 h-3 text-red-500 flex-shrink-0"></i>
+                <span id="rec-title-text" class="truncate" title="Video Lainnya">Video Lainnya</span>
             </div>
             <div id="recommendation-column" class="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-0 lg:space-y-1">
                 <?php while ($r = $rekom->fetch_assoc()): ?>
-                    <a href="<?= base_url('/video/watch?id=' . (int)$r['id']) ?>"
+                    <a href="<?= base_url('/video/watch?v=' . (int)$r['id']) ?>"
                         class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline"
                         title="<?= htmlspecialchars($r['title']) ?>">
                         <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
@@ -385,6 +384,16 @@ $__vdir = function($dir) {
                         </div>
                     </a>
                 <?php endwhile; ?>
+                <?php if ($rekom->num_rows >= 15): ?>
+                    <div class="py-3 text-center rec-sentinel"
+                        hx-get="search?exclude=<?= (int)$id ?>"
+                        hx-target="#recommendation-column"
+                        hx-swap="beforeend"
+                        hx-trigger="revealed"
+                        hx-indicator="#search-indicator">
+                        <div class="rec-spinner animate-spin h-3 w-3 border-2 border-red-500 border-t-transparent rounded-full mx-auto"></div>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -414,22 +423,29 @@ $__vdir = function($dir) {
     <script src="../assets/js/shared/comment.js<?= $__v('assets/js/shared/comment.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js<?= $__v('assets/js/shared/htmx-lucide.js') ?>"></script>
 
-    <script>        
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInputs = ['v-search-watch', 'v-search-mobile'];
-            searchInputs.forEach(id => {
-                const input = document.getElementById(id);
-                if (input) {
-                    input.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            document.getElementById('v-search-btn')?.click();
-                        }
-                    });
-                }
-            });
+    <script src="../assets/js/video/watch/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/video/watch/search.js') ?>"></script>
+    <script>
+        document.addEventListener('htmx:beforeRequest', function(e) {
+            var btn = e.target.closest('#v-search-btn, #v-search-mobile');
+            if (!btn) return;
+            var input = document.getElementById('v-search-watch') || document.getElementById('v-search-mobile');
+            var query = (input ? input.value : '').trim();
+            var titleEl = document.getElementById('rec-title-text');
+            if (!titleEl) return;
+            if (query.length > 0) {
+                var label = 'Hasil pencarian \u201c' + query + '\u201d';
+                titleEl.textContent = label;
+                titleEl.title = label;
+            } else {
+                titleEl.textContent = 'Video Lainnya';
+                titleEl.title = 'Video Lainnya';
+            }
         });
-</script>
+        document.addEventListener('htmx:afterRequest', function(e) {
+            var sentinel = e.target.closest('.rec-sentinel');
+            if (sentinel) sentinel.style.display = 'none';
+        });
+    </script>
 </body>
 
 </html>

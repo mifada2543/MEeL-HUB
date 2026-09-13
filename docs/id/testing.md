@@ -5,7 +5,7 @@
 
 ---
 
-## 📋 Ikhtisar
+## Ikhtisar
 
 MEeL menggunakan pendekatan testing berlapis:
 
@@ -62,7 +62,7 @@ logs/tests/
 
 | File | Test | Cakupan |
 |---|---|---|
-| `RateLimiterTest.php` | 11 | Admin bypass, role limits, blocking, cleanup, stats, fallback, independent keys |
+| `RateLimiterTest.php` | 11 | Admin bypass, role limits, blocking, cleanup, stats, fail-closed saat storage gagal, independent keys |
 | `HelpersTest.php` | 50 | format_bytes, time_ago, audio MIME, disk space, CSRF, dir_size, deteksi protokol (data provider) |
 | `JapaneseTest.php` | 15 | Romaji conversion, analyzeJapaneseText, English translation (tanpa MeCab) |
 | `GarbageCollectorTest.php` | 6 | Class existence, idempotency, graceful handling, cleanup rate-limit (dir test terisolasi) |
@@ -233,7 +233,7 @@ class MyIntegrationTest extends TestCase
 
 ---
 
-## 📋 Functional Test (`tests/functional_test.php`)
+## Functional Test (`tests/functional_test.php`)
 
 Skrip test kustom yang memvalidasi alur kerja aplikasi:
 
@@ -304,8 +304,10 @@ PHP Syntax (8.1, 8.2, 8.3)
     ├── Functional Tests          → php tests/functional_test.php
     ├── Security Tests            → php tests/security_test.php
     ├── PHPUnit Unit Tests        → php vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'
+    ├── PHPUnit Integration Tests → php vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests' (service MySQL)
     ├── HTACCESS & Integrity      → kehadiran .htaccess + permission
-    └── Deployment Check         → php tests/check_deploy.php --no-color --hdd=…
+    ├── Deployment Check         → php tests/check_deploy.php --no-color --hdd=…
+    └── Drive Storage Integrity   → verifikasi path storage
             └── CI Summary
 ```
 
@@ -320,18 +322,13 @@ DNS berjalan sungguhan karena runner GitHub Actions punya resolver;
 `ValidatingProxyTest` lulus karena runner punya PHP CLI dengan
 pcntl/stream sockets.
 
-> **CI hanya menjalankan suite unit.** Suite `tests/integration/` butuh
-> database MySQL nyata dengan data seed (`DbTestHelper` terkoneksi ke
-> `localhost` dengan ID user/media hardcoded) yang tidak tersedia di runner
-> CI — menjalankannya di sana menghasilkan 70+ error koneksi `mysqli`.
-> Jalankan secara lokal:
-> `vendor/bin/phpunit --testsuite='MEeL Integration Tests'`.
->
-> Test Jepang/romaji (`JapaneseTest`, sebagian `HelpersTest`) memanggil
-> **MeCab** via `proc_open`. CI meng-install-nya (`apt-get install mecab
-> mecab-ipadic-utf8`), dan saat MeCab tidak tersedia test terkait menurun ke
-> `markTestSkipped()` via `meel_mecab_available()` — jadi mesin tanpa mecab
-> tetap mendapat suite hijau, bukan failure.
+> **CI menjalankan suite unit dan integration.** Job `phpunit-tests` menjalankan
+> suite unit, sedangkan `phpunit-integration-tests` menjalankan integration test
+> terhadap container MySQL 8.0 sesungguhnya. Test Jepang/romaji (`JapaneseTest`,
+> sebagian `HelpersTest`) memanggil **MeCab** via `proc_open`. CI meng-install-nya
+> (`apt-get install mecab mecab-ipadic-utf8`), dan saat MeCab tidak tersedia test
+> terkait menurun ke `markTestSkipped()` via `meel_mecab_available()` — jadi
+> mesin tanpa mecab tetap mendapat suite hijau, bukan failure.
 
 Pemeriksaan **statis wiring** untuk boundary yang sama dijalankan oleh job
 `security-tests` (TEST 13 di `tests/security_test.php`) dan job

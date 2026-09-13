@@ -1,4 +1,5 @@
 <?php
+define('MEEL_API_CONTEXT', true);
 require_once '../../modules/core/helpers.php';
 meel_boot_session();
 
@@ -68,6 +69,20 @@ if (!$result['success']) {
     exit;
 }
 
+if ($type === 'like' && isset($result['data']['user_interaction']) && $result['data']['user_interaction'] === 'like') {
+    require_once __DIR__ . '/../../modules/core/Notification.php';
+    $table = ($media_type === 'music') ? 'music' : 'video';
+    $owner_q = $conn->query("SELECT user_id, title FROM $table WHERE id = $id");
+    if ($owner_q && $owner_q->num_rows > 0) {
+        $owner = $owner_q->fetch_assoc();
+        if ((int)$owner['user_id'] !== $user_id) {
+            Notification::create($conn, (int)$owner['user_id'], 'like', 'Like Video',
+                $_SESSION['username'] . ' menyukai video "' . $owner['title'] . '"',
+                $id, $media_type, $user_id);
+        }
+    }
+}
+
 $user_interaction = $result['data']['user_interaction'];
 $likes            = $result['data']['likes'];
 $dislikes         = $result['data']['dislikes'];
@@ -86,7 +101,7 @@ $inactive_class = 'bg-gray-900/40 border-gray-800 text-gray-400 hover:bg-gray-80
 <div id="like-dislike-container" class="flex items-center gap-2 mt-4 sm:mt-0" hx-get-trigger="load">
     <button
         hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
-        hx-vals='{"id":"<?= $id ?>","media_type":"<?= $media_type ?>","type":"like","csrf_token":"<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"}'
+        hx-vals='{"id":"<?= $id ?>","media_type":"<?= htmlspecialchars($media_type, ENT_QUOTES) ?>","type":"like","csrf_token":"<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"}'
         class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer <?= $user_interaction === 'like' ? $like_active_class : $inactive_class ?>">
         <i data-lucide="thumbs-up" class="w-3.5 h-3.5 <?= $user_interaction === 'like' ? 'fill-current' : '' ?>"></i>
         Like<?= $likes > 0 ? " <span class='tabular-nums ml-0.5'>{$likes}</span>" : '' ?>
@@ -94,7 +109,7 @@ $inactive_class = 'bg-gray-900/40 border-gray-800 text-gray-400 hover:bg-gray-80
 
     <button
         hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
-        hx-vals='{"id":"<?= $id ?>","media_type":"<?= $media_type ?>","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"}'
+        hx-vals='{"id":"<?= $id ?>","media_type":"<?= htmlspecialchars($media_type, ENT_QUOTES) ?>","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"}'
         class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer <?= $user_interaction === 'dislike' ? $dislike_active_class : $inactive_class ?>">
         <i data-lucide="thumbs-down" class="w-3.5 h-3.5 <?= $user_interaction === 'dislike' ? 'fill-current' : '' ?>"></i>
         <?= $dislikes > 0 ? "<span class='tabular-nums'>{$dislikes}</span>" : '' ?>

@@ -15,12 +15,13 @@ require_once 'modules/core/BrowserProgressObserver.php';
 require_once 'modules/core/GarbageCollector.php';
 require_once 'modules/media/MediaLibrary.php';
 require_once 'modules/core/MeelCoin.php';
+require_once 'modules/core/Notification.php';
 GarbageCollector::run();
 
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
     if (strpos($errfile, 'node_modules') !== false || strpos($errfile, 'vendor') !== false) return false;
     $safe_msg = "$errstr (Line $errline)";
-    $js = 'if(typeof meelError==="function"){meelError(' . json_encode($safe_msg) . ')}';
+    $js = 'if(typeof meelError==="function"){meelError(' . json_encode($safe_msg, JSON_HEX_TAG | JSON_HEX_AMP) . ')}';
     echo '<script>' . $js . '</script>';
     echo str_repeat(' ', 1024);
     flush();
@@ -30,7 +31,7 @@ set_error_handler(function ($errno, $errstr, $errfile, $errline) {
 register_shutdown_function(function () {
     $error = error_get_last();
     if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
-        $js = 'if(typeof meelError==="function"){meelError(' . json_encode($error['message']) . ')}';
+        $js = 'if(typeof meelError==="function"){meelError(' . json_encode($error['message'], JSON_HEX_TAG | JSON_HEX_AMP) . ')}';
         echo '<script>' . $js . '</script>';
         echo str_repeat(' ', 1024);
         flush();
@@ -55,6 +56,16 @@ $q_active = $conn->query("SELECT COUNT(*) FROM upload_queue WHERE status='proces
 $active_count = $q_active ? (int)$q_active->fetch_row()[0] : 0;
 
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
+
+$coin_balance   = 0;
+$coin_max       = 0;
+$coin_cost      = 0;
+$coin_countdown = 0;
+$upload_max     = 0;
+$quota_video_used      = 0;
+$quota_music_used      = 0;
+$quota_video_remaining = 0;
+$quota_music_remaining = 0;
 
 if ($meelcoin_enabled) {
     if (!$is_admin) {
@@ -97,6 +108,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 if (!$spent_ok) {
                     $message = 'rate_limit';
                     $rate_limit_msg = $spent_err;
+                } else {
+                    $new_balance = MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
+                    $clean_url = filter_var(trim($_POST['url']), FILTER_SANITIZE_URL) ?: trim($_POST['url']);
+                    Notification::create($conn, (int)$_SESSION['user_id'], 'meelcoin',
+                        'Penggunaan MEeLCoin',
+                        'Upload URL berhasil. URL: ' . htmlspecialchars($clean_url) . ' — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
+                    );
                 }
             }
         }
@@ -158,13 +176,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                     if ($result['status'] === 'success') {
                         MediaLibrary::clearCountsCache();
                         log_activity($conn, (int)$_SESSION['user_id'], 'upload_music', 'music');
-                        $done_title = json_encode($enc_title);
+                        $done_title = json_encode($enc_title, JSON_HEX_TAG | JSON_HEX_AMP);
                         echo '<script>'
                            . 'if(typeof meelDone==="function"){meelDone(' . $done_title . ',"music/index.php");}'
-                           . 'else{window.location.href="upload?success=1&file="+encodeURIComponent(' . json_encode($result['filename']) . ');}'
+                           . 'else{window.location.href="upload?success=1&file="+encodeURIComponent(' . json_encode($result['filename'], JSON_HEX_TAG | JSON_HEX_AMP) . ');}'
                            . '</script>';
                     } else {
-                        $err_msg = json_encode($result['msg'] ?? 'Gagal mengonversi audio.');
+                        if ($coin_deducted ?? false) {
+                            MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_encode_refund');
+                        }
+                        $err_msg = json_encode($result['msg'] ?? 'Gagal mengonversi audio.', JSON_HEX_TAG | JSON_HEX_AMP);
                         echo '<script>'
                            . 'if(typeof meelError==="function"){meelError(' . $err_msg . ');}'
                            . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ Encode Gagal</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
@@ -183,12 +204,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                         ob_end_clean();
                     }
                     $target_attr = htmlspecialchars($target, ENT_QUOTES);
-                    $target_js   = json_encode($target, JSON_UNESCAPED_SLASHES);
+                    $target_js   = json_encode($target, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
                     echo '<meta http-equiv="refresh" content="0;url=' . $target_attr . '">'
                        . '<script>'
                        . 'if (typeof window.meelRedirect === "function") { window.meelRedirect(' . $target_js . '); }'
                        . 'else { window.location.replace(' . $target_js . '); }'
                        . '</script></body></html>';
+                    exit;
+                }
+
+                if ($coin_deducted ?? false) {
+                    MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_download_refund');
+                    $err_msg = $message !== '' ? json_encode($message, JSON_HEX_TAG | JSON_HEX_AMP) : '"Download gagal: media tidak tersimpan di server."';
+                    $err_label = $message !== '' ? 'Download Gagal' : 'Download Gagal';
+                    echo '<script>'
+                       . 'if(typeof meelError==="function"){meelError(' . $err_msg . ');}'
+                       . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ ' . $err_label . '</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
+                       . '</script>';
+                    echo str_repeat(' ', 1024);
+                    flush();
                     exit;
                 }
             } catch (Exception $e) {
@@ -198,7 +232,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 }
                 if ($is_admin) {
                     $msg = $e->getMessage();
-                    echo '<script>if(typeof meelError==="function"){meelError(' . json_encode($msg) . ')}else{document.open();document.write("<pre style=\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\">"+"<b style=\"color:#f44\">⚠ Download Gagal</b><br><br>"+document.createTextNode(' . json_encode($msg) . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}</script>';
+                    $json_msg = json_encode($msg, JSON_HEX_TAG | JSON_HEX_AMP);
+                    echo '<script>if(typeof meelError==="function"){meelError(' . $json_msg . ')}else{document.open();document.write("<pre style=\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\">"+"<b style=\"color:#f44\">⚠ Download Gagal</b><br><br>"+document.createTextNode(' . $json_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}</script>';
                 } else {
                     header('Location: err/index.php?code=server_error');
                     exit;
@@ -213,7 +248,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 }
                 if ($is_admin) {
                     $msg = $e->getMessage();
-                    echo '<script>if(typeof meelError==="function"){meelError(' . json_encode($msg) . ')}else{document.open();document.write("<pre style=\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\">"+"<b style=\"color:#f44\">⚠ Download Gagal</b><br><br>"+document.createTextNode(' . json_encode($msg) . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}</script>';
+                    $json_msg = json_encode($msg, JSON_HEX_TAG | JSON_HEX_AMP);
+                    echo '<script>if(typeof meelError==="function"){meelError(' . $json_msg . ')}else{document.open();document.write("<pre style=\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\">"+"<b style=\"color:#f44\">⚠ Download Gagal</b><br><br>"+document.createTextNode(' . $json_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}</script>';
                 } else {
                     header('Location: err/index.php?code=server_error');
                     exit;
@@ -275,7 +311,7 @@ include __DIR__ . '/partials/scripts.php';
                 <div class="masthead-meta">
                     <div><?= htmlspecialchars($_SESSION['username'] ?? '—') ?></div>
                     <div style="color:<?= $is_admin ? 'var(--orange)' : 'var(--muted)' ?>">
-                        <?= strtoupper($user_role) ?>
+                        <?= htmlspecialchars(strtoupper($user_role)) ?>
                     </div>
                     <div><?= date('d M Y') ?></div>
                 </div>
@@ -381,7 +417,7 @@ include __DIR__ . '/partials/scripts.php';
                         <div class="form-card-body">
                             <form method="POST" onsubmit="return startAdvancedUpload(this)" style="display:flex;flex-direction:column;gap:1.25rem;">
                                 <?php if (isset($_SESSION['csrf_token'])): ?>
-                                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES) ?>">
                                 <?php endif; ?>
                                 
                                 <div>

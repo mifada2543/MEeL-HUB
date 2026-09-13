@@ -4,7 +4,7 @@ Panduan untuk pengembang yang ingin berkontribusi atau memahami standar koding d
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [Lingkungan Development](#lingkungan-development)
 - [Standar Koding](#standar-koding)
@@ -170,7 +170,7 @@ define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
 
 #### 7. Type Hints
 
-Properti class dan parameter constructor **wajib** memiliki type hints (PHP 7.4+):
+Properti class dan parameter constructor **wajib** memiliki type hints (PHP 8.0+):
 
 ```php
 // ✅ BENAR - Type hints
@@ -346,12 +346,12 @@ music ──1:N── playlist_tracks
 
 Setiap modul (video, music, books, drive) mengikuti pola. Halaman diakses via
 **URL bersih** (front controller `router.php` → `modules/core/Router.php`),
-contoh `video/beranda` → `video/index.php`, `music/watch?id=X` → `music/watch.php`:
+contoh `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch.php`:
 
 ```
 [module]/
 ├── index.php          # Katalog / daftar (URL: [module]/beranda)
-├── watch.php          # Player / detail (URL: [module]/watch?id=X)
+├── watch.php          # Player / detail (URL: [module]/watch?v=X)
 ├── upload.php         # Form upload (URL: [module]/upload)
 ├── search_[module].php  # Pencarian (HTMX) (URL: [module]/search)
 ├── load_more.php      # Pagination (HTMX) (URL: [module]/load-more)
@@ -792,6 +792,16 @@ if (!headers_sent()) {
 | `assets/js/music/watch/mini-player.js` | Mode mini-player music (Spotify-style) — dipisah dari player-core.js |
 | `assets/js/music/watch/player-core.js` | Inti player music (visualizer, EQ, bitrate, logika resume-modal & sesi) |
 | `assets/js/music/watch/state.js` | Music player state, preset equalizer & marker sesi resume (`window.__meelResumeSessionActive`) |
+| `assets/js/profile/manage.js` | Profile management (edit, delete media) |
+| `assets/js/profile/avatar-crop.js` | Avatar cropping tool |
+| `assets/js/profile/coin-countdown.js` | MEeLCoin refill countdown |
+| `assets/js/profile/theme-init.js` | Theme initialization on profile page |
+| `assets/js/admin/activity_log.js` | Activity log viewer with 3 tabs |
+| `assets/js/shared/nav.js` | Navigation bar behavior |
+| `assets/js/shared/theme.js` | Theme toggle logic |
+| `assets/js/shared/notification.js` | Notification polling system |
+| `assets/css/video/player.css` | Plyr video player overrides (object-fit: contain) |
+| `assets/css/profile/*.css` | Profile module CSS (10 files: base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state) |
 
 ### Musik — Perilaku Resume Modal
 

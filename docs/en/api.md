@@ -4,7 +4,7 @@ Documentation of API endpoints, controllers, and AJAX/HTMX handlers in MEeL-HUB.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Controllers Overview](#controllers-overview)
 - [WatchController](#watchcontroller)
@@ -35,7 +35,10 @@ controllers/
 │   ├── theme.php             # Theme preference (GET/POST) — light/dark
 │   ├── ajax_refresh.php      # AJAX fragment refresh (search, etc.)
 │   ├── server_stats.php      # Server statistics (JSON)
-│   └── server_stats_sse.php  # Server statistics via Server-Sent Events
+│   ├── server_stats_sse.php  # Server statistics via Server-Sent Events
+│   ├── notification.php      # User notifications (mark read, get count)
+│   ├── chat.php              # Real-time chat between users
+│   └── meelcoin.php          # MEeLCoin balance & operations
 ├── profile/
 │   ├── fun-manage.php        # Delete media, pending deletions, cleanup
 │   └── profile_edit.php      # Update user profile
@@ -84,9 +87,9 @@ abstract class AbstractWatchController
 }
 ```
 
-- `handleRequest()` — records the view and processes comment POSTs with CSRF verification & rate limit (10/min). Redirects via the `commentRedirectUrl()` hook.
-- `baseViewData()` — returns the keys shared by every watch page: `id`, `user_id`, `is_logged_in`, `v`, `user_interaction`, `comments_grouped`, `user_map`, `rekom`.
-- `commentRedirectUrl()` — defaults to `music/watch?id=...#comment-section`; `MusicWatchController` overrides it to append `&playlist_id=...`.
+- `handleRequest()` — records the view and processes comment POSTs with CSRF verification & rate limit (10/min). Redirects via the `commentRedirectUrl()` hook
+- `baseViewData()` — returns the keys shared by every watch page: `id`, `user_id`, `is_logged_in`, `v`, `user_interaction`, `comments_grouped`, `user_map`, `rekom`
+- `commentRedirectUrl()` — defaults to `music/watch?v=...#comment-section`; `MusicWatchController` overrides it to append `&playlist_id=...`
 
 ### VideoWatchController
 
@@ -445,7 +448,7 @@ Store in a safe place!
 
 ### Admin MFA Reset (`admin/mfa-reset` + `controllers/admin/admin_actions.php`)
 
-**Method:** GET (link with parameters)
+**Method:** POST (form submission, not GET link)
 **Auth:** Admin only
 **Rate Limit:** None
 
@@ -467,10 +470,10 @@ Page `admin/mfa-reset` shows a list of users with MFA enabled:
 
 #### Reset MFA Action
 
-**Trigger:** Click "Reset MFA" → SweetAlert2 confirmation → redirect
+**Trigger:** Click "Reset MFA" → SweetAlert2 confirmation → POST form submission
 
 ```
-GET admin/mfa-reset?reset_mfa=1&user_id=123&csrf_token=...
+POST admin/mfa-reset (form: reset_mfa=1, user_id=123, csrf_token=...)
   ↓
 die(include admin_actions.php)
   ↓
@@ -531,21 +534,35 @@ Redirect to admin/mfa-reset?msg=reset_ok&user={username}
 
 ### Delete Comment
 
-**Endpoint:** `api/delete-comment?id=123` (handler: `controllers/api/delete_comment.php`)
-**Method:** GET
-**Auth:** User (comment owner)
+**Endpoint:** `api/delete-comment` (handler: `controllers/api/delete_comment.php`)
+**Method:** POST only (GET returns 405)
+**Auth:** User (comment owner, media uploader, or admin)
 **Rate Limit:** 10 requests per minute per user
 
+**Request (HTMX):**
+```html
+<form method="POST" hx-post="api/delete-comment" hx-target="#comment-section">
+  <input type="hidden" name="csrf_token" value="...">
+  <input type="hidden" name="id" value="123">
+  <input type="hidden" name="media_type" value="video">
+  <input type="hidden" name="media_id" value="456">
+  <button type="submit">Delete</button>
+</form>
+```
+
 **Response:**
-- Success: Redirect to referrer with flash message
-- Error: Redirect with error message
-- `429 Too Many Requests` — Redirect with `$_SESSION['error']`
+- Success (AJAX): Re-rendered comment section HTML
+- Success (non-AJAX): Redirect to referrer with flash message
+- Error: Error message in HTML or redirect
+- `405 Method Not Allowed` — non-POST request
+- `429 Too Many Requests` — Rate limit exceeded
 
 ### Auto Metadata
 
 **Endpoint:** `api/auto-metadata` (handler: `controllers/api/auto_metadata.php`)
 **Method:** POST
-**Auth:** Admin
+**Auth:** User (login required)
+**Rate Limit:** 5 requests per hour per user (CPU-intensive: runs ffprobe + ffmpeg)
 
 Fetches automatic metadata from URL (yt-dlp) for upload forms.
 
@@ -817,7 +834,78 @@ and the same auth helpers as the other modules).
 | `arcade/rhythm/api/delete` | POST | login + CSRF | Delete custom song — owner or admin; removes audio + cover + beatmap.json + DB record (transactional) |
 
 > ⚠️ The `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`
-> (separate from `database/schema.sql` / `database/migrate.php` v1–v12).
+> (separate from `database/schema.sql` / `database/migrate.php` v1–v15).
+
+---
+
+## Notification API
+
+### Notification Endpoints (`api/notification.php`)
+
+**Auth:** User (login required)
+
+| Action | Method | CSRF | Description |
+|---|---|---|---|
+| `unread_count` | GET | No | Returns `{count: int}` — number of unread notifications |
+| `list` | GET | No | Returns `{ok, list, count}` — notification list (limit 1–50) |
+| `mark_read` | POST | Yes | Mark single notification as read (`id` param) |
+| `mark_all_read` | POST | Yes | Mark all user notifications as read |
+| `delete` | POST | Yes | Delete single notification (`id` param) |
+| `delete_all` | POST | Yes | Delete all user notifications |
+
+State-changing actions (mark_read, mark_all_read, delete, delete_all) enforce POST method and CSRF token verification. GET requests return HTTP 405.
+
+**Notification types:**
+| Type | Trigger | Link Target |
+|---|---|---|
+| `like` | User liked your video/music | `/video/watch?v=ID` or `/music/watch?v=ID` |
+| `reply` | User replied to your comment | `/video/watch?v=ID` or `/music/watch?v=ID` |
+| `admin_chat` | Admin sent a chat message | — |
+
+---
+
+## Chat API
+
+### Chat Endpoints (`api/chat.php`)
+
+#### User Chat (Real-time)
+
+**Auth:** User (login required)
+
+| Action | Method | CSRF | Description |
+|---|---|---|---|
+| `list` | GET | No | Get chat messages (params: `after_id`, `limit`) |
+| `send` | POST | Yes | Send chat message (params: `message`, `csrf_token`) |
+| `delete` | POST | Yes | Delete own message (params: `id`) — ownership validation |
+
+**Database Schema:**
+```sql
+CREATE TABLE chat_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+**HTMX Polling:** Client polls every 3 seconds for new messages using `HX-Get` with `after_id` parameter.
+
+#### Admin Chat
+
+**Auth:** Admin only (`is_admin()` check)
+
+| Action | Method | CSRF | Description |
+|---|---|---|---|
+| `recent` | GET | No | List of users with recent chat messages |
+| `get` | GET | No | Get chat messages for a specific user (`user_id` param) |
+| `users` | GET | No | Search users for chat (`q` param, excludes admin/guest/pending) |
+| `send` | POST | Yes | Send message to user (`user_id`, `message`) |
+| `delete` | POST | Yes | Delete admin message (`user_id`, `index`) |
+
+Admin chat storage: JSON files in `storage/chats/{user_id}/isipesan.json`
+
+**Rate Limiting:** 30 messages per minute per user.
 
 ---
 

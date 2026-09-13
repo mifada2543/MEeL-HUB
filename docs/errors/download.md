@@ -49,7 +49,7 @@ $this->base_path = dirname(__DIR__, 2); // → .../MEeL/
 
 ### What it affects (when `base_path` is wrong):
 | Path used | Correct location | Wrong location |
-|-----------|-----------------|----------------|
+|---|---|---|
 | `cookies.txt` | `.../MEeL/cookies.txt` | `.../MEeL/modules/cookies.txt` |
 | `partials/ui.php` | `.../MEeL/partials/ui.php` | `.../MEeL/modules/partials/ui.php` |
 | `music/upload/file/` | `.../MEeL/music/upload/file/` | `.../MEeL/modules/music/upload/file/` |
@@ -202,7 +202,7 @@ After making changes:
 ## 6. 📁 Relevant Files Reference
 
 | File | Purpose |
-|------|---------|
+|---|---|
 | `upload_advanced.php` | Advanced upload form + POST handler |
 | `modules/core/Transcoder.php` + `modules/transcoder/` | Facade; download/HLS/finalize di `DownloadService`, encode musik di `EncodeService`, transcode di `TranscodeService` |
 | `modules/core/Uploader.php` | Direct file upload processing |

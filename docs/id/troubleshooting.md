@@ -4,7 +4,7 @@ Panduan pemecahan masalah umum di MEeL-HUB.
 
 ---
 
-## 📋 Daftar Isi
+## Daftar Isi
 
 - [Masalah Database](#masalah-database)
 - [Masalah Storage & HDD](#masalah-storage--hdd)
@@ -71,7 +71,7 @@ ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWOR
 ```bash
 mysql -u root -p MEeL < database/schema.sql
 ```
-File `database/schema.sql` berisi seluruh skema (20 tabel + admin default) — import langsung!
+File `database/schema.sql` berisi seluruh skema (23 tabel + admin default) — import langsung.
 
 ### ❌ "Column 'description' cannot be null" (atau error kolom lain)
 

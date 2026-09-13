@@ -1,0 +1,22 @@
+body {
+    background-color: var(--meel-bg, #0b0e14);
+}
+
+.glass {
+    background: var(--meel-surface, rgba(22, 27, 34, 0.7));
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--meel-border, rgba(255, 255, 255, 0.05));
+}
+
+html[data-theme="light"] .glass {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.profile-banner-gradient {
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.3) 50%, var(--meel-bg, #0b0e14));
+}
+
+html[data-theme="light"] .profile-banner-gradient {
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.08) 50%, var(--meel-bg, #fafafa));
+}

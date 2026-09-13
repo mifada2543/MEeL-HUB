@@ -166,7 +166,7 @@ class SearchEngine
         );
 
         $total = 0;
-        if (!$params['sidebar']) {
+        if (!empty($params['query'])) {
             $total = $this->library->countSearchVideo($params['query'], $params['exclude']);
         }
 
@@ -197,7 +197,7 @@ class SearchEngine
         );
 
         $total = 0;
-        if (!$params['sidebar']) {
+        if (!empty($params['query'])) {
             $total = $this->library->countSearchMusic($params['query'], $params['exclude']);
         }
 

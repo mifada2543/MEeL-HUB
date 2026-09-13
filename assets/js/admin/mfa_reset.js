@@ -39,11 +39,19 @@ function confirmResetMFA(userId, username) {
     if (result.isConfirmed) {
       var csrfInput = document.querySelector('input[name=\"csrf_token\"]');
       var token = csrfInput ? csrfInput.value : "";
-      window.location.href =
-        "mfa_reset.php?reset_mfa=1&user_id=" +
-        userId +
-        "&csrf_token=" +
-        encodeURIComponent(token);
+      var form = document.createElement("form");
+      form.method = "POST";
+      form.action = window.MEEL_BASE + "/admin/mfa-reset";
+      var fields = {reset_mfa: "1", user_id: userId, csrf_token: token};
+      for (var k in fields) {
+        var input = document.createElement("input");
+        input.type = "hidden";
+        input.name = k;
+        input.value = fields[k];
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
     }
   });
 }

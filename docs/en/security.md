@@ -4,7 +4,7 @@ Documentation about authentication, authorization, and protection systems in MEe
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Security Architecture](#security-architecture)
 - [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
@@ -21,6 +21,7 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [Exception Handling](#exception-handling)
 - [Disk Space Validation](#disk-space-validation)
 - [Input Validation](#input-validation)
+- [Best Practices](#best-practices)
 
 ---
 
@@ -138,13 +139,7 @@ session_start();
 | `HttpOnly` | `true` | XSS cannot steal the session cookie via JavaScript |
 | `SameSite` | `Lax` | Cross-site POST requests don't carry the cookie (CSRF layer 1) |
 
-The configuration above is now **centralized** in `modules/auth/helpers/session.php` as the
-`meel_boot_session()` function — the single source of truth for session bootstrapping. Every
-entry point (index, video, music, auth, controllers/api, err, admin) calls it instead of the
-scattered manual `session_name('meel'); session_start();` pattern, so the session cookie is
-guaranteed to always use the hardened flags. The function is **idempotent** (no-op if the
-session is already active); `auth/config.php` and `auth_boot_session()` in
-`auth/auth_helpers.php` now delegate to it:
+The configuration above is now **centralized** in `modules/auth/helpers/session.php` as the `meel_boot_session()` function — the single source of truth for session bootstrapping. Every entry point (index, video, music, auth, controllers/api, err, admin) calls it instead of the scattered manual `session_name('meel'); session_start();` pattern, so the session cookie is guaranteed to always use the hardened flags. The function is **idempotent** (no-op if the session is already active); `auth/config.php` and `auth_boot_session()` in `auth/auth_helpers.php` now delegate to it:
 
 ```php
 // Usage in a new entry point
@@ -211,7 +206,7 @@ echo "<input type='hidden' name='csrf_token' value='$token'>";
 
 ### Admin Actions — POST Forms (not GET links)
 
-Admin state-changing actions (approve/reject/delete user, kick user, unban IP, force-stop queue)
+Admin state-changing actions (approve/reject/delete user, kick user, unban IP, force-stop queue, MFA reset)
 use **POST forms with CSRF token** — a GET link can be triggered by a `<img>` tag (CSRF),
 a POST form cannot:
 
@@ -232,12 +227,26 @@ chess admin `catur.php?auto_cleanup=1` endpoint requires a `csrf_token` too
 > the `.htaccess` canonical rule. The 301 converts POST to GET, losing all form data.
 > Use no `action` attribute (defaults to current page URL) or `action=""`.
 
+### API Endpoints — POST Enforcement + CSRF
+
+All state-changing API endpoints now enforce **POST method** and **CSRF token verification**:
+
+| Endpoint | CSRF | Method | Notes |
+|---|---|---|---|
+| `api/notification.php` (mark_read, delete, delete_all) | `$_POST['csrf_token']` | POST only | GET returns 405 |
+| `api/chat.php` (send, delete) | `$_POST['csrf_token']` | POST only | Admin-only, GET returns 405 |
+| `api/delete_comment.php` | `$_POST['csrf_token']` | POST only | GET returns 405 |
+| `api/like.php` | `hx-vals` csrf_token | POST (HTMX) | — |
+| `api/comment.php` | `$_POST['csrf_token']` | POST (HTMX) | — |
+
+Read-only endpoints (`unread_count`, `list`, `users`, `get`) remain accessible via GET.
+
 ### Chess Multiplayer — Login + CSRF Guards
 
 All `arcade/chess/controller/*.php` endpoints require:
-- **Login** — JSON `401` + `login_required: true` (client `arcade/chess/assets/js/api.js` redirects to login).
-- **CSRF** — every state-changing POST carries `csrf_token` (JSON body for `save_move`, `FormData` for `create_room`/`join_room`).
-- The token is **never stored** in `moves.move_data` (not exposed to opponents).
+- **Login** — JSON `401` + `login_required: true` (client `arcade/chess/assets/js/api.js` redirects to login)
+- **CSRF** — every state-changing POST carries `csrf_token` (JSON body for `save_move`, `FormData` for `create_room`/`join_room`)
+- The token is **never stored** in `moves.move_data` (not exposed to opponents)
 
 ---
 
@@ -246,31 +255,45 @@ All `arcade/chess/controller/*.php` endpoints require:
 ### IP Detection (Anti-Proxy)
 
 ```php
+function trust_proxy_headers(): bool {
+    return defined('MEEL_TRUST_PROXY_HEADERS') && MEEL_TRUST_PROXY_HEADERS === true;
+}
+
 function get_real_ip() {
-    // Cloudflare
-    if (isset($_SERVER["HTTP_CF_CONNECTING_IP"])) {
-        return $_SERVER["HTTP_CF_CONNECTING_IP"];
+    $valid = fn($ip) => is_string($ip) && $ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) !== false;
+
+    if (trust_proxy_headers()) {
+        // Cloudflare Tunnel / CDN
+        if (isset($_SERVER["HTTP_CF_CONNECTING_IP"]) && $valid($_SERVER["HTTP_CF_CONNECTING_IP"])) {
+            return $_SERVER["HTTP_CF_CONNECTING_IP"];
+        }
+        // X-Forwarded-For (first hop)
+        if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
+            $xff = trim(explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"])[0]);
+            if ($valid($xff)) return $xff;
+        }
     }
-    // X-Forwarded-For
-    if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
-        return trim(explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"])[0]);
-    }
-    // Fallback
-    return $_SERVER["REMOTE_ADDR"];
+    $remote = $_SERVER["REMOTE_ADDR"] ?? '0.0.0.0';
+    return $valid($remote) ? $remote : '0.0.0.0';
 }
 ```
 
 ### Trusted Proxy Gate (`MEEL_TRUST_PROXY_HEADERS`)
 
-Header proxy **hanya** boleh dipercaya jika request lewat proxy/CDN yang Anda
-kendalikan. Konfigurasi di `auth/settings.php`:
+Proxy headers should only be trusted if the request goes through a proxy/CDN you control. Configuration in `auth/settings.php`:
 
 ```php
-define('MEEL_TRUST_PROXY_HEADERS', false); // default aman: pakai REMOTE_ADDR saja
+// MUST be true when using Cloudflare Tunnel, Nginx reverse proxy, or CDN
+define('MEEL_TRUST_PROXY_HEADERS', true);
 ```
 
-> Jika diset `true` padahal server diakses langsung, attacker bisa memalsukan
-> `X-Forwarded-For` untuk mem-bypass IP-ban atau membanjiri activity log.
+> If set to `true` when the server is accessed directly, an attacker can spoof `X-Forwarded-For` to bypass IP bans or flood the activity log.
+
+> **Behind cloudflared:** Tunnel always connects to Apache from localhost (`REMOTE_ADDR = 127.0.0.1`). Without `MEEL_TRUST_PROXY_HEADERS = true`, all IPs are detected as localhost, rate limiting is disabled, and the environment is detected as "development".
+
+### Auth IP Helpers
+
+`auth_get_ip()` and `auth_is_loopback()` in `auth/auth_helpers.php` also use `get_real_ip()` — not `$_SERVER['REMOTE_ADDR']` directly. This ensures consistent IP detection across the system (login, rate limiting, ban check).
 
 ### Ban Check (Real-time)
 
@@ -311,15 +334,13 @@ function log_activity(
 
 ### Admin Activity Log Viewer
 
-Page `admin/activity_log.php` provides a dedicated audit trail viewer:
+Page `admin/activity_log.php` provides a dedicated audit trail viewer with 3 tabs:
 
-| Feature | Detail |
-|---|---|
-| 🔍 **Filter** | By action type (dropdown), search username/IP, date range (7–365 days) |
-| 📄 **Pagination** | 50 entries per page with prev/next navigation |
-| 📊 **Stats Cards** | 7-day activity count, unique users, total entries, page info |
-| 🏷️ **Action Badges** | Color-coded: login/logout (blue), upload (green), ban (red), admin (purple) |
-| 🗑️ **Manual Cleanup** | Delete old logs (>7, 14, 30, 90, 365 days) with SweetAlert2 confirmation + CSRF |
+| Tab | Theme | Features |
+|---|---|---|
+| 📋 **Activity** | Blue-600 | Filter by action type, username/IP, date range (7–365 days); pagination (50/page); stats cards (7-day activity, unique users, total entries); color-coded action badges (login=blue, upload=green, ban=red); manual log cleanup with CSRF |
+| 🛡️ **Admin Actions** | Purple-600 | Filter by admin username, action type, date range; stats cards (7-day admin actions, unique admins, total entries); color-coded badges (coin=yellow, reset=red, login=blue, other=gray); maintenance: clear older than 7–365 days |
+| 📤 **Upload Queue** | Green-600 | Filter by status (pending/processing/transcoding/completed/failed), uploader, date range; stats cards (total uploads, completed, failed, active); color-coded status badges; export CSV/JSON/XLS with preview modal; maintenance: clear completed/failed older than 7–365 days |
 
 ---
 
@@ -349,7 +370,15 @@ Allow request
 | **Comment** | 10 | 1 minute | Redirect with flash error message |
 | **Upload** (video/music/books) | 3 | 1 hour | — |
 | **Transcode** | 5 | 1 hour | — |
+| **Auto Metadata** (ffmpeg) | 5 | 1 hour | HTTP 429 + JSON error |
 | **API Generic** | 60 | 1 minute | — |
+
+### Fail-Closed Behavior
+
+When the rate limiter storage directory (`temp/ratelimit/`) is not writable or
+`flock()` fails, the rate limiter **denies all requests** (fail-closed) instead
+of silently allowing them through. This prevents a broken filesystem from
+disabling rate limiting entirely. Failures are logged via `error_log()`.
 
 ### Cleanup
 
@@ -448,6 +477,7 @@ if (isset($_SESSION['mfa_locked_until'])) {
 ### Admin Reset MFA
 
 Admins can reset a user's MFA from `admin/mfa_reset.php`:
+- **Method:** POST form (not GET link) — prevents CSRF via `<img>` tags
 - **Cannot reset another admin** — only the admin themselves can disable their own MFA
 - **Action logged** — `log_activity($conn, $admin_id, 'reset_mfa', 'user', $target_id)`
 - **User needs to re-setup** — MFA reset to default (disabled)
@@ -500,9 +530,7 @@ if ($detectedType === 'audio') { /* MP3: 0xFFFB, FLAC: 0x664C6143 */ }
 
 ### Centralized Magic Bytes Validation (`meel_magic_extension_ok`)
 
-The single source of truth for server-side file-signature validation — every
-upload path (Uploader video/music, thumbnails, BookUploader, DriveStorage) uses
-it, replacing duplicated inline checks:
+The single source of truth for server-side file-signature validation — every upload path (Uploader video/music, thumbnails, BookUploader, DriveStorage) uses it, replacing duplicated inline checks:
 
 ```php
 // modules/core/helpers/upload.php
@@ -511,15 +539,11 @@ meel_magic_extension_ok(string $path, string $ext, string $mediaKind): string
 // returns '' when valid, an error message otherwise
 ```
 
-Recognized types: Ogg/Opus, FLAC, WAV/RIFF, MP3 (ID3/frame sync), MP4/M4A
-(ftyp), Matroska/WebM, JPEG/PNG/WebP/GIF, PDF, and ZIP archives. Validation
-never relies on `$_FILES['type']` or the extension alone.
+Recognized types: Ogg/Opus, FLAC, WAV/RIFF, MP3 (ID3/frame sync), MP4/M4A (ftyp), Matroska/WebM, JPEG/PNG/WebP/GIF, PDF, and ZIP archives. Validation never relies on `$_FILES['type']` or the extension alone.
 
 ### Atomic Filename Allocation (race-condition free)
 
-Physical filenames are no longer allocated with a check-then-move pattern
-(`while (file_exists(...))`). Every media filename is **atomically** reserved
-via `meel_reserve_unique_filename()` (placeholder `fopen(..., 'x')` / O_EXCL):
+Physical filenames are no longer allocated with a check-then-move pattern (`while (file_exists(...))`). Every media filename is **atomically** reserved via `meel_reserve_unique_filename()` (placeholder `fopen(..., 'x')` / O_EXCL):
 
 ```php
 // modules/core/helpers/upload.php — used by Uploader, EncodeService,
@@ -527,15 +551,11 @@ via `meel_reserve_unique_filename()` (placeholder `fopen(..., 'x')` / O_EXCL):
 meel_reserve_unique_filename(string $dir, string $clean_name, string $ext): ?string
 ```
 
-Two concurrent requests can never receive the same name; callers overwrite the
-placeholder with `move_uploaded_file()` / ffmpeg `-y`. Video work-folder names
-are allocated through a similar helper (`meel_allocate_unique_dir()`).
+Two concurrent requests can never receive the same name; callers overwrite the placeholder with `move_uploaded_file()` / ffmpeg `-y`. Video work-folder names are allocated through a similar helper (`meel_allocate_unique_dir()`).
 
 ### ZIP/CBZ Archive Protection (`ArchiveGuard`)
 
-Manga/book extraction **never** calls `ZipArchive::extractTo()` directly into
-the final folder. `modules/media/ArchiveGuard.php` runs a validate → staging →
-move pipeline:
+Manga/book extraction **never** calls `ZipArchive::extractTo()` directly into the final folder. `modules/media/ArchiveGuard.php` runs a validate → staging → move pipeline:
 
 ```
 open archive
@@ -557,21 +577,15 @@ Limits are configurable via constants (defaults):
 | `MAX_ARCHIVE_COMPRESSION_RATIO` | 300 | Per-entry compression ratio (zip bomb) |
 | `MAX_ARCHIVE_PATH_DEPTH` | 16 | Maximum directory depth |
 
-Rejected: absolute paths, `../`, `..\`, null bytes, symlinks, excessive depth,
-non-image entries (only `jpg/jpeg/png/webp/gif/bmp/avif` for CBZ/manga), and
-entry count/size/ratio over the limits. Rejections are written to the error
-log without storing archive contents.
+Rejected: absolute paths, `../`, `..\`, null bytes, symlinks, excessive depth, non-image entries (only `jpg/jpeg/png/webp/gif/bmp/avif` for CBZ/manga), and entry count/size/ratio over the limits. Rejections are written to the error log without storing archive contents.
 
 ### Quota & Resource Limits
 
-- **Disk pre-flight** — `require_disk_space()` rejects an upload before any byte
-  is written (music 500MB, video 1GB + `/dev/shm` 512MB).
-- **Concurrent uploads** — max 3 simultaneous uploads (`flock`-protected counter
-  file + 5-minute TTL + shutdown auto-decrement).
-- **Rate limit** — uploads are hourly-limited per role (admin unlimited).
-- **Archives** — the entry/size/ratio limits above (zip-bomb protection).
-- **Transcode** — audio timeout 600s (`TRANSCODE_AUDIO_TIMEOUT`), HLS remux 120s,
-  `stream_set_timeout(30)`, and output duration validated ≥ 50% of source.
+- **Disk pre-flight** — `require_disk_space()` rejects an upload before any byte is written (music 500MB, video 1GB + `/dev/shm` 512MB)
+- **Concurrent uploads** — max 3 simultaneous uploads (`flock`-protected counter file + 5-minute TTL + shutdown auto-decrement)
+- **Rate limit** — uploads are hourly-limited per role (admin unlimited)
+- **Archives** — the entry/size/ratio limits above (zip-bomb protection)
+- **Transcode** — audio timeout 600s (`TRANSCODE_AUDIO_TIMEOUT`), HLS remux 120s, `stream_set_timeout(30)`, and output duration validated ≥ 50% of source
 
 ---
 
@@ -590,25 +604,9 @@ log without storing archive contents.
 - `video/upload/` — Video files
 - `data_drive/private_admins/` — Private Drive files (denied for direct HTTP access, see [Private Drive Protection](#private-drive-protection))
 
-> **Media uploads are not served directly by the web server.** Since the
-> portability refactor, `books/upload/`, `music/upload/`, and `video/upload/`
-> are real tracked directories (placeholder `.gitkeep` + hardened `.htaccess`)
-> whose contents are served through PHP endpoints mapped by an internal rewrite
-> in the root `.htaccess`: `video/upload/...` → `video/stream.php`,
-> `music/upload/...` → `music/file.php`, `books/upload/...` → `books/file.php`
-> (see [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
-> These endpoints enforce path-traversal protection, an extension whitelist,
-> and HTTP Range support.
+> **Media uploads are not served directly by the web server.** Since the portability refactor, `books/upload/`, `music/upload/`, and `video/upload/` are real tracked directories (placeholder `.gitkeep` + hardened `.htaccess`) whose contents are served through PHP endpoints mapped by an internal rewrite in the root `.htaccess`: `video/upload/...` → `video/stream.php`, `music/upload/...` → `music/file.php`, `books/upload/...` → `books/file.php` (see [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)). These endpoints enforce path-traversal protection, an extension whitelist, and HTTP Range support.
 >
-> **`books/file.php` requires login** (`auth/auth.php`), consistent with the rest
-> of the Books module — `index.php`, `read.php`, `read_pdf.php`, and
-> `controllers/api/pdf.php` are all login-gated. Without this, manga images and
-> PDFs could be downloaded directly without authentication (the raw paths were
-> reachable with `HTTP 200` before the fix). Music audio stays behind
-> `music/stream.php` (session marker + strict referer gate); `music/file.php`
-> and `video/stream.php` intentionally have **no** login gate because the
-> Music/Video index & watch pages are public by design (thumbnails must render
-> for anonymous visitors).
+> **`books/file.php` requires login** (`auth/auth.php`), consistent with the rest of the Books module — `index.php`, `read.php`, `read_pdf.php`, and `controllers/api/pdf.php` are all login-gated. Without this, manga images and PDFs could be downloaded directly without authentication (the raw paths were reachable with `HTTP 200` before the fix). Music audio stays behind `music/stream.php` (session marker + strict referer gate); `music/file.php` and `video/stream.php` intentionally have **no** login gate because the Music/Video index & watch pages are public by design (thumbnails must render for anonymous visitors).
 
 ---
 
@@ -711,8 +709,7 @@ The `https://` limitation is therefore resolved: even though the original HTTPS 
 
 ### `temp_file` & `post_encode` Security
 
-`temp_file` never accepts a filesystem path from the client. The music-download
-flow:
+`temp_file` never accepts a filesystem path from the client. The music-download flow:
 
 ```
 yt-dlp download → staging on the RAM disk (`/dev/shm/meel/`) under an opaque
@@ -724,27 +721,16 @@ yt-dlp download → staging on the RAM disk (`/dev/shm/meel/`) under an opaque
 `post_encode.php`:
 - **POST method** + CSRF verification (state-changing endpoint)
 - Token validation: regex `[A-Za-z0-9._-]+`, rejects `..`, absolute paths, and null bytes
-- `pathinfo()` + session match → **ownership** (user A cannot use user B's
-  token) + existence check + 1-hour expiry
+- `pathinfo()` + session match → **ownership** (user A cannot use user B's token) + existence check + 1-hour expiry
 - The encode input is locked to the server temp dir (`getShmTempPath()`)
 
-Transcode downloads (`download_transcode.php`) use
-`Transcoder::ownsTranscodeFile()` — session-bound ownership — plus a filename
-allowlist regex, so another user's transcode files cannot be guessed/downloaded.
+Transcode downloads (`download_transcode.php`) use `Transcoder::ownsTranscodeFile()` — session-bound ownership — plus a filename allowlist regex, so another user's transcode files cannot be guessed/downloaded.
 
 ---
 
 ## Private Drive Protection
 
-MEeL's Cloud Drive stores private user files under
-`<MEEL_HDD_DRIVE>/private_admins/<username>/...` when `MEEL_HDD_DRIVE` is set in
-`auth/settings.php`, or the repo-tracked fallback folder
-`data_drive/private_admins/<username>/...` when it is not (see
-[Installation §5a](installation.md#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
-Whenever the private subtree is reachable from the web server (the fallback
-folder lives in the document root; HDD deployments may expose it via a
-deploy-time symlink), the web server could serve files directly — bypassing
-application-level authorization. Two layered controls close this gap.
+MEeL's Cloud Drive stores private user files under `<MEEL_HDD_DRIVE>/private_admins/<username>/...` when `MEEL_HDD_DRIVE` is set in `auth/settings.php`, or the repo-tracked fallback folder `data_drive/private_admins/<username>/...` when it is not (see [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)). Whenever the private subtree is reachable from the web server (the fallback folder lives in the document root; HDD deployments may expose it via a deploy-time symlink), the web server could serve files directly — bypassing application-level authorization. Two layered controls close this gap.
 
 ### Layer 1 — Web Server Deny (tracked in repo)
 
@@ -800,8 +786,8 @@ Both endpoints resolve files through `DriveStorage::getFileForDownload()`, which
 
 Two TOCTOU races were closed in `DriveStorage::upload()`:
 
-- **Quota** — the "check usage → check quota → write file" sequence runs inside a per-user `flock()` (lock file `temp/drive_quota_<md5(username)>.lock`) with usage computed fresh (bypassing the 5-minute cache), so concurrent uploads cannot collectively exceed the member quota. If the lock cannot be created, the quota check still runs non-atomically — it is never skipped.
-- **Filename collisions** — `fopen($path, 'x')` (O_CREAT|O_EXCL) atomically claims a unique filename before `move_uploaded_file()`, so two simultaneous uploads with the same name cannot both win (closes the `file_exists()` → move TOCTOU).
+- **Quota** — the "check usage → check quota → write file" sequence runs inside a per-user `flock()` (lock file `temp/drive_quota_<md5(username)>.lock`) with usage computed fresh (bypassing the 5-minute cache), so concurrent uploads cannot collectively exceed the member quota. If the lock cannot be created, the quota check still runs non-atomically — it is never skipped
+- **Filename collisions** — `fopen($path, 'x')` (O_CREAT|O_EXCL) atomically claims a unique filename before `move_uploaded_file()`, so two simultaneous uploads with the same name cannot both win (closes the `file_exists()` → move TOCTOU)
 
 ### Regression Tests
 
@@ -812,10 +798,7 @@ Two TOCTOU races were closed in `DriveStorage::upload()`:
 | `tests/unit/DriveSecurityTest.php` | Cross-user access, path traversal, symlink escape, realpath boundary, quota enforcement, atomic filename reservation |
 | `tests/security_test.php` / `tests/functional_test.php` | Static wiring checks: guard is called, proxy flag is wired, `.htaccess` deny rules exist, stream endpoint is used for private previews |
 
-**Run everything with one command:** `scripts/verify_security.sh` runs the
-three security suites (PHPUnit security subset, `security_test.php`,
-`functional_test.php`) plus a live Private Drive 403 probe and exits with a
-CI-friendly code (see [test.md](test.md)).
+**Run everything with one command:** `scripts/verify_security.sh` runs the three security suites (PHPUnit security subset, `security_test.php`, `functional_test.php`) plus a live Private Drive 403 probe and exits with a CI-friendly code (see [testing.md](testing.md)).
 
 ---
 
@@ -894,18 +877,13 @@ Output is always escaped with `htmlspecialchars()`:
 echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
 ```
 
-**Stored XSS (hardening):** the database stores raw (canonical) data; escaping
-happens **at output time**, per context:
+### Stored XSS (hardening): the database stores raw (canonical) data; escaping happens **at output time**, per context:
 
 - Plain-text HTML → `htmlspecialchars($v, ENT_QUOTES, 'UTF-8')`
 - Attributes/URLs → attribute-context escaping + `urlencode`/allowlist
 - JSON/JS → `json_encode(..., JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)`
 
-The audit covers every rendered user-controlled value: profile bios, media
-title/description, comments, filenames, playlists, search results, and data
-shown in the admin panel. Regression tests (`tests/security_test.php`) verify
-payloads such as `<script>alert(1)</script>` and
-`<img src=x onerror=alert(1)>` are never executed as HTML.
+The audit covers every rendered user-controlled value: profile bios, media title/description, comments, filenames, playlists, search results, chat usernames, and data shown in the admin panel. For inline JS template literals (e.g. admin chat search results), a dedicated `escapeHtml()` function wraps user-derived values before HTML injection. Regression tests (`tests/security_test.php`) verify payloads such as `<script>alert(1)</script>` and `<img src=x onerror=alert(1)>` are never executed as HTML.
 
 ### Login Rate Limiting
 
@@ -923,6 +901,31 @@ Theme preference is stored securely:
 3. **API validation:** `in_array($theme, ['light', 'dark'], true)` — rejects invalid values
 4. **CSRF protection:** POST requires valid CSRF token
 5. **No XSS risk:** Theme value is not escaped to HTML, only used for `data-theme` attribute
+
+---
+
+## Best Practices
+
+### For Developers
+
+1. **Always use Prepared Statements** for database queries
+2. **Sanitize all input** POST/GET
+3. **Verify CSRF token** on every form POST
+4. **Don't trust user input** — validate file type, size, and content
+5. **Escape output** with `htmlspecialchars()`
+6. **Don't expose error details** to non-admin users
+
+### Security Checklist
+
+- [ ] Database credentials only in `auth/settings.php`
+- [ ] All `.htaccess` files installed in sensitive directories
+- [ ] Prepared statements in all SQL queries
+- [ ] CSRF token in all POST forms
+- [ ] Session timeout active (12 hours)
+- [ ] IP banning system active
+- [ ] File upload validation (type, size, magic bytes)
+- [ ] Role checking before sensitive actions
+- [ ] Theme preference doesn't store sensitive data
 
 ---
 

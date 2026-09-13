@@ -1,6 +1,9 @@
 <?php
+define('MEEL_API_CONTEXT', true);
 require_once __DIR__ . '/../../modules/core/helpers.php';
 require_once __DIR__ . '/../../auth/config.php';
+require_once __DIR__ . '/../../modules/auth/helpers/user.php';
+require_once __DIR__ . '/../../modules/auth/RateLimiter.php';
 
 header('Content-Type: application/json');
 
@@ -14,6 +17,15 @@ if (!isset($_SESSION['user_id'])) {
 if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'CSRF token tidak valid.']);
+    exit;
+}
+
+$rateKey  = 'user_' . ($_SESSION['user_id'] ?? 0);
+$rateRole = get_user_role($conn, (int)$_SESSION['user_id']);
+$rateCheck = RateLimiter::check($rateKey, 'auto_metadata', $rateRole);
+if (!$rateCheck['allowed']) {
+    http_response_code(429);
+    echo json_encode(['status' => 'error', 'message' => 'Terlalu banyak request. Coba lagi dalam ' . $rateCheck['retry_after'] . ' detik.']);
     exit;
 }
 
