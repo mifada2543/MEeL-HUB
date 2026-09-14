@@ -421,6 +421,9 @@ function expandPlayerFromMiniPlayer() {
             if (typeof window.meelInitWatchPlayer === "function") {
               window.meelInitWatchPlayer();
             }
+            if (typeof checkDescriptionLengthMusic === 'function') {
+              checkDescriptionLengthMusic();
+            }
           },
         }),
       ).then(
