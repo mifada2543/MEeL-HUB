@@ -32,7 +32,6 @@ final class MeelRouter
         'books'        => ['handler' => 'books/index.php',     'script' => '/books/index.php'],
         'books/beranda'=> ['handler' => 'books/index.php',     'script' => '/books/index.php'],
         'books/read'   => ['handler' => 'books/read.php',      'script' => '/books/read.php'],
-        'books/read-pdf' => ['handler' => 'books/read_pdf.php','script' => '/books/read_pdf.php'],
         'books/search' => ['handler' => 'books/search_books.php','script' => '/books/search_books.php'],
         'books/upload' => ['handler' => 'books/upload.php',    'script' => '/books/upload.php'],
         'books/file'   => ['handler' => 'books/file.php',      'script' => '/books/file.php'],
