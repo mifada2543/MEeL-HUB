@@ -92,8 +92,6 @@ DirectoryIndex index.php index.html
     RewriteRule ^ %1/music/playlist-action [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/books/search_books\.php$ [NC]
     RewriteRule ^ %1/books/search [R=301,L,QSA]
-    RewriteCond %{REQUEST_URI} ^(.*)/books/read_pdf\.php$ [NC]
-    RewriteRule ^ %1/books/read-pdf [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/admin/activity_log\.php$ [NC]
     RewriteRule ^ %1/admin/activity-log [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/admin/mfa_reset\.php$ [NC]

@@ -29,7 +29,7 @@ $file_size = filesize($file_path);
 
 header('X-Content-Type-Options: nosniff');
 header('Content-Type: application/pdf');
-header('Content-Disposition: inline; filename="' . str_replace(["\r", "\n", '"'], '', $book['title']) . '.pdf"');
+header('Content-Disposition: inline');
 header('Content-Length: ' . $file_size);
 header('Cache-Control: public, max-age=86400');
 header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');

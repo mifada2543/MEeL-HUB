@@ -186,17 +186,6 @@ if (isset($conn)) {
                     $current_page = "Reading: " . $short_title;
                 }
             }
-        } elseif ($current_page == 'read_pdf.php' || $current_page == 'pdf.php') {
-            $get_book = $conn->prepare("SELECT title FROM books WHERE id = ?");
-            if ($get_book) {
-                $get_book->bind_param("i", $id_get);
-                $get_book->execute();
-                $res = $get_book->get_result()->fetch_assoc();
-                if ($res) {
-                    $short_title = (mb_strlen($res['title']) > 20) ? mb_substr($res['title'], 0, 17) . '...' : $res['title'];
-                    $current_page = "Reading PDF: " . $short_title;
-                }
-            }
         } elseif ($current_page == 'stream.php' && $dir_name == 'music') {
             $last_stream_id = $_SESSION['_last_stream_id'] ?? null;
             if ($last_stream_id !== $id_get) {

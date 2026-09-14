@@ -6,7 +6,6 @@
     var bookType = el.dataset.bookType || '';
     var currentChapter = el.dataset.chapter || '';
     var totalPages = parseInt(el.dataset.totalPages) || 0;
-    var baseUrl = el.dataset.baseUrl || '';
 
     var lazyImages = document.querySelectorAll('img.manga-img.lazy');
     if (lazyImages.length) {

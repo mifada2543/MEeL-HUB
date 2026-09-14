@@ -99,7 +99,6 @@ function _scanSubdirs(string $dir): array {
          data-book-type="<?= htmlspecialchars($book['type'], ENT_QUOTES) ?>"
          data-chapter="<?= htmlspecialchars($current_chapter, ENT_QUOTES) ?>"
          data-total-pages="<?= (int)$total_pages ?>"
-         data-base-url="<?= base_url('/books/read-pdf?id=' . (int)$book['id']) ?>"
          style="display:none;"></div>
 </head>
 
@@ -156,7 +155,7 @@ function _scanSubdirs(string $dir): array {
         <?php if ($book['type'] === 'pdf'): ?>
             
             <?php
-            $pdf_path   = __DIR__ . '/upload/pdf/' . basename($book['path_folder']);
+            $pdf_path   = meel_media_base_path('books') . '/pdf/' . basename($book['path_folder']);
             $pdf_size   = is_file($pdf_path) ? filesize($pdf_path) : 0;
             $pdf_size_f = $pdf_size > 1048576
                 ? number_format($pdf_size / 1048576, 1) . ' MB'
@@ -165,26 +164,34 @@ function _scanSubdirs(string $dir): array {
             <div class="pdf-view">
                 
                 <div class="pdf-body pdf-iframe-wrap" id="readPdfBody">
-                    <iframe src="<?= base_url('/books/read-pdf?id=' . (int)$book['id'] . '&raw=1') ?>"
+                    <iframe src="<?= base_url('/api/pdf?id=' . (int)$book['id']) ?>"
                             id="pdfFrame"
                             title="PDF Viewer"
                             style="width:100%;height:100%;border:none;display:block;"></iframe>
                 </div>
 
                 
-                <div class="pdf-body pdf-mobile-card">
+                <div class="pdf-body pdf-mobile-embed" id="pdfMobileEmbed">
+                    <embed src="<?= base_url('/api/pdf?id=' . (int)$book['id']) ?>"
+                           type="application/pdf"
+                           style="width:100%;height:100%;border:none;">
+                </div>
+
+                
+                <div class="pdf-body pdf-mobile-card" id="pdfMobileCard">
                     <div class="pdf-card-inner">
                         <div class="pdf-card-icon">
                             <i data-lucide="file-text" class="w-10 h-10 text-purple-400"></i>
                         </div>
                         <h2 class="pdf-card-title"><?= htmlspecialchars($book['title']) ?></h2>
                         <p class="pdf-card-meta">Dokumen PDF &middot; <?= $pdf_size_f ?></p>
-                        <a href="<?= base_url('/books/read-pdf?id=' . (int)$book['id']) ?>"
+                        <a href="<?= base_url('/api/pdf?id=' . (int)$book['id']) ?>"
+                           target="_blank" rel="noopener"
                            class="pdf-card-btn">
                             <i data-lucide="external-link" class="w-4 h-4"></i>
                             Buka PDF
                         </a>
-                        <p class="pdf-card-hint">Akan dialihkan ke pembaca PDF</p>
+                        <p class="pdf-card-hint">PDF akan dibuka di tab baru</p>
                     </div>
                 </div>
 
@@ -194,7 +201,7 @@ function _scanSubdirs(string $dir): array {
                         <span class="pdf-info-title"><?= htmlspecialchars($book['title']) ?></span>
                         <span class="pdf-info-meta">PDF &middot; <?= $pdf_size_f ?></span>
                     </div>
-                    <a href="<?= base_url('/books/read-pdf?id=' . (int)$book['id']) ?>"
+                    <a href="<?= base_url('/api/pdf?id=' . (int)$book['id']) ?>"
                        target="_blank" rel="noopener"
                        class="pdf-info-btn">
                         <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
@@ -205,13 +212,22 @@ function _scanSubdirs(string $dir): array {
 
             <script>
             (function() {
-                var frame = document.getElementById('pdfFrame');
-                if (!frame) return;
-                var timeout = setTimeout(function() {
-                    window.location.href = '<?= base_url('/books/read-pdf?id=' . (int)$book['id']) ?>';
-                }, 10000);
-                frame.addEventListener('load', function() { clearTimeout(timeout); });
-                frame.addEventListener('error', function() { clearTimeout(timeout); });
+                if (window.innerWidth > 639) return;
+                var embed = document.getElementById('pdfMobileEmbed');
+                var card  = document.getElementById('pdfMobileCard');
+                if (!embed || !card) return;
+                var fallback = setTimeout(function() {
+                    embed.style.display = 'none';
+                    card.classList.add('embed-failed');
+                }, 8000);
+                embed.querySelector('embed').addEventListener('load', function() {
+                    clearTimeout(fallback);
+                });
+                embed.querySelector('embed').addEventListener('error', function() {
+                    clearTimeout(fallback);
+                    embed.style.display = 'none';
+                    card.classList.add('embed-failed');
+                });
             })();
             </script>
 
