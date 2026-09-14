@@ -543,6 +543,9 @@
         window.meelNavigateView(target, "watch", {
           onAfterSwap: function () {
             window.meelInitWatchPlayer();
+            if (typeof checkDescriptionLengthMusic === 'function') {
+              checkDescriptionLengthMusic();
+            }
             isNavigating = false;
           },
         });
