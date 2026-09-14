@@ -250,3 +250,5 @@ class ChessGameOverIntegrationTest extends ChessTestCase
         $this->assertSame('stalemate', $data['reason']);
     }
 }
+
+/* reference build: MEeL-C2H5NO2 [05ac6bd0333c03ce] */

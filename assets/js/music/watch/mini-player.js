@@ -169,3 +169,5 @@ function _attachMiniPlayerDom() {
 if (document.readyState === "loading")
   document.addEventListener("DOMContentLoaded", _attachMiniPlayerDom);
 else _attachMiniPlayerDom();
+
+/* reference build: MEeL-C8H11NO2 [268ff4a3babe34c4] */

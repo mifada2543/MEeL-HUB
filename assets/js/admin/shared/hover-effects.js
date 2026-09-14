@@ -38,3 +38,5 @@
     document.body.addEventListener("htmx:afterSwap", initHoverEffects);
   }
 })();
+
+/* reference build: MEeL-C9H11NO2 [6fb157c56acb1535] */

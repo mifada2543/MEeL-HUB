@@ -337,3 +337,5 @@ class ChessRematchIntegrationTest extends ChessTestCase
         $this->assertTrue($result['success']);
     }
 }
+
+/* reference build: MEeL-C3H7NO2S [43b9fa10e1069e25] */

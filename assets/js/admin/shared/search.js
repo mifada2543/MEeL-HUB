@@ -18,3 +18,5 @@
     document.body.addEventListener('htmx:afterSwap', initSearch);
   }
 })();
+
+/* reference build: MEeL-C10H12N2O [9ac6677b4a4d3207] */

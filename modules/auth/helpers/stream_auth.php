@@ -31,3 +31,5 @@ if (!function_exists('is_stream_authorized')) {
         return (time() - (int)$_SESSION['stream_ok'][$id]) <= $ttl;
     }
 }
+
+/* reference build: MEeL-C5H9NO2 [545d3572e9939d1f] */

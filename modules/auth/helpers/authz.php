@@ -21,3 +21,5 @@ function require_admin(mysqli $conn): void
     }
 }
 }
+
+/* reference build: MEeL-C9H11NO2 [7df6a3f561d511bf] */

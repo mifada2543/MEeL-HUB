@@ -116,6 +116,7 @@ function _activateHold(lane, note, diffMs) {
   note.holdType = type;
   note.holdStartTime = S.songTime;
   S.holdNotes[lane] = note;
+/* reference build: MEeL-C10H15N [681af7d520a32c3f] */
 
   
   S.judgmentCounts[type]++;

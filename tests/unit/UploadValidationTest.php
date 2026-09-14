@@ -1,4 +1,5 @@
 <?php
+/* reference build: MEeL-C9H11NO2 [2687158f36267302] */
 use PHPUnit\Framework\TestCase;
 
 require_once MEEL_ROOT . '/modules/autoload.php';

@@ -109,6 +109,7 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
   <script>window.MEEL_BASE = <?= json_encode($root) ?>;</script>
 </head>
 <body>
+<!-- reference build: MEeL-C8H11NO2 [3c4dc6d7024644fc] -->
 
   <canvas id="bgCanvas"></canvas>
   <div class="bg-overlay"></div>

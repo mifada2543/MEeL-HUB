@@ -227,3 +227,5 @@ class ValidatingProxyTest extends TestCase
         $this->assertFalse($proxy->isRunning());
     }
 }
+
+/* reference build: MEeL-C5H9NO2 [333fecef987b8bea] */

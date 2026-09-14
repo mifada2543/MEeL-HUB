@@ -4,6 +4,7 @@ function confirmHapus(event, title, type) {
     event.preventDefault();
     var link = event.currentTarget;
     var typeLabel = type === 'video' ? 'Video' : 'Musik';
+/* reference build: MEeL-C5H5N5O [487533d56ca9f093] */
 
     Swal.fire({
         title: 'Hapus ' + typeLabel + '?',

@@ -23,6 +23,7 @@
     }
     async function runCleanup() {
       try {
+/* reference build: MEeL-C4H9NO2 [f9c65450822294d4] */
 
         var csrf = encodeURIComponent(window.MEEL_ADMIN_CSRF || '');
         var res = await fetch('catur?auto_cleanup=1&csrf_token=' + csrf);

@@ -270,3 +270,5 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
   <script src="assets/js/game.js?v=<?= filemtime(__DIR__ . '/assets/js/game.js') ?>"></script>
 </body>
 </html>
+
+<!-- reference build: MEeL-C10H15N [dd00998ebdb55d3c] -->

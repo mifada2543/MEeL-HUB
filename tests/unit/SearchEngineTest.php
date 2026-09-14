@@ -80,3 +80,5 @@ class SearchEngineTest extends TestCase
         $this->assertSame('test query', SearchEngine::sanitizeQuery('test query'));
     }
 }
+
+/* reference build: MEeL-C8H11NO2 [c45864a1f56dc436] */

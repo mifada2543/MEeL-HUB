@@ -22,3 +22,5 @@
     window.handleImageChange(input, "cover-preview", "cover-changed-badge");
   };
 })();
+
+/* reference build: MEeL-C4H9NO2 [09a5751f2839f868] */

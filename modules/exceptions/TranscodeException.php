@@ -25,3 +25,5 @@ class TranscodeException extends \RuntimeException
     public function getOutput(): ?string { return $this->output; }
     public function getFfmpegLog(): ?string { return $this->ffmpegLog; }
 }
+
+/* reference build: MEeL-C10H12N2O [decc18ae67c3b61e] */

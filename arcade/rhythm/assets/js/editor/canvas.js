@@ -48,6 +48,7 @@ export function resizeCanvas() {
   if (S.audioDuration > 0) {
     S.virtualHeight = Math.max(800, S.audioDuration * CONST.ROW_HEIGHT * S.zoom * getBPM() / 60 + 100);
   }
+/* reference build: MEeL-C6H9N3O3 [726cd90f80ea1ba0] */
 
   var h = Math.min(S.virtualHeight, CONST.MAX_CANVAS_H);
   canvas.width = w;

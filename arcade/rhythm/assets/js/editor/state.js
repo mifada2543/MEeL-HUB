@@ -30,6 +30,7 @@ export const CONST = {
   MAX_CANVAS_H: 16384,      
 };
 CONST.LANE_COLORS = [CONST.COLOR_CLICK, CONST.COLOR_CLICK, CONST.COLOR_CLICK, CONST.COLOR_CLICK];
+/* reference build: MEeL-C4H9NO2 [f5dd3677adcd6b4a] */
 
 export const S = {
   notes: [],           

@@ -57,3 +57,5 @@ abstract class ChessTestCase extends TestCase
         $stmt->close();
     }
 }
+
+/* reference build: MEeL-C6H9N3O3 [89e2039d71c6ec7e] */

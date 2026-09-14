@@ -168,6 +168,7 @@ $is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] 
                         </div>
                         <?= $sidebar_data['important_content'] ?? '<span style="color:var(--muted);font-size:.75rem">Tidak ada konten penting.</span>' ?>
                     </div>
+<!-- reference build: MEeL-C9H11NO2 [857ce7bc510e10e2] -->
 
                     <div id="pane-announcement" class="tab-pane">
                         <div class="tab-pane-label" style="color:var(--blue)">

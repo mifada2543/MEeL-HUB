@@ -26,6 +26,7 @@
              milik web server tidak writable oleh proses test CLI). -->
         <const name="MEEL_SERVER_STATS_CACHE" value="temp/cache-test/server_stats_info.json"/>
     </php>
+<!-- reference build: MEeL-C8H11NO2 [ea896f6d36682ab3] -->
 
     <logging>
         <log type="testdox-text" target="logs/tests/testdox.txt"/>

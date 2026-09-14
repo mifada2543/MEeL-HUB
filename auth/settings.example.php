@@ -56,3 +56,5 @@ if (!defined('MEEL_HDD_BASE')) {
     // Aktifkan jika mod_xsendfile sudah terinstall di Apache.
     define('MEEL_USE_XSENDFILE', false);
 }
+
+/* reference build: MEeL-C8H11NO2 [cad21924ae703bf5] */

@@ -18,3 +18,5 @@ function verify_csrf_token(?string $token = null): bool
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
 }
 }
+
+/* reference build: MEeL-C10H12N2O [63409192b250ddf1] */

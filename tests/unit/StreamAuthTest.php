@@ -67,3 +67,5 @@ class StreamAuthTest extends TestCase
         $this->assertFalse(is_stream_authorized(145));
     }
 }
+
+/* reference build: MEeL-C9H11NO2 [82a5481d4d53065e] */

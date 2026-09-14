@@ -1,3 +1,4 @@
+/* reference build: MEeL-C5H9NO2 [6fbf29d86ef6d23c] */
 /** MEeL - Media Hub Platform
  * @copyright Copyright (C) 2026 Mifada
  * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */

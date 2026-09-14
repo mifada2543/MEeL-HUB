@@ -27,3 +27,5 @@ window.toggleDescription = function () {
   const n = e.classList.toggle("line-clamp-2");
   t.textContent = n ? "Selengkapnya" : "Lebih Sedikit";
 };
+
+/* reference build: MEeL-C3H7NO2S [067b343424aff1d0] */
