@@ -40,22 +40,25 @@ Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
    `USE \`MEeL\`` yang hardcoded di schema ditulis ulang ke nama DB
    konfigurasi); jika DB sudah ada, dilewati dengan aman (reimport hanya atas
    konfirmasi eksplisit).
-3. **Konfigurasi aplikasi** — buat `auth/settings.php` & `auth/config.php`
+3. **Buat akun admin** — Anda **wajib** membuat username dan password sendiri
+   (tidak ada kredensial default). Script akan meminta input dan menyimpannya
+   ke database dengan bcrypt hash.
+4. **Konfigurasi aplikasi** — buat `auth/settings.php` & `auth/config.php`
    dari template, patch kredensial DB + `MEEL_HDD_BASE`, dan (opsional)
    aktifkan `MEEL_USE_XSENDFILE` via `--xsendfile`.
-4. **Direktori storage** — buat struktur lengkap di `MEEL_HDD_BASE`
+5. **Direktori storage** — buat struktur lengkap di `MEEL_HDD_BASE`
    (termasuk `music/upload/{file,thumbnail}` dan
    `books/upload/{manga,pdf,thumbnail}`), arahkan symlink deploy
    `{video,music,books}/upload` serta `data_drive/public` ke storage terpusat,
    dan **salin `.htaccess` hardening ke target** (symlink tidak pernah
    di-commit).
-5. **Apache** — aktifkan `mod_rewrite` (best-effort).
-6. **Migration** — `php database/migrate.php`.
-7. **Verifikasi akhir** — `php tests/check_deploy.php`; **exit code `1` jika
+6. **Apache** — aktifkan `mod_rewrite` (best-effort).
+7. **Migration** — `php database/migrate.php`.
+8. **Verifikasi akhir** — `php tests/check_deploy.php`; **exit code `1` jika
    ada FAIL** dan banner akhir dibedakan antara "deployment sehat" vs "server
    belum siap dipakai".
 
-> 💡 Langkah 7 memvalidasi `MEEL_HDD_BASE` asli di `auth/settings.php` (tanpa override `--hdd`) — konfigurasi yang diuji adalah konfigurasi yang digunakan aplikasi.
+> 💡 Langkah 8 memvalidasi `MEEL_HDD_BASE` asli di `auth/settings.php` (tanpa override `--hdd`) — konfigurasi yang diuji adalah konfigurasi yang digunakan aplikasi.
 
 ---
 
@@ -522,9 +525,7 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
 
 2. Buka browser: `http://localhost/MEeL/`
 
-3. Login dengan:
-   - **Username:** `Admin`
-   - **Password:** `Admin#123`
+3. Login dengan kredensial yang Anda buat saat instalasi (`install.sh` meminta membuat akun admin)
 
 4. Cek halaman Admin: `http://localhost/MEeL/admin/`
 

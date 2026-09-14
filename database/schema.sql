@@ -47,18 +47,7 @@ CREATE TABLE
     KEY `idx_meelcoin` (`meelcoin`)
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Default admin user (password: Admin#123)
--- Ganti password segera setelah pertama login!
-INSERT INTO
-  `users` (`id`, `username`, `role`, `password`, `is_active`)
-VALUES
-  (
-    1,
-    'Admin',
-    'admin',
-    '$2a$12$5cRghghOdj6ZQIAQ5dCGfOZcXUFvWhaAhwdq08r6bMIVNRY0gjAVm',
-    1
-  );
+-- Admin user dibuat otomatis oleh install.sh atau migrasi.
 
 -- =============================================================================
 -- TABEL: video
