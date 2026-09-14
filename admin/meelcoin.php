@@ -215,6 +215,12 @@ $user_list_json = json_encode($user_list);
     <script>
     var __userList = <?= $user_list_json ?>;
 
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     function toggleMeelCoinConfig(enabled) {
         var cfg = document.getElementById('meelcoin-config');
         var manual = document.getElementById('manual-coin');
@@ -242,7 +248,7 @@ $user_list_json = json_encode($user_list);
         if (!val) { info.style.display = 'none'; return; }
         var u = __userList.find(function(x){ return x.id === val; });
         if (!u) { info.style.display = 'none'; return; }
-        info.innerHTML = '<strong>' + u.username + '</strong> — ID: #' + u.id + ' — Role: ' + u.role.charAt(0).toUpperCase() + u.role.slice(1) + ' — Coin saat ini: <strong>' + u.meelcoin + '</strong>';
+        info.innerHTML = '<strong>' + escapeHtml(u.username) + '</strong> — ID: #' + parseInt(u.id) + ' — Role: ' + escapeHtml(u.role.charAt(0).toUpperCase() + u.role.slice(1)) + ' — Coin saat ini: <strong>' + parseInt(u.meelcoin) + '</strong>';
         info.style.display = '';
     });
     </script>

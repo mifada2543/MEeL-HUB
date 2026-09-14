@@ -18,12 +18,10 @@ if ($user_data) {
         header("Location: " . base_url('/auth/login?error=account_inactive'));
         exit;
     }
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        if ($user_data['role'] !== 'admin' && !empty($user_data['last_session_id']) && $user_data['last_session_id'] !== session_id()) {
-            session_destroy();
-            header("Location: " . base_url('/auth/login?error=session_expired'));
-            exit;
-        }
+    if (!empty($user_data['last_session_id']) && $user_data['last_session_id'] !== session_id()) {
+        session_destroy();
+        header("Location: " . base_url('/auth/login?error=session_expired'));
+        exit;
     }
     $stmt = $conn->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
     $stmt->bind_param("i", $user_id);

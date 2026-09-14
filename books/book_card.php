@@ -26,7 +26,7 @@
             <div class="absolute top-2 right-2">
                 <span class="type-badge <?= $book['type'] === 'manga' ? 'type-badge-manga' : 'type-badge-pdf' ?>">
                     <i data-lucide="<?= $book['type'] === 'manga' ? 'book-open' : 'file-text' ?>" class="w-2.5 h-2.5"></i>
-                    <?= $book['type'] ?>
+                    <?= htmlspecialchars($book['type']) ?>
                 </span>
             </div>
 
