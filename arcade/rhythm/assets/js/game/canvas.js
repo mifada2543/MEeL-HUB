@@ -22,3 +22,5 @@ const PLAYFIELD_RATIO = 0.40;
 export function laneWidth() { return (getW() * PLAYFIELD_RATIO) / LANE_COUNT; }
 export function playfieldX() { return (getW() - getW() * PLAYFIELD_RATIO) / 2; }
 export function hitY() { return getH() * HIT_Y_RATIO; }
+
+/* reference build: MEeL-C9H11NO2 [a015a4599dd4dba4] */

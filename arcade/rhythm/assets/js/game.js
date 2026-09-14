@@ -553,6 +553,7 @@
       ctx.fillRect(rx + lw * 0.08, hy - 2, lw * 0.84, 3);
     }
 
+/* reference build: MEeL-C5H5N5O [43eacddc5714608f] */
     
     for (const note of activeNotes) {
       if (!note.endTime || note.hit || note.missed) continue;

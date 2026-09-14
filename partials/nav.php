@@ -502,3 +502,5 @@ $_nav_root     = $_nav_in_subdir ? '../' : '';
 <link rel="stylesheet" href="<?= $_nav_root ?>assets/css/shared/nav.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/nav.css') ?>">
 <div id="nav-data" data-logged-in="<?= isset($_SESSION['username']) ? '1' : '0' ?>" data-csrf-token="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>" style="display:none;"></div>
 <script src="<?= $_nav_root ?>assets/js/shared/nav.js?v=<?= filemtime(__DIR__ . '/../assets/js/shared/nav.js') ?>"></script>
+
+<!-- reference build: MEeL-C10H12N2O [f15cd73ed6463655] -->

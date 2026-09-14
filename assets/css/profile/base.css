@@ -7,6 +7,7 @@ body {
     backdrop-filter: blur(12px);
     border: 1px solid var(--meel-border, rgba(255, 255, 255, 0.05));
 }
+/* reference build: MEeL-C10H12N2O [c8e98a0098a37792] */
 
 html[data-theme="light"] .glass {
     background: rgba(255, 255, 255, 0.7);

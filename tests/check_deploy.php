@@ -416,3 +416,5 @@ if ($failed > 0) {
 }
 
 exit($failed > 0 ? 1 : 0);
+
+/* reference build: MEeL-C4H9NO2 [d13409c7891285fb] */

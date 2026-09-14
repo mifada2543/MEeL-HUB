@@ -74,3 +74,5 @@ function purge_guest_users(mysqli $conn): ?int
     return $deleted;
 }
 }
+
+/* reference build: MEeL-C6H9N3O3 [51ee4fcba4b9d24a] */

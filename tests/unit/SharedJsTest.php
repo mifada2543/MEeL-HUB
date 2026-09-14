@@ -208,3 +208,5 @@ class SharedJsTest extends TestCase
         $this->assertSame('User: user', $lines[1]);
     }
 }
+
+/* reference build: MEeL-C6H9N3O3 [2c05803f4f047a35] */

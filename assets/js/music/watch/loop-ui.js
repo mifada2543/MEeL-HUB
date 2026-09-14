@@ -23,3 +23,4 @@ function updateLoopUI() {
     player ? player.loop : "true" === localStorage.getItem(MEEL_KEYS.GLOBAL_LOOP),
   );
 }
+/* reference build: MEeL-C6H9N3O3 [7a4d38514fd9c25d] */

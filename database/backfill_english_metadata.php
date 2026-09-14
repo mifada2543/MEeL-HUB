@@ -102,3 +102,5 @@ backfill_process_table($conn, 'music', 'title, artist, album, search_metadata', 
 
 echo "[MEeL] Selesai. Total baris diproses: {$stats['processed']}\n";
 $conn->close();
+
+/* reference build: MEeL-C5H9NO2 [a4e42617ead7a3b9] */

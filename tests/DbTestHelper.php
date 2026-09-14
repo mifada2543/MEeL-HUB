@@ -276,3 +276,5 @@ class DbTestHelper
         $this->close();
     }
 }
+
+/* reference build: MEeL-C5H9NO2 [7e926dab7eccb635] */

@@ -28,6 +28,7 @@
 .content-card:hover .card-thumb img {
     transform: scale(1.05);
 }
+/* reference build: MEeL-C9H11NO2 [7daddffb37fd45f8] */
 
 .content-card .card-body {
     padding: 12px 14px 14px;

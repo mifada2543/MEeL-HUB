@@ -126,3 +126,5 @@ class Transcoder extends TranscoderBase
         return TranscodeService::ownsTranscodeFile($outputFilename);
     }
 }
+
+/* reference build: MEeL-C10H12N2O [6aa5534624d9760b] */

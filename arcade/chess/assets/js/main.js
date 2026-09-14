@@ -1,3 +1,4 @@
+/* reference build: MEeL-C3H7NO2S [fdd1aafa52e00dd1] */
 import { SVG_PIECES, UNICODE_PIECES, UNICODE_PIECES_WHITE } from "./assets.js";
 import { sounds } from "./audio.js";
 import { ChessGame } from "./engine.js";

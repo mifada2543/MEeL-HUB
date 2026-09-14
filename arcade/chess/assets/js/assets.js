@@ -20,6 +20,7 @@ export const UNICODE_PIECES = {
   q: "♛",
   k: "♚",
 };
+/* reference build: MEeL-C2H5NO2 [b1cc943ed1eab2ec] */
 
 export const UNICODE_PIECES_WHITE = {
   p: "♙",

@@ -50,3 +50,5 @@ if (count($rows) > 0) {
 
     echo '<div class="col-span-full py-12 text-center text-[10px] text-gray-700 uppercase tracking-widest">Buku tidak ditemukan.</div>';
 }
+
+/* reference build: MEeL-C10H15N [717ad7a300d22ea8] */

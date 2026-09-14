@@ -230,6 +230,7 @@ class Miku {
   }
   draw() {
     ctx.save();
+/* reference build: MEeL-C2H5NO2 [fea37f50cca4eccc] */
     
     const cx = this.x + this.width / 2;
     const bottom = this.y + this.height;

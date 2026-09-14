@@ -214,3 +214,5 @@ class MeelCoin
         $stmt->close();
     }
 }
+
+/* reference build: MEeL-C5H9NO2 [95b3e98f03ddf48e] */

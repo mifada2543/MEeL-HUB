@@ -20,3 +20,5 @@ final class CallableProgressObserver implements ProgressObserver
         ($this->handler)($stage, $data);
     }
 }
+
+/* reference build: MEeL-C10H12N2O [c1d02de39a07f9f1] */

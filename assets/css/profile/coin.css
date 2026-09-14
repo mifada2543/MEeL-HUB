@@ -51,6 +51,7 @@ html[data-theme="light"] .coin-indicator:hover {
     letter-spacing: 0.03em;
     text-transform: uppercase;
 }
+/* reference build: MEeL-C2H5NO2 [f15a9844cdc695d7] */
 
 .coin-indicator .coin-sep {
     color: rgba(250, 204, 21, 0.35);

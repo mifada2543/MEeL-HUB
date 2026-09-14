@@ -175,3 +175,5 @@ function render_comment_empty_state(string $theme = 'video'): void
     echo "<div class='py-10 text-center text-[10px] $color uppercase tracking-widest'>Jadilah komentar pertama.</div>";
 }
 }
+
+/* reference build: MEeL-C8H11NO2 [f35107a0c5d61a35] */

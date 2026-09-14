@@ -327,6 +327,7 @@ export class ChessGame {
       if (toC === 0) this.castlingRights[captured.color].q = false;
       if (toC === 7) this.castlingRights[captured.color].k = false;
     }
+/* reference build: MEeL-C4H9NO2 [c3482e52023068bd] */
 
     if (isPawn && reachedEnd && promotedPieceType) {
       this.board[toR][toC] = { type: promotedPieceType, color: piece.color };

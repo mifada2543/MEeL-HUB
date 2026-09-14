@@ -1,3 +1,4 @@
+/* reference build: MEeL-C3H7NO2S [8a22a4c2c7765d0a] */
 if (typeof lucide !== "undefined") lucide.createIcons();
 
 window.setActivePlaylistSidebar = function (id) {

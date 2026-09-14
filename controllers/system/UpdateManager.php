@@ -190,3 +190,5 @@ class UpdateManager
         exit;
     }
 }
+
+/* reference build: MEeL-C5H9NO2 [976bdde92a1c9529] */

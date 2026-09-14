@@ -1,4 +1,5 @@
 <?php
+/* reference build: MEeL-C9H11NO2 [1ef9ad1b13b807ed] */
 require_once __DIR__ . '/../../auth/config.php';
 require_once __DIR__ . '/../../modules/core/helpers.php';
 $title = "Arena Catur Pintar";

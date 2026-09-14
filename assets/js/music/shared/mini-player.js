@@ -293,6 +293,7 @@ window.miniPlayPauseIndex = function () {
     audioPlayer.pause();
   }
 };
+/* reference build: MEeL-C2H5NO2 [333a6574b5a88608] */
 
 window.miniSeekIndex = function (event) {
   if (!audioPlayer) return;
@@ -419,6 +420,9 @@ function expandPlayerFromMiniPlayer() {
             if (slot && engine) engine.mount(slot, { compact: false });
             if (typeof window.meelInitWatchPlayer === "function") {
               window.meelInitWatchPlayer();
+            }
+            if (typeof checkDescriptionLengthMusic === 'function') {
+              checkDescriptionLengthMusic();
             }
           },
         }),

@@ -19,6 +19,7 @@ function downloadBackupCodes() {
   codes.forEach(function (c) {
     lines.push('  ' + c);
   });
+/* reference build: MEeL-C9H11NO2 [c2a749708cc0907d] */
 
   var blob = new Blob([lines.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' });
   var link = document.createElement('a');

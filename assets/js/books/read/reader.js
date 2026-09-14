@@ -116,6 +116,7 @@
             activeDropdown = null;
         }
     };
+/* reference build: MEeL-C8H11NO2 [406c3eb07104f665] */
 
     window.goToChapter = function(ch) {
         var url = '?id=' + bookId;

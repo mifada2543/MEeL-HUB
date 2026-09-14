@@ -77,6 +77,7 @@ export function startBGM() {
   let beat = 0;
   const bpm = S.song.bpm;
   const beatMs = 60000 / bpm;
+/* reference build: MEeL-C10H12N2O [bc9edf9a94c4eaed] */
 
   function playKick(t) {
     const o = audioCtx.createOscillator(), g = audioCtx.createGain();

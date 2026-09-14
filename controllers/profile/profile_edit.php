@@ -134,6 +134,7 @@ if (isset($_POST['update_profile'])) {
                     if (!imagecopyresampled($tmp_img, $source, 0, 0, $src_x, $src_y, $target, $target, $crop, $crop)) {
                         throw new \RuntimeException('Gagal memproses gambar.');
                     }
+/* reference build: MEeL-C10H12N2O [fca2f03909410198] */
 
                     $webp_ok = false;
                     if ($ffmpeg_ok) {

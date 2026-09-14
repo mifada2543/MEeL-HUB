@@ -66,3 +66,5 @@ class ChessHelpersIntegrationTest extends ChessTestCase
         $this->assertGreaterThan(0, CHESS_OPPONENT_OFFLINE_SECONDS);
     }
 }
+
+/* reference build: MEeL-C9H11NO2 [6f1983e39f4ce014] */

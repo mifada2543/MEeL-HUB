@@ -75,3 +75,5 @@ if ($result['count'] > 0) {
 } elseif ($result['offset'] === 0) {
     echo '<div class="col-span-full py-16 text-center text-[10px] text-gray-700 uppercase tracking-widest">Video tidak ditemukan.</div>';
 }
+
+/* reference build: MEeL-C6H9N3O3 [b271388b3aca6acc] */
