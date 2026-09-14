@@ -226,4 +226,5 @@
     });
 
     document.body.addEventListener('htmx:afterOnLoad', function() { lucide.createIcons(); });
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 })();
