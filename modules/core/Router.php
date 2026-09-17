@@ -3,6 +3,7 @@ final class MeelRouter
 {
     private const ROUTES = [
         ''                => ['handler' => 'index.php',           'script' => '/index.php'],
+        'beranda'         => ['handler' => 'index.php',           'script' => '/index.php'],
         'introduction'    => ['handler' => 'introduction.php',    'script' => '/introduction.php'],
         'update'          => ['handler' => 'update.php',          'script' => '/update.php'],
         'upload'         => ['handler' => 'upload_advanced.php', 'script' => '/upload_advanced.php'],
@@ -219,9 +220,7 @@ final class MeelRouter
                 Modules::guardRedirect('arcade');
             }
 
-            http_response_code(404);
-            $_GET['code'] = 'not_found';
-            require dirname(__DIR__, 2) . '/err/index.php';
+            header('Location: ' . self::basePath() . '/err?code=not_found', true, 302);
             exit;
         }
 

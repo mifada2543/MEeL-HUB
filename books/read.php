@@ -14,9 +14,7 @@ $repo = new BookRepository($conn);
 $book = $repo->getBookById((int)$_GET['id']);
 
 if (!$book) {
-    http_response_code(404);
-    $_GET['code'] = 'not_found';
-    include '../err/index.php';
+    header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
     exit;
 }
 

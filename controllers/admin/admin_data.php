@@ -1,8 +1,8 @@
 <?php
 
 if (!defined('MEEL_ADMIN_CONTEXT')) {
-    $_GET['code'] = 'denied';
-    die(include __DIR__ . '/../../err/index.php');
+    header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
+    exit;
 }
 
 $banned_ips = $conn->query("SELECT * FROM ip_ban ORDER BY banned_at DESC");
