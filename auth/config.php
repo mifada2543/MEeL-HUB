@@ -29,6 +29,10 @@ require_once __DIR__ . '/../modules/core/bootstrap.php';
 /** @var string $username User DB (dari settings.php) */
 /** @var string $password Password DB (dari settings.php) */
 /** @var string $db       Nama DB (dari settings.php) */
+if (!isset($server))   $server   = 'localhost';
+if (!isset($username)) $username = 'root';
+if (!isset($password)) $password = '';
+if (!isset($db))       $db       = 'MEeL';
 if (!isset($conn) || $conn === null) {
     $conn = new mysqli($server, $username, $password, $db);
     if ($conn->connect_error) {

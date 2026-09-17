@@ -137,14 +137,17 @@ if (isset($conn)) {
 
     $session_role = $_SESSION['role'] ?? null;
     $check_ban = $conn->prepare("SELECT reason FROM ip_ban WHERE ip_address = ?");
-    $check_ban->bind_param("s", $user_ip);
-    $check_ban->execute();
-    $ban_res = $check_ban->get_result();
+    $ban_res = false;
+    if ($check_ban) {
+        $check_ban->bind_param("s", $user_ip);
+        $check_ban->execute();
+        $ban_res = $check_ban->get_result();
+    }
 
     $current_page = basename($_SERVER['PHP_SELF']);
     $current_dir  = basename(dirname($_SERVER['PHP_SELF']));
     if ($current_dir !== 'err') {
-        if ($ban_res->num_rows > 0) {
+        if ($ban_res && $ban_res->num_rows > 0) {
             if ($session_role !== 'admin') {
                 $row = $ban_res->fetch_assoc();
                 $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
