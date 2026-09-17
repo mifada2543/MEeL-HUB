@@ -367,7 +367,6 @@ include __DIR__ . '/../partials/link.php';
                                 <div style="font-size:10px;color:#cbd5e1;margin-top:2px;">Kelola lirik untuk fitur karaoke</div>
                             </div>
                             <a href="<?= base_url('/' . ($_EDIT_CONTEXT === 'admin' ? 'admin' : 'profile') . '/lrc-editor?id=' . (int)$id) ?>"
-                                target="_blank"
                                 class="btn-secondary" style="font-size:10px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
                                 <i data-lucide="pen-tool" style="width:12px;height:12px;"></i> LRC Editor
                             </a>
