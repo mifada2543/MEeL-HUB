@@ -462,6 +462,13 @@ final class DriveStorage
 }
 final class DriveViewRenderer
 {
+    private static array $previewableImages = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+
+    public static function isPreviewableImage(string $ext): bool
+    {
+        return in_array(strtolower($ext), self::$previewableImages);
+    }
+
     public function renderFileGrid(array $files, string $accent, string $icon, string $type, string $scope, bool $showDelete = true): void
     {
         $csrfToken = get_csrf_token();
