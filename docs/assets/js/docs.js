@@ -18,7 +18,7 @@ const DOCS = {
             ['problem-solved',    '🌍 Problems'],
             ['upload-issues',     '📥 Upload'],
             ['pwa',               '📱 PWA'],
-            ['analysis',          '📋 Analysis'],
+            ['info',              '📖 Info'],
         ]
     },
     id: {
@@ -37,7 +37,7 @@ const DOCS = {
             ['problem-solved',    '🌍 Masalah'],
             ['upload-issues',     '📥 Upload'],
             ['pwa',               '📱 PWA'],
-            ['analysis',          '📋 Analisis'],
+            ['info',              '📖 Info'],
         ]
     }
 };

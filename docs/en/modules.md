@@ -444,6 +444,40 @@ Error handling is centralized in one dynamic page `err/index.php` — content & 
 
 **Source adaptation:** the origin module is detected from `HTTP_REFERER` (video/music/books/drive/admin/profile) → accent color & back-button label change automatically. Back-button priority: `?back=` → referer (GET page) → module home → hub (`index.php`).
 
+### 15c. Keyboard Shortcuts
+
+Keyboard shortcuts are implemented in JavaScript and guarded by `assets/js/shared/keyboard.js` (`meelKeyShortcutIgnored()`) — prevents shortcuts from firing when typing in inputs, holding modifier keys (Ctrl/Alt/Meta), or on key repeat.
+
+**Video Watch (`assets/js/video/watch/`):**
+
+| Key | Action | Source |
+|-----|--------|--------|
+| `0–9` | Jump to 0–90% duration | Plyr default |
+| `Space / K` | Play / Pause | Plyr default |
+| `←` / `→` | Seek backward / forward | Plyr default |
+| `↑` / `↓` | Volume up / down | Plyr default |
+| `M` | Mute / Unmute | Plyr default |
+| `F` | Fullscreen | Plyr default |
+| `C` | Toggle captions | Plyr default |
+| `L` | Toggle loop | `misc.js` |
+| `A` | Toggle auto-next | `misc.js` |
+| `N` | Skip to next video | `mini-player.js` |
+| `I` | Toggle mini player | `mini-player.js` |
+
+**Music Watch (`assets/js/music/watch/`):**
+
+| Key | Action | Source |
+|-----|--------|--------|
+| `0–9` | Jump to 0–90% duration | Plyr default |
+| `Space / K` | Play / Pause | Plyr default |
+| `←` / `→` | Seek backward / forward | Plyr default |
+| `↑` / `↓` | Volume up / down | Plyr default |
+| `M` | Mute / Unmute | Plyr default |
+| `L` | Toggle loop | `misc.js` |
+| `E` | Toggle equalizer | `misc.js` |
+| `V` | Toggle visualizer | `misc.js` |
+| `I` | Go back to library / mini player | `misc.js` |
+
 ### 16. `modules/media/SearchEngine.php`
 
 **Class:** `SearchEngine` — FULLTEXT search engine (video, music, books) with query sanitizer:

@@ -355,6 +355,40 @@ Error handling terpusat di satu halaman dinamis `err/index.php` — konten & tem
 
 **Adaptasi sumber:** modul asal dideteksi dari `HTTP_REFERER` (video/music/books/drive/admin/profile) → tema warna + label tombol kembali berubah otomatis. Prioritas tombol kembali: `?back=` → referer (halaman GET) → home modul → hub (`index.php`).
 
+### 15c. Shortcut Keyboard
+
+Shortcut keyboard diimplementasikan dalam JavaScript dan di-guard oleh `assets/js/shared/keyboard.js` (`meelKeyShortcutIgnored()`) — mencegah shortcut aktif saat mengetik di input, menahan modifier key (Ctrl/Alt/Meta), atau saat key di-repeat.
+
+**Video Watch (`assets/js/video/watch/`):**
+
+| Key | Aksi | Sumber |
+|-----|------|--------|
+| `0–9` | Loncat ke 0–90% durasi | Plyr default |
+| `Space / K` | Play / Pause | Plyr default |
+| `←` / `→` | Mundur / Maju (seek) | Plyr default |
+| `↑` / `↓` | Volume naik / turun | Plyr default |
+| `M` | Mute / Unmute | Plyr default |
+| `F` | Layar penuh | Plyr default |
+| `C` | Toggle caption | Plyr default |
+| `L` | Toggle loop | `misc.js` |
+| `A` | Toggle auto-next | `misc.js` |
+| `N` | Video berikutnya | `mini-player.js` |
+| `I` | Toggle mini player | `mini-player.js` |
+
+**Music Watch (`assets/js/music/watch/`):**
+
+| Key | Aksi | Sumber |
+|-----|------|--------|
+| `0–9` | Loncat ke 0–90% durasi | Plyr default |
+| `Space / K` | Play / Pause | Plyr default |
+| `←` / `→` | Mundur / Maju (seek) | Plyr default |
+| `↑` / `↓` | Volume naik / turun | Plyr default |
+| `M` | Mute / Unmute | Plyr default |
+| `L` | Toggle loop | `misc.js` |
+| `E` | Toggle equalizer | `misc.js` |
+| `V` | Toggle visualizer | `misc.js` |
+| `I` | Kembali ke library / mini player | `misc.js` |
+
 ### 16. `modules/media/SearchEngine.php`
 
 **Class:** `SearchEngine` — FULLTEXT search engine (video, music, books) dengan sanitizer query:

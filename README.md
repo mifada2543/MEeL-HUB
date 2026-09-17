@@ -184,7 +184,7 @@ MEeL/
 
 ## 🧪 Testing
 
-> 258+ kasus uji (unit, integrasi, fungsional, keamanan) — dijalankan secara otomatis pada setiap push melalui GitHub Actions CI.
+> 369+ kasus uji (288 unit + 81 integrasi, fungsional, keamanan) — dijalankan secara otomatis pada setiap push melalui GitHub Actions CI.
 
 ```bash
 composer install

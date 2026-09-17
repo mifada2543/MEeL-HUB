@@ -775,6 +775,9 @@ if (!headers_sent()) {
 | `admin/mfa_reset.php` | Admin MFA reset panel |
 | `partials/ui.php` | Overlay UI system (JS heavy) |
 | `assets/js/shared/keyboard.js` | Guard shortcut keyboard bersama (meelKeyShortcutIgnored) — dipakai misc/mini-player video & music |
+| `assets/js/video/watch/misc.js` | Shortcut spesifik video (L=loop, A=auto-next) |
+| `assets/js/video/watch/mini-player.js` | Shortcut video (N=next, I=mini-player) + logika mini-player |
+| `assets/js/music/watch/misc.js` | Shortcut musik (L=loop, E=equalizer, V=visualizer, I=mini-player) |
 | `assets/js/shared/temp-index.js` | Loader bersama index.php ke #temp-index-content tanpa reload (meelLoadTempIndex) — dipakai mini-player video & music |
 | `assets/js/shared/plyr-config.js` | Konfigurasi dasar Plyr bersama (MEEL_PLYR_COMMON: iconUrl, speed, keyboard, tooltips) — dipakai player video & music |
 | `assets/js/shared/upload-progress.js` | Animasi progress-bar upload bersama (meelUploadProgress) — dipakai halaman upload music & video |

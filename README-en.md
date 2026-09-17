@@ -184,7 +184,7 @@ MEeL/
 
 ## 🧪 Testing
 
-> 258+ test cases (unit, integration, functional, security) — executed automatically on every push via GitHub Actions CI.
+> 369+ test cases (288 unit + 81 integration, functional, security) — executed automatically on every push via GitHub Actions CI.
 
 ```bash
 composer install

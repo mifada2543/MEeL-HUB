@@ -19,6 +19,7 @@ Dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untuk streaming video,
 | 9 | [📥 Troubleshooting Advanced Upload](upload-issues.md) | Penanganan masalah yt-dlp & background queue |
 | 10 | [🧪 Testing Guide](testing.md) | PHPUnit, Functional, Security test — panduan lengkap |
 | 11 | [📱 PWA](pwa.md) | Progressive Web App: service worker dinamis, strategi cache, offline |
+| 12 | [📖 Info](info.md) | Referensi lengkap fungsi `meel_*()` — semua fungsi utilitas global |
 
 ---
 
@@ -91,7 +92,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 | URL | Handler (file) |
 |---|---|
-| `/` | `index.php` (hub) |
+| `/`, `/beranda` | `index.php` (hub) |
 | `/introduction`, `/update`, `/upload`, `/transcode` | `introduction.php`, `update.php`, `upload_advanced.php`, `transcode.php` |
 | `/err`, `/err/offline` | `err/index.php` (dinamis `?code=`), `err/offline.php` (PWA) |
 | `/video/beranda`, `/video/watch`, `/video/search`, `/video/load-more`, `/video/upload`, `/video/stream` | `video/*.php` |
@@ -167,6 +168,10 @@ Request: /MEeL/music/beranda?format=ogg
 - **Profile Modularisasi:** Halaman profile dipecah menjadi komponen terpisah — `manage.js`, `avatar-crop.js`, `coin-countdown.js`, `theme-init.js` + CSS modular (base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state)
 - **Admin Chat:** Interface admin chat baru di `admin/chat.php` dengan CSS & JS modular
 - **URL Cleanup:** Normalisasi URL routing — semua URL bersih tanpa ekstensi `.php`, redirect 301 dari URL lama
+- **Admin Access Obfuscation:** `require_admin()` dan guard admin sekarang redirect user non-admin ke `/err?code=not_found` (404) alih-alih menampilkan halaman 403 "Access Denied" — menyembunyikan keberadaan halaman admin-only
+- **Error Page Redirect Pattern:** Semua pola `die(include __DIR__ . '/err/index.php')` dikonversi ke `header('Location: .../err?code=...')` redirect via `meel_base_url_path()` — lebih bersih, tanpa rendering error inline
+- **Root `/beranda` Route:** Route `/beranda` baru di root level — map ke `index.php` (HUB home), konsisten dengan skema `/module/beranda`
+- **Keyboard Shortcuts Terdokumentasi:** Shortcut Video (N=next, I=mini-player) dan Musik (E=equalizer, V=visualizer, I=mini-player) sekarang terdokumentasi di `introduction.php` dan `docs/`
 
 ## 📖 Tentang Proyek
 

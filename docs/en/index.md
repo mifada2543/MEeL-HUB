@@ -19,6 +19,7 @@ Official documentation for **MEeL** — A Personal Media Hub Platform for video 
 | 9 | [📥 Advanced Upload Issues](upload-issues.md) | Handling yt-dlp & background queue problems |
 | 10 | [🧪 Testing Guide](testing.md) | PHPUnit, Functional, Security test — complete guide |
 | 11 | [📱 PWA](pwa.md) | Progressive Web App: dynamic service worker, cache strategies, offline |
+| 12 | [📖 Info](info.md) | Complete `meel_*()` function reference — all global utility functions |
 
 ---
 
@@ -91,7 +92,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 | URL | Handler (file) |
 |---|---|
-| `/` | `index.php` (hub) |
+| `/`, `/beranda` | `index.php` (hub) |
 | `/introduction`, `/update`, `/upload`, `/transcode` | `introduction.php`, `update.php`, `upload_advanced.php`, `transcode.php` |
 | `/err`, `/err/offline` | `err/index.php` (dynamic `?code=`), `err/offline.php` (PWA) |
 | `/video/beranda`, `/video/watch`, `/video/search`, `/video/load-more`, `/video/upload`, `/video/stream` | `video/*.php` |
@@ -167,6 +168,10 @@ Request: /MEeL/music/beranda?format=ogg
 - **Profile Modularization:** Profile page split into separate components — `manage.js`, `avatar-crop.js`, `coin-countdown.js`, `theme-init.js` + modular CSS (base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state)
 - **Admin Chat:** New admin chat interface at `admin/chat.php` with modular CSS & JS
 - **URL Cleanup:** URL routing normalization — all clean URLs without `.php` extension, 301 redirects from legacy URLs
+- **Admin Access Obfuscation:** `require_admin()` and admin guards now redirect non-admin users to `/err?code=not_found` (404) instead of showing a 403 "Access Denied" page — hides existence of admin-only pages
+- **Error Page Redirect Pattern:** All `die(include __DIR__ . '/err/index.php')` patterns converted to `header('Location: .../err?code=...')` redirects via `meel_base_url_path()` — cleaner, no more inline error rendering
+- **Root `/beranda` Route:** New `/beranda` route at root level — maps to `index.php` (HUB home), consistent with module-level `/module/beranda` scheme
+- **Keyboard Shortcuts Documented:** Video (N=next, I=mini-player) and Music (E=equalizer, V=visualizer, I=mini-player) shortcuts now documented in `introduction.php` and `docs/`
 
 ## 📖 About the Project
 
