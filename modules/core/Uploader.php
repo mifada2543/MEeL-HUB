@@ -231,7 +231,13 @@ class Uploader
             if (!$ins[0]) {
                 throw new \RuntimeException($ins[1]);
             }
+            $music_id = $this->conn->insert_id;
             $this->conn->commit();
+
+            if ($music_id > 0) {
+                $this->processMusicLyrics($music_id, $post, $files);
+            }
+
             return ['status' => 'success'];
         } catch (\Throwable $e) {
             $this->conn->rollback();
@@ -242,6 +248,30 @@ class Uploader
                 $this->removeFile($thumb_path);
             }
             return ['status' => 'error', 'msg' => "Database error! [" . $e->getMessage() . "]"];
+        }
+    }
+
+    private function processMusicLyrics(int $music_id, array $post, array $files): void
+    {
+        $lyrics_lang = sanitize_subtitle_lang($post['lyrics_lang'] ?? 'id');
+
+        if (
+            !empty($files['lyrics']['tmp_name'])
+            && is_uploaded_file($files['lyrics']['tmp_name'])
+            && ($files['lyrics']['error'] ?? -1) === UPLOAD_ERR_OK
+        ) {
+            $ext = strtolower(pathinfo($files['lyrics']['name'] ?? '', PATHINFO_EXTENSION));
+            if (in_array($ext, ['lrc', 'txt'], true) && validate_lyrics_file($files['lyrics']['tmp_name'])) {
+                $content = (string)@file_get_contents($files['lyrics']['tmp_name']);
+                if ($content !== '') {
+                    save_music_lyrics($music_id, $lyrics_lang, $content);
+                }
+            }
+        } elseif (!empty($post['lyrics_text'])) {
+            $text = trim($post['lyrics_text']);
+            if ($text !== '') {
+                save_music_lyrics($music_id, $lyrics_lang, $text);
+            }
         }
     }
 

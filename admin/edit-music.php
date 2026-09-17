@@ -67,6 +67,17 @@ if (!$is_admin && !$is_owner) {
 }
 $status = "";
 $error_message = "";
+
+if (isset($_POST['delete_lyrics_lang']) && $_POST['delete_lyrics_lang'] !== '') {
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        $error_message = "CSRF Token tidak valid.";
+    } else {
+        $del_lang = sanitize_subtitle_lang($_POST['delete_lyrics_lang'], 'und');
+        delete_music_lyrics($id, $del_lang);
+        $status = "lyrics_deleted";
+    }
+}
+
 if (isset($_POST['update'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error_message = "CSRF Token tidak valid.";
@@ -347,6 +358,47 @@ include __DIR__ . '/../partials/link.php';
                     </div>
 
                     
+                    <div class="divider" style="margin:0;"></div>
+
+                    <div class="lyrics-section">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
+                            <div>
+                                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Lirik / Lyrics</div>
+                                <div style="font-size:10px;color:#cbd5e1;margin-top:2px;">Kelola lirik untuk fitur karaoke</div>
+                            </div>
+                            <a href="<?= base_url('/' . ($_EDIT_CONTEXT === 'admin' ? 'admin' : 'profile') . '/lrc-editor?id=' . (int)$id) ?>"
+                                target="_blank"
+                                class="btn-secondary" style="font-size:10px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
+                                <i data-lucide="pen-tool" style="width:12px;height:12px;"></i> LRC Editor
+                            </a>
+                        </div>
+
+                        <?php
+                        $existing_lyrics = get_music_lyrics_list($id);
+                        $has_lyrics = !empty($existing_lyrics);
+                        ?>
+                        <?php if ($has_lyrics): ?>
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                                <?php foreach ($existing_lyrics as $_ly): ?>
+                                    <div class="lyrics-row">
+                                        <i data-lucide="file-text" style="width:13px;height:13px;color:var(--accent);flex-shrink:0;"></i>
+                                        <span style="font-size:11px;color:#cbd5e1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= htmlspecialchars($_ly['file']) ?></span>
+                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Hapus lirik ini?')">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                                            <input type="hidden" name="delete_lyrics_lang" value="<?= htmlspecialchars($_ly['lang']) ?>">
+                                            <button type="submit" class="lyrics-delete-btn" title="Hapus lirik">
+                                                <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div style="font-size:11px;color:#6b7280;">Belum ada lirik. Tambahkan via LRC Editor.</div>
+                        <?php endif; ?>
+                    </div>
+
+                    
                     <div class="form-actions">
                         <button type="submit" name="update" id="btn-save" class="btn-primary">
                             <i data-lucide="save" style="width:15px;height:15px;"></i>
@@ -370,6 +422,16 @@ include __DIR__ . '/../partials/link.php';
             Swal.fire({
                 title: 'Berhasil!',
                 text: 'Detail musik telah diperbarui.',
+                icon: 'success',
+                confirmButtonColor: '#f97316',
+                background: '#0e1118',
+                color: '#fff'
+            });
+        <?php endif; ?>
+        <?php if ($status === "lyrics_deleted"): ?>
+            Swal.fire({
+                title: 'Dihapus!',
+                text: 'Lirik berhasil dihapus.',
                 icon: 'success',
                 confirmButtonColor: '#f97316',
                 background: '#0e1118',

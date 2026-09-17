@@ -18,7 +18,7 @@ if ($referer !== '' && $currentHost !== '') {
         if (strtolower($refParts['host']) === $currentHostNorm) {
 
             $refPath = $refParts['path'] ?? '';
-            if (preg_match('#/music(?:/|$)#i', $refPath)) {
+            if (preg_match('#/(?:music|admin|profile)(?:/|$)#i', $refPath)) {
                 $refererOk = true;
             }
         }

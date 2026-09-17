@@ -188,6 +188,11 @@ $__vdir = function($dir) {
                                 <i data-lucide="sliders-horizontal" class="w-3 h-3"></i>
                                 <span id="eq-text">EQ Off</span>
                             </button>
+                            <button id="btn-karaoke" onclick="openKaraoke()" style="display:none;"
+                                class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
+                                <i data-lucide="mic" class="w-3 h-3"></i>
+                                Lirik
+                            </button>
                         </div>
                     </div>
 
@@ -522,6 +527,18 @@ $__vdir = function($dir) {
                 </div>
             </div>
         <?php endif; ?>
+        <div id="karaoke-modal" class="hidden">
+            <div class="karaoke-panel">
+                <div class="karaoke-header">
+                    <span class="karaoke-header-title">Lirik</span>
+                    <button class="karaoke-close-btn" onclick="closeKaraoke()">
+                        <i data-lucide="x" style="width:16px;height:16px;"></i>
+                    </button>
+                </div>
+                <div id="karaoke-lang-tabs" class="karaoke-lang-tabs"></div>
+                <div id="karaoke-scroll"></div>
+            </div>
+        </div>
         <div id="mini-player" aria-label="Mini Player">
             <div class="mp-seekbar" id="mp-seekbar" onclick="miniSeek(event)" title="Klik untuk seek">
                 <div class="mp-seekbar-fill" id="mp-seekbar-fill"></div>
@@ -583,7 +600,8 @@ $__vdir = function($dir) {
             thumbnailUrl: <?= json_encode(music_thumbnail_url($v['thumbnail'])) ?>,
             filename: <?= json_encode($v['filename']) ?>,
             streamUrl: <?= json_encode('stream?id=' . $id) ?>,
-            mimeType: <?= json_encode($mimeType) ?>
+            mimeType: <?= json_encode($mimeType) ?>,
+            lyrics: <?= json_encode($lyrics ?? []) ?>
         };
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') {

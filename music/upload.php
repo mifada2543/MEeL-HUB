@@ -286,6 +286,27 @@ $__v = function($f) {
 
                     <div class="divider" style="margin:0;"></div>
 
+                    <div class="field-group">
+                        <label class="field-label">Lirik / Lyrics (Opsional)</label>
+                        <div class="drop-grid">
+                            <div class="drop-zone" id="lyrics-zone">
+                                <input type="file" name="lyrics" accept=".lrc,.txt"
+                                    id="lyrics-input" onchange="handleLyricsFile(this)" aria-label="Pilih file lirik (.lrc atau .txt)">
+                                <div class="drop-zone-icon">
+                                    <i data-lucide="file-text" style="width:18px;height:18px;color:var(--accent);"></i>
+                                </div>
+                                <div class="drop-zone-label" id="lyrics-label">Drag &amp; Drop LRC</div>
+                                <div class="drop-zone-sub">Format .lrc atau .txt</div>
+                            </div>
+                            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
+                                <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#455060;">Atau paste lirik langsung</div>
+                                <textarea name="lyrics_text" id="lyrics-text"
+                                    placeholder="Paste lirik di sini... (opsional, bisa di-edit nanti via LRC Editor)"
+                                    class="field-input" style="flex:1;min-height:80px;resize:none;font-size:12px;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
                     
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <label class="field-label">File Audio & Cover Art</label>
@@ -405,6 +426,28 @@ $__v = function($f) {
     </script>
     <script src="../assets/js/shared/upload-progress.js<?= $__v('assets/js/shared/upload-progress.js') ?>"></script>
     <script src="../assets/js/music/upload/upload.js<?= $__v('assets/js/music/upload/upload.js') ?>"></script>
+    <script>
+        function handleLyricsFile(input) {
+            var label = document.getElementById('lyrics-label');
+            if (input.files && input.files.length > 0) {
+                var f = input.files[0];
+                var ext = f.name.split('.').pop().toLowerCase();
+                if (['lrc', 'txt'].indexOf(ext) === -1) {
+                    meelAlertRedirect({ title: 'Format Tidak Didukung', text: 'Gunakan file .lrc atau .txt', icon: 'warning', redirectUrl: 'upload' });
+                    input.value = '';
+                    return;
+                }
+                if (f.size > 2 * 1024 * 1024) {
+                    meelAlertRedirect({ title: 'File Terlalu Besar', text: 'Maksimal 2MB', icon: 'warning', redirectUrl: 'upload' });
+                    input.value = '';
+                    return;
+                }
+                if (label) label.textContent = f.name;
+            } else {
+                if (label) label.textContent = 'Drag & Drop LRC';
+            }
+        }
+    </script>
 </body>
 
 </html>

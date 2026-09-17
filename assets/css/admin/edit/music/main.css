@@ -29,4 +29,33 @@ body.theme-music .uploader-avatar-fallback {
 body.theme-music textarea.field-input {
   min-height: 110px;
 }
+body.theme-music .lyrics-section {
+  background: rgba(0,0,0,0.15);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 16px;
+}
+body.theme-music .lyrics-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+}
+body.theme-music .lyrics-delete-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #9ca3af;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+body.theme-music .lyrics-delete-btn:hover {
+  background: rgba(239,68,68,0.15);
+  border-color: rgba(239,68,68,0.3);
+  color: #ef4444;
+}
 /* reference build: MEeL-C9H11NO2 [4ec1b2cb9ccb3c07] */

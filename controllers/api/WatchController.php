@@ -239,6 +239,22 @@ class MusicWatchController extends AbstractWatchController
             ? (@filesize(meel_media_base_path('music') . '/file/' . $v['filename']) ?: 0)
             : 0;
 
+        $lyrics_list = get_music_lyrics_list($this->id);
+        $lyrics_data = [];
+        foreach ($lyrics_list as $ly) {
+            $lrc_path = get_music_lyrics_path($this->id, $ly['lang']);
+            if (is_file($lrc_path)) {
+                $lrc_content = @file_get_contents($lrc_path);
+                if ($lrc_content !== false) {
+                    $lyrics_data[] = [
+                        'lang'  => $ly['lang'],
+                        'label' => $ly['label'],
+                        'lines' => parse_lrc($lrc_content),
+                    ];
+                }
+            }
+        }
+
         return array_merge($this->baseViewData($v, $rekom), [
             'playlist_id'      => $this->playlist_id,
             'playlist_context' => $playlist_context,
@@ -249,6 +265,8 @@ class MusicWatchController extends AbstractWatchController
             'deskripsi'        => $deskripsi,
             'mimeType'         => $mimeType,
             'preloadVal'       => $preloadVal,
+            'lyrics'           => $lyrics_data,
+            'lyrics_list'      => $lyrics_list,
         ]);
     }
 }
