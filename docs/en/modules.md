@@ -518,23 +518,25 @@ class MusicWatchController { public function getViewData(): array; public functi
 
 ### 19. Migration System (`database/migrate.php`)
 
-| Version | Changes |
+The migration system consolidates all schema changes into a single **v1** migration. It is **idempotent** — safe to run multiple times. The `db_version` table tracks which migrations have been applied.
+
+| What v1 Syncs | Detail |
 |---|---|
-| **v1** | FULLTEXT index for video, music, books search |
-| **v2** | Performance index (upload_date) |
-| **v3** | Structural synchronization (idempotent) |
-| **v4** | Foreign key constraints |
-| **v5** | title VARCHAR → TEXT |
-| **v6** | activity_log table |
-| **v7** | UNIQUE INDEX on users.username + schema sync |
-| **v8** | Role column `varchar(20)`, drop duplicate UNIQUE KEY, sync defaults |
-| **v9** | **MFA columns:** `mfa_secret`, `mfa_backup_codes`, `mfa_enabled` |
-| **v10** | Composite index `(video_id, created_at)` & `(music_id, created_at)` on `comments` |
-| **v11** | `interactions` unique keys split: `(user_id, video_id)` & `(user_id, music_id)` — NULL in a combined unique key did not prevent duplicate likes |
-| **v12** | No-op — chess room columns (`white_user_id`, `black_user_id`) moved to arcade extension |
-| **v13** | MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table |
-| **v14** | Indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery |
-| **v15** | `user_notifications` table — notification system for likes, replies, MEeLCoin, admin chat |
+| FULLTEXT indexes | `video`, `music`, `books` search |
+| Performance indexes | `upload_date` on video, music, books, drive_files |
+| Foreign keys | `upload_queue`, `transcode_queue`, `drive_files` → `users.id` |
+| title type | `VARCHAR(255)` → `TEXT` (video, music, books) |
+| activity_log table | Audit trail for user actions |
+| UNIQUE KEY | `users.username` (dedup guest accounts) |
+| Role column | `varchar(20)` — supports admin, member, user, guest |
+| MFA columns | `mfa_secret`, `mfa_backup_codes`, `mfa_enabled` |
+| Comments indexes | Composite `(video_id, created_at)` & `(music_id, created_at)` |
+| Interactions unique keys | Split into `(user_id, video_id)` & `(user_id, music_id)` |
+| MEeLCoin system | `meelcoin` + `meelcoin_last_refill` columns, `site_settings`, `meelcoin_log` tables |
+| view_logs indexes | `(video_id)`, `(music_id)` — accelerates `syncViewsFromLogs` |
+| user_notifications | Notification system for likes, replies, MEeLCoin, admin chat |
+
+> Fresh installs use `database/schema.sql` (import directly). The migration is for **existing databases** to sync to the latest schema.
 
 > 💡 **Rhythm module (MEeL!Mania) does NOT use the main migration system.** The
 > `rooms`, `moves`, `arcade_song`, & `arcade_score` tables come from

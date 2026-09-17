@@ -13,8 +13,6 @@ if (!isset($conn) || !$conn instanceof \mysqli || $conn->connect_error) {
 
 function meel_mig_has_column(\mysqli $conn, string $table, string $col): bool
 {
-    // Identifiers berasal dari daftar migrasi internal (hardcoded, bukan input
-    // user); nilai dicari memakai LIKE yang di-escape penuh.
     $sql = "SHOW COLUMNS FROM `" . $conn->real_escape_string($table)
          . "` LIKE '" . $conn->real_escape_string($col) . "'";
     $r = $conn->query($sql);
@@ -29,80 +27,106 @@ function meel_mig_has_index(\mysqli $conn, string $table, string $index): bool
     return $r && $r->num_rows > 0;
 }
 
+function meel_mig_add_index(\mysqli $conn, string $table, string $index, string $cols): void
+{
+    if (meel_mig_has_index($conn, $table, $index)) {
+        return;
+    }
+    $result = $conn->query("ALTER TABLE `{$table}` ADD INDEX `{$index}` ({$cols})");
+    if (!$result) {
+        $err = $conn->error;
+        if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+            echo "[MEeL] ⚠ Warning ({$table}.{$index}): {$err}\n";
+        }
+    }
+}
+
+function meel_mig_add_fulltext(\mysqli $conn, string $table, string $index, string $cols): void
+{
+    if (meel_mig_has_index($conn, $table, $index)) {
+        return;
+    }
+    $result = $conn->query("ALTER TABLE `{$table}` ADD FULLTEXT INDEX `{$index}` ({$cols})");
+    if (!$result) {
+        $err = $conn->error;
+        if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+            echo "[MEeL] ⚠ Warning ({$table}.{$index}): {$err}\n";
+        }
+    }
+}
+
+function meel_mig_add_unique(\mysqli $conn, string $table, string $index, string $cols): void
+{
+    if (meel_mig_has_index($conn, $table, $index)) {
+        return;
+    }
+    $result = $conn->query("ALTER TABLE `{$table}` ADD UNIQUE INDEX `{$index}` ({$cols})");
+    if (!$result) {
+        $err = $conn->error;
+        if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+            echo "[MEeL] ⚠ Warning ({$table}.{$index}): {$err}\n";
+        }
+    }
+}
+
+function meel_mig_add_fk(\mysqli $conn, string $table, string $constraint, string $fk_def): void
+{
+    $result = $conn->query("ALTER TABLE `{$table}` ADD CONSTRAINT `{$constraint}` {$fk_def}");
+    if (!$result) {
+        $err = $conn->error;
+        if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+            echo "[MEeL] ⚠ Warning ({$table}.{$constraint}): {$err}\n";
+        }
+    }
+}
+
 $migrations = [
     1 => [
-        'description' => 'Tambah FULLTEXT index untuk pencarian',
+        'description' => 'Sync database ke skema terbaru (v1.0.0)',
         'sql' => [
+            // ── FULLTEXT indexes (pencarian) ──
             function ($conn) {
-                $conn->query("ALTER TABLE video ADD FULLTEXT INDEX ft_video_search (title, search_metadata)");
+                meel_mig_add_fulltext($conn, 'video', 'ft_video_search', 'title, search_metadata');
             },
             function ($conn) {
-                $conn->query("ALTER TABLE music ADD FULLTEXT INDEX ft_music_search (title, artist, search_metadata)");
+                meel_mig_add_fulltext($conn, 'music', 'ft_music_search', 'title, artist, search_metadata');
             },
             function ($conn) {
-                $conn->query("ALTER TABLE books ADD FULLTEXT INDEX ft_books_search (title, author)");
+                meel_mig_add_fulltext($conn, 'books', 'ft_books_search', 'title, author');
             },
-        ],
-    ],
-    2 => [
-        'description' => 'Tambah index pada kolom upload_date',
-        'sql' => [
+
+            // ── Performance indexes (upload_date) ──
             function ($conn) {
-                $conn->query("ALTER TABLE video ADD INDEX idx_video_upload_date (upload_date)");
+                meel_mig_add_index($conn, 'video', 'idx_video_upload_date', 'upload_date');
             },
             function ($conn) {
-                $conn->query("ALTER TABLE music ADD INDEX idx_music_upload_date (upload_date)");
+                meel_mig_add_index($conn, 'music', 'idx_music_upload_date', 'upload_date');
             },
             function ($conn) {
-                $conn->query("ALTER TABLE books ADD INDEX idx_books_upload_date (upload_date)");
+                meel_mig_add_index($conn, 'books', 'idx_books_upload_date', 'upload_date');
             },
             function ($conn) {
-                $conn->query("ALTER TABLE drive_files ADD INDEX idx_drive_upload_date (upload_date)");
+                meel_mig_add_index($conn, 'drive_files', 'idx_drive_upload_date', 'upload_date');
             },
-        ],
-    ],
-    3 => [
-        'description' => 'Catatan: db_version dibuat otomatis oleh runner',
-        'sql' => [], 
-    ],
-    4 => [
-        'description' => 'Tambah FK constraint untuk tabel tanpa referensi',
-        'sql' => [
+
+            // ── FK constraints (upload_queue, transcode_queue, drive_files) ──
             function ($conn) {
                 $conn->query("DELETE FROM upload_queue WHERE user_id NOT IN (SELECT id FROM users)");
-                $result = $conn->query("ALTER TABLE upload_queue ADD CONSTRAINT fk_upload_queue_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
-                        echo "[MEeL] ⚠ Warning: {$err}\n";
-                    }
-                }
+                meel_mig_add_fk($conn, 'upload_queue', 'fk_upload_queue_user',
+                    'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE');
             },
             function ($conn) {
                 $conn->query("DELETE FROM transcode_queue WHERE user_id NOT IN (SELECT id FROM users)");
-                $result = $conn->query("ALTER TABLE transcode_queue ADD CONSTRAINT fk_transcode_queue_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
-                        echo "[MEeL] ⚠ Warning: {$err}\n";
-                    }
-                }
+                meel_mig_add_fk($conn, 'transcode_queue', 'fk_transcode_queue_user',
+                    'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE');
             },
             function ($conn) {
                 $conn->query("DELETE FROM drive_files WHERE user_id NOT IN (SELECT id FROM users)");
-                $result = $conn->query("ALTER TABLE drive_files ADD CONSTRAINT fk_drive_files_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
-                        echo "[MEeL] ⚠ Warning: {$err}\n";
-                    }
-                }
+                meel_mig_add_fk($conn, 'drive_files', 'fk_drive_files_user',
+                    'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE');
             },
-        ],
-    ],
-    5 => [
-        'description' => 'Ubah kolom title dari varchar(255) ke TEXT — cegah silent truncation title panjang',
-        'sql' => [
+
+            // ── title TEXT (cegah silent truncation) ──
             function ($conn) {
                 $result = $conn->query("ALTER TABLE video MODIFY COLUMN title TEXT NOT NULL");
                 if (!$result) {
@@ -130,11 +154,8 @@ $migrations = [
                     }
                 }
             },
-        ],
-    ],
-    6 => [
-        'description' => 'Buat tabel activity_log untuk audit trail — cegah crash saat prepare() gagal',
-        'sql' => [
+
+            // ── activity_log table ──
             function ($conn) {
                 $conn->query("CREATE TABLE IF NOT EXISTS activity_log (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -142,15 +163,12 @@ $migrations = [
                     action VARCHAR(50) NOT NULL,
                     media_type VARCHAR(20) DEFAULT NULL,
                     media_id INT DEFAULT NULL,
-                    ip_address VARCHAR(45) DEFAULT NULL,
+                    ip_address VARCHAR(45) DEFAULT 'Unknown',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
             },
-        ],
-    ],
-    7 => [
-        'description' => 'Tambah UNIQUE KEY pada users.username — cegah bloat guest, optimasi ON DUPLICATE KEY',
-        'sql' => [
+
+            // ── UNIQUE KEY users.username (bersihkan duplikat guest) ──
             function ($conn) {
                 $conn->query("DELETE g1 FROM users g1
                     INNER JOIN users g2
@@ -160,7 +178,6 @@ $migrations = [
                     AND g1.username = g2.username");
             },
             function ($conn) {
-                
                 $result = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS new_ai FROM users");
                 if ($result) {
                     $row = $result->fetch_assoc();
@@ -169,20 +186,10 @@ $migrations = [
                 }
             },
             function ($conn) {
-                
-                $result = $conn->query("ALTER TABLE users ADD UNIQUE INDEX idx_username_unique (username)");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
-                        echo "[MEeL] ⚠ Warning: {$err}\n";
-                    }
-                }
+                meel_mig_add_unique($conn, 'users', 'idx_username_unique', 'username');
             },
-        ],
-    ],
-    8 => [
-        'description' => 'Sinkronisasi kolom & default values dengan actual DB — role→varchar(20), hapus duplicate UNIQUE KEY, defaults konsisten',
-        'sql' => [
+
+            // ── role varchar(20) + defaults ──
             function ($conn) {
                 $result = $conn->query("ALTER TABLE users MODIFY COLUMN role varchar(20) DEFAULT 'user'");
                 if (!$result) {
@@ -199,7 +206,6 @@ $migrations = [
                 }
             },
             function ($conn) {
-                
                 $conn->query("ALTER TABLE users ALTER COLUMN is_active SET DEFAULT 0");
             },
             function ($conn) {
@@ -209,14 +215,10 @@ $migrations = [
                 $conn->query("ALTER TABLE users ALTER COLUMN last_page SET DEFAULT 'Index'");
             },
             function ($conn) {
-                
                 $conn->query("ALTER TABLE activity_log ALTER COLUMN ip_address SET DEFAULT 'Unknown'");
             },
-        ],
-    ],
-    9 => [
-        'description' => 'Tambah kolom MFA (multi-factor authentication) ke tabel users',
-        'sql' => [
+
+            // ── MFA columns ──
             function ($conn) {
                 if (!meel_mig_has_column($conn, 'users', 'mfa_secret')) {
                     $conn->query("ALTER TABLE users ADD COLUMN mfa_secret VARCHAR(64) DEFAULT NULL AFTER last_session_id");
@@ -232,24 +234,17 @@ $migrations = [
                     $conn->query("ALTER TABLE users ADD COLUMN mfa_enabled TINYINT(1) DEFAULT 0 AFTER mfa_backup_codes");
                 }
             },
-        ],
-    ],
-    10 => [
-        'description' => 'Tambah index komposit (video_id, created_at) & (music_id, created_at) pada tabel comments',
-        'sql' => [
+
+            // ── Comments composite indexes ──
             function ($conn) {
-                $conn->query("ALTER TABLE comments ADD INDEX idx_comments_video_created (video_id, created_at)");
+                meel_mig_add_index($conn, 'comments', 'idx_comments_video_created', 'video_id, created_at');
             },
             function ($conn) {
-                $conn->query("ALTER TABLE comments ADD INDEX idx_comments_music_created (music_id, created_at)");
+                meel_mig_add_index($conn, 'comments', 'idx_comments_music_created', 'music_id, created_at');
             },
-        ],
-    ],
-    11 => [
-        'description' => 'Perbaiki unique key tabel interactions — pisah jadi (user_id, video_id) & (user_id, music_id) karena NULL di unique key gabungan tidak mencegah duplikat',
-        'sql' => [
+
+            // ── Interactions unique key (split per media type) ──
             function ($conn) {
-                
                 $conn->query("DELETE i1 FROM interactions i1
                     INNER JOIN interactions i2
                     WHERE i1.id < i2.id
@@ -273,36 +268,13 @@ $migrations = [
                 }
             },
             function ($conn) {
-                $result = $conn->query("ALTER TABLE interactions ADD UNIQUE INDEX unique_interaction_video (user_id, video_id)");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
-                        echo "[MEeL] ⚠ Warning (unique_interaction_video): {$err}\n";
-                    }
-                }
+                meel_mig_add_unique($conn, 'interactions', 'unique_interaction_video', 'user_id, video_id');
             },
             function ($conn) {
-                $result = $conn->query("ALTER TABLE interactions ADD UNIQUE INDEX unique_interaction_music (user_id, music_id)");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
-                        echo "[MEeL] ⚠ Warning (unique_interaction_music): {$err}\n";
-                    }
-                }
+                meel_mig_add_unique($conn, 'interactions', 'unique_interaction_music', 'user_id, music_id');
             },
-        ],
-    ],
-    12 => [
-        'description' => '(legacy) Chess rooms white/black user columns — dipindah ke arcade/migrate.php v1.',
-        'sql' => [
-            // No-op: tabel rooms sekarang di arcade/schema.sql dengan kolom white_user_id/black_user_id
-            // sudah termasuk sejak awal. Migration ini dipertahankan untuk menjaga numbering v1-v15.
-        ],
-    ],
-    13 => [
-        'description' => 'MEeLCoin system — tambah kolom coin di users, tabel site_settings, dan meelcoin_log',
-        'sql' => [
-            // Tambah kolom meelcoin ke tabel users
+
+            // ── MEeLCoin system ──
             function ($conn) {
                 if (!meel_mig_has_column($conn, 'users', 'meelcoin')) {
                     $result = $conn->query("ALTER TABLE users ADD COLUMN meelcoin INT(11) NOT NULL DEFAULT 0 AFTER mfa_enabled");
@@ -314,7 +286,6 @@ $migrations = [
                     }
                 }
             },
-            // Tambah kolom meelcoin_last_refill ke tabel users
             function ($conn) {
                 if (!meel_mig_has_column($conn, 'users', 'meelcoin_last_refill')) {
                     $result = $conn->query("ALTER TABLE users ADD COLUMN meelcoin_last_refill TIMESTAMP NULL DEFAULT NULL AFTER meelcoin");
@@ -326,17 +297,9 @@ $migrations = [
                     }
                 }
             },
-            // Tambah index pada kolom meelcoin
             function ($conn) {
-                $result = $conn->query("ALTER TABLE users ADD INDEX idx_meelcoin (meelcoin)");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
-                        echo "[MEeL] ⚠ Warning (idx_meelcoin): {$err}\n";
-                    }
-                }
+                meel_mig_add_index($conn, 'users', 'idx_meelcoin', 'meelcoin');
             },
-            // Buat tabel site_settings
             function ($conn) {
                 $conn->query("CREATE TABLE IF NOT EXISTS site_settings (
                     setting_key VARCHAR(50) NOT NULL,
@@ -346,7 +309,6 @@ $migrations = [
                     KEY idx_setting_key (setting_key)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
             },
-            // Insert default MEeLCoin settings
             function ($conn) {
                 $defaults = [
                     'meelcoin_enabled'       => '1',
@@ -365,7 +327,6 @@ $migrations = [
                 }
                 $stmt->close();
             },
-            // Buat tabel meelcoin_log
             function ($conn) {
                 $conn->query("CREATE TABLE IF NOT EXISTS meelcoin_log (
                     id INT(11) NOT NULL AUTO_INCREMENT,
@@ -380,34 +341,16 @@ $migrations = [
                     CONSTRAINT meelcoin_log_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
             },
-        ],
-    ],
-    14 => [
-        'description' => 'Tambah index video_id & music_id di view_logs — percepat syncViewsFromLogs correlated subquery',
-        'sql' => [
+
+            // ── view_logs indexes ──
             function ($conn) {
-                $result = $conn->query("ALTER TABLE view_logs ADD INDEX idx_vl_video_id (video_id)");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
-                        echo "[MEeL] ⚠ Warning (idx_vl_video_id): {$err}\n";
-                    }
-                }
+                meel_mig_add_index($conn, 'view_logs', 'idx_vl_video_id', 'video_id');
             },
             function ($conn) {
-                $result = $conn->query("ALTER TABLE view_logs ADD INDEX idx_vl_music_id (music_id)");
-                if (!$result) {
-                    $err = $conn->error;
-                    if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
-                        echo "[MEeL] ⚠ Warning (idx_vl_music_id): {$err}\n";
-                    }
-                }
+                meel_mig_add_index($conn, 'view_logs', 'idx_vl_music_id', 'music_id');
             },
-        ],
-    ],
-    15 => [
-        'description' => 'Buat tabel user_notifications — sistem notifikasi untuk like, reply, MEeLCoin, chat admin',
-        'sql' => [
+
+            // ── user_notifications ──
             function ($conn) {
                 $conn->query("CREATE TABLE IF NOT EXISTS user_notifications (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -429,6 +372,7 @@ $migrations = [
         ],
     ],
 ];
+
 $conn->query("CREATE TABLE IF NOT EXISTS db_version (
     id INT AUTO_INCREMENT PRIMARY KEY,
     version INT NOT NULL,
@@ -452,18 +396,6 @@ foreach ($migrations as $version => $migration) {
                     $err = $conn->error;
                     if ($err && !str_contains($err, 'Duplicate key name') && !str_contains($err, 'already exists')) {
                         echo "[MEeL] ⚠ Warning: {$err}\n";
-                    }
-                } catch (\Throwable $e) {
-                    echo "[MEeL] ⚠ Warning: " . $e->getMessage() . "\n";
-                }
-            } else {
-                $sql = $migration_step;
-                try {
-                    if ($conn->query($sql) === false) {
-                        $err = $conn->error;
-                        if ($err && !str_contains($err, 'Duplicate key name') && !str_contains($err, 'already exists')) {
-                            echo "[MEeL] ⚠ Warning: {$err}\n";
-                        }
                     }
                 } catch (\Throwable $e) {
                     echo "[MEeL] ⚠ Warning: " . $e->getMessage() . "\n";

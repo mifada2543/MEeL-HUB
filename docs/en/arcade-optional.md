@@ -39,7 +39,7 @@ The arcade extension manages its **own database** (`arcade/schema.sql` +
 | `arcade/` folder | Part of HUB repo | Separate extension, can be absent |
 | DB `rooms`, `moves` | In `database/schema.sql` | In `arcade/schema.sql` |
 | DB `arcade_song`, `arcade_score` | In `arcade/rhythm/migration.sql` | In `arcade/schema.sql` |
-| Migration | `php database/migrate.php` (v12) | `php arcade/migrate.php` (separate) |
+| Migration | `php database/migrate.php` (core) | `php arcade/migrate.php` (separate) |
 | install.sh | Core migration only | Optional arcade prompts (step 6b) |
 
 ## Three Decision Layers

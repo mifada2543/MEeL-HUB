@@ -481,16 +481,9 @@ Setelah semua setup selesai, jalankan migrasi database untuk mengoptimalkan skem
 /opt/lampp/bin/php database/migrate.php
 ```
 
-Migration bersifat **idempotent** — aman dijalankan berulang kali. Mengelola v1–v15 (tracker otomatis di tabel `db_version`):
-- **v1–v5:** FULLTEXT index, performance index, sinkronisasi struktural, foreign key, tipe title
-- **v6–v7:** tabel `activity_log`, UNIQUE KEY pada username
-- **v8–v9:** sync kolom role, **kolom MFA** (`mfa_secret`, `mfa_backup_codes`, `mfa_enabled`)
-- **v10:** index komposit `comments` `(video_id, created_at)` & `(music_id, created_at)`
-- **v11:** unique key `interactions` dipecah menjadi `(user_id, video_id)` & `(user_id, music_id)`
-- **v12:** No-op — kolom chess room (`white_user_id`, `black_user_id`) dipindahkan ke ekstensi arcade
-- **v13:** sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log`
-- **v14:** index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery
-- **v15:** tabel `user_notifications` — sistem notifikasi untuk like, reply, MEeLCoin, chat admin
+Migration bersifat **idempotent** — aman dijalankan berulang kali. Mensync database ke skema terbaru (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, index comments, interactions, user_notifications):
+
+> 💡 **Ekstensi arcade (MEeL!Mania, Chess, dll.) punya migration DB sendiri** — tabel `rooms`, `moves`, `arcade_song` & `arcade_score` dibuat lewat `arcade/migrate.php`, **bukan** bagian dari `database/migrate.php`. Install opsional:
 
 > 💡 **Ekstensi Arcade (MEeL!Mania, Chess, dll.) punya migrasi DB sendiri** — tabel `rooms`, `moves`, `arcade_song` & `arcade_score` dibuat lewat `arcade/migrate.php`, **bukan** bagian dari `database/migrate.php` (v1–v15). Install opsional:
 > ```bash

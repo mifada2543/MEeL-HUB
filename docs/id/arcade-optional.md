@@ -37,7 +37,7 @@ Ekstensi arcade mengelola **database sendiri** (`arcade/schema.sql` +
 | Folder `arcade/` | Bagian dari repo HUB | Ekstensi terpisah, bisa absen |
 | DB `rooms`, `moves` | Di `database/schema.sql` | Di `arcade/schema.sql` |
 | DB `arcade_song`, `arcade_score` | Di `arcade/rhythm/migration.sql` | Di `arcade/schema.sql` |
-| Migrasi | `php database/migrate.php` (v12) | `php arcade/migrate.php` (terpisah) |
+| Migrasi | `php database/migrate.php` (core) | `php arcade/migrate.php` (terpisah) |
 | Install.sh | Hanya migrasi core | Prompts arcade opsional (langkah 6b) |
 
 ## Tiga Lapis Keputusan

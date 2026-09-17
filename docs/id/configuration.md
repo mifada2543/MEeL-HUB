@@ -42,7 +42,7 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 | `modules/autoload.php` | Class-map autoloader | Daftar direktori yang di-scan |
 | `modules/core/SwPrecache.php` | Generator precache PWA (service worker) | `baseAssets()`, `moduleAssets()`, `all()`, `version()` |
 | `sw.js.php` | Generator service worker dinamis (disajikan sebagai `/sw.js`) | `SW_VERSION`, `PRECACHE_URLS` (otomatis) |
-| `database/migrate.php` | Database migration v1–v15 | FULLTEXT index, FK, activity_log, UNIQUE KEY, MFA, index comments, unique key interactions, chess room identity, user_notifications |
+| `database/migrate.php` | Database migration (sync ke skema terbaru) | FULLTEXT index, FK, UNIQUE KEY, MFA, MEeLCoin, index comments, interactions, user_notifications |
 
 ---
 

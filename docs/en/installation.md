@@ -481,18 +481,9 @@ After all setup is complete, run the database migration to optimize the schema:
 /opt/lampp/bin/php database/migrate.php
 ```
 
-The migration is **idempotent** — safe to run multiple times. It manages v1–v15 (automatic tracker in the `db_version` table):
-- **v1–v5:** FULLTEXT indexes, performance indexes, structural sync, foreign keys, title type
-- **v6–v7:** `activity_log` table, UNIQUE KEY on username
-- **v8–v9:** role column sync, **MFA columns** (`mfa_secret`, `mfa_backup_codes`, `mfa_enabled`)
-- **v10:** composite indexes on `comments` `(video_id, created_at)` & `(music_id, created_at)`
-- **v11:** `interactions` unique keys split into `(user_id, video_id)` & `(user_id, music_id)`
-- **v12:** No-op — chess room columns (`white_user_id`, `black_user_id`) moved to arcade extension
-- **v13:** MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table
-- **v14:** indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery
-- **v15:** `user_notifications` table — notification system for likes, replies, MEeLCoin, admin chat
+The migration is **idempotent** — safe to run multiple times. It syncs the database to the latest schema (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, comments indexes, interactions, user_notifications):
 
-> 💡 **Arcade extension (MEeL!Mania, Chess, etc.) has its own DB migration** — the `rooms`, `moves`, `arcade_song` & `arcade_score` tables come from `arcade/migrate.php`, **not** part of `database/migrate.php` (v1–v15). Optional install:
+> 💡 **Arcade extension (MEeL!Mania, Chess, etc.) has its own DB migration** — the `rooms`, `moves`, `arcade_song` & `arcade_score` tables come from `arcade/migrate.php`, **not** part of `database/migrate.php`. Optional install:
 > ```bash
 > php arcade/migrate.php
 > ```
