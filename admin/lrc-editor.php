@@ -130,6 +130,8 @@ $__v = function($f) {
                 <span class="nav-chevron">›</span>
                 <a href="<?= base_url('/music/watch?v=' . (int)$edit_id) ?>" class="nav-crumb"><?= htmlspecialchars(mb_strimwidth($music['title'], 0, 30, '...')) ?></a>
                 <span class="nav-chevron">›</span>
+                <a href="<?= base_url('/' . ($_LRC_CONTEXT === 'admin' ? 'admin' : 'profile') . '/edit-music?id=' . (int)$edit_id) ?>" class="nav-crumb">Edit Music</a>
+                <span class="nav-chevron">›</span>
                 <span class="nav-crumb-current">LRC Editor</span>
                 <?php if ($is_admin): ?>
                     <span class="admin-badge"><i data-lucide="shield" style="width:10px;height:10px;"></i> Admin</span>
@@ -150,7 +152,7 @@ $__v = function($f) {
 
             <div class="editor-top-bar">
                 <div class="editor-top-left">
-                    <a href="<?= base_url('/music/watch?v=' . (int)$edit_id) ?>" class="editor-back-btn" title="Kembali">
+                    <a href="<?= base_url('/' . ($_LRC_CONTEXT === 'admin' ? 'admin' : 'profile') . '/edit-music?id=' . (int)$edit_id) ?>" class="editor-back-btn" title="Kembali">
                         <i data-lucide="x" style="width:18px;height:18px;"></i>
                     </a>
                     <div class="editor-mode-tabs">
