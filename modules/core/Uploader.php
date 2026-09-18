@@ -39,6 +39,12 @@ class Uploader
         return meel_magic_extension_ok($filePath, 'mp4', 'video') === '';
     }
 
+    private function validateVideoCodec(string $filePath): string
+    {
+        // Hanya izinkan H.264 (AVC) dan H.265 (HEVC) — kompatibel MPEG-2 TS.
+        return meel_validate_video_codec($filePath, $this->ffprobe_bin, $this->getEnvPrefix());
+    }
+
     private function checkActiveUploadLimit(): bool
     {
         $lock_file    = sys_get_temp_dir() . '/meel_upload_counter.lock';
@@ -313,6 +319,11 @@ class Uploader
 
         if (!$this->validateVideoMagicBytes($temp_video)) {
             return ['status' => 'error', 'msg' => "File tidak valid sebagai video (magic bytes mismatch).", 'alert' => true];
+        }
+
+        $codec_error = $this->validateVideoCodec($temp_video);
+        if ($codec_error !== '') {
+            return ['status' => 'error', 'msg' => $codec_error, 'alert' => true];
         }
 
         $raw_clean_name = pathinfo($video_name_orig, PATHINFO_FILENAME);
