@@ -45,6 +45,13 @@ class Uploader
         return meel_validate_video_codec($filePath, $this->ffprobe_bin, $this->getEnvPrefix());
     }
 
+    private function validateAudioCodec(string $filePath): array
+    {
+        // Cek codec audio: AAC/MP3/AC3/E-AC3 bisa copy langsung.
+        // Opus/Vorbis/DTS/FLAC harus transcode ke AAC (max 5 menit).
+        return meel_validate_audio_codec($filePath, $this->ffprobe_bin, $this->getEnvPrefix());
+    }
+
     private function checkActiveUploadLimit(): bool
     {
         $lock_file    = sys_get_temp_dir() . '/meel_upload_counter.lock';
@@ -326,6 +333,13 @@ class Uploader
             return ['status' => 'error', 'msg' => $codec_error, 'alert' => true];
         }
 
+        $audio_result             = $this->validateAudioCodec($temp_video);
+        if ($audio_result['error'] !== '') {
+            return ['status' => 'error', 'msg' => $audio_result['error'], 'alert' => true];
+        }
+        $has_audio                = $audio_result['has_audio'];
+        $needs_audio_transcode    = $audio_result['needs_audio_transcode'];
+
         $raw_clean_name = pathinfo($video_name_orig, PATHINFO_FILENAME);
         $clean_name     = getRomajiName($raw_clean_name);
         $clean_name     = substr($clean_name, 0, 60);
@@ -412,8 +426,20 @@ class Uploader
         $work_m3u8 = $work_folder . $folder_name . ".m3u8";
         $db_filename = "video/" . $folder_name . "/" . $folder_name . ".m3u8";
 
-        $cmd = $this->getEnvPrefix() . escapeshellarg($this->ffmpeg_bin) . " -i " . escapeshellarg($staged_video)
-            . " -codec copy"
+        $audio_codec_arg = $needs_audio_transcode
+            ? '-c:a aac -b:a 128k'
+            : '-c:a copy';
+
+        $map_args = '-map 0:v:0';
+        if ($has_audio) {
+            $map_args .= ' -map 0:a:0';
+        }
+
+        $cmd = $this->getEnvPrefix() . escapeshellarg($this->ffmpeg_bin)
+            . " -i " . escapeshellarg($staged_video)
+            . " " . $map_args
+            . " -c:v copy " . $audio_codec_arg
+            . " -sn"
             . " -start_number 0 -hls_time 20 -hls_list_size 0"
             . " -hls_segment_filename " . escapeshellarg($work_folder . $folder_name . "_%03d.ts")
             . " -f hls " . escapeshellarg($work_m3u8) . " 2>&1";
