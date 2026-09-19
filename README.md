@@ -50,7 +50,7 @@
     </td>
     <td width="50%">
       <h3>🎵 Musik</h3>
-      <p>Pemutar audio untuk MP3, FLAC, OGG, M4A dengan visualizer WebAudio. Pembuatan playlist, antrean cerdas, dan mini-player persisten di bagian bawah layar.</p>
+      <p>Pemutar audio untuk MP3, FLAC, OGG, M4A dengan visualizer WebAudio. Lirik karaoke real-time dengan sinkronisasi timestamp (LRC). Pembuatan playlist, antrean cerdas, dan mini-player persisten di bagian bawah layar.</p>
     </td>
   </tr>
   <tr>
