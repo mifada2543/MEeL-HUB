@@ -249,8 +249,8 @@ $msg = $_GET['msg'] ?? null;
                                         <span class="monitor-label text-[10px] font-black uppercase tracking-tighter"><?= $is_online ? 'Online' : 'Offline' ?></span>
                                     </div>
                                 </td>
-                                <td class="py-4 px-2">
-                                    <code class="text-[10px] bg-orange-500/10 text-orange-500 px-2 py-1 rounded border border-orange-500/20 font-mono"><?= htmlspecialchars($row['last_page']) ?></code>
+                                <td class="py-4 px-2" style="max-width:220px;">
+                                    <code class="text-[10px] bg-orange-500/10 text-orange-500 px-2 py-1 rounded border border-orange-500/20 font-mono block truncate" title="<?= htmlspecialchars($row['last_page']) ?>"><?= htmlspecialchars($row['last_page']) ?></code>
                                 </td>
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-3">

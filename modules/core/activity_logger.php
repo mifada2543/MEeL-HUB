@@ -161,7 +161,7 @@ if (isset($conn)) {
     }
     $current_page = basename($_SERVER['PHP_SELF']);
     $dir_name = basename(dirname($_SERVER['PHP_SELF']));
-    $id_get = isset($_GET['id']) ? $_GET['id'] : null;
+    $id_get = $_GET['id'] ?? $_GET['v'] ?? null;
 
     if ($id_get) {
         if ($current_page == 'watch.php') {
@@ -174,8 +174,7 @@ if (isset($conn)) {
                 $get_title->execute();
                 $res = $get_title->get_result()->fetch_assoc();
                 if ($res) {
-                    $short_title = (mb_strlen($res['title']) > 20) ? mb_substr($res['title'], 0, 17) . '...' : $res['title'];
-                    $current_page = $label . $short_title;
+                    $current_page = $label . $res['title'];
                 }
             }
         } elseif ($current_page == 'read.php') {
@@ -185,8 +184,7 @@ if (isset($conn)) {
                 $get_book->execute();
                 $res = $get_book->get_result()->fetch_assoc();
                 if ($res) {
-                    $short_title = (mb_strlen($res['title']) > 20) ? mb_substr($res['title'], 0, 17) . '...' : $res['title'];
-                    $current_page = "Reading: " . $short_title;
+                    $current_page = "Reading: " . $res['title'];
                 }
             }
         } elseif ($current_page == 'stream.php' && $dir_name == 'music') {
@@ -199,8 +197,7 @@ if (isset($conn)) {
                     $get_title->execute();
                     $res = $get_title->get_result()->fetch_assoc();
                     if ($res) {
-                        $short_title = (mb_strlen($res['title']) > 20) ? mb_substr($res['title'], 0, 17) . '...' : $res['title'];
-                        $current_page = "Streaming: " . $short_title;
+                        $current_page = "Streaming: " . $res['title'];
                         $_SESSION['_last_stream_page'] = $current_page;
                     }
                 }

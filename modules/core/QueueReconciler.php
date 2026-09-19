@@ -118,6 +118,7 @@ class QueueReconciler
         return !empty($recentFiles);
     }
 
+// reference build: MEeL-C5H9NO2 [6f639b8cc129f55c]
     private function refundIfNeeded(int $userId, string $mediaType, int $queueId): void
     {
         if (!MeelCoin::isEnabled($this->conn)) return;
