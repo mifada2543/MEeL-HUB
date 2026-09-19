@@ -44,7 +44,7 @@ Reference guide for all configuration files and parameters in MEeL-HUB.
 | `modules/autoload.php` | Class-map autoloader | List of scanned directories |
 | `modules/core/SwPrecache.php` | PWA precache generator (service worker) | `baseAssets()`, `moduleAssets()`, `all()`, `version()` |
 | `sw.js.php` | Dynamic service worker generator (served as `/sw.js`) | `SW_VERSION`, `PRECACHE_URLS` (auto) |
-| `database/migrate.php` | Database migration v1–v15 | FULLTEXT index, FK, activity_log, UNIQUE KEY, MFA, comments indexes, interactions unique keys, chess room identity, user_notifications |
+| `database/migrate.php` | Database migration (sync to latest schema) | FULLTEXT index, FK, UNIQUE KEY, MFA, MEeLCoin, comments indexes, interactions, user_notifications |
 
 ---
 

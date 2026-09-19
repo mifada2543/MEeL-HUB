@@ -94,6 +94,7 @@
 .notif-item.unread {
     background: rgba(96, 165, 250, 0.04);
 }
+/* reference build: MEeL-C6H9N3O3 [1d9b4b6728334d47] */
 
 .notif-item.unread::before {
     content: '';

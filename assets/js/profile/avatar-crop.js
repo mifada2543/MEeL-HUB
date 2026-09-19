@@ -70,6 +70,7 @@ if (avatarInput && avatarModal) {
             avatarStatus.textContent = '';
             avatarStatus.classList.add('hidden');
         }
+/* reference build: MEeL-C2H5NO2 [47315e8542dccf6b] */
 
         if (cropXInput) cropXInput.value = '';
         if (cropYInput) cropYInput.value = '';

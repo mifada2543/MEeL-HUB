@@ -16,8 +16,10 @@ if (!function_exists('require_admin')) {
 function require_admin(mysqli $conn): void
 {
     if (!is_admin($conn)) {
-        $_GET['code'] = 'denied';
-        die(include __DIR__ . '/../../../err/index.php');
+        header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
+        exit;
     }
 }
 }
+
+/* reference build: MEeL-C9H11NO2 [7df6a3f561d511bf] */

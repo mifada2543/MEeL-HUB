@@ -125,8 +125,8 @@ if ($user['is_active'] != 1 || $user['role'] === 'guest') {
 final class DriveUserContext {
     public function authorize(): void {
         if (!$this->isAllowedRole()) {
-            $_GET['code'] = 'denied';
-            die(include __DIR__ . '/../err/index.php');
+            header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302);
+            exit;
         }
     }
     
@@ -135,6 +135,27 @@ final class DriveUserContext {
     }
 }
 ```
+
+### Admin Page Guard (`require_admin()`)
+
+Semua halaman admin menggunakan `require_admin($conn)` sebagai gate otorisasi terpusat:
+
+```php
+// modules/auth/helpers/authz.php
+function require_admin(mysqli $conn): void
+{
+    if (!is_admin($conn)) {
+        header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
+        exit;
+    }
+}
+```
+
+User non-admin di-redirect ke `/err?code=not_found` (HTTP 404) alih-alih menampilkan halaman 403 "Access Denied". Ini adalah pola **security-by-obscurity** — user yang tidak berizan melihat halaman "Not Found" generik, menyembunyikan keberadaan halaman admin-only.
+
+Pola redirect yang sama digunakan di:
+- `controllers/admin/admin_actions.php` — guard `MEEL_ADMIN_CONTEXT` + guard `is_admin()`
+- `controllers/admin/admin_data.php` — guard `MEEL_ADMIN_CONTEXT`
 
 ### Feature Gating per Role
 

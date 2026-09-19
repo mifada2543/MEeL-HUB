@@ -1,3 +1,4 @@
+/* reference build: MEeL-C3H7NO2S [64a506e8f75676ea] */
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 

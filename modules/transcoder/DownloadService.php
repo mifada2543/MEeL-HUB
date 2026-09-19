@@ -440,109 +440,171 @@ class DownloadService extends TranscoderBase
 
         $file_dur = $this->probeDuration($staging_mp4);
 
-        
-        $work_m3u8  = $work_folder . $folder_name . ".m3u8";
+        $work_m3u8 = $work_folder . $folder_name . ".m3u8";
 
         $lib_path = '/usr/lib/x86_64-linux-gnu:/usr/local/lib';
         $hls_env = ['LD_LIBRARY_PATH' => $lib_path, 'PATH' => '/usr/local/bin:/usr/bin:/bin', 'LC_ALL' => 'en_US.UTF-8'];
         $hls_cmd = [
             $this->ffmpeg_bin,
-            '-threads',
-            (string)self::FFMPEG_THREADS,
-            '-i',
-            $staging_mp4,
-            '-codec',
-            'copy',
-            '-start_number',
-            '0',
-            '-hls_time',
-            (string)self::HLS_SEGMENT_DURATION,
-            '-hls_list_size',
-            '0',
-            '-hls_segment_filename',
-            $work_folder . $folder_name . '_%03d.ts',
-            '-f',
-            'hls',
+            '-threads', (string)self::FFMPEG_THREADS,
+            '-i', $staging_mp4,
+            '-codec', 'copy',
+            '-start_number', '0',
+            '-hls_time', (string)self::HLS_SEGMENT_DURATION,
+            '-hls_list_size', '0',
+            '-hls_segment_filename', $work_folder . $folder_name . '_%03d.ts',
+            '-f', 'hls',
             $work_m3u8,
         ];
-
-        $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-        $hls_proc = proc_open($hls_cmd, $desc, $hls_pipes, null, $hls_env);
-        if (!is_resource($hls_proc)) {
-            $this->removeDir($work_folder);
-            $this->emit('error', ['message' => 'Gagal menjalankan ffmpeg untuk transcode HLS. Cek instalasi ffmpeg.']);
-            return "";
-        }
-        fclose($hls_pipes[0]); 
-        fclose($hls_pipes[1]); 
-        $hls_out = $hls_pipes[2]; 
-
-        $hls_status = proc_get_status($hls_proc);
-        $hls_pid    = (int)($hls_status['pid'] ?? 0);
-        $this->trackChildProcess($hls_pid, false, 'ffmpeg HLS (' . $folder_name . ')');
-        $this->writePidFile('transcode', 0, $hls_pid);
-
-        stream_set_timeout($hls_out, 30);
-        $hls_start = time();
-        $hls_timeout = max(120, (int)($file_dur * 2)); 
-        while (!feof($hls_out)) {
-            if (time() - $hls_start > $hls_timeout) {
-                error_log("[MEeL] finalizeVideo: HLS timeout setelah {$hls_timeout}s");
-                $this->terminateChildProcess($hls_pid, 'ffmpeg HLS timeout', false);
-                break;
-            }
-            $line = fgets($hls_out);
-            if ($line === false) break;
-            if (preg_match('/time=((\d+):(\d+):(\d+)\.(\d+))/', $line, $m) && $file_dur > 0) {
-                $cur = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
-                $pct = min(99, round(($cur / $file_dur) * 100));
-                $this->emit('transcode_progress', ['pct' => $pct]);
-            }
-        }
-        fclose($hls_pipes[2]);
-        proc_close($hls_proc);
-        $this->untrackChildProcess($hls_pid);
-        $this->removePidFile('transcode', 0);
-
-        if (!file_exists($work_m3u8) || filesize($work_m3u8) === 0) {
-            $this->removeDir($work_folder);
-            $this->removeFile($staging_mp4);
-            $this->emit('error', ['message' => 'Transcode HLS gagal. File .m3u8 tidak terbentuk.']);
-            return "";
-        }
-
-        $this->emit('phase', ['phase' => 'sprite']);
-        $this->emit('sprite_progress', ['pct' => 0, 'label' => 'Membuat thumbnail.vtt...']);
 
         $shm_base   = (is_writable('/dev/shm') ? '/dev/shm' : sys_get_temp_dir());
         $ram_folder = $shm_base . '/meel_sprite_' . uniqid() . '/';
         if (!is_dir($ram_folder)) {
             $this->ensureDir($ram_folder, 0777);
         }
+        $sprite_file = $ram_folder . 'thumb_sprite.webp';
+        $vtt_file    = $ram_folder . 'thumbnails.vtt';
 
-        $this->generateSpriteAndVTT($staging_mp4, $ram_folder);
+        $sprite_data = $this->buildSpriteCommand($staging_mp4, $sprite_file);
 
-        $sprite_src = $ram_folder . 'thumb_sprite.webp';
-        $vtt_src    = $ram_folder . 'thumbnails.vtt';
+        $this->emit('phase', ['phase' => 'transcode']);
+        $this->emit('sprite_progress', ['pct' => 0, 'label' => 'Memproses HLS & sprite...']);
 
-        if (file_exists($sprite_src)) {
-            if (!$this->moveFile($sprite_src, $work_folder . 'thumb_sprite.webp')) {
-                error_log("[MEeL] WARN: Gagal move thumb_sprite.webp dari RAM ke: $work_folder");
+        $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+
+        $hls_proc = proc_open($hls_cmd, $desc, $hls_pipes, null, $hls_env);
+        if (!is_resource($hls_proc)) {
+            $this->removeDir($ram_folder);
+            $this->removeDir($work_folder);
+            $this->emit('error', ['message' => 'Gagal menjalankan ffmpeg untuk transcode HLS. Cek instalasi ffmpeg.']);
+            return "";
+        }
+        fclose($hls_pipes[0]);
+        fclose($hls_pipes[1]);
+        $hls_out = $hls_pipes[2];
+
+        $hls_status = proc_get_status($hls_proc);
+        $hls_pid    = (int)($hls_status['pid'] ?? 0);
+        $this->trackChildProcess($hls_pid, false, 'ffmpeg HLS (' . $folder_name . ')');
+        $this->writePidFile('transcode', 0, $hls_pid);
+
+        $sprite_proc  = null;
+        $sprite_pid   = 0;
+        $sprite_out   = null;
+        $sprite_pipes = [];
+        if ($sprite_data) {
+            $sprite_proc = proc_open($sprite_data['cmd'], $desc, $sprite_pipes, null, $sprite_data['env']);
+            if (is_resource($sprite_proc)) {
+                fclose($sprite_pipes[0]);
+                fclose($sprite_pipes[1]);
+                $sprite_out = $sprite_pipes[2];
+
+                $sp_status = proc_get_status($sprite_proc);
+                $sprite_pid = (int)($sp_status['pid'] ?? 0);
+                $this->trackChildProcess($sprite_pid, false, 'ffmpeg sprite (' . $folder_name . ')');
+            } else {
+                error_log("[MEeL] finalizeVideo: gagal jalankan sprite ffmpeg — melanjutkan tanpa sprite");
+                $sprite_data = null;
             }
-        } else {
-            error_log("[MEeL] WARN: thumb_sprite.webp tidak terbentuk di RAM: $ram_folder");
         }
 
-        if (file_exists($vtt_src)) {
-            if (!$this->moveFile($vtt_src, $work_folder . 'thumbnails.vtt')) {
+        stream_set_timeout($hls_out, 5);
+        if ($sprite_out) stream_set_timeout($sprite_out, 5);
+
+        $start_all      = time();
+        $hls_timeout    = max(120, (int)($file_dur * 2));
+        $hls_done       = false;
+        $sprite_done    = !$sprite_data;
+        $hls_exit       = null;
+        $sprite_exit    = null;
+
+        while (!$hls_done || !$sprite_done) {
+            if (time() - $start_all > $hls_timeout) {
+                error_log("[MEeL] finalizeVideo: parallel processing timeout setelah {$hls_timeout}s");
+                foreach ($hls_pipes as $p) { if (is_resource($p)) fclose($p); }
+                if (!$hls_done) $this->terminateChildProcess($hls_pid, 'ffmpeg HLS timeout', false);
+                if (!$sprite_done && $sprite_pid) {
+                    foreach ($sprite_pipes as $p) { if (is_resource($p)) fclose($p); }
+                    $this->terminateChildProcess($sprite_pid, 'ffmpeg sprite timeout', false);
+                }
+                break;
+            }
+
+            $read = [];
+            if (!$hls_done)    $read[] = $hls_out;
+            if (!$sprite_done) $read[] = $sprite_out;
+
+            $write = $except = null;
+            $changed = @stream_select($read, $write, $except, 1);
+
+            if ($changed === false || $changed === 0) {
+                if (!$hls_done && !$this->isProcessAlive($hls_pid)) $hls_done = true;
+                if (!$sprite_done && $sprite_pid && !$this->isProcessAlive($sprite_pid)) $sprite_done = true;
+                continue;
+            }
+
+            foreach ($read as $stream) {
+                $line = fgets($stream);
+                if ($line === false) {
+                    if ($stream === $hls_out) {
+                        $hls_done = true;
+                    } elseif ($stream === $sprite_out) {
+                        $sprite_done = true;
+                    }
+                    continue;
+                }
+
+                if ($stream === $hls_out && preg_match('/time=((\d+):(\d+):(\d+)\.(\d+))/', $line, $m) && $file_dur > 0) {
+                    $cur = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
+                    $pct = min(99, round(($cur / $file_dur) * 100));
+                    $this->emit('transcode_progress', ['pct' => $pct]);
+                }
+            }
+        }
+
+        foreach ($hls_pipes as $p) { if (is_resource($p)) fclose($p); }
+        $hls_exit = proc_close($hls_proc);
+        $this->untrackChildProcess($hls_pid);
+        $this->removePidFile('transcode', 0);
+
+        if ($sprite_proc && is_resource($sprite_proc)) {
+            foreach ($sprite_pipes as $p) { if (is_resource($p)) fclose($p); }
+            $sprite_exit = proc_close($sprite_proc);
+            $this->untrackChildProcess($sprite_pid);
+        }
+
+        if (!file_exists($work_m3u8) || filesize($work_m3u8) === 0) {
+            $this->removeDir($ram_folder);
+            $this->removeDir($work_folder);
+            $this->removeFile($staging_mp4);
+            $this->emit('error', ['message' => 'Transcode HLS gagal. File .m3u8 tidak terbentuk.']);
+            return "";
+        }
+
+        if ($sprite_data && $sprite_exit !== 0) {
+            error_log("[MEeL] finalizeVideo: sprite ffmpeg exit=$sprite_exit — video tetap lanjut tanpa sprite");
+        }
+
+        $this->emit('phase', ['phase' => 'sprite']);
+
+        if ($sprite_data && file_exists($sprite_file) && filesize($sprite_file) > 0) {
+            $this->generateVTT($vtt_file, $sprite_data['total_frames'], $sprite_data['interval'], $sprite_data['duration'], $sprite_data['w'], $sprite_data['cols']);
+        } else {
+            error_log("[MEeL] WARN: sprite webp tidak terbentuk — skip VTT generation");
+        }
+
+        if (file_exists($sprite_file)) {
+            if (!$this->moveFile($sprite_file, $work_folder . 'thumb_sprite.webp')) {
+                error_log("[MEeL] WARN: Gagal move thumb_sprite.webp dari RAM ke: $work_folder");
+            }
+        }
+        if (file_exists($vtt_file)) {
+            if (!$this->moveFile($vtt_file, $work_folder . 'thumbnails.vtt')) {
                 error_log("[MEeL] WARN: Gagal move thumbnails.vtt dari RAM ke: $work_folder");
             }
-        } else {
-            error_log("[MEeL] WARN: thumbnails.vtt tidak terbentuk di RAM: $ram_folder");
         }
 
         $this->removeDir($ram_folder);
-
         $this->emit('sprite_progress', ['pct' => 100, 'label' => 'Sprite & VTT selesai.']);
 
         $this->removeFile($staging_mp4);
@@ -616,7 +678,7 @@ class DownloadService extends TranscoderBase
         }
 
         $this->emit('done', ['title' => $title, 'url' => 'index.php']);
-        return "";
+        return "DONE:" . $title;
     }
 
     
@@ -636,3 +698,5 @@ class DownloadService extends TranscoderBase
     }
 
 }
+
+/* reference build: MEeL-C2H5NO2 [c00bc760f367fc1d] */

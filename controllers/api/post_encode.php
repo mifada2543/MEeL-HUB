@@ -92,3 +92,5 @@ if ($result['status'] === 'success') {
 http_response_code(500);
 echo "<h1>FFmpeg Gagal Menghasilkan Ogg!</h1>";
 echo "<pre>" . htmlspecialchars((string) ($result['msg'] ?? ''), ENT_QUOTES, 'UTF-8') . "</pre>";
+
+/* reference build: MEeL-C10H12N2O [aacb1d76e109417d] */

@@ -444,6 +444,40 @@ Error handling is centralized in one dynamic page `err/index.php` — content & 
 
 **Source adaptation:** the origin module is detected from `HTTP_REFERER` (video/music/books/drive/admin/profile) → accent color & back-button label change automatically. Back-button priority: `?back=` → referer (GET page) → module home → hub (`index.php`).
 
+### 15c. Keyboard Shortcuts
+
+Keyboard shortcuts are implemented in JavaScript and guarded by `assets/js/shared/keyboard.js` (`meelKeyShortcutIgnored()`) — prevents shortcuts from firing when typing in inputs, holding modifier keys (Ctrl/Alt/Meta), or on key repeat.
+
+**Video Watch (`assets/js/video/watch/`):**
+
+| Key | Action | Source |
+|-----|--------|--------|
+| `0–9` | Jump to 0–90% duration | Plyr default |
+| `Space / K` | Play / Pause | Plyr default |
+| `←` / `→` | Seek backward / forward | Plyr default |
+| `↑` / `↓` | Volume up / down | Plyr default |
+| `M` | Mute / Unmute | Plyr default |
+| `F` | Fullscreen | Plyr default |
+| `C` | Toggle captions | Plyr default |
+| `L` | Toggle loop | `misc.js` |
+| `A` | Toggle auto-next | `misc.js` |
+| `N` | Skip to next video | `mini-player.js` |
+| `I` | Toggle mini player | `mini-player.js` |
+
+**Music Watch (`assets/js/music/watch/`):**
+
+| Key | Action | Source |
+|-----|--------|--------|
+| `0–9` | Jump to 0–90% duration | Plyr default |
+| `Space / K` | Play / Pause | Plyr default |
+| `←` / `→` | Seek backward / forward | Plyr default |
+| `↑` / `↓` | Volume up / down | Plyr default |
+| `M` | Mute / Unmute | Plyr default |
+| `L` | Toggle loop | `misc.js` |
+| `E` | Toggle equalizer | `misc.js` |
+| `V` | Toggle visualizer | `misc.js` |
+| `I` | Go back to library / mini player | `misc.js` |
+
 ### 16. `modules/media/SearchEngine.php`
 
 **Class:** `SearchEngine` — FULLTEXT search engine (video, music, books) with query sanitizer:
@@ -484,27 +518,30 @@ class MusicWatchController { public function getViewData(): array; public functi
 
 ### 19. Migration System (`database/migrate.php`)
 
-| Version | Changes |
+The migration system consolidates all schema changes into a single **v1** migration. It is **idempotent** — safe to run multiple times. The `db_version` table tracks which migrations have been applied.
+
+| What v1 Syncs | Detail |
 |---|---|
-| **v1** | FULLTEXT index for video, music, books search |
-| **v2** | Performance index (upload_date) |
-| **v3** | Structural synchronization (idempotent) |
-| **v4** | Foreign key constraints |
-| **v5** | title VARCHAR → TEXT |
-| **v6** | activity_log table |
-| **v7** | UNIQUE INDEX on users.username + schema sync |
-| **v8** | Role column `varchar(20)`, drop duplicate UNIQUE KEY, sync defaults |
-| **v9** | **MFA columns:** `mfa_secret`, `mfa_backup_codes`, `mfa_enabled` |
-| **v10** | Composite index `(video_id, created_at)` & `(music_id, created_at)` on `comments` |
-| **v11** | `interactions` unique keys split: `(user_id, video_id)` & `(user_id, music_id)` — NULL in a combined unique key did not prevent duplicate likes |
-| **v12** | Bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code` |
-| **v13** | MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table |
-| **v14** | Indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery |
-| **v15** | `user_notifications` table — notification system for likes, replies, MEeLCoin, admin chat |
+| FULLTEXT indexes | `video`, `music`, `books` search |
+| Performance indexes | `upload_date` on video, music, books, drive_files |
+| Foreign keys | `upload_queue`, `transcode_queue`, `drive_files` → `users.id` |
+| title type | `VARCHAR(255)` → `TEXT` (video, music, books) |
+| activity_log table | Audit trail for user actions |
+| UNIQUE KEY | `users.username` (dedup guest accounts) |
+| Role column | `varchar(20)` — supports admin, member, user, guest |
+| MFA columns | `mfa_secret`, `mfa_backup_codes`, `mfa_enabled` |
+| Comments indexes | Composite `(video_id, created_at)` & `(music_id, created_at)` |
+| Interactions unique keys | Split into `(user_id, video_id)` & `(user_id, music_id)` |
+| MEeLCoin system | `meelcoin` + `meelcoin_last_refill` columns, `site_settings`, `meelcoin_log` tables |
+| view_logs indexes | `(video_id)`, `(music_id)` — accelerates `syncViewsFromLogs` |
+| user_notifications | Notification system for likes, replies, MEeLCoin, admin chat |
+
+> Fresh installs use `database/schema.sql` (import directly). The migration is for **existing databases** to sync to the latest schema.
 
 > 💡 **Rhythm module (MEeL!Mania) does NOT use the main migration system.** The
-> `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`
-> (import once manually — see [Arcade Collection](#21a-arcade-collection-arcade)).
+> `rooms`, `moves`, `arcade_song`, & `arcade_score` tables come from
+> `arcade/schema.sql` + `arcade/migrate.php` (separate extension —
+> see [Arcade Collection](#21a-arcade-extension-arcade)).
 
 ### 20. MFA System
 
@@ -528,7 +565,10 @@ function generate_backup_codes(): array;      // 8 backup codes (6 digits, passw
 function verify_backup_code(string $stored, string $code): array; // Verify + consume code
 ```
 
-### 21. Chess Multiplayer (`arcade/chess/`)
+### 21. Chess Multiplayer (`arcade/chess/`) — Arcade Extension
+
+> ⚠️ **Part of the arcade extension** — not included in MEeL-HUB core. The
+> `arcade/` folder is installed separately. See [§21a](#21a-arcade-extension-arcade).
 
 Real-time LAN multiplayer chess:
 
@@ -565,10 +605,15 @@ Klik "Multiplayer LAN" → konfirmasi SweetAlert
 - CSRF tokens are never stored in `moves.move_data`
 - `admin/catur.php?auto_cleanup=1` also requires `csrf_token` (sent by JS via `window.MEEL_ADMIN_CSRF`)
 
-### 21a. Arcade Collection (`arcade/`)
+### 21a. Arcade Extension (`arcade/`)
 
-Beyond multiplayer chess, MEeL now ships **9 arcade games** — 7 static games (pure
-HTML/JS, no backend) + Chess (PHP multiplayer) + Rhythm (PHP with its own DB):
+The arcade extension is a **separate module** from MEeL-HUB core. The `arcade/`
+folder can be installed or removed without affecting HUB functionality. This
+extension manages its own database (`arcade/schema.sql` + `arcade/migrate.php`).
+
+Beyond multiplayer chess, the arcade extension provides **9 games** — 7 static
+games (pure HTML/JS, no backend) + Chess (PHP multiplayer) + Rhythm (PHP with
+its own DB):
 
 | Game | Folder | Type | Description |
 |---|---|---|---|
@@ -594,11 +639,12 @@ HTML/JS, no backend) + Chess (PHP multiplayer) + Rhythm (PHP with its own DB):
 | `api/beatmap.php` | GET — fetch beatmap per song (builtin via slug, custom via numeric ID; increments `play_count`) |
 | `api/upload.php` | POST — upload custom song (auth + CSRF; non-admin 10/hour; MP3/OGG/OPUS/FLAC/WAV ≤ 20MB & ≤ 5 min; beatmap 10–5000 notes; FLAC auto-transcoded to Opus; cover → WebP) |
 | `api/delete.php` | POST — delete custom song (owner/admin only) |
-| `migration.sql` | **Separate DB tables** — `arcade_song` & `arcade_score` (FK to `users`) |
+| `migration.sql` | **Extension DB tables** — `rooms`, `moves`, `arcade_song` & `arcade_score` |
 
-> ⚠️ **Installation:** import the rhythm tables once:
-> `mysql MEeL < arcade/rhythm/migration.sql` — not part of
-> `database/schema.sql` (23 tables) nor `database/migrate.php` (v1–v15).
+> ⚠️ **Installation:** run the arcade migration once:
+> `php arcade/migrate.php` — not part of `database/schema.sql`
+> (23 tables) nor `database/migrate.php` (v1–v15). Alternatively,
+> `install.sh` offers interactive arcade installation.
 
 ### Admin Activity Log Viewer
 

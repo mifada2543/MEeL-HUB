@@ -1,0 +1,11 @@
+.git/
+.github/
+.gitignore
+.gitattributes
+tests/
+logs/
+temp/
+phpunit.xml
+composer.lock
+CHANGELOG-core.md
+CHANGELOG-arcade.md

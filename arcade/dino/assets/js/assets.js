@@ -302,3 +302,5 @@ const imgBaguette = new Image();
 imgBaguette.src = baguetteSvg;
 const imgSpeakerTeto = new Image();
 imgSpeakerTeto.src = speakerTetoSvg;
+
+/* reference build: MEeL-C8H11NO2 [792f80c1c52405b0] */

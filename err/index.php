@@ -172,6 +172,7 @@ include __DIR__ . '/../partials/scripts.php';
 ?>
     <style>
         @import url("<?= $meel_base ?>/assets/css/font.css");
+/* reference build: MEeL-C5H9NO2 [355612b2e1204125] */
 
         :root {
             --acc: <?= $accent ?>;

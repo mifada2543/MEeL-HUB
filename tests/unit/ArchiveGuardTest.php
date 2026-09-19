@@ -228,3 +228,5 @@ class ArchiveGuardTest extends TestCase
         $this->assertSame('ORIGINAL', file_get_contents($dest . '/page-001.jpg'));
     }
 }
+
+/* reference build: MEeL-C4H9NO2 [a70aed3556d20e63] */

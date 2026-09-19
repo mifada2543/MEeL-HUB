@@ -118,3 +118,5 @@ DOM.coverInput.addEventListener("change", function () {
     reader.readAsDataURL(this.files[0]);
   }
 });
+
+/* reference build: MEeL-C10H12N2O [7124ac4b356c9802] */

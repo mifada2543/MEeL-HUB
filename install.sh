@@ -318,9 +318,69 @@ if [ "$DB_USER" = "root" ]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────
+# 2c. Buat akun admin — wajib, tidak ada default
+# ─────────────────────────────────────────────────────────────────────────
+step "2c — Buat Akun Admin"
+
+# Cek apakah sudah ada admin
+ADMIN_EXISTS=$(mysql "${MYSQL_AUTH[@]}" "$DB_NAME" -N -e "SELECT COUNT(*) FROM users WHERE role='admin';" 2>/dev/null || echo "0")
+if [ "$ADMIN_EXISTS" -gt 0 ]; then
+    warn "Sudah ada akun admin di database — dilewati."
+    ADMIN_USER=$(mysql "${MYSQL_AUTH[@]}" "$DB_NAME" -N -e "SELECT username FROM users WHERE role='admin' LIMIT 1;" 2>/dev/null || echo "(unknown)")
+    warn "Akun admin existing: ${ADMIN_USER}"
+else
+    # Loop sampai username valid (tidak kosong, tidak ada spasi)
+    ADMIN_USER=""
+    while true; do
+        ADMIN_USER="$(ask "Username admin" "")"
+        # Hapus spasi di awal/akhir
+        ADMIN_USER="$(echo "$ADMIN_USER" | xargs)"
+        if [ -z "$ADMIN_USER" ]; then
+            warn "Username tidak boleh kosong. Silakan coba lagi."
+            continue
+        fi
+        if echo "$ADMIN_USER" | grep -q ' '; then
+            warn "Username tidak boleh mengandung spasi. Silakan coba lagi."
+            continue
+        fi
+        break
+    done
+
+    # Loop sampai password valid (tidak kosong)
+    ADMIN_PASS=""
+    while true; do
+        ADMIN_PASS="$(ask_secret "Password admin" "")"
+        if [ -z "$ADMIN_PASS" ]; then
+            warn "Password tidak boleh kosong. Silakan coba lagi."
+            continue
+        fi
+        break
+    done
+
+    # Generate bcrypt hash via PHP
+    ADMIN_HASH=$(php -r "echo password_hash('${ADMIN_PASS//\'/\\\'}', PASSWORD_DEFAULT);" 2>/dev/null)
+    if [ -z "$ADMIN_HASH" ]; then
+        die "Gagal generate password hash — pastikan PHP tersedia."
+    fi
+
+    # Escape username untuk SQL
+    ADMIN_USER_ESC=$(printf '%s' "$ADMIN_USER" | sed "s/'/''/g")
+
+    # Insert admin user
+    if mysql "${MYSQL_AUTH[@]}" "$DB_NAME" -e "
+        INSERT INTO \`users\` (\`username\`, \`role\`, \`password\`, \`is_active\`)
+        VALUES ('${ADMIN_USER_ESC}', 'admin', '${ADMIN_HASH}', 1);
+    " 2>/dev/null; then
+        ok "Akun admin '${ADMIN_USER}' berhasil dibuat."
+    else
+        die "Gagal membuat akun admin — cek log MySQL di atas."
+    fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────
 # 3. auth/settings.php & auth/config.php
 # ─────────────────────────────────────────────────────────────────────────
-step "3/7 — Buat auth/settings.php & auth/config.php"
+step "3/8 — Buat auth/settings.php & auth/config.php"
 
 if [ -f "auth/settings.php" ]; then
     warn "auth/settings.php sudah ada — tidak ditimpa (hapus manual jika ingin regenerasi)."
@@ -517,7 +577,7 @@ fi
 # ─────────────────────────────────────────────────────────────────────────
 # 4. Direktori storage runtime
 # ─────────────────────────────────────────────────────────────────────────
-step "4/7 — Buat direktori storage runtime"
+step "4/8 — Buat direktori storage runtime"
 
 mkdir -p "$HDD_BASE/video/upload/video" \
          "$HDD_BASE/video/upload/thumbnail" \
@@ -603,7 +663,7 @@ fi
 # ─────────────────────────────────────────────────────────────────────────
 # 5. Aktifkan mod_rewrite Apache + (opsional) VirtualHost
 # ─────────────────────────────────────────────────────────────────────────
-step "5/7 — Aktifkan mod_rewrite & VirtualHost Apache"
+step "5/8 — Aktifkan mod_rewrite & VirtualHost Apache"
 
 if command -v a2enmod >/dev/null 2>&1 && $CAN_ELEVATE; then
     if confirm "Aktifkan mod_rewrite & restart Apache sekarang?" Y; then
@@ -663,7 +723,7 @@ fi
 # ─────────────────────────────────────────────────────────────────────────
 # 6. Migration database
 # ─────────────────────────────────────────────────────────────────────────
-step "6/7 — Jalankan migration database"
+step "6/8 — Jalankan migration database"
 
 if php database/migrate.php; then
     ok "Migration selesai (idempotent — aman diulang)."
@@ -671,10 +731,24 @@ else
     warn "Migration selesai dengan warning — cek output di atas."
 fi
 
+# ── Arcade migration (opsional) ──
+if [ -d "arcade" ] && [ -f "arcade/migrate.php" ]; then
+    if confirm "Aktifkan modul Arcade? (akan membuat tabel rooms, moves, arcade_song, arcade_score)" N; then
+        step "6b — Jalankan migration arcade"
+        if php arcade/migrate.php; then
+            ok "Arcade migration selesai."
+        else
+            warn "Arcade migration selesai dengan warning — cek output di atas."
+        fi
+    else
+        ok "Arcade dilewati — modul tidak diaktifkan. MEeL-HUB berjalan tanpa arcade."
+    fi
+fi
+
 # ─────────────────────────────────────────────────────────────────────────
 # 7. Verifikasi akhir via check_deploy.php
 # ─────────────────────────────────────────────────────────────────────────
-step "7/7 — Verifikasi deployment (tests/check_deploy.php)"
+step "7/8 — Verifikasi deployment (tests/check_deploy.php)"
 
 CHECK_OK=true
 if [ -f "tests/check_deploy.php" ]; then
@@ -692,7 +766,7 @@ fi
 # Selesai
 # ─────────────────────────────────────────────────────────────────────────
 echo ""
-echo "  Login default   : Admin / Admin#123  (${C_YELLOW}ganti segera setelah login pertama${C_RESET})"
+echo "  Login admin     : ${ADMIN_USER}"
 echo "  Database         : ${DB_NAME}@${DB_HOST}"
 echo "  Environment      : ${ENV_CHOICE} (APP_DEBUG=${DEBUG_CHOICE})"
 echo "  Storage media     : ${HDD_BASE}"

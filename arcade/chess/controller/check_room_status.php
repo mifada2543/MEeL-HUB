@@ -32,3 +32,5 @@ echo json_encode([
     "success" => true,
     "joined" => (int)$result['black_joined'] === 1
 ]);
+
+/* reference build: MEeL-C5H5N5O [1349a771927cf298] */

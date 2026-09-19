@@ -194,6 +194,8 @@ include __DIR__ . '/partials/scripts.php';
                             ['C',         'Toggle caption'],
                             ['L',         'Toggle loop'],
                             ['A',         'Toggle auto-next'],
+                            ['N',         'Video berikutnya'],
+                            ['I',         'Mini player'],
                         ];
                         foreach ($shortcuts_video as $s): ?>
                             <div class="shortcut-item">
@@ -302,6 +304,9 @@ include __DIR__ . '/partials/scripts.php';
                             ['↓',         'Volume turun'],
                             ['M',         'Mute / Unmute'],
                             ['L',         'Toggle loop'],
+                            ['E',         'Toggle equalizer'],
+                            ['V',         'Toggle visualizer'],
+                            ['I',         'Mini player'],
                         ];
                         foreach ($shortcuts_music as $s): ?>
                             <div class="shortcut-item">
@@ -418,3 +423,5 @@ include __DIR__ . '/partials/scripts.php';
 </body>
 
 </html>
+
+<!-- reference build: MEeL-C9H11NO2 [5135ef626d0d7648] -->

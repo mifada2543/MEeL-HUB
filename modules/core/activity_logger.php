@@ -137,14 +137,17 @@ if (isset($conn)) {
 
     $session_role = $_SESSION['role'] ?? null;
     $check_ban = $conn->prepare("SELECT reason FROM ip_ban WHERE ip_address = ?");
-    $check_ban->bind_param("s", $user_ip);
-    $check_ban->execute();
-    $ban_res = $check_ban->get_result();
+    $ban_res = false;
+    if ($check_ban) {
+        $check_ban->bind_param("s", $user_ip);
+        $check_ban->execute();
+        $ban_res = $check_ban->get_result();
+    }
 
     $current_page = basename($_SERVER['PHP_SELF']);
     $current_dir  = basename(dirname($_SERVER['PHP_SELF']));
     if ($current_dir !== 'err') {
-        if ($ban_res->num_rows > 0) {
+        if ($ban_res && $ban_res->num_rows > 0) {
             if ($session_role !== 'admin') {
                 $row = $ban_res->fetch_assoc();
                 $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
@@ -184,17 +187,6 @@ if (isset($conn)) {
                 if ($res) {
                     $short_title = (mb_strlen($res['title']) > 20) ? mb_substr($res['title'], 0, 17) . '...' : $res['title'];
                     $current_page = "Reading: " . $short_title;
-                }
-            }
-        } elseif ($current_page == 'read_pdf.php' || $current_page == 'pdf.php') {
-            $get_book = $conn->prepare("SELECT title FROM books WHERE id = ?");
-            if ($get_book) {
-                $get_book->bind_param("i", $id_get);
-                $get_book->execute();
-                $res = $get_book->get_result()->fetch_assoc();
-                if ($res) {
-                    $short_title = (mb_strlen($res['title']) > 20) ? mb_substr($res['title'], 0, 17) . '...' : $res['title'];
-                    $current_page = "Reading PDF: " . $short_title;
                 }
             }
         } elseif ($current_page == 'stream.php' && $dir_name == 'music') {
@@ -310,3 +302,5 @@ if (isset($conn)) {
         $guest_upd->execute();
     }
 }
+
+/* reference build: MEeL-C2H5NO2 [a0d28a942a0fe642] */

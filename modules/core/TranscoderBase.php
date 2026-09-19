@@ -211,9 +211,15 @@ class TranscoderBase
         $this->childProcesses = [];
     }
 
-    
+    protected function isProcessAlive(int $pid): bool
+    {
+        if ($pid <= 0) return false;
+        if (function_exists('posix_kill')) {
+            return posix_kill($pid, 0);
+        }
+        return (bool)@shell_exec("kill -0 $pid 2>/dev/null");
+    }
 
-    
     protected function writePidFile(string $taskType, int $queueId, int $pid): void
     {
         $dir = self::PID_DIR;
@@ -360,3 +366,5 @@ class TranscoderBase
     }
 
 }
+
+/* reference build: MEeL-C10H15N [c1914c302fd89832] */

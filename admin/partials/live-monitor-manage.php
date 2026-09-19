@@ -1,7 +1,7 @@
 <?php
 /**
- * Live Activity Monitor — AJAX polling endpoint for user-management.php.
- * Returns the full monitor table body for vanilla JS polling.
+ * Live Activity Monitor — AJAX endpoint (HTML).
+ * Returns ONLY online users. Client-side keeps offline rows untouched.
  */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -21,18 +21,23 @@ require_admin($conn);
 
 header('Content-Type: text/html; charset=utf-8');
 
+$server_time = time();
+
 $result_monitor = $conn->query(
     "SELECT id, username, role, last_activity, last_page, user_agent, access_via, ip_address
-     FROM users ORDER BY last_activity DESC LIMIT 10"
+     FROM users
+     WHERE last_activity >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+     ORDER BY last_activity DESC LIMIT 10"
 );
 ?>
 <?php if ($result_monitor && $result_monitor->num_rows > 0): ?>
     <?php while ($row = $result_monitor->fetch_assoc()):
-        $is_online = (time() - strtotime($row['last_activity'])) < 300;
+        $is_online = true;
         $is_cloud = strpos($row['access_via'] ?? '', 'trycloudflare.com') !== false;
         $is_mobile = strpos($row['user_agent'] ?? '', 'Smartphone') !== false || strpos($row['user_agent'] ?? '', 'Android') !== false;
+        $sec_since = max(0, $server_time - strtotime($row['last_activity']));
     ?>
-        <tr class="group hover:bg-white/[0.02] transition-colors" data-sec-since="<?= max(0, time() - strtotime($row['last_activity'])) ?>">
+        <tr class="group hover:bg-white/[0.02] transition-colors" data-username="<?= htmlspecialchars($row['username'], ENT_QUOTES) ?>" data-sec-since="<?= $sec_since ?>">
             <td class="py-4 px-2">
                 <div class="flex items-center gap-2">
                     <span class="text-sm font-bold <?= $row['role'] === 'guest' ? 'text-gray-500 italic' : 'text-white' ?>">
@@ -86,9 +91,9 @@ $result_monitor = $conn->query(
                 </div>
             </td>
             <td class="py-4 px-2">
-                <div class="monitor-status flex items-center gap-2 <?= $is_online ? 'text-green-500' : 'text-gray-600' ?>">
-                    <span class="monitor-dot h-1.5 w-1.5 rounded-full <?= $is_online ? 'bg-green-500 animate-pulse' : 'bg-gray-700' ?>"></span>
-                    <span class="monitor-label text-[10px] font-black uppercase tracking-tighter"><?= $is_online ? 'Online' : 'Offline' ?></span>
+                <div class="monitor-status flex items-center gap-2 text-green-500">
+                    <span class="monitor-dot h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                    <span class="monitor-label text-[10px] font-black uppercase tracking-tighter">Online</span>
                 </div>
             </td>
             <td class="py-4 px-2">
@@ -96,27 +101,20 @@ $result_monitor = $conn->query(
             </td>
             <td class="py-4 px-6 text-right">
                 <div class="flex items-center justify-end gap-3">
-                    <span class="text-xs text-gray-400 font-mono"><?= date('H:i:s', strtotime($row['last_activity'])) ?></span>
+                    <?php $act_ts = strtotime($row['last_activity']); ?>
+                    <span class="text-xs text-gray-400 font-mono" data-activity-ts="<?= $act_ts ?>"><?= date('H:i:s', $act_ts) ?></span>
 
-                    <?php
-                    $is_online = (time() - strtotime($row['last_activity'])) < 300;
-
-                    if ($is_online && $row['username'] !== $_SESSION['username'] && $row['role'] !== 'guest'):
-                    ?>
+                    <?php if ($row['username'] !== $_SESSION['username'] && $row['role'] !== 'guest'): ?>
                         <form method="POST" class="inline" onsubmit="return meelConfirmForm(event, { title: 'Kick User', text: 'Tendang <?= htmlspecialchars($row['username'], ENT_QUOTES) ?>? User akan langsung offline.', confirmButtonText: 'TENDANG' })">
-                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                             <input type="hidden" name="kick_user" value="<?= htmlspecialchars($row['username'], ENT_QUOTES) ?>">
                             <button type="submit" class="p-1.5 bg-red-600/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-600 hover:text-white transition-all cursor-pointer" title="Kick Active User">
                                 <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                             </button>
                         </form>
-                    <?php elseif (!$is_online && $row['username'] !== $_SESSION['username']): ?>
-                        <span class="p-1.5 bg-gray-800/30 text-gray-700 rounded-lg border border-gray-800/50 cursor-not-allowed" title="User is already offline">
-                            <i data-lucide="user-minus" class="w-3.5 h-3.5"></i>
-                        </span>
                     <?php endif; ?>
                 </div>
             </td>
         </tr>
     <?php endwhile; ?>
-<?php endif; ?>
+<?php endif;

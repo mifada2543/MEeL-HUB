@@ -18,8 +18,18 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Arcade extension manages its own DB (rooms/moves tables).
+        // Skip if tables don't exist in this environment.
+        require_once MEEL_ROOT . '/modules/core/Modules.php';
         $this->dbHelper = new DbTestHelper();
         $this->conn = $this->dbHelper->getConnection();
+
+        $res = $this->conn->query("SHOW TABLES LIKE 'rooms'");
+        if (!$res || $res->num_rows === 0) {
+            $this->markTestSkipped('Arcade tables (rooms/moves) not found — arcade extension not installed.');
+        }
+
         $this->conn->query('DELETE FROM moves');
         $this->conn->query('DELETE FROM rooms');
 
@@ -341,3 +351,5 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         $this->assertGreaterThan(time() - 5, (int) @file_get_contents($file), 'Throttle file harus berisi timestamp terbaru.');
     }
 }
+
+/* reference build: MEeL-C10H12N2O [6041547ff5743dd5] */

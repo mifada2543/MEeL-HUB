@@ -355,6 +355,40 @@ Error handling terpusat di satu halaman dinamis `err/index.php` — konten & tem
 
 **Adaptasi sumber:** modul asal dideteksi dari `HTTP_REFERER` (video/music/books/drive/admin/profile) → tema warna + label tombol kembali berubah otomatis. Prioritas tombol kembali: `?back=` → referer (halaman GET) → home modul → hub (`index.php`).
 
+### 15c. Shortcut Keyboard
+
+Shortcut keyboard diimplementasikan dalam JavaScript dan di-guard oleh `assets/js/shared/keyboard.js` (`meelKeyShortcutIgnored()`) — mencegah shortcut aktif saat mengetik di input, menahan modifier key (Ctrl/Alt/Meta), atau saat key di-repeat.
+
+**Video Watch (`assets/js/video/watch/`):**
+
+| Key | Aksi | Sumber |
+|-----|------|--------|
+| `0–9` | Loncat ke 0–90% durasi | Plyr default |
+| `Space / K` | Play / Pause | Plyr default |
+| `←` / `→` | Mundur / Maju (seek) | Plyr default |
+| `↑` / `↓` | Volume naik / turun | Plyr default |
+| `M` | Mute / Unmute | Plyr default |
+| `F` | Layar penuh | Plyr default |
+| `C` | Toggle caption | Plyr default |
+| `L` | Toggle loop | `misc.js` |
+| `A` | Toggle auto-next | `misc.js` |
+| `N` | Video berikutnya | `mini-player.js` |
+| `I` | Toggle mini player | `mini-player.js` |
+
+**Music Watch (`assets/js/music/watch/`):**
+
+| Key | Aksi | Sumber |
+|-----|------|--------|
+| `0–9` | Loncat ke 0–90% durasi | Plyr default |
+| `Space / K` | Play / Pause | Plyr default |
+| `←` / `→` | Mundur / Maju (seek) | Plyr default |
+| `↑` / `↓` | Volume naik / turun | Plyr default |
+| `M` | Mute / Unmute | Plyr default |
+| `L` | Toggle loop | `misc.js` |
+| `E` | Toggle equalizer | `misc.js` |
+| `V` | Toggle visualizer | `misc.js` |
+| `I` | Kembali ke library / mini player | `misc.js` |
+
 ### 16. `modules/media/SearchEngine.php`
 
 **Class:** `SearchEngine` — FULLTEXT search engine (video, music, books) dengan sanitizer query:
@@ -395,27 +429,30 @@ class MusicWatchController { public function getViewData(): array; public functi
 
 ### 19. Migration System (`database/migrate.php`)
 
-| Versi | Perubahan |
+Migration system mengkonsolidasi semua perubahan skema ke satu migrasi **v1** tunggal. Bersifat **idempotent** — aman dijalankan berulang kali. Tabel `db_version` melacak migrasi mana yang sudah dijalankan.
+
+| Apa yang di-Sync | Detail |
 |---|---|
-| **v1** | FULLTEXT index (video, music, books) |
-| **v2** | Performance index (upload_date) |
-| **v3** | Sinkronisasi struktural |
-| **v4** | Foreign key constraints |
-| **v5** | title VARCHAR → TEXT |
-| **v6** | activity_log table |
-| **v7** | UNIQUE INDEX (username) + schema sync |
-| **v8** | Role column `varchar(20)`, hapus duplicate UNIQUE KEY, sync defaults |
-| **v9** | **MFA columns:** `mfa_secret`, `mfa_backup_codes`, `mfa_enabled` |
-| **v10** | Index komposit `(video_id, created_at)` & `(music_id, created_at)` pada `comments` |
-| **v11** | Unique key `interactions` dipecah: `(user_id, video_id)` & `(user_id, music_id)` — NULL di unique key gabungan tidak mencegah like duplikat |
-| **v12** | Ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code` |
-| **v13** | Sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log` |
-| **v14** | Index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery |
-| **v15** | Tabel `user_notifications` — sistem notifikasi untuk like, reply, MEeLCoin, chat admin |
+| FULLTEXT indexes | Pencarian `video`, `music`, `books` |
+| Performance indexes | `upload_date` pada video, music, books, drive_files |
+| Foreign keys | `upload_queue`, `transcode_queue`, `drive_files` → `users.id` |
+| Tipe title | `VARCHAR(255)` → `TEXT` (video, music, books) |
+| Tabel activity_log | Audit trail untuk aksi user |
+| UNIQUE KEY | `users.username` (dedup akun guest) |
+| Kolom role | `varchar(20)` — mendukung admin, member, user, guest |
+| Kolom MFA | `mfa_secret`, `mfa_backup_codes`, `mfa_enabled` |
+| Index comments | Komposit `(video_id, created_at)` & `(music_id, created_at)` |
+| Unique key interactions | Dipisah menjadi `(user_id, video_id)` & `(user_id, music_id)` |
+| Sistem MEeLCoin | Kolom `meelcoin` + `meelcoin_last_refill`, tabel `site_settings`, `meelcoin_log` |
+| Index view_logs | `(video_id)`, `(music_id)` — percepat `syncViewsFromLogs` |
+| user_notifications | Sistem notifikasi untuk like, reply, MEeLCoin, chat admin |
+
+> Fresh install pakai `database/schema.sql` (import langsung). Migration untuk **database yang sudah ada** agar sync ke skema terbaru.
 
 > 💡 **Modul Rhythm (MEeL!Mania) TIDAK memakai migration system utama.** Tabel
-> `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
-> (import manual sekali — lihat [Arcade Collection](#21a-arcade-collection-arcade)).
+> `rooms`, `moves`, `arcade_song`, & `arcade_score` dibuat lewat
+> `arcade/schema.sql` + `arcade/migrate.php` (ekstensi terpisah —
+> lihat [Arcade Collection](#21a-ekstensi-arcade-arcade)).
 
 ### 20. MFA System
 
@@ -439,7 +476,10 @@ function generate_backup_codes(): array;      // 8 backup codes (6 digit, passwo
 function verify_backup_code(string $stored, string $code): array; // Verify + consume code
 ```
 
-### 21. Chess Multiplayer (`arcade/chess/`)
+### 21. Chess Multiplayer (`arcade/chess/`) — Ekstensi Arcade
+
+> ⚠️ **Bagian dari ekstensi arcade** — tidak ada di MEeL-HUB core. Folder
+> `arcade/` diinstal secara terpisah. Lihat [§21a](#21a-ekstensi-arcade-arcade).
 
 Multiplayer catur real-time via LAN:
 
@@ -476,10 +516,15 @@ Klik "Multiplayer LAN" → konfirmasi SweetAlert
 - Token CSRF tidak pernah disimpan ke `moves.move_data`
 - `admin/catur.php?auto_cleanup=1` juga wajib `csrf_token` (dikirim JS via `window.MEEL_ADMIN_CSRF`)
 
-### 21a. Arcade Collection (`arcade/`)
+### 21a. Ekstensi Arcade (`arcade/`)
 
-Selain catur multiplayer, MEeL kini punya **9 game arcade** — 7 game statis (HTML/JS
-murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm (PHP + DB sendiri):
+Ekstensi arcade adalah **modul terpisah** dari MEeL-HUB core. Folder `arcade/`
+bisa diinstal atau dihapus tanpa memengaruhi fungsi HUB. Ekstensi ini
+mengelola database sendiri (`arcade/schema.sql` + `arcade/migrate.php`).
+
+Selain catur multiplayer, ekstensi arcade menyediakan **9 game** — 7 game
+statis (HTML/JS murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm
+(PHP + DB sendiri):
 
 | Game | Folder | Tipe | Deskripsi |
 |---|---|---|---|
@@ -505,11 +550,12 @@ murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm (PHP + DB sendiri):
 | `api/beatmap.php` | GET — ambil beatmap per lagu (builtin via slug, custom via ID numerik; increment `play_count`) |
 | `api/upload.php` | POST — upload lagu custom (auth + CSRF; non-admin 10/jam; MP3/OGG/OPUS/FLAC/WAV ≤ 20MB & ≤ 5 menit; beatmap 10–5000 notes; FLAC otomatis di-transcode ke Opus; cover → WebP) |
 | `api/delete.php` | POST — hapus lagu custom (owner/admin saja) |
-| `migration.sql` | **Tabel DB terpisah** — `arcade_song` & `arcade_score` (FK ke `users`) |
+| `migration.sql` | **Tabel DB ekstensi** — `rooms`, `moves`, `arcade_song` & `arcade_score` |
 
-> ⚠️ **Instalasi:** import tabel rhythm sekali:
-> `mysql MEeL < arcade/rhythm/migration.sql` — bukan bagian dari
-> `database/schema.sql` (23 tabel) maupun `database/migrate.php` (v1–v15).
+> ⚠️ **Instalasi:** jalankan migrasi arcade sekali:
+> `php arcade/migrate.php` — bukan bagian dari `database/schema.sql`
+> (23 tabel) maupun `database/migrate.php` (v1–v15). Atau gunakan
+> `install.sh` yang menawarkan instalasi arcade secara interaktif.
 
 ### Admin Activity Log Viewer
 

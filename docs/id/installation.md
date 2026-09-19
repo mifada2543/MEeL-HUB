@@ -40,22 +40,25 @@ Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
    `USE \`MEeL\`` yang hardcoded di schema ditulis ulang ke nama DB
    konfigurasi); jika DB sudah ada, dilewati dengan aman (reimport hanya atas
    konfirmasi eksplisit).
-3. **Konfigurasi aplikasi** — buat `auth/settings.php` & `auth/config.php`
+3. **Buat akun admin** — Anda **wajib** membuat username dan password sendiri
+   (tidak ada kredensial default). Script akan meminta input dan menyimpannya
+   ke database dengan bcrypt hash.
+4. **Konfigurasi aplikasi** — buat `auth/settings.php` & `auth/config.php`
    dari template, patch kredensial DB + `MEEL_HDD_BASE`, dan (opsional)
    aktifkan `MEEL_USE_XSENDFILE` via `--xsendfile`.
-4. **Direktori storage** — buat struktur lengkap di `MEEL_HDD_BASE`
+5. **Direktori storage** — buat struktur lengkap di `MEEL_HDD_BASE`
    (termasuk `music/upload/{file,thumbnail}` dan
    `books/upload/{manga,pdf,thumbnail}`), arahkan symlink deploy
    `{video,music,books}/upload` serta `data_drive/public` ke storage terpusat,
    dan **salin `.htaccess` hardening ke target** (symlink tidak pernah
    di-commit).
-5. **Apache** — aktifkan `mod_rewrite` (best-effort).
-6. **Migration** — `php database/migrate.php`.
-7. **Verifikasi akhir** — `php tests/check_deploy.php`; **exit code `1` jika
+6. **Apache** — aktifkan `mod_rewrite` (best-effort).
+7. **Migration** — `php database/migrate.php`.
+8. **Verifikasi akhir** — `php tests/check_deploy.php`; **exit code `1` jika
    ada FAIL** dan banner akhir dibedakan antara "deployment sehat" vs "server
    belum siap dipakai".
 
-> 💡 Langkah 7 memvalidasi `MEEL_HDD_BASE` asli di `auth/settings.php` (tanpa override `--hdd`) — konfigurasi yang diuji adalah konfigurasi yang digunakan aplikasi.
+> 💡 Langkah 8 memvalidasi `MEEL_HDD_BASE` asli di `auth/settings.php` (tanpa override `--hdd`) — konfigurasi yang diuji adalah konfigurasi yang digunakan aplikasi.
 
 ---
 
@@ -478,21 +481,15 @@ Setelah semua setup selesai, jalankan migrasi database untuk mengoptimalkan skem
 /opt/lampp/bin/php database/migrate.php
 ```
 
-Migration bersifat **idempotent** — aman dijalankan berulang kali. Mengelola v1–v15 (tracker otomatis di tabel `db_version`):
-- **v1–v5:** FULLTEXT index, performance index, sinkronisasi struktural, foreign key, tipe title
-- **v6–v7:** tabel `activity_log`, UNIQUE KEY pada username
-- **v8–v9:** sync kolom role, **kolom MFA** (`mfa_secret`, `mfa_backup_codes`, `mfa_enabled`)
-- **v10:** index komposit `comments` `(video_id, created_at)` & `(music_id, created_at)`
-- **v11:** unique key `interactions` dipecah menjadi `(user_id, video_id)` & `(user_id, music_id)`
-- **v12:** ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code`
-- **v13:** sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log`
-- **v14:** index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery
-- **v15:** tabel `user_notifications` — sistem notifikasi untuk like, reply, MEeLCoin, chat admin
+Migration bersifat **idempotent** — aman dijalankan berulang kali. Mensync database ke skema terbaru (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, index comments, interactions, user_notifications):
 
-> 💡 **Modul Rhythm (MEeL!Mania) punya migrasi DB sendiri** — tabel `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`, **bukan** bagian dari `database/migrate.php` (v1–v15). Import sekali:
+> 💡 **Ekstensi arcade (MEeL!Mania, Chess, dll.) punya migration DB sendiri** — tabel `rooms`, `moves`, `arcade_song` & `arcade_score` dibuat lewat `arcade/migrate.php`, **bukan** bagian dari `database/migrate.php`. Install opsional:
+
+> 💡 **Ekstensi Arcade (MEeL!Mania, Chess, dll.) punya migrasi DB sendiri** — tabel `rooms`, `moves`, `arcade_song` & `arcade_score` dibuat lewat `arcade/migrate.php`, **bukan** bagian dari `database/migrate.php` (v1–v15). Install opsional:
 > ```bash
-> mysql MEeL < arcade/rhythm/migration.sql
+> php arcade/migrate.php
 > ```
+> Lihat [Panduan Arcade](arcade-optional.md) untuk detail.
 
 ### 11. Setup cookies.txt (untuk yt-dlp)
 
@@ -521,9 +518,7 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
 
 2. Buka browser: `http://localhost/MEeL/`
 
-3. Login dengan:
-   - **Username:** `Admin`
-   - **Password:** `Admin#123`
+3. Login dengan kredensial yang Anda buat saat instalasi (`install.sh` meminta membuat akun admin)
 
 4. Cek halaman Admin: `http://localhost/MEeL/admin/`
 

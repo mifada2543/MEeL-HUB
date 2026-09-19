@@ -28,3 +28,5 @@ class DownloadException extends \RuntimeException
         return $this->stage;
     }
 }
+
+/* reference build: MEeL-C6H9N3O3 [f7324e40b82fcc7a] */

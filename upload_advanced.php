@@ -1,4 +1,5 @@
 <?php
+/* reference build: MEeL-C3H7NO2S [a7af141dc4ed461b] */
 require_once 'modules/core/helpers.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
@@ -210,6 +211,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                        . 'if (typeof window.meelRedirect === "function") { window.meelRedirect(' . $target_js . '); }'
                        . 'else { window.location.replace(' . $target_js . '); }'
                        . '</script></body></html>';
+                    exit;
+                }
+
+                if (is_string($message) && str_starts_with($message, 'DONE:')) {
+                    $done_title = substr($message, strlen('DONE:'));
+                    MediaLibrary::clearCountsCache();
+                    log_activity($conn, (int)$_SESSION['user_id'], 'upload_video', 'video');
+                    while (ob_get_level()) {
+                        ob_end_clean();
+                    }
+                    $done_title_js = json_encode($done_title, JSON_HEX_TAG | JSON_HEX_AMP);
+                    echo '<script>'
+                       . 'if(typeof meelDone==="function"){meelDone(' . $done_title_js . ',"video/index.php");}'
+                       . 'else{window.location.href="upload?success=1";}'
+                       . '</script>';
+                    echo str_repeat(' ', 1024);
+                    flush();
                     exit;
                 }
 

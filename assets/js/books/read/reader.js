@@ -6,7 +6,6 @@
     var bookType = el.dataset.bookType || '';
     var currentChapter = el.dataset.chapter || '';
     var totalPages = parseInt(el.dataset.totalPages) || 0;
-    var baseUrl = el.dataset.baseUrl || '';
 
     var lazyImages = document.querySelectorAll('img.manga-img.lazy');
     if (lazyImages.length) {
@@ -117,6 +116,7 @@
             activeDropdown = null;
         }
     };
+/* reference build: MEeL-C8H11NO2 [406c3eb07104f665] */
 
     window.goToChapter = function(ch) {
         var url = '?id=' + bookId;
@@ -226,4 +226,5 @@
     });
 
     document.body.addEventListener('htmx:afterOnLoad', function() { lucide.createIcons(); });
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 })();

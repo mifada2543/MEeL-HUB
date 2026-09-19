@@ -544,6 +544,9 @@ if (!headers_sent()) {
 | `admin/mfa_reset.php` | Admin MFA reset panel |
 | `partials/ui.php` | Overlay UI system (JS heavy) |
 | `assets/js/shared/keyboard.js` | Shared keyboard shortcut guard (meelKeyShortcutIgnored) — used by video & music misc/mini-player |
+| `assets/js/video/watch/misc.js` | Video-specific shortcuts (L=loop, A=auto-next) |
+| `assets/js/video/watch/mini-player.js` | Video shortcuts (N=next, I=mini-player) + mini-player logic |
+| `assets/js/music/watch/misc.js` | Music shortcuts (L=loop, E=equalizer, V=visualizer, I=mini-player) |
 | `assets/js/shared/temp-index.js` | Shared loader of index.php into #temp-index-content without reload (meelLoadTempIndex) — used by video & music mini-player |
 | `assets/js/shared/plyr-config.js` | Shared Plyr base config (MEEL_PLYR_COMMON: iconUrl, speed, keyboard, tooltips) — used by video & music players |
 | `assets/js/shared/upload-progress.js` | Shared upload progress-bar animation (meelUploadProgress) — used by music & video upload pages |

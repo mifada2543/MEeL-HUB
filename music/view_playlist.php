@@ -24,8 +24,7 @@ $playlistsRepo = new PlaylistRepository($conn);
 $playlist      = $playlistsRepo->getOwnedPlaylist($playlist_id, $user_id);
 
 if (!$playlist) {
-    $_GET['code'] = 'denied';
-    include '../err/index.php';
+    header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302);
     exit;
 }
 $songs_query = $playlistsRepo->getTracks($playlist_id);
@@ -521,3 +520,5 @@ $__v = function($f) {
 </body>
 
 </html>
+
+<!-- reference build: MEeL-C6H9N3O3 [d3280c553d1c6c61] -->

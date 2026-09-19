@@ -19,6 +19,7 @@ Dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untuk streaming video,
 | 9 | [📥 Troubleshooting Advanced Upload](upload-issues.md) | Penanganan masalah yt-dlp & background queue |
 | 10 | [🧪 Testing Guide](testing.md) | PHPUnit, Functional, Security test — panduan lengkap |
 | 11 | [📱 PWA](pwa.md) | Progressive Web App: service worker dinamis, strategi cache, offline |
+| 12 | [📖 Info](info.md) | Referensi lengkap fungsi `meel_*()` — semua fungsi utilitas global |
 
 ---
 
@@ -41,7 +42,7 @@ Dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untuk streaming video,
 | **UpdateManager** | `controllers/system/UpdateManager.php` | CRUD changelog entries (OOP) |
 | **DriveService** | `drive/DriveService.php` | 3 class: DriveUserContext, DriveStorage, DriveViewRenderer |
 | **Profile Manager** | `controllers/profile/fun-manage.php` | Delete media, pending deletions, cleanup |
-| **Migration System** | `database/migrate.php` | Versioned database schema upgrades v1–v15 (idempotent) |
+| **Migration System** | `database/migrate.php` | Sync database ke skema terbaru (idempotent, migrasi v1 tunggal) |
 | **PWA Precache** | `modules/core/SwPrecache.php` | Generator precache service worker dinamis — membaca `assets/css/*/manifest.php`, `SW_VERSION` otomatis dari hash konten |
 | **PWA Generator** | `sw.js.php` | Service worker dibangkitkan per request (disajikan sebagai `/sw.js` via rewrite `.htaccess`) |
 | **Autoloader** | `modules/autoload.php` | Class-map autoloading |
@@ -50,8 +51,8 @@ Dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untuk streaming video,
 | **MFA Setup** | `auth/mfa_setup.php` | Setup MFA (generate secret, verify TOTP, backup codes) |
 | **MFA Verify** | `auth/mfa_verify.php` | Halaman verifikasi TOTP setelah login |
 | **MFA Reset (Admin)** | `admin/mfa_reset.php` | Admin reset MFA user jika kehilangan akses Authenticator |
-| **Chess Multiplayer** | `arcade/chess/` | Catur real-time via LAN — buat/gabung ruang, giliran, legal move validation |
-| **Rhythm Module (MEeL!Mania)** | `arcade/rhythm/` | Rhythm game 4-lane ala osu!mania — beatmap editor, upload lagu custom (tabel `arcade_song`/`arcade_score` via `arcade/rhythm/migration.sql`) |
+| **Chess Multiplayer** | `arcade/chess/` | Catur real-time via LAN — buat/gabung ruang, giliran, legal move validation *(ekstensi arcade)* |
+| **Rhythm Module (MEeL!Mania)** | `arcade/rhythm/` | Rhythm game 4-lane ala osu!mania — beatmap editor, upload lagu custom *(ekstensi arcade, tabel via `arcade/schema.sql` + `arcade/migrate.php`)* |
 | **FfmpegUtils Trait** | `modules/transcoder/FfmpegUtils.php` | Shared trait: probeDuration(), generateSpriteAndVTT() |
 | **PlaylistRepository** | `modules/media/PlaylistRepository.php` | Query playlist & route slug playlist |
 | **MediaAdminRepository** | `modules/media/MediaAdminRepository.php` | Query metadata media untuk panel admin (edit video/music) |
@@ -91,7 +92,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 | URL | Handler (file) |
 |---|---|
-| `/` | `index.php` (hub) |
+| `/`, `/beranda` | `index.php` (hub) |
 | `/introduction`, `/update`, `/upload`, `/transcode` | `introduction.php`, `update.php`, `upload_advanced.php`, `transcode.php` |
 | `/err`, `/err/offline` | `err/index.php` (dinamis `?code=`), `err/offline.php` (PWA) |
 | `/video/beranda`, `/video/watch`, `/video/search`, `/video/load-more`, `/video/upload`, `/video/stream` | `video/*.php` |
@@ -102,8 +103,8 @@ Request: /MEeL/music/beranda?format=ogg
 | `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/manage-action`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profil + grid channel publik, tab via query), `profile/channel_more.php` (fragment HTMX), `profile/edit-video.php` (pemilik, non-admin), `profile/edit-music.php` (pemilik, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
 | `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat`, `/admin/actions`, `/admin/data` | `admin/*.php` (edit-video/edit-music khusus admin), `controllers/admin/*.php` |
 | `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
-| `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` |
-| `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) |
+| `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` *(ekstensi — memerlukan folder arcade terpasang)* |
+| `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) *(ekstensi)* |
 | `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/notification`, `/api/chat`, `/api/meelcoin` | `controllers/api/*.php` |
 | `/system/mfa` | `controllers/system/mfa.php` |
 
@@ -134,13 +135,7 @@ Request: /MEeL/music/beranda?format=ogg
 - **Type hints:** Properti class dan parameter constructor sekarang menggunakan type hints (`\mysqli`, `int`, `string`, dll.)
 - **Activity Log Integration:** `log_activity()` function + integrasi di login, logout, upload, dan admin actions — audit trail penuh ke tabel `activity_log`
 - **Admin Activity Log Viewer:** Halaman `admin/activity_log.php` untuk melihat, filter, dan cleanup trail audit
-- **Database Alignment:** `schema.sql` dan `migrate.php` tersinkronisasi (v1–v15) — FULLTEXT, FK, UNIQUE KEY, activity_log, MFA, composite index comments, unique key interactions, chess room identity, user_notifications
-- **Migrasi v10:** Index komposit `(video_id, created_at)` & `(music_id, created_at)` pada tabel `comments`
-- **Migrasi v11:** Unique key `interactions` dipecah menjadi `(user_id, video_id)` & `(user_id, music_id)` — NULL di unique key gabungan tidak mencegah duplikat
-- **Migrasi v12:** Ikat identitas user ke room catur (`white_user_id`, `black_user_id`) — cegah akses ilegal via `room_code`
-- **Migrasi v13:** Sistem MEeLCoin — kolom `meelcoin` + `meelcoin_last_refill` di users, tabel `site_settings`, tabel `meelcoin_log`
-- **Migrasi v14:** Index di `view_logs` (`video_id`, `music_id`) — percepat `syncViewsFromLogs` correlated subquery
-- **Migrasi v15:** Tabel `user_notifications` — sistem notifikasi untuk like, reply, MEeLCoin, chat admin
+- **Database Alignment:** `schema.sql` dan `migrate.php` tersinkronisasi — satu migrasi v1 tunggal mengkonsolidasi semua perubahan skema (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, index comments, interactions, user_notifications)
 - **Modul Anime dihapus:** Modul placeholder "Coming Soon" yang sudah tidak relevan dihapus dari kodebase
 - **API Rate Limiting:** File-based rate limiter (`modules/auth/RateLimiter.php`) — proteksi endpoint like, comment, upload dari abuse dengan per-user limits dan role-based adjustment (admin=unlimited, member=2x)
 - **Security Module (`modules/auth/`):** Helper & class keamanan dikonsolidasi ke satu direktori agar mudah diaudit — `helpers/` (authz, csrf, session, stream_auth, mfa, user) + `RateLimiter.php` + `SsrfGuard.php`, dimuat lewat `modules/auth/loader.php` (shim lama `modules/core/helpers.php` tetap jalan)
@@ -153,7 +148,8 @@ Request: /MEeL/music/beranda?format=ogg
 - **Arcade Chess:** Multiplayer catur real-time via LAN — buat/gabung ruang, giliran bergantian, validasi legal move
 - **Chess Color Picker:** Di mode multiplayer, papan disembunyikan di balik overlay pilihan warna (Putih = buat room & tunggu, Hitam = join pakai kode) — papan terkunci sampai game dimulai
 - **Chess Auth & CSRF:** Controller multiplayer kini wajib login (JSON 401) dan token CSRF di semua panggilan yang mengubah state; endpoint admin `auto_cleanup` diverifikasi dengan CSRF
-- **Arcade Expansion (9 game):** Selain Dino Run, Chess & Snake — kini ada **2048**, **Tetris**, **Breakout**, **Simon Says**, **Ludo**, dan **MEeL!Mania** (rhythm game 4-lane ala osu!mania dengan beatmap editor, upload lagu custom MP3/OGG/FLAC/WAV ≤ 5 menit, tabel `arcade_song`/`arcade_score` via `arcade/rhythm/migration.sql` — terpisah dari migrasi utama v1–v15)
+- **Arcade Expansion (9 game):** Selain Dino Run, Chess & Snake — kini ada **2048**, **Tetris**, **Breakout**, **Simon Says**, **Ludo**, dan **MEeL!Mania** (rhythm game 4-lane ala osu!mania dengan beatmap editor, upload lagu custom MP3/OGG/FLAC/WAV ≤ 5 menit)
+- **Arcade menjadi Ekstensi Terpisah:** Modul arcade di-extract dari HUB core — folder `arcade/` kini ekstensi opsional dengan database sendiri (`arcade/schema.sql` + `arcade/migrate.php`). Tabel `rooms`, `moves`, `arcade_song`, `arcade_score` tidak lagi di `database/schema.sql`. HUB berfungsi 100% tanpa arcade
 - **PWA Optimization:** Service worker dinamis (`sw.js.php` + `SwPrecache`) — daftar precache otomatis dari `manifest.php`, `SW_VERSION` otomatis, ikon asli 192/512/maskable, meta iOS standalone, auto-reload saat update SW
 - **Search Improvements:** Sanitizer query (`sanitizeQuery()`), `MIN_SEARCH_QUERY = 3`, pagination search musik, search buku server-side (`BookRepository::searchBooks()`), cache key menyertakan offset, `try/catch` di sekitar query FULLTEXT
 - **Auth Hardening:** Cookie session kini `Secure` (auto-detect HTTPS) + `HttpOnly` + `SameSite=Lax`; `MEEL_TRUST_PROXY_HEADERS` (default `false`) untuk mencegah IP spoofing via header proxy; charset koneksi DB dipaksa `utf8mb4`
@@ -166,6 +162,10 @@ Request: /MEeL/music/beranda?format=ogg
 - **Profile Modularisasi:** Halaman profile dipecah menjadi komponen terpisah — `manage.js`, `avatar-crop.js`, `coin-countdown.js`, `theme-init.js` + CSS modular (base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state)
 - **Admin Chat:** Interface admin chat baru di `admin/chat.php` dengan CSS & JS modular
 - **URL Cleanup:** Normalisasi URL routing — semua URL bersih tanpa ekstensi `.php`, redirect 301 dari URL lama
+- **Admin Access Obfuscation:** `require_admin()` dan guard admin sekarang redirect user non-admin ke `/err?code=not_found` (404) alih-alih menampilkan halaman 403 "Access Denied" — menyembunyikan keberadaan halaman admin-only
+- **Error Page Redirect Pattern:** Semua pola `die(include __DIR__ . '/err/index.php')` dikonversi ke `header('Location: .../err?code=...')` redirect via `meel_base_url_path()` — lebih bersih, tanpa rendering error inline
+- **Root `/beranda` Route:** Route `/beranda` baru di root level — map ke `index.php` (HUB home), konsisten dengan skema `/module/beranda`
+- **Keyboard Shortcuts Terdokumentasi:** Shortcut Video (N=next, I=mini-player) dan Musik (E=equalizer, V=visualizer, I=mini-player) sekarang terdokumentasi di `introduction.php` dan `docs/`
 
 ## 📖 Tentang Proyek
 
@@ -175,7 +175,7 @@ Request: /MEeL/music/beranda?format=ogg
 - **🎵 Music** — Audio streaming dengan visualizer & mini player
 - **📚 Books** — Pembaca manga/PDF digital
 - **☁️ Cloud Drive** — Penyimpanan file pribadi dengan RBAC
-- **🕹️ Arcade** — 9 mini-game (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania)
+- **🕹️ Arcade** — 9 mini-game (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania) *(ekstensi terpisah)*
 
 ### Tech Stack Utama
 

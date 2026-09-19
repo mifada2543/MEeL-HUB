@@ -1,5 +1,6 @@
 {
     "require-dev": {
         "phpunit/phpunit": "^9.6"
-    }
+    },
+    "__meel_marker": "reference build: MEeL-C10H12N2O [b5d0ee8c97c7abd7]"
 }

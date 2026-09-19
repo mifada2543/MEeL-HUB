@@ -62,3 +62,5 @@ class TranscoderConstantsTest extends TestCase
         $this->assertTrue(method_exists('Transcoder', 'killByPidFile'));
     }
 }
+
+/* reference build: MEeL-C5H9NO2 [436b977380474796] */

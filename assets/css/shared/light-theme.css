@@ -1125,6 +1125,14 @@ html[data-theme="light"] {
   & .upload-prog-stat-val { color: var(--meel-text-heading) !important; }
   & .upload-prog-result { border-top-color: var(--meel-border) !important; }
 
+  /* File card image thumbnail */
+  & .file-card-thumb {
+    background: rgba(0, 0, 0, 0.05) !important;
+  }
+  & .file-card-preview-overlay {
+    background: rgba(0, 0, 0, 0.4) !important;
+  }
+
   /* 4.13 Notification page */
   & .notif-item {
     background: var(--meel-surface) !important;
@@ -1176,3 +1184,5 @@ html[data-theme="light"] {
     background-color: var(--meel-nav-bg) !important;
   }
 }
+
+/* reference build: MEeL-C4H9NO2 [b6796ea3c97ed44e] */

@@ -1,3 +1,4 @@
+/* reference build: MEeL-C8H11NO2 [75aa6be10a299df0] */
 (function() {
     var currentUserId = 0;
     var API_BASE = window.MEEL_BASE + '/api/chat';

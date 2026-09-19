@@ -1,4 +1,9 @@
 <?php
+// Arcade = modul opsional: lewati seluruh suite bila foldernya tidak ada.
+if (!is_file(MEEL_ROOT . '/arcade/chess/controller/chess_helpers.php')) {
+    echo 'arcade tidak terpasang — ChessRematchIntegrationTest dilewati.' . PHP_EOL;
+    return;
+}
 require_once MEEL_ROOT . '/arcade/chess/controller/chess_helpers.php';
 require_once __DIR__ . '/ChessTestCase.php';
 
@@ -332,3 +337,5 @@ class ChessRematchIntegrationTest extends ChessTestCase
         $this->assertTrue($result['success']);
     }
 }
+
+/* reference build: MEeL-C3H7NO2S [43b9fa10e1069e25] */

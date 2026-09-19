@@ -1,3 +1,4 @@
+/* reference build: MEeL-C2H5NO2 [7ac7932c4b2f9e0e] */
 (function() {
     const ICONS = { like: '❤️', reply: '💬', meelcoin: '🪙', admin_chat: '✉️', system: '🔔' };
     let pollInterval = null;

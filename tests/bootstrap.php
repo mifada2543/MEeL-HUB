@@ -80,3 +80,5 @@ foreach ($tempDirs as $dir) {
     
     @chmod($dir, 0777);
 }
+
+/* reference build: MEeL-C10H15N [10eafd8bf5fbdde8] */

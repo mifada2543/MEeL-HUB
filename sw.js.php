@@ -246,7 +246,6 @@ function isApiRequest(url) {
          p.includes('admin_data') ||
          p.includes('playlist_action') ||
          p.includes('stream.php') ||        
-         p.includes('read_pdf') ||
          p.includes('download') ||          
          p.includes('post_encode') ||
          p.includes('download_transcode') ||
@@ -256,7 +255,6 @@ function isApiRequest(url) {
          /\/(music|video|books)\/search\/?$/.test(p) ||
          /\/(music|video)\/load-more\/?$/.test(p) ||
          /\/music\/playlist-action\/?$/.test(p) ||
-         /\/books\/read-pdf\/?$/.test(p) ||
          /\/admin\/(actions|data)\/?$/.test(p) ||
          /\/profile\/(edit|manage-action)\/?$/.test(p);
 }
@@ -279,3 +277,5 @@ async function trimCache(cacheName, maxEntries) {
     await cache.delete(keys[0]);
   }
 }
+
+/* reference build: MEeL-C6H9N3O3 [7ec10d3dd177bb41] */

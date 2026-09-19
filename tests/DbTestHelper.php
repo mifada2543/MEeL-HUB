@@ -114,10 +114,11 @@ class DbTestHelper
             }
             $this->conn->set_charset('utf8mb4');
             
+            $this->conn->autocommit(true);
+            $this->seedFixtureData();
+            
             $this->conn->begin_transaction();
             $this->inTransaction = true;
-            
-            $this->seedFixtureData();
         }
         return $this->conn;
     }
@@ -275,3 +276,5 @@ class DbTestHelper
         $this->close();
     }
 }
+
+/* reference build: MEeL-C5H9NO2 [7e926dab7eccb635] */

@@ -85,3 +85,5 @@ class SwPrecache
         return 'v2-' . substr(md5(implode('|', $parts)), 0, 10);
     }
 }
+
+/* reference build: MEeL-C5H5N5O [718e581673425c6c] */

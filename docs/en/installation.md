@@ -40,23 +40,26 @@ Steps it runs (idempotent for most of them):
    (the hardcoded `USE \`MEeL\`` line in the schema is rewritten to the
    configured DB name); if the DB already exists it is safely skipped
    (reimport only on explicit confirmation).
-3. **Application configuration** — create `auth/settings.php` &
+3. **Create admin account** — You **must** create your own username and password
+   (no default credentials exist). The script prompts for input and stores it
+   in the database with a bcrypt hash.
+4. **Application configuration** — create `auth/settings.php` &
    `auth/config.php` from the templates, patch the DB credentials +
    `MEEL_HDD_BASE`, and (optionally) enable `MEEL_USE_XSENDFILE` via
    `--xsendfile`.
-4. **Storage directories** — create the full tree under `MEEL_HDD_BASE`
+5. **Storage directories** — create the full tree under `MEEL_HDD_BASE`
    (including `music/upload/{file,thumbnail}` and
    `books/upload/{manga,pdf,thumbnail}`), point deploy-time symlinks
    `{video,music,books}/upload` and `data_drive/public` at the centralized
    storage, and **copy the `.htaccess` hardening to the target** (symlinks are
    never committed).
-5. **Apache** — enable `mod_rewrite` (best-effort).
-6. **Migration** — `php database/migrate.php`.
-7. **Final verification** — `php tests/check_deploy.php`; **exit code `1` on
+6. **Apache** — enable `mod_rewrite` (best-effort).
+7. **Migration** — `php database/migrate.php`.
+8. **Final verification** — `php tests/check_deploy.php`; **exit code `1` on
    any FAIL** and a final banner that distinguishes "deployment healthy" from
    "server not ready".
 
-> 💡 Step 7 validates the real `MEEL_HDD_BASE` from `auth/settings.php` (no `--hdd` override) — the configuration tested is what the app actually uses.
+> 💡 Step 8 validates the real `MEEL_HDD_BASE` from `auth/settings.php` (no `--hdd` override) — the configuration tested is what the app actually uses.
 
 ---
 
@@ -478,21 +481,13 @@ After all setup is complete, run the database migration to optimize the schema:
 /opt/lampp/bin/php database/migrate.php
 ```
 
-The migration is **idempotent** — safe to run multiple times. It manages v1–v15 (automatic tracker in the `db_version` table):
-- **v1–v5:** FULLTEXT indexes, performance indexes, structural sync, foreign keys, title type
-- **v6–v7:** `activity_log` table, UNIQUE KEY on username
-- **v8–v9:** role column sync, **MFA columns** (`mfa_secret`, `mfa_backup_codes`, `mfa_enabled`)
-- **v10:** composite indexes on `comments` `(video_id, created_at)` & `(music_id, created_at)`
-- **v11:** `interactions` unique keys split into `(user_id, video_id)` & `(user_id, music_id)`
-- **v12:** bind user identity to chess rooms (`white_user_id`, `black_user_id`) — prevents illegal access via `room_code`
-- **v13:** MEeLCoin system — `meelcoin` + `meelcoin_last_refill` columns on users, `site_settings` table, `meelcoin_log` table
-- **v14:** indexes on `view_logs` (`video_id`, `music_id`) — accelerates `syncViewsFromLogs` correlated subquery
-- **v15:** `user_notifications` table — notification system for likes, replies, MEeLCoin, admin chat
+The migration is **idempotent** — safe to run multiple times. It syncs the database to the latest schema (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, comments indexes, interactions, user_notifications):
 
-> 💡 **Rhythm module (MEeL!Mania) has its own DB migration** — the `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`, **not** part of `database/migrate.php` (v1–v15). Import once:
+> 💡 **Arcade extension (MEeL!Mania, Chess, etc.) has its own DB migration** — the `rooms`, `moves`, `arcade_song` & `arcade_score` tables come from `arcade/migrate.php`, **not** part of `database/migrate.php`. Optional install:
 > ```bash
-> mysql MEeL < arcade/rhythm/migration.sql
+> php arcade/migrate.php
 > ```
+> See [Arcade Guide](arcade-optional.md) for details.
 
 ### 11. Setup cookies.txt (for yt-dlp)
 
@@ -521,9 +516,7 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
 
 2. Open browser: `http://localhost/MEeL/`
 
-3. Login with:
-   - **Username:** `Admin`
-   - **Password:** `Admin#123`
+3. Login with the credentials you created during installation (`install.sh` prompts you to create an admin account)
 
 4. Check Admin page: `http://localhost/MEeL/admin/`
 

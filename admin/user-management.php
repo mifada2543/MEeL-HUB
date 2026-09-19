@@ -190,7 +190,7 @@ $msg = $_GET['msg'] ?? null;
                             $is_cloud = strpos($row['access_via'] ?? '', 'trycloudflare.com') !== false;
                             $is_mobile = strpos($row['user_agent'] ?? '', 'Smartphone') !== false || strpos($row['user_agent'] ?? '', 'Android') !== false;
                         ?>
-                            <tr class="group hover:bg-white/[0.02] transition-colors" data-sec-since="<?= max(0, time() - strtotime($row['last_activity'])) ?>">
+                            <tr class="group hover:bg-white/[0.02] transition-colors" data-username="<?= htmlspecialchars($row['username'], ENT_QUOTES) ?>" data-sec-since="<?= max(0, time() - strtotime($row['last_activity'])) ?>">
                                 <td class="py-4 px-2">
                                     <div class="flex items-center gap-2">
                                         <span class="text-sm font-bold <?= $row['role'] === 'guest' ? 'text-gray-500 italic' : 'text-white' ?>">
@@ -254,7 +254,7 @@ $msg = $_GET['msg'] ?? null;
                                 </td>
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-3">
-                                        <span class="text-xs text-gray-400 font-mono"><?= date('H:i:s', strtotime($row['last_activity'])) ?></span>
+                                        <span class="text-xs text-gray-400 font-mono" data-activity-ts="<?= strtotime($row['last_activity']) ?>"><?= date('H:i:s', strtotime($row['last_activity'])) ?></span>
 
                                         <?php
                                         $is_online = (time() - strtotime($row['last_activity'])) < 300;
@@ -350,6 +350,9 @@ $msg = $_GET['msg'] ?? null;
     <script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
     <script>
     (function() {
+        var ONLINE_WINDOW_SEC = 300;
+        var MONITOR_TICK_MS = 1000;
+
         var clock = document.getElementById('live-clock');
         function updateClock() {
             var now = new Date();
@@ -361,6 +364,48 @@ $msg = $_GET['msg'] ?? null;
         updateClock();
         setInterval(updateClock, 1000);
 
+        var tickLast = Date.now();
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        function fmtTime(ts) {
+            var d = new Date(ts * 1000);
+            return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+        }
+        setInterval(function () {
+            var now = Date.now();
+            var delta = Math.max(1, Math.round((now - tickLast) / 1000));
+            tickLast = now;
+            var rows = document.querySelectorAll('#monitor-tbody tr[data-sec-since]');
+            rows.forEach(function (row) {
+                var sec = parseInt(row.getAttribute('data-sec-since'), 10) + delta;
+                row.setAttribute('data-sec-since', sec);
+                var online = sec < ONLINE_WINDOW_SEC;
+                var cell = row.querySelector('.monitor-status');
+                if (cell) {
+                    var dot = cell.querySelector('.monitor-dot');
+                    var label = cell.querySelector('.monitor-label');
+                    if (online) {
+                        cell.classList.add('text-green-500');
+                        cell.classList.remove('text-gray-600');
+                        if (dot) {
+                            dot.classList.add('bg-green-500', 'animate-pulse');
+                            dot.classList.remove('bg-gray-700');
+                        }
+                        if (label) label.textContent = 'Online';
+                    } else {
+                        cell.classList.remove('text-green-500');
+                        cell.classList.add('text-gray-600');
+                        if (dot) {
+                            dot.classList.remove('bg-green-500', 'animate-pulse');
+                            dot.classList.add('bg-gray-700');
+                        }
+                        if (label) label.textContent = 'Offline';
+                    }
+                }
+                var ts = row.querySelector('[data-activity-ts]');
+                if (ts && online) ts.textContent = fmtTime(parseInt(ts.getAttribute('data-activity-ts'), 10) + sec);
+            });
+        }, MONITOR_TICK_MS);
+
         var tbody = document.getElementById('monitor-tbody');
         if (!tbody) return;
         function pollMonitor() {
@@ -368,15 +413,27 @@ $msg = $_GET['msg'] ?? null;
             fetch(url, { credentials: 'same-origin', cache: 'no-store' })
                 .then(function(r) { return r.ok ? r.text() : ''; })
                 .then(function(html) {
-                    if (html) {
-                        tbody.innerHTML = html;
-                        if (typeof lucide !== 'undefined') lucide.createIcons();
-                    }
+                    if (!html) return;
+                    var tmp = document.createElement('tbody');
+                    tmp.innerHTML = html;
+                    var newRows = tmp.querySelectorAll('tr[data-username]');
+                    newRows.forEach(function(newRow) {
+                        var uname = newRow.getAttribute('data-username');
+                        var existing = tbody.querySelector('tr[data-username="' + uname + '"]');
+                        if (existing) {
+                            existing.replaceWith(newRow);
+                        } else {
+                            tbody.insertBefore(newRow, tbody.firstChild);
+                        }
+                    });
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
                 })
                 .catch(function() {});
         }
-        setInterval(pollMonitor, 10000);
+        setInterval(pollMonitor, 300000);
     })();
     </script>
 </body>
 </html>
+
+<!-- reference build: MEeL-C5H9NO2 [6f639b8cc129f55c] -->

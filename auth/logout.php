@@ -22,3 +22,5 @@ if (ini_get("session.use_cookies")) {
     ]);
 }
 session_destroy();            header("Location: login");
+
+/* reference build: MEeL-C10H12N2O [a9e5a7d302411e8e] */

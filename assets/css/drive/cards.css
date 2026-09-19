@@ -1,3 +1,4 @@
+/* reference build: MEeL-C9H11NO2 [395a012ebb00a097] */
 
 .file-card {
   background: var(--bg-card);
@@ -95,4 +96,38 @@
 .drive-empty-text {
   font-size: 1rem;
   font-weight: 600;
+}
+
+/* Image thumbnail card */
+.file-card {
+  cursor: pointer;
+}
+.file-card-thumb {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+}
+.file-card-thumb img {
+  display: block;
+  width: 100%;
+  height: 144px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.file-card:hover .file-card-thumb img {
+  transform: scale(1.05);
+}
+.file-card-preview-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.file-card:hover .file-card-preview-overlay {
+  opacity: 1;
 }

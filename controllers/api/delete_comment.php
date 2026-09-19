@@ -130,3 +130,5 @@ if ($is_ajax) {
 $_SESSION['success'] = $result['message'];
 header('Location: ' . safe_comment_back_url());
 exit;
+
+/* reference build: MEeL-C9H11NO2 [d2adadde492c3226] */

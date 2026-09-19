@@ -42,3 +42,5 @@ $__ui_base  = $__ui_proto . '://' . $__ui_host . rtrim(str_replace('\\', '/', di
   </div>
 </div>
 <script src="assets/js/engine/main.js<?= $__meel_engine_v('assets/js/engine/main.js') ?>"></script>
+
+<!-- reference build: MEeL-C10H15N [b7568b352d2b39cf] -->

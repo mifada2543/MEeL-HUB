@@ -56,3 +56,5 @@ echo json_encode([
     "moves"           => $moves,
     "opponent_online" => $opponentOnline,
 ]);
+
+/* reference build: MEeL-C6H9N3O3 [c27f8e6d29d4a60e] */

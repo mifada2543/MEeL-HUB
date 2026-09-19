@@ -341,6 +341,7 @@ function getMiniShell() {
 function closeMiniPlayer() {
   if (!isMiniPlayerActive) return;
   isMiniPlayerActive = false;
+/* reference build: MEeL-C4H9NO2 [edca1e6fcbd54a93] */
   
   
   
@@ -468,6 +469,10 @@ function attachMiniPlayerVideoCardListeners(e) {
                   t && n && (t.innerHTML = n.innerHTML);
                 },
               ),
+              (() => {
+                const el = document.getElementById("rec-title-text");
+                if (el) { el.textContent = "Video Lainnya"; el.title = "Video Lainnya"; }
+              })(),
               window.lucide && window.lucide.createIcons(),
               ["main-video", "watch-details-wrapper", "recommendation-column"].forEach(
                 (e) => {

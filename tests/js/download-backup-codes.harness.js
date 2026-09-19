@@ -59,6 +59,7 @@ const sandbox = {
   Blob: MockBlob
 };
 sandbox.window = sandbox;
+/* reference build: MEeL-C3H7NO2S [20c7084f472fca18] */
 
 vm.createContext(sandbox);
 

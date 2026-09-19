@@ -106,6 +106,27 @@ Documentation about authentication, authorization, and protection systems in MEe
 | Admin Panel | ✅ | ❌ | ❌ | ❌ |
 | Chess Multiplayer | ✅ | ✅ | ✅ | ❌ |
 
+### Admin Page Guard (`require_admin()`)
+
+All admin pages use `require_admin($conn)` as a centralized authorization gate:
+
+```php
+// modules/auth/helpers/authz.php
+function require_admin(mysqli $conn): void
+{
+    if (!is_admin($conn)) {
+        header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
+        exit;
+    }
+}
+```
+
+Non-admin users are redirected to `/err?code=not_found` (HTTP 404) instead of showing a 403 "Access Denied" page. This is a **security-by-obscurity** pattern — unauthorized users see a generic "Not Found" page, hiding the existence of admin-only pages.
+
+The same redirect pattern is used in:
+- `controllers/admin/admin_actions.php` — `MEEL_ADMIN_CONTEXT` guard + `is_admin()` guard
+- `controllers/admin/admin_data.php` — `MEEL_ADMIN_CONTEXT` guard
+
 ---
 
 ## Session Management

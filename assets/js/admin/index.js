@@ -1,3 +1,4 @@
+/* reference build: MEeL-C6H9N3O3 [2bf25c4825e14714] */
 
 (function () {
   "use strict";
@@ -144,9 +145,9 @@
       case "cpu":
         return perc > 80 ? "bg-red-500" : perc > 50 ? "bg-yellow-500" : "bg-green-500";
       case "ram":
-        return perc > 80 ? "bg-red-500" : perc > 50 ? "bg-yellow-500" : "bg-cyan-500";
+        return perc > 80 ? "bg-red-500" : perc > 50 ? "bg-yellow-500" : "bg-blue-500";
       case "swap":
-        return perc > 50 ? "bg-red-500" : "bg-gray-500";
+        return perc > 50 ? "bg-red-500" : "bg-blue-800";
     }
     return "";
   }
