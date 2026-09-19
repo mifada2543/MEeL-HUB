@@ -232,6 +232,7 @@ class DownloadService extends TranscoderBase
 
         $frag_retry_abort  = false;
         $php_timeout_abort = false;
+        $client_disconnected = false;
         $frag_total        = 0;
         $dl_out            = $dl_pipes[1];
         while (!feof($dl_out)) {
@@ -253,6 +254,12 @@ class DownloadService extends TranscoderBase
                     $frag_retry_abort = true;
                     break;
                 }
+            }
+
+            if (!$this->isClientConnected()) {
+                $client_disconnected = true;
+                error_log("[MEeL] DownloadService: client disconnected, download continue in background (queue_id=$queue_id)");
+                continue;
             }
 
             if (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%\s+of\s+([\d.]+\s*\S+)\s+at\s+([\d.]+\s*\S+\/s)(?:\s+ETA\s+([\d:]+))?(?:\s+\(frag\s+(\d+)\/(\d+)\))?/', $line, $m)) {
@@ -308,7 +315,8 @@ class DownloadService extends TranscoderBase
         }
 
         if (!$is_success) {
-            $this->releaseQueue($queue_id, 'failed');
+            $queue_status = $client_disconnected ? 'orphaned' : 'failed';
+            $this->releaseQueue($queue_id, $queue_status);
             file_put_contents('/tmp/ytdlp_error.log', $error_log);
 
             if ($frag_retry_abort) {
@@ -326,7 +334,7 @@ class DownloadService extends TranscoderBase
             }
 
             $this->emit('error', ['message' => $error_msg]);
-            return "";
+            return $client_disconnected ? "DISCONNECTED" : "";
         }
 
         $this->releaseQueue($queue_id, 'completed');

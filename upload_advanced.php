@@ -21,6 +21,7 @@ GarbageCollector::run();
 
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
     if (strpos($errfile, 'node_modules') !== false || strpos($errfile, 'vendor') !== false) return false;
+    if (connection_aborted() || connection_status() !== CONNECTION_NORMAL) return true;
     $safe_msg = "$errstr (Line $errline)";
     $js = 'if(typeof meelError==="function"){meelError(' . json_encode($safe_msg, JSON_HEX_TAG | JSON_HEX_AMP) . ')}';
     echo '<script>' . $js . '</script>';
@@ -30,6 +31,7 @@ set_error_handler(function ($errno, $errstr, $errfile, $errline) {
 });
 
 register_shutdown_function(function () {
+    if (connection_aborted() || connection_status() !== CONNECTION_NORMAL) return;
     $error = error_get_last();
     if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
         $js = 'if(typeof meelError==="function"){meelError(' . json_encode($error['message'], JSON_HEX_TAG | JSON_HEX_AMP) . ')}';
@@ -49,9 +51,40 @@ $is_busy = $sys->isServerBusy();
 $user_role = get_user_role($conn, (int)$_SESSION['user_id']);
 $is_admin  = ($user_role === 'admin');
 
+$is_queue_orphaned = function(int $uid, string $type): bool {
+    global $conn;
+    $q = $conn->query(
+        "SELECT id, status FROM upload_queue WHERE user_id = {$uid} AND media_type = " .
+        $conn->real_escape_string($type === 'music' ? 'music' : 'video') .
+        " ORDER BY id DESC LIMIT 3"
+    );
+    if (!$q) return false;
+    $rows = $q->fetch_all(MYSQLI_ASSOC);
+    if (empty($rows)) return false;
+    $latest = $rows[0]['status'] ?? '';
+    if ($latest !== 'processing') return false;
+    $older_rows = array_slice($rows, 1);
+    return empty($older_rows) || ($older_rows[0]['status'] ?? '') !== 'processing';
+};
+
+$is_download_disconnected = function(int $uid, string $type): bool {
+    global $conn;
+    $q = $conn->query(
+        "SELECT status FROM upload_queue WHERE user_id = {$uid} AND media_type = " .
+        $conn->real_escape_string($type === 'music' ? 'music' : 'video') .
+        " ORDER BY id DESC LIMIT 1"
+    );
+    if (!$q) return false;
+    $row = $q->fetch_assoc();
+    return ($row['status'] ?? '') === 'orphaned';
+};
+
 $transcoder     = new Transcoder($conn, $_SESSION['user_id'], new BrowserProgressObserver($is_admin));
 register_shutdown_function([$transcoder, 'terminateAllProcesses']);
 
+if (!$is_admin) {
+    $conn->query("UPDATE upload_queue SET status = 'failed' WHERE status = 'processing' AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)");
+}
 
 $q_active = $conn->query("SELECT COUNT(*) FROM upload_queue WHERE status='processing'");
 $active_count = $q_active ? (int)$q_active->fetch_row()[0] : 0;
@@ -183,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                            . 'else{window.location.href="upload?success=1&file="+encodeURIComponent(' . json_encode($result['filename'], JSON_HEX_TAG | JSON_HEX_AMP) . ');}'
                            . '</script>';
                     } else {
-                        if ($coin_deducted ?? false) {
+                        if (($coin_deducted ?? false) && !$is_queue_orphaned((int)$_SESSION['user_id'], $type)) {
                             MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_encode_refund');
                         }
                         $err_msg = json_encode($result['msg'] ?? 'Gagal mengonversi audio.', JSON_HEX_TAG | JSON_HEX_AMP);
@@ -232,7 +265,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 }
 
                 if ($coin_deducted ?? false) {
-                    MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_download_refund');
+                    if ($message === 'DISCONNECTED' || $is_download_disconnected((int)$_SESSION['user_id'], $type)) {
+                        $err_msg = json_encode('Download diproses di background. Refresh halaman untuk melihat status.', JSON_HEX_TAG | JSON_HEX_AMP);
+                        echo '<script>'
+                           . 'if(typeof meelDone==="function"){meelDone(' . $err_msg . ',"upload_advanced.php?success=1");}'
+                           . 'else{window.location.href="upload_advanced.php?success=1";}'
+                           . '</script>';
+                        echo str_repeat(' ', 1024);
+                        flush();
+                        exit;
+                    }
+                    if (!$is_queue_orphaned((int)$_SESSION['user_id'], $type)) {
+                        MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_download_refund');
+                    }
                     $err_msg = $message !== '' ? json_encode($message, JSON_HEX_TAG | JSON_HEX_AMP) : '"Download gagal: media tidak tersimpan di server."';
                     $err_label = $message !== '' ? 'Download Gagal' : 'Download Gagal';
                     echo '<script>'
@@ -245,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 }
             } catch (Exception $e) {
                 error_log('[MEeL-Upload] ' . $e->getMessage());
-                if ($coin_deducted ?? false) {
+                if (($coin_deducted ?? false) && !$is_queue_orphaned((int)$_SESSION['user_id'], $type)) {
                     MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_error_refund');
                 }
                 if ($is_admin) {
@@ -261,7 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 exit;
             } catch (Throwable $e) {
                 error_log('[MEeL-Upload] ' . $e->getMessage());
-                if ($coin_deducted ?? false) {
+                if (($coin_deducted ?? false) && !$is_queue_orphaned((int)$_SESSION['user_id'], $type)) {
                     MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_error_refund');
                 }
                 if ($is_admin) {
