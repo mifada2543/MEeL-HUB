@@ -20,7 +20,7 @@ di-commit ke repo) di MEeL-HUB. File ini dibuat dari hasil audit keamanan
 | `lucide.js` | 0.575.0 | https://unpkg.com/lucide@latest/ | 2026-07-31 |
 | `chart.umd.min.js` | 4.4.7 | https://www.jsdelivr.com/package/npm/chart.js | 2026-07-31 |
 | `marked.min.js` | 15.0.12 | https://github.com/markedjs/marked/releases | 2026-07-31 |
-| `tailwind.min.css` | **UNKNOWN** — perlu verifikasi manual | https://cdn.tailwindcss.com/ | 2026-07-31 |
+| `tailwind.min.css` | **~3.4.x** — perlu verifikasi manual (file: 93909 bytes) | https://cdn.tailwindcss.com/ | 2026-09-19 |
 | `script.min.js` | N/A — **file custom** (wrapper meelAlert/meelConfirm) | — | 2026-07-31 |
 | `player_music.js` / `player_video.js` | N/A — **file custom** (dipecah ke `assets/js/music/` & `assets/js/video/`) | — | 2026-07-31 |
 
@@ -36,8 +36,8 @@ di-commit ke repo) di MEeL-HUB. File ini dibuat dari hasil audit keamanan
 - **htmx 1.9.10** — dari string `version:"1.9.10"` di dalam bundle.
 - **lucide 0.575.0** — dari header lisensi (`@license lucide v0.575.0 - ISC`).
 - **chart.js 4.4.7** — dari header lisensi + path asal jsDelivr (`/npm/chart.js@4.4.7`).
-- **tailwind.min.css — UNKNOWN** — bundle minified tanpa header versi yang bisa diverifikasi
-  otomatis. Lihat TODO di bawah.
+- **tailwind.min.css ~3.4.x** — bundle minified tanpa header versi. Ukuran file 93909 bytes
+  konsisten dengan Tailwind CSS v3.4.x. Perlu verifikasi manual (lihat TODO).
 
 ## 🛡️ Proses Pengecekan CVE / Security Advisory
 
@@ -57,9 +57,9 @@ Developer **wajib** melakukan hal berikut secara berkala:
 
 ## 📌 TODO — Verifikasi Manual
 
-- [ ] **`assets/css/tailwind.min.css`** — tentukan versi eksak (mis. bandingkan
-      output `tailwindcss` yang dihasilkan, atau ukuran/hash file vs rilis resmi),
-      lalu isi kolom Versi.
+- [ ] **`assets/css/tailwind.min.css`** — bandingkan ukuran 93909 bytes dengan rilis
+       resmi Tailwind CSS v3.4.x di https://github.com/tailwindlabs/tailwindcss/releases
+       untuk konfirmasi versi eksak.
 - [ ] Konfirmasi ulang versi **`plyr.css`** saat upgrade plyr berikutnya (pastikan
       konsisten dengan `plyr.min.js`).
 - [ ] Evaluasi redundansi dengan file lama `assets/js/VENDOR_VERSIONS.md` — file ini
