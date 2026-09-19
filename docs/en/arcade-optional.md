@@ -4,7 +4,7 @@
 > no broken links, no leftovers. Arcade is a *separate extension*, not a
 > core dependency.
 
-> 🇮🇩 Versi Bahasa Indonesia: [docs/id/arcade-optional.md](arcade-optional.md)
+> 🇮🇩 Versi Bahasa Indonesia: [docs/id/arcade-optional.md](../id/arcade-optional.md)
 
 ---
 

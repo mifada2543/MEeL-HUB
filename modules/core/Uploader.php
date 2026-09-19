@@ -39,6 +39,19 @@ class Uploader
         return meel_magic_extension_ok($filePath, 'mp4', 'video') === '';
     }
 
+    private function validateVideoCodec(string $filePath): string
+    {
+        // Hanya izinkan H.264 (AVC) dan H.265 (HEVC) — kompatibel MPEG-2 TS.
+        return meel_validate_video_codec($filePath, $this->ffprobe_bin, $this->getEnvPrefix());
+    }
+
+    private function validateAudioCodec(string $filePath): array
+    {
+        // Cek codec audio: AAC/MP3/AC3/E-AC3 bisa copy langsung.
+        // Opus/Vorbis/DTS/FLAC harus transcode ke AAC (max 5 menit).
+        return meel_validate_audio_codec($filePath, $this->ffprobe_bin, $this->getEnvPrefix());
+    }
+
     private function checkActiveUploadLimit(): bool
     {
         $lock_file    = sys_get_temp_dir() . '/meel_upload_counter.lock';
@@ -231,7 +244,13 @@ class Uploader
             if (!$ins[0]) {
                 throw new \RuntimeException($ins[1]);
             }
+            $music_id = $this->conn->insert_id;
             $this->conn->commit();
+
+            if ($music_id > 0) {
+                $this->processMusicLyrics($music_id, $post, $files);
+            }
+
             return ['status' => 'success'];
         } catch (\Throwable $e) {
             $this->conn->rollback();
@@ -242,6 +261,30 @@ class Uploader
                 $this->removeFile($thumb_path);
             }
             return ['status' => 'error', 'msg' => "Database error! [" . $e->getMessage() . "]"];
+        }
+    }
+
+    private function processMusicLyrics(int $music_id, array $post, array $files): void
+    {
+        $lyrics_lang = sanitize_subtitle_lang($post['lyrics_lang'] ?? 'id');
+
+        if (
+            !empty($files['lyrics']['tmp_name'])
+            && is_uploaded_file($files['lyrics']['tmp_name'])
+            && ($files['lyrics']['error'] ?? -1) === UPLOAD_ERR_OK
+        ) {
+            $ext = strtolower(pathinfo($files['lyrics']['name'] ?? '', PATHINFO_EXTENSION));
+            if (in_array($ext, ['lrc', 'txt'], true) && validate_lyrics_file($files['lyrics']['tmp_name'])) {
+                $content = (string)@file_get_contents($files['lyrics']['tmp_name']);
+                if ($content !== '') {
+                    save_music_lyrics($music_id, $lyrics_lang, $content);
+                }
+            }
+        } elseif (!empty($post['lyrics_text'])) {
+            $text = trim($post['lyrics_text']);
+            if ($text !== '') {
+                save_music_lyrics($music_id, $lyrics_lang, $text);
+            }
         }
     }
 
@@ -284,6 +327,18 @@ class Uploader
         if (!$this->validateVideoMagicBytes($temp_video)) {
             return ['status' => 'error', 'msg' => "File tidak valid sebagai video (magic bytes mismatch).", 'alert' => true];
         }
+
+        $codec_error = $this->validateVideoCodec($temp_video);
+        if ($codec_error !== '') {
+            return ['status' => 'error', 'msg' => $codec_error, 'alert' => true];
+        }
+
+        $audio_result             = $this->validateAudioCodec($temp_video);
+        if ($audio_result['error'] !== '') {
+            return ['status' => 'error', 'msg' => $audio_result['error'], 'alert' => true];
+        }
+        $has_audio                = $audio_result['has_audio'];
+        $needs_audio_transcode    = $audio_result['needs_audio_transcode'];
 
         $raw_clean_name = pathinfo($video_name_orig, PATHINFO_FILENAME);
         $clean_name     = getRomajiName($raw_clean_name);
@@ -371,8 +426,20 @@ class Uploader
         $work_m3u8 = $work_folder . $folder_name . ".m3u8";
         $db_filename = "video/" . $folder_name . "/" . $folder_name . ".m3u8";
 
-        $cmd = $this->getEnvPrefix() . escapeshellarg($this->ffmpeg_bin) . " -i " . escapeshellarg($staged_video)
-            . " -codec copy"
+        $audio_codec_arg = $needs_audio_transcode
+            ? '-c:a aac -b:a 128k'
+            : '-c:a copy';
+
+        $map_args = '-map 0:v:0';
+        if ($has_audio) {
+            $map_args .= ' -map 0:a:0';
+        }
+
+        $cmd = $this->getEnvPrefix() . escapeshellarg($this->ffmpeg_bin)
+            . " -i " . escapeshellarg($staged_video)
+            . " " . $map_args
+            . " -c:v copy " . $audio_codec_arg
+            . " -sn"
             . " -start_number 0 -hls_time 20 -hls_list_size 0"
             . " -hls_segment_filename " . escapeshellarg($work_folder . $folder_name . "_%03d.ts")
             . " -f hls " . escapeshellarg($work_m3u8) . " 2>&1";

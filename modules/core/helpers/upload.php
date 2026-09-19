@@ -75,6 +75,125 @@ function meel_magic_extension_ok(string $path, string $ext, string $mediaKind = 
 }
 }
 
+if (!function_exists('meel_validate_video_codec')) {
+/**
+ * Validasi codec video menggunakan ffprobe. Hanya mengizinkan H.264 (AVC)
+ * dan H.265 (HEVC) karena kedua codec tersebut kompatibel dengan
+ * MPEG-2 Transport Stream (HLS versi lama).
+ *
+ * @param string $file_path  Path file video.
+ * @param string $ffprobe_bin Path biner ffprobe.
+ * @param string $env_prefix Prefix env (mis. 'export LD_LIBRARY_PATH=''; ').
+ *
+ * @return string kosong jika codec valid; pesan error jika tidak.
+ */
+function meel_validate_video_codec(
+    string $file_path,
+    string $ffprobe_bin = '/usr/bin/ffprobe',
+    string $env_prefix = ''
+): string {
+    if (!is_file($file_path) || filesize($file_path) < 4) {
+        return 'File tidak valid atau terlalu kecil.';
+    }
+
+    $allowed_codecs = ['h264', 'hevc', 'h265'];
+
+    $cmd = $env_prefix . escapeshellarg($ffprobe_bin)
+        . ' -v error -select_streams v:0'
+        . ' -show_entries stream=codec_name'
+        . ' -of default=noprint_wrappers=1:nokey=1 '
+        . escapeshellarg($file_path);
+
+    $output = [];
+    $ret    = -1;
+    @exec($cmd, $output, $ret);
+
+    if ($ret !== 0 || empty($output)) {
+        return 'Gagal membaca codec video. Pastikan ffprobe terinstall.';
+    }
+
+    $codec = strtolower(trim($output[0]));
+
+    if (!in_array($codec, $allowed_codecs, true)) {
+        return "Codec video \"{$codec}\" tidak didukung. Hanya codec H.264 (AVC) dan H.265 (HEVC) yang diizinkan.";
+    }
+
+    return '';
+}
+}
+
+if (!function_exists('meel_validate_audio_codec')) {
+/**
+ * Validasi codec audio menggunakan ffprobe. Memeriksa apakah codec audio
+ * kompatibel dengan MPEG-2 Transport Stream (HLS versi lama).
+ *
+ * Codec yang kompatibel (bisa di-copy langsung): AAC, MP3, AC3, E-AC3.
+ * Codec yang tidak kompatibel (perlu transcode): Opus, Vorbis, DTS, FLAC, dll.
+ *
+ * Jika codec tidak kompatibel dan durasi audio > 5 menit, proses ditolak
+ * karena transcode audio berdurasi panjang terlalu membebani server.
+ *
+ * @param string $file_path   Path file video.
+ * @param string $ffprobe_bin Path biner ffprobe.
+ * @param string $env_prefix  Prefix env (mis. 'export LD_LIBRARY_PATH=''; ').
+ *
+ * @return array ['error' => string, 'has_audio' => bool, 'needs_audio_transcode' => bool]
+ *               error: pesan error jika harus ditolak; '' jika lolos.
+ *               has_audio: true jika video memiliki audio stream.
+ *               needs_audio_transcode: true jika audio harus di-transcode ke AAC.
+ */
+function meel_validate_audio_codec(
+    string $file_path,
+    string $ffprobe_bin = '/usr/bin/ffprobe',
+    string $env_prefix = ''
+): array {
+    if (!is_file($file_path) || filesize($file_path) < 4) {
+        return ['error' => 'File tidak valid atau terlalu kecil.', 'has_audio' => false, 'needs_audio_transcode' => false];
+    }
+
+    $allowed_codecs    = ['aac', 'mp3', 'ac3', 'eac3'];
+    $max_audio_duration = 300; // 5 menit (detik)
+
+    $cmd = $env_prefix . escapeshellarg($ffprobe_bin)
+        . ' -v error -select_streams a:0'
+        . ' -show_entries stream=codec_name,duration'
+        . ' -of csv=p=0 '
+        . escapeshellarg($file_path);
+
+    $output = [];
+    $ret    = -1;
+    @exec($cmd, $output, $ret);
+
+    // Tidak ada audio stream.
+    if ($ret !== 0 || empty($output) || trim($output[0]) === '') {
+        return ['error' => '', 'has_audio' => false, 'needs_audio_transcode' => false];
+    }
+
+    $parts    = array_map('trim', explode(',', $output[0]));
+    $codec    = strtolower($parts[0] ?? '');
+    $duration = (float)($parts[1] ?? 0);
+
+    // Audio codec kompatibel → bisa di-copy langsung ke MPEG-TS.
+    if (in_array($codec, $allowed_codecs, true)) {
+        return ['error' => '', 'has_audio' => true, 'needs_audio_transcode' => false];
+    }
+
+    // Audio tidak kompatibel + durasi > 5 menit → tolak.
+    if ($duration > $max_audio_duration) {
+        $minutes = round($duration / 60, 1);
+        return [
+            'error' => "Audio menggunakan codec \"{$codec}\" yang tidak kompatibel dengan HLS. "
+                     . "Durasi audio {$minutes} menit melebihi batas 5 menit untuk transcode otomatis.",
+            'has_audio' => true,
+            'needs_audio_transcode' => false,
+        ];
+    }
+
+    // Audio tidak kompatibel + durasi <= 5 menit → akan di-transcode ke AAC.
+    return ['error' => '', 'has_audio' => true, 'needs_audio_transcode' => true];
+}
+}
+
 if (!function_exists('meel_sanitize_upload_filename')) {
 /**
  * Sanitasi nama file upload → nama file fisik aman (hanya [a-z0-9._-],

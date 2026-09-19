@@ -142,6 +142,11 @@ class TranscoderBase
         }
     }
 
+    protected function isClientConnected(): bool
+    {
+        return !connection_aborted() && connection_status() === CONNECTION_NORMAL;
+    }
+
     
     
 

@@ -50,7 +50,7 @@
     </td>
     <td width="50%">
       <h3>🎵 Music</h3>
-      <p>Audio playback for MP3, FLAC, OGG, and M4A with a WebAudio visualizer. Playlist creation, smart queue management, and a persistent mini-player anchored at the bottom of the screen.</p>
+      <p>Audio playback for MP3, FLAC, OGG, and M4A with a WebAudio visualizer. Real-time karaoke lyrics with timestamp synchronization (LRC). Playlist creation, smart queue management, and a persistent mini-player anchored at the bottom of the screen.</p>
     </td>
   </tr>
   <tr>

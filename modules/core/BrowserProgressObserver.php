@@ -83,9 +83,15 @@ class BrowserProgressObserver implements ProgressObserver
     
     private function emitJs(string $js): void
     {
-        echo '<script>' . $js . '</script>';
-        echo str_repeat(' ', 1024);
-        flush();
+        try {
+            echo '<script>' . $js . '</script>';
+            echo str_repeat(' ', 1024);
+            if (connection_status() === CONNECTION_NORMAL) {
+                flush();
+            }
+        } catch (\Throwable $e) {
+            error_log('[MEeL] BrowserProgressObserver::emitJs error: ' . $e->getMessage());
+        }
     }
 
     
@@ -96,24 +102,29 @@ class BrowserProgressObserver implements ProgressObserver
         }
         $this->overlayInjected = true;
 
-        while (ob_get_level()) {
-            ob_end_clean();
+        try {
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            header('X-Accel-Buffering: no');
+            header('Content-Encoding: none');
+
+            $ui_file = dirname(__DIR__, 2) . '/partials/ui.php';
+            if (file_exists($ui_file)) {
+                include $ui_file;
+            } else {
+                error_log('[MEeL] WARN: partials/ui.php tidak ditemukan: ' . $ui_file);
+            }
+
+            echo str_repeat(' ', 65536);
+            echo '<script>meelPhase(' . json_encode($initialPhase) . ');</script>';
+            if (connection_status() === CONNECTION_NORMAL) {
+                flush();
+            }
+        } catch (\Throwable $e) {
+            error_log('[MEeL] BrowserProgressObserver::injectOverlay error: ' . $e->getMessage());
         }
-
-        header('X-Accel-Buffering: no');
-        header('Content-Encoding: none');
-
-        $ui_file = dirname(__DIR__, 2) . '/partials/ui.php';
-        if (file_exists($ui_file)) {
-            include $ui_file;
-        } else {
-            error_log('[MEeL] WARN: partials/ui.php tidak ditemukan: ' . $ui_file);
-        }
-
-        
-        echo str_repeat(' ', 65536);
-        echo '<script>meelPhase(' . json_encode($initialPhase) . ');</script>';
-        flush();
     }
 
     

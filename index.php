@@ -24,7 +24,6 @@ $counts  = $library->getCounts();
     <link href="assets/css/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared/theme-tokens.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/theme-tokens.css') ?>">
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
-    <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
     <script src="assets/js/compatibilitas/lucide.js"></script>
     <script src="assets/js/compatibilitas/sweetalert2.all.min.js"></script>
     <script src="assets/js/compatibilitas/script.min.js"></script>

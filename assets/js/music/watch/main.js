@@ -21,6 +21,7 @@
     "misc.js",
     "mini-player.js",
     "player-core.js",
+    "karaoke.js",
   ];
   
   
