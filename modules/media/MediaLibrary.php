@@ -93,21 +93,34 @@ class MediaLibrary
         return (int)$res->fetch_assoc()['total'];
     }
 
-    public function searchVideo(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0, int $fetchLimit = 21)
+    private function searchMedia(array $cfg): ?\mysqli_result
     {
-        $limit = $fetchLimit; 
+        $table      = $cfg['table'];
+        $alias      = $cfg['alias'];
+        $matchCols  = $cfg['matchCols'];
+        $selectCols = $cfg['selectCols'];
+        $sessionKey = $cfg['sessionKey'];
+        $q          = $cfg['q'];
+        $exclude    = $cfg['exclude'];
+        $sidebar    = $cfg['sidebar'];
+        $offset     = $cfg['offset'];
+        $limit      = $cfg['limit'];
+        $orderBy    = $cfg['orderBy'] ?? "{$alias}.id DESC";
+
+        $a = $alias;
+        $ua = $cfg['uploaderAlias'] ?? 'uploader_name';
 
         if (empty($q)) {
             if ($sidebar) {
                 $sidebar_limit = 15;
-                $count_res = $this->conn->query("SELECT COUNT(*) AS total FROM video");
+                $count_res = $this->conn->query("SELECT COUNT(*) AS total FROM {$table}");
                 $total = (int)($count_res ? $count_res->fetch_assoc()['total'] : 0);
 
-                $seen_ids = $_SESSION['seen_video_ids'] ?? [];
+                $seen_ids = $_SESSION[$sessionKey] ?? [];
                 $exclude_ids = array_merge([$exclude], $seen_ids);
 
                 if ($total < 1000) {
-                    $id_result = $this->conn->query("SELECT id FROM video WHERE id != {$exclude}");
+                    $id_result = $this->conn->query("SELECT id FROM {$table} WHERE id != {$exclude}");
                     $all_ids = [];
                     if ($id_result) {
                         while ($row = $id_result->fetch_assoc()) {
@@ -116,14 +129,14 @@ class MediaLibrary
                     }
                     $available = array_values(array_diff($all_ids, $exclude_ids));
                     if (empty($available)) {
-                        $_SESSION['seen_video_ids'] = [];
+                        $_SESSION[$sessionKey] = [];
                         $available = array_values(array_diff($all_ids, [$exclude]));
                     }
                     shuffle($available);
                     $picked_ids = array_slice($available, 0, $sidebar_limit);
                 } else {
                     $extra = min($sidebar_limit * 2, 40);
-                    $sql = "SELECT id FROM video WHERE id != ? ORDER BY RAND() LIMIT ?";
+                    $sql = "SELECT id FROM {$table} WHERE id != ? ORDER BY RAND() LIMIT ?";
                     $stmt_ids = $this->conn->prepare($sql);
                     $stmt_ids->bind_param("ii", $exclude, $extra);
                     $stmt_ids->execute();
@@ -136,7 +149,7 @@ class MediaLibrary
                     }
                     $available = array_values(array_diff($candidate_ids, $exclude_ids));
                     if (empty($available)) {
-                        $_SESSION['seen_video_ids'] = [];
+                        $_SESSION[$sessionKey] = [];
                         $available = array_values(array_diff($candidate_ids, [$exclude]));
                     }
                     shuffle($available);
@@ -145,38 +158,37 @@ class MediaLibrary
 
                 if (empty($picked_ids)) {
                     $stmt = $this->conn->prepare(
-                        "SELECT v.*, u.username AS uploader_name FROM video v
-                         JOIN users u ON v.user_id = u.id WHERE 1 = 0"
+                        "SELECT {$selectCols} FROM {$table} {$a}
+                         JOIN users u ON {$a}.user_id = u.id WHERE 1 = 0"
                     );
                 } else {
                     $placeholders = implode(',', array_fill(0, count($picked_ids), '?'));
                     $types = str_repeat('i', count($picked_ids));
-                    $sql = "SELECT v.*, u.username AS uploader_name FROM video v
-                            JOIN users u ON v.user_id = u.id
-                            WHERE v.id IN ({$placeholders}) ORDER BY FIELD(v.id, {$placeholders})";
+                    $sql = "SELECT {$selectCols} FROM {$table} {$a}
+                            JOIN users u ON {$a}.user_id = u.id
+                            WHERE {$a}.id IN ({$placeholders}) ORDER BY FIELD({$a}.id, {$placeholders})";
                     $all_params = array_merge($picked_ids, $picked_ids);
                     $stmt = $this->conn->prepare($sql);
                     $stmt->bind_param($types . $types, ...$all_params);
                 }
             } else {
-                
                 $stmt = $this->conn->prepare(
-                    "SELECT v.*, u.username AS uploader_name FROM video v
-                     JOIN users u ON v.user_id = u.id
-                     WHERE v.id != ? ORDER BY v.upload_date DESC LIMIT ? OFFSET ?"
+                    "SELECT {$selectCols} FROM {$table} {$a}
+                     JOIN users u ON {$a}.user_id = u.id
+                     WHERE {$a}.id != ? ORDER BY {$orderBy} LIMIT ? OFFSET ?"
                 );
                 $stmt->bind_param("iii", $exclude, $limit, $offset);
             }
         } else {
+            $matchStr = implode(', ', $matchCols);
             $stmt = $this->conn->prepare(
-                "SELECT v.*, u.username AS uploader_name,
-                 MATCH(v.title, v.search_metadata) AGAINST (? IN BOOLEAN MODE) AS rank
-                 FROM video v
-                 JOIN users u ON v.user_id = u.id
-                 WHERE MATCH(v.title, v.search_metadata) AGAINST (? IN BOOLEAN MODE) AND v.id != ?
-                 ORDER BY rank DESC, v.upload_date DESC LIMIT ? OFFSET ?"
+                "SELECT {$selectCols},
+                 MATCH({$matchStr}) AGAINST (? IN BOOLEAN MODE) AS rank
+                 FROM {$table} {$a}
+                 JOIN users u ON {$a}.user_id = u.id
+                 WHERE MATCH({$matchStr}) AGAINST (? IN BOOLEAN MODE) AND {$a}.id != ?
+                 ORDER BY rank DESC, {$orderBy} LIMIT ? OFFSET ?"
             );
-
             $stmt->bind_param("ssiii", $q, $q, $exclude, $limit, $offset);
         }
         try {
@@ -188,21 +200,29 @@ class MediaLibrary
         return $result ?: null;
     }
 
-    public function countSearchVideo(string $q, int $exclude = 0): int
+    private function countSearchMedia(array $cfg): int
     {
+        $table     = $cfg['table'];
+        $alias     = $cfg['alias'];
+        $matchCols = $cfg['matchCols'];
+        $q         = $cfg['q'];
+        $exclude   = $cfg['exclude'];
+        $a = $alias;
+
         if (empty($q)) {
             $stmt = $this->conn->prepare(
-                "SELECT COUNT(*) AS total FROM video v
-                 JOIN users u ON v.user_id = u.id
-                 WHERE v.id != ?"
+                "SELECT COUNT(*) AS total FROM {$table} {$a}
+                 JOIN users u ON {$a}.user_id = u.id
+                 WHERE {$a}.id != ?"
             );
             $stmt->bind_param("i", $exclude);
         } else {
+            $matchStr = implode(', ', $matchCols);
             $stmt = $this->conn->prepare(
-                "SELECT COUNT(*) AS total FROM video v
-                 JOIN users u ON v.user_id = u.id
-                 WHERE MATCH(v.title, v.search_metadata) AGAINST (? IN BOOLEAN MODE)
-                   AND v.id != ?"
+                "SELECT COUNT(*) AS total FROM {$table} {$a}
+                 JOIN users u ON {$a}.user_id = u.id
+                 WHERE MATCH({$matchStr}) AGAINST (? IN BOOLEAN MODE)
+                   AND {$a}.id != ?"
             );
             $stmt->bind_param("si", $q, $exclude);
         }
@@ -214,6 +234,35 @@ class MediaLibrary
         }
         $res = $stmt->get_result();
         return $res ? (int)$res->fetch_assoc()['total'] : 0;
+    }
+
+    public function searchVideo(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0, int $fetchLimit = 21)
+    {
+        return $this->searchMedia([
+            'table'       => 'video',
+            'alias'       => 'v',
+            'selectCols'  => 'v.*, u.username AS uploader_name',
+            'uploaderAlias' => 'uploader_name',
+            'matchCols'   => ['v.title', 'v.search_metadata'],
+            'sessionKey'  => 'seen_video_ids',
+            'orderBy'     => 'v.upload_date DESC',
+            'q'           => $q,
+            'exclude'     => $exclude,
+            'sidebar'     => $sidebar,
+            'offset'      => $offset,
+            'limit'       => $fetchLimit,
+        ]);
+    }
+
+    public function countSearchVideo(string $q, int $exclude = 0): int
+    {
+        return $this->countSearchMedia([
+            'table'     => 'video',
+            'alias'     => 'v',
+            'matchCols' => ['v.title', 'v.search_metadata'],
+            'q'         => $q,
+            'exclude'   => $exclude,
+        ]);
     }
 
     
@@ -317,124 +366,31 @@ class MediaLibrary
 
     public function searchMusic(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0, int $fetchLimit = 21)
     {
-        $limit = $fetchLimit; 
-
-        if (empty($q)) {
-            if ($sidebar) {
-                $sidebar_limit = 15;
-                $count_res = $this->conn->query("SELECT COUNT(*) AS total FROM music");
-                $total = (int)($count_res ? $count_res->fetch_assoc()['total'] : 0);
-
-                $seen_ids = $_SESSION['seen_music_ids'] ?? [];
-                $exclude_ids = array_merge([$exclude], $seen_ids);
-
-                if ($total < 1000) {
-                    $id_result = $this->conn->query("SELECT id FROM music WHERE id != {$exclude}");
-                    $all_ids = [];
-                    if ($id_result) {
-                        while ($row = $id_result->fetch_assoc()) {
-                            $all_ids[] = (int)$row['id'];
-                        }
-                    }
-                    $available = array_values(array_diff($all_ids, $exclude_ids));
-                    if (empty($available)) {
-                        $_SESSION['seen_music_ids'] = [];
-                        $available = array_values(array_diff($all_ids, [$exclude]));
-                    }
-                    shuffle($available);
-                    $picked_ids = array_slice($available, 0, $sidebar_limit);
-                } else {
-                    $extra = min($sidebar_limit * 2, 40);
-                    $sql = "SELECT id FROM music WHERE id != ? ORDER BY RAND() LIMIT ?";
-                    $stmt_ids = $this->conn->prepare($sql);
-                    $stmt_ids->bind_param("ii", $exclude, $extra);
-                    $stmt_ids->execute();
-                    $id_result = $stmt_ids->get_result();
-                    $candidate_ids = [];
-                    if ($id_result) {
-                        while ($row = $id_result->fetch_assoc()) {
-                            $candidate_ids[] = (int)$row['id'];
-                        }
-                    }
-                    $available = array_values(array_diff($candidate_ids, $exclude_ids));
-                    if (empty($available)) {
-                        $_SESSION['seen_music_ids'] = [];
-                        $available = array_values(array_diff($candidate_ids, [$exclude]));
-                    }
-                    shuffle($available);
-                    $picked_ids = array_slice($available, 0, $sidebar_limit);
-                }
-
-                if (empty($picked_ids)) {
-                    $stmt = $this->conn->prepare(
-                        "SELECT m.*, u.username AS uploader FROM music m
-                         JOIN users u ON m.user_id = u.id WHERE 1 = 0"
-                    );
-                } else {
-                    $placeholders = implode(',', array_fill(0, count($picked_ids), '?'));
-                    $types = str_repeat('i', count($picked_ids));
-                    $sql = "SELECT m.*, u.username AS uploader FROM music m
-                            JOIN users u ON m.user_id = u.id
-                            WHERE m.id IN ({$placeholders}) ORDER BY FIELD(m.id, {$placeholders})";
-                    $all_params = array_merge($picked_ids, $picked_ids);
-                    $stmt = $this->conn->prepare($sql);
-                    $stmt->bind_param($types . $types, ...$all_params);
-                }
-            } else {
-
-                $stmt = $this->conn->prepare(
-                    "SELECT m.*, u.username AS uploader FROM music m
-                     JOIN users u ON m.user_id = u.id
-                     ORDER BY m.id DESC LIMIT ? OFFSET ?"
-                );
-                $stmt->bind_param("ii", $limit, $offset);
-            }
-        } else {
-            $stmt = $this->conn->prepare(
-                "SELECT m.*, u.username AS uploader,
-                 (MATCH(m.title, m.artist, m.search_metadata) AGAINST (? IN BOOLEAN MODE)) AS rank
-                 FROM music m
-                 JOIN users u ON m.user_id = u.id
-                 WHERE MATCH(m.title, m.artist, m.search_metadata) AGAINST (? IN BOOLEAN MODE) AND m.id != ?
-                 ORDER BY rank DESC, m.title ASC LIMIT ? OFFSET ?"
-            );
-            $stmt->bind_param("ssiii", $q, $q, $exclude, $limit, $offset);
-        }
-        try {
-            $stmt->execute();
-        } catch (\mysqli_sql_exception $e) {
-            return null;
-        }
-        $result = $stmt->get_result();
-        return $result ?: null;
+        return $this->searchMedia([
+            'table'       => 'music',
+            'alias'       => 'm',
+            'selectCols'  => 'm.*, u.username AS uploader',
+            'uploaderAlias' => 'uploader',
+            'matchCols'   => ['m.title', 'm.artist', 'm.search_metadata'],
+            'sessionKey'  => 'seen_music_ids',
+            'orderBy'     => 'm.id DESC',
+            'q'           => $q,
+            'exclude'     => $exclude,
+            'sidebar'     => $sidebar,
+            'offset'      => $offset,
+            'limit'       => $fetchLimit,
+        ]);
     }
 
     public function countSearchMusic(string $q, int $exclude = 0): int
     {
-        if (empty($q)) {
-            $stmt = $this->conn->prepare(
-                "SELECT COUNT(*) AS total FROM music m
-                 JOIN users u ON m.user_id = u.id
-                 WHERE m.id != ?"
-            );
-            $stmt->bind_param("i", $exclude);
-        } else {
-            $stmt = $this->conn->prepare(
-                "SELECT COUNT(*) AS total FROM music m
-                 JOIN users u ON m.user_id = u.id
-                 WHERE MATCH(m.title, m.artist, m.search_metadata) AGAINST (? IN BOOLEAN MODE)
-                   AND m.id != ?"
-            );
-            $stmt->bind_param("si", $q, $exclude);
-        }
-
-        try {
-            $stmt->execute();
-        } catch (\mysqli_sql_exception $e) {
-            return 0;
-        }
-        $res = $stmt->get_result();
-        return $res ? (int)$res->fetch_assoc()['total'] : 0;
+        return $this->countSearchMedia([
+            'table'     => 'music',
+            'alias'     => 'm',
+            'matchCols' => ['m.title', 'm.artist', 'm.search_metadata'],
+            'q'         => $q,
+            'exclude'   => $exclude,
+        ]);
     }
 
     private function buildMusicWhere(string $format, string $artist): array

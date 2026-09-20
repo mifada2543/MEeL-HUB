@@ -391,6 +391,7 @@ function attachMiniPlayerVideoCardListeners(e) {
         ((e.dataset.miniIntercepted = "1"),
         e.addEventListener("click", async (t) => {
           if (!isMiniPlayerActive) return;
+          if (window.meelHealthAlertActive) return;
           t.preventDefault();
           autoNextEnabled = false;
           localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false");

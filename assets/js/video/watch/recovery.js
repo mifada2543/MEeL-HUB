@@ -48,17 +48,13 @@ function destroyPlayer() {
   }
 }
 function showReconnectingIndicator() {
-  const wrapper = document.getElementById("main-video-wrapper");
-  if (!wrapper) return;
-  const existing = document.getElementById("meel-reconnect-indicator");
-  existing && existing.remove();
-  const indicator = document.createElement("div");
-  indicator.id = "meel-reconnect-indicator";
-  indicator.className =
-    "absolute inset-0 bg-[#080a0f]/95 flex flex-col items-center justify-center z-[100] text-white gap-3 p-4 text-center rounded-none sm:rounded-none";
-  indicator.innerHTML =
-    '\n    <div class="animate-spin h-8 w-8 border-4 border-red-600 border-t-transparent rounded-full"></div>\n    <div class="text-sm font-bold uppercase tracking-wider text-white">Sambungan Media Terputus</div>\n    <div class="text-xs text-gray-500">Mencoba menghubungkan kembali secara otomatis...</div>\n  ';
-  wrapper.appendChild(indicator);
+  if (!window._videoReconnectOverlay) {
+    window._videoReconnectOverlay = meelCreateReconnectOverlay({
+      containerId: "main-video-wrapper",
+      color: "red",
+    });
+  }
+  window._videoReconnectOverlay.show();
 }
 function checkMediaAndRecover() {
   if (isCheckingStatus) return;
@@ -74,11 +70,10 @@ function checkMediaAndRecover() {
     (console.warn("Batas percobaan pemulihan tercapai, berhenti mencoba."),
       (isCheckingStatus = !1),
       (recoveryRetryCount = 0));
-    const e = document.getElementById("meel-reconnect-indicator");
+    const e = document.getElementById("meel-reconnect-overlay");
     return void (
-      e &&
-      (e.innerHTML =
-        '\n        <div class="flex flex-col items-center gap-3 p-4 text-center">\n          <div class="text-xs text-gray-500">Tidak dapat terhubung ke media.</div>\n          <button onclick="window.location.reload()" class="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl transition-all border-none cursor-pointer">Muat Ulang Halaman</button>\n        </div>\n      ')
+      e && window._videoReconnectOverlay &&
+      window._videoReconnectOverlay.showFailed()
     );
   }
   ((isCheckingStatus = !0),
@@ -98,8 +93,7 @@ function checkMediaAndRecover() {
           (lastSuccessfulRecovery = Date.now()));
         const e = player ? player.currentTime : 0;
         e > 0 && localStorage.setItem(storageKeyVideo, e);
-        const t = document.getElementById("meel-reconnect-indicator");
-        (t && t.remove(),
+        window._videoReconnectOverlay && window._videoReconnectOverlay.hide(),
           (isRecovering = !0),
           (isAutoRecovering = !0),
           window.htmx
@@ -109,7 +103,7 @@ function checkMediaAndRecover() {
                 swap: "outerHTML",
               })
             : window.location.reload(),
-          (isCheckingStatus = !1));
+          (isCheckingStatus = !1);
       } else
         (console.log(
           "Media masih offline (kembalian server bukan file media). Menguji ulang dalam 3 detik...",
@@ -148,26 +142,19 @@ function triggerPlayerRecovery() {
       : ((lastRecoveryTime = e), stopStuckDetector(), checkMediaAndRecover());
 }
 function startStuckDetector() {
-  (stopStuckDetector(),
-    (stuckCheckInterval = setInterval(() => {
-      if (
-        !player ||
-        (hasEverPlayed && player.paused) ||
-        isRecovering ||
-        isTransitioningNext
-      )
-        return;
-      if (document.hidden) return;
-      const e = player.currentTime,
-        t = Date.now();
-      e === lastPlayTime
-        ? (t - lastTimeUpdateTimestamp) / 1e3 >= 6 && triggerPlayerRecovery()
-        : ((lastPlayTime = e), (lastTimeUpdateTimestamp = t));
-    }, 2e3)));
+  if (!window._videoStuckDetector) {
+    window._videoStuckDetector = meelCreateStuckDetector({
+      interval: 2000,
+      threshold: 6,
+      isPaused: function () { return hasEverPlayed && player && player.paused; },
+      getCurrentTime: function () { return player ? player.currentTime : 0; },
+      onStuck: function () { triggerPlayerRecovery(); },
+    });
+  }
+  window._videoStuckDetector.start();
 }
 function stopStuckDetector() {
-  stuckCheckInterval &&
-    (clearInterval(stuckCheckInterval), (stuckCheckInterval = null));
+  window._videoStuckDetector && window._videoStuckDetector.stop();
 }
 function registerHlsErrorListener(hlsInstance) {
   hlsInstance.on(Hls.Events.ERROR, function (_event, data) {
@@ -205,14 +192,17 @@ function registerVideoErrorListener(videoEl) {
   });
 }
 function startWaitingTimeout() {
-  (stopWaitingTimeout(),
-    (waitingTimeout = setTimeout(() => {
-      (console.warn(
-        "Video menunggu data terlalu lama (>10 detik), trigger recovery",
-      ),
-        triggerPlayerRecovery());
-    }, 1e4)));
+  if (!window._videoWaitingTimeout) {
+    window._videoWaitingTimeout = meelCreateWaitingTimeout({
+      timeout: 10000,
+      onTimeout: function () {
+        console.warn("Video menunggu data terlalu lama (>10 detik), trigger recovery");
+        triggerPlayerRecovery();
+      },
+    });
+  }
+  window._videoWaitingTimeout.start();
 }
 function stopWaitingTimeout() {
-  waitingTimeout && (clearTimeout(waitingTimeout), (waitingTimeout = null));
+  window._videoWaitingTimeout && window._videoWaitingTimeout.stop();
 }

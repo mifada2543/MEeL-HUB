@@ -79,27 +79,6 @@ if (isset($_GET['content_only'])) {
     exit;
 }
 
-$__v = function($f) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/../' . $f;
-    if (!isset($mtimeCache[$path])) {
-        $mtimeCache[$path] = @filemtime($path);
-    }
-    return '?v=' . $mtimeCache[$path];
-};
-
-$__vdir = function($dir) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/../' . $dir;
-    if (!isset($mtimeCache[$path])) {
-        $max = 0;
-        foreach (glob($path . '/*.js') ?: [] as $f) {
-            $max = max($max, (int)@filemtime($f));
-        }
-        $mtimeCache[$path] = $max;
-    }
-    return '?v=' . $mtimeCache[$path];
-};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -113,7 +92,7 @@ $__vdir = function($dir) {
     <title>MEeL Music | Library</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= $__v('assets/css/music/' . $__f) ?>">
+    <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
     <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/music/index/main.css">
     <script src="../assets/js/compatibilitas/htmx.min.js" defer></script>
@@ -442,15 +421,15 @@ $__vdir = function($dir) {
             playlistId: <?= (int)$playlist_id_from_url ?>
         };
     </script>
-    <script src="../assets/js/shared/state-keys.js<?= $__v('assets/js/shared/state-keys.js') ?>"></script>
-    <script src="../assets/js/shared/format-time.js<?= $__v('assets/js/shared/format-time.js') ?>"></script>
-    <script src="../assets/js/shared/keyboard.js<?= $__v('assets/js/shared/keyboard.js') ?>"></script>
+    <script src="../assets/js/shared/state-keys.js<?= meel_asset_version('assets/js/shared/state-keys.js') ?>"></script>
+    <script src="../assets/js/shared/format-time.js<?= meel_asset_version('assets/js/shared/format-time.js') ?>"></script>
+    <script src="../assets/js/shared/keyboard.js<?= meel_asset_version('assets/js/shared/keyboard.js') ?>"></script>
     <script src="../assets/js/compatibilitas/plyr.min.js"></script>
-    <script src="../assets/js/shared/plyr-config.js<?= $__v('assets/js/shared/plyr-config.js') ?>"></script>
-    <script src="../assets/js/shared/audio-engine.js<?= $__v('assets/js/shared/audio-engine.js') ?>"></script>
-    <script src="../assets/js/shared/view-router.js<?= $__v('assets/js/shared/view-router.js') ?>"></script>
-    <script src="../assets/js/music/shared/mini-player.js<?= $__v('assets/js/music/shared/mini-player.js') ?>"></script>
-    <script src="../assets/js/music/index/main.js<?= $__vdir('assets/js/music/index') ?>"></script>
+    <script src="../assets/js/shared/plyr-config.js<?= meel_asset_version('assets/js/shared/plyr-config.js') ?>"></script>
+    <script src="../assets/js/shared/audio-engine.js<?= meel_asset_version('assets/js/shared/audio-engine.js') ?>"></script>
+    <script src="../assets/js/shared/view-router.js<?= meel_asset_version('assets/js/shared/view-router.js') ?>"></script>
+    <script src="../assets/js/music/shared/mini-player.js<?= meel_asset_version('assets/js/music/shared/mini-player.js') ?>"></script>
+    <script src="../assets/js/music/index/main.js<?= meel_asset_dir_version('assets/js/music/index') ?>"></script>
     <?php include '../partials/footer.php'; ?>
 </body>
 

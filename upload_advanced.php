@@ -310,14 +310,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     }
 }
 
-$__v = function ($f) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/' . $f;
-    if (!isset($mtimeCache[$path])) {
-        $mtimeCache[$path] = @filemtime($path);
-    }
-    return '?v=' . $mtimeCache[$path];
-};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -332,7 +324,7 @@ include __DIR__ . '/partials/scripts.php';
 ?>
     <link rel="stylesheet" href="assets/css/up.css">
     <?php foreach (require __DIR__ . '/assets/css/up/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="assets/css/up/<?= $__f ?><?= $__v('assets/css/up/' . $__f) ?>">
+    <link rel="stylesheet" href="assets/css/up/<?= $__f ?><?= meel_asset_version('assets/css/up/' . $__f) ?>">
     <?php endforeach; ?>
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
 </head>
@@ -735,7 +727,7 @@ include __DIR__ . '/partials/scripts.php';
     </main>
 
     <?php include 'partials/footer.php'; ?>
-    <script src="assets/js/up/main.js<?= $__v('assets/js/up/main.js') ?>"></script>
+    <script src="assets/js/up/main.js<?= meel_asset_version('assets/js/up/main.js') ?>"></script>
 </body>
 
 </html>

@@ -355,6 +355,11 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
     set_time_limit(0);
     ignore_user_abort(false);
 
+    while (@ob_get_level()) {
+        @ob_end_clean();
+    }
+    @ob_implicit_flush(true);
+
     $fp = @fopen($realFull, 'rb');
     if ($fp === false) {
         http_response_code(500);

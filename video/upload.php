@@ -32,7 +32,6 @@ if ($meelcoin_enabled) {
     $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, $user_id, $user_role);
 } else {
     $hour_count     = get_hourly_upload_count($conn, $user_id, 'video');
-    $total_uploads  = get_total_upload_count($conn, $user_id, 'video');
     $hourly_limit   = $is_admin ? '∞' : get_upload_hourly_limit($user_role);
 }
 
@@ -41,63 +40,20 @@ $total_uploads = get_total_upload_count($conn, $user_id, 'video');
 $uploader = new Uploader($conn, $user_id, $user);
 
 if (isset($_POST['upload'])) {
-    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
-        $alert_message = 'CSRF token tidak valid.';
-    } else {
-        if ($meelcoin_enabled && !$is_admin) {
-            if (!MeelCoin::canAfford($conn, $user_id, $coin_cost)) {
-                $alert_message = "MEeLCoin tidak cukup! Dibutuhkan {$coin_cost} coin, saldo Anda: {$coin_balance}.";
-            }
-        }
+    $upload_result = meel_handle_upload('video', function ($post, $files) use ($uploader) {
+        return $uploader->processVideo($post, $files, __DIR__ . "/");
+    }, 'upload_video');
 
-            if ($alert_message === '') {
-            $coin_deducted = false;
-            if ($meelcoin_enabled && !$is_admin) {
-                [$spent_ok, $spent_err] = MeelCoin::spend($conn, $user_id, $coin_cost, 'upload');
-                if (!$spent_ok) {
-                    $alert_message = $spent_err;
-                } else {
-                    $coin_deducted = true;
-                    $new_balance = MeelCoin::getBalance($conn, $user_id);
-                    Notification::create($conn, $user_id, 'meelcoin',
-                        'Penggunaan MEeLCoin',
-                        'Upload video "' . htmlspecialchars(trim($_POST['title'])) . '" — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
-                    );
-                }
-            }
-
-            if ($alert_message === '') {
-                $result = $uploader->processVideo($_POST, $_FILES, __DIR__ . "/");
-
-                if ($result['status'] === 'success') {
-                    $status = "success";
-                    if ($meelcoin_enabled && !$is_admin) {
-                        $coin_balance = MeelCoin::getBalance($conn, $user_id);
-                    } else {
-                        $hour_count++;
-                    }
-                    $total_uploads++;
-                    MediaLibrary::clearCountsCache();
-                    log_activity($conn, $user_id, 'upload_video', 'video', (int)($result['id'] ?? 0));
-                } else {
-                    $alert_message = $result['msg'];
-                    if ($coin_deducted) {
-                        MeelCoin::refund($conn, $user_id, $coin_cost, 'upload_failed_refund');
-                    }
-                }
-            }
-        }
+    $status        = $upload_result['status'];
+    $alert_message = $upload_result['alert_message'];
+    if (isset($upload_result['extra']['coin_balance'])) {
+        $coin_balance = $upload_result['extra']['coin_balance'];
+    } elseif ($upload_result['status'] === 'success') {
+        $hour_count = $upload_result['extra']['hour_count'] ?? $hour_count;
     }
+    $total_uploads = $upload_result['extra']['total_uploads'] ?? $total_uploads;
 }
 
-$__v = function($f) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/../' . $f;
-    if (!isset($mtimeCache[$path])) {
-        $mtimeCache[$path] = @filemtime($path);
-    }
-    return '?v=' . $mtimeCache[$path];
-};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -111,7 +67,7 @@ $__v = function($f) {
     <title>MEeL Video | Upload</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= $__v('assets/css/video/' . $__f) ?>">
+    <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= meel_asset_version('assets/css/video/' . $__f) ?>">
     <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime('../assets/css/font.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
@@ -358,7 +314,6 @@ $__v = function($f) {
             </section>
 
         </div>
-        </main>
 
     </div>
 
@@ -390,8 +345,8 @@ $__v = function($f) {
     </div>
     <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
     <script src="../assets/js/compatibilitas/script.min.js"></script>
-    <script src="../assets/js/shared/lang-dropdown.js<?= $__v('assets/js/shared/lang-dropdown.js') ?>"></script>
-    <script src="../assets/js/shared/htmx-lucide.js<?= $__v('assets/js/shared/htmx-lucide.js') ?>"></script>
+    <script src="../assets/js/shared/lang-dropdown.js<?= meel_asset_version('assets/js/shared/lang-dropdown.js') ?>"></script>
+    <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
     <script>
         <?php if ($alert_message !== ""): ?>
             meelAlertRedirect({
@@ -412,8 +367,8 @@ $__v = function($f) {
             });
         <?php endif; ?>
     </script>
-    <script src="../assets/js/shared/upload-progress.js<?= $__v('assets/js/shared/upload-progress.js') ?>"></script>
-    <script src="../assets/js/video/upload/upload.js<?= $__v('assets/js/video/upload/upload.js') ?>"></script>
+    <script src="../assets/js/shared/upload-progress.js<?= meel_asset_version('assets/js/shared/upload-progress.js') ?>"></script>
+    <script src="../assets/js/video/upload/upload.js<?= meel_asset_version('assets/js/video/upload/upload.js') ?>"></script>
 </body>
 
 </html>

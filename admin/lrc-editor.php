@@ -102,10 +102,6 @@ if (is_file($lrc_path)) {
     }
 }
 
-$__v = function($f) {
-    $path = __DIR__ . '/../' . $f;
-    return '?v=' . @filemtime($path);
-};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -114,12 +110,12 @@ $__v = function($f) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LRC Editor — <?= htmlspecialchars($music['title']) ?> — MEeL Music</title>
     <?php include __DIR__ . '/../partials/link.php'; ?>
-    <link rel="stylesheet" href="../assets/css/shared/design-tokens.css<?= $__v('assets/css/shared/design-tokens.css') ?>">
-    <link rel="stylesheet" href="../assets/css/shared/upload-form.css<?= $__v('assets/css/shared/upload-form.css') ?>">
-    <link rel="stylesheet" href="../assets/css/admin/shared/utility.css<?= $__v('assets/css/admin/shared/utility.css') ?>">
-    <link rel="stylesheet" href="../assets/css/admin/edit/shared/main.css<?= $__v('assets/css/admin/edit/shared/main.css') ?>">
-    <link rel="stylesheet" href="../assets/css/admin/edit/music/main.css<?= $__v('assets/css/admin/edit/music/main.css') ?>">
-    <link rel="stylesheet" href="../assets/css/music/lrc-editor.css<?= $__v('assets/css/music/lrc-editor.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/design-tokens.css<?= meel_asset_version('assets/css/shared/design-tokens.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/upload-form.css<?= meel_asset_version('assets/css/shared/upload-form.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin/shared/utility.css<?= meel_asset_version('assets/css/admin/shared/utility.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin/edit/shared/main.css<?= meel_asset_version('assets/css/admin/edit/shared/main.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin/edit/music/main.css<?= meel_asset_version('assets/css/admin/edit/music/main.css') ?>">
+    <link rel="stylesheet" href="../assets/css/music/lrc-editor.css<?= meel_asset_version('assets/css/music/lrc-editor.css') ?>">
 </head>
 <body class="theme-music">
     <div class="page-wrap">
@@ -219,8 +215,8 @@ $__v = function($f) {
 
     <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="../assets/js/compatibilitas/plyr.min.js"></script>
-    <script src="../assets/js/shared/htmx-lucide.js<?= $__v('assets/js/shared/htmx-lucide.js') ?>"></script>
-    <script src="../assets/js/music/lrc-editor.js<?= $__v('assets/js/music/lrc-editor.js') ?>"></script>
+    <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
+    <script src="../assets/js/music/lrc-editor.js<?= meel_asset_version('assets/js/music/lrc-editor.js') ?>"></script>
     <script>
         var MUSIC_ID = <?= (int)$edit_id ?>;
         var MUSIC_FILENAME = <?= json_encode($music['filename']) ?>;

@@ -470,3 +470,81 @@ function meel_insert_music_row(
 }
 
 /* reference build: MEeL-C4H9NO2 [78a1c65c4d60c8d8] */
+
+if (!function_exists('meel_handle_upload')) {
+/**
+ * Handle upload POST flow: CSRF, MeelCoin spend/try/refund, process, log.
+ * Dipakai video/upload.php dan music/upload.php untuk menghilangkan duplikasi.
+ *
+ * @param string $media_type   'video' | 'music'
+ * @param callable $process_fn fn($_POST, $_FILES, $extra) → ['status'=>'success'|'error', 'id'=>int?, 'msg'=>string]
+ * @param string $log_action   nama action untuk log_activity()
+ *
+ * @return array ['status'=>'success'|'error'|'', 'alert_message'=>string, 'extra'=>mixed]
+ *   extra: data tambahan (coin_balance, hour_count, total_uploads) yang perlu dikembalikan ke caller.
+ */
+function meel_handle_upload(string $media_type, callable $process_fn, string $log_action): array
+{
+    global $conn;
+
+    $user_id  = $_SESSION['user_id'];
+    $is_admin = (get_user_role($conn, $user_id) === 'admin');
+
+    $result = ['status' => '', 'alert_message' => '', 'extra' => []];
+
+    // CSRF check
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        $result['alert_message'] = 'CSRF token tidak valid.';
+        return $result;
+    }
+
+    $meelcoin_enabled = MeelCoin::isEnabled($conn);
+    $coin_cost = 0;
+
+    if ($meelcoin_enabled && !$is_admin) {
+        $coin_cost   = MeelCoin::getCost($conn, 'upload');
+        $coin_balance = MeelCoin::getBalance($conn, $user_id);
+        if (!MeelCoin::canAfford($conn, $user_id, $coin_cost)) {
+            $result['alert_message'] = "MEeLCoin tidak cukup! Dibutuhkan {$coin_cost} coin, saldo Anda: {$coin_balance}.";
+            return $result;
+        }
+    }
+
+    $coin_deducted = false;
+    if ($meelcoin_enabled && !$is_admin) {
+        [$spent_ok, $spent_err] = MeelCoin::spend($conn, $user_id, $coin_cost, 'upload');
+        if (!$spent_ok) {
+            $result['alert_message'] = $spent_err;
+            return $result;
+        }
+        $coin_deducted = true;
+        $new_balance = MeelCoin::getBalance($conn, $user_id);
+        Notification::create($conn, $user_id, 'meelcoin',
+            'Penggunaan MEeLCoin',
+            'Upload ' . $media_type . ' "' . htmlspecialchars(trim($_POST['title'] ?? '')) . '" — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
+        );
+    }
+
+    // Process upload
+    $process_result = $process_fn($_POST, $_FILES);
+
+    if ($process_result['status'] === 'success') {
+        $result['status'] = 'success';
+        if ($meelcoin_enabled && !$is_admin) {
+            $result['extra']['coin_balance'] = MeelCoin::getBalance($conn, $user_id);
+        } else {
+            $result['extra']['hour_count'] = get_hourly_upload_count($conn, $user_id, $media_type);
+        }
+        $result['extra']['total_uploads'] = get_total_upload_count($conn, $user_id, $media_type);
+        MediaLibrary::clearCountsCache();
+        log_activity($conn, $user_id, $log_action, $media_type, (int)($process_result['id'] ?? 0));
+    } else {
+        $result['alert_message'] = $process_result['msg'];
+        if ($coin_deducted) {
+            MeelCoin::refund($conn, $user_id, $coin_cost, 'upload_failed_refund');
+        }
+    }
+
+    return $result;
+}
+}
