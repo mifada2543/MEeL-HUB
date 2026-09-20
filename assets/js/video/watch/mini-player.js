@@ -458,6 +458,12 @@ function attachMiniPlayerVideoCardListeners(e) {
                 id: p,
                 title: r,
                 uploader: i,
+                thumbnail: l.thumbnail || "",
+              }),
+              meelUpdateMediaSession({
+                title: r,
+                artist: i,
+                artwork: l.thumbnail || "",
               }),
               initPlayer(),
               updateMiniPlayerInfo(r, i),

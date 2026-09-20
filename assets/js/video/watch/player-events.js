@@ -242,6 +242,11 @@ function setupMeelPlayerEvents() {
         (videoSrc = s),
         (isHls = c),
         (vttSrc = p),
+        meelUpdateMediaSession({
+          title: videoTitle,
+          artist: videoUploader,
+          artwork: u.thumbnail || "",
+        }),
         isMiniPlayerActive && updateMiniPlayerInfo(videoTitle, videoUploader),
         (function () {
           var fsT = document.querySelector(".meel-fs-title-text");

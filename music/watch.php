@@ -55,8 +55,8 @@ $__vdir = function($dir) {
     <?php
     $__thumb_raw = music_thumbnail_url($v['thumbnail']);
     $__og_image  = str_starts_with($__thumb_raw, '../')
-        ? detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/' . substr($__thumb_raw, 3)
-        : detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/music/' . ltrim($__thumb_raw, '/');
+        ? base_url('/' . ltrim(substr($__thumb_raw, 3), '/'))
+        : base_url('/music/' . ltrim($__thumb_raw, '/'));
     ?>
     <meta property="og:image" content="<?= $__og_image ?>">
     <meta property="og:image:width" content="512">
@@ -654,6 +654,7 @@ $__vdir = function($dir) {
             if (options) options.classList.add('hidden');
         };
     </script>
+    <script src="../assets/js/shared/media-session.js<?= $__v('assets/js/shared/media-session.js') ?>"></script>
     <script src="../assets/js/compatibilitas/plyr.min.js"></script>
     <script src="../assets/js/shared/state-keys.js<?= $__v('assets/js/shared/state-keys.js') ?>"></script>
     <script src="../assets/js/shared/keyboard.js<?= $__v('assets/js/shared/keyboard.js') ?>"></script>
