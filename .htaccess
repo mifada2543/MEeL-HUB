@@ -17,12 +17,6 @@ DirectoryIndex index.php index.html
     </IfModule>
 </FilesMatch>
 
-# ── PWA: /sw.js disajikan dari generator PHP (precache dinamis dari manifest.php) ──
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteRule ^sw\.js$ sw.js.php [END]
-</IfModule>
-
 # ── SEO: /sitemap.xml & /robots.txt disajikan dari FILE FISIK (regenerate
 # via CLI: php sitemap.php [base-url]). Generator sitemap.php/robots.php
 # TIDAK boleh dieksekusi lewat browser — diblokir di FilesMatch di atas ──
@@ -54,6 +48,10 @@ DirectoryIndex index.php index.html
 # 3) Catch-all: semua yang bukan file/aset nyata → router.php
 # ═══════════════════════════════════════════════════════════════════════
 <IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # ── 0. PWA: /sw.js → sw.js.php (MUST be first — before any R=301) ──
+    RewriteRule ^sw\.js$ sw.js.php [END]
 
     # ── 1. Redirect 301: .php lama → bersih (query dipertahankan via QSA) ──
     # PENTING: target memakai %{REQUEST_URI} capture (%1) sehingga hasil

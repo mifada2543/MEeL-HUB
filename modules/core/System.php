@@ -183,9 +183,10 @@ class System
 
         $uptime_raw = @file_get_contents('/proc/uptime');
         $uptime_sec = (float) explode(' ', (string) $uptime_raw)[0];
-        $days  = floor($uptime_sec / 86400);
-        $hours = floor(($uptime_sec % 86400) / 3600);
-        $mins  = floor(($uptime_sec % 3600) / 60);
+        $up_int     = intval($uptime_sec);
+        $days  = intdiv($up_int, 86400);
+        $hours = intdiv($up_int % 86400, 3600);
+        $mins  = intdiv($up_int % 3600, 60);
 
         $net_rx = 0;
         $net_tx = 0;

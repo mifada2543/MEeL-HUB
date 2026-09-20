@@ -95,6 +95,9 @@ final class MeelRouter
         'api/chat'               => ['handler' => 'controllers/api/chat.php',              'script' => '/controllers/api/chat.php'],
         'api/meelcoin'           => ['handler' => 'controllers/api/meelcoin.php',           'script' => '/controllers/api/meelcoin.php'],
         'system/mfa'             => ['handler' => 'controllers/system/mfa.php',            'script' => '/controllers/system/mfa.php'],
+
+        // PWA: sw.js served via PHP (fallback if .htaccess rewrite fails)
+        'sw.js'                  => ['handler' => 'sw.js.php',                              'script' => '/sw.js.php'],
     ];
 
     // Rute modul OPSIONAL (mis. Arcade) — dipisah agar modul bisa hilang

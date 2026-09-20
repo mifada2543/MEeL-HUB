@@ -20,6 +20,7 @@ spl_autoload_register(function (string $class) {
         'ValidatingProxy'     => __DIR__ . '/auth/ValidatingProxy.php',
         'SearchEngine'        => __DIR__ . '/media/SearchEngine.php',
         'DriveService'       => __DIR__ . '/../drive/DriveService.php',
+        'DriveUserContext'   => __DIR__ . '/../drive/DriveService.php',
         'SwPrecache'         => __DIR__ . '/core/SwPrecache.php',
     ];
 
