@@ -91,7 +91,18 @@ const plyrOptions = {
     fullscreen: { enabled: !0, fallback: !0, iosNative: !1 },
     clickToPlay: !isTouchDevice,
     previewThumbnails: { enabled: "" !== vttSrc, src: vttSrc },
-    mediaMetadata: {},
+    mediaMetadata: (function () {
+      var cfg = window.playerConfig || {};
+      return cfg.title
+        ? {
+            title: cfg.title,
+            artist: cfg.uploader || "",
+            artwork: cfg.thumbnail
+              ? [{ src: cfg.thumbnail, sizes: "512x512", type: "image/jpeg" }]
+              : [],
+          }
+        : {};
+    })(),
   },
   HLS_CONFIG = {
     maxBufferLength: 45,

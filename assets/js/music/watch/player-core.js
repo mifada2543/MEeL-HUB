@@ -716,6 +716,13 @@
     
     
     saveAudioState();
+    if (window.meelUpdateMediaSession) {
+      meelUpdateMediaSession({
+        title: window.MEEL_MUSIC_CONFIG.title || "",
+        artist: window.MEEL_MUSIC_CONFIG.artist || "",
+        artwork: window.MEEL_MUSIC_CONFIG.thumbnailUrl || "",
+      });
+    }
     if (engine.__armLoadingTimeout) engine.__armLoadingTimeout();
 
     const modalEl = document.getElementById("resume-modal"),

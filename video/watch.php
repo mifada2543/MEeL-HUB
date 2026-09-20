@@ -52,8 +52,8 @@ $__vdir = function($dir) {
     $__thumb_name = $v['thumbnail'] ?? '';
     $__thumb_ok   = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . basename($__thumb_name));
     $__og_image   = $__thumb_ok
-        ? detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/video/upload/thumbnail/' . rawurlencode($__thumb_name)
-        : detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/assets/img/video0.webp';
+        ? base_url('/video/upload/thumbnail/' . rawurlencode($__thumb_name))
+        : base_url('/assets/img/video0.webp');
     ?>
     <meta property="og:image" content="<?= htmlspecialchars($__og_image, ENT_QUOTES, 'UTF-8') ?>">
     <meta property="og:image:width" content="1280">
@@ -400,6 +400,7 @@ $__vdir = function($dir) {
     </main>
 
     <?php include '../partials/footer.php'; ?>
+    <script src="../assets/js/shared/media-session.js<?= $__v('assets/js/shared/media-session.js') ?>"></script>
     <script src="../assets/js/compatibilitas/plyr.min.js"></script>
 
     <script>
@@ -409,7 +410,8 @@ $__vdir = function($dir) {
                                     'vttSrc' => $vtt_src ?? '',
                                                         'id' => (int)$id,
                                     'title' => $v['title'] ?? '',
-                                    'uploader' => $v['uploader'] ?? ''
+                                    'uploader' => $v['uploader'] ?? '',
+                                    'thumbnail' => $__og_image
                                 ]); ?>;
     </script>
     <script src="../assets/js/shared/state-keys.js<?= $__v('assets/js/shared/state-keys.js') ?>"></script>
