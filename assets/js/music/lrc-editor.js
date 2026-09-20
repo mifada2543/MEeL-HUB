@@ -262,7 +262,9 @@
     if (!seekbar || !audioEl || !audioEl.duration) return;
     var pct = (audioEl.currentTime / audioEl.duration) * 100;
     seekbar.value = Math.floor(pct * 10);
-    seekbar.style.background = "linear-gradient(to right, #f97316 " + pct + "%, rgba(255,255,255,0.1) " + pct + "%)";
+    var trackColor = document.documentElement.getAttribute("data-theme") === "light"
+      ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.1)";
+    seekbar.style.background = "linear-gradient(to right, #f97316 " + pct + "%, " + trackColor + " " + pct + "%)";
   }
 
   function highlightActiveLine() {

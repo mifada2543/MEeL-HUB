@@ -321,7 +321,7 @@ if (isset($_POST['adjust_meelcoin_user'])) {
         $action_label = $action === 'add' ? 'tambah' : 'kurang';
         log_activity($conn, $admin_id, $action_label . '-' . $actual . 'coin-' . $target_username, 'user', $target_id);
 
-        $action_lbl = $action === 'add' ? 'ditambahkan' : 'dikurangi';
+        $action_lbl = $action === 'add' ? 'menambahkan' : 'mengurangi';
         $coin_msg   = 'Admin telah ' . $action_lbl . ' ' . $actual . ' MEeLCoin dari akun Anda.';
         if ($action === 'add' && $actual < $amount) {
             $coin_msg .= ' (Dibatasi max ' . $coin_max . ' coin)';

@@ -1,26 +1,9 @@
 <?php
 
+// Prevent session timeout redirect (API context)
+define('MEEL_API_CONTEXT', true);
 
-require_once __DIR__ . '/../../../modules/auth/helpers/session.php';
-meel_boot_session();
-
-require_once __DIR__ . '/../../../auth/settings.php';
-$conn = new mysqli($server, $username, $password, $db);
-if ($conn->connect_error) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Database connection failed']);
-    exit;
-}
-$conn->set_charset('utf8mb4');
-
-require_once __DIR__ . '/../../../modules/auth/helpers/user.php';
-require_once __DIR__ . '/../../../modules/auth/helpers/authz.php';
-require_once __DIR__ . '/../../../modules/auth/helpers/csrf.php';
-
-// Helper upload bersama (meel_reserve_unique_filename) — satu sumber
-// kebenaran untuk alokasi nama file atomik.
-require_once __DIR__ . '/../../../modules/core/helpers/upload.php';
-
+require_once __DIR__ . '/../../../auth/config.php';
 
 $FFMPEG_BIN  = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== '' ? MEEL_FFMPEG_PATH : 'ffmpeg';
 $FFPROBE_BIN = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== '' ? MEEL_FFPROBE_PATH : 'ffprobe';
@@ -67,8 +50,6 @@ function get_auth_user() {
     ];
 }
 
-
-
 function probe_duration(string $filepath): float {
     global $FFPROBE_BIN;
     $cmd = escapeshellarg($FFPROBE_BIN)
@@ -79,8 +60,6 @@ function probe_duration(string $filepath): float {
     return ($duration > 0) ? $duration : 0;
 }
 
-
-
 function probe_audio_info(string $filepath): array {
     global $FFPROBE_BIN;
     $cmd = escapeshellarg($FFPROBE_BIN)
@@ -90,8 +69,6 @@ function probe_audio_info(string $filepath): array {
     $data = json_decode($json, true);
     return $data ?? [];
 }
-
-
 
 function transcode_flac_to_opus(string $input, string $output): ?string {
     global $FFMPEG_BIN;
@@ -108,8 +85,6 @@ function transcode_flac_to_opus(string $input, string $output): ?string {
     return false;
 }
 
-
-
 function validate_audio_mime(string $filepath): ?string {
     global $ALLOWED_AUDIO_MIME;
     $finfo = new finfo(FILEINFO_MIME_TYPE);
@@ -117,20 +92,13 @@ function validate_audio_mime(string $filepath): ?string {
     return in_array($mime, $ALLOWED_AUDIO_MIME, true) ? $mime : null;
 }
 
-
-
 function unique_filename(string $base, string $ext, string $dir): string {
-    // Delegasi ke helper bersama (meel_reserve_unique_filename, fopen O_EXCL)
-    // — dua request bersamaan tidak bisa memilih nama yang sama. Placeholder
-    // kosong dibuat lalu ditimpa oleh move_uploaded_file/transcoder.
     $reserved = meel_reserve_unique_filename($dir, $base, $ext, 200);
     if ($reserved !== null) {
         return $reserved;
     }
     return $base . '.' . $ext;
 }
-
-
 
 function sanitize_filename(string $name): string {
     $name = preg_replace('/[^\w\-]/u', '_', $name);

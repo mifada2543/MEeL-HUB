@@ -158,6 +158,8 @@ class DownloadService extends TranscoderBase
             throw $e;
         }
 
+        try {
+
         $title_candidates = array_values(array_filter(
             [$meta['title'] ?? '', $meta['fulltitle'] ?? '', $meta['alt_title'] ?? '', $meta['track'] ?? ''],
             fn($t) => $t !== '' && mb_substr(trim($t), -3) !== '...'
@@ -244,7 +246,9 @@ class DownloadService extends TranscoderBase
             $line = fgets($dl_out);
             if ($line === false) break;
 
-            $error_log .= $line;
+            if (strlen($error_log) < 65536) {
+                $error_log .= $line;
+            }
 
             
             if (preg_match('/Retrying\s+fragment[s]?\b/i', $line)) {
@@ -343,6 +347,11 @@ class DownloadService extends TranscoderBase
             return $this->finalizeMusic($temp_id, $title, $artist, $album, $duration, $description);
         }
         return $this->finalizeVideo($basename, $basename . ".webp", $title, $duration, $description);
+
+        } catch (\Throwable $e) {
+            try { $this->releaseQueue($queue_id, 'failed'); } catch (\Throwable $ignore) {}
+            throw $e;
+        }
     }
 
     private function finalizeMusic(
