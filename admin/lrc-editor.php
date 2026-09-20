@@ -140,12 +140,12 @@ $__v = function($f) {
 
         <main style="height:calc(100vh - 56px);display:flex;flex-direction:column;overflow:hidden;">
             <?php if ($save_status): ?>
-                <div id="save-status-alert" style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#4ade80;padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;flex-shrink:0;transition:opacity 0.5s, max-height 0.5s;max-height:60px;overflow:hidden;">
+                <div id="save-status-alert" class="editor-alert-success" style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;flex-shrink:0;transition:opacity 0.5s, max-height 0.5s;max-height:60px;overflow:hidden;">
                     ✓ <?= htmlspecialchars($save_status) ?>
                 </div>
             <?php endif; ?>
             <?php if ($error_msg): ?>
-                <div id="save-status-alert" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);color:#f87171;padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;flex-shrink:0;transition:opacity 0.5s, max-height 0.5s;max-height:60px;overflow:hidden;">
+                <div id="save-status-alert" class="editor-alert-error" style="padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;flex-shrink:0;transition:opacity 0.5s, max-height 0.5s;max-height:60px;overflow:hidden;">
                     <?= htmlspecialchars($error_msg) ?>
                 </div>
             <?php endif; ?>
@@ -176,9 +176,9 @@ $__v = function($f) {
                 <div id="mode-simple" class="editor-mode-panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
                     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:16px;">
                         <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:#455060;margin-bottom:8px;">Lirik Tertanam</label>
-                        <textarea name="lyrics_content" id="lyrics-textarea"
+                        <textarea name="lyrics_content" id="lyrics-textarea" class="editor-textarea"
                             placeholder="Paste atau ketik lirik di sini...&#10;&#10;Format: satu baris per lirik.&#10;Bisa langsung paste dari website lirik."
-                            style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;color:#e5e7eb;font-size:14px;line-height:1.8;resize:none;font-family:inherit;"><?= htmlspecialchars($current_content) ?></textarea>
+                            style="flex:1;border-radius:12px;padding:16px;font-size:14px;line-height:1.8;resize:none;font-family:inherit;"><?= htmlspecialchars($current_content) ?></textarea>
                     </div>
                 </div>
 

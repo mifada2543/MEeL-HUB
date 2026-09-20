@@ -364,7 +364,7 @@ include __DIR__ . '/../partials/link.php';
                         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
                             <div>
                                 <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Lirik / Lyrics</div>
-                                <div style="font-size:10px;color:#cbd5e1;margin-top:2px;">Kelola lirik untuk fitur karaoke</div>
+                                <div class="lyrics-subtitle">Kelola lirik untuk fitur karaoke</div>
                             </div>
                             <a href="<?= base_url('/' . ($_EDIT_CONTEXT === 'admin' ? 'admin' : 'profile') . '/lrc-editor?id=' . (int)$id) ?>"
                                 class="btn-secondary" style="font-size:10px;padding:6px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
@@ -381,7 +381,7 @@ include __DIR__ . '/../partials/link.php';
                                 <?php foreach ($existing_lyrics as $_ly): ?>
                                     <div class="lyrics-row">
                                         <i data-lucide="file-text" style="width:13px;height:13px;color:var(--accent);flex-shrink:0;"></i>
-                                        <span style="font-size:11px;color:#cbd5e1;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= htmlspecialchars($_ly['file']) ?></span>
+                                        <span class="lyrics-filename"><?= htmlspecialchars($_ly['file']) ?></span>
                                         <form method="POST" style="display:inline;" onsubmit="return confirm('Hapus lirik ini?')">
                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                                             <input type="hidden" name="delete_lyrics_lang" value="<?= htmlspecialchars($_ly['lang']) ?>">
@@ -393,7 +393,7 @@ include __DIR__ . '/../partials/link.php';
                                 <?php endforeach; ?>
                             </div>
                         <?php else: ?>
-                            <div style="font-size:11px;color:#6b7280;">Belum ada lirik. Tambahkan via LRC Editor.</div>
+                            <div class="lyrics-empty">Belum ada lirik. Tambahkan via LRC Editor.</div>
                         <?php endif; ?>
                     </div>
 

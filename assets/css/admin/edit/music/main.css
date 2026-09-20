@@ -58,4 +58,50 @@ body.theme-music .lyrics-delete-btn:hover {
   border-color: rgba(239,68,68,0.3);
   color: #ef4444;
 }
+body.theme-music .lyrics-subtitle {
+  font-size: 10px;
+  color: #cbd5e1;
+  margin-top: 2px;
+}
+body.theme-music .lyrics-filename {
+  font-size: 11px;
+  color: #cbd5e1;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.theme-music .lyrics-empty {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ── Light Theme: lyrics ── */
+html[data-theme="light"] body.theme-music .lyrics-section {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.08);
+}
+html[data-theme="light"] body.theme-music .lyrics-row {
+  background: rgba(0,0,0,0.02);
+  border-color: rgba(0,0,0,0.08);
+}
+html[data-theme="light"] body.theme-music .lyrics-delete-btn {
+  border-color: rgba(0,0,0,0.12);
+  color: #71717a;
+}
+html[data-theme="light"] body.theme-music .lyrics-delete-btn:hover {
+  background: rgba(239,68,68,0.08);
+  border-color: rgba(239,68,68,0.20);
+  color: #dc2626;
+}
+html[data-theme="light"] body.theme-music .lyrics-subtitle {
+  color: #52525b;
+}
+html[data-theme="light"] body.theme-music .lyrics-filename {
+  color: #3f3f46;
+}
+html[data-theme="light"] body.theme-music .lyrics-empty {
+  color: #71717a;
+}
 /* reference build: MEeL-C9H11NO2 [4ec1b2cb9ccb3c07] */
