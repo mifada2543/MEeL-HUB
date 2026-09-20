@@ -90,6 +90,7 @@
   var DIRECT_SCRIPTS = {
     watch: [
       "../assets/js/shared/state-keys.js",
+      "../assets/js/shared/recovery-manager.js",
       "../assets/js/compatibilitas/plyr.min.js",
       "../assets/js/shared/keyboard.js",
       "../assets/js/shared/temp-index.js",
@@ -100,6 +101,7 @@
       "../assets/js/shared/audio-engine.js",
       "../assets/js/shared/view-router.js",
       "../assets/js/shared/comment.js",
+      "../assets/js/music/watch/description-toggle.js",
     ],
     index: [
       "../assets/js/shared/format-time.js",
