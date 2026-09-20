@@ -99,49 +99,35 @@
 
     
     const RECOVERY_MAX_RETRIES = 15;
-    const STUCK_CHECK_INTERVAL_MS = 3000;
-    const STUCK_THRESHOLD_S = 6;
     const RECOVERY_COOLDOWN_MS = 8000;
     let recoveryRetryCount = 0;
     let isRecovering = false;
     let lastRecoveryTime = 0;
-    let stuckCheckInterval = null;
-    let lastPlayTime = -1;
-    let lastTimeUpdateTs = 0;
     let hasEverPlayed = false;
-    let waitingTimeout = null;
 
-    function showReconnectIndicator() {
-      var container = document.getElementById('player-container');
-      if (!container) return;
-      var existing = document.getElementById('meel-music-reconnect');
-      if (existing) return;
-      var el = document.createElement('div');
-      el.id = 'meel-music-reconnect';
-      el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(8,10,15,.88);z-index:60;gap:10px;padding:20px;text-align:center;';
-      el.innerHTML = '<div class="animate-spin h-7 w-7 border-2 border-orange-500 border-t-transparent rounded-full"></div>' +
-        '<div style="color:#f97316;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;">Sambungan Terputus</div>' +
-        '<div style="color:#6b7280;font-size:10px;">Menghubungkan kembali secara otomatis...</div>';
-      container.appendChild(el);
-    }
+    var _musicOverlay = meelCreateReconnectOverlay({
+      containerId: "player-container",
+      color: "orange",
+    });
 
-    function hideReconnectIndicator() {
-      var el = document.getElementById('meel-music-reconnect');
-      if (el) el.remove();
-    }
+    var _musicStuckDetector = meelCreateStuckDetector({
+      interval: 3000,
+      threshold: 6,
+      isPaused: function () { return player.paused; },
+      getCurrentTime: function () { return player.currentTime; },
+      onStuck: function () {
+        console.warn('⚠️ Music stream stalled');
+        triggerStreamRecovery();
+      },
+    });
 
-    function showReconnectFailed() {
-      var container = document.getElementById('player-container');
-      if (!container) return;
-      var existing = document.getElementById('meel-music-reconnect');
-      if (existing) existing.remove();
-      var el = document.createElement('div');
-      el.id = 'meel-music-reconnect';
-      el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(8,10,15,.88);z-index:60;gap:12px;padding:20px;text-align:center;';
-      el.innerHTML = '<div style="color:#6b7280;font-size:11px;">Tidak dapat terhubung ke media.</div>' +
-        '<button onclick="window.location.reload()" style="background:#ea580c;color:#000;border:none;padding:8px 20px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;">Muat Ulang</button>';
-      container.appendChild(el);
-    }
+    var _musicWaitingTimeout = meelCreateWaitingTimeout({
+      timeout: 10000,
+      onTimeout: function () {
+        console.warn('⚠️ Music audio waiting >10s, trigger recovery');
+        triggerStreamRecovery();
+      },
+    });
 
     function triggerStreamRecovery() {
       if (isRecovering || !hasEverPlayed || player.paused) return;
@@ -149,14 +135,14 @@
       if (now - lastRecoveryTime < RECOVERY_COOLDOWN_MS) return;
       if (recoveryRetryCount >= RECOVERY_MAX_RETRIES) {
         console.warn('⚠️ Music recovery: max retries reached');
-        showReconnectFailed();
+        _musicOverlay.showFailed();
         return;
       }
       isRecovering = true;
       lastRecoveryTime = now;
       recoveryRetryCount++;
-      stopStuckDetector();
-      showReconnectIndicator();
+      _musicStuckDetector.stop();
+      _musicOverlay.show();
       console.log('🔄 Music stream recovery #' + recoveryRetryCount + '...');
 
       var savedTime = player.currentTime || 0;
@@ -176,8 +162,8 @@
         audio.play().then(function () {
           isRecovering = false;
           recoveryRetryCount = 0;
-          hideReconnectIndicator();
-          startStuckDetector();
+          _musicOverlay.hide();
+          _musicStuckDetector.start();
           console.log('✅ Music stream recovered at ' + Math.floor(savedTime) + 's');
         }).catch(function (err) {
           console.warn('⚠️ Music recovery play() failed:', err);
@@ -192,43 +178,19 @@
     }
 
     function startStuckDetector() {
-      stopStuckDetector();
-      lastPlayTime = -1;
-      lastTimeUpdateTs = Date.now();
-      stuckCheckInterval = setInterval(function () {
-        if (!player || player.paused || isRecovering || isNavigating) return;
-        if (document.hidden) return;
-        var ct = player.currentTime;
-        var now = Date.now();
-        if (ct === lastPlayTime) {
-          if ((now - lastTimeUpdateTs) / 1000 >= STUCK_THRESHOLD_S) {
-            console.warn('⚠️ Music stream stalled (no progress for ' + STUCK_THRESHOLD_S + 's)');
-            triggerStreamRecovery();
-          }
-        } else {
-          lastPlayTime = ct;
-          lastTimeUpdateTs = now;
-        }
-      }, STUCK_CHECK_INTERVAL_MS);
+      _musicStuckDetector.start();
     }
 
     function stopStuckDetector() {
-      if (stuckCheckInterval) {
-        clearInterval(stuckCheckInterval);
-        stuckCheckInterval = null;
-      }
+      _musicStuckDetector.stop();
     }
 
     function startWaitingTimeout() {
-      stopWaitingTimeout();
-      waitingTimeout = setTimeout(function () {
-        console.warn('⚠️ Music audio waiting >10s, trigger recovery');
-        triggerStreamRecovery();
-      }, 10000);
+      _musicWaitingTimeout.start();
     }
 
     function stopWaitingTimeout() {
-      if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
+      _musicWaitingTimeout.stop();
     }
 
     
@@ -237,6 +199,16 @@
       if (code === 2 && hasEverPlayed && !isRecovering) {
         console.warn('⚠️ Audio network error, attempting recovery...');
         triggerStreamRecovery();
+        return;
+      }
+      if (errorHandled) return;
+      errorHandled = true;
+      audioEndedNaturally = false;
+      clearAllTimeouts();
+      hideLoadingOverlay();
+      console.error("❌ Audio error [" + code + "]:", audio.error ? audio.error.message : "Gagal memuat audio");
+      if (isFlacNow()) {
+        showLoadingOverlay("⚠️ FLAC tidak dapat dimuat. Coba refresh halaman atau gunakan format lain.");
       }
     });
 
@@ -257,7 +229,7 @@
       if (isRecovering) {
         isRecovering = false;
         recoveryRetryCount = 0;
-        hideReconnectIndicator();
+        _musicOverlay.hide();
         startStuckDetector();
       }
     });
@@ -272,7 +244,7 @@
       loadingTimeout = secondaryTimeout = null;
     }
     function showLoadingOverlay(msg) {
-      hideReconnectIndicator();
+      _musicOverlay.hide();
       const container = document.getElementById("player-container");
       if (!container) return;
       let overlay = document.getElementById("flac-loading-overlay");
@@ -327,20 +299,6 @@
       }, LOADING_TIMEOUT_MS);
     };
 
-    audio.addEventListener("error", function () {
-      if (errorHandled) return;
-      const errCode = audio.error ? audio.error.code : 0;
-      
-      if (errCode === 2 && hasEverPlayed) return;
-      errorHandled = true;
-      audioEndedNaturally = false;
-      clearAllTimeouts();
-      hideLoadingOverlay();
-      console.error("❌ Audio error [" + errCode + "]:", audio.error ? audio.error.message : "Gagal memuat audio");
-      if (isFlacNow()) {
-        showLoadingOverlay("⚠️ FLAC tidak dapat dimuat. Coba refresh halaman atau gunakan format lain.");
-      }
-    });
     audio.addEventListener("loadedmetadata", function () {
       metadataLoaded = true;
       clearAllTimeouts();
@@ -518,7 +476,7 @@
       stopWaitingTimeout();
       hasEverPlayed = false;
       isRecovering = false;
-      hideReconnectIndicator();
+      _musicOverlay.hide();
       const isGenuineEnd =
         audioEndedNaturally ||
         (player.duration > 0 && Math.abs(player.currentTime - player.duration) < 1.5) ||

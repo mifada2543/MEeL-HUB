@@ -789,11 +789,14 @@ if (!headers_sent()) {
 | `assets/js/video/watch/player-init.js` | Plyr + HLS.js initialization |
 | `assets/js/video/watch/player-events.js` | Event orchestration (auto-next, glow, resume) |
 | `assets/js/video/watch/mini-player.js` | Mini-player floating mode |
-| `assets/js/video/watch/recovery.js` | Player auto-recovery system |
+| `assets/js/video/watch/recovery.js` | Player auto-recovery system — menggunakan factory dari `recovery-manager.js` |
 | `assets/js/video/watch/gestures.js` | Mobile touch gestures |
 | `assets/js/music/watch/main.js` | Entry point folder watch/ — memuat sibling secara sinkron (document.write) |
 | `assets/js/music/watch/mini-player.js` | Mode mini-player music (Spotify-style) — dipisah dari player-core.js |
-| `assets/js/music/watch/player-core.js` | Inti player music (visualizer, EQ, bitrate, logika resume-modal & sesi) |
+| `assets/js/music/watch/player-core.js` | Inti player music (visualizer, EQ, bitrate, Media Session, logika resume-modal & sesi) |
+| `assets/js/music/watch/description-toggle.js` | Toggle "Selengkapnya" deskripsi music + deteksi overflow |
+| `assets/js/shared/recovery-manager.js` | Recovery factory — stuck detector, waiting timeout, reconnect overlay (shared video & music) |
+| `assets/js/shared/media-session.js` | Media Session API helper — memperbarui kontrol media OS dengan artwork/metadata |
 | `assets/js/music/watch/state.js` | Music player state, preset equalizer & marker sesi resume (`window.__meelResumeSessionActive`) |
 | `assets/js/profile/manage.js` | Profile management (edit, delete media) |
 | `assets/js/profile/avatar-crop.js` | Avatar cropping tool |

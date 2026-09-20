@@ -14,20 +14,27 @@
   }
 
   function buildModal() {
-    if (modalEl) return;
-    modalEl = document.getElementById("karaoke-modal");
-    scrollEl = document.getElementById("karaoke-scroll");
-    if (!modalEl || !scrollEl) return;
+    var modal = document.getElementById("karaoke-modal");
+    if (modal && modal === modalEl && modal.isConnected) return;
+    var wasOpen = !!(
+      modalEl &&
+      modalEl !== modal &&
+      !modalEl.classList.contains("hidden")
+    );
 
+    modalEl = modal || null;
+    scrollEl = modal ? document.getElementById("karaoke-scroll") : null;
+    lineEls = [];
+    activeLineIdx = -1;
+    if (!modalEl || !scrollEl) return;
+    if (wasOpen && document.body.style.overflow === "hidden") {
+      document.body.style.overflow = "";
+    }
     var closeBtn = modalEl.querySelector(".karaoke-close-btn");
     if (closeBtn) closeBtn.addEventListener("click", closeKaraoke);
-
-    var backdrop = modalEl;
-    if (backdrop) {
-      backdrop.addEventListener("click", function (e) {
-        if (e.target === backdrop) closeKaraoke();
-      });
-    }
+    modalEl.addEventListener("click", function (e) {
+      if (e.target === modalEl) closeKaraoke();
+    });
   }
 
   function renderLines(langIdx) {
@@ -38,7 +45,8 @@
 
     var data = lyricsData[langIdx];
     if (!data || !data.lines || data.lines.length === 0) {
-      scrollEl.innerHTML = '<div class="karaoke-empty"><i data-lucide="file-text" style="width:32px;height:32px;display:inline-block;"></i><div>Tidak ada lirik tersedia</div></div>';
+      scrollEl.innerHTML =
+        '<div class="karaoke-empty"><i data-lucide="file-text" style="width:32px;height:32px;display:inline-block;"></i><div>Tidak ada lirik tersedia</div></div>';
       if (typeof lucide !== "undefined") lucide.createIcons({}, scrollEl);
       return;
     }
@@ -47,7 +55,12 @@
     for (var i = 0; i < data.lines.length; i++) {
       var text = data.lines[i].text || "";
       if (text === "") text = "\u00A0";
-      html += '<div class="karaoke-line future" data-idx="' + i + '">' + escapeHtml(text) + '</div>';
+      html +=
+        '<div class="karaoke-line future" data-idx="' +
+        i +
+        '">' +
+        escapeHtml(text) +
+        "</div>";
     }
     scrollEl.innerHTML = html;
 
@@ -112,7 +125,8 @@
       var offsetTop = elActive.offsetTop - container.offsetTop;
       var scrollTop = container.scrollTop;
       var containerHeight = container.clientHeight;
-      var targetScroll = offsetTop - containerHeight / 2 + elActive.clientHeight / 2;
+      var targetScroll =
+        offsetTop - containerHeight / 2 + elActive.clientHeight / 2;
       container.scrollTo({ top: targetScroll, behavior: "smooth" });
     }
   }
@@ -128,7 +142,14 @@
     var html = "";
     for (var i = 0; i < lyricsData.length; i++) {
       var active = i === currentLangIdx ? " active" : "";
-      html += '<button class="karaoke-lang-tab' + active + '" data-lang-idx="' + i + '">' + escapeHtml(lyricsData[i].label || lyricsData[i].lang) + '</button>';
+      html +=
+        '<button class="karaoke-lang-tab' +
+        active +
+        '" data-lang-idx="' +
+        i +
+        '">' +
+        escapeHtml(lyricsData[i].label || lyricsData[i].lang) +
+        "</button>";
     }
     tabsContainer.innerHTML = html;
     var tabs = tabsContainer.querySelectorAll(".karaoke-lang-tab");
@@ -159,7 +180,7 @@
   };
 
   window.toggleKaraoke = function () {
-    if (!modalEl) buildModal();
+    buildModal();
     if (!modalEl) return;
     if (modalEl.classList.contains("hidden")) {
       window.openKaraoke();
@@ -221,7 +242,8 @@
   }
 
   document.addEventListener("keydown", function (e) {
-    if (window.meelKeyShortcutIgnored && window.meelKeyShortcutIgnored(e)) return;
+    if (window.meelKeyShortcutIgnored && window.meelKeyShortcutIgnored(e))
+      return;
     if (window.__meelCurrentView !== "watch") return;
     if (e.key.toLowerCase() === "k") {
       e.preventDefault();

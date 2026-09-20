@@ -222,14 +222,6 @@ if (isset($_GET['content_only'])) {
     exit;
 }
 
-$__v = function($f) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/../' . $f;
-    if (!isset($mtimeCache[$path])) {
-        $mtimeCache[$path] = @filemtime($path);
-    }
-    return '?v=' . $mtimeCache[$path];
-};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -244,7 +236,7 @@ $__v = function($f) {
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= $__v('assets/css/music/' . $__f) ?>">
+    <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
     <?php endforeach; ?>
     <link href="../assets/css/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/music/playlist.css?v=<?= filemtime(__DIR__ . '/../assets/css/music/playlist.css') ?>">
@@ -508,15 +500,15 @@ $__v = function($f) {
     </div>
 
     <?php include '../partials/footer.php'; ?>
-    <script src="../assets/js/shared/state-keys.js<?= $__v('assets/js/shared/state-keys.js') ?>"></script>
-    <script src="../assets/js/shared/format-time.js<?= $__v('assets/js/shared/format-time.js') ?>"></script>
-    <script src="../assets/js/shared/keyboard.js<?= $__v('assets/js/shared/keyboard.js') ?>"></script>
+    <script src="../assets/js/shared/state-keys.js<?= meel_asset_version('assets/js/shared/state-keys.js') ?>"></script>
+    <script src="../assets/js/shared/format-time.js<?= meel_asset_version('assets/js/shared/format-time.js') ?>"></script>
+    <script src="../assets/js/shared/keyboard.js<?= meel_asset_version('assets/js/shared/keyboard.js') ?>"></script>
     <script src="../assets/js/compatibilitas/plyr.min.js"></script>
-    <script src="../assets/js/shared/plyr-config.js<?= $__v('assets/js/shared/plyr-config.js') ?>"></script>
-    <script src="../assets/js/shared/audio-engine.js<?= $__v('assets/js/shared/audio-engine.js') ?>"></script>
-    <script src="../assets/js/shared/view-router.js<?= $__v('assets/js/shared/view-router.js') ?>"></script>
-    <script src="../assets/js/music/shared/mini-player.js<?= $__v('assets/js/music/shared/mini-player.js') ?>"></script>
-    <script src="../assets/js/music/view_playlist/view_playlist.js<?= $__v('assets/js/music/view_playlist/view_playlist.js') ?>"></script>
+    <script src="../assets/js/shared/plyr-config.js<?= meel_asset_version('assets/js/shared/plyr-config.js') ?>"></script>
+    <script src="../assets/js/shared/audio-engine.js<?= meel_asset_version('assets/js/shared/audio-engine.js') ?>"></script>
+    <script src="../assets/js/shared/view-router.js<?= meel_asset_version('assets/js/shared/view-router.js') ?>"></script>
+    <script src="../assets/js/music/shared/mini-player.js<?= meel_asset_version('assets/js/music/shared/mini-player.js') ?>"></script>
+    <script src="../assets/js/music/view_playlist/view_playlist.js<?= meel_asset_version('assets/js/music/view_playlist/view_playlist.js') ?>"></script>
 </body>
 
 </html>

@@ -166,6 +166,13 @@ Request: /MEeL/music/beranda?format=ogg
 - **Error Page Redirect Pattern:** All `die(include __DIR__ . '/err/index.php')` patterns converted to `header('Location: .../err?code=...')` redirects via `meel_base_url_path()` — cleaner, no more inline error rendering
 - **Root `/beranda` Route:** New `/beranda` route at root level — maps to `index.php` (HUB home), consistent with module-level `/module/beranda` scheme
 - **Keyboard Shortcuts Documented:** Video (N=next, I=mini-player) and Music (E=equalizer, V=visualizer, I=mini-player) shortcuts now documented in `introduction.php` and `docs/`
+- **Media Session API:** Video & music players now show artwork/thumbnail in OS media controls (Windows, macOS, Android) via `shared/media-session.js`
+- **Shared Recovery Manager:** Video & music auto-recovery system extracted to `shared/recovery-manager.js` — factory functions `meelCreateStuckDetector()`, `meelCreateWaitingTimeout()`, `meelCreateReconnectOverlay()` replace duplicated inline logic
+- **Upload Handler Dedup:** `meel_handle_upload()` in `modules/core/helpers/upload.php` — centralizes CSRF check, MeelCoin spend/refund, process callback, and activity logging for video & music uploads (~40 LOC saved per module)
+- **MediaLibrary Search Dedup:** Generic `searchMedia(array $cfg)` and `countSearchMedia(array $cfg)` methods — `searchVideo()` and `searchMusic()` are now thin config wrappers (~50 LOC removed)
+- **Asset Version Helpers:** `meel_asset_version()` and `meel_asset_dir_version()` in `modules/core/helpers/url.php` — replace per-file `$__v`/`$__vdir` closures with static-cached global helpers
+- **Music Stream Refactor:** `music/stream.php` rewritten to use `meel_serve_media_file()` from `storage.php` — adds output buffer cleanup (`ob_end_clean` + `ob_implicit_flush`), consistent MIME handling, and range request support (~110 LOC removed)
+- **Description Toggle Fix:** Music description "Selengkapnya" button now works correctly after SPA navigation — `description-toggle.js` added to view-router `DIRECT_SCRIPTS`
 
 ## 📖 About the Project
 

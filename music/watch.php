@@ -1,9 +1,7 @@
 <?php
 require_once '../modules/core/helpers.php';
 meel_boot_session();
-
 include '../auth/config.php';
-require_once '../modules/core/helpers.php';
 require_once '../modules/core/CommentRenderer.php';
 require_once '../modules/media/MediaLibrary.php';
 require_once '../controllers/api/WatchController.php';
@@ -20,28 +18,6 @@ $ctrl->handleRequest();
 extract($ctrl->getViewData(), EXTR_SKIP);
 
 session_write_close();
-
-$__v = function($f) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/../' . $f;
-    if (!isset($mtimeCache[$path])) {
-        $mtimeCache[$path] = @filemtime($path);
-    }
-    return '?v=' . $mtimeCache[$path];
-};
-
-$__vdir = function($dir) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/../' . $dir;
-    if (!isset($mtimeCache[$path])) {
-        $max = 0;
-        foreach (glob($path . '/*.js') ?: [] as $f) {
-            $max = max($max, (int)@filemtime($f));
-        }
-        $mtimeCache[$path] = $max;
-    }
-    return '?v=' . $mtimeCache[$path];
-};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -66,11 +42,11 @@ $__vdir = function($dir) {
     <?php include '../partials/link.php'; ?>
     <?php $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'); ?>
     <link rel="preconnect" href="<?= $base_url ?>/" crossorigin>
-    <link rel="stylesheet" href="../assets/css/plyr.css<?= $__v('assets/css/plyr.css') ?>">
+    <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
     <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= $__v('assets/css/music/' . $__f) ?>">
+    <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
     <?php endforeach; ?>
-    <link rel="stylesheet" href="../assets/css/shared/comment.css<?= $__v('assets/css/shared/comment.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/comment.css<?= meel_asset_version('assets/css/shared/comment.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js" defer></script>
 </head>
 
@@ -654,19 +630,20 @@ $__vdir = function($dir) {
             if (options) options.classList.add('hidden');
         };
     </script>
-    <script src="../assets/js/shared/media-session.js<?= $__v('assets/js/shared/media-session.js') ?>"></script>
+    <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>
+    <script src="../assets/js/shared/recovery-manager.js<?= meel_asset_version('assets/js/shared/recovery-manager.js') ?>"></script>
     <script src="../assets/js/compatibilitas/plyr.min.js"></script>
-    <script src="../assets/js/shared/state-keys.js<?= $__v('assets/js/shared/state-keys.js') ?>"></script>
-    <script src="../assets/js/shared/keyboard.js<?= $__v('assets/js/shared/keyboard.js') ?>"></script>
-    <script src="../assets/js/shared/temp-index.js<?= $__v('assets/js/shared/temp-index.js') ?>"></script>
-    <script src="../assets/js/shared/plyr-config.js<?= $__v('assets/js/shared/plyr-config.js') ?>"></script>
-    <script src="../assets/js/shared/format-time.js<?= $__v('assets/js/shared/format-time.js') ?>"></script>
-    <script src="../assets/js/shared/resume-modal.js<?= $__v('assets/js/shared/resume-modal.js') ?>"></script>
-    <script src="../assets/js/shared/mini-player-popstate.js<?= $__v('assets/js/shared/mini-player-popstate.js') ?>"></script>
-    <script src="../assets/js/shared/audio-engine.js<?= $__v('assets/js/shared/audio-engine.js') ?>"></script>
-    <script src="../assets/js/shared/view-router.js<?= $__v('assets/js/shared/view-router.js') ?>"></script>
-    <script src="../assets/js/music/watch/main.js<?= $__vdir('assets/js/music/watch') ?>"></script>
-    <script src="../assets/js/shared/comment.js<?= $__v('assets/js/shared/comment.js') ?>"></script>
+    <script src="../assets/js/shared/state-keys.js<?= meel_asset_version('assets/js/shared/state-keys.js') ?>"></script>
+    <script src="../assets/js/shared/keyboard.js<?= meel_asset_version('assets/js/shared/keyboard.js') ?>"></script>
+    <script src="../assets/js/shared/temp-index.js<?= meel_asset_version('assets/js/shared/temp-index.js') ?>"></script>
+    <script src="../assets/js/shared/plyr-config.js<?= meel_asset_version('assets/js/shared/plyr-config.js') ?>"></script>
+    <script src="../assets/js/shared/format-time.js<?= meel_asset_version('assets/js/shared/format-time.js') ?>"></script>
+    <script src="../assets/js/shared/resume-modal.js<?= meel_asset_version('assets/js/shared/resume-modal.js') ?>"></script>
+    <script src="../assets/js/shared/mini-player-popstate.js<?= meel_asset_version('assets/js/shared/mini-player-popstate.js') ?>"></script>
+    <script src="../assets/js/shared/audio-engine.js<?= meel_asset_version('assets/js/shared/audio-engine.js') ?>"></script>
+    <script src="../assets/js/shared/view-router.js<?= meel_asset_version('assets/js/shared/view-router.js') ?>"></script>
+    <script src="../assets/js/music/watch/main.js<?= meel_asset_dir_version('assets/js/music/watch') ?>"></script>
+    <script src="../assets/js/shared/comment.js<?= meel_asset_version('assets/js/shared/comment.js') ?>"></script>
     <script>
         document.addEventListener('htmx:beforeRequest', function(e) {
             var btn = e.target.closest('#m-search-btn');

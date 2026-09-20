@@ -131,7 +131,7 @@ class Uploader
         $album       = trim($post['album']  ?? 'Single');
         $description = trim($post['description'] ?? '');
 
-        if (empty($files['media']['name'])) return ['status' => 'no_file'];
+        if (empty($files['media']['name'])) return ['status' => 'no_file', 'msg' => 'File audio tidak ditemukan.'];
 
         $raw_filename = pathinfo($files['media']['name'], PATHINFO_FILENAME);
         $ext          = strtolower(pathinfo($files['media']['name'], PATHINFO_EXTENSION));
@@ -161,7 +161,7 @@ class Uploader
 
         if (!move_uploaded_file($files['media']['tmp_name'], $target_file)) {
             @unlink($target_file); // hapus placeholder reserve jika gagal
-            return ['status' => 'upload_failed'];
+            return ['status' => 'upload_failed', 'msg' => 'Gagal memindahkan file upload ke server.'];
         }
 
         if (filesize($target_file) > $max_size) {

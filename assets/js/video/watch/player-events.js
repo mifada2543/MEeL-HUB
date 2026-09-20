@@ -238,6 +238,7 @@ function setupMeelPlayerEvents() {
           id: videoId,
           title: videoTitle,
           uploader: videoUploader,
+          thumbnail: u.thumbnail || "",
         }),
         (videoSrc = s),
         (isHls = c),
@@ -597,6 +598,12 @@ function setupMeelPlayerEvents() {
       if (window.meelHealthAlertActive) return;
       if ((stopStuckDetector(), player.loop)) return;
       if (isTransitioningNext) return;
+      const durationOk = player.duration > 0 && Math.abs(player.currentTime - player.duration) < 1.5;
+      const progressOk = player.currentTime > 0 && !videoElement.error && videoElement.ended;
+      if (!durationOk && !progressOk) {
+        console.warn("[MEeL] ended fired tapi bukan natural end — skip.");
+        return;
+      }
       if (!autoNextEnabled) {
         stopPlaybackStartTimeout();
         return;

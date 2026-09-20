@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
             </div>
         <?php endif; ?>
         <form method="POST" enctype="multipart/form-data" class="space-y-6">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
 
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">

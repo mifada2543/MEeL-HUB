@@ -158,19 +158,10 @@ if (!$is_guest_profile) {
     <meta property="og:description" content="Profil <?= htmlspecialchars($u['username']) ?> di MEeL - Platform Media Hub Pribadi.">
     <title><?= htmlspecialchars($u['username']) ?> | MEeL</title>
     <?php include '../partials/link.php'; ?>
-    <?php
-    $__v = function($f) {
-        static $mtimeCache = [];
-        $path = __DIR__ . '/../' . $f;
-        if (!isset($mtimeCache[$path])) {
-            $mtimeCache[$path] = @filemtime($path);
-        }
-        return '?v=' . $mtimeCache[$path];
-    };
-    ?>
+    <?php ?>
     <meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
     <?php foreach (require __DIR__ . '/../assets/css/profile/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/profile/<?= $__f ?><?= $__v('assets/css/profile/' . $__f) ?>">
+    <link rel="stylesheet" href="../assets/css/profile/<?= $__f ?><?= meel_asset_version('assets/css/profile/' . $__f) ?>">
     <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/../assets/css/shared/light-theme.css') ?>">
 </head>
@@ -422,8 +413,8 @@ if (!$is_guest_profile) {
     <script src="../assets/js/shared/download-backup-codes.js"></script>
     <script src="../assets/js/compatibilitas/htmx.min.js"></script>
     <script src="../assets/js/shared/htmx-lucide.js?v=<?= @filemtime(__DIR__ . '/../assets/js/shared/htmx-lucide.js') ?>"></script>
-    <script src="../assets/js/profile/theme-init.js<?= $__v('assets/js/profile/theme-init.js') ?>"></script>
-    <script src="../assets/js/profile/coin-countdown.js<?= $__v('assets/js/profile/coin-countdown.js') ?>"></script>
+    <script src="../assets/js/profile/theme-init.js<?= meel_asset_version('assets/js/profile/theme-init.js') ?>"></script>
+    <script src="../assets/js/profile/coin-countdown.js<?= meel_asset_version('assets/js/profile/coin-countdown.js') ?>"></script>
     <script>
         function showBackupModal() {
             Swal.fire({

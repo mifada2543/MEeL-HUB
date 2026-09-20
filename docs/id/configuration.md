@@ -29,13 +29,15 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 | `modules/core/TranscoderBase.php` | FFmpeg, yt-dlp, CPU threads | `FFMPEG_THREADS`, `DOWNLOAD_TIMEOUT`, `TRANSCODE_AUDIO_TIMEOUT` |
 | `modules/core/Uploader.php` | Upload paths, FFmpeg | `$ffmpeg_bin`, `$ffprobe_bin` |
 | `modules/core/helpers.php` | **Shim** — me-require `helpers/main.php` + `modules/auth/loader.php` (backward-compat) | — |
-| `modules/core/helpers/*.php` | Utilitas per domain (main, storage, audio, url) | `dir_size()`, `check_disk_space()`, `get_audio_mime_type()`, `resolve_binary()`, `log_drive_operation()` |
+| `modules/core/helpers/*.php` | Utilitas per domain (main, storage, upload, audio, url) | `dir_size()`, `check_disk_space()`, `get_audio_mime_type()`, `resolve_binary()`, `log_drive_operation()`, `meel_serve_media_file()`, `meel_handle_upload()` |
 | `modules/auth/helpers/user.php` | Helper user & role | `get_user_role()`, `get_user_usage()`, `invalidate_user_role_cache()` |
 | `modules/core/System.php` | Queue management | Rate limit constants |
 | `modules/core/GarbageCollector.php` | Auto-cleanup temp files + guest + chess rooms + rate limit | `STALE_SECONDS`, `GUEST_STALE_HOURS`, `ROOM_LOBBY_STALE_HOURS`, `ROOM_GAME_STALE_HOURS`, `CHESS_CLEANUP_INTERVAL` |
 | `modules/auth/RateLimiter.php` | File-based API rate limiter | Per-endpoint limits (30 likes/min, 10 comments/min, dll.) |
 | `modules/core/japanese.php` | Pemrosesan teks Jepang (MeCab + transliterasi) | `getRomajiName()`, `analyzeJapaneseText()` |
-| `modules/core/activity_logger.php` | Activity logging, IP banning, session kick | `get_real_ip()`, `log_activity()` |
+| `modules/core/activity_logger.php` | Activity logging, IP banning, session kick | `get_real_ip()`, `log_activity()`, `validate_and_format_ip()` |
+| `modules/core/helpers/upload.php` | Helper upload/file (sanitasi, reserve nama unik, validasi codec, ffmpeg, handler upload terpusat) | `meel_sanitize_upload_filename()`, `meel_reserve_unique_filename()`, `meel_validate_video_codec()`, `meel_validate_audio_codec()`, `meel_handle_upload()` |
+| `modules/core/helpers/storage.php` | Helper storage media/Drive + penyajian media | `meel_media_base_path()`, `meel_drive_base_path()`, `meel_serve_media_file()`, `meel_write_cache_file()` |
 | `modules/core/bootstrap.php` | Bootstrap (env detection, error reporting, timezone) | `MEEL_ENV`, log error config |
 | `modules/core/base_url.php` | Perhitungan base URL terpusat (`meel_base_url_path()`) | `MEEL_BASE_URL` (via `bootstrap.php`/`config.php`) |
 | `modules/transcoder/FfmpegUtils.php` | **Trait** utilitas FFmpeg | `resolveBinary()`, `probeDuration()`, `generateSpriteAndVTT()` |

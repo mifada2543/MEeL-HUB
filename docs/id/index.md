@@ -166,6 +166,13 @@ Request: /MEeL/music/beranda?format=ogg
 - **Error Page Redirect Pattern:** Semua pola `die(include __DIR__ . '/err/index.php')` dikonversi ke `header('Location: .../err?code=...')` redirect via `meel_base_url_path()` — lebih bersih, tanpa rendering error inline
 - **Root `/beranda` Route:** Route `/beranda` baru di root level — map ke `index.php` (HUB home), konsisten dengan skema `/module/beranda`
 - **Keyboard Shortcuts Terdokumentasi:** Shortcut Video (N=next, I=mini-player) dan Musik (E=equalizer, V=visualizer, I=mini-player) sekarang terdokumentasi di `introduction.php` dan `docs/`
+- **Media Session API:** Player video & music sekarang menampilkan artwork/thumbnail di kontrol media OS (Windows, macOS, Android) melalui `shared/media-session.js`
+- **Shared Recovery Manager:** Sistem auto-recovery video & music diekstrak ke `shared/recovery-manager.js` — factory function `meelCreateStuckDetector()`, `meelCreateWaitingTimeout()`, `meelCreateReconnectOverlay()` menggantikan logika duplikat
+- **Upload Handler Dedup:** `meel_handle_upload()` di `modules/core/helpers/upload.php` — memusatkan pengecekan CSRF, MeelCoin spend/refund, process callback, dan activity logging untuk upload video & music (~40 LOC per modul)
+- **MediaLibrary Search Dedup:** Method generic `searchMedia(array $cfg)` dan `countSearchMedia(array $cfg)` — `searchVideo()` dan `searchMusic()` sekarang thin wrapper (~50 LOC dihapus)
+- **Asset Version Helpers:** `meel_asset_version()` dan `meel_asset_dir_version()` di `modules/core/helpers/url.php` — menggantikan closure `$__v`/`$__vdir` per-file dengan helper global static cache
+- **Music Stream Refactor:** `music/stream.php` ditulis ulang menggunakan `meel_serve_media_file()` dari `storage.php` — menambahkan output buffer cleanup (`ob_end_clean` + `ob_implicit_flush`), penanganan MIME konsisten, dan range request support (~110 LOC dihapus)
+- **Description Toggle Fix:** Tombol "Selengkapnya" deskripsi music sekarang berfungsi dengan benar setelah navigasi SPA — `description-toggle.js` ditambahkan ke `DIRECT_SCRIPTS` view-router
 
 ## 📖 Tentang Proyek
 

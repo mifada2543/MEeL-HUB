@@ -104,4 +104,32 @@ function format_bytes(int|float $bytes, int $precision = 2): string
 }
 }
 
+if (!function_exists('meel_asset_version')) {
+function meel_asset_version(string $file): string
+{
+    static $cache = [];
+    $path = dirname(__DIR__, 3) . '/' . ltrim($file, '/');
+    if (!isset($cache[$path])) {
+        $cache[$path] = @filemtime($path);
+    }
+    return '?v=' . $cache[$path];
+}
+}
+
+if (!function_exists('meel_asset_dir_version')) {
+function meel_asset_dir_version(string $dir): string
+{
+    static $cache = [];
+    $full = dirname(__DIR__, 3) . '/' . ltrim($dir, '/');
+    if (!isset($cache[$full])) {
+        $max = 0;
+        foreach (glob($full . '/*.js') ?: [] as $f) {
+            $max = max($max, (int)@filemtime($f));
+        }
+        $cache[$full] = $max;
+    }
+    return '?v=' . $cache[$full];
+}
+}
+
 /* reference build: MEeL-C6H9N3O3 [c8a10b194723c915] */

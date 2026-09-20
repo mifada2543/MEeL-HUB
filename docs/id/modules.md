@@ -110,10 +110,23 @@ sw.js.php                   # Generator service worker — disajikan sebagai /sw
 Fungsi utama query database untuk katalog media — dengan **pagination metadata dan cache getCounts()**:
 
 ```php
-public function searchVideo(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0);
-public function searchMusic(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0);
-public function searchBooks(string $q, string $type = 'all', int $offset = 0, int $limit = 24);
+class MediaLibrary {
+    protected function paginateResult($result, int $total, int $page, int $perPage): array;
+    public function getCounts(): array;
+    public static function clearCountsCache(): void;
+    public function getVideosWithMeta(int $page = 1, int $perPage = 15): array;
+    public function getVideos(int $limit, int $offset);
+    public function countVideos(): int;
+    private function searchMedia(array $cfg): ?\mysqli_result;
+    private function countSearchMedia(array $cfg): int;
+    public function searchVideo(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0);
+    public function searchMusic(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0);
+    public function searchBooks(string $q, string $type = 'all', int $offset = 0, int $limit = 24);
+    public function getUserPlaylists(int $user_id);
+}
 ```
+
+`searchVideo()` dan `searchMusic()` adalah thin wrapper yang memanggil `searchMedia()` / `countSearchMedia()` dengan config spesifik modul (tabel, kolom pencarian, session key).
 
 **Resilience search:** `searchVideo()`, `searchMusic()`, dan `searchBooks()`
 membungkus query FULLTEXT-nya dengan `try/catch (\mysqli_sql_exception)` —
@@ -887,7 +900,7 @@ assets/
 │   │   ├── seek-indicator.js # Seek visual feedback
 │   │   ├── vtt-sprites.js # VTT sprite thumbnails
 │   │   └── misc.js      # Miscellaneous utilities
-│   ├── shared/          # Shared JS (19 files)
+│   ├── shared/          # Shared JS (21 files)
 │   │   ├── nav.js       # Navigation behavior
 │   │   ├── theme.js     # Theme toggle
 │   │   ├── keyboard.js  # Keyboard shortcuts
@@ -896,6 +909,8 @@ assets/
 │   │   ├── plyr-config.js # Plyr configuration
 │   │   ├── format-time.js # Time formatting
 │   │   ├── resume-modal.js # Resume playback modal
+│   │   ├── recovery-manager.js # Recovery factory: stuck detector, waiting timeout, reconnect overlay
+│   │   ├── media-session.js # Media Session API: OS media controls artwork/metadata
 │   │   ├── index-hub.js # Homepage hub
 │   │   └── ...          # Other shared utilities
 │   ├── profile/         # Profile JS (5 files)
@@ -907,6 +922,10 @@ assets/
 │   │   ├── activity_log.js # Activity log viewer
 │   │   └── chat/        # Admin chat
 │   ├── music/           # Music JS
+│   │   └── watch/       # Music watch page JS
+│   │       ├── player-core.js # Music player core (visualizer, EQ, Media Session)
+│   │       ├── description-toggle.js # Toggle "Selengkapnya" untuk deskripsi music
+│   │       └── ...
 │   └── books/           # Books JS
 │       └── read/reader.js # Book reader
 ```
@@ -933,6 +952,8 @@ const scripts = [
     'seek-indicator.js', 'misc.js'
 ];
 ```
+
+Halaman watch music juga menggunakan view-router (`shared/view-router.js`) untuk navigasi SPA. Script yang terdaftar di `DIRECT_SCRIPTS` (mis. `recovery-manager.js`, `description-toggle.js`) dimuat via `loadScriptOnce()` saat transisi SPA — memastikan global seperti `meelCreateReconnectOverlay` tersedia saat `player-core.js` dieksekusi.
 
 ---
 

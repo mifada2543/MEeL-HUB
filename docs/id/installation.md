@@ -238,12 +238,14 @@ define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');
 Repositori men-track `books/upload`, `music/upload`, dan `video/upload` sebagai folder nyata (placeholder `.gitkeep` + `.htaccess` hardening) — storage fallback bawaan. **Tidak ada symlink yang di-commit atau diperlukan.** File media disimpan di bawah `MEEL_HDD_BASE` (via konstanta turunan `MEEL_HDD_*_UPLOAD`) dan disajikan lewat **endpoint PHP** yang dipetakan oleh **internal rewrite** di `.htaccess` root:
 
 ```apache
-RewriteRule ^video/upload/(.+)$ video/stream.php?f=$1 [L,QSA,B]
-RewriteRule ^music/upload/(.+)$ music/file.php?f=$1 [L,QSA,B]
-RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [L,QSA,B]
+<IfModule mod_rewrite.c>
+    RewriteRule ^video/upload/(.+)$ video/stream.php?f=$1 [END,QSA,B]
+    RewriteRule ^music/upload/(.+)$ music/file.php?f=$1 [END,QSA,B]
+    RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [END,QSA,B]
+</IfModule>
 ```
 
-URL di browser tetap `.../upload/...` (segmen HLS relatif seperti `.ts` tetap resolve dengan benar), tetapi Apache secara internal meneruskan request ke endpoint, yang me-resolve file asli via `meel_media_base_path()`. Flag `B` meng-escape backreference sehingga nama file yang mengandung spasi atau karakter khusus tetap lolos rewrite tanpa merusak query string:
+URL di browser tetap `.../upload/...` (segmen HLS relatif seperti `.ts` tetap resolve dengan benar), tetapi Apache secara internal meneruskan request ke endpoint, yang me-resolve file asli via `meel_media_base_path()`. Rule-rule ini dibungkus `<IfModule mod_rewrite.c>` dan ditempatkan **sebelum** routing front controller (`router.php`) — pengecualian eksplisit agar request streaming/range langsung mengenai endpoint tanpa lewat router. Flag `END` menghentikan seluruh proses rewrite (bukan hanya ronde saat ini, beda dengan `L`), dan flag `B` meng-escape backreference sehingga nama file yang mengandung spasi atau karakter khusus tetap lolos rewrite tanpa merusak query string:
 
 - `MEEL_HDD_*_UPLOAD` terdefinisi → file dibaca dari path HDD;
 - tidak terdefinisi → file dibaca dari folder fallback repo

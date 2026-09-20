@@ -13,14 +13,6 @@ $total      = $meta['total'];
 $page       = $meta['page'];
 $totalPages = $meta['total_pages'];
 
-$__v = function($f) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/../' . $f;
-    if (!isset($mtimeCache[$path])) {
-        $mtimeCache[$path] = @filemtime($path);
-    }
-    return '?v=' . $mtimeCache[$path];
-};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -34,7 +26,7 @@ $__v = function($f) {
     <title>MEeL Video | Library</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= $__v('assets/css/video/' . $__f) ?>">
+    <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= meel_asset_version('assets/css/video/' . $__f) ?>">
     <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/video/index/main.css">
 </head>
@@ -136,7 +128,7 @@ $__v = function($f) {
 
     <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/compatibilitas/htmx.min.js"></script>
-    <script src="../assets/js/shared/htmx-lucide.js<?= $__v('assets/js/shared/htmx-lucide.js') ?>"></script>
+    <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
 </body>
 
 </html>
