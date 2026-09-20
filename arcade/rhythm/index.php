@@ -1,17 +1,9 @@
 <?php
-
-
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 require_once __DIR__ . '/api/config.php';
-require_once __DIR__ . '/../../modules/core/base_url.php';
 
 $root = meel_base_url_path();
-
-
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
 $csrf = $_SESSION['csrf_token'];
 
 $is_logged_in = isset($_SESSION['user_id']);
@@ -26,6 +18,7 @@ if (file_exists($index_path)) {
     $builtin_data = json_decode($raw, true);
     if (is_array($builtin_data)) {
         foreach ($builtin_data as $s) {
+            if (!is_array($s)) continue;
             $builtin_songs[] = [
                 'id' => $s['id'],
                 'title' => $s['title'],
