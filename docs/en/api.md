@@ -12,6 +12,7 @@ Documentation of API endpoints, controllers, and AJAX/HTMX handlers in MEeL-HUB.
 - [MFA Endpoints](#mfa-endpoints)
 - [Media Interaction Endpoints](#media-interaction-endpoints)
 - [Upload Endpoints](#upload-endpoints)
+- [Media Streaming Endpoints](#media-streaming-endpoints)
 - [Profile Endpoints](#profile-endpoints)
 - [Admin Endpoints](#admin-endpoints)
 
@@ -658,6 +659,44 @@ Phase 4: Done (links to media)
 **Endpoint:** `transcode.php`
 **Method:** POST
 **Auth:** User/Admin
+
+---
+
+## Media Streaming Endpoints
+
+All media bytes are served through PHP endpoints that delegate to one shared function, `meel_serve_media_file()` (`modules/core/helpers/storage.php`). Raw paths like `/video/upload/...` are internal rewrites from the root `.htaccess` — there is no direct file access.
+
+| Endpoint | Serves | Auth / Gate |
+|---|---|---|
+| `video/stream.php` | HLS playlists (`.m3u8`), segments (`.ts`), subtitles (`.vtt`), thumbnails | Public + HLS referer gate (`hls_gate => true`) |
+| `music/file.php` | Audio files, thumbnails (raw `upload/...` paths) | Public |
+| `music/stream.php` | Audio by media ID (`?id=`) with referer gate + `is_stream_authorized()` | Public (referer-gated) |
+| `books/file.php` | Manga images, PDFs | **Login required** (`auth/auth.php`) |
+
+### Common Behavior (`meel_serve_media_file()`)
+
+- **Path validation:** traversal (`..`) and null bytes → `403`; resolved path must stay inside the module upload root via `realpath()` containment, otherwise `404`.
+- **Extension whitelist:** `m3u8, ts, vtt, mp4, webm, mkv, jpg, jpeg, png, webp, gif, pdf, mp3, ogg, m4a, flac, wav, opus` — anything else → `403`.
+- **MIME mapping:** automatic per extension (e.g., `m3u8` → `application/vnd.apple.mpegurl`, `ts` → `video/mp2t`).
+- **Range requests:** `Range: bytes=...` → `206 Partial Content` with `Accept-Ranges`/`Content-Range` — enables HLS segment seeking and audio scrubbing.
+- **Output buffer cleanup:** `ob_end_clean` + `ob_implicit_flush` before streaming to prevent binary corruption.
+
+### HLS Referer Gate (video)
+
+`video/stream.php?f=...` passes `hls_gate => true`. Requests for paths under `video/` must carry a same-host `Referer` from a video page (`/video`, `/video/watch`, `/video/index`, `/video/beranda`); otherwise the request is redirected to `err/?code=denied`. This prevents third-party sites from hotlinking HLS segments.
+
+### Music Stream by ID
+
+`music/stream.php?id=<music_id>` — referer must be same-host and from `/music`, `/admin`, or `/profile`; then `is_stream_authorized($id)` runs before the file is resolved via `MediaViewer` and served as `file/<filename>`. Both `video/stream.php` and `music/stream.php` call `session_write_close()` before streaming so parallel segment/audio requests don't block each other on the PHP session file lock.
+
+### Error Responses
+
+| Status | Condition |
+|---|---|
+| `400` | Missing `f` / invalid `id` parameter |
+| `403` | Path traversal, disallowed extension, failed referer gate (redirect) |
+| `404` | File not found (or escaped the upload root) |
+| `503` | Storage base path unavailable |
 
 ---
 

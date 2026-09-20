@@ -119,10 +119,11 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
 **Return:** void (langsung mengirim response dan `exit`).
 **Fitur:**
 - Validasi path traversal (`..`, null byte)
-- Whitelist ekstensi (m3u8, ts, vtt, mp4, webm, mkv, jpg, png, webp, gif, pdf, mp3, ogg, m4a, flac, wav,opus)
+- Whitelist ekstensi (m3u8, ts, vtt, mp4, webm, mkv, jpg, png, webp, gif, pdf, mp3, ogg, m4a, flac, wav, opus)
 - MIME type mapping otomatis
 - Range request support (206 Partial Content) untuk HLS `.ts` dan video besar
 - Referer gate untuk video HLS (anti-hotlink)
+- Pembersihan output buffer (`ob_end_clean` + `ob_implicit_flush`) sebelum streaming — mencegah korupsi data biner
 
 ---
 
@@ -203,7 +204,7 @@ function meel_sanitize_upload_filename(string $original, string $fallback = 'fil
 | `$original` | `string` | Nama file asli dari user |
 | `$fallback` | `string` | Nama fallback jika hasil kosong (default: `'file'`) |
 
-**File:** `modules/core/helpers/upload.php:84`
+**File:** `modules/core/helpers/upload.php:203`
 **Return:** Nama file bersih (hanya `[a-zA-Z0-9._-]`), tanpa path separator, tanpa null byte, tanpa traversal.
 **Catatan:** Nama asli user tetap bisa disimpan sebagai metadata terpisah.
 
@@ -222,7 +223,7 @@ function meel_sanitize_clean_name(string $raw, int $max_len = 120): string
 | `$raw` | `string` | Nama mentah yang akan dibersihkan |
 | `$max_len` | `int` | Panjang maksimum hasil (default: 120) |
 
-**File:** `modules/core/helpers/upload.php:146`
+**File:** `modules/core/helpers/upload.php:265`
 **Return:** Nama bersih, atau `''` jika hasil kosong.
 **Catatan:** Mengganti karakter non-aman dengan `_`, memotong ke `$max_len`.
 
@@ -244,7 +245,7 @@ function meel_reserve_unique_filename(string $dir, string $clean_name, string $e
 | `$max_attempts` | `int` | Maksimal percobaan (default: 1000) |
 | `$suffix_sep` | `string` | Pemisah suffix (default: `'-'`) |
 
-**File:** `modules/core/helpers/upload.php:171`
+**File:** `modules/core/helpers/upload.php:290`
 **Return:** Nama file unik yang berhasil di-reserve, atau `null` jika semua gagal.
 **Fitur:**
 - Placeholder kosong dibuat lebih dulu → pemanggil menimpa dengan `move_uploaded_file` / `ffmpeg -y`
@@ -266,7 +267,7 @@ function meel_allocate_unique_dir(string $parent, string $base): string
 | `$parent` | `string` | Folder induk |
 | `$base` | `string` | Nama dasar folder |
 
-**File:** `modules/core/helpers/upload.php:240`
+**File:** `modules/core/helpers/upload.php:359`
 **Return:** Nama folder unik tanpa trailing slash.
 **Contoh:** `meel_allocate_unique_dir('/tmp', 'encode')` → `'encode'` atau `'encode-1'` atau `'encode-2'`, ...
 
@@ -284,7 +285,7 @@ function meel_upload_allowed_table(string $table): string
 |-----------|------|-----------|
 | `$table` | `string` | Nama tabel yang akan divalidasi |
 
-**File:** `modules/core/helpers/upload.php:96`
+**File:** `modules/core/helpers/upload.php:215`
 **Return:** `string` nama tabel jika valid (`'music'` atau `'video'`), atau `''` jika tidak valid.
 
 ---
@@ -321,13 +322,70 @@ function meel_insert_music_row(
 | `$thumbnail` | `string` | Nama file thumbnail |
 | `$duration` | `?int` | Durasi dalam detik (opsional) |
 
-**File:** `modules/core/helpers/upload.php:311`
+**File:** `modules/core/helpers/upload.php:430`
 **Return:** `[bool $ok, string $error]` — `$ok = true` jika berhasil, `$error` berisi pesan mysqli jika gagal.
 **Catatan:** Kolom `duration` hanya disertakan jika != null (perilaku lama dijaga).
 
 ---
 
 ## FFmpeg & Encoding
+
+### `meel_validate_video_codec(string $file_path, string $ffprobe_bin = '/usr/bin/ffprobe', string $env_prefix = '')`
+
+Validasi codec video via ffprobe sebelum upload — hanya H.264 (AVC) dan H.265 (HEVC) yang diizinkan (wajib untuk stream-copy HLS MPEG-TS).
+
+```php
+function meel_validate_video_codec(
+    string $file_path,
+    string $ffprobe_bin = '/usr/bin/ffprobe',
+    string $env_prefix = ''
+): string
+```
+
+| Parameter | Tipe | Deskripsi |
+|-----------|------|-----------|
+| `$file_path` | `string` | Path file video yang akan divalidasi |
+| `$ffprobe_bin` | `string` | Path biner ffprobe (default: `'/usr/bin/ffprobe'`) |
+| `$env_prefix` | `string` | Prefix env (mis. `'export LD_LIBRARY_PATH=''; '`) |
+
+**File:** `modules/core/helpers/upload.php:90`
+**Return:** `''` jika valid; pesan error jika tidak valid.
+**Catatan:** Codec lain (VP9, AV1, dll.) ditolak karena tidak dapat di-copy ke HLS MPEG-TS.
+
+**Dipakai oleh:** `modules/core/Uploader.php` (pipeline upload video)
+
+---
+
+### `meel_validate_audio_codec(string $file_path, string $ffprobe_bin = '/usr/bin/ffprobe', string $env_prefix = '')`
+
+Validasi kompatibilitas codec audio dengan HLS MPEG-TS lama — memutuskan antara stream-copy dan transcode ke AAC, atau menolak file.
+
+```php
+function meel_validate_audio_codec(
+    string $file_path,
+    string $ffprobe_bin = '/usr/bin/ffprobe',
+    string $env_prefix = ''
+): array
+```
+
+| Parameter | Tipe | Deskripsi |
+|-----------|------|-----------|
+| `$file_path` | `string` | Path file video yang akan divalidasi |
+| `$ffprobe_bin` | `string` | Path biner ffprobe (default: `'/usr/bin/ffprobe'`) |
+| `$env_prefix` | `string` | Prefix env |
+
+**File:** `modules/core/helpers/upload.php:145`
+**Return:** `['error' => string, 'has_audio' => bool, 'needs_audio_transcode' => bool]`
+- `error` — pesan penolakan; `''` jika file lolos
+- `has_audio` — `true` jika video memiliki audio stream
+- `needs_audio_transcode` — `true` jika audio harus di-transcode ke AAC
+**Aturan:**
+- Kompatibel (stream-copy): AAC, MP3, AC3, E-AC3
+- Tidak kompatibel (Opus, Vorbis, DTS, FLAC, ...) dengan durasi > 5 menit → ditolak (transcode audio berdurasi panjang terlalu memberatkan server)
+
+**Dipakai oleh:** `modules/core/Uploader.php` (pipeline upload video)
+
+---
 
 ### `meel_ffmpeg_thumbnail_webp(string $ffmpeg_bin, string $src, string $dst, int $max_width, string $extra = '', string $env_prefix = '', int $threads = 0)`
 
@@ -355,7 +413,7 @@ function meel_ffmpeg_thumbnail_webp(
 | `$env_prefix` | `string` | Prefix env (mis. `'export LD_LIBRARY_PATH=''; '`) |
 | `$threads` | `int` | Nilai `-threads` ffmpeg (0 = default) |
 
-**File:** `modules/core/helpers/upload.php:208`
+**File:** `modules/core/helpers/upload.php:327`
 **Return:** `true` jika file output terbentuk dan berisi data.
 **Contoh:**
 ```php
@@ -394,7 +452,7 @@ function meel_ffmpeg_encode_opus(
 | `$threads` | `int` | Nilai `-threads` ffmpeg (0 = default) |
 | `$metadata` | `array` | Tag metadata `['title' => ..., 'artist' => ...]` |
 
-**File:** `modules/core/helpers/upload.php:275`
+**File:** `modules/core/helpers/upload.php:394`
 **Return:** `[int $exit_code, string $log]` — log berisi gabungan stdout+stderr untuk pesan error.
 **Contoh:**
 ```php
@@ -407,6 +465,64 @@ function meel_ffmpeg_encode_opus(
     ['title' => 'Judul Lagu', 'artist' => 'Nama Artis']
 );
 ```
+
+---
+
+### `meel_handle_upload(string $media_type, callable $process_fn, string $log_action): array`
+
+Handler upload terpusat — cek CSRF, spend/refund MeelCoin, callback proses, dan logging aktivitas untuk upload video & music.
+
+```php
+function meel_handle_upload(string $media_type, callable $process_fn, string $log_action): array
+```
+
+| Parameter | Tipe | Deskripsi |
+|-----------|------|-----------|
+| `$media_type` | `string` | `'video'` atau `'music'` |
+| `$process_fn` | `callable` | `fn($_POST, $_FILES) → ['status'=>'success'|'error', 'id'=>int?, 'msg'=>string]` |
+| `$log_action` | `string` | Nama aksi untuk `log_activity()` |
+
+**File:** `modules/core/helpers/upload.php:486`
+**Return:** `['status' => 'success'|'', 'alert_message' => string, 'extra' => array]`
+- `extra['coin_balance']` — saldo MeelCoin terbaru (saat MeelCoin aktif)
+- `extra['hour_count']` — jumlah upload per jam (saat MeelCoin nonaktif)
+- `extra['total_uploads']` — total jumlah upload
+
+**Dipakai oleh:** `video/upload.php`, `music/upload.php`
+
+---
+
+### `meel_asset_version(string $file): string`
+
+Mengembalikan query string `?v=<filemtime>` untuk cache-busting. Menggunakan static cache untuk menghindari syscalls `filemtime()` berulang.
+
+```php
+function meel_asset_version(string $file): string
+```
+
+| Parameter | Tipe | Deskripsi |
+|-----------|------|-----------|
+| `$file` | `string` | Path file relatif dari project root (mis. `'assets/js/shared/media-session.js'`) |
+
+**File:** `modules/core/helpers/url.php:108`
+**Return:** String `?v=<unix_timestamp>`.
+
+---
+
+### `meel_asset_dir_version(string $dir): string`
+
+Mengembalikan `?v=<max_mtime>` untuk file `.js` terbaru dalam sebuah direktori. Digunakan untuk cache-busting bundle.
+
+```php
+function meel_asset_dir_version(string $dir): string
+```
+
+| Parameter | Tipe | Deskripsi |
+|-----------|------|-----------|
+| `$dir` | `string` | Path direktori relatif dari project root (mis. `'assets/js/music/watch'`) |
+
+**File:** `modules/core/helpers/url.php:120`
+**Return:** String `?v=<unix_timestamp>`. Menggunakan glob + static cache.
 
 ---
 
@@ -446,8 +562,92 @@ function meel_mig_has_index(\mysqli $conn, string $table, string $index): bool
 | `$table` | `string` | Nama tabel |
 | `$index` | `string` | Nama index |
 
-**File:** `database/migrate.php:24`
+**File:** `database/migrate.php:22`
 **Return:** `true` jika index ada.
+
+---
+
+### `meel_mig_add_index(\mysqli $conn, string $table, string $index, string $cols)`
+
+`ADD INDEX` idempoten — otomatis dilewati jika index sudah ada.
+
+```php
+function meel_mig_add_index(\mysqli $conn, string $table, string $index, string $cols): void
+```
+
+| Parameter | Tipe | Deskripsi |
+|-----------|------|-----------|
+| `$conn` | `\mysqli` | Koneksi database |
+| `$table` | `string` | Nama tabel |
+| `$index` | `string` | Nama index |
+| `$cols` | `string` | Daftar kolom (mis. `'user_id, created_at'`) |
+
+**File:** `database/migrate.php:30`
+**Return:** void.
+**Catatan:** Error duplicate/already-exists diabaikan; kegagalan lain dicetak sebagai warning CLI (`[MEeL] ⚠ Warning`).
+
+---
+
+### `meel_mig_add_fulltext(\mysqli $conn, string $table, string $index, string $cols)`
+
+`ADD FULLTEXT INDEX` idempoten — untuk index pencarian FULLTEXT.
+
+```php
+function meel_mig_add_fulltext(\mysqli $conn, string $table, string $index, string $cols): void
+```
+
+| Parameter | Tipe | Deskripsi |
+|-----------|------|-----------|
+| `$conn` | `\mysqli` | Koneksi database |
+| `$table` | `string` | Nama tabel |
+| `$index` | `string` | Nama index |
+| `$cols` | `string` | Daftar kolom (mis. `'title, description'`) |
+
+**File:** `database/migrate.php:44`
+**Return:** void.
+**Catatan:** Perilaku idempoten sama dengan `meel_mig_add_index`.
+
+---
+
+### `meel_mig_add_unique(\mysqli $conn, string $table, string $index, string $cols)`
+
+`ADD UNIQUE INDEX` idempoten — untuk constraint unik.
+
+```php
+function meel_mig_add_unique(\mysqli $conn, string $table, string $index, string $cols): void
+```
+
+| Parameter | Tipe | Deskripsi |
+|-----------|------|-----------|
+| `$conn` | `\mysqli` | Koneksi database |
+| `$table` | `string` | Nama tabel |
+| `$index` | `string` | Nama index |
+| `$cols` | `string` | Daftar kolom (mis. `'username'`) |
+
+**File:** `database/migrate.php:58`
+**Return:** void.
+**Catatan:** Perilaku idempoten sama dengan `meel_mig_add_index`.
+
+---
+
+### `meel_mig_add_fk(\mysqli $conn, string $table, string $constraint, string $fk_def)`
+
+Menambahkan foreign key constraint — error duplicate diabaikan.
+
+```php
+function meel_mig_add_fk(\mysqli $conn, string $table, string $constraint, string $fk_def): void
+```
+
+| Parameter | Tipe | Deskripsi |
+|-----------|------|-----------|
+| `$conn` | `\mysqli` | Koneksi database |
+| `$table` | `string` | Nama tabel |
+| `$constraint` | `string` | Nama constraint |
+| `$fk_def` | `string` | Definisi FK (mis. `'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE'`) |
+
+**File:** `database/migrate.php:72`
+**Return:** void.
+**Catatan:** Tidak ada pre-check keberadaan (beda dengan helper `add_*` lain) — duplicate difilter oleh pemeriksaan error yang sama.
 
 ---
 

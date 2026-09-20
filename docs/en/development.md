@@ -558,11 +558,14 @@ if (!headers_sent()) {
 | `assets/js/video/watch/player-init.js` | Plyr + HLS.js initialization |
 | `assets/js/video/watch/player-events.js` | Event orchestration (auto-next, glow, resume) |
 | `assets/js/video/watch/mini-player.js` | Mini-player floating mode |
-| `assets/js/video/watch/recovery.js` | Player auto-recovery system |
+| `assets/js/video/watch/recovery.js` | Player auto-recovery system — uses shared `recovery-manager.js` factories |
 | `assets/js/video/watch/gestures.js` | Mobile touch gestures |
 | `assets/js/music/watch/main.js` | Entry point folder watch/ — loads siblings synchronously (document.write) |
 | `assets/js/music/watch/mini-player.js` | Music mini-player mode (Spotify-style) — separated from player-core.js |
-| `assets/js/music/watch/player-core.js` | Music player core (visualizer, EQ, bitrate, resume-modal & session logic) |
+| `assets/js/music/watch/player-core.js` | Music player core (visualizer, EQ, bitrate, Media Session, resume-modal & session logic) |
+| `assets/js/music/watch/description-toggle.js` | Music description "Selengkapnya" toggle + overflow detection |
+| `assets/js/shared/recovery-manager.js` | Recovery factory — stuck detector, waiting timeout, reconnect overlay (shared video & music) |
+| `assets/js/shared/media-session.js` | Media Session API helper — updates OS media controls with artwork/metadata |
 | `assets/js/music/watch/state.js` | Music player state, equalizer presets & resume-session marker (`window.__meelResumeSessionActive`) |
 | `assets/js/profile/manage.js` | Profile management (edit, delete media) |
 | `assets/js/profile/avatar-crop.js` | Avatar cropping tool |

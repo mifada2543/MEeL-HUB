@@ -239,12 +239,14 @@ define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');
 The repository tracks `books/upload`, `music/upload`, and `video/upload` as real directories (placeholder `.gitkeep` + hardened `.htaccess`) — the built-in fallback storage. **No symlinks are committed or required.** Uploaded media is stored under `MEEL_HDD_BASE` (via the derived `MEEL_HDD_*_UPLOAD` constants) and served through **PHP endpoints** mapped by an **internal rewrite** in the root `.htaccess`:
 
 ```apache
-RewriteRule ^video/upload/(.+)$ video/stream.php?f=$1 [L,QSA,B]
-RewriteRule ^music/upload/(.+)$ music/file.php?f=$1 [L,QSA,B]
-RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [L,QSA,B]
+<IfModule mod_rewrite.c>
+    RewriteRule ^video/upload/(.+)$ video/stream.php?f=$1 [END,QSA,B]
+    RewriteRule ^music/upload/(.+)$ music/file.php?f=$1 [END,QSA,B]
+    RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [END,QSA,B]
+</IfModule>
 ```
 
-The browser URL stays `.../upload/...` (so relative HLS segments like `.ts` resolve correctly), but Apache internally hands the request to the endpoint, which resolves the real file via `meel_media_base_path()`. The `B` flag escapes backreferences so filenames containing spaces or special characters survive the rewrite without breaking the query string:
+The browser URL stays `.../upload/...` (so relative HLS segments like `.ts` resolve correctly), but Apache internally hands the request to the endpoint, which resolves the real file via `meel_media_base_path()`. The rules are wrapped in `<IfModule mod_rewrite.c>` and sit **before** the front controller routing (`router.php`) — an explicit exception so streaming/range requests hit the endpoints directly without going through the router. The `END` flag stops all rewrite processing (not just the current round, unlike `L`), and the `B` flag escapes backreferences so filenames containing spaces or special characters survive the rewrite without breaking the query string:
 
 - `MEEL_HDD_*_UPLOAD` defined → file read from the HDD path;
 - not defined → file read from the repo fallback folder `<root>/{module}/upload`

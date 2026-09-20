@@ -11,6 +11,7 @@ Dokumentasi endpoint API, controllers, dan handler AJAX/HTMX di MEeL-HUB.
 - [MFA Endpoints](#mfa-endpoints)
 - [Media Interaction Endpoints](#media-interaction-endpoints)
 - [Upload Endpoints](#upload-endpoints)
+- [Media Streaming Endpoints](#media-streaming-endpoints)
 - [Profile Endpoints](#profile-endpoints)
 - [Admin Endpoints](#admin-endpoints)
 
@@ -731,6 +732,44 @@ Phase 4: Done (links to media)
 ```
 
 **Response:** Download link to converted file
+
+---
+
+## Media Streaming Endpoints
+
+Semua byte media disajikan melalui endpoint PHP yang mendelegasikan ke satu fungsi bersama, `meel_serve_media_file()` (`modules/core/helpers/storage.php`). Path mentah seperti `/video/upload/...` adalah rewrite internal dari `.htaccess` root — tidak ada akses file langsung.
+
+| Endpoint | Menyajikan | Auth / Gate |
+|---|---|---|
+| `video/stream.php` | Playlist HLS (`.m3u8`), segment (`.ts`), subtitle (`.vtt`), thumbnail | Publik + referer gate HLS (`hls_gate => true`) |
+| `music/file.php` | File audio, thumbnail (path mentah `upload/...`) | Publik |
+| `music/stream.php` | Audio berdasarkan ID media (`?id=`) dengan referer gate + `is_stream_authorized()` | Publik (referer-gated) |
+| `books/file.php` | Gambar manga, PDF | **Wajib login** (`auth/auth.php`) |
+
+### Perilaku Bersama (`meel_serve_media_file()`)
+
+- **Validasi path:** traversal (`..`) dan null byte → `403`; path hasil resolve harus tetap di dalam root upload modul via containment `realpath()`, jika tidak → `404`.
+- **Whitelist ekstensi:** `m3u8, ts, vtt, mp4, webm, mkv, jpg, jpeg, png, webp, gif, pdf, mp3, ogg, m4a, flac, wav, opus` — selain itu → `403`.
+- **MIME mapping:** otomatis per ekstensi (mis. `m3u8` → `application/vnd.apple.mpegurl`, `ts` → `video/mp2t`).
+- **Range request:** `Range: bytes=...` → `206 Partial Content` dengan `Accept-Ranges`/`Content-Range` — memungkinkan seeking segment HLS dan scrubbing audio.
+- **Pembersihan output buffer:** `ob_end_clean` + `ob_implicit_flush` sebelum streaming untuk mencegah korupsi data biner.
+
+### Referer Gate HLS (video)
+
+`video/stream.php?f=...` melewatkan `hls_gate => true`. Request untuk path di bawah `video/` harus membawa `Referer` same-host dari halaman video (`/video`, `/video/watch`, `/video/index`, `/video/beranda`); jika tidak, request di-redirect ke `err/?code=denied`. Ini mencegah situs pihak ketiga meng-hotlink segment HLS.
+
+### Music Stream by ID
+
+`music/stream.php?id=<music_id>` — referer harus same-host dan dari `/music`, `/admin`, atau `/profile`; lalu `is_stream_authorized($id)` dijalankan sebelum file di-resolve via `MediaViewer` dan disajikan sebagai `file/<filename>`. `video/stream.php` dan `music/stream.php` juga memanggil `session_write_close()` sebelum streaming agar request segment/audio paralel tidak saling memblokir karena lock file session PHP.
+
+### Response Error
+
+| Status | Kondisi |
+|---|---|
+| `400` | Parameter `f` / `id` tidak ada atau tidak valid |
+| `403` | Path traversal, ekstensi tidak diizinkan, referer gate gagal (redirect) |
+| `404` | File tidak ditemukan (atau keluar dari root upload) |
+| `503` | Path base storage tidak tersedia |
 
 ---
 
