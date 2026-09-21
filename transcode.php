@@ -283,7 +283,9 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
                                     </div>
                                     <div>
                                         <div class="text-[9px] font-bold uppercase tracking-[.15em] text-muted">MEeLCoin</div>
-                                        <div class="text-[13px] font-syne font-extrabold text-yellow-400"
+                                        <div id="coin-balance" class="text-[13px] font-syne font-extrabold text-yellow-400"
+                                            data-coin-api="<?= htmlspecialchars(meel_base_url_path(), ENT_QUOTES) ?>/api/meelcoin"
+                                            data-coin-user="<?= (int)($_SESSION['user_id'] ?? 0) ?>"
                                             <?php if (!$is_admin): ?>
                                                 title="Refill berikutnya: <?= $coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill' ?>"
                                             <?php endif; ?>

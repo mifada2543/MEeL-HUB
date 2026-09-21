@@ -308,7 +308,7 @@
     }
 }
 
-/* ── Alert & Textarea base (dark default) ── */
+/* Alert & Textarea base (dark default) */
 .editor-alert-success {
     background: rgba(34,197,94,0.12);
     border: 1px solid rgba(34,197,94,0.25);
@@ -328,7 +328,7 @@
     color: #4b5563;
 }
 
-/* ── Light Theme ── */
+/* Light Theme */
 html[data-theme="light"] .editor-top-bar {
     background: rgba(0,0,0,0.03);
     border-bottom-color: var(--border);
@@ -471,3 +471,5 @@ html[data-theme="light"] .editor-textarea:focus {
 html[data-theme="light"] .editor-textarea::placeholder {
     color: #a1a1aa;
 }
+
+/* reference build: MEeL-C2H5NO2 [c1eeb2d90dec3de5] */

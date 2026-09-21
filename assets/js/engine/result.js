@@ -6,6 +6,22 @@ window.meelRedirect = function (url) {
   _meelRedirectFired = true;
   window.location.replace(url);
 };
+window.meelRefreshCoinBalance = function () {
+  var el = document.getElementById("coin-balance");
+  if (!el) return;
+  var api = el.getAttribute("data-coin-api");
+  var uid = el.getAttribute("data-coin-user");
+  if (!api || !uid) return;
+  fetch(api + "?user_id=" + encodeURIComponent(uid))
+    .then(function (r) {
+      return r.json();
+    })
+    .then(function (d) {
+      if (!d || d.is_admin || typeof d.balance === "undefined") return;
+      el.textContent = d.balance;
+    })
+    .catch(function () {});
+};
 
 window.meelDone = function (title, homeUrl) {
   meelPhase("done");
@@ -15,6 +31,7 @@ window.meelDone = function (title, homeUrl) {
     var btn = document.getElementById("meel-btn-home");
     if (btn) btn.href = homeUrl;
   }
+  meelRefreshCoinBalance();
 };
 window.meelError = function (log) {
   if (_errorTimeout) clearTimeout(_errorTimeout);
@@ -26,6 +43,7 @@ window.meelError = function (log) {
   var el = document.getElementById("meel-error-log");
   if (el) el.textContent = log;
   console.error("MEeL Error:", log);
+  meelRefreshCoinBalance();
 };
 window.addEventListener("error", function (event) {
   console.error("Global JavaScript Error:", event.error);
@@ -62,4 +80,5 @@ window.meelDoneTranscode = function (title, downloadUrl) {
     };
     navBtns.appendChild(closeBtn);
   }
+  meelRefreshCoinBalance();
 };

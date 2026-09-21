@@ -27,15 +27,12 @@ function meel_arc_mig_has_index(\mysqli $conn, string $table, string $index): bo
     return $r && $r->num_rows > 0;
 }
 
-// =============================================================================
 // Migrasi Arcade
-// =============================================================================
 // Setiap migrasi adalah array berisi:
 //   'description' => deskripsi singkat
 //   'sql'         => array of closure($conn) atau SQL string
 //
 // Semua step bersifat idempotent (aman dijalankan berulang kali).
-// =============================================================================
 
 $migrations = [
     1 => [
@@ -128,9 +125,7 @@ $migrations = [
     ],
 ];
 
-// =============================================================================
 // Runner — mirip database/migrate.php tapi pakai tabel `arcade_db_version`
-// =============================================================================
 
 $conn->query("CREATE TABLE IF NOT EXISTS arcade_db_version (
     id INT AUTO_INCREMENT PRIMARY KEY,

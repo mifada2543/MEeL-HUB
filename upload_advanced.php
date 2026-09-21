@@ -100,6 +100,16 @@ if ($meelcoin_enabled) {
     $quota_music_remaining = ($user_role === 'admin') ? -1 : $upload_max - $quota_music_used;
 }
 
+$coin_active = $meelcoin_enabled && !$is_admin && $coin_cost > 0;
+
+$is_confirmed_download_failure = static function (string $msg): bool {
+    if ($msg === '' || $msg === 'DISCONNECTED') return true;
+    foreach (['Download gagal', 'File audio tidak ditemukan'] as $prefix) {
+        if (str_starts_with($msg, $prefix)) return true;
+    }
+    return false;
+};
+
 if (isset($_GET['success'])) {
     $message = 'success';
     MediaLibrary::clearCountsCache();
@@ -112,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
     } elseif ($is_busy) {
         $message = 'busy';
     } else {
-        if ($meelcoin_enabled && !$is_admin) {
+        if ($coin_active) {
             if (!MeelCoin::canAfford($conn, (int)$_SESSION['user_id'], $coin_cost)) {
                 $message = 'rate_limit';
                 $rate_limit_msg = "MEeLCoin tidak cukup! Dibutuhkan {$coin_cost} coin, saldo Anda: {$coin_balance}.";
@@ -120,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
         }
 
         if ($message === '') {
-            if ($meelcoin_enabled && !$is_admin) {
+            if ($coin_active) {
                 [$spent_ok, $spent_err] = MeelCoin::spend($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced');
                 if (!$spent_ok) {
                     $message = 'rate_limit';
@@ -137,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
         }
 
         if ($message === '') {
-            $coin_deducted = $meelcoin_enabled && !$is_admin;
+            $coin_deducted = $coin_active;
             
             $type        = $_POST['type'] ?? '';
             if (!$meelcoin_enabled) {
@@ -146,9 +156,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 if (!$limit['allowed']) {
                     $message        = 'rate_limit';
                     $rate_limit_msg = "Batas upload tercapai! Tunggu {$limit['minutes']} menit lagi.";
-                    if ($coin_deducted) {
-                        MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_refund');
-                    }
                 }
             }
 
@@ -247,7 +254,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                     exit;
                 }
 
-                if ($coin_deducted ?? false) {
+                if ($coin_deducted) {
+                    $confirmed_failure = $is_confirmed_download_failure((string)$message);
+                    if (!$confirmed_failure) {
+                        error_log('[MEeL-Upload] Hasil tak dikenali dari engine, coin TIDAK direfund: ' . (string)$message);
+                    }
                     if (is_string($message) && $message === 'DISCONNECTED') {
                         MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_download_refund');
                         $err_msg = json_encode('Download terputus. Coin sudah dikembalikan.', JSON_HEX_TAG | JSON_HEX_AMP);
@@ -259,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                         flush();
                         exit;
                     }
-                    if ($coin_deducted) {
+                    if ($confirmed_failure) {
                         MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_download_refund');
                     }
                     $err_msg = $message !== '' ? json_encode($message, JSON_HEX_TAG | JSON_HEX_AMP) : '"Download gagal: media tidak tersimpan di server."';
@@ -578,7 +589,10 @@ include __DIR__ . '/partials/scripts.php';
                                     <div style="display:flex;flex-direction:column;gap:.6rem;">
                                         <div style="display:flex;align-items:center;justify-content:space-between;">
                                             <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Saldo</span>
-                                            <span style="font-family:var(--font-mono);font-size:.85rem;color:#facc15;font-weight:700;cursor:help;"
+                                            <span id="coin-balance"
+                                                data-coin-api="<?= htmlspecialchars(meel_base_url_path(), ENT_QUOTES) ?>/api/meelcoin"
+                                                data-coin-user="<?= (int)($_SESSION['user_id'] ?? 0) ?>"
+                                                style="font-family:var(--font-mono);font-size:.85rem;color:#facc15;font-weight:700;cursor:help;"
                                                 title="Refill berikutnya: <?= $coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill' ?>"
                                             ><?= $is_admin ? '∞' : $coin_balance ?></span>
                                         </div>

@@ -191,7 +191,10 @@ if (isset($_POST['clean_orphans'])) {
         }
         $valid = false;
         foreach ($valid_dirs as $dir) {
-            if (strpos($real, $dir) === 0) { $valid = true; break; }
+            if (strpos($real, $dir) === 0) {
+                $valid = true;
+                break;
+            }
         }
         if (!$valid) {
             $skipped_count++;
@@ -261,7 +264,9 @@ if (isset($_POST['save_meelcoin_settings'])) {
 
     foreach ($fields as $key => $default) {
         $value = $_POST[$key] ?? $default;
-        if (in_array($key, ['meelcoin_upload_cost', 'meelcoin_advanced_cost', 'meelcoin_transcode_user_cost', 'meelcoin_transcode_member_cost', 'meelcoin_user_max', 'meelcoin_user_refill', 'meelcoin_member_max', 'meelcoin_member_refill', 'meelcoin_refill_hours'])) {
+        if (in_array($key, ['meelcoin_upload_cost', 'meelcoin_advanced_cost'], true)) {
+            $value = max(1, (int)$value);
+        } elseif (in_array($key, ['meelcoin_transcode_user_cost', 'meelcoin_transcode_member_cost', 'meelcoin_user_max', 'meelcoin_user_refill', 'meelcoin_member_max', 'meelcoin_member_refill', 'meelcoin_refill_hours'], true)) {
             $value = max(0, (int)$value);
         }
         set_site_setting($conn, $key, (string)$value);

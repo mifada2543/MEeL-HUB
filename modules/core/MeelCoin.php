@@ -96,37 +96,43 @@ class MeelCoin
 
     public static function spend(\mysqli $conn, int $userId, int $amount, string $reason): array
     {
-        $balance = self::getBalance($conn, $userId);
-        if ($balance < $amount) {
-            return [false, 'MEeLCoin tidak cukup. Dibutuhkan: ' . $amount . ', tersedia: ' . $balance];
+        if ($amount <= 0) {
+            return [true, ''];
         }
 
-        $newBalance = $balance - $amount;
-
-        $stmt = $conn->prepare("UPDATE users SET meelcoin = ? WHERE id = ?");
-        $stmt->bind_param("ii", $newBalance, $userId);
+        $stmt = $conn->prepare("UPDATE users SET meelcoin = meelcoin - ? WHERE id = ? AND meelcoin >= ?");
+        if (!$stmt) {
+            return [false, 'Gagal memperbarui saldo MEeLCoin.'];
+        }
+        $stmt->bind_param("iii", $amount, $userId, $amount);
         if (!$stmt->execute()) {
             $stmt->close();
             return [false, 'Gagal memperbarui saldo MEeLCoin.'];
         }
+        $affected = $stmt->affected_rows;
         $stmt->close();
 
-        self::log($conn, $userId, -$amount, $newBalance, $reason);
+        // 0 baris terpengaruh = guard gagal (saldo kurang) atau user tidak ada.
+        if ($affected < 1) {
+            $balance = self::getBalance($conn, $userId);
+            return [false, 'MEeLCoin tidak cukup. Dibutuhkan: ' . $amount . ', tersedia: ' . $balance];
+        }
+
+        self::log($conn, $userId, -$amount, self::getBalance($conn, $userId), $reason);
         return [true, ''];
     }
 
     public static function refund(\mysqli $conn, int $userId, int $amount, string $reason): bool
     {
-        $balance = self::getBalance($conn, $userId);
-        $newBalance = $balance + $amount;
-
-        $stmt = $conn->prepare("UPDATE users SET meelcoin = ? WHERE id = ?");
-        $stmt->bind_param("ii", $newBalance, $userId);
-        $ok = $stmt->execute();
+        if ($amount <= 0) return true;
+        $stmt = $conn->prepare("UPDATE users SET meelcoin = meelcoin + ? WHERE id = ?");
+        if (!$stmt) return false;
+        $stmt->bind_param("ii", $amount, $userId);
+        $ok = $stmt->execute() && $stmt->affected_rows > 0;
         $stmt->close();
 
         if ($ok) {
-            self::log($conn, $userId, $amount, $newBalance, $reason);
+            self::log($conn, $userId, $amount, self::getBalance($conn, $userId), $reason);
         }
         return $ok;
     }
@@ -138,58 +144,59 @@ class MeelCoin
         $refillHours = self::getRefillHours($conn);
         $maxCoins    = self::getMax($conn, $role);
         $refillAmt   = self::getRefillAmount($conn, $role);
-
-        $stmt = $conn->prepare("SELECT meelcoin, meelcoin_last_refill FROM users WHERE id = ?");
-        $stmt->bind_param("i", $userId);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-
-        if (!$row) return false;
-
-        $current      = (int)$row['meelcoin'];
-        $lastRefill   = $row['meelcoin_last_refill'];
-        $now          = time();
-
-        if ($current >= $maxCoins) return false;
-
-        $shouldRefill = false;
-        if ($lastRefill === null) {
-            $shouldRefill = true;
-        } else {
-            $elapsed = $now - strtotime($lastRefill);
-            if ($elapsed >= $refillHours * 3600) {
-                $shouldRefill = true;
+        if ($refillAmt <= 0) return false;
+        $current = self::getBalance($conn, $userId);
+        if ($current >= $maxCoins) {
+            $stmt = $conn->prepare("UPDATE users SET meelcoin_last_refill = NOW() WHERE id = ? AND meelcoin >= ?");
+            if ($stmt) {
+                $stmt->bind_param("ii", $userId, $maxCoins);
+                $stmt->execute();
+                $stmt->close();
             }
+            return false;
         }
 
-        if (!$shouldRefill) return false;
-
-        $newBalance = min($maxCoins, $current + $refillAmt);
-        $added = $newBalance - $current;
-
-        if ($added <= 0) return false;
-
-        $stmt = $conn->prepare("UPDATE users SET meelcoin = ?, meelcoin_last_refill = NOW() WHERE id = ?");
-        $stmt->bind_param("ii", $newBalance, $userId);
+        $threshold = date('Y-m-d H:i:s', time() - ($refillHours * 3600));
+        $stmt = $conn->prepare(
+            "UPDATE users
+                SET meelcoin = LEAST(?, meelcoin + ?),
+                    meelcoin_last_refill = NOW()
+              WHERE id = ?
+                AND meelcoin = ?
+                AND meelcoin < ?
+                AND (meelcoin_last_refill IS NULL OR meelcoin_last_refill <= ?)"
+        );
+        if (!$stmt) return false;
+        $stmt->bind_param("iiiiis", $maxCoins, $refillAmt, $userId, $current, $maxCoins, $threshold);
         $ok = $stmt->execute();
+        $affected = $stmt->affected_rows;
         $stmt->close();
-
-        if ($ok) {
-            self::log($conn, $userId, $added, $newBalance, 'refill');
-        }
-        return $ok;
+        if (!$ok || $affected < 1) return false;
+        $added = min($refillAmt, $maxCoins - $current);
+        if ($added <= 0) return false;
+        self::log($conn, $userId, $added, $current + $added, 'refill');
+        return true;
     }
 
     public static function getRefillCountdown(\mysqli $conn, int $userId, string $role): int
     {
         if ($role === 'admin') return 0;
 
-        $refillHours = self::getRefillHours($conn);
-        $cycleSeconds = $refillHours * 3600;
+        $cycleSeconds = max(1, self::getRefillHours($conn) * 3600);
+        $stmt = $conn->prepare("SELECT meelcoin_last_refill FROM users WHERE id = ?");
+        if (!$stmt) return 0;
+        $stmt->bind_param("i", $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
-        // Siklus global — semua user countdown yang sama
-        return $cycleSeconds - (time() % $cycleSeconds);
+        $last = $row['meelcoin_last_refill'] ?? null;
+        if ($last === null || $last === '' || str_starts_with((string)$last, '0000-00-00')) {
+            return 0;
+        }
+
+        $elapsed = max(0, time() - (int)strtotime((string)$last));
+        return max(0, $cycleSeconds - $elapsed);
     }
 
     public static function initialize(\mysqli $conn, int $userId, string $role): void

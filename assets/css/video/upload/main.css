@@ -1,9 +1,6 @@
-/* ============================================================
- * upload/main.css — Page-specific CSS untuk Upload Video
+/* upload/main.css — Page-specific CSS untuk Upload Video
  * Halaman: video/upload.php
- * Dependensi:
- *   ../../shared/upload-form.css  — Nav, form, buttons, alerts (shared)
- * ============================================================ */
+ * Dependensi: ../../shared/upload-form.css — Nav, form, buttons, alerts (shared) */
 :root {
   --accent: #ef4444;
   --accent-hover: #f87171;
