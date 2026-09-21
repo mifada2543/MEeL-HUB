@@ -987,7 +987,7 @@ dan helper auth yang sama dengan modul lain).
 | `arcade/rhythm/api/delete` | POST | login + CSRF | Hapus lagu custom — owner atau admin; hapus audio + cover + beatmap.json + record DB (transaksional) |
 
 > ⚠️ Tabel `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
-> (terpisah dari `database/schema.sql` / `database/migrate.php` v1–v15).
+> (terpisah dari `database/schema.sql` / `database/migrate.php`).
 
 ---
 

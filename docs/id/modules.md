@@ -442,7 +442,9 @@ class MusicWatchController { public function getViewData(): array; public functi
 
 ### 19. Migration System (`database/migrate.php`)
 
-Migration system mengkonsolidasi semua perubahan skema ke satu migrasi **v1** tunggal. Bersifat **idempotent** — aman dijalankan berulang kali. Tabel `db_version` melacak migrasi mana yang sudah dijalankan.
+Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabel `db_version` melacak migrasi mana yang sudah dijalankan (satu baris per versi, setiap versi hanya dieksekusi sekali).
+
+**v1 — konsolidasi skema**
 
 | Apa yang di-Sync | Detail |
 |---|---|
@@ -459,6 +461,14 @@ Migration system mengkonsolidasi semua perubahan skema ke satu migrasi **v1** tu
 | Sistem MEeLCoin | Kolom `meelcoin` + `meelcoin_last_refill`, tabel `site_settings`, `meelcoin_log` |
 | Index view_logs | `(video_id)`, `(music_id)` — percepat `syncViewsFromLogs` |
 | user_notifications | Sistem notifikasi untuk like, reply, MEeLCoin, chat admin |
+
+**v16 — normalisasi state MEeLCoin**
+
+> Penomoran melompat ke `16` karena loop migrasi hanya mengeksekusi versi yang `> MAX(db_version)`, sementara instalasi lama masih mencatat angka tertinggi dari riwayat migrasi sebelumnya (v1–v15). Migrasi baru harus bernomor di atas angka tersebut agar ikut dijalankan.
+
+| Apa yang di-Sync | Detail |
+|---|---|
+| Biaya upload MEeLCoin | `meelcoin_upload_cost` & `meelcoin_advanced_cost` dinormalkan minimum `1` (biaya `0` membuat `spend()` tidak memotong apa pun) |
 
 > Fresh install pakai `database/schema.sql` (import langsung). Migration untuk **database yang sudah ada** agar sync ke skema terbaru.
 
@@ -567,7 +577,7 @@ statis (HTML/JS murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm
 
 > ⚠️ **Instalasi:** jalankan migrasi arcade sekali:
 > `php arcade/migrate.php` — bukan bagian dari `database/schema.sql`
-> (23 tabel) maupun `database/migrate.php` (v1–v15). Atau gunakan
+> (23 tabel) maupun `database/migrate.php`. Atau gunakan
 > `install.sh` yang menawarkan instalasi arcade secara interaktif.
 
 ### Admin Activity Log Viewer
@@ -710,6 +720,36 @@ class Notification {
 1. Gunakan CSS variables (`var(--meel-bg)`, `var(--meel-surface)`) alih-alih hardcoded colors
 2. Jika pakai Tailwind hardcoded (`bg-[#0d1017]`), tambah override di `light-theme.css`
 3. Logo/icon harus di-exclude dari color changes
+
+---
+
+### 26. MEeLCoin System (`modules/core/MeelCoin.php`)
+
+Mata uang internal untuk membatasi upload per-user. Semua perubahan saldo memakai **satu statement `UPDATE` dengan guard saldo** — tanpa pola read-modify-write — sehingga potongan tidak bisa tertimpa request lain yang berjalan bersamaan.
+
+**Database:** kolom `users.meelcoin` & `users.meelcoin_last_refill`, tabel `site_settings` (kunci `meelcoin_*`), tabel `meelcoin_log` (audit kredit/debit).
+
+```php
+class MeelCoin {
+    public static function spend(mysqli $conn, int $userId, int $amount, string $reason): array; // [ok, error]
+    public static function refund(mysqli $conn, int $userId, int $amount, string $reason): bool;
+    public static function refill(mysqli $conn, int $userId, string $role): bool;
+    public static function getRefillCountdown(mysqli $conn, int $userId, string $role): int;     // 0 = siap refill
+}
+```
+
+| Aturan | Implementasi |
+|---|---|
+| Potong saldo | `SET meelcoin = meelcoin - ? WHERE id = ? AND meelcoin >= ?` — 0 baris terpengaruh = saldo kurang |
+| Refund | `SET meelcoin = meelcoin + ?` (ditambah dari nilai DB terkini) |
+| Refill | Siklus per-user: grant dibatasi `LEAST(max, meelcoin + refill)` di DB; saat saldo penuh `meelcoin_last_refill` **di-reset** supaya refill tidak menumpuk dan tidak menutup potongan upload berikutnya |
+| Countdown | Mengikuti `meelcoin_last_refill` user tersebut; `0` = siap refill |
+| Biaya | Wajib ≥ 1 (ditegakkan panel admin). Biaya ≤ 0 → alur coin dilewati di runtime |
+| Admin | Dikecualikan dari pemotongan (`$is_admin`) dan dari dropdown penyesuaian manual |
+| Refund `upload_advanced.php` | Hanya untuk sentinel gagal eksplisit (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); hasil tak dikenal tidak direfund + `error_log` |
+| Refund queue orphaned | `QueueReconciler` memakai `reason = 'reconcile_refund_q<id>'` sehingga refund idempoten per queue |
+
+**Sinkronisasi UI:** `meelRefreshCoinBalance()` (`assets/js/engine/result.js`) menyegarkan elemen `#coin-balance` setelah overlay `meelDone`/`meelError` — halaman tidak di-render ulang oleh overlay.
 
 ---
 
