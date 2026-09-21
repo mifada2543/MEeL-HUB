@@ -2,12 +2,12 @@
 (function() {
     'use strict';
 
-    /* ── Lucide Icons ── */
+    /* Lucide Icons */
     function initIcons() {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
-    /* ── Delete Modal ── */
+    /* Delete Modal */
     window.confirmDelete = function(id, type, title, views, likes, dislikes, thumbUrl) {
         var idEl      = document.getElementById('modal-media-id');
         var typeEl    = document.getElementById('modal-media-type');
@@ -55,7 +55,7 @@
         if (e.key === 'Escape') closeDeleteModal();
     });
 
-    /* ── Search Enter ── */
+    /* Search Enter */
     var searchInput = document.querySelector('input[name="search"]');
     if (searchInput) {
         searchInput.addEventListener('keydown', function(e) {
@@ -67,7 +67,7 @@
         });
     }
 
-    /* ── Type Dropdown Toggle ── */
+    /* Type Dropdown Toggle */
     var typeTrigger = document.getElementById('type-trigger');
     var typeDropdown = document.getElementById('type-dropdown');
     if (typeTrigger && typeDropdown) {
@@ -81,11 +81,8 @@
         if (dd && !dd.contains(e.target)) dd.classList.remove('open');
     });
 
-    /* ══════════════════════════════════════════════════════
-       CLIENT-SIDE SORT FIX
-       Reads URL params, rewrites ALL sort links + chevrons
-       Works even if page is served from cache.
-       ══════════════════════════════════════════════════════ */
+    /* CLIENT-SIDE SORT FIX — reads URL params and rewrites ALL sort links +
+       chevrons, so it works even when the page is served from cache. */
     var p    = new URLSearchParams(window.location.search);
     var sort = p.get('sort') || 'views';
     var dir  = p.get('dir')  || '';
@@ -164,13 +161,13 @@
         else if (input.name === 'type') input.value = type;
     });
 
-    /* ── Hover Effects ── */
+    /* Hover Effects */
     document.querySelectorAll('.admin-table tbody tr').forEach(function(row) {
         row.addEventListener('mouseenter', function() { this.style.background = 'rgba(255,255,255,0.02)'; });
         row.addEventListener('mouseleave', function() { this.style.background = 'transparent'; });
     });
 
-    /* ── Init ── */
+    /* Init */
     initIcons();
 
 })();

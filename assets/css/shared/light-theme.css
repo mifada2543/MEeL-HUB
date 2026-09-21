@@ -1,5 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   MEeL — LIGHT THEME
+/* MEeL — LIGHT THEME
    Architecture: token → component → state
 
    1. TOKENS   — legacy CSS variable maps consumed by component styles.
@@ -15,12 +14,9 @@
 
    Every rule is scoped to html[data-theme="light"] (native CSS nesting),
    so dark mode is untouched. Rules are load-bearing overrides of the
-   Tailwind/module CSS and intentionally keep !important.
-   ═══════════════════════════════════════════════════════════════════════════ */
+   Tailwind/module CSS and intentionally keep !important. */
 
-/* ────────────────────────────────────────────────────────────────────────────
-   0. THEME TRANSITION (both themes)
-   ──────────────────────────────────────────────────────────────────────────── */
+/* 0. THEME TRANSITION (both themes) */
 html.theme-transition,
 html.theme-transition *,
 html.theme-transition *::before,
@@ -74,11 +70,9 @@ html.theme-transition *::after {
   100% { background-position: -200% 0; }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   LIGHT THEME (everything below is gated to html[data-theme="light"])
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* LIGHT THEME (everything below is gated to html[data-theme="light"]) */
 html[data-theme="light"] {
-  /* ── 1. TOKENS (legacy variable maps) ─────────────────────────────────── */
+  /* 1. TOKENS (legacy variable maps) */
   --bg-base: #fafafa !important;
   --bg-card: #ffffff !important;
   --bg-panel: #f4f4f5 !important;
@@ -89,7 +83,7 @@ html[data-theme="light"] {
   --muted: #71717a !important;
   --white: #18181b !important;
 
-  /* ── 2. BASE (page + form elements) ───────────────────────────────────── */
+  /* 2. BASE (page + form elements) */
   & body {
     --bg: #fafafa !important;
     --surface: #ffffff !important;
@@ -122,7 +116,7 @@ html[data-theme="light"] {
     color: var(--meel-text) !important;
   }
 
-  /* ── 3. UTILITY REMAP — Tailwind color utilities → semantic tokens ────── */
+  /* 3. UTILITY REMAP — Tailwind color utilities → semantic tokens */
   /* Text */
   & .text-white:not(.nav-logo-text):not(.bg-blue-600):not(.bg-gray-600):not(.bg-red-600):not(.bg-purple-600):not(.bg-green-600),
   & .text-white\/90:not(.nav-logo-text),
@@ -343,7 +337,7 @@ html[data-theme="light"] {
   & nav.hub-nav .bg-white\/10 { background: rgba(255, 255, 255, 0.10) !important; }
   & nav.hub-nav .hover\:bg-white\/5:hover { background: rgba(255, 255, 255, 0.05) !important; }
 
-  /* ── 4. COMPONENTS ────────────────────────────────────────────────────── */
+  /* 4. COMPONENTS */
   /* 4.1 Navigation */
   & nav {
     transition: background-color 0.35s ease, border-color 0.35s ease;

@@ -1,9 +1,7 @@
-/* ============================================================
- * upload/main.css — Page-specific CSS untuk Music Upload
+/* upload/main.css — Page-specific CSS untuk Music Upload
  * Halaman: music/upload.php
  * Tema: Oranye
- * Dependensi: ../../shared/upload-form.css  — Nav, form, buttons, alerts (shared)
- * ============================================================ */
+ * Dependensi: ../../shared/upload-form.css — Nav, form, buttons, alerts (shared) */
 :root {
   --accent: #f97316;
   --accent-hover: #fb923c;
