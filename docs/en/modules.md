@@ -522,7 +522,9 @@ class MusicWatchController { public function getViewData(): array; public functi
 
 ### 19. Migration System (`database/migrate.php`)
 
-The migration system consolidates all schema changes into a single **v1** migration. It is **idempotent** — safe to run multiple times. The `db_version` table tracks which migrations have been applied.
+The migration system is **idempotent** — safe to run multiple times. The `db_version` table tracks which migrations have been applied (one row per version; each version runs exactly once).
+
+**v1 — schema consolidation**
 
 | What v1 Syncs | Detail |
 |---|---|
@@ -539,6 +541,14 @@ The migration system consolidates all schema changes into a single **v1** migrat
 | MEeLCoin system | `meelcoin` + `meelcoin_last_refill` columns, `site_settings`, `meelcoin_log` tables |
 | view_logs indexes | `(video_id)`, `(music_id)` — accelerates `syncViewsFromLogs` |
 | user_notifications | Notification system for likes, replies, MEeLCoin, admin chat |
+
+**v16 — MEeLCoin state normalization**
+
+> The number jumps to `16` because the migration loop only runs versions `> MAX(db_version)`, while existing installations still record the highest number from the earlier migration history (v1–v15). A new migration must be numbered above that so it actually runs.
+
+| What v16 Syncs | Detail |
+|---|---|
+| MEeLCoin upload costs | `meelcoin_upload_cost` & `meelcoin_advanced_cost` normalized to a minimum of `1` (a cost of `0` makes `spend()` deduct nothing) |
 
 > Fresh installs use `database/schema.sql` (import directly). The migration is for **existing databases** to sync to the latest schema.
 
@@ -647,7 +657,7 @@ its own DB):
 
 > ⚠️ **Installation:** run the arcade migration once:
 > `php arcade/migrate.php` — not part of `database/schema.sql`
-> (23 tables) nor `database/migrate.php` (v1–v15). Alternatively,
+> (23 tables) nor `database/migrate.php`. Alternatively,
 > `install.sh` offers interactive arcade installation.
 
 ### Admin Activity Log Viewer
@@ -784,6 +794,36 @@ class Notification {
 **Link generation:** The `related_slug` column stores the media type (`video`/`music`) or a compound key (`type:id` for replies). The notification page builds links dynamically using `meel_base_url_path()` prefix.
 
 **API:** `controllers/api/notification.php` — POST-only for state-changing actions (mark_read, delete, delete_all) with CSRF verification. Read-only actions (unread_count, list) accept GET.
+
+---
+
+### 26. MEeLCoin System (`modules/core/MeelCoin.php`)
+
+Internal currency that limits uploads per user. Every balance change uses **a single `UPDATE` with a balance guard** — no read-modify-write — so a deduction can no longer be overwritten by a concurrent request.
+
+**Database:** `users.meelcoin` & `users.meelcoin_last_refill` columns, `site_settings` table (`meelcoin_*` keys), `meelcoin_log` table (credit/debit audit trail).
+
+```php
+class MeelCoin {
+    public static function spend(mysqli $conn, int $userId, int $amount, string $reason): array; // [ok, error]
+    public static function refund(mysqli $conn, int $userId, int $amount, string $reason): bool;
+    public static function refill(mysqli $conn, int $userId, string $role): bool;
+    public static function getRefillCountdown(mysqli $conn, int $userId, string $role): int;     // 0 = ready to refill
+}
+```
+
+| Rule | Implementation |
+|---|---|
+| Spend | `SET meelcoin = meelcoin - ? WHERE id = ? AND meelcoin >= ?` — 0 affected rows = insufficient balance |
+| Refund | `SET meelcoin = meelcoin + ?` (added on top of the current DB value) |
+| Refill | Per-user cycle: the grant is capped by `LEAST(max, meelcoin + refill)` in the DB; when the balance is full, `meelcoin_last_refill` is **reset** so refills neither pile up nor mask the next upload's deduction |
+| Countdown | Derived from that user's `meelcoin_last_refill`; `0` = ready to refill |
+| Cost | Minimum 1 (enforced in the admin panel). Cost ≤ 0 → the coin flow is skipped at runtime |
+| Admin | Excluded from deductions (`$is_admin`) and from the manual adjustment dropdown |
+| `upload_advanced.php` refund | Only for explicit failure sentinels (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); unrecognized results are not refunded and go to `error_log` |
+| Orphaned queue refund | `QueueReconciler` uses `reason = 'reconcile_refund_q<id>'`, making the refund idempotent per queue |
+
+**UI sync:** `meelRefreshCoinBalance()` (`assets/js/engine/result.js`) refreshes the `#coin-balance` element after the `meelDone`/`meelError` overlay — the page itself is not re-rendered by the overlay.
 
 ---
 
