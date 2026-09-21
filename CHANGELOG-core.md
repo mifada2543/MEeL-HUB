@@ -7,12 +7,23 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), versi mengikut
 [Semantic Versioning](https://semver.org/) dengan tag `core-vX.Y.Z`.
 
 ## [Unreleased]
+
 ### Added
--
+- **Test integrasi MEeLCoin:** `tests/integration/MeelCoinIntegrationTest.php` (17 test) — mengunci kontrak atomik `spend`/`refund`/`refill`, semantik siklus refill, countdown per-user, dan idempotensi refund `QueueReconciler`
+- **Migrasi v16 (`database/migrate.php`):** normalisasi state MEeLCoin — `meelcoin_upload_cost` & `meelcoin_advanced_cost` minimum `1`
+
 ### Changed
--
+- **MEeLCoin atomik:** `MeelCoin::spend()`/`refund()`/`refill()` memakai satu `UPDATE` dengan guard saldo (bukan read-modify-write), sehingga potongan saldo tidak bisa tertimpa request lain yang berjalan bersamaan
+- **Refill = siklus, bukan tabungan:** `refill()` meng-reset `meelcoin_last_refill` saat saldo penuh, dan cap ke `meelcoin_user_max`/`meelcoin_member_max` dihitung di DB (`LEAST`)
+- **Countdown refill per-user:** `MeelCoin::getRefillCountdown()` mengikuti `meelcoin_last_refill` user tersebut (sebelumnya siklus wall-clock global yang identik untuk semua user); nilai `0` = siap refill
+- **Biaya upload wajib ≥ 1:** panel admin MEeLCoin menolak biaya `0`; runtime melewati alur coin bila biaya ≤ 0
+- **Refund lebih ketat:** `upload_advanced.php` hanya me-refund kegagalan terkonfirmasi (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); hasil tak dikenal tidak direfund dan dicatat ke error log
+- **`QueueReconciler` benar-benar me-refund:** idempotensi per-queue via `reason = 'reconcile_refund_q<id>'` (sebelumnya hanya menulis log tanpa refund)
+- **Sinkronisasi saldo di UI:** `meelRefreshCoinBalance()` (`assets/js/engine/result.js`) menyegarkan `#coin-balance` setelah operasi selesai pada halaman upload & transcode
+
 ### Fixed
--
+- **Saldo MEeLCoin kadang tidak terpotong setelah upload advanced berhasil:** user yang lama berada di saldo penuh menyimpan "refill tertunda" (timer tidak pernah di-reset saat saldo penuh) sehingga refill di request berikutnya menutup potongan coin
+- Countdown refill di halaman profil menampilkan siklus penuh saat sudah waktunya refill (seharusnya "Siap")
 
 ## [1.0.0] - 2026-09-19
 

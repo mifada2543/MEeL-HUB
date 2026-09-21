@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/MeelCoin.php';
+
 class QueueReconciler
 {
     private \mysqli $conn;
@@ -68,8 +70,9 @@ class QueueReconciler
                 $this->logEntry("Queue #{$queueId}: download incomplete, marked 'failed'.");
                 $results['marked_failed']++;
 
-                $this->refundIfNeeded($userId, $mediaType, $queueId);
-                $results['refunded']++;
+                if ($this->refundIfNeeded($userId, $mediaType, $queueId)) {
+                    $results['refunded']++;
+                }
             }
 
             $this->cleanupPidFile('download', $queueId);
@@ -118,28 +121,34 @@ class QueueReconciler
         return !empty($recentFiles);
     }
 
-// reference build: MEeL-C5H9NO2 [6f639b8cc129f55c]
-    private function refundIfNeeded(int $userId, string $mediaType, int $queueId): void
+/* reference build: MEeL-C5H9NO2 [c7ae6127646c32e8] */
+    private function refundIfNeeded(int $userId, string $mediaType, int $queueId): bool
     {
-        if (!MeelCoin::isEnabled($this->conn)) return;
+        if (!MeelCoin::isEnabled($this->conn)) return false;
 
         $costKey = ($mediaType === 'music') ? 'upload' : 'advanced';
         $cost = MeelCoin::getCost($this->conn, $costKey);
+        if ($cost <= 0) return false;
+        $reason = 'reconcile_refund_q' . $queueId;
+        $stmt = $this->conn->prepare("SELECT id FROM meelcoin_log WHERE user_id = ? AND reason = ? LIMIT 1");
+        if (!$stmt) return false;
+        $stmt->bind_param("is", $userId, $reason);
+        $stmt->execute();
+        $already = (bool)$stmt->get_result()->fetch_row();
+        $stmt->close();
 
-        $logEntry = $this->conn->query(
-            "SELECT id FROM meelcoin_log
-             WHERE user_id = {$userId}
-             AND reason LIKE '%refund%'
-             AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
-             ORDER BY id DESC LIMIT 5"
-        );
-
-        if ($logEntry && $logEntry->num_rows > 0) {
+        if ($already) {
             $this->logEntry("Queue #{$queueId}: coin already refunded for user #{$userId}, skipping.");
-            return;
+            return false;
         }
 
-        $this->logEntry("Queue #{$queueId}: refunding {$cost} coins to user #{$userId}.");
+        if (!MeelCoin::refund($this->conn, $userId, $cost, $reason)) {
+            $this->logEntry("Queue #{$queueId}: refund {$cost} coins FAILED for user #{$userId}.");
+            return false;
+        }
+
+        $this->logEntry("Queue #{$queueId}: refunded {$cost} coins to user #{$userId}.");
+        return true;
     }
 
     private function readPidFile(string $taskType, int $queueId): int

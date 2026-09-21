@@ -77,7 +77,7 @@ body.theme-music .lyrics-empty {
   color: #6b7280;
 }
 
-/* ── Light Theme: lyrics ── */
+/* Light Theme: lyrics */
 html[data-theme="light"] body.theme-music .lyrics-section {
   background: rgba(0,0,0,0.03);
   border-color: rgba(0,0,0,0.08);

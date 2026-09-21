@@ -135,7 +135,7 @@ Request: /MEeL/music/beranda?format=ogg
 - **Type hints:** Class properties and constructor parameters now use type hints (`\mysqli`, `int`, `string`, etc.)
 - **Activity Log Integration:** `log_activity()` function integrated at login, logout, upload, and admin actions — full audit trail to `activity_log` table
 - **Admin Activity Log Viewer:** `admin/activity_log.php` page for viewing, filtering, and cleaning audit trails
-- **Database Alignment:** `schema.sql` and `migrate.php` are synchronized — single v1 migration consolidates all schema changes (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, comments indexes, interactions, user_notifications)
+- **Database Alignment:** `schema.sql` and `migrate.php` are synchronized — migration v1 consolidates all schema changes (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, comments indexes, interactions, user_notifications), and migration v16 normalizes MEeLCoin state (upload cost minimum 1)
 - **Anime Module Removed:** The "Coming Soon" placeholder module has been removed from the codebase
 - **API Rate Limiting:** File-based rate limiter (`modules/auth/RateLimiter.php`) — protects like, comment, upload endpoints from abuse with per-user limits with role-based adjustment (admin=unlimited, member=2x)
 - **Security Module (`modules/auth/`):** Security helpers & classes consolidated into one directory for easy auditing — `helpers/` (authz, csrf, session, stream_auth, mfa, user) + `RateLimiter.php` + `SsrfGuard.php`, loaded via `modules/auth/loader.php` (the legacy `modules/core/helpers.php` shim still works)

@@ -278,11 +278,7 @@ function meel_sanitize_clean_name(string $raw, int $max_len = 120): string
 
 if (!function_exists('meel_reserve_unique_filename')) {
 /**
- * Alokasi nama file unik secara ATOMIK memakai fopen(..., 'x') (O_EXCL):
- * placeholder kosong dibuat lebih dulu, lalu pemanggil menimpanya dengan
- * move_uploaded_file / ffmpeg -y. Dua request bersamaan tidak mungkin
- * memilih nama yang sama (anti race condition).
- *
+ * Reservasi nama file unik (tanpa direktori) di dalam $dir.
  * @return string|null nama file (tanpa direktori) yang berhasil di-reserve,
  *                     atau null bila semua percobaan gagal (folder penuh/
  *                     tidak writable).
@@ -492,7 +488,6 @@ function meel_handle_upload(string $media_type, callable $process_fn, string $lo
 
     $result = ['status' => '', 'alert_message' => '', 'extra' => []];
 
-    // CSRF check
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $result['alert_message'] = 'CSRF token tidak valid.';
         return $result;
@@ -500,9 +495,12 @@ function meel_handle_upload(string $media_type, callable $process_fn, string $lo
 
     $meelcoin_enabled = MeelCoin::isEnabled($conn);
     $coin_cost = 0;
-
     if ($meelcoin_enabled && !$is_admin) {
-        $coin_cost   = MeelCoin::getCost($conn, 'upload');
+        $coin_cost = MeelCoin::getCost($conn, 'upload');
+    }
+    $coin_active = $meelcoin_enabled && !$is_admin && $coin_cost > 0;
+
+    if ($coin_active) {
         $coin_balance = MeelCoin::getBalance($conn, $user_id);
         if (!MeelCoin::canAfford($conn, $user_id, $coin_cost)) {
             $result['alert_message'] = "MEeLCoin tidak cukup! Dibutuhkan {$coin_cost} coin, saldo Anda: {$coin_balance}.";
@@ -511,7 +509,7 @@ function meel_handle_upload(string $media_type, callable $process_fn, string $lo
     }
 
     $coin_deducted = false;
-    if ($meelcoin_enabled && !$is_admin) {
+    if ($coin_active) {
         [$spent_ok, $spent_err] = MeelCoin::spend($conn, $user_id, $coin_cost, 'upload');
         if (!$spent_ok) {
             $result['alert_message'] = $spent_err;
@@ -525,7 +523,6 @@ function meel_handle_upload(string $media_type, callable $process_fn, string $lo
         );
     }
 
-    // Process upload
     $process_result = $process_fn($_POST, $_FILES);
 
     if ($process_result['status'] === 'success') {

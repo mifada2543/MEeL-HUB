@@ -14,7 +14,7 @@ if (!isset($conn) || !$conn instanceof \mysqli || $conn->connect_error) {
 function meel_mig_has_column(\mysqli $conn, string $table, string $col): bool
 {
     $sql = "SHOW COLUMNS FROM `" . $conn->real_escape_string($table)
-         . "` LIKE '" . $conn->real_escape_string($col) . "'";
+        . "` LIKE '" . $conn->real_escape_string($col) . "'";
     $r = $conn->query($sql);
     return $r && $r->num_rows > 0;
 }
@@ -22,7 +22,7 @@ function meel_mig_has_column(\mysqli $conn, string $table, string $col): bool
 function meel_mig_has_index(\mysqli $conn, string $table, string $index): bool
 {
     $sql = "SHOW INDEX FROM `" . $conn->real_escape_string($table)
-         . "` WHERE Key_name = '" . $conn->real_escape_string($index) . "'";
+        . "` WHERE Key_name = '" . $conn->real_escape_string($index) . "'";
     $r = $conn->query($sql);
     return $r && $r->num_rows > 0;
 }
@@ -84,7 +84,7 @@ $migrations = [
     1 => [
         'description' => 'Sync database ke skema terbaru (v1.0.0)',
         'sql' => [
-            // ── FULLTEXT indexes (pencarian) ──
+            // FULLTEXT indexes (pencarian)
             function ($conn) {
                 meel_mig_add_fulltext($conn, 'video', 'ft_video_search', 'title, search_metadata');
             },
@@ -95,7 +95,7 @@ $migrations = [
                 meel_mig_add_fulltext($conn, 'books', 'ft_books_search', 'title, author');
             },
 
-            // ── Performance indexes (upload_date) ──
+            // Performance indexes (upload_date)
             function ($conn) {
                 meel_mig_add_index($conn, 'video', 'idx_video_upload_date', 'upload_date');
             },
@@ -109,24 +109,36 @@ $migrations = [
                 meel_mig_add_index($conn, 'drive_files', 'idx_drive_upload_date', 'upload_date');
             },
 
-            // ── FK constraints (upload_queue, transcode_queue, drive_files) ──
+            // FK constraints (upload_queue, transcode_queue, drive_files)
             function ($conn) {
                 $conn->query("DELETE FROM upload_queue WHERE user_id NOT IN (SELECT id FROM users)");
-                meel_mig_add_fk($conn, 'upload_queue', 'fk_upload_queue_user',
-                    'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE');
+                meel_mig_add_fk(
+                    $conn,
+                    'upload_queue',
+                    'fk_upload_queue_user',
+                    'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE'
+                );
             },
             function ($conn) {
                 $conn->query("DELETE FROM transcode_queue WHERE user_id NOT IN (SELECT id FROM users)");
-                meel_mig_add_fk($conn, 'transcode_queue', 'fk_transcode_queue_user',
-                    'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE');
+                meel_mig_add_fk(
+                    $conn,
+                    'transcode_queue',
+                    'fk_transcode_queue_user',
+                    'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE'
+                );
             },
             function ($conn) {
                 $conn->query("DELETE FROM drive_files WHERE user_id NOT IN (SELECT id FROM users)");
-                meel_mig_add_fk($conn, 'drive_files', 'fk_drive_files_user',
-                    'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE');
+                meel_mig_add_fk(
+                    $conn,
+                    'drive_files',
+                    'fk_drive_files_user',
+                    'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE'
+                );
             },
 
-            // ── title TEXT (cegah silent truncation) ──
+            // title TEXT (cegah silent truncation)
             function ($conn) {
                 $result = $conn->query("ALTER TABLE video MODIFY COLUMN title TEXT NOT NULL");
                 if (!$result) {
@@ -155,7 +167,7 @@ $migrations = [
                 }
             },
 
-            // ── activity_log table ──
+            // activity_log table
             function ($conn) {
                 $conn->query("CREATE TABLE IF NOT EXISTS activity_log (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -168,7 +180,7 @@ $migrations = [
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
             },
 
-            // ── UNIQUE KEY users.username (bersihkan duplikat guest) ──
+            // UNIQUE KEY users.username (bersihkan duplikat guest)
             function ($conn) {
                 $conn->query("DELETE g1 FROM users g1
                     INNER JOIN users g2
@@ -189,7 +201,7 @@ $migrations = [
                 meel_mig_add_unique($conn, 'users', 'idx_username_unique', 'username');
             },
 
-            // ── role varchar(20) + defaults ──
+            // role varchar(20) + defaults
             function ($conn) {
                 $result = $conn->query("ALTER TABLE users MODIFY COLUMN role varchar(20) DEFAULT 'user'");
                 if (!$result) {
@@ -218,7 +230,7 @@ $migrations = [
                 $conn->query("ALTER TABLE activity_log ALTER COLUMN ip_address SET DEFAULT 'Unknown'");
             },
 
-            // ── MFA columns ──
+            // MFA columns
             function ($conn) {
                 if (!meel_mig_has_column($conn, 'users', 'mfa_secret')) {
                     $conn->query("ALTER TABLE users ADD COLUMN mfa_secret VARCHAR(64) DEFAULT NULL AFTER last_session_id");
@@ -235,7 +247,7 @@ $migrations = [
                 }
             },
 
-            // ── Comments composite indexes ──
+            // Comments composite indexes
             function ($conn) {
                 meel_mig_add_index($conn, 'comments', 'idx_comments_video_created', 'video_id, created_at');
             },
@@ -243,7 +255,7 @@ $migrations = [
                 meel_mig_add_index($conn, 'comments', 'idx_comments_music_created', 'music_id, created_at');
             },
 
-            // ── Interactions unique key (split per media type) ──
+            // Interactions unique key (split per media type)
             function ($conn) {
                 $conn->query("DELETE i1 FROM interactions i1
                     INNER JOIN interactions i2
@@ -274,7 +286,7 @@ $migrations = [
                 meel_mig_add_unique($conn, 'interactions', 'unique_interaction_music', 'user_id, music_id');
             },
 
-            // ── MEeLCoin system ──
+            // MEeLCoin system
             function ($conn) {
                 if (!meel_mig_has_column($conn, 'users', 'meelcoin')) {
                     $result = $conn->query("ALTER TABLE users ADD COLUMN meelcoin INT(11) NOT NULL DEFAULT 0 AFTER mfa_enabled");
@@ -342,7 +354,7 @@ $migrations = [
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
             },
 
-            // ── view_logs indexes ──
+            // view_logs indexes
             function ($conn) {
                 meel_mig_add_index($conn, 'view_logs', 'idx_vl_video_id', 'video_id');
             },
@@ -350,7 +362,7 @@ $migrations = [
                 meel_mig_add_index($conn, 'view_logs', 'idx_vl_music_id', 'music_id');
             },
 
-            // ── user_notifications ──
+            // user_notifications
             function ($conn) {
                 $conn->query("CREATE TABLE IF NOT EXISTS user_notifications (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -371,6 +383,34 @@ $migrations = [
             },
         ],
     ],
+
+    // Nomor 16 (bukan 2): loop di bawah hanya menjalankan versi yang
+    // `> MAX(db_version)`. Riwayat migrasi lama (v1–v15) pernah dikonsolidasi
+    // menjadi satu v1, tetapi database yang sudah ada tetap mencatat angka
+    // tertinggi dari riwayat lamanya (mis. 15). Karena itu migrasi baru harus
+    // bernomor lebih besar dari nomor tertinggi yang mungkin sudah tercatat
+    // supaya ikut dieksekusi, baik di instalasi lama maupun fresh install.
+    16 => [
+        'description' => 'Normalisasi state MEeLCoin (biaya upload minimum 1)',
+        'sql' => [
+            function ($conn) {
+                $stmt = $conn->prepare(
+                    "UPDATE site_settings
+                        SET setting_value = '1'
+                      WHERE setting_key = ?
+                        AND (setting_value = '' OR CAST(setting_value AS SIGNED) < 1)"
+                );
+                if (!$stmt) {
+                    return;
+                }
+                foreach (['meelcoin_upload_cost', 'meelcoin_advanced_cost'] as $key) {
+                    $stmt->bind_param('s', $key);
+                    $stmt->execute();
+                }
+                $stmt->close();
+            },
+        ],
+    ],
 ];
 
 $conn->query("CREATE TABLE IF NOT EXISTS db_version (
@@ -384,6 +424,7 @@ $row = $result->fetch_assoc();
 $current_version = (int)($row['current_version'] ?? 0);
 
 $new_migrations = 0;
+$latest_applied = $current_version;
 
 foreach ($migrations as $version => $migration) {
     if ($version > $current_version) {
@@ -408,6 +449,7 @@ foreach ($migrations as $version => $migration) {
         $stmt->execute();
         $stmt->close();
 
+        $latest_applied = $version;
         $new_migrations++;
         echo "[MEeL] ✓ Migrasi v{$version} selesai.\n";
     }
@@ -416,7 +458,7 @@ foreach ($migrations as $version => $migration) {
 if ($new_migrations === 0) {
     echo "[MEeL] Database sudah up-to-date (versi {$current_version}). Tidak ada migrasi baru.\n";
 } else {
-    echo "[MEeL] ✓ {$new_migrations} migrasi berhasil dijalankan. Versi sekarang: " . ($current_version + $new_migrations) . "\n";
+    echo "[MEeL] ✓ {$new_migrations} migrasi berhasil dijalankan. Versi sekarang: {$latest_applied}\n";
 }
 
 $conn->close();

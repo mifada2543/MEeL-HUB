@@ -73,9 +73,7 @@ class Transcoder extends TranscoderBase
         parent::terminateAllProcesses();
     }
 
-    // ------------------------------------------------------------------
     // Delegasi — API lama tetap tersedia di facade.
-    // ------------------------------------------------------------------
 
     public function processDownload(string $url, string $type): string
     {
