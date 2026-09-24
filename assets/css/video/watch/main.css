@@ -2,11 +2,10 @@
 
 @media (max-width: 639px) {
   #video-glow-container {
-    position: sticky;
-    top: 56px;
-    z-index: 40;
+    position: relative;
+    z-index: auto;
     width: auto;
-    margin-top: -1rem;
+    margin-top: 0;
     margin-left: -1rem;
     margin-right: -1rem;
     background: var(--bg);
@@ -19,6 +18,8 @@
   }
   #video-info {
     margin-left: -1rem;
+    margin-top: 0.75rem;
+    background: var(--bg);
   }
 }
 
