@@ -9,7 +9,7 @@ $__link_base = meel_base_url_path();
 $__meel_self = $_SERVER['PHP_SELF'] ?? '';
 $__meel_is_arcade = str_contains($__meel_self, '/arcade/');
 $__meel_is_admin  = str_contains($__meel_self, '/admin/');
-$__meel_theme_ok  = !$__meel_is_arcade && !$__meel_is_admin;
+$__meel_theme_ok  = !$__meel_is_arcade;
 ?>
 <link href="<?= $__link_base ?>/assets/css/tailwind.min.css" rel="stylesheet">
 <?php if ($__meel_theme_ok): ?>

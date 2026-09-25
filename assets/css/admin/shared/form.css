@@ -10,7 +10,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--admin-text);
   width: 200px;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s;
   outline: none;
 }
 .admin-search-input:focus {
@@ -43,7 +43,7 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s;
 }
 .type-dropdown:hover .type-trigger {
   background: rgba(255, 255, 255, 0.08);
@@ -122,3 +122,36 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
   color: #f87171;
 }
+
+/* ============ LIGHT THEME ============ */
+html[data-theme="light"] .admin-search-input {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+html[data-theme="light"] .admin-search-input:focus {
+  background: #ffffff;
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
+html[data-theme="light"] .type-trigger {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.02);
+}
+html[data-theme="light"] .type-dropdown:hover .type-trigger {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.16);
+}
+html[data-theme="light"] .type-menu {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.12);
+}
+html[data-theme="light"] .type-option:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #18181b;
+}
+html[data-theme="light"] .type-option.active { color: #2563eb; }
+
+html[data-theme="light"] .alert-success { color: #16a34a; }
+html[data-theme="light"] .alert-warning { color: #a16207; }
+html[data-theme="light"] .alert-error { color: #dc2626; }

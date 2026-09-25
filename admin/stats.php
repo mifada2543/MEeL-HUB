@@ -300,7 +300,7 @@ while ($rc = $r->fetch_assoc()) {
                     </div>
                     <div>
                         <div class="stat-chip-number" style="color:<?= $chip['color'] ?>;"><?= number_format($total_counts[$key]) ?></div>
-                        <div class="stat-chip-label" style="color:#455060;"><?= $chip['label'] ?></div>
+                        <div class="stat-chip-label" style="color:var(--admin-muted);"><?= $chip['label'] ?></div>
                     </div>
                 </a>
             <?php endforeach; ?>
