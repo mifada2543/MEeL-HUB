@@ -135,7 +135,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--admin-muted-light);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 .btn-modal-cancel:hover {
     background: rgba(255, 255, 255, 0.09);
@@ -153,9 +153,34 @@
     border: none;
     color: #fff;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.2s, box-shadow 0.2s;
     box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
 }
 .btn-modal-delete:hover {
     background: #f87171;
 }
+
+/* ============ LIGHT THEME ============ */
+html[data-theme="light"] .modal-box {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.15);
+}
+html[data-theme="light"] .modal-title { color: #18181b; }
+html[data-theme="light"] .modal-title-display {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+html[data-theme="light"] .modal-media-preview {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.07);
+}
+html[data-theme="light"] .modal-thumb-img { background: rgba(0, 0, 0, 0.05); }
+html[data-theme="light"] .btn-modal-cancel {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.12);
+}
+html[data-theme="light"] .btn-modal-cancel:hover {
+    background: rgba(0, 0, 0, 0.07);
+}
+html[data-theme="light"] .btn-modal-delete:hover { background: #b91c1c; }

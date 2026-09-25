@@ -39,17 +39,17 @@ if ($all_users) {
 $user_list_json = json_encode($user_list);
 ?>
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEeLCoin Settings | MEeL Admin</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link href="../assets/css/admin/<?= $__f ?>" rel="stylesheet">
+        <link href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
     <?php endforeach; ?>
 </head>
-<body class="bg-[#0b0e14] min-h-screen">
+<body class="min-h-screen">
     <?php
     $is_admin = true;
     $page_title = 'MEeLCoin Settings';
@@ -64,7 +64,7 @@ $user_list_json = json_encode($user_list);
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg>
             </div>
             <div>
-                <h1 style="font-size:22px;font-weight:800;color:#fff;line-height:1.2;margin:0;">MEeLCoin Settings</h1>
+                <h1 style="font-size:22px;font-weight:800;color:var(--admin-text);line-height:1.2;margin:0;">MEeLCoin Settings</h1>
                 <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-top:4px;">Upload Currency System</p>
             </div>
         </div>
@@ -89,7 +89,7 @@ $user_list_json = json_encode($user_list);
 
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
                         <div>
-                            <div style="font-size:12px;font-weight:700;color:#fff;">Aktifkan MEeLCoin</div>
+                            <div style="font-size:12px;font-weight:700;color:var(--admin-text);">Aktifkan MEeLCoin</div>
                             <div style="font-size:10px;color:#6b7280;margin-top:4px;">Gunakan sistem coin untuk upload. Nonaktifkan untuk kembali ke rate limit per jam.</div>
                         </div>
                         <label class="admin-toggle">

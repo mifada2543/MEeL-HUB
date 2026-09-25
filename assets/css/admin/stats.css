@@ -9,4 +9,9 @@
     background: rgba(255, 255, 255, 0.05);
 }
 
+/* ============ LIGHT THEME ============ */
+html[data-theme="light"] .media-thumb {
+    background: rgba(0, 0, 0, 0.05);
+}
+
 /* reference build: MEeL-C10H15N [0b7c8ecda73306f7] */

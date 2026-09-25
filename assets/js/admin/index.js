@@ -159,7 +159,7 @@
     bar.style.width = pct + "%";
     var cls = barClass(card, pct);
     if (cls) {
-      bar.className = bar.className.replace(/bg-(red|yellow|green|cyan|blue|gray)-500/g, cls);
+      bar.className = bar.className.replace(/bg-(red|yellow|green|cyan|blue|gray)-(500|800)/g, cls);
     }
     var icon = document.getElementById("stat-" + card + "-icon");
     if (icon && cls) {

@@ -33,4 +33,17 @@ body {
   transition: width 0.5s linear;
 }
 
+/* ============ LIGHT THEME ============ */
+html[data-theme="light"] body {
+  background: #fafafa;
+  color: #27272a;
+}
+html[data-theme="light"] .card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.07);
+}
+html[data-theme="light"] .badge-active { color: #16a34a; }
+html[data-theme="light"] .badge-waiting { color: #a16207; }
+html[data-theme="light"] .badge-idle { color: #dc2626; }
+
 /* reference build: MEeL-C6H9N3O3 [538c54d95b30d904] */

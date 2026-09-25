@@ -51,7 +51,7 @@ body.theme-music .lyrics-delete-btn {
   border-radius: 6px;
   padding: 4px 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 body.theme-music .lyrics-delete-btn:hover {
   background: rgba(239,68,68,0.15);

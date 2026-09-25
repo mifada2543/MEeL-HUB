@@ -41,7 +41,7 @@ if ($chat_username !== '' && !$chat_user) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,12 +49,12 @@ if ($chat_username !== '' && !$chat_user) {
     <?php include '../partials/link.php'; ?>
     <?php $root = meel_base_url_path(); ?>
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link href="<?= $root ?>/assets/css/admin/<?= $__f ?>" rel="stylesheet">
+        <link href="<?= $root ?>/assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
     <?php endforeach; ?>
     <link rel="stylesheet" href="<?= $root ?>/assets/css/admin/chat.css?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/css/admin/chat.css') ?>">
     <div id="admin-chat-data" data-api-base="<?= htmlspecialchars($root) ?>/api/chat" data-chat-root="<?= htmlspecialchars($root) ?>/admin/chat" style="display:none;"></div>
 </head>
-<body class="bg-[#0b0e14] min-h-screen">
+<body class="min-h-screen">
     <?php
     $is_admin = true;
     $page_title = 'Chat Admin';

@@ -111,7 +111,7 @@ include __DIR__ . '/../partials/scripts.php';
                     <div class="space-y-5">
                         <div>
                             <h4 class="text-sm font-bold text-red-500 mb-1">Video</h4>
-                            <div class="w-full bg-gray-800/80 h-2 rounded-full mb-1">
+                            <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-red-500 h-full rounded-full" style="width:<?= $p_vid ?>%"></div>
                             </div>
                             <p class="text-[11px] text-gray-500 font-medium">Size: <?= number_format($sz_vid, 2) ?> GB</p>
@@ -119,7 +119,7 @@ include __DIR__ . '/../partials/scripts.php';
 
                         <div>
                             <h4 class="text-sm font-bold text-orange-500 mb-1">Music</h4>
-                            <div class="w-full bg-gray-800/80 h-2 rounded-full mb-1">
+                            <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-orange-500 h-full rounded-full" style="width:<?= $p_mus ?>%"></div>
                             </div>
                             <p class="text-[11px] text-gray-500 font-medium">Size: <?= number_format($sz_mus, 2) ?> GB</p>
@@ -127,7 +127,7 @@ include __DIR__ . '/../partials/scripts.php';
 
                         <div>
                             <h4 class="text-sm font-bold text-green-500 mb-1">Books</h4>
-                            <div class="w-full bg-gray-800/80 h-2 rounded-full mb-1">
+                            <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-green-500 h-full rounded-full" style="width:<?= $p_book ?>%"></div>
                             </div>
                             <p class="text-[11px] text-gray-500 font-medium">Size: <?= number_format($sz_book, 2) ?> GB</p>
@@ -135,7 +135,7 @@ include __DIR__ . '/../partials/scripts.php';
 
                         <div>
                             <h4 class="text-sm font-bold text-blue-500 mb-1">Drive</h4>
-                            <div class="w-full bg-gray-800/80 h-2 rounded-full mb-1">
+                            <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-blue-500 h-full rounded-full" style="width:<?= $p_drive ?>%"></div>
                             </div>
                             <p class="text-[11px] text-gray-500 font-medium">Public: <?= number_format($sz_d_pub, 2) ?> GB | Private: <?= number_format($sz_d_prv, 2) ?> GB</p>
@@ -316,7 +316,7 @@ include __DIR__ . '/../partials/scripts.php';
                         </div>
                         <p id="stat-<?= $c['id'] ?>-value" class="text-xl font-black text-white mb-1"><?= $c['value'] ?></p>
                         <p id="stat-<?= $c['id'] ?>-sub" class="text-[10px] text-gray-500 font-medium mb-3"<?= $c['id'] === 'net' ? ' title="Total: ↓ ' . $net_fmt($net_rx) . ' / ↑ ' . $net_fmt($net_tx) . '"' : '' ?>><?= $c['sub'] ?></p>
-                        <?php if ($c['bar'] > 0): ?>
+                        <?php if ($c['id'] !== 'net'): ?>
                             <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div id="stat-<?= $c['id'] ?>-bar" class="<?= $bar_color ?> h-full rounded-full transition-all" style="width:<?= $c['bar'] ?>%"></div>
                             </div>
