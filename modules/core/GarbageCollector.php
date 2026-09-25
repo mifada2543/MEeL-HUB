@@ -265,6 +265,8 @@ class GarbageCollector
             
             if ($basename === 'ytdlp-cache') continue;
 
+            if (in_array($basename, ['cache', 'ratelimit'], true)) continue;
+
             
             if (!file_exists($item)) continue; 
             $mtime = filemtime($item);
