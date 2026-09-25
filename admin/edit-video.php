@@ -224,7 +224,9 @@ include __DIR__ . '/../partials/link.php';
 ?>
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">
-    <link rel="stylesheet" href="../assets/css/admin/shared/utility.css?v=<?= filemtime('../assets/css/admin/shared/utility.css') ?>">
+    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
+    <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
+    <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/admin/edit/shared/main.css?v=<?= filemtime('../assets/css/admin/edit/shared/main.css') ?>">
     <link rel="stylesheet" href="../assets/css/admin/edit/video/main.css?v=<?= filemtime('../assets/css/admin/edit/video/main.css') ?>">
 </head>
@@ -399,7 +401,7 @@ include __DIR__ . '/../partials/link.php';
                                 <?php endforeach; ?>
                             </div>
                         <?php else: ?>
-                            <div style="font-size:10px;color:#455060;">Belum ada subtitle untuk video ini.</div>
+                            <div style="font-size:10px;color:var(--admin-muted);">Belum ada subtitle untuk video ini.</div>
                         <?php endif; ?>
                     </div>
                     
@@ -437,7 +439,7 @@ include __DIR__ . '/../partials/link.php';
                             </div>
                             <input type="hidden" name="subtitle_lang" id="f-subtitle-lang" value="id">
                         </div>
-                        <div style="font-size:9px;color:#455060;">SRT dikonversi otomatis ke VTT</div>
+                        <div style="font-size:9px;color:var(--admin-muted);">SRT dikonversi otomatis ke VTT</div>
                     </div>
 
                     

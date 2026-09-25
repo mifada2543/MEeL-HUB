@@ -960,6 +960,9 @@ include __DIR__ . '/../partials/scripts.php';
                 const values = data.map(d => d.views);
 
                 const ctx = document.getElementById('view-chart');
+                const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+                const gridColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.03)';
+                const tickColor = isLight ? '#52525b' : '#6b7280';
                 new Chart(ctx, {
                     type: 'bar',
                     data: {
@@ -967,7 +970,7 @@ include __DIR__ . '/../partials/scripts.php';
                         datasets: [{
                             label: 'Views',
                             data: values,
-                            backgroundColor: 'rgba(168,85,247,0.4)',
+                            backgroundColor: isLight ? 'rgba(168,85,247,0.55)' : 'rgba(168,85,247,0.4)',
                             borderColor: 'rgba(168,85,247,1)',
                             borderWidth: 1,
                             borderRadius: 4
@@ -981,13 +984,13 @@ include __DIR__ . '/../partials/scripts.php';
                         },
                         scales: {
                             x: {
-                                grid: { color: 'rgba(255,255,255,0.03)' },
-                                ticks: { color: '#6b7280', font: { size: 9 } }
+                                grid: { color: gridColor },
+                                ticks: { color: tickColor, font: { size: 9 } }
                             },
                             y: {
                                 beginAtZero: true,
-                                grid: { color: 'rgba(255,255,255,0.03)' },
-                                ticks: { color: '#6b7280', font: { size: 9 }, precision: 0 }
+                                grid: { color: gridColor },
+                                ticks: { color: tickColor, font: { size: 9 }, precision: 0 }
                             }
                         }
                     }

@@ -377,7 +377,7 @@ form textarea.field-input[style*="resize:none"] {
   background: none;
   border: none;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s;
   font-family: inherit;
   display: block;
 }
@@ -487,4 +487,15 @@ html[data-theme="light"] .lang-option:hover {
 html[data-theme="light"] .lang-option.active {
   color: var(--accent, #ef4444) !important;
   background: var(--accent-dim, rgba(239, 68, 68, 0.06)) !important;
+}
+
+html[data-theme="light"] .thumb-wrap,
+html[data-theme="light"] .cover-wrap {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+html[data-theme="light"] .uploader-card {
+  background: rgba(0, 0, 0, 0.02);
+}
+html[data-theme="light"] .meta-row {
+  background: rgba(0, 0, 0, 0.02);
 }

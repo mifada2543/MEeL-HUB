@@ -59,7 +59,7 @@
     border: 1px solid var(--meel-border, rgba(255, 255, 255, 0.08));
     border-radius: 12px;
     padding: 10px 14px;
-    color: var(--meel-text-primary, #f3f4f6);
+    color: var(--meel-text, #f3f4f6);
     font-size: 12px;
     resize: none;
     outline: none;
@@ -77,10 +77,19 @@
     padding: 10px 14px;
     color: #a78bfa;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.15s;
     flex-shrink: 0;
 }
 
 .chat-send-btn:hover {
     background: rgba(139, 92, 246, 0.3);
 }
+
+/* ============ LIGHT THEME ============ */
+html[data-theme="light"] .chat-bubble-admin { color: #6d28d9; }
+html[data-theme="light"] .chat-bubble-user {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #3f3f46;
+}
+html[data-theme="light"] .chat-send-btn { color: #6d28d9; }

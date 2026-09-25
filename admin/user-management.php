@@ -24,18 +24,18 @@ $sys = new System($conn);
 $msg = $_GET['msg'] ?? null;
 ?>
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management | MEeL Admin</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link href="../assets/css/admin/<?= $__f ?>" rel="stylesheet">
+        <link href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
     <?php endforeach; ?>
     <link href="../assets/css/admin/index.css" rel="stylesheet">
 </head>
-<body class="bg-[#0b0e14] min-h-screen">
+<body class="min-h-screen">
     <?php
     $is_admin = true;
     $page_title = 'User Management';

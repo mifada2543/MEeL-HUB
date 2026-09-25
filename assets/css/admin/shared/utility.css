@@ -34,7 +34,7 @@
   letter-spacing: 0.1em;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
   border: 1px solid;
 }
 .action-btn-edit {
@@ -70,7 +70,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
   text-decoration: none;
-  transition: all 0.2s;
+  transition: background 0.2s, color 0.2s;
 }
 .btn-back:hover {
   color: var(--admin-text);
@@ -91,7 +91,7 @@
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
   color: #f87171;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 .btn-clear-filter:hover {
   background: rgba(239, 68, 68, 0.15);
@@ -146,7 +146,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  transition: all 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   color: #6b7280;
@@ -177,7 +177,7 @@
 .action-dropdown-btn {
   background: #131720;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: all 0.15s;
+  transition: background 0.15s, border-color 0.15s;
   cursor: pointer;
 }
 .action-dropdown-btn:hover {
@@ -197,7 +197,7 @@
   scrollbar-color: #374151 transparent;
 }
 .action-dropdown-option {
-  transition: all 0.1s;
+  transition: background 0.1s, color 0.1s;
   cursor: pointer;
 }
 .action-dropdown-option:hover {
@@ -223,7 +223,7 @@
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.03);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 .admin-menu-toggle:hover {
   background: rgba(255,255,255,0.07);
@@ -251,7 +251,7 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
-  transition: all 0.15s;
+  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
 }
 .admin-menu-dropdown.open {
   opacity: 1;
@@ -267,7 +267,7 @@
   font-size: 11px;
   font-weight: 600;
   color: #9ca3af;
-  transition: all 0.12s;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
   text-decoration: none;
   cursor: pointer;
   border-left: 2px solid transparent;
@@ -351,7 +351,7 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   text-decoration: none;
-  transition: all 0.2s;
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
 }
 .admin-shortcut-card:hover {
@@ -449,7 +449,7 @@
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
   text-decoration: none;
   font-family: inherit;
 }
@@ -505,5 +505,181 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+/* ============ LIGHT THEME ============ */
+html[data-theme="light"] .action-btn-edit { color: #1d4ed8; }
+html[data-theme="light"] .action-btn-delete { color: #dc2626; }
+
+html[data-theme="light"] .btn-back {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.02);
+}
+html[data-theme="light"] .btn-back:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+html[data-theme="light"] .btn-clear-filter { color: #dc2626; }
+
+html[data-theme="light"] .scroll-table {
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+html[data-theme="light"] .scroll-table::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme="light"] .pill-btn {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #52525b;
+}
+html[data-theme="light"] .pill-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.14);
+  color: #18181b;
+}
+html[data-theme="light"] .pill-btn.active-blue { color: #1d4ed8; }
+html[data-theme="light"] .pill-btn.active-red { color: #b91c1c; }
+html[data-theme="light"] .pill-btn.active-green { color: #15803d; }
+
+html[data-theme="light"] .action-dropdown-btn {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+html[data-theme="light"] .action-dropdown-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.16);
+}
+html[data-theme="light"] .action-dropdown-btn:focus {
+  border-color: #2563eb;
+}
+html[data-theme="light"] .action-dropdown-panel {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+html[data-theme="light"] .action-dropdown-option.active { color: #2563eb; }
+
+html[data-theme="light"] .admin-menu-toggle {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.02);
+}
+html[data-theme="light"] .admin-menu-toggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.16);
+}
+html[data-theme="light"] .admin-menu-dropdown {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+html[data-theme="light"] .admin-menu-item { color: #52525b; }
+html[data-theme="light"] .admin-menu-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #18181b;
+  border-left-color: rgba(0, 0, 0, 0.2);
+}
+html[data-theme="light"] .admin-menu-item.active { color: #2563eb; }
+html[data-theme="light"] .admin-menu-item.active svg { stroke: #2563eb; }
+html[data-theme="light"] .admin-menu-divider { background: rgba(0, 0, 0, 0.08); }
+
+html[data-theme="light"] .admin-toggle-track {
+  background: rgba(0, 0, 0, 0.15);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+html[data-theme="light"] .admin-shortcut-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.07);
+}
+html[data-theme="light"] .admin-shortcut-card:hover {
+  background: rgba(0, 0, 0, 0.02);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+html[data-theme="light"] .admin-shortcut-card h4 { color: #18181b; }
+html[data-theme="light"] .admin-shortcut-card p { color: #71717a; }
+
+html[data-theme="light"] .admin-input {
+  background-color: #ffffff;
+  color: #18181b;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+html[data-theme="light"] .admin-input:focus { border-color: #a16207; }
+html[data-theme="light"] .admin-input::placeholder { color: #a1a1aa; }
+html[data-theme="light"] .admin-select {
+  background-color: #ffffff;
+  color: #18181b;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+html[data-theme="light"] .admin-select:focus { border-color: #a16207; }
+html[data-theme="light"] .admin-select option {
+  background: #ffffff;
+  color: #18181b;
+}
+
+/* Beats light-theme.css blanket `& .admin-btn` (loaded later, same
+   specificity) so modifier colors survive on shared admin pages.
+   Light primary uses yellow-600: #eab308 on white is only 1.9:1 and
+   reads washed out; #ca8a04 keeps the same hue with real presence. */
+html[data-theme="light"] .admin-btn.admin-btn-primary {
+  background: #ca8a04 !important;
+  color: #000 !important;
+  box-shadow: 0 4px 16px rgba(202, 138, 4, 0.35) !important;
+  border-color: transparent !important;
+}
+html[data-theme="light"] .admin-btn.admin-btn-primary:hover {
+  background: #eab308 !important;
+  color: #000 !important;
+  box-shadow: 0 6px 20px rgba(202, 138, 4, 0.45) !important;
+}
+html[data-theme="light"] .admin-btn.admin-btn-danger {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+html[data-theme="light"] .admin-btn.admin-btn-danger:hover {
+  background: #dc2626 !important;
+  color: #fff !important;
+}
+html[data-theme="light"] .admin-btn.admin-btn-success {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #16a34a !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+html[data-theme="light"] .admin-btn.admin-btn-success:hover {
+  background: #16a34a !important;
+  color: #fff !important;
+}
+html[data-theme="light"] .admin-label { color: #71717a; }
+
+html[data-theme="light"] .hover\:text-gray-200:hover { color: #18181b !important; }
+html[data-theme="light"] .hover\:text-gray-300:hover { color: #3f3f46 !important; }
+html[data-theme="light"] .hover\:text-blue-400:hover,
+html[data-theme="light"] .hover\:text-blue-500:hover { color: #2563eb !important; }
+html[data-theme="light"] .hover\:text-sky-300:hover { color: #0284c7 !important; }
+html[data-theme="light"] .hover\:text-violet-300:hover { color: #7c3aed !important; }
+html[data-theme="light"] .hover\:text-emerald-300:hover { color: #059669 !important; }
+html[data-theme="light"] .hover\:bg-white\/5:hover { background: rgba(0, 0, 0, 0.05) !important; }
+html[data-theme="light"] .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Tinted-badge text shades: darken one step for light surfaces */
+html[data-theme="light"] .text-green-500 { color: #16a34a !important; }
+html[data-theme="light"] .text-emerald-400 { color: #059669 !important; }
+html[data-theme="light"] .text-emerald-300 { color: #047857 !important; }
+html[data-theme="light"] .text-violet-400 { color: #7c3aed !important; }
+html[data-theme="light"] .text-violet-300 { color: #6d28d9 !important; }
+html[data-theme="light"] .text-sky-400 { color: #0284c7 !important; }
+html[data-theme="light"] .text-sky-300 { color: #0369a1 !important; }
+html[data-theme="light"] .text-cyan-400 { color: #0e7490 !important; }
+html[data-theme="light"] .text-indigo-300 { color: #4f46e5 !important; }
+html[data-theme="light"] .text-blue-500 { color: #2563eb !important; }
+html[data-theme="light"] .text-amber-500 { color: #b45309 !important; }
+html[data-theme="light"] .text-amber-400 { color: #b45309 !important; }
+html[data-theme="light"] .text-orange-500 { color: #ea580c !important; }
+html[data-theme="light"] .text-red-500\/70 { color: #dc2626 !important; }
+html[data-theme="light"] .text-amber-500\/20 { color: rgba(180, 83, 9, 0.35) !important; }
+html[data-theme="light"] .text-green-500\/50 { color: rgba(22, 163, 74, 0.55) !important; }
 
 /* reference build: MEeL-C3H7NO2S [ab3ae91e7e38f522] */

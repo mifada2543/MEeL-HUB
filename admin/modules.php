@@ -29,17 +29,17 @@ $modules = [
 $msg = $_GET['msg'] ?? null;
 ?>
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modules | MEeL Admin</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link href="../assets/css/admin/<?= $__f ?>" rel="stylesheet">
+        <link href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
     <?php endforeach; ?>
 </head>
-<body class="bg-[#0b0e14] min-h-screen">
+<body class="min-h-screen">
     <?php
     $is_admin = true;
     $page_title = 'Modules';
@@ -54,7 +54,7 @@ $msg = $_GET['msg'] ?? null;
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             </div>
             <div>
-                <h1 style="font-size:22px;font-weight:800;color:#fff;line-height:1.2;margin:0;">Modules</h1>
+                <h1 style="font-size:22px;font-weight:800;color:var(--admin-text);line-height:1.2;margin:0;">Modules</h1>
                 <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-top:4px;">Modul Opsional Platform</p>
             </div>
         </div>
@@ -76,7 +76,7 @@ $msg = $_GET['msg'] ?? null;
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
                         <div style="min-width:0;">
                             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                                <span style="font-size:14px;font-weight:800;color:#fff;"><?= htmlspecialchars($mod['label']) ?></span>
+                                <span style="font-size:14px;font-weight:800;color:var(--admin-text);"><?= htmlspecialchars($mod['label']) ?></span>
                                 <?php if (!$exists): ?>
                                     <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:999px;background:rgba(107,114,128,0.15);border:1px solid rgba(107,114,128,0.3);color:#9ca3af;">Tidak Terpasang</span>
                                 <?php elseif (!$enabled): ?>

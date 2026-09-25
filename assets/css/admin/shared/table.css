@@ -136,3 +136,18 @@ tr:hover .row-actions {
     font-size: 12px;
     font-style: italic;
 }
+
+/* ============ LIGHT THEME ============ */
+html[data-theme="light"] .admin-table thead {
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+    background: rgba(0, 0, 0, 0.02);
+}
+html[data-theme="light"] .admin-table tbody tr {
+    border-bottom-color: rgba(0, 0, 0, 0.05);
+}
+html[data-theme="light"] .admin-table tbody tr:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+html[data-theme="light"] .content-title:hover { color: #2563eb; }
+html[data-theme="light"] .stat-value-views { color: #3f3f46; }
+html[data-theme="light"] .stat-value-dislikes { color: #dc2626; }
