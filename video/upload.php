@@ -40,18 +40,22 @@ $total_uploads = get_total_upload_count($conn, $user_id, 'video');
 $uploader = new Uploader($conn, $user_id, $user);
 
 if (isset($_POST['upload'])) {
-    $upload_result = meel_handle_upload('video', function ($post, $files) use ($uploader) {
-        return $uploader->processVideo($post, $files, __DIR__ . "/");
-    }, 'upload_video');
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        $alert_message = 'CSRF token tidak valid. Silakan muat ulang halaman lalu coba lagi.';
+    } else {
+        $upload_result = meel_handle_upload('video', function ($post, $files) use ($uploader) {
+            return $uploader->processVideo($post, $files, __DIR__ . "/");
+        }, 'upload_video');
 
-    $status        = $upload_result['status'];
-    $alert_message = $upload_result['alert_message'];
-    if (isset($upload_result['extra']['coin_balance'])) {
-        $coin_balance = $upload_result['extra']['coin_balance'];
-    } elseif ($upload_result['status'] === 'success') {
-        $hour_count = $upload_result['extra']['hour_count'] ?? $hour_count;
+        $status        = $upload_result['status'];
+        $alert_message = $upload_result['alert_message'];
+        if (isset($upload_result['extra']['coin_balance'])) {
+            $coin_balance = $upload_result['extra']['coin_balance'];
+        } elseif ($upload_result['status'] === 'success') {
+            $hour_count = $upload_result['extra']['hour_count'] ?? $hour_count;
+        }
+        $total_uploads = $upload_result['extra']['total_uploads'] ?? $total_uploads;
     }
-    $total_uploads = $upload_result['extra']['total_uploads'] ?? $total_uploads;
 }
 
 ?>
@@ -67,7 +71,7 @@ if (isset($_POST['upload'])) {
     <title>MEeL Video | Upload</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= meel_asset_version('assets/css/video/' . $__f) ?>">
+    <link rel="stylesheet" href="../assets/css/video/<?= htmlspecialchars($__f) ?><?= meel_asset_version('assets/css/video/' . $__f) ?>">
     <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime('../assets/css/font.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
@@ -112,32 +116,32 @@ if (isset($_POST['upload'])) {
                         <div class="stat-chip" style="grid-column:1/-1;">
                             <div class="stat-number" style="font-size:15px;color:#facc15;<?= $is_admin ? '' : 'cursor:help;' ?>"
                                 <?php if (!$is_admin): ?>
-                                    title="Refill berikutnya: <?= $coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill' ?>"
+                                    title="Refill berikutnya: <?= htmlspecialchars($coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill', ENT_QUOTES, 'UTF-8') ?>"
                                 <?php endif; ?>
-                            ><?= $is_admin ? '∞' : $coin_balance ?></div>
+                            ><?= $is_admin ? '∞' : htmlspecialchars((string) $coin_balance) ?></div>
                             <div class="stat-label">MEeLCoin</div>
                         </div>
                         <?php if (!$is_admin): ?>
                             <div class="stat-chip">
-                                <div class="stat-number" style="font-size:11px;color:#f97316;"><?= $coin_cost ?></div>
+                                <div class="stat-number" style="font-size:11px;color:#f97316;"><?= htmlspecialchars((string) $coin_cost) ?></div>
                                 <div class="stat-label">Biaya</div>
                             </div>
                             <div class="stat-chip">
-                                <div class="stat-number" style="font-size:11px;"><?= $total_uploads ?></div>
+                                <div class="stat-number" style="font-size:11px;"><?= htmlspecialchars((string) $total_uploads) ?></div>
                                 <div class="stat-label">Total</div>
                             </div>
                         <?php endif; ?>
                     <?php else: ?>
                         <div class="stat-chip">
-                            <div class="stat-number"><?= $hour_count ?></div>
+                            <div class="stat-number"><?= htmlspecialchars((string) $hour_count) ?></div>
                             <div class="stat-label">Jam Ini</div>
                         </div>
                         <div class="stat-chip">
-                            <div class="stat-number"><?= $total_uploads ?></div>
+                            <div class="stat-number"><?= htmlspecialchars((string) $total_uploads) ?></div>
                             <div class="stat-label">Total</div>
                         </div>
                         <div class="stat-chip">
-                            <div class="stat-number" style="font-size:15px;"><?= $hourly_limit ?></div>
+                            <div class="stat-number" style="font-size:15px;"><?= htmlspecialchars((string) $hourly_limit) ?></div>
                             <div class="stat-label">Limit/Jam</div>
                         </div>
                     <?php endif; ?>
@@ -198,7 +202,7 @@ if (isset($_POST['upload'])) {
                 <?php endif; ?>
                 <form method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
                     <?php if (isset($_SESSION['csrf_token'])): ?>
-                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     <?php endif; ?>
                     
                     <div class="field-group">
