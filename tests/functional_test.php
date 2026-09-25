@@ -151,6 +151,15 @@ function testFunctionExistence(): void {
 function testDirectoryStructure(): void {
     print_header('TEST 4: Directory Structure & Permissions');
 
+    $settingsFile = PROJECT_ROOT . '/auth/settings.php';
+    if (is_file($settingsFile)) {
+        require_once $settingsFile;
+    }
+
+    $musicBase = (defined('MEEL_HDD_MUSIC_UPLOAD') && MEEL_HDD_MUSIC_UPLOAD !== '')
+        ? rtrim(MEEL_HDD_MUSIC_UPLOAD, '/')
+        : PROJECT_ROOT . '/music/upload';
+
     $dirs = [
         'temp'              => 'Temp directory untuk staging upload, harus writable',
         'logs'              => 'Log directory untuk audit trail',
@@ -163,8 +172,12 @@ function testDirectoryStructure(): void {
         'err'               => 'Error pages',
     ];
 
+    $paths = [
+        'music/upload/file' => $musicBase . '/file',
+    ];
+
     foreach ($dirs as $dir => $desc) {
-        $full = PROJECT_ROOT . '/' . $dir;
+        $full = $paths[$dir] ?? PROJECT_ROOT . '/' . $dir;
         if (is_dir($full)) {
             $writable = is_writable($full);
             if ($writable) {
@@ -173,7 +186,7 @@ function testDirectoryStructure(): void {
                 record("{$dir}/ — ada tapi TIDAK writable ⚠", true, true, "Set permission 0755");
             }
         } else {
-            record("{$dir}/ — {$desc} (tidak ada ⚠)", true, true, "Directory akan dibuat otomatis saat upload pertama");
+            record("{$dir}/ — {$desc} (tidak ada ⚠)", true, true, "TIDAK dibuat otomatis — buat manual: mkdir -p " . $full);
         }
     }
 }

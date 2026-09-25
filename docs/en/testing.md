@@ -20,7 +20,7 @@ MEeL uses a multi-layered testing approach:
 
 ---
 
-## 🧪 PHPUnit Test Suite (288 Unit + 81 Integration = 369 Tests)
+## 🧪 PHPUnit Test Suite (305 Unit + 98 Integration = 403 Tests)
 
 ### Installation
 
@@ -65,13 +65,14 @@ logs/tests/
 | `RateLimiterTest.php` | 11 | Admin bypass, role limits, blocking, cleanup, stats, fail-closed on storage failure, independent keys |
 | `HelpersTest.php` | 50 | format_bytes, time_ago, audio MIME types, disk space, CSRF, dir_size, protocol detection (data providers) |
 | `JapaneseTest.php` | 15 | Romaji conversion, analyzeJapaneseText, English translation (MeCab-optional) |
-| `GarbageCollectorTest.php` | 6 | Class existence, idempotency, graceful handling, rate-limit cleanup (isolated test dir) |
+| `GarbageCollectorTest.php` | 7 | Class existence, idempotency, graceful handling, cleanup rate-limit (dir test terisolasi), active-cache dir preservation |
 | `SearchEngineTest.php` | 5 | Parse params, sanitizer (`sanitizeQuery`), default values, constants |
 | `MediaLibraryTest.php` | 11 | Pagination logic (pure math), BookRepository mock |
 | `MediaInteractionTest.php` | 7 | Input validation (invalid IDs, types) |
-| `MediaViewerTest.php` | 4 | Media rendering / viewer logic |
+| `MediaViewerTest.php` | 9 | Media recommendations / playlist queue / next-url logic |
+| `RouterProfileRouteTest.php` | 9 | Profile route resolution, reserved routes, nested/trailing-slash cases |
 | `BootstrapTest.php` | 9 | Env detection, error reporting config, timezone |
-| `CssManifestTest.php` | 16 | CSS module manifests — every entry exists, **all** folders pre-cached by `SwPrecache`, precache entries resolve, deterministic SW version |
+| `CssManifestTest.php` | 18 | CSS module manifests — every entry exists, **all** folders pre-cached by `SwPrecache`, precache entries resolve, deterministic SW version |
 | `SharedJsTest.php` | 7 | Shared JS harness — download-backup-codes flow |
 | `StreamAuthTest.php` | 8 | Stream endpoint authorization guards |
 | `SsrfGuardTest.php` | 76 | **SSRF guard** — protocol allowlist, private/public IP ranges (v4 & v6), DNS mixed-record rejection, hostname denylist, HTTP pinning (see below) |
@@ -91,13 +92,14 @@ logs/tests/
 | `ChessHelpersIntegrationTest.php` | 6 | Chess helper functions with real DB |
 | `ChessRematchIntegrationTest.php` | 21 | Chess rematch flow against real DB |
 | `GarbageCollectorChessRoomsIntegrationTest.php` | 15 | Chess room garbage collection with real DB |
+| `MeelCoinIntegrationTest.php` | 17 | Spend/refund/refill, queue reconciler, role caps, countdown |
 | `SystemTest.php` | 2 | System class existence & utilities |
 
 ### Test Helpers
 
 | File | Purpose |
 |---|---|
-| `tests/DbTestHelper.php` | Real DB connection with transaction rollback isolation |
+| `tests/DbTestHelper.php` | Real DB connection with transaction rollback isolation. Builds the throw-away `MEeL-test` database from **both** `database/schema.sql` and `arcade/schema.sql`, and exposes that connection as `$GLOBALS['conn']` so `Modules::enabled()` resolves against the test database instead of production. |
 | `tests/bootstrap.php` | Autoloader, `$_SERVER` defaults, temp directory setup |
 
 ### PHPUnit Configuration (`phpunit.xml`)
@@ -399,19 +401,21 @@ for `data_drive/` — fix `httpd.conf` (`AllowOverride All`) before release.
 
 | Suite | Tests | Pass | Fail | Score |
 |---|---|---|---|---|
-| **PHPUnit (unit + integration)** | 369 | 369 | 0 | ✅ 100% |
+| **PHPUnit (unit + integration)** | 403 | 403 | 0 | ✅ 100% |
 | **PHPUnit security subset** (SsrfGuard + Drive + Proxy) | 109 | 109 | 0 | ✅ 100% |
-| **Functional Test** | 55 | 53 pass, 2 warn | 0 | ✅ 98/100 |
-| **Security Test** | 152 | 149 pass, 3 warn | 0 | ✅ 99/100 |
-| **Deployment Check** | 15 | 15 | 0 | ✅ 100% |
+| **Functional Test** | 55 | 55 pass, 0 warn | 0 | ✅ 100/100 |
+| **Security Test** | 153 | 153 pass, 0 warn | 0 | ✅ 100/100 |
+| **Deployment Check** | 15 | 12 pass, 3 warn | 0 | ✅ 0 FAIL |
 
-> Numbers are from the hardening + dedupe pass (September 2026). Run the suites yourself
+> Numbers are from the September 2026 verification pass. Run the suites yourself
 > to get the current state — the security checks may additionally produce
 > warnings when HDD storage (`MEEL_HDD_BASE` / storage not mounted) is not
-> set up in a development environment. Media folders (`books/upload`,
-> `music/upload`, `video/upload`) are real tracked directories served through
-> PHP endpoints — no symlinks involved (see
+> set up in a development environment. The 3 remaining **Deployment WARNs** are
+> informational only: `books/upload`, `music/upload` and `video/upload` are real
+> tracked fallback folders rather than symlinks to `MEEL_HDD_BASE`; the runtime
+> storage itself resolves through `MEEL_HDD_*` constants (see
 > [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
+> Media folders are served through PHP endpoints — no symlinks involved.
 
 ---
 

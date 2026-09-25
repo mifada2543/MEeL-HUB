@@ -114,6 +114,24 @@ class GarbageCollectorTest extends TestCase
         $this->assertFileExists($cache . '/entries.db');
     }
 
+    public function testCleanDirectoryKeepsActiveCacheAndRateLimitDirs(): void
+    {
+        $cache = $this->testTempDir . '/cache';
+        $this->touchAged($cache . '/server_stats_info.json', 400);
+        touch($cache, time() - 400);
+
+        $rate = $this->testTempDir . '/ratelimit';
+        $this->touchAged($rate . '/active.cache', 400);
+        touch($rate, time() - 400);
+
+        $this->cleanDirectory($this->testTempDir);
+
+        $this->assertDirectoryExists($cache, 'temp/cache dikelola sistem lain, tidak boleh dihapus massal');
+        $this->assertFileExists($cache . '/server_stats_info.json');
+        $this->assertDirectoryExists($rate, 'temp/ratelimit punya RateLimiter::cleanup(), tidak boleh dihapus massal');
+        $this->assertFileExists($rate . '/active.cache');
+    }
+
     
 
     

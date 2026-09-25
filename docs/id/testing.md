@@ -20,7 +20,7 @@ MEeL menggunakan pendekatan testing berlapis:
 
 ---
 
-## 🧪 PHPUnit Test Suite (288 Unit + 81 Integration = 369 Tests)
+## 🧪 PHPUnit Test Suite (305 Unit + 98 Integration = 403 Tests)
 
 ### Instalasi
 
@@ -65,13 +65,14 @@ logs/tests/
 | `RateLimiterTest.php` | 11 | Admin bypass, role limits, blocking, cleanup, stats, fail-closed saat storage gagal, independent keys |
 | `HelpersTest.php` | 50 | format_bytes, time_ago, audio MIME, disk space, CSRF, dir_size, deteksi protokol (data provider) |
 | `JapaneseTest.php` | 15 | Romaji conversion, analyzeJapaneseText, English translation (tanpa MeCab) |
-| `GarbageCollectorTest.php` | 6 | Class existence, idempotency, graceful handling, cleanup rate-limit (dir test terisolasi) |
+| `GarbageCollectorTest.php` | 7 | Class existence, idempotency, graceful handling, cleanup rate-limit (dir test terisolasi), pelestarian direktori cache aktif |
 | `SearchEngineTest.php` | 5 | Parse params, sanitizer (`sanitizeQuery`), default values, constants |
 | `MediaLibraryTest.php` | 11 | Logika pagination (pure math), BookRepository mock |
 | `MediaInteractionTest.php` | 7 | Validasi input (ID/type tidak valid) |
-| `MediaViewerTest.php` | 4 | Logika rendering / viewer media |
+| `MediaViewerTest.php` | 9 | Logika rekomendasi media / antrean playlist / next-url |
+| `RouterProfileRouteTest.php` | 9 | Resolusi route profil, route terreserved, kasus nested/trailing-slash |
 | `BootstrapTest.php` | 9 | Env detection, konfigurasi error reporting, timezone |
-| `CssManifestTest.php` | 16 | Manifest CSS modul — semua entri ada, **semua** folder ter-precache oleh `SwPrecache`, entri precache resolve, versi SW deterministik |
+| `CssManifestTest.php` | 18 | Manifest CSS modul — semua entri ada, **semua** folder ter-precache oleh `SwPrecache`, entri precache resolve, versi SW deterministik |
 | `SharedJsTest.php` | 7 | Shared JS harness — alur download-backup-codes |
 | `StreamAuthTest.php` | 8 | Guard otorisasi endpoint stream |
 | `SsrfGuardTest.php` | 76 | **Guard SSRF** — allowlist protokol, range IP private/publik (v4 & v6), penolakan record DNS campuran, denylist hostname, HTTP pinning (lihat bawah) |
@@ -91,13 +92,14 @@ logs/tests/
 | `ChessHelpersIntegrationTest.php` | 6 | Helper catur dengan DB real |
 | `ChessRematchIntegrationTest.php` | 21 | Alur rematch catur dengan DB real |
 | `GarbageCollectorChessRoomsIntegrationTest.php` | 15 | Garbage collection room catur dengan DB real |
+| `MeelCoinIntegrationTest.php` | 17 | Spend/refund/refill, queue reconciler, batas role, countdown |
 | `SystemTest.php` | 2 | Class existence & utilitas System |
 
 ### Test Helpers
 
 | File | Fungsi |
 |---|---|
-| `tests/DbTestHelper.php` | Koneksi DB real dengan isolasi transaction rollback |
+| `tests/DbTestHelper.php` | Koneksi DB real dengan isolasi transaction rollback. Membangun database sekali-pakai `MEeL-test` dari **kedua** `database/schema.sql` dan `arcade/schema.sql`, lalu mengekspos koneksi tersebut sebagai `$GLOBALS['conn']` agar `Modules::enabled()` menilai terhadap database test — bukan produksi. |
 | `tests/bootstrap.php` | Autoloader, `$_SERVER` defaults, setup direktori temp |
 
 ### Konfigurasi PHPUnit (`phpunit.xml`)
@@ -401,19 +403,21 @@ sebelum rilis.
 
 | Suite | Test | Lulus | Gagal | Skor |
 |---|---|---|---|---|
-| **PHPUnit (unit + integration)** | 369 | 369 | 0 | ✅ 100% |
+| **PHPUnit (unit + integration)** | 403 | 403 | 0 | ✅ 100% |
 | **PHPUnit subset keamanan** (SsrfGuard + Drive + Proxy) | 109 | 109 | 0 | ✅ 100% |
-| **Functional Test** | 55 | 53 pass, 2 warn | 0 | ✅ 98/100 |
-| **Security Test** | 152 | 149 pass, 3 warn | 0 | ✅ 99/100 |
-| **Deployment Check** | 15 | 15 | 0 | ✅ 100% |
+| **Functional Test** | 55 | 55 pass, 0 warn | 0 | ✅ 100/100 |
+| **Security Test** | 153 | 153 pass, 0 warn | 0 | ✅ 100/100 |
+| **Deployment Check** | 15 | 12 pass, 3 warn | 0 | ✅ 0 FAIL |
 
-> Angka diambil dari hardening + dedupe pass (September 2026). Jalankan sendiri
-> suite tersebut untuk kondisi terkini — pemeriksaan keamanan bisa memunculkan
-> warning tambahan saat storage HDD (`MEEL_HDD_BASE` / storage belum
-> ter-mount) belum disiapkan di lingkungan pengembangan. Folder media
-> (`books/upload`, `music/upload`, `video/upload`) adalah folder nyata
-> ter-track yang disajikan lewat endpoint PHP — tanpa symlink sama sekali
-> (lihat [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
+> Angka diambil dari verifikasi September 2026. Jalankan sendiri suite tersebut
+> untuk kondisi terkini — pemeriksaan keamanan bisa memunculkan warning tambahan
+> saat storage HDD (`MEEL_HDD_BASE` / storage belum ter-mount) belum disiapkan di
+> lingkungan pengembangan. 3 **WARN Deployment** yang tersisa bersifat informatif:
+> `books/upload`, `music/upload` dan `video/upload` adalah folder fallback asli
+> (ter-track), bukan symlink ke `MEEL_HDD_BASE`; storage runtime sendiri
+> mengikuti konstanta `MEEL_HDD_*` (lihat
+> [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
+> Folder media disajikan lewat endpoint PHP — tanpa symlink sama sekali.
 
 ---
 

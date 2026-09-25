@@ -62,9 +62,14 @@ class DbTestHelper
         $admin->set_charset('utf8mb4');
 
         $name = self::TEST_DB_NAME;
-        $schemaPath = dirname(__DIR__) . '/database/schema.sql';
-        if (!is_file($schemaPath)) {
-            throw new RuntimeException('Test DB: database/schema.sql tidak ditemukan.');
+        $schemaPaths = [
+            dirname(__DIR__) . '/database/schema.sql',
+            dirname(__DIR__) . '/arcade/schema.sql',
+        ];
+        foreach ($schemaPaths as $schemaPath) {
+            if (!is_file($schemaPath)) {
+                throw new RuntimeException('Test DB: schema tidak ditemukan: ' . $schemaPath);
+            }
         }
 
         
@@ -74,16 +79,17 @@ class DbTestHelper
             throw new RuntimeException('Test DB: gagal drop database lama: ' . $admin->error);
         }
 
-        
-        $schema = str_replace('`MEeL`', '`' . $name . '`', (string) file_get_contents($schemaPath));
+        foreach ($schemaPaths as $schemaPath) {
+            $schema = str_replace('`MEeL`', '`' . $name . '`', (string) file_get_contents($schemaPath));
 
-        if (!$admin->multi_query($schema)) {
-            throw new RuntimeException('Test DB: gagal import schema: ' . $admin->error);
-        }
-        while ($admin->more_results()) {
-            $admin->next_result();
-            if ($admin->error) {
-                throw new RuntimeException('Test DB: gagal import schema: ' . $admin->error);
+            if (!$admin->multi_query($schema)) {
+                throw new RuntimeException('Test DB: gagal import ' . basename(dirname($schemaPath)) . '/' . basename($schemaPath) . ': ' . $admin->error);
+            }
+            while ($admin->more_results()) {
+                $admin->next_result();
+                if ($admin->error) {
+                    throw new RuntimeException('Test DB: gagal import ' . basename(dirname($schemaPath)) . '/' . basename($schemaPath) . ': ' . $admin->error);
+                }
             }
         }
         $admin->close();
@@ -116,11 +122,28 @@ class DbTestHelper
             
             $this->conn->autocommit(true);
             $this->seedFixtureData();
-            
+            self::exposeAsGlobalConnection($this->conn);
             $this->conn->begin_transaction();
             $this->inTransaction = true;
         }
         return $this->conn;
+    }
+
+    
+    private static function exposeAsGlobalConnection(mysqli $conn): void
+    {
+        $GLOBALS['conn'] = $conn;
+
+        if (!class_exists('Modules', false)) {
+            return;
+        }
+        $ref = new \ReflectionClass('Modules');
+        if (!$ref->hasProperty('cache')) {
+            return;
+        }
+        $prop = $ref->getProperty('cache');
+        $prop->setAccessible(true);
+        $prop->setValue([]);
     }
 
     public function rollback(): void
