@@ -469,6 +469,7 @@ function attachMiniPlayerVideoCardListeners(e) {
               initPlayer(),
               updateMiniPlayerInfo(r, i),
               (document.title = o.title),
+              window.meelUpdateHeadMeta && meelUpdateHeadMeta(o),
               ["watch-details-wrapper", "recommendation-column"].forEach(
                 (e) => {
                   const t = document.getElementById(e),
