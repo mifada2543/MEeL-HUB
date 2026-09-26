@@ -594,7 +594,14 @@ Streaming PDF untuk viewer buku:
 ```php
 // Proteksi akses file PDF — tidak bisa diakses langsung dari URL
 header("Content-Type: application/pdf");
-readfile($filePath);
+
+// Akselerasi X-Sendfile: Apache mengirim file langsung dari disk
+// (Range/206 dihitung Apache), PHP tidak membaca isi file
+if (meel_xsendfile_ready($file_path)) {
+    header('X-Sendfile: ' . meel_xsendfile_header($file_path));
+    exit;
+}
+readfile($file_path);
 ```
 
 ### Download Transcode
@@ -620,6 +627,8 @@ Download file hasil transcoding video → audio dengan header Content-Dispositio
 - `Content-Type`: MIME type yang benar untuk format
 - `Content-Disposition`: `attachment` dengan nama file UTF-8 (RFC 5987)
 - `X-Accel-Buffering: no` (nonaktifkan buffering proxy)
+- `Accept-Ranges: bytes` + `X-Sendfile` (jika akselerasi aktif — Apache
+  mengirim file dari `/dev/shm/meel/transcode`; tanpa akselerasi: `Accept-Ranges: none`)
 
 **Kode error:**
 | Kode | Arti |

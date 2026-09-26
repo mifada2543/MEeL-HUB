@@ -532,11 +532,12 @@ fi
 # ─────────────────────────────────────────────────────────────────────────
 # X-Sendfile (opsional — akselerasi streaming via Apache)
 # ─────────────────────────────────────────────────────────────────────────
-# PERHATIAN: dengan MEEL_USE_XSENDFILE=true, aplikasi mengirim header
-# X-Sendfile lalu BERHENTI streaming dari PHP (music/stream.php,
-# drive/download.php). Jika modul Apache mod_xsendfile belum terpasang &
-# dikonfigurasi (LoadModule + XSendFile on + XSendFilePath), streaming dan
-# download akan rusak/kosong. Default: TIDAK aktif (aman).
+# CATATAN: dengan MEEL_USE_XSENDFILE=true, endpoint (video/stream, music/stream,
+# music/file, books/file, drive/stream, drive/download, api/pdf,
+# api/download-transcode) mengirim header X-Sendfile lalu BERHENTI streaming
+# dari PHP. Aplikasi hanya mengirim header itu jika mod_xsendfile terpasang DAN
+# file termasuk XSendFilePath di httpd.conf — selain itu otomatis fallback ke
+# streaming PHP, sehingga respons tidak pernah kosong. Default: TIDAK aktif.
 USE_XSENDFILE=false
 if [ "$XSENDFILE_OVERRIDE" = "1" ]; then
     USE_XSENDFILE=true
@@ -561,12 +562,14 @@ PYEOF
     sed -i "s#define('MEEL_USE_XSENDFILE', false);#define('MEEL_USE_XSENDFILE', true);#" auth/settings.php
     }
     ok "MEEL_USE_XSENDFILE diaktifkan di auth/settings.php."
-    warn "JANGAN LUPA konfigurasi Apache — tanpa mod_xsendfile, streaming akan rusak:"
+    warn "Konfigurasi Apache agar akselerasi benar-benar aktif (tanpa ini streaming tetap jalan via fallback PHP):"
     warn "  LoadModule xsendfile_module modules/mod_xsendfile.so"
+    warn "  EnableSendfile on"
     warn "  <IfModule xsendfile_module>"
     warn "      XSendFile on"
     warn "      XSendFilePath \"${HDD_BASE}\""
-    warn "      XSendFilePath \"${PROJECT_ROOT}/data_drive\""
+    warn "      XSendFilePath \"${PROJECT_ROOT}\""
+    warn "      XSendFilePath \"/dev/shm/meel\"   # output transcode"
     warn "  </IfModule>"
     warn "  Restart Apache, lalu verifikasi: apachectl -M | grep xsend"
     warn "  (detail: docs/id/installation.md → 'Aktifkan mod_xsendfile')"

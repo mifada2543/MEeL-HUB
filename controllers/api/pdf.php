@@ -36,6 +36,13 @@ header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
 header('Pragma: public');
 header('Accept-Ranges: bytes');
 
+// Akselerasi: Apache kirim file langsung dari disk; Range (206), ETag, dan 304
+// dihitung Apache — PHP tidak membaca isi file sama sekali.
+if (meel_xsendfile_ready($file_path)) {
+    header('X-Sendfile: ' . meel_xsendfile_header($file_path));
+    exit();
+}
+
 readfile($file_path);
 exit();
 

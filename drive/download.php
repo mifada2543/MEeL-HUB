@@ -51,8 +51,8 @@ try {
         @ob_end_clean();
     }
 
-    if (defined('MEEL_USE_XSENDFILE') && MEEL_USE_XSENDFILE === true) {
-        header('X-Sendfile: ' . $file['path']);
+    if (meel_xsendfile_ready($file['path'])) {
+        header('X-Sendfile: ' . meel_xsendfile_header($file['path']));
         exit();
     }
 

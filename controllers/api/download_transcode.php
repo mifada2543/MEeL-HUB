@@ -118,13 +118,21 @@ header('Content-Length: ' . $file_size);
 header('Content-Disposition: attachment; filename="' . addcslashes($download_name, '"\\') . '"; filename*=UTF-8\'\'' . rawurlencode($download_name));
 header('X-Accel-Buffering: no');
 header('Cache-Control: no-cache, must-revalidate');
-header('Accept-Ranges: none');
 
 if (function_exists('apache_setenv')) {
     @apache_setenv('no-gzip', '1');
 }
 @ini_set('zlib.output_compression', '0');
 
+// Akselerasi: file transcode dikirim Apache langsung dari disk (Range/206 ikut
+// dihitung Apache), PHP tidak membaca isi file.
+if (meel_xsendfile_ready($file_path)) {
+    header('Accept-Ranges: bytes');
+    header('X-Sendfile: ' . meel_xsendfile_header($file_path));
+    exit();
+}
+
+header('Accept-Ranges: none');
 readfile($file_path);
 exit;
 
