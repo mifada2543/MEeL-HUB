@@ -86,10 +86,10 @@ if (isset($_GET['content_only'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="MEeL Music | Library">
-    <meta property="og:description" content="Jelajahi koleksi musik di MEeL Music Library. Streaming audio lossless dengan kualitas terbaik.">
-    <title>MEeL Music | Library</title>
+    <?php
+    $_META_TITLE = 'MEeL Music | Library';
+    $_META_DESC  = 'Jelajahi koleksi musik di MEeL Music Library. Streaming audio lossless dengan kualitas terbaik.';
+    ?>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
@@ -427,6 +427,8 @@ if (isset($_GET['content_only'])) {
     <script src="../assets/js/compatibilitas/plyr.min.js"></script>
     <script src="../assets/js/shared/plyr-config.js<?= meel_asset_version('assets/js/shared/plyr-config.js') ?>"></script>
     <script src="../assets/js/shared/audio-engine.js<?= meel_asset_version('assets/js/shared/audio-engine.js') ?>"></script>
+    <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>
+    <script src="../assets/js/shared/head-meta.js<?= meel_asset_version('assets/js/shared/head-meta.js') ?>"></script>
     <script src="../assets/js/shared/view-router.js<?= meel_asset_version('assets/js/shared/view-router.js') ?>"></script>
     <script src="../assets/js/music/shared/mini-player.js<?= meel_asset_version('assets/js/music/shared/mini-player.js') ?>"></script>
     <script src="../assets/js/music/index/main.js<?= meel_asset_dir_version('assets/js/music/index') ?>"></script>

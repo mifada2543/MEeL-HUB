@@ -229,11 +229,23 @@ if (isset($_GET['content_only'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="<?= htmlspecialchars($playlist['name']) ?> — MEeL Playlist">
-    <meta property="og:description" content="Dengarkan playlist <?= htmlspecialchars($playlist['name']) ?> di MEeL Music.">
-    <title><?= htmlspecialchars($playlist['name']) ?> — MEeL Playlist</title>
-    <link rel="icon" type="image/png" href="../assets/MEeL.png">
+    <?php
+    $_META_TITLE = $playlist['name'] . ' — MEeL Playlist';
+    $_META_DESC  = 'Dengarkan playlist ' . $playlist['name'] . ' di MEeL Music.';
+    $_META_TYPE  = 'music.playlist';
+    if ($first_song && !empty($first_song['thumbnail'])) {
+        $__pl_thumb = music_thumbnail_url($first_song['thumbnail']);
+        $__pl_image = str_starts_with($__pl_thumb, '../')
+            ? base_url('/' . ltrim(substr($__pl_thumb, 3), '/'))
+            : base_url('/music/' . ltrim($__pl_thumb, '/'));
+        if (!preg_match('#^https?://#i', $__pl_image)) {
+            $__pl_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__pl_image;
+        }
+        $_META_IMAGE   = $__pl_image;
+        $_META_IMAGE_W = '512';
+        $_META_IMAGE_H = '512';
+    }
+    ?>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
@@ -506,6 +518,8 @@ if (isset($_GET['content_only'])) {
     <script src="../assets/js/compatibilitas/plyr.min.js"></script>
     <script src="../assets/js/shared/plyr-config.js<?= meel_asset_version('assets/js/shared/plyr-config.js') ?>"></script>
     <script src="../assets/js/shared/audio-engine.js<?= meel_asset_version('assets/js/shared/audio-engine.js') ?>"></script>
+    <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>
+    <script src="../assets/js/shared/head-meta.js<?= meel_asset_version('assets/js/shared/head-meta.js') ?>"></script>
     <script src="../assets/js/shared/view-router.js<?= meel_asset_version('assets/js/shared/view-router.js') ?>"></script>
     <script src="../assets/js/music/shared/mini-player.js<?= meel_asset_version('assets/js/music/shared/mini-player.js') ?>"></script>
     <script src="../assets/js/music/view_playlist/view_playlist.js<?= meel_asset_version('assets/js/music/view_playlist/view_playlist.js') ?>"></script>

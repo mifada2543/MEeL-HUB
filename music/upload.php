@@ -65,10 +65,10 @@ if (isset($_POST['upload'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Upload musik ke MEeL Music Library. Format audio didukung: FLAC, MP3, WAV, OPUS, OGG, M4A.">
-    <meta property="og:title" content="Upload | MEeL Music">
-    <meta property="og:description" content="Upload musik ke MEeL Music Library. Format audio: FLAC, MP3, WAV, OPUS, OGG, M4A.">
-    <title>Upload | MEeL Music</title>
+    <?php
+    $_META_TITLE = 'Upload | MEeL Music';
+    $_META_DESC  = 'Upload musik ke MEeL Music Library. Format audio: FLAC, MP3, WAV, OPUS, OGG, M4A.';
+    ?>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/music/<?= htmlspecialchars($__f) ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
