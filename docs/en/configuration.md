@@ -209,6 +209,21 @@ define('MEEL_USE_XSENDFILE', false);
 
 X-Sendfile speeds up streaming of large files like FLAC (33MB+) by letting Apache serve files directly from disk (zero-copy), without PHP reading the file at all.
 
+**Endpoints that support X-Sendfile** (all via the `meel_xsendfile_*` helpers in `modules/core/helpers/storage.php`):
+
+| Endpoint | Module |
+|---|---|
+| `video/stream.php` (incl. rewrite `/video/upload/...`) | Video |
+| `music/stream.php`, `music/file.php` (incl. rewrite `/music/upload/...`) | Music |
+| `books/file.php` (incl. rewrite `/books/upload/...`) | Books |
+| `drive/stream.php`, `drive/download.php` | Drive |
+| `controllers/api/pdf.php` (PDF viewer) | Books |
+| `controllers/api/download_transcode.php` | Music (transcode) |
+
+**Safe behaviour (automatic fallback):** the app only sends the `X-Sendfile` header when **all four** conditions hold: (1) `MEEL_USE_XSENDFILE === true`, (2) the `mod_xsendfile` module is actually loaded in Apache, (3) the file lies under one of the `XSendFilePath` entries read from Apache's configuration, and (4) the `XSendFile on` directive is in effect for the request — the `XSendFile on|off` value is read from Apache's configuration files **and** from the `.htaccess` files along the URL path/script directory (most specific wins; a missing directive counts as `off`, matching the `mod_xsendfile` default). If any condition fails, the endpoint falls back to PHP chunk streaming — the response stays valid and is never empty/404.
+
+**Range note:** while X-Sendfile is active, PHP does **not** send the `206` status itself (mod_xsendfile only runs on status `200`); `Range`/`Content-Range` and `416` are computed by Apache. `XSendFileUnescape On` (default) decodes `%XX` in the header, so filenames containing `%` are escaped automatically by the app.
+
 **Performance impact based on testing (FLAC 33MB):**
 
 | Metric | Without X-Sendfile (PHP chunking) | With X-Sendfile |

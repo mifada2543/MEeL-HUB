@@ -52,8 +52,11 @@ if (!defined('MEEL_HDD_BASE')) {
     define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
     define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
     define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
+}
 
-    // Aktifkan jika mod_xsendfile sudah terinstall di Apache.
+// Aktifkan hanya jika mod_xsendfile sudah terinstall & terkonfigurasi di Apache
+// (lihat docs/id/installation.md → "Aktifkan mod_xsendfile").
+if (!defined('MEEL_USE_XSENDFILE')) {
     define('MEEL_USE_XSENDFILE', false);
 }
 

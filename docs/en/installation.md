@@ -251,7 +251,7 @@ The browser URL stays `.../upload/...` (so relative HLS segments like `.ts` reso
 - `MEEL_HDD_*_UPLOAD` defined → file read from the HDD path;
 - not defined → file read from the repo fallback folder `<root>/{module}/upload`
 
-Endpoints enforce path-traversal protection, an extension whitelist, Range support (206 — needed for HLS `.ts` and large video), and a referer gate for HLS video (anti-hotlink). Audio playback uses `music/stream?id=...` (session authorization + strict referer gate; optional X-Sendfile acceleration — see [mod_xsendfile](#enable-mod_xsendfile-optional--for-streaming-acceleration)).
+Endpoints enforce path-traversal protection, an extension whitelist, Range support (206 — needed for HLS `.ts` and large video), and a referer gate for HLS video (anti-hotlink). All modules (video, music, books, drive) also support optional X-Sendfile acceleration with automatic fallback — see [mod_xsendfile](#enable-mod_xsendfile-optional--for-streaming-acceleration). Audio playback uses `music/stream?id=...` (session authorization + strict referer gate).
 
 `.gitignore` explicitly blocks committing symlinks named after these folders (they were previously committed as absolute `/media/<user>/...` symlinks that leaked the OS username and broke on other machines).
 
@@ -418,16 +418,23 @@ mod_xsendfile speeds up streaming large files (FLAC 33MB+, MKV 4K) by letting Ap
    ```apache
    LoadModule xsendfile_module modules/mod_xsendfile.so
 
+   # Kernel sendfile: optional, makes Apache deliver static files even faster
+   EnableSendfile on
+
    <IfModule xsendfile_module>
        XSendFile on
        # Media files are now read directly from centralized storage (MEEL_HDD_BASE),
        # not from the webroot folder — whitelist the HDD path:
        XSendFilePath "/media/<user>/MEeL/media"
-       XSendFilePath "/opt/lampp/htdocs/MEeL/data_drive"
+       # Webroot fallback storage + temporary transcode output:
+       XSendFilePath "/opt/lampp/htdocs/MEeL"
+       XSendFilePath "/dev/shm/meel"
    </IfModule>
    ```
 
-   > ⚠️ `XSendFilePath` must include the path where media files actually reside (the `MEEL_HDD_BASE` value in `auth/settings.php`). Since the portability refactor, `music/upload` etc. are real directories in the repo (not symlinks), so old webroot paths like `/opt/lampp/htdocs/MEeL/music/upload/file` are **no longer** the file location — only the correct HDD path works. If `XSendFilePath` doesn't cover the storage, Apache returns 404 "Object not found" during streaming (see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
+   > ⚠️ `XSendFilePath` must include the path where media files actually reside (the `MEEL_HDD_BASE` value in `auth/settings.php`) — including `/dev/shm/meel` for transcode output. Since the portability refactor, `music/upload` etc. are real directories in the repo (not symlinks), so old webroot paths like `/opt/lampp/htdocs/MEeL/music/upload/file` are **no longer** the file location — only the correct HDD path works.
+   >
+   > ✅ If `XSendFilePath` doesn't cover the storage, **streaming does not break**: the app reads `XSendFilePath` from Apache's configuration and only sends the `X-Sendfile` header for whitelisted paths — everything else automatically falls back to PHP streaming (you only lose the acceleration).
 
 5. Restart Apache:
    ```bash
