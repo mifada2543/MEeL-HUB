@@ -79,7 +79,15 @@ function loadAudio(state, autoplay) {
 
   currentState = state;
   updateMiniLoopUIIndex();
-  
+
+  if (window.meelUpdateMediaSession) {
+    meelUpdateMediaSession({
+      title: state.title || "",
+      artist: state.artist || "",
+      artwork: state.thumbnailUrl || state.thumbnail || "",
+    });
+  }
+
   
   setPlayIcon(audioPlayer.paused ? "play" : "pause");
 }
