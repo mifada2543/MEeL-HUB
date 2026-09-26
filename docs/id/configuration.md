@@ -220,6 +220,34 @@ X-Sendfile mempercepat streaming file besar seperti FLAC (33MB+) dengan
 membiarkan Apache mengirim file langsung dari disk (zero-copy), tanpa PHP
 membaca file sama sekali.
 
+**Endpoint yang mendukung X-Sendfile** (semuanya lewat helper `meel_xsendfile_*`
+di `modules/core/helpers/storage.php`):
+
+| Endpoint | Module |
+|---|---|
+| `video/stream.php` (termasuk rewrite `/video/upload/...`) | Video |
+| `music/stream.php`, `music/file.php` (termasuk rewrite `/music/upload/...`) | Music |
+| `books/file.php` (termasuk rewrite `/books/upload/...`) | Books |
+| `drive/stream.php`, `drive/download.php` | Drive |
+| `controllers/api/pdf.php` (viewer PDF) | Books |
+| `controllers/api/download_transcode.php` | Music (transcode) |
+
+**Perilaku aman (fallback otomatis):** aplikasi hanya mengirim header
+`X-Sendfile` jika **keempatnya** terpenuhi: (1) `MEEL_USE_XSENDFILE === true`,
+(2) modul `mod_xsendfile` benar-benar terpasang di Apache, (3) file berada
+di salah satu `XSendFilePath` yang terbaca dari konfigurasi Apache, dan (4)
+direktif `XSendFile on` berlaku untuk request tersebut — nilai `XSendFile
+on|off` dibaca dari file konfigurasi Apache **dan** dari `.htaccess` sepanjang
+jalur URL/direktori skrip (yang paling spesifik menang; tidak adanya direktif
+dianggap `off`, sama seperti default `mod_xsendfile`). Jika salah satu syarat
+gagal, endpoint otomatis kembali ke streaming PHP (chunking) — respons tetap
+valid, tidak pernah kosong/404.
+
+**Catatan Range:** saat X-Sendfile aktif, PHP **tidak** mengirim status `206`
+sendiri (mod_xsendfile hanya jalan pada status `200`); `Range`/`Content-Range`
+dan `416` dihitung oleh Apache. `XSendFileUnescape On` (default) men-decode
+`%XX` pada header, jadi nama file ber-% otomatis di-escape oleh aplikasi.
+
 **Dampak performa berdasarkan hasil tes (FLAC 33MB):**
 
 | Metrik | Tanpa X-Sendfile (PHP chunking) | Dengan X-Sendfile |

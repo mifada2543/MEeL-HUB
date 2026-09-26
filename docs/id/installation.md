@@ -251,7 +251,7 @@ URL di browser tetap `.../upload/...` (segmen HLS relatif seperti `.ts` tetap re
 - tidak terdefinisi → file dibaca dari folder fallback repo
   `<root>/{module}/upload`.
 
-Endpoint menerapkan proteksi path traversal, whitelist ekstensi, dukungan Range (206 — diperlukan untuk HLS `.ts` dan video besar), serta referer gate untuk HLS video (anti-hotlink). Pemutaran audio memakai `music/stream?id=...` (otorisasi session + referer gate ketat; akselerasi X-Sendfile opsional — lihat [mod_xsendfile](#aktifkan-mod_xsendfile-opsional--untuk-akselerasi-streaming)).
+Endpoint menerapkan proteksi path traversal, whitelist ekstensi, dukungan Range (206 — diperlukan untuk HLS `.ts` dan video besar), serta referer gate untuk HLS video (anti-hotlink). Seluruh module (video, music, books, drive) juga mendukung akselerasi X-Sendfile opsional dengan fallback otomatis — lihat [mod_xsendfile](#aktifkan-mod_xsendfile-opsional--untuk-akselerasi-streaming). Pemutaran audio memakai `music/stream?id=...` (otorisasi session + referer gate ketat).
 
 `.gitignore` secara eksplisit memblokir commit symlink dengan nama folder ini (sebelumnya pernah ter-commit symlink absolut `/media/<user>/...` yang membocorkan username OS dan broken di mesin lain).
 
@@ -418,16 +418,23 @@ mod_xsendfile mempercepat streaming file besar (FLAC 33MB+, MKV 4K) dengan membi
    ```apache
    LoadModule xsendfile_module modules/mod_xsendfile.so
 
+   # Kernel sendfile: opsi, mempercepat pengiriman file statis oleh Apache
+   EnableSendfile on
+
    <IfModule xsendfile_module>
        XSendFile on
        # File media kini dibaca langsung dari storage terpusat (MEEL_HDD_BASE),
        # bukan dari folder webroot — whitelist path HDD-nya:
        XSendFilePath "/media/<user>/MEeL/media"
-       XSendFilePath "/opt/lampp/htdocs/MEeL/data_drive"
+       # Fallback storage di webroot + output transcode sementara:
+       XSendFilePath "/opt/lampp/htdocs/MEeL"
+       XSendFilePath "/dev/shm/meel"
    </IfModule>
    ```
 
-   > ⚠️ `XSendFilePath` harus mencakup path tempat file media sebenarnya berada (nilai `MEEL_HDD_BASE` di `auth/settings.php`). Sejak refactor portabilitas, `music/upload` dkk adalah folder nyata di repo (bukan symlink), jadi path webroot lama seperti `/opt/lampp/htdocs/MEeL/music/upload/file` BUKAN lagi lokasi file — hanya path HDD yang benar. Jika `XSendFilePath` tidak mencakup storage, Apache mengembalikan 404 "Object not found" saat streaming (lihat [5a. Media Storage](#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
+   > ⚠️ `XSendFilePath` harus mencakup path tempat file media sebenarnya berada (nilai `MEEL_HDD_BASE` di `auth/settings.php`) — termasuk `/dev/shm/meel` untuk output transcode. Sejak refactor portabilitas, `music/upload` dkk adalah folder nyata di repo (bukan symlink), jadi path webroot lama seperti `/opt/lampp/htdocs/MEeL/music/upload/file` BUKAN lagi lokasi file — hanya path HDD yang benar.
+   >
+   > ✅ Jika `XSendFilePath` tidak mencakup storage, **streaming tidak rusak**: aplikasi membaca `XSendFilePath` dari konfigurasi Apache dan hanya mengirim header `X-Sendfile` untuk path yang di-whitelist — selain itu otomatis fallback ke streaming PHP (hanya kehilangan akselerasi).
 
 5. Restart Apache:
    ```bash

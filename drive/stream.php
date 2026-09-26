@@ -72,6 +72,14 @@ header('Pragma: no-cache');
 header('Expires: 0');
 header('X-Content-Type-Options: nosniff');
 
+// Akselerasi: Apache kirim file langsung dari disk, PHP exit tanpa membaca isi.
+// Content-Length/206/Content-Range tidak dikirim — mod_xsendfile hanya aktif
+// pada status 200, lalu Apache core yang menghitung Range/ETag/304.
+if (meel_xsendfile_ready($file['path'])) {
+    header('X-Sendfile: ' . meel_xsendfile_header($file['path']));
+    exit;
+}
+
 if (isset($_SERVER['HTTP_RANGE'])) {
     $c_start = $start;
     $c_end = $end;
