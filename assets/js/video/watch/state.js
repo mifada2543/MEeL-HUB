@@ -91,18 +91,7 @@ const plyrOptions = {
     fullscreen: { enabled: !0, fallback: !0, iosNative: !1 },
     clickToPlay: !isTouchDevice,
     previewThumbnails: { enabled: "" !== vttSrc, src: vttSrc },
-    mediaMetadata: (function () {
-      var cfg = window.playerConfig || {};
-      return cfg.title
-        ? {
-            title: cfg.title,
-            artist: cfg.uploader || "",
-            artwork: cfg.thumbnail
-              ? [{ src: cfg.thumbnail, sizes: "512x512", type: "image/jpeg" }]
-              : [],
-          }
-        : {};
-    })(),
+    mediaMetadata: buildPlyrMediaMetadata(),
   },
   HLS_CONFIG = {
     maxBufferLength: 45,
@@ -118,3 +107,19 @@ const plyrOptions = {
     fragLoadingTimeOut: 2e4,
     manifestLoadingTimeOut: 1e4,
   };
+
+function buildPlyrMediaMetadata() {
+  var cfg = window.playerConfig || {};
+  return cfg.title
+    ? {
+        title: cfg.title,
+        artist: cfg.uploader || "",
+        artwork: cfg.thumbnail
+          ? [{ src: cfg.thumbnail, sizes: "512x512", type: "image/jpeg" }]
+          : [],
+      }
+    : {};
+}
+function refreshPlyrMediaMetadata() {
+  plyrOptions.mediaMetadata = buildPlyrMediaMetadata();
+}

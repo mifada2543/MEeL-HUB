@@ -196,7 +196,8 @@ function setupMeelPlayerEvents() {
       const r = new DOMParser().parseFromString(a, "text/html");
       ((watchUrl = t.href),
         window.history.pushState({}, "", t.href),
-        (document.title = r.title));
+        (document.title = r.title),
+        window.meelUpdateHeadMeta && meelUpdateHeadMeta(r));
       const i = r.getElementById("main-video");
       if (!i) throw new Error("Video elemen tidak ditemukan");
       const s = i.getAttribute("data-src"),
@@ -322,6 +323,7 @@ function setupMeelPlayerEvents() {
                 if (videoElement && hls) {
                   hls.attachMedia(videoElement);
                 }
+                window.refreshPlyrMediaMetadata && refreshPlyrMediaMetadata();
                 player = new Plyr(videoElement, plyrOptions);
                 setupMeelPlayerEvents();
                 window.appendCustomSettings && setTimeout(window.appendCustomSettings, 0);

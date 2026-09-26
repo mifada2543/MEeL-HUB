@@ -21,21 +21,23 @@ session_write_close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="<?= htmlspecialchars($v['title']) ?> — MEeL Video">
-    <meta property="og:description" content="Tonton <?= htmlspecialchars($v['title']) ?> di MEeL Video - Streaming HLS dengan kualitas terbaik.">
     <?php
     $__thumb_name = $v['thumbnail'] ?? '';
     $__thumb_ok   = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . basename($__thumb_name));
     $__og_image   = $__thumb_ok
         ? base_url('/video/upload/thumbnail/' . rawurlencode($__thumb_name))
         : base_url('/assets/img/video0.webp');
+    if (!preg_match('#^https?://#i', $__og_image)) {
+        $__og_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__og_image;
+    }
+
+    $_META_TITLE   = ($v['title'] ?? '') . ' | MEeL Video';
+    $_META_DESC    = 'Tonton ' . ($v['title'] ?? '') . ' di MEeL Video - Streaming HLS dengan kualitas terbaik.';
+    $_META_IMAGE   = $__og_image;
+    $_META_IMAGE_W = '1280';
+    $_META_IMAGE_H = '720';
+    $_META_TYPE    = 'video.other';
     ?>
-    <meta property="og:image" content="<?= htmlspecialchars($__og_image, ENT_QUOTES, 'UTF-8') ?>">
-    <meta property="og:image:width" content="1280">
-    <meta property="og:image:height" content="720">
-    <meta property="og:type" content="video.other">
-    <title><?= htmlspecialchars($v['title']) ?> | MEeL Video</title>
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
     <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
@@ -377,6 +379,7 @@ session_write_close();
 
     <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>
+    <script src="../assets/js/shared/head-meta.js<?= meel_asset_version('assets/js/shared/head-meta.js') ?>"></script>
     <script src="../assets/js/shared/recovery-manager.js<?= meel_asset_version('assets/js/shared/recovery-manager.js') ?>"></script>
     <script src="../assets/js/compatibilitas/plyr.min.js"></script>
 
