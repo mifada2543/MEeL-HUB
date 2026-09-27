@@ -73,8 +73,20 @@ if (!function_exists('meel_stream_path_allowed')) {
         }
 
         $map = is_array($_SESSION['stream_paths'] ?? null) ? $_SESSION['stream_paths'] : [];
-        $dir = str_contains($rel, '/') ? substr($rel, 0, (int) strrpos($rel, '/')) : '';
-        $key = $map[$dir] ?? $map[$rel] ?? null;
+        $key = $map[$rel] ?? null;
+        if ($key === null) {
+            $dir = $rel;
+            while (($pos = strrpos($dir, '/')) !== false) {
+                $dir = substr($dir, 0, $pos);
+                if ($dir === '' || $dir === 'video') {
+                    break;
+                }
+                if (isset($map[$dir])) {
+                    $key = $map[$dir];
+                    break;
+                }
+            }
+        }
 
         return $key !== null && is_stream_authorized((int) $key);
     }
