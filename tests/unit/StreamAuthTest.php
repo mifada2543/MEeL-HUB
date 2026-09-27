@@ -122,6 +122,61 @@ class StreamAuthTest extends TestCase
         meel_register_stream_path('', 5);
         $this->assertEmpty($_SESSION['stream_paths'] ?? []);
     }
+
+    public function testNestedVariantPlaylistAllowed(): void
+    {
+        authorize_stream(42);
+        meel_register_stream_path('video/clip/clip.m3u8', 42);
+
+        $this->assertTrue(meel_stream_path_allowed('video/clip/v1/index.m3u8'));
+        $this->assertTrue(meel_stream_path_allowed('video/clip/v1/index0.ts'));
+        $this->assertTrue(meel_stream_path_allowed('video/clip/v2/index.m3u8'));
+        $this->assertTrue(meel_stream_path_allowed('video/clip/v2/hi/index0.ts'), 'kedalaman 3 level harus ikut terizinkan');
+    }
+
+    public function testNestedSiblingStillDenied(): void
+    {
+        authorize_stream(42);
+        meel_register_stream_path('video/clip/clip.m3u8', 42);
+
+        $this->assertFalse(meel_stream_path_allowed('video/clipother/v1/index.m3u8'));
+        $this->assertFalse(meel_stream_path_allowed('video/other/v1/index0.ts'));
+        $this->assertFalse(meel_stream_path_allowed('video/clip2/v1/index0.ts'));
+    }
+
+    public function testVideoRootAndFlatNeverOpensTree(): void
+    {
+        $this->assertFalse(meel_stream_path_allowed('video/anything.ts'));
+
+        authorize_stream(7);
+        meel_register_stream_path('video/x.m3u8', 7);
+        $this->assertTrue(meel_stream_path_allowed('video/x.m3u8'), 'kunci persis tetap diizinkan');
+        $this->assertFalse(meel_stream_path_allowed('video/other/y.ts'), 'registrasi datar tidak boleh membuka seluruh pohon video/');
+        $this->assertFalse(meel_stream_path_allowed('video/'), 'root pohon video/ tanpa registrasi tetap ditolak');
+    }
+
+    public function testNestedStillRequiresLiveToken(): void
+    {
+        meel_register_stream_path('video/clip/clip.m3u8', 42);
+        $_SESSION['stream_ok'] = [42 => time() - 99999]; // token kedaluwarsa
+
+        $this->assertFalse(meel_stream_path_allowed('video/clip/v1/index.m3u8'));
+        $this->assertFalse(meel_stream_path_allowed('video/clip/v1/index0.ts'));
+
+        $_SESSION['stream_ok'] = [];
+        $this->assertFalse(meel_stream_path_allowed('video/clip/v1/index.m3u8'), 'tanpa token harus tetap ditolak');
+    }
+
+    public function testMasterAndAdjacentSegmentStillAllowed(): void
+    {
+        authorize_stream(42);
+        meel_register_stream_path('video/myclip/myclip.m3u8', 42);
+
+        $this->assertTrue(meel_stream_path_allowed('video/myclip/myclip.m3u8'));
+        $this->assertTrue(meel_stream_path_allowed('video/myclip/myclip_001.ts'));
+        $this->assertTrue(meel_stream_path_allowed('video/myclip/thumbnails.vtt'));
+        $this->assertTrue(meel_stream_path_allowed('video/myclip/vtt/extra.vtt'));
+    }
 }
 
 /* reference build: MEeL-C9H11NO2 [82a5481d4d53065e] */
