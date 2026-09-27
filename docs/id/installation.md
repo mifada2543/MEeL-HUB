@@ -184,6 +184,8 @@ cp settings.example.php settings.php
 cp config.example.php config.php
 ```
 
+> 💡 `install.sh` menyalakan `chmod 640` untuk `auth/settings.php` **hanya bila variabel `$CAN_ELEVATE` terisi** (privilege elevation terdeteksi) — di instalasi baru tanpa privilege, file tetap default dan konfigurasi DB tidak pernah dipojokkan ke world-readable.
+
 Edit `auth/settings.php`:
 ```php
 $server   = "localhost";
@@ -506,10 +508,10 @@ Untuk download dari YouTube dan platform lain, ekspor cookie browser:
 1. Install ekstensi [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
 2. Login ke YouTube di browser
 3. Ekspor cookies ke format Netscape
-4. Simpan sebagai `cookies.txt` di root proyek:
+4. Simpan sebagai `cookies.txt` di `temp/` (folder terproteksi `.htaccess`; file lama di root otomatis dimigrasikan):
 
 ```bash
-cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
+cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 ```
 
 ---

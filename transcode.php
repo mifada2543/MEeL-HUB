@@ -28,7 +28,15 @@ if (isset($_POST['start_transcode'])) {
         $video_id = (int)($_POST['video_id'] ?? 0);
         $format   = $_POST['format'] ?? 'mp3';
 
-        if ($video_id <= 0) {
+        $rateCheck = RateLimiter::check(
+            'user_' . (int)($_SESSION['user_id'] ?? 0),
+            'transcode',
+            $user_role
+        );
+        if (!$rateCheck['allowed']) {
+            $alert_message = 'Batas transcode tercapai — coba lagi dalam '
+                . (int)$rateCheck['retry_after'] . ' detik.';
+        } elseif ($video_id <= 0) {
             $alert_message = 'ID Video harus berupa angka valid!';
         } else {
             $stmt_title = $conn->prepare("SELECT title FROM video WHERE id = ? LIMIT 1");

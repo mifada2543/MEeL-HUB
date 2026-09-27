@@ -13,6 +13,11 @@ $ctrl->handleRequest();
 
 extract($ctrl->getViewData(), EXTR_SKIP);
 
+if ($id > 0 && !empty($v['filename']) && function_exists('meel_register_stream_path')) {
+    authorize_stream($id);
+    meel_register_stream_path((string) $v['filename'], $id);
+}
+
 session_write_close();
 ?>
 <!DOCTYPE html>

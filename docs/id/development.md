@@ -10,6 +10,7 @@ Panduan untuk pengembang yang ingin berkontribusi atau memahami standar koding d
 - [Standar Koding](#standar-koding)
 - [Struktur Database](#struktur-database)
 - [Coding Conventions](#coding-conventions)
+- [Catatan `.htaccess` & Route Legacy](#catatan-htaccess--route-legacy)
 - [Testing](#testing)
 - [Pull Request Guide](#pull-request-guide)
 - [Troubleshooting Development](#troubleshooting-development)
@@ -430,6 +431,26 @@ User klik toggle → MEELTheme.toggle()
 → Save ke localStorage + DB (jika login)
 → Update CSS variables + icon + label
 ```
+
+---
+
+## Catatan `.htaccess` & Route Legacy
+
+### `auto_prepend_file` gerbang arcade (portabel & fail-closed)
+
+- `arcade/.htaccess` memakai `php_value auto_prepend_file _gate.php` dengan **filename polos tanpa path**: PHP me-resolve relatif terhadap cwd = direktori script utama yang dieksekusi, sehingga portabel di mesin mana pun (tanpa path absolut hardcoded).
+- Konsekuensi fail-closed: skrip yang dieksekusi langsung di subdirektori wajib punya `_gate.php` sendiri — cukup satu baris `require __DIR__ . '/../../_gate.php';` (lihat `arcade/chess/controller/_gate.php`).
+- Request clean-URL (router di root) **tidak** kena `php_value` ini — gating-nya oleh `modules/core/Modules.php` di Router.
+
+### `controllers/.htaccess` menaungi aturan 301 legacy
+
+`Deny from all` di `controllers/.htaccess` (file include-only; akses langsung 403 by design, diuji `security_test.php:419`) menaungi seluruh aturan 301 `controllers/*` di root `.htaccess` — aturan itu terlihat mati padahal hidup. Sifatnya **latent**: bila deny dilepas, aturan tetap mengarah 301 ke rute induk yang benar.
+
+### Route dihapus (Fase 0/T7) & rute bersih
+
+- `profile/manage-action`, `admin/actions`, `admin/data` dihapus dari `Router.php` — keduanya fragment include ber-guard `MEEL_MANAGE_ACCESS`/`MEEL_ADMIN_CONTEXT` sehingga route mandiri mustahil berdiri. URL lama di-301 ke induk (`/profile/manage`, `/admin`) di root `.htaccess`.
+- `assets/js/drive/upload.js` memakai rute bersih `../api/ajax-refresh`; URL lama `controllers/api/ajax_refresh.php` selalu 403 oleh deny di atas.
+- Catatan empiris: root 301 generik **tidak** diproses untuk subtree `arcade/` (seluruh `*.php` arcade dieksekusi langsung).
 
 ---
 

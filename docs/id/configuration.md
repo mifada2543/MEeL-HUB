@@ -120,6 +120,15 @@ jika request benar-benar lewat proxy/CDN yang Anda kendalikan (Cloudflare,
 Nginx reverse proxy). Jika diset `true` padahal server diakses langsung,
 attacker bisa memalsukan IP untuk mem-bypass IP-ban atau membanjiri activity log.
 
+**Allowlist `MEEL_TRUSTED_PROXIES`** (nilai default `['127.0.0.1', '::1']`):
+header proxy hanya dipercaya bila `REMOTE_ADDR` ada di daftar ini. Resolusi IP
+terpusat di `modules/core/proxy.php` — `CF-Connecting-IP` → `X-Forwarded-For`
+kanan-ke-kiri (Cloudflare menaruh IP klien asli di ujung kanan; entri yang
+terpercaya dilewati) → fallback `REMOTE_ADDR`. Tanpa allowlist, siapa pun bisa
+mengirim `X-Forwarded-For: 127.0.0.1` untuk bypass rate-limit login, lockout
+MFA, dan IP-ban. `proxy.php` tanpa side-effect — aman di-require dari
+bootstrap, logger, maupun test.
+
 ### Charset Koneksi (`utf8mb4`)
 
 ```php
@@ -470,11 +479,14 @@ private static array $limits = [
 
 ## Cookies & yt-dlp Authentication
 
-File `cookies.txt` di root proyek digunakan untuk autentikasi yt-dlp:
+File `cookies.txt` digunakan untuk autentikasi yt-dlp. Sejak T2 file ini
+disimpan di **`temp/`** (folder terproteksi `.htaccess`, bukan docroot — file
+berisi sesi YouTube asli); file lama di root **otomatis dimigrasikan** saat
+pertama dibuka, dan chmod `0600` diterapkan best-effort oleh `TranscoderBase`:
 
 ```php
-// Path: /opt/lampp/htdocs/MEeL/cookies.txt
-$this->cookies_path = $this->base_path . "/cookies.txt";
+// Path: <root>/temp/cookies.txt (migrasi otomatis dari <root>/cookies.txt)
+$this->cookies_path = $this->base_path . "/temp/cookies.txt";
 ```
 
 ### Cara Mendapatkan Cookies.txt
@@ -482,7 +494,7 @@ $this->cookies_path = $this->base_path . "/cookies.txt";
 1. Install ekstensi browser "Get cookies.txt LOCALLY"
 2. Login ke YouTube (atau platform lain) di browser
 3. Klik ekstensi → Export cookies
-4. Simpan file sebagai `cookies.txt` di root proyek
+4. Simpan file sebagai `cookies.txt` di `temp/` (atau root proyek — otomatis dimigrasikan)
 
 ---
 

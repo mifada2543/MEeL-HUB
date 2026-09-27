@@ -445,7 +445,7 @@
     var icon = btn ? btn.querySelector("i") : null;
     if (icon) icon.classList.add("animate-spin");
     
-    fetch("../controllers/api/ajax_refresh.php?_=" + Date.now())
+    fetch("../api/ajax-refresh?_=" + Date.now())
       .then(function (r) {
         return r.json();
       })

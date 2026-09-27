@@ -255,8 +255,7 @@ function isApiRequest(url) {
          /\/(music|video|books)\/search\/?$/.test(p) ||
          /\/(music|video)\/load-more\/?$/.test(p) ||
          /\/music\/playlist-action\/?$/.test(p) ||
-         /\/admin\/(actions|data)\/?$/.test(p) ||
-         /\/profile\/(edit|manage-action)\/?$/.test(p);
+         /\/profile\/edit\/?$/.test(p);
 }
 
 function isStreamingMedia(url) {

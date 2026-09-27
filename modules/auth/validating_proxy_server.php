@@ -39,6 +39,8 @@ ini_set('display_errors', '0');
 const PROXY_IDLE_TIMEOUT = 300; 
 const PROXY_MAX_LIFETIME = 3600; 
 const PROXY_CHUNK = 65536;
+const PROXY_MAX_HEADERS = 100;      
+const PROXY_MAX_HEADER_LINE = 8192; 
 
 
 
@@ -95,6 +97,19 @@ function readRequestHead($client): ?array
 
     $lines   = explode("\r\n", $head);
     $request = array_shift($lines);
+
+    if (count($lines) > PROXY_MAX_HEADERS) {
+        return null;
+    }
+    if (preg_match('/[\r\n\x00]/', $request)) {
+        return null;
+    }
+    foreach ($lines as $line) {
+        if (strlen($line) > PROXY_MAX_HEADER_LINE || preg_match('/[\r\n\x00]/', $line)) {
+            return null;
+        }
+    }
+
     $parts   = preg_split('/\s+/', trim($request));
     if (count($parts) < 3) {
         return null;

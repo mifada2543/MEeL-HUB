@@ -137,6 +137,62 @@ class ValidatingProxyTest extends TestCase
         $this->assertStringNotContainsStringIgnoringCase('200 Connection Established', $response);
     }
 
+    /**
+     * T4: baris header dengan CR/LF liar (HTTP request splitting) harus
+     * ditolak SEBELUM koneksi upstream — respons harus kosong (tutup
+     * langsung), bukan 502/200 hasil relay.
+     *
+     * @dataProvider injectionHeadsProvider
+     */
+    public function testInjectedHeaderHeadIsRejectedSilently(string $head): void
+    {
+        $response = $this->probeProxy($head);
+        $this->assertSame(
+            '',
+            $response,
+            'Head dengan injeksi/limit terlanggar harus ditutup tanpa respons (dapat: '
+                . var_export(substr($response, 0, 80), true) . ')'
+        );
+    }
+
+    public static function injectionHeadsProvider(): array
+    {
+        $manyHdr = '';
+        for ($i = 0; $i < 120; $i++) {
+            $manyHdr .= "X-H{$i}: v\r\n";
+        }
+
+        return [
+            // "X-Evil: a\nInjected: 1" tidak terpisah explode("\r\n")
+            'bare LF splitting'  => [
+                "GET http://example.com/ HTTP/1.1\r\nHost: example.com\r\nX-Evil: a\nInjected: 1\r\n\r\n",
+            ],
+            'bare CR dalam nilai' => [
+                "GET http://example.com/ HTTP/1.1\r\nHost: example.com\r\nX-Cr: a\rb\r\n\r\n",
+            ],
+            'NUL byte'           => [
+                "GET http://example.com/ HTTP/1.1\r\nHost: example.com\r\nX-Nul: a\x00b\r\n\r\n",
+            ],
+            'jumlah header > 100' => [
+                "GET http://example.com/ HTTP/1.1\r\nHost: example.com\r\n" . $manyHdr . "\r\n",
+            ],
+            'baris header > 8KB' => [
+                "GET http://example.com/ HTTP/1.1\r\nHost: example.com\r\nX-Big: "
+                    . str_repeat('a', 9000) . "\r\n\r\n",
+            ],
+        ];
+    }
+
+    public function testLegitHeadStillProcessesNormally(): void
+    {
+        // Head valid tetap diproses hingga tahap validasi target
+        // (target private → 502; bukan penutupan diam).
+        $response = $this->probeProxy(
+            "GET http://127.0.0.1/secret HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
+        );
+        $this->assertStringContainsStringIgnoringCase('502', $response);
+    }
+
     public function testHttpsSchemeAbsoluteUriIsNotRelayed(): void
     {
         
