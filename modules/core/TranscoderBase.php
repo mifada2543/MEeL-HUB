@@ -73,7 +73,12 @@ class TranscoderBase
         $this->conn         = $db_connection;
         $this->user_id      = (int)$session_user_id;
         $this->base_path    = dirname(__DIR__, 2);
-        $this->cookies_path = $this->base_path . "/cookies.txt";
+        $this->cookies_path = $this->base_path . "/temp/cookies.txt";
+        $legacy_cookies     = $this->base_path . "/cookies.txt";
+        if (!is_file($this->cookies_path) && is_file($legacy_cookies)) {
+            @rename($legacy_cookies, $this->cookies_path);
+        }
+        @chmod($this->cookies_path, 0600);
         $this->user_agent   = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
         $this->ffmpeg_bin   = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
         $this->ffprobe_bin  = resolve_binary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);

@@ -92,7 +92,7 @@ logs/tests/
 | `ChessHelpersIntegrationTest.php` | 6 | Helper catur dengan DB real |
 | `ChessRematchIntegrationTest.php` | 21 | Alur rematch catur dengan DB real |
 | `GarbageCollectorChessRoomsIntegrationTest.php` | 15 | Garbage collection room catur dengan DB real |
-| `MeelCoinIntegrationTest.php` | 17 | Spend/refund/refill, queue reconciler, batas role, countdown |
+| `MeelCoinIntegrationTest.php` | 15 | Spend/refund/refill, batas role, countdown |
 | `SystemTest.php` | 2 | Class existence & utilitas System |
 
 ### Test Helpers

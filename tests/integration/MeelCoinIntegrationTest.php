@@ -2,7 +2,6 @@
 use PHPUnit\Framework\TestCase;
 
 require_once MEEL_ROOT . '/modules/core/MeelCoin.php';
-require_once MEEL_ROOT . '/modules/core/QueueReconciler.php';
 
 /**
  * Test integrasi MEeLCoin (butuh MySQL; memakai database uji MEeL-test).
@@ -305,43 +304,11 @@ class MeelCoinIntegrationTest extends TestCase
         $this->assertSame(0, MeelCoin::getRefillCountdown($this->conn, DbTestHelper::ADMIN_USER_ID, 'admin'));
     }
 
-    // QueueReconciler::refundIfNeeded()
-
-    public function testQueueReconcilerRefundsOncePerQueue(): void
-    {
-        $this->setBalance($this->userId, 7);
-
-        $reconciler = new QueueReconciler($this->conn);
-        $method     = new ReflectionMethod(QueueReconciler::class, 'refundIfNeeded');
-        $method->setAccessible(true);
-
-        $queueId = 4242;
-
-        // video → biaya 'advanced' = 10
-        $this->assertTrue($method->invoke($reconciler, $this->userId, 'video', $queueId));
-        $this->assertSame(17, MeelCoin::getBalance($this->conn, $this->userId));
-
-        // Reconcile kedua untuk queue yang sama tidak boleh refund dobel.
-        $this->assertFalse($method->invoke($reconciler, $this->userId, 'video', $queueId));
-        $this->assertSame(17, MeelCoin::getBalance($this->conn, $this->userId));
-
-        $logs = $this->coinLogs($this->userId, 'reconcile_refund_q' . $queueId);
-        $this->assertCount(1, $logs);
-        $this->assertSame(10, $logs[0]['amount']);
-    }
-
-    public function testQueueReconcilerSkipsWhenMeelCoinDisabled(): void
-    {
-        $this->setSetting('meelcoin_enabled', '0');
-        $this->setBalance($this->userId, 7);
-
-        $reconciler = new QueueReconciler($this->conn);
-        $method     = new ReflectionMethod(QueueReconciler::class, 'refundIfNeeded');
-        $method->setAccessible(true);
-
-        $this->assertFalse($method->invoke($reconciler, $this->userId, 'music', 77));
-        $this->assertSame(7, MeelCoin::getBalance($this->conn, $this->userId));
-    }
+    // Catatan (T6): QueueReconciler dihapus — kelas mati (tanpa pemanggil
+    // produksi), menulis enum status 'orphaned' yang tidak ada di schema, dan
+    // checkDownloadedFile() mengabaikan argumennya. Refund-dedup-nya ikut
+    // terhapus; jalur refund produksi (DownloadService/transcode.php) tetap
+    // tercakup test lain.
 }
 
 /* reference build: MEeL-C9H11NO2 [1738fa77212209fc] */

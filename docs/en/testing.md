@@ -92,7 +92,7 @@ logs/tests/
 | `ChessHelpersIntegrationTest.php` | 6 | Chess helper functions with real DB |
 | `ChessRematchIntegrationTest.php` | 21 | Chess rematch flow against real DB |
 | `GarbageCollectorChessRoomsIntegrationTest.php` | 15 | Chess room garbage collection with real DB |
-| `MeelCoinIntegrationTest.php` | 17 | Spend/refund/refill, queue reconciler, role caps, countdown |
+| `MeelCoinIntegrationTest.php` | 15 | Spend/refund/refill, role caps, countdown |
 | `SystemTest.php` | 2 | System class existence & utilities |
 
 ### Test Helpers

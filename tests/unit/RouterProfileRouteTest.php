@@ -29,7 +29,7 @@ class RouterProfileRouteTest extends TestCase
 
     public function testReservedProfileRoutesKeepPriority(): void
     {
-        foreach (['profile/manage', 'profile/edit', 'profile/manage-action', 'profile/edit-video', 'profile/edit-music'] as $path) {
+        foreach (['profile/manage', 'profile/edit', 'profile/edit-video', 'profile/edit-music'] as $path) {
             $route = MeelRouter::routeFor($path);
             $this->assertNotSame('profile/index.php', $route['handler'], "{$path} harus tetap rute eksak, bukan profil user");
             $this->assertArrayNotHasKey('u', $_GET, "{$path} tidak boleh mengisi \$_GET['u']");

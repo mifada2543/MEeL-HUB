@@ -4,13 +4,22 @@ if (is_file(__DIR__ . '/../auth/settings.php')) {
     require_once __DIR__ . '/../auth/settings.php';
 }
 require_once __DIR__ . '/../modules/core/helpers.php';
-if (session_status() === PHP_SESSION_ACTIVE) {
-    session_write_close();
-}
+meel_boot_session();
+
 $f = isset($_GET['f']) ? (string) $_GET['f'] : '';
 if ($f === '') {
     http_response_code(400);
     exit('Parameter f wajib diisi.');
+}
+
+$__allowed = meel_stream_path_allowed($f);
+session_write_close();
+
+if (!$__allowed) {
+    $__script = $_SERVER['SCRIPT_NAME'] ?? '';
+    $__base   = rtrim(dirname(dirname($__script)), '/');
+    header('Location: ' . $__base . '/err/?code=denied');
+    exit;
 }
 
 meel_serve_media_file('video', $f, ['hls_gate' => true]);

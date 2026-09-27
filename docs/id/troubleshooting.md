@@ -282,7 +282,7 @@ sudo apt install nodejs
 **Penyebab 3: Cookies tidak valid/expired**
 - Export ulang cookies dari browser
 - Pastikan Anda login ke YouTube/platform target
-- Simpan sebagai `cookies.txt` di root proyek
+- Simpan sebagai `cookies.txt` di `temp/` (file lama di root otomatis dimigrasikan)
 
 **Penyebab 4: Update yt-dlp**
 ```bash

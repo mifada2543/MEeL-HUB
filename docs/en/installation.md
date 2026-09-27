@@ -185,6 +185,8 @@ cp settings.example.php settings.php
 cp config.example.php config.php
 ```
 
+> 💡 `install.sh` only runs `chmod 640` on `auth/settings.php` **when `$CAN_ELEVATE` is set** (privilege elevation detected) — on a fresh install without elevation the file stays at its default and the DB config is never made world-readable.
+
 Edit `auth/settings.php`:
 ```php
 $server   = "localhost";
@@ -504,10 +506,10 @@ To download from YouTube and other platforms, export your browser cookies:
 1. Install the [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) extension
 2. Log in to YouTube in your browser
 3. Export cookies to Netscape format
-4. Save as `cookies.txt` in the project root:
+4. Save as `cookies.txt` in `temp/` (an `.htaccess`-protected folder; legacy files in the root are auto-migrated):
 
 ```bash
-cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
+cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 ```
 
 ---

@@ -85,18 +85,17 @@ Saat memasukkan URL, sistem memanggil `yt-dlp --print-json` untuk mengekstrak in
 Platform video seperti YouTube sering kali memblokir akses otomatis dari server (Bot/Cloud Provider) dengan tantangan Captcha atau batasan login.
 
 > [!IMPORTANT]
-> Sistem membutuhkan kuki browser terkini yang disimpan dalam berkas `cookies.txt` di root proyek MEeL agar bisa mengunduh dengan sukses.
+> Sistem membutuhkan kuki browser terkini yang disimpan dalam berkas `cookies.txt` di folder `temp/` proyek MEeL agar bisa mengunduh dengan sukses (file lama di root otomatis dimigrasikan).
 
 ### Cara Memperbarui Cookies:
 
 1. Buka browser Anda dan pasang ekstensi **Get cookies.txt LOCALLY** (Chrome/Firefox).
 2. Buka dan masuk (Sign-in) ke akun YouTube Anda.
 3. Klik ikon ekstensi dan pilih **Export / Download** cookies untuk domain youtube.com.
-4. Simpan berkas hasil download tersebut dengan nama `cookies.txt` lalu pindahkan ke direktori utama proyek MEeL:
+4. Simpan berkas hasil download tersebut dengan nama `cookies.txt` lalu pindahkan ke folder `temp/` proyek MEeL (chmod `0600` diterapkan otomatis oleh aplikasi):
    ```bash
-   cp /path/ke/download/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
-   sudo chown www-data:www-data /opt/lampp/htdocs/MEeL/cookies.txt
-   sudo chmod 664 /opt/lampp/htdocs/MEeL/cookies.txt
+   cp /path/ke/download/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
+   sudo chown www-data:www-data /opt/lampp/htdocs/MEeL/temp/cookies.txt
    ```
 
 ---

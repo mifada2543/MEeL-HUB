@@ -113,6 +113,8 @@ define('MEEL_TRUST_PROXY_HEADERS', false);
 
 Header `HTTP_X_FORWARDED_FOR` / `HTTP_CF_CONNECTING_IP` should only be trusted if the request actually goes through a proxy/CDN you control (Cloudflare, Nginx reverse proxy). If set to `true` while the server is accessed directly, an attacker can spoof IPs to bypass IP bans or flood the activity log.
 
+**`MEEL_TRUSTED_PROXIES` allowlist** (default `['127.0.0.1', '::1']`): proxy headers are only trusted when `REMOTE_ADDR` is in this list. IP resolution is centralized in `modules/core/proxy.php` — `CF-Connecting-IP` → `X-Forwarded-For` right-to-left (Cloudflare puts the real client IP at the far right; trusted entries are skipped) → fallback `REMOTE_ADDR`. Without the allowlist, anyone can send `X-Forwarded-For: 127.0.0.1` to bypass login rate limits, MFA lockout, and IP bans. `proxy.php` has no side effects — safe to require from bootstrap, logger, or tests.
+
 ### Connection Charset (`utf8mb4`)
 
 ```php
@@ -392,11 +394,11 @@ return $active >= 2; // isServerBusy()
 
 ## Cookies & yt-dlp Authentication
 
-The `cookies.txt` file in the project root is used for yt-dlp authentication:
+The `cookies.txt` file is used for yt-dlp authentication. Since T2 it lives in **`temp/`** (an `.htaccess`-protected folder, not the docroot — the file contains real YouTube sessions); legacy files in the project root are **auto-migrated** on first open, and chmod `0600` is applied best-effort by `TranscoderBase`:
 
 ```php
-// Path: /opt/lampp/htdocs/MEeL/cookies.txt
-$this->cookies_path = $this->base_path . "/cookies.txt";
+// Path: <root>/temp/cookies.txt (auto-migrated from <root>/cookies.txt)
+$this->cookies_path = $this->base_path . "/temp/cookies.txt";
 ```
 
 ### How to Get cookies.txt
@@ -404,7 +406,7 @@ $this->cookies_path = $this->base_path . "/cookies.txt";
 1. Install browser extension "Get cookies.txt LOCALLY"
 2. Log in to YouTube (or other platform) in your browser
 3. Click the extension → Export cookies
-4. Save the file as `cookies.txt` in the project root
+4. Save the file as `cookies.txt` in `temp/` (or the project root — auto-migrated)
 
 ---
 

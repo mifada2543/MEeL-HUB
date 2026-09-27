@@ -68,7 +68,7 @@ yt-dlp --simulate "https://www.youtube.com/watch?v=..."
    ```
 2. **Re-export cookies:**
    - Use browser extension to export cookies
-   - Save as `cookies.txt` in project root
+   - Save as `cookies.txt` in `temp/` (legacy root files are auto-migrated)
 3. **Try different user-agent**
 
 ### ❌ Download completes but no file found

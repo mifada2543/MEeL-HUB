@@ -29,6 +29,10 @@ if (!defined('MEEL_TRUST_PROXY_HEADERS')) {
     define('MEEL_TRUST_PROXY_HEADERS', false);
 }
 
+if (!defined('MEEL_TRUSTED_PROXIES')) {
+    define('MEEL_TRUSTED_PROXIES', ['127.0.0.1', '::1']);
+}
+
 if (!defined('MEEL_FFMPEG_PATH')) {
     define('MEEL_FFMPEG_PATH', '');
 }

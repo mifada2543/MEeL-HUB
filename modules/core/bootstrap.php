@@ -8,15 +8,10 @@ if (!defined('MEEL_ENV')) {
 
     // Behind a trusted proxy (e.g. cloudflared), REMOTE_ADDR is always localhost.
     // Use proxy headers to detect real environment.
-    if ($is_local && defined('MEEL_TRUST_PROXY_HEADERS') && MEEL_TRUST_PROXY_HEADERS) {
-        $real_ip = $_SERVER['HTTP_CF_CONNECTING_IP']
-                ?? $_SERVER['HTTP_X_FORWARDED_FOR']
-                ?? '';
-        if (is_string($real_ip) && $real_ip !== '') {
-            $first_ip = trim(explode(',', $real_ip)[0]);
-            if ($first_ip !== '' && $first_ip !== '127.0.0.1' && $first_ip !== '::1') {
-                $is_local = false;
-            }
+    if ($is_local) {
+        require_once __DIR__ . '/proxy.php';
+        if (trust_proxy_headers() && !meel_is_loopback_ip(get_real_ip())) {
+            $is_local = false;
         }
     }
 

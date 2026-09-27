@@ -295,6 +295,8 @@ File-based rate limiter dengan `flock()` safety. Role-based (admin = unlimited, 
 
 **Fail-closed behavior:** Ketika direktori penyimpanan (`temp/ratelimit/`) tidak writable atau `flock()` gagal, rate limiter **menolak semua request** (fail-closed) daripada diam-diam membiarkannya lewat. Kegagalan dicatat via `error_log()`.
 
+Endpoint `transcode` diperiksa **sebelum** spend koin dan pekerjaan berat dimulai (urutan di `transcode.php`: rate-limit → validasi → spend); admin lolos tanpa batas (diteruskan ke `RateLimiter` internal).
+
 ### 12. `modules/exceptions/`
 
 Tiga class exception yang extends `\RuntimeException`:
@@ -470,6 +472,23 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 |---|---|
 | Biaya upload MEeLCoin | `meelcoin_upload_cost` & `meelcoin_advanced_cost` dinormalkan minimum `1` (biaya `0` membuat `spend()` tidak memotong apa pun) |
 
+**v17 — indeks hot query + FK komentar**
+
+| Apa yang di-Sync | Detail |
+|---|---|
+| `activity_log` | `(created_at)`, `(user_id, created_at)`, `(action, created_at)` — feed admin (urut waktu), filter per-user & per-aksi |
+| `upload_queue` | `(status, created_at)` (poll status antrean), `(user_id, media_type, id)` (daftar antrean per user/media) |
+| `transcode_queue` | `(status)` (poll), `(created_at)` (histori) |
+| `interactions` | `(video_id, type)`, `(music_id, type)` — count like/dislike per media |
+| `users` | `(role, is_active, last_activity)` (listing admin + deteksi idle), `(last_activity)` |
+| FK `comments.video_id → video.id` | `ON DELETE CASCADE`; baris orphan dibersihkan dulu sebelum FK dipasang |
+| Buang indeks redundan | `site_settings.idx_setting_key`, `view_logs.idx_vl_user_video` (duplikat terhadap UNIQUE/PRIMARY) |
+
+Catatan migrasi:
+
+- Pemasangan FK memakai **existence check** via `information_schema` (`meel_mig_add_fk`) — menolak FK ganda, baik yang sudah bernama sama maupun FK lain pada kolom yang sama dengan nama constraint berbeda.
+- Entri FULLTEXT + `idx_*_upload_date` tetap dipertahankan di **v1 selain** sudah ada di `schema.sql` — idempoten (`has_index`) dan menopang DB lama yang belum pernah import schema terbaru; instalasi segar cukup import `schema.sql`.
+
 > Fresh install pakai `database/schema.sql` (import langsung). Migration untuk **database yang sudah ada** agar sync ke skema terbaru.
 
 > 💡 **Modul Rhythm (MEeL!Mania) TIDAK memakai migration system utama.** Tabel
@@ -598,7 +617,7 @@ statis (HTML/JS murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm
 - Maintenance: hapus yang lebih lama dari 7–365 hari
 
 **Tab Upload Queue** (tema hijau-600):
-- Filter berdasarkan status (pending/processing/transcoding/completed/failed), uploader, rentang waktu
+- Filter berdasarkan status (`processing`/`completed`/`failed` — sesuai enum `upload_queue.status`), uploader, rentang waktu
 - Stats cards (total upload, selesai, gagal, aktif)
 - Badge status berwarna
 - Export CSV/JSON/XLS dengan preview modal
@@ -747,7 +766,13 @@ class MeelCoin {
 | Biaya | Wajib ≥ 1 (ditegakkan panel admin). Biaya ≤ 0 → alur coin dilewati di runtime |
 | Admin | Dikecualikan dari pemotongan (`$is_admin`) dan dari dropdown penyesuaian manual |
 | Refund `upload_advanced.php` | Hanya untuk sentinel gagal eksplisit (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); hasil tak dikenal tidak direfund + `error_log` |
-| Refund queue orphaned | `QueueReconciler` memakai `reason = 'reconcile_refund_q<id>'` sehingga refund idempoten per queue |
+| Refund antrean gagal | Dijalankan **di momen kegagalan**: `modules/core/helpers/upload.php` (`upload_failed_refund` — download/upload) dan `transcode.php` (`transcode_refund` — transcode). Idempoten via `reason` unik |
+
+**Status antrean & PID (`modules/transcoder/DownloadService.php`):**
+
+- Status ditulis jujur oleh `releaseQueue()` **setelah** `finalizeVideo()`/`finalizeMusic()` sukses (`DONE:…` / `ENCODE_MUSIC:…` → `completed`; selain itu → `failed`). Enum `upload_queue.status` hanya `processing/completed/failed` — tidak ada nilai `orphaned`.
+- Class `QueueReconciler` **dihapus**: nol panggilan produksi, `checkDownloadedFile()` mengabaikan argumennya (menandai antrean gagal sebagai `completed` berdasarkan file temp siapa pun), dan ia menulis/mencari status `orphaned` yang di luar enum. Tak ada sweeper global untuk antrean `processing` basi — bila diperlukan, buat job CLI (rencana T16/T17), bukan penebak file temp.
+- PID file memakai taskType `transcode_dl_{upload_queue_id}` (bukan `transcode`): `transcode` dipakai `TranscodeService` dengan id dari `transcode_queue` — tabel berbeda → rentang id berbeda → tabrakan kunci bila nama sama. `queue_id` asli (bukan `0`) membuat antrean paralel tidak saling menimpa file pid.
 
 **Sinkronisasi UI:** `meelRefreshCoinBalance()` (`assets/js/engine/result.js`) menyegarkan elemen `#coin-balance` setelah overlay `meelDone`/`meelError` — halaman tidak di-render ulang oleh overlay.
 

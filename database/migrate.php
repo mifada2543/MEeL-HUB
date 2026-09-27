@@ -69,14 +69,47 @@ function meel_mig_add_unique(\mysqli $conn, string $table, string $index, string
     }
 }
 
+function meel_mig_has_fk_column(\mysqli $conn, string $table, string $column): bool
+{
+    $t = $conn->real_escape_string($table);
+    $c = $conn->real_escape_string($column);
+    $r = $conn->query(
+        "SELECT 1 FROM information_schema.KEY_COLUMN_USAGE
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = '{$t}'
+            AND COLUMN_NAME = '{$c}'
+            AND REFERENCED_TABLE_NAME IS NOT NULL
+          LIMIT 1"
+    );
+    return $r && $r->num_rows > 0;
+}
+
 function meel_mig_add_fk(\mysqli $conn, string $table, string $constraint, string $fk_def): void
 {
+    $col = '';
+    if (preg_match('/FOREIGN KEY\s*\(\s*`?(\w+)`?\s*\)/i', $fk_def, $m)) {
+        $col = $m[1];
+    }
+    if (meel_mig_has_index($conn, $table, $constraint) || ($col !== '' && meel_mig_has_fk_column($conn, $table, $col))) {
+        return;
+    }
     $result = $conn->query("ALTER TABLE `{$table}` ADD CONSTRAINT `{$constraint}` {$fk_def}");
     if (!$result) {
         $err = $conn->error;
         if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
             echo "[MEeL] ⚠ Warning ({$table}.{$constraint}): {$err}\n";
         }
+    }
+}
+
+function meel_mig_drop_index(\mysqli $conn, string $table, string $index): void
+{
+    if (!meel_mig_has_index($conn, $table, $index)) {
+        return;
+    }
+    $result = $conn->query("ALTER TABLE `{$table}` DROP INDEX `{$index}`");
+    if (!$result) {
+        echo "[MEeL] ⚠ Warning (drop {$table}.{$index}): {$conn->error}\n";
     }
 }
 
@@ -317,8 +350,7 @@ $migrations = [
                     setting_key VARCHAR(50) NOT NULL,
                     setting_value TEXT NOT NULL,
                     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    PRIMARY KEY (setting_key),
-                    KEY idx_setting_key (setting_key)
+                    PRIMARY KEY (setting_key)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
             },
             function ($conn) {
@@ -408,6 +440,68 @@ $migrations = [
                     $stmt->execute();
                 }
                 $stmt->close();
+            },
+        ],
+    ],
+
+    17 => [
+        'description' => 'Indeks hot query (activity_log, queue, interactions, users) + FK comments.video_id + drop indeks redundan (T9)',
+        'sql' => [
+            function ($conn) {
+                meel_mig_add_index($conn, 'activity_log', 'idx_al_created', 'created_at');
+            },
+            function ($conn) {
+                meel_mig_add_index($conn, 'activity_log', 'idx_al_user_created', 'user_id, created_at');
+            },
+            function ($conn) {
+                meel_mig_add_index($conn, 'activity_log', 'idx_al_action_created', 'action, created_at');
+            },
+
+            function ($conn) {
+                meel_mig_add_index($conn, 'upload_queue', 'idx_uq_status_created', 'status, created_at');
+            },
+            function ($conn) {
+                meel_mig_add_index($conn, 'upload_queue', 'idx_uq_user_media', 'user_id, media_type, id');
+            },
+
+            function ($conn) {
+                meel_mig_add_index($conn, 'transcode_queue', 'idx_tq_status', 'status');
+            },
+            function ($conn) {
+                meel_mig_add_index($conn, 'transcode_queue', 'idx_tq_created', 'created_at');
+            },
+
+            function ($conn) {
+                meel_mig_add_index($conn, 'interactions', 'idx_int_video_type', 'video_id, type');
+            },
+            function ($conn) {
+                meel_mig_add_index($conn, 'interactions', 'idx_int_music_type', 'music_id, type');
+            },
+
+            function ($conn) {
+                meel_mig_add_index($conn, 'users', 'idx_users_role_active', 'role, is_active, last_activity');
+            },
+            function ($conn) {
+                meel_mig_add_index($conn, 'users', 'idx_users_last_activity', 'last_activity');
+            },
+
+            function ($conn) {
+                $conn->query("DELETE FROM comments
+                    WHERE video_id IS NOT NULL
+                      AND video_id NOT IN (SELECT id FROM video)");
+                meel_mig_add_fk(
+                    $conn,
+                    'comments',
+                    'fk_comments_video',
+                    'FOREIGN KEY (video_id) REFERENCES video(id) ON DELETE CASCADE'
+                );
+            },
+
+            function ($conn) {
+                meel_mig_drop_index($conn, 'view_logs', 'idx_vl_user_video');
+            },
+            function ($conn) {
+                meel_mig_drop_index($conn, 'site_settings', 'idx_setting_key');
             },
         ],
     ],

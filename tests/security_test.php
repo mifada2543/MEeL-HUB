@@ -383,6 +383,7 @@ function testHtaccessSecurity(): void {
         'data_drive', 'books/upload', 'music/upload', 'video/upload',
         
         'profile/upload',
+        'arcade/rhythm/uploads', 'arcade/rhythm/songs',
     ];
 
     $missing = [];
@@ -427,6 +428,8 @@ function testHtaccessSecurity(): void {
         'docs/partials/.htaccess'   => ['Deny from all'],
         'drive/templates/.htaccess' => ['Deny from all'],
         'tests/.htaccess'           => ['Deny from all'],
+        'arcade/rhythm/uploads/.htaccess' => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
+        'arcade/rhythm/songs/.htaccess'   => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
     ];
 
     foreach ($checks as $file => $reqs) {
@@ -443,6 +446,59 @@ function testHtaccessSecurity(): void {
         }
         if ($ok) record("{$file} \u{2014} semua security directive OK", true);
         else     record("{$file} \u{2014} kurang: " . implode(', ', $miss), true, true);
+    }
+
+    // ── T4: auto_prepend arcade portabel (tanpa path absolut) ──
+    $arcHt = PROJECT_ROOT . '/arcade/.htaccess';
+    if (!file_exists($arcHt)) {
+        record("arcade/.htaccess \u{2014} FILE TIDAK DITEMUKAN!", false, false);
+    } else {
+        $arc = file_get_contents($arcHt);
+        if (preg_match('/auto_prepend_file\s+_gate\.php\b/', $arc)) {
+            record("arcade/.htaccess \u{2014} auto_prepend filename polos (_gate.php)", true);
+        } else {
+            record("arcade/.htaccess \u{2014} auto_prepend BUKAN filename polos", true, true);
+        }
+        if (preg_match('#auto_prepend_file\s+/#', $arc)) {
+            record("arcade/.htaccess \u{2014} auto_prepend masih MEMAKAI PATH ABSOLUT", true, true);
+        } else {
+            record("arcade/.htaccess \u{2014} auto_prepend tanpa path absolut", true);
+        }
+    }
+
+    // Shim wajib: tiap direktori arcade/ yang bisa mengeksekusi *.php langsung
+    // (root .htaccess 301 tidak diproses di bawah arcade/ → eksekusi langsung
+    //  mungkin; tanpa shim di cwd yang benar → fatal fail-closed 500).
+    $shims = [
+        'arcade/_gate.php',
+        'arcade/chess/_gate.php',
+        'arcade/chess/controller/_gate.php',
+        'arcade/rhythm/_gate.php',
+        'arcade/rhythm/api/_gate.php',
+        'arcade/rhythm/manage/_gate.php',
+    ];
+    $shimMissing = [];
+    foreach ($shims as $s) {
+        if (!file_exists(PROJECT_ROOT . '/' . $s)) {
+            $shimMissing[] = $s;
+        } elseif (strpos((string) file_get_contents(PROJECT_ROOT . '/' . $s), 'require') === false) {
+            $shimMissing[] = $s . ' (tanpa require)';
+        }
+    }
+    if (empty($shimMissing)) {
+        record("arcade \u{2014} " . count($shims) . " shim/gate auto_prepend lengkap", true);
+    } else {
+        record("arcade \u{2014} shim auto_prepend hilang: " . implode(", ", $shimMissing), false, false);
+    }
+
+    // "ForceType inherit" mengirim header literal "Content-Type: inherit"
+    // (rusak saat dipadu X-Content-Type-Options: nosniff) — dilarang di
+    // subtree rhythm yang baru.
+    foreach (['arcade/rhythm/uploads/.htaccess', 'arcade/rhythm/songs/.htaccess'] as $rf) {
+        $full = PROJECT_ROOT . '/' . $rf;
+        if (file_exists($full) && preg_match('/^\\s*ForceType\\s+inherit\\s*$/m', (string) file_get_contents($full))) {
+            record($rf . " \u{2014} memakai direktif ForceType inherit (header Content-Type rusak)", true, true);
+        }
     }
 }
 
@@ -703,7 +759,7 @@ function testSsrfAndPrivateDrive(): void {
         record('modules/auth/validating_proxy_server.php — FILE TIDAK DITEMUKAN!', false, false);
     } else {
         $ps = file_get_contents($proxyServer);
-        foreach (['SsrfGuard', 'CONNECT', 'resolvePublicAddresses'] as $pat) {
+        foreach (['SsrfGuard', 'CONNECT', 'resolvePublicAddresses', 'PROXY_MAX_HEADERS', 'PROXY_MAX_HEADER_LINE'] as $pat) {
             if (strpos($ps, $pat) === false) {
                 record("validating_proxy_server: {$pat} TIDAK ditemukan", false, false);
             }

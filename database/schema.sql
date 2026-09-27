@@ -44,7 +44,9 @@ CREATE TABLE
     `meelcoin_last_refill` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `idx_username_unique` (`username`),
-    KEY `idx_meelcoin` (`meelcoin`)
+    KEY `idx_meelcoin` (`meelcoin`),
+    KEY `idx_users_role_active` (`role`, `is_active`, `last_activity`),
+    KEY `idx_users_last_activity` (`last_activity`)
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Admin user dibuat otomatis oleh install.sh atau migrasi.
@@ -69,6 +71,8 @@ CREATE TABLE
     `upload_date` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     KEY `user_id` (`user_id`),
+    KEY `idx_video_upload_date` (`upload_date`),
+    FULLTEXT KEY `ft_video_search` (`title`, `search_metadata`),
     CONSTRAINT `video_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -94,6 +98,8 @@ CREATE TABLE
     `upload_date` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     KEY `user_id` (`user_id`),
+    KEY `idx_music_upload_date` (`upload_date`),
+    FULLTEXT KEY `ft_music_search` (`title`, `artist`, `search_metadata`),
     CONSTRAINT `music_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -115,6 +121,8 @@ CREATE TABLE
     `upload_date` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     KEY `user_id` (`user_id`),
+    KEY `idx_books_upload_date` (`upload_date`),
+    FULLTEXT KEY `ft_books_search` (`title`, `author`),
     CONSTRAINT `books_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -139,6 +147,7 @@ CREATE TABLE
     KEY `idx_comments_music_created` (`music_id`, `created_at`),
     CONSTRAINT `comments_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
     CONSTRAINT `comments_ibfk_2` FOREIGN KEY (`music_id`) REFERENCES `music` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_comments_video` FOREIGN KEY (`video_id`) REFERENCES `video` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_parent_comment` FOREIGN KEY (`parent_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -161,7 +170,9 @@ CREATE TABLE
     -- dua unique key per media type.
     UNIQUE KEY `unique_interaction_video` (`user_id`, `video_id`),
     UNIQUE KEY `unique_interaction_music` (`user_id`, `music_id`),
-    KEY `user_id` (`user_id`)
+    KEY `user_id` (`user_id`),
+    KEY `idx_int_video_type` (`video_id`, `type`),
+    KEY `idx_int_music_type` (`music_id`, `type`)
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =============================================================================
@@ -210,6 +221,8 @@ CREATE TABLE
     `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     KEY `user_id` (`user_id`),
+    KEY `idx_uq_status_created` (`status`, `created_at`),
+    KEY `idx_uq_user_media` (`user_id`, `media_type`, `id`),
     CONSTRAINT `upload_queue_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -225,6 +238,8 @@ CREATE TABLE
     `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     KEY `user_id` (`user_id`),
+    KEY `idx_tq_status` (`status`),
+    KEY `idx_tq_created` (`created_at`),
     CONSTRAINT `transcode_queue_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -241,7 +256,6 @@ CREATE TABLE
     `viewed_at` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     UNIQUE KEY `unique_view` (`user_id`, `video_id`, `music_id`),
-    KEY `idx_vl_user_video` (`user_id`, `video_id`),
     KEY `idx_vl_user_music` (`user_id`, `music_id`),
     KEY `idx_vl_viewed_at` (`viewed_at`),
     KEY `idx_vl_video_id` (`video_id`),
@@ -300,7 +314,10 @@ CREATE TABLE
     `media_id` int (11) DEFAULT NULL,
     `ip_address` varchar(45) DEFAULT 'Unknown',
     `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    KEY `idx_al_created` (`created_at`),
+    KEY `idx_al_user_created` (`user_id`, `created_at`),
+    KEY `idx_al_action_created` (`action`, `created_at`)
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =============================================================================
@@ -331,6 +348,7 @@ CREATE TABLE
     `upload_date` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     KEY `user_id` (`user_id`),
+    KEY `idx_drive_upload_date` (`upload_date`),
     CONSTRAINT `drive_files_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -363,8 +381,7 @@ CREATE TABLE
     `setting_key` varchar (50) NOT NULL,
     `setting_value` text NOT NULL,
     `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-    PRIMARY KEY (`setting_key`),
-    KEY `idx_setting_key` (`setting_key`)
+    PRIMARY KEY (`setting_key`)
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Default MEeLCoin settings
