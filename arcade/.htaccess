@@ -5,7 +5,7 @@ DirectoryIndex index.php index.html
 # ── GATE MODUL OPSIONAL — auto_prepend (admin toggle via DB) ──────
 # Semua file PHP di bawah arcade/ otomatis memuat _gate.php sebelum
 # eksekusi. Saat modul nonaktif: halaman → 302, API → JSON 404.
-php_value auto_prepend_file /opt/lampp/htdocs/MEeL/arcade/_gate.php
+php_value auto_prepend_file _gate.php
 
 # ── GATE MODUL OPSIONAL (lihat modules/core/Modules.php) ──────────
 # Jika file flag .disabled ADA, semua request di bawah arcade/
