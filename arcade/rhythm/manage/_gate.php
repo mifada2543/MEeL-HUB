@@ -1,0 +1,10 @@
+<?php
+/**
+ * Auto-prepend shim untuk request langsung *.php di arcade/rhythm/manage/.
+ * arcade/.htaccess menetapkan `php_value auto_prepend_file _gate.php`
+ * (filename polos — tanpa path absolut hardcoded → portabel ke mesin lain).
+ * PHP me-resolve nama relatif terhadap cwd = direktori script utama yang
+ * dieksekusi; untuk direktori ini, shim inilah yang dimuat, lalu meneruskan
+ * ke gate asli (arcade/_gate.php).
+ */
+require_once __DIR__ . '/../../_gate.php';
