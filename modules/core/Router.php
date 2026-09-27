@@ -48,7 +48,6 @@ final class MeelRouter
         'profile/channel-more' => ['handler' => 'profile/channel_more.php',      'script' => '/profile/channel_more.php'],
         'profile/manage'     => ['handler' => 'profile/manage.php',             'script' => '/profile/manage.php'],
         'profile/edit'       => ['handler' => 'controllers/profile/profile_edit.php', 'script' => '/controllers/profile/profile_edit.php'],
-        'profile/manage-action' => ['handler' => 'controllers/profile/fun-manage.php', 'script' => '/controllers/profile/fun-manage.php'],
         'profile/edit-video' => ['handler' => 'profile/edit-video.php',          'script' => '/profile/edit-video.php'],
         'profile/edit-music' => ['handler' => 'profile/edit-music.php',          'script' => '/profile/edit-music.php'],
         'profile/lrc-editor' => ['handler' => 'profile/lrc-editor.php',          'script' => '/profile/lrc-editor.php'],
@@ -66,8 +65,6 @@ final class MeelRouter
         'admin/user-management' => ['handler' => 'admin/user-management.php',  'script' => '/admin/user-management.php'],
         'admin/meelcoin'    => ['handler' => 'admin/meelcoin.php',             'script' => '/admin/meelcoin.php'],
         'admin/chat'        => ['handler' => 'admin/chat.php',                 'script' => '/admin/chat.php'],
-        'admin/actions'     => ['handler' => 'controllers/admin/admin_actions.php', 'script' => '/controllers/admin/admin_actions.php'],
-        'admin/data'        => ['handler' => 'controllers/admin/admin_data.php',    'script' => '/controllers/admin/admin_data.php'],
 
         'auth/login'    => ['handler' => 'auth/login.php',    'script' => '/auth/login.php'],
         'auth/register' => ['handler' => 'auth/register.php', 'script' => '/auth/register.php'],

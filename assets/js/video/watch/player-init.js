@@ -9,6 +9,7 @@ function initPlayer() {
     videoId = window.playerConfig.id || videoId;
     storageKeyVideo = `video_pos_${videoId}`;
   }
+  window.refreshPlyrMediaMetadata && refreshPlyrMediaMetadata();
   ((videoElement = document.getElementById("main-video")),
     videoElement &&
       (isHls && window.Hls && Hls.isSupported()

@@ -350,6 +350,8 @@ File-based rate limiter with `flock()` safety. Role-based limits (admin = unlimi
 
 **Fail-closed behavior:** When the storage directory (`temp/ratelimit/`) is not writable or `flock()` fails, the rate limiter **denies all requests** instead of silently allowing them. This prevents a broken filesystem from disabling rate limiting. Failures are logged via `error_log()`.
 
+The `transcode` endpoint is checked **before** the coin spend and heavy work start (order in `transcode.php`: rate-limit → validation → spend); admins pass without a limit (delegated to the internal `RateLimiter`).
+
 ### 12. `modules/exceptions/`
 
 Three typed exception classes extending `\RuntimeException`:
@@ -550,6 +552,23 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 |---|---|
 | MEeLCoin upload costs | `meelcoin_upload_cost` & `meelcoin_advanced_cost` normalized to a minimum of `1` (a cost of `0` makes `spend()` deduct nothing) |
 
+**v17 — hot-query indexes + comment FK**
+
+| What v17 Syncs | Detail |
+|---|---|
+| `activity_log` | `(created_at)`, `(user_id, created_at)`, `(action, created_at)` — admin feed (time-ordered), per-user & per-action filters |
+| `upload_queue` | `(status, created_at)` (status polling), `(user_id, media_type, id)` (per-user/media queue listing) |
+| `transcode_queue` | `(status)` (polling), `(created_at)` (history) |
+| `interactions` | `(video_id, type)`, `(music_id, type)` — like/dislike counts per media |
+| `users` | `(role, is_active, last_activity)` (admin listing + idle detection), `(last_activity)` |
+| FK `comments.video_id → video.id` | `ON DELETE CASCADE`; orphan rows are cleaned up before the FK is added |
+| Dropped redundant indexes | `site_settings.idx_setting_key`, `view_logs.idx_vl_user_video` (duplicates of UNIQUE/PRIMARY) |
+
+Migration notes:
+
+- FK installation uses an **existence check** via `information_schema` (`meel_mig_add_fk`) — rejects duplicate FKs, whether same-named or another FK on the same column under a different constraint name.
+- The FULLTEXT + `idx_*_upload_date` entries remain in **v1 in addition to** `schema.sql` — idempotent (`has_index`) and supporting old databases that never imported the latest schema; fresh installs only need to import `schema.sql`.
+
 > Fresh installs use `database/schema.sql` (import directly). The migration is for **existing databases** to sync to the latest schema.
 
 > 💡 **Rhythm module (MEeL!Mania) does NOT use the main migration system.** The
@@ -678,7 +697,7 @@ its own DB):
 - Maintenance: clear older than 7–365 days
 
 **Upload Queue Tab** (green-600 theme):
-- Filter by status (pending/processing/transcoding/completed/failed), uploader, date range
+- Filter by status (`processing`/`completed`/`failed` — matching the `upload_queue.status` enum), uploader, date range
 - Stats cards (total uploads, completed, failed, active)
 - Color-coded status badges
 - Export CSV/JSON/XLS with preview modal
@@ -821,7 +840,13 @@ class MeelCoin {
 | Cost | Minimum 1 (enforced in the admin panel). Cost ≤ 0 → the coin flow is skipped at runtime |
 | Admin | Excluded from deductions (`$is_admin`) and from the manual adjustment dropdown |
 | `upload_advanced.php` refund | Only for explicit failure sentinels (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); unrecognized results are not refunded and go to `error_log` |
-| Orphaned queue refund | `QueueReconciler` uses `reason = 'reconcile_refund_q<id>'`, making the refund idempotent per queue |
+| Failed-queue refund | Runs **at the moment of failure**: `modules/core/helpers/upload.php` (`upload_failed_refund` — download/upload) and `transcode.php` (`transcode_refund` — transcode). Idempotent via a unique `reason` |
+
+**Queue status & PID (`modules/transcoder/DownloadService.php`):**
+
+- Status is written honestly by `releaseQueue()` **after** `finalizeVideo()`/`finalizeMusic()` succeeds (`DONE:…` / `ENCODE_MUSIC:…` → `completed`; anything else → `failed`). The `upload_queue.status` enum only holds `processing/completed/failed` — there is no `orphaned` value.
+- The `QueueReconciler` class was **removed**: zero production callers, `checkDownloadedFile()` ignored its arguments (marking a failed queue as `completed` based on anyone's temp file), and it wrote/queried the out-of-enum `orphaned` status. There is no global sweeper for stale `processing` queues — if needed, build a CLI job (planned T16/T17) instead of guessing from temp files.
+- PID files use taskType `transcode_dl_{upload_queue_id}` (not `transcode`): `transcode` is used by `TranscodeService` with ids from `transcode_queue` — different tables → different id ranges → key collisions if the name were shared. The real `queue_id` (not `0`) keeps parallel jobs from overwriting each other's PID files.
 
 **UI sync:** `meelRefreshCoinBalance()` (`assets/js/engine/result.js`) refreshes the `#coin-balance` element after the `meelDone`/`meelError` overlay — the page itself is not re-rendered by the overlay.
 

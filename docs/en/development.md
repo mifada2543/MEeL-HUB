@@ -10,6 +10,7 @@ Guide for developers who want to contribute or understand coding standards in ME
 - [Coding Standards](#coding-standards)
 - [Database Structure](#database-structure)
 - [Coding Conventions](#coding-conventions)
+- [`.htaccess` & Legacy Route Notes](#htaccess--legacy-route-notes)
 - [Testing](#testing)
 - [Pull Request Guide](#pull-request-guide)
 - [Troubleshooting Development](#troubleshooting-development)
@@ -242,6 +243,26 @@ assets/css/shared/
 - Use CSS variables (`var(--meel-bg)`, `var(--meel-surface)`, etc.) instead of hardcoded colors
 - If you must use Tailwind hardcoded (`bg-[#0d1017]`), add override in `light-theme.css`
 - Logo/icons must be excluded from color overrides (use `:not(.nav-logo-text)`)
+
+---
+
+## `.htaccess` & Legacy Route Notes
+
+### Arcade module `auto_prepend_file` (portable & fail-closed)
+
+- `arcade/.htaccess` uses `php_value auto_prepend_file _gate.php` with a **bare filename, no path**: PHP resolves it relative to the cwd of the executed main script, making it portable on any machine (no hardcoded absolute path).
+- Fail-closed consequence: scripts executed directly in a subdirectory must ship their own `_gate.php` — a single `require __DIR__ . '/../../_gate.php';` line (see `arcade/chess/controller/_gate.php`).
+- Clean-URL requests (root router) are **not** subject to this `php_value` — they are gated by `modules/core/Modules.php` in the Router.
+
+### `controllers/.htaccess` shadows the legacy 301 rules
+
+`Deny from all` in `controllers/.htaccess` (include-only files; direct access is 403 by design, tested at `security_test.php:419`) shadows every `controllers/*` 301 rule in the root `.htaccess` — the rules look dead while being live. The relationship is **latent**: if the deny is lifted, the rules still 301 to the correct parent routes.
+
+### Removed routes (Phase 0/T7) & clean routes
+
+- `profile/manage-action`, `admin/actions`, `admin/data` were removed from `Router.php` — they were fragment includes guarded by `MEEL_MANAGE_ACCESS`/`MEEL_ADMIN_CONTEXT`, so standalone routes could never work. Old URLs 301 to their parents (`/profile/manage`, `/admin`) in the root `.htaccess`.
+- `assets/js/drive/upload.js` uses the clean route `../api/ajax-refresh`; the old URL `controllers/api/ajax_refresh.php` always returned 403 due to the deny above.
+- Empirical note: the generic root 301 does **not** apply to the `arcade/` subtree (every arcade `*.php` is executed directly).
 
 ---
 

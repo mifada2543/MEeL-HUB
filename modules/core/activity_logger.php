@@ -1,29 +1,6 @@
 <?php
-function trust_proxy_headers(): bool
-{
-    return defined('MEEL_TRUST_PROXY_HEADERS') && MEEL_TRUST_PROXY_HEADERS === true;
-}
+require_once __DIR__ . '/proxy.php';
 
-function get_real_ip()
-{
-    $valid = function ($ip) {
-        return is_string($ip) && $ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) !== false;
-    };
-
-    if (trust_proxy_headers()) {
-        if (isset($_SERVER["HTTP_CF_CONNECTING_IP"]) && $valid($_SERVER["HTTP_CF_CONNECTING_IP"])) {
-            return $_SERVER["HTTP_CF_CONNECTING_IP"];
-        }
-        if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
-            $xff = trim(explode(',', $_SERVER["HTTP_X_FORWARDED_FOR"])[0]);
-            if ($valid($xff)) {
-                return $xff;
-            }
-        }
-    }
-    $remote = $_SERVER["REMOTE_ADDR"] ?? '0.0.0.0';
-    return $valid($remote) ? $remote : '0.0.0.0';
-}
 function validate_and_format_ip(string $ip): array
 {
     $ip = trim($ip);

@@ -319,8 +319,7 @@ class DownloadService extends TranscoderBase
         }
 
         if (!$is_success) {
-            $queue_status = $client_disconnected ? 'orphaned' : 'failed';
-            $this->releaseQueue($queue_id, $queue_status);
+            $this->releaseQueue($queue_id, 'failed');
             file_put_contents('/tmp/ytdlp_error.log', $error_log);
 
             if ($frag_retry_abort) {
@@ -341,12 +340,15 @@ class DownloadService extends TranscoderBase
             return $client_disconnected ? "DISCONNECTED" : "";
         }
 
-        $this->releaseQueue($queue_id, 'completed');
-
         if ($type === 'music') {
-            return $this->finalizeMusic($temp_id, $title, $artist, $album, $duration, $description);
+            $result = $this->finalizeMusic($temp_id, $title, $artist, $album, $duration, $description);
+            $finalized_ok = str_starts_with($result, 'ENCODE_MUSIC:');
+        } else {
+            $result = $this->finalizeVideo($basename, $basename . ".webp", $title, $duration, $description, $queue_id);
+            $finalized_ok = str_starts_with($result, 'DONE:');
         }
-        return $this->finalizeVideo($basename, $basename . ".webp", $title, $duration, $description);
+        $this->releaseQueue($queue_id, $finalized_ok ? 'completed' : 'failed');
+        return $result;
 
         } catch (\Throwable $e) {
             try { $this->releaseQueue($queue_id, 'failed'); } catch (\Throwable $ignore) {}
@@ -401,7 +403,8 @@ class DownloadService extends TranscoderBase
         string $db_thumb,
         string $title,
         int    $duration,
-        string $description = 'Upload by MEeL Engine'
+        string $description = 'Upload by MEeL Engine',
+        int    $queue_id = 0
     ): string {
         $shm_temp    = $this->getShmTempPath();
         $staging_mp4 = "$shm_temp/{$basename}.mp4";
@@ -503,7 +506,7 @@ class DownloadService extends TranscoderBase
         $hls_status = proc_get_status($hls_proc);
         $hls_pid    = (int)($hls_status['pid'] ?? 0);
         $this->trackChildProcess($hls_pid, false, 'ffmpeg HLS (' . $folder_name . ')');
-        $this->writePidFile('transcode', 0, $hls_pid);
+        $this->writePidFile('transcode_dl', $queue_id, $hls_pid);
 
         $sprite_proc  = null;
         $sprite_pid   = 0;
@@ -582,7 +585,7 @@ class DownloadService extends TranscoderBase
         foreach ($hls_pipes as $p) { if (is_resource($p)) fclose($p); }
         $hls_exit = proc_close($hls_proc);
         $this->untrackChildProcess($hls_pid);
-        $this->removePidFile('transcode', 0);
+        $this->removePidFile('transcode_dl', $queue_id);
 
         if ($sprite_proc && is_resource($sprite_proc)) {
             foreach ($sprite_pipes as $p) { if (is_resource($p)) fclose($p); }

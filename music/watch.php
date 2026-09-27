@@ -25,20 +25,22 @@ session_write_close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="<?= htmlspecialchars($v['title']) ?> — MEeL Music">
-    <meta property="og:description" content="Dengarkan <?= htmlspecialchars($v['title']) ?> oleh <?= htmlspecialchars($v['artist'] ?? 'Unknown') ?> di MEeL Music.">
     <?php
     $__thumb_raw = music_thumbnail_url($v['thumbnail']);
     $__og_image  = str_starts_with($__thumb_raw, '../')
         ? base_url('/' . ltrim(substr($__thumb_raw, 3), '/'))
         : base_url('/music/' . ltrim($__thumb_raw, '/'));
+    if (!preg_match('#^https?://#i', $__og_image)) {
+        $__og_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__og_image;
+    }
+
+    $_META_TITLE   = $v['title'] . ' — MEeL Music';
+    $_META_DESC    = 'Dengarkan ' . $v['title'] . ' oleh ' . ($v['artist'] ?? 'Unknown') . ' di MEeL Music.';
+    $_META_IMAGE   = $__og_image;
+    $_META_IMAGE_W = '512';
+    $_META_IMAGE_H = '512';
+    $_META_TYPE    = 'music.song';
     ?>
-    <meta property="og:image" content="<?= $__og_image ?>">
-    <meta property="og:image:width" content="512">
-    <meta property="og:image:height" content="512">
-    <meta property="og:type" content="music.song">
-    <title><?= htmlspecialchars($v['title']) ?> — MEeL Music</title>
     <?php include '../partials/link.php'; ?>
     <?php $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'); ?>
     <link rel="preconnect" href="<?= $base_url ?>/" crossorigin>
@@ -641,6 +643,7 @@ session_write_close();
     <script src="../assets/js/shared/resume-modal.js<?= meel_asset_version('assets/js/shared/resume-modal.js') ?>"></script>
     <script src="../assets/js/shared/mini-player-popstate.js<?= meel_asset_version('assets/js/shared/mini-player-popstate.js') ?>"></script>
     <script src="../assets/js/shared/audio-engine.js<?= meel_asset_version('assets/js/shared/audio-engine.js') ?>"></script>
+    <script src="../assets/js/shared/head-meta.js<?= meel_asset_version('assets/js/shared/head-meta.js') ?>"></script>
     <script src="../assets/js/shared/view-router.js<?= meel_asset_version('assets/js/shared/view-router.js') ?>"></script>
     <script src="../assets/js/music/watch/main.js<?= meel_asset_dir_version('assets/js/music/watch') ?>"></script>
     <script src="../assets/js/shared/comment.js<?= meel_asset_version('assets/js/shared/comment.js') ?>"></script>

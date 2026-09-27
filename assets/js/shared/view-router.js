@@ -98,6 +98,8 @@
       "../assets/js/shared/format-time.js",
       "../assets/js/shared/resume-modal.js",
       "../assets/js/shared/mini-player-popstate.js",
+      "../assets/js/shared/media-session.js",
+      "../assets/js/shared/head-meta.js",
       "../assets/js/shared/audio-engine.js",
       "../assets/js/shared/view-router.js",
       "../assets/js/shared/comment.js",
@@ -108,6 +110,8 @@
       "../assets/js/shared/keyboard.js",
       "../assets/js/compatibilitas/plyr.min.js",
       "../assets/js/shared/plyr-config.js",
+      "../assets/js/shared/media-session.js",
+      "../assets/js/shared/head-meta.js",
       "../assets/js/shared/audio-engine.js",
       "../assets/js/shared/view-router.js",
       "../assets/js/music/shared/mini-player.js",
@@ -332,8 +336,11 @@
       document.title = doc.title;
       applyInlineConfig(doc, viewType);
 
-      
+
       await ensureViewScripts(viewType);
+
+      if (window.meelUpdateHeadMeta) window.meelUpdateHeadMeta(doc);
+
 
       
       if (options.pushState !== false) {

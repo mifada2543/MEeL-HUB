@@ -62,6 +62,7 @@ XSENDFILE_OVERRIDE=""      # ""=tanya, "1"=aktifkan, "0"=nonaktifkan
 ENV_OVERRIDE=""             # ""=tanya, "production"|"development"
 TRUST_PROXY_OVERRIDE=""     # ""=tanya, "1"=aktifkan, "0"=nonaktifkan
 VHOST_OVERRIDE=""           # ""=tanya/lewati, domain=buat VirtualHost
+WEB_USER="www-data"         # user web server (ownership & permission file)
 
 for arg in "$@"; do
     case "$arg" in
@@ -524,9 +525,19 @@ ok "MEEL_ENV=${ENV_CHOICE} (APP_DEBUG=${DEBUG_CHOICE}) ditulis ke auth/settings.
 [ -n "$NODE_PATH" ] && ok "MEEL_NODE_PATH → $NODE_PATH"
 [ -n "$YTDLP_PATH" ] && ok "MEEL_YTDLP_PATH → $YTDLP_PATH"
 if $TRUST_PROXY; then
-    ok "MEEL_TRUST_PROXY_HEADERS diaktifkan (percaya X-Forwarded-For/Proto)."
+    ok "MEEL_TRUST_PROXY_HEADERS diaktifkan — header proxy hanya dipercaya dari IP di MEEL_TRUSTED_PROXIES."
+    warn "Pastikan IP reverse proxy Anda tercantum di MEEL_TRUSTED_PROXIES (auth/settings.php; default 127.0.0.1/::1 untuk cloudflared lokal)."
 else
     warn "MEEL_TRUST_PROXY_HEADERS tetap nonaktif (default aman — jangan aktifkan tanpa proxy)."
+fi
+
+if [ -f "auth/settings.php" ] && id "$WEB_USER" >/dev/null 2>&1 && $CAN_ELEVATE; then
+    if $SUDO chgrp "$WEB_USER" auth/settings.php auth/config.php 2>/dev/null \
+        && $SUDO chmod 640 auth/settings.php auth/config.php 2>/dev/null; then
+        ok "auth/settings.php & auth/config.php → 640 (owner + group ${WEB_USER})."
+    else
+        warn "Gagal mengatur permission auth/*.php — lakukan manual: chgrp ${WEB_USER} + chmod 640."
+    fi
 fi
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -651,7 +662,6 @@ if [ "$HDD_BASE" != "$PROJECT_ROOT/data_drive" ]; then
 fi
 
 # Kepemilikan & permission — best-effort, sesuaikan user web server Anda
-WEB_USER="www-data"
 if id "$WEB_USER" >/dev/null 2>&1 && $CAN_ELEVATE; then
     if confirm "Set ownership folder storage ke ${WEB_USER} (user Apache umum)?" Y; then
         $SUDO chown -R "$WEB_USER:$WEB_USER" data_drive temp profile/upload "$HDD_BASE" 2>/dev/null || \
