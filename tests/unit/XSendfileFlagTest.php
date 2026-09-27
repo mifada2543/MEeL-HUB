@@ -7,6 +7,7 @@ use PHPUnit\Framework\TestCase;
 class XSendfileFlagTest extends TestCase
 {
     private array $savedServer = [];
+    private string $fixtureRoot = '';
 
     protected function setUp(): void
     {
@@ -27,6 +28,32 @@ class XSendfileFlagTest extends TestCase
                 $_SERVER[$key] = $value;
             }
         }
+        if ($this->fixtureRoot !== '') {
+            $this->removeFixture($this->fixtureRoot);
+            $this->fixtureRoot = '';
+        }
+    }
+
+    private function makeFixture(): string
+    {
+        $base = rtrim(sys_get_temp_dir(), '/') . '/meel_xsendfile_' . str_replace('.', '', uniqid('', true));
+        mkdir($base . '/MEeL/music/upload', 0777, true);
+        return $this->fixtureRoot = $base;
+    }
+
+    private function removeFixture(string $dir): void
+    {
+        if ($dir === '' || strpos(basename($dir), 'meel_xsendfile_') !== 0 || !is_dir($dir)) {
+            return;
+        }
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($items as $item) {
+            $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+        }
+        rmdir($dir);
     }
 
     public function testFlagOn(): void
@@ -108,17 +135,19 @@ class XSendfileFlagTest extends TestCase
 
     public function testHtaccessDirsOrderedFromDocrootDeepest(): void
     {
-        $_SERVER['DOCUMENT_ROOT'] = '/opt/lampp/htdocs';
+        $docRoot = $this->makeFixture();
+        $_SERVER['DOCUMENT_ROOT'] = $docRoot;
         $_SERVER['REQUEST_URI']   = '/MEeL/music/upload/file/song.ogg';
         $_SERVER['SCRIPT_NAME']   = '/MEeL/music/file.php';
         unset($_SERVER['REDIRECT_URL']);
 
         $dirs = meel_xsendfile_htaccess_dirs();
 
-        $this->assertSame('/opt/lampp/htdocs', $dirs[0]);
-        $this->assertContains('/opt/lampp/htdocs/MEeL', $dirs);
-        $this->assertContains('/opt/lampp/htdocs/MEeL/music', $dirs);
-        $this->assertContains('/opt/lampp/htdocs/MEeL/music/upload', $dirs);
+        $this->assertNotEmpty($dirs, 'fixture docroot harus ada di daftar');
+        $this->assertSame($docRoot, $dirs[0]);
+        $this->assertContains($docRoot . '/MEeL', $dirs);
+        $this->assertContains($docRoot . '/MEeL/music', $dirs);
+        $this->assertContains($docRoot . '/MEeL/music/upload', $dirs);
 
         $depths = array_map(static fn (string $d): int => substr_count($d, '/'), $dirs);
         $sorted = $depths;
@@ -128,24 +157,29 @@ class XSendfileFlagTest extends TestCase
 
     public function testHtaccessDirsNeverEscapesDocroot(): void
     {
-        $_SERVER['DOCUMENT_ROOT'] = '/opt/lampp/htdocs';
+        $docRoot = $this->makeFixture();
+        $_SERVER['DOCUMENT_ROOT'] = $docRoot;
         $_SERVER['REQUEST_URI']   = '/../../etc';
         $_SERVER['SCRIPT_NAME']   = '/index.php';
         unset($_SERVER['REDIRECT_URL']);
 
-        foreach (meel_xsendfile_htaccess_dirs() as $dir) {
-            $this->assertSame('/opt/lampp/htdocs', $dir);
+        $dirs = meel_xsendfile_htaccess_dirs();
+
+        $this->assertNotEmpty($dirs, 'docroot fixture selalu menghasilkan minimal [docroot]');
+        foreach ($dirs as $dir) {
+            $this->assertSame($docRoot, $dir);
         }
     }
 
     public function testHtaccessDirsHandlesPercentEncodedPath(): void
     {
-        $_SERVER['DOCUMENT_ROOT'] = '/opt/lampp/htdocs';
+        $docRoot = $this->makeFixture();
+        $_SERVER['DOCUMENT_ROOT'] = $docRoot;
         $_SERVER['REQUEST_URI']   = '/MEeL/music/upload/file/a%20b.ogg';
         $_SERVER['SCRIPT_NAME']   = '/MEeL/music/file.php';
         unset($_SERVER['REDIRECT_URL']);
 
-        $this->assertContains('/opt/lampp/htdocs/MEeL/music/upload', meel_xsendfile_htaccess_dirs());
+        $this->assertContains($docRoot . '/MEeL/music/upload', meel_xsendfile_htaccess_dirs());
     }
 
     public function testHtaccessDirsWithoutDocumentRoot(): void
