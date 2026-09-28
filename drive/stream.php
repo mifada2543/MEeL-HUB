@@ -18,6 +18,8 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
 
+meel_storage_guard('binary');
+
 $storage = new DriveStorage(DriveStorage::defaultBasePath(), $user);
 
 try {
@@ -26,6 +28,9 @@ try {
         isset($_GET['type']) ? basename($_GET['type']) : null,
         $_GET['scope'] ?? DriveStorage::SCOPE_PUBLIC
     );
+} catch (StorageNotMountedException $exception) {
+    http_response_code(503);
+    exit;
 } catch (RuntimeException $exception) {
     http_response_code(404);
     exit;

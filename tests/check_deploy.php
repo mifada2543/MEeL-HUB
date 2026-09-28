@@ -134,6 +134,11 @@ if ($hdd === '') {
 } else {
     report('PASS', "MEEL_HDD_BASE OK: {$hdd}" . ($hddOverride !== null ? ' (override --hdd)' : ''));
 
+    if (!is_file($hdd . '/.meel_mount')) {
+        report('WARN', "Penanda volume .meel_mount belum ada: {$hdd}/.meel_mount",
+            'tanpa penanda, folder storage kosong dianggap "belum ter-mount" — jalankan: touch "' . $hdd . '/.meel_mount"');
+    }
+
     
     $derived = [
         'MEEL_HDD_VIDEO_UPLOAD' => ['video/upload',           'auto'],

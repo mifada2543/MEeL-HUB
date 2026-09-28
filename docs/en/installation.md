@@ -293,7 +293,10 @@ mkdir -p "$BASE"/video/upload/video "$BASE"/video/upload/thumbnail
 mkdir -p "$BASE"/music/upload/file   "$BASE"/music/upload/thumbnail
 mkdir -p "$BASE"/books/upload/manga  "$BASE"/books/upload/pdf "$BASE"/books/upload/thumbnail
 mkdir -p "$BASE"/drive/public "$BASE"/drive/private_admins
+touch "$BASE"/.meel_mount
 ```
+
+`.meel_mount` is the **mounted-volume marker**: `install.sh` creates it, `.gitignore` blocks it, and `meel_storage_ready()` uses it to tell a mounted volume apart from a leftover empty folder on the mountpoint. Without it, an empty storage folder is treated as *not mounted* and every Drive/media page falls back to the safe `err/?code=storage` screen (HTTP 503) instead of crashing.
 
 #### 3. No symlinks to create
 

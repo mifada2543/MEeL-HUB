@@ -12,6 +12,8 @@ $storage = new DriveStorage(DriveStorage::defaultBasePath(), $user);
 $renderer = new DriveViewRenderer();
 $currentScope = $storage->normalizeScope($_GET['scope'] ?? DriveStorage::SCOPE_PUBLIC);
 
+meel_storage_guard();
+
 $videos = $storage->listFilesByType('video', $currentScope);
 $audios = $storage->listFilesByType('audio', $currentScope);
 $documents = $storage->listFilesByType('dokumen', $currentScope);

@@ -75,6 +75,18 @@ $types = [
         'meta_t'   => 'Maintenance | MEeL',
         'meta_d'   => 'MEeL sedang dalam perawatan.',
     ],
+    'storage' => [
+        'status'   => 503,
+        'protocol' => '503_Storage_Unavailable',
+        'title'    => 'Storage Belum Siap',
+        'desc'     => 'Volume penyimpanan media belum ter-mount di server. Halaman ini akan kembali normal otomatis setelah storage tersedia.',
+        'icon'     => 'hard-drive-download',
+        'dot'      => 'OFFLINE',
+        'accent'   => '#f97316',
+        'accent2'  => '#fbbf24',
+        'meta_t'   => 'Storage Belum Siap | MEeL',
+        'meta_d'   => 'Penyimpanan media belum ter-mount. Coba lagi beberapa saat lagi.',
+    ],
     'server_error' => [
         'status'   => 500,
         'protocol' => '500_Server_Error',
