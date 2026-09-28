@@ -145,6 +145,44 @@ sudo chmod -R 777 /opt/lampp/htdocs/MEeL/temp/
 Halaman maintenance kini terpadu di `err/?code=maintance` (HTTP 503) dan hanya menampilkan status perawatan.
 Diagnosa path storage dilakukan lewat perintah filesystem (contoh `ls -la` dan `df -h` di atas).
 
+### ⚠️ Dialihkan ke `err/?code=storage` — "Storage Belum Siap" (HTTP 503)
+
+**Gejala:**
+- Membuka Drive / halaman upload dialihkan ke `err/?code=storage` (HTTP 503)
+- Streaming video/musik/books membalas **503 kosong** (tanpa body)
+- Endpoint Drive `upload`/`delete` membalas JSON
+  `{"status":"error","code":"storage_unmounted"}`
+- Log berisi `[MEeL] Peringatan: MEEL_HDD_BASE tidak dapat diakses: /media/<user>/MEeL/media`
+
+**Penyebab:** volume `MEEL_HDD_BASE` (di `auth/settings.php`) belum ter-mount —
+HDD belum dicolok, `mount` belum dijalankan, atau path salah. Dulu kasus ini
+berujung fatal `mkdir(): Permission denied ... RuntimeException: Folder
+penyimpanan gagal dibuat`; sekarang semua jalur dicek lebih dulu oleh
+`meel_storage_ready()` lalu diarahkan ke halaman error yang aman, sehingga
+tidak ada folder sampah yang terbentuk di filesystem root.
+
+**Diagnosis:**
+```bash
+df -h | grep MEeL
+ls -la "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")"
+php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; var_dump(meel_storage_ready());"
+```
+
+**Solusi:**
+```bash
+sudo mount /dev/sdX? /media/<user>/MEeL          # sesuaikan dengan fstab
+touch "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")/.meel_mount"
+```
+
+**Penanda `.meel_mount`** dibuat `install.sh` dan masuk `.gitignore`
+(**jangan pernah di-commit**). Ia memberi tahu `meel_storage_ready()` bahwa
+folder itu adalah volume ter-mount, bukan sisa folder kosong di mountpoint.
+Tanpa penanda: folder **kosong** dianggap belum ter-mount (arah aman: blokir),
+folder berisi (volume lama) tetap dilayani dengan log peringatan. Hilangnya
+penanda juga diperingatkan `tests/check_deploy.php`.
+
+---
+
 ### ❌ Modul Drive crash: "Folder penyimpanan gagal dibuat" (RuntimeException)
 
 **Gejala:**
@@ -171,7 +209,7 @@ Diagnosa path storage dilakukan lewat perintah filesystem (contoh `ls -la` dan `
    mana aplikasi benar-benar me-resolve storage:
    ```bash
    php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_DRIVE') ? MEEL_HDD_DRIVE : 'NOT SET';"
-   php -r "require 'modules/core/helpers.php'; echo meel_drive_base_path();"
+   php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; echo meel_drive_base_path();"
    ```
    Jika path hasil resolve tidak ada atau tidak writable, perbaiki `MEEL_HDD_BASE`
    di `auth/settings.php` (atau biarkan tidak di-set agar memakai fallback

@@ -293,7 +293,10 @@ mkdir -p "$BASE"/video/upload/video "$BASE"/video/upload/thumbnail
 mkdir -p "$BASE"/music/upload/file   "$BASE"/music/upload/thumbnail
 mkdir -p "$BASE"/books/upload/manga  "$BASE"/books/upload/pdf "$BASE"/books/upload/thumbnail
 mkdir -p "$BASE"/drive/public "$BASE"/drive/private_admins
+touch "$BASE"/.meel_mount
 ```
+
+`.meel_mount` adalah **penanda volume ter-mount**: dibuat `install.sh`, diblokir `.gitignore`, dan dibaca `meel_storage_ready()` untuk membedakan volume yang benar-benar ter-mount dengan folder kosong sisa di mountpoint. Tanpa penanda, folder storage yang kosong dianggap *belum ter-mount* dan semua halaman Drive/media jatuh ke layar aman `err/?code=storage` (HTTP 503) alih-alih crash.
 
 #### 3. Tidak ada symlink yang perlu dibuat
 

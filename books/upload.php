@@ -13,6 +13,8 @@ if ($role !== 'admin') {
     exit();
 }
 
+meel_storage_guard();
+
 $message  = '';
 $val_title = htmlspecialchars($_GET['reup'] ?? '');
 

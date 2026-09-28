@@ -39,7 +39,7 @@ Reference guide for all configuration files and parameters in MEeL-HUB.
 | `modules/core/japanese.php` | Japanese text processing (MeCab + transliterator) | `getRomajiName()`, `analyzeJapaneseText()` |
 | `modules/core/activity_logger.php` | Activity logging, IP banning, session kick | `get_real_ip()`, `log_activity()`, `validate_and_format_ip()` |
 | `modules/core/helpers/upload.php` | Upload/file helpers (sanitization, unique-name reservation, codec validation, ffmpeg, centralized upload handler) | `meel_sanitize_upload_filename()`, `meel_reserve_unique_filename()`, `meel_validate_video_codec()`, `meel_validate_audio_codec()`, `meel_handle_upload()` |
-| `modules/core/helpers/storage.php` | Media/Drive storage helpers + media serving | `meel_media_base_path()`, `meel_drive_base_path()`, `meel_serve_media_file()`, `meel_write_cache_file()` |
+| `modules/core/helpers/storage.php` | Media/Drive storage helpers + media serving | `meel_media_base_path()`, `meel_drive_base_path()`, `meel_storage_ready()`, `meel_storage_guard()`, `meel_serve_media_file()`, `meel_write_cache_file()` |
 | `modules/core/bootstrap.php` | Bootstrap (env detection, error reporting, timezone) | `MEEL_ENV`, error log config |
 | `modules/core/base_url.php` | Centralized base URL computation (`meel_base_url_path()`) | `MEEL_BASE_URL` (via `bootstrap.php`/`config.php`) |
 | `modules/transcoder/FfmpegUtils.php` | **Trait** for FFmpeg utilities | `resolveBinary()`, `probeDuration()`, `generateSpriteAndVTT()` |

@@ -608,6 +608,11 @@ echo "    music : $HDD_BASE/music/upload/{file,thumbnail}"
 echo "    books : $HDD_BASE/books/upload/{manga,pdf,thumbnail}"
 echo "    drive : $HDD_BASE/drive/{public,private_admins}"
 
+# Penanda volume ter-mount — dipakai meel_storage_ready() untuk membedakan
+# "volume ter-mount" vs "folder sisa mountpoint yang belum di-mount".
+touch "$HDD_BASE/.meel_mount"
+ok "Penanda volume .meel_mount dibuat."
+
 mkdir -p data_drive/public data_drive/private_admins temp profile/upload
 ok "Folder runtime lokal (data_drive, temp, profile/upload) siap."
 
