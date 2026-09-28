@@ -327,6 +327,7 @@ function setupMeelPlayerEvents() {
                 player = new Plyr(videoElement, plyrOptions);
                 setupMeelPlayerEvents();
                 window.appendCustomSettings && setTimeout(window.appendCustomSettings, 0);
+                window.MEEL_UPSCALER && window.MEEL_UPSCALER.attach(player);
                 var playPromise = player.play();
                 if (void 0 !== playPromise) {
                   playPromise.catch(function (e) {
@@ -448,6 +449,7 @@ function setupMeelPlayerEvents() {
       if (
         ("function" == typeof window.appendCustomSettings &&
           setTimeout(window.appendCustomSettings, 0),
+        window.MEEL_UPSCALER && window.MEEL_UPSCALER.attach(player),
         videoElement && !isHls && (videoElement.preload = "metadata"),
         a(),
         vttSrc)
@@ -971,7 +973,12 @@ function setupMeelPlayerEvents() {
       if (!e) return;
       (e.querySelector("#plyr-setting-glow")?.remove(),
         e.querySelector("#plyr-setting-loop")?.remove(),
-        e.querySelector("#plyr-setting-autonext")?.remove());
+        e.querySelector("#plyr-setting-autonext")?.remove(),
+        e.querySelector("#plyr-setting-upsale")?.remove());
+      const up =
+        window.MEEL_UPSCALER && window.MEEL_UPSCALER.buildHomeRow
+          ? window.MEEL_UPSCALER.buildHomeRow()
+          : null;
       const t = document.createElement("button");
       ((t.type = "button"),
         (t.className = "plyr__control"),
@@ -1002,12 +1009,16 @@ function setupMeelPlayerEvents() {
         o.addEventListener("click", (e) => {
           (e.stopPropagation(), window.toggleAutoNext());
         }),
+        up && e.appendChild(up),
         e.appendChild(t),
         e.appendChild(n),
         e.appendChild(o),
         p(),
         u(),
-        window.updateAutoNextMenuUI());
+        window.updateAutoNextMenuUI(),
+        window.MEEL_UPSCALER && window.MEEL_UPSCALER.refreshHomeRow
+          ? window.MEEL_UPSCALER.refreshHomeRow()
+          : void 0);
     };
     window.appendCustomSettings = () => {
       if (y) return;

@@ -18,6 +18,10 @@ class SharedJsTest extends TestCase
         'HEALTH_ALERT'      => 'meel_health_alert',
         'GLOW_ENABLED'      => 'meel_glow_enabled',
         'MINI_PLAYER_POS'   => 'meel_mini_player_pos',
+        'UPSCALE_ENABLED'   => 'meel_upscale_enabled',
+        'UPSCALE_MODEL'     => 'meel_upscale_model',
+        'UPSCALE_MODE'      => 'meel_upscale_mode',
+        'UPSCALE_SCALE'     => 'meel_upscale_scale',
     ];
 
     private function rootPath(): string

@@ -26,6 +26,7 @@
     "vtt-sprites.js",
     "seek-indicator.js",
     "misc.js",
+    "upscaler.js",
   ];
   for (var i = 0; i < files.length; i++) {
     document.write('<script src="' + base + files[i] + qs + '"><\/script>');
