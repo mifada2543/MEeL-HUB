@@ -67,7 +67,7 @@ const plyrOptions = {
       "airplay",
       "fullscreen",
     ],
-    settings: ["quality", "speed"],
+    settings: ["quality", "speed", "upscale"],
     i18n: {
       play: "Putar video",
       pause: "Jeda video",
@@ -82,6 +82,7 @@ const plyrOptions = {
       unmute: "Suarakan",
       captions: "Teks",
       settings: "Pengaturan",
+      upscale: "AI Upscale",
       fullscreen: "Layar penuh",
       exitFullscreen: "Keluar layar penuh",
       pip: "Gambar dalam gambar",
