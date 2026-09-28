@@ -32,42 +32,37 @@ if (empty($files)): ?>
         $isImage = ($type === 'dokumen' && DriveViewRenderer::isPreviewableImage($ext));
     ?>
         <?php if ($isImage): ?>
-            <div class='file-card glass rounded-2xl group hover:border-blue-500/50 transition-all duration-300 transform hover:-translate-y-1 shadow-xl hover:shadow-blue-900/10 overflow-hidden' onclick="openPreview('<?= $path ?>', 'dokumen', '<?= $name ?>')" style='cursor:pointer'>
+            <div class='file-card file-card--image glass rounded-2xl group hover:border-blue-500/50 transition-all duration-300 transform hover:-translate-y-1 shadow-xl hover:shadow-blue-900/10 overflow-hidden' onclick="openPreview('<?= $path ?>', 'dokumen', '<?= $name ?>')" style='cursor:pointer'>
                 <div class='file-card-thumb relative'>
-                    <img src='<?= $path ?>' alt='<?= $name ?>' loading='lazy' class='w-full h-36 object-cover' onerror="this.parentElement.innerHTML='<div class=\'flex items-center justify-center h-36 bg-gray-900\'><i data-lucide=\'image\' class=\'w-10 h-10 text-gray-600\'></i></div>';if(window.lucide)lucide.createIcons();">
+                    <img src='<?= $path ?>' alt='<?= $name ?>' loading='lazy' class='w-full h-44 object-cover' onerror="this.parentElement.innerHTML='<div class=\'flex items-center justify-center h-44 bg-gray-900\'><i data-lucide=\'image\' class=\'w-10 h-10 text-gray-600\'></i></div>';if(window.lucide)lucide.createIcons();">
                     <div class='file-card-preview-overlay'>
                         <i data-lucide='maximize-2' class='w-5 h-5 text-white'></i>
                     </div>
-                </div>
-                <div class='p-3'>
-                    <div class='flex items-start justify-between mb-2'>
-                        <div class='p-2 rounded-lg bg-gray-900 group-hover:bg-blue-500/10 transition' title='Tipe: <?= $type ?>'>
-                            <i data-lucide='image' class='w-4 h-4' style='color: <?= $accent ?>'></i>
-                        </div>
-                        <div class='flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
-                            <button onclick="event.stopPropagation();openPreview('<?= $path ?>', 'dokumen', '<?= $name ?>')" class='p-1.5 hover:bg-blue-500/20 rounded-lg text-blue-400' title='Pratinjau'>
-                                <i data-lucide='eye' class='w-3.5 h-3.5'></i>
+                    <div class='file-card-thumb-actions flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                        <button onclick="event.stopPropagation();openPreview('<?= $path ?>', 'dokumen', '<?= $name ?>')" class='p-1.5 hover:bg-blue-500/20 rounded-lg text-blue-400' title='Pratinjau'>
+                            <i data-lucide='eye' class='w-3.5 h-3.5'></i>
+                        </button>
+                        <a href='<?= $downloadUrl ?>' onclick='event.stopPropagation();' class='p-1.5 hover:bg-green-500/20 rounded-lg text-green-400' title='Unduh'>
+                            <i data-lucide='download' class='w-3.5 h-3.5'></i>
+                        </a>
+                        <?php if ($showDelete): ?>
+                            <button onclick="event.stopPropagation();meelConfirm({ title:'Hapus File', text:'Hapus file ini?', confirmButtonText:'HAPUS' }).then(function(ok){ if(ok) document.getElementById('<?= $deleteFormId ?>').submit(); }); return false;" class='p-1.5 hover:bg-red-500/20 rounded-lg text-red-400' title='Hapus'>
+                                <i data-lucide='trash-2' class='w-3.5 h-3.5'></i>
                             </button>
-                            <a href='<?= $downloadUrl ?>' onclick='event.stopPropagation();' class='p-1.5 hover:bg-green-500/20 rounded-lg text-green-400' title='Unduh'>
-                                <i data-lucide='download' class='w-3.5 h-3.5'></i>
-                            </a>
-                            <?php if ($showDelete): ?>
-                                <button onclick="event.stopPropagation();meelConfirm({ title:'Hapus File', text:'Hapus file ini?', confirmButtonText:'HAPUS' }).then(function(ok){ if(ok) document.getElementById('<?= $deleteFormId ?>').submit(); }); return false;" class='p-1.5 hover:bg-red-500/20 rounded-lg text-red-400' title='Hapus'>
-                                    <i data-lucide='trash-2' class='w-3.5 h-3.5'></i>
-                                </button>
-                                <form id='<?= $deleteFormId ?>' action='delete' method='POST' style='display:none;'>
-                                    <input type='hidden' name='csrf_token' value='<?= $safeCsrfToken ?>'>
-                                    <input type='hidden' name='file' value='<?= $safeFileName ?>'>
-                                    <input type='hidden' name='type' value='<?= htmlspecialchars($type, ENT_QUOTES, 'UTF-8') ?>'>
-                                    <input type='hidden' name='scope' value='<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>'>
-                                </form>
-                            <?php endif; ?>
-                        </div>
+                            <form id='<?= $deleteFormId ?>' action='delete' method='POST' style='display:none;'>
+                                <input type='hidden' name='csrf_token' value='<?= $safeCsrfToken ?>'>
+                                <input type='hidden' name='file' value='<?= $safeFileName ?>'>
+                                <input type='hidden' name='type' value='<?= htmlspecialchars($type, ENT_QUOTES, 'UTF-8') ?>'>
+                                <input type='hidden' name='scope' value='<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8') ?>'>
+                            </form>
+                        <?php endif; ?>
                     </div>
-                    <h3 class='text-xs font-bold truncate mb-1 text-gray-200' title='<?= $name ?>'><?= $name ?></h3>
-                    <div class='flex justify-between items-center text-[10px] text-gray-500 font-medium uppercase tracking-tighter'>
-                        <span><?= $size ?></span>
-                        <span><?= $date ?></span>
+                    <div class='file-card-thumb-info'>
+                        <h3 class='text-xs font-bold truncate mb-1' title='<?= $name ?>'><?= $name ?></h3>
+                        <div class='flex justify-between items-center text-[10px] font-medium uppercase tracking-tighter'>
+                            <span><?= $size ?></span>
+                            <span><?= $date ?></span>
+                        </div>
                     </div>
                 </div>
             </div>

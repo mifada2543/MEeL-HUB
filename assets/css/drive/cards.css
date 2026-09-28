@@ -131,3 +131,61 @@
 .file-card:hover .file-card-preview-overlay {
   opacity: 1;
 }
+
+/* Full-bleed image card — caption overlaid on the thumbnail */
+.file-card--image {
+  padding: 0;
+  gap: 0;
+}
+.file-card--image .file-card-thumb {
+  border-radius: inherit;
+}
+.file-card--image .file-card-thumb img {
+  height: 176px;
+}
+.file-card-thumb-info {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 36px 12px 10px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.92) 0%,
+    rgba(0, 0, 0, 0.62) 45%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+.file-card-thumb-info h3 {
+  color: #f3f4f6;
+}
+.file-card-thumb-info > div span {
+  color: #cbd5e1;
+}
+
+/* Action buttons floating over the thumbnail */
+.file-card-thumb-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+}
+.file-card-thumb-actions > a,
+.file-card-thumb-actions > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.file-card-thumb-actions > a:hover,
+.file-card-thumb-actions > button:hover {
+  background: rgba(0, 0, 0, 0.72);
+}
+@media (hover: none) {
+  .file-card-thumb-actions {
+    opacity: 1;
+  }
+}
