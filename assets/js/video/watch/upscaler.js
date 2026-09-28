@@ -26,6 +26,10 @@
   var hasGPU = !!(navigator.gpu);
   var hasRVFC = !!HTMLVideoElement.prototype.requestVideoFrameCallback;
   var supported = hasGPU;
+  var supportChecked = false;
+  var supportChecking = false;
+  var supportPromise = null;
+  var lastSupportCheck = 0;
 
   /* ======================================================================
    * 2. State + persistensi
@@ -215,7 +219,14 @@
       el.addEventListener(evt, resolve, { once: true });
     });
   }
-  function toast(text) {
+  function errText(err) {
+    if (!err) return "error tidak diketahui";
+    var msg = err.message || "";
+    if (!msg || /^\[object \w+\]$/.test(msg)) msg = err.name || "";
+    if (!msg) msg = String(err);
+    return msg;
+  }
+  function toast(text, ms) {
     var c = getContainer();
     if (!c) return;
     var old = c.querySelector(".meel-toggle-toast");
@@ -226,12 +237,14 @@
     c.appendChild(d);
     setTimeout(function () {
       d.remove();
-    }, 1900);
+    }, ms || 1900);
   }
   var CHECK_ON =
     'On <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display:inline-block;vertical-align:middle;margin-left:4px"><polyline points="20 6 9 17 4 12"/></svg>';
   var CHECK_OFF =
     'Off <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display:none;vertical-align:middle;margin-left:4px"><polyline points="20 6 9 17 4 12"/></svg>';
+  var SPIN_LOAD = '<span class="meel-upscale-spin" aria-label="Memuat"></span>';
+  var SPIN_CHECK = '<span class="meel-upscale-spin" aria-label="Memeriksa"></span>';
 
   /* ======================================================================
    * 5. Engine WebGPU
@@ -255,7 +268,8 @@
   var ro = null;
   var lastBox = { w: 0, h: 0 };
   var frameErrors = 0;
-  var stats = { renders: 0, copies: 0, lastError: null };
+  var stats = { renders: 0, copies: 0, completed: 0, gpuErrors: 0, lastError: null };
+  var gpuWatchdog = null;
 
   var BLIT_WGSL = [
     "struct VSOut {",
@@ -354,6 +368,7 @@
 
   function releaseChain() {
     stopLoop();
+    clearTimeout(gpuWatchdog);
     destroyChainTextures();
     engine.inputTex = null;
     engine.chain = null;
@@ -477,6 +492,16 @@
             engine.device = device;
             engine.native = native;
             engine.target = target;
+            stats.gpuErrors = 0;
+            device.onuncapturederror = function (ev) {
+              stats.gpuErrors++;
+              var msg = ev && ev.error && ev.error.message ? ev.error.message : "GPU error tak dikenal";
+              stats.lastError = msg;
+              if (stats.gpuErrors <= 3) console.warn("[MEeL][upscaler] GPU async:", msg);
+              if (stats.gpuErrors >= 6 && seq === buildSeq && state.enabled) {
+                fail(new Error("GPU error: " + msg));
+              }
+            };
             engine.inputTex = device.createTexture({
               label: "meel-upscale-input",
               size: [native.width, native.height, 1],
@@ -509,6 +534,7 @@
               cont.classList.add("meel-upscale-active");
             }
             renderFrame(true);
+            armGpuWatchdog(seq);
             scheduleFrame();
             updateUI();
             if (opts && opts.announce) toast("AI Upscale On");
@@ -518,6 +544,36 @@
       .catch(function (err) {
         if (seq === buildSeq) fail(err);
       });
+  }
+
+  function armGpuWatchdog(seq) {
+    clearTimeout(gpuWatchdog);
+    var dev = engine.device;
+    if (!dev || !dev.queue || typeof dev.queue.onSubmittedWorkDone !== "function") return;
+    var done = false;
+    var p = dev.queue.onSubmittedWorkDone();
+    if (p && p.then) {
+      p.then(
+        function () {
+          if (done) return;
+          done = true;
+          clearTimeout(gpuWatchdog);
+          stats.completed++;
+        },
+        function (err) {
+          if (done) return;
+          done = true;
+          clearTimeout(gpuWatchdog);
+          stats.lastError = errText(err);
+        },
+      );
+    }
+    gpuWatchdog = setTimeout(function () {
+      if (done) return;
+      done = true;
+      if (seq !== buildSeq || !state.enabled) return;
+      fail(new Error("GPU tidak merespons render (queue macet)"));
+    }, 6000);
   }
 
   function renderFrame(force, videoOverride) {
@@ -555,9 +611,9 @@
       stats.renders++;
     } catch (err) {
       frameErrors++;
-      stats.lastError = String(err && err.message ? err.message : err);
+      stats.lastError = errText(err);
       if (frameErrors <= 3) console.warn("[MEeL][upscaler] frame error:", err);
-      if (frameErrors >= 60) fail(err);
+      if (frameErrors >= 60) fail(new Error("frame error: " + stats.lastError));
     }
   }
 
@@ -621,13 +677,13 @@
 
   function fail(err) {
     console.warn("[MEeL][upscaler]", err);
-    stats.lastError = String(err && err.message ? err.message : err);
+    stats.lastError = errText(err);
     teardownDevice();
     state.enabled = false;
     lsSet(KEY_ENABLED, "false");
     var cont = getContainer();
     if (cont) cont.classList.remove("meel-upscale-active");
-    toast("Upscale gagal: " + (err && err.message ? err.message : err));
+    toast("Upscale gagal: " + stats.lastError, 5000);
     updateUI();
   }
 
@@ -635,7 +691,20 @@
     if (on === state.enabled) return;
     if (on) {
       if (!supported) {
-        toast("WebGPU tidak didukung di browser ini");
+        if (supportChecking || supportPromise) {
+          toast("Memeriksa WebGPU…");
+          checkSupport(true).then(function (ok) {
+            if (ok && !state.enabled) setEnabled(true, opts);
+          });
+          return;
+        }
+        checkSupport(true).then(function (ok) {
+          if (ok) {
+            if (!state.enabled) setEnabled(true, opts);
+          } else {
+            toast(supportLabel() === "Butuh HTTPS" ? "WebGPU butuh halaman HTTPS" : "WebGPU tidak didukung di browser ini", 4000);
+          }
+        });
         return;
       }
       state.enabled = true;
@@ -857,9 +926,18 @@
     if (row) row.textContent = text;
   }
 
+  function setRowDisabled(key, disabled) {
+    if (!plyrReady()) return;
+    var row = plyr.elements.settings.panels.upscale.querySelector('[data-upscale-row="' + key + '"]');
+    if (!row) return;
+    if (disabled) row.setAttribute("aria-disabled", "true");
+    else row.removeAttribute("aria-disabled");
+  }
+
   function homeValueHtml() {
-    if (state.loading) return '<span class="meel-upscale-spin" aria-label="Memuat"></span>';
-    if (!supported) return "Tidak didukung";
+    if (supportChecking) return SPIN_CHECK;
+    if (!supported) return esc(supportLabel());
+    if (state.loading) return SPIN_LOAD;
     if (!state.enabled) return "Mati";
     return esc(currentModel().short) + " · " + esc(currentMode().short) + " · " + esc(currentScale().short);
   }
@@ -888,6 +966,7 @@
     b.addEventListener("click", function (e) {
       e.stopPropagation();
       showPanel("upscale");
+      if (!supported || supportChecking) checkSupport(true);
     });
     return b;
   }
@@ -895,19 +974,27 @@
   function updateUI() {
     if (!plyrReady()) return;
     var S = plyr.elements.settings;
+    var avail = supported && !supportChecking;
 
     var tog = S.panels.upscale.querySelector("#plyr-setting-upscale");
     if (tog) {
       var on = state.enabled;
       tog.setAttribute("aria-checked", on ? "true" : "false");
-      tog.setAttribute("aria-disabled", state.loading || !supported ? "true" : "false");
+      tog.setAttribute("aria-disabled", state.loading || !avail ? "true" : "false");
       var tv = tog.querySelector(".plyr__menu__value");
-      if (tv) tv.innerHTML = state.loading ? "" : on ? CHECK_ON : CHECK_OFF;
+      if (tv) {
+        if (supportChecking) tv.innerHTML = SPIN_CHECK;
+        else if (!supported) tv.innerHTML = esc(supportLabel());
+        else tv.innerHTML = state.loading ? "" : on ? CHECK_ON : CHECK_OFF;
+      }
     }
 
     setRowValue("model", currentModel().label);
     setRowValue("mode", currentMode().short);
     setRowValue("scale", currentScale().short);
+    setRowDisabled("model", !avail);
+    setRowDisabled("mode", !avail);
+    setRowDisabled("scale", !avail);
 
     setHomeRowValue();
 
@@ -965,19 +1052,49 @@
     showPanel("upscale");
   }
 
-  var adapterChecked = false;
-  function preflightAdapter() {
-    if (adapterChecked || !navigator.gpu) return;
-    adapterChecked = true;
-    var p = navigator.gpu.requestAdapter();
-    if (p && p.then) {
-      p.then(function (a) {
-        if (!a) {
-          supported = false;
-          updateUI();
-        }
-      }).catch(function () {});
+  function supportLabel() {
+    if (!window.isSecureContext && !hasGPU) return "Butuh HTTPS";
+    return "Tidak didukung";
+  }
+  function checkSupport(force) {
+    if (!navigator.gpu) {
+      supported = false;
+      supportChecked = true;
+      supportChecking = false;
+      return Promise.resolve(false);
     }
+    if (supportPromise) return supportPromise;
+    if (supportChecked && supported && !force) return Promise.resolve(true);
+    if (!force && supportChecked && Date.now() - lastSupportCheck < 30000) {
+      return Promise.resolve(supported);
+    }
+    supportChecking = true;
+    lastSupportCheck = Date.now();
+    updateUI();
+    var p;
+    try {
+      p = navigator.gpu.requestAdapter();
+    } catch (e) {
+      p = null;
+    }
+    supportPromise = Promise.resolve(p)
+      .then(
+        function (a) {
+          return !!a;
+        },
+        function () {
+          return false;
+        },
+      )
+      .then(function (ok) {
+        supportPromise = null;
+        supportChecking = false;
+        supportChecked = true;
+        supported = ok;
+        updateUI();
+        return ok;
+      });
+    return supportPromise;
   }
 
   function observeContainer() {
@@ -1022,13 +1139,17 @@
     buildPanels();
     observeContainer();
     updateUI();
-    preflightAdapter();
-    if (state.enabled && supported) rebuild(0);
-    else if (state.enabled) {
-      state.enabled = false;
-      lsSet(KEY_ENABLED, "false");
-      updateUI();
-    }
+    checkSupport(false).then(function (ok) {
+      if (attachedPlayer !== plyrInstance) return;
+      if (state.enabled && ok) {
+        rebuild(0);
+      } else if (state.enabled) {
+        state.enabled = false;
+        lsSet(KEY_ENABLED, "false");
+        updateUI();
+        toast("WebGPU tidak tersedia — AI Upscale nonaktif", 4000);
+      }
+    });
   }
 
   function reviveLoop() {
@@ -1059,6 +1180,8 @@
       return {
         renders: stats.renders,
         copies: stats.copies,
+        completed: stats.completed,
+        gpuErrors: stats.gpuErrors,
         lastError: stats.lastError,
         built: engine.built,
         target: engine.target ? { width: engine.target.width, height: engine.target.height } : null,
@@ -1067,6 +1190,9 @@
     },
     registerModel: registerModel,
     attach: attach,
+    checkSupport: function () {
+      return checkSupport(true);
+    },
     buildHomeRow: buildHomeRow,
     refreshHomeRow: setHomeRowValue,
     enable: function () {
