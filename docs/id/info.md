@@ -101,6 +101,32 @@ function meel_drive_base_path(?string $hddDriveOverride = null): string
 
 ---
 
+### `meel_storage_ready(): bool` & `meel_storage_guard(string $mode = 'html'): void`
+
+Menjaga semua jalur storage dari volume `MEEL_HDD_BASE` yang belum ter-mount, sehingga aplikasi turun ke layar aman `err/?code=storage` alih-alih fatal error `mkdir()`.
+
+```php
+function meel_storage_ready(): bool
+function meel_storage_guard(string $mode = 'html'): void   // 'html' | 'json' | 'binary'
+```
+
+**File:** `modules/core/helpers/storage.php`
+**Return:** `meel_storage_ready()` → `true` bila storage dapat dipakai. `meel_storage_guard()` → return bila siap, selain itu exit (melempar `RuntimeException` di CLI).
+
+**Logika:**
+- `MEEL_HDD_BASE` tidak diset → selalu siap (fallback `data_drive/` di repo)
+- `MEEL_HDD_BASE` tidak ada di disk → **belum siap** (volume belum ter-mount)
+- penanda `<MEEL_HDD_BASE>/.meel_mount` ada → siap
+- tanpa penanda → siap hanya bila folder berisi (volume lama); folder kosong dianggap *belum ter-mount* (arah aman: blokir)
+
+| Mode | Dipakai oleh | Perilaku saat belum siap |
+|------|--------------|--------------------------|
+| `html` | `drive/index.php`, halaman upload | redirect `303` ke `err/?code=storage` |
+| `json` | `drive/upload.php`, `drive/delete.php` | `503` + `{"status":"error","code":"storage_unmounted"}` |
+| `binary` | `drive/stream.php`, `meel_serve_media_file()` | `503` dengan body kosong |
+
+---
+
 ### `meel_serve_media_file(string $module, string $relPath, array $opts = [])`
 
 Menyajikan file media dengan Range support (HTTP 206), referer gate untuk HLS, dan validasi keamanan.

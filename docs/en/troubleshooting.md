@@ -281,6 +281,43 @@ $timeout = 43200; // 12 hours in seconds
 
 ## Storage & Disk Issues
 
+### ⚠️ Redirected to `err/?code=storage` — "Storage Not Ready" (HTTP 503)
+
+**Symptoms:**
+- Opening Drive / an upload page redirects to `err/?code=storage` (HTTP 503)
+- Video/music/books streaming responds with an **empty 503** (no body)
+- Drive `upload`/`delete` endpoints respond with JSON
+  `{"status":"error","code":"storage_unmounted"}`
+- Log contains
+  `[MEeL] Peringatan: MEEL_HDD_BASE tidak dapat diakses: /media/<user>/MEeL/media`
+
+**Cause:** the `MEEL_HDD_BASE` volume (`auth/settings.php`) is not mounted —
+external HDD unplugged, `mount` not run yet, or a wrong path. This used to end
+in a fatal `mkdir(): Permission denied ... RuntimeException: Folder
+penyimpanan gagal dibuat`; every path is now checked by `meel_storage_ready()`
+first and routed to a safe error page, so no garbage folders are created on
+the root filesystem.
+
+**Diagnosis:**
+```bash
+df -h | grep MEeL
+ls -la "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")"
+php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; var_dump(meel_storage_ready());"
+```
+
+**Fix:**
+```bash
+sudo mount /dev/sdX? /media/<user>/MEeL          # match your fstab
+touch "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")/.meel_mount"
+```
+
+**The `.meel_mount` marker** is created by `install.sh` and is in `.gitignore`
+(**never commit it**). It tells `meel_storage_ready()` that the folder is a
+mounted volume rather than a leftover empty directory on the mountpoint.
+Without a marker: an **empty** folder counts as unmounted (fails safe: block),
+a folder with content (legacy volume) is still served with a warning in the
+log. A missing marker is also reported by `tests/check_deploy.php`.
+
 ### ❌ Drive module crashes: "Storage folder creation failed" (RuntimeException)
 
 **Symptoms:**
@@ -306,8 +343,8 @@ $timeout = 43200; // 12 hours in seconds
    from `MEEL_HDD_BASE` in `auth/settings.php`) — **no symlink is involved**.
    Verify where the app actually resolves storage:
    ```bash
-   php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_DRIVE') ? MEEL_HDD_DRIVE : 'NOT SET';"
-   php -r "require 'modules/core/helpers.php'; echo meel_drive_base_path();"
+    php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_DRIVE') ? MEEL_HDD_DRIVE : 'NOT SET';"
+    php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; echo meel_drive_base_path();"
    ```
    If the resolved path doesn't exist or isn't writable, fix `MEEL_HDD_BASE` in
    `auth/settings.php` (or leave it unset to use the `data_drive/` fallback).

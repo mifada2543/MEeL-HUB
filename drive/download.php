@@ -21,6 +21,8 @@ if (session_status() === PHP_SESSION_ACTIVE) {
 
 set_time_limit(0);
 
+meel_storage_guard('binary');
+
 $storage = new DriveStorage(DriveStorage::defaultBasePath(), $user);
 
 try {
@@ -58,6 +60,19 @@ try {
 
     readfile($file['path']);
     exit();
+} catch (StorageNotMountedException $exception) {
+    log_drive_operation(
+        $user->userId,
+        $user->username,
+        'download',
+        $_GET['file'] ?? 'unknown',
+        $_GET['type'] ?? 'unknown',
+        $_GET['scope'] ?? 'unknown',
+        'failed: ' . $exception->getMessage()
+    );
+
+    http_response_code(503);
+    echo htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8');
 } catch (RuntimeException $exception) {
     log_drive_operation(
         $user->userId,

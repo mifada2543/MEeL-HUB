@@ -17,6 +17,7 @@ require_once 'modules/core/GarbageCollector.php';
 require_once 'modules/media/MediaLibrary.php';
 require_once 'modules/core/MeelCoin.php';
 require_once 'modules/core/Notification.php';
+meel_storage_guard();
 GarbageCollector::run();
 
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {

@@ -101,6 +101,32 @@ function meel_drive_base_path(?string $hddDriveOverride = null): string
 
 ---
 
+### `meel_storage_ready(): bool` & `meel_storage_guard(string $mode = 'html'): void`
+
+Guards every storage path against an unmounted `MEEL_HDD_BASE` volume, so the app degrades to the safe `err/?code=storage` screen instead of a fatal `mkdir()` error.
+
+```php
+function meel_storage_ready(): bool
+function meel_storage_guard(string $mode = 'html'): void   // 'html' | 'json' | 'binary'
+```
+
+**File:** `modules/core/helpers/storage.php`
+**Return:** `meel_storage_ready()` → `true` when storage can be used. `meel_storage_guard()` → returns when ready, otherwise exits (throws `RuntimeException` on CLI).
+
+**Logic:**
+- `MEEL_HDD_BASE` not set → always ready (repo `data_drive/` fallback)
+- `MEEL_HDD_BASE` missing on disk → **not ready** (volume not mounted)
+- marker `<MEEL_HDD_BASE>/.meel_mount` present → ready
+- no marker → ready only when the folder has content (legacy volume); an empty folder is treated as *not mounted* (fails safe: block)
+
+| Mode | Used by | Behaviour when not ready |
+|------|---------|--------------------------|
+| `html` | `drive/index.php`, upload pages | `303` redirect to `err/?code=storage` |
+| `json` | `drive/upload.php`, `drive/delete.php` | `503` + `{"status":"error","code":"storage_unmounted"}` |
+| `binary` | `drive/stream.php`, `meel_serve_media_file()` | `503` with an empty body |
+
+---
+
 ### `meel_serve_media_file(string $module, string $relPath, array $opts = [])`
 
 Serves media files with Range support (HTTP 206), referer gate for HLS, and security validation.

@@ -9,6 +9,8 @@ $user->authorize();
 
 $isAjax = (isset($_GET['ajax']) && $_GET['ajax'] === '1');
 
+meel_storage_guard($isAjax ? 'json' : 'html');
+
 if ($isAjax) {
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_FILES['file_drive'])) {
@@ -99,6 +101,30 @@ try {
 
     header('Location: .?scope=' . urlencode($result['scope']) . '&status=success');
     exit();
+} catch (StorageNotMountedException $exception) {
+    log_drive_operation(
+        $user_id,
+        $user->username,
+        'upload',
+        $_FILES['file_drive']['name'] ?? 'unknown',
+        $_POST['type'] ?? 'unknown',
+        $_POST['scope'] ?? 'unknown',
+        'failed: ' . $exception->getMessage()
+    );
+
+    if ($isAjax) {
+        http_response_code(503);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status'  => 'error',
+            'code'    => 'storage_unmounted',
+            'message' => $exception->getMessage(),
+        ]);
+        exit();
+    }
+
+    http_response_code(503);
+    echo htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8');
 } catch (RuntimeException $exception) {
     log_drive_operation(
         $user_id,

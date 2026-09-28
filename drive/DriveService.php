@@ -1,4 +1,8 @@
 <?php
+final class StorageNotMountedException extends RuntimeException
+{
+}
+
 final class DriveUserContext
 {
     public const ROLE_ADMIN = 'admin';
@@ -350,6 +354,15 @@ final class DriveStorage
 
     private function ensureDirectoryExists(string $directory): void
     {
+        if (
+            function_exists('meel_storage_path_in_volume')
+            && meel_storage_path_in_volume($directory)
+            && function_exists('meel_storage_ready')
+            && !meel_storage_ready()
+        ) {
+            throw new StorageNotMountedException('Penyimpanan media belum ter-mount.');
+        }
+
         if (is_dir($directory)) {
             return;
         }
