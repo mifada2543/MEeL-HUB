@@ -7,7 +7,7 @@
 (function () {
   "use strict";
 
-  var hasGPU = !!(navigator.gpu);
+  var hasGPU = !!navigator.gpu;
   var hasRVFC = !!HTMLVideoElement.prototype.requestVideoFrameCallback;
   var supported = hasGPU;
   var supportChecked = false;
@@ -97,10 +97,9 @@
     loading: false,
   };
 
-  // Migrasi pilihan model lama: id "fsrcnn" sudah diganti "meelvision".
-  if (state.modelId === "fsrcnn") {
-    state.modelId = "meelvision";
-    lsSet(KEY_MODEL, "meelvision");
+  if (state.modelId === "fsrcnn" || state.modelId === "meelvision") {
+    state.modelId = "meelsharp";
+    lsSet(KEY_MODEL, "meelsharp");
   }
 
   var models = {};
@@ -113,16 +112,25 @@
     return models[id] || null;
   }
   function validateState() {
-    // Status ON terikat satu video: refresh/loop video yang sama lolos, video
-    // lain mematikan upscale; nilai basi ikut dibersihkan dari penyimpanan.
     if (state.enabled && !readEnabled()) turnOff();
     else persistEnabled(state.enabled);
     if (!models[state.modelId]) state.modelId = "anime4k";
-    var m = models[state.modelId] || Object.keys(models).map(function (k) { return models[k]; })[0];
+    var m =
+      models[state.modelId] ||
+      Object.keys(models).map(function (k) {
+        return models[k];
+      })[0];
     if (!m) return;
-    var ok = m.modes.some(function (x) { return x.id === state.modeId; });
+    var ok = m.modes.some(function (x) {
+      return x.id === state.modeId;
+    });
     if (!ok) state.modeId = m.modes[0].id;
-    if (!SCALES.some(function (x) { return x.id === state.scaleId; })) state.scaleId = "auto";
+    if (
+      !SCALES.some(function (x) {
+        return x.id === state.scaleId;
+      })
+    )
+      state.scaleId = "auto";
   }
 
   function loadScript(url) {
@@ -155,15 +163,15 @@
 
   var ANIME4K_LIB_URL = MODELS_BASE + "anime4k/model.js?v=1.0.0";
 
-  // File model diinjeksi sekali dan wajib mendaftarkan buildChain.
   function modelFileLoader(id, relPath) {
     return function () {
       return loadScript(MODELS_BASE + relPath + MODEL_QS).then(function () {
         var m = models[id];
         if (!m || !m.buildChain) {
-          throw new Error("File model " + id + " tidak mendaftarkan buildChain");
+          throw new Error(
+            "File model " + id + " tidak mendaftarkan buildChain",
+          );
         }
-        // Muat aset berat milik impl (mis. bobot MEeLVision) sekali jalan.
         return loadModel(m);
       });
     };
@@ -178,7 +186,11 @@
       { id: "b", label: "Mode B — Restore Soft → Upscale", short: "B" },
       { id: "c", label: "Mode C — Denoise Upscale", short: "C" },
       { id: "aa", label: "Mode AA — Restore → Upscale → Restore", short: "AA" },
-      { id: "bb", label: "Mode BB — Restore Soft → Upscale → Restore Soft", short: "BB" },
+      {
+        id: "bb",
+        label: "Mode BB — Restore Soft → Upscale → Restore Soft",
+        short: "BB",
+      },
       { id: "ca", label: "Mode CA — Upscale Denoise → Restore", short: "CA" },
     ],
     load: function () {
@@ -210,8 +222,6 @@
     },
   });
 
-  // Deskriptor statis agar model tampil di UI sebelum file-nya dimuat; saat
-  // file diinjeksi, registerModel() dari file itu menimpa entri ini.
   registerModel({
     id: "meelscale",
     label: "MEeLScale",
@@ -226,11 +236,15 @@
     load: modelFileLoader("meelscale", "meelscale/model.js"),
   });
   registerModel({
-    id: "meelvision",
-    label: "MEeLVision",
-    short: "MEeLVision",
-    modes: [{ id: "x2", label: "FSRCNN ×2", short: "×2" }],
-    load: modelFileLoader("meelvision", "meelvision/model.js"),
+    id: "meelsharp",
+    label: "MEeLSharp",
+    short: "MEeLSharp",
+    modes: [
+      { id: "seimbang", label: "Seimbang", short: "Seimbang" },
+      { id: "lembut", label: "Lembut", short: "Lembut" },
+      { id: "tajam", label: "Tajam", short: "Tajam" },
+    ],
+    load: modelFileLoader("meelsharp", "meelsharp/model.js"),
   });
 
   function loadModel(model) {
@@ -270,7 +284,12 @@
     return document.getElementById("main-video");
   }
   function getContainer() {
-    if (plyr && plyr.elements && plyr.elements.container && plyr.elements.container.isConnected)
+    if (
+      plyr &&
+      plyr.elements &&
+      plyr.elements.container &&
+      plyr.elements.container.isConnected
+    )
       return plyr.elements.container;
     var v = getVideo();
     return v ? v.parentElement : null;
@@ -289,7 +308,13 @@
   }
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      return {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[c];
     });
   }
   function once(el, evt) {
@@ -322,7 +347,8 @@
   var CHECK_OFF =
     'Off <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display:none;vertical-align:middle;margin-left:4px"><polyline points="20 6 9 17 4 12"/></svg>';
   var SPIN_LOAD = '<span class="meel-upscale-spin" aria-label="Memuat"></span>';
-  var SPIN_CHECK = '<span class="meel-upscale-spin" aria-label="Memeriksa"></span>';
+  var SPIN_CHECK =
+    '<span class="meel-upscale-spin" aria-label="Memeriksa"></span>';
 
   var MAX_W = 3840;
   var MAX_H = 2160;
@@ -356,10 +382,14 @@
   };
   var gpuWatchdog = null;
 
-  // Backpressure: hanya satu submit GPU in-flight (loopBp.busy); frame yang
-  // dilewati ditandai pendingRender dan dirender ulang saat GPU selesai.
-  // Metrik frame-nya dibaca lewat diagnose().perf (lihat docs/id/development.md).
-  var loopBp = { busy: false, pendingRender: false, timer: null, token: 0, timeouts: 0, at: 0 };
+  var loopBp = {
+    busy: false,
+    pendingRender: false,
+    timer: null,
+    token: 0,
+    timeouts: 0,
+    at: 0,
+  };
   var perf = { gpu: [], ticks: [], renders: [], lastTick: 0 };
   var PERF_CAP = 120;
 
@@ -375,7 +405,9 @@
   }
   function perfP95(a) {
     if (!a.length) return 0;
-    var b = a.slice().sort(function (x, y) { return x - y; });
+    var b = a.slice().sort(function (x, y) {
+      return x - y;
+    });
     return b[Math.min(b.length - 1, Math.ceil(b.length * 0.95) - 1)];
   }
   function computePerf() {
@@ -383,7 +415,8 @@
     var renderFps = 0;
     if (perf.renders.length > 1) {
       var d = [];
-      for (var i = 1; i < perf.renders.length; i++) d.push(perf.renders[i] - perf.renders[i - 1]);
+      for (var i = 1; i < perf.renders.length; i++)
+        d.push(perf.renders[i] - perf.renders[i - 1]);
       renderFps = 1000 / perfAvg(d);
     }
     var msAvg = perfAvg(perf.gpu);
@@ -485,10 +518,12 @@
       }
       stages.push(node);
       if (node.pipelines && node.pipelines.length) {
-        for (var j = 0; j < node.pipelines.length; j++) stages.push(node.pipelines[j]);
+        for (var j = 0; j < node.pipelines.length; j++)
+          stages.push(node.pipelines[j]);
       }
     };
-    if (engine.chain) for (var i = 0; i < engine.chain.length; i++) push(engine.chain[i]);
+    if (engine.chain)
+      for (var i = 0; i < engine.chain.length; i++) push(engine.chain[i]);
     for (var k = 0; k < stages.length; k++) {
       try {
         var t = stages[k].getOutputTexture && stages[k].getOutputTexture();
@@ -549,7 +584,8 @@
       c.setAttribute("aria-hidden", "true");
     }
     var vp = v.parentNode;
-    if (c.parentNode !== vp || c.previousSibling !== v) vp.insertBefore(c, v.nextSibling);
+    if (c.parentNode !== vp || c.previousSibling !== v)
+      vp.insertBefore(c, v.nextSibling);
     var ctx = c.getContext("webgpu");
     if (!ctx) throw new Error("Konteks WebGPU tidak didukungi canvas ini");
     engine.canvas = c;
@@ -564,8 +600,6 @@
       if (state.enabled && engine.built) renderFrame(true, v);
     });
     v.addEventListener("loadstart", function () {
-      // load() menggugurkan rVFC yang masih tertunda; tanpa reset ini
-      // loop.pending mentok "true" dan loop render berhenti senyap.
       if (loop.rvfc && v.cancelVideoFrameCallback) {
         try {
           v.cancelVideoFrameCallback(loop.rvfc);
@@ -594,12 +628,19 @@
         { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
       ],
     });
-    var module = device.createShaderModule({ label: "meel-upscale-blit", code: BLIT_WGSL });
+    var module = device.createShaderModule({
+      label: "meel-upscale-blit",
+      code: BLIT_WGSL,
+    });
     var pipeline = device.createRenderPipeline({
       label: "meel-upscale-blit-pipeline",
       layout: device.createPipelineLayout({ bindGroupLayouts: [bgl] }),
       vertex: { module: module, entryPoint: "vs_main" },
-      fragment: { module: module, entryPoint: "fs_main", targets: [{ format: format }] },
+      fragment: {
+        module: module,
+        entryPoint: "fs_main",
+        targets: [{ format: format }],
+      },
       primitive: { topology: "triangle-list" },
     });
     var bind = device.createBindGroup({
@@ -608,9 +649,17 @@
       entries: [
         {
           binding: 0,
-          resource: device.createSampler({ magFilter: "linear", minFilter: "linear" }),
+          resource: device.createSampler({
+            magFilter: "linear",
+            minFilter: "linear",
+          }),
         },
-        { binding: 1, resource: engine.chain[engine.chain.length - 1].getOutputTexture().createView() },
+        {
+          binding: 1,
+          resource: engine.chain[engine.chain.length - 1]
+            .getOutputTexture()
+            .createView(),
+        },
       ],
     });
     return { pipeline: pipeline, bind: bind };
@@ -623,10 +672,6 @@
       doRebuild(seq, opts);
     }, delay || 0);
   }
-
-  // Debounce resolusi: ganti kualitas membuat videoWidth berubah beberapa kali
-  // sebelum stabil. Selama menunggu class dilepas (video asli tampil, tanpa
-  // frame hitam) dan copy lintas ukuran dilewati.
   function scheduleResolutionRebuild(v) {
     if (resolutionTimer) return;
     var cont = getContainer();
@@ -637,12 +682,13 @@
       var vv = getVideo();
       if (!vv) return;
       if (!vv.videoWidth) {
-        // Metadata belum siap (baru ganti src) — tunggu lagi, jangan menyerah.
         scheduleResolutionRebuild(vv);
         return;
       }
-      if (vv.videoWidth === engine.native.width && vv.videoHeight === engine.native.height) {
-        // Ganti kualitas ternyata dibatalkan (ukurannya sama) — cukup lanjutkan loop.
+      if (
+        vv.videoWidth === engine.native.width &&
+        vv.videoHeight === engine.native.height
+      ) {
         loop.dirty = true;
         scheduleFrame();
         return;
@@ -657,8 +703,6 @@
     if (!v) return Promise.resolve();
     stats.rebuilds++;
     stats.rebuildReason = (opts && opts.reason) || "manual";
-    // Anti-hitam: tampilkan video asli selama rebuild — class dilepas di sini
-    // dan dipasang kembali oleh renderFrame() hanya setelah frame sukses.
     var contStart = getContainer();
     if (contStart) contStart.classList.remove("meel-upscale-active");
     var waitMeta = v.videoWidth ? Promise.resolve() : once(v, "loadedmetadata");
@@ -666,14 +710,15 @@
       .then(function () {
         if (seq !== buildSeq || !state.enabled) return;
         var model = getModel(state.modelId);
-        if (!model) throw new Error("Model upscale tidak dikenal: " + state.modelId);
+        if (!model)
+          throw new Error("Model upscale tidak dikenal: " + state.modelId);
         return loadModel(model).then(function () {
           if (seq !== buildSeq || !state.enabled) return;
-          // File model baru diinjeksi dan menimpa deskriptor — ambil entri terbaru.
           model = getModel(state.modelId) || model;
           ensureCanvas();
           var native = { width: v.videoWidth, height: v.videoHeight };
-          if (!native.width || !native.height) throw new Error("Resolusi video belum siap");
+          if (!native.width || !native.height)
+            throw new Error("Resolusi video belum siap");
           var target = computeTarget(native);
           releaseChain();
           return getDevice().then(function (device) {
@@ -691,9 +736,13 @@
             stats.gpuErrors = 0;
             device.onuncapturederror = function (ev) {
               stats.gpuErrors++;
-              var msg = ev && ev.error && ev.error.message ? ev.error.message : "GPU error tak dikenal";
+              var msg =
+                ev && ev.error && ev.error.message
+                  ? ev.error.message
+                  : "GPU error tak dikenal";
               stats.lastError = msg;
-              if (stats.gpuErrors <= 3) console.warn("[MEeL][upscaler] GPU async:", msg);
+              if (stats.gpuErrors <= 3)
+                console.warn("[MEeL][upscaler] GPU async:", msg);
               if (stats.gpuErrors >= 6 && seq === buildSeq && state.enabled) {
                 fail(new Error("GPU error: " + msg));
               }
@@ -702,7 +751,10 @@
               label: "meel-upscale-input",
               size: [native.width, native.height, 1],
               format: "rgba16float",
-              usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+              usage:
+                GPUTextureUsage.TEXTURE_BINDING |
+                GPUTextureUsage.COPY_DST |
+                GPUTextureUsage.RENDER_ATTACHMENT,
             });
             engine.chain = model.buildChain({
               device: device,
@@ -711,7 +763,8 @@
               native: native,
               target: target,
             });
-            if (!engine.chain || !engine.chain.length) throw new Error("Pipeline model kosong");
+            if (!engine.chain || !engine.chain.length)
+              throw new Error("Pipeline model kosong");
             engine.canvas.width = target.width;
             engine.canvas.height = target.height;
             engine.ctx = engine.canvas.getContext("webgpu");
@@ -720,7 +773,10 @@
               format: navigator.gpu.getPreferredCanvasFormat(),
               alphaMode: "premultiplied",
             });
-            engine.blit = buildBlit(device, navigator.gpu.getPreferredCanvasFormat());
+            engine.blit = buildBlit(
+              device,
+              navigator.gpu.getPreferredCanvasFormat(),
+            );
             engine.built = true;
             loop.dirty = true;
             frameErrors = 0;
@@ -742,7 +798,12 @@
   function armGpuWatchdog(seq) {
     clearTimeout(gpuWatchdog);
     var dev = engine.device;
-    if (!dev || !dev.queue || typeof dev.queue.onSubmittedWorkDone !== "function") return;
+    if (
+      !dev ||
+      !dev.queue ||
+      typeof dev.queue.onSubmittedWorkDone !== "function"
+    )
+      return;
     var done = false;
     var p = dev.queue.onSubmittedWorkDone();
     if (p && p.then) {
@@ -769,8 +830,6 @@
     }, 6000);
   }
 
-  // GPU selesai (atau timeout): bebaskan backpressure lalu render tangkapan
-  // bila ada frame yang tadi di-skip. Token menolak promise yang datang terlambat.
   function setGpuSettled(tok, note) {
     if (tok !== loopBp.token || !loopBp.busy) return;
     loopBp.busy = false;
@@ -790,7 +849,12 @@
     } else {
       loopBp.timeouts = 0;
     }
-    if (loopBp.pendingRender && state.enabled && engine.built && !document.hidden) {
+    if (
+      loopBp.pendingRender &&
+      state.enabled &&
+      engine.built &&
+      !document.hidden
+    ) {
       loopBp.pendingRender = false;
       renderFrame(false);
     }
@@ -800,7 +864,6 @@
   function markGpuBusy() {
     loopBp.at = performance.now();
     perfPush(perf.renders, loopBp.at);
-    // Tanpa API sinyal GPU, jalani tanpa backpressure — jangan sampai jadi frame error.
     var q = engine.device.queue;
     if (typeof q.onSubmittedWorkDone !== "function") return;
     var p = q.onSubmittedWorkDone();
@@ -832,14 +895,14 @@
     if (!engine.built || !engine.device) return;
     var v = videoOverride || getVideo();
     if (!v || v.readyState < 2 || !v.videoWidth) return;
-    if (v.videoWidth !== engine.native.width || v.videoHeight !== engine.native.height) {
-      // Ukuran beda dari pipeline: tunggu rebuild, jangan copy lintas ukuran (picu error antrian GPU).
+    if (
+      v.videoWidth !== engine.native.width ||
+      v.videoHeight !== engine.native.height
+    ) {
       stats.skipped++;
       return;
     }
     if (loopBp.busy) {
-      // Backpressure: jangan tumpuk antrian (antrian menumpuk = freeze) —
-      // tandai perlu render, jalankan setelah onSubmittedWorkDone() selesai.
       loopBp.pendingRender = true;
       stats.skipped++;
       return;
@@ -888,7 +951,8 @@
   }
 
   function scheduleFrame() {
-    if (!state.enabled || !engine.built || loop.pending || document.hidden) return;
+    if (!state.enabled || !engine.built || loop.pending || document.hidden)
+      return;
     var v = getVideo();
     if (!v) return;
     loop.pending = true;
@@ -913,7 +977,6 @@
     var tnow = performance.now();
     if (perf.lastTick > 0) {
       var dt = tnow - perf.lastTick;
-      // Hanya jeda wajar (≥4 fps); jeda pause/hidden/seek tidak dihitung.
       if (dt > 0 && dt <= 250) perfPush(perf.ticks, dt);
     }
     perf.lastTick = tnow;
@@ -925,7 +988,8 @@
     if (
       engine.built &&
       v.videoWidth &&
-      (v.videoWidth !== engine.native.width || v.videoHeight !== engine.native.height)
+      (v.videoWidth !== engine.native.width ||
+        v.videoHeight !== engine.native.height)
     ) {
       scheduleResolutionRebuild(v);
       return;
@@ -962,9 +1026,7 @@
   }
 
   // Matikan upscale tanpa toast — dipakai setEnabled(false), validasi
-  // per-video di validateState(), resetForNewVideo(), dan kasus dukungan
-  // WebGPU yang hilang.
-  function turnOff() {
+function turnOff() {
     state.enabled = false;
     persistEnabled(false);
     teardownDevice();
@@ -974,9 +1036,6 @@
   }
 
   function resetForNewVideo() {
-    // Video berpindah lewat transisi in-place (klik rekomendasi & auto-next,
-    // keduanya lewat skipToNextVideo): buang status ON agar video baru mulai
-    // tanpa beban GPU. Tanpa toast supaya transisi tidak dibanjiri notifikasi.
     persistEnabled(false);
     if (state.enabled) turnOff();
   }
@@ -996,7 +1055,12 @@
           if (ok) {
             if (!state.enabled) setEnabled(true, opts);
           } else {
-            toast(supportLabel() === "Butuh HTTPS" ? "WebGPU butuh halaman HTTPS" : "WebGPU tidak didukung di browser ini", 4000);
+            toast(
+              supportLabel() === "Butuh HTTPS"
+                ? "WebGPU butuh halaman HTTPS"
+                : "WebGPU tidak didukung di browser ini",
+              4000,
+            );
           }
         });
         return;
@@ -1279,7 +1343,9 @@
 
   function setRowDisabled(key, disabled) {
     if (!plyrReady()) return;
-    var row = plyr.elements.settings.panels.upscale.querySelector('[data-upscale-row="' + key + '"]');
+    var row = plyr.elements.settings.panels.upscale.querySelector(
+      '[data-upscale-row="' + key + '"]',
+    );
     if (!row) return;
     if (disabled) row.setAttribute("aria-disabled", "true");
     else row.removeAttribute("aria-disabled");
@@ -1290,7 +1356,13 @@
     if (!supported) return "Tidak tersedia";
     if (state.loading) return SPIN_LOAD;
     if (!state.enabled) return "Mati";
-    return esc(currentModel().short) + " · " + esc(currentMode().short) + " · " + esc(currentScale().short);
+    return (
+      esc(currentModel().short) +
+      " · " +
+      esc(currentMode().short) +
+      " · " +
+      esc(currentScale().short)
+    );
   }
 
   function setHomeRowValue() {
@@ -1345,7 +1417,10 @@
     if (tog) {
       var on = state.enabled;
       tog.setAttribute("aria-checked", on ? "true" : "false");
-      tog.setAttribute("aria-disabled", state.loading || !avail ? "true" : "false");
+      tog.setAttribute(
+        "aria-disabled",
+        state.loading || !avail ? "true" : "false",
+      );
       var tv = tog.querySelector(".plyr__menu__value");
       if (tv) {
         if (supportChecking) tv.innerHTML = SPIN_CHECK;
@@ -1379,10 +1454,19 @@
     var prevMode = state.modeId;
     state.modelId = id;
     var m = getModel(id);
-    if (!m.modes.some(function (x) { return x.id === state.modeId; })) state.modeId = m.modes[0].id;
+    if (
+      !m.modes.some(function (x) {
+        return x.id === state.modeId;
+      })
+    )
+      state.modeId = m.modes[0].id;
     lsSet(KEY_MODEL, state.modelId);
     lsSet(KEY_MODE, state.modeId);
-    buildModeList(plyr.elements.settings.panels["upscale-mode"].querySelector('[role="menu"]'));
+    buildModeList(
+      plyr.elements.settings.panels["upscale-mode"].querySelector(
+        '[role="menu"]',
+      ),
+    );
     updateUI();
     if (state.enabled) {
       loadModel(m).then(
@@ -1434,7 +1518,8 @@
 
   function unsupportedReason() {
     if (supported || supportChecking) return null;
-    if (!window.isSecureContext) return { code: "insecure", body: WHY.insecure };
+    if (!window.isSecureContext)
+      return { code: "insecure", body: WHY.insecure };
     if (!navigator.gpu) return { code: "nogpu", body: WHY.nogpu };
     return { code: "no-adapter", body: WHY.adapter };
   }
@@ -1442,7 +1527,9 @@
   function whyBodyText() {
     if (supportChecking) return "Memeriksa dukungan WebGPU…";
     var r = unsupportedReason();
-    return r ? r.body : "Dukungan WebGPU terdeteksi — opsi AI Upscale bisa diaktifkan.";
+    return r
+      ? r.body
+      : "Dukungan WebGPU terdeteksi — opsi AI Upscale bisa diaktifkan.";
   }
 
   function supportLabel() {
@@ -1502,33 +1589,32 @@
       d.reason = "requestAdapter() melempar: " + errText(e);
       return Promise.resolve(d);
     }
-    return Promise.resolve(p)
-      .then(
-        function (a) {
-          if (!a) {
-            d.adapter = "null";
-            d.reason = WHY.adapter;
-            return d;
-          }
-          d.adapter = "ok";
-          var info = a.info || (a.requestAdapterInfo ? null : null);
-          if (info) {
-            d.adapterInfo = {
-              vendor: info.vendor || "",
-              architecture: info.architecture || "",
-              description: info.description || "",
-              device: info.device || "",
-            };
-          }
-          d.reason = "Adapter ditemukan.";
+    return Promise.resolve(p).then(
+      function (a) {
+        if (!a) {
+          d.adapter = "null";
+          d.reason = WHY.adapter;
           return d;
-        },
-        function (e) {
-          d.adapter = "error";
-          d.reason = "requestAdapter() gagal: " + errText(e);
-          return d;
-        },
-      );
+        }
+        d.adapter = "ok";
+        var info = a.info || (a.requestAdapterInfo ? null : null);
+        if (info) {
+          d.adapterInfo = {
+            vendor: info.vendor || "",
+            architecture: info.architecture || "",
+            description: info.description || "",
+            device: info.device || "",
+          };
+        }
+        d.reason = "Adapter ditemukan.";
+        return d;
+      },
+      function (e) {
+        d.adapter = "error";
+        d.reason = "requestAdapter() gagal: " + errText(e);
+        return d;
+      },
+    );
   }
   function checkSupport(force) {
     if (!navigator.gpu) {
@@ -1579,7 +1665,11 @@
       if (!state.enabled || !engine.built || state.scaleId !== "auto") return;
       var r = entries[0] ? entries[0].contentRect : null;
       if (!r) return;
-      if (Math.abs(r.width - lastBox.w) < 2 && Math.abs(r.height - lastBox.h) < 2) return;
+      if (
+        Math.abs(r.width - lastBox.w) < 2 &&
+        Math.abs(r.height - lastBox.h) < 2
+      )
+        return;
       rebuild(300, { reason: "resize" });
     });
     ro.observe(cont);
@@ -1618,7 +1708,12 @@
   }, 500);
 
   function attach(plyrInstance) {
-    if (!plyrInstance || !plyrInstance.elements || !plyrInstance.elements.settings) return;
+    if (
+      !plyrInstance ||
+      !plyrInstance.elements ||
+      !plyrInstance.elements.settings
+    )
+      return;
     plyr = plyrInstance;
     var buttons = plyrInstance.elements.settings.buttons;
     if (!buttons || !buttons.upscale) return;
@@ -1652,7 +1747,8 @@
       rv &&
       rv.videoWidth &&
       engine.native &&
-      (rv.videoWidth !== engine.native.width || rv.videoHeight !== engine.native.height)
+      (rv.videoWidth !== engine.native.width ||
+        rv.videoHeight !== engine.native.height)
     ) {
       // Resolusi belum di-rebuild: tampilkan video asli dulu, debounce jalan.
       scheduleResolutionRebuild(rv);
@@ -1697,8 +1793,12 @@
         built: engine.built,
         rebuilds: stats.rebuilds,
         rebuildReason: stats.rebuildReason,
-        target: engine.target ? { width: engine.target.width, height: engine.target.height } : null,
-        native: engine.native ? { width: engine.native.width, height: engine.native.height } : null,
+        target: engine.target
+          ? { width: engine.target.width, height: engine.target.height }
+          : null,
+        native: engine.native
+          ? { width: engine.native.width, height: engine.native.height }
+          : null,
         perf: computePerf(),
       };
     },

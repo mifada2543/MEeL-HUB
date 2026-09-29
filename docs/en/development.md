@@ -771,12 +771,16 @@ MEEL_UPSCALER.registerModel({
   selection. The `registerModel()` inside that file **overwrites** the static
   descriptor registered by the shell, so `doRebuild()` always re-reads the
   entry before calling `buildChain()`.
-- Built-in models: `anime4k` (vendor bundle), `meelscale` (local resampler),
-  `meelvision` — **MEeLVision** (weights in `assets/models/meelvision/weights.js`).
+- Built-in models: `anime4k` (vendor bundle), `meelscale` (local resampler) and
+  `meelsharp` — **MEeLSharp** (Lanczos-3 + CAS, no weights). `meelvision` —
+  **MEeLVision** (weights in `assets/models/meelvision/weights.js`) is still in
+  the repo, but it is no longer registered in the AI Upscaler menu.
 
 #### Model notes: MEeLVision (FSRCNN architecture) & MEeLScale
 
 Both are local models under `assets/models/<id>/` — no internet downloads.
+MEeLVision no longer shows up in the menu (its descriptor was removed from
+`upscaler.js`); the notes below still apply to its files.
 
 **MEeLVision ×2** (`meelvision/model.js` + `meelvision/weights.js`)
 
