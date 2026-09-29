@@ -434,10 +434,7 @@ function meel_xsendfile_config_files(): array
 }
 
 if (!function_exists('meel_xsendfile_flag_from_text')) {
-/**
- * Parse direktif `XSendFile on|off` dari konten konfigurasi (httpd.conf/.htaccess).
- * Mengembalikan null jika tidak ada direktif (Apache: mod_xsendfile default nonaktif).
- */
+/** Parse direktif `XSendFile on|off` dari konfigurasi Apache; null bila tak ada direktif (default Apache: nonaktif). */
 function meel_xsendfile_flag_from_text(string $content): ?bool
 {
     $flag = null;
@@ -526,9 +523,6 @@ function meel_xsendfile_roots(): array
 }
 
 if (!function_exists('meel_xsendfile_server_flag')) {
-/**
- * Nilai `XSendFile on|off` dari konfigurasi server (gabungan file konfigurasi Apache).
- */
 function meel_xsendfile_server_flag(): bool
 {
     return meel_xsendfile_config_data()['flag'];
@@ -537,9 +531,7 @@ function meel_xsendfile_server_flag(): bool
 
 if (!function_exists('meel_xsendfile_htaccess_dirs')) {
 /**
- * Daftar direktori yang .htaccess-nya berlaku untuk request berjalan,
- * diurutkan dari docroot ke direktori paling spesifik (mengikuti merge per-dir Apache).
- * Mencakup jalur URL (REQUEST_URI/REDIRECT_URL) dan direktori skrip (hasil internal rewrite).
+ * Direktori yang .htaccess-nya berlaku untuk request ini, diurutkan docroot → paling spesifik (merge per-dir Apache); mencakup jalur URL (REQUEST_URI/REDIRECT_URL) dan direktori skrip hasil internal rewrite.
  */
 function meel_xsendfile_htaccess_dirs(): array
 {
@@ -595,10 +587,7 @@ function meel_xsendfile_htaccess_dirs(): array
 }
 
 if (!function_exists('meel_xsendfile_merge_flag')) {
-/**
- * Terapkan isi .htaccess (urut dari yang paling umum ke paling spesifik) di atas flag dasar.
- * Konten null/bukan string dianggap tidak ada direktif.
- */
+/** Terapkan isi .htaccess (umum → spesifik) di atas flag dasar; konten null/bukan string dianggap tanpa direktif. */
 function meel_xsendfile_merge_flag(bool $base, array $contents): bool
 {
     $flag = $base;
@@ -616,9 +605,7 @@ function meel_xsendfile_merge_flag(bool $base, array $contents): bool
 }
 
 if (!function_exists('meel_xsendfile_effective_flag')) {
-/**
- * Nilai `XSendFile on|off` efektif untuk request berjalan: server, lalu override .htaccess.
- */
+/** Nilai `XSendFile on|off` efektif untuk request ini: flag server, lalu override tiap .htaccess. */
 function meel_xsendfile_effective_flag(): bool
 {
     static $flag = null;
@@ -752,7 +739,7 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
 
     // Akselerasi: Apache mengirim file langsung dari disk (zero-copy), PHP exit
     // tanpa membaca isi file. Content-Length/206/Content-Range TIDAK dikirim di
-    // sini — mod_xsendfile hanya aktif pada status 200, lalu Apache core yang
+    // sini — mod_xsendfile hanya aktif pada status 200; Apache core yang
     // menghitung Range (206/416), ETag, Last-Modified, dan 304.
     if (meel_xsendfile_ready($realFull)) {
         header('Content-Type: ' . $mime);

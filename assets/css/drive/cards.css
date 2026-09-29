@@ -98,7 +98,6 @@
   font-weight: 600;
 }
 
-/* Image thumbnail card */
 .file-card {
   cursor: pointer;
 }
@@ -132,7 +131,6 @@
   opacity: 1;
 }
 
-/* Full-bleed image card — caption overlaid on the thumbnail */
 .file-card--image {
   padding: 0;
   gap: 0;
@@ -164,7 +162,6 @@
   color: #cbd5e1;
 }
 
-/* Action buttons floating over the thumbnail */
 .file-card-thumb-actions {
   position: absolute;
   top: 8px;

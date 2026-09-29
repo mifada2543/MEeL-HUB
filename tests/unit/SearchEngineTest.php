@@ -1,9 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers SearchEngine
- */
+/** @covers SearchEngine */
 class SearchEngineTest extends TestCase
 {
     private \mysqli $mockConn;

@@ -197,7 +197,6 @@
     }
   }
 
-  /* Audio Player Controls */
   function initPlayer() {
     if (audioEl) return;
     audioEl = new Audio();

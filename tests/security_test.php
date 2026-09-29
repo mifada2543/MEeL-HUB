@@ -13,10 +13,7 @@ $GLOBALS['failed']       = 0;
 $GLOBALS['fail_details'] = [];
 
 
-/**
- * Gabungan source Transcoder facade + seluruh service di modules/transcoder/.
- * Dipakai oleh static-pattern checks agar tetap valid setelah refactor split.
- */
+/** Gabungan source Transcoder facade + seluruh service modules/transcoder/ — supaya static-pattern checks tetap valid setelah refactor split. */
 function transcoderCombinedSource(): string {
     $out  = '';
     $core = PROJECT_ROOT . '/modules/core/Transcoder.php';
@@ -448,7 +445,6 @@ function testHtaccessSecurity(): void {
         else     record("{$file} \u{2014} kurang: " . implode(', ', $miss), true, true);
     }
 
-    // ── T4: auto_prepend arcade portabel (tanpa path absolut) ──
     $arcHt = PROJECT_ROOT . '/arcade/.htaccess';
     if (!file_exists($arcHt)) {
         record("arcade/.htaccess \u{2014} FILE TIDAK DITEMUKAN!", false, false);
@@ -466,9 +462,8 @@ function testHtaccessSecurity(): void {
         }
     }
 
-    // Shim wajib: tiap direktori arcade/ yang bisa mengeksekusi *.php langsung
-    // (root .htaccess 301 tidak diproses di bawah arcade/ → eksekusi langsung
-    //  mungkin; tanpa shim di cwd yang benar → fatal fail-closed 500).
+    // Shim wajib per direktori arcade/ yang mengeksekusi *.php langsung: root .htaccess
+    // (301) tak diproses di bawah arcade/ → tanpa shim di cwd yang benar → fatal 500 fail-closed.
     $shims = [
         'arcade/_gate.php',
         'arcade/chess/_gate.php',
@@ -491,9 +486,8 @@ function testHtaccessSecurity(): void {
         record("arcade \u{2014} shim auto_prepend hilang: " . implode(", ", $shimMissing), false, false);
     }
 
-    // "ForceType inherit" mengirim header literal "Content-Type: inherit"
-    // (rusak saat dipadu X-Content-Type-Options: nosniff) — dilarang di
-    // subtree rhythm yang baru.
+    // "ForceType inherit" mengirim header literal "Content-Type: inherit" (rusak
+    // dipadu X-Content-Type-Options: nosniff) — dilarang di subtree rhythm.
     foreach (['arcade/rhythm/uploads/.htaccess', 'arcade/rhythm/songs/.htaccess'] as $rf) {
         $full = PROJECT_ROOT . '/' . $rf;
         if (file_exists($full) && preg_match('/^\\s*ForceType\\s+inherit\\s*$/m', (string) file_get_contents($full))) {

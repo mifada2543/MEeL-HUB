@@ -1,20 +1,8 @@
 <?php
 /**
- * MEeL-HUB — Konfigurasi Aplikasi (Entry Point)
- *
- *
- * PENTING — Jangan hapus guard !defined() di sekitar konstanta.
- * File ini bisa di-include dari berbagai entry point (index.php,
- * auth/auth.php, file admin, dll), guard mencegah redeclare error.
- *
- * File ini HANYA memuat logic inisialisasi. Semua DATA konfigurasi
- * (DB credentials + MEEL_* constants) sudah dipindah ke settings.php:
- * require __DIR__ . '/settings.php';
- * Ubah nilai server di settings.php, JANGAN di file ini.
- *
+ * MEeL-HUB — Konfigurasi Aplikasi (Entry Point), hanya logic inisialisasi; DATA (DB credentials + MEEL_*) di settings.php.
+ * PENTING — Jangan hapus guard !defined() di sekitar konstanta: file ini di-include dari banyak entry point, guard mencegah redeclare error.
  */
-
-// PURE CONFIG (DATA) — DB credentials + MEEL_* constants
 $meel_settings = __DIR__ . '/settings.php';
 if (!file_exists($meel_settings)) {
     die("[MEeL SYSTEM ERROR]\nFile auth/settings.php tidak ditemukan.\n"
@@ -23,12 +11,7 @@ if (!file_exists($meel_settings)) {
 }
 require_once $meel_settings;
 require_once __DIR__ . '/../modules/core/bootstrap.php';
-// Hanya connect jika $conn belum ada — aman di-include berkali-kali
-// Credentials diambil dari settings.php ($server, $username, dll.)
-/** @var string $server   Host DB (dari settings.php) */
-/** @var string $username User DB (dari settings.php) */
-/** @var string $password Password DB (dari settings.php) */
-/** @var string $db       Nama DB (dari settings.php) */
+// Kredensial dari settings.php; koneksi hanya dibuat bila $conn belum ada — aman di-include berkali-kali.
 if (!isset($server))   $server   = 'localhost';
 if (!isset($username)) $username = 'root';
 if (!isset($password)) $password = '';
@@ -44,13 +27,10 @@ if (!defined('MEEL_BASE_URL')) {
     require_once __DIR__ . '/../modules/core/base_url.php';
     define('MEEL_BASE_URL', meel_base_url_path());
 }
-// SESSION CONFIGURATION (terpusat di modules/auth/helpers/session.php — satu sumber kebenaran)
 require_once __DIR__ . '/../modules/auth/helpers/session.php';
 meel_boot_session();
 require_once __DIR__ . '/../modules/autoload.php';
-// Helper functions (verify_csrf_token, get_csrf_token, base_url, dll.)
 require_once __DIR__ . '/../modules/core/helpers.php';
-// Security Headers
 if (!headers_sent()) {
     header("X-Frame-Options: SAMEORIGIN");
     header("X-Content-Type-Options: nosniff");
@@ -67,7 +47,6 @@ if (!headers_sent()) {
     $csp_worker_src = "worker-src 'self' blob:";
     header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'self'; frame-src 'self' blob:; frame-ancestors 'self'; form-action 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; style-src 'self' 'unsafe-inline'; {$csp_script_src}; {$csp_worker_src}");
 }
-// CSRF Token
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }

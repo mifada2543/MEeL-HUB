@@ -22,12 +22,7 @@ function meel_read_magic_bytes(string $path, int $length = 16): string
 }
 
 if (!function_exists('meel_magic_extension_ok')) {
-/**
- * Cocokkan magic bytes file upload dengan extension & jenis media yang
- * diizinkan. Jangan pernah hanya mempercayai $_FILES['type'] / extension.
- *
- * @return string kosong jika cocok; pesan error jika tidak.
- */
+/** Cocokkan magic bytes — jangan hanya percaya $_FILES['type']. @return '' bila cocok, pesan error bila tidak. */
 function meel_magic_extension_ok(string $path, string $ext, string $mediaKind = 'audio'): string
 {
     if (!is_file($path) || filesize($path) < 4) {
@@ -76,17 +71,7 @@ function meel_magic_extension_ok(string $path, string $ext, string $mediaKind = 
 }
 
 if (!function_exists('meel_validate_video_codec')) {
-/**
- * Validasi codec video menggunakan ffprobe. Hanya mengizinkan H.264 (AVC)
- * dan H.265 (HEVC) karena kedua codec tersebut kompatibel dengan
- * MPEG-2 Transport Stream (HLS versi lama).
- *
- * @param string $file_path  Path file video.
- * @param string $ffprobe_bin Path biner ffprobe.
- * @param string $env_prefix Prefix env (mis. 'export LD_LIBRARY_PATH=''; ').
- *
- * @return string kosong jika codec valid; pesan error jika tidak.
- */
+/** Validasi codec video via ffprobe — hanya H.264/H.265 (kompatibel MPEG-2 TS). @return '' bila valid, pesan error bila tidak. */
 function meel_validate_video_codec(
     string $file_path,
     string $ffprobe_bin = '/usr/bin/ffprobe',
@@ -123,25 +108,7 @@ function meel_validate_video_codec(
 }
 
 if (!function_exists('meel_validate_audio_codec')) {
-/**
- * Validasi codec audio menggunakan ffprobe. Memeriksa apakah codec audio
- * kompatibel dengan MPEG-2 Transport Stream (HLS versi lama).
- *
- * Codec yang kompatibel (bisa di-copy langsung): AAC, MP3, AC3, E-AC3.
- * Codec yang tidak kompatibel (perlu transcode): Opus, Vorbis, DTS, FLAC, dll.
- *
- * Jika codec tidak kompatibel dan durasi audio > 5 menit, proses ditolak
- * karena transcode audio berdurasi panjang terlalu membebani server.
- *
- * @param string $file_path   Path file video.
- * @param string $ffprobe_bin Path biner ffprobe.
- * @param string $env_prefix  Prefix env (mis. 'export LD_LIBRARY_PATH=''; ').
- *
- * @return array ['error' => string, 'has_audio' => bool, 'needs_audio_transcode' => bool]
- *               error: pesan error jika harus ditolak; '' jika lolos.
- *               has_audio: true jika video memiliki audio stream.
- *               needs_audio_transcode: true jika audio harus di-transcode ke AAC.
- */
+/** Codec tak kompatibel (Opus, Vorbis, DTS, FLAC) di-transcode ke AAC, tapi durasi > 5 menit ditolak — transcode panjang membebani server. @return array [error, has_audio, needs_audio_transcode]. */
 function meel_validate_audio_codec(
     string $file_path,
     string $ffprobe_bin = '/usr/bin/ffprobe',
@@ -164,7 +131,6 @@ function meel_validate_audio_codec(
     $ret    = -1;
     @exec($cmd, $output, $ret);
 
-    // Tidak ada audio stream.
     if ($ret !== 0 || empty($output) || trim($output[0]) === '') {
         return ['error' => '', 'has_audio' => false, 'needs_audio_transcode' => false];
     }
@@ -178,7 +144,6 @@ function meel_validate_audio_codec(
         return ['error' => '', 'has_audio' => true, 'needs_audio_transcode' => false];
     }
 
-    // Audio tidak kompatibel + durasi > 5 menit → tolak.
     if ($duration > $max_audio_duration) {
         $minutes = round($duration / 60, 1);
         return [
@@ -189,17 +154,12 @@ function meel_validate_audio_codec(
         ];
     }
 
-    // Audio tidak kompatibel + durasi <= 5 menit → akan di-transcode ke AAC.
     return ['error' => '', 'has_audio' => true, 'needs_audio_transcode' => true];
 }
 }
 
 if (!function_exists('meel_sanitize_upload_filename')) {
-/**
- * Sanitasi nama file upload → nama file fisik aman (hanya [a-z0-9._-],
- * tanpa separators path, tanpa null byte, tanpa residue traversal).
- * Nama asli user tetap bisa disimpan sebagai metadata bila perlu.
- */
+/** Sanitasi nama fisik upload: hanya [a-z0-9._-], tanpa path separator, null byte, maupun sisa traversal. */
 function meel_sanitize_upload_filename(string $original, string $fallback = 'file'): string
 {
     $original = str_replace("\0", '', $original);
@@ -255,19 +215,10 @@ function get_upload_hourly_limit(string $user_role): int
 }
 
 if (!function_exists('meel_sanitize_clean_name')) {
-/**
- * Sanitasi nama dasar (tanpa ekstensi) menjadi karakter aman untuk nama
- * file media. Versi terpusat dari logika yang dulu diduplikasi di
- * Uploader::getUniqueFilename(), EncodeService::encodeMusic(), dll.
- *
- * @return string nama bersih; '' jika hasil kosong (pemanggil boleh fallback).
- */
+/** Sanitasi nama dasar (tanpa ekstensi) untuk nama file media. @return '' bila hasil kosong — pemanggil boleh fallback. */
 function meel_sanitize_clean_name(string $raw, int $max_len = 120): string
 {
-    // Semantik SAMA dengan kode inline asli (Uploader::getUniqueFilename &
-    // EncodeService::encodeMusic): ganti karakter non-aman jadi '_' lalu
-    // potong. Tanpa trim/collapse tambahan — menjaga nama file yang sudah
-    // ada. Fallback saat hasil kosong dilakukan oleh pemanggil.
+    // Tanpa trim/collapse tambahan — menjaga nama file yang sudah ada.
     $clean = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) $raw);
     if ($clean === '') {
         return '';
@@ -277,12 +228,7 @@ function meel_sanitize_clean_name(string $raw, int $max_len = 120): string
 }
 
 if (!function_exists('meel_reserve_unique_filename')) {
-/**
- * Reservasi nama file unik (tanpa direktori) di dalam $dir.
- * @return string|null nama file (tanpa direktori) yang berhasil di-reserve,
- *                     atau null bila semua percobaan gagal (folder penuh/
- *                     tidak writable).
- */
+/** Reservasi nama file unik (tanpa direktori) di dalam $dir; null bila semua percobaan gagal (folder penuh/tidak writable). */
 function meel_reserve_unique_filename(string $dir, string $clean_name, string $ext, int $max_attempts = 1000, string $suffix_sep = '-'): ?string
 {
     $dir = rtrim($dir, '/\\') . '/';
@@ -302,23 +248,8 @@ function meel_reserve_unique_filename(string $dir, string $clean_name, string $e
 
 if (!function_exists('meel_ffmpeg_thumbnail_webp')) {
 /**
- * Satu-satunya jalur konversi gambar/frame menjadi WebP via ffmpeg.
- * Menggantikan 8+ duplikasi inline ffmpeg -vf scale libwebp di Uploader,
- * EncodeService, DownloadService, MediaLibrary, dan admin editors.
- *
- * @param string $ffmpeg_bin  Path biner ffmpeg.
- * @param string $src         File sumber (gambar, audio, video).
- * @param string $dst         Path output .webp (placeholder boleh sudah ada,
- *                            ffmpeg -y akan menimpanya).
- * @param int    $max_width   Lebar maksimal (min(scale, iw)).
- * @param string $extra       Argumen tambahan sebelum -vf, mis. '-ss 00:00:05'
- *                            atau '-an -vframes 1' (boleh kosong).
- * @param string $env_prefix  Prefix env (mis. 'export LD_LIBRARY_PATH=''; ').
- * @param int    $threads     Nilai -threads ffmpeg (0 = tanpa flag, perilaku
- *                            default ffmpeg). Pemanggil yang dulu eksplisit
- *                            '-threads 1' bisa meneruskan 1.
- *
- * @return bool true bila file output terbentuk dan berisi data.
+ * Satu-satunya jalur konversi gambar/frame → WebP via ffmpeg.
+ * @param int $threads 0 = tanpa flag; $extra = argumen tambahan sebelum -vf. @return bool: output terbentuk dan berisi data.
  */
 function meel_ffmpeg_thumbnail_webp(
     string $ffmpeg_bin,
@@ -345,13 +276,7 @@ function meel_ffmpeg_thumbnail_webp(
 }
 
 if (!function_exists('meel_allocate_unique_dir')) {
-/**
- * Alokasi nama folder unik (suffix -1, -2, ...) di dalam $parent.
- * Dipakai untuk folder kerja video (Uploader & DownloadService) — versi
- * terpusat dari loop while(is_dir()) yang diduplikasi.
- *
- * @return string nama folder TANPA slash trailing.
- */
+/** Alokasi nama folder unik (suffix -1, -2, ...) untuk folder kerja video; @return tanpa slash trailing. */
 function meel_allocate_unique_dir(string $parent, string $base): string
 {
     $parent = rtrim($parent, '/\\') . '/';
@@ -367,25 +292,8 @@ function meel_allocate_unique_dir(string $parent, string $base): string
 
 if (!function_exists('meel_ffmpeg_encode_opus')) {
 /**
- * Satu-satunya jalur encoding audio → Opus/Ogg via ffmpeg
- * (dipakai Uploader::processMusic & EncodeService::encodeMusic).
- * Duplikasi command-construction inline dihapus dari kedua pemanggil;
- * opsi yang berbeda (threads, metadata) diteruskan sebagai parameter.
- *
- * @param string $ffmpeg_bin  Path biner ffmpeg.
- * @param string $input       File sumber audio.
- * @param string $output      Path output .ogg (placeholder boleh sudah ada,
- *                            ffmpeg -y akan menimpanya).
- * @param string $env_prefix  Prefix env (mis. 'export LD_LIBRARY_PATH=''; ').
- *                            Pemanggil yang mengandalkan putenv() cukup
- *                            meneruskan ''.
- * @param int    $threads     Nilai -threads ffmpeg (0 = tanpa flag, perilaku
- *                            default ffmpeg).
- * @param array  $metadata    Pasangan key=>value tag metadata (mis.
- *                            ['title' => ..., 'artist' => ...]).
- *
- * @return array [int exit_code, string log] — log berisi gabungan stdout+
- *               stderr ffmpeg untuk pesan error yang ramah.
+ * Satu-satunya jalur encoding audio → Opus/Ogg via ffmpeg.
+ * @param int $threads 0 = tanpa flag. @return array [int exit_code, string log].
  */
 function meel_ffmpeg_encode_opus(
     string $ffmpeg_bin,
@@ -415,14 +323,7 @@ function meel_ffmpeg_encode_opus(
 }
 
 if (!function_exists('meel_insert_music_row')) {
-/**
- * Satu-satunya jalur INSERT baris musik (dipakai Uploader::processMusic &
- * EncodeService::encodeMusic). Kolom duration hanya disertakan bila != null
- * — jalur upload file langsung memang tidak menyimpan duration (perilaku
- * lama dijaga; kolom default NULL).
- *
- * @return array [bool ok, string error] — error = pesan mysqli bila gagal.
- */
+/** Satu-satunya jalur INSERT baris musik. duration hanya disertakan bila != null — jalur upload langsung tidak menyimpannya (perilaku lama dijaga). @return array [bool ok, string error]. */
 function meel_insert_music_row(
     \mysqli $conn,
     int $user_id,
@@ -469,15 +370,9 @@ function meel_insert_music_row(
 
 if (!function_exists('meel_handle_upload')) {
 /**
- * Handle upload POST flow: CSRF, MeelCoin spend/try/refund, process, log.
- * Dipakai video/upload.php dan music/upload.php untuk menghilangkan duplikasi.
- *
- * @param string $media_type   'video' | 'music'
+ * Handle upload POST flow: CSRF, MeelCoin spend/refund, process, log.
  * @param callable $process_fn fn($_POST, $_FILES, $extra) → ['status'=>'success'|'error', 'id'=>int?, 'msg'=>string]
- * @param string $log_action   nama action untuk log_activity()
- *
- * @return array ['status'=>'success'|'error'|'', 'alert_message'=>string, 'extra'=>mixed]
- *   extra: data tambahan (coin_balance, hour_count, total_uploads) yang perlu dikembalikan ke caller.
+ * @return array [status, alert_message, extra] — extra: coin_balance|hour_count|total_uploads.
  */
 function meel_handle_upload(string $media_type, callable $process_fn, string $log_action): array
 {

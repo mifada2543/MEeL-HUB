@@ -603,7 +603,6 @@ class BookUploader
             $name = time() . '_' . bin2hex(random_bytes(4)) . '.webp';
             $target_path = $this->base_path . '/upload/thumbnail/' . $name;
             $ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== '' ? MEEL_FFMPEG_PATH : resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
-            // Konversi via helper bersama (ffmpeg → webp).
             if (meel_ffmpeg_thumbnail_webp($ffmpeg_bin, $file['tmp_name'], $target_path, 500)) {
                 return $name;
             }
@@ -691,7 +690,6 @@ class BookUploader
             return ['success' => false, 'message' => 'Error: ' . $result['error']];
         }
 
-        // Deteksi chapter: entry pertama yang mengandung '/' berarti ada subfolder.
         $first_entry = $this->firstEntryHasSubdir($file['tmp_name']);
         if ($first_entry) {
             $has_chapters = 1;

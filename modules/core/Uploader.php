@@ -34,21 +34,17 @@ class Uploader
 
     private function validateVideoMagicBytes(string $filePath): bool
     {
-        // Satu sumber kebenaran magic-byte: meel_magic_extension_ok('video')
-        // (MP4 ftyp / WebM-Matroska) — duplikasi inline dihapus.
+        // Magic-byte video via helper terpusat (MP4 ftyp / WebM-Matroska).
         return meel_magic_extension_ok($filePath, 'mp4', 'video') === '';
     }
 
     private function validateVideoCodec(string $filePath): string
     {
-        // Hanya izinkan H.264 (AVC) dan H.265 (HEVC) — kompatibel MPEG-2 TS.
         return meel_validate_video_codec($filePath, $this->ffprobe_bin, $this->getEnvPrefix());
     }
 
     private function validateAudioCodec(string $filePath): array
     {
-        // Cek codec audio: AAC/MP3/AC3/E-AC3 bisa copy langsung.
-        // Opus/Vorbis/DTS/FLAC harus transcode ke AAC (max 5 menit).
         return meel_validate_audio_codec($filePath, $this->ffprobe_bin, $this->getEnvPrefix());
     }
 
@@ -90,10 +86,7 @@ class Uploader
         return true;
     }
 
-    /**
-     * Alokasi nama file secara ATOMIK (fopen 'x' via meel_reserve_unique_filename).
-     * Dua request bersamaan tidak bisa mendapat nama yang sama.
-     */
+    /** Alokasi nama file ATOMIK (fopen 'x') — dua request bersamaan tidak bisa mendapat nama yang sama. */
     private function getUniqueFilename(string $clean_name, string $ext, string $target_dir): string
     {
         $clean = meel_sanitize_clean_name($clean_name, 120);
@@ -148,14 +141,12 @@ class Uploader
             return ['status' => 'error', 'msg' => "File terlalu besar!", 'alert' => true];
         }
 
-        // Magic bytes harus cocok dengan extension audio (server-side, bukan
-        // $_FILES['type']).
+        // Magic bytes harus cocok dengan extension (server-side, bukan $_FILES['type']).
         $magic_err = meel_magic_extension_ok($files['media']['tmp_name'], $ext, 'audio');
         if ($magic_err !== '') {
             return ['status' => 'error', 'msg' => "File tidak valid sebagai audio.", 'alert' => true];
         }
 
-        // Alokasi nama atomik — tanpa lock eksternal & tanpa while(file_exists).
         $file_name   = $this->getUniqueFilename($clean_name, $ext, $base_dir . "upload/file/");
         $target_file = $base_dir . "upload/file/" . $file_name;
 
@@ -216,13 +207,11 @@ class Uploader
         $skip_transcode = (isset($post['skip_transcode']) && $this->user_role === 'admin');
         if (!$skip_transcode && strtolower(pathinfo($file_name, PATHINFO_EXTENSION)) !== 'ogg') {
 
-            // Nama output .ogg juga dialokasikan secara atomik agar dua request
-            // dengan judul sama tidak saling menimpa.
+            // Output .ogg juga dialokasikan atomik — dua request judul sama tidak saling menimpa.
             $opus_base = pathinfo($file_name, PATHINFO_FILENAME);
             $opus_file = $this->getUniqueFilename($opus_base, 'ogg', $base_dir . "upload/file/");
             $opus_path = $base_dir . "upload/file/" . $opus_file;
 
-            // Encoding Opus via helper bersama (Uploader & EncodeService satu jalur).
             $opus_result = meel_ffmpeg_encode_opus($this->ffmpeg_bin, $target_file, $opus_path, $this->getEnvPrefix());
             $ret = $opus_result[0];
 
@@ -238,7 +227,6 @@ class Uploader
 
         $this->conn->begin_transaction();
         try {
-            // INSERT via helper bersama (Uploader & EncodeService satu jalur).
             // Uploader tidak menyimpan duration — perilaku lama dijaga (null).
             $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $meta, $file_name, $thumb_name);
             if (!$ins[0]) {

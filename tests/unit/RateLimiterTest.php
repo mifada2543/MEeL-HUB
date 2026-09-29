@@ -1,9 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers RateLimiter
- */
+/** @covers RateLimiter */
 class RateLimiterTest extends TestCase
 {
     private string $origStorageDir;
@@ -168,9 +166,7 @@ class RateLimiterTest extends TestCase
 
     public function testDeniesWhenStorageUnavailable(): void
     {
-        // Point storage at a regular file so it can never be used as a lock
-        // directory — check() must fail closed (deny) instead of silently
-        // allowing requests through.
+        // Storage berupa file biasa → tak bisa jadi direktori lock: check() harus fail closed (deny).
         $invalidStoragePath = MEEL_ROOT . '/temp/ratelimit-test/not-a-dir.lock';
         file_put_contents($invalidStoragePath, 'lock');
 

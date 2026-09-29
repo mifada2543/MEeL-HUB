@@ -65,9 +65,7 @@ class ValidatingProxyTest extends TestCase
         return $response;
     }
 
-    /**
-     * @dataProvider privateConnectTargetsProvider
-     */
+    /** @dataProvider privateConnectTargetsProvider */
     public function testConnectToPrivateTargetIsRefused(string $target, string $hostHeader): void
     {
         $response = $this->probeProxy(
@@ -103,9 +101,7 @@ class ValidatingProxyTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider privateGetTargetsProvider
-     */
+    /** @dataProvider privateGetTargetsProvider */
     public function testHttpAbsoluteUriToPrivateTargetIsRefused(string $absoluteUri): void
     {
         $response = $this->probeProxy(
@@ -138,10 +134,8 @@ class ValidatingProxyTest extends TestCase
     }
 
     /**
-     * T4: baris header dengan CR/LF liar (HTTP request splitting) harus
-     * ditolak SEBELUM koneksi upstream — respons harus kosong (tutup
-     * langsung), bukan 502/200 hasil relay.
-     *
+     * T4: header dengan CR/LF liar (HTTP request splitting) harus ditolak SEBELUM koneksi upstream —
+     * respons kosong (tutup langsung), bukan 502/200 hasil relay.
      * @dataProvider injectionHeadsProvider
      */
     public function testInjectedHeaderHeadIsRejectedSilently(string $head): void
@@ -185,8 +179,7 @@ class ValidatingProxyTest extends TestCase
 
     public function testLegitHeadStillProcessesNormally(): void
     {
-        // Head valid tetap diproses hingga tahap validasi target
-        // (target private → 502; bukan penutupan diam).
+        // Head valid tetap diproses hingga tahap validasi target (target private → 502; bukan penutupan diam).
         $response = $this->probeProxy(
             "GET http://127.0.0.1/secret HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
         );

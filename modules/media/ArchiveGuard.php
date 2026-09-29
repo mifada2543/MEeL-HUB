@@ -1,20 +1,7 @@
 <?php
 
 /**
- * ArchiveGuard — Validasi & ekstraksi aman arsip ZIP/CBZ (manga/books).
- *
- * Menggantikan pemanggilan langsung ZipArchive::extractTo() ke direktori
- * final. Pipeline:
- *
- *   buka arsip
- *     → inspeksi tiap entry (path traversal, null byte, count, ukuran,
- *       rasio kompresi, kedalaman, symlink, ekstensi)
- *     → ekstrak ke staging directory (server-generated)
- *     → validasi hasil ekstraksi
- *     → pindahkan ke destinasi final (rename per file, tidak menimpa
- *       file acak di luar direktori)
- *
- * Semua limit dapat dikonfigurasi via konstanta (lihat defaults di bawah).
+ * ArchiveGuard — validasi & ekstraksi aman arsip ZIP/CBZ, menggantikan ZipArchive::extractTo() ke destinasi final: inspeksi tiap entry → staging server-generated → validasi → rename per file (tidak menimpa file luar).
  */
 
 if (!defined('MAX_ARCHIVE_ENTRIES')) {
@@ -35,9 +22,6 @@ if (!defined('MAX_ARCHIVE_PATH_DEPTH')) {
 
 class ArchiveGuard
 {
-    /**
-     * Ekstensi yang diizinkan untuk arsip manga/CBZ (halaman gambar).
-     */
     private const ALLOWED_IMAGE_EXT = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'avif'];
 
     private string $basePath;
@@ -47,14 +31,7 @@ class ArchiveGuard
         $this->basePath = rtrim($basePath, '/\\');
     }
 
-    /**
-     * Validasi + ekstraksi aman ke $destDir.
-     *
-     * @param string $archivePath Path arsip ZIP/CBZ (sudah di server, dari upload).
-     * @param string $destDir     Direktori final (akan dibuat bila perlu).
-     *
-     * @return array{ok: bool, error?: string, entries?: int}
-     */
+    /** Validasi + ekstraksi aman ke $destDir. @return array{ok: bool, error?: string, entries?: int} */
     public function extractSafe(string $archivePath, string $destDir): array
     {
         if (!is_file($archivePath) || !is_readable($archivePath)) {
@@ -102,11 +79,7 @@ class ArchiveGuard
         }
     }
 
-    /**
-     * Periksa seluruh entry tanpa mengekstrak apa pun.
-     *
-     * @return array{ok: bool, error?: string, entries?: int}
-     */
+    /** Periksa seluruh entry tanpa mengekstrak apa pun. @return array{ok: bool, error?: string, entries?: int} */
     private function validateEntries(ZipArchive $zip): array
     {
         $count = $zip->numFiles;
@@ -134,13 +107,11 @@ class ArchiveGuard
 
             $name = (string) ($stat['name'] ?? '');
 
-            // 1. Path traversal / absolute path / null byte
             $pathCheck = $this->validateEntryName($name);
             if (!$pathCheck['ok']) {
                 return $pathCheck;
             }
 
-            // 2. Ukuran per-file & total (uncompressed)
             $entrySize = (int) ($stat['size'] ?? 0);
             if ($entrySize < 0) {
                 return ['ok' => false, 'error' => "Entry '{$name}' memiliki ukuran tidak valid."];
@@ -169,7 +140,7 @@ class ArchiveGuard
                 ];
             }
 
-            // 3. Rasio kompresi (zip bomb)
+            // Rasio kompresi — guard terhadap zip bomb.
             $compSize = (int) ($stat['comp_size'] ?? 0);
             if ($compSize > 0 && $entrySize > 0) {
                 $ratio = $entrySize / $compSize;
@@ -186,7 +157,6 @@ class ArchiveGuard
                 }
             }
 
-            // 4. Ekstensi diizinkan (hanya untuk file non-direktori)
             if (substr($name, -1) !== '/') {
                 $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
                 if (!in_array($ext, self::ALLOWED_IMAGE_EXT, true)) {
@@ -205,9 +175,7 @@ class ArchiveGuard
         return ['ok' => true, 'entries' => $count];
     }
 
-    /**
-     * @return array{ok: bool, error?: string}
-     */
+    /** @return array{ok: bool, error?: string} */
     private function validateEntryName(string $name): array
     {
         if ($name === '') {
@@ -246,11 +214,7 @@ class ArchiveGuard
         return ['ok' => true];
     }
 
-    /**
-     * Ekstrak entry satu per satu ke staging — tidak memakai extractTo().
-     *
-     * @return array{ok: bool, error?: string}
-     */
+    /** Ekstrak entry satu per satu ke staging — tidak memakai extractTo(). @return array{ok: bool, error?: string} */
     private function extractToStaging(ZipArchive $zip, string $staging): array
     {
         $count = $zip->numFiles;
@@ -260,7 +224,6 @@ class ArchiveGuard
 
             $target = $staging . '/' . $norm;
             if (substr($norm, -1) === '/') {
-                // Direktori
                 if (!@mkdir($target, 0755, true) && !is_dir($target)) {
                     return ['ok' => false, 'error' => "Gagal membuat direktori '{$this->shortName($name)}'."];
                 }
@@ -278,7 +241,6 @@ class ArchiveGuard
             if ($content === false) {
                 return ['ok' => false, 'error' => "Gagal membaca entry '{$this->shortName($name)}'."];
             }
-            // Batasi memori: jangan tulis lebih dari batas per-file
             if (strlen($content) > MAX_ARCHIVE_ENTRY_BYTES) {
                 return ['ok' => false, 'error' => "Entry '{$this->shortName($name)}' melebihi batas ukuran."];
             }
@@ -290,12 +252,7 @@ class ArchiveGuard
         return ['ok' => true];
     }
 
-    /**
-     * Pindahkan file staging ke destinasi final. File yang sudah ada TIDAK
-     * ditimpa (menghindari tabrakan dengan chapter lama & symlink swap).
-     *
-     * @return array{ok: bool, error?: string}
-     */
+    /** Pindahkan file staging ke destinasi final. File yang sudah ada TIDAK ditimpa (menghindari tabrakan dengan chapter lama & symlink swap). @return array{ok: bool, error?: string} */
     private function moveStagingToDest(string $staging, string $destDir): array
     {
         if (!is_dir($destDir)) {

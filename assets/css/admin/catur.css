@@ -33,7 +33,6 @@ body {
   transition: width 0.5s linear;
 }
 
-/* ============ LIGHT THEME ============ */
 html[data-theme="light"] body {
   background: #fafafa;
   color: #27272a;

@@ -67,8 +67,6 @@ class StreamAuthTest extends TestCase
         $this->assertFalse(is_stream_authorized(145));
     }
 
-    // ── T3: gate path video/stream.php ─────────────────────────────────
-
     protected function tearDown(): void
     {
         unset($_SESSION['stream_paths'], $_SESSION['stream_ok']);
