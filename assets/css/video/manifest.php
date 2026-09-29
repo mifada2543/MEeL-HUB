@@ -12,6 +12,7 @@ return [
     'glow.css',
     'seek.css',
     'toast.css',
+    'upscaler.css',
     'utility.css',
     
     '../shared/light-theme.css',

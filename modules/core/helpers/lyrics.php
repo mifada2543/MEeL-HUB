@@ -34,11 +34,8 @@ function parse_lrc(string $content): array
                 'text' => $text,
             ];
         } elseif (preg_match('/^\[ti:(.+)\]$/i', $line, $m)) {
-            // metadata tag, skip
         } elseif (preg_match('/^\[ar:(.+)\]$/i', $line, $m)) {
-            // metadata tag, skip
         } elseif (preg_match('/^\[al:(.+)\]$/i', $line, $m)) {
-            // metadata tag, skip
         }
     }
 

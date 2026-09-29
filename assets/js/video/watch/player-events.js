@@ -1,5 +1,30 @@
 function setupMeelPlayerEvents() {
   window.player = player;
+
+  // Play() ditolak saat tab di-background: jangan menyerah diam-diam, coba lagi
+  // begitu tab aktif (mencegah freeze setelah recovery/swap di tab tersembunyi).
+  function retryPlayWhenVisible(playPromise, onRejected) {
+    if (!playPromise || typeof playPromise.catch !== "function") return;
+    playPromise.catch(function (err) {
+      if (document.hidden) {
+        pendingPlayRetry = !0;
+        console.log("play() ditolak saat tab di-background, dicoba ulang saat tab aktif.");
+        return;
+      }
+      if (onRejected) onRejected(err);
+    });
+  }
+  if (!window._meelPlayRetryBound) {
+    window._meelPlayRetryBound = !0;
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden || !pendingPlayRetry) return;
+      pendingPlayRetry = !1;
+      if (player && player.paused) {
+        var p = player.play();
+        if (p && p.catch) p.catch(function () {});
+      }
+    });
+  }
   
   function applyMeelVideoAspect(wrapper, videoW, videoH) {
     if (!wrapper || !videoW || !videoH) return;
@@ -327,6 +352,7 @@ function setupMeelPlayerEvents() {
                 player = new Plyr(videoElement, plyrOptions);
                 setupMeelPlayerEvents();
                 window.appendCustomSettings && setTimeout(window.appendCustomSettings, 0);
+                window.MEEL_UPSCALER && window.MEEL_UPSCALER.attach(player);
                 var playPromise = player.play();
                 if (void 0 !== playPromise) {
                   playPromise.catch(function (e) {
@@ -448,6 +474,7 @@ function setupMeelPlayerEvents() {
       if (
         ("function" == typeof window.appendCustomSettings &&
           setTimeout(window.appendCustomSettings, 0),
+        window.MEEL_UPSCALER && window.MEEL_UPSCALER.attach(player),
         videoElement && !isHls && (videoElement.preload = "metadata"),
         a(),
         vttSrc)
@@ -468,7 +495,7 @@ function setupMeelPlayerEvents() {
 
         function doRestore() {
           player.currentTime = savedPos;
-          player.play().catch(() => {});
+          retryPlayWhenVisible(player.play());
           startStuckDetector();
           startPlaybackStartTimeout();
         }
@@ -513,7 +540,9 @@ function setupMeelPlayerEvents() {
           })
         )
           return;
-        player.play().catch(() => console.log("Menunggu interaksi user..."));
+        retryPlayWhenVisible(player.play(), function () {
+          console.log("Menunggu interaksi user...");
+        });
         startStuckDetector();
         startPlaybackStartTimeout();
       }
@@ -971,7 +1000,12 @@ function setupMeelPlayerEvents() {
       if (!e) return;
       (e.querySelector("#plyr-setting-glow")?.remove(),
         e.querySelector("#plyr-setting-loop")?.remove(),
-        e.querySelector("#plyr-setting-autonext")?.remove());
+        e.querySelector("#plyr-setting-autonext")?.remove(),
+        e.querySelector("#plyr-setting-upsale")?.remove());
+      const up =
+        window.MEEL_UPSCALER && window.MEEL_UPSCALER.buildHomeRow
+          ? window.MEEL_UPSCALER.buildHomeRow()
+          : null;
       const t = document.createElement("button");
       ((t.type = "button"),
         (t.className = "plyr__control"),
@@ -1002,12 +1036,16 @@ function setupMeelPlayerEvents() {
         o.addEventListener("click", (e) => {
           (e.stopPropagation(), window.toggleAutoNext());
         }),
+        up && e.appendChild(up),
         e.appendChild(t),
         e.appendChild(n),
         e.appendChild(o),
         p(),
         u(),
-        window.updateAutoNextMenuUI());
+        window.updateAutoNextMenuUI(),
+        window.MEEL_UPSCALER && window.MEEL_UPSCALER.refreshHomeRow
+          ? window.MEEL_UPSCALER.refreshHomeRow()
+          : void 0);
     };
     window.appendCustomSettings = () => {
       if (y) return;

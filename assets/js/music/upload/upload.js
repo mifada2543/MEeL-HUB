@@ -2,8 +2,9 @@
  * @copyright Copyright (C) 2026 Mifada
  * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
 /*
- * upload/upload.js — JS halaman music/upload.php: drop-zone handler (audio & cover), overlay upload (progress manual), drag-and-drop, dan auto-fill metadata dari file audio via auto_metadata.php.
- * Depends on: shared/upload-progress.js (meelUploadProgress)
+ * upload/upload.js — music/upload.php: drop-zone (audio & cover), overlay
+ * progress, drag-and-drop, auto-fill metadata; progress memakai
+ * shared/upload-progress.js (meelUploadProgress).
  * */
 // True jika user memilih cover manual — Auto-fill TIDAK menimpa cover manual
 // (konsisten dgn prioritas cover di Uploader::processMusic: manual > embedded).
@@ -48,7 +49,6 @@ function handleSubmit() {
   btn.style.opacity = ".5";
   btn.style.pointerEvents = "none";
   overlay.classList.add("active");
-  // Animasi progress-bar via helper bersama shared/upload-progress.js
   const fileSizeMB = audioInput.files[0]
     ? audioInput.files[0].size / 1024 / 1024
     : 20;
@@ -128,8 +128,6 @@ function coverFromBase64(b64) {
   dt.items.add(file);
   return dt.files;
 }
-/** Auto-fill metadata dari file audio via ffprobe di server.
- * Upload file ke auto_metadata.php → parse response → isi form + cover. */
 function autoFillMetadata() {
   const audioInput = document.getElementById("audio-input");
   if (!audioInput.files || !audioInput.files[0]) {
@@ -173,7 +171,6 @@ function autoFillMetadata() {
           document.getElementById("f-album").value = data.album.trim();
         if (hasDesc)
           document.getElementById("f-desc").value = data.description.trim();
-        // Isi cover art dari metadata (hanya jika user belum pilih cover manual)
         if (data.cover && data.cover.length > 0 && !coverManual) {
           const preview = document.getElementById("cover-preview");
           const iconWrap = document.getElementById("cover-icon-wrap");

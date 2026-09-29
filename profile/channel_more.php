@@ -1,14 +1,6 @@
 <?php
-/**
- * Fragment AJAX (htmx) untuk profil/channel: memuat batch berikutnya dari
- * feed konten user dan merender kartu + tombol load-more lanjutan (atau
- * penanda akhir). Dipanggil oleh profile/index.php via hx-get="channel-more?".
- *
- * - tab=all   → feed campuran video+musik (UNION, urut upload_date DESC)
- * - tab=video → hanya video
- * - tab=music → hanya musik
- *
- * Params: u (username), tab, offset.
+/** Fragment AJAX (htmx) profil/channel: batch feed berikutnya dari profile/index.php (hx-get="channel-more?"). Params: u (username), tab (all|video|music), offset.
+ * Tab "all" mencampur video+musik (UNION, upload_date DESC) — lihat profile/index.php.
  */
 require_once '../modules/auth/helpers/session.php';
 meel_boot_session();

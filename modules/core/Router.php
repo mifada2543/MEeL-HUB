@@ -94,9 +94,7 @@ final class MeelRouter
         'system/mfa'             => ['handler' => 'controllers/system/mfa.php',            'script' => '/controllers/system/mfa.php'],
     ];
 
-    // Rute modul OPSIONAL (mis. Arcade) — dipisah agar modul bisa hilang
-    // tanpa merusak HUB (lihat modules/core/Modules.php). Saat modul
-    // nonaktif: halaman → 302 ke HUB, API → JSON 404.
+    // Rute modul OPSIONAL — dipisah agar modul bisa hilang tanpa merusak HUB (lihat modules/core/Modules.php).
     private const OPTIONAL_ROUTES = [
         'arcade'           => ['handler' => 'arcade/index.php',          'script' => '/arcade/index.php'],
         'arcade/beranda'   => ['handler' => 'arcade/index.php',          'script' => '/arcade/index.php'],
@@ -157,7 +155,6 @@ final class MeelRouter
         if (isset(self::ROUTES[$path])) {
             return self::ROUTES[$path];
         }
-        // Rute modul opsional — hanya valid saat modulnya aktif.
         if (isset(self::OPTIONAL_ROUTES[$path])) {
             require_once __DIR__ . '/Modules.php';
             if (Modules::enabled('arcade')) {
@@ -169,9 +166,7 @@ final class MeelRouter
             $_GET['slug'] = $m[1];
             return self::ROUTES['music/playlist'];
         }
-        // /profile/<username> → halaman profil sekaligus channel (konten user).
-        // Tab all|video|music disaring via ?tab= di handler. URL multi-segmen
-        // /profile/<user>/<type> di-301 ke bentuk tunggal ini (lihat dispatch).
+        // /profile/<username> → halaman profil sekaligus channel; tab all|video|music disaring via ?tab= di handler.
         if (preg_match('#^profile/([^/]+)$#', $path, $m)) {
             $_GET['u'] = $m[1];
             return self::ROUTES['profile'];
@@ -198,7 +193,6 @@ final class MeelRouter
         }
 
         // 301 kanonik: /profile/<user>/<all|video|music> → /profile/<user>?tab=<type>
-        // (URL lama channel multi-segmen diarahkan ke halaman profil tunggal)
         if (preg_match('#^profile/([^/]+)/(all|video|music)$#', $path, $m)) {
             header('Location: ' . self::url('profile/' . rawurlencode($m[1]), ['tab' => $m[2]]), true, 301);
             exit;
@@ -207,8 +201,7 @@ final class MeelRouter
         $route = self::routeFor($path);
 
         if ($route === null) {
-            // Modul opsional nonaktif (rutenya dikenal): halaman → 302 HUB,
-            // API → JSON 404. Bukan error 404 generik.
+            // Modul opsional nonaktif (rutenya dikenal): halaman → 302 HUB, API → JSON 404 — bukan error 404 generik.
             if (isset(self::OPTIONAL_ROUTES[$path])) {
                 require_once __DIR__ . '/Modules.php';
                 foreach (self::OPTIONAL_API_PREFIXES as $prefix) {

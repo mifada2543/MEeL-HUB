@@ -1,9 +1,6 @@
 <?php
-/** MEeL-HUB — Contoh Konfigurasi Server (Template)
- * Copy file ini ke settings.php dan sesuaikan dengan environment Anda:
- * cp auth/settings.example.php auth/settings.php
- * File ini HANYA memuat data konfigurasi (DB credentials + MEEL_*
- * constants) — tanpa session, header, atau logic lain.
+/** MEeL-HUB — Contoh Konfigurasi Server: cp auth/settings.example.php auth/settings.php lalu isi nilai.
+ * Hanya data konfigurasi (DB credentials + MEEL_* constants) — tanpa session, header, atau logic lain.
  */
 
 // define('MEEL_ENV', 'production');
@@ -22,9 +19,8 @@ if (!defined('MEEL_HOST')) {
     define('MEEL_HOST', $_SERVER['HTTP_HOST'] ?? '');
 }
 
-// TRUSTED PROXY (CEGAH IP SPOOFING)
-// (mis. Cloudflare, Nginx reverse proxy). Jika diset true padahal server
-// diakses langsung, attacker bisa memalsukan IP untuk bypass IP-ban atau
+// TRUSTED PROXY — cegah IP spoofing: header proxy HANYA dipercaya bila REMOTE_ADDR ada di MEEL_TRUSTED_PROXIES.
+// Diset true padahal server diakses langsung → attacker bisa memalsukan IP untuk bypass IP-ban.
 if (!defined('MEEL_TRUST_PROXY_HEADERS')) {
     define('MEEL_TRUST_PROXY_HEADERS', false);
 }

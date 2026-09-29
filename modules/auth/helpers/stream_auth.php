@@ -33,11 +33,7 @@ if (!function_exists('is_stream_authorized')) {
 }
 
 if (!function_exists('meel_register_stream_path')) {
-    /**
-     * Simpan mapping path file video → media id di sesi (dipanggil halaman
-     * watch), agar endpoint stream dapat memverifikasi token tanpa query DB
-     * per segmen.
-     */
+    /** Simpan mapping path file video → media id di sesi (dipanggil halaman watch) agar endpoint stream bisa verifikasi token tanpa query DB per segmen. */
     function meel_register_stream_path(string $filename, int $id): void
     {
         if ($id <= 0 || $filename === '') return;
@@ -61,9 +57,7 @@ if (!function_exists('meel_register_stream_path')) {
 
 if (!function_exists('meel_stream_path_allowed')) {
     /**
-     * true bila path media boleh diakses sesi ini.
-     * - Di luar pohon video/ (thumbnail, lyrics, dsb.) → publik (aset display).
-     * - Di pohon video/ → wajib mapping stream_paths + token authorize_stream.
+     * true bila path media boleh diakses sesi ini: di luar pohon video/ (thumbnail, lyrics, dsb.) → publik (aset display); di pohon video/ → wajib mapping stream_paths + token authorize_stream.
      */
     function meel_stream_path_allowed(string $relPath): bool
     {

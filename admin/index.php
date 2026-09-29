@@ -14,32 +14,9 @@ define('MEEL_ADMIN_CONTEXT', true);
 include '../controllers/admin/admin_actions.php';
 include '../controllers/admin/admin_data.php';
 
-// Variabel berikut di-set oleh controllers/admin/admin_data.php (include di
-// atas). Anotasi @var untuk intelephense — variabel valid saat runtime.
-/** @var System $sys                        Instance System (dibuat admin_data). */
-/** @var int|null $orphan_checked_at         Waktu cache scan storage. */
-/** @var \mysqli_result $banned_ips      Hasil query ip_ban. */
-/** @var \mysqli_result $all_users      Daftar seluruh user. */
-/** @var \mysqli_result $top_media      Media terpopuler. */
-/** @var \mysqli_result $pending_users  User menunggu aktivasi. */
-/** @var \mysqli_result $result_monitor Hasil query monitor queue. */
-/** @var array $stats                   Statistik agregat (views/likes/dll). */
-/** @var array $server_stats            Statistik server (cpu/ram/swap/net). */
-/** @var array $orphans                 Daftar file yatim. */
-/** @var array $chart_activity          Data chart aktivitas. */
-/** @var float $ssd_free */
-/** @var float $ssd_used */
-/** @var float $ssd_total */
-/** @var float $hdd_free */
-/** @var float $sz_vid */
-/** @var float $sz_mus */
-/** @var float $sz_book */
-/** @var float $sz_d_pub */
-/** @var float $sz_d_prv */
-/** @var float $p_vid */
-/** @var float $p_mus */
-/** @var float $p_book */
-/** @var float $p_drive */
+// Variabel di bawah di-set oleh include controllers/admin/admin_data.php (valid saat runtime; @var untuk intelephense).
+/** @var System $sys; \mysqli_result $banned_ips, $all_users, $top_media, $pending_users, $result_monitor */
+/** @var array $stats, $server_stats, $orphans, $chart_activity; float $ssd_free/$ssd_used/$ssd_total/$hdd_free, $sz_*, $p_* */
 
 require_once __DIR__ . '/../modules/core/MeelCoin.php';
 

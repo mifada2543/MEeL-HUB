@@ -1,9 +1,6 @@
 <?php
-/** @var array<string, mixed> $playlist Data playlist dari PlaylistRepository */
-/** @var int $playlist_id ID playlist aktif */
-/** @var int $total_songs Jumlah lagu dalam playlist */
-/** @var \mysqli_result $songs_query Query result lagu */
-/** @var array<string, mixed>|null $first_song Data lagu pertama */
+// Variabel berikut di-set oleh include pemanggil (require di bawah) — @var untuk intelephense.
+/** @var array<string, mixed>|null $playlist, $first_song; int $playlist_id, $total_songs; \mysqli_result $songs_query */
 require_once '../modules/core/helpers.php';
 meel_boot_session();
 include '../auth/config.php';

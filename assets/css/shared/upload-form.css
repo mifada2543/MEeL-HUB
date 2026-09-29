@@ -1,5 +1,4 @@
 
-
 .page-wrap {
   --page-wrap-rows: auto 1fr;
   position: relative;
@@ -323,7 +322,6 @@
   margin-left: auto;
 }
 
-/* ============ LIGHT THEME ============ */
 html[data-theme="light"] .stat-chip {
   background: rgba(0, 0, 0, 0.02);
 }

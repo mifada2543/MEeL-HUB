@@ -20,6 +20,7 @@ di-commit ke repo) di MEeL-HUB. File ini dibuat dari hasil audit keamanan
 | `lucide.js` | 0.575.0 | https://unpkg.com/lucide@latest/ | 2026-07-31 |
 | `chart.umd.min.js` | 4.4.7 | https://www.jsdelivr.com/package/npm/chart.js | 2026-07-31 |
 | `marked.min.js` | 15.0.12 | https://github.com/markedjs/marked/releases | 2026-07-31 |
+| `anime4k-webgpu.js` | 1.0.0 | https://www.npmjs.com/package/anime4k-webgpu | 2026-09-28 |
 | `tailwind.min.css` | **~3.4.x** — perlu verifikasi manual (file: 93909 bytes) | https://cdn.tailwindcss.com/ | 2026-09-19 |
 | `script.min.js` | N/A — **file custom** (wrapper meelAlert/meelConfirm) | — | 2026-07-31 |
 | `player_music.js` / `player_video.js` | N/A — **file custom** (dipecah ke `assets/js/music/` & `assets/js/video/`) | — | 2026-07-31 |
@@ -38,6 +39,12 @@ di-commit ke repo) di MEeL-HUB. File ini dibuat dari hasil audit keamanan
 - **chart.js 4.4.7** — dari header lisensi + path asal jsDelivr (`/npm/chart.js@4.4.7`).
 - **tailwind.min.css ~3.4.x** — bundle minified tanpa header versi. Ukuran file 93909 bytes
   konsisten dengan Tailwind CSS v3.4.x. Perlu verifikasi manual (lihat TODO).
+- **anime4k-webgpu 1.0.0** — dari `package.json` tarball npm
+  (`anime4k-webgpu-1.0.0.tgz`); file `lib/index.js` di-vendor apa adanya + header
+  atribusi MIT di bagian atas. Dipakai fitur AI Upscale di pemutar video
+  (`assets/js/video/watch/upscaler.js`), di-load on-demand, bukan eager.
+  Lokasi bundle: `assets/models/anime4k/model.js` (sebelumnya
+  `assets/js/compatibilitas/anime4k-webgpu.js`).
 
 ## 🛡️ Proses Pengecekan CVE / Security Advisory
 
@@ -68,5 +75,6 @@ Developer **wajib** melakukan hal berikut secara berkala:
 
 ---
 
-> Terakhir diverifikasi: **2026-07-31** — seluruh versi di atas dibaca langsung dari
-> isi file bundle (header lisensi / string versi internal), bukan perkiraan.
+> Terakhir diverifikasi: **2026-09-28** — versi hls/plyr/htmx/lucide/chart/sweetalert2
+> dibaca langsung dari isi file bundle (header lisensi / string versi internal), bukan
+> perkiraan; `anime4k-webgpu` dari metadata npm.

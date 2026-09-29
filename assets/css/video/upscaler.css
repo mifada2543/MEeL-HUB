@@ -1,0 +1,77 @@
+/* MEeL Video — AI Upscale overlay (WebGPU/Anime4K): canvas menumpang persis
+   di atas <video> di dalam .plyr. */
+
+#meel-upscale-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+  pointer-events: none;
+  z-index: 1;
+  background: transparent;
+}
+
+.plyr.meel-upscale-active #meel-upscale-canvas {
+  display: block;
+}
+
+/* Video tetap di-decode & di-frame (rVFC tetap jalan), hanya tidak dirender. */
+.plyr.meel-upscale-active video {
+  opacity: 0;
+}
+
+.meel-upscale-spin {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 6px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: meel-upscale-spin 0.7s linear infinite;
+  vertical-align: -1px;
+}
+
+@keyframes meel-upscale-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.plyr__menu__container .meel-upscale-item[aria-disabled="true"] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Baris menu yang tak didukung: redup tapi tetap bisa diklik → panel alasan */
+.plyr__menu__container .meel-upscale-unavail[aria-disabled="true"] {
+  opacity: 0.45;
+}
+
+.meel-upscale-why {
+  padding: 10px 4px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.meel-upscale-why-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.meel-upscale-why-body {
+  margin: 0 0 10px;
+  opacity: 0.8;
+}
+
+.meel-upscale-why-req {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  opacity: 0.7;
+}
+
+.meel-upscale-why-req li {
+  margin-bottom: 4px;
+}

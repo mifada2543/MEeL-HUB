@@ -1,9 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers MediaInteraction
- */
+/** @covers MediaInteraction */
 class MediaInteractionTest extends TestCase
 {
     

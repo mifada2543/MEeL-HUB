@@ -14,6 +14,8 @@ let videoElement,
   isAutoRecovering = !1,
   isRecovering = !1,
   isCheckingStatus = !1,
+  pendingRecoveryOnVisible = !1,
+  pendingPlayRetry = !1,
   waitingTimeout = null,
   recoveryRetryCount = 0;
 const MAX_RECOVERY_RETRIES = 20;
@@ -67,7 +69,7 @@ const plyrOptions = {
       "airplay",
       "fullscreen",
     ],
-    settings: ["quality", "speed"],
+    settings: ["quality", "speed", "upscale"],
     i18n: {
       play: "Putar video",
       pause: "Jeda video",
@@ -82,6 +84,7 @@ const plyrOptions = {
       unmute: "Suarakan",
       captions: "Teks",
       settings: "Pengaturan",
+      upscale: "AI Upscale",
       fullscreen: "Layar penuh",
       exitFullscreen: "Keluar layar penuh",
       pip: "Gambar dalam gambar",

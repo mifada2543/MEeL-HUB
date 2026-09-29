@@ -2,12 +2,10 @@
 (function() {
     'use strict';
 
-    /* Lucide Icons */
     function initIcons() {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
-    /* Delete Modal */
     window.confirmDelete = function(id, type, title, views, likes, dislikes, thumbUrl) {
         var idEl      = document.getElementById('modal-media-id');
         var typeEl    = document.getElementById('modal-media-type');
@@ -55,7 +53,6 @@
         if (e.key === 'Escape') closeDeleteModal();
     });
 
-    /* Search Enter */
     var searchInput = document.querySelector('input[name="search"]');
     if (searchInput) {
         searchInput.addEventListener('keydown', function(e) {
@@ -67,7 +64,6 @@
         });
     }
 
-    /* Type Dropdown Toggle */
     var typeTrigger = document.getElementById('type-trigger');
     var typeDropdown = document.getElementById('type-dropdown');
     if (typeTrigger && typeDropdown) {
@@ -123,7 +119,6 @@
         return svg;
     }
 
-    /* Fix sort links + chevrons */
     document.querySelectorAll('.sort-link[data-sort]').forEach(function(a) {
         var field = a.getAttribute('data-sort');
         var nextDir = (field === sort)
@@ -138,36 +133,30 @@
         }
     });
 
-    /* Fix stat chip links */
     document.querySelectorAll('.stat-chip[data-type]').forEach(function(chip) {
         chip.href = buildUrl({ type: chip.getAttribute('data-type') });
     });
 
-    /* Fix type option links */
     document.querySelectorAll('.type-option[data-type]').forEach(function(opt) {
         opt.href = buildUrl({ type: opt.getAttribute('data-type') });
     });
 
-    /* Fix clear filter link */
     var clearBtn = document.querySelector('.btn-clear-filter');
     if (clearBtn) {
         clearBtn.href = buildUrl({ search: '', type: type });
     }
 
-    /* Fix search form hidden inputs */
     document.querySelectorAll('#search-form input[type="hidden"]').forEach(function(input) {
         if (input.name === 'sort') input.value = sort;
         else if (input.name === 'dir') input.value = dir;
         else if (input.name === 'type') input.value = type;
     });
 
-    /* Hover Effects */
     document.querySelectorAll('.admin-table tbody tr').forEach(function(row) {
         row.addEventListener('mouseenter', function() { this.style.background = 'rgba(255,255,255,0.02)'; });
         row.addEventListener('mouseleave', function() { this.style.background = 'transparent'; });
     });
 
-    /* Init */
     initIcons();
 
 })();

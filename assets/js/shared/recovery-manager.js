@@ -15,7 +15,13 @@
         lastTs = Date.now();
         timer = setInterval(function () {
           if (opts.isPaused && opts.isPaused()) return;
-          if (document.hidden) return;
+          if (document.hidden) {
+            // Reset baseline selama tab tersembunyi — durasi ter-hidden tidak
+            // boleh dihitung sebagai "stuck" saat tab aktif kembali.
+            lastTime = -1;
+            lastTs = Date.now();
+            return;
+          }
           var ct = opts.getCurrentTime();
           var now = Date.now();
           if (ct === lastTime) {
