@@ -1,28 +1,13 @@
 /**
- * FSRCNN ×2 — model neural upscaler WebGPU untuk AI Upscale MEeL.
+ * FSRCNN ×2 — neural upscaler WebGPU lokal (tanpa unduhan): bobot dilatih
+ * lokal oleh trainer vanilla JS yang tidak ikut repo, dikirim sebagai
+ * weights.js (window.MEEL_FSRCNN_WEIGHTS_B64).
  *
- * Bobot dilatih LOKAL (scripts/train-fsrcnn.js) dan dikirim bersama sebagai
- * fsrcnn-weights.js (window.MEEL_FSRCNN_WEIGHTS_B64) — TIDAK ada unduhan
- * dari internet.
+ * Arsitektur, layout bobot, dan strategi bertile ada di
+ * docs/id/development.md ("Video — AI Upscale & Play Recovery"); kontrak
+ * registerModel() ada di bagian yang sama.
  *
- * Arsitektur (layout Float32Array(13163), lihat juga header fsrcnn-weights.js):
- *   input LR (dikurangi 0.5)
- *   → conv1 5×5 pad2 3→24 + PReLU → shrink 1×1 24→16 + PReLU
- *   → 3× map 3×3 pad1 16→16 + PReLU
- *   → deconv 9×9 stride2 fase (16→3) + bias 0.5 → clamp 0..1, alpha 1.0.
- *
- * Eksekusi bertile (T=512 piksel LR, halo 5 per sisi) agar jejak memori
- * antara tetap kecil berapa pun resolusi video. Setiap tile = 5 render pass:
- *   P1 input → shrink (conv1+PReLU+shrink terfusion, 4 MRT)
- *   P2 shrink → map1, P3 map1 → map2, P4 map2 → map3 (masing-masing4 MRT)
- *   P5 map3 → tekstur keluaran 2× (scissor ke rect tile).
- * 16 kanal antara = 4 tekstur rgba16float per lapisan (64 B/px LR/lapisan).
- *
- * Kontrak registry (upscaler.js):
- *   buildChain({device, modeId, inputTexture, native, target}) -> [node]
- *   node = { pass(enc), getOutputTexture(), pipelines?, destroy?() }
- *
- * Semantik tepi sama persis dengan trainer CPU: baca di luar batas frame
+ * Semantik tepi wajib sama dengan trainer CPU: baca di luar batas frame
  * di-skip (zero-pad), posisi di luar frame tidak dikonsumsi.
  */
 (function () {
@@ -33,7 +18,8 @@
   var T = 512; // sisi tile (piksel LR)
   var TS = T + 10; // ukuran tekstur tile = T + halo 5 per sisi
 
-  // Offset buffer bobot — HARUS sama dengan scripts/train-fsrcnn.js (OFF).
+  // Offset bobot — wajib identik dengan layout Float32Array(13163) di
+  // docs/id/development.md (trainer lokal tidak ikut repo).
   var OFF = {
     c1w: 0, c1b: 1800, c1p: 1824,
     sw: 1848, sb: 2232, sp: 2248,
@@ -45,7 +31,45 @@
 
   var weightBuf = null; // ArrayBuffer hasil decode, dipakai ulang tiap build
 
-  /* ============================ WGSL ============================ */
+  // weights.js satu folder dengan file ini; string versi (?v=) ikut file model.
+  var WEIGHTS_URL = (function () {
+    var src = (document.currentScript && document.currentScript.src) || "";
+    var m = src.match(/[?&]v=([^&]+)/);
+    var qs = m ? "?v=" + encodeURIComponent(m[1]) : "";
+    return src ? src.replace(/[^\/?]+(\?[^\/]*)?$/, "weights.js" + qs) : "weights.js";
+  })();
+
+  function injectScript(url) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = url;
+      s.async = true;
+      s.onload = function () {
+        resolve();
+      };
+      s.onerror = function () {
+        s.remove();
+        reject(new Error("Gagal memuat " + url));
+      };
+      document.head.appendChild(s);
+    });
+  }
+
+  function decodeWeights(b64) {
+    var bin;
+    try {
+      bin = atob(b64);
+    } catch (e) {
+      throw new Error("bobot FSRCNN bukan base64 valid");
+    }
+    var n = bin.length;
+    if (n % 4 !== 0 || n / 4 !== TOTAL) {
+      throw new Error("panjang bobot FSRCNN tidak valid (" + n + " byte)");
+    }
+    var u8 = new Uint8Array(n);
+    for (var i = 0; i < n; i++) u8[i] = bin.charCodeAt(i);
+    weightBuf = u8.buffer;
+  }
 
   var VS = [
     "struct VSOut {",
@@ -76,8 +100,7 @@
     ].join("\n");
   }
 
-  // P1: conv1 5×5 pad2 3→24 + PReLU → shrink 1×1 24→16 + PReLU.
-  // Membaca input global (zero-pad di luar frame), menulis 4 tekstur.
+  // P1: conv1 5×5 pad2 3→24 + PReLU → shrink 1×1 24→16 + PReLU (4 MRT).
   function shaderP1(w, h) {
     return [
       VS,
@@ -131,10 +154,8 @@
     ].join("\n");
   }
 
-  // P2–P4: conv3 3×3 pad1 16→16 + PReLU. Baca 4 tekstur, tulis 4 MRT.
-  // Teks tile: koordinat LR dari pusat tile (origin x0-5), baca di-clamp
-  // ke tekstur (cincin terluar = sampah tak terkonsumsi) dan di-skip di
-  // luar batas frame (zero-pad, sama seperti trainer CPU).
+  // P2–P4: conv3 3×3 pad1 16→16 + PReLU (4 MRT). Koordinat tile dari pusat
+  // tile (origin x0-5); tepi di-clamp ke tekstur, luar frame zero-pad.
   function shaderMap(w, h, base, bias, pre) {
     return [
       VS,
@@ -195,9 +216,8 @@
     ].join("\n");
   }
 
-  // P5: deconv 9×9 stride2 fase16→3 + bias, clamp 0..1, alpha 1.0.
-  // Posisi piksel = koordinat absolut tekstur keluaran (viewport penuh);
-  // scissor membatasi ke rect tile.
+  // P5: deconv 9×9 stride2 fase 16→3 + bias, clamp 0..1. Posisi piksel =
+  // koordinat absolut tekstur keluaran; scissor membatasi ke rect tile.
   function shaderP5(w, h) {
     return [
       VS,
@@ -238,8 +258,6 @@
     ].join("\n");
   }
 
-  /* ============================ Registry ============================ */
-
   window.MEEL_UPSCALER.registerModel({
     id: "fsrcnn",
     label: "FSRCNN",
@@ -248,23 +266,18 @@
     load: function () {
       if (weightBuf) return Promise.resolve();
       var b64 = window.MEEL_FSRCNN_WEIGHTS_B64;
-      if (typeof b64 !== "string" || !b64) {
-        return Promise.reject(new Error("fsrcnn-weights.js belum termuat"));
+      if (typeof b64 === "string" && b64) {
+        decodeWeights(b64);
+        return Promise.resolve();
       }
-      var bin;
-      try {
-        bin = atob(b64);
-      } catch (e) {
-        return Promise.reject(new Error("bobot FSRCNN bukan base64 valid"));
-      }
-      var n = bin.length;
-      if (n % 4 !== 0 || n / 4 !== TOTAL) {
-        return Promise.reject(new Error("panjang bobot FSRCNN tidak valid (" + n + " byte)"));
-      }
-      var u8 = new Uint8Array(n);
-      for (var i = 0; i < n; i++) u8[i] = bin.charCodeAt(i);
-      weightBuf = u8.buffer;
-      return Promise.resolve();
+      // Lazy-load: injeksi weights.js dulu, baru decode base64-nya.
+      return injectScript(WEIGHTS_URL).then(function () {
+        var b = window.MEEL_FSRCNN_WEIGHTS_B64;
+        if (typeof b !== "string" || !b) {
+          throw new Error("weights.js belum termuat setelah injeksi");
+        }
+        decodeWeights(b);
+      });
     },
     buildChain: function (o) {
       var device = o.device;
@@ -342,8 +355,7 @@
       });
       device.queue.writeBuffer(ubuf, 0, udata);
 
-      // Pipeline per pass: bgl (uniform + bobot + tekstur baca), tanpa
-      // perubahan layout dinamis — bind group dibuat per (pass, tile).
+      // Tanpa dynamic offset: bind group dibuat per (pass, tile) saat build.
       function makePass(name, code, readTexs, views, opts) {
         var module = device.createShaderModule({ label: "meel-fsrcnn-" + name, code: code });
         var entries = [

@@ -169,6 +169,19 @@ music ──1:N── playlist_tracks
 
 ## Coding Conventions
 
+### Comment Style
+
+- **Free for *why*** — design rationale, trade-offs, past pitfalls (e.g. "without
+  this reset the render loop dies silently"), and contracts that are not visible
+  in the code.
+- **Never restate the code** — a comment that only narrates what the next line
+  does adds nothing and goes stale quickly.
+- **Long technical detail → documentation** — API contracts, pipeline flows, and
+  behaviour notes that need context live in the MD files; the code file only
+  points there.
+- **No section banners** — do not use `/* ==== 1. Name ==== */` separators in JS;
+  a blank line is enough.
+
 ### Security
 
 1. **Always Prepared Statement** — No SQL concat
@@ -634,6 +647,135 @@ saved playback position (`music_pos_<id>` in `localStorage`) and the user did
 > **Design decision (2026-08):** active listening sessions auto-continue
 > without interruption; only cold visits ask to resume.
 
+### Video — AI Upscale & Play Recovery
+
+Behaviour notes for the video player that are not obvious from a quick code
+read; primary references are `assets/js/video/watch/upscaler.js` and
+`recovery.js`.
+
+#### Upscale model API contract
+
+Models are pluggable through `MEEL_UPSCALER.registerModel()`:
+
+```javascript
+MEEL_UPSCALER.registerModel({
+  id, label, short,
+  modes: [{ id, label, short }, ...],
+  load: function () { return Promise; },      // heavy lazy-load (bundle / weights)
+  buildChain: function ({ device, modeId, inputTexture, native, target }) {
+    return [node, ...];
+    // node = {
+    //   pass(encoder): void,            // encode this frame's passes
+    //   getOutputTexture(): GPUTexture, // output texture of the last node
+    //   pipelines?: [GPUPipelineBase],  // registered for cleanup
+    //   destroy?(): void,               // optional: free the node's resources;
+    //                                   // when present it replaces getOutputTexture
+    // };
+  },
+});
+```
+
+- `inputTexture` is `rgba16float` at `native` size; the final size may differ
+  from `target` — the linear blit stretches it to the canvas size.
+- Model files live in `assets/models/<id>/model.js` and are injected on first
+  selection. The `registerModel()` inside that file **overwrites** the static
+  descriptor registered by the shell, so `doRebuild()` always re-reads the
+  entry before calling `buildChain()`.
+- Built-in models: `anime4k` (vendor bundle), `meelscale` (local resampler),
+  `fsrcnn` (weights in `assets/models/fsrcnn/weights.js`).
+
+#### Model notes: FSRCNN & MEeLScale
+
+Both are local models under `assets/models/<id>/` — no internet downloads.
+
+**FSRCNN ×2** (`fsrcnn/model.js` + `fsrcnn/weights.js`)
+
+- Weights are a base64 `Float32Array(13163)` in `window.MEEL_FSRCNN_WEIGHTS_B64`,
+  trained locally by a vanilla JS trainer that is not in the repo (regenerate
+  with `node scripts/train-fsrcnn.js` in a local checkout).
+- Architecture: LR input (minus 0.5) → conv1 5×5 pad2 3→24 + PReLU →
+  shrink 1×1 24→16 + PReLU → 3× map 3×3 pad1 16→16 + PReLU → deconv 9×9
+  stride2 phase (16→3) + bias 0.5 → clamp 0..1.
+- Blob offsets (the `OFF` constant in `model.js` must match exactly):
+  `c1w 0, c1b 1800, c1p 1824, sw 1848, sb 2232, sp 2248, m1w 2264, m1b 4568,
+  m1p 4584, m2w 4600, m2b 6904, m2p 6920, m3w 6936, m3b 9240, m3p 9256,
+  dw 9272, db 13160`.
+- Tiled execution (T=512 LR px, 5 px halo per side) keeps the intermediate
+  footprint small regardless of video resolution; the 16 intermediate channels
+  are 4 rgba16float textures per layer. Each tile runs 5 render passes (P1
+  fused conv1+shrink, P2–P4 map, P5 deconv into the 2× output texture with a
+  scissor) and the order is **tile-major**: one tile finishes P1→P5 before the
+  next one, because the intermediate textures are shared.
+- Edge semantics match the CPU trainer: reads outside the frame are skipped
+  (zero-pad).
+- Evaluation (n=150, 64×64 HR patches, 1500 steps): PSNR **32.409 dB** (bicubic
+  32.390 dB, bilinear 31.308 dB).
+
+**MEeLScale** (`meelscale/model.js`)
+
+- Weightless separable resampler — one fullscreen-triangle render pass per
+  mode; mode ids are algorithm names (`bilinear`, `mitchell` B=1/3 C=1/3,
+  `catrom` B=0 C=1/2, `lanczos2`, `lanczos3`).
+- When reducing resolution the taps widen: `rx/ry = clamp(native/target, 1, 8)`,
+  the tap window is capped at 63 taps per axis, edges are clamped and the
+  result is normalised by the total weight (`wsum ≤ 0` falls back to the
+  nearest sample, not a black pixel).
+
+#### Render pipeline & backpressure
+
+- Only one GPU submit is *in-flight*: `renderFrame()` holds further submits
+  until the previous `onSubmittedWorkDone()` resolves (`loopBp.busy`); skipped
+  frames are flagged `pendingRender` and caught up once the GPU is done.
+  Without this rule the queue grows → the GPU idles suddenly → playback stalls.
+- A 3-second queue timeout three times in a row turns the upscaler off with a
+  toast. If `queue.onSubmittedWorkDone` is unavailable the path runs without
+  backpressure (not an error).
+- Metrics (120-sample window) are read via `MEEL_UPSCALER.diagnose().perf` or
+  `stats().perf` → `{msAvg, msP95, videoFps, renderFps, budgetMs, fitsBudget,
+  samples, skipped, timeouts}`; `fitsBudget === null` means no samples yet.
+- `stats()` also exposes loop state (`loopPending`, `loopRvfc`, `loopRaf`,
+  `pendingRender`, `gpuBusy`) and `rebuildReason`
+  (`enable|model|mode|scale|resolution|resize|attach`) to tell a normal
+  rebuild apart from a stuck loop.
+
+#### Anti-black transition, resolution debounce, rVFC watchdog
+
+- **Anti-black transition:** the `meel-upscale-active` class (hides the source
+  video) is only added by `renderFrame()` after a frame renders successfully,
+  and removed when a rebuild starts and while the resolution debounce runs. Do
+  not add this class anywhere else.
+- **600 ms resolution debounce:** an HLS quality switch can change
+  `videoWidth` several times before settling; while waiting, cross-size copies
+  are skipped (`skipped`) and the source video stays visible. Metadata that is
+  not ready yet re-arms the timer instead of giving up. A size that reverts to
+  the previous value simply resumes the loop.
+- **500 ms rVFC watchdog:** Chrome drops `requestVideoFrameCallback` on
+  hidden↔visible transitions or on `load()`; if the first callback never fires,
+  `loop.pending` stays `true` and the canvas freezes while the video keeps
+  playing. The watchdog re-registers the callback when the tab is active and
+  the video plays but no tick happened for >700 ms. `loadstart` resets
+  `loop.pending`, `loadeddata` kicks the loop again.
+
+#### Recovery while the tab is in the background
+
+- `triggerPlayerRecovery()` defers recovery until `visibilitychange` → visible
+  (the cooldown rule still applies to a deferred run), autoplay retry
+  (`pendingPlayRetry`) waits for an active tab, and `RecoveryManager` resets
+  the `lastTime`/`lastTs` baseline while hidden — time spent hidden is never
+  counted as "stuck".
+- Without those gates the browser silently rejects `play()` and the video
+  freezes when the user comes back.
+
+#### CSP note for `blankVideo`
+
+- Plyr calls `cancelRequests()` with its built-in
+  `https://cdn.plyr.io/static/blank.mp4`; that external URL violates
+  `media-src 'self' data: blob:` and triggers a chain of
+  `MEDIA_ELEMENT_ERROR` after `player.destroy()`.
+- `assets/js/shared/plyr-config.js` points `blankVideo` at a local data URI
+  (applies to video, music, and audio). **Do not restore the CDN URL** and do
+  not relax the CSP.
+
 ### Key Processes
 
 1. **Upload Pipeline** — Uploader → FFmpeg → HDD → DB
@@ -642,6 +784,7 @@ saved playback position (`music_pos_<id>` in `localStorage`) and the user did
 4. **HTMX Flow** — Event → Request → Server → Response → DOM swap
 5. **MFA Flow** — Login password valid → Check mfa_enabled → Redirect mfa_verify.php → Verify TOTP → Set full session
 6. **Music Player Session & Resume** — Card/playlist tap → mini-player (sets `skip_resume_once`) → expand → watch (consumes flag, activates session marker) → auto-continue; cold visits show the resume modal
+7. **Video Upscale & Recovery** — toggle → lazy-load model → rebuild pipeline → one in-flight submit (wait for GPU, skipped frames catch up); quality switches are debounced 600 ms with no black frame; recovery & autoplay wait for an active tab
 
 ---
 

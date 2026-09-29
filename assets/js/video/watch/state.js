@@ -14,6 +14,8 @@ let videoElement,
   isAutoRecovering = !1,
   isRecovering = !1,
   isCheckingStatus = !1,
+  pendingRecoveryOnVisible = !1,
+  pendingPlayRetry = !1,
   waitingTimeout = null,
   recoveryRetryCount = 0;
 const MAX_RECOVERY_RETRIES = 20;

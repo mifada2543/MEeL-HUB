@@ -42,18 +42,38 @@ class SharedJsTest extends TestCase
 
     private function allAssetsJsFiles(): array
     {
-        $root = $this->rootPath() . '/assets/js';
+        // assets/models berisi kode model upscale first-party — ikut dilint;
+        // bundle vendor (anime4k) dikecualikan seperti compatibilitas/.
+        $roots = ['/assets/js', '/assets/models'];
+        $exclude = [
+            'assets/js/compatibilitas/',
+            'assets/js/shared/state-keys.js',
+            'assets/models/anime4k/',
+        ];
         $files = [];
-        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
-        foreach ($it as $f) {
-            if ($f->getExtension() !== 'js') {
+        foreach ($roots as $r) {
+            $root = $this->rootPath() . $r;
+            if (!is_dir($root)) {
                 continue;
             }
-            $rel = str_replace('\\', '/', substr($f->getPathname(), strlen($this->rootPath() . '/')));
-            if (strpos($rel, 'assets/js/compatibilitas/') === 0 || $rel === 'assets/js/shared/state-keys.js') {
-                continue;
+            $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+            foreach ($it as $f) {
+                if ($f->getExtension() !== 'js') {
+                    continue;
+                }
+                $rel = str_replace('\\', '/', substr($f->getPathname(), strlen($this->rootPath() . '/')));
+                $skip = false;
+                foreach ($exclude as $ex) {
+                    if (strpos($rel, $ex) === 0) {
+                        $skip = true;
+                        break;
+                    }
+                }
+                if ($skip) {
+                    continue;
+                }
+                $files[] = $rel;
             }
-            $files[] = $rel;
         }
         sort($files);
         return $files;
