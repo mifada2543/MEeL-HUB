@@ -1024,7 +1024,10 @@
     return b;
   }
 
-  function buildSubPanel(name, listBuilder) {
+  function buildSubPanel(name, listBuilder, opts) {
+    opts = opts || {};
+    var backTo = opts.backTo || "upscale";
+    var backLabel = opts.backLabel || "AI Upscale";
     var inner = plyr.elements.settings.panels.home.parentNode;
     var id = "plyr-settings-" + plyr.id + "-" + name;
     var old = document.getElementById(id);
@@ -1037,22 +1040,24 @@
     back.type = "button";
     back.className = "plyr__control plyr__control--back";
     back.innerHTML =
-      '<span aria-hidden="true">AI Upscale</span><span class="plyr__sr-only">Kembali</span>';
+      '<span aria-hidden="true">' +
+      esc(backLabel) +
+      '</span><span class="plyr__sr-only">Kembali</span>';
     back.addEventListener("click", function (e) {
       e.stopPropagation();
-      showPanel("upscale");
+      showPanel(backTo);
     });
     pane.appendChild(back);
 
     var menu = document.createElement("div");
-    menu.setAttribute("role", "menu");
+    menu.setAttribute("role", opts.role || "menu");
     pane.appendChild(menu);
 
     pane.addEventListener("keydown", function (e) {
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         e.stopPropagation();
-        showPanel("upscale");
+        showPanel(backTo);
       }
     });
 
@@ -1097,6 +1102,61 @@
     });
   }
 
+  // Panel read-only saat dukungan absen: alasan spesifik + persyaratan +
+  // cek ulang tanpa reload. Baris menu disabled mengarah ke sini.
+  function buildWhyPanel(menu) {
+    menu.replaceChildren();
+
+    var box = document.createElement("div");
+    box.className = "meel-upscale-why";
+
+    var title = document.createElement("p");
+    title.className = "meel-upscale-why-title";
+    title.textContent = "AI Upscale tidak tersedia";
+
+    var body = document.createElement("p");
+    body.className = "meel-upscale-why-body";
+    body.textContent = whyBodyText();
+
+    var req = document.createElement("ul");
+    req.className = "meel-upscale-why-req";
+    [
+      "Browser dengan WebGPU: Chrome/Edge 113+ desktop, Firefox 141+, atau Safari 18+",
+      "Halaman dibuka lewat HTTPS atau http://localhost",
+      "GPU/driver mengizinkan WebGPU (flag browser tidak mematikannya)",
+    ].forEach(function (t) {
+      var li = document.createElement("li");
+      li.textContent = t;
+      req.appendChild(li);
+    });
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "plyr__control meel-upscale-item";
+    btn.innerHTML = "<span>Cek ulang dukungan</span>";
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (supportChecking) return;
+      btn.setAttribute("aria-disabled", "true");
+      btn.querySelector("span").textContent = "Memeriksa…";
+      checkSupport(true).then(function (ok) {
+        btn.removeAttribute("aria-disabled");
+        btn.querySelector("span").textContent = "Cek ulang dukungan";
+        updateUI();
+        if (ok) {
+          toast("WebGPU tersedia — AI Upscale bisa diaktifkan", 3000);
+          showPanel("upscale");
+        }
+      });
+    });
+
+    box.appendChild(title);
+    box.appendChild(body);
+    box.appendChild(req);
+    box.appendChild(btn);
+    menu.appendChild(box);
+  }
+
   function buildPanels() {
     if (!plyrReady()) return;
     var S = plyr.elements.settings;
@@ -1113,6 +1173,11 @@
     buildSubPanel("upscale-model", buildModelList);
     buildSubPanel("upscale-mode", buildModeList);
     buildSubPanel("upscale-scale", buildScaleList);
+    buildSubPanel("upscale-why", buildWhyPanel, {
+      backTo: "home",
+      backLabel: "Settings",
+      role: "group",
+    });
   }
 
   function currentModel() {
@@ -1153,7 +1218,7 @@
 
   function homeValueHtml() {
     if (supportChecking) return SPIN_CHECK;
-    if (!supported) return esc(supportLabel());
+    if (!supported) return "Tidak tersedia";
     if (state.loading) return SPIN_LOAD;
     if (!state.enabled) return "Mati";
     return esc(currentModel().short) + " · " + esc(currentMode().short) + " · " + esc(currentScale().short);
@@ -1164,6 +1229,7 @@
     if (!row) return;
     var v = row.querySelector(".plyr__menu__value");
     if (v) v.innerHTML = homeValueHtml();
+    applyHomeRowState(row);
   }
 
   function buildHomeRow() {
@@ -1180,8 +1246,21 @@
     val.innerHTML = homeValueHtml();
     flex.appendChild(val);
     b.appendChild(flex);
+    applyHomeRowState(b);
     b.addEventListener("click", function (e) {
       e.stopPropagation();
+      if (unsupportedReason()) {
+        showPanel("upscale-why");
+        refreshWhyText();
+        // Segarkan tanpa paksa (throttle 30 dtk): bila dukungan baru muncul
+        // setelah user menyalakan flag GPU, panel langsung berganti.
+        checkSupport(false).then(function (ok) {
+          if (!ok || !plyrReady()) return;
+          var cur = plyr.elements.settings.panels["upscale-why"];
+          if (cur && !cur.hidden) showPanel("upscale");
+        });
+        return;
+      }
       showPanel("upscale");
       if (!supported || supportChecking) checkSupport(true);
     });
@@ -1218,6 +1297,8 @@
     syncRadios("upscale-model", state.modelId);
     syncRadios("upscale-mode", state.modeId);
     syncRadios("upscale-scale", state.scaleId);
+
+    refreshWhyText();
   }
 
   function selectModel(id) {
@@ -1269,11 +1350,57 @@
     showPanel("upscale");
   }
 
+  // Satu sumber kebenaran untuk alasan "kenapa opsi ini tidak tersedia" —
+  // dipakai panel alasan di menu dan diagnose(). Repair path: navigator.gpu
+  // hilang/HTTP non-localhost sudah pasti final; adapter null baru diketahui
+  // setelah checkSupport() selesai.
+  var WHY = {
+    insecure:
+      "Halaman tidak aman (HTTP non-localhost) — WebGPU hanya tersedia di HTTPS atau http://localhost.",
+    nogpu:
+      "Browser ini tidak mendukung WebGPU (navigator.gpu tidak ada) — butuh Chrome/Edge 113+ desktop, Firefox 141+, atau Safari 18+.",
+    adapter:
+      "WebGPU terdeteksi tapi GPU tidak tersedia — GPU/driver diblokir, GPU sedang blank, atau flag WebGPU dinonaktifkan.",
+  };
+
+  function unsupportedReason() {
+    if (supported || supportChecking) return null;
+    if (!window.isSecureContext) return { code: "insecure", body: WHY.insecure };
+    if (!navigator.gpu) return { code: "nogpu", body: WHY.nogpu };
+    return { code: "no-adapter", body: WHY.adapter };
+  }
+
+  function whyBodyText() {
+    if (supportChecking) return "Memeriksa dukungan WebGPU…";
+    var r = unsupportedReason();
+    return r ? r.body : "Dukungan WebGPU terdeteksi — opsi AI Upscale bisa diaktifkan.";
+  }
+
   function supportLabel() {
-    if (!window.isSecureContext && !hasGPU) return "Butuh HTTPS";
-    if (!window.isSecureContext) return "Butuh HTTPS";
-    if (!hasGPU) return "Butuh browser WebGPU";
+    var r = unsupportedReason();
+    if (!r) return "Tidak didukung";
+    if (r.code === "insecure") return "Butuh HTTPS";
+    if (r.code === "nogpu") return "Butuh browser WebGPU";
     return "Tidak didukung";
+  }
+
+  function refreshWhyText() {
+    if (!plyrReady()) return;
+    var pane = plyr.elements.settings.panels["upscale-why"];
+    if (!pane) return;
+    var body = pane.querySelector(".meel-upscale-why-body");
+    if (body) body.textContent = whyBodyText();
+  }
+
+  function applyHomeRowState(row) {
+    if (!row) return;
+    if (unsupportedReason()) {
+      row.setAttribute("aria-disabled", "true");
+      row.classList.add("meel-upscale-unavail");
+    } else {
+      row.removeAttribute("aria-disabled");
+      row.classList.remove("meel-upscale-unavail");
+    }
   }
 
   function diagnose() {
@@ -1290,13 +1417,12 @@
     };
     if (!d.secureContext) {
       d.adapter = "dilewati";
-      d.reason = "Halaman tidak aman (HTTP non-localhost) — WebGPU hanya tersedia di konteks aman.";
+      d.reason = WHY.insecure;
       return Promise.resolve(d);
     }
     if (!navigator.gpu) {
       d.adapter = "dilewati";
-      d.reason =
-        "navigator.gpu tidak ada — browser/tidak ada dukungan WebGPU (butuh Chrome/Edge 113+ desktop, Firefox 141+, atau Safari 18+).";
+      d.reason = WHY.nogpu;
       return Promise.resolve(d);
     }
     var p;
@@ -1312,8 +1438,7 @@
         function (a) {
           if (!a) {
             d.adapter = "null";
-            d.reason =
-              "Adapter GPU tidak tersedia — GPU diblokir/blank/driver lawas atau WebGPU dinonaktifkan di flag browser.";
+            d.reason = WHY.adapter;
             return d;
           }
           d.adapter = "ok";
@@ -1482,6 +1607,7 @@
     supported: function () {
       return supported;
     },
+    unsupportedReason: unsupportedReason,
     hasRVFC: function () {
       return hasRVFC;
     },

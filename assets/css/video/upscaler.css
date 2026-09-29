@@ -44,3 +44,34 @@
   opacity: 0.45;
   pointer-events: none;
 }
+
+/* Baris menu yang tak didukung: redup tapi tetap bisa diklik → panel alasan */
+.plyr__menu__container .meel-upscale-unavail[aria-disabled="true"] {
+  opacity: 0.45;
+}
+
+.meel-upscale-why {
+  padding: 10px 4px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.meel-upscale-why-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.meel-upscale-why-body {
+  margin: 0 0 10px;
+  opacity: 0.8;
+}
+
+.meel-upscale-why-req {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  opacity: 0.7;
+}
+
+.meel-upscale-why-req li {
+  margin-bottom: 4px;
+}

@@ -912,6 +912,33 @@ datang dari sesi mini-player yang aktif.
 Catatan perilaku player video yang tidak terbaca sekilas dari kode; rujukan
 utamanya `assets/js/video/watch/upscaler.js` dan `recovery.js`.
 
+#### Ketersediaan opsi (gating WebGPU)
+
+Baris **AI Upscale** di menu Pengaturan selalu ada, termasuk saat browser tidak
+mendukung WebGPU — tidak ada toast otomatis saat halaman dibuka:
+
+- Tak didukung → baris diberi `aria-disabled="true"` + class
+  `meel-upscale-unavail` (redup tapi **tetap bisa diklik**), nilai kolom jadi
+  `Tidak tersedia`, dan panel normal (toggle/Model/Mode/Skala) tidak terjangkau.
+- Klik baris → sub-panel read-only `upscale-why` berisi judul, alasan spesifik
+  per penyebab, daftar persyaratan, dan tombol **"Cek ulang dukungan"** yang
+  menjalankan `checkSupport(true)`; bila kini didukung → toast + panel beralih
+  ke toggle normal.
+- Saat pemeriksaan berjalan (`supportChecking`) baris menampilkan spinner dan
+  **belum** disabled — anti-kedip, menu tidak berubah sendiri di tengah cek.
+- Setelah cek selesai, `updateUI()` menyinkronkan baris (nilai + aria-disabled)
+  lewat `setHomeRowValue()` → `applyHomeRowState()`.
+
+Alasan bersumber tunggal: `unsupportedReason()` (juga diekspos sebagai
+`MEEL_UPSCALER.unsupportedReason()`), dipakai `supportLabel()` dan
+`diagnose()` lewat konstanta `WHY` — urutan pemeriksaan sama dengan `diagnose()`:
+
+| Kode | Kondisi | Alasan |
+| ---- | ------- | ------ |
+| `insecure` | `!window.isSecureContext` | halaman non-HTTPS/non-localhost |
+| `nogpu` | `!navigator.gpu` | browser tanpa WebGPU |
+| `no-adapter` | `requestAdapter()` → `null` | GPU/driver diblokir, GPU blank, atau flag WebGPU mati |
+
 #### Kontrak API model upscale
 
 Model pluggable lewat `MEEL_UPSCALER.registerModel()`:
