@@ -711,6 +711,38 @@ Reasons come from a single source: `unsupportedReason()` (also exposed as
 | `nogpu` | `!navigator.gpu` | browser has no WebGPU |
 | `no-adapter` | `requestAdapter()` → `null` | GPU/driver blocked, GPU blank, or WebGPU flag off |
 
+#### On/off status per video (sessionStorage)
+
+The AI Upscale state lives in **sessionStorage** (`MEEL_KEYS.UPSCALE_ENABLED`:
+`"true|<videoId>"` while ON, `"false"` while OFF) — not localStorage — so the
+default is **OFF** and it only survives for the current video:
+
+| Event | State |
+| ----- | ----- |
+| New tab / never switched on | **OFF** (default) |
+| Page refresh (same video) | stays **ON** |
+| Video loops on its own without leaving the page | stays **ON** |
+| Switching to another video (recommendation, next button, mini-player card) | **OFF** |
+| Auto-next when the video ends | **OFF** |
+| Opening another video URL in the same tab (full navigation) | **OFF** |
+
+Two guard layers:
+
+- `readEnabled()` only honours `"true|<videoId>"` when the current video id
+  matches. `validateState()` runs it again on every `attach()` — including when
+  the Plyr instance is unchanged — so a full navigation to another video turns
+  the upscale off and discards the stale value from the previous video.
+- In-place transitions (no page reload) call
+  `MEEL_UPSCALER.resetForNewVideo()`: `skipToNextVideo()` in `player-events.js`
+  (both manual clicks and auto-next go through it) and the mini-player card
+  listener in `mini-player.js`. The reset runs without a toast so transitions
+  are not flooded with notifications; the actual shutdown is centralised in
+  `turnOff()`.
+
+`modelId`/`modeId`/`scaleId` stay in localStorage as cross-session preferences
+— only the on/off state is per video. The old `localStorage` value for the same
+key is removed once when the script loads.
+
 #### Upscale model API contract
 
 Models are pluggable through `MEEL_UPSCALER.registerModel()`:
@@ -739,18 +771,24 @@ MEEL_UPSCALER.registerModel({
   selection. The `registerModel()` inside that file **overwrites** the static
   descriptor registered by the shell, so `doRebuild()` always re-reads the
   entry before calling `buildChain()`.
-- Built-in models: `anime4k` (vendor bundle), `meelscale` (local resampler),
-  `fsrcnn` (weights in `assets/models/fsrcnn/weights.js`).
+- Built-in models: `anime4k` (vendor bundle), `meelscale` (local resampler) and
+  `meelsharp` — **MEeLSharp** (Lanczos-3 + CAS, no weights). `meelvision` —
+  **MEeLVision** (weights in `assets/models/meelvision/weights.js`) is still in
+  the repo, but it is no longer registered in the AI Upscaler menu.
 
-#### Model notes: FSRCNN & MEeLScale
+#### Model notes: MEeLVision (FSRCNN architecture) & MEeLScale
 
 Both are local models under `assets/models/<id>/` — no internet downloads.
+MEeLVision no longer shows up in the menu (its descriptor was removed from
+`upscaler.js`); the notes below still apply to its files.
 
-**FSRCNN ×2** (`fsrcnn/model.js` + `fsrcnn/weights.js`)
+**MEeLVision ×2** (`meelvision/model.js` + `meelvision/weights.js`)
 
-- Weights are a base64 `Float32Array(13163)` in `window.MEEL_FSRCNN_WEIGHTS_B64`,
-  trained locally by a vanilla JS trainer that is not in the repo (regenerate
-  with `node scripts/train-fsrcnn.js` in a local checkout).
+- Product name **MEeLVision** (id `meelvision`, folder
+  `assets/models/meelvision/`); the architecture term stays FSRCNN. Weights are
+  a base64 `Float32Array(13163)` in `window.MEEL_VISION_WEIGHTS_B64`, trained
+  locally by a vanilla JS trainer that is not in the repo (regenerate with
+  `node scripts/train-meelvision.js` in a local checkout).
 - Architecture: LR input (minus 0.5) → conv1 5×5 pad2 3→24 + PReLU →
   shrink 1×1 24→16 + PReLU → 3× map 3×3 pad1 16→16 + PReLU → deconv 9×9
   stride2 phase (16→3) + bias 0.5 → clamp 0..1.

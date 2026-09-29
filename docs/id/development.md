@@ -939,6 +939,37 @@ Alasan bersumber tunggal: `unsupportedReason()` (juga diekspos sebagai
 | `nogpu` | `!navigator.gpu` | browser tanpa WebGPU |
 | `no-adapter` | `requestAdapter()` → `null` | GPU/driver diblokir, GPU blank, atau flag WebGPU mati |
 
+#### Status on/off per video (sessionStorage)
+
+Status AI Upscale disimpan di **sessionStorage** (`MEEL_KEYS.UPSCALE_ENABLED`:
+`"true|<videoId>"` saat ON, `"false"` saat OFF) — bukan localStorage — sehingga
+default-nya **OFF** dan hanya bertahan selama video yang sama:
+
+| Peristiwa | Status |
+| --------- | ------ |
+| Tab baru / belum pernah dinyalakan | **OFF** (default) |
+| Refresh halaman (video yang sama) | **ON tetap** |
+| Video loop / ulang sendiri tanpa pindah halaman | **ON tetap** |
+| Klik video lain (rekomendasi, tombol next, kartu mini-player) | **OFF** |
+| Auto-next saat video habis | **OFF** |
+| Buka URL video lain di tab yang sama (navigasi penuh) | **OFF** |
+
+Dua lapis penjagaannya:
+
+- `readEnabled()` hanya menganggap `"true|<videoId>"` bila id video saat ini
+  cocok. `validateState()` menjalankannya lagi pada setiap `attach()` —
+  termasuk saat instance Plyr tidak berubah — sehingga navigasi penuh ke video
+  lain mematikan upscale sekaligus membuang nilai basi dari video sebelumnya.
+- Jalur transisi in-place (tanpa reload halaman) memanggil
+  `MEEL_UPSCALER.resetForNewVideo()`: `skipToNextVideo()` di `player-events.js`
+  (klik manual **dan** auto-next sama-sama lewat sana) serta listener kartu
+  mini-player di `mini-player.js`. Reset berjalan tanpa toast agar transisi
+  tidak dibanjiri notifikasi; mati total disatukan di `turnOff()`.
+
+`modelId`/`modeId`/`scaleId` tetap di localStorage sebagai preferensi lintas
+sesi — hanya status on/off yang bersifat per video. Nilai `localStorage` lama
+untuk key yang sama dihapus sekali saat skrip dimuat.
+
 #### Kontrak API model upscale
 
 Model pluggable lewat `MEEL_UPSCALER.registerModel()`:
@@ -967,18 +998,24 @@ MEEL_UPSCALER.registerModel({
   dipilih. `registerModel()` di dalam file itu **menimpa** deskriptor statis
   yang didaftarkan shell, jadi `doRebuild()` selalu mengambil entri terbaru
   sebelum memanggil `buildChain()`.
-- Model bawaan: `anime4k` (bundle vendor), `meelscale` (resampler lokal),
-  `fsrcnn` (bobot di `assets/models/fsrcnn/weights.js`).
+- Model bawaan: `anime4k` (bundle vendor), `meelscale` (resampler lokal) dan
+  `meelsharp` — **MEeLSharp** (Lanczos-3 + CAS, tanpa bobot). `meelvision` —
+  **MEeLVision** (bobot di `assets/models/meelvision/weights.js`) masih ada
+  filenya, tetapi sudah tidak didaftarkan di menu AI Upscaler.
 
-#### Catatan model: FSRCNN & MEeLScale
+#### Catatan model: MEeLVision (arsitektur FSRCNN) & MEeLScale
 
 Keduanya model lokal di `assets/models/<id>/` — tanpa unduhan internet.
+MEeLVision sudah tidak tampil di menu (deskriptornya dihapus dari `upscaler.js`);
+catatan di bawah tetap berlaku untuk filenya.
 
-**FSRCNN ×2** (`fsrcnn/model.js` + `fsrcnn/weights.js`)
+**MEeLVision ×2** (`meelvision/model.js` + `meelvision/weights.js`)
 
-- Bobot = base64 `Float32Array(13163)` di `window.MEEL_FSRCNN_WEIGHTS_B64`,
-  dilatih lokal dengan trainer vanilla JS yang tidak ikut repo (regenerasi:
-  `node scripts/train-fsrcnn.js` pada checkout lokal).
+- Nama produk **MEeLVision** (id `meelvision`, folder `assets/models/meelvision/`);
+  istilah arsitektur tetap FSRCNN. Bobot = base64 `Float32Array(13163)` di
+  `window.MEEL_VISION_WEIGHTS_B64`, dilatih lokal dengan trainer vanilla JS
+  yang tidak ikut repo (regenerasi: `node scripts/train-meelvision.js` pada
+  checkout lokal).
 - Arsitektur: input LR (dikurangi 0.5) → conv1 5×5 pad2 3→24 + PReLU →
   shrink 1×1 24→16 + PReLU → 3× map 3×3 pad1 16→16 + PReLU → deconv 9×9
   stride2 fase (16→3) + bias 0.5 → clamp 0..1.
