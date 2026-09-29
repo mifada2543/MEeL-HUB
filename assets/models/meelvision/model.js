@@ -1,7 +1,7 @@
 /**
- * FSRCNN ×2 — neural upscaler WebGPU lokal (tanpa unduhan): bobot dilatih
- * lokal oleh trainer vanilla JS yang tidak ikut repo, dikirim sebagai
- * weights.js (window.MEEL_FSRCNN_WEIGHTS_B64).
+ * MEeLVision ×2 — neural upscaler WebGPU lokal (tanpa unduhan), arsitektur
+ * FSRCNN: bobot dilatih lokal oleh trainer vanilla JS yang tidak ikut repo,
+ * dikirim sebagai weights.js (window.MEEL_VISION_WEIGHTS_B64).
  *
  * Arsitektur, layout bobot, dan strategi bertile ada di
  * docs/id/development.md ("Video — AI Upscale & Play Recovery"); kontrak
@@ -60,11 +60,11 @@
     try {
       bin = atob(b64);
     } catch (e) {
-      throw new Error("bobot FSRCNN bukan base64 valid");
+      throw new Error("bobot MEeLVision bukan base64 valid");
     }
     var n = bin.length;
     if (n % 4 !== 0 || n / 4 !== TOTAL) {
-      throw new Error("panjang bobot FSRCNN tidak valid (" + n + " byte)");
+      throw new Error("panjang bobot MEeLVision tidak valid (" + n + " byte)");
     }
     var u8 = new Uint8Array(n);
     for (var i = 0; i < n; i++) u8[i] = bin.charCodeAt(i);
@@ -259,20 +259,20 @@
   }
 
   window.MEEL_UPSCALER.registerModel({
-    id: "fsrcnn",
-    label: "FSRCNN",
-    short: "FSRCNN",
+    id: "meelvision",
+    label: "MEeLVision",
+    short: "MEeLVision",
     modes: [{ id: "x2", label: "FSRCNN ×2", short: "×2" }],
     load: function () {
       if (weightBuf) return Promise.resolve();
-      var b64 = window.MEEL_FSRCNN_WEIGHTS_B64;
+      var b64 = window.MEEL_VISION_WEIGHTS_B64;
       if (typeof b64 === "string" && b64) {
         decodeWeights(b64);
         return Promise.resolve();
       }
       // Lazy-load: injeksi weights.js dulu, baru decode base64-nya.
       return injectScript(WEIGHTS_URL).then(function () {
-        var b = window.MEEL_FSRCNN_WEIGHTS_B64;
+        var b = window.MEEL_VISION_WEIGHTS_B64;
         if (typeof b !== "string" || !b) {
           throw new Error("weights.js belum termuat setelah injeksi");
         }
@@ -291,20 +291,20 @@
       } catch (e) {}
       if (ow > maxDim || oh > maxDim) {
         throw new Error(
-          "FSRCNN: ukuran keluaran 2× (" + ow + "×" + oh + ") melebihi batas GPU (" + maxDim + "px)",
+          "MEeLVision: ukuran keluaran 2× (" + ow + "×" + oh + ") melebihi batas GPU (" + maxDim + "px)",
         );
       }
-      if (!weightBuf) throw new Error("Bobot FSRCNN belum dimuat (load() belum dipanggil)");
+      if (!weightBuf) throw new Error("Bobot MEeLVision belum dimuat (load() belum dipanggil)");
 
       var wbuf = device.createBuffer({
-        label: "meel-fsrcnn-w",
+        label: "meel-vision-w",
         size: TOTAL * 4,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
       });
       device.queue.writeBuffer(wbuf, 0, weightBuf, 0, TOTAL * 4);
 
       var outTex = device.createTexture({
-        label: "meel-fsrcnn-out",
+        label: "meel-vision-out",
         size: [ow, oh, 1],
         format: "rgba16float",
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
@@ -318,10 +318,10 @@
           usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
         });
       }
-      var gShrink = [tileTex("meel-fsrcnn-sh0"), tileTex("meel-fsrcnn-sh1"), tileTex("meel-fsrcnn-sh2"), tileTex("meel-fsrcnn-sh3")];
-      var gM1 = [tileTex("meel-fsrcnn-m10"), tileTex("meel-fsrcnn-m11"), tileTex("meel-fsrcnn-m12"), tileTex("meel-fsrcnn-m13")];
-      var gM2 = [tileTex("meel-fsrcnn-m20"), tileTex("meel-fsrcnn-m21"), tileTex("meel-fsrcnn-m22"), tileTex("meel-fsrcnn-m23")];
-      var gM3 = [tileTex("meel-fsrcnn-m30"), tileTex("meel-fsrcnn-m31"), tileTex("meel-fsrcnn-m32"), tileTex("meel-fsrcnn-m33")];
+      var gShrink = [tileTex("meel-vision-sh0"), tileTex("meel-vision-sh1"), tileTex("meel-vision-sh2"), tileTex("meel-vision-sh3")];
+      var gM1 = [tileTex("meel-vision-m10"), tileTex("meel-vision-m11"), tileTex("meel-vision-m12"), tileTex("meel-vision-m13")];
+      var gM2 = [tileTex("meel-vision-m20"), tileTex("meel-vision-m21"), tileTex("meel-vision-m22"), tileTex("meel-vision-m23")];
+      var gM3 = [tileTex("meel-vision-m30"), tileTex("meel-vision-m31"), tileTex("meel-vision-m32"), tileTex("meel-vision-m33")];
       var allTex = gShrink.concat(gM1, gM2, gM3);
 
       // Daftar tile + slot uniform per tile (256 B/slot, penulisan sekali).
@@ -349,7 +349,7 @@
         }
       }
       var ubuf = device.createBuffer({
-        label: "meel-fsrcnn-u",
+        label: "meel-vision-u",
         size: udata.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
@@ -357,7 +357,7 @@
 
       // Tanpa dynamic offset: bind group dibuat per (pass, tile) saat build.
       function makePass(name, code, readTexs, views, opts) {
-        var module = device.createShaderModule({ label: "meel-fsrcnn-" + name, code: code });
+        var module = device.createShaderModule({ label: "meel-vision-" + name, code: code });
         var entries = [
           { binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
           { binding: 1, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "read-only-storage" } },
@@ -365,11 +365,11 @@
         for (var i = 0; i < readTexs.length; i++) {
           entries.push({ binding: 2 + i, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } });
         }
-        var bgl = device.createBindGroupLayout({ label: "meel-fsrcnn-" + name + "-bgl", entries: entries });
+        var bgl = device.createBindGroupLayout({ label: "meel-vision-" + name + "-bgl", entries: entries });
         var targets = [];
         for (var t = 0; t < views.length; t++) targets.push({ format: "rgba16float" });
         var pipeline = device.createRenderPipeline({
-          label: "meel-fsrcnn-" + name + "-pipe",
+          label: "meel-vision-" + name + "-pipe",
           layout: device.createPipelineLayout({ bindGroupLayouts: [bgl] }),
           vertex: { module: module, entryPoint: "vs" },
           fragment: { module: module, entryPoint: "fs", targets: targets },
@@ -402,7 +402,7 @@
           }
           P.binds.push(
             device.createBindGroup({
-              label: "meel-fsrcnn-" + name + "-bind-" + ti,
+              label: "meel-vision-" + name + "-bind-" + ti,
               layout: bgl,
               entries: bents,
             }),
