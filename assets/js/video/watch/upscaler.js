@@ -4,17 +4,30 @@
  * Overlay upscaler bergaya mpv/Anime4K di atas <video> memakai WebGPU:
  *   video → copyExternalImageToTexture → rantai pipeline model → blit → <canvas>
  *
- * Arsitudur model pluggable (registry):
+ * Arsitektur model pluggable (registry):
  *   MEEL_UPSCALER.registerModel({
  *     id, label, short,
  *     modes: [{ id, label, short }, ...],
  *     load: function () { return Promise; },          // lazy-load berat (mis. bundle)
  *     buildChain: function ({ device, modeId, inputTexture, native, target }) {
- *       return [pipeline, ...];                       // objek dengan .pass(encoder)
+ *       // inputTexture: rgba16float ukuran native; hasil akhir boleh berbeda
+ *       // dari target (blit linear akan meregangkan ke ukuran canvas).
+ *       return [node, ...];
+ *       // node = {
+ *       //   pass(encoder): void,             // encode pass ke encoder frame ini
+ *       //   getOutputTexture(): GPUTexture,  // tekstur output node terakhir
+ *       //   pipelines?: [GPUPipelineBase],   // didaftarkan untuk buku-buku
+ *       //   destroy?(): void,                // opsional: bebaskan semua resource
+ *       //                                    // milik node (tekstur, buffer).
+ *       //                                    // Bila ada, pemanggilan otomatis
+ *       //                                    // menggantikan jalur getOutputTexture.
+ *       // };
  *     },
  *   });
  *
- * Model bawaan: "anime4k" (bundle vendor assets/js/compatibilitas/anime4k-webgpu.js).
+ * Model bawaan: "anime4k" (bundle vendor assets/js/compatibilitas/anime4k-webgpu.js),
+ * "meelscale" (upscaler-meelscale.js, resampler lokal), "fsrcnn"
+ * (upscaler-fsrcnn.js + bobot lokal fsrcnn-weights.js).
  * Panel settings Plyr: home → "AI Upscale" → sub-panel Model / Mode / Skala.
  */
 (function () {
@@ -347,6 +360,12 @@
     var stages = [];
     var push = function (node) {
       if (!node) return;
+      if (typeof node.destroy === "function") {
+        try {
+          node.destroy();
+        } catch (e) {}
+        return;
+      }
       stages.push(node);
       if (node.pipelines && node.pipelines.length) {
         for (var j = 0; j < node.pipelines.length; j++) stages.push(node.pipelines[j]);
@@ -1251,6 +1270,7 @@
       };
     },
     registerModel: registerModel,
+    getModel: getModel,
     attach: attach,
     checkSupport: function () {
       return checkSupport(true);

@@ -27,6 +27,9 @@
     "seek-indicator.js",
     "misc.js",
     "upscaler.js",
+    "upscaler-meelscale.js",
+    "fsrcnn-weights.js",
+    "upscaler-fsrcnn.js",
   ];
   for (var i = 0; i < files.length; i++) {
     document.write('<script src="' + base + files[i] + qs + '"><\/script>');

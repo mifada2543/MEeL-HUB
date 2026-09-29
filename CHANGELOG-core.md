@@ -9,6 +9,8 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), versi mengikut
 ## [Unreleased]
 
 ### Added
+- **Model upscale baru (WebGPU):** `MEeLScale` (resampler separable: Bilinear, Mitchell (Bicubic), Catmull-Rom (Bicubic), Lanczos 2, Lanczos 3) di `assets/js/video/watch/upscaler-meelscale.js`, dan `FSRCNN ×2` (jaringan saraf ~13k parameter, eksekusi GPU bertile dengan halo + scissor) di `assets/js/video/watch/upscaler-fsrcnn.js`; keduanya terdaftar lewat `MEEL_UPSCALER.registerModel()` pada `upscaler.js` (shell ringan eager, aset berat dimuat saat model pertama dipilih — total unduhan saat pilihan pertama ≤ ~5 MB)
+- **FSRCNN dilatih lokal:** `scripts/train-fsrcnn.js` melatih bobot dari frame video lokal (tanpa unduhan weights dari internet); eval penuh n=150 → PSNR **32.409 dB** (+0.019 vs bicubic, +1.101 vs bilinear); bobot tersimpan di `assets/js/video/watch/fsrcnn-weights.js`
 - **Test integrasi MEeLCoin:** `tests/integration/MeelCoinIntegrationTest.php` (15 test) — mengunci kontrak atomik `spend`/`refund`/`refill`, semantik siklus refill, dan countdown per-user
 - **Migrasi v16 (`database/migrate.php`):** normalisasi state MEeLCoin — `meelcoin_upload_cost` & `meelcoin_advanced_cost` minimum `1`
 
