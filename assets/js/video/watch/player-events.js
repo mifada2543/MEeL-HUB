@@ -1,5 +1,30 @@
 function setupMeelPlayerEvents() {
   window.player = player;
+
+  // Play() ditolak saat tab di-background: jangan menyerah diam-diam, coba lagi
+  // begitu tab aktif (mencegah freeze setelah recovery/swap di tab tersembunyi).
+  function retryPlayWhenVisible(playPromise, onRejected) {
+    if (!playPromise || typeof playPromise.catch !== "function") return;
+    playPromise.catch(function (err) {
+      if (document.hidden) {
+        pendingPlayRetry = !0;
+        console.log("play() ditolak saat tab di-background, dicoba ulang saat tab aktif.");
+        return;
+      }
+      if (onRejected) onRejected(err);
+    });
+  }
+  if (!window._meelPlayRetryBound) {
+    window._meelPlayRetryBound = !0;
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden || !pendingPlayRetry) return;
+      pendingPlayRetry = !1;
+      if (player && player.paused) {
+        var p = player.play();
+        if (p && p.catch) p.catch(function () {});
+      }
+    });
+  }
   
   function applyMeelVideoAspect(wrapper, videoW, videoH) {
     if (!wrapper || !videoW || !videoH) return;
@@ -470,7 +495,7 @@ function setupMeelPlayerEvents() {
 
         function doRestore() {
           player.currentTime = savedPos;
-          player.play().catch(() => {});
+          retryPlayWhenVisible(player.play());
           startStuckDetector();
           startPlaybackStartTimeout();
         }
@@ -515,7 +540,9 @@ function setupMeelPlayerEvents() {
           })
         )
           return;
-        player.play().catch(() => console.log("Menunggu interaksi user..."));
+        retryPlayWhenVisible(player.play(), function () {
+          console.log("Menunggu interaksi user...");
+        });
         startStuckDetector();
         startPlaybackStartTimeout();
       }

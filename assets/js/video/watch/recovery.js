@@ -125,6 +125,16 @@ function checkMediaAndRecover() {
 function triggerPlayerRecovery() {
   if (isRecovering || isCheckingStatus || isTransitioningNext) return;
   if (!document.getElementById("main-video-wrapper")) return;
+  if (document.hidden) {
+    // Tab di-background: play() pasti ditolak dan video freeze saat user kembali —
+    // tunda recovery sampai tab aktif (cooldown tetap berlaku untuk yang tertunda).
+    if (!pendingRecoveryOnVisible) {
+      pendingRecoveryOnVisible = !0;
+      console.log("Tab di-background, pemulihan ditunda sampai tab aktif kembali.");
+    }
+    return;
+  }
+  pendingRecoveryOnVisible = !1;
   if (player && player.paused && hasEverPlayed)
     return void console.log("Video sedang di-paused, skip recovery.");
   const e = Date.now();
@@ -205,4 +215,13 @@ function startWaitingTimeout() {
 }
 function stopWaitingTimeout() {
   window._videoWaitingTimeout && window._videoWaitingTimeout.stop();
+}
+if (!window._meelRecoveryVisBound) {
+  window._meelRecoveryVisBound = !0;
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden || !pendingRecoveryOnVisible) return;
+    pendingRecoveryOnVisible = !1;
+    console.log("Tab aktif kembali, menjalankan pemulihan yang tertunda.");
+    triggerPlayerRecovery();
+  });
 }

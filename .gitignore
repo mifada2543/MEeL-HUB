@@ -135,6 +135,15 @@ dist/
 build/
 out/
 
+# Proses build model upscale — TIDAK masuk repo (biar user tinggal pakai):
+# trainer lokal + artefaknya; yang di-commit hanya bobot jadi
+# (assets/models/*/weights.js).
+scripts/train-fsrcnn.js
+fsrcnn-ref*.json
+*.weights.bin
+scripts/.train-*/
+*.train.log
+
 # ─── LOGS ─────────────────────────────────────────────
 error_log
 *.log

@@ -327,6 +327,19 @@ music ──1:N── playlist_tracks
 
 ## Coding Conventions
 
+### Gaya Komentar
+
+- **Bebas untuk *why*** — alasan desain, trade-off, jebakan yang pernah terjadi
+  (mis. "tanpa reset ini loop render berhenti senyap"), dan kontrak yang tidak
+  terbaca dari kode.
+- **Dilarang mengulang kode** — komentar yang hanya menceritakan apa yang baris
+  di bawahnya lakukan tidak menambah informasi dan cepat basi.
+- **Detail teknis panjang → dokumentasi** — kontrak API, alur pipeline, dan
+  catatan perilaku yang butuh konteks panjang ditulis di file MD; file kode
+  cukup menunjuk ke sana.
+- **Tanpa banner seksi** — jangan pakai blok pemisah `/* ==== 1. Nama ==== */`;
+  pemisah bab di file JS cukup baris kosong.
+
 ### Keamanan
 
 1. **Selalu Prepared Statement** — Tidak ada SQL concat
@@ -864,6 +877,132 @@ datang dari sesi mini-player yang aktif.
 > **Keputusan desain (2026-08):** sesi mendengarkan aktif auto-continue tanpa
 > interupsi; hanya kunjungan dingin yang menanyakan resume.
 
+### Video — AI Upscale & Play Recovery
+
+Catatan perilaku player video yang tidak terbaca sekilas dari kode; rujukan
+utamanya `assets/js/video/watch/upscaler.js` dan `recovery.js`.
+
+#### Kontrak API model upscale
+
+Model pluggable lewat `MEEL_UPSCALER.registerModel()`:
+
+```javascript
+MEEL_UPSCALER.registerModel({
+  id, label, short,
+  modes: [{ id, label, short }, ...],
+  load: function () { return Promise; },      // lazy-load berat (bundle / bobot)
+  buildChain: function ({ device, modeId, inputTexture, native, target }) {
+    return [node, ...];
+    // node = {
+    //   pass(encoder): void,            // encode pass untuk frame ini
+    //   getOutputTexture(): GPUTexture, // tekstur output node terakhir
+    //   pipelines?: [GPUPipelineBase],  // didaftarkan untuk pembersihan
+    //   destroy?(): void,               // opsional: bebaskan resource milik node;
+    //                                   // bila ada, menggantikan getOutputTexture
+    // };
+  },
+});
+```
+
+- `inputTexture` bertipe `rgba16float` seukuran `native`; ukuran akhir boleh
+  berbeda dari `target` — blit linear meregangkannya ke ukuran canvas.
+- File model ada di `assets/models/<id>/model.js` dan diinjeksi saat pertama
+  dipilih. `registerModel()` di dalam file itu **menimpa** deskriptor statis
+  yang didaftarkan shell, jadi `doRebuild()` selalu mengambil entri terbaru
+  sebelum memanggil `buildChain()`.
+- Model bawaan: `anime4k` (bundle vendor), `meelscale` (resampler lokal),
+  `fsrcnn` (bobot di `assets/models/fsrcnn/weights.js`).
+
+#### Catatan model: FSRCNN & MEeLScale
+
+Keduanya model lokal di `assets/models/<id>/` — tanpa unduhan internet.
+
+**FSRCNN ×2** (`fsrcnn/model.js` + `fsrcnn/weights.js`)
+
+- Bobot = base64 `Float32Array(13163)` di `window.MEEL_FSRCNN_WEIGHTS_B64`,
+  dilatih lokal dengan trainer vanilla JS yang tidak ikut repo (regenerasi:
+  `node scripts/train-fsrcnn.js` pada checkout lokal).
+- Arsitektur: input LR (dikurangi 0.5) → conv1 5×5 pad2 3→24 + PReLU →
+  shrink 1×1 24→16 + PReLU → 3× map 3×3 pad1 16→16 + PReLU → deconv 9×9
+  stride2 fase (16→3) + bias 0.5 → clamp 0..1.
+- Offset dalam blob (konstanta `OFF` di `model.js` wajib identik):
+  `c1w 0, c1b 1800, c1p 1824, sw 1848, sb 2232, sp 2248, m1w 2264, m1b 4568,
+  m1p 4584, m2w 4600, m2b 6904, m2p 6920, m3w 6936, m3b 9240, m3p 9256,
+  dw 9272, db 13160`.
+- Eksekusi bertile (T=512 px LR, halo 5/sisi) agar jejak memori antara tetap
+  kecil berapa pun resolusi video; 16 kanal antara = 4 tekstur rgba16float
+  per lapisan. Tiap tile = 5 render pass (P1 conv1+shrink terfusion, P2–P4 map,
+  P5 deconv ke tekstur keluaran 2× dengan scissor) dan urutannya **tile-major**:
+  rantai P1→P5 satu tile selesai dulu karena tekstur antara dipakai bersama.
+- Semantik tepi identik dengan trainer CPU: baca di luar batas frame di-skip
+  (zero-pad).
+- Evaluasi (n=150, patch 64×64 HR, 1500 step): PSNR **32.409 dB** (bicubic
+  32.390 dB, bilinear 31.308 dB).
+
+**MEeLScale** (`meelscale/model.js`)
+
+- Resampler separable tanpa bobot — satu render pass fullscreen-triangle per
+  mode; mode = nama algoritma (`bilinear`, `mitchell` B=1/3 C=1/3, `catrom`
+  B=0 C=1/2, `lanczos2`, `lanczos3`).
+- Saat mengecilkan resolusi tap diperluas: `rx/ry = clamp(native/target, 1, 8)`,
+  jendela tap dibatasi 63 tap/sumbu, tepi di-clamp lalu hasil dibagi total
+  bobot (bila `wsum ≤ 0` jatuh ke sampel terdekat, bukan piksel hitam).
+
+#### Pipeline render & backpressure
+
+- Hanya ada satu submit GPU *in-flight*: `renderFrame()` menahan submit
+  selama `onSubmittedWorkDone()` sebelumnya belum selesai (`loopBp.busy`);
+  frame yang dilewati ditandai `pendingRender` dan di-*catch-up* begitu GPU
+  selesai. Tanpa aturan ini antrian menumpuk → GPU idle mendadak → video berhenti.
+- Timeout antrian 3 detik sebanyak 3 kali berturut-turut → upscale dimatikan +
+  toast. Bila `queue.onSubmittedWorkDone` tidak tersedia, jalur berjalan tanpa
+  backpressure (bukan error).
+- Metrik (jendela 120 sampel) dibaca lewat `MEEL_UPSCALER.diagnose().perf`
+  atau `stats().perf` → `{msAvg, msP95, videoFps, renderFps, budgetMs,
+  fitsBudget, samples, skipped, timeouts}`; `fitsBudget === null` berarti
+  belum ada sampel.
+- `stats()` juga memantau state loop (`loopPending`, `loopRvfc`, `loopRaf`,
+  `pendingRender`, `gpuBusy`) dan `rebuildReason`
+  (`enable|model|mode|scale|resolution|resize|attach`) untuk membedakan
+  rebuild normal dari loop yang macet.
+
+#### Anti-hitam, debounce resolusi, watchdog rVFC
+
+- **Transisi anti-hitam:** class `meel-upscale-active` (menyembunyikan video
+  asli) hanya dipasang `renderFrame()` setelah frame baru sukses, dan dilepas
+  saat rebuild mulai serta selama debounce resolusi. Jangan memasang class ini
+  di tempat lain.
+- **Debounce resolusi 600 ms:** ganti kualitas HLS bisa membuat `videoWidth`
+  berubah beberapa kali sebelum stabil; selama menunggu copy lintas ukuran
+  dilewati (`skipped`) dan video asli tampil. Metadata yang belum siap menunda
+  timer, bukan menyerah. Ukuran yang kembali sama cukup melanjutkan loop.
+- **Watchdog rVFC tiap 500 ms:** Chrome membuang `requestVideoFrameCallback`
+  saat transisi hidden↔visible atau saat `load()`; bila pemicu pertama jatuh,
+  `loop.pending` mentok `true` dan canvas beku walau video terus bermain.
+  Watchdog mendaftarkan ulang callback bila tab aktif, video bermain, tapi tak
+  ada tick >700 ms. `loadstart` me-reset `loop.pending`, `loadeddata` men-kick
+  loop kembali.
+
+#### Recovery saat tab di-background
+
+- `triggerPlayerRecovery()` menunda pemulihan sampai `visibilitychange` →
+  aktif (aturan cooldown tetap berlaku untuk pemulihan tertunda), autoplay
+  retry (`pendingPlayRetry`) menunggu tab aktif, dan `RecoveryManager`
+  me-reset baseline `lastTime`/`lastTs` saat hidden — durasi ter-hidden tidak
+  dihitung sebagai "stuck".
+- Tanpa gate itu `play()` ditolak senyap oleh browser dan video freeze ketika
+  user kembali ke tab.
+
+#### Catatan CSP `blankVideo`
+
+- Plyr memanggil `cancelRequests()` dengan `blankVideo` bawaan
+  `https://cdn.plyr.io/static/blank.mp4`; URL eksternal itu melanggar
+  `media-src 'self' data: blob:` dan memicu `MEDIA_ELEMENT_ERROR` berantai
+  setelah `player.destroy()`.
+- `assets/js/shared/plyr-config.js` menyetel `blankVideo` ke data URI lokal
+  (berlaku untuk video, musik, dan audio). **Jangan kembalikan URL CDN** dan
+  jangan melonggarkan CSP.
+
 ### Proses yang Perlu Dipahami
 
 1. **Upload Pipeline** — Uploader → FFmpeg → HDD → DB
@@ -872,6 +1011,7 @@ datang dari sesi mini-player yang aktif.
 4. **HTMX Flow** — Event → Request → Server → Response → DOM swap
 5. **MFA Flow** — Login password valid → Cek mfa_enabled → Redirect auth/mfa-verify → Verify TOTP → Set session penuh
 6. **Sesi Music Player & Resume** — Tap kartu/playlist → mini-player (set `skip_resume_once`) → expand → watch (konsumsi flag, aktifkan marker sesi) → auto-continue; kunjungan dingin menampilkan resume-modal
+7. **Video Upscale & Recovery** — toggle → lazy-load model → rebuild pipeline → satu submit in-flight (tunggu GPU, frame dilewati di-catch-up); ganti kualitas di-debounce 600 ms tanpa frame hitam; recovery & autoplay ditunda sampai tab aktif
 
 ---
 

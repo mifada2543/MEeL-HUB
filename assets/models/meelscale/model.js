@@ -1,18 +1,11 @@
 /**
- * MEeLScale — model resampler WebGPU untuk AI Upscale MEeL.
+ * MEeLScale — resampler WebGPU lokal untuk AI Upscale MEeL: tanpa unduhan,
+ * seluruh kernel dihitung GPU dalam satu render pass fullscreen-triangle.
+ * Kontrak registerModel() → docs/id/development.md ("Video — AI Upscale &
+ * Play Recovery").
  *
- * Model ini TIDAK mengunduh apa pun: seluruh kernel dihitung langsung di
- * GPU (satu render pass fullscreen-triangle, tekstur rgba16float).
- * Daftarkan lewat MEEL_UPSCALER.registerModel() (lihat kontrak di upscaler.js):
- *
- *   buildChain({device, modeId, inputTexture, native, target}) -> [node]
- *   node = { pass(encoder), getOutputTexture(), pipelines?, destroy?() }
- *
- * Mode = nama algoritma yang sebenarnya (bukan label marketing):
- *   bilinear | mitchell | catrom | lanczos2 | lanczos3
- *
- * Kernel separable, tap diperluas saat downscale (ratio = max(scale, 1),
- * dibatasi 8× dan maksimal 64 tap/sumbu), tepi di-clamp lalu dinormalisasi.
+ * Kernel separable; tap diperluas saat downscale (scale dibatasi 8×, maks 64
+ * tap/sumbu), tepi di-clamp lalu hasil dinormalisasi.
  */
 (function () {
   "use strict";

@@ -43,6 +43,8 @@ di-commit ke repo) di MEeL-HUB. File ini dibuat dari hasil audit keamanan
   (`anime4k-webgpu-1.0.0.tgz`); file `lib/index.js` di-vendor apa adanya + header
   atribusi MIT di bagian atas. Dipakai fitur AI Upscale di pemutar video
   (`assets/js/video/watch/upscaler.js`), di-load on-demand, bukan eager.
+  Lokasi bundle: `assets/models/anime4k/model.js` (sebelumnya
+  `assets/js/compatibilitas/anime4k-webgpu.js`).
 
 ## 🛡️ Proses Pengecekan CVE / Security Advisory
 
