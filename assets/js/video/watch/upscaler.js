@@ -1054,7 +1054,69 @@
 
   function supportLabel() {
     if (!window.isSecureContext && !hasGPU) return "Butuh HTTPS";
+    if (!window.isSecureContext) return "Butuh HTTPS";
+    if (!hasGPU) return "Butuh browser WebGPU";
     return "Tidak didukung";
+  }
+
+  function diagnose() {
+    var d = {
+      secureContext: !!window.isSecureContext,
+      hasNavigatorGPU: !!navigator.gpu,
+      userAgent: navigator.userAgent,
+      supported: supported,
+      supportChecked: supportChecked,
+      adapter: "belum-dicek",
+      adapterInfo: null,
+      reason: "",
+    };
+    if (!d.secureContext) {
+      d.adapter = "dilewati";
+      d.reason = "Halaman tidak aman (HTTP non-localhost) — WebGPU hanya tersedia di konteks aman.";
+      return Promise.resolve(d);
+    }
+    if (!navigator.gpu) {
+      d.adapter = "dilewati";
+      d.reason =
+        "navigator.gpu tidak ada — browser/tidak ada dukungan WebGPU (butuh Chrome/Edge 113+ desktop, Firefox 141+, atau Safari 18+).";
+      return Promise.resolve(d);
+    }
+    var p;
+    try {
+      p = navigator.gpu.requestAdapter();
+    } catch (e) {
+      d.adapter = "error";
+      d.reason = "requestAdapter() melempar: " + errText(e);
+      return Promise.resolve(d);
+    }
+    return Promise.resolve(p)
+      .then(
+        function (a) {
+          if (!a) {
+            d.adapter = "null";
+            d.reason =
+              "Adapter GPU tidak tersedia — GPU diblokir/blank/driver lawas atau WebGPU dinonaktifkan di flag browser.";
+            return d;
+          }
+          d.adapter = "ok";
+          var info = a.info || (a.requestAdapterInfo ? null : null);
+          if (info) {
+            d.adapterInfo = {
+              vendor: info.vendor || "",
+              architecture: info.architecture || "",
+              description: info.description || "",
+              device: info.device || "",
+            };
+          }
+          d.reason = "Adapter ditemukan.";
+          return d;
+        },
+        function (e) {
+          d.adapter = "error";
+          d.reason = "requestAdapter() gagal: " + errText(e);
+          return d;
+        },
+      );
   }
   function checkSupport(force) {
     if (!navigator.gpu) {
@@ -1193,6 +1255,7 @@
     checkSupport: function () {
       return checkSupport(true);
     },
+    diagnose: diagnose,
     buildHomeRow: buildHomeRow,
     refreshHomeRow: setHomeRowValue,
     enable: function () {
