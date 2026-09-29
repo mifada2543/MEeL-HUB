@@ -998,12 +998,16 @@ MEEL_UPSCALER.registerModel({
   dipilih. `registerModel()` di dalam file itu **menimpa** deskriptor statis
   yang didaftarkan shell, jadi `doRebuild()` selalu mengambil entri terbaru
   sebelum memanggil `buildChain()`.
-- Model bawaan: `anime4k` (bundle vendor), `meelscale` (resampler lokal),
-  `meelvision` — **MEeLVision** (bobot di `assets/models/meelvision/weights.js`).
+- Model bawaan: `anime4k` (bundle vendor), `meelscale` (resampler lokal) dan
+  `meelsharp` — **MEeLSharp** (Lanczos-3 + CAS, tanpa bobot). `meelvision` —
+  **MEeLVision** (bobot di `assets/models/meelvision/weights.js`) masih ada
+  filenya, tetapi sudah tidak didaftarkan di menu AI Upscaler.
 
 #### Catatan model: MEeLVision (arsitektur FSRCNN) & MEeLScale
 
 Keduanya model lokal di `assets/models/<id>/` — tanpa unduhan internet.
+MEeLVision sudah tidak tampil di menu (deskriptornya dihapus dari `upscaler.js`);
+catatan di bawah tetap berlaku untuk filenya.
 
 **MEeLVision ×2** (`meelvision/model.js` + `meelvision/weights.js`)
 

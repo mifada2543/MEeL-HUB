@@ -135,10 +135,9 @@ dist/
 build/
 out/
 
-# Proses build model upscale — TIDAK masuk repo (biar user tinggal pakai):
-# trainer lokal + artefaknya; yang di-commit hanya bobot jadi
-# (assets/models/*/weights.js).
+# Training files for MeelVision (if applicable)
 scripts/train-meelvision.js
+scripts/train-meelvision-colab.ipynb
 meelvision-ref*.json
 *.weights.bin
 scripts/.train-*/
