@@ -48,6 +48,12 @@
     loading: false,
   };
 
+  // Migrasi pilihan model lama: id "fsrcnn" sudah diganti "meelvision".
+  if (state.modelId === "fsrcnn") {
+    state.modelId = "meelvision";
+    lsSet(KEY_MODEL, "meelvision");
+  }
+
   var models = {};
   function registerModel(model) {
     if (!model || !model.id || !model.modes || !model.modes.length) return;
@@ -104,7 +110,7 @@
         if (!m || !m.buildChain) {
           throw new Error("File model " + id + " tidak mendaftarkan buildChain");
         }
-        // Muat aset berat milik impl (mis. bobot FSRCNN) sekali jalan.
+        // Muat aset berat milik impl (mis. bobot MEeLVision) sekali jalan.
         return loadModel(m);
       });
     };
@@ -167,11 +173,11 @@
     load: modelFileLoader("meelscale", "meelscale/model.js"),
   });
   registerModel({
-    id: "fsrcnn",
-    label: "FSRCNN",
-    short: "FSRCNN",
+    id: "meelvision",
+    label: "MEeLVision",
+    short: "MEeLVision",
     modes: [{ id: "x2", label: "FSRCNN ×2", short: "×2" }],
-    load: modelFileLoader("fsrcnn", "fsrcnn/model.js"),
+    load: modelFileLoader("meelvision", "meelvision/model.js"),
   });
 
   function loadModel(model) {

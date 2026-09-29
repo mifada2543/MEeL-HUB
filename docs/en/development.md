@@ -740,17 +740,19 @@ MEEL_UPSCALER.registerModel({
   descriptor registered by the shell, so `doRebuild()` always re-reads the
   entry before calling `buildChain()`.
 - Built-in models: `anime4k` (vendor bundle), `meelscale` (local resampler),
-  `fsrcnn` (weights in `assets/models/fsrcnn/weights.js`).
+  `meelvision` — **MEeLVision** (weights in `assets/models/meelvision/weights.js`).
 
-#### Model notes: FSRCNN & MEeLScale
+#### Model notes: MEeLVision (FSRCNN architecture) & MEeLScale
 
 Both are local models under `assets/models/<id>/` — no internet downloads.
 
-**FSRCNN ×2** (`fsrcnn/model.js` + `fsrcnn/weights.js`)
+**MEeLVision ×2** (`meelvision/model.js` + `meelvision/weights.js`)
 
-- Weights are a base64 `Float32Array(13163)` in `window.MEEL_FSRCNN_WEIGHTS_B64`,
-  trained locally by a vanilla JS trainer that is not in the repo (regenerate
-  with `node scripts/train-fsrcnn.js` in a local checkout).
+- Product name **MEeLVision** (id `meelvision`, folder
+  `assets/models/meelvision/`); the architecture term stays FSRCNN. Weights are
+  a base64 `Float32Array(13163)` in `window.MEEL_VISION_WEIGHTS_B64`, trained
+  locally by a vanilla JS trainer that is not in the repo (regenerate with
+  `node scripts/train-meelvision.js` in a local checkout).
 - Architecture: LR input (minus 0.5) → conv1 5×5 pad2 3→24 + PReLU →
   shrink 1×1 24→16 + PReLU → 3× map 3×3 pad1 16→16 + PReLU → deconv 9×9
   stride2 phase (16→3) + bias 0.5 → clamp 0..1.

@@ -968,17 +968,19 @@ MEEL_UPSCALER.registerModel({
   yang didaftarkan shell, jadi `doRebuild()` selalu mengambil entri terbaru
   sebelum memanggil `buildChain()`.
 - Model bawaan: `anime4k` (bundle vendor), `meelscale` (resampler lokal),
-  `fsrcnn` (bobot di `assets/models/fsrcnn/weights.js`).
+  `meelvision` — **MEeLVision** (bobot di `assets/models/meelvision/weights.js`).
 
-#### Catatan model: FSRCNN & MEeLScale
+#### Catatan model: MEeLVision (arsitektur FSRCNN) & MEeLScale
 
 Keduanya model lokal di `assets/models/<id>/` — tanpa unduhan internet.
 
-**FSRCNN ×2** (`fsrcnn/model.js` + `fsrcnn/weights.js`)
+**MEeLVision ×2** (`meelvision/model.js` + `meelvision/weights.js`)
 
-- Bobot = base64 `Float32Array(13163)` di `window.MEEL_FSRCNN_WEIGHTS_B64`,
-  dilatih lokal dengan trainer vanilla JS yang tidak ikut repo (regenerasi:
-  `node scripts/train-fsrcnn.js` pada checkout lokal).
+- Nama produk **MEeLVision** (id `meelvision`, folder `assets/models/meelvision/`);
+  istilah arsitektur tetap FSRCNN. Bobot = base64 `Float32Array(13163)` di
+  `window.MEEL_VISION_WEIGHTS_B64`, dilatih lokal dengan trainer vanilla JS
+  yang tidak ikut repo (regenerasi: `node scripts/train-meelvision.js` pada
+  checkout lokal).
 - Arsitektur: input LR (dikurangi 0.5) → conv1 5×5 pad2 3→24 + PReLU →
   shrink 1×1 24→16 + PReLU → 3× map 3×3 pad1 16→16 + PReLU → deconv 9×9
   stride2 fase (16→3) + bias 0.5 → clamp 0..1.
