@@ -683,6 +683,34 @@ Behaviour notes for the video player that are not obvious from a quick code
 read; primary references are `assets/js/video/watch/upscaler.js` and
 `recovery.js`.
 
+#### Option gating (WebGPU support)
+
+The **AI Upscale** row in the Settings menu is always present, including when
+the browser does not support WebGPU — no automatic toast when the page opens:
+
+- Unsupported → the row gets `aria-disabled="true"` + the
+  `meel-upscale-unavail` class (dimmed but **still clickable**), its value cell
+  reads `Tidak tersedia`, and the normal panel (toggle/Model/Mode/Scale) is
+  unreachable.
+- Clicking the row opens the read-only `upscale-why` sub-panel: title, the
+  specific reason per cause, a requirement list, and a **"Cek ulang dukungan"**
+  button running `checkSupport(true)`; if support is now present → toast + the
+  panel switches to the normal toggle.
+- While a check is running (`supportChecking`) the row shows a spinner and is
+  **not** disabled yet — anti-flicker, the menu does not change under the user.
+- After the check, `updateUI()` syncs the row (value + aria-disabled) through
+  `setHomeRowValue()` → `applyHomeRowState()`.
+
+Reasons come from a single source: `unsupportedReason()` (also exposed as
+`MEEL_UPSCALER.unsupportedReason()`), shared with `supportLabel()` and
+`diagnose()` through the `WHY` constants — same check order as `diagnose()`:
+
+| Code | Condition | Reason |
+| ---- | --------- | ------ |
+| `insecure` | `!window.isSecureContext` | page is not HTTPS/localhost |
+| `nogpu` | `!navigator.gpu` | browser has no WebGPU |
+| `no-adapter` | `requestAdapter()` → `null` | GPU/driver blocked, GPU blank, or WebGPU flag off |
+
 #### Upscale model API contract
 
 Models are pluggable through `MEEL_UPSCALER.registerModel()`:
