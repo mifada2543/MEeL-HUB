@@ -939,6 +939,37 @@ Alasan bersumber tunggal: `unsupportedReason()` (juga diekspos sebagai
 | `nogpu` | `!navigator.gpu` | browser tanpa WebGPU |
 | `no-adapter` | `requestAdapter()` → `null` | GPU/driver diblokir, GPU blank, atau flag WebGPU mati |
 
+#### Status on/off per video (sessionStorage)
+
+Status AI Upscale disimpan di **sessionStorage** (`MEEL_KEYS.UPSCALE_ENABLED`:
+`"true|<videoId>"` saat ON, `"false"` saat OFF) — bukan localStorage — sehingga
+default-nya **OFF** dan hanya bertahan selama video yang sama:
+
+| Peristiwa | Status |
+| --------- | ------ |
+| Tab baru / belum pernah dinyalakan | **OFF** (default) |
+| Refresh halaman (video yang sama) | **ON tetap** |
+| Video loop / ulang sendiri tanpa pindah halaman | **ON tetap** |
+| Klik video lain (rekomendasi, tombol next, kartu mini-player) | **OFF** |
+| Auto-next saat video habis | **OFF** |
+| Buka URL video lain di tab yang sama (navigasi penuh) | **OFF** |
+
+Dua lapis penjagaannya:
+
+- `readEnabled()` hanya menganggap `"true|<videoId>"` bila id video saat ini
+  cocok. `validateState()` menjalankannya lagi pada setiap `attach()` —
+  termasuk saat instance Plyr tidak berubah — sehingga navigasi penuh ke video
+  lain mematikan upscale sekaligus membuang nilai basi dari video sebelumnya.
+- Jalur transisi in-place (tanpa reload halaman) memanggil
+  `MEEL_UPSCALER.resetForNewVideo()`: `skipToNextVideo()` di `player-events.js`
+  (klik manual **dan** auto-next sama-sama lewat sana) serta listener kartu
+  mini-player di `mini-player.js`. Reset berjalan tanpa toast agar transisi
+  tidak dibanjiri notifikasi; mati total disatukan di `turnOff()`.
+
+`modelId`/`modeId`/`scaleId` tetap di localStorage sebagai preferensi lintas
+sesi — hanya status on/off yang bersifat per video. Nilai `localStorage` lama
+untuk key yang sama dihapus sekali saat skrip dimuat.
+
 #### Kontrak API model upscale
 
 Model pluggable lewat `MEEL_UPSCALER.registerModel()`:

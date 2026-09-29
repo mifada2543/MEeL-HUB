@@ -711,6 +711,38 @@ Reasons come from a single source: `unsupportedReason()` (also exposed as
 | `nogpu` | `!navigator.gpu` | browser has no WebGPU |
 | `no-adapter` | `requestAdapter()` → `null` | GPU/driver blocked, GPU blank, or WebGPU flag off |
 
+#### On/off status per video (sessionStorage)
+
+The AI Upscale state lives in **sessionStorage** (`MEEL_KEYS.UPSCALE_ENABLED`:
+`"true|<videoId>"` while ON, `"false"` while OFF) — not localStorage — so the
+default is **OFF** and it only survives for the current video:
+
+| Event | State |
+| ----- | ----- |
+| New tab / never switched on | **OFF** (default) |
+| Page refresh (same video) | stays **ON** |
+| Video loops on its own without leaving the page | stays **ON** |
+| Switching to another video (recommendation, next button, mini-player card) | **OFF** |
+| Auto-next when the video ends | **OFF** |
+| Opening another video URL in the same tab (full navigation) | **OFF** |
+
+Two guard layers:
+
+- `readEnabled()` only honours `"true|<videoId>"` when the current video id
+  matches. `validateState()` runs it again on every `attach()` — including when
+  the Plyr instance is unchanged — so a full navigation to another video turns
+  the upscale off and discards the stale value from the previous video.
+- In-place transitions (no page reload) call
+  `MEEL_UPSCALER.resetForNewVideo()`: `skipToNextVideo()` in `player-events.js`
+  (both manual clicks and auto-next go through it) and the mini-player card
+  listener in `mini-player.js`. The reset runs without a toast so transitions
+  are not flooded with notifications; the actual shutdown is centralised in
+  `turnOff()`.
+
+`modelId`/`modeId`/`scaleId` stay in localStorage as cross-session preferences
+— only the on/off state is per video. The old `localStorage` value for the same
+key is removed once when the script loads.
+
 #### Upscale model API contract
 
 Models are pluggable through `MEEL_UPSCALER.registerModel()`:

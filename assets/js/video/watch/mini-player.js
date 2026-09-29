@@ -431,6 +431,9 @@ function attachMiniPlayerVideoCardListeners(e) {
               (vttSrc = u),
               (videoId = p),
               destroyPlayer());
+            // Kartu mini-player menukar video di tempat: status ON AI Upscale
+            // dibuang supaya video baru mulai tanpa beban GPU client.
+            window.MEEL_UPSCALER && window.MEEL_UPSCALER.resetForNewVideo();
             const m = document.getElementById("main-video");
             (m &&
               ((m.innerHTML = ""),
