@@ -1,5 +1,4 @@
 
-
 .glass {
   background: var(--admin-surface);
   backdrop-filter: blur(16px);
@@ -209,7 +208,6 @@
   background: rgba(59, 130, 246, 0.06);
 }
 
-/* Hamburger Menu */
 .admin-menu-wrapper {
   position: relative;
 }
@@ -296,7 +294,6 @@
   margin: 4px 6px;
 }
 
-/* Admin Toggle Switch */
 .admin-toggle {
   position: relative;
   display: inline-flex;
@@ -338,7 +335,6 @@
   transform: translateX(16px);
 }
 
-/* Shortcut Cards */
 .admin-shortcut-card {
   display: flex;
   flex-direction: row;
@@ -389,7 +385,6 @@
   margin-bottom: 10px;
 }
 
-/* Admin Form Elements */
 .admin-input {
   width: 100%;
   background: rgba(255,255,255,0.04);
@@ -435,7 +430,6 @@
   color: #fff;
 }
 
-/* Admin Buttons */
 .admin-btn {
   display: inline-flex;
   align-items: center;
@@ -492,7 +486,6 @@
   width: 100%;
 }
 
-/* Admin Field Group */
 .admin-field {
   display: flex;
   flex-direction: column;
@@ -506,7 +499,6 @@
   letter-spacing: 0.05em;
 }
 
-/* ============ LIGHT THEME ============ */
 html[data-theme="light"] .action-btn-edit { color: #1d4ed8; }
 html[data-theme="light"] .action-btn-delete { color: #dc2626; }
 

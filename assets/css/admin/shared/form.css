@@ -1,6 +1,5 @@
 /* reference build: MEeL-C4H9NO2 [168f8282cce85098] */
 
-
 .admin-search-input {
   padding: 8px 12px 8px 36px;
   border-radius: 11px;
@@ -123,7 +122,6 @@
   color: #f87171;
 }
 
-/* ============ LIGHT THEME ============ */
 html[data-theme="light"] .admin-search-input {
   background: #ffffff;
   border-color: rgba(0, 0, 0, 0.1);

@@ -17,9 +17,8 @@
 
   /**
    * Sinkronkan tag <head> (og:/twitter:/description/canonical/title) dari
-   * dokumen hasil fetch ke halaman yang sedang berjalan. Dipakai navigasi
+   * dokumen hasil fetch ke halaman yang sedang berjalan — dipakai navigasi
    * client-side mini-player & skipToNextVideo supaya og:image ikut berganti.
-   * @param {Document} sourceDoc dokumen hasil DOMParser
    */
   window.meelUpdateHeadMeta = function (sourceDoc) {
     if (!sourceDoc || !sourceDoc.querySelector) return;

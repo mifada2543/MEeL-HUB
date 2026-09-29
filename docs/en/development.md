@@ -182,6 +182,36 @@ music ──1:N── playlist_tracks
 - **No section banners** — do not use `/* ==== 1. Name ==== */` separators in JS;
   a blank line is enough.
 
+#### When a comment gets deleted
+
+Applies to first-party code. **Excluded:** third-party/vendor files
+(`assets/js/compatibilitas/`, `*.min.js`, `plyr.css`, `tailwind.min.css`,
+`font.css`, …), the `reference build:` markers produced by `marks.php`, and
+configuration files (`.htaccess`, `install.sh`, `.github/workflows`).
+
+**Deleted:**
+
+1. Banners & separators — `/* ==== */`, `/* ---- */`, `────`, `════`,
+   `// 1. Name`; a blank line separates blocks instead.
+2. Comments that restate the code (what the line below does).
+3. Empty and consecutive duplicate comments (`//`, `/** */`).
+4. Commented-out dead code — delete the code, do not keep it as a comment.
+5. Docblocks that only repeat the function/constant name
+   (`/** Reject (inactive)? */` above a `return ...`).
+6. `@param`/`@return` that only duplicate the signature's types; **kept** when
+   they add contract (special return value, array shape, status enum).
+7. Step-by-step comments in tests (`// create data`) — keep the ones explaining
+   *why* the scenario exists.
+8. Long narrative headers → move to `docs/en/development.md`, the file keeps a
+   1–2 line pointer.
+
+**Kept:**
+
+- *Why* comments: trade-offs, security/race invariants, browser/GPU/DB
+  behaviour that is not readable from the code.
+- PHPDoc that documents a real contract instead of restating types.
+- `reference build:` markers, licences, and vendor attribution.
+
 ### Security
 
 1. **Always Prepared Statement** — No SQL concat

@@ -347,11 +347,7 @@ class TranscoderBase
     }
 
     /**
-     * Resolve input musik temp secara aman.
-     *
-     * Menolak path traversal/absolut: hanya nama file polos di dalam direktori
-     * temp milik server yang dikembalikan. Caller tidak pernah boleh
-     * menyuplai filesystem path mentah.
+     * Resolve input musik temp: tolak path traversal/absolut — hanya nama file polos di dalam direktori temp milik server, bukan path mentah dari caller.
      */
     public function resolveMusicInputPath(string $tempFile): ?string
     {

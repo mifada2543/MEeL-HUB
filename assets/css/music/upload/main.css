@@ -1,7 +1,5 @@
-/* upload/main.css — Page-specific CSS untuk Music Upload
- * Halaman: music/upload.php
- * Tema: Oranye
- * Dependensi: ../../shared/upload-form.css — Nav, form, buttons, alerts (shared) */
+/* upload/main.css — Music Upload (music/upload.php, tema oranye);
+   nav/form/tombol/alert datang dari ../../shared/upload-form.css. */
 :root {
   --accent: #f97316;
   --accent-hover: #fb923c;
@@ -44,7 +42,6 @@ body::before {
 .page-wrap {
   grid-template-columns: 1fr;
 }
-/* Layout */
 .upload-layout {
   display: grid;
   grid-template-columns: 1fr;
@@ -60,7 +57,6 @@ body::before {
     grid-template-columns: 360px 1fr;
   }
 }
-/* Hero — waveform visual */
 .hero-waveform {
   width: 100%;
   aspect-ratio: 16/9;
@@ -153,7 +149,6 @@ body::before {
     opacity: 0.85;
   }
 }
-/* Guide */
 .guide-list {
   display: flex;
   flex-direction: column;
@@ -190,7 +185,6 @@ body::before {
   color: #cbd5e1;
   line-height: 1.4;
 }
-/* Drop zones */
 .drop-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -276,7 +270,6 @@ body::before {
   display: none;
   border: 1px solid var(--border-strong);
 }
-/* Toggle (anti-transcode) */
 .toggle-card {
   display: flex;
   align-items: center;
@@ -326,7 +319,6 @@ body::before {
 .toggle-switch input:checked + .toggle-track::after {
   transform: translateX(16px);
 }
-/* Buttons */
 .btn-auto {
   display: inline-flex;
   align-items: center;
@@ -380,7 +372,6 @@ body::before {
     transform: rotate(360deg);
   }
 }
-/* Upload overlay */
 #upload-overlay {
   display: none;
   position: fixed;
@@ -427,7 +418,6 @@ body::before {
     opacity: 1;
   }
 }
-/* waveform spinner */
 .upload-wave {
   display: flex;
   align-items: center;
@@ -578,7 +568,6 @@ body::before {
 .alert {
   margin-bottom: 20px;
 }
-/* Primary button full-width */
 .btn-primary {
   width: 100%;
   padding-top: 15px;

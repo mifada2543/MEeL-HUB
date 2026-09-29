@@ -1,22 +1,10 @@
-/* MEeL — LIGHT THEME
-   Architecture: token → component → state
+/* MEeL — LIGHT THEME: token → utility → component. Semua rule di-scop ke
+   html[data-theme="light"] (native CSS nesting) sehingga dark mode tidak
+   tersentuh; rule di sini adalah override load-bearing Tailwind/CSS modul dan
+   sengaja memakai !important. Var legacy (--bg, --surface, --text, …) masih
+   dipertahankan untuk komponen lama — token semantik baru ada di
+   theme-tokens.css (--meel-*). */
 
-   1. TOKENS   — legacy CSS variable maps consumed by component styles.
-                Semantic tokens live in theme-tokens.css (--meel-*);
-                these legacy vars (--bg, --surface, --text, …) are kept for
-                older components that still reference them directly.
-   2. UTILITY  — remap Tailwind color utilities onto semantic tokens, so the
-                Tailwind-heavy markup keeps working without hardcoded dark
-                colors. New markup should prefer the .meel-* component
-                classes in theme-tokens.css over Tailwind color utilities.
-   3. COMPONENT— each component is themed once (base) with its state
-                (:hover / :active / :focus) grouped right below it.
-
-   Every rule is scoped to html[data-theme="light"] (native CSS nesting),
-   so dark mode is untouched. Rules are load-bearing overrides of the
-   Tailwind/module CSS and intentionally keep !important. */
-
-/* 0. THEME TRANSITION (both themes) */
 html.theme-transition,
 html.theme-transition *,
 html.theme-transition *::before,
@@ -49,7 +37,6 @@ html.theme-transition *::after {
   transform: scale(0.95);
 }
 
-/* MFA mini theme knob icon */
 #theme-icon.mfa-knob {
   background: transparent !important;
   box-shadow: none !important;
@@ -58,7 +45,6 @@ html.theme-transition *::after {
   height: 20px !important;
 }
 
-/* Keyframes used by light-mode states */
 @keyframes counter-pop-light {
   0% { transform: scale(1); color: var(--meel-text-heading); }
   35% { transform: scale(1.35); color: #16a34a; }
@@ -70,9 +56,7 @@ html.theme-transition *::after {
   100% { background-position: -200% 0; }
 }
 
-/* LIGHT THEME (everything below is gated to html[data-theme="light"]) */
 html[data-theme="light"] {
-  /* 1. TOKENS (legacy variable maps) */
   --bg-base: #fafafa !important;
   --bg-card: #ffffff !important;
   --bg-panel: #f4f4f5 !important;
@@ -83,7 +67,6 @@ html[data-theme="light"] {
   --muted: #71717a !important;
   --white: #18181b !important;
 
-  /* 2. BASE (page + form elements) */
   & body {
     --bg: #fafafa !important;
     --surface: #ffffff !important;
@@ -116,8 +99,6 @@ html[data-theme="light"] {
     color: var(--meel-text) !important;
   }
 
-  /* 3. UTILITY REMAP — Tailwind color utilities → semantic tokens */
-  /* Text */
   & .text-white:not(.nav-logo-text):not(.bg-blue-600):not(.bg-gray-600):not(.bg-red-600):not(.bg-purple-600):not(.bg-green-600),
   & .text-white\/90:not(.nav-logo-text),
   & .text-white\/80:not(.nav-logo-text) { color: var(--meel-text-heading) !important; }
@@ -150,7 +131,6 @@ html[data-theme="light"] {
   & .hover\:text-red-400:hover { color: var(--meel-red) !important; }
   & .hover\:text-orange-400:hover { color: var(--meel-orange) !important; }
 
-  /* Backgrounds — white-glass & black overlays */
   & .bg-white\/\[\.02\] { background: rgba(0, 0, 0, 0.02) !important; }
   & .bg-white\/\[\.03\] { background: rgba(0, 0, 0, 0.03) !important; }
   & .bg-white\/\[\.035\] { background: rgba(0, 0, 0, 0.03) !important; }
@@ -179,7 +159,6 @@ html[data-theme="light"] {
   & .bg-black\/60 { background: rgba(0, 0, 0, 0.25) !important; }
   & .bg-black\/90 { background: rgba(0, 0, 0, 0.35) !important; }
 
-  /* Backgrounds — gray scales & dark hex panels */
   & .bg-gray-900\/40 { background: var(--meel-surface-hover) !important; }
   & .bg-gray-800\/60 { background: var(--meel-surface-active) !important; }
   & .bg-gray-800\/50 {
@@ -255,7 +234,6 @@ html[data-theme="light"] {
     border-color: rgba(0, 0, 0, 0.06) !important;
   }
 
-  /* Borders */
   & .border-white\/\[\.04\],
   & .border-white\/\[\.05\],
   & .border-white\/\[\.06\],
@@ -269,7 +247,6 @@ html[data-theme="light"] {
   & .border-gray-700 { border-color: var(--meel-border-strong) !important; }
   & .border-blue-500\/50 { border-color: rgba(37, 99, 235, 0.25) !important; }
 
-  /* Hover utilities */
   & .hover\:bg-white\/\[\.04\]:hover { background: rgba(0, 0, 0, 0.04) !important; }
   & .hover\:bg-white\/\[\.05\]:hover { background: var(--meel-surface-hover) !important; }
   & .hover\:bg-white\/\[\.08\]:hover { background: var(--meel-surface-active) !important; }
@@ -290,7 +267,6 @@ html[data-theme="light"] {
     color: #ffffff !important;
   }
 
-  /* Dividers & shadows */
   & .divide-gray-800 > :not([hidden]) ~ :not([hidden]) { border-color: var(--meel-border) !important; }
   & .divide-gray-700 > :not([hidden]) ~ :not([hidden]) { border-color: var(--meel-border-strong) !important; }
   & .shadow-2xl { box-shadow: var(--meel-shadow-xl) !important; }
@@ -298,7 +274,6 @@ html[data-theme="light"] {
   & .shadow-lg { box-shadow: var(--meel-shadow-md) !important; }
   & .shadow-black\/60 { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.12) !important; }
 
-  /* Inline-style & file-input overrides */
   & [style*="background-color:#111827"],
   & [style*="background-color: #111827"] { background-color: var(--meel-surface) !important; }
   & [style*="#0b0e14"] { background: var(--meel-bg) !important; }
@@ -337,8 +312,6 @@ html[data-theme="light"] {
   & nav.hub-nav .bg-white\/10 { background: rgba(255, 255, 255, 0.10) !important; }
   & nav.hub-nav .hover\:bg-white\/5:hover { background: rgba(255, 255, 255, 0.05) !important; }
 
-  /* 4. COMPONENTS */
-  /* 4.1 Navigation */
   /* shared/nav.css hardcodes `body > nav` as a dark fixed bar; light mode
      overrides it so navs without their own bg class (video/music index+watch)
      follow the theme. Beats nav.css on both specificity and load order.
@@ -417,7 +390,6 @@ html[data-theme="light"] {
     border-color: rgba(234, 88, 12, 0.15);
   }
 
-  /* 4.2 Surfaces & cards */
   & .glass,
   & .glass-card {
     transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
@@ -540,7 +512,6 @@ html[data-theme="light"] {
   }
   & .thumb-mini { border-color: rgba(0, 0, 0, 0.08) !important; }
 
-  /* 4.3 Mini player */
   & #mini-player,
   & #mini-player-index,
   & #mini-player-shell {
@@ -584,7 +555,6 @@ html[data-theme="light"] {
     color: var(--meel-red) !important;
   }
 
-  /* 4.4 Video player & watch page */
   & #player-container { background: var(--meel-surface) !important; }
   & #player-container .plyr__controls { color: var(--meel-text-heading) !important; }
   & #player-container .plyr__controls .plyr__control { color: var(--meel-text-heading) !important; }
@@ -649,7 +619,6 @@ html[data-theme="light"] {
     border-color: var(--meel-border) !important;
   }
 
-  /* 4.5 Music player extras */
   & #custom-artist-dropdown > button,
   & #custom-playlist-dropdown > button {
     background: rgba(0, 0, 0, 0.02) !important;
@@ -698,7 +667,6 @@ html[data-theme="light"] {
     color: var(--meel-text) !important;
   }
 
-  /* 4.6 SweetAlert */
   & .swal2-popup {
     background: var(--meel-surface) !important;
     color: var(--meel-text) !important;
@@ -711,7 +679,6 @@ html[data-theme="light"] {
     background: rgba(0, 0, 0, 0.25) !important;
   }
 
-  /* 4.7 Tables */
   & thead th {
     color: var(--meel-text-secondary) !important;
     border-bottom-color: var(--meel-border-strong) !important;
@@ -719,7 +686,6 @@ html[data-theme="light"] {
   & tbody td { border-bottom-color: var(--meel-border) !important; }
   & tbody tr:hover { background: var(--meel-surface-hover) !important; }
 
-  /* 4.8 Books & reader */
   & .continue-banner-text { color: var(--meel-text-secondary) !important; }
   & .continue-banner-text strong { color: var(--meel-text-heading) !important; }
   & .reader-nav {
@@ -795,7 +761,6 @@ html[data-theme="light"] {
   & .pdf-info-meta { color: var(--meel-text-muted) !important; }
   & .crop-guide { background-color: rgba(0, 0, 0, 0.35) !important; }
 
-  /* 4.9 Admin edit & update page */
   & .hero-title { color: var(--meel-text-heading) !important; }
   & .hero-title .accent { color: var(--meel-blue) !important; }
   & .station-id {
@@ -1014,7 +979,6 @@ html[data-theme="light"] {
     color: var(--meel-text) !important;
   }
 
-  /* 4.10 Profile / manage */
   & .manage-tabs {
     background: rgba(0, 0, 0, 0.03) !important;
     border-color: var(--meel-border) !important;
@@ -1073,7 +1037,6 @@ html[data-theme="light"] {
   & .empty-state svg { color: var(--meel-text-muted) !important; }
   & .empty-state p { color: var(--meel-text-secondary) !important; }
 
-  /* 4.11 Auth */
   & .backup-code {
     background: var(--meel-surface-hover) !important;
     border-color: var(--meel-border) !important;
@@ -1083,7 +1046,6 @@ html[data-theme="light"] {
   & .dot-green { box-shadow: 0 0 6px rgba(34, 197, 94, 0.4) !important; }
   & .dot-orange { box-shadow: 0 0 6px rgba(249, 115, 22, 0.4) !important; }
 
-  /* 4.12 Drive */
   & .nav-item { color: var(--meel-text-secondary) !important; }
   & .nav-item:hover,
   & .nav-btn-desktop:hover {
@@ -1126,7 +1088,6 @@ html[data-theme="light"] {
   & .upload-prog-stat-val { color: var(--meel-text-heading) !important; }
   & .upload-prog-result { border-top-color: var(--meel-border) !important; }
 
-  /* File card image thumbnail */
   & .file-card-thumb {
     background: rgba(0, 0, 0, 0.05) !important;
   }
@@ -1134,7 +1095,6 @@ html[data-theme="light"] {
     background: rgba(0, 0, 0, 0.4) !important;
   }
 
-  /* 4.13 Notification page */
   & .notif-item {
     background: var(--meel-surface) !important;
     border-color: var(--meel-border) !important;
@@ -1179,7 +1139,6 @@ html[data-theme="light"] {
   }
 }
 
-/* Mobile nav background */
 @media (max-width: 640px) {
   html[data-theme="light"] nav {
     background-color: var(--meel-nav-bg) !important;

@@ -8,16 +8,7 @@ require_once '../../modules/core/GarbageCollector.php';
 GarbageCollector::run();
 
 /**
- * Post-encode musik dari unduhan URL (yt-dlp → encodeMusic).
- *
- * Keamanan:
- * - Hanya menerima POST + CSRF token (state-changing endpoint).
- * - `temp_file` diperlakukan sebagai OPAQUE TOKEN (bukan filesystem path):
- *     hanya nama file polos (basename, tanpa separator/..), dan WAJIB
- *     memiliki entri padanan di $_SESSION['meel_pending_music'] milik user
- *   yang sama. Metadata tidak pernah diambil dari request — hanya dari sesi.
- * - File fisik tetap di-resolve server-side di dalam direktori temp milik
- *   server (lihat Transcoder::resolveMusicInputPath()).
+ * Post-encode musik dari unduhan URL (yt-dlp → encodeMusic): hanya POST + CSRF (state-changing). `temp_file` = OPAQUE TOKEN yang wajib ada di $_SESSION['meel_pending_music'] user yang sama — detail validasi ada di tiap guard di bawah.
  */
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {

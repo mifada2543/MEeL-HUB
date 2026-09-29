@@ -3,9 +3,9 @@
  * @copyright Copyright (C) 2026 Mifada
  * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
 /*
- * upload/upload.js — JS halaman video/upload.php: drop-zone handler,
- * overlay upload (progress manual), drag-and-drop, dan @keyframes spin.
- * Depends on: shared/upload-progress.js (meelUploadProgress)
+ * upload/upload.js — video/upload.php: drop-zone, overlay progress,
+ * drag-and-drop, @keyframes spin; progress memakai
+ * shared/upload-progress.js (meelUploadProgress).
  * */
 function handleVideoFile(input) {
   const file = input.files[0];
@@ -46,7 +46,6 @@ function handleSubtitleFile(input) {
   label.textContent = file.name;
   sub.textContent = ext === "srt" ? "SRT · akan dikonversi otomatis" : "VTT";
   zone.classList.add("has-file");
-  // Tampilkan dropdown bahasa subtitle
   const langWrap = document.getElementById("subtitle-lang-wrap");
   if (langWrap) langWrap.style.display = "";
 }
@@ -169,10 +168,8 @@ thumbZone.addEventListener("drop", (e) => {
     handleThumbFile(thumbInput);
   }
 });
-// Flag: apakah user sudah pilih thumbnail manual
 let thumbManual = false;
 
-/** Auto-fill metadata dari file video via ffprobe di server. */
 function autoFillMetadata() {
   const videoInput = document.getElementById("video-input");
   if (!videoInput.files || !videoInput.files[0]) {
@@ -208,7 +205,6 @@ function autoFillMetadata() {
           document.getElementById("f-title").value = data.title.trim();
         if (hasDesc)
           document.getElementById("f-desc").value = data.description.trim();
-        // Isi thumbnail dari metadata (hanya jika user belum pilih manual)
         if (data.cover && data.cover.length > 0 && !thumbManual) {
           const preview = document.getElementById("thumb-preview");
           const iconWrap = document.getElementById("thumb-icon-wrap");
@@ -221,7 +217,6 @@ function autoFillMetadata() {
           label.textContent = "Thumbnail dari metadata";
           sub.textContent = "";
           zone.classList.add("has-file");
-          // Convert base64 ke File agar ikut terupload saat submit
           const binary = atob(data.cover);
           const bytes = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);

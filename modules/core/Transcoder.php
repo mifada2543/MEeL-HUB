@@ -25,20 +25,7 @@ require_once __DIR__ . '/../transcoder/EncodeService.php';
 require_once __DIR__ . '/../transcoder/TranscodeService.php';
 
 /**
- * Transcoder — facade/orchestrator untuk pipeline media.
- *
- * File ini sengaja dijadikan tipis. Implementasi per-responsibility dipisah
- * ke service class agar tiap class punya satu alasan berubah:
- *
- *   modules/transcoder/DownloadService.php   — download URL (yt-dlp) + finalisasi
- *   modules/transcoder/EncodeService.php     — encode audio mentah → .ogg (ffmpeg)
- *   modules/transcoder/TranscodeService.php  — transcode video HLS → mp3/ogg/m4a
- *
- * State bersama (koneksi DB, user, child-process tracking, temp path, PID file)
- * hidup di TranscoderBase yang di-extend oleh facade dan tiap service. Facade
- * tetap menyediakan API yang sama seperti sebelum refactor sehingga caller
- * existing (upload_advanced.php, transcode.php, controllers/api/*) tidak
- * berubah sama sekali.
+ * Transcoder — facade tipis; implementasi di modules/transcoder/{Download,Encode,Transcode}Service.php, state bersama di TranscoderBase. API tidak berubah bagi caller existing.
  */
 class Transcoder extends TranscoderBase
 {
@@ -65,15 +52,12 @@ class Transcoder extends TranscoderBase
 
     public function terminateAllProcesses(): void
     {
-        // Terminate proses milik service (download/encode/transcode) dulu,
-        // lalu proses yang tercatat langsung di instance ini.
+        // Proses milik service dulu, lalu yang tercatat langsung di instance ini.
         foreach ([$this->downloadService, $this->encodeService, $this->transcodeService] as $svc) {
             $svc?->terminateAllProcesses();
         }
         parent::terminateAllProcesses();
     }
-
-    // Delegasi — API lama tetap tersedia di facade.
 
     public function processDownload(string $url, string $type): string
     {
@@ -115,10 +99,7 @@ class Transcoder extends TranscoderBase
         return $this->transcodeService->transcodeVideo($video_id, $format);
     }
 
-    /**
-     * Cek kepemilikan output transcode di sesi aktif user (lihat
-     * TranscodeService::ownsTranscodeFile() — dipakai download_transcode.php).
-     */
+    /** Cek kepemilikan output transcode di sesi aktif user (lihat TranscodeService::ownsTranscodeFile()). */
     public static function ownsTranscodeFile(string $outputFilename): bool
     {
         return TranscodeService::ownsTranscodeFile($outputFilename);

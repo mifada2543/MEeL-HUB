@@ -1,14 +1,6 @@
 <?php
 /**
- * Variabel berikut di-inject dari scope pemanggil (DriveViewRenderer::renderFileGrid).
- *
- * @var array $files      Daftar file untuk dirender.
- * @var string $accent    Warna aksen (hex) untuk ikon tipe.
- * @var string $icon      Nama ikon lucide untuk tipe file.
- * @var string $type      Tipe file (video/audio/dokumen).
- * @var string $scope     Scope file (public/private).
- * @var bool $showDelete  Tampilkan tombol hapus (false = hanya view + download).
- * @var string $csrfToken Token CSRF untuk form download/delete.
+ * Variabel di-inject dari scope pemanggil (DriveViewRenderer::renderFileGrid): $files, $accent, $icon, $type, $scope, $showDelete (false = hanya view + download), $csrfToken.
  */
 
 if (empty($files)): ?>

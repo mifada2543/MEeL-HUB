@@ -1,7 +1,5 @@
-/* ==========================================================================
-   MEeL Video — AI Upscale overlay (WebGPU / Anime4K)
-   Canvas overlay menumpang persis di atas <video> di dalam .plyr.
-   ========================================================================== */
+/* MEeL Video — AI Upscale overlay (WebGPU/Anime4K): canvas menumpang persis
+   di atas <video> di dalam .plyr. */
 
 #meel-upscale-canvas {
   position: absolute;
@@ -23,10 +21,6 @@
 .plyr.meel-upscale-active video {
   opacity: 0;
 }
-
-/* --------------------------------------------------------------------------
-   Menu settings: spinner saat model dimuat on-demand
-   -------------------------------------------------------------------------- */
 
 .meel-upscale-spin {
   display: inline-block;

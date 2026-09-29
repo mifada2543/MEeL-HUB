@@ -1,9 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @coversNothing
- */
+/** @coversNothing */
 class BootstrapTest extends TestCase
 {
     
@@ -31,9 +29,7 @@ class BootstrapTest extends TestCase
         return [$env, $debug === '1'];
     }
 
-    /**
-     * @dataProvider baseUrlProvider
-     */
+    /** @dataProvider baseUrlProvider */
     public function testBaseUrlFallbackFromProjectRoot(
         string $scriptName,
         string $documentRoot,
@@ -76,9 +72,7 @@ class BootstrapTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider environmentProvider
-     */
+    /** @dataProvider environmentProvider */
     public function testAppDebugFollowsEnvironment(
         string $remoteAddr,
         string $serverName,

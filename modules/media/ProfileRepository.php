@@ -58,8 +58,7 @@ class ProfileRepository
 
     /**
      * Feed campuran video+musik untuk channel (tab "all"): satu urutan
-     * kronologis, tiap baris diberi kolom `type` (video|music) agar kartu
-     * bisa dirender seragam di satu grid.
+     * kronologis dengan kolom `type` (video|music) agar kartu dirender seragam di satu grid.
      */
     public function getFeedPaginated(int $user_id, int $limit, int $offset): array
     {

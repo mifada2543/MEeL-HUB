@@ -1,6 +1,5 @@
-/* upload/main.css — Page-specific CSS untuk Upload Video
- * Halaman: video/upload.php
- * Dependensi: ../../shared/upload-form.css — Nav, form, buttons, alerts (shared) */
+/* upload/main.css — Video Upload (video/upload.php);
+   nav/form/tombol/alert datang dari ../../shared/upload-form.css. */
 :root {
   --accent: #ef4444;
   --accent-hover: #f87171;
@@ -42,7 +41,6 @@ body::before {
 .page-wrap {
   grid-template-columns: 1fr;
 }
-/* Layout */
 .upload-layout {
   display: grid;
   grid-template-columns: 1fr;
@@ -58,7 +56,6 @@ body::before {
     grid-template-columns: 360px 1fr;
   }
 }
-/* Video icon hero */
 .hero-icon {
   width: 100%;
   aspect-ratio: 16/9;
@@ -101,7 +98,6 @@ body::before {
   position: relative;
   z-index: 1;
 }
-/* Guide list */
 .guide-list {
   display: flex;
   flex-direction: column;
@@ -138,7 +134,6 @@ body::before {
   color: #cbd5e1;
   line-height: 1.4;
 }
-/* Drop zones */
 .drop-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -341,7 +336,6 @@ body::before {
   display: none;
   border: 1px solid var(--border-strong);
 }
-/* Auto-fill metadata button */
 .btn-auto {
   display: inline-flex;
   align-items: center;
@@ -395,7 +389,6 @@ body::before {
     transform: rotate(360deg);
   }
 }
-/* Upload overlay */
 #upload-overlay {
   display: none;
   position: fixed;
@@ -550,11 +543,9 @@ body::before {
 .footer-link.accent:hover {
   color: #f87171;
 }
-/* Alert upload */
 .alert {
   margin-bottom: 20px;
 }
-/* Primary button */
 .btn-primary {
   width: 100%;
   padding-top: 15px;

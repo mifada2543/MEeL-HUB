@@ -2,11 +2,8 @@
 use PHPUnit\Framework\TestCase;
 
 /**
- * Regresi keamanan trusted-proxy (T1 Fase 0):
- * X-Forwarded-For / CF-Connecting-IP dari klien tak tepercaya harus diabaikan,
- * sehingga auth_is_loopback() tak bisa dipakai untuk bypass rate-limit login,
- * lockout MFA, dan IP-ban.
- *
+ * Regresi trusted-proxy: X-Forwarded-For / CF-Connecting-IP dari klien tak tepercaya harus diabaikan,
+ * supaya auth_is_loopback() tak bisa dipakai bypass rate-limit login, lockout MFA, IP-ban.
  * @coversNothing
  */
 class ProxyTrustTest extends TestCase
@@ -118,9 +115,7 @@ class ProxyTrustTest extends TestCase
         $this->assertSame('127.0.0.1', get_real_ip());
     }
 
-    /**
-     * @dataProvider cidrProvider
-     */
+    /** @dataProvider cidrProvider */
     public function testTrustedProxyCidrMatching(string $ip, string $cidr, bool $expected): void
     {
         $this->assertSame($expected, meel_ip_in_cidr($ip, $cidr));

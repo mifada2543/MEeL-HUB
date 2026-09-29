@@ -1,9 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers MediaViewer
- */
+/** @covers MediaViewer */
 class MediaViewerTest extends TestCase
 {
     

@@ -1,9 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @coversNothing
- */
+/** @coversNothing */
 class SharedJsTest extends TestCase
 {
     

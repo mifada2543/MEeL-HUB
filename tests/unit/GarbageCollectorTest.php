@@ -1,9 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers GarbageCollector
- */
+/** @covers GarbageCollector */
 class GarbageCollectorTest extends TestCase
 {
     private string $testTempDir;

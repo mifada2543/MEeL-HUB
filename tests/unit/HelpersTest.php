@@ -1,16 +1,12 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @coversNothing
- */
+/** @coversNothing */
 class HelpersTest extends TestCase
 {
     
 
-    /**
-     * @dataProvider bytesProvider
-     */
+    /** @dataProvider bytesProvider */
     public function testFormatBytes(int|float $bytes, int $precision, string $expected): void
     {
         $this->assertSame($expected, format_bytes($bytes, $precision));
@@ -33,9 +29,7 @@ class HelpersTest extends TestCase
 
     
 
-    /**
-     * @dataProvider timeAgoProvider
-     */
+    /** @dataProvider timeAgoProvider */
     public function testTimeAgo(int $secondsAgo, string $expectedRegex): void
     {
         $timestamp = time() - $secondsAgo;
@@ -58,9 +52,7 @@ class HelpersTest extends TestCase
 
     
 
-    /**
-     * @dataProvider mimeTypeProvider
-     */
+    /** @dataProvider mimeTypeProvider */
     public function testGetAudioMimeType(string $ext, string $expected): void
     {
         $this->assertSame($expected, get_audio_mime_type($ext));
@@ -82,9 +74,7 @@ class HelpersTest extends TestCase
 
     
 
-    /**
-     * @dataProvider formatLabelProvider
-     */
+    /** @dataProvider formatLabelProvider */
     public function testGetAudioFormatLabel(string $ext, string $expected): void
     {
         $this->assertSame($expected, get_audio_format_label($ext));
@@ -104,9 +94,7 @@ class HelpersTest extends TestCase
 
     
 
-    /**
-     * @dataProvider formatDescriptionProvider
-     */
+    /** @dataProvider formatDescriptionProvider */
     public function testGetAudioFormatDescription(string $ext, string $expectedContains): void
     {
         $result = get_audio_format_description($ext);

@@ -4,13 +4,9 @@ use PHPUnit\Framework\TestCase;
 require_once MEEL_ROOT . '/modules/core/MeelCoin.php';
 
 /**
- * Test integrasi MEeLCoin (butuh MySQL; memakai database uji MEeL-test).
- *
- * Catatan cakupan: harness ini memakai satu koneksi, jadi skenario *interleaving*
- * dua request paralel tidak bisa disimulasikan literal. Yang diuji di sini adalah
- * kontrak yang menjamin kebenaran saldo: guard saldo di statement UPDATE tunggal,
- * nilai tambah/kurang yang eksak, serta semantik siklus refill.
- *
+ * Test integrasi MEeLCoin (butuh MySQL; database uji MEeL-test).
+ * Satu koneksi harness → interleaving dua request tak bisa disimulasikan literal; yang
+ * diuji kontrak saldo: guard di UPDATE tunggal, delta eksak, semantik siklus refill.
  * @requires extension mysqli
  * @group integration
  * @covers MeelCoin
@@ -47,8 +43,6 @@ class MeelCoinIntegrationTest extends TestCase
         $this->dbHelper->close();
         parent::tearDown();
     }
-
-    // Helper
 
     private function setBalance(int $userId, int $balance, ?string $lastRefill = null): void
     {
@@ -104,8 +98,6 @@ class MeelCoinIntegrationTest extends TestCase
         return $rows;
     }
 
-    // spend()
-
     public function testSpendDeductsBalanceAndWritesLog(): void
     {
         $this->setBalance($this->userId, 20);
@@ -142,13 +134,12 @@ class MeelCoinIntegrationTest extends TestCase
         // Perubahan saldo "dari request lain" setelah nilai awal diketahui.
         $this->setBalance($this->userId, 8);
 
-        // spend() dinilai dari saldo di DB saat UPDATE (8), bukan 20.
+        // spend() dinilai dari saldo di DB saat UPDATE (8), bukan 20; saat cukup, pengurangan juga dari nilai DB terkini.
         [$ok, $err] = MeelCoin::spend($this->conn, $this->userId, 10, 'upload_advanced');
         $this->assertFalse($ok);
         $this->assertStringContainsString('tersedia: 8', $err);
         $this->assertSame(8, MeelCoin::getBalance($this->conn, $this->userId));
 
-        // Dan saat saldo cukup, pengurangan dihitung dari nilai DB terkini.
         [$ok2] = MeelCoin::spend($this->conn, $this->userId, 5, 'upload_advanced');
         $this->assertTrue($ok2);
         $this->assertSame(3, MeelCoin::getBalance($this->conn, $this->userId));
@@ -165,8 +156,6 @@ class MeelCoinIntegrationTest extends TestCase
         $this->assertSame(12, MeelCoin::getBalance($this->conn, $this->userId));
         $this->assertCount(0, $this->coinLogs($this->userId, 'upload_advanced'), 'Biaya 0 tidak boleh menulis log');
     }
-
-    // refund()
 
     public function testRefundAddsCoinsAndWritesLog(): void
     {
@@ -190,8 +179,6 @@ class MeelCoinIntegrationTest extends TestCase
         $this->assertSame(5, MeelCoin::getBalance($this->conn, $this->userId));
         $this->assertCount(0, $this->coinLogs($this->userId, 'upload_advanced_download_refund'));
     }
-
-    // refill()
 
     public function testRefillGrantsCappedAmountWithExactLogDelta(): void
     {
@@ -223,32 +210,26 @@ class MeelCoinIntegrationTest extends TestCase
         $this->assertFalse(MeelCoin::refill($this->conn, $this->userId, 'user'));
         $this->assertSame(25, MeelCoin::getBalance($this->conn, $this->userId));
 
-        // Timer harus di-reset → tidak ada "refill tertunda" yang bisa menutup
-        // potongan coin berikutnya.
+        // Timer di-reset → tak ada "refill tertunda" yang menutup potongan berikutnya.
         $reset = strtotime((string)$this->lastRefill($this->userId));
         $this->assertGreaterThan(time() - 60, $reset, 'Timer refill harus di-reset saat saldo penuh');
         $this->assertLessThanOrEqual(time() + 5, $reset);
     }
 
-    /**
-     * Regresi inti: upload berhasil, coin harus TETAP terpotong di request
-     * berikutnya (dulu hilang karena refill tertunda langsung menutupnya).
-     */
+    /** Regresi inti: coin harus TETAP terpotong di request berikutnya (dulu hilang karena refill tertunda langsung menutupnya). */
     public function testSpendIsNotMaskedByPendingRefillOnNextRequest(): void
     {
         $this->setBalance($this->userId, 25, date('Y-m-d H:i:s', time() - 6 * 3600));
 
-        // Request 1: halaman upload dimuat (refill dievaluasi) lalu user upload.
         MeelCoin::refill($this->conn, $this->userId, 'user');
         [$ok] = MeelCoin::spend($this->conn, $this->userId, 10, 'upload_advanced');
         $this->assertTrue($ok);
         $this->assertSame(15, MeelCoin::getBalance($this->conn, $this->userId));
 
-        // Request 2: buka halaman upload lagi → saldo tidak boleh melompat naik.
+        // Request 2: halaman upload dimuat lagi → saldo tidak boleh melompat naik.
         MeelCoin::refill($this->conn, $this->userId, 'user');
         $this->assertSame(15, MeelCoin::getBalance($this->conn, $this->userId));
 
-        // Dan upload kedua tetap terpotong normal.
         [$ok2] = MeelCoin::spend($this->conn, $this->userId, 10, 'upload_advanced');
         $this->assertTrue($ok2);
         $this->assertSame(5, MeelCoin::getBalance($this->conn, $this->userId));
@@ -272,8 +253,6 @@ class MeelCoinIntegrationTest extends TestCase
         $this->assertTrue(MeelCoin::refill($this->conn, DbTestHelper::MEMBER_USER_ID, 'member'));
         $this->assertSame(50, MeelCoin::getBalance($this->conn, DbTestHelper::MEMBER_USER_ID));
     }
-
-    // getRefillCountdown()
 
     public function testGetRefillCountdownFollowsPerUserTimestamp(): void
     {
@@ -303,12 +282,6 @@ class MeelCoinIntegrationTest extends TestCase
     {
         $this->assertSame(0, MeelCoin::getRefillCountdown($this->conn, DbTestHelper::ADMIN_USER_ID, 'admin'));
     }
-
-    // Catatan (T6): QueueReconciler dihapus — kelas mati (tanpa pemanggil
-    // produksi), menulis enum status 'orphaned' yang tidak ada di schema, dan
-    // checkDownloadedFile() mengabaikan argumennya. Refund-dedup-nya ikut
-    // terhapus; jalur refund produksi (DownloadService/transcode.php) tetap
-    // tercakup test lain.
 }
 
 /* reference build: MEeL-C9H11NO2 [1738fa77212209fc] */

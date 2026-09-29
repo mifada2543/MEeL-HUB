@@ -340,6 +340,36 @@ music ──1:N── playlist_tracks
 - **Tanpa banner seksi** — jangan pakai blok pemisah `/* ==== 1. Nama ==== */`;
   pemisah bab di file JS cukup baris kosong.
 
+#### Kapan komentar dihapus
+
+Berlaku untuk kode first-party. **Dikecualikan:** file vendor/pihak ketiga
+(`assets/js/compatibilitas/`, `*.min.js`, `plyr.css`, `tailwind.min.css`,
+`font.css`, dll.), marker `reference build:` hasil `marks.php`, dan file
+konfigurasi (`.htaccess`, `install.sh`, `.github/workflows`).
+
+**Dihapus:**
+
+1. Banner & pemisah — `/* ==== */`, `/* ---- */`, `────`, `════`, `// 1. Nama`;
+   blok cukup dipisah baris kosong.
+2. Komentar yang mengulang kode (apa yang baris di bawahnya lakukan).
+3. Komentar kosong dan duplikat berurutan (`//`, `/** */`).
+4. Kode mati yang dikomentari — hapus kodenya, jangan disimpan sebagai komentar.
+5. Docblock yang hanya mengulang nama fungsi/konstanta
+   (`/** Tolak (nonaktif)? */` di atas `return ...`).
+6. `@param`/`@return` yang hanya menduplikasi tipe dari signature; **disisakan**
+   bila menambah kontrak (nilai balik khusus, format array, enum status).
+7. Komentar langkah-demi-langkah di test (`// buat data`) — sisakan yang
+   menjelaskan *mengapa* skenario itu dipilih.
+8. Header naratif panjang → pindahkan ke `docs/id/development.md`
+   (`docs/en/development.md`), file cukup pointer 1–2 baris.
+
+**Dipertahankan:**
+
+- Komentar *why*: trade-off, invarian keamanan/race, perilaku browser/GPU/DB
+  yang tidak terbaca dari kode.
+- PHPDoc yang menjelaskan kontrak nyata, bukan tipe ulangan.
+- Marker `reference build:`, lisensi, dan attribution vendor.
+
 ### Keamanan
 
 1. **Selalu Prepared Statement** — Tidak ada SQL concat

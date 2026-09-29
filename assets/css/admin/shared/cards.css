@@ -1,5 +1,4 @@
 
-
 .stat-card {
   transition:
     border-color 0.2s,
@@ -52,7 +51,6 @@
   margin-top: 2px;
 }
 
-/* ============ LIGHT THEME ============ */
 html[data-theme="light"] .stat-card:hover {
   border-color: rgba(0, 0, 0, 0.14) !important;
   background: rgba(0, 0, 0, 0.03) !important;

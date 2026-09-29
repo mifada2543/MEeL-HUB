@@ -1,7 +1,6 @@
 <?php
 /**
- * Resolusi IP klien di balik proxy tepercaya (allowlist MEEL_TRUSTED_PROXIES;
- * perilaku lengkap di docs/{id,en}/configuration.md).
+ * Resolusi IP klien di balik proxy tepercaya (allowlist MEEL_TRUSTED_PROXIES); perilaku lengkap di docs/{id,en}/configuration.md.
  */
 
 function meel_normalize_ip(string $ip): string
@@ -102,9 +101,8 @@ function meel_is_loopback_ip(string $ip): bool
 }
 
 /**
- * IP klien asli. Tanpa proxy tepercaya → selalu REMOTE_ADDR (spoof-proof).
- * Di balik proxy tepercaya → CF-Connecting-IP, lalu X-Forwarded-For
- * kanan-ke-kiri (Cloudflare menaruh IP klien asli di ujung kanan).
+ * IP klien asli. Tanpa proxy tepercaya → selalu REMOTE_ADDR (spoof-proof). Di balik
+ * proxy tepercaya → CF-Connecting-IP, lalu X-Forwarded-For kanan-ke-kiri (Cloudflare menaruh IP klien asli di ujung kanan).
  */
 function get_real_ip(): string
 {

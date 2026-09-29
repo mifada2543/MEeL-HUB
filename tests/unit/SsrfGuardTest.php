@@ -29,9 +29,7 @@ class SsrfGuardTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    /**
-     * @dataProvider privateIpv4Provider
-     */
+    /** @dataProvider privateIpv4Provider */
     public function testPrivateIpv4LiteralsAreRejected(string $ip): void
     {
         $this->assertTrue($this->guard->isPrivateIp($ip), "{$ip} harus private");
@@ -65,9 +63,7 @@ class SsrfGuardTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider privateIpv6Provider
-     */
+    /** @dataProvider privateIpv6Provider */
     public function testPrivateIpv6LiteralsAreRejected(string $ip): void
     {
         $this->assertTrue($this->guard->isPrivateIp($ip), "{$ip} harus private");
@@ -96,9 +92,7 @@ class SsrfGuardTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider publicIpv4Provider
-     */
+    /** @dataProvider publicIpv4Provider */
     public function testPublicIpv4LiteralsAreAllowed(string $ip): void
     {
         $this->assertFalse($this->guard->isPrivateIp($ip), "{$ip} harus publik");
@@ -122,9 +116,7 @@ class SsrfGuardTest extends TestCase
         $this->assertAllowed('https://[2606:4700::1111]/');
     }
 
-    /**
-     * @dataProvider unsupportedProtocolProvider
-     */
+    /** @dataProvider unsupportedProtocolProvider */
     public function testUnsupportedProtocolsAreRejected(string $url): void
     {
         $this->assertRejected($url);
@@ -143,9 +135,7 @@ class SsrfGuardTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider malformedUrlProvider
-     */
+    /** @dataProvider malformedUrlProvider */
     public function testMalformedUrlsAreRejected(string $url): void
     {
         $this->assertRejected($url);
@@ -164,9 +154,7 @@ class SsrfGuardTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider blockedHostnameProvider
-     */
+    /** @dataProvider blockedHostnameProvider */
     public function testSpecialHostnamesAreRejected(string $url): void
     {
         $this->assertRejected($url);

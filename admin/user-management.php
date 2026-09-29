@@ -12,11 +12,7 @@ define('MEEL_ADMIN_CONTEXT', true);
 include '../controllers/admin/admin_actions.php';
 include '../controllers/admin/admin_data.php';
 
-/** @var \mysqli_result $banned_ips */
-/** @var \mysqli_result $all_users */
-/** @var array $stats */
-/** @var \mysqli_result $pending_users */
-/** @var \mysqli_result $result_monitor */
+/** @var \mysqli_result $banned_ips, $all_users, $pending_users, $result_monitor; @var array $stats — di-set oleh admin_data.php (include di atas). */
 
 require_once __DIR__ . '/../modules/core/System.php';
 $sys = new System($conn);

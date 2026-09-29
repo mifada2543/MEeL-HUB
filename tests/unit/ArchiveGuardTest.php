@@ -3,9 +3,7 @@ use PHPUnit\Framework\TestCase;
 
 require_once MEEL_ROOT . '/modules/media/ArchiveGuard.php';
 
-/**
- * @covers ArchiveGuard
- */
+/** @covers ArchiveGuard */
 class ArchiveGuardTest extends TestCase
 {
     private string $tmp = '';
@@ -120,9 +118,8 @@ class ArchiveGuardTest extends TestCase
 
     public function testNullByteInNameCannotEscapeDestination(): void
     {
-        // ZipArchive truncates nama pada null byte saat addFromString,
-        // sehingga file aman berada di dalam dest. Buat zip mentah berisi
-        // null byte di nama untuk memastikan guard menolaknya bila ada.
+        // ZipArchive memotong nama pada null byte saat addFromString — buat zip mentah
+        // berisi null byte di nama untuk memastikan guard menolaknya bila ada.
         $archive = $this->tmp . '/null.zip';
         $dest    = $this->tmp . '/manga/null';
         $name    = "page.jpg\0.png";
@@ -150,8 +147,7 @@ class ArchiveGuardTest extends TestCase
         $guard = new ArchiveGuard($this->tmp . '/manga');
         $result = $guard->extractSafe($archive, $dest);
 
-        // Guard menolak entry dengan null byte (atau setidaknya tidak
-        // pernah menulis file di luar direktori dest).
+        // Guard menolak null byte (atau setidaknya tak pernah menulis file di luar dest).
         if ($result['ok']) {
             $this->assertFileDoesNotExist(dirname($dest) . '/page.jpg');
             $this->assertFileDoesNotExist($this->tmp . '/page.jpg');

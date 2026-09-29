@@ -3,9 +3,7 @@ use PHPUnit\Framework\TestCase;
 
 require_once MEEL_ROOT . '/modules/core/Router.php';
 
-/**
- * @covers MeelRouter
- */
+/** @covers MeelRouter */
 class RouterProfileRouteTest extends TestCase
 {
     protected function tearDown(): void
@@ -71,8 +69,7 @@ class RouterProfileRouteTest extends TestCase
 
     public function testMultiSegmentProfileTypeNotRouted(): void
     {
-        // /profile/<user>/<all|video|music> di-handle via 301 redirect di
-        // dispatch(), bukan route — jadi routeFor harus null tanpa mengisi GET.
+        // /profile/<user>/<all|video|music> di-handle 301 di dispatch(), bukan route.
         foreach (['all', 'video', 'music', 'other'] as $type) {
             $this->assertNull(MeelRouter::routeFor('profile/john_doe/' . $type));
         }

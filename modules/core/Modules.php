@@ -1,25 +1,11 @@
 <?php
 
 /**
- * modules/core/Modules.php — Gate modul opsional MEeL.
- *
- * Prinsip: MEeL-HUB harus tetap berfungsi 100% walau modul opsional
- * (mis. arcade/) tidak ada atau dinonaktifkan. Tidak ada halaman inti,
- * controller, atau helper yang boleh error hanya karena sebuah modul hilang.
- *
- * Tiga lapis keputusan (semua konservatif — gagal → modul dianggap nonaktif):
- *   1. FISIK   — folder modul ada di disk (marker file).
- *   2. FLAG    — file kill-switch manual di folder modul (mis. arcade/.disabled),
- *                diabaikan di lingkungan development agar dev lokal tidak terkunci.
- *   3. TOGGLE  — admin panel (site_settings, key "modules_arcade"), persisten.
- *
- * Semua metode aman dipanggil tanpa DB, tanpa session, tanpa autoloader,
- * dan tidak pernah melempar exception (fail-closed ke nonaktif).
+ * Gate modul opsional MEeL — fail-closed (gagal → nonaktif), aman dipanggil tanpa DB/session/autoloader, tidak pernah melempar exception. Lapisan: FISIK (marker), FLAG (.disabled, diabaikan di dev), TOGGLE (site_settings).
  */
 
 final class Modules
 {
-    /** Modul opsional yang dikenal. Marker relatif ke root proyek. */
     private const OPTIONAL = [
         'arcade' => [
             'marker'     => 'arcade/index.php',
@@ -29,12 +15,10 @@ final class Modules
         ],
     ];
 
-    /** Cache hasil deteksi per request (key: "exists:arcade", "enabled:arcade"). */
     private static array $cache = [];
 
     private function __construct() {}
 
-    /** Marker fisik modul ada di disk? */
     public static function exists(string $module): bool
     {
         $key = 'exists:' . $module;
@@ -60,9 +44,7 @@ final class Modules
         return self::OPTIONAL[$module]['home_route'] ?? null;
     }
 
-    /**
-     * Guard untuk handler halaman: jika modul nonaktif, redirect ke HUB lalu exit.
-     */
+    /** Guard halaman: modul nonaktif → redirect ke HUB, lalu exit. */
     public static function guardRedirect(string $module): void
     {
         if (self::enabled($module)) {
@@ -74,9 +56,7 @@ final class Modules
     }
 
     /**
-     * Guard untuk endpoint API: jika modul nonaktif, balas JSON 404
-     * (konsisten dengan pola error arcade yang sudah ada) lalu exit.
-     * Bila modul aktif, kembali normal tanpa efek.
+     * Guard endpoint API: modul nonaktif → balas JSON 404 lalu exit; aktif → kembali normal tanpa efek.
      */
     public static function guardJson(string $module): void
     {
@@ -94,7 +74,6 @@ final class Modules
         exit(json_encode(['error' => $message]));
     }
 
-    /** Tolak (nonaktif)? */
     private static function flaggedOff(string $module): bool
     {
         if (defined('MEEL_ENV') && MEEL_ENV === 'development') {
@@ -107,8 +86,7 @@ final class Modules
     /** Toggle runtime dari admin panel (site_settings) — default ON. */
     private static function toggleOn(string $module): bool
     {
-        // Entry point yang minim (router.php, sitemap.php) tidak memuat
-        // helpers/settings.php — muat sendiri, aman dipanggil berulang.
+        // Entry point minim (router.php, sitemap.php) tidak memuat helpers/settings.php — muat sendiri, aman dipanggil berulang.
         require_once __DIR__ . '/helpers/settings.php';
 
         $conn = self::tryConnect();
@@ -121,15 +99,13 @@ final class Modules
         } catch (\Throwable) {
             return true;
         }
-        // Koneksi TIDAK ditutup di sini: bisa jadi koneksi global $conn milik
-        // auth/config.php yang masih dipakai request — ditutup otomatis di akhir.
+        // Koneksi TIDAK ditutup di sini: bisa jadi koneksi global $conn milik auth/config.php yang masih dipakai request — ditutup otomatis di akhir.
         return $value !== '0';
     }
 
     /** Koneksi mysqli lazim; null bila tidak memungkinkan (tanpa error). */
     private static function tryConnect(): ?\mysqli
     {
-        // Satu koneksi per request untuk semua cek modul.
         static $conn = null;
         static $resolved = false;
         if ($resolved) {
@@ -137,9 +113,7 @@ final class Modules
         }
         $resolved = true;
 
-        // Reuse koneksi yang sudah ada (dibuat auth/config.php) bila tersedia.
         if (isset($GLOBALS['conn']) && $GLOBALS['conn'] instanceof \mysqli) {
-            /** @var \mysqli $existing */
             $existing = $GLOBALS['conn'];
             if (empty($existing->connect_error)) {
                 return $conn = $existing;
@@ -147,7 +121,6 @@ final class Modules
             return null;
         }
 
-        // Tidak ada koneksi aktif — coba buat sendiri dari auth/settings.php.
         $settings = self::root() . '/auth/settings.php';
         if (!is_file($settings)) {
             return null;

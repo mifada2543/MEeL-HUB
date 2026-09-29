@@ -85,7 +85,6 @@
     background: rgba(139, 92, 246, 0.3);
 }
 
-/* ============ LIGHT THEME ============ */
 html[data-theme="light"] .chat-bubble-admin { color: #6d28d9; }
 html[data-theme="light"] .chat-bubble-user {
     background: rgba(0, 0, 0, 0.03);
