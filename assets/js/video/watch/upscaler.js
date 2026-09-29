@@ -29,10 +29,30 @@
       localStorage.setItem(key, val);
     } catch (e) {}
   }
+  function ssGet(key, def) {
+    try {
+      var v = sessionStorage.getItem(key);
+      return v === null ? def : v;
+    } catch (e) {
+      return def;
+    }
+  }
+  function ssSet(key, val) {
+    try {
+      sessionStorage.setItem(key, val);
+    } catch (e) {}
+  }
   var KEY_ENABLED = K.UPSCALE_ENABLED;
   var KEY_MODEL = K.UPSCALE_MODEL;
   var KEY_MODE = K.UPSCALE_MODE;
   var KEY_SCALE = K.UPSCALE_SCALE;
+
+  // Status on/off dulu menetap di localStorage (berlaku lintas tab sampai
+  // ditutup); kini pindah ke sessionStorage dan terikat satu video — bersihkan
+  // sisa nilai lama supaya tidak membingungkan pembaca berikutnya.
+  try {
+    localStorage.removeItem(KEY_ENABLED);
+  } catch (e) {}
 
   var SCALES = [
     { id: "auto", label: "Auto (ikuti layar)", short: "Auto" },
@@ -40,8 +60,37 @@
     { id: "2", label: "2× resolusi video", short: "2×" },
   ];
 
+  // Id video aktif: playerConfig (ikut diperbarui saat transisi in-place) atau
+  // parameter URL (?v= untuk halaman tonton, ?id= untuk tautan lama).
+  function currentVideoId() {
+    var id = window.playerConfig && window.playerConfig.id;
+    if (id !== undefined && id !== null && id !== "") return String(id);
+    var m = window.location.search.match(/[?&](v|id)=([^&]+)/);
+    return m ? decodeURIComponent(m[2]) : "";
+  }
+
+  // Status on/off per video: nilai sessionStorage = "true|<videoId>" | "false".
+  // ON hanya berlaku untuk video yang menyimpannya, sehingga refresh dan loop
+  // video yang sama tetap ON sedangkan video baru selalu mulai OFF (hemat GPU
+  // client — lihat resetForNewVideo()).
+  function readEnabled() {
+    var raw = ssGet(KEY_ENABLED, "false");
+    if (raw.indexOf("true") !== 0) return false;
+    var vid = currentVideoId();
+    var saved = raw.slice(5); // panjang prefiks "true|"
+    if (!vid) return true; // id belum terbaca — divalidasi ulang saat attach
+    if (!saved) {
+      persistEnabled(true); // disimpan sebelum id dikenal → ikat ke video ini
+      return true;
+    }
+    return saved === vid;
+  }
+  function persistEnabled(on) {
+    ssSet(KEY_ENABLED, on ? "true|" + currentVideoId() : "false");
+  }
+
   var state = {
-    enabled: lsGet(KEY_ENABLED, "false") === "true",
+    enabled: readEnabled(),
     modelId: lsGet(KEY_MODEL, "anime4k"),
     modeId: lsGet(KEY_MODE, "a"),
     scaleId: lsGet(KEY_SCALE, "auto"),
@@ -64,6 +113,10 @@
     return models[id] || null;
   }
   function validateState() {
+    // Status ON terikat satu video: refresh/loop video yang sama lolos, video
+    // lain mematikan upscale; nilai basi ikut dibersihkan dari penyimpanan.
+    if (state.enabled && !readEnabled()) turnOff();
+    else persistEnabled(state.enabled);
     if (!models[state.modelId]) state.modelId = "anime4k";
     var m = models[state.modelId] || Object.keys(models).map(function (k) { return models[k]; })[0];
     if (!m) return;
@@ -904,13 +957,28 @@
   function fail(err) {
     console.warn("[MEeL][upscaler]", err);
     stats.lastError = errText(err);
-    teardownDevice();
+    turnOff();
+    toast("Upscale gagal: " + stats.lastError, 5000);
+  }
+
+  // Matikan upscale tanpa toast — dipakai setEnabled(false), validasi
+  // per-video di validateState(), resetForNewVideo(), dan kasus dukungan
+  // WebGPU yang hilang.
+  function turnOff() {
     state.enabled = false;
-    lsSet(KEY_ENABLED, "false");
+    persistEnabled(false);
+    teardownDevice();
     var cont = getContainer();
     if (cont) cont.classList.remove("meel-upscale-active");
-    toast("Upscale gagal: " + stats.lastError, 5000);
     updateUI();
+  }
+
+  function resetForNewVideo() {
+    // Video berpindah lewat transisi in-place (klik rekomendasi & auto-next,
+    // keduanya lewat skipToNextVideo): buang status ON agar video baru mulai
+    // tanpa beban GPU. Tanpa toast supaya transisi tidak dibanjiri notifikasi.
+    persistEnabled(false);
+    if (state.enabled) turnOff();
   }
 
   function setEnabled(on, opts) {
@@ -934,16 +1002,11 @@
         return;
       }
       state.enabled = true;
-      lsSet(KEY_ENABLED, "true");
+      persistEnabled(true);
       updateUI();
       rebuild(0, { reason: "enable", announce: !!(opts && opts.announce) });
     } else {
-      state.enabled = false;
-      lsSet(KEY_ENABLED, "false");
-      teardownDevice();
-      var cont = getContainer();
-      if (cont) cont.classList.remove("meel-upscale-active");
-      updateUI();
+      turnOff();
       if (!(opts && opts.silent)) toast("AI Upscale Off");
     }
   }
@@ -1560,6 +1623,9 @@
     var buttons = plyrInstance.elements.settings.buttons;
     if (!buttons || !buttons.upscale) return;
     if (attachedPlayer === plyrInstance) {
+      // Instance sama ≠ video sama (transisi in-place tidak selalu bikin Plyr
+      // baru): validasi status per-video tetap dijalankan sebelum loop hidup lagi.
+      validateState();
       reviveLoop();
       return;
     }
@@ -1573,9 +1639,7 @@
       if (state.enabled && ok) {
         rebuild(0, { reason: "attach" });
       } else if (state.enabled) {
-        state.enabled = false;
-        lsSet(KEY_ENABLED, "false");
-        updateUI();
+        turnOff();
         toast("WebGPU tidak tersedia — AI Upscale nonaktif", 4000);
       }
     });
@@ -1641,6 +1705,7 @@
     registerModel: registerModel,
     getModel: getModel,
     attach: attach,
+    resetForNewVideo: resetForNewVideo,
     checkSupport: function () {
       return checkSupport(true);
     },

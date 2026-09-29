@@ -200,6 +200,10 @@ function setupMeelPlayerEvents() {
     ((isTransitioningNext = !0), (isRecovering = !0));
     const n = ++nextVideoTransitionId;
     localStorage.removeItem(storageKeyVideo);
+    // Video berganti lewat jalur ini (klik manual & auto-next sama-sama lewat
+    // skipToNextVideo): status ON AI Upscale dibuang supaya video baru mulai
+    // tanpa beban GPU client — lihat docs "Status on/off per video".
+    window.MEEL_UPSCALER && window.MEEL_UPSCALER.resetForNewVideo();
     const o = player
       ? player.fullscreen.active || !!document.fullscreenElement
       : !1;
