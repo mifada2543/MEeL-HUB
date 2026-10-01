@@ -970,6 +970,34 @@ Dua lapis penjagaannya:
 sesi — hanya status on/off yang bersifat per video. Nilai `localStorage` lama
 untuk key yang sama dihapus sekali saat skrip dimuat.
 
+#### Skala: ukuran tekstur keluaran
+
+Panel **Skala** hanya memilih ukuran *tekstur* hasil upscale — bukan ukuran
+tampilan video (video selalu melar ke kotaknya sendiri lewat blit linear, jadi
+membesarkan Skala tidak membuat video tampak lebih besar):
+
+| Pilihan | Ukuran tekstur |
+| ------- | -------------- |
+| `auto` — *Auto (ikuti layar)* | pas dengan kotak tampilan × `devicePixelRatio` (maks 2×), **tidak pernah mengecil** dari resolusi native video |
+| `1.5` | 1,5× piksel video (1920×1080 → 2880×1620) |
+| `2` | 2× piksel video (1920×1080 → 3840×2160) |
+
+- Cap `MAX_W × MAX_H` (3840×2160) tetap otoritas terakhir untuk semua pilihan
+  — termasuk `auto`.
+- `auto` dulu boleh menghasilkan tekstur **lebih kecil** dari native (kotak
+  tampilan ~1217×685 pada layar 1080p): Skala terlihat "tak berpengaruh"
+  karena tekstur dikecilkan lalu direntangkan ke kotak yang sama — kerja GPU
+  tambahan tanpa hasil terlihat. Kini `s = max(s, 1)` (lihat
+  `computeTarget()`), jadi hasil minimal setara native; saat target memang
+  native, jalur resample dilewati (lihat MEeLScale).
+- Baris info di bawah menu Skala (`<p class="meel-upscale-scale-info">`,
+  `aria-live="polite"`) menampilkan `Video WxH → keluaran WxH (n×)` plus
+  petunjuk bahwa Skala mengatur tekstur, bukan tampilan. Elemen itu disisipkan
+  **sesudah** `<div role="menu">` (lihat `buildScaleList()`) supaya kontrak
+  ARIA menu tetap utuh; teksnya dihitung dari `computeTarget()` yang sama
+  dengan rebuild sehingga langsung benar walau rantai GPU belum selesai.
+  Gaya di `assets/css/video/upscaler.css`.
+
 #### Kontrak API model upscale
 
 Model pluggable lewat `MEEL_UPSCALER.registerModel()`:
@@ -1035,12 +1063,30 @@ catatan di bawah tetap berlaku untuk filenya.
 
 **MEeLScale** (`meelscale/model.js`)
 
-- Resampler separable tanpa bobot — satu render pass fullscreen-triangle per
-  mode; mode = nama algoritma (`bilinear`, `mitchell` B=1/3 C=1/3, `catrom`
-  B=0 C=1/2, `lanczos2`, `lanczos3`).
-- Saat mengecilkan resolusi tap diperluas: `rx/ry = clamp(native/target, 1, 8)`,
-  jendela tap dibatasi 63 tap/sumbu, tepi di-clamp lalu hasil dibagi total
-  bobot (bila `wsum ≤ 0` jatuh ke sampel terdekat, bukan piksel hitam).
+- Resampler separable tanpa bobot. `buildChain()` memilih jalur termurah dari
+  selisih `target` vs `native`:
+
+  | Selisih | Rantai pass |
+  | ------- | ----------- |
+  | `target == native` | **CAS saja** (resample dilewati — satu pass) |
+  | hanya lebar beda | horizontal → CAS |
+  | hanya tinggi beda | vertikal → CAS |
+  | kedua sumbu beda | horizontal → vertikal → CAS (teksel antara `rgba16float`) |
+
+  Tiap node memakai `destroy()` untuk membebaskan tekstur miliknya.
+- Konvensi koordinat `src = pos * scale - 0.5` dengan `pos` = pusat piksel
+  hasil (`@builtin(position)` sudah +0.5), sehingga pada `scale 1` hasil
+  identik dengan sumber. Rumus lama `(pos + 0.5) * scale - 0.5` menambahkan
+  geseran **setengah piksel** yang tampak sebagai blur pada resolusi native;
+  konvensi yang sama ikut diperbaiki di `meelsharp/model.js`.
+- Mode = nama algoritma (`bilinear`, `mitchell` B=1/3 C=1/3, `catrom` B=0
+  C=1/2, `lanczos2`, `lanczos3`). Saat mengecilkan resolusi tap diperluas:
+  `rx/ry = clamp(scale, 1, 8)`, jendela tap dibatasi 63 tap/sumbu, tepi
+  clamp-to-edge lalu hasil dibagi total bobot (bila `wsum ≤ 0` jatuh ke sampel
+  terdekat, bukan piksel hitam).
+- Pass terakhir **CAS** (FidelityFX milik AMD, lisensi MIT — atensi dipertahankan
+  di header file) selalu aktif dengan `SHARPNESS 0.45`, termasuk pada jalur 1:1,
+  sehingga target native tetap mendapat penajeman adaptif.
 
 #### Pipeline render & backpressure
 
