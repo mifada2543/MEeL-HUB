@@ -19,21 +19,25 @@ if ($data && $data->num_rows > 0):
     $next = $offset + $limit;
     $nextPage = $page + 1;
     if ($next < $total): ?>
-        <div id="load-more-area" title="Muat lebih banyak"
-            class="aspect-video flex items-center justify-center bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl cursor-pointer hover:border-red-500/30 hover:bg-white/[.03] transition-all group"
+        <div id="load-more-area" role="status"
+            class="col-span-full flex items-center justify-center gap-2.5 py-6 bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl transition-all"
             hx-get="load-more?offset=<?= $next ?>&page=<?= $nextPage ?>"
             hx-target="#load-more-area"
-            hx-swap="outerHTML">
-            <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300 group-hover:text-red-500 transition-colors">
-                Muat Lebih Banyak · <?= $nextPage ?>/<?= $totalPages ?>
-            </span>
+            hx-swap="outerHTML"
+            hx-trigger="revealed">
+            <div class="animate-spin h-3 w-3 border-2 border-t-transparent rounded-full" style="border-color:var(--meel-red); border-top-color:transparent"></div>
+            <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300">Memuat...</span>
         </div>
     <?php else: ?>
-        <div class="aspect-video flex items-center justify-center border border-dashed border-white/[.04] rounded-2xl">
-            <span class="text-[9px] text-gray-800 uppercase tracking-widest">End of Library · <?= $page ?>/<?= $totalPages ?></span>
+        <div class="col-span-full py-6 text-center border border-dashed border-white/[.04] rounded-2xl">
+            <span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span>
         </div>
     <?php endif;
-endif;
+else: ?>
+    <div class="col-span-full py-6 text-center border border-dashed border-white/[.04] rounded-2xl">
+        <span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span>
+    </div>
+<?php endif;
 ?>
 <script>lucide.createIcons();
 </script>

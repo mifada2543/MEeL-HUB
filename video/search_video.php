@@ -49,31 +49,30 @@ if ($result['count'] > 0) {
         </div>
         <?php
     } elseif (!$result['sidebar']) {
-        $curPage    = (int)((int)$result['offset'] / max((int)$result['limit'], 1)) + 1;
-        $totalPages = max(1, (int)$result['total_pages']);
-
         if ($result['hasMore']) {
             ?>
-            <div id="load-more-area"
-                class="aspect-video flex items-center justify-center bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl cursor-pointer hover:border-red-500/30 hover:bg-white/[.03] transition-all group"
+            <div id="load-more-area" role="status"
+                class="col-span-full flex items-center justify-center gap-2.5 py-6 bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl transition-all"
                 hx-get="search?search=<?= urlencode($result['query']) ?>&exclude=<?= $result['exclude'] ?>&offset=<?= $result['offset'] + $result['limit'] ?>"
                 hx-target="#load-more-area"
-                hx-swap="outerHTML">
-                <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300 group-hover:text-red-500 transition-colors">
-                    Muat Lebih Banyak · <?= $curPage ?>/<?= $totalPages ?>
-                </span>
+                hx-swap="outerHTML"
+                hx-trigger="revealed">
+                <div class="animate-spin h-3 w-3 border-2 border-t-transparent rounded-full" style="border-color:var(--meel-red); border-top-color:transparent"></div>
+                <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300">Memuat...</span>
             </div>
             <?php
         } elseif ((int)$result['offset'] > 0) {
             ?>
-            <div class="aspect-video flex items-center justify-center border border-dashed border-white/[.04] rounded-2xl">
-                <span class="text-[9px] text-gray-800 uppercase tracking-widest">End of Results · <?= $curPage ?>/<?= $totalPages ?></span>
+            <div class="col-span-full py-6 text-center border border-dashed border-white/[.04] rounded-2xl">
+                <span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span>
             </div>
             <?php
         }
     }
 } elseif ($result['offset'] === 0) {
     echo '<div class="col-span-full py-16 text-center text-[10px] text-gray-700 uppercase tracking-widest">Video tidak ditemukan.</div>';
+} else {
+    echo '<div class="col-span-full py-6 text-center border border-dashed border-white/[.04] rounded-2xl"><span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span></div>';
 }
 
 /* reference build: MEeL-C6H9N3O3 [b271388b3aca6acc] */
