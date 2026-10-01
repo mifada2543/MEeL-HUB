@@ -398,7 +398,7 @@ contoh `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch
 ├── watch.php          # Player / detail (URL: [module]/watch?v=X)
 ├── upload.php         # Form upload (URL: [module]/upload)
 ├── search_[module].php  # Pencarian (HTMX) (URL: [module]/search)
-├── load_more.php      # Pagination (HTMX) (URL: [module]/load-more)
+├── load_more.php      # Infinite scroll — batch berikutnya + rantai sentinel (hx-trigger=revealed) (URL: [module]/load-more)
 └── [module]_item.php  # Komponen kartu
 ```
 
@@ -422,6 +422,45 @@ contoh `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch
     <div class="animate-spin">⏳</div>
 </div>
 ```
+
+### Pola Infinite Scroll (Sentinel)
+
+Dipakai library video & music, hasil search, dan sidebar rekomendasi watch — menggantikan tombol "Muat Lebih Banyak" lama:
+
+```html
+<!-- Sentinel: elemen yang sama menjadi requester sekaligus target -->
+<div id="load-more-area" role="status"
+    hx-get="load-more?offset=15&page=1"
+    hx-target="#load-more-area"
+    hx-swap="outerHTML"
+    hx-trigger="revealed">          <!-- htmx memicu saat masuk viewport -->
+    <div class="animate-spin …"></div>
+    <span>Memuat...</span>
+</div>
+```
+
+**Aturan:**
+- **Semantik rantai:** setiap respons berisi kartu berikutnya **plus sentinel
+  pengganti**. Elemen hasil swap baru mulai tanpa `data-hx-revealed`, sehingga
+  rantai terus terpicu selama sentinel terlihat di viewport.
+- **Terminal:** saat `offset + limit ≥ total` (atau `hasMore` false) server
+  mengirim end box **"Out Of Content · Konten sudah tidak ada lagi"** — respons
+  kosong juga menghasilkan end box yang sama.
+- **Retry saat gagal:** `assets/js/shared/sentinel-retry.js` menghapus
+  `data-hx-revealed` dari sentinel yang request-nya gagal, sehingga scroll
+  *berikutnya* memicunya lagi (retry by user scroll — tanpa loop otomatis).
+- **Id itu penta:** pertahankan id sentinel (`#load-more-area`, `#load-more-music`,
+  `#load-more-music-search`) — CSS `overflow-anchor: none` dan guard
+  `isFromLoadMore` di `assets/js/music/index/index.js` bergantung padanya.
+  Hasil search memakai id sentinel terpisah agar pembersihan pasca-search tidak mematikannya.
+- **Gotcha:** pada swap `outerHTML`, `htmx:afterSwap` menyala **sekali per elemen
+  baru** — kartu tidak punya `id` sehingga `targetId === ""`. Perlakukan fragment
+  swap sebagai content update (lihat `isFragmentSwap` di
+  `assets/js/music/index/index.js`), kalau tidak logika view-boot
+  (`bootPlayerIndex()` termasuk scroll-to-active) jalan per kartu dan menarik
+  halaman saat scroll.
+- **Jangan** memasangkan `revealed` dengan smooth-scroll programatik — loop
+  `scrollTo` akan terus menarik halaman tanpa henti (alasan `load-more.js` lama dihapus).
 
 ### CSS File Organization
 

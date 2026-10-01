@@ -240,7 +240,7 @@ e.g. `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch.p
 ├── watch.php          # Player / detail (URL: [module]/watch?v=X)
 ├── upload.php         # Upload form (URL: [module]/upload)
 ├── search_[module].php  # Search (HTMX) (URL: [module]/search)
-├── load_more.php      # Pagination (HTMX) (URL: [module]/load-more)
+├── load_more.php      # Infinite scroll — next batch + sentinel chain (hx-trigger=revealed) (URL: [module]/load-more)
 └── [module]_item.php  # Card component
 ```
 
@@ -264,6 +264,44 @@ e.g. `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch.p
     <div class="animate-spin">⏳</div>
 </div>
 ```
+
+### Infinite Scroll (Sentinel) Pattern
+
+Used by the video & music libraries, search results, and watch recommendation sidebars — replaces the old "Load More" button:
+
+```html
+<!-- Sentinel: requester and target are the same element -->
+<div id="load-more-area" role="status"
+    hx-get="load-more?offset=15&page=1"
+    hx-target="#load-more-area"
+    hx-swap="outerHTML"
+    hx-trigger="revealed">          <!-- htmx fires when it enters the viewport -->
+    <div class="animate-spin …"></div>
+    <span>Memuat...</span>
+</div>
+```
+
+**Rules:**
+- **Chain semantics:** each response returns the next cards **plus a replacement
+  sentinel**. Freshly swapped elements start without `data-hx-revealed`, so the
+  chain keeps firing while the sentinel stays visible.
+- **Termination:** when `offset + limit ≥ total` (or `hasMore` is false) the
+  server returns the end box **"Out Of Content · Konten sudah tidak ada lagi"** —
+  an empty response renders the same end box.
+- **Error retry:** `assets/js/shared/sentinel-retry.js` removes `data-hx-revealed`
+  from a sentinel whose request failed, so the *next* scroll re-fires it
+  (retries on user scroll — no automatic loop).
+- **IDs matter:** keep the sentinel ids (`#load-more-area`, `#load-more-music`,
+  `#load-more-music-search`) — CSS `overflow-anchor: none` and the
+  `isFromLoadMore` guard in `assets/js/music/index/index.js` depend on them.
+  Search results use their own sentinel id so post-search cleanup can't disable them.
+- **Gotcha:** for an `outerHTML` swap, `htmx:afterSwap` fires **once per new
+  element** — cards have no `id`, so `targetId === ""`. Treat fragment swaps as
+  content updates (see `isFragmentSwap` in `assets/js/music/index/index.js`),
+  otherwise view-boot logic (`bootPlayerIndex()` incl. scroll-to-active) runs per
+  card and yanks the page during scroll.
+- **Don't** pair `revealed` with programmatic smooth-scroll — a `scrollTo` loop
+  would keep pulling pages endlessly (this is why the old `load-more.js` was removed).
 
 ### Theme System (Light/Dark Mode)
 

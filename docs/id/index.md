@@ -130,6 +130,10 @@ Request: /MEeL/music/beranda?format=ogg
 
 ## 🔧 Perubahan Terbaru
 
+- **Infinite Scroll (Video & Music):** Tombol "Muat Lebih Banyak" di video, music, hasil search, dan sidebar rekomendasi watch diganti sentinel auto-load (`hx-trigger="revealed"` — htmx memicu saat elemen masuk viewport). Respons berisi kartu + sentinel pengganti, berakhir dengan end box **"Out Of Content · Konten sudah tidak ada lagi"**. Teks progres halaman dan protokol `.lm-meta` dihapus; `assets/js/music/index/load-more.js` dihapus
+- **Sentinel Retry:** File baru `assets/js/shared/sentinel-retry.js` — me-re-arm `data-hx-revealed` saat request load-more gagal agar scroll berikutnya mencoba ulang; juga menyembunyikan `.rec-sentinel` hanya setelah rekomendasi watch berhasil dimuat
+- **Fix Paginasi SearchEngine:** `searchVideo()` / `searchMusic()` tetap menghitung `total` untuk query kosong — memperbaiki tampilan paginasi "1/1 → 2/1" yang salah
+- **Fix Sentakan Halaman saat Load-More:** Guard `isFragmentSwap` di `assets/js/music/index/index.js` — `htmx:afterSwap` menyala sekali per elemen hasil swap `outerHTML`, sehingga `bootPlayerIndex()` (termasuk efek scroll artist-menu ke item aktif) terpanggil per kartu dan menarik halaman kembali ke atas saat infinite scroll
 - **Path terpusat:** Semua path penyimpanan media (Video, Music, Books, Drive) diatur dari `MEEL_HDD_BASE` di `auth/settings.php` — cukup ubah 1 baris
 - **Skema database standalone:** File `database/schema.sql` untuk import cepat
 - **Type hints:** Properti class dan parameter constructor sekarang menggunakan type hints (`\mysqli`, `int`, `string`, dll.)
@@ -139,7 +143,7 @@ Request: /MEeL/music/beranda?format=ogg
 - **Modul Anime dihapus:** Modul placeholder "Coming Soon" yang sudah tidak relevan dihapus dari kodebase
 - **API Rate Limiting:** File-based rate limiter (`modules/auth/RateLimiter.php`) — proteksi endpoint like, comment, upload dari abuse dengan per-user limits dan role-based adjustment (admin=unlimited, member=2x)
 - **Security Module (`modules/auth/`):** Helper & class keamanan dikonsolidasi ke satu direktori agar mudah diaudit — `helpers/` (authz, csrf, session, stream_auth, mfa, user) + `RateLimiter.php` + `SsrfGuard.php`, dimuat lewat `modules/auth/loader.php` (shim lama `modules/core/helpers.php` tetap jalan)
-- **Pagination Metadata:** `MediaLibrary` & `BookRepository` sekarang mengembalikan metadata pagination (`total_pages`, `from`, `to`) — UI menampilkan info halaman
+- **Pagination Metadata:** `MediaLibrary` & `BookRepository` sekarang mengembalikan metadata pagination (`total_pages`, `from`, `to`) — mendorong end state infinite scroll (teks progres halaman dihapus dari UI)
 - **Admin Dashboard Charts:** Chart.js 7-Day Activity Chart — views, uploads, active users dalam 7 hari terakhir
 - **Player Enhancement:** Auto-next overlay dengan backdrop gelap + sembunyikan replay button Plyr + mutual exclusion Auto-Next ↔ Loop
 - **MFA Support:** Multi-Factor Authentication (TOTP) — setup, verify, backup codes, admin reset, brute-force protection (10 attempts → 5 menit lock)

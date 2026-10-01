@@ -803,12 +803,17 @@ Every POST must carry `csrf_token`.
 **Target:** `#video-container`
 **Swap:** `innerHTML`
 
-### Video Load More
+Search results embed the same `#load-more-area` sentinel — infinite scroll continues with the current query (`search?search=…&exclude=…&offset=+15`).
 
-**Trigger:** Click "Load More"
-**Request:** `video/load-more?offset=15` (handler: `video/load_more.php`)
-**Target:** `#load-more-area`
+### Video Load More (Infinite Scroll)
+
+**Trigger:** Auto-scroll — sentinel `#load-more-area` with `hx-trigger="revealed"` (fires when the sentinel enters the viewport; the "Load More" button was removed)
+**Request:** `video/load-more?offset=15&page=N` (handler: `video/load_more.php`)
+**Target:** `#load-more-area` (itself)
 **Swap:** `outerHTML`
+**Response:** 15 cards + a replacement sentinel (the chain continues automatically), or the end box **"Out Of Content · Konten sudah tidak ada lagi"** when `offset + limit ≥ total`. An empty response also renders the end box.
+
+Watch sidebar recommendations use the same auto-load pattern: a `.rec-sentinel` with `hx-trigger="revealed"` appends to `#recommendation-column` (`search?exclude=<id>`, swap `beforeend`).
 
 ### Music Search
 
@@ -817,12 +822,18 @@ Every POST must carry `csrf_token`.
 **Target:** `#music-list`
 **Swap:** `innerHTML`
 
-### Music Load More
+Search results embed their own sentinel `#load-more-music-search` (separate id, so the post-search cleanup of `#load-more-music` doesn't disable it) — infinite scroll continues with the current query (`search?search=…&exclude=…&offset=+10`).
 
-**Trigger:** Click "Load More"
-**Request:** `music/load-more?offset=10&format=all&artist=all` (handler: `music/load_more_music.php`)
-**Target:** `#music-list`
-**Swap:** `beforeend`
+### Music Load More (Infinite Scroll)
+
+**Trigger:** Auto-scroll — sentinel `#load-more-music` (inside `#music-list`) with `hx-trigger="revealed"`
+**Request:** `music/load-more?offset=10&page=N&format=all&artist=all` (handler: `music/load_more_music.php`)
+**Target:** `#load-more-music` (itself)
+**Swap:** `outerHTML`
+**Response:** 10 cards + a replacement sentinel (the chain continues automatically), or the end box **"Out Of Content · Konten sudah tidak ada lagi"** at the end of results.
+**Note:** The sentinel id must be kept — CSS `overflow-anchor: none` on `#load-more-music` and the `isFromLoadMore` check in `assets/js/music/index/index.js` depend on it.
+
+Watch sidebar recommendations use the same auto-load pattern: a `.rec-sentinel` with `hx-trigger="revealed"` appends to `#music-recommendation-column` (`search?exclude=<id>`, swap `beforeend`).
 
 ### Books Search
 
