@@ -75,3 +75,29 @@
 .meel-upscale-why-req li {
   margin-bottom: 4px;
 }
+
+/* Baris info ukuran pada panel Skala. Elemen ini disisipkan sesudah <div
+   role="menu"> (lihat buildScaleList) supaya tak jadi child menu; aria-live
+   mengabarkan perubahan target tiap skala dipilih. */
+.meel-upscale-scale-info {
+  display: block;
+  padding: 4px 4px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.meel-upscale-scale-size,
+.meel-upscale-scale-hint {
+  display: block;
+}
+
+.meel-upscale-scale-size {
+  font-variant-numeric: tabular-nums;
+}
+
+.meel-upscale-scale-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.7;
+}
