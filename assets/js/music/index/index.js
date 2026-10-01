@@ -23,7 +23,13 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("htmx:afterSwap", (e) => {
   if (typeof lucide !== "undefined") lucide.createIcons();
   const targetId = e.target?.id || "";
+  // Swap outerHTML (sentinel load-more) memicu htmx:afterSwap sekali per elemen
+  // baru; kartu hasil load-more tidak punya id sehingga targetId = "". Tanpa guard
+  // ini, bootPlayerIndex() (termasuk scrollToActiveArtistDesktop) ikut terpanggil
+  // setiap kartu dan halaman tersentak ke atas saat infinite scroll.
+  const isFragmentSwap = !targetId;
   const isContentUpdate =
+    isFragmentSwap ||
     targetId.includes("music-list") ||
     targetId.includes("recommendation") ||
     targetId.includes("search") ||
@@ -39,7 +45,9 @@ document.addEventListener("htmx:afterSwap", (e) => {
   if (typeof setupPlaylistItemClicks === "function") {
     setupPlaylistItemClicks();
   }
-  const isFromLoadMore = e.detail?.elt?.closest?.("#load-more-music") != null;
+  const isFromLoadMore =
+    isFragmentSwap ||
+    e.detail?.elt?.closest?.("#load-more-music, #load-more-music-search") != null;
   
   
   

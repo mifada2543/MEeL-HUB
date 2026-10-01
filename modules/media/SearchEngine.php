@@ -193,10 +193,7 @@ class SearchEngine
             $limit + 1
         );
 
-        $total = 0;
-        if (!empty($params['query'])) {
-            $total = $this->library->countSearchMusic($params['query'], $params['exclude']);
-        }
+        $total = $this->library->countSearchMusic($params['query'], $params['exclude']);
 
         $result = $this->buildResult($data, $params, $limit, $total);
         self::setCache('music', $params, $result);

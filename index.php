@@ -15,11 +15,11 @@ $counts  = $library->getCounts();
 <html lang="id">
 
 <head>
-<?php
+    <?php
     $_META_TITLE = 'MEeL | Media Hub';
     $_META_DESC  = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
     include 'partials/head.php';
-?>
+    ?>
     <link rel="stylesheet" href="assets/css/index(hub).css">
     <link href="assets/css/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared/theme-tokens.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/theme-tokens.css') ?>">
@@ -35,11 +35,11 @@ $counts  = $library->getCounts();
 
 <body class="text-gray-300 min-h-screen" style="background:#05070c">
 
-    
+
     <?php include 'partials/navbar.php'; ?>
     <main class="relative z-10 max-w-6xl mx-auto px-6 pt-32 pb-20 flex flex-col items-center">
 
-        
+
         <div class="text-center mb-20">
             <div class="inline-block mb-6">
                 <?php if (Modules::enabled('arcade')): ?>
@@ -54,10 +54,10 @@ $counts  = $library->getCounts();
             <p onclick="window.location.href='index.html'" class="text-xs text-gray-400 mt-4 tracking-[.25em] uppercase">Streaming &amp; Archive Platform</p>
         </div>
 
-        
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mb-20">
 
-            
+
             <div class="media-card card-music flex flex-col gap-4 md:h-64"
                 onclick="window.location.href='music/beranda'"
                 title="MEeL Music">
@@ -81,7 +81,7 @@ $counts  = $library->getCounts();
                 </div>
             </div>
 
-            
+
             <div class="media-card card-video flex flex-col gap-4 md:h-64"
                 onclick="window.location.href='video/beranda'"
                 title="MEeL Video" hx-boost="true">
@@ -105,7 +105,7 @@ $counts  = $library->getCounts();
                 </div>
             </div>
 
-            
+
             <?php if ($is_logged_in): ?>
                 <div class="media-card card-books flex flex-col gap-4 md:h-64"
                     onclick="window.location.href='books/beranda'"
@@ -132,20 +132,21 @@ $counts  = $library->getCounts();
             <?php endif; ?>
         </div>
 
-        
+
         <div class="flex flex-wrap items-center justify-center gap-3">
             <?php if ($is_logged_in && isset($_SESSION['role'])): ?>
                 <?php if ($_SESSION['role'] === 'admin'): ?>
                     <a href="admin/beranda" class="bottom-link" title="Panel Admin untuk mengelola konten dan pengguna">
                         <i data-lucide="settings" class="w-3 h-3"></i> Admin Panel
                     </a>
-                    <a href="upload" class="bottom-link" title="Unggah media baru ke platform">
-                        <i data-lucide="upload-cloud" class="w-3 h-3"></i> Upload Media
-                    </a>
+
                 <?php endif; ?>
                 <?php if (in_array($_SESSION['role'], ['member', 'admin'])): ?>
                     <a href="drive/beranda" class="bottom-link" title="Akses drive Anda untuk mengelola file dan dokumen">
                         <i data-lucide="hard-drive" class="w-3 h-3"></i> Drive
+                    </a>
+                    <a href="upload" class="bottom-link" title="Unggah media baru ke platform">
+                        <i data-lucide="upload-cloud" class="w-3 h-3"></i> Upload Media
                     </a>
                 <?php endif; ?>
             <?php endif; ?>
@@ -157,7 +158,7 @@ $counts  = $library->getCounts();
             </a>
         </div>
 
-        
+
         <div class="mt-10 flex items-center gap-3">
             <span class="text-[10px] text-gray-200 uppercase tracking-widest">Mode 20-20-20</span>
             <button id="healthToggle"
@@ -170,7 +171,7 @@ $counts  = $library->getCounts();
         <?php include 'partials/footer.php'; ?>
     </main>
 
-    
+
     <div id="demoBanner" class="demo-banner" role="alert" aria-label="Pemberitahuan website demo">
         <div class="demo-banner-inner">
             <div class="demo-banner-left">
