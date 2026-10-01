@@ -509,6 +509,9 @@ class SearchEngine {
   the FULLTEXT syntax is always valid (no `mysqli_sql_exception` on malformed input).
 - `parseParams()` reads `$_GET['search']` + `$_GET['offset']`; offset is included
   in the **cache key**, so pagination never serves a stale page.
+- `searchVideo()` / `searchMusic()` always compute the **total** — even for an
+  empty result set — so `hasMore` and the pagination metadata are trustworthy
+  (fixes the bogus "1/1 → 2/1" progress display).
 - `MIN_SEARCH_QUERY = 3` — shorter queries are ignored (index efficiency)
 
 ### 17. `modules/autoload.php`

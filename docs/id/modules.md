@@ -429,6 +429,9 @@ class SearchEngine {
   sehingga sintaks FULLTEXT selalu valid (tidak ada `mysqli_sql_exception` pada input malformed).
 - `parseParams()` membaca `$_GET['search']` + `$_GET['offset']`; offset ikut
   dalam **cache key**, sehingga pagination tidak pernah menyajikan halaman basi.
+- `searchVideo()` / `searchMusic()` selalu menghitung **total** — termasuk untuk
+  hasil kosong — sehingga `hasMore` dan metadata pagination dapat dipercaya
+  (memperbaiki tampilan progres "1/1 → 2/1" yang salah).
 - `MIN_SEARCH_QUERY = 3` — query lebih pendek diabaikan (efisiensi index)
 
 ### 17. `modules/autoload.php`
