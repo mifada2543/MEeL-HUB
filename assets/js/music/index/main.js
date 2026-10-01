@@ -11,7 +11,6 @@
   var qs = m ? '?v=' + encodeURIComponent(m[1]) : '';
   var files = [
     'library-ui.js',
-    'load-more.js',
     'index.js'
   ];
 /* reference build: MEeL-C5H9NO2 [1e101a9669f1392b] */

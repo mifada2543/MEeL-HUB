@@ -474,7 +474,12 @@
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
       var bw = Math.max(box.w * dpr, 1);
       var bh = Math.max(box.h * dpr, 1);
-      var s = Math.min(bw / native.width, bh / native.height);
+      // Auto tidak pernah mengecil: keluaran minimal setara resolusi native
+      // video. Tanpa batas ini, kotak tampilan yang lebih kecil dari video
+      // membuat Skala diam-diam menurunkan ketajaman (blit tetap melar ke
+      // kotak yang sama sehingga efeknya tak terlihat, hanya tambahan lag).
+      // Cap MAX_W x MAX_H di bawah tetap otoritas terakhir.
+      var s = Math.max(Math.min(bw / native.width, bh / native.height), 1);
       w = Math.round(native.width * s);
       h = Math.round(native.height * s);
     } else {
@@ -1233,6 +1238,59 @@ function turnOff() {
         }),
       );
     });
+
+    // Info ukuran diletakkan SETELAH menu — di luar elemen role="menu" —
+    // supaya kontrak ARIA menu tetap utuh; aria-live mengabarkan perubahan
+    // ukuran keluaran begitu pengguna memilih skala.
+    var pane = menu.parentNode;
+    if (!pane) return;
+    var stale = pane.querySelector(".meel-upscale-scale-info");
+    if (stale) stale.remove();
+
+    var info = document.createElement("p");
+    info.className = "meel-upscale-scale-info";
+    info.setAttribute("aria-live", "polite");
+
+    var size = document.createElement("span");
+    size.className = "meel-upscale-scale-size";
+    info.appendChild(size);
+
+    var hint = document.createElement("span");
+    hint.className = "meel-upscale-scale-hint";
+    hint.textContent =
+      "Skala menentukan ukuran tekstur hasil upscale, bukan ukuran tampilan video.";
+    info.appendChild(hint);
+
+    pane.appendChild(info);
+    updateScaleInfo();
+  }
+
+  // Satu baris: "Video 1920x1080 -> keluaran 3840x2160 (2x)". Perhitungannya
+  // memakai computeTarget() yang sama dengan rebuild, jadi angkanya langsung
+  // benar bahkan sebelum rantai GPU selesai dibangun.
+  function scaleInfoText() {
+    var v = getVideo();
+    var nw = (v && v.videoWidth) || (engine.native && engine.native.width) || 0;
+    var nh = (v && v.videoHeight) || (engine.native && engine.native.height) || 0;
+    if (!nw || !nh) return "Ukuran video belum terbaca — putar video dulu.";
+    var t = computeTarget({ width: nw, height: nh });
+    var f = Math.round(Math.min(t.width / nw, t.height / nh) * 100) / 100;
+    var txt =
+      "Video " + nw + "\u00d7" + nh +
+      " \u2192 keluaran " + t.width + "\u00d7" + t.height +
+      " (" + String(f).replace(".", ",") + "\u00d7)";
+    if (f === 1) txt += " \u2014 tanpa perbesaran piksel, poles CAS tetap jalan";
+    return txt;
+  }
+
+  function updateScaleInfo() {
+    if (!plyrReady()) return;
+    var pane = plyr.elements.settings.panels["upscale-scale"];
+    if (!pane) return;
+    var el = pane.querySelector(".meel-upscale-scale-size");
+    if (!el) return;
+    var txt = scaleInfoText();
+    if (el.textContent !== txt) el.textContent = txt;
   }
 
   // Panel read-only saat dukungan absen: alasan spesifik + persyaratan +
@@ -1441,6 +1499,8 @@ function turnOff() {
     syncRadios("upscale-model", state.modelId);
     syncRadios("upscale-mode", state.modeId);
     syncRadios("upscale-scale", state.scaleId);
+
+    updateScaleInfo();
 
     refreshWhyText();
   }

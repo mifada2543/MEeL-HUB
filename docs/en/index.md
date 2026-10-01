@@ -130,6 +130,10 @@ Request: /MEeL/music/beranda?format=ogg
 
 ## 🔧 Recent Changes
 
+- **Infinite Scroll (Video & Music):** The "Load More" buttons on video, music, search results, and watch recommendation sidebars were replaced by auto-load sentinels (`hx-trigger="revealed"` — htmx fires when the element enters the viewport). Responses return cards + a replacement sentinel, ending with an **"Out Of Content · Konten sudah tidak ada lagi"** box. Page-progress text and the `.lm-meta` protocol were removed; `assets/js/music/index/load-more.js` was deleted
+- **Sentinel Retry:** New shared `assets/js/shared/sentinel-retry.js` — re-arms `data-hx-revealed` on failed load-more requests so the next scroll retries; also hides `.rec-sentinel` only after a successful watch recommendation load
+- **SearchEngine Pagination Fix:** `searchVideo()` / `searchMusic()` still compute `total` for empty queries — fixes the bogus "1/1 → 2/1" pagination display
+- **Load-More Scroll Jump Fix:** `isFragmentSwap` guard in `assets/js/music/index/index.js` — `htmx:afterSwap` fires once per swapped element on `outerHTML`, so `bootPlayerIndex()` (including the artist-menu scroll-to-active effect) was invoked per card and yanked the page back to the top during infinite scroll
 - **Centralized paths:** All media storage paths (Video, Music, Books, Drive) managed from `MEEL_HDD_BASE` in `auth/settings.php` — change just 1 line
 - **Standalone database schema:** `database/schema.sql` for quick import
 - **Type hints:** Class properties and constructor parameters now use type hints (`\mysqli`, `int`, `string`, etc.)
@@ -139,7 +143,7 @@ Request: /MEeL/music/beranda?format=ogg
 - **Anime Module Removed:** The "Coming Soon" placeholder module has been removed from the codebase
 - **API Rate Limiting:** File-based rate limiter (`modules/auth/RateLimiter.php`) — protects like, comment, upload endpoints from abuse with per-user limits with role-based adjustment (admin=unlimited, member=2x)
 - **Security Module (`modules/auth/`):** Security helpers & classes consolidated into one directory for easy auditing — `helpers/` (authz, csrf, session, stream_auth, mfa, user) + `RateLimiter.php` + `SsrfGuard.php`, loaded via `modules/auth/loader.php` (the legacy `modules/core/helpers.php` shim still works)
-- **Pagination Metadata:** `MediaLibrary` & `BookRepository` now return pagination metadata (`total_pages`, `from`, `to`) — UI displays page info
+- **Pagination Metadata:** `MediaLibrary` & `BookRepository` now return pagination metadata (`total_pages`, `from`, `to`) — drives the infinite-scroll end state (the page-progress text was removed from the UI)
 - **Admin Dashboard Charts:** Chart.js 7-Day Activity Chart — views, uploads, active users in the last 7 days
 - **Player Enhancement:** Auto-next overlay with dark backdrop + hide Plyr replay button + mutual exclusion Auto-Next ↔ Loop
 - **MFA Support:** Multi-Factor Authentication (TOTP) — setup, verify, backup codes, admin reset, brute-force protection (10 attempts → 5 min lockout)

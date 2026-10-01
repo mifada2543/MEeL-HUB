@@ -46,24 +46,23 @@ function renderLibraryContent(string $artist_filter, int $total_music, \mysqli_r
             <?php while ($v = $data_init->fetch_assoc()): ?>
                 <?php include 'music_item.php'; ?>
             <?php endwhile; ?>
+            <?php if ($total_music > $perPageMusic): ?>
+                <div id="load-more-music" role="status"
+                    class="w-full py-6 flex items-center justify-center gap-2.5 border border-dashed border-white/[.06] rounded-xl transition-all"
+                    hx-get="load-more?offset=<?= $perPageMusic ?>&page=<?= $pageMusic ?>&format=<?= urlencode($format_filter) ?>&artist=<?= urlencode($artist_filter) ?>"
+                    hx-target="#load-more-music"
+                    hx-swap="outerHTML"
+                    hx-trigger="revealed">
+                    <div class="animate-spin h-3 w-3 border-2 border-t-transparent rounded-full" style="border-color:var(--meel-orange); border-top-color:transparent"></div>
+                    <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-700">Memuat...</span>
+                </div>
+            <?php endif; ?>
         <?php else: ?>
             <div class="py-16 text-center text-[10px] text-gray-700 uppercase tracking-widest">
                 Tidak ada lagu ditemukan.
             </div>
         <?php endif; ?>
     </div>
-
-    
-    <?php if ($total_music > $perPageMusic): ?>
-        <div id="load-more-music" class="pt-6">                <button type="button" id="load-more-btn"                    hx-get="load-more?offset=<?= $perPageMusic ?>&page=<?= $pageMusic ?>&format=<?= urlencode($format_filter) ?>&artist=<?= urlencode($artist_filter) ?>"
-                hx-target="#music-list"
-                hx-swap="beforeend"
-                title="Muat lebih banyak lagu"
-                class="w-full py-4 border border-dashed border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-[.25em] text-gray-700 hover:text-orange-500 hover:border-orange-500/30 transition-all">
-                Load More · <?= $pageMusic ?>/<?= $totalPagesMusic ?>
-            </button>
-        </div>
-    <?php endif; ?>
 <?php
 }
 
@@ -432,6 +431,7 @@ if (isset($_GET['content_only'])) {
     <script src="../assets/js/shared/view-router.js<?= meel_asset_version('assets/js/shared/view-router.js') ?>"></script>
     <script src="../assets/js/music/shared/mini-player.js<?= meel_asset_version('assets/js/music/shared/mini-player.js') ?>"></script>
     <script src="../assets/js/music/index/main.js<?= meel_asset_dir_version('assets/js/music/index') ?>"></script>
+    <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>
     <?php include '../partials/footer.php'; ?>
 </body>
 

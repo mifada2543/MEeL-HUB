@@ -409,6 +409,7 @@ session_write_close();
     <script src="../assets/js/video/watch/main.js<?= meel_asset_dir_version('assets/js/video/watch') ?>"></script>
     <script src="../assets/js/shared/comment.js<?= meel_asset_version('assets/js/shared/comment.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
+    <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>
 
     <script src="../assets/js/video/watch/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/video/watch/search.js') ?>"></script>
     <script>
@@ -427,10 +428,6 @@ session_write_close();
                 titleEl.textContent = 'Video Lainnya';
                 titleEl.title = 'Video Lainnya';
             }
-        });
-        document.addEventListener('htmx:afterRequest', function(e) {
-            var sentinel = e.target.closest('.rec-sentinel');
-            if (sentinel) sentinel.style.display = 'none';
         });
     </script>
 </body>

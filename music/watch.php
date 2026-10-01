@@ -647,6 +647,7 @@ session_write_close();
     <script src="../assets/js/shared/view-router.js<?= meel_asset_version('assets/js/shared/view-router.js') ?>"></script>
     <script src="../assets/js/music/watch/main.js<?= meel_asset_dir_version('assets/js/music/watch') ?>"></script>
     <script src="../assets/js/shared/comment.js<?= meel_asset_version('assets/js/shared/comment.js') ?>"></script>
+    <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>
     <script>
         document.addEventListener('htmx:beforeRequest', function(e) {
             var btn = e.target.closest('#m-search-btn');
@@ -663,10 +664,6 @@ session_write_close();
                 titleEl.textContent = 'Discover';
                 titleEl.title = 'Discover';
             }
-        });
-        document.addEventListener('htmx:afterRequest', function(e) {
-            var sentinel = e.target.closest('.rec-sentinel');
-            if (sentinel) sentinel.style.display = 'none';
         });
     </script>
 </body>

@@ -99,7 +99,7 @@ $totalPages = $meta['total_pages'];
         </div>
 
         
-        <div id="video-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5" title="Muat lebih banyak">
+        <div id="video-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
             <?php if ($data && $data->num_rows > 0): ?>
                 <?php while ($v = $data->fetch_assoc()): ?>
                     <?php include 'video_card.php'; ?>
@@ -112,16 +112,15 @@ $totalPages = $meta['total_pages'];
                 </div>
             <?php endif; ?>
             <?php if ($total > $perPage): ?>
-                <button type="button" id="load-more-area"
-                    class="aspect-video flex items-center justify-center bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl cursor-pointer hover:border-red-500/30 hover:bg-white/[.03] transition-all group"
+                <div id="load-more-area" role="status"
+                    class="col-span-full flex items-center justify-center gap-2.5 py-6 bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl transition-all"
                     hx-get="load-more?offset=<?= $perPage ?>&page=<?= $page ?>"
                     hx-target="#load-more-area"
                     hx-swap="outerHTML"
-                    aria-label="Muat lebih banyak video">
-                    <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300 group-hover:text-red-500 transition-colors">
-                        Muat Lebih Banyak · <?= $page ?>/<?= $totalPages ?>
-                    </span>
-                </button>
+                    hx-trigger="revealed">
+                    <div class="animate-spin h-3 w-3 border-2 border-t-transparent rounded-full" style="border-color:var(--meel-red); border-top-color:transparent"></div>
+                    <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300">Memuat...</span>
+                </div>
             <?php endif; ?>
         </div>
     </main>
@@ -129,6 +128,7 @@ $totalPages = $meta['total_pages'];
     <?php include '../partials/footer.php'; ?>
     <script src="../assets/js/compatibilitas/htmx.min.js"></script>
     <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
+    <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>
 </body>
 
 </html>

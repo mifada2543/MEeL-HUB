@@ -240,7 +240,7 @@ e.g. `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch.p
 ├── watch.php          # Player / detail (URL: [module]/watch?v=X)
 ├── upload.php         # Upload form (URL: [module]/upload)
 ├── search_[module].php  # Search (HTMX) (URL: [module]/search)
-├── load_more.php      # Pagination (HTMX) (URL: [module]/load-more)
+├── load_more.php      # Infinite scroll — next batch + sentinel chain (hx-trigger=revealed) (URL: [module]/load-more)
 └── [module]_item.php  # Card component
 ```
 
@@ -264,6 +264,44 @@ e.g. `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch.p
     <div class="animate-spin">⏳</div>
 </div>
 ```
+
+### Infinite Scroll (Sentinel) Pattern
+
+Used by the video & music libraries, search results, and watch recommendation sidebars — replaces the old "Load More" button:
+
+```html
+<!-- Sentinel: requester and target are the same element -->
+<div id="load-more-area" role="status"
+    hx-get="load-more?offset=15&page=1"
+    hx-target="#load-more-area"
+    hx-swap="outerHTML"
+    hx-trigger="revealed">          <!-- htmx fires when it enters the viewport -->
+    <div class="animate-spin …"></div>
+    <span>Memuat...</span>
+</div>
+```
+
+**Rules:**
+- **Chain semantics:** each response returns the next cards **plus a replacement
+  sentinel**. Freshly swapped elements start without `data-hx-revealed`, so the
+  chain keeps firing while the sentinel stays visible.
+- **Termination:** when `offset + limit ≥ total` (or `hasMore` is false) the
+  server returns the end box **"Out Of Content · Konten sudah tidak ada lagi"** —
+  an empty response renders the same end box.
+- **Error retry:** `assets/js/shared/sentinel-retry.js` removes `data-hx-revealed`
+  from a sentinel whose request failed, so the *next* scroll re-fires it
+  (retries on user scroll — no automatic loop).
+- **IDs matter:** keep the sentinel ids (`#load-more-area`, `#load-more-music`,
+  `#load-more-music-search`) — CSS `overflow-anchor: none` and the
+  `isFromLoadMore` guard in `assets/js/music/index/index.js` depend on them.
+  Search results use their own sentinel id so post-search cleanup can't disable them.
+- **Gotcha:** for an `outerHTML` swap, `htmx:afterSwap` fires **once per new
+  element** — cards have no `id`, so `targetId === ""`. Treat fragment swaps as
+  content updates (see `isFragmentSwap` in `assets/js/music/index/index.js`),
+  otherwise view-boot logic (`bootPlayerIndex()` incl. scroll-to-active) runs per
+  card and yanks the page during scroll.
+- **Don't** pair `revealed` with programmatic smooth-scroll — a `scrollTo` loop
+  would keep pulling pages endlessly (this is why the old `load-more.js` was removed).
 
 ### Theme System (Light/Dark Mode)
 
@@ -743,6 +781,34 @@ Two guard layers:
 — only the on/off state is per video. The old `localStorage` value for the same
 key is removed once when the script loads.
 
+#### Scale: output texture size
+
+The **Scale** panel only picks the *texture* size of the upscaled output — not
+the on-screen video size (the video always stretches to its own box through the
+linear blit, so raising Scale does not make the video look bigger):
+
+| Choice | Texture size |
+| ------ | ------------ |
+| `auto` — *Auto (follow screen)* | fits the display box × `devicePixelRatio` (capped at 2×), **never smaller** than the video's native resolution |
+| `1.5` | 1.5× the video's pixels (1920×1080 → 2880×1620) |
+| `2` | 2× the video's pixels (1920×1080 → 3840×2160) |
+
+- The `MAX_W × MAX_H` cap (3840×2160) remains the final authority for every
+  choice — including `auto`.
+- `auto` used to be allowed to produce a texture **smaller** than native (a
+  ~1217×685 display box on a 1080p screen): Scale then looked like "it does
+  nothing" because the texture was shrunk and stretched back to the same box —
+  extra GPU work with no visible result. Now `s = max(s, 1)` (see
+  `computeTarget()`), so the output is at least native; when the target is
+  native the resample path is skipped (see MEeLScale).
+- The info row under the Scale menu (`<p class="meel-upscale-scale-info">`,
+  `aria-live="polite"`) shows `Video WxH → output WxH (n×)` plus a hint that
+  Scale controls the texture, not the display. That element is inserted
+  **after** the `<div role="menu">` (see `buildScaleList()`) so the ARIA menu
+  contract stays intact; its text comes from the same `computeTarget()` used
+  by the rebuild, so it is correct even before the GPU chain finishes. Styles
+  live in `assets/css/video/upscaler.css`.
+
 #### Upscale model API contract
 
 Models are pluggable through `MEEL_UPSCALER.registerModel()`:
@@ -809,13 +875,31 @@ MEeLVision no longer shows up in the menu (its descriptor was removed from
 
 **MEeLScale** (`meelscale/model.js`)
 
-- Weightless separable resampler — one fullscreen-triangle render pass per
-  mode; mode ids are algorithm names (`bilinear`, `mitchell` B=1/3 C=1/3,
-  `catrom` B=0 C=1/2, `lanczos2`, `lanczos3`).
-- When reducing resolution the taps widen: `rx/ry = clamp(native/target, 1, 8)`,
-  the tap window is capped at 63 taps per axis, edges are clamped and the
-  result is normalised by the total weight (`wsum ≤ 0` falls back to the
-  nearest sample, not a black pixel).
+- Weightless separable resampler. `buildChain()` picks the cheapest path from
+  the `target` vs `native` difference:
+
+  | Difference | Pass chain |
+  | ---------- | ---------- |
+  | `target == native` | **CAS only** (resample skipped — one pass) |
+  | width only | horizontal → CAS |
+  | height only | vertical → CAS |
+  | both axes | horizontal → vertical → CAS (intermediate `rgba16float` texture) |
+
+  Each node calls `destroy()` to release the texture it owns.
+- Coordinate convention `src = pos * scale - 0.5` with `pos` = the output pixel
+  centre (`@builtin(position)` already includes +0.5), so at `scale 1` the
+  result is identical to the source. The old formula
+  `(pos + 0.5) * scale - 0.5` added a **half-pixel shift** that shows up as
+  blur at native resolution; the same fix was applied to
+  `meelsharp/model.js`.
+- Modes are algorithm names (`bilinear`, `mitchell` B=1/3 C=1/3, `catrom` B=0
+  C=1/2, `lanczos2`, `lanczos3`). When reducing resolution the taps widen:
+  `rx/ry = clamp(scale, 1, 8)`, the tap window is capped at 63 taps per axis,
+  edges are clamped and the result is normalised by the total weight (`wsum ≤
+  0` falls back to the nearest sample, not a black pixel).
+- The final **CAS** pass (FidelityFX by AMD, MIT licence — attribution kept in
+  the file header) is always active with `SHARPNESS 0.45`, including on the 1:1
+  path, so a native target still gets adaptive sharpening.
 
 #### Render pipeline & backpressure
 
