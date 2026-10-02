@@ -26,7 +26,7 @@ if (!$is_admin) {
 }
 
 $title = trim($_POST['title'] ?? '');
-$artist = trim($_POST['artist'] ?? 'Unknown Artist');
+$artist = trim($_POST['artist'] ?? 'Artis Tidak Diketahui');
 $bpm = (int) ($_POST['bpm'] ?? 0);
 $difficulty = (int) ($_POST['difficulty'] ?? 2);
 $beatmap_json = $_POST['beatmap_json'] ?? '';

@@ -45,7 +45,7 @@ foreach ($user_songs as $s) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>MEeL!Mania — Manage Beatmaps</title>
+  <title>MEeL!Mania — Kelola Beatmap</title>
   <link rel="icon" type="image/png" href="<?= $root ?>/assets/MEeL.png">
   <link href="<?= $root ?>/assets/css/font.css" rel="stylesheet">
   <link rel="stylesheet" href="<?= $root ?>/arcade/rhythm/assets/css/editor.css">
@@ -57,9 +57,9 @@ foreach ($user_songs as $s) {
   <div class="auth-required">
     <div class="auth-card">
       <div class="auth-icon">🔒</div>
-      <h2>Login Diperlukan</h2>
-      <p>Anda harus login untuk mengelola beatmap.</p>
-      <a href="../../auth/login.php" class="btn btn-primary">Login</a>
+      <h2>Masuk Terlebih Dahulu</h2>
+      <p>Anda harus masuk untuk mengelola beatmap.</p>
+      <a href="../../auth/login.php" class="btn btn-primary">Masuk</a>
       <a href="../" class="btn btn-ghost">Kembali</a>
     </div>
   </div>
@@ -69,7 +69,7 @@ foreach ($user_songs as $s) {
     <a href="../" class="nav-back">← Kembali ke Lobby</a>
     <div class="nav-brand">
       <span class="brand-icon">♫</span>
-      <span>Manage Beatmaps</span>
+      <span>Kelola Beatmap</span>
     </div>
     <div class="nav-actions">
       <a href="edit" class="btn btn-primary btn-sm">+ Buat Baru</a>
@@ -86,11 +86,11 @@ foreach ($user_songs as $s) {
       </div>
       <div class="stat-card">
         <div class="stat-num"><?= number_format($total_notes) ?></div>
-        <div class="stat-label">Total Notes</div>
+        <div class="stat-label">Total Note</div>
       </div>
       <div class="stat-card">
         <div class="stat-num"><?= number_format($total_plays) ?></div>
-        <div class="stat-label">Total Plays</div>
+        <div class="stat-label">Total Dimainkan</div>
       </div>
       <?php if ($is_admin): ?>
       <div class="stat-card">
@@ -192,12 +192,12 @@ foreach ($user_songs as $s) {
       var song = SONGS_DATA.find(function(s) { return s.id === id; });
       if (!song) return;
       var html = '<h3>' + song.title + '</h3>';
-      html += '<div class="detail-row"><span>Artist</span><span>' + (song.artist || '-') + '</span></div>';
+      html += '<div class="detail-row"><span>Artis</span><span>' + (song.artist || '-') + '</span></div>';
       html += '<div class="detail-row"><span>BPM</span><span>' + song.bpm + '</span></div>';
-      html += '<div class="detail-row"><span>Difficulty</span><span>' + song.difficulty_label + '</span></div>';
-      html += '<div class="detail-row"><span>Duration</span><span>' + song.duration + 's</span></div>';
-      html += '<div class="detail-row"><span>Notes</span><span>' + song.note_count + '</span></div>';
-      html += '<div class="detail-row"><span>Plays</span><span>' + song.play_count + '</span></div>';
+      html += '<div class="detail-row"><span>Kesulitan</span><span>' + song.difficulty_label + '</span></div>';
+      html += '<div class="detail-row"><span>Durasi</span><span>' + song.duration + 's</span></div>';
+      html += '<div class="detail-row"><span>Note</span><span>' + song.note_count + '</span></div>';
+      html += '<div class="detail-row"><span>Dimainkan</span><span>' + song.play_count + '</span></div>';
       html += '<div class="detail-row"><span>Created</span><span>' + (song.created_at || '-') + '</span></div>';
       html += '<div style="margin-top:16px;display:flex;gap:8px;">';
       html += '<a href="edit?id=' + song.id + '" class="btn btn-edit" style="flex:1;">✏️ Edit</a>';
@@ -231,11 +231,11 @@ foreach ($user_songs as $s) {
               Swal.fire({ title: 'Terhapus!', text: res.message, icon: 'success', background: '#0e1118', color: '#fff' })
                 .then(function() { window.location.reload(); });
             } else {
-              Swal.fire({ title: 'Error', text: res.error, icon: 'error', background: '#0e1118', color: '#fff' });
+              Swal.fire({ title: 'Kesalahan', text: res.error, icon: 'error', background: '#0e1118', color: '#fff' });
             }
           })
           .catch(function() {
-            Swal.fire({ title: 'Error', text: 'Gagal menghapus', icon: 'error', background: '#0e1118', color: '#fff' });
+            Swal.fire({ title: 'Kesalahan', text: 'Gagal menghapus', icon: 'error', background: '#0e1118', color: '#fff' });
           });
       });
     }

@@ -27,7 +27,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
         class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-300 hover:text-orange-500 transition-all"
         title="MEeL Music - Streaming Audio dengan kualitas terbaik">
         <i data-lucide="music" class="w-3.5 h-3.5"></i>
-        <span class="hidden md:inline">Music</span>
+        <span class="hidden md:inline">Musik</span>
     </a>
 <?php elseif ($_nav_is_music): ?>
     <a href="<?= $_nav_root ?>video/beranda"
@@ -47,7 +47,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
         class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-orange-500 transition-all"
         title="MEeL Music - Streaming Audio dengan kualitas terbaik">
         <i data-lucide="music" class="w-3.5 h-3.5"></i>
-        <span class="hidden md:inline">Music</span>
+        <span class="hidden md:inline">Musik</span>
     </a>
 <?php endif; ?>
 <?php if (isset($_SESSION['username'])): ?>
@@ -144,7 +144,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                         <?php else: ?>
                             <div class="flex items-center gap-1 mt-0.5">
                                 <span class="h-1.5 w-1.5 rounded-full bg-gray-600"></span>
-                                <span class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter" title="Anda adalah pengguna biasa">User</span>
+                                <span class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter" title="Anda adalah pengguna biasa">Pengguna</span>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -158,14 +158,14 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                     onmouseover="this.style.color='var(--meel-text-heading)'; this.style.background='var(--meel-surface-hover)'"
                     onmouseout="this.style.color='var(--meel-text-secondary)'; this.style.background='transparent'">
                     <i data-lucide="settings" class="w-3.5 h-3.5 flex-shrink-0"></i>
-                    <span>Preference</span>
+                    <span>Pengaturan</span>
                 </a>
 
                 <?php if (!$_nav_is_books): ?>
                 <a href="<?= $_nav_root ?>books/beranda" title="Akses MEeL Books"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-green-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="book-open" class="w-3.5 h-3.5 flex-shrink-0"></i>
-                    <span>Books</span>
+                    <span>Buku</span>
                 </a>
                 <?php endif; ?>
                 <a href="<?= $_nav_root ?>introduction" title="Cara bernavigasi di MEeL"
@@ -185,13 +185,13 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                     <a href="upload" title="Unggah media baru ke platform"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
-                        <span>Upload Media</span>
+                        <span>Unggah Media</span>
                     </a>
                     <a href="<?= $_nav_root ?>admin/beranda"
                         title="Panel admin untuk mengelola pengguna dan konten"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-red-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="settings" class="w-3.5 h-3.5 flex-shrink-0"></i>
-                        <span>Admin Panel</span>
+                        <span>Panel Admin</span>
                     </a>
                 <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'member'): ?>
 
@@ -199,7 +199,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                         title="Unggah media baru ke platform"
                         class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                         <i data-lucide="upload-cloud" class="w-3.5 h-3.5 flex-shrink-0"></i>
-                        <span>Upload</span>
+                        <span>Unggah</span>
                     </a>
                 <?php endif; ?>
             </div>
@@ -208,13 +208,13 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                 <a href="<?= $_nav_root ?>auth/logout"
                     data-meel-confirm-link
                     data-meel-confirm-size="sm"
-                    data-meel-confirm-title="Logout"
-                    data-meel-confirm-text="Yakin mau logout?"
-                    data-meel-confirm-button="LOGOUT"
+                    data-meel-confirm-title="Keluar"
+                    data-meel-confirm-text="Yakin mau keluar?"
+                    data-meel-confirm-button="KELUAR"
                     title="Keluar dari akun Anda"
                     class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-500 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
                     <i data-lucide="log-out" class="w-3.5 h-3.5 flex-shrink-0"></i>
-                    <span>Logout</span>
+                    <span>Keluar</span>
                 </a>
             </div>
         </div>
@@ -272,7 +272,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                         <?php else: ?>
                             <div class="flex items-center gap-1 mt-0.5">
                                 <span class="h-1.5 w-1.5 rounded-full bg-gray-600"></span>
-                                <span class="text-[9px] text-gray-500 uppercase">Member</span>
+                                <span class="text-[9px] text-gray-500 uppercase">Anggota</span>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -294,14 +294,14 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                 title="Pengaturan profil dan tema"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
-                <span>Preference</span>
+                <span>Pengaturan</span>
             </a>
             <?php if (!$_nav_is_books): ?>
             <a href="<?= $_nav_root ?>books/beranda"
                 title="Baca manga dan PDF digital"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-green-400 hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="book-open" class="w-5 h-5 flex-shrink-0"></i>
-                <span>Books</span>
+                <span>Buku</span>
             </a>
             <?php endif; ?>
             <a href="<?= $_nav_root ?>introduction"
@@ -314,7 +314,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                 <a href="<?= $_nav_root ?>music/beranda"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
                     <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Music</span>
+                    <span>Musik</span>
                 </a>
             <?php elseif ($_nav_is_music): ?>
                 <a href="<?= $_nav_root ?>video/beranda"
@@ -331,7 +331,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                 <a href="<?= $_nav_root ?>music/beranda"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
                     <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Music</span>
+                    <span>Musik</span>
                 </a>
             <?php endif; ?>
             <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['member', 'admin'])): ?>
@@ -345,18 +345,18 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                 <a href="upload"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Upload Media</span>
+                    <span>Unggah Media</span>
                 </a>
                 <a href="<?= $_nav_root ?>admin/beranda"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Admin Panel</span>
+                    <span>Panel Admin</span>
                 </a>
             <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'member'): ?>
                 <a href="upload"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Upload</span>
+                    <span>Unggah</span>
                 </a>
             <?php endif; ?>
             <div class="mx-6 my-3 h-px bg-white/[.05]"></div>
@@ -364,7 +364,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
             <a href="<?= $_nav_root ?>update"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-500 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="radio" class="w-5 h-5 flex-shrink-0"></i>
-                <span>Changelog</span>
+                <span>Catatan Perubahan</span>
             </a>
         </nav>
 
@@ -372,12 +372,12 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
             <a href="<?= $_nav_root ?>auth/logout"
                 data-meel-confirm-link
                 data-meel-confirm-size="sm"
-                data-meel-confirm-title="Logout"
-                data-meel-confirm-text="Yakin mau logout?"
-                data-meel-confirm-button="LOGOUT"
+                data-meel-confirm-title="Keluar"
+                data-meel-confirm-text="Yakin mau keluar?"
+                data-meel-confirm-button="KELUAR"
                 class="flex items-center justify-center gap-3 w-full py-4 rounded-xl bg-red-600/10 border border-red-600/20 text-base text-red-400 hover:bg-red-600/20 transition-all no-underline font-bold">
                 <i data-lucide="log-out" class="w-5 h-5"></i>
-                Logout
+                Keluar
             </a>
         </div>
     </div>
@@ -385,9 +385,9 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
 
     <div class="hidden sm:flex items-center gap-2">
         <a href="<?= $_nav_root ?>auth/login"
-            title="Login"
+            title="Masuk"
             class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-900/40">
-            LOGIN
+            MASUK
         </a>
         <a href="<?= $_nav_root ?>auth/register"
             title="Daftar"
@@ -401,7 +401,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
         </a>
         <a href="<?= $_nav_root ?>profile/guest"
             class="text-gray-500 hover:text-white transition-all p-2 rounded-lg hover:bg-white/5"
-            title="Preference">
+            title="Pengaturan">
             <i data-lucide="settings" class="w-4 h-4"></i>
         </a>
     </div>
@@ -427,8 +427,8 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                     <span class="hidden w-full h-full items-center justify-center text-white text-sm font-bold">?</span>
                 </div>
                 <div>
-                    <div class="text-sm font-bold text-white">Guest</div>
-                    <div class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter">Belum Login</div>
+                    <div class="text-sm font-bold text-white">Tamu</div>
+                    <div class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter">Belum Masuk</div>
                 </div>
             </div>
             <button onclick="toggleNavDrawerGuest()" class="text-gray-600 hover:text-white p-1 transition-all">
@@ -440,7 +440,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
             <a href="<?= $_nav_root ?>auth/login"
                 class="flex items-center gap-4 px-6 py-4 text-base text-blue-400 hover:text-blue-300 hover:bg-blue-500/[.06] transition-all no-underline font-bold">
                 <i data-lucide="log-in" class="w-5 h-5 flex-shrink-0"></i>
-                <span>Login</span>
+                <span>Masuk</span>
             </a>
             <a href="<?= $_nav_root ?>auth/register"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
@@ -450,14 +450,14 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
             <a href="<?= $_nav_root ?>profile/guest"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
-                <span>Preference</span>
+                <span>Pengaturan</span>
             </a>
 
             <?php if ($_nav_is_video): ?>
                 <a href="<?= $_nav_root ?>music/beranda"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
                     <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Music</span>
+                    <span>Musik</span>
                 </a>
             <?php elseif ($_nav_is_music): ?>
                 <a href="<?= $_nav_root ?>video/beranda"
@@ -474,13 +474,13 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                 <a href="<?= $_nav_root ?>music/beranda"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
                     <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Music</span>
+                    <span>Musik</span>
                 </a>
             <?php endif; ?>
             <a href="<?= $_nav_root ?>introduction"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="compass" class="w-5 h-5 flex-shrink-0"></i>
-                <span>Introduction</span>
+                <span>Panduan</span>
             </a>
         </nav>
 

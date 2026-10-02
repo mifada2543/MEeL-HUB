@@ -42,10 +42,10 @@ function updateHealthToggleButton() {
   );
   if (on) {
     btn.classList.add("bg-green-500/20", "text-green-500");
-    btn.innerText = "ON";
+    btn.innerText = "HIDUP";
   } else {
     btn.classList.add("bg-red-500/20", "text-red-500");
-    btn.innerText = "OFF";
+    btn.innerText = "MATI";
   }
 }
 

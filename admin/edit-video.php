@@ -29,23 +29,12 @@ if ($_EDIT_CONTEXT === 'admin') {
     exit;
 }
 
-$back_url = $is_admin ? 'stats.php' : '../video/beranda';
-if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref = $_SERVER['HTTP_REFERER'];
-    $host = $_SERVER['HTTP_HOST'];
-    if (parse_url($ref, PHP_URL_HOST) === $host) {
-        $ref_path = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages = ['edit-music.php', 'edit-music', 'edit-video.php', 'edit-video'];
-        $should_exclude = false;
-        foreach ($excluded_pages as $page) {
-            if (strpos($ref_path, $page) !== false) {
-                $should_exclude = true;
-                break;
-            }
-        }
-        if (!$should_exclude) $back_url = $ref;
-    }
-}
+// Tombol "Kembali": hormati halaman asal hanya jika layak — bukan halaman
+// edit/editor (termasuk lrc-editor) dan bukan halaman ini sendiri.
+// Tujuan bawaan: admin -> Analitik Media, pemilik konten -> Kelola Konten.
+$back_url = meel_back_url(
+    $_EDIT_CONTEXT === 'admin' ? base_url('/admin/stats') : base_url('/profile/manage')
+);
 require_once __DIR__ . '/../modules/media/MediaAdminRepository.php';
 $adminMedia = new MediaAdminRepository($conn);
 
@@ -250,7 +239,7 @@ include __DIR__ . '/../partials/link.php';
                         <div class="thumb-overlay-icon">
                             <i data-lucide="image" style="width:22px;height:22px;color:#fff;"></i>
                         </div>
-                        <div class="thumb-overlay-text">Klik atau drop<br>untuk ganti thumbnail</div>
+                        <div class="thumb-overlay-text">Klik atau jatuhkan<br>untuk ganti thumbnail</div>
                     </div>
                     <span class="thumb-label" id="thumb-label">Thumbnail saat ini</span>
                     <span class="thumb-changed-badge" id="thumb-changed-badge">✓ Baru</span>
@@ -288,7 +277,7 @@ include __DIR__ . '/../partials/link.php';
                             <i data-lucide="calendar" style="width:13px;height:13px;color:var(--accent)"></i>
                         </div>
                         <div>
-                            <div class="meta-label">Tanggal Upload</div>
+                            <div class="meta-label">Tanggal Unggah</div>
                             <div class="meta-value"><?= !empty($video['upload_date']) ? date('d M Y', strtotime($video['upload_date'])) : '—' ?></div>
                         </div>
                     </div>
@@ -315,7 +304,7 @@ include __DIR__ . '/../partials/link.php';
                     </a>
                     <?php if ($is_admin): ?>
                         <a href="." class="btn-secondary" style="justify-content:center;">
-                            <i data-lucide="layout-dashboard" style="width:13px;height:13px;"></i> Dashboard Admin
+                            <i data-lucide="layout-dashboard" style="width:13px;height:13px;"></i> Dasbor Admin
                         </a>
                     <?php else: ?>
                         <a href="../profile/<?= $_SESSION['username'] ?>" class="btn-secondary" style="justify-content:center;">
@@ -394,7 +383,7 @@ include __DIR__ . '/../partials/link.php';
                     </div>
 
                     <div style="display:flex;flex-direction:column;gap:8px;">
-                        <label class="field-label">Upload / Ganti Subtitle</label>
+                        <label class="field-label">Unggah / Ganti Subtitle</label>
 
                         <div class="drop-zone-subtitle" id="subtitle-zone">
                             <input type="file" name="subtitle" accept=".vtt,.srt"

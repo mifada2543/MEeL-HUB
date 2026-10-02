@@ -25,8 +25,8 @@ $total_all = $conn->query("SELECT COUNT(*) AS c FROM users")->fetch_assoc()['c']
 
 <head>
 <?php
-$_META_TITLE = 'MFA Reset | Admin MEeL';
-$_META_DESC = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
+$_META_TITLE = 'Reset MFA | Admin MEeL';
+$_META_DESC = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.';
 include __DIR__ . '/../partials/link.php';
 $scripts_root = '../';
 include __DIR__ . '/../partials/scripts.php';
@@ -40,7 +40,7 @@ include __DIR__ . '/../partials/scripts.php';
 <body class="text-gray-300 min-h-screen">
     <?php
     $is_admin = true;
-    $page_title = 'MFA Reset';
+    $page_title = 'Reset MFA';
     $media_type = 'analytics';
     $back_url = 'index.php';
     include 'header-admin.php';
@@ -52,7 +52,7 @@ include __DIR__ . '/../partials/scripts.php';
                 <i data-lucide="shield" class="w-5 h-5 text-purple-500"></i>
             </div>
             <div>
-                <h1 class="text-2xl font-extrabold text-white leading-tight">MFA Management</h1>
+                <h1 class="text-2xl font-extrabold text-white leading-tight">Pengelolaan MFA</h1>
                 <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1">
                     <?= $total_mfa ?> / <?= $total_all ?> users have MFA enabled
                 </p>
@@ -91,9 +91,9 @@ include __DIR__ . '/../partials/scripts.php';
             <div class="flex items-start gap-3">
                 <i data-lucide="info" class="w-4 h-4 text-purple-400 mt-0.5"></i>
                 <div class="text-xs text-gray-400 leading-relaxed">
-                    <strong class="text-white">Reset MFA</strong> akan menonaktifkan autentikasi dua faktor untuk user tersebut.
-                    User perlu melakukan <strong class="text-yellow-400">setup ulang MFA</strong> dari halaman profil mereka.
-                    Backup codes lama juga akan dihapus.
+                    <strong class="text-white">Reset MFA</strong> akan menonaktifkan autentikasi dua faktor untuk pengguna tersebut.
+                    Pengguna perlu <strong class="text-yellow-400">menyiapkan ulang MFA</strong> dari halaman profil mereka.
+                    Kode cadangan lama juga akan dihapus.
                 </div>
             </div>
         </div>
@@ -101,18 +101,18 @@ include __DIR__ . '/../partials/scripts.php';
         <div class="glass rounded-2xl overflow-hidden">
             <div class="p-5 border-b border-white/5 bg-white/[0.02] flex items-center gap-2">
                 <i data-lucide="users" class="w-4 h-4 text-purple-400"></i>
-                <h3 class="text-xs font-bold text-gray-400 uppercase">Users with MFA Active</h3>
+                <h3 class="text-xs font-bold text-gray-400 uppercase">Pengguna dengan MFA Aktif</h3>
             </div>
             <?php if ($mfa_users && $mfa_users->num_rows > 0): ?>
                 <div class="scroll-table" style="max-height:400px">
                     <table class="w-full text-left text-xs">
                         <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
                             <tr>
-                                <th class="py-3 px-5">Username</th>
-                                <th class="py-3 px-3">Role</th>
+                                <th class="py-3 px-5">Nama Pengguna</th>
+                                <th class="py-3 px-3">Peran</th>
                                 <th class="py-3 px-3">Status</th>
-                                <th class="py-3 px-4">Last Activity</th>
-                                <th class="py-3 px-5 text-right">Action</th>
+                                <th class="py-3 px-4">Aktivitas Terakhir</th>
+                                <th class="py-3 px-5 text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-800">
@@ -147,7 +147,7 @@ include __DIR__ . '/../partials/scripts.php';
                                                 Reset MFA
                                             </button>
                                         <?php else: ?>
-                                            <span class="text-[9px] text-gray-600 italic">Protected</span>
+                                            <span class="text-[9px] text-gray-600 italic">Terlindungi</span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -158,14 +158,14 @@ include __DIR__ . '/../partials/scripts.php';
             <?php else: ?>
                 <div class="p-10 text-center">
                     <i data-lucide="shield-check" class="w-10 h-10 text-green-500/50 mx-auto mb-4"></i>
-                    <p class="text-sm text-gray-500 font-bold">Tidak ada user dengan MFA aktif.</p>
-                    <p class="text-[10px] text-gray-600 mt-1">Semua user aman tanpa perlu di-reset.</p>
+                    <p class="text-sm text-gray-500 font-bold">Tidak ada pengguna dengan MFA aktif.</p>
+                    <p class="text-[10px] text-gray-600 mt-1">Semua pengguna aman tanpa perlu di-reset.</p>
                 </div>
             <?php endif; ?>
         </div>
 
         <div class="text-center mt-8"> <a href="." class="text-xs text-gray-600 hover:text-blue-500 transition inline-flex items-center gap-1">
-                <i data-lucide="arrow-left" class="w-3 h-3"></i> Kembali ke Dashboard Admin
+                <i data-lucide="arrow-left" class="w-3 h-3"></i> Kembali ke Dasbor Admin
             </a>
         </div>
     </div>

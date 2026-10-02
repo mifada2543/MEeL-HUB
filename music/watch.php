@@ -35,7 +35,7 @@ session_write_close();
     }
 
     $_META_TITLE = $v['title'] . ' — MEeL Music';
-    $_META_DESC = 'Dengarkan ' . $v['title'] . ' oleh ' . ($v['artist'] ?? 'Unknown') . ' di MEeL Music.';
+    $_META_DESC = 'Dengarkan ' . $v['title'] . ' oleh ' . ($v['artist'] ?? 'Tidak diketahui') . ' di MEeL Music.';
     $_META_IMAGE = $__og_image;
     $_META_IMAGE_W = '512';
     $_META_IMAGE_H = '512';
@@ -65,7 +65,7 @@ session_write_close();
                     <i data-lucide="music" class="nav-logo-icon w-3.5 h-3.5"></i>
                 </div>
                 <span class="text-sm font-bold tracking-tight text-white uppercase">
-                    MEeL<span class="text-orange-500">Music</span>
+                    MEeL<span class="text-orange-500">Musik</span>
                 </span>
             </a>
 
@@ -126,8 +126,8 @@ session_write_close();
 
                 <div class="flex flex-col sm:flex-row gap-5 p-4 sm:p-6 border-b border-white/[.04]">
                     <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
-                        <div class="vinyl-spin vinyl-disc" onclick="event.stopPropagation();(window.goBackToLibrary ? window.goBackToLibrary() : window.toggleMiniPlayer?.())" style="cursor:pointer" title="Mini Player (I)">
-                            <img src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> cover" width="512" height="512" class="w-full h-full object-cover" fetchpriority="high" decoding="async">
+                        <div class="vinyl-spin vinyl-disc" onclick="event.stopPropagation();(window.goBackToLibrary ? window.goBackToLibrary() : window.toggleMiniPlayer?.())" style="cursor:pointer" title="Pemutar Mini (I)">
+                            <img src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> sampul" width="512" height="512" class="w-full h-full object-cover" fetchpriority="high" decoding="async">
                         </div>
                     </div>
 
@@ -154,17 +154,17 @@ session_write_close();
                             <button id="btn-loop" onclick="toggleLoop()"
                                 class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
                                 <i data-lucide="repeat" class="w-3 h-3"></i>
-                                <span id="loop-text">Loop Off</span>
+                                <span id="loop-text">Loop Mati</span>
                             </button>
                             <button id="btn-vis" onclick="toggleVisualizer()"
                                 class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
                                 <i data-lucide="activity" class="w-3 h-3"></i>
-                                <span id="vis-text">Vis On</span>
+                                <span id="vis-text">Vis Aktif</span>
                             </button>
                             <button id="btn-eq" onclick="toggleEqualizer()"
                                 class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
                                 <i data-lucide="sliders-horizontal" class="w-3 h-3"></i>
-                                <span id="eq-text">EQ Off</span>
+                                <span id="eq-text">EQ Mati</span>
                             </button>
                             <button id="btn-karaoke" onclick="openKaraoke()" style="display:none;"
                                 class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
@@ -183,20 +183,20 @@ session_write_close();
                         <div id="eq-preset-dropdown" class="relative w-full sm:w-auto">
                             <button id="eq-preset-button" type="button" onclick="toggleEqPresetDropdown()"
                                 class="w-full sm:w-auto min-w-[140px] flex items-center justify-between gap-2 bg-gray-900/80 border border-white/[.10] text-gray-200 text-[11px] rounded-lg px-3 py-2 outline-none focus:border-orange-500/40 transition-all">
-                                <span id="eq-preset-label">Flat</span>
+                                <span id="eq-preset-label">Datar</span>
                                 <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
                             </button>
                             <div id="eq-preset-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
-                                <button type="button" data-preset="flat" onclick="selectEqPreset('flat')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Flat</button>
-                                <button type="button" data-preset="bass" onclick="selectEqPreset('bass')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Bass Boost</button>
-                                <button type="button" data-preset="treble" onclick="selectEqPreset('treble')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Treble Boost</button>
-                                <button type="button" data-preset="vocal" onclick="selectEqPreset('vocal')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Vocal Boost</button>
+                                <button type="button" data-preset="flat" onclick="selectEqPreset('flat')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Datar</button>
+                                <button type="button" data-preset="bass" onclick="selectEqPreset('bass')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Penguat Bass</button>
+                                <button type="button" data-preset="treble" onclick="selectEqPreset('treble')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Penguat Treble</button>
+                                <button type="button" data-preset="vocal" onclick="selectEqPreset('vocal')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Penguat Vokal</button>
                                 <button type="button" data-preset="rock" onclick="selectEqPreset('rock')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Rock</button>
-                                <button type="button" data-preset="classical" onclick="selectEqPreset('classical')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Classical</button>
+                                <button type="button" data-preset="classical" onclick="selectEqPreset('classical')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Klasik</button>
                                 <button type="button" data-preset="pop" onclick="selectEqPreset('pop')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Pop</button>
                                 <button type="button" data-preset="jazz" onclick="selectEqPreset('jazz')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Jazz</button>
-                                <button type="button" data-preset="electronic" onclick="selectEqPreset('electronic')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Electronic</button>
-                                <button type="button" data-preset="acoustic" onclick="selectEqPreset('acoustic')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Acoustic</button>
+                                <button type="button" data-preset="electronic" onclick="selectEqPreset('electronic')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Elektronik</button>
+                                <button type="button" data-preset="acoustic" onclick="selectEqPreset('acoustic')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Akustik</button>
                                 <button type="button" data-preset="gaming" onclick="selectEqPreset('gaming')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Gaming</button>
                                 <button type="button" data-preset="podcast" onclick="selectEqPreset('podcast')" class="w-full text-left px-4 py-3 text-xs text-gray-300 hover:bg-white/[.04] transition-colors">Podcast</button>
                             </div>
@@ -330,8 +330,8 @@ session_write_close();
                                 <span>Jadilah komentar pertama</span>
                             <?php else: foreach ($preview_items as $_pc): ?>
                                 <div class="line-clamp-1"
-                                    title="<?= htmlspecialchars('@' . ($_pc['username'] ?? 'Guest') . ': ' . preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? '')), ENT_QUOTES) ?>">
-                                    <span class="font-bold text-orange-400">@<?= htmlspecialchars($_pc['username'] ?? 'Guest') ?></span>: <?= htmlspecialchars(preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? ''))) ?>
+                                    title="<?= htmlspecialchars('@' . ($_pc['username'] ?? 'Tamu') . ': ' . preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? '')), ENT_QUOTES) ?>">
+                                    <span class="font-bold text-orange-400">@<?= htmlspecialchars($_pc['username'] ?? 'Tamu') ?></span>: <?= htmlspecialchars(preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? ''))) ?>
                                 </div>
                             <?php endforeach; endif; ?>
                         </div>
@@ -380,7 +380,7 @@ session_write_close();
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
                     <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                         <i data-lucide="list-music" class="w-3.5 h-3.5 text-orange-500"></i>
-                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Up Next</span>
+                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Berikutnya</span>
                     </div>
                     <div class="p-3 space-y-0.5 max-h-[320px] overflow-y-auto no-scrollbar">
                         <?php
@@ -463,7 +463,7 @@ session_write_close();
                     </button>
                     <div class="flex items-center gap-2 mb-5">
                         <i data-lucide="list-music" class="w-4 h-4 text-orange-400"></i>
-                        <span class="text-sm font-bold text-white uppercase tracking-wider">Simpan ke Playlist</span>
+                        <span class="text-sm font-bold text-white uppercase tracking-wider">Simpan ke Daftar Putar</span>
                     </div>
                     <div class="space-y-1.5 mb-4 max-h-[180px] overflow-y-auto pr-1 no-scrollbar">
                         <?php
@@ -483,7 +483,7 @@ session_write_close();
                                 </form>
                             <?php endwhile;
                         else: ?>
-                            <p class="text-[11px] text-gray-600 text-center py-3">Belum ada playlist.</p>
+                            <p class="text-[11px] text-gray-600 text-center py-3">Belum ada daftar putar.</p>
                         <?php endif; ?>
                     </div>
                     <div class="border-t border-white/[.05] pt-4">
@@ -493,7 +493,7 @@ session_write_close();
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                             <input type="text" name="playlist_name"
                                 class="flex-1 bg-black/30 border border-white/[.06] rounded-xl px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 transition-all min-w-0"
-                                placeholder="Nama playlist baru..." required>
+                                placeholder="Nama daftar putar baru..." required>
                             <button type="submit"
                                 class="bg-orange-500 hover:bg-orange-400 text-black text-xs font-black uppercase px-4 py-2 rounded-xl border-none cursor-pointer transition-all flex-shrink-0">
                                 Buat
@@ -515,7 +515,7 @@ session_write_close();
                 <div id="karaoke-scroll"></div>
             </div>
         </div>
-        <div id="mini-player" aria-label="Mini Player">
+        <div id="mini-player" aria-label="Pemutar Mini">
             <div class="mp-seekbar" id="mp-seekbar" onclick="miniSeek(event)" title="Klik untuk seek">
                 <div class="mp-seekbar-fill" id="mp-seekbar-fill"></div>
                 <div class="mp-seekbar-thumb" id="mp-seekbar-thumb"></div>
@@ -524,14 +524,14 @@ session_write_close();
             <div class="mp-body">
                 <div class="mp-track" onclick="toggleMiniPlayer()" title="Buka player penuh">
                     <div class="mp-art" onclick="event.stopPropagation(); window.goBackToLibrary();">
-                        <img id="mini-thumbnail" src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> cover" width="256" height="256" loading="eager" decoding="async">
+                        <img id="mini-thumbnail" src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> sampul" width="256" height="256" loading="eager" decoding="async">
                         <div class="mp-art-overlay">
                             <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
                         </div>
                     </div>
                     <div class="mp-meta">
                         <div class="mp-title" id="mini-title"><?= htmlspecialchars($v['title']) ?></div>
-                        <div class="mp-artist" id="mini-artist"><?= htmlspecialchars($v['artist'] ?? 'Unknown') ?></div>
+                        <div class="mp-artist" id="mini-artist"><?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?></div>
                     </div>
                 </div>
 
@@ -542,7 +542,7 @@ session_write_close();
                     <button class="mp-btn mp-btn-ghost" onclick="miniPrev()" id="mp-prev-btn" title="Sebelumnya">
                         <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
                     </button>
-                    <button class="mp-btn mp-btn-primary" onclick="miniPlayPause()" id="mini-play-btn" title="Play / Pause">
+                    <button class="mp-btn mp-btn-primary" onclick="miniPlayPause()" id="mini-play-btn" title="Putar / Jeda">
                         <i data-lucide="play" style="width:18px;height:18px;"></i>
                     </button>
                     <button class="mp-btn mp-btn-ghost" onclick="miniNext()" id="mp-next-btn" title="Berikutnya">

@@ -118,7 +118,7 @@ class Uploader
         }
 
         $title = trim($post['title'] ?? '');
-        $artist = trim($post['artist'] ?? 'Unknown Artist');
+        $artist = trim($post['artist'] ?? 'Artis Tidak Diketahui');
         $album = trim($post['album'] ?? 'Single');
         $description = trim($post['description'] ?? '');
 

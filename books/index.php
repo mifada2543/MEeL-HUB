@@ -27,10 +27,10 @@ $totalPagesBooks = $meta_books['total_pages'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="MEeL | Books">
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.">
+    <meta property="og:title" content="MEeL | Buku">
     <meta property="og:description" content="MEeL Books - Perpustakaan digital untuk membaca manga, komik, dan dokumen PDF.">
-    <title>MEeL | Books</title>
+    <title>MEeL | Buku</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/books/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/books/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/books/' . $__f) ?>">
@@ -48,7 +48,7 @@ $totalPagesBooks = $meta_books['total_pages'];
                     <i data-lucide="library" class="w-3.5 h-3.5 text-white fill-current"></i>
                 </div>
                 <span class="text-xs sm:text-sm font-bold tracking-tight text-white uppercase hidden sm:block">
-                    MEeL<span class="text-green-500">Books</span>
+                    MEeL<span class="text-green-500">Buku</span>
                 </span>
             </a>
 
@@ -111,8 +111,8 @@ $totalPagesBooks = $meta_books['total_pages'];
 
         <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
             <div>
-                <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Library</div>
-                <div class="section-title">BOOKS</div>
+                <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Koleksi</div>
+                <div class="section-title">BUKU</div>
             </div>
             <span class="text-[10px] text-gray-700 uppercase tracking-widest">
                 <?= $total ?> items
@@ -139,7 +139,7 @@ $totalPagesBooks = $meta_books['total_pages'];
             <?php if ($role === 'admin'): ?>
                 <a href="upload"
                     class="filter-pill ml-auto text-green-500 border-green-500/30 hover:border-green-500 hover:text-green-400 hover:bg-green-500/5">
-                    <i data-lucide="upload-cloud" class="w-3 h-3 inline-block -ml-0.5 mr-1"></i> Upload
+                    <i data-lucide="upload-cloud" class="w-3 h-3 inline-block -ml-0.5 mr-1"></i> Unggah
                 </a>
             <?php endif; ?>
         </div>
@@ -164,7 +164,7 @@ $totalPagesBooks = $meta_books['total_pages'];
                     <?php if ($role === 'admin'): ?>
                         <a href="upload"
                             class="mt-6 px-6 py-2.5 bg-green-600 hover:bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-green-900/30">
-                            Upload Sekarang
+                            Unggah Sekarang
                         </a>
                     <?php endif; ?>
                 </div>
@@ -178,7 +178,7 @@ $totalPagesBooks = $meta_books['total_pages'];
             <?php if ($bookPage > 1): ?>
                 <a href="?type=<?= $filter ?>&page=<?= $bookPage - 1 ?>"
                     class="px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-green-500 hover:border-green-500/30 transition-all">
-                    <i data-lucide="chevron-left" class="w-3.5 h-3.5 inline -ml-1"></i> Prev
+                    <i data-lucide="chevron-left" class="w-3.5 h-3.5 inline -ml-1"></i> Sebelumnya
                 </a>
             <?php endif; ?>
             <?php
@@ -193,7 +193,7 @@ $totalPagesBooks = $meta_books['total_pages'];
             <?php if ($bookPage < $totalPagesBooks): ?>
                 <a href="?type=<?= $filter ?>&page=<?= $bookPage + 1 ?>"
                     class="px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-green-500 hover:border-green-500/30 transition-all">
-                    Next <i data-lucide="chevron-right" class="w-3.5 h-3.5 inline -mr-1"></i>
+                    Berikutnya <i data-lucide="chevron-right" class="w-3.5 h-3.5 inline -mr-1"></i>
                 </a>
             <?php endif; ?>
         </div>

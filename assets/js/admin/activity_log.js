@@ -180,7 +180,7 @@
           .replace(/>/g, "&gt;");
 
         Swal.fire({
-          title: "Preview — " + formatLabels[format],
+          title: "Pratinjau — " + formatLabels[format],
           html:
             '<div style="text-align:left">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.1em;font-weight:800;margin-bottom:10px">' +
@@ -242,6 +242,7 @@
           title: "Gagal!",
           text: "Tidak dapat memuat preview: " + err.message,
           icon: "error",
+          confirmButtonText: "Mengerti",
           background: "#0e1118",
           color: "#fff",
           confirmButtonColor: "#3b82f6",

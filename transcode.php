@@ -103,7 +103,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
 <head>
     <?php
     $_META_TITLE = 'MEeL Transcoder';
-    $_META_DESC = 'MEeL Transcoder - Konversi video ke format audio MP3, OGG, dan M4A. Ekstrak audio dari library video dengan mudah.';
+    $_META_DESC = 'MEeL Transcoder - Konversi video ke format audio MP3, OGG, dan M4A. Ekstrak audio dari koleksi video dengan mudah.';
     include __DIR__ . '/partials/link.php';
     $scripts_root = '';
     include __DIR__ . '/partials/scripts.php';
@@ -213,7 +213,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
                 <div class="p-7 pb-6 border-b border-white/[.06] flex items-start justify-between gap-3">
                     <div>
                         <div class="font-syne text-[22px] font-extrabold text-[#f0f2f7] leading-tight">Transcode<span class="text-red-500">.</span></div>
-                        <div class="text-[10px] font-bold uppercase tracking-[.2em] text-muted mt-1">Ekstrak audio dari video library</div>
+                        <div class="text-[10px] font-bold uppercase tracking-[.2em] text-muted mt-1">Ekstrak audio dari koleksi video</div>
                     </div>
                     <i data-lucide="wand-2" class="w-7 h-7 text-red-500 opacity-40 flex-shrink-0 mt-1"></i>
                 </div>
@@ -286,7 +286,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
                             <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/[.03] border border-white/[.06]">
                                 <div class="flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.2);">
-                                        <i data-lucide="coin" class="w-3.5 h-3.5 text-yellow-400"></i>
+                                        <i data-lucide="coins" class="w-3.5 h-3.5 text-yellow-400"></i>
                                     </div>
                                     <div>
                                         <div class="text-[9px] font-bold uppercase tracking-[.15em] text-muted">MEeLCoin</div>

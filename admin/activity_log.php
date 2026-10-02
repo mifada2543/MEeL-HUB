@@ -124,7 +124,7 @@ if ($active_tab === 'uploads') {
                 echo '    <Author>MEeL Admin</Author>' . "\n";
                 echo '    <Created>' . date('c') . '</Created>' . "\n";
                 echo '  </DocumentProperties>' . "\n";
-                echo '  <Worksheet ss:Name="Upload Queue">' . "\n";
+                echo '  <Worksheet ss:Name="Antrean Unggah">' . "\n";
                 echo '    <Table>' . "\n";
 
                 $headers = ['ID', 'User', 'URL', 'Tipe', 'Status', 'Waktu'];
@@ -296,13 +296,13 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
 
             $output = fopen('php://output', 'w');
             fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($output, ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'IP Address', 'Waktu']);
+            fputcsv($output, ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'Alamat IP', 'Waktu']);
 
             foreach ($rows as $row) {
                 fputcsv($output, [
                     $row['id'],
                     $row['user_id'] ?? '',
-                    $row['username'] ?? 'Guest',
+                    $row['username'] ?? 'Tamu',
                     $row['action'],
                     $row['media_type'] ?? '',
                     $row['media_id'] ?? '',
@@ -321,7 +321,7 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
                 return [
                     'id' => (int)$r['id'],
                     'user_id' => $r['user_id'] !== null ? (int)$r['user_id'] : null,
-                    'username' => $r['username'] ?? 'Guest',
+                    'username' => $r['username'] ?? 'Tamu',
                     'action' => $r['action'],
                     'media_type' => $r['media_type'] ?? '',
                     'media_id' => $r['media_id'] !== null ? (int)$r['media_id'] : null,
@@ -347,10 +347,10 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
             echo '    <Author>MEeL Admin</Author>' . "\n";
             echo '    <Created>' . date('c') . '</Created>' . "\n";
             echo '  </DocumentProperties>' . "\n";
-            echo '  <Worksheet ss:Name="Activity Log">' . "\n";
+            echo '  <Worksheet ss:Name="Log Aktivitas">' . "\n";
             echo '    <Table>' . "\n";
 
-            $headers = ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'IP Address', 'Waktu'];
+            $headers = ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'Alamat IP', 'Waktu'];
             echo '      <Row>' . "\n";
             foreach ($headers as $h) {
                 echo '        <Cell><Data ss:Type="String">' . htmlspecialchars($h) . '</Data></Cell>' . "\n";
@@ -370,7 +370,7 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
                 echo '      <Row>' . "\n";
                 echo $xls_cell($row['id'], 'Number');
                 echo $xls_cell($row['user_id'], 'Number');
-                echo $xls_cell($row['username'] ?? 'Guest');
+                echo $xls_cell($row['username'] ?? 'Tamu');
                 echo $xls_cell($row['action']);
                 echo $xls_cell($row['media_type']);
                 echo $xls_cell($row['media_id'], 'Number');
@@ -398,13 +398,13 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
     switch ($preview_format) {
         case 'csv':
             $content = '';
-            $h = ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'IP Address', 'Waktu'];
+            $h = ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'Alamat IP', 'Waktu'];
             $content .= implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $h)) . "\n";
             foreach ($preview_rows as $r) {
                 $vals = [
                     $r['id'],
                     $r['user_id'] ?? '',
-                    $r['username'] ?? 'Guest',
+                    $r['username'] ?? 'Tamu',
                     $r['action'],
                     $r['media_type'] ?? '',
                     $r['media_id'] ?? '',
@@ -423,7 +423,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 return [
                     'id' => (int)$r['id'],
                     'user_id' => $r['user_id'] !== null ? (int)$r['user_id'] : null,
-                    'username' => $r['username'] ?? 'Guest',
+                    'username' => $r['username'] ?? 'Tamu',
                     'action' => $r['action'],
                     'media_type' => $r['media_type'] ?? '',
                     'media_id' => $r['media_id'] !== null ? (int)$r['media_id'] : null,
@@ -438,12 +438,12 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             break;
 
         case 'xls':
-            $content = "ID\tUser ID\tUsername\tAction\tMedia Type\tMedia ID\tIP Address\tWaktu\n";
+            $content = "ID\tUser ID\tUsername\tAction\tMedia Type\tMedia ID\tAlamat IP\tWaktu\n";
             foreach ($preview_rows as $r) {
                 $content .= implode("\t", [
                     $r['id'],
                     $r['user_id'] ?? '',
-                    $r['username'] ?? 'Guest',
+                    $r['username'] ?? 'Tamu',
                     $r['action'],
                     $r['media_type'] ?? '',
                     $r['media_id'] ?? '',
@@ -473,8 +473,8 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
 
 <head>
     <?php
-    $_META_TITLE = 'MEeL | Activity Log';
-    $_META_DESC = 'MEeL Activity Log — Audit trail untuk monitoring aktivitas pengguna.';
+    $_META_TITLE = 'MEeL | Log Aktivitas';
+    $_META_DESC = 'MEeL Log Aktivitas — Audit trail untuk monitoring aktivitas pengguna.';
     include __DIR__ . '/../partials/link.php';
     $scripts_root = '../';
     include __DIR__ . '/../partials/scripts.php';
@@ -488,7 +488,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
 <body class="text-gray-300 min-h-screen">
 
     <?php
-    $page_title = 'Activity Log';
+    $page_title = 'Log Aktivitas';
     $media_type = 'analytics';
     $back_url = 'index.php';
     include 'header-admin.php';
@@ -497,15 +497,15 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
         <div class="flex gap-0 rounded-xl overflow-hidden border border-white/10 mb-6">
             <a href="activity-log"
                 class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all border-r border-white/10 <?= $active_tab === 'log' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5' ?>">
-                <i data-lucide="activity" class="w-3 h-3 inline mr-1.5"></i> Activity Log
+                <i data-lucide="activity" class="w-3 h-3 inline mr-1.5"></i> Log Aktivitas
             </a>
             <a href="activity-log?tab=views"
                 class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all <?= $active_tab === 'views' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5' ?>">
-                <i data-lucide="bar-chart-3" class="w-3 h-3 inline mr-1.5"></i> View Analytics
+                <i data-lucide="bar-chart-3" class="w-3 h-3 inline mr-1.5"></i> Analitik Tayangan
             </a>
             <a href="activity-log?tab=uploads"
                 class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all border-l border-white/10 <?= $active_tab === 'uploads' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5' ?>">
-                <i data-lucide="upload-cloud" class="w-3 h-3 inline mr-1.5"></i> Upload Queue
+                <i data-lucide="upload-cloud" class="w-3 h-3 inline mr-1.5"></i> Antrean Unggah
             </a>
         </div>
     </div>
@@ -518,8 +518,8 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     <i data-lucide="activity" class="w-6 h-6 text-blue-500"></i>
                 </div>
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight">Activity Log</h1>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">Audit Trail</p>
+                    <h1 class="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight">Log Aktivitas</h1>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">Jejak Audit</p>
                 </div>
             </div>
 
@@ -530,7 +530,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     <span class="text-[10px] text-gray-500 ml-1.5">events</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-green-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">User Aktif</p>
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Pengguna Aktif</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($stats['unique_users']) ?></span>
                     <span class="text-[10px] text-gray-500 ml-1.5">users</span>
                 </div>
@@ -598,11 +598,11 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
 
                     <div class="w-full lg:w-1/4 min-w-0 relative z-10">
                         <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2.5 block">
-                            <i data-lucide="search" class="w-3 h-3 inline mr-1.5"></i> Cari Username / IP
+                            <i data-lucide="search" class="w-3 h-3 inline mr-1.5"></i> Cari Nama Pengguna / IP
                         </label>
                         <div class="relative">
                             <input type="text" name="q" id="search-input" value="<?= htmlspecialchars($search_q) ?>"
-                                placeholder="Cari username atau IP..."
+                                placeholder="Cari nama pengguna atau IP..."
                                 class="w-full bg-[#131720] border border-white/10 rounded-xl pl-4 pr-4 text-xs text-gray-300 outline-none focus:border-blue-500 transition-all placeholder:text-gray-600 h-[42px]">
                         </div>
                     </div>
@@ -648,11 +648,11 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                         <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
                             <tr>
                                 <th class="py-3 px-4 w-14">#</th>
-                                <th class="py-3 px-4">User</th>
-                                <th class="py-3 px-4">Action</th>
+                                <th class="py-3 px-4">Pengguna</th>
+                                <th class="py-3 px-4">Aksi</th>
                                 <th class="py-3 px-4">Media</th>
                                 <th class="py-3 px-4 text-center">ID</th>
-                                <th class="py-3 px-4 hidden md:table-cell">IP Address</th>
+                                <th class="py-3 px-4 hidden md:table-cell">Alamat IP</th>
                                 <th class="py-3 px-4 text-right">Waktu</th>
                             </tr>
                         </thead>
@@ -756,7 +756,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                         <i data-lucide="trash-2" class="w-4 h-4 text-red-400"></i>
                     </div>
                     <div>
-                        <h3 class="text-xs font-bold text-gray-300">Maintenance Log</h3>
+                        <h3 class="text-xs font-bold text-gray-300">Log Pemeliharaan</h3>
                         <p class="text-[9px] text-gray-500">Hapus log lama secara permanen untuk menghemat ruang database.</p>
                     </div>
                 </div>
@@ -802,19 +802,19 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     <div class="flex items-center gap-1.5 shrink-0">
                         <button type="button" onclick="previewExport('csv')"
                             class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 px-2 py-2 rounded-xl border border-amber-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1"
-                            title="Preview CSV">
+                            title="Pratinjau CSV">
                             <i data-lucide="eye" class="w-3 h-3"></i>
                         </button>
                         <span class="text-amber-500/20">|</span>
                         <button type="button" onclick="previewExport('json')"
                             class="text-[10px] font-bold text-sky-400 hover:text-sky-300 px-2 py-2 rounded-xl border border-amber-500/30 hover:bg-sky-500/10 hover:border-sky-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1"
-                            title="Preview JSON">
+                            title="Pratinjau JSON">
                             <i data-lucide="eye" class="w-3 h-3"></i>
                         </button>
                         <span class="text-amber-500/20">|</span>
                         <button type="button" onclick="previewExport('xls')"
                             class="text-[10px] font-bold text-violet-400 hover:text-violet-300 px-2 py-2 rounded-xl border border-amber-500/30 hover:bg-violet-500/10 hover:border-violet-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1"
-                            title="Preview XLS">
+                            title="Pratinjau XLS">
                             <i data-lucide="eye" class="w-3 h-3"></i>
                         </button>
                     </div>
@@ -844,8 +844,8 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     <i data-lucide="bar-chart-3" class="w-6 h-6 text-purple-500"></i>
                 </div>
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight">View Analytics</h1>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">Monitoring View Logs</p>
+                    <h1 class="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight">Analitik Tayangan</h1>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">Pemantauan Log Tayangan</p>
                 </div>
             </div>
 
@@ -858,22 +858,22 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-8">
                 <div class="glass p-5 rounded-2xl border-l-4 border-purple-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Total Log Rows</p>
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Total Baris Log</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($view_stats['total_log_rows']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">rows</span>
+                    <span class="text-[10px] text-gray-500 ml-1.5">baris</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-red-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Video Log Rows</p>
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Baris Log Video</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($view_stats['video_log_rows']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">rows</span>
+                    <span class="text-[10px] text-gray-500 ml-1.5">baris</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-orange-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Music Log Rows</p>
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Baris Log Musik</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($view_stats['music_log_rows']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">rows</span>
+                    <span class="text-[10px] text-gray-500 ml-1.5">baris</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-green-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Sync Status</p>
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Status Sinkronisasi</p>
                     <?php
                     $synced = ($view_stats['video_views_counter'] + $view_stats['music_views_counter']) > 0;
                     ?>
@@ -887,12 +887,12 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8">
                 <div class="glass p-5 rounded-2xl border-l-4 border-red-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Video Views Counter</p>
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Penghitung Tayangan Video</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($view_stats['video_views_counter']) ?></span>
                     <span class="text-[10px] text-gray-500 ml-1.5">views</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-orange-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Music Views Counter</p>
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Penghitung Tayangan Musik</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($view_stats['music_views_counter']) ?></span>
                     <span class="text-[10px] text-gray-500 ml-1.5">views</span>
                 </div>
@@ -904,7 +904,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-purple-400"></i>
                     </div>
                     <div>
-                        <h3 class="text-xs font-bold text-gray-300">Manual Sync</h3>
+                        <h3 class="text-xs font-bold text-gray-300">Sinkron Manual</h3>
                         <p class="text-[9px] text-gray-500">Sinkronkan views counter dari view_logs sekarang. Auto-sync berjalan setiap 1 jam.</p>
                     </div>
                 </div>
@@ -925,12 +925,12 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                             <i data-lucide="trending-up" class="w-4 h-4 text-purple-400"></i>
                         </div>
                         <div>
-                            <h3 class="text-xs font-bold text-gray-300">View Logs Growth (30 Hari)</h3>
+                            <h3 class="text-xs font-bold text-gray-300">Pertumbuhan Log Tayangan (30 Hari)</h3>
                             <p class="text-[9px] text-gray-500">Pertumbuhan jumlah view_logs per hari.</p>
                         </div>
                     </div>
                     <div id="view-chart" class="w-full" style="height:280px;"></div>
-                    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+                    <script src="../assets/js/compatibilitas/chart.umd.min.js"></script>
                     <script>
                         (function() {
                             const data = <?= json_encode($view_stats['chart']) ?>;
@@ -1009,8 +1009,8 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     <i data-lucide="upload-cloud" class="w-6 h-6 text-green-500"></i>
                 </div>
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight">Upload Queue</h1>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">Riwayat Upload &amp; Download</p>
+                    <h1 class="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight">Antrean Unggah</h1>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">Riwayat Unggah &amp; Unduh</p>
                 </div>
             </div>
             <script src="../assets/js/admin/activity_log.js?v=<?= filemtime('../assets/js/admin/activity_log.js') ?>"></script>
@@ -1027,17 +1027,17 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     <span class="text-[10px] text-gray-500 ml-1.5">jobs</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-green-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Completed</p>
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Selesai</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($uq_stats['completed_count']) ?></span>
                     <span class="text-[10px] text-gray-500 ml-1.5">jobs</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-red-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Failed</p>
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Gagal</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($uq_stats['failed_count']) ?></span>
                     <span class="text-[10px] text-gray-500 ml-1.5">jobs</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-yellow-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Processing</p>
+                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Diproses</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($uq_stats['processing_count']) ?></span>
                     <span class="text-[10px] text-gray-500 ml-1.5">jobs</span>
                 </div>
@@ -1056,7 +1056,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                                 id="uq-status-dropdown-trigger">
                                 <span class="truncate" id="uq-status-dropdown-label">
                                     <?php
-                                    $uq_status_labels = ['' => 'Semua Status', 'processing' => 'Processing', 'completed' => 'Completed', 'failed' => 'Failed'];
+                                    $uq_status_labels = ['' => 'Semua Status', 'processing' => 'Diproses', 'completed' => 'Selesai', 'failed' => 'Gagal'];
                                     echo htmlspecialchars($uq_status_labels[$uq_status] ?? 'Semua Status');
                                     ?>
                                 </span>
@@ -1081,11 +1081,11 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
 
                     <div class="w-full lg:w-1/4 min-w-0 relative z-10">
                         <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2.5 block">
-                            <i data-lucide="search" class="w-3 h-3 inline mr-1.5"></i> Cari Username / URL
+                            <i data-lucide="search" class="w-3 h-3 inline mr-1.5"></i> Cari Nama Pengguna / URL
                         </label>
                         <div class="relative">
                             <input type="text" name="q" id="uq-search-input" value="<?= htmlspecialchars($uq_search) ?>"
-                                placeholder="Cari username atau URL..."
+                                placeholder="Cari nama pengguna atau URL..."
                                 class="w-full bg-[#131720] border border-white/10 rounded-xl pl-4 pr-4 text-xs text-gray-300 outline-none focus:border-green-500 transition-all placeholder:text-gray-600 h-[42px]">
                         </div>
                     </div>
@@ -1128,7 +1128,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                         <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
                             <tr>
                                 <th class="py-3 px-4 w-14">#</th>
-                                <th class="py-3 px-4">User</th>
+                                <th class="py-3 px-4">Pengguna</th>
                                 <th class="py-3 px-4">URL</th>
                                 <th class="py-3 px-4 text-center">Tipe</th>
                                 <th class="py-3 px-4 text-center">Status</th>
@@ -1184,7 +1184,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                                 <tr>
                                     <td colspan="6" class="py-12 text-center text-gray-500 text-xs italic">
                                         <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-3 opacity-30"></i>
-                                        <p>Belum ada data upload queue untuk filter ini.</p>
+                                        <p>Belum ada data antrean unggah untuk filter ini.</p>
                                     </td>
                                 </tr>
                             <?php endif; ?>
@@ -1226,7 +1226,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                         <i data-lucide="trash-2" class="w-4 h-4 text-red-400"></i>
                     </div>
                     <div>
-                        <h3 class="text-xs font-bold text-gray-300">Maintenance Upload Queue</h3>
+                        <h3 class="text-xs font-bold text-gray-300">Antrean Unggah Pemeliharaan</h3>
                         <p class="text-[9px] text-gray-500">Hapus record upload queue lama secara permanen untuk menghemat ruang database.</p>
                     </div>
                 </div>
@@ -1239,25 +1239,25 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     <div class="flex items-center gap-1.5 shrink-0">
                         <button type="button" onclick="previewExport('csv')"
                             class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 px-2 py-2 rounded-xl border border-amber-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1"
-                            title="Preview CSV">
+                            title="Pratinjau CSV">
                             <i data-lucide="eye" class="w-3 h-3"></i>
                         </button>
                         <span class="text-amber-500/20">|</span>
                         <button type="button" onclick="previewExport('json')"
                             class="text-[10px] font-bold text-sky-400 hover:text-sky-300 px-2 py-2 rounded-xl border border-amber-500/30 hover:bg-sky-500/10 hover:border-sky-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1"
-                            title="Preview JSON">
+                            title="Pratinjau JSON">
                             <i data-lucide="eye" class="w-3 h-3"></i>
                         </button>
                         <span class="text-amber-500/20">|</span>
                         <button type="button" onclick="previewExport('xls')"
                             class="text-[10px] font-bold text-violet-400 hover:text-violet-300 px-2 py-2 rounded-xl border border-amber-500/30 hover:bg-violet-500/10 hover:border-violet-500/30 transition-all uppercase tracking-wider inline-flex items-center gap-1"
-                            title="Preview XLS">
+                            title="Pratinjau XLS">
                             <i data-lucide="eye" class="w-3 h-3"></i>
                         </button>
                     </div>
                 </div>
 
-                <form method="POST" class="flex items-center gap-3 flex-wrap" onsubmit="return meelConfirmForm(event, { title:'Hapus Upload Queue', text:'Hapus permanen semua record upload queue yang lebih lama dari periode yang dipilih?', confirmButtonText:'HAPUS' })">
+                <form method="POST" class="flex items-center gap-3 flex-wrap" onsubmit="return meelConfirmForm(event, { title:'Hapus Antrean Unggah', text:'Hapus permanen semua record upload queue yang lebih lama dari periode yang dipilih?', confirmButtonText:'HAPUS' })">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="clear_uq_days" id="uq-clear-days-input" value="30">
                     <input type="hidden" name="clear_uq_older_than" value="1">

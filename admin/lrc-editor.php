@@ -122,13 +122,13 @@ if (is_file($lrc_path)) {
 <body class="theme-music">
     <div class="page-wrap">
             <nav class="top-nav">
-                <a href="../" class="nav-brand">MEeL<span>Music</span></a>
+                <a href="../" class="nav-brand">MEeL<span>Musik</span></a>
                 <div class="nav-sep"></div>
-                <a href="beranda" class="nav-crumb">Library</a>
+                <a href="beranda" class="nav-crumb">Koleksi</a>
                 <span class="nav-chevron">›</span>
                 <a href="<?= base_url('/music/watch?v=' . (int)$edit_id) ?>" class="nav-crumb"><?= htmlspecialchars(mb_strimwidth($music['title'], 0, 30, '...')) ?></a>
                 <span class="nav-chevron">›</span>
-                <a href="<?= base_url('/' . ($_LRC_CONTEXT === 'admin' ? 'admin' : 'profile') . '/edit-music?id=' . (int)$edit_id) ?>" class="nav-crumb">Edit Music</a>
+                <a href="<?= base_url('/' . ($_LRC_CONTEXT === 'admin' ? 'admin' : 'profile') . '/edit-music?id=' . (int)$edit_id) ?>" class="nav-crumb">Edit Musik</a>
                 <span class="nav-chevron">›</span>
                 <span class="nav-crumb-current">LRC Editor</span>
                 <?php if ($is_admin): ?>
@@ -200,7 +200,7 @@ if (is_file($lrc_path)) {
                     <button type="button" class="editor-ctrl-btn" onclick="editorSkipBack()" title="-5 detik">
                         <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
                     </button>
-                    <button type="button" class="editor-ctrl-btn editor-play-btn" onclick="editorPlayPause()" id="editor-play-btn" title="Play / Pause">
+                    <button type="button" class="editor-ctrl-btn editor-play-btn" onclick="editorPlayPause()" id="editor-play-btn" title="Putar / Jeda">
                         <i data-lucide="play" style="width:20px;height:20px;"></i>
                     </button>
                     <button type="button" class="editor-ctrl-btn" onclick="editorSkipForward()" title="+5 detik">

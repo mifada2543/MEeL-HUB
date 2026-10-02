@@ -260,7 +260,7 @@
       if (!idxResp.ok) throw new Error("No _index.json");
       const index = await idxResp.json();
       const meta = (index || []).find((s) => s.id === songId);
-      if (!meta) throw new Error("Song not in index");
+      if (!meta) throw new Error("Lagu tidak ada di indeks");
 
       song = {
         id: meta.id,
@@ -767,7 +767,7 @@
         countdownNum.style.animation = "";
         playCountdownBeep(440, 0.15);
       } else if (count === 0) {
-        countdownNum.textContent = "GO!";
+        countdownNum.textContent = "MULAI!";
         countdownNum.className = "countdown-go";
         void countdownNum.offsetWidth;
         countdownNum.style.animation = "none";

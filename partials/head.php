@@ -17,7 +17,7 @@ $_head_root_rel = str_replace(rtrim($_head_doc_root, '/'), '', $_head_root_path)
 $_head_root = $_head_proto . '://' . $_head_host . rtrim($_head_root_rel, '/\\');
 
 $_META_TITLE = $_META_TITLE ?? 'MEeL | Media Hub';
-$_META_DESC = $_META_DESC ?? 'Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
+$_META_DESC = $_META_DESC ?? 'Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.';
 $_META_IMAGE = $_META_IMAGE ?? $_head_root . '/assets/MEeL.png';
 $_META_IMAGE_W = $_META_IMAGE_W ?? '500';
 $_META_IMAGE_H = $_META_IMAGE_H ?? '500';

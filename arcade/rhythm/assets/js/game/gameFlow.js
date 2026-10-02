@@ -143,7 +143,7 @@ function runCountdown(callback) {
       countdownNum.style.animation = "";
       playCountdownBeep(440, 0.15);
     } else if (count === 0) {
-      countdownNum.textContent = "GO!";
+      countdownNum.textContent = "MULAI!";
       countdownNum.className = "countdown-go";
       void countdownNum.offsetWidth;
       countdownNum.style.animation = "none";

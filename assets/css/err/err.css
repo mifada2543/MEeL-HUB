@@ -1,0 +1,92 @@
+@import url("../font.css");
+
+/* ==========================================================================
+   Halaman error MEeL (err/index.php)
+   Gaya statis dipindahkan dari <style> inline agar bisa dipakai bersama
+   oleh precache service worker. Variabel --acc* tetap di-inline di PHP
+   karena nilainya dihitung per-request.
+   ========================================================================== */
+
+body {
+    font-family: 'JetBrains Mono', monospace, sans-serif;
+}
+
+.bg-grid {
+    background-image: radial-gradient(circle at 2px 2px, var(--acc-a04) 1px, transparent 0);
+    background-size: 32px 32px;
+}
+
+.glass-panel {
+    background: rgba(10, 15, 30, 0.55);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--acc-a12);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5),
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+.glow-effect {
+    filter: drop-shadow(0 0 20px var(--acc-a45));
+}
+
+.glitch-text {
+    text-shadow: 0 0 10px var(--acc-a45), 0 0 20px var(--acc-a30);
+}
+
+.back-btn {
+    background: linear-gradient(to right, var(--acc), var(--acc2));
+    box-shadow: 0 4px 25px var(--acc-a25shadow);
+    transition: all .3s ease;
+}
+
+.back-btn:hover {
+    box-shadow: 0 4px 35px var(--acc-a45shadow);
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+}
+
+.back-btn:active {
+    transform: translateY(0);
+}
+
+.icon-ring {
+    background: var(--acc-a20);
+    filter: blur(32px);
+}
+
+.icon-box {
+    border: 1px solid var(--acc-a30);
+    box-shadow: 0 0 30px var(--acc-a15shadow);
+}
+
+/* ==========================================================================
+   Mode terang (html[data-theme="light"])
+
+   - panel kaca gelap -> kaca terang memakai token --meel-* dari theme-tokens
+   - glow neon & teks "glitch" dipadamkan (di latar putih jadi berkabut)
+   - overlay scanline CRT dimatikan (elemen .err-scanlines)
+   - border & ring aksen DIPERTAHANKAN agar karakter "error protocol" tetap
+   ========================================================================== */
+
+html[data-theme="light"] .glass-panel {
+    background: var(--meel-glass);
+    box-shadow: var(--meel-shadow-xl);
+}
+
+html[data-theme="light"] .glitch-text {
+    text-shadow: none;
+}
+
+html[data-theme="light"] .glow-effect {
+    filter: drop-shadow(0 0 10px var(--acc-a30));
+}
+
+html[data-theme="light"] .icon-box {
+    box-shadow: 0 0 20px var(--acc-a10);
+}
+
+html[data-theme="light"] .err-scanlines {
+    display: none;
+}
+
+/* reference build: MEeL-C5H9NO2 [724b05119b9de80d] */

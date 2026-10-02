@@ -53,7 +53,7 @@ if (isset($_POST['login']) && !$is_locked) {
                         if ($u['is_active'] == 0 || $u['is_active'] == 2) {
                             $error_msg = ($u['is_active'] == 2)
                                 ? "Akun Anda sedang menunggu verifikasi admin."
-                                : "Akses ditolak untuk akun Guest.";
+                                : "Akses ditolak untuk akun ini.";
                         } else {
                             unset($_SESSION['login_fail_count']);
                             unset($_SESSION['login_locked_until']);
@@ -119,7 +119,7 @@ if (!$is_loopback && !$is_locked) {
     }
 }
 $auth_title = "MEeL | Login";
-$auth_description = "MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.";
+$auth_description = "MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.";
 $auth_og_title = "MEeL | Login";
 $auth_og_desc = "Masuk ke akun MEeL untuk streaming video, musik, dan mengakses perpustakaan digital.";
 include __DIR__ . '/partials/auth_head.php';
@@ -128,7 +128,7 @@ include __DIR__ . '/partials/auth_head.php';
 
     <div class="text-center mb-8">
         <div class="inline-flex p-4 bg-blue-600/10 rounded-3xl text-blue-500 mb-4 shadow-lg shadow-blue-900/10"><i data-lucide="log-in" class="w-10 h-10"></i></div>
-        <h2 id="login-title" class="text-3xl font-black text-white tracking-tighter">Login</h2>
+        <h2 id="login-title" class="text-3xl font-black text-white tracking-tighter">Masuk</h2>
         <p class="text-sm text-gray-300 mt-1">Masuk ke akun <span class="text-blue-500 font-bold">MEeL</span></p>
     </div>
     <?php if ($error_msg): ?>
@@ -151,18 +151,18 @@ include __DIR__ . '/partials/auth_head.php';
             <?php endif; ?>
 
             <div class="space-y-2">
-                <label for="username" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Username</label>
+                <label for="username" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Nama Pengguna</label>
                 <div class="relative">
                     <i data-lucide="user" class="absolute left-4 top-3.5 w-5 h-5 text-gray-300"></i>
-                    <input id="username" name="username" placeholder="Username" required title="Masukkan username Anda" class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
+                    <input id="username" name="username" placeholder="Nama Pengguna" required title="Masukkan nama pengguna Anda" class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
                 </div>
             </div>
             <div class="space-y-2">
-                <label for="password" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Password</label>
+                <label for="password" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Kata Sandi</label>
                 <div class="relative">
                     <i data-lucide="lock" class="absolute left-4 top-3.5 w-5 h-5 text-gray-300"></i>
-                    <input type="password" id="password" name="password" placeholder="••••••••" required title="Masukkan password Anda" class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-14 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
-                    <button type="button" id="togglePassword" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full text-gray-300 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors" aria-label="Tampilkan atau sembunyikan password" aria-pressed="false">
+                    <input type="password" id="password" name="password" placeholder="••••••••" required title="Masukkan kata sandi Anda" class="w-full bg-[#0b0e14] border border-gray-800 rounded-2xl py-3.5 pl-12 pr-14 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-white transition-all">
+                    <button type="button" id="togglePassword" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full text-gray-300 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors" aria-label="Tampilkan atau sembunyikan kata sandi" aria-pressed="false">
                         <i data-lucide="eye" id="iconEye" class="w-5 h-5 hidden"></i>
                         <i data-lucide="eye-off" id="iconEyeOff" class="w-5 h-5"></i>
                     </button>

@@ -30,7 +30,7 @@ GarbageCollector::syncViews($conn);
 
 <head>
 <?php
-$_META_TITLE = 'MEeL | System Admin';
+$_META_TITLE = 'MEeL | Admin Sistem';
 $_META_DESC = 'Panel administrasi MEeL untuk mengelola konten, pengguna, dan monitoring server.';
 include __DIR__ . '/../partials/link.php';
 $scripts_root = '../';
@@ -47,7 +47,7 @@ include __DIR__ . '/../partials/scripts.php';
 
     <?php
     $is_admin = true;
-    $page_title = 'Dashboard';
+    $page_title = 'Dasbor';
     $media_type = 'dashboard';
     $back_url = '../';
     include 'header-admin.php';
@@ -59,15 +59,15 @@ include __DIR__ . '/../partials/scripts.php';
                 <i data-lucide="activity" class="w-5 h-5 text-orange-500"></i>
             </div>
             <div>
-                <h1 class="text-2xl font-extrabold text-white leading-tight">System Admin</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1">Admin Center</p>
+                <h1 class="text-2xl font-extrabold text-white leading-tight">Admin Sistem</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1">Pusat Admin</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div class="glass rounded-3xl lg:col-span-2 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-700">
                 <div class="p-8 md:w-5/12 flex flex-col justify-center">
-                    <h3 class="text-sm font-bold text-gray-400 uppercase mb-4 tracking-wider">SSD Nvme Storage</h3>
+                    <h3 class="text-sm font-bold text-gray-400 uppercase mb-4 tracking-wider">Penyimpanan SSD NVMe</h3>
                     <div class="flex items-baseline gap-2 mb-4">
                         <span class="text-5xl font-black text-white"><?= number_format($ssd_free, 1) ?></span>
                         <span class="text-lg font-bold text-gray-500">GB Free</span>
@@ -77,7 +77,7 @@ include __DIR__ . '/../partials/scripts.php';
 
                 <div class="p-8 md:w-7/12">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">MEeL Media Storage</h3>
+                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Penyimpanan Media MEeL</h3>
                         <div class="flex items-baseline gap-2">
                             <span class="text-3xl font-black text-white"><?= number_format($hdd_free, 1) ?></span>
                             <span class="text-sm font-bold text-gray-500">GB Free</span>
@@ -90,23 +90,23 @@ include __DIR__ . '/../partials/scripts.php';
                             <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-red-500 h-full rounded-full" style="width:<?= $p_vid ?>%"></div>
                             </div>
-                            <p class="text-[11px] text-gray-500 font-medium">Size: <?= number_format($sz_vid, 2) ?> GB</p>
+                            <p class="text-[11px] text-gray-500 font-medium">Ukuran: <?= number_format($sz_vid, 2) ?> GB</p>
                         </div>
 
                         <div>
-                            <h4 class="text-sm font-bold text-orange-500 mb-1">Music</h4>
+                            <h4 class="text-sm font-bold text-orange-500 mb-1">Musik</h4>
                             <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-orange-500 h-full rounded-full" style="width:<?= $p_mus ?>%"></div>
                             </div>
-                            <p class="text-[11px] text-gray-500 font-medium">Size: <?= number_format($sz_mus, 2) ?> GB</p>
+                            <p class="text-[11px] text-gray-500 font-medium">Ukuran: <?= number_format($sz_mus, 2) ?> GB</p>
                         </div>
 
                         <div>
-                            <h4 class="text-sm font-bold text-green-500 mb-1">Books</h4>
+                            <h4 class="text-sm font-bold text-green-500 mb-1">Buku</h4>
                             <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-green-500 h-full rounded-full" style="width:<?= $p_book ?>%"></div>
                             </div>
-                            <p class="text-[11px] text-gray-500 font-medium">Size: <?= number_format($sz_book, 2) ?> GB</p>
+                            <p class="text-[11px] text-gray-500 font-medium">Ukuran: <?= number_format($sz_book, 2) ?> GB</p>
                         </div>
 
                         <div>
@@ -114,7 +114,7 @@ include __DIR__ . '/../partials/scripts.php';
                             <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-blue-500 h-full rounded-full" style="width:<?= $p_drive ?>%"></div>
                             </div>
-                            <p class="text-[11px] text-gray-500 font-medium">Public: <?= number_format($sz_d_pub, 2) ?> GB | Private: <?= number_format($sz_d_prv, 2) ?> GB</p>
+                            <p class="text-[11px] text-gray-500 font-medium">Publik: <?= number_format($sz_d_pub, 2) ?> GB | Privat: <?= number_format($sz_d_prv, 2) ?> GB</p>
                         </div>
                     </div>
                 </div>
@@ -124,20 +124,20 @@ include __DIR__ . '/../partials/scripts.php';
                 <div>
                     <div class="flex items-center gap-2 mb-4">
                         <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-blue-400"></i>
-                        <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Global Analytics</h3>
+                        <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Analitik Global</h3>
                     </div>
 
                     <div class="space-y-3 mb-6">
                         <div class="flex justify-between items-center text-[11px]">
-                            <span class="text-gray-500">Total Views</span>
+                            <span class="text-gray-500">Total Tayangan</span>
                             <span class="text-white font-mono font-bold"><?= number_format($stats['total_views']) ?></span>
                         </div>
                         <div class="flex justify-between items-center text-[11px]">
-                            <span class="text-gray-500">Total Likes</span>
+                            <span class="text-gray-500">Total Suka</span>
                             <span class="text-green-500 font-mono font-bold">+<?= number_format($stats['total_likes']) ?></span>
                         </div>
                         <div class="flex justify-between items-center text-[11px]">
-                            <span class="text-gray-500">Total Dislikes</span>
+                            <span class="text-gray-500">Total Tidak Suka</span>
                             <span class="text-red-500 font-mono font-bold">-<?= number_format($stats['total_dislikes']) ?></span>
                         </div>
                     </div>
@@ -188,7 +188,7 @@ include __DIR__ . '/../partials/scripts.php';
         <div class="glass p-6 rounded-3xl mb-8">
             <div class="flex items-center gap-2 mb-6">
                 <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i>
-                <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Server Stats — <?= htmlspecialchars($server_stats['info']['hostname'] ?? 'Unknown') ?></h3>
+                <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Server Stats — <?= htmlspecialchars($server_stats['info']['hostname'] ?? 'Tidak diketahui') ?></h3>
                 <span id="stats-live" class="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-green-500 bg-green-500/10 border border-green-500/25 px-2 py-1 rounded-lg" title="Data diperbarui otomatis setiap 3 detik">
                     <span class="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>
                     Live
@@ -204,7 +204,7 @@ include __DIR__ . '/../partials/scripts.php';
                         <option value="10000">10s</option>
                     </select>
                 </label>
-                <span class="ml-auto text-[8px] text-gray-600 font-mono">Uptime: <span id="stat-uptime"><?= $server_stats['uptime']['text'] ?></span></span>
+                <span class="ml-auto text-[8px] text-gray-600 font-mono">Waktu Nyala: <span id="stat-uptime"><?= $server_stats['uptime']['text'] ?></span></span>
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -313,7 +313,7 @@ include __DIR__ . '/../partials/scripts.php';
                 <span class="text-gray-600">•</span>
                 <span class="text-gray-500"><span class="text-gray-400 font-bold">PHP:</span> <?= $server_stats['info']['php_version'] ?></span>
                 <span class="text-gray-600">•</span>
-                <span class="text-gray-500"><span class="text-gray-400 font-bold">Load Avg:</span> <span id="stat-load"><?= $server_stats['cpu']['load_1m'] ?> / <?= $server_stats['cpu']['load_5m'] ?> / <?= $server_stats['cpu']['load_15m'] ?></span></span>
+                <span class="text-gray-500"><span class="text-gray-400 font-bold">Rata-rata Beban:</span> <span id="stat-load"><?= $server_stats['cpu']['load_1m'] ?> / <?= $server_stats['cpu']['load_5m'] ?> / <?= $server_stats['cpu']['load_15m'] ?></span></span>
                 <span class="text-gray-600">•</span>
                 <span class="text-gray-500"><span class="text-gray-400 font-bold">Processes:</span> <span id="stat-procs"><?= $server_stats['info']['processes'] ?></span></span>
             </div>
@@ -322,7 +322,7 @@ include __DIR__ . '/../partials/scripts.php';
         <div class="glass p-6 rounded-3xl mb-8">
             <div class="flex items-center gap-2 mb-4">
                 <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
-                <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">7-Day Activity</h3>
+                <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Aktivitas 7 Hari</h3>
             </div>
             <div class="h-48">
                 <canvas id="activityChart"></canvas>
@@ -346,22 +346,22 @@ include __DIR__ . '/../partials/scripts.php';
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-            <a href="user-management" class="admin-shortcut-card border-blue-500/20 hover:border-blue-500/40" title="Kelola akun, verifikasi, monitor, dan keamanan IP">
+            <a href="user-management" class="admin-shortcut-card border-blue-500/20 hover:border-blue-500/40" title="Kelola akun, verifikasi, pemantauan, dan keamanan IP">
                 <div class="admin-shortcut-icon" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                 </div>
                 <div>
-                    <h4>User Management</h4>
-                    <p>Akun, verifikasi, monitor, firewall</p>
+                    <h4>Pengelolaan Pengguna</h4>
+                    <p>Akun, verifikasi, pemantauan, firewall</p>
                 </div>
             </a>
-            <a href="meelcoin" class="admin-shortcut-card border-yellow-500/20 hover:border-yellow-500/40" title="Konfigurasi sistem coin upload">
+            <a href="meelcoin" class="admin-shortcut-card border-yellow-500/20 hover:border-yellow-500/40" title="Konfigurasi sistem koin unggah">
                 <div class="admin-shortcut-icon" style="background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.25);">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg>
                 </div>
                 <div>
-                    <h4>MEeLCoin Settings</h4>
-                    <p>Konfigurasi sistem coin upload</p>
+                    <h4>Pengaturan MEeLCoin</h4>
+                    <p>Konfigurasi sistem koin unggah</p>
                 </div>
             </a>
             <a href="activity-log" class="admin-shortcut-card border-purple-500/20 hover:border-purple-500/40" title="Lihat trail audit aktivitas pengguna">
@@ -369,8 +369,8 @@ include __DIR__ . '/../partials/scripts.php';
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                 </div>
                 <div>
-                    <h4>Activity Log</h4>
-                    <p>Audit trail dan view analytics</p>
+                    <h4>Log Aktivitas</h4>
+                    <p>Jejak audit dan analitik tayangan</p>
                 </div>
             </a>
             <a href="mfa-reset" class="admin-shortcut-card border-cyan-500/20 hover:border-cyan-500/40" title="Reset MFA/2FA pengguna yang kehilangan akses">
@@ -378,8 +378,8 @@ include __DIR__ . '/../partials/scripts.php';
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
                 </div>
                 <div>
-                    <h4>MFA Reset</h4>
-                    <p>Reset autentikasi dua faktor user</p>
+                    <h4>Reset MFA</h4>
+                    <p>Reset autentikasi dua faktor pengguna</p>
                 </div>
             </a>
             <a href="chat" class="admin-shortcut-card border-emerald-500/20 hover:border-emerald-500/40" title="Kirim pesan langsung ke pengguna">
@@ -387,7 +387,7 @@ include __DIR__ . '/../partials/scripts.php';
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                 </div>
                 <div>
-                    <h4>Chat Admin</h4>
+                    <h4>Obrolan Admin</h4>
                     <p>Pesan langsung ke pengguna</p>
                 </div>
             </a>
@@ -397,7 +397,7 @@ include __DIR__ . '/../partials/scripts.php';
                 </div>
                 <div>
                     <h4>Modules</h4>
-                    <p>Toggle modul opsional platform</p>
+                    <p>Sakelar modul opsional platform</p>
                 </div>
             </a>
         </div>
@@ -433,11 +433,11 @@ include __DIR__ . '/../partials/scripts.php';
                 <script>setTimeout(function(){var el=document.getElementById('orphan-recheck-msg');if(el)el.remove();},4000);</script>
             <?php endif; ?>
             <div class="flex items-center gap-3 mb-4">
-                <h3 class="text-xs font-bold text-gray-500 uppercase">Database Sync Check</h3>
-                <span class="text-[9px] text-gray-600 font-mono" title="Hasil scan storage di-cache 10 menit agar halaman tetap responsif">Dicek: <?= $orphan_checked_at ? date('d/m/Y H:i:s', $orphan_checked_at) : '—' ?></span>
+                <h3 class="text-xs font-bold text-gray-500 uppercase">Cek Sinkronisasi Database</h3>
+                <span class="text-[9px] text-gray-600 font-mono" title="Hasil pindai penyimpanan di-cache 10 menit agar halaman tetap responsif">Dicek: <?= $orphan_checked_at ? date('d/m/Y H:i:s', $orphan_checked_at) : '—' ?></span>
                 <form method="POST" class="ml-auto">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                    <button type="submit" name="recheck_orphans" value="1" class="text-[9px] border border-white/10 text-gray-400 px-2.5 py-1 rounded-lg hover:bg-white/5 hover:text-white font-bold uppercase tracking-wider cursor-pointer" title="Paksa scan ulang seluruh storage media sekarang">Cek Ulang</button>
+                    <button type="submit" name="recheck_orphans" value="1" class="text-[9px] border border-white/10 text-gray-400 px-2.5 py-1 rounded-lg hover:bg-white/5 hover:text-white font-bold uppercase tracking-wider cursor-pointer" title="Paksa pindai ulang seluruh penyimpanan media sekarang">Cek Ulang</button>
                 </form>
             </div>
             <?php if (count($orphans) > 0): ?>
@@ -470,7 +470,7 @@ include __DIR__ . '/../partials/scripts.php';
                     <thead class="bg-white/[0.02] text-gray-500 uppercase text-[9px] font-black tracking-widest">
                         <tr>
                             <th class="py-3 px-6">Task ID</th>
-                            <th class="py-3 px-4">User</th>
+                            <th class="py-3 px-4">Pengguna</th>
                             <th class="py-3 px-4">Type</th>
                             <th class="py-3 px-4">Status</th>
                             <th class="py-3 px-6 text-right">Started At</th>
@@ -484,7 +484,7 @@ include __DIR__ . '/../partials/scripts.php';
                         ?>
                                 <tr class="hover:bg-white/[0.02] transition-colors">
                                     <td class="py-4 px-6 font-mono text-gray-400">#<?= $q['id'] ?></td>
-                                    <td class="py-4 px-4 font-bold text-white"><?= htmlspecialchars($q['username'] ?? 'Unknown') ?></td>
+                                    <td class="py-4 px-4 font-bold text-white"><?= htmlspecialchars($q['username'] ?? 'Tidak diketahui') ?></td>
                                     <td class="py-4 px-4">
                                         <span class="px-2 py-0.5 rounded text-[9px] font-bold uppercase <?= $q['task_type'] === 'download' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400' ?>">
                                             <?= htmlspecialchars($q['task_type'], ENT_QUOTES, 'UTF-8') ?>
@@ -501,7 +501,7 @@ include __DIR__ . '/../partials/scripts.php';
                                                 <input type="hidden" name="queue_id" value="<?= $q['id'] ?>">
                                                 <input type="hidden" name="task_type" value="<?= $q['task_type'] ?>">
 
-                                                <button type="submit" name="force_stop_queue" value="1" title="Force Stop" class="text-red-500 hover:text-white bg-red-500/10 hover:bg-red-600 border border-red-500/30 rounded p-1.5 transition-all flex items-center justify-center cursor-pointer">
+                                                <button type="submit" name="force_stop_queue" value="1" title="Paksa Berhenti" class="text-red-500 hover:text-white bg-red-500/10 hover:bg-red-600 border border-red-500/30 rounded p-1.5 transition-all flex items-center justify-center cursor-pointer">
                                                     <i data-lucide="x" class="w-3 h-3"></i>
                                                 </button>
                                             </form>

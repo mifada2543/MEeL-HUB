@@ -17,7 +17,7 @@ export function toggleGold() {
   S.notes[S.selectedNoteIdx].g = !S.notes[S.selectedNoteIdx].g;
   draw();
   updateNoteInfo();
-  showToast(S.notes[S.selectedNoteIdx].g ? "⭐ Gold note!" : "Gold removed", "success");
+  showToast(S.notes[S.selectedNoteIdx].g ? "⭐ Note Gold!" : "Gold dihapus", "success");
 }
 
 export function deleteSelected() {
@@ -308,7 +308,7 @@ document.addEventListener("keydown", function (e) {
   }
 
   if (e.code === "KeyG" && !isInput && S.selectedNoteIdx < 0) {
-    showToast("Klik note dulu, lalu tekan G untuk toggle gold", "info");
+    showToast("Klik note dulu, lalu tekan G untuk alihkan gold", "info");
     return;
   }
 

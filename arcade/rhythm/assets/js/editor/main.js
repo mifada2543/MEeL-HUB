@@ -28,7 +28,7 @@ function init() {
   resizeCanvas();
   var loaded = loadNotesFromStorage();
   if (loaded) {
-    showToast("Notes loaded from cache", "success");
+    showToast("Note dimuat dari cache", "success");
     updateNoteInfo();
   }
   draw();

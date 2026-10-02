@@ -24,7 +24,7 @@ $msg = $_GET['msg'] ?? null;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management | MEeL Admin</title>
+    <title>Pengelolaan Pengguna | MEeL Admin</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
         <link href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
@@ -34,7 +34,7 @@ $msg = $_GET['msg'] ?? null;
 <body class="min-h-screen">
     <?php
     $is_admin = true;
-    $page_title = 'User Management';
+    $page_title = 'Pengelolaan Pengguna';
     $media_type = 'dashboard';
     $back_url = 'index.php';
     include 'header-admin.php';
@@ -46,8 +46,8 @@ $msg = $_GET['msg'] ?? null;
                 <i data-lucide="users" class="w-5 h-5 text-blue-500"></i>
             </div>
             <div>
-                <h1 class="text-2xl font-extrabold text-white leading-tight">User Management</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1">Kelola akun, verifikasi, monitor, dan keamanan</p>
+                <h1 class="text-2xl font-extrabold text-white leading-tight">Pengelolaan Pengguna</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1">Kelola akun, verifikasi, pemantauan, dan keamanan</p>
             </div>
         </div>
 
@@ -60,7 +60,7 @@ $msg = $_GET['msg'] ?? null;
         <?php if ($pending_users->num_rows > 0): ?>
             <div class="glass rounded-3xl overflow-hidden mb-8 border border-yellow-500/20">
                 <div class="p-4 bg-yellow-500/5 border-b border-white/5">
-                    <h3 class="text-xs font-bold text-white uppercase">Verification Queue (<?= $stats['pending'] ?>)</h3>
+                    <h3 class="text-xs font-bold text-white uppercase">Antrean Verifikasi (<?= $stats['pending'] ?>)</h3>
                 </div>
                 <table class="w-full text-left text-xs">
                     <tbody class="divide-y divide-white/5">
@@ -71,12 +71,12 @@ $msg = $_GET['msg'] ?? null;
                                     <form method="POST" class="inline" onsubmit="return meelConfirmForm(event, { title: 'Setujui User', text: 'Setujui pendaftaran <?= htmlspecialchars($u['username'], ENT_QUOTES) ?>?', confirmButtonText: 'APPROVE' })">
                                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                         <input type="hidden" name="approve_id" value="<?= (int)$u['id'] ?>">
-                                        <button type="submit" class="bg-green-600 text-white px-4 py-1.5 rounded-xl font-bold text-[10px] cursor-pointer">APPROVE</button>
+                                        <button type="submit" class="bg-green-600 text-white px-4 py-1.5 rounded-xl font-bold text-[10px] cursor-pointer">SETUJUI</button>
                                     </form>
                                     <form method="POST" class="inline" onsubmit="return meelConfirmForm(event, { title: 'Tolak User', text: 'Tolak pendaftaran <?= htmlspecialchars($u['username'], ENT_QUOTES) ?>?', confirmButtonText: 'TOLAK' })">
                                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                         <input type="hidden" name="reject_id" value="<?= (int)$u['id'] ?>">
-                                        <button type="submit" class="bg-red-600/20 text-red-500 px-4 py-1.5 rounded-xl font-bold text-[10px] border border-red-500/20 cursor-pointer">REJECT</button>
+                                        <button type="submit" class="bg-red-600/20 text-red-500 px-4 py-1.5 rounded-xl font-bold text-[10px] border border-red-500/20 cursor-pointer">TOLAK</button>
                                     </form>
                                 </td>
                             </tr>
@@ -90,7 +90,7 @@ $msg = $_GET['msg'] ?? null;
             <div class="p-6 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
                 <div class="flex items-center gap-2">
                     <i data-lucide="users" class="w-5 h-5 text-blue-500"></i>
-                    <h3 class="text-xs font-bold text-gray-400 uppercase">User Accounts</h3>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase">Akun Pengguna</h3>
                 </div>
                 <span class="text-[9px] text-gray-600 font-mono">Total: <?= ($all_users) ? $all_users->num_rows : 0 ?> Accounts</span>
             </div>
@@ -99,11 +99,11 @@ $msg = $_GET['msg'] ?? null;
                 <table class="w-full text-left text-xs">
                     <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
                         <tr>
-                            <th class="py-3 px-6">ID & Username</th>
-                            <th class="py-3 px-4">Role</th>
+                            <th class="py-3 px-6">ID & Nama Pengguna</th>
+                            <th class="py-3 px-4">Peran</th>
                             <th class="py-3 px-4 text-center">Status</th>
-                            <th class="py-3 px-4">Registered</th>
-                            <th class="py-3 px-6 text-right">Actions</th>
+                            <th class="py-3 px-4">Terdaftar</th>
+                            <th class="py-3 px-6 text-right">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-800">
@@ -136,10 +136,10 @@ $msg = $_GET['msg'] ?? null;
                                             <form method="POST" class="inline" onsubmit="return meelConfirmForm(event, { title: 'Hapus User', text: 'Hapus permanen user <?= htmlspecialchars($u['username'], ENT_QUOTES) ?>?', confirmButtonText: 'HAPUS' })">
                                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                                 <input type="hidden" name="delete_user_id" value="<?= (int)$u['id'] ?>">
-                                                <button type="submit" class="bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold text-[10px] uppercase cursor-pointer">Delete</button>
+                                                <button type="submit" class="bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold text-[10px] uppercase cursor-pointer">Hapus</button>
                                             </form>
                                         <?php else: ?>
-                                            <span class="text-[9px] text-gray-600 italic">Protected</span>
+                                            <span class="text-[9px] text-gray-600 italic">Terlindungi</span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -156,14 +156,14 @@ $msg = $_GET['msg'] ?? null;
             <div class="p-6 border-b border-white/5 justify-between flex items-center">
                 <div class="flex items-center gap-2">
                     <i data-lucide="monitor" class="w-5 h-5 text-green-500"></i>
-                    <h3 class="text-xs font-bold text-green-500 uppercase">Live Activity Monitor</h3>
+                    <h3 class="text-xs font-bold text-green-500 uppercase">Pemantau Aktivitas Langsung</h3>
                 </div>
-                <form method="POST" onsubmit="return meelConfirmForm(event, { title: 'Hapus Guest', text: 'Hapus semua Guest?', confirmButtonText: 'HAPUS' });">
+                <form method="POST" onsubmit="return meelConfirmForm(event, { title: 'Hapus Tamu', text: 'Hapus semua Tamu?', confirmButtonText: 'HAPUS' });">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                    <button type="submit" name="clear_all_guests" value="1" class="group flex flex-col items-end gap-1 cursor-pointer" title="Hapus semua user guest yang tidak aktif">
+                    <button type="submit" name="clear_all_guests" value="1" class="group flex flex-col items-end gap-1 cursor-pointer" title="Hapus semua pengguna tamu yang tidak aktif">
                         <div class="flex items-center gap-2 text-[9px] bg-red-600/10 text-red-500 border border-red-500/20 px-3 py-1.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-bold uppercase">
                             <i data-lucide="shield-alert" class="w-3 h-3"></i>
-                            Clean Inactive Guests
+                            Bersihkan Tamu Tidak Aktif
                         </div>
                         <span class="text-[8px] text-gray-600 font-mono tracking-tighter uppercase pr-1" id="live-clock">--:--:--</span>
                     </button>
@@ -174,10 +174,10 @@ $msg = $_GET['msg'] ?? null;
                 <table class="w-full text-left text-xs">
                     <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
                         <tr>
-                            <th class="py-3 px-6">User</th>
+                            <th class="py-3 px-6">Pengguna</th>
                             <th class="py-3 px-4 text-center">Status</th>
-                            <th class="py-3 px-4">Last Page</th>
-                            <th class="py-3 px-6 text-right">Activity</th>
+                            <th class="py-3 px-4">Halaman Terakhir</th>
+                            <th class="py-3 px-6 text-right">Aktivitas</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-800" id="monitor-tbody">
@@ -193,7 +193,7 @@ $msg = $_GET['msg'] ?? null;
                                             <a href="<?= meel_base_url_path() ?>/profile/<?= htmlspecialchars($row['username'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($row['username']) ?></a>
                                         </span>
                                         <?php if ($row['role'] === 'guest'): ?>
-                                            <span class="text-[7px] bg-white/5 text-gray-500 px-1 rounded border border-white/10 uppercase font-black">Guest</span>
+                                            <span class="text-[7px] bg-white/5 text-gray-500 px-1 rounded border border-white/10 uppercase font-black">Tamu</span>
                                         <?php endif; ?>
                                     </div>
                                     <div class="flex flex-col">
@@ -203,7 +203,7 @@ $msg = $_GET['msg'] ?? null;
 
                                         <div class="flex items-center gap-1 mt-1 flex-wrap">
                                             <?php
-                                            $ip_display = $row['ip_address'] ?? 'Unknown';
+                                            $ip_display = $row['ip_address'] ?? 'Tidak diketahui';
                                             $is_local = ($ip_display === 'LOCAL' || strpos($ip_display, 'Local') !== false);
 
                                             $ip_type = 'Unknown';
@@ -260,12 +260,12 @@ $msg = $_GET['msg'] ?? null;
                                             <form method="POST" class="inline" onsubmit="return meelConfirmForm(event, { title: 'Kick User', text: 'Tendang <?= htmlspecialchars($row['username'], ENT_QUOTES) ?>? User akan langsung offline.', confirmButtonText: 'TENDANG' })">
                                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                                 <input type="hidden" name="kick_user" value="<?= htmlspecialchars($row['username'], ENT_QUOTES) ?>">
-                                                <button type="submit" class="p-1.5 bg-red-600/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-600 hover:text-white transition-all cursor-pointer" title="Kick Active User">
+                                                <button type="submit" class="p-1.5 bg-red-600/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-600 hover:text-white transition-all cursor-pointer" title="Keluarkan pengguna aktif">
                                                     <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                                                 </button>
                                             </form>
                                         <?php elseif (!$is_online && $row['username'] !== $_SESSION['username']): ?>
-                                            <span class="p-1.5 bg-gray-800/30 text-gray-700 rounded-lg border border-gray-800/50 cursor-not-allowed" title="User is already offline">
+                                            <span class="p-1.5 bg-gray-800/30 text-gray-700 rounded-lg border border-gray-800/50 cursor-not-allowed" title="Pengguna sudah offline">
                                                 <i data-lucide="user-minus" class="w-3.5 h-3.5"></i>
                                             </span>
                                         <?php endif; ?>
@@ -282,16 +282,16 @@ $msg = $_GET['msg'] ?? null;
             <div class="p-6 border-b border-white/5 bg-red-500/5 flex justify-between items-center">
                 <div class="flex items-center gap-2">
                     <i data-lucide="shield-alert" class="w-5 h-5 text-red-500"></i>
-                    <h3 class="text-xs font-bold text-red-500 uppercase">Firewall & Banned IPs</h3>
+                    <h3 class="text-xs font-bold text-red-500 uppercase">Firewall & IP Diblokir</h3>
                 </div>
-                <span class="text-[10px] text-gray-500 uppercase">Protected by MEeL Security</span>
+                <span class="text-[10px] text-gray-500 uppercase">Dilindungi MEeL Security</span>
             </div>
 
             <div class="p-6">
                 <form method="POST" class="flex flex-col gap-2 mb-6">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <div class="flex gap-2">
-                        <input type="text" name="ip_target" placeholder="IP Address..."
+                        <input type="text" name="ip_target" placeholder="Alamat IP..."
                             class="bg-gray-800 text-white text-xs px-4 py-2 rounded-xl border border-gray-700 focus:border-red-500 outline-none w-1/3" required>
 
                         <input type="text" name="ban_reason" placeholder="Alasan pemblokiran (Contoh: Percobaan Brute Force)..."
@@ -309,10 +309,10 @@ $msg = $_GET['msg'] ?? null;
                         <table class="w-full text-left text-xs">
                             <thead class="text-gray-500 uppercase text-[9px] font-black">
                                 <tr>
-                                    <th class="py-2">IP Address</th>
-                                    <th class="py-2">Reason</th>
-                                    <th class="py-2">Time</th>
-                                    <th class="py-2 text-right">Action</th>
+                                    <th class="py-2">Alamat IP</th>
+                                    <th class="py-2">Alasan</th>
+                                    <th class="py-2">Waktu</th>
+                                    <th class="py-2 text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-800">
@@ -325,7 +325,7 @@ $msg = $_GET['msg'] ?? null;
                                             <form method="POST" class="inline" onsubmit="return meelConfirmForm(event, { title: 'Unban IP', text: 'Buka blokir IP <?= htmlspecialchars($ban['ip_address'], ENT_QUOTES) ?>?', confirmButtonText: 'UNBAN' })">
                                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                                 <input type="hidden" name="unban_ip" value="<?= htmlspecialchars($ban['ip_address'], ENT_QUOTES) ?>">
-                                                <button type="submit" class="text-[9px] border border-green-500/30 text-green-500 px-3 py-1 rounded hover:bg-green-500 hover:text-white transition cursor-pointer">UNBAN</button>
+                                                <button type="submit" class="text-[9px] border border-green-500/30 text-green-500 px-3 py-1 rounded hover:bg-green-500 hover:text-white transition cursor-pointer">BATAL BLOKIR</button>
                                             </form>
                                         </td>
                                     </tr>

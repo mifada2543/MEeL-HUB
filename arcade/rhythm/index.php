@@ -73,7 +73,7 @@ if ($conn && $conn->connect_errno === 0) {
                 'cover_url' => $cover_url,
                 'audio_url' => 'uploads/audio/' . $row['audio_file'],
                 'user_id' => (int) $row['user_id'],
-                'username' => $row['username'] ?? 'Unknown',
+                'username' => $row['username'] ?? 'Tidak diketahui',
                 'play_count' => (int) $row['play_count'],
                 'created_at' => $row['created_at'],
             ];
@@ -97,7 +97,7 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
   <link rel="manifest" href="../assets/manifest.json" />
   <title>MEeL!Mania</title>
   <link rel="icon" type="image/png" href="<?= $root ?>/assets/MEeL.png" />
-  <link href="../assets/css/font.css" rel="stylesheet" />
+  <link href="<?= $root ?>/assets/css/font.css" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/lobby.css?v=<?= filemtime(__DIR__ . '/assets/css/lobby.css') ?>" />
   <script>window.MEEL_BASE = <?= json_encode($root) ?>;</script>
 </head>
@@ -144,7 +144,7 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
       <div class="section-header">
         <h2 class="section-title">Pilih Lagu</h2>
         <div class="sort-group">
-          <button class="sort-btn active" data-sort="default">Default</button>
+          <button class="sort-btn active" data-sort="default">Bawaan</button>
           <button class="sort-btn" data-sort="bpm">BPM</button>
           <button class="sort-btn" data-sort="difficulty">Sulit</button>
         </div>
@@ -153,7 +153,7 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
     </section>
 
     <section class="speed-section">
-      <h3 class="speed-title">Speed Modifier</h3>
+      <h3 class="speed-title">Pengubah Kecepatan</h3>
       <div class="speed-options">
         <button class="speed-btn" data-speed="1.0"><span class="speed-icon">○</span><span class="speed-label">Santai</span><span class="speed-val">1.0×</span></button>
         <button class="speed-btn selected" data-speed="1.5"><span class="speed-icon">◎</span><span class="speed-label">Normal</span><span class="speed-val">1.5×</span></button>
@@ -177,9 +177,9 @@ $songs_json = json_encode($all_songs, JSON_UNESCAPED_UNICODE);
       <div class="panel-body">
         <div class="setting-row"><label>Volume SFX</label><input type="range" id="sfxVolume" min="0" max="100" value="70" class="slider" /><span id="sfxVolumeVal" class="slider-val">70%</span></div>
         <div class="setting-row"><label>Volume BGM</label><input type="range" id="bgmVolume" min="0" max="100" value="50" class="slider" /><span id="bgmVolumeVal" class="slider-val">50%</span></div>
-        <div class="setting-row"><label>Note Size</label><div class="radio-group"><button class="radio-btn" data-note-size="small">Kecil</button><button class="radio-btn active" data-note-size="normal">Normal</button><button class="radio-btn" data-note-size="large">Besar</button></div></div>
-        <div class="setting-row"><label>Background Dim</label><input type="range" id="bgDim" min="0" max="100" value="80" class="slider" /><span id="bgDimVal" class="slider-val">80%</span></div>
-        <div class="setting-row"><label>Reset Semua Data</label><button id="btnResetAll" class="btn-danger">Hapus Semua Score</button></div>
+        <div class="setting-row"><label>Ukuran Note</label><div class="radio-group"><button class="radio-btn" data-note-size="small">Kecil</button><button class="radio-btn active" data-note-size="normal">Normal</button><button class="radio-btn" data-note-size="large">Besar</button></div></div>
+        <div class="setting-row"><label>Redupkan Latar</label><input type="range" id="bgDim" min="0" max="100" value="80" class="slider" /><span id="bgDimVal" class="slider-val">80%</span></div>
+        <div class="setting-row"><label>Reset Semua Data</label><button id="btnResetAll" class="btn-danger">Hapus Semua Skor</button></div>
       </div>
     </div>
   </div>

@@ -543,7 +543,7 @@ class BookUploader
     public function handleUpload(array $post, array $files): array
     {
         $title = trim($post['title'] ?? '');
-        $author = trim($post['author'] ?? 'Unknown');
+        $author = trim($post['author'] ?? 'Tidak diketahui');
         $type = $post['type'] ?? '';
         $category = trim($post['category'] ?? '');
         $user_id = (int)($post['user_id'] ?? 0);
