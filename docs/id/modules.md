@@ -467,15 +467,15 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 | Index view_logs | `(video_id)`, `(music_id)` — percepat `syncViewsFromLogs` |
 | user_notifications | Sistem notifikasi untuk like, reply, MEeLCoin, chat admin |
 
-**v16 — normalisasi state MEeLCoin**
+**v2 — normalisasi state MEeLCoin**
 
-> Penomoran melompat ke `16` karena loop migrasi hanya mengeksekusi versi yang `> MAX(db_version)`, sementara instalasi lama masih mencatat angka tertinggi dari riwayat migrasi sebelumnya (v1–v15). Migrasi baru harus bernomor di atas angka tersebut agar ikut dijalankan.
+> v1 merupakan hasil regresi/konsolidasi dari migrasi lama v1–v15 (riwayat lama tidak lagi dipakai), jadi migrasi lanjutan bernomor urut setelah v1 — v2, v3, dan seterusnya. Loop tetap hanya mengeksekusi versi `> MAX(db_version)`; baris riwayat pra-regresi sudah dibersihkan dari `db_version`.
 
 | Apa yang di-Sync | Detail |
 |---|---|
 | Biaya upload MEeLCoin | `meelcoin_upload_cost` & `meelcoin_advanced_cost` dinormalkan minimum `1` (biaya `0` membuat `spend()` tidak memotong apa pun) |
 
-**v17 — indeks hot query + FK komentar**
+**v3 — indeks hot query + FK komentar**
 
 | Apa yang di-Sync | Detail |
 |---|---|

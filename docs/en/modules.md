@@ -547,17 +547,17 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 | view_logs indexes | `(video_id)`, `(music_id)` — accelerates `syncViewsFromLogs` |
 | user_notifications | Notification system for likes, replies, MEeLCoin, admin chat |
 
-**v16 — MEeLCoin state normalization**
+**v2 — MEeLCoin state normalization**
 
-> The number jumps to `16` because the migration loop only runs versions `> MAX(db_version)`, while existing installations still record the highest number from the earlier migration history (v1–v15). A new migration must be numbered above that so it actually runs.
+> v1 is the regression/consolidation result of the earlier migrations v1–v15 (the old history is no longer used), so follow-up migrations are numbered sequentially after v1 — v2, v3, and so on. The loop still only runs versions `> MAX(db_version)`; the pre-regression history rows have been cleaned from `db_version`.
 
-| What v16 Syncs | Detail |
+| What v2 Syncs | Detail |
 |---|---|
 | MEeLCoin upload costs | `meelcoin_upload_cost` & `meelcoin_advanced_cost` normalized to a minimum of `1` (a cost of `0` makes `spend()` deduct nothing) |
 
-**v17 — hot-query indexes + comment FK**
+**v3 — hot-query indexes + comment FK**
 
-| What v17 Syncs | Detail |
+| What v3 Syncs | Detail |
 |---|---|
 | `activity_log` | `(created_at)`, `(user_id, created_at)`, `(action, created_at)` — admin feed (time-ordered), per-user & per-action filters |
 | `upload_queue` | `(status, created_at)` (status polling), `(user_id, media_type, id)` (per-user/media queue listing) |
