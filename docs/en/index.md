@@ -42,7 +42,7 @@ Official documentation for **MEeL** — A Personal Media Hub Platform for video 
 | **UpdateManager** | `controllers/system/UpdateManager.php` | CRUD changelog entries (OOP) |
 | **DriveService** | `drive/DriveService.php` | 3 classes: DriveUserContext, DriveStorage, DriveViewRenderer |
 | **Profile Manager** | `controllers/profile/fun-manage.php` | Delete media, pending deletions, cleanup |
-| **Migration System** | `database/migrate.php` | Sync database to latest schema (idempotent, single v1 migration) |
+| **Migration System** | `database/migrate.php` | Sync database to latest schema (idempotent, migrations v1–v3) |
 | **PWA Precache** | `modules/core/SwPrecache.php` | Dynamic service worker precache generator — reads `assets/css/*/manifest.php`, auto `SW_VERSION` from content hash |
 | **PWA Generator** | `sw.js.php` | Service worker generated per request (served as `/sw.js` via `.htaccess` rewrite) |
 | **Autoloader** | `modules/autoload.php` | Class-map autoloading |
@@ -139,7 +139,7 @@ Request: /MEeL/music/beranda?format=ogg
 - **Type hints:** Class properties and constructor parameters now use type hints (`\mysqli`, `int`, `string`, etc.)
 - **Activity Log Integration:** `log_activity()` function integrated at login, logout, upload, and admin actions — full audit trail to `activity_log` table
 - **Admin Activity Log Viewer:** `admin/activity_log.php` page for viewing, filtering, and cleaning audit trails
-- **Database Alignment:** `schema.sql` and `migrate.php` are synchronized — migration v1 consolidates all schema changes (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, comments indexes, interactions, user_notifications), and migration v16 normalizes MEeLCoin state (upload cost minimum 1)
+- **Database Alignment:** `schema.sql` and `migrate.php` are synchronized — migration v1 consolidates all schema changes (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, comments indexes, interactions, user_notifications), and migration v2 normalizes MEeLCoin state (upload cost minimum 1)
 - **Anime Module Removed:** The "Coming Soon" placeholder module has been removed from the codebase
 - **API Rate Limiting:** File-based rate limiter (`modules/auth/RateLimiter.php`) — protects like, comment, upload endpoints from abuse with per-user limits with role-based adjustment (admin=unlimited, member=2x)
 - **Security Module (`modules/auth/`):** Security helpers & classes consolidated into one directory for easy auditing — `helpers/` (authz, csrf, session, stream_auth, mfa, user) + `RateLimiter.php` + `SsrfGuard.php`, loaded via `modules/auth/loader.php` (the legacy `modules/core/helpers.php` shim still works)
