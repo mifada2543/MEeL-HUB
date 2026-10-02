@@ -13,15 +13,6 @@ if (!function_exists('meel_err_alpha')) {
 
 if (!function_exists('meel_err_shade')) {
 
-    /**
-     * Menggelapkan warna hex menuju hitam.
-     *
-     * Dipakai untuk varian teks/ikon aksen pada mode terang (latar #fafafa),
-     * karena semua warna aksen MEeL gagal WCAG AA di latar terang
-     * (contoh: #06b6d4 = 2.33:1, #67e8f9 = 1.39:1) sementara di latar
-     * gelap mereka 8-14:1. Dengan 50% ke hitam, rasio terendah menjadi
-     * 5.11:1 — seluruh palet aksen lolos AA.
-     */
     function meel_err_shade(string $hex, float $amount = 0.5): string
     {
         $clean = ltrim($hex, '#');
@@ -198,13 +189,10 @@ include __DIR__ . '/../partials/scripts.php';
             --acc-a25shadow: <?= meel_err_alpha($accent, 64) ?>;
             --acc-a45shadow: <?= meel_err_alpha($accent, 115) ?>;
 
-            /* Tinta aksen untuk teks & ikon — mode gelap = warna asli. */
             --acc-text: <?= $accent ?>;
             --acc2-text: <?= $accent2 ?>;
         }
 
-        /* Mode terang: tinta aksen digelapkan agar kontras di latar #fafafa.
-           50% ke hitam -> rasio terendah 5.11:1 (seluruh palet lolos AA). */
         html[data-theme="light"] {
             --acc-text: <?= meel_err_shade($accent) ?>;
             --acc2-text: <?= meel_err_shade($accent2) ?>;

@@ -77,17 +77,6 @@ p {
     50% { opacity: 1; }
 }
 
-/* ==========================================================================
-   Mode terang — halaman ini sengaja mandiri (hanya 1 berkas CSS, tanpa
-   theme-tokens/light-theme) agar tetap andal saat koneksi mati, jadi
-   paletnya ditulis eksplisit di sini.
-
-   Target kontras vs latar #fafafa (WCAG AA, teks normal >= 4.5:1):
-     #c2410c pada #fafafa = 4.96:1      putih pada #c2410c = 5.18:1
-     #3f3f46 pada #fafafa = 9.89:1      #374151 pada #fafafa = 9.86:1
-     #6b7280 pada #fafafa = 4.56:1 (tetap, sudah lulus)
-   ========================================================================== */
-
 html[data-theme="light"] body {
     background: #fafafa;
     color: #3f3f46;

@@ -1,12 +1,5 @@
 @import url("../font.css");
 
-/* ==========================================================================
-   Halaman error MEeL (err/index.php)
-   Gaya statis dipindahkan dari <style> inline agar bisa dipakai bersama
-   oleh precache service worker. Variabel --acc* tetap di-inline di PHP
-   karena nilainya dihitung per-request.
-   ========================================================================== */
-
 body {
     font-family: 'JetBrains Mono', monospace, sans-serif;
 }
@@ -58,15 +51,6 @@ body {
     border: 1px solid var(--acc-a30);
     box-shadow: 0 0 30px var(--acc-a15shadow);
 }
-
-/* ==========================================================================
-   Mode terang (html[data-theme="light"])
-
-   - panel kaca gelap -> kaca terang memakai token --meel-* dari theme-tokens
-   - glow neon & teks "glitch" dipadamkan (di latar putih jadi berkabut)
-   - overlay scanline CRT dimatikan (elemen .err-scanlines)
-   - border & ring aksen DIPERTAHANKAN agar karakter "error protocol" tetap
-   ========================================================================== */
 
 html[data-theme="light"] .glass-panel {
     background: var(--meel-glass);

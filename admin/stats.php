@@ -15,9 +15,6 @@ if (!is_admin($conn)) {
     exit();
 }
 
-// Hormati halaman asal, kecuali halaman analitik diri sendiri,
-// halaman edit/editor, atau index (halaman edit/editor & lrc-editor
-// diblokir otomatis oleh meel_back_url()).
 $back_url = meel_back_url('../index.php', ['stats', 'content', 'cookies', 'analys', 'index.php']);
 
 function meel_remove_media_dir(string $dir, int &$counter, array &$failed): void

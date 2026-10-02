@@ -257,7 +257,7 @@ include __DIR__ . '/../../partials/scripts.php';
   </footer>
   <script type="module" src="assets/js/main.js?v=<?= @filemtime(__DIR__ . '/assets/js/main.js') ?>"></script>
   <script>
-    
+
     window.MEEL_CSRF = <?= json_encode($chess_csrf, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
   </script>
 </body>

@@ -103,7 +103,6 @@ html[data-theme="light"] {
   & .text-gray-800 { color: var(--meel-text-heading) !important; }
   & .text-gray-700.uppercase { color: var(--meel-text-secondary) !important; }
 
-  /* Tailwind slate — keluarga abu yang sebelumnya tidak dipetakan sama sekali */
   & .text-slate-300 { color: var(--meel-text) !important; }
   & .text-slate-400 { color: var(--meel-text-secondary) !important; }
   & .text-slate-500 { color: var(--meel-text-muted) !important; }
@@ -278,8 +277,6 @@ html[data-theme="light"] {
   & [style*="#0b0e14"] { background: var(--meel-bg) !important; }
   & [style*="border:4px solid #0b0e14"],
   & [style*="border: 4px solid #0b0e14"] { border-color: var(--meel-bg) !important; }
-  /* Teks footer memakai inline style yang mengalahkan class text-gray-500,
-     sehingga harus ditimpa eksplisit agar tetap terbaca di latar terang. */
   & footer [style*="color:#9ca3af"] { color: var(--meel-text-muted) !important; }
   & .file\:bg-gray-800 {
     background: var(--meel-surface-hover) !important;
@@ -1133,10 +1130,8 @@ html[data-theme="light"] {
     text-decoration: underline !important;
   }
 
-  /* ── Utilitas global ── */
   & .hover\:text-\[\#f0f2f7\]:hover { color: var(--meel-text-heading) !important; }
 
-  /* ── Music · Modal lirik / karaoke ── */
   & #karaoke-modal { background: rgba(0, 0, 0, 0.45) !important; }
   & .karaoke-panel {
     background: var(--meel-surface) !important;
@@ -1175,7 +1170,6 @@ html[data-theme="light"] {
   & .karaoke-line.future { color: rgba(0, 0, 0, 0.18) !important; }
   & .karaoke-empty { color: var(--meel-text-muted) !important; }
 
-  /* ── Introduction · Panduan (introduction.php) ── */
   & #hamburger {
     background: rgba(255, 255, 255, 0.92) !important;
     border-color: rgba(0, 0, 0, 0.12) !important;
@@ -1227,11 +1221,9 @@ html[data-theme="light"] {
     border-color: rgba(0, 0, 0, 0.22) !important;
   }
 
-  /* ── Update · Changelog (update.php) ── */
   & .entry-version { color: #080a0f !important; }
   & .btn-primary { color: #080a0f !important; }
 
-  /* ── Engine overlay · Proses transcode & upload ── */
   & #meel-overlay { background: rgba(245, 245, 247, 0.92) !important; }
   & #meel-overlay.error-state { background: rgba(250, 250, 250, 0.97) !important; }
   & #meel-card > div:first-child { color: rgba(0, 0, 0, 0.25) !important; }

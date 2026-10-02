@@ -7,9 +7,6 @@
     <title>Offline — MEeL</title>
     <meta name="theme-color" content="#05070c">
     <script>
-        /* Halaman offline sengaja tanpa partial/head.php, jadi penentuan tema
-           harus mandiri (inline, tanpa dependensi) agar tetap jalan saat
-           koneksi mati. Sama dengan logika partials/head.php: default gelap. */
         (function() {
             var t = null;
             try { t = localStorage.getItem('meel_theme'); } catch (e) {}

@@ -128,7 +128,7 @@ $_e_robots = htmlspecialchars($_META_ROBOTS, ENT_QUOTES, 'UTF-8');
 
 <script>
 if ('serviceWorker' in navigator) {
-    
+
     const swUrl = (<?= json_encode(rtrim($_head_root_rel, '/')) ?> || '') + '/sw.js';
     window.addEventListener('load', function() {
 
