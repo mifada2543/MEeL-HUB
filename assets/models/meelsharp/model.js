@@ -44,8 +44,6 @@
   "use strict";
   if (!window.MEEL_UPSCALER) return;
 
-  // Kekuatan CAS per mode (dipakai sebagai konstanta shader; ganti mode hanya
-  // membangun ulang pipeline — tidak ada aset yang dimuat ulang).
   var SHARP = { lembut: 0.3, seimbang: 0.5, tajam: 0.8 };
 
   var VS = [
@@ -80,9 +78,6 @@
     "}",
   ].join("\n");
 
-  // Jendela tap diskalakan rasio (seperti MEeLScale): pada 1,33× jendela
-  // sumber melebar jadi ±4 px (±3 pada ruang hasil) — konsekuensi normal
-  // Lanczos-3 yang benar untuk rasio tak-integer, bukan 6 tap tetap.
   var WINDOW_X = [
     "  let rx = clamp(scaleX, 1.0, 8.0);",
     "  var x0 = i32(floor(srcx - 3.0 * rx));",
@@ -97,9 +92,6 @@
     "  if (y1 - y0 > 63) { let cy = i32(floor(srcy)); y0 = cy - 31; y1 = cy + 31; }",
   ].join("\n");
 
-  // Batas anti-ringing dari kotak sumber terdekat: 2×2 saat upscale
-  // (hx = hy = 0 → ax..ax+1) dan melebar mengikuti footprint filter saat
-  // downscale ("setara" dari ketentuan 2×2). Butuh ds/src/srcx/srcy/rx/ry.
   var ANTI_RING = [
     "  let ax = clamp(i32(floor(srcx)), 0, i32(ds.x) - 1);",
     "  let ay = clamp(i32(floor(srcy)), 0, i32(ds.y) - 1);",
@@ -118,8 +110,6 @@
     "  }",
   ].join("\n");
 
-  // Tahap 1: Lanczos horizontal, satu baris sumber per piksel hasil
-  // (tinggi hasil = tinggi sumber) → tekstur antara selebar target.
   function shaderH(targetW) {
     return [
       VS,
@@ -151,9 +141,6 @@
     ].join("\n");
   }
 
-  // Tahap 2: Lanczos vertikal + anti-ringing. Kotak sumber untuk batas
-  // min/max: 2×2 saat upscale (hx = hy = 0 → ax..ax+1), melebar mengikuti
-  // footprint filter saat downscale ("setara" dari spesifikasi 2×2).
   function shaderV(targetW, targetH) {
     return [
       VS,
@@ -192,9 +179,6 @@
     ].join("\n");
   }
 
-  // Varian pembanding performa: Lanczos 2D dalam satu pass (jendela penuh
-  // rx×ry per piksel hasil, tanpa tekstur antara). Sengaja tidak terdaftar di
-  // modes — hanya dipanggil benchmark lewat modeId berakhiran "-direct".
   function shader2D(targetW, targetH) {
     return [
       VS,
@@ -237,7 +221,6 @@
     ].join("\n");
   }
 
-  // Tahap 3: CAS pada resolusi tampil (butuh tetangga silang hasil Lanczos).
   function shaderCAS(sharpness) {
     return [
       VS,
@@ -350,13 +333,11 @@
       var nodes = [];
       var casIn;
       if (direct) {
-        // Pembanding: dua pass total (2D → CAS), tanpa tekstur antara.
         var tmpD = makeTexture(device, "meel-meelsharp-tmd", w, h);
         nodes.push(makeNode(device, "meel-meelsharp-2d", shader2D(w, h), [0], tmpD,
                             [o.inputTexture.createView()]));
         casIn = tmpD.createView();
       } else {
-        // Jalur normal: horizontal → vertikal (antara rgba16float) → CAS.
         var tmpH = makeTexture(device, "meel-meelsharp-tmph", w, o.native.height);
         var tmpV = makeTexture(device, "meel-meelsharp-tmpv", w, h);
         nodes.push(makeNode(device, "meel-meelsharp-h", shaderH(w), [0], tmpH,

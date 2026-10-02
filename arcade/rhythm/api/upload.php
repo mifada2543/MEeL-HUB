@@ -1,6 +1,5 @@
 <?php
 
-
 require_once __DIR__ . '/config.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -11,11 +10,9 @@ $user_id = require_auth();
 $user_role = get_user_role($conn, $user_id);
 $is_admin = ($user_role === 'admin');
 
-
 if (!verify_csrf_token()) {
     api_error('CSRF token tidak valid.');
 }
-
 
 if (!$is_admin) {
     $stmt = $conn->prepare("SELECT COUNT(*) as cnt FROM arcade_song WHERE user_id = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
@@ -27,7 +24,6 @@ if (!$is_admin) {
         api_error('Batas upload tercapai (10/jam). Coba lagi nanti.');
     }
 }
-
 
 $title = trim($_POST['title'] ?? '');
 $artist = trim($_POST['artist'] ?? 'Unknown Artist');
@@ -42,7 +38,6 @@ if (strlen($title) > 120) api_error('Judul maksimal 120 karakter.');
 if ($bpm < 60 || $bpm > 300) api_error('BPM harus antara 60-300.');
 if ($difficulty < 1 || $difficulty > 5) api_error('Difficulty harus antara 1-5.');
 
-
 $beatmap = json_decode($beatmap_json, true);
 if (!$beatmap || !isset($beatmap['notes']) || !is_array($beatmap['notes'])) {
     api_error('Beatmap JSON tidak valid.');
@@ -54,7 +49,6 @@ if (count($beatmap['notes']) > 5000) {
     api_error('Maksimal 5000 notes dalam beatmap.');
 }
 
-
 foreach ($beatmap['notes'] as $i => $note) {
     if (!isset($note['t']) || !isset($note['l'])) {
         api_error("Note ke-" . ($i + 1) . " format tidak valid (butuh 't' dan 'l').");
@@ -63,7 +57,7 @@ foreach ($beatmap['notes'] as $i => $note) {
     $l = (int) $note['l'];
     if ($t < 0) api_error("Note ke-" . ($i + 1) . " waktu negatif.");
     if ($l < 0 || $l > 3) api_error("Note ke-" . ($i + 1) . " lane harus 0-3.");
-    
+
     if (isset($note['e'])) {
         $e = (int) $note['e'];
         if ($e <= $t) api_error("Note ke-" . ($i + 1) . " hold end time harus lebih besar dari start time.");
@@ -81,10 +75,8 @@ foreach ($beatmap['notes'] as $n) {
 }
 $beatmap_duration = ceil($last_time / 1000) + 2;
 
-
 if (!preg_match('/^#[0-9a-fA-F]{6}$/', $color_primary)) $color_primary = '#ec4899';
 if (!preg_match('/^#[0-9a-fA-F]{6}$/', $color_secondary)) $color_secondary = '#a855f7';
-
 
 if (!isset($_FILES['audio']) || $_FILES['audio']['error'] !== UPLOAD_ERR_OK) {
     $err_code = $_FILES['audio']['error'] ?? -1;
@@ -104,12 +96,10 @@ if ($audio_size > $MAX_AUDIO_SIZE) {
     api_error('File audio terlalu besar (maksimal 20MB).');
 }
 
-
 $mime = validate_audio_mime($audio_tmp);
 if (!$mime) {
     api_error('Tipe MIME audio tidak valid. File mungkin bukan audio.');
 }
-
 
 $handle = fopen($audio_tmp, 'rb');
 $header = fread($handle, 16);
@@ -137,10 +127,8 @@ $final_ext = $audio_ext;
 $final_mime = $mime;
 
 if ($audio_ext === 'flac') {
-    // Alokasi nama output atomik dulu, lalu biarkan ffmpeg -y / move
-    // menimpa placeholder kosong hasil reservasi fopen('x').
     $opus_filename = unique_filename($clean_name, 'ogg', $AUDIO_DIR);
-    $opus_path     = $AUDIO_DIR . $opus_filename;
+    $opus_path = $AUDIO_DIR . $opus_filename;
     $result = transcode_flac_to_opus($audio_tmp, $opus_path);
     if ($result && file_exists($result)) {
         $final_ext = 'ogg';
@@ -170,7 +158,6 @@ if (isset($_FILES['cover']) && $_FILES['cover']['error'] === UPLOAD_ERR_OK) {
     $cover_tmp = $_FILES['cover']['tmp_name'];
     $cover_size = $_FILES['cover']['size'];
 
-    
     $cover_finfo = new finfo(FILEINFO_MIME_TYPE);
     $cover_mime = $cover_finfo->file($cover_tmp);
     $allowed_cover = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -181,22 +168,19 @@ if (isset($_FILES['cover']) && $_FILES['cover']['error'] === UPLOAD_ERR_OK) {
         api_error('Cover terlalu besar (maksimal 5MB).');
     }
 
-    
-    // Ekstensi dari MIME yang sudah divalidasi server-side (bukan dari nama file client).
     $mime_to_ext = [
         'image/jpeg' => 'jpg',
-        'image/png'  => 'png',
-        'image/gif'  => 'gif',
+        'image/png' => 'png',
+        'image/gif' => 'gif',
         'image/webp' => 'webp',
     ];
-    $cover_ext  = $mime_to_ext[$cover_mime] ?? 'jpg';
+    $cover_ext = $mime_to_ext[$cover_mime] ?? 'jpg';
     $cover_name = unique_filename($clean_name . '_cover', $cover_ext, $COVER_DIR);
-    $cover_out  = $COVER_DIR . $cover_name;
+    $cover_out = $COVER_DIR . $cover_name;
 
     $cover_filename = $cover_name;
-    $webp_name      = null;
+    $webp_name = null;
 
-    
     if ($cover_mime === 'image/jpeg' || $cover_mime === 'image/png' || $cover_mime === 'image/webp') {
         $webp_name = unique_filename($clean_name . '_cover', 'webp', $COVER_DIR);
         $cmd = "export LD_LIBRARY_PATH=''; "
@@ -207,19 +191,19 @@ if (isset($_FILES['cover']) && $_FILES['cover']['error'] === UPLOAD_ERR_OK) {
         exec($cmd, $out, $ret);
         if ($ret === 0 && file_exists($COVER_DIR . $webp_name) && filesize($COVER_DIR . $webp_name) > 0) {
             $cover_filename = $webp_name;
-            $webp_name      = null;
+            $webp_name = null;
         }
     }
 
     if ($cover_filename === $cover_name) {
-        
+
         move_uploaded_file($cover_tmp, $cover_out);
     } else {
-        
+
         @unlink($cover_out);
     }
     if ($webp_name !== null) {
-        
+
         @unlink($COVER_DIR . $webp_name);
     }
 }

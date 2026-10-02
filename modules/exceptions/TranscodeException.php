@@ -1,6 +1,5 @@
 <?php
 
-
 class TranscodeException extends \RuntimeException
 {
     private string $input;
@@ -16,8 +15,8 @@ class TranscodeException extends \RuntimeException
         ?\Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
-        $this->input    = $input;
-        $this->output   = $output;
+        $this->input = $input;
+        $this->output = $output;
         $this->ffmpegLog = $ffmpegLog;
     }
 

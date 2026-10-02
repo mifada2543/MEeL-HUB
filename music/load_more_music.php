@@ -4,16 +4,16 @@ require_once '../modules/core/helpers.php';
 require_once '../modules/media/MediaLibrary.php';
 
 $offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 10;
-$page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $format = $_GET['format'] ?? 'all';
 $artist = $_GET['artist'] ?? 'all';
-$limit  = 10;
+$limit = 10;
 
 $library = new MediaLibrary($conn);
-$data    = $library->getMusicList($format, $artist, $limit, $offset);
-$total   = $library->countMusic($format, $artist);
+$data = $library->getMusicList($format, $artist, $limit, $offset);
+$total = $library->countMusic($format, $artist);
 
-$next     = $offset + $limit;
+$next = $offset + $limit;
 $nextPage = $page + 1;
 
 if ($data && $data->num_rows > 0):

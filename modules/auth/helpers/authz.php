@@ -1,6 +1,5 @@
 <?php
 
-
 if (!function_exists('is_admin')) {
 function is_admin(mysqli $conn): bool
 {
@@ -10,7 +9,6 @@ function is_admin(mysqli $conn): bool
     return get_user_role($conn, (int)$_SESSION['user_id']) === 'admin';
 }
 }
-
 
 if (!function_exists('require_admin')) {
 function require_admin(mysqli $conn): void

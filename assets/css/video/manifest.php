@@ -14,7 +14,7 @@ return [
     'toast.css',
     'upscaler.css',
     'utility.css',
-    
+
     '../shared/light-theme.css',
 ];
 

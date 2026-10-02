@@ -1,6 +1,6 @@
 <?php
 if (!function_exists('authorize_stream')) {
-    
+
     function authorize_stream(int $id): void
     {
         if ($id <= 0) return;
@@ -21,7 +21,7 @@ if (!function_exists('authorize_stream')) {
 }
 
 if (!function_exists('is_stream_authorized')) {
-    
+
     function is_stream_authorized(int $id, int $ttl = 7200): bool
     {
         if ($id <= 0) return false;
@@ -33,7 +33,6 @@ if (!function_exists('is_stream_authorized')) {
 }
 
 if (!function_exists('meel_register_stream_path')) {
-    /** Simpan mapping path file video → media id di sesi (dipanggil halaman watch) agar endpoint stream bisa verifikasi token tanpa query DB per segmen. */
     function meel_register_stream_path(string $filename, int $id): void
     {
         if ($id <= 0 || $filename === '') return;
@@ -56,9 +55,6 @@ if (!function_exists('meel_register_stream_path')) {
 }
 
 if (!function_exists('meel_stream_path_allowed')) {
-    /**
-     * true bila path media boleh diakses sesi ini: di luar pohon video/ (thumbnail, lyrics, dsb.) → publik (aset display); di pohon video/ → wajib mapping stream_paths + token authorize_stream.
-     */
     function meel_stream_path_allowed(string $relPath): bool
     {
         $rel = ltrim(str_replace('\\', '/', $relPath), '/');

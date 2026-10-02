@@ -1,9 +1,5 @@
-
-
-
-
-
 let _mpPrevPaused = null;
+var savedWatchScrollY = 0;
 
 window.updateMiniPlayerUI = function () {
   if (!isMiniPlayerActive) return;
@@ -37,10 +33,7 @@ window.toggleMiniPlayer = async function () {
     a = n?.nextElementSibling;
   if (isMiniPlayerActive)
     ((isMiniPlayerActive = !1),
-      
-      
-      
-      
+
       (skipResumeModalOnce = !1),
       e && ((e.style.maxHeight = ""), (e.style.overflow = "")),
       document
@@ -57,13 +50,15 @@ window.toggleMiniPlayer = async function () {
         )),
       n?.classList.add("lg:col-span-2", "space-y-5"),
       a && (a.style.display = "block"),
-      
-      
+
       typeof window.meelRebuildCommentPreview === "function" &&
         window.meelRebuildCommentPreview(),
-      window.history.pushState({}, "", watchUrl));
+      window.history.pushState({}, "", watchUrl),
+      window.scrollTo({ top: savedWatchScrollY, left: 0, behavior: "instant" }));
   else {
-    ((isMiniPlayerActive = !0),
+    ((savedWatchScrollY = window.scrollY),
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" }),
+      (isMiniPlayerActive = !0),
       (skipResumeModalOnce = !0),
       a && (a.style.display = "none"),
       e && ((e.style.maxHeight = "120px"), (e.style.overflow = "hidden")),
@@ -103,7 +98,7 @@ window.miniNext = function () {
   else {
     const e = document.querySelector(".rekomendasi-item");
     if (e) window.location.href = e.href;
-    else isNavigating = false; 
+    else isNavigating = false;
   }
 };
 window.miniPrev = function () {
@@ -117,26 +112,18 @@ window.miniPrev = function () {
 };
 window.goBackToLibrary = function () {
   saveAudioState();
-  
-  
-  
-  
+
   isMiniPlayerActive = false;
-  
-  
-  
+
   skipResumeModalOnce = false;
   var playlistId = window.MEEL_MUSIC_CONFIG?.playlistId;
-  
-  
+
   var url =
     playlistId && playlistId > 0
       ? "beranda?playlist_id=" + playlistId
       : "beranda";
   if (window.meelNavigateView) {
-    
-    
-    
+
     window.meelNavigateView(url, "index", {
       onAfterSwap: function () {
         var engine = window.meelGetAudioEngine();
@@ -146,7 +133,7 @@ window.goBackToLibrary = function () {
       },
     });
   } else {
-    
+
     window.location.href = url;
   }
 };

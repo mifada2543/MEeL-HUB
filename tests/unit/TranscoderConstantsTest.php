@@ -7,9 +7,6 @@ require_once MEEL_ROOT . '/modules/transcoder/EncodeService.php';
 require_once MEEL_ROOT . '/modules/transcoder/TranscodeService.php';
 
 /**
- * Regression: konstanta bersama hidup di TranscoderBase; `private` di parent membuat
- * `self::CONST` fatal di child saat encode/download jalan (tak ter-trigger test biasa karena butuh ffmpeg).
- *
  * @covers TranscoderBase
  * @covers EncodeService
  * @covers DownloadService

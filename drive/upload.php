@@ -116,8 +116,8 @@ try {
         http_response_code(503);
         header('Content-Type: application/json');
         echo json_encode([
-            'status'  => 'error',
-            'code'    => 'storage_unmounted',
+            'status' => 'error',
+            'code' => 'storage_unmounted',
             'message' => $exception->getMessage(),
         ]);
         exit();

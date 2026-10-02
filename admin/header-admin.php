@@ -16,22 +16,22 @@ if (!isset($back_url)) {
 
 $nav_page_title = $page_title ?? 'Edit';
 $nav_media_type = $media_type ?? 'music';
-$nav_id         = $GLOBALS['id'] ?? 0;
+$nav_id = $GLOBALS['id'] ?? 0;
 
 $nav_current_page = basename($_SERVER['SCRIPT_NAME'] ?? '', '.php');
 $nav_current_page = str_replace('-', '_', $nav_current_page);
 if ($nav_current_page === 'index') $nav_current_page = 'dashboard';
 
 $nav_page_labels = [
-    'dashboard'       => 'Dashboard',
-    'stats'           => 'Media Analytics',
-    'content'         => 'Media Analytics',
-    'activity_log'    => 'Activity Log',
+    'dashboard' => 'Dashboard',
+    'stats' => 'Media Analytics',
+    'content' => 'Media Analytics',
+    'activity_log' => 'Activity Log',
     'user_management' => 'User Management',
-    'meelcoin'        => 'MEeLCoin Settings',
-    'chat'            => 'Chat Admin',
-    'mfa_reset'       => 'MFA Management',
-    'catur'           => 'Chess Room',
+    'meelcoin' => 'MEeLCoin Settings',
+    'chat' => 'Chat Admin',
+    'mfa_reset' => 'MFA Management',
+    'catur' => 'Chess Room',
 ];
 $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
 ?>
@@ -116,7 +116,6 @@ $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
                         MFA Management
                     </a>
                     <?php if (Modules::enabled('arcade')): ?>
-                    <!-- Arcade opsional: menu hanya tampil saat modul aktif -->
                     <a href="<?= meel_base_url_path() ?>/admin/catur" class="admin-menu-item <?= $nav_current_page === 'catur' ? 'active' : '' ?>">
                         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v2"></path><path d="M4 8h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"></path><path d="M10 20v-4h4v4"></path></svg>
                         Chess Room
@@ -132,7 +131,6 @@ $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
         <?php endif; ?>
     </div>
 </nav>
-
 
 <script>
 (function(){

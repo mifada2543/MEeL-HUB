@@ -84,7 +84,7 @@ if (!function_exists('getRomajiName')) {
                 if ($line === 'EOS' || trim($line) === '') continue;
                 $parts = explode("\t", $line);
                 if (count($parts) >= 2) {
-                    $surface  = $parts[0];
+                    $surface = $parts[0];
                     $features = explode(',', $parts[1]);
                     $yomi = '*';
                     if (isset($features[7]) && $features[7] !== '*') $yomi = $features[7];
@@ -119,7 +119,7 @@ if (!function_exists('analyzeJapaneseText')) {
         if (empty(trim($text))) return $result;
         $text = Normalizer::normalize($text, Normalizer::FORM_C) ?: $text;
 
-        $search  = ['×', 'x', 'X', '*', '&', '/', '【', '】', '「', '」', '(', ')', '鏡音', '巡音', '初音'];
+        $search = ['×', 'x', 'X', '*', '&', '/', '【', '】', '「', '」', '(', ')', '鏡音', '巡音', '初音'];
         $replace = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'かがみね', 'めぐりね', 'hatsune'];
         $original_text = $text;
         $clean_text = str_replace($search, $replace, $text);
@@ -133,7 +133,7 @@ if (!function_exists('analyzeJapaneseText')) {
         }
 
         $alias_glosses = [];
-        $full_cover    = null;
+        $full_cover = null;
         foreach ($aliases as $phrase => $translation) {
             if ($phrase !== '' && mb_strpos($original_text, $phrase) !== false) {
                 $alias_glosses[$phrase] = $translation;
@@ -175,8 +175,8 @@ if (!function_exists('analyzeJapaneseText')) {
             $dict_path = __DIR__ . '/../../assets/dict/jmdict.sqlite3';
             if (file_exists($dict_path)) {
                 try {
-                    $pdo        = new PDO('sqlite:' . $dict_path);
-                    $dict_stmt  = $pdo->prepare("SELECT glosses FROM entries WHERE reading = :w LIMIT 1");
+                    $pdo = new PDO('sqlite:' . $dict_path);
+                    $dict_stmt = $pdo->prepare("SELECT glosses FROM entries WHERE reading = :w LIMIT 1");
                     $dict_ready = true;
                 } catch (RuntimeException $e) {
                     $dict_ready = false;
@@ -196,7 +196,7 @@ if (!function_exists('analyzeJapaneseText')) {
             $parts = explode("\t", $line);
             if (count($parts) < 2) continue;
 
-            $surface  = $parts[0];
+            $surface = $parts[0];
             $features = explode(',', $parts[1]);
 
             $yomi = '*';

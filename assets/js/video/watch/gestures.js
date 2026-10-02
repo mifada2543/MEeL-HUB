@@ -5,7 +5,6 @@ function setupMobileGestures() {
   var plyr = document.querySelector(".plyr");
   if (!plyr) return;
 
-  
   var controlsVisible = false,
     hideTimer = null,
     lastTapTime = 0,
@@ -13,7 +12,6 @@ function setupMobileGestures() {
     tapTimer = null,
     tapZone = null;
 
-  
   var ddStreak = 0,
     ddSide = null,
     ddResetTimer = null,
@@ -21,7 +19,6 @@ function setupMobileGestures() {
     DD_WINDOW = 600,
     DD_SEEK_STEP = 10;
 
-  
   function showControls() {
     controlsVisible = true;
     plyr.classList.add("plyr--hide-controls");
@@ -53,7 +50,6 @@ function setupMobileGestures() {
     }, 3000);
   }
 
-  
   function handleDoubleTap(x, y, side) {
     var now = Date.now();
 
@@ -73,7 +69,6 @@ function setupMobileGestures() {
       else player.forward(seekAmount);
     }
 
-    
     tampilkanSisiIndikator(side, seekLabel);
 
     clearTimeout(ddResetTimer);
@@ -83,9 +78,6 @@ function setupMobileGestures() {
     }, DD_WINDOW);
   }
 
-
-
-  
   plyr.addEventListener(
     "touchstart",
     function (ev) {
@@ -112,7 +104,6 @@ function setupMobileGestures() {
       var relX = x - rect.left;
       var zone = relX < 0.4 * rect.width ? "left" : relX > 0.6 * rect.width ? "right" : "center";
 
-      
       if (now - lastTapTime < 300 && tapPending) {
         clearTimeout(tapTimer);
         tapPending = false;
@@ -125,7 +116,6 @@ function setupMobileGestures() {
         return;
       }
 
-      
       lastTapTime = now;
       tapPending = true;
       tapZone = zone;
@@ -162,7 +152,6 @@ function setupMobileGestures() {
     true,
   );
 
-  
   (function () {
     var startY = null,
       startVal = null,
@@ -202,7 +191,6 @@ function setupMobileGestures() {
     });
   })();
 
-  
   if (player) {
     player.on("play", function () {
       resetHideTimer();
@@ -217,4 +205,3 @@ function setupMobileGestures() {
     });
   }
 }
-

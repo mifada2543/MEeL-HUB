@@ -3,8 +3,6 @@ use PHPUnit\Framework\TestCase;
 
 require_once dirname(__DIR__, 2) . '/modules/auth/ValidatingProxy.php';
 
-
-
 class ValidatingProxyTest extends TestCase
 {
     private ?ValidatingProxy $proxy = null;
@@ -24,8 +22,6 @@ class ValidatingProxyTest extends TestCase
         }
         return $this->proxy;
     }
-
-    
 
     private function probeProxy(string $request, float $timeout = 6.0): string
     {
@@ -72,7 +68,6 @@ class ValidatingProxyTest extends TestCase
             "CONNECT $target HTTP/1.1\r\nHost: $hostHeader\r\n\r\n"
         );
 
-        
         $this->assertStringNotContainsStringIgnoringCase(
             '200 Connection Established',
             $response,
@@ -89,15 +84,15 @@ class ValidatingProxyTest extends TestCase
     public static function privateConnectTargetsProvider(): array
     {
         return [
-            'loopback IPv4'    => ['127.0.0.1:443', '127.0.0.1:443'],
-            'loopback alt'     => ['127.0.0.2:8443', '127.0.0.2:8443'],
-            'private 10/8'     => ['10.0.0.1:80', '10.0.0.1'],
-            'private 172.16'   => ['172.16.5.5:22', '172.16.5.5'],
-            'private 192.168'  => ['192.168.1.1:8080', '192.168.1.1'],
+            'loopback IPv4' => ['127.0.0.1:443', '127.0.0.1:443'],
+            'loopback alt' => ['127.0.0.2:8443', '127.0.0.2:8443'],
+            'private 10/8' => ['10.0.0.1:80', '10.0.0.1'],
+            'private 172.16' => ['172.16.5.5:22', '172.16.5.5'],
+            'private 192.168' => ['192.168.1.1:8080', '192.168.1.1'],
             'link-local 169.254' => ['169.254.169.254:80', '169.254.169.254'],
-            'localhost name'   => ['localhost:443', 'localhost'],
-            'ip6 loopback'     => ['[::1]:443', '[::1]'],
-            'ip6 ULA'          => ['[fd12::1]:443', '[fd12::1]'],
+            'localhost name' => ['localhost:443', 'localhost'],
+            'ip6 loopback' => ['[::1]:443', '[::1]'],
+            'ip6 ULA' => ['[fd12::1]:443', '[fd12::1]'],
         ];
     }
 
@@ -120,10 +115,10 @@ class ValidatingProxyTest extends TestCase
     public static function privateGetTargetsProvider(): array
     {
         return [
-            'loopback'   => ['http://127.0.0.1/'],
+            'loopback' => ['http://127.0.0.1/'],
             'private 10' => ['http://10.1.2.3/x'],
             'private 192.168' => ['http://192.168.0.10/secret'],
-            'localhost'  => ['http://localhost/'],
+            'localhost' => ['http://localhost/'],
         ];
     }
 
@@ -134,8 +129,6 @@ class ValidatingProxyTest extends TestCase
     }
 
     /**
-     * T4: header dengan CR/LF liar (HTTP request splitting) harus ditolak SEBELUM koneksi upstream —
-     * respons kosong (tutup langsung), bukan 502/200 hasil relay.
      * @dataProvider injectionHeadsProvider
      */
     public function testInjectedHeaderHeadIsRejectedSilently(string $head): void
@@ -157,14 +150,13 @@ class ValidatingProxyTest extends TestCase
         }
 
         return [
-            // "X-Evil: a\nInjected: 1" tidak terpisah explode("\r\n")
-            'bare LF splitting'  => [
+            'bare LF splitting' => [
                 "GET http://example.com/ HTTP/1.1\r\nHost: example.com\r\nX-Evil: a\nInjected: 1\r\n\r\n",
             ],
             'bare CR dalam nilai' => [
                 "GET http://example.com/ HTTP/1.1\r\nHost: example.com\r\nX-Cr: a\rb\r\n\r\n",
             ],
-            'NUL byte'           => [
+            'NUL byte' => [
                 "GET http://example.com/ HTTP/1.1\r\nHost: example.com\r\nX-Nul: a\x00b\r\n\r\n",
             ],
             'jumlah header > 100' => [
@@ -179,7 +171,6 @@ class ValidatingProxyTest extends TestCase
 
     public function testLegitHeadStillProcessesNormally(): void
     {
-        // Head valid tetap diproses hingga tahap validasi target (target private → 502; bukan penutupan diam).
         $response = $this->probeProxy(
             "GET http://127.0.0.1/secret HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
         );
@@ -188,15 +179,13 @@ class ValidatingProxyTest extends TestCase
 
     public function testHttpsSchemeAbsoluteUriIsNotRelayed(): void
     {
-        
+
         $response = $this->probeProxy(
             "GET https://example.com/ HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n"
         );
         $this->assertStringContainsStringIgnoringCase('502', $response);
         $this->assertStringNotContainsStringIgnoringCase('200 OK', $response);
     }
-
-    
 
     public function testConnectToPublicTargetIsAccepted(): void
     {
@@ -235,21 +224,16 @@ class ValidatingProxyTest extends TestCase
         $this->assertStringContainsString('Example Domain', $response);
     }
 
-    
-
     public function testResolvePhpBinaryReturnsExecutablePhp(): void
     {
         $bin = ValidatingProxy::resolvePhpBinary();
         $this->assertNotSame('', $bin, 'resolvePhpBinary() tidak boleh kosong');
 
-        
-        
         if (str_contains($bin, '/')) {
             $this->assertFileExists($bin, "Binary PHP harus ada: $bin");
             $this->assertTrue(is_executable($bin), "Binary PHP harus executable: $bin");
         }
 
-        
         exec(escapeshellarg($bin) . ' -r "echo PHP_VERSION;" 2>&1', $out, $rc);
         $this->assertSame(0, $rc, "Binary PHP $bin harus bisa menjalankan php -r");
         $this->assertNotEmpty(trim(implode('', $out)), 'Output PHP_VERSION tidak boleh kosong');
@@ -271,7 +255,7 @@ class ValidatingProxyTest extends TestCase
         $this->assertTrue($proxy->isRunning());
         $proxy->stop();
         $this->assertFalse($proxy->isRunning());
-        
+
         $proxy->stop();
         $this->assertFalse($proxy->isRunning());
     }

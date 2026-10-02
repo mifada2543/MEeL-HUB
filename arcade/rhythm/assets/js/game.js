@@ -1,18 +1,11 @@
-
-
-
-
-
 (function () {
   "use strict";
 
-  
   const speedMult = window.MANIA_SPEED || 1.5;
   const phpSong = window.MANIA_SONG || null;
   const phpBeatmap = window.MANIA_BEATMAP || null;
   const songId = phpSong ? phpSong.id : 'starlight';
 
-  
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
   const audioElement = document.getElementById("audioPlayer") || new Audio();
@@ -31,26 +24,25 @@
   const pauseOverlay = document.getElementById("pauseOverlay");
   const resultsOverlay = document.getElementById("resultsOverlay");
 
-  
   const LANE_COUNT = 4;
   const KEY_MAP = { a: 0, s: 1, k: 2, l: 3 };
-  
-  const COLOR_CLICK = "#3b82f6";       
+
+  const COLOR_CLICK = "#3b82f6";
   const COLOR_CLICK_BRIGHT = "#60a5fa";
-  const COLOR_HOLD = "#22c55e";         
+  const COLOR_HOLD = "#22c55e";
   const COLOR_HOLD_BRIGHT = "#4ade80";
-  const GOLD_COLOR = "#fbbf24";         
+  const GOLD_COLOR = "#fbbf24";
   const GOLD_BRIGHT = "#fde047";
   const LANE_COLORS = [COLOR_CLICK, COLOR_CLICK, COLOR_CLICK, COLOR_CLICK];
   const LANE_COLORS_BRIGHT = [COLOR_CLICK_BRIGHT, COLOR_CLICK_BRIGHT, COLOR_CLICK_BRIGHT, COLOR_CLICK_BRIGHT];
   const HIT_Y_RATIO = 0.88;
   const NOTE_HEIGHT_BASE = 22;
-  const NOTE_RADIUS = 0; 
+  const NOTE_RADIUS = 0;
   const APPROACH_TIME_BASE = 1800;
 
   const TIMING = { perfect: 24, great: 52, good: 85, bad: 115 };
   const SCORE_VALUES = { perfect: 320, great: 200, good: 100, bad: 50, miss: 0 };
-  const GOLD_MULTIPLIER = 3; 
+  const GOLD_MULTIPLIER = 3;
   const ACC_WEIGHT = { perfect: 1.0, great: 0.75, good: 0.5, bad: 0.25, miss: 0 };
   const JUDGE_COLORS = {
     perfect: "#fbbf24", great: "#34d399", good: "#60a5fa",
@@ -58,22 +50,20 @@
   };
   const GOLD_GLOW = "rgba(251,191,36,0.4)";
 
-  
-  let song = null;         
-  let beatmapData = null;  
-  let gameState = "loading"; 
+  let song = null;
+  let beatmapData = null;
+  let gameState = "loading";
   let score = 0, combo = 0, maxCombo = 0;
   let noteIndex = 0, notes = [], activeNotes = [];
   let laneFlashes = [0, 0, 0, 0];
   let lanePressed = [false, false, false, false];
-  let holdNotes = {}; 
+  let holdNotes = {};
   let judgmentCounts = { perfect: 0, great: 0, good: 0, bad: 0, miss: 0 };
   let totalNotes = 0;
   let lastTime = 0, animFrame = null;
   let songTime = 0, songDuration = 0;
   let highScore = 0;
 
-  
   let audioCtx = null, masterGain = null, sfxGain = null, bgmGain = null;
 
   function initAudio() {
@@ -117,7 +107,6 @@
     osc.stop(now + c.dur + 0.01);
   }
 
-  
   let bgmInterval = null;
 
   function startBGM() {
@@ -181,7 +170,6 @@
     if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; }
   }
 
-  
   function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
     const w = window.innerWidth;
@@ -195,13 +183,12 @@
 
   function getW() { return canvas.width / (window.devicePixelRatio || 1); }
   function getH() { return canvas.height / (window.devicePixelRatio || 1); }
-  
+
   const PLAYFIELD_RATIO = 0.40;
   function laneWidth() { return (getW() * PLAYFIELD_RATIO) / LANE_COUNT; }
   function playfieldX() { return (getW() - getW() * PLAYFIELD_RATIO) / 2; }
   function hitY() { return getH() * HIT_Y_RATIO; }
 
-  
   function roundRect(x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -223,9 +210,8 @@
     return 1.0;
   }
 
-  
   async function loadSongData() {
-    
+
     if (phpSong) {
       song = {
         id: phpSong.id,
@@ -249,17 +235,15 @@
         audioElement.load();
       }
     } else {
-      
+
       await loadFromFiles();
     }
 
-    
     try {
       const saved = JSON.parse(localStorage.getItem("mania_scores")) || {};
       highScore = saved[String(songId)] || 0;
     } catch (e) { highScore = 0; }
 
-    
     document.getElementById("overlayEmoji").textContent = song.emoji;
     document.getElementById("overlayTitle").textContent = song.title;
     document.getElementById("overlaySub").textContent =
@@ -271,7 +255,7 @@
 
   async function loadFromFiles() {
     try {
-      
+
       const idxResp = await fetch("songs/_index.json");
       if (!idxResp.ok) throw new Error("No _index.json");
       const index = await idxResp.json();
@@ -294,7 +278,6 @@
         coverUrl: "songs/" + meta.id + "/cover.svg",
       };
 
-      
       const bmResp = await fetch("songs/" + songId + "/beatmap.json");
       if (!bmResp.ok) throw new Error("No beatmap.json");
       beatmapData = await bmResp.json();
@@ -310,7 +293,6 @@
     }
   }
 
-  
   const APPROACH_TIME = APPROACH_TIME_BASE / speedMult;
 
   function hitLane(lane) {
@@ -318,7 +300,6 @@
     laneFlashes[lane] = 1.0;
     lanePressed[lane] = true;
 
-    
     if (holdNotes[lane]) return;
 
     let best = null, bestDiff = Infinity;
@@ -336,12 +317,12 @@
       else type = "bad";
 
       if (best.endTime) {
-        
+
         best.holding = true;
         best.holdType = type;
         holdNotes[lane] = best;
       } else {
-        
+
         best.hit = true;
       }
 
@@ -365,7 +346,6 @@
     const hold = holdNotes[lane];
     if (!hold) return;
 
-    
     const diffMs = Math.abs(hold.endTime - songTime);
     let releaseType;
     if (diffMs <= TIMING.perfect) releaseType = "perfect";
@@ -374,17 +354,14 @@
     else if (diffMs <= TIMING.bad) releaseType = "bad";
     else releaseType = "miss";
 
-    
-    
     const types = ["miss", "bad", "good", "great", "perfect"];
     const startIdx = types.indexOf(hold.holdType);
     const releaseIdx = types.indexOf(releaseType);
     let finalType;
 
     if (releaseType === "miss") {
-      
-      
-      finalType = types[Math.max(startIdx, 1)]; 
+
+      finalType = types[Math.max(startIdx, 1)];
     } else {
       finalType = types[Math.max(startIdx, releaseIdx)];
     }
@@ -406,7 +383,6 @@
     playSFX(finalType);
   }
 
-  
   function updateHUD() {
     hudScore.textContent = pad6(score);
     hudScore.classList.remove("score-pop");
@@ -447,8 +423,6 @@
     judgeTimer = setTimeout(() => judgmentWrap.classList.add("hidden"), 550);
   }
 
-  
-  
   function noteColorFor(note) {
     if (note.gold) return GOLD_COLOR;
     return note.endTime ? COLOR_HOLD : COLOR_CLICK;
@@ -465,31 +439,28 @@
     const ppm = hy / APPROACH_TIME;
     const ns = getNoteSize();
     const nh = NOTE_HEIGHT_BASE * ns;
-    const pfx = playfieldX(); 
-    const pfw = lw * LANE_COUNT; 
+    const pfx = playfieldX();
+    const pfw = lw * LANE_COUNT;
 
     ctx.clearRect(0, 0, w, h);
 
-    
     ctx.fillStyle = "#08080f";
     ctx.fillRect(0, 0, w, h);
-    if (gameOptions.lowGfx) {  } else {
+    if (gameOptions.lowGfx) { } else {
     const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
     bgGrad.addColorStop(0, "rgba(168,85,247,0.03)");
     bgGrad.addColorStop(0.5, "transparent");
     bgGrad.addColorStop(1, "rgba(244,63,122,0.02)");
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
-    } 
+    }
 
-    
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.fillRect(pfx, 0, pfw, h);
 
-    
     for (let i = 0; i < LANE_COUNT; i++) {
       const x = pfx + i * lw;
-      
+
       ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.01)";
       ctx.fillRect(x, 0, lw, h);
 
@@ -500,7 +471,6 @@
       ctx.lineTo(x, h);
       ctx.stroke();
 
-      
       if (laneFlashes[i] > 0) {
         const flashColor = lanePressed[i] ? LANE_COLORS_BRIGHT[i] : LANE_COLORS[i];
         const fg = ctx.createLinearGradient(x, hy, x, hy - 100);
@@ -513,7 +483,6 @@
         laneFlashes[i] -= 0.05;
       }
 
-      
       if (lanePressed[i]) {
         const pg = ctx.createLinearGradient(x, hy, x, hy - 50);
         pg.addColorStop(0, LANE_COLORS[i] + "25");
@@ -522,7 +491,6 @@
         ctx.fillRect(x, hy - 50, lw, 50);
       }
 
-      
       ctx.strokeStyle = "rgba(255,255,255,0.06)";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -531,7 +499,6 @@
       ctx.stroke();
     }
 
-    
     const hlGlow = ctx.createLinearGradient(0, hy - 3, 0, hy + 3);
     hlGlow.addColorStop(0, "transparent");
     hlGlow.addColorStop(0.5, "rgba(255,255,255,0.08)");
@@ -546,7 +513,6 @@
     ctx.lineTo(pfx + pfw, hy);
     ctx.stroke();
 
-    
     for (let i = 0; i < LANE_COUNT; i++) {
       const rx = pfx + i * lw;
       ctx.fillStyle = lanePressed[i] ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.2)";
@@ -554,7 +520,7 @@
     }
 
 /* reference build: MEeL-C5H5N5O [43eacddc5714608f] */
-    
+
     for (const note of activeNotes) {
       if (!note.endTime || note.hit || note.missed) continue;
       const cx = pfx + note.lane * lw + lw / 2;
@@ -566,30 +532,25 @@
       const trailW = lw * 0.75 * ns;
       const color = noteColorFor(note);
 
-      
       const drawTop = note.holding ? hy : cyStart;
       const drawBottom = cyEnd;
       if (drawTop <= drawBottom) continue;
 
-      
       ctx.globalAlpha = note.holding ? 0.75 : 0.5;
       ctx.fillStyle = color;
       ctx.fillRect(cx - trailW / 2, drawBottom, trailW, drawTop - drawBottom);
 
-      
       ctx.globalAlpha = note.holding ? 0.9 : 0.6;
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.strokeRect(cx - trailW / 2, drawBottom, trailW, drawTop - drawBottom);
 
-      
       if (!note.holding) {
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = color;
         ctx.fillRect(cx - trailW / 2, cyStart - 5, trailW, 10);
       }
 
-      
       ctx.globalAlpha = 0.9;
       ctx.fillStyle = color;
       ctx.fillRect(cx - trailW / 2, drawBottom - 5, trailW, 10);
@@ -597,7 +558,6 @@
       ctx.globalAlpha = 1;
     }
 
-    
     for (const note of activeNotes) {
       if (note.hit || note.missed) continue;
       if (note.holding) continue;
@@ -610,20 +570,16 @@
       const noteH = nh;
       const isHold = !!note.endTime;
 
-      
       ctx.fillStyle = noteColor;
       ctx.fillRect(cx - noteW / 2, cy - noteH / 2, noteW, noteH);
 
-      
       ctx.strokeStyle = "rgba(255,255,255,0.15)";
       ctx.lineWidth = 1.5;
       ctx.strokeRect(cx - noteW / 2, cy - noteH / 2, noteW, noteH);
 
-      
       ctx.fillStyle = "rgba(255,255,255,0.12)";
       ctx.fillRect(cx - noteW / 2 + 2, cy - noteH / 2 + 1, noteW - 4, noteH * 0.35);
 
-      
       if (isHold) {
         ctx.fillStyle = "rgba(255,255,255,0.5)";
         ctx.beginPath();
@@ -636,7 +592,6 @@
       }
     }
 
-    
     for (let i = 0; i < LANE_COUNT; i++) {
       const cx = pfx + i * lw + lw / 2;
       ctx.fillStyle = LANE_COLORS[i] + "15";
@@ -644,7 +599,6 @@
     }
   }
 
-  
   function gameLoop(ts) {
     if (gameState !== "playing") return;
 
@@ -657,16 +611,14 @@
     const hy = hitY();
     const ppm = hy / APPROACH_TIME;
 
-    
     while (noteIndex < notes.length && notes[noteIndex].time - songTime <= APPROACH_TIME) {
       activeNotes.push({ ...notes[noteIndex] });
       noteIndex++;
     }
 
-    
     for (const n of activeNotes) {
       if (n.hit || n.missed) continue;
-      if (n.holding) continue; 
+      if (n.holding) continue;
       if (n.time - songTime < -TIMING.bad - 30) {
         n.missed = true;
         judgmentCounts.miss++;
@@ -677,12 +629,11 @@
       }
     }
 
-    
     for (const laneStr of Object.keys(holdNotes)) {
       const lane = parseInt(laneStr);
       const hold = holdNotes[lane];
       if (hold && songTime > hold.endTime + TIMING.bad + 50) {
-        
+
         hold.hit = true;
         hold.holding = false;
         delete holdNotes[lane];
@@ -694,20 +645,17 @@
       }
     }
 
-    
     activeNotes = activeNotes.filter((n) => {
       if (n.hit || n.missed) return (n.time - songTime) > -500;
       return true;
     });
 
-    
     if (songDuration > 0) {
       progressFill.style.width = Math.min(songTime / songDuration * 100, 100) + "%";
     }
 
     draw();
 
-    
     const allSpawned = noteIndex >= notes.length;
     const allProcessed = activeNotes.length === 0 && allSpawned;
     if (allSpawned && songTime >= songDuration + 2000 && (allProcessed || activeNotes.every((n) => n.hit || n.missed))) {
@@ -718,7 +666,6 @@
     animFrame = requestAnimationFrame(gameLoop);
   }
 
-  
   function startGame() {
     initAudio();
     resumeAudio();
@@ -730,7 +677,6 @@
     lanePressed = [false, false, false, false];
     judgmentCounts = { perfect: 0, great: 0, good: 0, bad: 0, miss: 0 };
 
-    
     notes = beatmapData.notes.map((n) => ({
       time: n.t,
       endTime: n.e || null,
@@ -777,7 +723,6 @@
     lanePressed = [false, false, false, false];
   }
 
-  
   var countdownOverlay = document.getElementById("countdownOverlay");
   var countdownNum = document.getElementById("countdownNum");
 
@@ -809,7 +754,6 @@
     void countdownNum.offsetWidth;
     countdownNum.style.animation = "";
 
-    
     playCountdownBeep(440, 0.15);
 
     var timer = setInterval(function () {
@@ -821,7 +765,7 @@
         countdownNum.style.animation = "none";
         void countdownNum.offsetWidth;
         countdownNum.style.animation = "";
-        playCountdownBeep(440, 0.15); 
+        playCountdownBeep(440, 0.15);
       } else if (count === 0) {
         countdownNum.textContent = "GO!";
         countdownNum.className = "countdown-go";
@@ -829,7 +773,7 @@
         countdownNum.style.animation = "none";
         void countdownNum.offsetWidth;
         countdownNum.style.animation = "";
-        playCountdownBeep(880, 0.25); 
+        playCountdownBeep(880, 0.25);
       } else {
         clearInterval(timer);
         countdownOverlay.classList.add("hidden");
@@ -851,7 +795,7 @@
 
   window.restartGame = function () {
     pauseOverlay.classList.add("hidden");
-    
+
     score = 0; combo = 0; maxCombo = 0;
     judgmentCount = { perfect: 0, great: 0, good: 0, bad: 0, miss: 0 };
     noteIndex = 0;
@@ -865,14 +809,12 @@
     });
   };
 
-  
   var optionsOverlay = document.getElementById("optionsOverlay");
   var gameOptions = {
     speed: 10, dim: 70, volume: 80,
     blurBg: false, fps: false, lowGfx: false
   };
 
-  
   var fpsDisplay = null;
   var fpsFrames = 0;
   var fpsLastTime = performance.now();
@@ -926,14 +868,14 @@
   };
 
   function applyOptions() {
-    
+
     if (gameOptions.fps && !fpsDisplay) {
       fpsDisplay = document.getElementById("fpsCounter");
       if (fpsDisplay) fpsDisplay.classList.remove("hidden");
     } else if (!gameOptions.fps && fpsDisplay) {
       fpsDisplay.classList.add("hidden");
     }
-    
+
     var bgEl = document.getElementById("bgImage");
     if (bgEl) {
       if (gameOptions.blurBg && song && song.cover_url) {
@@ -943,7 +885,7 @@
         bgEl.classList.add("hidden");
       }
     }
-    
+
     var dimEl = document.getElementById("dimOverlay");
     if (dimEl) {
       if (gameOptions.blurBg && song && song.cover_url) {
@@ -955,7 +897,6 @@
     }
   }
 
-  
   loadOptions();
 
   window.quitToLobby = function () {
@@ -970,7 +911,6 @@
     stopBGM();
     if (animFrame) cancelAnimationFrame(animFrame);
 
-    
     try {
       const saved = JSON.parse(localStorage.getItem("mania_scores")) || {};
       const key = String(songId);
@@ -981,7 +921,6 @@
       document.getElementById("newHighScoreBanner").classList.toggle("hidden", !isNew);
     } catch (e) {}
 
-    
     const total = judgmentCounts.perfect + judgmentCounts.great + judgmentCounts.good + judgmentCounts.bad + judgmentCounts.miss;
     const acc = total > 0
       ? (judgmentCounts.perfect * ACC_WEIGHT.perfect + judgmentCounts.great * ACC_WEIGHT.great + judgmentCounts.good * ACC_WEIGHT.good + judgmentCounts.bad * ACC_WEIGHT.bad) / total * 100
@@ -1007,7 +946,6 @@
     touchLanes.classList.add("hidden");
   }
 
-  
   document.addEventListener("keydown", (e) => {
     const key = e.key.toLowerCase();
 
@@ -1039,7 +977,6 @@
     }
   });
 
-  
   function isMobile() {
     return "ontouchstart" in window || navigator.maxTouchPoints > 0;
   }
@@ -1102,7 +1039,6 @@
   });
   document.getElementById("btnBackLobby").addEventListener("click", quitToLobby);
 
-  
   async function init() {
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);

@@ -1,4 +1,3 @@
-
 function _setTogglePillUI(e, t) {
   e &&
     (e.classList.toggle("bg-gray-800", !t),

@@ -6,8 +6,8 @@ require_once '../modules/core/CommentRenderer.php';
 require_once '../modules/media/MediaLibrary.php';
 require_once '../controllers/api/WatchController.php';
 
-$id          = isset($_GET['v']) ? (int)$_GET['v'] : 0;
-$user_id     = $_SESSION['user_id'] ?? null;
+$id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
+$user_id = $_SESSION['user_id'] ?? null;
 $playlist_id = isset($_GET['playlist_id']) ? (int)$_GET['playlist_id'] : 0;
 
 authorize_stream($id);
@@ -27,19 +27,19 @@ session_write_close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php
     $__thumb_raw = music_thumbnail_url($v['thumbnail']);
-    $__og_image  = str_starts_with($__thumb_raw, '../')
+    $__og_image = str_starts_with($__thumb_raw, '../')
         ? base_url('/' . ltrim(substr($__thumb_raw, 3), '/'))
         : base_url('/music/' . ltrim($__thumb_raw, '/'));
     if (!preg_match('#^https?://#i', $__og_image)) {
         $__og_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__og_image;
     }
 
-    $_META_TITLE   = $v['title'] . ' — MEeL Music';
-    $_META_DESC    = 'Dengarkan ' . $v['title'] . ' oleh ' . ($v['artist'] ?? 'Unknown') . ' di MEeL Music.';
-    $_META_IMAGE   = $__og_image;
+    $_META_TITLE = $v['title'] . ' — MEeL Music';
+    $_META_DESC = 'Dengarkan ' . $v['title'] . ' oleh ' . ($v['artist'] ?? 'Unknown') . ' di MEeL Music.';
+    $_META_IMAGE = $__og_image;
     $_META_IMAGE_W = '512';
     $_META_IMAGE_H = '512';
-    $_META_TYPE    = 'music.song';
+    $_META_TYPE = 'music.song';
     ?>
     <?php include '../partials/link.php'; ?>
     <?php $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'); ?>
@@ -220,7 +220,6 @@ session_write_close();
                 </div>
 
                 <div class="p-4 sm:p-5">
-                    
 
                     <div id="player-audio-slot" class="w-full"></div>
                 </div>
@@ -322,9 +321,8 @@ session_write_close();
                     </button>
                     <div id="comment-preview" class="px-4 sm:px-6 py-3">
                         <?php
-                        
-                        
-                        $preview       = comment_preview($comments_grouped ?? []);
+
+                        $preview = comment_preview($comments_grouped ?? []);
                         $preview_items = $preview['items'];
                         ?>
                         <div id="comment-preview-text" class="space-y-1 text-sm text-gray-400 <?= empty($preview_items) ? 'italic' : '' ?>">
@@ -341,7 +339,7 @@ session_write_close();
                     <div id="comment-body">
                         <div class="p-4 sm:p-6">
                             <div id="comment-alert"></div>
-                        <form action="<?= base_url('/music/watch?v=' . (int)$id . ($playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : '')) ?>" method="post" class="mb-6"                                hx-post="../api/comment"
+                        <form action="<?= base_url('/music/watch?v=' . (int)$id . ($playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : '')) ?>" method="post" class="mb-6" hx-post="../api/comment"
                             hx-target="#comment-list"
                             hx-swap="innerHTML"
                             hx-vals='{"id":"<?= $id ?>","media_type":"music"<?= $playlist_context > 0 ? ',"playlist_id":"' . (int)$playlist_context . '"' : '' ?>}'
@@ -600,8 +598,7 @@ session_write_close();
 
         document.body.addEventListener('htmx:afterOnLoad', function(e) {
             if (typeof lucide !== 'undefined') {
-                
-                
+
                 lucide.createIcons({}, e.detail?.target || document.body);
             }
         });

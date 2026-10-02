@@ -1,16 +1,15 @@
 <?php
 
-// Prevent session timeout redirect (API context)
 define('MEEL_API_CONTEXT', true);
 
 require_once __DIR__ . '/../../../auth/config.php';
 
-$FFMPEG_BIN  = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== '' ? MEEL_FFMPEG_PATH : 'ffmpeg';
+$FFMPEG_BIN = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== '' ? MEEL_FFMPEG_PATH : 'ffmpeg';
 $FFPROBE_BIN = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== '' ? MEEL_FFPROBE_PATH : 'ffprobe';
 
-$UPLOAD_DIR   = __DIR__ . '/../uploads/';
-$AUDIO_DIR    = $UPLOAD_DIR . 'audio/';
-$COVER_DIR    = $UPLOAD_DIR . 'cover/';
+$UPLOAD_DIR = __DIR__ . '/../uploads/';
+$AUDIO_DIR = $UPLOAD_DIR . 'audio/';
+$COVER_DIR = $UPLOAD_DIR . 'cover/';
 $MAX_DURATION = 300;
 $MAX_AUDIO_SIZE = 20 * 1024 * 1024;
 $ALLOWED_AUDIO_MIME = [

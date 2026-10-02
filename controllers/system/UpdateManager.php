@@ -3,7 +3,7 @@
 class UpdateManager
 {
     private mysqli $db;
-    private array  $flash = [];
+    private array $flash = [];
 
     public function __construct(mysqli $db)
     {
@@ -13,7 +13,7 @@ class UpdateManager
     public function handle(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-        if (($_SESSION['role'] ?? '') !== 'admin')  return;
+        if (($_SESSION['role'] ?? '') !== 'admin') return;
 
         if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
             $this->setFlash('error', 'CSRF Token tidak valid.');
@@ -24,17 +24,17 @@ class UpdateManager
         $action = $_POST['action'] ?? '';
 
         match ($action) {
-            'sidebar'       => $this->saveSidebar(),
-            'update'        => $this->saveUpdate(),
-            'edit_update'   => $this->saveEditUpdate(),
+            'sidebar' => $this->saveSidebar(),
+            'update' => $this->saveUpdate(),
+            'edit_update' => $this->saveEditUpdate(),
             'delete_update' => $this->deleteUpdate(),
-            default         => null,
+            default => null,
         };
     }
 
     private function saveSidebar(): void
     {
-        $imp = $this->clean($_POST['important']    ?? '');
+        $imp = $this->clean($_POST['important'] ?? '');
         $ann = $this->clean($_POST['announcement'] ?? '');
 
         $stmt = $this->db->prepare(
@@ -57,7 +57,7 @@ class UpdateManager
     {
         $version = $this->clean($_POST['version'] ?? '');
         $content = $this->clean($_POST['content'] ?? '');
-        $date    = $_POST['created_at'] ?? '';
+        $date = $_POST['created_at'] ?? '';
 
         if ($version === '' || $content === '') {
             $this->setFlash('error', 'Versi dan konten tidak boleh kosong.');
@@ -69,7 +69,6 @@ class UpdateManager
             $date = date('Y-m-d');
         }
 
-        
         $stmt = $this->db->prepare(
             "INSERT INTO updates (version, content, created_at) VALUES (?, ?, ?)"
         );
@@ -88,10 +87,10 @@ class UpdateManager
 
     private function saveEditUpdate(): void
     {
-        $id      = (int)($_POST['id'] ?? 0);
+        $id = (int)($_POST['id'] ?? 0);
         $version = $this->clean($_POST['version'] ?? '');
         $content = $this->clean($_POST['content'] ?? '');
-        $date    = $_POST['created_at'] ?? '';
+        $date = $_POST['created_at'] ?? '';
 
         if ($id <= 0 || $version === '' || $content === '') {
             $this->setFlash('error', 'Data tidak valid atau ada form yang kosong.');
@@ -173,8 +172,8 @@ class UpdateManager
 
     private function setFlash(string $type, string $msg): void
     {
-        $this->flash               = ['type' => $type, 'msg' => $msg];
-        $_SESSION['flash']         = $this->flash;
+        $this->flash = ['type' => $type, 'msg' => $msg];
+        $_SESSION['flash'] = $this->flash;
     }
 
     private function clean(string $val): string

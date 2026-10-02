@@ -6,7 +6,6 @@ require_once __DIR__ . '/DbTestHelper.php';
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
-
 if (!isset($_SERVER['SCRIPT_NAME'])) {
     $_SERVER['SCRIPT_NAME'] = '/MEeL/index.php';
 }
@@ -16,9 +15,6 @@ if (!isset($_SERVER['DOCUMENT_ROOT'])) {
 if (!isset($_SERVER['REMOTE_ADDR'])) {
     $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 }
-
-
-
 
 if (!function_exists('meel_mecab_available')) {
     function meel_mecab_available(): bool
@@ -46,8 +42,7 @@ if (!function_exists('meel_mecab_available')) {
         }
         $out = [];
         $exit = 1;
-        
-        
+
         $proc = @proc_open(
             $bin . ' 2>/dev/null',
             [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
@@ -67,7 +62,6 @@ if (!function_exists('meel_mecab_available')) {
     }
 }
 
-
 $tempDirs = [
     MEEL_ROOT . '/temp',
     MEEL_ROOT . '/temp/ratelimit',
@@ -77,7 +71,7 @@ foreach ($tempDirs as $dir) {
     if (!is_dir($dir)) {
         @mkdir($dir, 0755, true);
     }
-    
+
     @chmod($dir, 0777);
 }
 

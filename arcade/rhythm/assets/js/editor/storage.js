@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import { S } from "./state.js";
 
 export function getStorageKey() {
@@ -32,13 +26,8 @@ export function saveNotesToStorage() {
       savedAt: Date.now(),
     };
     localStorage.setItem(getStorageKey(), JSON.stringify(data));
-  } catch (e) {  }
+  } catch (e) { }
 }
-
-
-
-
-
 
 export function loadNotesFromStorage() {
   try {

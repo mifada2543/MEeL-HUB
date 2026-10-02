@@ -10,14 +10,13 @@ if (!is_admin($conn)) {
     exit;
 }
 
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token($_POST['csrf_token'] ?? null)) {
     header("Location: .?msg=CSRF_Token_Invalid");
     exit();
 }
 
 if (isset($_POST['ban_ip'])) {
-    $ip   = $_POST['ip_target'];
+    $ip = $_POST['ip_target'];
     $reason = !empty($_POST['ban_reason']) ? $_POST['ban_reason'] : "Manual Ban by Admin";
 
     $stmt = $conn->prepare("INSERT IGNORE INTO ip_ban (ip_address, reason) VALUES (?, ?)");
@@ -54,9 +53,9 @@ if (isset($_POST['clear_all_guests'])) {
 
 if (isset($_POST['clean_stuck_queues'])) {
     require_once __DIR__ . '/../../modules/core/System.php';
-    $sys     = new System($conn);
+    $sys = new System($conn);
     $cleaned = $sys->cleanStuckQueues();
-    $url     = "index.php?msg=Queues_Cleaned_{$cleaned}#queues";
+    $url = "index.php?msg=Queues_Cleaned_{$cleaned}#queues";
 
     if (!headers_sent()) {
         header("Location: " . $url);
@@ -176,9 +175,9 @@ if (isset($_POST['clean_orphans'])) {
         dirname(__DIR__, 2) . '/temp/uploads/',
     ];
     $deleted_count = 0;
-    $failed_count  = 0;
+    $failed_count = 0;
     $skipped_count = 0;
-    $deleted_dirs  = [];
+    $deleted_dirs = [];
 
     error_log("[MEeL] Orphan cleaner: mulai, " . count((array)$files) . " file diproses, valid_dirs: " . implode(', ', $valid_dirs));
 
@@ -250,16 +249,16 @@ if (isset($_POST['save_meelcoin_settings'])) {
     require_once __DIR__ . '/../../modules/core/MeelCoin.php';
 
     $fields = [
-        'meelcoin_enabled'       => '0',
-        'meelcoin_upload_cost'   => '5',
+        'meelcoin_enabled' => '0',
+        'meelcoin_upload_cost' => '5',
         'meelcoin_advanced_cost' => '10',
-        'meelcoin_transcode_user_cost'   => '5',
+        'meelcoin_transcode_user_cost' => '5',
         'meelcoin_transcode_member_cost' => '2',
-        'meelcoin_user_max'      => '25',
-        'meelcoin_user_refill'   => '15',
-        'meelcoin_member_max'    => '50',
+        'meelcoin_user_max' => '25',
+        'meelcoin_user_refill' => '15',
+        'meelcoin_member_max' => '50',
         'meelcoin_member_refill' => '25',
-        'meelcoin_refill_hours'  => '5',
+        'meelcoin_refill_hours' => '5',
     ];
 
     foreach ($fields as $key => $default) {
@@ -283,9 +282,9 @@ if (isset($_POST['adjust_meelcoin_user'])) {
     require_once __DIR__ . '/../../modules/core/Notification.php';
 
     $target_id = (int)($_POST['target_user_id'] ?? 0);
-    $amount    = (int)($_POST['coin_amount'] ?? 0);
-    $action    = $_POST['coin_action'] ?? 'add';
-    $reason    = !empty($_POST['coin_reason']) ? substr(trim($_POST['coin_reason']), 0, 50) : 'admin_adjust';
+    $amount = (int)($_POST['coin_amount'] ?? 0);
+    $action = $_POST['coin_action'] ?? 'add';
+    $reason = !empty($_POST['coin_reason']) ? substr(trim($_POST['coin_reason']), 0, 50) : 'admin_adjust';
 
     if ($target_id > 0 && $amount > 0) {
         $current = MeelCoin::getBalance($conn, $target_id);
@@ -321,13 +320,13 @@ if (isset($_POST['adjust_meelcoin_user'])) {
         MeelCoin::log($conn, $target_id, $action === 'add' ? $actual : -$amount, $new, $reason);
         MeelCoin::clearCache();
 
-        $admin_id   = (int)($_SESSION['user_id'] ?? 0);
+        $admin_id = (int)($_SESSION['user_id'] ?? 0);
 
         $action_label = $action === 'add' ? 'tambah' : 'kurang';
         log_activity($conn, $admin_id, $action_label . '-' . $actual . 'coin-' . $target_username, 'user', $target_id);
 
         $action_lbl = $action === 'add' ? 'menambahkan' : 'mengurangi';
-        $coin_msg   = 'Admin telah ' . $action_lbl . ' ' . $actual . ' MEeLCoin dari akun Anda.';
+        $coin_msg = 'Admin telah ' . $action_lbl . ' ' . $actual . ' MEeLCoin dari akun Anda.';
         if ($action === 'add' && $actual < $amount) {
             $coin_msg .= ' (Dibatasi max ' . $coin_max . ' coin)';
         }
@@ -388,7 +387,6 @@ if (isset($_POST['toggle_module'])) {
     require_once __DIR__ . '/../../modules/core/helpers/settings.php';
     require_once __DIR__ . '/../../modules/core/Modules.php';
 
-    // Whitelist key modul dari daftar internal Modules (anti input liar).
     $known = ['arcade' => 'modules_arcade'];
     $module_key = (string)($_POST['module_key'] ?? '');
 

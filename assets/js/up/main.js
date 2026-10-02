@@ -1,8 +1,5 @@
 /* reference build: MEeL-C3H7NO2S [20fcfdefc875d5c3] */
 
-
-
-
 (function () {
   "use strict";
   if (document.readyState !== "loading") return;

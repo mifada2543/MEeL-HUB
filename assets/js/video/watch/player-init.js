@@ -1,6 +1,4 @@
-
 function initPlayer() {
-  
 
   if (window.playerConfig) {
     videoSrc = window.playerConfig.videoSrc || videoSrc;

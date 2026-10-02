@@ -1,25 +1,11 @@
-/**
- * MEeLVision ×2 — neural upscaler WebGPU lokal (tanpa unduhan), arsitektur
- * FSRCNN: bobot dilatih lokal oleh trainer vanilla JS yang tidak ikut repo,
- * dikirim sebagai weights.js (window.MEEL_VISION_WEIGHTS_B64).
- *
- * Arsitektur, layout bobot, dan strategi bertile ada di
- * docs/id/development.md ("Video — AI Upscale & Play Recovery"); kontrak
- * registerModel() ada di bagian yang sama.
- *
- * Semantik tepi wajib sama dengan trainer CPU: baca di luar batas frame
- * di-skip (zero-pad), posisi di luar frame tidak dikonsumsi.
- */
 (function () {
   "use strict";
   if (!window.MEEL_UPSCALER) return;
 
   var TOTAL = 13163;
-  var T = 512; // sisi tile (piksel LR)
-  var TS = T + 10; // ukuran tekstur tile = T + halo 5 per sisi
+  var T = 512;
+  var TS = T + 10;
 
-  // Offset bobot — wajib identik dengan layout Float32Array(13163) di
-  // docs/id/development.md (trainer lokal tidak ikut repo).
   var OFF = {
     c1w: 0, c1b: 1800, c1p: 1824,
     sw: 1848, sb: 2232, sp: 2248,
@@ -29,9 +15,8 @@
     dw: 9272, db: 13160,
   };
 
-  var weightBuf = null; // ArrayBuffer hasil decode, dipakai ulang tiap build
+  var weightBuf = null;
 
-  // weights.js satu folder dengan file ini; string versi (?v=) ikut file model.
   var WEIGHTS_URL = (function () {
     var src = (document.currentScript && document.currentScript.src) || "";
     var m = src.match(/[?&]v=([^&]+)/);
@@ -100,7 +85,6 @@
     ].join("\n");
   }
 
-  // P1: conv1 5×5 pad2 3→24 + PReLU → shrink 1×1 24→16 + PReLU (4 MRT).
   function shaderP1(w, h) {
     return [
       VS,
@@ -154,8 +138,6 @@
     ].join("\n");
   }
 
-  // P2–P4: conv3 3×3 pad1 16→16 + PReLU (4 MRT). Koordinat tile dari pusat
-  // tile (origin x0-5); tepi di-clamp ke tekstur, luar frame zero-pad.
   function shaderMap(w, h, base, bias, pre) {
     return [
       VS,
@@ -216,8 +198,6 @@
     ].join("\n");
   }
 
-  // P5: deconv 9×9 stride2 fase 16→3 + bias, clamp 0..1. Posisi piksel =
-  // koordinat absolut tekstur keluaran; scissor membatasi ke rect tile.
   function shaderP5(w, h) {
     return [
       VS,
@@ -270,7 +250,6 @@
         decodeWeights(b64);
         return Promise.resolve();
       }
-      // Lazy-load: injeksi weights.js dulu, baru decode base64-nya.
       return injectScript(WEIGHTS_URL).then(function () {
         var b = window.MEEL_VISION_WEIGHTS_B64;
         if (typeof b !== "string" || !b) {
@@ -324,7 +303,6 @@
       var gM3 = [tileTex("meel-vision-m30"), tileTex("meel-vision-m31"), tileTex("meel-vision-m32"), tileTex("meel-vision-m33")];
       var allTex = gShrink.concat(gM1, gM2, gM3);
 
-      // Daftar tile + slot uniform per tile (256 B/slot, penulisan sekali).
       var txN = Math.ceil(w / T);
       var tyN = Math.ceil(h / T);
       var SLOT = 256;
@@ -355,7 +333,6 @@
       });
       device.queue.writeBuffer(ubuf, 0, udata);
 
-      // Tanpa dynamic offset: bind group dibuat per (pass, tile) saat build.
       function makePass(name, code, readTexs, views, opts) {
         var module = device.createShaderModule({ label: "meel-vision-" + name, code: code });
         var entries = [
@@ -425,8 +402,6 @@
         {
           pass: function (enc) {
             if (destroyed) return;
-            // Tile-major: rantai P1→P5 satu tile selesai sebelum tile
-            // berikutnya menimpa tekstur antara yang dipakai bersama.
             for (var t = 0; t < tiles.length; t++) {
               for (var pi = 0; pi < passes.length; pi++) {
                 var P = passes[pi];

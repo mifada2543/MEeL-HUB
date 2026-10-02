@@ -8,26 +8,26 @@ meel_boot_session();
 include '../auth/config.php';
 require_once '../modules/media/MediaLibrary.php';
 
-$library       = new MediaLibrary($conn);
-$format_raw    = $_GET['format'] ?? 'all';
+$library = new MediaLibrary($conn);
+$format_raw = $_GET['format'] ?? 'all';
 $allowed_formats = ['all', 'mp3', 'ogg', 'm4a', 'opus', 'flac', 'wav'];
 $format_filter = in_array($format_raw, $allowed_formats, true) ? $format_raw : 'all';
 $artist_filter = $_GET['artist'] ?? 'all';
-$perPageMusic  = 10;
-$pageMusic     = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$perPageMusic = 10;
+$pageMusic = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 
-$artists        = $library->getArtists();
-$meta_music     = $library->getMusicListWithMeta($format_filter, $artist_filter, $pageMusic, $perPageMusic);
-$total_music    = $meta_music['total'];
-$data_init      = $meta_music['data'];
-$pageMusic      = $meta_music['page'];
+$artists = $library->getArtists();
+$meta_music = $library->getMusicListWithMeta($format_filter, $artist_filter, $pageMusic, $perPageMusic);
+$total_music = $meta_music['total'];
+$data_init = $meta_music['data'];
+$pageMusic = $meta_music['page'];
 $totalPagesMusic = $meta_music['total_pages'];
-$is_logged_in   = isset($_SESSION['user_id']);
+$is_logged_in = isset($_SESSION['user_id']);
 
 function renderLibraryContent(string $artist_filter, int $total_music, \mysqli_result $data_init, string $format_filter, int $totalPagesMusic = 1, int $pageMusic = 1, int $perPageMusic = 10): void
 {
 ?>
-    
+
     <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
         <div>
             <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Library</div>
@@ -40,7 +40,6 @@ function renderLibraryContent(string $artist_filter, int $total_music, \mysqli_r
         </span>
     </div>
 
-    
     <div id="music-list" class="space-y-1">
         <?php if ($data_init && $data_init->num_rows > 0): ?>
             <?php while ($v = $data_init->fetch_assoc()): ?>
@@ -87,7 +86,7 @@ if (isset($_GET['content_only'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <?php
     $_META_TITLE = 'MEeL Music | Library';
-    $_META_DESC  = 'Jelajahi koleksi musik di MEeL Music Library. Streaming audio lossless dengan kualitas terbaik.';
+    $_META_DESC = 'Jelajahi koleksi musik di MEeL Music Library. Streaming audio lossless dengan kualitas terbaik.';
     ?>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
@@ -99,7 +98,6 @@ if (isset($_GET['content_only'])) {
 
 <body class="text-gray-400 min-h-screen">
 
-    
     <nav class="meel-nav sticky top-0 z-50" style="border-bottom:1px solid var(--meel-nav-border)">
         <div class="w-full px-3 sm:px-6 xl:px-10 2xl:px-16 h-14 flex items-center justify-between gap-2 sm:gap-4">
             <a href="../" class="flex items-center gap-1 sm:gap-2.5 flex-shrink-0" title="MEeL HUB">
@@ -150,11 +148,9 @@ if (isset($_GET['content_only'])) {
 
     <div id="library-container" class="w-full px-4 sm:px-6 xl:px-10 2xl:px-16 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        
         <aside class="lg:col-span-3 xl:col-span-2">
             <div class="sticky top-20 space-y-6">
 
-                
                 <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3">Format</div>
                     <div class="flex flex-wrap gap-2">
@@ -185,7 +181,6 @@ if (isset($_GET['content_only'])) {
                     </div>
                 </div>
 
-                
                 <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
                         <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
@@ -217,7 +212,6 @@ if (isset($_GET['content_only'])) {
                 </div>
 <!-- reference build: MEeL-C10H12N2O [3ef4a9227c36e7d1] -->
 
-                
                 <?php if ($is_logged_in): ?>
                     <div class="hidden lg:block">
                         <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
@@ -225,11 +219,11 @@ if (isset($_GET['content_only'])) {
                         </div>
                         <div class="space-y-0.5 max-h-[30vh] overflow-y-auto no-scrollbar">
                             <?php
-                            $pl_routes  = $library->getUserPlaylistRoutes($_SESSION['user_id']);
-                            $playlists  = $library->getUserPlaylists($_SESSION['user_id']);
+                            $pl_routes = $library->getUserPlaylistRoutes($_SESSION['user_id']);
+                            $playlists = $library->getUserPlaylists($_SESSION['user_id']);
                             while ($pl = $playlists->fetch_assoc()):
                                 $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
-                                $pl_sep   = str_contains($pl_route, '?') ? '&' : '?';
+                                $pl_sep = str_contains($pl_route, '?') ? '&' : '?';
                             ?>
                                 <a href="<?= $pl_route ?>"
                                     hx-get="<?= $pl_route . $pl_sep ?>content_only=1"
@@ -247,9 +241,9 @@ if (isset($_GET['content_only'])) {
                         </div>
                     </div>
                 <?php endif; ?>
-                
+
                 <div id="mobile-filters" class="lg:hidden flex flex-col gap-4 bg-[#0d1017]/70 backdrop-blur-xl p-4 rounded-xl border border-white/[.04] shadow-lg" style="backdrop-filter: blur(24px) saturate(1.5); -webkit-backdrop-filter: blur(24px) saturate(1.5);">
-                    
+
                     <div class="flex flex-wrap gap-2">
                         <a href="beranda?format=all&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="beranda?format=all&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
@@ -278,7 +272,7 @@ if (isset($_GET['content_only'])) {
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        
+
                         <div>
                             <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
                                 <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
@@ -318,7 +312,6 @@ if (isset($_GET['content_only'])) {
                             </div>
                         </div>
 
-                        
                         <?php if ($is_logged_in): ?>
                             <div>
                                 <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
@@ -337,7 +330,7 @@ if (isset($_GET['content_only'])) {
                                         $playlists_mobile = $library->getUserPlaylists($_SESSION['user_id']);
                                         while ($pl = $playlists_mobile->fetch_assoc()):
                                             $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
-                                            $pl_sep   = str_contains($pl_route, '?') ? '&' : '?';
+                                            $pl_sep = str_contains($pl_route, '?') ? '&' : '?';
                                         ?>
                                             <button onclick="navigateToPlaylistMobile(<?= $pl['id'] ?>)"
                                                 data-playlist-id="<?= $pl['id'] ?>"
@@ -356,23 +349,20 @@ if (isset($_GET['content_only'])) {
             </div>
         </aside>
 
-        
         <main class="lg:col-span-9 xl:col-span-10">
             <?php renderLibraryContent($artist_filter, $total_music, $data_init, $format_filter, $totalPagesMusic, $pageMusic, $perPageMusic); ?>
         </main>
     </div>
 
-    
     <div id="mini-player-index" aria-label="Mini Player">
 
-        
         <div class="mp-seekbar" id="mp-seekbar-index" onclick="event.stopPropagation(); miniSeekIndex(event);" title="Klik untuk seek">
             <div class="mp-seekbar-fill" id="mp-seekbar-fill-index"></div>
             <div class="mp-seekbar-thumb" id="mp-seekbar-thumb-index"></div>
         </div>
 
         <div class="mp-body">
-            
+
             <div class="mp-track">
                 <div class="mp-art" onclick="expandPlayerFromMiniPlayer()">
                     <img id="mini-thumbnail-index" title="Buka player penuh" src="<?= htmlspecialchars(music_thumbnail_url('default.png')) ?>" alt="Cover lagu" width="256" height="256" loading="eager" decoding="async">
@@ -386,7 +376,6 @@ if (isset($_GET['content_only'])) {
                 </div>
             </div>
 
-            
             <div class="mp-controls">
                 <button class="mp-btn mp-btn-ghost" id="mini-loop-btn-index" onclick="toggleMiniLoopIndex()" title="Ulangi lagu" aria-label="Ulang">
                     <i data-lucide="repeat" style="width:15px;height:15px;"></i>
@@ -402,7 +391,6 @@ if (isset($_GET['content_only'])) {
                 </button>
             </div>
 
-            
             <div class="mp-right">
                 <div class="mp-time">
                     <span id="mini-current-time-index">0:00</span>

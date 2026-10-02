@@ -1,18 +1,17 @@
 <?php
 
-
 class RateLimiter
 {
-    
+
     private static string $storageDir = '';
 
     private static array $limits = [
-        'like'          => ['requests' => 30, 'window' => 60],
-        'comment'       => ['requests' => 10, 'window' => 60],
-        'upload'        => ['requests' => 3,  'window' => 3600],
-        'transcode'     => ['requests' => 5,  'window' => 3600],
-        'auto_metadata' => ['requests' => 5,  'window' => 3600],
-        'api'           => ['requests' => 60, 'window' => 60],
+        'like' => ['requests' => 30, 'window' => 60],
+        'comment' => ['requests' => 10, 'window' => 60],
+        'upload' => ['requests' => 3, 'window' => 3600],
+        'transcode' => ['requests' => 5, 'window' => 3600],
+        'auto_metadata' => ['requests' => 5, 'window' => 3600],
+        'api' => ['requests' => 60, 'window' => 60],
     ];
 
     private static function init(): void
@@ -42,37 +41,33 @@ class RateLimiter
             return ['count' => 0, 'window_start' => time()];
         }
         $content = file_get_contents($path);
-        $data    = $content !== false ? json_decode($content, true) : null;
+        $data = $content !== false ? json_decode($content, true) : null;
         if (!is_array($data) || !isset($data['count'], $data['window_start'])) {
             return ['count' => 0, 'window_start' => time()];
         }
         return $data;
     }
 
-    
-
     public static function getRoleLimit(int $baseLimit, string $role = 'user'): int
     {
         if ($role === 'member') {
             return $baseLimit * 2;
         }
-        
+
         return $baseLimit;
     }
 
-    
-
     public static function check(string $key, string $endpoint = 'api', string $role = 'user'): array
     {
-        
+
         if ($role === 'admin') {
             $limitConfig = self::$limits[$endpoint] ?? self::$limits['api'];
             $window = $limitConfig['window'];
             return [
-                'allowed'   => true,
+                'allowed' => true,
                 'remaining' => -1,
-                'reset'     => time() + $window,
-                'limit'     => 999999,
+                'reset' => time() + $window,
+                'limit' => 999999,
                 'retry_after' => 0,
             ];
         }
@@ -80,8 +75,8 @@ class RateLimiter
 
         $limitConfig = self::$limits[$endpoint] ?? self::$limits['api'];
         $maxRequests = self::getRoleLimit($limitConfig['requests'], $role);
-        $window      = $limitConfig['window'];
-        $filePath    = self::filePath($key, $endpoint);
+        $window = $limitConfig['window'];
+        $filePath = self::filePath($key, $endpoint);
 
         $fp = null;
         if (is_dir(self::$storageDir) && is_writable(self::$storageDir)) {
@@ -99,7 +94,7 @@ class RateLimiter
         }
 
         $data = self::readFile($filePath);
-        $now  = time();
+        $now = time();
 
         if (($now - $data['window_start']) >= $window) {
             $data = ['count' => 0, 'window_start' => $now];
@@ -107,7 +102,7 @@ class RateLimiter
 
         $data['count']++;
         $remaining = max(0, $maxRequests - $data['count']);
-        $reset     = $data['window_start'] + $window;
+        $reset = $data['window_start'] + $window;
 
         $content = json_encode($data, JSON_UNESCAPED_UNICODE);
         ftruncate($fp, 0);
@@ -118,10 +113,10 @@ class RateLimiter
         fclose($fp);
 
         return [
-            'allowed'   => $data['count'] <= $maxRequests,
+            'allowed' => $data['count'] <= $maxRequests,
             'remaining' => $remaining,
-            'reset'     => $reset,
-            'limit'     => $maxRequests,
+            'reset' => $reset,
+            'limit' => $maxRequests,
             'retry_after' => max(0, $reset - $now),
         ];
     }
@@ -140,7 +135,6 @@ class RateLimiter
         return max(0, $maxRequests - $data['count']);
     }
 
-    
     public static function cleanup(): int
     {
         self::init();
@@ -172,7 +166,6 @@ class RateLimiter
         return $cleaned;
     }
 
-    
     public static function getStats(): array
     {
         self::init();
@@ -193,14 +186,14 @@ class RateLimiter
             if (!is_file($path)) continue;
 
             $data = self::readFile($path);
-            $now  = time();
+            $now = time();
 
             $windowStart = $data['window_start'] ?? 0;
             if (($now - $windowStart) < 3600 && $data['count'] > 0) {
                 $stats[] = [
-                    'file'  => $file,
+                    'file' => $file,
                     'count' => $data['count'],
-                    'age'   => $now - $windowStart,
+                    'age' => $now - $windowStart,
                 ];
             }
         }
@@ -208,7 +201,6 @@ class RateLimiter
         return $stats;
     }
 
-    
     public static function getLimitsConfig(): array
     {
         return self::$limits;

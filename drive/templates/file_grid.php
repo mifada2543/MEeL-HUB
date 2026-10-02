@@ -1,7 +1,4 @@
 <?php
-/**
- * Variabel di-inject dari scope pemanggil (DriveViewRenderer::renderFileGrid): $files, $accent, $icon, $type, $scope, $showDelete (false = hanya view + download), $csrfToken.
- */
 
 if (empty($files)): ?>
     <div class="flex flex-col items-center justify-center py-20 opacity-20">

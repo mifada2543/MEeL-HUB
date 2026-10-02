@@ -11,11 +11,11 @@ $max_ip_attempts = 10;
 $ip_lockout_time = 300;
 $is_locked = false;
 $remaining = 0;
-$ip_address  = auth_get_ip();
+$ip_address = auth_get_ip();
 $is_loopback = auth_is_loopback();
-$ip_lock     = $is_loopback ? ['locked' => false, 'remaining' => 0] : auth_ip_lockout_status($conn, $ip_address);
-$is_locked   = $ip_lock['locked'];
-$remaining   = $ip_lock['remaining'];
+$ip_lock = $is_loopback ? ['locked' => false, 'remaining' => 0] : auth_ip_lockout_status($conn, $ip_address);
+$is_locked = $ip_lock['locked'];
+$remaining = $ip_lock['remaining'];
 if (!isset($_SESSION['reg_attempts'])) {
     $_SESSION['reg_attempts'] = [];
 }
@@ -85,27 +85,27 @@ if (!$is_loopback && !$is_locked && !$session_blocked) {
         $remaining = $recheck['remaining'];
     }
 }
-$auth_title       = "MEeL | Register";
+$auth_title = "MEeL | Register";
 $auth_description = "MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.";
-$auth_og_title    = "MEeL | Register";
-$auth_og_desc     = "Buat akun MEeL dan nikmati streaming video, musik, dan akses perpustakaan digital.";
+$auth_og_title = "MEeL | Register";
+$auth_og_desc = "Buat akun MEeL dan nikmati streaming video, musik, dan akses perpustakaan digital.";
 include __DIR__ . '/partials/auth_head.php';
 ?>
 <main class="w-full max-w-sm" aria-labelledby="register-title">
-    
+
     <div class="text-center mb-8">
         <div class="inline-flex p-4 bg-red-600/10 rounded-3xl text-red-600 mb-4 shadow-lg shadow-red-900/10"><i data-lucide="user-plus" class="w-10 h-10"></i></div>
         <h2 id="register-title" class="text-3xl font-black text-white tracking-tighter">Register</h2>
         <p class="text-sm text-gray-400 mt-1">Buat akun <span class="text-red-500 font-bold">MEeL</span></p>
     </div>
-    
+
     <?php if ($message): ?>
         <div class="mb-6 p-4 rounded-2xl text-sm flex items-center gap-3 animate-pulse <?= $msg_type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : ($msg_type === 'warning' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20') ?>" role="alert"><i data-lucide="<?= $msg_type === 'success' ? 'check-circle' : 'alert-circle' ?>" class="w-5 h-5"></i><?= $message ?></div>
     <?php endif; ?>
-    
+
     <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6">
         <?php if ($session_blocked && !$is_locked): ?>
-            
+
             <div class="text-center py-6 space-y-4">
                 <i data-lucide="timer-reset" class="w-12 h-12 text-orange-500 mx-auto animate-pulse"></i>
                 <h3 class="text-lg font-bold text-white">Batas Pendaftaran</h3>
@@ -116,17 +116,17 @@ include __DIR__ . '/partials/auth_head.php';
                 </div>
             </div>
         <?php elseif ($is_locked): ?>
-            
+
             <?php
             $countdown_seconds = $remaining;
-            $countdown_color   = 'text-red-500';
-            $countdown_extra   = '<div class="pt-2">
+            $countdown_color = 'text-red-500';
+            $countdown_extra = '<div class="pt-2">
                     <a href="login" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all" title="Pergi ke halaman login">Ke Halaman Login</a>
                 </div>';
             include __DIR__ . '/partials/auth_countdown.php';
             ?>
         <?php else: ?>
-            
+
             <?php if (isset($_SESSION['csrf_token'])): ?>
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
             <?php endif; ?>

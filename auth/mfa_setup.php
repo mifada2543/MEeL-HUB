@@ -7,14 +7,14 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login");
     exit;
 }
-$user_id   = (int)$_SESSION['user_id'];
-$username  = $_SESSION['username'] ?? '';
+$user_id = (int)$_SESSION['user_id'];
+$username = $_SESSION['username'] ?? '';
 $stmt = $conn->prepare("SELECT mfa_enabled FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $mfa_enabled = (int)$stmt->get_result()->fetch_assoc()['mfa_enabled'] ?? 0;
 $stmt->close();
-$step = 'setup'; 
+$step = 'setup';
 $error = '';
 $secret = '';
 $otpauth = '';
@@ -91,11 +91,11 @@ if ($mfa_enabled && $step === 'setup') {
         $otpauth = generate_otpauth_url($existing_secret, $username);
     }
 }
-$auth_title       = "Keamanan Akun | MEeL";
+$auth_title = "Keamanan Akun | MEeL";
 $auth_description = "MEeL - Kelola autentikasi dua faktor (MFA) akun Anda.";
-$auth_og_title    = "Keamanan Akun | MEeL";
-$auth_og_desc     = "Aktifkan, nonaktifkan, atau kelola autentikasi dua faktor akun MEeL Anda.";
-$auth_extra_head  = '<script src="../assets/js/compatibilitas/qrcode.min.js"></script>';
+$auth_og_title = "Keamanan Akun | MEeL";
+$auth_og_desc = "Aktifkan, nonaktifkan, atau kelola autentikasi dua faktor akun MEeL Anda.";
+$auth_extra_head = '<script src="../assets/js/compatibilitas/qrcode.min.js"></script>';
 $auth_extra_style = '
         .code-input {
             letter-spacing: 0.5em;
@@ -142,7 +142,7 @@ include __DIR__ . '/partials/auth_head.php';
     <?php endif; ?>
     <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6 anim-fade">
         <?php if ($mfa_enabled && $step === 'setup'): ?>
-            
+
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-green-500/10 rounded-full text-green-400">
                     <i data-lucide="check-circle" class="w-10 h-10"></i>
@@ -171,7 +171,7 @@ include __DIR__ . '/partials/auth_head.php';
                         });
                     </script>
                 <?php endif; ?>
-                
+
                 <div class="pt-4 border-t border-white/5 space-y-4">
                     <p class="text-[10px] text-gray-600 uppercase tracking-widest">Ingin mengganti / menonaktifkan MFA?</p>
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -214,7 +214,7 @@ include __DIR__ . '/partials/auth_head.php';
                 </script>
             </div>
         <?php elseif ($step === 'verify'): ?>
-            
+
             <input type="hidden" name="verify_code" value="1">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <div class="text-center space-y-4">
@@ -223,7 +223,7 @@ include __DIR__ . '/partials/auth_head.php';
                     Buka aplikasi <strong class="text-white">Google Authenticator</strong> atau <strong class="text-white">Authy</strong>,
                     lalu scan QR Code di bawah ini.
                 </p>
-                
+
                 <div class="flex justify-center">
                     <div id="mfa-qr-canvas" class="inline-flex items-center justify-center w-48 h-48 rounded-2xl bg-white p-2 shadow-lg"></div>
                 </div>
@@ -233,7 +233,7 @@ include __DIR__ . '/partials/auth_head.php';
                     <i data-lucide="download" class="w-4 h-4"></i>
                     Download QR Code
                 </button>
-                
+
                 <details class="text-left cursor-pointer group">
                     <summary class="text-[11px] text-gray-500 hover:text-gray-300 transition font-bold tracking-wider">
                         Tidak bisa scan? Masukkan manual
@@ -271,7 +271,7 @@ include __DIR__ . '/partials/auth_head.php';
             </div>
 
         <?php elseif ($step === 'backup'): ?>
-            
+
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-yellow-500/10 rounded-full text-yellow-400">
                     <i data-lucide="alert-triangle" class="w-10 h-10"></i>
@@ -303,7 +303,7 @@ include __DIR__ . '/partials/auth_head.php';
                 <i data-lucide="check" class="w-4 h-4"></i>
             </button>
         <?php elseif ($step === 'done'): ?>
-            
+
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-green-500/10 rounded-full text-green-400">
                     <i data-lucide="shield-check" class="w-10 h-10"></i>
@@ -319,7 +319,7 @@ include __DIR__ . '/partials/auth_head.php';
                 </a>
             </div>
         <?php else: ?>
-            
+
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-purple-500/10 rounded-full text-purple-400">
                     <i data-lucide="smartphone" class="w-10 h-10"></i>
@@ -356,14 +356,14 @@ include __DIR__ . '/partials/auth_head.php';
                 <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
             </button>
         <?php endif; ?>
-        
+
         <div class="text-center pt-2">
             <a href="../index.php" class="text-xs text-gray-500 hover:text-gray-300 transition">
                 <i data-lucide="arrow-left" class="w-3 h-3 inline-block mr-1"></i> Kembali ke Beranda
             </a>
         </div>
     </form>
-    
+
     <script src="../assets/js/shared/download-backup-codes.js"></script>
     <script>
         var _backupCodes = <?= json_encode($backup_codes) ?>;

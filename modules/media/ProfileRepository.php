@@ -1,7 +1,5 @@
 <?php
 
-
-
 class ProfileRepository
 {
     private \mysqli $conn;
@@ -11,24 +9,22 @@ class ProfileRepository
         $this->conn = $conn;
     }
 
-    
     public function isMfaEnabled(int $user_id): int
     {
         $stmt = $this->conn->prepare('SELECT mfa_enabled FROM users WHERE id = ?');
         $stmt->bind_param('i', $user_id);
         $stmt->execute();
-        $res  = $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         return (int) ($res['mfa_enabled'] ?? 0);
     }
 
-    
     public function findByUsername(string $username): ?array
     {
         $stmt = $this->conn->prepare('SELECT id, username, bio, role, profile_picture, last_activity FROM users WHERE username = ?');
         $stmt->bind_param('s', $username);
         $stmt->execute();
-        $res  = $stmt->get_result()->fetch_assoc();
+        $res = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         return $res ?: null;
     }
@@ -38,28 +34,21 @@ class ProfileRepository
         return $this->countMedia('video', $user_id);
     }
 
-    
     public function countMusic(int $user_id): int
     {
         return $this->countMedia('music', $user_id);
     }
 
-    
     public function getVideosPaginated(int $user_id, int $limit, int $offset): array
     {
         return $this->getMediaList('video', $user_id, $limit, $offset);
     }
 
-    
     public function getMusicPaginated(int $user_id, int $limit, int $offset): array
     {
         return $this->getMediaList('music', $user_id, $limit, $offset);
     }
 
-    /**
-     * Feed campuran video+musik untuk channel (tab "all"): satu urutan
-     * kronologis dengan kolom `type` (video|music) agar kartu dirender seragam di satu grid.
-     */
     public function getFeedPaginated(int $user_id, int $limit, int $offset): array
     {
         $sql = "SELECT 'video' AS `type`, id, title, NULL AS artist, thumbnail, views, likes, dislikes, upload_date

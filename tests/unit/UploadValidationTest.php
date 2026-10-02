@@ -44,12 +44,12 @@ class UploadValidationTest extends TestCase
     public function testAudioMagicBytesAccepted(): void
     {
         $cases = [
-            ["OggS\x00\x02", 'ogg'],      // Ogg
-            ["OggS\x00\x02", 'opus'],     // Opus (Ogg container)
+            ["OggS\x00\x02", 'ogg'],
+            ["OggS\x00\x02", 'opus'],
             ["fLaC\x00\x00\x00\x22", 'flac'],
             ["RIFF\x24\x00\x00\x00WAVE", 'wav'],
             ["ID3\x04\x00\x00\x00\x00\x00\x00", 'mp3'],
-            ["\xFF\xFB\x90\x00", 'mp3'],  // MP3 frame sync
+            ["\xFF\xFB\x90\x00", 'mp3'],
         ];
         foreach ($cases as [$bytes, $ext]) {
             $this->assertSame('', meel_magic_extension_ok($this->fileWith($bytes), $ext, 'audio'), "ext=$ext");

@@ -2,11 +2,11 @@
 if (!defined('MEEL_HDD_BASE')) {
     define('MEEL_HDD_BASE', '/path/to/your/media');
     define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
-    define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
-    define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+    define('MEEL_HDD_VIDEO_DIR', MEEL_HDD_VIDEO_UPLOAD . 'video/');
+    define('MEEL_HDD_THUMB_DIR', MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
     define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
     define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
-    define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
+    define('MEEL_HDD_DRIVE', MEEL_HDD_BASE . '/drive/');
 }
 
 require_once __DIR__ . '/helpers.php';
@@ -24,13 +24,10 @@ require_once __DIR__ . '/../transcoder/DownloadService.php';
 require_once __DIR__ . '/../transcoder/EncodeService.php';
 require_once __DIR__ . '/../transcoder/TranscodeService.php';
 
-/**
- * Transcoder — facade tipis; implementasi di modules/transcoder/{Download,Encode,Transcode}Service.php, state bersama di TranscoderBase. API tidak berubah bagi caller existing.
- */
 class Transcoder extends TranscoderBase
 {
-    private ?DownloadService  $downloadService  = null;
-    private ?EncodeService    $encodeService    = null;
+    private ?DownloadService $downloadService = null;
+    private ?EncodeService $encodeService = null;
     private ?TranscodeService $transcodeService = null;
 
     public function __construct(
@@ -44,7 +41,6 @@ class Transcoder extends TranscoderBase
     public function setProgressListener(callable|ProgressObserver|null $listener): void
     {
         parent::setProgressListener($listener);
-        // Selaraskan observer agar service yang sudah dibuat ikut menerima.
         foreach ([$this->downloadService, $this->encodeService, $this->transcodeService] as $svc) {
             $svc?->setProgressListener($listener);
         }
@@ -52,7 +48,6 @@ class Transcoder extends TranscoderBase
 
     public function terminateAllProcesses(): void
     {
-        // Proses milik service dulu, lalu yang tercatat langsung di instance ini.
         foreach ([$this->downloadService, $this->encodeService, $this->transcodeService] as $svc) {
             $svc?->terminateAllProcesses();
         }
@@ -73,7 +68,7 @@ class Transcoder extends TranscoderBase
         string $title,
         string $artist,
         string $album,
-        int    $duration,
+        int $duration,
         string $description = 'Upload by MEeL Engine'
     ): array {
         if ($this->encodeService === null) {
@@ -99,7 +94,6 @@ class Transcoder extends TranscoderBase
         return $this->transcodeService->transcodeVideo($video_id, $format);
     }
 
-    /** Cek kepemilikan output transcode di sesi aktif user (lihat TranscodeService::ownsTranscodeFile()). */
     public static function ownsTranscodeFile(string $outputFilename): bool
     {
         return TranscodeService::ownsTranscodeFile($outputFilename);

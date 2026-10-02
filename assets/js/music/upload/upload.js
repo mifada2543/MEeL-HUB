@@ -1,13 +1,6 @@
 /** MEeL - Media Hub Platform
  * @copyright Copyright (C) 2026 Mifada
  * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
-/*
- * upload/upload.js — music/upload.php: drop-zone (audio & cover), overlay
- * progress, drag-and-drop, auto-fill metadata; progress memakai
- * shared/upload-progress.js (meelUploadProgress).
- * */
-// True jika user memilih cover manual — Auto-fill TIDAK menimpa cover manual
-// (konsisten dgn prioritas cover di Uploader::processMusic: manual > embedded).
 let coverManual = false;
 function handleAudioFile(input) {
   if (!input.files || !input.files[0]) return;
@@ -18,7 +11,7 @@ function handleAudioFile(input) {
 }
 function handleCoverFile(input) {
   if (!input.files || !input.files[0]) return;
-  coverManual = true; // pilihan manual — Auto-fill tidak boleh menimpa
+  coverManual = true;
   const reader = new FileReader();
   reader.onload = function (e) {
     const preview = document.getElementById("cover-preview");
@@ -52,7 +45,7 @@ function handleSubmit() {
   const fileSizeMB = audioInput.files[0]
     ? audioInput.files[0].size / 1024 / 1024
     : 20;
-  const baseDelay = Math.max(2000, Math.min(fileSizeMB * 200, 18000)); // 2s–18s
+  const baseDelay = Math.max(2000, Math.min(fileSizeMB * 200, 18000));
   window.meelUploadProgress({
     phases: [
       {
@@ -115,8 +108,6 @@ coverZone.addEventListener("drop", (e) => {
     handleCoverFile(coverInput);
   }
 });
-/** Konversi base64 (JPEG dari server) menjadi FileList utk input file.
- * Dipakai supaya cover hasil Auto-fill benar-benar terupload (bukan cuma preview). */
 function coverFromBase64(b64) {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
@@ -146,7 +137,6 @@ function autoFillMetadata() {
   btn.innerHTML = '<div class="auto-spinner"></div> Memproses...';
   const formData = new FormData();
   formData.append("audio", audioInput.files[0]);
-  // Sertakan CSRF token (di-verify server di auto_metadata.php)
   const csrfInput = document.querySelector('input[name="csrf_token"]');
   if (csrfInput && csrfInput.value) {
     formData.append("csrf_token", csrfInput.value);
@@ -183,8 +173,6 @@ function autoFillMetadata() {
           label.textContent = "Cover dari metadata";
           sub.textContent = "";
           zone.classList.add("has-file");
-          // Persist ke file input agar cover benar-benar ikut terupload saat submit
-          // (PRIORITAS 1 di Uploader::processMusic: thumbnail dari form).
           const coverInput = document.getElementById("cover-input");
           coverInput.files = coverFromBase64(data.cover);
         }

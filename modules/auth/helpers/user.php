@@ -9,7 +9,6 @@ function get_user_usage(string $username): int|float
 }
 }
 
-
 if (!function_exists('get_user_role')) {
 function get_user_role(mysqli $conn, int $user_id): string
 {
@@ -40,15 +39,12 @@ function get_user_role(mysqli $conn, int $user_id): string
 }
 }
 
-
 if (!function_exists('invalidate_user_role_cache')) {
 function invalidate_user_role_cache(): void
 {
     unset($_SESSION['role']);
 }
 }
-
-
 
 if (!function_exists('purge_guest_users')) {
 function purge_guest_users(mysqli $conn): ?int
@@ -57,7 +53,7 @@ function purge_guest_users(mysqli $conn): ?int
     if (!$stmt) {
         return null;
     }
-    $ok      = $stmt->execute();
+    $ok = $stmt->execute();
     $deleted = $stmt->affected_rows;
     $stmt->close();
     if (!$ok) {

@@ -1,11 +1,3 @@
-
-
-
-
-
-
-
-
 export const DOM = {
   canvas: document.getElementById("editorCanvas"),
   ctx: null,
@@ -20,23 +12,23 @@ DOM.ctx = DOM.canvas ? DOM.canvas.getContext("2d") : null;
 
 export const CONST = {
   LANE_COUNT: 4,
-  COLOR_CLICK: "#3b82f6",   
-  COLOR_HOLD: "#22c55e",    
-  GOLD_COLOR: "#fbbf24",    
+  COLOR_CLICK: "#3b82f6",
+  COLOR_HOLD: "#22c55e",
+  GOLD_COLOR: "#fbbf24",
   LANE_KEYS: ["A", "S", "K", "L"],
-  ROW_HEIGHT: 30,           
+  ROW_HEIGHT: 30,
   LANE_WIDTH_MIN: 80,
   LANE_WIDTH_MAX: 140,
-  MAX_CANVAS_H: 16384,      
+  MAX_CANVAS_H: 16384,
 };
 CONST.LANE_COLORS = [CONST.COLOR_CLICK, CONST.COLOR_CLICK, CONST.COLOR_CLICK, CONST.COLOR_CLICK];
 /* reference build: MEeL-C4H9NO2 [f5dd3677adcd6b4a] */
 
 export const S = {
-  notes: [],           
+  notes: [],
   undoStack: [],
   zoom: 3,
-  snapDiv: 8,           
+  snapDiv: 8,
   isPlaying: false,
   audioDuration: 0,
   animFrame: null,
@@ -45,11 +37,11 @@ export const S = {
   dragStartMs: -1,
   dragNoteIdx: -1,
   selectedNoteIdx: -1,
-  laneWidth: 100,       
+  laneWidth: 100,
   hasAudio: false,
-  gridCanvas: null,     
+  gridCanvas: null,
   gridDirty: true,
-  lastUIUpdate: 0,      
+  lastUIUpdate: 0,
   isDraggingCursor: false,
   isMovingNote: false,
   moveNoteIdx: -1,

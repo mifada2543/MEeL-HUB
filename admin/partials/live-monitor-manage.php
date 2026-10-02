@@ -1,8 +1,4 @@
 <?php
-/**
- * Live Activity Monitor — AJAX endpoint (HTML).
- * Returns ONLY online users. Client-side keeps offline rows untouched.
- */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }

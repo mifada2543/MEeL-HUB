@@ -1,17 +1,13 @@
 <?php
 
-/**
- * ArchiveGuard — validasi & ekstraksi aman arsip ZIP/CBZ, menggantikan ZipArchive::extractTo() ke destinasi final: inspeksi tiap entry → staging server-generated → validasi → rename per file (tidak menimpa file luar).
- */
-
 if (!defined('MAX_ARCHIVE_ENTRIES')) {
     define('MAX_ARCHIVE_ENTRIES', 5000);
 }
 if (!defined('MAX_ARCHIVE_UNCOMPRESSED_BYTES')) {
-    define('MAX_ARCHIVE_UNCOMPRESSED_BYTES', 2 * 1024 * 1024 * 1024); // 2 GiB
+    define('MAX_ARCHIVE_UNCOMPRESSED_BYTES', 2 * 1024 * 1024 * 1024);
 }
 if (!defined('MAX_ARCHIVE_ENTRY_BYTES')) {
-    define('MAX_ARCHIVE_ENTRY_BYTES', 200 * 1024 * 1024); // 200 MiB per file
+    define('MAX_ARCHIVE_ENTRY_BYTES', 200 * 1024 * 1024);
 }
 if (!defined('MAX_ARCHIVE_COMPRESSION_RATIO')) {
     define('MAX_ARCHIVE_COMPRESSION_RATIO', 300);
@@ -31,7 +27,6 @@ class ArchiveGuard
         $this->basePath = rtrim($basePath, '/\\');
     }
 
-    /** Validasi + ekstraksi aman ke $destDir. @return array{ok: bool, error?: string, entries?: int} */
     public function extractSafe(string $archivePath, string $destDir): array
     {
         if (!is_file($archivePath) || !is_readable($archivePath)) {
@@ -53,7 +48,6 @@ class ArchiveGuard
                 return $validation;
             }
 
-            // Staging directory server-generated — nama acak, di luar kontrol user.
             $staging = $this->basePath . '/.staging_' . bin2hex(random_bytes(8));
             if (!@mkdir($staging, 0755, true) && !is_dir($staging)) {
                 return ['ok' => false, 'error' => 'Gagal membuat direktori staging.'];
@@ -79,7 +73,6 @@ class ArchiveGuard
         }
     }
 
-    /** Periksa seluruh entry tanpa mengekstrak apa pun. @return array{ok: bool, error?: string, entries?: int} */
     private function validateEntries(ZipArchive $zip): array
     {
         $count = $zip->numFiles;
@@ -88,7 +81,7 @@ class ArchiveGuard
         }
         if ($count > MAX_ARCHIVE_ENTRIES) {
             return [
-                'ok'    => false,
+                'ok' => false,
                 'error' => sprintf(
                     'Arsip terlalu banyak entri (%d; maks %d).',
                     $count,
@@ -118,7 +111,7 @@ class ArchiveGuard
             }
             if ($entrySize > MAX_ARCHIVE_ENTRY_BYTES) {
                 return [
-                    'ok'    => false,
+                    'ok' => false,
                     'error' => sprintf(
                         "Entry '%s' terlalu besar (%d bytes; maks %d).",
                         $this->shortName($name),
@@ -131,7 +124,7 @@ class ArchiveGuard
             $totalUncompressed += $entrySize;
             if ($totalUncompressed > MAX_ARCHIVE_UNCOMPRESSED_BYTES) {
                 return [
-                    'ok'    => false,
+                    'ok' => false,
                     'error' => sprintf(
                         'Total ukuran setelah diekstrak melebihi batas (%d bytes; maks %d).',
                         $totalUncompressed,
@@ -140,13 +133,12 @@ class ArchiveGuard
                 ];
             }
 
-            // Rasio kompresi — guard terhadap zip bomb.
             $compSize = (int) ($stat['comp_size'] ?? 0);
             if ($compSize > 0 && $entrySize > 0) {
                 $ratio = $entrySize / $compSize;
                 if ($ratio > MAX_ARCHIVE_COMPRESSION_RATIO) {
                     return [
-                        'ok'    => false,
+                        'ok' => false,
                         'error' => sprintf(
                             "Entry '%s' memiliki rasio kompresi mencurigakan (%.1fx; maks %d).",
                             $this->shortName($name),
@@ -161,7 +153,7 @@ class ArchiveGuard
                 $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
                 if (!in_array($ext, self::ALLOWED_IMAGE_EXT, true)) {
                     return [
-                        'ok'    => false,
+                        'ok' => false,
                         'error' => sprintf(
                             "Entry '%s' bertipe %s — hanya file gambar yang diizinkan dalam arsip manga/CBZ.",
                             $this->shortName($name),
@@ -175,7 +167,6 @@ class ArchiveGuard
         return ['ok' => true, 'entries' => $count];
     }
 
-    /** @return array{ok: bool, error?: string} */
     private function validateEntryName(string $name): array
     {
         if ($name === '') {
@@ -185,7 +176,6 @@ class ArchiveGuard
             return ['ok' => false, 'error' => 'Arsip berisi null byte pada nama entry.'];
         }
 
-        // Normalisasi backslash (Windows) ke slash untuk pemeriksaan traversal.
         $norm = str_replace('\\', '/', $name);
         if (str_starts_with($norm, '/')) {
             return ['ok' => false, 'error' => 'Arsip berisi absolute path.'];
@@ -202,7 +192,7 @@ class ArchiveGuard
         }
         if ($depth > MAX_ARCHIVE_PATH_DEPTH) {
             return [
-                'ok'    => false,
+                'ok' => false,
                 'error' => sprintf(
                     'Entry terlalu dalam (%d level; maks %d).',
                     $depth,
@@ -214,7 +204,6 @@ class ArchiveGuard
         return ['ok' => true];
     }
 
-    /** Ekstrak entry satu per satu ke staging — tidak memakai extractTo(). @return array{ok: bool, error?: string} */
     private function extractToStaging(ZipArchive $zip, string $staging): array
     {
         $count = $zip->numFiles;
@@ -252,7 +241,6 @@ class ArchiveGuard
         return ['ok' => true];
     }
 
-    /** Pindahkan file staging ke destinasi final. File yang sudah ada TIDAK ditimpa (menghindari tabrakan dengan chapter lama & symlink swap). @return array{ok: bool, error?: string} */
     private function moveStagingToDest(string $staging, string $destDir): array
     {
         if (!is_dir($destDir)) {
@@ -280,12 +268,11 @@ class ArchiveGuard
             }
 
             if ($item->isLink()) {
-                // Symlink tidak pernah dipindahkan — hindari symlink swap.
                 continue;
             }
 
             if (file_exists($dest)) {
-                continue; // jangan timpa file existing
+                continue;
             }
 
             if (!@rename($item->getPathname(), $dest)) {

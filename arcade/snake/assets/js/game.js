@@ -165,7 +165,7 @@ function draw() {
   if (food && typeof food.x === "number") {
     const fx = food.x * CELL_SIZE;
     const fy = food.y * CELL_SIZE;
-    
+
     const pulse = 0.08 * Math.sin(foodPulse * 0.09);
     const r0 = 0.4 + 0.15 * Math.abs(Math.sin(foodPulse * 0.09));
     const glow = ctx.createRadialGradient(
@@ -195,7 +195,7 @@ function draw() {
     ctx.arc(fx + CELL_SIZE / 2 - 2, fy + CELL_SIZE / 2 - 2, 3.2, 0, Math.PI * 2);
     ctx.fill();
   }
-  
+
   if (eatFlash > 0) {
     ctx.fillStyle = `rgba(255,255,255,${(eatFlash / 12) * 0.12})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);

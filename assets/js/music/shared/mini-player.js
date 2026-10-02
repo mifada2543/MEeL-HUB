@@ -1,15 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
 let audioPlayer = null;
 let isMiniPlayerIndexActive = false;
 let currentState = null;
@@ -18,10 +6,8 @@ function getMiniPlayerIndexEl() {
   return document.getElementById("mini-player-index");
 }
 
-
 function saveIndexState() {
-  
-  
+
   if (window.__meelCurrentView !== "index") return;
   if (!currentState || !audioPlayer) return;
   currentState.currentTime = audioPlayer.currentTime;
@@ -29,8 +15,6 @@ function saveIndexState() {
   currentState.isLooping = isMiniLoopIndexActive;
   sessionStorage.setItem(MEEL_KEYS.AUDIO_STATE, JSON.stringify(currentState));
 }
-
-
 
 function ensureIndexAudioListeners(audio) {
   if (audio.__meelIndexListenersBound) return;
@@ -40,7 +24,6 @@ function ensureIndexAudioListeners(audio) {
   audio.addEventListener("pause", () => setPlayIcon("play"));
   audio.addEventListener("ended", () => miniNextIndex());
 }
-
 
 function loadAudio(state, autoplay) {
   const engine = window.meelGetAudioEngine();
@@ -57,18 +40,14 @@ function loadAudio(state, autoplay) {
     loopVal = _gLoop;
   }
   isMiniLoopIndexActive = loopVal;
-  
+
   engine.setLoop(loopVal);
 
-  
   const didLoad = engine.loadTrack(
     { id: trackId, streamUrl: `stream?id=${trackId}`, isLooping: loopVal },
     { autoplay: !!autoplay, startTime: state.currentTime || 0 },
   );
-  
-  
-  
-  
+
   if (!didLoad && autoplay) {
     const want = state.currentTime || 0;
     if (Math.abs(audioPlayer.currentTime - want) > 1.5) {
@@ -88,10 +67,8 @@ function loadAudio(state, autoplay) {
     });
   }
 
-  
   setPlayIcon(audioPlayer.paused ? "play" : "pause");
 }
-
 
 let _idxEls = null;
 function _getIdxEls() {
@@ -108,7 +85,6 @@ function _getIdxEls() {
   }
   return _idxEls;
 }
-
 
 function _resetIdxEls() {
   _idxEls = null;
@@ -148,9 +124,6 @@ function setPlayIcon(icon) {
   }
 }
 
-
-
-
 function initMiniPlayerIndex() {
   window.__meelCurrentView = "index";
   _resetIdxEls();
@@ -161,8 +134,6 @@ function initMiniPlayerIndex() {
   audioPlayer = engine.audio;
   ensureIndexAudioListeners(audioPlayer);
 
-  
-  
   const _engIdNow = engine.getCurrentTrackId();
   if (_engIdNow != null) {
     const _sRaw = sessionStorage.getItem(MEEL_KEYS.AUDIO_STATE);
@@ -185,7 +156,7 @@ function initMiniPlayerIndex() {
     miniPlayerBar.__meelClickBound = true;
     miniPlayerBar.style.cursor = "default";
     miniPlayerBar.addEventListener("click", (e) => {
-      
+
       if (e.target.closest(".mp-art")) return;
       if (
         e.target.closest(".mp-thumbnail") ||
@@ -198,14 +169,13 @@ function initMiniPlayerIndex() {
   }
   isMiniLoopIndexActive = localStorage.getItem(MEEL_KEYS.GLOBAL_LOOP) === "true";
   updateMiniLoopUIIndex();
-  
+
   engine.setLoop(isMiniLoopIndexActive);
   if (engine.getCurrentTrackId() != null && currentState) {
     isMiniPlayerIndexActive = true;
     updateIndexUI();
     setPlayIcon(audioPlayer.paused ? "play" : "pause");
-    
-    
+
     const wantId = String(currentState.id ?? currentState.musicId);
     const wantStream =
       currentState.streamUrl || `stream?id=${wantId}`;
@@ -232,7 +202,7 @@ function initMiniPlayerIndex() {
           });
       }
     } else if (currentState.isPlaying && audioPlayer.paused) {
-      
+
       audioPlayer.play().catch(function () {});
     }
     const bar = getMiniPlayerIndexEl();
@@ -249,8 +219,7 @@ function initMiniPlayerIndex() {
       els.img.src = state.thumbnailUrl || `upload/thumbnail/${state.thumbnail}`;
     if (els.title) els.title.textContent = state.title || "Unknown";
     if (els.artist) els.artist.textContent = state.artist || "Unknown";
-    
-    
+
     loadAudio(state, state.isPlaying);
     updateIndexUI();
     const globalLoop = localStorage.getItem(MEEL_KEYS.GLOBAL_LOOP) === "true";
@@ -263,7 +232,7 @@ function initMiniPlayerIndex() {
     } else {
       isMiniLoopIndexActive = globalLoop;
     }
-    
+
     engine.setLoop(isMiniLoopIndexActive);
     updateMiniLoopUIIndex();
     const bar = getMiniPlayerIndexEl();
@@ -294,8 +263,7 @@ window.miniPlayPauseIndex = function () {
   if (audioPlayer.paused) {
     audioPlayer.play();
   } else {
-    
-    
+
     sessionStorage.removeItem(MEEL_KEYS.SKIP_RESUME_ONCE);
     window.__meelResumeSessionActive = false;
     audioPlayer.pause();
@@ -362,9 +330,9 @@ window.miniPrevIndex = function () {
 
 function withPlaylistParam(url, playlistId) {
   if (!url || !playlistId || playlistId <= 0) return url;
-  
+
   if (url.indexOf("playlist_id=") !== -1 || /\/playlist\/\d+/.test(url)) return url;
-  
+
   const hashIdx = url.indexOf("#");
   const base = hashIdx === -1 ? url : url.substring(0, hashIdx);
   const hash = hashIdx === -1 ? "" : url.substring(hashIdx);
@@ -376,7 +344,6 @@ function withPlaylistParam(url, playlistId) {
     hash
   );
 }
-
 
 let _expandInFlight = false;
 function expandPlayerFromMiniPlayer() {
@@ -415,11 +382,10 @@ function expandPlayerFromMiniPlayer() {
       _expandInFlight = false;
       return;
     }
-    
+
     isMiniPlayerIndexActive = false;
     if (window.meelNavigateView) {
-      
-      
+
       Promise.resolve(
         window.meelNavigateView(target, "watch", {
           onAfterSwap: function () {
@@ -443,7 +409,7 @@ function expandPlayerFromMiniPlayer() {
           },
         );
     } else {
-      
+
       _expandInFlight = false;
       window.location.href = target;
     }
@@ -456,7 +422,7 @@ function expandPlayerFromMiniPlayer() {
 let isMiniLoopIndexActive = localStorage.getItem(MEEL_KEYS.GLOBAL_LOOP) === "true";
 window.toggleMiniLoopIndex = function () {
   isMiniLoopIndexActive = !isMiniLoopIndexActive;
-  
+
   const engine = window.meelGetAudioEngine ? window.meelGetAudioEngine() : null;
   if (engine) engine.setLoop(isMiniLoopIndexActive);
   else localStorage.setItem(MEEL_KEYS.GLOBAL_LOOP, String(isMiniLoopIndexActive));
@@ -467,8 +433,7 @@ function updateMiniLoopUIIndex() {
   const btn = document.getElementById("mini-loop-btn-index");
   if (!btn) return;
   if (isMiniLoopIndexActive) {
-    
-    
+
     btn.classList.add("mp-loop-active");
     btn.style.color = "#f97316";
     btn.style.opacity = "1";
@@ -484,15 +449,12 @@ window.closeMiniPlayerIndex = function () {
   const bar = getMiniPlayerIndexEl();
   if (bar) bar.classList.remove("active");
   sessionStorage.removeItem(MEEL_KEYS.AUDIO_STATE);
-  
-  
+
   sessionStorage.removeItem(MEEL_KEYS.SKIP_RESUME_ONCE);
   window.__meelResumeSessionActive = false;
   isMiniPlayerIndexActive = false;
   currentState = null;
 };
-
-
 
 function resumeTimeForClicked(id) {
   const engine = window.meelGetAudioEngine ? window.meelGetAudioEngine() : null;
@@ -537,7 +499,7 @@ function setupPlaylistItemClicks() {
       loadAudio(state, true);
       updateIndexUI();
       sessionStorage.setItem(MEEL_KEYS.AUDIO_STATE, JSON.stringify(state));
-      
+
       var plIdNow = parseInt(this.dataset.playlistId || "0", 10);
       if (plIdNow > 0) {
         localStorage.setItem(MEEL_KEYS.LAST_PLAYLIST_ID, String(plIdNow));
@@ -563,12 +525,12 @@ document.addEventListener("keydown", (e) => {
   if (window.meelKeyShortcutIgnored?.(e)) return;
   if (window.__meelCurrentView !== "index") return;
   const key = e.key.toLowerCase();
-  
+
   if (key === "i") {
     e.preventDefault();
     expandPlayerFromMiniPlayer();
   }
-  
+
   if (key === "l") {
     e.preventDefault();
     window.toggleMiniLoopIndex();
@@ -578,8 +540,6 @@ document.addEventListener("keydown", (e) => {
 setInterval(() => {
   if (isMiniPlayerIndexActive) saveIndexState();
 }, 5000);
-
-
 
 const meelLibTitle =
   document.title.indexOf("| Library") !== -1

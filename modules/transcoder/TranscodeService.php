@@ -44,11 +44,11 @@ class TranscodeService extends TranscoderBase
             return ['status' => 'error', 'msg' => 'ID Video tidak ditemukan!'];
         }
 
-        $v_data  = $res->fetch_assoc();
+        $v_data = $res->fetch_assoc();
         $db_file = $v_data['filename'];
 
-        $hls_base   = MEEL_HDD_VIDEO_UPLOAD;
-        $m3u8_path  = $hls_base . $db_file;
+        $hls_base = MEEL_HDD_VIDEO_UPLOAD;
+        $m3u8_path = $hls_base . $db_file;
         $hls_folder = dirname($m3u8_path) . "/";
 
         if (!file_exists($m3u8_path)) {
@@ -62,7 +62,7 @@ class TranscodeService extends TranscoderBase
         natsort($ts_files);
         $ts_files = array_values($ts_files);
 
-        $file_dur   = $this->probeDuration($m3u8_path);
+        $file_dur = $this->probeDuration($m3u8_path);
         $total_size = array_sum(array_map('filesize', $ts_files));
 
         if ($this->user_role !== 'admin') {
@@ -82,24 +82,24 @@ class TranscodeService extends TranscoderBase
         }
 
         $output_filename = $this->sanitizeFilename($v_data['title']) . '.' . $format;
-        $output_path     = $output_dir . $output_filename;
+        $output_path = $output_dir . $output_filename;
 
         $marker_file = $output_path . '.processing';
 
-        $mtx_path  = sys_get_temp_dir() . '/meel_transcode_marker.lock';
-        $mtx_fp    = fopen($mtx_path, 'c');
+        $mtx_path = sys_get_temp_dir() . '/meel_transcode_marker.lock';
+        $mtx_fp = fopen($mtx_path, 'c');
         $mtx_locked = $mtx_fp !== false && flock($mtx_fp, LOCK_EX);
 
         $cache_valid = false;
         if (file_exists($output_path)) {
             $cache_size = filesize($output_path);
             if ($cache_size > 10240) {
-                
+
                 $cache_dur = $this->probeDuration($output_path);
                 if ($cache_dur > 0 && $file_dur > 0 && $cache_dur >= $file_dur * 0.5) {
                     $cache_valid = true;
                 } elseif ($cache_dur <= 0 && $cache_size > 50000) {
-                    
+
                     $cache_valid = true;
                 }
             }
@@ -124,7 +124,7 @@ class TranscodeService extends TranscoderBase
 
         if (file_exists($marker_file)) {
             $marker_age = time() - filemtime($marker_file);
-            if ($marker_age < 600) { 
+            if ($marker_age < 600) {
                 if ($mtx_locked) {
                     flock($mtx_fp, LOCK_UN);
                     fclose($mtx_fp);
@@ -157,29 +157,29 @@ class TranscodeService extends TranscoderBase
         $stmt_q->close();
 
         $concat_list_path = $output_dir . "concat_{$video_id}_" . time() . ".txt";
-        $concat_content   = "";
+        $concat_content = "";
         foreach ($ts_files as $ts) {
-            
-            $safe_ts        = str_replace("'", "'\\''", $ts);
+
+            $safe_ts = str_replace("'", "'\\''", $ts);
             $concat_content .= "file '$safe_ts'\n";
         }
         file_put_contents($concat_list_path, $concat_content);
 
         $thumb_path = $hls_base . "thumbnail/" . $v_data['thumbnail'];
-        $use_thumb  = file_exists($thumb_path) && !empty($v_data['thumbnail']);
+        $use_thumb = file_exists($thumb_path) && !empty($v_data['thumbnail']);
 
         switch ($format) {
             case 'ogg':
-                $codec     = "libopus";
-                $bitrate   = "-b:a 128k -vbr on";
-                $use_thumb = false; 
+                $codec = "libopus";
+                $bitrate = "-b:a 128k -vbr on";
+                $use_thumb = false;
                 break;
             case 'm4a':
-                $codec   = "copy"; 
+                $codec = "copy";
                 $bitrate = "";
                 break;
-            default: 
-                $codec   = "libmp3lame";
+            default:
+                $codec = "libmp3lame";
                 $bitrate = "-q:a 2";
                 break;
         }
@@ -193,23 +193,23 @@ class TranscodeService extends TranscoderBase
             $cmd .= " -map 1:v -c:v copy -disposition:v:0 attached_pic";
             if ($format === 'mp3') $cmd .= " -id3v2_version 3";
         }
-        $meta_title  = $v_data['title'] ?? 'Untitled';
+        $meta_title = $v_data['title'] ?? 'Untitled';
         $meta_artist = $v_data['username'] ?? 'MEeL Transcoder';
-        $meta_album  = 'MEeL';
-        $meta_date   = !empty($v_data['upload_date']) ? date('Y-m-d', strtotime($v_data['upload_date'])) : date('Y-m-d');
+        $meta_album = 'MEeL';
+        $meta_date = !empty($v_data['upload_date']) ? date('Y-m-d', strtotime($v_data['upload_date'])) : date('Y-m-d');
         $meta_comment = !empty($v_data['description']) ? mb_substr($v_data['description'], 0, 256) : 'Transcoded by MEeL';
 
         $cmd .= " -c:a $codec $bitrate"
-            . " -metadata title="  . escapeshellarg($meta_title)
+            . " -metadata title=" . escapeshellarg($meta_title)
             . " -metadata artist=" . escapeshellarg($meta_artist)
-            . " -metadata album="  . escapeshellarg($meta_album)
-            . " -metadata date="   . escapeshellarg($meta_date)
+            . " -metadata album=" . escapeshellarg($meta_album)
+            . " -metadata date=" . escapeshellarg($meta_date)
             . " -metadata comment=" . escapeshellarg($meta_comment)
             . " -metadata album_artist=" . escapeshellarg('MEeL')
             . " " . escapeshellarg($output_path) . " 2>&1";
 
-        $tc_env  = ['LD_LIBRARY_PATH' => self::FFMPEG_LIB_PATH, 'PATH' => '/usr/local/bin:/usr/bin:/bin', 'LC_ALL' => 'en_US.UTF-8'];
-        $tc_cmd  = [
+        $tc_env = ['LD_LIBRARY_PATH' => self::FFMPEG_LIB_PATH, 'PATH' => '/usr/local/bin:/usr/bin:/bin', 'LC_ALL' => 'en_US.UTF-8'];
+        $tc_cmd = [
             $this->ffmpeg_bin,
             '-y',
             '-threads',
@@ -230,13 +230,7 @@ class TranscodeService extends TranscoderBase
         if ($use_thumb) {
             $tc_cmd[] = '-map';
             $tc_cmd[] = '1:v';
-            
-            
-            
-            
-            
-            
-            
+
             $tc_cmd[] = '-c:v';
             $tc_cmd[] = 'mjpeg';
             $tc_cmd[] = '-disposition:v:0';
@@ -271,16 +265,16 @@ class TranscodeService extends TranscoderBase
         $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
         $tc_proc = proc_open($tc_cmd, $desc, $tc_pipes, null, $tc_env);
         if (is_resource($tc_proc)) {
-            fclose($tc_pipes[0]); 
-            fclose($tc_pipes[1]); 
-            $tc_out = $tc_pipes[2]; 
+            fclose($tc_pipes[0]);
+            fclose($tc_pipes[1]);
+            $tc_out = $tc_pipes[2];
 
             $tc_status = proc_get_status($tc_proc);
-            $tc_pid    = (int)($tc_status['pid'] ?? 0);
+            $tc_pid = (int)($tc_status['pid'] ?? 0);
             $this->trackChildProcess($tc_pid, false, 'ffmpeg transcode audio (' . $output_filename . ')');
             $this->writePidFile('transcode', $queue_id, $tc_pid);
 
-            stream_set_timeout($tc_out, 30); 
+            stream_set_timeout($tc_out, 30);
             $ffmpeg_stderr = [];
             $tc_start = time();
             while (!feof($tc_out)) {
@@ -295,26 +289,21 @@ class TranscodeService extends TranscoderBase
                 $fmt = strtoupper($format);
                 if (preg_match('/time=((\d+):(\d+):(\d+)\.(\d+))/', $line, $m)) {
                     if ($file_dur > 0) {
-                        $cur   = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
-                        $pct   = min(100, round(($cur / $file_dur) * 100));
+                        $cur = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
+                        $pct = min(100, round(($cur / $file_dur) * 100));
                         $label = "$pct% — CONVERTING TO $fmt";
                         $this->emit('transcode_progress', ['pct' => $pct, 'label' => $label]);
                     } else {
-                        
-                        
-                        
-                        
-                        
+
                         $elapsed = time() - $tc_start;
-                        $pct     = min(95, (int)round(($elapsed / self::TRANSCODE_AUDIO_TIMEOUT) * 100));
-                        $label   = "$pct% — CONVERTING TO $fmt (estimasi)";
+                        $pct = min(95, (int)round(($elapsed / self::TRANSCODE_AUDIO_TIMEOUT) * 100));
+                        $label = "$pct% — CONVERTING TO $fmt (estimasi)";
                         $this->emit('transcode_progress', ['pct' => $pct, 'label' => $label]);
                     }
                 }
             }
             fclose($tc_pipes[2]);
 
-            
             $tc_exit = proc_close($tc_proc);
             $this->untrackChildProcess($tc_pid);
             $this->removePidFile('transcode', $queue_id);
@@ -356,17 +345,13 @@ class TranscodeService extends TranscoderBase
         $this->emit('done_transcode', ['title' => $v_data['title'], 'download_link' => $download_link]);
 
         return [
-            'status'          => 'success',
-            'download_link'   => $download_link,
+            'status' => 'success',
+            'download_link' => $download_link,
             'output_filename' => $output_filename,
-            'title'           => $v_data['title'],
+            'title' => $v_data['title'],
         ];
     }
 
-    /**
-     * Catat kepemilikan output transcode di sesi user (untuk download yang
-     * aman — user lain tidak boleh menebak nama file transcode milik user ini).
-     */
     private function grantTranscodeOwnership(string $outputFilename): void
     {
         if ($outputFilename === '' || session_status() !== PHP_SESSION_ACTIVE) {
@@ -375,7 +360,6 @@ class TranscodeService extends TranscoderBase
         if (!is_array($_SESSION['meel_transcode_files'] ?? null)) {
             $_SESSION['meel_transcode_files'] = [];
         }
-        // Prune entri basi (> 4 jam) — file transcode juga dibersihkan ~2 jam.
         foreach ($_SESSION['meel_transcode_files'] as $f => $ts) {
             if ((int)$ts < time() - 4 * 3600) {
                 unset($_SESSION['meel_transcode_files'][$f]);
@@ -384,9 +368,6 @@ class TranscodeService extends TranscoderBase
         $_SESSION['meel_transcode_files'][$outputFilename] = time();
     }
 
-    /**
-     * Cek kepemilikan output transcode di sesi aktif user.
-     */
     public static function ownsTranscodeFile(string $outputFilename): bool
     {
         if ($outputFilename === '' || session_status() !== PHP_SESSION_ACTIVE) {
@@ -396,7 +377,6 @@ class TranscodeService extends TranscoderBase
         if (!is_array($files) || !isset($files[$outputFilename])) {
             return false;
         }
-        // File transcode dibersihkan server setelah ~2 jam.
         if ((int)$files[$outputFilename] < time() - 4 * 3600) {
             unset($_SESSION['meel_transcode_files'][$outputFilename]);
             return false;

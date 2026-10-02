@@ -6,7 +6,6 @@ include_once '../modules/core/activity_logger.php';
 include_once '../modules/core/GarbageCollector.php';
 include_once '../modules/auth/RateLimiter.php';
 
-
 require_admin($conn);
 
 define('MEEL_ADMIN_CONTEXT', true);
@@ -32,7 +31,7 @@ GarbageCollector::syncViews($conn);
 <head>
 <?php
 $_META_TITLE = 'MEeL | System Admin';
-$_META_DESC  = 'Panel administrasi MEeL untuk mengelola konten, pengguna, dan monitoring server.';
+$_META_DESC = 'Panel administrasi MEeL untuk mengelola konten, pengguna, dan monitoring server.';
 include __DIR__ . '/../partials/link.php';
 $scripts_root = '../';
 include __DIR__ . '/../partials/scripts.php';
@@ -186,7 +185,6 @@ include __DIR__ . '/../partials/scripts.php';
             </div>
         </div>
 
-        
         <div class="glass p-6 rounded-3xl mb-8">
             <div class="flex items-center gap-2 mb-6">
                 <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i>
@@ -225,62 +223,62 @@ include __DIR__ . '/../partials/scripts.php';
 
                 $stat_cards = [
                     [
-                        'id'    => 'cpu',
+                        'id' => 'cpu',
                         'label' => 'CPU Load',
                         'value' => $server_stats['cpu']['load_1m'],
-                        'sub'   => $server_stats['cpu']['cores'] . ' Cores • ' . $server_stats['cpu']['usage_perc'] . '%',
-                        'icon'  => 'cpu',
+                        'sub' => $server_stats['cpu']['cores'] . ' Cores • ' . $server_stats['cpu']['usage_perc'] . '%',
+                        'icon' => 'cpu',
                         'color' => $cpu_color,
-                        'bar'   => $server_stats['cpu']['usage_perc'],
+                        'bar' => $server_stats['cpu']['usage_perc'],
                     ],
                     [
-                        'id'    => 'ram',
+                        'id' => 'ram',
                         'label' => 'RAM Usage',
                         'value' => $net_fmt($server_stats['ram']['used']),
-                        'sub'   => $net_fmt($server_stats['ram']['total']) . ' Total • ' . $server_stats['ram']['usage_perc'] . '%',
-                        'icon'  => 'memory-stick',
+                        'sub' => $net_fmt($server_stats['ram']['total']) . ' Total • ' . $server_stats['ram']['usage_perc'] . '%',
+                        'icon' => 'memory-stick',
                         'color' => $ram_color,
-                        'bar'   => $server_stats['ram']['usage_perc'],
+                        'bar' => $server_stats['ram']['usage_perc'],
                     ],
                     [
-                        'id'    => 'swap',
+                        'id' => 'swap',
                         'label' => 'Swap',
                         'value' => $net_fmt($server_stats['swap']['used']),
-                        'sub'   => $net_fmt($server_stats['swap']['total']) . ' Total • ' . $server_stats['swap']['usage_perc'] . '%',
-                        'icon'  => 'hard-drive',
+                        'sub' => $net_fmt($server_stats['swap']['total']) . ' Total • ' . $server_stats['swap']['usage_perc'] . '%',
+                        'icon' => 'hard-drive',
                         'color' => $swap_color,
-                        'bar'   => $server_stats['swap']['usage_perc'],
+                        'bar' => $server_stats['swap']['usage_perc'],
                     ],
                     [
-                        'id'    => 'net',
+                        'id' => 'net',
                         'label' => 'Network',
                         'value' => '↓ —',
-                        'sub'   => '↑ —',
-                        'icon'  => 'network',
+                        'sub' => '↑ —',
+                        'icon' => 'network',
                         'color' => 'blue',
-                        'bar'   => 0,
+                        'bar' => 0,
                     ],
                 ];
 /* reference build: MEeL-C10H12N2O [def968f48f9a8de4] */
 
                 foreach ($stat_cards as $c):
                     $bar_color = match($c['color']) {
-                        'red'       => 'bg-red-500',
-                        'yellow'    => 'bg-yellow-500',
-                        'green'     => 'bg-green-500',
-                        'cyan'      => 'bg-cyan-500',
-                        'blue'      => 'bg-blue-500',
+                        'red' => 'bg-red-500',
+                        'yellow' => 'bg-yellow-500',
+                        'green' => 'bg-green-500',
+                        'cyan' => 'bg-cyan-500',
+                        'blue' => 'bg-blue-500',
                         'blue-dark' => 'bg-blue-800',
-                        default     => 'bg-gray-500',
+                        default => 'bg-gray-500',
                     };
                     $text_color = match($c['color']) {
-                        'red'       => 'text-red-400',
-                        'yellow'    => 'text-yellow-400',
-                        'green'     => 'text-green-400',
-                        'cyan'      => 'text-cyan-400',
-                        'blue'      => 'text-blue-400',
+                        'red' => 'text-red-400',
+                        'yellow' => 'text-yellow-400',
+                        'green' => 'text-green-400',
+                        'cyan' => 'text-cyan-400',
+                        'blue' => 'text-blue-400',
                         'blue-dark' => 'text-blue-400',
-                        default     => 'text-gray-400',
+                        default => 'text-gray-400',
                     };
                 ?>
                     <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4<?= $c['id'] === 'net' ? ' md:col-span-4' : '' ?>">
@@ -299,7 +297,7 @@ include __DIR__ . '/../partials/scripts.php';
                             </div>
                         <?php endif; ?>
                         <?php if ($c['id'] === 'net'): ?>
-                            
+
                             <div class="h-24 mt-2">
                                 <canvas id="netChart"></canvas>
                             </div>
@@ -308,7 +306,6 @@ include __DIR__ . '/../partials/scripts.php';
                 <?php endforeach; ?>
             </div>
 
-            
             <div class="flex flex-wrap gap-4 text-[10px]">
                 <span class="text-gray-500"><span class="text-gray-400 font-bold">OS:</span> <?= htmlspecialchars($server_stats['info']['os']) ?></span>
                 <span class="text-gray-600">•</span>
@@ -322,7 +319,6 @@ include __DIR__ . '/../partials/scripts.php';
             </div>
         </div>
 
-        
         <div class="glass p-6 rounded-3xl mb-8">
             <div class="flex items-center gap-2 mb-4">
                 <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
@@ -409,7 +405,7 @@ include __DIR__ . '/../partials/scripts.php';
             <?php if (isset($_GET['status']) && $_GET['status'] === 'cleaned'): ?>
                 <?php
                 $clean_deleted = (int)($_GET['deleted'] ?? 0);
-                $clean_failed  = (int)($_GET['failed'] ?? 0);
+                $clean_failed = (int)($_GET['failed'] ?? 0);
                 ?>
                 <?php if ($clean_failed > 0): ?>
                     <div class="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-xl mb-4 flex items-center gap-2" id="orphan-clean-msg">
@@ -448,7 +444,7 @@ include __DIR__ . '/../partials/scripts.php';
                 <div class="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl">
                     <p class="text-xs text-red-400 mb-2">Ditemukan <?= count($orphans) ?> file sampah (tidak ada di DB):</p>
                     <ul class="text-[9px] font-mono text-gray-500 max-h-24 overflow-y-auto mb-4"><?php foreach ($orphans as $o) echo "<li>- $o</li>"; ?></ul>
-                    <form method="POST"><input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>"><input type="hidden" name="files_to_delete" value='<?= json_encode($orphans) ?>'>                                <button name="clean_orphans" class="bg-red-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl hover:bg-red-700 transition-all uppercase" title="Hapus file sampah yang tidak ada di database">Bersihkan SSD Thinkpad</button></form>
+                    <form method="POST"><input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>"><input type="hidden" name="files_to_delete" value='<?= json_encode($orphans) ?>'> <button name="clean_orphans" class="bg-red-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl hover:bg-red-700 transition-all uppercase" title="Hapus file sampah yang tidak ada di database">Bersihkan SSD Thinkpad</button></form>
                 </div>
             <?php else: ?>
                 <p class="text-xs text-green-500 font-bold uppercase tracking-widest flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Semua file di SSD sinkron dengan Database</p>
@@ -526,7 +522,7 @@ include __DIR__ . '/../partials/scripts.php';
         </div>
 
     </div>
-    
+
     <script>
         var activityData = <?= json_encode($chart_activity) ?>;
         var serverStatsUrl = <?= json_encode(base_url('/api/server-stats')) ?>;

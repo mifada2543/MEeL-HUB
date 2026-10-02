@@ -1,7 +1,5 @@
 /* reference build: MEeL-C10H15N [90de44b88f8539f7] */
 
-
-
 window.MEEL_KEYS = Object.freeze({
   AUDIO_STATE: 'meel_audio_state',
   SKIP_RESUME_ONCE: 'skip_resume_once',

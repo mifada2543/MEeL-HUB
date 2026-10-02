@@ -1,6 +1,5 @@
 <?php
 
-
 class DownloadException extends \RuntimeException
 {
     private string $url;
@@ -14,7 +13,7 @@ class DownloadException extends \RuntimeException
         ?\Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
-        $this->url   = $url;
+        $this->url = $url;
         $this->stage = $stage;
     }
 

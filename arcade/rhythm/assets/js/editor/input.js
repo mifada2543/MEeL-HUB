@@ -1,9 +1,5 @@
 /* reference build: MEeL-C5H9NO2 [fde5b40722b291f4] */
 
-
-
-
-
 import { S, DOM, CONST } from "./state.js";
 import { msToY, yToMs, snapMs, getCanvasPos, getLaneAndTime, findNoteAt } from "./canvas.js";
 import { draw, updateNoteInfo } from "./renderer.js";
@@ -14,7 +10,6 @@ import { togglePlayback } from "./playback.js";
 var canvas = DOM.canvas;
 var wrap = DOM.wrap;
 var audio = DOM.audio;
-
 
 export function toggleGold() {
   if (S.selectedNoteIdx < 0) { showToast("Pilih note dulu!", "warning"); return; }
@@ -59,7 +54,6 @@ export function convertToTap() {
   }
 }
 
-
 canvas.addEventListener("mousedown", function (e) {
   var pos = getCanvasPos(e);
 
@@ -77,7 +71,7 @@ canvas.addEventListener("mousedown", function (e) {
 
   S.lastDragPos = pos;
 
-  if (e.button === 2 && e.ctrlKey) return; 
+  if (e.button === 2 && e.ctrlKey) return;
 
   if (e.button === 2 && !e.ctrlKey) {
     e.preventDefault();
@@ -222,7 +216,6 @@ canvas.addEventListener("mouseleave", function () {
   S.dragNoteIdx = -1;
 });
 
-
 var canvasTooltip = null;
 canvas.addEventListener("mousemove", function (e) {
   if (S.isDragging || S.isDraggingCursor) {
@@ -263,7 +256,6 @@ canvas.addEventListener("mouseleave", function () {
   if (canvasTooltip) canvasTooltip.style.display = "none";
 });
 
-
 canvas.addEventListener("contextmenu", function (e) {
   e.preventDefault();
   if (!e.ctrlKey || !S.audioDuration) return;
@@ -277,7 +269,6 @@ canvas.addEventListener("contextmenu", function (e) {
   draw();
   showToast("Seek: " + (ms / 1000).toFixed(1) + "s", "info");
 });
-
 
 function seekTimeline(e) {
   var rect = DOM.timelineBar.getBoundingClientRect();
@@ -294,7 +285,6 @@ document.addEventListener("mousemove", function (e) {
   seekTimeline(e);
 });
 document.addEventListener("mouseup", function () { S.timelineDragging = false; });
-
 
 document.addEventListener("keydown", function (e) {
   var isInput = e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA";
@@ -355,7 +345,6 @@ document.addEventListener("keydown", function (e) {
     draw();
   }
 });
-
 
 var canvasScroll = canvas.parentElement;
 canvasScroll.addEventListener("scroll", function () {

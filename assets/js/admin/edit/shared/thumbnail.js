@@ -1,8 +1,6 @@
-
 (function () {
   "use strict";
 
-  
   window.handleImageChange = function (input, previewId, badgeId) {
     if (!input || !input.files || !input.files[0]) return;
     var reader = new FileReader();
@@ -14,7 +12,7 @@
     };
     reader.readAsDataURL(input.files[0]);
   };
-  
+
   window.handleThumbChange = function (input) {
     window.handleImageChange(input, "thumb-preview", "thumb-changed-badge");
   };

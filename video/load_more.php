@@ -3,12 +3,12 @@ include '../auth/config.php';
 require_once '../modules/media/MediaLibrary.php';
 
 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 15;
-$page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$limit  = 15;
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$limit = 15;
 
 $library = new MediaLibrary($conn);
-$data    = $library->getVideos($limit, $offset);
-$total   = $library->countVideos();
+$data = $library->getVideos($limit, $offset);
+$total = $library->countVideos();
 $totalPages = max(1, (int)ceil($total / $limit));
 
 if ($data && $data->num_rows > 0):

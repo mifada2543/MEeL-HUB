@@ -24,7 +24,7 @@
   var pendingProgress = null;
   var rafId = null;
   var currentXhr = null;
-  
+
   function formatBytes(bytes) {
     if (bytes === 0) return "0 B";
     var units = ["B", "KB", "MB", "GB"];
@@ -33,12 +33,12 @@
       (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + " " + units[i]
     );
   }
-  
+
   function formatSpeed(bytesPerSec) {
     if (bytesPerSec < 0) return "\u2014";
     return formatBytes(bytesPerSec) + "/s";
   }
-  
+
   function formatDuration(seconds) {
     if (!seconds || seconds < 0) return "\u2014";
     var h = Math.floor(seconds / 3600);
@@ -50,7 +50,7 @@
       );
     return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
   }
-  
+
   function commitProgress() {
     rafId = null;
     if (!pendingProgress) return;
@@ -61,14 +61,14 @@
     speedEl.textContent = pp.speed;
     durationEl.textContent = pp.duration;
   }
-  
+
   function scheduleProgress(data) {
     pendingProgress = data;
     if (!rafId) {
       rafId = requestAnimationFrame(commitProgress);
     }
   }
-  
+
   function showCard(filename) {
     if (rafId) cancelAnimationFrame(rafId);
     rafId = null;
@@ -105,7 +105,7 @@
       autoHideTimer = null;
     }
   }
-  
+
   function resetButton() {
     var fi = document.getElementById("fileInput");
     submitBtn.disabled = false;
@@ -120,7 +120,7 @@
       } catch (e) {}
     }, 50);
   }
-  
+
   function spawnConfetti() {
     var container = document.getElementById("uploadConfetti");
     if (!container) return;
@@ -166,7 +166,7 @@
       container.classList.add("hidden");
     }, 4000);
   }
-  
+
   function minimizeCard() {
     card.classList.add("minimized");
     card.classList.remove("hidden");
@@ -176,7 +176,7 @@
       autoHideTimer = null;
     }
   }
-  
+
   function toggleCard() {
     if (card.classList.contains("minimized")) {
       card.classList.remove("minimized");
@@ -186,7 +186,7 @@
       }
     }
   }
-  
+
   function showSuccess() {
     if (rafId) {
       cancelAnimationFrame(rafId);
@@ -207,7 +207,7 @@
       minimizeCard();
     }, 2500);
   }
-  
+
   function showError(msg) {
     if (rafId) {
       cancelAnimationFrame(rafId);
@@ -221,7 +221,7 @@
     card.classList.remove("upload-prog-success");
     resetButton();
   }
-  
+
   function resetUploadForm(newToken) {
     var fi = document.getElementById("fileInput");
     var label = document.getElementById("fileLabel");
@@ -235,12 +235,12 @@
     if (tokenInput && newToken) tokenInput.value = newToken;
     resetButton();
   }
-  
+
   function updateStorageBar(usageBytes, usagePct) {
     var textEl = document.getElementById("storageUsageText");
     var barEl = document.getElementById("storageUsageBar");
     if (!textEl || !barEl) return;
-    var limit = 20 * 1024 * 1024 * 1024; 
+    var limit = 20 * 1024 * 1024 * 1024;
     usagePct =
       usagePct !== undefined
         ? usagePct
@@ -255,7 +255,7 @@
       textEl.classList.add("text-blue-500");
     }
   }
-  
+
   function refreshFileGrids() {
     fetch(window.location.href)
       .then(function (r) {
@@ -288,7 +288,7 @@
       .catch(function () {
       });
   }
-  
+
   function closeCard() {
     card.classList.remove("upload-prog-visible");
     card.classList.add("hidden");
@@ -304,14 +304,14 @@
     if (submitBtn.disabled) resetButton();
   }
   closeBtn.addEventListener("click", closeCard);
-  
+
   if (toggleBtn) {
     toggleBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       toggleCard();
     });
   }
-  
+
   var dropzone = document.getElementById("uploadDropzone");
   var dragCounter = 0;
   if (dropzone) {
@@ -359,7 +359,7 @@
       startUpload(fd, file.name, file.size);
     });
   }
-  
+
   function startUpload(formData, fileName, totalSize) {
     if (currentXhr) {
       try {
@@ -430,7 +430,7 @@
     xhr.open("POST", form.getAttribute("action"));
     xhr.send(formData);
   }
-  
+
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     var fileInput = document.getElementById("fileInput");
@@ -439,12 +439,12 @@
     var formData = new FormData(form);
     startUpload(formData, file.name, file.size);
   });
-  
+
   window.refreshDrive = function () {
     var btn = document.getElementById("refreshBtn");
     var icon = btn ? btn.querySelector("i") : null;
     if (icon) icon.classList.add("animate-spin");
-    
+
     fetch("../api/ajax-refresh?_=" + Date.now())
       .then(function (r) {
         return r.json();

@@ -20,7 +20,6 @@ body {
   font-family: "Press Start 2P", monospace;
 }
 
-
 .board-grid {
   display: grid;
   grid-template-columns: repeat(15, 1fr);
@@ -69,7 +68,6 @@ body {
 .cell-start.c-yellow { background: rgba(234, 179, 8, 0.55); }
 .cell-start.c-blue { background: rgba(59, 130, 246, 0.55); }
 
-
 .finish-tri {
   position: absolute;
   inset: 4%;
@@ -86,7 +84,6 @@ body {
   background: radial-gradient(circle at 35% 30%, #fbbf24, #b45309);
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
 }
-
 
 .token {
   position: absolute;
@@ -120,7 +117,6 @@ body {
 .token.dim { opacity: 0.45; }
 /* reference build: MEeL-C8H11NO2 [547e23958504f469] */
 
-
 .dice-box:disabled {
   cursor: not-allowed;
   opacity: 0.6;
@@ -142,7 +138,6 @@ body {
   0% { transform: scale(0.4); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
-
 
 .player-count-btn {
   background: #0f131c;
@@ -190,11 +185,9 @@ body {
   color: #fbbf24;
 }
 
-
 #winOverlay {
   transition: opacity 0.3s ease;
 }
-
 
 .player-badge {
   display: flex;
@@ -220,7 +213,6 @@ body {
   background: rgba(245, 158, 11, 0.1);
 }
 .player-badge.finished-badge { opacity: 0.5; }
-
 
 ::-webkit-scrollbar {
   width: 6px;

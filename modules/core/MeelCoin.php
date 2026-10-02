@@ -11,16 +11,16 @@ class MeelCoin
         }
 
         $defaults = [
-            'meelcoin_enabled'       => '1',
-            'meelcoin_upload_cost'   => '5',
+            'meelcoin_enabled' => '1',
+            'meelcoin_upload_cost' => '5',
             'meelcoin_advanced_cost' => '10',
-            'meelcoin_transcode_user_cost'   => '5',
+            'meelcoin_transcode_user_cost' => '5',
             'meelcoin_transcode_member_cost' => '2',
-            'meelcoin_user_max'      => '25',
-            'meelcoin_user_refill'   => '15',
-            'meelcoin_member_max'    => '50',
+            'meelcoin_user_max' => '25',
+            'meelcoin_user_refill' => '15',
+            'meelcoin_member_max' => '50',
             'meelcoin_member_refill' => '25',
-            'meelcoin_refill_hours'  => '5',
+            'meelcoin_refill_hours' => '5',
         ];
 
         $result = $conn->query("SELECT setting_key, setting_value FROM site_settings WHERE setting_key LIKE 'meelcoin_%'");
@@ -112,7 +112,6 @@ class MeelCoin
         $affected = $stmt->affected_rows;
         $stmt->close();
 
-        // 0 baris terpengaruh = guard gagal (saldo kurang) atau user tidak ada.
         if ($affected < 1) {
             $balance = self::getBalance($conn, $userId);
             return [false, 'MEeLCoin tidak cukup. Dibutuhkan: ' . $amount . ', tersedia: ' . $balance];
@@ -142,8 +141,8 @@ class MeelCoin
         if ($role === 'admin') return true;
 
         $refillHours = self::getRefillHours($conn);
-        $maxCoins    = self::getMax($conn, $role);
-        $refillAmt   = self::getRefillAmount($conn, $role);
+        $maxCoins = self::getMax($conn, $role);
+        $refillAmt = self::getRefillAmount($conn, $role);
         if ($refillAmt <= 0) return false;
         $current = self::getBalance($conn, $userId);
         if ($current >= $maxCoins) {

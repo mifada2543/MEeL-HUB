@@ -8,17 +8,17 @@ require_once '../modules/media/MediaLibrary.php';
 require_once '../modules/media/PlaylistRepository.php';
 
 $playlist_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$user_id     = $_SESSION['user_id'] ?? 0;
+$user_id = $_SESSION['user_id'] ?? 0;
 $format_filter = $_GET['format'] ?? 'all';
 
-$library   = new MediaLibrary($conn);
+$library = new MediaLibrary($conn);
 $pl_routes = $library->getUserPlaylistRoutes($user_id);
 if ($playlist_id === 0 && isset($_GET['slug']) && $_GET['slug'] !== '') {
     $playlist_id = $library->resolvePlaylistSlug((string) $_GET['slug'], $user_id);
 }
 
 $playlistsRepo = new PlaylistRepository($conn);
-$playlist      = $playlistsRepo->getOwnedPlaylist($playlist_id, $user_id);
+$playlist = $playlistsRepo->getOwnedPlaylist($playlist_id, $user_id);
 
 if (!$playlist) {
     header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302);
@@ -33,13 +33,13 @@ if ($total_songs > 0) {
     $songs_query->data_seek(0);
 }
 
-$artists       = $library->getArtists();
-$is_logged_in  = isset($_SESSION['user_id']);
+$artists = $library->getArtists();
+$is_logged_in = isset($_SESSION['user_id']);
 
 function renderPlaylistContent(array $playlist, int $playlist_id, int $total_songs, \mysqli_result $songs_query, ?array $first_song, bool $include_script = true): void
 {
 ?>
-    
+
     <?php if (!$include_script): ?>
         <div class="mb-6">
             <a href="javascript:void(0)"
@@ -53,7 +53,7 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
             </a>
         </div>
     <?php endif; ?>
-    
+
     <div class="flex items-start sm:items-end gap-5 mb-8 pb-6 border-b border-white/[.04]">
         <div class="relative flex-shrink-0">
             <div class="w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-orange-500 via-orange-600 to-red-700
@@ -101,7 +101,6 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
         </div>
     </div>
 
-    
     <?php if ($total_songs > 0): ?>
         <div class="hidden sm:grid grid-cols-[2rem_1fr_auto_2rem] gap-4 px-3 mb-2">
             <span class="text-[9px] font-bold uppercase tracking-[.3em] text-gray-700 text-center">#</span>
@@ -116,8 +115,8 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
             while ($s = $songs_query->fetch_assoc()):
                 $idx++;
                 authorize_stream((int)$s['id']);
-                $s_ext   = strtolower(pathinfo($s['filename'], PATHINFO_EXTENSION));
-                $s_lbl   = $s_ext === 'ogg' ? 'opus' : $s_ext;
+                $s_ext = strtolower(pathinfo($s['filename'], PATHINFO_EXTENSION));
+                $s_lbl = $s_ext === 'ogg' ? 'opus' : $s_ext;
                 $watch_url = base_url('/music/watch?v=' . (int)$s['id'] . '&playlist_id=' . (int)$playlist_id);
             ?>
                 <div class="group grid grid-cols-[2rem_1fr_auto_2rem] items-center gap-4 px-3 py-2 rounded-xl
@@ -132,7 +131,6 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
                     data-watch-url="<?= htmlspecialchars($watch_url) ?>"
                     data-playlist-id="<?= $playlist_id ?>">
 
-                    
                     <div class="flex items-center justify-center w-8 flex-shrink-0">
                         <span class="group-hover:hidden block text-[10px] font-mono text-gray-600"><?= $idx ?></span>
                         <button type="button"
@@ -142,7 +140,6 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
                         </button>
                     </div>
 
-                    
                     <a href="<?= htmlspecialchars($watch_url) ?>"
                         class="flex items-center gap-3 min-w-0 no-underline">
                         <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0
@@ -170,13 +167,11 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
                         </div>
                     </a>
 
-                    
                     <span class="text-[8px] px-1.5 py-0.5 rounded bg-white/[.04] border border-white/[.05]
                                  text-gray-600 uppercase font-bold tracking-wide text-right">
                         <?= $s_lbl ?>
                     </span>
 
-                    
                     <form action="playlist-action" method="POST"
                         onsubmit="return meelConfirmForm(event, { title:'Hapus dari Playlist', text:'Hapus lagu ini dari playlist?', confirmButtonText:'HAPUS' })">
                         <input type="hidden" name="action" value="remove_from_playlist">
@@ -228,8 +223,8 @@ if (isset($_GET['content_only'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <?php
     $_META_TITLE = $playlist['name'] . ' — MEeL Playlist';
-    $_META_DESC  = 'Dengarkan playlist ' . $playlist['name'] . ' di MEeL Music.';
-    $_META_TYPE  = 'music.playlist';
+    $_META_DESC = 'Dengarkan playlist ' . $playlist['name'] . ' di MEeL Music.';
+    $_META_TYPE = 'music.playlist';
     if ($first_song && !empty($first_song['thumbnail'])) {
         $__pl_thumb = music_thumbnail_url($first_song['thumbnail']);
         $__pl_image = str_starts_with($__pl_thumb, '../')
@@ -238,7 +233,7 @@ if (isset($_GET['content_only'])) {
         if (!preg_match('#^https?://#i', $__pl_image)) {
             $__pl_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__pl_image;
         }
-        $_META_IMAGE   = $__pl_image;
+        $_META_IMAGE = $__pl_image;
         $_META_IMAGE_W = '512';
         $_META_IMAGE_H = '512';
     }
@@ -254,7 +249,6 @@ if (isset($_GET['content_only'])) {
 
 <body class="text-gray-400 min-h-screen">
 
-    
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-3 sm:px-5 h-14 flex items-center justify-between gap-2 sm:gap-4">
             <a href="../" class="flex items-center gap-1 sm:gap-2.5 flex-shrink-0" title="MEeL HUB">
@@ -289,15 +283,12 @@ if (isset($_GET['content_only'])) {
         </div>
     </nav>
 
-    
     <div id="library-container"
         class="w-full px-4 sm:px-6 xl:px-10 2xl:px-16 pt-8 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-        
         <aside class="lg:col-span-3 xl:col-span-2">
             <div class="sticky top-20 space-y-6">
 
-                
                 <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3">Format</div>
                     <div class="flex flex-wrap gap-2">
@@ -312,7 +303,6 @@ if (isset($_GET['content_only'])) {
                     </div>
                 </div>
 
-                
                 <div class="hidden lg:block">
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
                         <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
@@ -335,7 +325,6 @@ if (isset($_GET['content_only'])) {
                     </div>
                 </div>
 
-                
                 <?php if ($is_logged_in): ?>
                     <div class="hidden lg:block">
                         <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3 flex items-center gap-2">
@@ -346,8 +335,8 @@ if (isset($_GET['content_only'])) {
                             $my_pls = $library->getUserPlaylists($user_id);
                             while ($pl = $my_pls->fetch_assoc()):
                                 $is_active = ($pl['id'] == $playlist_id);
-                                $pl_route  = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
-                                $pl_sep    = str_contains($pl_route, '?') ? '&' : '?';
+                                $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
+                                $pl_sep = str_contains($pl_route, '?') ? '&' : '?';
                             ?>
                                 <a href="<?= $pl_route ?>"
                                     hx-get="<?= $pl_route . $pl_sep ?>content_only=1"
@@ -372,10 +361,9 @@ if (isset($_GET['content_only'])) {
                         </div>
                     </div>
                 <?php endif; ?>
-                
+
                 <div class="lg:hidden flex flex-col gap-4 bg-[#0d1017]/95 backdrop-blur-md p-4 rounded-xl border border-white/[.04] shadow-lg">
 
-                    
                     <div class="flex flex-wrap gap-2">
                         <a href="beranda?format=all"
                             class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
@@ -388,7 +376,7 @@ if (isset($_GET['content_only'])) {
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        
+
                         <div>
                             <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
                                 <i data-lucide="mic-2" class="w-3 h-3"></i> Artists
@@ -417,7 +405,6 @@ if (isset($_GET['content_only'])) {
                             </div>
                         </div>
 
-                        
                         <?php if ($is_logged_in): ?>
                             <div>
                                 <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-1.5 flex items-center gap-1.5">
@@ -435,8 +422,8 @@ if (isset($_GET['content_only'])) {
                                         $my_pls2 = $library->getUserPlaylists($user_id);
                                         while ($pl = $my_pls2->fetch_assoc()):
                                             $pl_active = ($pl['id'] == $playlist_id);
-                                            $pl_route  = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
-                                            $pl_sep    = str_contains($pl_route, '?') ? '&' : '?';
+                                            $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
+                                            $pl_sep = str_contains($pl_route, '?') ? '&' : '?';
                                         ?>
                                             <button onclick="navigateToPlaylistPL(<?= $pl['id'] ?>)"
                                                 data-playlist-id="<?= $pl['id'] ?>"
@@ -455,13 +442,11 @@ if (isset($_GET['content_only'])) {
             </div>
         </aside>
 
-        
         <main id="playlist-main" class="lg:col-span-9 xl:col-span-10">
             <?php renderPlaylistContent($playlist, $playlist_id, $total_songs, $songs_query, $first_song); ?>
         </main>
     </div>
 
-    
     <div id="mini-player-index" aria-label="Mini Player">
         <div class="mp-seekbar" id="mp-seekbar-index" onclick="miniSeekIndex(event)" title="Klik untuk seek">
             <div class="mp-seekbar-fill" id="mp-seekbar-fill-index"></div>

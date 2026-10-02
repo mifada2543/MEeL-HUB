@@ -52,8 +52,6 @@
   "use strict";
   if (!window.MEEL_UPSCALER) return;
 
-  // Kekuatan CAS: tetap (bukan per mode) supaya karakter tiap kernel tak
-  // berubah; 0,45 ≈ tengah kisangan aman antara lembut dan tajam.
   var SHARPNESS = 0.45;
 
   var KERNELS = {
@@ -142,8 +140,6 @@
 
   var BIND_SRC = "@group(0) @binding(0) var src : texture_2d<f32>;";
 
-  // Tahap horizontal: lebar = target, tinggi = tinggi sumber (1:1 vertikal,
-  // baris sumber diambil langsung dari pos piksel hasil).
   function shaderH(k, targetW) {
     return [
       VS,
@@ -179,8 +175,6 @@
     ].join("\n");
   }
 
-  // Tahap vertikal: tinggi = target, lebar = lebar teksel masukan (1:1
-  // horizontal). Dipakai pada sumbu yang berubah saja.
   function shaderV(k, targetH) {
     return [
       VS,
@@ -216,7 +210,6 @@
     ].join("\n");
   }
 
-  // CAS 1:1 pada resolusi keluaran (tetangga silang dari hasil resample).
   function shaderCAS(sharpness) {
     return [
       VS,

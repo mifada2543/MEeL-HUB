@@ -1,6 +1,5 @@
 <?php
 
-
 class DbTestHelper
 {
     private const TEST_DB_NAME = 'MEeL-test';
@@ -10,12 +9,10 @@ class DbTestHelper
     private ?mysqli $conn = null;
     private bool $inTransaction = false;
 
-    
-
-    const ADMIN_USER_ID = 1;     
-    const ADMIN2_USER_ID = 9;    
-    const MEMBER_USER_ID = 10;   
-    const REGULAR_USER_ID = 39;  
+    const ADMIN_USER_ID = 1;
+    const ADMIN2_USER_ID = 9;
+    const MEMBER_USER_ID = 10;
+    const REGULAR_USER_ID = 39;
 
     const MUSIC_ID_1 = 49;
     const MUSIC_ID_2 = 50;
@@ -25,7 +22,6 @@ class DbTestHelper
     const VIDEO_ID_2 = 5;
     const VIDEO_ID_3 = 6;
 
-    
     private static function serverCreds(): array
     {
         return [
@@ -35,8 +31,6 @@ class DbTestHelper
         ];
     }
 
-    
-
     private static function ensureTestDatabase(): void
     {
         if (self::$testDbName !== null) {
@@ -45,7 +39,6 @@ class DbTestHelper
 
         $creds = self::serverCreds();
 
-        
         $admin = null;
         for ($i = 0; $i < 10; $i++) {
             $admin = @new mysqli($creds['host'], $creds['user'], $creds['pass']);
@@ -72,8 +65,6 @@ class DbTestHelper
             }
         }
 
-        
-        
         $admin->query('DROP DATABASE IF EXISTS `' . $name . '`');
         if ($admin->error) {
             throw new RuntimeException('Test DB: gagal drop database lama: ' . $admin->error);
@@ -96,7 +87,6 @@ class DbTestHelper
 
         self::$testDbName = $name;
 
-        
         register_shutdown_function(static function () use ($name, $creds): void {
             $c = @new mysqli($creds['host'], $creds['user'], $creds['pass']);
             if (!$c->connect_error) {
@@ -106,7 +96,6 @@ class DbTestHelper
         });
     }
 
-    
     public function getConnection(): mysqli
     {
         if ($this->conn === null) {
@@ -119,7 +108,7 @@ class DbTestHelper
                 );
             }
             $this->conn->set_charset('utf8mb4');
-            
+
             $this->conn->autocommit(true);
             $this->seedFixtureData();
             self::exposeAsGlobalConnection($this->conn);
@@ -129,7 +118,6 @@ class DbTestHelper
         return $this->conn;
     }
 
-    
     private static function exposeAsGlobalConnection(mysqli $conn): void
     {
         $GLOBALS['conn'] = $conn;
@@ -154,30 +142,25 @@ class DbTestHelper
         }
     }
 
-    
-
     private function seedFixtureData(): void
     {
-        
-        
+
         static $hash = null;
         if ($hash === null) {
             $hash = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);
         }
 
-        
-        
         $users = [
-            [self::ADMIN_USER_ID,   'Admin',   'admin'],
-            [self::ADMIN2_USER_ID,  'Admin2',  'admin'],
-            [self::MEMBER_USER_ID,  'Member1', 'member'],
-            [self::REGULAR_USER_ID, 'User1',   'user'],
+            [self::ADMIN_USER_ID, 'Admin', 'admin'],
+            [self::ADMIN2_USER_ID, 'Admin2', 'admin'],
+            [self::MEMBER_USER_ID, 'Member1', 'member'],
+            [self::REGULAR_USER_ID, 'User1', 'user'],
         ];
         $stmt = $this->conn->prepare(
             'INSERT IGNORE INTO users (id, username, role, password, is_active) VALUES (?, ?, ?, ?, 1)'
         );
         foreach ($users as $u) {
-            $id   = $u[0];
+            $id = $u[0];
             $name = $u[1];
             $role = $u[2];
             $stmt->bind_param('isss', $id, $name, $role, $hash);
@@ -185,13 +168,13 @@ class DbTestHelper
         }
         $stmt->close();
 
-        $artist   = 'Test Fixture';
+        $artist = 'Test Fixture';
         $uploader = self::ADMIN2_USER_ID;
         $stmt = $this->conn->prepare(
             'INSERT IGNORE INTO music (id, title, artist, filename, user_id) VALUES (?, ?, ?, ?, ?)'
         );
         foreach ([self::MUSIC_ID_1, self::MUSIC_ID_2, self::MUSIC_ID_3] as $id) {
-            $title    = 'Fixture Track ' . $id;
+            $title = 'Fixture Track ' . $id;
             $filename = 'fixture_' . $id . '.mp3';
             $stmt->bind_param('isssi', $id, $title, $artist, $filename, $uploader);
             $stmt->execute();
@@ -202,7 +185,7 @@ class DbTestHelper
             'INSERT IGNORE INTO video (id, title, filename, user_id) VALUES (?, ?, ?, ?)'
         );
         foreach ([self::VIDEO_ID_1, self::VIDEO_ID_2, self::VIDEO_ID_3] as $id) {
-            $title    = 'Fixture Video ' . $id;
+            $title = 'Fixture Video ' . $id;
             $filename = 'fixture_' . $id . '.mp4';
             $stmt->bind_param('issi', $id, $title, $filename, $uploader);
             $stmt->execute();
@@ -210,7 +193,6 @@ class DbTestHelper
         $stmt->close();
     }
 
-    
     public function commit(): void
     {
         if ($this->conn !== null && $this->inTransaction) {
@@ -219,17 +201,15 @@ class DbTestHelper
         }
     }
 
-    
     public function close(): void
     {
         if ($this->conn !== null) {
-            $this->rollback(); 
+            $this->rollback();
             $this->conn->close();
             $this->conn = null;
         }
     }
 
-    
     public function getMusicLikesCount(int $musicId): array
     {
         $stmt = $this->conn->prepare("SELECT likes, dislikes FROM music WHERE id = ?");
@@ -243,7 +223,6 @@ class DbTestHelper
         ];
     }
 
-    
     public function getVideoLikesCount(int $videoId): array
     {
         $stmt = $this->conn->prepare("SELECT likes, dislikes FROM video WHERE id = ?");
@@ -257,7 +236,6 @@ class DbTestHelper
         ];
     }
 
-    
     public function interactionExists(int $userId, string $col, int $mediaId): ?string
     {
         $stmt = $this->conn->prepare(
@@ -270,7 +248,6 @@ class DbTestHelper
         return $result['TYPE'] ?? null;
     }
 
-    
     public function createTestComment(int $userId, ?int $musicId, ?int $videoId, string $text): int
     {
         $stmt = $this->conn->prepare(
@@ -283,7 +260,6 @@ class DbTestHelper
         return $id;
     }
 
-    
     public function getCommentOwner(int $commentId): ?int
     {
         $stmt = $this->conn->prepare("SELECT user_id FROM comments WHERE id = ?");

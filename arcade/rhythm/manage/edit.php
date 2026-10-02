@@ -1,7 +1,6 @@
 <?php
 ini_set('display_errors', 0);ini_set('display_startup_errors', 0);error_reporting(E_ALL);
 
-
 require_once __DIR__ . '/../../../auth/auth.php';
 require_once __DIR__ . '/../api/config.php';
 
@@ -9,7 +8,6 @@ $user_id = $_SESSION['user_id'] ?? null;
 $username = $_SESSION['username'] ?? null;
 $is_logged_in = $user_id !== null;
 $is_admin = $is_logged_in && is_admin($conn);
-
 
 require_once __DIR__ . '/../../../modules/core/base_url.php';
 $root = meel_base_url_path();
@@ -62,7 +60,6 @@ if ($edit_id > 0 && $is_logged_in) {
   </div>
   <?php else: ?>
 
-  
   <nav class="nav-bar">
     <a href="./" class="nav-back">← Kembali</a>
     <div class="nav-brand">
@@ -79,7 +76,6 @@ if ($edit_id > 0 && $is_logged_in) {
 
   <main class="editor-layout">
 
-    
     <aside class="editor-sidebar">
       <div class="sidebar-section">
         <h3>Metadata</h3>
@@ -209,13 +205,12 @@ if ($edit_id > 0 && $is_logged_in) {
       </div>
     </aside>
 
-    
     <section class="editor-main">
       <div class="editor-canvas-wrap" id="canvasWrap">
         <canvas id="editorCanvas"></canvas>
-        
+
         <audio id="audioPlayer" preload="auto"></audio>
-        
+
         <div id="audioPromptOverlay" class="audio-prompt-overlay">
           <div class="audio-prompt-card">
             <div class="audio-prompt-icon">🎵</div>
@@ -236,7 +231,6 @@ if ($edit_id > 0 && $is_logged_in) {
 
   </main>
 
-  
   <div id="uploadOverlay" class="overlay hidden">
     <div class="overlay-card">
       <div class="spinner"></div>
@@ -256,11 +250,9 @@ if ($edit_id > 0 && $is_logged_in) {
     const EDIT_SONG = <?= $edit_song ? json_encode($edit_song) : 'null' ?>;
     const EDIT_BEATMAP = <?= $edit_beatmap ? json_encode($edit_beatmap) : 'null' ?>;
 
-    
     window.__editorNotes = [];
   </script>
 
-  
   <script>
     function uploadBeatmap() {
       var form = document.getElementById('beatmapForm');
@@ -343,7 +335,6 @@ if ($edit_id > 0 && $is_logged_in) {
     }
   </script>
 
-  
   <script type="module" src="<?= $root ?>/arcade/rhythm/assets/js/editor/main.js"></script>
   <?php endif; ?>
 </body>

@@ -9,7 +9,6 @@ class PlaylistRepository
         $this->conn = $conn;
     }
 
-    
     public function getOwnedPlaylist(int $playlist_id, int $user_id): ?array
     {
         $stmt = $this->conn->prepare("SELECT * FROM playlists WHERE id = ? AND user_id = ?");
@@ -20,7 +19,6 @@ class PlaylistRepository
         return $row ?: null;
     }
 
-    
     public function getTracks(int $playlist_id)
     {
         $stmt = $this->conn->prepare(

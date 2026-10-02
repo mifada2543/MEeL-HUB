@@ -1,5 +1,3 @@
-
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -33,7 +31,6 @@ body {
   overflow: hidden;
 }
 
-
 .auth-required {
   display: flex;
   align-items: center;
@@ -51,7 +48,6 @@ body {
 .auth-icon { font-size: 48px; margin-bottom: 16px; }
 .auth-card h2 { font-size: 20px; margin-bottom: 8px; }
 .auth-card p { color: var(--text2); font-size: 14px; margin-bottom: 20px; }
-
 
 .nav-bar {
   position: sticky;
@@ -98,7 +94,6 @@ body {
   color: var(--text2);
 }
 
-
 .editor-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -126,7 +121,6 @@ body {
   height: 100%;
 }
 
-
 .sidebar-section {
   margin-bottom: 20px;
 }
@@ -138,7 +132,6 @@ body {
   color: var(--text3);
   margin-bottom: 12px;
 }
-
 
 .form-group {
   margin-bottom: 10px;
@@ -187,7 +180,6 @@ body {
   padding: 2px;
 }
 
-
 .file-drop {
   position: relative;
   border: 2px dashed var(--border);
@@ -227,7 +219,6 @@ body {
   display: none;
 }
 .cover-preview.visible { display: block; margin: 8px auto 0; }
-
 
 .btn {
   display: inline-flex;
@@ -273,7 +264,6 @@ body {
 }
 .btn-icon:hover { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--danger); }
 
-
 .editor-controls {
   display: flex;
   gap: 6px;
@@ -297,7 +287,6 @@ body {
   color: var(--accent);
 }
 
-
 .editor-canvas-wrap {
   flex: 1;
   overflow-y: scroll;
@@ -317,7 +306,6 @@ body {
   width: 1px !important;
   pointer-events: none;
 }
-
 
 .editor-timeline {
   height: 32px;
@@ -348,7 +336,6 @@ body {
   box-shadow: 0 0 8px rgba(244,63,122,0.5);
   pointer-events: none;
 }
-
 
 .song-list {
   display: flex;
@@ -387,7 +374,6 @@ body {
   text-align: center;
   padding: 16px;
 }
-
 
 .overlay {
   position: fixed;
@@ -443,7 +429,6 @@ body {
   border-radius: 4px;
 }
 
-
 .note-info-row {
   display: flex;
   justify-content: space-between;
@@ -472,7 +457,6 @@ body {
   font-size: 10px;
   padding: 5px 8px;
 }
-
 
 .audio-prompt-overlay {
   position: absolute;
@@ -532,7 +516,6 @@ body {
   50% { transform: translateX(-8px); }
 }
 
-
 .gold-hint {
   display: inline-flex;
   align-items: center;
@@ -546,7 +529,6 @@ body {
   font-weight: 600;
   margin-top: 8px;
 }
-
 
 @media (max-width: 1024px) {
   .editor-layout {

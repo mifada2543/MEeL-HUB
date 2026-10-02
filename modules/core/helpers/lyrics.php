@@ -12,8 +12,8 @@ function parse_lrc(string $content): array
         if ($line === '') continue;
 
         if (preg_match('/^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\](.*)$/', $line, $m)) {
-            $min  = (int)$m[1];
-            $sec  = (int)$m[2];
+            $min = (int)$m[1];
+            $sec = (int)$m[2];
             $ms_str = $m[3] ?? '';
             if ($ms_str !== '') {
                 $ms_len = strlen($ms_str);
@@ -60,9 +60,9 @@ function generate_lrc(array $lines, ?string $title = null, ?string $artist = nul
     foreach ($lines as $line) {
         $time = (float)($line['time'] ?? 0);
         $text = $line['text'] ?? '';
-        $min  = (int)floor($time / 60);
-        $sec  = (int)floor($time % 60);
-        $ms   = (int)round(($time - floor($time)) * 100);
+        $min = (int)floor($time / 60);
+        $sec = (int)floor($time % 60);
+        $ms = (int)round(($time - floor($time)) * 100);
         $out[] = sprintf('[%02d:%02d.%02d]%s', $min, $sec, $ms, $text);
     }
 
@@ -114,9 +114,9 @@ function get_music_lyrics_list(int $music_id): array
         if (preg_match('/^\d+\.([a-z]{2,3}(?:-[a-z]{2,8})?)\.lrc$/i', $base, $m)) {
             $lang = strtolower($m[1]);
             $results[] = [
-                'lang'  => $lang,
+                'lang' => $lang,
                 'label' => lang_label($lang),
-                'file'  => $base,
+                'file' => $base,
             ];
         }
     }

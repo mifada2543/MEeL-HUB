@@ -74,8 +74,6 @@ window.meelConfirmHtmx = function (e) {
   document.body.addEventListener("htmx:confirm", window.meelConfirmHtmx);
 })();
 
-
-
 window.meelRebuildCommentPreview = function () {
   const list = document.getElementById("comment-list"),
     txt = document.getElementById("comment-preview-text");

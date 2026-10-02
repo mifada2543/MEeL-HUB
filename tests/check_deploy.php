@@ -7,10 +7,9 @@ if (PHP_SAPI !== 'cli') {
 
 define('MEEL_ROOT', rtrim(realpath(__DIR__ . '/..') ?: (__DIR__ . '/..'), '/'));
 
-
-$url         = null;   
-$hddOverride = null;   
-$color       = true;
+$url = null;
+$hddOverride = null;
+$color = true;
 foreach (array_slice($argv, 1) as $a) {
     if (str_starts_with($a, '--url=')) {
         $url = rtrim(substr($a, 6), '/');
@@ -42,7 +41,6 @@ HELP);
         exit(2);
     }
 }
-
 
 $passed = 0;
 $warned = 0;
@@ -87,14 +85,13 @@ function cmd_output(string $cmd): ?string
     return $out;
 }
 
-
 section('1. MEEL_HDD_BASE (Media Storage)');
 
 $settingsFile = MEEL_ROOT . '/auth/settings.php';
 if (!is_file($settingsFile)) {
     report('FAIL', 'auth/settings.php tidak ditemukan',
         'cp auth/settings.example.php auth/settings.php lalu atur MEEL_HDD_BASE');
-    $settingsFile = MEEL_ROOT . '/auth/settings.example.php'; 
+    $settingsFile = MEEL_ROOT . '/auth/settings.example.php';
 } else {
     try {
         require_once $settingsFile;
@@ -107,7 +104,6 @@ if (!is_file($settingsFile)) {
 $hdd = $hddOverride !== null
     ? $hddOverride
     : (defined('MEEL_HDD_BASE') ? (string) MEEL_HDD_BASE : '');
-
 
 if ($hddOverride !== null && defined('MEEL_HDD_BASE') && (string) MEEL_HDD_BASE !== '') {
     $realHdd = (string) MEEL_HDD_BASE;
@@ -139,14 +135,13 @@ if ($hdd === '') {
             'tanpa penanda, folder storage kosong dianggap "belum ter-mount" — jalankan: touch "' . $hdd . '/.meel_mount"');
     }
 
-    
     $derived = [
-        'MEEL_HDD_VIDEO_UPLOAD' => ['video/upload',           'auto'],
-        'MEEL_HDD_VIDEO_DIR'    => ['video/upload/video',     'auto'],
-        'MEEL_HDD_THUMB_DIR'    => ['video/upload/thumbnail', 'manual'],
-        'MEEL_HDD_MUSIC_UPLOAD' => ['music/upload',           'manual'],
-        'MEEL_HDD_BOOKS_UPLOAD' => ['books/upload',           'manual'],
-        'MEEL_HDD_DRIVE'        => ['drive',                  'auto'],
+        'MEEL_HDD_VIDEO_UPLOAD' => ['video/upload', 'auto'],
+        'MEEL_HDD_VIDEO_DIR' => ['video/upload/video', 'auto'],
+        'MEEL_HDD_THUMB_DIR' => ['video/upload/thumbnail', 'manual'],
+        'MEEL_HDD_MUSIC_UPLOAD' => ['music/upload', 'manual'],
+        'MEEL_HDD_BOOKS_UPLOAD' => ['books/upload', 'manual'],
+        'MEEL_HDD_DRIVE' => ['drive', 'auto'],
     ];
     foreach ($derived as $const => [$rel, $mode]) {
 
@@ -170,9 +165,9 @@ if ($hdd === '') {
         : rtrim((string) constant('MEEL_HDD_BOOKS_UPLOAD'), '/');
 
     $requiredSubdirs = [
-        'music/upload/file'      => $musicBase . '/file',
+        'music/upload/file' => $musicBase . '/file',
         'music/upload/thumbnail' => $musicBase . '/thumbnail',
-        'books/upload/pdf'       => $booksBase . '/pdf',
+        'books/upload/pdf' => $booksBase . '/pdf',
         'books/upload/thumbnail' => $booksBase . '/thumbnail',
     ];
     foreach ($requiredSubdirs as $label => $dir) {
@@ -183,15 +178,14 @@ if ($hdd === '') {
     }
 }
 
-
 section('2. Upload dirs (books / music / video)');
 
 foreach (['books', 'music', 'video'] as $m) {
-    $path  = MEEL_ROOT . "/{$m}/upload";
+    $path = MEEL_ROOT . "/{$m}/upload";
     $label = "{$m}/upload";
 
     if (is_link($path)) {
-        $target    = (string) readlink($path);
+        $target = (string) readlink($path);
         $targetDir = rtrim($target, '/');
         if (!is_dir($targetDir)) {
             report('FAIL', $label, "symlink menunjuk ke target yang TIDAK ADA: {$target} (storage belum di-mount?)");
@@ -220,7 +214,7 @@ section('3. .htaccess Upload Dirs (hardening)');
 
 $requiredDirs = ['php_flag engine off', 'ForceType', 'Options -Indexes'];
 foreach (['books/upload', 'music/upload', 'video/upload'] as $u) {
-    $ht    = MEEL_ROOT . "/{$u}/.htaccess";
+    $ht = MEEL_ROOT . "/{$u}/.htaccess";
     $label = "{$u}/.htaccess";
     if (!is_file($ht)) {
         report('FAIL', $label,
@@ -243,10 +237,7 @@ foreach (['books/upload', 'music/upload', 'video/upload'] as $u) {
     }
 }
 
-
-
-
-$parentHt    = MEEL_ROOT . '/data_drive/.htaccess';
+$parentHt = MEEL_ROOT . '/data_drive/.htaccess';
 $parentLabel = 'data_drive/.htaccess (deny private_admins)';
 if (!is_file($parentHt)) {
     report('FAIL', $parentLabel, 'tidak ada');
@@ -259,8 +250,7 @@ if (!is_file($parentHt)) {
     }
 }
 
-
-$driveHt    = MEEL_ROOT . '/data_drive/private_admins/.htaccess';
+$driveHt = MEEL_ROOT . '/data_drive/private_admins/.htaccess';
 $driveLabel = 'data_drive/private_admins/.htaccess';
 if (!is_file($driveHt)) {
     report('WARN', $driveLabel,
@@ -283,9 +273,9 @@ foreach (['public', 'private_admins'] as $driveSub) {
     if (!is_link($driveEntry)) {
         continue;
     }
-    $target       = (string) readlink($driveEntry);
-    $targetNorm   = rtrim($target, '/');
-    $expected     = $driveRoot . '/' . $driveSub;
+    $target = (string) readlink($driveEntry);
+    $targetNorm = rtrim($target, '/');
+    $expected = $driveRoot . '/' . $driveSub;
     $expectedNorm = rtrim($expected, '/');
     if ($expectedNorm !== '' && ($targetNorm === $expectedNorm || str_starts_with($targetNorm, $expectedNorm . '/'))) {
         report('PASS', "data_drive/{$driveSub} → {$target} (symlink deploy sah — target di dalam MEEL_HDD_DRIVE)");
@@ -294,7 +284,6 @@ foreach (['public', 'private_admins'] as $driveSub) {
             'target di LUAR MEEL_HDD_DRIVE — jadikan folder nyata ATAU arahkan ke ' . $expected . ' (jangan commit symlink)');
     }
 }
-
 
 $vpClass = MEEL_ROOT . '/modules/auth/ValidatingProxy.php';
 $vpScript = MEEL_ROOT . '/modules/auth/validating_proxy_server.php';
@@ -324,9 +313,7 @@ if (!is_file($vpClass) || !is_file($vpScript)) {
     }
 }
 
-
 section('4. mod_rewrite & PWA (sw.js → sw.js.php)');
-
 
 $rootHt = MEEL_ROOT . '/.htaccess';
 if (!is_file($rootHt)) {
@@ -334,24 +321,22 @@ if (!is_file($rootHt)) {
 } else {
     $ht = (string) @file_get_contents($rootHt);
     $hasEngine = str_contains($ht, 'RewriteEngine On');
-    $hasRule   = str_contains($ht, 'sw.js.php');
+    $hasRule = str_contains($ht, 'sw.js.php');
     if ($hasEngine && $hasRule) {
         report('PASS', 'RewriteRule ^sw\\.js$ sw.js.php [L] ada di .htaccess root');
     } else {
         $miss = [];
         if (!$hasEngine) $miss[] = 'RewriteEngine On';
-        if (!$hasRule)   $miss[] = 'RewriteRule ^sw\\.js$ sw.js.php';
+        if (!$hasRule) $miss[] = 'RewriteRule ^sw\\.js$ sw.js.php';
         report('FAIL', '.htaccess root kehilangan: ' . implode(' + ', $miss));
     }
 }
-
 
 if (is_file(MEEL_ROOT . '/sw.js.php')) {
     report('PASS', 'sw.js.php (generator service worker) ada');
 } else {
     report('FAIL', 'sw.js.php tidak ada', 'service worker dinamis hilang — restore dari repo');
 }
-
 
 $apacheBins = ['/opt/lampp/bin/apachectl', '/opt/lampp/bin/httpd', 'apache2ctl', 'apachectl', 'httpd'];
 $modOut = null;
@@ -369,17 +354,16 @@ if ($modOut === null) {
         'aktifkan: LoadModule rewrite_module modules/mod_rewrite.so');
 }
 
-
-$probeBase  = $url !== null ? $url : 'http://localhost/' . basename(MEEL_ROOT);
-$probeUrl   = $probeBase . '/sw.js';
+$probeBase = $url !== null ? $url : 'http://localhost/' . basename(MEEL_ROOT);
+$probeUrl = $probeBase . '/sw.js';
 $ctx = stream_context_create(['http' => [
-    'timeout'       => 4,
+    'timeout' => 4,
     'ignore_errors' => true,
-    'header'        => "User-Agent: MEeL-check-deploy\r\n",
+    'header' => "User-Agent: MEeL-check-deploy\r\n",
 ]]);
 $body = @file_get_contents($probeUrl, false, $ctx);
 $status = 0;
-$ct     = '';
+$ct = '';
 if (isset($http_response_header) && is_array($http_response_header)) {
 
     if (preg_match('/\s(\d{3})\s/', $http_response_header[0] ?? '', $m)) {
@@ -406,7 +390,6 @@ if ($body === false) {
         ? 'mod_rewrite atau AllowOverride All tidak aktif di vhost Apache'
         : 'kode 404/403 — coba --url yang tepat untuk konfirmasi');
 }
-
 
 section('Ringkasan');
 echo '  PASS: ' . c('1;32', (string) $passed)

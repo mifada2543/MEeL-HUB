@@ -1,6 +1,6 @@
 <?php
 $countdown_seconds = max(1, (int)($countdown_seconds ?? 1));
-$countdown_color   = $countdown_color ?? 'text-red-500';
+$countdown_color = $countdown_color ?? 'text-red-500';
 ?>
 <div class="text-center py-6 space-y-4">
     <i data-lucide="shield-alert" class="w-12 h-12 text-red-500 mx-auto animate-pulse"></i>

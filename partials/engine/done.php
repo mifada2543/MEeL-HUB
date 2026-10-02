@@ -9,7 +9,7 @@
   </div>
   <div class="meel-label" style="color:#22c55e">Selesai</div>
   <div id="meel-done-title" style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.05em;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-  
+
   <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;justify-content:center" id="meel-nav-btns">
     <a id="meel-btn-home" href="./" class="meel-nav-btn" style="color:#22c55e;border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.08)">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">

@@ -1,6 +1,5 @@
 /* reference build: MEeL-C9H11NO2 [35797e6fc76bd862] */
 
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -35,7 +34,6 @@ body {
   position: relative;
   -webkit-font-smoothing: antialiased;
 }
-
 
 .game-bg-image {
   position: fixed;
@@ -83,7 +81,6 @@ body {
   display: block;
   image-rendering: auto;
 }
-
 
 .hud {
   position: fixed;
@@ -139,7 +136,6 @@ body {
   transform: translateY(36px);
 }
 
-
 .combo-wrap {
   position: absolute;
   top: 50%;
@@ -175,7 +171,6 @@ body {
   margin-top: 2px;
 }
 
-
 .judgment-wrap {
   position: absolute;
   top: 38%;
@@ -197,7 +192,6 @@ body {
   100% { opacity: 0; transform: scale(0.85) translateY(-10px); }
 }
 
-
 .progress-bar {
   position: absolute;
   bottom: 0;
@@ -212,7 +206,6 @@ body {
   background: linear-gradient(90deg, var(--accent-pink), var(--accent-purple), var(--accent-blue));
   transition: width 0.3s linear;
 }
-
 
 .touch-lanes {
   position: fixed;
@@ -256,7 +249,6 @@ body {
 .tl-3 { border-color: rgba(129,140,248,0.25); color: #818cf8; }
 .tl-3:active { background: rgba(129,140,248,0.2); }
 
-
 .overlay {
   position: fixed;
   inset: 0;
@@ -277,7 +269,6 @@ body {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 
 .pause-card {
   background: rgba(30,30,40,0.85);
@@ -353,7 +344,6 @@ body {
   background: linear-gradient(135deg, #818cf8, #c084fc);
   color: #fff;
 }
-
 
 .options-card {
   background: rgba(30,30,40,0.92);
@@ -521,7 +511,6 @@ body {
   color: var(--text-primary);
 }
 
-
 .countdown-num {
   font-size: 120px;
   font-weight: 900;
@@ -543,7 +532,6 @@ body {
   animation: countdown-pop 0.5s ease-out;
   user-select: none;
 }
-
 
 .results-content {
   max-width: 380px;
@@ -671,14 +659,12 @@ body {
   box-shadow: 0 4px 20px rgba(244,63,122,0.3);
 }
 
-
 @keyframes score-pop {
   0% { transform: scale(1); }
   50% { transform: scale(1.08); }
   100% { transform: scale(1); }
 }
 .score-pop { animation: score-pop 0.15s ease; }
-
 
 @media (max-width: 600px) {
   .combo-number { font-size: 42px; }

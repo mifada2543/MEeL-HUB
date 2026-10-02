@@ -1,20 +1,17 @@
 <?php
 
-
 define('PROJECT_ROOT', realpath(__DIR__ . '/..'));
 define('EXCLUDE_DIRS', ['vendor', 'node_modules', '.git', 'assets/dict', 'data_drive']);
 define('EXCLUDE_FILES', ['config.example.php', 'settings.example.php', 'test.php', '.gitkeep']);
 
 require_once __DIR__ . '/helpers.php';
 
-
-$GLOBALS['total_tests']  = 0;
-$GLOBALS['passed']       = 0;
-$GLOBALS['warnings']     = 0;
-$GLOBALS['failed']       = 0;
+$GLOBALS['total_tests'] = 0;
+$GLOBALS['passed'] = 0;
+$GLOBALS['warnings'] = 0;
+$GLOBALS['failed'] = 0;
 $GLOBALS['fail_details'] = [];
 $GLOBALS['test_timestamp'] = date('Y-m-d H:i:s');
-
 
 function testPhpSyntax(): void {
     print_header('TEST 1: PHP Syntax — Semua File PHP');
@@ -49,26 +46,24 @@ function testPhpSyntax(): void {
     }
 }
 
-
 function testClassLoading(): void {
     print_header('TEST 2: Class Loading — Instantiation Check');
 
     $classes = [
-        'Uploader'           => 'modules/core/Uploader.php',
-        'Transcoder'         => 'modules/core/Transcoder.php',
-        'MediaViewer'        => 'modules/media/MediaViewer.php',
-        'MediaLibrary'       => 'modules/media/MediaLibrary.php',
-        'MediaInteraction'   => 'modules/media/MediaInteraction.php',
-        'System'             => 'modules/core/System.php',
-        'GarbageCollector'   => 'modules/core/GarbageCollector.php',
-        'SsrfGuard'          => 'modules/auth/SsrfGuard.php',
-        'ValidatingProxy'    => 'modules/auth/ValidatingProxy.php',
-        'UpdateManager'      => 'controllers/system/UpdateManager.php',
-        'BookRepository'     => 'modules/media/MediaLibrary.php',
-        'BookUploader'       => 'modules/media/MediaLibrary.php',
+        'Uploader' => 'modules/core/Uploader.php',
+        'Transcoder' => 'modules/core/Transcoder.php',
+        'MediaViewer' => 'modules/media/MediaViewer.php',
+        'MediaLibrary' => 'modules/media/MediaLibrary.php',
+        'MediaInteraction' => 'modules/media/MediaInteraction.php',
+        'System' => 'modules/core/System.php',
+        'GarbageCollector' => 'modules/core/GarbageCollector.php',
+        'SsrfGuard' => 'modules/auth/SsrfGuard.php',
+        'ValidatingProxy' => 'modules/auth/ValidatingProxy.php',
+        'UpdateManager' => 'controllers/system/UpdateManager.php',
+        'BookRepository' => 'modules/media/MediaLibrary.php',
+        'BookUploader' => 'modules/media/MediaLibrary.php',
     ];
 
-    
     foreach ($classes as $name => $file) {
         $full = PROJECT_ROOT . '/' . $file;
         if (!file_exists($full)) {
@@ -84,7 +79,6 @@ function testClassLoading(): void {
         }
     }
 
-    
     foreach (['DriveUserContext', 'DriveStorage', 'DriveViewRenderer'] as $driveClass) {
         $full = PROJECT_ROOT . '/drive/DriveService.php';
         if (file_exists($full)) {
@@ -96,28 +90,27 @@ function testClassLoading(): void {
     }
 }
 
-
 function testFunctionExistence(): void {
     print_header('TEST 3: Function Existence — Helper Functions');
 
     $functions = [
 
-        'time_ago'              => 'modules/core/helpers/url.php',
-        'format_bytes'          => 'modules/core/helpers/url.php',
-        'music_thumbnail_url'   => 'modules/core/helpers/storage.php',
-        'get_user_usage'        => 'modules/auth/helpers/user.php',
-        'get_csrf_token'        => 'modules/auth/helpers/csrf.php',
-        'verify_csrf_token'     => 'modules/auth/helpers/csrf.php',
-        'log_drive_operation'   => 'modules/core/helpers/storage.php',
+        'time_ago' => 'modules/core/helpers/url.php',
+        'format_bytes' => 'modules/core/helpers/url.php',
+        'music_thumbnail_url' => 'modules/core/helpers/storage.php',
+        'get_user_usage' => 'modules/auth/helpers/user.php',
+        'get_csrf_token' => 'modules/auth/helpers/csrf.php',
+        'verify_csrf_token' => 'modules/auth/helpers/csrf.php',
+        'log_drive_operation' => 'modules/core/helpers/storage.php',
         'generate_search_metadata' => 'modules/core/helpers/metadata.php',
-        
-        'getRomajiName'         => 'modules/core/japanese.php',
-        'analyzeJapaneseText'   => 'modules/core/japanese.php',
 
-        'log_activity'          => 'modules/core/activity_logger.php',
+        'getRomajiName' => 'modules/core/japanese.php',
+        'analyzeJapaneseText' => 'modules/core/japanese.php',
+
+        'log_activity' => 'modules/core/activity_logger.php',
     ];
 
-    $warning_funcs = ['log_activity']; 
+    $warning_funcs = ['log_activity'];
 
     foreach ($functions as $name => $file) {
         $full = PROJECT_ROOT . '/' . $file;
@@ -147,7 +140,6 @@ function testFunctionExistence(): void {
     }
 }
 
-
 function testDirectoryStructure(): void {
     print_header('TEST 4: Directory Structure & Permissions');
 
@@ -161,15 +153,15 @@ function testDirectoryStructure(): void {
         : PROJECT_ROOT . '/music/upload';
 
     $dirs = [
-        'temp'              => 'Temp directory untuk staging upload, harus writable',
-        'logs'              => 'Log directory untuk audit trail',
-        'video/upload'      => 'Upload directory untuk video (delegated ke HDD)',
-        'music/upload'      => 'Upload directory untuk music',
-        'music/upload/file'  => 'Music file storage',
-        'books/upload'      => 'Upload directory untuk books',
-        'data_drive'        => 'Drive storage root',
-        'data_drive/public'  => 'Drive public files',
-        'err'               => 'Error pages',
+        'temp' => 'Temp directory untuk staging upload, harus writable',
+        'logs' => 'Log directory untuk audit trail',
+        'video/upload' => 'Upload directory untuk video (delegated ke HDD)',
+        'music/upload' => 'Upload directory untuk music',
+        'music/upload/file' => 'Music file storage',
+        'books/upload' => 'Upload directory untuk books',
+        'data_drive' => 'Drive storage root',
+        'data_drive/public' => 'Drive public files',
+        'err' => 'Error pages',
     ];
 
     $paths = [
@@ -191,7 +183,6 @@ function testDirectoryStructure(): void {
     }
 }
 
-
 function testConfigCheck(): void {
     print_header('TEST 5: Config Check — auth/config.php');
 
@@ -205,24 +196,23 @@ function testConfigCheck(): void {
     $content = file_get_contents($configFile);
 
     $checks = [
-        'Session name (meel)'            => '/session_name.*meel/',
-        'Session GC maxlifetime'         => '/session\.gc_maxlifetime/',
-        'Session cookie params'          => '/session_set_cookie_params/',
-        'CSRF token generation'          => '/random_bytes.*32/',
-        'verify_csrf_token function'     => '/function verify_csrf_token/',
-        'Last activity timeout'          => '/LAST_ACTIVITY/',
-        'MySQLi connection'              => '/new mysqli\(/',
-        'Activity logger include'        => '/activity_logger/',
+        'Session name (meel)' => '/session_name.*meel/',
+        'Session GC maxlifetime' => '/session\.gc_maxlifetime/',
+        'Session cookie params' => '/session_set_cookie_params/',
+        'CSRF token generation' => '/random_bytes.*32/',
+        'verify_csrf_token function' => '/function verify_csrf_token/',
+        'Last activity timeout' => '/LAST_ACTIVITY/',
+        'MySQLi connection' => '/new mysqli\(/',
+        'Activity logger include' => '/activity_logger/',
     ];
 
-    
     $sessionFile = PROJECT_ROOT . '/modules/auth/helpers/session.php';
     $sessionContent = file_exists($sessionFile) ? file_get_contents($sessionFile) : '';
     $csrfFile = PROJECT_ROOT . '/modules/auth/helpers/csrf.php';
     $csrfContent = file_exists($csrfFile) ? file_get_contents($csrfFile) : '';
 
     foreach ($checks as $name => $pattern) {
-        
+
         if (preg_match($pattern, $content) || preg_match($pattern, $sessionContent) || preg_match($pattern, $csrfContent)) {
             record("{$name} ✓", true);
         } else {
@@ -230,9 +220,6 @@ function testConfigCheck(): void {
         }
     }
 
-    
-    
-    
     $hasServerVar = preg_match('/\$server\s*=\s*"[^"]*"/', $content);
     $hasDirectConn = preg_match('/new\s+mysqli\(\s*"[^"]+"/', $content);
 
@@ -249,7 +236,6 @@ function testConfigCheck(): void {
     }
 }
 
-
 function testDatabaseConnectivity(): void {
     print_header('TEST 6: Database Connectivity Check');
 
@@ -260,13 +246,10 @@ function testDatabaseConnectivity(): void {
         return;
     }
 
-    
-    
     try {
-        
+
         $content = file_get_contents($configFile);
 
-        
         $hasConfig = preg_match('/\$conn\s*=\s*new\s+mysqli\(/', $content);
 
         if ($hasConfig) {
@@ -279,20 +262,17 @@ function testDatabaseConnectivity(): void {
     }
 }
 
-
 function testIndexPages(): void {
     print_header('TEST 7: Index Pages — HTML Structure');
 
-    
-    
     $index_pages = [
-        'index.php'             => ['head', 'footer'],
-        'video/index.php'       => ['head', 'footer'],
-        'music/index.php'       => ['head', 'footer'],
-        'books/index.php'       => ['head', 'footer'],
-        'drive/index.php'       => ['head', 'footer'],
-        'admin/index.php'       => ['header-admin'],
-        'profile/index.php'     => ['head', 'footer'],
+        'index.php' => ['head', 'footer'],
+        'video/index.php' => ['head', 'footer'],
+        'music/index.php' => ['head', 'footer'],
+        'books/index.php' => ['head', 'footer'],
+        'drive/index.php' => ['head', 'footer'],
+        'admin/index.php' => ['header-admin'],
+        'profile/index.php' => ['head', 'footer'],
     ];
 
     foreach ($index_pages as $file => $partials) {
@@ -320,7 +300,7 @@ function testIndexPages(): void {
                     strpos($content, 'partials/link.php') !== false
                 );
             } else {
-                
+
                 if (strpos($content, "partials/{$partial}.php") !== false) {
                     $found = true;
                 }
@@ -337,8 +317,8 @@ function testIndexPages(): void {
         }
 
         if ($hasInclusions) {
-            
-            $hasHtml5   = (strpos($content, '<!DOCTYPE html') !== false);
+
+            $hasHtml5 = (strpos($content, '<!DOCTYPE html') !== false);
             $hasClosing = (strpos($content, '</html>') !== false);
 
             if ($hasHtml5 && $hasClosing) {
@@ -349,7 +329,6 @@ function testIndexPages(): void {
         }
     }
 }
-
 
 function testErrorPages(): void {
     print_header('TEST 8: Error Pages — Path Consistency');
@@ -365,14 +344,14 @@ function testErrorPages(): void {
             continue;
         }
 
-        $code   = stripPhpComments(file_get_contents($full));
+        $code = stripPhpComments(file_get_contents($full));
         $issues = [];
 
         if (strpos($code, '/MEeL/') !== false) {
-            $issues[] = 'path hardcoded /MEeL/ ditemukan'; 
+            $issues[] = 'path hardcoded /MEeL/ ditemukan';
         }
         if (strpos($code, 'meel_base_url_path()') === false) {
-            $issues[] = 'meel_base_url_path() tidak dipakai'; 
+            $issues[] = 'meel_base_url_path() tidak dipakai';
         }
 
         if (preg_match("/include\s*['\"]\.\.\/partials\//", $code)) {
@@ -392,7 +371,6 @@ function testErrorPages(): void {
     }
 }
 
-
 function run(): int {
     echo CLR_CYAN . CLR_BOLD . "\n";
     echo "  " . chr(9556) . str_repeat(chr(9552), 56) . chr(9559) . "\n";
@@ -402,7 +380,6 @@ function run(): int {
     echo CLR_GRAY . "  Path : " . PROJECT_ROOT . "\n";
     echo "  Time : " . $GLOBALS['test_timestamp'] . "\n" . CLR_RESET;
 
-    
     testPhpSyntax();
     testClassLoading();
     testFunctionExistence();
@@ -412,7 +389,6 @@ function run(): int {
     testIndexPages();
     testErrorPages();
 
-    
     echo "\n" . CLR_BOLD . chr(9556) . str_repeat(chr(9552), 56) . chr(9559) . "\n";
     echo chr(9553) . "                    FUNCTIONAL TEST SUMMARY" . str_repeat(' ', 20) . chr(9553) . "\n";
     echo chr(9562) . str_repeat(chr(9552), 56) . chr(9565) . CLR_RESET . "\n\n";
@@ -432,7 +408,6 @@ function run(): int {
 
     echo "  Score : {$score}/100  Grade: " . $grade . CLR_RESET . "\n\n";
 
-    
     $health_issues = $f + ($w > 5 ? $w - 5 : 0);
     $health = match(true) {
         $f > 0 => CLR_RED . '⚠ CRITICAL' . CLR_RESET . ' — Ada test gagal yang perlu diperbaiki',
@@ -454,7 +429,7 @@ function run(): int {
     }
 
     $reportFile = PROJECT_ROOT . '/logs/functional_report_' . date('Ymd_His') . '.log';
-    $report  = "MEeL Functional Test Report\n";
+    $report = "MEeL Functional Test Report\n";
     $report .= "Date: " . $GLOBALS['test_timestamp'] . "\n";
     $report .= "Score: {$score}/100 ({$p} pass, {$w} warn, {$f} fail)\n\n";
     if (!empty($GLOBALS['fail_details'])) {

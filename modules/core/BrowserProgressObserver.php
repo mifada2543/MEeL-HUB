@@ -1,6 +1,5 @@
 <?php
 
-
 require_once __DIR__ . '/ProgressObserver.php';
 
 class BrowserProgressObserver implements ProgressObserver
@@ -14,7 +13,6 @@ class BrowserProgressObserver implements ProgressObserver
         $this->isAdmin = $isAdmin;
     }
 
-    
     public function onProgress(string $stage, array $data = []): void
     {
         switch ($stage) {
@@ -60,7 +58,7 @@ class BrowserProgressObserver implements ProgressObserver
                 break;
 
             case 'redirect':
-                
+
                 break;
 
             case 'error':
@@ -80,7 +78,6 @@ class BrowserProgressObserver implements ProgressObserver
         }
     }
 
-    
     private function emitJs(string $js): void
     {
         try {
@@ -94,7 +91,6 @@ class BrowserProgressObserver implements ProgressObserver
         }
     }
 
-    
     private function injectOverlay(string $initialPhase): void
     {
         if ($this->overlayInjected) {
@@ -127,7 +123,6 @@ class BrowserProgressObserver implements ProgressObserver
         }
     }
 
-    
     private function emitDownloadProgress(array $data): void
     {
 
@@ -135,11 +130,11 @@ class BrowserProgressObserver implements ProgressObserver
             $args = implode(',', array_map(
                 'json_encode',
                 [
-                    $data['pct']   ?? 0,
-                    $data['eta']   ?? '',
+                    $data['pct'] ?? 0,
+                    $data['eta'] ?? '',
                     $data['speed'] ?? '',
-                    $data['size']  ?? '',
-                    $data['frag']  ?? '',
+                    $data['size'] ?? '',
+                    $data['frag'] ?? '',
                 ]
             ));
             $this->emitJs('meelDlPct(' . $args . ');');

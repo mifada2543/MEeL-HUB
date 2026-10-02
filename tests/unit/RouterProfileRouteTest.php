@@ -62,14 +62,12 @@ class RouterProfileRouteTest extends TestCase
     {
         $route = MeelRouter::routeFor('profile/channel-more');
         $this->assertSame('profile/channel_more.php', $route['handler']);
-        // Route eksak menang atas pattern username — tidak boleh mengisi GET.
         $this->assertArrayNotHasKey('u', $_GET);
         $this->assertArrayNotHasKey('tab', $_GET);
     }
 
     public function testMultiSegmentProfileTypeNotRouted(): void
     {
-        // /profile/<user>/<all|video|music> di-handle 301 di dispatch(), bukan route.
         foreach (['all', 'video', 'music', 'other'] as $type) {
             $this->assertNull(MeelRouter::routeFor('profile/john_doe/' . $type));
         }

@@ -39,14 +39,14 @@ class StreamAuthTest extends TestCase
 
     public function testExpiredMarkerDenied(): void
     {
-        
+
         $_SESSION['stream_ok'] = [145 => time() - 99999];
         $this->assertFalse(is_stream_authorized(145));
     }
 
     public function testCustomTtl(): void
     {
-        $_SESSION['stream_ok'] = [7 => time() - 60]; 
+        $_SESSION['stream_ok'] = [7 => time() - 60];
         $this->assertTrue(is_stream_authorized(7, 3600));
         $this->assertFalse(is_stream_authorized(7, 30));
     }
@@ -57,7 +57,7 @@ class StreamAuthTest extends TestCase
             authorize_stream($i);
         }
         $this->assertLessThanOrEqual(100, count($_SESSION['stream_ok']));
-        
+
         $this->assertTrue(is_stream_authorized(150));
     }
 
@@ -94,14 +94,13 @@ class StreamAuthTest extends TestCase
         $this->assertTrue(meel_stream_path_allowed('video/myclip/myclip.m3u8'));
         $this->assertTrue(meel_stream_path_allowed('video/myclip/myclip_001.ts'));
         $this->assertTrue(meel_stream_path_allowed('video/myclip/thumbnails.vtt'));
-        // folder lain milik video lain tidak ikut terizinkan
         $this->assertFalse(meel_stream_path_allowed('video/other/other.m3u8'));
     }
 
     public function testRegisteredPathStillRequiresLiveToken(): void
     {
         meel_register_stream_path('video/myclip/myclip.m3u8', 42);
-        $_SESSION['stream_ok'] = [42 => time() - 99999]; // token kedaluwarsa
+        $_SESSION['stream_ok'] = [42 => time() - 99999];
 
         $this->assertFalse(meel_stream_path_allowed('video/myclip/myclip.m3u8'));
     }
@@ -156,7 +155,7 @@ class StreamAuthTest extends TestCase
     public function testNestedStillRequiresLiveToken(): void
     {
         meel_register_stream_path('video/clip/clip.m3u8', 42);
-        $_SESSION['stream_ok'] = [42 => time() - 99999]; // token kedaluwarsa
+        $_SESSION['stream_ok'] = [42 => time() - 99999];
 
         $this->assertFalse(meel_stream_path_allowed('video/clip/v1/index.m3u8'));
         $this->assertFalse(meel_stream_path_allowed('video/clip/v1/index0.ts'));

@@ -39,7 +39,7 @@ window.meelPhase = function (phase) {
       row.appendChild(s);
     }
   }
-  
+
   if (phase === "sprite" || phase === "sp") {
     startSpriteTrickle();
   } else {

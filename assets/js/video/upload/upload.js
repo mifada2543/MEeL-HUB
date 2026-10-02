@@ -2,11 +2,6 @@
 /** MEeL - Media Hub Platform
  * @copyright Copyright (C) 2026 Mifada
  * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
-/*
- * upload/upload.js — video/upload.php: drop-zone, overlay progress,
- * drag-and-drop, @keyframes spin; progress memakai
- * shared/upload-progress.js (meelUploadProgress).
- * */
 function handleVideoFile(input) {
   const file = input.files[0];
   if (!file) return;
@@ -51,7 +46,7 @@ function handleSubtitleFile(input) {
 }
 function handleThumbFile(input) {
   if (!input.files || !input.files[0]) return;
-  thumbManual = true; // pilihan manual — Auto-fill tidak boleh menimpa
+  thumbManual = true;
   const reader = new FileReader();
   reader.onload = function (e) {
     const preview = document.getElementById("thumb-preview");
@@ -85,7 +80,7 @@ function handleSubmit() {
   const fileSizeMB = videoInput.files[0]
     ? videoInput.files[0].size / 1024 / 1024
     : 50;
-  const baseDelay = Math.max(3000, Math.min(fileSizeMB * 120, 20000)); // 3s–20s
+  const baseDelay = Math.max(3000, Math.min(fileSizeMB * 120, 20000));
   window.meelUploadProgress({
     phases: [
       {

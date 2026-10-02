@@ -16,7 +16,6 @@ class GarbageCollector
 
     private static bool $hasRun = false;
 
-    
     public static function cleanGuests(\mysqli $conn): int
     {
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_guest_last_run.txt';
@@ -64,7 +63,6 @@ class GarbageCollector
         return $totalCleaned;
     }
 
-    
     public static function syncViews(\mysqli $conn): void
     {
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_views_sync_last_run.txt';
@@ -81,9 +79,6 @@ class GarbageCollector
 
     public static function cleanChessRooms(\mysqli $conn): int
     {
-        // Arcade modul opsional (lihat modules/core/Modules.php); tanpa arcade aktif
-        // tidak ada room baru — pembersihan di-skip agar tabel legacy (rooms/moves)
-        // tidak disentuh dan caller tetap berjalan normal tanpa error.
         require_once __DIR__ . '/Modules.php';
         if (!Modules::enabled('arcade')) {
             return 0;
@@ -159,7 +154,6 @@ class GarbageCollector
         return $totalCleaned;
     }
 
-    
     private static function writeThrottleFile(string $throttleFile): void
     {
         $dir = dirname($throttleFile);
@@ -261,13 +255,11 @@ class GarbageCollector
         foreach ($items as $item) {
             $basename = basename($item);
 
-            
             if ($basename === 'ytdlp-cache') continue;
 
             if (in_array($basename, ['cache', 'ratelimit'], true)) continue;
 
-            
-            if (!file_exists($item)) continue; 
+            if (!file_exists($item)) continue;
             $mtime = filemtime($item);
             if ($mtime === false || $mtime > $cutoff) continue;
 
@@ -279,7 +271,6 @@ class GarbageCollector
         }
     }
 
-    
     private static function removeDirectory(string $dir): void
     {
         if (!is_dir($dir)) {
@@ -306,7 +297,6 @@ class GarbageCollector
         }
     }
 
-    
     private static function removeFile(string $path): void
     {
         if (!is_file($path) && !is_link($path)) {

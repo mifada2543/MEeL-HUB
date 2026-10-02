@@ -9,7 +9,7 @@ require_admin($conn);
 
 define('MEEL_ADMIN_CONTEXT', true);
 include '../controllers/admin/admin_actions.php';
-$msg      = $_GET['msg'] ?? '';
+$msg = $_GET['msg'] ?? '';
 $msg_user = $_GET['user'] ?? '';
 $mfa_users = $conn->query("
     SELECT id, username, role, is_active, last_activity, created_at
@@ -26,7 +26,7 @@ $total_all = $conn->query("SELECT COUNT(*) AS c FROM users")->fetch_assoc()['c']
 <head>
 <?php
 $_META_TITLE = 'MFA Reset | Admin MEeL';
-$_META_DESC  = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
+$_META_DESC = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
 include __DIR__ . '/../partials/link.php';
 $scripts_root = '../';
 include __DIR__ . '/../partials/scripts.php';
@@ -39,14 +39,14 @@ include __DIR__ . '/../partials/scripts.php';
 
 <body class="text-gray-300 min-h-screen">
     <?php
-    $is_admin   = true;
+    $is_admin = true;
     $page_title = 'MFA Reset';
     $media_type = 'analytics';
-    $back_url   = 'index.php';
+    $back_url = 'index.php';
     include 'header-admin.php';
     ?>
     <div class="max-w-4xl mx-auto px-4 md:px-8 py-8">
-        
+
         <div class="flex items-center gap-4 mb-8">
             <div class="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center shrink-0">
                 <i data-lucide="shield" class="w-5 h-5 text-purple-500"></i>
@@ -58,7 +58,7 @@ include __DIR__ . '/../partials/scripts.php';
                 </p>
             </div>
         </div>
-        
+
         <?php if ($msg === 'reset_ok' && $msg_user): ?>
             <div class="mb-6 p-4 rounded-2xl text-sm flex items-center gap-3 bg-green-500/10 text-green-400 border border-green-500/20">
                 <i data-lucide="check-circle" class="w-5 h-5"></i>
@@ -86,7 +86,7 @@ include __DIR__ . '/../partials/scripts.php';
             </div>
         <?php endif; ?>
 <!-- reference build: MEeL-C10H15N [222b7b4a59b5a4f1] -->
-        
+
         <div class="glass p-5 rounded-2xl mb-6 border border-purple-500/10 space-y-2">
             <div class="flex items-start gap-3">
                 <i data-lucide="info" class="w-4 h-4 text-purple-400 mt-0.5"></i>
@@ -97,7 +97,7 @@ include __DIR__ . '/../partials/scripts.php';
                 </div>
             </div>
         </div>
-        
+
         <div class="glass rounded-2xl overflow-hidden">
             <div class="p-5 border-b border-white/5 bg-white/[0.02] flex items-center gap-2">
                 <i data-lucide="users" class="w-4 h-4 text-purple-400"></i>
@@ -163,8 +163,8 @@ include __DIR__ . '/../partials/scripts.php';
                 </div>
             <?php endif; ?>
         </div>
-        
-        <div class="text-center mt-8">                <a href="." class="text-xs text-gray-600 hover:text-blue-500 transition inline-flex items-center gap-1">
+
+        <div class="text-center mt-8"> <a href="." class="text-xs text-gray-600 hover:text-blue-500 transition inline-flex items-center gap-1">
                 <i data-lucide="arrow-left" class="w-3 h-3"></i> Kembali ke Dashboard Admin
             </a>
         </div>

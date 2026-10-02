@@ -1,6 +1,5 @@
 <?php
 
-
 require_once __DIR__ . '/MediaLibrary.php';
 
 class SearchEngine
@@ -9,11 +8,9 @@ class SearchEngine
     private static array $cache = [];
     private static int $cacheSize = 50;
 
-    
     const VIDEO_LIMIT = 15;
     const MUSIC_LIMIT = 10;
-    
-    
+
     const SIDEBAR_LIMIT = 15;
     const MIN_SEARCH_QUERY = 3;
     const MAX_SEARCH_QUERY = 255;
@@ -28,12 +25,12 @@ class SearchEngine
         $query = self::sanitizeQuery($_GET['search'] ?? '');
 
         return [
-            'query'   => $query,
+            'query' => $query,
             'exclude' => isset($_GET['exclude']) ? max(0, (int)$_GET['exclude']) : 0,
-            'offset'  => isset($_GET['offset']) ? max(0, (int)$_GET['offset']) : 0,
+            'offset' => isset($_GET['offset']) ? max(0, (int)$_GET['offset']) : 0,
             'sidebar' => $this->detectSidebar(),
-            'target'  => $_SERVER['HTTP_HX_TARGET'] ?? '',
-            'valid'   => $this->isValidSearchQuery($query),
+            'target' => $_SERVER['HTTP_HX_TARGET'] ?? '',
+            'valid' => $this->isValidSearchQuery($query),
         ];
     }
 
@@ -79,15 +76,15 @@ class SearchEngine
 
         if (!$data) {
             return [
-                'results'     => [],
-                'count'       => 0,
-                'limit'       => $limit,
-                'offset'      => $params['offset'],
-                'hasMore'     => false,
-                'sidebar'     => $params['sidebar'],
-                'query'       => $params['query'],
-                'exclude'     => $params['exclude'],
-                'total'       => $total,
+                'results' => [],
+                'count' => 0,
+                'limit' => $limit,
+                'offset' => $params['offset'],
+                'hasMore' => false,
+                'sidebar' => $params['sidebar'],
+                'query' => $params['query'],
+                'exclude' => $params['exclude'],
+                'total' => $total,
                 'total_pages' => $totalPages,
             ];
         }
@@ -104,15 +101,15 @@ class SearchEngine
         }
 
         return [
-            'results'     => $rows,
-            'count'       => count($rows),
-            'limit'       => $limit,
-            'offset'      => $params['offset'],
-            'hasMore'     => ($data->num_rows > $limit),
-            'sidebar'     => $params['sidebar'],
-            'query'       => $params['query'],
-            'exclude'     => $params['exclude'],
-            'total'       => $total,
+            'results' => $rows,
+            'count' => count($rows),
+            'limit' => $limit,
+            'offset' => $params['offset'],
+            'hasMore' => ($data->num_rows > $limit),
+            'sidebar' => $params['sidebar'],
+            'query' => $params['query'],
+            'exclude' => $params['exclude'],
+            'total' => $total,
             'total_pages' => $totalPages,
         ];
     }
@@ -121,10 +118,10 @@ class SearchEngine
     {
 
         $key = $type . ':' . md5(json_encode([
-            'query'   => $params['query'],
+            'query' => $params['query'],
             'exclude' => $params['exclude'],
             'sidebar' => $params['sidebar'],
-            'offset'  => $params['offset'],
+            'offset' => $params['offset'],
         ]));
         return $key;
     }

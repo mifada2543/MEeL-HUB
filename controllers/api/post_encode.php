@@ -7,10 +7,6 @@ require_once '../../modules/core/Transcoder.php';
 require_once '../../modules/core/GarbageCollector.php';
 GarbageCollector::run();
 
-/**
- * Post-encode musik dari unduhan URL (yt-dlp → encodeMusic): hanya POST + CSRF (state-changing). `temp_file` = OPAQUE TOKEN yang wajib ada di $_SESSION['meel_pending_music'] user yang sama — detail validasi ada di tiap guard di bawah.
- */
-
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     http_response_code(405);
     header('Allow: POST');
@@ -29,7 +25,6 @@ if ($temp_file === '') {
     die("<h1>Error: Parameter temp_file tidak ditemukan.</h1>");
 }
 
-// Token format: nama file polos — tolak separator path, traversal, null byte.
 if (!preg_match('/^[A-Za-z0-9._-]+$/', $temp_file) || str_contains($temp_file, '..')) {
     http_response_code(400);
     die("<h1>Error: Token temp_file tidak valid.</h1>");
@@ -37,7 +32,6 @@ if (!preg_match('/^[A-Za-z0-9._-]+$/', $temp_file) || str_contains($temp_file, '
 
 $meta_key = pathinfo($temp_file, PATHINFO_FILENAME);
 
-// Ownership + eksistensi: hanya job yang dibuat oleh sesi user ini.
 $pending = is_array($_SESSION['meel_pending_music'] ?? null)
     ? ($_SESSION['meel_pending_music'][$meta_key] ?? null)
     : null;
@@ -47,7 +41,6 @@ if (!is_array($pending)) {
     die("<h1>Error: Job encoding tidak ditemukan atau bukan milik Anda.</h1>");
 }
 
-// Expiration: job lebih dari 1 jam dianggap basi.
 if ((int)($pending['ts'] ?? 0) < time() - 3600) {
     unset($_SESSION['meel_pending_music'][$meta_key]);
     http_response_code(410);
@@ -56,8 +49,6 @@ if ((int)($pending['ts'] ?? 0) < time() - 3600) {
 
 $transcoder = new Transcoder($conn, (int)$_SESSION['user_id']);
 
-// Server-side resolve: pastikan file berada di direktori temp milik server
-// dan bukan path arbitrer. Metadata HANYA dari sesi — bukan dari request.
 $input_path = $transcoder->resolveMusicInputPath($temp_file);
 if ($input_path === null) {
     http_response_code(410);
@@ -66,10 +57,10 @@ if ($input_path === null) {
 
 $result = $transcoder->encodeMusic(
     $temp_file,
-    (string) ($pending['title']       ?? 'Unknown'),
-    (string) ($pending['artist']      ?? 'Unknown Artist'),
-    (string) ($pending['album']       ?? 'Single'),
-    (int)    ($pending['duration']    ?? 0),
+    (string) ($pending['title'] ?? 'Unknown'),
+    (string) ($pending['artist'] ?? 'Unknown Artist'),
+    (string) ($pending['album'] ?? 'Single'),
+    (int) ($pending['duration'] ?? 0),
     (string) ($pending['description'] ?? 'Upload by MEeL Engine')
 );
 

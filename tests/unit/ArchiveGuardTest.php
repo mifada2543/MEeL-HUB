@@ -45,7 +45,7 @@ class ArchiveGuardTest extends TestCase
     public function testValidCbzExtractsToDestDir(): void
     {
         $archive = $this->tmp . '/valid.cbz';
-        $dest    = $this->tmp . '/manga/valid';
+        $dest = $this->tmp . '/manga/valid';
         $this->makeZip([
             'page-001.jpg' => str_repeat('A', 100),
             'page-002.jpg' => str_repeat('B', 100),
@@ -63,7 +63,7 @@ class ArchiveGuardTest extends TestCase
     public function testChaptersWithSubdirsExtract(): void
     {
         $archive = $this->tmp . '/chapters.cbz';
-        $dest    = $this->tmp . '/manga/ch';
+        $dest = $this->tmp . '/manga/ch';
         $this->makeZip([
             'ch1/page-001.jpg' => 'data',
             'ch1/page-002.jpg' => 'data',
@@ -81,7 +81,7 @@ class ArchiveGuardTest extends TestCase
     public function testRejectsDotDotTraversal(): void
     {
         $archive = $this->tmp . '/evil.zip';
-        $dest    = $this->tmp . '/manga/evil';
+        $dest = $this->tmp . '/manga/evil';
         $this->makeZip(['../evil.php' => '<?php system($_GET["c"]); ?>'], $archive);
 
         $guard = new ArchiveGuard($this->tmp . '/manga');
@@ -95,7 +95,7 @@ class ArchiveGuardTest extends TestCase
     public function testRejectsAbsolutePath(): void
     {
         $archive = $this->tmp . '/abs.zip';
-        $dest    = $this->tmp . '/manga/abs';
+        $dest = $this->tmp . '/manga/abs';
         $this->makeZip(['/tmp/pwned.jpg' => 'data'], $archive);
 
         $guard = new ArchiveGuard($this->tmp . '/manga');
@@ -107,7 +107,7 @@ class ArchiveGuardTest extends TestCase
     public function testRejectsBackslashTraversal(): void
     {
         $archive = $this->tmp . '/win.zip';
-        $dest    = $this->tmp . '/manga/win';
+        $dest = $this->tmp . '/manga/win';
         $this->makeZip(["..\\..\\evil.php" => 'x'], $archive);
 
         $guard = new ArchiveGuard($this->tmp . '/manga');
@@ -118,21 +118,18 @@ class ArchiveGuardTest extends TestCase
 
     public function testNullByteInNameCannotEscapeDestination(): void
     {
-        // ZipArchive memotong nama pada null byte saat addFromString — buat zip mentah
-        // berisi null byte di nama untuk memastikan guard menolaknya bila ada.
         $archive = $this->tmp . '/null.zip';
-        $dest    = $this->tmp . '/manga/null';
-        $name    = "page.jpg\0.png";
+        $dest = $this->tmp . '/manga/null';
+        $name = "page.jpg\0.png";
 
-        // Minimal ZIP dengan satu entry ber-nama null-byte (local + central).
         $content = 'X';
-        $crc     = crc32($content);
-        $local   = "PK\x03\x04" . pack('v', 20) . pack('v', 0) . pack('v', 0)
+        $crc = crc32($content);
+        $local = "PK\x03\x04" . pack('v', 20) . pack('v', 0) . pack('v', 0)
             . pack('v', 0) . pack('v', 0) . pack('V', $crc)
             . pack('V', strlen($content)) . pack('V', strlen($content))
             . pack('v', strlen($name)) . pack('v', 0)
             . $name . $content;
-        $offset  = 0;
+        $offset = 0;
         $central = "PK\x01\x02" . pack('v', 20) . pack('v', 20) . pack('v', 0)
             . pack('v', 0) . pack('v', 0) . pack('v', 0)
             . pack('V', $crc) . pack('V', strlen($content)) . pack('V', strlen($content))
@@ -147,7 +144,6 @@ class ArchiveGuardTest extends TestCase
         $guard = new ArchiveGuard($this->tmp . '/manga');
         $result = $guard->extractSafe($archive, $dest);
 
-        // Guard menolak null byte (atau setidaknya tak pernah menulis file di luar dest).
         if ($result['ok']) {
             $this->assertFileDoesNotExist(dirname($dest) . '/page.jpg');
             $this->assertFileDoesNotExist($this->tmp . '/page.jpg');
@@ -159,7 +155,7 @@ class ArchiveGuardTest extends TestCase
     public function testRejectsExecutableFileInsideArchive(): void
     {
         $archive = $this->tmp . '/php.zip';
-        $dest    = $this->tmp . '/manga/php';
+        $dest = $this->tmp . '/manga/php';
         $this->makeZip(['shell.php' => '<?php phpinfo(); ?>'], $archive);
 
         $guard = new ArchiveGuard($this->tmp . '/manga');
@@ -211,7 +207,7 @@ class ArchiveGuardTest extends TestCase
     public function testDoesNotOverwriteExistingFiles(): void
     {
         $archive = $this->tmp . '/dup.zip';
-        $dest    = $this->tmp . '/manga/dup';
+        $dest = $this->tmp . '/manga/dup';
         @mkdir($dest, 0755, true);
         file_put_contents($dest . '/page-001.jpg', 'ORIGINAL');
 

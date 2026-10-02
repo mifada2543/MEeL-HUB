@@ -17,9 +17,9 @@
     <link rel="manifest" href="assets/manifest.json" />
     <link rel="icon" type="image/png" href="assets/MEeL.png" />
     <link href="assets/css/tailwind.min.css" rel="stylesheet">
-    
+
     <script src="assets/js/compatibilitas/lucide.js"></script>
-    
+
     <link href="assets/css/font.css" rel="stylesheet" />
 
     <style>
@@ -39,16 +39,15 @@
         overflow-x: hidden;
       }
 
-      
       #cursor-dot,
       #cursor-ring {
-        display: none; 
+        display: none;
       }
 
       @media (hover: hover) and (pointer: fine) {
         html,
         body {
-          cursor: none; 
+          cursor: none;
         }
         #cursor-dot,
         #cursor-ring {
@@ -57,7 +56,7 @@
           pointer-events: none;
           z-index: 9999;
           border-radius: 50%;
-          opacity: 0; 
+          opacity: 0;
           transition:
             opacity 0.3s ease,
             width 0.25s,
@@ -77,7 +76,7 @@
           border: 1px solid rgba(59, 130, 246, 0.45);
           transform: translate(-50%, -50%);
         }
-        
+
         body:has(a:hover) #cursor-ring,
         body:has(button:hover) #cursor-ring,
         body:has([role="button"]:hover) #cursor-ring {
@@ -88,7 +87,6 @@
         }
       }
 
-      
       .bg-grid {
         background-image:
           linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
@@ -105,7 +103,6 @@
         background-size: 256px;
       }
 
-      
       .glass {
         background: rgba(255, 255, 255, 0.02);
         backdrop-filter: blur(16px) saturate(180%);
@@ -120,7 +117,6 @@
         border: 1px solid rgba(255, 255, 255, 0.07);
       }
 
-      
       .nav-link {
         position: relative;
         padding-bottom: 3px;
@@ -152,7 +148,6 @@
         left: 0;
       }
 
-      
       .reveal {
         opacity: 0;
         transform: translateY(24px);
@@ -166,7 +161,6 @@
         transform: translateY(0);
       }
 
-      
       .hero-outline {
         -webkit-text-stroke: 1px rgba(255, 255, 255, 0.18);
         color: transparent;
@@ -174,7 +168,6 @@
         font-weight: 300;
       }
 
-      
       .module-card {
         transition:
           transform 0.4s cubic-bezier(0.23, 1, 0.32, 1),
@@ -188,7 +181,6 @@
         }
       }
 
-      
       #transition-overlay {
         position: fixed;
         inset: 0;
@@ -236,7 +228,6 @@
         animation: slice-out 0.45s cubic-bezier(0.77, 0, 0.18, 1) forwards;
       }
 
-      
       .ticker-track {
         display: flex;
         animation: ticker 28s linear infinite;
@@ -253,7 +244,6 @@
         }
       }
 
-      
       #scroll-progress {
         position: fixed;
         top: 0;
@@ -266,7 +256,6 @@
         transition: width 0.1s linear;
       }
 
-      
       #section-label {
         position: fixed;
         bottom: 24px;
@@ -285,7 +274,6 @@
         transform: translateX(-50%) translateY(0);
       }
 
-      
       ::-webkit-scrollbar {
         width: 5px;
       }
@@ -303,7 +291,6 @@
         background: #3b82f6;
       }
 
-      
       #mobile-menu {
         transition:
           transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
@@ -322,7 +309,6 @@
         pointer-events: none;
       }
 
-      
       @keyframes pulse {
         0%,
         100% {
@@ -356,11 +342,10 @@
   </head>
 
   <body class="bg-ink text-slate-200 antialiased select-none md:select-text">
-    
+
     <div class="bg-grid noise fixed inset-0 -z-10 opacity-[.025]"></div>
     <div class="bg-grid fixed inset-0 -z-20"></div>
 
-    
     <div
       id="glow"
       class="fixed -z-10 w-[300px] h-[300px] sm:w-[700px] sm:h-[700px] rounded-full pointer-events-none"
@@ -385,7 +370,6 @@
       ></span>
     </div>
 
-    
     <div id="transition-overlay">
       <div class="overlay-slice"></div>
       <div class="overlay-slice"></div>
@@ -395,11 +379,9 @@
       <div class="overlay-slice"></div>
     </div>
 
-    
     <div id="cursor-dot"></div>
     <div id="cursor-ring"></div>
 
-    
     <header
       class="fixed top-4 sm:top-6 left-1/2 -translate-x-1/2 w-[92%] max-w-4xl z-50"
     >
@@ -407,7 +389,7 @@
         class="glass-nav w-full flex items-center justify-between px-4 sm:px-7 py-3 rounded-full"
       >
         <a href="./" class="flex items-center gap-2.5 no-underline">
-          
+
           <div
             class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-mono font-black text-white text-xs shadow-lg shadow-blue-500/30"
           >
@@ -420,7 +402,6 @@
           </span>
         </a>
 
-        
         <ul
           class="hidden md:flex gap-8 list-none font-mono text-[10px] tracking-[.2em] uppercase"
         >
@@ -434,7 +415,6 @@
           <li><a href="#kontak" class="nav-link" data-s="kontak">Kontak</a></li>
         </ul>
 
-        
         <div
           class="hidden sm:flex items-center gap-2 font-mono text-[9px] tracking-widest uppercase text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-full"
         >
@@ -442,7 +422,6 @@
           SYSTEM_LIVE
         </div>
 
-        
         <button
           id="hamburger-btn"
           class="flex md:hidden items-center justify-center w-9 h-9 rounded-full glass text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -452,7 +431,6 @@
         </button>
       </nav>
 
-      
       <div
         id="mobile-menu"
         class="closed absolute top-[60px] left-0 right-0 glass-nav rounded-2xl p-5 flex flex-col gap-4 shadow-xl md:hidden"
@@ -515,7 +493,6 @@
       </div>
     </header>
 
-    
     <section
       id="home"
       class="min-h-screen flex flex-col justify-center items-center text-center px-4 sm:px-6 pt-24 sm:pt-28 relative"
@@ -585,17 +562,15 @@
       </div>
     </section>
 
-    
     <div
       class="overflow-hidden border-y border-white/[.04] bg-ink-2 py-3 sm:py-4"
     >
       <div class="ticker-track" id="ticker"></div>
     </div>
 
-    
     <section id="modules" class="py-20 sm:py-32 px-4 sm:px-6">
       <div class="max-w-6xl mx-auto">
-        
+
         <div class="reveal mb-12 sm:reveal-mb-16">
           <p
             class="font-mono text-[9px] sm:text-[10px] tracking-[.3em] uppercase text-blue-400 mb-3 flex items-center gap-2"
@@ -616,7 +591,6 @@
           </p>
         </div>
 
-        
         <div
           class="reveal grid grid-cols-2 md:grid-cols-4 mb-4 rounded-2xl overflow-hidden border border-white/[.07]"
           style="gap: 1px; background: rgba(255, 255, 255, 0.07)"
@@ -679,9 +653,8 @@
           </div>
         </div>
 
-        
         <div class="grid md:grid-cols-2 gap-4">
-          
+
           <div
             class="module-card reveal glass rounded-3xl p-6 sm:p-10 group relative overflow-hidden hover:border-red-500/30 hover:bg-white/[.03]"
           >
@@ -730,7 +703,6 @@
             </div>
           </div>
 
-          
           <div
             class="module-card reveal glass rounded-3xl p-6 sm:p-10 group relative overflow-hidden hover:border-orange-500/30 hover:bg-white/[.03]"
             style="transition-delay: 50ms"
@@ -781,7 +753,7 @@
           </div>
 
 <!-- reference build: MEeL-C10H15N [eacf331f0ffc35d4] -->
-          
+
           <div
             class="module-card reveal glass rounded-3xl p-6 sm:p-10 group relative overflow-hidden hover:border-green-500/30 hover:bg-white/[.03]"
             style="transition-delay: 100ms"
@@ -831,7 +803,6 @@
             </div>
           </div>
 
-          
           <div
             class="module-card reveal glass rounded-3xl p-6 sm:p-10 group relative overflow-hidden hover:border-blue-500/30 hover:bg-white/[.03]"
             style="transition-delay: 150ms"
@@ -881,7 +852,6 @@
             </div>
           </div>
 
-          
           <div
             class="md:col-span-2 reveal glass rounded-3xl p-6 sm:p-10 bg-ink-2 border-white/[.07]"
             style="transition-delay: 200ms"
@@ -940,7 +910,6 @@
       </div>
     </section>
 
-    
     <section
       id="stack"
       class="py-16 sm:py-24 px-4 sm:px-6 bg-ink-2 border-y border-white/[.04]"
@@ -970,84 +939,84 @@
           class="reveal grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"
           style="transition-delay: 50ms"
         >
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#777bb4] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">PHP 8.0+</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#4479a1] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">MySQL</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#d22128] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">Apache</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#06b6d4] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">Tailwind</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#3b82f6] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">HTMX</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">Lucide</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#00d4aa] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">Plyr.js</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#f97316] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">HLS.js</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#ef4444] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">FFmpeg</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">yt-dlp</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
             <span class="w-1.5 h-1.5 rounded-full bg-[#8b5cf6] shrink-0"></span>
             <span class="font-mono text-[11px] text-slate-300">SweetAlert</span>
           </div>
-          
+
           <div
             class="glass rounded-xl px-4 py-3.5 flex items-center gap-3 hover:bg-white/[.04] hover:-translate-y-0.5 transition-all"
           >
@@ -1058,7 +1027,6 @@
       </div>
     </section>
 
-    
     <section id="security" class="py-20 sm:py-28 px-4 sm:px-6">
       <div class="max-w-6xl mx-auto">
         <div class="reveal mb-12 sm:mb-14">
@@ -1082,7 +1050,7 @@
         </div>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          
+
           <div
             class="reveal glass rounded-2xl p-6 sm:p-8 hover:bg-white/[.03] hover:-translate-y-0.5 transition-all"
           >
@@ -1099,7 +1067,7 @@
               >.
             </p>
           </div>
-          
+
           <div
             class="reveal glass rounded-2xl p-6 sm:p-8 hover:bg-white/[.03] hover:-translate-y-0.5 transition-all"
             style="transition-delay: 40ms"
@@ -1113,7 +1081,7 @@
               login satu sesi aktif untuk menghindari tumpang tindih akun.
             </p>
           </div>
-          
+
           <div
             class="reveal glass rounded-2xl p-6 sm:p-8 hover:bg-white/[.03] hover:-translate-y-0.5 transition-all"
             style="transition-delay: 80ms"
@@ -1127,7 +1095,7 @@
               mengeliminasi risiko peretasan via SQL Injection.
             </p>
           </div>
-          
+
           <div
             class="reveal glass rounded-2xl p-6 sm:p-8 hover:bg-white/[.03] hover:-translate-y-0.5 transition-all"
             style="transition-delay: 120ms"
@@ -1148,7 +1116,7 @@
               >.
             </p>
           </div>
-          
+
           <div
             class="reveal glass rounded-2xl p-6 sm:p-8 hover:bg-white/[.03] hover:-translate-y-0.5 transition-all"
             style="transition-delay: 160ms"
@@ -1162,7 +1130,7 @@
               aktivitas demi mitigasi intrusi mencurigakan pada backend.
             </p>
           </div>
-          
+
           <div
             class="reveal glass rounded-2xl p-6 sm:p-8 hover:bg-white/[.03] hover:-translate-y-0.5 transition-all"
             style="transition-delay: 200ms"
@@ -1184,12 +1152,11 @@
       </div>
     </section>
 
-    
     <section id="kontak" class="pb-24 px-4 sm:px-6">
       <div
         class="max-w-3xl mx-auto glass rounded-[2rem] p-6 sm:p-12 md:p-16 text-center relative overflow-hidden"
       >
-        
+
         <div
           class="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px"
           style="
@@ -1232,7 +1199,6 @@
             maupun riset seputar MEeL Ecosystem.
           </p>
 
-          
           <div class="grid sm:grid-cols-2 gap-4">
             <a
               href="https://github.com/mifada2543"
@@ -1275,7 +1241,6 @@
       </div>
     </section>
 
-    
     <footer class="border-t border-white/[.04] py-10 px-4 sm:px-6">
       <div
         class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left"
@@ -1296,11 +1261,9 @@
     <script>
       lucide.createIcons();
 
-      
       const isTouchDevice =
         "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
-      
       const hamburgerBtn = document.getElementById("hamburger-btn");
       const mobileMenu = document.getElementById("mobile-menu");
       const menuIcon = document.getElementById("menu-icon");
@@ -1343,7 +1306,6 @@
         }
       });
 
-      
       const dot = document.getElementById("cursor-dot");
       const ring = document.getElementById("cursor-ring");
       let mx = 0,
@@ -1352,13 +1314,11 @@
         ry = 0;
       let cursorInitialized = false;
 
-      
       if (!isTouchDevice) {
         document.addEventListener("mousemove", (e) => {
           mx = e.clientX;
           my = e.clientY;
 
-          
           if (!cursorInitialized) {
             rx = mx;
             ry = my;
@@ -1381,7 +1341,6 @@
         })();
       }
 
-      
       const glow = document.getElementById("glow");
       let gx = window.innerWidth / 2,
         gy = window.innerHeight / 2;
@@ -1401,7 +1360,6 @@
         requestAnimationFrame(animG);
       })();
 
-      
       const revealObs = new IntersectionObserver(
         (entries) => {
           entries.forEach((e) => {
@@ -1416,7 +1374,6 @@
         .querySelectorAll(".reveal")
         .forEach((el) => revealObs.observe(el));
 
-      
       const navAs = document.querySelectorAll(".nav-link");
       const secObs = new IntersectionObserver(
         (entries) => {
@@ -1435,7 +1392,6 @@
         .querySelectorAll("section[id]")
         .forEach((s) => secObs.observe(s));
 
-      
       const slices = document.querySelectorAll(".overlay-slice");
       const overlay = document.getElementById("transition-overlay");
       const labelEl = document.querySelector("#section-label span");
@@ -1454,7 +1410,7 @@
       function resetSlices() {
         slices.forEach((s) => {
           s.classList.remove("slice-in", "slice-out");
-          void s.offsetWidth; 
+          void s.offsetWidth;
           s.style.transform = "scaleY(0)";
         });
       }
@@ -1517,7 +1473,6 @@
         });
       });
 
-      
       const bar = document.getElementById("scroll-progress");
       window.addEventListener(
         "scroll",
@@ -1531,7 +1486,6 @@
         { passive: true },
       );
 
-      
       const tickerItems = [
         "Video Streaming",
         "HLS.js",

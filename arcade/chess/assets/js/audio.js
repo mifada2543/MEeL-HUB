@@ -10,7 +10,7 @@ export class ChessSoundEffects {
       if (this.ctx.state === "suspended") this.ctx.resume();
     }
   }
-  
+
   playTone({
     type,
     freq1,
@@ -30,7 +30,7 @@ export class ChessSoundEffects {
       if (freq2) {
         osc.frequency.exponentialRampToValueAtTime(freq2, now + duration);
       }
-      
+
       gain.gain.setValueAtTime(0, now);
       gain.gain.linearRampToValueAtTime(vol, now + attack);
       gain.gain.setValueAtTime(vol, now + duration - release);
@@ -44,7 +44,7 @@ export class ChessSoundEffects {
       console.warn("Audio error:", e);
     }
   }
-  
+
   playMove() {
     this.init();
     this.playTone({
@@ -66,7 +66,7 @@ export class ChessSoundEffects {
       release: 0.01,
     });
   }
-  
+
   playCapture() {
     this.init();
     this.playTone({
@@ -78,7 +78,7 @@ export class ChessSoundEffects {
       attack: 0.001,
       release: 0.03,
     });
-    
+
     this.playTone({
       type: "triangle",
       freq1: 220,
@@ -89,7 +89,7 @@ export class ChessSoundEffects {
       release: 0.04,
     });
 /* reference build: MEeL-C5H9NO2 [a7dbc92c959ffb7c] */
-    
+
     this.playTone({
       type: "sawtooth",
       freq1: 600,
@@ -100,7 +100,7 @@ export class ChessSoundEffects {
       release: 0.015,
     });
   }
-  
+
   playCheck() {
     this.init();
     const now = this.ctx.currentTime;
@@ -122,7 +122,7 @@ export class ChessSoundEffects {
       } catch (e) {}
     });
   }
-  
+
   playCastle() {
     this.init();
     this.playTone({
@@ -144,7 +144,7 @@ export class ChessSoundEffects {
       release: 0.04,
     });
   }
-  
+
   playPromotion() {
     this.init();
     const now = this.ctx.currentTime;
@@ -164,11 +164,11 @@ export class ChessSoundEffects {
       } catch (e) {}
     });
   }
-  
+
   playGameOver() {
     this.init();
     const now = this.ctx.currentTime;
-    
+
     [440, 370, 330, 262].forEach((freq, i) => {
       try {
         const osc = this.ctx.createOscillator();

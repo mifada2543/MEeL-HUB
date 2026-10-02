@@ -14,7 +14,7 @@ function generate_search_metadata(string $title, string $artist = '', string $al
 
     $extra_romaji = '';
     if ($artist !== '' && preg_match('/[^\x20-\x7E]/u', $artist)) $extra_romaji .= ' ' . getRomajiName($artist);
-    if ($album  !== '' && preg_match('/[^\x20-\x7E]/u', $album))  $extra_romaji .= ' ' . getRomajiName($album);
+    if ($album !== '' && preg_match('/[^\x20-\x7E]/u', $album)) $extra_romaji .= ' ' . getRomajiName($album);
 
     $combined = trim($original . ' ' . $title_analysis['romaji'] . $extra_romaji . ' ' . $title_analysis['english']);
     return mb_strtolower($combined, 'UTF-8');

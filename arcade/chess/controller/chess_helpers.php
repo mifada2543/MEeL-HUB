@@ -1,8 +1,4 @@
 <?php
-// Guard modul opsional (arcade): jika modul dinonaktifkan lewat admin panel
-// (site_settings via modules/core/Modules.php), semua endpoint HTTP di folder
-// ini balas JSON 404 — bukan fatal error "class not found".
-// CLI (migrasi/CLI tooling) & PHPUnit tetap boleh me-load helper untuk test.
 require_once __DIR__ . '/../../../modules/core/Modules.php';
 if (PHP_SAPI !== 'cli' && !defined('PHPUNIT_COMPOSER_INSTALL')) {
     Modules::guardJson('arcade');
@@ -50,7 +46,6 @@ function chess_has_terminal_event(\mysqli $conn, string $room): bool
     return $found;
 }
 
-
 function chess_last_move_color(\mysqli $conn, string $room): ?string
 {
     $stmt = $conn->prepare(
@@ -68,7 +63,6 @@ function chess_last_move_color(\mysqli $conn, string $room): ?string
     $stmt->close();
     return $row ? $row['color'] : null;
 }
-
 
 function chess_record_game_over(\mysqli $conn, string $room, string $loserColor, string $reason): array
 {
@@ -110,8 +104,6 @@ function insertGameEvent(\mysqli $conn, string $room, string $color, string $typ
     }
 }
 
-
-
 function chess_last_event(\mysqli $conn, string $room): ?array
 {
     $stmt = $conn->prepare(
@@ -132,11 +124,10 @@ function chess_last_event(\mysqli $conn, string $room): ?array
     }
     $data = json_decode($row['move_data'], true);
     return [
-        'type'  => is_array($data) ? ($data['type'] ?? null) : null,
+        'type' => is_array($data) ? ($data['type'] ?? null) : null,
         'color' => $row['color'],
     ];
 }
-
 
 function chess_reset_room_game(\mysqli $conn, string $room): void
 {
@@ -151,8 +142,6 @@ function chess_reset_room_game(\mysqli $conn, string $room): void
     $stmt->close();
 }
 
-
-
 function chess_rematch(\mysqli $conn, string $room, string $color, string $action, ?int $opponentId = null): array
 {
 
@@ -164,14 +153,14 @@ function chess_rematch(\mysqli $conn, string $room, string $color, string $actio
         && $opponentId !== null
         && !chess_opponent_online($conn, $opponentId)) {
         return [
-            "success"       => false,
+            "success" => false,
             "opponent_gone" => true,
-            "message"       => "Lawan sudah keluar dari permainan.",
+            "message" => "Lawan sudah keluar dari permainan.",
         ];
     }
 
     $lastEvent = chess_last_event($conn, $room);
-    $pending   = $lastEvent !== null && $lastEvent['type'] === 'rematch_offer';
+    $pending = $lastEvent !== null && $lastEvent['type'] === 'rematch_offer';
     $pendingBy = $pending ? $lastEvent['color'] : null;
 
     if ($action === 'rematch_offer') {

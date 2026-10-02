@@ -1,13 +1,10 @@
 <?php
 
-
 if (!defined('MEEL_ENV')) {
     $remote_ip = $_SERVER['REMOTE_ADDR'] ?? '';
     $is_local = in_array($remote_ip, ['127.0.0.1', '::1', 'localhost'], true)
              || (isset($_SERVER['SERVER_NAME']) && in_array($_SERVER['SERVER_NAME'], ['localhost', '127.0.0.1'], true));
 
-    // Behind a trusted proxy (e.g. cloudflared), REMOTE_ADDR is always localhost.
-    // Use proxy headers to detect real environment.
     if ($is_local) {
         require_once __DIR__ . '/proxy.php';
         if (trust_proxy_headers() && !meel_is_loopback_ip(get_real_ip())) {

@@ -1,5 +1,3 @@
-
-
 (function () {
   "use strict";
 
@@ -12,8 +10,7 @@
     if (document.getElementById("meel-audio-engine-style")) return;
     var style = document.createElement("style");
     style.id = "meel-audio-engine-style";
-    
-    
+
     style.textContent =
       "#meel-audio-engine-root.meel-engine-compact{position:absolute!important;width:0!important;height:0!important;overflow:hidden!important;opacity:0;pointer-events:none;}";
     document.head.appendChild(style);
@@ -21,12 +18,11 @@
 
   function createEngine() {
     ensureEngineStyle();
-    
-    
+
     var root = document.createElement("div");
     root.id = "meel-audio-engine-root";
     root.setAttribute("data-meel-persist", "true");
-    
+
     root.style.cssText =
       "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;";
 
@@ -47,7 +43,6 @@
       console.error("❌ audio-engine: Plyr init error:", e);
     }
 
-    
     if (player) {
       var _durEl =
         player.elements &&
@@ -61,8 +56,6 @@
         return m + ":" + (s < 10 ? "0" : "") + s;
       }
 
-      
-      
       var _isSeekingNow = false;
 
       function _seekPreviewSeconds() {
@@ -97,8 +90,7 @@
           typeof window.formatTime === "function"
             ? window.formatTime
             : _formatTimeFallback;
-        
-        
+
         _curEl.textContent =
           _dur > 0 ? _fmt(_cur) + " / " + _fmt(_dur) : "--:-- / --:--";
       }
@@ -113,7 +105,7 @@
         _updateCombinedTime();
       });
       audio.addEventListener("loadedmetadata", function () {
-        
+
         _isSeekingNow = false;
         _updateCombinedTime();
       });
@@ -124,8 +116,6 @@
       _updateCombinedTime();
     }
 
-    
-    
     var ctx = null,
       analyser = null,
       sourceNode = null,
@@ -182,8 +172,8 @@
     }
 
     var currentTrackId = null;
-    var handlers = {}; 
-    
+    var handlers = {};
+
     var freshLoadPending = false;
 
     function fire(name) {
@@ -248,9 +238,6 @@
         return analyser;
       },
 
-      
-      
-      
       setLoop: function (active) {
         active = !!active;
         audio.loop = active;
@@ -264,7 +251,7 @@
       getCurrentTrackId: function () {
         return currentTrackId;
       },
-      
+
       wasFreshLoad: function () {
         var v = freshLoadPending;
         freshLoadPending = false;
@@ -275,7 +262,6 @@
         handlers = h || {};
       },
 
-      
       mount: function (container, opts) {
         opts = opts || {};
         if (!container) return;
@@ -287,7 +273,6 @@
         }
       },
 
-      
       loadTrack: function (meta, opts) {
         opts = opts || {};
         var id = meta && (meta.id != null ? meta.id : meta.musicId);
@@ -299,7 +284,7 @@
         audio.pause();
         audio.src = meta.streamUrl || "stream?id=" + id;
         audio.loop = !!meta.isLooping;
-        
+
         if (player) player.loop = !!meta.isLooping;
         audio.load();
         var startTime = opts.startTime || 0;
@@ -312,8 +297,6 @@
         return true;
       },
 
-      
-      
       destroy: function () {
         try {
           if (player && player.destroy) player.destroy();

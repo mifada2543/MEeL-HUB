@@ -23,7 +23,7 @@ function music_thumbnail_url(?string $thumbnail): string
 {
     $thumbnail = trim((string)$thumbnail);
     $thumb_dir = meel_media_base_path('music') . '/thumbnail/';
-    $fallback  = '../assets/img/music0.webp';
+    $fallback = '../assets/img/music0.webp';
     static $default_thumb = null;
     if ($thumbnail === '') {
         if ($default_thumb === null) {
@@ -172,8 +172,6 @@ if (PHP_SAPI !== 'cli' && !defined('MEEL_HDD_CHECKED')) {
     }
 }
 
-
-
 if (!function_exists('meel_drive_base_path')) {
 function meel_drive_base_path(?string $hddDriveOverride = null): string
 {
@@ -184,8 +182,6 @@ function meel_drive_base_path(?string $hddDriveOverride = null): string
     return dirname(__DIR__, 3) . '/data_drive';
 }
 }
-
-
 
 if (!function_exists('check_disk_space')) {
 function check_disk_space(int $required_bytes, string $path): array
@@ -203,25 +199,23 @@ function check_disk_space(int $required_bytes, string $path): array
     $free_bytes = disk_free_space($path);
     if ($free_bytes === false) {
         return [
-            'ok'       => false,
-            'free'     => 0,
+            'ok' => false,
+            'free' => 0,
             'required' => $required_bytes,
-            'path'     => $path,
-            'error'    => 'Tidak dapat membaca kapasitas disk.',
+            'path' => $path,
+            'error' => 'Tidak dapat membaca kapasitas disk.',
         ];
     }
 
     return [
-        'ok'       => ($free_bytes >= $required_bytes),
-        'free'     => $free_bytes,
+        'ok' => ($free_bytes >= $required_bytes),
+        'free' => $free_bytes,
         'required' => $required_bytes,
-        'path'     => $path,
-        'error'    => null,
+        'path' => $path,
+        'error' => null,
     ];
 }
 }
-
-
 
 if (!function_exists('require_disk_space')) {
 function require_disk_space(int $required_bytes, string $path, string $label): void
@@ -229,8 +223,8 @@ function require_disk_space(int $required_bytes, string $path, string $label): v
     $result = check_disk_space($required_bytes, $path);
     if ($result['ok']) return;
 
-    $free_gb  = sprintf('%.1f', $result['free'] / (1024 ** 3));
-    $need_gb  = sprintf('%.1f', $result['required'] / (1024 ** 3));
+    $free_gb = sprintf('%.1f', $result['free'] / (1024 ** 3));
+    $need_gb = sprintf('%.1f', $result['required'] / (1024 ** 3));
     $error_ms = $result['error'] ?? "Hanya tersedia {$free_gb} GB, butuh minimal {$need_gb} GB";
 
     throw new \RuntimeException("Ruang {$label} tidak mencukupi! {$error_ms}");
@@ -239,15 +233,14 @@ function require_disk_space(int $required_bytes, string $path, string $label): v
 
 if (!function_exists('dir_size')) {
 
-
 function dir_size(string $path, int $cache_ttl = 300): float
 {
-    $cache_key  = 'dirsize_' . md5($path);
+    $cache_key = 'dirsize_' . md5($path);
     $cache_file = dirname(__DIR__, 3) . '/temp/' . $cache_key . '.cache';
 
     if (is_readable($cache_file)) {
         $content = file_get_contents($cache_file);
-        $cached  = $content !== false ? json_decode($content, true) : null;
+        $cached = $content !== false ? json_decode($content, true) : null;
         if ($cached && isset($cached['size'], $cached['time'])) {
             if (time() - $cached['time'] < $cache_ttl) {
                 return (float)$cached['size'];
@@ -345,8 +338,6 @@ function log_drive_operation(int $userId, string $username, string $operation, s
 }
 }
 
-
-
 if (!function_exists('meel_xsendfile_enabled')) {
 function meel_xsendfile_enabled(): bool
 {
@@ -389,8 +380,8 @@ function meel_xsendfile_config_files(): array
         return $files;
     }
 
-    $found  = [];
-    $queue  = [[$main, 0]];
+    $found = [];
+    $queue = [[$main, 0]];
     while ($queue !== []) {
         [$file, $depth] = array_shift($queue);
         $real = realpath($file);
@@ -434,7 +425,6 @@ function meel_xsendfile_config_files(): array
 }
 
 if (!function_exists('meel_xsendfile_flag_from_text')) {
-/** Parse direktif `XSendFile on|off` dari konfigurasi Apache; null bila tak ada direktif (default Apache: nonaktif). */
 function meel_xsendfile_flag_from_text(string $content): ?bool
 {
     $flag = null;
@@ -472,14 +462,14 @@ function meel_xsendfile_config_data(): array
             && (int) ($cached['time'] ?? 0) > time() - 3600) {
             $data = [
                 'roots' => array_values((array) ($cached['roots'] ?? [])),
-                'flag'  => (bool) $cached['flag'],
+                'flag' => (bool) $cached['flag'],
             ];
             return $data;
         }
     }
 
     $parsed = [];
-    $flag   = false;
+    $flag = false;
     foreach ($confFiles as $confFile) {
         $content = @file_get_contents($confFile);
         if ($content === false) {
@@ -503,10 +493,10 @@ function meel_xsendfile_config_data(): array
     $roots = array_values(array_unique(array_filter($parsed)));
 
     meel_write_cache_file($cacheFile, json_encode([
-        'sig'   => $sig,
-        'time'  => time(),
+        'sig' => $sig,
+        'time' => time(),
         'roots' => $roots,
-        'flag'  => $flag,
+        'flag' => $flag,
     ]));
 
     $data = ['roots' => $roots, 'flag' => $flag];
@@ -530,9 +520,6 @@ function meel_xsendfile_server_flag(): bool
 }
 
 if (!function_exists('meel_xsendfile_htaccess_dirs')) {
-/**
- * Direktori yang .htaccess-nya berlaku untuk request ini, diurutkan docroot → paling spesifik (merge per-dir Apache); mencakup jalur URL (REQUEST_URI/REDIRECT_URL) dan direktori skrip hasil internal rewrite.
- */
 function meel_xsendfile_htaccess_dirs(): array
 {
     $docRoot = rtrim((string) ($_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
@@ -587,7 +574,6 @@ function meel_xsendfile_htaccess_dirs(): array
 }
 
 if (!function_exists('meel_xsendfile_merge_flag')) {
-/** Terapkan isi .htaccess (umum → spesifik) di atas flag dasar; konten null/bukan string dianggap tanpa direktif. */
 function meel_xsendfile_merge_flag(bool $base, array $contents): bool
 {
     $flag = $base;
@@ -605,7 +591,6 @@ function meel_xsendfile_merge_flag(bool $base, array $contents): bool
 }
 
 if (!function_exists('meel_xsendfile_effective_flag')) {
-/** Nilai `XSendFile on|off` efektif untuk request ini: flag server, lalu override tiap .htaccess. */
 function meel_xsendfile_effective_flag(): bool
 {
     static $flag = null;
@@ -655,8 +640,6 @@ function meel_xsendfile_ready(string $realPath): bool
 if (!function_exists('meel_xsendfile_header')) {
 function meel_xsendfile_header(string $realPath): string
 {
-    // mod_xsendfile men-decode %XX pada nilai header (XSendFileUnescape On),
-    // sehingga '%' literal pada nama file harus di-escape agar tidak salah sasaran.
     return str_replace('%', '%25', $realPath);
 }
 }
@@ -704,21 +687,19 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
 
     $mimeMap = [
         'm3u8' => 'application/vnd.apple.mpegurl', 'ts' => 'video/mp2t',
-        'vtt'  => 'text/vtt', 'mp4' => 'video/mp4', 'webm' => 'video/webm',
-        'mkv'  => 'video/x-matroska', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg',
-        'png'  => 'image/png', 'webp' => 'image/webp', 'gif' => 'image/gif',
-        'pdf'  => 'application/pdf', 'mp3' => 'audio/mpeg', 'ogg' => 'audio/ogg',
-        'm4a'  => 'audio/mp4', 'flac' => 'audio/flac', 'wav' => 'audio/wav',
+        'vtt' => 'text/vtt', 'mp4' => 'video/mp4', 'webm' => 'video/webm',
+        'mkv' => 'video/x-matroska', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg',
+        'png' => 'image/png', 'webp' => 'image/webp', 'gif' => 'image/gif',
+        'pdf' => 'application/pdf', 'mp3' => 'audio/mpeg', 'ogg' => 'audio/ogg',
+        'm4a' => 'audio/mp4', 'flac' => 'audio/flac', 'wav' => 'audio/wav',
         'opus' => 'audio/ogg',
     ];
     $mime = $mimeMap[$ext] ?? 'application/octet-stream';
 
-    
-    
     if (!empty($opts['hls_gate']) && (str_starts_with($relPath, 'video/') || str_contains($relPath, '/video/'))) {
         $referer = $_SERVER['HTTP_REFERER'] ?? '';
-        $host    = $_SERVER['HTTP_HOST'] ?? '';
-        $refOk   = false;
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $refOk = false;
         if ($referer !== '' && $host !== '') {
             $parts = parse_url($referer);
             $hostNorm = strtolower(parse_url('http://' . $host, PHP_URL_HOST) ?: $host);
@@ -737,10 +718,6 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
         }
     }
 
-    // Akselerasi: Apache mengirim file langsung dari disk (zero-copy), PHP exit
-    // tanpa membaca isi file. Content-Length/206/Content-Range TIDAK dikirim di
-    // sini — mod_xsendfile hanya aktif pada status 200; Apache core yang
-    // menghitung Range (206/416), ETag, Last-Modified, dan 304.
     if (meel_xsendfile_ready($realFull)) {
         header('Content-Type: ' . $mime);
         header('Accept-Ranges: bytes');
@@ -751,18 +728,18 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
 
     $size = (int) @filesize($realFull);
     $start = 0;
-    $end   = $size - 1;
+    $end = $size - 1;
     $range = $_SERVER['HTTP_RANGE'] ?? '';
     $isPartial = false;
     if ($range !== '' && preg_match('/bytes=(\d*)-(\d*)/', $range, $m)) {
         $rStart = $m[1] !== '' ? (int) $m[1] : null;
-        $rEnd   = $m[2] !== '' ? (int) $m[2] : null;
+        $rEnd = $m[2] !== '' ? (int) $m[2] : null;
         if ($rStart === null && $rEnd === null) {
             $rStart = 0;
         }
         if ($rStart !== null) {
             $start = max(0, $rStart);
-            $end   = ($rEnd !== null && $rEnd < $size) ? $rEnd : ($size - 1);
+            $end = ($rEnd !== null && $rEnd < $size) ? $rEnd : ($size - 1);
             if ($start > $end) {
                 header('HTTP/1.1 416 Requested Range Not Satisfiable');
                 header('Content-Range: bytes */' . $size);
@@ -771,7 +748,7 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
             $isPartial = true;
         } elseif ($rEnd !== null) {
             $start = max(0, $size - $rEnd);
-            $end   = $size - 1;
+            $end = $size - 1;
             $isPartial = true;
         }
     }

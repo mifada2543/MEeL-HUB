@@ -1,8 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
-
 abstract class ChessTestCase extends TestCase
 {
     protected DbTestHelper $dbHelper;
@@ -12,7 +10,6 @@ abstract class ChessTestCase extends TestCase
     {
         parent::setUp();
 
-        // Arcade extension owns its own DB (rooms/moves) — skip if tables are absent.
         require_once MEEL_ROOT . '/modules/core/Modules.php';
         $this->dbHelper = new DbTestHelper();
         $this->conn = $this->dbHelper->getConnection();
@@ -30,7 +27,6 @@ abstract class ChessTestCase extends TestCase
         parent::tearDown();
     }
 
-    
     protected function insertRoom(string $code): void
     {
         $stmt = $this->conn->prepare(
@@ -42,7 +38,6 @@ abstract class ChessTestCase extends TestCase
         $stmt->close();
     }
 
-    
     protected function insertMove(string $code, string $color): void
     {
         $stmt = $this->conn->prepare(

@@ -73,9 +73,6 @@
       t && attachMiniPlayerVideoCardListeners(t);
     }
   }),
-  
-
-
 
   document.addEventListener("htmx:afterSettle", function (e) {
     if ("main-video-wrapper" !== e.detail.target.id || !isMiniPlayerActive)

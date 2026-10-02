@@ -3,19 +3,19 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 const SIZE = 4;
-const CELL = canvas.width / SIZE; 
+const CELL = canvas.width / SIZE;
 const PAD = 12;
 
 const TILE_COLORS = {
-  2:    { bg: "#eee4da", fg: "#776e65" },
-  4:    { bg: "#ede0c8", fg: "#776e65" },
-  8:    { bg: "#f2b179", fg: "#f9f6f2" },
-  16:   { bg: "#f59563", fg: "#f9f6f2" },
-  32:   { bg: "#f67c5f", fg: "#f9f6f2" },
-  64:   { bg: "#f65e3b", fg: "#f9f6f2" },
-  128:  { bg: "#edcf72", fg: "#f9f6f2" },
-  256:  { bg: "#edcc61", fg: "#f9f6f2" },
-  512:  { bg: "#edc850", fg: "#f9f6f2" },
+  2: { bg: "#eee4da", fg: "#776e65" },
+  4: { bg: "#ede0c8", fg: "#776e65" },
+  8: { bg: "#f2b179", fg: "#f9f6f2" },
+  16: { bg: "#f59563", fg: "#f9f6f2" },
+  32: { bg: "#f67c5f", fg: "#f9f6f2" },
+  64: { bg: "#f65e3b", fg: "#f9f6f2" },
+  128: { bg: "#edcf72", fg: "#f9f6f2" },
+  256: { bg: "#edcc61", fg: "#f9f6f2" },
+  512: { bg: "#edc850", fg: "#f9f6f2" },
   1024: { bg: "#edc53f", fg: "#f9f6f2" },
   2048: { bg: "#edc22e", fg: "#f9f6f2" },
 };
@@ -33,12 +33,11 @@ let wonNotified = false;
 let mergeFlash = [];
 let flashTimer = 0;
 
-
-let slidePrev = null; 
-let slideDest = null; 
-let slideNew = []; 
+let slidePrev = null;
+let slideDest = null;
+let slideNew = [];
 let animTimer = 0;
-const ANIM_MS = 150; 
+const ANIM_MS = 150;
 
 function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
@@ -86,7 +85,6 @@ function canMove() {
   return false;
 }
 
-
 function slideLine(line) {
   const tiles = line.filter((v) => v);
   const out = [];
@@ -115,7 +113,7 @@ function move(dir) {
     if (dir === "left") return { r, c };
     if (dir === "right") return { r, c: SIZE - 1 - c };
     if (dir === "up") return { r: c, c: r };
-    return { r: SIZE - 1 - c, c: r }; 
+    return { r: SIZE - 1 - c, c: r };
   };
   for (let i = 0; i < SIZE; i++) {
     const line = [];
@@ -150,7 +148,6 @@ function doMove(dir) {
   flashTimer = 20;
   scorePop();
 
-  
   const newTiles = [];
   for (let r = 0; r < SIZE; r++)
     for (let c = 0; c < SIZE; c++) if (board[r][c]) newTiles.push({ r, c, val: board[r][c] });
@@ -160,7 +157,7 @@ function doMove(dir) {
     for (let c = 0; c < SIZE; c++) {
       const v = prev[r][c];
       if (!v) continue;
-      
+
       if (flash.some((m) => m.r === r && m.c === c)) {
         dest[`${r},${c}`] = { r, c };
         continue;
@@ -170,13 +167,13 @@ function doMove(dir) {
         used.add(`${target.r},${target.c}`);
         dest[`${r},${c}`] = { r: target.r, c: target.c };
       } else {
-        dest[`${r},${c}`] = { r, c }; 
+        dest[`${r},${c}`] = { r, c };
       }
     }
   slidePrev = prev;
   slideDest = dest;
   slideNew = [];
-  
+
   const destSet = new Set(Object.values(dest).map((d) => `${d.r},${d.c}`));
   for (const t of newTiles) if (!destSet.has(`${t.r},${t.c}`)) slideNew.push(t);
   animTimer = ANIM_MS;
@@ -244,7 +241,6 @@ function draw() {
   ctx.fillStyle = "#0b0e14";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  
   for (let r = 0; r < SIZE; r++)
     for (let c = 0; c < SIZE; c++) {
       const x = c * CELL + PAD / 2;
@@ -257,7 +253,6 @@ function draw() {
   const w = CELL - PAD;
   const glow = (flashTimer / 20) * 0.55;
 
-  
   if (animTimer > 0 && slidePrev) {
     const t = 1 - animTimer / ANIM_MS;
     const ease = easeOutCubic(Math.min(1, t));
@@ -271,7 +266,7 @@ function draw() {
         const isMerge = mergeFlash.some((m) => m.r === d.r && m.c === d.c);
         drawTile(x, y, w, v, 1, isMerge ? glow : 0);
       }
-    
+
     for (const t of slideNew) {
       const scale = easeOutCubic(Math.min(1, t * 1.6));
       drawTile(t.c * CELL + PAD / 2, t.r * CELL + PAD / 2, w, t.val, scale);
@@ -279,7 +274,6 @@ function draw() {
     return;
   }
 
-  
   for (let r = 0; r < SIZE; r++)
     for (let c = 0; c < SIZE; c++) {
       const val = board[r][c];
@@ -290,9 +284,6 @@ function draw() {
       drawTile(x, y, w, val, 1, isMerge ? glow : 0);
     }
 }
-
-
-
 
 let consecutiveErrors = 0;
 
@@ -366,7 +357,6 @@ function endGame() {
   });
 }
 
-
 const KEY_DIRS = {
   ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down",
   a: "left", d: "right", w: "up", s: "down",
@@ -437,7 +427,6 @@ document.getElementById("resetScoreBtn").addEventListener("click", () => {
     }
   });
 });
-
 
 renderHUD();
 gameLoop();

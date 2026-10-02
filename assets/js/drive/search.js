@@ -4,7 +4,7 @@ function filterDriveFiles() {
   var desktopInput = document.getElementById("search-input-desktop");
   var mobileInput = document.getElementById("search-input-mobile");
   var active = document.activeElement;
-  
+
   var value =
     active === mobileInput
       ? mobileInput
@@ -16,7 +16,7 @@ function filterDriveFiles() {
           ? mobileInput.value
           : "";
   var keyword = value.toLowerCase();
-  
+
   if (desktopInput && desktopInput !== active) desktopInput.value = value;
   if (mobileInput && mobileInput !== active) mobileInput.value = value;
   var activeSection = document.querySelector(".drive-section:not(.hidden)");

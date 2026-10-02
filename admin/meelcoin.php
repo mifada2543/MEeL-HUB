@@ -14,16 +14,16 @@ require_once __DIR__ . '/../modules/core/helpers/settings.php';
 require_once __DIR__ . '/../modules/core/MeelCoin.php';
 
 $meelcoin_settings = [
-    'meelcoin_enabled'       => get_site_setting($conn, 'meelcoin_enabled', '1'),
-    'meelcoin_upload_cost'   => get_site_setting($conn, 'meelcoin_upload_cost', '5'),
+    'meelcoin_enabled' => get_site_setting($conn, 'meelcoin_enabled', '1'),
+    'meelcoin_upload_cost' => get_site_setting($conn, 'meelcoin_upload_cost', '5'),
     'meelcoin_advanced_cost' => get_site_setting($conn, 'meelcoin_advanced_cost', '10'),
-    'meelcoin_transcode_user_cost'   => get_site_setting($conn, 'meelcoin_transcode_user_cost', '5'),
+    'meelcoin_transcode_user_cost' => get_site_setting($conn, 'meelcoin_transcode_user_cost', '5'),
     'meelcoin_transcode_member_cost' => get_site_setting($conn, 'meelcoin_transcode_member_cost', '2'),
-    'meelcoin_user_max'      => get_site_setting($conn, 'meelcoin_user_max', '25'),
-    'meelcoin_user_refill'   => get_site_setting($conn, 'meelcoin_user_refill', '15'),
-    'meelcoin_member_max'    => get_site_setting($conn, 'meelcoin_member_max', '50'),
+    'meelcoin_user_max' => get_site_setting($conn, 'meelcoin_user_max', '25'),
+    'meelcoin_user_refill' => get_site_setting($conn, 'meelcoin_user_refill', '15'),
+    'meelcoin_member_max' => get_site_setting($conn, 'meelcoin_member_max', '50'),
     'meelcoin_member_refill' => get_site_setting($conn, 'meelcoin_member_refill', '25'),
-    'meelcoin_refill_hours'  => get_site_setting($conn, 'meelcoin_refill_hours', '5'),
+    'meelcoin_refill_hours' => get_site_setting($conn, 'meelcoin_refill_hours', '5'),
 ];
 
 $msg = $_GET['msg'] ?? null;

@@ -11,9 +11,9 @@ class XSendfileFlagTest extends TestCase
     {
         $this->savedServer = [
             'DOCUMENT_ROOT' => $_SERVER['DOCUMENT_ROOT'] ?? null,
-            'REQUEST_URI'   => $_SERVER['REQUEST_URI'] ?? null,
-            'REDIRECT_URL'  => $_SERVER['REDIRECT_URL'] ?? null,
-            'SCRIPT_NAME'   => $_SERVER['SCRIPT_NAME'] ?? null,
+            'REQUEST_URI' => $_SERVER['REQUEST_URI'] ?? null,
+            'REDIRECT_URL' => $_SERVER['REDIRECT_URL'] ?? null,
+            'SCRIPT_NAME' => $_SERVER['SCRIPT_NAME'] ?? null,
         ];
     }
 
@@ -135,8 +135,8 @@ class XSendfileFlagTest extends TestCase
     {
         $docRoot = $this->makeFixture();
         $_SERVER['DOCUMENT_ROOT'] = $docRoot;
-        $_SERVER['REQUEST_URI']   = '/MEeL/music/upload/file/song.ogg';
-        $_SERVER['SCRIPT_NAME']   = '/MEeL/music/file.php';
+        $_SERVER['REQUEST_URI'] = '/MEeL/music/upload/file/song.ogg';
+        $_SERVER['SCRIPT_NAME'] = '/MEeL/music/file.php';
         unset($_SERVER['REDIRECT_URL']);
 
         $dirs = meel_xsendfile_htaccess_dirs();
@@ -157,8 +157,8 @@ class XSendfileFlagTest extends TestCase
     {
         $docRoot = $this->makeFixture();
         $_SERVER['DOCUMENT_ROOT'] = $docRoot;
-        $_SERVER['REQUEST_URI']   = '/../../etc';
-        $_SERVER['SCRIPT_NAME']   = '/index.php';
+        $_SERVER['REQUEST_URI'] = '/../../etc';
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
         unset($_SERVER['REDIRECT_URL']);
 
         $dirs = meel_xsendfile_htaccess_dirs();
@@ -173,8 +173,8 @@ class XSendfileFlagTest extends TestCase
     {
         $docRoot = $this->makeFixture();
         $_SERVER['DOCUMENT_ROOT'] = $docRoot;
-        $_SERVER['REQUEST_URI']   = '/MEeL/music/upload/file/a%20b.ogg';
-        $_SERVER['SCRIPT_NAME']   = '/MEeL/music/file.php';
+        $_SERVER['REQUEST_URI'] = '/MEeL/music/upload/file/a%20b.ogg';
+        $_SERVER['SCRIPT_NAME'] = '/MEeL/music/file.php';
         unset($_SERVER['REDIRECT_URL']);
 
         $this->assertContains($docRoot . '/MEeL/music/upload', meel_xsendfile_htaccess_dirs());

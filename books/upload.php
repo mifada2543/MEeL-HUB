@@ -4,9 +4,9 @@ require_once '../auth/config.php';
 
 require_once '../modules/media/MediaLibrary.php';
 
-$repo    = new BookRepository($conn);
+$repo = new BookRepository($conn);
 $user_id = (int)$_SESSION['user_id'];
-$role    = $repo->getUserRole($user_id);
+$role = $repo->getUserRole($user_id);
 
 if ($role !== 'admin') {
     header("Location: ..?error=unauthorized");
@@ -15,7 +15,7 @@ if ($role !== 'admin') {
 
 meel_storage_guard();
 
-$message  = '';
+$message = '';
 $val_title = htmlspecialchars($_GET['reup'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
     } else {
     $books_base = dirname(meel_media_base_path('books'));
     $uploader = new BookUploader($conn, $books_base);
-    $result   = $uploader->handleUpload(
+    $result = $uploader->handleUpload(
         array_merge($_POST, ['user_id' => $user_id]),
         $_FILES
     );

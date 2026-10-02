@@ -1,8 +1,5 @@
 /* reference build: MEeL-C8H11NO2 [3ea41355425cd7db] */
 
-
-
-
 import { S, songId, phpSong, phpBeatmap, speedMult, audioElement } from "./state.js";
 
 const SONGS_BASE = window.MEEL_BASE + "/arcade/rhythm/songs";
@@ -34,13 +31,11 @@ export async function loadSongData() {
     await loadFromFiles();
   }
 
-  
   try {
     const saved = JSON.parse(localStorage.getItem("mania_scores")) || {};
     S.highScore = saved[String(songId)] || 0;
   } catch (e) { S.highScore = 0; }
 
-  
   document.getElementById("overlayEmoji").textContent = S.song.emoji;
   document.getElementById("overlayTitle").textContent = S.song.title;
   document.getElementById("overlaySub").textContent =

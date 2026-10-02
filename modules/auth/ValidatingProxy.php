@@ -1,16 +1,5 @@
 <?php
 
-
-
-
-
-
-
-
-
-
-
-
 final class ValidatingProxy
 {
     private const START_TIMEOUT_SECONDS = 8;
@@ -18,7 +7,7 @@ final class ValidatingProxy
     private ?int $port = null;
     /** @var resource|null $process proc_open resource */
     private $process = null;
-    
+
     private array $pipes = [];
 
     public function __construct()
@@ -32,9 +21,9 @@ final class ValidatingProxy
         $cmd = escapeshellarg($phpBin) . ' ' . escapeshellarg($script);
 
         $descriptor = [
-            0 => ['pipe', 'r'], 
-            1 => ['pipe', 'w'], 
-            2 => ['pipe', 'w'], 
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
         ];
 
         $this->process = @proc_open($cmd, $descriptor, $this->pipes, dirname(__DIR__, 2));
@@ -47,7 +36,6 @@ final class ValidatingProxy
         stream_set_blocking($this->pipes[1], true);
         stream_set_timeout($this->pipes[1], self::START_TIMEOUT_SECONDS);
 
-        
         $handshake = '';
         $deadline = microtime(true) + self::START_TIMEOUT_SECONDS;
         while (strpos($handshake, "READY") === false && microtime(true) < $deadline) {
@@ -66,27 +54,21 @@ final class ValidatingProxy
             throw new \RuntimeException('Validating proxy tidak siap (handshake gagal).');
         }
 
-        
         stream_set_blocking($this->pipes[2], false);
     }
-
-    
 
     public static function resolvePhpBinary(): string
     {
         $candidates = [];
 
-        
-        
         if (defined('PHP_BINARY') && PHP_BINARY !== '') {
             $candidates[] = PHP_BINARY;
         }
-        
-        
+
         foreach (['/opt/lampp/bin/php', '/usr/bin/php', '/usr/local/bin/php'] as $c) {
             $candidates[] = $c;
         }
-        
+
         $candidates[] = 'php';
 
         foreach ($candidates as $candidate) {
@@ -96,10 +78,9 @@ final class ValidatingProxy
             if (!is_executable($candidate)) {
                 continue;
             }
-            
-            
+
             $out = [];
-            $rc  = 0;
+            $rc = 0;
             @exec(escapeshellarg($candidate) . ' -r "echo PHP_VERSION;" 2>&1', $out, $rc);
             if ($rc === 0 && preg_match('/^\d+\.\d+\.\d+$/', trim(implode('', $out)))) {
                 return $candidate;
@@ -108,7 +89,6 @@ final class ValidatingProxy
         return 'php';
     }
 
-    
     public function url(): string
     {
         if ($this->port === null) {
@@ -138,17 +118,14 @@ final class ValidatingProxy
         if (is_resource($this->process)) {
             $status = proc_get_status($this->process);
             if (!empty($status['running'])) {
-                
-                
-                
-                
+
                 $pid = (int) ($status['pid'] ?? 0);
                 $hasPosix = function_exists('posix_kill') && defined('SIGTERM') && defined('SIGKILL');
                 if ($pid > 0 && $hasPosix) {
                     @posix_kill($pid, SIGTERM);
                 }
                 @proc_terminate($this->process);
-                
+
                 usleep(150000);
                 $status2 = proc_get_status($this->process);
                 if (!empty($status2['running']) && $pid > 0 && $hasPosix) {

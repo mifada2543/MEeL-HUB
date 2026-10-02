@@ -4,10 +4,6 @@ use PHPUnit\Framework\TestCase;
 require_once MEEL_ROOT . '/modules/core/MeelCoin.php';
 
 /**
- * Test integrasi MEeLCoin (butuh MySQL; database uji MEeL-test).
- * Satu koneksi harness → interleaving dua request tak bisa disimulasikan literal; yang
- * diuji kontrak saldo: guard di UPDATE tunggal, delta eksak, semantik siklus refill.
- * @requires extension mysqli
  * @group integration
  * @covers MeelCoin
  */
@@ -22,12 +18,11 @@ class MeelCoinIntegrationTest extends TestCase
         parent::setUp();
 
         $this->dbHelper = new DbTestHelper();
-        $this->conn     = $this->dbHelper->getConnection();
-        $this->userId   = DbTestHelper::REGULAR_USER_ID;
+        $this->conn = $this->dbHelper->getConnection();
+        $this->userId = DbTestHelper::REGULAR_USER_ID;
 
         MeelCoin::clearCache();
 
-        // Baseline deterministik (schema.sql juga sudah menyisipkan nilai ini).
         $this->setSetting('meelcoin_enabled', '1');
         $this->setSetting('meelcoin_advanced_cost', '10');
         $this->setSetting('meelcoin_upload_cost', '5');
@@ -74,7 +69,6 @@ class MeelCoinIntegrationTest extends TestCase
         MeelCoin::clearCache();
     }
 
-    /** @return array<int, array{amount:int, balance_after:int, reason:string}> */
     private function coinLogs(int $userId, ?string $reason = null): array
     {
         $rows = [];
@@ -89,9 +83,9 @@ class MeelCoinIntegrationTest extends TestCase
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {
             $rows[] = [
-                'amount'        => (int)$row['amount'],
+                'amount' => (int)$row['amount'],
                 'balance_after' => (int)$row['balance_after'],
-                'reason'        => (string)$row['reason'],
+                'reason' => (string)$row['reason'],
             ];
         }
         $stmt->close();
@@ -122,7 +116,6 @@ class MeelCoinIntegrationTest extends TestCase
 
         $this->assertFalse($ok);
         $this->assertStringContainsString('tidak cukup', $err);
-        // Guard saldo: saldo tetap, tidak pernah minus, dan tidak ada log debit.
         $this->assertSame(3, MeelCoin::getBalance($this->conn, $this->userId));
         $this->assertCount(0, $this->coinLogs($this->userId, 'upload_advanced'));
     }
@@ -131,10 +124,8 @@ class MeelCoinIntegrationTest extends TestCase
     {
         $this->setBalance($this->userId, 20);
 
-        // Perubahan saldo "dari request lain" setelah nilai awal diketahui.
         $this->setBalance($this->userId, 8);
 
-        // spend() dinilai dari saldo di DB saat UPDATE (8), bukan 20; saat cukup, pengurangan juga dari nilai DB terkini.
         [$ok, $err] = MeelCoin::spend($this->conn, $this->userId, 10, 'upload_advanced');
         $this->assertFalse($ok);
         $this->assertStringContainsString('tersedia: 8', $err);
@@ -182,7 +173,6 @@ class MeelCoinIntegrationTest extends TestCase
 
     public function testRefillGrantsCappedAmountWithExactLogDelta(): void
     {
-        // max 25, refill 15 → dari 23 hanya boleh nambah 2 (cap di DB).
         $this->setBalance($this->userId, 23, date('Y-m-d H:i:s', time() - 6 * 3600));
 
         $this->assertTrue(MeelCoin::refill($this->conn, $this->userId, 'user'));
@@ -204,19 +194,16 @@ class MeelCoinIntegrationTest extends TestCase
 
     public function testRefillResetsTimerWhenBalanceIsAtMax(): void
     {
-        // Kondisi awal bug: saldo penuh, timer refill sudah lama lewat.
         $this->setBalance($this->userId, 25, date('Y-m-d H:i:s', time() - 6 * 3600));
 
         $this->assertFalse(MeelCoin::refill($this->conn, $this->userId, 'user'));
         $this->assertSame(25, MeelCoin::getBalance($this->conn, $this->userId));
 
-        // Timer di-reset → tak ada "refill tertunda" yang menutup potongan berikutnya.
         $reset = strtotime((string)$this->lastRefill($this->userId));
         $this->assertGreaterThan(time() - 60, $reset, 'Timer refill harus di-reset saat saldo penuh');
         $this->assertLessThanOrEqual(time() + 5, $reset);
     }
 
-    /** Regresi inti: coin harus TETAP terpotong di request berikutnya (dulu hilang karena refill tertunda langsung menutupnya). */
     public function testSpendIsNotMaskedByPendingRefillOnNextRequest(): void
     {
         $this->setBalance($this->userId, 25, date('Y-m-d H:i:s', time() - 6 * 3600));
@@ -226,7 +213,6 @@ class MeelCoinIntegrationTest extends TestCase
         $this->assertTrue($ok);
         $this->assertSame(15, MeelCoin::getBalance($this->conn, $this->userId));
 
-        // Request 2: halaman upload dimuat lagi → saldo tidak boleh melompat naik.
         MeelCoin::refill($this->conn, $this->userId, 'user');
         $this->assertSame(15, MeelCoin::getBalance($this->conn, $this->userId));
 
@@ -256,16 +242,15 @@ class MeelCoinIntegrationTest extends TestCase
 
     public function testGetRefillCountdownFollowsPerUserTimestamp(): void
     {
-        $user   = $this->userId;
+        $user = $this->userId;
         $member = DbTestHelper::MEMBER_USER_ID;
 
-        $this->setBalance($user, 10, date('Y-m-d H:i:s', time() - 2 * 3600)); // siklus 5 jam
-        $this->setBalance($member, 10, date('Y-m-d H:i:s'));                  // baru saja
+        $this->setBalance($user, 10, date('Y-m-d H:i:s', time() - 2 * 3600));
+        $this->setBalance($member, 10, date('Y-m-d H:i:s'));
 
-        $userCountdown   = MeelCoin::getRefillCountdown($this->conn, $user, 'user');
+        $userCountdown = MeelCoin::getRefillCountdown($this->conn, $user, 'user');
         $memberCountdown = MeelCoin::getRefillCountdown($this->conn, $member, 'member');
 
-        // ~3 jam tersisa vs ~5 jam — dulu (siklus global) keduanya identik.
         $this->assertEqualsWithDelta(3 * 3600, $userCountdown, 60);
         $this->assertEqualsWithDelta(5 * 3600, $memberCountdown, 60);
         $this->assertNotSame($userCountdown, $memberCountdown);

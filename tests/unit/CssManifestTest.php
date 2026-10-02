@@ -4,7 +4,7 @@ use PHPUnit\Framework\TestCase;
 /** @covers SwPrecache */
 class CssManifestTest extends TestCase
 {
-    
+
     public static function manifestProvider(): array
     {
         $out = [];
@@ -38,7 +38,7 @@ class CssManifestTest extends TestCase
     public function testAllManifestFoldersArePrecached(string $manifest): void
     {
         $folder = basename(dirname($manifest));
-        $mods   = require $manifest;
+        $mods = require $manifest;
 
         $expected = [];
         foreach ($mods as $mod) {

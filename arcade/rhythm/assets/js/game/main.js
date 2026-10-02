@@ -1,14 +1,10 @@
 /* reference build: MEeL-C3H7NO2S [e4792acfeaf34e46] */
 
-
-
-
 import { S } from "./state.js";
 import { resizeCanvas } from "./canvas.js";
 import { loadSongData } from "./loader.js";
 import { loadOptions } from "./gameFlow.js";
 import { initKeyboard, initTouch, initButtons } from "./input.js";
-
 
 async function init() {
   try { resizeCanvas(); } catch (e) { console.error("[Game] resizeCanvas failed:", e); }

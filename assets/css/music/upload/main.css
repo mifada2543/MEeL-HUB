@@ -1,5 +1,3 @@
-/* upload/main.css — Music Upload (music/upload.php, tema oranye);
-   nav/form/tombol/alert datang dari ../../shared/upload-form.css. */
 :root {
   --accent: #f97316;
   --accent-hover: #fb923c;
@@ -564,7 +562,6 @@ body::before {
 .footer-link.accent:hover {
   color: #fb923c;
 }
-/* Alert in upload context needs margin-bottom */
 .alert {
   margin-bottom: 20px;
 }
@@ -573,7 +570,6 @@ body::before {
   padding-top: 15px;
   padding-bottom: 15px;
 }
-/* Injected JS keyframe */
 @keyframes spin {
   to {
     transform: rotate(360deg);

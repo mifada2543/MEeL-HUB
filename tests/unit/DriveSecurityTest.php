@@ -1,12 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
-
-
 require_once MEEL_ROOT . '/drive/DriveService.php';
-
-
 
 class DriveSecurityTest extends TestCase
 {
@@ -54,8 +49,6 @@ class DriveSecurityTest extends TestCase
         @rmdir($dir);
     }
 
-    
-
     public function testOwnerCanDownloadOwnPrivateFile(): void
     {
         file_put_contents($this->baseDir . '/private_admins/alice/video/x.mp4', 'data');
@@ -86,8 +79,6 @@ class DriveSecurityTest extends TestCase
         $this->assertSame('p.mp4', $file['name']);
     }
 
-    
-
     public function testPathTraversalIsBlocked(): void
     {
         $this->expectException(RuntimeException::class);
@@ -102,8 +93,7 @@ class DriveSecurityTest extends TestCase
 
     public function testUsernamePrefixCannotBypassRealpathBoundary(): void
     {
-        
-        
+
         file_put_contents($this->baseDir . '/private_admins/bobby/video/secret.mp4', 'bob-data');
         $this->expectException(RuntimeException::class);
         $this->storage('alice')->getFileForDownload('secret.mp4', 'video', 'private');
@@ -115,8 +105,6 @@ class DriveSecurityTest extends TestCase
         $this->storage('alice')->getFileForDownload('', 'video', 'private');
     }
 
-    
-
     public function testPrivateListingUsesAuthenticatedStreamEndpoint(): void
     {
         file_put_contents($this->baseDir . '/private_admins/alice/video/x.mp4', 'data');
@@ -125,7 +113,7 @@ class DriveSecurityTest extends TestCase
         $this->assertStringStartsWith('stream?file=' . rawurlencode('x.mp4'), $files[0]['path']);
         $this->assertStringContainsString('scope=private', $files[0]['path']);
         $this->assertStringContainsString('csrf_token=test_token_123', $files[0]['path']);
-        
+
         $this->assertStringNotContainsString('private_admins', $files[0]['path']);
         $this->assertStringNotContainsString('/x.mp4', str_replace('stream?file=', '', $files[0]['path']));
     }
@@ -140,25 +128,23 @@ class DriveSecurityTest extends TestCase
         $this->assertStringContainsString('csrf_token=', $files[0]['path']);
     }
 
-    
-
     public function testQuotaEnforcementRejectsOverLimitUpload(): void
     {
-        
+
         file_put_contents($this->baseDir . '/private_admins/alice/audio/old.mp3', str_repeat('A', 1024));
         @mkdir($this->baseDir . '/private_admins/alice/dokumen', 0755, true);
 
         $file = [
-            'error'    => UPLOAD_ERR_OK,
-            'name'     => 'big.mp4',
+            'error' => UPLOAD_ERR_OK,
+            'name' => 'big.mp4',
             'tmp_name' => '/tmp/definitely-not-an-upload',
-            'size'     => 100000,
-            'type'     => 'video/mp4',
+            'size' => 100000,
+            'type' => 'video/mp4',
         ];
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('quota_full');
-        $this->storage('alice')->upload($file, 'private', 1000); 
+        $this->storage('alice')->upload($file, 'private', 1000);
     }
 
     public function testQuotaDoesNotApplyToAdmin(): void
@@ -169,14 +155,13 @@ class DriveSecurityTest extends TestCase
             $this->user(['user_id' => 2, 'role' => 'admin', 'username' => 'admin'])
         );
         $file = [
-            'error'    => UPLOAD_ERR_OK,
-            'name'     => 'big.mp4',
+            'error' => UPLOAD_ERR_OK,
+            'name' => 'big.mp4',
             'tmp_name' => '/tmp/definitely-not-an-upload',
-            'size'     => 100000,
-            'type'     => 'video/mp4',
+            'size' => 100000,
+            'type' => 'video/mp4',
         ];
-        
-        
+
         try {
             $storage->upload($file, 'private', 1);
         } catch (RuntimeException $e) {
@@ -185,20 +170,15 @@ class DriveSecurityTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    
-
     public function testPrivateStorageDeniedByWebServerConfig(): void
     {
-        
-        
+
         $parent = MEEL_ROOT . '/data_drive/.htaccess';
         $this->assertFileExists($parent);
         $parentContent = (string) file_get_contents($parent);
         $this->assertStringContainsString('private_admins', $parentContent);
         $this->assertStringContainsString('[F', $parentContent);
 
-        
-        
         $nested = MEEL_ROOT . '/data_drive/private_admins/.htaccess';
         if (is_file($nested)) {
             $content = (string) file_get_contents($nested);

@@ -1,8 +1,5 @@
 /* reference build: MEeL-C4H9NO2 [c97f68efa8bd8f0c] */
 
-
-
-
 window.meelMiniPlayerPopstate = function (options) {
   const opts = options || {};
   const isActive =

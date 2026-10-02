@@ -22,7 +22,7 @@ if (!$user_id) {
 }
 
 $media_type = (($_POST['media_type'] ?? 'video') === 'music') ? 'music' : 'video';
-$media_id   = (int)($_POST['id'] ?? 0);
+$media_id = (int)($_POST['id'] ?? 0);
 if ($media_id <= 0) {
     http_response_code(400);
     header('HX-Retarget: #comment-alert');
@@ -31,8 +31,8 @@ if ($media_id <= 0) {
     exit;
 }
 
-$rateKey   = 'user_' . $user_id;
-$rateRole  = get_user_role($conn, $user_id);
+$rateKey = 'user_' . $user_id;
+$rateRole = get_user_role($conn, $user_id);
 $rateCheck = RateLimiter::check($rateKey, 'comment', $rateRole);
 if (!$rateCheck['allowed']) {
     http_response_code(429);
@@ -82,16 +82,16 @@ if ($parent_id > 0) {
 }
 
 $comments_data = $viewer->getComments();
-$grouped       = $comments_data['grouped'];
-$user_map      = $comments_data['user_map'];
+$grouped = $comments_data['grouped'];
+$user_map = $comments_data['user_map'];
 
 $playlist_context = (int)($_POST['playlist_id'] ?? 0);
 
 $media_row = $viewer->getMediaData();
 $GLOBALS['uploader_id'] = (int)($media_row['user_id'] ?? 0);
 
-$GLOBALS['id']        = $media_id;
-$GLOBALS['user_map']  = $user_map;
+$GLOBALS['id'] = $media_id;
+$GLOBALS['user_map'] = $user_map;
 
 if (empty($grouped)) {
     render_comment_empty_state($media_type);

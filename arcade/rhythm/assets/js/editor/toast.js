@@ -1,8 +1,3 @@
-
-
-
-
-
 export function showToast(message, type) {
   type = type || "info";
 
@@ -28,7 +23,6 @@ export function showToast(message, type) {
     setTimeout(function () { toast.remove(); }, 300);
   }, type === "success" ? 3000 : 5000);
 }
-
 
 if (!document.getElementById("toastStyle")) {
   var st = document.createElement("style");
