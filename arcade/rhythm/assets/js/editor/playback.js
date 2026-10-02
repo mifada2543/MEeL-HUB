@@ -1,7 +1,3 @@
-
-
-
-
 import { S, DOM } from "./state.js";
 import { resizeCanvas, formatTime } from "./canvas.js";
 import { draw } from "./renderer.js";
@@ -15,12 +11,12 @@ export function togglePlayback() {
   if (S.isPlaying) {
     audio.pause();
     S.isPlaying = false;
-    document.getElementById("btnPlayPause").textContent = "▶ Play";
+    document.getElementById("btnPlayPause").textContent = "▶ Putar";
     cancelAnimationFrame(S.animFrame);
   } else {
     audio.play();
     S.isPlaying = true;
-    document.getElementById("btnPlayPause").textContent = "⏸ Pause";
+    document.getElementById("btnPlayPause").textContent = "⏸ Jeda";
     animatePlayback();
   }
 }
@@ -29,14 +25,14 @@ export function stopPlayback() {
   audio.pause();
   audio.currentTime = 0;
   S.isPlaying = false;
-  document.getElementById("btnPlayPause").textContent = "▶ Play";
+  document.getElementById("btnPlayPause").textContent = "▶ Putar";
   cancelAnimationFrame(S.animFrame);
   draw();
 }
 
 audio.addEventListener("ended", function () {
   S.isPlaying = false;
-  document.getElementById("btnPlayPause").textContent = "▶ Play";
+  document.getElementById("btnPlayPause").textContent = "▶ Putar";
   cancelAnimationFrame(S.animFrame);
 });
 
@@ -45,7 +41,6 @@ function animatePlayback() {
   draw();
   S.animFrame = requestAnimationFrame(animatePlayback);
 }
-
 
 export function setZoom(val) {
   S.zoom = parseInt(val);
@@ -66,7 +61,6 @@ export function setSnap(val) {
   draw();
 }
 
-
 var bpmInput = document.getElementById("f-bpm");
 if (bpmInput) {
   bpmInput.addEventListener("input", function () {
@@ -85,7 +79,6 @@ export function clearNotes() {
   draw();
   saveNotesToStorage();
 }
-
 
 DOM.audioInput.addEventListener("change", function () {
   if (this.files && this.files[0]) {
@@ -106,7 +99,6 @@ DOM.audioInput.addEventListener("change", function () {
     }, { once: true });
   }
 });
-
 
 DOM.coverInput.addEventListener("change", function () {
   if (this.files && this.files[0]) {

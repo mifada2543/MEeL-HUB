@@ -1,6 +1,5 @@
 /* reference build: MEeL-C10H15N [0dfcdb9773dbe299] */
 
-
 :root {
   --admin-bg: #0b0e14;
   --admin-surface: rgba(14, 17, 24, 0.8);
@@ -73,7 +72,6 @@ html[data-theme="light"] ::selection {
   color: #18181b;
 }
 
-/* Legacy arbitrary-value utilities & inline styles in admin markup */
 .bg-\[\#131720\] {
   background: #131720;
 }

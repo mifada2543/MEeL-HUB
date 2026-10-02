@@ -2,8 +2,6 @@
 use PHPUnit\Framework\TestCase;
 
 /**
- * Regresi trusted-proxy: X-Forwarded-For / CF-Connecting-IP dari klien tak tepercaya harus diabaikan,
- * supaya auth_is_loopback() tak bisa dipakai bypass rate-limit login, lockout MFA, IP-ban.
  * @coversNothing
  */
 class ProxyTrustTest extends TestCase
@@ -64,8 +62,6 @@ class ProxyTrustTest extends TestCase
     public function testTrustedProxyTakesRightmostNonProxyXffEntry(): void
     {
         $this->enableTrust();
-        // Cloudflare menaruh IP klien asli di ujung kanan; attacker bisa
-        // menyisipkan nilai palsu di kiri. Entry tepercaya (loopback) dilewati.
         $this->setRequest('127.0.0.1', '1.2.3.4, 127.0.0.1, 198.51.100.9');
 
         $this->assertTrue(trust_proxy_headers());
@@ -124,15 +120,15 @@ class ProxyTrustTest extends TestCase
     public static function cidrProvider(): array
     {
         return [
-            'ipv4 dalam range'      => ['192.168.5.9', '192.168.0.0/16', true],
-            'ipv4 di luar range'    => ['10.1.2.3', '192.168.0.0/16', false],
-            'ipv4 /8'               => ['10.255.1.1', '10.0.0.0/8', true],
-            'ipv4 /32 tepat'        => ['203.0.113.7', '203.0.113.7/32', true],
-            'ipv4 /32 salah'        => ['203.0.113.8', '203.0.113.7/32', false],
-            'ipv6 loopback /128'    => ['::1', '::1/128', true],
-            'ipv6 beda /64'         => ['2001:db8::1', '2001:db9::/64', false],
-            'beda family'           => ['192.168.1.1', '::1/128', false],
-            'bukan cidr'            => ['127.0.0.1', '127.0.0.1', false],
+            'ipv4 dalam range' => ['192.168.5.9', '192.168.0.0/16', true],
+            'ipv4 di luar range' => ['10.1.2.3', '192.168.0.0/16', false],
+            'ipv4 /8' => ['10.255.1.1', '10.0.0.0/8', true],
+            'ipv4 /32 tepat' => ['203.0.113.7', '203.0.113.7/32', true],
+            'ipv4 /32 salah' => ['203.0.113.8', '203.0.113.7/32', false],
+            'ipv6 loopback /128' => ['::1', '::1/128', true],
+            'ipv6 beda /64' => ['2001:db8::1', '2001:db9::/64', false],
+            'beda family' => ['192.168.1.1', '::1/128', false],
+            'bukan cidr' => ['127.0.0.1', '127.0.0.1', false],
         ];
     }
 

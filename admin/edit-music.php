@@ -14,14 +14,13 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 $curr_role = get_user_role($conn, (int)$user_id);
-$is_admin   = is_admin($conn);
+$is_admin = is_admin($conn);
 
 if ($curr_role === 'guest') {
     header("Location: ../");
     exit();
 }
 
-// Routing berbasis role: /admin/edit-* khusus admin, /profile/edit-* khusus pemilik (non-admin).
 $edit_id = (int)($_GET['id'] ?? 0);
 if ($_EDIT_CONTEXT === 'admin') {
     if (!$is_admin) {
@@ -33,23 +32,9 @@ if ($_EDIT_CONTEXT === 'admin') {
     exit;
 }
 
-$back_url = $is_admin ? 'stats.php' : '../music/beranda';
-if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref      = $_SERVER['HTTP_REFERER'];
-    $host     = $_SERVER['HTTP_HOST'];
-    if (parse_url($ref, PHP_URL_HOST) === $host) {
-        $ref_path       = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages = ['edit-music.php', 'edit-music', 'edit-video.php', 'edit-video'];
-        $should_exclude = false;
-        foreach ($excluded_pages as $page) {
-            if (strpos($ref_path, $page) !== false) {
-                $should_exclude = true;
-                break;
-            }
-        }
-        if (!$should_exclude) $back_url = $ref;
-    }
-}
+$back_url = meel_back_url(
+    $_EDIT_CONTEXT === 'admin' ? base_url('/admin/stats') : base_url('/profile/manage')
+);
 require_once __DIR__ . '/../modules/media/MediaAdminRepository.php';
 $adminMedia = new MediaAdminRepository($conn);
 
@@ -83,7 +68,7 @@ if (isset($_POST['update'])) {
         $error_message = "CSRF Token tidak valid.";
     } else {
         $title = trim($_POST['title'] ?? '');
-        $artist = trim($_POST['artist'] ?? 'Unknown Artist');
+        $artist = trim($_POST['artist'] ?? 'Artis Tidak Diketahui');
         $album = trim($_POST['album'] ?? 'Single');
         $description = trim($_POST['description'] ?? '');
         $old_thumb_name = $music['thumbnail'];
@@ -109,10 +94,8 @@ if (isset($_POST['update'])) {
                 }
                 $clean_title = getRomajiName($title);
                 if (empty($clean_title)) $clean_title = 'music-cover';
-                
-                // Reservasi nama atomik via helper bersama (fopen x) — dua
-                // request bersamaan tidak boleh memilih nama yang sama.
-                $new_name    = meel_reserve_unique_filename($target_dir, $clean_title . '_cover', 'webp', 200, '_');
+
+                $new_name = meel_reserve_unique_filename($target_dir, $clean_title . '_cover', 'webp', 200, '_');
                 $upload_path = $new_name !== null ? $target_dir . $new_name : null;
                 $ffmpeg_bin = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
 
@@ -165,15 +148,15 @@ $thumb_src = !empty($music['thumbnail'])
 <html lang="id">
 
 <head>
-<?php
-$_META_TITLE = 'Edit Musik | MEeL Admin';
-$_META_DESC  = 'Edit detail musik di MEeL. Ubah judul, artis, album, deskripsi, dan cover art.';
-include __DIR__ . '/../partials/link.php';
-?>
+    <?php
+    $_META_TITLE = 'Edit Musik | MEeL Admin';
+    $_META_DESC = 'Edit detail musik di MEeL. Ubah judul, artis, album, deskripsi, dan cover art.';
+    include __DIR__ . '/../partials/link.php';
+    ?>
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
+        <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
     <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/admin/edit/shared/main.css?v=<?= filemtime('../assets/css/admin/edit/shared/main.css') ?>">
     <link rel="stylesheet" href="../assets/css/admin/edit/music/main.css?v=<?= filemtime('../assets/css/admin/edit/music/main.css') ?>">
@@ -182,35 +165,32 @@ include __DIR__ . '/../partials/link.php';
 <body class="theme-music">
     <div class="page-wrap">
 
-        
         <?php
         $page_title = 'Edit Musik';
         $media_type = 'music';
         include __DIR__ . '/header-admin.php';
         ?>
-        
+
         <div class="edit-layout">
 
-            
             <aside class="sidebar-panel">
-                
+
                 <div class="cover-wrap" id="cover-wrap">
-                    
+
                     <img src="<?= $thumb_src ?>"
-                        alt="Cover <?= htmlspecialchars($music['title']) ?>"
+                        alt="Sampul <?= htmlspecialchars($music['title']) ?>"
                         class="cover-img"
                         id="cover-preview">
                     <div class="cover-overlay">
                         <div class="cover-overlay-icon">
                             <i data-lucide="image" style="width:20px;height:20px;color:#fff;"></i>
                         </div>
-                        <div class="cover-overlay-text">Klik atau drop<br>untuk ganti cover</div>
+                        <div class="cover-overlay-text">Klik atau jatuhkan<br>untuk ganti cover</div>
                     </div>
                     <span class="cover-badge" id="cover-badge">Cover Art</span>
                     <span class="cover-changed-badge" id="cover-changed-badge">✓ Baru</span>
                 </div>
 
-                
                 <div class="uploader-card">
                     <?php if (!empty($music['uploader_pfp'])): ?>
                         <img src="../profile/upload/<?= htmlspecialchars($music['uploader_pfp']) ?>"
@@ -261,7 +241,7 @@ include __DIR__ . '/../partials/link.php';
                             <i data-lucide="calendar" style="width:13px;height:13px;color:var(--accent)"></i>
                         </div>
                         <div>
-                            <div class="meta-label">Tanggal Upload</div>
+                            <div class="meta-label">Tanggal Unggah</div>
                             <div class="meta-value"><?= !empty($music['upload_date']) ? date('d M Y', strtotime($music['upload_date'])) : '—' ?></div>
                         </div>
                     </div>
@@ -288,7 +268,7 @@ include __DIR__ . '/../partials/link.php';
                     </a>
                     <?php if ($is_admin): ?>
                         <a href="." class="btn-secondary" style="justify-content:center;">
-                            <i data-lucide="layout-dashboard" style="width:13px;height:13px;"></i> Dashboard Admin
+                            <i data-lucide="layout-dashboard" style="width:13px;height:13px;"></i> Dasbor Admin
                         </a>
                     <?php else: ?>
                         <a href="../profile/" class="btn-secondary" style="justify-content:center;">
@@ -298,7 +278,6 @@ include __DIR__ . '/../partials/link.php';
                 </div>
             </aside>
 
-            
             <section class="form-panel">
                 <div class="form-header">
                     <div>
@@ -325,7 +304,7 @@ include __DIR__ . '/../partials/link.php';
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
                         <input type="file" name="thumbnail" accept="image/*" id="cover-file-hidden" style="display:none">
                     <?php endif; ?>
-                    
+
                     <div class="field-group">
                         <label class="field-label" for="f-title">Judul Lagu</label>
                         <input type="text" id="f-title" name="title" placeholder="Masukkan judul lagu..."
@@ -334,7 +313,6 @@ include __DIR__ . '/../partials/link.php';
                             oninput="document.getElementById('sidebar-title').textContent = this.value || '—'">
                     </div>
 
-                    
                     <div class="two-col">
                         <div class="field-group">
                             <label class="field-label" for="f-artist">Artis</label>
@@ -352,20 +330,18 @@ include __DIR__ . '/../partials/link.php';
                         </div>
                     </div>
 
-                    
                     <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description" placeholder="Masukkan deskripsi musik..."
                             class="field-input" style="flex:1;min-height:120px;resize:none;"><?= htmlspecialchars($music['description'] ?? '') ?></textarea>
                     </div>
 
-                    
                     <div class="divider" style="margin:0;"></div>
 
                     <div class="lyrics-section">
                         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
                             <div>
-                                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Lirik / Lyrics</div>
+                                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Lirik</div>
                                 <div class="lyrics-subtitle">Kelola lirik untuk fitur karaoke</div>
                             </div>
                             <a href="<?= base_url('/' . ($_EDIT_CONTEXT === 'admin' ? 'admin' : 'profile') . '/lrc-editor?id=' . (int)$id) ?>"
@@ -399,7 +375,6 @@ include __DIR__ . '/../partials/link.php';
                         <?php endif; ?>
                     </div>
 
-                    
                     <div class="form-actions">
                         <button type="submit" name="update" id="btn-save" class="btn-primary">
                             <i data-lucide="save" style="width:15px;height:15px;"></i>
@@ -413,7 +388,8 @@ include __DIR__ . '/../partials/link.php';
     </div>
 
     <?php include '../partials/footer.php'; ?>
-    <?php $scripts_root = '../'; include __DIR__ . '/../partials/scripts.php'; ?>
+    <?php $scripts_root = '../';
+    include __DIR__ . '/../partials/scripts.php'; ?>
     <script src="../assets/js/admin/edit/shared/form.js?v=<?= filemtime('../assets/js/admin/edit/shared/form.js') ?>"></script>
     <script src="../assets/js/admin/edit/shared/thumbnail.js?v=<?= filemtime('../assets/js/admin/edit/shared/thumbnail.js') ?>"></script>
     <script src="../assets/js/admin/edit/shared/dragdrop.js?v=<?= filemtime('../assets/js/admin/edit/shared/dragdrop.js') ?>"></script>

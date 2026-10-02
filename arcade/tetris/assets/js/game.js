@@ -5,8 +5,8 @@ const ctx = canvas.getContext("2d");
 const COLS = 10;
 const ROWS = 20;
 const CELL = 24;
-const BOARD_W = COLS * CELL; 
-const BOARD_H = ROWS * CELL; 
+const BOARD_W = COLS * CELL;
+const BOARD_H = ROWS * CELL;
 const SIDE = 80;
 canvas.width = BOARD_W + SIDE;
 canvas.height = BOARD_H;
@@ -40,12 +40,11 @@ let dropAcc = 0;
 let lockTimer = 0;
 let lastTime = 0;
 
-
-let clearingRows = null; 
+let clearingRows = null;
 let clearTimer = 0;
-let pendingClear = null; 
-let lockFlash = 0; 
-const CLEAR_MS = 280; 
+let pendingClear = null;
+let lockFlash = 0;
+const CLEAR_MS = 280;
 
 const pad = (n) => String(n).padStart(5, "0");
 
@@ -167,23 +166,22 @@ function lockPiece() {
       if (by >= 0) board[by][piece.x + c] = piece.color;
     }),
   );
-  lockFlash = 6; 
+  lockFlash = 6;
 
-  
   const full = [];
   for (let r = 0; r < ROWS; r++) if (board[r].every((v) => v)) full.push(r);
   if (full.length) {
     clearingRows = full;
     clearTimer = CLEAR_MS;
     pendingClear = { cleared: full.length, rowIndices: full };
-    return; 
+    return;
   }
   spawnPiece();
 }
 
 function finishClear() {
   const { cleared } = pendingClear;
-  
+
   const rowsToRemove = new Set(pendingClear.rowIndices);
   const newBoard = board.filter((_, r) => !rowsToRemove.has(r));
   while (newBoard.length < ROWS) newBoard.unshift(Array(COLS).fill(0));
@@ -211,7 +209,6 @@ function spawnPiece() {
   }
 }
 
-
 function roundRect(x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -236,7 +233,6 @@ function drawSidePanel() {
   const px = BOARD_W + 8;
   const pw = SIDE - 16;
 
-  
   ctx.fillStyle = "rgba(255,255,255,0.05)";
   roundRect(px, 10, pw, 76, 10);
   ctx.fill();
@@ -295,7 +291,6 @@ function draw() {
   ctx.fillStyle = "#0b0e14";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  
   ctx.fillStyle = "#0f131c";
   ctx.fillRect(0, 0, BOARD_W, BOARD_H);
   ctx.strokeStyle = "rgba(255,255,255,0.04)";
@@ -317,7 +312,6 @@ function draw() {
     for (let c = 0; c < COLS; c++)
       if (board[r][c]) drawCell(c * CELL, r * CELL, board[r][c]);
 
-  
   if (clearingRows) {
     const phase = clearTimer / CLEAR_MS;
     const flashA = 0.25 + 0.55 * Math.abs(Math.sin((1 - phase) * Math.PI));
@@ -327,7 +321,6 @@ function draw() {
     }
   }
 
-  
   if (lockFlash > 0) {
     ctx.fillStyle = `rgba(255,255,255,${(lockFlash / 6) * 0.18})`;
     ctx.fillRect(0, 0, BOARD_W, BOARD_H);
@@ -350,10 +343,6 @@ function draw() {
   if (gameState.isPaused) drawCenterText("PAUSE", "Tekan P atau SPASI untuk lanjut");
 }
 
-
-
-
-
 let consecutiveErrors = 0;
 
 function gameLoop(ts) {
@@ -365,7 +354,7 @@ function gameLoop(ts) {
   try {
     const dt = Math.min(100, ts - lastTime);
     lastTime = ts;
-    
+
     if (clearingRows && gameState.isPlaying) {
       clearTimer -= dt;
       if (clearTimer <= 0) finishClear();
@@ -393,7 +382,6 @@ function gameLoop(ts) {
     requestAnimationFrame(gameLoop);
   }
 }
-
 
 function startGame() {
   board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
@@ -444,7 +432,6 @@ function endGame() {
     gos.style.pointerEvents = "auto";
   });
 }
-
 
 window.addEventListener("keydown", (e) => {
   const k = e.key;
@@ -540,7 +527,6 @@ document.getElementById("resetScoreBtn").addEventListener("click", () => {
     }
   });
 });
-
 
 renderHUD();
 requestAnimationFrame(gameLoop);

@@ -1,27 +1,25 @@
 <?php
 
-
 if (!defined('PROJECT_ROOT')) {
     define('PROJECT_ROOT', realpath(__DIR__ . '/..'));
 }
 
-
-if (!defined('CLR_GREEN'))  { define('CLR_GREEN',  "\033[32m"); }
-if (!defined('CLR_RED'))    { define('CLR_RED',    "\033[31m"); }
+if (!defined('CLR_GREEN')) { define('CLR_GREEN', "\033[32m"); }
+if (!defined('CLR_RED')) { define('CLR_RED', "\033[31m"); }
 if (!defined('CLR_YELLOW')) { define('CLR_YELLOW', "\033[33m"); }
-if (!defined('CLR_CYAN'))   { define('CLR_CYAN',   "\033[36m"); }
-if (!defined('CLR_BOLD'))   { define('CLR_BOLD',   "\033[1m"); }
-if (!defined('CLR_RESET'))  { define('CLR_RESET',  "\033[0m"); }
-if (!defined('CLR_GRAY'))   { define('CLR_GRAY',   "\033[90m"); }
+if (!defined('CLR_CYAN')) { define('CLR_CYAN', "\033[36m"); }
+if (!defined('CLR_BOLD')) { define('CLR_BOLD', "\033[1m"); }
+if (!defined('CLR_RESET')) { define('CLR_RESET', "\033[0m"); }
+if (!defined('CLR_GRAY')) { define('CLR_GRAY', "\033[90m"); }
 
 if (!function_exists('p')) {
 
 function p(string $msg = '', string $color = ''): void {
     $prefix = match($color) {
-        CLR_GREEN  => '  ✓ ',
-        CLR_RED    => '  ✗ ',
+        CLR_GREEN => '  ✓ ',
+        CLR_RED => '  ✗ ',
         CLR_YELLOW => '  ⚠ ',
-        default    => '    '
+        default => '    '
     };
     echo $color . $prefix . $msg . CLR_RESET . "\n";
 }
@@ -87,9 +85,9 @@ function getPhpFiles(): array {
 if (!function_exists('stripPhpComments')) {
 
 function stripPhpComments(string $code): string {
-    
+
     $code = preg_replace('/\/\*.*?\*\//s', '', $code);
-    
+
     $code = preg_replace('/\/\/.*$/m', '', $code);
     $code = preg_replace('/(?:^|\s)#.*$/m', '', $code);
     return $code;

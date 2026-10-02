@@ -1,4 +1,3 @@
-
 .glass {
   background: var(--admin-surface);
   backdrop-filter: blur(16px);
@@ -609,10 +608,6 @@ html[data-theme="light"] .admin-select option {
   color: #18181b;
 }
 
-/* Beats light-theme.css blanket `& .admin-btn` (loaded later, same
-   specificity) so modifier colors survive on shared admin pages.
-   Light primary uses yellow-600: #eab308 on white is only 1.9:1 and
-   reads washed out; #ca8a04 keeps the same hue with real presence. */
 html[data-theme="light"] .admin-btn.admin-btn-primary {
   background: #ca8a04 !important;
   color: #000 !important;
@@ -656,7 +651,6 @@ html[data-theme="light"] .divide-white\/5 > :not([hidden]) ~ :not([hidden]) {
   border-color: rgba(0, 0, 0, 0.06) !important;
 }
 
-/* Tinted-badge text shades: darken one step for light surfaces */
 html[data-theme="light"] .text-green-500 { color: #16a34a !important; }
 html[data-theme="light"] .text-emerald-400 { color: #059669 !important; }
 html[data-theme="light"] .text-emerald-300 { color: #047857 !important; }

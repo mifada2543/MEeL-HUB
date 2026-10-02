@@ -33,10 +33,10 @@ if ($user->isMember()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="MEeL Cloud | Dashboard">
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.">
+    <meta property="og:title" content="MEeL Cloud | Dasbor">
     <meta property="og:description" content="MEeL Cloud Drive - Kelola dan simpan file Anda dengan aman di cloud pribadi.">
-    <title>MEeL Cloud | Dashboard</title>
+    <title>MEeL Cloud | Dasbor</title>
     <?php include '../partials/link.php'; ?>
     <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
     <script src="../assets/js/compatibilitas/script.min.js"></script>
@@ -54,17 +54,17 @@ if ($user->isMember()) {
                     <img src="../assets/MEeL.png" class="w-10 h-10 rounded-xl shadow-lg shadow-blue-500/20" alt="Logo">
                     <div>
                         <h1 class="font-bold text-lg leading-none">MEeL <span class="text-blue-500">Cloud</span></h1>
-                        <p class="text-[10px] text-gray-500 tracking-widest uppercase mt-1">Storage System</p>
+                        <p class="text-[10px] text-gray-500 tracking-widest uppercase mt-1">Sistem Penyimpanan</p>
                     </div>
                 </div>
 
                 <nav class="space-y-1">
-                    <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Scope</p>
+                    <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Cakupan</p>
                     <a href="?scope=public" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'public' ? 'nav-active' : '' ?>" title="File publik yang bisa diakses semua orang">
-                        <i data-lucide="globe" class="w-5 h-5"></i> Public Space
+                        <i data-lucide="globe" class="w-5 h-5"></i> Ruang Publik
                     </a>
                     <a href="?scope=private" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'private' ? 'nav-active' : '' ?>" title="File pribadi Anda">
-                        <i data-lucide="shield-check" class="w-5 h-5"></i> Private Cloud
+                        <i data-lucide="shield-check" class="w-5 h-5"></i> Ruang Pribadi
                     </a>
                 </nav>
 
@@ -102,7 +102,7 @@ if ($user->isMember()) {
         </aside>
 
         <main class="flex-1 p-4 md:p-10 w-full overflow-x-hidden">
-            
+
             <div class="md:hidden flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
                 <div class="flex items-center gap-3" onclick="window.location.href='../'" style="cursor: pointer;" title="Kembali ke MEeL HUB">
                     <img src="../assets/MEeL.png" class="w-8 h-8 rounded-lg shadow-lg shadow-blue-500/20" alt="Logo">
@@ -121,13 +121,11 @@ if ($user->isMember()) {
                 <?php endif; ?>
             </div>
 
-            
             <div class="md:hidden flex items-center gap-2 mb-4">
-                <a href="?scope=public" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'public' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Public</a>
-                <a href="?scope=private" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'private' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Private</a>
+                <a href="?scope=public" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'public' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Publik</a>
+                <a href="?scope=private" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'private' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Privat</a>
             </div>
 
-            
             <div class="md:hidden flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
                 <button onclick="showSection('video', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500 text-blue-500 whitespace-nowrap nav-btn-mobile active font-medium text-xs" title="Tampilkan file video">
                     <i data-lucide="play-circle" class="w-4 h-4"></i> Video
@@ -159,7 +157,6 @@ if ($user->isMember()) {
                 </div>
             </header>
 
-            
             <div class="md:hidden flex flex-col gap-3 mb-6">
                 <div>
                     <h2 class="text-xl font-extrabold tracking-tight">
@@ -189,11 +186,11 @@ if ($user->isMember()) {
                             <div id="storageUsageBar" class="h-full bg-gradient-to-r from-blue-500 to-blue-500 transition-all duration-500" style="width: <?= $usagePercentage ?>%"></div>
                         </div>
                     </div>
-                    <button id="refreshBtn" onclick="refreshDrive()" class="p-2 hover:bg-gray-800 rounded-lg transition-all" title="Refresh data (grid + penyimpanan)"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                    <button id="refreshBtn" onclick="refreshDrive()" class="p-2 hover:bg-gray-800 rounded-lg transition-all" title="Muat ulang data (grid + penyimpanan)"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
                 </div>
             <?php endif; ?>
             <section class="upload-dropzone glass rounded-2xl p-6 mb-8 border-dashed border-2 border-gray-800 hover:border-blue-500/50 transition-colors" id="uploadDropzone">
-                
+
                 <div class="dropzone-hint" id="dropzoneHint">
                     <div class="dropzone-hint-icon">
                         <i data-lucide="cloud-upload" class="w-5 h-5"></i>
@@ -230,7 +227,6 @@ if ($user->isMember()) {
         </main>
     </div>
 
-    
     <div id="uploadProgressCard" class="upload-prog-card hidden">
         <div class="upload-prog-header">
             <div class="upload-prog-header-title" id="uploadProgToggle" title="Klik untuk detail">
@@ -246,18 +242,16 @@ if ($user->isMember()) {
         </div>
 
         <div class="upload-prog-body">
-            
+
             <div class="upload-prog-track">
                 <div id="uploadProgBar" class="upload-prog-fill" style="width: 0%"></div>
             </div>
 
-            
             <div class="upload-prog-info">
                 <span id="uploadProgPercent" class="upload-prog-pct">0%</span>
                 <span id="uploadProgStatus" class="upload-prog-status">Mengunggah...</span>
             </div>
 
-            
             <div class="upload-prog-stats">
                 <div class="upload-prog-stat">
                     <span class="upload-prog-stat-label">Kecepatan</span>
@@ -273,10 +267,9 @@ if ($user->isMember()) {
                 </div>
             </div>
 
-            
             <div id="uploadProgDone" class="upload-prog-result hidden">
                 <div class="upload-prog-result-icon upload-prog-result-success">
-                    
+
                     <svg class="upload-checkmark" viewBox="0 0 52 52" width="28" height="28">
                         <circle class="upload-checkmark-circle" cx="26" cy="26" r="24" fill="none" stroke="currentColor" stroke-width="3" />
                         <path class="upload-checkmark-check" d="M14 27l7 7 16-16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
@@ -291,7 +284,6 @@ if ($user->isMember()) {
                 <span class="upload-prog-result-text">Unggah Gagal</span>
             </div>
 
-            
             <div id="uploadConfetti" class="upload-confetti hidden"></div>
         </div>
     </div>

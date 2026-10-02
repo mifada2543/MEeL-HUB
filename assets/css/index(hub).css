@@ -273,7 +273,6 @@ body::before {
   transform: rotate(90deg) scale(0.9);
 }
 
-
 .demo-modal-popup {
   border-radius: 20px !important;
   border: 1px solid rgba(251, 191, 36, 0.2) !important;

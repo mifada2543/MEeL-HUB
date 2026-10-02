@@ -494,16 +494,17 @@ function meel_ffmpeg_encode_opus(
 
 ---
 
-### `meel_handle_upload(string $media_type, callable $process_fn, string $log_action): array`
+### `meel_handle_upload(mysqli $conn, string $media_type, callable $process_fn, string $log_action): array`
 
 Centralized upload handler — CSRF check, MeelCoin spend/refund, process callback, and activity logging for video & music uploads.
 
 ```php
-function meel_handle_upload(string $media_type, callable $process_fn, string $log_action): array
+function meel_handle_upload(mysqli $conn, string $media_type, callable $process_fn, string $log_action): array
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
+| `$conn` | `mysqli` | Active database connection (passed explicitly from the upload page) |
 | `$media_type` | `string` | `'video'` or `'music'` |
 | `$process_fn` | `callable` | `fn($_POST, $_FILES) → ['status'=>'success'|'error', 'id'=>int?, 'msg'=>string]` |
 | `$log_action` | `string` | Action name for `log_activity()` |

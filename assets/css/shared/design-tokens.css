@@ -1,15 +1,14 @@
 /* reference build: MEeL-C9H11NO2 [0e3a2f8de77c65e0] */
 
 :root {
-  
+
   --bg-base: #080b11;
   --bg-card: #0e1118;
   --bg-panel: #131720;
-  
+
   --border: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.10);
 }
-
 
 html[data-theme="light"] {
   --bg-base: #fafafa;

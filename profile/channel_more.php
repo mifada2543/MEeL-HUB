@@ -1,20 +1,17 @@
 <?php
-/** Fragment AJAX (htmx) profil/channel: batch feed berikutnya dari profile/index.php (hx-get="channel-more?"). Params: u (username), tab (all|video|music), offset.
- * Tab "all" mencampur video+musik (UNION, upload_date DESC) — lihat profile/index.php.
- */
 require_once '../modules/auth/helpers/session.php';
 meel_boot_session();
 require_once '../auth/config.php';
 require_once '../modules/media/ProfileRepository.php';
 
 $target_user = $_GET['u'] ?? '';
-$active_tab  = $_GET['tab'] ?? 'all';
+$active_tab = $_GET['tab'] ?? 'all';
 if (!in_array($active_tab, ['all', 'video', 'music'], true)) {
     $active_tab = 'all';
 }
 
 $offset = max(0, (int) ($_GET['offset'] ?? 0));
-$limit  = 12;
+$limit = 12;
 
 if ($target_user === '' || $target_user === 'guest') {
     header('Location: ' . base_url('/err/?code=not_found'), true, 302);
@@ -41,7 +38,7 @@ if ($active_tab === 'video') {
     $total = $profileRepo->countVideo($user_id) + $profileRepo->countMusic($user_id);
 }
 
-$next     = $offset + count($items);
+$next = $offset + count($items);
 $has_more = $next < $total;
 $more_url = 'channel-more?u=' . rawurlencode($target_user)
           . '&tab=' . $active_tab
@@ -67,7 +64,7 @@ $more_label = $active_tab === 'all' ? 'Konten' : ($active_tab === 'video' ? 'Vid
             </a>
             <div class="card-meta">
                 <?php if ($is_music): ?>
-                    <span><?= htmlspecialchars($item['artist'] ?? 'Unknown') ?></span>
+                    <span><?= htmlspecialchars($item['artist'] ?? 'Tidak diketahui') ?></span>
                     <span>•</span>
                 <?php endif; ?>
                 <span><?= number_format($item['views'] ?? 0) ?> views</span>

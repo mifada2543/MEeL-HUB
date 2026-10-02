@@ -7,14 +7,14 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login");
     exit;
 }
-$user_id   = (int)$_SESSION['user_id'];
-$username  = $_SESSION['username'] ?? '';
+$user_id = (int)$_SESSION['user_id'];
+$username = $_SESSION['username'] ?? '';
 $stmt = $conn->prepare("SELECT mfa_enabled FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $mfa_enabled = (int)$stmt->get_result()->fetch_assoc()['mfa_enabled'] ?? 0;
 $stmt->close();
-$step = 'setup'; 
+$step = 'setup';
 $error = '';
 $secret = '';
 $otpauth = '';
@@ -91,11 +91,11 @@ if ($mfa_enabled && $step === 'setup') {
         $otpauth = generate_otpauth_url($existing_secret, $username);
     }
 }
-$auth_title       = "Keamanan Akun | MEeL";
+$auth_title = "Keamanan Akun | MEeL";
 $auth_description = "MEeL - Kelola autentikasi dua faktor (MFA) akun Anda.";
-$auth_og_title    = "Keamanan Akun | MEeL";
-$auth_og_desc     = "Aktifkan, nonaktifkan, atau kelola autentikasi dua faktor akun MEeL Anda.";
-$auth_extra_head  = '<script src="../assets/js/compatibilitas/qrcode.min.js"></script>';
+$auth_og_title = "Keamanan Akun | MEeL";
+$auth_og_desc = "Aktifkan, nonaktifkan, atau kelola autentikasi dua faktor akun MEeL Anda.";
+$auth_extra_head = '<script src="../assets/js/compatibilitas/qrcode.min.js"></script>';
 $auth_extra_style = '
         .code-input {
             letter-spacing: 0.5em;
@@ -142,7 +142,7 @@ include __DIR__ . '/partials/auth_head.php';
     <?php endif; ?>
     <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6 anim-fade">
         <?php if ($mfa_enabled && $step === 'setup'): ?>
-            
+
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-green-500/10 rounded-full text-green-400">
                     <i data-lucide="check-circle" class="w-10 h-10"></i>
@@ -150,11 +150,11 @@ include __DIR__ . '/partials/auth_head.php';
                 <h3 class="text-lg font-bold text-white">MFA Sudah Aktif</h3>
                 <p class="text-xs text-gray-400 leading-relaxed">
                     Akun Anda dilindungi dengan autentikasi dua faktor.
-                    Setiap login memerlukan kode 6-digit dari aplikasi Authenticator.
+                    Setiap kali masuk memerlukan kode 6-digit dari aplikasi Authenticator.
                 </p>
                 <?php if (!empty($otpauth)): ?>
                     <div class="pt-4 space-y-2">
-                        <p class="text-[10px] text-gray-500 uppercase tracking-widest">Scan QR Code (jika perlu)</p>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-widest">Pindai QR Code (jika perlu)</p>
                         <div id="mfa-qr-existing" class="inline-flex items-center justify-center w-44 h-44 rounded-2xl bg-white p-2"></div>
                     </div>
                     <script>
@@ -171,7 +171,7 @@ include __DIR__ . '/partials/auth_head.php';
                         });
                     </script>
                 <?php endif; ?>
-                
+
                 <div class="pt-4 border-t border-white/5 space-y-4">
                     <p class="text-[10px] text-gray-600 uppercase tracking-widest">Ingin mengganti / menonaktifkan MFA?</p>
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -185,7 +185,7 @@ include __DIR__ . '/partials/auth_head.php';
                     function confirmDisable() {
                         Swal.fire({
                             title: 'Nonaktifkan MFA?',
-                            html: '<div style="font-size:12px;color:var(--meel-text)">Akun Anda akan kembali hanya menggunakan <strong style="color:var(--meel-text-heading)">password</strong> untuk login. Ini mengurangi keamanan akun.</div>',
+                            html: '<div style="font-size:12px;color:var(--meel-text)">Akun Anda akan kembali hanya menggunakan <strong style="color:var(--meel-text-heading)">kata sandi</strong> untuk masuk. Ini mengurangi keamanan akun.</div>',
                             icon: 'warning',
                             iconColor: '#ef4444',
                             showCancelButton: true,
@@ -214,36 +214,36 @@ include __DIR__ . '/partials/auth_head.php';
                 </script>
             </div>
         <?php elseif ($step === 'verify'): ?>
-            
+
             <input type="hidden" name="verify_code" value="1">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <div class="text-center space-y-4">
-                <h3 class="text-lg font-bold text-white">1. Scan QR Code</h3>
+                <h3 class="text-lg font-bold text-white">1. Pindai QR Code</h3>
                 <p class="text-xs text-gray-400">
                     Buka aplikasi <strong class="text-white">Google Authenticator</strong> atau <strong class="text-white">Authy</strong>,
-                    lalu scan QR Code di bawah ini.
+                    lalu pindai QR Code di bawah ini.
                 </p>
-                
+
                 <div class="flex justify-center">
                     <div id="mfa-qr-canvas" class="inline-flex items-center justify-center w-48 h-48 rounded-2xl bg-white p-2 shadow-lg"></div>
                 </div>
                 <button type="button" onclick="downloadQR()"
                     class="text-[11px] text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl font-bold transition-all inline-flex items-center gap-2 mx-auto"
-                    title="Download QR Code sebagai gambar PNG">
+                    title="Unduh QR Code sebagai gambar PNG">
                     <i data-lucide="download" class="w-4 h-4"></i>
-                    Download QR Code
+                    Unduh QR Code
                 </button>
-                
+
                 <details class="text-left cursor-pointer group">
                     <summary class="text-[11px] text-gray-500 hover:text-gray-300 transition font-bold tracking-wider">
-                        Tidak bisa scan? Masukkan manual
+                        Tidak bisa memindai? Masukkan manual
                     </summary>
                     <div class="mt-3 p-3 bg-black/30 rounded-xl text-[11px] text-gray-400 space-y-1 break-all font-mono">
-                        <p><span class="text-gray-500">Secret:</span>
+                        <p><span class="text-gray-500">Kunci Rahasia:</span>
                             <span id="mfa-secret-text" class="text-white select-all font-mono"><?= htmlspecialchars($_SESSION['mfa_pending_secret'] ?? '') ?></span>
                             <button type="button" onclick="copySecret()"
                                 class="inline-flex ml-1 p-1 rounded-md bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white transition-all align-middle"
-                                title="Salin secret key">
+                                title="Salin kunci rahasia">
                                 <i data-lucide="copy" class="w-3 h-3"></i>
                             </button>
                         </p>
@@ -271,7 +271,7 @@ include __DIR__ . '/partials/auth_head.php';
             </div>
 
         <?php elseif ($step === 'backup'): ?>
-            
+
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-yellow-500/10 rounded-full text-yellow-400">
                     <i data-lucide="alert-triangle" class="w-10 h-10"></i>
@@ -290,7 +290,7 @@ include __DIR__ . '/partials/auth_head.php';
             <button type="button" onclick="downloadBackupCodes()"
                 class="w-full bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-400 border border-yellow-600/20 hover:border-yellow-500/40 font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm">
                 <i data-lucide="download" class="w-4 h-4"></i>
-                Download Backup Codes (.txt)
+                Unduh Kode Cadangan (.txt)
             </button>
             <div class="text-[10px] text-gray-600 text-center">
                 Halaman ini hanya ditampilkan <strong class="text-gray-400">sekali</strong>.
@@ -303,7 +303,7 @@ include __DIR__ . '/partials/auth_head.php';
                 <i data-lucide="check" class="w-4 h-4"></i>
             </button>
         <?php elseif ($step === 'done'): ?>
-            
+
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-green-500/10 rounded-full text-green-400">
                     <i data-lucide="shield-check" class="w-10 h-10"></i>
@@ -311,7 +311,7 @@ include __DIR__ . '/partials/auth_head.php';
                 <h3 class="text-lg font-bold text-white">MFA Berhasil Diaktifkan! 🎉</h3>
                 <p class="text-xs text-gray-400 leading-relaxed">
                     Akun Anda sekarang lebih aman dengan autentikasi dua faktor.
-                    Setiap login akan meminta kode 6-digit dari aplikasi Authenticator.
+                    Setiap kali masuk akan meminta kode 6-digit dari aplikasi Authenticator.
                 </p>
                 <a href="../"
                     class="inline-block mt-4 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-all">
@@ -319,7 +319,7 @@ include __DIR__ . '/partials/auth_head.php';
                 </a>
             </div>
         <?php else: ?>
-            
+
             <div class="text-center space-y-4">
                 <div class="inline-flex p-3 bg-purple-500/10 rounded-full text-purple-400">
                     <i data-lucide="smartphone" class="w-10 h-10"></i>
@@ -327,18 +327,18 @@ include __DIR__ . '/partials/auth_head.php';
                 <h3 class="text-lg font-bold text-white">Aktifkan MFA</h3>
                 <p class="text-xs text-gray-400 leading-relaxed">
                     Autentikasi Dua Faktor (MFA) menambahkan lapisan keamanan ekstra.
-                    Selain password, Anda juga perlu kode 6-digit dari aplikasi Authenticator
+                    Selain kata sandi, Anda juga perlu kode 6-digit dari aplikasi Authenticator
                     (<strong class="text-white">Google Authenticator</strong>, <strong class="text-white">Authy</strong>, atau <strong class="text-white">Bitwarden</strong>).
                 </p>
             </div>
             <div class="bg-white/5 rounded-2xl p-5 space-y-3 text-sm">
                 <div class="flex items-start gap-3">
                     <div class="w-7 h-7 bg-purple-600/20 rounded-lg flex items-center justify-center flex-shrink-0 text-purple-400 text-xs font-black">1</div>
-                    <p class="text-gray-400">Klik tombol di bawah untuk <strong class="text-white">Generate Secret Key</strong></p>
+                    <p class="text-gray-400">Klik tombol di bawah untuk <strong class="text-white">Buat Kunci Rahasia</strong></p>
                 </div>
                 <div class="flex items-start gap-3">
                     <div class="w-7 h-7 bg-purple-600/20 rounded-lg flex items-center justify-center flex-shrink-0 text-purple-400 text-xs font-black">2</div>
-                    <p class="text-gray-400">Scan <strong class="text-white">QR Code</strong> dengan aplikasi Authenticator</p>
+                    <p class="text-gray-400">Pindai <strong class="text-white">QR Code</strong> dengan aplikasi Authenticator</p>
                 </div>
                 <div class="flex items-start gap-3">
                     <div class="w-7 h-7 bg-purple-600/20 rounded-lg flex items-center justify-center flex-shrink-0 text-purple-400 text-xs font-black">3</div>
@@ -346,7 +346,7 @@ include __DIR__ . '/partials/auth_head.php';
                 </div>
                 <div class="flex items-start gap-3">
                     <div class="w-7 h-7 bg-purple-600/20 rounded-lg flex items-center justify-center flex-shrink-0 text-purple-400 text-xs font-black">4</div>
-                    <p class="text-gray-400">Simpan <strong class="text-yellow-400">backup codes</strong> untuk keadaan darurat</p>
+                    <p class="text-gray-400">Simpan <strong class="text-yellow-400">kode cadangan</strong> untuk keadaan darurat</p>
                 </div>
             </div>
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -356,14 +356,14 @@ include __DIR__ . '/partials/auth_head.php';
                 <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
             </button>
         <?php endif; ?>
-        
+
         <div class="text-center pt-2">
             <a href="../index.php" class="text-xs text-gray-500 hover:text-gray-300 transition">
                 <i data-lucide="arrow-left" class="w-3 h-3 inline-block mr-1"></i> Kembali ke Beranda
             </a>
         </div>
     </form>
-    
+
     <script src="../assets/js/shared/download-backup-codes.js"></script>
     <script>
         var _backupCodes = <?= json_encode($backup_codes) ?>;

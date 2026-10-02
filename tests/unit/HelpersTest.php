@@ -4,7 +4,6 @@ use PHPUnit\Framework\TestCase;
 /** @coversNothing */
 class HelpersTest extends TestCase
 {
-    
 
     /** @dataProvider bytesProvider */
     public function testFormatBytes(int|float $bytes, int $precision, string $expected): void
@@ -15,19 +14,17 @@ class HelpersTest extends TestCase
     public static function bytesProvider(): array
     {
         return [
-            'zero bytes'       => [0, 2, '0 B'],
-            'bytes'            => [500, 0, '500 B'],
-            'KB'               => [2048, 2, '2 KB'],
-            'MB'               => [5 * 1024 * 1024, 2, '5 MB'],
-            'GB'               => [3 * 1024 * 1024 * 1024, 2, '3 GB'],
-            'TB'               => [2 * 1024 * 1024 * 1024 * 1024, 2, '2 TB'],
-            'precision 0 MB'   => [7 * 1024 * 1024 + 512 * 1024, 0, '8 MB'],
+            'zero bytes' => [0, 2, '0 B'],
+            'bytes' => [500, 0, '500 B'],
+            'KB' => [2048, 2, '2 KB'],
+            'MB' => [5 * 1024 * 1024, 2, '5 MB'],
+            'GB' => [3 * 1024 * 1024 * 1024, 2, '3 GB'],
+            'TB' => [2 * 1024 * 1024 * 1024 * 1024, 2, '2 TB'],
+            'precision 0 MB' => [7 * 1024 * 1024 + 512 * 1024, 0, '8 MB'],
             'negative clamped' => [-100, 2, '0 B'],
-            'large GB'         => [10.5 * 1024 * 1024 * 1024, 1, '10.5 GB'],
+            'large GB' => [10.5 * 1024 * 1024 * 1024, 1, '10.5 GB'],
         ];
     }
-
-    
 
     /** @dataProvider timeAgoProvider */
     public function testTimeAgo(int $secondsAgo, string $expectedRegex): void
@@ -40,17 +37,15 @@ class HelpersTest extends TestCase
     public static function timeAgoProvider(): array
     {
         return [
-            'just now'     => [0, '/Baru saja/'],
-            'seconds'      => [5, '/5 detik yang lalu/'],
-            'minutes'      => [120, '/2 menit yang lalu/'],
-            'hours'        => [3600 * 3, '/3 jam yang lalu/'],
-            'days'         => [86400 * 7, '/7 hari yang lalu/'],
-            'months'       => [2592000 * 2, '/2 bulan yang lalu/'],
-            'years'        => [31104000 * 1, '/1 tahun yang lalu/'],
+            'just now' => [0, '/Baru saja/'],
+            'seconds' => [5, '/5 detik yang lalu/'],
+            'minutes' => [120, '/2 menit yang lalu/'],
+            'hours' => [3600 * 3, '/3 jam yang lalu/'],
+            'days' => [86400 * 7, '/7 hari yang lalu/'],
+            'months' => [2592000 * 2, '/2 bulan yang lalu/'],
+            'years' => [31104000 * 1, '/1 tahun yang lalu/'],
         ];
     }
-
-    
 
     /** @dataProvider mimeTypeProvider */
     public function testGetAudioMimeType(string $ext, string $expected): void
@@ -61,18 +56,16 @@ class HelpersTest extends TestCase
     public static function mimeTypeProvider(): array
     {
         return [
-            'mp3'      => ['mp3', 'audio/mpeg'],
-            'm4a'      => ['m4a', 'audio/mp4'],
-            'ogg'      => ['ogg', 'audio/ogg'],
-            'opus'     => ['opus', 'audio/ogg'],
-            'flac'     => ['flac', 'audio/flac'],
-            'wav'      => ['wav', 'audio/wav'],
+            'mp3' => ['mp3', 'audio/mpeg'],
+            'm4a' => ['m4a', 'audio/mp4'],
+            'ogg' => ['ogg', 'audio/ogg'],
+            'opus' => ['opus', 'audio/ogg'],
+            'flac' => ['flac', 'audio/flac'],
+            'wav' => ['wav', 'audio/wav'],
             'uppercase MP3' => ['MP3', 'audio/mpeg'],
-            'unknown'  => ['aac', 'audio/ogg'],
+            'unknown' => ['aac', 'audio/ogg'],
         ];
     }
-
-    
 
     /** @dataProvider formatLabelProvider */
     public function testGetAudioFormatLabel(string $ext, string $expected): void
@@ -83,16 +76,14 @@ class HelpersTest extends TestCase
     public static function formatLabelProvider(): array
     {
         return [
-            'mp3'      => ['mp3', 'MP3'],
-            'ogg'      => ['ogg', 'OPUS'],
-            'opus'     => ['opus', 'OPUS'],
-            'flac'     => ['flac', 'FLAC'],
-            'wav'      => ['wav', 'WAV'],
-            'm4a'      => ['m4a', 'M4A'],
+            'mp3' => ['mp3', 'MP3'],
+            'ogg' => ['ogg', 'OPUS'],
+            'opus' => ['opus', 'OPUS'],
+            'flac' => ['flac', 'FLAC'],
+            'wav' => ['wav', 'WAV'],
+            'm4a' => ['m4a', 'M4A'],
         ];
     }
-
-    
 
     /** @dataProvider formatDescriptionProvider */
     public function testGetAudioFormatDescription(string $ext, string $expectedContains): void
@@ -105,19 +96,17 @@ class HelpersTest extends TestCase
     public static function formatDescriptionProvider(): array
     {
         return [
-            'ogg'  => ['ogg', 'modern'],
+            'ogg' => ['ogg', 'modern'],
             'opus' => ['opus', 'modern'],
-            'm4a'  => ['m4a', 'kompatibilitas'],
-            'mp3'  => ['mp3', 'populer'],
+            'm4a' => ['m4a', 'kompatibilitas'],
+            'mp3' => ['mp3', 'populer'],
             'flac' => ['flac', 'terbaik'],
         ];
     }
 
-    
-
     public function testDetectProtocolDefaultHttp(): void
     {
-        
+
         $origHttps = $_SERVER['HTTPS'] ?? null;
         $origForwardedProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null;
 
@@ -128,24 +117,19 @@ class HelpersTest extends TestCase
         $protocol = detectProtocol();
         $this->assertSame('http', $protocol);
 
-        
         if ($origHttps !== null) $_SERVER['HTTPS'] = $origHttps;
         if ($origForwardedProto !== null) $_SERVER['HTTP_X_FORWARDED_PROTO'] = $origForwardedProto;
     }
 
-    
-
     public function testBaseUrl(): void
     {
-        
+
         $result = base_url('index.php');
         $this->assertStringEndsWith('index.php', $result);
 
-        
         $result2 = base_url();
         $this->assertStringEndsWith('/', $result2);
 
-        
         $result3 = base_url('css/style.css');
         $this->assertStringEndsWith('/css/style.css', $result3);
     }
@@ -156,8 +140,8 @@ class HelpersTest extends TestCase
         $this->assertNotFalse($helpers, 'modules/core/helpers.php tidak ditemukan');
 
         $projectRoot = rtrim(str_replace('\\', '/', realpath(__DIR__ . '/../..')), '/');
-        $docRoot     = dirname($projectRoot);
-        $expected    = '/' . basename($projectRoot);
+        $docRoot = dirname($projectRoot);
+        $expected = '/' . basename($projectRoot);
 
         $code = '$_SERVER["SCRIPT_NAME"]=' . var_export($expected . '/admin/index.php', true) . ';'
             . '$_SERVER["DOCUMENT_ROOT"]=' . var_export($docRoot, true) . ';'
@@ -165,15 +149,13 @@ class HelpersTest extends TestCase
             . 'echo base_url("/auth/login.php?next=x");';
 
         $output = [];
-        $exit   = 0;
+        $exit = 0;
         exec(PHP_BINARY . ' -d display_errors=0 -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit);
 
         $this->assertSame(0, $exit, 'Subprocess helpers gagal: ' . implode("\n", $output));
         $this->assertCount(1, $output, 'Output subprocess tidak valid: ' . implode("\n", $output));
         $this->assertSame($expected . '/auth/login.php?next=x', trim($output[0]));
     }
-
-    
 
     public function testCheckDiskSpaceOnExistingPath(): void
     {
@@ -194,19 +176,15 @@ class HelpersTest extends TestCase
         $this->assertArrayHasKey('path', $result);
     }
 
-    
-
     public function testCsrfTokenFunctions(): void
     {
-        
+
         $_SESSION['csrf_token'] = 'test_token_123';
         $this->assertSame('test_token_123', get_csrf_token());
 
         $this->assertTrue(verify_csrf_token('test_token_123'));
         $this->assertFalse(verify_csrf_token('wrong_token'));
     }
-
-    
 
     public function testDirSizeOnNonExistentPath(): void
     {
@@ -216,34 +194,31 @@ class HelpersTest extends TestCase
 
     public function testDirSizeOnExistingDirectory(): void
     {
-        
+
         $testDir = MEEL_ROOT . '/temp/dirsize_test';
         if (!is_dir($testDir)) {
             @mkdir($testDir, 0755, true);
         }
         file_put_contents($testDir . '/test.txt', str_repeat('A', 100));
 
-        $size = dir_size($testDir, 1); 
+        $size = dir_size($testDir, 1);
         $this->assertGreaterThan(0, $size);
 
-        
         @unlink($testDir . '/test.txt');
         @rmdir($testDir);
     }
 
-    
     public function testGenerateSearchMetadataWithAliases(): void
     {
-        
-        
+
         if (!function_exists('meel_mecab_available') || !meel_mecab_available()) {
             $this->markTestSkipped('mecab tidak tersedia — bagian romaji di-skip');
         }
         $result = generate_search_metadata('プロジェクトセカイ カラフルステージ!');
         $this->assertStringContainsString('project sekai', $result);
         $this->assertStringContainsString('colorful stage', $result);
-        $this->assertStringContainsString('purojekutosekai', $result); 
-        $this->assertSame(mb_strtolower($result, 'UTF-8'), $result);   
+        $this->assertStringContainsString('purojekutosekai', $result);
+        $this->assertSame(mb_strtolower($result, 'UTF-8'), $result);
     }
 
     public function testGenerateSearchMetadataPlainText(): void
@@ -252,8 +227,6 @@ class HelpersTest extends TestCase
         $this->assertStringContainsString('hello world test', $result);
         $this->assertSame(mb_strtolower($result, 'UTF-8'), $result);
     }
-
-    
 
     public function testLangMapHasAllLanguages(): void
     {
@@ -268,7 +241,7 @@ class HelpersTest extends TestCase
     public function testLangLabelKnownLanguage(): void
     {
         $this->assertSame('Indonesia', lang_label('id'));
-        $this->assertSame('English', lang_label('EN')); 
+        $this->assertSame('English', lang_label('EN'));
         $this->assertSame('日本語', lang_label('ja'));
     }
 
@@ -292,7 +265,6 @@ class HelpersTest extends TestCase
         $this->assertSame(lang_label('pt-br'), subtitle_lang_label('pt-br'));
     }
 
-    
     }
 
 /* reference build: MEeL-C4H9NO2 [8ace15947c86ea7b] */

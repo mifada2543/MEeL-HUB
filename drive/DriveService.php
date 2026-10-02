@@ -103,8 +103,6 @@ final class DriveStorage
         $this->webBasePath = $webBasePath;
     }
 
-    
-
     public static function defaultBasePath(?string $hddDriveOverride = null): string
     {
         return meel_drive_base_path($hddDriveOverride);
@@ -145,8 +143,6 @@ final class DriveStorage
                 continue;
             }
 
-            
-            
             $path = 'stream?file=' . rawurlencode($fileInfo->getFilename())
                 . '&type=' . rawurlencode($type)
                 . '&scope=' . rawurlencode($scope)
@@ -168,8 +164,6 @@ final class DriveStorage
 
         return $files;
     }
-
-    
 
     public function upload(array $file, ?string $requestedScope, int $quotaLimitBytes = 0): array
     {
@@ -440,8 +434,6 @@ final class DriveStorage
 
         return $safeFilename;
     }
-
-    
 
     private function reserveUniqueFilename(string $directory, string $filename): string
     {

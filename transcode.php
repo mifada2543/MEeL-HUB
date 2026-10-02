@@ -11,22 +11,21 @@ require_once 'modules/core/Transcoder.php';
 require_once 'modules/core/BrowserProgressObserver.php';
 require_once 'modules/core/MeelCoin.php';
 
-
-$transcoder      = new Transcoder($conn, $_SESSION['user_id'], new BrowserProgressObserver());
+$transcoder = new Transcoder($conn, $_SESSION['user_id'], new BrowserProgressObserver());
 register_shutdown_function([$transcoder, 'terminateAllProcesses']);
-$download_link   = null;
+$download_link = null;
 $output_filename = "";
-$format          = "mp3";
-$alert_message   = "";
-$video_title     = "";
-$user_role       = get_user_role($conn, $_SESSION['user_id']);
+$format = "mp3";
+$alert_message = "";
+$video_title = "";
+$user_role = get_user_role($conn, $_SESSION['user_id']);
 
 if (isset($_POST['start_transcode'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $alert_message = 'CSRF Token tidak valid.';
     } else {
         $video_id = (int)($_POST['video_id'] ?? 0);
-        $format   = $_POST['format'] ?? 'mp3';
+        $format = $_POST['format'] ?? 'mp3';
 
         $rateCheck = RateLimiter::check(
             'user_' . (int)($_SESSION['user_id'] ?? 0),
@@ -42,11 +41,11 @@ if (isset($_POST['start_transcode'])) {
             $stmt_title = $conn->prepare("SELECT title FROM video WHERE id = ? LIMIT 1");
             $stmt_title->bind_param("i", $video_id);
             $stmt_title->execute();
-            $title_row  = $stmt_title->get_result()->fetch_assoc();
+            $title_row = $stmt_title->get_result()->fetch_assoc();
             $video_title = $title_row['title'] ?? "Video #$video_id";
 
             $coin_spent = false;
-            $coin_cost  = 0;
+            $coin_cost = 0;
             if (MeelCoin::isEnabled($conn)) {
                 $coin_cost = MeelCoin::getTranscodeCost($conn, $user_role);
                 if ($coin_cost > 0) {
@@ -63,7 +62,7 @@ if (isset($_POST['start_transcode'])) {
                 $result = $transcoder->transcodeVideo($video_id, $format);
 
                 if ($result['status'] === 'success') {
-                    $download_link   = $result['download_link'];
+                    $download_link = $result['download_link'];
                     $output_filename = $result['output_filename'];
                 } else {
                     $alert_message = $result['msg'];
@@ -73,28 +72,28 @@ if (isset($_POST['start_transcode'])) {
                 }
             }
         }
-    } 
+    }
 }
 
 $video_id_value = isset($_GET['id']) ? (int)$_GET['id'] : "";
 
-$user_role      = get_user_role($conn, (int)$_SESSION['user_id']);
-$is_admin       = ($user_role === 'admin');
+$user_role = get_user_role($conn, (int)$_SESSION['user_id']);
+$is_admin = ($user_role === 'admin');
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 
 if ($meelcoin_enabled) {
     if (!$is_admin) {
         MeelCoin::refill($conn, (int)$_SESSION['user_id'], $user_role);
     }
-    $coin_balance   = $is_admin ? -1 : MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
-    $coin_cost      = $is_admin ? 0 : MeelCoin::getTranscodeCost($conn, $user_role);
+    $coin_balance = $is_admin ? -1 : MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
+    $coin_cost = $is_admin ? 0 : MeelCoin::getTranscodeCost($conn, $user_role);
     $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, (int)$_SESSION['user_id'], $user_role);
 }
 
 $format_meta = [
-    'mp3' => ['label' => 'MP3',  'desc' => '128 kbps · MPEG Audio',    'color' => '#ef4444', 'dim' => 'rgba(239,68,68,.12)',  'icon' => 'music', 'textClass' => 'text-red-500'],
-    'ogg' => ['label' => 'OGG',  'desc' => 'Opus · Efisien & Modern',  'color' => '#f97316', 'dim' => 'rgba(249,115,22,.12)', 'icon' => 'radio', 'textClass' => 'text-orange-500'],
-    'm4a' => ['label' => 'M4A',  'desc' => 'AAC · Apple Compatible',   'color' => '#a78bfa', 'dim' => 'rgba(167,139,250,.12)', 'icon' => 'headphones', 'textClass' => 'text-purple-400'],
+    'mp3' => ['label' => 'MP3', 'desc' => '128 kbps · MPEG Audio', 'color' => '#ef4444', 'dim' => 'rgba(239,68,68,.12)', 'icon' => 'music', 'textClass' => 'text-red-500'],
+    'ogg' => ['label' => 'OGG', 'desc' => 'Opus · Efisien & Modern', 'color' => '#f97316', 'dim' => 'rgba(249,115,22,.12)', 'icon' => 'radio', 'textClass' => 'text-orange-500'],
+    'm4a' => ['label' => 'M4A', 'desc' => 'AAC · Apple Compatible', 'color' => '#a78bfa', 'dim' => 'rgba(167,139,250,.12)', 'icon' => 'headphones', 'textClass' => 'text-purple-400'],
 ];
 $chosen = $format_meta[$format] ?? $format_meta['mp3'];
 ?>
@@ -104,7 +103,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
 <head>
     <?php
     $_META_TITLE = 'MEeL Transcoder';
-    $_META_DESC  = 'MEeL Transcoder - Konversi video ke format audio MP3, OGG, dan M4A. Ekstrak audio dari library video dengan mudah.';
+    $_META_DESC = 'MEeL Transcoder - Konversi video ke format audio MP3, OGG, dan M4A. Ekstrak audio dari koleksi video dengan mudah.';
     include __DIR__ . '/partials/link.php';
     $scripts_root = '';
     include __DIR__ . '/partials/scripts.php';
@@ -112,7 +111,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
     <link href="assets/css/font.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
     <style>
-        
+
         body::before {
             content: '';
             position: fixed;
@@ -134,7 +133,6 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
             animation: glow 3s ease-in-out infinite;
         }
 
-        
         .has-\[\:checked\]\:border-green-500\/40:has(:checked) {
             border-color: rgba(34, 197, 94, 0.4);
         }
@@ -214,7 +212,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
                 <div class="p-7 pb-6 border-b border-white/[.06] flex items-start justify-between gap-3">
                     <div>
                         <div class="font-syne text-[22px] font-extrabold text-[#f0f2f7] leading-tight">Transcode<span class="text-red-500">.</span></div>
-                        <div class="text-[10px] font-bold uppercase tracking-[.2em] text-muted mt-1">Ekstrak audio dari video library</div>
+                        <div class="text-[10px] font-bold uppercase tracking-[.2em] text-muted mt-1">Ekstrak audio dari koleksi video</div>
                     </div>
                     <i data-lucide="wand-2" class="w-7 h-7 text-red-500 opacity-40 flex-shrink-0 mt-1"></i>
                 </div>
@@ -287,7 +285,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
                             <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/[.03] border border-white/[.06]">
                                 <div class="flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.2);">
-                                        <i data-lucide="coin" class="w-3.5 h-3.5 text-yellow-400"></i>
+                                        <i data-lucide="coins" class="w-3.5 h-3.5 text-yellow-400"></i>
                                     </div>
                                     <div>
                                         <div class="text-[9px] font-bold uppercase tracking-[.15em] text-muted">MEeLCoin</div>
@@ -342,7 +340,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
                 redirectUrl: 'transcode.php<?= $video_id_value ? "?id=$video_id_value" : "" ?>'
             });
         <?php endif; ?>
-        
+
         function startProcess() {
             const btn = document.getElementById('btn-submit');
             const progress = document.getElementById('progress-strip');

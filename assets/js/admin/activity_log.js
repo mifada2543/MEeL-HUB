@@ -1,9 +1,8 @@
-
 (function () {
   "use strict";
   document.addEventListener("DOMContentLoaded", function () {
     if (typeof lucide !== "undefined") lucide.createIcons();
-    
+
     var trigger = document.getElementById("action-dropdown-trigger");
     var panel = document.getElementById("action-dropdown-panel");
     var actionInput = document.getElementById("action-input");
@@ -32,7 +31,7 @@
         }
       });
     }
-    
+
     var searchInput = document.getElementById("search-input");
     if (searchInput) {
       searchInput.addEventListener("keydown", function (e) {
@@ -57,7 +56,7 @@
       }
     });
   });
-  
+
   window.selectDays = function (val) {
     var input = document.getElementById("days-input");
     if (input) input.value = val;
@@ -65,7 +64,7 @@
       btn.classList.toggle("active-blue", parseInt(btn.dataset.days) === val);
     });
   }
-  
+
   window.selectClearDays = function (val) {
     var input = document.getElementById("clear-days-input");
     if (input) input.value = val;
@@ -76,7 +75,7 @@
       );
     });
   };
-  
+
   window.submitFilters = function () {
     var action = document.getElementById("action-input");
     var q = document.getElementById("search-input");
@@ -88,12 +87,12 @@
 
     window.location.href = "activity-log?" + params.toString();
   };
-  
+
   window.toggleActionDropdown = function () {
     var panel = document.getElementById("action-dropdown-panel");
     if (panel) panel.classList.toggle("hidden");
   };
-  
+
   window.selectAction = function (val) {
     var input = document.getElementById("action-input");
     var label = document.getElementById("action-dropdown-label");
@@ -107,8 +106,7 @@
       panel.classList.add("hidden");
     }
   };
-  
-  
+
   window.toggleUqStatusDropdown = function () {
     var panel = document.getElementById("uq-status-dropdown-panel");
     if (panel) panel.classList.toggle("hidden");
@@ -182,7 +180,7 @@
           .replace(/>/g, "&gt;");
 
         Swal.fire({
-          title: "Preview — " + formatLabels[format],
+          title: "Pratinjau — " + formatLabels[format],
           html:
             '<div style="text-align:left">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.1em;font-weight:800;margin-bottom:10px">' +
@@ -244,6 +242,7 @@
           title: "Gagal!",
           text: "Tidak dapat memuat preview: " + err.message,
           icon: "error",
+          confirmButtonText: "Mengerti",
           background: "#0e1118",
           color: "#fff",
           confirmButtonColor: "#3b82f6",

@@ -1,8 +1,6 @@
 <?php
 
-
 if (!function_exists('render_comments')) {
-
 
 function render_comments(int $parent_id, array $grouped, int $level = 0, string $theme = 'video', int $playlist_context = 0): void
 {
@@ -12,25 +10,25 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
 
     $is_video = ($theme === 'video');
 
-    $c_avatar_from    = $is_video ? 'from-red-600' : 'from-orange-500';
-    $c_avatar_to      = $is_video ? 'to-red-900' : 'to-red-600';
-    $c_author          = $is_video ? 'text-red-400' : 'text-gray-300';
-    $c_comment_text    = $is_video ? 'text-gray-400' : 'text-gray-300';
-    $c_delete           = $is_video ? 'text-gray-300' : 'text-gray-500';
-    $c_parent_text      = $is_video ? 'text-blue-400' : 'text-orange-400';
-    $c_parent_bg        = $is_video ? 'bg-blue-500/10' : 'bg-orange-500/10';
-    $c_reply_btn        = $is_video ? 'text-gray-500 hover:text-red-400' : 'text-orange-400';
-    $c_reply_focus      = $is_video ? 'border-red-500/40' : 'border-orange-500/40';
-    $c_reply_btn_bg     = $is_video ? 'bg-red-600 hover:bg-red-500' : 'bg-orange-500';
-    $c_reply_btn_text   = $is_video ? 'text-white' : 'text-black';
-    $reply_prefix       = $is_video ? 'vid-' : 'mus-';
-    $author_time_color  = $is_video ? 'text-gray-300' : 'text-gray-500';
-    $form_action_url   = base_url(($is_video ? '/video/watch' : '/music/watch') . '?id=' . (int)$id . (!$is_video && $playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : ''));
+    $c_avatar_from = $is_video ? 'from-red-600' : 'from-orange-500';
+    $c_avatar_to = $is_video ? 'to-red-900' : 'to-red-600';
+    $c_author = $is_video ? 'text-red-400' : 'text-gray-300';
+    $c_comment_text = $is_video ? 'text-gray-400' : 'text-gray-300';
+    $c_delete = $is_video ? 'text-gray-300' : 'text-gray-500';
+    $c_parent_text = $is_video ? 'text-blue-400' : 'text-orange-400';
+    $c_parent_bg = $is_video ? 'bg-blue-500/10' : 'bg-orange-500/10';
+    $c_reply_btn = $is_video ? 'text-gray-500 hover:text-red-400' : 'text-orange-400';
+    $c_reply_focus = $is_video ? 'border-red-500/40' : 'border-orange-500/40';
+    $c_reply_btn_bg = $is_video ? 'bg-red-600 hover:bg-red-500' : 'bg-orange-500';
+    $c_reply_btn_text = $is_video ? 'text-white' : 'text-black';
+    $reply_prefix = $is_video ? 'vid-' : 'mus-';
+    $author_time_color = $is_video ? 'text-gray-300' : 'text-gray-500';
+    $form_action_url = base_url(($is_video ? '/video/watch' : '/music/watch') . '?id=' . (int)$id . (!$is_video && $playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : ''));
 
     foreach ($grouped[$parent_id] as $c):
-        $author      = $c['username'] ?? 'Guest';
+        $author = $c['username'] ?? 'Guest';
         $parent_user = ($c['parent_id'] > 0) ? ($user_map[$c['parent_id']] ?? 'Guest') : null;
-        $indent      = min($level * 16, 48);
+        $indent = min($level * 16, 48);
 ?>
         <div class="comment-row flex gap-3 p-3 rounded-xl" data-id="<?= (int)$c['id'] ?>" style="margin-left:<?= $indent ?>px">
             <div class="w-8 h-8 rounded-full bg-gradient-to-br <?= $c_avatar_from ?> <?= $c_avatar_to ?> flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
@@ -48,16 +46,16 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
                                 : 'bg-blue-500/15 text-blue-400 border-blue-500/30';
                         ?>
                             <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border flex-shrink-0 <?= $_badge_color ?>"
-                                title="Role: <?= htmlspecialchars($_c_role) ?>">
+                                title="Peran: <?= htmlspecialchars($_c_role) ?>">
                                 <?= htmlspecialchars($_c_role) ?>
                             </span>
                         <?php endif; ?>
                         <span class="text-[10px] <?= $author_time_color ?> flex-shrink-0"><?= time_ago($c['created_at']) ?></span>
                     </div>
                     <?php
-                        $is_owner   = (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === (int)$c['user_id']);
+                        $is_owner = (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === (int)$c['user_id']);
                         $is_uploader = ($uploader_id > 0 && isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === $uploader_id);
-                        $is_admin    = (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'admin');
+                        $is_admin = (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'admin');
                         $can_delete = $is_owner || $is_uploader || $is_admin;
 
                         if ($can_delete):
@@ -79,8 +77,8 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
                         }
 
                         $delete_json = htmlspecialchars(json_encode([
-                            'title'             => 'Hapus Komentar',
-                            'text'              => $delete_text,
+                            'title' => 'Hapus Komentar',
+                            'text' => $delete_text,
                             'confirmButtonText' => 'HAPUS',
                         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
                     ?>
@@ -139,12 +137,11 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
 
 if (!function_exists('comment_preview')) {
 
-
 function comment_preview(array $grouped, int $limit = 4): array
 {
-    $preview_txt    = 'Jadilah komentar pertama';
+    $preview_txt = 'Jadilah komentar pertama';
     $latest_comment = null;
-    $items          = [];
+    $items = [];
 
     $all = [];
     foreach ($grouped as $_grp) {
@@ -159,8 +156,8 @@ function comment_preview(array $grouped, int $limit = 4): array
 
     if ($latest_comment) {
         $preview_author = $latest_comment['username'] ?? 'Guest';
-        $preview_body   = preg_replace('/\s+/', ' ', (string)($latest_comment['comment'] ?? ''));
-        $preview_txt    = '@' . $preview_author . ': ' . $preview_body;
+        $preview_body = preg_replace('/\s+/', ' ', (string)($latest_comment['comment'] ?? ''));
+        $preview_txt = '@' . $preview_author . ': ' . $preview_body;
     }
 
     return ['text' => $preview_txt, 'latest_comment' => $latest_comment, 'items' => $items];

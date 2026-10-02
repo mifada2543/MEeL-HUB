@@ -1,6 +1,3 @@
-/* MEeL Video — AI Upscale overlay (WebGPU/Anime4K): canvas menumpang persis
-   di atas <video> di dalam .plyr. */
-
 #meel-upscale-canvas {
   position: absolute;
   inset: 0;
@@ -17,7 +14,6 @@
   display: block;
 }
 
-/* Video tetap di-decode & di-frame (rVFC tetap jalan), hanya tidak dirender. */
 .plyr.meel-upscale-active video {
   opacity: 0;
 }
@@ -45,7 +41,6 @@
   pointer-events: none;
 }
 
-/* Baris menu yang tak didukung: redup tapi tetap bisa diklik → panel alasan */
 .plyr__menu__container .meel-upscale-unavail[aria-disabled="true"] {
   opacity: 0.45;
 }
@@ -76,9 +71,6 @@
   margin-bottom: 4px;
 }
 
-/* Baris info ukuran pada panel Skala. Elemen ini disisipkan sesudah <div
-   role="menu"> (lihat buildScaleList) supaya tak jadi child menu; aria-live
-   mengabarkan perubahan target tiap skala dipilih. */
 .meel-upscale-scale-info {
   display: block;
   padding: 4px 4px 14px;

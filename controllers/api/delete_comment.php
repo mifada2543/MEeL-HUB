@@ -10,16 +10,13 @@ include '../../modules/media/MediaInteraction.php';
 
 $is_ajax = !empty($_SERVER['HTTP_HX_REQUEST']);
 
-
-
-
 if (!function_exists('safe_comment_back_url')) {
     function safe_comment_back_url(): string
     {
         $ref_url = $_SERVER['HTTP_REFERER'] ?? '';
         if ($ref_url !== '') {
             $allowed_host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST);
-            $ref_host     = parse_url($ref_url, PHP_URL_HOST);
+            $ref_host = parse_url($ref_url, PHP_URL_HOST);
             if ($ref_host !== $allowed_host) {
                 $ref_url = '';
             }
@@ -53,7 +50,7 @@ if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
     exit;
 }
 
-$rateKey  = 'user_' . ($_SESSION['user_id'] ?? 0);
+$rateKey = 'user_' . ($_SESSION['user_id'] ?? 0);
 $rateRole = get_user_role($conn, (int)($_SESSION['user_id'] ?? 0));
 $rateCheck = RateLimiter::check($rateKey, 'comment', $rateRole);
 if (!$rateCheck['allowed']) {
@@ -97,7 +94,7 @@ if ($is_ajax) {
     require_once __DIR__ . '/../../modules/core/CommentRenderer.php';
 
     $media_type = (($_POST['media_type'] ?? 'video') === 'music') ? 'music' : 'video';
-    $media_id   = (int)($_POST['media_id'] ?? 0);
+    $media_id = (int)($_POST['media_id'] ?? 0);
     if ($media_id <= 0) {
         http_response_code(400);
         header('HX-Retarget: #comment-alert');
@@ -110,13 +107,13 @@ if ($is_ajax) {
 
     $viewer = new MediaViewer($conn, (int)($_SESSION['user_id'] ?? 0), $media_type, $media_id);
     $comments_data = $viewer->getComments();
-    $grouped       = $comments_data['grouped'];
-    $user_map      = $comments_data['user_map'];
+    $grouped = $comments_data['grouped'];
+    $user_map = $comments_data['user_map'];
 
     $media_row = $viewer->getMediaData();
     $GLOBALS['uploader_id'] = (int)($media_row['user_id'] ?? 0);
 
-    $GLOBALS['id']       = $media_id;
+    $GLOBALS['id'] = $media_id;
     $GLOBALS['user_map'] = $user_map;
 
     if (empty($grouped)) {

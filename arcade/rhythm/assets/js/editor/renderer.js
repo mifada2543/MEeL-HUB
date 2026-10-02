@@ -1,7 +1,3 @@
-
-
-
-
 import { S, DOM, CONST } from "./state.js";
 import { getBPM, msToY, yToMs, snapMs, formatTime } from "./canvas.js";
 
@@ -24,7 +20,6 @@ export function buildGridBuffer() {
   var beatMs = 60000 / bpm;
   var totalMs = S.audioDuration * 1000;
 
-  
   for (var ms = 0; ms <= totalMs; ms += beatMs) {
     var y = msToY(ms);
     if (y > h) break;
@@ -46,7 +41,6 @@ export function buildGridBuffer() {
     }
   }
 
-  
   if (S.snapDiv > 0) {
     var snap = beatMs / S.snapDiv;
     gc.strokeStyle = "rgba(255,255,255,0.02)";
@@ -63,7 +57,6 @@ export function buildGridBuffer() {
     }
   }
 
-  
   for (var i = 0; i < CONST.LANE_COUNT; i++) {
     var x = off + i * lw;
     var alpha = i % 2 === 0 ? 0.03 : 0.01;
@@ -116,7 +109,6 @@ export function draw() {
     viewBot = viewTop + wrap.clientHeight + 200;
   }
 
-  
   for (var ni = 0; ni < S.notes.length; ni++) {
     var note = S.notes[ni];
     if (!note.e) continue;
@@ -159,7 +151,6 @@ export function draw() {
     ctx.globalAlpha = 1;
   }
 
-  
   for (var ni2 = 0; ni2 < S.notes.length; ni2++) {
     var note2 = S.notes[ni2];
     var y3 = msToY(note2.t);
@@ -220,7 +211,6 @@ export function draw() {
     }
   }
 
-  
   if (S.isDragging && S.dragLane >= 0 && S.dragStartMs >= 0) {
     var cx2 = offset + S.dragLane * lw + lw / 2;
     var currentMs = snapMs(yToMs(S.lastDragPos.y));
@@ -237,7 +227,6 @@ export function draw() {
     }
   }
 
-  
   if (audio.currentTime > 0) {
     var cursorY = msToY(audio.currentTime * 1000);
     if (cursorY >= viewTop - 20 && cursorY <= viewBot) {
@@ -263,7 +252,6 @@ export function draw() {
 
   ctx.restore();
 
-  
   var now = performance.now();
   if (!S.isPlaying || now - S.lastUIUpdate > 200) {
     S.lastUIUpdate = now;
@@ -289,17 +277,17 @@ export function updateNoteInfo() {
   var dur = note.e ? note.e - note.t + "ms" : "-";
 
   var html = "";
-  html += '<div class="note-info-row"><span>Type:</span><span class="note-info-val">' + type + "</span></div>";
-  html += '<div class="note-info-row"><span>Lane:</span><span class="note-info-val">' + laneKeys[note.l] + " (" + note.l + ")</span></div>";
-  html += '<div class="note-info-row"><span>Start:</span><span class="note-info-val">' + note.t + "ms</span></div>";
-  if (note.e) html += '<div class="note-info-row"><span>End:</span><span class="note-info-val">' + note.e + "ms</span></div>";
-  if (note.e) html += '<div class="note-info-row"><span>Duration:</span><span class="note-info-val">' + dur + "</span></div>";
-  html += '<div class="note-info-row"><span>Gold:</span><span class="note-info-val">' + (note.g ? "⭐ Yes" : "No") + "</span></div>";
+  html += '<div class="note-info-row"><span>Jenis:</span><span class="note-info-val">' + type + "</span></div>";
+  html += '<div class="note-info-row"><span>Lajur:</span><span class="note-info-val">' + laneKeys[note.l] + " (" + note.l + ")</span></div>";
+  html += '<div class="note-info-row"><span>Mulai:</span><span class="note-info-val">' + note.t + "ms</span></div>";
+  if (note.e) html += '<div class="note-info-row"><span>Akhir:</span><span class="note-info-val">' + note.e + "ms</span></div>";
+  if (note.e) html += '<div class="note-info-row"><span>Durasi:</span><span class="note-info-val">' + dur + "</span></div>";
+  html += '<div class="note-info-row"><span>Gold:</span><span class="note-info-val">' + (note.g ? "⭐ Ya" : "Tidak") + "</span></div>";
   html += '<div class="note-actions">';
-  html += '<button class="btn btn-sm" onclick="window.editorToggleGold()">' + (note.g ? "Remove Gold" : "Make Gold ⭐") + "</button>";
-  html += '<button class="btn btn-sm" onclick="window.editorDeleteSelected()" style="color:var(--danger);">Delete</button>';
-  if (note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToTap()">Convert to Tap</button>';
-  if (!note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToHold()">Convert to Hold</button>';
+  html += '<button class="btn btn-sm" onclick="window.editorToggleGold()">' + (note.g ? "Hapus Gold" : "Beri Gold ⭐") + "</button>";
+  html += '<button class="btn btn-sm" onclick="window.editorDeleteSelected()" style="color:var(--danger);">Hapus</button>';
+  if (note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToTap()">Ubah ke Ketuk</button>';
+  if (!note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToHold()">Ubah ke Tahan</button>';
   html += "</div>";
   el.innerHTML = html;
 }

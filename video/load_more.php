@@ -3,12 +3,12 @@ include '../auth/config.php';
 require_once '../modules/media/MediaLibrary.php';
 
 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 15;
-$page   = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-$limit  = 15;
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$limit = 15;
 
 $library = new MediaLibrary($conn);
-$data    = $library->getVideos($limit, $offset);
-$total   = $library->countVideos();
+$data = $library->getVideos($limit, $offset);
+$total = $library->countVideos();
 $totalPages = max(1, (int)ceil($total / $limit));
 
 if ($data && $data->num_rows > 0):
@@ -30,12 +30,12 @@ if ($data && $data->num_rows > 0):
         </div>
     <?php else: ?>
         <div class="col-span-full py-6 text-center border border-dashed border-white/[.04] rounded-2xl">
-            <span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span>
+            <span class="text-[9px] text-gray-800 uppercase tracking-widest">Konten Habis · Semua konten sudah ditampilkan</span>
         </div>
     <?php endif;
 else: ?>
     <div class="col-span-full py-6 text-center border border-dashed border-white/[.04] rounded-2xl">
-        <span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span>
+        <span class="text-[9px] text-gray-800 uppercase tracking-widest">Konten Habis · Semua konten sudah ditampilkan</span>
     </div>
 <?php endif;
 ?>

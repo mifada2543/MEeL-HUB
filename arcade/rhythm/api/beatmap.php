@@ -1,6 +1,5 @@
 <?php
 
-
 require_once __DIR__ . '/config.php';
 
 $id = (int) ($_GET['id'] ?? 0);
@@ -27,7 +26,7 @@ if (file_exists($builtin_path) && !is_numeric($builtin_id)) {
         'id' => $builtin_id,
         'type' => 'builtin',
         'title' => $meta['title'] ?? $builtin_id,
-        'artist' => $meta['artist'] ?? 'Unknown',
+        'artist' => $meta['artist'] ?? 'Tidak diketahui',
         'bpm' => $meta['bpm'] ?? 120,
         'difficulty' => $meta['difficulty'] ?? 2,
         'difficulty_label' => $meta['difficultyLabel'] ?? 'Normal',
@@ -89,7 +88,7 @@ api_respond([
     'color' => [$song['color_primary'], $song['color_secondary']],
     'emoji' => '🎵',
     'user_id' => (int) $song['user_id'],
-    'username' => $song['username'] ?? 'Unknown',
+    'username' => $song['username'] ?? 'Tidak diketahui',
 ]);
 
 /* reference build: MEeL-C5H9NO2 [803c18e0941e841d] */

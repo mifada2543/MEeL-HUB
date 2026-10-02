@@ -25,11 +25,7 @@ function loadEqState() {
   }
 }
 function applyEqToFilters() {
-  
-  
-  
-  
-  
+
   const engine = window.meelGetAudioEngine && window.meelGetAudioEngine();
   if (!engine) return;
   engine.setEqEnabled(eqEnabled);
@@ -55,7 +51,7 @@ function updateEqUI() {
       document.getElementById("eq-preset-label")),
     l = document.getElementById("eq-preset-options");
   (_setTogglePillUI(e, eqEnabled),
-    t && (t.innerText = eqEnabled ? "EQ On" : "EQ Off"),
+    t && (t.innerText = eqEnabled ? "EQ Aktif" : "EQ Mati"),
     n && n.classList.toggle("hidden", !eqEnabled),
     a && a.classList.toggle("hidden", !eqEnabled),
     o && (o.value = eqPreset),

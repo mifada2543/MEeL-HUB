@@ -1,32 +1,6 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 (function () {
   "use strict";
 
-  
-  
-  
-  
-  
   var isWatchDocFreshLoad = true;
 
   function updateVisualizerUI(on) {
@@ -34,14 +8,13 @@
       label = document.getElementById("vis-text"),
       cava = document.getElementById("cava-container");
     _setTogglePillUI(btn, on);
-    if (label) label.innerText = on ? "Vis On" : "Vis Off";
+    if (label) label.innerText = on ? "Vis Aktif" : "Vis Mati";
     if (cava) {
       cava.style.display = on ? "flex" : "none";
       cava.classList.toggle("hidden", !on);
     }
   }
 
-  
   function buildVisualizerBars(engine) {
     const cava = document.getElementById("cava-container");
     if (!cava) return;
@@ -79,9 +52,6 @@
     }
   }
 
-  
-  
-  
   function bindEngineOnce(engine) {
     if (engine.player.__meelCoreBound) return;
     engine.player.__meelCoreBound = true;
@@ -89,7 +59,6 @@
     const audio = engine.audio,
       player = engine.player;
 
-    
     let loadingTimeout = null,
       secondaryTimeout = null,
       metadataLoaded = false,
@@ -97,7 +66,6 @@
       errorHandled = false,
       audioEndedNaturally = false;
 
-    
     const RECOVERY_MAX_RETRIES = 15;
     const RECOVERY_COOLDOWN_MS = 8000;
     let recoveryRetryCount = 0;
@@ -149,7 +117,6 @@
       var streamUrl = (window.MEEL_MUSIC_CONFIG && window.MEEL_MUSIC_CONFIG.streamUrl) || '';
       if (!streamUrl) { isRecovering = false; return; }
 
-      
       var sep = streamUrl.indexOf('?') >= 0 ? '&' : '?';
       var freshUrl = streamUrl + sep + '_r=' + Date.now();
 
@@ -168,7 +135,7 @@
         }).catch(function (err) {
           console.warn('⚠️ Music recovery play() failed:', err);
           isRecovering = false;
-          
+
           setTimeout(triggerStreamRecovery, RECOVERY_COOLDOWN_MS);
         });
       }
@@ -193,7 +160,6 @@
       _musicWaitingTimeout.stop();
     }
 
-    
     audio.addEventListener('error', function () {
       var code = audio.error ? audio.error.code : 0;
       if (code === 2 && hasEverPlayed && !isRecovering) {
@@ -212,7 +178,6 @@
       }
     });
 
-    
     audio.addEventListener('stalled', function () {
       if (!player.paused && hasEverPlayed && !isRecovering) {
         console.warn('⚠️ Audio stalled event, starting waiting timeout...');
@@ -273,7 +238,7 @@
       const overlay = document.getElementById("flac-loading-overlay");
       if (overlay) overlay.style.display = "none";
     }
-    
+
     engine.__armLoadingTimeout = function () {
       metadataLoaded = false;
       errorHandled = false;
@@ -311,7 +276,6 @@
       stopWaitingTimeout();
     });
 
-    
     let rafId = null,
       visLastTs = 0,
       visualizerOn = window.innerWidth >= 1024,
@@ -412,8 +376,6 @@
       updateVisualizerUI(next);
     };
 
-    
-    
     function applyPlayingVisualState(isPlaying) {
       const container = document.getElementById("player-container");
       const vinyl = document.querySelector(".vinyl-wrap .vinyl-spin");
@@ -457,8 +419,7 @@
         if (sec !== lastSecond) {
           lastSecond = sec;
           localStorage.setItem(storageKeyMusic, player.currentTime);
-          
-          
+
           if (sec % 5 === 0) saveAudioState();
         }
       }
@@ -496,7 +457,7 @@
         isNavigating = false;
         return;
       }
-      
+
       if (window.meelNavigateView) {
         window.meelNavigateView(target, "watch", {
           onAfterSwap: function () {
@@ -515,17 +476,14 @@
 
   window.meelInitWatchPlayer = function () {
     window.__meelCurrentView = "watch";
-    
-    
-    
+
     if (typeof window.meelRebuildCommentPreview === "function") {
       const _ptxt = document.getElementById("comment-preview-text");
       if (_ptxt && !_ptxt.textContent.trim()) {
         window.meelRebuildCommentPreview();
       }
     }
-    
-    
+
     isMiniPlayerActive = false;
     const engine = window.meelGetAudioEngine();
     const slot = document.getElementById("player-audio-slot");
@@ -537,7 +495,6 @@
     watchUrl = window.location.href;
     storageKeyMusic = "music_pos_" + window.MEEL_MUSIC_CONFIG.id;
 
-    
     engine.mount(slot, { compact: false });
     audio = engine.audio;
     player = engine.player;
@@ -546,8 +503,6 @@
 
     bindEngineOnce(engine);
 
-    
-    
     if (engine.__syncPlayingVisualState) {
       engine.__syncPlayingVisualState(!engine.audio.paused);
     }
@@ -555,11 +510,9 @@
     const globalLoop = "true" === localStorage.getItem(MEEL_KEYS.GLOBAL_LOOP);
     loadEqState();
     updateEqUI();
-    
-    
+
     applyEqToFilters();
 
-    
     let savedActive = false,
       savedTime = 0,
       savedPlaying = false,
@@ -582,21 +535,11 @@
       }
     }
 
-    
-    
     const skipFromIndex = sessionStorage.getItem(MEEL_KEYS.SKIP_RESUME_ONCE) === "true";
     if (skipFromIndex) sessionStorage.removeItem(MEEL_KEYS.SKIP_RESUME_ONCE);
-    
-    
+
     if (skipFromIndex) window.__meelResumeSessionActive = true;
 
-    
-    
-    
-    
-    
-    
-    
     if (isWatchDocFreshLoad) {
       isWatchDocFreshLoad = false;
       savedActive = false;
@@ -604,7 +547,6 @@
       savedPlaying = false;
     }
 
-    
     const isFreshTrack = engine.loadTrack(
       {
         id: window.MEEL_MUSIC_CONFIG.id,
@@ -612,8 +554,7 @@
         isLooping: savedLoop,
       },
       {
-        
-        
+
         autoplay: savedActive ? savedPlaying : false,
         startTime: savedActive ? savedTime : 0,
       },
@@ -623,20 +564,17 @@
     updateVisualizerUI(engine.__vis ? engine.__vis.isOn() : window.innerWidth >= 1024);
 
     if (!isFreshTrack) {
-      
-      
-      
+
       const wantStream = window.MEEL_MUSIC_CONFIG.streamUrl || "";
       const haveSrc = engine.audio.currentSrc || engine.audio.src || "";
       const wantId = String(window.MEEL_MUSIC_CONFIG.id);
-      
+
       let haveId = null;
       try {
         haveId = new URL(haveSrc, window.location.href).searchParams.get("id");
       } catch (e) {}
       if (wantStream && haveSrc && haveId !== null && haveId !== wantId) {
-        
-        
+
         engine.audio.src = wantStream;
         engine.audio.load();
         if (savedActive && savedPlaying) {
@@ -652,27 +590,21 @@
             });
         }
       } else if (savedActive && savedPlaying && engine.audio.paused) {
-        
+
         if (savedTime > 5 && engine.audio.currentTime < 1) {
           engine.audio.currentTime = savedTime;
         }
         engine.audio.play().catch(function () {});
       }
-      
-      
+
       player.loop = engine.audio.loop;
       _applyLoopUI(player.loop);
       return;
     }
 
-    
-    
     engine.setLoop(savedLoop);
     updateLoopUI();
-    
-    
-    
-    
+
     saveAudioState();
     if (window.meelUpdateMediaSession) {
       meelUpdateMediaSession({
@@ -688,8 +620,7 @@
       btnRestart = document.getElementById("btn-restart"),
       timeEl = document.getElementById("resume-time");
     if (modalEl && btnResume && btnRestart && timeEl) {
-      
-      
+
       if (skipFromIndex && !savedActive) skipResumeModalOnce = true;
 
       function showResumeModal() {
@@ -736,15 +667,13 @@
           if (needsResume) {
             const shown = showResumeModal();
             if (!shown) {
-              
-              
+
               localStorage.removeItem(storageKeyMusic);
               audio.currentTime = 0;
               player.play();
             }
           } else {
-            
-            
+
             skipResumeModalOnce = false;
             player.play();
           }

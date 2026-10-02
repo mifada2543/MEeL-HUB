@@ -1,8 +1,6 @@
 function setupMeelPlayerEvents() {
   window.player = player;
 
-  // Play() ditolak saat tab di-background: jangan menyerah diam-diam, coba lagi
-  // begitu tab aktif (mencegah freeze setelah recovery/swap di tab tersembunyi).
   function retryPlayWhenVisible(playPromise, onRejected) {
     if (!playPromise || typeof playPromise.catch !== "function") return;
     playPromise.catch(function (err) {
@@ -25,7 +23,7 @@ function setupMeelPlayerEvents() {
       }
     });
   }
-  
+
   function applyMeelVideoAspect(wrapper, videoW, videoH) {
     if (!wrapper || !videoW || !videoH) return;
     wrapper.style.aspectRatio = `${videoW} / ${videoH}`;
@@ -64,14 +62,14 @@ function setupMeelPlayerEvents() {
       e.style.aspectRatio = `${n} / ${o}`;
     }
   }
-  
+
   const AUTONEXT_COUNTDOWN = 5;
   function showAutoNextOverlay(e) {
     return new Promise((t) => {
       try {
         const n = document.getElementById("autonext-overlay");
         n && n.remove();
-        
+
         const o =
           e
             .querySelector(".rec-title-text, .line-clamp-2, h5")
@@ -79,13 +77,13 @@ function setupMeelPlayerEvents() {
           e.querySelector('[class*="line-clamp"]')?.textContent?.trim() ||
           e.querySelector("a[title]")?.getAttribute("title")?.trim() ||
           "";
-        
+
         const l =
           e.querySelector(".rec-thumb-img")?.src ||
           e.querySelector('img[src*="thumbnail"]')?.src ||
           e.querySelector("img")?.src ||
           "";
-        
+
         const a =
           e
             .querySelector('[class*="text-red-500"], [class*="text-red-600"]')
@@ -151,7 +149,7 @@ function setupMeelPlayerEvents() {
       }
     });
   }
-  
+
   function ensureCustomControls() {
     if (!player?.elements?.controls) return;
     const e = player.elements.controls;
@@ -188,7 +186,7 @@ function setupMeelPlayerEvents() {
       n.parentNode.insertBefore(o, n.nextSibling));
     window.lucide && window.lucide.createIcons();
   }
-  
+
   window.skipToNextVideo = async function (e, isManual = !0) {
     if (window.meelHealthAlertActive) return !1;
     const t = e || document.querySelector(".rekomendasi-item");
@@ -200,9 +198,6 @@ function setupMeelPlayerEvents() {
     ((isTransitioningNext = !0), (isRecovering = !0));
     const n = ++nextVideoTransitionId;
     localStorage.removeItem(storageKeyVideo);
-    // Video berganti lewat jalur ini (klik manual & auto-next sama-sama lewat
-    // skipToNextVideo): status ON AI Upscale dibuang supaya video baru mulai
-    // tanpa beban GPU client — lihat docs "Status on/off per video".
     window.MEEL_UPSCALER && window.MEEL_UPSCALER.resetForNewVideo();
     const o = player
       ? player.fullscreen.active || !!document.fullscreenElement
@@ -233,7 +228,7 @@ function setupMeelPlayerEvents() {
         c = "true" === i.getAttribute("data-ishls"),
         d = i.getAttribute("data-poster"),
         p = i.getAttribute("data-vtt");
-      
+
       const subTracks = Array.from(
         i.querySelectorAll('track[kind="captions"]'),
       ).map((t) => ({
@@ -413,7 +408,7 @@ function setupMeelPlayerEvents() {
               },
               { once: !0 },
             )));
-      
+
       if (videoElement) {
         videoElement
           .querySelectorAll('track[kind="captions"]')
@@ -494,8 +489,6 @@ function setupMeelPlayerEvents() {
       if (isAutoRecovering && i) {
         const savedPos = parseFloat(i);
         isAutoRecovering = !1;
-        
-
 
         function doRestore() {
           player.currentTime = savedPos;
@@ -629,7 +622,7 @@ function setupMeelPlayerEvents() {
       stopWaitingTimeout();
     }),
     player.on("ended", async () => {
-      
+
       if (window.meelHealthAlertActive) return;
       if ((stopStuckDetector(), player.loop)) return;
       if (isTransitioningNext) return;
@@ -648,7 +641,7 @@ function setupMeelPlayerEvents() {
       localStorage.removeItem(storageKeyVideo);
       const t = document.querySelector(".rekomendasi-item");
       if (!t) return ((isTransitioningNext = !1), void (isRecovering = !1));
-      
+
       const g = await showAutoNextOverlay(t);
       if (!g) {
         autoNextEnabled = !1;
@@ -657,7 +650,7 @@ function setupMeelPlayerEvents() {
         stopPlaybackStartTimeout();
         return;
       }
-      
+
       await window.skipToNextVideo(t, !1);
     }),
     player.on("enterfullscreen", () => {
@@ -795,7 +788,7 @@ function setupMeelPlayerEvents() {
     }),
     player.on("exitfullscreen", () => {
       screen.orientation?.unlock && screen.orientation.unlock();
-      
+
       document.body.classList.remove("meel-fs-active");
       const e_xsWrap = document.getElementById("main-video-wrapper"),
         e_xsGlow = document.getElementById("video-glow-container");
@@ -957,7 +950,7 @@ function setupMeelPlayerEvents() {
         n && (n.innerHTML = d(t));
       };
     ((window.updateLoopMenuUI = u), (window.updateGlowMenuUI = p));
-    
+
     const S = (e) =>
       `${e ? "On" : "Off"} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display:${e ? "inline-block" : "none"};vertical-align:middle;margin-left:4px"><polyline points="20 6 9 17 4 12"/></svg>`;
     window.updateAutoNextMenuUI = () => {
@@ -1131,7 +1124,7 @@ function setupMeelPlayerEvents() {
       player.on("ended", () => s(!0)),
       videoElement.paused || videoElement.ended || i());
   }
-  
+
   if (!window._meelClickRekomGuard) {
     window._meelClickRekomGuard = !0;
     document.addEventListener("click", function (e) {

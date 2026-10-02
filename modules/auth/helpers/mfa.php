@@ -103,7 +103,6 @@ function generate_backup_codes(): array
 
 if (!function_exists('verify_backup_code')) {
 
-
 function verify_backup_code(string $hashed_json, string $input): array
 {
     $codes = json_decode($hashed_json, true);

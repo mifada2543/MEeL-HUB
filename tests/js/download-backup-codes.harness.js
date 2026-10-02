@@ -1,16 +1,10 @@
-
-
-
-
-
-
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
 const scenario = process.argv[2] || 'normal';
-const root     = path.join(__dirname, '..', '..');
+const root = path.join(__dirname, '..', '..');
 
 const captured = {
   clicked: 0,
@@ -64,7 +58,7 @@ sandbox.window = sandbox;
 vm.createContext(sandbox);
 
 if (scenario === 'keys') {
-  
+
   const keysFile = path.join(root, 'assets', 'js', 'shared', 'state-keys.js');
   vm.runInContext(fs.readFileSync(keysFile, 'utf8'), sandbox, { filename: 'state-keys.js' });
 
@@ -94,10 +88,10 @@ if (scenario === 'normal') {
   sandbox.window._meelBackupUser = 'alice';
 } else if (scenario === 'noUser') {
   sandbox.window._meelBackupCodes = ['111111'];
-  
+
 } else if (scenario === 'empty') {
   sandbox.window._meelBackupCodes = [];
-} 
+}
 
 sandbox.downloadBackupCodes();
 

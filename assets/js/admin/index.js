@@ -3,25 +3,20 @@
 (function () {
   "use strict";
 
-  
-  
   var DEFAULT_POLL_INTERVAL_MS = 3000;
   var POLL_OPTIONS = [1000, 3000, 5000, 10000];
   var STORAGE_KEY = "meel_admin_poll_interval";
   var pollTimer = null;
 
-  
-  
   var source = null;
-  var streamMode = "sse"; 
+  var streamMode = "sse";
   var lastSseMessage = 0;
   var sseErrorCount = 0;
   var sseWatchdog = null;
-  var connStartedAt = 0; 
+  var connStartedAt = 0;
 
-  
   var MONITOR_TICK_MS = 1000;
-  
+
   var ONLINE_WINDOW_SEC = 300;
 
   function setText(id, value) {
@@ -36,21 +31,17 @@
     return bytes + " B";
   }
 
-  
   function formatSpeed(bps) {
     if (bps >= 1048576) return (bps / 1048576).toFixed(2) + " MB/s";
     if (bps >= 1024) return (bps / 1024).toFixed(1) + " KB/s";
     return Math.round(bps) + " B/s";
   }
 
-  
-  
   var netPrev = { rx: null, tx: null, t: 0 };
-  
-  var netChart = null;
-  var NET_HISTORY_MAX = 60; 
 
-  
+  var netChart = null;
+  var NET_HISTORY_MAX = 60;
+
   function setupNetChart() {
     var canvas = document.getElementById("netChart");
     if (!canvas || typeof Chart === "undefined") return;
@@ -139,7 +130,6 @@
     netChart.update();
   }
 
-  
   function barClass(card, perc) {
     switch (card) {
       case "cpu":
@@ -163,9 +153,7 @@
     }
     var icon = document.getElementById("stat-" + card + "-icon");
     if (icon && cls) {
-      
-      
-      
+
       var tcls = cls.replace("bg-", "text-").replace("-500", "-400");
       icon.classList.remove("text-red-400", "text-yellow-400", "text-green-400", "text-cyan-400", "text-blue-400", "text-gray-400");
       icon.classList.add(tcls);
@@ -189,8 +177,6 @@
     }
   }
 
-  
-  
   function setLatency(ms) {
     var el = document.getElementById("stat-net-ping");
     if (!el) return;
@@ -200,30 +186,22 @@
   }
 
   function applyServerStats(s) {
-    
-    
-    
+
     try {
       var cpu = s.cpu, ram = s.ram, swap = s.swap, net = s.network, info = s.info, up = s.uptime;
 
-      
       setText("stat-cpu-value", cpu.load_1m);
       setText("stat-cpu-sub", cpu.cores + " Cores • " + cpu.usage_perc + "%");
       updateBar("cpu", cpu.usage_perc);
 
-      
       setText("stat-ram-value", formatBytes(ram.used));
       setText("stat-ram-sub", formatBytes(ram.total) + " Total • " + ram.usage_perc + "%");
       updateBar("ram", ram.usage_perc);
 
-      
       setText("stat-swap-value", formatBytes(swap.used));
       setText("stat-swap-sub", formatBytes(swap.total) + " Total • " + swap.usage_perc + "%");
       updateBar("swap", swap.usage_perc);
 
-      
-      
-      
       var nowMs = Date.now();
       var netTotalsTitle = "Total: ↓ " + formatBytes(net.rx) + " / ↑ " + formatBytes(net.tx);
       if (netPrev.rx !== null && net.rx >= netPrev.rx && net.tx >= netPrev.tx) {
@@ -234,7 +212,7 @@
         setText("stat-net-sub", "↑ " + formatSpeed(txRate));
         pushNetSample(rxRate, txRate);
       } else {
-        
+
         setText("stat-net-value", "↓ —");
         setText("stat-net-sub", "↑ —");
       }
@@ -242,7 +220,6 @@
       if (netSubEl) netSubEl.title = netTotalsTitle;
       netPrev = { rx: net.rx, tx: net.tx, t: nowMs };
 
-      
       setText("stat-uptime", up.text);
       setText("stat-load", cpu.load_1m + " / " + cpu.load_5m + " / " + cpu.load_15m);
       setText("stat-procs", info.processes);
@@ -274,14 +251,12 @@
       });
   }
 
-  
-
   function loadPref(key, fallback) {
     try {
       var v = localStorage.getItem(key);
       return v === null ? fallback : v;
     } catch (e) {
-      return fallback; 
+      return fallback;
     }
   }
 
@@ -289,7 +264,7 @@
     try {
       localStorage.setItem(key, value);
     } catch (e) {
-      
+
     }
   }
 
@@ -302,8 +277,6 @@
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = setInterval(refreshServerStats, currentPollInterval());
   }
-
-  
 
   function startStatsStream() {
     if (source) return;
@@ -319,7 +292,7 @@
     source.addEventListener("open", function () {
       lastSseMessage = Date.now();
       setLiveStatus(true);
-      setLatency(Date.now() - connStartedAt); 
+      setLatency(Date.now() - connStartedAt);
       startWatchdog();
     });
 
@@ -334,15 +307,15 @@
           setLiveStatus(false);
         }
       } catch (e) {
-        
+
       }
     });
 
     source.addEventListener("error", function () {
-      connStartedAt = Date.now(); 
+      connStartedAt = Date.now();
       sseErrorCount++;
       setLiveStatus(false);
-      
+
       if (sseErrorCount >= 3) {
         fallbackToPolling();
       }
@@ -369,8 +342,6 @@
     startStatsPolling();
   }
 
-  
-  
   function startWatchdog() {
     stopWatchdog();
     var interval = currentPollInterval();
@@ -399,7 +370,6 @@
     var sel = document.getElementById("stats-poll-interval");
     if (!sel) return;
 
-    
     sel.value = String(currentPollInterval());
     updateLiveBadgeTitle(currentPollInterval());
 
@@ -409,15 +379,13 @@
       savePref(STORAGE_KEY, String(v));
       updateLiveBadgeTitle(v);
       if (streamMode === "sse") {
-        restartStatsStream(); 
+        restartStatsStream();
       } else {
         startStatsPolling();
       }
     });
   }
 
-  
-  
   function startMonitorTicking() {
     var rows = document.querySelectorAll("#monitor tr[data-sec-since]");
     if (!rows.length) return;
@@ -457,7 +425,7 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     if (typeof lucide !== "undefined") lucide.createIcons();
-    
+
     var ctx2 = document.getElementById("activityChart");
     if (
       ctx2 &&
@@ -541,12 +509,10 @@
       }
     }
 
-    
     setupNetChart();
     startStatsStream();
     setupIntervalControl();
 
-    
     startMonitorTicking();
   });
 })();

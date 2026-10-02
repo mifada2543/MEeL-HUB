@@ -4,9 +4,9 @@ require_once '../auth/config.php';
 
 require_once '../modules/media/MediaLibrary.php';
 
-$repo    = new BookRepository($conn);
+$repo = new BookRepository($conn);
 $user_id = (int)$_SESSION['user_id'];
-$role    = $repo->getUserRole($user_id);
+$role = $repo->getUserRole($user_id);
 
 if ($role !== 'admin') {
     header("Location: ..?error=unauthorized");
@@ -15,7 +15,7 @@ if ($role !== 'admin') {
 
 meel_storage_guard();
 
-$message  = '';
+$message = '';
 $val_title = htmlspecialchars($_GET['reup'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
     } else {
     $books_base = dirname(meel_media_base_path('books'));
     $uploader = new BookUploader($conn, $books_base);
-    $result   = $uploader->handleUpload(
+    $result = $uploader->handleUpload(
         array_merge($_POST, ['user_id' => $user_id]),
         $_FILES
     );
@@ -41,10 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
 
 <head>
     <meta charset="UTF-8">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="MEeL | Upload Book">
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.">
+    <meta property="og:title" content="MEeL | Unggah Buku">
     <meta property="og:description" content="Upload buku dan dokumen ke perpustakaan digital MEeL Books.">
-    <title>MEeL | Upload Book</title>
+    <title>MEeL | Unggah Buku</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/books/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/books/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/books/' . $__f) ?>">
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
     <div class="w-full max-w-xl bg-[#0b0e14] border border-gray-800 rounded-[2.5rem] p-10 shadow-2xl">
 
         <div class="flex justify-between items-center mb-8">
-            <h1 class="text-2xl font-black">Upload to Library</h1>
+            <h1 class="text-2xl font-black">Unggah ke Koleksi</h1>
             <a href="beranda" class="text-gray-500 hover:text-white transition">
                 <i data-lucide="x"></i>
             </a>
@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
                 </div>
                 <div class="space-y-2">
                     <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Kategori</label>
-                    <input type="text" name="category" placeholder="Edukasi, Action, dll"
+                    <input type="text" name="category" placeholder="Edukasi, Aksi, dll"
                         class="w-full bg-[#05070a] border border-gray-800 rounded-2xl p-3 text-sm focus:border-blue-600 outline-none">
                 </div>
             </div>
@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
             </div>
 
             <div class="space-y-2">
-                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Penulis / Artist</label>
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Penulis / Artis</label>
                 <input type="text" name="author" placeholder="Nama Penulis"
                     class="w-full bg-[#05070a] border border-gray-800 rounded-2xl p-3 text-sm focus:border-blue-600 outline-none">
             </div>
@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
                                   file:text-xs file:font-bold file:bg-gray-800 file:text-gray-300">
                 </div>
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Cover (Thumbnail)</label>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Sampul (Thumbnail)</label>
                     <input type="file" name="thumbnail"
                         class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0
                                   file:text-xs file:font-bold file:bg-gray-800 file:text-gray-300">

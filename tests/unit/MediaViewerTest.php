@@ -4,19 +4,14 @@ use PHPUnit\Framework\TestCase;
 /** @covers MediaViewer */
 class MediaViewerTest extends TestCase
 {
-    
+
     private array $sqls = [];
 
-    
     private array $bindCalls = [];
-
-    
 
     private function buildConn(?array $currentRow, ?array $nextRow): array
     {
         $this->bindCalls = [];
-        // Param adalah PHPUnit MockObject (createMock), bukan mysqli_stmt asli —
-        // tipe native mysqli_stmt membuat analyzer menganggap method() tak ada.
         $recordBind = function (\PHPUnit\Framework\MockObject\MockObject $stmt): void {
             $stmt->method('bind_param')->willReturnCallback(
                 function ($types, ...$vars) {
@@ -216,35 +211,28 @@ class MediaViewerTest extends TestCase
         $viewer = new MediaViewer($conn, null, 'music', 5);
         $result = $viewer->getPlaylistQueue(3);
 
-        
         $this->assertStringContainsString(
             'ORDER BY pt.added_at DESC, pt.id DESC',
             $this->sqls[0]
         );
 
-        
         $this->assertStringContainsString(
             'SELECT added_at, id FROM playlist_tracks',
             $this->sqls[1]
         );
         $this->assertStringContainsString('ORDER BY id DESC LIMIT 1', $this->sqls[1]);
 
-        
         $this->assertStringContainsString('(added_at, id) < (?, ?)', $this->sqls[2]);
         $this->assertStringContainsString(
             'ORDER BY added_at DESC, id DESC LIMIT 1',
             $this->sqls[2]
         );
 
-        
-        
-        
         $this->assertCount(3, $this->bindCalls);
         $this->assertSame('isi', $this->bindCalls[2]['types']);
         $this->assertSame(3, $this->bindCalls[2]['count']);
         $this->assertSame(strlen($this->bindCalls[2]['types']), $this->bindCalls[2]['count']);
 
-        
         foreach ([0, 1, 2] as $i) {
             $this->assertSame(
                 substr_count($this->sqls[$i], '?'),
@@ -253,7 +241,6 @@ class MediaViewerTest extends TestCase
             );
         }
 
-        
         $this->assertSame('watch.php?v=7&playlist_id=3', $result['next_url']);
     }
 
@@ -265,7 +252,7 @@ class MediaViewerTest extends TestCase
         $result = $viewer->getPlaylistQueue(3);
 
         $this->assertSame('', $result['next_url']);
-        
+
         $this->assertCount(2, $this->sqls);
     }
 

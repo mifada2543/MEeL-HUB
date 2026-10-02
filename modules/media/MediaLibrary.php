@@ -12,7 +12,7 @@ class MediaLibrary
     public function getCounts(): array
     {
         $cache_file = __DIR__ . '/../../temp/cache/media_counts.json';
-        $cache_ttl  = 30;
+        $cache_ttl = 30;
 
         if (file_exists($cache_file) && (time() - filemtime($cache_file)) < $cache_ttl) {
             $cached = json_decode(file_get_contents($cache_file), true);
@@ -51,31 +51,27 @@ class MediaLibrary
         }
     }
 
-    
-
     protected function paginateResult(\mysqli_result|null $result, int $total, int $page, int $perPage): array
     {
         $totalPages = max(1, (int)ceil($total / max($perPage, 1)));
         $page = max(1, min($page, $totalPages));
 
         return [
-            'data'        => $result,
-            'total'       => $total,
-            'page'        => $page,
-            'per_page'    => $perPage,
+            'data' => $result,
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
             'total_pages' => $totalPages,
-            'from'        => ($page - 1) * $perPage + 1,
-            'to'          => min($page * $perPage, $total),
+            'from' => ($page - 1) * $perPage + 1,
+            'to' => min($page * $perPage, $total),
         ];
     }
-
-    
 
     public function getVideosWithMeta(int $page = 1, int $perPage = 15): array
     {
         $offset = ($page - 1) * $perPage;
-        $total  = $this->countVideos();
-        $data   = $this->getVideos($perPage, $offset);
+        $total = $this->countVideos();
+        $data = $this->getVideos($perPage, $offset);
         return $this->paginateResult($data, $total, $page, $perPage);
     }
 
@@ -95,17 +91,17 @@ class MediaLibrary
 
     private function searchMedia(array $cfg): ?\mysqli_result
     {
-        $table      = $cfg['table'];
-        $alias      = $cfg['alias'];
-        $matchCols  = $cfg['matchCols'];
+        $table = $cfg['table'];
+        $alias = $cfg['alias'];
+        $matchCols = $cfg['matchCols'];
         $selectCols = $cfg['selectCols'];
         $sessionKey = $cfg['sessionKey'];
-        $q          = $cfg['q'];
-        $exclude    = $cfg['exclude'];
-        $sidebar    = $cfg['sidebar'];
-        $offset     = $cfg['offset'];
-        $limit      = $cfg['limit'];
-        $orderBy    = $cfg['orderBy'] ?? "{$alias}.id DESC";
+        $q = $cfg['q'];
+        $exclude = $cfg['exclude'];
+        $sidebar = $cfg['sidebar'];
+        $offset = $cfg['offset'];
+        $limit = $cfg['limit'];
+        $orderBy = $cfg['orderBy'] ?? "{$alias}.id DESC";
 
         $a = $alias;
         $ua = $cfg['uploaderAlias'] ?? 'uploader_name';
@@ -202,11 +198,11 @@ class MediaLibrary
 
     private function countSearchMedia(array $cfg): int
     {
-        $table     = $cfg['table'];
-        $alias     = $cfg['alias'];
+        $table = $cfg['table'];
+        $alias = $cfg['alias'];
         $matchCols = $cfg['matchCols'];
-        $q         = $cfg['q'];
-        $exclude   = $cfg['exclude'];
+        $q = $cfg['q'];
+        $exclude = $cfg['exclude'];
         $a = $alias;
 
         if (empty($q)) {
@@ -239,39 +235,37 @@ class MediaLibrary
     public function searchVideo(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0, int $fetchLimit = 21)
     {
         return $this->searchMedia([
-            'table'       => 'video',
-            'alias'       => 'v',
-            'selectCols'  => 'v.*, u.username AS uploader_name',
+            'table' => 'video',
+            'alias' => 'v',
+            'selectCols' => 'v.*, u.username AS uploader_name',
             'uploaderAlias' => 'uploader_name',
-            'matchCols'   => ['v.title', 'v.search_metadata'],
-            'sessionKey'  => 'seen_video_ids',
-            'orderBy'     => 'v.upload_date DESC',
-            'q'           => $q,
-            'exclude'     => $exclude,
-            'sidebar'     => $sidebar,
-            'offset'      => $offset,
-            'limit'       => $fetchLimit,
+            'matchCols' => ['v.title', 'v.search_metadata'],
+            'sessionKey' => 'seen_video_ids',
+            'orderBy' => 'v.upload_date DESC',
+            'q' => $q,
+            'exclude' => $exclude,
+            'sidebar' => $sidebar,
+            'offset' => $offset,
+            'limit' => $fetchLimit,
         ]);
     }
 
     public function countSearchVideo(string $q, int $exclude = 0): int
     {
         return $this->countSearchMedia([
-            'table'     => 'video',
-            'alias'     => 'v',
+            'table' => 'video',
+            'alias' => 'v',
             'matchCols' => ['v.title', 'v.search_metadata'],
-            'q'         => $q,
-            'exclude'   => $exclude,
+            'q' => $q,
+            'exclude' => $exclude,
         ]);
     }
-
-    
 
     public function getMusicListWithMeta(string $format = 'all', string $artist = 'all', int $page = 1, int $perPage = 10): array
     {
         $offset = ($page - 1) * $perPage;
-        $total  = $this->countMusic($format, $artist);
-        $data   = $this->getMusicList($format, $artist, $perPage, $offset);
+        $total = $this->countMusic($format, $artist);
+        $data = $this->getMusicList($format, $artist, $perPage, $offset);
         return $this->paginateResult($data, $total, $page, $perPage);
     }
 
@@ -315,8 +309,6 @@ class MediaLibrary
         return $stmt->get_result();
     }
 
-    
-
     public static function playlistSlug(string $name): string
     {
         $slug = strtolower(trim($name));
@@ -325,22 +317,18 @@ class MediaLibrary
         return $slug !== '' ? $slug : 'playlist';
     }
 
-    
-
     private const RESERVED_MUSIC_ROUTES = [
         'index', 'beranda', 'watch', 'upload', 'search', 'load-more', 'stream',
         'file', 'playlist', 'playlist-action',
     ];
 
-    
-
     public function getUserPlaylistRoutes(int $user_id): array
     {
         $routes = [];
-        $used   = [];
-        $res    = $this->conn->query("SELECT id, name FROM playlists WHERE user_id = " . (int) $user_id . " ORDER BY id ASC");
+        $used = [];
+        $res = $this->conn->query("SELECT id, name FROM playlists WHERE user_id = " . (int) $user_id . " ORDER BY id ASC");
         while ($row = $res->fetch_assoc()) {
-            $id   = (int) $row['id'];
+            $id = (int) $row['id'];
             $base = self::playlistSlug((string) $row['name']);
             $slug = $base;
             if (isset($used[$slug]) || in_array($slug, self::RESERVED_MUSIC_ROUTES, true)) {
@@ -351,8 +339,6 @@ class MediaLibrary
         }
         return $routes;
     }
-
-    
 
     public function resolvePlaylistSlug(string $slug, int $user_id): int
     {
@@ -367,29 +353,29 @@ class MediaLibrary
     public function searchMusic(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0, int $fetchLimit = 21)
     {
         return $this->searchMedia([
-            'table'       => 'music',
-            'alias'       => 'm',
-            'selectCols'  => 'm.*, u.username AS uploader',
+            'table' => 'music',
+            'alias' => 'm',
+            'selectCols' => 'm.*, u.username AS uploader',
             'uploaderAlias' => 'uploader',
-            'matchCols'   => ['m.title', 'm.artist', 'm.search_metadata'],
-            'sessionKey'  => 'seen_music_ids',
-            'orderBy'     => 'm.id DESC',
-            'q'           => $q,
-            'exclude'     => $exclude,
-            'sidebar'     => $sidebar,
-            'offset'      => $offset,
-            'limit'       => $fetchLimit,
+            'matchCols' => ['m.title', 'm.artist', 'm.search_metadata'],
+            'sessionKey' => 'seen_music_ids',
+            'orderBy' => 'm.id DESC',
+            'q' => $q,
+            'exclude' => $exclude,
+            'sidebar' => $sidebar,
+            'offset' => $offset,
+            'limit' => $fetchLimit,
         ]);
     }
 
     public function countSearchMusic(string $q, int $exclude = 0): int
     {
         return $this->countSearchMedia([
-            'table'     => 'music',
-            'alias'     => 'm',
+            'table' => 'music',
+            'alias' => 'm',
             'matchCols' => ['m.title', 'm.artist', 'm.search_metadata'],
-            'q'         => $q,
-            'exclude'   => $exclude,
+            'q' => $q,
+            'exclude' => $exclude,
         ]);
     }
 
@@ -429,7 +415,6 @@ class BookRepository
         $this->conn = $db_connection;
     }
 
-    
     public function getBooks(string $filter = 'all', int $limit = 0, int $offset = 0)
     {
         $allowed = ['manga', 'pdf'];
@@ -457,7 +442,6 @@ class BookRepository
         return $stmt->get_result();
     }
 
-    
     public function countBooks(string $filter = 'all'): int
     {
         $allowed = ['manga', 'pdf'];
@@ -473,11 +457,9 @@ class BookRepository
         return (int)$stmt->get_result()->fetch_assoc()['total'];
     }
 
-    
-
     public function searchBooks(string $q, string $type = 'all', int $offset = 0, int $limit = 24)
     {
-        $allowed    = ['manga', 'pdf'];
+        $allowed = ['manga', 'pdf'];
         $type_where = in_array($type, $allowed, true) ? " AND type = ?" : "";
 
         if (empty($q)) {
@@ -513,24 +495,22 @@ class BookRepository
         return $result ?: null;
     }
 
-    
-
     public function getBooksPaginated(string $filter = 'all', int $page = 1, int $perPage = 24): array
     {
-        $total  = $this->countBooks($filter);
+        $total = $this->countBooks($filter);
         $totalPages = max(1, (int)ceil($total / max($perPage, 1)));
-        $page   = max(1, min($page, $totalPages));
+        $page = max(1, min($page, $totalPages));
         $offset = ($page - 1) * $perPage;
-        $data   = $this->getBooks($filter, $perPage, $offset);
+        $data = $this->getBooks($filter, $perPage, $offset);
 
         return [
-            'data'        => $data,
-            'total'       => $total,
-            'page'        => $page,
-            'per_page'    => $perPage,
+            'data' => $data,
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
             'total_pages' => $totalPages,
-            'from'        => $offset + 1,
-            'to'          => min($page * $perPage, $total),
+            'from' => $offset + 1,
+            'to' => min($page * $perPage, $total),
         ];
     }
 
@@ -562,11 +542,11 @@ class BookUploader
 
     public function handleUpload(array $post, array $files): array
     {
-        $title    = trim($post['title'] ?? '');
-        $author   = trim($post['author'] ?? 'Unknown');
-        $type     = $post['type'] ?? '';
+        $title = trim($post['title'] ?? '');
+        $author = trim($post['author'] ?? 'Tidak diketahui');
+        $type = $post['type'] ?? '';
         $category = trim($post['category'] ?? '');
-        $user_id  = (int)($post['user_id'] ?? 0);
+        $user_id = (int)($post['user_id'] ?? 0);
 
         if (empty($title) || !in_array($type, ['manga', 'pdf'], true)) {
             return ['success' => false, 'message' => 'Error: Data tidak lengkap atau tipe tidak valid.'];
@@ -607,8 +587,6 @@ class BookUploader
                 return $name;
             }
 
-            // Fallback hanya jika file BENAR-BENAR gambar (magic bytes),
-            // bukan sembarang konten dengan nama .webp.
             if (meel_magic_extension_ok($file['tmp_name'], 'webp', 'image') === '') {
                 if (move_uploaded_file($file['tmp_name'], $target_path)) {
                     return $name;
@@ -629,7 +607,6 @@ class BookUploader
             return ['success' => false, 'message' => 'Error: File harus berformat PDF!'];
         }
 
-        // Jangan percaya extension saja — verifikasi signature %PDF server-side.
         if (meel_magic_extension_ok($file['tmp_name'], 'pdf', 'pdf') !== '') {
             return ['success' => false, 'message' => 'Error: File tidak valid sebagai PDF (magic bytes mismatch).'];
         }
@@ -664,7 +641,6 @@ class BookUploader
             return ['success' => false, 'message' => 'Error: Harap upload file ZIP atau CBZ!'];
         }
 
-        // Verifikasi signature ZIP server-side (bukan hanya extension).
         if (meel_magic_extension_ok($file['tmp_name'], $ext, 'archive') !== '') {
             return ['success' => false, 'message' => 'Error: File tidak valid sebagai arsip ZIP.'];
         }
@@ -673,7 +649,7 @@ class BookUploader
             return ['success' => false, 'message' => 'Error: File arsip terlalu besar.'];
         }
 
-        $clean        = preg_replace('/[^a-zA-Z0-9]/', '_', $title);
+        $clean = preg_replace('/[^a-zA-Z0-9]/', '_', $title);
         $manga_folder = $this->base_path . '/upload/manga/' . $clean;
         $has_chapters = 0;
 
@@ -683,7 +659,7 @@ class BookUploader
         $exists = $check->get_result()->num_rows > 0;
 
         require_once __DIR__ . '/ArchiveGuard.php';
-        $guard  = new ArchiveGuard($this->base_path . '/upload/manga');
+        $guard = new ArchiveGuard($this->base_path . '/upload/manga');
         $result = $guard->extractSafe($file['tmp_name'], $manga_folder);
 
         if (!$result['ok']) {
@@ -702,9 +678,9 @@ class BookUploader
             $stmt->bind_param("s", $clean);
             $stmt->execute();
             return [
-                'success'  => true,
+                'success' => true,
                 'existing' => true,
-                'message'  => 'Success: Chapter tambahan berhasil digabungkan!'
+                'message' => 'Success: Chapter tambahan berhasil digabungkan!'
             ];
         }
 

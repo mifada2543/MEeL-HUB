@@ -26,7 +26,7 @@ if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
 }
 
 $user_id = (int) $_SESSION['user_id'];
-$action  = $_POST['action'] ?? '';
+$action = $_POST['action'] ?? '';
 
 function redirect(string $url): never
 {
@@ -55,7 +55,7 @@ function redirect(string $url): never
 }
 
 if ($action === 'create_playlist') {
-    $name     = trim($_POST['playlist_name'] ?? '');
+    $name = trim($_POST['playlist_name'] ?? '');
     $music_id = (int) ($_POST['music_id'] ?? 0);
 
     if ($name !== '') {
@@ -91,11 +91,11 @@ if ($action === 'create_playlist') {
 
 if ($action === 'add_to_playlist') {
     $playlist_id = (int) ($_POST['playlist_id'] ?? 0);
-    $music_id    = (int) ($_POST['music_id']    ?? 0);
+    $music_id = (int) ($_POST['music_id'] ?? 0);
 
     $conn->begin_transaction();
     try {
-        
+
         $own = $conn->prepare('SELECT p.id FROM playlists p WHERE p.id = ? AND p.user_id = ?');
         $own->bind_param('ii', $playlist_id, $user_id);
         $own->execute();
@@ -131,7 +131,7 @@ if ($action === 'add_to_playlist') {
 }
 
 if ($action === 'remove_from_playlist') {
-    $pivot_id    = (int) ($_POST['pivot_id']    ?? 0);
+    $pivot_id = (int) ($_POST['pivot_id'] ?? 0);
     $playlist_id = (int) ($_POST['playlist_id'] ?? 0);
 
     $stmt = $conn->prepare('DELETE pt FROM playlist_tracks pt JOIN playlists p ON p.id = pt.playlist_id WHERE pt.id = ? AND p.user_id = ?');
@@ -151,7 +151,6 @@ if ($action === 'delete_playlist') {
         $stmt_tracks->execute();
         $stmt_tracks->close();
 
-        
         $stmt = $conn->prepare('DELETE FROM playlists WHERE id = ? AND user_id = ?');
         $stmt->bind_param('ii', $playlist_id, $user_id);
         if (!$stmt->execute()) {

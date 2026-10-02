@@ -39,19 +39,19 @@ try {
 $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
 $mimeTypes = [
-    'mp4'  => 'video/mp4',
+    'mp4' => 'video/mp4',
     'webm' => 'video/webm',
-    'mkv'  => 'video/x-matroska',
-    'mov'  => 'video/quicktime',
-    'avi'  => 'video/x-msvideo',
-    'm4v'  => 'video/mp4',
-    'jpg'  => 'image/jpeg',
+    'mkv' => 'video/x-matroska',
+    'mov' => 'video/quicktime',
+    'avi' => 'video/x-msvideo',
+    'm4v' => 'video/mp4',
+    'jpg' => 'image/jpeg',
     'jpeg' => 'image/jpeg',
-    'png'  => 'image/png',
-    'gif'  => 'image/gif',
+    'png' => 'image/png',
+    'gif' => 'image/gif',
     'webp' => 'image/webp',
-    'pdf'  => 'application/pdf',
-    'txt'  => 'text/plain; charset=utf-8',
+    'pdf' => 'application/pdf',
+    'txt' => 'text/plain; charset=utf-8',
 ];
 $audioExts = ['mp3', 'm4a', 'ogg', 'opus', 'flac', 'wav', 'aac'];
 $mimeType = $mimeTypes[$ext] ?? (in_array($ext, $audioExts, true) ? get_audio_mime_type($ext) : 'application/octet-stream');
@@ -77,9 +77,6 @@ header('Pragma: no-cache');
 header('Expires: 0');
 header('X-Content-Type-Options: nosniff');
 
-// Akselerasi: Apache kirim file langsung dari disk, PHP exit tanpa membaca isi.
-// Content-Length/206/Content-Range tidak dikirim — mod_xsendfile hanya aktif
-// pada status 200, lalu Apache core yang menghitung Range/ETag/304.
 if (meel_xsendfile_ready($file['path'])) {
     header('X-Sendfile: ' . meel_xsendfile_header($file['path']));
     exit;

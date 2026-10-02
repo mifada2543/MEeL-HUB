@@ -14,16 +14,16 @@ require_once __DIR__ . '/../modules/core/helpers/settings.php';
 require_once __DIR__ . '/../modules/core/MeelCoin.php';
 
 $meelcoin_settings = [
-    'meelcoin_enabled'       => get_site_setting($conn, 'meelcoin_enabled', '1'),
-    'meelcoin_upload_cost'   => get_site_setting($conn, 'meelcoin_upload_cost', '5'),
+    'meelcoin_enabled' => get_site_setting($conn, 'meelcoin_enabled', '1'),
+    'meelcoin_upload_cost' => get_site_setting($conn, 'meelcoin_upload_cost', '5'),
     'meelcoin_advanced_cost' => get_site_setting($conn, 'meelcoin_advanced_cost', '10'),
-    'meelcoin_transcode_user_cost'   => get_site_setting($conn, 'meelcoin_transcode_user_cost', '5'),
+    'meelcoin_transcode_user_cost' => get_site_setting($conn, 'meelcoin_transcode_user_cost', '5'),
     'meelcoin_transcode_member_cost' => get_site_setting($conn, 'meelcoin_transcode_member_cost', '2'),
-    'meelcoin_user_max'      => get_site_setting($conn, 'meelcoin_user_max', '25'),
-    'meelcoin_user_refill'   => get_site_setting($conn, 'meelcoin_user_refill', '15'),
-    'meelcoin_member_max'    => get_site_setting($conn, 'meelcoin_member_max', '50'),
+    'meelcoin_user_max' => get_site_setting($conn, 'meelcoin_user_max', '25'),
+    'meelcoin_user_refill' => get_site_setting($conn, 'meelcoin_user_refill', '15'),
+    'meelcoin_member_max' => get_site_setting($conn, 'meelcoin_member_max', '50'),
     'meelcoin_member_refill' => get_site_setting($conn, 'meelcoin_member_refill', '25'),
-    'meelcoin_refill_hours'  => get_site_setting($conn, 'meelcoin_refill_hours', '5'),
+    'meelcoin_refill_hours' => get_site_setting($conn, 'meelcoin_refill_hours', '5'),
 ];
 
 $msg = $_GET['msg'] ?? null;
@@ -43,7 +43,7 @@ $user_list_json = json_encode($user_list);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MEeLCoin Settings | MEeL Admin</title>
+    <title>Pengaturan MEeLCoin | MEeL Admin</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
         <link href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
@@ -52,7 +52,7 @@ $user_list_json = json_encode($user_list);
 <body class="min-h-screen">
     <?php
     $is_admin = true;
-    $page_title = 'MEeLCoin Settings';
+    $page_title = 'Pengaturan MEeLCoin';
     $media_type = 'dashboard';
     $back_url = 'index.php';
     include 'header-admin.php';
@@ -64,8 +64,8 @@ $user_list_json = json_encode($user_list);
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg>
             </div>
             <div>
-                <h1 style="font-size:22px;font-weight:800;color:var(--admin-text);line-height:1.2;margin:0;">MEeLCoin Settings</h1>
-                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-top:4px;">Upload Currency System</p>
+                <h1 style="font-size:22px;font-weight:800;color:var(--admin-text);line-height:1.2;margin:0;">Pengaturan MEeLCoin</h1>
+                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-top:4px;">Sistem Mata Uang Unggah</p>
             </div>
         </div>
 
@@ -102,14 +102,14 @@ $user_list_json = json_encode($user_list);
                     <div id="meelcoin-config" style="<?= $meelcoin_settings['meelcoin_enabled'] !== '1' ? 'display:none;opacity:0.3;pointer-events:none;' : '' ?>">
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                             <div style="padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
-                                <div class="admin-label" style="margin-bottom:12px;">Biaya Upload</div>
+                                <div class="admin-label" style="margin-bottom:12px;">Biaya Unggah</div>
                                 <div style="display:flex;flex-direction:column;gap:12px;">
                                     <div class="admin-field">
-                                        <label class="admin-label">Upload Biasa (coin)</label>
+                                        <label class="admin-label">Unggah Biasa (koin)</label>
                                         <input type="number" name="meelcoin_upload_cost" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_upload_cost']) ?>" min="1" class="admin-input">
                                     </div>
                                     <div class="admin-field">
-                                        <label class="admin-label">Upload Advanced (coin)</label>
+                                        <label class="admin-label">Unggah Lanjutan (koin)</label>
                                         <input type="number" name="meelcoin_advanced_cost" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_advanced_cost']) ?>" min="1" class="admin-input">
                                     </div>
                                 </div>
@@ -119,11 +119,11 @@ $user_list_json = json_encode($user_list);
                                 <div class="admin-label" style="margin-bottom:12px;">Biaya Transcode</div>
                                 <div style="display:flex;flex-direction:column;gap:12px;">
                                     <div class="admin-field">
-                                        <label class="admin-label">User (coin)</label>
+                                        <label class="admin-label">Pengguna (koin)</label>
                                         <input type="number" name="meelcoin_transcode_user_cost" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_transcode_user_cost']) ?>" min="0" class="admin-input">
                                     </div>
                                     <div class="admin-field">
-                                        <label class="admin-label">Member (coin)</label>
+                                        <label class="admin-label">Anggota (koin)</label>
                                         <input type="number" name="meelcoin_transcode_member_cost" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_transcode_member_cost']) ?>" min="0" class="admin-input">
                                     </div>
                                 </div>
@@ -132,10 +132,10 @@ $user_list_json = json_encode($user_list);
 
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
                             <div style="padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
-                                <div class="admin-label" style="margin-bottom:12px;">Refill Settings</div>
+                                <div class="admin-label" style="margin-bottom:12px;">Pengaturan Isi Ulang</div>
                                 <div style="display:flex;flex-direction:column;gap:12px;">
                                     <div class="admin-field">
-                                        <label class="admin-label">Interval Refill (jam)</label>
+                                        <label class="admin-label">Interval Isi Ulang (jam)</label>
                                         <input type="number" name="meelcoin_refill_hours" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_refill_hours']) ?>" min="1" class="admin-input">
                                     </div>
                                 </div>
@@ -144,28 +144,28 @@ $user_list_json = json_encode($user_list);
 
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
                             <div style="padding:16px;border-radius:16px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.2);">
-                                <div style="font-size:10px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">User Role</div>
+                                <div style="font-size:10px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">Peran Pengguna</div>
                                 <div style="display:flex;flex-direction:column;gap:12px;">
                                     <div class="admin-field">
-                                        <label class="admin-label">Max Coin</label>
+                                        <label class="admin-label">Koin Maks</label>
                                         <input type="number" name="meelcoin_user_max" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_user_max']) ?>" min="1" class="admin-input" style="border-color:rgba(59,130,246,0.3);">
                                     </div>
                                     <div class="admin-field">
-                                        <label class="admin-label">Refill per Cycle</label>
+                                        <label class="admin-label">Isi Ulang per Siklus</label>
                                         <input type="number" name="meelcoin_user_refill" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_user_refill']) ?>" min="0" class="admin-input" style="border-color:rgba(59,130,246,0.3);">
                                     </div>
                                 </div>
                             </div>
 
                             <div style="padding:16px;border-radius:16px;background:rgba(168,85,247,0.05);border:1px solid rgba(168,85,247,0.2);">
-                                <div style="font-size:10px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">Member Role</div>
+                                <div style="font-size:10px;font-weight:700;color:#c084fc;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">Peran Anggota</div>
                                 <div style="display:flex;flex-direction:column;gap:12px;">
                                     <div class="admin-field">
-                                        <label class="admin-label">Max Coin</label>
+                                        <label class="admin-label">Koin Maks</label>
                                         <input type="number" name="meelcoin_member_max" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_member_max']) ?>" min="1" class="admin-input" style="border-color:rgba(168,85,247,0.3);">
                                     </div>
                                     <div class="admin-field">
-                                        <label class="admin-label">Refill per Cycle</label>
+                                        <label class="admin-label">Isi Ulang per Siklus</label>
                                         <input type="number" name="meelcoin_member_refill" value="<?= htmlspecialchars($meelcoin_settings['meelcoin_member_refill']) ?>" min="0" class="admin-input" style="border-color:rgba(168,85,247,0.3);">
                                     </div>
                                 </div>
@@ -180,12 +180,12 @@ $user_list_json = json_encode($user_list);
                 </form>
 
                 <div id="manual-coin" style="margin-top:24px;padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);<?= $meelcoin_settings['meelcoin_enabled'] !== '1' ? 'display:none;opacity:0.3;pointer-events:none;' : '' ?>">
-                    <div class="admin-label" style="margin-bottom:12px;">Manual Coin Adjustment</div>
+                    <div class="admin-label" style="margin-bottom:12px;">Penyesuaian Koin Manual</div>
                     <form method="POST" style="display:flex;flex-direction:column;gap:8px;">
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                         <div style="display:flex;gap:8px;">
                             <select name="target_user_id" required class="admin-select" style="width:25%;" id="coin-user-select">
-                                <option value="">Pilih User...</option>
+                                <option value="">Pilih Pengguna...</option>
                                 <?php foreach ($user_list as $u): ?>
                                     <option value="<?= $u['id'] ?>">
                                         #<?= $u['id'] ?> — <?= htmlspecialchars($u['username']) ?> (<?= ucfirst($u['role']) ?>) — <?= $u['meelcoin'] ?> coin

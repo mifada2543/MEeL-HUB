@@ -7,15 +7,15 @@ $repo = new BookRepository($conn);
 $u_id = (int)($_SESSION['user_id'] ?? 0);
 $role = $repo->getUserRole($u_id);
 
-$q      = SearchEngine::sanitizeQuery($_GET['search'] ?? '');
-$type   = $_GET['type'] ?? 'all';
-$type   = in_array($type, ['manga', 'pdf'], true) ? $type : 'all';
+$q = SearchEngine::sanitizeQuery($_GET['search'] ?? '');
+$type = $_GET['type'] ?? 'all';
+$type = in_array($type, ['manga', 'pdf'], true) ? $type : 'all';
 $offset = isset($_GET['offset']) ? max(0, (int)$_GET['offset']) : 0;
-$limit  = 24;
+$limit = 24;
 
 $result = $repo->searchBooks($q, $type, $offset, $limit + 1);
 
-$rows    = [];
+$rows = [];
 $hasMore = false;
 if ($result) {
     while ($row = $result->fetch_assoc()) {

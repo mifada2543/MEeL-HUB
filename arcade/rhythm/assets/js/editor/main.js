@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import { S, DOM } from "./state.js";
 import { resizeCanvas } from "./canvas.js";
 import { draw, updateNoteInfo } from "./renderer.js";
@@ -14,9 +7,8 @@ import * as Input from "./input.js";
 import * as Playback from "./playback.js";
 import * as Upload from "./upload.js";
 
-
 if (DOM.canvas) {
-  
+
   window.togglePlayback = Playback.togglePlayback;
   window.stopPlayback = Playback.stopPlayback;
   window.setZoom = Playback.setZoom;
@@ -36,7 +28,7 @@ function init() {
   resizeCanvas();
   var loaded = loadNotesFromStorage();
   if (loaded) {
-    showToast("Notes loaded from cache", "success");
+    showToast("Note dimuat dari cache", "success");
     updateNoteInfo();
   }
   draw();

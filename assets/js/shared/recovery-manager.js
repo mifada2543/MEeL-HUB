@@ -16,8 +16,6 @@
         timer = setInterval(function () {
           if (opts.isPaused && opts.isPaused()) return;
           if (document.hidden) {
-            // Reset baseline selama tab tersembunyi — durasi ter-hidden tidak
-            // boleh dihitung sebagai "stuck" saat tab aktif kembali.
             lastTime = -1;
             lastTs = Date.now();
             return;

@@ -92,14 +92,13 @@ if (empty($target_user)) {
 
     $profile_id = $u['id'];
 
-    $total_video  = $profileRepo->countVideo($profile_id);
-    $total_music  = $profileRepo->countMusic($profile_id);
+    $total_video = $profileRepo->countVideo($profile_id);
+    $total_music = $profileRepo->countMusic($profile_id);
 
     $total_uploads = $total_video + $total_music;
     $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
 }
 
-// MEeLCoin data (hanya untuk profil sendiri)
 $coin_enabled = false;
 $coin_balance = 0;
 $coin_max = 0;
@@ -121,28 +120,24 @@ if ($coin_is_owner) {
     }
 }
 
-// Tab konten: all | video | music (default all — halaman profil sekaligus channel)
 $active_tab = $_GET['tab'] ?? 'all';
 if (!in_array($active_tab, ['all', 'video', 'music'], true)) {
     $active_tab = 'all';
 }
 
-// Satu feed konten: tab "all" mencampur video+musik (UNION) dalam satu grid
-// & satu tombol load-more. Batch awal dirender di sini, sisanya via htmx
-// (channel_more.php) dijajarkan di grid yang sama.
-$items        = [];
+$items = [];
 $initial_batch = 12;
-$has_more      = false;
+$has_more = false;
 
 if (!$is_guest_profile) {
     if ($active_tab === 'video') {
-        $items    = $profileRepo->getVideosPaginated($profile_id, $initial_batch, 0);
+        $items = $profileRepo->getVideosPaginated($profile_id, $initial_batch, 0);
         $has_more = count($items) < $total_video;
     } elseif ($active_tab === 'music') {
-        $items    = $profileRepo->getMusicPaginated($profile_id, $initial_batch, 0);
+        $items = $profileRepo->getMusicPaginated($profile_id, $initial_batch, 0);
         $has_more = count($items) < $total_music;
     } else {
-        $items    = $profileRepo->getFeedPaginated($profile_id, $initial_batch, 0);
+        $items = $profileRepo->getFeedPaginated($profile_id, $initial_batch, 0);
         $has_more = count($items) < ($total_video + $total_music);
     }
 }
@@ -153,7 +148,7 @@ if (!$is_guest_profile) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.">
     <meta property="og:title" content="<?= htmlspecialchars($u['username']) ?> — MEeL Profile">
     <meta property="og:description" content="Profil <?= htmlspecialchars($u['username']) ?> di MEeL - Platform Media Hub Pribadi.">
     <title><?= htmlspecialchars($u['username']) ?> | MEeL</title>
@@ -195,7 +190,7 @@ if (!$is_guest_profile) {
                         <?php if ($u['role'] === 'admin'): ?>
                             ∞
                         <?php else: ?>
-                            <span class="coin-label-text">Saat ini</span> <span id="coin-current"><?= (int)$coin_balance ?></span><span class="coin-sep">/</span><span id="coin-max"><?= (int)$coin_max ?></span> <span class="coin-label-text">Max</span>
+                            <span class="coin-label-text">Saat ini</span> <span id="coin-current"><?= (int)$coin_balance ?></span><span class="coin-sep">/</span><span id="coin-max"><?= (int)$coin_max ?></span> <span class="coin-label-text">Maks</span>
                         <?php endif; ?>
                     </span>
                     <?php if ($u['role'] !== 'admin'): ?>
@@ -286,7 +281,7 @@ if (!$is_guest_profile) {
                             <?php if ($_mfa_on): ?>
                                 <button type="button" onclick="showBackupModal()"
                                     class="bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-400 border border-yellow-600/20 hover:border-yellow-500/40 px-4 py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-                                    title="Lihat atau download kode cadangan MFA">
+                                    title="Lihat atau unduh kode cadangan MFA">
                                     <i data-lucide="key-round" class="w-4 h-4"></i>
                                     Backup Codes
                                 </button>
@@ -314,11 +309,11 @@ if (!$is_guest_profile) {
                     <h1 class="text-3xl font-black text-white tracking-tight italic">
                         <?= htmlspecialchars($u['username']) ?>
                         <?php if ($u['role'] === 'admin'): ?>
-                            <span class="ml-2 text-[10px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-lg uppercase tracking-widest border border-blue-500/30">Staff</span>
+                            <span class="ml-2 text-[10px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-lg uppercase tracking-widest border border-blue-500/30">Staf</span>
                         <?php elseif ($u['role'] === 'member'): ?>
                             <span class="ml-2 text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded-lg uppercase tracking-widest border border-green-500/30" title="Jadilah member untuk mendapatkan benefit berupa akses Drive dan batasan yang lebih banyak">Berlangganan</span>
                         <?php elseif ($is_guest_profile): ?>
-                            <span class="ml-2 text-[10px] bg-gray-500/20 text-gray-400 px-2 py-1 rounded-lg uppercase tracking-widest border border-gray-500/30">Guest</span>
+                            <span class="ml-2 text-[10px] bg-gray-500/20 text-gray-400 px-2 py-1 rounded-lg uppercase tracking-widest border border-gray-500/30">Tamu</span>
                         <?php endif; ?>
                     </h1>
                     <p class="text-gray-500 text-sm mt-1">@<?= strtolower($u['username']) ?> • Profile</p>
@@ -333,15 +328,15 @@ if (!$is_guest_profile) {
                         <div class="flex gap-4 mt-8">
                             <a href="?tab=all" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'all' ? 'stat-active-total' : 'stat-total' ?>">
                                 <span class="block text-xl font-bold text-white"><?= $total_uploads ?></span>
-                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Total Uploads</span>
+                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Total Unggahan</span>
                             </a>
                             <a href="?tab=video" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'video' ? 'stat-active-video' : 'stat-video' ?>">
                                 <span class="block text-xl font-bold text-white"><?= $total_video ?></span>
-                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Videos</span>
+                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Video</span>
                             </a>
                             <a href="?tab=music" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'music' ? 'stat-active-music' : 'stat-music' ?>">
                                 <span class="block text-xl font-bold text-white"><?= $total_music ?></span>
-                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Music</span>
+                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Musik</span>
                             </a>
                         </div>
                     <?php endif; ?>
@@ -378,7 +373,7 @@ if (!$is_guest_profile) {
                                     </a>
                                     <div class="card-meta">
                                         <?php if ($is_music): ?>
-                                            <span><?= htmlspecialchars($item['artist'] ?? 'Unknown') ?></span>
+                                            <span><?= htmlspecialchars($item['artist'] ?? 'Tidak diketahui') ?></span>
                                             <span>•</span>
                                             <span><?= number_format($item['views'] ?? 0) ?> views</span>
                                         <?php else: ?>
@@ -419,10 +414,10 @@ if (!$is_guest_profile) {
         function showBackupModal() {
             Swal.fire({
                 title: 'Kode Cadangan MFA',
-                html: '<div style="font-size:12px;color:#9ca3af;margin-bottom:12px">Masukkan <strong style="color:#e5e7eb">password</strong> untuk verifikasi. Kode cadangan LAMA akan <strong style="color:#fbbf24">dinonaktifkan</strong> dan diganti dengan yang baru.</div>' +
+                html: '<div style="font-size:12px;color:#9ca3af;margin-bottom:12px">Masukkan <strong style="color:#e5e7eb">kata sandi</strong> untuk verifikasi. Kode cadangan LAMA akan <strong style="color:#fbbf24">dinonaktifkan</strong> dan diganti dengan yang baru.</div>' +
                     '<div style="position:relative">' +
                     '  <i data-lucide="lock" style="position:absolute;left:14px;top:13px;width:16px;height:16px;color:#6b7280"></i>' +
-                    '  <input id="backup-pwd-input" type="password" placeholder="Password Anda" style="width:100%;background:#0b0e14;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 12px 12px 42px;color:#fff;font-size:14px;outline:none">' +
+                    '  <input id="backup-pwd-input" type="password" placeholder="Kata Sandi Anda" style="width:100%;background:#0b0e14;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 12px 12px 42px;color:#fff;font-size:14px;outline:none">' +
                     '</div>',
                 focusConfirm: false,
                 showCancelButton: true,
@@ -475,7 +470,7 @@ if (!$is_guest_profile) {
                                 html: '<div style="font-size:11px;color:#fbbf24;margin-bottom:12px;font-weight:700">⚠️ Simpan di tempat aman. Kode TIDAK bisa ditampilkan lagi!</div>' +
                                     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">' + codesHtml + '</div>' +
                                     '<button onclick="downloadBackupCodes()" style="background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.2);padding:10px 20px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'rgba(251,191,36,0.2)\';" onmouseout="this.style.background=\'rgba(251,191,36,0.1)\'">' +
-                                    '  <i data-lucide="download" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px"></i> Download (.txt)' +
+                                    ' <i data-lucide="download" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px"></i> Download (.txt)' +
                                     '</button>',
                                 showConfirmButton: true,
                                 confirmButtonText: 'SIMPAN',
@@ -510,7 +505,7 @@ if (!$is_guest_profile) {
                     .catch(function() {
                         Swal.fire({
                             icon: 'error',
-                            title: 'Error',
+                            title: 'Kesalahan',
                             text: 'Gagal terhubung ke server.',
                             background: '#141820',
                             color: '#fff',

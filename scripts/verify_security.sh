@@ -3,7 +3,7 @@
 # (SsrfGuard|DriveSecurity|ValidatingProxy), security_test, functional_test, probe 403
 # private_admins, opsional --deploy. Exit code: 0 lulus, 1 gagal, 2 argumen tak dikenal.
 
-set -u  # error jika variabel tidak terdefinisi (TANPA set -e — tiap langkah di-handle manual)
+set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -17,11 +17,11 @@ HDD_ARG=""
 
 for arg in "$@"; do
   case "$arg" in
-    --url=*)      URL_BASE="${arg#*=}" ;;
-    --skip-403)   RUN_403=0 ;;
-    --deploy)     RUN_DEPLOY=1 ;;
-    --hdd=*)      HDD_ARG="$arg" ;;
-    --no-color)   USE_COLOR=0 ;;
+    --url=*) URL_BASE="${arg#*=}" ;;
+    --skip-403) RUN_403=0 ;;
+    --deploy) RUN_DEPLOY=1 ;;
+    --hdd=*) HDD_ARG="$arg" ;;
+    --no-color) USE_COLOR=0 ;;
     -h|--help)
       sed -n '2,4p' "$0" | sed 's/^# \{0,1\}//'
       cat <<'USAGE'
@@ -53,10 +53,6 @@ fi
 
 echo "${C_BOLD}===== MEeL Security Verification =====${C_RESET}"
 
-# run_step <nama> <rc_warn> <perintah...>: jalankan, cetak hasil, catat status.
-# rc_warn = exit code yang dianggap WARN (lulus dengan peringatan), -1 = tidak ada.
-# security_test.php & functional_test.php mengembalikan 1 saat hanya ada warning
-# (Score A / Health GOOD) dan 2 saat ada FAIL — jadi 1 harus dihitung WARN, bukan FAIL.
 run_step() {
   local name="$1"; shift
   local rc_warn="$1"; shift
@@ -77,16 +73,11 @@ run_step() {
   return "$rc"
 }
 
-# warn <pesan>: catat peringatan (tidak menggagalkan skrip).
 warn() {
   echo "${C_YELLOW}⚠ WARN${C_RESET} — $1"
   WARN=$((WARN + 1))
 }
 
-# probe_403: akses langsung ke private_admins/ HARUS 403. 403 = PASS,
-# server tidak terjangkau = WARN (probe dilewati), 404/301 = WARN (storage
-# belum ter-mount ATAU AllowOverride/mod_rewrite tidak aktif), kode lain
-# (mis. 200 yang melayani konten) = FAIL — itu artinya deny rule tidak aktif.
 probe_403() {
   local base="$URL_BASE/data_drive/private_admins"
   echo ""
@@ -136,7 +127,6 @@ if [ "$RUN_DEPLOY" = "1" ]; then
   if [ ! -f tests/check_deploy.php ]; then
     warn "tests/check_deploy.php tidak ditemukan (langkah dilewati)"
   else
-    # shellcheck disable=SC2086 — HDD_ARG sengaja tidak dikutip agar kosong = tanpa argumen
     run_step "Deployment Check (tests/check_deploy.php)" -1 php tests/check_deploy.php --no-color $HDD_ARG
   fi
 fi

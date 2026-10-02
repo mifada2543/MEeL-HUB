@@ -11,7 +11,7 @@
   justify-content: center;
   position: relative;
   margin: 0 auto;
-  
+
   transform: translateZ(0);
 }
 #meel-phase-download .dl-icon-wrap::after {

@@ -2,11 +2,11 @@
 if (!defined('MEEL_HDD_BASE')) {
     define('MEEL_HDD_BASE', '/path/to/your/media');
     define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
-    define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
-    define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+    define('MEEL_HDD_VIDEO_DIR', MEEL_HDD_VIDEO_UPLOAD . 'video/');
+    define('MEEL_HDD_THUMB_DIR', MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
     define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
     define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
-    define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
+    define('MEEL_HDD_DRIVE', MEEL_HDD_BASE . '/drive/');
 }
 
 require_once __DIR__ . '/helpers.php';
@@ -35,32 +35,22 @@ class TranscoderBase
 
     protected ?ProgressObserver $progressObserver = null;
 
-    
     protected ?ValidatingProxy $validatingProxy = null;
-    
+
     protected string $proxyArgs = '';
 
-    
     protected array $childProcesses = [];
 
-    protected const FFMPEG_THREADS        = 8;
+    protected const FFMPEG_THREADS = 8;
 
-    
-    protected const HLS_SEGMENT_DURATION  = 10;
+    protected const HLS_SEGMENT_DURATION = 10;
 
-    
-    protected const DOWNLOAD_TIMEOUT      = 900;
+    protected const DOWNLOAD_TIMEOUT = 900;
 
-    
-    
-    protected const FRAGMENT_RETRY_LIMIT  = 1;
+    protected const FRAGMENT_RETRY_LIMIT = 1;
 
-    
-    protected const PID_DIR = '/tmp/meel_pids';
-    
     protected const TRANSCODE_AUDIO_TIMEOUT = 600;
 
-    
     protected const FFMPEG_LIB_PATH = '/usr/lib/x86_64-linux-gnu:/usr/local/lib';
 
     protected const ENV_PREFIX = "export LD_LIBRARY_PATH='/usr/lib/x86_64-linux-gnu:/usr/local/lib'; export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; ";
@@ -70,25 +60,25 @@ class TranscoderBase
         int $session_user_id,
         callable|ProgressObserver|null $progressListener = null
     ) {
-        $this->conn         = $db_connection;
-        $this->user_id      = (int)$session_user_id;
-        $this->base_path    = dirname(__DIR__, 2);
+        $this->conn = $db_connection;
+        $this->user_id = (int)$session_user_id;
+        $this->base_path = dirname(__DIR__, 2);
         $this->cookies_path = $this->base_path . "/temp/cookies.txt";
-        $legacy_cookies     = $this->base_path . "/cookies.txt";
+        $legacy_cookies = $this->base_path . "/cookies.txt";
         if (!is_file($this->cookies_path) && is_file($legacy_cookies)) {
             @rename($legacy_cookies, $this->cookies_path);
         }
         @chmod($this->cookies_path, 0600);
-        $this->user_agent   = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
-        $this->ffmpeg_bin   = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
-        $this->ffprobe_bin  = resolve_binary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+        $this->user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
+        $this->ffmpeg_bin = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+        $this->ffprobe_bin = resolve_binary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
 
         $this->user_role = get_user_role($this->conn, $this->user_id);
 
         $ytdlp_bin = defined('MEEL_YTDLP_PATH') && MEEL_YTDLP_PATH !== ''
             ? MEEL_YTDLP_PATH
             : resolve_binary(['/usr/local/bin/yt-dlp', '/usr/bin/yt-dlp', 'yt-dlp']);
-        $node_bin  = defined('MEEL_NODE_PATH') && MEEL_NODE_PATH !== ''
+        $node_bin = defined('MEEL_NODE_PATH') && MEEL_NODE_PATH !== ''
             ? MEEL_NODE_PATH
             : '/usr/bin/node';
 
@@ -96,18 +86,16 @@ class TranscoderBase
             . " " . escapeshellarg($ytdlp_bin) . " --js-runtime " . escapeshellarg($node_bin)
             . " --remote-components ejs:github"
             . " --no-warnings --restrict-filenames"
-            . " --user-agent "      . escapeshellarg($this->user_agent)
-            . " --referer "         . escapeshellarg("https://www.youtube.com/")
-            . " --cookies "         . escapeshellarg($this->cookies_path) . " ";
+            . " --user-agent " . escapeshellarg($this->user_agent)
+            . " --referer " . escapeshellarg("https://www.youtube.com/")
+            . " --cookies " . escapeshellarg($this->cookies_path) . " ";
 
         $this->setProgressListener($progressListener);
     }
 
-    
     public function __destruct()
     {
-        
-        
+
         $this->validatingProxy?->stop();
         $this->terminateAllProcesses();
     }
@@ -123,7 +111,6 @@ class TranscoderBase
         }
     }
 
-
     public function getProgressObserver(): ?ProgressObserver
     {
         return $this->progressObserver;
@@ -133,7 +120,6 @@ class TranscoderBase
         return $this->user_role;
     }
 
-    
     protected function emit(string $stage, array $data = []): void
     {
         try {
@@ -152,22 +138,18 @@ class TranscoderBase
         return !connection_aborted() && connection_status() === CONNECTION_NORMAL;
     }
 
-    
-    
-
     protected function trackChildProcess(int $pid, bool $processGroup, string $label): void
     {
         if ($pid > 0) {
             $this->childProcesses[] = [
-                'pid'     => $pid,
-                'group'   => $processGroup,
-                'label'   => $label,
+                'pid' => $pid,
+                'group' => $processGroup,
+                'label' => $label,
                 'started' => time(),
             ];
         }
     }
 
-    
     protected function untrackChildProcess(int $pid): void
     {
         foreach ($this->childProcesses as $i => $proc) {
@@ -178,26 +160,25 @@ class TranscoderBase
         $this->childProcesses = array_values($this->childProcesses);
     }
 
-    
     protected function terminateChildProcess(int $pid, string $label, bool $processGroup = false): void
     {
         if ($pid <= 0) {
             return;
         }
 
-        $target   = $processGroup ? -$pid : $pid;
-        $prefix   = $processGroup ? '-' : '';
+        $target = $processGroup ? -$pid : $pid;
+        $prefix = $processGroup ? '-' : '';
         $termSent = false;
 
         if (function_exists('posix_kill')) {
             $termSent = posix_kill($target, SIGTERM);
         }
         if (!$termSent) {
-            
+
             shell_exec('kill -TERM -- ' . $prefix . $pid . ' 2>/dev/null');
         }
 
-        usleep(300000); 
+        usleep(300000);
 
         if (function_exists('posix_kill')) {
             posix_kill($target, SIGKILL);
@@ -232,29 +213,52 @@ class TranscoderBase
 
     protected function writePidFile(string $taskType, int $queueId, int $pid): void
     {
-        $dir = self::PID_DIR;
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0755, true);
+        $file = meel_pid_filename($taskType, $queueId);
+        if ($file === '') {
+            return;
         }
-        $path = "$dir/{$taskType}_{$queueId}.pid";
-        @file_put_contents($path, (string)$pid);
-    }
-
-    
-    protected function removePidFile(string $taskType, int $queueId): void
-    {
-        $path = self::PID_DIR . "/{$taskType}_{$queueId}.pid";
-        if (file_exists($path)) {
+        $path = meel_pid_dir() . '/' . $file;
+        if (is_link($path)) {
             @unlink($path);
         }
+        if (@file_put_contents($path, (string)$pid, LOCK_EX) === false) {
+            error_log('[MEeL] writePidFile GAGAL: ' . $path);
+        }
     }
 
-    
+    protected function removePidFile(string $taskType, int $queueId): void
+    {
+        $file = meel_pid_filename($taskType, $queueId);
+        if ($file === '') {
+            return;
+        }
+        foreach (meel_pid_dir_candidates() as $dir) {
+            $path = $dir . '/' . $file;
+            if (is_file($path) || is_link($path)) {
+                @unlink($path);
+            }
+        }
+    }
 
     public static function killByPidFile(string $taskType, int $queueId): bool
     {
-        $path = self::PID_DIR . "/{$taskType}_{$queueId}.pid";
-        if (!file_exists($path)) {
+        $file = meel_pid_filename($taskType, $queueId);
+        if ($file === '') {
+            return false;
+        }
+        $path = '';
+        foreach (meel_pid_dir_candidates() as $dir) {
+            $candidate = $dir . '/' . $file;
+            if (is_file($candidate)) {
+                $path = $candidate;
+                break;
+            }
+        }
+        if ($path === '') {
+            return false;
+        }
+        if (is_link($path)) {
+            @unlink($path);
             return false;
         }
         $pid = (int)@file_get_contents($path);
@@ -272,7 +276,7 @@ class TranscoderBase
             @shell_exec('kill -TERM ' . $pid . ' 2>/dev/null');
         }
 
-        usleep(500000); 
+        usleep(500000);
 
         if (function_exists('posix_kill')) {
             @posix_kill($pid, SIGKILL);
@@ -284,25 +288,23 @@ class TranscoderBase
         return true;
     }
 
-    
-
     public static function cleanupStalePidFiles(): int
     {
-        $dir = self::PID_DIR;
-        if (!is_dir($dir)) {
-            return 0;
-        }
         $cleaned = 0;
-        foreach (glob("$dir/*.pid") ?: [] as $file) {
-            if (time() - @filemtime($file) > 1800) {
-                @unlink($file);
-                $cleaned++;
+        foreach (meel_pid_dir_candidates() as $dir) {
+            if (!is_dir($dir)) {
+                continue;
+            }
+            foreach (glob($dir . '/*.pid') ?: [] as $file) {
+                if (time() - @filemtime($file) > 1800) {
+                    @unlink($file);
+                    $cleaned++;
+                }
             }
         }
         return $cleaned;
     }
 
-    
     protected function resolveShmPath(string $subdir): string
     {
         GarbageCollector::run();
@@ -310,7 +312,7 @@ class TranscoderBase
         static $resolved = [];
         if (!isset($resolved[$subdir])) {
             $shm_path = '/dev/shm';
-            $use_shm  = false;
+            $use_shm = false;
 
             if (is_dir($shm_path) && is_writable($shm_path)) {
                 $free = disk_free_space($shm_path);
@@ -346,9 +348,6 @@ class TranscoderBase
         return file_exists($path) ? $path : null;
     }
 
-    /**
-     * Resolve input musik temp: tolak path traversal/absolut — hanya nama file polos di dalam direktori temp milik server, bukan path mentah dari caller.
-     */
     public function resolveMusicInputPath(string $tempFile): ?string
     {
         if ($tempFile === '' || !preg_match('/^[A-Za-z0-9._-]+$/', $tempFile) || str_contains($tempFile, '..')) {
@@ -361,7 +360,7 @@ class TranscoderBase
         }
 
         $candidate = $tempDirReal . '/' . $tempFile;
-        $real      = realpath($candidate);
+        $real = realpath($candidate);
         if ($real === false || !is_file($real) || !is_readable($real)) {
             return null;
         }

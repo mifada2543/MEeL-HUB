@@ -1,7 +1,4 @@
 <?php
-/**
- * Resolusi IP klien di balik proxy tepercaya (allowlist MEEL_TRUSTED_PROXIES); perilaku lengkap di docs/{id,en}/configuration.md.
- */
 
 function meel_normalize_ip(string $ip): string
 {
@@ -32,8 +29,8 @@ function meel_ip_in_cidr(string $ip, string $cidr): bool
     if (count($parts) !== 2 || !is_numeric($parts[1])) {
         return false;
     }
-    $bits   = (int) $parts[1];
-    $ipBin  = @inet_pton($ip);
+    $bits = (int) $parts[1];
+    $ipBin = @inet_pton($ip);
     $subBin = @inet_pton(trim($parts[0]));
     if ($ipBin === false || $subBin === false || strlen($ipBin) !== strlen($subBin)) {
         return false;
@@ -45,7 +42,7 @@ function meel_ip_in_cidr(string $ip, string $cidr): bool
     if ($bits === 0) {
         return true;
     }
-    $bytes    = intdiv($bits, 8);
+    $bytes = intdiv($bits, 8);
     $remainder = $bits % 8;
     if ($bytes > 0 && substr($ipBin, 0, $bytes) !== substr($subBin, 0, $bytes)) {
         return false;
@@ -100,10 +97,6 @@ function meel_is_loopback_ip(string $ip): bool
     return strpos($ip, '127.') === 0;
 }
 
-/**
- * IP klien asli. Tanpa proxy tepercaya → selalu REMOTE_ADDR (spoof-proof). Di balik
- * proxy tepercaya → CF-Connecting-IP, lalu X-Forwarded-For kanan-ke-kiri (Cloudflare menaruh IP klien asli di ujung kanan).
- */
 function get_real_ip(): string
 {
     $valid = function ($value): bool {

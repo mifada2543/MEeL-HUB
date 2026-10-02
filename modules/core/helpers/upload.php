@@ -1,11 +1,10 @@
 <?php
 
-// Batas upload generik (bisa dioverride via settings.php).
 if (!defined('MEEL_MAX_BOOK_FILE_BYTES')) {
-    define('MEEL_MAX_BOOK_FILE_BYTES', 500 * 1024 * 1024); // 500MB
+    define('MEEL_MAX_BOOK_FILE_BYTES', 500 * 1024 * 1024);
 }
 if (!defined('MEEL_MAX_THUMBNAIL_BYTES')) {
-    define('MEEL_MAX_THUMBNAIL_BYTES', 25 * 1024 * 1024); // 25MB
+    define('MEEL_MAX_THUMBNAIL_BYTES', 25 * 1024 * 1024);
 }
 
 if (!function_exists('meel_read_magic_bytes')) {
@@ -22,23 +21,21 @@ function meel_read_magic_bytes(string $path, int $length = 16): string
 }
 
 if (!function_exists('meel_magic_extension_ok')) {
-/** Cocokkan magic bytes — jangan hanya percaya $_FILES['type']. @return '' bila cocok, pesan error bila tidak. */
 function meel_magic_extension_ok(string $path, string $ext, string $mediaKind = 'audio'): string
 {
     if (!is_file($path) || filesize($path) < 4) {
         return 'File tidak valid atau terlalu kecil.';
     }
     $head = meel_read_magic_bytes($path, 16);
-    $ext  = strtolower($ext);
+    $ext = strtolower($ext);
 
     if ($mediaKind === 'video') {
-        $ok = str_starts_with($head, "\x1A\x45\xDF\xA3")   // Matroska/WebM
-            || (strlen($head) >= 8 && substr($head, 4, 4) === 'ftyp'); // MP4/MOV/M4A
+        $ok = str_starts_with($head, "\x1A\x45\xDF\xA3")
+            || (strlen($head) >= 8 && substr($head, 4, 4) === 'ftyp');
         return $ok ? '' : 'File tidak valid sebagai video (magic bytes mismatch).';
     }
 
     if ($mediaKind === 'audio') {
-        // Ogg/Opus, FLAC, WAV/RIFF, MP3 (ID3 atau frame sync), MP4/M4A (ftyp)
         if (str_starts_with($head, "OggS")) return '';
         if (str_starts_with($head, "fLaC")) return '';
         if (str_starts_with($head, "RIFF") && substr($head, 8, 4) === 'WAVE') return '';
@@ -49,10 +46,10 @@ function meel_magic_extension_ok(string $path, string $ext, string $mediaKind = 
     }
 
     if ($mediaKind === 'image') {
-        $ok = str_starts_with($head, "\xFF\xD8\xFF")            // JPEG
-            || str_starts_with($head, "\x89PNG\x0D\x0A\x1A\x0A") // PNG
+        $ok = str_starts_with($head, "\xFF\xD8\xFF")
+            || str_starts_with($head, "\x89PNG\x0D\x0A\x1A\x0A")
             || (str_starts_with($head, 'RIFF') && substr($head, 8, 4) === 'WEBP')
-            || str_starts_with($head, 'GIF8');                     // GIF
+            || str_starts_with($head, 'GIF8');
         return $ok ? '' : 'File tidak valid sebagai gambar (magic bytes mismatch).';
     }
 
@@ -66,12 +63,11 @@ function meel_magic_extension_ok(string $path, string $ext, string $mediaKind = 
         return $ok ? '' : 'File tidak valid sebagai arsip ZIP.';
     }
 
-    return ''; // generic kind: no magic check
+    return '';
 }
 }
 
 if (!function_exists('meel_validate_video_codec')) {
-/** Validasi codec video via ffprobe — hanya H.264/H.265 (kompatibel MPEG-2 TS). @return '' bila valid, pesan error bila tidak. */
 function meel_validate_video_codec(
     string $file_path,
     string $ffprobe_bin = '/usr/bin/ffprobe',
@@ -90,7 +86,7 @@ function meel_validate_video_codec(
         . escapeshellarg($file_path);
 
     $output = [];
-    $ret    = -1;
+    $ret = -1;
     @exec($cmd, $output, $ret);
 
     if ($ret !== 0 || empty($output)) {
@@ -108,7 +104,6 @@ function meel_validate_video_codec(
 }
 
 if (!function_exists('meel_validate_audio_codec')) {
-/** Codec tak kompatibel (Opus, Vorbis, DTS, FLAC) di-transcode ke AAC, tapi durasi > 5 menit ditolak — transcode panjang membebani server. @return array [error, has_audio, needs_audio_transcode]. */
 function meel_validate_audio_codec(
     string $file_path,
     string $ffprobe_bin = '/usr/bin/ffprobe',
@@ -118,8 +113,8 @@ function meel_validate_audio_codec(
         return ['error' => 'File tidak valid atau terlalu kecil.', 'has_audio' => false, 'needs_audio_transcode' => false];
     }
 
-    $allowed_codecs    = ['aac', 'mp3', 'ac3', 'eac3'];
-    $max_audio_duration = 300; // 5 menit (detik)
+    $allowed_codecs = ['aac', 'mp3', 'ac3', 'eac3'];
+    $max_audio_duration = 300;
 
     $cmd = $env_prefix . escapeshellarg($ffprobe_bin)
         . ' -v error -select_streams a:0'
@@ -128,18 +123,17 @@ function meel_validate_audio_codec(
         . escapeshellarg($file_path);
 
     $output = [];
-    $ret    = -1;
+    $ret = -1;
     @exec($cmd, $output, $ret);
 
     if ($ret !== 0 || empty($output) || trim($output[0]) === '') {
         return ['error' => '', 'has_audio' => false, 'needs_audio_transcode' => false];
     }
 
-    $parts    = array_map('trim', explode(',', $output[0]));
-    $codec    = strtolower($parts[0] ?? '');
+    $parts = array_map('trim', explode(',', $output[0]));
+    $codec = strtolower($parts[0] ?? '');
     $duration = (float)($parts[1] ?? 0);
 
-    // Audio codec kompatibel → bisa di-copy langsung ke MPEG-TS.
     if (in_array($codec, $allowed_codecs, true)) {
         return ['error' => '', 'has_audio' => true, 'needs_audio_transcode' => false];
     }
@@ -159,14 +153,13 @@ function meel_validate_audio_codec(
 }
 
 if (!function_exists('meel_sanitize_upload_filename')) {
-/** Sanitasi nama fisik upload: hanya [a-z0-9._-], tanpa path separator, null byte, maupun sisa traversal. */
 function meel_sanitize_upload_filename(string $original, string $fallback = 'file'): string
 {
     $original = str_replace("\0", '', $original);
-    $name     = str_replace(["\\", '/'], '_', $original);
-    $name     = preg_replace('/[^a-zA-Z0-9._-]/', '_', $name) ?: $fallback;
-    $name     = preg_replace('/\.{2,}/', '_', $name); // hilangkan '..' traversal
-    $name     = trim($name, '._');
+    $name = str_replace(["\\", '/'], '_', $original);
+    $name = preg_replace('/[^a-zA-Z0-9._-]/', '_', $name) ?: $fallback;
+    $name = preg_replace('/\.{2,}/', '_', $name);
+    $name = trim($name, '._');
     return $name !== '' ? $name : $fallback;
 }
 }
@@ -183,7 +176,7 @@ function get_hourly_upload_count(\mysqli $conn, int $user_id, string $table): in
 {
     $table = meel_upload_allowed_table($table);
     if ($table === '') return 0;
-    $stmt  = $conn->prepare("SELECT COUNT(*) AS c FROM {$table} WHERE user_id = ? AND upload_date > NOW() - INTERVAL 1 HOUR");
+    $stmt = $conn->prepare("SELECT COUNT(*) AS c FROM {$table} WHERE user_id = ? AND upload_date > NOW() - INTERVAL 1 HOUR");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $count = (int)$stmt->get_result()->fetch_assoc()['c'];
@@ -197,7 +190,7 @@ function get_total_upload_count(\mysqli $conn, int $user_id, string $table): int
 {
     $table = meel_upload_allowed_table($table);
     if ($table === '') return 0;
-    $stmt  = $conn->prepare("SELECT COUNT(*) AS c FROM {$table} WHERE user_id = ?");
+    $stmt = $conn->prepare("SELECT COUNT(*) AS c FROM {$table} WHERE user_id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $count = (int)$stmt->get_result()->fetch_assoc()['c'];
@@ -215,10 +208,8 @@ function get_upload_hourly_limit(string $user_role): int
 }
 
 if (!function_exists('meel_sanitize_clean_name')) {
-/** Sanitasi nama dasar (tanpa ekstensi) untuk nama file media. @return '' bila hasil kosong — pemanggil boleh fallback. */
 function meel_sanitize_clean_name(string $raw, int $max_len = 120): string
 {
-    // Tanpa trim/collapse tambahan — menjaga nama file yang sudah ada.
     $clean = preg_replace('/[^a-zA-Z0-9_-]/', '_', (string) $raw);
     if ($clean === '') {
         return '';
@@ -228,7 +219,6 @@ function meel_sanitize_clean_name(string $raw, int $max_len = 120): string
 }
 
 if (!function_exists('meel_reserve_unique_filename')) {
-/** Reservasi nama file unik (tanpa direktori) di dalam $dir; null bila semua percobaan gagal (folder penuh/tidak writable). */
 function meel_reserve_unique_filename(string $dir, string $clean_name, string $ext, int $max_attempts = 1000, string $suffix_sep = '-'): ?string
 {
     $dir = rtrim($dir, '/\\') . '/';
@@ -247,10 +237,6 @@ function meel_reserve_unique_filename(string $dir, string $clean_name, string $e
 }
 
 if (!function_exists('meel_ffmpeg_thumbnail_webp')) {
-/**
- * Satu-satunya jalur konversi gambar/frame → WebP via ffmpeg.
- * @param int $threads 0 = tanpa flag; $extra = argumen tambahan sebelum -vf. @return bool: output terbentuk dan berisi data.
- */
 function meel_ffmpeg_thumbnail_webp(
     string $ffmpeg_bin,
     string $src,
@@ -276,7 +262,6 @@ function meel_ffmpeg_thumbnail_webp(
 }
 
 if (!function_exists('meel_allocate_unique_dir')) {
-/** Alokasi nama folder unik (suffix -1, -2, ...) untuk folder kerja video; @return tanpa slash trailing. */
 function meel_allocate_unique_dir(string $parent, string $base): string
 {
     $parent = rtrim($parent, '/\\') . '/';
@@ -291,10 +276,6 @@ function meel_allocate_unique_dir(string $parent, string $base): string
 }
 
 if (!function_exists('meel_ffmpeg_encode_opus')) {
-/**
- * Satu-satunya jalur encoding audio → Opus/Ogg via ffmpeg.
- * @param int $threads 0 = tanpa flag. @return array [int exit_code, string log].
- */
 function meel_ffmpeg_encode_opus(
     string $ffmpeg_bin,
     string $input,
@@ -323,7 +304,6 @@ function meel_ffmpeg_encode_opus(
 }
 
 if (!function_exists('meel_insert_music_row')) {
-/** Satu-satunya jalur INSERT baris musik. duration hanya disertakan bila != null — jalur upload langsung tidak menyimpannya (perilaku lama dijaga). @return array [bool ok, string error]. */
 function meel_insert_music_row(
     \mysqli $conn,
     int $user_id,
@@ -369,16 +349,9 @@ function meel_insert_music_row(
 /* reference build: MEeL-C4H9NO2 [78a1c65c4d60c8d8] */
 
 if (!function_exists('meel_handle_upload')) {
-/**
- * Handle upload POST flow: CSRF, MeelCoin spend/refund, process, log.
- * @param callable $process_fn fn($_POST, $_FILES, $extra) → ['status'=>'success'|'error', 'id'=>int?, 'msg'=>string]
- * @return array [status, alert_message, extra] — extra: coin_balance|hour_count|total_uploads.
- */
-function meel_handle_upload(string $media_type, callable $process_fn, string $log_action): array
+function meel_handle_upload(\mysqli $conn, string $media_type, callable $process_fn, string $log_action): array
 {
-    global $conn;
-
-    $user_id  = $_SESSION['user_id'];
+    $user_id = $_SESSION['user_id'];
     $is_admin = (get_user_role($conn, $user_id) === 'admin');
 
     $result = ['status' => '', 'alert_message' => '', 'extra' => []];

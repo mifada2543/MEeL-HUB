@@ -13,12 +13,12 @@ require_admin($conn);
 session_write_close();
 
 require_once '../../modules/core/System.php';
-$sys           = new System($conn);
-$server_stats  = $sys->getServerStats();
+$sys = new System($conn);
+$server_stats = $sys->getServerStats();
 
 echo json_encode([
-    'status'       => 'success',
-    'timestamp'    => time(),
+    'status' => 'success',
+    'timestamp' => time(),
     'server_stats' => $server_stats,
 ]);
 

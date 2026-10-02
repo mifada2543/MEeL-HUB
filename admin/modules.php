@@ -14,15 +14,14 @@ include '../controllers/admin/admin_actions.php';
 require_once __DIR__ . '/../modules/core/helpers/settings.php';
 require_once __DIR__ . '/../modules/core/Modules.php';
 
-// Daftar modul opsional yang dapat di-toggle admin (key = Modules::OPTIONAL).
 $modules = [
     [
-        'key'     => 'arcade',
-        'label'   => 'MEeL Arcade',
-        'desc'    => 'Koleksi 9 mini-game (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania). Nonaktifkan untuk menyembunyikan arcade dari seluruh platform tanpa menghapus file.',
+        'key' => 'arcade',
+        'label' => 'MEeL Arcade',
+        'desc' => 'Koleksi 9 mini-game (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania). Nonaktifkan untuk menyembunyikan arcade dari seluruh platform tanpa menghapus file.',
         'setting' => 'modules_arcade',
-        'home'    => 'arcade/beranda',
-        'color'   => '#ec4899',
+        'home' => 'arcade/beranda',
+        'color' => '#ec4899',
     ],
 ];
 
@@ -68,9 +67,9 @@ $msg = $_GET['msg'] ?? null;
         <div style="display:flex;flex-direction:column;gap:16px;">
             <?php foreach ($modules as $mod): ?>
                 <?php
-                $exists  = Modules::exists($mod['key']);
+                $exists = Modules::exists($mod['key']);
                 $enabled = Modules::enabled($mod['key']);
-                $toggle  = get_site_setting($conn, $mod['setting'], '1') !== '0';
+                $toggle = get_site_setting($conn, $mod['setting'], '1') !== '0';
                 ?>
                 <div class="glass" style="border-radius:20px;padding:20px;border:1px solid rgba(255,255,255,0.06);">
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
@@ -104,7 +103,7 @@ $msg = $_GET['msg'] ?? null;
                     </div>
                     <?php if ($exists): ?>
                     <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#6b7280;">
-                        <span>Toggle ini disimpan di database (site_settings: <code><?= htmlspecialchars($mod['setting']) ?></code>) — berlaku untuk semua user secara langsung.</span>
+                        <span>Sakelar ini disimpan di database (site_settings: <code><?= htmlspecialchars($mod['setting']) ?></code>) — berlaku untuk semua pengguna secara langsung.</span>
                         <?php if ($enabled): ?>
                             <a href="../<?= htmlspecialchars($mod['home']) ?>" target="_blank" rel="noopener" style="color:<?= $mod['color'] ?>;font-weight:700;text-decoration:none;">Buka modul ↗</a>
                         <?php endif; ?>

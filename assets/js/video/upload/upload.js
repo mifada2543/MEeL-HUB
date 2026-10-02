@@ -2,11 +2,6 @@
 /** MEeL - Media Hub Platform
  * @copyright Copyright (C) 2026 Mifada
  * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
-/*
- * upload/upload.js — video/upload.php: drop-zone, overlay progress,
- * drag-and-drop, @keyframes spin; progress memakai
- * shared/upload-progress.js (meelUploadProgress).
- * */
 function handleVideoFile(input) {
   const file = input.files[0];
   if (!file) return;
@@ -51,7 +46,7 @@ function handleSubtitleFile(input) {
 }
 function handleThumbFile(input) {
   if (!input.files || !input.files[0]) return;
-  thumbManual = true; // pilihan manual — Auto-fill tidak boleh menimpa
+  thumbManual = true;
   const reader = new FileReader();
   reader.onload = function (e) {
     const preview = document.getElementById("thumb-preview");
@@ -85,7 +80,7 @@ function handleSubmit() {
   const fileSizeMB = videoInput.files[0]
     ? videoInput.files[0].size / 1024 / 1024
     : 50;
-  const baseDelay = Math.max(3000, Math.min(fileSizeMB * 120, 20000)); // 3s–20s
+  const baseDelay = Math.max(3000, Math.min(fileSizeMB * 120, 20000));
   window.meelUploadProgress({
     phases: [
       {
@@ -177,6 +172,7 @@ function autoFillMetadata() {
       title: "Pilih file dulu!",
       text: "Silakan pilih file video terlebih dahulu sebelum menggunakan Auto-fill.",
       icon: "warning",
+      confirmButtonText: "Mengerti",
       confirmButtonColor: "#ef4444",
       background: "#0e1118",
       color: "#fff",
@@ -230,6 +226,7 @@ function autoFillMetadata() {
             title: "Metadata tidak ditemukan",
             text: "File ini tidak memiliki metadata yang bisa dibaca.",
             icon: "info",
+            confirmButtonText: "Mengerti",
             confirmButtonColor: "#ef4444",
             background: "#0e1118",
             color: "#fff",
@@ -251,6 +248,7 @@ function autoFillMetadata() {
           title: "Gagal",
           text: data.message || "Tidak dapat membaca metadata dari file ini.",
           icon: "error",
+          confirmButtonText: "Mengerti",
           confirmButtonColor: "#ef4444",
           background: "#0e1118",
           color: "#fff",
@@ -260,9 +258,10 @@ function autoFillMetadata() {
     .catch((err) => {
       console.error("Auto-metadata error:", err);
       Swal.fire({
-        title: "Error",
+        title: "Kesalahan",
         text: "Terjadi kesalahan koneksi saat memproses metadata.",
         icon: "error",
+        confirmButtonText: "Mengerti",
         confirmButtonColor: "#ef4444",
         background: "#0e1118",
         color: "#fff",

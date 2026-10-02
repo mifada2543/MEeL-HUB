@@ -1,5 +1,3 @@
-/* upload/main.css — Video Upload (video/upload.php);
-   nav/form/tombol/alert datang dari ../../shared/upload-form.css. */
 :root {
   --accent: #ef4444;
   --accent-hover: #f87171;
@@ -211,7 +209,6 @@ body::before {
 .drop-zone.has-file .drop-zone-label {
   color: var(--accent);
 }
-/* Subtitle drop zone: memanjang satu baris (bukan grid) */
 .drop-zone-subtitle {
   flex-direction: row;
   justify-content: flex-start;
@@ -236,7 +233,6 @@ body::before {
 .drop-zone-subtitle .drop-zone-sub {
   margin-top: 2px;
 }
-/* Custom dropdown bahasa — meniru .ch-trigger/.ch-options di books/read.php */
 .lang-dropdown {
   position: relative;
   z-index: 60;

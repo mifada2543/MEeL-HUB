@@ -20,8 +20,8 @@ class AdminUploadQueueRepository
     public function buildFilter(string $status, string $search_q, int $days): void
     {
         $this->where_conditions = ['1=1'];
-        $this->params           = [];
-        $this->types            = '';
+        $this->params = [];
+        $this->types = '';
 
         if ($status !== '' && in_array($status, ['processing', 'completed', 'failed'], true)) {
             $this->where_conditions[] = 'uq.status = ?';
@@ -69,7 +69,7 @@ class AdminUploadQueueRepository
              LIMIT ? OFFSET ?"
         );
         $all_params = array_merge($this->params, [$limit, $offset]);
-        $all_types  = $this->types . 'ii';
+        $all_types = $this->types . 'ii';
         $stmt->bind_param($all_types, ...$all_params);
         $stmt->execute();
         $result = $stmt->get_result();

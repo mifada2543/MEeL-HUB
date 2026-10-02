@@ -1,5 +1,4 @@
 <?php
-// Arcade = modul opsional: lewati seluruh suite bila foldernya tidak ada.
 if (!is_file(MEEL_ROOT . '/arcade/chess/controller/chess_helpers.php')) {
     echo 'arcade tidak terpasang — ChessHelpersIntegrationTest dilewati.' . PHP_EOL;
     return;
@@ -10,7 +9,6 @@ require_once __DIR__ . '/ChessTestCase.php';
 use PHPUnit\Framework\TestCase;
 
 /**
- * @requires extension mysqli
  * @group integration
  * @covers chess_opponent_online
  */
@@ -29,7 +27,7 @@ class ChessHelpersIntegrationTest extends ChessTestCase
 
     public function testStaleUserIsOffline(): void
     {
-        
+
         $this->conn->query(
             "UPDATE users SET last_activity = DATE_SUB(NOW(), INTERVAL 10 MINUTE)
              WHERE id = " . DbTestHelper::REGULAR_USER_ID
@@ -40,7 +38,7 @@ class ChessHelpersIntegrationTest extends ChessTestCase
 
     public function testBoundaryJustUnderThresholdIsOnline(): void
     {
-        
+
         $this->conn->query(
             "UPDATE users SET last_activity = DATE_SUB(NOW(), INTERVAL 60 SECOND)
              WHERE id = " . DbTestHelper::REGULAR_USER_ID
@@ -56,7 +54,7 @@ class ChessHelpersIntegrationTest extends ChessTestCase
 
     public function testZeroIdIsOffline(): void
     {
-        
+
         $this->assertFalse(chess_opponent_online($this->conn, 0));
     }
 

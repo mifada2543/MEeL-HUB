@@ -1,7 +1,6 @@
 <?php
 ini_set('display_errors', 0);ini_set('display_startup_errors', 0);error_reporting(E_ALL);
 
-
 require_once __DIR__ . '/../../../auth/auth.php';
 require_once __DIR__ . '/../api/config.php';
 
@@ -9,7 +8,6 @@ $user_id = $_SESSION['user_id'] ?? null;
 $username = $_SESSION['username'] ?? null;
 $is_logged_in = $user_id !== null;
 $is_admin = $is_logged_in && is_admin($conn);
-
 
 require_once __DIR__ . '/../../../modules/core/base_url.php';
 $root = meel_base_url_path();
@@ -42,7 +40,7 @@ if ($edit_id > 0 && $is_logged_in) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="robots" content="noindex, nofollow">
-  <title>MEeL!Mania — Beatmap Editor</title>
+  <title>MEeL!Mania — Penyunting Beatmap</title>
   <link rel="icon" type="image/png" href="<?= $root ?>/assets/MEeL.png">
   <link href="<?= $root ?>/assets/css/font.css" rel="stylesheet">
   <link rel="stylesheet" href="<?= $root ?>/arcade/rhythm/assets/css/editor.css">
@@ -54,20 +52,19 @@ if ($edit_id > 0 && $is_logged_in) {
   <div class="auth-required">
     <div class="auth-card">
       <div class="auth-icon">🔒</div>
-      <h2>Login Diperlukan</h2>
-      <p>Anda harus login untuk membuat beatmap.</p>
-      <a href="<?= $root ?>/auth/login" class="btn btn-primary">Login</a>
+      <h2>Masuk Terlebih Dahulu</h2>
+      <p>Anda harus masuk untuk membuat beatmap.</p>
+      <a href="<?= $root ?>/auth/login" class="btn btn-primary">Masuk</a>
       <a href="../manage/" class="btn btn-ghost">Kembali</a>
     </div>
   </div>
   <?php else: ?>
 
-  
   <nav class="nav-bar">
     <a href="./" class="nav-back">← Kembali</a>
     <div class="nav-brand">
       <span class="brand-icon">♪</span>
-      <span>Beatmap Editor</span>
+      <span>Penyunting Beatmap</span>
       <?php if ($is_admin): ?>
         <span class="admin-badge">Admin</span>
       <?php endif; ?>
@@ -79,7 +76,6 @@ if ($edit_id > 0 && $is_logged_in) {
 
   <main class="editor-layout">
 
-    
     <aside class="editor-sidebar">
       <div class="sidebar-section">
         <h3>Metadata</h3>
@@ -93,7 +89,7 @@ if ($edit_id > 0 && $is_logged_in) {
 
           <div class="form-group">
             <label>Artis</label>
-            <input type="text" name="artist" id="f-artist" placeholder="Artist Name...">
+            <input type="text" name="artist" id="f-artist" placeholder="Nama Artis...">
           </div>
 
           <div class="form-row">
@@ -102,7 +98,7 @@ if ($edit_id > 0 && $is_logged_in) {
               <input type="number" name="bpm" id="f-bpm" required min="60" max="300" value="120">
             </div>
             <div class="form-group">
-              <label>Difficulty *</label>
+              <label>Kesulitan *</label>
               <select name="difficulty" id="f-difficulty">
                 <option value="1">1 - Easy</option>
                 <option value="2" selected>2 - Normal</option>
@@ -125,7 +121,7 @@ if ($edit_id > 0 && $is_logged_in) {
           </div>
 
           <div class="form-group">
-            <label>Audio File * <small>(MP3, OGG, OPUS, FLAC, WAV — max 5 menit)</small></label>
+            <label>File Audio * <small>(MP3, OGG, OPUS, FLAC, WAV — max 5 menit)</small></label>
             <div class="file-drop" id="audio-drop">
               <input type="file" name="audio" id="f-audio" accept="audio/*" required>
               <div class="file-drop-label" id="audio-label">🎵 Pilih atau drag audio</div>
@@ -134,18 +130,18 @@ if ($edit_id > 0 && $is_logged_in) {
           </div>
 
           <div class="form-group">
-            <label>Cover Art <small>(opsional)</small></label>
+            <label>Sampul <small>(opsional)</small></label>
             <div class="file-drop" id="cover-drop">
               <input type="file" name="cover" id="f-cover" accept="image/*">
               <div class="file-drop-label" id="cover-label">🖼️ Pilih cover image</div>
-              <img id="cover-preview" class="cover-preview" alt="preview">
+              <img id="cover-preview" class="cover-preview" alt="pratinjau">
             </div>
           </div>
         </form>
       </div>
 
       <div class="sidebar-section">
-        <h3>Editor Controls</h3>
+        <h3>Kontrol Penyunting</h3>
         <div class="editor-controls">
           <button id="btnPlayPause" class="btn btn-sm" onclick="togglePlayback()">▶ Play</button>
           <button id="btnStop" class="btn btn-sm" onclick="stopPlayback()">⏹ Stop</button>
@@ -153,15 +149,15 @@ if ($edit_id > 0 && $is_logged_in) {
         </div>
         <div class="editor-stats">
           <div class="stat-item">
-            <span>Notes:</span>
+            <span>Note:</span>
             <span id="noteCount">0</span>
           </div>
           <div class="stat-item">
-            <span>Duration:</span>
+            <span>Durasi:</span>
             <span id="durationDisplay">0:00</span>
           </div>
           <div class="stat-item">
-            <span>Position:</span>
+            <span>Posisi:</span>
             <span id="positionDisplay">0:00</span>
           </div>
         </div>
@@ -170,9 +166,9 @@ if ($edit_id > 0 && $is_logged_in) {
           <input type="range" id="zoomSlider" min="1" max="10" value="3" oninput="setZoom(this.value)">
         </div>
         <div class="form-group">
-          <label>Snap to Beat</label>
+          <label>Selaraskan ke Ketukan</label>
           <select id="snapSelect" onchange="setSnap(this.value)">
-            <option value="0">Off</option>
+            <option value="0">Mati</option>
             <option value="4">1/4 Beat</option>
             <option value="8" selected>1/8 Beat</option>
             <option value="16">1/16 Beat</option>
@@ -188,15 +184,15 @@ if ($edit_id > 0 && $is_logged_in) {
       </div>
 
       <div class="sidebar-section">
-        <h3>Shortcuts</h3>
+        <h3>Pintasan</h3>
         <div class="editor-stats">
-          <div class="stat-item"><span>Click</span><span>Tap note</span></div>
-          <div class="stat-item"><span>Click + Drag</span><span>Hold note</span></div>
-          <div class="stat-item"><span style="color:#fbbf24">G (pilih note)</span><span style="color:#fbbf24">Toggle gold ⭐</span></div>
-          <div class="stat-item"><span>Delete</span><span>Hapus note</span></div>
-          <div class="stat-item"><span>Right click</span><span>Hapus note</span></div>
-          <div class="stat-item"><span>Ctrl+Z</span><span>Undo</span></div>
-          <div class="stat-item"><span>Space</span><span>Play/Pause</span></div>
+          <div class="stat-item"><span>Klik</span><span>Ketuk note</span></div>
+          <div class="stat-item"><span>Klik + Seret</span><span>Tahan note</span></div>
+          <div class="stat-item"><span style="color:#fbbf24">G (pilih note)</span><span style="color:#fbbf24">Alihkan gold ⭐</span></div>
+          <div class="stat-item"><span>Hapus</span><span>Hapus note</span></div>
+          <div class="stat-item"><span>Klik Kanan</span><span>Hapus note</span></div>
+          <div class="stat-item"><span>Ctrl+Z</span><span>Batalkan</span></div>
+          <div class="stat-item"><span>Spasi</span><span>Putar/Jeda</span></div>
           <div class="stat-item"><span>↑ / ↓</span><span>Seek ±1s</span></div>
         </div>
         <div class="gold-hint">⭐ Klik note → tekan G → Gold note (3x skor!)</div>
@@ -209,20 +205,19 @@ if ($edit_id > 0 && $is_logged_in) {
       </div>
     </aside>
 
-    
     <section class="editor-main">
       <div class="editor-canvas-wrap" id="canvasWrap">
         <canvas id="editorCanvas"></canvas>
-        
+
         <audio id="audioPlayer" preload="auto"></audio>
-        
+
         <div id="audioPromptOverlay" class="audio-prompt-overlay">
           <div class="audio-prompt-card">
             <div class="audio-prompt-icon">🎵</div>
             <h3>Pilih File Audio Dulu</h3>
             <p>Upload file audio (MP3, OGG, OPUS, FLAC, WAV) di sidebar kiri untuk mulai mengedit beatmap.</p>
             <div class="audio-prompt-formats">MP3 · OGG · OPUS · FLAC · WAV</div>
-            <div class="audio-prompt-arrow">Upload music dulu</div>
+            <div class="audio-prompt-arrow">Unggah musik dulu</div>
           </div>
         </div>
       </div>
@@ -236,7 +231,6 @@ if ($edit_id > 0 && $is_logged_in) {
 
   </main>
 
-  
   <div id="uploadOverlay" class="overlay hidden">
     <div class="overlay-card">
       <div class="spinner"></div>
@@ -256,11 +250,9 @@ if ($edit_id > 0 && $is_logged_in) {
     const EDIT_SONG = <?= $edit_song ? json_encode($edit_song) : 'null' ?>;
     const EDIT_BEATMAP = <?= $edit_beatmap ? json_encode($edit_beatmap) : 'null' ?>;
 
-    
     window.__editorNotes = [];
   </script>
 
-  
   <script>
     function uploadBeatmap() {
       var form = document.getElementById('beatmapForm');
@@ -269,18 +261,18 @@ if ($edit_id > 0 && $is_logged_in) {
 
       var title = formData.get('title');
       if (!title || title.trim() === '') {
-        if (typeof Swal !== 'undefined') Swal.fire({title:'Error',text:'Judul wajib diisi!',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Judul wajib diisi!',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
         else alert('Judul wajib diisi!');
         return;
       }
       if (!formData.get('audio') || formData.get('audio').size === 0) {
-        if (typeof Swal !== 'undefined') Swal.fire({title:'Error',text:'File audio wajib diupload!',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'File audio wajib diupload!',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
         else alert('File audio wajib diupload!');
         return;
       }
       var currentNotes = window.__editorNotes || [];
       if (currentNotes.length < 10) {
-        if (typeof Swal !== 'undefined') Swal.fire({title:'Error',text:'Minimal 10 notes dalam beatmap! (saat ini: ' + currentNotes.length + ')',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Minimal 10 notes dalam beatmap! (saat ini: ' + currentNotes.length + ')',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
         else alert('Minimal 10 notes! (saat ini: ' + currentNotes.length + ')');
         return;
       }
@@ -312,17 +304,17 @@ if ($edit_id > 0 && $is_logged_in) {
             if (typeof Swal !== 'undefined') Swal.fire({title:'Berhasil!',text:'Beatmap berhasil diupload! \ud83c\udf89',icon:'success',timer:3000,confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
             setTimeout(function(){ window.location.reload(); }, 1500);
           } else {
-            if (typeof Swal !== 'undefined') Swal.fire({title:'Error',text:res.error||'Upload gagal',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+            if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:res.error||'Upload gagal',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
             else alert(res.error || 'Upload gagal');
           }
         } catch(ex) {
-          if (typeof Swal !== 'undefined') Swal.fire({title:'Error',text:'Response tidak valid dari server (HTTP ' + xhr.status + ')',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
-          else alert('Response tidak valid (HTTP ' + xhr.status + ')');
+          if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Respons tidak valid dari server (HTTP ' + xhr.status + ')',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+          else alert('Respons tidak valid (HTTP ' + xhr.status + ')');
         }
       };
       xhr.onerror = function() {
         overlay.classList.add('hidden');
-        if (typeof Swal !== 'undefined') Swal.fire({title:'Error',text:'Koneksi gagal!',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Koneksi gagal!',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
         else alert('Koneksi gagal!');
       };
       xhr.send(formData);
@@ -343,7 +335,6 @@ if ($edit_id > 0 && $is_logged_in) {
     }
   </script>
 
-  
   <script type="module" src="<?= $root ?>/arcade/rhythm/assets/js/editor/main.js"></script>
   <?php endif; ?>
 </body>

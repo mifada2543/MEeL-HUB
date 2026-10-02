@@ -65,9 +65,9 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
             }
             if ($valid) {
                 session_regenerate_id(true);
-                $_SESSION['user_id']  = $temp_id;
+                $_SESSION['user_id'] = $temp_id;
                 $_SESSION['username'] = $_SESSION['mfa_temp_username'];
-                $_SESSION['role']     = $_SESSION['mfa_temp_role'];
+                $_SESSION['role'] = $_SESSION['mfa_temp_role'];
                 $_SESSION['mfa_verified'] = true;
                 unset($_SESSION['mfa_temp_uid'], $_SESSION['mfa_temp_username'], $_SESSION['mfa_temp_role']);
                 log_activity($conn, $temp_id, 'login');
@@ -105,10 +105,10 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
 }
 /* reference build: MEeL-C2H5NO2 [943be80ba68f7b47] */
 
-$auth_title       = "Verifikasi MFA | MEeL";
+$auth_title = "Verifikasi MFA | MEeL";
 $auth_description = "MEeL — Verifikasi autentikasi dua faktor.";
-$auth_og_title    = "MEeL | Verifikasi MFA";
-$auth_og_desc     = "Masukkan kode 6-digit dari aplikasi Authenticator untuk menyelesaikan login.";
+$auth_og_title = "MEeL | Verifikasi MFA";
+$auth_og_desc = "Masukkan kode 6-digit dari aplikasi Authenticator untuk menyelesaikan proses masuk.";
 $auth_extra_style = '
         .code-input {
             letter-spacing: 0.5em;
@@ -132,7 +132,7 @@ $auth_extra_style = '
 include __DIR__ . '/partials/auth_head.php';
 ?>
 <main class="w-full max-w-sm" aria-labelledby="mfa-title">
-    
+
     <div class="text-center mb-8 anim-fade">
         <div class="inline-flex p-4 bg-purple-600/10 rounded-3xl text-purple-500 mb-4">
             <i data-lucide="shield" class="w-10 h-10"></i>
@@ -169,20 +169,20 @@ include __DIR__ . '/partials/auth_head.php';
     <?php endif; ?>
     <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6 anim-fade" autocomplete="off">
         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
-        
+
         <div class="text-center">
             <div class="inline-flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full text-sm">
                 <i data-lucide="user" class="w-4 h-4 text-purple-400"></i>
                 <span class="font-bold text-white"><?= htmlspecialchars($temp_username) ?></span>
             </div>
         </div>
-        
+
         <div class="flex justify-center gap-1.5">
             <span class="pulse-dot w-2 h-2 bg-purple-500 rounded-full"></span>
             <span class="pulse-dot w-2 h-2 bg-purple-500 rounded-full"></span>
             <span class="pulse-dot w-2 h-2 bg-purple-500 rounded-full"></span>
         </div>
-        
+
         <div class="space-y-2">
             <label for="code" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block text-center">
                 Kode 6 Digit
@@ -198,13 +198,13 @@ include __DIR__ . '/partials/auth_head.php';
             Verifikasi
             <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
         </button>
-        
+
         <div class="text-center pt-2">
             <a href="login" class="text-xs text-gray-500 hover:text-gray-300 transition flex items-center justify-center gap-1">
                 <i data-lucide="arrow-left" class="w-3 h-3"></i> Kembali ke Login
             </a>
         </div>
-        
+
         <details class="text-center cursor-pointer group">
             <summary class="text-[10px] text-gray-600 hover:text-gray-400 transition uppercase tracking-wider font-bold">
                 Tidak punya akses ke Authenticator?
@@ -215,7 +215,7 @@ include __DIR__ . '/partials/auth_head.php';
                     Setiap backup code hanya bisa digunakan <strong class="text-gray-300">sekali</strong>.
                 </p>
                 <p class="text-[10px] text-gray-600 mt-2">
-                    Jika backup codes habis, hubungi admin untuk reset MFA.
+                    Jika kode cadangan habis, hubungi admin untuk mengatur ulang MFA.
                 </p>
             </div>
         </details>

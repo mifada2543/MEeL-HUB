@@ -10,7 +10,6 @@ class GarbageCollectorTest extends TestCase
     {
         parent::setUp();
 
-        
         $this->testTempDir = MEEL_ROOT . '/temp/gc_test_' . uniqid();
         @mkdir($this->testTempDir, 0755, true);
 
@@ -23,7 +22,6 @@ class GarbageCollectorTest extends TestCase
         parent::tearDown();
     }
 
-    
     private static function resetHasRun(): void
     {
         $ref = new ReflectionClass(GarbageCollector::class);
@@ -32,7 +30,6 @@ class GarbageCollectorTest extends TestCase
         $prop->setValue(false);
     }
 
-    
     private function touchAged(string $path, int $ageSeconds): void
     {
         @mkdir(dirname($path), 0755, true);
@@ -40,7 +37,6 @@ class GarbageCollectorTest extends TestCase
         touch($path, time() - $ageSeconds);
     }
 
-    
     private function cleanDirectory(string $dir): void
     {
         $ref = new ReflectionClass(GarbageCollector::class);
@@ -62,13 +58,11 @@ class GarbageCollectorTest extends TestCase
         @rmdir($dir);
     }
 
-    
-
     public function testCleanDirectoryRemovesStaleFilesButKeepsFresh(): void
     {
         $stale = $this->testTempDir . '/stale.tmp';
         $fresh = $this->testTempDir . '/fresh.tmp';
-        $this->touchAged($stale, 400); 
+        $this->touchAged($stale, 400);
         $this->touchAged($fresh, 10);
 
         $this->cleanDirectory($this->testTempDir);
@@ -130,10 +124,6 @@ class GarbageCollectorTest extends TestCase
         $this->assertFileExists($rate . '/active.cache');
     }
 
-    
-
-    
-
     private string $origRateStorageDir = '';
 
     private function isolateRateLimiterDir(): string
@@ -161,7 +151,6 @@ class GarbageCollectorTest extends TestCase
     {
         $rateDir = $this->isolateRateLimiterDir();
 
-        
         $expired = $rateDir . '/gc_test_expired.cache';
         file_put_contents($expired, json_encode([
             'count' => 5,
@@ -174,8 +163,6 @@ class GarbageCollectorTest extends TestCase
             'window_start' => time(),
         ]));
 
-        
-        
         touch($rateDir, time());
 
         GarbageCollector::run();
@@ -200,7 +187,6 @@ class GarbageCollectorTest extends TestCase
         GarbageCollector::run();
         $this->assertFileDoesNotExist($expired, 'run() pertama membersihkan file kadaluarsa');
 
-        
         $late = $rateDir . '/gc_test_late.cache';
         file_put_contents($late, json_encode([
             'count' => 5,

@@ -10,9 +10,9 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-$user_id   = (int)$_SESSION['user_id'];
-$username  = htmlspecialchars($_SESSION['username'] ?? '');
-$is_admin  = ($_SESSION['role'] ?? '') === 'admin';
+$user_id = (int)$_SESSION['user_id'];
+$username = htmlspecialchars($_SESSION['username'] ?? '');
+$is_admin = ($_SESSION['role'] ?? '') === 'admin';
 
 $profileRepo = new ProfileRepository($conn);
 
@@ -38,7 +38,7 @@ if (isset($_GET['delete']) && isset($_GET['type']) && isset($_GET['id'])) {
     if (!verify_csrf_token($csrf_input)) {
         $delete_msg = 'Token tidak valid.';
     } else {
-        $del_id   = (int)$_GET['id'];
+        $del_id = (int)$_GET['id'];
         $del_type = $_GET['type'];
 
         if ($del_type === 'video') {
@@ -68,10 +68,10 @@ $videos = [];
 $music_list = [];
 
 if ($active_tab === 'video') {
-    $videos      = $profileRepo->getVideosPaginated($user_id, $page_size, $offset);
+    $videos = $profileRepo->getVideosPaginated($user_id, $page_size, $offset);
     $total_items = $profileRepo->countVideo($user_id);
 } else {
-    $music_list  = $profileRepo->getMusicPaginated($user_id, $page_size, $offset);
+    $music_list = $profileRepo->getMusicPaginated($user_id, $page_size, $offset);
     $total_items = $profileRepo->countMusic($user_id);
 }
 
@@ -97,7 +97,6 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
 
 <body class="text-gray-400 min-h-screen">
 
-    
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
             <a href="<?= $back_url ?>" class="flex items-center gap-2 flex-shrink-0" title="Kembali ke Profil">
@@ -111,10 +110,9 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
 
     <main class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-20">
 
-        
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-                <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Dashboard</div>
+                <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Dasbor</div>
                 <h1 class="text-2xl font-black text-white tracking-tight uppercase">
                     <span class="text-blue-500">@<?= htmlspecialchars($username, ENT_QUOTES, 'UTF-8') ?></span>
                 </h1>
@@ -129,7 +127,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                 <div class="stat-item stat-music">
                     <i data-lucide="music"></i>
                     <span><?= $total_music ?></span>
-                    <span class="text-[9px] font-normal text-gray-600 uppercase">Music</span>
+                    <span class="text-[9px] font-normal text-gray-600 uppercase">Musik</span>
                 </div>
                 <?php if ($cleaned_count > 0): ?>
                     <div class="stat-item text-green-500" title="File lama dibersihkan">
@@ -141,14 +139,13 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
             </div>
         </div>
 
-        
         <?php if (!empty($delete_msg)): ?>
             <div class="alert-bar <?= strpos($delete_msg, 'berhasil') !== false || strpos($delete_msg, 'dibersihkan') !== false ? 'alert-success' : 'alert-error' ?>">
                 <i data-lucide="<?= strpos($delete_msg, 'berhasil') !== false || strpos($delete_msg, 'dibersihkan') !== false ? 'check-circle' : 'alert-triangle' ?>" class="w-4 h-4 flex-shrink-0"></i>
                 <?= htmlspecialchars($delete_msg) ?>
             </div>
         <?php endif; ?>
-        
+
         <div class="manage-tabs mb-6 max-w-sm">
             <a href="?tab=video<?= isset($_GET['csrf_token']) ? '&csrf_token=' . urlencode($_GET['csrf_token']) : '' ?>"
                 class="manage-tab <?= $active_tab === 'video' ? 'active-video' : '' ?>" title="Kelola video Anda">
@@ -162,7 +159,6 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
             </a>
         </div>
 
-        
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <?php if ($active_tab === 'video'): ?>
                 <?php if (!empty($videos)): ?>
@@ -228,7 +224,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                                     <?= htmlspecialchars($m['title']) ?>
                                 </a>
                                 <div class="card-meta">
-                                    <span><?= htmlspecialchars($m['artist'] ?? 'Unknown') ?></span>
+                                    <span><?= htmlspecialchars($m['artist'] ?? 'Tidak diketahui') ?></span>
                                     <span>•</span>
                                     <span><?= number_format($m['views']) ?> views</span>
                                     <span class="flex items-center gap-1 text-green-500/80">
@@ -263,7 +259,6 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
             <?php endif; ?>
         </div>
 
-        
         <?php if ($total_pages > 1): ?>
             <div class="pagination">
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>

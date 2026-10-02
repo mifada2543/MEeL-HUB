@@ -1,8 +1,6 @@
 <?php
 include '../auth/config.php';
 include '../auth/auth.php';
-
-
 require_admin($conn);
 
 $message = null;
@@ -33,8 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $message = "Gagal menghapus room: " . $e->getMessage();
                 $message_type = 'error';
             }
-        }
-        elseif ($action === 'purge_inactive') {
+        } elseif ($action === 'purge_inactive') {
             $result = purgeInactiveRooms($conn);
             $message = "Purge selesai: <strong>{$result['rooms']}</strong> room dan <strong>{$result['moves']}</strong> moves dihapus.";
         }
@@ -109,10 +106,10 @@ $rooms_result = $conn->query("
 $rooms = $rooms_result ? $rooms_result->fetch_all(MYSQLI_ASSOC) : [];
 
 $stats = [
-    'total_rooms'  => count($rooms),
-    'active'       => count(array_filter($rooms, fn($r) => $r['black_joined'] == 1)),
-    'waiting'      => count(array_filter($rooms, fn($r) => $r['black_joined'] == 0)),
-    'total_moves'  => array_sum(array_column($rooms, 'total_moves')),
+    'total_rooms' => count($rooms),
+    'active' => count(array_filter($rooms, fn($r) => $r['black_joined'] == 1)),
+    'waiting' => count(array_filter($rooms, fn($r) => $r['black_joined'] == 0)),
+    'total_moves' => array_sum(array_column($rooms, 'total_moves')),
 ];
 
 $log_file = __DIR__ . '/../logs/chess_cleanup.log';
@@ -122,9 +119,9 @@ if (file_exists($log_file)) {
     $log_lines = array_slice(array_reverse($all), 0, 20);
 }
 
-$page_title  = 'Chess Room Manager';
-$media_type  = 'analytics';
-$back_url    = 'index.php';
+$page_title = 'Pengelola Ruang Catur';
+$media_type = 'analytics';
+$back_url = 'index.php';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -132,7 +129,7 @@ $back_url    = 'index.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL Admin - Chess Room Manager. Monitor dan kelola sesi permainan catur, hapus room tidak aktif.">
+    <meta name="description" content="MEeL Admin - Ruang Catur. Pantau dan kelola sesi permainan catur, hapus ruang tidak aktif.">
     <meta property="og:title" content="Chess Manager · MEeL Admin">
     <meta property="og:description" content="Panel admin MEeL untuk memonitor dan mengelola sesi permainan catur.">
     <title>Chess Manager · MEeL Admin</title>
@@ -147,11 +144,8 @@ $back_url    = 'index.php';
 </head>
 
 <body class="min-h-screen">
-
     <?php require 'header-admin.php'; ?>
     <main class="max-w-7xl mx-auto px-6 py-8 space-y-6">
-
-        
         <?php if ($message): ?>
             <div class="flex items-start gap-3 px-4 py-3 rounded-lg text-sm
         <?= $message_type === 'error' ? 'bg-red-500/10 border border-red-500/20 text-red-400' : 'bg-green-500/10 border border-green-500/20 text-green-400' ?>">
@@ -159,19 +153,16 @@ $back_url    = 'index.php';
                 <span><?= $message ?></span>
             </div>
         <?php endif; ?>
-        
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-lg font-bold text-white">Chess Room Manager</h1>
-                <p class="text-xs text-gray-500 mt-0.5">Monitor & kelola seluruh sesi permainan catur</p>
+                <h1 class="text-lg font-bold text-white">Pengelola Ruang Catur</h1>
+                <p class="text-xs text-gray-500 mt-0.5">Pantau & kelola seluruh sesi permainan catur</p>
             </div>
             <div class="flex items-center gap-2">
-                
                 <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-400">
                     <i data-lucide="timer" class="w-3.5 h-3.5 text-blue-400"></i>
                     <span>Auto-cleanup: <span id="countdown" class="text-blue-400 font-mono font-bold">10:00</span></span>
                 </div>
-                
                 <form method="POST"
                     onsubmit="return meelConfirmForm(event, { title:'Purge Room', text:'Hapus semua room tidak aktif sekarang?', confirmButtonText:'PURGE' })">
                     <input type="hidden" name="action" value="purge_inactive">
@@ -183,15 +174,13 @@ $back_url    = 'index.php';
                 </form>
             </div>
         </div>
-
-        
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <?php
             $stat_cards = [
-                ['label' => 'Total Room',   'value' => $stats['total_rooms'],  'icon' => 'layout-grid',    'color' => 'text-blue-400'],
-                ['label' => 'Aktif',        'value' => $stats['active'],       'icon' => 'swords',         'color' => 'text-green-400'],
-                ['label' => 'Menunggu',     'value' => $stats['waiting'],      'icon' => 'clock',          'color' => 'text-yellow-400'],
-                ['label' => 'Total Moves',  'value' => $stats['total_moves'],  'icon' => 'move',           'color' => 'text-purple-400'],
+                ['label' => 'Total Room', 'value' => $stats['total_rooms'], 'icon' => 'layout-grid', 'color' => 'text-blue-400'],
+                ['label' => 'Aktif', 'value' => $stats['active'], 'icon' => 'swords', 'color' => 'text-green-400'],
+                ['label' => 'Menunggu', 'value' => $stats['waiting'], 'icon' => 'clock', 'color' => 'text-yellow-400'],
+                ['label' => 'Total Langkah', 'value' => $stats['total_moves'], 'icon' => 'move', 'color' => 'text-purple-400'],
             ];
             foreach ($stat_cards as $s): ?>
                 <div class="card px-4 py-4 flex items-center gap-3">
@@ -205,8 +194,6 @@ $back_url    = 'index.php';
                 </div>
             <?php endforeach; ?>
         </div>
-
-        
         <div class="card overflow-hidden">
             <div class="px-5 py-4 border-b border-white/5 flex items-center justify-between">
                 <h2 class="text-sm font-semibold text-white flex items-center gap-2">
@@ -214,7 +201,6 @@ $back_url    = 'index.php';
                 </h2>
                 <span class="text-[11px] text-gray-500"><?= count($rooms) ?> room</span>
             </div>
-
             <?php if (empty($rooms)): ?>
                 <div class="py-16 text-center text-gray-600 text-sm">
                     <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
@@ -227,7 +213,7 @@ $back_url    = 'index.php';
                             <tr class="text-[11px] uppercase tracking-widest text-gray-600 border-b border-white/5">
                                 <th class="px-5 py-3 text-left">Room Code</th>
                                 <th class="px-5 py-3 text-left">Status</th>
-                                <th class="px-5 py-3 text-left">Total Moves</th>
+                                <th class="px-5 py-3 text-left">Total Langkah</th>
                                 <th class="px-5 py-3 text-left">Dibuat</th>
                                 <th class="px-5 py-3 text-left">Aktivitas Terakhir</th>
                                 <th class="px-5 py-3 text-center">Aksi</th>
@@ -289,7 +275,6 @@ $back_url    = 'index.php';
             <?php endif; ?>
         </div>
 
-        
         <div class="card overflow-hidden">
             <div class="px-5 py-4 border-b border-white/5 flex items-center justify-between">
                 <h2 class="text-sm font-semibold text-white flex items-center gap-2">
@@ -299,7 +284,7 @@ $back_url    = 'index.php';
             </div>
             <div class="p-5 space-y-1 max-h-64 overflow-y-auto">
                 <?php if (empty($log_lines)): ?>
-                    <p class="text-[12px] text-gray-700">Belum ada log cleanup.</p>
+                    <p class="text-[12px] text-gray-700">Belum ada log pembersihan.</p>
                 <?php else: ?>
                     <?php foreach ($log_lines as $line): ?>
                         <p class="log-entry"><?= htmlspecialchars($line) ?></p>
@@ -312,7 +297,6 @@ $back_url    = 'index.php';
     </main>
 
     <script>
-        
         window.MEEL_ADMIN_CSRF = <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
     <script src="../assets/js/admin/catur.js?v=<?= filemtime('../assets/js/admin/catur.js') ?>"></script>

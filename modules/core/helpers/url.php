@@ -132,4 +132,37 @@ function meel_asset_dir_version(string $dir): string
 }
 }
 
+if (!function_exists('meel_back_url')) {
+function meel_back_url(string $default, array $extra_block = []): string
+{
+    $ref = $_SERVER['HTTP_REFERER'] ?? '';
+    if (!is_string($ref) || $ref === '') {
+        return $default;
+    }
+
+    $ref_host = parse_url($ref, PHP_URL_HOST);
+    $cur_host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
+    if (!is_string($ref_host) || !is_string($cur_host) || $ref_host === ''
+        || strcasecmp($ref_host, $cur_host) !== 0) {
+        return $default;
+    }
+
+    $path = (string) (parse_url($ref, PHP_URL_PATH) ?? '');
+
+    $blocked = array_merge(['edit-music', 'edit-video', 'lrc-editor'], $extra_block);
+    $current = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    if ($current !== '' && $current !== '/') {
+        $blocked[] = $current;
+    }
+
+    foreach ($blocked as $page) {
+        if (is_string($page) && $page !== '' && stripos($path, $page) !== false) {
+            return $default;
+        }
+    }
+
+    return $ref;
+}
+}
+
 /* reference build: MEeL-C6H9N3O3 [c8a10b194723c915] */

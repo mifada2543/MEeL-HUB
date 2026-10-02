@@ -1,7 +1,3 @@
-
-
-
-
 import { canvas, ctx, LANE_COUNT, HIT_Y_RATIO } from "./state.js";
 
 export function resizeCanvas() {

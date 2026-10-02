@@ -9,8 +9,6 @@ class MediaInteraction {
         $this->user_id = (int)$session_user_id;
     }
 
-    
-
     public function toggleLike(int $media_id, string $media_type, string $like_type): array {
         if (!$this->validateUser()) {
             return $this->getResponse(false, 'User tidak terautentikasi', 403);
@@ -35,14 +33,12 @@ class MediaInteraction {
         }
     }
 
-    
     public function getUserInteractionStatus(int $media_id, string $media_type): ?string {
         $col = ($media_type === 'music') ? 'music_id' : 'video_id';
         $existing = $this->getExistingInteraction($col, $media_id);
         return $existing ? $existing['TYPE'] : null;
     }
 
-    
     public function getLikesCount(string $table, int $media_id): array {
         $stmt = $this->conn->prepare("SELECT likes, dislikes FROM $table WHERE id = ?");
         $stmt->bind_param("i", $media_id);
@@ -57,7 +53,6 @@ class MediaInteraction {
         ];
     }
 
-    
     public function deleteComment(int $comment_id): array {
         if (!$this->validateUser()) {
             return $this->getResponse(false, 'User tidak terautentikasi', 403);
@@ -82,9 +77,9 @@ class MediaInteraction {
                 return $this->getResponse(false, 'Komentar tidak ditemukan', 404);
             }
 
-            $is_owner    = ((int)$comment['user_id'] === $this->user_id);
+            $is_owner = ((int)$comment['user_id'] === $this->user_id);
             $is_uploader = false;
-            $is_admin    = false;
+            $is_admin = false;
 
             if (!$is_owner) {
                 $is_uploader = $this->isMediaUploader(
@@ -126,8 +121,6 @@ class MediaInteraction {
         }
     }
 
-    
-
     private function isMediaUploader(?int $video_id, ?int $music_id): bool
     {
         if ($video_id) {
@@ -157,7 +150,6 @@ class MediaInteraction {
         return false;
     }
 
-    
     private function isAdmin(): bool
     {
         return get_user_role($this->conn, $this->user_id) === 'admin';
@@ -237,12 +229,12 @@ class MediaInteraction {
     }
 
     private function getLikesData(string $table, int $media_id, string $col): array {
-        $counts  = $this->getLikesCount($table, $media_id);
+        $counts = $this->getLikesCount($table, $media_id);
         $existing = $this->getExistingInteraction($col, $media_id);
 
         return [
-            'likes'            => $counts['likes'],
-            'dislikes'         => $counts['dislikes'],
+            'likes' => $counts['likes'],
+            'dislikes' => $counts['dislikes'],
             'user_interaction' => $existing['TYPE'] ?? null,
         ];
     }

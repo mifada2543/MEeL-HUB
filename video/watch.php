@@ -5,7 +5,7 @@ include '../auth/config.php';
 require_once '../modules/core/CommentRenderer.php';
 require_once '../controllers/api/WatchController.php';
 
-$id      = isset($_GET['v']) ? (int)$_GET['v'] : 0;
+$id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
 
 $ctrl = new VideoWatchController($conn, $user_id, $id);
@@ -28,20 +28,20 @@ session_write_close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <?php
     $__thumb_name = $v['thumbnail'] ?? '';
-    $__thumb_ok   = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . basename($__thumb_name));
-    $__og_image   = $__thumb_ok
+    $__thumb_ok = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . basename($__thumb_name));
+    $__og_image = $__thumb_ok
         ? base_url('/video/upload/thumbnail/' . rawurlencode($__thumb_name))
         : base_url('/assets/img/video0.webp');
     if (!preg_match('#^https?://#i', $__og_image)) {
         $__og_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__og_image;
     }
 
-    $_META_TITLE   = ($v['title'] ?? '') . ' | MEeL Video';
-    $_META_DESC    = 'Tonton ' . ($v['title'] ?? '') . ' di MEeL Video - Streaming HLS dengan kualitas terbaik.';
-    $_META_IMAGE   = $__og_image;
+    $_META_TITLE = ($v['title'] ?? '') . ' | MEeL Video';
+    $_META_DESC = 'Tonton ' . ($v['title'] ?? '') . ' di MEeL Video - Streaming HLS dengan kualitas terbaik.';
+    $_META_IMAGE = $__og_image;
     $_META_IMAGE_W = '1280';
     $_META_IMAGE_H = '720';
-    $_META_TYPE    = 'video.other';
+    $_META_TYPE = 'video.other';
     ?>
     <?php include '../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
@@ -222,7 +222,7 @@ session_write_close();
                         <?php if (isset($_SESSION['username'])): ?>
                             <a href="../transcode?id=<?= $id ?>"
                                 class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline"
-                                title="Download audio saja">
+                                title="Unduh audio saja">
                                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Audio
                             </a>
                             <div id="like-dislike-container" class="flex items-center gap-2">
@@ -283,9 +283,8 @@ session_write_close();
                         </button>
                         <div id="comment-preview" class="px-4 sm:px-6 py-3">
                             <?php
-                            
-                            
-                            $preview       = comment_preview($comments_grouped ?? []);
+
+                            $preview = comment_preview($comments_grouped ?? []);
                             $preview_items = $preview['items'];
                             ?>
                             <div id="comment-preview-text" class="space-y-1 text-sm text-gray-400 <?= empty($preview_items) ? 'italic' : '' ?>">
@@ -293,8 +292,8 @@ session_write_close();
                                     <span>Jadilah komentar pertama</span>
                                 <?php else: foreach ($preview_items as $_pc): ?>
                                     <div class="line-clamp-1"
-                                        title="<?= htmlspecialchars('@' . ($_pc['username'] ?? 'Guest') . ': ' . preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? '')), ENT_QUOTES) ?>">
-                                        <span class="font-bold text-red-400">@<?= htmlspecialchars($_pc['username'] ?? 'Guest') ?></span>: <?= htmlspecialchars(preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? ''))) ?>
+                                        title="<?= htmlspecialchars('@' . ($_pc['username'] ?? 'Tamu') . ': ' . preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? '')), ENT_QUOTES) ?>">
+                                        <span class="font-bold text-red-400">@<?= htmlspecialchars($_pc['username'] ?? 'Tamu') ?></span>: <?= htmlspecialchars(preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? ''))) ?>
                                     </div>
                                 <?php endforeach; endif; ?>
                             </div>

@@ -25,17 +25,17 @@ if (isset($_POST['update_profile'])) {
         }
 
         if (!empty($_FILES['avatar']['name'])) {
-            $file_tmp  = $_FILES['avatar']['tmp_name'];
+            $file_tmp = $_FILES['avatar']['tmp_name'];
 
             if (isset($_FILES['avatar']['error']) && $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
                 $upload_errors = [
-                    UPLOAD_ERR_INI_SIZE   => 'File melebihi batas upload (upload_max_filesize).',
-                    UPLOAD_ERR_FORM_SIZE  => 'File melebihi batas ukuran form.',
-                    UPLOAD_ERR_PARTIAL    => 'File hanya ter-upload sebagian.',
-                    UPLOAD_ERR_NO_FILE    => 'Tidak ada file yang di-upload.',
+                    UPLOAD_ERR_INI_SIZE => 'File melebihi batas upload (upload_max_filesize).',
+                    UPLOAD_ERR_FORM_SIZE => 'File melebihi batas ukuran form.',
+                    UPLOAD_ERR_PARTIAL => 'File hanya ter-upload sebagian.',
+                    UPLOAD_ERR_NO_FILE => 'Tidak ada file yang di-upload.',
                     UPLOAD_ERR_NO_TMP_DIR => 'Folder tmp server tidak ditemukan.',
                     UPLOAD_ERR_CANT_WRITE => 'Gagal menulis file ke disk.',
-                    UPLOAD_ERR_EXTENSION  => 'Upload dihentikan oleh ekstensi PHP.',
+                    UPLOAD_ERR_EXTENSION => 'Upload dihentikan oleh ekstensi PHP.',
                 ];
                 throw new \RuntimeException($upload_errors[$_FILES['avatar']['error']] ?? 'Gagal mengupload file.');
             }
@@ -122,9 +122,9 @@ if (isset($_POST['update_profile'])) {
                     }
 
                     $target = 400;
-                    $crop   = $crop_size;
-                    $src_x  = $crop_x;
-                    $src_y  = $crop_y;
+                    $crop = $crop_size;
+                    $src_x = $crop_x;
+                    $src_y = $crop_y;
 
                     $tmp_img = imagecreatetruecolor($target, $target);
                     if (!$tmp_img) {
@@ -199,7 +199,7 @@ if (isset($_POST['update_profile'])) {
         $conn->rollback();
         $msg = 'Error: ' . $e->getMessage();
     }
-    } 
+    }
 }
 
 $stmt_data = $conn->prepare("SELECT * FROM users WHERE id = ?");
@@ -213,7 +213,7 @@ $data = $stmt_data->get_result()->fetch_assoc();
 <head>
 <?php
 $_META_TITLE = 'Edit Profile | MEeL';
-$_META_DESC  = 'Edit profil Anda di MEeL. Ubah bio dan foto profil.';
+$_META_DESC = 'Edit profil Anda di MEeL. Ubah bio dan foto profil.';
 include __DIR__ . '/../../partials/link.php';
 $scripts_root = '../';
 include __DIR__ . '/../../partials/scripts.php';
@@ -243,7 +243,6 @@ include __DIR__ . '/../../partials/scripts.php';
                     <p id="avatarStatus" class="hidden text-[10px] text-red-400 text-center"></p>
                 </div>
 
-                
                 <div id="avatarModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="batalPreview()"></div>
                     <div class="relative glass rounded-[2rem] border border-white/10 shadow-2xl w-full max-w-xs p-8 text-center">
@@ -252,7 +251,7 @@ include __DIR__ . '/../../partials/scripts.php';
                         <h3 class="text-sm font-black text-white uppercase tracking-widest mb-4">Pratinjau Foto</h3>
                         <p class="text-[10px] text-gray-500 mb-4">Geser foto untuk memilih bagian yang dipakai</p>
                         <div id="cropFrame" class="relative h-56 mx-auto mb-4 rounded-2xl overflow-hidden border-2 border-blue-500/30 select-none" style="width:224px;touch-action:none;cursor:grab;background-color:#0b0e14">
-                            <img id="modalAvatarPreview" class="absolute select-none" style="max-width:none;top:0;left:0" alt="Preview" draggable="false">
+                            <img id="modalAvatarPreview" class="absolute select-none" style="max-width:none;top:0;left:0" alt="Pratinjau" draggable="false">
                             <div class="pointer-events-none absolute top-0 bottom-0 left-1/2 w-px crop-guide" style="transform:translateX(-50%)"></div>
                             <div class="pointer-events-none absolute left-0 right-0 top-1/2 h-px crop-guide" style="transform:translateY(-50%)"></div>
                         </div>

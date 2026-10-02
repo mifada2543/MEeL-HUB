@@ -1,6 +1,5 @@
-
 var healthReminderTimer = null;
-var HEALTH_INTERVAL_MS  = 12e5; 
+var HEALTH_INTERVAL_MS = 12e5;
 function formatHealthRemaining(ms) {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(totalSec / 60);
@@ -16,16 +15,15 @@ function logHealthDebug(msg) {
 window.meelHealthAlertActive = false;
 window.meelHealthReminderStarted = false;
 
-
 function toggleHealth() {
   const enabled = !(localStorage.getItem("health_reminder") === "true");
   localStorage.setItem("health_reminder", String(enabled));
   updateHealthToggleButton();
   if (enabled) {
-    
+
     scheduleNextHealthAlert();
   } else {
-    
+
     clearTimeout(healthReminderTimer);
     localStorage.removeItem("health_target_time");
     window.meelHealthReminderStarted = false;
@@ -39,19 +37,17 @@ function updateHealthToggleButton() {
   const on = localStorage.getItem("health_reminder") === "true";
   btn.classList.remove(
     "bg-green-500/20", "text-green-500",
-    "bg-red-500/20",   "text-red-500",
+    "bg-red-500/20", "text-red-500",
     "text-gray-700"
   );
   if (on) {
     btn.classList.add("bg-green-500/20", "text-green-500");
-    btn.innerText = "ON";
+    btn.innerText = "HIDUP";
   } else {
     btn.classList.add("bg-red-500/20", "text-red-500");
-    btn.innerText = "OFF";
+    btn.innerText = "MATI";
   }
 }
-
-
 
 function scheduleNextHealthAlert() {
   const target = Date.now() + HEALTH_INTERVAL_MS;
@@ -68,14 +64,14 @@ function startHealthCountdown() {
 
   const targetRaw = localStorage.getItem("health_target_time");
   if (!targetRaw) {
-    scheduleNextHealthAlert(); 
+    scheduleNextHealthAlert();
     return;
   }
 
   const remaining = parseInt(targetRaw, 10) - Date.now();
   if (remaining <= 0) {
     logHealthDebug("Target sudah lewat → langsung menampilkan alarm.");
-    triggerPremiumHealthAlert(); 
+    triggerPremiumHealthAlert();
   } else {
     logHealthDebug(
       `Anda akan diingatkan health-reminder dalam ${formatHealthRemaining(remaining)} ` +
@@ -85,7 +81,6 @@ function startHealthCountdown() {
   }
 }
 
-
 function startHealthReminder() {
   if (window.meelHealthReminderStarted) return;
   if (localStorage.getItem("health_reminder") !== "true") return;
@@ -93,9 +88,6 @@ function startHealthReminder() {
   window.meelHealthReminderStarted = true;
   startHealthCountdown();
 }
-
-
-
 
 function isPlayerActive() {
   const hasAnyMedia =
@@ -105,10 +97,8 @@ function isPlayerActive() {
     document.querySelectorAll("video, audio").length > 0;
   if (!hasAnyMedia) return false;
 
-  
   if (window.player && !window.player.paused) return true;
 
-  
   const main =
     document.getElementById("main-video") ||
     document.getElementById("main-player") ||
@@ -116,7 +106,6 @@ function isPlayerActive() {
       document.fullscreenElement.querySelector("video, audio"));
   if (main && !main.paused) return true;
 
-  
   const media = document.querySelectorAll("video, audio");
   for (const el of media) {
     if (!el.paused) return true;
@@ -125,15 +114,13 @@ function isPlayerActive() {
   return false;
 }
 
-
-
 var healthAlertChannel = null;
 if (typeof BroadcastChannel !== "undefined") {
   try {
     healthAlertChannel = new BroadcastChannel(MEEL_KEYS.HEALTH_ALERT);
     healthAlertChannel.onmessage = function (event) {
       if (event.data === "pause") {
-        
+
         window.meelHealthAlertActive = true;
         startBreakEnforcement();
         pauseMediaForHealthBreak();
@@ -152,7 +139,7 @@ var healthPausedMedia = null;
 
 function broadcastHealthCommand(cmd) {
   if (healthAlertChannel) {
-    try { healthAlertChannel.postMessage(cmd); } catch (e) {  }
+    try { healthAlertChannel.postMessage(cmd); } catch (e) { }
   }
 }
 
@@ -181,7 +168,6 @@ function resumeMediaAfterHealthBreak() {
   else if (m.el) m.el.play().catch(() => {});
 }
 
-
 function acquireHealthAlertLock(task) {
   if (
     typeof navigator !== "undefined" &&
@@ -191,26 +177,24 @@ function acquireHealthAlertLock(task) {
     var ran = false;
     navigator.locks
       .request(MEEL_KEYS.HEALTH_ALERT, { ifAvailable: true }, function (lock) {
-        if (!lock) return; 
+        if (!lock) return;
         ran = true;
-        return task(); 
+        return task();
       })
       .catch(function () {
-        
-        
+
         if (!ran) task();
       });
     return;
   }
-  task(); 
+  task();
 }
-
 
 var breakEnforceTimer = null;
 var breakPlayBlock = null;
 
 function startBreakEnforcement() {
-  if (breakEnforceTimer) return; 
+  if (breakEnforceTimer) return;
   breakPlayBlock = function (e) {
     if (!window.meelHealthAlertActive) return;
     const t = e && e.target;
@@ -245,33 +229,27 @@ function stopBreakEnforcement() {
   }
 }
 
-
-
-var healthReadingLastActivity = 0;    
-var HEALTH_READING_IDLE_MS = 6e4;     
-var healthBannerEl = null;            
-var healthBannerHideTimer = null;     
-var healthBannerResolve = null;       
-var healthBannerRemoving = false;     
-var HEALTH_BANNER_MS = 2e4;           
-
+var healthReadingLastActivity = 0;
+var HEALTH_READING_IDLE_MS = 6e4;
+var healthBannerEl = null;
+var healthBannerHideTimer = null;
+var healthBannerResolve = null;
+var healthBannerRemoving = false;
+var HEALTH_BANNER_MS = 2e4;
 
 function isReadingModeActive() {
   return window.meelHealthActivityMode === "reading";
 }
 
-
 function markHealthReadingActivity() {
   healthReadingLastActivity = Date.now();
 }
 
-
 function isReadingActivityActive() {
-  if (document.hidden) return false; 
+  if (document.hidden) return false;
   if (!healthReadingLastActivity) return true;
   return Date.now() - healthReadingLastActivity <= HEALTH_READING_IDLE_MS;
 }
-
 
 function setupReadingActivityTracking() {
   if (!isReadingModeActive()) return;
@@ -282,11 +260,9 @@ function setupReadingActivityTracking() {
   markHealthReadingActivity();
 }
 
-
 function runReadingHealthBanner() {
-  if (healthBannerEl || healthBannerRemoving) return Promise.resolve(); 
+  if (healthBannerEl || healthBannerRemoving) return Promise.resolve();
 
-  
   if (!document.getElementById("meel-health-banner-style")) {
     var st = document.createElement("style");
     st.id = "meel-health-banner-style";
@@ -306,10 +282,10 @@ function runReadingHealthBanner() {
     "border:1px solid rgba(16,185,129,.35);border-top:2px solid #10b981;" +
     "border-radius:14px;box-shadow:0 14px 44px rgba(0,0,0,.6);" +
     "padding:14px 14px 12px;display:flex;align-items:flex-start;gap:12px;" +
-    "overflow:hidden;" + 
+    "overflow:hidden;" +
     "color:#fff;font-family:ui-sans-serif,system-ui,sans-serif;";
   banner.innerHTML =
-    
+
     '<div id="meel-health-banner-progress" style="position:absolute;top:0;left:0;' +
     'height:3px;width:100%;background:#10b981;' +
     'transition:width ' + (HEALTH_BANNER_MS / 1000) + 's linear;"></div>' +
@@ -337,7 +313,7 @@ function runReadingHealthBanner() {
   if (typeof requestAnimationFrame !== "undefined") {
     requestAnimationFrame(function () {
       banner.style.animation = "meelBannerSlideIn .35s ease forwards";
-      
+
       var prog = banner.querySelector("#meel-health-banner-progress");
       if (prog) prog.style.width = "0%";
     });
@@ -357,14 +333,13 @@ function runReadingHealthBanner() {
   });
 }
 
-
 function dismissHealthReadingBanner(doSchedule) {
   if (!healthBannerEl || healthBannerRemoving) return;
   clearTimeout(healthBannerHideTimer);
   healthBannerHideTimer = null;
   var b = healthBannerEl;
   healthBannerEl = null;
-  healthBannerRemoving = true; 
+  healthBannerRemoving = true;
   b.style.animation = "meelBannerFadeOut .3s ease forwards";
   setTimeout(function () {
     if (b.parentNode) b.parentNode.removeChild(b);
@@ -378,7 +353,6 @@ function dismissHealthReadingBanner(doSchedule) {
     r();
   }
 }
-
 
 function finalizeReadingBannerOnLeave() {
   if (!healthBannerEl || healthBannerRemoving) return;
@@ -397,29 +371,25 @@ function finalizeReadingBannerOnLeave() {
   }
 }
 
-
-
 function triggerPremiumHealthAlert() {
-  
+
   const targetRaw = localStorage.getItem("health_target_time");
   if (targetRaw && parseInt(targetRaw, 10) - Date.now() > 0) {
     startHealthCountdown();
     return;
   }
 
-  
   if (!isPlayerActive()) {
-    
+
     if (isReadingModeActive() && isReadingActivityActive()) {
       acquireHealthAlertLock(() => runReadingHealthBanner());
       return;
     }
 
-    healthReminderTimer = setTimeout(triggerPremiumHealthAlert, 3e4); 
+    healthReminderTimer = setTimeout(triggerPremiumHealthAlert, 3e4);
     return;
   }
 
-  
   if (typeof Swal === "undefined") {
     console.warn("SweetAlert2 belum ter-load.");
     return;
@@ -429,7 +399,6 @@ function triggerPremiumHealthAlert() {
     runHealthAlertFlow();
   });
 }
-
 
 function runHealthAlertFlow() {
 
@@ -476,7 +445,7 @@ function runHealthAlertFlow() {
       if (window.player) window.player.play().catch(() => {});
       else if (media) media.play().catch(() => {});
     }
-    
+
     broadcastHealthCommand("resume");
   };
 
@@ -493,7 +462,6 @@ function runHealthAlertFlow() {
     }
   };
 
-  
   return Swal.fire({
     title: "WAKTUNYA ISTIRAHATKAN MATA!",
     html: `
@@ -525,7 +493,7 @@ function runHealthAlertFlow() {
     reverseButtons: true,
     buttonsStyling: false,
     allowOutsideClick: false,
-    timer: 3e5, 
+    timer: 3e5,
     timerProgressBar: true,
     customClass: {
       popup: "border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl shadow-2xl",
@@ -551,7 +519,7 @@ function runHealthAlertFlow() {
     },
   }).then((result) => {
     if (result.isConfirmed) {
-      
+
       let countdownInterval;
       Swal.fire({
         title: "RELAKSASI DIMULAI",
@@ -565,7 +533,7 @@ function runHealthAlertFlow() {
                 `,
         background: "#141820",
         color: "#ffffff",
-        timer: 2e4, 
+        timer: 2e4,
         timerProgressBar: true,
         showConfirmButton: false,
         allowOutsideClick: false,
@@ -574,7 +542,7 @@ function runHealthAlertFlow() {
           title: "text-xs font-black uppercase tracking-widest pt-4 text-green-400",
         },
         didOpen: () => {
-          
+
           const tpBar = document.querySelector(".swal2-timer-progress-bar");
           if (tpBar) tpBar.style.background = "#10b981";
           let sec = 20;
@@ -588,7 +556,7 @@ function runHealthAlertFlow() {
           clearInterval(countdownInterval);
         },
       }).then(() => {
-        
+
         Swal.fire({
           title: "SELESAI!",
           text: "Mata Anda kembali bugar. Selamat menonton kembali!",
@@ -612,20 +580,18 @@ function runHealthAlertFlow() {
         });
       });
     } else if (result.dismiss === Swal.DismissReason.cancel) {
-      
+
       resume();
       reenterFullscreen();
       scheduleNextHealthAlert();
     } else if (result.dismiss === Swal.DismissReason.timer) {
-      
+
       resume();
       reenterFullscreen();
       scheduleNextHealthAlert();
     }
   });
 }
-
-
 
 function meelHealthKeydownBlock(e) {
   if (!window.meelHealthAlertActive) return;
@@ -636,7 +602,7 @@ function meelHealthKeydownBlock(e) {
       t.tagName === "TEXTAREA" ||
       t.isContentEditable)
   ) {
-    return; 
+    return;
   }
   e.preventDefault();
   e.stopPropagation();
@@ -644,11 +610,10 @@ function meelHealthKeydownBlock(e) {
 window.addEventListener("keydown", meelHealthKeydownBlock, true);
 document.addEventListener("keydown", meelHealthKeydownBlock, true);
 
-
 document.addEventListener("DOMContentLoaded", () => {
-  startHealthReminder();      
-  updateHealthToggleButton(); 
-  setupReadingActivityTracking(); 
+  startHealthReminder();
+  updateHealthToggleButton();
+  setupReadingActivityTracking();
 });
 
 window.addEventListener("storage", function (e) {

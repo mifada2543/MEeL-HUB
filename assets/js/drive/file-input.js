@@ -1,4 +1,3 @@
-
 function updateFileName(input) {
   var label = document.getElementById("fileLabel");
   if (!label || !input.files || input.files.length === 0) return;

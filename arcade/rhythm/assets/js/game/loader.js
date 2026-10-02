@@ -1,8 +1,5 @@
 /* reference build: MEeL-C8H11NO2 [3ea41355425cd7db] */
 
-
-
-
 import { S, songId, phpSong, phpBeatmap, speedMult, audioElement } from "./state.js";
 
 const SONGS_BASE = window.MEEL_BASE + "/arcade/rhythm/songs";
@@ -34,13 +31,11 @@ export async function loadSongData() {
     await loadFromFiles();
   }
 
-  
   try {
     const saved = JSON.parse(localStorage.getItem("mania_scores")) || {};
     S.highScore = saved[String(songId)] || 0;
   } catch (e) { S.highScore = 0; }
 
-  
   document.getElementById("overlayEmoji").textContent = S.song.emoji;
   document.getElementById("overlayTitle").textContent = S.song.title;
   document.getElementById("overlaySub").textContent =
@@ -53,7 +48,7 @@ async function loadFromFiles() {
     if (!idxResp.ok) throw new Error("No _index.json");
     const index = await idxResp.json();
     const meta = (index || []).find((s) => s.id === songId);
-    if (!meta) throw new Error("Song not in index");
+    if (!meta) throw new Error("Lagu tidak ada di indeks");
 
     S.song = {
       id: meta.id,

@@ -1,6 +1,5 @@
 /* reference build: MEeL-C10H12N2O [88453ea80a37d31b] */
 
-
 (function () {
   "use strict";
 
@@ -29,16 +28,13 @@
     seedLoadedScripts();
   }
 
-  
-  
   var SESSION_TS = Date.now();
 
   function loadScriptOnce(absSrc) {
     var key = toPathname(absSrc);
     if (loadedScriptSrcs.has(key)) return Promise.resolve();
     loadedScriptSrcs.add(key);
-    
-    
+
     var buster = absSrc.indexOf("?") === -1 ? "?_meel=" : "&_meel=";
     var srcWithBuster = absSrc + buster + SESSION_TS;
     return new Promise(function (resolve, reject) {
@@ -59,7 +55,6 @@
     return new URL(relSrc, window.location.href).href;
   }
 
-  
   var loadedStyleHrefs = new Set(
     Array.prototype.map.call(
       document.querySelectorAll('link[rel="stylesheet"][href]'),
@@ -69,9 +64,6 @@
     ),
   );
 
-  
-  
-  
   function ensureViewStyles(doc) {
     var links = doc.querySelectorAll('link[rel="stylesheet"][href]');
     for (var i = 0; i < links.length; i++) {
@@ -85,8 +77,6 @@
     }
   }
 
-  
-  
   var DIRECT_SCRIPTS = {
     watch: [
       "../assets/js/shared/state-keys.js",
@@ -131,7 +121,7 @@
     for (var i = 0; i < directList.length; i++) {
       await loadScriptOnce(toAbsolute(directList[i]));
     }
-    
+
     await loadScriptOnce(toAbsolute(BUNDLE_LOADER_SRC[viewType]));
     var bundleInfo = window[BUNDLE_GLOBAL[viewType]];
     if (bundleInfo && Array.isArray(bundleInfo.files)) {
@@ -141,19 +131,11 @@
     }
   }
 
-  
-  
-  
-  
   function runInlineScript(code) {
     var s = document.createElement("script");
     s.textContent = code;
     document.body.appendChild(s);
-    
   }
-
-  
-  
 
   function parseConfigJson(text, varName) {
     try {
@@ -162,7 +144,7 @@
       if (idx === -1) return undefined;
       var open = text.indexOf("{", idx + marker.length);
       if (open === -1) return undefined;
-      
+
       var depth = 0;
       var inStr = null;
       var end = -1;
@@ -196,8 +178,6 @@
     }
   }
 
-  
-  
   function quoteObjectKeys(literal) {
     var out = "";
     var inStr = null;
@@ -224,7 +204,7 @@
       }
       if (canKey) {
         if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") {
-          out += ch; 
+          out += ch;
           continue;
         }
         if (/[A-Za-z_$0-9]/.test(ch)) {
@@ -253,11 +233,12 @@
   }
 
   function applyInlineConfig(doc, viewType) {
-    var varName = viewType === "watch" ? "MEEL_MUSIC_CONFIG" : "MEEL_INDEX_CONFIG";
+    var varName =
+      viewType === "watch" ? "MEEL_MUSIC_CONFIG" : "MEEL_INDEX_CONFIG";
     var scripts = doc.querySelectorAll("script:not([src])");
     for (var i = 0; i < scripts.length; i++) {
       var text = scripts[i].textContent || "";
-      
+
       if (text.indexOf("window." + varName + " =") === -1) continue;
       try {
         runInlineScript(text);
@@ -269,19 +250,16 @@
         if (parsed !== undefined) {
           window[varName] = parsed;
         } else {
-          console.error("❌ view-router: gagal apply " + varName + " (injection & JSON fallback gagal)");
+          console.error(
+            "❌ view-router: gagal apply " +
+              varName +
+              " (injection & JSON fallback gagal)",
+          );
         }
       }
       return;
     }
   }
-
-  
-
-
-
-
-
 
   window.meelNavigateView = async function (url, viewType, options) {
     options = options || {};
@@ -291,11 +269,8 @@
       var html = await res.text();
       var doc = new DOMParser().parseFromString(html, "text/html");
 
-      
       ensureViewStyles(doc);
 
-      
-      
       var persisted = Array.prototype.slice.call(
         document.body.querySelectorAll("[data-meel-persist]"),
       );
@@ -304,30 +279,20 @@
         holder.appendChild(n);
       });
 
-      
-      
-      
-      
-      
       var noscripts = doc.body.querySelectorAll("noscript");
       for (var ns = 0; ns < noscripts.length; ns++) {
-        if (noscripts[ns].parentNode) noscripts[ns].parentNode.removeChild(noscripts[ns]);
+        if (noscripts[ns].parentNode)
+          noscripts[ns].parentNode.removeChild(noscripts[ns]);
       }
-      
+
       document.body.innerHTML = "";
       Array.prototype.forEach.call(doc.body.children, function (node) {
-        
-        
         if (node.tagName === "SCRIPT" && node.src) return;
         document.body.appendChild(document.importNode(node, true));
       });
 
-      
       document.body.appendChild(holder);
 
-      
-      
-      
       var inlineScripts = document.body.querySelectorAll("script:not([src])");
       for (var k = 0; k < inlineScripts.length; k++) {
         runInlineScript(inlineScripts[k].textContent);
@@ -336,19 +301,15 @@
       document.title = doc.title;
       applyInlineConfig(doc, viewType);
 
+      if (options.pushState !== false) {
+        window.history.pushState({ meelView: viewType }, "", url);
+      }
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 
       await ensureViewScripts(viewType);
 
       if (window.meelUpdateHeadMeta) window.meelUpdateHeadMeta(doc);
 
-
-      
-      if (options.pushState !== false) {
-        window.history.pushState({ meelView: viewType }, "", url);
-      }
-
-      
-      
       if (typeof options.onAfterSwap === "function") {
         options.onAfterSwap(doc);
       }
@@ -357,8 +318,11 @@
       if (window.htmx) window.htmx.process(document.body);
       return true;
     } catch (err) {
-      console.error("❌ view-router: navigasi AJAX gagal, fallback ke reload penuh:", err);
-      
+      console.error(
+        "❌ view-router: navigasi AJAX gagal, fallback ke reload penuh:",
+        err,
+      );
+
       window.location.href = url;
       return false;
     }

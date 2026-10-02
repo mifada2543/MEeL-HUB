@@ -1,6 +1,4 @@
 <?php
-// Konstanta ini normalnya di-inject via phpunit.xml (<const>); fallback ini membuat file
-// tetap berjalan di luar PHPUnit dan membuat analyzer memahami definisinya.
 if (!defined('MEEL_SERVER_STATS_CACHE')) {
     define('MEEL_SERVER_STATS_CACHE', 'temp/cache-test/server_stats_info.json');
 }
@@ -10,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 /** @covers System */
 class SystemTest extends TestCase
 {
-    
+
     private static function cacheFile(): string
     {
         return MEEL_ROOT . '/' . ltrim(MEEL_SERVER_STATS_CACHE, '/');
@@ -26,9 +24,6 @@ class SystemTest extends TestCase
         $this->db = new DbTestHelper();
         $this->system = new System($this->db->getConnection());
 
-        
-        
-        
         clearstatcache();
         if (file_exists(self::cacheFile())) {
             @unlink(self::cacheFile());
@@ -74,9 +69,6 @@ class SystemTest extends TestCase
         $this->assertIsNumeric($stats['ram']['total']);
         $this->assertMatchesRegularExpression('/^\d+d \d+h \d+m$/', $stats['uptime']['text']);
 
-        
-        
-        
         $hasNonLo = false;
         $net_lines = @file('/proc/net/dev');
         if ($net_lines) {
@@ -102,7 +94,6 @@ class SystemTest extends TestCase
         $mtime = filemtime(self::cacheFile());
         clearstatcache();
 
-        
         $this->system->getServerStats();
         clearstatcache();
         $this->assertSame($mtime, filemtime(self::cacheFile()));

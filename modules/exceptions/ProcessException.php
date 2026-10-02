@@ -1,6 +1,5 @@
 <?php
 
-
 class ProcessException extends \RuntimeException
 {
     private string $command;
@@ -16,9 +15,9 @@ class ProcessException extends \RuntimeException
         ?\Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
-        $this->command  = $command;
+        $this->command = $command;
         $this->exitCode = $exitCode;
-        $this->output   = $output;
+        $this->output = $output;
     }
 
     public function getCommand(): string
