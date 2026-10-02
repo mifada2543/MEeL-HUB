@@ -1,4 +1,3 @@
-
 (function () {
   lucide.createIcons();
   window.counts = {

@@ -1,9 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 require_once MEEL_ROOT . '/drive/DriveService.php';
-
 
 class StorageMountGuardTest extends TestCase
 {
@@ -23,7 +21,7 @@ class StorageMountGuardTest extends TestCase
     private function runPhp(string $code): array
     {
         $output = [];
-        $exit   = 0;
+        $exit = 0;
         exec(
             PHP_BINARY . ' -d display_errors=0 -d error_log=/dev/null -r '
             . escapeshellarg($code) . ' 2>&1',
@@ -67,7 +65,7 @@ class StorageMountGuardTest extends TestCase
     public function testStorageNotReadyWhenBaseMissing(): void
     {
         $missing = $this->workDir . '/belum_ter_mount';
-        $code    = $this->defineBase($missing)
+        $code = $this->defineBase($missing)
             . $this->helpersRequire()
             . 'echo meel_storage_ready() ? "READY" : "NOT_READY";';
 
@@ -144,7 +142,7 @@ class StorageMountGuardTest extends TestCase
     public function testStorageGuardBlocksWhenNotMounted(): void
     {
         $missing = $this->workDir . '/tidak_ada';
-        $code    = $this->defineBase($missing)
+        $code = $this->defineBase($missing)
             . $this->helpersRequire()
             . 'try { meel_storage_guard(); echo "LANJUT"; } catch (RuntimeException $e) { echo "DIBLOKIR"; }';
 
@@ -157,7 +155,7 @@ class StorageMountGuardTest extends TestCase
     public function testListFilesThrowsWithoutCreatingGarbageFolders(): void
     {
         $missing = $this->workDir . '/volume_kosong';
-        $code    = $this->defineBase($missing)
+        $code = $this->defineBase($missing)
             . $this->helpersRequire()
             . $this->driveRequire()
             . '$u = DriveUserContext::fromSession(["user_id" => 1, "role" => "admin", "username" => "admin"]);'

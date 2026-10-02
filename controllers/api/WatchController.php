@@ -1,6 +1,5 @@
 <?php
 
-
 require_once __DIR__ . '/../../modules/core/helpers.php';
 require_once __DIR__ . '/../../modules/auth/RateLimiter.php';
 require_once __DIR__ . '/../../modules/media/MediaViewer.php';
@@ -18,10 +17,10 @@ abstract class AbstractWatchController
         int $id,
         string $media_type
     ) {
-        $this->conn    = $conn;
+        $this->conn = $conn;
         $this->user_id = $user_id;
-        $this->id      = $id;
-        $this->viewer  = new MediaViewer($conn, $user_id, $media_type, $id);
+        $this->id = $id;
+        $this->viewer = new MediaViewer($conn, $user_id, $media_type, $id);
     }
 
     public function handleRequest(): void
@@ -35,7 +34,7 @@ abstract class AbstractWatchController
                 exit;
             }
 
-            $rateKey  = 'user_' . ($this->user_id ?? 0);
+            $rateKey = 'user_' . ($this->user_id ?? 0);
             $rateRole = get_user_role($this->conn, $this->user_id ?? 0);
             $rateCheck = RateLimiter::check($rateKey, 'comment', $rateRole);
             if (!$rateCheck['allowed']) {
@@ -61,7 +60,6 @@ abstract class AbstractWatchController
         return isset($this->user_id);
     }
 
-    
     protected function baseViewData(array $v, $rekom = null): array
     {
 
@@ -89,14 +87,14 @@ abstract class AbstractWatchController
         }
 
         return [
-            'id'               => $this->id,
-            'user_id'          => $this->user_id,
-            'is_logged_in'     => $this->isLoggedIn(),
-            'v'                => $v,
+            'id' => $this->id,
+            'user_id' => $this->user_id,
+            'is_logged_in' => $this->isLoggedIn(),
+            'v' => $v,
             'user_interaction' => $this->viewer->getUserInteraction(),
             'comments_grouped' => $comments_data['grouped'],
-            'user_map'         => $comments_data['user_map'],
-            'rekom'            => $recommendations,
+            'user_map' => $comments_data['user_map'],
+            'rekom' => $recommendations,
         ];
     }
 }
@@ -120,16 +118,15 @@ class VideoWatchController extends AbstractWatchController
         $this->mediaData = $v;
     }
 
-    
     public function getViewData(): array
     {
         $this->requireMedia();
         $v = $this->mediaData;
         $video_src = 'upload/' . $v['filename'];
-        $is_hls    = (pathinfo($video_src, PATHINFO_EXTENSION) === 'm3u8');
+        $is_hls = (pathinfo($video_src, PATHINFO_EXTENSION) === 'm3u8');
         $video_dir = dirname($video_src);
-        $fs_dir    = meel_media_base_path('video') . '/' . dirname($v['filename']);
-        $vtt_src   = is_file($fs_dir . '/thumbnails.vtt')
+        $fs_dir = meel_media_base_path('video') . '/' . dirname($v['filename']);
+        $vtt_src = is_file($fs_dir . '/thumbnails.vtt')
             ? $video_dir . '/thumbnails.vtt'
             : '';
 
@@ -137,15 +134,15 @@ class VideoWatchController extends AbstractWatchController
         foreach (glob($fs_dir . '/*.vtt') ?: [] as $sub_file) {
             $sub_base = basename($sub_file);
             if ($sub_base === 'thumbnails.vtt') continue;
-            
+
             $lang = 'und';
             if (preg_match('/\.([a-z]{2,3}(?:-[a-z]{2,8})?)\.vtt$/i', $sub_base, $m)) {
                 $lang = strtolower($m[1]);
             }
 
             $subtitles[] = [
-                'src'   => $video_dir . '/' . $sub_base,
-                'lang'  => $lang,
+                'src' => $video_dir . '/' . $sub_base,
+                'lang' => $lang,
                 'label' => subtitle_lang_label($lang),
             ];
         }
@@ -157,13 +154,12 @@ class VideoWatchController extends AbstractWatchController
 
         return array_merge($this->baseViewData($v), [
             'video_src' => $video_src,
-            'is_hls'    => $is_hls,
-            'vtt_src'   => $vtt_src,
+            'is_hls' => $is_hls,
+            'vtt_src' => $vtt_src,
             'subtitles' => $subtitles,
         ]);
     }
 }
-
 
 class MusicWatchController extends AbstractWatchController
 {
@@ -189,7 +185,6 @@ class MusicWatchController extends AbstractWatchController
         return $url . '#comment-section';
     }
 
-    
     public function requireMedia(): void
     {
         $v = $this->viewer->getMediaData();
@@ -200,15 +195,14 @@ class MusicWatchController extends AbstractWatchController
         $this->mediaData = $v;
     }
 
-    
     public function getViewData(): array
     {
         $this->requireMedia();
         $v = $this->mediaData;
 
-        $playlist_data    = $this->viewer->getPlaylistQueue($this->playlist_id);
-        $queue_query      = $playlist_data['queue'] ?? null;
-        $next_url         = $playlist_data['next_url'] ?? '';
+        $playlist_data = $this->viewer->getPlaylistQueue($this->playlist_id);
+        $queue_query = $playlist_data['queue'] ?? null;
+        $next_url = $playlist_data['next_url'] ?? '';
         $playlist_context = $this->playlist_id;
 
         $rekom = $this->viewer->getRecommendations(15);
@@ -229,13 +223,13 @@ class MusicWatchController extends AbstractWatchController
             $next_song_url = base_url('/music/watch?v=' . (int)$m[1] . (!empty($m[2]) ? '&playlist_id=' . (int)$m[2] : ''));
         }
 
-        $ext       = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
+        $ext = strtolower(pathinfo($v['filename'], PATHINFO_EXTENSION));
         $fmt_label = get_audio_format_label($ext);
         $deskripsi = get_audio_format_description($ext);
-        $mimeType  = get_audio_mime_type($ext);
+        $mimeType = get_audio_mime_type($ext);
 
-        $preloadVal       = ($ext === 'flac') ? 'none' : 'metadata';
-        $file_size_bytes  = !empty($v['filename'])
+        $preloadVal = ($ext === 'flac') ? 'none' : 'metadata';
+        $file_size_bytes = !empty($v['filename'])
             ? (@filesize(meel_media_base_path('music') . '/file/' . $v['filename']) ?: 0)
             : 0;
 
@@ -247,7 +241,7 @@ class MusicWatchController extends AbstractWatchController
                 $lrc_content = @file_get_contents($lrc_path);
                 if ($lrc_content !== false) {
                     $lyrics_data[] = [
-                        'lang'  => $ly['lang'],
+                        'lang' => $ly['lang'],
                         'label' => $ly['label'],
                         'lines' => parse_lrc($lrc_content),
                     ];
@@ -256,17 +250,17 @@ class MusicWatchController extends AbstractWatchController
         }
 
         return array_merge($this->baseViewData($v, $rekom), [
-            'playlist_id'      => $this->playlist_id,
+            'playlist_id' => $this->playlist_id,
             'playlist_context' => $playlist_context,
-            'queue_query'      => $queue_query,
-            'next_song_url'    => $next_song_url,
-            'file_size_bytes'  => $file_size_bytes,
-            'fmt_label'        => $fmt_label,
-            'deskripsi'        => $deskripsi,
-            'mimeType'         => $mimeType,
-            'preloadVal'       => $preloadVal,
-            'lyrics'           => $lyrics_data,
-            'lyrics_list'      => $lyrics_list,
+            'queue_query' => $queue_query,
+            'next_song_url' => $next_song_url,
+            'file_size_bytes' => $file_size_bytes,
+            'fmt_label' => $fmt_label,
+            'deskripsi' => $deskripsi,
+            'mimeType' => $mimeType,
+            'preloadVal' => $preloadVal,
+            'lyrics' => $lyrics_data,
+            'lyrics_list' => $lyrics_list,
         ]);
     }
 }

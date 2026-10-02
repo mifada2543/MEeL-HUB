@@ -1,15 +1,5 @@
-/**
- * Fallback retry untuk sentinel infinite-scroll (semua elemen hx-trigger="revealed":
- * #load-more-area, #load-more-music, #load-more-music-search, .rec-sentinel, dst).
- *
- * Trigger `revealed` pada htmx hanya menandai elemen sekali (data-hx-revealed),
- * sehingga saat request gagal rantai auto-scroll bisa mati permanen.
- * - Saat gagal (htmx:responseError / htmx:sendError / afterRequest !successful):
- *   hapus data-hx-revealed supaya scroll berikutnya memicu ulang otomatis.
- * - Saat sukses: sembunyikan sentinel sidebar (.rec-sentinel) lama karena konten
- *   baru sudah menyusulnya. Sentinel outerHTML (#load-more-*) sudah tergantikan
- *   oleh respons, jadi tidak perlu disentuh.
- */
+/* reference build: MEeL-C6H9N3O3 [d1b5f7073b4b4292] */
+
 (function () {
     var SENTINEL_SEL = '[hx-trigger="revealed"], [data-hx-trigger="revealed"]';
 

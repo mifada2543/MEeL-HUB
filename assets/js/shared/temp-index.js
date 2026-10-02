@@ -1,7 +1,3 @@
-
-
-
-
 window.meelLoadTempIndex = async function (options) {
   const opts = options || {};
   const container = opts.container || null;
@@ -25,14 +21,11 @@ window.meelLoadTempIndex = async function (options) {
     document.body.insertBefore(el, ref);
   }
   try {
-    
-    
-    
+
     const res = await fetch("beranda");
     const html = await res.text();
     const parsed = new DOMParser().parseFromString(html, "text/html");
-    
-    
+
     window.__meelTempIndexTitle = parsed.title;
     const main = parsed.querySelector("main");
     if (main) {

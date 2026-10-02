@@ -24,13 +24,13 @@ $stats_row = $conn->query("
 ");
 $stats_row = $stats_row ? $stats_row->fetch_assoc() : [];
 $stats = [
-    'video'         => (int)($stats_row['video'] ?? 0),
-    'music'         => (int)($stats_row['music'] ?? 0),
-    'books'         => (int)($stats_row['books'] ?? 0),
-    'total_views'   => (int)($stats_row['v_views'] ?? 0) + (int)($stats_row['m_views'] ?? 0),
-    'total_likes'   => (int)($stats_row['likes'] ?? 0),
+    'video' => (int)($stats_row['video'] ?? 0),
+    'music' => (int)($stats_row['music'] ?? 0),
+    'books' => (int)($stats_row['books'] ?? 0),
+    'total_views' => (int)($stats_row['v_views'] ?? 0) + (int)($stats_row['m_views'] ?? 0),
+    'total_likes' => (int)($stats_row['likes'] ?? 0),
     'total_dislikes'=> (int)($stats_row['dislikes'] ?? 0),
-    'pending'       => (int)($stats_row['pending'] ?? 0),
+    'pending' => (int)($stats_row['pending'] ?? 0),
 ];
 
 $top_media = $conn->query("
@@ -40,36 +40,35 @@ $top_media = $conn->query("
 ");
 
 require_once __DIR__ . '/../../modules/core/System.php';
-$sys           = new System($conn);
+$sys = new System($conn);
 $storage_usage = $sys->getStorageUsage();
 
 $server_stats = $sys->getServerStats();
 
-$ssd_free  = $storage_usage['ssd']['free'];
+$ssd_free = $storage_usage['ssd']['free'];
 $ssd_total = $storage_usage['ssd']['total'];
-$ssd_used  = $storage_usage['ssd']['used'];
-$ssd_perc  = $storage_usage['ssd']['perc'];
+$ssd_used = $storage_usage['ssd']['used'];
+$ssd_perc = $storage_usage['ssd']['perc'];
 
-$hdd_free  = $storage_usage['hdd']['free'];
+$hdd_free = $storage_usage['hdd']['free'];
 $hdd_total = $storage_usage['hdd']['total'];
 
-$sz_vid       = $storage_usage['sizes']['video'];
-$sz_mus       = $storage_usage['sizes']['music'];
-$sz_book      = $storage_usage['sizes']['books'];
-$sz_d_pub     = $storage_usage['sizes']['drive_pub'];
-$sz_d_prv     = $storage_usage['sizes']['drive_prv'];
+$sz_vid = $storage_usage['sizes']['video'];
+$sz_mus = $storage_usage['sizes']['music'];
+$sz_book = $storage_usage['sizes']['books'];
+$sz_d_pub = $storage_usage['sizes']['drive_pub'];
+$sz_d_prv = $storage_usage['sizes']['drive_prv'];
 $sz_drive_total = $storage_usage['sizes']['drive_total'];
 
-$p_vid   = $storage_usage['percentages']['video'];
-$p_mus   = $storage_usage['percentages']['music'];
-$p_book  = $storage_usage['percentages']['books'];
+$p_vid = $storage_usage['percentages']['video'];
+$p_mus = $storage_usage['percentages']['music'];
+$p_book = $storage_usage['percentages']['books'];
 $p_drive = $storage_usage['percentages']['drive'];
 
-
-$orphans           = [];
+$orphans = [];
 $orphan_checked_at = null;
 
-$ORPHAN_CACHE_TTL  = 600;
+$ORPHAN_CACHE_TTL = 600;
 $orphan_cache_file = defined('MEEL_ADMIN_ORPHANS_CACHE')
     ? MEEL_ADMIN_ORPHANS_CACHE
     : dirname(__DIR__, 2) . '/temp/cache/admin_orphans.json';
@@ -79,29 +78,29 @@ if (is_readable($orphan_cache_file)) {
     if (is_array($cached) && isset($cached['checked_at'], $cached['orphans'])
         && is_array($cached['orphans'])
         && (time() - (int) $cached['checked_at']) < $ORPHAN_CACHE_TTL) {
-        $orphans           = $cached['orphans'];
+        $orphans = $cached['orphans'];
         $orphan_checked_at = (int) $cached['checked_at'];
     }
 }
 
 if ($orphan_checked_at === null) {
 $check_map = [
-    'video/upload/video/'       => 'video',
-    'music/upload/file/'        => 'music',
-    'video/upload/thumbnail/'   => 'video_thumb',
-    'music/upload/thumbnail/'   => 'music_thumb',
-    'books/upload/manga/'       => 'books',
-    'books/upload/pdf/'         => 'books',
-    'books/upload/thumbnail/'   => 'books_thumb',
+    'video/upload/video/' => 'video',
+    'music/upload/file/' => 'music',
+    'video/upload/thumbnail/' => 'video_thumb',
+    'music/upload/thumbnail/' => 'music_thumb',
+    'books/upload/manga/' => 'books',
+    'books/upload/pdf/' => 'books',
+    'books/upload/thumbnail/' => 'books_thumb',
 ];
 
 $db_data = [
-    'video_folders'  => [],
-    'video_thumbs'   => [],
-    'music_files'    => [],
-    'music_thumbs'   => [],
-    'books_folders'  => [],
-    'books_thumbs'   => [],
+    'video_folders' => [],
+    'video_thumbs' => [],
+    'music_files' => [],
+    'music_thumbs' => [],
+    'books_folders' => [],
+    'books_thumbs' => [],
 ];
 
 $res = $conn->query("SELECT filename, thumbnail FROM video");
@@ -158,17 +157,17 @@ $ignored_files = ['.htaccess', 'default_video.png', 'music_default.png', 'defaul
 $__ignored_flip = array_flip($ignored_files);
 
 $base_dirs = [
-    'video/upload/video/'       => meel_media_base_path('video') . '/video/',
-    'music/upload/file/'        => meel_media_base_path('music') . '/file/',
-    'video/upload/thumbnail/'   => meel_media_base_path('video') . '/thumbnail/',
-    'music/upload/thumbnail/'   => meel_media_base_path('music') . '/thumbnail/',
-    'books/upload/manga/'       => meel_media_base_path('books') . '/manga/',
-    'books/upload/pdf/'         => meel_media_base_path('books') . '/pdf/',
-    'books/upload/thumbnail/'   => meel_media_base_path('books') . '/thumbnail/',
+    'video/upload/video/' => meel_media_base_path('video') . '/video/',
+    'music/upload/file/' => meel_media_base_path('music') . '/file/',
+    'video/upload/thumbnail/' => meel_media_base_path('video') . '/thumbnail/',
+    'music/upload/thumbnail/' => meel_media_base_path('music') . '/thumbnail/',
+    'books/upload/manga/' => meel_media_base_path('books') . '/manga/',
+    'books/upload/pdf/' => meel_media_base_path('books') . '/pdf/',
+    'books/upload/thumbnail/' => meel_media_base_path('books') . '/thumbnail/',
 ];
 
 foreach ($check_map as $rel_path => $table) {
-    $abs_path  = $base_dirs[$rel_path];
+    $abs_path = $base_dirs[$rel_path];
     $all_files = __admin_scan_files($abs_path);
 
     foreach ($all_files as $full_path) {
@@ -232,7 +231,7 @@ foreach ($check_map as $rel_path => $table) {
     if (function_exists('meel_write_cache_file')) {
         meel_write_cache_file($orphan_cache_file, json_encode([
             'checked_at' => $orphan_checked_at,
-            'orphans'    => $orphans,
+            'orphans' => $orphans,
         ], JSON_UNESCAPED_UNICODE));
     }
 }
@@ -272,11 +271,11 @@ $chart_activity = [];
 for ($i = 6; $i >= 0; $i--) {
     $date = date('Y-m-d', strtotime("-$i days"));
     $chart_activity[] = [
-        'date'  => $date,
+        'date' => $date,
         'label' => date('D', strtotime("-$i days")),
-        'views'     => $chart_views[$date] ?? 0,
-        'uploads'   => $chart_uploads[$date] ?? 0,
-        'users'     => $chart_active[$date] ?? 0,
+        'views' => $chart_views[$date] ?? 0,
+        'uploads' => $chart_uploads[$date] ?? 0,
+        'users' => $chart_active[$date] ?? 0,
         'new_users' => $chart_new[$date] ?? 0,
     ];
 }

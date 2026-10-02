@@ -1,7 +1,3 @@
-
-
-
-
 window.meelTcPct = function (pct, label) {
   var b = document.getElementById("meel-tc-bar");
   var t = document.getElementById("meel-tc-pct");

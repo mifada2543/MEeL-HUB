@@ -5,17 +5,14 @@ define('EXCLUDE_FILES', ['config.example.php', 'settings.example.php', 'test.php
 
 require_once __DIR__ . '/helpers.php';
 
-
-$GLOBALS['total_tests']  = 0;
-$GLOBALS['passed']       = 0;
-$GLOBALS['warnings']     = 0;
-$GLOBALS['failed']       = 0;
+$GLOBALS['total_tests'] = 0;
+$GLOBALS['passed'] = 0;
+$GLOBALS['warnings'] = 0;
+$GLOBALS['failed'] = 0;
 $GLOBALS['fail_details'] = [];
 
-
-/** Gabungan source Transcoder facade + seluruh service modules/transcoder/ — supaya static-pattern checks tetap valid setelah refactor split. */
 function transcoderCombinedSource(): string {
-    $out  = '';
+    $out = '';
     $core = PROJECT_ROOT . '/modules/core/Transcoder.php';
     if (is_file($core)) {
         $out .= (string) file_get_contents($core) . "\n";
@@ -33,16 +30,14 @@ function transcoderCombinedSource(): string {
     return $out;
 }
 
-
 function testSqlInjection(): void {
     print_header('TEST 1: SQL Injection ' . chr(8212) . ' Prepared Statement Analysis');
 
     $files = getPhpFiles();
-    $issues   = [];
-    $clean    = 0;
+    $issues = [];
+    $clean = 0;
     $examined = 0;
 
-    
     $staticPatterns = [
         '/COUNT\(\*\)/i',
         '/SUM\(/i',
@@ -53,7 +48,7 @@ function testSqlInjection(): void {
     ];
 
     foreach ($files as $path) {
-        $rel     = str_replace(PROJECT_ROOT . '/', '', $path);
+        $rel = str_replace(PROJECT_ROOT . '/', '', $path);
         $content = file_get_contents($path);
 
         $prepCount = countInFile($path, '/\->prepare\s*\(/');
@@ -70,16 +65,15 @@ function testSqlInjection(): void {
             continue;
         }
 
-        
         $risky = [];
         foreach ($rawWithVars as $qry) {
             $isStatic = false;
             foreach ($staticPatterns as $sp) {
                 if (preg_match($sp, $qry)) { $isStatic = true; break; }
             }
-            
+
             if (preg_match('/=\s*\(int\)/', $qry)) { $isStatic = true; }
-            
+
             if (!$isStatic) {
                 $allVars = [];
                 preg_match_all('/\$(\w+)/', $qry, $varMatches);
@@ -140,7 +134,7 @@ function testSqlInjection(): void {
 
         $hasPrep = ($prepCount > 0);
         $issues[] = [
-            'file'  => $rel,
+            'file' => $rel,
             'count' => count($risky),
             'has_prep' => $hasPrep,
             'sample' => substr($risky[0], 0, 100),
@@ -164,16 +158,15 @@ function testSqlInjection(): void {
     }
 }
 
-
 function testDisplayErrors(): void {
     print_header('TEST 2: Error Handling ' . chr(8212) . ' display_errors Setting');
 
-    $files    = getPhpFiles();
-    $enabled  = [];
+    $files = getPhpFiles();
+    $enabled = [];
     $disabled = 0;
 
     foreach ($files as $path) {
-        $rel     = str_replace(PROJECT_ROOT . '/', '', $path);
+        $rel = str_replace(PROJECT_ROOT . '/', '', $path);
         $content = file_get_contents($path);
 
         if (preg_match('/ini_set\s*\(\s*["\']display_errors["\']\s*,\s*["\']?1["\']?\s*\)/', $content)) {
@@ -183,7 +176,6 @@ function testDisplayErrors(): void {
         }
     }
 
-    
     $enabled = array_values(array_filter($enabled, fn($f) => !in_array($f, [
         'music/stream.php',
         'modules/core/bootstrap.php',
@@ -200,31 +192,30 @@ function testDisplayErrors(): void {
     }
 }
 
-
 function testCsrfProtection(): void {
     print_header('TEST 3: CSRF Protection ' . chr(8212) . ' Anti-CSRF Token');
 
-    $files      = getPhpFiles();
-    $protected  = 0;
-    $unprot     = [];
+    $files = getPhpFiles();
+    $protected = 0;
+    $unprot = [];
     $totalForms = 0;
 
     foreach ($files as $path) {
-        $rel     = str_replace(PROJECT_ROOT . '/', '', $path);
+        $rel = str_replace(PROJECT_ROOT . '/', '', $path);
         $content = file_get_contents($path);
 
-        $hasForm   = (preg_match('/<form.*method\s*=\s*["\']post["\']/is', $content) === 1);
-        $hasPost   = (strpos($content, '$_POST[') !== false);
+        $hasForm = (preg_match('/<form.*method\s*=\s*["\']post["\']/is', $content) === 1);
+        $hasPost = (strpos($content, '$_POST[') !== false);
         if (!$hasForm && !$hasPost) continue;
 
         $totalForms++;
         $hasVerify = (strpos($content, 'verify_csrf_token(') !== false);
-        $hasToken  = (strpos($content, 'csrf_token') !== false);
+        $hasToken = (strpos($content, 'csrf_token') !== false);
 
         if ($hasVerify || $hasToken) {
             $protected++;
             if ($hasPost && !$hasVerify && !strpos($rel, 'drive/')) {
-                
+
                 $unprot[] = $rel;
             }
         } else {
@@ -243,44 +234,41 @@ function testCsrfProtection(): void {
     }
 }
 
-
 function testXssProtection(): void {
     print_header('TEST 4: XSS Protection ' . chr(8212) . ' htmlspecialchars Usage');
 
-    $files  = getPhpFiles();
+    $files = getPhpFiles();
     $issues = [];
     $totalOut = 0;
-    $totalHs  = 0;
+    $totalHs = 0;
 
     foreach ($files as $path) {
-        $rel     = str_replace(PROJECT_ROOT . '/', '', $path);
+        $rel = str_replace(PROJECT_ROOT . '/', '', $path);
         $content = file_get_contents($path);
 
-        
         $outPatterns = [
-            '/\<\?\=\s*\$/',           
-            '/echo\s+\$/',             
-            '/print\s+\$/',            
-            '/\<\?\=\s*htmlspecialchars/', 
+            '/\<\?\=\s*\$/',
+            '/echo\s+\$/',
+            '/print\s+\$/',
+            '/\<\?\=\s*htmlspecialchars/',
         ];
 
         $rawOut = 0;
         foreach ($outPatterns as $i => $pat) {
-            if ($i === 3) continue; 
+            if ($i === 3) continue;
             preg_match_all($pat, $content, $m);
             $rawOut += count($m[0]);
         }
 
-        
         $hsCount = countInFile($path, '/htmlspecialchars\s*\(/');
 
         $totalOut += $rawOut;
-        $totalHs  += $hsCount;
+        $totalHs += $hsCount;
 
         if ($rawOut > 10 && $hsCount === 0) {
             $issues[] = ['file' => $rel, 'out' => $rawOut, 'hs' => $hsCount];
         }
-        
+
         if ($rawOut > 30 && $hsCount < 5) {
             $issues[] = ['file' => $rel, 'out' => $rawOut, 'hs' => $hsCount];
         }
@@ -297,17 +285,16 @@ function testXssProtection(): void {
     }
 }
 
-
 function testFileUploadSecurity(): void {
     print_header('TEST 5: File Upload Security');
 
     $uploads = [
-        'video/upload.php'            => ['delegated to Uploader::processVideo()', 'Uploader|in_array'],
-        'music/upload.php'            => ['delegated to Uploader::processMusic()', 'Uploader|in_array'],
-        'books/upload.php'            => ['delegated to BookUploader::handleUpload()', 'BookUploader|ZipArchive'],
+        'video/upload.php' => ['delegated to Uploader::processVideo()', 'Uploader|in_array'],
+        'music/upload.php' => ['delegated to Uploader::processMusic()', 'Uploader|in_array'],
+        'books/upload.php' => ['delegated to BookUploader::handleUpload()', 'BookUploader|ZipArchive'],
         'controllers/profile/profile_edit.php'=> ['MIME check', 'getimagesize|in_array.*file_type'],
-        'drive/upload.php'            => ['delegated to DriveService::upload()', 'DriveStorage|validateFileByMagicBytes'],
-        'modules/core/Uploader.php'        => ['ext + blacklist + magic bytes', 'preg_match.*php|validateVideoMagicBytes'],
+        'drive/upload.php' => ['delegated to DriveService::upload()', 'DriveStorage|validateFileByMagicBytes'],
+        'modules/core/Uploader.php' => ['ext + blacklist + magic bytes', 'preg_match.*php|validateVideoMagicBytes'],
     ];
 
     foreach ($uploads as $file => $info) {
@@ -323,19 +310,18 @@ function testFileUploadSecurity(): void {
             if (preg_match('/' . $pat . '/i', $content) !== 1) { $ok = false; break; }
         }
         if ($ok) record("{$file} \u{2014} {$info[0]} OK", true);
-        else     record("{$file} \u{2014} {$info[0]} (perlu review)", true, true);
+        else record("{$file} \u{2014} {$info[0]} (perlu review)", true, true);
     }
 }
-
 
 function testPathTraversal(): void {
     print_header('TEST 6: Path Traversal Protection');
 
     $checks = [
         'controllers/api/download_transcode.php' => ['basename', 'preg_match', 'pathinfo'],
-        'drive/download.php'                 => ['basename', 'DriveStorage|getFileForDownload'],
-        'drive/delete.php'                   => ['basename', 'DriveStorage|delete'],
-        'music/stream.php'                   => ['getMediaData', 'basename|\(int\)'],
+        'drive/download.php' => ['basename', 'DriveStorage|getFileForDownload'],
+        'drive/delete.php' => ['basename', 'DriveStorage|delete'],
+        'music/stream.php' => ['getMediaData', 'basename|\(int\)'],
     ];
 
     foreach ($checks as $file => $pats) {
@@ -350,35 +336,29 @@ function testPathTraversal(): void {
             if (preg_match('/' . $pat . '/i', $content) !== 1) { $ok = false; break; }
         }
         if ($ok) record("{$file} \u{2014} path traversal protection OK", true);
-        else     record("{$file} \u{2014} perlu review validasi filename", true, true);
+        else record("{$file} \u{2014} perlu review validasi filename", true, true);
     }
 }
-
 
 function testHtaccessSecurity(): void {
     print_header('TEST 7: .htaccess & HTTP Security Headers');
 
-    
     $sensitiveDirs = [
-        
+
         'controllers', 'controllers/admin', 'controllers/api', 'controllers/profile', 'controllers/system',
         'modules', 'modules/core', 'modules/core/helpers', 'modules/media', 'modules/transcoder', 'modules/exceptions',
-        
+
         'modules/auth', 'modules/auth/helpers',
         'partials', 'drive/templates', 'docs/partials',
-        
+
         'auth', 'database',
-        
+
         'err', 'temp',
-        
+
         'logs', 'tests',
-        
-        
-        
-        
-        
+
         'data_drive', 'books/upload', 'music/upload', 'video/upload',
-        
+
         'profile/upload',
         'arcade/rhythm/uploads', 'arcade/rhythm/songs',
     ];
@@ -399,34 +379,33 @@ function testHtaccessSecurity(): void {
         }
     }
 
-    
     $checks = [
-        '.htaccess'                 => ['Options -Indexes', 'X-Content-Type-Options', 'Deny from all'],
-        'auth/.htaccess'            => ['Options -Indexes', 'Deny from all'],
-        'admin/.htaccess'           => ['Options -Indexes', 'FilesMatch'],
-        'logs/.htaccess'            => ['Options -Indexes', 'Deny from all'],
-        'data_drive/.htaccess'      => ['php_flag engine off', 'ForceType', 'Options -Indexes', 'RewriteRule ^private_admins'],
-        'books/upload/.htaccess'    => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
-        'music/upload/.htaccess'    => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
-        'video/upload/.htaccess'    => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
-        'books/.htaccess'           => ['Options -Indexes'],
-        'video/.htaccess'           => ['Options -Indexes'],
-        'music/.htaccess'           => ['Options -Indexes'],
-        'drive/.htaccess'           => ['Options -Indexes'],
-        'controllers/.htaccess'     => ['Deny from all'],
-        'modules/.htaccess'         => ['Deny from all'],
-        'modules/core/.htaccess'    => ['Deny from all'],
+        '.htaccess' => ['Options -Indexes', 'X-Content-Type-Options', 'Deny from all'],
+        'auth/.htaccess' => ['Options -Indexes', 'Deny from all'],
+        'admin/.htaccess' => ['Options -Indexes', 'FilesMatch'],
+        'logs/.htaccess' => ['Options -Indexes', 'Deny from all'],
+        'data_drive/.htaccess' => ['php_flag engine off', 'ForceType', 'Options -Indexes', 'RewriteRule ^private_admins'],
+        'books/upload/.htaccess' => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
+        'music/upload/.htaccess' => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
+        'video/upload/.htaccess' => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
+        'books/.htaccess' => ['Options -Indexes'],
+        'video/.htaccess' => ['Options -Indexes'],
+        'music/.htaccess' => ['Options -Indexes'],
+        'drive/.htaccess' => ['Options -Indexes'],
+        'controllers/.htaccess' => ['Deny from all'],
+        'modules/.htaccess' => ['Deny from all'],
+        'modules/core/.htaccess' => ['Deny from all'],
         'modules/core/helpers/.htaccess' => ['Deny from all'],
-        'modules/auth/.htaccess'    => ['Deny from all'],
+        'modules/auth/.htaccess' => ['Deny from all'],
         'modules/auth/helpers/.htaccess' => ['Deny from all'],
         'modules/exceptions/.htaccess' => ['Deny from all'],
-        'profile/upload/.htaccess'  => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
-        'partials/.htaccess'        => ['Deny from all'],
-        'docs/partials/.htaccess'   => ['Deny from all'],
+        'profile/upload/.htaccess' => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
+        'partials/.htaccess' => ['Deny from all'],
+        'docs/partials/.htaccess' => ['Deny from all'],
         'drive/templates/.htaccess' => ['Deny from all'],
-        'tests/.htaccess'           => ['Deny from all'],
+        'tests/.htaccess' => ['Deny from all'],
         'arcade/rhythm/uploads/.htaccess' => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
-        'arcade/rhythm/songs/.htaccess'   => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
+        'arcade/rhythm/songs/.htaccess' => ['php_flag engine off', 'ForceType', 'Options -Indexes'],
     ];
 
     foreach ($checks as $file => $reqs) {
@@ -436,13 +415,13 @@ function testHtaccessSecurity(): void {
             continue;
         }
         $content = file_get_contents($full);
-        $ok  = true;
+        $ok = true;
         $miss = [];
         foreach ($reqs as $r) {
             if (strpos($content, $r) === false) { $ok = false; $miss[] = $r; }
         }
         if ($ok) record("{$file} \u{2014} semua security directive OK", true);
-        else     record("{$file} \u{2014} kurang: " . implode(', ', $miss), true, true);
+        else record("{$file} \u{2014} kurang: " . implode(', ', $miss), true, true);
     }
 
     $arcHt = PROJECT_ROOT . '/arcade/.htaccess';
@@ -462,8 +441,6 @@ function testHtaccessSecurity(): void {
         }
     }
 
-    // Shim wajib per direktori arcade/ yang mengeksekusi *.php langsung: root .htaccess
-    // (301) tak diproses di bawah arcade/ → tanpa shim di cwd yang benar → fatal 500 fail-closed.
     $shims = [
         'arcade/_gate.php',
         'arcade/chess/_gate.php',
@@ -486,8 +463,6 @@ function testHtaccessSecurity(): void {
         record("arcade \u{2014} shim auto_prepend hilang: " . implode(", ", $shimMissing), false, false);
     }
 
-    // "ForceType inherit" mengirim header literal "Content-Type: inherit" (rusak
-    // dipadu X-Content-Type-Options: nosniff) — dilarang di subtree rhythm.
     foreach (['arcade/rhythm/uploads/.htaccess', 'arcade/rhythm/songs/.htaccess'] as $rf) {
         $full = PROJECT_ROOT . '/' . $rf;
         if (file_exists($full) && preg_match('/^\\s*ForceType\\s+inherit\\s*$/m', (string) file_get_contents($full))) {
@@ -496,25 +471,24 @@ function testHtaccessSecurity(): void {
     }
 }
 
-
 function testSessionSecurity(): void {
     print_header('TEST 8: Session & Authentication Security');
 
     $checks = [
-        'Session name unik (meel)'        => ['modules/auth/helpers/session.php', '/session_name.*meel/'],
+        'Session name unik (meel)' => ['modules/auth/helpers/session.php', '/session_name.*meel/'],
         'Session timeout (gc_maxlifetime)' => ['modules/auth/helpers/session.php', '/session\.gc_maxlifetime/'],
-        'HTTP-only cookie params'          => ['modules/auth/helpers/session.php', '/session_set_cookie_params/'],
-        'CSRF token generation'            => ['auth/config.php', '/random_bytes.*32/'],
-        'Activity timeout check'           => ['auth/config.php', '/LAST_ACTIVITY/'],
-        'Session hijack protection'        => ['auth/auth.php', '/last_session_id/'],
-        'Password hashing'                 => ['auth/register.php', '/password_hash/'],
-        'Password verification'            => ['auth/login.php', '/password_verify/'],
-        'Brute force (login lockout)'      => ['auth/login.php', '/login_locked/'],
-        'Rate limit (register)'            => ['auth/register.php', '/reg_attempts/'],
-        'IP Ban system'                    => ['modules/core/activity_logger.php', '/ip_ban/'],
-        'Session kick on hijack'           => ['modules/core/activity_logger.php', '/session_destroy/'],
-        'Logout proper (session destroy)'  => ['auth/logout.php', '/session_destroy/'],
-        'Logout clears cookie'             => ['auth/logout.php', '/setcookie.*session/'],
+        'HTTP-only cookie params' => ['modules/auth/helpers/session.php', '/session_set_cookie_params/'],
+        'CSRF token generation' => ['auth/config.php', '/random_bytes.*32/'],
+        'Activity timeout check' => ['auth/config.php', '/LAST_ACTIVITY/'],
+        'Session hijack protection' => ['auth/auth.php', '/last_session_id/'],
+        'Password hashing' => ['auth/register.php', '/password_hash/'],
+        'Password verification' => ['auth/login.php', '/password_verify/'],
+        'Brute force (login lockout)' => ['auth/login.php', '/login_locked/'],
+        'Rate limit (register)' => ['auth/register.php', '/reg_attempts/'],
+        'IP Ban system' => ['modules/core/activity_logger.php', '/ip_ban/'],
+        'Session kick on hijack' => ['modules/core/activity_logger.php', '/session_destroy/'],
+        'Logout proper (session destroy)' => ['auth/logout.php', '/session_destroy/'],
+        'Logout clears cookie' => ['auth/logout.php', '/setcookie.*session/'],
     ];
 
     foreach ($checks as $name => $c) {
@@ -525,10 +499,9 @@ function testSessionSecurity(): void {
         }
         $content = file_get_contents($full);
         if (preg_match($c[1], $content)) record("{$name} OK", true);
-        else                              record("{$name} \u{2014} tidak terdeteksi", true, true);
+        else record("{$name} \u{2014} tidak terdeteksi", true, true);
     }
 }
-
 
 function testCspHeaders(): void {
     print_header('TEST 9: HTTP Security Headers & CSP');
@@ -541,11 +514,11 @@ function testCspHeaders(): void {
 
     $content = file_get_contents($cfg);
     $hdrs = [
-        'X-Frame-Options'           => 'SAMEORIGIN',
-        'X-Content-Type-Options'    => 'nosniff',
-        'Referrer-Policy'           => 'strict-origin',
-        'Permissions-Policy'        => 'camera',
-        'Content-Security-Policy'   => "default-src 'self'",
+        'X-Frame-Options' => 'SAMEORIGIN',
+        'X-Content-Type-Options' => 'nosniff',
+        'Referrer-Policy' => 'strict-origin',
+        'Permissions-Policy' => 'camera',
+        'Content-Security-Policy' => "default-src 'self'",
         'Cross-Origin-Opener-Policy'=> 'same-origin',
     ];
 
@@ -564,20 +537,19 @@ function testCspHeaders(): void {
     }
 }
 
-
 function testCommandInjection(): void {
     print_header('TEST 10: Command Injection ' . chr(8212) . ' Shell Execution Safety');
 
     $risky = [
-        'modules/core/Uploader.php'     => ['shell_exec', 'exec', 'popen'],
-        'modules/core/Transcoder.php'   => ['shell_exec', 'exec', 'popen'],
-        'modules/transcoder/DownloadService.php'    => ['shell_exec', 'exec', 'popen', 'proc_open'],
-        'modules/transcoder/EncodeService.php'      => ['shell_exec', 'exec', 'popen', 'proc_open'],
-        'modules/transcoder/TranscodeService.php'   => ['shell_exec', 'exec', 'popen', 'proc_open'],
-        'modules/core/helpers/storage.php' => ['shell_exec'], 
-        'modules/core/System.php'       => ['shell_exec'],
-        'auth/config.example.php'  => ['proc_open', 'shell_exec'],
-        'modules/core/japanese.php'     => ['proc_open'],
+        'modules/core/Uploader.php' => ['shell_exec', 'exec', 'popen'],
+        'modules/core/Transcoder.php' => ['shell_exec', 'exec', 'popen'],
+        'modules/transcoder/DownloadService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
+        'modules/transcoder/EncodeService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
+        'modules/transcoder/TranscodeService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
+        'modules/core/helpers/storage.php' => ['shell_exec'],
+        'modules/core/System.php' => ['shell_exec'],
+        'auth/config.example.php' => ['proc_open', 'shell_exec'],
+        'modules/core/japanese.php' => ['proc_open'],
     ];
 
     foreach ($risky as $file => $funcs) {
@@ -597,7 +569,7 @@ function testCommandInjection(): void {
         } elseif ($escCount >= $execCount) {
             record("{$file} \u{2014} {$execCount} shell exec, semua pakai escapeshellarg", true);
         } else {
-            
+
             $unprotected = 0;
             preg_match_all('/(?:shell_exec|exec|popen|proc_open)\s*\(([^)]+)\)/s', $content, $execMatches);
             foreach ($execMatches[1] as $argStr) {
@@ -624,17 +596,16 @@ function testCommandInjection(): void {
     }
 }
 
-
 function testPasswordPolicy(): void {
     print_header('TEST 11: Password Policy & Strength');
 
     $checks = [
 
-        ['Min 8 karakter password',          'auth/auth_helpers.php', '/strlen.*pass.*8|min.*8/'],
-        ['Brute force lockout',              'auth/login.php',    '/login_fail_count/'],
-        ['Lockout timeout',                  'auth/login.php',    '/lockout_time/'],
-        ['Username regex (alpha numeric)',   'auth/auth_helpers.php', '/preg_match.*a-zA-Z0-9/'],
-        ['Guest username blacklist',         'auth/auth_helpers.php', '/stripos.*guest/'],
+        ['Min 8 karakter password', 'auth/auth_helpers.php', '/strlen.*pass.*8|min.*8/'],
+        ['Brute force lockout', 'auth/login.php', '/login_fail_count/'],
+        ['Lockout timeout', 'auth/login.php', '/lockout_time/'],
+        ['Username regex (alpha numeric)', 'auth/auth_helpers.php', '/preg_match.*a-zA-Z0-9/'],
+        ['Guest username blacklist', 'auth/auth_helpers.php', '/stripos.*guest/'],
     ];
 
     foreach ($checks as $c) {
@@ -645,10 +616,9 @@ function testPasswordPolicy(): void {
         }
         $content = file_get_contents($full);
         if (preg_match($c[2], $content)) record("{$c[0]} OK", true);
-        else                              record("{$c[0]} \u{2014} policy tidak terdeteksi", true, true);
+        else record("{$c[0]} \u{2014} policy tidak terdeteksi", true, true);
     }
 }
-
 
 function testFileIntegrity(): void {
     print_header('TEST 12: File Integrity ' . chr(8212) . ' Critical Files');
@@ -682,11 +652,9 @@ function testFileIntegrity(): void {
     }
 }
 
-
 function testSsrfAndPrivateDrive(): void {
     print_header('TEST 13: SSRF Guard & Private Drive Hardening');
 
-    
     $guardFile = PROJECT_ROOT . '/modules/auth/SsrfGuard.php';
     if (!file_exists($guardFile)) {
         record('modules/auth/SsrfGuard.php — FILE TIDAK DITEMUKAN!', false, false);
@@ -727,7 +695,6 @@ function testSsrfAndPrivateDrive(): void {
             record('SsrfGuard: --add-header Host TIDAK terdeteksi', false, false);
         }
 
-        
         if (strpos($tc, 'ensureDownloadProxy') !== false && strpos($tc, '--proxy') !== false) {
             record('Transcoder: yt-dlp diarahkan lewat validating proxy (--proxy)', true);
         } else {
@@ -761,9 +728,6 @@ function testSsrfAndPrivateDrive(): void {
         record('validating_proxy_server: SsrfGuard diterapkan per hop (CONNECT + resolve)', true);
     }
 
-    
-    
-    
     $parentHt = PROJECT_ROOT . '/data_drive/.htaccess';
     if (!file_exists($parentHt)) {
         record('data_drive/.htaccess — FILE TIDAK DITEMUKAN!', false, false,
@@ -778,8 +742,6 @@ function testSsrfAndPrivateDrive(): void {
         }
     }
 
-    
-    
     $nestedHt = PROJECT_ROOT . '/data_drive/private_admins/.htaccess';
     if (is_file($nestedHt)) {
         $nhc = (string) file_get_contents($nestedHt);
@@ -792,17 +754,16 @@ function testSsrfAndPrivateDrive(): void {
         record('data_drive/private_admins/.htaccess — tidak ada (deploy-time; parent rule aktif)', true, true);
     }
 
-    
     $streamFile = PROJECT_ROOT . '/drive/stream.php';
     if (!file_exists($streamFile)) {
         record('drive/stream.php — FILE TIDAK DITEMUKAN!', false, false);
     } else {
         $sc = file_get_contents($streamFile);
         $need = [
-            'authorize()'            => 'authorize()',
-            'verify_csrf_token'      => 'verify_csrf_token',
-            'getFileForDownload'     => 'getFileForDownload',
-            'basename (traversal)'   => 'basename(',
+            'authorize()' => 'authorize()',
+            'verify_csrf_token' => 'verify_csrf_token',
+            'getFileForDownload' => 'getFileForDownload',
+            'basename (traversal)' => 'basename(',
         ];
         foreach ($need as $label => $pat) {
             if (strpos($sc, $pat) !== false) {
@@ -813,13 +774,10 @@ function testSsrfAndPrivateDrive(): void {
         }
     }
 
-    
     $dsFile = PROJECT_ROOT . '/drive/DriveService.php';
     if (file_exists($dsFile)) {
         $ds = file_get_contents($dsFile);
-        
-        
-        
+
         $usesAuthStream =
             strpos($ds, "'stream?file='") !== false ||
             strpos($ds, "'stream.php?file='") !== false;
@@ -842,19 +800,9 @@ function testSsrfAndPrivateDrive(): void {
     }
 }
 
-
-
-
-
-
-
 function testFatalBugRegression(): void {
     print_header('TEST 14: Fatal-Bug Regression Guard');
 
-    
-    
-    
-    
     $alFile = PROJECT_ROOT . '/modules/core/activity_logger.php';
     if (!file_exists($alFile)) {
         record('modules/core/activity_logger.php — FILE TIDAK DITEMUKAN!', false, false);
@@ -883,9 +831,6 @@ function testFatalBugRegression(): void {
         }
     }
 
-    
-    
-    
     $insertSites = [];
     $ri = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator(PROJECT_ROOT, RecursiveDirectoryIterator::SKIP_DOTS)
@@ -921,10 +866,6 @@ function testFatalBugRegression(): void {
         }
     }
 
-    
-    
-    
-    
     $adFile = PROJECT_ROOT . '/controllers/admin/admin_data.php';
     if (!file_exists($adFile)) {
         record('controllers/admin/admin_data.php — FILE TIDAK DITEMUKAN!', false, false);
@@ -947,19 +888,15 @@ function testFatalBugRegression(): void {
     }
 }
 
-
-
-
 function testAdminContextAndPipelineHardening(): void {
     print_header('TEST 15: Admin Context Guards & Media Pipeline Hardening');
 
-    
     $adminFiles = [
         'admin/catur.php' => [
             'Role check admin (require_admin)' => '/require_admin\s*\(/',
         ],
         'controllers/admin/admin_actions.php' => [
-            'Role check via is_admin()'        => '/is_admin\s*\(\s*\$conn\s*\)/',
+            'Role check via is_admin()' => '/is_admin\s*\(\s*\$conn\s*\)/',
             'Guard direct access (MEEL_ADMIN_CONTEXT)' => "/defined\('MEEL_ADMIN_CONTEXT'\)/",
         ],
         'controllers/admin/admin_data.php' => [
@@ -989,26 +926,25 @@ function testAdminContextAndPipelineHardening(): void {
         }
     }
 
-    
     $uploaderFile = PROJECT_ROOT . '/modules/core/Uploader.php';
     if (!file_exists($uploaderFile)) {
         record('modules/core/Uploader.php — FILE TIDAK DITEMUKAN!', false, false);
     } else {
         $uc = (string) file_get_contents($uploaderFile);
         $uploaderChecks = [
-            'checkActiveUploadLimit() method'          => '/function checkActiveUploadLimit/',
-            'flock() untuk serialisasi'                => '/flock\(/',
-            'TTL auto-reset 5 menit'                   => '/300\)/',
-            'Max 3 simultaneous uploads'               => '/current >= 3/',
-            'register_shutdown_function decrement'     => '/register_shutdown_function/',
-            'Dipanggil di processMusic()'              => '/\$this->checkActiveUploadLimit\(\)/',
-            'Dipanggil di processVideo()'              => '/\$this->checkActiveUploadLimit\(\)/',
-            'flock untuk penamaan folder video'        => '/meel_upload_video\.lock/',
-            'reserve nama upload atomik via helper'    => '/meel_reserve_unique_filename\(\$target_dir/',
-            'atomic reserve music transcode (.ogg)'    => '/getUniqueFilename\(\$opus_base, \x27ogg\x27/',
-            'flock HDD move'                           => '/meel_move_hdd\.lock/',
-            'FFprobe failure handling'                 => '/duration.*<=.*0/',
-            'try-finally untuk unlock'                 => '/finally \{.*flock\(\$lock_fp, LOCK_UN\)/s',
+            'checkActiveUploadLimit() method' => '/function checkActiveUploadLimit/',
+            'flock() untuk serialisasi' => '/flock\(/',
+            'TTL auto-reset 5 menit' => '/300\)/',
+            'Max 3 simultaneous uploads' => '/current >= 3/',
+            'register_shutdown_function decrement' => '/register_shutdown_function/',
+            'Dipanggil di processMusic()' => '/\$this->checkActiveUploadLimit\(\)/',
+            'Dipanggil di processVideo()' => '/\$this->checkActiveUploadLimit\(\)/',
+            'flock untuk penamaan folder video' => '/meel_upload_video\.lock/',
+            'reserve nama upload atomik via helper' => '/meel_reserve_unique_filename\(\$target_dir/',
+            'atomic reserve music transcode (.ogg)' => '/getUniqueFilename\(\$opus_base, \x27ogg\x27/',
+            'flock HDD move' => '/meel_move_hdd\.lock/',
+            'FFprobe failure handling' => '/duration.*<=.*0/',
+            'try-finally untuk unlock' => '/finally \{.*flock\(\$lock_fp, LOCK_UN\)/s',
         ];
 
         foreach ($uploaderChecks as $name => $pat) {
@@ -1020,20 +956,19 @@ function testAdminContextAndPipelineHardening(): void {
         }
     }
 
-    
     $transcoderFile = PROJECT_ROOT . '/modules/core/Transcoder.php';
     if (!file_exists($transcoderFile)) {
         record('modules/core/Transcoder.php — FILE TIDAK DITEMUKAN!', false, false);
     } else {
         $tc = transcoderCombinedSource();
         $tcChecks = [
-            'proc_open array (finalizeVideo)'   => '/proc_open\(\$hls_cmd/',
-            'proc_open array (transcodeVideo)'  => '/proc_open\(\$tc_cmd/',
+            'proc_open array (finalizeVideo)' => '/proc_open\(\$hls_cmd/',
+            'proc_open array (transcodeVideo)' => '/proc_open\(\$tc_cmd/',
             'env vars via $env (LD_LIBRARY_PATH)' => "/'LD_LIBRARY_PATH'/",
-            'env vars via $env (PATH)'          => "/'PATH'/",
-            'putenv() untuk processDownload'    => "/putenv\('PATH/",
+            'env vars via $env (PATH)' => "/'PATH'/",
+            'putenv() untuk processDownload' => "/putenv\('PATH/",
             'marker file anti-duplikat transcode' => '/marker_file/',
-            'folder naming lock'                => '/meel_transcode_folder\.lock/',
+            'folder naming lock' => '/meel_transcode_folder\.lock/',
             'stderr pipe untuk progress FFmpeg' => '/\$hls_pipes\[2\]/',
         ];
 
@@ -1047,24 +982,15 @@ function testAdminContextAndPipelineHardening(): void {
     }
 }
 
-
-
-
-
-
-
-
 function testOpenRedirectHardening(): void {
     print_header('TEST 16: Open-Redirect & Redirect-Hardening Guard');
 
-    
     $dcFile = PROJECT_ROOT . '/controllers/api/delete_comment.php';
     if (!file_exists($dcFile)) {
         record('controllers/api/delete_comment.php — FILE TIDAK DITEMUKAN!', false, false);
     } else {
         $dc = (string) file_get_contents($dcFile);
 
-        
         preg_match_all('/header\s*\(\s*["\']Location:/i', $dc, $locMs);
         $locCount = count($locMs[0]);
         preg_match_all('/header\s*\(\s*["\']Location:\s*["\']\s*\.\s*safe_comment_back_url\(\)/i', $dc, $safeMs);
@@ -1076,7 +1002,6 @@ function testOpenRedirectHardening(): void {
                 'Semua redirect harus lewat safe_comment_back_url() (validasi host referer)');
         }
 
-        
         if (preg_match('/header\s*\(\s*["\']Location:\s*["\']\s*\.\s*\$_SERVER\[\'HTTP_REFERER\'\]/i', $dc)) {
             record('delete_comment: redirect ke HTTP_REFERER MENTAH — open redirect!', false, false,
                 'Redirect referer harus lewat safe_comment_back_url()');
@@ -1084,10 +1009,6 @@ function testOpenRedirectHardening(): void {
             record('delete_comment: tidak ada redirect ke HTTP_REFERER mentah', true);
         }
 
-        
-        
-        
-        
         foreach ([
             'controllers/api/delete_comment.php',
             'controllers/api/comment.php',
@@ -1111,7 +1032,6 @@ function testOpenRedirectHardening(): void {
         }
     }
 
-    
     $paFile = PROJECT_ROOT . '/music/playlist_action.php';
     if (!file_exists($paFile)) {
         record('music/playlist_action.php — FILE TIDAK DITEMUKAN!', false, false);
@@ -1132,7 +1052,6 @@ function testOpenRedirectHardening(): void {
                 'Tambah cek str_contains($url, \'://\')');
         }
 
-        
         $hasClean = strpos($pa, "'beranda'") !== false
             && strpos($pa, "'playlist'") !== false
             && strpos($pa, "'watch'") !== false
@@ -1146,17 +1065,14 @@ function testOpenRedirectHardening(): void {
     }
 }
 
-
 function testHardeningRegression(): void {
     print_header('TEST 17: Security Hardening Regression Guard');
 
-    
     $read = function (string $rel): string {
         $path = PROJECT_ROOT . '/' . $rel;
         return file_exists($path) ? (string) file_get_contents($path) : '';
     };
 
-    
     $ml = $read('modules/media/MediaLibrary.php');
     if (strpos($ml, 'ArchiveGuard') !== false && !preg_match('/\$zip->extractTo\(\$manga_folder\)/', $ml)) {
         record('MediaLibrary: ekstraksi ZIP via ArchiveGuard (tanpa extractTo ke folder final)', true);
@@ -1165,7 +1081,6 @@ function testHardeningRegression(): void {
             'extractTo langsung ke folder final harus dihapus');
     }
 
-    
     $pe = $read('controllers/api/post_encode.php');
     if (preg_match('/\$_GET\[\x27temp_file\x27\]/', $pe)) {
         record('post_encode: temp_file dari $_GET — path manipulation!', false, false,
@@ -1184,8 +1099,7 @@ function testHardeningRegression(): void {
         record('post_encode: ownership via sesi tidak terdeteksi', false, false);
     }
 
-    
-    $tc    = $read('modules/core/Transcoder.php');
+    $tc = $read('modules/core/Transcoder.php');
     $tcEnc = $read('modules/transcoder/EncodeService.php');
     if (strpos($tc, 'processDownload') !== false
         && strpos($tc, 'encodeMusic') !== false
@@ -1202,7 +1116,6 @@ function testHardeningRegression(): void {
             'wajib reserve fopen(...,\'x\') — via meel_reserve_unique_filename');
     }
 
-    
     $up = $read('modules/core/Uploader.php');
     $hup = $read('modules/core/helpers/upload.php');
     $uploaderDelegates = strpos($up, 'meel_reserve_unique_filename') !== false
@@ -1219,7 +1132,6 @@ function testHardeningRegression(): void {
         record('Uploader: validasi magic bytes belum konsisten', false, false);
     }
 
-    
     $profile = $read('profile/index.php');
     if (preg_match('/\$u\[\x27bio\x27\]/', $profile) && strpos($profile, "htmlspecialchars(\$u['bio']") !== false) {
         record('profile: bio di-escape saat render (stored XSS fixed)', true);
@@ -1228,7 +1140,6 @@ function testHardeningRegression(): void {
             'wrap $u[bio] dengan htmlspecialchars(..., ENT_QUOTES, UTF-8)');
     }
 
-    
     $dt = $read('controllers/api/download_transcode.php');
     if (strpos($dt, 'ownsTranscodeFile') !== false) {
         record('download_transcode: ownership sesi (anti cross-user file guess)', true);
@@ -1236,7 +1147,6 @@ function testHardeningRegression(): void {
         record('download_transcode: ownership sesi belum terpasang', false, false);
     }
 
-    
     $tb = $read('modules/core/TranscoderBase.php');
     if (preg_match('/kill -TERM.*\$pid/s', $tb) && !preg_match('/\$pid <= 0|\(int\)@file_get_contents|int \$pid/', $tb)) {
         record('TranscoderBase: shell_exec kill tanpa validasi integer PID!', false, false,
@@ -1245,7 +1155,6 @@ function testHardeningRegression(): void {
         record('TranscoderBase: kill via posix_kill + PID integer (tanpa shell injection)', true);
     }
 
-    
     $guard = $read('modules/media/ArchiveGuard.php');
     foreach (['MAX_ARCHIVE_ENTRIES', 'MAX_ARCHIVE_UNCOMPRESSED_BYTES', 'MAX_ARCHIVE_ENTRY_BYTES', 'MAX_ARCHIVE_COMPRESSION_RATIO'] as $limit) {
         if (strpos($guard, $limit) === false) {
@@ -1258,7 +1167,6 @@ function testHardeningRegression(): void {
         record('ArchiveGuard: extractSafe tidak ditemukan', false, false);
     }
 }
-
 
 function run(): int {
     echo CLR_CYAN . CLR_BOLD . "\n";
@@ -1287,7 +1195,6 @@ function run(): int {
     testOpenRedirectHardening();
     testHardeningRegression();
 
-    
     echo "\n" . CLR_BOLD . chr(9556) . str_repeat(chr(9552), 56) . chr(9559) . "\n";
     echo chr(9553) . "                    SUMMARY REPORT" . str_repeat(' ', 23) . chr(9553) . "\n";
     echo chr(9562) . str_repeat(chr(9552), 56) . chr(9565) . CLR_RESET . "\n\n";
@@ -1319,7 +1226,7 @@ function run(): int {
     }
 
     $reportFile = PROJECT_ROOT . '/logs/security_report_' . date('Ymd_His') . '.log';
-    $report  = "MEeL Security Report\n";
+    $report = "MEeL Security Report\n";
     $report .= "Date: " . date('Y-m-d H:i:s') . "\n";
     $report .= "Score: {$score}/100 ({$p} pass, {$w} warn, {$f} fail)\n\n";
     if (!empty($failDetails)) {

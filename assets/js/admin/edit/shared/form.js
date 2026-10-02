@@ -2,7 +2,7 @@
 
 (function () {
   "use strict";
-  
+
   window.handleSubmit = function () {
     var btn = document.getElementById("btn-save");
     if (!btn) return;
@@ -11,7 +11,7 @@
     btn.style.opacity = ".6";
     btn.style.pointerEvents = "none";
   };
-  
+
   (function () {
     var style = document.createElement("style");
     style.textContent =

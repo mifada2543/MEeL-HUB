@@ -42,7 +42,7 @@ if (str_starts_with($__rel, 'file/')) {
 
     if (!$__allowed) {
         $__script = $_SERVER['SCRIPT_NAME'] ?? '';
-        $__base   = rtrim(dirname(dirname($__script)), '/');
+        $__base = rtrim(dirname(dirname($__script)), '/');
         header('Location: ' . $__base . '/err/?code=denied');
         exit;
     }

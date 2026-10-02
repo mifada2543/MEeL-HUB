@@ -15,7 +15,6 @@ class System
     {
         $active_queues = [];
 
-        
         $res1 = $this->conn->query("SELECT q.id, q.url, q.media_type, q.status, q.created_at, u.username, 'download' as task_type
                                     FROM upload_queue q
                                     JOIN users u ON q.user_id = u.id
@@ -27,7 +26,6 @@ class System
             }
         }
 
-        
         $res2 = $this->conn->query("SELECT q.id, q.status, q.created_at, u.username, 'transcode' as task_type, q.user_id
                                     FROM transcode_queue q
                                     JOIN users u ON q.user_id = u.id
@@ -64,41 +62,41 @@ class System
         $project_root = dirname(__DIR__, 2);
         require_once __DIR__ . '/helpers.php';
 
-        $ssd_free  = @disk_free_space("/") / (1024 ** 3);
+        $ssd_free = @disk_free_space("/") / (1024 ** 3);
         $ssd_total = @disk_total_space("/") / (1024 ** 3);
-        $ssd_used  = $ssd_total - $ssd_free;
-        $ssd_perc  = ($ssd_total > 0) ? ($ssd_used / $ssd_total) * 100 : 0;
+        $ssd_used = $ssd_total - $ssd_free;
+        $ssd_perc = ($ssd_total > 0) ? ($ssd_used / $ssd_total) * 100 : 0;
 
         $video_base = meel_media_base_path('video');
         $music_base = meel_media_base_path('music');
         $books_base = meel_media_base_path('books');
         $drive_base = meel_drive_base_path();
 
-        $hdd_path  = $video_base;
-        $hdd_free  = @disk_free_space($hdd_path) / (1024 ** 3);
+        $hdd_path = $video_base;
+        $hdd_free = @disk_free_space($hdd_path) / (1024 ** 3);
         $hdd_total = @disk_total_space($hdd_path) / (1024 ** 3);
 
-        $sz_vid   = self::getFolderSizeSys($video_base) / (1024 ** 3);
-        $sz_mus   = self::getFolderSizeSys($music_base) / (1024 ** 3);
-        $sz_book  = self::getFolderSizeSys($books_base) / (1024 ** 3);
+        $sz_vid = self::getFolderSizeSys($video_base) / (1024 ** 3);
+        $sz_mus = self::getFolderSizeSys($music_base) / (1024 ** 3);
+        $sz_book = self::getFolderSizeSys($books_base) / (1024 ** 3);
         $sz_d_pub = self::getFolderSizeSys($drive_base . '/public') / (1024 ** 3);
         $sz_d_prv = self::getFolderSizeSys($drive_base . '/private_admins') / (1024 ** 3);
 
         $sz_drive_total = $sz_d_pub + $sz_d_prv;
-        $p_vid   = ($hdd_total > 0) ? ($sz_vid / $hdd_total) * 100 : 0;
-        $p_mus   = ($hdd_total > 0) ? ($sz_mus / $hdd_total) * 100 : 0;
-        $p_book  = ($hdd_total > 0) ? ($sz_book / $hdd_total) * 100 : 0;
+        $p_vid = ($hdd_total > 0) ? ($sz_vid / $hdd_total) * 100 : 0;
+        $p_mus = ($hdd_total > 0) ? ($sz_mus / $hdd_total) * 100 : 0;
+        $p_book = ($hdd_total > 0) ? ($sz_book / $hdd_total) * 100 : 0;
         $p_drive = ($hdd_total > 0) ? ($sz_drive_total / $hdd_total) * 100 : 0;
 
         return [
             'ssd' => [
-                'free'  => $ssd_free,
+                'free' => $ssd_free,
                 'total' => $ssd_total,
-                'used'  => $ssd_used,
-                'perc'  => $ssd_perc
+                'used' => $ssd_used,
+                'perc' => $ssd_perc
             ],
             'hdd' => [
-                'free'  => $hdd_free,
+                'free' => $hdd_free,
                 'total' => $hdd_total
             ],
             'sizes' => [
@@ -117,8 +115,6 @@ class System
             ]
         ];
     }
-
-    
 
     public function isServerBusy(): bool
     {
@@ -150,8 +146,8 @@ class System
 
         if ($res->num_rows >= $max_upload) {
             $first = $res->fetch_assoc();
-            $next  = strtotime($first['upload_date']) + 3600;
-            $rem   = ceil(($next - time()) / 60);
+            $next = strtotime($first['upload_date']) + 3600;
+            $rem = ceil(($next - time()) / 60);
             return ['allowed' => false, 'minutes' => $rem];
         }
         return ['allowed' => true];
@@ -162,30 +158,30 @@ class System
         $info = $this->getCachedServerInfo();
 
         $load = sys_getloadavg();
-        $cpu_load_1m  = $load[0] ?? 0;
-        $cpu_load_5m  = $load[1] ?? 0;
+        $cpu_load_1m = $load[0] ?? 0;
+        $cpu_load_5m = $load[1] ?? 0;
         $cpu_load_15m = $load[2] ?? 0;
 
         $cpu_cores = $info['cores'];
-        $cpu_perc  = ($cpu_cores > 0) ? round(($cpu_load_1m / $cpu_cores) * 100, 1) : 0;
-        $cpu_perc  = min($cpu_perc, 100);
+        $cpu_perc = ($cpu_cores > 0) ? round(($cpu_load_1m / $cpu_cores) * 100, 1) : 0;
+        $cpu_perc = min($cpu_perc, 100);
 
-        $meminfo    = self::readProcMeminfo();
-        $mem_total  = $meminfo['MemTotal'] ?? 0;
-        $mem_avail  = $meminfo['MemAvailable'] ?? 0;
-        $mem_used   = $mem_total - $mem_avail;
-        $mem_perc   = ($mem_total > 0) ? round(($mem_used / $mem_total) * 100, 1) : 0;
+        $meminfo = self::readProcMeminfo();
+        $mem_total = $meminfo['MemTotal'] ?? 0;
+        $mem_avail = $meminfo['MemAvailable'] ?? 0;
+        $mem_used = $mem_total - $mem_avail;
+        $mem_perc = ($mem_total > 0) ? round(($mem_used / $mem_total) * 100, 1) : 0;
 
         $swap_total = $meminfo['SwapTotal'] ?? 0;
-        $swap_free  = $meminfo['SwapFree'] ?? 0;
-        $swap_used  = $swap_total - $swap_free;
-        $swap_perc  = ($swap_total > 0) ? round(($swap_used / $swap_total) * 100, 1) : 0;
+        $swap_free = $meminfo['SwapFree'] ?? 0;
+        $swap_used = $swap_total - $swap_free;
+        $swap_perc = ($swap_total > 0) ? round(($swap_used / $swap_total) * 100, 1) : 0;
 
         $uptime_raw = @file_get_contents('/proc/uptime');
         $uptime_sec = (float) explode(' ', (string) $uptime_raw)[0];
-        $days  = floor($uptime_sec / 86400);
+        $days = floor($uptime_sec / 86400);
         $hours = floor(($uptime_sec % 86400) / 3600);
-        $mins  = floor(($uptime_sec % 3600) / 60);
+        $mins = floor(($uptime_sec % 3600) / 60);
 
         $net_rx = 0;
         $net_tx = 0;
@@ -201,50 +197,48 @@ class System
             }
         }
 
-        $proc_list  = @glob('/proc/[0-9]*');
+        $proc_list = @glob('/proc/[0-9]*');
         $proc_count = is_array($proc_list) ? count($proc_list) : 0;
 
         return [
             'cpu' => [
-                'cores'       => $cpu_cores,
-                'load_1m'     => round($cpu_load_1m, 2),
-                'load_5m'     => round($cpu_load_5m, 2),
-                'load_15m'    => round($cpu_load_15m, 2),
-                'usage_perc'  => $cpu_perc,
+                'cores' => $cpu_cores,
+                'load_1m' => round($cpu_load_1m, 2),
+                'load_5m' => round($cpu_load_5m, 2),
+                'load_15m' => round($cpu_load_15m, 2),
+                'usage_perc' => $cpu_perc,
             ],
             'ram' => [
-                'total'  => $mem_total,
-                'used'   => $mem_used,
-                'avail'  => $mem_avail,
+                'total' => $mem_total,
+                'used' => $mem_used,
+                'avail' => $mem_avail,
                 'usage_perc' => $mem_perc,
             ],
             'swap' => [
-                'total'  => $swap_total,
-                'used'   => $swap_used,
+                'total' => $swap_total,
+                'used' => $swap_used,
                 'usage_perc' => $swap_perc,
             ],
             'uptime' => [
                 'seconds' => (int) $uptime_sec,
-                'days'    => $days,
-                'hours'   => $hours,
-                'mins'    => $mins,
-                'text'    => "{$days}d {$hours}h {$mins}m",
+                'days' => $days,
+                'hours' => $hours,
+                'mins' => $mins,
+                'text' => "{$days}d {$hours}h {$mins}m",
             ],
             'network' => [
                 'rx' => $net_rx,
                 'tx' => $net_tx,
             ],
             'info' => [
-                'hostname'    => $info['hostname'],
-                'os'          => $info['os'],
-                'kernel'      => $info['kernel'],
+                'hostname' => $info['hostname'],
+                'os' => $info['os'],
+                'kernel' => $info['kernel'],
                 'php_version' => $info['php_version'],
-                'processes'   => $proc_count,
+                'processes' => $proc_count,
             ],
         ];
     }
-
-    
 
     private static function readProcMeminfo(): array
     {
@@ -261,14 +255,12 @@ class System
         return $info;
     }
 
-    
-
     private function getCachedServerInfo(): array
     {
         $cache_file = defined('MEEL_SERVER_STATS_CACHE')
             ? MEEL_SERVER_STATS_CACHE
             : __DIR__ . '/../../temp/cache/server_stats_info.json';
-        $cache_ttl  = 300;
+        $cache_ttl = 300;
 
         if (file_exists($cache_file) && (time() - filemtime($cache_file)) < $cache_ttl) {
             $cached = json_decode((string) file_get_contents($cache_file), true);
@@ -279,11 +271,11 @@ class System
         }
 
         $info = [
-            'hostname'    => @exec('hostname') ?: gethostname(),
-            'os'          => @exec('cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d\" -f2') ?: PHP_OS,
-            'kernel'      => @exec('uname -r') ?: PHP_OS,
+            'hostname' => @exec('hostname') ?: gethostname(),
+            'os' => @exec('cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d\" -f2') ?: PHP_OS,
+            'kernel' => @exec('uname -r') ?: PHP_OS,
             'php_version' => phpversion(),
-            'cores'       => (int) (@exec('nproc') ?: 1),
+            'cores' => (int) (@exec('nproc') ?: 1),
         ];
 
         $cache_dir = dirname($cache_file);
@@ -314,8 +306,7 @@ class System
     }
     public function forceStopQueue(int $id, string $task_type): bool
     {
-        
-        
+
         $pid_dir = '/tmp/meel_pids';
         $pid_file = $pid_dir . "/{$task_type}_{$id}.pid";
         if (is_file($pid_file)) {
@@ -336,7 +327,6 @@ class System
             }
         }
 
-        
         if ($task_type === 'download') {
             $stmt = $this->conn->prepare("DELETE FROM upload_queue WHERE id = ?");
         } elseif ($task_type === 'transcode') {

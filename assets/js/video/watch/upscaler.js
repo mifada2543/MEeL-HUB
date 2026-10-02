@@ -1,9 +1,3 @@
-/**
- * MEeL Video — AI Upscale (WebGPU): video → copyExternalImageToTexture →
- * rantai pipeline model → blit → <canvas>. Registry model pluggable lewat
- * MEEL_UPSCALER.registerModel(); kontrak API-nya di docs/id/development.md
- * ("Video — AI Upscale & Play Recovery").
- */
 (function () {
   "use strict";
 
@@ -47,9 +41,6 @@
   var KEY_MODE = K.UPSCALE_MODE;
   var KEY_SCALE = K.UPSCALE_SCALE;
 
-  // Status on/off dulu menetap di localStorage (berlaku lintas tab sampai
-  // ditutup); kini pindah ke sessionStorage dan terikat satu video — bersihkan
-  // sisa nilai lama supaya tidak membingungkan pembaca berikutnya.
   try {
     localStorage.removeItem(KEY_ENABLED);
   } catch (e) {}
@@ -60,8 +51,6 @@
     { id: "2", label: "2× resolusi video", short: "2×" },
   ];
 
-  // Id video aktif: playerConfig (ikut diperbarui saat transisi in-place) atau
-  // parameter URL (?v= untuk halaman tonton, ?id= untuk tautan lama).
   function currentVideoId() {
     var id = window.playerConfig && window.playerConfig.id;
     if (id !== undefined && id !== null && id !== "") return String(id);
@@ -69,18 +58,14 @@
     return m ? decodeURIComponent(m[2]) : "";
   }
 
-  // Status on/off per video: nilai sessionStorage = "true|<videoId>" | "false".
-  // ON hanya berlaku untuk video yang menyimpannya, sehingga refresh dan loop
-  // video yang sama tetap ON sedangkan video baru selalu mulai OFF (hemat GPU
-  // client — lihat resetForNewVideo()).
   function readEnabled() {
     var raw = ssGet(KEY_ENABLED, "false");
     if (raw.indexOf("true") !== 0) return false;
     var vid = currentVideoId();
-    var saved = raw.slice(5); // panjang prefiks "true|"
-    if (!vid) return true; // id belum terbaca — divalidasi ulang saat attach
+    var saved = raw.slice(5);
+    if (!vid) return true;
     if (!saved) {
-      persistEnabled(true); // disimpan sebelum id dikenal → ikat ke video ini
+      persistEnabled(true);
       return true;
     }
     return saved === vid;
@@ -474,11 +459,6 @@
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
       var bw = Math.max(box.w * dpr, 1);
       var bh = Math.max(box.h * dpr, 1);
-      // Auto tidak pernah mengecil: keluaran minimal setara resolusi native
-      // video. Tanpa batas ini, kotak tampilan yang lebih kecil dari video
-      // membuat Skala diam-diam menurunkan ketajaman (blit tetap melar ke
-      // kotak yang sama sehingga efeknya tak terlihat, hanya tambahan lag).
-      // Cap MAX_W x MAX_H di bawah tetap otoritas terakhir.
       var s = Math.max(Math.min(bw / native.width, bh / native.height), 1);
       w = Math.round(native.width * s);
       h = Math.round(native.height * s);
@@ -549,7 +529,6 @@
       clearTimeout(resolutionTimer);
       resolutionTimer = null;
     }
-    // Token membuang janji submit GPU lama, supaya render baru boleh langsung jalan.
     if (loopBp.timer) {
       clearTimeout(loopBp.timer);
       loopBp.timer = null;
@@ -1030,7 +1009,6 @@
     toast("Upscale gagal: " + stats.lastError, 5000);
   }
 
-  // Matikan upscale tanpa toast — dipakai setEnabled(false), validasi
 function turnOff() {
     state.enabled = false;
     persistEnabled(false);
@@ -1239,9 +1217,6 @@ function turnOff() {
       );
     });
 
-    // Info ukuran diletakkan SETELAH menu — di luar elemen role="menu" —
-    // supaya kontrak ARIA menu tetap utuh; aria-live mengabarkan perubahan
-    // ukuran keluaran begitu pengguna memilih skala.
     var pane = menu.parentNode;
     if (!pane) return;
     var stale = pane.querySelector(".meel-upscale-scale-info");
@@ -1265,9 +1240,6 @@ function turnOff() {
     updateScaleInfo();
   }
 
-  // Satu baris: "Video 1920x1080 -> keluaran 3840x2160 (2x)". Perhitungannya
-  // memakai computeTarget() yang sama dengan rebuild, jadi angkanya langsung
-  // benar bahkan sebelum rantai GPU selesai dibangun.
   function scaleInfoText() {
     var v = getVideo();
     var nw = (v && v.videoWidth) || (engine.native && engine.native.width) || 0;
@@ -1293,8 +1265,6 @@ function turnOff() {
     if (el.textContent !== txt) el.textContent = txt;
   }
 
-  // Panel read-only saat dukungan absen: alasan spesifik + persyaratan +
-  // cek ulang tanpa reload. Baris menu disabled mengarah ke sini.
   function buildWhyPanel(menu) {
     menu.replaceChildren();
 
@@ -1451,8 +1421,6 @@ function turnOff() {
       if (unsupportedReason()) {
         showPanel("upscale-why");
         refreshWhyText();
-        // Segarkan tanpa paksa (throttle 30 dtk): bila dukungan baru muncul
-        // setelah user menyalakan flag GPU, panel langsung berganti.
         checkSupport(false).then(function (ok) {
           if (!ok || !plyrReady()) return;
           var cur = plyr.elements.settings.panels["upscale-why"];
@@ -1563,10 +1531,6 @@ function turnOff() {
     showPanel("upscale");
   }
 
-  // Satu sumber kebenaran untuk alasan "kenapa opsi ini tidak tersedia" —
-  // dipakai panel alasan di menu dan diagnose(). Repair path: navigator.gpu
-  // hilang/HTTP non-localhost sudah pasti final; adapter null baru diketahui
-  // setelah checkSupport() selesai.
   var WHY = {
     insecure:
       "Halaman tidak aman (HTTP non-localhost) — WebGPU hanya tersedia di HTTPS atau http://localhost.",
@@ -1746,16 +1710,13 @@ function turnOff() {
     }
   });
 
-  // Watchdog loop: Chrome bisa membuang rVFC saat transisi hidden↔visible atau
-  // saat load(); kalau pemicu pertama jatuh, loop.pending mentok "true" dan
-  // canvas upscale membeku walau video terus bermain — daftarkan ulang dari awal.
   setInterval(function () {
     if (!state.enabled || !engine.built || document.hidden) return;
     var v = getVideo();
     if (!v || v.paused || !v.videoWidth) return;
-    if (loop.raf) return; // jalur rAF (tanpa rVFC) masih berjalan
+    if (loop.raf) return;
     var last = perf.lastTick || 0;
-    if (last && performance.now() - last < 700) return; // loop sehat
+    if (last && performance.now() - last < 700) return;
     if (loop.rvfc && v.cancelVideoFrameCallback) {
       try {
         v.cancelVideoFrameCallback(loop.rvfc);
@@ -1778,8 +1739,6 @@ function turnOff() {
     var buttons = plyrInstance.elements.settings.buttons;
     if (!buttons || !buttons.upscale) return;
     if (attachedPlayer === plyrInstance) {
-      // Instance sama ≠ video sama (transisi in-place tidak selalu bikin Plyr
-      // baru): validasi status per-video tetap dijalankan sebelum loop hidup lagi.
       validateState();
       reviveLoop();
       return;
@@ -1810,7 +1769,6 @@ function turnOff() {
       (rv.videoWidth !== engine.native.width ||
         rv.videoHeight !== engine.native.height)
     ) {
-      // Resolusi belum di-rebuild: tampilkan video asli dulu, debounce jalan.
       scheduleResolutionRebuild(rv);
       return;
     }

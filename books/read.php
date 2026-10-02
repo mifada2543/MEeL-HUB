@@ -18,7 +18,7 @@ if (!$book) {
     exit;
 }
 
-$raw_chapter     = $_GET['ch'] ?? '';
+$raw_chapter = $_GET['ch'] ?? '';
 $current_chapter = basename($raw_chapter);
 
 if ($current_chapter === '..') {
@@ -26,11 +26,11 @@ if ($current_chapter === '..') {
 }
 
 $book_id = (int)$book['id'];
-$fs_base    = meel_media_base_path('books');
+$fs_base = meel_media_base_path('books');
 $total_pages = 0;
 if ($book['type'] !== 'pdf') {
     $ch_base = "upload/manga/" . $book['path_folder'];
-    $ch_fs   = $fs_base . '/manga/' . $book['path_folder'];
+    $ch_fs = $fs_base . '/manga/' . $book['path_folder'];
     $target_path = $ch_fs;
 
     if ($book['has_chapters'] == 1 && !empty($current_chapter)) {
@@ -102,7 +102,6 @@ function _scanSubdirs(string $dir): array {
 
 <body class="flex flex-col min-h-screen">
 
-    
     <div class="reader-nav sticky top-0 z-50 px-3 sm:px-6 h-14 flex items-center justify-between transition-all duration-300" id="reader-navbar">
         <div class="flex items-center gap-3 min-w-0 flex-1">
             <a href="beranda" class="p-2 hover:bg-white/[.06] rounded-xl transition-all flex-shrink-0 group">
@@ -145,22 +144,20 @@ function _scanSubdirs(string $dir): array {
         </div>
     </div>
 
-    
     <div class="ch-overlay" id="chOverlay"></div>
 
-    
     <div class="flex-grow overflow-y-auto" id="scroll-container">
         <?php if ($book['type'] === 'pdf'): ?>
-            
+
             <?php
-            $pdf_path   = meel_media_base_path('books') . '/pdf/' . basename($book['path_folder']);
-            $pdf_size   = is_file($pdf_path) ? filesize($pdf_path) : 0;
+            $pdf_path = meel_media_base_path('books') . '/pdf/' . basename($book['path_folder']);
+            $pdf_size = is_file($pdf_path) ? filesize($pdf_path) : 0;
             $pdf_size_f = $pdf_size > 1048576
                 ? number_format($pdf_size / 1048576, 1) . ' MB'
                 : number_format($pdf_size / 1024, 1) . ' KB';
             ?>
             <div class="pdf-view">
-                
+
                 <div class="pdf-body pdf-iframe-wrap" id="readPdfBody">
                     <iframe src="<?= base_url('/api/pdf?id=' . (int)$book['id']) ?>"
                             id="pdfFrame"
@@ -168,14 +165,12 @@ function _scanSubdirs(string $dir): array {
                             style="width:100%;height:100%;border:none;display:block;"></iframe>
                 </div>
 
-                
                 <div class="pdf-body pdf-mobile-embed" id="pdfMobileEmbed">
                     <embed src="<?= base_url('/api/pdf?id=' . (int)$book['id']) ?>"
                            type="application/pdf"
                            style="width:100%;height:100%;border:none;">
                 </div>
 
-                
                 <div class="pdf-body pdf-mobile-card" id="pdfMobileCard">
                     <div class="pdf-card-inner">
                         <div class="pdf-card-icon">
@@ -193,7 +188,6 @@ function _scanSubdirs(string $dir): array {
                     </div>
                 </div>
 
-                
                 <div class="pdf-info-bar">
                     <div class="pdf-info-left">
                         <span class="pdf-info-title"><?= htmlspecialchars($book['title']) ?></span>
@@ -230,11 +224,11 @@ function _scanSubdirs(string $dir): array {
             </script>
 
         <?php else: ?>
-            
+
             <div class="py-0 space-y-0" id="manga-container">
                 <?php
-                $ch_base   = "upload/manga/" . $book['path_folder'];
-                $ch_fs     = $fs_base . '/manga/' . $book['path_folder'];
+                $ch_base = "upload/manga/" . $book['path_folder'];
+                $ch_fs = $fs_base . '/manga/' . $book['path_folder'];
 
                 if ($book['has_chapters'] == 1):
                     $chapters = _scanSubdirs($ch_fs);
@@ -245,7 +239,7 @@ function _scanSubdirs(string $dir): array {
                     $next_ch = ($current_idx !== false && $current_idx < count($ch_list) - 1) ? $ch_list[$current_idx + 1] : null;
                 ?>
                     <?php if ($total_pages > 0 && !empty($current_chapter)): ?>
-                    
+
                     <div class="max-w-4xl mx-auto px-4 mb-2 flex items-center justify-between gap-2">
                         <?php if ($prev_ch): ?>
                             <a href="?id=<?= $book_id ?>&ch=<?= urlencode($prev_ch) ?>"
@@ -271,7 +265,7 @@ function _scanSubdirs(string $dir): array {
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
-                    
+
                     <div class="sticky top-14 z-30 py-3 px-4 bg-gradient-to-b from-[#080a0f] to-transparent">
                         <div class="max-w-4xl mx-auto ch-dropdown" id="ch-dropdown-top">
                             <button type="button"
@@ -286,8 +280,8 @@ function _scanSubdirs(string $dir): array {
                                     — Pilih Chapter —
                                 </button>
                                 <?php foreach ($chapters as $ch):
-                                    $ch_name  = basename($ch);
-                                    $active   = ($current_chapter === $ch_name) ? 'active' : '';
+                                    $ch_name = basename($ch);
+                                    $active = ($current_chapter === $ch_name) ? 'active' : '';
                                     $enc_name = htmlspecialchars($ch_name, ENT_QUOTES);
                                 ?>
                                     <button onclick="goToChapter('<?= $enc_name ?>')"
@@ -332,7 +326,7 @@ function _scanSubdirs(string $dir): array {
                         $page_num = 0;
                         foreach ($images as $img):
                             $page_num++;
-                            $url_img  = 'upload' . substr($img, strlen($fs_base));
+                            $url_img = 'upload' . substr($img, strlen($fs_base));
                             $safe_src = htmlspecialchars($url_img);
                             $is_first = ($img === reset($images));
                         ?>
@@ -351,7 +345,7 @@ function _scanSubdirs(string $dir): array {
                                     decoding="async">
                             <?php endif; ?>
                         <?php endforeach; ?>
-                        
+
                         <?php if ($book['has_chapters'] == 1 && !empty($chapters)): ?>
                             <div class="max-w-4xl mx-auto px-4 mt-4 mb-8 flex items-center justify-between gap-2">
                                 <?php if ($prev_ch): ?>
@@ -379,7 +373,6 @@ function _scanSubdirs(string $dir): array {
                                 <?php endif; ?>
                             </div>
 
-                            
                             <div class="max-w-4xl mx-auto px-4 mb-8">
                                 <div class="ch-dropdown" id="ch-dropdown-bottom">
                                     <button type="button"
@@ -394,8 +387,8 @@ function _scanSubdirs(string $dir): array {
                                             — Pilih Chapter —
                                         </button>
                                         <?php foreach ($chapters as $ch):
-                                            $ch_name  = basename($ch);
-                                            $active   = ($current_chapter === $ch_name) ? 'active' : '';
+                                            $ch_name = basename($ch);
+                                            $active = ($current_chapter === $ch_name) ? 'active' : '';
                                             $enc_name = htmlspecialchars($ch_name, ENT_QUOTES);
                                         ?>
                                             <button onclick="goToChapter('<?= $enc_name ?>')"
@@ -421,7 +414,7 @@ function _scanSubdirs(string $dir): array {
                         </div>
                     <?php endif; ?>
                 <?php elseif ($target_path === null): ?>
-                    
+
                 <?php else: ?>
                     <div class="max-w-4xl mx-auto px-4 py-20 text-center">
                         <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/[.03] border border-white/[.06] flex items-center justify-center">
@@ -437,20 +430,18 @@ function _scanSubdirs(string $dir): array {
         <?php include '../partials/footer.php'; ?>
     </div>
 
-    
     <?php if ($total_pages > 0): ?>
     <div class="page-counter <?= $total_pages > 1 ? 'visible' : '' ?>" id="page-counter">
         Halaman <span class="current" id="current-page-display">1</span> / <?= $total_pages ?>
     </div>
     <?php endif; ?>
-    
+
     <button id="scroll-top-btn" onclick="scrollToTop()" title="Ke atas">
         <i data-lucide="chevron-up" class="w-4 h-4"></i>
     </button>
 
     <script src="../assets/js/books/read/reader.js?v=<?= filemtime(__DIR__ . '/../assets/js/books/read/reader.js') ?>"></script>
 
-    
     <script>window.meelHealthActivityMode = "reading";
 </script>
     <script src="../assets/js/shared/state-keys.js?v=<?= filemtime(__DIR__ . '/../assets/js/shared/state-keys.js') ?>"></script>

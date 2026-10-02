@@ -1,7 +1,3 @@
-
-
-
-
 function downloadBackupCodes() {
   var codes = window._meelBackupCodes || [];
   if (!codes.length) return;

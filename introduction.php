@@ -4,12 +4,12 @@ include 'auth/config.php';
 $back_url = 'index.php';
 
 if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref  = $_SERVER['HTTP_REFERER'];
+    $ref = $_SERVER['HTTP_REFERER'];
     $host = $_SERVER['HTTP_HOST'];
     if (parse_url($ref, PHP_URL_HOST) === $host) {
-        $ref_path        = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages  = ['profile_edit.php', 'edit', 'index.php'];
-        $should_exclude  = false;
+        $ref_path = parse_url($ref, PHP_URL_PATH);
+        $excluded_pages = ['profile_edit.php', 'edit', 'index.php'];
+        $should_exclude = false;
         foreach ($excluded_pages as $page) {
             if (strpos($ref_path, $page) !== false) {
                 $should_exclude = true;
@@ -26,7 +26,7 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
 <head>
 <?php
 $_META_TITLE = 'MEeL | Panduan Penggunaan';
-$_META_DESC  = 'Panduan penggunaan fitur video & musik MEeL.';
+$_META_DESC = 'Panduan penggunaan fitur video & musik MEeL.';
 include __DIR__ . '/partials/link.php';
 $scripts_root = '';
 include __DIR__ . '/partials/scripts.php';
@@ -36,18 +36,14 @@ include __DIR__ . '/partials/scripts.php';
 
 <body>
 
-    
     <div id="reading-progress"></div>
 
-    
     <button id="hamburger" onclick="toggleSidebar()" aria-label="Toggle sidebar" title="Buka menu samping">
         <i data-lucide="menu"></i>
     </button>
 
-    
     <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-    
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <a href="<?= htmlspecialchars($back_url) ?>" class="back-link">
@@ -87,11 +83,9 @@ include __DIR__ . '/partials/scripts.php';
         </div>
     </aside>
 
-    
     <main class="main">
         <div class="main-inner">
 
-            
             <div id="guide-video" class="guide-section active">
                 <div class="guide-header">
                     <div class="guide-eyebrow">Dokumentasi · Fitur</div>
@@ -99,7 +93,6 @@ include __DIR__ . '/partials/scripts.php';
                     <p class="guide-desc">Kenali cara bernavigasi dan menggunakan fitur pemutar video MEeL.</p>
                 </div>
 
-                
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);">
@@ -117,11 +110,11 @@ include __DIR__ . '/partials/scripts.php';
                     <div class="annotation-list">
                         <?php
                         $video_index = [
-                            ['Menu HUB',           'Kembali ke halaman utama MEeL',                       '#ef4444'],
-                            ['Search',             'Cari video berdasarkan judul atau kata kunci',         '#f97316'],
-                            ['Navbar',             'Berpindah antar halaman — Video, Books, FikaAI',       '#3b82f6'],
-                            ['Daftar Video',       'Grid video yang tersedia di library',                  '#a78bfa'],
-                            ['Muat Lebih Banyak',  'Memuat batch video berikutnya secara lazy',            '#22c55e'],
+                            ['Menu HUB', 'Kembali ke halaman utama MEeL', '#ef4444'],
+                            ['Search', 'Cari video berdasarkan judul atau kata kunci', '#f97316'],
+                            ['Navbar', 'Berpindah antar halaman — Video, Books, FikaAI', '#3b82f6'],
+                            ['Daftar Video', 'Grid video yang tersedia di library', '#a78bfa'],
+                            ['Muat Lebih Banyak', 'Memuat batch video berikutnya secara lazy', '#22c55e'],
                         ];
                         foreach ($video_index as $a): ?>
                             <div class="annotation-item">
@@ -133,7 +126,6 @@ include __DIR__ . '/partials/scripts.php';
                     </div>
                 </div>
 
-                
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);">
@@ -155,9 +147,9 @@ include __DIR__ . '/partials/scripts.php';
                     <div class="annotation-list">
                         <?php
                         $video_watch = [
-                            ['Kembali ke Index',   'Tombol navigasi ke halaman daftar video',    '#ef4444'],
-                            ['Video Player',       'Pemutar video HLS adaptif berbasis Plyr',    '#f97316'],
-                            ['Search',             'Cari video lain tanpa keluar dari halaman',  '#3b82f6'],
+                            ['Kembali ke Index', 'Tombol navigasi ke halaman daftar video', '#ef4444'],
+                            ['Video Player', 'Pemutar video HLS adaptif berbasis Plyr', '#f97316'],
+                            ['Search', 'Cari video lain tanpa keluar dari halaman', '#3b82f6'],
                         ];
                         foreach ($video_watch as $a): ?>
                             <div class="annotation-item">
@@ -169,7 +161,6 @@ include __DIR__ . '/partials/scripts.php';
                     </div>
                 </div>
 
-                
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);">
@@ -183,19 +174,19 @@ include __DIR__ . '/partials/scripts.php';
                     <div class="shortcuts-grid">
                         <?php
                         $shortcuts_video = [
-                            ['0–9',       'Loncat ke 0–90% durasi'],
+                            ['0–9', 'Loncat ke 0–90% durasi'],
                             ['Space / K', 'Play / Pause'],
-                            ['←',         'Mundur (seekTime)'],
-                            ['→',         'Maju (seekTime)'],
-                            ['↑',         'Volume naik'],
-                            ['↓',         'Volume turun'],
-                            ['M',         'Mute / Unmute'],
-                            ['F',         'Layar penuh'],
-                            ['C',         'Toggle caption'],
-                            ['L',         'Toggle loop'],
-                            ['A',         'Toggle auto-next'],
-                            ['N',         'Video berikutnya'],
-                            ['I',         'Mini player'],
+                            ['←', 'Mundur (seekTime)'],
+                            ['→', 'Maju (seekTime)'],
+                            ['↑', 'Volume naik'],
+                            ['↓', 'Volume turun'],
+                            ['M', 'Mute / Unmute'],
+                            ['F', 'Layar penuh'],
+                            ['C', 'Toggle caption'],
+                            ['L', 'Toggle loop'],
+                            ['A', 'Toggle auto-next'],
+                            ['N', 'Video berikutnya'],
+                            ['I', 'Mini player'],
                         ];
                         foreach ($shortcuts_video as $s): ?>
                             <div class="shortcut-item">
@@ -207,7 +198,6 @@ include __DIR__ . '/partials/scripts.php';
                 </div>
             </div>
 
-            
             <div id="guide-music" class="guide-section">
                 <div class="guide-header">
                     <div class="guide-eyebrow">Dokumentasi · Fitur</div>
@@ -215,7 +205,6 @@ include __DIR__ . '/partials/scripts.php';
                     <p class="guide-desc">Kenali cara bernavigasi dan menggunakan fitur pemutar musik MEeL.</p>
                 </div>
 
-                
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.2);">
@@ -235,10 +224,10 @@ include __DIR__ . '/partials/scripts.php';
                     <div class="annotation-list">
                         <?php
                         $music_index = [
-                            ['Menu HUB',        'Kembali ke halaman utama MEeL',                       '#f97316'],
-                            ['Search',          'Cari lagu berdasarkan judul, artis, atau album',      '#ef4444'],
-                            ['Navbar',          'Berpindah antar halaman — Video, Books, FikaAI',      '#3b82f6'],
-                            ['Daftar Musik',    'Grid lagu yang tersedia di music library',            '#a78bfa'],
+                            ['Menu HUB', 'Kembali ke halaman utama MEeL', '#f97316'],
+                            ['Search', 'Cari lagu berdasarkan judul, artis, atau album', '#ef4444'],
+                            ['Navbar', 'Berpindah antar halaman — Video, Books, FikaAI', '#3b82f6'],
+                            ['Daftar Musik', 'Grid lagu yang tersedia di music library', '#a78bfa'],
                         ];
                         foreach ($music_index as $a): ?>
                             <div class="annotation-item">
@@ -250,7 +239,6 @@ include __DIR__ . '/partials/scripts.php';
                     </div>
                 </div>
 
-                
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.2);">
@@ -268,9 +256,9 @@ include __DIR__ . '/partials/scripts.php';
                     <div class="annotation-list">
                         <?php
                         $music_watch = [
-                            ['Kembali ke Index',  'Tombol navigasi ke halaman library musik',    '#f97316'],
-                            ['Music Player',      'Pemutar audio Opus berbasis Plyr',             '#ef4444'],
-                            ['Search',            'Cari lagu lain tanpa keluar dari halaman',     '#3b82f6'],
+                            ['Kembali ke Index', 'Tombol navigasi ke halaman library musik', '#f97316'],
+                            ['Music Player', 'Pemutar audio Opus berbasis Plyr', '#ef4444'],
+                            ['Search', 'Cari lagu lain tanpa keluar dari halaman', '#3b82f6'],
                         ];
                         foreach ($music_watch as $a): ?>
                             <div class="annotation-item">
@@ -282,7 +270,6 @@ include __DIR__ . '/partials/scripts.php';
                     </div>
                 </div>
 
-                
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);">
@@ -296,17 +283,17 @@ include __DIR__ . '/partials/scripts.php';
                     <div class="shortcuts-grid">
                         <?php
                         $shortcuts_music = [
-                            ['0–9',       'Loncat ke 0–90% durasi'],
+                            ['0–9', 'Loncat ke 0–90% durasi'],
                             ['Space / K', 'Play / Pause'],
-                            ['←',         'Mundur (seekTime)'],
-                            ['→',         'Maju (seekTime)'],
-                            ['↑',         'Volume naik'],
-                            ['↓',         'Volume turun'],
-                            ['M',         'Mute / Unmute'],
-                            ['L',         'Toggle loop'],
-                            ['E',         'Toggle equalizer'],
-                            ['V',         'Toggle visualizer'],
-                            ['I',         'Mini player'],
+                            ['←', 'Mundur (seekTime)'],
+                            ['→', 'Maju (seekTime)'],
+                            ['↑', 'Volume naik'],
+                            ['↓', 'Volume turun'],
+                            ['M', 'Mute / Unmute'],
+                            ['L', 'Toggle loop'],
+                            ['E', 'Toggle equalizer'],
+                            ['V', 'Toggle visualizer'],
+                            ['I', 'Mini player'],
                         ];
                         foreach ($shortcuts_music as $s): ?>
                             <div class="shortcut-item">
@@ -321,7 +308,6 @@ include __DIR__ . '/partials/scripts.php';
         </div>
     </main>
 
-    
     <div id="lightbox" onclick="closeLightbox()" title="Klik untuk menutup">
         <div id="lightbox-close" onclick="closeLightbox()" title="Tutup">
             <i data-lucide="x" style="width:14px;height:14px;color:#9ca3af;"></i>

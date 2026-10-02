@@ -1,4 +1,3 @@
-
 (function () {
   "use strict";
   function setOpen(dd, open) {

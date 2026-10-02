@@ -42,15 +42,15 @@ register_shutdown_function(function () {
     }
 });
 
-$message        = "";
+$message = "";
 $rate_limit_msg = "";
 
 require_once 'modules/core/System.php';
-$sys     = new System($conn);
+$sys = new System($conn);
 $is_busy = $sys->isServerBusy();
 
 $user_role = get_user_role($conn, (int)$_SESSION['user_id']);
-$is_admin  = ($user_role === 'admin');
+$is_admin = ($user_role === 'admin');
 
 $get_queue_status = function(int $uid, string $type): ?string {
     global $conn;
@@ -63,7 +63,7 @@ $get_queue_status = function(int $uid, string $type): ?string {
     return $row['status'] ?? null;
 };
 
-$transcoder     = new Transcoder($conn, $_SESSION['user_id'], new BrowserProgressObserver($is_admin));
+$transcoder = new Transcoder($conn, $_SESSION['user_id'], new BrowserProgressObserver($is_admin));
 register_shutdown_function([$transcoder, 'terminateAllProcesses']);
 
 if (!$is_admin) {
@@ -75,13 +75,13 @@ $active_count = $q_active ? (int)$q_active->fetch_row()[0] : 0;
 
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 
-$coin_balance   = 0;
-$coin_max       = 0;
-$coin_cost      = 0;
+$coin_balance = 0;
+$coin_max = 0;
+$coin_cost = 0;
 $coin_countdown = 0;
-$upload_max     = 0;
-$quota_video_used      = 0;
-$quota_music_used      = 0;
+$upload_max = 0;
+$quota_video_used = 0;
+$quota_music_used = 0;
 $quota_video_remaining = 0;
 $quota_music_remaining = 0;
 
@@ -89,9 +89,9 @@ if ($meelcoin_enabled) {
     if (!$is_admin) {
         MeelCoin::refill($conn, (int)$_SESSION['user_id'], $user_role);
     }
-    $coin_balance   = $is_admin ? -1 : MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
-    $coin_max       = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
-    $coin_cost      = MeelCoin::getCost($conn, 'advanced');
+    $coin_balance = $is_admin ? -1 : MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
+    $coin_max = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
+    $coin_cost = MeelCoin::getCost($conn, 'advanced');
     $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, (int)$_SESSION['user_id'], $user_role);
 } else {
     $upload_max = get_upload_hourly_limit($user_role);
@@ -149,24 +149,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
 
         if ($message === '') {
             $coin_deducted = $coin_active;
-            
-            $type        = $_POST['type'] ?? '';
+
+            $type = $_POST['type'] ?? '';
             if (!$meelcoin_enabled) {
                 $limit_table = ($type === 'music') ? 'music' : 'video';
-                $limit       = $sys->checkRateLimit($_SESSION['user_id'], $limit_table, $user_role);
+                $limit = $sys->checkRateLimit($_SESSION['user_id'], $limit_table, $user_role);
                 if (!$limit['allowed']) {
-                    $message        = 'rate_limit';
+                    $message = 'rate_limit';
                     $rate_limit_msg = "Batas upload tercapai! Tunggu {$limit['minutes']} menit lagi.";
                 }
             }
 
             if ($message === '') {
                 try {
-                    $url     = trim($_POST['url']);
+                    $url = trim($_POST['url']);
                     $message = $transcoder->processDownload($url, $type);
 
-                
-                
                 if (is_string($message) && str_starts_with($message, 'ENCODE_MUSIC:')) {
                     $temp_file = substr($message, strlen('ENCODE_MUSIC:'));
 
@@ -179,15 +177,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                     flush();
 
                     $meta_key = pathinfo($temp_file, PATHINFO_FILENAME);
-                    $pending  = is_array($_SESSION['meel_pending_music'] ?? null)
+                    $pending = is_array($_SESSION['meel_pending_music'] ?? null)
                         ? ($_SESSION['meel_pending_music'][$meta_key] ?? null)
                         : null;
 
-                    $enc_title    = (string)($pending['title']       ?? 'Unknown');
-                    $enc_artist   = (string)($pending['artist']      ?? 'Unknown Artist');
-                    $enc_album    = (string)($pending['album']       ?? 'Single');
-                    $enc_duration = (int)($pending['duration']       ?? 0);
-                    $enc_desc     = (string)($pending['description'] ?? 'Upload by MEeL Engine');
+                    $enc_title = (string)($pending['title'] ?? 'Unknown');
+                    $enc_artist = (string)($pending['artist'] ?? 'Unknown Artist');
+                    $enc_album = (string)($pending['album'] ?? 'Single');
+                    $enc_duration = (int)($pending['duration'] ?? 0);
+                    $enc_desc = (string)($pending['description'] ?? 'Upload by MEeL Engine');
 
                     try {
                         $result = $transcoder->encodeMusic(
@@ -222,14 +220,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                     exit;
                 }
 
-                
                 if (is_string($message) && str_starts_with($message, 'REDIRECT:')) {
                     $target = substr($message, strlen('REDIRECT:'));
                     while (ob_get_level()) {
                         ob_end_clean();
                     }
                     $target_attr = htmlspecialchars($target, ENT_QUOTES);
-                    $target_js   = json_encode($target, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
+                    $target_js = json_encode($target, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
                     echo '<meta http-equiv="refresh" content="0;url=' . $target_attr . '">'
                        . '<script>'
                        . 'if (typeof window.meelRedirect === "function") { window.meelRedirect(' . $target_js . '); }'
@@ -329,7 +326,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
 <head>
 <?php
 $_META_TITLE = 'MEeL — Advanced Upload';
-$_META_DESC  = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
+$_META_DESC = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
 include __DIR__ . '/partials/link.php';
 $scripts_root = '';
 include __DIR__ . '/partials/scripts.php';
@@ -343,14 +340,12 @@ include __DIR__ . '/partials/scripts.php';
 
 <body class="min-h-screen flex flex-col">
 
-    
     <?php if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $message === 'busy' || $message === 'rate_limit'): ?>
         <?php include 'partials/ui.php'; ?>
     <?php endif; ?>
     <main class="flex-grow" style="position:relative;z-index:1;">
         <div class="wrap">
 
-            
             <div class="masthead">
                 <a href="./" class="masthead-logo">
                     <img src="assets/MEeL.png" alt="MEeL">
@@ -368,7 +363,6 @@ include __DIR__ . '/partials/scripts.php';
                 </div>
             </div>
 
-            
             <?php if ($is_admin): ?>
                 <div class="admin-bar">
                     <span class="admin-badge">
@@ -391,12 +385,11 @@ include __DIR__ . '/partials/scripts.php';
                     </a>
                 </div>
             <?php endif; ?>
-            
+
             <div class="page-grid">
 
-                
                 <div>
-                    
+
                     <?php if ($message === 'success'): ?>
                         <div class="alert-banner alert-success">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px">
@@ -445,7 +438,7 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     <?php endif; ?>
                     <div class="form-card">
-                        
+
                         <div class="form-card-header">
                             <div>
                                 <div style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem;">
@@ -455,7 +448,7 @@ include __DIR__ . '/partials/scripts.php';
                                     Download & <span style="color:#3b82f6;">Process</span>
                                 </div>
                             </div>
-                            
+
                             <div class="queue-chip" style="<?= $is_busy
                                                                 ? 'background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);color:#f97316;'
                                                                 : 'background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);color:#22c55e;' ?>">
@@ -464,13 +457,12 @@ include __DIR__ . '/partials/scripts.php';
                             </div>
                         </div>
 
-                        
                         <div class="form-card-body">
                             <form method="POST" onsubmit="return startAdvancedUpload(this)" style="display:flex;flex-direction:column;gap:1.25rem;">
                                 <?php if (isset($_SESSION['csrf_token'])): ?>
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES) ?>">
                                 <?php endif; ?>
-                                
+
                                 <div>
                                     <label class="f-label">URL Sumber</label>
                                     <div class="url-wrap">
@@ -483,7 +475,6 @@ include __DIR__ . '/partials/scripts.php';
                                     <div id="url-preview" style="display:none;margin-top:8px;padding:8px 12px;border-radius:10px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);font-family:var(--font-mono);font-size:.65rem;color:#60a5fa;word-break:break-all;"></div>
                                 </div>
 
-                                
                                 <div>
                                     <label class="f-label">Tipe Media</label>
                                     <div class="type-grid">
@@ -506,7 +497,6 @@ include __DIR__ . '/partials/scripts.php';
                                     </div>
                                 </div>
 
-                                
                                 <button type="submit" class="submit-btn" id="submit-btn"
                                     <?= $is_busy ? 'disabled' : '' ?>>
                                     <i data-lucide="download-cloud" style="width:16px;height:16px;"></i>
@@ -516,7 +506,6 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     </div>
 
-                    
                     <div class="entry" style="margin-top:1rem;padding:1.5rem 1.75rem;">
                         <div style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -547,9 +536,8 @@ include __DIR__ . '/partials/scripts.php';
                     </div>
                 </div>
 
-                
                 <aside>
-                    
+
                     <div class="side-card">
                         <div class="side-card-header">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -580,7 +568,6 @@ include __DIR__ . '/partials/scripts.php';
                                 </span>
                             </div>
 
-                            
                             <div style="height:1px;background:var(--border);"></div>
                             <div>
                                 <?php if ($meelcoin_enabled): ?>
@@ -619,7 +606,7 @@ include __DIR__ . '/partials/scripts.php';
                                             ['label' => 'Music', 'used' => $quota_music_used, 'remaining' => $quota_music_remaining, 'color' => '#f97316'],
                                         ];
                                         foreach ($quotas as $q):
-                                            $pct  = ($user_role !== 'admin' && $upload_max > 0) ? round(($q['used'] / $upload_max) * 100) : 0;
+                                            $pct = ($user_role !== 'admin' && $upload_max > 0) ? round(($q['used'] / $upload_max) * 100) : 0;
                                             $stat = $user_role === 'admin' ? '∞' : ($q['remaining'] > 0 ? "{$q['used']}/{$upload_max}" : 'Penuh');
                                             $stat_color = $user_role === 'admin' ? 'var(--muted)' : ($q['remaining'] <= 0 ? '#ef4444' : '#4ade80');
                                         ?>
@@ -653,7 +640,6 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     </div>
 
-                    
                     <div class="side-card">
                         <div class="side-card-header">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -664,10 +650,10 @@ include __DIR__ . '/partials/scripts.php';
                         <div class="side-card-body">
                             <?php
                             $sources = [
-                                ['name' => 'YouTube',    'badge' => 'Video + Audio', 'bc' => 'rgba(239,68,68,.1)',   'tc' => '#ef4444'],
-                                ['name' => 'SoundCloud', 'badge' => 'Audio',         'bc' => 'rgba(249,115,22,.1)', 'tc' => '#f97316'],
-                                ['name' => 'Twitter/X',  'badge' => 'Video',         'bc' => 'rgba(59,130,246,.1)', 'tc' => '#60a5fa'],
-                                ['name' => 'Instagram',  'badge' => 'Video',         'bc' => 'rgba(168,85,247,.1)', 'tc' => '#c084fc'],
+                                ['name' => 'YouTube', 'badge' => 'Video + Audio', 'bc' => 'rgba(239,68,68,.1)', 'tc' => '#ef4444'],
+                                ['name' => 'SoundCloud', 'badge' => 'Audio', 'bc' => 'rgba(249,115,22,.1)', 'tc' => '#f97316'],
+                                ['name' => 'Twitter/X', 'badge' => 'Video', 'bc' => 'rgba(59,130,246,.1)', 'tc' => '#60a5fa'],
+                                ['name' => 'Instagram', 'badge' => 'Video', 'bc' => 'rgba(168,85,247,.1)', 'tc' => '#c084fc'],
                                 ['name' => 'yt-dlp compatible', 'badge' => '1000+ situs', 'bc' => 'rgba(34,197,94,.1)', 'tc' => '#4ade80'],
                             ];
                             foreach ($sources as $s): ?>
@@ -681,7 +667,6 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     </div>
 
-                    
                     <div class="side-card">
                         <div class="side-card-header">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -711,7 +696,6 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     </div>
 
-                    
                     <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
                         <a href="./" class="check-btn" style="flex:1;">
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">

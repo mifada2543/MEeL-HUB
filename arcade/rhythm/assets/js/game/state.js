@@ -1,14 +1,7 @@
-
-
-
-
-
-
 export const speedMult = window.MANIA_SPEED || 1.5;
 export const phpSong = window.MANIA_SONG || null;
 export const phpBeatmap = window.MANIA_BEATMAP || null;
 export const songId = phpSong ? phpSong.id : "starlight";
-
 
 export const canvas = document.getElementById("gameCanvas");
 export const ctx = canvas ? canvas.getContext("2d") : null;
@@ -31,7 +24,6 @@ export const countdownOverlay = document.getElementById("countdownOverlay");
 export const countdownNum = document.getElementById("countdownNum");
 export const optionsOverlay = document.getElementById("optionsOverlay");
 
-
 export const LANE_COUNT = 4;
 export const KEY_MAP = { a: 0, s: 1, k: 2, l: 3 };
 export const COLOR_CLICK = "#3b82f6";
@@ -48,16 +40,11 @@ export const NOTE_RADIUS = 0;
 export const APPROACH_TIME_BASE = 1800;
 export const APPROACH_TIME = APPROACH_TIME_BASE / speedMult;
 
-
 export const TIMING = { perfect: 24, great: 52, good: 85, bad: 115 };
-
-
-
 
 export const HOLD_BUFFER = 180;
 
 export const HOLD_RELEASE_SCALE = 1.4;
-
 
 export const HOLD_SUSTAIN_PENALTY = { after200ms: "bad", after500ms: "miss" };
 
@@ -73,7 +60,6 @@ export const JUDGE_COLORS = {
 };
 export const GOLD_GLOW = "rgba(251,191,36,0.4)";
 
-
 export const S = {
   song: null,
   beatmapData: null,
@@ -87,7 +73,7 @@ export const S = {
   laneFlashes: [0, 0, 0, 0],
   lanePressed: [false, false, false, false],
   holdNotes: {},
-  
+
   holdPending: {},
   judgmentCounts: { perfect: 0, great: 0, good: 0, bad: 0, miss: 0 },
   totalNotes: 0,

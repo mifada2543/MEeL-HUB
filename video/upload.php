@@ -11,13 +11,13 @@ meel_storage_guard();
 GarbageCollector::run();
 
 set_time_limit(0);
-$status        = "";
-$user          = $_SESSION['username'];
-$user_id       = $_SESSION['user_id'];
+$status = "";
+$user = $_SESSION['username'];
+$user_id = $_SESSION['user_id'];
 $alert_message = "";
 
 $user_role = get_user_role($conn, $user_id);
-$is_admin  = ($user_role === 'admin');
+$is_admin = ($user_role === 'admin');
 
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 $hour_count = 0;
@@ -27,13 +27,13 @@ if ($meelcoin_enabled) {
     if (!$is_admin) {
         MeelCoin::refill($conn, $user_id, $user_role);
     }
-    $coin_balance   = $is_admin ? -1 : MeelCoin::getBalance($conn, $user_id);
-    $coin_max       = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
-    $coin_cost      = MeelCoin::getCost($conn, 'upload');
+    $coin_balance = $is_admin ? -1 : MeelCoin::getBalance($conn, $user_id);
+    $coin_max = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
+    $coin_cost = MeelCoin::getCost($conn, 'upload');
     $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, $user_id, $user_role);
 } else {
-    $hour_count     = get_hourly_upload_count($conn, $user_id, 'video');
-    $hourly_limit   = $is_admin ? '∞' : get_upload_hourly_limit($user_role);
+    $hour_count = get_hourly_upload_count($conn, $user_id, 'video');
+    $hourly_limit = $is_admin ? '∞' : get_upload_hourly_limit($user_role);
 }
 
 $total_uploads = get_total_upload_count($conn, $user_id, 'video');
@@ -48,7 +48,7 @@ if (isset($_POST['upload'])) {
             return $uploader->processVideo($post, $files, __DIR__ . "/");
         }, 'upload_video');
 
-        $status        = $upload_result['status'];
+        $status = $upload_result['status'];
         $alert_message = $upload_result['alert_message'];
         if (isset($upload_result['extra']['coin_balance'])) {
             $coin_balance = $upload_result['extra']['coin_balance'];
@@ -83,7 +83,6 @@ if (isset($_POST['upload'])) {
 <body>
     <div class="page-wrap">
 
-        
         <nav class="top-nav">
             <a href="../" class="nav-brand">MEeL<span>Video</span></a>
             <div class="nav-sep"></div>
@@ -97,10 +96,8 @@ if (isset($_POST['upload'])) {
 
         <div class="upload-layout">
 
-            
             <aside class="sidebar-panel">
 
-                
                 <div class="hero-icon">
                     <div class="hero-icon-ring">
                         <i data-lucide="clapperboard" style="width:28px;height:28px;color:var(--accent);"></i>
@@ -111,7 +108,6 @@ if (isset($_POST['upload'])) {
                     </div>
                 </div>
 
-                
                 <div class="stats-strip">
                     <?php if ($meelcoin_enabled): ?>
                         <div class="stat-chip" style="grid-column:1/-1;">
@@ -148,7 +144,6 @@ if (isset($_POST['upload'])) {
                     <?php endif; ?>
                 </div>
 
-                
                 <div class="guide-list">
                     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;padding-left:2px;">Panduan Upload</div>
                     <div class="guide-item">
@@ -185,7 +180,6 @@ if (isset($_POST['upload'])) {
 
             </aside>
 
-            
             <section class="form-panel">
                 <div class="form-header">
                     <div>
@@ -205,7 +199,7 @@ if (isset($_POST['upload'])) {
                     <?php if (isset($_SESSION['csrf_token'])): ?>
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     <?php endif; ?>
-                    
+
                     <div class="field-group">
                         <div style="display:flex;align-items:center;justify-content:space-between;">
                             <label class="field-label" for="f-title">Judul Video</label>
@@ -221,7 +215,6 @@ if (isset($_POST['upload'])) {
                             class="field-input">
                     </div>
 
-                    
                     <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description"
@@ -231,11 +224,10 @@ if (isset($_POST['upload'])) {
 
                     <div class="divider" style="margin:0;"></div>
 
-                    
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <label class="field-label">File & Thumbnail</label>
                         <div class="drop-grid">
-                            
+
                             <div class="drop-zone" id="video-zone">
                                 <input type="file" name="video" accept=".mp4,.webm,.mkv" required
                                     id="video-input" onchange="handleVideoFile(this)" aria-label="Pilih atau drop file video (format: MP4, WEBM, MKV)">
@@ -246,7 +238,6 @@ if (isset($_POST['upload'])) {
                                 <div class="drop-zone-sub">MP4 · WEBM · MKV</div>
                             </div>
 
-                            
                             <div class="drop-zone" id="thumb-zone">
                                 <input type="file" name="thumbnail" accept="image/*"
                                     id="thumb-input" onchange="handleThumbFile(this)" aria-label="Pilih atau drop file thumbnail (opsional)">
@@ -260,10 +251,9 @@ if (isset($_POST['upload'])) {
                         </div>
                     </div>
 
-                    
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <label class="field-label">Subtitle (Opsional)</label>
-                        
+
                         <div class="drop-zone drop-zone-subtitle" id="subtitle-zone">
                             <input type="file" name="subtitle" accept=".vtt,.srt"
                                 id="subtitle-input" onchange="handleSubtitleFile(this)" aria-label="Pilih atau drop file subtitle (format: VTT, SRT)">
@@ -276,7 +266,6 @@ if (isset($_POST['upload'])) {
                             </div>
                         </div>
 
-                        
                         <div class="field-group" id="subtitle-lang-wrap" style="display:none;">
                             <label class="field-label" for="f-subtitle-lang-trigger">Bahasa Subtitle</label>
                             <div class="lang-dropdown" id="f-subtitle-lang-dropdown" data-name="subtitle_lang">
@@ -297,7 +286,6 @@ if (isset($_POST['upload'])) {
                         </div>
                     </div>
 
-                    
                     <div style="margin-top:auto;">
                         <button type="submit" name="upload" id="btn-upload" class="btn-primary">
                             <i data-lucide="upload" style="width:15px;height:15px;"></i>
@@ -305,7 +293,6 @@ if (isset($_POST['upload'])) {
                         </button>
                     </div>
 
-                    
                     <div class="footer-links">
                         <a href="beranda" class="footer-link">Library</a>
                         <a href="../" class="footer-link">Portal</a>
@@ -323,7 +310,7 @@ if (isset($_POST['upload'])) {
     </div>
 
     <?php include '../partials/footer.php'; ?>
-    
+
     <div id="upload-overlay">
         <div class="overlay-card">
             <div class="upload-ring">

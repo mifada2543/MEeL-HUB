@@ -22,7 +22,6 @@
                 <i data-lucide="book-open" class="w-10 h-10 text-gray-700"></i>
             </div>
 
-            
             <div class="absolute top-2 right-2">
                 <span class="type-badge <?= $book['type'] === 'manga' ? 'type-badge-manga' : 'type-badge-pdf' ?>">
                     <i data-lucide="<?= $book['type'] === 'manga' ? 'book-open' : 'file-text' ?>" class="w-2.5 h-2.5"></i>
@@ -30,7 +29,6 @@
                 </span>
             </div>
 
-            
             <div class="book-overlay absolute inset-0 flex flex-col justify-end p-3 sm:p-4">
                 <h3 class="text-sm font-bold text-white line-clamp-2 drop-shadow-lg leading-tight">
                     <?= htmlspecialchars($book['title']) ?>

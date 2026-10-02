@@ -1,5 +1,3 @@
-
-
 function formatTime(e) {
   if (!e || isNaN(e)) return "0:00";
   const t = Math.floor(e / 60),

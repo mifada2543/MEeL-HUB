@@ -1,10 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 require_once MEEL_ROOT . '/drive/DriveService.php';
-
-
 
 class DriveStorageBasePathTest extends TestCase
 {
@@ -12,8 +9,6 @@ class DriveStorageBasePathTest extends TestCase
     {
         return '/media/someuser/MEeL/media/drive/';
     }
-
-    
 
     public function testDefaultBasePathUsesMeelHddDriveWhenDefined(): void
     {
@@ -34,28 +29,22 @@ class DriveStorageBasePathTest extends TestCase
         $this->assertSame('/x/drive', DriveStorage::defaultBasePath('/x/drive'));
     }
 
-    
-
     public function testDefaultBasePathFallsBackToLocalDataDrive(): void
     {
         $this->assertSame(
             MEEL_ROOT . '/data_drive',
-            DriveStorage::defaultBasePath('') 
+            DriveStorage::defaultBasePath('')
         );
     }
 
     public function testDefaultBasePathWithoutOverrideUsesCurrentEnvironment(): void
     {
-        
-        
-        
+
         $expected = defined('MEEL_HDD_DRIVE') && (string) MEEL_HDD_DRIVE !== ''
             ? rtrim((string) MEEL_HDD_DRIVE, '/\\')
             : MEEL_ROOT . '/data_drive';
         $this->assertSame($expected, DriveStorage::defaultBasePath());
     }
-
-    
 
     public function testHelperMatchesDriveStorageResolution(): void
     {
@@ -78,13 +67,9 @@ class DriveStorageBasePathTest extends TestCase
         $this->assertSame('/media/u/MEeL/drive', meel_drive_base_path('/media/u/MEeL/drive/'));
     }
 
-    
-
     public function testEnsureDirectoryCreatesRealFoldersUnderFallbackBase(): void
     {
-        
-        
-        
+
         $base = MEEL_ROOT . '/temp/drive_base_test_' . bin2hex(random_bytes(4));
         $user = DriveUserContext::fromSession(['user_id' => 1, 'role' => 'admin', 'username' => 'admin']);
         $storage = new DriveStorage($base, $user);
@@ -96,7 +81,6 @@ class DriveStorageBasePathTest extends TestCase
         $this->assertDirectoryExists($publicDir);
         $this->assertFalse(is_link($publicDir), 'Folder storage harus folder nyata, bukan symlink.');
 
-        
         $this->removeDir($base);
     }
 

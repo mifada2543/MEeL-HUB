@@ -21,10 +21,9 @@ function handleDeleteVideo(int $id, int $user_id, mysqli $conn): array
 
     $pending = [
         'timestamp' => time(),
-        'files'     => []
+        'files' => []
     ];
 
-    
     $video_base = meel_media_base_path('video') . '/video/';
     $video_file = $video['filename'];
     $video_path = $video_base . $video_file;
@@ -32,7 +31,6 @@ function handleDeleteVideo(int $id, int $user_id, mysqli $conn): array
         $pending['files'][] = $video_path;
     }
 
-    
     $hls_dir = $video_base . pathinfo($video_file, PATHINFO_FILENAME);
     if (is_dir($hls_dir)) {
         $pending['files'][] = $hls_dir;
@@ -78,7 +76,7 @@ function handleDeleteMusic(int $id, int $user_id, mysqli $conn): array
 
     $pending = [
         'timestamp' => time(),
-        'files'     => []
+        'files' => []
     ];
 
     $audio_path = meel_media_base_path('music') . '/file/' . $music['filename'];
@@ -195,7 +193,7 @@ function logActivity(mysqli $conn, int $user_id, string $action, string $media_t
     $stmt = $conn->prepare("INSERT INTO activity_log (user_id, action, media_type, media_id, ip_address) VALUES (?, ?, ?, ?, ?)");
 
     if ($stmt === false) {
-        
+
         error_log('[MEeL] logActivity gagal: ' . $conn->error);
         return;
     }

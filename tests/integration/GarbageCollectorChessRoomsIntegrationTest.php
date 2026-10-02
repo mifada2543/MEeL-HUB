@@ -2,7 +2,6 @@
 use PHPUnit\Framework\TestCase;
 
 /**
- * @requires extension mysqli
  * @group integration
  * @covers GarbageCollector::cleanChessRooms
  */
@@ -11,7 +10,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
     private DbTestHelper $dbHelper;
     private mysqli $conn;
 
-    
     private string $throttleFile;
     private ?string $throttleBackup = null;
 
@@ -19,7 +17,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
     {
         parent::setUp();
 
-        // Arcade extension owns its own DB (rooms/moves) — skip if tables are absent.
         require_once MEEL_ROOT . '/modules/core/Modules.php';
         $this->dbHelper = new DbTestHelper();
         $this->conn = $this->dbHelper->getConnection();
@@ -42,7 +39,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     protected function tearDown(): void
     {
-        
+
         if ($this->throttleBackup !== null) {
             @file_put_contents($this->throttleFile, $this->throttleBackup);
         } else {
@@ -54,7 +51,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         parent::tearDown();
     }
 
-    
     private function insertRoom(string $code, bool $blackJoined, string $createdAt): void
     {
         $stmt = $this->conn->prepare(
@@ -68,7 +64,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         $stmt->close();
     }
 
-    
     private function insertMove(string $code, string $createdAt): void
     {
         $stmt = $this->conn->prepare(
@@ -82,7 +77,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         $stmt->close();
     }
 
-    
     private function insertEvent(string $code, string $type, string $color = 'w', string $createdAt = ''): void
     {
         if ($createdAt === '') $createdAt = date('Y-m-d H:i:s', time() - 8 * 86400);
@@ -122,7 +116,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         return 'ZZ' . strtoupper(substr(uniqid('', true), -6));
     }
 
-    
     public function testLobbyOlderThan24HoursIsDeleted(): void
     {
         $code = $this->newCode();
@@ -144,12 +137,11 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         $this->assertTrue($this->roomExists($code));
     }
 
-    
     public function testStartedGameWithStaleLastMoveIsDeletedWithMoves(): void
     {
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 30 * 86400));
-        
+
         $this->insertMove($code, date('Y-m-d H:i:s', time() - 8 * 86400));
         $this->assertSame(1, $this->moveCount($code));
 
@@ -174,7 +166,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testStartedGameWithoutMovesFallsBackToCreatedAt(): void
     {
-        
+
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 8 * 86400));
 
@@ -226,7 +218,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testStaleLobbyWithMovesCleansBoth(): void
     {
-        
+
         $code = $this->newCode();
         $this->insertRoom($code, false, date('Y-m-d H:i:s', time() - 2 * 86400));
         $this->insertMove($code, date('Y-m-d H:i:s', time() - 2 * 86400));
@@ -269,7 +261,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testMixedRunKeepsFinishedAndCleansStuckInSameCall(): void
     {
-        
+
         $finished = $this->newCode();
         $this->insertRoom($finished, true, date('Y-m-d H:i:s', time() - 30 * 86400));
         $this->insertMove($finished, date('Y-m-d H:i:s', time() - 8 * 86400));
@@ -290,7 +282,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testMixedRunOnlyRemovesStaleRooms(): void
     {
-        
+
         $stale = $this->newCode();
         $this->insertRoom($stale, false, date('Y-m-d H:i:s', time() - 2 * 86400));
 
@@ -310,7 +302,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
         $this->assertSame(1, $this->moveCount($activeGame));
     }
 
-    
     public function testThrottleSkipsCleanupWhenRecentlyRun(): void
     {
 
@@ -326,7 +317,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testThrottleFileNotWritableIsReclaimedWithoutWarning(): void
     {
-        
+
         $file = $this->throttleFile;
         @file_put_contents($file, '123');
         chmod($file, 0444);
@@ -342,7 +333,7 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
             GarbageCollector::cleanChessRooms($this->conn);
         } finally {
             restore_error_handler();
-            @chmod($file, 0644); 
+            @chmod($file, 0644);
         }
 
         $this->assertSame([], $warnings, 'Throttle file yang tidak writable tidak boleh memicu warning PHP.');

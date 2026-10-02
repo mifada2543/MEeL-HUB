@@ -15,11 +15,6 @@
     { sel: 'meta[name="twitter:image"]', attr: "content" },
   ];
 
-  /**
-   * Sinkronkan tag <head> (og:/twitter:/description/canonical/title) dari
-   * dokumen hasil fetch ke halaman yang sedang berjalan — dipakai navigasi
-   * client-side mini-player & skipToNextVideo supaya og:image ikut berganti.
-   */
   window.meelUpdateHeadMeta = function (sourceDoc) {
     if (!sourceDoc || !sourceDoc.querySelector) return;
 

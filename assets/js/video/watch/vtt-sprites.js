@@ -1,36 +1,11 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 const _vttSpriteCache = {};
 
 const _vttState = {
   lastSrc: null,
-  
+
   status: 'idle',
   attempts: 0,
-  
+
   token: 0,
 };
 
@@ -39,11 +14,6 @@ let _vttVisibilityHooked = false;
 const MAX_ATTEMPTS = 3;
 const WATCHDOG_DELAY = 8000;
 const SPRITE_VERIFY_TIMEOUT = 15000;
-
-
-
-
-
 
 function _isPlyrReady() {
   const pt = player && player.previewThumbnails;
@@ -54,7 +24,6 @@ function _isPlyrReady() {
       pt.thumbnails.length > 0,
   );
 }
-
 
 function _applySprite(spriteUrl) {
   document
@@ -70,7 +39,6 @@ function _applySprite(spriteUrl) {
       el.src = spriteUrl;
     });
 }
-
 
 function _verifyImage(url) {
   return new Promise((resolve, reject) => {
@@ -91,11 +59,6 @@ function _verifyImage(url) {
   });
 }
 
-
-
-
-
-
 function _parseFirstFrameText(vttText) {
   const timeLineRe = /(\d{2})?:?\d{2}:\d{2}[.,]\d{2,3}\s*-->/;
   const blocks = vttText.split(/\r\n\r\n|\n\n|\r\r/);
@@ -104,7 +67,7 @@ function _parseFirstFrameText(vttText) {
     const lines = block.split(/\r\n|\n|\r/);
     for (let i = 0; i < lines.length; i++) {
       if (!timeLineRe.test(lines[i])) continue;
-      
+
       for (let j = i + 1; j < lines.length; j++) {
         const text = lines[j].trim();
         if (!text) continue;
@@ -114,11 +77,6 @@ function _parseFirstFrameText(vttText) {
   }
   return null;
 }
-
-
-
-
-
 
 function _resolveSpriteUrl(frameText, vttUrl) {
   if (
@@ -130,15 +88,6 @@ function _resolveSpriteUrl(frameText, vttUrl) {
   }
   return vttUrl.substring(0, vttUrl.lastIndexOf("/") + 1) + frameText;
 }
-
-
-
-
-
-
-
-
-
 
 async function _fallbackApply(vttUrl, token) {
   try {
@@ -154,31 +103,22 @@ async function _fallbackApply(vttUrl, token) {
       if (token !== _vttState.token) return;
 
       spriteUrl = _resolveSpriteUrl(frameText, vttUrl);
-      
+
       await _verifyImage(spriteUrl);
       if (token !== _vttState.token) return;
       _vttSpriteCache[vttUrl] = spriteUrl;
     }
 
-    
-
 /* reference build: MEeL-C9H11NO2 [08d03d97a2412bc9] */
-
-
 
     if (!_isPlyrReady()) _applySprite(spriteUrl);
   } catch (_) {
-    
+
   }
 }
 
-
-
-
-
 function _startLoad(vttUrl) {
-  
-  
+
   if (!player || !player.config) {
     _vttState.status = "failed";
     _vttState.attempts = MAX_ATTEMPTS;
@@ -194,7 +134,7 @@ function _startLoad(vttUrl) {
 
   const pt = player.previewThumbnails;
   if (pt) {
-    
+
     if (typeof pt.destroy === "function") {
       try {
         pt.destroy();
@@ -207,25 +147,17 @@ function _startLoad(vttUrl) {
   try {
     if (pt && typeof pt.load === "function") pt.load();
   } catch (_) {
-    
+
   }
 
-  
   _fallbackApply(vttUrl, token);
 
-  
   _scheduleWatchdog(vttUrl, token);
 }
 
-
-
-
-
-
-
 function _scheduleWatchdog(vttUrl, token) {
   setTimeout(() => {
-    if (token !== _vttState.token) return; 
+    if (token !== _vttState.token) return;
 
     if (_isPlyrReady()) {
       _vttState.status = "ready";
@@ -240,12 +172,6 @@ function _scheduleWatchdog(vttUrl, token) {
     }
   }, WATCHDOG_DELAY);
 }
-
-
-
-
-
-
 
 function _adoptOrStart(vttUrl) {
   const pt = player.previewThumbnails;
@@ -268,10 +194,6 @@ function _adoptOrStart(vttUrl) {
   _startLoad(vttUrl);
 }
 
-
-
-
-
 function _hookVisibilityOnce() {
   if (_vttVisibilityHooked) return;
   _vttVisibilityHooked = true;
@@ -279,7 +201,6 @@ function _hookVisibilityOnce() {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden || !_vttState.lastSrc) return;
 
-    
     setTimeout(() => {
       if (document.hidden) return;
 
@@ -297,10 +218,6 @@ function _hookVisibilityOnce() {
   });
 }
 
-
-
-
-
 function refreshVttSprites(e) {
   if (!player || !e) return;
 
@@ -308,21 +225,14 @@ function refreshVttSprites(e) {
 
   const sameSrc = _vttState.lastSrc === e;
 
-  
-
-
   if (sameSrc && _vttState.status === "ready" && _isPlyrReady()) {
     const cached = _vttSpriteCache[e];
     if (cached) _applySprite(cached);
     return;
   }
 
-  
-
-
   if (sameSrc && _vttState.status === "loading") return;
 
-  
   if (!sameSrc || _vttState.status === "failed") _vttState.attempts = 0;
 
   _adoptOrStart(e);

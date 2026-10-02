@@ -7,16 +7,16 @@
     }
 
     window.confirmDelete = function(id, type, title, views, likes, dislikes, thumbUrl) {
-        var idEl      = document.getElementById('modal-media-id');
-        var typeEl    = document.getElementById('modal-media-type');
-        var titleEl   = document.getElementById('modal-title-display');
-        var badge     = document.getElementById('modal-type-badge');
-        var modal     = document.getElementById('delete-modal');
-        var thumbEl   = document.getElementById('modal-thumb');
-        var viewsEl   = document.getElementById('modal-views');
-        var likesEl   = document.getElementById('modal-likes');
-        var dislEl    = document.getElementById('modal-dislikes');
-        var statsEl   = document.getElementById('modal-stats');
+        var idEl = document.getElementById('modal-media-id');
+        var typeEl = document.getElementById('modal-media-type');
+        var titleEl = document.getElementById('modal-title-display');
+        var badge = document.getElementById('modal-type-badge');
+        var modal = document.getElementById('delete-modal');
+        var thumbEl = document.getElementById('modal-thumb');
+        var viewsEl = document.getElementById('modal-views');
+        var likesEl = document.getElementById('modal-likes');
+        var dislEl = document.getElementById('modal-dislikes');
+        var statsEl = document.getElementById('modal-stats');
         if (idEl) idEl.value = id;
         if (typeEl) typeEl.value = type;
         if (titleEl) titleEl.textContent = title;
@@ -77,11 +77,9 @@
         if (dd && !dd.contains(e.target)) dd.classList.remove('open');
     });
 
-    /* CLIENT-SIDE SORT FIX — reads URL params and rewrites ALL sort links +
-       chevrons, so it works even when the page is served from cache. */
-    var p    = new URLSearchParams(window.location.search);
+    var p = new URLSearchParams(window.location.search);
     var sort = p.get('sort') || 'views';
-    var dir  = p.get('dir')  || '';
+    var dir = p.get('dir') || '';
     var type = p.get('type') || 'all';
     var search = p.get('search') || '';
     if (!dir) {

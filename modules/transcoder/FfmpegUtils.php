@@ -1,6 +1,5 @@
 <?php
 
-
 require_once __DIR__ . '/../core/helpers.php';
 
 trait FfmpegUtils
@@ -11,7 +10,6 @@ trait FfmpegUtils
         return "export LD_LIBRARY_PATH=''; export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; ";
     }
 
-    
     protected function probeDuration(string $file_path): float
     {
         $cmd = $this->getEnvPrefix() . escapeshellarg($this->ffprobe_bin)
@@ -20,8 +18,6 @@ trait FfmpegUtils
             . escapeshellarg($file_path);
         return (float)trim((string)shell_exec($cmd));
     }
-
-    
 
     protected function ensureDir(string $dir, int $perms = 0755): bool
     {
@@ -35,7 +31,6 @@ trait FfmpegUtils
         return true;
     }
 
-    
     protected function removeFile(string $path): void
     {
         if (!is_file($path) && !is_link($path)) {
@@ -46,7 +41,6 @@ trait FfmpegUtils
         }
     }
 
-    
     protected function removeDir(string $dir): void
     {
         if (!is_dir($dir)) {
@@ -60,7 +54,6 @@ trait FfmpegUtils
         }
     }
 
-    
     protected function moveFile(string $src, string $dst): bool
     {
         if (!is_file($src)) {
@@ -113,7 +106,6 @@ trait FfmpegUtils
         return false;
     }
 
-    
     protected function sanitizeFilename(string $title): string
     {
         $name = trim($title);
@@ -124,7 +116,7 @@ trait FfmpegUtils
         $name = preg_replace("/[^a-zA-Z0-9_\x{3000}-\x{9fff}\x{30a0}-\x{30ff}\x{3040}-\x{309f}\x{ff00}-\x{ffef}]+/u", "-", $name);
         $name = str_replace(['..', './'], '', $name);
         $name = mb_substr($name, 0, 120);
-        
+
         $name = trim($name, "- \t\n\r\0\x0B");
 
         return $name ?: 'untitled-media';
@@ -132,8 +124,8 @@ trait FfmpegUtils
 
     protected function calculateSpriteParams(float $duration): array
     {
-        $w    = 160;
-        $h    = 90;
+        $w = 160;
+        $h = 90;
         $cols = 5;
 
         if ($duration > 3600) {
@@ -147,7 +139,7 @@ trait FfmpegUtils
         }
 
         $total_frames = (int)ceil($duration / $interval);
-        $rows         = max(1, (int)ceil($total_frames / $cols));
+        $rows = max(1, (int)ceil($total_frames / $cols));
 
         return compact('w', 'h', 'cols', 'rows', 'interval', 'total_frames');
     }
@@ -157,7 +149,7 @@ trait FfmpegUtils
         $duration = $this->probeDuration($video_path);
         if ($duration <= 0) return null;
 
-        $p   = $this->calculateSpriteParams($duration);
+        $p = $this->calculateSpriteParams($duration);
         $filter = "fps=1/{$p['interval']},scale={$p['w']}:{$p['h']},tile={$p['cols']}x{$p['rows']}";
 
         $lib_path = '/usr/lib/x86_64-linux-gnu:/usr/local/lib';
@@ -182,10 +174,10 @@ trait FfmpegUtils
         $vtt_content = "WEBVTT\n\n";
         for ($i = 0; $i < $total_frames; $i++) {
             $start = $i * $interval;
-            $end   = min(($i + 1) * $interval, $duration);
+            $end = min(($i + 1) * $interval, $duration);
 
             $start_time = gmdate("H:i:s", (int)$start) . ".000";
-            $end_time   = gmdate("H:i:s", (int)$end)   . ".000";
+            $end_time = gmdate("H:i:s", (int)$end) . ".000";
 
             $x = ($i % $cols) * $w;
             $y = (int)floor($i / $cols) * 90;

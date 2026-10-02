@@ -6,12 +6,12 @@ require_once 'controllers/system/UpdateManager.php';
 $um = new UpdateManager($conn);
 $um->handle();
 
-$flash        = $um->getFlash();
+$flash = $um->getFlash();
 $sidebar_data = $um->getSidebarData();
-$updates      = $um->getUpdates();
+$updates = $um->getUpdates();
 
 $is_logged_in = isset($_SESSION['user_id']);
-$is_admin     = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
+$is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
 ?>
 <!DOCTYPE html>
 <html lang="id">

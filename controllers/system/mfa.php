@@ -9,9 +9,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-$user_id   = (int)$_SESSION['user_id'];
-$action    = $_POST['action'] ?? '';
-$response  = ['status' => 'error', 'message' => 'Aksi tidak dikenal.'];
+$user_id = (int)$_SESSION['user_id'];
+$action = $_POST['action'] ?? '';
+$response = ['status' => 'error', 'message' => 'Aksi tidak dikenal.'];
 
 if ($action === 'generate_backup' || $action === 'download_backup') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -31,7 +31,7 @@ if ($action === 'generate_backup' || $action === 'download_backup') {
             $response['message'] = 'MFA belum diaktifkan.';
         } else {
             $password_raw = $_POST['password'] ?? '';
-            $stored_hash  = $user_data['password'];
+            $stored_hash = $user_data['password'];
 
             $_SESSION['backup_pwd_attempts'] = ($_SESSION['backup_pwd_attempts'] ?? 0);
 
@@ -60,7 +60,7 @@ if ($action === 'generate_backup' || $action === 'download_backup') {
                 log_activity($conn, $user_id, 'backup_codes_generated');
 
                 if ($action === 'download_backup') {
-                    $username  = $_SESSION['username'] ?? 'user';
+                    $username = $_SESSION['username'] ?? 'user';
                     $date_text = date('Y-m-d H:i:s');
                     $lines = [
                         "MEeL — MFA Backup Codes",
@@ -85,9 +85,9 @@ if ($action === 'generate_backup' || $action === 'download_backup') {
                 }
 
                 $response = [
-                    'status'  => 'success',
+                    'status' => 'success',
                     'message' => 'Kode cadangan baru berhasil dibuat.',
-                    'codes'   => $backup['plain'],
+                    'codes' => $backup['plain'],
                 ];
             }
         }

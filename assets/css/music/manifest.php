@@ -10,7 +10,7 @@ return [
     'playlist-modal.css',
     'karaoke.css',
     'utility.css',
-    
+
     '../shared/light-theme.css',
 ];
 

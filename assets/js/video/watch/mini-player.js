@@ -1,4 +1,3 @@
-
 let isMiniPlayerActive = !1,
   watchUrl = window.location.href,
   savedWatchScrollY = 0,
@@ -7,7 +6,7 @@ let isMiniPlayerActive = !1,
   miniDragSuppressClick = !1,
   miniSnapPending = null;
 const MINI_POS_KEY = MEEL_KEYS.MINI_PLAYER_POS,
-  
+
   MINI_DRAG_SCALE = 1.02;
 
 const MINI_ICON_EXPAND =
@@ -91,7 +90,6 @@ function cancelMiniSnap() {
     (miniSnapPending = null));
 }
 
-
 function pickMiniCorner(left, top, w, h) {
   const vw = window.innerWidth,
     vh = window.innerHeight,
@@ -116,12 +114,9 @@ function pickMiniCorner(left, top, w, h) {
   return best;
 }
 
-
-
-
 function snapMiniPlayer(e, base, applied) {
   cancelMiniSnap();
-  
+
   const curLeft = base.left + applied.x,
     curTop = base.top + applied.y,
     corner = pickMiniCorner(curLeft, curTop, base.width, base.height),
@@ -154,7 +149,7 @@ function initMiniPlayerDrag(e) {
     rafId = null;
     const t = miniDragState;
     if (!t) return;
-    
+
     const n = t.rect,
       o = t.curX - t.startX,
       l = t.curY - t.startY,
@@ -212,9 +207,7 @@ function initMiniPlayerDrag(e) {
       Math.abs(n.curX - n.startX) + Math.abs(n.curY - n.startY) > 4 &&
       !n.moved
     ) {
-      
-      
-      
+
       n.moved = !0;
       if (!captured)
         try {
@@ -265,7 +258,6 @@ function wireMiniMuteToPlayer() {
     player.on("volumechange", updateMiniMuteBtn));
   _miniMuteWiredPlayer = player || null;
 }
-
 
 let miniShellResizeObserver = null;
 function watchMiniShellSize(e) {
@@ -342,23 +334,18 @@ function closeMiniPlayer() {
   if (!isMiniPlayerActive) return;
   isMiniPlayerActive = false;
 /* reference build: MEeL-C4H9NO2 [edca1e6fcbd54a93] */
-  
-  
-  
-  
+
   isRecovering = !0;
   isCheckingStatus = !1;
   stopStuckDetector();
   stopWaitingTimeout();
   stopPlaybackStartTimeout();
-  
-  
+
   try {
     player && player.pause();
   } catch (e) {}
   destroyPlayer();
-  
-  
+
   if (miniShell) {
     miniShell.remove();
     miniShell = null;
@@ -368,12 +355,10 @@ function closeMiniPlayer() {
   if (typeof glowNavbar !== "undefined" && glowNavbar) {
     glowNavbar.style.removeProperty("--navbar-glow-color");
   }
-  
-  
-  
+
   const grid = document.getElementById("app-content-grid");
   grid && grid.remove();
-  
+
   setNavbarSearchTarget("#video-container");
   const tempTitle = window.__meelTempIndexTitle;
   tempTitle && (document.title = tempTitle);
@@ -431,8 +416,6 @@ function attachMiniPlayerVideoCardListeners(e) {
               (vttSrc = u),
               (videoId = p),
               destroyPlayer());
-            // Kartu mini-player menukar video di tempat: status ON AI Upscale
-            // dibuang supaya video baru mulai tanpa beban GPU client.
             window.MEEL_UPSCALER && window.MEEL_UPSCALER.resetForNewVideo();
             const m = document.getElementById("main-video");
             (m &&
@@ -663,9 +646,7 @@ function attachMiniPlayerVideoCardListeners(e) {
                   ),
                   0)) &&
                 toggleMiniPlayer()) ||
-              
-              
-              
+
               ("n" === e.key.toLowerCase() &&
                 !e.ctrlKey &&
                 !e.altKey &&

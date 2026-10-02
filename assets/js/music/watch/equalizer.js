@@ -25,11 +25,7 @@ function loadEqState() {
   }
 }
 function applyEqToFilters() {
-  
-  
-  
-  
-  
+
   const engine = window.meelGetAudioEngine && window.meelGetAudioEngine();
   if (!engine) return;
   engine.setEqEnabled(eqEnabled);

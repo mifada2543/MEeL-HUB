@@ -9,7 +9,7 @@ authorize_stream((int)$v['id']);
      data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
      data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
      data-filename="<?= htmlspecialchars($v['filename']) ?>">
-    
+
     <a href="<?= base_url('/music/watch?v=' . (int)$v['id']) ?>"
        class="music-item-link relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0"
        style="background:var(--meel-surface-hover)"
@@ -32,7 +32,6 @@ authorize_stream((int)$v['id']);
         <?php endif; ?>
     </a>
 
-    
     <div class="flex-1 min-w-0">
         <a href="<?= base_url('/music/watch?v=' . (int)$v['id']) ?>"
            class="music-item-link block text-[12px] font-bold truncate transition-colors leading-tight"
@@ -59,7 +58,6 @@ authorize_stream((int)$v['id']);
         </div>
     </div>
 
-    
     <a href="<?= base_url('/music/watch?v=' . (int)$v['id']) ?>"
        class="music-item-link play-btn hidden md:flex opacity-0 -translate-x-2 transition-all duration-200
               text-[9px] font-bold uppercase tracking-widest

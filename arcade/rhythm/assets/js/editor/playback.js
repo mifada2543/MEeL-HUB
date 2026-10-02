@@ -1,7 +1,3 @@
-
-
-
-
 import { S, DOM } from "./state.js";
 import { resizeCanvas, formatTime } from "./canvas.js";
 import { draw } from "./renderer.js";
@@ -46,7 +42,6 @@ function animatePlayback() {
   S.animFrame = requestAnimationFrame(animatePlayback);
 }
 
-
 export function setZoom(val) {
   S.zoom = parseInt(val);
   var pctEl = document.getElementById("zoomPercent");
@@ -65,7 +60,6 @@ export function setSnap(val) {
   S.gridDirty = true;
   draw();
 }
-
 
 var bpmInput = document.getElementById("f-bpm");
 if (bpmInput) {
@@ -86,7 +80,6 @@ export function clearNotes() {
   saveNotesToStorage();
 }
 
-
 DOM.audioInput.addEventListener("change", function () {
   if (this.files && this.files[0]) {
     var file = this.files[0];
@@ -106,7 +99,6 @@ DOM.audioInput.addEventListener("change", function () {
     }, { once: true });
   }
 });
-
 
 DOM.coverInput.addEventListener("change", function () {
   if (this.files && this.files[0]) {

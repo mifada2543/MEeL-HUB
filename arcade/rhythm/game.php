@@ -1,6 +1,5 @@
 <?php
 
-
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 require_once __DIR__ . '/api/config.php';
@@ -118,11 +117,10 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
 </head>
 <body>
 
-  
   <div id="bgImage" class="game-bg-image hidden"></div>
-  
+
   <div id="dimOverlay" class="game-dim-overlay"></div>
-  
+
   <div id="fpsCounter" class="fps-counter hidden">0 FPS</div>
 
   <canvas id="gameCanvas"></canvas>
@@ -196,7 +194,6 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
     </div>
   </div>
 
-  
   <div id="optionsOverlay" class="overlay hidden">
     <div class="options-card">
       <div class="options-title">Options</div>
@@ -232,7 +229,6 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
     </div>
   </div>
 
-  
   <div id="countdownOverlay" class="overlay hidden" style="background:transparent;backdrop-filter:none;">
     <div class="countdown-num" id="countdownNum">3</div>
   </div>

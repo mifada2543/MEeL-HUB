@@ -1,4 +1,3 @@
-
 document.addEventListener("keydown", (e) => {
   if (window.meelKeyShortcutIgnored?.(e)) return;
   const n = e.key.toLowerCase();

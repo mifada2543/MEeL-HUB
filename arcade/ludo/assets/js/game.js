@@ -1,6 +1,5 @@
 /* reference build: MEeL-C2H5NO2 [afb965864360dd20] */
 
-
 const TRACK = [
   [6, 0], [7, 0], [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5],
   [9, 6], [10, 6], [11, 6], [12, 6], [13, 6], [14, 6], [14, 7], [14, 8],
@@ -11,34 +10,30 @@ const TRACK = [
   [6, 4], [6, 3], [6, 2], [6, 1],
 ];
 
-
 const START = { red: 40, green: 1, blue: 14, yellow: 27 };
 const SAFE = new Set(Object.values(START));
 
-
 const HOME = {
-  red:    [[1, 7], [2, 7], [3, 7], [4, 7], [5, 7]],
-  green:  [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5]],
-  blue:   [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7]],
+  red: [[1, 7], [2, 7], [3, 7], [4, 7], [5, 7]],
+  green: [[7, 1], [7, 2], [7, 3], [7, 4], [7, 5]],
+  blue: [[13, 7], [12, 7], [11, 7], [10, 7], [9, 7]],
   yellow: [[7, 13], [7, 12], [7, 11], [7, 10], [7, 9]],
 };
-
 
 const YARD = { red: [0, 0], green: [9, 0], yellow: [0, 9], blue: [9, 9] };
 const ORDER = ["red", "green", "blue", "yellow"];
 const COLORS = {
-  red:    { name: "Merah",  hex: "#ef4444" },
-  green:  { name: "Hijau",  hex: "#22c55e" },
-  blue:   { name: "Biru",   hex: "#3b82f6" },
+  red: { name: "Merah", hex: "#ef4444" },
+  green: { name: "Hijau", hex: "#22c55e" },
+  blue: { name: "Biru", hex: "#3b82f6" },
   yellow: { name: "Kuning", hex: "#eab308" },
 };
 
-const FINISH_STEPS = 56; 
-
+const FINISH_STEPS = 56;
 
 let players = [];
 let turnIdx = 0;
-let phase = "idle"; 
+let phase = "idle";
 let lastRoll = 0;
 let sixCount = 0;
 let gameOver = false;
@@ -49,7 +44,6 @@ const boardEl = document.getElementById("board");
 const diceBtn = document.getElementById("diceBtn");
 const diceFace = document.getElementById("diceFace");
 const diceHint = document.getElementById("diceHint");
-
 
 function cellInfo(c, r) {
   for (const color of ORDER) {
@@ -103,7 +97,6 @@ function buildBoard() {
   }
 }
 
-
 function newToken() {
   return { state: "yard", steps: 0 };
 }
@@ -138,10 +131,10 @@ function canMoveToken(player, token, roll) {
   if (token.state === "finished") return false;
   if (token.state === "yard") return roll === 6;
   const ns = token.steps + roll;
-  if (ns > FINISH_STEPS) return false; 
+  if (ns > FINISH_STEPS) return false;
   if (ns <= 50) {
     const idx = (START[player.color] + ns) % 52;
-    if (isOpponentBlock(player.color, idx)) return false; 
+    if (isOpponentBlock(player.color, idx)) return false;
   }
   return true;
 }
@@ -172,7 +165,6 @@ function moveToken(player, token, roll) {
     else if (token.steps >= 51) token.state = "home";
   }
 
-  
   if (token.state === "path") {
     const idx = (START[player.color] + token.steps) % 52;
     if (!SAFE.has(idx)) captureAt(idx, player.color);
@@ -202,7 +194,6 @@ function rollDice() {
   sixCount = lastRoll === 6 ? sixCount + 1 : 0;
   renderDice();
 
-  
   if (sixCount >= 3) {
     setDiceEnabled(false, "Tiga kali 6 beruntun — giliran gugur!");
     botTimers.push(setTimeout(nextTurn, 900));
@@ -239,18 +230,17 @@ function nextTurn() {
   else setDiceEnabled(true, "Gulingkan dadu untuk melempar.");
 }
 
-
 function scoreMove(player, token, roll) {
-  if (token.state === "yard") return 60; 
+  if (token.state === "yard") return 60;
   const ns = token.steps + roll;
-  if (ns === FINISH_STEPS) return 1000; 
-  if (ns >= 51) return 400 + (FINISH_STEPS - ns); 
+  if (ns === FINISH_STEPS) return 1000;
+  if (ns >= 51) return 400 + (FINISH_STEPS - ns);
   const idx = (START[player.color] + ns) % 52;
-  let s = ns; 
+  let s = ns;
   for (const p of players) {
     if (p.color === player.color) continue;
     for (const t of p.tokens) {
-      if (t.state === "path" && (START[p.color] + t.steps) % 52 === idx) s += 120; 
+      if (t.state === "path" && (START[p.color] + t.steps) % 52 === idx) s += 120;
     }
   }
   return s;
@@ -268,7 +258,6 @@ function botMove(player, roll, movable) {
   }
   if (best) moveToken(player, best, roll);
 }
-
 
 function setDiceEnabled(enabled, label) {
   diceBtn.disabled = !enabled;
@@ -295,9 +284,7 @@ function isInteractiveToken(p, t) {
   );
 }
 
-
-
-let prevTokenPos = new Map(); 
+let prevTokenPos = new Map();
 
 function captureTokenPositions() {
   prevTokenPos = new Map();
@@ -316,7 +303,7 @@ function animateTokenSlide(el, oldPos) {
   if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
   el.style.transition = "none";
   el.style.transform = `translate(${dx}px, ${dy}px)`;
-  
+
   void el.offsetWidth;
   el.style.transition = "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)";
   el.style.transform = "translate(0, 0)";
@@ -364,7 +351,7 @@ function renderBoard() {
         });
       }
       cellEl.appendChild(el);
-      
+
       const old = prevTokenPos.get(el.dataset.key);
       if (old) animateTokenSlide(el, old);
     });
@@ -400,7 +387,6 @@ function updateTurnUI() {
 function setHint(text) {
   diceHint.textContent = text;
 }
-
 
 function setupPlayers(count, botFlags) {
   players = ORDER.slice(0, count).map((color, i) => ({
@@ -447,7 +433,6 @@ function endGame(winner) {
     wo.style.pointerEvents = "auto";
   });
 }
-
 
 let setupCount = 2;
 let setupBots = [false, true, true, true];
@@ -498,7 +483,6 @@ function initSetup() {
     document.getElementById("setupOverlay").classList.remove("hidden");
   });
 }
-
 
 diceBtn.addEventListener("click", rollDice);
 initSetup();

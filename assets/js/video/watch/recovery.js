@@ -32,9 +32,6 @@ function destroyPlayer() {
       console.error("Gagal destroy player:", e);
     }
     player = null;
-    
-
-
 
     videoElement && videoElement.removeAttribute("controls");
   }
@@ -58,9 +55,7 @@ function showReconnectingIndicator() {
 }
 function checkMediaAndRecover() {
   if (isCheckingStatus) return;
-  
-  
-  
+
   if (!document.getElementById("main-video-wrapper")) {
     isCheckingStatus = !1;
     isRecovering = !1;
@@ -126,8 +121,6 @@ function triggerPlayerRecovery() {
   if (isRecovering || isCheckingStatus || isTransitioningNext) return;
   if (!document.getElementById("main-video-wrapper")) return;
   if (document.hidden) {
-    // Tab di-background: play() pasti ditolak dan video freeze saat user kembali —
-    // tunda recovery sampai tab aktif (cooldown tetap berlaku untuk yang tertunda).
     if (!pendingRecoveryOnVisible) {
       pendingRecoveryOnVisible = !0;
       console.log("Tab di-background, pemulihan ditunda sampai tab aktif kembali.");

@@ -1,6 +1,6 @@
 <?php
 $auth_extra_style = $auth_extra_style ?? '';
-$auth_extra_head  = $auth_extra_head ?? '';
+$auth_extra_head = $auth_extra_head ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="id">

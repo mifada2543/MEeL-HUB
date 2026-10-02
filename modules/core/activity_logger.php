@@ -66,7 +66,6 @@ function get_connection_protocol()
 }
 
 if (!function_exists('log_activity')) {
-    
 
     function log_activity(mysqli $conn, int $user_id, string $action, string $media_type = '', ?int $media_id = null): void
     {
@@ -122,7 +121,7 @@ if (isset($conn)) {
     }
 
     $current_page = basename($_SERVER['PHP_SELF']);
-    $current_dir  = basename(dirname($_SERVER['PHP_SELF']));
+    $current_dir = basename(dirname($_SERVER['PHP_SELF']));
     if ($current_dir !== 'err') {
         if ($ban_res && $ban_res->num_rows > 0) {
             if ($session_role !== 'admin') {
@@ -259,7 +258,7 @@ if (isset($conn)) {
     } else {
 
         $guest_id = "g_" . substr(md5(session_id()), 0, 10);
-        $role     = 'guest';
+        $role = 'guest';
         $guest_pass = bin2hex(random_bytes(24));
 
         $guest_upd = $conn->prepare(

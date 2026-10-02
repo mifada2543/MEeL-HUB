@@ -10,13 +10,13 @@ meel_storage_guard();
 GarbageCollector::run();
 
 set_time_limit(0);
-$status        = "";
-$user          = $_SESSION['username'];
-$user_id       = $_SESSION['user_id'];
+$status = "";
+$user = $_SESSION['username'];
+$user_id = $_SESSION['user_id'];
 $alert_message = "";
 
 $user_role = get_user_role($conn, $user_id);
-$is_admin  = ($user_role === 'admin');
+$is_admin = ($user_role === 'admin');
 
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 $hour_count = 0;
@@ -26,13 +26,13 @@ if ($meelcoin_enabled) {
     if (!$is_admin) {
         MeelCoin::refill($conn, $user_id, $user_role);
     }
-    $coin_balance   = $is_admin ? -1 : MeelCoin::getBalance($conn, $user_id);
-    $coin_max       = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
-    $coin_cost      = MeelCoin::getCost($conn, 'upload');
+    $coin_balance = $is_admin ? -1 : MeelCoin::getBalance($conn, $user_id);
+    $coin_max = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
+    $coin_cost = MeelCoin::getCost($conn, 'upload');
     $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, $user_id, $user_role);
 } else {
-    $hour_count     = get_hourly_upload_count($conn, $user_id, 'music');
-    $hourly_limit   = $is_admin ? '∞' : get_upload_hourly_limit($user_role);
+    $hour_count = get_hourly_upload_count($conn, $user_id, 'music');
+    $hourly_limit = $is_admin ? '∞' : get_upload_hourly_limit($user_role);
 }
 
 $total_uploads = get_total_upload_count($conn, $user_id, 'music');
@@ -48,7 +48,7 @@ if (isset($_POST['upload'])) {
             return $uploader->processMusic($post, $files, $music_base);
         }, 'upload_music');
 
-        $status        = $upload_result['status'];
+        $status = $upload_result['status'];
         $alert_message = $upload_result['alert_message'];
         if (isset($upload_result['extra']['coin_balance'])) {
             $coin_balance = $upload_result['extra']['coin_balance'];
@@ -68,7 +68,7 @@ if (isset($_POST['upload'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php
     $_META_TITLE = 'Upload | MEeL Music';
-    $_META_DESC  = 'Upload musik ke MEeL Music Library. Format audio: FLAC, MP3, WAV, OPUS, OGG, M4A.';
+    $_META_DESC = 'Upload musik ke MEeL Music Library. Format audio: FLAC, MP3, WAV, OPUS, OGG, M4A.';
     ?>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
@@ -83,7 +83,6 @@ if (isset($_POST['upload'])) {
 <body>
     <div class="page-wrap">
 
-        
         <nav class="top-nav">
             <a href="../" class="nav-brand">MEeL<span>Music</span></a>
             <div class="nav-sep"></div>
@@ -98,10 +97,8 @@ if (isset($_POST['upload'])) {
         <main>
             <div class="upload-layout">
 
-            
             <aside class="sidebar-panel">
 
-                
                 <div class="hero-waveform">
                     <div class="waveform-bars">
                         <span></span><span></span><span></span><span></span>
@@ -114,7 +111,6 @@ if (isset($_POST['upload'])) {
                     </div>
                 </div>
 
-                
                 <div class="stats-strip">
                     <?php if ($meelcoin_enabled): ?>
                         <div class="stat-chip" style="grid-column:1/-1;">
@@ -151,7 +147,6 @@ if (isset($_POST['upload'])) {
                     <?php endif; ?>
                 </div>
 
-                
                 <div class="guide-list">
                     <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;padding-left:2px;">Panduan Upload</div>
                     <div class="guide-item">
@@ -188,7 +183,6 @@ if (isset($_POST['upload'])) {
 
             </aside>
 
-            
             <section class="form-panel">
                 <div class="form-header">
                     <div>
@@ -208,7 +202,7 @@ if (isset($_POST['upload'])) {
                     <?php if (isset($_SESSION['csrf_token'])): ?>
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     <?php endif; ?>
-                    
+
                     <div class="field-group">
                         <div style="display:flex;align-items:center;justify-content:space-between;">
                             <label class="field-label" for="f-title">Judul Lagu</label>
@@ -224,7 +218,6 @@ if (isset($_POST['upload'])) {
                             class="field-input">
                     </div>
 
-                    
                     <div class="two-col">
                         <div class="field-group">
                             <label class="field-label" for="f-artist">Artis</label>
@@ -238,7 +231,6 @@ if (isset($_POST['upload'])) {
                         </div>
                     </div>
 
-                    
                     <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description"
@@ -269,11 +261,10 @@ if (isset($_POST['upload'])) {
                         </div>
                     </div>
 
-                    
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <label class="field-label">File Audio & Cover Art</label>
                         <div class="drop-grid">
-                            
+
                             <div class="drop-zone" id="audio-zone">
                                 <input type="file" name="media" accept="audio/*" required
                                     id="audio-input" onchange="handleAudioFile(this)" aria-label="Pilih atau drop file audio untuk upload lagu">
@@ -284,7 +275,6 @@ if (isset($_POST['upload'])) {
                                 <div class="drop-zone-sub">FLAC · MP3 · WAV · OPUS</div>
                             </div>
 
-                            
                             <div class="drop-zone" id="cover-zone">
                                 <input type="file" name="thumbnail" accept="image/*"
                                     id="cover-input" onchange="handleCoverFile(this)" aria-label="Pilih atau drop cover art untuk lagu">
@@ -299,7 +289,7 @@ if (isset($_POST['upload'])) {
                     </div>
 
                     <?php if ($is_admin): ?>
-                        
+
                         <div class="toggle-card">
                             <div>
                                 <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Anti Transcode</div>
@@ -311,7 +301,7 @@ if (isset($_POST['upload'])) {
                             </label>
                         </div>
                     <?php endif; ?>
-                    
+
                     <div style="margin-top:auto;">
                         <button type="submit" name="upload" id="btn-upload" class="btn-primary">
                             <i data-lucide="upload" style="width:15px;height:15px;"></i>
@@ -319,7 +309,6 @@ if (isset($_POST['upload'])) {
                         </button>
                     </div>
 
-                    
                     <div class="footer-links">
                         <a href="beranda" class="footer-link">Library</a>
                         <a href="../" class="footer-link">Portal</a>
@@ -337,7 +326,7 @@ if (isset($_POST['upload'])) {
     </div>
 
     <?php include '../partials/footer.php'; ?>
-    
+
     <div id="upload-overlay">
         <div class="overlay-card">
             <div class="upload-wave">

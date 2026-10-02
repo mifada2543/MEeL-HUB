@@ -16,9 +16,9 @@ if (isset($_SESSION['login_locked_until'])) {
         $_SESSION['login_fail_count'] = 0;
     }
 }
-$ip_address  = auth_get_ip();
-$ip_lock     = $is_loopback ? ['locked' => false, 'remaining' => 0] : auth_ip_lockout_status($conn, $ip_address);
-$ip_locked   = $ip_lock['locked'];
+$ip_address = auth_get_ip();
+$ip_lock = $is_loopback ? ['locked' => false, 'remaining' => 0] : auth_ip_lockout_status($conn, $ip_address);
+$ip_locked = $ip_lock['locked'];
 $ip_remaining = $ip_lock['remaining'];
 if (!$is_loopback && ($ip_locked || (isset($_SESSION['login_locked_until']) && time() < $_SESSION['login_locked_until']))) {
     $is_locked = true;
@@ -62,9 +62,9 @@ if (isset($_POST['login']) && !$is_locked) {
                             $stmt_del->execute();
                             $stmt_del->close();
                             if (!empty($u['mfa_secret']) && $u['mfa_enabled'] == 1) {
-                                $_SESSION['mfa_temp_uid']      = (int)$u['id'];
+                                $_SESSION['mfa_temp_uid'] = (int)$u['id'];
                                 $_SESSION['mfa_temp_username'] = $u['username'];
-                                $_SESSION['mfa_temp_role']     = $u['role'];
+                                $_SESSION['mfa_temp_role'] = $u['role'];
                                 log_activity($conn, $u['id'], 'login_password_ok');
                                 $upd = $conn->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
                                 $upd->bind_param("i", $u['id']);
@@ -75,9 +75,9 @@ if (isset($_POST['login']) && !$is_locked) {
                             }
                             session_regenerate_id(true);
                             $current_sid = session_id();
-                            $_SESSION['user_id']  = $u['id'];
+                            $_SESSION['user_id'] = $u['id'];
                             $_SESSION['username'] = $u['username'];
-                            $_SESSION['role']     = $u['role'];
+                            $_SESSION['role'] = $u['role'];
 
                             log_activity($conn, $u['id'], 'login');
 
@@ -118,14 +118,14 @@ if (!$is_loopback && !$is_locked) {
         $remaining = $recheck['remaining'];
     }
 }
-$auth_title       = "MEeL | Login";
+$auth_title = "MEeL | Login";
 $auth_description = "MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.";
-$auth_og_title    = "MEeL | Login";
-$auth_og_desc     = "Masuk ke akun MEeL untuk streaming video, musik, dan mengakses perpustakaan digital.";
+$auth_og_title = "MEeL | Login";
+$auth_og_desc = "Masuk ke akun MEeL untuk streaming video, musik, dan mengakses perpustakaan digital.";
 include __DIR__ . '/partials/auth_head.php';
 ?>
 <main class="w-full max-w-sm" aria-labelledby="login-title">
-    
+
     <div class="text-center mb-8">
         <div class="inline-flex p-4 bg-blue-600/10 rounded-3xl text-blue-500 mb-4 shadow-lg shadow-blue-900/10"><i data-lucide="log-in" class="w-10 h-10"></i></div>
         <h2 id="login-title" class="text-3xl font-black text-white tracking-tighter">Login</h2>
@@ -134,22 +134,22 @@ include __DIR__ . '/partials/auth_head.php';
     <?php if ($error_msg): ?>
         <div class="mb-6 p-4 rounded-2xl text-sm flex items-center gap-3 bg-red-500/10 text-red-400 border border-red-500/20 animate-shake"><i data-lucide="alert-circle" class="w-5 h-5"></i><?= $error_msg ?></div>
     <?php endif; ?>
-    
+
     <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6">
-        
+
         <?php if ($is_locked): ?>
             <?php
             $countdown_seconds = $remaining;
-            $countdown_color   = 'text-blue-500';
-            $countdown_extra   = '';
+            $countdown_color = 'text-blue-500';
+            $countdown_extra = '';
             include __DIR__ . '/partials/auth_countdown.php';
             ?>
         <?php else: ?>
-            
+
             <?php if (isset($_SESSION['csrf_token'])): ?>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             <?php endif; ?>
-            
+
             <div class="space-y-2">
                 <label for="username" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Username</label>
                 <div class="relative">
@@ -173,7 +173,7 @@ include __DIR__ . '/partials/auth_head.php';
                 <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
             </button>
         <?php endif; ?>
-        
+
         <div class="flex items-center justify-between px-1">
             <a href="register" class="text-xs text-gray-300 hover:text-white transition" title="Daftar untuk mendapatkan akun">
                 Belum punya akun?

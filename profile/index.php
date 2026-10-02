@@ -92,14 +92,13 @@ if (empty($target_user)) {
 
     $profile_id = $u['id'];
 
-    $total_video  = $profileRepo->countVideo($profile_id);
-    $total_music  = $profileRepo->countMusic($profile_id);
+    $total_video = $profileRepo->countVideo($profile_id);
+    $total_music = $profileRepo->countMusic($profile_id);
 
     $total_uploads = $total_video + $total_music;
     $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
 }
 
-// MEeLCoin data (hanya untuk profil sendiri)
 $coin_enabled = false;
 $coin_balance = 0;
 $coin_max = 0;
@@ -121,28 +120,24 @@ if ($coin_is_owner) {
     }
 }
 
-// Tab konten: all | video | music (default all — halaman profil sekaligus channel)
 $active_tab = $_GET['tab'] ?? 'all';
 if (!in_array($active_tab, ['all', 'video', 'music'], true)) {
     $active_tab = 'all';
 }
 
-// Satu feed konten: tab "all" mencampur video+musik (UNION) dalam satu grid
-// & satu tombol load-more. Batch awal dirender di sini, sisanya via htmx
-// (channel_more.php) dijajarkan di grid yang sama.
-$items        = [];
+$items = [];
 $initial_batch = 12;
-$has_more      = false;
+$has_more = false;
 
 if (!$is_guest_profile) {
     if ($active_tab === 'video') {
-        $items    = $profileRepo->getVideosPaginated($profile_id, $initial_batch, 0);
+        $items = $profileRepo->getVideosPaginated($profile_id, $initial_batch, 0);
         $has_more = count($items) < $total_video;
     } elseif ($active_tab === 'music') {
-        $items    = $profileRepo->getMusicPaginated($profile_id, $initial_batch, 0);
+        $items = $profileRepo->getMusicPaginated($profile_id, $initial_batch, 0);
         $has_more = count($items) < $total_music;
     } else {
-        $items    = $profileRepo->getFeedPaginated($profile_id, $initial_batch, 0);
+        $items = $profileRepo->getFeedPaginated($profile_id, $initial_batch, 0);
         $has_more = count($items) < ($total_video + $total_music);
     }
 }
@@ -475,7 +470,7 @@ if (!$is_guest_profile) {
                                 html: '<div style="font-size:11px;color:#fbbf24;margin-bottom:12px;font-weight:700">⚠️ Simpan di tempat aman. Kode TIDAK bisa ditampilkan lagi!</div>' +
                                     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">' + codesHtml + '</div>' +
                                     '<button onclick="downloadBackupCodes()" style="background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.2);padding:10px 20px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background=\'rgba(251,191,36,0.2)\';" onmouseout="this.style.background=\'rgba(251,191,36,0.1)\'">' +
-                                    '  <i data-lucide="download" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px"></i> Download (.txt)' +
+                                    ' <i data-lucide="download" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px"></i> Download (.txt)' +
                                     '</button>',
                                 showConfirmButton: true,
                                 confirmButtonText: 'SIMPAN',

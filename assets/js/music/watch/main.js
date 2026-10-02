@@ -1,7 +1,3 @@
-
-
-
-
 (function () {
   "use strict";
   var src =
@@ -23,8 +19,7 @@
     "player-core.js",
     "karaoke.js",
   ];
-  
-  
+
   window.MEEL_WATCH_BUNDLE = {
     base: base,
     qs: qs,

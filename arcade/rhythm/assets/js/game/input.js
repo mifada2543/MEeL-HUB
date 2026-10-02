@@ -1,15 +1,11 @@
 /* reference build: MEeL-C6H9N3O3 [1d4bd10fdb33b449] */
 
-
-
-
 import {
   S, canvas, KEY_MAP, LANE_COUNT,
 } from "./state.js";
 import { getW, laneWidth, playfieldX } from "./canvas.js";
 import { hitLane, releaseLane } from "./hitDetection.js";
 import { startGame, pauseGame } from "./gameFlow.js";
-
 
 export function initKeyboard() {
   document.addEventListener("keydown", (e) => {
@@ -43,7 +39,6 @@ export function initKeyboard() {
     }
   });
 }
-
 
 export function initTouch() {
   document.querySelectorAll(".touch-btn").forEach((btn) => {
@@ -96,7 +91,6 @@ export function initTouch() {
     for (let i = 0; i < LANE_COUNT; i++) releaseLane(i);
   });
 }
-
 
 export function initButtons() {
   const startOverlay = document.getElementById("startOverlay");

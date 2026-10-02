@@ -11,9 +11,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-$user_id   = $_SESSION['user_id'];
-$is_admin  = is_admin($conn);
-$edit_id   = (int)($_GET['id'] ?? 0);
+$user_id = $_SESSION['user_id'];
+$is_admin = is_admin($conn);
+$edit_id = (int)($_GET['id'] ?? 0);
 
 if ($edit_id <= 0) {
     header('Location: ' . base_url('/music/beranda'));
@@ -43,14 +43,14 @@ if (!$is_admin && !$is_owner) {
 }
 
 $save_status = "";
-$error_msg   = "";
+$error_msg = "";
 
 if (isset($_POST['save_lyrics'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error_msg = "CSRF token tidak valid.";
     } else {
-        $lang   = 'id';
-        $title  = trim($_POST['song_title'] ?? $music['title']);
+        $lang = 'id';
+        $title = trim($_POST['song_title'] ?? $music['title']);
         $artist = trim($_POST['song_artist'] ?? $music['artist'] ?? '');
         $content = trim($_POST['lyrics_content'] ?? '');
 

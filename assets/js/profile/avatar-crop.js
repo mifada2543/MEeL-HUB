@@ -1,16 +1,16 @@
 lucide.createIcons();
 
-var avatarInput        = document.getElementById('avatarInput');
-var avatarPreview      = document.getElementById('avatarPreview');
-var avatarModal        = document.getElementById('avatarModal');
+var avatarInput = document.getElementById('avatarInput');
+var avatarPreview = document.getElementById('avatarPreview');
+var avatarModal = document.getElementById('avatarModal');
 var modalAvatarPreview = document.getElementById('modalAvatarPreview');
-var cropFrame          = document.getElementById('cropFrame');
-var avatarUseBtn       = document.getElementById('avatarUseBtn');
-var avatarCancelBtn    = document.getElementById('avatarCancelBtn');
-var avatarStatus       = document.getElementById('avatarStatus');
-var cropXInput         = document.getElementById('cropX');
-var cropYInput         = document.getElementById('cropY');
-var pendingAvatarUrl   = null;
+var cropFrame = document.getElementById('cropFrame');
+var avatarUseBtn = document.getElementById('avatarUseBtn');
+var avatarCancelBtn = document.getElementById('avatarCancelBtn');
+var avatarStatus = document.getElementById('avatarStatus');
+var cropXInput = document.getElementById('cropX');
+var cropYInput = document.getElementById('cropY');
+var pendingAvatarUrl = null;
 
 var cropState = { W: 0, H: 0, D: 0, scale: 1, ox: 0, oy: 0 };
 
@@ -26,7 +26,7 @@ function initCrop(img) {
     var frameSize = cropFrame.clientWidth;
     var scale = frameSize / D;
     cropState = { W: W, H: H, D: D, scale: scale, ox: 0, oy: 0 };
-    modalAvatarPreview.style.width  = Math.round(W * scale) + 'px';
+    modalAvatarPreview.style.width = Math.round(W * scale) + 'px';
     modalAvatarPreview.style.height = Math.round(H * scale) + 'px';
     modalAvatarPreview.src = pendingAvatarUrl;
     setCropOffset((frameSize - W * scale) / 2, (frameSize - H * scale) / 2);

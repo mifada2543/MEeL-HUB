@@ -9,7 +9,7 @@ class EncodeService extends TranscoderBase
         string $title,
         string $artist,
         string $album,
-        int    $duration,
+        int $duration,
         string $description = 'Upload by MEeL Engine'
     ): array {
         putenv("LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib");
@@ -24,19 +24,17 @@ class EncodeService extends TranscoderBase
             return ['status' => 'error', 'msg' => 'Storage HDD untuk musik tidak mencukupi (hanya ' . sprintf('%.1f', $hdd_free / (1024 ** 3)) . ' GB free).'];
         }
 
-        // Token validity: tolak path traversal/absolut — tapi file boleh sudah
-        // tidak ada (request lain sudah memprosesnya → dedup di bawah).
         if ($temp_file === '' || !preg_match('/^[A-Za-z0-9._-]+$/', $temp_file) || str_contains($temp_file, '..')) {
             $msg = "Token file sumber audio tidak valid.";
             error_log("[MEeL] encodeMusic: token input tidak valid ($temp_file)");
             return ['status' => 'error', 'msg' => $msg];
         }
 
-        $shm_temp   = $this->getShmTempPath();
+        $shm_temp = $this->getShmTempPath();
         $input_path = $shm_temp . '/' . $temp_file;
 
         $lock_path = sys_get_temp_dir() . '/meel_encode_' . md5($temp_file) . '.lock';
-        $lock_fp   = fopen($lock_path, 'c');
+        $lock_fp = fopen($lock_path, 'c');
         $lock_held = $lock_fp !== false && flock($lock_fp, LOCK_EX);
 
         try {
@@ -63,20 +61,14 @@ class EncodeService extends TranscoderBase
                 $clean = 'track';
             }
 
-            // Alokasi nama final .ogg secara ATOMIK via helper bersama
-            // (fopen 'x') — dua request dengan judul sama tidak saling menimpa.
             $final_fname = meel_reserve_unique_filename($music_dir, $clean, 'ogg');
             if ($final_fname === null) {
-                // Folder penuh / tidak writable: fallback nama dengan timestamp.
                 $final_fname = $clean . "-" . time() . ".ogg";
             }
             $final_path = $music_dir . "/$final_fname";
 
             $thumb_name = str_replace('.ogg', '.webp', $final_fname);
 
-            // Encoding Opus via helper bersama (Uploader & EncodeService satu
-            // jalur). Env sudah di-set via putenv() di atas → env_prefix '';
-            // opsi -threads & metadata diteruskan seperti semula.
             $opus_result = meel_ffmpeg_encode_opus(
                 $this->ffmpeg_bin,
                 $input_path,
@@ -88,8 +80,7 @@ class EncodeService extends TranscoderBase
             $log = $opus_result[1];
 
             if (!file_exists($final_path) || filesize($final_path) === 0) {
-                
-                
+
                 $friendly = "Gagal mengonversi audio. Silakan coba lagi nanti.";
                 if (!file_exists($input_path)) {
                     $friendly = "File sumber audio tidak ditemukan. Media mungkin sudah diproses — periksa library Anda, atau coba upload ulang.";
@@ -102,13 +93,13 @@ class EncodeService extends TranscoderBase
                         }
                     }
                 }
-                $this->removeFile($final_path); // hapus placeholder hasil fopen('x')
+                $this->removeFile($final_path);
                 error_log("[MEeL] encodeMusic GAGAL ($temp_file): " . substr(trim($log), 0, 800));
                 return ['status' => 'error', 'msg' => $friendly];
             }
 
-            $temp_base    = pathinfo($temp_file, PATHINFO_FILENAME);
-            $temp_dir     = $this->getShmTempPath();
+            $temp_base = pathinfo($temp_file, PATHINFO_FILENAME);
+            $temp_dir = $this->getShmTempPath();
             $thumb_result = $this->extractMusicThumbnail($input_path, $temp_dir, $temp_base, $thumb_name);
 
             $this->removeFile($input_path);
@@ -119,7 +110,6 @@ class EncodeService extends TranscoderBase
 
             $metadata = generate_search_metadata($title, $artist, $album);
 
-            // INSERT via helper bersama (Uploader & EncodeService satu jalur).
             $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $metadata, $final_fname, $thumb_result, $duration);
 
             if ($ins[0]) {
@@ -164,7 +154,7 @@ class EncodeService extends TranscoderBase
         string $target_name
     ): string {
         $target_path = "$target_dir/$target_name";
-        $src_ext     = strtolower(pathinfo($source_image, PATHINFO_EXTENSION));
+        $src_ext = strtolower(pathinfo($source_image, PATHINFO_EXTENSION));
 
         if ($src_ext === 'webp') {
             if (copy($source_image, $target_path)) {
@@ -173,7 +163,6 @@ class EncodeService extends TranscoderBase
             }
         }
 
-        // Konversi via helper bersama (ffmpeg → webp) — duplikasi inline dihapus.
         $ok = meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $source_image, $target_path, 500, '', self::ENV_PREFIX, 1);
 
         if ($ok) {
@@ -201,7 +190,6 @@ class EncodeService extends TranscoderBase
 
         $temp_extracted = "$target_dir/.temp_thumb_" . time() . "_" . random_int(1000, 9999) . ".webp";
 
-        // Ekstrak frame dari audio via helper bersama (ffmpeg → webp).
         $ok = meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $audio_file, $temp_extracted, 500, '-an -vframes 1', self::ENV_PREFIX, 1);
 
         if ($ok && filesize($temp_extracted) > 1000) {
