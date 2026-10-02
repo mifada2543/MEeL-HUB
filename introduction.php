@@ -318,7 +318,6 @@ include __DIR__ . '/partials/scripts.php';
 
     <script>        lucide.createIcons();
 
-        
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
@@ -328,7 +327,6 @@ include __DIR__ . '/partials/scripts.php';
             hamburger.classList.toggle('open');
         }
 
-        
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 if (window.innerWidth <= 768) {
@@ -337,7 +335,6 @@ include __DIR__ . '/partials/scripts.php';
             });
         });
 
-        
         const mainEl = document.querySelector('.main');
         const progressBar = document.getElementById('reading-progress');
 

@@ -506,8 +506,6 @@ if (isset($_GET['content_only'])) {
     <script src="../assets/js/music/shared/mini-player.js<?= meel_asset_version('assets/js/music/shared/mini-player.js') ?>"></script>
     <script src="../assets/js/music/view_playlist/view_playlist.js<?= meel_asset_version('assets/js/music/view_playlist/view_playlist.js') ?>"></script>
     <script>
-        // Ikon Lucide dirender setelah seluruh DOM & library dimuat;
-        // render ulang untuk konten yang di-swap oleh HTMX.
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }

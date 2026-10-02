@@ -145,8 +145,6 @@ class TranscodeService extends TranscoderBase
         require_once __DIR__ . '/../core/System.php';
         $sys = new System($this->conn);
         if ($sys->isServerBusy()) {
-            // Marker sudah dibuat di atas; hapus agar tidak memblokir request
-            // berikutnya selama 10 menit saat server memang sedang sibuk.
             $this->removeFile($marker_file);
             return ['status' => 'error', 'msg' => 'Silahkan Menunggu. Server sedang sibuk memproses antrean lain.'];
         }

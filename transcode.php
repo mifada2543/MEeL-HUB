@@ -111,7 +111,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
     <link href="assets/css/font.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
     <style>
-        
+
         body::before {
             content: '';
             position: fixed;
@@ -133,7 +133,6 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
             animation: glow 3s ease-in-out infinite;
         }
 
-        
         .has-\[\:checked\]\:border-green-500\/40:has(:checked) {
             border-color: rgba(34, 197, 94, 0.4);
         }

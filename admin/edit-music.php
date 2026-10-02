@@ -32,9 +32,6 @@ if ($_EDIT_CONTEXT === 'admin') {
     exit;
 }
 
-// Tombol "Kembali": hormati halaman asal hanya jika layak — bukan halaman
-// edit/editor (termasuk lrc-editor) dan bukan halaman ini sendiri.
-// Tujuan bawaan: admin -> Analitik Media, pemilik konten -> Kelola Konten.
 $back_url = meel_back_url(
     $_EDIT_CONTEXT === 'admin' ? base_url('/admin/stats') : base_url('/profile/manage')
 );
