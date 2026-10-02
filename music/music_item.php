@@ -5,7 +5,7 @@ authorize_stream((int)$v['id']);
 <div class="music-item flex items-center gap-3 px-3 py-2.5 rounded-xl htmx-added"
      data-id="<?= $v['id'] ?>"
      data-title="<?= htmlspecialchars($v['title']) ?>"
-     data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
+     data-artist="<?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>"
      data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
      data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
      data-filename="<?= htmlspecialchars($v['filename']) ?>">
@@ -15,11 +15,11 @@ authorize_stream((int)$v['id']);
        style="background:var(--meel-surface-hover)"
        data-music-id="<?= $v['id'] ?>"
        data-title="<?= htmlspecialchars($v['title']) ?>"
-       data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
+       data-artist="<?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>"
        data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
        data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
        data-filename="<?= htmlspecialchars($v['filename']) ?>"
-       title="<?= htmlspecialchars($v['title']) ?> — <?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>">
+       title="<?= htmlspecialchars($v['title']) ?> — <?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>">
         <?php if (!empty($v['thumbnail'])): ?>
             <img src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
                  alt="<?= htmlspecialchars($v['title']) ?> thumbnail"
@@ -40,15 +40,15 @@ authorize_stream((int)$v['id']);
            onmouseout="this.style.color='var(--meel-text)'"
            data-music-id="<?= $v['id'] ?>"
            data-title="<?= htmlspecialchars($v['title']) ?>"
-           data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
+           data-artist="<?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>"
            data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
            data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
            data-filename="<?= htmlspecialchars($v['filename']) ?>" title="<?= htmlspecialchars($v['title']) ?>">
             <?= htmlspecialchars($v['title']) ?>
         </a>
         <div class="flex items-center gap-2 mt-0.5">
-            <span class="text-[10px] truncate" style="color:var(--meel-text-secondary)" title="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>">
-                <?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>
+            <span class="text-[10px] truncate" style="color:var(--meel-text-secondary)" title="<?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>">
+                <?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>
             </span>
             <span class="text-[9px] px-1.5 py-0.5 rounded uppercase flex-shrink-0"
                   style="background:var(--meel-surface-hover); color:var(--meel-text-secondary); border:1px solid var(--meel-border)"
@@ -67,7 +67,7 @@ authorize_stream((int)$v['id']);
        onmouseout="this.style.background='var(--meel-orange)'"
        data-music-id="<?= $v['id'] ?>"
        data-title="<?= htmlspecialchars($v['title']) ?>"
-       data-artist="<?= htmlspecialchars($v['artist'] ?? 'Unknown') ?>"
+       data-artist="<?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?>"
        data-thumbnail="<?= htmlspecialchars($v['thumbnail']) ?>"
        data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>"
        data-filename="<?= htmlspecialchars($v['filename']) ?>"

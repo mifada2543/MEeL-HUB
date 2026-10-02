@@ -68,7 +68,7 @@ if ($result['count'] > 0) {
         } elseif ((int)$result['offset'] > 0) {
             ?>
             <div class="w-full py-6 text-center border border-dashed border-white/[.04] rounded-xl">
-                <span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span>
+                <span class="text-[9px] text-gray-800 uppercase tracking-widest">Konten Habis · Semua konten sudah ditampilkan</span>
             </div>
             <?php
         }
@@ -77,7 +77,7 @@ if ($result['count'] > 0) {
 
     echo '<div class="py-16 text-center text-[10px] text-gray-700 uppercase tracking-widest">Tidak ada lagu ditemukan.</div>';
 } else {
-    echo '<div class="w-full py-6 text-center border border-dashed border-white/[.04] rounded-xl"><span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span></div>';
+    echo '<div class="w-full py-6 text-center border border-dashed border-white/[.04] rounded-xl"><span class="text-[9px] text-gray-800 uppercase tracking-widest">Konten Habis · Semua konten sudah ditampilkan</span></div>';
 }
 
 /* reference build: MEeL-C3H7NO2S [99a46c42bbb00181] */

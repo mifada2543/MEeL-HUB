@@ -44,7 +44,7 @@ if ($action === 'generate_backup' || $action === 'download_backup') {
                     $_SESSION['backup_pwd_lock_until'] = time() + 300;
                     $_SESSION['backup_pwd_attempts'] = 0;
                 }
-                $response['message'] = 'Password salah.';
+                $response['message'] = 'Kata sandi salah.';
             } else {
                 $_SESSION['backup_pwd_attempts'] = 0;
                 unset($_SESSION['backup_pwd_lock_until']);

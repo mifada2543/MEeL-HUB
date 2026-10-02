@@ -102,6 +102,13 @@ html[data-theme="light"] {
   & .text-gray-700 { color: var(--meel-text-muted) !important; }
   & .text-gray-800 { color: var(--meel-text-heading) !important; }
   & .text-gray-700.uppercase { color: var(--meel-text-secondary) !important; }
+
+  /* Tailwind slate — keluarga abu yang sebelumnya tidak dipetakan sama sekali */
+  & .text-slate-300 { color: var(--meel-text) !important; }
+  & .text-slate-400 { color: var(--meel-text-secondary) !important; }
+  & .text-slate-500 { color: var(--meel-text-muted) !important; }
+  & .bg-slate-900\/80 { background: rgba(255, 255, 255, 0.6) !important; }
+
   & .text-\[\#f0f2f7\] { color: var(--meel-text-heading) !important; }
   & .font-syne.text-\[\#f0f2f7\] { color: var(--meel-text-heading) !important; }
   & .text-\[\#c9cdd6\] { color: #3f3f46 !important; }
@@ -226,6 +233,7 @@ html[data-theme="light"] {
     border-color: rgba(0, 0, 0, 0.06) !important;
   }
 
+  & .border-white\/\[\.03\],
   & .border-white\/\[\.04\],
   & .border-white\/\[\.05\],
   & .border-white\/\[\.06\],
@@ -270,6 +278,9 @@ html[data-theme="light"] {
   & [style*="#0b0e14"] { background: var(--meel-bg) !important; }
   & [style*="border:4px solid #0b0e14"],
   & [style*="border: 4px solid #0b0e14"] { border-color: var(--meel-bg) !important; }
+  /* Teks footer memakai inline style yang mengalahkan class text-gray-500,
+     sehingga harus ditimpa eksplisit agar tetap terbaca di latar terang. */
+  & footer [style*="color:#9ca3af"] { color: var(--meel-text-muted) !important; }
   & .file\:bg-gray-800 {
     background: var(--meel-surface-hover) !important;
     color: var(--meel-text) !important;
@@ -1120,6 +1131,140 @@ html[data-theme="light"] {
   & .notif-clear:hover {
     opacity: 0.75 !important;
     text-decoration: underline !important;
+  }
+
+  /* ── Utilitas global ── */
+  & .hover\:text-\[\#f0f2f7\]:hover { color: var(--meel-text-heading) !important; }
+
+  /* ── Music · Modal lirik / karaoke ── */
+  & #karaoke-modal { background: rgba(0, 0, 0, 0.45) !important; }
+  & .karaoke-panel {
+    background: var(--meel-surface) !important;
+    border-color: var(--meel-border) !important;
+    border-top-color: #f97316 !important;
+  }
+  & .karaoke-header {
+    background: rgba(0, 0, 0, 0.03) !important;
+    border-bottom-color: var(--meel-border) !important;
+  }
+  & .karaoke-header-title { color: var(--meel-text-secondary) !important; }
+  & .karaoke-close-btn { color: var(--meel-text-secondary) !important; }
+  & .karaoke-close-btn:hover {
+    color: var(--meel-text-heading) !important;
+    background: var(--meel-surface-active) !important;
+  }
+  & .karaoke-lang-tabs { border-bottom-color: var(--meel-border) !important; }
+  & .karaoke-lang-tab {
+    border-color: var(--meel-border) !important;
+    color: var(--meel-text-secondary) !important;
+  }
+  & .karaoke-lang-tab.active {
+    background: rgba(249, 115, 22, 0.10) !important;
+    border-color: rgba(249, 115, 22, 0.25) !important;
+    color: var(--meel-orange) !important;
+  }
+  & .karaoke-lang-tab:hover:not(.active) {
+    background: var(--meel-surface-hover) !important;
+    color: var(--meel-text) !important;
+  }
+  & #karaoke-scroll::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2) !important; }
+  & .karaoke-line { color: rgba(0, 0, 0, 0.22) !important; }
+  & .karaoke-line:hover { color: rgba(0, 0, 0, 0.38) !important; }
+  & .karaoke-line.past { color: rgba(0, 0, 0, 0.30) !important; }
+  & .karaoke-line.active { color: var(--meel-orange) !important; }
+  & .karaoke-line.future { color: rgba(0, 0, 0, 0.18) !important; }
+  & .karaoke-empty { color: var(--meel-text-muted) !important; }
+
+  /* ── Introduction · Panduan (introduction.php) ── */
+  & #hamburger {
+    background: rgba(255, 255, 255, 0.92) !important;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+  }
+  & #hamburger:hover {
+    background: rgba(59, 130, 246, 0.10) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+  }
+  & #sidebar-overlay { background: rgba(0, 0, 0, 0.35) !important; }
+  & aside.sidebar {
+    background: var(--meel-surface) !important;
+    border-right-color: var(--meel-border) !important;
+  }
+  & .back-icon {
+    background: rgba(0, 0, 0, 0.04) !important;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+  }
+  & .nav-btn:hover { background: rgba(0, 0, 0, 0.035) !important; }
+  & .version-chip { background: rgba(0, 0, 0, 0.03) !important; }
+  & .version-chip:hover { border-color: rgba(0, 0, 0, 0.12) !important; }
+  & main.main { background: rgba(0, 0, 0, 0.04) !important; }
+  & main.main::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.18) !important; }
+  & main.main::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.32) !important; }
+  & .guide-eyebrow { color: var(--meel-text-muted) !important; }
+  & .screenshot-wrap { background: rgba(0, 0, 0, 0.05) !important; }
+  & .screenshot-img { background: rgba(0, 0, 0, 0.05) !important; }
+  & .annotation-item {
+    background: rgba(0, 0, 0, 0.02) !important;
+    border-color: rgba(0, 0, 0, 0.05) !important;
+  }
+  & .annotation-item:hover {
+    background: rgba(0, 0, 0, 0.035) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+  }
+  & .shortcut-item {
+    background: rgba(0, 0, 0, 0.02) !important;
+    border-color: rgba(0, 0, 0, 0.05) !important;
+  }
+  & .shortcut-item:hover {
+    background: rgba(0, 0, 0, 0.035) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+  }
+  & .kbd {
+    background: rgba(0, 0, 0, 0.05) !important;
+    border-color: rgba(0, 0, 0, 0.14) !important;
+  }
+  & .shortcut-item:hover .kbd {
+    background: rgba(0, 0, 0, 0.08) !important;
+    border-color: rgba(0, 0, 0, 0.22) !important;
+  }
+
+  /* ── Update · Changelog (update.php) ── */
+  & .entry-version { color: #080a0f !important; }
+  & .btn-primary { color: #080a0f !important; }
+
+  /* ── Engine overlay · Proses transcode & upload ── */
+  & #meel-overlay { background: rgba(245, 245, 247, 0.92) !important; }
+  & #meel-overlay.error-state { background: rgba(250, 250, 250, 0.97) !important; }
+  & #meel-card > div:first-child { color: rgba(0, 0, 0, 0.25) !important; }
+  & .meel-track { background: rgba(0, 0, 0, 0.08) !important; }
+  & .dl-track {
+    background: rgba(0, 0, 0, 0.07) !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+  }
+  & .meel-pct { color: rgba(0, 0, 0, 0.55) !important; }
+  & #meel-phase-download .meel-scan {
+    background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.15), transparent) !important;
+  }
+  & #meel-dl-url { color: rgba(0, 0, 0, 0.4) !important; }
+  & #meel-dl-pct { color: rgba(0, 0, 0, 0.7) !important; }
+  & #meel-dl-eta { color: rgba(0, 0, 0, 0.45) !important; }
+  & .dl-stat {
+    background: rgba(0, 0, 0, 0.03) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+  }
+  & .dl-stat-label { color: rgba(0, 0, 0, 0.45) !important; }
+  & .dl-stat-val { color: rgba(0, 0, 0, 0.8) !important; }
+  & #meel-phase-download > div:last-child { color: rgba(0, 0, 0, 0.35) !important; }
+  & #meel-tc-eta { color: rgba(0, 0, 0, 0.35) !important; }
+  & #meel-done-title { color: rgba(0, 0, 0, 0.55) !important; }
+  & #meel-phase-done .meel-nav-btn:not(#meel-btn-home) {
+    color: rgba(0, 0, 0, 0.55) !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+    background: rgba(0, 0, 0, 0.04) !important;
+  }
+  & #meel-phase-error .meel-nav-btn:last-child {
+    color: rgba(0, 0, 0, 0.5) !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+    background: rgba(0, 0, 0, 0.04) !important;
   }
 }
 

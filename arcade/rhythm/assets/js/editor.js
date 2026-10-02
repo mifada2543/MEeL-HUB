@@ -771,12 +771,12 @@
       draw();
       updateNoteInfo();
       saveNotesToStorage();
-      showToast(notes[selectedNoteIdx].g ? "⭐ Gold note!" : "Gold removed", "success");
+      showToast(notes[selectedNoteIdx].g ? "⭐ Note Gold!" : "Gold dihapus", "success");
       return;
     }
 
     if (e.code === "KeyG" && !isInput && selectedNoteIdx < 0) {
-      showToast("Klik note dulu, lalu tekan G untuk toggle gold", "info");
+      showToast("Klik note dulu, lalu tekan G untuk alihkan gold", "info");
       return;
     }
 
@@ -827,17 +827,17 @@
     var dur = note.e ? ((note.e - note.t) + "ms") : "-";
 
     var html = "";
-    html += '<div class="note-info-row"><span>Type:</span><span class="note-info-val">' + type + "</span></div>";
-    html += '<div class="note-info-row"><span>Lane:</span><span class="note-info-val">' + laneKeys[note.l] + " (" + note.l + ")</span></div>";
-    html += '<div class="note-info-row"><span>Start:</span><span class="note-info-val">' + note.t + "ms</span></div>";
-    if (note.e) html += '<div class="note-info-row"><span>End:</span><span class="note-info-val">' + note.e + "ms</span></div>";
-    if (note.e) html += '<div class="note-info-row"><span>Duration:</span><span class="note-info-val">' + dur + "</span></div>";
-    html += '<div class="note-info-row"><span>Gold:</span><span class="note-info-val">' + (note.g ? "⭐ Yes" : "No") + "</span></div>";
+    html += '<div class="note-info-row"><span>Jenis:</span><span class="note-info-val">' + type + "</span></div>";
+    html += '<div class="note-info-row"><span>Lajur:</span><span class="note-info-val">' + laneKeys[note.l] + " (" + note.l + ")</span></div>";
+    html += '<div class="note-info-row"><span>Mulai:</span><span class="note-info-val">' + note.t + "ms</span></div>";
+    if (note.e) html += '<div class="note-info-row"><span>Akhir:</span><span class="note-info-val">' + note.e + "ms</span></div>";
+    if (note.e) html += '<div class="note-info-row"><span>Durasi:</span><span class="note-info-val">' + dur + "</span></div>";
+    html += '<div class="note-info-row"><span>Gold:</span><span class="note-info-val">' + (note.g ? "⭐ Ya" : "Tidak") + "</span></div>";
     html += '<div class="note-actions">';
-    html += '<button class="btn btn-sm" onclick="window.editorToggleGold()">' + (note.g ? "Remove Gold" : "Make Gold ⭐") + "</button>";
-    html += '<button class="btn btn-sm" onclick="window.editorDeleteSelected()" style="color:var(--danger);">Delete</button>';
-    if (note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToTap()">Convert to Tap</button>';
-    if (!note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToHold()">Convert to Hold</button>';
+    html += '<button class="btn btn-sm" onclick="window.editorToggleGold()">' + (note.g ? "Hapus Gold" : "Beri Gold ⭐") + "</button>";
+    html += '<button class="btn btn-sm" onclick="window.editorDeleteSelected()" style="color:var(--danger);">Hapus</button>';
+    if (note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToTap()">Ubah ke Ketuk</button>';
+    if (!note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToHold()">Ubah ke Tahan</button>';
     html += "</div>";
     el.innerHTML = html;
   }
@@ -848,7 +848,7 @@
     notes[selectedNoteIdx].g = !notes[selectedNoteIdx].g;
     draw();
     updateNoteInfo();
-    showToast(notes[selectedNoteIdx].g ? "⭐ Gold note!" : "Gold removed", "success");
+    showToast(notes[selectedNoteIdx].g ? "⭐ Note Gold!" : "Gold dihapus", "success");
   };
 
   window.editorDeleteSelected = function () {
@@ -889,12 +889,12 @@
     if (isPlaying) {
       audio.pause();
       isPlaying = false;
-      document.getElementById("btnPlayPause").textContent = "▶ Play";
+      document.getElementById("btnPlayPause").textContent = "▶ Putar";
       cancelAnimationFrame(animFrame);
     } else {
       audio.play();
       isPlaying = true;
-      document.getElementById("btnPlayPause").textContent = "⏸ Pause";
+      document.getElementById("btnPlayPause").textContent = "⏸ Jeda";
       animatePlayback();
     }
   };
@@ -903,14 +903,14 @@
     audio.pause();
     audio.currentTime = 0;
     isPlaying = false;
-    document.getElementById("btnPlayPause").textContent = "▶ Play";
+    document.getElementById("btnPlayPause").textContent = "▶ Putar";
     cancelAnimationFrame(animFrame);
     draw();
   };
 
   audio.addEventListener("ended", function () {
     isPlaying = false;
-    document.getElementById("btnPlayPause").textContent = "▶ Play";
+    document.getElementById("btnPlayPause").textContent = "▶ Putar";
     cancelAnimationFrame(animFrame);
   });
 
@@ -1007,7 +1007,7 @@
           showToast(res.error || "Upload gagal", "error");
         }
       } catch (ex) {
-        showToast("Response tidak valid dari server (HTTP " + xhr.status + ")", "error");
+        showToast("Respons tidak valid dari server (HTTP " + xhr.status + ")", "error");
       }
     };
 
@@ -1058,7 +1058,7 @@
 
     var loaded = loadNotesFromStorage();
     if (loaded) {
-      showToast("Notes loaded from cache", "success");
+      showToast("Note dimuat dari cache", "success");
     }
     draw();
     window.addEventListener("resize", function () { resizeCanvas(); draw(); });

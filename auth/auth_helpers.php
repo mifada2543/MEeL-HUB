@@ -165,13 +165,13 @@ if (!function_exists('auth_validate_credentials')) {
     function auth_validate_credentials(string $user, string $pass): ?string
     {
         if (strlen($user) < 8 || strlen($pass) < 8) {
-            return "Username min 8 karakter, Password min 8 karakter!";
+            return "Nama Pengguna min 8 karakter, Kata Sandi min 8 karakter!";
         }
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $user)) {
-            return "Username hanya boleh berisi huruf, angka, dan underscore (_)!";
+            return "Nama pengguna hanya boleh berisi huruf, angka, dan underscore (_)!";
         }
         if (stripos($user, 'guest') !== false) {
-            return "Username 'Guest' tidak dapat didaftarkan karena dicadangkan untuk sistem!";
+            return "Nama pengguna 'Guest' tidak dapat didaftarkan karena dicadangkan untuk sistem!";
         }
         return null;
     }

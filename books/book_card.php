@@ -6,7 +6,7 @@
         <div class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">
             <a href="upload?reup=<?= urlencode($book['title']) ?>"
                 class="p-1.5 bg-green-600/90 backdrop-blur-md rounded-lg text-white hover:bg-green-500 hover:scale-110 transition-all shadow-lg block"
-                title="Tambah Chapter">
+                title="Tambah Bab">
                 <i data-lucide="plus" class="w-3.5 h-3.5"></i>
             </a>
         </div>
@@ -34,7 +34,7 @@
                     <?= htmlspecialchars($book['title']) ?>
                 </h3>
                 <p class="text-[10px] text-gray-300 mt-1 opacity-80 truncate">
-                    <?= htmlspecialchars($book['author'] ?? 'Unknown Author') ?>
+                    <?= htmlspecialchars($book['author'] ?? 'Penulis Tidak Diketahui') ?>
                 </p>
                 <?php if (!empty($book['category'])): ?>
                     <span class="text-[8px] text-green-400/70 uppercase tracking-widest mt-1.5 font-bold">

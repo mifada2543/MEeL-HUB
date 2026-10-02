@@ -15,23 +15,10 @@ if (!is_admin($conn)) {
     exit();
 }
 
-$back_url = '../index.php';
-if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref = $_SERVER['HTTP_REFERER'];
-    $host = $_SERVER['HTTP_HOST'];
-    if (parse_url($ref, PHP_URL_HOST) === $host) {
-        $ref_path = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages = ['stats.php', 'stats', 'content.php', 'content', 'cookies.php', 'cookies', 'analys.php', 'analys', 'edit-music.php', 'edit-music', 'edit-video.php', 'edit-video', 'index.php'];
-        $should_exclude = false;
-        foreach ($excluded_pages as $page) {
-            if (strpos($ref_path, $page) !== false) {
-                $should_exclude = true;
-                break;
-            }
-        }
-        if (!$should_exclude) $back_url = $ref;
-    }
-}
+// Hormati halaman asal, kecuali halaman analitik diri sendiri,
+// halaman edit/editor, atau index (halaman edit/editor & lrc-editor
+// diblokir otomatis oleh meel_back_url()).
+$back_url = meel_back_url('../index.php', ['stats', 'content', 'cookies', 'analys', 'index.php']);
 
 function meel_remove_media_dir(string $dir, int &$counter, array &$failed): void
 {
@@ -237,10 +224,10 @@ while ($rc = $r->fetch_assoc()) {
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL Admin - Media Analytics. Monitor dan kelola seluruh konten video dan musik, lihat statistik views, likes, dan dislikes.">
-    <meta property="og:title" content="MEeL | Media Analytics">
+    <meta name="description" content="MEeL Admin - Analitik Media. Monitor dan kelola seluruh konten video dan musik, lihat statistik views, likes, dan dislikes.">
+    <meta property="og:title" content="MEeL | Analitik Media">
     <meta property="og:description" content="Panel admin MEeL untuk memonitor dan menganalisis statistik konten video dan musik.">
-    <title>MEeL | Media Analytics</title>
+    <title>MEeL | Analitik Media</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
@@ -259,7 +246,7 @@ while ($rc = $r->fetch_assoc()) {
 
     <?php
     $is_admin = true;
-    $page_title = 'Media Analytics';
+    $page_title = 'Analitik Media';
     $media_type = 'analytics';
     include 'header-admin.php';
     ?>
@@ -271,8 +258,8 @@ while ($rc = $r->fetch_assoc()) {
                 <i data-lucide="bar-chart-2" class="text-blue-600" style="width:22px;height:22px;"></i>
             </div>
             <div>
-                <h1 class="text-[22px] font-extrabold text-white leading-tight">Media Analytics</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-[#455060] mt-0.5">Monitor & Kelola Seluruh Konten</p>
+                <h1 class="text-[22px] font-extrabold text-white leading-tight">Analitik Media</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-[#455060] mt-0.5">Pantau & Kelola Seluruh Konten</p>
             </div>
         </div>
 

@@ -48,7 +48,7 @@ async function loadFromFiles() {
     if (!idxResp.ok) throw new Error("No _index.json");
     const index = await idxResp.json();
     const meta = (index || []).find((s) => s.id === songId);
-    if (!meta) throw new Error("Song not in index");
+    if (!meta) throw new Error("Lagu tidak ada di indeks");
 
     S.song = {
       id: meta.id,

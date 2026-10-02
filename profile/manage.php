@@ -112,7 +112,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
 
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-                <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Dashboard</div>
+                <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Dasbor</div>
                 <h1 class="text-2xl font-black text-white tracking-tight uppercase">
                     <span class="text-blue-500">@<?= htmlspecialchars($username, ENT_QUOTES, 'UTF-8') ?></span>
                 </h1>
@@ -127,7 +127,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                 <div class="stat-item stat-music">
                     <i data-lucide="music"></i>
                     <span><?= $total_music ?></span>
-                    <span class="text-[9px] font-normal text-gray-600 uppercase">Music</span>
+                    <span class="text-[9px] font-normal text-gray-600 uppercase">Musik</span>
                 </div>
                 <?php if ($cleaned_count > 0): ?>
                     <div class="stat-item text-green-500" title="File lama dibersihkan">
@@ -224,7 +224,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                                     <?= htmlspecialchars($m['title']) ?>
                                 </a>
                                 <div class="card-meta">
-                                    <span><?= htmlspecialchars($m['artist'] ?? 'Unknown') ?></span>
+                                    <span><?= htmlspecialchars($m['artist'] ?? 'Tidak diketahui') ?></span>
                                     <span>•</span>
                                     <span><?= number_format($m['views']) ?> views</span>
                                     <span class="flex items-center gap-1 text-green-500/80">

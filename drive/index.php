@@ -33,10 +33,10 @@ if ($user->isMember()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="MEeL Cloud | Dashboard">
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.">
+    <meta property="og:title" content="MEeL Cloud | Dasbor">
     <meta property="og:description" content="MEeL Cloud Drive - Kelola dan simpan file Anda dengan aman di cloud pribadi.">
-    <title>MEeL Cloud | Dashboard</title>
+    <title>MEeL Cloud | Dasbor</title>
     <?php include '../partials/link.php'; ?>
     <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
     <script src="../assets/js/compatibilitas/script.min.js"></script>
@@ -54,17 +54,17 @@ if ($user->isMember()) {
                     <img src="../assets/MEeL.png" class="w-10 h-10 rounded-xl shadow-lg shadow-blue-500/20" alt="Logo">
                     <div>
                         <h1 class="font-bold text-lg leading-none">MEeL <span class="text-blue-500">Cloud</span></h1>
-                        <p class="text-[10px] text-gray-500 tracking-widest uppercase mt-1">Storage System</p>
+                        <p class="text-[10px] text-gray-500 tracking-widest uppercase mt-1">Sistem Penyimpanan</p>
                     </div>
                 </div>
 
                 <nav class="space-y-1">
-                    <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Scope</p>
+                    <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Cakupan</p>
                     <a href="?scope=public" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'public' ? 'nav-active' : '' ?>" title="File publik yang bisa diakses semua orang">
-                        <i data-lucide="globe" class="w-5 h-5"></i> Public Space
+                        <i data-lucide="globe" class="w-5 h-5"></i> Ruang Publik
                     </a>
                     <a href="?scope=private" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'private' ? 'nav-active' : '' ?>" title="File pribadi Anda">
-                        <i data-lucide="shield-check" class="w-5 h-5"></i> Private Cloud
+                        <i data-lucide="shield-check" class="w-5 h-5"></i> Ruang Pribadi
                     </a>
                 </nav>
 
@@ -122,8 +122,8 @@ if ($user->isMember()) {
             </div>
 
             <div class="md:hidden flex items-center gap-2 mb-4">
-                <a href="?scope=public" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'public' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Public</a>
-                <a href="?scope=private" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'private' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Private</a>
+                <a href="?scope=public" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'public' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Publik</a>
+                <a href="?scope=private" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'private' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Privat</a>
             </div>
 
             <div class="md:hidden flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
@@ -186,7 +186,7 @@ if ($user->isMember()) {
                             <div id="storageUsageBar" class="h-full bg-gradient-to-r from-blue-500 to-blue-500 transition-all duration-500" style="width: <?= $usagePercentage ?>%"></div>
                         </div>
                     </div>
-                    <button id="refreshBtn" onclick="refreshDrive()" class="p-2 hover:bg-gray-800 rounded-lg transition-all" title="Refresh data (grid + penyimpanan)"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                    <button id="refreshBtn" onclick="refreshDrive()" class="p-2 hover:bg-gray-800 rounded-lg transition-all" title="Muat ulang data (grid + penyimpanan)"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
                 </div>
             <?php endif; ?>
             <section class="upload-dropzone glass rounded-2xl p-6 mb-8 border-dashed border-2 border-gray-800 hover:border-blue-500/50 transition-colors" id="uploadDropzone">

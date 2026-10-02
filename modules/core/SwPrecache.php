@@ -29,6 +29,7 @@ class SwPrecache
             'assets/js/shared/theme.js',
 
             'assets/css/font/latin.woff2',
+            'assets/css/font/inter-latin.woff2',
 
             'assets/MEeL.png',
             'assets/MEeL-192.png',

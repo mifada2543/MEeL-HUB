@@ -84,11 +84,11 @@ if (isset($_POST['upload'])) {
     <div class="page-wrap">
 
         <nav class="top-nav">
-            <a href="../" class="nav-brand">MEeL<span>Music</span></a>
+            <a href="../" class="nav-brand">MEeL<span>Musik</span></a>
             <div class="nav-sep"></div>
-            <a href="beranda" class="nav-crumb">Library</a>
+            <a href="beranda" class="nav-crumb">Koleksi</a>
             <span class="nav-chevron">›</span>
-            <span class="nav-crumb-current">Upload</span>
+            <span class="nav-crumb-current">Unggah</span>
             <?php if ($is_admin): ?>
                 <span class="admin-badge"><i data-lucide="shield" style="width:10px;height:10px;"></i> Admin</span>
             <?php endif; ?>
@@ -106,7 +106,7 @@ if (isset($_POST['upload'])) {
                         <span></span><span></span><span></span><span></span>
                     </div>
                     <div style="position:relative;z-index:1;text-align:center;">
-                        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#e2e6ef;text-transform:uppercase;letter-spacing:.1em;">Upload Musik</div>
+                        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#e2e6ef;text-transform:uppercase;letter-spacing:.1em;">Unggah Musik</div>
                         <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#cbd5e1;margin-top:3px;">FLAC · MP3 · WAV · OPUS</div>
                     </div>
                 </div>
@@ -148,7 +148,7 @@ if (isset($_POST['upload'])) {
                 </div>
 
                 <div class="guide-list">
-                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;padding-left:2px;">Panduan Upload</div>
+                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;padding-left:2px;">Panduan Unggah</div>
                     <div class="guide-item">
                         <div class="guide-icon"><i data-lucide="file-audio" style="width:13px;height:13px;color:var(--accent);"></i></div>
                         <div>
@@ -186,8 +186,8 @@ if (isset($_POST['upload'])) {
             <section class="form-panel">
                 <div class="form-header">
                     <div>
-                        <h1 class="form-title">Add New <span>Track</span></h1>
-                        <p class="form-subtitle">Tambahkan lagu ke music library</p>
+                        <h1 class="form-title">Tambah <span>Lagu Baru</span></h1>
+                        <p class="form-subtitle">Tambahkan lagu ke koleksi musik</p>
                     </div>
                     <i data-lucide="music-2" style="width:36px;height:36px;color:var(--accent);opacity:.3;flex-shrink:0;margin-top:4px;"></i>
                 </div>
@@ -222,7 +222,7 @@ if (isset($_POST['upload'])) {
                         <div class="field-group">
                             <label class="field-label" for="f-artist">Artis</label>
                             <input type="text" id="f-artist" name="artist" required
-                                placeholder="Artist..." class="field-input">
+                                placeholder="Artis..." class="field-input">
                         </div>
                         <div class="field-group">
                             <label class="field-label" for="f-album">Album</label>
@@ -241,7 +241,7 @@ if (isset($_POST['upload'])) {
                     <div class="divider" style="margin:0;"></div>
 
                     <div class="field-group">
-                        <label class="field-label">Lirik / Lyrics (Opsional)</label>
+                        <label class="field-label">Lirik (Opsional)</label>
                         <div class="drop-grid">
                             <div class="drop-zone" id="lyrics-zone">
                                 <input type="file" name="lyrics" accept=".lrc,.txt"
@@ -249,36 +249,36 @@ if (isset($_POST['upload'])) {
                                 <div class="drop-zone-icon">
                                     <i data-lucide="file-text" style="width:18px;height:18px;color:var(--accent);"></i>
                                 </div>
-                                <div class="drop-zone-label" id="lyrics-label">Drag &amp; Drop LRC</div>
+                                <div class="drop-zone-label" id="lyrics-label">Seret &amp; Jatuhkan LRC</div>
                                 <div class="drop-zone-sub">Format .lrc atau .txt</div>
                             </div>
                             <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
                                 <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#455060;">Atau paste lirik langsung</div>
                                 <textarea name="lyrics_text" id="lyrics-text"
-                                    placeholder="Paste lirik di sini... (opsional, bisa di-edit nanti via LRC Editor)"
+                                    placeholder="Tempel lirik di sini... (opsional, bisa diedit nanti via Penyunting LRC)"
                                     class="field-input" style="flex:1;min-height:80px;resize:none;font-size:12px;"></textarea>
                             </div>
                         </div>
                     </div>
 
                     <div style="display:flex;flex-direction:column;gap:8px;">
-                        <label class="field-label">File Audio & Cover Art</label>
+                        <label class="field-label">File Audio & Sampul</label>
                         <div class="drop-grid">
 
                             <div class="drop-zone" id="audio-zone">
                                 <input type="file" name="media" accept="audio/*" required
-                                    id="audio-input" onchange="handleAudioFile(this)" aria-label="Pilih atau drop file audio untuk upload lagu">
+                                    id="audio-input" onchange="handleAudioFile(this)" aria-label="Pilih atau jatuhkan file audio untuk mengunggah lagu">
                                 <div class="drop-zone-icon">
                                     <i data-lucide="file-audio" style="width:18px;height:18px;color:var(--accent);"></i>
                                 </div>
-                                <div class="drop-zone-label" id="audio-label">Drag &amp; Drop Audio</div>
+                                <div class="drop-zone-label" id="audio-label">Seret &amp; Jatuhkan Audio</div>
                                 <div class="drop-zone-sub">FLAC · MP3 · WAV · OPUS</div>
                             </div>
 
                             <div class="drop-zone" id="cover-zone">
                                 <input type="file" name="thumbnail" accept="image/*"
-                                    id="cover-input" onchange="handleCoverFile(this)" aria-label="Pilih atau drop cover art untuk lagu">
-                                <img id="cover-preview" class="thumb-mini" alt="preview">
+                                    id="cover-input" onchange="handleCoverFile(this)" aria-label="Pilih atau jatuhkan sampul untuk lagu">
+                                <img id="cover-preview" class="thumb-mini" alt="pratinjau">
                                 <div class="drop-zone-icon" id="cover-icon-wrap">
                                     <i data-lucide="image" style="width:18px;height:18px;color:#4a5568;"></i>
                                 </div>
@@ -310,9 +310,9 @@ if (isset($_POST['upload'])) {
                     </div>
 
                     <div class="footer-links">
-                        <a href="beranda" class="footer-link">Library</a>
+                        <a href="beranda" class="footer-link">Koleksi</a>
                         <a href="../" class="footer-link">Portal</a>
-                        <a href="../video/upload" class="footer-link accent">Go to Video</a>
+                        <a href="../video/upload" class="footer-link accent">Buka Video</a>
                         <a href="../upload" class="footer-link"
                             onclick="return meelAlertRedirect({ title:'Upload Lanjutan', text:'Anda dan Server memerlukan koneksi internet', icon:'info', redirectUrl:'../upload' })">
                             Upload Lanjutan
@@ -395,7 +395,7 @@ if (isset($_POST['upload'])) {
                 }
                 if (label) label.textContent = f.name;
             } else {
-                if (label) label.textContent = 'Drag & Drop LRC';
+                if (label) label.textContent = 'Seret & Jatuhkan LRC';
             }
         }
     </script>

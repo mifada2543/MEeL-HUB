@@ -77,4 +77,56 @@ p {
     50% { opacity: 1; }
 }
 
+/* ==========================================================================
+   Mode terang — halaman ini sengaja mandiri (hanya 1 berkas CSS, tanpa
+   theme-tokens/light-theme) agar tetap andal saat koneksi mati, jadi
+   paletnya ditulis eksplisit di sini.
+
+   Target kontras vs latar #fafafa (WCAG AA, teks normal >= 4.5:1):
+     #c2410c pada #fafafa = 4.96:1      putih pada #c2410c = 5.18:1
+     #3f3f46 pada #fafafa = 9.89:1      #374151 pada #fafafa = 9.86:1
+     #6b7280 pada #fafafa = 4.56:1 (tetap, sudah lulus)
+   ========================================================================== */
+
+html[data-theme="light"] body {
+    background: #fafafa;
+    color: #3f3f46;
+}
+
+html[data-theme="light"] h1 {
+    color: #c2410c;
+}
+
+html[data-theme="light"] .status {
+    background: rgba(194, 65, 12, 0.08);
+    border-color: rgba(194, 65, 12, 0.22);
+    color: #c2410c;
+}
+
+html[data-theme="light"] .btn {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #3f3f46;
+}
+
+html[data-theme="light"] .btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #18181b;
+}
+
+html[data-theme="light"] .btn-primary {
+    background: #c2410c;
+    border-color: #c2410c;
+    color: #fff;
+}
+
+html[data-theme="light"] .btn-primary:hover {
+    background: #9a3412;
+    border-color: #9a3412;
+}
+
+html[data-theme="light"] .dot {
+    background: #c2410c;
+}
+
 /* reference build: MEeL-C8H11NO2 [229257bd07299b73] */

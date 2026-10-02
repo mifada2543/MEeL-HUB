@@ -99,7 +99,7 @@ while ($row = $result->fetch_assoc()) {
         'cover_url' => $cover_url,
         'audio_url' => 'uploads/audio/' . $row['audio_file'],
         'user_id' => (int) $row['user_id'],
-        'username' => $row['username'] ?? 'Unknown',
+        'username' => $row['username'] ?? 'Tidak diketahui',
         'play_count' => (int) $row['play_count'],
         'created_at' => $row['created_at'],
     ];

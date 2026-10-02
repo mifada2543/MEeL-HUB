@@ -46,7 +46,7 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
                                 : 'bg-blue-500/15 text-blue-400 border-blue-500/30';
                         ?>
                             <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border flex-shrink-0 <?= $_badge_color ?>"
-                                title="Role: <?= htmlspecialchars($_c_role) ?>">
+                                title="Peran: <?= htmlspecialchars($_c_role) ?>">
                                 <?= htmlspecialchars($_c_role) ?>
                             </span>
                         <?php endif; ?>

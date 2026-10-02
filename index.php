@@ -17,7 +17,7 @@ $counts = $library->getCounts();
 <head>
     <?php
     $_META_TITLE = 'MEeL | Media Hub';
-    $_META_DESC = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
+    $_META_DESC = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.';
     include 'partials/head.php';
     ?>
     <link rel="stylesheet" href="assets/css/index(hub).css">
@@ -46,9 +46,9 @@ $counts = $library->getCounts();
                     <img src="assets/MEeL.png" class="w-14 h-14 object-contain mx-auto opacity-80" alt="MEeL" title="MEeL">
                 <?php endif; ?>
             </div>
-            <div class="station-id mb-5">Local Media Station</div>
+            <div class="station-id mb-5">Stasiun Media Lokal</div>
             <h1 class="hero-title">MEeL <span class="accent">HUB</span></h1>
-            <p onclick="window.location.href='index.html'" class="text-xs text-gray-400 mt-4 tracking-[.25em] uppercase">Streaming &amp; Archive Platform</p>
+            <p onclick="window.location.href='index.html'" class="text-xs text-gray-400 mt-4 tracking-[.25em] uppercase">Platform Streaming &amp; Arsip</p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mb-20">
@@ -62,11 +62,11 @@ $counts = $library->getCounts();
                     </div>
                     <div class="text-right">
                         <div class="card-count" style="color:#f97316"><?= $counts['music'] ?></div>
-                        <div class="card-label">Tracks</div>
+                        <div class="card-label">Lagu</div>
                     </div>
                 </div>
                 <div class="mt-auto">
-                    <div class="card-name">MUSIC</div>
+                    <div class="card-name">MUSIK</div>
                     <div class="card-desc">Audio tinggi dengan kualitas terbaik.</div>
                 </div>
                 <div class="flex justify-end">
@@ -85,7 +85,7 @@ $counts = $library->getCounts();
                     </div>
                     <div class="text-right">
                         <div class="card-count" style="color:#dc2626"><?= $counts['video'] ?></div>
-                        <div class="card-label">Clips</div>
+                        <div class="card-label">Klip</div>
                     </div>
                 </div>
                 <div class="mt-auto">
@@ -109,11 +109,11 @@ $counts = $library->getCounts();
                         </div>
                         <div class="text-right">
                             <div class="card-count" style="color:#22c55e"><?= $counts['books'] ?></div>
-                            <div class="card-label">Books</div>
+                            <div class="card-label">Buku</div>
                         </div>
                     </div>
                     <div class="mt-auto">
-                        <div class="card-name">BOOKS</div>
+                        <div class="card-name">BUKU</div>
                         <div class="card-desc">Komik dan buku digital.</div>
                     </div>
                     <div class="flex justify-end">
@@ -129,7 +129,7 @@ $counts = $library->getCounts();
             <?php if ($is_logged_in && isset($_SESSION['role'])): ?>
                 <?php if ($_SESSION['role'] === 'admin'): ?>
                     <a href="admin/beranda" class="bottom-link" title="Panel Admin untuk mengelola konten dan pengguna">
-                        <i data-lucide="settings" class="w-3 h-3"></i> Admin Panel
+                        <i data-lucide="settings" class="w-3 h-3"></i> Panel Admin
                     </a>
 
                 <?php endif; ?>
@@ -138,15 +138,15 @@ $counts = $library->getCounts();
                         <i data-lucide="hard-drive" class="w-3 h-3"></i> Drive
                     </a>
                     <a href="upload" class="bottom-link" title="Unggah media baru ke platform">
-                        <i data-lucide="upload-cloud" class="w-3 h-3"></i> Upload Media
+                        <i data-lucide="upload-cloud" class="w-3 h-3"></i> Unggah Media
                     </a>
                 <?php endif; ?>
             <?php endif; ?>
             <a href="update" class="bottom-link" title="Lihat perubahan terbaru dan pembaruan platform">
-                <i data-lucide="radio" class="w-3 h-3"></i> Changelog
+                <i data-lucide="radio" class="w-3 h-3"></i> Catatan Perubahan
             </a>
             <a href="docs/index.html" class="bottom-link" title="Lihat dokumentasi platform">
-                <i data-lucide="book-open" class="w-3 h-3"></i> Documentation
+                <i data-lucide="book-open" class="w-3 h-3"></i> Dokumentasi
             </a>
         </div>
 
@@ -156,7 +156,7 @@ $counts = $library->getCounts();
                 class="px-3 py-1 rounded-full text-[10px] font-bold border border-white/5 text-gray-300 hover:text-white transition-all"
                 title="Mode Sehat"
                 aria-label="Aktifkan atau nonaktifkan mode sehat 20-20-20">
-                OFF
+                MATI
             </button>
         </div>
         <?php include 'partials/footer.php'; ?>

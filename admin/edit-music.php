@@ -32,23 +32,12 @@ if ($_EDIT_CONTEXT === 'admin') {
     exit;
 }
 
-$back_url = $is_admin ? 'stats.php' : '../music/beranda';
-if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref = $_SERVER['HTTP_REFERER'];
-    $host = $_SERVER['HTTP_HOST'];
-    if (parse_url($ref, PHP_URL_HOST) === $host) {
-        $ref_path = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages = ['edit-music.php', 'edit-music', 'edit-video.php', 'edit-video'];
-        $should_exclude = false;
-        foreach ($excluded_pages as $page) {
-            if (strpos($ref_path, $page) !== false) {
-                $should_exclude = true;
-                break;
-            }
-        }
-        if (!$should_exclude) $back_url = $ref;
-    }
-}
+// Tombol "Kembali": hormati halaman asal hanya jika layak — bukan halaman
+// edit/editor (termasuk lrc-editor) dan bukan halaman ini sendiri.
+// Tujuan bawaan: admin -> Analitik Media, pemilik konten -> Kelola Konten.
+$back_url = meel_back_url(
+    $_EDIT_CONTEXT === 'admin' ? base_url('/admin/stats') : base_url('/profile/manage')
+);
 require_once __DIR__ . '/../modules/media/MediaAdminRepository.php';
 $adminMedia = new MediaAdminRepository($conn);
 
@@ -82,7 +71,7 @@ if (isset($_POST['update'])) {
         $error_message = "CSRF Token tidak valid.";
     } else {
         $title = trim($_POST['title'] ?? '');
-        $artist = trim($_POST['artist'] ?? 'Unknown Artist');
+        $artist = trim($_POST['artist'] ?? 'Artis Tidak Diketahui');
         $album = trim($_POST['album'] ?? 'Single');
         $description = trim($_POST['description'] ?? '');
         $old_thumb_name = $music['thumbnail'];
@@ -192,14 +181,14 @@ $thumb_src = !empty($music['thumbnail'])
                 <div class="cover-wrap" id="cover-wrap">
 
                     <img src="<?= $thumb_src ?>"
-                        alt="Cover <?= htmlspecialchars($music['title']) ?>"
+                        alt="Sampul <?= htmlspecialchars($music['title']) ?>"
                         class="cover-img"
                         id="cover-preview">
                     <div class="cover-overlay">
                         <div class="cover-overlay-icon">
                             <i data-lucide="image" style="width:20px;height:20px;color:#fff;"></i>
                         </div>
-                        <div class="cover-overlay-text">Klik atau drop<br>untuk ganti cover</div>
+                        <div class="cover-overlay-text">Klik atau jatuhkan<br>untuk ganti cover</div>
                     </div>
                     <span class="cover-badge" id="cover-badge">Cover Art</span>
                     <span class="cover-changed-badge" id="cover-changed-badge">✓ Baru</span>
@@ -255,7 +244,7 @@ $thumb_src = !empty($music['thumbnail'])
                             <i data-lucide="calendar" style="width:13px;height:13px;color:var(--accent)"></i>
                         </div>
                         <div>
-                            <div class="meta-label">Tanggal Upload</div>
+                            <div class="meta-label">Tanggal Unggah</div>
                             <div class="meta-value"><?= !empty($music['upload_date']) ? date('d M Y', strtotime($music['upload_date'])) : '—' ?></div>
                         </div>
                     </div>
@@ -282,7 +271,7 @@ $thumb_src = !empty($music['thumbnail'])
                     </a>
                     <?php if ($is_admin): ?>
                         <a href="." class="btn-secondary" style="justify-content:center;">
-                            <i data-lucide="layout-dashboard" style="width:13px;height:13px;"></i> Dashboard Admin
+                            <i data-lucide="layout-dashboard" style="width:13px;height:13px;"></i> Dasbor Admin
                         </a>
                     <?php else: ?>
                         <a href="../profile/" class="btn-secondary" style="justify-content:center;">
@@ -355,7 +344,7 @@ $thumb_src = !empty($music['thumbnail'])
                     <div class="lyrics-section">
                         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
                             <div>
-                                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Lirik / Lyrics</div>
+                                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;">Lirik</div>
                                 <div class="lyrics-subtitle">Kelola lirik untuk fitur karaoke</div>
                             </div>
                             <a href="<?= base_url('/' . ($_EDIT_CONTEXT === 'admin' ? 'admin' : 'profile') . '/lrc-editor?id=' . (int)$id) ?>"

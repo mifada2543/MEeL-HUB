@@ -222,7 +222,7 @@ session_write_close();
                         <?php if (isset($_SESSION['username'])): ?>
                             <a href="../transcode?id=<?= $id ?>"
                                 class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline"
-                                title="Download audio saja">
+                                title="Unduh audio saja">
                                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Audio
                             </a>
                             <div id="like-dislike-container" class="flex items-center gap-2">
@@ -292,8 +292,8 @@ session_write_close();
                                     <span>Jadilah komentar pertama</span>
                                 <?php else: foreach ($preview_items as $_pc): ?>
                                     <div class="line-clamp-1"
-                                        title="<?= htmlspecialchars('@' . ($_pc['username'] ?? 'Guest') . ': ' . preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? '')), ENT_QUOTES) ?>">
-                                        <span class="font-bold text-red-400">@<?= htmlspecialchars($_pc['username'] ?? 'Guest') ?></span>: <?= htmlspecialchars(preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? ''))) ?>
+                                        title="<?= htmlspecialchars('@' . ($_pc['username'] ?? 'Tamu') . ': ' . preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? '')), ENT_QUOTES) ?>">
+                                        <span class="font-bold text-red-400">@<?= htmlspecialchars($_pc['username'] ?? 'Tamu') ?></span>: <?= htmlspecialchars(preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? ''))) ?>
                                     </div>
                                 <?php endforeach; endif; ?>
                             </div>

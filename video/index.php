@@ -20,10 +20,10 @@ $totalPages = $meta['total_pages'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="MEeL Video | Library">
-    <meta property="og:description" content="Jelajahi koleksi video di MEeL Video Library. Streaming HLS dengan kualitas terbaik.">
-    <title>MEeL Video | Library</title>
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.">
+    <meta property="og:title" content="MEeL Video | Koleksi">
+    <meta property="og:description" content="Jelajahi koleksi video di MEeL Video. Streaming HLS dengan kualitas terbaik.">
+    <title>MEeL Video | Koleksi</title>
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= meel_asset_version('assets/css/video/' . $__f) ?>">
@@ -89,7 +89,7 @@ $totalPages = $meta['total_pages'];
 
         <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
             <div>
-                <div class="text-[9px] text-gray-300 uppercase tracking-[.25em] mb-1">Library</div>
+                <div class="text-[9px] text-gray-300 uppercase tracking-[.25em] mb-1">Koleksi</div>
                 <div class="section-title">VIDEO</div>
             </div>
             <span class="text-[10px] text-gray-300 uppercase tracking-widest">

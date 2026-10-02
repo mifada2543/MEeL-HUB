@@ -82,7 +82,7 @@ function _scanSubdirs(string $dir): array {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.">
     <meta property="og:title" content="<?= htmlspecialchars($book['title']) ?> — MEeL Read">
     <meta property="og:description" content="Baca <?= htmlspecialchars($book['title']) ?> di MEeL Books - Platform Media Hub Pribadi.">
     <title>MEeL Read | <?= htmlspecialchars($book['title']) ?></title>
@@ -271,13 +271,13 @@ function _scanSubdirs(string $dir): array {
                             <button type="button"
                                 onclick="toggleChDropdown('top')"
                                 class="ch-trigger">
-                                <span class="truncate" title="<?= $current_chapter ? htmlspecialchars($current_chapter) : 'Pilih chapter' ?>"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
+                                <span class="truncate" title="<?= $current_chapter ? htmlspecialchars($current_chapter) : 'Pilih bab' ?>"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Bab —' ?></span>
                                 <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 flex-shrink-0"></i>
                             </button>
                             <div id="ch-options-top" class="ch-options hidden">
                                 <button onclick="goToChapter('')"
                                     class="ch-option <?= empty($current_chapter) ? 'active' : '' ?>">
-                                    — Pilih Chapter —
+                                    — Pilih Bab —
                                 </button>
                                 <?php foreach ($chapters as $ch):
                                     $ch_name = basename($ch);
@@ -359,7 +359,7 @@ function _scanSubdirs(string $dir): array {
                                 <?php endif; ?>
                                 <a href="beranda"
                                     class="text-[9px] text-gray-700 hover:text-green-500 uppercase tracking-widest transition-colors">
-                                    Kembali ke Library
+                                    Kembali ke Koleksi
                                 </a>
 
                                 <?php if ($next_ch): ?>
@@ -378,13 +378,13 @@ function _scanSubdirs(string $dir): array {
                                     <button type="button"
                                         onclick="toggleChDropdown('bottom')"
                                         class="ch-trigger">
-                                        <span class="truncate" title="<?= $current_chapter ? htmlspecialchars($current_chapter) : 'Pilih chapter' ?>"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Chapter —' ?></span>
+                                        <span class="truncate" title="<?= $current_chapter ? htmlspecialchars($current_chapter) : 'Pilih bab' ?>"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Bab —' ?></span>
                                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 flex-shrink-0"></i>
                                     </button>
                                     <div id="ch-options-bottom" class="ch-options hidden">
                                         <button onclick="goToChapter('')"
                                             class="ch-option <?= empty($current_chapter) ? 'active' : '' ?>">
-                                            — Pilih Chapter —
+                                            — Pilih Bab —
                                         </button>
                                         <?php foreach ($chapters as $ch):
                                             $ch_name = basename($ch);

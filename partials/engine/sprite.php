@@ -7,7 +7,7 @@
       <rect x="3" y="3" width="18" height="14" rx="2" />
       <path d="M3 9h18" />
     </svg>
-    <span class="meel-label" style="color:#a78bfa">Preview Sprite &amp; VTT</span>
+    <span class="meel-label" style="color:#a78bfa">Pratinjau Sprite &amp; VTT</span>
   </div>
   <div class="meel-track">
     <div class="meel-bar" id="meel-sp-bar" style="background:#a78bfa"></div>

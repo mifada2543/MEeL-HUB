@@ -326,7 +326,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
 <head>
 <?php
 $_META_TITLE = 'MEeL — Advanced Upload';
-$_META_DESC = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.';
+$_META_DESC = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.';
 include __DIR__ . '/partials/link.php';
 $scripts_root = '';
 include __DIR__ . '/partials/scripts.php';
@@ -351,7 +351,7 @@ include __DIR__ . '/partials/scripts.php';
                     <img src="assets/MEeL.png" alt="MEeL">
                 </a>
                 <div>
-                    <div class="masthead-title">Advanced<span>Upload</span></div>
+                    <div class="masthead-title">Lanjutan<span>Unggah</span></div>
                     <div class="masthead-sub">MEeL Engine · yt-dlp + FFmpeg</div>
                 </div>
                 <div class="masthead-meta">
@@ -381,7 +381,7 @@ include __DIR__ . '/partials/scripts.php';
                             <rect x="14" y="14" width="7" height="7" />
                             <rect x="3" y="14" width="7" height="7" />
                         </svg>
-                        Dashboard
+                        Dasbor
                     </a>
                 </div>
             <?php endif; ?>
@@ -397,7 +397,7 @@ include __DIR__ . '/partials/scripts.php';
                             </svg>
                             <div>
                                 <div style="font-weight:700;letter-spacing:.1em;margin-bottom:3px;">PROSES SELESAI</div>
-                                <div style="color:rgba(74,222,128,.7);">Media berhasil diunduh dan disimpan ke library.</div>
+                                <div style="color:rgba(74,222,128,.7);">Media berhasil diunduh dan disimpan ke koleksi.</div>
                             </div>
                         </div>
                     <?php elseif ($message === 'busy'): ?>
@@ -420,7 +420,7 @@ include __DIR__ . '/partials/scripts.php';
                                 <line x1="12" y1="16" x2="12.01" y2="16" />
                             </svg>
                             <div>
-                                <div style="font-weight:700;letter-spacing:.1em;margin-bottom:3px;">BATAS UPLOAD TERCAPAI</div>
+                                <div style="font-weight:700;letter-spacing:.1em;margin-bottom:3px;">BATAS UNGGAH TERCAPAI</div>
                                 <div style="color:rgba(251,146,60,.7);"><?= htmlspecialchars($rate_limit_msg) ?></div>
                             </div>
                         </div>
@@ -445,7 +445,7 @@ include __DIR__ . '/partials/scripts.php';
                                     MEeL Engine · yt-dlp
                                 </div>
                                 <div style="font-family:var(--font-display);font-size:1.4rem;letter-spacing:.06em;color:var(--white);line-height:1.1;">
-                                    Download & <span style="color:#3b82f6;">Process</span>
+                                    Unduh & <span style="color:#3b82f6;">Proses</span>
                                 </div>
                             </div>
 
@@ -491,7 +491,7 @@ include __DIR__ . '/partials/scripts.php';
                                             <div class="type-icon-wrap">
                                                 <i data-lucide="music-2" style="width:20px;height:20px;color:#f97316;"></i>
                                             </div>
-                                            <div class="type-label-text">Music</div>
+                                            <div class="type-label-text">Musik</div>
                                             <div class="type-ext">Audio → Opus</div>
                                         </label>
                                     </div>
@@ -550,13 +550,13 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                         <div class="side-card-body" style="display:flex;flex-direction:column;gap:.85rem;">
                             <div style="display:flex;align-items:center;justify-content:space-between;">
-                                <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Engine</span>
+                                <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Mesin</span>
                                 <span style="font-family:var(--font-mono);font-size:.7rem;color:#22c55e;display:flex;align-items:center;gap:5px;">
                                     <div class="status-dot dot-green"></div> Online
                                 </span>
                             </div>
                             <div style="display:flex;align-items:center;justify-content:space-between;">
-                                <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Queue Aktif</span>
+                                <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Antrean Aktif</span>
                                 <span style="font-family:var(--font-mono);font-size:.7rem;color:<?= $active_count > 0 ? '#f97316' : 'var(--muted)' ?>;">
                                     <?= $active_count ?> proses
                                 </span>
@@ -590,7 +590,7 @@ include __DIR__ . '/partials/scripts.php';
                                             <span style="font-family:var(--font-mono);font-size:.7rem;color:#f97316;"><?= $coin_cost ?> coin</span>
                                         </div>
                                         <div style="display:flex;align-items:center;justify-content:space-between;">
-                                            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Max</span>
+                                            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Maks</span>
                                             <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);"><?= $coin_max ?> coin</span>
                                         </div>
                                         <?php endif; ?>

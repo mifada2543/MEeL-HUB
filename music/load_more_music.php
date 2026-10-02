@@ -31,12 +31,12 @@ if ($data && $data->num_rows > 0):
         </div>
     <?php else: ?>
         <div class="w-full py-6 text-center border border-dashed border-white/[.04] rounded-xl">
-            <span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span>
+            <span class="text-[9px] text-gray-800 uppercase tracking-widest">Konten Habis · Semua konten sudah ditampilkan</span>
         </div>
     <?php endif;
 else: ?>
     <div class="w-full py-6 text-center border border-dashed border-white/[.04] rounded-xl">
-        <span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span>
+        <span class="text-[9px] text-gray-800 uppercase tracking-widest">Konten Habis · Semua konten sudah ditampilkan</span>
     </div>
 <?php endif;
 

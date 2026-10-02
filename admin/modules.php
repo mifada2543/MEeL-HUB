@@ -103,7 +103,7 @@ $msg = $_GET['msg'] ?? null;
                     </div>
                     <?php if ($exists): ?>
                     <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#6b7280;">
-                        <span>Toggle ini disimpan di database (site_settings: <code><?= htmlspecialchars($mod['setting']) ?></code>) — berlaku untuk semua user secara langsung.</span>
+                        <span>Sakelar ini disimpan di database (site_settings: <code><?= htmlspecialchars($mod['setting']) ?></code>) — berlaku untuk semua pengguna secara langsung.</span>
                         <?php if ($enabled): ?>
                             <a href="../<?= htmlspecialchars($mod['home']) ?>" target="_blank" rel="noopener" style="color:<?= $mod['color'] ?>;font-weight:700;text-decoration:none;">Buka modul ↗</a>
                         <?php endif; ?>

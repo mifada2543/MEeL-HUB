@@ -60,14 +60,14 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
                         rounded-2xl shadow-2xl shadow-orange-900/40 flex items-center justify-center overflow-hidden">
                 <?php if ($first_song && !empty($first_song['thumbnail'])): ?>
                     <img src="<?= htmlspecialchars(music_thumbnail_url($first_song['thumbnail'])) ?>"
-                        alt="cover" class="w-full h-full object-cover">
+                        alt="sampul" class="w-full h-full object-cover">
                 <?php endif; ?>
             </div>
             <div class="absolute -inset-2 bg-orange-500/15 rounded-3xl blur-xl -z-10"></div>
         </div>
 
         <div class="flex-1 min-w-0">
-            <div class="text-[9px] font-black uppercase tracking-[.4em] text-orange-500 mb-1.5">Playlist</div>
+            <div class="text-[9px] font-black uppercase tracking-[.4em] text-orange-500 mb-1.5">Daftar Putar</div>
             <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-white leading-none truncate mb-2">
                 <?= htmlspecialchars($playlist['name']) ?>
             </h1>
@@ -124,7 +124,7 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
                             music-pl-item"
                     data-id="<?= $s['id'] ?>"
                     data-title="<?= htmlspecialchars($s['title']) ?>"
-                    data-artist="<?= htmlspecialchars($s['artist'] ?? 'Unknown') ?>"
+                    data-artist="<?= htmlspecialchars($s['artist'] ?? 'Tidak diketahui') ?>"
                     data-thumbnail="<?= htmlspecialchars($s['thumbnail'] ?? '') ?>"
                     data-thumbnail-url="<?= htmlspecialchars(music_thumbnail_url($s['thumbnail'])) ?>"
                     data-filename="<?= htmlspecialchars($s['filename']) ?>"
@@ -162,7 +162,7 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
                                 <?= htmlspecialchars($s['title']) ?>
                             </div>
                             <div class="text-[10px] text-gray-600 font-bold uppercase tracking-wider truncate mt-0.5">
-                                <?= htmlspecialchars($s['artist'] ?? 'Unknown') ?>
+                                <?= htmlspecialchars($s['artist'] ?? 'Tidak diketahui') ?>
                             </div>
                         </div>
                     </a>
@@ -193,10 +193,10 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
                     border-2 border-dashed border-white/[.04] rounded-2xl">
             <div class="w-16 h-16 rounded-2xl bg-white/[.03] border border-white/[.05]
                         flex items-center justify-center">
-                <i data-lucide="music-off" class="w-7 h-7 text-gray-700"></i>
+                <i data-lucide="list-music" class="w-7 h-7 text-gray-700"></i>
             </div>
             <div class="text-center">
-                <div class="text-[11px] font-bold uppercase tracking-widest text-gray-600 mb-1">Playlist Kosong</div>
+                <div class="text-[11px] font-bold uppercase tracking-widest text-gray-600 mb-1">Daftar Putar Kosong</div>
                 <div class="text-[10px] text-gray-700">Tambahkan lagu dari halaman player</div>
             </div>
             <a href="beranda"
@@ -256,7 +256,7 @@ if (isset($_GET['content_only'])) {
                     <i data-lucide="music" class="w-3.5 h-3.5 text-white fill-current"></i>
                 </div>
                 <span class="text-xs sm:text-sm font-bold tracking-tight text-white uppercase hidden sm:block">
-                    MEeL<span class="text-orange-500">Music</span>
+                    MEeL<span class="text-orange-500">Musik</span>
                 </span>
             </a>
 
@@ -272,7 +272,7 @@ if (isset($_GET['content_only'])) {
                 </div>
                 <a href="beranda"
                     class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
-                    <span class="hidden sm:inline">Library</span>
+                    <span class="hidden sm:inline">Koleksi</span>
                     <i data-lucide="library" class="w-3.5 h-3.5 sm:hidden"></i>
                 </a>
             </div>
@@ -293,7 +293,7 @@ if (isset($_GET['content_only'])) {
                     <div class="text-[9px] font-bold text-gray-700 uppercase tracking-[.25em] mb-3">Format</div>
                     <div class="flex flex-wrap gap-2">
                         <a href="beranda?format=all"
-                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
+                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">Semua</a>
                         <a href="beranda?format=ogg"
                             class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
                         <a href="beranda?format=m4a"
@@ -311,7 +311,7 @@ if (isset($_GET['content_only'])) {
                         <a href="beranda"
                             class="sidebar-link flex items-center justify-between px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all
                                  text-gray-600 hover:text-gray-300 hover:bg-white/[.03]">
-                            <span>All Collections</span>
+                            <span>Semua Koleksi</span>
                         </a>
                         <?php
                         $artists->data_seek(0);
@@ -366,7 +366,7 @@ if (isset($_GET['content_only'])) {
 
                     <div class="flex flex-wrap gap-2">
                         <a href="beranda?format=all"
-                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
+                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">Semua</a>
                         <a href="beranda?format=ogg"
                             class="format-pill <?= $format_filter === 'ogg' ? 'active-orange' : '' ?>">Opus</a>
                         <a href="beranda?format=m4a"
@@ -385,7 +385,7 @@ if (isset($_GET['content_only'])) {
                                 <button type="button"
                                     onclick="toggleArtistDropdownPL()"
                                     class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
-                                    <span class="truncate">All Collections</span>
+                                    <span class="truncate">Semua Koleksi</span>
                                     <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
                                 </button>
                                 <div id="artist-options-pl" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
@@ -447,7 +447,7 @@ if (isset($_GET['content_only'])) {
         </main>
     </div>
 
-    <div id="mini-player-index" aria-label="Mini Player">
+    <div id="mini-player-index" aria-label="Pemutar Mini">
         <div class="mp-seekbar" id="mp-seekbar-index" onclick="miniSeekIndex(event)" title="Klik untuk seek">
             <div class="mp-seekbar-fill" id="mp-seekbar-fill-index"></div>
             <div class="mp-seekbar-thumb" id="mp-seekbar-thumb-index"></div>
@@ -456,14 +456,14 @@ if (isset($_GET['content_only'])) {
             <div class="mp-track" title="Buka player penuh">
                 <div class="mp-art" onclick="expandPlayerFromMiniPlayer()">
                     <img id="mini-thumbnail-index" src="<?= htmlspecialchars(music_thumbnail_url('default.png')) ?>"
-                        alt="Cover lagu" width="256" height="256" loading="eager" decoding="async">
+                        alt="Sampul lagu" width="256" height="256" loading="eager" decoding="async">
                     <div class="mp-art-overlay">
                         <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
                     </div>
                 </div>
                 <div class="mp-meta">
                     <div class="mp-title" id="mini-title-index">Tidak ada musik</div>
-                    <div class="mp-artist" id="mini-artist-index">Unknown</div>
+                    <div class="mp-artist" id="mini-artist-index">Tidak diketahui</div>
                 </div>
             </div>
             <div class="mp-controls">
@@ -473,7 +473,7 @@ if (isset($_GET['content_only'])) {
                 <button class="mp-btn mp-btn-ghost" onclick="miniPrevIndex()" id="mp-prev-btn-index" title="Sebelumnya">
                     <i data-lucide="skip-back" style="width:16px;height:16px;"></i>
                 </button>
-                <button class="mp-btn mp-btn-primary" onclick="miniPlayPauseIndex()" id="mini-play-btn-index" title="Play / Pause">
+                <button class="mp-btn mp-btn-primary" onclick="miniPlayPauseIndex()" id="mini-play-btn-index" title="Putar / Jeda">
                     <i data-lucide="play" style="width:18px;height:18px;"></i>
                 </button>
                 <button class="mp-btn mp-btn-ghost" onclick="miniNextIndex()" id="mp-next-btn-index" title="Berikutnya">
@@ -505,6 +505,18 @@ if (isset($_GET['content_only'])) {
     <script src="../assets/js/shared/view-router.js<?= meel_asset_version('assets/js/shared/view-router.js') ?>"></script>
     <script src="../assets/js/music/shared/mini-player.js<?= meel_asset_version('assets/js/music/shared/mini-player.js') ?>"></script>
     <script src="../assets/js/music/view_playlist/view_playlist.js<?= meel_asset_version('assets/js/music/view_playlist/view_playlist.js') ?>"></script>
+    <script>
+        // Ikon Lucide dirender setelah seluruh DOM & library dimuat;
+        // render ulang untuk konten yang di-swap oleh HTMX.
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+        document.body.addEventListener('htmx:afterOnLoad', function() {
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+    </script>
 </body>
 
 </html>

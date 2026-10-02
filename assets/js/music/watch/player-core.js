@@ -8,7 +8,7 @@
       label = document.getElementById("vis-text"),
       cava = document.getElementById("cava-container");
     _setTogglePillUI(btn, on);
-    if (label) label.innerText = on ? "Vis On" : "Vis Off";
+    if (label) label.innerText = on ? "Vis Aktif" : "Vis Mati";
     if (cava) {
       cava.style.display = on ? "flex" : "none";
       cava.classList.toggle("hidden", !on);

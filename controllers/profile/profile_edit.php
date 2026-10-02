@@ -251,7 +251,7 @@ include __DIR__ . '/../../partials/scripts.php';
                         <h3 class="text-sm font-black text-white uppercase tracking-widest mb-4">Pratinjau Foto</h3>
                         <p class="text-[10px] text-gray-500 mb-4">Geser foto untuk memilih bagian yang dipakai</p>
                         <div id="cropFrame" class="relative h-56 mx-auto mb-4 rounded-2xl overflow-hidden border-2 border-blue-500/30 select-none" style="width:224px;touch-action:none;cursor:grab;background-color:#0b0e14">
-                            <img id="modalAvatarPreview" class="absolute select-none" style="max-width:none;top:0;left:0" alt="Preview" draggable="false">
+                            <img id="modalAvatarPreview" class="absolute select-none" style="max-width:none;top:0;left:0" alt="Pratinjau" draggable="false">
                             <div class="pointer-events-none absolute top-0 bottom-0 left-1/2 w-px crop-guide" style="transform:translateX(-50%)"></div>
                             <div class="pointer-events-none absolute left-0 right-0 top-1/2 h-px crop-guide" style="transform:translateY(-50%)"></div>
                         </div>

@@ -64,7 +64,7 @@ $more_label = $active_tab === 'all' ? 'Konten' : ($active_tab === 'video' ? 'Vid
             </a>
             <div class="card-meta">
                 <?php if ($is_music): ?>
-                    <span><?= htmlspecialchars($item['artist'] ?? 'Unknown') ?></span>
+                    <span><?= htmlspecialchars($item['artist'] ?? 'Tidak diketahui') ?></span>
                     <span>•</span>
                 <?php endif; ?>
                 <span><?= number_format($item['views'] ?? 0) ?> views</span>

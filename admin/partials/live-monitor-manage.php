@@ -40,7 +40,7 @@ $result_monitor = $conn->query(
                         <a href="<?= meel_base_url_path() ?>/profile/<?= htmlspecialchars($row['username'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($row['username']) ?></a>
                     </span>
                     <?php if ($row['role'] === 'guest'): ?>
-                        <span class="text-[7px] bg-white/5 text-gray-500 px-1 rounded border border-white/10 uppercase font-black">Guest</span>
+                        <span class="text-[7px] bg-white/5 text-gray-500 px-1 rounded border border-white/10 uppercase font-black">Tamu</span>
                     <?php endif; ?>
                 </div>
                 <div class="flex flex-col">
@@ -50,7 +50,7 @@ $result_monitor = $conn->query(
 
                     <div class="flex items-center gap-1 mt-1 flex-wrap">
                         <?php
-                        $ip_display = $row['ip_address'] ?? 'Unknown';
+                        $ip_display = $row['ip_address'] ?? 'Tidak diketahui';
                         $is_local = ($ip_display === 'LOCAL' || strpos($ip_display, 'Local') !== false);
 
                         $ip_type = 'Unknown';
@@ -104,7 +104,7 @@ $result_monitor = $conn->query(
                         <form method="POST" class="inline" onsubmit="return meelConfirmForm(event, { title: 'Kick User', text: 'Tendang <?= htmlspecialchars($row['username'], ENT_QUOTES) ?>? User akan langsung offline.', confirmButtonText: 'TENDANG' })">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                             <input type="hidden" name="kick_user" value="<?= htmlspecialchars($row['username'], ENT_QUOTES) ?>">
-                            <button type="submit" class="p-1.5 bg-red-600/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-600 hover:text-white transition-all cursor-pointer" title="Kick Active User">
+                            <button type="submit" class="p-1.5 bg-red-600/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-600 hover:text-white transition-all cursor-pointer" title="Keluarkan pengguna aktif">
                                 <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                             </button>
                         </form>

@@ -64,7 +64,7 @@ if ($result['count'] > 0) {
         } elseif ((int)$result['offset'] > 0) {
             ?>
             <div class="col-span-full py-6 text-center border border-dashed border-white/[.04] rounded-2xl">
-                <span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span>
+                <span class="text-[9px] text-gray-800 uppercase tracking-widest">Konten Habis · Semua konten sudah ditampilkan</span>
             </div>
             <?php
         }
@@ -72,7 +72,7 @@ if ($result['count'] > 0) {
 } elseif ($result['offset'] === 0) {
     echo '<div class="col-span-full py-16 text-center text-[10px] text-gray-700 uppercase tracking-widest">Video tidak ditemukan.</div>';
 } else {
-    echo '<div class="col-span-full py-6 text-center border border-dashed border-white/[.04] rounded-2xl"><span class="text-[9px] text-gray-800 uppercase tracking-widest">Out Of Content · Konten sudah tidak ada lagi</span></div>';
+    echo '<div class="col-span-full py-6 text-center border border-dashed border-white/[.04] rounded-2xl"><span class="text-[9px] text-gray-800 uppercase tracking-widest">Konten Habis · Semua konten sudah ditampilkan</span></div>';
 }
 
 /* reference build: MEeL-C6H9N3O3 [b271388b3aca6acc] */

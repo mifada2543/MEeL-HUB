@@ -19,19 +19,40 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="MEeL | Changelog">
+    <script>
+    (function(){
+      try {
+        var t = localStorage.getItem('meel_theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.setAttribute('data-theme', t);
+          if (t === 'dark') document.documentElement.classList.add('dark');
+          else document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          document.documentElement.classList.add('dark');
+        }
+      } catch(e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.classList.add('dark');
+      }
+    })();
+    </script>
+    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.">
+    <meta property="og:title" content="MEeL | Catatan Perubahan">
     <meta property="og:description" content="Catatan perubahan sistem MEeL. Lihat update terbaru dan riwayat versi platform.">
     <meta property="og:image" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') ?>/assets/MEeL.png">
     <meta property="og:url" content="<?= (function_exists('detectProtocol') ? detectProtocol() : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ? 'https' : 'http')) . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $_SERVER['REQUEST_URI'] ?>">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
-    <title>MEeL | Changelog</title>
+    <title>MEeL | Catatan Perubahan</title>
     <link rel="icon" type="image/png" href="assets/MEeL.png">
     <link rel="manifest" href="assets/manifest.json">
     <link href="assets/css/tailwind.min.css" rel="stylesheet">
     <script src="assets/js/compatibilitas/htmx.min.js"></script>
     <script src="assets/js/compatibilitas/lucide.js"></script>
+    <link rel="stylesheet" href="assets/css/shared/theme-tokens.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/theme-tokens.css') ?>">
+    <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
+    <script src="assets/js/shared/theme.js?v=<?= @filemtime(__DIR__ . '/assets/js/shared/theme.js') ?>"></script>
     <?php include 'partials/scripts.php'; ?>
     <link rel="stylesheet" href="assets/css/up.css">
 </head>
@@ -44,13 +65,13 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
                 <img src="assets/MEeL.png" alt="MEeL">
             </a>
             <div>
-                <div class="masthead-title">CHANGELOG <span>&</span> UPDATES</div>
+                <div class="masthead-title">Catatan <span>&</span> Pembaruan</div>
                 <div class="masthead-sub">Catatan Perubahan Sistem MEeL</div>
             </div>
             <div class="masthead-meta">
                 <div><?= date('d M Y') ?></div>
                 <div>MEeL Platform</div>
-                <div style="color:var(--orange)">RELEASE NOTES</div>
+                <div style="color:var(--orange)">Catatan Rilis</div>
             </div>
         </header>
 
@@ -60,14 +81,14 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     </svg>
-                    Admin Mode
+                    Mode Admin
                 </span>
                 <button class="admin-btn" onclick="openModal('modal-add-update')">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5">
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
-                    Tambah Update
+                    Tambah Pembaruan
                 </button>
                 <button class="admin-btn" onclick="openModal('modal-edit-sidebar')">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5">
@@ -104,21 +125,21 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
                             <div class="entry-header">
                                 <div style="display:flex;align-items:center;gap:.75rem">
                                     <span class="entry-version"><?= htmlspecialchars($row['version']) ?></span>
-                                    <span class="entry-label">System Update</span>
+                                    <span class="entry-label">Pembaruan Sistem</span>
                                 </div>
                                 <div style="display:flex;align-items:center;gap:1rem">
                                     <span class="entry-date"><?= date('d M Y', strtotime($row['created_at'])) ?></span>
 
                                     <?php if ($is_admin): ?>
                                         <div style="display:flex;align-items:center;gap:.5rem">
-                                            <button onclick="openEditModal(<?= htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') ?>)" style="background:none;border:none;cursor:pointer;color:#60a5fa;" title="Edit Update">
+                                            <button onclick="openEditModal(<?= htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8') ?>)" style="background:none;border:none;cursor:pointer;color:#60a5fa;" title="Edit Pembaruan">
                                                 <i data-lucide="edit-2" style="width:14px;height:14px;"></i>
                                             </button>
                                             <form action="update" method="POST" onsubmit="return meelConfirmForm(event, { title:'Hapus Update', text:'Apakah Anda yakin ingin menghapus update versi <?= htmlspecialchars($row['version']) ?> ini?', confirmButtonText:'HAPUS' });" style="display:inline;">
                                                 <input type="hidden" name="action" value="delete_update">
                                                 <input type="hidden" name="id" value="<?= (int)$row['id'] ?>">
                                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                                                <button type="submit" style="background:none;border:none;cursor:pointer;color:#ef4444;" title="Hapus Update">
+                                                <button type="submit" style="background:none;border:none;cursor:pointer;color:#ef4444;" title="Hapus Pembaruan">
                                                     <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
                                                 </button>
                                             </form>
@@ -132,7 +153,7 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
                         </article>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="empty">Belum ada catatan update tersedia.</div>
+                    <div class="empty">Belum ada catatan pembaruan tersedia.</div>
                 <?php endif; ?>
             </main>
 
@@ -197,7 +218,7 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
     <?php if ($is_admin): ?>
         <div id="modal-add-update" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-add-update')">
             <div class="modal-box">
-                <div class="modal-title">TAMBAH <span>UPDATE</span></div>
+                <div class="modal-title">TAMBAH <span>PEMBARUAN</span></div>
                 <form action="update" method="POST">
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -226,7 +247,7 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
 
         <div id="modal-edit-update" class="modal-backdrop" onclick="handleBackdropClick(event, 'modal-edit-update')">
             <div class="modal-box">
-                <div class="modal-title">EDIT <span>UPDATE</span></div>
+                <div class="modal-title">EDIT <span>PEMBARUAN</span></div>
                 <form action="update" method="POST">
                     <input type="hidden" name="action" value="edit_update">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -329,6 +350,13 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
             }
 
             openModal('modal-edit-update');
+        }
+
+        if (typeof MEELTheme !== 'undefined') {
+            MEELTheme.init({
+                isLoggedIn: <?= $is_logged_in ? 'true' : 'false' ?>,
+                csrfToken: <?= json_encode($_SESSION['csrf_token'] ?? '') ?>
+            });
         }
 </script>
     <?php include 'partials/footer.php'; ?>

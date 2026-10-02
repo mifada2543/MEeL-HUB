@@ -108,7 +108,7 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
 $auth_title = "Verifikasi MFA | MEeL";
 $auth_description = "MEeL — Verifikasi autentikasi dua faktor.";
 $auth_og_title = "MEeL | Verifikasi MFA";
-$auth_og_desc = "Masukkan kode 6-digit dari aplikasi Authenticator untuk menyelesaikan login.";
+$auth_og_desc = "Masukkan kode 6-digit dari aplikasi Authenticator untuk menyelesaikan proses masuk.";
 $auth_extra_style = '
         .code-input {
             letter-spacing: 0.5em;
@@ -215,7 +215,7 @@ include __DIR__ . '/partials/auth_head.php';
                     Setiap backup code hanya bisa digunakan <strong class="text-gray-300">sekali</strong>.
                 </p>
                 <p class="text-[10px] text-gray-600 mt-2">
-                    Jika backup codes habis, hubungi admin untuk reset MFA.
+                    Jika kode cadangan habis, hubungi admin untuk mengatur ulang MFA.
                 </p>
             </div>
         </details>

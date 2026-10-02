@@ -277,17 +277,17 @@ export function updateNoteInfo() {
   var dur = note.e ? note.e - note.t + "ms" : "-";
 
   var html = "";
-  html += '<div class="note-info-row"><span>Type:</span><span class="note-info-val">' + type + "</span></div>";
-  html += '<div class="note-info-row"><span>Lane:</span><span class="note-info-val">' + laneKeys[note.l] + " (" + note.l + ")</span></div>";
-  html += '<div class="note-info-row"><span>Start:</span><span class="note-info-val">' + note.t + "ms</span></div>";
-  if (note.e) html += '<div class="note-info-row"><span>End:</span><span class="note-info-val">' + note.e + "ms</span></div>";
-  if (note.e) html += '<div class="note-info-row"><span>Duration:</span><span class="note-info-val">' + dur + "</span></div>";
-  html += '<div class="note-info-row"><span>Gold:</span><span class="note-info-val">' + (note.g ? "⭐ Yes" : "No") + "</span></div>";
+  html += '<div class="note-info-row"><span>Jenis:</span><span class="note-info-val">' + type + "</span></div>";
+  html += '<div class="note-info-row"><span>Lajur:</span><span class="note-info-val">' + laneKeys[note.l] + " (" + note.l + ")</span></div>";
+  html += '<div class="note-info-row"><span>Mulai:</span><span class="note-info-val">' + note.t + "ms</span></div>";
+  if (note.e) html += '<div class="note-info-row"><span>Akhir:</span><span class="note-info-val">' + note.e + "ms</span></div>";
+  if (note.e) html += '<div class="note-info-row"><span>Durasi:</span><span class="note-info-val">' + dur + "</span></div>";
+  html += '<div class="note-info-row"><span>Gold:</span><span class="note-info-val">' + (note.g ? "⭐ Ya" : "Tidak") + "</span></div>";
   html += '<div class="note-actions">';
-  html += '<button class="btn btn-sm" onclick="window.editorToggleGold()">' + (note.g ? "Remove Gold" : "Make Gold ⭐") + "</button>";
-  html += '<button class="btn btn-sm" onclick="window.editorDeleteSelected()" style="color:var(--danger);">Delete</button>';
-  if (note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToTap()">Convert to Tap</button>';
-  if (!note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToHold()">Convert to Hold</button>';
+  html += '<button class="btn btn-sm" onclick="window.editorToggleGold()">' + (note.g ? "Hapus Gold" : "Beri Gold ⭐") + "</button>";
+  html += '<button class="btn btn-sm" onclick="window.editorDeleteSelected()" style="color:var(--danger);">Hapus</button>';
+  if (note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToTap()">Ubah ke Ketuk</button>';
+  if (!note.e) html += '<button class="btn btn-sm" onclick="window.editorConvertToHold()">Ubah ke Tahan</button>';
   html += "</div>";
   el.innerHTML = html;
 }

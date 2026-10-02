@@ -15,17 +15,17 @@ if (!isset($is_logged_in)) {
             <a href="auth/logout"
                data-meel-confirm-link
                data-meel-confirm-size="sm"
-               data-meel-confirm-title="Logout"
-               data-meel-confirm-text="Yakin mau logout?"
-               data-meel-confirm-button="LOGOUT"
+               data-meel-confirm-title="Keluar"
+               data-meel-confirm-text="Yakin mau keluar?"
+               data-meel-confirm-button="KELUAR"
                class="text-[10px] font-bold text-gray-600 hover:text-red-400 uppercase tracking-widest transition-colors">
-                Out
+                Keluar
             </a>
         </div>
     <?php else: ?>
         <a href="auth/login"
            class="text-[11px] font-bold text-gray-400 hover:text-white transition-colors px-3 py-2">
-            Login
+            Masuk
         </a>
         <a href="auth/register"
            class="bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold px-4 py-2 rounded-lg transition btn-glow uppercase tracking-wider">

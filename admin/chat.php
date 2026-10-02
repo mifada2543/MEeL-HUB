@@ -45,7 +45,7 @@ if ($chat_username !== '' && !$chat_user) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Admin | MEeL</title>
+    <title>Obrolan Admin | MEeL</title>
     <?php include '../partials/link.php'; ?>
     <?php $root = meel_base_url_path(); ?>
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
@@ -57,7 +57,7 @@ if ($chat_username !== '' && !$chat_user) {
 <body class="min-h-screen">
     <?php
     $is_admin = true;
-    $page_title = 'Chat Admin';
+    $page_title = 'Obrolan Admin';
     $media_type = 'dashboard';
     $back_url = 'index.php';
     include 'header-admin.php';
@@ -75,7 +75,7 @@ if ($chat_username !== '' && !$chat_user) {
                 </div>
                 <div>
                     <div style="font-size:13px;font-weight:700;color:var(--meel-text-heading,#f3f4f6);">@<?= htmlspecialchars($chat_user['username']) ?></div>
-                    <div style="font-size:10px;color:#6b7280;">Pesan 1 arah: Admin → User</div>
+                    <div style="font-size:10px;color:#6b7280;">Pesan 1 arah: Admin → Pengguna</div>
                 </div>
                 <a href="<?= $root ?>/admin/chat" style="margin-left:auto;font-size:10px;color:#6b7280;text-decoration:none;" title="Kembali ke daftar chat">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
@@ -97,8 +97,8 @@ if ($chat_username !== '' && !$chat_user) {
             </div>
         <?php else: ?>
             <div class="glass" style="border-radius:16px;padding:20px;margin-bottom:16px;">
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-bottom:10px;">Cari User</div>
-                <input type="text" id="user-search" placeholder="Ketik nama user..." class="chat-input" oninput="searchUsers(this.value)">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-bottom:10px;">Cari Pengguna</div>
+                <input type="text" id="user-search" placeholder="Ketik nama pengguna..." class="chat-input" oninput="searchUsers(this.value)">
             </div>
             <div id="user-results" style="display:flex;flex-direction:column;gap:8px;"></div>
             <div id="recent-chats" class="glass" style="border-radius:16px;padding:20px;margin-top:16px;">

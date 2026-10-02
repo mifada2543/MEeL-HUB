@@ -111,7 +111,7 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
   <meta property="og:image" content="<?= $root ?>/assets/MEeL.png" />
   <title>MEeL!Mania — <?= htmlspecialchars($song_data['title']) ?></title>
   <link rel="icon" type="image/png" href="<?= $root ?>/assets/MEeL.png" />
-  <link href="../assets/css/font.css" rel="stylesheet" />
+  <link href="<?= $root ?>/assets/css/font.css" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/game.css?v=<?= filemtime(__DIR__ . '/assets/css/game.css') ?>" />
   <script>window.MEEL_BASE = <?= json_encode($root) ?>;</script>
 </head>
@@ -158,7 +158,7 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
   <div id="startOverlay" class="overlay">
     <div class="overlay-content">
       <div class="overlay-emoji" id="overlayEmoji">♪</div>
-      <div class="overlay-title" id="overlayTitle">Loading...</div>
+      <div class="overlay-title" id="overlayTitle">Memuat...</div>
       <div class="overlay-sub" id="overlaySub">BPM: --</div>
       <div class="overlay-hint">Tekan SPASI atau TAP untuk mulai</div>
       <div class="overlay-controls">
@@ -172,23 +172,23 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
 
   <div id="pauseOverlay" class="overlay hidden">
     <div class="pause-card">
-      <div class="pause-title">Pause Menu</div>
+      <div class="pause-title">Menu Jeda</div>
       <div class="pause-buttons">
         <button id="btnResume" class="pause-btn" onclick="resumeGame()">
           <span class="pause-btn-icon">▶</span>
-          <span>Resume</span>
+          <span>Lanjutkan</span>
         </button>
         <button class="pause-btn" onclick="restartGame()">
           <span class="pause-btn-icon">↻</span>
-          <span>Restart</span>
+          <span>Mulai Ulang</span>
         </button>
         <button class="pause-btn" onclick="toggleAdvanced()">
           <span class="pause-btn-icon">⚙</span>
-          <span>Advanced</span>
+          <span>Lanjutan</span>
         </button>
         <button id="btnQuit" class="pause-btn pause-btn-danger" onclick="quitToLobby()">
           <span class="pause-btn-icon">🚪</span>
-          <span>Exit Game</span>
+          <span>Keluar dari Permainan</span>
         </button>
       </div>
     </div>
@@ -196,34 +196,34 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
 
   <div id="optionsOverlay" class="overlay hidden">
     <div class="options-card">
-      <div class="options-title">Options</div>
+      <div class="options-title">Opsi</div>
 
       <div class="options-group">
-        <label class="opt-label">Note Speed</label>
+        <label class="opt-label">Kecepatan Note</label>
         <input type="range" class="opt-slider" id="optSpeed" min="1" max="20" value="10">
       </div>
       <div class="options-group">
-        <label class="opt-label">Background Dim</label>
+        <label class="opt-label">Redupkan Latar</label>
         <input type="range" class="opt-slider" id="optDim" min="0" max="100" value="70">
       </div>
       <div class="options-group">
-        <label class="opt-label">Game Volume</label>
+        <label class="opt-label">Volume Permainan</label>
         <input type="range" class="opt-slider" id="optVolume" min="0" max="100" value="80">
       </div>
 
       <div class="options-checks">
-        <label class="opt-check"><input type="checkbox" id="optBlurBg"><span class="check-box"></span>Blur Background</label>
-        <label class="opt-check"><input type="checkbox" id="optFPS"><span class="check-box"></span>Show FPS</label>
-        <label class="opt-check"><input type="checkbox" id="optLowGfx"><span class="check-box"></span>Low Graphics (Effects Off)</label>
+        <label class="opt-check"><input type="checkbox" id="optBlurBg"><span class="check-box"></span>Buramkan Latar</label>
+        <label class="opt-check"><input type="checkbox" id="optFPS"><span class="check-box"></span>Tampilkan FPS</label>
+        <label class="opt-check"><input type="checkbox" id="optLowGfx"><span class="check-box"></span>Grafis Rendah (Efek Mati)</label>
       </div>
 
       <div class="options-footer">
         <button class="pause-btn" onclick="closeOptions()">
           <span class="pause-btn-icon">←</span>
-          <span>Back</span>
+          <span>Kembali</span>
         </button>
         <button class="pause-btn pause-btn-primary" onclick="saveOptions()">
-          <span>Done</span>
+          <span>Selesai</span>
         </button>
       </div>
     </div>
@@ -248,7 +248,7 @@ $beatmap_json = json_encode($beatmap_data, JSON_UNESCAPED_UNICODE);
         <div class="res-stat"><div class="res-label">MAX COMBO</div><div class="res-val purple" id="resMaxCombo">0</div></div>
       </div>
       <div class="results-acc">
-        <span class="results-acc-label">Accuracy</span>
+        <span class="results-acc-label">Akurasi</span>
         <span class="results-acc-val" id="resultsAcc">0%</span>
       </div>
       <div class="results-actions">

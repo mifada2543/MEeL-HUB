@@ -11,12 +11,12 @@ export function togglePlayback() {
   if (S.isPlaying) {
     audio.pause();
     S.isPlaying = false;
-    document.getElementById("btnPlayPause").textContent = "▶ Play";
+    document.getElementById("btnPlayPause").textContent = "▶ Putar";
     cancelAnimationFrame(S.animFrame);
   } else {
     audio.play();
     S.isPlaying = true;
-    document.getElementById("btnPlayPause").textContent = "⏸ Pause";
+    document.getElementById("btnPlayPause").textContent = "⏸ Jeda";
     animatePlayback();
   }
 }
@@ -25,14 +25,14 @@ export function stopPlayback() {
   audio.pause();
   audio.currentTime = 0;
   S.isPlaying = false;
-  document.getElementById("btnPlayPause").textContent = "▶ Play";
+  document.getElementById("btnPlayPause").textContent = "▶ Putar";
   cancelAnimationFrame(S.animFrame);
   draw();
 }
 
 audio.addEventListener("ended", function () {
   S.isPlaying = false;
-  document.getElementById("btnPlayPause").textContent = "▶ Play";
+  document.getElementById("btnPlayPause").textContent = "▶ Putar";
   cancelAnimationFrame(S.animFrame);
 });
 

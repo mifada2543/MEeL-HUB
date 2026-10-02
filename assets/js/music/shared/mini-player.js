@@ -108,8 +108,8 @@ function updateIndexMeta() {
   if (els.img)
     els.img.src =
       currentState.thumbnailUrl || `upload/thumbnail/${currentState.thumbnail}`;
-  if (els.title) els.title.textContent = currentState.title || "Unknown";
-  if (els.artist) els.artist.textContent = currentState.artist || "Unknown";
+  if (els.title) els.title.textContent = currentState.title || "Tidak diketahui";
+  if (els.artist) els.artist.textContent = currentState.artist || "Tidak diketahui";
 }
 function updateIndexUI() {
   if (!audioPlayer || !currentState) return;
@@ -217,8 +217,8 @@ function initMiniPlayerIndex() {
     const els = _getIdxEls();
     if (els.img)
       els.img.src = state.thumbnailUrl || `upload/thumbnail/${state.thumbnail}`;
-    if (els.title) els.title.textContent = state.title || "Unknown";
-    if (els.artist) els.artist.textContent = state.artist || "Unknown";
+    if (els.title) els.title.textContent = state.title || "Tidak diketahui";
+    if (els.artist) els.artist.textContent = state.artist || "Tidak diketahui";
 
     loadAudio(state, state.isPlaying);
     updateIndexUI();

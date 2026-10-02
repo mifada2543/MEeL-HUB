@@ -30,7 +30,7 @@ function renderLibraryContent(string $artist_filter, int $total_music, \mysqli_r
 
     <div class="flex items-end justify-between mb-6 pb-4 border-b border-white/[.04]">
         <div>
-            <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Library</div>
+            <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Koleksi</div>
             <div class="section-title">
                 <?= $artist_filter === 'all' ? 'DISCOVERY' : strtoupper(htmlspecialchars($artist_filter)) ?>
             </div>
@@ -105,7 +105,7 @@ if (isset($_GET['content_only'])) {
                     <i data-lucide="music" class="nav-logo-icon w-3.5 h-3.5"></i>
                 </div>
                 <span class="nav-logo-text text-xs sm:text-sm font-bold tracking-tight uppercase hidden sm:block">
-                    MEeL<span style="color:var(--meel-orange)">Music</span>
+                    MEeL<span style="color:var(--meel-orange)">Musik</span>
                 </span>
             </a>
 
@@ -159,7 +159,7 @@ if (isset($_GET['content_only'])) {
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
-                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
+                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">Semua</a>
                         <a href="beranda?format=ogg&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="beranda?format=ogg&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
                             hx-target="#library-container"
@@ -193,7 +193,7 @@ if (isset($_GET['content_only'])) {
                             hx-swap="outerHTML"
                             class="sidebar-link flex items-center justify-between px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all
                                  <?= $artist_filter === 'all' ? 'active' : 'text-gray-600 hover:text-gray-300 hover:bg-white/[.03]' ?>">
-                            <span>All Collections</span>
+                            <span>Semua Koleksi</span>
                         </a>
                         <?php
                         $artists->data_seek(0);
@@ -250,7 +250,7 @@ if (isset($_GET['content_only'])) {
                             hx-target="#library-container"
                             hx-select="#library-container"
                             hx-swap="outerHTML"
-                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">All</a>
+                            class="format-pill <?= $format_filter === 'all' ? 'active-orange' : '' ?>">Semua</a>
                         <a href="beranda?format=ogg&artist=<?= urlencode($artist_filter) ?>"
                             hx-get="beranda?format=ogg&artist=<?= urlencode($artist_filter) ?>" hx-push-url="true"
                             hx-target="#library-container"
@@ -320,9 +320,9 @@ if (isset($_GET['content_only'])) {
                                 <div class="relative w-full z-[100]" id="custom-playlist-dropdown">
                                     <button type="button"
                                         onclick="togglePlaylistDropdown()"
-                                        title="Pilih playlist"
+                                        title="Pilih daftar putar"
                                         class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
-                                        <span class="truncate" id="playlist-dropdown-label">Pilih Playlist...</span>
+                                        <span class="truncate" id="playlist-dropdown-label">Pilih Daftar Putar...</span>
                                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
                                     </button>
                                     <div id="playlist-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
@@ -354,7 +354,7 @@ if (isset($_GET['content_only'])) {
         </main>
     </div>
 
-    <div id="mini-player-index" aria-label="Mini Player">
+    <div id="mini-player-index" aria-label="Pemutar Mini">
 
         <div class="mp-seekbar" id="mp-seekbar-index" onclick="event.stopPropagation(); miniSeekIndex(event);" title="Klik untuk seek">
             <div class="mp-seekbar-fill" id="mp-seekbar-fill-index"></div>
@@ -365,14 +365,14 @@ if (isset($_GET['content_only'])) {
 
             <div class="mp-track">
                 <div class="mp-art" onclick="expandPlayerFromMiniPlayer()">
-                    <img id="mini-thumbnail-index" title="Buka player penuh" src="<?= htmlspecialchars(music_thumbnail_url('default.png')) ?>" alt="Cover lagu" width="256" height="256" loading="eager" decoding="async">
+                    <img id="mini-thumbnail-index" title="Buka player penuh" src="<?= htmlspecialchars(music_thumbnail_url('default.png')) ?>" alt="Sampul lagu" width="256" height="256" loading="eager" decoding="async">
                     <div class="mp-art-overlay">
                         <i data-lucide="maximize-2" style="width:14px;height:14px;"></i>
                     </div>
                 </div>
                 <div class="mp-meta">
                     <div class="mp-title" id="mini-title-index">Tidak ada musik</div>
-                    <div class="mp-artist" id="mini-artist-index">Unknown</div>
+                    <div class="mp-artist" id="mini-artist-index">Tidak diketahui</div>
                 </div>
             </div>
 
