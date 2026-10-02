@@ -135,13 +135,6 @@ $totalPagesBooks = $meta_books['total_pages'];
                 class="filter-pill <?= $filter === 'pdf' ? 'active' : '' ?>">
                 <i data-lucide="file-text" class="w-3 h-3 inline-block -ml-0.5 mr-1"></i> PDF
             </a>
-
-            <?php if ($role === 'admin'): ?>
-                <a href="upload"
-                    class="filter-pill ml-auto text-green-500 border-green-500/30 hover:border-green-500 hover:text-green-400 hover:bg-green-500/5">
-                    <i data-lucide="upload-cloud" class="w-3 h-3 inline-block -ml-0.5 mr-1"></i> Unggah
-                </a>
-            <?php endif; ?>
         </div>
 
         <div id="book-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">

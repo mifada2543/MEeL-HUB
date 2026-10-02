@@ -193,7 +193,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                         <i data-lucide="settings" class="w-3.5 h-3.5 flex-shrink-0"></i>
                         <span>Panel Admin</span>
                     </a>
-                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'member'): ?>
+                <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'member' && !$_nav_is_books): ?>
 
                     <a href="upload"
                         title="Unggah media baru ke platform"
@@ -352,7 +352,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                     <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
                     <span>Panel Admin</span>
                 </a>
-            <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'member'): ?>
+            <?php elseif (isset($_SESSION['role']) && $_SESSION['role'] === 'member' && !$_nav_is_books): ?>
                 <a href="upload"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
                     <i data-lucide="upload-cloud" class="w-5 h-5 flex-shrink-0"></i>
