@@ -49,8 +49,6 @@ class TranscoderBase
 
     protected const FRAGMENT_RETRY_LIMIT = 1;
 
-    protected const PID_DIR = '/tmp/meel_pids';
-
     protected const TRANSCODE_AUDIO_TIMEOUT = 600;
 
     protected const FFMPEG_LIB_PATH = '/usr/lib/x86_64-linux-gnu:/usr/local/lib';
@@ -215,26 +213,52 @@ class TranscoderBase
 
     protected function writePidFile(string $taskType, int $queueId, int $pid): void
     {
-        $dir = self::PID_DIR;
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0755, true);
+        $file = meel_pid_filename($taskType, $queueId);
+        if ($file === '') {
+            return;
         }
-        $path = "$dir/{$taskType}_{$queueId}.pid";
-        @file_put_contents($path, (string)$pid);
+        $path = meel_pid_dir() . '/' . $file;
+        if (is_link($path)) {
+            @unlink($path);
+        }
+        if (@file_put_contents($path, (string)$pid, LOCK_EX) === false) {
+            error_log('[MEeL] writePidFile GAGAL: ' . $path);
+        }
     }
 
     protected function removePidFile(string $taskType, int $queueId): void
     {
-        $path = self::PID_DIR . "/{$taskType}_{$queueId}.pid";
-        if (file_exists($path)) {
-            @unlink($path);
+        $file = meel_pid_filename($taskType, $queueId);
+        if ($file === '') {
+            return;
+        }
+        foreach (meel_pid_dir_candidates() as $dir) {
+            $path = $dir . '/' . $file;
+            if (is_file($path) || is_link($path)) {
+                @unlink($path);
+            }
         }
     }
 
     public static function killByPidFile(string $taskType, int $queueId): bool
     {
-        $path = self::PID_DIR . "/{$taskType}_{$queueId}.pid";
-        if (!file_exists($path)) {
+        $file = meel_pid_filename($taskType, $queueId);
+        if ($file === '') {
+            return false;
+        }
+        $path = '';
+        foreach (meel_pid_dir_candidates() as $dir) {
+            $candidate = $dir . '/' . $file;
+            if (is_file($candidate)) {
+                $path = $candidate;
+                break;
+            }
+        }
+        if ($path === '') {
+            return false;
+        }
+        if (is_link($path)) {
+            @unlink($path);
             return false;
         }
         $pid = (int)@file_get_contents($path);
@@ -266,15 +290,16 @@ class TranscoderBase
 
     public static function cleanupStalePidFiles(): int
     {
-        $dir = self::PID_DIR;
-        if (!is_dir($dir)) {
-            return 0;
-        }
         $cleaned = 0;
-        foreach (glob("$dir/*.pid") ?: [] as $file) {
-            if (time() - @filemtime($file) > 1800) {
-                @unlink($file);
-                $cleaned++;
+        foreach (meel_pid_dir_candidates() as $dir) {
+            if (!is_dir($dir)) {
+                continue;
+            }
+            foreach (glob($dir . '/*.pid') ?: [] as $file) {
+                if (time() - @filemtime($file) > 1800) {
+                    @unlink($file);
+                    $cleaned++;
+                }
             }
         }
         return $cleaned;

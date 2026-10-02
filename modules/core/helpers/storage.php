@@ -121,6 +121,55 @@ function meel_storage_path_in_volume(string $path): bool
 }
 }
 
+if (!function_exists('meel_pid_dir_candidates')) {
+function meel_pid_dir_candidates(): array
+{
+    return [
+        '/tmp/meel_pids',
+        dirname(__DIR__, 3) . '/temp/meel_pids',
+    ];
+}
+}
+
+if (!function_exists('meel_pid_dir')) {
+function meel_pid_dir(): string
+{
+    static $resolved = null;
+    if ($resolved !== null) {
+        return $resolved;
+    }
+
+    foreach (meel_pid_dir_candidates() as $dir) {
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+            @chmod($dir, 01777);
+        }
+        if (is_writable($dir)) {
+            $resolved = $dir;
+            return $dir;
+        }
+        @chmod($dir, 01777);
+        if (is_writable($dir)) {
+            $resolved = $dir;
+            return $dir;
+        }
+    }
+
+    $resolved = meel_pid_dir_candidates()[1];
+    return $resolved;
+}
+}
+
+if (!function_exists('meel_pid_filename')) {
+function meel_pid_filename(string $task_type, int $queue_id): string
+{
+    if (!preg_match('/^[A-Za-z0-9_-]{1,32}$/', $task_type)) {
+        return '';
+    }
+    return $task_type . '_' . $queue_id . '.pid';
+}
+}
+
 if (!function_exists('meel_storage_guard')) {
 function meel_storage_guard(string $mode = 'html'): void
 {
