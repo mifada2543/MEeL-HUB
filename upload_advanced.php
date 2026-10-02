@@ -21,9 +21,10 @@ meel_storage_guard();
 GarbageCollector::run();
 
 set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+    if (!(error_reporting() & $errno)) return false;
     if (strpos($errfile, 'node_modules') !== false || strpos($errfile, 'vendor') !== false) return false;
     if (connection_aborted() || connection_status() !== CONNECTION_NORMAL) return true;
-    $safe_msg = "$errstr (Line $errline)";
+    $safe_msg = basename($errfile) . ": $errstr (Line $errline)";
     $js = 'if(typeof meelError==="function"){meelError(' . json_encode($safe_msg, JSON_HEX_TAG | JSON_HEX_AMP) . ')}';
     echo '<script>' . $js . '</script>';
     echo str_repeat(' ', 1024);
