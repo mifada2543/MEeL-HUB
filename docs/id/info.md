@@ -494,16 +494,17 @@ function meel_ffmpeg_encode_opus(
 
 ---
 
-### `meel_handle_upload(string $media_type, callable $process_fn, string $log_action): array`
+### `meel_handle_upload(mysqli $conn, string $media_type, callable $process_fn, string $log_action): array`
 
 Handler upload terpusat — cek CSRF, spend/refund MeelCoin, callback proses, dan logging aktivitas untuk upload video & music.
 
 ```php
-function meel_handle_upload(string $media_type, callable $process_fn, string $log_action): array
+function meel_handle_upload(mysqli $conn, string $media_type, callable $process_fn, string $log_action): array
 ```
 
 | Parameter | Tipe | Deskripsi |
 |-----------|------|-----------|
+| `$conn` | `mysqli` | Koneksi database aktif (diteruskan eksplisit dari halaman upload) |
 | `$media_type` | `string` | `'video'` atau `'music'` |
 | `$process_fn` | `callable` | `fn($_POST, $_FILES) → ['status'=>'success'|'error', 'id'=>int?, 'msg'=>string]` |
 | `$log_action` | `string` | Nama aksi untuk `log_activity()` |

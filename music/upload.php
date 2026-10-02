@@ -43,7 +43,7 @@ if (isset($_POST['upload'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $alert_message = 'CSRF token tidak valid. Silakan muat ulang halaman lalu coba lagi.';
     } else {
-        $upload_result = meel_handle_upload('music', function ($post, $files) use ($uploader) {
+        $upload_result = meel_handle_upload($conn, 'music', function ($post, $files) use ($uploader) {
             $music_base = dirname(meel_media_base_path('music')) . '/';
             return $uploader->processMusic($post, $files, $music_base);
         }, 'upload_music');
