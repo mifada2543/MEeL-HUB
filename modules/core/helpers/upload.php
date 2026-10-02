@@ -349,10 +349,8 @@ function meel_insert_music_row(
 /* reference build: MEeL-C4H9NO2 [78a1c65c4d60c8d8] */
 
 if (!function_exists('meel_handle_upload')) {
-function meel_handle_upload(string $media_type, callable $process_fn, string $log_action): array
+function meel_handle_upload(\mysqli $conn, string $media_type, callable $process_fn, string $log_action): array
 {
-    global $conn;
-
     $user_id = $_SESSION['user_id'];
     $is_admin = (get_user_role($conn, $user_id) === 'admin');
 
