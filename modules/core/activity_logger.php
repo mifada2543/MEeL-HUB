@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/proxy.php';
+require_once __DIR__ . '/helpers/datetime.php';
 
 function validate_and_format_ip(string $ip): array
 {
@@ -100,180 +101,321 @@ if (!function_exists('log_activity')) {
     }
 }
 
-if (PHP_SAPI === 'cli') {
-    return;
-}
+class ActivityLogger
+{
 
-$user_ip_data = validate_and_format_ip(get_real_ip());
-$user_ip = $user_ip_data['ip'];
-$access_method = get_access_method();
-$connection_protocol = get_connection_protocol();
+    public const TOUCH_THROTTLE_SECONDS = 60;
 
-if (isset($conn)) {
+    private const SESSION_KEY = '_meel_touch';
 
-    $session_role = $_SESSION['role'] ?? null;
-    $check_ban = $conn->prepare("SELECT reason FROM ip_ban WHERE ip_address = ?");
-    $ban_res = false;
-    if ($check_ban) {
-        $check_ban->bind_param("s", $user_ip);
-        $check_ban->execute();
-        $ban_res = $check_ban->get_result();
+    private static bool $hasRun = false;
+
+    public static function onRequest(mysqli $conn): void
+    {
+        if (self::$hasRun) {
+            return;
+        }
+        self::$hasRun = true;
+
+        if (!isset($_SESSION['role'])) {
+
+            self::enforceIpBan($conn, self::clientIp());
+            return;
+        }
+
+        $ip = self::clientIp();
+
+        self::enforceIpBan($conn, $ip);
+
+        if (!isset($_SESSION['user_id'])) {
+            if (!self::shouldSkipTelemetry()) {
+                self::touchGuest($conn, $ip);
+            }
+            return;
+        }
+
+        $uid = (int)$_SESSION['user_id'];
+        $status = self::enforceSingleSession($conn, $uid);
+
+        if (self::shouldSkipTelemetry()) {
+            return;
+        }
+
+        self::touchUser($conn, $uid, $ip, $status);
     }
 
-    $current_page = basename($_SERVER['PHP_SELF']);
-    $current_dir = basename(dirname($_SERVER['PHP_SELF']));
-    if ($current_dir !== 'err') {
-        if ($ban_res && $ban_res->num_rows > 0) {
-            if ($session_role !== 'admin') {
-                $row = $ban_res->fetch_assoc();
-                $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
-                $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
-                $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
-                $banned_url = $relative_base . '/err/?code=banned';
-                header("Location: " . $banned_url . "&reason=" . urlencode($row['reason']));
-                exit();
-            }
+    private static function clientIp(): string
+    {
+        if (PHP_SAPI !== 'cli' && function_exists('get_real_ip')) {
+            return get_real_ip();
         }
+        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
     }
-    $current_page = basename($_SERVER['PHP_SELF']);
-    $dir_name = basename(dirname($_SERVER['PHP_SELF']));
-    $id_get = $_GET['id'] ?? $_GET['v'] ?? null;
 
-    if ($id_get) {
-        if ($current_page == 'watch.php') {
-            $table = ($dir_name == 'music') ? 'music' : 'video';
-            $label = ($dir_name == 'music') ? "Listening: " : "Watching: ";
-
-            $get_title = $conn->prepare("SELECT title FROM $table WHERE id = ?");
-            if ($get_title) {
-                $get_title->bind_param("i", $id_get);
-                $get_title->execute();
-                $res = $get_title->get_result()->fetch_assoc();
-                if ($res) {
-                    $current_page = $label . $res['title'];
-                }
-            }
-        } elseif ($current_page == 'read.php') {
-            $get_book = $conn->prepare("SELECT title FROM books WHERE id = ?");
-            if ($get_book) {
-                $get_book->bind_param("i", $id_get);
-                $get_book->execute();
-                $res = $get_book->get_result()->fetch_assoc();
-                if ($res) {
-                    $current_page = "Reading: " . $res['title'];
-                }
-            }
-        } elseif ($current_page == 'stream.php' && $dir_name == 'music') {
-            $last_stream_id = $_SESSION['_last_stream_id'] ?? null;
-            if ($last_stream_id !== $id_get) {
-                $_SESSION['_last_stream_id'] = $id_get;
-                $get_title = $conn->prepare("SELECT title FROM music WHERE id = ?");
-                if ($get_title) {
-                    $get_title->bind_param("i", $id_get);
-                    $get_title->execute();
-                    $res = $get_title->get_result()->fetch_assoc();
-                    if ($res) {
-                        $current_page = "Streaming: " . $res['title'];
-                        $_SESSION['_last_stream_page'] = $current_page;
-                    }
-                }
-            } elseif (isset($_SESSION['_last_stream_page'])) {
-                $current_page = $_SESSION['_last_stream_page'];
-            }
-        } elseif ($current_page == 'index.php' && $dir_name == 'profile') {
-            $target_user = $_GET['u'] ?? 'Someone';
-            $current_page = "Viewing Profile: " . htmlspecialchars($target_user);
+    private static function shouldSkipTelemetry(): bool
+    {
+        if (isset($_SERVER['HTTP_HX_REQUEST'])) {
+            return true;
         }
-    } elseif ($current_page == 'index.php') {
-        switch ($dir_name) {
-            case 'video':
-                $current_page = "Browsing Video Library";
-                break;
-            case 'music':
-                $current_page = "Browsing Music Library";
-                break;
-            case 'books':
-                $current_page = "Browsing Books Library";
-                break;
-            case 'arcade':
-                $current_page = "Browsing Arcade";
-                break;
-            case 'drive':
-                $current_page = "Browsing Drive";
-                break;
-            case 'profile':
-                $current_page = "Browsing Profiles";
-                break;
-            default:
 
-                $current_page = "Browsing HUB";
-                break;
+        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+        if ($accept !== ''
+            && stripos($accept, 'text/html') === false
+            && stripos($accept, '*/*') === false) {
+            return true;
         }
+
+        $self = basename((string)($_SERVER['PHP_SELF'] ?? ''));
+        return in_array($self, ['stream.php', 'file.php'], true);
     }
-    $ua_raw = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-    $host = $_SERVER['HTTP_HOST'] ?? 'Local';
-    $access_via = $access_method;
 
-    $device = "Unknown";
-    if (strpos($ua_raw, 'Android') !== false) $device = "Smartphone";
-    elseif (strpos($ua_raw, 'Linux') !== false) $device = "Linux PC";
-    elseif (strpos($ua_raw, 'Windows') !== false) $device = "Windows PC";
-    elseif (strpos($ua_raw, 'Macintosh') !== false) $device = "Mac";
-    elseif (strpos($ua_raw, 'iPhone') !== false) $device = "iPhone";
-
-    if (isset($_SESSION['user_id'])) {
-        $uid = $_SESSION['user_id'];
-        $current_sid = session_id();
-
-        $stmt_check = $conn->prepare("SELECT last_session_id, role FROM users WHERE id = ?");
-        $stmt_check->bind_param("i", $uid);
-        $stmt_check->execute();
-        $user_status = $stmt_check->get_result()->fetch_assoc();
-
-        if ($current_dir !== 'err') {
-            if ($user_status && $user_status['role'] !== 'admin') {
-                if (!empty($user_status['last_session_id']) && $user_status['last_session_id'] !== $current_sid) {
-                    session_unset();
-                    session_destroy();
-
-                    $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
-                    $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
-                    $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
-                    $revoked_url = $relative_base . '/err/?code=revoked';
-                    header("Location: " . $revoked_url);
-                    exit();
-                }
-            }
+    private static function enforceIpBan(mysqli $conn, string $ip): void
+    {
+        if (basename(dirname((string)($_SERVER['PHP_SELF'] ?? ''))) === 'err') {
+            return;
+        }
+        if (($_SESSION['role'] ?? null) === 'admin') {
+            return;
         }
 
-        if (empty($user_status['last_session_id'])) {
-            $stmt_update_sid = $conn->prepare("UPDATE users SET last_session_id = ? WHERE id = ?");
-            $stmt_update_sid->bind_param("si", $current_sid, $uid);
-            $stmt_update_sid->execute();
+        $stmt = $conn->prepare("SELECT reason FROM ip_ban WHERE ip_address = ?");
+        if (!$stmt) {
+            return;
         }
-
-        $stmt = $conn->prepare("UPDATE users SET last_page = ?, user_agent = ?, access_via = ?, ip_address = ?, last_activity = NOW() WHERE id = ?");
-        $stmt->bind_param("ssssi", $current_page, $device, $access_via, $user_ip, $uid);
+        $stmt->bind_param("s", $ip);
         $stmt->execute();
-    } else {
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
-        $guest_id = "g_" . substr(md5(session_id()), 0, 10);
-        $role = 'guest';
+        if (!$row) {
+            return;
+        }
+
+        $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
+        $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
+        $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
+        header("Location: " . $relative_base . "/err/?code=banned&reason=" . urlencode($row['reason']));
+        exit();
+    }
+
+    private static function enforceSingleSession(mysqli $conn, int $uid): array
+    {
+        $stmt = $conn->prepare("SELECT last_session_id, role FROM users WHERE id = ?");
+        $stmt->bind_param("i", $uid);
+        $stmt->execute();
+        $status = $stmt->get_result()->fetch_assoc() ?: [];
+        $stmt->close();
+
+        if (basename(dirname((string)($_SERVER['PHP_SELF'] ?? ''))) === 'err') {
+            return $status;
+        }
+
+        $currentSid = session_id();
+        $role = $_SESSION['role'] ?? null;
+        if (($status['role'] ?? null) !== 'admin'
+            && !empty($status['last_session_id'])
+            && $status['last_session_id'] !== $currentSid) {
+            session_unset();
+            session_destroy();
+
+            $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
+            $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
+            $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
+            header("Location: " . $relative_base . "/err/?code=revoked");
+            exit();
+        }
+
+        return $status;
+    }
+
+    private static function touchUser(mysqli $conn, int $uid, string $ip, array $status): void
+    {
+        $currentSid = session_id();
+        if (empty($status['last_session_id'])) {
+            $sidStmt = $conn->prepare("UPDATE users SET last_session_id = ? WHERE id = ?");
+            $sidStmt->bind_param("si", $currentSid, $uid);
+            $sidStmt->execute();
+            $sidStmt->close();
+        }
+
+        $payload = self::buildPayload($conn, $ip);
+        if (self::isThrottled($payload)) {
+            return;
+        }
+
+        $now = meel_now();
+        $stmt = $conn->prepare(
+            "UPDATE users
+                SET last_page = ?, user_agent = ?, access_via = ?, ip_address = ?, last_activity = ?
+              WHERE id = ?"
+        );
+        $stmt->bind_param(
+            "sssssi",
+            $payload['last_page'],
+            $payload['device'],
+            $payload['access_via'],
+            $payload['ip_address'],
+            $now,
+            $uid
+        );
+        $stmt->execute();
+        $stmt->close();
+
+        self::markThrottled($payload);
+    }
+
+    private static function touchGuest(mysqli $conn, string $ip): void
+    {
+        $payload = self::buildPayload($conn, $ip);
+        if (self::isThrottled($payload)) {
+            return;
+        }
+
+        $guest_id = 'g_' . substr(md5(session_id()), 0, 10);
+
         $guest_pass = bin2hex(random_bytes(24));
-
-        $guest_upd = $conn->prepare(
+        $stmt = $conn->prepare(
             "INSERT INTO users (username, password, role, last_page, user_agent, access_via, ip_address, last_activity)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+             VALUES (?, ?, 'guest', ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
                 last_page = VALUES(last_page),
                 user_agent = VALUES(user_agent),
                 access_via = VALUES(access_via),
                 ip_address = VALUES(ip_address),
-                last_activity = NOW()"
+                last_activity = VALUES(last_activity)"
         );
-        $guest_upd->bind_param("sssssss", $guest_id, $guest_pass, $role, $current_page, $device, $access_via, $user_ip);
-        $guest_upd->execute();
+        if (!$stmt) {
+            return;
+        }
+        $now = meel_now();
+        $stmt->bind_param(
+            "ssssssss",
+            $guest_id,
+            $guest_pass,
+            $payload['last_page'],
+            $payload['device'],
+            $payload['access_via'],
+            $payload['ip_address'],
+            $now
+        );
+        $stmt->execute();
+        $stmt->close();
+
+        self::markThrottled($payload);
     }
+
+    private static function buildPayload(mysqli $conn, string $ip): array
+    {
+        return [
+            'last_page'  => self::resolveCurrentPage($conn),
+            'device'     => self::detectDevice((string)($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown')),
+            'access_via' => get_access_method(),
+            'ip_address' => $ip,
+        ];
+    }
+
+    private static function signature(array $payload): string
+    {
+        return implode("\0", [
+            $payload['last_page'],
+            $payload['device'],
+            $payload['access_via'],
+            $payload['ip_address'],
+        ]);
+    }
+
+    private static function isThrottled(array $payload): bool
+    {
+        $last = $_SESSION[self::SESSION_KEY] ?? null;
+        if (!is_array($last) || !isset($last['sig'], $last['ts'])) {
+            return false;
+        }
+        return $last['sig'] === self::signature($payload)
+            && (time() - (int)$last['ts']) < self::TOUCH_THROTTLE_SECONDS;
+    }
+
+    private static function markThrottled(array $payload): void
+    {
+        $_SESSION[self::SESSION_KEY] = ['sig' => self::signature($payload), 'ts' => time()];
+    }
+
+    private static function detectDevice(string $ua): string
+    {
+        if (strpos($ua, 'Android') !== false) return 'Smartphone';
+        if (strpos($ua, 'Linux') !== false) return 'Linux PC';
+        if (strpos($ua, 'Windows') !== false) return 'Windows PC';
+        if (strpos($ua, 'Macintosh') !== false) return 'Mac';
+        if (strpos($ua, 'iPhone') !== false) return 'iPhone';
+        return 'Unknown';
+    }
+
+    private static function resolveCurrentPage(mysqli $conn): string
+    {
+        $self = (string)($_SERVER['PHP_SELF'] ?? '');
+        $currentPage = basename($self);
+        $dirName = basename(dirname($self));
+        $id = $_GET['id'] ?? $_GET['v'] ?? null;
+
+        if ($id) {
+            if ($currentPage === 'watch.php') {
+                return (($dirName === 'music') ? 'Listening: ' : 'Watching: ')
+                    . (self::lookupTitle($conn, $dirName === 'music' ? 'music' : 'video', (int)$id) ?? '');
+            }
+            if ($currentPage === 'read.php') {
+                return 'Reading: ' . (self::lookupTitle($conn, 'books', (int)$id) ?? '');
+            }
+            if ($currentPage === 'stream.php' && $dirName === 'music') {
+                if (($_SESSION['_last_stream_id'] ?? null) !== $id) {
+                    $_SESSION['_last_stream_id'] = $id;
+                    $title = self::lookupTitle($conn, 'music', (int)$id);
+                    if ($title !== null) {
+                        $page = 'Streaming: ' . $title;
+                        $_SESSION['_last_stream_page'] = $page;
+                        return $page;
+                    }
+                }
+                return (string)($_SESSION['_last_stream_page'] ?? $currentPage);
+            }
+            if ($currentPage === 'index.php' && $dirName === 'profile') {
+                return 'Viewing Profile: ' . htmlspecialchars((string)($_GET['u'] ?? 'Someone'), ENT_QUOTES);
+            }
+        } elseif ($currentPage === 'index.php') {
+            return [
+                'video'   => 'Browsing Video Library',
+                'music'   => 'Browsing Music Library',
+                'books'   => 'Browsing Books Library',
+                'arcade'  => 'Browsing Arcade',
+                'drive'   => 'Browsing Drive',
+                'profile' => 'Browsing Profiles',
+            ][$dirName] ?? 'Browsing HUB';
+        }
+
+        return $currentPage;
+    }
+
+    private static function lookupTitle(mysqli $conn, string $table, int $id): ?string
+    {
+        if (!in_array($table, ['music', 'video', 'books'], true)) {
+            return null;
+        }
+        $stmt = $conn->prepare("SELECT title FROM `$table` WHERE id = ?");
+        if (!$stmt) {
+            return null;
+        }
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row['title'] ?? null;
+    }
+}
+
+if (PHP_SAPI === 'cli') {
+    return;
+}
+
+if (isset($conn) && $conn instanceof mysqli) {
+    ActivityLogger::onRequest($conn);
 }
 
 /* reference build: MEeL-C2H5NO2 [a0d28a942a0fe642] */

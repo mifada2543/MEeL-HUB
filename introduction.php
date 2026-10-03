@@ -31,7 +31,7 @@ include __DIR__ . '/partials/link.php';
 $scripts_root = '';
 include __DIR__ . '/partials/scripts.php';
 ?>
-    <link rel="stylesheet" href="assets/css/introduction.css">
+    <link rel="stylesheet" href="assets/css/introduction.css<?= meel_asset_version('assets/css/introduction.css') ?>">
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
 </head>
 

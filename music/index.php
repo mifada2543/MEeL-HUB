@@ -92,8 +92,8 @@ if (isset($_GET['content_only'])) {
     <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
     <?php endforeach; ?>
-    <link rel="stylesheet" href="../assets/css/music/index/main.css">
-    <script src="../assets/js/compatibilitas/htmx.min.js" defer></script>
+    <link rel="stylesheet" href="../assets/css/music/index/main.css<?= meel_asset_version('assets/css/music/index/main.css') ?>">
+    <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -411,7 +411,7 @@ if (isset($_GET['content_only'])) {
     <script src="../assets/js/shared/state-keys.js<?= meel_asset_version('assets/js/shared/state-keys.js') ?>"></script>
     <script src="../assets/js/shared/format-time.js<?= meel_asset_version('assets/js/shared/format-time.js') ?>"></script>
     <script src="../assets/js/shared/keyboard.js<?= meel_asset_version('assets/js/shared/keyboard.js') ?>"></script>
-    <script src="../assets/js/compatibilitas/plyr.min.js"></script>
+    <script src="../assets/js/compatibilitas/plyr.min.js<?= meel_asset_version('assets/js/compatibilitas/plyr.min.js') ?>"></script>
     <script src="../assets/js/shared/plyr-config.js<?= meel_asset_version('assets/js/shared/plyr-config.js') ?>"></script>
     <script src="../assets/js/shared/audio-engine.js<?= meel_asset_version('assets/js/shared/audio-engine.js') ?>"></script>
     <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>

@@ -95,7 +95,7 @@ $auth_title = "Keamanan Akun | MEeL";
 $auth_description = "MEeL - Kelola autentikasi dua faktor (MFA) akun Anda.";
 $auth_og_title = "Keamanan Akun | MEeL";
 $auth_og_desc = "Aktifkan, nonaktifkan, atau kelola autentikasi dua faktor akun MEeL Anda.";
-$auth_extra_head = '<script src="../assets/js/compatibilitas/qrcode.min.js"></script>';
+$auth_extra_head = '<script src="../assets/js/compatibilitas/qrcode.min.js' . meel_asset_version('assets/js/compatibilitas/qrcode.min.js') . '"></script>';
 $auth_extra_style = '
         .code-input {
             letter-spacing: 0.5em;
@@ -364,7 +364,7 @@ include __DIR__ . '/partials/auth_head.php';
         </div>
     </form>
 
-    <script src="../assets/js/shared/download-backup-codes.js"></script>
+    <script src="../assets/js/shared/download-backup-codes.js<?= meel_asset_version('assets/js/shared/download-backup-codes.js') ?>"></script>
     <script>
         var _backupCodes = <?= json_encode($backup_codes) ?>;
         document.addEventListener('DOMContentLoaded', function() {

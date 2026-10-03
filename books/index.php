@@ -35,8 +35,8 @@ $totalPagesBooks = $meta_books['total_pages'];
     <?php foreach (require __DIR__ . '/../assets/css/books/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/books/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/books/' . $__f) ?>">
     <?php endforeach; ?>
-    <link rel="stylesheet" href="../assets/css/books/index/main.css">
-    <script src="../assets/js/compatibilitas/htmx.min.js"></script>
+    <link rel="stylesheet" href="../assets/css/books/index/main.css<?= meel_asset_version('assets/css/books/index/main.css') ?>">
+    <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">

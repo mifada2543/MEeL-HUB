@@ -1,242 +1,316 @@
 <?php
+
 use PHPUnit\Framework\TestCase;
 
-/** @covers MediaViewer */
+require_once __DIR__ . '/support/MysqlFake.php';
+
 class MediaViewerTest extends TestCase
 {
+    private FakeMysqli $conn;
 
-    private array $sqls = [];
+    /** @var FakeMysqliStmt[] urut pembuatan */
+    private array $stmts = [];
 
-    private array $bindCalls = [];
-
-    private function buildConn(?array $currentRow, ?array $nextRow): array
+    protected function setUp(): void
     {
-        $this->bindCalls = [];
-        $recordBind = function (\PHPUnit\Framework\MockObject\MockObject $stmt): void {
-            $stmt->method('bind_param')->willReturnCallback(
-                function ($types, ...$vars) {
-                    $this->bindCalls[] = [
-                        'types' => (string)$types,
-                        'count' => count($vars),
-                    ];
-                    return true;
-                }
-            );
-        };
-
-        $resultQ = $this->createMock(mysqli_result::class);
-        $stmtQ = $this->createMock(mysqli_stmt::class);
-        $recordBind($stmtQ);
-        $stmtQ->method('execute')->willReturn(true);
-        $stmtQ->method('get_result')->willReturn($resultQ);
-
-        $resultCur = $this->createMock(mysqli_result::class);
-        $resultCur->method('fetch_assoc')->willReturn($currentRow);
-        $stmtCur = $this->createMock(mysqli_stmt::class);
-        $recordBind($stmtCur);
-        $stmtCur->method('execute')->willReturn(true);
-        $stmtCur->method('get_result')->willReturn($resultCur);
-
-        $resultNext = $this->createMock(mysqli_result::class);
-        $resultNext->method('fetch_assoc')->willReturn($nextRow);
-        $stmtNext = $this->createMock(mysqli_stmt::class);
-        $recordBind($stmtNext);
-        $stmtNext->method('execute')->willReturn(true);
-        $stmtNext->method('get_result')->willReturn($resultNext);
-
-        $conn = $this->createMock(mysqli::class);
-        $this->sqls = [];
-        $conn->method('prepare')->willReturnCallback(
-            function ($sql) use ($stmtQ, $stmtCur, $stmtNext) {
-                $this->sqls[] = $sql;
-                $count = count($this->sqls);
-                return $count === 1 ? $stmtQ : ($count === 2 ? $stmtCur : $stmtNext);
-            }
-        );
-
-        return [$conn, $stmtQ, $stmtCur, $stmtNext];
+        parent::setUp();
+        $this->stmts = [];
+        $_SESSION = [];
+        require_once MEEL_ROOT . '/modules/core/helpers/media.php';
+        require_once MEEL_ROOT . '/modules/core/helpers/storage.php';
+        meel_invalidate_media_stats_cache();
     }
 
-    private function buildRecommendConn(
-        int $total,
-        array $idRows,
-        bool $useRand,
-        array $fullRows
-    ): \mysqli {
-        $conn = $this->createMock(mysqli::class);
-        $this->sqls = [];
-        $queryCallCount = 0;
+    protected function tearDown(): void
+    {
+        meel_invalidate_media_stats_cache();
+        $_SESSION = [];
+        parent::tearDown();
+    }
 
-        $countResult = $this->createMock(mysqli_result::class);
-        $countResult->method('fetch_assoc')->willReturn(['total' => (string)$total]);
+    private function stmtSql(int $i): string
+    {
+        return $this->stmts[$i]->sql ?? '';
+    }
 
-        $idAssocRows = array_map(fn($id) => ['id' => (string)$id], $idRows);
-        $idResult = $this->createMock(mysqli_result::class);
-        $idResult->method('fetch_assoc')->willReturnOnConsecutiveCalls(...array_merge($idAssocRows, [null]));
+    private function allStmtSql(): array
+    {
+        return array_map(static fn($s) => $s->sql, $this->usedStmts());
+    }
 
-        $fullResult = $this->createMock(mysqli_result::class);
-        $fullResult->method('fetch_assoc')->willReturnOnConsecutiveCalls(...array_merge($fullRows, [null]));
+    private function buildConn(array $resultRows = []): FakeMysqli
+    {
+        $this->stmts = [];
+        $conn = new FakeMysqli();
 
-        $fullStmt = $this->createMock(mysqli_stmt::class);
-        $fullStmt->method('bind_param')->willReturn(true);
-        $fullStmt->method('execute')->willReturn(true);
-        $fullStmt->method('get_result')->willReturn($fullResult);
-
-        $conn->method('query')->willReturnCallback(function (string $sql) use (&$queryCallCount, $countResult, $idResult) {
-            $this->sqls[] = $sql;
-            $queryCallCount++;
-            if (stripos($sql, 'COUNT(*)') !== false) {
-                return $countResult;
-            }
-            return $idResult;
-        });
-
-        if ($useRand) {
-            $randStmt = $this->createMock(mysqli_stmt::class);
-            $randStmt->method('bind_param')->willReturn(true);
-            $randStmt->method('execute')->willReturn(true);
-            $randStmt->method('get_result')->willReturn($idResult);
-
-            $conn->method('prepare')->willReturnCallback(function (string $sql) use ($randStmt, $fullStmt) {
-                $this->sqls[] = $sql;
-                if (stripos($sql, 'RAND()') !== false) {
-                    return $randStmt;
-                }
-                return $fullStmt;
-            });
-        } else {
-            $conn->method('prepare')->willReturnCallback(function (string $sql) use ($fullStmt) {
-                $this->sqls[] = $sql;
-                return $fullStmt;
-            });
+        foreach ($resultRows as $rows) {
+            $stmt = new FakeMysqliStmt();
+            $stmt->result = new FakeMysqliResult($rows);
+            $conn->stmtQueue[] = $stmt;
         }
+        $conn->windowResult = new FakeMysqliResult([]);
 
+        $this->conn = $conn;
         return $conn;
     }
 
-    public function testRecommendationsReturnsEmptyWhenOnlyOneItem(): void
+    private function usedStmts(): array
     {
-        $_SESSION = [];
-        $conn = $this->buildRecommendConn(1, [], false, []);
-
-        $viewer = new MediaViewer($conn, null, 'music', 1);
-        $result = $viewer->getRecommendations();
-
-        $this->assertCount(2, $this->sqls);
-        $this->assertStringContainsString('COUNT(*)', $this->sqls[0]);
-        $this->assertStringContainsString('WHERE 1 = 0', $this->sqls[1]);
-        unset($_SESSION["seen_music_ids"]);
+        return $this->conn->createdStmts;
+    }
+    private function syncStmts(): void
+    {
+        $this->stmts = $this->conn->createdStmts;
     }
 
-    public function testRecommendationsFetchesAllIdsUnder1000(): void
+    private function buildRecommendConn(array $idPool, int $total, int $minId, int $maxId, array $fullRows): FakeMysqli
     {
-        $_SESSION = [];
-        $conn = $this->buildRecommendConn(5, [1, 2, 3, 4], false, [
-            ['id' => '1', 'title' => 'Song A', 'uploader' => 'alice'],
-            ['id' => '2', 'title' => 'Song B', 'uploader' => 'bob'],
-            ['id' => '3', 'title' => 'Song C', 'uploader' => 'carol'],
-            ['id' => '4', 'title' => 'Song D', 'uploader' => 'dave'],
+        $this->stmts = [];
+        $conn = new FakeMysqli();
+
+        $stats = [];
+        foreach (['music', 'video', 'books'] as $t) {
+            $stats[] = ['t' => $t, 'c' => (string)$total, 'mn' => (string)$minId, 'mx' => (string)$maxId];
+        }
+        $conn->queryResult = new FakeMysqliResult($stats);
+
+        $windowStmt = new FakeMysqliStmt();
+        $windowStmt->result = fake_result_of_ids($idPool);
+        $fullStmt = new FakeMysqliStmt();
+        $fullStmt->result = new FakeMysqliResult($fullRows);
+
+        $conn->onPrepare = static function (string $sql) use ($windowStmt, $fullStmt) {
+            return stripos($sql, 'ORDER BY FIELD') !== false ? $fullStmt : $windowStmt;
+        };
+
+        $this->conn = $conn;
+        return $conn;
+    }
+
+    private function finalRecommendSql(): string
+    {
+        foreach ($this->allStmtSql() as $sql) {
+            if (stripos($sql, 'ORDER BY FIELD') !== false) {
+                return $sql;
+            }
+        }
+        return '';
+    }
+
+    public function testGetMediaTypeReturnsRequestedType(): void
+    {
+        $viewer = new MediaViewer($this->buildConn(), null, 'music', 5);
+        $this->assertSame('music', $viewer->getMediaType());
+    }
+
+    public function testInvalidMediaTypeFallsBackToMusicTable(): void
+    {
+        $conn = $this->buildConn();
+        $viewer = new MediaViewer($conn, null, 'books', 1);
+
+        $this->assertSame('books', $viewer->getMediaType());
+        $this->assertSame([], $conn->sqls, 'konstruktor tanpa user_id tidak boleh query');
+    }
+
+    public function testRecordViewSkipsWhenNoUser(): void
+    {
+        $viewer = new MediaViewer($this->buildConn(), null, 'music', 5);
+        $this->assertFalse($viewer->recordView());
+    }
+
+    public function testRecordViewSkipsWhenMediaIdIsZero(): void
+    {
+        $conn = $this->buildConn();
+        $viewer = new MediaViewer($conn, 1, 'music', 0);
+        $this->assertFalse($viewer->recordView());
+    }
+
+    public function testGetMediaDataReturnsRow(): void
+    {
+        $conn = $this->buildConn([
+            [['id' => '5', 'title' => 'Lagu', 'uploader' => 'alice']],
         ]);
 
         $viewer = new MediaViewer($conn, null, 'music', 5);
-        $result = $viewer->getRecommendations(10);
+        $row = $viewer->getMediaData();
+        $this->syncStmts();
 
-        $this->assertStringNotContainsString('RAND()', $this->sqls[0]);
-        $this->assertStringContainsString('COUNT(*)', $this->sqls[0]);
-        $this->assertStringContainsString('SELECT id FROM music', $this->sqls[1]);
-        $this->assertStringContainsString('m.id IN', $this->sqls[2]);
-        $this->assertInstanceOf(mysqli_result::class, $result);
-        unset($_SESSION["seen_music_ids"]);
+        $this->assertIsArray($row);
+        $this->assertSame('Lagu', $row['title']);
+        $this->assertStringContainsString('FROM music m', $this->stmtSql(0));
+        $this->assertStringContainsString('JOIN users u', $this->stmtSql(0));
+        $this->assertSame('i', $this->stmts[0]->binds[0]['types']);
     }
 
-    public function testRecommendationsUsesRandOver1000(): void
+    public function testGetMediaDataReturnsNullWhenNoRows(): void
     {
-        $_SESSION = [];
-        $conn = $this->buildRecommendConn(1500, [101, 102, 103], true, [
-            ['id' => '101', 'title' => 'Song X', 'uploader' => 'x'],
-            ['id' => '102', 'title' => 'Song Y', 'uploader' => 'y'],
-            ['id' => '103', 'title' => 'Song Z', 'uploader' => 'z'],
+        $conn = $this->buildConn([[]]);
+        $viewer = new MediaViewer($conn, null, 'music', 5);
+        $this->assertNull($viewer->getMediaData());
+    }
+
+    public function testGetMediaDataUsesVideoTableForVideo(): void
+    {
+        $conn = $this->buildConn([[['id' => '7', 'title' => 'V']]]);
+        $viewer = new MediaViewer($conn, null, 'video', 7);
+        $viewer->getMediaData();
+        $this->syncStmts();
+
+        $this->assertStringContainsString('FROM video m', $this->stmtSql(0));
+    }
+
+    public function testGetUserInteractionReturnsNullWithoutUser(): void
+    {
+        $viewer = new MediaViewer($this->buildConn(), null, 'music', 5);
+        $this->assertNull($viewer->getUserInteraction());
+    }
+
+    public function testAddCommentRejectsEmptyComment(): void
+    {
+        $viewer = new MediaViewer($this->buildConn(), 1, 'music', 5);
+        $this->assertFalse($viewer->addComment(['comments' => '   ']));
+    }
+
+    public function testGetCommentsGroupsByParent(): void
+    {
+        $conn = $this->buildConn([
+            [
+                ['id' => '1', 'parent_id' => null, 'username' => 'alice', 'comment' => 'root'],
+                ['id' => '2', 'parent_id' => '1', 'username' => 'bob', 'comment' => 'balasan'],
+            ],
         ]);
 
+        $viewer = new MediaViewer($conn, null, 'music', 5);
+        $out = $viewer->getComments();
+
+        $this->assertArrayHasKey(0, $out['grouped'], 'komentar root di parent_id NULL → 0');
+        $this->assertArrayHasKey('1', $out['grouped'], 'balasan dikelompokkan di parent_id 1');
+        $this->assertSame('alice', $out['user_map']['1']);
+        $this->assertSame('bob', $out['user_map']['2']);
+    }
+
+    public function testRecommendationsEmptyWhenOnlyOneItem(): void
+    {
+        $conn = $this->buildRecommendConn([1], 1, 1, 1, []);
+        $viewer = new MediaViewer($conn, null, 'music', 1);
+        $result = $viewer->getRecommendations();
+
+        $this->assertInstanceOf(FakeMysqliResult::class, $result);
+        $this->assertSame([], $result->fetch_all(MYSQLI_ASSOC), 'harus kosong');
+        $this->assertStringContainsString('WHERE 1 = 0', $conn->sqls[count($conn->sqls) - 1] ?? '');
+    }
+
+    public function testRecommendationsNeverUseOrderByRand(): void
+    {
+        $conn = $this->buildRecommendConn(range(1, 40), 1500, 1, 1500, [
+            ['id' => '7', 'title' => 'X', 'uploader' => 'x'],
+        ]);
         $viewer = new MediaViewer($conn, null, 'music', 100);
-        $result = $viewer->getRecommendations(5);
+        $viewer->getRecommendations(5);
 
-        $this->assertStringContainsString('RAND()', $this->sqls[1]);
-        $this->assertStringContainsString('ORDER BY RAND() LIMIT', $this->sqls[1]);
-        $this->assertInstanceOf(mysqli_result::class, $result);
-        unset($_SESSION["seen_music_ids"]);
+        $all = array_merge($conn->sqls, $this->allStmtSql());
+        $this->assertNotEmpty($all);
+        foreach ($all as $sql) {
+            $this->assertStringNotContainsString(
+                'RAND()',
+                $sql,
+                'ORDER BY RAND() memaksa full scan + filesort (T13)'
+            );
+        }
     }
 
-    public function testRecommendationsResetsSeenWhenAllItemsAlreadySeen(): void
+    public function testRecommendationsFetchIdsWithLimit(): void
     {
-        $_SESSION["seen_music_ids"] = [2, 3];
-        $conn = $this->buildRecommendConn(3, [2, 3], false, [
-            ['id' => '2', 'title' => 'Song B', 'uploader' => 'bob'],
-            ['id' => '3', 'title' => 'Song C', 'uploader' => 'carol'],
+        $conn = $this->buildRecommendConn(range(1, 40), 1500, 1, 1500, [
+            ['id' => '7', 'title' => 'X', 'uploader' => 'x'],
         ]);
+        $viewer = new MediaViewer($conn, null, 'music', 100);
+        $viewer->getRecommendations(5);
 
-        $viewer = new MediaViewer($conn, null, 'music', 1);
-        $result = $viewer->getRecommendations(10);
-
-        $this->assertSame([], $_SESSION["seen_music_ids"]);
-        $this->assertInstanceOf(mysqli_result::class, $result);
-        $this->assertStringContainsString('m.id IN', $this->sqls[2]);
-        unset($_SESSION["seen_music_ids"]);
+        $sawWindow = false;
+        foreach ($this->allStmtSql() as $sql) {
+            if (stripos($sql, 'ORDER BY FIELD') !== false) continue;
+            $this->assertMatchesRegularExpression(
+                '/\bLIMIT\b/i',
+                $sql,
+                "pengambilan id harus selalu punya LIMIT:\n$sql"
+            );
+            $sawWindow = true;
+        }
+        $this->assertTrue($sawWindow, 'harus ada query pengambilan id');
     }
 
-    public function testRecommendationsRespectsLimitParameter(): void
+    public function testRecommendationsUseInWithMatchedPlaceholders(): void
     {
-        $_SESSION = [];
-        $conn = $this->buildRecommendConn(10, [2, 3, 4, 5, 6, 7, 8, 9, 10], false, [
-            ['id' => '2', 'title' => 'Song 2', 'uploader' => 'u2'],
-            ['id' => '3', 'title' => 'Song 3', 'uploader' => 'u3'],
-            ['id' => '4', 'title' => 'Song 4', 'uploader' => 'u4'],
+        $conn = $this->buildRecommendConn(range(1, 20), 20, 1, 20, [
+            ['id' => '2', 'title' => 'B', 'uploader' => 'bob'],
         ]);
+        $viewer = new MediaViewer($conn, null, 'music', 3);
+        $viewer->getRecommendations(10);
 
+        $finalSql = $this->finalRecommendSql();
+        $this->assertStringContainsString('m.id IN', $finalSql);
+        $this->assertStringContainsString('ORDER BY FIELD(m.id,', $finalSql);
+
+        $questionMarks = substr_count($finalSql, '?');
+        $bound = 0;
+        foreach ($this->usedStmts() as $stmt) {
+            if (stripos($stmt->sql, 'ORDER BY FIELD') !== false) {
+                $bound = count($stmt->binds[0]['vars'] ?? []);
+            }
+        }
+        $this->assertSame(
+            $questionMarks,
+            $bound,
+            'jumlah placeholder harus sama dengan jumlah argumen bind_param'
+        );
+        $this->assertGreaterThan(0, $questionMarks);
+    }
+
+    public function testRecommendationsResetSeenWhenExhausted(): void
+    {
+        $_SESSION['seen_music_ids'] = [2, 3];
+        $conn = $this->buildRecommendConn([2, 3], 3, 2, 3, [
+            ['id' => '2', 'title' => 'B', 'uploader' => 'bob'],
+        ]);
         $viewer = new MediaViewer($conn, null, 'music', 1);
-        $result = $viewer->getRecommendations(3);
+        $viewer->getRecommendations(10);
 
-        $this->assertStringContainsString('m.id IN', $this->sqls[2]);
-        $this->assertInstanceOf(mysqli_result::class, $result);
-        unset($_SESSION["seen_music_ids"]);
+        $this->assertSame([], $_SESSION['seen_music_ids'], 'penanda seen harus di-reset');
     }
 
     public function testQueueUsesDeterministicOrderWithTieBreaker(): void
     {
-        [$conn] = $this->buildConn(
-            ['added_at' => '2026-08-08 10:00:00', 'id' => '5'],
-            ['music_id' => '7']
-        );
+        $conn = $this->buildConn([
+            [],
+            [['added_at' => '2026-08-08 10:00:00', 'id' => '5']],
+            [['music_id' => '7']],
+        ]);
 
         $viewer = new MediaViewer($conn, null, 'music', 5);
         $result = $viewer->getPlaylistQueue(3);
+        $this->syncStmts();
 
         $this->assertStringContainsString(
             'ORDER BY pt.added_at DESC, pt.id DESC',
-            $this->sqls[0]
+            $this->stmtSql(0)
         );
-
         $this->assertStringContainsString(
             'SELECT added_at, id FROM playlist_tracks',
-            $this->sqls[1]
+            $this->stmtSql(1)
         );
-        $this->assertStringContainsString('ORDER BY id DESC LIMIT 1', $this->sqls[1]);
-
-        $this->assertStringContainsString('(added_at, id) < (?, ?)', $this->sqls[2]);
+        $this->assertStringContainsString('ORDER BY id DESC LIMIT 1', $this->stmtSql(1));
+        $this->assertStringContainsString('(added_at, id) < (?, ?)', $this->stmtSql(2));
         $this->assertStringContainsString(
             'ORDER BY added_at DESC, id DESC LIMIT 1',
-            $this->sqls[2]
+            $this->stmtSql(2)
         );
 
-        $this->assertCount(3, $this->bindCalls);
-        $this->assertSame('isi', $this->bindCalls[2]['types']);
-        $this->assertSame(3, $this->bindCalls[2]['count']);
-        $this->assertSame(strlen($this->bindCalls[2]['types']), $this->bindCalls[2]['count']);
-
         foreach ([0, 1, 2] as $i) {
+            $types = $this->stmts[$i]->binds[0]['types'] ?? '';
             $this->assertSame(
-                substr_count($this->sqls[$i], '?'),
-                strlen($this->bindCalls[$i]['types']),
+                substr_count($this->stmtSql($i), '?'),
+                strlen($types),
                 "Jumlah placeholder tidak cocok dengan bind_param di query #$i"
             );
         }
@@ -246,32 +320,32 @@ class MediaViewerTest extends TestCase
 
     public function testNextUrlEmptyWhenCurrentTrackNotInPlaylist(): void
     {
-        [$conn] = $this->buildConn(null, null);
+        $conn = $this->buildConn([
+            [],
+            [],
+        ]);
 
         $viewer = new MediaViewer($conn, null, 'music', 999);
         $result = $viewer->getPlaylistQueue(3);
 
         $this->assertSame('', $result['next_url']);
-
-        $this->assertCount(2, $this->sqls);
+        $this->assertCount(2, $conn->sqls, 'tanpa current track, query next tidak dijalankan');
     }
 
     public function testReturnsNullForNonMusicType(): void
     {
-        $conn = $this->createMock(mysqli::class);
-        $conn->expects($this->never())->method('prepare');
-
+        $conn = $this->buildConn();
         $viewer = new MediaViewer($conn, null, 'video', 1);
         $this->assertNull($viewer->getPlaylistQueue(3));
+        $this->assertSame([], $conn->sqls, 'tidak boleh ada query sama sekali');
     }
 
     public function testReturnsNullForEmptyPlaylistId(): void
     {
-        $conn = $this->createMock(mysqli::class);
-        $conn->expects($this->never())->method('prepare');
-
+        $conn = $this->buildConn();
         $viewer = new MediaViewer($conn, null, 'music', 1);
         $this->assertNull($viewer->getPlaylistQueue(0));
+        $this->assertSame([], $conn->sqls, 'tidak boleh ada query sama sekali');
     }
 }
 

@@ -28,7 +28,7 @@ $totalPages = $meta['total_pages'];
     <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= meel_asset_version('assets/css/video/' . $__f) ?>">
     <?php endforeach; ?>
-    <link rel="stylesheet" href="../assets/css/video/index/main.css">
+    <link rel="stylesheet" href="../assets/css/video/index/main.css<?= meel_asset_version('assets/css/video/index/main.css') ?>">
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -123,7 +123,7 @@ $totalPages = $meta['total_pages'];
     </main>
 
     <?php include '../partials/footer.php'; ?>
-    <script src="../assets/js/compatibilitas/htmx.min.js"></script>
+    <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
     <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>
 </body>

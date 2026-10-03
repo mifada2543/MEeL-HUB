@@ -332,7 +332,7 @@ include __DIR__ . '/partials/link.php';
 $scripts_root = '';
 include __DIR__ . '/partials/scripts.php';
 ?>
-    <link rel="stylesheet" href="assets/css/up.css">
+    <link rel="stylesheet" href="assets/css/up.css<?= meel_asset_version('assets/css/up.css') ?>">
     <?php foreach (require __DIR__ . '/assets/css/up/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="assets/css/up/<?= $__f ?><?= meel_asset_version('assets/css/up/' . $__f) ?>">
     <?php endforeach; ?>

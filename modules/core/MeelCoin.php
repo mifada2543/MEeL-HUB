@@ -4,6 +4,11 @@ class MeelCoin
 {
     private static ?array $settingsCache = null;
 
+    private static function nowSql(): string
+    {
+        return function_exists('meel_now') ? meel_now() : date('Y-m-d H:i:s');
+    }
+
     private static function loadSettings(\mysqli $conn): array
     {
         if (self::$settingsCache !== null) {
@@ -145,10 +150,11 @@ class MeelCoin
         $refillAmt = self::getRefillAmount($conn, $role);
         if ($refillAmt <= 0) return false;
         $current = self::getBalance($conn, $userId);
+        $now = self::nowSql();
         if ($current >= $maxCoins) {
-            $stmt = $conn->prepare("UPDATE users SET meelcoin_last_refill = NOW() WHERE id = ? AND meelcoin >= ?");
+            $stmt = $conn->prepare("UPDATE users SET meelcoin_last_refill = ? WHERE id = ? AND meelcoin >= ?");
             if ($stmt) {
-                $stmt->bind_param("ii", $userId, $maxCoins);
+                $stmt->bind_param("sii", $now, $userId, $maxCoins);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -159,14 +165,14 @@ class MeelCoin
         $stmt = $conn->prepare(
             "UPDATE users
                 SET meelcoin = LEAST(?, meelcoin + ?),
-                    meelcoin_last_refill = NOW()
+                    meelcoin_last_refill = ?
               WHERE id = ?
                 AND meelcoin = ?
                 AND meelcoin < ?
                 AND (meelcoin_last_refill IS NULL OR meelcoin_last_refill <= ?)"
         );
         if (!$stmt) return false;
-        $stmt->bind_param("iiiiis", $maxCoins, $refillAmt, $userId, $current, $maxCoins, $threshold);
+        $stmt->bind_param("iisisis", $maxCoins, $refillAmt, $now, $userId, $current, $maxCoins, $threshold);
         $ok = $stmt->execute();
         $affected = $stmt->affected_rows;
         $stmt->close();
@@ -204,8 +210,9 @@ class MeelCoin
 
         $maxCoins = self::getMax($conn, $role);
 
-        $stmt = $conn->prepare("UPDATE users SET meelcoin = ?, meelcoin_last_refill = NOW() WHERE id = ?");
-        $stmt->bind_param("ii", $maxCoins, $userId);
+        $stmt = $conn->prepare("UPDATE users SET meelcoin = ?, meelcoin_last_refill = ? WHERE id = ?");
+        $now = self::nowSql();
+        $stmt->bind_param("isi", $maxCoins, $now, $userId);
         $stmt->execute();
         $stmt->close();
 

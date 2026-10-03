@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../../modules/core/Modules.php';
+require_once __DIR__ . '/../../../modules/core/helpers/datetime.php';
 if (PHP_SAPI !== 'cli' && !defined('PHPUNIT_COMPOSER_INSTALL')) {
     Modules::guardJson('arcade');
 }

@@ -1,4 +1,24 @@
 <?php
+/**
+ * Variabel di bawah di-set oleh include di file ini: `$conn` oleh
+ * `auth/config.php`, dan `$banned_ips`/`$all_users`/`$pending_users`/
+ * `$result_monitor`/`$stats` oleh `controllers/admin/admin_data.php` — sah saat
+ * runtime, tapi tak terlihat oleh static analyser karena tidak menelusuri
+ * variabel lintas `include`.
+ *
+ * ⚠️ Satu variabel per baris `@var` — bentuk daftar berkoma (`@var Type $a, $b`)
+ * tidak dipahami PHPStan/Intelephense, hanya baris pertama yang terbaca.
+ * Blok ini juga harus diletakkan SEBELUM pemakaian pertama, karena `@var`
+ * hanya berlaku ke depan.
+ *
+ * @var \mysqli $conn
+ * @var \mysqli_result $banned_ips
+ * @var \mysqli_result $all_users
+ * @var \mysqli_result $pending_users
+ * @var \mysqli_result $result_monitor
+ * @var array<string,mixed> $stats
+ */
+
 include '../auth/config.php';
 include '../auth/auth.php';
 include_once '../modules/core/helpers.php';
@@ -11,8 +31,6 @@ define('MEEL_ADMIN_CONTEXT', true);
 
 include '../controllers/admin/admin_actions.php';
 include '../controllers/admin/admin_data.php';
-
-/** @var \mysqli_result $banned_ips, $all_users, $pending_users, $result_monitor; @var array $stats — di-set oleh admin_data.php (include di atas). */
 
 require_once __DIR__ . '/../modules/core/System.php';
 $sys = new System($conn);
@@ -29,7 +47,7 @@ $msg = $_GET['msg'] ?? null;
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
         <link href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
     <?php endforeach; ?>
-    <link href="../assets/css/admin/index.css" rel="stylesheet">
+    <link href="../assets/css/admin/index.css<?= meel_asset_version('assets/css/admin/index.css') ?>" rel="stylesheet">
 </head>
 <body class="min-h-screen">
     <?php

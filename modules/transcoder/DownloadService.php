@@ -656,6 +656,9 @@ class DownloadService extends TranscoderBase
             $stmt->close();
 
             $this->conn->commit();
+            if (function_exists('meel_invalidate_media_stats_cache')) {
+                meel_invalidate_media_stats_cache('video');
+            }
         } catch (\Throwable $e) {
 
             $this->conn->rollback();

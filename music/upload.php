@@ -352,8 +352,8 @@ if (isset($_POST['upload'])) {
             </div>
         </div>
     </div>
-    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/compatibilitas/script.min.js"></script>
+    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
+    <script src="../assets/js/compatibilitas/script.min.js<?= meel_asset_version('assets/js/compatibilitas/script.min.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
     <script>
         <?php if ($alert_message !== ""): ?>

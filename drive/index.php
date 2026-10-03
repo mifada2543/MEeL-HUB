@@ -38,8 +38,8 @@ if ($user->isMember()) {
     <meta property="og:description" content="MEeL Cloud Drive - Kelola dan simpan file Anda dengan aman di cloud pribadi.">
     <title>MEeL Cloud | Dasbor</title>
     <?php include '../partials/link.php'; ?>
-    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/compatibilitas/script.min.js"></script>
+    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
+    <script src="../assets/js/compatibilitas/script.min.js<?= meel_asset_version('assets/js/compatibilitas/script.min.js') ?>"></script>
     <?php foreach (require __DIR__ . '/../assets/css/drive/manifest.php' as $__f): ?>
         <link rel="stylesheet" href="../assets/css/drive/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/drive/' . $__f) ?>">
     <?php endforeach; ?>

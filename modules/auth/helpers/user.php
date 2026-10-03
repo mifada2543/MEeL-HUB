@@ -46,6 +46,27 @@ function invalidate_user_role_cache(): void
 }
 }
 
+if (!function_exists('get_user_active')) {
+function get_user_active(mysqli $conn, int $user_id): bool
+{
+    static $cache = [];
+    if (isset($cache[$user_id])) {
+        return $cache[$user_id];
+    }
+
+    $stmt = $conn->prepare("SELECT is_active FROM users WHERE id = ? LIMIT 1");
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $cache[$user_id] = isset($row) && (int)$row['is_active'] === 1;
+}
+}
+
 if (!function_exists('purge_guest_users')) {
 function purge_guest_users(mysqli $conn): ?int
 {

@@ -1,4 +1,12 @@
 <?php
+/**
+ * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
+ * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
+ * lintas `include`.
+ *
+ * @var \mysqli $conn
+ */
+
 require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
 include __DIR__ . '/../auth/auth.php';
@@ -216,7 +224,7 @@ if (is_file($lrc_path)) {
     </div>
 
     <?php include __DIR__ . '/../partials/footer.php'; ?>
-    <script src="../assets/js/compatibilitas/plyr.min.js"></script>
+    <script src="../assets/js/compatibilitas/plyr.min.js<?= meel_asset_version('assets/js/compatibilitas/plyr.min.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
     <script src="../assets/js/music/lrc-editor.js<?= meel_asset_version('assets/js/music/lrc-editor.js') ?>"></script>
     <script>

@@ -1,8 +1,5 @@
 <?php
-/**
- * MEeL-HUB — Konfigurasi Aplikasi (Entry Point), hanya logic inisialisasi; DATA (DB credentials + MEEL_*) di settings.php.
- * PENTING — Jangan hapus guard !defined() di sekitar konstanta: file ini di-include dari banyak entry point, guard mencegah redeclare error.
- */
+
 $meel_settings = __DIR__ . '/settings.php';
 if (!file_exists($meel_settings)) {
     die("[MEeL SYSTEM ERROR]\nFile auth/settings.php tidak ditemukan.\n"
@@ -11,7 +8,7 @@ if (!file_exists($meel_settings)) {
 }
 require_once $meel_settings;
 require_once __DIR__ . '/../modules/core/bootstrap.php';
-// Kredensial dari settings.php; koneksi hanya dibuat bila $conn belum ada — aman di-include berkali-kali.
+
 if (!isset($server))   $server   = 'localhost';
 if (!isset($username)) $username = 'root';
 if (!isset($password)) $password = '';
@@ -61,8 +58,9 @@ if (!defined('MEEL_API_CONTEXT')) {
         }
     }
     $_SESSION['LAST_ACTIVITY'] = time();
-    if (PHP_SAPI !== 'cli') {
-        include_once __DIR__ . '/../modules/core/activity_logger.php';
+    if (PHP_SAPI !== 'cli' && isset($conn) && $conn instanceof \mysqli) {
+        require_once __DIR__ . '/../modules/core/activity_logger.php';
+        ActivityLogger::onRequest($conn);
     }
 }
 

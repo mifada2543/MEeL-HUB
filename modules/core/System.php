@@ -117,10 +117,27 @@ class System
         ];
     }
 
+    public function countActiveQueues(): int
+    {
+        $total = 0;
+
+        foreach (['upload_queue', 'transcode_queue'] as $table) {
+            $res = $this->conn->query(
+                "SELECT COUNT(*) AS c FROM `{$table}` WHERE status = 'processing'"
+            );
+            if ($res) {
+                $row = $res->fetch_assoc();
+                $total += (int)($row['c'] ?? 0);
+                $res->free();
+            }
+        }
+
+        return $total;
+    }
+
     public function isServerBusy(): bool
     {
-        $active = count($this->getActiveQueues());
-        return $active >= 2;
+        return $this->countActiveQueues() >= 2;
     }
 
     public function checkRateLimit(int $user_id, string $type, string $user_role): array

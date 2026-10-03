@@ -48,6 +48,7 @@ function handleDeleteVideo(int $id, int $user_id, mysqli $conn): array
     if (!$stmt_del->execute()) {
         return ['success' => false, 'message' => 'Gagal menghapus dari database.'];
     }
+    meel_invalidate_media_stats_cache('video');
 
     if (!empty($pending['files'])) {
         savePendingDeletions($pending);
@@ -96,6 +97,7 @@ function handleDeleteMusic(int $id, int $user_id, mysqli $conn): array
     if (!$stmt_del->execute()) {
         return ['success' => false, 'message' => 'Gagal menghapus dari database.'];
     }
+    meel_invalidate_media_stats_cache('music');
 
     if (!empty($pending['files'])) {
         savePendingDeletions($pending);

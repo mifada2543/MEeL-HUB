@@ -11,44 +11,17 @@ class MediaLibrary
 
     public function getCounts(): array
     {
-        $cache_file = __DIR__ . '/../../temp/cache/media_counts.json';
-        $cache_ttl = 30;
-
-        if (file_exists($cache_file) && (time() - filemtime($cache_file)) < $cache_ttl) {
-            $cached = json_decode(file_get_contents($cache_file), true);
-            if (is_array($cached) && isset($cached['music'], $cached['video'], $cached['books'])) {
-                return $cached;
-            }
-        }
-
+        $all = meel_media_stats_all($this->conn);
         $counts = ['music' => 0, 'video' => 0, 'books' => 0];
-        $sql = "SELECT 'music' AS type, COUNT(*) AS total FROM music
-                UNION ALL
-                SELECT 'video', COUNT(*) FROM video
-                UNION ALL
-                SELECT 'books', COUNT(*) FROM books";
-        $res = $this->conn->query($sql);
-        if ($res) {
-            while ($row = $res->fetch_assoc()) {
-                $counts[$row['type']] = (int)$row['total'];
-            }
+        foreach ($counts as $table => $_) {
+            $counts[$table] = $all[$table]['total'] ?? 0;
         }
-
-        $cache_dir = dirname($cache_file);
-        if (!is_dir($cache_dir)) {
-            @mkdir($cache_dir, 0755, true);
-        }
-        @file_put_contents($cache_file, json_encode($counts, JSON_UNESCAPED_UNICODE), LOCK_EX);
-
         return $counts;
     }
 
     public static function clearCountsCache(): void
     {
-        $cache_file = __DIR__ . '/../../temp/cache/media_counts.json';
-        if (file_exists($cache_file)) {
-            @unlink($cache_file);
-        }
+        meel_invalidate_media_stats_cache();
     }
 
     protected function paginateResult(\mysqli_result|null $result, int $total, int $page, int $perPage): array
@@ -85,8 +58,7 @@ class MediaLibrary
 
     public function countVideos(): int
     {
-        $res = $this->conn->query("SELECT COUNT(*) AS total FROM video");
-        return (int)$res->fetch_assoc()['total'];
+        return meel_media_stats($this->conn, 'video')['total'];
     }
 
     private function searchMedia(array $cfg): ?\mysqli_result
@@ -109,48 +81,14 @@ class MediaLibrary
         if (empty($q)) {
             if ($sidebar) {
                 $sidebar_limit = 15;
-                $count_res = $this->conn->query("SELECT COUNT(*) AS total FROM {$table}");
-                $total = (int)($count_res ? $count_res->fetch_assoc()['total'] : 0);
-
-                $seen_ids = $_SESSION[$sessionKey] ?? [];
-                $exclude_ids = array_merge([$exclude], $seen_ids);
-
-                if ($total < 1000) {
-                    $id_result = $this->conn->query("SELECT id FROM {$table} WHERE id != {$exclude}");
-                    $all_ids = [];
-                    if ($id_result) {
-                        while ($row = $id_result->fetch_assoc()) {
-                            $all_ids[] = (int)$row['id'];
-                        }
-                    }
-                    $available = array_values(array_diff($all_ids, $exclude_ids));
-                    if (empty($available)) {
-                        $_SESSION[$sessionKey] = [];
-                        $available = array_values(array_diff($all_ids, [$exclude]));
-                    }
-                    shuffle($available);
-                    $picked_ids = array_slice($available, 0, $sidebar_limit);
-                } else {
-                    $extra = min($sidebar_limit * 2, 40);
-                    $sql = "SELECT id FROM {$table} WHERE id != ? ORDER BY RAND() LIMIT ?";
-                    $stmt_ids = $this->conn->prepare($sql);
-                    $stmt_ids->bind_param("ii", $exclude, $extra);
-                    $stmt_ids->execute();
-                    $id_result = $stmt_ids->get_result();
-                    $candidate_ids = [];
-                    if ($id_result) {
-                        while ($row = $id_result->fetch_assoc()) {
-                            $candidate_ids[] = (int)$row['id'];
-                        }
-                    }
-                    $available = array_values(array_diff($candidate_ids, $exclude_ids));
-                    if (empty($available)) {
-                        $_SESSION[$sessionKey] = [];
-                        $available = array_values(array_diff($candidate_ids, [$exclude]));
-                    }
-                    shuffle($available);
-                    $picked_ids = array_slice($available, 0, $sidebar_limit);
-                }
+                $picked_ids = meel_pick_random_ids(
+                    $this->conn,
+                    $table,
+                    $sidebar_limit,
+                    $exclude,
+                    $_SESSION[$sessionKey] ?? [],
+                    $sessionKey
+                );
 
                 if (empty($picked_ids)) {
                     $stmt = $this->conn->prepare(

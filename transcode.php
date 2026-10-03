@@ -108,7 +108,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
     $scripts_root = '';
     include __DIR__ . '/partials/scripts.php';
     ?>
-    <link href="assets/css/font.css" rel="stylesheet">
+    <link href="assets/css/font.css<?= meel_asset_version('assets/css/font.css') ?>" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
     <style>
 

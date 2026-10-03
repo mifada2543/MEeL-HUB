@@ -1,4 +1,12 @@
 <?php
+/**
+ * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
+ * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
+ * lintas `include`.
+ *
+ * @var \mysqli $conn
+ */
+
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 require_once '../modules/core/helpers.php';

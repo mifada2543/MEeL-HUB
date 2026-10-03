@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/** @covers GarbageCollector */
 class GarbageCollectorTest extends TestCase
 {
     private string $testTempDir;
@@ -28,6 +27,10 @@ class GarbageCollectorTest extends TestCase
         $prop = $ref->getProperty('hasRun');
         $prop->setAccessible(true);
         $prop->setValue(false);
+
+        $throttle = $ref->getMethod('runThrottleFile');
+        $throttle->setAccessible(true);
+        @unlink($throttle->invoke(null));
     }
 
     private function touchAged(string $path, int $ageSeconds): void
@@ -198,6 +201,179 @@ class GarbageCollectorTest extends TestCase
         $this->assertFileExists($late, 'run() kedua harus no-op (static $hasRun) — file tidak dibersihkan');
 
         $this->restoreRateLimiterDir();
+    }
+
+    public function testRunIsThrottledAcrossStaticFlagReset(): void
+    {
+        $rateDir = $this->isolateRateLimiterDir();
+        touch($rateDir, time());
+
+        GarbageCollector::run();
+
+        self::assertHasRunThrottleFile(true, 'run() pertama harus menulis throttle file');
+
+        self::resetHasRunFlagOnly();
+
+        $late = $rateDir . '/gc_test_throttled.cache';
+        file_put_contents($late, json_encode([
+            'count' => 5,
+            'window_start' => time() - 7200,
+        ]));
+
+        GarbageCollector::run();
+
+        $this->assertFileExists($late, 'run() kedua dalam window throttle harus skip housekeeping');
+
+        $this->restoreRateLimiterDir();
+    }
+
+    public function testRunThrottleFileIsStaleOutsideWindowAndRunsAgain(): void
+    {
+        $rateDir = $this->isolateRateLimiterDir();
+        touch($rateDir, time());
+
+        GarbageCollector::run();
+        self::resetHasRunFlagOnly();
+
+        self::writeRunThrottleFile(time() - (GarbageCollector::RUN_INTERVAL_SECONDS + 5));
+
+        $expired = $rateDir . '/gc_test_after_window.cache';
+        file_put_contents($expired, json_encode([
+            'count' => 5,
+            'window_start' => time() - 7200,
+        ]));
+
+        GarbageCollector::run();
+
+        $this->assertFileDoesNotExist($expired, 'di luar jendela throttle housekeeping harus jalan lagi');
+
+        $this->restoreRateLimiterDir();
+    }
+
+    public function testRunCliMaintenanceIsNoOpOutsideCli(): void
+    {
+        if (PHP_SAPI === 'cli') {
+            $this->markTestSkipped('test ini hanya bermakna di SAPI non-CLI');
+        }
+
+        $ref = new ReflectionClass(GarbageCollector::class);
+        $method = $ref->getMethod('runCliMaintenance');
+        $method->setAccessible(true);
+
+        $conn = $this->createMock(mysqli::class);
+        $conn->expects($this->never())->method('query');
+
+        $method->invoke(null, $conn);
+        $this->addToAssertionCount(1);
+    }
+
+    public function testRunCliMaintenanceExistsAndIsPublic(): void
+    {
+        $ref = new ReflectionClass(GarbageCollector::class);
+        $this->assertTrue(
+            $ref->hasMethod('runCliMaintenance'),
+            'scripts/gc.php bergantung pada entry point ini'
+        );
+        $this->assertTrue(
+            $ref->getMethod('runCliMaintenance')->isPublic(),
+            'entry point housekeeping berat harus publik supaya bisa dipanggil scripts/gc.php'
+        );
+        $this->assertTrue(
+            $ref->getMethod('runCliMaintenance')->isStatic(),
+            'dipanggil sebagai GarbageCollector::runCliMaintenance($conn)'
+        );
+    }
+
+    public function testGcScriptRefusesNonCliAndHasCliGuard(): void
+    {
+        $script = MEEL_ROOT . '/scripts/gc.php';
+        $this->assertFileExists($script, 'scripts/gc.php harus ada untuk cron');
+
+        $src = (string)file_get_contents($script);
+        $this->assertStringContainsString(
+            "PHP_SAPI !== 'cli'",
+            $src,
+            'scripts/gc.php harus menolak eksekusi via web'
+        );
+        $this->assertStringContainsString('runCliMaintenance', $src);
+        $this->assertStringContainsString('GarbageCollector::run()', $src);
+
+        $this->assertSame(
+            0,
+            self::lintPhp($script),
+            'scripts/gc.php harus lolos php -l'
+        );
+    }
+
+    public function testNoWebEntryPointTriggersHeavyMaintenance(): void
+    {
+
+        $root = realpath(MEEL_ROOT);
+        $skip = ['/vendor/', '/.git/', '/tests/', '/logs/', '/temp/'];
+        $offenders = [];
+
+        $it = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)
+        );
+        foreach ($it as $f) {
+            if (!$f->isFile() || strtolower($f->getExtension()) !== 'php') continue;
+            $path = str_replace('\\', '/', $f->getPathname());
+            foreach ($skip as $s) {
+                if (strpos($path, $s) !== false) continue 2;
+            }
+            if (str_ends_with($path, '/GarbageCollector.php')) continue;
+            if (str_ends_with($path, '/scripts/gc.php')) continue;
+
+            $src = (string) file_get_contents($path);
+            if (preg_match('/GarbageCollector::syncViews\s*\(/', $src)) {
+                $offenders[] = str_replace(realpath(MEEL_ROOT) . '/', '', $path);
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $offenders,
+            "syncViews() adalah pekerjaan berat (agregasi ulang dari activity_log) dan hanya boleh\n"
+            . "dipanggil lewat scripts/gc.php. Pemanggil langsung dari halaman web:\n"
+            . implode("\n", $offenders)
+        );
+    }
+
+    private static function lintPhp(string $file): int
+    {
+        $cmd = escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($file) . ' 2>&1';
+        $out = [];
+        $rc = 0;
+        exec($cmd, $out, $rc);
+        return $rc;
+    }
+
+    private static function resetHasRunFlagOnly(): void
+    {
+        $ref = new ReflectionClass(GarbageCollector::class);
+        $prop = $ref->getProperty('hasRun');
+        $prop->setAccessible(true);
+        $prop->setValue(false);
+    }
+
+    private static function runThrottleFilePath(): string
+    {
+        $ref = new ReflectionClass(GarbageCollector::class);
+        $m = $ref->getMethod('runThrottleFile');
+        $m->setAccessible(true);
+        return (string)$m->invoke(null);
+    }
+
+    private static function writeRunThrottleFile(int $timestamp): void
+    {
+        $path = self::runThrottleFilePath();
+        @mkdir(dirname($path), 0755, true);
+        file_put_contents($path, (string)$timestamp);
+    }
+
+    private static function assertHasRunThrottleFile(bool $exists, string $message): void
+    {
+        self::assertSame($exists, is_file(self::runThrottleFilePath()), $message);
     }
 }
 

@@ -404,9 +404,9 @@ if (!$is_guest_profile) {
             </main>
         <?php endif; ?>
     </div> <?php include '../partials/footer.php'; ?>
-    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/shared/download-backup-codes.js"></script>
-    <script src="../assets/js/compatibilitas/htmx.min.js"></script>
+    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
+    <script src="../assets/js/shared/download-backup-codes.js<?= meel_asset_version('assets/js/shared/download-backup-codes.js') ?>"></script>
+    <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js?v=<?= @filemtime(__DIR__ . '/../assets/js/shared/htmx-lucide.js') ?>"></script>
     <script src="../assets/js/profile/theme-init.js<?= meel_asset_version('assets/js/profile/theme-init.js') ?>"></script>
     <script src="../assets/js/profile/coin-countdown.js<?= meel_asset_version('assets/js/profile/coin-countdown.js') ?>"></script>

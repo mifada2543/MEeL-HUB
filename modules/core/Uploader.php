@@ -527,6 +527,9 @@ class Uploader
             }
 
             $this->conn->commit();
+            if (function_exists('meel_invalidate_media_stats_cache')) {
+                meel_invalidate_media_stats_cache('video');
+            }
             return ['status' => 'success'];
         } catch (\Throwable $e) {
             $this->conn->rollback();
