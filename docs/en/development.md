@@ -929,7 +929,153 @@ so every other check in the same file stays active. `.vscode/` is already in
 
 ---
 
-### Test Infrastructure — important notes
+### Test doubles: properti internal mysqli tidak bisa di-fake
+
+
+Discovery yang berlaku untuk test double: `num_rows`,
+`affected_rows`, dan properti internal serupa adalah **read-only virtual property**
+di PHP 8.x. Override method maupun `__get()` sama-sama **tidak mengintervensi** —
+`ReflectionMethod('mysqli_result', 'num_rows')` bahkan melempar *method does not
+exist*, yang membuktikan murni itu property.
+
+Konsekuensi praktis: **kode produksi jangan bergantung pada membaca properti
+internal tersebut** kalau pemanggilannya ingin bisa diuji dengan
+`tests/unit/support/MysqlFake.php`. Kalau memang butuh nilai tersebut, kirim
+melewat parameter atau kembalikan lewat jalur lain — bukan lewat properti stmt.
+
+---
+
+### Notifications: `like` coalescing & retention (2026-10-03)
+
+Goal: automatic **refill** MEeLCoin notifications, while stopping the unbounded
+growth of `user_notifications`.
+
+#### Background (measured, not assumed)
+
+Before this change `user_notifications` had **no pruning whatsoever** — the only
+`DELETE` statements came from user actions (`deleteOne`, `deleteAllByUser`,
+`deleteByChat`). No age limit, no count limit.
+
+What made it not urgent: the notifications page only ever fetches the **50 newest
+rows** (`profile/notification.php` → `getList($conn, $userId, 50, …)`; the API
+caps at `min(50, …)`). So **rows beyond the newest 50 per user are never shown** —
+pure ballast.
+
+State at the time: 30 rows / 3,351 B, averaging 112 B per row. The `meelcoin` type
+accounted for 27 of those 30, because its `message` embeds the **full upload URL and
+title**. Only **27 of the 30 were unique**: there were 3 exact duplicates, one of
+them the fingerprint of an **upload retry**.
+
+#### Rule 1 — Automatic refill notification
+
+Created inside `MeelCoin::refill()` rather than at each call site, because the
+credited amount is only known there — no caller can forget. `refill()` is invoked
+from 7 production places and **none of them changed**.
+
+`admin` already returns early inside `refill()`
+(`if ($role === 'admin') return true;`), so that role automatically gets no
+notification.
+
+**The message uses the amount actually credited, never a fixed number:**
+
+> Saldo Anda bertambah {amount} dari isi ulang.
+> *(Your balance increased by {amount} from the refill.)*
+
+Hardcoding "25" would lie in two real cases:
+
+| Source | Value |
+| --- | --- |
+| Default `meelcoin_user_refill` | **15** |
+| Default `meelcoin_member_refill` | 25 |
+| All of them | admin-editable in `admin/meelcoin.php` → `site_settings` |
+| Actual credited | `min($refillAmt, $maxCoins - $current)` — **clamped by remaining headroom** |
+
+So a `member` with a balance of 45 (max 50) and a refill of 25 only receives
+**+5**. The notification reuses the existing `meelcoin` type (not a new one), so
+`$validTypes`, `$ICONS` and the filters in `notification.js` need no changes and
+all coin history stays in a single tab.
+
+#### Rule 2 — Coalescing `like` notifications
+
+One viral video can produce hundreds of likes within minutes. Without
+coalescing, the uploader receives hundreds of rows all reading "X liked your
+work".
+
+`Notification::create()` therefore becomes a no-op when a `like` notification for
+the same user was already created within the **last 60 minutes**. What is traded
+away: the identity of the liker inside that window (the notification names whoever
+triggered it first) and the specific video is deferred too. That is deliberate —
+the bound becomes clear: **at most one like notification per hour per user**.
+
+Only `like` is coalesced. Every other type **must not** be throttled:
+
+| Type | Reason |
+| --- | --- |
+| `reply` | conversation — a dropped notification means a lost comment |
+| `admin_chat` | admin messages must all get through |
+| `meelcoin` | tied to balance — the user needs the full history |
+| `system` | system announcements |
+
+#### Rule 3 — Retention: 50 rows & 15 days
+
+`Notification::pruneUser()` deletes rows that are either:
+
+1. older than **15 days**, or
+2. outside the **50 newest** (ordered `created_at DESC, id DESC`).
+
+Unread rows are pruned too once they fall outside the 50-row bound — which is
+fair, since the notifications page never renders more than that anyway.
+
+It runs from `scripts/gc.php` (CLI/cron), never from a web request — pruning
+issues `DELETE` and does not belong in the per-request path. `pruneAll()` returns
+the number of **users** pruned rather than rows: `mysqli_stmt::$affected_rows` is
+an internal property that cannot be read from a test double, so counting rows
+would make the code hard to test for no real benefit.
+
+#### What needed a migration
+
+A new index `idx_un_user_type_created (user_id, type, created_at)` — it backs the
+`like` coalescing lookup and doubles as covering for the pruning query. Without it,
+`isCoalesced()` scans all of that user's rows on every like press.
+
+Migration **v4** plus `schema.sql` were kept in sync (both must move together, per
+the T9 convention). Verified idempotent across 2 runs.
+
+#### Verification
+
+`tests/unit/NotificationRetentionTest.php` (**11 tests**) locks in: only `like` has a
+coalescing window, other types touch no database at all, both retention bounds hold,
+nonsensical arguments are clamped (keep ≥ 1), and pruning never touches other users.
+
+Plus direct database verification (6 scenarios, all passing):
+
+| # | Scenario | Result |
+| --- | --- | --- |
+| 1 | 5× like within 1 hour | **1** row |
+| 2 | 3× reply | **3** rows (not throttled) |
+| 3 | 120 rows → prune | **50** rows |
+| 4 | 20 days old | removed; the new one **survived** |
+| 5 | Another user | **untouched** |
+| 6 | refill, role `user` | notification shown: "increased by **15**" |
+
+Scenario 6 also proves the correction above: the number displayed is **15** (the
+`user` role default), not 25.
+
+---
+
+### Test doubles: internal mysqli properties cannot be faked
+
+A finding that applies to any fake: `num_rows`, `affected_rows` and similar
+internals are **read-only virtual properties** in PHP 8.x. Overriding the method
+and adding `__get()` **both fail to intercept** —
+`ReflectionMethod('mysqli_result', 'num_rows')` even throws *method does not
+exist*, which proves it is purely a property.
+
+Practical consequence: **production code should not depend on reading those internal
+properties** if it is meant to be testable with
+`tests/unit/support/MysqlFake.php`. When such a value is genuinely needed, pass it
+in as a parameter or return it through another path — never through a statement
+property.### Test Infrastructure — important notes
 
 #### 🚨 `createMock(mysqli::class)` consumed 8.86 GiB of RAM
 

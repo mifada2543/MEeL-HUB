@@ -1155,6 +1155,139 @@ File `.vscode/` sudah masuk `.gitignore`, jadi kontributor lain tidak terpengaru
 
 ---
 
+### Notifikasi: coalescing `like` & retensi (2026-10-03)
+
+Tujuan: notifikasi MEeLCoin **isi ulang** otomatis, sekaligus menghentikan
+pertumbuhan `user_notifications` tanpa batas.
+
+#### Latar belakang (dihitung dari data, bukan asumsi)
+
+Sebelum perubahan ini tabel `user_notifications` **tidak punya pruning sama
+sekali** — satu-satunya `DELETE` berasal dari aksi user (`deleteOne`,
+`deleteAllByUser`, `deleteByChat`). Tidak ada batas umur maupun batas jumlah.
+
+Yang membuatnya tidakurgency: halaman notifikasi hanya mengambil **50 baris
+terbaru** (`profile/notification.php` → `getList($conn, $userId, 50, …)`; API
+meng-imposed `min(50, …)`). Jadi **baris di luar 50 terbaru per pengguna tidak
+pernah tampil** — murni ballast.
+
+Kondisi saat itu: 30 baris / 3.351 B, rata-rata 112 B per baris. Tipe `meelcoin`
+menyumbang 27 dari 30 baris — karena `message`-nya menyisipkan **URL dan judul
+upload penuh**. Dari 30 baris itu hanya **27 yang unik**: ada 3 duplikat persis,
+salah satunya jejak **retry upload**.
+
+#### Aturan 1 — Notifikasi isi ulang otomatis
+
+Dibuat di dalam `MeelCoin::refill()`, bukan di titik pemanggil. Alasannya: jumlah
+yang dikreditkan hanya diketahui di sana, jadi tidak ada pemanggil yang bisa lupa.
+`refill()` dipanggil dari 7 tempat produksi dan **tidak satu pun berubah**.
+
+`admin` sudah keluar lebih dulu di `refill()` (`if ($role === 'admin') return true;`)
+sehingga role itu otomatis tidak menerima notifikasi.
+
+**Pesannya memakai jumlah yang benar-benar dikreditkan, bukan angka tetap:**
+
+> Saldo Anda bertambah {jumlah} dari isi ulang.
+
+Hardcode "25" akan berbohong di dua kasus nyata:
+
+| Sumber | Nilai |
+| --- | --- |
+| Default `meelcoin_user_refill` | **15** |
+| Default `meelcoin_member_refill` | 25 |
+| Semua nilai | bisa diubah admin di `admin/meelcoin.php` → `site_settings` |
+| Jumlah nyata | `min($refillAmt, $maxCoins - $current)` — **dipotong sisa kapasitas** |
+
+Jadi user `member` dengan saldo 45 (max 50) dan refill 25 hanya menerima **+5**.
+Tipe notifikasi memakai ulang `meelcoin` (bukan tipe baru), supaya
+`$validTypes`, `$ICONS`, dan filter di `notification.js` tidak perlu berubah dan
+seluruh histori koin tetap dalam satu tab.
+
+#### Aturan 2 — Coalescing notifikasi `like`
+
+Satu video viral bisa menghasilkan ratusan like dalam hitungan menit. Tanpa
+penggabungan,uploader menerima ratusan baris notifikasi yang isinya cuma
+"X menyukai karyamu".
+
+Jadi `Notification::create()` menjadi no-op bila notifikasi `like` untuk pengguna
+yang sama sudah dibuat dalam **60 menit terakhir**. Atribut yang dikorbankan:
+identitas peng-`like` di dalam jendela tersebut (notifikasi menampilkan orang
+ pertama yang memicu) dan video mana pun ikut tertunda. Ini memang disengaja —
+batasnya jadi jelas: **maksimal satu notifikasi like per jam per pengguna**.
+
+Hanya `like` yang digabung. Tipe lain **tidak boleh** di-throttle:
+
+| Tipe | Alasan |
+| --- | --- |
+| `reply` | percakapan — tanpa notifikasi berarti komentar hilang |
+| `admin_chat` | pesan admin harus masuk semuanya |
+| `meelcoin` | terikat pada saldo — user perlu riwayat utuh |
+| `system` | pengumuman sistem |
+
+#### Aturan 3 — Retensi: 50 baris & 15 hari
+
+`Notification::pruneUser()` menghapus baris yang:
+
+1. berumur lebih dari **15 hari**, atau
+2. berada di luar **50 terbaru** (urut `created_at DESC, id DESC`).
+
+Baris yang belum dibaca juga ikut terhapus bila sudah terdorong keluar batas 50 —
+sah karena halaman notifikasi memang tidak pernah menampilkan lebih dari itu.
+
+Dijalankan dari `scripts/gc.php` (CLI/cron), bukan dari web request — prune
+membuat `DELETE` dan tidak pantas dipanggil per-request. `pruneAll()` mengembalikan
+jumlah **pengguna** yang dipangkas, bukan jumlah baris: `mysqli_stmt::$affected_rows`
+termasuk properti internal yang tidak bisa dibaca pada test double, jadi menghitung
+baris akan membuat kode sulit diuji tanpa manfaat nyata.
+
+#### Yang perlu migration
+
+Indeks baru `idx_un_user_type_created (user_id, type, created_at)` — menopang
+lookup coalescing `like` sekaligus jadi covering untuk query pruning. Tanpa ini,
+`isCoalesced()` menyisir seluruh baris pengguna tersebut per-press like.
+
+Migrasi **v4** + `schema.sql` sudah disinkronkan (keduanya wajib ikut, sesuai
+konvensi T9). Sudah diverifikasi idempoten 2×.
+
+#### Verifikasi
+
+`tests/unit/NotificationRetentionTest.php` (**11 test**) mengunci: hanya `like`
+yang punya jendela coalescing, tipe lain tidak menyentuh DB sama sekali, kedua
+batas retensi benar, argumen tidak masuk akal di-clamp (keep ≥ 1), dan prune tidak
+menyentuh pengguna lain.
+
+Ditambah verifikasi langsung ke DB (6 skenario, semua lulus):
+
+| # | Skenario | Hasil |
+| --- | --- | --- |
+| 1 | 5× like dalam 1 jam | **1** baris |
+| 2 | 3× reply | **3** baris (tidak di-throttle) |
+| 3 | 120 baris → prune | **50** baris |
+| 4 | umur 20 hari | terhapus; yang baru **utuh** |
+| 5 | pengguna lain | **tidak terpengaruh** |
+| 6 | refill role `user` | notifikasi tampil: "bertambah **15**" |
+
+Skenario 6 sekaligus membuktikan koreksi di atas: angka yang muncul adalah **15**
+(default role `user`), bukan 25.
+
+---
+
+### Test doubles: properti internal mysqli tidak bisa di-fake
+
+
+Discovery yang berlaku untuk test double: `num_rows`,
+`affected_rows`, dan properti internal serupa adalah **read-only virtual property**
+di PHP 8.x. Override method maupun `__get()` sama-sama **tidak mengintervensi** —
+`ReflectionMethod('mysqli_result', 'num_rows')` bahkan melempar *method does not
+exist*, yang membuktikan murni itu property.
+
+Konsekuensi praktis: **kode produksi jangan bergantung pada membaca properti
+internal tersebut** kalau pemanggilannya ingin bisa diuji dengan
+`tests/unit/support/MysqlFake.php`. Kalau memang butuh nilai tersebut, kirim
+melewat parameter atau kembalikan lewat jalur lain — bukan lewat properti stmt.
+
+---
+
 ### Test Infrastructure — catatan penting
 
 #### 🚨 `createMock(mysqli::class)` menghabiskan 8,86 GiB RAM

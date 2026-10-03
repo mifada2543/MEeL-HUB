@@ -435,6 +435,7 @@ CREATE TABLE
     KEY `idx_un_user` (`user_id`),
     KEY `idx_un_read` (`user_id`, `is_read`),
     KEY `idx_un_created` (`created_at`),
+    KEY `idx_un_user_type_created` (`user_id`, `type`, `created_at`),
     CONSTRAINT `user_notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 

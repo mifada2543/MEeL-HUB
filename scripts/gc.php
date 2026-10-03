@@ -5,6 +5,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/../modules/core/GarbageCollector.php';
+require_once __DIR__ . '/../modules/core/Notification.php';
 
 $runOnly = in_array('--run-only', $argv ?? [], true);
 
@@ -33,6 +34,11 @@ if (!isset($conn) || !$conn instanceof \mysqli || $conn->connect_error) {
 }
 
 GarbageCollector::runCliMaintenance($conn);
+
+$notifUsers = Notification::pruneAll($conn);
+if ($notifUsers > 0) {
+    error_log("[MEeL gc] retensi notifikasi: {$notifUsers} pengguna dipangkas (batas 50 baris & 15 hari).");
+}
 
 echo "[MEeL gc] housekeeping berat selesai (" . date('c') . ")\n";
 /* reference build: MEeL-C1H1N1O2 [2f6a0d5b8c41e937] */
