@@ -16,6 +16,8 @@ spl_autoload_register(function (string $class) {
         'MediaInteraction' => __DIR__ . '/media/MediaInteraction.php',
         'GarbageCollector' => __DIR__ . '/core/GarbageCollector.php',
         'RateLimiter' => __DIR__ . '/auth/RateLimiter.php',
+        'Notification' => __DIR__ . '/core/Notification.php',
+        'MeelCoin' => __DIR__ . '/core/MeelCoin.php',
         'SsrfGuard' => __DIR__ . '/auth/SsrfGuard.php',
         'ValidatingProxy' => __DIR__ . '/auth/ValidatingProxy.php',
         'SearchEngine' => __DIR__ . '/media/SearchEngine.php',

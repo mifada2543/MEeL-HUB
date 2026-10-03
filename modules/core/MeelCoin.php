@@ -180,7 +180,23 @@ class MeelCoin
         $added = min($refillAmt, $maxCoins - $current);
         if ($added <= 0) return false;
         self::log($conn, $userId, $added, $current + $added, 'refill');
+        self::notifyRefill($conn, $userId, $added);
         return true;
+    }
+
+
+    private static function notifyRefill(\mysqli $conn, int $userId, int $added): void
+    {
+        if ($added <= 0 || !class_exists('Notification')) {
+            return;
+        }
+        Notification::create(
+            $conn,
+            $userId,
+            'meelcoin',
+            'Isi Ulang MEeLCoin',
+            'Saldo Anda bertambah ' . $added . ' dari isi ulang.'
+        );
     }
 
     public static function getRefillCountdown(\mysqli $conn, int $userId, string $role): int
