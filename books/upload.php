@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
     <?php foreach (require __DIR__ . '/../assets/css/books/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/books/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/books/' . $__f) ?>">
     <?php endforeach; ?>
-    <link rel="stylesheet" href="../assets/css/books/upload/main.css">
+    <link rel="stylesheet" href="../assets/css/books/upload/main.css<?= meel_asset_version('assets/css/books/upload/main.css') ?>">
 </head>
 
 <body class="min-h-screen flex items-center justify-center p-6">

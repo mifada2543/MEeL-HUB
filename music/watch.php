@@ -49,7 +49,7 @@ session_write_close();
     <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
     <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/shared/comment.css<?= meel_asset_version('assets/css/shared/comment.css') ?>">
-    <script src="../assets/js/compatibilitas/htmx.min.js" defer></script>
+    <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -631,7 +631,7 @@ session_write_close();
     </script>
     <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>
     <script src="../assets/js/shared/recovery-manager.js<?= meel_asset_version('assets/js/shared/recovery-manager.js') ?>"></script>
-    <script src="../assets/js/compatibilitas/plyr.min.js"></script>
+    <script src="../assets/js/compatibilitas/plyr.min.js<?= meel_asset_version('assets/js/compatibilitas/plyr.min.js') ?>"></script>
     <script src="../assets/js/shared/state-keys.js<?= meel_asset_version('assets/js/shared/state-keys.js') ?>"></script>
     <script src="../assets/js/shared/keyboard.js<?= meel_asset_version('assets/js/shared/keyboard.js') ?>"></script>
     <script src="../assets/js/shared/temp-index.js<?= meel_asset_version('assets/js/shared/temp-index.js') ?>"></script>

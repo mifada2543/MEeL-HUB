@@ -90,7 +90,7 @@ function _scanSubdirs(string $dir): array {
     <?php foreach (require __DIR__ . '/../assets/css/books/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/books/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/books/' . $__f) ?>">
     <?php endforeach; ?>
-    <link rel="stylesheet" href="../assets/css/books/read/main.css">
+    <link rel="stylesheet" href="../assets/css/books/read/main.css<?= meel_asset_version('assets/css/books/read/main.css') ?>">
     <div id="reader-data"
          data-book-id="<?= (int)$book['id'] ?>"
          data-book-title="<?= htmlspecialchars($book['title'], ENT_QUOTES) ?>"

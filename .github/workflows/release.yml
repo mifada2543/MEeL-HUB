@@ -65,6 +65,21 @@ jobs:
     name: Test gate sebelum release
     needs: resolve
     runs-on: ubuntu-latest
+    # WAJIB: `vendor/bin/phpunit` di bawah menjalankan KEDUA suite, termasuk
+    # 'MEeL Integration Tests' yang butuh MySQL. Tanpa service di sini seluruh
+    # integration test ERROR dan gate ini mustahil hijau.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,12 +92,17 @@ jobs:
         with:
           php-version: '8.2'
           coverage: none
+          extensions: mysqli
           tools: composer
 
       - name: Install dependencies
         run: composer install --no-progress --prefer-dist
 
       - name: Run full test suite (unit + integration)
+        env:
+          MEEL_TEST_DB_HOST: 127.0.0.1
+          MEEL_TEST_DB_USER: root
+          MEEL_TEST_DB_PASS: root
         run: vendor/bin/phpunit
 
       - name: Run arcade-specific integration tests

@@ -10,14 +10,14 @@
     </testsuite>
   </testsuites>
   <php>
+    <ini name="memory_limit" value="2G"/>
     <const name="PHPUNIT_TEST" value="true"/>
     <const name="MEEL_FFMPEG_PATH" value=""/>
     <const name="MEEL_FFPROBE_PATH" value=""/>
     <const name="MEEL_NODE_PATH" value=""/>
     <const name="MEEL_YTDLP_PATH" value=""/>
-    <!-- Cache System::getServerStats() dialihkan ke dir test (temp/cache
-             milik web server tidak writable oleh proses test CLI). -->
     <const name="MEEL_SERVER_STATS_CACHE" value="temp/cache-test/server_stats_info.json"/>
+    <const name="MEEL_MEDIA_CACHE_DIR" value="temp/cache-test/media"/>
   </php>
   <!-- reference build: MEeL-C8H11NO2 [ea896f6d36682ab3] -->
   <logging>

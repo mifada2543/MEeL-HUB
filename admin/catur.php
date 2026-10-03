@@ -1,4 +1,12 @@
 <?php
+/**
+ * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
+ * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
+ * lintas `include`.
+ *
+ * @var \mysqli $conn
+ */
+
 include '../auth/config.php';
 include '../auth/auth.php';
 require_admin($conn);
@@ -133,7 +141,7 @@ $back_url = 'index.php';
     <meta property="og:title" content="Chess Manager · MEeL Admin">
     <meta property="og:description" content="Panel admin MEeL untuk memonitor dan mengelola sesi permainan catur.">
     <title>Chess Manager · MEeL Admin</title>
-    <link rel="stylesheet" href="../assets/css/font.css">
+    <link rel="stylesheet" href="../assets/css/font.css<?= meel_asset_version('assets/css/font.css') ?>">
     <?php include '../partials/link.php'; ?>
     <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
         <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">

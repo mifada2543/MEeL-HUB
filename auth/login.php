@@ -66,8 +66,9 @@ if (isset($_POST['login']) && !$is_locked) {
                                 $_SESSION['mfa_temp_username'] = $u['username'];
                                 $_SESSION['mfa_temp_role'] = $u['role'];
                                 log_activity($conn, $u['id'], 'login_password_ok');
-                                $upd = $conn->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
-                                $upd->bind_param("i", $u['id']);
+                                $now = meel_now();
+                                $upd = $conn->prepare("UPDATE users SET last_activity = ? WHERE id = ?");
+                                $upd->bind_param("si", $now, $u['id']);
                                 $upd->execute();
                                 $upd->close();
                                 header("Location: mfa-verify");
@@ -81,9 +82,9 @@ if (isset($_POST['login']) && !$is_locked) {
 
                             log_activity($conn, $u['id'], 'login');
 
-                            $upd = $conn->prepare("UPDATE users SET last_session_id = ?, last_activity = NOW() WHERE id = ?");
+                            $upd = $conn->prepare("UPDATE users SET last_session_id = ?, last_activity = ? WHERE id = ?");
                             if ($upd) {
-                                $upd->bind_param("si", $current_sid, $u['id']);
+                                $upd->bind_param("ssi", $current_sid, $now, $u['id']);
                                 $upd->execute();
                                 header("Location: ../");
                                 exit;

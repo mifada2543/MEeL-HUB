@@ -37,10 +37,10 @@ $auth_extra_head = $auth_extra_head ?? '';
     <meta name="twitter:card" content="summary_large_image">
     <title><?= htmlspecialchars($auth_title ?? '') ?></title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <link href="../assets/css/tailwind.min.css" rel="stylesheet">
+    <link href="../assets/css/tailwind.min.css<?= meel_asset_version('assets/css/tailwind.min.css') ?>" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/shared/theme-tokens.css?v=<?= @filemtime(__DIR__ . '/../../assets/css/shared/theme-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/../../assets/css/shared/light-theme.css') ?>">
-    <script src="../assets/js/compatibilitas/lucide.js"></script>
+    <script src="../assets/js/compatibilitas/lucide.js<?= meel_asset_version('assets/js/compatibilitas/lucide.js') ?>"></script>
     <link rel="stylesheet" href="../assets/css/auth/base.css?v=<?= @filemtime(__DIR__ . '/../../assets/css/auth/base.css') ?>">
     <style><?= $auth_extra_style ?></style>
     <?= $auth_extra_head ?>

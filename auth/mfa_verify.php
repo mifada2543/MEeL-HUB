@@ -72,8 +72,9 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
                 unset($_SESSION['mfa_temp_uid'], $_SESSION['mfa_temp_username'], $_SESSION['mfa_temp_role']);
                 log_activity($conn, $temp_id, 'login');
                 $current_sid = session_id();
-                $upd = $conn->prepare("UPDATE users SET last_session_id = ?, last_activity = NOW() WHERE id = ?");
-                $upd->bind_param("si", $current_sid, $temp_id);
+                $now = meel_now();
+                $upd = $conn->prepare("UPDATE users SET last_session_id = ?, last_activity = ? WHERE id = ?");
+                $upd->bind_param("ssi", $current_sid, $now, $temp_id);
                 $upd->execute();
                 $upd->close();
                 $stmt = $conn->prepare("INSERT INTO activity_log (user_id, action, media_type, ip_address) VALUES (?, 'mfa_verify', 'totp', ?)");

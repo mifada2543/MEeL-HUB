@@ -20,13 +20,13 @@ $counts = $library->getCounts();
     $_META_DESC = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.';
     include 'partials/head.php';
     ?>
-    <link rel="stylesheet" href="assets/css/index(hub).css">
-    <link href="assets/css/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/index(hub).css<?= meel_asset_version('assets/css/index(hub).css') ?>">
+    <link href="assets/css/tailwind.min.css<?= meel_asset_version('assets/css/tailwind.min.css') ?>" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/shared/theme-tokens.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/theme-tokens.css') ?>">
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
-    <script src="assets/js/compatibilitas/lucide.js"></script>
-    <script src="assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-    <script src="assets/js/compatibilitas/script.min.js"></script>
+    <script src="assets/js/compatibilitas/lucide.js<?= meel_asset_version('assets/js/compatibilitas/lucide.js') ?>"></script>
+    <script src="assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
+    <script src="assets/js/compatibilitas/script.min.js<?= meel_asset_version('assets/js/compatibilitas/script.min.js') ?>"></script>
     <script src="assets/js/shared/state-keys.js?v=<?= filemtime(__DIR__ . '/assets/js/shared/state-keys.js') ?>"></script>
     <script src="assets/js/shared/health-reminder.js?v=<?= filemtime(__DIR__ . '/assets/js/shared/health-reminder.js') ?>"></script>
     <script src="assets/js/shared/theme.js?v=<?= @filemtime(__DIR__ . '/assets/js/shared/theme.js') ?>"></script>

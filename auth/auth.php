@@ -23,8 +23,9 @@ if ($user_data) {
         header("Location: " . base_url('/auth/login?error=session_expired'));
         exit;
     }
-    $stmt = $conn->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
+    $stmt = $conn->prepare("UPDATE users SET last_activity = ? WHERE id = ?");
+    $now = meel_now();
+    $stmt->bind_param("si", $now, $user_id);
     $stmt->execute();
     $_SESSION['role'] = $user_data['role'];
 }

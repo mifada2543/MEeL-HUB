@@ -16,15 +16,46 @@ class GarbageCollector
 
     private static bool $hasRun = false;
 
+    private static bool $cliOnlyRan = false;
+
+    public static function runCliMaintenance(\mysqli $conn): void
+    {
+        if (PHP_SAPI !== 'cli' || self::$cliOnlyRan) {
+            return;
+        }
+        self::$cliOnlyRan = true;
+
+        self::syncViews($conn);
+        self::resetGuestsAutoIncrement($conn);
+    }
+
+    private static function resetGuestsAutoIncrement(\mysqli $conn): void
+    {
+        if (!function_exists('purge_guest_users')) {
+            error_log('[MEeL] GarbageCollector: purge_guest_users() tidak termuat, reset AUTO_INCREMENT dilewati.');
+            return;
+        }
+        if (!self::cleanGuests($conn)) {
+            return;
+        }
+        $result = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS new_ai FROM users");
+        if (!$result) {
+            return;
+        }
+        $row = $result->fetch_assoc();
+        $newAi = (int) ($row['new_ai'] ?? 0);
+        if ($newAi < 1) {
+            return;
+        }
+        $conn->query("ALTER TABLE users AUTO_INCREMENT = " . $newAi);
+    }
+
     public static function cleanGuests(\mysqli $conn): int
     {
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_guest_last_run.txt';
 
-        if (is_readable($throttleFile)) {
-            $lastRun = (int) file_get_contents($throttleFile);
-            if ($lastRun > 0 && (time() - $lastRun) < self::GUEST_CLEANUP_INTERVAL) {
-                return 0;
-            }
+        if (self::isWithinThrottle($throttleFile, self::GUEST_CLEANUP_INTERVAL)) {
+            return 0;
         }
 
         $totalCleaned = 0;
@@ -49,15 +80,6 @@ class GarbageCollector
             $totalCleaned += $deleted;
         }
 
-        if ($totalCleaned > 0) {
-            $result = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS new_ai FROM users");
-            if ($result) {
-                $row = $result->fetch_assoc();
-                $newAi = (int) $row['new_ai'];
-                $conn->query("ALTER TABLE users AUTO_INCREMENT = " . (int)$newAi);
-            }
-        }
-
         self::writeThrottleFile($throttleFile);
 
         return $totalCleaned;
@@ -68,9 +90,11 @@ class GarbageCollector
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_views_sync_last_run.txt';
         $interval = 3600;
 
-        if (is_readable($throttleFile)) {
-            $lastRun = (int) file_get_contents($throttleFile);
-            if ($lastRun > 0 && (time() - $lastRun) < $interval) return;
+        if (self::isWithinThrottle($throttleFile, $interval)) return;
+
+        if (!class_exists(MediaViewer::class)) {
+            error_log('[MEeL] GarbageCollector::syncViews: kelas MediaViewer tidak termuat, dilewati.');
+            return;
         }
 
         MediaViewer::syncViewsFromLogs($conn);
@@ -86,11 +110,8 @@ class GarbageCollector
 
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_chess_last_run.txt';
 
-        if (is_readable($throttleFile)) {
-            $lastRun = (int) file_get_contents($throttleFile);
-            if ($lastRun > 0 && (time() - $lastRun) < self::CHESS_CLEANUP_INTERVAL) {
-                return 0;
-            }
+        if (self::isWithinThrottle($throttleFile, self::CHESS_CLEANUP_INTERVAL)) {
+            return 0;
         }
 
         $totalCleaned = 0;
@@ -154,6 +175,17 @@ class GarbageCollector
         return $totalCleaned;
     }
 
+    public const RUN_INTERVAL_SECONDS = 60;
+
+    private static function isWithinThrottle(string $throttleFile, int $interval): bool
+    {
+        if (!is_readable($throttleFile)) {
+            return false;
+        }
+        $lastRun = (int) file_get_contents($throttleFile);
+        return $lastRun > 0 && (time() - $lastRun) < $interval;
+    }
+
     private static function writeThrottleFile(string $throttleFile): void
     {
         $dir = dirname($throttleFile);
@@ -179,6 +211,11 @@ class GarbageCollector
         if (self::$hasRun) return;
         self::$hasRun = true;
 
+        $throttleFile = self::runThrottleFile();
+        if (self::isWithinThrottle($throttleFile, self::RUN_INTERVAL_SECONDS)) {
+            return;
+        }
+
         $directories = self::getTargetDirectories();
         if (!empty($directories)) {
             $timeout = microtime(true) + 3;
@@ -193,6 +230,13 @@ class GarbageCollector
         if (class_exists('RateLimiter')) {
             RateLimiter::cleanup();
         }
+
+        self::writeThrottleFile($throttleFile);
+    }
+
+    private static function runThrottleFile(): string
+    {
+        return dirname(__DIR__, 2) . '/temp/gc_run_last_run.txt';
     }
 
     private static function cleanPendingFileDeletions(): void
@@ -200,10 +244,7 @@ class GarbageCollector
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_pending_delete_last_run.txt';
         $interval = 300;
 
-        if (is_readable($throttleFile)) {
-            $lastRun = (int) file_get_contents($throttleFile);
-            if ($lastRun > 0 && (time() - $lastRun) < $interval) return;
-        }
+        if (self::isWithinThrottle($throttleFile, $interval)) return;
 
         $pendingFile = dirname(__DIR__, 2) . '/temp/pending_delete.json';
         if (!file_exists($pendingFile)) {

@@ -1,4 +1,12 @@
 <?php
+/**
+ * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
+ * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
+ * lintas `include`.
+ *
+ * @var \mysqli $conn
+ */
+
 /* reference build: MEeL-C3H7NO2S [40ae36a03f3f429a] */
 include '../auth/config.php';
 include '../auth/auth.php';

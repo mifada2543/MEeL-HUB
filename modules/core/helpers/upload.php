@@ -342,6 +342,9 @@ function meel_insert_music_row(
         return [false, $err];
     }
     $stmt->close();
+    if (function_exists('meel_invalidate_media_stats_cache')) {
+        meel_invalidate_media_stats_cache('music');
+    }
     return [true, ''];
 }
 }

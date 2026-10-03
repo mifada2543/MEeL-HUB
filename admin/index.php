@@ -1,4 +1,34 @@
 <?php
+/**
+ * @var \mysqli $conn
+ * @var System $sys
+ * @var \mysqli_result $banned_ips
+ * @var \mysqli_result $all_users
+ * @var \mysqli_result $top_media
+ * @var \mysqli_result $pending_users
+ * @var \mysqli_result $result_monitor
+ * @var array<string,mixed> $stats
+ * @var array<string,mixed> $server_stats
+ * @var array<string,mixed> $orphans
+ * @var array<int,mixed> $chart_activity
+ * @var float $ssd_free
+ * @var float $ssd_used
+ * @var float $ssd_total
+ * @var float $hdd_free
+ * @var float $hdd_used
+ * @var float $hdd_total
+ * @var float $p_vid
+ * @var float $sz_vid
+ * @var float $p_mus
+ * @var float $sz_mus
+ * @var float $p_book
+ * @var float $sz_book
+ * @var float $p_drive
+ * @var float $sz_d_prv
+ * @var float $sz_d_pub
+ * @var int|null $orphan_checked_at
+ */
+
 include '../auth/config.php';
 include '../auth/auth.php';
 include_once '../modules/core/helpers.php';
@@ -13,17 +43,11 @@ define('MEEL_ADMIN_CONTEXT', true);
 include '../controllers/admin/admin_actions.php';
 include '../controllers/admin/admin_data.php';
 
-// Variabel di bawah di-set oleh include controllers/admin/admin_data.php (valid saat runtime; @var untuk intelephense).
-/** @var System $sys; \mysqli_result $banned_ips, $all_users, $top_media, $pending_users, $result_monitor */
-/** @var array $stats, $server_stats, $orphans, $chart_activity; float $ssd_free/$ssd_used/$ssd_total/$hdd_free, $sz_*, $p_* */
-
 require_once __DIR__ . '/../modules/core/MeelCoin.php';
 
 GarbageCollector::cleanGuests($conn);
 
 GarbageCollector::cleanChessRooms($conn);
-
-GarbageCollector::syncViews($conn);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -40,7 +64,7 @@ include __DIR__ . '/../partials/scripts.php';
     <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
     <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/admin/index.css?v=<?= filemtime('../assets/css/admin/index.css') ?>">
-    <script defer src="../assets/js/compatibilitas/chart.umd.min.js"></script>
+    <script defer src="../assets/js/compatibilitas/chart.umd.min.js<?= meel_asset_version('assets/js/compatibilitas/chart.umd.min.js') ?>"></script>
 </head>
 
 <body class="text-gray-300 font-sans min-h-screen">

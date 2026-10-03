@@ -272,8 +272,8 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
     </main>
 
     <?php include '../partials/footer.php'; ?>
-    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/compatibilitas/script.min.js"></script>
+    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
+    <script src="../assets/js/compatibilitas/script.min.js<?= meel_asset_version('assets/js/compatibilitas/script.min.js') ?>"></script>
     <script src="../assets/js/profile/manage.js?v=<?= filemtime(__DIR__ . '/../assets/js/profile/manage.js') ?>"></script>
 </body>
 

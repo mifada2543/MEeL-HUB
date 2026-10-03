@@ -693,6 +693,55 @@ function meel_xsendfile_header(string $realPath): string
 }
 }
 
+if (!function_exists('meel_cache_is_fresh')) {
+
+function meel_cache_is_fresh(array $server, string $etag, int $mtime): bool
+{
+    $ifNoneMatch = trim((string)($server['HTTP_IF_NONE_MATCH'] ?? ''));
+    if ($ifNoneMatch === '*') {
+
+        return true;
+    }
+    if ($ifNoneMatch !== '') {
+        foreach (explode(',', $ifNoneMatch) as $candidate) {
+            $candidate = trim($candidate);
+
+            if ($candidate === $etag || $candidate === 'W/' . $etag) {
+                return true;
+            }
+        }
+    }
+
+    $ifModifiedSince = trim((string)($server['HTTP_IF_MODIFIED_SINCE'] ?? ''));
+    if ($ifModifiedSince !== '') {
+        $since = strtotime($ifModifiedSince);
+        if ($since !== false && $mtime <= $since) {
+            return true;
+        }
+    }
+
+    return false;
+}
+}
+
+if (!function_exists('meel_media_etag')) {
+
+function meel_media_etag(string $realPath, int $size, int $mtime): string
+{
+    return '"' . substr(md5($realPath . '|' . $size . '|' . $mtime), 0, 32) . '"';
+}
+}
+
+if (!function_exists('meel_media_cache_control')) {
+
+function meel_media_cache_control(string $ext): string
+{
+    return $ext === 'm3u8'
+        ? 'private, no-cache'
+        : 'private, max-age=31536000, immutable';
+}
+}
+
 if (!function_exists('meel_serve_media_file')) {
 function meel_serve_media_file(string $module, string $relPath, array $opts = []): void
 {
@@ -745,6 +794,16 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
     ];
     $mime = $mimeMap[$ext] ?? 'application/octet-stream';
 
+    $size = (int) @filesize($realFull);
+    $mtime = (int) @filemtime($realFull);
+    if ($mtime <= 0) {
+        $mtime = time();
+    }
+
+    $etag = meel_media_etag($realFull, $size, $mtime);
+    $lastModified = gmdate('D, d M Y H:i:s', $mtime) . ' GMT';
+    $cacheControl = meel_media_cache_control($ext);
+
     if (!empty($opts['hls_gate']) && (str_starts_with($relPath, 'video/') || str_contains($relPath, '/video/'))) {
         $referer = $_SERVER['HTTP_REFERER'] ?? '';
         $host = $_SERVER['HTTP_HOST'] ?? '';
@@ -770,12 +829,13 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
     if (meel_xsendfile_ready($realFull)) {
         header('Content-Type: ' . $mime);
         header('Accept-Ranges: bytes');
-        header('Cache-Control: private, must-revalidate');
+        header('Cache-Control: ' . $cacheControl);
+        header('ETag: ' . $etag);
+        header('Last-Modified: ' . $lastModified);
         header('X-Sendfile: ' . meel_xsendfile_header($realFull));
         exit;
     }
 
-    $size = (int) @filesize($realFull);
     $start = 0;
     $end = $size - 1;
     $range = $_SERVER['HTTP_RANGE'] ?? '';
@@ -802,10 +862,21 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
         }
     }
 
+    if (!$isPartial && meel_cache_is_fresh($_SERVER, $etag, $mtime)) {
+        http_response_code(304);
+        header('ETag: ' . $etag);
+        header('Last-Modified: ' . $lastModified);
+        header('Cache-Control: ' . $cacheControl);
+        exit;
+    }
+
     header('Content-Type: ' . $mime);
     header('X-Content-Type-Options: nosniff');
     header('Accept-Ranges: bytes');
     header('Content-Length: ' . ($end - $start + 1));
+    header('ETag: ' . $etag);
+    header('Last-Modified: ' . $lastModified);
+    header('Cache-Control: ' . $cacheControl);
     if ($isPartial) {
         header('HTTP/1.1 206 Partial Content');
         header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);

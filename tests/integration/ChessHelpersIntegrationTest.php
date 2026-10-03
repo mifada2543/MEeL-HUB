@@ -8,10 +8,6 @@ require_once __DIR__ . '/ChessTestCase.php';
 
 use PHPUnit\Framework\TestCase;
 
-/**
- * @group integration
- * @covers chess_opponent_online
- */
 class ChessHelpersIntegrationTest extends ChessTestCase
 {
 
@@ -19,7 +15,7 @@ class ChessHelpersIntegrationTest extends ChessTestCase
     {
 
         $this->conn->query(
-            "UPDATE users SET last_activity = NOW() WHERE id = " . DbTestHelper::REGULAR_USER_ID
+            "UPDATE users SET last_activity = '" . meel_now() . "' WHERE id = " . DbTestHelper::REGULAR_USER_ID
         );
 
         $this->assertTrue(chess_opponent_online($this->conn, DbTestHelper::REGULAR_USER_ID));
@@ -29,7 +25,7 @@ class ChessHelpersIntegrationTest extends ChessTestCase
     {
 
         $this->conn->query(
-            "UPDATE users SET last_activity = DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+            "UPDATE users SET last_activity = '" . meel_now_ago(600) . "'
              WHERE id = " . DbTestHelper::REGULAR_USER_ID
         );
 
@@ -40,7 +36,7 @@ class ChessHelpersIntegrationTest extends ChessTestCase
     {
 
         $this->conn->query(
-            "UPDATE users SET last_activity = DATE_SUB(NOW(), INTERVAL 60 SECOND)
+            "UPDATE users SET last_activity = '" . meel_now_ago(60) . "'
              WHERE id = " . DbTestHelper::REGULAR_USER_ID
         );
 

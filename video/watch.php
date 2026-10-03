@@ -50,8 +50,8 @@ session_write_close();
     <?php endforeach; ?>
     <link rel="stylesheet" href="../assets/css/video/watch/main.css<?= meel_asset_version('assets/css/video/watch/main.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/comment.css<?= meel_asset_version('assets/css/shared/comment.css') ?>">
-    <script src="../assets/js/compatibilitas/htmx.min.js"></script>
-    <script src="../assets/js/compatibilitas/hls.js"></script>
+    <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
+    <script src="../assets/js/compatibilitas/hls.js<?= meel_asset_version('assets/js/compatibilitas/hls.js') ?>"></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -385,7 +385,7 @@ session_write_close();
     <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>
     <script src="../assets/js/shared/head-meta.js<?= meel_asset_version('assets/js/shared/head-meta.js') ?>"></script>
     <script src="../assets/js/shared/recovery-manager.js<?= meel_asset_version('assets/js/shared/recovery-manager.js') ?>"></script>
-    <script src="../assets/js/compatibilitas/plyr.min.js"></script>
+    <script src="../assets/js/compatibilitas/plyr.min.js<?= meel_asset_version('assets/js/compatibilitas/plyr.min.js') ?>"></script>
 
     <script>
         window.playerConfig = <?= json_encode([

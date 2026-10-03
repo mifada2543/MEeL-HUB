@@ -1,4 +1,12 @@
 <?php
+/**
+ * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
+ * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
+ * lintas `include`.
+ *
+ * @var \mysqli $conn
+ */
+
 /* reference build: MEeL-C5H5N5O [c2c3223a89e5e36a] */
 include '../auth/config.php';
 include '../auth/auth.php';
@@ -930,7 +938,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                         </div>
                     </div>
                     <div id="view-chart" class="w-full" style="height:280px;"></div>
-                    <script src="../assets/js/compatibilitas/chart.umd.min.js"></script>
+                    <script src="../assets/js/compatibilitas/chart.umd.min.js<?= meel_asset_version('assets/js/compatibilitas/chart.umd.min.js') ?>"></script>
                     <script>
                         (function() {
                             const data = <?= json_encode($view_stats['chart']) ?>;

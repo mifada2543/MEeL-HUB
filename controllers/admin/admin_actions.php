@@ -232,12 +232,13 @@ if (isset($_POST['recheck_orphans'])) {
 }
 
 if (isset($_POST['kick_user'])) {
+    $kicked_at = meel_now_ago(600);
     $stmt = $conn->prepare("UPDATE users SET
         last_session_id = 'KICKED',
         last_page       = 'KICKED BY ADMIN',
-        last_activity   = DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+        last_activity   = ?
         WHERE username = ?");
-    $stmt->bind_param("s", $_POST['kick_user']);
+    $stmt->bind_param("ss", $kicked_at, $_POST['kick_user']);
     $stmt->execute();
     log_activity($conn, (int)$_SESSION['user_id'], 'kick_user', 'user', 0);
     header("Location: user-management.php?msg=Kicked#monitor");
