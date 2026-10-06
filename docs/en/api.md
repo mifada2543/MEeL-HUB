@@ -740,9 +740,11 @@ All media bytes are served through PHP endpoints that delegate to one shared fun
 |---|---|---|
 | `u` | Yes | Target username |
 | `tab` | No | `all` (default), `video`, `music` |
-| `offset` | Yes | Pagination offset (starts at 12) |
+| `offset` | Yes | Pagination offset (starts at 12, +12 per batch) |
 
-Returns HTML fragment (content cards + next load-more button or "All Content Loaded" marker). Used by `profile/index.php` via `hx-get` for infinite scroll.
+Returns an HTML fragment with content cards (from the `profile/content_card.php` partial) **plus a replacement sentinel** `#channel-more-area` carrying `hx-trigger='revealed'`, or the end box **Konten Habis · Semua konten sudah ditampilkan** on the final batch. Used by `profile/index.php` via `hx-get` for infinite scroll — no click button.
+
+> Each batch loads automatically once the sentinel enters the viewport (`revealed` pattern, same as `video/load-more` and `music/load-more`). On a failed request, `assets/js/shared/sentinel-retry.js` drops `data-hx-revealed` so the next scroll retries. An empty batch also renders the end box, so the chain never loops.
 
 ### Media Deletion & Cleanup
 
