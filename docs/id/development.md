@@ -426,7 +426,7 @@ contoh `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch
 
 ### Pola Infinite Scroll (Sentinel)
 
-Dipakai library video & music, hasil search, dan sidebar rekomendasi watch — menggantikan tombol "Muat Lebih Banyak" lama:
+Dipakai library video & music, hasil search, sidebar rekomendasi watch, dan grid channel profil — menggantikan tombol "Muat Lebih Banyak" lama:
 
 ```html
 <!-- Sentinel: elemen yang sama menjadi requester sekaligus target -->
@@ -451,8 +451,8 @@ Dipakai library video & music, hasil search, dan sidebar rekomendasi watch — m
   `data-hx-revealed` dari sentinel yang request-nya gagal, sehingga scroll
   *berikutnya* memicunya lagi (retry by user scroll — tanpa loop otomatis).
 - **Id itu penta:** pertahankan id sentinel (`#load-more-area`, `#load-more-music`,
-  `#load-more-music-search`) — CSS `overflow-anchor: none` dan guard
-  `isFromLoadMore` di `assets/js/music/index/index.js` bergantung padanya.
+  `#load-more-music-search`, `#channel-more-area`) — CSS `overflow-anchor: none`
+  dan guard `isFromLoadMore` di `assets/js/music/index/index.js` bergantung padanya.
   Hasil search memakai id sentinel terpisah agar pembersihan pasca-search tidak mematikannya.
 - **Gotcha:** pada swap `outerHTML`, `htmx:afterSwap` menyala **sekali per elemen
   baru** — kartu tidak punya `id` sehingga `targetId === ""`. Perlakukan fragment

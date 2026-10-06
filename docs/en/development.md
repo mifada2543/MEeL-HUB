@@ -268,7 +268,7 @@ e.g. `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch.p
 
 ### Infinite Scroll (Sentinel) Pattern
 
-Used by the video & music libraries, search results, and watch recommendation sidebars — replaces the old "Load More" button:
+Used by the video & music libraries, search results, watch recommendation sidebars, and the profile channel grid — replaces the old "Load More" button:
 
 ```html
 <!-- Sentinel: requester and target are the same element -->
@@ -293,8 +293,8 @@ Used by the video & music libraries, search results, and watch recommendation si
   from a sentinel whose request failed, so the *next* scroll re-fires it
   (retries on user scroll — no automatic loop).
 - **IDs matter:** keep the sentinel ids (`#load-more-area`, `#load-more-music`,
-  `#load-more-music-search`) — CSS `overflow-anchor: none` and the
-  `isFromLoadMore` guard in `assets/js/music/index/index.js` depend on them.
+  `#load-more-music-search`, `#channel-more-area`) — CSS `overflow-anchor: none`
+  and the `isFromLoadMore` guard in `assets/js/music/index/index.js` depend on them.
   Search results use their own sentinel id so post-search cleanup can't disable them.
 - **Gotcha:** for an `outerHTML` swap, `htmx:afterSwap` fires **once per new
   element** — cards have no `id`, so `targetId === ""`. Treat fragment swaps as

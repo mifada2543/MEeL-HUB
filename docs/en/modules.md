@@ -759,7 +759,8 @@ User profile page with role-based visibility, theme toggle, and public channel g
 | Component | Role |
 |---|---|
 | `profile/index.php` | Profile page — displays avatar, bio, stats, action buttons, content channel grid |
-| `profile/channel_more.php` | HTMX fragment for infinite scroll load-more on profile channel |
+| `profile/channel_more.php` | HTMX fragment for infinite scroll load-more on profile channel (auto-load sentinel) |
+| `profile/content_card.php` | Channel content card component, shared by `index.php` and `channel_more.php` |
 | `controllers/profile/profile_edit.php` | Profile edit handler |
 | `controllers/profile/manage.php` | Content management (video/music) |
 | `modules/media/ProfileRepository.php` | Profile data queries (count video, music, paginated feed) |
@@ -782,7 +783,7 @@ User profile page with role-based visibility, theme toggle, and public channel g
 | Bio | from DB | from DB | "Akun Guest" |
 | Badge | Staff/Member | Staff/Member | Guest |
 
-**Profile as Channel:** The profile page doubles as a public channel. For logged-in users, it renders a content grid with initial batch of 12 items. HTMX-powered infinite scroll loads more via `profile/channel-more`. Guest profiles only show the profile card — tabs and content grid are hidden.
+**Profile as Channel:** The profile page doubles as a public channel. For logged-in users, it renders a content grid with initial batch of 12 items. HTMX-powered infinite scroll loads more via `profile/channel-more` — the `#channel-more-area` sentinel uses `hx-trigger=revealed`, so the next batch loads on its own when it enters the viewport (retry via `assets/js/shared/sentinel-retry.js`, end box once content runs out). Cards render through the `profile/content_card.php` partial. Guest profiles only show the profile card — tabs and content grid are hidden.
 
 **Canonical redirects:**
 - `profile/?u=X` → 301 → `profile/X`

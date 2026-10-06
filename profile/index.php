@@ -355,49 +355,21 @@ if (!$is_guest_profile) {
                     </div>
                 <?php else: ?>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        <?php foreach ($items as $item):
-                            $is_music = ($item['type'] ?? $active_tab) === 'music';
-                            $thumb = !empty($item['thumbnail'])
-                                ? ($is_music ? '../music/upload/thumbnail/' : '../video/upload/thumbnail/') . htmlspecialchars($item['thumbnail'])
-                                : ($is_music ? '../assets/img/music0.webp' : '../assets/img/video0.webp');
-                            $watch = base_url(($is_music ? '/music' : '/video') . '/watch?v=' . (int)$item['id']);
-                        ?>
-                            <div class="content-card">
-                                <a href="<?= $watch ?>" class="block card-thumb relative" title="<?= htmlspecialchars($item['title']) ?>">
-                                    <span class="type-badge <?= $is_music ? 'music' : 'video' ?>"><?= $is_music ? 'Music' : 'Video' ?></span>
-                                    <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($item['title']) ?>" loading="lazy" width="640" height="360">
-                                </a>
-                                <div class="card-body">
-                                    <a href="<?= $watch ?>" class="card-title no-underline hover:text-<?= $is_music ? 'orange' : 'red' ?>-400 transition-colors" title="<?= htmlspecialchars($item['title']) ?>">
-                                        <?= htmlspecialchars($item['title']) ?>
-                                    </a>
-                                    <div class="card-meta">
-                                        <?php if ($is_music): ?>
-                                            <span><?= htmlspecialchars($item['artist'] ?? 'Tidak diketahui') ?></span>
-                                            <span>•</span>
-                                            <span><?= number_format($item['views'] ?? 0) ?> views</span>
-                                        <?php else: ?>
-                                            <span><?= number_format($item['views'] ?? 0) ?> views</span>
-                                            <span>•</span>
-                                            <span><?= date('d M Y', strtotime($item['upload_date'])) ?></span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </div>
+                        <?php foreach ($items as $item): ?>
+                            <?php include __DIR__ . '/content_card.php'; ?>
                         <?php endforeach; ?>
 
                         <?php if ($has_more): ?>
-                            <button type="button" id="channel-more-area"
-                                class="col-span-full h-16 flex items-center justify-center gap-2 bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl cursor-pointer hover:border-white/10 hover:bg-white/[.03] transition-all group"
+                            <div id="channel-more-area" role="status"
+                                class="col-span-full flex items-center justify-center gap-2.5 py-6 bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl transition-all"
                                 hx-get="<?= htmlspecialchars('channel-more?u=' . rawurlencode($u['username']) . '&tab=' . $active_tab . '&offset=' . $initial_batch) ?>"
                                 hx-target="#channel-more-area"
                                 hx-swap="outerHTML"
-                                aria-label="Muat lebih banyak konten">
-                                <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300 group-hover:text-white transition-colors">
-                                    <i data-lucide="chevrons-down" class="w-3.5 h-3.5 inline-block -mr-1 mr-1.5"></i>
-                                    Muat Lebih Banyak <?= $active_tab === 'all' ? 'Konten' : ($active_tab === 'video' ? 'Video' : 'Musik') ?>
-                                </span>
-                            </button>
+                                hx-trigger="revealed"
+                                aria-label="Memuat lebih banyak konten">
+                                <div class="animate-spin h-3 w-3 border-2 border-t-transparent rounded-full" style="border-color:var(--meel-blue,#3b82f6);border-top-color:transparent"></div>
+                                <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300">Memuat...</span>
+                            </div>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
@@ -408,6 +380,7 @@ if (!$is_guest_profile) {
     <script src="../assets/js/shared/download-backup-codes.js<?= meel_asset_version('assets/js/shared/download-backup-codes.js') ?>"></script>
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js?v=<?= @filemtime(__DIR__ . '/../assets/js/shared/htmx-lucide.js') ?>"></script>
+    <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>
     <script src="../assets/js/profile/theme-init.js<?= meel_asset_version('assets/js/profile/theme-init.js') ?>"></script>
     <script src="../assets/js/profile/coin-countdown.js<?= meel_asset_version('assets/js/profile/coin-countdown.js') ?>"></script>
     <script>

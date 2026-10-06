@@ -678,7 +678,8 @@ Halaman profil pengguna dengan visibilitas berbasis role, theme toggle, dan grid
 | Komponen | Peran |
 |---|---|
 | `profile/index.php` | Halaman profil — menampilkan avatar, bio, statistik, tombol aksi, grid konten channel |
-| `profile/channel_more.php` | Fragment HTMX untuk infinite scroll load-more pada profile channel |
+| `profile/channel_more.php` | Fragment HTMX untuk infinite scroll load-more pada profile channel (sentinel auto-load) |
+| `profile/content_card.php` | Komponen kartu konten channel, dipakai bersama oleh `index.php` dan `channel_more.php` |
 | `controllers/profile/profile_edit.php` | Handler edit profil |
 | `controllers/profile/manage.php` | Manajemen konten (video/music) |
 | `modules/media/ProfileRepository.php` | Query data profil (count video, music, feed paginated) |
@@ -701,7 +702,7 @@ Halaman profil pengguna dengan visibilitas berbasis role, theme toggle, dan grid
 | Bio | dari DB | dari DB | "Akun Guest" |
 | Badge | Staff/Member | Staff/Member | Guest |
 
-**Profile sebagai Channel:** Halaman profil sekaligus channel publik. Untuk user yang login, menampilkan grid konten dengan batch awal 12 item. Infinite scroll via HTMX memuat lebih banyak melalui `profile/channel-more`. Profil guest hanya menampilkan card profil — tab dan grid konten tersembunyi.
+**Profile sebagai Channel:** Halaman profil sekaligus channel publik. Untuk user yang login, menampilkan grid konten dengan batch awal 12 item. Infinite scroll via HTMX memuat lebih banyak melalui `profile/channel-more` — sentinel `#channel-more-area` memakai `hx-trigger=revealed`, jadi batch berikutnya dimuat sendiri saat masuk viewport (retry via `assets/js/shared/sentinel-retry.js`, end box saat konten habis). Kartu dirender partial `profile/content_card.php`. Profil guest hanya menampilkan card profil — tab dan grid konten tersembunyi.
 
 **Canonical redirects:**
 - `profile/?u=X` → 301 → `profile/X`

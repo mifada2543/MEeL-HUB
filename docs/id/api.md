@@ -831,9 +831,11 @@ Semua byte media disajikan melalui endpoint PHP yang mendelegasikan ke satu fung
 |---|---|---|
 | `u` | Ya | Username target |
 | `tab` | Tidak | `all` (default), `video`, `music` |
-| `offset` | Ya | Offset paginasi (mulai dari 12) |
+| `offset` | Ya | Offset paginasi (mulai dari 12, bertambah 12 tiap batch) |
 
-Mengembalikan fragment HTML (kartu konten + tombol load more atau penanda "Semua Konten Dimuat"). Digunakan oleh `profile/index.php` via `hx-get` untuk infinite scroll.
+Mengembalikan fragment HTML berisi kartu konten (dari partial `profile/content_card.php`) **plus sentinel pengganti** `#channel-more-area` dengan trigger `hx-trigger='revealed'`, atau end box **Konten Habis · Semua konten sudah ditampilkan** saat batch terakhir. Dipakai `profile/index.php` via `hx-get` untuk infinite scroll — tanpa tombol klik.
+
+> Batch dimuat otomatis saat sentinel masuk viewport (pola `revealed`, sama seperti `video/load-more` dan `music/load-more`). Jika request gagal, `assets/js/shared/sentinel-retry.js` menghapus `data-hx-revealed` sehingga scroll berikutnya mencoba lagi. Batch kosong juga menghasilkan end box, sehingga rantai tidak pernah looping.
 
 ### Media Deletion & Cleanup
 

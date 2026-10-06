@@ -38,61 +38,31 @@ if ($active_tab === 'video') {
     $total = $profileRepo->countVideo($user_id) + $profileRepo->countMusic($user_id);
 }
 
-$next = $offset + count($items);
-$has_more = $next < $total;
+$next = $offset + $limit;
+$has_more = ($next < $total) && count($items) > 0;
 $more_url = 'channel-more?u=' . rawurlencode($target_user)
           . '&tab=' . $active_tab
           . '&offset=' . $next;
-$more_label = $active_tab === 'all' ? 'Konten' : ($active_tab === 'video' ? 'Video' : 'Musik');
 ?>
 
-<?php foreach ($items as $item):
-    $is_music = ($item['type'] ?? $active_tab) === 'music';
-    $thumb = !empty($item['thumbnail'])
-        ? ($is_music ? '../music/upload/thumbnail/' : '../video/upload/thumbnail/') . htmlspecialchars($item['thumbnail'])
-        : ($is_music ? '../assets/img/music0.webp' : '../assets/img/video0.webp');
-    $watch = base_url(($is_music ? '/music' : '/video') . '/watch?v=' . (int)$item['id']);
-?>
-    <div class="content-card">
-        <a href="<?= $watch ?>" class="block card-thumb relative" title="<?= htmlspecialchars($item['title']) ?>">
-            <span class="type-badge <?= $is_music ? 'music' : 'video' ?>"><?= $is_music ? 'Music' : 'Video' ?></span>
-            <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($item['title']) ?>" loading="lazy" width="640" height="360">
-        </a>
-        <div class="card-body">
-            <a href="<?= $watch ?>" class="card-title no-underline hover:text-<?= $is_music ? 'orange' : 'red' ?>-400 transition-colors" title="<?= htmlspecialchars($item['title']) ?>">
-                <?= htmlspecialchars($item['title']) ?>
-            </a>
-            <div class="card-meta">
-                <?php if ($is_music): ?>
-                    <span><?= htmlspecialchars($item['artist'] ?? 'Tidak diketahui') ?></span>
-                    <span>•</span>
-                <?php endif; ?>
-                <span><?= number_format($item['views'] ?? 0) ?> views</span>
-                <span>•</span>
-                <span><?= date('d M Y', strtotime($item['upload_date'])) ?></span>
-            </div>
-        </div>
-    </div>
+<?php foreach ($items as $item): ?>
+    <?php include __DIR__ . '/content_card.php'; ?>
 <?php endforeach; ?>
 
 <?php if ($has_more): ?>
-    <button type="button" id="channel-more-area"
-        class="col-span-full h-16 flex items-center justify-center gap-2 bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl cursor-pointer hover:border-white/10 hover:bg-white/[.03] transition-all group"
+    <div id="channel-more-area" role="status"
+        class="col-span-full flex items-center justify-center gap-2.5 py-6 bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl transition-all"
         hx-get="<?= htmlspecialchars($more_url) ?>"
         hx-target="#channel-more-area"
         hx-swap="outerHTML"
-        aria-label="Muat lebih banyak <?= strtolower($more_label) ?>">
-        <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300 group-hover:text-white transition-colors">
-            <i data-lucide="chevrons-down" class="w-3.5 h-3.5 inline-block -mr-1 mr-1.5"></i>
-            Muat Lebih Banyak <?= $more_label ?>
-        </span>
-    </button>
+        hx-trigger="revealed"
+        aria-label="Memuat lebih banyak konten">
+        <div class="animate-spin h-3 w-3 border-2 border-t-transparent rounded-full" style="border-color:var(--meel-blue,#3b82f6);border-top-color:transparent"></div>
+        <span class="text-[10px] font-bold uppercase tracking-[.2em] text-gray-300">Memuat...</span>
+    </div>
 <?php else: ?>
-    <div class="col-span-full h-16 flex items-center justify-center gap-2 border border-dashed border-white/[.04] rounded-2xl">
-        <span class="text-[9px] text-gray-600 uppercase tracking-widest flex items-center gap-2">
-            <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
-            Semua <?= $more_label ?> Dimuat
-        </span>
+    <div class="col-span-full py-6 text-center border border-dashed border-white/[.04] rounded-2xl">
+        <span class="text-[9px] text-gray-800 uppercase tracking-widest">Konten Habis · Semua konten sudah ditampilkan</span>
     </div>
 <?php endif; ?>
 <script>lucide.createIcons();</script>
