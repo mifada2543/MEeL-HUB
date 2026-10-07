@@ -1,0 +1,72 @@
+MEeL-HUB — NOTICE
+==================
+
+Copyright (C) 2026 Mifada
+
+MEeL-HUB is a self-hosted personal media hub for video streaming, music playback,
+digital books, cloud storage, media transcoding, and optional arcade features.
+
+Unless a file or component states otherwise, the source code in this repository is
+licensed under the GNU General Public License, version 3 (GPLv3). A copy of the
+license is available in the LICENSE file.
+
+This NOTICE file is informational only. It does not modify, replace, or add to the
+terms of any applicable license. When redistributing MEeL-HUB, preserve this file,
+the LICENSE file, and all other copyright and license notices included with the
+corresponding work.
+
+THIRD-PARTY SOFTWARE AND TECHNOLOGIES
+--------------------------------------
+
+MEeL-HUB is designed to work with, or may include integrations for, the following
+independent software and technologies:
+
+* PHP — https://www.php.net/
+* MySQL and MariaDB — https://www.mysql.com/ and https://mariadb.org/
+* Apache HTTP Server — https://httpd.apache.org/
+* FFmpeg — https://ffmpeg.org/
+* yt-dlp — https://github.com/yt-dlp/yt-dlp
+* PHPUnit — https://phpunit.de/
+* Tailwind CSS — https://tailwindcss.com/
+* HTMX — https://htmx.org/
+* Plyr — https://plyr.io/
+* HLS.js — https://github.com/video-dev/hls.js/
+
+These projects are separate works and are governed by their own licenses and
+notices. Their names and trademarks belong to their respective owners. The
+presence of a technology in this list does not by itself mean that a copy of that
+technology is redistributed with every MEeL-HUB installation.
+
+If you distribute a package that includes third-party files, bundled assets,
+modified components, generated media, fonts, icons, game assets, or other works
+not authored by Mifada, you are responsible for including the applicable license
+texts and attribution notices required by those works. Please review the license
+and notice files shipped with each dependency before redistribution.
+
+USER-PROVIDED CONTENT AND EXTERNAL SERVICES
+-------------------------------------------
+
+MEeL-HUB may be used to upload, store, stream, download, transcode, or display
+content supplied by users or obtained from external services. Users and operators
+are solely responsible for ensuring that their content, downloads, and use of
+external services comply with applicable law, copyright, terms of service, and
+privacy obligations.
+
+The project authors do not grant permission to redistribute copyrighted media,
+books, music, video, artwork, trademarks, or other third-party content merely
+because MEeL-HUB can process or display it.
+
+TRADEMARKS
+----------
+
+MEeL-HUB and the MEeL name and logo are used to identify this project. They may
+not be used to imply endorsement of modified or redistributed versions without
+permission. Other product names, logos, and marks referenced in this repository
+are the property of their respective owners.
+
+CONTACT
+-------
+
+Project: https://github.com/mifada2543/MEeL-HUB
+Author:  Mifada
+Email:   mifada2543@gmail.com
