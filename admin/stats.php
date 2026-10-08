@@ -235,9 +235,7 @@ while ($rc = $r->fetch_assoc()) {
     <title>MEeL | Analitik Media</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link rel="stylesheet" href="../assets/css/admin/stats.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin/stats.css') ?>">
     <script>
     window.addEventListener('pageshow', function(e) {
@@ -260,7 +258,7 @@ while ($rc = $r->fetch_assoc()) {
 
         <div class="flex items-center gap-4 mb-8">
             <div class="w-12 h-12 rounded-2xl bg-blue-600/15 border border-blue-600/25 flex items-center justify-center shrink-0">
-                <i data-lucide="bar-chart-2" class="text-blue-600" style="width:22px;height:22px;"></i>
+                <i data-lucide="bar-chart-2" class="text-blue-500" style="width:22px;height:22px;"></i>
             </div>
             <div>
                 <h1 class="text-[22px] font-extrabold text-white leading-tight">Analitik Media</h1>
@@ -465,7 +463,7 @@ while ($rc = $r->fetch_assoc()) {
                 <i data-lucide="trash-2" class="text-red-500" style="width:22px;height:22px;"></i>
             </div>
             <h3 class="modal-title">Hapus Konten?</h3>
-            <p style="font-size:13px;color:#6b7280;margin:0 0 10px;">Anda akan menghapus:</p>
+            <p style="font-size:13px;color:#8b93a1;margin:0 0 10px;">Anda akan menghapus:</p>
             <div class="modal-media-preview">
                 <img id="modal-thumb" src="" alt="" class="modal-thumb-img">
                 <div class="modal-media-info">

@@ -155,9 +155,7 @@ if (!$is_guest_profile) {
     <?php include '../partials/link.php'; ?>
     <?php ?>
     <meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
-    <?php foreach (require __DIR__ . '/../assets/css/profile/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/profile/<?= $__f ?><?= meel_asset_version('assets/css/profile/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('profile', '../assets/css/profile'); ?>
     <link rel="stylesheet" href="../assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/../assets/css/shared/light-theme.css') ?>">
 </head>
 
@@ -316,7 +314,7 @@ if (!$is_guest_profile) {
                             <span class="ml-2 text-[10px] bg-gray-500/20 text-gray-400 px-2 py-1 rounded-lg uppercase tracking-widest border border-gray-500/30">Tamu</span>
                         <?php endif; ?>
                     </h1>
-                    <p class="text-gray-500 text-sm mt-1">@<?= strtolower($u['username']) ?> • Profile</p>
+                    <p class="text-gray-400 text-sm mt-1">@<?= strtolower($u['username']) ?> • Profile</p>
 
                     <div class="mt-6 p-4 bg-white/5 rounded-2xl border border-white/5">
                         <p class="text-gray-400 text-sm italic leading-relaxed">
@@ -328,15 +326,15 @@ if (!$is_guest_profile) {
                         <div class="flex gap-4 mt-8">
                             <a href="?tab=all" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'all' ? 'stat-active-total' : 'stat-total' ?>">
                                 <span class="block text-xl font-bold text-white"><?= $total_uploads ?></span>
-                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Total Unggahan</span>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-widest transition">Total Unggahan</span>
                             </a>
                             <a href="?tab=video" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'video' ? 'stat-active-video' : 'stat-video' ?>">
                                 <span class="block text-xl font-bold text-white"><?= $total_video ?></span>
-                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Video</span>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-widest transition">Video</span>
                             </a>
                             <a href="?tab=music" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'music' ? 'stat-active-music' : 'stat-music' ?>">
                                 <span class="block text-xl font-bold text-white"><?= $total_music ?></span>
-                                <span class="text-[10px] text-gray-500 uppercase tracking-widest transition">Musik</span>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-widest transition">Musik</span>
                             </a>
                         </div>
                     <?php endif; ?>
@@ -389,7 +387,7 @@ if (!$is_guest_profile) {
                 title: 'Kode Cadangan MFA',
                 html: '<div style="font-size:12px;color:#9ca3af;margin-bottom:12px">Masukkan <strong style="color:#e5e7eb">kata sandi</strong> untuk verifikasi. Kode cadangan LAMA akan <strong style="color:#fbbf24">dinonaktifkan</strong> dan diganti dengan yang baru.</div>' +
                     '<div style="position:relative">' +
-                    '  <i data-lucide="lock" style="position:absolute;left:14px;top:13px;width:16px;height:16px;color:#6b7280"></i>' +
+                    '  <i data-lucide="lock" style="position:absolute;left:14px;top:13px;width:16px;height:16px;color:#8b93a1"></i>' +
                     '  <input id="backup-pwd-input" type="password" placeholder="Kata Sandi Anda" style="width:100%;background:#0b0e14;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 12px 12px 42px;color:#fff;font-size:14px;outline:none">' +
                     '</div>',
                 focusConfirm: false,

@@ -45,9 +45,7 @@ session_write_close();
     <?php $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'); ?>
     <link rel="preconnect" href="<?= $base_url ?>/" crossorigin>
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
-    <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('music', '../assets/css/music'); ?>
     <link rel="stylesheet" href="../assets/css/shared/comment.css<?= meel_asset_version('assets/css/shared/comment.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
 </head>
@@ -88,7 +86,7 @@ session_write_close();
                     hx-include="#m-search-watch"
                     hx-target="#music-recommendation-column"
                     hx-indicator="#music-search-indicator"
-                    class="px-3 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase text-gray-500 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
+                    class="px-3 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase text-gray-400 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
                     Cari
                 </button>
             </div>
@@ -108,7 +106,7 @@ session_write_close();
                             <i data-lucide="play-circle" class="text-orange-500" style="width:clamp(18px,4cqw,28px);height:clamp(18px,4cqw,28px)"></i>
                         </div>
                         <div class="font-black text-white uppercase tracking-wider mb-2">Lanjut Musik?</div>
-                        <div class="text-[10px] text-gray-500 uppercase tracking-widest mb-4">
+                        <div class="text-[10px] text-gray-400 uppercase tracking-widest mb-4">
                             Menit ke‑ <span id="resume-time" class="text-orange-400 font-mono">0:00</span>
                         </div>
                         <div class="flex gap-2">
@@ -243,7 +241,7 @@ session_write_close();
                                 class="text-[10px] font-black uppercase tracking-widest text-orange-400 hover:underline block leading-tight">
                                 <?= htmlspecialchars($v['uploader']) ?>
                             </a>
-                            <div class="text-[10px] text-gray-500 mt-0.5">
+                            <div class="text-[10px] text-gray-400 mt-0.5">
                                 <?= number_format($v['views'] ?? 0) ?> tayangan &nbsp;•&nbsp; <?= time_ago($v['upload_date']) ?>
                             </div>
                         </div>
@@ -258,7 +256,7 @@ session_write_close();
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'like'
                                         ? 'bg-orange-500/15 border-orange-500/30 text-orange-400'
-                                        : 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300' ?>">
+                                        : 'bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300' ?>">
                                     <i data-lucide="thumbs-up" class="w-3.5 h-3.5 <?= $user_interaction === 'like' ? 'fill-current' : '' ?>"></i>
                                     Like<?= ($v['likes'] ?? 0) > 0 ? " <span class='tabular-nums ml-0.5'>{$v['likes']}</span>" : '' ?>
                                 </button>
@@ -268,12 +266,12 @@ session_write_close();
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'dislike'
                                         ? 'bg-white/10 border-white/15 text-white'
-                                        : 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300' ?>">
+                                        : 'bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300' ?>">
                                     <i data-lucide="thumbs-down" class="w-3.5 h-3.5 <?= $user_interaction === 'dislike' ? 'fill-current' : '' ?>"></i>
                                     <?= ($v['dislikes'] ?? 0) > 0 ? "<span class='tabular-nums'>{$v['dislikes']}</span>" : '' ?>
                                 </button>
                                 <button onclick="document.getElementById('playlist-modal').classList.remove('hidden')"
-                                    class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300">
+                                    class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300">
                                     <i data-lucide="list-plus" class="w-3.5 h-3.5"></i> Simpan
                                 </button>
                             </div>
@@ -296,7 +294,7 @@ session_write_close();
 
             <?php if (!empty($v['description'])): ?>
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6 desc-container" style="min-height:120px;contain-intrinsic-size:120px;content-visibility:auto">
-                    <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500 mb-3 flex items-center gap-2">
+                    <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-400 mb-3 flex items-center gap-2">
                         <i data-lucide="align-left" class="w-3.5 h-3.5 text-orange-500"></i> Deskripsi
                     </div>
                     <div class="relative">
@@ -315,9 +313,9 @@ session_write_close();
                         class="w-full px-4 sm:px-6 py-4 border-b border-white/[.04] bg-black/10 flex items-center gap-2 cursor-pointer hover:bg-white/[.08] transition-colors text-left"
                         title="Buka / tutup komentar">
                         <i data-lucide="message-square" class="w-3.5 h-3.5 text-orange-500"></i>
-                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Komentar</span>
-                        <i data-lucide="chevron-up" id="comment-chevron-open" class="w-3.5 h-3.5 ml-auto text-gray-500 hidden"></i>
-                        <i data-lucide="chevron-down" id="comment-chevron-closed" class="w-3.5 h-3.5 ml-auto text-gray-500"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-400">Komentar</span>
+                        <i data-lucide="chevron-up" id="comment-chevron-open" class="w-3.5 h-3.5 ml-auto text-gray-400 hidden"></i>
+                        <i data-lucide="chevron-down" id="comment-chevron-closed" class="w-3.5 h-3.5 ml-auto text-gray-400"></i>
                     </button>
                     <div id="comment-preview" class="px-4 sm:px-6 py-3">
                         <?php
@@ -380,7 +378,7 @@ session_write_close();
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
                     <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
                         <i data-lucide="list-music" class="w-3.5 h-3.5 text-orange-500"></i>
-                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-500">Berikutnya</span>
+                        <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-400">Berikutnya</span>
                     </div>
                     <div class="p-3 space-y-0.5 max-h-[320px] overflow-y-auto no-scrollbar">
                         <?php
@@ -398,7 +396,7 @@ session_write_close();
                                     <div class="text-[11px] font-bold truncate uppercase <?= $is_pl ? 'text-orange-400' : 'text-gray-400' ?>">
                                         <?= htmlspecialchars($q['title']) ?>
                                     </div>
-                                    <div class="text-[9px] text-gray-500 uppercase tracking-wider"><?= htmlspecialchars($q['artist']) ?></div>
+                                    <div class="text-[9px] text-gray-400 uppercase tracking-wider"><?= htmlspecialchars($q['artist']) ?></div>
                                 </div>
                                 <?php if ($is_pl): ?><i data-lucide="volume-2" class="w-3.5 h-3.5 text-orange-400 flex-shrink-0"></i><?php endif; ?>
                             </a>

@@ -44,9 +44,7 @@ $msg = $_GET['msg'] ?? null;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pengelolaan Pengguna | MEeL Admin</title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link href="../assets/css/admin/index.css<?= meel_asset_version('assets/css/admin/index.css') ?>" rel="stylesheet">
 </head>
 <body class="min-h-screen">
@@ -65,7 +63,7 @@ $msg = $_GET['msg'] ?? null;
             </div>
             <div>
                 <h1 class="text-2xl font-extrabold text-white leading-tight">Pengelolaan Pengguna</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1">Kelola akun, verifikasi, pemantauan, dan keamanan</p>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">Kelola akun, verifikasi, pemantauan, dan keamanan</p>
             </div>
         </div>
 
@@ -115,7 +113,7 @@ $msg = $_GET['msg'] ?? null;
 
             <div class="scrollable-table-wrap" style="max-height:400px;">
                 <table class="w-full text-left text-xs">
-                    <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                    <thead class="text-gray-400 uppercase text-[9px] font-black tracking-widest">
                         <tr>
                             <th class="py-3 px-6">ID & Nama Pengguna</th>
                             <th class="py-3 px-4">Peran</th>
@@ -133,7 +131,7 @@ $msg = $_GET['msg'] ?? null;
                                     <td class="py-4 px-6">
                                         <div class="flex flex-col">
                                             <span class="font-bold text-white"><?= htmlspecialchars($u['username']) ?></span>
-                                            <span class="text-[10px] text-gray-500 font-mono">#ID-<?= $u['id'] ?></span>
+                                            <span class="text-[10px] text-gray-400 font-mono">#ID-<?= $u['id'] ?></span>
                                         </div>
                                     </td>
                                     <td class="py-4 px-4">
@@ -146,7 +144,7 @@ $msg = $_GET['msg'] ?? null;
                                             <?= $u['is_active'] == 1 ? 'Active' : 'Pending' ?>
                                         </span>
                                     </td>
-                                    <td class="py-4 px-4 text-gray-500 font-mono text-[10px]">
+                                    <td class="py-4 px-4 text-gray-400 font-mono text-[10px]">
                                         <?= date('d/m/Y', strtotime($u['created_at'])) ?>
                                     </td>
                                     <td class="py-4 px-6 text-right">
@@ -190,7 +188,7 @@ $msg = $_GET['msg'] ?? null;
 
             <div class="scrollable-table-wrap" style="max-height:520px;">
                 <table class="w-full text-left text-xs">
-                    <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                    <thead class="text-gray-400 uppercase text-[9px] font-black tracking-widest">
                         <tr>
                             <th class="py-3 px-6">Pengguna</th>
                             <th class="py-3 px-4 text-center">Status</th>
@@ -207,11 +205,11 @@ $msg = $_GET['msg'] ?? null;
                             <tr class="group hover:bg-white/[0.02] transition-colors" data-username="<?= htmlspecialchars($row['username'], ENT_QUOTES) ?>" data-sec-since="<?= max(0, time() - strtotime($row['last_activity'])) ?>">
                                 <td class="py-4 px-2">
                                     <div class="flex items-center gap-2">
-                                        <span class="text-sm font-bold <?= $row['role'] === 'guest' ? 'text-gray-500 italic' : 'text-white' ?>">
+                                        <span class="text-sm font-bold <?= $row['role'] === 'guest' ? 'text-gray-400 italic' : 'text-white' ?>">
                                             <a href="<?= meel_base_url_path() ?>/profile/<?= htmlspecialchars($row['username'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($row['username']) ?></a>
                                         </span>
                                         <?php if ($row['role'] === 'guest'): ?>
-                                            <span class="text-[7px] bg-white/5 text-gray-500 px-1 rounded border border-white/10 uppercase font-black">Tamu</span>
+                                            <span class="text-[7px] bg-white/5 text-gray-400 px-1 rounded border border-white/10 uppercase font-black">Tamu</span>
                                         <?php endif; ?>
                                     </div>
                                     <div class="flex flex-col">
@@ -252,7 +250,7 @@ $msg = $_GET['msg'] ?? null;
                                             <?php endif; ?>
                                         </div>
 
-                                        <span class="text-[9px] text-gray-500 font-semibold mt-1">
+                                        <span class="text-[9px] text-gray-400 font-semibold mt-1">
                                             <?= htmlspecialchars($row['access_via']) ?>
                                         </span>
                                     </div>
@@ -302,7 +300,7 @@ $msg = $_GET['msg'] ?? null;
                     <i data-lucide="shield-alert" class="w-5 h-5 text-red-500"></i>
                     <h3 class="text-xs font-bold text-red-500 uppercase">Firewall & IP Diblokir</h3>
                 </div>
-                <span class="text-[10px] text-gray-500 uppercase">Dilindungi MEeL Security</span>
+                <span class="text-[10px] text-gray-400 uppercase">Dilindungi MEeL Security</span>
             </div>
 
             <div class="p-6">
@@ -325,7 +323,7 @@ $msg = $_GET['msg'] ?? null;
                 <?php if ($banned_ips->num_rows > 0): ?>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs">
-                            <thead class="text-gray-500 uppercase text-[9px] font-black">
+                            <thead class="text-gray-400 uppercase text-[9px] font-black">
                                 <tr>
                                     <th class="py-2">Alamat IP</th>
                                     <th class="py-2">Alasan</th>
@@ -338,7 +336,7 @@ $msg = $_GET['msg'] ?? null;
                                     <tr>
                                         <td class="py-3 font-mono text-red-400 font-bold"><?= htmlspecialchars($ban['ip_address'], ENT_QUOTES, 'UTF-8') ?></td>
                                         <td class="py-3 text-gray-400"><?= htmlspecialchars($ban['reason'], ENT_QUOTES, 'UTF-8') ?></td>
-                                        <td class="py-3 text-gray-500"><?= htmlspecialchars($ban['banned_at'], ENT_QUOTES, 'UTF-8') ?></td>
+                                        <td class="py-3 text-gray-400"><?= htmlspecialchars($ban['banned_at'], ENT_QUOTES, 'UTF-8') ?></td>
                                         <td class="py-3 text-right">
                                             <form method="POST" class="inline" onsubmit="return meelConfirmForm(event, { title: 'Unban IP', text: 'Buka blokir IP <?= htmlspecialchars($ban['ip_address'], ENT_QUOTES) ?>?', confirmButtonText: 'UNBAN' })">
                                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -352,7 +350,7 @@ $msg = $_GET['msg'] ?? null;
                         </table>
                     </div>
                 <?php else: ?>
-                    <p class="text-center text-xs text-gray-500 py-4">Belum ada IP yang di-banned. Aman terkendali, <?= htmlspecialchars($_SESSION['username']) ?></p>
+                    <p class="text-center text-xs text-gray-400 py-4">Belum ada IP yang di-banned. Aman terkendali, <?= htmlspecialchars($_SESSION['username']) ?></p>
                 <?php endif; ?>
             </div>
         </div>

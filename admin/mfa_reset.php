@@ -38,9 +38,7 @@ include __DIR__ . '/../partials/link.php';
 $scripts_root = '../';
 include __DIR__ . '/../partials/scripts.php';
 ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link rel="stylesheet" href="../assets/css/admin/mfa_reset.css?v=<?= filemtime('../assets/css/admin/mfa_reset.css') ?>">
 </head>
 
@@ -60,7 +58,7 @@ include __DIR__ . '/../partials/scripts.php';
             </div>
             <div>
                 <h1 class="text-2xl font-extrabold text-white leading-tight">Pengelolaan MFA</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">
                     <?= $total_mfa ?> / <?= $total_all ?> users have MFA enabled
                 </p>
             </div>
@@ -113,7 +111,7 @@ include __DIR__ . '/../partials/scripts.php';
             <?php if ($mfa_users && $mfa_users->num_rows > 0): ?>
                 <div class="scroll-table" style="max-height:400px">
                     <table class="w-full text-left text-xs">
-                        <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                        <thead class="text-gray-400 uppercase text-[9px] font-black tracking-widest">
                             <tr>
                                 <th class="py-3 px-5">Nama Pengguna</th>
                                 <th class="py-3 px-3">Peran</th>
@@ -142,7 +140,7 @@ include __DIR__ . '/../partials/scripts.php';
                                             <?= $u['is_active'] == 1 ? 'Active' : 'Pending' ?>
                                         </span>
                                     </td>
-                                    <td class="py-3 px-4 text-gray-500 font-mono text-[10px]">
+                                    <td class="py-3 px-4 text-gray-400 font-mono text-[10px]">
                                         <?= date('d/m/Y H:i', strtotime($u['last_activity'])) ?>
                                     </td>
                                     <td class="py-3 px-5 text-right">
@@ -165,7 +163,7 @@ include __DIR__ . '/../partials/scripts.php';
             <?php else: ?>
                 <div class="p-10 text-center">
                     <i data-lucide="shield-check" class="w-10 h-10 text-green-500/50 mx-auto mb-4"></i>
-                    <p class="text-sm text-gray-500 font-bold">Tidak ada pengguna dengan MFA aktif.</p>
+                    <p class="text-sm text-gray-400 font-bold">Tidak ada pengguna dengan MFA aktif.</p>
                     <p class="text-[10px] text-gray-600 mt-1">Semua pengguna aman tanpa perlu di-reset.</p>
                 </div>
             <?php endif; ?>

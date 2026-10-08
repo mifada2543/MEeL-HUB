@@ -39,7 +39,7 @@
 }
 .pdf-fallback-desc {
   font-size: 0.7rem;
-  color: #6b7280;
+  color: #8b93a1;
   text-transform: uppercase;
   letter-spacing: 0.2em;
   margin-bottom: 2rem;
@@ -65,11 +65,11 @@
 }
 .pdf-fallback-hint {
   font-size: 0.65rem;
-  color: #4b5563;
+  color: #7a8290;
   margin-top: 1.2rem;
 }
 .pdf-fallback-hint a {
-  color: #6b7280;
+  color: #8b93a1;
   text-decoration: underline;
 }
 .pdf-fallback-hint a:hover {
@@ -106,7 +106,7 @@
 }
 .pdf-info-meta {
   font-size: 0.6rem;
-  color: #6b7280;
+  color: #8b93a1;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }

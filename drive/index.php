@@ -40,9 +40,7 @@ if ($user->isMember()) {
     <?php include '../partials/link.php'; ?>
     <script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
     <script src="../assets/js/compatibilitas/script.min.js<?= meel_asset_version('assets/js/compatibilitas/script.min.js') ?>"></script>
-    <?php foreach (require __DIR__ . '/../assets/css/drive/manifest.php' as $__f): ?>
-        <link rel="stylesheet" href="../assets/css/drive/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/drive/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('drive', '../assets/css/drive'); ?>
 </head>
 
 <body class="antialiased">
@@ -54,7 +52,7 @@ if ($user->isMember()) {
                     <img src="../assets/MEeL.png" class="w-10 h-10 rounded-xl shadow-lg shadow-blue-500/20" alt="Logo">
                     <div>
                         <h1 class="font-bold text-lg leading-none">MEeL <span class="text-blue-500">Cloud</span></h1>
-                        <p class="text-[10px] text-gray-500 tracking-widest uppercase mt-1">Sistem Penyimpanan</p>
+                        <p class="text-[10px] text-gray-400 tracking-widest uppercase mt-1">Sistem Penyimpanan</p>
                     </div>
                 </div>
 
@@ -95,7 +93,7 @@ if ($user->isMember()) {
                     <?php endif; ?>
                     <div class="overflow-hidden">
                         <p class="text-sm font-semibold truncate"><?= htmlspecialchars($user->username, ENT_QUOTES, 'UTF-8') ?></p>
-                        <p class="text-[10px] text-gray-500 uppercase"><?= htmlspecialchars($user->role, ENT_QUOTES, 'UTF-8') ?></p>
+                        <p class="text-[10px] text-gray-400 uppercase"><?= htmlspecialchars($user->role, ENT_QUOTES, 'UTF-8') ?></p>
                     </div>
                 </div>
             </div>
@@ -143,12 +141,12 @@ if ($user->isMember()) {
                     <h2 id="sectionHeading" class="text-3xl font-extrabold tracking-tight">
                         Drive <span id="sectionAccent" class="text-red-500">Video</span>
                     </h2>
-                    <p id="fileCount" class="text-sm text-gray-500 mt-1">Memuat file...</p>
+                    <p id="fileCount" class="text-sm text-gray-400 mt-1">Memuat file...</p>
                 </div>
 
                 <div class="flex items-center gap-3">
                     <div class="relative flex-1">
-                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                         <input type="text" id="search-input-desktop" placeholder="Cari file..." class="bg-gray-900 border border-gray-800 rounded-full py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64">
                     </div>
                     <button onclick="filterDriveFiles()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold uppercase tracking-wider transition-all flex-shrink-0">
@@ -162,11 +160,11 @@ if ($user->isMember()) {
                     <h2 class="text-xl font-extrabold tracking-tight">
                         Drive <span id="sectionAccentMobile" class="text-red-500">Video</span>
                     </h2>
-                    <p id="fileCountMobile" class="text-xs text-gray-500 mt-0.5">Memuat file...</p>
+                    <p id="fileCountMobile" class="text-xs text-gray-400 mt-0.5">Memuat file...</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
-                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                         <input type="text" id="search-input-mobile" placeholder="Cari file..." class="w-full bg-gray-900 border border-gray-800 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500">
                     </div>
                     <button onclick="filterDriveFiles()" class="px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex-shrink-0">
@@ -295,7 +293,7 @@ if ($user->isMember()) {
                 <div class="flex items-center gap-2">
                     <i data-lucide="file" class="w-4 h-4 text-blue-500"></i>
                     <h3 id="previewTitle" class="text-sm font-semibold truncate max-w-[200px] md:max-w-md text-gray-300">Nama File</h3>
-                </div> <button onclick="closePreview()" class="p-2 hover:bg-red-500/20 text-gray-500 hover:text-red-500 rounded-lg transition" title="Tutup pratinjau">
+                </div> <button onclick="closePreview()" class="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-500 rounded-lg transition" title="Tutup pratinjau">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>

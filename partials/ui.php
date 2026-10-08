@@ -11,6 +11,17 @@ $__meel_engine_v = function (string $asset): string {
 $__meel_css_bundle = function (string $dir, string $baseUrl) use ($__meel_engine_v) {
     $manifest = __DIR__ . '/../' . $dir . '/manifest.php';
     if (!file_exists($manifest)) return;
+
+    // Pakai bundle satu request bila sudah dibangun
+    // (scripts/build-css-bundle.php). Kalau belum ada, jatuh ke daftar
+    // file individual — clone baru tanpa build tetap tampil benar.
+    $bundleRel = $dir . '/bundle.css';
+    if (is_file(__DIR__ . '/../' . $bundleRel)) {
+        echo '<link rel="stylesheet" href="' . $baseUrl . 'bundle.css'
+            . $__meel_engine_v($bundleRel) . '">' . "\n";
+        return;
+    }
+
     foreach (require $manifest as $file) {
         $rel = $dir . '/' . $file;
         echo '<link rel="stylesheet" href="' . $baseUrl . $file

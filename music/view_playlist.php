@@ -71,7 +71,7 @@ function renderPlaylistContent(array $playlist, int $playlist_id, int $total_son
             <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-white leading-none truncate mb-2">
                 <?= htmlspecialchars($playlist['name']) ?>
             </h1>
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                 <span><?= $total_songs ?> track<?= $total_songs !== 1 ? 's' : '' ?></span>
                 <span class="text-gray-700">•</span>
                 <span>Milikmu</span>
@@ -239,9 +239,7 @@ if (isset($_GET['content_only'])) {
     }
     ?>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('music', '../assets/css/music'); ?>
     <link href="../assets/css/tailwind.min.css<?= meel_asset_version('assets/css/tailwind.min.css') ?>" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/music/playlist.css?v=<?= filemtime(__DIR__ . '/../assets/css/music/playlist.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
@@ -271,7 +269,7 @@ if (isset($_GET['content_only'])) {
                         autocomplete="off">
                 </div>
                 <a href="beranda"
-                    class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
+                    class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-orange-500 hover:border-orange-500/30 transition-all flex-shrink-0">
                     <span class="hidden sm:inline">Koleksi</span>
                     <i data-lucide="library" class="w-3.5 h-3.5 sm:hidden"></i>
                 </a>
@@ -386,7 +384,7 @@ if (isset($_GET['content_only'])) {
                                     onclick="toggleArtistDropdownPL()"
                                     class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
                                     <span class="truncate">Semua Koleksi</span>
-                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
                                 </button>
                                 <div id="artist-options-pl" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
                                     <button onclick="navigateToArtistPL('all')"
@@ -415,7 +413,7 @@ if (isset($_GET['content_only'])) {
                                         onclick="togglePlaylistDropdownPL()"
                                         class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
                                         <span class="truncate" id="playlist-dropdown-label-pl"><?= htmlspecialchars($playlist['name']) ?></span>
-                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
+                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
                                     </button>
                                     <div id="playlist-options-pl" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
                                         <?php

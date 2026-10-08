@@ -15,7 +15,7 @@
   border-radius: 999px;
 }
 .scrollable-table-wrap::-webkit-scrollbar-thumb:hover {
-  background: #4b5563;
+  background: #7a8290;
 }
 .scrollable-table-wrap thead {
   position: sticky;

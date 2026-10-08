@@ -154,7 +154,7 @@ include __DIR__ . '/partials/auth_head.php';
                 </p>
                 <?php if (!empty($otpauth)): ?>
                     <div class="pt-4 space-y-2">
-                        <p class="text-[10px] text-gray-500 uppercase tracking-widest">Pindai QR Code (jika perlu)</p>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-widest">Pindai QR Code (jika perlu)</p>
                         <div id="mfa-qr-existing" class="inline-flex items-center justify-center w-44 h-44 rounded-2xl bg-white p-2"></div>
                     </div>
                     <script>
@@ -235,11 +235,11 @@ include __DIR__ . '/partials/auth_head.php';
                 </button>
 
                 <details class="text-left cursor-pointer group">
-                    <summary class="text-[11px] text-gray-500 hover:text-gray-300 transition font-bold tracking-wider">
+                    <summary class="text-[11px] text-gray-400 hover:text-gray-300 transition font-bold tracking-wider">
                         Tidak bisa memindai? Masukkan manual
                     </summary>
                     <div class="mt-3 p-3 bg-black/30 rounded-xl text-[11px] text-gray-400 space-y-1 break-all font-mono">
-                        <p><span class="text-gray-500">Kunci Rahasia:</span>
+                        <p><span class="text-gray-400">Kunci Rahasia:</span>
                             <span id="mfa-secret-text" class="text-white select-all font-mono"><?= htmlspecialchars($_SESSION['mfa_pending_secret'] ?? '') ?></span>
                             <button type="button" onclick="copySecret()"
                                 class="inline-flex ml-1 p-1 rounded-md bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white transition-all align-middle"
@@ -247,14 +247,14 @@ include __DIR__ . '/partials/auth_head.php';
                                 <i data-lucide="copy" class="w-3 h-3"></i>
                             </button>
                         </p>
-                        <p><span class="text-gray-500">Tipe:</span> Time-based (TOTP)</p>
-                        <p><span class="text-gray-500">Akun:</span> <span class="text-white"><?= htmlspecialchars($username) ?></span></p>
+                        <p><span class="text-gray-400">Tipe:</span> Time-based (TOTP)</p>
+                        <p><span class="text-gray-400">Akun:</span> <span class="text-white"><?= htmlspecialchars($username) ?></span></p>
                     </div>
                 </details>
             </div>
             <div class="border-t border-white/5 pt-6 space-y-4">
                 <h3 class="text-lg font-bold text-white text-center">2. Verifikasi Kode</h3>
-                <p class="text-[11px] text-gray-500 text-center">
+                <p class="text-[11px] text-gray-400 text-center">
                     Masukkan kode 6-digit yang muncul di aplikasi Authenticator Anda.
                 </p>
                 <div>
@@ -358,7 +358,7 @@ include __DIR__ . '/partials/auth_head.php';
         <?php endif; ?>
 
         <div class="text-center pt-2">
-            <a href="../index.php" class="text-xs text-gray-500 hover:text-gray-300 transition">
+            <a href="../index.php" class="text-xs text-gray-400 hover:text-gray-300 transition">
                 <i data-lucide="arrow-left" class="w-3 h-3 inline-block mr-1"></i> Kembali ke Beranda
             </a>
         </div>

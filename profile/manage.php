@@ -89,9 +89,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
     <meta property="og:description" content="Kelola konten video dan musik Anda di MEeL. Edit, hapus, dan pantau statistik.">
     <title>Kelola Konten | MEeL</title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/video/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/video/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('video', '../assets/css/video'); ?>
     <link rel="stylesheet" href="../assets/css/profile/manage.css?v=<?= filemtime(__DIR__ . '/../assets/css/profile/manage.css') ?>">
 </head>
 

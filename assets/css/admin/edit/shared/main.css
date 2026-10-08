@@ -333,7 +333,7 @@ form textarea.field-input[style*="resize:none"] {
 .lang-trigger-chevron {
   width: 14px;
   height: 14px;
-  color: #6b7280;
+  color: #8b93a1;
   flex-shrink: 0;
   transition: transform 0.2s;
 }

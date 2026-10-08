@@ -14,15 +14,15 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
     $c_avatar_to = $is_video ? 'to-red-900' : 'to-red-600';
     $c_author = $is_video ? 'text-red-400' : 'text-gray-300';
     $c_comment_text = $is_video ? 'text-gray-400' : 'text-gray-300';
-    $c_delete = $is_video ? 'text-gray-300' : 'text-gray-500';
+    $c_delete = $is_video ? 'text-gray-300' : 'text-gray-400';
     $c_parent_text = $is_video ? 'text-blue-400' : 'text-orange-400';
     $c_parent_bg = $is_video ? 'bg-blue-500/10' : 'bg-orange-500/10';
-    $c_reply_btn = $is_video ? 'text-gray-500 hover:text-red-400' : 'text-orange-400';
+    $c_reply_btn = $is_video ? 'text-gray-400 hover:text-red-400' : 'text-orange-400';
     $c_reply_focus = $is_video ? 'border-red-500/40' : 'border-orange-500/40';
     $c_reply_btn_bg = $is_video ? 'bg-red-600 hover:bg-red-500' : 'bg-orange-500';
     $c_reply_btn_text = $is_video ? 'text-white' : 'text-black';
     $reply_prefix = $is_video ? 'vid-' : 'mus-';
-    $author_time_color = $is_video ? 'text-gray-300' : 'text-gray-500';
+    $author_time_color = $is_video ? 'text-gray-300' : 'text-gray-400';
     $form_action_url = base_url(($is_video ? '/video/watch' : '/music/watch') . '?id=' . (int)$id . (!$is_video && $playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : ''));
 
     foreach ($grouped[$parent_id] as $c):
