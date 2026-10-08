@@ -14,6 +14,9 @@
   var qs = m ? "?v=" + encodeURIComponent(m[1]) : "";
   var files = ["core.js", "download.js", "transcode.js", "result.js"];
   for (var i = 0; i < files.length; i++) {
-    document.write('<script src="' + base + files[i] + qs + '"><\/script>');
+    var s = document.createElement("script");
+    s.src = base + files[i] + qs;
+    s.async = false;
+    document.head.appendChild(s);
   }
 })();

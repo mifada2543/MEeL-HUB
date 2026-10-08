@@ -74,7 +74,7 @@ if ($chat_username !== '' && !$chat_user) {
             <div class="glass" style="border-radius:16px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
                 <div class="chat-avatar">
                     <?php if (!empty($chat_user['profile_picture'])): ?>
-                        <img src="<?= $root ?>/profile/upload/<?= htmlspecialchars($chat_user['profile_picture']) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <img src="<?= $root ?>/profile/upload/<?= htmlspecialchars($chat_user['profile_picture']) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
                     <?php else: ?>
                         <?= strtoupper(substr($chat_user['username'], 0, 1)) ?>
                     <?php endif; ?>

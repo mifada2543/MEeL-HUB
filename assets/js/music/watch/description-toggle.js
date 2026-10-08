@@ -54,7 +54,9 @@ function initDescriptionObserver() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', checkDescriptionLengthMusic);
+if (document.readyState === 'loading')
+  document.addEventListener('DOMContentLoaded', checkDescriptionLengthMusic);
+else checkDescriptionLengthMusic();
 document.body.addEventListener('htmx:afterOnLoad', checkDescriptionLengthMusic);
 window.addEventListener('resize', checkDescriptionLengthMusic);
 

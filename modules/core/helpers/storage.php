@@ -31,6 +31,10 @@ function video_thumbnail_sm(?string $thumbnail): string
         return $thumbnail;
     }
 
+    // Aturan penamaan varian ini dibuat di Uploader.php (lembar 256px, disisipkan
+    // sebelum ekstensi). Berkas varian sengaja TIDAK masuk DB; kehadirannya
+    // dicek lewat is_file() di sini. Scan admin "Cek Sinkronisasi Database"
+    // memakai pengecualian yang sama, jadi varian tidak pernah dianggap sampah.
     $sm = $stem . '_sm.webp';
     return is_file(meel_media_base_path('video') . '/thumbnail/' . $sm)
         ? $sm

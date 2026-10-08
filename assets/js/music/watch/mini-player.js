@@ -81,7 +81,7 @@ setInterval(() => {
 window.miniPlayPause = function () {
   player &&
     (window.meelHealthAlertActive ||
-      (player.paused ? player.play() : player.pause(),
+      (player.paused ? player.play().catch(function () {}) : player.pause(),
       window.updateMiniPlayerUI()));
 };
 window.miniSeek = function (e) {

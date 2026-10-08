@@ -333,7 +333,7 @@ $scripts_root = '';
 include __DIR__ . '/partials/scripts.php';
 ?>
     <link rel="stylesheet" href="assets/css/up.css<?= meel_asset_version('assets/css/up.css') ?>">
-    <?php meel_css_links('up', '../assets/css/up'); ?>
+    <?php meel_css_links('up', 'assets/css/up'); ?>
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
 </head>
 

@@ -263,6 +263,7 @@ session_write_close();
                                 <button
                                     hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                     hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
+                                    aria-label="Dislike<?= ($v['dislikes'] ?? 0) > 0 ? ' (' . $v['dislikes'] . ')' : '' ?>"
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'dislike'
                                         ? 'bg-white/10 border-white/15 text-white'

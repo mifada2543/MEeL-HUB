@@ -527,12 +527,12 @@ function setupMeelPlayerEvents() {
             countdownPrefix: "Otomatis ulang dari awal dalam",
             onResume: (pos) => {
               player.currentTime = pos;
-              player.play();
+              player.play().catch(() => {});
             },
             onRestart: () => {
               localStorage.removeItem(storageKeyVideo);
               player.currentTime = 0;
-              player.play();
+              player.play().catch(() => {});
             },
           })
         )

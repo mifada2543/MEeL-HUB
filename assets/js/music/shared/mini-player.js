@@ -261,7 +261,7 @@ window.miniPlayPauseIndex = function () {
 
   if (window.meelHealthAlertActive && audioPlayer.paused) return;
   if (audioPlayer.paused) {
-    audioPlayer.play();
+    audioPlayer.play().catch(function () {});
   } else {
 
     sessionStorage.removeItem(MEEL_KEYS.SKIP_RESUME_ONCE);
