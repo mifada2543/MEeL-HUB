@@ -387,8 +387,18 @@ Shortcut keyboard diimplementasikan dalam JavaScript dan di-guard oleh `assets/j
 | `C` | Toggle caption | Plyr default |
 | `L` | Toggle loop | `misc.js` |
 | `A` | Toggle auto-next | `misc.js` |
+| `S` | Toggle AI Upscale | `misc.js` → `toggleUpscale()` di `upscaler.js` |
 | `N` | Video berikutnya | `mini-player.js` |
 | `I` | Toggle mini player | `mini-player.js` |
+
+> **Dikunci saat modal resume terbuka.** Selama modal "Lanjutkan Sesi?" tampil,
+> `meelResumeModalActive` bernilai `true` dan seluruh pintasan di atas
+> dinonaktifkan (kecuali `Esc`), sehingga video tidak bisa dikendalikan di
+> belakang layar. `←` / `→` dipakai untuk berpindah pilihan mengikuti posisi
+> tombol — **← Lanjut**, **→ Ulang**; `Home` / `End` ke pilihan pertama/terakhir,
+> lalu `Enter` atau `Spasi` menjalankan pilihan yang disorot.
+> Dijaga oleh `window` listener fase `capture` di `assets/js/shared/resume-modal.js`
+> yang beating Plyr (`window` bubble) dan `mini-player.js` (`window` capture).
 
 **Music Watch (`assets/js/music/watch/`):**
 

@@ -1,9 +1,12 @@
 document.addEventListener("keydown", (e) => {
+  if (window.meelResumeModalActive) return;
   if (window.meelKeyShortcutIgnored?.(e)) return;
   const n = e.key.toLowerCase();
   "l" === n && (e.preventDefault(), e.stopPropagation(), window.toggleLoop?.());
   "a" === n &&
     (e.preventDefault(), e.stopPropagation(), window.toggleAutoNext?.());
+  "s" === n &&
+    (e.preventDefault(), e.stopPropagation(), window.toggleUpscale?.());
 });
 function updateSearchExcludeId(e) {
   (["v-search-watch", "v-search-mobile"].forEach((t) => {

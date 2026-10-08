@@ -635,6 +635,7 @@ function attachMiniPlayerVideoCardListeners(e) {
   window.addEventListener(
     "keydown",
     (e) => {
+      if (window.meelResumeModalActive) return;
       if (!["INPUT", "TEXTAREA"].includes(document.activeElement.tagName))
         return isMiniPlayerActive && "f" === e.key.toLowerCase()
           ? (e.preventDefault(), void e.stopPropagation())

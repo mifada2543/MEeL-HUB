@@ -100,12 +100,13 @@ session_write_close();
     <main id="main-content" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
         <div class="flex-1 min-w-0 space-y-5 px-4 sm:px-5">
             <div id="player-container" class="bg-[#0d1017] border-0 rounded-none sm:rounded-none overflow-hidden relative">
-                <div id="resume-modal" class="hidden rounded-xl sm:rounded-2xl">
+                <div id="resume-modal" class="hidden rounded-xl sm:rounded-2xl" role="dialog" aria-modal="true"
+                    aria-labelledby="resume-modal-title" aria-describedby="resume-countdown">
                     <div class="bg-[#141820] border border-orange-500/25 border-t-2 border-t-orange-500 rounded-2xl text-center">
                         <div class="bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-3" style="width:clamp(36px,8cqw,56px);height:clamp(36px,8cqw,56px)">
                             <i data-lucide="play-circle" class="text-orange-500" style="width:clamp(18px,4cqw,28px);height:clamp(18px,4cqw,28px)"></i>
                         </div>
-                        <div class="font-black text-white uppercase tracking-wider mb-2">Lanjut Musik?</div>
+                        <div id="resume-modal-title" class="font-black text-white uppercase tracking-wider mb-2">Lanjut Musik?</div>
                         <div class="text-[10px] text-gray-400 uppercase tracking-widest mb-4">
                             Menit ke‑ <span id="resume-time" class="text-orange-400 font-mono">0:00</span>
                         </div>
