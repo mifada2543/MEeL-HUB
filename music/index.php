@@ -89,9 +89,7 @@ if (isset($_GET['content_only'])) {
     $_META_DESC = 'Jelajahi koleksi musik di MEeL Music Library. Streaming audio lossless dengan kualitas terbaik.';
     ?>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/music/<?= $__f ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('music', '../assets/css/music'); ?>
     <link rel="stylesheet" href="../assets/css/music/index/main.css<?= meel_asset_version('assets/css/music/index/main.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
 </head>
@@ -284,7 +282,7 @@ if (isset($_GET['content_only'])) {
                                     title="Filter berdasarkan artis"
                                     class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
                                     <span class="truncate"><?= $artist_filter === 'all' ? 'All Collections' : htmlspecialchars($artist_filter) ?></span>
-                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
+                                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
                                 </button>
 
                                 <div id="artist-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
@@ -323,7 +321,7 @@ if (isset($_GET['content_only'])) {
                                         title="Pilih daftar putar"
                                         class="w-full bg-white/[.03] border border-white/[.06] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-gray-300 focus:outline-none focus:border-orange-500/40 cursor-pointer flex items-center justify-between transition-all hover:bg-white/[.05] hover:border-white/[.1] relative z-[100]">
                                         <span class="truncate" id="playlist-dropdown-label">Pilih Daftar Putar...</span>
-                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500"></i>
+                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
                                     </button>
                                     <div id="playlist-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
                                         <?php

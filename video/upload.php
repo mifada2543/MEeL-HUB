@@ -71,9 +71,7 @@ if (isset($_POST['upload'])) {
     <meta property="og:description" content="Unggah video ke MEeL Video. Format: MP4, WEBM, MKV. Transcoding otomatis ke HLS.">
     <title>MEeL Video | Unggah</title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/video/<?= htmlspecialchars($__f) ?><?= meel_asset_version('assets/css/video/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('video', '../assets/css/video'); ?>
     <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime('../assets/css/font.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">

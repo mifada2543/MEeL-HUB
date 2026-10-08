@@ -10,8 +10,8 @@
   --meel-border-strong: rgba(255, 255, 255, 0.10);
 
   --meel-text: #c9cdd5;
-  --meel-text-secondary: #6b7280;
-  --meel-text-muted: #4b5563;
+  --meel-text-secondary: #8b93a1;
+  --meel-text-muted: #7a8290;
   --meel-text-heading: #f0f2f7;
 
   --meel-red: #dc2626;
@@ -178,4 +178,23 @@ html.theme-transition *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+}
+
+/* ── Pemetaan utility Tailwind yang terlalu gelap untuk mode gelap ──
+   Tailwind di-build lebih dulu (assets/css/tailwind.min.css), jadi
+   .text-gray-500/600/700 membawa warna #6b7280 / #4b5563 / #374151 —
+   masing-masing hanya 3,94:1 / 2,51:1 / 1,92:1 di atas #0d1017, jauh
+   di bawah ambang WCAG AA 4,5:1 untuk teks kecil.
+
+   Berkas ini dimuat setelah tailwind.min.css di setiap halaman, jadi
+  override di sini berlaku tanpa perlu build ulang Tailwind. Mode terang
+   tetap memakai --meel-text-muted lewat assets/css/shared/light-theme.css. */
+.text-gray-500 {
+  color: var(--meel-text-secondary) !important;
+}
+.text-gray-600 {
+  color: var(--meel-text-secondary) !important;
+}
+.text-gray-700 {
+  color: var(--meel-text-muted) !important;
 }

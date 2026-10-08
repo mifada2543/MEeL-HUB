@@ -199,3 +199,7 @@ storage/chats/**/*.json
 # ---Another----
 skills-lock.json
 marks.php
+# ---GENERATED BUNDLE CSS---
+# Hasil build scripts/build-css-bundle.php dari manifest.php.
+# Tidak di-commit supaya clone baru otomatis jatuh ke daftar file individual.
+assets/css/*/bundle.css

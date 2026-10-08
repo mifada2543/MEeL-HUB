@@ -71,9 +71,7 @@ if (isset($_POST['upload'])) {
     $_META_DESC = 'Upload musik ke MEeL Music Library. Format audio: FLAC, MP3, WAV, OPUS, OGG, M4A.';
     ?>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/music/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/music/<?= htmlspecialchars($__f) ?><?= meel_asset_version('assets/css/music/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('music', '../assets/css/music'); ?>
     <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime('../assets/css/font.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">

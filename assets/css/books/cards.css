@@ -6,7 +6,7 @@
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: 0 0;
-  color: #6b7280;
+  color: #8b93a1;
   transition: all 0.2s;
   text-decoration: none;
   display: inline-block;
@@ -21,8 +21,8 @@
   background: rgba(34, 197, 94, 0.06);
 }
 .filter-pill.active {
-  background: var(--green);
-  border-color: var(--green);
+  background: #15803d;
+  border-color: #15803d;
   color: #fff;
   box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
 }
@@ -70,7 +70,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 .type-badge-manga {
-  background: #ea580c;
+  background: #c2410c;
   color: #fff;
 }
 .type-badge-pdf {

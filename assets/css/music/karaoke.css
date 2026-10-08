@@ -43,7 +43,7 @@
 .karaoke-close-btn {
   background: transparent;
   border: none;
-  color: #6b7280;
+  color: #8b93a1;
   cursor: pointer;
   padding: 4px;
   border-radius: 6px;
@@ -70,7 +70,7 @@
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.08);
   background: transparent;
-  color: #6b7280;
+  color: #8b93a1;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
@@ -127,7 +127,7 @@
 .karaoke-empty {
   text-align: center;
   padding: 40px 20px;
-  color: #4b5563;
+  color: #7a8290;
   font-size: 12px;
 }
 .karaoke-empty i {

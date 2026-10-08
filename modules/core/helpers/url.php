@@ -116,6 +116,40 @@ function meel_asset_version(string $file): string
 }
 }
 
+if (!function_exists('meel_css_links')) {
+/**
+ * Cetak <link rel="stylesheet"> untuk sebuah modul CSS.
+ *
+ * Kalau `assets/css/<module>/bundle.css` sudah dibangun
+ * (scripts/build-css-bundle.php) emit satu request saja; kalau belum ada,
+ * jatuh ke daftar individual dari manifest.php. Clone baru tanpa build
+ * tetap tampil benar, dan urutan kaskade manifest tetap terjaga di kedua
+ * jalur karena bundle disusun persis dari urutan itu.
+ */
+function meel_css_links(string $module, string $baseUrl): void
+{
+    $root = dirname(__DIR__, 3);
+    $module = trim($module, '/');
+
+    $bundleRel = 'assets/css/' . $module . '/bundle.css';
+    if (is_file($root . '/' . $bundleRel)) {
+        echo '<link rel="stylesheet" href="' . rtrim($baseUrl, '/') . '/bundle.css'
+            . meel_asset_version($bundleRel) . '">' . "\n";
+        return;
+    }
+
+    $manifest = $root . '/assets/css/' . $module . '/manifest.php';
+    if (!is_file($manifest)) {
+        return;
+    }
+    foreach (require $manifest as $file) {
+        $rel = 'assets/css/' . $module . '/' . $file;
+        echo '<link rel="stylesheet" href="' . rtrim($baseUrl, '/') . '/' . $file
+            . meel_asset_version($rel) . '">' . "\n";
+    }
+}
+}
+
 if (!function_exists('meel_asset_dir_version')) {
 function meel_asset_dir_version(string $dir): string
 {

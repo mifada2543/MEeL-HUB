@@ -487,9 +487,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
     $scripts_root = '../';
     include __DIR__ . '/../partials/scripts.php';
     ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link rel="stylesheet" href="../assets/css/admin/activity_log.css?v=<?= filemtime('../assets/css/admin/activity_log.css') ?>">
 </head>
 
@@ -504,15 +502,15 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
     <div class="max-w-7xl mx-auto px-6 md:px-10 xl:px-16 pt-4">
         <div class="flex gap-0 rounded-xl overflow-hidden border border-white/10 mb-6">
             <a href="activity-log"
-                class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all border-r border-white/10 <?= $active_tab === 'log' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5' ?>">
+                class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all border-r border-white/10 <?= $active_tab === 'log' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-300 hover:bg-white/5' ?>">
                 <i data-lucide="activity" class="w-3 h-3 inline mr-1.5"></i> Log Aktivitas
             </a>
             <a href="activity-log?tab=views"
-                class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all <?= $active_tab === 'views' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5' ?>">
+                class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all <?= $active_tab === 'views' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-gray-300 hover:bg-white/5' ?>">
                 <i data-lucide="bar-chart-3" class="w-3 h-3 inline mr-1.5"></i> Analitik Tayangan
             </a>
             <a href="activity-log?tab=uploads"
-                class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all border-l border-white/10 <?= $active_tab === 'uploads' ? 'bg-green-600 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5' ?>">
+                class="flex-1 text-center text-[10px] font-black uppercase tracking-widest py-3 transition-all border-l border-white/10 <?= $active_tab === 'uploads' ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-gray-300 hover:bg-white/5' ?>">
                 <i data-lucide="upload-cloud" class="w-3 h-3 inline mr-1.5"></i> Antrean Unggah
             </a>
         </div>
@@ -527,28 +525,28 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 </div>
                 <div>
                     <h1 class="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight">Log Aktivitas</h1>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">Jejak Audit</p>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1.5">Jejak Audit</p>
                 </div>
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-8">
                 <div class="glass p-5 rounded-2xl border-l-4 border-blue-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">7 Hari Terakhir</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">7 Hari Terakhir</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($stats['total']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">events</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">events</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-green-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Pengguna Aktif</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Pengguna Aktif</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($stats['unique_users']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">users</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">users</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-purple-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Total Log</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Total Log</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($total_rows) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">entries</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">entries</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-orange-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Halaman</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Halaman</p>
                     <span class="text-2xl font-bold text-white"><?= $page ?>/<?= $total_pages ?></span>
                 </div>
             </div>
@@ -563,7 +561,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             <div class="glass p-6 md:p-8 rounded-2xl mb-8 filter-section relative z-40 overflow-visible" id="filter-section">
                 <div class="flex flex-col lg:flex-row items-start justify-between gap-6 w-full min-w-0">
                     <div class="w-full lg:w-1/4 min-w-0 relative z-30">
-                        <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2.5 block">
+                        <label class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 block">
                             <i data-lucide="activity" class="w-3 h-3 inline mr-1.5"></i> Action
                         </label>
                         <div class="relative" id="action-dropdown-container">
@@ -575,7 +573,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                                 <span class="truncate" id="action-dropdown-label">
                                     <?= $action_filter ? htmlspecialchars($action_filter) : 'Semua Aksi' ?>
                                 </span>
-                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 shrink-0"></i>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400 shrink-0"></i>
                             </button>
 
                             <div id="action-dropdown-panel"
@@ -605,7 +603,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     </div>
 
                     <div class="w-full lg:w-1/4 min-w-0 relative z-10">
-                        <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2.5 block">
+                        <label class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 block">
                             <i data-lucide="search" class="w-3 h-3 inline mr-1.5"></i> Cari Nama Pengguna / IP
                         </label>
                         <div class="relative">
@@ -616,7 +614,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     </div>
 
                     <div class="w-full lg:flex-1 min-w-0 relative z-10">
-                        <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2.5 block">
+                        <label class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 block">
                             <i data-lucide="calendar" class="w-3 h-3 inline mr-1.5"></i> Rentang
                         </label>
                         <input type="hidden" name="days" id="days-input" value="<?= $days ?>">
@@ -641,7 +639,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                         Terapkan
                     </button>
                     <a href="activity-log"
-                        class="text-[10px] text-gray-500 hover:text-white px-4 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-2 rounded-xl hover:bg-white/[.03]">
+                        class="text-[10px] text-gray-400 hover:text-white px-4 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-2 rounded-xl hover:bg-white/[.03]">
                         <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
                         Reset
                     </a>
@@ -653,7 +651,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             <div class="glass rounded-2xl overflow-hidden relative z-0">
                 <div class="scroll-table" style="max-height:70vh;">
                     <table class="w-full text-left text-[11px]">
-                        <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                        <thead class="text-gray-400 uppercase text-[9px] font-black tracking-widest">
                             <tr>
                                 <th class="py-3 px-4 w-14">#</th>
                                 <th class="py-3 px-4">Pengguna</th>
@@ -707,10 +705,10 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                                         <td class="py-3 px-4 text-gray-400">
                                             <?= !empty($row['media_type']) ? htmlspecialchars($row['media_type']) : '<span class="text-gray-600">—</span>' ?>
                                         </td>
-                                        <td class="py-3 px-4 text-center font-mono text-gray-500">
+                                        <td class="py-3 px-4 text-center font-mono text-gray-400">
                                             <?= !empty($row['media_id']) ? (int)$row['media_id'] : '—' ?>
                                         </td>
-                                        <td class="py-3 px-4 hidden md:table-cell font-mono text-gray-500 text-[10px]">
+                                        <td class="py-3 px-4 hidden md:table-cell font-mono text-gray-400 text-[10px]">
                                             <?= htmlspecialchars($row['ip_address'] ?? '—') ?>
                                         </td>
                                         <td class="py-3 px-4 text-right text-gray-400 text-[10px] whitespace-nowrap">
@@ -720,7 +718,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                                 <?php endwhile; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="7" class="py-12 text-center text-gray-500 text-xs italic">
+                                    <td colspan="7" class="py-12 text-center text-gray-400 text-xs italic">
                                         <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-3 opacity-30"></i>
                                         <p>Belum ada data log untuk filter ini.</p>
                                     </td>
@@ -765,7 +763,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     </div>
                     <div>
                         <h3 class="text-xs font-bold text-gray-300">Log Pemeliharaan</h3>
-                        <p class="text-[9px] text-gray-500">Hapus log lama secara permanen untuk menghemat ruang database.</p>
+                        <p class="text-[9px] text-gray-400">Hapus log lama secara permanen untuk menghemat ruang database.</p>
                     </div>
                 </div>
                 <form method="POST" class="flex items-center gap-3 flex-wrap" onsubmit="return meelConfirmForm(event, { title:'Hapus Log', text:'Hapus permanen semua log yang lebih lama dari periode yang dipilih?', confirmButtonText:'HAPUS' })" id="clear-logs-form">
@@ -798,7 +796,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     </div>
                     <div>
                         <h3 class="text-xs font-bold text-gray-300">Hapus Semua Log</h3>
-                        <p class="text-[9px] text-gray-500">Hapus <strong class="text-red-400">seluruh</strong> log aktivitas dan reset auto-increment ke 1. Tindakan ini <strong class="text-red-400">tidak dapat dibatalkan</strong>.</p>
+                        <p class="text-[9px] text-gray-400">Hapus <strong class="text-red-400">seluruh</strong> log aktivitas dan reset auto-increment ke 1. Tindakan ini <strong class="text-red-400">tidak dapat dibatalkan</strong>.</p>
                     </div>
                 </div>
 
@@ -853,7 +851,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 </div>
                 <div>
                     <h1 class="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight">Analitik Tayangan</h1>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">Pemantauan Log Tayangan</p>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1.5">Pemantauan Log Tayangan</p>
                 </div>
             </div>
 
@@ -866,43 +864,43 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-8">
                 <div class="glass p-5 rounded-2xl border-l-4 border-purple-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Total Baris Log</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Total Baris Log</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($view_stats['total_log_rows']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">baris</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">baris</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-red-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Baris Log Video</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Baris Log Video</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($view_stats['video_log_rows']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">baris</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">baris</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-orange-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Baris Log Musik</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Baris Log Musik</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($view_stats['music_log_rows']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">baris</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">baris</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-green-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Status Sinkronisasi</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Status Sinkronisasi</p>
                     <?php
                     $synced = ($view_stats['video_views_counter'] + $view_stats['music_views_counter']) > 0;
                     ?>
                     <?php if ($synced): ?>
                         <span class="text-lg font-bold text-green-400"><i data-lucide="check-circle" class="w-5 h-5 inline"></i> Synced</span>
                     <?php else: ?>
-                        <span class="text-lg font-bold text-gray-500"><i data-lucide="minus-circle" class="w-5 h-5 inline"></i> No Data</span>
+                        <span class="text-lg font-bold text-gray-400"><i data-lucide="minus-circle" class="w-5 h-5 inline"></i> No Data</span>
                     <?php endif; ?>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8">
                 <div class="glass p-5 rounded-2xl border-l-4 border-red-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Penghitung Tayangan Video</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Penghitung Tayangan Video</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($view_stats['video_views_counter']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">views</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">views</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-orange-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Penghitung Tayangan Musik</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Penghitung Tayangan Musik</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($view_stats['music_views_counter']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">views</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">views</span>
                 </div>
             </div>
 
@@ -913,7 +911,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     </div>
                     <div>
                         <h3 class="text-xs font-bold text-gray-300">Sinkron Manual</h3>
-                        <p class="text-[9px] text-gray-500">Sinkronkan views counter dari view_logs sekarang. Auto-sync berjalan setiap 1 jam.</p>
+                        <p class="text-[9px] text-gray-400">Sinkronkan views counter dari view_logs sekarang. Auto-sync berjalan setiap 1 jam.</p>
                     </div>
                 </div>
                 <form method="POST">
@@ -934,7 +932,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                         </div>
                         <div>
                             <h3 class="text-xs font-bold text-gray-300">Pertumbuhan Log Tayangan (30 Hari)</h3>
-                            <p class="text-[9px] text-gray-500">Pertumbuhan jumlah view_logs per hari.</p>
+                            <p class="text-[9px] text-gray-400">Pertumbuhan jumlah view_logs per hari.</p>
                         </div>
                     </div>
                     <div id="view-chart" class="w-full" style="height:280px;"></div>
@@ -1018,7 +1016,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 </div>
                 <div>
                     <h1 class="text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight">Antrean Unggah</h1>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">Riwayat Unggah &amp; Unduh</p>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1.5">Riwayat Unggah &amp; Unduh</p>
                 </div>
             </div>
             <script src="../assets/js/admin/activity_log.js?v=<?= filemtime('../assets/js/admin/activity_log.js') ?>"></script>
@@ -1030,30 +1028,30 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             <?php endif; ?>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-8">
                 <div class="glass p-5 rounded-2xl border-l-4 border-blue-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Total</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Total</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($uq_stats['total']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">jobs</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">jobs</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-green-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Selesai</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Selesai</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($uq_stats['completed_count']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">jobs</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">jobs</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-red-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Gagal</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Gagal</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($uq_stats['failed_count']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">jobs</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">jobs</span>
                 </div>
                 <div class="glass p-5 rounded-2xl border-l-4 border-yellow-500">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1.5">Diproses</p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1.5">Diproses</p>
                     <span class="text-2xl font-bold text-white"><?= number_format($uq_stats['processing_count']) ?></span>
-                    <span class="text-[10px] text-gray-500 ml-1.5">jobs</span>
+                    <span class="text-[10px] text-gray-400 ml-1.5">jobs</span>
                 </div>
             </div>
             <div class="glass p-6 md:p-8 rounded-2xl mb-8 filter-section relative z-40 overflow-visible">
                 <div class="flex flex-col lg:flex-row items-start justify-between gap-6 w-full min-w-0">
                     <div class="w-full lg:w-1/4 min-w-0 relative z-30">
-                        <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2.5 block">
+                        <label class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 block">
                             <i data-lucide="filter" class="w-3 h-3 inline mr-1.5"></i> Status
                         </label>
                         <div class="relative" id="uq-status-dropdown-container">
@@ -1068,7 +1066,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                                     echo htmlspecialchars($uq_status_labels[$uq_status] ?? 'Semua Status');
                                     ?>
                                 </span>
-                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 shrink-0"></i>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400 shrink-0"></i>
                             </button>
                             <div id="uq-status-dropdown-panel"
                                 class="action-dropdown-panel hidden absolute left-0 right-0 mt-1.5 rounded-xl z-50 py-1 shadow-2xl bg-[#131720]">
@@ -1088,7 +1086,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     </div>
 
                     <div class="w-full lg:w-1/4 min-w-0 relative z-10">
-                        <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2.5 block">
+                        <label class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 block">
                             <i data-lucide="search" class="w-3 h-3 inline mr-1.5"></i> Cari Nama Pengguna / URL
                         </label>
                         <div class="relative">
@@ -1099,7 +1097,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     </div>
 
                     <div class="w-full lg:flex-1 min-w-0 relative z-10">
-                        <label class="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2.5 block">
+                        <label class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2.5 block">
                             <i data-lucide="calendar" class="w-3 h-3 inline mr-1.5"></i> Rentang
                         </label>
                         <input type="hidden" name="days" id="uq-days-input" value="<?= $uq_days ?>">
@@ -1123,7 +1121,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                         Terapkan
                     </button>
                     <a href="activity-log?tab=uploads"
-                        class="text-[10px] text-gray-500 hover:text-white px-4 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-2 rounded-xl hover:bg-white/[.03]">
+                        class="text-[10px] text-gray-400 hover:text-white px-4 py-3 transition-all uppercase tracking-wider inline-flex items-center gap-2 rounded-xl hover:bg-white/[.03]">
                         <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
                         Reset
                     </a>
@@ -1133,7 +1131,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             <div class="glass rounded-2xl overflow-hidden relative z-0">
                 <div class="scroll-table" style="max-height:70vh;">
                     <table class="w-full text-left text-[11px]">
-                        <thead class="text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                        <thead class="text-gray-400 uppercase text-[9px] font-black tracking-widest">
                             <tr>
                                 <th class="py-3 px-4 w-14">#</th>
                                 <th class="py-3 px-4">Pengguna</th>
@@ -1190,7 +1188,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                                 <?php endwhile; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="6" class="py-12 text-center text-gray-500 text-xs italic">
+                                    <td colspan="6" class="py-12 text-center text-gray-400 text-xs italic">
                                         <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-3 opacity-30"></i>
                                         <p>Belum ada data antrean unggah untuk filter ini.</p>
                                     </td>
@@ -1235,7 +1233,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                     </div>
                     <div>
                         <h3 class="text-xs font-bold text-gray-300">Antrean Unggah Pemeliharaan</h3>
-                        <p class="text-[9px] text-gray-500">Hapus record upload queue lama secara permanen untuk menghemat ruang database.</p>
+                        <p class="text-[9px] text-gray-400">Hapus record upload queue lama secara permanen untuk menghemat ruang database.</p>
                     </div>
                 </div>
 

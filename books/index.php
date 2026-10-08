@@ -32,9 +32,7 @@ $totalPagesBooks = $meta_books['total_pages'];
     <meta property="og:description" content="MEeL Books - Perpustakaan digital untuk membaca manga, komik, dan dokumen PDF.">
     <title>MEeL | Buku</title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/books/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/books/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/books/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('books', '../assets/css/books'); ?>
     <link rel="stylesheet" href="../assets/css/books/index/main.css<?= meel_asset_version('assets/css/books/index/main.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
 </head>
@@ -76,7 +74,7 @@ $totalPagesBooks = $meta_books['total_pages'];
                 <button type="submit"
                     title="Cari"
                     aria-label="Cari buku"
-                    class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all flex-shrink-0">
+                    class="px-2.5 sm:px-4 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-green-500 hover:border-green-500/30 transition-all flex-shrink-0">
                     <span class="hidden sm:inline">Cari</span>
                     <i data-lucide="search" class="w-3.5 h-3.5 sm:hidden"></i>
                 </button>
@@ -179,7 +177,7 @@ $totalPagesBooks = $meta_books['total_pages'];
             $endPage = min($totalPagesBooks, $bookPage + 2);
             for ($i = $startPage; $i <= $endPage; $i++): ?>
                 <a href="?type=<?= $filter ?>&page=<?= $i ?>"
-                    class="w-9 h-9 flex items-center justify-center rounded-xl text-[11px] font-bold transition-all <?= $i === $bookPage ? 'bg-green-600 text-white shadow-lg shadow-green-900/30' : 'bg-white/[.04] border border-white/[.06] text-gray-500 hover:text-green-500 hover:border-green-500/30' ?>">
+                    class="w-9 h-9 flex items-center justify-center rounded-xl text-[11px] font-bold transition-all <?= $i === $bookPage ? 'bg-green-600 text-white shadow-lg shadow-green-900/30' : 'bg-white/[.04] border border-white/[.06] text-gray-400 hover:text-green-500 hover:border-green-500/30' ?>">
                     <?= $i ?>
                 </a>
             <?php endfor; ?>

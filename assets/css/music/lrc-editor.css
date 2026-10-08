@@ -51,7 +51,7 @@
     border-radius: 8px;
     border: none;
     background: transparent;
-    color: #6b7280;
+    color: #8b93a1;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -148,7 +148,7 @@
     font-family: inherit;
 }
 .synced-text-input::placeholder {
-    color: #4b5563;
+    color: #7a8290;
 }
 .synced-actions-col {
     display: flex;
@@ -165,7 +165,7 @@
     border-radius: 6px;
     background: transparent;
     border: 1px solid rgba(255,255,255,0.08);
-    color: #6b7280;
+    color: #8b93a1;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -191,7 +191,7 @@
     border-radius: 8px;
     border: 1px dashed rgba(255,255,255,0.12);
     background: transparent;
-    color: #6b7280;
+    color: #8b93a1;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -322,7 +322,7 @@
     color: #e5e7eb;
 }
 .editor-textarea::placeholder {
-    color: #4b5563;
+    color: #7a8290;
 }
 
 html[data-theme="light"] .editor-top-bar {

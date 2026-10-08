@@ -46,9 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
     <meta property="og:description" content="Upload buku dan dokumen ke perpustakaan digital MEeL Books.">
     <title>MEeL | Unggah Buku</title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/books/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/books/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/books/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('books', '../assets/css/books'); ?>
     <link rel="stylesheet" href="../assets/css/books/upload/main.css<?= meel_asset_version('assets/css/books/upload/main.css') ?>">
 </head>
 
@@ -57,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
 
         <div class="flex justify-between items-center mb-8">
             <h1 class="text-2xl font-black">Unggah ke Koleksi</h1>
-            <a href="beranda" class="text-gray-500 hover:text-white transition">
+            <a href="beranda" class="text-gray-400 hover:text-white transition">
                 <i data-lucide="x"></i>
             </a>
         </div>
@@ -73,43 +71,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
 
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Tipe Konten</label>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Tipe Konten</label>
                     <select name="type" class="w-full bg-[#05070a] border border-gray-800 rounded-2xl p-3 text-sm focus:border-blue-600 outline-none">
                         <option value="manga">Manga / Komik (ZIP / CBZ)</option>
                         <option value="pdf">E-Book / Dokumen (PDF)</option>
                     </select>
                 </div>
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Kategori</label>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Kategori</label>
                     <input type="text" name="category" placeholder="Edukasi, Aksi, dll"
                         class="w-full bg-[#05070a] border border-gray-800 rounded-2xl p-3 text-sm focus:border-blue-600 outline-none">
                 </div>
             </div>
 
             <div class="space-y-2">
-                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Judul Buku</label>
+                <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Judul Buku</label>
                 <input type="text" name="title" value="<?= $val_title ?>" required
                     placeholder="Contoh: Belajar PHP Dasar"
                     class="w-full bg-[#05070a] border border-gray-800 rounded-2xl p-3 text-sm focus:border-blue-600 outline-none">
             </div>
 
             <div class="space-y-2">
-                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Penulis / Artis</label>
+                <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Penulis / Artis</label>
                 <input type="text" name="author" placeholder="Nama Penulis"
                     class="w-full bg-[#05070a] border border-gray-800 rounded-2xl p-3 text-sm focus:border-blue-600 outline-none">
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">File (PDF / ZIP / CBZ)</label>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">File (PDF / ZIP / CBZ)</label>
                     <input type="file" name="book_file" required
-                        class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0
+                        class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0
                                   file:text-xs file:font-bold file:bg-gray-800 file:text-gray-300">
                 </div>
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase ml-1">Sampul (Thumbnail)</label>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Sampul (Thumbnail)</label>
                     <input type="file" name="thumbnail"
-                        class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0
+                        class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0
                                   file:text-xs file:font-bold file:bg-gray-800 file:text-gray-300">
                 </div>
             </div>

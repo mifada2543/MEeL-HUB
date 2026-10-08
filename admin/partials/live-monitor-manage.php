@@ -36,11 +36,11 @@ $result_monitor = $conn->query(
         <tr class="group hover:bg-white/[0.02] transition-colors" data-username="<?= htmlspecialchars($row['username'], ENT_QUOTES) ?>" data-sec-since="<?= $sec_since ?>">
             <td class="py-4 px-2">
                 <div class="flex items-center gap-2">
-                    <span class="text-sm font-bold <?= $row['role'] === 'guest' ? 'text-gray-500 italic' : 'text-white' ?>">
+                    <span class="text-sm font-bold <?= $row['role'] === 'guest' ? 'text-gray-400 italic' : 'text-white' ?>">
                         <a href="<?= meel_base_url_path() ?>/profile/<?= htmlspecialchars($row['username'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($row['username']) ?></a>
                     </span>
                     <?php if ($row['role'] === 'guest'): ?>
-                        <span class="text-[7px] bg-white/5 text-gray-500 px-1 rounded border border-white/10 uppercase font-black">Tamu</span>
+                        <span class="text-[7px] bg-white/5 text-gray-400 px-1 rounded border border-white/10 uppercase font-black">Tamu</span>
                     <?php endif; ?>
                 </div>
                 <div class="flex flex-col">
@@ -81,7 +81,7 @@ $result_monitor = $conn->query(
                         <?php endif; ?>
                     </div>
 
-                    <span class="text-[9px] text-gray-500 font-semibold mt-1">
+                    <span class="text-[9px] text-gray-400 font-semibold mt-1">
                         <?= htmlspecialchars($row['access_via']) ?>
                     </span>
                 </div>

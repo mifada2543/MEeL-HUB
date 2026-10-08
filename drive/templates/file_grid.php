@@ -87,7 +87,7 @@ if (empty($files)): ?>
                 </div>
 
                 <h3 class='text-sm font-bold truncate mb-1 text-gray-200' title='<?= $name ?>'><?= $name ?></h3>
-                <div class='flex justify-between items-center text-[10px] text-gray-500 font-medium uppercase tracking-tighter'>
+                <div class='flex justify-between items-center text-[10px] text-gray-400 font-medium uppercase tracking-tighter'>
                     <span><?= $size ?></span>
                     <span><?= $date ?></span>
                 </div>

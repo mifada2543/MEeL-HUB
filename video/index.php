@@ -25,9 +25,7 @@ $totalPages = $meta['total_pages'];
     <meta property="og:description" content="Jelajahi koleksi video di MEeL Video. Streaming HLS dengan kualitas terbaik.">
     <title>MEeL Video | Koleksi</title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= meel_asset_version('assets/css/video/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('video', '../assets/css/video'); ?>
     <link rel="stylesheet" href="../assets/css/video/index/main.css<?= meel_asset_version('assets/css/video/index/main.css') ?>">
 </head>
 

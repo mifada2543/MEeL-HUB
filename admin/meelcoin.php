@@ -53,9 +53,7 @@ $user_list_json = json_encode($user_list);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pengaturan MEeLCoin | MEeL Admin</title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
 </head>
 <body class="min-h-screen">
     <?php
@@ -73,7 +71,7 @@ $user_list_json = json_encode($user_list);
             </div>
             <div>
                 <h1 style="font-size:22px;font-weight:800;color:var(--admin-text);line-height:1.2;margin:0;">Pengaturan MEeLCoin</h1>
-                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-top:4px;">Sistem Mata Uang Unggah</p>
+                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8b93a1;margin-top:4px;">Sistem Mata Uang Unggah</p>
             </div>
         </div>
 
@@ -98,7 +96,7 @@ $user_list_json = json_encode($user_list);
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
                         <div>
                             <div style="font-size:12px;font-weight:700;color:var(--admin-text);">Aktifkan MEeLCoin</div>
-                            <div style="font-size:10px;color:#6b7280;margin-top:4px;">Gunakan sistem coin untuk upload. Nonaktifkan untuk kembali ke rate limit per jam.</div>
+                            <div style="font-size:10px;color:#8b93a1;margin-top:4px;">Gunakan sistem coin untuk upload. Nonaktifkan untuk kembali ke rate limit per jam.</div>
                         </div>
                         <label class="admin-toggle">
                             <input type="hidden" name="meelcoin_enabled" value="0">

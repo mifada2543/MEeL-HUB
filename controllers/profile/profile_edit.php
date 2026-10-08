@@ -247,9 +247,9 @@ include __DIR__ . '/../../partials/scripts.php';
                     <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="batalPreview()"></div>
                     <div class="relative glass rounded-[2rem] border border-white/10 shadow-2xl w-full max-w-xs p-8 text-center">
                         <img src="../profile/upload/<?= htmlspecialchars($data['profile_picture'] ?: 'default_avatar.png', ENT_QUOTES, 'UTF-8') ?>" alt="Foto profil saat ini" class="w-16 h-16 mx-auto mb-2 rounded-2xl object-cover border-2 border-white/10 shadow-lg" title="Foto profil Anda saat ini">
-                        <p class="text-xs text-gray-500 uppercase tracking-widest mb-4">Foto Saat Ini</p>
+                        <p class="text-xs text-gray-400 uppercase tracking-widest mb-4">Foto Saat Ini</p>
                         <h3 class="text-sm font-black text-white uppercase tracking-widest mb-4">Pratinjau Foto</h3>
-                        <p class="text-[10px] text-gray-500 mb-4">Geser foto untuk memilih bagian yang dipakai</p>
+                        <p class="text-[10px] text-gray-400 mb-4">Geser foto untuk memilih bagian yang dipakai</p>
                         <div id="cropFrame" class="relative h-56 mx-auto mb-4 rounded-2xl overflow-hidden border-2 border-blue-500/30 select-none" style="width:224px;touch-action:none;cursor:grab;background-color:#0b0e14">
                             <img id="modalAvatarPreview" class="absolute select-none" style="max-width:none;top:0;left:0" alt="Pratinjau" draggable="false">
                             <div class="pointer-events-none absolute top-0 bottom-0 left-1/2 w-px crop-guide" style="transform:translateX(-50%)"></div>
@@ -265,7 +265,7 @@ include __DIR__ . '/../../partials/scripts.php';
                 </div>
 
                 <div class="space-y-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Bio Anda</label>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Bio Anda</label>
                     <textarea name="bio" rows="4" class="w-full bg-[#0b0e14] border border-white/5 rounded-2xl p-4 text-sm focus:outline-none focus:border-blue-600 transition"><?= htmlspecialchars($data['bio']) ?></textarea>
                 </div>
 

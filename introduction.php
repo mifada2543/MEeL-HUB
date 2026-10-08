@@ -49,7 +49,7 @@ include __DIR__ . '/partials/scripts.php';
         <div class="sidebar-header">
             <a href="<?= htmlspecialchars($back_url) ?>" class="back-link">
                 <div class="back-icon">
-                    <i data-lucide="home" style="width:16px;height:16px;color:#6b7280;"></i>
+                    <i data-lucide="home" style="width:16px;height:16px;color:#8b93a1;"></i>
                 </div>
                 <div>
                     <div class="brand-title">MEeL <span>Guide</span></div>

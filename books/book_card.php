@@ -15,6 +15,9 @@
         <div class="book-card relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/[.06] bg-[#0b0e14] shadow-lg">
             <img src="upload/thumbnail/<?= htmlspecialchars($book['thumbnail']) ?>"
                 loading="lazy"
+                decoding="async"
+                width="512"
+                height="683"
                 class="book-thumb w-full h-full object-cover"
                 alt="<?= htmlspecialchars($book['title']) ?>"
                 onerror="this.style.display='none'; this.parentElement.querySelector('.book-fallback')?.classList.remove('hidden')">
