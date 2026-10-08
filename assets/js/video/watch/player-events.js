@@ -526,7 +526,6 @@ function setupMeelPlayerEvents() {
             durationMargin: 10,
             countdownPrefix: "Otomatis ulang dari awal dalam",
             onShow: () => {
-              // Jangan biarkan video tetap berjalan di belakang modal.
               player.pause();
             },
             onResume: (pos) => {

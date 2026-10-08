@@ -1,16 +1,4 @@
 /* reference build: MEeL-C6H9N3O3 [d1b5f7073b4b4292] */
-
-/* Keyboard guard untuk resume-modal.
- *
- * Plyr (config keyboard.global) dan shortcut aplikasi sama-sama listen
- * "keydown" di window fase bubble / document, sehingga space, k, j, l, f, m, c,
- * angka 0-9, dan Arrow (volume + seek) tetap bereaksi meski modal sedang
- * terbuka. Satu listener window+capture di bawah menutup semua sumber itu
- * selama modal tampil, tanpa menyentuh kode lain.
- *
- * File ini dimuat sebelum module loader video/watch, jadi daftarnya mendahului
- * shortcut yang juga capture di window (mini-player.js).
- */
 (function () {
   if (window.__meelResumeKeyGuardBound) return;
   window.__meelResumeKeyGuardBound = true;
