@@ -70,21 +70,17 @@ $orphan_checked_at = null;
 $variants_kept = 0;
 $variants_bytes = 0;
 
-$ORPHAN_CACHE_TTL = 600;
-$orphan_cache_file = defined('MEEL_ADMIN_ORPHANS_CACHE')
-    ? MEEL_ADMIN_ORPHANS_CACHE
+$ORPHAN_CACHE_TTL = 120;
+$orphan_cache_file = function_exists('meel_admin_orphan_cache_path')
+    ? meel_admin_orphan_cache_path()
     : dirname(__DIR__, 2) . '/temp/cache/admin_orphans.json';
 
-if (is_readable($orphan_cache_file)) {
-    $cached = json_decode((string) file_get_contents($orphan_cache_file), true);
-    if (is_array($cached) && isset($cached['checked_at'], $cached['orphans'])
-        && is_array($cached['orphans'])
-        && (time() - (int) $cached['checked_at']) < $ORPHAN_CACHE_TTL) {
-        $orphans = $cached['orphans'];
-        $orphan_checked_at = (int) $cached['checked_at'];
-        $variants_kept = (int) ($cached['variant_count'] ?? 0);
-        $variants_bytes = (int) ($cached['variant_bytes'] ?? 0);
-    }
+$cached = meel_read_cache_file($orphan_cache_file, $ORPHAN_CACHE_TTL, ['orphans'], 'checked_at');
+if ($cached !== null) {
+    $orphans = (array) $cached['orphans'];
+    $orphan_checked_at = (int) $cached['checked_at'];
+    $variants_kept = (int) ($cached['variant_count'] ?? 0);
+    $variants_bytes = (int) ($cached['variant_bytes'] ?? 0);
 }
 
 if ($orphan_checked_at === null) {

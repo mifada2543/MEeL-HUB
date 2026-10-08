@@ -175,6 +175,149 @@ class GarbageCollector
         return $totalCleaned;
     }
 
+    /**
+     * Bersihkan file cache yang expired + sisa .tmp.* yatim.
+     *
+     * Menggunakan TTL per prefix:
+     *   - media_stats_*         : 30 detik  (default media.php)
+     *   - admin_orphans.json    : 120 detik (admin_data.php)
+     *   - dirsize_*             : 300 detik (storage.php)
+     *   - server_stats_info.json: 300 detik (System.php)
+     *   - xsendfile_roots.cache : 86400 detik (storage.php)
+     *   - .tmp.*                : > 300 detik (stale temp)
+     *
+     * File yang MASIH dalam TTL DIPEJAMKAN (tidak dihapus).
+     *
+     * @return int Jumlah file yang dihapus
+     */
+    public static function cleanCacheDirectory(): int
+    {
+        $cacheDir = self::getMediaCacheDir();
+        if (!is_dir($cacheDir)) {
+            return 0;
+        }
+
+        $ttlMap = [
+            'media_stats_'       => 30,
+            'admin_orphans'      => 120,
+            'dirsize_'           => 300,
+            'server_stats_info'  => 300,
+            'xsendfile_roots'    => 86400,
+        ];
+
+        $now = time();
+        $deleted = 0;
+
+        $items = glob(rtrim($cacheDir, '/') . '/*');
+        if (empty($items)) {
+            return 0;
+        }
+
+        foreach ($items as $item) {
+            $base = basename($item);
+
+            // .tmp.* yatim (> 300 dtk)
+            if (preg_match('/\.tmp\.\d+\.[0-9a-f]{12}$/', $base)) {
+                $mtime = @filemtime($item);
+                if ($mtime !== false && ($now - $mtime) > 300) {
+                    if (is_file($item) && @unlink($item)) {
+                        $deleted++;
+                    }
+                }
+                continue;
+            }
+
+            // Cache JSON dengan TTL per prefix
+            $expired = false;
+            foreach ($ttlMap as $prefix => $ttl) {
+                if (str_starts_with($base, $prefix)) {
+                    $expired = self::isCacheExpired($item, $ttl);
+                    break;
+                }
+            }
+
+            // Fallback: file tidak dikenal prefix tapi > 1 hari
+            if (!$expired && !isset($ttlMap)) {
+                $mtime = @filemtime($item);
+                if ($mtime !== false && ($now - $mtime) > 86400) {
+                    $expired = true;
+                }
+            }
+
+            if ($expired && is_file($item) && @unlink($item)) {
+                $deleted++;
+            }
+        }
+
+        // Bersihkan direktori kosong di cache
+        self::cleanEmptyCacheDirs($cacheDir);
+
+        return $deleted;
+    }
+
+    /**
+     * Cek apakah file cache sudah expired berdasarkan TTL.
+     * Menggunakan meel_read_cache_file jika tersedia, fallback manual.
+     */
+    private static function isCacheExpired(string $path, int $ttl): bool
+    {
+        // Kalau helper storage.php sudah termuat, pakai itu (TTL 0 = cek manual)
+        if (function_exists('meel_read_cache_file')) {
+            $data = @meel_read_cache_file($path, 0, [], '');
+            if ($data !== null) {
+                // Data valid = tidak expired
+                return false;
+            }
+            // null = tidak ada / rusak / kedaluwarsa
+            return true;
+        }
+
+        // Fallback manual (storage.php belum load)
+        $raw = @file_get_contents($path);
+        if ($raw === false || $raw === '') {
+            return true;
+        }
+        $decoded = @json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return true;
+        }
+        // Cek kunci waktu umum
+        $timeKey = '';
+        foreach (['ts', 'time', 'checked_at'] as $k) {
+            if (isset($decoded[$k])) {
+                $timeKey = $k;
+                break;
+            }
+        }
+        if ($timeKey === '') {
+            return false; // tidak punya timestamp -> anggap valid
+        }
+        $age = time() - (int)$decoded[$timeKey];
+        return $age >= $ttl;
+    }
+
+    private static function getMediaCacheDir(): string
+    {
+        if (defined('MEEL_MEDIA_CACHE_DIR')) {
+            return MEEL_MEDIA_CACHE_DIR;
+        }
+        return dirname(__DIR__, 2) . '/temp/cache';
+    }
+
+    private static function cleanEmptyCacheDirs(string $dir): void
+    {
+        if (!is_dir($dir)) return;
+        foreach (glob(rtrim($dir, '/') . '/*') ?: [] as $item) {
+            if (is_dir($item)) {
+                self::cleanEmptyCacheDirs($item);
+                $rem = glob(rtrim($item, '/') . '/*') ?: [];
+                if (empty($rem) && !rmdir($item)) {
+                    error_log("[MEeL] GarbageCollector: gagal hapus dir kosong: {$item}");
+                }
+            }
+        }
+    }
+
     public const RUN_INTERVAL_SECONDS = 60;
 
     private static function isWithinThrottle(string $throttleFile, int $interval): bool

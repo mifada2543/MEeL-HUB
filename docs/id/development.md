@@ -1017,7 +1017,7 @@ Helper bersama di `modules/core/helpers/media.php`:
 | `meel_media_stats_all()` | **Satu** query `UNION ALL` untuk `video`/`music`/`books` (COUNT + MIN(id) + MAX(id)), cache file per tabel 30 detik |
 | `meel_media_stats()` | Satu tabel; cache miss menghangatkan **ketiganya** sekaligus |
 | `meel_pick_random_ids()` | Sampling **rentang acak** untuk rekomendasi |
-| `meel_invalidate_media_stats_cache()` | Buang cache (dipanggil di 4 titik mutasi) |
+| `meel_invalidate_media_stats_cache()` | Buang cache (dipanggil di 5 titik mutasi) **sekaligus** cache orphan admin |
 | `meel_media_table_whitelist()` | Validasi nama tabel (anti injeksi lewat nama tabel) |
 
 **Strategi sampling:** beberapa jendela `id >= ? ORDER BY id LIMIT ?` dengan titik
@@ -1046,7 +1046,26 @@ musik (`helpers/upload.php`), hapus video & musik (`fun-manage.php`).
 
 Cache bisa dialihkan lewat konstanta **`MEEL_MEDIA_CACHE_DIR`** (mengikuti pola
 `MEEL_SERVER_STATS_CACHE`) supaya test tidak bergantung pada hak akses
-`temp/cache/` milik Apache.
+`temp/cache/` milik Apache. Cache orphan admin mengikuti konstanta yang sama lewat
+`meel_admin_orphan_cache_path()` (dengan override `MEEL_ADMIN_ORPHANS_CACHE`).
+
+#### Konvensi cache file
+
+1. **Tulis lewat `meel_write_cache_file()` saja** — tidak pernah `file_put_contents()`
+   langsung. Fungsi itu menulis file sementara lalu `rename()`, sehingga atomic.
+   `LOCK_EX` **bukan** padanan atomic: ia hanya mengunci penulis, sedangkan pembaca
+   tetap bisa membaca file yang sedang ditulis (terukur 58%–81% pembacaan gagal saat
+   ada writer bersamaan).
+2. **Baca lewat `meel_read_cache_file()` saja** — jangan tulis ulang logika TTL per
+   file. Kunci waktu yang dipakai: `ts` (bawaan), `time` (`dir_size`), `checked_at`
+   (orphan admin).
+3. **TTL pendek + invalidasi saat mutasi** — TTL bukan alat kesegaran. Untuk cache
+   yang harus disegarkan, invalidasi dilakukan di titik mutasi (lihat
+   `meel_invalidate_media_stats_cache()`, yang juga membuang cache orphan). TTL hanya
+   menahan scan berulang saat refresh cepat.
+4. **Hanya JSON** — tidak ada `serialize()`/pickle di cache.
+5. **Direktori harus group-writable** — `temp/cache/` dibuat dengan mode `0775`.
+   Untuk instalasi lama: `sudo chgrp daemon temp/cache && sudo chmod 775 temp/cache`.
 
 #### Dua bug yang ditemukan oleh test
 

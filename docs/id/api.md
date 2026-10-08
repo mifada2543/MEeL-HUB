@@ -918,7 +918,7 @@ Setiap POST wajib menyertakan `csrf_token`.
 | Clean Orphans | `clean_orphans=1` + `files_to_delete` (JSON) | POST | Delete files not in DB |
 | Recheck | `recheck_orphans=1` | POST | Hapus cache pindai lalu tampilkan hasil terbaru |
 
-Hasil pindai disimpan di `temp/cache/admin_orphans.json` dengan TTL 10 menit (`checked_at`, `orphans`, `variant_count`, `variant_bytes`).
+Hasil pindai disimpan di `temp/cache/admin_orphans.json` dengan TTL **120 detik** (`checked_at`, `orphans`, `variant_count`, `variant_bytes`) — pindai 13.686 berkas hanya butuh ~40 ms, jadi TTL pendek cukup mencegah scan berulang tanpa menahan data basi. Cache juga dibuang otomatis oleh `meel_invalidate_media_stats_cache()` setiap kali media berubah (upload/hapus), sehingga panel akurat langsung tanpa harus menunggu TTL habis atau klik "Cek Ulang".
 
 > **Varian thumbnail bukan sampah.** Tiap video punya dua berkas thumbnail di `video/upload/thumbnail/`: `<stem>.<ext>` (asli, terdaftar di `video.thumbnail`) dan `<stem>_sm.webp` (varian turunan lebar 256px). Varian ditulis sekali saat upload (`Uploader.php`) dan dipakai saat render lewat `video_thumbnail_sm()` yang mencocokkan stem — jadi **sengaja tidak didaftarkan di DB**. Pemindai mengecualikan pola `_sm.<ext>` di ketiga direktori thumbnail (video, music, books) dan melaporkan jumlahnya sebagai baris info, bukan sebagai orphan.
 >

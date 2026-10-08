@@ -275,17 +275,21 @@ class System
 
     private function getCachedServerInfo(): array
     {
+        require_once __DIR__ . '/helpers.php';
+
         $cache_file = defined('MEEL_SERVER_STATS_CACHE')
             ? MEEL_SERVER_STATS_CACHE
             : __DIR__ . '/../../temp/cache/server_stats_info.json';
         $cache_ttl = 300;
 
-        if (file_exists($cache_file) && (time() - filemtime($cache_file)) < $cache_ttl) {
-            $cached = json_decode((string) file_get_contents($cache_file), true);
-            if (is_array($cached)
-                && isset($cached['hostname'], $cached['os'], $cached['kernel'], $cached['php_version'], $cached['cores'])) {
-                return $cached;
-            }
+        $cached = meel_read_cache_file(
+            $cache_file,
+            $cache_ttl,
+            ['hostname', 'os', 'kernel', 'php_version', 'cores', 'ts'],
+            'ts'
+        );
+        if ($cached !== null) {
+            return $cached;
         }
 
         $info = [
@@ -294,13 +298,14 @@ class System
             'kernel' => @exec('uname -r') ?: PHP_OS,
             'php_version' => phpversion(),
             'cores' => (int) (@exec('nproc') ?: 1),
+            'ts' => time(),
         ];
 
         $cache_dir = dirname($cache_file);
         if (!is_dir($cache_dir)) {
-            @mkdir($cache_dir, 0755, true);
+            @mkdir($cache_dir, 0775, true);
         }
-        @file_put_contents($cache_file, json_encode($info, JSON_UNESCAPED_UNICODE), LOCK_EX);
+        meel_write_cache_file($cache_file, json_encode($info, JSON_UNESCAPED_UNICODE));
 
         return $info;
     }

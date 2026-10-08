@@ -788,7 +788,7 @@ Shared helpers in `modules/core/helpers/media.php`:
 | `meel_media_stats_all()` | **One** `UNION ALL` query for `video`/`music`/`books` (COUNT + MIN(id) + MAX(id)), 30-second per-table file cache |
 | `meel_media_stats()` | One table; a cache miss warms **all three** at once |
 | `meel_pick_random_ids()` | **Random-range sampling** for recommendations |
-| `meel_invalidate_media_stats_cache()` | Drop the cache (called from 4 mutation sites) |
+| `meel_invalidate_media_stats_cache()` | Drop the cache (called from 5 mutation sites) **and** the admin orphan cache |
 | `meel_media_table_whitelist()` | Table-name validation (guards against injection via table name) |
 
 **Sampling strategy:** several `id >= ? ORDER BY id LIMIT ?` windows at random
@@ -817,7 +817,26 @@ upload (`helpers/upload.php`), video & music deletion (`fun-manage.php`).
 
 The cache can be redirected via the **`MEEL_MEDIA_CACHE_DIR`** constant (following
 the `MEEL_SERVER_STATS_CACHE` pattern) so tests don't depend on write access to
-Apache's `temp/cache/`.
+Apache's `temp/cache/`. The admin orphan cache follows the same directory via
+`meel_admin_orphan_cache_path()` (with a `MEEL_ADMIN_ORPHANS_CACHE` override).
+
+#### File cache convention
+
+1. **Write only through `meel_write_cache_file()`** — never call `file_put_contents()`
+   directly. It writes a temp file then `rename()`s, which is atomic. `LOCK_EX` is
+   **not** an atomic substitute: it only locks the writer, and readers can still read
+   a file mid-write (measured at 58%–81% failed reads while a writer was active).
+2. **Read only through `meel_read_cache_file()`** — don't re-implement TTL logic per
+   file. Timestamp keys in use: `ts` (default), `time` (`dir_size`), `checked_at`
+   (admin orphan).
+3. **Short TTL + invalidation on mutation** — a TTL is not a freshness mechanism.
+   Anything a reader must see invalidated at the mutation site (see
+   `meel_invalidate_media_stats_cache()`, which also drops the orphan cache). The TTL
+   only prevents a repeated scan on a quick refresh.
+4. **JSON only** — no `serialize()`/pickle in caches.
+5. **The directory must be group-writable** — `temp/cache/` is created with mode
+   `0775`. For existing installs:
+   `sudo chgrp daemon temp/cache && sudo chmod 775 temp/cache`.
 
 #### Two real bugs the tests caught
 
