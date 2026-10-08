@@ -62,6 +62,18 @@
 .rekomendasi-item:hover .rec-thumb-img {
   transform: scale(1.06);
 }
+
+.rec-meta-text {
+  color: #9ca3af !important;
+}
+.rekomendasi-item:hover .rec-meta-text {
+  color: #d1d5db !important;
+}
+
+.rec-uploader-text {
+  color: #f87171 !important;
+  font-size: 10px;
+}
 .rec-thumb-img {
   aspect-ratio: 1/1;
 }

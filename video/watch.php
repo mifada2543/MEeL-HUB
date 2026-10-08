@@ -44,6 +44,8 @@ session_write_close();
     $_META_TYPE = 'video.other';
     ?>
     <?php include '../partials/link.php'; ?>
+    <link rel="preload" as="image" fetchpriority="high"
+        href="upload/thumbnail/<?= htmlspecialchars($v['thumbnail'] ?? '') ?>">
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
     <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
     <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= meel_asset_version('assets/css/video/' . $__f) ?>">
@@ -350,8 +352,8 @@ session_write_close();
                         class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline"
                         title="<?= htmlspecialchars($r['title']) ?>">
                         <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                            <img src="upload/thumbnail/<?= htmlspecialchars($r['thumbnail']) ?>"
-                                class="rec-thumb-img w-full h-full object-cover transition-transform duration-300" loading="lazy" alt="Thumbnail video <?= htmlspecialchars($r['title']) ?>">
+                            <img src="upload/thumbnail/<?= video_thumbnail_sm($r['thumbnail']) ?>"
+                                class="rec-thumb-img w-full h-full object-cover transition-transform duration-300" loading="lazy" decoding="async" width="256" height="144" alt="Thumbnail video <?= htmlspecialchars($r['title']) ?>">
                         </div>
                         <div class="flex-1 min-w-0 flex flex-col justify-center">
                             <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
@@ -359,7 +361,7 @@ session_write_close();
                             </div>
                             <div class="text-[9px] text-gray-300 mt-1"><?= number_format($r['views'] ?? 0) ?> views</div>
                             <?php if (!empty($r['uploader'])): ?>
-                                <div class="text-[9px] font-bold text-red-500/60 uppercase tracking-wider mt-0.5 truncate">
+                                <div class="rec-uploader-text font-bold uppercase tracking-wider mt-0.5 truncate">
                                     <?= htmlspecialchars($r['uploader']) ?>
                                 </div>
                             <?php endif; ?>

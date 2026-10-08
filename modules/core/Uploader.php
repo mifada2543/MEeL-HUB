@@ -367,6 +367,9 @@ class Uploader
         $thumb_dir = $this->base_dir . "thumbnail/";
         $thumb_from_user = false;
 
+        $sm_name = $clean_name . "_thumb_sm.webp";
+        $sm_done = false;
+
         if (
             !empty($files['thumbnail']['tmp_name']) && is_uploaded_file($files['thumbnail']['tmp_name'])
             && $files['thumbnail']['error'] === UPLOAD_ERR_OK
@@ -385,6 +388,17 @@ class Uploader
                     $thumb_name = $t_name;
                     $thumb_from_user = true;
                 }
+
+                if ($thumb_from_user) {
+                    $sm_done = meel_ffmpeg_thumbnail_webp(
+                        $this->ffmpeg_bin,
+                        $t_dst,
+                        $thumb_dir . $sm_name,
+                        256,
+                        '',
+                        $this->getEnvPrefix()
+                    );
+                }
             }
         }
 
@@ -398,7 +412,20 @@ class Uploader
             }
             if (!$thumb_generated) {
                 $thumb_name = "default_thumb.webp";
+            } elseif (is_file($work_thumb)) {
+                $sm_done = meel_ffmpeg_thumbnail_webp(
+                    $this->ffmpeg_bin,
+                    $work_thumb,
+                    $work_folder . $sm_name,
+                    256,
+                    '',
+                    $this->getEnvPrefix()
+                );
             }
+        }
+
+        if (!$sm_done && !$thumb_from_user) {
+            @unlink($work_folder . $sm_name);
         }
 
         $work_m3u8 = $work_folder . $folder_name . ".m3u8";
@@ -478,7 +505,7 @@ class Uploader
         foreach (glob($work_folder . "*") as $work_file) {
             $filename = basename($work_file);
 
-            if (!$thumb_from_user && $filename === $thumb_name) {
+            if (!$thumb_from_user && ($filename === $thumb_name || $filename === $sm_name)) {
                 if (!rename($work_file, $hdd_thumb_dir . $filename)) {
                     $move_failed = true;
                     break;
@@ -502,6 +529,7 @@ class Uploader
         if ($move_failed) {
             $this->removeDir($hdd_target_folder);
             $this->removeFile($hdd_thumb_dir . $thumb_name);
+            $this->removeFile($hdd_thumb_dir . $sm_name);
             return ['status' => 'error', 'msg' => 'Gagal memindahkan file ke storage. Cek permission HDD.', 'alert' => true];
         }
 
@@ -538,6 +566,7 @@ class Uploader
             $this->removeDir($hdd_target_folder);
             $hdd_thumb_dir = $this->base_dir . "thumbnail/";
             $this->removeFile($hdd_thumb_dir . $thumb_name);
+            $this->removeFile($hdd_thumb_dir . $sm_name);
 
             return ['status' => 'error', 'msg' => 'Database error! [' . $e->getMessage() . '] | title_len=' . strlen($title) . ' meta_len=' . strlen($meta) . ' filename=' . $db_filename];
         }

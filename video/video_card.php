@@ -9,7 +9,7 @@
         $thumb_name = $v['thumbnail'] ?? '';
         $thumb_ok = $thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . basename($thumb_name));
         $thumb_src = $thumb_ok
-            ? 'upload/thumbnail/' . rawurlencode($thumb_name)
+            ? 'upload/thumbnail/' . video_thumbnail_sm(rawurlencode($thumb_name))
             : '../assets/img/video0.webp';
         ?>
         <img src="<?= $thumb_src ?>"

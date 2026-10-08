@@ -412,7 +412,7 @@ while ($rc = $r->fetch_assoc()) {
                                                      loading="lazy"
                                                      width="40" height="40">
                                                 <div>
-                                                    <a href="<?= $watch_url ?>" target="_blank" class="content-title">
+                                                    <a href="<?= $watch_url ?>" target="_blank" rel="noopener" class="content-title">
                                                         <?= htmlspecialchars($row['title']) ?>
                                                     </a>
                                                     <span class="content-id">ID #<?= (int)$row['id'] ?></span>

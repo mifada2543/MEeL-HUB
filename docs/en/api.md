@@ -681,6 +681,21 @@ All media bytes are served through PHP endpoints that delegate to one shared fun
 - **Range requests:** `Range: bytes=...` → `206 Partial Content` with `Accept-Ranges`/`Content-Range` — enables HLS segment seeking and audio scrubbing.
 - **Output buffer cleanup:** `ob_end_clean` + `ob_implicit_flush` before streaming to prevent binary corruption.
 
+### Video Thumbnail Sizes
+
+Video uploads produce **two** thumbnail sizes at once (via `meel_ffmpeg_thumbnail_webp()` in `modules/core/Uploader.php`):
+
+| File | Width | Used by |
+|---|---|---|
+| `<name>_thumb.webp` | 1280px | player poster (`data-poster`) and the OG image |
+| `<name>_thumb_sm.webp` | 256px | watch sidebar (128px slot) and library grid cards |
+
+There is **no cache and no on-demand variant layer** — both files are written once during upload, so storage does not grow on its own. `video_thumbnail_sm($thumbnail)` returns the small filename when it exists, otherwise the original name, so thumbnails uploaded before this change keep rendering correctly (just without the byte saving). Naming inserts `_sm` before the extension regardless of the source naming, because existing thumbnails in storage are not consistently named (`*_thumb.webp`, `*_vthumb.jpg`, `*.png`, …).
+
+One-off backfill for pre-existing media:
+
+
+
 ### HLS Referer Gate (video)
 
 `video/stream.php?f=...` passes `hls_gate => true`. Requests for paths under `video/` must carry a same-host `Referer` from a video page (`/video`, `/video/watch`, `/video/index`, `/video/beranda`); otherwise the request is redirected to `err/?code=denied`. This prevents third-party sites from hotlinking HLS segments.

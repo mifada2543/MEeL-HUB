@@ -763,6 +763,21 @@ Semua byte media disajikan melalui endpoint PHP yang mendelegasikan ke satu fung
 - **Range request:** `Range: bytes=...` → `206 Partial Content` dengan `Accept-Ranges`/`Content-Range` — memungkinkan seeking segment HLS dan scrubbing audio.
 - **Pembersihan output buffer:** `ob_end_clean` + `ob_implicit_flush` sebelum streaming untuk mencegah korupsi data biner.
 
+### Ukuran Thumbnail Video
+
+Upload video menghasilkan **dua** ukuran thumbnail sekaligus (lewat `meel_ffmpeg_thumbnail_webp()` di `modules/core/Uploader.php`):
+
+| Berkas | Lebar | Dipakai oleh |
+|---|---|---|
+| `<name>_thumb.webp` | 1280px | poster player (`data-poster`) dan OG image |
+| `<name>_thumb_sm.webp` | 256px | sidebar watch (slot 128px) dan kartu grid library |
+
+**Tidak ada cache dan tidak ada lapisan varian on-demand** — kedua berkas ditulis sekali saat upload, jadi storage tidak bertambah sendiri. `video_thumbnail_sm($thumbnail)` mengembalikan nama berkas kecil bila ada, selain itu nama aslinya, sehingga thumbnail yang diunggah sebelum fitur ini tetap tampil benar (hanya tidak hemat byte). Penamaan menyisipkan `_sm` sebelum ekstensi apa pun hasilnya, karena penamaan thumbnail lama di storage tidak konsisten (`*_thumb.webp`, `*_vthumb.jpg`, `*.png`, …).
+
+Backfill sekali jalan untuk media lama:
+
+
+
 ### Referer Gate HLS (video)
 
 `video/stream.php?f=...` melewatkan `hls_gate => true`. Request untuk path di bawah `video/` harus membawa `Referer` same-host dari halaman video (`/video`, `/video/watch`, `/video/index`, `/video/beranda`); jika tidak, request di-redirect ke `err/?code=denied`. Ini mencegah situs pihak ketiga meng-hotlink segment HLS.
