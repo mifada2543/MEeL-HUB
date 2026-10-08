@@ -181,6 +181,10 @@ html[data-theme="light"]{--bg-base:#fafafa!important;--bg-card:#fff!important;--
 .rekomendasi-item:hover{background:var(--meel-surface-hover)!important}
 .rec-title-text{color:var(--meel-text)!important;text-shadow:none!important}
 .rekomendasi-item:hover .rec-title-text{color:var(--meel-text-heading)!important;text-shadow:none!important}
+.rec-uploader-text{color:#b91c1c!important}
+.rekomendasi-item:hover .rec-uploader-text{color:#991b1b!important}
+.rec-meta-text{color:var(--meel-text-muted)!important}
+.rekomendasi-item:hover .rec-meta-text{color:var(--meel-text)!important}
 .comment-row:hover,.music-item:hover{background:var(--meel-surface-hover)!important}
 .bottom-link{color:var(--meel-text-muted)!important}
 .bottom-link:hover{color:var(--meel-text-heading)!important;border-color:rgba(0,0,0,.08)!important;background:rgba(0,0,0,.03)!important}

@@ -18,6 +18,26 @@ function meel_media_base_path(string $module): string
 }
 }
 
+if (!function_exists('video_thumbnail_sm')) {
+function video_thumbnail_sm(?string $thumbnail): string
+{
+    $thumbnail = basename(trim((string)$thumbnail));
+    if ($thumbnail === '') {
+        return '';
+    }
+
+    $stem = pathinfo($thumbnail, PATHINFO_FILENAME);
+    if ($stem === '') {
+        return $thumbnail;
+    }
+
+    $sm = $stem . '_sm.webp';
+    return is_file(meel_media_base_path('video') . '/thumbnail/' . $sm)
+        ? $sm
+        : $thumbnail;
+}
+}
+
 if (!function_exists('music_thumbnail_url')) {
 function music_thumbnail_url(?string $thumbnail): string
 {

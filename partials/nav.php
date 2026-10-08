@@ -144,7 +144,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                         <?php else: ?>
                             <div class="flex items-center gap-1 mt-0.5">
                                 <span class="h-1.5 w-1.5 rounded-full bg-gray-600"></span>
-                                <span class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter" title="Anda adalah pengguna biasa">Pengguna</span>
+                                <span class="text-[9px] text-gray-400 font-medium uppercase tracking-tighter" title="Anda adalah pengguna biasa">Pengguna</span>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -272,7 +272,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                         <?php else: ?>
                             <div class="flex items-center gap-1 mt-0.5">
                                 <span class="h-1.5 w-1.5 rounded-full bg-gray-600"></span>
-                                <span class="text-[9px] text-gray-500 uppercase">Anggota</span>
+                                <span class="text-[9px] text-gray-400 uppercase">Anggota</span>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -428,7 +428,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                 </div>
                 <div>
                     <div class="text-sm font-bold text-white">Tamu</div>
-                    <div class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter">Belum Masuk</div>
+                    <div class="text-[9px] text-gray-400 font-medium uppercase tracking-tighter">Belum Masuk</div>
                 </div>
             </div>
             <button onclick="toggleNavDrawerGuest()" class="text-gray-600 hover:text-white p-1 transition-all">
