@@ -1839,10 +1839,6 @@ function turnOff() {
     state: state,
   };
 
-  /* Pintasan papan ketik (S): klik bar toggle yang sudah ada supaya support
-     check, guard loading, toast, dan sinkronisasi UI tetap satu sumber
-     kebenaran dengan klik manual. Fallback dipakai kalau bar belum terpasang
-     (menu settings belum dibangun). */
   window.toggleUpscale = function () {
     var row = document.getElementById("plyr-setting-upscale");
     if (row) return row.click();

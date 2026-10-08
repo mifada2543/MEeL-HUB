@@ -14,7 +14,6 @@
   justify-content: center;
 }
 
-/* Pilihan aktif harus jelas saat dinavigasi keyboard (← → Home End). */
 #resume-modal button:focus {
   outline: 2px solid #fff;
   outline-offset: 2px;
