@@ -14,9 +14,13 @@ document.addEventListener("htmx:configRequest", (e) => {
   } catch (err) {}
   e.detail.parameters["exclude"] = String(id || 0);
 });
-document.addEventListener("DOMContentLoaded", () => {
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    bootPlayerIndex();
+  });
+} else {
   bootPlayerIndex();
-});
+}
 document.addEventListener("htmx:afterSwap", (e) => {
   if (typeof lucide !== "undefined") lucide.createIcons();
   const targetId = e.target?.id || "";

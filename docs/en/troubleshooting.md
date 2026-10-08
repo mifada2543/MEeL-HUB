@@ -377,6 +377,8 @@ du -sh /media/[user]/MEeL/
 - Move storage to larger HDD
 - Run orphan cleanup from admin panel
 
+> **Note on "Database Sync Check":** the line *"{n} 256px thumbnail variants (X MB) kept — not orphans"* is expected. Every video has two thumbnail files: the original (registered in the DB) and a derived 256px variant `<stem>_sm.webp` that is deliberately not registered because it is used for grid cards. Do not remove them by hand via "Bersihkan SSD Thinkpad" — that line is informational only.
+
 ---
 
 ## Performance Issues
@@ -425,6 +427,8 @@ du -sh /media/[user]/MEeL/
 3. Clean inactive guests: Admin Panel → **Clean Inactive Guests**
 4. Delete stuck queues: Admin Panel → **Clean Stuck Queues**
 5. Delete unnecessary drive files
+
+> **Note on "Database Sync Check":** the line *"{n} 256px thumbnail variants (X MB) kept — not orphans"* is expected. Every video has two thumbnail files: the original (registered in the DB) and a derived 256px variant `<stem>_sm.webp` that is deliberately not registered because it is used for grid cards. Do not remove them by hand via "Bersihkan SSD Thinkpad" — that line is informational only.
 
 ---
 

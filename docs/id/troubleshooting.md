@@ -505,6 +505,8 @@ Tunggu hingga kuota ter-reset, atau minta admin untuk meng-upload-kan.
 4. Hapus queue stuck: Admin Panel → **Clean Stuck Queues**
 5. Hapus file drive yang tidak perlu
 
+> **Catatan "Cek Sinkronisasi Database":** baris *"{n} varian thumbnail 256px (X MB) dipertahankan — bukan sampah"* itu normal. Tiap video punya dua berkas thumbnail: yang asli (terdaftar di DB) dan varian turunan 256px `<stem>_sm.webp` yang sengaja tidak didaftarkan di DB karena dipakai untuk kartu grid. Jangan dihapus manual lewat "Bersihkan SSD Thinkpad" — baris itu hanya informasi.
+
 ---
 
 ## Error Codes

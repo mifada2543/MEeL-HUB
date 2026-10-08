@@ -1,6 +1,20 @@
 {
+    "require": {
+        "php": ">=8.1"
+    },
     "require-dev": {
         "phpunit/phpunit": "^9.6"
+    },
+    "scripts": {
+        "test": [
+            "@test:unit",
+            "@test:security"
+        ],
+        "test:unit": "phpunit --no-coverage tests/unit",
+        "test:integration": "phpunit --no-coverage tests/integration",
+        "test:security": "php tests/security_test.php",
+        "build:css": "php scripts/build-css-bundle.php",
+        "lint:shell": "shellcheck -S warning install.sh scripts/verify_security.sh"
     },
     "__meel_marker": "reference build: MEeL-C10H12N2O [b5d0ee8c97c7abd7]"
 }

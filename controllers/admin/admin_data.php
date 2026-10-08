@@ -67,6 +67,8 @@ $p_drive = $storage_usage['percentages']['drive'];
 
 $orphans = [];
 $orphan_checked_at = null;
+$variants_kept = 0;
+$variants_bytes = 0;
 
 $ORPHAN_CACHE_TTL = 600;
 $orphan_cache_file = defined('MEEL_ADMIN_ORPHANS_CACHE')
@@ -80,6 +82,8 @@ if (is_readable($orphan_cache_file)) {
         && (time() - (int) $cached['checked_at']) < $ORPHAN_CACHE_TTL) {
         $orphans = $cached['orphans'];
         $orphan_checked_at = (int) $cached['checked_at'];
+        $variants_kept = (int) ($cached['variant_count'] ?? 0);
+        $variants_bytes = (int) ($cached['variant_bytes'] ?? 0);
     }
 }
 
@@ -169,10 +173,23 @@ $base_dirs = [
 foreach ($check_map as $rel_path => $table) {
     $abs_path = $base_dirs[$rel_path];
     $all_files = __admin_scan_files($abs_path);
+    $is_thumb_table = ($table === 'video_thumb' || $table === 'music_thumb' || $table === 'books_thumb');
 
     foreach ($all_files as $full_path) {
         $fname = basename($full_path);
         if (isset($__ignored_flip[$fname])) continue;
+
+        // Varian thumbnail turunan (mis. foo_sm.webp dari foo.jpg) sengaja TIDAK
+        // didaftarkan di DB: ditulis sekali di Uploader.php:370/394/417 (lebar 256px)
+        // lalu dipakai saat render lewat video_thumbnail_sm() yang mencocokkan stem.
+        // Jadi varian ini bukan sampah, meski induknya sudah tidak ada di DB.
+        // Thumbnail asli tidak akan tertangkap: video/music asli selalu berakhiran
+        // _thumb.* atau .thumb.* sehingga stem-nya tidak pernah persis "_sm".
+        $is_thumb_variant = $is_thumb_table && preg_match('/_sm\.[^.]+$/', $fname);
+        if ($is_thumb_variant) {
+            $variants_kept++;
+            $variants_bytes += (int) @filesize($full_path);
+        }
 
         $is_orphan = true;
 
@@ -190,7 +207,7 @@ foreach ($check_map as $rel_path => $table) {
             }
         }
         elseif ($table === 'video_thumb') {
-            if (isset($db_data['video_thumbs'][$fname])) {
+            if ($is_thumb_variant || isset($db_data['video_thumbs'][$fname])) {
                 $is_orphan = false;
             }
         }
@@ -200,7 +217,7 @@ foreach ($check_map as $rel_path => $table) {
             }
         }
         elseif ($table === 'music_thumb') {
-            if (isset($db_data['music_thumbs'][$fname])) {
+            if ($is_thumb_variant || isset($db_data['music_thumbs'][$fname])) {
                 $is_orphan = false;
             }
         }
@@ -218,7 +235,7 @@ foreach ($check_map as $rel_path => $table) {
             }
         }
         elseif ($table === 'books_thumb') {
-            if (isset($db_data['books_thumbs'][$fname])) {
+            if ($is_thumb_variant || isset($db_data['books_thumbs'][$fname])) {
                 $is_orphan = false;
             }
         }
@@ -232,6 +249,8 @@ foreach ($check_map as $rel_path => $table) {
         meel_write_cache_file($orphan_cache_file, json_encode([
             'checked_at' => $orphan_checked_at,
             'orphans' => $orphans,
+            'variant_count' => $variants_kept,
+            'variant_bytes' => $variants_bytes,
         ], JSON_UNESCAPED_UNICODE));
     }
 }

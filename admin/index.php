@@ -10,6 +10,8 @@
  * @var array<string,mixed> $stats
  * @var array<string,mixed> $server_stats
  * @var array<string,mixed> $orphans
+ * @var int $variants_kept
+ * @var int $variants_bytes
  * @var array<int,mixed> $chart_activity
  * @var float $ssd_free
  * @var float $ssd_used
@@ -470,6 +472,12 @@ include __DIR__ . '/../partials/scripts.php';
                 </div>
             <?php else: ?>
                 <p class="text-xs text-green-500 font-bold uppercase tracking-widest flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Semua file di SSD sinkron dengan Database</p>
+            <?php endif; ?>
+            <?php if ((int)($variants_kept ?? 0) > 0): ?>
+                <p class="text-[9px] text-gray-600 font-mono mt-2 flex items-center gap-1.5" title="Varian thumbnail 256px hasil turunan. Ditulis sekali saat upload dan dipakai untuk kartu grid, sengaja tidak didaftarkan di DB — bukan file sampah dan tidak ikut dihapus.">
+                    <i data-lucide="layers" class="w-3 h-3 shrink-0"></i>
+                    <span><?= (int)$variants_kept ?> varian thumbnail 256px (<?= isset($net_fmt) ? $net_fmt((int)$variants_bytes) : number_format((int)$variants_bytes / 1048576, 2) . ' MB' ?>) dipertahankan — bukan sampah</span>
+                </p>
             <?php endif; ?>
         </div>
         <div class="glass rounded-3xl overflow-hidden shadow-2xl mb-8" id="queues">

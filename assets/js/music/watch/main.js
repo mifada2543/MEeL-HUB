@@ -29,7 +29,10 @@
   };
   if (document.readyState !== "loading") return;
   for (var i = 0; i < files.length; i++) {
-    document.write('<script src="' + base + files[i] + qs + '"><\/script>');
+    var s = document.createElement("script");
+    s.src = base + files[i] + qs;
+    s.async = false;
+    document.head.appendChild(s);
   }
 })();
 

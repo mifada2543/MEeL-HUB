@@ -179,6 +179,28 @@ if (isset($_POST['clean_orphans'])) {
     $skipped_count = 0;
     $deleted_dirs = [];
 
+    // Daftar orphan datang dari cache 10 menit, jadi jangan dipercaya buta:
+    // query ulang DB di sini dan tolak file yang ternyata masih terdaftar.
+    $live_thumbs = [];
+    $live_files = [];
+    $live_folders = [];
+    $q = $conn->query('SELECT filename, thumbnail FROM video');
+    while ($r = $q->fetch_assoc()) {
+        if (!empty($r['thumbnail'])) $live_thumbs[$r['thumbnail']] = true;
+        $f = basename(dirname((string) $r['filename']));
+        if ($f !== '.' && $f !== '') $live_folders[$f] = true;
+    }
+    $q = $conn->query('SELECT filename, thumbnail FROM music');
+    while ($r = $q->fetch_assoc()) {
+        if (!empty($r['thumbnail'])) $live_thumbs[$r['thumbnail']] = true;
+        if (!empty($r['filename'])) $live_files[basename($r['filename'])] = true;
+    }
+    $q = $conn->query('SELECT path_folder, thumbnail FROM books');
+    while ($r = $q->fetch_assoc()) {
+        if (!empty($r['thumbnail'])) $live_thumbs[$r['thumbnail']] = true;
+        if (!empty($r['path_folder'])) $live_folders[$r['path_folder']] = true;
+    }
+
     error_log("[MEeL] Orphan cleaner: mulai, " . count((array)$files) . " file diproses, valid_dirs: " . implode(', ', $valid_dirs));
 
     foreach ((array)$files as $f) {
@@ -199,6 +221,28 @@ if (isset($_POST['clean_orphans'])) {
             $skipped_count++;
             error_log("[MEeL] Orphan cleaner: path tidak valid, skip: {$real}");
             continue;
+        }
+
+        // Pengaman ulang: varian thumbnail 256px dan berkas yang ternyata masih
+        // terdaftar di DB tidak boleh dihapus meski sempat masuk daftar cache.
+        $lbase = basename($real);
+        $ldir = dirname($real);
+        if (preg_match('/_sm\.[^.]+$/', $lbase)
+            || isset($live_thumbs[$lbase])
+            || isset($live_files[$lbase])
+        ) {
+            $skipped_count++;
+            error_log("[MEeL] Orphan cleaner: masih terpakai, skip: {$real}");
+            continue;
+        }
+        if (strpos($ldir, '/thumbnail/') === false) {
+            foreach (explode('/', $ldir) as $seg) {
+                if ($seg !== '' && isset($live_folders[$seg])) {
+                    $skipped_count++;
+                    error_log("[MEeL] Orphan cleaner: folder masih terpakai, skip: {$real}");
+                    continue 2;
+                }
+            }
         }
 
         if (is_dir($real)) {
