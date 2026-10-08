@@ -15,7 +15,33 @@ $__meel_theme_ok = !$__meel_is_arcade;
 <?php if ($__meel_theme_ok): ?>
 <link rel="stylesheet" href="<?= $__link_base ?>/assets/css/shared/theme-tokens.css?v=<?= @filemtime(__DIR__ . '/../assets/css/shared/theme-tokens.css') ?>">
 <?php endif; ?>
-<script src="<?= $__link_base ?>/assets/js/compatibilitas/lucide.js"></script>
+<script>
+window.__meelLucideQueue = [];
+window.__meelLucideStub = {
+  createIcons: function () {
+    window.__meelLucideQueue.push(Array.prototype.slice.call(arguments));
+  }
+};
+window.lucide = window.__meelLucideStub;
+</script>
+<script src="<?= $__link_base ?>/assets/js/compatibilitas/lucide.js" defer></script>
+<script>
+(function () {
+  function flush() {
+    if (!window.lucide || window.lucide === window.__meelLucideStub) return;
+    var q = window.__meelLucideQueue || [];
+    window.__meelLucideQueue = [];
+    for (var i = 0; i < q.length; i++) {
+      try { window.lucide.createIcons.apply(window.lucide, q[i]); } catch (e) {}
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', flush);
+  } else {
+    flush();
+  }
+})();
+</script>
 <?php if ($__meel_theme_ok): ?>
 <script src="<?= $__link_base ?>/assets/js/shared/theme.js?v=<?= @filemtime(__DIR__ . '/../assets/js/shared/theme.js') ?>"></script>
 <?php endif; ?>

@@ -6,7 +6,7 @@
   border-radius: 99px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: 0 0;
-  color: #6b7280;
+  color: #8b93a1;
   transition: all 0.2s;
   text-decoration: none;
   display: inline-block;
@@ -14,19 +14,22 @@
 .format-pill:hover {
   border-color: rgba(255, 255, 255, 0.15);
 }
+/* Latar pill aktif digelapkan supaya teks putih tetap lolos WCAG AA:
+   orange #f97316 hanya 2,80:1, blue #3b82f6 3,68:1, green #16a34a 3,30:1.
+   Nilai di bawah masing-masing 5:1. */
 .format-pill.active-orange {
-  background: var(--orange);
-  border-color: var(--orange);
+  background: #c2410c;
+  border-color: #c2410c;
   color: #fff;
 }
 .format-pill.active-blue {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #2563eb;
+  border-color: #2563eb;
   color: #fff;
 }
 .format-pill.active-green {
-  background: #16a34a;
-  border-color: #16a34a;
+  background: #15803d;
+  border-color: #15803d;
   color: #fff;
 }
 /* reference build: MEeL-C3H7NO2S [9d28ef73204fa006] */
@@ -61,6 +64,18 @@
 }
 .rekomendasi-item:hover .rec-thumb-img {
   transform: scale(1.06);
+}
+
+.rec-meta-text {
+  color: #9ca3af !important;
+}
+.rekomendasi-item:hover .rec-meta-text {
+  color: #d1d5db !important;
+}
+
+.rec-uploader-text {
+  color: #f87171 !important;
+  font-size: 10px;
 }
 .rec-thumb-img {
   aspect-ratio: 1/1;

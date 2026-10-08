@@ -147,7 +147,7 @@
   justify-content: center;
   gap: 10px;
   padding: 15px;
-  background: #3b82f6;
+  background: #1d4ed8;
   color: #fff;
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -160,12 +160,12 @@
     opacity 0.2s,
     transform 0.15s,
     box-shadow 0.2s;
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 4px 20px rgba(29, 78, 216, 0.25);
 }
 .submit-btn:hover:not(:disabled) {
   opacity: 0.88;
   transform: translateY(-1px);
-  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 8px 32px rgba(29, 78, 216, 0.35);
 }
 .submit-btn:disabled {
   opacity: 0.4;

@@ -42,9 +42,7 @@ $msg = $_GET['msg'] ?? null;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modules | MEeL Admin</title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
 </head>
 <body class="min-h-screen">
     <?php
@@ -62,7 +60,7 @@ $msg = $_GET['msg'] ?? null;
             </div>
             <div>
                 <h1 style="font-size:22px;font-weight:800;color:var(--admin-text);line-height:1.2;margin:0;">Modules</h1>
-                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-top:4px;">Modul Opsional Platform</p>
+                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8b93a1;margin-top:4px;">Modul Opsional Platform</p>
             </div>
         </div>
 
@@ -94,7 +92,7 @@ $msg = $_GET['msg'] ?? null;
                             </div>
                             <p style="font-size:11px;color:#9ca3af;line-height:1.6;margin-top:8px;"><?= htmlspecialchars($mod['desc']) ?></p>
                             <?php if ($exists && !$enabled): ?>
-                                <p style="font-size:10px;color:#6b7280;margin-top:6px;">Seluruh URL <code style="color:#93c5fd;">/arcade/*</code> dialihkan ke HUB &amp; semua jejaknya (link, menu, sitemap) disembunyikan otomatis.</p>
+                                <p style="font-size:10px;color:#8b93a1;margin-top:6px;">Seluruh URL <code style="color:#93c5fd;">/arcade/*</code> dialihkan ke HUB &amp; semua jejaknya (link, menu, sitemap) disembunyikan otomatis.</p>
                             <?php endif; ?>
                         </div>
                         <form method="POST" action="modules" style="flex-shrink:0;">
@@ -110,14 +108,14 @@ $msg = $_GET['msg'] ?? null;
                         </form>
                     </div>
                     <?php if ($exists): ?>
-                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#6b7280;">
+                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#8b93a1;">
                         <span>Sakelar ini disimpan di database (site_settings: <code><?= htmlspecialchars($mod['setting']) ?></code>) — berlaku untuk semua pengguna secara langsung.</span>
                         <?php if ($enabled): ?>
                             <a href="../<?= htmlspecialchars($mod['home']) ?>" target="_blank" rel="noopener" style="color:<?= $mod['color'] ?>;font-weight:700;text-decoration:none;">Buka modul ↗</a>
                         <?php endif; ?>
                     </div>
                     <?php else: ?>
-                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);font-size:10px;color:#6b7280;">
+                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);font-size:10px;color:#8b93a1;">
                         Folder modul tidak ditemukan di server — toggle tidak berpengaruh. MEeL-HUB tetap berfungsi normal tanpa modul ini.
                     </div>
                     <?php endif; ?>

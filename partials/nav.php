@@ -90,7 +90,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                 <?php if (!empty($_nav_pfp)): ?>
                     <img src="<?= $_nav_pfp_base . htmlspecialchars($_nav_pfp) ?>"
                         class="w-full h-full object-cover"
-                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
                     <span class="hidden w-full h-full items-center justify-center text-white text-xs font-bold">
                         <?= strtoupper(substr($_SESSION['username'], 0, 1)) ?>
                     </span>
@@ -113,7 +113,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                     <?php if (!empty($_nav_pfp)): ?>
                         <img src="<?= $_nav_pfp_base . htmlspecialchars($_nav_pfp) ?>"
                             class="w-full h-full object-cover"
-                            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
                         <span class="hidden w-full h-full items-center justify-center text-white text-xs font-bold">
                             <?= strtoupper(substr($_SESSION['username'], 0, 1)) ?>
                         </span>
@@ -144,7 +144,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                         <?php else: ?>
                             <div class="flex items-center gap-1 mt-0.5">
                                 <span class="h-1.5 w-1.5 rounded-full bg-gray-600"></span>
-                                <span class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter" title="Anda adalah pengguna biasa">Pengguna</span>
+                                <span class="text-[9px] text-gray-400 font-medium uppercase tracking-tighter" title="Anda adalah pengguna biasa">Pengguna</span>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -212,7 +212,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                     data-meel-confirm-text="Yakin mau keluar?"
                     data-meel-confirm-button="KELUAR"
                     title="Keluar dari akun Anda"
-                    class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-500 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
+                    class="flex items-center gap-3 px-4 py-2.5 text-[11px] text-gray-400 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
                     <i data-lucide="log-out" class="w-3.5 h-3.5 flex-shrink-0"></i>
                     <span>Keluar</span>
                 </a>
@@ -224,7 +224,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
     <?php if (!$_nav_is_notif): ?>
     <button id="nav-hamburger"
         onclick="toggleNavDrawer()"
-        class="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/[.04] border border-white/[.06] text-gray-500 hover:text-white transition-all"
+        class="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/[.04] border border-white/[.06] text-gray-400 hover:text-white transition-all"
         title="Buka menu navigasi">
         <i data-lucide="menu" class="w-6 h-6"></i>
     </button>
@@ -243,7 +243,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                     <?php if (!empty($_nav_pfp)): ?>
                         <img src="<?= $_nav_pfp_base . htmlspecialchars($_nav_pfp) ?>"
                             class="w-full h-full object-cover"
-                            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
                         <span class="hidden w-full h-full items-center justify-center text-white text-sm font-bold">
                             <?= strtoupper(substr($_SESSION['username'], 0, 1)) ?>
                         </span>
@@ -272,7 +272,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                         <?php else: ?>
                             <div class="flex items-center gap-1 mt-0.5">
                                 <span class="h-1.5 w-1.5 rounded-full bg-gray-600"></span>
-                                <span class="text-[9px] text-gray-500 uppercase">Anggota</span>
+                                <span class="text-[9px] text-gray-400 uppercase">Anggota</span>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -362,7 +362,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
             <div class="mx-6 my-3 h-px bg-white/[.05]"></div>
 
             <a href="<?= $_nav_root ?>update"
-                class="flex items-center gap-4 px-6 py-4 text-base text-gray-500 hover:text-white hover:bg-white/[.04] transition-all no-underline">
+                class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="radio" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Catatan Perubahan</span>
             </a>
@@ -395,12 +395,12 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
             DAFTAR
         </a>
         <a href="<?= $_nav_root ?>introduction"
-            class="text-gray-500 hover:text-white transition-all p-2 rounded-lg hover:bg-white/5"
+            class="text-gray-400 hover:text-white transition-all p-2 rounded-lg hover:bg-white/5"
             title="Cara Bernavigasi">
             <i data-lucide="compass" class="w-4 h-4"></i>
         </a>
         <a href="<?= $_nav_root ?>profile/guest"
-            class="text-gray-500 hover:text-white transition-all p-2 rounded-lg hover:bg-white/5"
+            class="text-gray-400 hover:text-white transition-all p-2 rounded-lg hover:bg-white/5"
             title="Pengaturan">
             <i data-lucide="settings" class="w-4 h-4"></i>
         </a>
@@ -408,7 +408,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
 
     <button id="nav-hamburger-guest"
         onclick="toggleNavDrawerGuest()"
-        class="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/[.04] border border-white/[.06] text-gray-500 hover:text-white transition-all"
+        class="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/[.04] border border-white/[.06] text-gray-400 hover:text-white transition-all"
         title="Menu">
         <i data-lucide="menu" class="w-6 h-6"></i>
     </button>
@@ -423,12 +423,12 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
         <div class="flex items-center justify-between px-5 py-4 border-b border-white/[.05]">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                    <img src="<?= $_nav_pfp_base ?>default_avatar.png" class="w-full h-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                    <img src="<?= $_nav_pfp_base ?>default_avatar.png" class="w-full h-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
                     <span class="hidden w-full h-full items-center justify-center text-white text-sm font-bold">?</span>
                 </div>
                 <div>
                     <div class="text-sm font-bold text-white">Tamu</div>
-                    <div class="text-[9px] text-gray-500 font-medium uppercase tracking-tighter">Belum Masuk</div>
+                    <div class="text-[9px] text-gray-400 font-medium uppercase tracking-tighter">Belum Masuk</div>
                 </div>
             </div>
             <button onclick="toggleNavDrawerGuest()" class="text-gray-600 hover:text-white p-1 transition-all">

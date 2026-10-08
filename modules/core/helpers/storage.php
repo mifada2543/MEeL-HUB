@@ -18,6 +18,30 @@ function meel_media_base_path(string $module): string
 }
 }
 
+if (!function_exists('video_thumbnail_sm')) {
+function video_thumbnail_sm(?string $thumbnail): string
+{
+    $thumbnail = basename(trim((string)$thumbnail));
+    if ($thumbnail === '') {
+        return '';
+    }
+
+    $stem = pathinfo($thumbnail, PATHINFO_FILENAME);
+    if ($stem === '') {
+        return $thumbnail;
+    }
+
+    // Aturan penamaan varian ini dibuat di Uploader.php (lembar 256px, disisipkan
+    // sebelum ekstensi). Berkas varian sengaja TIDAK masuk DB; kehadirannya
+    // dicek lewat is_file() di sini. Scan admin "Cek Sinkronisasi Database"
+    // memakai pengecualian yang sama, jadi varian tidak pernah dianggap sampah.
+    $sm = $stem . '_sm.webp';
+    return is_file(meel_media_base_path('video') . '/thumbnail/' . $sm)
+        ? $sm
+        : $thumbnail;
+}
+}
+
 if (!function_exists('music_thumbnail_url')) {
 function music_thumbnail_url(?string $thumbnail): string
 {
@@ -287,14 +311,9 @@ function dir_size(string $path, int $cache_ttl = 300): float
     $cache_key = 'dirsize_' . md5($path);
     $cache_file = dirname(__DIR__, 3) . '/temp/' . $cache_key . '.cache';
 
-    if (is_readable($cache_file)) {
-        $content = file_get_contents($cache_file);
-        $cached = $content !== false ? json_decode($content, true) : null;
-        if ($cached && isset($cached['size'], $cached['time'])) {
-            if (time() - $cached['time'] < $cache_ttl) {
-                return (float)$cached['size'];
-            }
-        }
+    $cached = meel_read_cache_file($cache_file, $cache_ttl, ['size', 'time'], 'time');
+    if ($cached !== null) {
+        return (float) $cached['size'];
     }
 
     if (!is_dir($path)) return 0.0;
@@ -338,6 +357,39 @@ function invalidate_dir_size_cache(string $username): void
 }
 }
 
+if (!function_exists('meel_sweep_stale_cache_tmp')) {
+
+/** @param string $path Path file cache tujuan (bukan path sementara).
+ * @param int $max_age Umur maksimum file sementara, detik.*/
+function meel_sweep_stale_cache_tmp(string $path, int $max_age = 300): void
+{
+    $dir = dirname($path);
+    if (!is_dir($dir) || !is_writable($dir)) {
+        return;
+    }
+
+    $now = time();
+    $entries = @scandir($dir);
+    if ($entries === false) {
+        return;
+    }
+
+    foreach ($entries as $entry) {
+        if (!preg_match('/\.tmp\.\d+\.[0-9a-f]{12}$/', $entry)) {
+            continue;
+        }
+        $tmp = $dir . '/' . $entry;
+        $mtime = @filemtime($tmp);
+        if ($mtime !== false && ($now - $mtime) < $max_age) {
+            continue;
+        }
+        if (is_file($tmp)) {
+            @unlink($tmp);
+        }
+    }
+}
+}
+
 if (!function_exists('meel_write_cache_file')) {
 
 function meel_write_cache_file(string $path, string $content): void
@@ -347,7 +399,69 @@ function meel_write_cache_file(string $path, string $content): void
         error_log("[MEeL] storage.php: cache file tidak bisa ditulis: {$path}");
         return;
     }
-    file_put_contents($path, $content, LOCK_EX);
+
+    $tmp = $path . '.tmp.' . getmypid() . '.' . bin2hex(random_bytes(6));
+    $bytes = @file_put_contents($tmp, $content);
+
+    if ($bytes === false || !@rename($tmp, $path)) {
+        if (is_file($tmp)) {
+            @unlink($tmp);
+        }
+        error_log("[MEeL] storage.php: cache file gagal ditulis: {$path}");
+        return;
+    }
+
+    meel_sweep_stale_cache_tmp($path);
+}
+}
+
+if (!function_exists('meel_read_cache_file')) {
+
+/** @param string $path Path file cache.
+ * @param int $ttl Umur maksimum, detik. <= 0 = selalu null.
+ * @param string[] $required_keys Kunci yang wajib ada agar cache dianggap sah.
+ * @param string $time_key Kunci penanda waktu; string kosong = pakai mtime file.
+ * @return array<string,mixed>|null */
+function meel_read_cache_file(string $path, int $ttl, array $required_keys = [], string $time_key = 'ts'): ?array
+{
+    if ($ttl <= 0 || !is_file($path) || !is_readable($path)) {
+        return null;
+    }
+
+    $raw = @file_get_contents($path);
+    if ($raw === false || $raw === '') {
+        return null;
+    }
+
+    $decoded = json_decode($raw, true);
+    if (!is_array($decoded)) {
+        return null;
+    }
+
+    foreach ($required_keys as $key) {
+        if (!array_key_exists($key, $decoded)) {
+            return null;
+        }
+    }
+
+    if ($time_key === '') {
+        $mtime = @filemtime($path);
+        if ($mtime === false || (time() - $mtime) >= $ttl) {
+            return null;
+        }
+        return $decoded;
+    }
+
+    if (!array_key_exists($time_key, $decoded)) {
+        return null;
+    }
+
+    $age = time() - (int) $decoded[$time_key];
+    if ($age < 0 || $age >= $ttl) {
+        return null;
+    }
+
+    return $decoded;
 }
 }
 

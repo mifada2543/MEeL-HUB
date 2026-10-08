@@ -14,9 +14,10 @@ if ($result['count'] > 0) {
                 class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline htmx-added"
                 title="<?= htmlspecialchars($v['title']) ?>">
                 <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                    <img src="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
+                    <img src="upload/thumbnail/<?= video_thumbnail_sm($v['thumbnail']) ?>"
                         class="rec-thumb-img w-full h-full object-cover transition-transform duration-300"
-                        loading="lazy">
+                        loading="lazy" decoding="async" width="256" height="144"
+                        alt="Thumbnail video <?= htmlspecialchars($v['title']) ?>">
                 </div>
                 <div class="flex-1 min-w-0 flex flex-col justify-center">
                     <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
@@ -24,7 +25,7 @@ if ($result['count'] > 0) {
                     </div>
                     <div class="text-[9px] text-gray-300 mt-1"><?= number_format($v['views'] ?? 0) ?> views</div>
                     <?php if (!empty($v['uploader_name'])): ?>
-                        <div class="text-[9px] font-bold text-red-500/60 uppercase tracking-wider mt-0.5 truncate">
+                        <div class="rec-uploader-text font-bold uppercase tracking-wider mt-0.5 truncate">
                             <?= htmlspecialchars($v['uploader_name']) ?>
                         </div>
                     <?php endif; ?>

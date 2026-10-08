@@ -10,6 +10,8 @@
  * @var array<string,mixed> $stats
  * @var array<string,mixed> $server_stats
  * @var array<string,mixed> $orphans
+ * @var int $variants_kept
+ * @var int $variants_bytes
  * @var array<int,mixed> $chart_activity
  * @var float $ssd_free
  * @var float $ssd_used
@@ -60,9 +62,7 @@ include __DIR__ . '/../partials/link.php';
 $scripts_root = '../';
 include __DIR__ . '/../partials/scripts.php';
 ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link rel="stylesheet" href="../assets/css/admin/index.css?v=<?= filemtime('../assets/css/admin/index.css') ?>">
     <script defer src="../assets/js/compatibilitas/chart.umd.min.js<?= meel_asset_version('assets/js/compatibilitas/chart.umd.min.js') ?>"></script>
 </head>
@@ -84,7 +84,7 @@ include __DIR__ . '/../partials/scripts.php';
             </div>
             <div>
                 <h1 class="text-2xl font-extrabold text-white leading-tight">Admin Sistem</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1">Pusat Admin</p>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">Pusat Admin</p>
             </div>
         </div>
 
@@ -94,9 +94,9 @@ include __DIR__ . '/../partials/scripts.php';
                     <h3 class="text-sm font-bold text-gray-400 uppercase mb-4 tracking-wider">Penyimpanan SSD NVMe</h3>
                     <div class="flex items-baseline gap-2 mb-4">
                         <span class="text-5xl font-black text-white"><?= number_format($ssd_free, 1) ?></span>
-                        <span class="text-lg font-bold text-gray-500">GB Free</span>
+                        <span class="text-lg font-bold text-gray-400">GB Free</span>
                     </div>
-                    <p class="text-xs text-gray-500 uppercase font-bold tracking-widest">Usage: <?= number_format($ssd_used, 1) ?> / <?= number_format($ssd_total, 1) ?> GB</p>
+                    <p class="text-xs text-gray-400 uppercase font-bold tracking-widest">Usage: <?= number_format($ssd_used, 1) ?> / <?= number_format($ssd_total, 1) ?> GB</p>
                 </div>
 
                 <div class="p-8 md:w-7/12">
@@ -104,7 +104,7 @@ include __DIR__ . '/../partials/scripts.php';
                         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Penyimpanan Media MEeL</h3>
                         <div class="flex items-baseline gap-2">
                             <span class="text-3xl font-black text-white"><?= number_format($hdd_free, 1) ?></span>
-                            <span class="text-sm font-bold text-gray-500">GB Free</span>
+                            <span class="text-sm font-bold text-gray-400">GB Free</span>
                         </div>
                     </div>
 
@@ -114,7 +114,7 @@ include __DIR__ . '/../partials/scripts.php';
                             <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-red-500 h-full rounded-full" style="width:<?= $p_vid ?>%"></div>
                             </div>
-                            <p class="text-[11px] text-gray-500 font-medium">Ukuran: <?= number_format($sz_vid, 2) ?> GB</p>
+                            <p class="text-[11px] text-gray-400 font-medium">Ukuran: <?= number_format($sz_vid, 2) ?> GB</p>
                         </div>
 
                         <div>
@@ -122,7 +122,7 @@ include __DIR__ . '/../partials/scripts.php';
                             <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-orange-500 h-full rounded-full" style="width:<?= $p_mus ?>%"></div>
                             </div>
-                            <p class="text-[11px] text-gray-500 font-medium">Ukuran: <?= number_format($sz_mus, 2) ?> GB</p>
+                            <p class="text-[11px] text-gray-400 font-medium">Ukuran: <?= number_format($sz_mus, 2) ?> GB</p>
                         </div>
 
                         <div>
@@ -130,7 +130,7 @@ include __DIR__ . '/../partials/scripts.php';
                             <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-green-500 h-full rounded-full" style="width:<?= $p_book ?>%"></div>
                             </div>
-                            <p class="text-[11px] text-gray-500 font-medium">Ukuran: <?= number_format($sz_book, 2) ?> GB</p>
+                            <p class="text-[11px] text-gray-400 font-medium">Ukuran: <?= number_format($sz_book, 2) ?> GB</p>
                         </div>
 
                         <div>
@@ -138,7 +138,7 @@ include __DIR__ . '/../partials/scripts.php';
                             <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div class="bg-blue-500 h-full rounded-full" style="width:<?= $p_drive ?>%"></div>
                             </div>
-                            <p class="text-[11px] text-gray-500 font-medium">Publik: <?= number_format($sz_d_pub, 2) ?> GB | Privat: <?= number_format($sz_d_prv, 2) ?> GB</p>
+                            <p class="text-[11px] text-gray-400 font-medium">Publik: <?= number_format($sz_d_pub, 2) ?> GB | Privat: <?= number_format($sz_d_prv, 2) ?> GB</p>
                         </div>
                     </div>
                 </div>
@@ -148,20 +148,20 @@ include __DIR__ . '/../partials/scripts.php';
                 <div>
                     <div class="flex items-center gap-2 mb-4">
                         <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-blue-400"></i>
-                        <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Analitik Global</h3>
+                        <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Analitik Global</h3>
                     </div>
 
                     <div class="space-y-3 mb-6">
                         <div class="flex justify-between items-center text-[11px]">
-                            <span class="text-gray-500">Total Tayangan</span>
+                            <span class="text-gray-400">Total Tayangan</span>
                             <span class="text-white font-mono font-bold"><?= number_format($stats['total_views']) ?></span>
                         </div>
                         <div class="flex justify-between items-center text-[11px]">
-                            <span class="text-gray-500">Total Suka</span>
+                            <span class="text-gray-400">Total Suka</span>
                             <span class="text-green-500 font-mono font-bold">+<?= number_format($stats['total_likes']) ?></span>
                         </div>
                         <div class="flex justify-between items-center text-[11px]">
-                            <span class="text-gray-500">Total Tidak Suka</span>
+                            <span class="text-gray-400">Total Tidak Suka</span>
                             <span class="text-red-500 font-mono font-bold">-<?= number_format($stats['total_dislikes']) ?></span>
                         </div>
                     </div>
@@ -200,8 +200,8 @@ include __DIR__ . '/../partials/scripts.php';
                             <?php endforeach; ?>
                         </div>
                         <a href="stats" class="flex items-center justify-center gap-2 mt-3 p-2 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-all group text-center" title="Lihat seluruh statistik konten">
-                            <i data-lucide="bar-chart-2" class="w-3 h-3 text-gray-500 group-hover:text-blue-400 transition-colors"></i>
-                            <span class="text-[9px] font-bold text-gray-500 group-hover:text-blue-400 uppercase tracking-widest transition-colors">Lihat Semua Statistik</span>
+                            <i data-lucide="bar-chart-2" class="w-3 h-3 text-gray-400 group-hover:text-blue-400 transition-colors"></i>
+                            <span class="text-[9px] font-bold text-gray-400 group-hover:text-blue-400 uppercase tracking-widest transition-colors">Lihat Semua Statistik</span>
                         </a>
                     </div>
                 </div>
@@ -212,13 +212,13 @@ include __DIR__ . '/../partials/scripts.php';
         <div class="glass p-6 rounded-3xl mb-8">
             <div class="flex items-center gap-2 mb-6">
                 <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i>
-                <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Server Stats — <?= htmlspecialchars($server_stats['info']['hostname'] ?? 'Tidak diketahui') ?></h3>
+                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Server Stats — <?= htmlspecialchars($server_stats['info']['hostname'] ?? 'Tidak diketahui') ?></h3>
                 <span id="stats-live" class="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-green-500 bg-green-500/10 border border-green-500/25 px-2 py-1 rounded-lg" title="Data diperbarui otomatis setiap 3 detik">
                     <span class="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>
                     Live
                 </span>
                 <span id="stats-updated" class="text-[8px] text-gray-600 font-mono"></span>
-                <label class="flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-widest text-gray-500 cursor-pointer" title="Interval pembaruan realtime">
+                <label class="flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-widest text-gray-400 cursor-pointer" title="Interval pembaruan realtime">
                     <i data-lucide="timer" class="w-3 h-3 text-cyan-400"></i>
                     Polling
                     <select id="stats-poll-interval" class="bg-gray-800/80 text-gray-300 text-[9px] font-bold uppercase tracking-widest border border-white/10 rounded-lg px-1.5 py-1 outline-none focus:border-cyan-500 cursor-pointer">
@@ -308,13 +308,13 @@ include __DIR__ . '/../partials/scripts.php';
                     <div class="bg-white/[0.02] border border-white/5 rounded-2xl p-4<?= $c['id'] === 'net' ? ' md:col-span-4' : '' ?>">
                         <div class="flex items-center gap-2 mb-3">
                             <i data-lucide="<?= $c['icon'] ?>" id="stat-<?= $c['id'] ?>-icon" class="w-3.5 h-3.5 <?= $text_color ?>"></i>
-                            <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest"><?= $c['label'] ?></span>
+                            <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest"><?= $c['label'] ?></span>
                             <?php if ($c['id'] === 'net'): ?>
-                                <span id="stat-net-ping" class="ml-auto text-[9px] font-mono font-bold text-gray-500" title="Latensi koneksi ke server (RTT polling / handshake SSE)">—</span>
+                                <span id="stat-net-ping" class="ml-auto text-[9px] font-mono font-bold text-gray-400" title="Latensi koneksi ke server (RTT polling / handshake SSE)">—</span>
                             <?php endif; ?>
                         </div>
                         <p id="stat-<?= $c['id'] ?>-value" class="text-xl font-black text-white mb-1"><?= $c['value'] ?></p>
-                        <p id="stat-<?= $c['id'] ?>-sub" class="text-[10px] text-gray-500 font-medium mb-3"<?= $c['id'] === 'net' ? ' title="Total: ↓ ' . $net_fmt($net_rx) . ' / ↑ ' . $net_fmt($net_tx) . '"' : '' ?>><?= $c['sub'] ?></p>
+                        <p id="stat-<?= $c['id'] ?>-sub" class="text-[10px] text-gray-400 font-medium mb-3"<?= $c['id'] === 'net' ? ' title="Total: ↓ ' . $net_fmt($net_rx) . ' / ↑ ' . $net_fmt($net_tx) . '"' : '' ?>><?= $c['sub'] ?></p>
                         <?php if ($c['id'] !== 'net'): ?>
                             <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                 <div id="stat-<?= $c['id'] ?>-bar" class="<?= $bar_color ?> h-full rounded-full transition-all" style="width:<?= $c['bar'] ?>%"></div>
@@ -331,22 +331,22 @@ include __DIR__ . '/../partials/scripts.php';
             </div>
 
             <div class="flex flex-wrap gap-4 text-[10px]">
-                <span class="text-gray-500"><span class="text-gray-400 font-bold">OS:</span> <?= htmlspecialchars($server_stats['info']['os']) ?></span>
+                <span class="text-gray-400"><span class="text-gray-400 font-bold">OS:</span> <?= htmlspecialchars($server_stats['info']['os']) ?></span>
                 <span class="text-gray-600">•</span>
-                <span class="text-gray-500"><span class="text-gray-400 font-bold">Kernel:</span> <?= htmlspecialchars($server_stats['info']['kernel']) ?></span>
+                <span class="text-gray-400"><span class="text-gray-400 font-bold">Kernel:</span> <?= htmlspecialchars($server_stats['info']['kernel']) ?></span>
                 <span class="text-gray-600">•</span>
-                <span class="text-gray-500"><span class="text-gray-400 font-bold">PHP:</span> <?= $server_stats['info']['php_version'] ?></span>
+                <span class="text-gray-400"><span class="text-gray-400 font-bold">PHP:</span> <?= $server_stats['info']['php_version'] ?></span>
                 <span class="text-gray-600">•</span>
-                <span class="text-gray-500"><span class="text-gray-400 font-bold">Rata-rata Beban:</span> <span id="stat-load"><?= $server_stats['cpu']['load_1m'] ?> / <?= $server_stats['cpu']['load_5m'] ?> / <?= $server_stats['cpu']['load_15m'] ?></span></span>
+                <span class="text-gray-400"><span class="text-gray-400 font-bold">Rata-rata Beban:</span> <span id="stat-load"><?= $server_stats['cpu']['load_1m'] ?> / <?= $server_stats['cpu']['load_5m'] ?> / <?= $server_stats['cpu']['load_15m'] ?></span></span>
                 <span class="text-gray-600">•</span>
-                <span class="text-gray-500"><span class="text-gray-400 font-bold">Processes:</span> <span id="stat-procs"><?= $server_stats['info']['processes'] ?></span></span>
+                <span class="text-gray-400"><span class="text-gray-400 font-bold">Processes:</span> <span id="stat-procs"><?= $server_stats['info']['processes'] ?></span></span>
             </div>
         </div>
 
         <div class="glass p-6 rounded-3xl mb-8">
             <div class="flex items-center gap-2 mb-4">
                 <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
-                <h3 class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Aktivitas 7 Hari</h3>
+                <h3 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Aktivitas 7 Hari</h3>
             </div>
             <div class="h-48">
                 <canvas id="activityChart"></canvas>
@@ -363,7 +363,7 @@ include __DIR__ . '/../partials/scripts.php';
             ];
             foreach ($cards as $c): ?>
                 <div class="glass p-4 rounded-2xl border-l-4 border-gray-700">
-                    <p class="text-[9px] font-bold text-gray-500 uppercase mb-1"><?= $c['label'] ?></p>
+                    <p class="text-[9px] font-bold text-gray-400 uppercase mb-1"><?= $c['label'] ?></p>
                     <div class="flex items-center justify-between"><span class="text-xl font-bold text-white"><?= $c['val'] ?></span><i data-lucide="<?= $c['icon'] ?>" class="w-4 h-4 <?= $c['color'] ?> opacity-50"></i></div>
                 </div>
             <?php endforeach; ?>
@@ -457,7 +457,7 @@ include __DIR__ . '/../partials/scripts.php';
                 <script>setTimeout(function(){var el=document.getElementById('orphan-recheck-msg');if(el)el.remove();},4000);</script>
             <?php endif; ?>
             <div class="flex items-center gap-3 mb-4">
-                <h3 class="text-xs font-bold text-gray-500 uppercase">Cek Sinkronisasi Database</h3>
+                <h3 class="text-xs font-bold text-gray-400 uppercase">Cek Sinkronisasi Database</h3>
                 <span class="text-[9px] text-gray-600 font-mono" title="Hasil pindai penyimpanan di-cache 10 menit agar halaman tetap responsif">Dicek: <?= $orphan_checked_at ? date('d/m/Y H:i:s', $orphan_checked_at) : '—' ?></span>
                 <form method="POST" class="ml-auto">
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -467,11 +467,17 @@ include __DIR__ . '/../partials/scripts.php';
             <?php if (count($orphans) > 0): ?>
                 <div class="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl">
                     <p class="text-xs text-red-400 mb-2">Ditemukan <?= count($orphans) ?> file sampah (tidak ada di DB):</p>
-                    <ul class="text-[9px] font-mono text-gray-500 max-h-24 overflow-y-auto mb-4"><?php foreach ($orphans as $o) echo "<li>- $o</li>"; ?></ul>
+                    <ul class="text-[9px] font-mono text-gray-400 max-h-24 overflow-y-auto mb-4"><?php foreach ($orphans as $o) echo "<li>- $o</li>"; ?></ul>
                     <form method="POST"><input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>"><input type="hidden" name="files_to_delete" value='<?= json_encode($orphans) ?>'> <button name="clean_orphans" class="bg-red-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl hover:bg-red-700 transition-all uppercase" title="Hapus file sampah yang tidak ada di database">Bersihkan SSD Thinkpad</button></form>
                 </div>
             <?php else: ?>
                 <p class="text-xs text-green-500 font-bold uppercase tracking-widest flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Semua file di SSD sinkron dengan Database</p>
+            <?php endif; ?>
+            <?php if ((int)($variants_kept ?? 0) > 0): ?>
+                <p class="text-[9px] text-gray-600 font-mono mt-2 flex items-center gap-1.5" title="Varian thumbnail 256px hasil turunan. Ditulis sekali saat upload dan dipakai untuk kartu grid, sengaja tidak didaftarkan di DB — bukan file sampah dan tidak ikut dihapus.">
+                    <i data-lucide="layers" class="w-3 h-3 shrink-0"></i>
+                    <span><?= (int)$variants_kept ?> varian thumbnail 256px (<?= isset($net_fmt) ? $net_fmt((int)$variants_bytes) : number_format((int)$variants_bytes / 1048576, 2) . ' MB' ?>) dipertahankan — bukan sampah</span>
+                </p>
             <?php endif; ?>
         </div>
         <div class="glass rounded-3xl overflow-hidden shadow-2xl mb-8" id="queues">
@@ -491,7 +497,7 @@ include __DIR__ . '/../partials/scripts.php';
 
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs">
-                    <thead class="bg-white/[0.02] text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                    <thead class="bg-white/[0.02] text-gray-400 uppercase text-[9px] font-black tracking-widest">
                         <tr>
                             <th class="py-3 px-6">Task ID</th>
                             <th class="py-3 px-4">Pengguna</th>
@@ -518,7 +524,7 @@ include __DIR__ . '/../partials/scripts.php';
 
                                     <td class="py-4 px-6 text-right">
                                         <div class="flex items-center justify-end gap-3">
-                                            <span class="text-gray-500 font-mono text-[10px]"><?= $q['created_at'] ?></span>
+                                            <span class="text-gray-400 font-mono text-[10px]"><?= $q['created_at'] ?></span>
 
                                             <form method="POST" class="m-0" onsubmit="return meelConfirmForm(event, { title: 'Hentikan Proses', text: 'Hentikan paksa proses spesifik ini?', confirmButtonText: 'HENTIKAN' });">
                                                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
@@ -537,7 +543,7 @@ include __DIR__ . '/../partials/scripts.php';
                         else:
                             ?>
                             <tr>
-                                <td colspan="5" class="py-6 text-center text-gray-500 text-xs italic">Tidak ada proses yang sedang berjalan.</td>
+                                <td colspan="5" class="py-6 text-center text-gray-400 text-xs italic">Tidak ada proses yang sedang berjalan.</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

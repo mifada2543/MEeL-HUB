@@ -56,9 +56,7 @@ if ($chat_username !== '' && !$chat_user) {
     <title>Obrolan Admin | MEeL</title>
     <?php include '../partials/link.php'; ?>
     <?php $root = meel_base_url_path(); ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link href="<?= $root ?>/assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>" rel="stylesheet">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link rel="stylesheet" href="<?= $root ?>/assets/css/admin/chat.css?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/css/admin/chat.css') ?>">
     <div id="admin-chat-data" data-api-base="<?= htmlspecialchars($root) ?>/api/chat" data-chat-root="<?= htmlspecialchars($root) ?>/admin/chat" style="display:none;"></div>
 </head>
@@ -76,22 +74,22 @@ if ($chat_username !== '' && !$chat_user) {
             <div class="glass" style="border-radius:16px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
                 <div class="chat-avatar">
                     <?php if (!empty($chat_user['profile_picture'])): ?>
-                        <img src="<?= $root ?>/profile/upload/<?= htmlspecialchars($chat_user['profile_picture']) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <img src="<?= $root ?>/profile/upload/<?= htmlspecialchars($chat_user['profile_picture']) ?>" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
                     <?php else: ?>
                         <?= strtoupper(substr($chat_user['username'], 0, 1)) ?>
                     <?php endif; ?>
                 </div>
                 <div>
                     <div style="font-size:13px;font-weight:700;color:var(--meel-text-heading,#f3f4f6);">@<?= htmlspecialchars($chat_user['username']) ?></div>
-                    <div style="font-size:10px;color:#6b7280;">Pesan 1 arah: Admin → Pengguna</div>
+                    <div style="font-size:10px;color:#8b93a1;">Pesan 1 arah: Admin → Pengguna</div>
                 </div>
-                <a href="<?= $root ?>/admin/chat" style="margin-left:auto;font-size:10px;color:#6b7280;text-decoration:none;" title="Kembali ke daftar chat">
+                <a href="<?= $root ?>/admin/chat" style="margin-left:auto;font-size:10px;color:#8b93a1;text-decoration:none;" title="Kembali ke daftar chat">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                 </a>
             </div>
 
             <div id="chat-messages" class="glass" style="border-radius:16px;padding:16px;margin-bottom:16px;min-height:300px;max-height:500px;overflow-y:auto;">
-                <div style="text-align:center;color:#6b7280;font-size:11px;padding:32px 0;">Memuat pesan...</div>
+                <div style="text-align:center;color:#8b93a1;font-size:11px;padding:32px 0;">Memuat pesan...</div>
             </div>
 
             <div class="glass" style="border-radius:16px;padding:16px;">
@@ -105,14 +103,14 @@ if ($chat_username !== '' && !$chat_user) {
             </div>
         <?php else: ?>
             <div class="glass" style="border-radius:16px;padding:20px;margin-bottom:16px;">
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-bottom:10px;">Cari Pengguna</div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8b93a1;margin-bottom:10px;">Cari Pengguna</div>
                 <input type="text" id="user-search" placeholder="Ketik nama pengguna..." class="chat-input" oninput="searchUsers(this.value)">
             </div>
             <div id="user-results" style="display:flex;flex-direction:column;gap:8px;"></div>
             <div id="recent-chats" class="glass" style="border-radius:16px;padding:20px;margin-top:16px;">
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-bottom:10px;">Percakapan Terakhir</div>
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8b93a1;margin-bottom:10px;">Percakapan Terakhir</div>
                 <div id="recent-list" style="display:flex;flex-direction:column;gap:4px;">
-                    <div style="text-align:center;color:#6b7280;font-size:11px;padding:16px 0;">Memuat...</div>
+                    <div style="text-align:center;color:#8b93a1;font-size:11px;padding:16px 0;">Memuat...</div>
                 </div>
             </div>
         <?php endif; ?>

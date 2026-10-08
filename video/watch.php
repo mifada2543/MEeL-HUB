@@ -44,14 +44,16 @@ session_write_close();
     $_META_TYPE = 'video.other';
     ?>
     <?php include '../partials/link.php'; ?>
+    <link rel="preload" as="image" fetchpriority="high"
+        href="upload/thumbnail/<?= htmlspecialchars($v['thumbnail'] ?? '') ?>">
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
-    <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= meel_asset_version('assets/css/video/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('video', '../assets/css/video'); ?>
     <link rel="stylesheet" href="../assets/css/video/watch/main.css<?= meel_asset_version('assets/css/video/watch/main.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/comment.css<?= meel_asset_version('assets/css/shared/comment.css') ?>">
-    <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
-    <script src="../assets/js/compatibilitas/hls.js<?= meel_asset_version('assets/js/compatibilitas/hls.js') ?>"></script>
+    <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
+    <?php if ($is_hls): ?>
+    <script src="../assets/js/compatibilitas/hls.js<?= meel_asset_version('assets/js/compatibilitas/hls.js') ?>" defer></script>
+    <?php endif; ?>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -89,7 +91,7 @@ session_write_close();
                     hx-include="#v-search-watch"
                     hx-target="#recommendation-column"
                     hx-indicator="#search-indicator"
-                    class="px-3 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase text-gray-500 hover:text-red-400 hover:border-red-500/30 transition-all flex-shrink-0">
+                    class="px-3 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase text-gray-400 hover:text-red-400 hover:border-red-500/30 transition-all flex-shrink-0">
                     Cari
                 </button>
             </div>
@@ -97,7 +99,7 @@ session_write_close();
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
                 <button id="navbar-search-icon-btn"
                     onclick="document.getElementById('mobile-search-overlay').classList.toggle('open')"
-                    class="hidden items-center justify-center w-8 h-8 text-gray-500 hover:text-red-400 bg-white/[.04] hover:bg-white/[.08] rounded-xl transition-all"
+                    class="hidden items-center justify-center w-8 h-8 text-gray-400 hover:text-red-400 bg-white/[.04] hover:bg-white/[.08] rounded-xl transition-all"
                     title="Cari"
                     aria-label="Cari video">
                     <i data-lucide="search" class="w-4 h-4"></i>
@@ -133,6 +135,7 @@ session_write_close();
                 <canvas id="video-glow-canvas" class="block"></canvas>
                 <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" style="aspect-ratio: 16/9;">
                     <video id="main-video" playsinline controls preload="metadata"
+                        poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
                         data-poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
                         data-src="<?= htmlspecialchars($video_src) ?>"
                         aria-label="Pemutar video: <?= htmlspecialchars($v['title']) ?>"
@@ -221,7 +224,7 @@ session_write_close();
                     <div class="flex items-center gap-2 flex-wrap">
                         <?php if (isset($_SESSION['username'])): ?>
                             <a href="../transcode?id=<?= $id ?>"
-                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline"
+                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300 no-underline"
                                 title="Unduh audio saja">
                                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Audio
                             </a>
@@ -233,7 +236,7 @@ session_write_close();
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'like'
                                         ? 'bg-red-600/15 border-red-600/30 text-red-400'
-                                        : 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300' ?>">
+                                        : 'bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300' ?>">
                                     <i data-lucide="thumbs-up" class="w-3.5 h-3.5 <?= $user_interaction === 'like' ? 'fill-current' : '' ?>"></i>
                                     Like<?= ($v['likes'] ?? 0) > 0 ? " <span class='tabular-nums ml-0.5'>{$v['likes']}</span>" : '' ?>
                                 </button>
@@ -241,10 +244,11 @@ session_write_close();
                                     hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                     hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
                                     title="Tidak suka video"
+                                    aria-label="Dislike<?= ($v['dislikes'] ?? 0) > 0 ? ' (' . $v['dislikes'] . ')' : '' ?>"
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'dislike'
                                         ? 'bg-white/10 border-white/15 text-white'
-                                        : 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300' ?>">
+                                        : 'bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300' ?>">
                                     <i data-lucide="thumbs-down" class="w-3.5 h-3.5 <?= $user_interaction === 'dislike' ? 'fill-current' : '' ?>"></i>
                                     <?= ($v['dislikes'] ?? 0) > 0 ? "<span class='tabular-nums'>{$v['dislikes']}</span>" : '' ?>
                                 </button>
@@ -278,8 +282,8 @@ session_write_close();
                             title="Buka / tutup komentar">
                             <i data-lucide="message-square" class="w-3.5 h-3.5 text-red-500"></i>
                             <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-300">Komentar</span>
-                            <i data-lucide="chevron-up" id="comment-chevron-open" class="w-3.5 h-3.5 ml-auto text-gray-500 hidden"></i>
-                            <i data-lucide="chevron-down" id="comment-chevron-closed" class="w-3.5 h-3.5 ml-auto text-gray-500"></i>
+                            <i data-lucide="chevron-up" id="comment-chevron-open" class="w-3.5 h-3.5 ml-auto text-gray-400 hidden"></i>
+                            <i data-lucide="chevron-down" id="comment-chevron-closed" class="w-3.5 h-3.5 ml-auto text-gray-400"></i>
                         </button>
                         <div id="comment-preview" class="px-4 sm:px-6 py-3">
                             <?php
@@ -350,8 +354,8 @@ session_write_close();
                         class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline"
                         title="<?= htmlspecialchars($r['title']) ?>">
                         <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                            <img src="upload/thumbnail/<?= htmlspecialchars($r['thumbnail']) ?>"
-                                class="rec-thumb-img w-full h-full object-cover transition-transform duration-300" loading="lazy" alt="Thumbnail video <?= htmlspecialchars($r['title']) ?>">
+                            <img src="upload/thumbnail/<?= video_thumbnail_sm($r['thumbnail']) ?>"
+                                class="rec-thumb-img w-full h-full object-cover transition-transform duration-300" loading="lazy" decoding="async" width="256" height="144" alt="Thumbnail video <?= htmlspecialchars($r['title']) ?>">
                         </div>
                         <div class="flex-1 min-w-0 flex flex-col justify-center">
                             <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
@@ -359,7 +363,7 @@ session_write_close();
                             </div>
                             <div class="text-[9px] text-gray-300 mt-1"><?= number_format($r['views'] ?? 0) ?> views</div>
                             <?php if (!empty($r['uploader'])): ?>
-                                <div class="text-[9px] font-bold text-red-500/60 uppercase tracking-wider mt-0.5 truncate">
+                                <div class="rec-uploader-text font-bold uppercase tracking-wider mt-0.5 truncate">
                                     <?= htmlspecialchars($r['uploader']) ?>
                                 </div>
                             <?php endif; ?>

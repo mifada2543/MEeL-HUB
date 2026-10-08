@@ -642,12 +642,12 @@
           },
           onResume: function (pos) {
             player.currentTime = pos;
-            player.play();
+            player.play().catch(function () {});
           },
           onRestart: function () {
             localStorage.removeItem(storageKeyMusic);
             audio.currentTime = 0;
-            player.play();
+            player.play().catch(function () {});
           },
         });
       }
@@ -670,12 +670,12 @@
 
               localStorage.removeItem(storageKeyMusic);
               audio.currentTime = 0;
-              player.play();
+              player.play().catch(function () {});
             }
           } else {
 
             skipResumeModalOnce = false;
-            player.play();
+            player.play().catch(function () {});
           }
         }
       }

@@ -681,6 +681,21 @@ All media bytes are served through PHP endpoints that delegate to one shared fun
 - **Range requests:** `Range: bytes=...` → `206 Partial Content` with `Accept-Ranges`/`Content-Range` — enables HLS segment seeking and audio scrubbing.
 - **Output buffer cleanup:** `ob_end_clean` + `ob_implicit_flush` before streaming to prevent binary corruption.
 
+### Video Thumbnail Sizes
+
+Video uploads produce **two** thumbnail sizes at once (via `meel_ffmpeg_thumbnail_webp()` in `modules/core/Uploader.php`):
+
+| File | Width | Used by |
+|---|---|---|
+| `<name>_thumb.webp` | 1280px | player poster (`data-poster`) and the OG image |
+| `<name>_thumb_sm.webp` | 256px | watch sidebar (128px slot) and library grid cards |
+
+There is **no cache and no on-demand variant layer** — both files are written once during upload, so storage does not grow on its own. `video_thumbnail_sm($thumbnail)` returns the small filename when it exists, otherwise the original name, so thumbnails uploaded before this change keep rendering correctly (just without the byte saving). Naming inserts `_sm` before the extension regardless of the source naming, because existing thumbnails in storage are not consistently named (`*_thumb.webp`, `*_vthumb.jpg`, `*.png`, …).
+
+One-off backfill for pre-existing media:
+
+
+
 ### HLS Referer Gate (video)
 
 `video/stream.php?f=...` passes `hls_gate => true`. Requests for paths under `video/` must carry a same-host `Referer` from a video page (`/video`, `/video/watch`, `/video/index`, `/video/beranda`); otherwise the request is redirected to `err/?code=denied`. This prevents third-party sites from hotlinking HLS segments.
@@ -793,6 +808,19 @@ Every POST must carry `csrf_token`.
 | Action | Parameter | Method | Description |
 |---|---|---|---|
 | Clean Logs | `clean_logs=1` + `days` | POST | Delete logs older than N days |
+
+### Orphan File Cleanup
+
+| Action | Parameter | Method | Description |
+|---|---|---|---|
+| Clean Orphans | `clean_orphans=1` + `files_to_delete` (JSON) | POST | Delete files not in DB |
+| Recheck | `recheck_orphans=1` | POST | Drop the scan cache and show fresh results |
+
+Scan results are cached in `temp/cache/admin_orphans.json` for **120 seconds** (`checked_at`, `orphans`, `variant_count`, `variant_bytes`) — scanning 13,686 files only takes ~40 ms, so a short TTL prevents repeated scans without holding stale data. The cache is also dropped automatically by `meel_invalidate_media_stats_cache()` whenever media changes (upload/delete), so the panel is accurate immediately without waiting out the TTL or clicking "Cek Ulang".
+
+> **Thumbnail variants are not orphans.** Every video has two thumbnail files in `video/upload/thumbnail/`: `<stem>.<ext>` (the original, registered in `video.thumbnail`) and `<stem>_sm.webp` (a derived 256px variant). The variant is written once during upload (`Uploader.php`) and used at render time by `video_thumbnail_sm()`, which matches on stem — so it is deliberately **not** registered in the DB. The scanner excludes the `_sm.<ext>` pattern in all three thumbnail directories (video, music, books) and reports the count as an info line rather than as orphans.
+>
+> **Double guard before deleting.** Because the list comes from a cache, `clean_orphans` re-queries the DB before `unlink`: `_sm` variants, files that turn out to be registered (`video.thumbnail`, `music.filename`, `books.thumbnail`), and files inside still-live folders (`video.filename`, `books.path_folder`) are counted as *skipped*, never deleted.
 
 ---
 

@@ -37,12 +37,12 @@ $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
 ?>
 <nav class="sticky top-0 z-50 bg-[#080b11]/90 backdrop-blur-md border-b border-white/5 px-6 h-14 flex items-center gap-3">
     <a href="../" class="font-sans text-sm font-extrabold text-white no-underline tracking-wider">
-        MEeL<?php if ($is_admin): ?><span class="text-blue-600">Admin</span><?php endif; ?>
+        MEeL<?php if ($is_admin): ?><span class="text-blue-500">Admin</span><?php endif; ?>
     </a>
     <div class="w-px h-5 bg-white/10"></div>
 
     <?php if ($is_admin): ?>
-        <a href="." class="text-[11px] font-semibold text-gray-500 no-underline hover:text-gray-300 transition-colors">Dasbor</a>
+        <a href="." class="text-[11px] font-semibold text-gray-400 no-underline hover:text-gray-300 transition-colors">Dasbor</a>
         <?php if ($nav_current_page !== 'dashboard'): ?>
             <span class="text-gray-600">›</span>
             <span class="text-[11px] font-semibold text-gray-200"><?= htmlspecialchars($nav_current_label) ?></span>
@@ -51,12 +51,12 @@ $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
         <?php if ($nav_media_type === 'dashboard'): ?>
             <span class="text-[11px] font-semibold text-gray-200">Dasbor</span>
         <?php else: ?>
-            <a href="../profile/<?= urlencode($_SESSION['username'] ?? '') ?>" class="text-[11px] font-semibold text-gray-500 no-underline hover:text-gray-300 transition-colors">Dasbor</a>
+            <a href="../profile/<?= urlencode($_SESSION['username'] ?? '') ?>" class="text-[11px] font-semibold text-gray-400 no-underline hover:text-gray-300 transition-colors">Dasbor</a>
             <span class="text-gray-600">›</span>
             <?php if ($nav_media_type === 'video'): ?>
-                <a href="../video/beranda" class="text-[11px] font-semibold text-gray-500 no-underline hover:text-gray-300 transition-colors">Video</a>
+                <a href="../video/beranda" class="text-[11px] font-semibold text-gray-400 no-underline hover:text-gray-300 transition-colors">Video</a>
             <?php else: ?>
-                <a href="../music/beranda" class="text-[11px] font-semibold text-gray-500 no-underline hover:text-gray-300 transition-colors">Musik</a>
+                <a href="../music/beranda" class="text-[11px] font-semibold text-gray-400 no-underline hover:text-gray-300 transition-colors">Musik</a>
             <?php endif; ?>
             <span class="text-gray-600">›</span>
             <span class="text-[11px] font-semibold text-gray-200"><?= htmlspecialchars($nav_page_title) ?></span>
@@ -71,7 +71,7 @@ $nav_current_label = $nav_page_labels[$nav_current_page] ?? $nav_page_title;
                 #<?= $nav_id ?>
             </span>
         <?php endif; ?>
-        <a href="<?= htmlspecialchars($back_url) ?>" class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 py-1.5 px-3.5 rounded-lg border border-white/10 bg-white/5 no-underline transition-all duration-200 hover:text-gray-200 hover:bg-white/10">
+        <a href="<?= htmlspecialchars($back_url) ?>" class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 py-1.5 px-3.5 rounded-lg border border-white/10 bg-white/5 no-underline transition-all duration-200 hover:text-gray-200 hover:bg-white/10">
             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
             Kembali
         </a>

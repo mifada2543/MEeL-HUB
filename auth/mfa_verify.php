@@ -201,7 +201,7 @@ include __DIR__ . '/partials/auth_head.php';
         </button>
 
         <div class="text-center pt-2">
-            <a href="login" class="text-xs text-gray-500 hover:text-gray-300 transition flex items-center justify-center gap-1">
+            <a href="login" class="text-xs text-gray-400 hover:text-gray-300 transition flex items-center justify-center gap-1">
                 <i data-lucide="arrow-left" class="w-3 h-3"></i> Kembali ke Login
             </a>
         </div>

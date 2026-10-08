@@ -18,6 +18,22 @@ DirectoryIndex index.php index.html
     </IfModule>
 </FilesMatch>
 
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/manifest+json
+    AddOutputFilterByType DEFLATE image/svg+xml
+    AddOutputFilterByType DEFLATE text/vtt
+</IfModule>
+
 # ── PWA: /sw.js disajikan dari generator PHP (precache dinamis dari manifest.php) ──
 <IfModule mod_rewrite.c>
     RewriteRule ^arcade/testgeneric\.php$ - [E=ROOTPROC:1]

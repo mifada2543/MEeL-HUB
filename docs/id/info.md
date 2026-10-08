@@ -155,7 +155,7 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
 
 ### `meel_write_cache_file(string $path, string $content)`
 
-Menulis file cache secara atomic dengan `LOCK_EX` (mencegah race condition).
+Menulis file cache secara **atomic**: isi ditulis ke file sementara bernama unik, lalu di-`rename()` ke path tujuan. `rename()` bersifat atomik di POSIX sehingga pembaca tidak pernah melihat isi setengah jadi.
 
 ```php
 function meel_write_cache_file(string $path, string $content): void
@@ -166,9 +166,44 @@ function meel_write_cache_file(string $path, string $content): void
 | `$path` | `string` | Path lengkap file cache |
 | `$content` | `string` | Isi konten yang akan ditulis |
 
-**File:** `modules/core/helpers/storage.php:196`
+**File:** `modules/core/helpers/storage.php:395`
 **Return:** void.
-**Catatan:** Jika direktori tidak writable, log error ke error_log.
+
+> **`LOCK_EX` bukan pengganti atomis.** Flag itu hanya mengunci *penulis*; pembaca tetap bisa membaca file yang sedang ditulis karena `file_put_contents()` memotong file (truncate) lebih dulu. Terukur pada uji konkuren: **58%** pembacaan gagal saat payload kecil (64 B), **81%** saat payload 10 KB — semuanya terbaca sebagai cache miss, sehingga cache justru tidak berfungsi justru saat paling dibutuhkan. Setelah pindah ke `tmp` + `rename()`: **0%**.
+
+**Catatan:**
+- Jika direktori tidak writable → `error_log` (tidak fatal).
+- Sisa `.tmp.*` dari proses yang mati dibersihkan otomatis oleh `meel_sweep_stale_cache_tmp()` (umur > 300 dtk).
+- Aman karena `temp/.htaccess` menolak semua akses web. Jika `MEEL_MEDIA_CACHE_DIR` diarahkan ke luar `temp/`, lindungi folder itu secara setara.
+
+---
+
+### `meel_read_cache_file(string $path, int $ttl, array $required_keys = [], string $time_key = 'ts'): ?array`
+
+Membaca file cache JSON bila masih segar. Satu-satunya implementasi pembacaan cache di proyek — dipakai keempat call site agar nama kunci waktu tidak lagi berbeda-beda di tiap file.
+
+```php
+function meel_read_cache_file(string $path, int $ttl, array $required_keys = [], string $time_key = 'ts'): ?array
+```
+
+| Parameter | Tipe | Deskripsi |
+|-----------|------|-----------|
+| `$path` | `string` | Path file cache |
+| `$ttl` | `int` | Umur maksimum, detik. `<= 0` = selalu `null` (cache dimatikan) |
+| `$required_keys` | `string[]` | Kunci yang wajib ada agar cache dianggap sah |
+| `$time_key` | `string` | Kunci penanda waktu; string kosong = pakai mtime file |
+
+**File:** `modules/core/helpers/storage.php:425`
+**Return:** `array` hasil decode, atau `null` bila tidak ada / rusak / kurang kunci / kedaluwarsa.
+
+**Call site:**
+
+| Call site | TTL | Kunci wajib | `time_key` |
+|---|---|---|---|
+| `controllers/admin/admin_data.php` (orphan) | 120 dtk | `orphans` | `checked_at` |
+| `modules/core/helpers/media.php` (media stats) | param | `total`,`min_id`,`max_id`,`ts` | `ts` |
+| `modules/core/helpers/storage.php` (`dir_size`) | param | `size`,`time` | `time` |
+| `modules/core/System.php` (server info) | 300 dtk | `hostname`,`os`,`kernel`,`php_version`,`cores`,`ts` | `ts` |
 
 ---
 

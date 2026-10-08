@@ -87,9 +87,7 @@ function _scanSubdirs(string $dir): array {
     <meta property="og:description" content="Baca <?= htmlspecialchars($book['title']) ?> di MEeL Books - Platform Media Hub Pribadi.">
     <title>MEeL Read | <?= htmlspecialchars($book['title']) ?></title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/books/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/books/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/books/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('books', '../assets/css/books'); ?>
     <link rel="stylesheet" href="../assets/css/books/read/main.css<?= meel_asset_version('assets/css/books/read/main.css') ?>">
     <div id="reader-data"
          data-book-id="<?= (int)$book['id'] ?>"
@@ -105,7 +103,7 @@ function _scanSubdirs(string $dir): array {
     <div class="reader-nav sticky top-0 z-50 px-3 sm:px-6 h-14 flex items-center justify-between transition-all duration-300" id="reader-navbar">
         <div class="flex items-center gap-3 min-w-0 flex-1">
             <a href="beranda" class="p-2 hover:bg-white/[.06] rounded-xl transition-all flex-shrink-0 group">
-                <i data-lucide="arrow-left" class="w-4 h-4 text-gray-500 group-hover:text-green-500 transition-colors"></i>
+                <i data-lucide="arrow-left" class="w-4 h-4 text-gray-400 group-hover:text-green-500 transition-colors"></i>
             </a>
             <div class="min-w-0 flex-1">
                 <h1 class="text-sm font-bold truncate text-white/90" title="<?= htmlspecialchars($book['title']) ?>">
@@ -243,7 +241,7 @@ function _scanSubdirs(string $dir): array {
                     <div class="max-w-4xl mx-auto px-4 mb-2 flex items-center justify-between gap-2">
                         <?php if ($prev_ch): ?>
                             <a href="?id=<?= $book_id ?>&ch=<?= urlencode($prev_ch) ?>"
-                                class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
+                                class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-green-500 hover:border-green-500/30 transition-all group">
                                 <i data-lucide="chevron-left" class="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform"></i>
                                 Sebelumnya
                             </a>
@@ -256,7 +254,7 @@ function _scanSubdirs(string $dir): array {
 
                         <?php if ($next_ch): ?>
                             <a href="?id=<?= $book_id ?>&ch=<?= urlencode($next_ch) ?>"
-                                class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
+                                class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-green-500 hover:border-green-500/30 transition-all group">
                                 Selanjutnya
                                 <i data-lucide="chevron-right" class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform"></i>
                             </a>
@@ -272,7 +270,7 @@ function _scanSubdirs(string $dir): array {
                                 onclick="toggleChDropdown('top')"
                                 class="ch-trigger">
                                 <span class="truncate" title="<?= $current_chapter ? htmlspecialchars($current_chapter) : 'Pilih bab' ?>"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Bab —' ?></span>
-                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 flex-shrink-0"></i>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"></i>
                             </button>
                             <div id="ch-options-top" class="ch-options hidden">
                                 <button onclick="goToChapter('')"
@@ -303,7 +301,7 @@ function _scanSubdirs(string $dir): array {
                                     <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-white/[.03] border border-white/[.06] flex items-center justify-center">
                                         <i data-lucide="book-open" class="w-9 h-9 text-gray-700"></i>
                                     </div>
-                                    <p class="text-gray-500 font-bold uppercase tracking-widest text-xs mb-2">
+                                    <p class="text-gray-400 font-bold uppercase tracking-widest text-xs mb-2">
                                         Silakan pilih chapter untuk mulai membaca
                                     </p>
                                     <p class="text-[10px] text-gray-700 uppercase tracking-widest">
@@ -350,7 +348,7 @@ function _scanSubdirs(string $dir): array {
                             <div class="max-w-4xl mx-auto px-4 mt-4 mb-8 flex items-center justify-between gap-2">
                                 <?php if ($prev_ch): ?>
                                     <a href="?id=<?= $book_id ?>&ch=<?= urlencode($prev_ch) ?>"
-                                        class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
+                                        class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-green-500 hover:border-green-500/30 transition-all group">
                                         <i data-lucide="chevron-left" class="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform"></i>
                                         Sebelumnya
                                     </a>
@@ -364,7 +362,7 @@ function _scanSubdirs(string $dir): array {
 
                                 <?php if ($next_ch): ?>
                                     <a href="?id=<?= $book_id ?>&ch=<?= urlencode($next_ch) ?>"
-                                        class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-green-500 hover:border-green-500/30 transition-all group">
+                                        class="flex items-center gap-2 px-4 py-2.5 bg-white/[.03] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-green-500 hover:border-green-500/30 transition-all group">
                                         Selanjutnya
                                         <i data-lucide="chevron-right" class="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform"></i>
                                     </a>
@@ -379,7 +377,7 @@ function _scanSubdirs(string $dir): array {
                                         onclick="toggleChDropdown('bottom')"
                                         class="ch-trigger">
                                         <span class="truncate" title="<?= $current_chapter ? htmlspecialchars($current_chapter) : 'Pilih bab' ?>"><?= $current_chapter ? htmlspecialchars($current_chapter) : '— Pilih Bab —' ?></span>
-                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-500 flex-shrink-0"></i>
+                                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0"></i>
                                     </button>
                                     <div id="ch-options-bottom" class="ch-options hidden">
                                         <button onclick="goToChapter('')"

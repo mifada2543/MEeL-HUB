@@ -143,9 +143,7 @@ $back_url = 'index.php';
     <title>Chess Manager · MEeL Admin</title>
     <link rel="stylesheet" href="../assets/css/font.css<?= meel_asset_version('assets/css/font.css') ?>">
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <?php $scripts_root = '../';
     include '../partials/scripts.php'; ?>
     <link rel="stylesheet" href="../assets/css/admin/catur.css?v=<?= filemtime('../assets/css/admin/catur.css') ?>">
@@ -164,7 +162,7 @@ $back_url = 'index.php';
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-lg font-bold text-white">Pengelola Ruang Catur</h1>
-                <p class="text-xs text-gray-500 mt-0.5">Pantau & kelola seluruh sesi permainan catur</p>
+                <p class="text-xs text-gray-400 mt-0.5">Pantau & kelola seluruh sesi permainan catur</p>
             </div>
             <div class="flex items-center gap-2">
                 <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-400">
@@ -196,7 +194,7 @@ $back_url = 'index.php';
                         <i data-lucide="<?= $s['icon'] ?>" class="w-4 h-4 <?= $s['color'] ?>"></i>
                     </div>
                     <div>
-                        <p class="text-[11px] text-gray-500"><?= $s['label'] ?></p>
+                        <p class="text-[11px] text-gray-400"><?= $s['label'] ?></p>
                         <p class="text-xl font-bold text-white leading-tight"><?= $s['value'] ?></p>
                     </div>
                 </div>
@@ -207,7 +205,7 @@ $back_url = 'index.php';
                 <h2 class="text-sm font-semibold text-white flex items-center gap-2">
                     <i data-lucide="table" class="w-4 h-4 text-gray-400"></i> Daftar Room
                 </h2>
-                <span class="text-[11px] text-gray-500"><?= count($rooms) ?> room</span>
+                <span class="text-[11px] text-gray-400"><?= count($rooms) ?> room</span>
             </div>
             <?php if (empty($rooms)): ?>
                 <div class="py-16 text-center text-gray-600 text-sm">
@@ -255,8 +253,8 @@ $back_url = 'index.php';
                                         </span>
                                     </td>
                                     <td class="px-5 py-3 text-gray-400"><?= (int)$room['total_moves'] ?></td>
-                                    <td class="px-5 py-3 text-gray-500 text-xs"><?= $created->format('d M Y, H:i') ?></td>
-                                    <td class="px-5 py-3 text-gray-500 text-xs">
+                                    <td class="px-5 py-3 text-gray-400 text-xs"><?= $created->format('d M Y, H:i') ?></td>
+                                    <td class="px-5 py-3 text-gray-400 text-xs">
                                         <?php if ($last_act): ?>
                                             <?= $last_act->format('H:i:s') ?>
                                             <span class="text-gray-600">(<?= $idle_minutes ?>m lalu)</span>
@@ -288,7 +286,7 @@ $back_url = 'index.php';
                 <h2 class="text-sm font-semibold text-white flex items-center gap-2">
                     <i data-lucide="scroll-text" class="w-4 h-4 text-gray-400"></i> Log Auto-Cleanup
                 </h2>
-                <span class="text-[11px] text-gray-500">20 entri terakhir</span>
+                <span class="text-[11px] text-gray-400">20 entri terakhir</span>
             </div>
             <div class="p-5 space-y-1 max-h-64 overflow-y-auto">
                 <?php if (empty($log_lines)): ?>

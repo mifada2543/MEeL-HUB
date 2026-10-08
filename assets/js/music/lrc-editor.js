@@ -221,7 +221,7 @@
   window.editorPlayPause = function () {
     initPlayer();
     if (audioEl.paused) {
-      audioEl.play();
+      audioEl.play().catch(() => {});
       isPlaying = true;
     } else {
       audioEl.pause();

@@ -1190,7 +1190,9 @@ Setiap akses filesystem mengikuti tiga aturan:
 | `moveFile()` | trait `FfmpegUtils` | Pindah lintas-device dengan cek device `stat()` |
 | `GarbageCollector::removeFile()` | `GarbageCollector.php` | unlink statis ber-guard |
 | `GarbageCollector::removeDirectory()` | `GarbageCollector.php` | Pembersihan rekursif ber-guard (melewati subtree non-writable, `rmdir` hanya saat kosong) |
-| `meel_write_cache_file()` | `helpers/storage.php` | Tulis cache ber-guard dengan `LOCK_EX` |
+| `meel_write_cache_file()` | `helpers/storage.php` | Tulis cache **atomic** (file sementara + `rename()`), bukan `LOCK_EX` |
+| `meel_read_cache_file()` | `helpers/storage.php` | Baca cache JSON + cek TTL + kunci wajib (satu-satunya implementasi di repo) |
+| `meel_sweep_stale_cache_tmp()` | `helpers/storage.php` | Buang sisa `.tmp.*` dari proses yang mati saat menulis cache |
 
 ---
 

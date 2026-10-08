@@ -120,9 +120,7 @@ if (is_file($lrc_path)) {
     <?php include __DIR__ . '/../partials/link.php'; ?>
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css<?= meel_asset_version('assets/css/shared/design-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/upload-form.css<?= meel_asset_version('assets/css/shared/upload-form.css') ?>">
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?><?= meel_asset_version('assets/css/admin/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link rel="stylesheet" href="../assets/css/admin/edit/shared/main.css<?= meel_asset_version('assets/css/admin/edit/shared/main.css') ?>">
     <link rel="stylesheet" href="../assets/css/admin/edit/music/main.css<?= meel_asset_version('assets/css/admin/edit/music/main.css') ?>">
     <link rel="stylesheet" href="../assets/css/music/lrc-editor.css<?= meel_asset_version('assets/css/music/lrc-editor.css') ?>">
