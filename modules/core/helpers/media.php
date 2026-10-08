@@ -14,10 +14,21 @@ function meel_media_cache_dir(): string
         : (getenv('MEEL_MEDIA_CACHE_DIR') ?: dirname(__DIR__, 3) . '/temp/cache');
 
     if (!is_dir($dir)) {
-        @mkdir($dir, 0755, true);
+        @mkdir($dir, 0775, true);
     }
 
     return rtrim($dir, '/');
+}
+}
+
+if (!function_exists('meel_admin_orphan_cache_path')) {
+function meel_admin_orphan_cache_path(): string
+{
+    if (defined('MEEL_ADMIN_ORPHANS_CACHE')) {
+        return (string) MEEL_ADMIN_ORPHANS_CACHE;
+    }
+
+    return meel_media_cache_dir() . '/admin_orphans.json';
 }
 }
 
@@ -34,25 +45,19 @@ function meel_media_stats_all(mysqli $conn, int $ttl = 30): array
 
     foreach ($tables as $table) {
         $file = $dir . '/media_stats_' . $table . '.json';
-        $cached = null;
-        if ($ttl > 0 && is_readable($file)) {
-            $raw = @file_get_contents($file);
-            if ($raw !== false && $raw !== '') {
-                $decoded = json_decode($raw, true);
-                if (is_array($decoded)
-                    && isset($decoded['total'], $decoded['min_id'], $decoded['max_id'], $decoded['ts'])
-                    && ($now - (int)$decoded['ts']) < $ttl
-                ) {
-                    $cached = [
-                        'total'  => (int)$decoded['total'],
-                        'min_id' => (int)$decoded['min_id'],
-                        'max_id' => (int)$decoded['max_id'],
-                    ];
-                }
-            }
-        }
-        if ($cached !== null) {
-            $out[$table] = $cached;
+        $decoded = meel_read_cache_file(
+            $file,
+            $ttl,
+            ['total', 'min_id', 'max_id', 'ts'],
+            'ts'
+        );
+
+        if ($decoded !== null) {
+            $out[$table] = [
+                'total'  => (int)$decoded['total'],
+                'min_id' => (int)$decoded['min_id'],
+                'max_id' => (int)$decoded['max_id'],
+            ];
         } else {
             $stale[] = $table;
         }
@@ -124,6 +129,11 @@ function meel_invalidate_media_stats_cache(?string $table = null): void
 
     foreach (glob($pattern) ?: [] as $file) {
         @unlink($file);
+    }
+
+    $orphan_cache = meel_admin_orphan_cache_path();
+    if (is_file($orphan_cache)) {
+        @unlink($orphan_cache);
     }
 }
 }

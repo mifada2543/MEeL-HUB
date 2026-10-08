@@ -1274,7 +1274,9 @@ Every filesystem access follows three rules:
 | `moveFile()` | `FfmpegUtils` trait | Cross-device move with `stat()` device check |
 | `GarbageCollector::removeFile()` | `GarbageCollector.php` | Static guarded unlink |
 | `GarbageCollector::removeDirectory()` | `GarbageCollector.php` | Recursive guarded cleanup (skips non-writable subtrees, `rmdir` only when empty) |
-| `meel_write_cache_file()` | `helpers/storage.php` | Guarded cache write with `LOCK_EX` |
+| `meel_write_cache_file()` | `helpers/storage.php` | **Atomic** cache write (temp file + `rename()`), not `LOCK_EX` |
+| `meel_read_cache_file()` | `helpers/storage.php` | Read JSON cache + check TTL + required keys (the only implementation in the repo) |
+| `meel_sweep_stale_cache_tmp()` | `helpers/storage.php` | Drop leftover `.tmp.*` files from processes that died mid-write |
 
 ---
 

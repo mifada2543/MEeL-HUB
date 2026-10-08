@@ -816,11 +816,11 @@ Every POST must carry `csrf_token`.
 | Clean Orphans | `clean_orphans=1` + `files_to_delete` (JSON) | POST | Delete files not in DB |
 | Recheck | `recheck_orphans=1` | POST | Drop the scan cache and show fresh results |
 
-Scan results are cached in `temp/cache/admin_orphans.json` for 10 minutes (`checked_at`, `orphans`, `variant_count`, `variant_bytes`).
+Scan results are cached in `temp/cache/admin_orphans.json` for **120 seconds** (`checked_at`, `orphans`, `variant_count`, `variant_bytes`) — scanning 13,686 files only takes ~40 ms, so a short TTL prevents repeated scans without holding stale data. The cache is also dropped automatically by `meel_invalidate_media_stats_cache()` whenever media changes (upload/delete), so the panel is accurate immediately without waiting out the TTL or clicking "Cek Ulang".
 
 > **Thumbnail variants are not orphans.** Every video has two thumbnail files in `video/upload/thumbnail/`: `<stem>.<ext>` (the original, registered in `video.thumbnail`) and `<stem>_sm.webp` (a derived 256px variant). The variant is written once during upload (`Uploader.php`) and used at render time by `video_thumbnail_sm()`, which matches on stem — so it is deliberately **not** registered in the DB. The scanner excludes the `_sm.<ext>` pattern in all three thumbnail directories (video, music, books) and reports the count as an info line rather than as orphans.
 >
-> **Double guard before deleting.** Because the list comes from a 10-minute cache, `clean_orphans` re-queries the DB before `unlink`: `_sm` variants, files that turn out to be registered (`video.thumbnail`, `music.filename`, `books.thumbnail`), and files inside still-live folders (`video.filename`, `books.path_folder`) are counted as *skipped*, never deleted.
+> **Double guard before deleting.** Because the list comes from a cache, `clean_orphans` re-queries the DB before `unlink`: `_sm` variants, files that turn out to be registered (`video.thumbnail`, `music.filename`, `books.thumbnail`), and files inside still-live folders (`video.filename`, `books.path_folder`) are counted as *skipped*, never deleted.
 
 ---
 
