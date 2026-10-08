@@ -186,6 +186,7 @@ include __DIR__ . '/partials/scripts.php';
                             ['C', 'Alihkan teks'],
                             ['L', 'Alihkan pengulangan'],
                             ['A', 'Alihkan lanjut otomatis'],
+                            ['S', 'Alihkan AI Upscale'],
                             ['N', 'Video berikutnya'],
                             ['I', 'Pemutar mini'],
                         ];
@@ -195,6 +196,48 @@ include __DIR__ . '/partials/scripts.php';
                                 <span class="shortcut-desc"><?= $s[1] ?></span>
                             </div>
                         <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <div class="card-header-icon" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);">
+                            <i data-lucide="rotate-ccw" style="width:14px;height:14px;color:#ef4444;"></i>
+                        </div>
+                        <div>
+                            <div class="card-header-title">Modal Lanjutkan Sesi</div>
+                            <div class="card-header-sub">Muncul saat ada posisi putar tersimpan</div>
+                        </div>
+                    </div>
+                    <div class="annotation-list">
+                        <?php
+                        $resume_modal = [
+                            ['←', 'Pilih tombol "Lanjut" (sebelah kiri)'],
+                            ['→', 'Pilih tombol "Ulang" (sebelah kanan)'],
+                            ['Enter', 'Jalankan pilihan yang sedang disorot'],
+                            ['Spasi', 'Jalankan pilihan yang sedang disorot'],
+                            ['Esc', 'Tetap berfungsi — keluar dari layar penuh'],
+                            ['↑ ↓', 'Tidak aktif selama modal terbuka'],
+                        ];
+                        foreach ($resume_modal as $a): ?>
+                            <div class="annotation-item">
+                                <div class="annotation-dot" style="background:#ef4444;box-shadow:0 0 5px #ef4444;"></div>
+                                <div class="annotation-key"><?= $a[0] ?></div>
+                                <div class="annotation-val"><?= $a[1] ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="annotation-list">
+                        <div class="annotation-item">
+                            <div class="annotation-dot" style="background:#f97316;box-shadow:0 0 5px #f97316;"></div>
+                            <div class="annotation-key">Kontrol dikunci</div>
+                            <div class="annotation-val">Selama modal terbuka, pintasan playback (Spasi, K, ↑ ↓, L, F, angka 0–9, dll.) dinonaktifkan agar video tidak berjalan di belakang pilihan Anda. Jika Anda tidak memilih apa pun, video otomatis diputar dari awal setelah 15 detik.</div>
+                        </div>
+                        <div class="annotation-item">
+                            <div class="annotation-dot" style="background:#22c55e;box-shadow:0 0 5px #22c55e;"></div>
+                            <div class="annotation-key">Bisa di layar penuh</div>
+                            <div class="annotation-val">Modal tetap terlihat dan dapat dipilih dengan keyboard maupun mouse baik dalam tampilan normal maupun layar penuh.</div>
+                        </div>
                     </div>
                 </div>
             </div>

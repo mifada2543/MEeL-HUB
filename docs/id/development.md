@@ -1404,13 +1404,13 @@ php scripts/gc.php          # housekeeping berat (butuh $server = TCP)
 | `admin/mfa_reset.php` | Admin MFA reset panel |
 | `partials/ui.php` | Overlay UI system (JS heavy) |
 | `assets/js/shared/keyboard.js` | Guard shortcut keyboard bersama (meelKeyShortcutIgnored) — dipakai misc/mini-player video & music |
-| `assets/js/video/watch/misc.js` | Shortcut spesifik video (L=loop, A=auto-next) |
+| `assets/js/video/watch/misc.js` | Shortcut spesifik video (L=loop, A=auto-next, S=AI-upscale) |
 | `assets/js/video/watch/mini-player.js` | Shortcut video (N=next, I=mini-player) + logika mini-player |
 | `assets/js/music/watch/misc.js` | Shortcut musik (L=loop, E=equalizer, V=visualizer, I=mini-player) |
 | `assets/js/shared/temp-index.js` | Loader bersama index.php ke #temp-index-content tanpa reload (meelLoadTempIndex) — dipakai mini-player video & music |
 | `assets/js/shared/plyr-config.js` | Konfigurasi dasar Plyr bersama (MEEL_PLYR_COMMON: iconUrl, speed, keyboard, tooltips) — dipakai player video & music |
 | `assets/js/shared/upload-progress.js` | Animasi progress-bar upload bersama (meelUploadProgress) — dipakai halaman upload music & video |
-| `assets/js/shared/resume-modal.js` | Modal resume bersama (meelResumeModal) — dipakai player-events video & player-core music |
+| `assets/js/shared/resume-modal.js` | Modal resume bersama (meelResumeModal) + keyboard guard (flag `meelResumeModalActive`) — dipakai player-events video & player-core music |
 | `assets/js/shared/format-time.js` | Formatter waktu mm:ss bersama (formatTime) — dipindah dari music/shared/utils.js, dipakai mini-player music & resume-modal |
 | `assets/js/shared/mini-player-popstate.js` | Handler popstate bersama untuk keluar dari mode mini-player (meelMiniPlayerPopstate) — dipakai mini-player watch video & music |
 | `assets/js/video/watch/main.js` | Entry point folder watch/ — memuat sibling secara sinkron (document.write) |
@@ -1437,6 +1437,89 @@ php scripts/gc.php          # housekeeping berat (butuh $server = TCP)
 | `assets/js/shared/notification.js` | Notification polling system |
 | `assets/css/video/player.css` | Plyr video player overrides (object-fit: contain) |
 | `assets/css/profile/*.css` | Profile module CSS (10 files: base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state) |
+| `assets/js/video/watch/upscaler.js` | AI Upscale berbasis WebGPU (model/mode/scale, glow) — mengekspor `window.MEEL_UPSCALER` + `window.toggleUpscale()` untuk pintasan `S` |
+| `assets/css/video/resume-modal.css` | Modal resume video — z-index fullscreen + cincin fokus tombol navigasi keyboard |
+
+### Video — Perilaku Resume Modal & Keyboard Guard
+
+Player video menampilkan modal **"Lanjutkan Sesi?"** ketika video punya posisi
+putar tersimpan (`video_pos_<id>` di `localStorage`) di atas 10 detik dan belum
+dekat ke ujung durasi.
+
+**Pemicu & jendela waktu.** `meelResumeModal()` dipanggil dari
+`player.on("ready")`. Untuk HLS pemanggilan ini ** tertunda**: menunggu event
+`FRAG_BUFFERED` (buffer ≥ 15 detik) atau **timeout 8 detik** (`player-events.js`).
+Artinya user tetap bisa menekan layar penuh sebelum modal muncul — dan
+`skipToNextVideo()` otomatis memanggil `player.fullscreen.toggle()` lagi setelah
+transisi video seamless. Kombinasi ini yang membuat modal pernah tampil (atau
+gagal tampil) dalam keadaan fullscreen.
+
+#### Why modal tidak muncul di layar penuh
+
+Plyr **tidak pernah memakai** `#main-video-wrapper` sebagai container-nya.
+Constructor-nya selalu membuat `<div class="plyr">` baru dan menyisipkannya di
+antara `#video-glow-container` dan `#main-video-wrapper`:
+
+```html
+#video-glow-container
+└─ div.plyr.plyr--full-ui…          ← container Plyr + target fullscreen
+   └─ #main-video-wrapper           ← z-index:2 (layout.css)
+      ├─ .plyr__video-wrapper > video, .plyr__poster
+      └─ #resume-modal              ← z-index:20
+```
+
+Modal yang ditulis di `watch.php` sebagai saudara `<video>` berakhir **satu
+level di bawah** container Plyr. Pada mode normal `#main-video-wrapper` hanya
+`position:relative; z-index:2` sehingga `z-index:20` masih menang atas
+`.plyr__poster`(1), tombol play besar(2), dan `.plyr__controls`(3).
+
+Pada fullscreen, `assets/css/video/fullscreen.css` menaikkan **tiga elemen
+bersarang** sekaligus ke `position:fixed` + `z-index:999999`:
+`#video-glow-container`, `.plyr`, dan `#main-video-wrapper`. Akibatnya
+`.plyr__video-wrapper` menutupi modal — overlay tertimpa area video dan tidak
+terlihat sama sekali. Terukur: `z-index:999999` masih tertimpa, `z-index:1000000`
+sudah di atas. Perbaikannya `body.meel-fs-active #resume-modal { z-index: 1000001 }`
+di `assets/css/video/resume-modal.css`.
+
+> **Catatan:** `#meel-reconnect-overlay` (`recovery-manager.js`) memakai
+> `z-index:60` dan juga di-append ke `#main-video-wrapper`, sehingga memiliki
+> masalah yang sama di layar penuh. Belum diperbaiki.
+
+#### Keyboard guard
+
+Plyr mendaftarkan `keydown keyup` di `window` fase **bubble** dengan
+`config.keyboard.global`, dan `keyboard.js`/`misc.js`/`mini-player.js`
+mendaftarkan listener sendiri. Plyr hanya mengecualikan `Space` saat fokus berada
+di `<button>`, sehingga `k`, `↑`/`↓`, `←`/`→`, `f`, `m`, `c`, `l`, dan angka `0–9`
+tetap bereaksi walau fokus sudah di tombol modal.
+
+`assets/js/shared/resume-modal.js` menutupnya dengan satu listener `window` fase
+**capture** yang didaftarkan sekali saat file dimuat. Karena `resume-modal.js`
+dimuat pada `video/watch.php` **sebelum** module loader `video/watch/main.js`,
+pendaftarannya mendahului `mini-player.js` (yang juga capture di `window`).
+
+| Kelas | Perlakuan |
+|---|---|
+| **Diizinkan** | `Tab` · `Shift+Tab` · `←` → Lanjut · `→` → Ulang (mengikuti posisi tombol) · `Home` `End` (pilihan pertama/terakhir) · `Enter` (native aktivasi `<button>`) · `Esc` (tetap keluar layar penuh) · semua kombinasi `Ctrl`/`Meta`/`Alt` |
+| **Diblokir** | `Space` (dialihkan ke aktivasi pilihan terfokus) · `↑` `↓` · `k` `j` `l` `m` `f` `c` · `0`–`9` · `i` `n` `a` · dan key lain |
+| **Pengaman tambahan** | `window.meelResumeModalActive` = `true` selama modal tampil; dipakai sebagai early-return di `video/watch/misc.js`, `video/watch/mini-player.js`, dan `music/watch/misc.js` |
+
+Detail tambahan:
+
+- Fokus awal otomatis ke `#btn-resume` (**Lanjut** — pilihan yang tidak menghapus
+  progres). Setelah modal ditutup, fokus dikembalikan ke container player.
+- `player-events.js` mengirim `onShow: () => player.pause()` agar video tidak
+  tetap berjalan di belakang modal.
+- `#resume-modal` memakai `role="dialog"` + `aria-modal="true"` +
+  `aria-labelledby` / `aria-describedby`, dengan cincin fokus `:focus` yang
+  terlihat di `assets/css/{video,music}/resume-modal.css`.
+- **Bug yang ikut diperbaiki:** `countdownTimer` tidak pernah di-`clearInterval()`
+  saat modal disembunyikan, sehingga label hitung mundur masih berubah selama 15
+  detik di DOM. Sekarang semua timer dibersihkan lewat satu fungsi `close()`.
+- Auto-restart 15 detik kini juga melewati `close()` sehingga flag dan hook ikut
+  dibersihkan.
+- `window.__meelResumeDismiss()` menutup instance sebelumnya — dipakai saat pindah
+  track di halaman musik agar tidak ada dua timer aktif.
 
 ### Musik — Perilaku Resume Modal
 

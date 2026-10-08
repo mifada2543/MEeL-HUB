@@ -177,6 +177,11 @@ Request: /MEeL/music/beranda?format=ogg
 - **Asset Version Helpers:** `meel_asset_version()` and `meel_asset_dir_version()` in `modules/core/helpers/url.php` — replace per-file `$__v`/`$__vdir` closures with static-cached global helpers
 - **Music Stream Refactor:** `music/stream.php` rewritten to use `meel_serve_media_file()` from `storage.php` — adds output buffer cleanup (`ob_end_clean` + `ob_implicit_flush`), consistent MIME handling, and range request support (~110 LOC removed)
 - **Description Toggle Fix:** Music description "Selengkapnya" button now works correctly after SPA navigation — `description-toggle.js` added to view-router `DIRECT_SCRIPTS`
+- **Resume Modal Now Visible in Fullscreen:** The "Lanjutkan Sesi?" modal no longer disappears while the user is in fullscreen. Root cause: Plyr creates its own `<div class="plyr">` container *between* `#video-glow-container` and `#main-video-wrapper`, while `fullscreen.css` promotes both to `position:fixed` + `z-index:999999`, so the overlay was painted behind the video area. Fixed with `body.meel-fs-active #resume-modal { z-index: 1000001 }`
+- **Keyboard Guard During Resume Modal:** While the modal is visible, all playback shortcuts (Space, K, ↑↓, L, F, C, 0–9, I, N, A) are disabled — previously the user could still play and seek behind the dialog. `←` `→` select **Lanjut**/**Ulang**, `Enter` or `Space` runs the highlighted choice, `Esc` still exits fullscreen. Enforced by a `window` capture-phase listener in `shared/resume-modal.js` (which pre-empts Plyr's bubble-phase handler) plus a `meelResumeModalActive` flag as a second layer
+- **`S` Shortcut — AI Upscale:** New key in `video/watch/misc.js` calling `window.toggleUpscale()` in `upscaler.js`. It clicks the existing `#plyr-setting-upscale` toggle row so the WebGPU support check, toast, and UI sync stay in one place
+- **Modal Semantics & Accessibility:** `#resume-modal` now uses `role="dialog"` + `aria-modal="true"` + `aria-labelledby` / `aria-describedby`, with a visible keyboard focus ring. Focus defaults to the "Lanjut" choice and returns to the player when the modal closes
+- **Modal Countdown Bug:** `countdownTimer` was never `clearInterval()`-ed when the modal was hidden, so the countdown label kept mutating in the DOM for 15 seconds — all timers now go through a single `close()` function
 
 ## 📖 About the Project
 

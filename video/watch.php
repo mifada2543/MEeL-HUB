@@ -154,9 +154,11 @@ session_write_close();
                                 label="<?= htmlspecialchars($_sub['label']) ?>">
                         <?php endforeach; ?>
                     </video>
-                    <div id="resume-modal" class="hidden">
+                    <div id="resume-modal" class="hidden" role="dialog" aria-modal="true"
+                        aria-labelledby="resume-modal-title" aria-describedby="resume-countdown">
                         <div class="bg-[#141820] border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl text-center">
-                            <div class="font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
+                            <div id="resume-modal-title"
+                                class="font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
                             <div class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">
                                 Menit ke‑ <span id="resume-time" class="text-red-400 font-mono">0:00</span>
                             </div>

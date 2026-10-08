@@ -467,8 +467,18 @@ Keyboard shortcuts are implemented in JavaScript and guarded by `assets/js/share
 | `C` | Toggle captions | Plyr default |
 | `L` | Toggle loop | `misc.js` |
 | `A` | Toggle auto-next | `misc.js` |
+| `S` | Toggle AI Upscale | `misc.js` → `toggleUpscale()` in `upscaler.js` |
 | `N` | Skip to next video | `mini-player.js` |
 | `I` | Toggle mini player | `mini-player.js` |
+
+> **Locked while the resume modal is open.** While the "Lanjutkan Sesi?" modal is
+> visible, `meelResumeModalActive` is `true` and every shortcut above is disabled
+> (except `Esc`), so the video cannot be controlled behind the dialog. `←` / `→`
+> move the selection following button position — **← Lanjut**, **→ Ulang**;
+> `Home` / `End` jump to the first/last choice; `Enter` or `Space` runs the
+> highlighted choice. Enforced by a `window` listener in the **capture** phase in
+> `assets/js/shared/resume-modal.js`, which pre-empts Plyr (`window` bubble) and
+> `mini-player.js` (`window` capture).
 
 **Music Watch (`assets/js/music/watch/`):**
 

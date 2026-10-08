@@ -14,6 +14,13 @@
   justify-content: center;
 }
 
+/* Pilihan aktif harus jelas saat dinavigasi keyboard (← → Home End). */
+#resume-modal button:focus {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.4);
+}
+
 #resume-modal > div {
   max-width: min(320px, 68%);
   padding: clamp(16px, 4cqw, 24px);
