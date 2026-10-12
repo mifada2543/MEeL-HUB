@@ -27,8 +27,9 @@ session_write_close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <?php
-    $__thumb_name = $v['thumbnail'] ?? '';
-    $__thumb_ok = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . basename($__thumb_name));
+    $__thumb_name = basename(trim((string)($v['thumbnail'] ?? '')));
+    $__thumb_ok = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . $__thumb_name);
+    $__thumb_path = $__thumb_ok ? 'upload/thumbnail/' . rawurlencode($__thumb_name) : '';
     $__og_image = $__thumb_ok
         ? base_url('/video/upload/thumbnail/' . rawurlencode($__thumb_name))
         : base_url('/assets/img/video0.webp');
@@ -44,8 +45,10 @@ session_write_close();
     $_META_TYPE = 'video.other';
     ?>
     <?php include '../partials/link.php'; ?>
-    <link rel="preload" as="image" fetchpriority="high"
-        href="upload/thumbnail/<?= htmlspecialchars($v['thumbnail'] ?? '') ?>">
+    <?php if ($__thumb_path !== ''): ?>
+        <link rel="preload" as="image" fetchpriority="high"
+            href="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>">
+    <?php endif; ?>
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
     <?php meel_css_links('video', '../assets/css/video'); ?>
     <link rel="stylesheet" href="../assets/css/video/watch/main.css<?= meel_asset_version('assets/css/video/watch/main.css') ?>">
@@ -133,10 +136,10 @@ session_write_close();
         <div id="left-column" class="flex-1 space-y-2 sm:space-y-3 px-4 sm:px-5">
             <div id="video-glow-container" class="relative w-full">
                 <canvas id="video-glow-canvas" class="block"></canvas>
-                <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" style="aspect-ratio: 16/9;">
+                <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" data-video-aspect="1.7778" style="--meel-video-ar: 1.7778;">
                     <video id="main-video" playsinline controls preload="metadata"
-                        poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
-                        data-poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
+                        poster="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>"
+                        data-poster="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>"
                         data-src="<?= htmlspecialchars($video_src) ?>"
                         aria-label="Pemutar video: <?= htmlspecialchars($v['title']) ?>"
                         data-ishls="<?= $is_hls ? 'true' : 'false' ?>"
@@ -403,6 +406,27 @@ session_write_close();
                                     'uploader' => $v['uploader'] ?? '',
                                     'thumbnail' => $__og_image
                                 ]); ?>;
+    </script>
+    <script>
+        (function () {
+            var wrapper = document.getElementById('main-video-wrapper');
+            var video = document.getElementById('main-video');
+            if (!wrapper || !video) return;
+            function applyIntrinsicRatio() {
+                var w = video.videoWidth;
+                var h = video.videoHeight;
+                if (!w || !h) return;
+                var ratio = w / h;
+                if (!(ratio > 0.2 && ratio < 5)) return;
+
+                wrapper.style.setProperty('--meel-video-ar', w + ' / ' + h);
+                wrapper.style.removeProperty('aspect-ratio');
+                wrapper.setAttribute('data-video-aspect', ratio.toFixed(4));
+            }
+
+            video.addEventListener('loadedmetadata', applyIntrinsicRatio);
+            if (video.readyState >= 1) applyIntrinsicRatio();
+        })();
     </script>
     <script src="../assets/js/shared/state-keys.js<?= meel_asset_version('assets/js/shared/state-keys.js') ?>"></script>
     <script src="../assets/js/shared/keyboard.js<?= meel_asset_version('assets/js/shared/keyboard.js') ?>"></script>

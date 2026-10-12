@@ -26,7 +26,9 @@ function setupMeelPlayerEvents() {
 
   function applyMeelVideoAspect(wrapper, videoW, videoH) {
     if (!wrapper || !videoW || !videoH) return;
-    wrapper.style.aspectRatio = `${videoW} / ${videoH}`;
+    wrapper.style.setProperty("--meel-video-ar", `${videoW} / ${videoH}`);
+    wrapper.style.removeProperty("aspect-ratio");
+    wrapper.setAttribute("data-video-aspect", (videoW / videoH).toFixed(4));
     if (videoW < videoH) {
       wrapper.style.maxHeight = "80vh";
       wrapper.style.width = "auto";
@@ -59,7 +61,9 @@ function setupMeelPlayerEvents() {
     if (!isMiniPlayerActive) {
       applyMeelVideoAspect(e, n, o);
     } else {
-      e.style.aspectRatio = `${n} / ${o}`;
+      e.style.setProperty("--meel-video-ar", `${n} / ${o}`);
+      e.style.removeProperty("aspect-ratio");
+      e.setAttribute("data-video-aspect", (n / o).toFixed(4));
     }
   }
 
@@ -299,6 +303,9 @@ function setupMeelPlayerEvents() {
               e.scrollHeight > e.clientHeight &&
               t.classList.remove("hidden");
           }),
+        (d
+          ? player.media.setAttribute("poster", d)
+          : player.media.removeAttribute("poster")),
         (player.poster = d),
         c
           ? (window.Hls && Hls.isSupported()
@@ -376,6 +383,7 @@ function setupMeelPlayerEvents() {
                   ),
                   (player.fullscreen.active || document.fullscreenElement) &&
                     ((e._meelSavedRatio = videoElement.videoWidth + " / " + videoElement.videoHeight),
+                    (e.style.setProperty("--meel-video-ar", e._meelSavedRatio)),
                     (e._meelSavedMaxHeight = ""),
                     (e._meelSavedWidth = ""),
                     (e._meelSavedMarginL = ""),
@@ -401,6 +409,7 @@ function setupMeelPlayerEvents() {
                   ),
                   (player.fullscreen.active || document.fullscreenElement) &&
                     ((e._meelSavedRatio = videoElement.videoWidth + " / " + videoElement.videoHeight),
+                    (e.style.setProperty("--meel-video-ar", e._meelSavedRatio)),
                     (e._meelSavedMaxHeight = ""),
                     (e._meelSavedWidth = ""),
                     (e._meelSavedMarginL = ""),
@@ -665,7 +674,7 @@ function setupMeelPlayerEvents() {
       const e_fsWrap = document.getElementById("main-video-wrapper"),
         e_fsGlow = document.getElementById("video-glow-container");
       if (e_fsWrap) {
-        e_fsWrap._meelSavedRatio = e_fsWrap.style.aspectRatio || "";
+        e_fsWrap._meelSavedRatio = e_fsWrap.style.getPropertyValue("--meel-video-ar") || "";
         e_fsWrap._meelSavedMaxHeight = e_fsWrap.style.maxHeight || "";
         e_fsWrap._meelSavedWidth = e_fsWrap.style.width || "";
         e_fsWrap._meelSavedMarginL = e_fsWrap.style.marginLeft || "";
@@ -802,7 +811,7 @@ function setupMeelPlayerEvents() {
         e_xsWrap.style.removeProperty("width");
         e_xsWrap.style.removeProperty("border-radius");
         if (e_xsWrap._meelSavedRatio)
-          e_xsWrap.style.aspectRatio = e_xsWrap._meelSavedRatio;
+          e_xsWrap.style.setProperty("--meel-video-ar", e_xsWrap._meelSavedRatio);
         if (e_xsWrap._meelSavedMaxHeight)
           e_xsWrap.style.maxHeight = e_xsWrap._meelSavedMaxHeight;
         if (e_xsWrap._meelSavedWidth)
