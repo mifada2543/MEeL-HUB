@@ -153,7 +153,7 @@ if ! $SKIP_APT && $HAS_APT; then
     fi
 elif ! $HAS_APT; then
     warn "apt-get tidak terdeteksi (bukan Debian/Ubuntu) — lewati instalasi paket otomatis."
-    warn "Pastikan manual: PHP 8.0+ (mysqli, mbstring, intl, gd, zip, xml, curl), MariaDB/MySQL, Apache+mod_rewrite."
+    warn "Pastikan manual: PHP 8.1+ (mysqli, mbstring, intl, gd, zip, xml, curl), MariaDB/MySQL, Apache+mod_rewrite."
 else
     ok "Instalasi apt dilewati (--skip-apt)."
 fi

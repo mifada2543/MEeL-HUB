@@ -539,9 +539,8 @@ class BookUploader
         if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
             return ['success' => false, 'message' => 'Error: Tidak ada file PDF yang diterima.'];
         }
-
         $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
-        if ($ext !== 'pdf' || preg_match('/\.(php|phtml|sh|js)/i', $file['name'] ?? '') || str_contains($file['name'] ?? '', "\0")) {
+        if ($ext !== 'pdf' || preg_match('/\.(php\d?|phtml|sh|js)(\.|$)/i', $file['name'] ?? '') || str_contains($file['name'] ?? '', "\0")) {
             return ['success' => false, 'message' => 'Error: File harus berformat PDF!'];
         }
 
