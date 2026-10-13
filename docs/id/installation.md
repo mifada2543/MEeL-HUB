@@ -33,7 +33,7 @@ Installer otomatis yang menjalankan sebagian besar langkah panduan ini dalam sat
 
 Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
 
-1. **Cek dependency** — PHP 8.0+ dengan ekstensi `mysqli`, `pdo_mysql`,
+1. **Cek dependency** — PHP 8.1+ dengan ekstensi `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl`, plus
    MariaDB/MySQL; diinstall via apt bila perlu (`--skip-apt` untuk melewati).
 2. **Setup database** — buat database + import `database/schema.sql` (baris
@@ -68,7 +68,7 @@ Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
 
 | Komponen | Versi | Keterangan |
 |---|---|---|
-| **PHP** | 8.0+ | **8.1+** sangat disarankan |
+| **PHP** | **8.1+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Wajib `mod_rewrite` |
 | **FFmpeg** | 6.0+ | Untuk HLS & transcoding |

@@ -99,7 +99,7 @@ public function toggleLike();
 
 #### 4. Type Hints
 
-Properties and constructor parameters **must** have type hints (PHP 8.0+):
+Properties and constructor parameters **must** have type hints (PHP 8.1+):
 
 ```php
 // ✅ CORRECT
@@ -1094,7 +1094,84 @@ Practical consequence: **production code should not depend on reading those inte
 properties** if it is meant to be testable with
 `tests/unit/support/MysqlFake.php`. When such a value is genuinely needed, pass it
 in as a parameter or return it through another path — never through a statement
-property.### Test Infrastructure — important notes
+property.
+
+---
+
+### Cross-test static caches: `get_user_role()` & `get_user_active()`
+
+Both use a per-process `static $cache`. It is **not** reset between tests, so
+one test can poison a later test running in the same process. This actually
+happened:
+
+`MediaViewerTest` constructs a `MediaViewer` with a **mock connection**, and the
+constructor calls `get_user_role($mock, 1)`. The mock has no rows, so the
+function returns the `'user'` fallback — and **memoizes** that fallback into
+`static $cache[1]`. Several tests later, in the same process,
+`MediaInteractionIntegrationTest` calls `get_user_role($conn, 1)` against the
+real test DB where the row is `role = 'admin'` — but the stale cache wins, so
+`isAdmin()` returns `false` and the admin comment deletion fails with 404.
+
+What made this hard to spot: the test **passes when run on its own**
+(`--filter`) and only fails when the whole suite runs.
+
+The rule: **a cache may only store facts, not uncertainty.** A missing row means
+"don't know yet", not "this user is a `user`". So a negative result is
+deliberately **not** memoized:
+
+```php
+$row = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if ($row === null) {
+    return 'user';          // fallback, NOT cached
+}
+
+$role = (string)$row['role'];
+$cache[$user_id] = $role;   // a fact → safe to cache
+```
+
+`get_user_active()` has the twin bug: it memoizes a `false` derived from a
+missing row, so a user who has just been activated stays "inactive" for the rest
+of the process. Fixed the same way.
+
+Locked in by `tests/unit/UserRoleCacheNotFoundTest.php`. If that test starts
+failing after you touch either function, first look for a caller that performs a
+negative lookup earlier.
+
+---
+
+### Media constants must be pinned in `tests/bootstrap.php`
+
+The media path constants (`MEEL_HDD_*`) are pinned in `tests/bootstrap.php`,
+**before** any production file that could define them at `require` time.
+
+The problem: `modules/core/TranscoderBase.php` defines `MEEL_HDD_BASE` as the
+placeholder `'/path/to/your/media'` when the constant is not already set. Once
+that file is `require`d — and `require_once` **cannot be undone** — every test
+running afterwards sees `meel_media_base_path('video')` pointing at an
+unwritable placeholder.
+
+The symptom looks innocuous but is deeply misleading:
+
+```
+file_put_contents(/path/to/your/media/video/upload/thumbnail/x_thumb.webp):
+Failed to open stream: No such file or directory
+```
+
+The test **passes when run on its own** (`--filter`) and only fails when the
+whole suite runs — because the test that pulls in `TranscoderBase.php` happened
+to run before the one that needs a writable path.
+
+The fix pins the constants to `temp/media-test/` up front. Two pleasant effects
+at once:
+
+1. test ordering stops determining results;
+2. no media directory leaks outside the repo while tests run.
+
+---
+
+### Test Infrastructure — important notes
 
 #### 🚨 `createMock(mysqli::class)` consumed 8.86 GiB of RAM
 
