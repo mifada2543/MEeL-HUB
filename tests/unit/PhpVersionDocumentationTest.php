@@ -24,6 +24,8 @@ class PhpVersionDocumentationTest extends TestCase
 
     public function testDocsAndLandingPageDoNotClaimPhp80(): void
     {
+        $checked = 0;
+
         foreach ([
             'docs/en/index.md',
             'docs/id/index.md',
@@ -32,9 +34,21 @@ class PhpVersionDocumentationTest extends TestCase
             '.agents/PRD.md',
             'index.html',
         ] as $file) {
-            $src = (string) file_get_contents(MEEL_ROOT . '/' . $file);
+            $path = MEEL_ROOT . '/' . $file;
+            if (!is_file($path)) {
+                fwrite(STDERR, "[skip] $file tidak ada (di-gitignore, hanya ada di mesin lokal)\n");
+                continue;
+            }
+            $checked++;
+            $src = (string) file_get_contents($path);
             $this->assertStringNotContainsString('PHP 8.0', $src, $file . ' masih menyebut PHP 8.0');
         }
+
+        $this->assertGreaterThan(
+            0,
+            $checked,
+            'Tidak ada satu pun file yang diperiksa — test ini akan selalu hijau tanpa makna'
+        );
     }
 
     public function testComposerRequiresPhp81(): void

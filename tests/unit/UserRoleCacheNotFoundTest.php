@@ -2,33 +2,29 @@
 use PHPUnit\Framework\TestCase;
 class UserRoleCacheNotFoundTest extends TestCase
 {
-    private ?DbTestHelper $db = null;
-
-    private const SUBJECT_ID = DbTestHelper::ADMIN_USER_ID;
+    private const SUBJECT_ID = 1;
 
     protected function setUp(): void
     {
         parent::setUp();
         require_once MEEL_ROOT . '/modules/auth/helpers/user.php';
+        unset($_SESSION['user_id'], $_SESSION['role']);
     }
 
     protected function tearDown(): void
     {
-        if ($this->db !== null) {
-            $this->db->rollback();
-            $this->db->close();
-        }
+        unset($_SESSION['user_id'], $_SESSION['role']);
         parent::tearDown();
     }
 
-    private function emptyResultConn(): mysqli
+    private function connReturning(?array $row): mysqli
     {
         $conn = $this->createMock(mysqli::class);
         $stmt = $this->createMock(mysqli_stmt::class);
         $result = $this->createMock(mysqli_result::class);
 
         $stmt->method('get_result')->willReturn($result);
-        $result->method('fetch_assoc')->willReturn(null);
+        $result->method('fetch_assoc')->willReturn($row);
         $conn->method('prepare')->willReturn($stmt);
 
         return $conn;
@@ -36,39 +32,28 @@ class UserRoleCacheNotFoundTest extends TestCase
 
     public function testMissingUserIsNotMemoizedAsUser(): void
     {
-        $empty = $this->emptyResultConn();
-        $this->assertSame('user', get_user_role($empty, self::SUBJECT_ID));
-
-        $this->db = new DbTestHelper();
-        $conn = $this->db->getConnection();
+        $this->assertSame('user', get_user_role($this->connReturning(null), self::SUBJECT_ID));
 
         $this->assertSame(
             'admin',
-            get_user_role($conn, self::SUBJECT_ID),
-            'Role admin harus terbaca apa adanya, tidak boleh memakai cache dari lookup negatif sebelumnya'
+            get_user_role($this->connReturning(['role' => 'admin']), self::SUBJECT_ID),
+            'Role asli harus terbaca, tidak boleh memakai cache dari lookup negatif sebelumnya'
         );
     }
 
     public function testMissingUserIsNotMemoizedAsInactive(): void
     {
-        $empty = $this->emptyResultConn();
-        $this->assertFalse(get_user_active($empty, self::SUBJECT_ID));
-
-        $this->db = new DbTestHelper();
-        $conn = $this->db->getConnection();
+        $this->assertFalse(get_user_active($this->connReturning(null), self::SUBJECT_ID));
 
         $this->assertTrue(
-            get_user_active($conn, self::SUBJECT_ID),
+            get_user_active($this->connReturning(['is_active' => '1']), self::SUBJECT_ID),
             'User aktif harus terdeteksi aktif, tidak boleh memakai cache false dari lookup negatif'
         );
     }
 
     public function testExistingUserStillGetsCached(): void
     {
-        $this->db = new DbTestHelper();
-        $conn = $this->db->getConnection();
-
-        $this->assertSame('admin', get_user_role($conn, self::SUBJECT_ID));
+        $this->assertSame('admin', get_user_role($this->connReturning(['role' => 'admin']), self::SUBJECT_ID));
 
         $static = (new ReflectionFunction('get_user_role'))->getStaticVariables();
         $this->assertArrayHasKey('cache', $static);
