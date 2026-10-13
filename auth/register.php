@@ -23,7 +23,13 @@ $_SESSION['reg_attempts'] = array_filter($_SESSION['reg_attempts'], function ($t
     return $timestamp > (time() - $reg_time_window);
 });
 $session_blocked = !$is_loopback && count($_SESSION['reg_attempts']) >= $max_reg_attempts;
-if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
+$reg_rate_key = 'reg_ip:' . $ip_address;
+$ip_reg_blocked = !$is_loopback && RateLimiter::getRemaining($reg_rate_key, 'register') <= 0;
+$reg_blocked = $session_blocked || $ip_reg_blocked;
+$reg_block_limit = $ip_reg_blocked
+    ? (RateLimiter::getLimitsConfig()['register']['requests'] ?? $max_reg_attempts)
+    : $max_reg_attempts;
+if (isset($_POST['register']) && !$is_locked && !$reg_blocked) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $message = "Sesi keamanan kadaluarsa. Silakan refresh halaman.";
         $msg_type = "error";
@@ -60,6 +66,9 @@ if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
                     $stmt->close();
 
                     $_SESSION['reg_attempts'][] = time();
+                    if (!$is_loopback) {
+                        RateLimiter::check($reg_rate_key, 'register');
+                    }
                     $message = "Registrasi berhasil! Silakan tunggu verifikasi admin.";
                     $msg_type = "success";
                 } else {
@@ -78,7 +87,7 @@ if (isset($_POST['register']) && !$is_locked && !$session_blocked) {
         }
     }
 }
-if (!$is_loopback && !$is_locked && !$session_blocked) {
+if (!$is_loopback && !$is_locked && !$reg_blocked) {
     $recheck = auth_recheck_lockout($conn, $ip_address);
     if ($recheck['locked']) {
         $is_locked = true;
@@ -92,31 +101,26 @@ $auth_og_desc = "Buat akun MEeL dan nikmati streaming video, musik, dan akses pe
 include __DIR__ . '/partials/auth_head.php';
 ?>
 <main class="w-full max-w-sm" aria-labelledby="register-title">
-
     <div class="text-center mb-8">
         <div class="inline-flex p-4 bg-red-600/10 rounded-3xl text-red-600 mb-4 shadow-lg shadow-red-900/10"><i data-lucide="user-plus" class="w-10 h-10"></i></div>
         <h2 id="register-title" class="text-3xl font-black text-white tracking-tighter">Daftar</h2>
         <p class="text-sm text-gray-400 mt-1">Buat akun <span class="text-red-500 font-bold">MEeL</span></p>
     </div>
-
     <?php if ($message): ?>
         <div class="mb-6 p-4 rounded-2xl text-sm flex items-center gap-3 animate-pulse <?= $msg_type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : ($msg_type === 'warning' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20') ?>" role="alert"><i data-lucide="<?= $msg_type === 'success' ? 'check-circle' : 'alert-circle' ?>" class="w-5 h-5"></i><?= $message ?></div>
     <?php endif; ?>
-
     <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6">
-        <?php if ($session_blocked && !$is_locked): ?>
-
+        <?php if ($reg_blocked && !$is_locked): ?>
             <div class="text-center py-6 space-y-4">
                 <i data-lucide="timer-reset" class="w-12 h-12 text-orange-500 mx-auto animate-pulse"></i>
                 <h3 class="text-lg font-bold text-white">Batas Pendaftaran</h3>
-                <p class="text-xs text-gray-300 leading-relaxed">Anda telah mencapai batas maksimal pendaftaran (<?= $max_reg_attempts ?> akun per jam). Silakan coba lagi nanti.</p>
+                <p class="text-xs text-gray-300 leading-relaxed">Anda telah mencapai batas maksimal pendaftaran (<?= (int)$reg_block_limit ?> akun per jam). Silakan coba lagi nanti.</p>
                 <div class="flex justify-center gap-3 pt-2">
                     <a href="login" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all" title="Masuk ke akun yang sudah ada">Masuk</a>
                     <a href="../" class="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-bold rounded-xl transition-all" title="Kembali ke beranda">Kembali</a>
                 </div>
             </div>
         <?php elseif ($is_locked): ?>
-
             <?php
             $countdown_seconds = $remaining;
             $countdown_color = 'text-red-500';
@@ -126,7 +130,6 @@ include __DIR__ . '/partials/auth_head.php';
             include __DIR__ . '/partials/auth_countdown.php';
             ?>
         <?php else: ?>
-
             <?php if (isset($_SESSION['csrf_token'])): ?>
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
             <?php endif; ?>
@@ -161,7 +164,5 @@ include __DIR__ . '/partials/auth_head.php';
         <?php endif; ?>
     </form>
     <?php include __DIR__ . '/partials/auth_footer.php';
-
-/* reference build: MEeL-C5H5N5O [ba29c193899ba422] */
-
-?>
+    /* reference build: MEeL-C5H5N5O [ba29c193899ba422] */
+    ?>

@@ -35,31 +35,15 @@ class GarbageCollector
             error_log('[MEeL] GarbageCollector: purge_guest_users() tidak termuat, reset AUTO_INCREMENT dilewati.');
             return;
         }
-        if (!self::cleanGuests($conn)) {
-            return;
-        }
-        $result = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS new_ai FROM users");
-        if (!$result) {
-            return;
-        }
-        $row = $result->fetch_assoc();
-        $newAi = (int) ($row['new_ai'] ?? 0);
-        if ($newAi < 1) {
-            return;
-        }
-        $conn->query("ALTER TABLE users AUTO_INCREMENT = " . $newAi);
+        self::cleanGuests($conn);
     }
-
     public static function cleanGuests(\mysqli $conn): int
     {
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_guest_last_run.txt';
-
         if (self::isWithinThrottle($throttleFile, self::GUEST_CLEANUP_INTERVAL)) {
             return 0;
         }
-
         $totalCleaned = 0;
-
         $stmt = $conn->prepare(
             "UPDATE users SET is_active = 0 WHERE role = 'guest' AND is_active = 1 AND last_activity < DATE_SUB(NOW(), INTERVAL ? HOUR)"
         );
@@ -69,53 +53,40 @@ class GarbageCollector
             $stmt->execute();
             $marked = $stmt->affected_rows;
             $stmt->close();
-
             if ($marked > 0) {
                 $totalCleaned += $marked;
             }
         }
-
         $deleted = purge_guest_users($conn) ?? 0;
         if ($deleted > 0) {
             $totalCleaned += $deleted;
         }
-
         self::writeThrottleFile($throttleFile);
-
         return $totalCleaned;
     }
-
     public static function syncViews(\mysqli $conn): void
     {
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_views_sync_last_run.txt';
         $interval = 3600;
-
         if (self::isWithinThrottle($throttleFile, $interval)) return;
-
         if (!class_exists(MediaViewer::class)) {
             error_log('[MEeL] GarbageCollector::syncViews: kelas MediaViewer tidak termuat, dilewati.');
             return;
         }
-
         MediaViewer::syncViewsFromLogs($conn);
         self::writeThrottleFile($throttleFile);
     }
-
     public static function cleanChessRooms(\mysqli $conn): int
     {
         require_once __DIR__ . '/Modules.php';
         if (!Modules::enabled('arcade')) {
             return 0;
         }
-
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_chess_last_run.txt';
-
         if (self::isWithinThrottle($throttleFile, self::CHESS_CLEANUP_INTERVAL)) {
             return 0;
         }
-
         $totalCleaned = 0;
-
         $lobbyHours = self::ROOM_LOBBY_STALE_HOURS;
         $stmt = $conn->prepare(
             "DELETE FROM moves WHERE room_code IN (
@@ -138,7 +109,6 @@ class GarbageCollector
             $totalCleaned += $stmt->affected_rows;
             $stmt->close();
         }
-
         $gameHours = self::ROOM_GAME_STALE_HOURS;
         $staleRooms = "SELECT room_code FROM (
                 SELECT r.room_code
@@ -169,34 +139,15 @@ class GarbageCollector
             $totalCleaned += $stmt->affected_rows;
             $stmt->close();
         }
-
         self::writeThrottleFile($throttleFile);
-
         return $totalCleaned;
     }
-
-    /**
-     * Bersihkan file cache yang expired + sisa .tmp.* yatim.
-     *
-     * Menggunakan TTL per prefix:
-     *   - media_stats_*         : 30 detik  (default media.php)
-     *   - admin_orphans.json    : 120 detik (admin_data.php)
-     *   - dirsize_*             : 300 detik (storage.php)
-     *   - server_stats_info.json: 300 detik (System.php)
-     *   - xsendfile_roots.cache : 86400 detik (storage.php)
-     *   - .tmp.*                : > 300 detik (stale temp)
-     *
-     * File yang MASIH dalam TTL DIPEJAMKAN (tidak dihapus).
-     *
-     * @return int Jumlah file yang dihapus
-     */
     public static function cleanCacheDirectory(): int
     {
         $cacheDir = self::getMediaCacheDir();
         if (!is_dir($cacheDir)) {
             return 0;
         }
-
         $ttlMap = [
             'media_stats_'       => 30,
             'admin_orphans'      => 120,
@@ -204,19 +155,14 @@ class GarbageCollector
             'server_stats_info'  => 300,
             'xsendfile_roots'    => 86400,
         ];
-
         $now = time();
         $deleted = 0;
-
         $items = glob(rtrim($cacheDir, '/') . '/*');
         if (empty($items)) {
             return 0;
         }
-
         foreach ($items as $item) {
             $base = basename($item);
-
-            // .tmp.* yatim (> 300 dtk)
             if (preg_match('/\.tmp\.\d+\.[0-9a-f]{12}$/', $base)) {
                 $mtime = @filemtime($item);
                 if ($mtime !== false && ($now - $mtime) > 300) {
@@ -226,53 +172,38 @@ class GarbageCollector
                 }
                 continue;
             }
-
-            // Cache JSON dengan TTL per prefix
             $expired = false;
+            $prefixMatched = false;
             foreach ($ttlMap as $prefix => $ttl) {
                 if (str_starts_with($base, $prefix)) {
+                    $prefixMatched = true;
                     $expired = self::isCacheExpired($item, $ttl);
                     break;
                 }
             }
-
-            // Fallback: file tidak dikenal prefix tapi > 1 hari
-            if (!$expired && !isset($ttlMap)) {
+            if (!$prefixMatched) {
                 $mtime = @filemtime($item);
                 if ($mtime !== false && ($now - $mtime) > 86400) {
                     $expired = true;
                 }
             }
-
             if ($expired && is_file($item) && @unlink($item)) {
                 $deleted++;
             }
         }
-
-        // Bersihkan direktori kosong di cache
         self::cleanEmptyCacheDirs($cacheDir);
 
         return $deleted;
     }
-
-    /**
-     * Cek apakah file cache sudah expired berdasarkan TTL.
-     * Menggunakan meel_read_cache_file jika tersedia, fallback manual.
-     */
     private static function isCacheExpired(string $path, int $ttl): bool
     {
-        // Kalau helper storage.php sudah termuat, pakai itu (TTL 0 = cek manual)
         if (function_exists('meel_read_cache_file')) {
             $data = @meel_read_cache_file($path, 0, [], '');
             if ($data !== null) {
-                // Data valid = tidak expired
                 return false;
             }
-            // null = tidak ada / rusak / kedaluwarsa
             return true;
         }
-
-        // Fallback manual (storage.php belum load)
         $raw = @file_get_contents($path);
         if ($raw === false || $raw === '') {
             return true;
@@ -281,7 +212,6 @@ class GarbageCollector
         if (!is_array($decoded)) {
             return true;
         }
-        // Cek kunci waktu umum
         $timeKey = '';
         foreach (['ts', 'time', 'checked_at'] as $k) {
             if (isset($decoded[$k])) {
@@ -290,12 +220,11 @@ class GarbageCollector
             }
         }
         if ($timeKey === '') {
-            return false; // tidak punya timestamp -> anggap valid
+            return false;
         }
         $age = time() - (int)$decoded[$timeKey];
         return $age >= $ttl;
     }
-
     private static function getMediaCacheDir(): string
     {
         if (defined('MEEL_MEDIA_CACHE_DIR')) {
@@ -303,7 +232,6 @@ class GarbageCollector
         }
         return dirname(__DIR__, 2) . '/temp/cache';
     }
-
     private static function cleanEmptyCacheDirs(string $dir): void
     {
         if (!is_dir($dir)) return;
@@ -317,9 +245,7 @@ class GarbageCollector
             }
         }
     }
-
     public const RUN_INTERVAL_SECONDS = 60;
-
     private static function isWithinThrottle(string $throttleFile, int $interval): bool
     {
         if (!is_readable($throttleFile)) {
@@ -328,7 +254,6 @@ class GarbageCollector
         $lastRun = (int) file_get_contents($throttleFile);
         return $lastRun > 0 && (time() - $lastRun) < $interval;
     }
-
     private static function writeThrottleFile(string $throttleFile): void
     {
         $dir = dirname($throttleFile);
@@ -336,19 +261,16 @@ class GarbageCollector
             error_log("[MEeL] GarbageCollector: throttle file tidak bisa ditulis: {$throttleFile}");
             return;
         }
-
         if (is_file($throttleFile) && !is_writable($throttleFile)) {
             if (!@unlink($throttleFile)) {
                 error_log("[MEeL] GarbageCollector: throttle file tidak writable & gagal dihapus: {$throttleFile}");
                 return;
             }
         }
-
         if (@file_put_contents($throttleFile, time()) === false) {
             error_log("[MEeL] GarbageCollector: gagal menulis throttle file: {$throttleFile}");
         }
     }
-
     public static function run(): void
     {
         if (self::$hasRun) return;
@@ -358,7 +280,6 @@ class GarbageCollector
         if (self::isWithinThrottle($throttleFile, self::RUN_INTERVAL_SECONDS)) {
             return;
         }
-
         $directories = self::getTargetDirectories();
         if (!empty($directories)) {
             $timeout = microtime(true) + 3;
@@ -367,86 +288,66 @@ class GarbageCollector
                 self::cleanDirectory($dir);
             }
         }
-
         self::cleanPendingFileDeletions();
 
         if (class_exists('RateLimiter')) {
             RateLimiter::cleanup();
         }
-
         self::writeThrottleFile($throttleFile);
     }
-
     private static function runThrottleFile(): string
     {
         return dirname(__DIR__, 2) . '/temp/gc_run_last_run.txt';
     }
-
     private static function cleanPendingFileDeletions(): void
     {
         $throttleFile = dirname(__DIR__, 2) . '/temp/gc_pending_delete_last_run.txt';
         $interval = 300;
 
         if (self::isWithinThrottle($throttleFile, $interval)) return;
-
         $pendingFile = dirname(__DIR__, 2) . '/temp/pending_delete.json';
         if (!file_exists($pendingFile)) {
             self::writeThrottleFile($throttleFile);
             return;
         }
-
-        require_once dirname(__DIR__, 2) . '/controllers/profile/fun-manage.php';
+        require_once __DIR__ . '/helpers/pending_delete.php';
         $cleaned = cleanupPendingDeletions();
-
         if ($cleaned > 0) {
             error_log("[MEeL] GarbageCollector: cleaned {$cleaned} pending file deletion(s) from queue.");
         }
-
         self::writeThrottleFile($throttleFile);
     }
-
     private static function getTargetDirectories(): array
     {
         $dirs = [];
-
         $project_temp = dirname(__DIR__, 2) . '/temp';
         if (is_dir($project_temp)) {
             $dirs[] = $project_temp;
         }
-
         if (is_dir('/dev/shm/meel/temp')) {
             $dirs[] = '/dev/shm/meel/temp';
         }
-
         if (is_dir('/dev/shm/meel/upload')) {
             $dirs[] = '/dev/shm/meel/upload';
         }
-
         if (is_dir('/dev/shm/meel/transcode')) {
             $dirs[] = '/dev/shm/meel/transcode';
         }
-
         return $dirs;
     }
-
     private static function cleanDirectory(string $dir): void
     {
         $cutoff = time() - self::STALE_SECONDS;
-
         $items = glob(rtrim($dir, '/') . '/*');
         if (empty($items)) return;
 
         foreach ($items as $item) {
             $basename = basename($item);
-
             if ($basename === 'ytdlp-cache') continue;
-
             if (in_array($basename, ['cache', 'ratelimit'], true)) continue;
-
             if (!file_exists($item)) continue;
             $mtime = filemtime($item);
             if ($mtime === false || $mtime > $cutoff) continue;
-
             if (is_dir($item)) {
                 self::removeDirectory($item);
             } else {
@@ -454,19 +355,16 @@ class GarbageCollector
             }
         }
     }
-
     private static function removeDirectory(string $dir): void
     {
         if (!is_dir($dir)) {
             return;
         }
-
         $parent = dirname($dir);
         if (!is_dir($parent) || !is_writable($parent)) {
             error_log("[MEeL] GarbageCollector: direktori tidak writable, dilewati: {$dir}");
             return;
         }
-
         foreach (glob(rtrim($dir, '/') . '/*') ?: [] as $item) {
             if (is_dir($item)) {
                 self::removeDirectory($item);
@@ -474,29 +372,24 @@ class GarbageCollector
                 self::removeFile($item);
             }
         }
-
         $remaining = glob(rtrim($dir, '/') . '/*') ?: [];
         if (empty($remaining) && !rmdir($dir)) {
             error_log("[MEeL] GarbageCollector: Gagal menghapus direktori: {$dir}");
         }
     }
-
     private static function removeFile(string $path): void
     {
         if (!is_file($path) && !is_link($path)) {
             return;
         }
-
         $parent = dirname($path);
         if (!is_dir($parent) || !is_writable($parent)) {
             error_log("[MEeL] GarbageCollector: direktori tidak writable, file dilewati: {$path}");
             return;
         }
-
         if (!unlink($path)) {
             error_log("[MEeL] GarbageCollector: Gagal menghapus file: {$path}");
         }
     }
 }
-
 /* reference build: MEeL-C8H11NO2 [65c57d32da4d271e] */

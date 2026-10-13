@@ -61,12 +61,12 @@ if (isset($_POST['login']) && !$is_locked) {
                             $stmt_del->bind_param("s", $ip_address);
                             $stmt_del->execute();
                             $stmt_del->close();
+                            $now = meel_now();
                             if (!empty($u['mfa_secret']) && $u['mfa_enabled'] == 1) {
                                 $_SESSION['mfa_temp_uid'] = (int)$u['id'];
                                 $_SESSION['mfa_temp_username'] = $u['username'];
                                 $_SESSION['mfa_temp_role'] = $u['role'];
                                 log_activity($conn, $u['id'], 'login_password_ok');
-                                $now = meel_now();
                                 $upd = $conn->prepare("UPDATE users SET last_activity = ? WHERE id = ?");
                                 $upd->bind_param("si", $now, $u['id']);
                                 $upd->execute();
@@ -83,12 +83,19 @@ if (isset($_POST['login']) && !$is_locked) {
                             log_activity($conn, $u['id'], 'login');
 
                             $upd = $conn->prepare("UPDATE users SET last_session_id = ?, last_activity = ? WHERE id = ?");
+                            $session_saved = false;
                             if ($upd) {
                                 $upd->bind_param("ssi", $current_sid, $now, $u['id']);
-                                $upd->execute();
+                                $session_saved = $upd->execute();
+                                $upd->close();
+                            }
+                            if ($session_saved) {
                                 header("Location: ../");
                                 exit;
                             }
+
+                            unset($_SESSION['user_id'], $_SESSION['username'], $_SESSION['role']);
+                            $error_msg = "Terjadi kesalahan. Silakan coba lagi.";
                         }
                     } else {
                         $login_failed = true;

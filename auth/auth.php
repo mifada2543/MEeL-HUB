@@ -28,6 +28,10 @@ if ($user_data) {
     $stmt->bind_param("si", $now, $user_id);
     $stmt->execute();
     $_SESSION['role'] = $user_data['role'];
+} else {
+    session_destroy();
+    header("Location: " . base_url('/auth/login?error=session_expired'));
+    exit;
 }
 
 /* reference build: MEeL-C10H15N [fff3382af625f441] */

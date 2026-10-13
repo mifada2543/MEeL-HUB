@@ -1,20 +1,16 @@
 <?php
-
 if (!defined('MEEL_ADMIN_CONTEXT')) {
     header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
     exit;
 }
-
 if (!is_admin($conn)) {
     header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
     exit;
 }
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token($_POST['csrf_token'] ?? null)) {
     header("Location: .?msg=CSRF_Token_Invalid");
     exit();
 }
-
 if (isset($_POST['ban_ip'])) {
     $ip = $_POST['ip_target'];
     $reason = !empty($_POST['ban_reason']) ? $_POST['ban_reason'] : "Manual Ban by Admin";
@@ -26,7 +22,6 @@ if (isset($_POST['ban_ip'])) {
     header("Location: user-management.php?msg=IP_Banned");
     exit();
 }
-
 if (isset($_POST['unban_ip'])) {
     $stmt = $conn->prepare("DELETE FROM ip_ban WHERE ip_address = ?");
     $stmt->bind_param("s", $_POST['unban_ip']);
@@ -35,28 +30,20 @@ if (isset($_POST['unban_ip'])) {
     header("Location: user-management.php?msg=IP_Unbanned#unban");
     exit();
 }
-
 if (isset($_POST['clear_all_guests'])) {
     $stmt = $conn->prepare("DELETE FROM users WHERE role = 'guest' AND is_active = 0");
     if ($stmt->execute()) {
-        $result_ai = $conn->query("SELECT COALESCE(MAX(id), 0) + 1 AS new_ai FROM users");
-        if ($result_ai) {
-            $new_ai = (int)$result_ai->fetch_assoc()['new_ai'];
-            $conn->query("ALTER TABLE users AUTO_INCREMENT = " . (int)$new_ai);
-        }
         header("Location: user-management.php?msg=Guests_Cleared#monitor");
     } else {
         header("Location: user-management.php?msg=Error_Cleaning");
     }
     exit();
 }
-
 if (isset($_POST['clean_stuck_queues'])) {
     require_once __DIR__ . '/../../modules/core/System.php';
     $sys = new System($conn);
     $cleaned = $sys->cleanStuckQueues();
     $url = "index.php?msg=Queues_Cleaned_{$cleaned}#queues";
-
     if (!headers_sent()) {
         header("Location: " . $url);
     } else {
@@ -64,12 +51,10 @@ if (isset($_POST['clean_stuck_queues'])) {
     }
     exit();
 }
-
 if (isset($_POST['force_stop_queue'])) {
     require_once __DIR__ . '/../../modules/core/System.php';
     $sys = new System($conn);
     $sys->forceStopQueue((int)$_POST['queue_id'], $_POST['task_type']);
-
     $url = "index.php?msg=Queue_Force_Stopped#queues";
     if (!headers_sent()) {
         header("Location: " . $url);
@@ -78,23 +63,19 @@ if (isset($_POST['force_stop_queue'])) {
     }
     exit();
 }
-
 if (isset($_POST['approve_id'])) {
     $stmt = $conn->prepare("UPDATE users SET is_active = 1 WHERE id = ?");
     $stmt->bind_param("i", $_POST['approve_id']);
     $stmt->execute();
     log_activity($conn, (int)$_SESSION['user_id'], 'approve_user', 'user', (int)$_POST['approve_id']);
-
     require_once __DIR__ . '/../../modules/core/MeelCoin.php';
     MeelCoin::initialize($conn, (int)$_POST['approve_id'], 'user');
-
     if (function_exists('invalidate_user_role_cache')) {
         invalidate_user_role_cache();
     }
     header("Location: user-management.php?msg=Approved");
     exit();
 }
-
 if (isset($_POST['reject_id'])) {
     $stmt = $conn->prepare("DELETE FROM users WHERE id = ? AND is_active = 2");
     $stmt->bind_param("i", $_POST['reject_id']);
@@ -103,20 +84,16 @@ if (isset($_POST['reject_id'])) {
     header("Location: user-management.php?msg=Rejected");
     exit();
 }
-
 if (isset($_POST['delete_user_id'])) {
     $id = (int)$_POST['delete_user_id'];
-
     if ($id === (int)($_SESSION['user_id'] ?? 0)) {
         header("Location: user-management.php?msg=Cannot_Delete_Self");
         exit();
     }
-
     if (get_user_role($conn, $id) === 'admin') {
         header("Location: user-management.php?msg=Cannot_Delete_Admin");
         exit();
     }
-
     $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
     $stmt->bind_param("i", $id);
     $stmt->execute();
@@ -124,7 +101,6 @@ if (isset($_POST['delete_user_id'])) {
     header("Location: user-management.php?msg=User_Deleted");
     exit();
 }
-
 function meel_admin_remove_dir(string $dir, int &$counter, int &$failed): void
 {
     if (!is_dir($dir)) return;
@@ -151,7 +127,6 @@ function meel_admin_remove_dir(string $dir, int &$counter, int &$failed): void
         }
     }
 }
-
 function meel_admin_clean_empty_parents(string $path, array $stop_dirs): void
 {
     $parent = dirname($path);
@@ -165,7 +140,6 @@ function meel_admin_clean_empty_parents(string $path, array $stop_dirs): void
         meel_admin_clean_empty_parents($parent, $stop_dirs);
     }
 }
-
 if (isset($_POST['clean_orphans'])) {
     $files = json_decode($_POST['files_to_delete'], true);
     $valid_dirs = [
@@ -178,9 +152,6 @@ if (isset($_POST['clean_orphans'])) {
     $failed_count = 0;
     $skipped_count = 0;
     $deleted_dirs = [];
-
-    // Daftar orphan datang dari cache 10 menit, jadi jangan dipercaya buta:
-    // query ulang DB di sini dan tolak file yang ternyata masih terdaftar.
     $live_thumbs = [];
     $live_files = [];
     $live_folders = [];
@@ -200,9 +171,7 @@ if (isset($_POST['clean_orphans'])) {
         if (!empty($r['thumbnail'])) $live_thumbs[$r['thumbnail']] = true;
         if (!empty($r['path_folder'])) $live_folders[$r['path_folder']] = true;
     }
-
     error_log("[MEeL] Orphan cleaner: mulai, " . count((array)$files) . " file diproses, valid_dirs: " . implode(', ', $valid_dirs));
-
     foreach ((array)$files as $f) {
         $real = realpath($f);
         if ($real === false) {
@@ -222,12 +191,10 @@ if (isset($_POST['clean_orphans'])) {
             error_log("[MEeL] Orphan cleaner: path tidak valid, skip: {$real}");
             continue;
         }
-
-        // Pengaman ulang: varian thumbnail 256px dan berkas yang ternyata masih
-        // terdaftar di DB tidak boleh dihapus meski sempat masuk daftar cache.
         $lbase = basename($real);
         $ldir = dirname($real);
-        if (preg_match('/_sm\.[^.]+$/', $lbase)
+        if (
+            preg_match('/_sm\.[^.]+$/', $lbase)
             || isset($live_thumbs[$lbase])
             || isset($live_files[$lbase])
         ) {
@@ -244,7 +211,6 @@ if (isset($_POST['clean_orphans'])) {
                 }
             }
         }
-
         if (is_dir($real)) {
             meel_admin_remove_dir($real, $deleted_count, $failed_count);
             $deleted_dirs[] = $real;
@@ -258,23 +224,19 @@ if (isset($_POST['clean_orphans'])) {
             }
         }
     }
-
     foreach ($deleted_dirs as $d) {
         meel_admin_clean_empty_parents($d, $valid_dirs);
     }
-
     @unlink(dirname(__DIR__, 2) . '/temp/cache/admin_orphans.json');
     error_log("[MEeL] Orphan cleaner: selesai, deleted={$deleted_count}, failed={$failed_count}, skipped={$skipped_count}");
     header("Location: .?status=cleaned&deleted={$deleted_count}&failed={$failed_count}#system_check");
     exit();
 }
-
 if (isset($_POST['recheck_orphans'])) {
     @unlink(dirname(__DIR__, 2) . '/temp/cache/admin_orphans.json');
     header("Location: .?msg=Orphan_Rechecked#system_check");
     exit();
 }
-
 if (isset($_POST['kick_user'])) {
     $kicked_at = meel_now_ago(600);
     $stmt = $conn->prepare("UPDATE users SET
@@ -288,11 +250,9 @@ if (isset($_POST['kick_user'])) {
     header("Location: user-management.php?msg=Kicked#monitor");
     exit();
 }
-
 if (isset($_POST['save_meelcoin_settings'])) {
     require_once __DIR__ . '/../../modules/core/helpers/settings.php';
     require_once __DIR__ . '/../../modules/core/MeelCoin.php';
-
     $fields = [
         'meelcoin_enabled' => '0',
         'meelcoin_upload_cost' => '5',
@@ -305,7 +265,6 @@ if (isset($_POST['save_meelcoin_settings'])) {
         'meelcoin_member_refill' => '25',
         'meelcoin_refill_hours' => '5',
     ];
-
     foreach ($fields as $key => $default) {
         $value = $_POST[$key] ?? $default;
         if (in_array($key, ['meelcoin_upload_cost', 'meelcoin_advanced_cost'], true)) {
@@ -315,25 +274,20 @@ if (isset($_POST['save_meelcoin_settings'])) {
         }
         set_site_setting($conn, $key, (string)$value);
     }
-
     MeelCoin::clearCache();
     log_activity($conn, (int)$_SESSION['user_id'], 'update_meelcoin_settings', 'settings', 0);
     header("Location: meelcoin.php?msg=MeelCoin_Updated");
     exit();
 }
-
 if (isset($_POST['adjust_meelcoin_user'])) {
     require_once __DIR__ . '/../../modules/core/MeelCoin.php';
     require_once __DIR__ . '/../../modules/core/Notification.php';
-
     $target_id = (int)($_POST['target_user_id'] ?? 0);
     $amount = (int)($_POST['coin_amount'] ?? 0);
     $action = $_POST['coin_action'] ?? 'add';
     $reason = !empty($_POST['coin_reason']) ? substr(trim($_POST['coin_reason']), 0, 50) : 'admin_adjust';
-
     if ($target_id > 0 && $amount > 0) {
         $current = MeelCoin::getBalance($conn, $target_id);
-
         $role_stmt = $conn->prepare("SELECT role, username FROM users WHERE id = ?");
         $role_stmt->bind_param("i", $target_id);
         $role_stmt->execute();
@@ -341,9 +295,7 @@ if (isset($_POST['adjust_meelcoin_user'])) {
         $target_role = $target_row['role'] ?? 'user';
         $target_username = $target_row['username'] ?? 'unknown';
         $role_stmt->close();
-
         $coin_max = MeelCoin::getMax($conn, $target_role);
-
         if ($action === 'add') {
             $new = min($current + $amount, $coin_max);
             $actual = max(0, $new - $current);
@@ -351,25 +303,19 @@ if (isset($_POST['adjust_meelcoin_user'])) {
             $new = max(0, $current - $amount);
             $actual = $amount;
         }
-
         if ($actual <= 0 && $action === 'add') {
             header("Location: meelcoin.php?msg=Balance_at_max#manual-coin");
             exit();
         }
-
         $stmt = $conn->prepare("UPDATE users SET meelcoin = ? WHERE id = ?");
         $stmt->bind_param("ii", $new, $target_id);
         $stmt->execute();
         $stmt->close();
-
         MeelCoin::log($conn, $target_id, $action === 'add' ? $actual : -$amount, $new, $reason);
         MeelCoin::clearCache();
-
         $admin_id = (int)($_SESSION['user_id'] ?? 0);
-
         $action_label = $action === 'add' ? 'tambah' : 'kurang';
         log_activity($conn, $admin_id, $action_label . '-' . $actual . 'coin-' . $target_username, 'user', $target_id);
-
         $action_lbl = $action === 'add' ? 'menambahkan' : 'mengurangi';
         $coin_msg = 'Admin telah ' . $action_lbl . ' ' . $actual . ' MEeLCoin dari akun Anda.';
         if ($action === 'add' && $actual < $amount) {
@@ -387,7 +333,6 @@ if (isset($_POST['adjust_meelcoin_user'])) {
             $admin_id
         );
     }
-
     header("Location: meelcoin.php?msg=Coin_Adjusted#manual-coin");
     exit();
 }
@@ -397,25 +342,20 @@ if (isset($_POST['reset_mfa']) && isset($_POST['user_id'])) {
         header("Location: " . meel_base_url_path() . "/admin/mfa-reset?msg=csrf_invalid");
         exit;
     }
-
     $target_id = (int)$_POST['user_id'];
-
     $check = $conn->prepare("SELECT id, username, role FROM users WHERE id = ?");
     $check->bind_param("i", $target_id);
     $check->execute();
     $target = $check->get_result()->fetch_assoc();
     $check->close();
-
     if (!$target) {
         header("Location: " . meel_base_url_path() . "/admin/mfa-reset?msg=user_not_found");
         exit;
     }
-
     if ($target['role'] === 'admin') {
         header("Location: " . meel_base_url_path() . "/admin/mfa-reset?msg=cannot_reset_admin");
         exit;
     }
-
     $stmt = $conn->prepare("UPDATE users SET mfa_enabled = 0, mfa_secret = NULL, mfa_backup_codes = NULL WHERE id = ?");
     $stmt->bind_param("i", $target_id);
     if ($stmt->execute()) {
@@ -427,24 +367,18 @@ if (isset($_POST['reset_mfa']) && isset($_POST['user_id'])) {
     $stmt->close();
     exit;
 }
-
 if (isset($_POST['toggle_module'])) {
     require_once __DIR__ . '/../../modules/core/helpers/settings.php';
     require_once __DIR__ . '/../../modules/core/Modules.php';
-
     $known = ['arcade' => 'modules_arcade'];
     $module_key = (string)($_POST['module_key'] ?? '');
-
     if (!isset($known[$module_key])) {
         header("Location: " . meel_base_url_path() . "/admin/modules?msg=Module_Tidak_Dikenal");
         exit();
     }
-
     $value = ($_POST['module_enabled'] ?? '0') === '1' ? '1' : '0';
     set_site_setting($conn, $known[$module_key], $value);
-
     log_activity($conn, (int)$_SESSION['user_id'], 'toggle_module_' . $module_key . '_' . $value, 'settings', 0);
-
     header("Location: " . meel_base_url_path() . "/admin/modules?msg=Module_Updated");
     exit();
 }
