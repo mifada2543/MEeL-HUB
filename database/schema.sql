@@ -172,7 +172,10 @@ CREATE TABLE
     UNIQUE KEY `unique_interaction_music` (`user_id`, `music_id`),
     KEY `user_id` (`user_id`),
     KEY `idx_int_video_type` (`video_id`, `type`),
-    KEY `idx_int_music_type` (`music_id`, `type`)
+    KEY `idx_int_music_type` (`music_id`, `type`),
+    CONSTRAINT `fk_interactions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_interactions_video` FOREIGN KEY (`video_id`) REFERENCES `video` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_interactions_music` FOREIGN KEY (`music_id`) REFERENCES `music` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =============================================================================
