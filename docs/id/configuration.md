@@ -459,6 +459,7 @@ if ($user_role === 'admin') return ['allowed' => true];
 | Upload | 3 | 1 jam | — |
 | Transcode | 5 | 1 jam | — |
 | Auto Metadata | 5 | 1 jam | `controllers/api/auto_metadata.php` |
+| Registrasi | 5 | 1 jam | `auth/register.php` |
 | API Generic | 60 | 1 menit | — |
 
 **Konfigurasi:** Edit langsung di `modules/auth/RateLimiter.php`:
@@ -469,9 +470,27 @@ private static array $limits = [
     'upload'        => ['requests' => 3,  'window' => 3600],
     'transcode'     => ['requests' => 5,  'window' => 3600],
     'auto_metadata' => ['requests' => 5,  'window' => 3600],
+    'register'      => ['requests' => 5,  'window' => 3600],
     'api'           => ['requests' => 60, 'window' => 60],
 ];
 ```
+
+> ⚠️ **Registrasi memakai bucket per-IP, dan hanya bertambah saat registrasi BERHASIL.**
+> Berbeda dengan endpoint lain yang memakai key gabungan user, `register.php`
+> memakai key `reg_ip:{IP}`. Konsekuensinya:
+> - Kuota **ikut dibagi** dengan siapa pun yang berada di IP yang sama (NAT rumah,
+>   kantor, kampus, jaringan seluler). Di balik NAT, 5 akun/jam adalah batas untuk
+>   seluruh gedung, bukan untuk satu orang.
+> - Loopback (`127.0.0.1`, `::1`) **selalu bebas**, jadi instalasi lokal dan
+>   environment test tidak pernah terkunci.
+> - Percobaan gagal (username bentrok, sandi terlalu lemah) **tidak**
+>   menghabiskan kuota; hanya INSERT yang berhasil yang dihitung. Artinya
+>   enumerasi username tidak dibatasi oleh bucket ini.
+>
+> Naik/turunkan angka `register` di `RateLimiter.php` bila environment Anda
+> cenderung shared-IP. Bucket tambahan per-username bisa ditambahkan, tapi
+> **harus tetap berpasangan** dengan bucket per-IP — kalau berdiri sendiri,
+> penyerang cukup melakukan cycling username untuk lolos.
 
 **Storage:** File JSON di `temp/ratelimit/` dengan `flock()` untuk race condition safety. Auto-cleanup via `GarbageCollector::run()`.
 

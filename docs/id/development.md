@@ -172,7 +172,7 @@ define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
 
 #### 7. Type Hints
 
-Properti class dan parameter constructor **wajib** memiliki type hints (PHP 8.0+):
+Properti class dan parameter constructor **wajib** memiliki type hints (PHP 8.1+):
 
 ```php
 // ✅ BENAR - Type hints
@@ -1304,6 +1304,79 @@ Konsekuensi praktis: **kode produksi jangan bergantung pada membaca properti
 internal tersebut** kalau pemanggilannya ingin bisa diuji dengan
 `tests/unit/support/MysqlFake.php`. Kalau memang butuh nilai tersebut, kirim
 melewat parameter atau kembalikan lewat jalur lain — bukan lewat properti stmt.
+
+---
+
+### Cache statis lintas-test: `get_user_role()` & `get_user_active()`
+
+Keduanya memakai `static $cache` per proses PHP. Cache ini **tidak** di-reset di
+antar test, jadi satu test bisa meracuni test lain yang jalan belakangan di
+proses yang sama. Kasus nyata yang pernah terjadi:
+
+`MediaViewerTest` membuat `MediaViewer` dengan **koneksi mock**, dan konstruktor
+memanggil `get_user_role($mock, 1)`. Mock tidak punya baris, jadi fungsi itu
+mengembalikan fallback `'user'` — dan **memoisasi** nilai fallback itu ke
+`static $cache[1]`. Beberapa test kemudian, di proses yang sama,
+`MediaInteractionIntegrationTest` memanggil `get_user_role($conn, 1)` dengan DB
+test sungguhan yang isinya `role = 'admin'` — tapi cache basal lebih dulu, jadi
+`isAdmin()` mengembalikan `false` dan penghapusan komentar admin gagal 404.
+
+Yang membuat ini sulit dideteksi: testnya **lulus saat dijalankan sendiri**
+(`--filter`), gagal hanya saat seluruh suite jalan.
+
+Aturannya: **cache hanya boleh menyimpan fakta, bukan ketidakpastian.** Baris
+yang tidak ditemukan berarti "belum tahu", bukan "user ini punya role `user`".
+Jadi hasil negatif sengaja **tidak** di-memoisasi:
+
+```php
+$row = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if ($row === null) {
+    return 'user';          // fallback, TIDAK masuk cache
+}
+
+$role = (string)$row['role'];
+$cache[$user_id] = $role;   // fakta → aman di-cache
+```
+
+`get_user_active()` punya masalah kembar: ia memoisasi `false` turunan dari
+baris yang tidak ada, sehingga user yang baru aktif tetap terbaca non-aktif
+sampai proses berakhir. Diperbaiki dengan pola yang sama.
+
+ Dikunci oleh `tests/unit/UserRoleCacheNotFoundTest.php`. Kalau test itu mulai
+gagal setelah Anda mengubah salah satu fungsi, cari dulu apakah ada pemanggil
+yang bisarahasia melakukan lookup negatif lebih dulu.
+
+---
+
+### Konstanta media harus dikunci di `tests/bootstrap.php`
+
+Konstanta path media (`MEEL_HDD_*`) ditetapkan di `tests/bootstrap.php`,
+**sebelum** file produksi mana pun yang bisa mendefinisikannya saat di-`require`.
+
+Masalahnya: `modules/core/TranscoderBase.php` mendefinisikan `MEEL_HDD_BASE`
+sebagai placeholder `'/path/to/your/media'` kalau konstantanya belum ada.
+Begitu file itu ter-`require` — dan `require_once` **tidak bisa dibatalkan** —
+setiap test yang jalan sesudahnya akan melihat
+`meel_media_base_path('video')` bernilai placeholder yang tidak writable.
+
+Gejalanyalooked innocuous tapi menyesatkan:
+
+```
+file_put_contents(/path/to/your/media/video/upload/thumbnail/x_thumb.webp):
+Failed to open stream: No such file or directory
+```
+
+Test-nya **lulus saat dijalankan sendiri** (`--filter`) dan gagal hanya ketika
+seluruh suite berjalan — karena test yang memuat `TranscoderBase.php` kebetulan
+berjalan sebelum test yang butuh path writable.
+
+Solusinya konstantanya dikunci lebih dulu ke `temp/media-test/`. Dua efek
+menyenangkan sekaligus:
+
+1. urutan test tidak lagi menentukan hasil;
+2. tidak ada lagi direktori media yang bocor ke luar repo saat test berjalan.
 
 ---
 

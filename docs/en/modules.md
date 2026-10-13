@@ -270,6 +270,40 @@ Key method — `forceStopQueue(int $id, string $task_type): bool`:
 - Deletes the queue record from `upload_queue` or `transcode_queue`
 - Returns `true` on success, `false` on failure
 
+#### PID identity verification (`killByPidFile`)
+
+PID files can be **stale**: once the process is gone, the OS recycles that PID
+number for something else. Killing without verification means the admin panel
+could kill a process it has **nothing to do with**. So the PID's cmdline is
+checked first (`ffmpeg`, `ffprobe`, `yt-dlp`, `youtube-dl`, `setsid`, `sh`).
+
+Two failure conditions are deliberately treated differently:
+
+| Condition | Behaviour | Why |
+|---|---|---|
+| `/proc` available, cmdline doesn't match | **fail-closed** (refuse to kill) | The PID was most likely recycled — this is the case being protected |
+| `/proc` unavailable (platform without procfs, or `hidepid`) | **fail-open** (kill anyway) + `error_log` | Nothing can be proven; refusing would orphan ffmpeg forever |
+
+When the PID is a *process group leader*, the kill is aimed at `-PID` so the
+whole ffmpeg child tree dies with it. `kill -- -PID` uses `--` so a negative PID
+isn't parsed as an option.
+
+#### Queue records are NOT deleted when the process survives
+
+`forceStopQueue()` only deletes the queue record **when there is no live
+process left to stop**. If a PID file exists but the kill was refused, the
+record is **kept** — otherwise the process becomes a permanent orphan with no
+trace in the DB and can never be stopped from the UI.
+
+The two cases are distinguished via `TranscoderBase::hadPidFile()`, which
+**must be called before `killByPidFile()`** because that function removes the
+PID file at the end (on success and on failure alike):
+
+| Condition | Result |
+|---|---|
+| No PID file (job finished / never started) | Record deleted — the queue must not jam |
+| PID file present, kill refused | Record kept, `error_log`, `return false` |
+
 ### 7. `modules/core/activity_logger.php`
 
 Activity logging & IP Banning:
@@ -316,6 +350,33 @@ function get_audio_format_description(string $ext): string;
 function log_drive_operation(...);                       // Drive audit trail
 ```
 
+#### Video thumbnail naming convention
+
+These rules live in `Uploader.php` and are reused wherever a variant name must
+be derived:
+
+| Kind | Name pattern | Source |
+|---|---|---|
+| Main thumbnail | `{folder_name}_thumb.webp` | `Uploader.php` |
+| 256px variant (sm) | `{folder_name}_thumb_sm.webp` | `Uploader.php` |
+| Default (fallback) | `default_thumb.webp` / `default_thumb.jpg` | never deleted |
+
+Three things that are easy to get wrong:
+
+1. **`folder_name`, not `clean_name`.** `folder_name` comes from
+   `meel_allocate_unique_dir()` and is therefore guaranteed unique;
+   `clean_name` (from `getRomajiName()`) can collide between videos. If
+   thumbnails were derived from `clean_name`, two videos with the same title
+   would overwrite each other's thumbnail file.
+2. **The `_sm` variant is deliberately NOT stored in the DB.** Only
+   `video.thumbnail` is persisted; the `_sm` variant's existence is probed via
+   `is_file()`. The admin "Check Database Sync" scan therefore uses the same
+   exemption so the variant is never mistaken for junk.
+3. **`default_thumb.*` is never deleted.** Every deletion path (thumbnail
+   replacement in `admin/edit-video.php`, media deletion in `fun-manage.php`,
+   and rollback in `Uploader.php`) checks `meel_is_default_thumbnail()` first.
+   Deleting the default thumbnail would break the image fallback entirely.
+
 ### 9. `modules/core/CommentRenderer.php`
 
 **Functions:** `render_comments()` — nested comment rendering with 2 themes (video/music); `comment_preview()` — latest comment preview for the comment header.
@@ -330,10 +391,53 @@ function log_drive_operation(...);                       // Drive audit trail
   - Abandoned mid-game: started, **no terminal event** (`resign`/`draw_accept`/`disconnect`/`game_over`) and no activity for >7 days (moves history removed too)
   - **Finished games are never deleted** — their history is preserved
 - Expired rate limit cache via `RateLimiter::cleanup()`
+- Deferred deletion queue (`temp/pending_delete.json`) via
+  `cleanPendingFileDeletions()` (throttle 1x/5 minutes, entry TTL 30 minutes)
 - Timeboxed execution (max 3 seconds)
 - Static `removeFile()`/`removeDirectory()` helpers with proactive `is_writable()`
   guards — subtrees owned by other users (e.g. `temp/cache/` owned by another
   process) are skipped with an error log instead of a PHP warning
+
+#### Media cache TTLs (`cleanCacheDirectory()`)
+
+Each cache prefix has its own TTL; files **still within** their TTL are
+protected (never deleted):
+
+| Prefix | TTL | Source |
+|---|:---:|---|
+| `media_stats_` | 30 seconds | `media.php` |
+| `admin_orphans` | 120 seconds | `admin_data.php` |
+| `dirsize_` | 300 seconds | `storage.php` |
+| `server_stats_info` | 300 seconds | `System.php` |
+| `xsendfile_roots` | 86400 seconds | `storage.php` |
+| `.tmp.<epoch>.<hash>` | 300 seconds | orphaned temp |
+
+Files with an **unknown prefix** are deleted once older than 1 day (86400 seconds).
+
+> **Why the fallback uses a `$prefixMatched` flag instead of `isset($ttlMap)`?**
+> The old code read `if (!$expired && !isset($ttlMap))`. `$ttlMap` is a local
+> array that is **always** assigned before the loop, so `isset($ttlMap)` was
+> always `true` and the fallback became dead code — unknown-prefix files were
+> never deleted and `temp/cache/` grew without bound. The flag now records
+> "did any prefix match" explicitly, so the fallback actually runs.
+
+#### Orphan cleaner safety guards (`controllers/admin/admin_actions.php`)
+
+The orphan list comes from a 10-minute cache, so it is **not trusted blindly**.
+Before deleting anything, entries are re-verified against the DB, with two
+exclusions:
+- `*_sm.*` thumbnail variants (never stored in the DB, only checked via `is_file()`)
+- files that turn out to still be registered in the DB
+
+#### `users` AUTO_INCREMENT is deliberately NOT reset
+
+After guests are deleted, `ALTER TABLE users AUTO_INCREMENT = MAX(id)+1` was
+historically used to "tidy up" numbering. This was **removed** because
+`auth/auth.php` validates `$_SESSION['user_id']` straight against the `users`
+table: a recycled id means a session belonging to user A can silently become
+user B. Ids now grow monotonically, and
+`GarbageCollector::resetGuestsAutoIncrement()` (method name kept for history)
+only calls `cleanGuests()`.
 
 ### 11. `modules/auth/RateLimiter.php`
 
@@ -346,6 +450,7 @@ File-based rate limiter with `flock()` safety. Role-based limits (admin = unlimi
 | `upload` | 3/hour | — |
 | `transcode` | 5/hour | — |
 | `auto_metadata` | 5/hour | CPU-intensive (ffprobe + ffmpeg) |
+| `register` | 5/hour | **Per-IP** bucket, only successful inserts counted, loopback exempt |
 | `api` | 60/min | Generic fallback |
 
 **Fail-closed behavior:** When the storage directory (`temp/ratelimit/`) is not writable or `flock()` fails, the rate limiter **denies all requests** instead of silently allowing them. This prevents a broken filesystem from disabling rate limiting. Failures are logged via `error_log()`.

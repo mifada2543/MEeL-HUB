@@ -33,7 +33,7 @@ An automatic installer that runs most steps of this guide in a single command (t
 
 Steps it runs (idempotent for most of them):
 
-1. **Check dependencies** — PHP 8.0+ with the `mysqli`, `pdo_mysql`,
+1. **Check dependencies** — PHP 8.1+ with the `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl` extensions, plus
    MariaDB/MySQL; installed via apt when needed (`--skip-apt` to skip).
 2. **Database setup** — create the database and import `database/schema.sql`
@@ -69,7 +69,7 @@ Steps it runs (idempotent for most of them):
 
 | Component | Version | Notes |
 |---|---|---|
-| **PHP** | 8.0+ | **8.1+** highly recommended |
+| **PHP** | **8.1+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Requires `mod_rewrite` |
 | **FFmpeg** | 6.0+ | For HLS & transcoding |

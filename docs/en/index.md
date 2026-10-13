@@ -197,7 +197,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 | Component | Technology |
 |---|---|
-| Backend | PHP 8.0+, MySQL/MariaDB |
+| Backend | PHP 8.1+, MySQL/MariaDB |
 | Frontend | TailwindCSS, HTMX, Vanilla JS |
 | Media Player | Plyr.js, HLS.js |
 | Transcoding | FFmpeg 6.0+, FFprobe |

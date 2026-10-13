@@ -440,6 +440,7 @@ File-based rate limiter for API endpoints (fail-closed on storage errors):
 | Upload | 3 | 1 hour | — |
 | Transcode | 5 | 1 hour | —
 | Auto Metadata | 5 | 1 hour | `controllers/api/auto_metadata.php` |
+| Registration | 5 | 1 hour | `auth/register.php` |
 | API Generic | 60 | 1 minute | — |
 
 **Configuration:** Edit directly in `modules/auth/RateLimiter.php`:
@@ -450,9 +451,27 @@ private static array $limits = [
     'upload'        => ['requests' => 3,  'window' => 3600],
     'transcode'     => ['requests' => 5,  'window' => 3600],
     'auto_metadata' => ['requests' => 5,  'window' => 3600],
+    'register'      => ['requests' => 5,  'window' => 3600],
     'api'           => ['requests' => 60, 'window' => 60],
 ];
 ```
+
+> ⚠️ **Registration is a per-IP bucket, and it only increments on a SUCCESSFUL
+> registration.** Unlike other endpoints (which key on the user), `register.php`
+> keys on `reg_ip:{IP}`. Consequences:
+> - The quota is **shared** with everyone behind the same IP (home NAT, office,
+>   campus, carrier-grade NAT). Behind NAT, 5 registrations/hour is a limit for
+>   the whole building, not per person.
+> - Loopback (`127.0.0.1`, `::1`) is **always exempt**, so local installs and test
+>   environments are never locked out.
+> - Failed attempts (duplicate username, weak password) **do not** consume quota;
+>   only a successful INSERT counts. Username enumeration is therefore not
+>   throttled by this bucket.
+>
+> Raise or lower the `register` value in `RateLimiter.php` if your deployment is
+> mostly shared-IP. A per-username bucket can be layered on top, but it **must
+> stay paired** with the per-IP bucket — on its own an attacker just cycles
+> usernames to get around it.
 
 ---
 
