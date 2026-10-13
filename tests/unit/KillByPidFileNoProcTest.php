@@ -11,14 +11,40 @@ class KillByPidFileNoProcTest extends TestCase
         parent::setUp();
 
         if (!function_exists('posix_kill')) {
-            $this->markTestSkipped('posix diperlukan untuk test ini');
+            $this->markTestSkipped('ENV: posix_kill() tidak tersedia');
         }
 
         require_once MEEL_ROOT . '/modules/core/TranscoderBase.php';
         require_once MEEL_ROOT . '/modules/core/helpers/storage.php';
 
-        $this->fakeFfmpeg = MEEL_ROOT . '/temp/fake_ffmpeg_' . bin2hex(random_bytes(4));
-        @symlink('/bin/sleep', $this->fakeFfmpeg);
+        $this->fakeFfmpeg = $this->makeFakeTranscoder();
+    }
+
+    private function makeFakeTranscoder(): string
+    {
+        $dir = MEEL_ROOT . '/temp';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+
+        $candidates = array_filter([
+            '/bin/sleep',
+            '/usr/bin/sleep',
+            trim((string) @shell_exec('command -v sleep 2>/dev/null')),
+        ], static fn(string $p): bool => $p !== '' && is_executable($p));
+
+        if ($candidates === []) {
+            fwrite(STDERR, "[ENV] Tidak ada binary 'sleep' yang executable — test PID dilewati.\n");
+            $this->markTestSkipped('ENV: binary sleep tidak tersedia');
+        }
+
+        $path = MEEL_ROOT . '/temp/fake_ffmpeg_' . bin2hex(random_bytes(4));
+        if (!@symlink((string) reset($candidates), $path)) {
+            fwrite(STDERR, "[ENV] Gagal membuat symlink proses tiruan di {$path}\n");
+            $this->markTestSkipped('ENV: symlink proses tiruan gagal dibuat');
+        }
+
+        return $path;
     }
 
     protected function tearDown(): void
@@ -32,8 +58,24 @@ class KillByPidFileNoProcTest extends TestCase
     private function spawn(array $cmd): array
     {
         $proc = proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-        $this->assertIsResource($proc, 'Gagal menjalankan proses dummy');
+        if (!is_resource($proc)) {
+            fwrite(STDERR, "[ENV] proc_open() gagal untuk: {$cmd[0]}\n");
+            $this->markTestSkipped('ENV: proc_open() tidak dapat menjalankan proses tiruan');
+        }
         $pid = (int) proc_get_status($proc)['pid'];
+
+        usleep(150000);
+        if (!proc_get_status($proc)['running']) {
+            foreach ($pipes as $pipe) {
+                if (is_resource($pipe)) {
+                    fclose($pipe);
+                }
+            }
+            @proc_close($proc);
+            fwrite(STDERR, "[ENV] Proses tiruan {$cmd[0]} langsung mati — test PID dilewati.\n");
+            $this->markTestSkipped('ENV: proses tiruan gagal bertahan hidup');
+        }
+
         return [$proc, $pid, $pipes];
     }
 
@@ -110,9 +152,7 @@ class KillByPidFileNoProcTest extends TestCase
         TranscoderBase::setProcAvailableOverride(false);
         try {
             $id = (int) (time() % 100000) + random_int(7100, 8000);
-            $proc = proc_open(['/bin/sleep', '30'], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-            $this->assertIsResource($proc);
-            $pid = (int) proc_get_status($proc)['pid'];
+            [$proc, $pid, $pipes] = $this->spawn(['/bin/sleep', '30']);
             $this->writePidFile('nptest', $id, $pid);
 
             $this->assertTrue(
