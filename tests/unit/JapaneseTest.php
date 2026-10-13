@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/** @coversNothing */
 class JapaneseTest extends TestCase
 {
     protected function setUp(): void
@@ -127,6 +126,38 @@ class JapaneseTest extends TestCase
         $this->assertStringContainsString('Kafu', $result['english']);
         $this->assertStringNotContainsString('acceptable', $result['english']);
         $this->assertStringNotContainsString('un-', $result['english']);
+    }
+
+    public function testNormalizeSeparatorsKeepsLetterXInWords(): void
+    {
+        $this->assertSame('Maximum Xylophone', meel_japanese_normalize_separators('Maximum Xylophone'));
+        $this->assertSame('Remix', meel_japanese_normalize_separators('Remix'));
+    }
+
+    public function testNormalizeSeparatorsTreatsStandaloneXAsSpace(): void
+    {
+        $out = meel_japanese_normalize_separators('A x B');
+        $this->assertStringNotContainsString('x', $out);
+        $this->assertSame('AB', str_replace(' ', '', $out));
+
+        $sym = meel_japanese_normalize_separators('A × B');
+        $this->assertStringNotContainsString('×', $sym);
+        $this->assertSame('AB', str_replace(' ', '', $sym));
+    }
+
+    public function testGetRomajiNamePreservesLetterX(): void
+    {
+        $this->skipIfNoMecab();
+
+        $this->assertSame('maximum-xylophone', getRomajiName('Maximum Xylophone'));
+        $this->assertSame('remix', getRomajiName('Remix'));
+    }
+
+    public function testGetRomajiNameSplitsStandaloneX(): void
+    {
+        $this->skipIfNoMecab();
+
+        $this->assertSame('a-b', getRomajiName('A x B'));
     }
 
 }
