@@ -1,7 +1,5 @@
 <?php
-
 require_once __DIR__ . '/../core/TranscoderBase.php';
-
 class DownloadService extends TranscoderBase
 {
     private function lockQueue(string $url, string $type): int
@@ -22,7 +20,7 @@ class DownloadService extends TranscoderBase
     {
         self::$pendingCoinCost = $amount > 0 ? $amount : 0;
     }
-    private function releaseQueue(int $queue_id, string $status = 'completed'): void
+    private function releaseQueue(int $queue_id, string $status = 'failed'): void
     {
         $allowed = ['completed', 'failed'];
         $status = in_array($status, $allowed, true) ? $status : 'failed';
