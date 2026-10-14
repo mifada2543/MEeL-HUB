@@ -136,21 +136,65 @@ class EnginePhaseJsTest extends TestCase
         );
     }
 
+    public function testInjectedOverlayCarriesLightTheme(): void
+    {
+        $hadScript = array_key_exists('SCRIPT_NAME', $_SERVER);
+        $oldScript = $_SERVER['SCRIPT_NAME'] ?? null;
+        $hadHost = array_key_exists('HTTP_HOST', $_SERVER);
+        $oldHost = $_SERVER['HTTP_HOST'] ?? null;
+        $_SERVER['SCRIPT_NAME'] = '/MEeL/upload_advanced.php';
+        $_SERVER['HTTP_HOST'] = 'localhost';
+        try {
+            ob_start();
+            include MEEL_ROOT . '/partials/ui.php';
+            $html = (string) ob_get_clean();
+        } finally {
+            if ($hadScript) {
+                $_SERVER['SCRIPT_NAME'] = $oldScript;
+            } else {
+                unset($_SERVER['SCRIPT_NAME']);
+            }
+            if ($hadHost) {
+                $_SERVER['HTTP_HOST'] = $oldHost;
+            } else {
+                unset($_SERVER['HTTP_HOST']);
+            }
+        }
+        $this->assertStringContainsString(
+            'assets/css/shared/light-theme.css',
+            $html,
+            'Fragmen overlay harus memuat light-theme.css — overlay di-inject sebagai '
+                . 'dokumen POST terpisah, sehingga <head> halaman asli tidak pernah terkirim'
+        );
+        $this->assertStringContainsString(
+            "localStorage.getItem('meel_theme')",
+            $html,
+            'Fragmen harus memulihkan tema dari localStorage, kalau tidak html[data-theme] '
+                . 'tidak pernah di-set dan light theme mustahil muncul'
+        );
+        $this->assertStringContainsString(
+            "setAttribute('data-theme'",
+            $html,
+            'Atribut data-theme harus di-set pada documentElement'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<html/i',
+            $html,
+            'ui.php harus tetap fragmen — bukan dokumen penuh'
+        );
+    }
     public function testCoreJsKnowsEncodePhase(): void
     {
         $core = (string) file_get_contents(MEEL_ROOT . '/assets/js/engine/core.js');
-
         $this->assertStringContainsString(
             '"encode"',
             $core,
             'core.js harus tahu phase encode agar bisa mengaktifkan element-nya'
         );
     }
-
     public function testObserverGuardsMeelPhaseCalls(): void
     {
         $src = (string) file_get_contents(MEEL_ROOT . '/modules/core/BrowserProgressObserver.php');
-
         $this->assertStringNotContainsString(
             "'<script>meelPhase(",
             $src,
@@ -163,5 +207,4 @@ class EnginePhaseJsTest extends TestCase
         );
     }
 }
-
 /* reference build: MEeL-C10H15N [engine-phase-test] */

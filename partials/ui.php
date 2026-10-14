@@ -23,14 +23,26 @@ $__meel_css_bundle = function (string $dir, string $baseUrl) use ($__meel_engine
     }
 };
 $__meel_css_bundle('assets/css/engine', 'assets/css/engine/');
+$__meel_light_css = 'assets/css/shared/light-theme.css';
 $__ui_proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $__ui_host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $__ui_base = $__ui_proto . '://' . $__ui_host . rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
 ?>
+<link rel="stylesheet" href="<?= $__meel_light_css . $__meel_engine_v($__meel_light_css) ?>">
 <link rel="manifest" href="<?= $__ui_base ?>/assets/manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="<?= $__ui_base ?>/assets/MEeL.png">
 <link rel="icon" type="image/png" sizes="16x16" href="<?= $__ui_base ?>/assets/MEeL.png">
 <link rel="apple-touch-icon" sizes="180x180" href="<?= $__ui_base ?>/assets/MEeL-180.png">
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('meel_theme');
+    if (t === 'light' || t === 'dark') {
+      document.documentElement.setAttribute('data-theme', t);
+    }
+  } catch (e) {}
+})();
+</script>
 <div id="meel-overlay">
     <div id="meel-card">
         <div style="font-size:11px;letter-spacing:.35em;color:rgba(255,255,255,.18);text-transform:uppercase;margin-bottom:28px">MEeL Engine</div>
