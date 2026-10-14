@@ -510,13 +510,17 @@ jobs:
           report_job "Deployment Check" "${{ needs.deploy-check.result }}"
           report_job "Drive Storage Integrity" "${{ needs.drive-storage-check.result }}"
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ⚡ Optimizations applied" >> $GITHUB_STEP_SUMMARY
-          echo "- **Parallel jobs** — syntax check, tests, security, and integrity run in parallel" >> $GITHUB_STEP_SUMMARY
-          echo "- **Matrix strategy** — syntax check across PHP 8.1, 8.2, 8.3" >> $GITHUB_STEP_SUMMARY
-          echo "- **Shallow clone** — `fetch-depth: 1` for faster checkout" >> $GITHUB_STEP_SUMMARY
-          echo "- **Concurrency** — cancels redundant runs on the same branch" >> $GITHUB_STEP_SUMMARY
-          echo "- **Xdebug disabled** — `coverage: none` for faster PHP execution" >> $GITHUB_STEP_SUMMARY
-          echo "- **Least privilege** — minimal `GITHUB_TOKEN` permissions" >> $GITHUB_STEP_SUMMARY
-          echo "- **Fail-fast disabled** — all PHP versions run even if one fails" >> $GITHUB_STEP_SUMMARY
-          echo "- **Job dependency** — functional/security tests wait for syntax check" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "### ⚡ Optimizations applied" >> "$GITHUB_STEP_SUMMARY"
+            cat <<'EOF'
+          - **Parallel jobs** — syntax check, tests, security, and integrity run in parallel
+          - **Matrix strategy** — syntax check across PHP 8.1, 8.2, 8.3
+          - **Shallow clone** — `fetch-depth: 1` for faster checkout
+          - **Concurrency** — cancels redundant runs on the same branch
+          - **Xdebug disabled** — `coverage: none` for faster PHP execution
+          - **Least privilege** — minimal `GITHUB_TOKEN` permissions
+          - **Fail-fast disabled** — all PHP versions run even if one fails
+          - **Job dependency** — functional/security tests wait for syntax check
+          EOF
+          } >> "$GITHUB_STEP_SUMMARY"
