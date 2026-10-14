@@ -2,6 +2,7 @@
 include '../auth/config.php';
 require_once '../modules/core/helpers.php';
 require_once '../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/cards.php';
 
 $offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 10;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -17,7 +18,7 @@ $next = $offset + $limit;
 $nextPage = $page + 1;
 
 if ($data && $data->num_rows > 0):
-    while ($v = $data->fetch_assoc()) include 'music_item.php';
+    while ($v = $data->fetch_assoc()) meel_render_music_row($v);
 
     if ($next < $total): ?>
         <div id="load-more-music" role="status"

@@ -4,6 +4,7 @@ meel_boot_session();
 include '../auth/config.php';
 require_once '../modules/core/CommentRenderer.php';
 require_once '../controllers/api/WatchController.php';
+require_once __DIR__ . '/cards.php';
 
 $id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
@@ -60,6 +61,7 @@ session_write_close();
 </head>
 
 <body class="text-gray-400 min-h-screen">
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
 
     <nav class="border-b border-white/[.04] sticky top-0 z-50">
         <div class="w-full px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
@@ -354,27 +356,9 @@ session_write_close();
                 <span id="rec-title-text" class="truncate" title="Video Lainnya">Video Lainnya</span>
             </div>
             <div id="recommendation-column" class="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-0 lg:space-y-1">
-                <?php while ($r = $rekom->fetch_assoc()): ?>
-                    <a href="<?= base_url('/video/watch?v=' . (int)$r['id']) ?>"
-                        class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline"
-                        title="<?= htmlspecialchars($r['title']) ?>">
-                        <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                            <img src="upload/thumbnail/<?= video_thumbnail_sm($r['thumbnail']) ?>"
-                                class="rec-thumb-img w-full h-full object-cover transition-transform duration-300" loading="lazy" decoding="async" width="256" height="144" alt="Thumbnail video <?= htmlspecialchars($r['title']) ?>">
-                        </div>
-                        <div class="flex-1 min-w-0 flex flex-col justify-center">
-                            <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
-                                <?= htmlspecialchars($r['title']) ?>
-                            </div>
-                            <div class="text-[9px] text-gray-300 mt-1"><?= number_format($r['views'] ?? 0) ?> views</div>
-                            <?php if (!empty($r['uploader'])): ?>
-                                <div class="rec-uploader-text font-bold uppercase tracking-wider mt-0.5 truncate">
-                                    <?= htmlspecialchars($r['uploader']) ?>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </a>
-                <?php endwhile; ?>
+                <?php while ($r = $rekom->fetch_assoc()):
+                    meel_render_video_rec_card($r);
+                endwhile; ?>
                 <?php if ($rekom->num_rows >= 15): ?>
                     <div class="py-3 text-center rec-sentinel"
                         hx-get="search?exclude=<?= (int)$id ?>"

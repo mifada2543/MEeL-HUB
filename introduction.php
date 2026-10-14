@@ -36,6 +36,7 @@ include __DIR__ . '/partials/scripts.php';
 </head>
 
 <body>
+<?php include __DIR__ . '/partials/skip-link.php'; ?>
 
     <div id="reading-progress"></div>
 

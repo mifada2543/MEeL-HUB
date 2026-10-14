@@ -160,6 +160,7 @@ if (!$is_guest_profile) {
 </head>
 
 <body class="text-gray-300">
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
 
     <?php $root = meel_base_url_path(); ?>
     <div class="max-w-5xl mx-auto mt-10 p-4">

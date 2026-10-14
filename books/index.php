@@ -38,6 +38,7 @@ $totalPagesBooks = $meta_books['total_pages'];
 </head>
 
 <body class="text-gray-400 min-h-screen">
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
 
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-3 sm:px-6 xl:px-10 2xl:px-16 h-14 flex items-center justify-between gap-2 sm:gap-4">

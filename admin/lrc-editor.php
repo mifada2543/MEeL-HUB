@@ -126,6 +126,7 @@ if (is_file($lrc_path)) {
     <link rel="stylesheet" href="../assets/css/music/lrc-editor.css<?= meel_asset_version('assets/css/music/lrc-editor.css') ?>">
 </head>
 <body class="theme-music">
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <div class="page-wrap">
             <nav class="top-nav">
                 <a href="../" class="nav-brand">MEeL<span>Musik</span></a>

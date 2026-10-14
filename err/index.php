@@ -1,8 +1,6 @@
 <?php
-
 require_once __DIR__ . '/../modules/core/base_url.php';
 $meel_base = meel_base_url_path();
-
 if (!function_exists('meel_err_alpha')) {
 
     function meel_err_alpha(string $hex, int $alpha): string
@@ -10,16 +8,13 @@ if (!function_exists('meel_err_alpha')) {
         return $hex . str_pad(dechex($alpha), 2, '0', STR_PAD_LEFT);
     }
 }
-
 if (!function_exists('meel_err_shade')) {
-
     function meel_err_shade(string $hex, float $amount = 0.5): string
     {
         $clean = ltrim($hex, '#');
         if (strlen($clean) !== 6) {
             return $hex;
         }
-
         $amount = max(0.0, min(1.0, $amount));
         $out = '#';
         for ($i = 0; $i < 3; $i++) {
@@ -29,7 +24,6 @@ if (!function_exists('meel_err_shade')) {
         return $out;
     }
 }
-
 $types = [
     'denied' => [
         'status' => 403,
@@ -116,7 +110,6 @@ $types = [
         'meta_d' => 'Terjadi kesalahan server. Silakan coba lagi.',
     ],
 ];
-
 $code = (isset($_GET['code']) && is_string($_GET['code'])) ? $_GET['code'] : 'not_found';
 if (!isset($types[$code])) {
     $code = 'not_found';
@@ -125,7 +118,6 @@ $type = $types[$code];
 if (!headers_sent()) {
     http_response_code($type['status']);
 }
-
 $modules = [
     'video' => ['accent' => '#ef4444', 'accent2' => '#f87171', 'label' => 'Video Library', 'back' => '../video/beranda'],
     'music' => ['accent' => '#f97316', 'accent2' => '#fb923c', 'label' => 'Music Library', 'back' => '../music/beranda'],
@@ -134,7 +126,6 @@ $modules = [
     'admin' => ['accent' => '#a855f7', 'accent2' => '#c084fc', 'label' => 'Dasbor Admin', 'back' => '../admin/beranda'],
     'profile' => ['accent' => '#22d3ee', 'accent2' => '#67e8f9', 'label' => 'Profil', 'back' => '../profile/'],
 ];
-
 $module = null;
 $ref_path = '';
 if (isset($_SERVER['HTTP_REFERER']) && $_SERVER['HTTP_REFERER'] !== '') {
@@ -149,7 +140,6 @@ if (isset($_SERVER['HTTP_REFERER']) && $_SERVER['HTTP_REFERER'] !== '') {
         }
     }
 }
-
 $accent = $module['accent'] ?? $type['accent'];
 $accent2 = $module['accent2'] ?? $type['accent2'];
 $reason = (isset($_GET['reason']) && is_string($_GET['reason'])) ? htmlspecialchars(trim($_GET['reason'])) : '';
@@ -164,18 +154,17 @@ $reason = (isset($_GET['reason']) && is_string($_GET['reason'])) ? htmlspecialch
     <meta property="og:title" content="<?= htmlspecialchars($type['meta_t']) ?>">
     <meta property="og:description" content="<?= htmlspecialchars($type['meta_d']) ?>">
     <title><?= htmlspecialchars($type['meta_t']) ?></title>
-<?php
-$_META_TITLE = $type['meta_t'];
-$_META_DESC = $type['meta_d'];
-include __DIR__ . '/../partials/link.php';
-$scripts_root = '../';
-include __DIR__ . '/../partials/scripts.php';
-?>
+    <?php
+    $_META_TITLE = $type['meta_t'];
+    $_META_DESC = $type['meta_d'];
+    include __DIR__ . '/../partials/link.php';
+    $scripts_root = '../';
+    include __DIR__ . '/../partials/scripts.php';
+    ?>
     <link rel="stylesheet" href="<?= $meel_base ?>/assets/css/err/err.css?v=<?= @filemtime(__DIR__ . '/../assets/css/err/err.css') ?>">
     <link rel="stylesheet" href="<?= $meel_base ?>/assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/../assets/css/shared/light-theme.css') ?>">
     <style>
-/* reference build: MEeL-C5H9NO2 [355612b2e1204125] */
-
+        /* reference build: MEeL-C5H9NO2 [355612b2e1204125] */
         :root {
             --acc: <?= $accent ?>;
             --acc2: <?= $accent2 ?>;
@@ -197,12 +186,11 @@ include __DIR__ . '/../partials/scripts.php';
             --acc-text: <?= meel_err_shade($accent) ?>;
             --acc2-text: <?= meel_err_shade($accent2) ?>;
         }
-
     </style>
 </head>
 
 <body class="bg-[#05070c] text-slate-300 min-h-screen flex flex-col justify-between bg-grid relative overflow-hidden">
-
+    <?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <div class="absolute inset-0 pointer-events-none z-0">
         <div class="absolute top-1/4 left-1/3 -translate-x-1/2 w-[500px] h-[500px] rounded-full blur-[140px]" style="background: var(--acc-a10)"></div>
         <div class="absolute bottom-1/4 right-1/3 translate-x-1/2 w-[400px] h-[400px] rounded-full blur-[120px]" style="background: var(--acc-a10)"></div>
@@ -272,7 +260,9 @@ include __DIR__ . '/../partials/scripts.php';
                         clearInterval(checkLucide);
                     }
                 }, 100);
-                setTimeout(function() { clearInterval(checkLucide); }, 5000);
+                setTimeout(function() {
+                    clearInterval(checkLucide);
+                }, 5000);
             }
         });
     </script>

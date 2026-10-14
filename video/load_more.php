@@ -1,6 +1,7 @@
 <?php
 include '../auth/config.php';
 require_once '../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/cards.php';
 
 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 15;
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -13,7 +14,7 @@ $totalPages = max(1, (int)ceil($total / $limit));
 
 if ($data && $data->num_rows > 0):
     while ($v = $data->fetch_assoc()):
-        include 'video_card.php';
+        meel_render_video_card($v);
     endwhile;
 
     $next = $offset + $limit;

@@ -58,6 +58,7 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
 </head>
 
 <body>
+<?php include __DIR__ . '/partials/skip-link.php'; ?>
     <div class="wrap">
 
         <header class="masthead">
