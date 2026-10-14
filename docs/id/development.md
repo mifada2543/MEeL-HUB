@@ -669,7 +669,7 @@ function verify_backup_code(string $hashedJson, string $code): array {
 
 ### Database Schema
 
-3 kolom baru di tabel `users` (Migration v9):
+3 kolom baru di tabel `users` (sekarang tercakup di migrasi **v1** — dulunya legacy v9):
 
 ```sql
 ALTER TABLE users
@@ -1267,6 +1267,10 @@ lookup coalescing `like` sekaligus jadi covering untuk query pruning. Tanpa ini,
 
 Migrasi **v4** + `schema.sql` sudah disinkronkan (keduanya wajib ikut, sesuai
 konvensi T9). Sudah diverifikasi idempoten 2×.
+
+> ⚠️ Nomor "v4" di sini = nomor **saat ini** (setelah redunisasi 17 Sep 2026).
+> Angka v1–v15 yang muncul di dokumen lain adalah riwayat lama yang
+> dikonsolidasikan menjadi v1 — lihat `docs/id/modules.md` § *Migration System*.
 
 #### Verifikasi
 
