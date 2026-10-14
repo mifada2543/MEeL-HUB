@@ -713,6 +713,19 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 | FK `interactions.video_id → video.id` | `ON DELETE CASCADE` |
 | FK `interactions.music_id → music.id` | `ON DELETE CASCADE` |
 
+**v6 — record MEeLCoin cost in the queues (basis for refunds)**
+
+| What v6 Syncs | Detail |
+|---|---|
+| `upload_queue` / `transcode_queue` | Columns `coin_cost` (the MEeLCoin actually deducted when the job was created) and `coin_refunded` (0/1, prevents double refunds) |
+| Sweeper indexes | `idx_uq_status_created`, `idx_tq_status_created` for finding stuck rows |
+
+> **Why the cost must be stored rather than recomputed?** If the sweeper
+> recomputed it from `site_settings`, and an admin changed the price after a
+> user uploaded, the refunded amount would be off — the user would get less
+> or more than they paid. `coin_cost` records **the amount at transaction
+> time**, so the result is always correct.
+
 Migration notes:
 
 - FK installation uses an **existence check** via `information_schema` (`meel_mig_add_fk`) — rejects duplicate FKs, whether same-named or another FK on the same column under a different constraint name.
