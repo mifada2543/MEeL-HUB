@@ -42,6 +42,7 @@ session_write_close();
     <?php meel_css_links('music', '../assets/css/music'); ?>
     <link rel="stylesheet" href="../assets/css/shared/comment.css<?= meel_asset_version('assets/css/shared/comment.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
+    <script src="../assets/js/shared/htmx-lucide.js?v=<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
 </head>
 <body class="text-gray-400 min-h-screen">
     <?php include __DIR__ . '/../partials/skip-link.php'; ?>
@@ -545,12 +546,9 @@ session_write_close();
                 });
             }
         });
-        document.body.addEventListener('htmx:afterOnLoad', function(e) {
-            if (typeof lucide !== 'undefined') {
-
-                lucide.createIcons({}, e.detail?.target || document.body);
-            }
-        });
+        // Ikon setelah swap htmx ditangani shared/htmx-lucide.js (T23);
+        // listener manual di sini identik dengan isi file itu, jadi
+        // dihapus supaya tidak ada dua sumber kebenaran.
         window.toggleEqPresetDropdown = function() {
             const options = document.getElementById('eq-preset-options');
             if (!options) return;
