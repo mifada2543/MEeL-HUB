@@ -26,7 +26,9 @@ class BrowserProgressObserver implements ProgressObserver
                 break;
 
             case 'phase':
-                $this->emitJs('meelPhase(' . json_encode($data['phase'] ?? '') . ');');
+                $this->emitJs(
+                    'if(typeof meelPhase==="function"){meelPhase(' . json_encode($data['phase'] ?? '') . ');}'
+                );
                 break;
 
             case 'download_progress':
@@ -114,7 +116,7 @@ class BrowserProgressObserver implements ProgressObserver
             }
 
             echo str_repeat(' ', 65536);
-            echo '<script>meelPhase(' . json_encode($initialPhase) . ');</script>';
+            echo '<script>if(typeof meelPhase==="function"){meelPhase(' . json_encode($initialPhase) . ');}</script>';
             if (connection_status() === CONNECTION_NORMAL) {
                 flush();
             }
