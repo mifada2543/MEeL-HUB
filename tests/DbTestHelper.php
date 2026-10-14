@@ -131,7 +131,24 @@ class DbTestHelper
         }
         $prop = $ref->getProperty('cache');
         $prop->setAccessible(true);
-        $prop->setValue([]);
+
+        // PENTING: bentuk 1-argumen `setValue([])` DEPRECATED di PHP 8.3
+        // ("Calling ReflectionProperty::setValue() with a single argument is
+        // deprecated") dan akan jadi error di PHP 9. Bentuk lama itu
+        // bekerja hanya karena Modules::exists() tidak pernah membaca argumen
+        // pertama — memusnahkan cache adalah kasus yang seharusnya punya
+        // bentuk eksplisit, bukan pintasan rapuh.
+        //
+        // Dua cara aman, berurutan dari yang paling bersih:
+        if (method_exists($ref, 'setStaticPropertyValue')) {
+            // PHP >= 8.3: API eksplisit untuk static property.
+            $ref->setStaticPropertyValue($prop->getName(), []);
+        } else {
+            // PHP < 8.3: bentuk 2-argumen (objek, nilai). Untuk static
+            // property, objeknya boleh null — persis yang dilakukan
+            // bentuk 1-argumen secara internal.
+            $prop->setValue(null, []);
+        }
     }
 
     public function rollback(): void
