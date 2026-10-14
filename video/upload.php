@@ -351,7 +351,7 @@ if (isset($_POST['upload'])) {
                 title: 'Berhasil!',
                 text: 'Video telah diupload dan sedang diproses.',
                 icon: 'success',
-                confirmButtonColor: '#ef4444',
+                confirmButtonColor: '#dc2626',
                 background: '#0e1118',
                 color: '#fff'
             });

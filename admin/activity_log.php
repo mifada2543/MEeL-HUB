@@ -1294,7 +1294,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 title: 'Selesai!',
                 text: <?= json_encode($clear_msg) ?>,
                 icon: 'success',
-                confirmButtonColor: '#3b82f6',
+                confirmButtonColor: '#2563eb',
                 background: '#0e1118',
                 color: '#fff'
             });
@@ -1304,7 +1304,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 title: 'Selesai!',
                 text: <?= json_encode($uq_clear_msg) ?>,
                 icon: 'success',
-                confirmButtonColor: '#22c55e',
+                confirmButtonColor: '#15803d',
                 background: '#0e1118',
                 color: '#fff'
             });

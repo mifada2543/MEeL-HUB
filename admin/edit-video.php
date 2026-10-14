@@ -455,7 +455,7 @@ $thumb_src = !empty($video['thumbnail'])
                 title: 'Berhasil!',
                 text: 'Detail video telah diperbarui.',
                 icon: 'success',
-                confirmButtonColor: '#ef4444',
+                confirmButtonColor: '#dc2626',
                 background: '#0e1118',
                 color: '#fff'
             });

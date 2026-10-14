@@ -6,7 +6,7 @@
 
     if (typeof Swal !== "undefined") {
       var bg = "#0e1118";
-      Swal.fire({ title: type === "error" ? "Error" : type === "success" ? "Berhasil!" : "Info", text: message, icon: type === "error" ? "error" : type === "success" ? "success" : "info", confirmButtonColor: "#f43f7a", background: bg, color: "#fff", timer: type === "success" ? 3000 : undefined });
+      Swal.fire({ title: type === "error" ? "Error" : type === "success" ? "Berhasil!" : "Info", text: message, icon: type === "error" ? "error" : type === "success" ? "success" : "info", confirmButtonColor: "#db2777", background: bg, color: "#fff", timer: type === "success" ? 3000 : undefined });
       return;
     }
 
