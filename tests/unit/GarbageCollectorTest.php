@@ -308,6 +308,18 @@ public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
         $backup = [];
         foreach ($throttles as $f) {
             $backup[$f] = is_file($f) ? (string)file_get_contents($f) : null;
+
+            // File throttle bisa dimiliki proses lain (Apache/daemon) dengan
+            // mode 644, sementara test jalan sebagai user dev. Menimpanya
+            // langsung gagal dengan "Permission denied" -- dan itu bukan
+            // kegagalan kode, melainkan kegagalan setup.
+            //
+            // Isinya cuma timestamp unix untuk throttle; menghapusnya
+            // bratarti satu siklus throttle dilewati, dan test menulis ulang
+            // nilai fresh di bawah. Tidak ada state bisnis yang hilang.
+            if (is_file($f) && !is_writable($f)) {
+                @unlink($f);
+            }
             file_put_contents($f, (string)time());   // isWithinThrottle() -> true
         }
 

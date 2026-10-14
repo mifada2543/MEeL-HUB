@@ -41,14 +41,14 @@ class SwalButtonContrastTest extends TestCase
     /**
      * @return array{0:int,1:int} [jumlah warn, jumlah gagal]
      */
-    private static function relativeLuminance(string $hex): array
+    private static function relativeLuminance(string $hex): float|int
     {
         $hex = ltrim($hex, '#');
         if (strlen($hex) === 3) {
             $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
         }
         if (!preg_match('/^[0-9a-fA-F]{6}$/', $hex)) {
-            return [0, -1];   // bukan warna hex yang bisa dihitung
+            return -1;   // bukan warna hex yang bisa dihitung
         }
 
         $channels = [];
@@ -56,16 +56,16 @@ class SwalButtonContrastTest extends TestCase
             $c = hexdec(substr($hex, $i, 2)) / 255;
             $channels[] = $c <= 0.03928 ? $c / 12.92 : (($c + 0.055) / 1.055) ** 2.4;
         }
-        return [(int) (100 * (0.2126 * $channels[0] + 0.7152 * $channels[1] + 0.0722 * $channels[2])), 0];
+        return 0.2126 * $channels[0] + 0.7152 * $channels[1] + 0.0722 * $channels[2];
     }
 
     private static function contrastWithWhite(string $hex): ?float
     {
-        [$lum] = self::relativeLuminance($hex);
+        $lum = self::relativeLuminance($hex);
         if ($lum < 0) {
             return null;
         }
-        return (1.05) / (($lum / 100) + 0.05);
+        return 1.05 / ($lum + 0.05);
     }
 
     /**
@@ -166,46 +166,73 @@ class SwalButtonContrastTest extends TestCase
     }
 
     /**
-     * Tombol yang TIDAK diberi warna eksplisit memakai default SweetAlert2
-     * (#3088d6), yang hanya 3.74:1 — juga gagal AA.
+     * Tombol yang TIDAK diberi `confirmButtonColor` memakai default library.
      *
-     * Test ini sengaja hanya MENGUKUR dan mencatat, bukan memaksa: menutupnya
-     * berarti menyuntik override global yang memaksa semua dialog memakai satu
-     * warna, dan itu keputusan desain yang belum diambil. Yang penting angkanya
-     * tercatat dan tidak hilang dari radar.
+     * KOREKSI 2026-10-14 — versi test sebelumnya sini menyatakan default
+     * SweetAlert2 adalah `#3088d6` (3.74:1, gagal AA). Itu SALAH: nilainya
+     * diambil dari ingatan versi library yang lebih lama, bukan dari berkas
+     * yang benar-benar dipakai. Nilai aslinya dibaca dari
+     * `assets/js/compatibilitas/sweetalert2.all.min.js` v11.26.25:
+     *
+     *   confirm  #7066e0 -> 4.5008:1
+     *   deny     #dc3741 -> 4.5007:1
+     *   cancel   #6e7881 -> 4.5001:1
+     *
+     * Ketiganya LULUS AA, dan luminance-nya nyaris identik (0.183293 /
+     * 0.183297 / 0.183329) — jadi library itu sengaja menyetel semua tombol
+     * aksi ke bobot visual sama persis di batas AA. 22 dialog tanpa warna
+     * eksplisit karena itu AMAN, bukan gap.
+     *
+     * Test ini sekarang membacanya langsung dari berkas library, bukan
+     * dari angka yang diketik tangan. Kalau suatu saat default berubah,
+     * test inilah yang harus remembers — bukan catatan di dokumentasi.
      */
-    public function testDocumentsKnownDefaultButtonContrastGap(): void
+    public function testLibraryDefaultButtonsMeetWcagAa(): void
     {
-        $files = self::filesUsingSwal();
+        $lib = MEEL_ROOT . '/assets/js/compatibilitas/sweetalert2.all.min.js';
+        $this->assertFileExists($lib, 'sweetalert2.all.min.js tidak ditemukan');
 
-        $withoutExplicitColor = [];
-        foreach ($files as $path) {
-            $src = (string)file_get_contents($path);
-            $fires = substr_count($src, 'Swal.fire');
-            $explicit = preg_match_all('/confirmButtonColor\s*:/', $src);
-            if ($fires > $explicit) {
-                $withoutExplicitColor[] = sprintf(
-                    '  - %s (%d dialog tanpa confirmButtonColor)',
-                    str_replace(MEEL_ROOT . '/', '', $path),
-                    $fires - $explicit
-                );
-            }
+        $src = (string) file_get_contents($lib);
+        if (!preg_match('/version="([\d.]+)"/', $src, $v)) {
+            $this->markTestSkipped('versi library tidak terbaca dari berkas');
         }
 
-        $default = self::contrastWithWhite('#3088d6');
-        $this->assertNotNull($default);
-        $this->assertLessThan(
-            4.5,
-            $default,
-            'Default SweetAlert2 (#3088d6) tiba-tiba mulai lulus — kalau begitu gap-nya tertutup '
-            . 'secara tidak sengaja dan catatan di Todo bisa dihapus'
-        );
+        $found = [];
+        foreach (['confirm', 'deny', 'cancel'] as $button) {
+            $needle = "--swal2-{$button}-button-background-color:";
+            $this->assertStringContainsString(
+                $needle,
+                $src,
+                "Nilai default tombol {$button} tidak ditemukan di library — pola berubah, "
+                . 'angka di test ini harus ikut dibaca ulang dari berkas'
+            );
+            preg_match('/' . preg_quote($needle, '/') . '\s*(#[0-9a-fA-F]{3,6})/', $src, $m);
+            $found[$button] = ['hex' => $m[1], 'ratio' => self::contrastWithWhite($m[1])];
+        }
 
-        // Eksplisit didokumentasikan supaya keputusan tidak hilang diam-diam.
-        $this->assertNotEmpty(
-            $withoutExplicitColor,
-            "Semua dialog sudah punya confirmButtonColor. Gap default sudah tertutup:\n"
-            . implode("\n", $withoutExplicitColor)
+        $report = [];
+        foreach ($found as $button => $d) {
+            $report[] = sprintf('%s %s = %.4f:1', $button, $d['hex'], $d['ratio']);
+            $this->assertGreaterThanOrEqual(
+                4.5,
+                $d['ratio'],
+                sprintf(
+                    'Tombol default %sSweetAlert2 (%s) hanya %.4f:1 — di bawah AA 4.5:1. '
+                    . 'Semua dialog tanpa confirmButtonColor akan gagal kontras.',
+                    $button,
+                    $d['hex'],
+                    $d['ratio']
+                )
+            );
+        }
+
+        fwrite(
+            STDERR,
+            sprintf(
+                "[swal-contrast] v%s default: %s\n",
+                $v[1],
+                implode(' | ', $report)
+            )
         );
     }
 }
