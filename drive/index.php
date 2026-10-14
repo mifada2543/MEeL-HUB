@@ -38,6 +38,7 @@ if ($user->isMember()) {
 </head>
 
 <body class="antialiased">
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <div class="flex min-h-screen">
         <aside class="w-64 glass border-r border-gray-800 hidden md:flex flex-col sticky top-0 h-screen">
             <div class="p-6">

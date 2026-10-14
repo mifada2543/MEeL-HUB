@@ -150,6 +150,7 @@ $back_url = 'index.php';
 </head>
 
 <body class="min-h-screen">
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <?php require 'header-admin.php'; ?>
     <main class="max-w-7xl mx-auto px-6 py-8 space-y-6">
         <?php if ($message): ?>

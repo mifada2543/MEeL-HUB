@@ -79,6 +79,7 @@ if (isset($_POST['upload'])) {
 </head>
 
 <body>
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <div class="page-wrap">
 
         <nav class="top-nav">

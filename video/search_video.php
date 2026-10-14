@@ -1,6 +1,7 @@
 <?php
 include '../auth/config.php';
 require_once '../modules/media/SearchEngine.php';
+require_once __DIR__ . '/cards.php';
 
 $engine = new SearchEngine($conn);
 $params = $engine->parseParams();
@@ -9,31 +10,9 @@ $result = $engine->searchVideo($params);
 if ($result['count'] > 0) {
     foreach ($result['results'] as $v) {
         if ($result['sidebar']) {
-?>
-            <a href="<?= base_url('/video/watch?v=' . (int)$v['id']) ?>"
-                class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline htmx-added"
-                title="<?= htmlspecialchars($v['title']) ?>">
-                <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                    <img src="upload/thumbnail/<?= video_thumbnail_sm($v['thumbnail']) ?>"
-                        class="rec-thumb-img w-full h-full object-cover transition-transform duration-300"
-                        loading="lazy" decoding="async" width="256" height="144"
-                        alt="Thumbnail video <?= htmlspecialchars($v['title']) ?>">
-                </div>
-                <div class="flex-1 min-w-0 flex flex-col justify-center">
-                    <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
-                        <?= htmlspecialchars($v['title']) ?>
-                    </div>
-                    <div class="text-[9px] text-gray-300 mt-1"><?= number_format($v['views'] ?? 0) ?> views</div>
-                    <?php if (!empty($v['uploader_name'])): ?>
-                        <div class="rec-uploader-text font-bold uppercase tracking-wider mt-0.5 truncate">
-                            <?= htmlspecialchars($v['uploader_name']) ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </a>
-        <?php
+            meel_render_video_rec_card($v, true);
         } else {
-            include 'video_card.php';
+            meel_render_video_card($v);
         }
     }
 

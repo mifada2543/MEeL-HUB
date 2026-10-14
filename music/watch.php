@@ -4,6 +4,7 @@ meel_boot_session();
 include '../auth/config.php';
 require_once '../modules/core/CommentRenderer.php';
 require_once '../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/cards.php';
 require_once '../controllers/api/WatchController.php';
 $id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
@@ -43,9 +44,7 @@ session_write_close();
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
 </head>
 <body class="text-gray-400 min-h-screen">
-    <a href="#main-content" class="absolute left-3 top-3 z-[999] -translate-y-20 rounded-lg bg-orange-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-black transition-transform focus:translate-y-0 focus:outline-none">
-        Lewati ke konten
-    </a>
+    <?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
             <a href="beranda" class="flex items-center gap-2 flex-shrink-0" title="MEeL Music">
@@ -84,7 +83,7 @@ session_write_close();
             </div>
         </div>
     </nav>
-    <main id="main-content" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
+    <main id="main-content" tabindex="-1" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4 focus:outline-none">
         <div class="flex-1 min-w-0 space-y-5 px-4 sm:px-5">
             <div id="player-container" class="bg-[#0d1017] border-0 rounded-none sm:rounded-none overflow-hidden relative">
                 <div id="resume-modal" class="hidden rounded-xl sm:rounded-2xl" role="dialog" aria-modal="true"
@@ -393,32 +392,9 @@ session_write_close();
                     <span id="rec-title-text" class="text-[9px] font-bold uppercase tracking-[.25em] text-gray-300 truncate" title="Discover">Discover</span>
                 </div>
                 <div id="music-recommendation-column" class="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-0 lg:space-y-0.5">
-                    <?php while ($r = $rekom->fetch_assoc()):
-                        $r_ext = strtolower(pathinfo($r['filename'], PATHINFO_EXTENSION));
-                        $r_lbl = $r_ext === 'ogg' ? 'opus' : $r_ext;
-                    ?>
-                        <a href="<?= base_url('/music/watch?v=' . (int)$r['id']) ?>"
-                            class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 p-2 rounded-xl no-underline"
-                            title="<?= htmlspecialchars($r['title']) ?>">
-                            <div class="w-full lg:w-16 aspect-square lg:h-12 lg:aspect-auto rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                                <img src="<?= htmlspecialchars(music_thumbnail_url($r['thumbnail'])) ?>"
-                                    alt="<?= htmlspecialchars($r['title']) ?> thumbnail"
-                                    width="96" height="96"
-                                    class="rec-thumb-img w-full h-full object-cover transition-transform duration-300"
-                                    loading="lazy" decoding="async">
-                            </div>
-                            <div class="flex-1 min-w-0 flex flex-col justify-center">
-                                <div class="text-[11px] font-bold text-gray-300 uppercase tracking-tight leading-snug rec-title-text">
-                                    <?= htmlspecialchars($r['title']) ?>
-                                </div>
-                                <div class="rec-meta-text mt-0.5 truncate"><?= htmlspecialchars($r['artist']) ?></div>
-                                <div class="flex items-center gap-1.5 mt-1">
-                                    <span class="rec-meta-text text-[9px]"><?= number_format($r['views'] ?? 0) ?> views</span>
-                                    <span class="rec-meta-text text-[8px] px-1.5 py-0.5 rounded bg-white/[.04] border border-white/[.05] uppercase"><?= $r_lbl ?></span>
-                                </div>
-                            </div>
-                        </a>
-                    <?php endwhile; ?>
+                    <?php while ($rec = $rekom->fetch_assoc()):
+                        meel_render_music_rec_card($rec);
+                    endwhile; ?>
                     <?php if ($rekom->num_rows >= 15): ?>
                         <div class="py-3 text-center rec-sentinel"
                             hx-get="search?exclude=<?= (int)$id ?>"

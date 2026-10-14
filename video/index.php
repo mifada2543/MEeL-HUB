@@ -3,6 +3,7 @@ require_once '../modules/core/helpers.php';
 meel_boot_session();
 include '../auth/config.php';
 require_once '../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/cards.php';
 
 $library = new MediaLibrary($conn);
 $perPage = 15;
@@ -30,6 +31,7 @@ $totalPages = $meta['total_pages'];
 </head>
 
 <body class="text-gray-400 min-h-screen">
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
 
     <nav class="meel-nav sticky top-0 z-50" style="border-bottom:1px solid var(--meel-nav-border)">
         <div class="w-full px-3 sm:px-6 xl:px-10 2xl:px-16 h-14 flex items-center justify-between gap-2 sm:gap-4">
@@ -98,7 +100,7 @@ $totalPages = $meta['total_pages'];
         <div id="video-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
             <?php if ($data && $data->num_rows > 0): ?>
                 <?php while ($v = $data->fetch_assoc()): ?>
-                    <?php include 'video_card.php'; ?>
+                    <?php meel_render_video_card($v); ?>
                 <?php endwhile; ?>
             <?php else: ?>
 

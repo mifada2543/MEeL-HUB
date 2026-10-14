@@ -7,6 +7,7 @@ require_once '../modules/core/helpers.php';
 meel_boot_session();
 include '../auth/config.php';
 require_once '../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/cards.php';
 
 $library = new MediaLibrary($conn);
 $format_raw = $_GET['format'] ?? 'all';
@@ -43,7 +44,7 @@ function renderLibraryContent(string $artist_filter, int $total_music, \mysqli_r
     <div id="music-list" class="space-y-1">
         <?php if ($data_init && $data_init->num_rows > 0): ?>
             <?php while ($v = $data_init->fetch_assoc()): ?>
-                <?php include 'music_item.php'; ?>
+                <?php meel_render_music_row($v); ?>
             <?php endwhile; ?>
             <?php if ($total_music > $perPageMusic): ?>
                 <div id="load-more-music" role="status"
@@ -95,6 +96,7 @@ if (isset($_GET['content_only'])) {
 </head>
 
 <body class="text-gray-400 min-h-screen">
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
 
     <nav class="meel-nav sticky top-0 z-50" style="border-bottom:1px solid var(--meel-nav-border)">
         <div class="w-full px-3 sm:px-6 xl:px-10 2xl:px-16 h-14 flex items-center justify-between gap-2 sm:gap-4">

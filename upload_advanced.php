@@ -338,6 +338,7 @@ include __DIR__ . '/partials/scripts.php';
 </head>
 
 <body class="min-h-screen flex flex-col">
+<?php include __DIR__ . '/partials/skip-link.php'; ?>
 
     <?php if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $message === 'busy' || $message === 'rate_limit'): ?>
         <?php include 'partials/ui.php'; ?>

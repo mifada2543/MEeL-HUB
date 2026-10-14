@@ -34,6 +34,7 @@ $counts = $library->getCounts();
 </head>
 
 <body class="text-gray-300 min-h-screen" style="background:#05070c">
+<?php include __DIR__ . '/partials/skip-link.php'; ?>
 
     <?php include 'partials/navbar.php'; ?>
     <main class="relative z-10 max-w-6xl mx-auto px-6 pt-32 pb-20 flex flex-col items-center">
