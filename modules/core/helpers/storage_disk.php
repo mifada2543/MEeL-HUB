@@ -175,7 +175,6 @@ if (!function_exists('meel_read_cache_file')) {
 if (!function_exists('log_drive_operation')) {
     function log_drive_operation(int $userId, string $username, string $operation, string $filename, string $type, string $scope, string $status = 'success'): void
     {
-        global $conn;
         $logDir = dirname(__DIR__, 3) . '/logs';
         if (!is_dir($logDir) && !mkdir($logDir, 0755, true) && !is_dir($logDir)) {
             error_log("[MEeL] log_drive_operation: gagal membuat log dir: {$logDir}");

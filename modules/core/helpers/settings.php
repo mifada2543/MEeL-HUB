@@ -30,15 +30,4 @@ function set_site_setting(\mysqli $conn, string $key, string $value): bool
 }
 }
 
-if (!function_exists('get_site_settings_batch')) {
-function get_site_settings_batch(\mysqli $conn, array $keys): array
-{
-    $results = [];
-    foreach ($keys as $key => $default) {
-        $results[$key] = get_site_setting($conn, $key, $default);
-    }
-    return $results;
-}
-}
-
 /* reference build: MEeL-C5H9NO2 [9e3d84cdc2b4aac2] */
