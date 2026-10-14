@@ -564,7 +564,25 @@ class MusicWatchController { public function getViewData(): array; public functi
 
 Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabel `db_version` melacak migrasi mana yang sudah dijalankan (satu baris per versi, setiap versi hanya dieksekusi sekali).
 
-**v1 — konsolidasi skema**
+> ⚠️ **Baca dulu kalau pernah melihat nomor migrasi yang berbeda.**
+>
+> Nomor **v1–v15 adalah riwayat lama** yang sudah di-*redunisasi* (direset)
+> pada 17 Sep 2026 — seluruhnya kini **dikonsolidasikan menjadi v1**, tanpa
+> menghilangkan fungsinya. Jadi:
+>
+> - **v1 sekarang bukan "migrasi pertama" dalam arti kronologis.** Ia adalah
+>   hasil konsolidasi legacy v1–v15 (v13 = MEeLCoin, v14 = index `view_logs`,
+>   v15 = tabel `user_notifications` — semuanya kini tercakup di v1).
+> - Nomor **v2 ke atas dihitung ulang dari nol** setelah reset: entri yang
+>   sempat bernomor 16/17 (2 Okt) diganti menjadi **v2/v3**, lalu v4/v5
+>   menyusul sebagai migrasi baru sungguhan.
+> - Riwayat lama **tidak lagi dipakai**; baris `db_version` dibersihkan menjadi
+>   `{1..5}`. Loop hanya mengeksekusi versi `> MAX(db_version)`.
+>
+> Kalau kamu menemukan docs atau kode yang menyebut "Migration v9" atau
+> "migration v15" sebagai **versi aktif**, itu angka legacy — bukan bug.
+
+**v1 — konsolidasi skema (hasil redunisasi legacy v1–v15)**
 
 | Apa yang di-Sync | Detail |
 |---|---|
@@ -584,8 +602,6 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 
 **v2 — normalisasi state MEeLCoin**
 
-> v1 merupakan hasil regresi/konsolidasi dari migrasi lama v1–v15 (riwayat lama tidak lagi dipakai), jadi migrasi lanjutan bernomor urut setelah v1 — v2, v3, dan seterusnya. Loop tetap hanya mengeksekusi versi `> MAX(db_version)`; baris riwayat pra-regresi sudah dibersihkan dari `db_version`.
-
 | Apa yang di-Sync | Detail |
 |---|---|
 | Biaya upload MEeLCoin | `meelcoin_upload_cost` & `meelcoin_advanced_cost` dinormalkan minimum `1` (biaya `0` membuat `spend()` tidak memotong apa pun) |
@@ -601,6 +617,21 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 | `users` | `(role, is_active, last_activity)` (listing admin + deteksi idle), `(last_activity)` |
 | FK `comments.video_id → video.id` | `ON DELETE CASCADE`; baris orphan dibersihkan dulu sebelum FK dipasang |
 | Buang indeks redundan | `site_settings.idx_setting_key`, `view_logs.idx_vl_user_video` (duplikat terhadap UNIQUE/PRIMARY) |
+
+**v4 — indeks coalescing notifikasi**
+
+| Apa yang di-Sync | Detail |
+|---|---|
+| `user_notifications` | `idx_un_user_type_created (user_id, type, created_at)` — menopang lookup coalescing `like` sekaligus covering untuk query pruning retensi. Tanpa ini `isCoalesced()` menyisir seluruh baris notifikasi pengguna tersebut per-press like |
+
+**v5 — FK `interactions`**
+
+| Apa yang di-Sync | Detail |
+|---|---|
+| Bersihkan baris yatim | `interactions` yang `user_id`/`video_id`/`music_id`-nya sudah tak ada dihapus lebih dulu |
+| FK `interactions.user_id → users.id` | `ON DELETE CASCADE` |
+| FK `interactions.video_id → video.id` | `ON DELETE CASCADE` |
+| FK `interactions.music_id → music.id` | `ON DELETE CASCADE` |
 
 Catatan migrasi:
 
@@ -831,7 +862,7 @@ Halaman profil pengguna dengan visibilitas berbasis role, theme toggle, dan grid
 
 Sistem notifikasi berbasis database dengan user scoping dan actor tracking.
 
-**Database:** tabel `user_notifications` (migration v15)
+**Database:** tabel `user_notifications` (bagian dari migrasi **v1** — dulunya legacy v15, sekarang dikonsolidasikan)
 
 ```php
 class Notification {

@@ -459,7 +459,7 @@ function verify_backup_code(string $hashedJson, string $code): array {
 
 ### Database Schema
 
-3 new columns in `users` table (Migration v9):
+3 new columns in `users` table (now covered by migration **v1** — formerly legacy v9):
 
 ```sql
 ALTER TABLE users

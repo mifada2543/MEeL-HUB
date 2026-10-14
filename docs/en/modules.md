@@ -644,7 +644,25 @@ class MusicWatchController { public function getViewData(): array; public functi
 
 The migration system is **idempotent** — safe to run multiple times. The `db_version` table tracks which migrations have been applied (one row per version; each version runs exactly once).
 
-**v1 — schema consolidation**
+> ⚠️ **Read this first if you have seen a different migration number.**
+>
+> Numbers **v1–v15 are the old history**, which was *redunized* (reset) on
+> 17 Sep 2026 — all of it is now **consolidated into v1**, without losing any of
+> its functionality. So:
+>
+> - **v1 today is not the "first" migration chronologically.** It is the
+>   consolidation of legacy v1–v15 (v13 = MEeLCoin, v14 = `view_logs` indexes,
+>   v15 = the `user_notifications` table — all now covered by v1).
+> - Numbers **from v2 up were recounted from zero** after the reset: entries
+>   briefly numbered 16/17 (2 Oct) became **v2/v3**, and v4/v5 followed as
+>   genuine new migrations.
+> - The old history is **no longer used**; `db_version` rows were cleaned to
+>   `{1..5}`. The loop only runs versions `> MAX(db_version)`.
+>
+> If you find docs or code mentioning "Migration v9" or "migration v15" as an
+> **active version**, that is a legacy number — not a bug.
+
+**v1 — schema consolidation (result of redunizing legacy v1–v15)**
 
 | What v1 Syncs | Detail |
 |---|---|
@@ -664,8 +682,6 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 
 **v2 — MEeLCoin state normalization**
 
-> v1 is the regression/consolidation result of the earlier migrations v1–v15 (the old history is no longer used), so follow-up migrations are numbered sequentially after v1 — v2, v3, and so on. The loop still only runs versions `> MAX(db_version)`; the pre-regression history rows have been cleaned from `db_version`.
-
 | What v2 Syncs | Detail |
 |---|---|
 | MEeLCoin upload costs | `meelcoin_upload_cost` & `meelcoin_advanced_cost` normalized to a minimum of `1` (a cost of `0` makes `spend()` deduct nothing) |
@@ -681,6 +697,21 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 | `users` | `(role, is_active, last_activity)` (admin listing + idle detection), `(last_activity)` |
 | FK `comments.video_id → video.id` | `ON DELETE CASCADE`; orphan rows are cleaned up before the FK is added |
 | Dropped redundant indexes | `site_settings.idx_setting_key`, `view_logs.idx_vl_user_video` (duplicates of UNIQUE/PRIMARY) |
+
+**v4 — notification coalescing index**
+
+| What v4 Syncs | Detail |
+|---|---|
+| `user_notifications` | `idx_un_user_type_created (user_id, type, created_at)` — supports the `like` coalescing lookup and doubles as a covering index for retention pruning. Without it `isCoalesced()` scans every notification row of that user on each like press |
+
+**v5 — `interactions` foreign keys**
+
+| What v5 Syncs | Detail |
+|---|---|
+| Orphan cleanup | `interactions` rows whose `user_id`/`video_id`/`music_id` no longer exist are deleted first |
+| FK `interactions.user_id → users.id` | `ON DELETE CASCADE` |
+| FK `interactions.video_id → video.id` | `ON DELETE CASCADE` |
+| FK `interactions.music_id → music.id` | `ON DELETE CASCADE` |
 
 Migration notes:
 
@@ -912,7 +943,7 @@ User profile page with role-based visibility, theme toggle, and public channel g
 
 Database-backed notification system with user scoping and actor tracking.
 
-**Database:** `user_notifications` table (migration v15)
+**Database:** `user_notifications` table (part of migration **v1** — formerly legacy v15, now consolidated)
 
 ```php
 class Notification {
