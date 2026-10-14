@@ -20,7 +20,7 @@ MEeL menggunakan pendekatan testing berlapis:
 
 ---
 
-## 🧪 PHPUnit Test Suite (305 Unit + 98 Integration = 403 Tests)
+## 🧪 PHPUnit Test Suite (560+ Unit + 100+ Integration)
 
 ### Instalasi
 

@@ -184,7 +184,16 @@ MEeL/
 
 ## 🧪 Testing
 
-> 369+ kasus uji (288 unit + 81 integrasi, fungsional, keamanan) — dijalankan secara otomatis pada setiap push melalui GitHub Actions CI.
+> 600+ kasus uji (560+ unit + 100+ integrasi, plus suite fungsional & keamanan) — dijalankan secara otomatis pada setiap push melalui GitHub Actions CI.
+>
+> Angka di atas diperbarui 2026-10-14. Kalau terlihat melenceng, ukur ulang sendiri — jangan percaya angka yang tertulis:
+>
+> ```bash
+> vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'  | tail -3
+> vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests' | tail -3
+> ```
+>
+> Jumlah test hampir selalu naik seiring waktu; angka yang ditulis manual di dokumen cepat basi.
 
 ```bash
 composer install
