@@ -497,6 +497,46 @@ $migrations = [
             },
         ],
     ],
+    6 => [
+        'description' => 'Rekam biaya MEeLCoin di antrean + refund pengembalian (T17a) — kolom coin_cost & coin_refunded di upload_queue/transcode_queue, indeks sweeper',
+        'sql' => [
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'upload_queue', 'coin_cost')) {
+                    $conn->query("ALTER TABLE upload_queue
+                        ADD COLUMN coin_cost INT(11) NOT NULL DEFAULT 0
+                        COMMENT 'MEeLCoin yang dipotong saat INSERT, 0 = tidak dipotong'");
+                }
+            },
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'upload_queue', 'coin_refunded')) {
+                    $conn->query("ALTER TABLE upload_queue
+                        ADD COLUMN coin_refunded TINYINT(1) NOT NULL DEFAULT 0
+                        COMMENT '1 = biaya sudah dikembalikan oleh sweeper'");
+                }
+            },
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'transcode_queue', 'coin_cost')) {
+                    $conn->query("ALTER TABLE transcode_queue
+                        ADD COLUMN coin_cost INT(11) NOT NULL DEFAULT 0
+                        COMMENT 'MEeLCoin yang dipotong saat INSERT, 0 = tidak dipotong'");
+                }
+            },
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'transcode_queue', 'coin_refunded')) {
+                    $conn->query("ALTER TABLE transcode_queue
+                        ADD COLUMN coin_refunded TINYINT(1) NOT NULL DEFAULT 0
+                        COMMENT '1 = biaya sudah dikembalikan oleh sweeper'");
+                }
+            },
+            // Indeks untuk sweeper: cari baris macet per status.
+            function ($conn) {
+                meel_mig_add_index($conn, 'upload_queue', 'idx_uq_status_created', 'status, created_at');
+            },
+            function ($conn) {
+                meel_mig_add_index($conn, 'transcode_queue', 'idx_tq_status_created', 'status, created_at');
+            },
+        ],
+    ],
 ];
 $conn->query("CREATE TABLE IF NOT EXISTS db_version (
     id INT AUTO_INCREMENT PRIMARY KEY,

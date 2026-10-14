@@ -633,6 +633,18 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 | FK `interactions.video_id → video.id` | `ON DELETE CASCADE` |
 | FK `interactions.music_id → music.id` | `ON DELETE CASCADE` |
 
+**v6 — rekam biaya MEeLCoin di antrean (dasar refund pengembalian)**
+
+| Apa yang di-Sync | Detail |
+|---|---|
+| `upload_queue` / `transcode_queue` | Kolom `coin_cost` (MEeLCoin yang benar-benar dipotong saat job dibuat) dan `coin_refunded` (0/1, mencegah refund ganda) |
+| Indeks sweeper | `idx_uq_status_created`, `idx_tq_status_created` untuk mencari baris macet |
+
+> **Mengapa biaya harus disimpan, bukan dihitung ulang?** Kalau sweeper menghitung
+> ulang dari `site_settings`, dan admin mengubah harga setelah user upload,
+> jumlah yang dikembalikan akan meleset — user mendapat kurang atau lebih.
+> `coin_cost` merekam **angka saat transaksi terjadi**, jadi hasilnya selalu benar.
+
 Catatan migrasi:
 
 - Pemasangan FK memakai **existence check** via `information_schema` (`meel_mig_add_fk`) — menolak FK ganda, baik yang sudah bernama sama maupun FK lain pada kolom yang sama dengan nama constraint berbeda.

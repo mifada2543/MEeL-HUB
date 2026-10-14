@@ -1,34 +1,118 @@
 <?php
 class GarbageCollector
 {
-
     private const STALE_SECONDS = 300;
-
     private const GUEST_STALE_HOURS = 2;
-
     private const GUEST_CLEANUP_INTERVAL = 3600;
-
     private const ROOM_LOBBY_STALE_HOURS = 24;
-
     private const ROOM_GAME_STALE_HOURS = 168;
-
     private const CHESS_CLEANUP_INTERVAL = 3600;
-
+    public const QUEUE_STUCK_MINUTES = 360;
     private static bool $hasRun = false;
-
     private static bool $cliOnlyRan = false;
-
     public static function runCliMaintenance(\mysqli $conn): void
     {
         if (PHP_SAPI !== 'cli' || self::$cliOnlyRan) {
             return;
         }
         self::$cliOnlyRan = true;
-
         self::syncViews($conn);
         self::resetGuestsAutoIncrement($conn);
+        self::sweepStuckQueues($conn);
     }
+    /** @return array{scanned:int, failed:int, refunded:int}  */
+    public static function sweepStuckQueues(\mysqli $conn, ?int $staleMinutes = null): array
+    {
+        $minutes = $staleMinutes ?? self::QUEUE_STUCK_MINUTES;
+        $result = ['scanned' => 0, 'failed' => 0, 'refunded' => 0];
+        $canRefund = class_exists('MeelCoin');
+        foreach ([['upload_queue', 'upload'], ['transcode_queue', 'transcode']] as [$table, $reason]) {
+            $stmt = $conn->prepare(
+                "SELECT id, user_id, coin_cost FROM {$table}
+                 WHERE status IN ('pending', 'processing')
+                   AND coin_refunded = 0
+                   AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+            );
+            if (!$stmt) {
+                continue;
+            }
+            $stmt->bind_param("i", $minutes);
+            $stmt->execute();
+            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
 
+            foreach ($rows as $row) {
+                $result['scanned']++;
+
+                $id = (int)$row['id'];
+                $userId = (int)$row['user_id'];
+                $cost = (int)($row['coin_cost'] ?? 0);
+                $refunded = false;
+                if ($canRefund && $cost > 0 && $userId > 0) {
+                    $conn->begin_transaction();
+                    try {
+                        $lock = $conn->prepare(
+                            "SELECT id, coin_refunded FROM {$table} WHERE id = ? FOR UPDATE"
+                        );
+                        if ($lock) {
+                            $lock->bind_param("i", $id);
+                            $lock->execute();
+                            $rowLock = $lock->get_result()->fetch_assoc();
+                            $lock->close();
+                            if ($rowLock && (int)$rowLock['coin_refunded'] === 0) {
+                                if (MeelCoin::refund($conn, $userId, $cost, 'upload_failed_refund')) {
+                                    $mark = $conn->prepare(
+                                        "UPDATE {$table} SET coin_refunded = 1 WHERE id = ?"
+                                    );
+                                    if ($mark) {
+                                        $mark->bind_param("i", $id);
+                                        $mark->execute();
+                                        $mark->close();
+                                        $refunded = true;
+                                    }
+                                }
+                            }
+                        }
+                        $conn->commit();
+                    } catch (\Throwable $e) {
+                        $conn->rollback();
+                        error_log(
+                            '[MEeL] GarbageCollector: gagal refund queue #' . $id
+                                . ' pada ' . $table . ': ' . $e->getMessage()
+                        );
+                    }
+                } elseif ($cost > 0 && !$canRefund) {
+                    error_log(
+                        '[MEeL] GarbageCollector: kelas MeelCoin tidak termuat, '
+                            . 'refund queue #' . $id . ' dilewati.'
+                    );
+                }
+                $upd = $conn->prepare("UPDATE {$table} SET status = 'failed' WHERE id = ?");
+                if ($upd) {
+                    $upd->bind_param("i", $id);
+                    $upd->execute();
+                    if ($upd->affected_rows > 0) {
+                        $result['failed']++;
+                    }
+                    $upd->close();
+                }
+                if ($refunded) {
+                    $result['refunded']++;
+                }
+            }
+        }
+        if ($result['scanned'] > 0) {
+            error_log(
+                sprintf(
+                    '[MEeL] GarbageCollector: sweeper antrean — %d baris macet, %d ditandai failed, %d direfund',
+                    $result['scanned'],
+                    $result['failed'],
+                    $result['refunded']
+                )
+            );
+        }
+        return $result;
+    }
     private static function resetGuestsAutoIncrement(\mysqli $conn): void
     {
         if (!function_exists('purge_guest_users')) {
@@ -192,7 +276,6 @@ class GarbageCollector
             }
         }
         self::cleanEmptyCacheDirs($cacheDir);
-
         return $deleted;
     }
     private static function isCacheExpired(string $path, int $ttl): bool
