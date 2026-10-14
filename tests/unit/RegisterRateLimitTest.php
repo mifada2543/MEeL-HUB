@@ -14,7 +14,7 @@ class RegisterRateLimitTest extends TestCase
         $prop = $ref->getProperty('storageDir');
         $prop->setAccessible(true);
         $this->origStorageDir = (string) $prop->getValue();
-        $prop->setValue(MEEL_ROOT . '/temp/ratelimit-reg-test/');
+        $prop->setValue(null, MEEL_ROOT . '/temp/ratelimit-reg-test/');
 
         $dir = MEEL_ROOT . '/temp/ratelimit-reg-test/';
         if (!is_dir($dir)) {
@@ -27,7 +27,7 @@ class RegisterRateLimitTest extends TestCase
         $ref = new ReflectionClass(RateLimiter::class);
         $prop = $ref->getProperty('storageDir');
         $prop->setAccessible(true);
-        $prop->setValue($this->origStorageDir);
+        $prop->setValue(null, $this->origStorageDir);
 
         $dir = MEEL_ROOT . '/temp/ratelimit-reg-test/';
         if (is_dir($dir)) {

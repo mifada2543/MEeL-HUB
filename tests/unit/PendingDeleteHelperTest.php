@@ -41,7 +41,7 @@ class PendingDeleteHelperTest extends TestCase
         $ref = new ReflectionClass(GarbageCollector::class);
         $prop = $ref->getProperty('hasRun');
         $prop->setAccessible(true);
-        $prop->setValue(false);
+        $prop->setValue(null, false);
     }
 
     private static function throttlePath(string $method): string

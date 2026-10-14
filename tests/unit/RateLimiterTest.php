@@ -14,7 +14,7 @@ class RateLimiterTest extends TestCase
         $prop = $ref->getProperty('storageDir');
         $prop->setAccessible(true);
         $this->origStorageDir = $prop->getValue();
-        $prop->setValue(MEEL_ROOT . '/temp/ratelimit-test/');
+        $prop->setValue(null, MEEL_ROOT . '/temp/ratelimit-test/');
 
         $testDir = MEEL_ROOT . '/temp/ratelimit-test/';
         if (!is_dir($testDir)) {
@@ -28,7 +28,7 @@ class RateLimiterTest extends TestCase
         $ref = new ReflectionClass(RateLimiter::class);
         $prop = $ref->getProperty('storageDir');
         $prop->setAccessible(true);
-        $prop->setValue($this->origStorageDir);
+        $prop->setValue(null, $this->origStorageDir);
 
         $testDir = MEEL_ROOT . '/temp/ratelimit-test/';
         if (is_dir($testDir)) {
@@ -164,7 +164,7 @@ class RateLimiterTest extends TestCase
         $ref = new ReflectionClass(RateLimiter::class);
         $prop = $ref->getProperty('storageDir');
         $prop->setAccessible(true);
-        $prop->setValue($invalidStoragePath);
+        $prop->setValue(null, $invalidStoragePath);
 
         $result = RateLimiter::check('fallback_user', 'api', 'user');
         $this->assertFalse($result['allowed']);
