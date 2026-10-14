@@ -168,9 +168,15 @@ class System
         $swap_perc = ($swap_total > 0) ? round(($swap_used / $swap_total) * 100, 1) : 0;
         $uptime_raw = @file_get_contents('/proc/uptime');
         $uptime_sec = (float) explode(' ', (string) $uptime_raw)[0];
-        $days = floor($uptime_sec / 86400);
-        $hours = floor(($uptime_sec % 86400) / 3600);
-        $mins = floor(($uptime_sec % 3600) / 60);
+        // floor() selalu mengembalikan FLOAT di PHP, dan operator % / / pada
+        // float non-integral menghasilkan float non-integral — sehingga
+        // (int)floor(...) memicu "Implicit conversion from float ... loses
+        // precision" di PHP 8.3 (error di PHP 9). Solusi: bulatkan detik ke
+        // integer DULU, lalu pakai intdiv() — tanpa loss dan tanpa deprecation.
+        $uptime_int = (int) $uptime_sec;
+        $days = intdiv($uptime_int, 86400);
+        $hours = intdiv($uptime_int % 86400, 3600);
+        $mins = intdiv($uptime_int % 3600, 60);
         $net_rx = 0;
         $net_tx = 0;
         $net_lines = @file('/proc/net/dev');

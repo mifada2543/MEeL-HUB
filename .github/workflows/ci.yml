@@ -168,6 +168,15 @@ jobs:
           coverage: none
           tools: composer
 
+      # Node dibutuhkan oleh tests/js/*.harness.js yang dijalankan dari
+      # unit suite (EnginePhaseJsTest, SharedJsTest). Tanpa langkah ini
+      # kedua test itu diam-diam markTestSkipped() di Actions — suite
+      # terlihat hijau padahal tidak menjalankan apa pun.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Get Composer Cache Directory
         id: composer-cache
         run: |
@@ -197,6 +206,27 @@ jobs:
           #   < 20.04: mecab-ipadic-utf8 ; >= 20.04: mecab-ipadic
           sudo apt-get install -y mecab-ipadic-utf8 || sudo apt-get install -y mecab-ipadic || true
           echo "テスト" | mecab || echo "⚠️  mecab gagal diuji — Japanese tests akan skip"
+
+      - name: Verify JS harness prerequisites
+        run: |
+          # Guard anti-skip-senyap: kalau ada tests/js/*.harness.js tapi Node
+          # tidak tersedia, test akan markTestSkipped() dan suite tetap hijau
+          # tanpa benar-benar menguji apa pun. Di runner GitHub Node sudah
+          # diinstall di langkah "Setup Node.js"; langkah ini hanya memastikan
+          # keadaan itu, dan GAGAL kalau suatu saat langkahnya hilang.
+          shopt -s nullglob
+          harnesses=(tests/js/*.harness.js)
+          if [ ${#harnesses[@]} -eq 0 ]; then
+            echo "ℹ️  Tidak ada harness JS — tidak ada yang perlu diverifikasi."
+            exit 0
+          fi
+          printf '   %s\n' "${harnesses[@]}"
+          if ! command -v node >/dev/null 2>&1; then
+            echo "❌ Ada ${#harnesses[@]} harness JS tapi Node tidak ada di runner."
+            echo "   Test akan markTestSkipped() — suite hijau palsu. Tambahkan langkah setup-node."
+            exit 1
+          fi
+          echo "✅ Node $(node --version) tersedia untuk ${#harnesses[@]} harness."
 
       - name: Run PHPUnit Tests
         run: |
