@@ -546,7 +546,12 @@ function testCommandInjection(): void {
         'modules/transcoder/DownloadService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
         'modules/transcoder/EncodeService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
         'modules/transcoder/TranscodeService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
-        'modules/core/helpers/storage.php' => ['shell_exec'],
+        // T27: storage.php dipecah. shell_exec()/du -sb ada di dir_size()
+        // yang kini hidup di storage_disk.php. Kalau peta ini tidak
+        // diperbarui, test tetap hijau padahal cakupannya hilang senyap --
+        // file yang dipindai jadi aggregator 40 baris tanpa shell
+        // sama sekali. Itu persis kelas bug yang test ini buat cegah.
+        'modules/core/helpers/storage_disk.php' => ['shell_exec'],
         'modules/core/System.php' => ['shell_exec'],
         'auth/config.example.php' => ['proc_open', 'shell_exec'],
         'modules/core/japanese.php' => ['proc_open'],
@@ -628,6 +633,8 @@ function testFileIntegrity(): void {
         'auth/logout.php', 'auth/register.php', 'auth/auth_helpers.php',
         'modules/core/helpers.php',
         'modules/core/helpers/main.php', 'modules/core/helpers/storage.php',
+        'modules/core/helpers/storage_paths.php', 'modules/core/helpers/storage_disk.php',
+        'modules/core/helpers/storage_xsendfile.php', 'modules/core/helpers/storage_stream.php',
         'modules/core/activity_logger.php', 'modules/core/System.php', 'modules/core/Uploader.php',
         'modules/core/Transcoder.php', 'modules/auth/SsrfGuard.php', 'modules/auth/ValidatingProxy.php',
         'modules/auth/validating_proxy_server.php', 'modules/media/MediaInteraction.php',
