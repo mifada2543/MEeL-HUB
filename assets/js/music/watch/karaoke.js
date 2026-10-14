@@ -70,11 +70,12 @@
     }
   }
 
-  function escapeHtml(str) {
-    var div = document.createElement("div");
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
-  }
+  // Salinan lokal dihapus (T23): sekarang dari
+  // assets/js/shared/format-helpers.js. Perbedaannya bukan cuma
+  // gaya penulisan — versi ini TIDAK menangani null/undefined,
+  // jadi pemanggil wajib ingat `|| ''` sendiri. Versi shared
+  // menanganinya, jadi satu pemanggil lagi tidak bisa salah.
+  var escapeHtml = window.escapeHtml;
 
   function onLineClick(e) {
     var idx = parseInt(e.currentTarget.getAttribute("data-idx"), 10);

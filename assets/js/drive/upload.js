@@ -25,14 +25,12 @@
   var rafId = null;
   var currentXhr = null;
 
-  function formatBytes(bytes) {
-    if (bytes === 0) return "0 B";
-    var units = ["B", "KB", "MB", "GB"];
-    var i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 3);
-    return (
-      (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + " " + units[i]
-    );
-  }
+  // formatBytes() sekarang dari assets/js/shared/format-helpers.js (T23).
+  // decimals=1 menjaga output PERSIS seperti implementasi lama di sini
+  // ("1.5 KB"), sementara admin/index.js memakai decimals=2 ("4.66 GB").
+  var formatBytes = function (bytes) {
+    return window.formatBytes(bytes, 1);
+  };
 
   function formatSpeed(bytesPerSec) {
     if (bytesPerSec < 0) return "\u2014";

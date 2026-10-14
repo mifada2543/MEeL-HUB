@@ -308,6 +308,7 @@ if ($user->isMember()) {
     <script src="../assets/js/drive/file-input.js?v=<?= filemtime('../assets/js/drive/file-input.js') ?>"></script>
     <script src="../assets/js/drive/preview.js?v=<?= filemtime('../assets/js/drive/preview.js') ?>"></script>
     <script src="../assets/js/drive/search.js?v=<?= filemtime('../assets/js/drive/search.js') ?>"></script>
+    <script src="../assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
     <script src="../assets/js/drive/upload.js?v=<?= filemtime('../assets/js/drive/upload.js') ?>"></script>
     <script>
     (function(){
