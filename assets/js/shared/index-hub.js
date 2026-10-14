@@ -48,7 +48,7 @@
                     + 'Konten &amp; data di sini <strong style="color:#f87171" title="diperuntukan untuk penggunaan pribadi">tidak nyata</strong>.<br>'
                     + 'Hanya untuk <em style="color:#fde68a">showcase &amp; uji coba</em>.</div>',
                 confirmButtonText: 'Saya Mengerti',
-                confirmButtonColor: '#f97316',
+                confirmButtonColor: '#c2410c',
                 timer: 120000,
                 timerProgressBar: true,
                 background: '#0f172a',

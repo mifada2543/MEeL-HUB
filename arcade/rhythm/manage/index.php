@@ -214,7 +214,7 @@ foreach ($user_songs as $s) {
         text: 'Tindakan ini tidak dapat dibatalkan.',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#ef4444',
+        confirmButtonColor: '#dc2626',
         cancelButtonColor: '#475569',
         confirmButtonText: 'Hapus',
         background: '#0e1118',

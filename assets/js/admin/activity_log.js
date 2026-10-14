@@ -245,7 +245,7 @@
           confirmButtonText: "Mengerti",
           background: "#0e1118",
           color: "#fff",
-          confirmButtonColor: "#3b82f6",
+          confirmButtonColor: "#2563eb",
         });
       });
   };

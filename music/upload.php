@@ -368,7 +368,7 @@ if (isset($_POST['upload'])) {
                 title: 'Berhasil!',
                 text: 'Lagu berhasil ditambahkan ke Music Library.',
                 icon: 'success',
-                confirmButtonColor: '#f97316',
+                confirmButtonColor: '#c2410c',
                 background: '#0e1118',
                 color: '#fff'
             });
