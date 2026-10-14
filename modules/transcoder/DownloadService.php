@@ -408,104 +408,56 @@ class DownloadService extends TranscoderBase
         $sprite_data = $this->buildSpriteCommand($staging_mp4, $sprite_file);
         $this->emit('phase', ['phase' => 'transcode']);
         $this->emit('sprite_progress', ['pct' => 0, 'label' => 'Memproses HLS & sprite...']);
-        $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-        $hls_proc = proc_open($hls_cmd, $desc, $hls_pipes, null, $hls_env);
-        if (!is_resource($hls_proc)) {
+        $paralel = $this->runParallelFfmpeg(
+            [
+                'hls' => [
+                    'cmd' => $hls_cmd,
+                    'env' => $hls_env,
+                    'label' => 'ffmpeg HLS (' . $folder_name . ')',
+                    'task_type' => 'transcode_dl',
+                    'queue_id' => $queue_id,
+                    'pid_file' => true,
+                    'required' => true,
+                    'progress' => true,
+                    'max_pct' => 99,
+                ],
+            ]
+            + ($sprite_data ? [
+                'sprite' => [
+                    'cmd' => $sprite_data['cmd'],
+                    'env' => $sprite_data['env'],
+                    'label' => 'ffmpeg sprite (' . $folder_name . ')',
+                    'task_type' => '',
+                    'queue_id' => 0,
+                    'pid_file' => false,
+                    'required' => false,
+                    'progress' => false,
+                    'max_pct' => 99,
+                ],
+            ] : []),
+            max(120, (int)($file_dur * 2)),
+            $file_dur
+        );
+
+        if (!$paralel['hls']['started']) {
             $this->removeDir($ram_folder);
             $this->removeDir($work_folder);
             $this->emit('error', ['message' => 'Gagal menjalankan ffmpeg untuk transcode HLS. Cek instalasi ffmpeg.']);
             return "";
         }
-        fclose($hls_pipes[0]);
-        fclose($hls_pipes[1]);
-        $hls_out = $hls_pipes[2];
-        $hls_status = proc_get_status($hls_proc);
-        $hls_pid = (int)($hls_status['pid'] ?? 0);
-        $this->trackChildProcess($hls_pid, false, 'ffmpeg HLS (' . $folder_name . ')');
-        $this->writePidFile('transcode_dl', $queue_id, $hls_pid);
-        $sprite_proc = null;
-        $sprite_pid = 0;
-        $sprite_out = null;
-        $sprite_pipes = [];
-        if ($sprite_data) {
-            $sprite_proc = proc_open($sprite_data['cmd'], $desc, $sprite_pipes, null, $sprite_data['env']);
-            if (is_resource($sprite_proc)) {
-                fclose($sprite_pipes[0]);
-                fclose($sprite_pipes[1]);
-                $sprite_out = $sprite_pipes[2];
-
-                $sp_status = proc_get_status($sprite_proc);
-                $sprite_pid = (int)($sp_status['pid'] ?? 0);
-                $this->trackChildProcess($sprite_pid, false, 'ffmpeg sprite (' . $folder_name . ')');
-            } else {
-                error_log("[MEeL] finalizeVideo: gagal jalankan sprite ffmpeg — melanjutkan tanpa sprite");
-                $sprite_data = null;
-            }
+        if (array_key_exists('sprite', $paralel) && !$paralel['sprite']['started']) {
+            error_log("[MEeL] finalizeVideo: gagal jalankan sprite ffmpeg — melanjutkan tanpa sprite");
+            $sprite_data = null;
         }
-        stream_set_timeout($hls_out, 5);
-        if ($sprite_out) stream_set_timeout($sprite_out, 5);
-        $start_all = time();
-        $hls_timeout = max(120, (int)($file_dur * 2));
-        $hls_done = false;
-        $sprite_done = !$sprite_data;
-        $hls_exit = null;
-        $sprite_exit = null;
-        while (!$hls_done || !$sprite_done) {
-            if (time() - $start_all > $hls_timeout) {
-                error_log("[MEeL] finalizeVideo: parallel processing timeout setelah {$hls_timeout}s");
-                foreach ($hls_pipes as $p) {
-                    if (is_resource($p)) fclose($p);
-                }
-                if (!$hls_done) $this->terminateChildProcess($hls_pid, 'ffmpeg HLS timeout', false);
-                if (!$sprite_done && $sprite_pid) {
-                    foreach ($sprite_pipes as $p) {
-                        if (is_resource($p)) fclose($p);
-                    }
-                    $this->terminateChildProcess($sprite_pid, 'ffmpeg sprite timeout', false);
-                }
-                break;
-            }
-            $read = [];
-            if (!$hls_done) $read[] = $hls_out;
-            if (!$sprite_done) $read[] = $sprite_out;
-            $write = $except = null;
-            $changed = @stream_select($read, $write, $except, 1);
-            if ($changed === false || $changed === 0) {
-                if (!$hls_done && !$this->isProcessAlive($hls_pid)) $hls_done = true;
-                if (!$sprite_done && $sprite_pid && !$this->isProcessAlive($sprite_pid)) $sprite_done = true;
-                continue;
-            }
-            foreach ($read as $stream) {
-                $line = fgets($stream);
-                if ($line === false) {
-                    if ($stream === $hls_out) {
-                        $hls_done = true;
-                    } elseif ($stream === $sprite_out) {
-                        $sprite_done = true;
-                    }
-                    continue;
-                }
-                if ($stream === $hls_out && preg_match('/time=((\d+):(\d+):(\d+)\.(\d+))/', $line, $m) && $file_dur > 0) {
-                    $cur = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
-                    $pct = min(99, round(($cur / $file_dur) * 100));
-                    $this->emit('transcode_progress', ['pct' => $pct]);
-                }
-            }
-        }
-        foreach ($hls_pipes as $p) {
-            if (is_resource($p)) fclose($p);
-        }
-        $hls_exit = proc_close($hls_proc);
-        $this->untrackChildProcess($hls_pid);
-        $this->removePidFile('transcode_dl', $queue_id);
-
-        if ($sprite_proc && is_resource($sprite_proc)) {
-            foreach ($sprite_pipes as $p) {
-                if (is_resource($p)) fclose($p);
-            }
-            $sprite_exit = proc_close($sprite_proc);
-            $this->untrackChildProcess($sprite_pid);
-        }
+        // CATATAN: exit code HLS sengaja tidak dipakai untuk memutuskan
+        // sukses/tidak. Success dinilai dari artefak: `.m3u8` harus ada dan
+        // tidak nol (penentuannya di bawah). Ini sudah begitu sejak sebelum
+        // T19 -- nilainya hanya dicatat, tidak pernah dibaca. Jangan
+        // menambahkan `if ($hls_exit !== 0) return ""` tanpa dipikirkan:
+        // ffmpeg bisa exit non-nol sementara segment HLS-nya tetap lengkap,
+        // jadi exit code bukan indikator yang bisa diandalkan di sini.
+        $hls_exit = $paralel['hls']['exit'];
+        $sprite_exit = $paralel['sprite']['exit'] ?? null;
         if (!file_exists($work_m3u8) || filesize($work_m3u8) === 0) {
             $this->removeDir($ram_folder);
             $this->removeDir($work_folder);
@@ -536,6 +488,256 @@ class DownloadService extends TranscoderBase
         $this->emit('sprite_progress', ['pct' => 100, 'label' => 'Sprite & VTT selesai.']);
         $this->removeFile($staging_mp4);
         $hdd_target_folder = MEEL_HDD_VIDEO_DIR . $folder_name . "/";
+        if (!$this->persistVideoToHdd(
+            $hdd_target_folder,
+            $work_folder,
+            $db_filename,
+            $db_thumb,
+            $thumb_generated,
+            $title,
+            $description,
+            $duration
+        )) {
+            return "";
+        }
+        $this->emit('done', ['title' => $title, 'url' => 'index.php']);
+        return "DONE:" . $title;
+    }
+    /**
+     * Jalankan beberapa proses ffmpeg secara paralel, awasi sampai
+     * semuanya selesai, lalu rapikan.
+     *
+     * Dipisah dari `finalizeVideo()` pada T19. Fass itu 268 baris dengan
+     * sembilan fase; supervise-proses ini adalah sepertiga dari itu dan
+     * bagian yang paling rawan salah -- kebocoran pipe, anak proses yang
+     * tidak pernah di-reap (zombie plus PID file yang tak pernah dihapus),
+     * dan jalur timeout yang meninggalkan ffmpeg berjalan di belakang.
+     *
+     * KENAPA BUKAN KELAS BARU (`FfmpegProcess`)
+     * ---------------------------------------
+     * Semua hook yang dibutuhkan -- `trackChildProcess()`,
+     * `untrackChildProcess()`, `terminateChildProcess()`, `writePidFile()`,
+     * `removePidFile()`, `isProcessAlive()` -- ber-`protected` di
+     * `TranscoderBase`, dan daftar anak proses (`$childProcesses`) adalah
+     * state per-instance yang dipindai `terminateAllProcesses()` saat
+     * shutdown.
+     *
+     * Kelas terpisah tidak bisa menjangkau itu tanpa melebarkannya jadi
+     * `public` atau memindahkan daftar anak ke collaborator bersama.
+     * Dua-duanya jatuh persis di mekanisme yang tugasnya MENCEGAH proses
+     * ffmpeg yatim ketika request mati di tengah transcode. Menukar
+     * itu dengan tata letak berkas yang lebih rapi adalah kerugian yang
+     * besar, jadi tidak diambil.
+     *
+     * Seam-nya dibiarkan: begitu ada harness uji yang bisa mengujinya
+     * ujung ke ujung, kelasnya bisa diekstrak tanpa menurunkan logikanya
+     * dari nol.
+     *
+     * @param array<string, array{
+     *     cmd: array<int, string>,      // argumen untuk proc_open
+     *     env: array<string, string>,   // environment untuk proc_open
+     *     label: string,                // untuk log dan terminateAllProcesses()
+     *     task_type: string,            // prefix PID file
+     *     queue_id: int,                // id antrean untuk PID file
+     *     pid_file: bool,               // tulis PID file atau tidak
+     *     required: bool,               // gagal start = pekerjaan selesai
+     *     progress: bool,               // emit transcode_progress dari stderr
+     *     max_pct: int                  // plafon persentase progres
+     * }> $jobs
+     * @param int $timeoutSeconds batas waktu total semua proses
+     * @param int $fileDur durasi media, untuk meng-hitung persen progres
+     * @return array<string, array{started: bool, pid: int, exit: int|null}>
+     */
+    private function runParallelFfmpeg(array $jobs, int $timeoutSeconds, int $fileDur): array
+    {
+        $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+        $state = [];
+
+        foreach ($jobs as $key => $job) {
+            $pipes = [];
+            $proc = proc_open($job['cmd'], $desc, $pipes, null, $job['env']);
+
+            if (!is_resource($proc)) {
+                error_log("[MEeL] runParallelFfmpeg: gagal menjalankan {$job['label']}");
+                $state[$key] = ['started' => false, 'pid' => 0, 'exit' => null, 'done' => true];
+                if ($job['required']) {
+                    // Jangan melepas job sisanya -- proses yang tidak
+                    // diperlukan jangan sampai sempat jalan.
+                    break;
+                }
+                continue;
+            }
+
+            fclose($pipes[0]);
+            fclose($pipes[1]);
+            $stream = $pipes[2];
+            stream_set_timeout($stream, 5);
+
+            $pid = (int) (proc_get_status($proc)['pid'] ?? 0);
+            $this->trackChildProcess($pid, false, $job['label']);
+            if ($job['pid_file']) {
+                $this->writePidFile($job['task_type'], $job['queue_id'], $pid);
+            }
+
+            $state[$key] = [
+                'started' => true,
+                'proc' => $proc,
+                'pipes' => $pipes,
+                'stream' => $stream,
+                'pid' => $pid,
+                'exit' => null,
+                'done' => false,
+            ];
+        }
+
+        $startAll = time();
+        while (true) {
+            $pending = [];
+            foreach ($state as $key => $s) {
+                if ($s['started'] && !$s['done']) {
+                    $pending[$key] = $s;
+                }
+            }
+            if ($pending === []) {
+                break;
+            }
+
+            if (time() - $startAll > $timeoutSeconds) {
+                error_log("[MEeL] runParallelFfmpeg: parallel processing timeout setelah {$timeoutSeconds}s");
+                foreach ($state as $s) {
+                    if (!$s['started'] || $s['done']) {
+                        continue;
+                    }
+                    $this->closePipes($s);
+                    $this->terminateChildProcess($s['pid'], $s['label'] . ' timeout', false);
+                }
+                break;
+            }
+
+            // Peta stream -> kunci job. array_column TIDAK bisa dipakai di sini:
+            // ia menyimpan ulang indeks, jadi array_search mengembalikan posisi
+            // integer, bukan kunci aslinya -- dan kunci job itu string ('hls',
+            // 'sprite'). Peta stream -> kunci dibuat eksplisit.
+            $streamToKey = [];
+            $read = [];
+            foreach ($pending as $key => $s) {
+                $streamToKey[(int) $s['stream']] = $key;
+                $read[] = $s['stream'];
+            }
+            $write = $except = null;
+            $changed = @stream_select($read, $write, $except, 1);
+
+            if ($changed === false || $changed === 0) {
+                foreach ($pending as $key => $s) {
+                    if (!$this->isProcessAlive($s['pid'])) {
+                        $state[$key]['done'] = true;
+                    }
+                }
+                continue;
+            }
+
+            foreach ($read as $stream) {
+                $key = $streamToKey[(int) $stream] ?? null;
+                if ($key === null) {
+                    continue;
+                }
+                $line = fgets($stream);
+                if ($line === false) {
+                    $state[$key]['done'] = true;
+                    continue;
+                }
+                if ($jobs[$key]['progress'] ?? false) {
+                    $this->emitFfmpegProgress($line, $fileDur, $jobs[$key]['max_pct']);
+                }
+            }
+        }
+
+        $result = [];
+        foreach ($state as $key => $s) {
+            if (!$s['started']) {
+                $result[$key] = ['started' => false, 'pid' => 0, 'exit' => null];
+                continue;
+            }
+            $this->closePipes($s);
+            $result[$key] = [
+                'started' => true,
+                'pid' => $s['pid'],
+                'exit' => proc_close($s['proc']),
+            ];
+            $this->untrackChildProcess($s['pid']);
+            if ($jobs[$key]['pid_file']) {
+                $this->removePidFile($jobs[$key]['task_type'], $jobs[$key]['queue_id']);
+            }
+        }
+
+        // Job yang tidak sempat dijalankan karena `required` gagal di
+        // tengah jalan harus tetap punya entri, kalau tidak caller tidak
+        // bisa membedakan "tidak diminta" dari "gagal start".
+        foreach ($jobs as $key => $unused) {
+            $result[$key] ??= ['started' => false, 'pid' => 0, 'exit' => null];
+        }
+
+        return $result;
+    }
+
+    /** Tutup semua pipe proses anak yang masih terbuka. */
+    private function closePipes(array $s): void
+    {
+        foreach ($s['pipes'] as $p) {
+            if (is_resource($p)) {
+                fclose($p);
+            }
+        }
+    }
+
+    /**
+     * Terjemahkan baris stderr ffmpeg `time=HH:MM:SS.ss` menjadi
+     * persentase progres.
+     */
+    private function emitFfmpegProgress(string $line, int $fileDur, int $maxPct): void
+    {
+        if ($fileDur <= 0) {
+            return;
+        }
+        if (!preg_match('/time=((\d+):(\d+):(\d+)\.(\d+))/', $line, $m)) {
+            return;
+        }
+        $cur = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
+        $pct = min($maxPct, round(($cur / $fileDur) * 100));
+        $this->emit('transcode_progress', ['pct' => $pct]);
+    }
+    /**
+     * Pindahkan hasil kerja dari folder kerja ke HDD, lalu catat ke
+     * database dalam satu transaksi.
+     *
+     * Dipisah dari `finalizeVideo()` pada T19. Fase ini punya satu
+     * sifat penting: kalau ada apa pun yang gagal di tengah, ia TIDAK
+     * boleh meninggalkan sistem dalam keadaan setengah jadi -- file sudah
+     * pindah tapi baris database belum ada, atau sebaliknya. Karena itu
+     * `moveFile()` melempar, bukan mengembalikan false, dan `catch`
+     * melakukan rollback database DITAMBAH pembatalan efek filesystem.
+     *
+     * Urutan pembatalannya penting dan tidak boleh dibalik:
+     *   1. rollback transaksi (baris database tidak jadi ada)
+     *   2. `rollbackFinalizeVideo()` (hapus folder target + thumbnail)
+     *   3. hapus folder kerja
+     *
+     * Kenapa dibungkus begini: `finalizeVideo()` sebagai pemanggil
+     * tidak perlu tahu detailnya. Ia hanya perlu tahu berhasil atau
+     * tidak; pesan errornya sudah di-emit di dalam.
+     *
+     * @return bool true bila sudah commit, false bila sudah di-rollback
+     */
+    private function persistVideoToHdd(
+        string $hdd_target_folder,
+        string $work_folder,
+        string $db_filename,
+        string $db_thumb,
+        bool $thumb_generated,
+        string $title,
+        string $description,
+        int $duration
+    ): bool {
         $this->conn->begin_transaction();
         try {
             if (!is_dir($hdd_target_folder)) {
@@ -584,16 +786,15 @@ class DownloadService extends TranscoderBase
             if (function_exists('meel_invalidate_media_stats_cache')) {
                 meel_invalidate_media_stats_cache('video');
             }
+            return true;
         } catch (\Throwable $e) {
             $this->conn->rollback();
             $this->rollbackFinalizeVideo($hdd_target_folder, $db_thumb, $thumb_generated);
             $this->removeDir($work_folder);
             error_log("[MEeL] finalizeVideo GAGAL: " . $e->getMessage());
             $this->emit('error', ['message' => $e->getMessage()]);
-            return "";
+            return false;
         }
-        $this->emit('done', ['title' => $title, 'url' => 'index.php']);
-        return "DONE:" . $title;
     }
     private function rollbackFinalizeVideo(
         string $hdd_target_folder,

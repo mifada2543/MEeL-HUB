@@ -4,6 +4,7 @@ define('EXCLUDE_DIRS', ['vendor', 'node_modules', '.git', 'tests', 'temp', 'asse
 define('EXCLUDE_FILES', ['config.example.php', 'settings.example.php', 'test.php', '.gitkeep']);
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/lib/transcoder_checks.php';
 
 $GLOBALS['total_tests'] = 0;
 $GLOBALS['passed'] = 0;
@@ -969,16 +970,7 @@ function testAdminContextAndPipelineHardening(): void {
         record('modules/core/Transcoder.php — FILE TIDAK DITEMUKAN!', false, false);
     } else {
         $tc = transcoderCombinedSource();
-        $tcChecks = [
-            'proc_open array (finalizeVideo)' => '/proc_open\(\$hls_cmd/',
-            'proc_open array (transcodeVideo)' => '/proc_open\(\$tc_cmd/',
-            'env vars via $env (LD_LIBRARY_PATH)' => "/'LD_LIBRARY_PATH'/",
-            'env vars via $env (PATH)' => "/'PATH'/",
-            'putenv() untuk processDownload' => "/putenv\('PATH/",
-            'marker file anti-duplikat transcode' => '/marker_file/',
-            'folder naming lock' => '/meel_transcode_folder\.lock/',
-            'stderr pipe untuk progress FFmpeg' => '/\$hls_pipes\[2\]/',
-        ];
+        $tcChecks = meel_transcoder_check_patterns();
 
         foreach ($tcChecks as $name => $pat) {
             if (preg_match($pat, $tc)) {
