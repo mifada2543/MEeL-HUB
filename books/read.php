@@ -4,6 +4,7 @@ require_once '../auth/auth.php';
 require_once '../auth/config.php';
 
 require_once '../modules/media/MediaLibrary.php';
+require_once '../modules/media/BookRepository.php';
 
 if (!isset($_GET['id']) || !ctype_digit($_GET['id'])) {
     header("Location: ..");

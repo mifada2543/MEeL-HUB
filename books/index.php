@@ -3,18 +3,15 @@
 require_once '../modules/core/helpers.php';
 require_once '../auth/auth.php';
 require_once '../auth/config.php';
-
 require_once '../modules/media/MediaLibrary.php';
-
+require_once '../modules/media/BookRepository.php';
 $repo = new BookRepository($conn);
 $u_id = (int)$_SESSION['user_id'];
 $role = $repo->getUserRole($u_id);
-
 $raw_filter = $_GET['type'] ?? 'all';
 $filter = in_array($raw_filter, ['manga', 'pdf'], true) ? $raw_filter : 'all';
 $bookPage = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $bookPerPage = 24;
-
 $meta_books = $repo->getBooksPaginated($filter, $bookPage, $bookPerPage);
 $books = $meta_books['data'];
 $total = $meta_books['total'];
@@ -39,7 +36,7 @@ $totalPagesBooks = $meta_books['total_pages'];
 </head>
 
 <body class="text-gray-400 min-h-screen">
-<?php include __DIR__ . '/../partials/skip-link.php'; ?>
+    <?php include __DIR__ . '/../partials/skip-link.php'; ?>
 
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-3 sm:px-6 xl:px-10 2xl:px-16 h-14 flex items-center justify-between gap-2 sm:gap-4">
@@ -51,15 +48,13 @@ $totalPagesBooks = $meta_books['total_pages'];
                     MEeL<span class="text-green-500">Buku</span>
                 </span>
             </a>
-
             <form
-                    hx-get="search"
-                    hx-trigger="submit"
-                    hx-target="#book-container"
-                    hx-swap="innerHTML"
-                    hx-indicator="#b-search-indicator"
-                    class="flex-1 max-w-sm flex items-center gap-1.5 sm:gap-2">
-
+                hx-get="search"
+                hx-trigger="submit"
+                hx-target="#book-container"
+                hx-swap="innerHTML"
+                hx-indicator="#b-search-indicator"
+                class="flex-1 max-w-sm flex items-center gap-1.5 sm:gap-2">
                 <input type="hidden" name="type" value="<?= htmlspecialchars($filter) ?>">
                 <div class="relative flex-1 group">
                     <i data-lucide="search" class="absolute left-2.5 sm:left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-green-500 transition-colors"></i>
@@ -192,7 +187,8 @@ $totalPagesBooks = $meta_books['total_pages'];
         </div>
     <?php endif; ?>
     <?php include '../partials/footer.php'; ?>
-    <script>        lucide.createIcons();
+    <script>
+        lucide.createIcons();
 
         (function() {
             var banner = document.getElementById('continueBanner');
@@ -223,18 +219,20 @@ $totalPagesBooks = $meta_books['total_pages'];
                 linkEl.href = '<?= base_url('/books/read?id=') ?>' + data.id + (data.ch ? '&ch=' + encodeURIComponent(data.ch) : '');
                 banner.classList.add('visible');
 
-            } catch(e) {
+            } catch (e) {
                 console.warn('[Continue] Gagal baca progress:', e);
             }
 
             if (closeEl) {
                 closeEl.addEventListener('click', function() {
                     banner.classList.remove('visible');
-                    try { localStorage.removeItem('meel_book_progress'); } catch(e) {}
+                    try {
+                        localStorage.removeItem('meel_book_progress');
+                    } catch (e) {}
                 });
             }
         })();
-</script>
+    </script>
 </body>
 
 </html>

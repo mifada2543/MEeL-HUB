@@ -60,8 +60,8 @@ function testClassLoading(): void {
         'SsrfGuard' => 'modules/auth/SsrfGuard.php',
         'ValidatingProxy' => 'modules/auth/ValidatingProxy.php',
         'UpdateManager' => 'controllers/system/UpdateManager.php',
-        'BookRepository' => 'modules/media/MediaLibrary.php',
-        'BookUploader' => 'modules/media/MediaLibrary.php',
+        'BookRepository' => 'modules/media/BookRepository.php',
+        'BookUploader' => 'modules/media/BookUploader.php',
     ];
 
     foreach ($classes as $name => $file) {

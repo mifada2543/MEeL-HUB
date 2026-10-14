@@ -3,6 +3,8 @@ require_once '../auth/auth.php';
 require_once '../auth/config.php';
 
 require_once '../modules/media/MediaLibrary.php';
+require_once '../modules/media/BookRepository.php';
+require_once '../modules/media/BookUploader.php';
 
 $repo = new BookRepository($conn);
 $user_id = (int)$_SESSION['user_id'];
