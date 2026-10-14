@@ -184,7 +184,16 @@ MEeL/
 
 ## 🧪 Testing
 
-> 369+ test cases (288 unit + 81 integration, functional, security) — executed automatically on every push via GitHub Actions CI.
+> 600+ test cases (560+ unit + 100+ integration, plus the functional & security suites) — executed automatically on every push via GitHub Actions CI.
+>
+> Figures refreshed 2026-10-14. If they look off, measure them yourself instead of trusting this line:
+>
+> ```bash
+> vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'  | tail -3
+> vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests' | tail -3
+> ```
+>
+> The test count grows over time; hand-written numbers in docs go stale quickly.
 
 ```bash
 composer install
