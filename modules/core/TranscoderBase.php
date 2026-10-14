@@ -204,11 +204,25 @@ class TranscoderBase
 
     protected function isProcessAlive(int $pid): bool
     {
-        if ($pid <= 0) return false;
+        return self::pidIsAlive($pid);
+    }
+
+    /**
+     * Varian statik dari `isProcessAlive()`.
+     *
+     * Dipisah karena `cleanupStalePidFiles()` adalah `static` dan tidak
+     * punya `$this`. Daripada mengubah method instance yang sudah dipakai
+     * jadi static, keduanya berbagi implementasi ini.
+     */
+    protected static function pidIsAlive(int $pid): bool
+    {
+        if ($pid <= 0) {
+            return false;
+        }
         if (function_exists('posix_kill')) {
             return posix_kill($pid, 0);
         }
-        return (bool)@shell_exec("kill -0 $pid 2>/dev/null");
+        return (bool) @shell_exec("kill -0 $pid 2>/dev/null");
     }
 
     protected function writePidFile(string $taskType, int $queueId, int $pid): void
@@ -344,7 +358,10 @@ class TranscoderBase
         error_log("[MEeL] killByPidFile: killed {$taskType}#{$queueId} (PID {$pid}" . ($isGroupLeader ? ', process group' : '') . ')');
         return true;
     }
-    public static function cleanupStalePidFiles(): int
+    /**
+     * @return int jumlah berkas yang dibersihkan
+     */
+    public static function cleanupStalePidFiles(int $maxAgeSeconds = 1800): int
     {
         $cleaned = 0;
         foreach (meel_pid_dir_candidates() as $dir) {
@@ -352,8 +369,16 @@ class TranscoderBase
                 continue;
             }
             foreach (glob($dir . '/*.pid') ?: [] as $file) {
-                if (time() - @filemtime($file) > 1800) {
-                    @unlink($file);
+                if ((time() - (int) @filemtime($file)) <= $maxAgeSeconds) {
+                    continue;
+                }
+
+                $raw = trim((string) @file_get_contents($file));
+                if ($raw !== '' && ctype_digit($raw) && self::pidIsAlive((int) $raw)) {
+                    continue;   // job masih jalan -- jangan sentuh
+                }
+
+                if (@unlink($file)) {
                     $cleaned++;
                 }
             }
