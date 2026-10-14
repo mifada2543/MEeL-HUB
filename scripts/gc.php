@@ -67,6 +67,7 @@ if (!$yes) {
     echo "\n";
     echo "  Akan dijalankan:\n";
     echo "    • GC normal: scan storage, rate-limit, pending delete\n";
+    echo "    • Bersihkan PID file yatim dari proses yang mati mendadak\n";
     if ($cleanCache) echo "    • Bersihkan cache expired + .tmp.* yatim\n";
     if ($runOnly)    echo "    • --run-only: HANYA ringan (tanpa DB maintenance)\n";
     echo "\n";
@@ -81,6 +82,17 @@ if (!$yes) {
 
 GarbageCollector::run();
 echo "[MEeL gc] scan storage + rate-limit selesai\n";
+
+// Bersihkan PID file yatim. `killByPidFile()` membuat berkas `.pid` saat
+// job mulai dan menghapusnya saat selesai; kalau proses dibunuh mendadak
+// (OOM, kill -9, crash), berkasnya tertinggal tanpa ada yang membersihkannya.
+// Tidak butuh database, jadi masuk bagian ringan -- tetap jalan pada
+// `--run-only`.
+require_once __DIR__ . '/../modules/core/TranscoderBase.php';
+$stalePids = TranscoderBase::cleanupStalePidFiles();
+if ($stalePids > 0) {
+    echo "[MEeL gc] PID file yatim dibersihkan: {$stalePids} file\n";
+}
 
 if ($cleanCache) {
     $cleaned = GarbageCollector::cleanCacheDirectory();
