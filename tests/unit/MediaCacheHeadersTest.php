@@ -132,7 +132,11 @@ class MediaCacheHeadersTest extends TestCase
 
     public function testConditionalResponseIsSkippedForRangeRequests(): void
     {
-        $src = file_get_contents(MEEL_ROOT . '/modules/core/helpers/storage.php');
+        // T27: meel_serve_media_file() pindah ke storage_stream.php (2026-10-14).
+        // Test ini mengunci URUTAN blok lewat posisi string, jadi file yang
+        // dibaca harus file yang benar-benar memuat fungsi itu -- bukan
+        // storage.php yang sekarang hanya aggregator.
+        $src = file_get_contents(MEEL_ROOT . '/modules/core/helpers/storage_stream.php');
 
         $posIsPartial = strpos($src, '$isPartial = false;');
         $pos304 = strpos($src, 'http_response_code(304)');
@@ -153,7 +157,7 @@ class MediaCacheHeadersTest extends TestCase
 
     public function testBothServePathsEmitValidatorHeaders(): void
     {
-        $src = file_get_contents(MEEL_ROOT . '/modules/core/helpers/storage.php');
+        $src = file_get_contents(MEEL_ROOT . '/modules/core/helpers/storage_stream.php');
 
         $this->assertGreaterThanOrEqual(
             2,
