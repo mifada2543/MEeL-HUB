@@ -39,7 +39,7 @@ class ActivityLoggerTest extends TestCase
     {
         $prop = new ReflectionProperty(ActivityLogger::class, 'hasRun');
         $prop->setAccessible(true);
-        $prop->setValue(false);
+        $prop->setValue(null, false);
     }
 
     public function testSkipTelemetryForHtmxRequest(): void

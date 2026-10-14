@@ -131,21 +131,178 @@ class TestCountDocumentationTest extends TestCase
      * Error log tidak boleh penuh deprecation — ini yang diam-diam sekali
      * menutupi bug (lihat T29: deprecation System.php tersembunyi di
      * balik deprecation DbTestHelper.php).
+     *
+     * Versi pertama guard ini hanya memeriksa SATU file
+     * (`tests/DbTestHelper.php`) dan SATU literal (`setValue([])`).
+     * Padahal ada 11 call site lain di 5 file test yang bentuk 1-argumennya
+     * sama persis — semuanya terhadap properti statis, jadi semuanya
+     * memang memicu deprecation PHP 8.3 dan semuanya sudah diperbaiki.
+     *
+     * Guard sekarang memindai SELURUH repo (di luar vendor) dan poked
+     * bentuk 1-argumen secara umum, bukan hanya literal `[]`. Memakai
+     * balance parens, bukan regex, supaya argumen bertanda kurung —mis.
+     * `setValue(MEEL_ROOT . '/temp/x/')`— tidak lolos salah baca.
      */
-    public function testNoDeprecatedSingleArgumentSetValueInTestHelper(): void
+    public function testNoDeprecatedSingleArgumentSetValueAnywhere(): void
     {
-        $path = MEEL_ROOT . '/tests/DbTestHelper.php';
-        if (!is_file($path)) {
-            $this->markTestSkipped('tests/DbTestHelper.php tidak ada');
-        }
-        $src = (string)file_get_contents($path);
+        $offenders = [];
+        $root = MEEL_ROOT;
+        $skipDirs = ['.git', 'vendor', 'node_modules', 'logs', 'temp', 'storage', 'data_drive'];
 
-        $this->assertDoesNotMatchRegularExpression(
-            '/->setValue\(\s*\[\]/',
-            $src,
-            'ReflectionProperty::setValue() 1-argumen deprecated di PHP 8.3. '
-            . 'Pakai setStaticPropertyValue() (PHP >= 8.3) atau setValue(null, ...).'
+        $it = new RecursiveIteratorIterator(
+            new RecursiveCallbackFilterIterator(
+                new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+                static function (SplFileInfo $f) use ($skipDirs): bool {
+                    if (!$f->isDir()) {
+                        return true;
+                    }
+                    return !in_array($f->getFilename(), $skipDirs, true);
+                }
+            )
         );
+
+        foreach ($it as $file) {
+            /** @var SplFileInfo $file */
+            if (!$file->isFile() || strtolower($file->getExtension()) !== 'php') {
+                continue;
+            }
+            $src = self::stripNonCode((string)file_get_contents($file->getPathname()));
+            if (!str_contains($src, '->setValue(')) {
+                continue;
+            }
+
+            foreach (self::singleArgumentSetValueLines($src) as $line) {
+                $offenders[] = $file->getPathname() . ':' . $line;
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $offenders,
+            "ReflectionProperty::setValue() 1-argumen deprecated di PHP 8.3 (jadi error di PHP 9).\n"
+            . "Pakai setValue(null, ...) untuk properti statis.\n"
+            . "Terdapat di:\n  - " . implode("\n  - ", $offenders)
+        );
+    }
+
+    /**
+     * Kosongkan isi komentar dan string, sisakan baris baru apa adanya.
+     *
+     * Tanpa ini guard membaca source-nya sendiri: file ini pun memuat
+     * `->setValue(` di dalam string dan docblock-nya, sehingga setiap run
+     * melaporkan dirinya sendiri sebagai pelanggaran.
+     *
+     * Nomor baris tetap terjaga karena karakter diganti spasi, bukan dihapus.
+     */
+    private static function stripNonCode(string $src): string
+    {
+        $len = strlen($src);
+        $out = '';
+        $i = 0;
+
+        while ($i < $len) {
+            $c = $src[$i];
+            $n = $src[$i + 1] ?? '';
+
+            // komentar satu baris
+            if ($c === '/' && $n === '/') {
+                while ($i < $len && $src[$i] !== "\n") {
+                    $out .= ' ';
+                    $i++;
+                }
+                continue;
+            }
+            if ($c === '#' && ($src[$i + 1] ?? '') !== '[') {
+                while ($i < $len && $src[$i] !== "\n") {
+                    $out .= ' ';
+                    $i++;
+                }
+                continue;
+            }
+            // komentar blok
+            if ($c === '/' && $n === '*') {
+                $out .= '  ';
+                $i += 2;
+                while ($i < $len && !($src[$i] === '*' && ($src[$i + 1] ?? '') === '/')) {
+                    $out .= $src[$i] === "\n" ? "\n" : ' ';
+                    $i++;
+                }
+                if ($i < $len) {
+                    $out .= '  ';
+                    $i += 2;
+                }
+                continue;
+            }
+            // string literal
+            if ($c === "'" || $c === '"') {
+                $quote = $c;
+                $out .= ' ';
+                $i++;
+                while ($i < $len && $src[$i] !== $quote) {
+                    if ($src[$i] === '\\') {
+                        $out .= $src[$i] === "\n" ? "\n" : ' ';
+                        $i++;
+                        if ($i < $len) {
+                            $out .= $src[$i] === "\n" ? "\n" : ' ';
+                            $i++;
+                        }
+                        continue;
+                    }
+                    $out .= $src[$i] === "\n" ? "\n" : ' ';
+                    $i++;
+                }
+                if ($i < $len) {
+                    $out .= ' ';
+                    $i++;
+                }
+                continue;
+            }
+
+            $out .= $c;
+            $i++;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Nomor baris setiap `->setValue(` yang HANYA punya satu argumen.
+     *
+     * @return int[]
+     */
+    private static function singleArgumentSetValueLines(string $src): array
+    {
+        $lines = [];
+        $len = strlen($src);
+
+        if (preg_match_all('/->setValue\(/', $src, $m, PREG_OFFSET_CAPTURE)) {
+            foreach ($m[0] as [$needle, $offset]) {
+                $i = $offset + strlen($needle) - 1;   // posisi "("
+                $depth = 0;
+                $hasTopLevelComma = false;
+
+                for (; $i < $len; $i++) {
+                    $c = $src[$i];
+                    if ($c === '(' || $c === '[') {
+                        $depth++;
+                    } elseif ($c === ')' || $c === ']') {
+                        $depth--;
+                        if ($depth === 0) {
+                            break;
+                        }
+                    } elseif ($c === ',' && $depth === 1) {
+                        $hasTopLevelComma = true;
+                    }
+                }
+
+                if ($depth !== 0 || $hasTopLevelComma) {
+                    continue;   // tidak tertutup, atau memang 2+ argumen
+                }
+                $lines[] = substr_count(substr($src, 0, $offset), "\n") + 1;
+            }
+        }
+
+        return $lines;
     }
 
     public function testUptimeMathDoesNotUseFloatModulo(): void
