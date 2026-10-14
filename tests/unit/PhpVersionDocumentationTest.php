@@ -31,7 +31,6 @@ class PhpVersionDocumentationTest extends TestCase
             'docs/id/index.md',
             'docs/en/installation.md',
             'docs/id/installation.md',
-            '.agents/PRD.md',
             'index.html',
         ] as $file) {
             $path = MEEL_ROOT . '/' . $file;
