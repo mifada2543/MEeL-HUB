@@ -1,0 +1,17 @@
+{
+  "name": "meel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build toolchain MEeL. Repo ini sengaja tidak punya front-end bundler: CSS modular dibangun oleh scripts/build-css-bundle.php, dan Tailwind via CLI di bawah.",
+  "scripts": {
+    "css:build": "tailwindcss -c tailwind.config.js -i tools/tailwind/input.css -o assets/css/tailwind.min.css --minify",
+    "css:check": "php scripts/ci/tailwind-coverage-check.php --rebuild",
+    "css:audit": "php scripts/ci/tailwind-coverage-check.php"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.19"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

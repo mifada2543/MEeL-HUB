@@ -21,6 +21,7 @@
     "test:functional": "php tests/functional_test.php",
     "test:deploy": "php tests/check_deploy.php",
     "test:migration": "php scripts/ci/schema-parity-check.php",
+    "test:tailwind": "php scripts/ci/tailwind-coverage-check.php --rebuild",
     "build:css": "php scripts/build-css-bundle.php",
     "lint:shell": "shellcheck -S warning $(find . -name '*.sh' -not -path './vendor/*' -not -path './node_modules/*' -not -path './.git/*' | sort)"
   },
