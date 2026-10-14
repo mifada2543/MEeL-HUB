@@ -508,12 +508,11 @@ if (isset($_GET['content_only'])) {
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
-        document.body.addEventListener('htmx:afterOnLoad', function() {
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
-        });
+        // Ikon setelah swap htmx ditangani oleh shared/htmx-lucide.js
+        // (T23) — listener manual di sini dihapus supaya tidak ada
+        // dua tempat yang bisa berbeda.
     </script>
+    <script src="../assets/js/shared/htmx-lucide.js?v=<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
 </body>
 
 </html>

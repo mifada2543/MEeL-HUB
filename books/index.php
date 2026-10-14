@@ -35,6 +35,7 @@ $totalPagesBooks = $meta_books['total_pages'];
     <?php meel_css_links('books', '../assets/css/books'); ?>
     <link rel="stylesheet" href="../assets/css/books/index/main.css<?= meel_asset_version('assets/css/books/index/main.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
+    <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
 </head>
 
 <body class="text-gray-400 min-h-screen">
@@ -233,10 +234,6 @@ $totalPagesBooks = $meta_books['total_pages'];
                 });
             }
         })();
-
-        document.body.addEventListener('htmx:afterOnLoad', function() {
-            lucide.createIcons();
-        });
 </script>
 </body>
 
