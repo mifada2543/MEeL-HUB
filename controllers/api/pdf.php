@@ -3,6 +3,7 @@ define('MEEL_API_CONTEXT', true);
 require_once '../../auth/auth.php';
 require_once '../../auth/config.php';
 require_once '../../modules/media/MediaLibrary.php';
+require_once '../../modules/media/BookRepository.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id < 1) {

@@ -25,7 +25,10 @@ class BookUploadFilenameTest extends TestCase
 
     public function testMediaLibraryUsesTightenedPattern(): void
     {
-        $src = (string) file_get_contents(MEEL_ROOT . '/modules/media/MediaLibrary.php');
+        // Pola `(php\d?|phtml|sh|js)(\.|$)` berada di BookUploader.
+        // Setelah pemecahan T19, membacanya dari MediaLibrary.php akan
+        // menghasilkan dua assertion yang selalu benar tanpa memeriksa apa pun.
+        $src = (string) file_get_contents(MEEL_ROOT . '/modules/media/BookUploader.php');
 
         $this->assertStringContainsString('(php\\d?|phtml|sh|js)(\\.|$)', $src);
         $this->assertStringNotContainsString("'/\\.(php|phtml|sh|js)/i'", $src);

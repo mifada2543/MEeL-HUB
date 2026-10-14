@@ -639,7 +639,8 @@ function testFileIntegrity(): void {
         'modules/core/Transcoder.php', 'modules/auth/SsrfGuard.php', 'modules/auth/ValidatingProxy.php',
         'modules/auth/validating_proxy_server.php', 'modules/media/MediaInteraction.php',
         'modules/media/MediaViewer.php',
-        'modules/media/MediaLibrary.php', 'modules/core/GarbageCollector.php', 'modules/core/japanese.php',
+        'modules/media/MediaLibrary.php', 'modules/media/BookRepository.php',
+        'modules/media/BookUploader.php', 'modules/core/GarbageCollector.php', 'modules/core/japanese.php',
         'admin/.htaccess', 'auth/.htaccess', 'data_drive/.htaccess',
         'drive/DriveService.php', 'drive/stream.php', 'controllers/admin/admin_actions.php', 'controllers/admin/admin_data.php',
         'controllers/profile/profile_edit.php',
@@ -1080,7 +1081,11 @@ function testHardeningRegression(): void {
         return file_exists($path) ? (string) file_get_contents($path) : '';
     };
 
-    $ml = $read('modules/media/MediaLibrary.php');
+    // ArchiveGuard + extractTo berada di BookUploader. Setelah pemecahan
+    // T19, membacanya dari MediaLibrary.php hanya akan mengembalikan '' dan
+    // cabang else-nya -- laporan 'belum sepenuhnya lewat ArchiveGuard' --
+    // tidak akan pernah dievaluasi sebagai pemeriksaan yang sebenarnya.
+    $ml = $read('modules/media/BookUploader.php');
     if (strpos($ml, 'ArchiveGuard') !== false && !preg_match('/\$zip->extractTo\(\$manga_folder\)/', $ml)) {
         record('MediaLibrary: ekstraksi ZIP via ArchiveGuard (tanpa extractTo ke folder final)', true);
     } else {
