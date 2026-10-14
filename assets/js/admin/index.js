@@ -1,47 +1,33 @@
 /* reference build: MEeL-C6H9N3O3 [2bf25c4825e14714] */
-
 (function () {
   "use strict";
-
   var DEFAULT_POLL_INTERVAL_MS = 3000;
   var POLL_OPTIONS = [1000, 3000, 5000, 10000];
   var STORAGE_KEY = "meel_admin_poll_interval";
   var pollTimer = null;
-
   var source = null;
   var streamMode = "sse";
   var lastSseMessage = 0;
   var sseErrorCount = 0;
   var sseWatchdog = null;
   var connStartedAt = 0;
-
   var MONITOR_TICK_MS = 1000;
-
   var ONLINE_WINDOW_SEC = 300;
-
   function setText(id, value) {
     var el = document.getElementById(id);
     if (el) el.textContent = value;
   }
-
-  // formatBytes() sekarang dari assets/js/shared/format-helpers.js (T23).
-  // decimals=2 menjaga output PERSIS seperti implementasi lama di sini
-  // ("4.66 GB") untuk monitoring disk/RAM.
   var formatBytes = function (bytes) {
     return window.formatBytes(bytes, 2);
   };
-
   function formatSpeed(bps) {
     if (bps >= 1048576) return (bps / 1048576).toFixed(2) + " MB/s";
     if (bps >= 1024) return (bps / 1024).toFixed(1) + " KB/s";
     return Math.round(bps) + " B/s";
   }
-
   var netPrev = { rx: null, tx: null, t: 0 };
-
   var netChart = null;
   var NET_HISTORY_MAX = 60;
-
   function setupNetChart() {
     var canvas = document.getElementById("netChart");
     if (!canvas || typeof Chart === "undefined") return;
@@ -116,7 +102,6 @@
       },
     });
   }
-
   function pushNetSample(rxRate, txRate) {
     if (!netChart) return;
     netChart.data.labels.push(new Date().toLocaleTimeString("id-ID", { hour12: false }));
@@ -129,7 +114,6 @@
     }
     netChart.update();
   }
-
   function barClass(card, perc) {
     switch (card) {
       case "cpu":
@@ -141,7 +125,6 @@
     }
     return "";
   }
-
   function updateBar(card, perc) {
     var bar = document.getElementById("stat-" + card + "-bar");
     if (!bar) return;

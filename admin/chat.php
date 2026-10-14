@@ -1,22 +1,16 @@
 <?php
+
 /**
- * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
- * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
- * lintas `include`.
- *
  * @var \mysqli $conn
  */
-
 include '../auth/config.php';
 include '../auth/auth.php';
 include_once '../modules/core/helpers.php';
 require_admin($conn);
 define('MEEL_ADMIN_CONTEXT', true);
-
 $chat_username = $_GET['username'] ?? '';
 $chat_user = null;
 $chat_user_id = 0;
-
 if ($chat_username === '' && !empty($_GET['user_id'])) {
     $old_id = (int)$_GET['user_id'];
     if ($old_id > 0) {
@@ -50,6 +44,7 @@ if ($chat_username !== '' && !$chat_user) {
 ?>
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -60,6 +55,7 @@ if ($chat_username !== '' && !$chat_user) {
     <link rel="stylesheet" href="<?= $root ?>/assets/css/admin/chat.css?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/css/admin/chat.css') ?>">
     <div id="admin-chat-data" data-api-base="<?= htmlspecialchars($root) ?>/api/chat" data-chat-root="<?= htmlspecialchars($root) ?>/admin/chat" style="display:none;"></div>
 </head>
+
 <body class="min-h-screen">
     <?php
     $is_admin = true;
@@ -69,7 +65,6 @@ if ($chat_username !== '' && !$chat_user) {
     include 'header-admin.php';
     ?>
     <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
-
         <?php if ($chat_user): ?>
             <div class="glass" style="border-radius:16px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
                 <div class="chat-avatar">
@@ -84,20 +79,26 @@ if ($chat_username !== '' && !$chat_user) {
                     <div style="font-size:10px;color:#8b93a1;">Pesan 1 arah: Admin → Pengguna</div>
                 </div>
                 <a href="<?= $root ?>/admin/chat" style="margin-left:auto;font-size:10px;color:#8b93a1;text-decoration:none;" title="Kembali ke daftar chat">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
                 </a>
             </div>
-
             <div id="chat-messages" class="glass" style="border-radius:16px;padding:16px;margin-bottom:16px;min-height:300px;max-height:500px;overflow-y:auto;">
                 <div style="text-align:center;color:#8b93a1;font-size:11px;padding:32px 0;">Memuat pesan...</div>
             </div>
-
             <div class="glass" style="border-radius:16px;padding:16px;">
                 <form id="chat-form" onsubmit="return sendChat(event)" style="display:flex;gap:8px;">
                     <input type="hidden" name="user_id" value="<?= $chat_user_id ?>">
                     <textarea id="chat-input" name="message" rows="2" placeholder="Ketik pesan untuk @<?= htmlspecialchars($chat_user['username']) ?>..." class="chat-input" style="flex:1;" required></textarea>
                     <button type="submit" class="chat-send-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
                     </button>
                 </form>
             </div>
@@ -115,18 +116,18 @@ if ($chat_username !== '' && !$chat_user) {
             </div>
         <?php endif; ?>
     </div>
-
     <?php if ($chat_user): ?>
-    <script src="<?= $root ?>/assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
-    <script src="<?= $root ?>/assets/js/admin/chat.js?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/js/admin/chat.js') ?>"></script>
-    <script>
-        loadChatMessages(<?= $chat_user_id ?>);
-    </script>
+        <script src="<?= $root ?>/assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
+        <script src="<?= $root ?>/assets/js/admin/chat.js?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/js/admin/chat.js') ?>"></script>
+        <script>
+            loadChatMessages(<?= $chat_user_id ?>);
+        </script>
     <?php else: ?>
-    <script src="<?= $root ?>/assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
-    <script src="<?= $root ?>/assets/js/admin/chat/list.js?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/js/admin/chat/list.js') ?>"></script>
+        <script src="<?= $root ?>/assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
+        <script src="<?= $root ?>/assets/js/admin/chat/list.js?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/js/admin/chat/list.js') ?>"></script>
     <?php endif; ?>
 </body>
+
 </html>
 
 <!-- reference build: MEeL-C8H11NO2 [71b2f2af520d2785] -->
