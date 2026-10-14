@@ -481,6 +481,44 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' \
             "$STAGING_URL/data_drive/private_admins/" || true)
           [ "$code" = "403" ] || { echo "Expected 403, got $code"; exit 1; }
+  tailwind-check:
+    name: Tailwind Reproducibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install build toolchain
+        # Versi tailwindcss DIPIN di package.json, bukanlatest: artefak
+        # ter-commit dibangun dengan versi tertentu, dan versi berbeda bisa
+        # menghasilkan CSS berbeda tanpa error sama sekali.
+        run: npm install --no-audit --no-fund
+
+      - name: Rebuild to a temp file and audit against the committed artifact
+        run: |
+          set -e
+          # PENTING: jangan `npm run css:build` di sini. Perintah itu
+          # MENULIS assets/css/tailwind.min.css, jadi artefak ter-commit
+          # tertimpa dan perbandingan dengan dirinya sendiri selalu lolos --
+          # gerbang hampa. --rebuild membangun ke file sementara lalu
+          # membandingkannya tanpa menyentuh isi repo.
+          #
+          # Gate-nya sengaja di tingkat class + deklarasi, bukan byte.
+          # package-lock.json tidak di-commit (sudah ada di .gitignore),
+          # jadi dependensi transitif bisa naik versi dan mengubah urutan
+          # atau format output tanpa mengubah isinya. Perbandingan byte
+          # akan gagalkan semua orang karena patch bump yang tak ada
+          # kaitannya dengan kode mereka. Yang benar-benar berbahaya --
+          # class hilang, atau deklarasi yang berubah nilainya -- tetap
+          # tertangkap di sini.
+          npm run css:check
   drive-storage-check:
     name: Drive Storage Integrity
     runs-on: ubuntu-latest
@@ -529,6 +567,7 @@ jobs:
         shellcheck,
         deploy-check,
         drive-storage-check,
+        tailwind-check,
       ]
     if: always()
     steps:
@@ -558,6 +597,7 @@ jobs:
           report_job "PHPUnit Integration Tests" "${{ needs.phpunit-integration-tests.result }}"
           report_job "Migration Test" "${{ needs.migration-test.result }}"
           report_job "HTACCESS & Integrity" "${{ needs.htaccess-check.result }}"
+          report_job "Tailwind Reproducibility" "${{ needs.tailwind-check.result }}"
           report_job "ShellCheck" "${{ needs.shellcheck.result }}"
           report_job "Deployment Check" "${{ needs.deploy-check.result }}"
           report_job "Drive Storage Integrity" "${{ needs.drive-storage-check.result }}"
