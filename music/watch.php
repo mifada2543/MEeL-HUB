@@ -637,6 +637,7 @@ session_write_close();
     <script src="../assets/js/shared/temp-index.js<?= meel_asset_version('assets/js/shared/temp-index.js') ?>"></script>
     <script src="../assets/js/shared/plyr-config.js<?= meel_asset_version('assets/js/shared/plyr-config.js') ?>"></script>
     <script src="../assets/js/shared/format-time.js<?= meel_asset_version('assets/js/shared/format-time.js') ?>"></script>
+    <script src="../assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
     <script src="../assets/js/shared/resume-modal.js<?= meel_asset_version('assets/js/shared/resume-modal.js') ?>"></script>
     <script src="../assets/js/shared/mini-player-popstate.js<?= meel_asset_version('assets/js/shared/mini-player-popstate.js') ?>"></script>
     <script src="../assets/js/shared/audio-engine.js<?= meel_asset_version('assets/js/shared/audio-engine.js') ?>"></script>

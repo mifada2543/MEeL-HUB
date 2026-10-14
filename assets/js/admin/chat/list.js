@@ -4,14 +4,11 @@
     var API_BASE = el.dataset.apiBase;
     var ADMIN_CHAT_ROOT = el.dataset.chatRoot;
 
-    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-    function timeAgo(ts) {
-        var diff = (Date.now() - new Date(ts).getTime()) / 1000;
-        if (diff < 60) return 'Baru saja';
-        if (diff < 3600) return Math.floor(diff / 60) + 'm lalu';
-        if (diff < 86400) return Math.floor(diff / 3600) + 'j lalu';
-        return Math.floor(diff / 86400) + 'h lalu';
-    }
+    // escapeHtml() & timeAgo() sekarang datang dari
+    // assets/js/shared/format-helpers.js (T23). Salinan lokal dihapus
+    // supaya tidak ada dua versi yang bisa berbeda diam-diam.
+    var escapeHtml = window.escapeHtml;
+    var timeAgo = window.timeAgo;
 
     window.searchUsers = function(q) {
         if (q.length < 1) { document.getElementById('user-results').innerHTML = ''; return; }

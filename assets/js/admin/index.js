@@ -24,12 +24,12 @@
     if (el) el.textContent = value;
   }
 
-  function formatBytes(bytes) {
-    if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + " GB";
-    if (bytes >= 1048576) return (bytes / 1048576).toFixed(2) + " MB";
-    if (bytes >= 1024) return (bytes / 1024).toFixed(2) + " KB";
-    return bytes + " B";
-  }
+  // formatBytes() sekarang dari assets/js/shared/format-helpers.js (T23).
+  // decimals=2 menjaga output PERSIS seperti implementasi lama di sini
+  // ("4.66 GB") untuk monitoring disk/RAM.
+  var formatBytes = function (bytes) {
+    return window.formatBytes(bytes, 2);
+  };
 
   function formatSpeed(bps) {
     if (bps >= 1048576) return (bps / 1048576).toFixed(2) + " MB/s";

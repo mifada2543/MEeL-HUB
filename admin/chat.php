@@ -117,11 +117,13 @@ if ($chat_username !== '' && !$chat_user) {
     </div>
 
     <?php if ($chat_user): ?>
+    <script src="<?= $root ?>/assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
     <script src="<?= $root ?>/assets/js/admin/chat.js?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/js/admin/chat.js') ?>"></script>
     <script>
         loadChatMessages(<?= $chat_user_id ?>);
     </script>
     <?php else: ?>
+    <script src="<?= $root ?>/assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
     <script src="<?= $root ?>/assets/js/admin/chat/list.js?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/js/admin/chat/list.js') ?>"></script>
     <?php endif; ?>
 </body>
