@@ -1380,6 +1380,65 @@ menyenangkan sekaligus:
 
 ---
 
+### Overlay engine: kenapa pakai antre (queue), bukan panggilan langsung
+
+Gejala yang pernah muncul: setelah submit, halaman jadi **putih kosong** —
+overlay "MEeL Engine" tidak pernah tampil, padahal prosesnya jalan.
+
+#### Akar masalahnya
+
+`assets/css/engine/base.css` menyembunyikan overlay secara default:
+
+```css
+#meel-overlay { display: none; }
+```
+
+Artinya overlay **hanya** bisa tampil kalau `meelPhase()` sempat dieksekusi.
+Jika tidak, respons POST itu hanya berisi fragmen (`partials/ui.php` tidak
+punya `<html>`/`<body>`) sehingga yang tampil adalah halaman putih kosong.
+
+Urutan pemuatan yang Mennonjolkan race:
+
+1. `main.js` (`<script src>`) dieksekusi — **parser-blocking**
+2. `main.js` menyisipkan `core.js` & friends via `document.head.appendChild` —
+   script yang disisipkan dinamis **tidak memblokir parser**, walau `async = false`
+3. Parser lanjut ke inline `<script>meelPhase("download")</script>`
+4. `core.js` baru selesai diunduh & baru mendefinisikan `meelPhase`
+
+Pada langkah 3, `meelPhase` belum ada → `ReferenceError`. Karena bergantung
+kecepatan jaringan/cache, gejalanya **intermiten**.
+
+#### Solusinya: antre di `main.js`
+
+`main.js` dipanggil sebelum inline script, jadi shim di sana selalu siap.
+Panggilan yang datang terlalu dini diantre, lalu diputar begitu `core.js`
+menjalankan `__meelPhaseBind()`:
+
+```js
+window.meelPhase = function (phase) {
+  if (real) { real(phase); return; }
+  queue.push(phase);          // engine belum siap
+};
+```
+
+Dengan begitu **urutan muat tidak lagi relevan** — overlay tetap tampil walau
+halaman sudah streaming beberapa menit sebelum engine JS selesai diunduh.
+
+#### Phase `encode`
+
+`upload_advanced.php` memanggil `meelPhase("encode")` untuk alur musik, tapi
+tidak ada `meel-phase-encode` di `core.js` maupun `partials/engine/`. Akibatnya
+semua phase kehilangan `.active` dan tidak ada yang diaktifkan — card kosong
+tanpa indikator loading. Sekarang ada `partials/engine/encode.php` dan
+`'encode'` masuk daftar `MEEL_PHASES`.
+
+Dikunci oleh `tests/unit/EnginePhaseJsTest.php` (7 test, menjalankan
+`tests/js/engine-phase.harness.js` lewat Node untuk mensimulasikan urutan
+muat terburuk). Dokumen `.agents/PRD.md` sengaja tidak ikut karena hanya ada di
+mesin lokal.
+
+---
+
 ### Test Infrastructure — catatan penting
 
 #### 🚨 `createMock(mysqli::class)` menghabiskan 8,86 GiB RAM
