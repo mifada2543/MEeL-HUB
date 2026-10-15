@@ -70,6 +70,8 @@ session/*
 !schema.sql
 *.db
 *.sqlite
+*.sqlite3
+*.sqlite-journal
 test.php
 # ─── OS-SPECIFIC FILES ────────────────────────────────
 # macOS

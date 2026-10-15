@@ -121,7 +121,7 @@ echo -e "${C_RESET}"
 echo " Installer — clone → install → run"
 echo " Project root: $PROJECT_ROOT"
 
-step "1/7 — Cek dependency sistem"
+step "1/9 — Cek dependency sistem"
 
 SUDO=""
 CAN_ELEVATE=true
@@ -202,7 +202,7 @@ for bin in ffmpeg ffprobe yt-dlp mecab; do
     fi
 done
 
-step "2/7 — Konfigurasi Database"
+step "2/9 — Konfigurasi Database"
 
 DB_HOST="$(ask "Host database" "localhost")"
 DB_NAME="$(ask "Nama database" "MEeL")"
@@ -320,7 +320,7 @@ else
     fi
 fi
 
-step "3/8 — Buat auth/settings.php & auth/config.php"
+step "3/9 — Buat auth/settings.php & auth/config.php"
 
 if [ -f "auth/settings.php" ]; then
     warn "auth/settings.php sudah ada — tidak ditimpa (hapus manual jika ingin regenerasi)."
@@ -503,7 +503,7 @@ else
     warn "X-Sendfile TIDAK diaktifkan — streaming memakai PHP langsung (default aman)."
 fi
 
-step "4/8 — Buat direktori storage runtime"
+step "4/9 — Buat direktori storage runtime"
 
 mkdir -p "$HDD_BASE/video/upload/video" \
          "$HDD_BASE/video/upload/thumbnail" \
@@ -575,7 +575,7 @@ else
     warn "User '${WEB_USER}' tidak ditemukan atau tanpa sudo — atur ownership/permission storage manual sesuai web server Anda."
 fi
 
-step "5/8 — Aktifkan mod_rewrite & VirtualHost Apache"
+step "5/9 — Aktifkan mod_rewrite & VirtualHost Apache"
 
 if command -v a2enmod >/dev/null 2>&1 && $CAN_ELEVATE; then
     if confirm "Aktifkan mod_rewrite & restart Apache sekarang?" Y; then
@@ -632,7 +632,46 @@ else
     ok "VirtualHost dilewati — akses via DocumentRoot/subfolder (mis. http://host/MEeL) memakai .htaccess langsung."
 fi
 
-step "6/8 — Jalankan migration database"
+step "6/9 — Tutup direktori dependency & tooling dari akses web"
+
+# vendor/ dan node_modules/ diabaikan git, jadi aturan .htaccess-nya tidak
+# ikut ter-commit dan hilang di clone baru (dipidah ulang oleh
+# `composer install` / `npm install`). Tanpa ini, /vendor/*/composer.json dan
+# /assets/dict/jmdict.sqlite3 (42 MB) bisa diunduh tanpa autentikasi.
+for DENY_DIR in vendor node_modules tools storage assets/dict; do
+    DENY_PATH="${PROJECT_ROOT}/${DENY_DIR}"
+    [ -d "$DENY_PATH" ] || continue
+    if [ -f "$DENY_PATH/.htaccess" ] && grep -q 'Require all denied\|Deny from all' "$DENY_PATH/.htaccess"; then
+        ok "Hardening ${DENY_DIR}/ sudah ada"
+    else
+        if cat > "$DENY_PATH/.htaccess" <<'HTEOF'
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} ^(.*/)[^/]+/?$
+    RewriteRule ^ - [F,L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</IfModule>
+HTEOF
+        then
+            ok "Hardening .htaccess dibuat di ${DENY_DIR}/"
+        else
+            warn "Gagal menulis .htaccess di ${DENY_DIR} — salin manual sebelum produksi."
+        fi
+    fi
+done
+
+step "7/9 — Jalankan migration database"
 
 if php database/migrate.php; then
     ok "Migration selesai (idempotent — aman diulang)."
@@ -653,7 +692,7 @@ if [ -d "arcade" ] && [ -f "arcade/migrate.php" ]; then
     fi
 fi
 
-step "7/8 — Verifikasi deployment (tests/check_deploy.php)"
+step "8/9 — Verifikasi deployment (tests/check_deploy.php)"
 
 CHECK_OK=true
 if [ -f "tests/check_deploy.php" ]; then
