@@ -1270,7 +1270,7 @@ php scripts/gc.php          # heavy housekeeping (needs $server = TCP)
 | `admin/mfa_reset.php` | Admin MFA reset panel |
 | `partials/ui.php` | Overlay UI system (JS heavy) |
 | `assets/js/shared/keyboard.js` | Shared keyboard shortcut guard (meelKeyShortcutIgnored) — used by video & music misc/mini-player |
-| `assets/js/video/watch/misc.js` | Video-specific shortcuts (L=loop, A=auto-next, S=AI-upscale) |
+| `assets/js/video/watch/misc.js` | Video-specific shortcuts (L=loop, A=auto-next, S=AI-upscale, B=ambient-glow) |
 | `assets/js/video/watch/mini-player.js` | Video shortcuts (N=next, I=mini-player) + mini-player logic |
 | `assets/js/music/watch/misc.js` | Music shortcuts (L=loop, E=equalizer, V=visualizer, I=mini-player) |
 | `assets/js/shared/temp-index.js` | Shared loader of index.php into #temp-index-content without reload (meelLoadTempIndex) — used by video & music mini-player |

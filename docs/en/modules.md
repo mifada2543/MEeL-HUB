@@ -573,6 +573,7 @@ Keyboard shortcuts are implemented in JavaScript and guarded by `assets/js/share
 | `L` | Toggle loop | `misc.js` |
 | `A` | Toggle auto-next | `misc.js` |
 | `S` | Toggle AI Upscale | `misc.js` → `toggleUpscale()` in `upscaler.js` |
+| `B` | Toggle ambient glow | `misc.js` → `toggleGlow()` in `player-events.js` |
 | `N` | Skip to next video | `mini-player.js` |
 | `I` | Toggle mini player | `mini-player.js` |
 
