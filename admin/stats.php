@@ -1,11 +1,6 @@
 <?php
-/**
- * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
- * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
- * lintas `include`.
- *
- * @var \mysqli $conn
- */
+
+/** @var \mysqli $conn */
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -60,16 +55,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         if ($del_id > 0 && in_array($del_type, ['video', 'music'])) {
             $del_table = ($del_type === 'video') ? 'video' : 'music';
-
             $stmt_fetch = $conn->prepare("SELECT filename, thumbnail FROM {$del_table} WHERE id = ? LIMIT 1");
             $stmt_fetch->bind_param("i", $del_id);
             $stmt_fetch->execute();
             $media_row = $stmt_fetch->get_result()->fetch_assoc();
             $stmt_fetch->close();
-
             $stmt_del = $conn->prepare("DELETE FROM {$del_table} WHERE id = ?");
             $stmt_del->bind_param("i", $del_id);
-
             if ($stmt_del->execute() && $stmt_del->affected_rows > 0) {
                 $files_deleted = 0;
                 $files_failed = [];
@@ -87,8 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         }
                         if (
                             !empty($media_row['thumbnail'])
-                            && $media_row['thumbnail'] !== 'default_thumb.jpg'
-                            && $media_row['thumbnail'] !== 'default_thumb.webp'
+                            && !meel_is_default_thumbnail($media_row['thumbnail'])
                         ) {
                             $thumb_abs = $video_base . '/thumbnail/' . $media_row['thumbnail'];
                             if (file_exists($thumb_abs)) {
@@ -238,24 +229,23 @@ while ($rc = $r->fetch_assoc()) {
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link rel="stylesheet" href="../assets/css/admin/stats.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin/stats.css') ?>">
     <script>
-    window.addEventListener('pageshow', function(e) {
-        if (e.persisted) { location.reload(); }
-    });
+        window.addEventListener('pageshow', function(e) {
+            if (e.persisted) {
+                location.reload();
+            }
+        });
     </script>
 </head>
 
 <body class="text-gray-300 min-h-screen">
-<!-- reference build: MEeL-C2H5NO2 [1332c720962ac63b] -->
-
+    <!-- reference build: MEeL-C2H5NO2 [1332c720962ac63b] -->
     <?php
     $is_admin = true;
     $page_title = 'Analitik Media';
     $media_type = 'analytics';
     include 'header-admin.php';
     ?>
-
     <div class="max-w-6xl mx-auto px-4 md:px-6 py-8">
-
         <div class="flex items-center gap-4 mb-8">
             <div class="w-12 h-12 rounded-2xl bg-blue-600/15 border border-blue-600/25 flex items-center justify-center shrink-0">
                 <i data-lucide="bar-chart-2" class="text-blue-500" style="width:22px;height:22px;"></i>
@@ -265,7 +255,6 @@ while ($rc = $r->fetch_assoc()) {
                 <p class="text-[10px] font-bold uppercase tracking-widest text-[#455060] mt-0.5">Pantau & Kelola Seluruh Konten</p>
             </div>
         </div>
-
         <?php if ($delete_msg): ?>
             <div class="alert-banner <?= $delete_msg['type'] === 'success' ? 'alert-success' : ($delete_msg['type'] === 'warning' ? 'alert-warning' : 'alert-error') ?>">
                 <i data-lucide="<?= $delete_msg['type'] === 'success' ? 'check-circle' : ($delete_msg['type'] === 'warning' ? 'alert-circle' : 'alert-triangle') ?>" class="w-3.5 h-3.5 shrink-0"></i>
@@ -295,7 +284,6 @@ while ($rc = $r->fetch_assoc()) {
                 </a>
             <?php endforeach; ?>
         </div>
-
         <div id="analytics-panel">
             <div class="flex flex-wrap gap-3 mb-5 items-center">
 
@@ -310,7 +298,6 @@ while ($rc = $r->fetch_assoc()) {
                             class="admin-search-input">
                     </form>
                 </div>
-
                 <?php
                 $type_labels = ['all' => 'Semua', 'video' => 'Video', 'music' => 'Musik'];
                 $current_type_label = $type_labels[$type_filter] ?? 'Semua';
@@ -330,7 +317,6 @@ while ($rc = $r->fetch_assoc()) {
                         <?php endforeach; ?>
                     </div>
                 </div>
-
                 <div class="ml-auto flex items-center gap-3">
                     <div class="text-[11px] font-semibold text-[#455060]">
                         <?= $result_media ? $result_media->num_rows : 0 ?> item ditemukan
@@ -342,7 +328,6 @@ while ($rc = $r->fetch_assoc()) {
                     <?php endif; ?>
                 </div>
             </div>
-
             <div class="glass rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,.4)]">
                 <div class="admin-table-wrap">
                     <table class="admin-table">
@@ -405,10 +390,10 @@ while ($rc = $r->fetch_assoc()) {
                                                 }
                                                 ?>
                                                 <img src="<?= htmlspecialchars($media_thumb) ?>"
-                                                     alt=""
-                                                     class="media-thumb"
-                                                     loading="lazy"
-                                                     width="40" height="40">
+                                                    alt=""
+                                                    class="media-thumb"
+                                                    loading="lazy"
+                                                    width="40" height="40">
                                                 <div>
                                                     <a href="<?= $watch_url ?>" target="_blank" rel="noopener" class="content-title">
                                                         <?= htmlspecialchars($row['title']) ?>
@@ -456,7 +441,6 @@ while ($rc = $r->fetch_assoc()) {
             </div>
         </div>
     </div>
-
     <div id="delete-modal">
         <div class="modal-box" style="max-width:440px;">
             <div class="modal-icon-wrap">
@@ -500,9 +484,7 @@ while ($rc = $r->fetch_assoc()) {
             </form>
         </div>
     </div>
-
     <script src="../assets/js/admin/stats.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/stats.js') ?>"></script>
-
 </body>
 
 </html>

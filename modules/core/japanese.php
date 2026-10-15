@@ -4,12 +4,10 @@ if (!function_exists('getMecabPath')) {
     {
         static $path = null;
         if ($path !== null) return $path;
-
         if (function_exists('resolve_binary')) {
             $path = resolve_binary(['/usr/bin/mecab', '/usr/local/bin/mecab', 'mecab']);
             return $path;
         }
-
         $candidates = ['/usr/bin/mecab', '/usr/local/bin/mecab', 'mecab'];
         foreach ($candidates as $candidate) {
             if (strpos($candidate, '/') !== false) {
@@ -23,55 +21,26 @@ if (!function_exists('getMecabPath')) {
         return $path;
     }
 }
-
+if (!function_exists('meel_japanese_normalize_separators')) {
+    function meel_japanese_normalize_separators(string $text): string
+    {
+        static $search = ['×', '*', '&', '/', '【', '】', '「', '」', '(', ')', '鏡音', '巡音', '初音'];
+        static $replace = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'かがみね', 'めぐりね', 'hatsune'];
+        $text = str_replace($search, $replace, $text);
+        return preg_replace('/(?<![\p{L}\p{N}])[xX](?![\p{L}\p{N}])/u', ' ', $text);
+    }
+}
 if (!function_exists('getRomajiName')) {
     function getRomajiName(string $text): string
     {
         if (empty($text)) return 'untitled';
         $text = Normalizer::normalize($text, Normalizer::FORM_C) ?: $text;
         $original_text = $text;
-
-        $search = [
-            '×',
-            'x',
-            'X',
-            '*',
-            '&',
-            '/',
-            '【',
-            '】',
-            '「',
-            '」',
-            '(',
-            ')',
-            '鏡音',
-            '巡音',
-            '初音'
-        ];
-        $replace = [
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            ' ',
-            'かがみね',
-            'めぐりね',
-            'hatsune'
-        ];
-        $text = str_replace($search, $replace, $text);
-
+        $text = meel_japanese_normalize_separators($text);
         $mecab_bin = getMecabPath();
         $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
         $mecab_cmd = 'export LD_LIBRARY_PATH=\'\'; ' . escapeshellarg($mecab_bin);
         $process = proc_open($mecab_cmd, $descriptorspec, $pipes);
-
         $parsedText = '';
         if (is_resource($process)) {
             fwrite($pipes[0], $text);
@@ -79,7 +48,6 @@ if (!function_exists('getRomajiName')) {
             $output = stream_get_contents($pipes[1]);
             fclose($pipes[1]);
             proc_close($process);
-
             foreach (explode("\n", trim($output)) as $line) {
                 if ($line === 'EOS' || trim($line) === '') continue;
                 $parts = explode("\t", $line);
@@ -94,44 +62,33 @@ if (!function_exists('getRomajiName')) {
             }
             $text = trim($parsedText);
         }
-
         $rule = "Katakana-Latin; Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC; Latin-ASCII; Any-Lower;";
         $transliterator = Transliterator::create($rule);
         if ($transliterator) $text = $transliterator->transliterate($text);
-
         $clean = preg_replace('/[^a-z0-9\-]/u', '-', $text);
         $clean = preg_replace('/-+/', '-', trim($clean, '-'));
-
         if (empty($clean)) {
             $fallback = preg_replace('/[^a-z0-9\-]/u', '-', $original_text);
             $fallback = preg_replace('/-+/', '-', trim($fallback, '-'));
             return $fallback ?: 'untitled';
         }
-
         return $clean;
     }
 }
-
 if (!function_exists('analyzeJapaneseText')) {
     function analyzeJapaneseText(string $text): array
     {
         $result = ['romaji' => 'untitled-media', 'english' => ''];
         if (empty(trim($text))) return $result;
         $text = Normalizer::normalize($text, Normalizer::FORM_C) ?: $text;
-
-        $search = ['×', 'x', 'X', '*', '&', '/', '【', '】', '「', '」', '(', ')', '鏡音', '巡音', '初音'];
-        $replace = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'かがみね', 'めぐりね', 'hatsune'];
         $original_text = $text;
-        $clean_text = str_replace($search, $replace, $text);
-
+        $clean_text = meel_japanese_normalize_separators($text);
         static $aliases = null;
         if ($aliases === null) {
             $alias_path = __DIR__ . '/japanese_aliases.php';
             $aliases = file_exists($alias_path) ? require $alias_path : [];
-
             uksort($aliases, fn($a, $b) => mb_strlen($b) - mb_strlen($a));
         }
-
         $alias_glosses = [];
         $full_cover = null;
         foreach ($aliases as $phrase => $translation) {
@@ -152,14 +109,12 @@ if (!function_exists('analyzeJapaneseText')) {
         }
         $matched_phrases = array_keys($alias_glosses);
         $alias_glosses = array_values($alias_glosses);
-
         $mecab_bin = getMecabPath();
         $descriptorspec = [0 => ["pipe", "r"], 1 => ["pipe", "w"]];
         $mecab_cmd = 'export LD_LIBRARY_PATH=\'\'; ' . escapeshellarg($mecab_bin);
         $process = proc_open($mecab_cmd, $descriptorspec, $pipes);
         if (!is_resource($process)) {
             $result['romaji'] = getRomajiName($text);
-
             $result['english'] = trim(implode(' ', array_unique($alias_glosses)));
             return $result;
         }
@@ -168,10 +123,8 @@ if (!function_exists('analyzeJapaneseText')) {
         $output = stream_get_contents($pipes[1]);
         fclose($pipes[1]);
         proc_close($process);
-
         static $pdo = null, $dict_ready = null, $dict_stmt = null;
         if ($dict_ready === null) {
-
             $dict_path = __DIR__ . '/../../assets/dict/jmdict.sqlite3';
             if (file_exists($dict_path)) {
                 try {
@@ -187,23 +140,18 @@ if (!function_exists('analyzeJapaneseText')) {
                 error_log('[japanese.php] Dictionary tidak ditemukan di: ' . $dict_path);
             }
         }
-
         $parsed_romaji = '';
         $glosses = [];
-
         foreach (explode("\n", trim($output)) as $line) {
             if ($line === 'EOS' || trim($line) === '') continue;
             $parts = explode("\t", $line);
             if (count($parts) < 2) continue;
-
             $surface = $parts[0];
             $features = explode(',', $parts[1]);
-
             $yomi = '*';
             if (isset($features[7]) && $features[7] !== '*') $yomi = $features[7];
             elseif (isset($features[8]) && $features[8] !== '*') $yomi = $features[8];
             $parsed_romaji .= ' ' . (($yomi !== '*' && !preg_match('/[a-zA-Z]/', $yomi)) ? $yomi : $surface);
-
             $pos = $features[0] ?? '';
             $sub = $features[1] ?? '';
             $is_functional = in_array($pos, ['助詞', '助動詞', '接続詞', '感動詞', '連体詞', '記号', '補助記号'], true)
@@ -215,7 +163,6 @@ if (!function_exists('analyzeJapaneseText')) {
                     break;
                 }
             }
-
             if ($dict_ready && !$is_functional && !$inside_alias) {
                 $base_form = $features[6] ?? '*';
                 foreach (array_unique([$surface, $base_form]) as $candidate) {
@@ -229,14 +176,12 @@ if (!function_exists('analyzeJapaneseText')) {
                 }
             }
         }
-
         $romaji_text = trim($parsed_romaji);
         $rule = "Katakana-Latin; Any-Latin; NFD; [:Nonspacing Mark:] Remove; NFC; Latin-ASCII; Any-Lower;";
         $transliterator = Transliterator::create($rule);
         if ($transliterator) $romaji_text = $transliterator->transliterate($romaji_text);
         $clean = preg_replace('/[^a-z0-9\-]/u', '-', $romaji_text);
         $clean = preg_replace('/-+/', '-', trim($clean, '-'));
-
         if (empty($clean)) {
             $fallback = preg_replace('/[^a-z0-9\-]/u', '-', $original_text);
             $fallback = preg_replace('/-+/', '-', trim($fallback, '-'));
@@ -244,7 +189,6 @@ if (!function_exists('analyzeJapaneseText')) {
         } else {
             $result['romaji'] = $clean;
         }
-
         if ($full_cover !== null) {
             $result['english'] = $full_cover;
         } else {
@@ -254,5 +198,4 @@ if (!function_exists('analyzeJapaneseText')) {
         return $result;
     }
 }
-
 /* reference build: MEeL-C9H11NO2 [923f17227df4569f] */

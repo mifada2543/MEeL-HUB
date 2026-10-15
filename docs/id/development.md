@@ -172,7 +172,7 @@ define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
 
 #### 7. Type Hints
 
-Properti class dan parameter constructor **wajib** memiliki type hints (PHP 8.0+):
+Properti class dan parameter constructor **wajib** memiliki type hints (PHP 8.1+):
 
 ```php
 // ✅ BENAR - Type hints
@@ -669,7 +669,7 @@ function verify_backup_code(string $hashedJson, string $code): array {
 
 ### Database Schema
 
-3 kolom baru di tabel `users` (Migration v9):
+3 kolom baru di tabel `users` (sekarang tercakup di migrasi **v1** — dulunya legacy v9):
 
 ```sql
 ALTER TABLE users
@@ -1268,6 +1268,10 @@ lookup coalescing `like` sekaligus jadi covering untuk query pruning. Tanpa ini,
 Migrasi **v4** + `schema.sql` sudah disinkronkan (keduanya wajib ikut, sesuai
 konvensi T9). Sudah diverifikasi idempoten 2×.
 
+> ⚠️ Nomor "v4" di sini = nomor **saat ini** (setelah redunisasi 17 Sep 2026).
+> Angka v1–v15 yang muncul di dokumen lain adalah riwayat lama yang
+> dikonsolidasikan menjadi v1 — lihat `docs/id/modules.md` § *Migration System*.
+
 #### Verifikasi
 
 `tests/unit/NotificationRetentionTest.php` (**11 test**) mengunci: hanya `like`
@@ -1304,6 +1308,138 @@ Konsekuensi praktis: **kode produksi jangan bergantung pada membaca properti
 internal tersebut** kalau pemanggilannya ingin bisa diuji dengan
 `tests/unit/support/MysqlFake.php`. Kalau memang butuh nilai tersebut, kirim
 melewat parameter atau kembalikan lewat jalur lain — bukan lewat properti stmt.
+
+---
+
+### Cache statis lintas-test: `get_user_role()` & `get_user_active()`
+
+Keduanya memakai `static $cache` per proses PHP. Cache ini **tidak** di-reset di
+antar test, jadi satu test bisa meracuni test lain yang jalan belakangan di
+proses yang sama. Kasus nyata yang pernah terjadi:
+
+`MediaViewerTest` membuat `MediaViewer` dengan **koneksi mock**, dan konstruktor
+memanggil `get_user_role($mock, 1)`. Mock tidak punya baris, jadi fungsi itu
+mengembalikan fallback `'user'` — dan **memoisasi** nilai fallback itu ke
+`static $cache[1]`. Beberapa test kemudian, di proses yang sama,
+`MediaInteractionIntegrationTest` memanggil `get_user_role($conn, 1)` dengan DB
+test sungguhan yang isinya `role = 'admin'` — tapi cache basal lebih dulu, jadi
+`isAdmin()` mengembalikan `false` dan penghapusan komentar admin gagal 404.
+
+Yang membuat ini sulit dideteksi: testnya **lulus saat dijalankan sendiri**
+(`--filter`), gagal hanya saat seluruh suite jalan.
+
+Aturannya: **cache hanya boleh menyimpan fakta, bukan ketidakpastian.** Baris
+yang tidak ditemukan berarti "belum tahu", bukan "user ini punya role `user`".
+Jadi hasil negatif sengaja **tidak** di-memoisasi:
+
+```php
+$row = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if ($row === null) {
+    return 'user';          // fallback, TIDAK masuk cache
+}
+
+$role = (string)$row['role'];
+$cache[$user_id] = $role;   // fakta → aman di-cache
+```
+
+`get_user_active()` punya masalah kembar: ia memoisasi `false` turunan dari
+baris yang tidak ada, sehingga user yang baru aktif tetap terbaca non-aktif
+sampai proses berakhir. Diperbaiki dengan pola yang sama.
+
+ Dikunci oleh `tests/unit/UserRoleCacheNotFoundTest.php`. Kalau test itu mulai
+gagal setelah Anda mengubah salah satu fungsi, cari dulu apakah ada pemanggil
+yang bisarahasia melakukan lookup negatif lebih dulu.
+
+---
+
+### Konstanta media harus dikunci di `tests/bootstrap.php`
+
+Konstanta path media (`MEEL_HDD_*`) ditetapkan di `tests/bootstrap.php`,
+**sebelum** file produksi mana pun yang bisa mendefinisikannya saat di-`require`.
+
+Masalahnya: `modules/core/TranscoderBase.php` mendefinisikan `MEEL_HDD_BASE`
+sebagai placeholder `'/path/to/your/media'` kalau konstantanya belum ada.
+Begitu file itu ter-`require` — dan `require_once` **tidak bisa dibatalkan** —
+setiap test yang jalan sesudahnya akan melihat
+`meel_media_base_path('video')` bernilai placeholder yang tidak writable.
+
+Gejalanyalooked innocuous tapi menyesatkan:
+
+```
+file_put_contents(/path/to/your/media/video/upload/thumbnail/x_thumb.webp):
+Failed to open stream: No such file or directory
+```
+
+Test-nya **lulus saat dijalankan sendiri** (`--filter`) dan gagal hanya ketika
+seluruh suite berjalan — karena test yang memuat `TranscoderBase.php` kebetulan
+berjalan sebelum test yang butuh path writable.
+
+Solusinya konstantanya dikunci lebih dulu ke `temp/media-test/`. Dua efek
+menyenangkan sekaligus:
+
+1. urutan test tidak lagi menentukan hasil;
+2. tidak ada lagi direktori media yang bocor ke luar repo saat test berjalan.
+
+---
+
+### Overlay engine: kenapa pakai antre (queue), bukan panggilan langsung
+
+Gejala yang pernah muncul: setelah submit, halaman jadi **putih kosong** —
+overlay "MEeL Engine" tidak pernah tampil, padahal prosesnya jalan.
+
+#### Akar masalahnya
+
+`assets/css/engine/base.css` menyembunyikan overlay secara default:
+
+```css
+#meel-overlay { display: none; }
+```
+
+Artinya overlay **hanya** bisa tampil kalau `meelPhase()` sempat dieksekusi.
+Jika tidak, respons POST itu hanya berisi fragmen (`partials/ui.php` tidak
+punya `<html>`/`<body>`) sehingga yang tampil adalah halaman putih kosong.
+
+Urutan pemuatan yang Mennonjolkan race:
+
+1. `main.js` (`<script src>`) dieksekusi — **parser-blocking**
+2. `main.js` menyisipkan `core.js` & friends via `document.head.appendChild` —
+   script yang disisipkan dinamis **tidak memblokir parser**, walau `async = false`
+3. Parser lanjut ke inline `<script>meelPhase("download")</script>`
+4. `core.js` baru selesai diunduh & baru mendefinisikan `meelPhase`
+
+Pada langkah 3, `meelPhase` belum ada → `ReferenceError`. Karena bergantung
+kecepatan jaringan/cache, gejalanya **intermiten**.
+
+#### Solusinya: antre di `main.js`
+
+`main.js` dipanggil sebelum inline script, jadi shim di sana selalu siap.
+Panggilan yang datang terlalu dini diantre, lalu diputar begitu `core.js`
+menjalankan `__meelPhaseBind()`:
+
+```js
+window.meelPhase = function (phase) {
+  if (real) { real(phase); return; }
+  queue.push(phase);          // engine belum siap
+};
+```
+
+Dengan begitu **urutan muat tidak lagi relevan** — overlay tetap tampil walau
+halaman sudah streaming beberapa menit sebelum engine JS selesai diunduh.
+
+#### Phase `encode`
+
+`upload_advanced.php` memanggil `meelPhase("encode")` untuk alur musik, tapi
+tidak ada `meel-phase-encode` di `core.js` maupun `partials/engine/`. Akibatnya
+semua phase kehilangan `.active` dan tidak ada yang diaktifkan — card kosong
+tanpa indikator loading. Sekarang ada `partials/engine/encode.php` dan
+`'encode'` masuk daftar `MEEL_PHASES`.
+
+Dikunci oleh `tests/unit/EnginePhaseJsTest.php` (7 test, menjalankan
+`tests/js/engine-phase.harness.js` lewat Node untuk mensimulasikan urutan
+muat terburuk). Dokumen `.agents/PRD.md` sengaja tidak ikut karena hanya ada di
+mesin lokal.
 
 ---
 
@@ -1404,13 +1540,13 @@ php scripts/gc.php          # housekeeping berat (butuh $server = TCP)
 | `admin/mfa_reset.php` | Admin MFA reset panel |
 | `partials/ui.php` | Overlay UI system (JS heavy) |
 | `assets/js/shared/keyboard.js` | Guard shortcut keyboard bersama (meelKeyShortcutIgnored) — dipakai misc/mini-player video & music |
-| `assets/js/video/watch/misc.js` | Shortcut spesifik video (L=loop, A=auto-next) |
+| `assets/js/video/watch/misc.js` | Shortcut spesifik video (L=loop, A=auto-next, S=AI-upscale, B=ambient-glow) |
 | `assets/js/video/watch/mini-player.js` | Shortcut video (N=next, I=mini-player) + logika mini-player |
 | `assets/js/music/watch/misc.js` | Shortcut musik (L=loop, E=equalizer, V=visualizer, I=mini-player) |
 | `assets/js/shared/temp-index.js` | Loader bersama index.php ke #temp-index-content tanpa reload (meelLoadTempIndex) — dipakai mini-player video & music |
 | `assets/js/shared/plyr-config.js` | Konfigurasi dasar Plyr bersama (MEEL_PLYR_COMMON: iconUrl, speed, keyboard, tooltips) — dipakai player video & music |
 | `assets/js/shared/upload-progress.js` | Animasi progress-bar upload bersama (meelUploadProgress) — dipakai halaman upload music & video |
-| `assets/js/shared/resume-modal.js` | Modal resume bersama (meelResumeModal) — dipakai player-events video & player-core music |
+| `assets/js/shared/resume-modal.js` | Modal resume bersama (meelResumeModal) + keyboard guard (flag `meelResumeModalActive`) — dipakai player-events video & player-core music |
 | `assets/js/shared/format-time.js` | Formatter waktu mm:ss bersama (formatTime) — dipindah dari music/shared/utils.js, dipakai mini-player music & resume-modal |
 | `assets/js/shared/mini-player-popstate.js` | Handler popstate bersama untuk keluar dari mode mini-player (meelMiniPlayerPopstate) — dipakai mini-player watch video & music |
 | `assets/js/video/watch/main.js` | Entry point folder watch/ — memuat sibling secara sinkron (document.write) |
@@ -1437,6 +1573,89 @@ php scripts/gc.php          # housekeeping berat (butuh $server = TCP)
 | `assets/js/shared/notification.js` | Notification polling system |
 | `assets/css/video/player.css` | Plyr video player overrides (object-fit: contain) |
 | `assets/css/profile/*.css` | Profile module CSS (10 files: base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state) |
+| `assets/js/video/watch/upscaler.js` | AI Upscale berbasis WebGPU (model/mode/scale, glow) — mengekspor `window.MEEL_UPSCALER` + `window.toggleUpscale()` untuk pintasan `S` |
+| `assets/css/video/resume-modal.css` | Modal resume video — z-index fullscreen + cincin fokus tombol navigasi keyboard |
+
+### Video — Perilaku Resume Modal & Keyboard Guard
+
+Player video menampilkan modal **"Lanjutkan Sesi?"** ketika video punya posisi
+putar tersimpan (`video_pos_<id>` di `localStorage`) di atas 10 detik dan belum
+dekat ke ujung durasi.
+
+**Pemicu & jendela waktu.** `meelResumeModal()` dipanggil dari
+`player.on("ready")`. Untuk HLS pemanggilan ini ** tertunda**: menunggu event
+`FRAG_BUFFERED` (buffer ≥ 15 detik) atau **timeout 8 detik** (`player-events.js`).
+Artinya user tetap bisa menekan layar penuh sebelum modal muncul — dan
+`skipToNextVideo()` otomatis memanggil `player.fullscreen.toggle()` lagi setelah
+transisi video seamless. Kombinasi ini yang membuat modal pernah tampil (atau
+gagal tampil) dalam keadaan fullscreen.
+
+#### Why modal tidak muncul di layar penuh
+
+Plyr **tidak pernah memakai** `#main-video-wrapper` sebagai container-nya.
+Constructor-nya selalu membuat `<div class="plyr">` baru dan menyisipkannya di
+antara `#video-glow-container` dan `#main-video-wrapper`:
+
+```html
+#video-glow-container
+└─ div.plyr.plyr--full-ui…          ← container Plyr + target fullscreen
+   └─ #main-video-wrapper           ← z-index:2 (layout.css)
+      ├─ .plyr__video-wrapper > video, .plyr__poster
+      └─ #resume-modal              ← z-index:20
+```
+
+Modal yang ditulis di `watch.php` sebagai saudara `<video>` berakhir **satu
+level di bawah** container Plyr. Pada mode normal `#main-video-wrapper` hanya
+`position:relative; z-index:2` sehingga `z-index:20` masih menang atas
+`.plyr__poster`(1), tombol play besar(2), dan `.plyr__controls`(3).
+
+Pada fullscreen, `assets/css/video/fullscreen.css` menaikkan **tiga elemen
+bersarang** sekaligus ke `position:fixed` + `z-index:999999`:
+`#video-glow-container`, `.plyr`, dan `#main-video-wrapper`. Akibatnya
+`.plyr__video-wrapper` menutupi modal — overlay tertimpa area video dan tidak
+terlihat sama sekali. Terukur: `z-index:999999` masih tertimpa, `z-index:1000000`
+sudah di atas. Perbaikannya `body.meel-fs-active #resume-modal { z-index: 1000001 }`
+di `assets/css/video/resume-modal.css`.
+
+> **Catatan:** `#meel-reconnect-overlay` (`recovery-manager.js`) memakai
+> `z-index:60` dan juga di-append ke `#main-video-wrapper`, sehingga memiliki
+> masalah yang sama di layar penuh. Belum diperbaiki.
+
+#### Keyboard guard
+
+Plyr mendaftarkan `keydown keyup` di `window` fase **bubble** dengan
+`config.keyboard.global`, dan `keyboard.js`/`misc.js`/`mini-player.js`
+mendaftarkan listener sendiri. Plyr hanya mengecualikan `Space` saat fokus berada
+di `<button>`, sehingga `k`, `↑`/`↓`, `←`/`→`, `f`, `m`, `c`, `l`, dan angka `0–9`
+tetap bereaksi walau fokus sudah di tombol modal.
+
+`assets/js/shared/resume-modal.js` menutupnya dengan satu listener `window` fase
+**capture** yang didaftarkan sekali saat file dimuat. Karena `resume-modal.js`
+dimuat pada `video/watch.php` **sebelum** module loader `video/watch/main.js`,
+pendaftarannya mendahului `mini-player.js` (yang juga capture di `window`).
+
+| Kelas | Perlakuan |
+|---|---|
+| **Diizinkan** | `Tab` · `Shift+Tab` · `←` → Lanjut · `→` → Ulang (mengikuti posisi tombol) · `Home` `End` (pilihan pertama/terakhir) · `Enter` (native aktivasi `<button>`) · `Esc` (tetap keluar layar penuh) · semua kombinasi `Ctrl`/`Meta`/`Alt` |
+| **Diblokir** | `Space` (dialihkan ke aktivasi pilihan terfokus) · `↑` `↓` · `k` `j` `l` `m` `f` `c` · `0`–`9` · `i` `n` `a` · dan key lain |
+| **Pengaman tambahan** | `window.meelResumeModalActive` = `true` selama modal tampil; dipakai sebagai early-return di `video/watch/misc.js`, `video/watch/mini-player.js`, dan `music/watch/misc.js` |
+
+Detail tambahan:
+
+- Fokus awal otomatis ke `#btn-resume` (**Lanjut** — pilihan yang tidak menghapus
+  progres). Setelah modal ditutup, fokus dikembalikan ke container player.
+- `player-events.js` mengirim `onShow: () => player.pause()` agar video tidak
+  tetap berjalan di belakang modal.
+- `#resume-modal` memakai `role="dialog"` + `aria-modal="true"` +
+  `aria-labelledby` / `aria-describedby`, dengan cincin fokus `:focus` yang
+  terlihat di `assets/css/{video,music}/resume-modal.css`.
+- **Bug yang ikut diperbaiki:** `countdownTimer` tidak pernah di-`clearInterval()`
+  saat modal disembunyikan, sehingga label hitung mundur masih berubah selama 15
+  detik di DOM. Sekarang semua timer dibersihkan lewat satu fungsi `close()`.
+- Auto-restart 15 detik kini juga melewati `close()` sehingga flag dan hook ikut
+  dibersihkan.
+- `window.__meelResumeDismiss()` menutup instance sebelumnya — dipakai saat pindah
+  track di halaman musik agar tidak ada dua timer aktif.
 
 ### Musik — Perilaku Resume Modal
 

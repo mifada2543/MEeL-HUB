@@ -15,6 +15,7 @@ return [
     'upscaler.css',
     'utility.css',
 
+    '../shared/htmx-anim.css',
     '../shared/light-theme.css',
 ];
 

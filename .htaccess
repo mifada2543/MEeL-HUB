@@ -39,11 +39,23 @@ DirectoryIndex index.php index.html
     RewriteRule ^arcade/testgeneric\.php$ - [E=ROOTPROC:1]
     RewriteEngine On
     RewriteRule ^sw\.js$ sw.js.php [END]
+    # /assets/manifest.json disajikan dari generator PHP supaya scope & id
+    # ikut base path aplikasi. Kalau repo dipindah ke folder lain (mis.
+    # /media-hub), manifest hardcode "/MEeL/" akan membuat SW tidak pernah
+    # controlling halaman. File assets/manifest.json tetap ada sebagai
+    # fallback untuk clone tanpa mod_rewrite.
+    RewriteRule ^assets/manifest\.json$ manifest.php [END]
 </IfModule>
 
 # ── SEO: /sitemap.xml & /robots.txt disajikan dari FILE FISIK (regenerate
 # via CLI: php sitemap.php [base-url]). Generator sitemap.php/robots.php
 # TIDAK boleh dieksekusi lewat browser — diblokir di FilesMatch di atas ──
+
+# Catatan: /manifest.php TIDAK diblokir seperti sitemap.php/robots.php.
+# Bedanya: manifest.php memang WAJIB dieksekusi browser — diakses lewat
+# rewrite ^assets/manifest\.json$ di atas (pola yang sama dengan
+# /sw.js -> sw.js.php). Akses langsung ke /manifest.php tidak berguna
+# bagi siapa pun, dan isinya hanya data manifest publik.
 
 # ── Media storage: serve file upload dari MEEL_HDD_*_UPLOAD via PHP ──
 # (pengecualian front controller — endpoint streaming/range request tetap

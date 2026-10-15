@@ -3,24 +3,18 @@ require '../auth/auth.php';
 require '../auth/config.php';
 require '../modules/core/helpers.php';
 require __DIR__ . '/DriveService.php';
-
 $user = DriveUserContext::fromSession($_SESSION);
 $user->authorize();
 $user->loadProfilePicture($conn);
-
 $storage = new DriveStorage(DriveStorage::defaultBasePath(), $user);
 $renderer = new DriveViewRenderer();
 $currentScope = $storage->normalizeScope($_GET['scope'] ?? DriveStorage::SCOPE_PUBLIC);
-
 meel_storage_guard();
-
 $videos = $storage->listFilesByType('video', $currentScope);
 $audios = $storage->listFilesByType('audio', $currentScope);
 $documents = $storage->listFilesByType('dokumen', $currentScope);
-
 $usage = null;
 $usagePercentage = null;
-
 if ($user->isMember()) {
     $usage = get_user_usage($user->username);
     $limit = 20 * 1024 * 1024 * 1024;
@@ -44,7 +38,7 @@ if ($user->isMember()) {
 </head>
 
 <body class="antialiased">
-
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <div class="flex min-h-screen">
         <aside class="w-64 glass border-r border-gray-800 hidden md:flex flex-col sticky top-0 h-screen">
             <div class="p-6">
@@ -55,7 +49,6 @@ if ($user->isMember()) {
                         <p class="text-[10px] text-gray-400 tracking-widest uppercase mt-1">Sistem Penyimpanan</p>
                     </div>
                 </div>
-
                 <nav class="space-y-1">
                     <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Cakupan</p>
                     <a href="?scope=public" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition <?= $currentScope === 'public' ? 'nav-active' : '' ?>" title="File publik yang bisa diakses semua orang">
@@ -65,7 +58,6 @@ if ($user->isMember()) {
                         <i data-lucide="shield-check" class="w-5 h-5"></i> Ruang Pribadi
                     </a>
                 </nav>
-
                 <nav class="mt-10 space-y-1">
                     <p class="text-[10px] font-bold text-gray-600 uppercase tracking-widest px-3 mb-2">Kategori</p>
                     <button onclick="showSection('video', this)" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition nav-btn-desktop active" title="Tampilkan file video">
@@ -79,7 +71,6 @@ if ($user->isMember()) {
                     </button>
                 </nav>
             </div>
-
             <div class="mt-auto p-4 border-t border-gray-800 bg-black/20">
                 <div class="flex items-center gap-3">
                     <?php if (!empty($user->profile_picture) && is_file(__DIR__ . '/../profile/upload/' . $user->profile_picture)): ?>
@@ -98,9 +89,7 @@ if ($user->isMember()) {
                 </div>
             </div>
         </aside>
-
         <main class="flex-1 p-4 md:p-10 w-full overflow-x-hidden">
-
             <div class="md:hidden flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
                 <div class="flex items-center gap-3" onclick="window.location.href='../'" style="cursor: pointer;" title="Kembali ke MEeL HUB">
                     <img src="../assets/MEeL.png" class="w-8 h-8 rounded-lg shadow-lg shadow-blue-500/20" alt="Logo">
@@ -118,12 +107,10 @@ if ($user->isMember()) {
                     </div>
                 <?php endif; ?>
             </div>
-
             <div class="md:hidden flex items-center gap-2 mb-4">
                 <a href="?scope=public" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'public' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Publik</a>
                 <a href="?scope=private" class="flex-1 text-center text-xs px-4 py-2 rounded-lg font-semibold transition <?= $currentScope === 'private' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400' ?>">Privat</a>
             </div>
-
             <div class="md:hidden flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
                 <button onclick="showSection('video', this, true)" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500 text-blue-500 whitespace-nowrap nav-btn-mobile active font-medium text-xs" title="Tampilkan file video">
                     <i data-lucide="play-circle" class="w-4 h-4"></i> Video
@@ -135,7 +122,6 @@ if ($user->isMember()) {
                     <i data-lucide="file-text" class="w-4 h-4 text-green-500"></i> Dokumen
                 </button>
             </div>
-
             <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 hidden md:flex">
                 <div>
                     <h2 id="sectionHeading" class="text-3xl font-extrabold tracking-tight">
@@ -143,7 +129,6 @@ if ($user->isMember()) {
                     </h2>
                     <p id="fileCount" class="text-sm text-gray-400 mt-1">Memuat file...</p>
                 </div>
-
                 <div class="flex items-center gap-3">
                     <div class="relative flex-1">
                         <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
@@ -154,7 +139,6 @@ if ($user->isMember()) {
                     </button>
                 </div>
             </header>
-
             <div class="md:hidden flex flex-col gap-3 mb-6">
                 <div>
                     <h2 class="text-xl font-extrabold tracking-tight">
@@ -172,7 +156,6 @@ if ($user->isMember()) {
                     </button>
                 </div>
             </div>
-
             <?php if ($user->isMember() && $usage !== null && $usagePercentage !== null): ?>
                 <div class="glass rounded-2xl p-4 mb-8 flex items-center gap-6">
                     <div class="flex-1">
@@ -188,7 +171,6 @@ if ($user->isMember()) {
                 </div>
             <?php endif; ?>
             <section class="upload-dropzone glass rounded-2xl p-6 mb-8 border-dashed border-2 border-gray-800 hover:border-blue-500/50 transition-colors" id="uploadDropzone">
-
                 <div class="dropzone-hint" id="dropzoneHint">
                     <div class="dropzone-hint-icon">
                         <i data-lucide="cloud-upload" class="w-5 h-5"></i>
@@ -196,7 +178,6 @@ if ($user->isMember()) {
                     <span class="dropzone-hint-text">Lepaskan file untuk mengunggah</span>
                     <span class="dropzone-hint-sub">atau klik area ini untuk memilih file</span>
                 </div>
-
                 <form id="uploadForm" action="upload?ajax=1" method="POST" enctype="multipart/form-data" class="flex flex-col md:flex-row items-center gap-6">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(get_csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="scope" value="<?= htmlspecialchars($currentScope, ENT_QUOTES, 'UTF-8') ?>">
@@ -212,7 +193,6 @@ if ($user->isMember()) {
                     </button>
                 </form>
             </section>
-
             <div id="drive-video" class="drive-section">
                 <?php $renderer->renderFileGrid($videos, '#ef4444', 'play', 'video', $currentScope, $user->isAdmin() || $currentScope !== 'public'); ?>
             </div>
@@ -224,7 +204,6 @@ if ($user->isMember()) {
             </div>
         </main>
     </div>
-
     <div id="uploadProgressCard" class="upload-prog-card hidden">
         <div class="upload-prog-header">
             <div class="upload-prog-header-title" id="uploadProgToggle" title="Klik untuk detail">
@@ -238,18 +217,14 @@ if ($user->isMember()) {
                 <i data-lucide="x" class="w-4 h-4"></i>
             </button>
         </div>
-
         <div class="upload-prog-body">
-
             <div class="upload-prog-track">
                 <div id="uploadProgBar" class="upload-prog-fill" style="width: 0%"></div>
             </div>
-
             <div class="upload-prog-info">
                 <span id="uploadProgPercent" class="upload-prog-pct">0%</span>
                 <span id="uploadProgStatus" class="upload-prog-status">Mengunggah...</span>
             </div>
-
             <div class="upload-prog-stats">
                 <div class="upload-prog-stat">
                     <span class="upload-prog-stat-label">Kecepatan</span>
@@ -264,10 +239,8 @@ if ($user->isMember()) {
                     <span id="uploadProgSize" class="upload-prog-stat-val">—</span>
                 </div>
             </div>
-
             <div id="uploadProgDone" class="upload-prog-result hidden">
                 <div class="upload-prog-result-icon upload-prog-result-success">
-
                     <svg class="upload-checkmark" viewBox="0 0 52 52" width="28" height="28">
                         <circle class="upload-checkmark-circle" cx="26" cy="26" r="24" fill="none" stroke="currentColor" stroke-width="3" />
                         <path class="upload-checkmark-check" d="M14 27l7 7 16-16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
@@ -281,11 +254,9 @@ if ($user->isMember()) {
                 </div>
                 <span class="upload-prog-result-text">Unggah Gagal</span>
             </div>
-
             <div id="uploadConfetti" class="upload-confetti hidden"></div>
         </div>
     </div>
-
     <div id="previewModal" class="hidden fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-[#161b2a] border border-gray-800 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl relative">
 
@@ -303,21 +274,21 @@ if ($user->isMember()) {
 
         </div>
     </div>
-
     <script src="../assets/js/drive/navigation.js?v=<?= filemtime('../assets/js/drive/navigation.js') ?>"></script>
     <script src="../assets/js/drive/file-input.js?v=<?= filemtime('../assets/js/drive/file-input.js') ?>"></script>
     <script src="../assets/js/drive/preview.js?v=<?= filemtime('../assets/js/drive/preview.js') ?>"></script>
     <script src="../assets/js/drive/search.js?v=<?= filemtime('../assets/js/drive/search.js') ?>"></script>
+    <script src="../assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
     <script src="../assets/js/drive/upload.js?v=<?= filemtime('../assets/js/drive/upload.js') ?>"></script>
     <script>
-    (function(){
-        if (typeof MEELTheme !== 'undefined') {
-            MEELTheme.init({
-                isLoggedIn: true,
-                csrfToken: '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>'
-            });
-        }
-    })();
+        (function() {
+            if (typeof MEELTheme !== 'undefined') {
+                MEELTheme.init({
+                    isLoggedIn: true,
+                    csrfToken: '<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>'
+                });
+            }
+        })();
     </script>
     <?php include '../partials/footer.php'; ?>
 </body>

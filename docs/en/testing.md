@@ -20,7 +20,7 @@ MEeL uses a multi-layered testing approach:
 
 ---
 
-## 🧪 PHPUnit Test Suite (305 Unit + 98 Integration = 403 Tests)
+## 🧪 PHPUnit Test Suite (560+ Unit + 100+ Integration)
 
 ### Installation
 
@@ -346,15 +346,18 @@ layout, and includes an optional live-403 probe that runs only when a staging
 URL is configured as a GitHub secret:
 
 ```yaml
-# .github/workflows/ci.yml — job deploy-check, optional step
-- name: Verify Private Drive 403 (staging)
-  if: secrets.STAGING_URL != ''
-  run: |
-    code=$(curl -s -o /dev/null -w '%{http_code}' \
-      "$STAGING_URL/data_drive/private_admins/" || true)
-    [ "$code" = "403" ] || { echo "Expected 403, got $code"; exit 1; }
-  env:
-    STAGING_URL: ${{ secrets.STAGING_URL }}
+# .github/workflows/ci.yml — job deploy-check
+# Note: the `secrets` context is NOT available in a step-level `if:`. The secret
+# is exposed via job-level `env`, then read as an env context inside `if:`.
+    env:
+      STAGING_URL: ${{ secrets.STAGING_URL }}
+    steps:
+      - name: Verify Private Drive 403 (staging)
+        if: env.STAGING_URL != ''
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            "$STAGING_URL/data_drive/private_admins/" || true)
+          [ "$code" = "403" ] || { echo "Expected 403, got $code"; exit 1; }
 ```
 
 ### Verifying Private Drive 403 manually (deploy-time)

@@ -33,7 +33,7 @@ Installer otomatis yang menjalankan sebagian besar langkah panduan ini dalam sat
 
 Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
 
-1. **Cek dependency** — PHP 8.0+ dengan ekstensi `mysqli`, `pdo_mysql`,
+1. **Cek dependency** — PHP 8.1+ dengan ekstensi `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl`, plus
    MariaDB/MySQL; diinstall via apt bila perlu (`--skip-apt` untuk melewati).
 2. **Setup database** — buat database + import `database/schema.sql` (baris
@@ -68,7 +68,7 @@ Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
 
 | Komponen | Versi | Keterangan |
 |---|---|---|
-| **PHP** | 8.0+ | **8.1+** sangat disarankan |
+| **PHP** | **8.1+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Wajib `mod_rewrite` |
 | **FFmpeg** | 6.0+ | Untuk HLS & transcoding |
@@ -153,12 +153,12 @@ cd MEeL
 > **📁 File skema database sudah tersedia di [`database/schema.sql`](../../database/schema.sql).**
 > Setelah impor, jalankan migrasi untuk menyelesaikan setup.
 
-> ⚠️ `schema.sql` meng-hardcode `CREATE DATABASE IF NOT EXISTS \`MEeL\`` + `USE \`MEeL\`;` — impor manual (CLI/phpMyAdmin) selalu menargetkan database bernama `MEeL`. `install.sh` menulis ulang kedua baris itu sesuai nama DB konfigurasi, jadi nama DB non-default (mis. untuk staging) aman dipakai lewat installer.
+> ⚠️ `schema.sql` **tidak** memuat `CREATE DATABASE` / `USE`. Nama database wajib disebut di baris perintah — inilah yang mencegah impor mendarat diam-diam di database yang salah. Untuk nama DB selain `MEeL`, sebutkan nama itu langsung di perintah; `install.sh` memakai cara yang sama.
 
 #### Opsi A — Via MySQL CLI (cepat):
 
 ```bash
-mysql -u root -p < database/schema.sql
+mysql -u root -p MEeL < database/schema.sql
 ```
 
 #### Opsi B — Via MySQL prompt:
@@ -167,6 +167,8 @@ mysql -u root -p < database/schema.sql
 mysql -u root -p
 ```
 ```sql
+CREATE DATABASE IF NOT EXISTS `MEeL` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `MEeL`;
 SOURCE /path/ke/MEeL/database/schema.sql;
 ```
 

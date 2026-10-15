@@ -1,57 +1,45 @@
 name: MEeL CI
-
 on:
   push:
-    branches: [ "main", "master", "develop", "Experiment" ]
+    branches: ["main", "master", "develop", "Experiment"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   workflow_dispatch:
     inputs:
       debug_enabled:
-        description: 'Enable debug logging'
+        description: "Enable debug logging"
         required: false
         default: false
         type: boolean
-
-# ─── Concurrency: cancel redundant runs on the same branch ───
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
-# ─── Least privilege for GITHUB_TOKEN ───
 permissions:
   contents: read
   checks: write
   pull-requests: write
-
-# ─── Defaults ───
 defaults:
   run:
     shell: bash
-
 jobs:
-  # ─── Job 1: PHP Syntax Check ───
   php-syntax:
     name: PHP Syntax (php -l)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.1', '8.2', '8.3']
-
+        php-version: ["8.1", "8.2", "8.3"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
           coverage: none
           tools: none
-
       - name: PHP Syntax Check (php -l)
         run: |
           failed=0
@@ -65,31 +53,26 @@ jobs:
           done < <(find . -name '*.php' -not -path './vendor/*' -not -path './.git/*' -not -path './assets/dict/*' -print0)
           if [ $failed -eq 1 ]; then exit 1; fi
           echo "✅ All $count PHP files passed syntax check on PHP ${{ matrix.php-version }}."
-
-  # ─── Job 2: Functional Tests ───
   functional-tests:
     name: Functional Tests
     runs-on: ubuntu-latest
     needs: php-syntax
-    if: always()  # Run even if syntax check fails on some PHP versions
+    if: always()
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.2']
-
+        php-version: ["8.2"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
           coverage: none
           tools: none
-
       - name: Run Functional Tests
         run: |
           if [ -f tests/functional_test.php ]; then
@@ -104,8 +87,6 @@ jobs:
           else
             echo "⚠️  Functional test not found, skipping."
           fi
-
-  # ─── Job 3: Security Tests ───
   security-tests:
     name: Security Tests
     runs-on: ubuntu-latest
@@ -114,21 +95,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.2']
-
+        php-version: ["8.2"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
           coverage: none
           tools: none
-
       - name: Run Security Tests
         run: |
           if [ -f tests/security_test.php ]; then
@@ -143,8 +121,6 @@ jobs:
           else
             echo "⚠️  Security test not found, skipping."
           fi
-
-  # ─── Job 4: PHPUnit Tests ───
   phpunit-tests:
     name: PHPUnit Unit Tests
     runs-on: ubuntu-latest
@@ -153,21 +129,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.2']
-
+        php-version: ["8.2"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
           coverage: none
           tools: composer
-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
       - name: Get Composer Cache Directory
         id: composer-cache
         run: |
@@ -180,7 +157,6 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
           restore-keys: |
             ${{ runner.os }}-composer-
-
       - name: Install Composer Dependencies
         run: |
           if [ -f composer.json ]; then
@@ -188,7 +164,6 @@ jobs:
           else
             echo "⚠️  composer.json not found, skipping."
           fi
-
       - name: Install mecab (Japanese tests dependency)
         run: |
           sudo apt-get update
@@ -197,7 +172,26 @@ jobs:
           #   < 20.04: mecab-ipadic-utf8 ; >= 20.04: mecab-ipadic
           sudo apt-get install -y mecab-ipadic-utf8 || sudo apt-get install -y mecab-ipadic || true
           echo "テスト" | mecab || echo "⚠️  mecab gagal diuji — Japanese tests akan skip"
-
+      - name: Verify JS harness prerequisites
+        run: |
+          # Guard anti-skip-senyap: kalau ada tests/js/*.harness.js tapi Node
+          # tidak tersedia, test akan markTestSkipped() dan suite tetap hijau
+          # tanpa benar-benar menguji apa pun. Di runner GitHub Node sudah
+          # diinstall di langkah "Setup Node.js"; langkah ini hanya memastikan
+          # keadaan itu, dan GAGAL kalau suatu saat langkahnya hilang.
+          shopt -s nullglob
+          harnesses=(tests/js/*.harness.js)
+          if [ ${#harnesses[@]} -eq 0 ]; then
+            echo "ℹ️  Tidak ada harness JS — tidak ada yang perlu diverifikasi."
+            exit 0
+          fi
+          printf '   %s\n' "${harnesses[@]}"
+          if ! command -v node >/dev/null 2>&1; then
+            echo "❌ Ada ${#harnesses[@]} harness JS tapi Node tidak ada di runner."
+            echo "   Test akan markTestSkipped() — suite hijau palsu. Tambahkan langkah setup-node."
+            exit 1
+          fi
+          echo "✅ Node $(node --version) tersedia untuk ${#harnesses[@]} harness."
       - name: Run PHPUnit Tests
         run: |
           if [ -f vendor/bin/phpunit ]; then
@@ -207,12 +201,6 @@ jobs:
           else
             echo "⚠️  PHPUnit not installed, skipping."
           fi
-
-  # ─── Job 4b: PHPUnit Integration Tests (MySQL service) ───
-  # Integration tests membutuhkan MySQL — service container menyediakan
-  # MySQL 8.0. Database test terpisah `MEeL-test` di-reset, di-import
-  # schema-nya, lalu di-drop OTOMATIS oleh tests/DbTestHelper.php — tidak
-  # pernah menyentuh database produksi dan tidak meninggalkan sisa.
   phpunit-integration-tests:
     name: PHPUnit Integration Tests
     runs-on: ubuntu-latest
@@ -221,7 +209,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.2']
+        php-version: ["8.2"]
     services:
       mysql:
         image: mysql:8.0
@@ -268,11 +256,24 @@ jobs:
           else
             echo "⚠️  PHPUnit not installed, skipping."
           fi
-
-  # ─── Job 5: HTACCESS & Integrity Check ───
-  htaccess-check:
-    name: HTACCESS & Integrity
+  migration-test:
+    name: Migration Test
     runs-on: ubuntu-latest
+    needs: php-syntax
+    if: always()
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: meel_migration_check
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - name: Checkout
@@ -280,6 +281,151 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          coverage: none
+          extensions: mysqli
+
+      - name: Import schema.sql (fresh install path)
+        run: |
+          set -euo pipefail
+          # ⚠️ Riwayat: langkah ini pernah dijalankan sebagai
+          #   mysql ... meel_migration_check < database/schema.sql
+          # dan itu SALAH diam-diam. schema.sql DULU memuat
+          #   CREATE DATABASE IF NOT EXISTS `MEeL` ...
+          #   USE `MEeL`;
+          # dan `USE` di dalam berkas MENANG atas nama database yang disebut
+          # di baris perintah. Hasilnya seluruh impor mendarat di database
+          # `MEeL`, bukan meel_migration_check -- sehingga langkah migrasi
+          # berikutnya menguji database yang KOSONG, dan jalur upgrade yang
+          # diklaim di komentar tidak pernah benar-benar diuji.
+          #
+          # Perbaikannya di sumbernya: schema.sql tidak lagi memuat
+          # CREATE DATABASE / USE sama sekali. Tidak ada lagi yang perlu ditulis
+          # ulang di sini, jadi kelas bug "impor mendarat di database yang
+          # salah" mustahil terjadi -- bukan sekadar diperiksa setelahnya.
+          #
+          # Polanya sengaja TIDAK menyebut nama database apa pun, hanya kata
+          # kuncinya. Pola yang menyebut nama bisa diam-diam gagal cocok dan
+          # membiarkan berkas apa adanya lolos ke mysql.
+          if grep -qiE '^[[:space:]]*(CREATE[[:space:]]+DATABASE|USE[[:space:]])' database/schema.sql; then
+            echo "❌ schema.sql memuat CREATE DATABASE / USE — impor bisa mendarat di database yang salah."
+            grep -niE '^[[:space:]]*(CREATE[[:space:]]+DATABASE|USE[[:space:]])' database/schema.sql
+            exit 1
+          fi
+
+          mysql -h 127.0.0.1 -u root -proot meel_migration_check < database/schema.sql
+
+          # Buktikan impor benar-benar mendarat di database yang dimaksud.
+          N=$(mysql -h 127.0.0.1 -u root -proot -N -B \
+              -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='meel_migration_check';")
+          echo "  tabel di meel_migration_check: $N"
+          if [ "$N" -lt 20 ]; then
+            echo "❌ Impor hanya menghasilkan $N tabel — hampir pasti mendarat di tempat lain."
+            exit 1
+          fi
+
+          # Dan buktikan database `MEeL` benar-benar TIDAK ikut tercipta --
+          # inilah gejala persis dari bug yang dulu ada.
+          M=$(mysql -h 127.0.0.1 -u root -proot -N -B \
+              -e "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='MEeL';")
+          if [ "$M" != "0" ]; then
+            echo "❌ Database `MEeL` ikut tercipta — masih ada pernyataan yang memilih database."
+            exit 1
+          fi
+          echo "✅ schema.sql import OK"
+
+      - name: Run migrate.php on top of existing schema (upgrade path)
+        run: |
+          set -euo pipefail
+          # ⚠️ Riwayat: langkah ini pernah memakai Empat `sed -i "s/define('DB_HOST'.*/..."`
+          # yang mencari konstanta TIDAK PERNAH ADA di settings.example.php --
+          # berkas itu memakai variabel polos ($server/$username/$password/$db).
+          # Keempat sed tidak pernah cocok, dan `|| true` menutupi itu, jadi CI
+          # diam-diam menjalankan migrate.php dengan $password="" ke host
+          # "localhost" (socket unix yang tidak ada di runner). Hasilnya fatal
+          # error 255 tanpa penjelasan apa pun.
+          #
+          # Sekarang: set variabel lingkungan, yang dibaca settings.example.php.
+          # Tidak ada lagi penulisan teks ke berkas konfigurasi, jadi tidak ada
+          # lagi pola regex yang bisa gagal diam-diam.
+          export MEEL_DB_HOST=127.0.0.1
+          export MEEL_DB_NAME=meel_migration_check
+          export MEEL_DB_USER=root
+          export MEEL_DB_PASS=root
+
+          if [ -f auth/settings.php ]; then
+            echo "⚠️  auth/settings.php ada di repo — TIDAK ditimpa, dan bisa saja"
+            echo "    menimpa kredensial di atas lewat nilai literalnya."
+          else
+            cp auth/settings.example.php auth/settings.php
+          fi
+
+          # Pastikan runner benar-benar memakai kredensial yang dimaksud.
+          # Tanpa ini, salah konfigurasi hanya muncul sebagai "uji migrasi
+          # lolos" padahal tidak menyentuh database sama sekali.
+          php -r '
+            require "auth/config.php";
+            $nama = $conn->query("SELECT DATABASE() AS d")->fetch_assoc()["d"];
+            if ($nama !== "meel_migration_check") {
+                fwrite(STDERR, "❌ Terhubung ke database \"$nama\", seharusnya meel_migration_check\n");
+                exit(1);
+            }
+            echo "✅ Terhubung ke database: $nama\n";
+          '
+
+          echo "── migrate.php run #1 ──"
+          php database/migrate.php
+
+          echo "── migrate.php run #2 (harus idempoten) ──"
+          OUT=$(php database/migrate.php)
+          echo "$OUT"
+          if ! echo "$OUT" | grep -q "up-to-date"; then
+            echo "❌ Migrasi TIDAK idempoten — run kedua masih ada migrasi baru."
+            exit 1
+          fi
+          echo "✅ migrate.php idempoten"
+
+      - name: Verify schema parity (upgrade path vs fresh install path)
+        run: |
+          # Konvensi T9: hasil upgrade (migrate.php di atas skema LAMA)
+          # harus identik dengan instalasi baru (import schema.sql).
+          #
+          # Penting: DB pertama dibangun dari schema.sql, jadi keduanya
+          # akan selalu sama — itu tidak membuktikan apa pun. Yang diuji
+          # di sini adalah jalur UPGRADE: mulai dari skema versi LAMA
+          # (tanpa kolom v6+), lalu jalankan migrate.php. Kalau ada
+          # migrasi yang lupa ditulis balik ke schema.sql, hasil upgrade
+          # akan punya kolom yang tidak ada di instalasi baru.
+          #
+          # Kredensial dideklarasikan ULANG di sini, bukan mengandalkan
+          # `export` dari langkah sebelumnya. Setiap `run:` adalah shell BARU,
+          # jadi `export` tidak bertahan antar langkah. Langkah ini sebelumnya
+          # berjalan tanpa apa pun, sehingga skrip jatuh ke bawaan "localhost"
+          # (= socket unix) dan gagal "No such file or directory" -- karena di
+          # runner MySQL berada di container terpisah lewat TCP 127.0.0.1, dan
+          # socket unix itu tidak ada.
+          #
+          # Skripnya sendiri sudah bisa membaca CI_PARITY_* maupun MEEL_DB_*,
+          # dan menolak jalan bila host-nya "localhost".
+          set -euo pipefail
+          export CI_PARITY_HOST=127.0.0.1
+          export CI_PARITY_USER=root
+          export CI_PARITY_PASS=root
+
+          php scripts/ci/schema-parity-check.php
+
+  # ─── Job 5: HTACCESS & Integrity Check ───
+  htaccess-check:
+    name: HTACCESS & Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Check HTACCESS Protection
         run: |
           echo "🔍 Checking sensitive directories have .htaccess protection..."
@@ -298,7 +444,6 @@ jobs:
           done
           if [ $missing -eq 1 ]; then exit 1; fi
           echo "✅ All ${#sensitive_dirs[@]} sensitive directories have .htaccess protection."
-
       - name: Check Critical File Permissions
         run: |
           echo "🔍 Checking critical file permissions..."
@@ -319,26 +464,18 @@ jobs:
             fi
           done
           echo "✅ Permission check complete."
-
-  # ─── Job 5b: Shell Script Lint (shellcheck) ───
-  # Severity `warning`, bukan `style`: install.sh & verify_security.sh
-  # memakai word splitting yang disengaja (daftar paket apt, flag opsional),
-  # jadi SC2086 di sana bukan bug.
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Install shellcheck
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
-
       - name: Lint shell scripts
         run: |
           echo "🔍 Menjalankan shellcheck..."
@@ -355,8 +492,6 @@ jobs:
           printf '   %s\n' "${shell_files[@]}"
           shellcheck -S warning "${shell_files[@]}"
           echo "✅ Shellcheck bersih pada ${#shell_files[@]} skrip (severity: warning)."
-
-  # ─── Job 6: Deployment Check ───
   deploy-check:
     name: Deployment Check
     runs-on: ubuntu-latest
@@ -365,25 +500,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.2']
+        php-version: ["8.2"]
     env:
-      # secrets TIDAK tersedia di step-level if: → expose di env job-level
-      # lalu baca lewat env.STAGING_URL (kosong bila secret belum diset)
       STAGING_URL: ${{ secrets.STAGING_URL }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Setup PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
           coverage: none
           tools: none
-
       - name: Simulate storage layout (temp HDD + upload dirs)
         run: |
           # check_deploy memverifikasi MEEL_HDD_BASE, upload symlinks dan
@@ -408,7 +538,6 @@ jobs:
                    "$HDD/music/upload/file" "$HDD/music/upload/thumbnail" \
                    "$HDD/books/upload/pdf" "$HDD/books/upload/thumbnail" \
                    "$HDD/drive/private_admins"
-
           # .htaccess hardening untuk tiap upload dir (pola sama dengan deploy)
           for m in video music books; do
             cp "${{ github.workspace }}/data_drive/.htaccess" "$HDD/$m/upload/.htaccess" 2>/dev/null || true
@@ -436,8 +565,44 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' \
             "$STAGING_URL/data_drive/private_admins/" || true)
           [ "$code" = "403" ] || { echo "Expected 403, got $code"; exit 1; }
+  tailwind-check:
+    name: Tailwind Reproducibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-  # ─── Job 6b: Drive Storage Integrity — tolak symlink di data_drive/ ───
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install build toolchain
+        # Versi tailwindcss DIPIN di package.json, bukanlatest: artefak
+        # ter-commit dibangun dengan versi tertentu, dan versi berbeda bisa
+        # menghasilkan CSS berbeda tanpa error sama sekali.
+        run: npm install --no-audit --no-fund
+
+      - name: Rebuild to a temp file and audit against the committed artifact
+        run: |
+          set -e
+          # PENTING: jangan `npm run css:build` di sini. Perintah itu
+          # MENULIS assets/css/tailwind.min.css, jadi artefak ter-commit
+          # tertimpa dan perbandingan dengan dirinya sendiri selalu lolos --
+          # gerbang hampa. --rebuild membangun ke file sementara lalu
+          # membandingkannya tanpa menyentuh isi repo.
+          #
+          # Gate-nya sengaja di tingkat class + deklarasi, bukan byte.
+          # package-lock.json tidak di-commit (sudah ada di .gitignore),
+          # jadi dependensi transitif bisa naik versi dan mengubah urutan
+          # atau format output tanpa mengubah isinya. Perbandingan byte
+          # akan gagalkan semua orang karena patch bump yang tak ada
+          # kaitannya dengan kode mereka. Yang benar-benar berbahaya --
+          # class hilang, atau deklarasi yang berubah nilainya -- tetap
+          # tertangkap di sini.
+          npm run css:check
   drive-storage-check:
     name: Drive Storage Integrity
     runs-on: ubuntu-latest
@@ -471,12 +636,23 @@ jobs:
           done < <(find data_drive -type l -print0)
           [ $found -eq 1 ] && exit 1
           echo "✅ Tidak ada symlink di data_drive/ (index & working tree bersih)."
-
-  # ─── Job 7: Summary / Status ───
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [php-syntax, functional-tests, security-tests, phpunit-tests, phpunit-integration-tests, htaccess-check, shellcheck, deploy-check, drive-storage-check]
+    needs:
+      [
+        php-syntax,
+        functional-tests,
+        security-tests,
+        phpunit-tests,
+        phpunit-integration-tests,
+        migration-test,
+        htaccess-check,
+        shellcheck,
+        deploy-check,
+        drive-storage-check,
+        tailwind-check,
+      ]
     if: always()
     steps:
       - name: Generate Job Status Summary
@@ -485,7 +661,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-
           report_job() {
             local name="$1"
             local result="$2"
@@ -497,7 +672,6 @@ jobs:
               echo "| ❌ $name | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
             fi
           }
-
           report_job "PHP Syntax (8.1)" "${{ needs.php-syntax.result }}"
           report_job "PHP Syntax (8.2)" "${{ needs.php-syntax.result }}"
           report_job "PHP Syntax (8.3)" "${{ needs.php-syntax.result }}"
@@ -505,18 +679,23 @@ jobs:
           report_job "Security Tests" "${{ needs.security-tests.result }}"
           report_job "PHPUnit Unit Tests" "${{ needs.phpunit-tests.result }}"
           report_job "PHPUnit Integration Tests" "${{ needs.phpunit-integration-tests.result }}"
+          report_job "Migration Test" "${{ needs.migration-test.result }}"
           report_job "HTACCESS & Integrity" "${{ needs.htaccess-check.result }}"
+          report_job "Tailwind Reproducibility" "${{ needs.tailwind-check.result }}"
           report_job "ShellCheck" "${{ needs.shellcheck.result }}"
           report_job "Deployment Check" "${{ needs.deploy-check.result }}"
           report_job "Drive Storage Integrity" "${{ needs.drive-storage-check.result }}"
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ⚡ Optimizations applied" >> $GITHUB_STEP_SUMMARY
-          echo "- **Parallel jobs** — syntax check, tests, security, and integrity run in parallel" >> $GITHUB_STEP_SUMMARY
-          echo "- **Matrix strategy** — syntax check across PHP 8.1, 8.2, 8.3" >> $GITHUB_STEP_SUMMARY
-          echo "- **Shallow clone** — `fetch-depth: 1` for faster checkout" >> $GITHUB_STEP_SUMMARY
-          echo "- **Concurrency** — cancels redundant runs on the same branch" >> $GITHUB_STEP_SUMMARY
-          echo "- **Xdebug disabled** — `coverage: none` for faster PHP execution" >> $GITHUB_STEP_SUMMARY
-          echo "- **Least privilege** — minimal `GITHUB_TOKEN` permissions" >> $GITHUB_STEP_SUMMARY
-          echo "- **Fail-fast disabled** — all PHP versions run even if one fails" >> $GITHUB_STEP_SUMMARY
-          echo "- **Job dependency** — functional/security tests wait for syntax check" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "### ⚡ Optimizations applied" >> "$GITHUB_STEP_SUMMARY"
+            cat <<'EOF'
+          - **Parallel jobs** — syntax check, tests, security, and integrity run in parallel
+          - **Matrix strategy** — syntax check across PHP 8.1, 8.2, 8.3
+          - **Shallow clone** — `fetch-depth: 1` for faster checkout
+          - **Concurrency** — cancels redundant runs on the same branch
+          - **Xdebug disabled** — `coverage: none` for faster PHP execution
+          - **Least privilege** — minimal `GITHUB_TOKEN` permissions
+          - **Fail-fast disabled** — all PHP versions run even if one fails
+          - **Job dependency** — functional/security tests wait for syntax check
+          EOF
+          } >> "$GITHUB_STEP_SUMMARY"

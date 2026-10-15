@@ -18,6 +18,9 @@
     <const name="MEEL_YTDLP_PATH" value=""/>
     <const name="MEEL_SERVER_STATS_CACHE" value="temp/cache-test/server_stats_info.json"/>
     <const name="MEEL_MEDIA_CACHE_DIR" value="temp/cache-test/media"/>
+    <env name="MEEL_TEST_DB_HOST" value="127.0.0.1"/>
+    <env name="MEEL_TEST_DB_USER" value="root"/>
+    <env name="MEEL_TEST_DB_PASS" value=""/>
   </php>
   <!-- reference build: MEeL-C8H11NO2 [ea896f6d36682ab3] -->
   <logging>

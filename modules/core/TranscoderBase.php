@@ -204,11 +204,25 @@ class TranscoderBase
 
     protected function isProcessAlive(int $pid): bool
     {
-        if ($pid <= 0) return false;
+        return self::pidIsAlive($pid);
+    }
+
+    /**
+     * Varian statik dari `isProcessAlive()`.
+     *
+     * Dipisah karena `cleanupStalePidFiles()` adalah `static` dan tidak
+     * punya `$this`. Daripada mengubah method instance yang sudah dipakai
+     * jadi static, keduanya berbagi implementasi ini.
+     */
+    protected static function pidIsAlive(int $pid): bool
+    {
+        if ($pid <= 0) {
+            return false;
+        }
         if (function_exists('posix_kill')) {
             return posix_kill($pid, 0);
         }
-        return (bool)@shell_exec("kill -0 $pid 2>/dev/null");
+        return (bool) @shell_exec("kill -0 $pid 2>/dev/null");
     }
 
     protected function writePidFile(string $taskType, int $queueId, int $pid): void
@@ -239,7 +253,58 @@ class TranscoderBase
             }
         }
     }
-
+    private static ?bool $procAvailableOverride = null;
+    private static function procAvailable(): bool
+    {
+        if (self::$procAvailableOverride !== null) {
+            return self::$procAvailableOverride;
+        }
+        static $available = null;
+        if ($available === null) {
+            $available = is_dir('/proc')
+                && is_readable('/proc/self/cmdline')
+                && is_readable('/proc/1/cmdline');
+        }
+        return $available;
+    }
+    public static function setProcAvailableOverride(?bool $value): void
+    {
+        self::$procAvailableOverride = $value;
+    }
+    /** @return bool|null   */
+    private static function pidLooksLikeTranscoder(int $pid): ?bool
+    {
+        if (!self::procAvailable()) {
+            return null;
+        }
+        $cmdlinePath = '/proc/' . $pid . '/cmdline';
+        if (!is_readable($cmdlinePath)) {
+            return false;
+        }
+        $cmdline = @file_get_contents($cmdlinePath);
+        if ($cmdline === false || $cmdline === '') {
+            return false;
+        }
+        foreach (['ffmpeg', 'ffprobe', 'yt-dlp', 'youtube-dl', 'setsid'] as $needle) {
+            if (stripos($cmdline, $needle) !== false) {
+                return true;
+            }
+        }
+        return (bool) preg_match('/(^|\x00)([^\x00]*\/)?sh(\x00|$)/', $cmdline);
+    }
+    public static function hadPidFile(string $taskType, int $queueId): bool
+    {
+        $file = meel_pid_filename($taskType, $queueId);
+        if ($file === '') {
+            return false;
+        }
+        foreach (meel_pid_dir_candidates() as $dir) {
+            if (is_file($dir . '/' . $file)) {
+                return true;
+            }
+        }
+        return false;
+    }
     public static function killByPidFile(string $taskType, int $queueId): bool
     {
         $file = meel_pid_filename($taskType, $queueId);
@@ -263,32 +328,40 @@ class TranscoderBase
         }
         $pid = (int)@file_get_contents($path);
         @unlink($path);
-
         if ($pid <= 0) {
             return false;
         }
+        $verdict = self::pidLooksLikeTranscoder($pid);
+        if ($verdict === false) {
+            error_log("[MEeL] killByPidFile: PID {$pid} untuk {$taskType}#{$queueId} gagal diverifikasi (cmdline tidak cocok), dilewati.");
+            return false;
+        }
+        if ($verdict === null) {
+            error_log("[MEeL] killByPidFile: /proc tidak tersedia, verifikasi PID dilewati untuk {$taskType}#{$queueId} (PID {$pid}).");
+        }
+        $isGroupLeader = function_exists('posix_getpgid') && @posix_getpgid($pid) === $pid;
+        $target = $isGroupLeader ? -$pid : $pid;
 
-        $killed = false;
+        $termSent = false;
         if (function_exists('posix_kill')) {
-            $killed = posix_kill($pid, SIGTERM);
+            $termSent = posix_kill($target, SIGTERM);
         }
-        if (!$killed) {
-            @shell_exec('kill -TERM ' . $pid . ' 2>/dev/null');
+        if (!$termSent) {
+            @shell_exec('kill -TERM -- ' . $target . ' 2>/dev/null');
         }
-
         usleep(500000);
-
         if (function_exists('posix_kill')) {
-            @posix_kill($pid, SIGKILL);
+            @posix_kill($target, SIGKILL);
         } else {
-            @shell_exec('kill -KILL ' . $pid . ' 2>/dev/null');
+            @shell_exec('kill -KILL -- ' . $target . ' 2>/dev/null');
         }
-
-        error_log("[MEeL] killByPidFile: killed {$taskType}#{$queueId} (PID {$pid})");
+        error_log("[MEeL] killByPidFile: killed {$taskType}#{$queueId} (PID {$pid}" . ($isGroupLeader ? ', process group' : '') . ')');
         return true;
     }
-
-    public static function cleanupStalePidFiles(): int
+    /**
+     * @return int jumlah berkas yang dibersihkan
+     */
+    public static function cleanupStalePidFiles(int $maxAgeSeconds = 1800): int
     {
         $cleaned = 0;
         foreach (meel_pid_dir_candidates() as $dir) {
@@ -296,19 +369,25 @@ class TranscoderBase
                 continue;
             }
             foreach (glob($dir . '/*.pid') ?: [] as $file) {
-                if (time() - @filemtime($file) > 1800) {
-                    @unlink($file);
+                if ((time() - (int) @filemtime($file)) <= $maxAgeSeconds) {
+                    continue;
+                }
+
+                $raw = trim((string) @file_get_contents($file));
+                if ($raw !== '' && ctype_digit($raw) && self::pidIsAlive((int) $raw)) {
+                    continue;   // job masih jalan -- jangan sentuh
+                }
+
+                if (@unlink($file)) {
                     $cleaned++;
                 }
             }
         }
         return $cleaned;
     }
-
     protected function resolveShmPath(string $subdir): string
     {
         GarbageCollector::run();
-
         static $resolved = [];
         if (!isset($resolved[$subdir])) {
             $shm_path = '/dev/shm';
@@ -320,7 +399,6 @@ class TranscoderBase
                     $use_shm = true;
                 }
             }
-
             $resolved[$subdir] = $use_shm
                 ? "$shm_path/meel/$subdir"
                 : dirname(__DIR__, 2) . '/temp/' . $subdir;
@@ -331,34 +409,28 @@ class TranscoderBase
         }
         return $resolved[$subdir];
     }
-
     protected function getShmTempPath(): string
     {
         return $this->resolveShmPath('temp');
     }
-
     protected function getShmTranscodePath(): string
     {
         return $this->resolveShmPath('transcode');
     }
-
     public function getTranscodeFilePath(string $filename): ?string
     {
         $path = $this->getShmTranscodePath() . '/' . $filename;
         return file_exists($path) ? $path : null;
     }
-
     public function resolveMusicInputPath(string $tempFile): ?string
     {
         if ($tempFile === '' || !preg_match('/^[A-Za-z0-9._-]+$/', $tempFile) || str_contains($tempFile, '..')) {
             return null;
         }
-
         $tempDirReal = realpath($this->getShmTempPath());
         if ($tempDirReal === false) {
             return null;
         }
-
         $candidate = $tempDirReal . '/' . $tempFile;
         $real = realpath($candidate);
         if ($real === false || !is_file($real) || !is_readable($real)) {
@@ -369,7 +441,5 @@ class TranscoderBase
         }
         return $real;
     }
-
 }
-
 /* reference build: MEeL-C10H15N [c1914c302fd89832] */

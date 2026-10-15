@@ -26,7 +26,7 @@ class GarbageCollectorTest extends TestCase
         $ref = new ReflectionClass(GarbageCollector::class);
         $prop = $ref->getProperty('hasRun');
         $prop->setAccessible(true);
-        $prop->setValue(false);
+        $prop->setValue(null, false);
 
         $throttle = $ref->getMethod('runThrottleFile');
         $throttle->setAccessible(true);
@@ -138,7 +138,7 @@ class GarbageCollectorTest extends TestCase
 
         $rateDir = $this->testTempDir . '/ratelimit';
         @mkdir($rateDir, 0755, true);
-        $prop->setValue($rateDir . '/');
+        $prop->setValue(null, $rateDir . '/');
         return $rateDir;
     }
 
@@ -147,7 +147,7 @@ class GarbageCollectorTest extends TestCase
         $ref = new ReflectionClass(RateLimiter::class);
         $prop = $ref->getProperty('storageDir');
         $prop->setAccessible(true);
-        $prop->setValue($this->origRateStorageDir);
+        $prop->setValue(null, $this->origRateStorageDir);
     }
 
     public function testRunCleansExpiredRateLimitCacheButKeepsRecent(): void
@@ -250,21 +250,123 @@ class GarbageCollectorTest extends TestCase
         $this->restoreRateLimiterDir();
     }
 
-    public function testRunCliMaintenanceIsNoOpOutsideCli(): void
+    /**
+     * Dulu test di sini memanggil markTestSkipped() kalau PHP_SAPI === 'cli'.
+     *
+     * Masalahnya: PHPUnit SELALU jalan di SAPI CLI — lokal maupun CI. Jadi
+     * test itu tidak pernah mengeksekusi apa pun, di environment mana pun,
+     * dan yang tersisa hanya baris skip-nya. Test yang terlihat hijau
+     * padahal nol coverage adalah lebih berbahaya daripada tidak ada test,
+     * karena ia memberi keyakinan palsu.
+     *
+     * Cabang non-CLI memang mustahil diuji dari unit test (tidak ada cara
+     * memalsukan PHP_SAPI), tapi guard-nya bisa dikunci lewat source, dan
+     * yang justru lebih berharga — latch "sekali per proses" — bisa
+     * diuji beneran karena kita memang berjalan di CLI.
+     */
+public function testRunCliMaintenanceGuardsAgainstNonCliSapi(): void
     {
-        if (PHP_SAPI === 'cli') {
-            $this->markTestSkipped('test ini hanya bermakna di SAPI non-CLI');
+        $src = (string)file_get_contents(MEEL_ROOT . '/modules/core/GarbageCollector.php');
+
+        $this->assertStringContainsString(
+            "PHP_SAPI !== 'cli'",
+            $src,
+            'runCliMaintenance() harus menolak jalan di luar CLI — dipanggil lewat web, '
+            . 'housekeeping berat akan jalan di setiap request'
+        );
+
+        // Guard harus jadi kondisi PERTAMA, sebelum efek samping apa pun.
+        // Kalau latch diperiksa lebih dulu, guard SAPI jadi tidak terjangkau
+        // pada panggilan kedua dan mulai kedengaran tidak sengaja lulus.
+        $this->assertMatchesRegularExpression(
+            '/if\s*\(\s*PHP_SAPI\s*!==\s*\'cli\'\s*\|\|\s*self::\$cliOnlyRan\s*\)\s*\{\s*return;/',
+            $src,
+            'guard SAPI dan latch harus jadi satu kondisi awal yang sama-sama'
+        );
+    }
+
+/**
+ * Latch `self::$cliOnlyRan`: housekeeping berat hanya boleh jalan SEKALI per
+ * proses, berapa kali pun runCliMaintenance() dipanggil.
+ *
+ * Ini perilaku yang benar-benar terjadi di produksi -- `scripts/gc.php` bisa
+ * dipanggil dari cron sekaligus ikut ter-hit dari jalur lain dalam proses
+ * yang sama -- dan sebelumnya nol coverage.
+ *
+ * Dua file throttle disentuh supaya test ini deterministik. `syncViews` dan
+ * `cleanGuests` mengecek throttle LEBIH DAHULU sebelum menyentuh apa pun;
+ * tanpa itu keduanya ikut jalan dan MediaViewer asli dieksekusi dengan
+ * koneksi palsu -- bukan yang ingin diuji di sini, dan hanya menambah
+ * ketergantungan pada state mesin.
+ */
+public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
+    {
+        $throttles = [
+            MEEL_ROOT . '/temp/gc_views_sync_last_run.txt',
+            MEEL_ROOT . '/temp/gc_guest_last_run.txt',
+        ];
+        $backup = [];
+        foreach ($throttles as $f) {
+            $backup[$f] = is_file($f) ? (string)file_get_contents($f) : null;
+
+            // File throttle bisa dimiliki proses lain (Apache/daemon) dengan
+            // mode 644, sementara test jalan sebagai user dev. Menimpanya
+            // langsung gagal dengan "Permission denied" -- dan itu bukan
+            // kegagalan kode, melainkan kegagalan setup.
+            //
+            // Isinya cuma timestamp unix untuk throttle; menghapusnya
+            // bratarti satu siklus throttle dilewati, dan test menulis ulang
+            // nilai fresh di bawah. Tidak ada state bisnis yang hilang.
+            if (is_file($f) && !is_writable($f)) {
+                @unlink($f);
+            }
+            file_put_contents($f, (string)time());   // isWithinThrottle() -> true
         }
 
-        $ref = new ReflectionClass(GarbageCollector::class);
-        $method = $ref->getMethod('runCliMaintenance');
-        $method->setAccessible(true);
+        try {
+            $latch = (new ReflectionClass(GarbageCollector::class))->getProperty('cliOnlyRan');
+            $latch->setAccessible(true);
+            $latch->setValue(null, false);
 
-        $conn = $this->createMock(mysqli::class);
-        $conn->expects($this->never())->method('query');
+            // prepare() mengembalikan false supaya melintas di cabang
+            // "if (!$stmt) continue" -- tidak ada stmt nyata yang dieksekusi,
+            // jadi yang dihitung murni berapa kali DB disentuh.
+            $calls = 0;
+            $conn = $this->createMock(mysqli::class);
+            $conn->method('prepare')->willReturnCallback(function () use (&$calls) {
+                $calls++;
+                return false;
+            });
 
-        $method->invoke(null, $conn);
-        $this->addToAssertionCount(1);
+            GarbageCollector::runCliMaintenance($conn);
+            $afterFirst = $calls;
+
+            $this->assertGreaterThan(
+                0,
+                $afterFirst,
+                'panggilan pertama harus benar-benar menyentuh DB (sweepStuckQueues minimal 2 prepare)'
+            );
+
+            GarbageCollector::runCliMaintenance($conn);
+            GarbageCollector::runCliMaintenance($conn);
+
+            $this->assertSame(
+                $afterFirst,
+                $calls,
+                'panggilan kedua dan ketiga harus no-op -- latch $cliOnlyRan tidak bekerja, '
+                . 'housekeeping berat diulang tiap kali entry point ini dipanggil'
+            );
+
+            $latch->setValue(null, false);   // jangan bocorkan state ke test lain
+        } finally {
+            foreach ($backup as $f => $content) {
+                if ($content === null) {
+                    @unlink($f);
+                } else {
+                    file_put_contents($f, $content);
+                }
+            }
+        }
     }
 
     public function testRunCliMaintenanceExistsAndIsPublic(): void
@@ -353,7 +455,7 @@ class GarbageCollectorTest extends TestCase
         $ref = new ReflectionClass(GarbageCollector::class);
         $prop = $ref->getProperty('hasRun');
         $prop->setAccessible(true);
-        $prop->setValue(false);
+        $prop->setValue(null, false);
     }
 
     private static function runThrottleFilePath(): string

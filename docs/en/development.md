@@ -99,7 +99,7 @@ public function toggleLike();
 
 #### 4. Type Hints
 
-Properties and constructor parameters **must** have type hints (PHP 8.0+):
+Properties and constructor parameters **must** have type hints (PHP 8.1+):
 
 ```php
 // ✅ CORRECT
@@ -459,7 +459,7 @@ function verify_backup_code(string $hashedJson, string $code): array {
 
 ### Database Schema
 
-3 new columns in `users` table (Migration v9):
+3 new columns in `users` table (now covered by migration **v1** — formerly legacy v9):
 
 ```sql
 ALTER TABLE users
@@ -1094,7 +1094,84 @@ Practical consequence: **production code should not depend on reading those inte
 properties** if it is meant to be testable with
 `tests/unit/support/MysqlFake.php`. When such a value is genuinely needed, pass it
 in as a parameter or return it through another path — never through a statement
-property.### Test Infrastructure — important notes
+property.
+
+---
+
+### Cross-test static caches: `get_user_role()` & `get_user_active()`
+
+Both use a per-process `static $cache`. It is **not** reset between tests, so
+one test can poison a later test running in the same process. This actually
+happened:
+
+`MediaViewerTest` constructs a `MediaViewer` with a **mock connection**, and the
+constructor calls `get_user_role($mock, 1)`. The mock has no rows, so the
+function returns the `'user'` fallback — and **memoizes** that fallback into
+`static $cache[1]`. Several tests later, in the same process,
+`MediaInteractionIntegrationTest` calls `get_user_role($conn, 1)` against the
+real test DB where the row is `role = 'admin'` — but the stale cache wins, so
+`isAdmin()` returns `false` and the admin comment deletion fails with 404.
+
+What made this hard to spot: the test **passes when run on its own**
+(`--filter`) and only fails when the whole suite runs.
+
+The rule: **a cache may only store facts, not uncertainty.** A missing row means
+"don't know yet", not "this user is a `user`". So a negative result is
+deliberately **not** memoized:
+
+```php
+$row = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if ($row === null) {
+    return 'user';          // fallback, NOT cached
+}
+
+$role = (string)$row['role'];
+$cache[$user_id] = $role;   // a fact → safe to cache
+```
+
+`get_user_active()` has the twin bug: it memoizes a `false` derived from a
+missing row, so a user who has just been activated stays "inactive" for the rest
+of the process. Fixed the same way.
+
+Locked in by `tests/unit/UserRoleCacheNotFoundTest.php`. If that test starts
+failing after you touch either function, first look for a caller that performs a
+negative lookup earlier.
+
+---
+
+### Media constants must be pinned in `tests/bootstrap.php`
+
+The media path constants (`MEEL_HDD_*`) are pinned in `tests/bootstrap.php`,
+**before** any production file that could define them at `require` time.
+
+The problem: `modules/core/TranscoderBase.php` defines `MEEL_HDD_BASE` as the
+placeholder `'/path/to/your/media'` when the constant is not already set. Once
+that file is `require`d — and `require_once` **cannot be undone** — every test
+running afterwards sees `meel_media_base_path('video')` pointing at an
+unwritable placeholder.
+
+The symptom looks innocuous but is deeply misleading:
+
+```
+file_put_contents(/path/to/your/media/video/upload/thumbnail/x_thumb.webp):
+Failed to open stream: No such file or directory
+```
+
+The test **passes when run on its own** (`--filter`) and only fails when the
+whole suite runs — because the test that pulls in `TranscoderBase.php` happened
+to run before the one that needs a writable path.
+
+The fix pins the constants to `temp/media-test/` up front. Two pleasant effects
+at once:
+
+1. test ordering stops determining results;
+2. no media directory leaks outside the repo while tests run.
+
+---
+
+### Test Infrastructure — important notes
 
 #### 🚨 `createMock(mysqli::class)` consumed 8.86 GiB of RAM
 
@@ -1193,13 +1270,13 @@ php scripts/gc.php          # heavy housekeeping (needs $server = TCP)
 | `admin/mfa_reset.php` | Admin MFA reset panel |
 | `partials/ui.php` | Overlay UI system (JS heavy) |
 | `assets/js/shared/keyboard.js` | Shared keyboard shortcut guard (meelKeyShortcutIgnored) — used by video & music misc/mini-player |
-| `assets/js/video/watch/misc.js` | Video-specific shortcuts (L=loop, A=auto-next) |
+| `assets/js/video/watch/misc.js` | Video-specific shortcuts (L=loop, A=auto-next, S=AI-upscale, B=ambient-glow) |
 | `assets/js/video/watch/mini-player.js` | Video shortcuts (N=next, I=mini-player) + mini-player logic |
 | `assets/js/music/watch/misc.js` | Music shortcuts (L=loop, E=equalizer, V=visualizer, I=mini-player) |
 | `assets/js/shared/temp-index.js` | Shared loader of index.php into #temp-index-content without reload (meelLoadTempIndex) — used by video & music mini-player |
 | `assets/js/shared/plyr-config.js` | Shared Plyr base config (MEEL_PLYR_COMMON: iconUrl, speed, keyboard, tooltips) — used by video & music players |
 | `assets/js/shared/upload-progress.js` | Shared upload progress-bar animation (meelUploadProgress) — used by music & video upload pages |
-| `assets/js/shared/resume-modal.js` | Shared resume modal (meelResumeModal) — used by video player-events & music player-core |
+| `assets/js/shared/resume-modal.js` | Shared resume modal (meelResumeModal) + keyboard guard (flag `meelResumeModalActive`) — used by video player-events & music player-core |
 | `assets/js/shared/format-time.js` | Shared mm:ss time formatter (formatTime) — moved from music/shared/utils.js, used by music mini-players & resume-modal |
 | `assets/js/shared/mini-player-popstate.js` | Shared popstate handler to exit mini-player mode (meelMiniPlayerPopstate) — used by video & music watch mini-players |
 | `assets/js/video/watch/main.js` | Entry point folder watch/ — loads siblings synchronously (document.write) |
@@ -1226,6 +1303,91 @@ php scripts/gc.php          # heavy housekeeping (needs $server = TCP)
 | `assets/js/shared/notification.js` | Notification polling system |
 | `assets/css/video/player.css` | Plyr video player overrides (object-fit: contain) |
 | `assets/css/profile/*.css` | Profile module CSS (10 files: base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state) |
+| `assets/js/video/watch/upscaler.js` | WebGPU-based AI Upscale (model/mode/scale, glow) — exports `window.MEEL_UPSCALER` + `window.toggleUpscale()` for the `S` shortcut |
+| `assets/css/video/resume-modal.css` | Video resume modal — fullscreen z-index + keyboard focus ring on the choice buttons |
+
+### Video — Resume Modal Behavior & Keyboard Guard
+
+The video player shows the **"Lanjutkan Sesi?"** modal when a video has a saved
+playback position (`video_pos_<id>` in `localStorage`) greater than 10 seconds
+and is not near the end of the duration.
+
+**Trigger & timing window.** `meelResumeModal()` is called from
+`player.on("ready")`. For HLS that call is **deferred**: it waits for
+`FRAG_BUFFERED` (≥ 15 seconds buffered) or a **8-second timeout**
+(`player-events.js`). That leaves a window in which the user can still enter
+fullscreen before the modal appears — and `skipToNextVideo()` automatically
+calls `player.fullscreen.toggle()` again after a seamless video transition.
+Together these are why the modal could appear (or fail to appear) while in
+fullscreen.
+
+#### Why the modal was invisible in fullscreen
+
+Plyr **never reuses** `#main-video-wrapper` as its container. Its constructor
+always creates a fresh `<div class="plyr">` and inserts it *between*
+`#video-glow-container` and `#main-video-wrapper`:
+
+```html
+#video-glow-container
+└─ div.plyr.plyr--full-ui…          ← Plyr container + fullscreen target
+   └─ #main-video-wrapper           ← z-index:2 (layout.css)
+      ├─ .plyr__video-wrapper > video, .plyr__poster
+      └─ #resume-modal              ← z-index:20
+```
+
+The modal declared in `watch.php` as a sibling of `<video>` therefore ends up
+**one level below** the real Plyr container. In normal mode
+`#main-video-wrapper` is only `position:relative; z-index:2`, so `z-index:20`
+still beats `.plyr__poster` (1), the big play button (2), and `.plyr__controls` (3).
+
+In fullscreen, `assets/css/video/fullscreen.css` promotes **three nested
+elements** at once to `position:fixed` + `z-index:999999`:
+`#video-glow-container`, `.plyr`, and `#main-video-wrapper`. `.plyr__video-wrapper`
+then covers the modal — the overlay is painted behind the video area and is not
+visible at all. Measured: `z-index:999999` is still covered, `z-index:1000000`
+is on top. The fix is `body.meel-fs-active #resume-modal { z-index: 1000001 }`
+in `assets/css/video/resume-modal.css`.
+
+> **Note:** `#meel-reconnect-overlay` (`recovery-manager.js`) uses `z-index:60`
+> and is also appended to `#main-video-wrapper`, so it has the same fullscreen
+> problem. Not fixed yet.
+
+#### Keyboard guard
+
+Plyr registers `keydown keyup` on `window` in the **bubble** phase via
+`config.keyboard.global`, and `keyboard.js` / `misc.js` / `mini-player.js`
+register their own listeners. Plyr only exempts `Space` when focus sits on a
+`<button>`, so `k`, `↑`/`↓`, `←`/`→`, `f`, `m`, `c`, `l`, and `0–9` still take
+effect even with a modal button focused.
+
+`assets/js/shared/resume-modal.js` closes that hole with a single `window`
+listener in the **capture** phase, registered once at load. Because
+`resume-modal.js` is loaded in `video/watch.php` **before** the `video/watch/main.js`
+module loader, it is registered ahead of `mini-player.js` (which is also capture
+on `window`).
+
+| Class | Handling |
+|---|---|
+| **Allowed** | `Tab` · `Shift+Tab` · `←` → Lanjut · `→` → Ulang (follows button position) · `Home` `End` (first/last choice) · `Enter` (native `<button>` activation) · `Esc` (still exits fullscreen) · all `Ctrl`/`Meta`/`Alt` combinations |
+| **Blocked** | `Space` (re-routed to activate the focused choice) · `↑` `↓` · `k` `j` `l` `m` `f` `c` · `0`–`9` · `i` `n` `a` · and any other key |
+| **Second layer** | `window.meelResumeModalActive` is `true` while the modal is visible; used as an early return in `video/watch/misc.js`, `video/watch/mini-player.js`, and `music/watch/misc.js` |
+
+Additional details:
+
+- Focus starts on `#btn-resume` (**Lanjut** — the choice that does not discard
+  progress). After the modal closes, focus returns to the player container.
+- `player-events.js` passes `onShow: () => player.pause()` so the video does not
+  keep playing behind the dialog.
+- `#resume-modal` uses `role="dialog"` + `aria-modal="true"` +
+  `aria-labelledby` / `aria-describedby`, with a visible `:focus` ring in
+  `assets/css/{video,music}/resume-modal.css`.
+- **Bug fixed alongside:** `countdownTimer` was never `clearInterval()`-ed when the
+  modal was hidden, so the countdown label kept mutating in the DOM for 15
+  seconds. All timers now go through a single `close()` function.
+- The 15-second auto-restart also routes through `close()`, so the flag and hook
+  are cleared too.
+- `window.__meelResumeDismiss()` closes the previous instance — used when
+  switching tracks on the music page so two timers are never active at once.
 
 ### Music Player — Resume Modal Behavior
 

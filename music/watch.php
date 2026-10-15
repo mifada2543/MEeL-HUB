@@ -4,24 +4,19 @@ meel_boot_session();
 include '../auth/config.php';
 require_once '../modules/core/CommentRenderer.php';
 require_once '../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/cards.php';
 require_once '../controllers/api/WatchController.php';
-
 $id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
 $playlist_id = isset($_GET['playlist_id']) ? (int)$_GET['playlist_id'] : 0;
-
 authorize_stream($id);
-
 $ctrl = new MusicWatchController($conn, $user_id, $id, $playlist_id);
 $ctrl->handleRequest();
-
 extract($ctrl->getViewData(), EXTR_SKIP);
-
 session_write_close();
 ?>
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,7 +28,6 @@ session_write_close();
     if (!preg_match('#^https?://#i', $__og_image)) {
         $__og_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__og_image;
     }
-
     $_META_TITLE = $v['title'] . ' — MEeL Music';
     $_META_DESC = 'Dengarkan ' . $v['title'] . ' oleh ' . ($v['artist'] ?? 'Tidak diketahui') . ' di MEeL Music.';
     $_META_IMAGE = $__og_image;
@@ -48,16 +42,12 @@ session_write_close();
     <?php meel_css_links('music', '../assets/css/music'); ?>
     <link rel="stylesheet" href="../assets/css/shared/comment.css<?= meel_asset_version('assets/css/shared/comment.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
+    <script src="../assets/js/shared/htmx-lucide.js?v=<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
 </head>
-
 <body class="text-gray-400 min-h-screen">
-    <a href="#main-content" class="absolute left-3 top-3 z-[999] -translate-y-20 rounded-lg bg-orange-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-black transition-transform focus:translate-y-0 focus:outline-none">
-        Lewati ke konten
-    </a>
-
+    <?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
-
             <a href="beranda" class="flex items-center gap-2 flex-shrink-0" title="MEeL Music">
                 <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center" style="background:var(--meel-orange)">
                     <i data-lucide="music" class="nav-logo-icon w-3.5 h-3.5"></i>
@@ -66,7 +56,6 @@ session_write_close();
                     MEeL<span class="text-orange-500">Musik</span>
                 </span>
             </a>
-
             <div class="flex flex-1 max-w-sm items-center gap-2">
                 <div class="relative flex-1 group">
                     <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600 group-focus-within:text-orange-500 transition-colors"></i>
@@ -90,22 +79,21 @@ session_write_close();
                     Cari
                 </button>
             </div>
-
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
                 <?php include '../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
-
-    <main id="main-content" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4">
+    <main id="main-content" tabindex="-1" class="w-full pt-4 sm:pt-8 pb-20 flex flex-col lg:flex-row gap-4 focus:outline-none">
         <div class="flex-1 min-w-0 space-y-5 px-4 sm:px-5">
             <div id="player-container" class="bg-[#0d1017] border-0 rounded-none sm:rounded-none overflow-hidden relative">
-                <div id="resume-modal" class="hidden rounded-xl sm:rounded-2xl">
+                <div id="resume-modal" class="hidden rounded-xl sm:rounded-2xl" role="dialog" aria-modal="true"
+                    aria-labelledby="resume-modal-title" aria-describedby="resume-countdown">
                     <div class="bg-[#141820] border border-orange-500/25 border-t-2 border-t-orange-500 rounded-2xl text-center">
                         <div class="bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-3" style="width:clamp(36px,8cqw,56px);height:clamp(36px,8cqw,56px)">
                             <i data-lucide="play-circle" class="text-orange-500" style="width:clamp(18px,4cqw,28px);height:clamp(18px,4cqw,28px)"></i>
                         </div>
-                        <div class="font-black text-white uppercase tracking-wider mb-2">Lanjut Musik?</div>
+                        <div id="resume-modal-title" class="font-black text-white uppercase tracking-wider mb-2">Lanjut Musik?</div>
                         <div class="text-[10px] text-gray-400 uppercase tracking-widest mb-4">
                             Menit ke‑ <span id="resume-time" class="text-orange-400 font-mono">0:00</span>
                         </div>
@@ -121,14 +109,12 @@ session_write_close();
                         </div>
                     </div>
                 </div>
-
                 <div class="flex flex-col sm:flex-row gap-5 p-4 sm:p-6 border-b border-white/[.04]">
                     <div class="flex-shrink-0 flex items-center justify-center sm:justify-start">
                         <div class="vinyl-spin vinyl-disc" onclick="event.stopPropagation();(window.goBackToLibrary ? window.goBackToLibrary() : window.toggleMiniPlayer?.())" style="cursor:pointer" title="Pemutar Mini (I)">
                             <img src="<?= htmlspecialchars(music_thumbnail_url($v['thumbnail'])) ?>" alt="<?= htmlspecialchars($v['title']) ?> sampul" width="512" height="512" class="w-full h-full object-cover" fetchpriority="high" decoding="async">
                         </div>
                     </div>
-
                     <div class="flex-1 min-w-0 flex flex-col justify-center gap-3">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="text-center sm:text-left flex-1 min-w-0">
@@ -138,7 +124,6 @@ session_write_close();
                                     <?= htmlspecialchars($v['artist']) ?>
                                 </a>
                             </div>
-
                         </div>
                         <div class="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                             <span class="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400"
@@ -171,10 +156,8 @@ session_write_close();
                             </button>
                         </div>
                     </div>
-
                     <div id="cava-container" class="hidden w-full sm:flex-1 sm:min-w-[160px] bg-black/20 border border-white/[.04] rounded-xl sm:rounded-xl p-2 sm:p-3 items-end justify-center gap-[2px]"></div>
                 </div>
-
                 <div id="eq-container" class="px-4 sm:px-6 py-4 border-t border-white/[.04] bg-black/10 hidden">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div class="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">Equalizer</div>
@@ -216,12 +199,10 @@ session_write_close();
                         </div>
                     </div>
                 </div>
-
                 <div class="p-4 sm:p-5">
 
                     <div id="player-audio-slot" class="w-full"></div>
                 </div>
-
                 <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-white/[.04] bg-black/10">
                     <div class="flex items-center gap-3">
                         <a href="../profile/<?= urlencode($v['uploader']) ?>"
@@ -246,7 +227,6 @@ session_write_close();
                             </div>
                         </div>
                     </div>
-
                     <?php if (isset($_SESSION['username'])): ?>
                         <div class="flex items-center gap-2 flex-wrap">
                             <div id="like-dislike-container" class="flex items-center gap-2 flex-wrap">
@@ -292,7 +272,6 @@ session_write_close();
                     <?php endif; ?>
                 </div>
             </div>
-
             <?php if (!empty($v['description'])): ?>
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl p-4 sm:p-6 desc-container" style="min-height:120px;contain-intrinsic-size:120px;content-visibility:auto">
                     <div class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-400 mb-3 flex items-center gap-2">
@@ -305,7 +284,6 @@ session_write_close();
                         Selengkapnya
                     </button>
                 </div>
-
                 <script src="../assets/js/music/watch/description-toggle.js?v=<?= filemtime(__DIR__ . '/../assets/js/music/watch/description-toggle.js') ?>"></script>
             <?php endif; ?>
             <?php if ($is_logged_in): ?>
@@ -320,61 +298,67 @@ session_write_close();
                     </button>
                     <div id="comment-preview" class="px-4 sm:px-6 py-3">
                         <?php
-
                         $preview = comment_preview($comments_grouped ?? []);
                         $preview_items = $preview['items'];
                         ?>
                         <div id="comment-preview-text" class="space-y-1 text-sm text-gray-400 <?= empty($preview_items) ? 'italic' : '' ?>">
                             <?php if (empty($preview_items)): ?>
                                 <span>Jadilah komentar pertama</span>
-                            <?php else: foreach ($preview_items as $_pc): ?>
-                                <div class="line-clamp-1"
-                                    title="<?= htmlspecialchars('@' . ($_pc['username'] ?? 'Tamu') . ': ' . preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? '')), ENT_QUOTES) ?>">
-                                    <span class="font-bold text-orange-400">@<?= htmlspecialchars($_pc['username'] ?? 'Tamu') ?></span>: <?= htmlspecialchars(preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? ''))) ?>
-                                </div>
-                            <?php endforeach; endif; ?>
+                                <?php else: foreach ($preview_items as $_pc): ?>
+                                    <div class="line-clamp-1"
+                                        title="<?= htmlspecialchars('@' . ($_pc['username'] ?? 'Tamu') . ': ' . preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? '')), ENT_QUOTES) ?>">
+                                        <span class="font-bold text-orange-400">@<?= htmlspecialchars($_pc['username'] ?? 'Tamu') ?></span>: <?= htmlspecialchars(preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? ''))) ?>
+                                    </div>
+                            <?php endforeach;
+                            endif; ?>
                         </div>
                     </div>
                     <div id="comment-body">
                         <div class="p-4 sm:p-6">
                             <div id="comment-alert"></div>
-                        <form action="<?= base_url('/music/watch?v=' . (int)$id . ($playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : '')) ?>" method="post" class="mb-6" hx-post="../api/comment"
-                            hx-target="#comment-list"
-                            hx-swap="innerHTML"
-                            hx-vals='{"id":"<?= $id ?>","media_type":"music"<?= $playlist_context > 0 ? ',"playlist_id":"' . (int)$playlist_context . '"' : '' ?>}'
-                            hx-on::after-request="if (event.detail.successful) { this.reset(); document.getElementById('comment-alert')?.replaceChildren(); var l=document.getElementById('comment-list'); if (l) l.scrollTop = l.scrollHeight; }">
-                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                            <textarea name="comments"
-                                class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-orange-500/40 min-h-[80px] resize-y transition-all"
-                                placeholder="Tulis komentar..." required></textarea>
-                            <div class="flex justify-end mt-2">
-                                <button name="send"
-                                    class="bg-orange-500 hover:bg-orange-400 text-black text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer">
-                                    Kirim
-                                </button>
-                            </div>
-                        </form>
-
-                        <div id="comment-list" class="space-y-1 max-h-[500px] overflow-y-auto pr-1">
-                            <?php
-                            $GLOBALS['uploader_id'] = (int)($v['user_id'] ?? 0);
-                            if (empty($comments_grouped)) {
-                                render_comment_empty_state('music');
-                            } else {
-                                render_comments(0, $comments_grouped, 0, 'music', $playlist_context);
-                            }
-                            ?>
+                            <form action="<?= base_url('/music/watch?v=' . (int)$id . ($playlist_context > 0 ? '&playlist_id=' . (int)$playlist_context : '')) ?>" method="post" class="mb-6" hx-post="../api/comment"
+                                hx-target="#comment-list"
+                                hx-swap="innerHTML"
+                                hx-vals='{"id":"<?= $id ?>","media_type":"music"<?= $playlist_context > 0 ? ',"playlist_id":"' . (int)$playlist_context . '"' : '' ?>}'
+                                hx-on::after-request="if (event.detail.successful) { this.reset(); document.getElementById('comment-alert')?.replaceChildren(); var l=document.getElementById('comment-list'); if (l) l.scrollTop = l.scrollHeight; }">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                                <textarea name="comments"
+                                    class="w-full bg-black/25 border border-white/[.06] rounded-xl p-3 sm:p-4 text-sm text-gray-300 focus:outline-none focus:border-orange-500/40 min-h-[80px] resize-y transition-all"
+                                    placeholder="Tulis komentar..." required></textarea>
+                                <div class="flex justify-end mt-2">
+                                    <button name="send"
+                                        class="bg-orange-500 hover:bg-orange-400 text-black text-[10px] font-black uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border-none cursor-pointer">
+                                        Kirim
+                                    </button>
                                 </div>
+                            </form>
+
+                            <div id="comment-list" class="space-y-1 max-h-[500px] overflow-y-auto pr-1">
+                                <?php
+                                $GLOBALS['uploader_id'] = (int)($v['user_id'] ?? 0);
+                                if (empty($comments_grouped)) {
+                                    render_comment_empty_state('music');
+                                } else {
+                                    render_comments(0, $comments_grouped, 0, 'music', $playlist_context);
+                                }
+                                ?>
                             </div>
                         </div>
-                    </section>
-                    <script>document.getElementById('comment-body')?.classList.add('collapsed');</script>
-                    <noscript><style>#comment-preview{display:none}</style></noscript>
-                <?php endif; ?>
+                    </div>
+                </section>
+                <script>
+                    document.getElementById('comment-body')?.classList.add('collapsed');
+                </script>
+                <noscript>
+                    <style>
+                        #comment-preview {
+                            display: none
+                        }
+                    </style>
+                </noscript>
+            <?php endif; ?>
         </div>
-
         <div class="w-full lg:w-80 flex-shrink-0 space-y-6 px-4 sm:px-5 lg:px-0 rekomendasi-sidebar" style="content-visibility:auto;contain-intrinsic-size:500px;min-height:300px">
-
             <?php if ($playlist_context > 0 && $queue_query && $queue_query->num_rows > 0): ?>
                 <div class="bg-[#0d1017] border border-white/[.06] rounded-xl sm:rounded-2xl overflow-hidden">
                     <div class="px-5 py-3.5 border-b border-white/[.04] bg-black/10 flex items-center gap-2">
@@ -382,11 +366,9 @@ session_write_close();
                         <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-400">Berikutnya</span>
                     </div>
                     <div class="p-3 space-y-0.5 max-h-[320px] overflow-y-auto no-scrollbar">
-                        <?php
-                        $queue_query->data_seek(0);
+                        <?php $queue_query->data_seek(0);
                         while ($q = $queue_query->fetch_assoc()):
-                            $is_pl = ($q['id'] == $id);
-                        ?>
+                            $is_pl = ($q['id'] == $id); ?>
                             <a href="<?= base_url('/music/watch?v=' . (int)$q['id'] . '&playlist_id=' . (int)$playlist_context) ?>"
                                 class="flex items-center gap-3 px-2 py-2 rounded-xl transition-all no-underline
                               <?= $is_pl ? 'bg-orange-500/8 border border-orange-500/20' : 'hover:bg-white/[.025] border border-transparent' ?>">
@@ -411,32 +393,9 @@ session_write_close();
                     <span id="rec-title-text" class="text-[9px] font-bold uppercase tracking-[.25em] text-gray-300 truncate" title="Discover">Discover</span>
                 </div>
                 <div id="music-recommendation-column" class="p-3 grid grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-0 lg:space-y-0.5">
-                    <?php while ($r = $rekom->fetch_assoc()):
-                        $r_ext = strtolower(pathinfo($r['filename'], PATHINFO_EXTENSION));
-                        $r_lbl = $r_ext === 'ogg' ? 'opus' : $r_ext;
-                    ?>
-                        <a href="<?= base_url('/music/watch?v=' . (int)$r['id']) ?>"
-                            class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 p-2 rounded-xl no-underline"
-                            title="<?= htmlspecialchars($r['title']) ?>">
-                            <div class="w-full lg:w-16 aspect-square lg:h-12 lg:aspect-auto rounded-lg overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                                <img src="<?= htmlspecialchars(music_thumbnail_url($r['thumbnail'])) ?>"
-                                    alt="<?= htmlspecialchars($r['title']) ?> thumbnail"
-                                    width="96" height="96"
-                                    class="rec-thumb-img w-full h-full object-cover transition-transform duration-300"
-                                    loading="lazy" decoding="async">
-                            </div>
-                            <div class="flex-1 min-w-0 flex flex-col justify-center">
-                                <div class="text-[11px] font-bold text-gray-300 uppercase tracking-tight leading-snug rec-title-text">
-                                    <?= htmlspecialchars($r['title']) ?>
-                                </div>
-                                <div class="rec-meta-text mt-0.5 truncate"><?= htmlspecialchars($r['artist']) ?></div>
-                                <div class="flex items-center gap-1.5 mt-1">
-                                    <span class="rec-meta-text text-[9px]"><?= number_format($r['views'] ?? 0) ?> views</span>
-                                    <span class="rec-meta-text text-[8px] px-1.5 py-0.5 rounded bg-white/[.04] border border-white/[.05] uppercase"><?= $r_lbl ?></span>
-                                </div>
-                            </div>
-                        </a>
-                    <?php endwhile; ?>
+                    <?php while ($rec = $rekom->fetch_assoc()):
+                        meel_render_music_rec_card($rec);
+                    endwhile; ?>
                     <?php if ($rekom->num_rows >= 15): ?>
                         <div class="py-3 text-center rec-sentinel"
                             hx-get="search?exclude=<?= (int)$id ?>"
@@ -449,9 +408,7 @@ session_write_close();
                     <?php endif; ?>
                 </div>
             </div>
-
         </div>
-
         <?php if (isset($_SESSION['user_id'])): ?>
             <div id="playlist-modal" class="hidden">
                 <div class="absolute inset-0" onclick="document.getElementById('playlist-modal').classList.add('hidden')"></div>
@@ -519,7 +476,6 @@ session_write_close();
                 <div class="mp-seekbar-fill" id="mp-seekbar-fill"></div>
                 <div class="mp-seekbar-thumb" id="mp-seekbar-thumb"></div>
             </div>
-
             <div class="mp-body">
                 <div class="mp-track" onclick="toggleMiniPlayer()" title="Buka player penuh">
                     <div class="mp-art" onclick="event.stopPropagation(); window.goBackToLibrary();">
@@ -533,7 +489,6 @@ session_write_close();
                         <div class="mp-artist" id="mini-artist"><?= htmlspecialchars($v['artist'] ?? 'Tidak diketahui') ?></div>
                     </div>
                 </div>
-
                 <div class="mp-controls">
                     <button class="mp-btn mp-btn-ghost" id="mini-loop-btn" onclick="toggleLoop()" title="Ulang">
                         <i data-lucide="repeat" style="width:15px;height:15px;"></i>
@@ -548,7 +503,6 @@ session_write_close();
                         <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
                     </button>
                 </div>
-
                 <div class="mp-right">
                     <div class="mp-time">
                         <span id="mini-current-time">0:00</span>
@@ -561,7 +515,6 @@ session_write_close();
                 </div>
             </div>
         </div>
-
     </main> <?php include '../partials/footer.php'; ?>
     <script>
         window.MEEL_MUSIC_CONFIG = {
@@ -582,7 +535,6 @@ session_write_close();
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
-
             const searchInput = document.getElementById('m-search-watch');
             const searchBtn = document.getElementById('m-search-btn');
             if (searchInput && searchBtn) {
@@ -594,14 +546,9 @@ session_write_close();
                 });
             }
         });
-
-        document.body.addEventListener('htmx:afterOnLoad', function(e) {
-            if (typeof lucide !== 'undefined') {
-
-                lucide.createIcons({}, e.detail?.target || document.body);
-            }
-        });
-
+        // Ikon setelah swap htmx ditangani shared/htmx-lucide.js (T23);
+        // listener manual di sini identik dengan isi file itu, jadi
+        // dihapus supaya tidak ada dua sumber kebenaran.
         window.toggleEqPresetDropdown = function() {
             const options = document.getElementById('eq-preset-options');
             if (!options) return;
@@ -616,9 +563,7 @@ session_write_close();
                 options.classList.add('hidden');
             }
         }
-
         document.addEventListener('click', closeEqPresetDropdownOnOutside);
-
         window.selectEqPreset = function(preset) {
             if (!preset) return;
             if (typeof window.setEqPreset === 'function') {
@@ -636,6 +581,7 @@ session_write_close();
     <script src="../assets/js/shared/temp-index.js<?= meel_asset_version('assets/js/shared/temp-index.js') ?>"></script>
     <script src="../assets/js/shared/plyr-config.js<?= meel_asset_version('assets/js/shared/plyr-config.js') ?>"></script>
     <script src="../assets/js/shared/format-time.js<?= meel_asset_version('assets/js/shared/format-time.js') ?>"></script>
+    <script src="../assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
     <script src="../assets/js/shared/resume-modal.js<?= meel_asset_version('assets/js/shared/resume-modal.js') ?>"></script>
     <script src="../assets/js/shared/mini-player-popstate.js<?= meel_asset_version('assets/js/shared/mini-player-popstate.js') ?>"></script>
     <script src="../assets/js/shared/audio-engine.js<?= meel_asset_version('assets/js/shared/audio-engine.js') ?>"></script>

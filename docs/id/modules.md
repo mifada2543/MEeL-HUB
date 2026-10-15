@@ -231,6 +231,40 @@ Metode kunci — `forceStopQueue(int $id, string $task_type): bool`:
 - Menghapus record queue dari `upload_queue` atau `transcode_queue`
 - Mengembalikan `true` jika berhasil, `false` jika gagal
 
+#### Verifikasi identitas PID (`killByPidFile`)
+
+PID file bisa **basi**: kalau prosesnya sudah mati, OS akan mendaur ulang nomor
+PID-nya untuk proses lain. Kill tanpa verifikasi berarti panel admin bisa
+mematikan proses yang **tidak ada hubungannya**. Karena itu cmdline PID dicek
+terlebih dahulu (`ffmpeg`, `ffprobe`, `yt-dlp`, `youtube-dl`, `setsid`, `sh`).
+
+Dua kondisi gagal dibedakan secara sengaja:
+
+| Kondisi | Sikap | Alasan |
+|---|---|---|
+| `/proc` tersedia, cmdline tidak cocok | **fail-closed** (tolak kill) | PID kemungkinan besar sudah didaur ulang — inilah yang dilindungi |
+| `/proc` tidak tersedia (platform tanpa procfs, atau `hidepid`) | **fail-open** (kill tetap dilakukan) + `error_log` | Kita tidak bisa membuktikan apa pun; menolak kill akan membuat ffmpeg yatim selamanya |
+
+Kalau PID adalah *process group leader*, kill diarahkan ke `-PID` sehingga
+seluruh anak ffmpeg ikut mati. `kill -- -PID` memakai `--` agar PID negatif
+tidak ditafsirkan sebagai opsi.
+
+#### Record antrean tidak dihapus bila proses tak terbunuh
+
+`forceStopQueue()` hanya menghapus record queue **bila tidak ada proses yang
+menyelamatkannya perlu dibunuh**. Kalau PID file ada tapi kill ditolak,
+record **dipertahankan** — kalau tidak, prosesnya akan jadi yatim permanen
+tanpa jejak di DB dan tidak bisa lagi dihentikan dari UI.
+
+Dua kondisi ini dibedakan lewat `TranscoderBase::hadPidFile()`, yang **wajib
+dipanggil sebelum `killByPidFile()`** karena fungsi itu menghapus PID file di
+akhir (sukses maupun gagal). Cases:
+
+| Kondisi | Hasil |
+|---|---|
+| Tidak ada PID file (job selesai / belum mulai) | Record dihapus — queue tidak boleh macet |
+| PID file ada, kill ditolak | Record dipertahankan, `error_log`, `return false` |
+
 ### 7. `modules/core/activity_logger.php`
 
 Activity logging & IP Banning:
@@ -252,6 +286,9 @@ Fungsi-fungsi dibungkus `function_exists()` guard dan tersebar di subfolder per 
 - `time_ago($timestamp)` — Waktu relatif (ID)
 - `format_bytes($bytes)` — Ukuran file readable
 - `music_thumbnail_url($thumbnail)` — Resolve thumbnail
+- `video_thumbnail_sm_name(?string): string` — Turunkan nama varian 256px dari nama thumbnail
+- `video_thumbnail_sm(?string): string` — Sama seperti di atas, tapi hanya mengembalikan nama bila file benar-benar ada
+- `meel_is_default_thumbnail(string): bool` — True bila nama itu `default_thumb.jpg`/`default_thumb.webp` (case-insensitive, aman terhadap path)
 - `get_user_usage($username)` — Usage drive
 - `get_user_role(mysqli, int): string` — 3-level cache
 - `invalidate_user_role_cache()`
@@ -262,6 +299,32 @@ Fungsi-fungsi dibungkus `function_exists()` guard dan tersebar di subfolder per 
 - `get_audio_format_label(string): string`
 - `get_audio_format_description(string): string`
 - `log_drive_operation(...)`
+
+#### Konvensi penamaan thumbnail video
+
+Aturan ini berlaku di `Uploader.php` dan dipakai ulang di mana pun nama
+varian perlu diturunkan:
+
+| Jenis | Pola nama | Sumber |
+|---|---|---|
+| Thumbnail utama | `{folder_name}_thumb.webp` | `Uploader.php` |
+| Varian 256px (sm) | `{folder_name}_thumb_sm.webp` | `Uploader.php` |
+| Default (fallback) | `default_thumb.webp` / `default_thumb.jpg` | tidak ikut dihapus |
+
+Tiga hal yang sering bikin salah paham:
+
+1. **`folder_name`, bukan `clean_name`.** `folder_name` berasal dari
+   `meel_allocate_unique_dir()` sehingga dijamin unik; `clean_name` (hasil
+   `getRomajiName()`) bisa sama antar video. Kalau thumbnail ikut memakai
+   `clean_name`, dua video berjudul sama akan saling menimpa file thumbnail.
+2. **Varian `_sm` sengaja TIDAK disimpan di DB.** Hanya `video.thumbnail` yang
+   disimpan; keberadaan varian `_sm` dicek via `is_file()`. Karena itu scan
+   "Cek Sinkronisasi Database" di admin memakai pengecualian yang sama agar
+   varian tidak pernah dianggap sampah.
+3. **`default_thumb.*` tidak pernah dihapus.** Semua jalur hapus (ganti
+   thumbnail di `admin/edit-video.php`, hapus media di `fun-manage.php`, dan
+   rollback di `Uploader.php`) meng-cek `meel_is_default_thumbnail()` dulu.
+   Menghapus default thumbnail akan mematikan seluruh fallback gambar.
 
 ### 9. `modules/core/CommentRenderer.php`
 
@@ -277,8 +340,49 @@ Fungsi-fungsi dibungkus `function_exists()` guard dan tersebar di subfolder per 
   - Game ditinggalkan di tengah: sudah dimulai, **tanpa event terminal** (`resign`/`draw_accept`/`disconnect`/`game_over`) dan tanpa aktivitas >7 hari (beserta riwayat `moves`)
   - **Game yang sudah selesai TIDAK pernah dihapus** — riwayatnya dipertahankan
 - Expired rate limit cache via `RateLimiter::cleanup()`
+- Antrean hapus tertunda (`temp/pending_delete.json`) via `cleanPendingFileDeletions()` (throttle 1x/5 menit, TTL entri 30 menit)
 - Timeboxed execution (max 3 detik)
 - `removeFile()`/`removeDirectory()` helper dengan guard `is_writable()` proaktif — subtree milik user lain dilewati dengan error log, bukan warning PHP
+
+#### TTL cache media (`cleanCacheDirectory()`)
+
+Setiap prefix cache punya TTL sendiri; file yang **masih** dalam TTL dipejamkan
+(tidak dihapus):
+
+| Prefix | TTL | Sumber |
+|---|:---:|---|
+| `media_stats_` | 30 detik | `media.php` |
+| `admin_orphans` | 120 detik | `admin_data.php` |
+| `dirsize_` | 300 detik | `storage.php` |
+| `server_stats_info` | 300 detik | `System.php` |
+| `xsendfile_roots` | 86400 detik | `storage.php` |
+| `.tmp.<epoch>.<hash>` | 300 detik | temp yatim |
+
+File dengan **prefix tak dikenal** dihapus bila lebih tua dari 1 hari (86400 detik).
+
+> **Kenapa fallback ini pakai flag `$prefixMatched`, bukan `isset($ttlMap)`?**
+> Versi lama menulis `if (!$expired && !isset($ttlMap))`. `$ttlMap` adalah array
+> lokal yang **selalu** di-set sebelum loop, jadi `isset($ttlMap)` selalu `true`
+> dan fallback tersebut menjadi dead code — file prefix tak dikenal tidak pernah
+> dihapus dan `temp/cache/` tumbuh tanpa batas. Sekarang flag-nya mencatat
+> "apakah ada prefix yang cocok" secara eksplisit, sehingga fallback benar-benar
+> berjalan.
+
+#### Guard keamanan orphan cleaner (`controllers/admin/admin_actions.php`)
+
+Daftar orphan berasal dari cache 10 menit, jadi **tidak dipercaya buta**.
+Sebelum menghapus, isi daftar diverifikasi ulang ke DB dan dua hal dikecualikan:
+- varian thumbnail `*_sm.*` (tidak pernah masuk DB, hanya dicek via `is_file()`)
+- berkas yang ternyata masih terdaftar di DB
+
+#### Auto-increment `users` sengaja TIDAK di-reset
+
+Historically setelah guest dihapus, `ALTER TABLE users AUTO_INCREMENT = MAX(id)+1`
+dipakai untuk "membersihkan" nomor. Ini **dihapus** karena `auth/auth.php`
+memvalidasi `$_SESSION['user_id']` langsung ke tabel `users`: id yang didaur ulang
+berarti sesi milik user A bisa diam-diam menjadi user B. Sekarang nomor grows
+monoton, dan `GarbageCollector::resetGuestsAutoIncrement()` (namamethodinggal
+historis) hanya memanggil `cleanGuests()`.
 
 ### 11. `modules/auth/RateLimiter.php`
 
@@ -291,6 +395,7 @@ File-based rate limiter dengan `flock()` safety. Role-based (admin = unlimited, 
 | `upload` | 3/jam | — |
 | `transcode` | 5/jam | — |
 | `auto_metadata` | 5/jam | CPU-intensive (ffprobe + ffmpeg) |
+| `register` | 5/jam | Bucket **per-IP**, hanya sukses yang dihitung, loopback bebas |
 | `api` | 60/menit | Generic fallback |
 
 **Fail-closed behavior:** Ketika direktori penyimpanan (`temp/ratelimit/`) tidak writable atau `flock()` gagal, rate limiter **menolak semua request** (fail-closed) daripada diam-diam membiarkannya lewat. Kegagalan dicatat via `error_log()`.
@@ -387,8 +492,19 @@ Shortcut keyboard diimplementasikan dalam JavaScript dan di-guard oleh `assets/j
 | `C` | Toggle caption | Plyr default |
 | `L` | Toggle loop | `misc.js` |
 | `A` | Toggle auto-next | `misc.js` |
+| `S` | Toggle AI Upscale | `misc.js` → `toggleUpscale()` di `upscaler.js` |
+| `B` | Toggle ambient glow | `misc.js` → `toggleGlow()` di `player-events.js` |
 | `N` | Video berikutnya | `mini-player.js` |
 | `I` | Toggle mini player | `mini-player.js` |
+
+> **Dikunci saat modal resume terbuka.** Selama modal "Lanjutkan Sesi?" tampil,
+> `meelResumeModalActive` bernilai `true` dan seluruh pintasan di atas
+> dinonaktifkan (kecuali `Esc`), sehingga video tidak bisa dikendalikan di
+> belakang layar. `←` / `→` dipakai untuk berpindah pilihan mengikuti posisi
+> tombol — **← Lanjut**, **→ Ulang**; `Home` / `End` ke pilihan pertama/terakhir,
+> lalu `Enter` atau `Spasi` menjalankan pilihan yang disorot.
+> Dijaga oleh `window` listener fase `capture` di `assets/js/shared/resume-modal.js`
+> yang beating Plyr (`window` bubble) dan `mini-player.js` (`window` capture).
 
 **Music Watch (`assets/js/music/watch/`):**
 
@@ -449,7 +565,25 @@ class MusicWatchController { public function getViewData(): array; public functi
 
 Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabel `db_version` melacak migrasi mana yang sudah dijalankan (satu baris per versi, setiap versi hanya dieksekusi sekali).
 
-**v1 — konsolidasi skema**
+> ⚠️ **Baca dulu kalau pernah melihat nomor migrasi yang berbeda.**
+>
+> Nomor **v1–v15 adalah riwayat lama** yang sudah di-*redunisasi* (direset)
+> pada 17 Sep 2026 — seluruhnya kini **dikonsolidasikan menjadi v1**, tanpa
+> menghilangkan fungsinya. Jadi:
+>
+> - **v1 sekarang bukan "migrasi pertama" dalam arti kronologis.** Ia adalah
+>   hasil konsolidasi legacy v1–v15 (v13 = MEeLCoin, v14 = index `view_logs`,
+>   v15 = tabel `user_notifications` — semuanya kini tercakup di v1).
+> - Nomor **v2 ke atas dihitung ulang dari nol** setelah reset: entri yang
+>   sempat bernomor 16/17 (2 Okt) diganti menjadi **v2/v3**, lalu v4/v5
+>   menyusul sebagai migrasi baru sungguhan.
+> - Riwayat lama **tidak lagi dipakai**; baris `db_version` dibersihkan menjadi
+>   `{1..5}`. Loop hanya mengeksekusi versi `> MAX(db_version)`.
+>
+> Kalau kamu menemukan docs atau kode yang menyebut "Migration v9" atau
+> "migration v15" sebagai **versi aktif**, itu angka legacy — bukan bug.
+
+**v1 — konsolidasi skema (hasil redunisasi legacy v1–v15)**
 
 | Apa yang di-Sync | Detail |
 |---|---|
@@ -469,8 +603,6 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 
 **v2 — normalisasi state MEeLCoin**
 
-> v1 merupakan hasil regresi/konsolidasi dari migrasi lama v1–v15 (riwayat lama tidak lagi dipakai), jadi migrasi lanjutan bernomor urut setelah v1 — v2, v3, dan seterusnya. Loop tetap hanya mengeksekusi versi `> MAX(db_version)`; baris riwayat pra-regresi sudah dibersihkan dari `db_version`.
-
 | Apa yang di-Sync | Detail |
 |---|---|
 | Biaya upload MEeLCoin | `meelcoin_upload_cost` & `meelcoin_advanced_cost` dinormalkan minimum `1` (biaya `0` membuat `spend()` tidak memotong apa pun) |
@@ -486,6 +618,33 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 | `users` | `(role, is_active, last_activity)` (listing admin + deteksi idle), `(last_activity)` |
 | FK `comments.video_id → video.id` | `ON DELETE CASCADE`; baris orphan dibersihkan dulu sebelum FK dipasang |
 | Buang indeks redundan | `site_settings.idx_setting_key`, `view_logs.idx_vl_user_video` (duplikat terhadap UNIQUE/PRIMARY) |
+
+**v4 — indeks coalescing notifikasi**
+
+| Apa yang di-Sync | Detail |
+|---|---|
+| `user_notifications` | `idx_un_user_type_created (user_id, type, created_at)` — menopang lookup coalescing `like` sekaligus covering untuk query pruning retensi. Tanpa ini `isCoalesced()` menyisir seluruh baris notifikasi pengguna tersebut per-press like |
+
+**v5 — FK `interactions`**
+
+| Apa yang di-Sync | Detail |
+|---|---|
+| Bersihkan baris yatim | `interactions` yang `user_id`/`video_id`/`music_id`-nya sudah tak ada dihapus lebih dulu |
+| FK `interactions.user_id → users.id` | `ON DELETE CASCADE` |
+| FK `interactions.video_id → video.id` | `ON DELETE CASCADE` |
+| FK `interactions.music_id → music.id` | `ON DELETE CASCADE` |
+
+**v6 — rekam biaya MEeLCoin di antrean (dasar refund pengembalian)**
+
+| Apa yang di-Sync | Detail |
+|---|---|
+| `upload_queue` / `transcode_queue` | Kolom `coin_cost` (MEeLCoin yang benar-benar dipotong saat job dibuat) dan `coin_refunded` (0/1, mencegah refund ganda) |
+| Indeks sweeper | `idx_uq_status_created`, `idx_tq_status_created` untuk mencari baris macet |
+
+> **Mengapa biaya harus disimpan, bukan dihitung ulang?** Kalau sweeper menghitung
+> ulang dari `site_settings`, dan admin mengubah harga setelah user upload,
+> jumlah yang dikembalikan akan meleset — user mendapat kurang atau lebih.
+> `coin_cost` merekam **angka saat transaksi terjadi**, jadi hasilnya selalu benar.
 
 Catatan migrasi:
 
@@ -716,7 +875,7 @@ Halaman profil pengguna dengan visibilitas berbasis role, theme toggle, dan grid
 
 Sistem notifikasi berbasis database dengan user scoping dan actor tracking.
 
-**Database:** tabel `user_notifications` (migration v15)
+**Database:** tabel `user_notifications` (bagian dari migrasi **v1** — dulunya legacy v15, sekarang dikonsolidasikan)
 
 ```php
 class Notification {

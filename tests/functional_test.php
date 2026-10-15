@@ -60,8 +60,8 @@ function testClassLoading(): void {
         'SsrfGuard' => 'modules/auth/SsrfGuard.php',
         'ValidatingProxy' => 'modules/auth/ValidatingProxy.php',
         'UpdateManager' => 'controllers/system/UpdateManager.php',
-        'BookRepository' => 'modules/media/MediaLibrary.php',
-        'BookUploader' => 'modules/media/MediaLibrary.php',
+        'BookRepository' => 'modules/media/BookRepository.php',
+        'BookUploader' => 'modules/media/BookUploader.php',
     ];
 
     foreach ($classes as $name => $file) {
@@ -97,11 +97,11 @@ function testFunctionExistence(): void {
 
         'time_ago' => 'modules/core/helpers/url.php',
         'format_bytes' => 'modules/core/helpers/url.php',
-        'music_thumbnail_url' => 'modules/core/helpers/storage.php',
+        'music_thumbnail_url' => 'modules/core/helpers/storage_paths.php',
         'get_user_usage' => 'modules/auth/helpers/user.php',
         'get_csrf_token' => 'modules/auth/helpers/csrf.php',
         'verify_csrf_token' => 'modules/auth/helpers/csrf.php',
-        'log_drive_operation' => 'modules/core/helpers/storage.php',
+        'log_drive_operation' => 'modules/core/helpers/storage_disk.php',
         'generate_search_metadata' => 'modules/core/helpers/metadata.php',
 
         'getRomajiName' => 'modules/core/japanese.php',

@@ -1,18 +1,15 @@
 (function () {
   "use strict";
-
   var lyricsData = [];
   var currentLangIdx = 0;
   var activeLineIdx = -1;
   var modalEl = null;
   var scrollEl = null;
   var lineEls = [];
-
   function getAudio() {
     var eng = window.meelGetAudioEngine ? window.meelGetAudioEngine() : null;
     return eng ? eng.audio : null;
   }
-
   function buildModal() {
     var modal = document.getElementById("karaoke-modal");
     if (modal && modal === modalEl && modal.isConnected) return;
@@ -21,7 +18,6 @@
       modalEl !== modal &&
       !modalEl.classList.contains("hidden")
     );
-
     modalEl = modal || null;
     scrollEl = modal ? document.getElementById("karaoke-scroll") : null;
     lineEls = [];
@@ -36,7 +32,6 @@
       if (e.target === modalEl) closeKaraoke();
     });
   }
-
   function renderLines(langIdx) {
     if (!scrollEl) return;
     currentLangIdx = langIdx;
@@ -50,7 +45,6 @@
       if (typeof lucide !== "undefined") lucide.createIcons({}, scrollEl);
       return;
     }
-
     var html = "";
     for (var i = 0; i < data.lines.length; i++) {
       var text = data.lines[i].text || "";
@@ -63,19 +57,12 @@
         "</div>";
     }
     scrollEl.innerHTML = html;
-
     lineEls = scrollEl.querySelectorAll(".karaoke-line");
     for (var j = 0; j < lineEls.length; j++) {
       lineEls[j].addEventListener("click", onLineClick);
     }
   }
-
-  function escapeHtml(str) {
-    var div = document.createElement("div");
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
-  }
-
+  var escapeHtml = window.escapeHtml;
   function onLineClick(e) {
     var idx = parseInt(e.currentTarget.getAttribute("data-idx"), 10);
     if (isNaN(idx)) return;
@@ -87,15 +74,12 @@
       if (audio.paused) audio.play().catch(function () {});
     }
   }
-
   function syncLyrics() {
     var audio = getAudio();
     if (!audio || !lyricsData.length || !lineEls.length) return;
-
     var currentTime = audio.currentTime;
     var data = lyricsData[currentLangIdx];
     if (!data || !data.lines) return;
-
     var newIdx = -1;
     for (var i = data.lines.length - 1; i >= 0; i--) {
       if (currentTime >= data.lines[i].time - 0.15) {
@@ -103,10 +87,8 @@
         break;
       }
     }
-
     if (newIdx === activeLineIdx) return;
     activeLineIdx = newIdx;
-
     for (var j = 0; j < lineEls.length; j++) {
       var el = lineEls[j];
       el.classList.remove("active", "past", "future");
@@ -118,7 +100,6 @@
         el.classList.add("future");
       }
     }
-
     if (newIdx >= 0 && lineEls[newIdx] && scrollEl) {
       var container = scrollEl;
       var elActive = lineEls[newIdx];
@@ -130,7 +111,6 @@
       container.scrollTo({ top: targetScroll, behavior: "smooth" });
     }
   }
-
   function renderLangTabs() {
     var tabsContainer = document.getElementById("karaoke-lang-tabs");
     if (!tabsContainer) return;
@@ -161,7 +141,6 @@
       });
     }
   }
-
   window.openKaraoke = function () {
     buildModal();
     if (!modalEl) return;
@@ -173,12 +152,10 @@
     if (audio) syncLyrics();
     document.body.style.overflow = "hidden";
   };
-
   window.closeKaraoke = function () {
     if (modalEl) modalEl.classList.add("hidden");
     document.body.style.overflow = "";
   };
-
   window.toggleKaraoke = function () {
     buildModal();
     if (!modalEl) return;
@@ -188,7 +165,6 @@
       window.closeKaraoke();
     }
   };
-
   window.setKaraokeLyrics = function (lyrics) {
     lyricsData = lyrics || [];
     currentLangIdx = 0;
@@ -198,20 +174,17 @@
       triggerBtn.style.display = lyricsData.length > 0 ? "" : "none";
     }
   };
-
   function timeupdateHandler() {
     if (modalEl && !modalEl.classList.contains("hidden")) {
       syncLyrics();
     }
   }
-
   function initKaraokeSync() {
     var audio = getAudio();
     if (!audio || audio.__meelKaraokeBound) return;
     audio.__meelKaraokeBound = true;
     audio.addEventListener("timeupdate", timeupdateHandler);
   }
-
   var origInit = window.meelInitWatchPlayer;
   window.meelInitWatchPlayer = function () {
     if (typeof origInit === "function") origInit();
@@ -222,7 +195,6 @@
       window.setKaraokeLyrics(config.lyrics);
     }
   };
-
   if (document.readyState !== "loading") {
     buildModal();
     initKaraokeSync();
@@ -240,7 +212,6 @@
       }
     });
   }
-
   document.addEventListener("keydown", function (e) {
     if (window.meelKeyShortcutIgnored && window.meelKeyShortcutIgnored(e))
       return;
@@ -252,5 +223,4 @@
     }
   });
 })();
-
 /* reference build: MEeL-KARAOKE-v1 */

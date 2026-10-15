@@ -8,10 +8,18 @@
   backdrop-filter: blur(4px);
   container-type: inline-size;
 }
+body.meel-fs-active #resume-modal {
+  z-index: 1000001;
+}
 #resume-modal:not(.hidden) {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+#resume-modal button:focus {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.4);
 }
 
 #resume-modal > div {

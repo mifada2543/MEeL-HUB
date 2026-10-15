@@ -270,6 +270,40 @@ Key method — `forceStopQueue(int $id, string $task_type): bool`:
 - Deletes the queue record from `upload_queue` or `transcode_queue`
 - Returns `true` on success, `false` on failure
 
+#### PID identity verification (`killByPidFile`)
+
+PID files can be **stale**: once the process is gone, the OS recycles that PID
+number for something else. Killing without verification means the admin panel
+could kill a process it has **nothing to do with**. So the PID's cmdline is
+checked first (`ffmpeg`, `ffprobe`, `yt-dlp`, `youtube-dl`, `setsid`, `sh`).
+
+Two failure conditions are deliberately treated differently:
+
+| Condition | Behaviour | Why |
+|---|---|---|
+| `/proc` available, cmdline doesn't match | **fail-closed** (refuse to kill) | The PID was most likely recycled — this is the case being protected |
+| `/proc` unavailable (platform without procfs, or `hidepid`) | **fail-open** (kill anyway) + `error_log` | Nothing can be proven; refusing would orphan ffmpeg forever |
+
+When the PID is a *process group leader*, the kill is aimed at `-PID` so the
+whole ffmpeg child tree dies with it. `kill -- -PID` uses `--` so a negative PID
+isn't parsed as an option.
+
+#### Queue records are NOT deleted when the process survives
+
+`forceStopQueue()` only deletes the queue record **when there is no live
+process left to stop**. If a PID file exists but the kill was refused, the
+record is **kept** — otherwise the process becomes a permanent orphan with no
+trace in the DB and can never be stopped from the UI.
+
+The two cases are distinguished via `TranscoderBase::hadPidFile()`, which
+**must be called before `killByPidFile()`** because that function removes the
+PID file at the end (on success and on failure alike):
+
+| Condition | Result |
+|---|---|
+| No PID file (job finished / never started) | Record deleted — the queue must not jam |
+| PID file present, kill refused | Record kept, `error_log`, `return false` |
+
 ### 7. `modules/core/activity_logger.php`
 
 Activity logging & IP Banning:
@@ -316,6 +350,33 @@ function get_audio_format_description(string $ext): string;
 function log_drive_operation(...);                       // Drive audit trail
 ```
 
+#### Video thumbnail naming convention
+
+These rules live in `Uploader.php` and are reused wherever a variant name must
+be derived:
+
+| Kind | Name pattern | Source |
+|---|---|---|
+| Main thumbnail | `{folder_name}_thumb.webp` | `Uploader.php` |
+| 256px variant (sm) | `{folder_name}_thumb_sm.webp` | `Uploader.php` |
+| Default (fallback) | `default_thumb.webp` / `default_thumb.jpg` | never deleted |
+
+Three things that are easy to get wrong:
+
+1. **`folder_name`, not `clean_name`.** `folder_name` comes from
+   `meel_allocate_unique_dir()` and is therefore guaranteed unique;
+   `clean_name` (from `getRomajiName()`) can collide between videos. If
+   thumbnails were derived from `clean_name`, two videos with the same title
+   would overwrite each other's thumbnail file.
+2. **The `_sm` variant is deliberately NOT stored in the DB.** Only
+   `video.thumbnail` is persisted; the `_sm` variant's existence is probed via
+   `is_file()`. The admin "Check Database Sync" scan therefore uses the same
+   exemption so the variant is never mistaken for junk.
+3. **`default_thumb.*` is never deleted.** Every deletion path (thumbnail
+   replacement in `admin/edit-video.php`, media deletion in `fun-manage.php`,
+   and rollback in `Uploader.php`) checks `meel_is_default_thumbnail()` first.
+   Deleting the default thumbnail would break the image fallback entirely.
+
 ### 9. `modules/core/CommentRenderer.php`
 
 **Functions:** `render_comments()` — nested comment rendering with 2 themes (video/music); `comment_preview()` — latest comment preview for the comment header.
@@ -330,10 +391,53 @@ function log_drive_operation(...);                       // Drive audit trail
   - Abandoned mid-game: started, **no terminal event** (`resign`/`draw_accept`/`disconnect`/`game_over`) and no activity for >7 days (moves history removed too)
   - **Finished games are never deleted** — their history is preserved
 - Expired rate limit cache via `RateLimiter::cleanup()`
+- Deferred deletion queue (`temp/pending_delete.json`) via
+  `cleanPendingFileDeletions()` (throttle 1x/5 minutes, entry TTL 30 minutes)
 - Timeboxed execution (max 3 seconds)
 - Static `removeFile()`/`removeDirectory()` helpers with proactive `is_writable()`
   guards — subtrees owned by other users (e.g. `temp/cache/` owned by another
   process) are skipped with an error log instead of a PHP warning
+
+#### Media cache TTLs (`cleanCacheDirectory()`)
+
+Each cache prefix has its own TTL; files **still within** their TTL are
+protected (never deleted):
+
+| Prefix | TTL | Source |
+|---|:---:|---|
+| `media_stats_` | 30 seconds | `media.php` |
+| `admin_orphans` | 120 seconds | `admin_data.php` |
+| `dirsize_` | 300 seconds | `storage.php` |
+| `server_stats_info` | 300 seconds | `System.php` |
+| `xsendfile_roots` | 86400 seconds | `storage.php` |
+| `.tmp.<epoch>.<hash>` | 300 seconds | orphaned temp |
+
+Files with an **unknown prefix** are deleted once older than 1 day (86400 seconds).
+
+> **Why the fallback uses a `$prefixMatched` flag instead of `isset($ttlMap)`?**
+> The old code read `if (!$expired && !isset($ttlMap))`. `$ttlMap` is a local
+> array that is **always** assigned before the loop, so `isset($ttlMap)` was
+> always `true` and the fallback became dead code — unknown-prefix files were
+> never deleted and `temp/cache/` grew without bound. The flag now records
+> "did any prefix match" explicitly, so the fallback actually runs.
+
+#### Orphan cleaner safety guards (`controllers/admin/admin_actions.php`)
+
+The orphan list comes from a 10-minute cache, so it is **not trusted blindly**.
+Before deleting anything, entries are re-verified against the DB, with two
+exclusions:
+- `*_sm.*` thumbnail variants (never stored in the DB, only checked via `is_file()`)
+- files that turn out to still be registered in the DB
+
+#### `users` AUTO_INCREMENT is deliberately NOT reset
+
+After guests are deleted, `ALTER TABLE users AUTO_INCREMENT = MAX(id)+1` was
+historically used to "tidy up" numbering. This was **removed** because
+`auth/auth.php` validates `$_SESSION['user_id']` straight against the `users`
+table: a recycled id means a session belonging to user A can silently become
+user B. Ids now grow monotonically, and
+`GarbageCollector::resetGuestsAutoIncrement()` (method name kept for history)
+only calls `cleanGuests()`.
 
 ### 11. `modules/auth/RateLimiter.php`
 
@@ -346,6 +450,7 @@ File-based rate limiter with `flock()` safety. Role-based limits (admin = unlimi
 | `upload` | 3/hour | — |
 | `transcode` | 5/hour | — |
 | `auto_metadata` | 5/hour | CPU-intensive (ffprobe + ffmpeg) |
+| `register` | 5/hour | **Per-IP** bucket, only successful inserts counted, loopback exempt |
 | `api` | 60/min | Generic fallback |
 
 **Fail-closed behavior:** When the storage directory (`temp/ratelimit/`) is not writable or `flock()` fails, the rate limiter **denies all requests** instead of silently allowing them. This prevents a broken filesystem from disabling rate limiting. Failures are logged via `error_log()`.
@@ -467,8 +572,19 @@ Keyboard shortcuts are implemented in JavaScript and guarded by `assets/js/share
 | `C` | Toggle captions | Plyr default |
 | `L` | Toggle loop | `misc.js` |
 | `A` | Toggle auto-next | `misc.js` |
+| `S` | Toggle AI Upscale | `misc.js` → `toggleUpscale()` in `upscaler.js` |
+| `B` | Toggle ambient glow | `misc.js` → `toggleGlow()` in `player-events.js` |
 | `N` | Skip to next video | `mini-player.js` |
 | `I` | Toggle mini player | `mini-player.js` |
+
+> **Locked while the resume modal is open.** While the "Lanjutkan Sesi?" modal is
+> visible, `meelResumeModalActive` is `true` and every shortcut above is disabled
+> (except `Esc`), so the video cannot be controlled behind the dialog. `←` / `→`
+> move the selection following button position — **← Lanjut**, **→ Ulang**;
+> `Home` / `End` jump to the first/last choice; `Enter` or `Space` runs the
+> highlighted choice. Enforced by a `window` listener in the **capture** phase in
+> `assets/js/shared/resume-modal.js`, which pre-empts Plyr (`window` bubble) and
+> `mini-player.js` (`window` capture).
 
 **Music Watch (`assets/js/music/watch/`):**
 
@@ -529,7 +645,25 @@ class MusicWatchController { public function getViewData(): array; public functi
 
 The migration system is **idempotent** — safe to run multiple times. The `db_version` table tracks which migrations have been applied (one row per version; each version runs exactly once).
 
-**v1 — schema consolidation**
+> ⚠️ **Read this first if you have seen a different migration number.**
+>
+> Numbers **v1–v15 are the old history**, which was *redunized* (reset) on
+> 17 Sep 2026 — all of it is now **consolidated into v1**, without losing any of
+> its functionality. So:
+>
+> - **v1 today is not the "first" migration chronologically.** It is the
+>   consolidation of legacy v1–v15 (v13 = MEeLCoin, v14 = `view_logs` indexes,
+>   v15 = the `user_notifications` table — all now covered by v1).
+> - Numbers **from v2 up were recounted from zero** after the reset: entries
+>   briefly numbered 16/17 (2 Oct) became **v2/v3**, and v4/v5 followed as
+>   genuine new migrations.
+> - The old history is **no longer used**; `db_version` rows were cleaned to
+>   `{1..5}`. The loop only runs versions `> MAX(db_version)`.
+>
+> If you find docs or code mentioning "Migration v9" or "migration v15" as an
+> **active version**, that is a legacy number — not a bug.
+
+**v1 — schema consolidation (result of redunizing legacy v1–v15)**
 
 | What v1 Syncs | Detail |
 |---|---|
@@ -549,8 +683,6 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 
 **v2 — MEeLCoin state normalization**
 
-> v1 is the regression/consolidation result of the earlier migrations v1–v15 (the old history is no longer used), so follow-up migrations are numbered sequentially after v1 — v2, v3, and so on. The loop still only runs versions `> MAX(db_version)`; the pre-regression history rows have been cleaned from `db_version`.
-
 | What v2 Syncs | Detail |
 |---|---|
 | MEeLCoin upload costs | `meelcoin_upload_cost` & `meelcoin_advanced_cost` normalized to a minimum of `1` (a cost of `0` makes `spend()` deduct nothing) |
@@ -566,6 +698,34 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 | `users` | `(role, is_active, last_activity)` (admin listing + idle detection), `(last_activity)` |
 | FK `comments.video_id → video.id` | `ON DELETE CASCADE`; orphan rows are cleaned up before the FK is added |
 | Dropped redundant indexes | `site_settings.idx_setting_key`, `view_logs.idx_vl_user_video` (duplicates of UNIQUE/PRIMARY) |
+
+**v4 — notification coalescing index**
+
+| What v4 Syncs | Detail |
+|---|---|
+| `user_notifications` | `idx_un_user_type_created (user_id, type, created_at)` — supports the `like` coalescing lookup and doubles as a covering index for retention pruning. Without it `isCoalesced()` scans every notification row of that user on each like press |
+
+**v5 — `interactions` foreign keys**
+
+| What v5 Syncs | Detail |
+|---|---|
+| Orphan cleanup | `interactions` rows whose `user_id`/`video_id`/`music_id` no longer exist are deleted first |
+| FK `interactions.user_id → users.id` | `ON DELETE CASCADE` |
+| FK `interactions.video_id → video.id` | `ON DELETE CASCADE` |
+| FK `interactions.music_id → music.id` | `ON DELETE CASCADE` |
+
+**v6 — record MEeLCoin cost in the queues (basis for refunds)**
+
+| What v6 Syncs | Detail |
+|---|---|
+| `upload_queue` / `transcode_queue` | Columns `coin_cost` (the MEeLCoin actually deducted when the job was created) and `coin_refunded` (0/1, prevents double refunds) |
+| Sweeper indexes | `idx_uq_status_created`, `idx_tq_status_created` for finding stuck rows |
+
+> **Why the cost must be stored rather than recomputed?** If the sweeper
+> recomputed it from `site_settings`, and an admin changed the price after a
+> user uploaded, the refunded amount would be off — the user would get less
+> or more than they paid. `coin_cost` records **the amount at transaction
+> time**, so the result is always correct.
 
 Migration notes:
 
@@ -797,7 +957,7 @@ User profile page with role-based visibility, theme toggle, and public channel g
 
 Database-backed notification system with user scoping and actor tracking.
 
-**Database:** `user_notifications` table (migration v15)
+**Database:** `user_notifications` table (part of migration **v1** — formerly legacy v15, now consolidated)
 
 ```php
 class Notification {

@@ -127,7 +127,7 @@ function autoFillMetadata() {
       text: "Silakan pilih file audio terlebih dahulu sebelum menggunakan Auto-fill.",
       icon: "warning",
       confirmButtonText: "Mengerti",
-      confirmButtonColor: "#f97316",
+      confirmButtonColor: "#c2410c",
       background: "#0e1118",
       color: "#fff",
     });
@@ -183,7 +183,7 @@ function autoFillMetadata() {
             text: "File ini tidak memiliki metadata ID3/FLAC yang bisa dibaca.",
             icon: "info",
             confirmButtonText: "Mengerti",
-            confirmButtonColor: "#f97316",
+            confirmButtonColor: "#c2410c",
             background: "#0e1118",
             color: "#fff",
           });
@@ -192,7 +192,7 @@ function autoFillMetadata() {
             title: "Metadata ditemukan!",
             text: "Formulir telah diisi otomatis dari metadata file audio.",
             icon: "success",
-            confirmButtonColor: "#f97316",
+            confirmButtonColor: "#c2410c",
             background: "#0e1118",
             color: "#fff",
             timer: 2000,
@@ -205,7 +205,7 @@ function autoFillMetadata() {
           text: data.message || "Tidak dapat membaca metadata dari file ini.",
           icon: "error",
           confirmButtonText: "Mengerti",
-          confirmButtonColor: "#f97316",
+          confirmButtonColor: "#c2410c",
           background: "#0e1118",
           color: "#fff",
         });
@@ -218,7 +218,7 @@ function autoFillMetadata() {
         text: "Terjadi kesalahan koneksi saat memproses metadata.",
         icon: "error",
         confirmButtonText: "Mengerti",
-        confirmButtonColor: "#f97316",
+        confirmButtonColor: "#c2410c",
         background: "#0e1118",
         color: "#fff",
       });

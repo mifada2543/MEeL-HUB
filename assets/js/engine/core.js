@@ -7,7 +7,6 @@ function startSpriteTrickle() {
   var t = document.getElementById("meel-sp-pct");
   meelSpriteCurrentPct = 0;
   clearInterval(meelSpriteTimer);
-
   meelSpriteTimer = setInterval(function () {
     if (meelSpriteCurrentPct < 95) {
       meelSpriteCurrentPct += 1;
@@ -16,12 +15,18 @@ function startSpriteTrickle() {
     }
   }, 135);
 }
-
-window.meelPhase = function (phase) {
+var MEEL_PHASES = [
+  "download",
+  "encode",
+  "transcode",
+  "sprite",
+  "done",
+  "error",
+];
+function applyMeelPhase(phase) {
   var overlay = document.getElementById("meel-overlay");
   if (overlay) overlay.style.display = "flex";
-  var phases = ["download", "transcode", "sprite", "done", "error"];
-  phases.forEach(function (p) {
+  MEEL_PHASES.forEach(function (p) {
     var el = document.getElementById("meel-phase-" + p);
     if (el) {
       el.classList.remove("active");
@@ -39,12 +44,16 @@ window.meelPhase = function (phase) {
       row.appendChild(s);
     }
   }
-
   if (phase === "sprite" || phase === "sp") {
     startSpriteTrickle();
   } else {
     clearInterval(meelSpriteTimer);
   }
-};
+}
+if (typeof window.__meelPhaseBind === "function") {
+  window.__meelPhaseBind(applyMeelPhase);
+} else {
+  window.meelPhase = applyMeelPhase;
+}
 
 /* reference build: MEeL-C5H5N5O [7919258ce7f4372d] */

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
  * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
@@ -149,11 +150,18 @@ if (isset($_POST['update'])) {
                 $video['title'] = $title;
                 $video['description'] = $description;
                 $video['thumbnail'] = $thumbnail_url;
-                if ($thumbnail_url !== $old_thumb_name
+                if (
+                    $thumbnail_url !== $old_thumb_name
                     && !empty($old_thumb_name)
-                    && !in_array($old_thumb_name, ['default_thumb.jpg', 'default_thumb.webp'])) {
+                    && !meel_is_default_thumbnail($old_thumb_name)
+                ) {
                     $old_path = meel_media_base_path('video') . '/thumbnail/' . basename($old_thumb_name);
                     if (is_file($old_path)) @unlink($old_path);
+                    $old_sm = video_thumbnail_sm_name($old_thumb_name);
+                    if ($old_sm !== '' && !meel_is_default_thumbnail($old_sm)) {
+                        $old_sm_path = meel_media_base_path('video') . '/thumbnail/' . $old_sm;
+                        if (is_file($old_sm_path)) @unlink($old_sm_path);
+                    }
                 }
             } else {
                 $error_message = "Gagal menyimpan perubahan ke database.";
@@ -208,11 +216,11 @@ $thumb_src = !empty($video['thumbnail'])
 <html lang="id">
 
 <head>
-<?php
-$_META_TITLE = 'Edit Video | MEeL Admin';
-$_META_DESC = 'Edit detail video di MEeL. Ubah judul, deskripsi, dan thumbnail video.';
-include __DIR__ . '/../partials/link.php';
-?>
+    <?php
+    $_META_TITLE = 'Edit Video | MEeL Admin';
+    $_META_DESC = 'Edit detail video di MEeL. Ubah judul, deskripsi, dan thumbnail video.';
+    include __DIR__ . '/../partials/link.php';
+    ?>
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
@@ -434,7 +442,8 @@ include __DIR__ . '/../partials/link.php';
     </div>
 
     <?php include '../partials/footer.php'; ?>
-    <?php $scripts_root = '../'; include __DIR__ . '/../partials/scripts.php'; ?>
+    <?php $scripts_root = '../';
+    include __DIR__ . '/../partials/scripts.php'; ?>
     <script src="../assets/js/admin/edit/shared/form.js?v=<?= filemtime('../assets/js/admin/edit/shared/form.js') ?>"></script>
     <script src="../assets/js/admin/edit/shared/thumbnail.js?v=<?= filemtime('../assets/js/admin/edit/shared/thumbnail.js') ?>"></script>
     <script src="../assets/js/admin/edit/shared/dragdrop.js?v=<?= filemtime('../assets/js/admin/edit/shared/dragdrop.js') ?>"></script>
@@ -446,7 +455,7 @@ include __DIR__ . '/../partials/link.php';
                 title: 'Berhasil!',
                 text: 'Detail video telah diperbarui.',
                 icon: 'success',
-                confirmButtonColor: '#ef4444',
+                confirmButtonColor: '#dc2626',
                 background: '#0e1118',
                 color: '#fff'
             });

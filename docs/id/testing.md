@@ -20,7 +20,7 @@ MEeL menggunakan pendekatan testing berlapis:
 
 ---
 
-## 🧪 PHPUnit Test Suite (305 Unit + 98 Integration = 403 Tests)
+## 🧪 PHPUnit Test Suite (560+ Unit + 100+ Integration)
 
 ### Instalasi
 
@@ -347,15 +347,18 @@ disimulasikan, dan menyertakan probe 403 live opsional yang berjalan hanya
 saat URL staging dikonfigurasi sebagai secret GitHub:
 
 ```yaml
-# .github/workflows/ci.yml — job deploy-check, langkah opsional
-- name: Verify Private Drive 403 (staging)
-  if: secrets.STAGING_URL != ''
-  run: |
-    code=$(curl -s -o /dev/null -w '%{http_code}' \
-      "$STAGING_URL/data_drive/private_admins/" || true)
-    [ "$code" = "403" ] || { echo "Expected 403, got $code"; exit 1; }
-  env:
-    STAGING_URL: ${{ secrets.STAGING_URL }}
+# .github/workflows/ci.yml — job deploy-check
+# Catatan: context `secrets` TIDAK tersedia di step-level `if:`. Secret diekspos
+# lewat `env` job-level, lalu dibaca sebagai env context di dalam `if:`.
+    env:
+      STAGING_URL: ${{ secrets.STAGING_URL }}
+    steps:
+      - name: Verify Private Drive 403 (staging)
+        if: env.STAGING_URL != ''
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            "$STAGING_URL/data_drive/private_admins/" || true)
+          [ "$code" = "403" ] || { echo "Expected 403, got $code"; exit 1; }
 ```
 
 ### Verifikasi Manual Private Drive 403 (saat deploy)

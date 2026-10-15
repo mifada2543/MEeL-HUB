@@ -173,6 +173,29 @@ html.theme-transition *::after {
   outline-offset: 2px;
 }
 
+/* Skip link (WCAG 2.4.1) dan target lompatan fragmen.
+   Ditulis manual, bukan pakai utilitas Tailwind, karena
+   assets/css/tailwind.min.css di repo ini adalah build subset tetap:
+   keluarga focus-visible:*, ring-offset-*, dan scroll-* tidak ada di
+   dalamnya, jadi kelas untuk itu akan diam-diam tidak berpola.
+
+   - #skip-to-content memakai focus:translate-y-0 dari Tailwind (ada di
+     build). Yang hilang di sini indikator fokusnya: .focus\:outline-none:focus
+     (specificity 0,2,0) mengalahkan :focus-visible (0,1,0) di atas, jadi
+     outline global ikut hilang dan tanpa aturan ini link ini tidak punya
+     penanda fokus sama sekali.
+   - #main-content diberi scroll-margin karena header halaman di MEeL lengket
+     (h-14 + border-b = 57px); tanpa ini lompatan fragmen akan menempatkan
+     kartu player tepat di bawah header. */
+#skip-to-content:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+#main-content {
+  scroll-margin-top: 4rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;

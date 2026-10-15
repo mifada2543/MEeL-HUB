@@ -16,6 +16,24 @@ if (!isset($_SERVER['REMOTE_ADDR'])) {
     $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 }
 
+if (!defined('MEEL_HDD_BASE')) {
+    define('MEEL_HDD_BASE', MEEL_ROOT . '/temp/media-test');
+    define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+    define('MEEL_HDD_VIDEO_DIR', MEEL_HDD_VIDEO_UPLOAD . 'video/');
+    define('MEEL_HDD_THUMB_DIR', MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+    define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
+    define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
+    define('MEEL_HDD_DRIVE', MEEL_HDD_BASE . '/drive/');
+}
+foreach ([
+    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/',
+    MEEL_HDD_MUSIC_UPLOAD . 'thumbnail/',
+] as $dir) {
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+}
+
 if (!function_exists('meel_mecab_available')) {
     function meel_mecab_available(): bool
     {

@@ -4,16 +4,33 @@
 -- Engine: MySQL 5.7+ / MariaDB 10.2+
 -- Encoding: utf8mb4
 -- =============================================================================
--- Cara import:
---   mysql -u root -p < database/schema.sql
--- Atau dari MySQL CLI:
+-- Cara import (nama database WAJIB disebut di baris perintah, bukan di sini):
+--   mysql -u root -p MEeL < database/schema.sql
+--
+-- Dari MySQL CLI:
+--   mysql> CREATE DATABASE `MEeL` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+--   mysql> USE `MEeL`;
 --   mysql> SOURCE /path/to/database/schema.sql;
--- =============================================================================
-CREATE DATABASE IF NOT EXISTS `MEeL` DEFAULT CHARACTER
-SET
-  utf8mb4 COLLATE utf8mb4_general_ci;
-
-USE `MEeL`;
+--
+-- kenapa berkas ini SENGAJA tidak memuat CREATE DATABASE / USE
+-- -----------------------------------------------------------
+-- Dulu ia memuat keduanya, dan itu sebabkan impor mendarat diam-diam di
+-- database yang salah: `USE` di dalam BERKAS menang atas nama database yang
+-- disebut di baris perintah. `mysql ... meel_ci < schema.sql` tetap mendarat
+-- di `MEeL`.
+--
+-- Perbaikannya harus berlapis, karena ada LIMA berkas yang selama ini menyalin
+-- ulang nama itu dengan pola yang rapuh: install.sh (dua kali), ci.yml,
+-- scripts/ci/schema-parity-check.php (dua kali), tests/DbTestHelper.php, dan
+-- InteractionsForeignKeyMigrationIntegrationTest. Kalau satu saja polanya tidak
+-- cocok, impor masuk ke database yang tidak dimaksud dan langkah berikutnya
+-- menguji database kosong -- tanpa error sama sekali. arcade/schema.sql punya
+-- `USE` yang sama dan bisa mengalihkan impor ke database produksi.
+--
+-- Menulis ulang salinan-salinan itu hanya memindahkan masalah. Jadi nama
+-- database dihapus dari sini, dan tiap pemanggil impor menyebutkannya sendiri.
+-- Penjaga: tests/unit/SchemaDatabaseSelectionTest.php + langkah CI
+-- "Import schema.sql".
 
 -- =============================================================================
 -- TABEL: users
@@ -172,7 +189,10 @@ CREATE TABLE
     UNIQUE KEY `unique_interaction_music` (`user_id`, `music_id`),
     KEY `user_id` (`user_id`),
     KEY `idx_int_video_type` (`video_id`, `type`),
-    KEY `idx_int_music_type` (`music_id`, `type`)
+    KEY `idx_int_music_type` (`music_id`, `type`),
+    CONSTRAINT `fk_interactions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_interactions_video` FOREIGN KEY (`video_id`) REFERENCES `video` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_interactions_music` FOREIGN KEY (`music_id`) REFERENCES `music` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =============================================================================
@@ -217,8 +237,11 @@ CREATE TABLE
     `url` text NOT NULL,
     `media_type` varchar(20) NOT NULL,
     `user_id` int (11) NOT NULL,
-    `status` enum ('processing', 'completed', 'failed') DEFAULT 'processing',
+    `status` enum ('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+    `coin_cost` int (11) NOT NULL DEFAULT 0 COMMENT 'MEeLCoin yang dipotong saat INSERT, 0 = tidak dipotong',
+    `coin_refunded` tinyint (1) NOT NULL DEFAULT 0 COMMENT '1 = biaya sudah dikembalikan oleh sweeper',
     `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+    `updated_at` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     KEY `user_id` (`user_id`),
     KEY `idx_uq_status_created` (`status`, `created_at`),
@@ -235,11 +258,13 @@ CREATE TABLE
     `id` int (11) NOT NULL AUTO_INCREMENT,
     `user_id` int (11) NOT NULL,
     `status` enum ('processing', 'completed', 'failed') DEFAULT 'processing',
+    `file_path` varchar(255) DEFAULT NULL,
+    `coin_cost` int (11) NOT NULL DEFAULT 0 COMMENT 'MEeLCoin yang dipotong saat INSERT, 0 = tidak dipotong',
+    `coin_refunded` tinyint (1) NOT NULL DEFAULT 0 COMMENT '1 = biaya sudah dikembalikan oleh sweeper',
     `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     KEY `user_id` (`user_id`),
-    KEY `idx_tq_status` (`status`),
-    KEY `idx_tq_created` (`created_at`),
+    KEY `idx_tq_status_created` (`status`, `created_at`),
     CONSTRAINT `transcode_queue_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 

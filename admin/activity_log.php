@@ -1,9 +1,5 @@
 <?php
 /**
- * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
- * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
- * lintas `include`.
- *
  * @var \mysqli $conn
  */
 
@@ -13,6 +9,12 @@ include '../auth/auth.php';
 include_once '../modules/core/helpers.php';
 
 require_admin($conn);
+
+require_once __DIR__ . '/includes/export_columns.php';
+require_once __DIR__ . '/../modules/core/helpers/export.php';
+
+$uq_export_cols = meel_export_cols_upload_queue();
+$log_export_cols = meel_export_cols_activity_log();
 require_once __DIR__ . '/../modules/media/AdminActivityRepository.php';
 
 $logRepo = new AdminActivityRepository($conn);
@@ -77,6 +79,7 @@ if ($active_tab === 'uploads') {
         $timestamp = date('Y-m-d_H-i-s');
         $filename_base = "upload-queue-export-{$timestamp}";
         $all_uq_rows = $uqRepo->fetchAll();
+        $uq_labels = meel_export_labels($uq_export_cols);
 
         switch ($uq_export_format) {
             case 'csv':
@@ -85,17 +88,10 @@ if ($active_tab === 'uploads') {
 
                 $output = fopen('php://output', 'w');
                 fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
-                fputcsv($output, ['ID', 'User', 'URL', 'Tipe', 'Status', 'Waktu']);
+                fputcsv($output, $uq_labels);
 
                 foreach ($all_uq_rows as $row) {
-                    fputcsv($output, [
-                        $row['id'],
-                        $row['username'] ?? '—',
-                        $row['url'] ?? '',
-                        $row['media_type'] ?? '',
-                        $row['status'] ?? '',
-                        $row['created_at']
-                    ]);
+                    fputcsv($output, meel_export_values($row, $uq_export_cols));
                 }
                 fclose($output);
                 break;
@@ -104,16 +100,10 @@ if ($active_tab === 'uploads') {
                 header('Content-Type: application/json; charset=utf-8');
                 header("Content-Disposition: attachment; filename=\"{$filename_base}.json\"");
 
-                $json_data = array_map(function ($r) {
-                    return [
-                        'id' => (int)$r['id'],
-                        'username' => $r['username'] ?? '—',
-                        'url' => $r['url'] ?? '',
-                        'media_type' => $r['media_type'] ?? '',
-                        'status' => $r['status'] ?? '',
-                        'created_at' => $r['created_at'],
-                    ];
-                }, $all_uq_rows);
+                $json_data = array_map(
+                    static fn(array $r): array => meel_export_map($r, $uq_export_cols),
+                    $all_uq_rows
+                );
 
                 echo json_encode($json_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 break;
@@ -122,49 +112,12 @@ if ($active_tab === 'uploads') {
                 header('Content-Type: application/vnd.ms-excel; charset=utf-8');
                 header("Content-Disposition: attachment; filename=\"{$filename_base}.xls\"");
 
-                echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-                echo '<?mso-application progid="Excel.Sheet"?>' . "\n";
-                echo '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"' . "\n";
-                echo '  xmlns:o="urn:schemas-microsoft-com:office:office"' . "\n";
-                echo '  xmlns:x="urn:schemas-microsoft-com:office:excel"' . "\n";
-                echo '  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' . "\n";
-                echo '  <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">' . "\n";
-                echo '    <Author>MEeL Admin</Author>' . "\n";
-                echo '    <Created>' . date('c') . '</Created>' . "\n";
-                echo '  </DocumentProperties>' . "\n";
-                echo '  <Worksheet ss:Name="Antrean Unggah">' . "\n";
-                echo '    <Table>' . "\n";
-
-                $headers = ['ID', 'User', 'URL', 'Tipe', 'Status', 'Waktu'];
-                echo '      <Row>' . "\n";
-                foreach ($headers as $h) {
-                    echo '        <Cell><Data ss:Type="String">' . htmlspecialchars($h) . '</Data></Cell>' . "\n";
-                }
-                echo '      </Row>' . "\n";
-                $xls_cell = function ($val, string $type = 'String'): string {
-                    if ($val === null || $val === '') {
-                        return '        <Cell><Data ss:Type="String"></Data></Cell>' . "\n";
-                    }
-                    if ($type === 'Number') {
-                        return '        <Cell><Data ss:Type="Number">' . (int)$val . '</Data></Cell>' . "\n";
-                    }
-                    return '        <Cell><Data ss:Type="String">' . htmlspecialchars((string)$val) . '</Data></Cell>' . "\n";
-                };
-
+                meel_xls_begin('Antrean Unggah');
+                meel_xls_header($uq_labels);
                 foreach ($all_uq_rows as $row) {
-                    echo '      <Row>' . "\n";
-                    echo $xls_cell($row['id'], 'Number');
-                    echo $xls_cell($row['username'] ?? '—');
-                    echo $xls_cell($row['url']);
-                    echo $xls_cell($row['media_type']);
-                    echo $xls_cell($row['status']);
-                    echo $xls_cell($row['created_at']);
-                    echo '      </Row>' . "\n";
+                    meel_xls_data_row(meel_export_values($row, $uq_export_cols), $uq_export_cols);
                 }
-
-                echo '    </Table>' . "\n";
-                echo '  </Worksheet>' . "\n";
-                echo '</Workbook>' . "\n";
+                meel_xls_end();
                 break;
         }
         exit;
@@ -180,19 +133,13 @@ if ($active_tab === 'uploads') {
         $content = '';
         switch ($preview_format) {
             case 'csv':
-                $content = '';
-                $h = ['ID', 'User', 'URL', 'Tipe', 'Status', 'Waktu'];
-                $content .= implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $h)) . "\n";
+                // Pengutipan manual ini BUKAN escaping fputcsv -- sengaja
+                // dipertahankan karena yang tampil di layar adalah teks
+                // pratinjau, bukan berkas CSV yang diunduh.
+                $quote = static fn($v): string => '"' . str_replace('"', '""', (string) $v) . '"';
+                $content = implode(',', array_map($quote, meel_export_labels($uq_export_cols))) . "\n";
                 foreach ($preview_rows as $r) {
-                    $vals = [
-                        $r['id'],
-                        $r['username'] ?? '—',
-                        $r['url'] ?? '',
-                        $r['media_type'] ?? '',
-                        $r['status'] ?? '',
-                        $r['created_at']
-                    ];
-                    $content .= implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $vals)) . "\n";
+                    $content .= implode(',', array_map($quote, meel_export_values($r, $uq_export_cols))) . "\n";
                 }
                 if ($preview_total > $preview_limit) {
                     $content .= "\n... dan " . ($preview_total - $preview_limit) . " baris lainnya\n";
@@ -200,16 +147,10 @@ if ($active_tab === 'uploads') {
                 break;
 
             case 'json':
-                $json_out = array_map(function ($r) {
-                    return [
-                        'id' => (int)$r['id'],
-                        'username' => $r['username'] ?? '—',
-                        'url' => $r['url'] ?? '',
-                        'media_type' => $r['media_type'] ?? '',
-                        'status' => $r['status'] ?? '',
-                        'created_at' => $r['created_at'],
-                    ];
-                }, $preview_rows);
+                $json_out = array_map(
+                    static fn(array $r): array => meel_export_map($r, $uq_export_cols),
+                    $preview_rows
+                );
                 $content = json_encode($json_out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 if ($preview_total > $preview_limit) {
                     $content .= "\n\n/* ... dan {$preview_total} total baris (ditampilkan {$preview_limit}) */";
@@ -217,16 +158,9 @@ if ($active_tab === 'uploads') {
                 break;
 
             case 'xls':
-                $content = "ID\tUser\tURL\tTipe\tStatus\tWaktu\n";
+                $content = implode("\t", meel_export_labels($uq_export_cols)) . "\n";
                 foreach ($preview_rows as $r) {
-                    $content .= implode("\t", [
-                        $r['id'],
-                        $r['username'] ?? '—',
-                        $r['url'] ?? '',
-                        $r['media_type'] ?? '',
-                        $r['status'] ?? '',
-                        $r['created_at']
-                    ]) . "\n";
+                    $content .= implode("\t", meel_export_values($r, $uq_export_cols)) . "\n";
                 }
                 if ($preview_total > $preview_limit) {
                     $content .= "\n... dan " . ($preview_total - $preview_limit) . " baris lainnya\n";
@@ -243,6 +177,7 @@ if ($active_tab === 'uploads') {
         ]);
         exit;
     }
+
 }
 
 $action_filter = $_GET['action'] ?? '';
@@ -292,10 +227,12 @@ $all_actions = $logRepo->getDistinctActions();
 $stats = $logRepo->getWeeklyStats();
 
 $export_format = $_GET['export'] ?? '';
+
 if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
     $timestamp = date('Y-m-d_H-i-s');
     $filename_base = "activity-log-export-{$timestamp}";
     $rows = $logRepo->fetchAll();
+    $log_labels = meel_export_labels($log_export_cols);
 
     switch ($export_format) {
         case 'csv':
@@ -304,19 +241,10 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
 
             $output = fopen('php://output', 'w');
             fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($output, ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'Alamat IP', 'Waktu']);
+            fputcsv($output, $log_labels);
 
             foreach ($rows as $row) {
-                fputcsv($output, [
-                    $row['id'],
-                    $row['user_id'] ?? '',
-                    $row['username'] ?? 'Tamu',
-                    $row['action'],
-                    $row['media_type'] ?? '',
-                    $row['media_id'] ?? '',
-                    $row['ip_address'] ?? '',
-                    $row['created_at']
-                ]);
+                fputcsv($output, meel_export_values($row, $log_export_cols));
             }
             fclose($output);
             break;
@@ -325,18 +253,10 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
             header('Content-Type: application/json; charset=utf-8');
             header("Content-Disposition: attachment; filename=\"{$filename_base}.json\"");
 
-            $json_data = array_map(function ($r) {
-                return [
-                    'id' => (int)$r['id'],
-                    'user_id' => $r['user_id'] !== null ? (int)$r['user_id'] : null,
-                    'username' => $r['username'] ?? 'Tamu',
-                    'action' => $r['action'],
-                    'media_type' => $r['media_type'] ?? '',
-                    'media_id' => $r['media_id'] !== null ? (int)$r['media_id'] : null,
-                    'ip_address' => $r['ip_address'] ?? '',
-                    'created_at' => $r['created_at'],
-                ];
-            }, $rows);
+            $json_data = array_map(
+                static fn(array $r): array => meel_export_map($r, $log_export_cols),
+                $rows
+            );
 
             echo json_encode($json_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             break;
@@ -345,51 +265,12 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
             header('Content-Type: application/vnd.ms-excel; charset=utf-8');
             header("Content-Disposition: attachment; filename=\"{$filename_base}.xls\"");
 
-            echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-            echo '<?mso-application progid="Excel.Sheet"?>' . "\n";
-            echo '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"' . "\n";
-            echo '  xmlns:o="urn:schemas-microsoft-com:office:office"' . "\n";
-            echo '  xmlns:x="urn:schemas-microsoft-com:office:excel"' . "\n";
-            echo '  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' . "\n";
-            echo '  <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">' . "\n";
-            echo '    <Author>MEeL Admin</Author>' . "\n";
-            echo '    <Created>' . date('c') . '</Created>' . "\n";
-            echo '  </DocumentProperties>' . "\n";
-            echo '  <Worksheet ss:Name="Log Aktivitas">' . "\n";
-            echo '    <Table>' . "\n";
-
-            $headers = ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'Alamat IP', 'Waktu'];
-            echo '      <Row>' . "\n";
-            foreach ($headers as $h) {
-                echo '        <Cell><Data ss:Type="String">' . htmlspecialchars($h) . '</Data></Cell>' . "\n";
-            }
-            echo '      </Row>' . "\n";
-            $xls_cell = function ($val, string $type = 'String'): string {
-                if ($val === null || $val === '') {
-                    return '        <Cell><Data ss:Type="String"></Data></Cell>' . "\n";
-                }
-                if ($type === 'Number') {
-                    return '        <Cell><Data ss:Type="Number">' . (int)$val . '</Data></Cell>' . "\n";
-                }
-                return '        <Cell><Data ss:Type="String">' . htmlspecialchars((string)$val) . '</Data></Cell>' . "\n";
-            };
-
+            meel_xls_begin('Log Aktivitas');
+            meel_xls_header($log_labels);
             foreach ($rows as $row) {
-                echo '      <Row>' . "\n";
-                echo $xls_cell($row['id'], 'Number');
-                echo $xls_cell($row['user_id'], 'Number');
-                echo $xls_cell($row['username'] ?? 'Tamu');
-                echo $xls_cell($row['action']);
-                echo $xls_cell($row['media_type']);
-                echo $xls_cell($row['media_id'], 'Number');
-                echo $xls_cell($row['ip_address']);
-                echo $xls_cell($row['created_at']);
-                echo '      </Row>' . "\n";
+                meel_xls_data_row(meel_export_values($row, $log_export_cols), $log_export_cols);
             }
-
-            echo '    </Table>' . "\n";
-            echo '  </Worksheet>' . "\n";
-            echo '</Workbook>' . "\n";
+            meel_xls_end();
             break;
     }
     exit;
@@ -405,21 +286,10 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
     $content = '';
     switch ($preview_format) {
         case 'csv':
-            $content = '';
-            $h = ['ID', 'User ID', 'Username', 'Action', 'Media Type', 'Media ID', 'Alamat IP', 'Waktu'];
-            $content .= implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $h)) . "\n";
+            $quote = static fn($v): string => '"' . str_replace('"', '""', (string) $v) . '"';
+            $content = implode(',', array_map($quote, meel_export_labels($log_export_cols))) . "\n";
             foreach ($preview_rows as $r) {
-                $vals = [
-                    $r['id'],
-                    $r['user_id'] ?? '',
-                    $r['username'] ?? 'Tamu',
-                    $r['action'],
-                    $r['media_type'] ?? '',
-                    $r['media_id'] ?? '',
-                    $r['ip_address'] ?? '',
-                    $r['created_at']
-                ];
-                $content .= implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $vals)) . "\n";
+                $content .= implode(',', array_map($quote, meel_export_values($r, $log_export_cols))) . "\n";
             }
             if ($preview_total > $preview_limit) {
                 $content .= "\n... dan " . ($preview_total - $preview_limit) . " baris lainnya\n";
@@ -427,18 +297,10 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             break;
 
         case 'json':
-            $json_out = array_map(function ($r) {
-                return [
-                    'id' => (int)$r['id'],
-                    'user_id' => $r['user_id'] !== null ? (int)$r['user_id'] : null,
-                    'username' => $r['username'] ?? 'Tamu',
-                    'action' => $r['action'],
-                    'media_type' => $r['media_type'] ?? '',
-                    'media_id' => $r['media_id'] !== null ? (int)$r['media_id'] : null,
-                    'ip_address' => $r['ip_address'] ?? '',
-                    'created_at' => $r['created_at'],
-                ];
-            }, $preview_rows);
+            $json_out = array_map(
+                static fn(array $r): array => meel_export_map($r, $log_export_cols),
+                $preview_rows
+            );
             $content = json_encode($json_out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             if ($preview_total > $preview_limit) {
                 $content .= "\n\n/* ... dan {$preview_total} total baris (ditampilkan {$preview_limit}) */";
@@ -446,18 +308,9 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             break;
 
         case 'xls':
-            $content = "ID\tUser ID\tUsername\tAction\tMedia Type\tMedia ID\tAlamat IP\tWaktu\n";
+            $content = implode("\t", meel_export_labels($log_export_cols)) . "\n";
             foreach ($preview_rows as $r) {
-                $content .= implode("\t", [
-                    $r['id'],
-                    $r['user_id'] ?? '',
-                    $r['username'] ?? 'Tamu',
-                    $r['action'],
-                    $r['media_type'] ?? '',
-                    $r['media_id'] ?? '',
-                    $r['ip_address'] ?? '',
-                    $r['created_at']
-                ]) . "\n";
+                $content .= implode("\t", meel_export_values($r, $log_export_cols)) . "\n";
             }
             if ($preview_total > $preview_limit) {
                 $content .= "\n... dan " . ($preview_total - $preview_limit) . " baris lainnya\n";
@@ -1294,7 +1147,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 title: 'Selesai!',
                 text: <?= json_encode($clear_msg) ?>,
                 icon: 'success',
-                confirmButtonColor: '#3b82f6',
+                confirmButtonColor: '#2563eb',
                 background: '#0e1118',
                 color: '#fff'
             });
@@ -1304,7 +1157,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 title: 'Selesai!',
                 text: <?= json_encode($uq_clear_msg) ?>,
                 icon: 'success',
-                confirmButtonColor: '#22c55e',
+                confirmButtonColor: '#15803d',
                 background: '#0e1118',
                 color: '#fff'
             });

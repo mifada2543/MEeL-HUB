@@ -4,6 +4,7 @@ define('EXCLUDE_DIRS', ['vendor', 'node_modules', '.git', 'tests', 'temp', 'asse
 define('EXCLUDE_FILES', ['config.example.php', 'settings.example.php', 'test.php', '.gitkeep']);
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/lib/transcoder_checks.php';
 
 $GLOBALS['total_tests'] = 0;
 $GLOBALS['passed'] = 0;
@@ -546,7 +547,12 @@ function testCommandInjection(): void {
         'modules/transcoder/DownloadService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
         'modules/transcoder/EncodeService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
         'modules/transcoder/TranscodeService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
-        'modules/core/helpers/storage.php' => ['shell_exec'],
+        // T27: storage.php dipecah. shell_exec()/du -sb ada di dir_size()
+        // yang kini hidup di storage_disk.php. Kalau peta ini tidak
+        // diperbarui, test tetap hijau padahal cakupannya hilang senyap --
+        // file yang dipindai jadi aggregator 40 baris tanpa shell
+        // sama sekali. Itu persis kelas bug yang test ini buat cegah.
+        'modules/core/helpers/storage_disk.php' => ['shell_exec'],
         'modules/core/System.php' => ['shell_exec'],
         'auth/config.example.php' => ['proc_open', 'shell_exec'],
         'modules/core/japanese.php' => ['proc_open'],
@@ -628,11 +634,14 @@ function testFileIntegrity(): void {
         'auth/logout.php', 'auth/register.php', 'auth/auth_helpers.php',
         'modules/core/helpers.php',
         'modules/core/helpers/main.php', 'modules/core/helpers/storage.php',
+        'modules/core/helpers/storage_paths.php', 'modules/core/helpers/storage_disk.php',
+        'modules/core/helpers/storage_xsendfile.php', 'modules/core/helpers/storage_stream.php',
         'modules/core/activity_logger.php', 'modules/core/System.php', 'modules/core/Uploader.php',
         'modules/core/Transcoder.php', 'modules/auth/SsrfGuard.php', 'modules/auth/ValidatingProxy.php',
         'modules/auth/validating_proxy_server.php', 'modules/media/MediaInteraction.php',
         'modules/media/MediaViewer.php',
-        'modules/media/MediaLibrary.php', 'modules/core/GarbageCollector.php', 'modules/core/japanese.php',
+        'modules/media/MediaLibrary.php', 'modules/media/BookRepository.php',
+        'modules/media/BookUploader.php', 'modules/core/GarbageCollector.php', 'modules/core/japanese.php',
         'admin/.htaccess', 'auth/.htaccess', 'data_drive/.htaccess',
         'drive/DriveService.php', 'drive/stream.php', 'controllers/admin/admin_actions.php', 'controllers/admin/admin_data.php',
         'controllers/profile/profile_edit.php',
@@ -961,16 +970,7 @@ function testAdminContextAndPipelineHardening(): void {
         record('modules/core/Transcoder.php — FILE TIDAK DITEMUKAN!', false, false);
     } else {
         $tc = transcoderCombinedSource();
-        $tcChecks = [
-            'proc_open array (finalizeVideo)' => '/proc_open\(\$hls_cmd/',
-            'proc_open array (transcodeVideo)' => '/proc_open\(\$tc_cmd/',
-            'env vars via $env (LD_LIBRARY_PATH)' => "/'LD_LIBRARY_PATH'/",
-            'env vars via $env (PATH)' => "/'PATH'/",
-            'putenv() untuk processDownload' => "/putenv\('PATH/",
-            'marker file anti-duplikat transcode' => '/marker_file/',
-            'folder naming lock' => '/meel_transcode_folder\.lock/',
-            'stderr pipe untuk progress FFmpeg' => '/\$hls_pipes\[2\]/',
-        ];
+        $tcChecks = meel_transcoder_check_patterns();
 
         foreach ($tcChecks as $name => $pat) {
             if (preg_match($pat, $tc)) {
@@ -1073,7 +1073,11 @@ function testHardeningRegression(): void {
         return file_exists($path) ? (string) file_get_contents($path) : '';
     };
 
-    $ml = $read('modules/media/MediaLibrary.php');
+    // ArchiveGuard + extractTo berada di BookUploader. Setelah pemecahan
+    // T19, membacanya dari MediaLibrary.php hanya akan mengembalikan '' dan
+    // cabang else-nya -- laporan 'belum sepenuhnya lewat ArchiveGuard' --
+    // tidak akan pernah dievaluasi sebagai pemeriksaan yang sebenarnya.
+    $ml = $read('modules/media/BookUploader.php');
     if (strpos($ml, 'ArchiveGuard') !== false && !preg_match('/\$zip->extractTo\(\$manga_folder\)/', $ml)) {
         record('MediaLibrary: ekstraksi ZIP via ArchiveGuard (tanpa extractTo ke folder final)', true);
     } else {

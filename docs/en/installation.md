@@ -33,7 +33,7 @@ An automatic installer that runs most steps of this guide in a single command (t
 
 Steps it runs (idempotent for most of them):
 
-1. **Check dependencies** — PHP 8.0+ with the `mysqli`, `pdo_mysql`,
+1. **Check dependencies** — PHP 8.1+ with the `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl` extensions, plus
    MariaDB/MySQL; installed via apt when needed (`--skip-apt` to skip).
 2. **Database setup** — create the database and import `database/schema.sql`
@@ -69,7 +69,7 @@ Steps it runs (idempotent for most of them):
 
 | Component | Version | Notes |
 |---|---|---|
-| **PHP** | 8.0+ | **8.1+** highly recommended |
+| **PHP** | **8.1+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Requires `mod_rewrite` |
 | **FFmpeg** | 6.0+ | For HLS & transcoding |
@@ -154,12 +154,12 @@ cd MEeL
 > **📁 The database schema file is available at [`database/schema.sql`](../../database/schema.sql).**
 > After importing, run the migration to complete the setup.
 
-> ⚠️ `schema.sql` hardcodes `CREATE DATABASE IF NOT EXISTS \`MEeL\`` + `USE \`MEeL\`;` — manual imports (CLI/phpMyAdmin) always target a database named `MEeL`. `install.sh` rewrites both lines to the configured database name, so a non-default DB name (e.g. for staging) is safe to use through the installer.
+> ⚠️ `schema.sql` does **not** contain `CREATE DATABASE` / `USE`. The database name must be given on the command line — that is what stops an import from silently landing in the wrong database. For any name other than `MEeL`, pass it directly in the command; `install.sh` does the same thing.
 
 #### Option A — Via MySQL CLI (fast):
 
 ```bash
-mysql -u root -p < database/schema.sql
+mysql -u root -p MEeL < database/schema.sql
 ```
 
 #### Option B — Via MySQL prompt:
@@ -168,6 +168,8 @@ mysql -u root -p < database/schema.sql
 mysql -u root -p
 ```
 ```sql
+CREATE DATABASE IF NOT EXISTS `MEeL` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `MEeL`;
 SOURCE /path/to/MEeL/database/schema.sql;
 ```
 

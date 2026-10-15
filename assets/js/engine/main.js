@@ -1,8 +1,32 @@
 /* reference build: MEeL-C9H11NO2 [bc40ac36f5c19737] */
-
 (function () {
   "use strict";
-  if (document.readyState !== "loading") return;
+  (function () {
+    if (window.__meelPhaseQ) return;
+    var queue = (window.__meelPhaseQ = []);
+    var real = null;
+
+    window.meelPhase = function (phase) {
+      if (real) {
+        real(phase);
+        return;
+      }
+      queue.push(phase);
+    };
+    window.__meelPhaseBind = function (fn) {
+      if (real) return;
+      real = fn;
+      while (queue.length) {
+        try {
+          real(queue.shift());
+        } catch (e) {
+          console.error("MEeL engine phase error:", e);
+        }
+      }
+    };
+  })();
+  if (window.__meelEngineLoaded) return;
+  window.__meelEngineLoaded = true;
   var src =
     (document.currentScript && document.currentScript.src) ||
     (function () {

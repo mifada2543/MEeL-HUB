@@ -1838,6 +1838,15 @@ function turnOff() {
     },
     state: state,
   };
+
+  window.toggleUpscale = function () {
+    var row = document.getElementById("plyr-setting-upscale");
+    if (row) return row.click();
+    var U = window.MEEL_UPSCALER;
+    if (!U) return;
+    if (U.state && U.state.enabled) U.disable();
+    else U.enable();
+  };
 })();
 
 /* reference build: MEeL-video-upscaler */

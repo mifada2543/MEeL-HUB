@@ -4,6 +4,7 @@ meel_boot_session();
 include '../auth/config.php';
 require_once '../modules/core/CommentRenderer.php';
 require_once '../controllers/api/WatchController.php';
+require_once __DIR__ . '/cards.php';
 
 $id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
@@ -27,8 +28,9 @@ session_write_close();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <?php
-    $__thumb_name = $v['thumbnail'] ?? '';
-    $__thumb_ok = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . basename($__thumb_name));
+    $__thumb_name = basename(trim((string)($v['thumbnail'] ?? '')));
+    $__thumb_ok = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . $__thumb_name);
+    $__thumb_path = $__thumb_ok ? 'upload/thumbnail/' . rawurlencode($__thumb_name) : '';
     $__og_image = $__thumb_ok
         ? base_url('/video/upload/thumbnail/' . rawurlencode($__thumb_name))
         : base_url('/assets/img/video0.webp');
@@ -44,8 +46,10 @@ session_write_close();
     $_META_TYPE = 'video.other';
     ?>
     <?php include '../partials/link.php'; ?>
-    <link rel="preload" as="image" fetchpriority="high"
-        href="upload/thumbnail/<?= htmlspecialchars($v['thumbnail'] ?? '') ?>">
+    <?php if ($__thumb_path !== ''): ?>
+        <link rel="preload" as="image" fetchpriority="high"
+            href="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>">
+    <?php endif; ?>
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
     <?php meel_css_links('video', '../assets/css/video'); ?>
     <link rel="stylesheet" href="../assets/css/video/watch/main.css<?= meel_asset_version('assets/css/video/watch/main.css') ?>">
@@ -57,6 +61,7 @@ session_write_close();
 </head>
 
 <body class="text-gray-400 min-h-screen">
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
 
     <nav class="border-b border-white/[.04] sticky top-0 z-50">
         <div class="w-full px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
@@ -133,10 +138,10 @@ session_write_close();
         <div id="left-column" class="flex-1 space-y-2 sm:space-y-3 px-4 sm:px-5">
             <div id="video-glow-container" class="relative w-full">
                 <canvas id="video-glow-canvas" class="block"></canvas>
-                <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" style="aspect-ratio: 16/9;">
+                <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" data-video-aspect="1.7778" style="--meel-video-ar: 1.7778;">
                     <video id="main-video" playsinline controls preload="metadata"
-                        poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
-                        data-poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
+                        poster="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>"
+                        data-poster="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>"
                         data-src="<?= htmlspecialchars($video_src) ?>"
                         aria-label="Pemutar video: <?= htmlspecialchars($v['title']) ?>"
                         data-ishls="<?= $is_hls ? 'true' : 'false' ?>"
@@ -154,9 +159,11 @@ session_write_close();
                                 label="<?= htmlspecialchars($_sub['label']) ?>">
                         <?php endforeach; ?>
                     </video>
-                    <div id="resume-modal" class="hidden">
+                    <div id="resume-modal" class="hidden" role="dialog" aria-modal="true"
+                        aria-labelledby="resume-modal-title" aria-describedby="resume-countdown">
                         <div class="bg-[#141820] border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl text-center">
-                            <div class="font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
+                            <div id="resume-modal-title"
+                                class="font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
                             <div class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">
                                 Menit ke‑ <span id="resume-time" class="text-red-400 font-mono">0:00</span>
                             </div>
@@ -349,27 +356,9 @@ session_write_close();
                 <span id="rec-title-text" class="truncate" title="Video Lainnya">Video Lainnya</span>
             </div>
             <div id="recommendation-column" class="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-0 lg:space-y-1">
-                <?php while ($r = $rekom->fetch_assoc()): ?>
-                    <a href="<?= base_url('/video/watch?v=' . (int)$r['id']) ?>"
-                        class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline"
-                        title="<?= htmlspecialchars($r['title']) ?>">
-                        <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                            <img src="upload/thumbnail/<?= video_thumbnail_sm($r['thumbnail']) ?>"
-                                class="rec-thumb-img w-full h-full object-cover transition-transform duration-300" loading="lazy" decoding="async" width="256" height="144" alt="Thumbnail video <?= htmlspecialchars($r['title']) ?>">
-                        </div>
-                        <div class="flex-1 min-w-0 flex flex-col justify-center">
-                            <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
-                                <?= htmlspecialchars($r['title']) ?>
-                            </div>
-                            <div class="text-[9px] text-gray-300 mt-1"><?= number_format($r['views'] ?? 0) ?> views</div>
-                            <?php if (!empty($r['uploader'])): ?>
-                                <div class="rec-uploader-text font-bold uppercase tracking-wider mt-0.5 truncate">
-                                    <?= htmlspecialchars($r['uploader']) ?>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </a>
-                <?php endwhile; ?>
+                <?php while ($r = $rekom->fetch_assoc()):
+                    meel_render_video_rec_card($r);
+                endwhile; ?>
                 <?php if ($rekom->num_rows >= 15): ?>
                     <div class="py-3 text-center rec-sentinel"
                         hx-get="search?exclude=<?= (int)$id ?>"
@@ -401,6 +390,27 @@ session_write_close();
                                     'uploader' => $v['uploader'] ?? '',
                                     'thumbnail' => $__og_image
                                 ]); ?>;
+    </script>
+    <script>
+        (function () {
+            var wrapper = document.getElementById('main-video-wrapper');
+            var video = document.getElementById('main-video');
+            if (!wrapper || !video) return;
+            function applyIntrinsicRatio() {
+                var w = video.videoWidth;
+                var h = video.videoHeight;
+                if (!w || !h) return;
+                var ratio = w / h;
+                if (!(ratio > 0.2 && ratio < 5)) return;
+
+                wrapper.style.setProperty('--meel-video-ar', w + ' / ' + h);
+                wrapper.style.removeProperty('aspect-ratio');
+                wrapper.setAttribute('data-video-aspect', ratio.toFixed(4));
+            }
+
+            video.addEventListener('loadedmetadata', applyIntrinsicRatio);
+            if (video.readyState >= 1) applyIntrinsicRatio();
+        })();
     </script>
     <script src="../assets/js/shared/state-keys.js<?= meel_asset_version('assets/js/shared/state-keys.js') ?>"></script>
     <script src="../assets/js/shared/keyboard.js<?= meel_asset_version('assets/js/shared/keyboard.js') ?>"></script>

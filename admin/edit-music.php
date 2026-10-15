@@ -406,7 +406,7 @@ $thumb_src = !empty($music['thumbnail'])
                 title: 'Berhasil!',
                 text: 'Detail musik telah diperbarui.',
                 icon: 'success',
-                confirmButtonColor: '#f97316',
+                confirmButtonColor: '#c2410c',
                 background: '#0e1118',
                 color: '#fff'
             });
@@ -416,7 +416,7 @@ $thumb_src = !empty($music['thumbnail'])
                 title: 'Dihapus!',
                 text: 'Lirik berhasil dihapus.',
                 icon: 'success',
-                confirmButtonColor: '#f97316',
+                confirmButtonColor: '#c2410c',
                 background: '#0e1118',
                 color: '#fff'
             });

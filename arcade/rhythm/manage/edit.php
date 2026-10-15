@@ -261,18 +261,18 @@ if ($edit_id > 0 && $is_logged_in) {
 
       var title = formData.get('title');
       if (!title || title.trim() === '') {
-        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Judul wajib diisi!',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Judul wajib diisi!',icon:'error',confirmButtonColor:'#db2777',background:'#0e1118',color:'#fff'});
         else alert('Judul wajib diisi!');
         return;
       }
       if (!formData.get('audio') || formData.get('audio').size === 0) {
-        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'File audio wajib diupload!',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'File audio wajib diupload!',icon:'error',confirmButtonColor:'#db2777',background:'#0e1118',color:'#fff'});
         else alert('File audio wajib diupload!');
         return;
       }
       var currentNotes = window.__editorNotes || [];
       if (currentNotes.length < 10) {
-        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Minimal 10 notes dalam beatmap! (saat ini: ' + currentNotes.length + ')',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Minimal 10 notes dalam beatmap! (saat ini: ' + currentNotes.length + ')',icon:'error',confirmButtonColor:'#db2777',background:'#0e1118',color:'#fff'});
         else alert('Minimal 10 notes! (saat ini: ' + currentNotes.length + ')');
         return;
       }
@@ -301,20 +301,20 @@ if ($edit_id > 0 && $is_logged_in) {
         try {
           var res = JSON.parse(xhr.responseText);
           if (res.success) {
-            if (typeof Swal !== 'undefined') Swal.fire({title:'Berhasil!',text:'Beatmap berhasil diupload! \ud83c\udf89',icon:'success',timer:3000,confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+            if (typeof Swal !== 'undefined') Swal.fire({title:'Berhasil!',text:'Beatmap berhasil diupload! \ud83c\udf89',icon:'success',timer:3000,confirmButtonColor:'#db2777',background:'#0e1118',color:'#fff'});
             setTimeout(function(){ window.location.reload(); }, 1500);
           } else {
-            if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:res.error||'Upload gagal',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+            if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:res.error||'Upload gagal',icon:'error',confirmButtonColor:'#db2777',background:'#0e1118',color:'#fff'});
             else alert(res.error || 'Upload gagal');
           }
         } catch(ex) {
-          if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Respons tidak valid dari server (HTTP ' + xhr.status + ')',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+          if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Respons tidak valid dari server (HTTP ' + xhr.status + ')',icon:'error',confirmButtonColor:'#db2777',background:'#0e1118',color:'#fff'});
           else alert('Respons tidak valid (HTTP ' + xhr.status + ')');
         }
       };
       xhr.onerror = function() {
         overlay.classList.add('hidden');
-        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Koneksi gagal!',icon:'error',confirmButtonColor:'#f43f7a',background:'#0e1118',color:'#fff'});
+        if (typeof Swal !== 'undefined') Swal.fire({title:'Kesalahan',text:'Koneksi gagal!',icon:'error',confirmButtonColor:'#db2777',background:'#0e1118',color:'#fff'});
         else alert('Koneksi gagal!');
       };
       xhr.send(formData);
