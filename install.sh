@@ -601,9 +601,6 @@ if [ -n "$VHOST_DOMAIN" ]; then
     VHOST_FILE="/etc/apache2/sites-available/meel.conf"
     VHOST_CONFIG="<VirtualHost *:80>
     ServerName ${VHOST_DOMAIN}
-    # Tanpa ini SERVER_NAME disalin dari header Host: klien, sehingga
-    # logika yang memakainya (dulu MEEL_ENV di bootstrap.php) bisa
-    # dipalsukan penyerang luar.
     UseCanonicalName On
     DocumentRoot ${PROJECT_ROOT}
     <Directory ${PROJECT_ROOT}>
@@ -634,10 +631,6 @@ fi
 
 step "6/9 — Tutup direktori dependency & tooling dari akses web"
 
-# vendor/ dan node_modules/ diabaikan git, jadi aturan .htaccess-nya tidak
-# ikut ter-commit dan hilang di clone baru (dipidah ulang oleh
-# `composer install` / `npm install`). Tanpa ini, /vendor/*/composer.json dan
-# /assets/dict/jmdict.sqlite3 (42 MB) bisa diunduh tanpa autentikasi.
 for DENY_DIR in vendor node_modules tools storage assets/dict; do
     DENY_PATH="${PROJECT_ROOT}/${DENY_DIR}"
     [ -d "$DENY_PATH" ] || continue

@@ -1,11 +1,6 @@
 <?php
 
 if (!defined('MEEL_ENV')) {
-    // Environment TIDAK boleh dipengaruhi header yang dikirim klien.
-    // Versi lama ikut-or SERVER_NAME; di Apache dengan UseCanonicalName Off
-    // (default), SERVER_NAME disalin dari header `Host:` — jadi `Host: localhost`
-    // dari penyerang luar cukup untuk mengaktifkan display_errors + unsafe-eval.
-    // Loopback tetap dikenali, tapi hanya lewat REMOTE_ADDR.
     $remote_ip = $_SERVER['REMOTE_ADDR'] ?? '';
     $is_local = ($remote_ip !== '')
         && in_array($remote_ip, ['127.0.0.1', '::1', 'localhost'], true);

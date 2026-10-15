@@ -17,7 +17,6 @@ DirectoryIndex index.php index.html
     </IfModule>
 </FilesMatch>
 
-# Sisa file cadangan/editor yang sering tertinggal dan membocorkan sumber.
 <FilesMatch "(~|\.bak$|\.old$|\.orig$|\.swp$|\.dist$|\.sample$)">
     <IfModule mod_authz_core.c>
         Require all denied
@@ -28,8 +27,6 @@ DirectoryIndex index.php index.html
     </IfModule>
 </FilesMatch>
 
-# Direktori tooling. FilesMatch di atas hanya menangkap file bernama `.vscode`,
-# bukan path yang memuat segmen itu.
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule "(^|/)\.(vscode|idea|git|freebuff)(/|$)" - [F,L]

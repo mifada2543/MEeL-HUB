@@ -12,7 +12,6 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = (int)$_SESSION['user_id'];
 $username = htmlspecialchars($_SESSION['username'] ?? '');
-// is_admin() membaca DB; $_SESSION['role'] hanya cache tampilan.
 $is_admin = is_admin($conn);
 
 $profileRepo = new ProfileRepository($conn);

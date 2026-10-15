@@ -1,9 +1,5 @@
 # Security defaults for controllers
 # Direct access blocked — controllers are include-only (routed via .htaccess root)
-#
-# `Deny from all` polos harus dibungkus: di Apache 2.4 tanpa
-# mod_access_compat, direktif 2.2 itu error config sehingga SELURUH
-# .htaccess ini dibuang — dan controllers/ kehilangan seluruh kontrol akses.
 Options -Indexes
 
 <IfModule !mod_rewrite.c>

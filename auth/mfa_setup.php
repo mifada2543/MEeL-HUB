@@ -19,11 +19,6 @@ $error = '';
 $secret = '';
 $otpauth = '';
 if (isset($_POST['disable_mfa']) && $mfa_enabled) {
-    // Menonaktifkan MFA berarti membuang lapisan kedua. Versi lama hanya
-    // butuh cookie sesi + token CSRF, jadi session yang dibajak (atau
-    // browser bersama yang tidak dikunci) langsung menurunkan akun ke 1FA
-    // dan ikut menghapus kode cadangan. Pola yang benar sudah ada di
-    // controllers/system/mfa.php: password_verify sebelum menerbitkan.
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error = 'Sesi keamanan kadaluarsa. Silakan refresh halaman.';
     } else {
@@ -107,12 +102,6 @@ if ($step === 'backup' && isset($_POST['backup_done'])) {
     $step = 'done';
 }
 if ($mfa_enabled && $step === 'setup') {
-    // Seed TOTP TIDAK lagi dirender di sini. Versi lama membangun ulang
-    // otpauth:// dari mfa_secret di DB untuk sesi mana pun yang login,
-    // jadi session yang dibajak bisa menyalin seed-nya dan tetap
-    // memiliki 2FA di perangkat penyerang. Menonaktifkan MFA sudah
-    // menuntut password + kode TOTP yang sah; seed pun tidak perlu
-    // pernah tampil lagi di halaman ini.
     $otpauth = '';
 }
 $auth_title = "Keamanan Akun | MEeL";
@@ -229,8 +218,6 @@ include __DIR__ . '/partials/auth_head.php';
                             if (result.isConfirmed) {
                                 const form = document.createElement('form');
                                 form.method = 'POST';
-                                // Password + kode TOTP wajib diisi server-side;
-                                // field kosong akan ditolak dengan pesan yang jelas.
                                 form.innerHTML = ''
                                     + '<div style="text-align:left;padding:0.25rem 0 0.5rem">'
                                     + '<label style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;margin-bottom:.25rem">Kata Sandi</label>'

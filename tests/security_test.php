@@ -363,10 +363,7 @@ function testHtaccessSecurity(): void {
         'profile/upload',
         'arcade/rhythm/uploads', 'arcade/rhythm/songs',
 
-        // Dependency & tooling. Tanpa ini /vendor/*/composer.json dan
-        // /assets/dict/jmdict.sqlite3 bisa diunduh tanpa autentikasi.
-        // vendor/ & node_modules/ diabaikan git, jadi install.sh yang menulis
-        // .htaccess-nya (vendor/ dan node_modules/ tidak bisa di-track).
+        // Dependency & tooling — vendor/ & node_modules/ ditulis install.sh, bukan di-commit
         'vendor', 'node_modules', 'tools', 'storage', 'assets/dict',
     ];
 

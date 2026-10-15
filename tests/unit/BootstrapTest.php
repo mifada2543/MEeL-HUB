@@ -96,11 +96,7 @@ class BootstrapTest extends TestCase
             'localhost auto-detect → development, debug ON' => [
                 '127.0.0.1', 'localhost', '', 'development', true, true,
             ],
-            // Regression: SERVER_NAME berasal dari header `Host:` pada
-            // Apache dengan UseCanonicalName Off (default). Kalau ikut-or,
-            // penyerang luar cukup mengirim `Host: localhost` untuk
-            // menyalakan display_errors + unsafe-eval di seluruh situs.
-            // Env hanya boleh ditentukan REMOTE_ADDR (atau define eksplisit).
+            // Regression: SERVER_NAME berasal dari header `Host:` — lihat docs/id/security.md §1
             'server_name localhost DARI PENYERANG → tetap production' => [
                 '8.8.8.8', 'localhost', '', 'production', false, true,
             ],

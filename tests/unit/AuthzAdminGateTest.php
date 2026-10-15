@@ -139,9 +139,7 @@ class AuthzAdminGateTest extends TestCase
 
     public function testDbRoleOverridesStaleSessionRole(): void
     {
-        // DB adalah sumber kebenaran. Session menyimpan role sebagai cache
-        // tampilan, jadi kalau admin dicabut di DB, sesi lama yang masih
-        // memegang 'admin' tidak boleh meneruskan hak akses.
+        // DB adalah sumber kebenaran — lihat docs/id/security.md §2
         $_SESSION['user_id'] = $this->freshUid();
         $_SESSION['role'] = 'admin';
 
