@@ -197,6 +197,19 @@ class MediaViewer
         if ($this->media_type !== 'music' || !$playlist_id) return null;
         $playlist_id = (int)$playlist_id;
 
+        // Gate kepemilikan di lapisan data, bukan di pemanggil.
+        // Tanpa ini, `?playlist_id=N` di halaman watch yang publik
+        // membocorkan antrean playlist user lain. PlaylistRepository
+        // sudah punya getOwnedPlaylist() untuk view_playlist.php, tapi
+        // jalur watch tidak pernah memakainya.
+        if (!$this->user_id) return null;
+        $own = $this->conn->prepare('SELECT id FROM playlists WHERE id = ? AND user_id = ?');
+        $own->bind_param('ii', $playlist_id, $this->user_id);
+        $own->execute();
+        $owned = $own->get_result()->fetch_assoc();
+        $own->close();
+        if (!$owned) return null;
+
         $stmt_q = $this->conn->prepare("SELECT m.*, pt.added_at FROM music m JOIN playlist_tracks pt ON m.id = pt.music_id WHERE pt.playlist_id = ? ORDER BY pt.added_at DESC, pt.id DESC");
         $stmt_q->bind_param("i", $playlist_id);
         $stmt_q->execute();

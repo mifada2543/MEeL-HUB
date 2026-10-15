@@ -601,6 +601,10 @@ if [ -n "$VHOST_DOMAIN" ]; then
     VHOST_FILE="/etc/apache2/sites-available/meel.conf"
     VHOST_CONFIG="<VirtualHost *:80>
     ServerName ${VHOST_DOMAIN}
+    # Tanpa ini SERVER_NAME disalin dari header Host: klien, sehingga
+    # logika yang memakainya (dulu MEEL_ENV di bootstrap.php) bisa
+    # dipalsukan penyerang luar.
+    UseCanonicalName On
     DocumentRoot ${PROJECT_ROOT}
     <Directory ${PROJECT_ROOT}>
         Options Indexes FollowSymLinks
