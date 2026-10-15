@@ -85,14 +85,21 @@ function generate_totp(string $secret, ?int $time_slice = null): string
 }
 }
 
-if (!function_exists('verify_totp')) {
+if (!function_exists('verify_totp_step')) {
 
-function verify_totp(string $secret, string $code): bool
+/**
+ * Cocokkan kode TOTP dan kembalikan time-step yang cocok (bukan bool).
+ *
+ * Verifikasi saja (verify_totp) tidak mencegah replay: jendela ±1 membuat
+ * satu kode sah selama ~90 detik dan bisa dipakai berulang kali. Pemanggil
+ * yang menyimpan hasilnya sebagai step terakhir membuat kode single-use.
+ *
+ * @return int|null Time-step yang cocok, atau null kalau tidak cocok.
+ */
+function verify_totp_step(string $secret, string $code): ?int
 {
-    // Kode harus persis 6 digit — menolak input malformed lebih awal
-    // supaya tidak ada jalur yang lolos karena perbandingan longgar.
     if ($code === '' || !preg_match('/^\d{6}$/', $code)) {
-        return false;
+        return null;
     }
 
     $time_slice = (int)floor(time() / 30);
@@ -101,16 +108,24 @@ function verify_totp(string $secret, string $code): bool
         try {
             $expected = generate_totp($secret, $time_slice + $i);
         } catch (InvalidArgumentException $e) {
-            // Secret tak sah (karakter di luar base32, atau kosong).
-            // Tidak bocor detailnya ke pemanggil — tetap "gagal".
-            return false;
+            return null;
         }
 
         if (hash_equals($expected, $code)) {
-            return true;
+            return $time_slice + $i;
         }
     }
-    return false;
+    return null;
+}
+}
+
+if (!function_exists('verify_totp')) {
+
+function verify_totp(string $secret, string $code): bool
+{
+    // Kode harus persis 6 digit — menolak input malformed lebih awal
+    // supaya tidak ada jalur yang lolos karena perbandingan longgar.
+    return verify_totp_step($secret, $code) !== null;
 }
 }
 
