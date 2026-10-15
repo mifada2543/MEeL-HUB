@@ -16,17 +16,21 @@ if (!function_exists('get_user_role')) {
         if (isset($cache[$user_id])) {
             return $cache[$user_id];
         }
-        if (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === $user_id && isset($_SESSION['role'])) {
-            $role = $_SESSION['role'];
-            $cache[$user_id] = $role;
-            return $role;
-        }
+
+        // DB adalah sumber kebenaran. $_SESSION['role'] hanya cache tampilan
+        // dan TIDAK boleh jadi rujukan otorisasi: kalau tidak, mencabut
+        // admin dari DB tidak langsung berlaku selama sesinya masih hidup.
+        //_static cache di atas tetap melayani banyak panggilan dalam satu
+        // request tanpa query ulang.
         $stmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
         $stmt->bind_param("i", $user_id);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         if ($row === null) {
+            // Sengaja TIDAK dimemoisasi hasil negatif: user yang belum ada
+            // bisa muncul di detik berikutnya, dan cache negatif akan
+            // mengunci peran 'user' selamanya untuk id itu.
             return 'user';
         }
         $role = (string)$row['role'];

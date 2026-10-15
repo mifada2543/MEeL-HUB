@@ -11,7 +11,9 @@ $sidebar_data = $um->getSidebarData();
 $updates = $um->getUpdates();
 
 $is_logged_in = isset($_SESSION['user_id']);
-$is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
+// Pakai is_admin() (cek DB), bukan $_SESSION['role']. Halaman ini tidak
+// memuat auth/auth.php, jadi nilai session bisa basi setelah admin dicabut.
+$is_admin = $is_logged_in && is_admin($conn);
 ?>
 <!DOCTYPE html>
 <html lang="id">
