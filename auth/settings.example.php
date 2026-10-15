@@ -10,10 +10,19 @@
 // define('APP_DEBUG', true); // paksa aktif (debugging)
 // define('APP_DEBUG', false); // paksa nonaktif
 
-if (!isset($server))   $server   = "localhost";
-if (!isset($username)) $username = "root";
-if (!isset($password)) $password = "";
-if (!isset($db))       $db       = "MEeL";
+// Kredensial database.
+//
+// Nilai literal dipakai di server. Variabel lingkungan MEEL_DB_* berfungsi
+// sebagai override -- dipakai CI dan container, di mana menulis ulang berkas
+// konfigurasi per-run lebih merepotkan daripada sekadar export.
+//
+// `?:` (bukan nilai tetap) dipakai supaya variabel yang belum di-set tidak
+// berubah menjadi string kosong. Prioritas: variabel yang sudah diset di atas
+// berkas ini > MEEL_DB_* > bawaan di kanan.
+if (!isset($server))   $server   = (getenv('MEEL_DB_HOST') ?: "localhost");
+if (!isset($username)) $username = (getenv('MEEL_DB_USER') ?: "root");
+if (!isset($password)) $password = (getenv('MEEL_DB_PASS') ?: "");
+if (!isset($db))       $db       = (getenv('MEEL_DB_NAME') ?: "MEeL");
 
 if (!defined('MEEL_HOST')) {
     define('MEEL_HOST', $_SERVER['HTTP_HOST'] ?? '');

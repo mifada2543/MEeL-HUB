@@ -18,9 +18,18 @@ if ($host === null || $user === null) {
     $pass = $pass ?? ($password ?? '');
 }
 $port = $port !== null ? (int)$port : 3306;
-$admin = @new mysqli($host, $user, $pass, '', $port);
-if ($admin->connect_error) {
-    fwrite(STDERR, "Koneksi MySQL gagal ({$user}@{$host}): {$admin->connect_error}\n");
+// `@` hanya menahan warning, BUKAN exception. Pada default PHP 8.1+
+// mysqli melempar mysqli_sql_exception, jadi `@new mysqli(...)` gagal dengan
+// fatal error 255 + stack trace -- pesan "Koneksi MySQL gagal (...)" di bawah
+// tidak pernah tampil. try/catch supaya kegagalannya terbaca.
+try {
+    $admin = new mysqli($host, $user, $pass, '', $port);
+    if ($admin->connect_error) {
+        fwrite(STDERR, "Koneksi MySQL gagal ({$user}@{$host}): {$admin->connect_error}\n");
+        exit(1);
+    }
+} catch (\mysqli_sql_exception $e) {
+    fwrite(STDERR, "Koneksi MySQL gagal ({$user}@{$host}): " . $e->getMessage() . "\n");
     exit(1);
 }
 $admin->set_charset('utf8mb4');
@@ -47,6 +56,28 @@ function import(mysqli $admin, string $sql, string $label): void
 }
 $upgradeDb = 'meel_parity_upgrade';
 $freshDb   = 'meel_parity_fresh';
+
+// Pengaman PRA-DESTRUKTIF, dan harus di sini -- sebelum DROP pertama.
+//
+// Script ini menjalankan `DROP DATABASE IF EXISTS` pada nama database yang
+// disebut di bawah. Kalau nama itu sampai berubah menjadi database milik orang
+// lain (MEeL, database kerja pengembang, atau database produksi), database itu
+// hilang sebelum satu baris pun sempat memverifikasi apa pun.
+//
+// Karena itu nama database diperiksa DI SINI, sebelum destruksi. Verifikasi
+// yang diletakkan sesudah langkah 1 tidak bernilai apa-apa: langkah 1 sudah
+// menghapus database-nya duluan. Verifikasi harus mendahului destruksi.
+//
+// Yang boleh dibDROP hanya meel_parity_*. Ini skrip uji yang membangun
+// database sementara sendiri; tidak ada alasan sampainya ia menyentuh
+// database di luar namespace tersebut.
+foreach ([$upgradeDb, $freshDb] as $kandidat) {
+    if (!str_starts_with($kandidat, 'meel_parity_')) {
+        fwrite(STDERR, "❌ Nama database skrip ini tidak boleh dibDROP: \"{$kandidat}\".\n");
+        fwrite(STDERR, "   Hanya meel_parity_* yang diizinkan -- ini skrip uji, bukan skrip migrasi.\n");
+        exit(1);
+    }
+}
 echo "═══ 1/4 Bangun DB jalur upgrade (skema versi LAMA) ═══\n";
 $admin->query("DROP DATABASE IF EXISTS `{$upgradeDb}`");
 $admin->query("CREATE DATABASE `{$upgradeDb}`");
@@ -76,15 +107,53 @@ if (!is_file($example)) {
     fwrite(STDERR, "auth/settings.example.php tidak ditemukan — tidak bisa menyiapkan kredensial.\n");
     exit(1);
 }
-$tpl = (string)file_get_contents($example);
-$tpl = preg_replace('/\$server\s*=\s*"[^"]*"/',   '$server   = ' . var_export($host, true), $tpl, 1);
-$tpl = preg_replace('/\$username\s*=\s*"[^"]*"/', '$username = ' . var_export($user, true), $tpl, 1);
-$tpl = preg_replace('/\$password\s*=\s*"[^"]*"/', '$password = ' . var_export($pass, true), $tpl, 1);
-$tpl = preg_replace('/\$db\s*=\s*"[^"]*"/',       '$db       = ' . var_export($upgradeDb, true), $tpl, 1);
-file_put_contents($cfg, $tpl);
+
+// settings.php hanya perlu ADA — auth/config.php menolak berjalan tanpanya.
+// Isinya boleh apa adanya karena SELURUH kredensial datang dari variabel
+// lingkungan di bawah.
+//
+// Versi sebelumnya menyuntikkan nilai ke dalam source settings.example.php lewat
+// regex seperti /\$server\s*=\s*"[^"]*"/. Regex itu bisa berhenti cocok
+// diam-diam setiap kali format example berubah, tanpa error apa pun, dan
+// migrate.php lalu berjalan ke database yang salah -- persis kelas kegagalan
+// yang sempat membuat empat regex itu tidak cocok. Env var tidak punya kelas
+// kegagalan itu: tidak ada pola yang bisa gagal.
+file_put_contents($cfg, file_get_contents($example));
+
+// Pengaman: sebelum menjalankan migrate.php, pastikan variabel lingkungan itu
+// BENAR-BENAR sampai dan dipakai auth/config.php.
+//
+// Tanpa ini, kegagalan diam-diam paling berbahaya yang mungkin terjadi adalah
+// migrate.php berjalan ke database bawaan settings.example.php, yaitu `MEeL` —
+// yaitu database kerja milik pengembang, atau database produksi. Mempermigrate
+// DB orang tanpa disadari adalah hal yang tidak boleh bisa terjadi, jadi di sini
+// diperiksa lebih dulu dan dihentikan bila targetnya keliru.
+$env = 'MEEL_DB_HOST=' . escapeshellarg((string)$host)
+     . ' MEEL_DB_NAME=' . escapeshellarg($upgradeDb)
+     . ' MEEL_DB_USER=' . escapeshellarg((string)$user)
+     . ' MEEL_DB_PASS=' . escapeshellarg((string)$pass);
+
+$probe = [];
+$probeRc = 0;
+exec($env . ' ' . escapeshellarg(PHP_BINARY) . ' -r '
+    . escapeshellarg('require ' . var_export($root . '/auth/config.php', true) . '; echo $conn->query("SELECT DATABASE() AS d")->fetch_assoc()["d"];')
+    . ' 2>/dev/null', $probe, $probeRc);
+$terhubung = trim(implode('', $probe));
+if ($terhubung !== $upgradeDb) {
+    fwrite(STDERR, "\n❌ migrate.php akan berjalan ke database \"{$terhubung}\", bukan \"{$upgradeDb}\".\n");
+    fwrite(STDERR, "   Dihentikan agar database lain tidak ikut termigrasi tanpa disadari.\n");
+    if ($cfgBackup !== null) {
+        file_put_contents($cfg, $cfgBackup);
+    } else {
+        @unlink($cfg);
+    }
+    exit(1);
+}
+echo "  ✅ Target migrate.php terverifikasi: {$terhubung}\n";
+
 $out = [];
 $rc = 0;
-exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($root . '/database/migrate.php') . ' 2>&1', $out, $rc);
+exec($env . ' ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($root . '/database/migrate.php') . ' 2>&1', $out, $rc);
 echo '  ' . implode("\n  ", $out) . "\n";
 if ($cfgBackup !== null) {
     file_put_contents($cfg, $cfgBackup);
