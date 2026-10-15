@@ -1554,7 +1554,7 @@ php scripts/gc.php          # housekeeping berat (butuh $server = TCP)
 | `assets/js/video/watch/player-init.js` | Plyr + HLS.js initialization |
 | `assets/js/video/watch/player-events.js` | Event orchestration (auto-next, glow, resume) |
 | `assets/js/video/watch/mini-player.js` | Mini-player floating mode |
-| `assets/js/video/watch/recovery.js` | Player auto-recovery system — menggunakan factory dari `recovery-manager.js` |
+| `assets/js/video/watch/recovery.js` | Player auto-recovery system — menggunakan factory dari `recovery-manager.js`, plus self-heal ber-grace-period untuk error decode/network |
 | `assets/js/video/watch/gestures.js` | Mobile touch gestures |
 | `assets/js/music/watch/main.js` | Entry point folder watch/ — memuat sibling secara sinkron (document.write) |
 | `assets/js/music/watch/mini-player.js` | Mode mini-player music (Spotify-style) — dipisah dari player-core.js |

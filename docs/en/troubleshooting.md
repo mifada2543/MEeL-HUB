@@ -72,6 +72,46 @@ Solutions for common issues encountered while using MEeL-HUB.
 
 ---
 
+### ❌ "Connection lost" overlay appears on its own while looping a video
+
+**Symptom:** after the video has looped 2–4 times (~10 minutes), the
+"Sambungan Terputus" overlay appears and playback jumps / changes position by
+itself. Console shows:
+
+```
+HTML5 video error: PipelineStatus::PIPELINE_ERROR_DECODE: video decode error! code: 3
+Mengecek ketersediaan file media di: upload/video/.../....m3u8
+Media terdeteksi online! Memulai pemulihan via HTMX...
+```
+
+**Cause:** the native `loop` attribute makes the browser seek
+`duration → 0` without telling hls.js. `HLS_CONFIG.backBufferLength` is only
+**10 seconds**, so the data at position 0 has already been evicted from the
+`SourceBuffer`. Chromium then seeks outside the buffer and throws
+`PIPELINE_ERROR_DECODE` — even though the media file is perfectly healthy (the
+`.m3u8` HEAD probe returns 200).
+
+The previous version escalated error code 3 straight to *full recovery*: HEAD
+probe → `htmx` swap → the entire player rebuilt, for no actual fault.
+
+**Fix (shipped in MEeL core):**
+
+| Layer | File | What it does |
+|-------|------|--------------|
+| Self-heal | `recovery.js` | Codes 2 & 3 get an 8-second *grace period* — `hls.recoverMediaError()`, then watch whether `currentTime` advances. If it moves, done: no recovery. |
+| Loop wrap | `player-events.js` | The `ended` handler tells hls.js the target position (`hls.startLoad()`) so it reloads segments instead of reacting blindly to the seek. |
+| Back buffer | `player-init.js` | Short videos (≤2 min) stay fully buffered, so looping needs no flush at all. |
+
+The log `[MEeL] Error media self-healed, playback lanjut normal.` means the
+grace period worked. If you instead see
+`Error media tidak pulih dalam 8 detik, lanjut ke recovery`, the media really
+is broken and recovery ran as designed.
+
+**Still happening?** Raise `MEDIA_ERROR_GRACE_MS` in
+`assets/js/video/watch/state.js` (default `8e3`).
+
+---
+
 ## Upload Problems
 
 ### ❌ Upload fails with no error message

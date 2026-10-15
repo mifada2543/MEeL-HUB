@@ -194,6 +194,7 @@ function setupMeelPlayerEvents() {
     const t = e || document.querySelector(".rekomendasi-item");
     if (!t) return !1;
     clearVideoLoop();
+    stopSelfHeal();
     isManual &&
       ((autoNextEnabled = !1),
       localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false"),
@@ -664,7 +665,17 @@ function setupMeelPlayerEvents() {
     }),
     player.on("ended", async () => {
       if (window.meelHealthAlertActive) return;
-      if ((stopStuckDetector(), player.loop)) return;
+      if (player.loop) {
+        stopStuckDetector();
+        const e = player.loopStart || 0;
+        try {
+          isHls && hls && hls.startLoad(e);
+        } catch (_) {
+          console.warn("[MEeL] hls.startLoad gagal saat loop wrap:", _);
+        }
+        startStuckDetector();
+        return;
+      }
       if (isTransitioningNext) return;
       const durationOk =
         player.duration > 0 &&
