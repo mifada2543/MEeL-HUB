@@ -307,27 +307,63 @@ else
 fi
 HDD_BASE="${HDD_BASE%/}"
 
-python3 - "$DB_HOST" "$DB_USER" "$DB_PASS" "$DB_NAME" "$HDD_BASE" "auth/settings.php" <<'PYEOF' 2>/dev/null || {
+if ! python3 - "$DB_HOST" "$DB_USER" "$DB_PASS" "$DB_NAME" "$HDD_BASE" "auth/settings.php" <<'PYEOF'
 import sys, re
 host, user, passwd, db, hdd, path = sys.argv[1:7]
 with open(path, 'r', encoding='utf-8') as f:
     content = f.read()
-content = re.sub(r'\$server\s*=\s*"localhost";', f'$server   = "{host}";', content, count=1)
-content = re.sub(r'\$username\s*=\s*"root";', f'$username = "{user}";', content, count=1)
-content = re.sub(r'\$password\s*=\s*"";', f'$password = "{passwd}";', content, count=1)
-content = re.sub(r'\$db\s*=\s*"MEeL";', f'$db       = "{db}";', content, count=1)
-content = content.replace("define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');", f"define('MEEL_HDD_BASE', '{hdd}');")
+
+def php_str(value):
+    return "'" + str(value).replace('\\', '\\\\').replace("'", "\\'") + "'"
+
+define_re = re.compile(r"(define\(\s*'MEEL_HDD_BASE'\s*,\s*)('[^']*')(\s*\))")
+if define_re.search(content):
+    content = define_re.sub(lambda m: m.group(1) + php_str(hdd) + m.group(3), content, count=1)
+else:
+    print("ERROR: define('MEEL_HDD_BASE', ...) tidak ditemukan", file=sys.stderr)
+    sys.exit(1)
+
+override = (
+    "\n// Ditulis install.sh — jangan diubah manual.\n"
+    "$server   = %s;\n"
+    "$username = %s;\n"
+    "$password = %s;\n"
+    "$db       = %s;\n"
+) % (php_str(host), php_str(user), php_str(passwd), php_str(db))
+
+if "// Ditulis install.sh" in content:
+    lines = [l for l in content.split('\n') if "// Ditulis install.sh" not in l]
+    cut = content.find(lines[-1]) if lines else 0
+    content = '\n'.join(lines)
+else:
+    content = content.rstrip('\n')
+
+content = content.rstrip('\n') + '\n' + override
+
 with open(path, 'w', encoding='utf-8') as f:
     f.write(content)
-print("patched via python3")
+
+verify = open(path, 'r', encoding='utf-8').read()
+missing = []
+for label, expected in (('server', host), ('username', user), ('db', db)):
+    if not re.search(r'^\$%s\s*=\s*%s\s*;' % (label, re.escape(php_str(expected))), verify, re.M):
+        missing.append('$' + label)
+if not re.search(r"define\(\s*'MEEL_HDD_BASE'\s*,\s*%s\s*\)" % re.escape(php_str(hdd)), verify):
+    missing.append('MEEL_HDD_BASE')
+if missing:
+    print("ERROR: nilai berikut tidak tersimpan: " + ", ".join(missing), file=sys.stderr)
+    sys.exit(1)
+print("patched via python3 (terverifikasi)")
 PYEOF
-    sed -i "s#\$server   = \"localhost\";#\$server   = \"${DB_HOST}\";#" auth/settings.php
-    sed -i "s#\$username = \"root\";#\$username = \"${DB_USER}\";#" auth/settings.php
-    sed -i "s#\$password = \"\";#\$password = \"${DB_PASS}\";#" auth/settings.php
-    sed -i "s#\$db       = \"MEeL\";#\$db       = \"${DB_NAME}\";#" auth/settings.php
-    sed -i "s#define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');#define('MEEL_HDD_BASE', '${HDD_BASE}');#" auth/settings.php
-}
-ok "auth/settings.php dikonfigurasi (DB: ${DB_NAME}@${DB_HOST}, storage: ${HDD_BASE})"
+then
+    die "Gagal menulis auth/settings.php — konfigurasi DB tidak tersimpan. Perbaiki manual lalu ulangi."
+fi
+
+if php -r 'require "auth/settings.php";' 2>/dev/null; then
+    ok "auth/settings.php dikonfigurasi & bisa dimuat (DB: ${DB_NAME}@${DB_HOST}, storage: ${HDD_BASE})"
+else
+    die "auth/settings.php tersimpan tapi tidak bisa dimuat PHP — periksa manual."
+fi
 
 ENV_CHOICE="production"
 if [ -n "$ENV_OVERRIDE" ]; then

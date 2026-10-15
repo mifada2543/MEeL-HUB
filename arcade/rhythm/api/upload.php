@@ -242,7 +242,7 @@ try {
              WHERE id = ?"
         );
         $stmt->bind_param(
-            "ssiiiiisssissi",
+            "ssiisiississsi",
             $title, $artist, $bpm, $difficulty, $diff_label,
             $beatmap_duration, $note_count, $audio_filename, $final_mime,
             $audio_bitrate, $cover_filename, $color_primary, $color_secondary,
@@ -263,7 +263,7 @@ try {
         );
         if (!$stmt) throw new RuntimeException('Prepare failed: ' . $conn->error);
         $stmt->bind_param(
-            "issiiiiisssiss",
+            "issiisiississs",
             $user_id, $title, $artist, $bpm, $difficulty, $diff_label,
             $beatmap_duration, $note_count, $audio_filename, $final_mime,
             $audio_bitrate, $cover_filename, $color_primary, $color_secondary

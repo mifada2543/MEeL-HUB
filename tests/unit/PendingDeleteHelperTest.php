@@ -100,7 +100,9 @@ class PendingDeleteHelperTest extends TestCase
 
     public function testRunCleansExpiredPendingDeletionWithoutExiting(): void
     {
-        $victim = MEEL_ROOT . '/temp/pd_victim_' . uniqid() . '.bin';
+        $dir = meel_media_base_path('video') . '/tmp-test';
+        @mkdir($dir, 0755, true);
+        $victim = $dir . '/pd_victim_' . uniqid() . '.bin';
         file_put_contents($victim, 'x');
 
         $payload = json_encode([
@@ -113,6 +115,23 @@ class PendingDeleteHelperTest extends TestCase
         $this->assertFileDoesNotExist($victim, 'Entri kedaluwarsa harus dihapus tanpa exit()');
         $this->assertFileDoesNotExist($this->pendingFile, 'Antrean kosong harus dibuang');
         $this->assertTrue($this->pendingThrottleExists(), 'Throttle GC harus ditulis setelah cleanup');
+        @rmdir($dir);
+    }
+
+    public function testExpiredEntryOutsideMediaRootIsNotDeleted(): void
+    {
+        $victim = MEEL_ROOT . '/temp/pd_outside_' . uniqid() . '.bin';
+        file_put_contents($victim, 'x');
+
+        $payload = json_encode([
+            ['timestamp' => time() - 3600, 'files' => [$victim]],
+        ]);
+        file_put_contents($this->pendingFile, $payload);
+
+        GarbageCollector::run();
+
+        $this->assertFileExists($victim, 'Path di luar root media tidak boleh dihapus');
+        @unlink($victim);
     }
 
     public function testRunKeepsFreshPendingDeletionEntry(): void

@@ -45,6 +45,33 @@ if (!function_exists('savePendingDeletions')) {
         }
     }
 }
+if (!function_exists('meel_pending_delete_allowed_path')) {
+    function meel_pending_delete_allowed_path(string $path): bool
+    {
+        $real = realpath($path);
+        if ($real === false || $real === '/') {
+            return false;
+        }
+
+        $roots = [];
+        foreach (['video', 'music', 'books'] as $module) {
+            if (function_exists('meel_media_base_path')) {
+                $roots[] = meel_media_base_path($module);
+            }
+        }
+        if (function_exists('meel_drive_base_path')) {
+            $roots[] = meel_drive_base_path();
+        }
+
+        foreach ($roots as $root) {
+            $realRoot = realpath((string) $root);
+            if ($realRoot !== false && $realRoot !== '' && str_starts_with($real, rtrim($realRoot, '/\\') . '/')) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
 if (!function_exists('cleanupPendingDeletions')) {
     function cleanupPendingDeletions(): int
     {
@@ -64,6 +91,11 @@ if (!function_exists('cleanupPendingDeletions')) {
                 $files = $item['files'] ?? [];
                 if ($timestamp <= $cutoff) {
                     foreach ($files as $path) {
+                        $path = (string) $path;
+                        if (!meel_pending_delete_allowed_path($path)) {
+                            error_log('[MEeL] pending_delete: path di luar root media, dilewati: ' . $path);
+                            continue;
+                        }
                         if (is_dir($path)) {
                             removeDirectoryRecursive($path);
                         } elseif (file_exists($path)) {
