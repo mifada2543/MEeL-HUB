@@ -290,23 +290,84 @@ jobs:
 
       - name: Import schema.sql (fresh install path)
         run: |
-          mysql -h 127.0.0.1 -u root -proot meel_migration_check < database/schema.sql
+          set -euo pipefail
+          # ⚠️ Riwayat: langkah ini pernah dijalankan sebagai
+          #   mysql ... meel_migration_check < database/schema.sql
+          # dan itu SALAH diam-diam. schema.sql memuat
+          #   CREATE DATABASE IF NOT EXISTS `MEeL` ...
+          #   USE `MEeL`;
+          # dan `USE` di dalam berkas MENANG atas nama database yang disebut
+          # di baris perintah. Hasilnya seluruh impor mendarat di database
+          # `MEeL`, bukan meel_migration_check -- sehingga langkah migrasi
+          # berikutnya menguji database yang KOSONG, dan jalur upgrade yang
+          # diklaim di komentar tidak pernah benar-benar diuji.
+          #
+          # Karena itu nama database ditulis ulang lebih dulu, dan hasilnya
+          # diverifikasi. Kalau penulisan ulang gagal diam-diam, langkah ini
+          # berhenti di sini -- bukan melanjut ke pengujian yang tidak berarti.
+          sed -e 's/^\(CREATE DATABASE IF NOT EXISTS .\)MEeL\`/\1meel_migration_check`/' \
+              -e 's/^\(USE .\)MEeL\`/\1meel_migration_check`/' \
+              database/schema.sql > /tmp/schema-ci.sql
+
+          if grep -q 'MEeL`' /tmp/schema-ci.sql; then
+            echo "❌ schema.sql masih menyebut MEeL — impor akan mendarat di database yang salah."
+            exit 1
+          fi
+          if ! grep -q 'meel_migration_check' /tmp/schema-ci.sql; then
+            echo "❌ Penulisan ulang nama database gagal — pola sed tidak cocok."
+            exit 1
+          fi
+
+          mysql -h 127.0.0.1 -u root -proot meel_migration_check < /tmp/schema-ci.sql
+
+          # Buktikan impor benar-benar mendarat di database yang dimaksud.
+          N=$(mysql -h 127.0.0.1 -u root -proot -N -B \
+              -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='meel_migration_check';")
+          echo "  tabel di meel_migration_check: $N"
+          if [ "$N" -lt 20 ]; then
+            echo "❌ Impor hanya menghasilkan $N tabel — hampir pasti mendarat di tempat lain."
+            exit 1
+          fi
           echo "✅ schema.sql import OK"
 
       - name: Run migrate.php on top of existing schema (upgrade path)
         run: |
-          set -e
-          # Konvensi auth/config.php. Settings contoh dipakai supaya runner
-          # tidak butuh kredensial nyata.
+          set -euo pipefail
+          # ⚠️ Riwayat: langkah ini pernah memakai Empat `sed -i "s/define('DB_HOST'.*/..."`
+          # yang mencari konstanta TIDAK PERNAH ADA di settings.example.php --
+          # berkas itu memakai variabel polos ($server/$username/$password/$db).
+          # Keempat sed tidak pernah cocok, dan `|| true` menutupi itu, jadi CI
+          # diam-diam menjalankan migrate.php dengan $password="" ke host
+          # "localhost" (socket unix yang tidak ada di runner). Hasilnya fatal
+          # error 255 tanpa penjelasan apa pun.
+          #
+          # Sekarang: set variabel lingkungan, yang dibaca settings.example.php.
+          # Tidak ada lagi penulisan teks ke berkas konfigurasi, jadi tidak ada
+          # lagi pola regex yang bisa gagal diam-diam.
+          export MEEL_DB_HOST=127.0.0.1
+          export MEEL_DB_NAME=meel_migration_check
+          export MEEL_DB_USER=root
+          export MEEL_DB_PASS=root
+
           if [ -f auth/settings.php ]; then
-            echo "ℹ️  auth/settings.php ada di repo — memastikan tidak menimpa."
+            echo "⚠️  auth/settings.php ada di repo — TIDAK ditimpa, dan bisa saja"
+            echo "    menimpa kredensial di atas lewat nilai literalnya."
           else
             cp auth/settings.example.php auth/settings.php
-            sed -i "s/define('DB_HOST'.*/define('DB_HOST', '127.0.0.1');/" auth/settings.php || true
-            sed -i "s/define('DB_NAME'.*/define('DB_NAME', 'meel_migration_check');/" auth/settings.php || true
-            sed -i "s/define('DB_USER'.*/define('DB_USER', 'root');/" auth/settings.php || true
-            sed -i "s/define('DB_PASS'.*/define('DB_PASS', 'root');/" auth/settings.php || true
           fi
+
+          # Pastikan runner benar-benar memakai kredensial yang dimaksud.
+          # Tanpa ini, salah konfigurasi hanya muncul sebagai "uji migrasi
+          # lolos" padahal tidak menyentuh database sama sekali.
+          php -r '
+            require "auth/config.php";
+            $nama = $conn->query("SELECT DATABASE() AS d")->fetch_assoc()["d"];
+            if ($nama !== "meel_migration_check") {
+                fwrite(STDERR, "❌ Terhubung ke database \"$nama\", seharusnya meel_migration_check\n");
+                exit(1);
+            }
+            echo "✅ Terhubung ke database: $nama\n";
+          '
 
           echo "── migrate.php run #1 ──"
           php database/migrate.php

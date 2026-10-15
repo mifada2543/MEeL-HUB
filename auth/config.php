@@ -2,9 +2,13 @@
 
 $meel_settings = __DIR__ . '/settings.php';
 if (!file_exists($meel_settings)) {
-    die("[MEeL SYSTEM ERROR]\nFile auth/settings.php tidak ditemukan.\n"
+    fwrite(STDERR, "[MEeL SYSTEM ERROR]\nFile auth/settings.php tidak ditemukan.\n"
         . "Copy dari settings.example.php lalu isi kredensial:\n"
-        . "  cp auth/settings.example.php auth/settings.php");
+        . "  cp auth/settings.example.php auth/settings.php\n");
+    // PENTING: exit(1), bukan die("teks"). die() dengan argumen string
+    // menghentikan skrip dengan kode 0, jadi `set -e` di CI tidak
+    // menangkapnya dan langkah dilaporkan berhasil padahal gagal.
+    exit(1);
 }
 require_once $meel_settings;
 require_once __DIR__ . '/../modules/core/bootstrap.php';
@@ -14,9 +18,25 @@ if (!isset($username)) $username = 'root';
 if (!isset($password)) $password = '';
 if (!isset($db))       $db       = 'MEeL';
 if (!isset($conn) || $conn === null) {
-    $conn = new mysqli($server, $username, $password, $db);
-    if ($conn->connect_error) {
-        die("[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $conn->connect_error);
+    // PHP 8.1+ mengubah default mysqli menjadi MYSQLI_REPORT_ERROR|STRICT,
+    // jadi `new mysqli()` MELEMPAR mysqli_sql_exception, bukan mengembalikan
+    // objek dengan connect_error terisi. Cek `$conn->connect_error` di bawah
+    // karena itu tidak pernah tersentuh pada default itu -- koneksi gagal
+    // berakhir sebagai fatal error 255 dengan stack trace, bukan pesan
+    // "[MEeL SYSTEM ERROR]" yang sengaja ditulis di sini.
+    //
+    // Kedua cabang tetap dipertahankan: catch menutup jalur default, dan
+    // connect_error menutup jalur ketika ada yang mengaktifkan
+    // mysqli_report(MYSQLI_REPORT_OFF).
+    try {
+        $conn = new mysqli($server, $username, $password, $db);
+        if ($conn->connect_error) {
+            fwrite(STDERR, "[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $conn->connect_error . "\n");
+            exit(1);
+        }
+    } catch (\mysqli_sql_exception $e) {
+        fwrite(STDERR, "[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $e->getMessage() . "\n");
+        exit(1);
     }
     $conn->set_charset('utf8mb4');
 }
