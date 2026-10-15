@@ -137,16 +137,28 @@ class AuthzAdminGateTest extends TestCase
         );
     }
 
-    public function testSessionRoleIsTrustedOverDb(): void
+    public function testDbRoleOverridesStaleSessionRole(): void
     {
-        // Preferensi session dipakai get_user_role(); kalau session='user'
-        // walau DB='admin', yang menang adalah session (kebijakan saat ini).
+        // DB adalah sumber kebenaran. Session menyimpan role sebagai cache
+        // tampilan, jadi kalau admin dicabut di DB, sesi lama yang masih
+        // memegang 'admin' tidak boleh meneruskan hak akses.
+        $_SESSION['user_id'] = $this->freshUid();
+        $_SESSION['role'] = 'admin';
+
+        $this->assertFalse(
+            is_admin($this->connWithRole('user')),
+            'Role DB harus menang atas $_SESSION[\'role\'] yang basi'
+        );
+    }
+
+    public function testDbPromotionAppliesImmediately(): void
+    {
         $_SESSION['user_id'] = $this->freshUid();
         $_SESSION['role'] = 'user';
 
-        $this->assertFalse(
+        $this->assertTrue(
             is_admin($this->connWithRole('admin')),
-            'Role di session dipakai duluan; DB tidak boleh menaikkan hak akses di tengah request'
+            'Kenaikan role di DB berlaku pada request yang sama'
         );
     }
 
