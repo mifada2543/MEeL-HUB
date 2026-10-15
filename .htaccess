@@ -5,10 +5,9 @@ DirectoryIndex index.php index.html
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
-    Header set X-RootProc "%{ROOTPROC}e" env=ROOTPROC
 </IfModule>
 
-<FilesMatch "(\.env|\.git|\.htaccess|\.htpasswd|\.sql|\.log|config\.php|settings\.php|settings\.example\.php|cookies\.txt|auth\.php|sitemap\.php|robots\.php)$">
+<FilesMatch "(\.env|\.git|\.htaccess|\.htpasswd|\.sql|\.log|config\.php|settings\.php|settings\.example\.php|cookies\.txt|auth\.php|sitemap\.php|robots\.php|phpunit\.xml|\.vscode|composer\.(json|lock)|package(-lock)?\.json|install\.sh|docker-compose\.ya?ml)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
@@ -17,6 +16,24 @@ DirectoryIndex index.php index.html
         Deny from all
     </IfModule>
 </FilesMatch>
+
+# Sisa file cadangan/editor yang sering tertinggal dan membocorkan sumber.
+<FilesMatch "(~|\.bak$|\.old$|\.orig$|\.swp$|\.dist$|\.sample$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Direktori tooling. FilesMatch di atas hanya menangkap file bernama `.vscode`,
+# bukan path yang memuat segmen itu.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule "(^|/)\.(vscode|idea|git|freebuff)(/|$)" - [F,L]
+</IfModule>
 
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/html
