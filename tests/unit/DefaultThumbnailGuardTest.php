@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class DefaultThumbnailGuardTest extends TestCase
 {
     protected function setUp(): void

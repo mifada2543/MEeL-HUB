@@ -10,7 +10,6 @@ include_once '../modules/core/helpers.php';
 
 require_admin($conn);
 
-
 require_once __DIR__ . '/includes/export_columns.php';
 require_once __DIR__ . '/../modules/core/helpers/export.php';
 
@@ -123,8 +122,6 @@ if ($active_tab === 'uploads') {
         }
         exit;
     }
-
-
 
     if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['format'] ?? '', ['csv', 'json', 'xls'], true)) {
         $preview_format = $_GET['format'];
@@ -279,8 +276,6 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
     exit;
 }
 
-
-
 if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['format'] ?? '', ['csv', 'json', 'xls'], true)) {
     $preview_format = $_GET['format'];
     $all_rows = $logRepo->fetchAll();
@@ -322,7 +317,6 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
             }
             break;
     }
-
 
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([

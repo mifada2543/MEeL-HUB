@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class AuthMissingUserTest extends TestCase
 {
     private static function source(): string

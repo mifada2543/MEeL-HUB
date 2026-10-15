@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class VideoThumbnailNamingTest extends TestCase
 {
     private static function uploaderSource(): string

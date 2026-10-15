@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class PendingDeleteSmVariantIntegrationTest extends TestCase
 {
     private ?DbTestHelper $db = null;

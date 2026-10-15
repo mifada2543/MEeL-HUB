@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class LoginNowVariableTest extends TestCase
 {
     private static function loginSource(): string

@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class PhpVersionDocumentationTest extends TestCase
 {
     public function testReadmeAdvertisesPhp81(): void

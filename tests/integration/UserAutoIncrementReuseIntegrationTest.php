@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class UserAutoIncrementReuseIntegrationTest extends TestCase
 {
     private ?DbTestHelper $db = null;
@@ -27,7 +26,6 @@ class UserAutoIncrementReuseIntegrationTest extends TestCase
     {
         $conn = $this->db->getConnection();
 
-        
         $conn->query("INSERT INTO users (id, username, role, password, is_active) VALUES (4999, 'keep_user', 'user', 'x', 1)");
         $conn->query("INSERT INTO users (id, username, role, password, is_active) VALUES (5000, 'guest_purge', 'guest', 'x', 0)");
 

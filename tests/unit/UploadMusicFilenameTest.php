@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class UploadMusicFilenameTest extends TestCase
 {
     private const PATTERN = '/\.(php\d?|phtml|sh)(\.|$)/i';
