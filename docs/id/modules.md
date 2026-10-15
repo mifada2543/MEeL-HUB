@@ -493,6 +493,7 @@ Shortcut keyboard diimplementasikan dalam JavaScript dan di-guard oleh `assets/j
 | `L` | Toggle loop | `misc.js` |
 | `A` | Toggle auto-next | `misc.js` |
 | `S` | Toggle AI Upscale | `misc.js` → `toggleUpscale()` di `upscaler.js` |
+| `B` | Toggle ambient glow | `misc.js` → `toggleGlow()` di `player-events.js` |
 | `N` | Video berikutnya | `mini-player.js` |
 | `I` | Toggle mini player | `mini-player.js` |
 

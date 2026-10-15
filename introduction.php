@@ -188,6 +188,7 @@ include __DIR__ . '/partials/scripts.php';
                             ['L', 'Alihkan pengulangan'],
                             ['A', 'Alihkan lanjut otomatis'],
                             ['S', 'Alihkan AI Upscale'],
+                            ['B', 'Alihkan Ambient Glow'],
                             ['N', 'Video berikutnya'],
                             ['I', 'Pemutar mini'],
                         ];
@@ -232,7 +233,7 @@ include __DIR__ . '/partials/scripts.php';
                         <div class="annotation-item">
                             <div class="annotation-dot" style="background:#f97316;box-shadow:0 0 5px #f97316;"></div>
                             <div class="annotation-key">Kontrol dikunci</div>
-                            <div class="annotation-val">Selama modal terbuka, pintasan playback (Spasi, K, ↑ ↓, L, F, angka 0–9, dll.) dinonaktifkan agar video tidak berjalan di belakang pilihan Anda. Jika Anda tidak memilih apa pun, video otomatis diputar dari awal setelah 15 detik.</div>
+                            <div class="annotation-val">Selama modal terbuka, pintasan playback (Spasi, K, ↑ ↓, L, F, B, angka 0–9, dll.) dinonaktifkan agar video tidak berjalan di belakang pilihan Anda. Jika Anda tidak memilih apa pun, video otomatis diputar dari awal setelah 15 detik.</div>
                         </div>
                         <div class="annotation-item">
                             <div class="annotation-dot" style="background:#22c55e;box-shadow:0 0 5px #22c55e;"></div>
