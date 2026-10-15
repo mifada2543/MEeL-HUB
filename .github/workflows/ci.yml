@@ -399,6 +399,22 @@ jobs:
           # (tanpa kolom v6+), lalu jalankan migrate.php. Kalau ada
           # migrasi yang lupa ditulis balik ke schema.sql, hasil upgrade
           # akan punya kolom yang tidak ada di instalasi baru.
+          #
+          # Kredensial dideklarasikan ULANG di sini, bukan mengandalkan
+          # `export` dari langkah sebelumnya. Setiap `run:` adalah shell BARU,
+          # jadi `export` tidak bertahan antar langkah. Langkah ini sebelumnya
+          # berjalan tanpa apa pun, sehingga skrip jatuh ke bawaan "localhost"
+          # (= socket unix) dan gagal "No such file or directory" -- karena di
+          # runner MySQL berada di container terpisah lewat TCP 127.0.0.1, dan
+          # socket unix itu tidak ada.
+          #
+          # Skripnya sendiri sudah bisa membaca CI_PARITY_* maupun MEEL_DB_*,
+          # dan menolak jalan bila host-nya "localhost".
+          set -euo pipefail
+          export CI_PARITY_HOST=127.0.0.1
+          export CI_PARITY_USER=root
+          export CI_PARITY_PASS=root
+
           php scripts/ci/schema-parity-check.php
 
   # ─── Job 5: HTACCESS & Integrity Check ───

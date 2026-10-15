@@ -4,20 +4,78 @@ if (PHP_SAPI !== 'cli') {
     exit("Access denied. Jalankan dari terminal.\n");
 }
 $root = dirname(__DIR__, 2);
-$host = getenv('CI_PARITY_HOST') ?: null;
-$port = getenv('CI_PARITY_PORT') ?: null;
-$user = getenv('CI_PARITY_USER') ?: null;
-$pass = getenv('CI_PARITY_PASS');
-if ($pass === false) {
-    $pass = null;
+
+function meel_env_or_null(string $name): ?string
+{
+    $v = getenv($name);
+    return ($v === false || $v === '') ? null : $v;
 }
+
+// ── Kredensial ──────────────────────────────────────────────────────────────
+//
+// Urutan: CI_PARITY_* > MEEL_DB_* > nilai literal di auth/settings.php >
+// bawaan. Tidak ada pola regex yang disuntikkan ke dalam berkas mana pun --
+// hanya pembacaan nilai yang sudah tertulis di sana.
+//
+// JANGAN pernah `require auth/config.php` hanya demi membaca tiga variabel.
+// Berkas itu bukan sekadar pembaca konfigurasi: ia BENAR-BENAR membuka
+// koneksi, sehingga skrip ini ikut konek ke database yang bukan urusannya,
+// dan ketika gagalnya, pesan yang muncul milik auth/config.php
+// ("[MEeL SYSTEM ERROR] ...") -- bukan pesan skrip ini. Lebih buruk, itu terjadi
+// SEBELUM blok koneksi di bawah, jadi semua penjaga di sini tidak pernah
+// dijalankan.
+//
+// Kegagalan seperti itu nyata terjadi di CI: langkah paritas tidak meng-export
+// apa pun, `export` dari langkah sebelumnya tidak bertahan karena tiap
+// `run:` adalah shell baru, jadi host jatuh ke bawaan "localhost" (= socket
+// unix). Di runner tidak ada socket itu karena MySQL berjalan di container
+// terpisah lewat TCP 127.0.0.1 -- hasilnya "No such file or directory" tanpa
+// penjelasan.
+$host = meel_env_or_null('CI_PARITY_HOST') ?? meel_env_or_null('MEEL_DB_HOST');
+$user = meel_env_or_null('CI_PARITY_USER') ?? meel_env_or_null('MEEL_DB_USER');
+$pass = meel_env_or_null('CI_PARITY_PASS') ?? meel_env_or_null('MEEL_DB_PASS');
+$port = meel_env_or_null('CI_PARITY_PORT') ?? meel_env_or_null('MEEL_DB_PORT');
+
+// auth/settings.php bisa tidak ada (CI belum menyalinnya) -- karena itu
+// keduanya diperiksa dan berkas HANYA dibaca, tidak pernah di-include.
 if ($host === null || $user === null) {
-    require_once $root . '/auth/config.php';
-    $host = $host ?? ($server ?? '127.0.0.1');
-    $user = $user ?? ($username ?? 'root');
-    $pass = $pass ?? ($password ?? '');
+    foreach ([$root . '/auth/settings.php', $root . '/auth/settings.example.php'] as $settingsFile) {
+        if (!is_file($settingsFile)) {
+            continue;
+        }
+        $src = (string) file_get_contents($settingsFile);
+        if ($host === null && preg_match('/\$server\s*=\s*"([^"]*)"/', $src, $m)) {
+            $host = $m[1];
+        }
+        if ($user === null && preg_match('/\$username\s*=\s*"([^"]*)"/', $src, $m)) {
+            $user = $m[1];
+        }
+        if ($pass === null && preg_match('/\$password\s*=\s*"([^"]*)"/', $src, $m)) {
+            $pass = $m[1];
+        }
+    }
+}
+
+// Bawaan 127.0.0.1, BUKAN "localhost". "localhost" membuat mysqli memakai
+// socket unix, dan tidak setiap mesin punya socket itu -- persis kasus runner CI.
+if ($host === null || $host === '') {
+    $host = '127.0.0.1';
+}
+if ($user === null || $user === '') {
+    $user = 'root';
+}
+if ($pass === null) {
+    $pass = '';
 }
 $port = $port !== null ? (int)$port : 3306;
+
+fwrite(STDOUT, "═══ 0/4 Kredensial ═══\n");
+fwrite(STDOUT, sprintf("  %s@%s:%d (database: %s)\n", $user, $host, $port, $pass === '' ? '<tanpa password>' : '<ada password>'));
+if ($host === 'localhost') {
+    fwrite(STDERR, "❌ Host 'localhost' berarti socket unix — hampir selalu salah di CI.\n");
+    fwrite(STDERR, "   Set CI_PARITY_HOST=127.0.0.1 (atau MEEL_DB_HOST).\n");
+    exit(1);
+}
 // `@` hanya menahan warning, BUKAN exception. Pada default PHP 8.1+
 // mysqli melempar mysqli_sql_exception, jadi `@new mysqli(...)` gagal dengan
 // fatal error 255 + stack trace -- pesan "Koneksi MySQL gagal (...)" di bawah
@@ -78,6 +136,39 @@ foreach ([$upgradeDb, $freshDb] as $kandidat) {
         exit(1);
     }
 }
+// Pembersihan di JALUR KELUAR APAPUN -- bukan hanya di akhir skrip.
+//
+// Dua DROP di ujung skrip hanya tercapai kalau semuanya sukses. Di antara
+// pemeriksaan gagal dan ujung itu ada belasan `exit(1)`: impor gagal, target
+// migrasi keliru, paritas tidak cocok. Semua itu meninggalkan
+// meel_parity_upgrade dan meel_parity_fresh di server -- dan di runner CI
+// yang baru selesai, jadi tidak ada yang membersihkannya.
+//
+// Sisa database uji tidak boleh menjadi milik server yang dipakai orang lain.
+// Jadi pembersihan didaftarkan sebagai shutdown function: diekssekusi juga pada
+// `exit(1)` dan pada fatal error.
+//
+// Koneksinya dibuat ulang, bukan memakai $admin, karena $admin bisa sudah
+// tertutup atau berada di tengah kondisi tidak bisa dipakai.
+register_shutdown_function(static function () use ($upgradeDb, $freshDb, $host, $user, $pass, $port): void {
+    try {
+        $c = @new mysqli($host, $user, $pass, '', $port);
+    } catch (\Throwable) {
+        return;
+    }
+    if ($c->connect_error) {
+        return;
+    }
+    foreach ([$upgradeDb, $freshDb] as $db) {
+        // Pengaman yang sama diulang di sini: shutdown function berjalan tanpa
+        //_guard_ di atas, jadi ia tidak boleh bisa menjatuhkan nama lain.
+        if (str_starts_with($db, 'meel_parity_')) {
+            $c->query("DROP DATABASE IF EXISTS `{$db}`");
+        }
+    }
+    $c->close();
+});
+
 echo "═══ 1/4 Bangun DB jalur upgrade (skema versi LAMA) ═══\n";
 $admin->query("DROP DATABASE IF EXISTS `{$upgradeDb}`");
 $admin->query("CREATE DATABASE `{$upgradeDb}`");
