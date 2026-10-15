@@ -49,8 +49,21 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
                 exit;
             }
             $valid = false;
-            if (verify_totp($u['mfa_secret'], $user_code)) {
-                $valid = true;
+            // Kode TOTP harus single-use. Verifikasi biasa tidak mencegah
+            // replay: jendela ±1 membuat satu kode sah ~90 detik. Step yang
+            // dipakai dicatat, dan UPDATE-nya bersifat kondisional sehingga
+            // dua permintaan bersamaan dengan kode sama tidak bisa dua-duanya
+            // lolos (affected_rows hanya 1 untuk yang menang).
+            $used_step = null;
+            $step = verify_totp_step((string)$u['mfa_secret'], $user_code);
+            if ($step !== null) {
+                $stmt_step = $conn->prepare(
+                    "UPDATE users SET mfa_last_step = ? WHERE id = ? AND (mfa_last_step IS NULL OR mfa_last_step < ?)"
+                );
+                $stmt_step->bind_param("iii", $step, $temp_id, $step);
+                $valid = $stmt_step->execute() && $stmt_step->affected_rows === 1;
+                $stmt_step->close();
+                $used_step = $valid ? $step : null;
             }
             if (!$valid && !empty($u['mfa_backup_codes'])) {
                 $result = verify_backup_code($u['mfa_backup_codes'], $user_code);
@@ -64,6 +77,14 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
                 }
             }
             if ($valid) {
+                // Kode cadangan dipakai: reset step supaya TOTP berikutnya
+                // tidak tertolak oleh kode TOTP lama yang belum sempat dipakai.
+                if ($used_step === null) {
+                    $stmt_reset = $conn->prepare("UPDATE users SET mfa_last_step = NULL WHERE id = ?");
+                    $stmt_reset->bind_param("i", $temp_id);
+                    $stmt_reset->execute();
+                    $stmt_reset->close();
+                }
                 session_regenerate_id(true);
                 $_SESSION['user_id'] = $temp_id;
                 $_SESSION['username'] = $_SESSION['mfa_temp_username'];

@@ -35,6 +35,19 @@ function meel_mig_add_index(\mysqli $conn, string $table, string $index, string 
         }
     }
 }
+function meel_mig_add_unique_index(\mysqli $conn, string $table, string $index, string $cols): void
+{
+    if (meel_mig_has_index($conn, $table, $index)) {
+        return;
+    }
+    $result = $conn->query("ALTER TABLE `{$table}` ADD UNIQUE INDEX `{$index}` ({$cols})");
+    if (!$result) {
+        $err = $conn->error;
+        if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+            echo "[MEeL] ⚠ Warning ({$table}.{$index} UNIQUE): {$err}\n";
+        }
+    }
+}
 function meel_mig_add_fulltext(\mysqli $conn, string $table, string $index, string $cols): void
 {
     if (meel_mig_has_index($conn, $table, $index)) {
@@ -533,6 +546,80 @@ $migrations = [
             },
             function ($conn) {
                 meel_mig_add_index($conn, 'transcode_queue', 'idx_tq_status_created', 'status, created_at');
+            },
+        ],
+    ],
+    7 => [
+        'description' => 'Anti-replay TOTP (mfa_last_step) + perbaikan unique view_logs (P0)',
+        'sql' => [
+            // verify_totp() memakai jendela ±1 langkah dan tidak menyimpan
+            // apa pun, jadi satu kode TOTP yang terlihat (phishing,Dicuri dari
+            // shoulder-surfing, atau bocor lewat log proxy) tetap sah
+            // dipakai berulang selama jendela ~90 detik. Menyimpan step
+            // terakhir yang dipakai membuat kode single-use, sesuai RFC 6238.
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'users', 'mfa_last_step')) {
+                    $conn->query("ALTER TABLE users
+                        ADD COLUMN mfa_last_step BIGINT NULL DEFAULT NULL
+                        COMMENT 'Time-step TOTP terakhir yang dipakai; kode dengan step <= ini ditolak'");
+                }
+            },
+            // UNIQUE (user_id, video_id, music_id) tidak pernah menahan apa pun:
+            // MySQL memperlakukan NULL sebagai nilai BERBEDA satu sama lain di
+            // unique index, jadi (9, 299, NULL) dan (9, 299, NULL) tetap dua
+            // baris. views naik setiap kali halaman dibuka.
+            //
+            // Pola yang benar sudah dipakai tabel `interactions`: dua unique
+            // terpisah per jenis media, dan kolom yang tidak dipakai TETAP
+            // NULL. Itu justru yang membuatnya bekerja — NULL tidak pernah
+            // bentrok satu sama lain, jadi semua baris musik (video_id NULL)
+            // lolos dari uq_view_video, sementara uq_view_music tetap
+            // menahan duplikat musik yang sesungguhnya.
+            //
+            // Konsekuensi: kolom TIDAK boleh diisi 0, karena semua baris musik
+            // lalu berbagi video_id=0 dan saling bentrok.
+            //
+            // Dedupe dulu: pada instalasi yang sudah Invasion lama, duplikatnya
+            // sudah menumpuk — justru karena unique lama tidak pernah bekerja.
+            function ($conn) {
+                $conn->query("DELETE FROM view_logs WHERE video_id IS NOT NULL AND video_id <> 0 AND id NOT IN (
+                    SELECT keep_id FROM (
+                        SELECT MIN(id) AS keep_id FROM view_logs
+                         WHERE video_id IS NOT NULL AND video_id <> 0
+                         GROUP BY user_id, video_id
+                    ) AS keep_rows
+                )");
+            },
+            function ($conn) {
+                $conn->query("DELETE FROM view_logs WHERE music_id IS NOT NULL AND music_id <> 0 AND id NOT IN (
+                    SELECT keep_id FROM (
+                        SELECT MIN(id) AS keep_id FROM view_logs
+                         WHERE music_id IS NOT NULL AND music_id <> 0
+                         GROUP BY user_id, music_id
+                    ) AS keep_rows
+                )");
+            },
+            // Kembalikan kolom ke nullable, lalu normalkan sentinel 0 (dari
+            // percobaan pertama yang salah) menjadi NULL.
+            function ($conn) {
+                $conn->query("ALTER TABLE view_logs
+                    MODIFY COLUMN video_id INT(11) DEFAULT NULL,
+                    MODIFY COLUMN music_id INT(11) DEFAULT NULL");
+            },
+            function ($conn) {
+                $conn->query("UPDATE view_logs SET music_id = NULL WHERE video_id IS NOT NULL AND video_id <> 0");
+                $conn->query("UPDATE view_logs SET video_id = NULL WHERE music_id IS NOT NULL AND music_id <> 0");
+            },
+            function ($conn) {
+                if (meel_mig_has_index($conn, 'view_logs', 'unique_view')) {
+                    $conn->query("ALTER TABLE view_logs DROP INDEX unique_view");
+                }
+            },
+            function ($conn) {
+                meel_mig_add_unique_index($conn, 'view_logs', 'uq_view_video', 'user_id, video_id');
+            },
+            function ($conn) {
+                meel_mig_add_unique_index($conn, 'view_logs', 'uq_view_music', 'user_id, music_id');
             },
         ],
     ],

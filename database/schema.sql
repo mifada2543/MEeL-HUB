@@ -57,6 +57,7 @@ CREATE TABLE
     `mfa_secret` varchar(64) DEFAULT NULL,
     `mfa_backup_codes` text DEFAULT NULL,
     `mfa_enabled` tinyint (1) DEFAULT 0,
+    `mfa_last_step` bigint DEFAULT NULL,
     `meelcoin` int (11) NOT NULL DEFAULT 0,
     `meelcoin_last_refill` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
@@ -271,6 +272,15 @@ CREATE TABLE
 -- =============================================================================
 -- TABEL: view_logs
 -- Mencatat kunjungan user ke konten (encegah view inflation).
+--
+-- Catatan: untuk baris video, music_id = NULL; untuk baris music,
+-- video_id = NULL. UNIQUE key gabungan (user_id, video_id, music_id) TIDAK
+-- mencegah duplikat karena MySQL memperlakukan NULL sebagai nilai berbeda,
+-- sehingga setiap kunjungan baru tetap lolos sebagai baris baru. Karena itu
+-- dipisah menjadi dua unique key per jenis media — sama seperti tabel
+-- `interactions`.
+-- Kolom yang tidak dipakai HARUS tetap NULL, bukan 0: kalau diisi 0, semua
+-- baris musik berbagi video_id=0 dan saling bentrok.
 -- =============================================================================
 CREATE TABLE
   IF NOT EXISTS `view_logs` (
@@ -280,11 +290,9 @@ CREATE TABLE
     `music_id` int (11) DEFAULT NULL,
     `viewed_at` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
-    UNIQUE KEY `unique_view` (`user_id`, `video_id`, `music_id`),
-    KEY `idx_vl_user_music` (`user_id`, `music_id`),
-    KEY `idx_vl_viewed_at` (`viewed_at`),
-    KEY `idx_vl_video_id` (`video_id`),
-    KEY `idx_vl_music_id` (`music_id`)
+    UNIQUE KEY `uq_view_video` (`user_id`, `video_id`),
+    UNIQUE KEY `uq_view_music` (`user_id`, `music_id`),
+    KEY `idx_vl_viewed_at` (`viewed_at`)
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =============================================================================

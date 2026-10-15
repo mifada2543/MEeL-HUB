@@ -35,6 +35,12 @@ class MediaViewer
 
         if ($user && $user['is_active'] == 1 && $user['role'] !== 'guest') {
             $log_column = ($this->media_type === 'video') ? 'video_id' : 'music_id';
+            // Kolom yang tidak dipakai dibiarkan NULL, bukan diisi 0.
+            // MySQL menganggap NULL berbeda satu sama lain di unique index,
+            // jadi inilah yang membuat dua unique terpisah (uq_view_video /
+            // uq_view_music) bekerja: semua baris musik otomatis lolos dari
+            // uq_view_video, sementara uq_view_music tetap menahan duplikat
+            // musik yang sesungguhnya. Kalau diisi 0, keduanya saling bentrok.
             $stmt_log = $this->conn->prepare("INSERT IGNORE INTO view_logs (user_id, $log_column) VALUES (?, ?)");
             $stmt_log->bind_param("ii", $this->user_id, $this->media_id);
             $stmt_log->execute();

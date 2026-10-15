@@ -257,19 +257,57 @@ class MfaTotpTest extends TestCase
     {
         // Guard statis: perbandingan kode TOTP wajib timing-safe supaya
         // penyerang tidak bisa menebak digit satu per satu lewat timing.
+        //
+        // Perbandingannya ada di verify_totp_step() yang mengembalikan
+        // time-step (dipakai auth/mfa_verify.php untuk anti-replay);
+        // verify_totp() sekarang hanya mendelegasikan ke sana.
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/mfa.php');
 
-        $verifyFn = $this->extractFunction($src, 'verify_totp');
+        $compareFn = $this->extractFunction($src, 'verify_totp_step');
         $this->assertStringContainsString(
             'hash_equals(',
-            $verifyFn,
-            'verify_totp() harus pakai hash_equals(), bukan === atau =='
+            $compareFn,
+            'verify_totp_step() harus pakai hash_equals(), bukan === atau =='
         );
         $this->assertDoesNotMatchRegularExpression(
             '/hash_equals\(.*\)\s*===/',
-            $verifyFn,
+            $compareFn,
             'Jangan membandingkan hasil hash_equals dengan ==='
         );
+
+        // verify_totp() tetap harus validation-safe: delegasi tidak boleh
+        // kehilangan penolakan input malformed lebih dulu.
+        $verifyFn = $this->extractFunction($src, 'verify_totp');
+        $this->assertStringContainsString(
+            'verify_totp_step(',
+            $verifyFn,
+            'verify_totp() harus mendelegasikan ke verify_totp_step()'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/(\$expected|\$code)\s*(===|==)\s*(\$expected|\$code)/',
+            $verifyFn,
+            'verify_totp() tidak boleh membandingkan kode dengan === atau =='
+        );
+    }
+
+    /** Anti-replay: verify_totp_step() harus mengembalikan step, bukan bool. */
+    public function testVerifyTotpStepReturnsMatchedStep(): void
+    {
+        $secret = generate_mfa_secret();
+        $now = (int)floor(time() / 30);
+        $code = generate_totp($secret, $now);
+
+        $this->assertSame($now, verify_totp_step($secret, $code));
+
+        // Step lama (jendela -1) juga dikenali, supaya jam yang meleset
+        // tidak bricking user — tapi pemanggil yang menyimpannya,
+        // bukan verifikasinya.
+        $oldCode = generate_totp($secret, $now - 1);
+        $this->assertSame($now - 1, verify_totp_step($secret, $oldCode));
+
+        $this->assertNull(verify_totp_step($secret, '000000'), 'kode asal-asalan harus null');
+        $this->assertNull(verify_totp_step($secret, '12345'), 'kode 5 digit harus null');
+        $this->assertNull(verify_totp_step($secret, ''), 'kode kosong harus null');
     }
 
     public function testOtpauthUrlFormat(): void
