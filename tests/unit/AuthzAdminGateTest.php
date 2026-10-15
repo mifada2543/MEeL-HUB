@@ -75,10 +75,6 @@ class AuthzAdminGateTest extends TestCase
         return $conn;
     }
 
-    /* ─────────────────────────────────────────────────────────────
-     * is_admin() — matriks keputusan
-     * ───────────────────────────────────────────────────────────── */
-
     public function testGuestWithoutSessionIsNotAdmin(): void
     {
         // Tidak ada $_SESSION['user_id'] sama sekali →meski DB punya admin,
@@ -193,10 +189,6 @@ class AuthzAdminGateTest extends TestCase
         );
     }
 
-    /* ─────────────────────────────────────────────────────────────
-     * Guard statis — keputusan redirect yang benar
-     * ───────────────────────────────────────────────────────────── */
-
     public function testRequireAdminRedirectsToNotFoundNotAdminPanel(): void
     {
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/authz.php');
@@ -270,7 +262,6 @@ class AuthzAdminGateTest extends TestCase
     {
         // Ancaman: kalau is_admin() pernah membaca $_GET/$_POST['role'] atau
         // $_REQUEST, siapa pun bisa jadi admin. Kunci bahwa sumbernya hanya
-        // $_SESSION.
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/authz.php');
         $fn = $this->extractFunction($src, 'is_admin');
 
@@ -303,10 +294,6 @@ class AuthzAdminGateTest extends TestCase
             . 'atau str_contains/substr match'
         );
     }
-
-    /* ─────────────────────────────────────────────────────────────
-     * Matrix integrasi: uid yang tidak ada vs uid yang ada
-     * ───────────────────────────────────────────────────────────── */
 
     public function testUnknownUserFallsBackToUserNotAdmin(): void
     {
@@ -354,10 +341,6 @@ public function testDistinctUsersDoNotShareCachedRole(): void
     {
         $this->assertSame([], $_SESSION, 'setUp() harus membersihkan $_SESSION');
     }
-
-    /* ─────────────────────────────────────────────────────────────
-     * Helper
-     * ───────────────────────────────────────────────────────────── */
 
     private function extractFunction(string $src, string $name): string
     {

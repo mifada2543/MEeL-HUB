@@ -11,12 +11,9 @@ function meel_env_or_null(string $name): ?string
     return ($v === false || $v === '') ? null : $v;
 }
 
-// ── Kredensial ──────────────────────────────────────────────────────────────
-//
 // Urutan: CI_PARITY_* > MEEL_DB_* > nilai literal di auth/settings.php >
 // bawaan. Tidak ada pola regex yang disuntikkan ke dalam berkas mana pun --
 // hanya pembacaan nilai yang sudah tertulis di sana.
-//
 // JANGAN pernah `require auth/config.php` hanya demi membaca tiga variabel.
 // Berkas itu bukan sekadar pembaca konfigurasi: ia BENAR-BENAR membuka
 // koneksi, sehingga skrip ini ikut konek ke database yang bukan urusannya,
@@ -24,7 +21,6 @@ function meel_env_or_null(string $name): ?string
 // ("[MEeL SYSTEM ERROR] ...") -- bukan pesan skrip ini. Lebih buruk, itu terjadi
 // SEBELUM blok koneksi di bawah, jadi semua penjaga di sini tidak pernah
 // dijalankan.
-//
 // Kegagalan seperti itu nyata terjadi di CI: langkah paritas tidak meng-export
 // apa pun, `export` dari langkah sebelumnya tidak bertahan karena tiap
 // `run:` adalah shell baru, jadi host jatuh ke bawaan "localhost" (= socket
@@ -116,16 +112,13 @@ $upgradeDb = 'meel_parity_upgrade';
 $freshDb   = 'meel_parity_fresh';
 
 // Pengaman PRA-DESTRUKTIF, dan harus di sini -- sebelum DROP pertama.
-//
 // Script ini menjalankan `DROP DATABASE IF EXISTS` pada nama database yang
 // disebut di bawah. Kalau nama itu sampai berubah menjadi database milik orang
 // lain (MEeL, database kerja pengembang, atau database produksi), database itu
 // hilang sebelum satu baris pun sempat memverifikasi apa pun.
-//
 // Karena itu nama database diperiksa DI SINI, sebelum destruksi. Verifikasi
 // yang diletakkan sesudah langkah 1 tidak bernilai apa-apa: langkah 1 sudah
 // menghapus database-nya duluan. Verifikasi harus mendahului destruksi.
-//
 // Yang boleh dibDROP hanya meel_parity_*. Ini skrip uji yang membangun
 // database sementara sendiri; tidak ada alasan sampainya ia menyentuh
 // database di luar namespace tersebut.
@@ -137,17 +130,14 @@ foreach ([$upgradeDb, $freshDb] as $kandidat) {
     }
 }
 // Pembersihan di JALUR KELUAR APAPUN -- bukan hanya di akhir skrip.
-//
 // Dua DROP di ujung skrip hanya tercapai kalau semuanya sukses. Di antara
 // pemeriksaan gagal dan ujung itu ada belasan `exit(1)`: impor gagal, target
 // migrasi keliru, paritas tidak cocok. Semua itu meninggalkan
 // meel_parity_upgrade dan meel_parity_fresh di server -- dan di runner CI
 // yang baru selesai, jadi tidak ada yang membersihkannya.
-//
 // Sisa database uji tidak boleh menjadi milik server yang dipakai orang lain.
 // Jadi pembersihan didaftarkan sebagai shutdown function: diekssekusi juga pada
 // `exit(1)` dan pada fatal error.
-//
 // Koneksinya dibuat ulang, bukan memakai $admin, karena $admin bisa sudah
 // tertutup atau berada di tengah kondisi tidak bisa dipakai.
 register_shutdown_function(static function () use ($upgradeDb, $freshDb, $host, $user, $pass, $port): void {
@@ -201,7 +191,6 @@ if (!is_file($example)) {
 // settings.php hanya perlu ADA — auth/config.php menolak berjalan tanpanya.
 // Isinya boleh apa adanya karena SELURUH kredensial datang dari variabel
 // lingkungan di bawah.
-//
 // Versi sebelumnya menyuntikkan nilai ke dalam source settings.example.php lewat
 // regex seperti /\$server\s*=\s*"[^"]*"/. Regex itu bisa berhenti cocok
 // diam-diam setiap kali format example berubah, tanpa error apa pun, dan
@@ -212,7 +201,6 @@ file_put_contents($cfg, file_get_contents($example));
 
 // Pengaman: sebelum menjalankan migrate.php, pastikan variabel lingkungan itu
 // BENAR-BENAR sampai dan dipakai auth/config.php.
-//
 // Tanpa ini, kegagalan diam-diam paling berbahaya yang mungkin terjadi adalah
 // migrate.php berjalan ke database bawaan settings.example.php, yaitu `MEeL` —
 // yaitu database kerja milik pengembang, atau database produksi. Mempermigrate

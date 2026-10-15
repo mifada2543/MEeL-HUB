@@ -217,7 +217,6 @@ function meel_collect_source_classes(array $files): array
                         continue;
                     }
                     // Buang sisa interpolasi PHP (tag short-echo) yang mungkin menempel di token.
-//
 // CATATAN PENTING: jangan pernah menulis tag short-echo secara harfiah di
 // dalam komentar satu-baris. Kemunculan tag tutup short-echo di baris
 // `//` mengakhiri mode PHP, dan seluruh sisa file lalu diparse sebagai
@@ -364,8 +363,6 @@ function meel_collect_css_classes(string $css): array
     return $list;
 }
 
-// ---------------------------------------------------------------------------
-
 [$argNew] = meel_cli_args($argv);
 
 $committedPath = $root . '/assets/css/tailwind.min.css';
@@ -380,7 +377,6 @@ $notes = [];
 
 echo "== Tailwind reproducibility check ==\n\n";
 
-// --- 1. Glob content ------------------------------------------------------
 [$positive, $negative] = meel_read_content_globs($root . '/tailwind.config.js');
 $files = meel_expand_globs($positive, $negative);
 
@@ -394,7 +390,6 @@ $excludedCount = count($negative);
 printf("  pola pengecualian    : %d (%s)\n", $excludedCount, implode(' ', $negative));
 
 // Bukti bahwa pengecualian benar-benar bekerja.
-//
 // Daftar folder yang WAJIB tidak pernah terpindai sengaja ditulis sebagai
 // konstanta di sini, BUKAN diturunkan dari glob di config. Kalau daftar
 // itu diambil dari config, pemeriksaan ini membandingkan config dengan
@@ -418,12 +413,10 @@ foreach ($mustExclude as $dir) {
     }
 }
 
-// --- 2. Class di artefak ter-commit --------------------------------------
 $oldRules = meel_collect_css_rules($committed);
 $oldClasses = array_keys($oldRules);
 printf("  class di CSS ter-commit: %d\n\n", count($oldClasses));
 
-// --- 3. Perbandingan dengan kandidat baru ---------------------------------
 if ($argNew === null) {
     $notes[] = 'Tidak ada --new/--rebuild, jadi hanya artefak ter-commit yang diaudit. '
         . 'Jalankan `npm run css:build && php scripts/ci/tailwind-coverage-check.php --rebuild` '
@@ -452,7 +445,6 @@ if ($argNew === null) {
     }
 
     // Perubahan nilai: class ada di kedua sisi, tapi deklarasinya beda.
-    //
     // Ini kondisi yang TIDAK tertangkap perbandingan nama class saja, dan
     // kasus nyatanya sudah terjadi: `animate-icon-pop` tetap ada setelah
     // build ulang, tapi `cubic-bezier()`-nya berubah dari empat angka jadi
@@ -539,7 +531,6 @@ if ($lost !== []) {
     $failures[] = 'tailwind.config.js kehilangan nilai tema yang dibutuhkan: ' . implode(', ', $lost);
 }
 
-// --- Hasil ----------------------------------------------------------------
 if ($notes !== []) {
     echo "Catatan:\n";
     foreach ($notes as $n) {

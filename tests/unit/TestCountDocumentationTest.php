@@ -314,14 +314,9 @@ class TestCountDocumentationTest extends TestCase
         $src = (string)file_get_contents($path);
 
         // Bentuk yang memicu deprecation PHP 8.3:
-        //   $days = (int) floor($uptime_sec / 86400);
-        //   $hours = (int) floor(($uptime_sec % 86400) / 3600);
         // atau bentuk float-modulo dengan nama variabel apa pun:
-        //   $x = (int) floor($someFloat % 86400);
         //
         // Pola yang benar: bulatkan ke integer dulu, lalu intdiv():
-        //   $uptime_int = (int) $uptime_sec;
-        //   $days = intdiv($uptime_int, 86400);
         $this->assertDoesNotMatchRegularExpression(
             '/\(int\)\s*floor\(\s*\$[A-Za-z_][A-Za-z0-9_]*\s*[%\/]/',
             $src,
