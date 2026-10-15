@@ -129,6 +129,58 @@ mengirim `X-Forwarded-For: 127.0.0.1` untuk bypass rate-limit login, lockout
 MFA, dan IP-ban. `proxy.php` tanpa side-effect — aman di-require dari
 bootstrap, logger, maupun test.
 
+### Canonical Host (`MEEL_CANONICAL_HOST`)
+
+**File:** `auth/settings.example.php` (dan `auth/settings.php`)
+
+```php
+// Host produksi Anda, TANPA port dan tanpa skema.
+// Kosong = semua referer dari luar ditolak (back-link jatuh ke default).
+define('MEEL_CANONICAL_HOST', 'meel.my.id');
+```
+
+Host ini dipakai `meel_same_origin_referer()` di `modules/core/helpers/url.php`
+untuk memutuskan apakah `HTTP_REFERER` boleh dipakai sebagai tombol "kembali".
+
+Kenapa tidak memakai `HTTP_HOST` saja: pada vhost default Apache, `HTTP_HOST`
+adalah header yang dikirim klien. Kalau pembandingannya memakainya, penyerang
+dengan `Host: evil.com` + `Referer: https://evil.com/` lolos sebagai "same
+origin" — itu open redirect.
+
+Helper ini menolak: host berbeda, skema selain http/https, URL protocol-relative
+(`//evil.com`), serta trik `evil.meel.my.id` dan `meel.my.id.evil.com`.
+
+Semua halaman yang memakai tombol kembali memakai helper yang sama:
+`music/playlist_action.php`, `profile/notification.php`, dan
+`meel_back_url()`. Kalau nilainya kosong, `meel_back_url()` selalu mengembalikan
+default — gagal aman, bukan membuka celah.
+
+### Batas Unduhan (`MEEL_MAX_DOWNLOAD_*`)
+
+**File:** `modules/core/helpers/upload.php`
+
+```php
+define('MEEL_MAX_DOWNLOAD_BYTES', 2 * 1024 * 1024 * 1024); // 2 GB
+define('MEEL_MAX_DOWNLOAD_SECONDS', 7200);                 // 2 jam
+```
+
+Diterapkan sebagai `--max-filesize` dan `--match-filter "duration < N"` pada
+perintah yt-dlp, lalu diperiksa ulang dari metadata sebelum unduhan dimulai
+(`DownloadService::assertWithinDownloadLimits`). Tanpa ini, satu URL dengan
+aliran 1080p yang panjang menulis ke staging `/dev/shm` tanpa batas.
+
+### Antrean Paralel (`MEEL_MAX_CONCURRENT_QUEUES`)
+
+**File:** `modules/core/System.php`
+
+Jumlah job transcode yang boleh berjalan bersamaan (default 2). Diambil dengan
+`System::maxConcurrentQueues()`.
+
+Klaim slot memakai `GET_LOCK()` MySQL sehingga pemeriksaan "server sibuk" dan
+INSERT baris `processing` terjadi dalam satu transaksi Advisory Lock — bukan
+`COUNT(*)` bebas yang bisa diloloskan oleh permintaan bersamaan. Batas diatur
+`System::MAX_CONCURRENT_QUEUES`.
+
 ### Charset Koneksi (`utf8mb4`)
 
 ```php
@@ -308,6 +360,34 @@ Jika `MEEL_HDD_BASE` tidak sesuai dengan mount point, halaman maintenance `err/?
 ```
 
 ---
+
+### Rate Limit Drive (`drive_files`)
+
+Tabel `drive_files` menyimpan satu baris per unggahan drive, dan
+`System::checkRateLimit('drive_files')` menghitung baris tersebut untuk
+menerapkan batas 10 file/jam per pengguna.
+
+Kalau tabel ini kosong — misalnya instalasi lama yang belum pernah mencatat —
+`num_rows` selalu 0 sehingga batasnya tidak pernah aktif. `DriveStorage` kini
+menulis baris itu setiap unggahan berhasil (`recordUpload()`), jadi penghitungnya
+punya data.
+
+### Antrean Hapus Tertunda (`pending_delete.json`)
+
+Berkas `temp/pending_delete.json` berisi path yang akan dihapus setelah 30 menit.
+`cleanupPendingDeletions()` hanya menghapus path yang `realpath()`-nya berada
+di dalam salah satu root media (video/music/books) atau drive base. Path di luar
+root dicatat ke `php_error.log` lalu dilewati.
+
+Antrean ini berada di `temp/` yang world-writable, jadi tanpa cek containment
+user lokal bisa menjadwalkan penghapusan file atau direktori mana pun sebagai user
+web.
+
+### Batas Ekspor Admin
+
+`AdminActivityRepository::fetchAll()` dan `AdminUploadQueueRepository::fetchAll()`
+menerima batas baris (default 50.000). Pratinjau 15 baris memakai
+`countFiltered()` + `fetchPage(15, 0)` — bukan memuat seluruh tabel filter dulu.
 
 ## Transcoder Configuration
 

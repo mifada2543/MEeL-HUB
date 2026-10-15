@@ -15,15 +15,10 @@ $userId = (int)$_SESSION['user_id'];
 
 $root = meel_base_url_path();
 $back_url = $root . '/profile/' . rawurlencode($_SESSION['username']);
-if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref = $_SERVER['HTTP_REFERER'];
-    $ref_host = parse_url($ref, PHP_URL_HOST);
-    $current_host = $_SERVER['HTTP_HOST'] ?? '';
-    if ($ref_host === $current_host || $ref_host === 'localhost' || $ref_host === '127.0.0.1') {
-        $ref_path = parse_url($ref, PHP_URL_PATH);
-        if (strpos($ref_path, '/profile/notification') === false) {
-            $back_url = $ref;
-        }
+if (($ref = meel_same_origin_referer()) !== null) {
+    $ref_path = (string) parse_url($ref, PHP_URL_PATH);
+    if (strpos($ref_path, '/profile/notification') === false) {
+        $back_url = $ref;
     }
 }
 

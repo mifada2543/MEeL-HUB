@@ -8,6 +8,9 @@ if (!isset($db))       $db       = (getenv('MEEL_DB_NAME') ?: "MEeL");
 if (!defined('MEEL_HOST')) {
     define('MEEL_HOST', $_SERVER['HTTP_HOST'] ?? '');
 }
+if (!defined('MEEL_CANONICAL_HOST')) {
+    define('MEEL_CANONICAL_HOST', '');
+}
 
 if (!defined('MEEL_TRUST_PROXY_HEADERS')) {
     define('MEEL_TRUST_PROXY_HEADERS', false);

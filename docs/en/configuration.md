@@ -173,6 +173,85 @@ function getRomajiName($text) {
 
 ---
 
+### Canonical Host (`MEEL_CANONICAL_HOST`)
+
+**File:** `auth/settings.example.php` (and `auth/settings.php`)
+
+```php
+// Your production host, WITHOUT port and WITHOUT scheme.
+// Empty = every external referer is rejected (back-link falls back to default).
+define('MEEL_CANONICAL_HOST', 'meel.my.id');
+```
+
+This host is used by `meel_same_origin_referer()` in `modules/core/helpers/url.php`
+to decide whether `HTTP_REFERER` may be used as a "back" target.
+
+Why not compare against `HTTP_HOST`: on an Apache default vhost, `HTTP_HOST` is
+the header sent by the client. If the comparison used it, an attacker sending
+`Host: evil.com` plus `Referer: https://evil.com/` would pass as "same origin" —
+that is an open redirect.
+
+The helper rejects: a different host, any scheme other than http/https,
+protocol-relative URLs (`//evil.com`), and the tricks `evil.meel.my.id` and
+`meel.my.id.evil.com`.
+
+Every page using a back button now shares this helper:
+`music/playlist_action.php`, `profile/notification.php`, and `meel_back_url()`.
+When the value is empty, `meel_back_url()` always returns the default — it fails
+closed rather than opening a hole.
+
+### Download Limits (`MEEL_MAX_DOWNLOAD_*`)
+
+**File:** `modules/core/helpers/upload.php`
+
+```php
+define('MEEL_MAX_DOWNLOAD_BYTES', 2 * 1024 * 1024 * 1024); // 2 GB
+define('MEEL_MAX_DOWNLOAD_SECONDS', 7200);                 // 2 hours
+```
+
+Applied as `--max-filesize` and `--match-filter "duration < N"` on the yt-dlp
+command, then re-checked from metadata before the download starts
+(`DownloadService::assertWithinDownloadLimits`). Without this, a single URL with
+a long 1080p stream writes into `/dev/shm` staging with no ceiling.
+
+### Concurrent Queues (`MEEL_MAX_CONCURRENT_QUEUES`)
+
+**File:** `modules/core/System.php`
+
+How many transcode jobs may run at once (default 2), read via
+`System::maxConcurrentQueues()`.
+
+Slot claiming uses MySQL `GET_LOCK()` so the "server busy" check and the INSERT of
+the `processing` row happen inside one Advisory Lock — not a free-running
+`COUNT(*)` that concurrent requests can all pass. The ceiling is
+`System::MAX_CONCURRENT_QUEUES`.
+
+### Drive Rate Limit (`drive_files`)
+
+The `drive_files` table stores one row per drive upload, and
+`System::checkRateLimit('drive_files')` counts those rows to enforce 10 files per
+hour per user.
+
+If that table is empty — for example an older install that never recorded
+anything — `num_rows` stays 0 and the limit never fires. `DriveStorage` now writes
+the row on every successful upload (`recordUpload()`), so the counter has data.
+
+### Pending Deletion Queue (`pending_delete.json`)
+
+`temp/pending_delete.json` holds paths to delete after 30 minutes.
+`cleanupPendingDeletions()` only deletes paths whose `realpath()` sits inside one
+of the media roots (video/music/books) or the drive base. Paths outside are logged
+to `php_error.log` and skipped.
+
+This queue lives in the world-writable `temp/`, so without the containment check a
+local user could schedule deletion of any file or directory as the web user.
+
+### Admin Export Ceiling
+
+`AdminActivityRepository::fetchAll()` and `AdminUploadQueueRepository::fetchAll()`
+take a row limit (default 50,000). The 15-row preview uses `countFiltered()` plus
+`fetchPage(15, 0)` instead of loading the whole filtered table first.
+
 ## Media Storage Paths (CENTRALIZED)
 
 All media storage paths are **centralized** in `auth/settings.php` through `MEEL_HDD_*` constants. Change just **one line** to relocate storage.

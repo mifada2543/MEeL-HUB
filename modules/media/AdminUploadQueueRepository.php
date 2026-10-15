@@ -77,18 +77,20 @@ class AdminUploadQueueRepository
         return $result;
     }
 
-    public function fetchAll(): array
+    public function fetchAll(int $limit = 50000): array
     {
         $stmt = $this->conn->prepare(
             "SELECT uq.*, u.username
              FROM upload_queue uq
              LEFT JOIN users u ON uq.user_id = u.id
              WHERE {$this->where_sql}
-             ORDER BY uq.created_at DESC"
+             ORDER BY uq.created_at DESC
+             LIMIT ?"
         );
-        if (!empty($this->params)) {
-            $stmt->bind_param($this->types, ...$this->params);
-        }
+        $params = $this->params;
+        $types = $this->types . 'i';
+        $params[] = $limit;
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
         $rows = [];

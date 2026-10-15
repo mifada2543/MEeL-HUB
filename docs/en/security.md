@@ -21,6 +21,7 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [Exception Handling](#exception-handling)
 - [Disk Space Validation](#disk-space-validation)
 - [P0 Hardening (October 2026)](#p0-hardening-october-2026)
+- [P1 Hardening (October 2026)](#p1-hardening-october-2026)
 - [Input Validation](#input-validation)
 - [Best Practices](#best-practices)
 
@@ -1083,6 +1084,108 @@ on every request.
 Apache 2.4 without `mod_access_compat` that is a config error, so the **entire**
 `.htaccess` is discarded and `controllers/` loses all access control. They are now
 wrapped in `IfModule` like the rest of the repo.
+
+---
+
+## P1 Hardening (October 2026)
+
+Follow-up to the previous section, for the same reason: the explanation lives in
+documentation, not in production files.
+
+### 9. Download size and duration limits
+
+The yt-dlp `base_cmd` had no ceiling at all. A single URL with a long 1080p stream
+wrote into `/dev/shm/meel/temp` staging with no bound, alongside a 10 GB
+`memory_limit`. Now:
+
+- `--max-filesize` and `--match-filter "duration < N"` on the yt-dlp command
+- `DownloadService::assertWithinDownloadLimits()` checks the metadata
+  (`duration`, `filesize`/`filesize_approx`) before the download starts
+
+Values are `MEEL_MAX_DOWNLOAD_BYTES` (2 GB) and `MEEL_MAX_DOWNLOAD_SECONDS`
+(7200), defined alongside the other upload limits in
+`modules/core/helpers/upload.php`.
+
+### 10. Queue slot claiming is now atomic
+
+`isServerBusy()` was a plain `SELECT COUNT(*) ... WHERE status = 'processing'`,
+with the INSERT done separately by the caller. Twenty concurrent requests could
+all observe a count below the threshold and all start ffmpeg (8 threads each).
+
+`System::claimQueueSlot()` now wraps the check and the INSERT inside MySQL
+`GET_LOCK()` — one Advisory Lock, so only one party gets to check then insert.
+Verified with 8 parallel PHP processes: exactly 2 claims succeed, the rest are
+refused.
+
+The ceiling is `System::MAX_CONCURRENT_QUEUES` (default 2).
+
+### 11. GC no longer deletes artifacts of running jobs
+
+`GarbageCollector::STALE_SECONDS` was 300, below `TRANSCODE_AUDIO_TIMEOUT` 600
+and `DOWNLOAD_TIMEOUT` 900. Any other request touching the transcoder could make
+the GC delete the `.processing` marker of a running job — and that marker is the
+only thing preventing two transcodes from colliding on the same output. Raised to
+1200.
+
+### 12. The installer no longer discards database credentials
+
+The old patcher matched `$server = "localhost";`, but
+`auth/settings.example.php` had already moved to
+`if (!isset($server)) $server = (getenv(...) ?: "localhost")`. The error was also
+swallowed by `2>/dev/null ||`, so the install still reported success while the
+operator's answers were thrown away and the defaults were used.
+
+The new patcher uses a durable regex for `define('MEEL_HDD_BASE', ...)` so it is
+idempotent, rewrites the override block, verifies the result with `re.search`,
+stops with `die` on failure, and finally checks
+`php -r 'require auth/settings.php'`.
+
+### 13. Open redirect: one helper instead of seven implementations
+
+Seven separate copies of referer validation, nearly all comparing the referer host
+against `$_SERVER['HTTP_HOST']` — the client-supplied header. With
+`Host: evil.com` plus `Referer: https://evil.com/` the check passes as "same
+origin". Some variants accepted `localhost` and `127.0.0.1` unconditionally.
+
+`meel_same_origin_referer()` replaces them: the host must match the configured
+`MEEL_CANONICAL_HOST`, only http/https schemes are allowed, and protocol-relative
+URLs are rejected. When `MEEL_CANONICAL_HOST` is empty, every external referer is
+rejected — it fails closed.
+
+Used by `music/playlist_action.php`, `profile/notification.php`, and
+`meel_back_url()`. The remaining `HTTP_REFERER` reads (such as the HLS gate) are
+not security controls and never were.
+
+### 14. Silent data corruption in an arcade bind_param
+
+`difficulty_label` and `cover_file` are varchar columns, but they were bound as
+`"i"`. mysqli emits no warning — it coerces the value to the requested type, so
+both were stored as `'0'`. Difficulty names became `0` and cover art broke even
+though the file was on disk.
+
+`tests/unit/BindParamTypeTest.php` derives the expected types from
+`arcade/schema.sql` rather than a hardcoded list, so the test stays correct when
+the schema changes.
+
+### 15. Drive rate limit that never fired
+
+`System::checkRateLimit('drive_files')` counts rows in `drive_files`, but nothing
+ever inserted into that table — `num_rows` stayed 0, so the 10 files/hour limit
+never applied. `DriveStorage::recordUpload()` now records every upload.
+
+### 16. Pending deletion queue limited to media roots
+
+`cleanupPendingDeletions()` deleted whatever path appeared in
+`temp/pending_delete.json`, with no containment check. That file lives in a
+world-writable directory, so a local user could schedule deletion of any file or
+directory as the web user. `realpath()` must now resolve inside one of the media
+roots or the drive base.
+
+### 17. Admin exports bounded
+
+`fetchAll()` without a `LIMIT` was used to render a 15-row preview — the entire
+filtered table was loaded into memory first. `fetchAll()` now takes a limit
+(default 50,000) and the preview uses `countFiltered()` plus `fetchPage(15, 0)`.
 
 ---
 
