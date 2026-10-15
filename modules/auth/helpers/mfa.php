@@ -35,10 +35,6 @@ function base32_decode(string $input): string
 
 if (!function_exists('base32_decode_is_valid')) {
 
-/**
- * Apakah string ini base32 yang bisa dipakai sebagai secret TOTP?
- * Tanpa exception — untuk validasi sebelum menyimpan.
- */
 function base32_decode_is_valid(string $input): bool
 {
     $trimmed = strtoupper(rtrim($input, '='));

@@ -154,10 +154,6 @@ class QueueStatusHonestyTest extends TestCase
         );
     }
 
-    /* ─────────────────────────────────────────────────────────────
-     * 2. Perilaku releaseQueue(): hanya status valid
-     * ───────────────────────────────────────────────────────────── */
-
     public function testReleaseQueueWhitelistsStatus(): void
     {
         $body = $this->methodBody('releaseQueue');
@@ -213,10 +209,6 @@ class QueueStatusHonestyTest extends TestCase
             );
         }
     }
-
-    /* ─────────────────────────────────────────────────────────────
-     * 3. Integrasi dengan refund (T17a)
-     * ───────────────────────────────────────────────────────────── */
 
     /**
      * Baris yang ditandai 'failed' oleh DownloadService juga boleh

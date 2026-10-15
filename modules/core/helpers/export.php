@@ -28,15 +28,7 @@
  * @see admin/activity_log.php
  */
 
-/* ========================================================================
- * SpreadsheetML (.xls)
- * ===================================================================== */
-
 if (!function_exists('meel_xls_begin')) {
-    /**
-     * Buka dokumen SpreadsheetML: preamble, properti dokumen, dan pembuka
-     * tabel. Header HTTP dan penutup dokumen ditangani pemanggil.
-     */
     function meel_xls_begin(string $sheet_name): void
     {
         echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";

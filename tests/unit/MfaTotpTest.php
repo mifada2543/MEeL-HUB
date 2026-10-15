@@ -31,10 +31,6 @@ class MfaTotpTest extends TestCase
         require_once MEEL_ROOT . '/modules/auth/helpers/mfa.php';
     }
 
-    /* ─────────────────────────────────────────────────────────────
-     * 1. RFC 6238 — test vector resmi untuk SHA-1 (appendix B)
-     * ───────────────────────────────────────────────────────────── */
-
     /** @dataProvider rfcCounterProvider */
     public function testTotpMatchesRfc6238Vectors(int $counter, string $expected): void
     {
@@ -67,10 +63,6 @@ class MfaTotpTest extends TestCase
             'Base32 RFC harus decode ke ASCII "12345678901234567890"'
         );
     }
-
-    /* ─────────────────────────────────────────────────────────────
-     * 2. base32_decode — parsing & validasi input
-     * ───────────────────────────────────────────────────────────── */
 
     public function testBase32DecodeAcceptsLowercase(): void
     {
@@ -174,10 +166,6 @@ class MfaTotpTest extends TestCase
         );
     }
 
-    /* ─────────────────────────────────────────────────────────────
-     * 3. generate_mfa_secret
-     * ───────────────────────────────────────────────────────────── */
-
     public function testGeneratedSecretHasCorrectLengthAndAlphabet(): void
     {
         for ($i = 0; $i < 20; $i++) {
@@ -201,10 +189,6 @@ class MfaTotpTest extends TestCase
         }
         $this->assertCount(50, array_unique($secrets), 'Setiap secret harus unik (random_int, bukan mt_rand)');
     }
-
-    /* ─────────────────────────────────────────────────────────────
-     * 4. verify_totp — jendela waktu & timing-safe
-     * ───────────────────────────────────────────────────────────── */
 
     public function testVerifyTotpAcceptsCurrentSlice(): void
     {
@@ -288,10 +272,6 @@ class MfaTotpTest extends TestCase
         );
     }
 
-    /* ─────────────────────────────────────────────────────────────
-     * 5. generate_otpauth_url
-     * ───────────────────────────────────────────────────────────── */
-
     public function testOtpauthUrlFormat(): void
     {
         $url = generate_otpauth_url('ABCDEFGH', 'budi');
@@ -309,10 +289,6 @@ class MfaTotpTest extends TestCase
         $this->assertStringNotContainsString('@', substr($url, strlen('otpauth://totp/'), 30));
         $this->assertStringContainsString(rawurlencode('MEeL:budi@meel.com'), $url);
     }
-
-    /* ─────────────────────────────────────────────────────────────
-     * 6. Backup codes
-     * ───────────────────────────────────────────────────────────── */
 
     public function testGenerateBackupCodesShape(): void
     {
@@ -413,10 +389,6 @@ class MfaTotpTest extends TestCase
             'verify_backup_code() tidak boleh memutasi input caller secara in-place'
         );
     }
-
-    /* ─────────────────────────────────────────────────────────────
-     * Helper
-     * ───────────────────────────────────────────────────────────── */
 
     private function extractFunction(string $src, string $name): string
     {

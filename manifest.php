@@ -54,7 +54,6 @@ $base = function_exists('meel_base_url_path') ? meel_base_url_path() : '';
 // proyek (CLI, cron, symlink), hasilnya bisa berupa PATH ABSOLUT
 // filesystem seperti "/opt/lampp/htdocs/MEeL" — yang sama sekali bukan
 // URL.
-//
 // Guard: hasil WAJIB berupa path relatif yang diawali "/", atau kosong.
 // Anything else dibuang dan jatuh ke "/" — lebih baik PWA ter-scope di
 // root daripada URL yang berisi path filesystem.
@@ -63,11 +62,9 @@ $base = trim((string)$base);
 // meel_base_url_path() = substr(project_root, strlen(doc_root)). Kalau
 // DOCUMENT_ROOT kosong, strlen("") = 0, jadi hasilnya PATH PROYEK PENUH
 // seperti "/opt/lampp/htdocs/MEeL" — sama sekali bukan URL.
-//
 // Deteksi yang andal: kalau hasil base == path proyek, berarti
 // DOCUMENT_ROOT memang tidak menyumbang apa pun. Bandingkan langsung,
 // jangan lewat heuristik.
-//
 // CATATAN: path proyek harus dihitung dari ISI FILE INI (manifest.php ada
 // di root repo), bukan dirname(__DIR__) dari base_url.php — base_url.php
 // tinggal di modules/core/, jadi __DIR__ di sana satu level lebih dalam.
@@ -159,7 +156,6 @@ $absolutize = static function (string $url) use ($base): string {
 $manifest['scope'] = $scope;
 $manifest['id']    = $scope;
 
-/* ── start_url & shortcut: buang .php, absolutkan ───────────────── */
 if (isset($manifest['start_url']) && is_string($manifest['start_url'])) {
     $manifest['start_url'] = $absolutize($manifest['start_url']);
 }

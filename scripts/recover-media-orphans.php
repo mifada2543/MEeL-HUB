@@ -50,7 +50,6 @@ if (PHP_SAPI !== 'cli') {
 
 require_once __DIR__ . '/../auth/config.php';
 
-// ─── Opsi CLI ────────────────────────────────────────────────────────────────
 $opt = [
     'apply'    => false,
     'lookup'   => false,
@@ -120,7 +119,6 @@ if (!function_exists('generate_search_metadata')) {
     require_once __DIR__ . '/../modules/core/helpers/metadata.php';
 }
 
-// ─── Pindai file (menyalin logika admin_data.php) ────────────────────────────
 function meel_recover_scan(string $dir): array
 {
     $out = [];
@@ -168,7 +166,6 @@ function meel_recover_deslug(string $slug): string
     return trim((string) $t);
 }
 
-// ─── Kumpulkan kandidat ─────────────────────────────────────────────────────
 echo "═══ Mendeteksi file tanpa baris DB ═══\n";
 
 $ignored = array_flip(['.htaccess', 'default_video.png', 'music_default.png',
@@ -199,8 +196,6 @@ while ($x = $r->fetch_assoc()) {
     }
 }
 
-// ── Mode --dari-laporan: lewati seluruh deteksi & pencarian ──
-//
 // Kalau tidak, skrip akan menimpa $opt['report'] dengan hasil pindai ulang
 // yang BELUM punya metadata YouTube -- persis merusak laporan yang sedang
 // ditinjau. Laporan adalah masukan, bukan keluaran, pada mode ini.
@@ -232,24 +227,18 @@ $musicThumbIdx = meel_recover_thumb_index($musicThumbDir);
 
 $candidates = ['video' => [], 'music' => []];
 
-// ── Video: satu subdirektori tingkat-1 = satu video ──
-//
 // PENTING: hanya direktori TINGKAT-1 yang diperiksa, bukan rekursif.
-//
 // Video multi-kualitas menyimpan rendition di dalam foldernya sendiri, contoh
 // nyata `HPJSekai_1775268953` (baris #100, sudah ada di DB) berisi:
-//
 //   HPJSekai_1775268953/HPJSekai.m3u8     <- master playlist
 //   HPJSekai_1775268953/1080p/index.m3u8  <- rendition 1080p
 //   HPJSekai_1775268953/720p/index.m3u8   <- rendition 720p
 //   (952 file total)
-//
 // Memindai rekursif sambil memakai basename(dirname()) akan salah menangkap
 // `1080p`, `720p`, `v1`, `v2` sebagai "video" tersendiri -- sempat ketemu
 // 4 kandidat palsu, padahal video nyatanya cuma 53. Admin memakai pencocokan
 // segmen path sehingga tidak salah di titik ini; di sini cukup enumerasi
 // tingkat-1 dan rendition tersaring dengan sendirinya.
-//
 // Syarat tambahan: folder harus punya .m3u8 DI DALAMNYA SENDIRI. Folder tanpa
 // .m3u8 adalah unggahan yang terputus di tengah jalan dan memang tidak dapat
 // dipulihkan -- dilaporkan terpisah, bukan diam-diam diabaikan.
@@ -300,7 +289,6 @@ foreach (scandir($videoDir) as $entry) {
 echo "  folder tanpa .m3u8 (unggahan terputus, tidak dipulihkan): "
    . count($folderTidakLengkap) . "\n";
 
-// ── Musik: satu file = satu lagu ──
 foreach (meel_recover_scan($musicDir) as $p) {
     $name = basename($p);
     if (isset($ignored[$name]) || isset($dbMusicFiles[$name])) {
@@ -340,7 +328,6 @@ if ($nVideo === 0 && $nMusic === 0) {
     exit(0);
 }
 
-// ─── Pencarian YouTube (opsional) ───────────────────────────────────────────
 if ($opt['lookup']) {
     $ytdlp = trim((string) shell_exec('command -v yt-dlp 2>/dev/null'));
     if ($ytdlp === '') {
@@ -372,8 +359,6 @@ if ($opt['lookup']) {
             printf("  [%d/%d] %s %-42s ", $i, count($all), $k === 'video' ? 'V' : 'M',
                 mb_strimwidth($query, 0, 40, '…'));
 
-            // --dump-json, bukan --print dengan template JSON buatan sendiri.
-            //
             // Template itu rusak untuk tujuan ini: %(description) disisipkan
             // mentah ke dalam JSON, sedangkan deskripsi YouTube hampir selalu
             // mengandung tanda kutip dan baris baru. Satu kutip saja sudah
@@ -426,7 +411,6 @@ if ($opt['lookup']) {
     }
 }
 
-// ─── Laporan ────────────────────────────────────────────────────────────────
 $rows = [];
 foreach (['video', 'music'] as $k) {
     foreach ($candidates[$k] as $c) {
@@ -463,8 +447,6 @@ foreach ($rows as $c) {
 }
 
 terapkan:
-// ── Terapkan dari CSV yang sudah ditinjau, tanpa jaringan ──
-//
 // `--apply` tanpa opsi lain akan mengulang seluruh pencarian YouTube dari awal
 // (puluhan menit, dan hasilnya bisa BERUBAH karena pencarian YouTube tidak
 // deterministik). Kalau laporan CSV-nya sudah ditinjau, lebih baik terapkan
@@ -512,7 +494,6 @@ if ($opt['dari-laporan'] !== '') {
     exit(0);
 }
 
-// ─── Terapkan ──────────────────────────────────────────────────────────────
 $conn->begin_transaction();
 try {
     $insVideo = $conn->prepare(
@@ -553,7 +534,6 @@ try {
         //     sebagai string.
         // Konvensi app sendiri (modules/core/helpers/upload.php:294):
         // duration = i, user_id = i, sisanya s.
-        //
         // bind_param juga mewajibkan argumen BY REFERENCE; ekspresi cast
         // tidak bisa. Karena itu semua nilai ditampung di variabel dulu.
         $dur = (int) $c['durasi'];

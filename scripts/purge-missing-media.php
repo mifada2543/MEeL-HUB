@@ -43,7 +43,6 @@ require_once __DIR__ . '/../auth/config.php';
 
 $apply = in_array('--apply', $argv, true);
 
-// ── Daftar id beku ──────────────────────────────────────────────────────────
 // Diverifikasi 2026-10-15: setiap nama folder/berkas di bawah dicari di SELURUH
 // pohon media, nol ditemukan.
 $VIDEO_ID = [6, 8, 15, 33, 39, 42, 46, 107, 150, 151, 177, 179, 211, 216, 233, 249, 275];
@@ -90,7 +89,6 @@ if (str_contains($terpasangPada['src'], '/dev/sda1') === false) {
     exit(1);
 }
 
-// ── Penjaga 2: sanity check bahwa disk memang berisi konten ────────────────
 $jumlahBerkas = 0;
 $it = new RecursiveIteratorIterator(
     new RecursiveDirectoryIterator($base, FilesystemIterator::SKIP_DOTS),

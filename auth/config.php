@@ -19,12 +19,10 @@ if (!isset($password)) $password = '';
 if (!isset($db))       $db       = 'MEeL';
 if (!isset($conn) || $conn === null) {
     // PHP 8.1+ mengubah default mysqli menjadi MYSQLI_REPORT_ERROR|STRICT,
-    // jadi `new mysqli()` MELEMPAR mysqli_sql_exception, bukan mengembalikan
     // objek dengan connect_error terisi. Cek `$conn->connect_error` di bawah
     // karena itu tidak pernah tersentuh pada default itu -- koneksi gagal
     // berakhir sebagai fatal error 255 dengan stack trace, bukan pesan
     // "[MEeL SYSTEM ERROR]" yang sengaja ditulis di sini.
-    //
     // Kedua cabang tetap dipertahankan: catch menutup jalur default, dan
     // connect_error menutup jalur ketika ada yang mengaktifkan
     // mysqli_report(MYSQLI_REPORT_OFF).

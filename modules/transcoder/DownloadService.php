@@ -453,7 +453,6 @@ class DownloadService extends TranscoderBase
         // sukses/tidak. Success dinilai dari artefak: `.m3u8` harus ada dan
         // tidak nol (penentuannya di bawah). Ini sudah begitu sejak sebelum
         // T19 -- nilainya hanya dicatat, tidak pernah dibaca. Jangan
-        // menambahkan `if ($hls_exit !== 0) return ""` tanpa dipikirkan:
         // ffmpeg bisa exit non-nol sementara segment HLS-nya tetap lengkap,
         // jadi exit code bukan indikator yang bisa diandalkan di sini.
         $hls_exit = $paralel['hls']['exit'];
@@ -690,10 +689,6 @@ class DownloadService extends TranscoderBase
         }
     }
 
-    /**
-     * Terjemahkan baris stderr ffmpeg `time=HH:MM:SS.ss` menjadi
-     * persentase progres.
-     */
     private function emitFfmpegProgress(string $line, int $fileDur, int $maxPct): void
     {
         if ($fileDur <= 0) {

@@ -1,14 +1,11 @@
 <?php
-/**
- * MEeL-HUB — Contoh entry point (DATA: DB credentials + MEEL_* constants → settings.example.php).
- * Install: cp auth/settings.example.php auth/settings.php, cp auth/config.example.php auth/config.php, lalu isi nilai. PORTABILITY: semua path media terpusat di MEEL_HDD_BASE.
- */
+// Contoh entry point: cp settings.example.php settings.php, cp config.example.php
+// config.php, lalu isi nilai. Semua path media terpusat di MEEL_HDD_BASE.
 require_once __DIR__ . '/settings.example.php';
 
 require_once __DIR__ . '/../modules/core/bootstrap.php';
 
 // define('MEEL_ENV', 'production');
-// define('MEEL_ENV', 'development');
 
 if (!isset($conn) || $conn === null) {
     $conn = new mysqli($server, $username, $password, $db);
