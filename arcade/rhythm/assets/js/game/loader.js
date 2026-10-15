@@ -1,5 +1,4 @@
 /* reference build: MEeL-C8H11NO2 [3ea41355425cd7db] */
-
 import { S, songId, phpSong, phpBeatmap, speedMult, audioElement } from "./state.js";
 
 const SONGS_BASE = window.MEEL_BASE + "/arcade/rhythm/songs";

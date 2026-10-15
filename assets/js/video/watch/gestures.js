@@ -1,5 +1,4 @@
 /* reference build: MEeL-C6H9N3O3 [2d44eb51a5a056c6] */
-
 function setupMobileGestures() {
   if (!isTouchDevice) return;
   var plyr = document.querySelector(".plyr");

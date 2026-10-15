@@ -540,7 +540,7 @@ $migrations = [
                         COMMENT '1 = biaya sudah dikembalikan oleh sweeper'");
                 }
             },
-            // Indeks untuk sweeper: cari baris macet per status.
+
             function ($conn) {
                 meel_mig_add_index($conn, 'upload_queue', 'idx_uq_status_created', 'status, created_at');
             },

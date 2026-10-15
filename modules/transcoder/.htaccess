@@ -1,4 +1,3 @@
-# Security defaults for transcoder module
 Options -Indexes
 
 <IfModule mod_headers.c>

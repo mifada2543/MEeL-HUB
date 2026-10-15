@@ -275,9 +275,6 @@ public function testRunCliMaintenanceGuardsAgainstNonCliSapi(): void
             . 'housekeeping berat akan jalan di setiap request'
         );
 
-        // Guard harus jadi kondisi PERTAMA, sebelum efek samping apa pun.
-        // Kalau latch diperiksa lebih dulu, guard SAPI jadi tidak terjangkau
-        // pada panggilan kedua dan mulai kedengaran tidak sengaja lulus.
         $this->assertMatchesRegularExpression(
             '/if\s*\(\s*PHP_SAPI\s*!==\s*\'cli\'\s*\|\|\s*self::\$cliOnlyRan\s*\)\s*\{\s*return;/',
             $src,
@@ -309,18 +306,10 @@ public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
         foreach ($throttles as $f) {
             $backup[$f] = is_file($f) ? (string)file_get_contents($f) : null;
 
-            // File throttle bisa dimiliki proses lain (Apache/daemon) dengan
-            // mode 644, sementara test jalan sebagai user dev. Menimpanya
-            // langsung gagal dengan "Permission denied" -- dan itu bukan
-            // kegagalan kode, melainkan kegagalan setup.
-            //
-            // Isinya cuma timestamp unix untuk throttle; menghapusnya
-            // bratarti satu siklus throttle dilewati, dan test menulis ulang
-            // nilai fresh di bawah. Tidak ada state bisnis yang hilang.
             if (is_file($f) && !is_writable($f)) {
                 @unlink($f);
             }
-            file_put_contents($f, (string)time());   // isWithinThrottle() -> true
+            file_put_contents($f, (string)time());
         }
 
         try {
@@ -328,9 +317,6 @@ public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
             $latch->setAccessible(true);
             $latch->setValue(null, false);
 
-            // prepare() mengembalikan false supaya melintas di cabang
-            // "if (!$stmt) continue" -- tidak ada stmt nyata yang dieksekusi,
-            // jadi yang dihitung murni berapa kali DB disentuh.
             $calls = 0;
             $conn = $this->createMock(mysqli::class);
             $conn->method('prepare')->willReturnCallback(function () use (&$calls) {
@@ -357,7 +343,7 @@ public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
                 . 'housekeeping berat diulang tiap kali entry point ini dipanggil'
             );
 
-            $latch->setValue(null, false);   // jangan bocorkan state ke test lain
+            $latch->setValue(null, false);
         } finally {
             foreach ($backup as $f => $content) {
                 if ($content === null) {

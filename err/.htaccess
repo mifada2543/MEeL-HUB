@@ -1,4 +1,3 @@
-# Security defaults for error pages
 Options -Indexes
 
 <IfModule mod_headers.c>

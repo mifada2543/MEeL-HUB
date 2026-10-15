@@ -1,5 +1,4 @@
 /* reference build: MEeL-C5H9NO2 [fde5b40722b291f4] */
-
 import { S, DOM, CONST } from "./state.js";
 import { msToY, yToMs, snapMs, getCanvasPos, getLaneAndTime, findNoteAt } from "./canvas.js";
 import { draw, updateNoteInfo } from "./renderer.js";

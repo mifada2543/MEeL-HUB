@@ -143,8 +143,6 @@ class LucideLoadOrderTest extends TestCase
         $this->assertNotFalse($stubAt, 'partials/link.php harus memasang stub window.lucide');
         $this->assertNotFalse($libAt, 'partials/link.php harus memuat lucide.js');
 
-        // Stub sebelum tag script-nya, dan tag itu sendiri tidak boleh defer
-        // (defer menundanya ke setelah parse — persis yang harus dihindari).
         $this->assertLessThan(
             $libAt,
             $stubAt,

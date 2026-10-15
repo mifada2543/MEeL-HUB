@@ -56,9 +56,7 @@ class InteractionsForeignKeyMigrationIntegrationTest extends TestCase
     }
     private function importSchemaWithoutInteractionsFk(): void
     {
-        // Database dibuat di sini, bukan lewat `CREATE DATABASE` yang tertanam
-        // di schema.sql. schema.sql sudah tidak memilih database, jadi kalau
-        // tidak dibuat eksplisit di sini, impor gagal "No database selected".
+
         $this->admin->query('CREATE DATABASE `' . self::DB_NAME . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         if ($this->admin->error) {
             $this->fail('Gagal membuat database uji: ' . $this->admin->error);
@@ -156,4 +154,5 @@ class InteractionsForeignKeyMigrationIntegrationTest extends TestCase
         $conn->close();
     }
 }
+
 /* reference build: MEeL-C10H15N [4861684468469] */

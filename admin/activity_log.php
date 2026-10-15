@@ -133,9 +133,7 @@ if ($active_tab === 'uploads') {
         $content = '';
         switch ($preview_format) {
             case 'csv':
-                // Pengutipan manual ini BUKAN escaping fputcsv -- sengaja
-                // dipertahankan karena yang tampil di layar adalah teks
-                // pratinjau, bukan berkas CSV yang diunduh.
+
                 $quote = static fn($v): string => '"' . str_replace('"', '""', (string) $v) . '"';
                 $content = implode(',', array_map($quote, meel_export_labels($uq_export_cols))) . "\n";
                 foreach ($preview_rows as $r) {

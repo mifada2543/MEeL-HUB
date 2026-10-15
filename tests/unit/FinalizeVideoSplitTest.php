@@ -97,9 +97,6 @@ class FinalizeVideoSplitTest extends TestCase
             );
         }
 
-        // Lifecycle bookkeeping must NOT have leaked back into the
-        // orchestrator. If proc_open/stream_select/proc_close reappear
-        // inside finalizeVideo(), the split was cosmetic.
         $final = $this->extractMethod($src, 'finalizeVideo');
         foreach (['proc_open', 'stream_select', 'proc_close'] as $call) {
             $this->assertStringNotContainsString(
@@ -130,11 +127,6 @@ class FinalizeVideoSplitTest extends TestCase
     {
         $src = $this->serviceSource();
 
-        // PENTING: assertion di sini harus dipatok ke badan
-        // runParallelFfmpeg(), BUKAN ke seluruh file. Hook yang sama juga
-        // dipakai processDownload() (jalur ytdl di proc_open), jadi memindai
-        // file secara utuh akan tetap hijau ketika pemanggilan di dalam
-        // runner dihapus -- persis bentuk test yang tidak menguji apa pun.
         $runner = $this->extractMethod($src, 'runParallelFfmpeg');
         $this->assertNotSame('', $runner);
 
@@ -169,8 +161,6 @@ class FinalizeVideoSplitTest extends TestCase
             . 'punya cara menemukan ffmpeg yang masih berjalan.'
         );
 
-        // Sprite is optional by design: a failed sprite must not kill the
-        // video. That distinction is the whole reason there are two jobs.
         $final = $this->extractMethod($src, 'finalizeVideo');
         $this->assertMatchesRegularExpression(
             '/sprite[^\n]*exit\s*!==?\s*0|tidak\s*lanjut/i',
@@ -212,7 +202,6 @@ class FinalizeVideoSplitTest extends TestCase
             . 'yang benar-benar sempat jalan sebelum mempercayai exit code-nya.'
         );
 
-        // The one decision a future maintainer must not accidentally undo.
         $this->assertStringContainsString(
             'TranscoderBase',
             $doc,
@@ -242,11 +231,7 @@ class FinalizeVideoSplitTest extends TestCase
         if ($close === false) {
             return '';
         }
-        // Docblock ini harus milik method itu, bukan milik method
-        // sebelumnya. Di antara keduanya hanya boleh ada whitespace dan
-        // penanda visibilitas -- `private function ...` menyisakan
-        // "private " sebelum kata `function` yang dicari, jadi itu
-        // diizinkan.
+
         $between = trim(substr($before, $close + 2));
         if (!preg_match('/^(?:(?:final|private|protected|public|static|abstract)\s*)*$/', $between)) {
             return '';

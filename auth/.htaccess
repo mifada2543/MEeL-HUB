@@ -1,4 +1,3 @@
-# Security defaults for auth
 Options -Indexes
 DirectoryIndex index.php index.html
 

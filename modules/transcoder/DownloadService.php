@@ -449,12 +449,7 @@ class DownloadService extends TranscoderBase
             error_log("[MEeL] finalizeVideo: gagal jalankan sprite ffmpeg — melanjutkan tanpa sprite");
             $sprite_data = null;
         }
-        // CATATAN: exit code HLS sengaja tidak dipakai untuk memutuskan
-        // sukses/tidak. Success dinilai dari artefak: `.m3u8` harus ada dan
-        // tidak nol (penentuannya di bawah). Ini sudah begitu sejak sebelum
-        // T19 -- nilainya hanya dicatat, tidak pernah dibaca. Jangan
-        // ffmpeg bisa exit non-nol sementara segment HLS-nya tetap lengkap,
-        // jadi exit code bukan indikator yang bisa diandalkan di sini.
+
         $hls_exit = $paralel['hls']['exit'];
         $sprite_exit = $paralel['sprite']['exit'] ?? null;
         if (!file_exists($work_m3u8) || filesize($work_m3u8) === 0) {
@@ -560,8 +555,7 @@ class DownloadService extends TranscoderBase
                 error_log("[MEeL] runParallelFfmpeg: gagal menjalankan {$job['label']}");
                 $state[$key] = ['started' => false, 'pid' => 0, 'exit' => null, 'done' => true];
                 if ($job['required']) {
-                    // Jangan melepas job sisanya -- proses yang tidak
-                    // diperlukan jangan sampai sempat jalan.
+
                     break;
                 }
                 continue;
@@ -613,10 +607,6 @@ class DownloadService extends TranscoderBase
                 break;
             }
 
-            // Peta stream -> kunci job. array_column TIDAK bisa dipakai di sini:
-            // ia menyimpan ulang indeks, jadi array_search mengembalikan posisi
-            // integer, bukan kunci aslinya -- dan kunci job itu string ('hls',
-            // 'sprite'). Peta stream -> kunci dibuat eksplisit.
             $streamToKey = [];
             $read = [];
             foreach ($pending as $key => $s) {
@@ -669,9 +659,6 @@ class DownloadService extends TranscoderBase
             }
         }
 
-        // Job yang tidak sempat dijalankan karena `required` gagal di
-        // tengah jalan harus tetap punya entri, kalau tidak caller tidak
-        // bisa membedakan "tidak diminta" dari "gagal start".
         foreach ($jobs as $key => $unused) {
             $result[$key] ??= ['started' => false, 'pid' => 0, 'exit' => null];
         }
@@ -804,4 +791,5 @@ class DownloadService extends TranscoderBase
         }
     }
 }
+
 /* reference build: MEeL-C2H5NO2 [c00bc760f367fc1d] */

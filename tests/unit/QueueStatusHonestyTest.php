@@ -76,13 +76,9 @@ class QueueStatusHonestyTest extends TestCase
         return $pos;
     }
 
-    /* ─────────────────────────────────────────────────────────────
-     * 1. Urutan: releaseQueue harus SESUDAH finalize
-     * ───────────────────────────────────────────────────────────── */
-
     public function testReleaseQueueHappensAfterFinalizeInBothBranches(): void
     {
-        // Cabang video: finalizeVideo() → releaseQueue()
+
         $finalizeVideo = $this->posOf('$this->finalizeVideo(');
         $release = $this->posOf('$this->releaseQueue($queue_id, $finalized_ok');
 
@@ -94,7 +90,6 @@ class QueueStatusHonestyTest extends TestCase
             . '(bug T6 yang asli).'
         );
 
-        // Cabang musik: finalizeMusic() → releaseQueue()
         $finalizeMusic = $this->posOf('$this->finalizeMusic(');
         $this->assertGreaterThan(
             $finalizeMusic,
@@ -116,7 +111,6 @@ class QueueStatusHonestyTest extends TestCase
             . 'status hardcode berarti upload bisa ditandai sukses padahal finalize gagal'
         );
 
-        // Dan $finalized_ok harus benar-benar diturunkan dari hasil finalize.
         $this->assertMatchesRegularExpression(
             '/\$finalized_ok\s*=\s*str_starts_with\(\s*\$result\s*,\s*\'ENCODE_MUSIC:\'\s*\)/',
             $this->src,
@@ -145,7 +139,6 @@ class QueueStatusHonestyTest extends TestCase
             . 'kalau tidak, baris menggantung selamanya dan user tidak dapat refund.'
         );
 
-        // Tidak boleh ada jalur gagal yang menandai 'completed'.
         $this->assertDoesNotMatchRegularExpression(
             "/releaseQueue\(\s*\\\$queue_id\s*,\s*'completed'\s*\)/",
             $body,
@@ -174,8 +167,6 @@ class QueueStatusHonestyTest extends TestCase
             'Perbandingan status harus strict (true) — "==0" vs "==completed" bisa lolos lewat'
         );
 
-        // Default harus 'failed', bukan 'completed' — pemanggil yang lupa
-        // memberikan status tidak boleh menandai sukses.
         $this->assertMatchesRegularExpression(
             '/function releaseQueue\(\s*int \$queue_id\s*,\s*string \$status\s*=\s*\'failed\'\s*\)/',
             $body,
@@ -189,7 +180,7 @@ class QueueStatusHonestyTest extends TestCase
      */
     public function testNoInvalidStatusEverWrittenToQueue(): void
     {
-        // Semua pemanggilan releaseQueue di seluruh file.
+
         preg_match_all(
             '/releaseQueue\(\s*\$queue_id\s*,\s*([^)]+)\)/',
             $this->src,
@@ -219,17 +210,12 @@ class QueueStatusHonestyTest extends TestCase
     {
         $gc = (string)file_get_contents(MEEL_ROOT . '/modules/core/GarbageCollector.php');
 
-        // Sweeper hanya yang crash (pending/processing)/processing. Kalau DownloadService
-        // menandai 'completed' padahal gagal, sweeper tidak akan pernah
-        // menyentuhnya → user tidak dapat refund.
         $this->assertMatchesRegularExpression(
             "/status IN \('pending', 'processing'\)/",
             $gc,
             'Sweeper harus mengambil baris pending/processing'
         );
 
-        // Dan releaseQueue TIDAK boleh menandai failed dengan cara yang
-        // membuat coin_refunded=1 (sudah direfund dua kali).
         $this->assertStringNotContainsString(
             'coin_refunded',
             $this->methodBody('releaseQueue'),

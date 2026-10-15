@@ -121,9 +121,6 @@ class ClassFileMapTest extends TestCase
             'Peta $functions di functional_test.php tidak terbaca.'
         );
 
-        // Dua peta itu harus benar-benar terpisah -- kalau tidak, kelas dan
-        // fungsi tercampur dan tidak ada yang bisa membedakan "salah" dari
-        // "benar tapi salah jenis".
         $namaKelas = array_column($maps['classes'], 0);
         $this->assertNotContains(
             'log_activity',
@@ -190,8 +187,7 @@ class ClassFileMapTest extends TestCase
             }
 
             $src = (string) file_get_contents($abs);
-            // Menghormati awalan yang sah: `function`, `public function`,
-            // `public static function`, `abstract function`.
+
             $pola = '/(?:^|[;{}\s])function\s+&?' . preg_quote($fn, '/') . '\s*\(/m';
 
             if (!preg_match($pola, $src)) {

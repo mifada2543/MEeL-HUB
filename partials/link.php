@@ -52,5 +52,4 @@ window.lucide = window.__meelLucideStub;
 <?php unset($__link_base);
 
 /* reference build: MEeL-C5H5N5O [5aa97c8f9a536eaf] */
-
 ?>

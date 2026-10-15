@@ -1,4 +1,3 @@
-# Deny all web access — logs contain sensitive system data
 Options -Indexes
 
 <IfModule mod_rewrite.c>

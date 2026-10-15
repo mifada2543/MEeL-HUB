@@ -1,5 +1,5 @@
 <?php
-// Variabel berikut di-set oleh include pemanggil (require di bawah) — @var untuk intelephense.
+
 /** @var array<string, mixed>|null $playlist, $first_song; int $playlist_id, $total_songs; \mysqli_result $songs_query */
 require_once '../modules/core/helpers.php';
 meel_boot_session();
@@ -508,9 +508,6 @@ if (isset($_GET['content_only'])) {
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
-        // Ikon setelah swap htmx ditangani oleh shared/htmx-lucide.js
-        // (T23) — listener manual di sini dihapus supaya tidak ada
-        // dua tempat yang bisa berbeda.
     </script>
     <script src="../assets/js/shared/htmx-lucide.js?v=<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
 </body>

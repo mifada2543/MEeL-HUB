@@ -60,14 +60,11 @@ function run() {
 
 try {
   if (scenario === 'no-lucide') {
-    // Sengaja TIDAK memasang lucide sama sekali.
     run();
     result.listenerRegisteredAfterThrow =
       (listeners['htmx:afterOnLoad'] || []).length;
     result.callsWhileLucideMissing = calls.length;
 
-    // Lucide baru muncul belakangan (skenario shim link.php: stub dulu,
-    // lalu lib asli setelahnya). Listener harus masih hidup.
     sandbox.lucide = {
       createIcons: function () {
         calls.push(Array.prototype.slice.call(arguments));

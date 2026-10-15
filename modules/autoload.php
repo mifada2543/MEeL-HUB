@@ -46,6 +46,7 @@ spl_autoload_register(function (string $class) {
         'SearchEngine' => __DIR__ . '/media/SearchEngine.php',
         'SwPrecache' => __DIR__ . '/core/SwPrecache.php',
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 37894cfe (redunisasi)
 =======
         // CATATAN: entri 'DriveService' -> drive/DriveService.php DIHAPUS
@@ -58,6 +59,9 @@ spl_autoload_register(function (string $class) {
         // lalu fatal "class not found" -- dengan pesan yang menunjuk berkas
         // yang salah. Ditangkap ClassFileMapTest.
 >>>>>>> 7538e3ee (refactor(media): pecah MediaLibrary.php jadi 3 file, perbaiki peta yang mati)
+=======
+
+>>>>>>> e161aaa8 (style: sweepcomments non-docblock menyeluruh, watermark dipertahankan)
     ];
 
     if (isset($map[$class])) {

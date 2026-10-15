@@ -1,6 +1,3 @@
-# Deny all web access — modules/auth berisi seluruh infrastruktur keamanan
-# (helpers, RateLimiter, SsrfGuard, ValidatingProxy). Hanya boleh di-include
-# via PHP (web) atau di-spawn sebagai subproses CLI.
 Options -Indexes
 
 <IfModule mod_rewrite.c>

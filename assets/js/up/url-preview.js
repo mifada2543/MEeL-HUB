@@ -1,5 +1,4 @@
 /* reference build: MEeL-C4H9NO2 [97df948c407ab4d1] */
-
 (function () {
   "use strict";
   var urlInput = document.getElementById("url-input");

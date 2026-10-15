@@ -1,6 +1,3 @@
-/* MEeL — Documentation Shared JavaScript */
-
-// Navigation Structure
 const DOCS = {
     en: {
         label: 'English',
@@ -42,7 +39,6 @@ const DOCS = {
     }
 };
 
-// Partial Loader
 async function loadPartial(url, targetId) {
     try {
         const res = await fetch(url);
@@ -57,7 +53,6 @@ async function loadPartial(url, targetId) {
     }
 }
 
-// URL Params
 function getDocParams() {
     const p = new URLSearchParams(window.location.search);
     return {
@@ -66,7 +61,6 @@ function getDocParams() {
     };
 }
 
-// Render Navbar
 function renderNavbar(lang, activeFile) {
     const docs = DOCS[lang] || DOCS.en;
     const otherLang = lang === 'en' ? 'id' : 'en';
@@ -90,7 +84,6 @@ function renderNavbar(lang, activeFile) {
     }
 }
 
-// Load & Render Markdown
 const DOC_STATE = { lang: 'en', file: 'index' };
 
 async function loadDoc(lang, file) {
@@ -123,7 +116,6 @@ async function loadDoc(lang, file) {
         const md = await res.text();
         const html = marked.parse(md, { gfm: true });
 
-        // Internal .md links → viewer links
         const fixedHtml = html.replace(
             /href="([^"]+)\.md"/g,
             (match, path) => {
@@ -154,12 +146,10 @@ async function loadDoc(lang, file) {
     }
 }
 
-// Load Footer
 async function loadFooter() {
     await loadPartial('partials/footer.html', 'footer');
 }
 
-// Init Documentation Page
 function initDocViewer() {
     const params = getDocParams();
     DOC_STATE.lang = params.lang;

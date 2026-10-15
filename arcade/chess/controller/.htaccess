@@ -1,4 +1,3 @@
-# Security defaults for chess controller
 Options -Indexes
 
 <IfModule mod_headers.c>

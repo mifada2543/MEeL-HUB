@@ -1,5 +1,5 @@
 <?php
-/** @var array<string, mixed> $item      Baris data dari ProfileRepository. 
+/** @var array<string, mixed> $item      Baris data dari ProfileRepository.
  *  @var string               $active_tab Tab aktif: all|video|music.*/
 
 $is_music = ($item['type'] ?? $active_tab) === 'music';

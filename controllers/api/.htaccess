@@ -1,4 +1,3 @@
-# Security defaults for controllers
 Options -Indexes
 
 <IfModule mod_headers.c>

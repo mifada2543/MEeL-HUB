@@ -43,7 +43,6 @@ $pasang = [
 
 $dirThumb = meel_media_base_path('video') . '/thumbnail/';
 
-// Semua berkas harus benar-benar ada sebelum satu baris pun ditulis.
 foreach ($pasang as [$fn, $thumb]) {
     if (!is_file($dirThumb . $thumb)) {
         fwrite(STDERR, "❌ {$thumb} tidak ada -- dibatalkan.\n");
@@ -65,7 +64,6 @@ try {
     }
     $stmt->close();
 
-    // Tidak ada lagi video yang menunjuk default_thumb.webp yang tidak ada.
     $cek = $conn->query("SELECT COUNT(*) c FROM video WHERE thumbnail = 'default_thumb.webp'")->fetch_assoc();
     if ((int) $cek['c'] !== 0) {
         throw new RuntimeException("Masih ada {$cek['c']} video yang menunjuk default_thumb.webp");

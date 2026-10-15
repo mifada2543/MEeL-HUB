@@ -170,6 +170,7 @@ class System
         $uptime_sec = (float) explode(' ', (string) $uptime_raw)[0];
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         $up_int     = intval($uptime_sec);
         $days  = intdiv($up_int, 86400);
         $hours = intdiv($up_int % 86400, 3600);
@@ -189,6 +190,9 @@ class System
         // (int)floor(...) memicu "Implicit conversion from float ... loses
         // precision" di PHP 8.3 (error di PHP 9). Solusi: bulatkan detik ke
         // integer DULU, lalu pakai intdiv() — tanpa loss dan tanpa deprecation.
+=======
+
+>>>>>>> e161aaa8 (style: sweepcomments non-docblock menyeluruh, watermark dipertahankan)
         $uptime_int = (int) $uptime_sec;
         $days = intdiv($uptime_int, 86400);
         $hours = intdiv($uptime_int % 86400, 3600);
@@ -335,4 +339,5 @@ class System
         return false;
     }
 }
+
 /* reference build: MEeL-C8H11NO2 [b2fdcd8a80692ce3] */

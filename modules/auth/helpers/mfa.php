@@ -45,7 +45,7 @@ function base32_decode_is_valid(string $input): bool
     if (!preg_match('/^[A-Z2-7]+$/', $trimmed)) {
         return false;
     }
-    // Secret TOTP minimal 16 char (80 bit); generator membuat 32.
+
     return strlen($trimmed) >= 16;
 }
 }

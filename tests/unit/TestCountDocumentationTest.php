@@ -70,7 +70,6 @@ class TestCountDocumentationTest extends TestCase
             }
             $src = (string)file_get_contents($path);
 
-            // Pola: angka yang langsung diikuti kata test/Unit/Integration/kasus uji.
             if (preg_match('/(?<![+\d])\b(\d{2,4})\s+(Unit|Integration|Tests?\b|kasus uji|test cases)/i', $src, $m)) {
                 $violations[] = sprintf('%s: "%s"', $file, trim($m[0]));
             }
@@ -104,10 +103,6 @@ class TestCountDocumentationTest extends TestCase
         $unitDir = MEEL_ROOT . '/tests/unit';
         $this->assertDirectoryExists($unitDir, 'tests/unit tidak ditemukan');
 
-        // Hitung file test sebagai cara kasar yang stabil & cepat —
-        // angkaPasti dari PHPUnit bisa berubah karena filter/skip, dan
-        // tujuankan di sini bukan pengukuran, tapi bukti bahwa repo punya
-        // test dalam jumlah yang jauh dari "0".
         $files = glob($unitDir . '/*Test.php') ?: [];
         $this->assertGreaterThanOrEqual(
             40,
@@ -204,7 +199,6 @@ class TestCountDocumentationTest extends TestCase
             $c = $src[$i];
             $n = $src[$i + 1] ?? '';
 
-            // komentar satu baris
             if ($c === '/' && $n === '/') {
                 while ($i < $len && $src[$i] !== "\n") {
                     $out .= ' ';
@@ -219,7 +213,7 @@ class TestCountDocumentationTest extends TestCase
                 }
                 continue;
             }
-            // komentar blok
+
             if ($c === '/' && $n === '*') {
                 $out .= '  ';
                 $i += 2;
@@ -233,7 +227,7 @@ class TestCountDocumentationTest extends TestCase
                 }
                 continue;
             }
-            // string literal
+
             if ($c === "'" || $c === '"') {
                 $quote = $c;
                 $out .= ' ';
@@ -277,7 +271,7 @@ class TestCountDocumentationTest extends TestCase
 
         if (preg_match_all('/->setValue\(/', $src, $m, PREG_OFFSET_CAPTURE)) {
             foreach ($m[0] as [$needle, $offset]) {
-                $i = $offset + strlen($needle) - 1;   // posisi "("
+                $i = $offset + strlen($needle) - 1;
                 $depth = 0;
                 $hasTopLevelComma = false;
 
@@ -296,7 +290,7 @@ class TestCountDocumentationTest extends TestCase
                 }
 
                 if ($depth !== 0 || $hasTopLevelComma) {
-                    continue;   // tidak tertutup, atau memang 2+ argumen
+                    continue;
                 }
                 $lines[] = substr_count(substr($src, 0, $offset), "\n") + 1;
             }
@@ -313,10 +307,6 @@ class TestCountDocumentationTest extends TestCase
         }
         $src = (string)file_get_contents($path);
 
-        // Bentuk yang memicu deprecation PHP 8.3:
-        // atau bentuk float-modulo dengan nama variabel apa pun:
-        //
-        // Pola yang benar: bulatkan ke integer dulu, lalu intdiv():
         $this->assertDoesNotMatchRegularExpression(
             '/\(int\)\s*floor\(\s*\$[A-Za-z_][A-Za-z0-9_]*\s*[%\/]/',
             $src,
@@ -324,7 +314,6 @@ class TestCountDocumentationTest extends TestCase
             . 'from float … loses precision" di PHP 8.3. Bulatkan ke integer dulu lalu pakai intdiv().'
         );
 
-        // Sebaliknya, pastikan pola yang benar benar-benar dipakai.
         $this->assertMatchesRegularExpression(
             '/intdiv\(\s*\$uptime_int\s*,/',
             $src,

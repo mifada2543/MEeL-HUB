@@ -38,8 +38,6 @@ module.exports = {
 
   theme: {
     extend: {
-      // Warna yang tidak ada di skala default Tailwind, tapi dipakai
-      // sebagai class utility: bg-bg, text-muted, bg-card, bg-ink-2/3.
       colors: {
         bg: '#080b11',
         muted: '#455060',
@@ -51,9 +49,6 @@ module.exports = {
         card: '#0e1118',
       },
 
-      // PENTING: ini override, bukan tambahan. Mengganti font default
-      //_tailwind_ berarti preflight ikut berubah — `html` dan `code`/`kbd`
-      // mewarisi DM Sans / IBM Plex Mono, bukan font default Tailwind.
       fontFamily: {
         sans: ['DM Sans', 'sans-serif'],
         mono: ['IBM Plex Mono', 'monospace'],
@@ -78,11 +73,6 @@ module.exports = {
 
       animation: {
         'card-in': 'cardIn .35s cubic-bezier(.22,1,.36,1)',
-        // WAJIB empat angka. `cubic-bezier()` dengan tiga angka itu invalid
-        // menurut spesifikasi, dan browser membuang seluruh deklarasi
-        // animation — jadi ikon transcode berhenti "pop". Dokumentasi T10
-        // menuliskan bentuk tiga angka; artefak ter-commit memakai empat.
-        // Yang benar adalah yang empat, dan itu yang dipakai di sini.
         'icon-pop': 'iconPop .4s cubic-bezier(.34,1.56,.64,1) .1s both',
         indeterminate: 'indeterminate 1.4s ease-in-out infinite',
       },

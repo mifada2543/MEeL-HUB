@@ -43,30 +43,18 @@ require_once __DIR__ . '/../auth/config.php';
 
 $apply = in_array('--apply', $argv, true);
 
-// Diverifikasi 2026-10-15: setiap nama folder/berkas di bawah dicari di SELURUH
-// pohon media, nol ditemukan.
 $VIDEO_ID = [6, 8, 15, 33, 39, 42, 46, 107, 150, 151, 177, 179, 211, 216, 233, 249, 275];
 $MUSIC_ID = [53, 111, 141];
 
-// view_logs tidak punya FK ke video/music, jadi barisnya tidak ikut terhapus
-// dan akan jadi yirim. Daftar ini ikut dihapus supaya tidak menumpuk.
 $VIEWLOG_ID = [7, 159, 236, 240, 314, 352, 366, 382, 524, 638, 642, 680, 717];
 
-// ── Penjaga 1: drive media harus benar-benar terpasang ───────────────────────
 $base = rtrim(MEEL_HDD_BASE, '/');
 
 $mounts = [];
 foreach (file('/proc/self/mountinfo') as $line) {
     $f = preg_split('/\s+/', trim($line));
     if (count($f) < 5) continue;
-    // Format /proc/self/mountinfo:
-    //   [0..3] id, parent, major:minor, root
-    //   [4]    titik mount
-    //   [5]    opsi mount
-    //   [6,7]  opsional, [7] selalu "-"
-    //   [8]    TIPE filesystem (ext4, tmpfs, ...)
-    //   [9]    SUMBER / device (bukan [8]!)
-    //   [10]   opsi superblock
+
     $mounts[] = ['point' => $f[4], 'fstype' => $f[8] ?? '', 'src' => $f[9] ?? ''];
 }
 $terpasangPada = null;
@@ -104,7 +92,6 @@ if ($jumlahBerkas < 200) {
     exit(1);
 }
 
-// ── Penjaga 3: file yang dianggap "ada" harus benar-benar ada ───────────────
 $sentinel = $conn->query("SELECT filename FROM video ORDER BY id LIMIT 1")->fetch_assoc();
 if ($sentinel && !file_exists(meel_media_base_path('video') . '/' . $sentinel['filename'])) {
     fwrite(STDERR, "❌ DITOLAK: file video yang seharusnya ada tidak ditemukan: {$sentinel['filename']}\n");
@@ -128,7 +115,7 @@ try {
     $st = $conn->prepare("DELETE FROM video WHERE id = ?");
     foreach ($VIDEO_ID as $id) {
         $row = $conn->query("SELECT id, title, filename FROM video WHERE id = {$id}")->fetch_assoc();
-        if ($row === null) continue;   // sudah tidak ada (aman, idempoten)
+        if ($row === null) continue;
         $st->bind_param('i', $id);
         $st->execute();
         $hapusVideo += $st->affected_rows;
@@ -155,7 +142,6 @@ try {
     }
     $st->close();
 
-    // Tidak boleh ada sisa dari daftar beku.
     $sisa = 0;
     foreach ($VIDEO_ID as $id) {
         $sisa += (int) $conn->query("SELECT COUNT(*) c FROM video WHERE id = {$id}")->fetch_assoc()['c'];
@@ -167,10 +153,6 @@ try {
         throw new RuntimeException("Masih ada {$sisa} baris dari daftar beku yang tidak terhapus");
     }
 
-    // commit() HANYA bila --apply. Memanggil commit() lebih dulu lalu
-    // rollback() setelah commit adalah no-op -- rollback sesudah commit tidak
-    // membatalkan apa pun. Kalau urutannya seperti itu, mode laporan justru
-    // akan menghapus seluruhnya. Rollback harus terjadi SEBELUM commit.
     if ($apply) {
         $conn->commit();
         printf("\n── Ringkasan ──\n");

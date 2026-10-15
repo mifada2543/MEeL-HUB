@@ -5,7 +5,6 @@ use PHPUnit\Framework\TestCase;
 require_once __DIR__ . '/support/MysqlFake.php';
 
 /* reference build: MEeL-C1H1N1O2 [2f6a0d5b8c41e937] */
-
 class PickRandomIdsTest extends TestCase
 {
     protected function setUp(): void

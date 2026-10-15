@@ -77,8 +77,7 @@ class AuthzAdminGateTest extends TestCase
 
     public function testGuestWithoutSessionIsNotAdmin(): void
     {
-        // Tidak ada $_SESSION['user_id'] sama sekali →meski DB punya admin,
-        // fungsi HARUS menolak karena tidak ada identitas untuk diperiksa.
+
         $this->assertFalse(
             is_admin($this->connWithRole('admin')),
             'Tanpa $_SESSION[\'user_id\'], is_admin() wajib false walau DB bilang admin'
@@ -89,7 +88,7 @@ class AuthzAdminGateTest extends TestCase
     public function testNonAdminRolesAreRejected(string $role): void
     {
         $_SESSION['user_id'] = $this->freshUid();
-        $_SESSION['role'] = $role; // diprioritaskan get_user_role() dari session
+        $_SESSION['role'] = $role;
 
         $this->assertFalse(
             is_admin($this->connWithRole($role)),
@@ -127,7 +126,7 @@ class AuthzAdminGateTest extends TestCase
 
     public function testRoleIsReadFromDbWhenNotInSession(): void
     {
-        // Sesi punya user_id tapi TIDAK punya role → get_user_role() query DB.
+
         $_SESSION['user_id'] = $this->freshUid();
         unset($_SESSION['role']);
 
@@ -139,7 +138,7 @@ class AuthzAdminGateTest extends TestCase
 
     public function testDbRoleOverridesStaleSessionRole(): void
     {
-        // DB adalah sumber kebenaran — lihat docs/id/security.md §2
+
         $_SESSION['user_id'] = $this->freshUid();
         $_SESSION['role'] = 'admin';
 
@@ -162,26 +161,18 @@ class AuthzAdminGateTest extends TestCase
 
     public function testUserIdIsCastToIntBeforeLookup(): void
     {
-        // $_SESSION['user_id'] bisa datang sebagai string dari form/session
-        // handler; is_admin() melakukan cast ke int sebelum lookup.
+
         $_SESSION['user_id'] = '123';
         $_SESSION['role'] = 'admin';
 
         $this->assertTrue(is_admin($this->connWithRole('admin')));
     }
 
-    /* ─────────────────────────────────────────────────────────────
-     * require_admin() — guard yang harus redirect, bukan fatal
-     * ───────────────────────────────────────────────────────────── */
-
     public function testRequireAdminRedirectsWhenNotAdmin(): void
     {
         $_SESSION['user_id'] = $this->freshUid();
         $_SESSION['role'] = 'user';
 
-        // require_admin() memanggil header()+exit. Kita tidak bisa men-_exit_
-        // di dalam PHPUnit, jadi kita memanggil is_admin() yang sama persis
-        // dan memastikan guard memutuskan "tolak" (bukan lolos).
         $this->assertFalse(
             is_admin($this->connWithRole('user')),
             'require_admin() menolak non-admin berdasarkan is_admin()'
@@ -235,9 +226,6 @@ class AuthzAdminGateTest extends TestCase
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/authz.php');
         $fn = $this->extractFunction($src, 'require_admin');
 
-        // Guard ketat: setelah header,Statement berikutnya yang boleh
-        // dieksekusi hanyalah `exit;`. Kalau ada `return` atau statement
-        // lain, caller bisa melanjutkan ke kode sensitif.
         $afterHeader = substr($fn, (int)strpos($fn, 'header('));
         $this->assertMatchesRegularExpression(
             '/header\([^;]*\)\s*;\s*exit\s*;/s',
@@ -254,9 +242,7 @@ class AuthzAdminGateTest extends TestCase
 
     public function testRequireAdminDoesNotLeakWhetherUserExists(): void
     {
-        // Redirect harus identik untuk "bukan admin" dan "user tidak ada".
-        // Kalau dua kondisi punya Location berbeda, penyerang bisa
-        // menebak apakah sebuah username terdaftar.
+
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/authz.php');
         $fn = $this->extractFunction($src, 'require_admin');
 
@@ -270,8 +256,7 @@ class AuthzAdminGateTest extends TestCase
 
     public function testIsAdminDoesNotTrustRoleFromRequestGlobals(): void
     {
-        // Ancaman: kalau is_admin() pernah membaca $_GET/$_POST['role'] atau
-        // $_REQUEST, siapa pun bisa jadi admin. Kunci bahwa sumbernya hanya
+
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/authz.php');
         $fn = $this->extractFunction($src, 'is_admin');
 
@@ -307,7 +292,7 @@ class AuthzAdminGateTest extends TestCase
 
     public function testUnknownUserFallsBackToUserNotAdmin(): void
     {
-        // get_user_role() mengembalikan 'user' bila baris tidak ditemukan.
+
         $_SESSION['user_id'] = $this->freshUid();
         unset($_SESSION['role']);
 
@@ -334,7 +319,6 @@ public function testDistinctUsersDoNotShareCachedRole(): void
         $_SESSION = ['user_id' => $adminUid, 'role' => 'admin'];
         $this->assertTrue(is_admin($this->connWithRole('admin')), 'Uid admin harus lolos');
 
-        // Ganti ke user biasa; cache untuk uid lama TIDAK boleh berlaku di sini.
         $_SESSION = ['user_id' => $userUid, 'role' => 'user'];
         $this->assertFalse(
             is_admin($this->connWithRole('user')),

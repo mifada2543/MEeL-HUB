@@ -219,8 +219,7 @@ if (!function_exists('meel_storage_guard')) {
         exit;
     }
 }
-// Efek samping saat berkas dimuat. HARUS setelah definisi di atas:
-// meel_storage_ready() harus sudah ada.
+
 if (PHP_SAPI !== 'cli' && !defined('MEEL_HDD_CHECKED')) {
     define('MEEL_HDD_CHECKED', true);
     if (!meel_storage_ready()) {

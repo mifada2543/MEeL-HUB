@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# scripts/verify_security.sh — verifikasi keamanan satu-perintah: PHPUnit subset
-# (SsrfGuard|DriveSecurity|ValidatingProxy), security_test, functional_test, probe 403
-# private_admins, opsional --deploy. Exit code: 0 lulus, 1 gagal, 2 argumen tak dikenal.
 
 set -u
 
