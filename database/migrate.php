@@ -470,7 +470,6 @@ $migrations = [
                 $conn->query("DELETE FROM interactions WHERE music_id IS NOT NULL AND music_id NOT IN (SELECT id FROM music)");
             },
 
-
             function ($conn) {
                 meel_mig_add_fk(
                     $conn,

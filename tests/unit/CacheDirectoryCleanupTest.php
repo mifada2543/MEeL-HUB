@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class CacheDirectoryCleanupTest extends TestCase
 {
     private string $cacheDir;

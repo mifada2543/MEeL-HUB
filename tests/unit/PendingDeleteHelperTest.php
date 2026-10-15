@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class PendingDeleteHelperTest extends TestCase
 {
     private string $pendingFile;

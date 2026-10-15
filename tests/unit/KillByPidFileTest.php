@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class KillByPidFileTest extends TestCase
 {
     private string $fakeFfmpeg = '';

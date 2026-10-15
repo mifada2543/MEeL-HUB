@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class RegisterRateLimitTest extends TestCase
 {
     private string $origStorageDir;
@@ -68,7 +67,6 @@ class RegisterRateLimitTest extends TestCase
 
     public function testRegistrationKeyIsIndependentFromLogin(): void
     {
-        
         
         $ip = '203.0.113.8';
         for ($i = 0; $i < 5; $i++) {

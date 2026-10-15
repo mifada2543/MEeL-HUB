@@ -184,7 +184,6 @@ class MeelCoin
         return true;
     }
 
-
     private static function notifyRefill(\mysqli $conn, int $userId, int $added): void
     {
         if ($added <= 0 || !class_exists('Notification')) {

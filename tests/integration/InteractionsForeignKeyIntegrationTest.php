@@ -1,7 +1,6 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-
 class InteractionsForeignKeyIntegrationTest extends TestCase
 {
     private ?DbTestHelper $db = null;
