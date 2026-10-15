@@ -188,7 +188,6 @@ function getRomajiName($text) {
 
 ---
 
-
 ## Media Storage Paths (TERPUSAT)
 
 Semua path penyimpanan media **terpusat** di `auth/settings.php` melalui konstanta `MEEL_HDD_*`. Cukup ubah **satu baris** untuk memindahkan lokasi penyimpanan.

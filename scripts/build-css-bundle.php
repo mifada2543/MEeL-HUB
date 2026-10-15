@@ -64,6 +64,9 @@ foreach ($manifests as $manifest) {
     $header = "/* MEeL CSS bundle — Generated oleh scripts/build-css-bundle.php.\n"
         . "   Sumber: assets/css/{$module}/manifest.php (urutan dipertahankan).\n"
         . "   Jangan edit berkas ini langsung; edit sumber lalu bangun ulang. */\n\n";
+    // Rtrim tiap bagian dulu: kalau tidak, implode("\n\n") menambah baris kosong
+    // kedua di setiap batas bagian.
+    $parts = array_map(static fn(string $part): string => rtrim($part, "\r\n"), $parts);
     $out = $header . implode("\n\n", $parts) . "\n";
 
     if (is_file($bundleAbs) && file_get_contents($bundleAbs) === $out) {

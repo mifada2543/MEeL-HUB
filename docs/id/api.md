@@ -776,8 +776,6 @@ Upload video menghasilkan **dua** ukuran thumbnail sekaligus (lewat `meel_ffmpeg
 
 Backfill sekali jalan untuk media lama:
 
-
-
 ### Referer Gate HLS (video)
 
 `video/stream.php?f=...` melewatkan `hls_gate => true`. Request untuk path di bawah `video/` harus membawa `Referer` same-host dari halaman video (`/video`, `/video/watch`, `/video/index`, `/video/beranda`); jika tidak, request di-redirect ke `err/?code=denied`. Ini mencegah situs pihak ketiga meng-hotlink segment HLS.

@@ -1297,7 +1297,6 @@ Skenario 6 sekaligus membuktikan koreksi di atas: angka yang muncul adalah **15*
 
 ### Test doubles: properti internal mysqli tidak bisa di-fake
 
-
 Discovery yang berlaku untuk test double: `num_rows`,
 `affected_rows`, dan properti internal serupa adalah **read-only virtual property**
 di PHP 8.x. Override method maupun `__get()` sama-sama **tidak mengintervensi** —
