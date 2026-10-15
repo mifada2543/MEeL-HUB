@@ -100,18 +100,20 @@ class AdminActivityRepository
         return $result;
     }
 
-    public function fetchAll(): array
+    public function fetchAll(int $limit = 50000): array
     {
         $stmt = $this->conn->prepare(
             "SELECT al.*, u.username
              FROM activity_log al
              LEFT JOIN users u ON al.user_id = u.id
              WHERE {$this->where_sql}
-             ORDER BY al.created_at DESC"
+             ORDER BY al.created_at DESC
+             LIMIT ?"
         );
-        if (!empty($this->params)) {
-            $stmt->bind_param($this->types, ...$this->params);
-        }
+        $params = $this->params;
+        $types = $this->types . 'i';
+        $params[] = $limit;
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
         $rows = [];

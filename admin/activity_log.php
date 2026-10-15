@@ -125,10 +125,8 @@ if ($active_tab === 'uploads') {
 
     if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['format'] ?? '', ['csv', 'json', 'xls'], true)) {
         $preview_format = $_GET['format'];
-        $preview_all_rows = $uqRepo->fetchAll();
-        $preview_total = count($preview_all_rows);
-        $preview_limit = 15;
-        $preview_rows = array_slice($preview_all_rows, 0, $preview_limit);
+        $preview_total = $uqRepo->countFiltered();
+        $preview_rows = $uqRepo->fetchPage(15, 0);
 
         $content = '';
         switch ($preview_format) {
@@ -276,10 +274,8 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
 
 if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['format'] ?? '', ['csv', 'json', 'xls'], true)) {
     $preview_format = $_GET['format'];
-    $all_rows = $logRepo->fetchAll();
-    $preview_total = count($all_rows);
-    $preview_limit = 15;
-    $preview_rows = array_slice($all_rows, 0, $preview_limit);
+    $preview_total = $logRepo->countFiltered();
+    $preview_rows = $logRepo->fetchPage(15, 0);
 
     $content = '';
     switch ($preview_format) {

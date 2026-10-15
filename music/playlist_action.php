@@ -5,14 +5,8 @@ include '../auth/config.php';
 
 function playlist_back_url(): string
 {
-    $back = 'beranda';
-    if (isset($_SERVER['HTTP_REFERER']) && $_SERVER['HTTP_REFERER'] !== '') {
-        $ref_host = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST);
-        if ($ref_host === ($_SERVER['HTTP_HOST'] ?? '')) {
-            $back = $_SERVER['HTTP_REFERER'];
-        }
-    }
-    return $back;
+    $ref = meel_same_origin_referer();
+    return $ref ?? 'beranda';
 }
 
 if (!isset($_SESSION['user_id'])) {

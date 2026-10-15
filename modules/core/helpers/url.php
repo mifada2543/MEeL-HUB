@@ -173,18 +173,46 @@ function meel_asset_dir_version(string $dir): string
 }
 }
 
+if (!function_exists('meel_canonical_host')) {
+function meel_canonical_host(): string
+{
+    if (defined('MEEL_CANONICAL_HOST')) {
+        return strtolower(trim((string) constant('MEEL_CANONICAL_HOST')));
+    }
+    return '';
+}
+}
+if (!function_exists('meel_same_origin_referer')) {
+function meel_same_origin_referer(?string $ref = null): ?string
+{
+    $ref = $ref ?? ($_SERVER['HTTP_REFERER'] ?? '');
+    if (!is_string($ref) || $ref === '') {
+        return null;
+    }
+
+    $host = meel_canonical_host();
+    if ($host === '') {
+        return null;
+    }
+
+    $scheme = strtolower((string) parse_url($ref, PHP_URL_SCHEME));
+    if ($scheme !== '' && $scheme !== 'http' && $scheme !== 'https') {
+        return null;
+    }
+
+    $refHost = parse_url($ref, PHP_URL_HOST);
+    if (!is_string($refHost) || $refHost === '' || strcasecmp($refHost, $host) !== 0) {
+        return null;
+    }
+
+    return $ref;
+}
+}
 if (!function_exists('meel_back_url')) {
 function meel_back_url(string $default, array $extra_block = []): string
 {
-    $ref = $_SERVER['HTTP_REFERER'] ?? '';
-    if (!is_string($ref) || $ref === '') {
-        return $default;
-    }
-
-    $ref_host = parse_url($ref, PHP_URL_HOST);
-    $cur_host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
-    if (!is_string($ref_host) || !is_string($cur_host) || $ref_host === ''
-        || strcasecmp($ref_host, $cur_host) !== 0) {
+    $ref = meel_same_origin_referer();
+    if ($ref === null) {
         return $default;
     }
 

@@ -82,10 +82,15 @@ class TranscoderBase
             ? MEEL_NODE_PATH
             : '/usr/bin/node';
 
+        $maxBytes = defined('MEEL_MAX_DOWNLOAD_BYTES') ? (int) MEEL_MAX_DOWNLOAD_BYTES : (2 * 1024 * 1024 * 1024);
+        $maxSeconds = defined('MEEL_MAX_DOWNLOAD_SECONDS') ? (int) MEEL_MAX_DOWNLOAD_SECONDS : 7200;
+
         $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8;"
             . " " . escapeshellarg($ytdlp_bin) . " --js-runtime " . escapeshellarg($node_bin)
             . " --remote-components ejs:github"
             . " --no-warnings --restrict-filenames"
+            . " --max-filesize " . escapeshellarg((string) $maxBytes)
+            . " --match-filter " . escapeshellarg('duration < ' . $maxSeconds)
             . " --user-agent " . escapeshellarg($this->user_agent)
             . " --referer " . escapeshellarg("https://www.youtube.com/")
             . " --cookies " . escapeshellarg($this->cookies_path) . " ";

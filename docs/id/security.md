@@ -19,6 +19,7 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 - [Multi-Factor Authentication (MFA)](#multi-factor-authentication-mfa)
 - [Input Validation](#input-validation)
 - [Hardening P0 (Oktober 2026)](#hardening-p0-oktober-2026)
+- [Hardening P1 (Oktober 2026)](#hardening-p1-oktober-2026)
 
 ---
 
@@ -1349,6 +1350,111 @@ Sebelum batch ini, nine path bisa diunduh tanpa autentikasi, termasuk kamus SQLi
 pembungkus. Di Apache 2.4 tanpa `mod_access_compat` itu error config, sehingga
 **seluruh** `.htaccess` dibuang dan `controllers/` kehilangan seluruh kontrol akses.
 Sekarang dibungkus `IfModule` seperti berkas lain di repo.
+
+---
+
+## Hardening P1 (Oktober 2026)
+
+Lanjutan dari bagian sebelumnya, dengan alasan yang sama: penjelasan berhenti di
+dokumen, bukan di file produksi.
+
+### 9. Batas ukuran dan durasi unduhan
+
+Dulu `base_cmd` untuk yt-dlp tidak punya batas apa pun. Satu URL dengan aliran
+1080p yang panjang menulis ke staging `/dev/shm/meel/temp` tanpa plafon, sementara
+`memory_limit` 10 GB. Sekarang:
+
+- `--max-filesize` dan `--match-filter "duration < N"` pada perintah yt-dlp
+- `DownloadService::assertWithinDownloadLimits()` memeriksa metadata
+  (`duration`, `filesize`/`filesize_approx`) sebelum unduhan dimulai
+
+Nilainya `MEEL_MAX_DOWNLOAD_BYTES` (2 GB) dan `MEEL_MAX_DOWNLOAD_SECONDS` (7200),
+didefinisikan bersama konstanta batas upload lain di
+`modules/core/helpers/upload.php`.
+
+### 10. Klaim slot antrean jadi atomik
+
+`isServerBusy()` hanya `SELECT COUNT(*) ... WHERE status = 'processing'`, lalu
+caller terpisah melakukan INSERT. Dua puluh permintaan bersamaan bisa semuanya
+melihat angka di bawah ambang dan semuanya menjalankan ffmpeg (masing-masing 8
+thread).
+
+`System::claimQueueSlot()` sekarang membungkus pemeriksaan dan INSERT di dalam
+`GET_LOCK()` MySQL — satu Advisory Lock, jadi hanya satu pihak yang boleh
+memeriksa lalu inserting. Diverifikasi dengan 8 proses PHP paralel: tepat 2 klaim
+berhasil, sisanya ditolak.
+
+Batasnya `System::MAX_CONCURRENT_QUEUES` (default 2).
+
+### 11. GC tidak lagi menghapus artefak job yang masih jalan
+
+`GarbageCollector::STALE_SECONDS` bernilai 300, lebih kecil dari
+`TRANSCODE_AUDIO_TIMEOUT` 600 dan `DOWNLOAD_TIMEOUT` 900. Request lain yang
+menyentuh transcoder bisa membuat GC menghapus marker `.processing` milik job
+yang sedang berjalan — dan marker itu justru satu-satunya pelindung tabrakan dua
+transcode atas output yang sama. Dinaikkan ke 1200.
+
+### 12. Installer tidak lagi membuang kredensial database
+
+Patcher lama cocokkan pola `$server = "localhost";`, padahal
+`auth/settings.example.php` sudah berubah ke
+`if (!isset($server)) $server = (getenv(...) ?: "localhost")`. Errornya juga
+ditelan `2>/dev/null ||` — jadi instalasi tetap melapor sukses padahal kredensial
+yang diinput operator dibuang dan yang dipakai adalah nilai default.
+
+Patcher sekarang memakai regex yang tahan untuk
+`define('MEEL_HDD_BASE', ...)` sehingga idempoten, menulis ulang blok override,
+memverifikasi hasilnya dengan `re.search`, berhenti dengan `die` bila gagal, lalu
+mengecek `php -r 'require auth/settings.php'`.
+
+### 13. Open redirect: satu helper, bukan tujuh implementasi
+
+Tujuh salinan validasi referer berbeda, hampir semuanya membandingkan host referer
+dengan `$_SERVER['HTTP_HOST']` — yaitu header kiriman klien. Dengan
+`Host: evil.com` + `Referer: https://evil.com/`, pemeriksaan itu lolos sebagai
+"same origin". Beberapa versi bahkan menerima `localhost` dan `127.0.0.1` tanpa
+syarat.
+
+`meel_same_origin_referer()` menggantinya: host harus cocok dengan
+`MEEL_CANONICAL_HOST` yang dikonfigurasi, skema hanya http/https, dan URL
+protocol-relative ditolak. Kalau `MEEL_CANONICAL_HOST` kosong, semua referer luar
+ditolak — gagal aman.
+
+Dipakai oleh `music/playlist_action.php`, `profile/notification.php`, dan
+`meel_back_url()`. Sisa pembacaan `HTTP_REFERER` (misalnya gate HLS) bukan
+kontrol keamanan dan memang sudah begitu sejak awal.
+
+### 14. Kerusakan data senyap di bind_param arcade
+
+`difficulty_label` dan `cover_file` bertipe varchar, tapi di-bind sebagai `"i"`.
+mysqli tidak memberi warning — ia mengonversi nilai sesuai tipe yang diminta, jadi
+keduanya tersimpan `'0'`. Nama tingkat kesulitan jadi `0` dan cover art rusak
+padahal filenya ada.
+
+`tests/unit/BindParamTypeTest.php` menurunkan tipe yang diharapkan dari
+`arcade/schema.sql`, bukan dari daftar hardcode, jadi test tetap benar saat skema
+berubah.
+
+### 15. Rate limit drive yang tidak pernah aktif
+
+`System::checkRateLimit('drive_files')` menghitung baris di `drive_files`, tapi
+tidak ada satu pun INSERT ke tabel itu — `num_rows` selalu 0 sehingga batas 10
+file/jam tidak pernah berlaku. `DriveStorage::recordUpload()` kini mencatat
+setiap unggahan.
+
+### 16. Antrean hapus tertunda dibatasi ke root media
+
+`cleanupPendingDeletions()` menghapus path apa pun yang tertulis di
+`temp/pending_delete.json`, tanpa cek containment. Berkas itu berada di direktori
+world-writable, jadi user lokal bisa menjadwalkan penghapusan file atau direktori
+mana pun sebagai user web. Sekarang `realpath()` harus berada di dalam salah satu
+root media atau drive base.
+
+### 17. Ekspor admin dibatasi
+
+`fetchAll()` tanpa `LIMIT` dipakai untuk menampilkan pratinjau 15 baris — seluruh
+tabel terfilter dimuat ke memori lebih dulu. Sekarang `fetchAll()` menerima batas
+(default 50.000) dan pratinjau memakai `countFiltered()` + `fetchPage(15, 0)`.
 
 ---
 

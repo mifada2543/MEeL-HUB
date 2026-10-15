@@ -83,6 +83,42 @@ class DownloadService extends TranscoderBase
         }
         return "bestvideo[height<=1080]+bestaudio/best";
     }
+    private function assertWithinDownloadLimits(array $meta, string $url): void
+    {
+        $maxSeconds = defined('MEEL_MAX_DOWNLOAD_SECONDS') ? (int) MEEL_MAX_DOWNLOAD_SECONDS : 7200;
+        $maxBytes = defined('MEEL_MAX_DOWNLOAD_BYTES') ? (int) MEEL_MAX_DOWNLOAD_BYTES : (2 * 1024 * 1024 * 1024);
+
+        $duration = (int) ($meta['duration'] ?? 0);
+        if ($duration > $maxSeconds) {
+            throw new DownloadException(
+                sprintf('Durasi %d detik melebihi batas %d detik.', $duration, $maxSeconds),
+                $url,
+                'limits'
+            );
+        }
+
+        $filesize = (int) ($meta['filesize'] ?? ($meta['filesize_approx'] ?? 0));
+        if ($filesize > $maxBytes) {
+            throw new DownloadException(
+                sprintf('Ukuran %s melebihi batas %s.', self::formatBytes($filesize), self::formatBytes($maxBytes)),
+                $url,
+                'limits'
+            );
+        }
+    }
+
+    private static function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = 0;
+        $value = (float) $bytes;
+        while ($value >= 1024 && $i < count($units) - 1) {
+            $value /= 1024;
+            $i++;
+        }
+        return round($value, $i === 0 ? 0 : 1) . ' ' . $units[$i];
+    }
+
     public function processDownload(string $url, string $type): string
     {
         $url = trim($url);
@@ -117,6 +153,7 @@ class DownloadService extends TranscoderBase
             if (!$meta) {
                 throw new DownloadException("Gagal ambil metadata dari yt-dlp.", $url, 'metadata');
             }
+            $this->assertWithinDownloadLimits($meta, $url);
         } catch (Throwable $e) {
             $this->releaseQueue($queue_id, 'failed');
             throw $e;

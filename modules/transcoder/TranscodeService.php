@@ -144,18 +144,11 @@ class TranscodeService extends TranscoderBase
 
         require_once __DIR__ . '/../core/System.php';
         $sys = new System($this->conn);
-        if ($sys->isServerBusy()) {
+        if (!$sys->claimQueueSlot('transcode_queue', $this->user_id)) {
             $this->removeFile($marker_file);
             return ['status' => 'error', 'msg' => 'Silahkan Menunggu. Server sedang sibuk memproses antrean lain.'];
         }
-
-        $stmt_q = $this->conn->prepare(
-            "INSERT INTO transcode_queue (user_id, status, created_at) VALUES (?, 'processing', NOW())"
-        );
-        $stmt_q->bind_param("i", $this->user_id);
-        $stmt_q->execute();
         $queue_id = (int)$this->conn->insert_id;
-        $stmt_q->close();
 
         $concat_list_path = $output_dir . "concat_{$video_id}_" . time() . ".txt";
         $concat_content = "";
