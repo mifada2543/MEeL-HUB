@@ -6,8 +6,12 @@
 -- =============================================================================
 -- Tabel-tabel ini dijalankan terpisah dari schema.sql utama.
 -- Jalankan: php arcade/migrate.php
+--
+-- Catatan: berkas ini SENGAJA tidak memuat `USE`. Dulu ada, dan itu
+-- berarti skrip apa pun yang mengimpor berkas ini tanpa rewrite -- termasuk
+-- tests/DbTestHelper.php -- akan berpindah ke database `MEeL` di tengah jalan
+-- dan membuat tabel arcade di database yang tidak seharusnya disentuh.
 -- =============================================================================
-USE `MEeL`;
 
 -- =============================================================================
 -- TABEL: rooms

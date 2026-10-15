@@ -153,12 +153,12 @@ cd MEeL
 > **📁 File skema database sudah tersedia di [`database/schema.sql`](../../database/schema.sql).**
 > Setelah impor, jalankan migrasi untuk menyelesaikan setup.
 
-> ⚠️ `schema.sql` meng-hardcode `CREATE DATABASE IF NOT EXISTS \`MEeL\`` + `USE \`MEeL\`;` — impor manual (CLI/phpMyAdmin) selalu menargetkan database bernama `MEeL`. `install.sh` menulis ulang kedua baris itu sesuai nama DB konfigurasi, jadi nama DB non-default (mis. untuk staging) aman dipakai lewat installer.
+> ⚠️ `schema.sql` **tidak** memuat `CREATE DATABASE` / `USE`. Nama database wajib disebut di baris perintah — inilah yang mencegah impor mendarat diam-diam di database yang salah. Untuk nama DB selain `MEeL`, sebutkan nama itu langsung di perintah; `install.sh` memakai cara yang sama.
 
 #### Opsi A — Via MySQL CLI (cepat):
 
 ```bash
-mysql -u root -p < database/schema.sql
+mysql -u root -p MEeL < database/schema.sql
 ```
 
 #### Opsi B — Via MySQL prompt:
@@ -167,6 +167,8 @@ mysql -u root -p < database/schema.sql
 mysql -u root -p
 ```
 ```sql
+CREATE DATABASE IF NOT EXISTS `MEeL` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `MEeL`;
 SOURCE /path/ke/MEeL/database/schema.sql;
 ```
 

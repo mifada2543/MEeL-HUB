@@ -230,8 +230,10 @@ if [ "$DB_EXISTS" -gt 0 ]; then
     warn "yang bukan idempotent, reimport akan gagal 'Duplicate entry' jika data sudah ada)."
     warn "Jika Anda ingin instalasi BENAR-BENAR bersih: DROP DATABASE \`${DB_NAME}\`; lalu jalankan ulang script ini."
     if confirm "Tetap paksa reimport schema.sql sekarang? (BERISIKO gagal jika tabel/data sudah ada)" N; then
-        if ! sed -e "s#^CREATE DATABASE IF NOT EXISTS \`MEeL\`#CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`#" \
-                 -e "s#^USE \`MEeL\`;#USE \`${DB_NAME}\`;#" database/schema.sql | mysql "${MYSQL_AUTH[@]}"; then
+        # schema.sql tidak lagi memuat CREATE DATABASE / USE, jadi nama
+        # database dinyatakan sekali di sini -- bukan dengan menyalin ulang
+        # pola dari dalam berkas.
+        if ! mysql "${MYSQL_AUTH[@]}" "${DB_NAME}" < database/schema.sql; then
             warn "Reimport schema gagal (kemungkinan besar data sudah ada) — melanjutkan dengan database apa adanya."
         else
             ok "Schema di-import ulang ke '${DB_NAME}'."
@@ -239,9 +241,8 @@ if [ "$DB_EXISTS" -gt 0 ]; then
     fi
 else
     mysql "${MYSQL_AUTH[@]}" -e "CREATE DATABASE \`${DB_NAME}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-    sed -e "s#^CREATE DATABASE IF NOT EXISTS \`MEeL\`#CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`#" \
-        -e "s#^USE \`MEeL\`;#USE \`${DB_NAME}\`;#" database/schema.sql | mysql "${MYSQL_AUTH[@]}"
-    ok "Database '${DB_NAME}' dibuat & schema di-import (20 tabel)."
+    mysql "${MYSQL_AUTH[@]}" "${DB_NAME}" < database/schema.sql
+    ok "Database '${DB_NAME}' dibuat & schema di-import."
 fi
 
 if [ "$DB_USER" = "root" ]; then
