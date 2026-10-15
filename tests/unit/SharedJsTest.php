@@ -9,6 +9,7 @@ class SharedJsTest extends TestCase
         'AUDIO_STATE' => 'meel_audio_state',
         'SKIP_RESUME_ONCE' => 'skip_resume_once',
         'GLOBAL_LOOP' => 'meel_global_loop',
+        'VIDEO_LOOP' => 'meel_video_loop',
         'LAST_PLAYLIST_ID' => 'meel_last_playlist_id',
         'AUTONEXT_ENABLED' => 'meel_autonext_enabled',
         'AUTONAV' => 'meel_autonav',
@@ -79,7 +80,7 @@ class SharedJsTest extends TestCase
         if (!preg_match('/Object\.freeze\(\{([\s\S]*?)\}\)\s*;/', $src, $m)) {
             $this->fail('state-keys.js: blok Object.freeze tidak ditemukan.');
         }
-        preg_match_all('/^\s*([A-Z_]+):\s*\'([^\']*)\',?\s*$/m', $m[1], $pairs, PREG_SET_ORDER);
+        preg_match_all('/^\s*([A-Z_]+):\s*[\'"]([^\'\"]*)[\'"],?\s*$/m', $m[1], $pairs, PREG_SET_ORDER);
         $map = [];
         foreach ($pairs as $p) {
             $map[$p[1]] = $p[2];
