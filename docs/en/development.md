@@ -950,7 +950,6 @@ so every other check in the same file stays active. `.vscode/` is already in
 
 ### Test doubles: properti internal mysqli tidak bisa di-fake
 
-
 Discovery yang berlaku untuk test double: `num_rows`,
 `affected_rows`, dan properti internal serupa adalah **read-only virtual property**
 di PHP 8.x. Override method maupun `__get()` sama-sama **tidak mengintervensi** —

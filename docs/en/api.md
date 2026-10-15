@@ -694,8 +694,6 @@ There is **no cache and no on-demand variant layer** — both files are written 
 
 One-off backfill for pre-existing media:
 
-
-
 ### HLS Referer Gate (video)
 
 `video/stream.php?f=...` passes `hls_gate => true`. Requests for paths under `video/` must carry a same-host `Referer` from a video page (`/video`, `/video/watch`, `/video/index`, `/video/beranda`); otherwise the request is redirected to `err/?code=denied`. This prevents third-party sites from hotlinking HLS segments.
