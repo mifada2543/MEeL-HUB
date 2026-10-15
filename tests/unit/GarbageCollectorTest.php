@@ -3,6 +3,8 @@ use PHPUnit\Framework\TestCase;
 
 class GarbageCollectorTest extends TestCase
 {
+    private const STALE_WINDOW = 1200;
+
     private string $testTempDir;
 
     protected function setUp(): void
@@ -65,20 +67,20 @@ class GarbageCollectorTest extends TestCase
     {
         $stale = $this->testTempDir . '/stale.tmp';
         $fresh = $this->testTempDir . '/fresh.tmp';
-        $this->touchAged($stale, 400);
+        $this->touchAged($stale, self::STALE_WINDOW + 300);
         $this->touchAged($fresh, 10);
 
         $this->cleanDirectory($this->testTempDir);
 
-        $this->assertFileDoesNotExist($stale, 'File dengan mtime > 5 menit harus dihapus');
-        $this->assertFileExists($fresh, 'File dengan mtime < 5 menit harus dipertahankan');
+        $this->assertFileDoesNotExist($stale, 'File dengan mtime > jendela stale harus dihapus');
+        $this->assertFileExists($fresh, 'File dengan mtime < jendela stale harus dipertahankan');
     }
 
     public function testCleanDirectoryRemovesStaleDirectoryRecursively(): void
     {
         $sub = $this->testTempDir . '/stale-sub';
-        $this->touchAged($sub . '/nested/file.bin', 400);
-        touch($sub, time() - 400);
+        $this->touchAged($sub . '/nested/file.bin', self::STALE_WINDOW + 300);
+        touch($sub, time() - (self::STALE_WINDOW + 300));
 
         $this->cleanDirectory($this->testTempDir);
 

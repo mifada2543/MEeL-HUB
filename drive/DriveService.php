@@ -92,15 +92,18 @@ final class DriveStorage
     private string $basePath;
     private DriveUserContext $user;
     private string $webBasePath;
+    private ?mysqli $conn;
 
     public function __construct(
         string $basePath,
         DriveUserContext $user,
-        string $webBasePath = '../data_drive'
+        string $webBasePath = '../data_drive',
+        ?mysqli $conn = null
     ) {
         $this->basePath = $basePath;
         $this->user = $user;
         $this->webBasePath = $webBasePath;
+        $this->conn = $conn;
     }
 
     public static function defaultBasePath(?string $hddDriveOverride = null): string
@@ -225,6 +228,8 @@ final class DriveStorage
             throw new RuntimeException('Tipe file tidak sesuai dengan extension yang diberikan.');
         }
 
+        $this->recordUpload((int) ($_SESSION['user_id'] ?? 0), $finalName, (int) (@filesize($destination) ?: 0), $type, $scope);
+
         if (is_resource($lockFp)) {
             @flock($lockFp, LOCK_UN);
             @fclose($lockFp);
@@ -236,6 +241,23 @@ final class DriveStorage
             'filename' => $finalName,
             'path' => $destination,
         ];
+    }
+
+    private function recordUpload(int $userId, string $filename, int $size, string $type, string $scope): void
+    {
+        if ($userId <= 0 || $this->conn === null) {
+            return;
+        }
+        try {
+            $stmt = $this->conn->prepare(
+                "INSERT INTO drive_files (user_id, filename, file_size, file_type, scope) VALUES (?, ?, ?, ?, ?)"
+            );
+            $stmt->bind_param("issss", $userId, $filename, $size, $type, $scope);
+            $stmt->execute();
+            $stmt->close();
+        } catch (Throwable $e) {
+            error_log('[MEeL] drive: gagal menyimpan catatan upload: ' . $e->getMessage());
+        }
     }
 
     public function getFileForDownload(?string $filename, ?string $type, ?string $scope): array

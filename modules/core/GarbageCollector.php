@@ -1,7 +1,7 @@
 <?php
 class GarbageCollector
 {
-    private const STALE_SECONDS = 300;
+    private const STALE_SECONDS = 1200;
     private const GUEST_STALE_HOURS = 2;
     private const GUEST_CLEANUP_INTERVAL = 3600;
     private const ROOM_LOBBY_STALE_HOURS = 24;
