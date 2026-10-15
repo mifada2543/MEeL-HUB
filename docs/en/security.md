@@ -20,6 +20,7 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [Private Drive Protection](#private-drive-protection)
 - [Exception Handling](#exception-handling)
 - [Disk Space Validation](#disk-space-validation)
+- [P0 Hardening (October 2026)](#p0-hardening-october-2026)
 - [Input Validation](#input-validation)
 - [Best Practices](#best-practices)
 
@@ -948,6 +949,140 @@ Theme preference is stored securely:
 - [ ] File upload validation (type, size, magic bytes)
 - [ ] Role checking before sensitive actions
 - [ ] Theme preference doesn't store sensitive data
+---
+
+## P0 Hardening (October 2026)
+
+Notes on the security changes landed in a single batch, with the reasoning behind
+each. This section replaces the long comments that used to live inside production
+files — explanation like this belongs in documentation.
+
+### 1. `MEEL_ENV` is no longer influenced by client headers
+
+`modules/core/bootstrap.php` decides `development` vs `production`. It used to
+consult `$_SERVER['SERVER_NAME']`. On Apache with `UseCanonicalName Off` (the
+default) `SERVER_NAME` is copied from the client's `Host:` header, so
+`Host: localhost` from a remote attacker was enough to:
+
+- turn on `display_errors=1` (leaking absolute paths, SQL, session internals site-wide)
+- add `'unsafe-eval'` to the CSP
+- make `Modules::flaggedOff()` ignore the `.disabled` kill switch
+
+The fix has two sides:
+
+- `bootstrap.php` now uses `REMOTE_ADDR` only (loopback is still recognised)
+- `install.sh` writes `UseCanonicalName On` into the generated VirtualHost
+
+If `MEEL_ENV` must be forced, set it explicitly in `auth/settings.php` — don't rely
+on auto-detection.
+
+### 2. Admin authorization always reads the database
+
+`get_user_role()` used to treat `$_SESSION['role']` as authoritative. Since this
+repo has no UI for demoting a role, revoking an admin always means running SQL by
+hand — and that never took effect while the session stayed alive.
+
+The database is now the source of truth; `$_SESSION['role']` remains only as a
+display cache. Every file calling `is_admin($conn)` is fixed as a consequence:
+
+| File | Before | After |
+| --- | --- | --- |
+| `admin/stats.php` | `is_admin()` → session cache | unchanged, now reads DB |
+| `controllers/api/chat.php` | `is_admin()` → session cache | unchanged, now reads DB |
+| `admin/partials/live-monitor-manage.php` | `require_admin()` → session cache | unchanged, now reads DB |
+| `update.php` | read `$_SESSION['role']` directly | `is_admin($conn)` |
+| `profile/manage.php` | read `$_SESSION['role']` directly | `is_admin($conn)` |
+| `controllers/system/UpdateManager.php` | read `$_SESSION['role']` directly | `is_admin($this->db)` |
+
+`UpdateManager` matters most: it is the **write** path for `sidebar_settings` and
+`updates`, which are rendered to every anonymous visitor.
+
+> The remaining `$_SESSION['role']` reads (badges, "edit" links) are display only —
+> the real gates re-check on the server.
+
+### 3. Disabling MFA requires a password and a TOTP code
+
+It used to require nothing but a session cookie and a CSRF token. A hijacked
+session (or an unlocked shared browser) could drop the account to 1FA **and**
+destroy the backup codes. It now uses `password_verify` plus a currently valid TOTP
+code — the same pattern as the backup-code regeneration in
+`controllers/system/mfa.php`.
+
+The TOTP seed is also no longer re-rendered for any logged-in session. The old code
+rebuilt `otpauth://` from `mfa_secret` in the DB, so a hijacked session could copy
+the seed and keep 2FA on the attacker's own device.
+
+### 4. TOTP codes are single-use (anti-replay)
+
+`verify_totp()` used a ±1 time-step window and stored nothing, so a single code
+stayed valid for roughly **90 seconds** and could be replayed without limit — a
+phished, shoulder-surfed, or proxy-logged code still worked after the legitimate
+user had already consumed it. RFC 6238 §5.2 requires a monotonic counter.
+
+The fix:
+
+- `verify_totp_step()` returns the matched time-step (not `bool`)
+- `auth/mfa_verify.php` stores it in the new `users.mfa_last_step` column
+- the update is `UPDATE ... WHERE mfa_last_step IS NULL OR mfa_last_step < ?`, so
+  two concurrent requests carrying the same code cannot both succeed
+
+`verify_totp()` remains as a safe wrapper for ordinary callers. When a backup code
+is used, the step is reset so a pending TOTP code isn't rejected.
+
+### 5. `view_logs` actually stops view inflation
+
+`UNIQUE (user_id, video_id, music_id)` **never blocked anything**: MySQL treats NULL
+as distinct from other NULLs in a unique index, so `(9, 299, NULL)` and
+`(9, 299, NULL)` stay two separate rows. Every page load incremented `views` —
+the exact opposite of what the `schema.sql` comment claimed.
+
+The working pattern is already used by the `interactions` table: two separate unique
+keys, one per media type.
+
+> ⚠️ **Trap:** the unused column **must stay `NULL`, not `0`**. Filling it with `0`
+> makes every music row share `video_id=0`, and they collide in `uq_view_video`.
+> The fact that NULL *escapes* uniqueness is exactly what makes this two-unique-key
+> pattern work.
+
+Migration v7 also removed the duplicate rows that had already piled up — precisely
+because the old unique key never worked.
+
+### 6. Playlist IDOR
+
+- **Delete:** `delete_playlist` removed `playlist_tracks` rows **before** checking
+  ownership. The `user_id`-scoped `DELETE playlists` still reports success at 0 rows,
+  so nothing signalled that someone else's tracks were gone. Now ownership is
+  verified first, the pivot is deleted through a `JOIN`, and `affected_rows` is
+  checked.
+- **Read:** `getPlaylistQueue()` had no ownership gate, so `?playlist_id=N` on the
+  public watch page leaked another user's playlist queue. The gate is now placed
+  **in the data layer**, not the caller, so the next caller cannot forget it.
+
+### 7. Webroot closed off
+
+Before this batch, nine paths were downloadable without authentication, including a
+42 MB SQLite dictionary (`/assets/dict/jmdict.sqlite3`) that could be re-downloaded
+on every request.
+
+- deny `.htaccess` for `vendor/`, `node_modules/`, `tools/`, `assets/dict/`, and
+  `storage/` (the last was a 0-byte file)
+- `vendor/` and `node_modules/` are gitignored, so their `.htaccess` cannot be
+  committed. `install.sh` now writes them (step 6/9), and `tests/security_test.php`
+  guards every sensitive directory so regressions are caught
+- root `FilesMatch` extended for `phpunit.xml`, `composer.*`, `package*.json`,
+  `install.sh`, `.vscode`, and backup suffixes (`~`, `.bak`, `.old`, `.orig`, `.swp`,
+  `.dist`, `.sample`)
+- deliberately **not** a blanket `*.json`/`*.xml`/`*.md`, since
+  `assets/manifest.json` and `sitemap.xml` must stay public
+- a `RewriteRule` blocks tooling directory segments — `FilesMatch` only catches a
+  file literally named `.vscode`, not a path containing that segment
+
+### 8. `.htaccess` using bare Apache 2.2 directives
+
+`controllers/.htaccess` and `logs/tests/.htaccess` used a bare `Deny from all`. On
+Apache 2.4 without `mod_access_compat` that is a config error, so the **entire**
+`.htaccess` is discarded and `controllers/` loses all access control. They are now
+wrapped in `IfModule` like the rest of the repo.
 
 ---
 

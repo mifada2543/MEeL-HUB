@@ -13,8 +13,6 @@ class UpdateManager
     public function handle(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-        // Cek DB, bukan $_SESSION['role']. Halaman update.php tidak memuat
-        // auth/auth.php, jadi nilai session bisa basi setelah admin dicabut.
         if (!function_exists('is_admin') || !is_admin($this->db)) return;
 
         if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {

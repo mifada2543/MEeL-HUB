@@ -1,6 +1,3 @@
-# Dependency Composer — hanya untuk include PHP, bukan untuk diakses lewat web.
-# Tanpa ini, /vendor/phpunit/phpunit/composer.json dan daftar versi dependency
-# lain bisa diunduh tanpa autentikasi.
 Options -Indexes
 
 <IfModule mod_rewrite.c>

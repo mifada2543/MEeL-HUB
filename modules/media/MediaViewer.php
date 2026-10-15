@@ -35,12 +35,6 @@ class MediaViewer
 
         if ($user && $user['is_active'] == 1 && $user['role'] !== 'guest') {
             $log_column = ($this->media_type === 'video') ? 'video_id' : 'music_id';
-            // Kolom yang tidak dipakai dibiarkan NULL, bukan diisi 0.
-            // MySQL menganggap NULL berbeda satu sama lain di unique index,
-            // jadi inilah yang membuat dua unique terpisah (uq_view_video /
-            // uq_view_music) bekerja: semua baris musik otomatis lolos dari
-            // uq_view_video, sementara uq_view_music tetap menahan duplikat
-            // musik yang sesungguhnya. Kalau diisi 0, keduanya saling bentrok.
             $stmt_log = $this->conn->prepare("INSERT IGNORE INTO view_logs (user_id, $log_column) VALUES (?, ?)");
             $stmt_log->bind_param("ii", $this->user_id, $this->media_id);
             $stmt_log->execute();
@@ -203,11 +197,6 @@ class MediaViewer
         if ($this->media_type !== 'music' || !$playlist_id) return null;
         $playlist_id = (int)$playlist_id;
 
-        // Gate kepemilikan di lapisan data, bukan di pemanggil.
-        // Tanpa ini, `?playlist_id=N` di halaman watch yang publik
-        // membocorkan antrean playlist user lain. PlaylistRepository
-        // sudah punya getOwnedPlaylist() untuk view_playlist.php, tapi
-        // jalur watch tidak pernah memakainya.
         if (!$this->user_id) return null;
         $own = $this->conn->prepare('SELECT id FROM playlists WHERE id = ? AND user_id = ?');
         $own->bind_param('ii', $playlist_id, $this->user_id);

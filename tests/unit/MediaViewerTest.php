@@ -11,7 +11,6 @@ class MediaViewerTest extends TestCase
     /** @var FakeMysqliStmt[] urut pembuatan */
     private array $stmts = [];
 
-    /** jumlah query yang sudah dijalankan konstruktor (user lookup) */
     private int $userLookupSqlCount = 0;
 
     protected function setUp(): void
@@ -282,17 +281,7 @@ class MediaViewerTest extends TestCase
         $this->assertSame([], $_SESSION['seen_music_ids'], 'penanda seen harus di-reset');
     }
 
-    /**
-     * Viewer dengan sesi login.
-     *
-     * Hasil query dipetakan berdasarkan ISI SQL, bukan urutan stmtQueue:
-     * get_user_active() dan get_user_role() punya static cache per-request
-     * yang bertahan antar-test, jadi query-nya muncul atau tidak muncul
-     * tergantung test mana yang jalan duluan. Routing per-pola kebal
-     * terhadap hal itu.
-     *
-     * @param array<int,array<int,array<string,string>>> $rows urut: antrean, track ini, track berikut
-     */
+    /** Viewer dengan sesi login; hasil query dipetakan per-pola SQL, bukan urutan stmtQueue. */
     private function buildSessionViewer(array $rows, int $user_id, int $media_id, bool $owned = true): MediaViewer
     {
         $this->stmts = [];
@@ -325,7 +314,6 @@ class MediaViewerTest extends TestCase
         return $viewer;
     }
 
-    /** Cari SQL di antara statement yang dibuat, tanpa bergantung indeks absolut. */
     private function sqlMatching(string $needle): string
     {
         foreach ($this->conn->createdStmts as $stmt) {
@@ -395,7 +383,7 @@ class MediaViewerTest extends TestCase
         );
     }
 
-    /** Regression: `?playlist_id=N` di halaman watch publik pernah membocorkan antrean user lain. */
+    /** Regression: `?playlist_id=N` pernah membocorkan antrean user lain — docs/id/security.md §6 */
     public function testQueueRejectedWhenPlaylistNotOwnedBySessionUser(): void
     {
         $viewer = $this->buildSessionViewer([], 42, 5, owned: false);
@@ -413,7 +401,6 @@ class MediaViewerTest extends TestCase
         );
     }
 
-    /** Tanpa sesi tidak ada playlist yang bisa dimiliki — jangan pernah query. */
     public function testQueueRejectedForGuestSession(): void
     {
         $conn = $this->buildConn();

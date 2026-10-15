@@ -18,6 +18,7 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 - [Proteksi Private Drive](#proteksi-private-drive)
 - [Multi-Factor Authentication (MFA)](#multi-factor-authentication-mfa)
 - [Input Validation](#input-validation)
+- [Hardening P0 (Oktober 2026)](#hardening-p0-oktober-2026)
 
 ---
 
@@ -1212,6 +1213,142 @@ Theme preference disimpan dengan aman:
 3. **API validation:** `in_array($theme, ['light', 'dark'], true)` — reject invalid values
 4. **CSRF protection:** POST memerlukan valid CSRF token
 5. **No XSS risk:** Theme value tidak di-escape ke HTML, hanya digunakan untuk `data-theme` attribute
+
+---
+
+## Hardening P0 (Oktober 2026)
+
+Catatan perubahan keamanan yang masuk pada satu batch, beserta alasannya.
+Bagian ini menggantikan komentar panjang yang sebelumnya ditaruh di dalam file
+produksi — penjelasan seperti ini lebih pantas di dokumen.
+
+### 1. `MEEL_ENV` tidak lagi dipengaruhi header klien
+
+`modules/core/bootstrap.php` menentukan `development` vs `production`.
+Sempat ikut-or `$_SERVER['SERVER_NAME']`. Di Apache dengan `UseCanonicalName Off`
+(nilai default) `SERVER_NAME` disalin dari header `Host:` yang dikirim klien,
+jadi `Host: localhost` dari penyerang luar cukup untuk:
+
+- menyalakan `display_errors=1` (bocor path absolut, SQL, internal session di seluruh situs)
+- menambahkan `'unsafe-eval'` ke CSP
+- membuat `Modules::flaggedOff()` mengabaikan kill-switch `.disabled`
+
+Koreksinya ada dua sisi:
+
+- `bootstrap.php` hanya memakai `REMOTE_ADDR` (loopback tetap dikenali)
+- `install.sh` menulis `UseCanonicalName On` ke VirtualHost yang di-generate
+
+Kalau `MEEL_ENV` memang perlu dipaksa, setel eksplisit di `auth/settings.php` —
+jangan andalkan deteksi otomatis.
+
+### 2. Otorisasi admin selalu baca DB
+
+`get_user_role()` sempat memakai `$_SESSION['role']` sebagai sumber otoritatif.
+Karena repo ini tidak punya UI untuk menurunkan role, pencabutan admin selalu
+dilakukan manual lewat SQL — dan tidak berlaku selama sesinya masih hidup.
+
+Sekarang DB yang jadi sumber kebenaran; `$_SESSION['role'` tetap ada hanya sebagai
+cache tampilan. Berkas yang memanggil `is_admin($conn)` otomatis ikut aman:
+
+| Berkas | Sebelum | Sesudah |
+| --- | --- | --- |
+| `admin/stats.php` | `is_admin()` → cache session | tetap, kini baca DB |
+| `controllers/api/chat.php` | `is_admin()` → cache session | tetap, kini baca DB |
+| `admin/partials/live-monitor-manage.php` | `require_admin()` → cache session | tetap, kini baca DB |
+| `update.php` | baca `$_SESSION['role']` langsung | `is_admin($conn)` |
+| `profile/manage.php` | baca `$_SESSION['role']` langsung | `is_admin($conn)` |
+| `controllers/system/UpdateManager.php` | baca `$_SESSION['role']` langsung | `is_admin($this->db)` |
+
+`UpdateManager` adalah yang paling penting: itu jalur **tulis** untuk
+`sidebar_settings` dan `updates`, yang dirender ke setiap pengunjung anonim.
+
+> Pembacaan `$_SESSION['role']` yang tersisa (badge, link "edit") murni tampilan.
+> Gerbang sebenarnya tetap memeriksa ulang di server.
+
+### 3. Nonaktifkan MFA wajib password + kode TOTP
+
+Sempat cukup cookie sesi + token CSRF. Sesi yang dibajak (atau browser bersama
+yang tidak terkunci) langsung menurunkan akun ke 1FA **dan** menghapus kode
+cadangan. Sekarang memakai `password_verify` + kode TOTP yang sedang berlaku,
+pola yang sama dengan reset kode cadangan di `controllers/system/mfa.php`.
+
+Seed TOTP juga tidak lagi dirender ulang untuk sesi mana pun yang login.
+Versi lama membangun ulang `otpauth://` dari `mfa_secret` di DB, jadi sesi yang
+dibajak bisa menyalin seed-nya dan tetap memegang 2FA di perangkat penyerang.
+
+### 4. Kode TOTP single-use (anti-replay)
+
+`verify_totp()` memakai jendela ±1 time-step dan tidak menyimpan apa pun, jadi
+satu kode sah sekitar **90 detik** dan bisa dipakai berulang tanpa batas —
+phishing, shoulder-surfing, atau kode yang bocor lewat log proxy tetap sah
+setelah pemilik sah sudah memakainya. RFC 6238 §5.2 mensyaratkan counter monoton.
+
+Perbaikannya:
+
+- `verify_totp_step()` mengembalikan time-step yang cocok (bukan `bool`)
+- `auth/mfa_verify.php` menyimpannya ke kolom baru `users.mfa_last_step`
+- pembaruan memakai `UPDATE ... WHERE mfa_last_step IS NULL OR mfa_last_step < ?`
+  sehingga dua permintaan bersamaan dengan kode sama tidak bisa dua-duanya lolos
+
+`verify_totp()` tetap ada sebagai pembungkus yang aman untuk pemanggil biasa.
+Bila kode cadangan yang dipakai, step di-reset agar kode TOTP berikutnya tidak
+tertolak.
+
+### 5. `view_logs` benar-benar menahan view inflation
+
+`UNIQUE (user_id, video_id, music_id)` **tidak pernah menahan apa pun**: MySQL
+memperlakukan NULL sebagai nilai berbeda satu sama lain di unique index, jadi
+`(9, 299, NULL)` dan `(9, 299, NULL)` tetap dua baris berbeda. Akibatnya setiap
+buka halaman menambah `views` — persis kebalikan dari komentar di `schema.sql`.
+
+Pola yang benar sudah dipakai tabel `interactions`: dua unique terpisah per jenis
+media.
+
+> ⚠️ **Jebakan:** kolom yang tidak dipakai **harus tetap `NULL`, bukan `0`**.
+> Mengisi `0` membuat semua baris musik berbagi `video_id=0` dan saling bentrok
+> di `uq_view_video`. Sifat NULL yang *lolos* justru yang membuat pola dua-unique
+> ini bekerja.
+
+Migrasi v7 juga menghapus baris duplikat yang sudah terlanjur menumpuk —
+justru karena unique lama tidak pernah berfungsi.
+
+### 6. IDOR playlist
+
+- **Hapus:** `delete_playlist` menghapus baris `playlist_tracks` **sebelum**
+  memeriksa kepemilikan. `DELETE playlists` yang di-scope `user_id` tetap sukses
+  pada 0 baris, jadi tidak ada error yang menandakan pivot milik orang sudah
+  hilang. Sekarang: kepemilikan dicek dulu, pivot dihapus lewat `JOIN`, dan
+  `affected_rows` diperiksa.
+- **Baca:** `getPlaylistQueue()` tidak punya gate kepemilikan, jadi `?playlist_id=N`
+  di halaman watch yang publik membocorkan antrean playlist user lain. Gate
+  dipasang **di lapisan data**, bukan di pemanggil, supaya pemanggil berikutnya
+  tidak bisa lupa.
+
+### 7. Webroot ditutup
+
+Sebelum batch ini, nine path bisa diunduh tanpa autentikasi, termasuk kamus SQLite
+42 MB (`/assets/dict/jmdict.sqlite3`) yang bisa diunduh ulang setiap permintaan.
+
+- `.htaccess` deny untuk `vendor/`, `node_modules/`, `tools/`, `assets/dict/`, dan
+  `storage/` (tadinya berkas 0 byte)
+- `vendor/` dan `node_modules/` diabaikan git, jadi aturan `.htaccess`-nya tidak
+  bisa di-commit. `install.sh` sekarang menulisnya (langkah 6/9), dan
+  `tests/security_test.php` mengawasi seluruh direktori sensitif supaya regresi
+  ketahuan
+- `FilesMatch` root ditambah untuk `phpunit.xml`, `composer.*`, `package*.json`,
+  `install.sh`, `.vscode`, dan sufiks cadangan (`~`, `.bak`, `.old`, `.orig`, `.swp`,
+  `.dist`, `.sample`)
+- **Tidak** memakai `*.json`/`*.xml`/`*.md` blanket, karena
+  `assets/manifest.json` dan `sitemap.xml` harus tetap publik
+- `RewriteRule` memblokir segmen direktori tooling — `FilesMatch` hanya menangkap
+  file bernama `.vscode`, bukan path yang memuat segmen itu
+
+### 8. `.htaccess` dengan direktif Apache 2.2 polos
+
+`controllers/.htaccess` dan `logs/tests/.htaccess` memakai `Deny from all` tanpa
+pembungkus. Di Apache 2.4 tanpa `mod_access_compat` itu error config, sehingga
+**seluruh** `.htaccess` dibuang dan `controllers/` kehilangan seluruh kontrol akses.
+Sekarang dibungkus `IfModule` seperti berkas lain di repo.
 
 ---
 

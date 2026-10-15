@@ -49,11 +49,6 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
                 exit;
             }
             $valid = false;
-            // Kode TOTP harus single-use. Verifikasi biasa tidak mencegah
-            // replay: jendela ±1 membuat satu kode sah ~90 detik. Step yang
-            // dipakai dicatat, dan UPDATE-nya bersifat kondisional sehingga
-            // dua permintaan bersamaan dengan kode sama tidak bisa dua-duanya
-            // lolos (affected_rows hanya 1 untuk yang menang).
             $used_step = null;
             $step = verify_totp_step((string)$u['mfa_secret'], $user_code);
             if ($step !== null) {
@@ -77,8 +72,6 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
                 }
             }
             if ($valid) {
-                // Kode cadangan dipakai: reset step supaya TOTP berikutnya
-                // tidak tertolak oleh kode TOTP lama yang belum sempat dipakai.
                 if ($used_step === null) {
                     $stmt_reset = $conn->prepare("UPDATE users SET mfa_last_step = NULL WHERE id = ?");
                     $stmt_reset->bind_param("i", $temp_id);

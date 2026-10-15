@@ -144,10 +144,6 @@ if ($action === 'remove_from_playlist') {
 if ($action === 'delete_playlist') {
     $playlist_id = (int) ($_POST['playlist_id'] ?? 0);
 
-    // Kepemilikan WAJIB diverifikasi sebelum pivot dihapus.
-    // Versi lama menghapus playlist_tracks lebih dulu; DELETE playlists
-    // yang di-scope user_id tetap "sukses" pada 0 baris, sehingga track
-    // milik user lain ikut terhapus tanpa sisa jejak.
     $own = $conn->prepare('SELECT id FROM playlists WHERE id = ? AND user_id = ?');
     $own->bind_param('ii', $playlist_id, $user_id);
     $own->execute();
@@ -159,7 +155,6 @@ if ($action === 'delete_playlist') {
 
     $conn->begin_transaction();
     try {
-        // Satu statement: hapus pivot hanya lewat JOIN ke playlist milik user.
         $stmt_tracks = $conn->prepare(
             'DELETE pt FROM playlist_tracks pt
                JOIN playlists p ON p.id = pt.playlist_id

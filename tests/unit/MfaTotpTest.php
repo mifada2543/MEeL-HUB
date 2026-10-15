@@ -257,10 +257,7 @@ class MfaTotpTest extends TestCase
     {
         // Guard statis: perbandingan kode TOTP wajib timing-safe supaya
         // penyerang tidak bisa menebak digit satu per satu lewat timing.
-        //
-        // Perbandingannya ada di verify_totp_step() yang mengembalikan
-        // time-step (dipakai auth/mfa_verify.php untuk anti-replay);
-        // verify_totp() sekarang hanya mendelegasikan ke sana.
+        // Lihat docs/id/security.md §4
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/mfa.php');
 
         $compareFn = $this->extractFunction($src, 'verify_totp_step');
@@ -299,9 +296,6 @@ class MfaTotpTest extends TestCase
 
         $this->assertSame($now, verify_totp_step($secret, $code));
 
-        // Step lama (jendela -1) juga dikenali, supaya jam yang meleset
-        // tidak bricking user — tapi pemanggil yang menyimpannya,
-        // bukan verifikasinya.
         $oldCode = generate_totp($secret, $now - 1);
         $this->assertSame($now - 1, verify_totp_step($secret, $oldCode));
 
