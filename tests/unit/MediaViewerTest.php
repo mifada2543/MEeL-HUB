@@ -11,6 +11,9 @@ class MediaViewerTest extends TestCase
     /** @var FakeMysqliStmt[] urut pembuatan */
     private array $stmts = [];
 
+    /** jumlah query yang sudah dijalankan konstruktor (user lookup) */
+    private int $userLookupSqlCount = 0;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -279,39 +282,96 @@ class MediaViewerTest extends TestCase
         $this->assertSame([], $_SESSION['seen_music_ids'], 'penanda seen harus di-reset');
     }
 
+    /**
+     * Viewer dengan sesi login.
+     *
+     * Hasil query dipetakan berdasarkan ISI SQL, bukan urutan stmtQueue:
+     * get_user_active() dan get_user_role() punya static cache per-request
+     * yang bertahan antar-test, jadi query-nya muncul atau tidak muncul
+     * tergantung test mana yang jalan duluan. Routing per-pola kebal
+     * terhadap hal itu.
+     *
+     * @param array<int,array<int,array<string,string>>> $rows urut: antrean, track ini, track berikut
+     */
+    private function buildSessionViewer(array $rows, int $user_id, int $media_id, bool $owned = true): MediaViewer
+    {
+        $this->stmts = [];
+        $conn = new FakeMysqli();
+
+        $queueStmt = static function (array $r): FakeMysqliStmt {
+            $s = new FakeMysqliStmt();
+            $s->result = new FakeMysqliResult($r);
+            return $s;
+        };
+
+        $i = 0;
+        $conn->onPrepare = static function (string $sql) use ($rows, $owned, $queueStmt, &$i) {
+            if (str_contains($sql, 'SELECT is_active FROM users')) {
+                return $queueStmt([['is_active' => '1']]);
+            }
+            if (str_contains($sql, 'SELECT role FROM users')) {
+                return $queueStmt([['role' => 'user']]);
+            }
+            if (str_contains($sql, 'SELECT id FROM playlists')) {
+                return $queueStmt($owned ? [['id' => '3']] : []);
+            }
+            return $queueStmt($rows[$i++] ?? []);
+        };
+
+        $this->conn = $conn;
+        $viewer = new MediaViewer($conn, $user_id, 'music', $media_id);
+        $this->syncStmts();
+        $this->userLookupSqlCount = count($conn->sqls);
+        return $viewer;
+    }
+
+    /** Cari SQL di antara statement yang dibuat, tanpa bergantung indeks absolut. */
+    private function sqlMatching(string $needle): string
+    {
+        foreach ($this->conn->createdStmts as $stmt) {
+            if (str_contains($stmt->sql, $needle)) {
+                return $stmt->sql;
+            }
+        }
+        return '';
+    }
+
     public function testQueueUsesDeterministicOrderWithTieBreaker(): void
     {
-        $conn = $this->buildConn([
-            [],
-            [['added_at' => '2026-08-08 10:00:00', 'id' => '5']],
-            [['music_id' => '7']],
-        ]);
+        $viewer = $this->buildSessionViewer([
+            [],                                                   // antrean
+            [['added_at' => '2026-08-08 10:00:00', 'id' => '5']], // track saat ini
+            [['music_id' => '7']],                                // track berikutnya
+        ], 42, 5);
 
-        $viewer = new MediaViewer($conn, null, 'music', 5);
         $result = $viewer->getPlaylistQueue(3);
         $this->syncStmts();
 
         $this->assertStringContainsString(
+            'SELECT id FROM playlists WHERE id = ? AND user_id = ?',
+            $this->sqlMatching('FROM playlists')
+        );
+        $this->assertStringContainsString(
             'ORDER BY pt.added_at DESC, pt.id DESC',
-            $this->stmtSql(0)
+            $this->sqlMatching('JOIN playlist_tracks')
         );
         $this->assertStringContainsString(
             'SELECT added_at, id FROM playlist_tracks',
-            $this->stmtSql(1)
+            $this->sqlMatching('SELECT added_at, id')
         );
-        $this->assertStringContainsString('ORDER BY id DESC LIMIT 1', $this->stmtSql(1));
-        $this->assertStringContainsString('(added_at, id) < (?, ?)', $this->stmtSql(2));
+        $this->assertStringContainsString('ORDER BY id DESC LIMIT 1', $this->sqlMatching('SELECT added_at, id'));
+        $this->assertStringContainsString('(added_at, id) < (?, ?)', $this->sqlMatching('SELECT music_id'));
         $this->assertStringContainsString(
             'ORDER BY added_at DESC, id DESC LIMIT 1',
-            $this->stmtSql(2)
+            $this->sqlMatching('SELECT music_id')
         );
 
-        foreach ([0, 1, 2] as $i) {
-            $types = $this->stmts[$i]->binds[0]['types'] ?? '';
+        foreach ($this->conn->createdStmts as $k => $stmt) {
+            $types = $stmt->binds[0]['types'] ?? '';
             $this->assertSame(
-                substr_count($this->stmtSql($i), '?'),
+                substr_count($stmt->sql, '?'),
                 strlen($types),
-                "Jumlah placeholder tidak cocok dengan bind_param di query #$i"
+                "Jumlah placeholder tidak cocok dengan bind_param di query #$k"
             );
         }
 
@@ -320,16 +380,47 @@ class MediaViewerTest extends TestCase
 
     public function testNextUrlEmptyWhenCurrentTrackNotInPlaylist(): void
     {
-        $conn = $this->buildConn([
-            [],
-            [],
-        ]);
+        $viewer = $this->buildSessionViewer([
+            [],   // antrean
+            [],   // track saat ini
+        ], 42, 999);
 
-        $viewer = new MediaViewer($conn, null, 'music', 999);
         $result = $viewer->getPlaylistQueue(3);
 
         $this->assertSame('', $result['next_url']);
-        $this->assertCount(2, $conn->sqls, 'tanpa current track, query next tidak dijalankan');
+        $this->assertSame(
+            '',
+            $this->sqlMatching('SELECT music_id'),
+            'tanpa current track, query next tidak boleh dijalankan'
+        );
+    }
+
+    /** Regression: `?playlist_id=N` di halaman watch publik pernah membocorkan antrean user lain. */
+    public function testQueueRejectedWhenPlaylistNotOwnedBySessionUser(): void
+    {
+        $viewer = $this->buildSessionViewer([], 42, 5, owned: false);
+
+        $this->assertNull($viewer->getPlaylistQueue(3));
+        $this->assertSame(
+            '',
+            $this->sqlMatching('JOIN playlist_tracks'),
+            'antrean playlist milik orang lain tidak boleh diambil'
+        );
+        $this->assertSame(
+            '',
+            $this->sqlMatching('SELECT music_id'),
+            'query next juga tidak boleh jalan'
+        );
+    }
+
+    /** Tanpa sesi tidak ada playlist yang bisa dimiliki — jangan pernah query. */
+    public function testQueueRejectedForGuestSession(): void
+    {
+        $conn = $this->buildConn();
+
+        $viewer = new MediaViewer($conn, null, 'music', 5);
+        $this->assertNull($viewer->getPlaylistQueue(3));
+        $this->assertSame([], $conn->sqls, 'tidak boleh ada query sama sekali');
     }
 
     public function testReturnsNullForNonMusicType(): void
