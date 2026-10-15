@@ -1,12 +1,14 @@
 function setupMeelPlayerEvents() {
   window.player = player;
-
+  restoreVideoLoop();
   function retryPlayWhenVisible(playPromise, onRejected) {
     if (!playPromise || typeof playPromise.catch !== "function") return;
     playPromise.catch(function (err) {
       if (document.hidden) {
         pendingPlayRetry = !0;
-        console.log("play() ditolak saat tab di-background, dicoba ulang saat tab aktif.");
+        console.log(
+          "play() ditolak saat tab di-background, dicoba ulang saat tab aktif.",
+        );
         return;
       }
       if (onRejected) onRejected(err);
@@ -73,7 +75,6 @@ function setupMeelPlayerEvents() {
       try {
         const n = document.getElementById("autonext-overlay");
         n && n.remove();
-
         const o =
           e
             .querySelector(".rec-title-text, .line-clamp-2, h5")
@@ -81,13 +82,11 @@ function setupMeelPlayerEvents() {
           e.querySelector('[class*="line-clamp"]')?.textContent?.trim() ||
           e.querySelector("a[title]")?.getAttribute("title")?.trim() ||
           "";
-
         const l =
           e.querySelector(".rec-thumb-img")?.src ||
           e.querySelector('img[src*="thumbnail"]')?.src ||
           e.querySelector("img")?.src ||
           "";
-
         const a =
           e
             .querySelector('[class*="text-red-500"], [class*="text-red-600"]')
@@ -153,7 +152,6 @@ function setupMeelPlayerEvents() {
       }
     });
   }
-
   function ensureCustomControls() {
     if (!player?.elements?.controls) return;
     const e = player.elements.controls;
@@ -195,6 +193,7 @@ function setupMeelPlayerEvents() {
     if (window.meelHealthAlertActive) return !1;
     const t = e || document.querySelector(".rekomendasi-item");
     if (!t) return !1;
+    clearVideoLoop();
     isManual &&
       ((autoNextEnabled = !1),
       localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false"),
@@ -253,9 +252,8 @@ function setupMeelPlayerEvents() {
         (videoId =
           u.id ||
           new URL(t.href, window.location.href).searchParams.get("id") ||
-          (new URL(t.href, window.location.href).href.match(
-            /[?&]id=(\d+)/,
-          ) || [])[1] ||
+          (new URL(t.href, window.location.href).href.match(/[?&]id=(\d+)/) ||
+            [])[1] ||
           videoId),
         (storageKeyVideo = `video_pos_${videoId}`),
         (videoTitle = u.title || ""),
@@ -280,7 +278,10 @@ function setupMeelPlayerEvents() {
         isMiniPlayerActive && updateMiniPlayerInfo(videoTitle, videoUploader),
         (function () {
           var fsT = document.querySelector(".meel-fs-title-text");
-          if (fsT) { fsT.textContent = videoTitle || ""; fsT.title = videoTitle || ""; }
+          if (fsT) {
+            fsT.textContent = videoTitle || "";
+            fsT.title = videoTitle || "";
+          }
         })(),
         updateSearchExcludeId(videoId),
         ["watch-details-wrapper", "recommendation-column"].forEach((e) => {
@@ -290,7 +291,10 @@ function setupMeelPlayerEvents() {
         }),
         (() => {
           const el = document.getElementById("rec-title-text");
-          if (el) { el.textContent = "Video Lainnya"; el.title = "Video Lainnya"; }
+          if (el) {
+            el.textContent = "Video Lainnya";
+            el.title = "Video Lainnya";
+          }
         })(),
         window.lucide && window.lucide.createIcons(),
         window.htmx && htmx.process(document.body),
@@ -303,9 +307,9 @@ function setupMeelPlayerEvents() {
               e.scrollHeight > e.clientHeight &&
               t.classList.remove("hidden");
           }),
-        (d
+        d
           ? player.media.setAttribute("poster", d)
-          : player.media.removeAttribute("poster")),
+          : player.media.removeAttribute("poster"),
         (player.poster = d),
         c
           ? (window.Hls && Hls.isSupported()
@@ -318,9 +322,14 @@ function setupMeelPlayerEvents() {
                 (hls.detachMedia(), hls.attachMedia(player.media)),
             hls.loadSource(s),
             (window._meelSkipManifestHandler &&
-              hls.off(Hls.Events.MANIFEST_PARSED, window._meelSkipManifestHandler),
+              hls.off(
+                Hls.Events.MANIFEST_PARSED,
+                window._meelSkipManifestHandler,
+              ),
             (window._meelSkipManifestHandler = function () {
-              var bitrates = hls.levels.map(function (e) { return e.bitrate; });
+              var bitrates = hls.levels.map(function (e) {
+                return e.bitrate;
+              });
               var needsRebuild = !1;
               if (bitrates.length > 1) {
                 plyrOptions.quality = {
@@ -328,11 +337,15 @@ function setupMeelPlayerEvents() {
                   options: bitrates,
                   forced: !0,
                   onChange: function (e) {
-                    var t = hls.levels.findIndex(function (t) { return t.bitrate === e; });
+                    var t = hls.levels.findIndex(function (t) {
+                      return t.bitrate === e;
+                    });
                     hls.currentLevel = t;
                   },
                 };
-                plyrOptions.i18n = Object.assign({}, plyrOptions.i18n, { qualityLabel: {} });
+                plyrOptions.i18n = Object.assign({}, plyrOptions.i18n, {
+                  qualityLabel: {},
+                });
                 hls.levels.forEach(function (e) {
                   var t = e.name
                     ? e.name
@@ -357,7 +370,8 @@ function setupMeelPlayerEvents() {
                 window.refreshPlyrMediaMetadata && refreshPlyrMediaMetadata();
                 player = new Plyr(videoElement, plyrOptions);
                 setupMeelPlayerEvents();
-                window.appendCustomSettings && setTimeout(window.appendCustomSettings, 0);
+                window.appendCustomSettings &&
+                  setTimeout(window.appendCustomSettings, 0);
                 window.MEEL_UPSCALER && window.MEEL_UPSCALER.attach(player);
                 var playPromise = player.play();
                 if (void 0 !== playPromise) {
@@ -367,7 +381,10 @@ function setupMeelPlayerEvents() {
                 }
               }
             }),
-            hls.on(Hls.Events.MANIFEST_PARSED, window._meelSkipManifestHandler)),
+            hls.on(
+              Hls.Events.MANIFEST_PARSED,
+              window._meelSkipManifestHandler,
+            )),
             videoElement.addEventListener(
               "loadedmetadata",
               function () {
@@ -382,8 +399,11 @@ function setupMeelPlayerEvents() {
                     videoElement.videoHeight,
                   ),
                   (player.fullscreen.active || document.fullscreenElement) &&
-                    ((e._meelSavedRatio = videoElement.videoWidth + " / " + videoElement.videoHeight),
-                    (e.style.setProperty("--meel-video-ar", e._meelSavedRatio)),
+                    ((e._meelSavedRatio =
+                      videoElement.videoWidth +
+                      " / " +
+                      videoElement.videoHeight),
+                    e.style.setProperty("--meel-video-ar", e._meelSavedRatio),
                     (e._meelSavedMaxHeight = ""),
                     (e._meelSavedWidth = ""),
                     (e._meelSavedMarginL = ""),
@@ -408,8 +428,11 @@ function setupMeelPlayerEvents() {
                     videoElement.videoHeight,
                   ),
                   (player.fullscreen.active || document.fullscreenElement) &&
-                    ((e._meelSavedRatio = videoElement.videoWidth + " / " + videoElement.videoHeight),
-                    (e.style.setProperty("--meel-video-ar", e._meelSavedRatio)),
+                    ((e._meelSavedRatio =
+                      videoElement.videoWidth +
+                      " / " +
+                      videoElement.videoHeight),
+                    e.style.setProperty("--meel-video-ar", e._meelSavedRatio),
                     (e._meelSavedMaxHeight = ""),
                     (e._meelSavedWidth = ""),
                     (e._meelSavedMarginL = ""),
@@ -511,10 +534,16 @@ function setupMeelPlayerEvents() {
             restored || ((restored = !0), doRestore());
           }, 1e4);
           hls.on(Hls.Events.FRAG_BUFFERED, function onBuf() {
-            if (restored) { hls.off(Hls.Events.FRAG_BUFFERED, onBuf); return; }
+            if (restored) {
+              hls.off(Hls.Events.FRAG_BUFFERED, onBuf);
+              return;
+            }
             try {
               const buf = videoElement.buffered;
-              if (buf.length > 0 && buf.end(0) - (videoElement.currentTime || 0) >= 5) {
+              if (
+                buf.length > 0 &&
+                buf.end(0) - (videoElement.currentTime || 0) >= 5
+              ) {
                 clearTimeout(restoreTimeout);
                 restored = !0;
                 hls.off(Hls.Events.FRAG_BUFFERED, onBuf);
@@ -634,12 +663,14 @@ function setupMeelPlayerEvents() {
       stopWaitingTimeout();
     }),
     player.on("ended", async () => {
-
       if (window.meelHealthAlertActive) return;
       if ((stopStuckDetector(), player.loop)) return;
       if (isTransitioningNext) return;
-      const durationOk = player.duration > 0 && Math.abs(player.currentTime - player.duration) < 1.5;
-      const progressOk = player.currentTime > 0 && !videoElement.error && videoElement.ended;
+      const durationOk =
+        player.duration > 0 &&
+        Math.abs(player.currentTime - player.duration) < 1.5;
+      const progressOk =
+        player.currentTime > 0 && !videoElement.error && videoElement.ended;
       if (!durationOk && !progressOk) {
         console.warn("[MEeL] ended fired tapi bukan natural end — skip.");
         return;
@@ -674,7 +705,8 @@ function setupMeelPlayerEvents() {
       const e_fsWrap = document.getElementById("main-video-wrapper"),
         e_fsGlow = document.getElementById("video-glow-container");
       if (e_fsWrap) {
-        e_fsWrap._meelSavedRatio = e_fsWrap.style.getPropertyValue("--meel-video-ar") || "";
+        e_fsWrap._meelSavedRatio =
+          e_fsWrap.style.getPropertyValue("--meel-video-ar") || "";
         e_fsWrap._meelSavedMaxHeight = e_fsWrap.style.maxHeight || "";
         e_fsWrap._meelSavedWidth = e_fsWrap.style.width || "";
         e_fsWrap._meelSavedMarginL = e_fsWrap.style.marginLeft || "";
@@ -748,7 +780,8 @@ function setupMeelPlayerEvents() {
           },
           m = () => {
             if (!glowEnabled || c) return;
-            if (document.documentElement.getAttribute("data-theme") === "light") return;
+            if (document.documentElement.getAttribute("data-theme") === "light")
+              return;
             o.style.opacity = "0.6";
             p();
             d = 0;
@@ -786,9 +819,11 @@ function setupMeelPlayerEvents() {
         fsTitle.innerHTML = '<div class="meel-fs-title-text"></div>';
         var fsTitleText = fsTitle.querySelector(".meel-fs-title-text");
         var cfg = window.playerConfig || {};
-        fsTitleText.textContent = cfg.title || document.title.split("|")[0].trim() || "";
+        fsTitleText.textContent =
+          cfg.title || document.title.split("|")[0].trim() || "";
         fsTitleText.title = fsTitleText.textContent;
-        var plyrContainer = player && player.elements && player.elements.container;
+        var plyrContainer =
+          player && player.elements && player.elements.container;
         if (plyrContainer) plyrContainer.appendChild(fsTitle);
       }
       player.on("controlsshown", function () {
@@ -800,7 +835,6 @@ function setupMeelPlayerEvents() {
     }),
     player.on("exitfullscreen", () => {
       screen.orientation?.unlock && screen.orientation.unlock();
-
       document.body.classList.remove("meel-fs-active");
       const e_xsWrap = document.getElementById("main-video-wrapper"),
         e_xsGlow = document.getElementById("video-glow-container");
@@ -811,7 +845,10 @@ function setupMeelPlayerEvents() {
         e_xsWrap.style.removeProperty("width");
         e_xsWrap.style.removeProperty("border-radius");
         if (e_xsWrap._meelSavedRatio)
-          e_xsWrap.style.setProperty("--meel-video-ar", e_xsWrap._meelSavedRatio);
+          e_xsWrap.style.setProperty(
+            "--meel-video-ar",
+            e_xsWrap._meelSavedRatio,
+          );
         if (e_xsWrap._meelSavedMaxHeight)
           e_xsWrap.style.maxHeight = e_xsWrap._meelSavedMaxHeight;
         if (e_xsWrap._meelSavedWidth)
@@ -918,7 +955,8 @@ function setupMeelPlayerEvents() {
       i = () => {
         if (!glowEnabled || glowRAF) return;
         if (player && player.fullscreen && player.fullscreen.active) return;
-        if (document.documentElement.getAttribute("data-theme") === "light") return;
+        if (document.documentElement.getAttribute("data-theme") === "light")
+          return;
         r.classList.add("glow-active");
         o();
         glowLastSampleTime = 0;
@@ -962,7 +1000,6 @@ function setupMeelPlayerEvents() {
         n && (n.innerHTML = d(t));
       };
     ((window.updateLoopMenuUI = u), (window.updateGlowMenuUI = p));
-
     const S = (e) =>
       `${e ? "On" : "Off"} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="display:${e ? "inline-block" : "none"};vertical-align:middle;margin-left:4px"><polyline points="20 6 9 17 4 12"/></svg>`;
     window.updateAutoNextMenuUI = () => {
@@ -979,10 +1016,7 @@ function setupMeelPlayerEvents() {
           autoNextEnabled ? "true" : "false",
         ),
         window.updateAutoNextMenuUI(),
-        autoNextEnabled &&
-          player &&
-          ((player.loop = false),
-          window.updateLoopMenuUI && window.updateLoopMenuUI()),
+        autoNextEnabled && clearVideoLoop(),
         h(
           autoNextEnabled
             ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>'
@@ -990,7 +1024,6 @@ function setupMeelPlayerEvents() {
           autoNextEnabled ? "Auto Next On" : "Auto Next Off",
         ));
     };
-
     const m = () => {
       if (!player?.elements?.container) return null;
       const e = player.elements?.settings?.panels?.home;
@@ -1120,6 +1153,7 @@ function setupMeelPlayerEvents() {
               ((autoNextEnabled = false),
               localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false"),
               window.updateAutoNextMenuUI && window.updateAutoNextMenuUI()),
+            persistVideoLoop(player.loop),
             u());
           const e = player.loop;
           h(
@@ -1136,19 +1170,17 @@ function setupMeelPlayerEvents() {
       player.on("ended", () => s(!0)),
       videoElement.paused || videoElement.ended || i());
   }
-
   if (!window._meelClickRekomGuard) {
     window._meelClickRekomGuard = !0;
     document.addEventListener("click", function (e) {
       const link = e.target.closest(".rekomendasi-item");
       if (!link || !link.href) return;
       if (link.href === window.location.href) return;
+      clearVideoLoop();
       autoNextEnabled = false;
       localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false");
     });
   }
-
   setupMobileGestures();
 }
-
 /* reference build: MEeL-C8H11NO2 [21dc524c577111c4] */

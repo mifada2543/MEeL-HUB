@@ -1,5 +1,4 @@
 /* reference build: MEeL-C5H9NO2 [bf8984aed70b015f] */
-
 const config = window.playerConfig || {};
 let videoElement,
   player,
@@ -48,10 +47,49 @@ let glowTargetData = new Float32Array(GLOW_W * GLOW_H * 4),
   glowStopFn = null,
   glowEnabled = "false" !== localStorage.getItem(MEEL_KEYS.GLOW_ENABLED),
   glowNavbar = null;
-
 const _meelAutoNavFlag = sessionStorage.getItem(MEEL_KEYS.AUTONAV) === "1";
 sessionStorage.removeItem(MEEL_KEYS.AUTONAV);
 let autoNextEnabled = localStorage.getItem(MEEL_KEYS.AUTONEXT_ENABLED) === "true";
+let loopEnabled = localStorage.getItem(MEEL_KEYS.VIDEO_LOOP) === "true";
+if (autoNextEnabled && loopEnabled) {
+  loopEnabled = false;
+  try {
+    localStorage.removeItem(MEEL_KEYS.VIDEO_LOOP);
+  } catch (e) {
+    console.warn("[MEeL] Gagal membersihkan state loop:", e);
+  }
+}
+function persistVideoLoop(enabled) {
+  loopEnabled = !!enabled;
+  try {
+    if (loopEnabled) localStorage.setItem(MEEL_KEYS.VIDEO_LOOP, "true");
+    else localStorage.removeItem(MEEL_KEYS.VIDEO_LOOP);
+  } catch (e) {
+    console.warn("[MEeL] Gagal menyimpan state loop:", e);
+  }
+  return loopEnabled;
+}
+function restoreVideoLoop() {
+  const want = loopEnabled && !autoNextEnabled;
+  if (player) {
+    try {
+      player.loop = want;
+    } catch (e) {
+      console.warn("[MEeL] Gagal menerapkan state loop:", e);
+    }
+  }
+  window.updateLoopMenuUI && window.updateLoopMenuUI();
+  return want;
+}
+function clearVideoLoop() {
+  persistVideoLoop(false);
+  if (player) {
+    try {
+      player.loop = false;
+    } catch (e) {}
+  }
+  window.updateLoopMenuUI && window.updateLoopMenuUI();
+}
 window.lucide && lucide.createIcons();
 const plyrOptions = {
     ...MEEL_PLYR_COMMON,
@@ -110,7 +148,6 @@ const plyrOptions = {
     fragLoadingTimeOut: 2e4,
     manifestLoadingTimeOut: 1e4,
   };
-
 function buildPlyrMediaMetadata() {
   var cfg = window.playerConfig || {};
   return cfg.title

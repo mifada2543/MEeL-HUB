@@ -7,6 +7,8 @@ document.addEventListener("keydown", (e) => {
     (e.preventDefault(), e.stopPropagation(), window.toggleAutoNext?.());
   "s" === n &&
     (e.preventDefault(), e.stopPropagation(), window.toggleUpscale?.());
+  "b" === n &&
+    (e.preventDefault(), e.stopPropagation(), window.toggleGlow?.());
 });
 function updateSearchExcludeId(e) {
   (["v-search-watch", "v-search-mobile"].forEach((t) => {
