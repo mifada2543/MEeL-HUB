@@ -66,6 +66,8 @@ function initPlayer() {
           hls.loadSource(videoSrc),
           hls.attachMedia(videoElement),
           hls.on(Hls.Events.MANIFEST_PARSED, function () {
+            const d = hls.levels[0]?.details?.totalduration || 0;
+            d && d <= 120 && (hls.config.backBufferLength = Math.ceil(d) + 5);
             const e = hls.levels.map((e) => e.bitrate);
             (e.length > 1 &&
               ((plyrOptions.quality = {

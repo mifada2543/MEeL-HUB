@@ -8,6 +8,7 @@ Panduan pemecahan masalah umum di MEeL-HUB.
 
 - [Masalah Database](#masalah-database)
 - [Masalah Storage & HDD](#masalah-storage--hdd)
+- [Masalah HLS Streaming](#masalah-hls-streaming)
 - [Masalah Transcoding](#masalah-transcoding)
 - [Masalah yt-dlp](#masalah-yt-dlp)
 - [Masalah Sesi & Login](#masalah-sesi--login)
@@ -229,6 +230,48 @@ penanda juga diperingatkan `tests/check_deploy.php`.
 > ke dalam `MEEL_HDD_DRIVE` dinilai PASS. Lihat
 > [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)
 > untuk layout storage Drive (`MEEL_HDD_DRIVE` vs fallback `data_drive/`).
+
+---
+
+## Masalah HLS Streaming
+
+### ❌ Overlay "Sambungan Terputus" muncul sendiri saat meng-loop video
+
+**Gejala:** setelah video diulang 2–4 kali (±10 menit), muncul overlay
+"Sambungan Terputus", lalu video *jumped* / posisi playback berubah sendiri.
+Console menunjukkan:
+
+```
+HTML5 video error: PipelineStatus::PIPELINE_ERROR_DECODE: video decode error! code: 3
+Mengecek ketersediaan file media di: upload/video/.../....m3u8
+Media terdeteksi online! Memulai pemulihan via HTMX...
+```
+
+**Penyebab:** atribut native `loop` menyuruh browser melakukan seek
+`duration → 0` tanpa memberi tahu hls.js. `HLS_CONFIG.backBufferLength` hanya
+**10 detik**, sehingga data di posisi 0 sudah dievict dari `SourceBuffer`.
+Chromium lalu menjalankan seek di luar buffer dan melempar `PIPELINE_ERROR_DECODE`
+— padahal file medianya sehat (HEAD `.m3u8` membalas 200).
+
+Versi lama langsung menaikkan kode error 3 ke *full recovery*: probe HEAD →
+`htmx` swap → seluruh player dibangun ulang, padahal tidak ada yang rusak.
+
+**Perbaikan (sudah masuk di MEeL core):**
+
+| Lapis | Lokasi | Yang dilakukan |
+|-------|--------|-----------------|
+| Self-heal | `recovery.js` | Kode 2 & 3 diberi *grace period* 8 detik — `hls.recoverMediaError()` lalu dipantau apakah `currentTime` bergerak. Bergerak → selesai, tidak ada recovery. |
+| Loop wrap | `player-events.js` | Handler `ended` memberi tahu hls.js posisi tujuan (`hls.startLoad()`) agar ia memuat ulang segmen, bukan buta terhadap seek. |
+| Back buffer | `player-init.js` | Video pendek (≤2 menit) disimpan utuh di back buffer, sehingga loop tidak perlu flush sama sekali. |
+
+Log `[MEeL] Error media self-healed, playback lanjut normal.` menandakan
+grace period berhasil. Kalau Anda melihat
+`Error media tidak pulih dalam 8 detik, lanjut ke recovery`, berarti media
+memang bermasalah dan recovery berjalan seperti seharusnya.
+
+**Kalau masih terjadi:** naikkan `MEDIA_ERROR_GRACE_MS` di
+`assets/js/video/watch/state.js` (default `8e3`), atau turunkan ambang
+back buffer manual.
 
 ---
 

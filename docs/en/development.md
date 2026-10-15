@@ -1284,7 +1284,7 @@ php scripts/gc.php          # heavy housekeeping (needs $server = TCP)
 | `assets/js/video/watch/player-init.js` | Plyr + HLS.js initialization |
 | `assets/js/video/watch/player-events.js` | Event orchestration (auto-next, glow, resume) |
 | `assets/js/video/watch/mini-player.js` | Mini-player floating mode |
-| `assets/js/video/watch/recovery.js` | Player auto-recovery system — uses shared `recovery-manager.js` factories |
+| `assets/js/video/watch/recovery.js` | Player auto-recovery system — uses shared `recovery-manager.js` factories, plus a grace-period self-heal for decode/network errors |
 | `assets/js/video/watch/gestures.js` | Mobile touch gestures |
 | `assets/js/music/watch/main.js` | Entry point folder watch/ — loads siblings synchronously (document.write) |
 | `assets/js/music/watch/mini-player.js` | Music mini-player mode (Spotify-style) — separated from player-core.js |
