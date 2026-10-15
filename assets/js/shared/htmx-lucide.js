@@ -30,7 +30,6 @@
     }
   }
 
-  // Ikon yang sudah ada di DOM saat halaman selesai parse.
   renderIcons();
 
   if (document.body) {

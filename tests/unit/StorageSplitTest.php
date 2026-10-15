@@ -104,8 +104,6 @@ class StorageSplitTest extends TestCase
             }
         }
 
-        // Daftar ini diambil dari storage.php sebelum dipecah (git HEAD
-        // sebelum T27). Kalau ada yang hilang,_test ini yang menangkapnya.
         $expected = [
             'meel_media_base_path', 'video_thumbnail_sm_name', 'video_thumbnail_sm',
             'meel_is_default_thumbnail', 'music_thumbnail_url', 'meel_storage_base_path',
@@ -243,19 +241,6 @@ class StorageSplitTest extends TestCase
         $security = (string) file_get_contents(MEEL_ROOT . '/tests/security_test.php');
         $functional = (string) file_get_contents(MEEL_ROOT . '/tests/functional_test.php');
 
-        // Berkas pecahan yang nyata memakai shell harus terdaftar di peta
-        // "risky" milik security_test.
-        //
-        // PENTING: yang diperiksa adalah ISI PETA $risky, bukan keseluruhan
-        // teks security_test. Versi pertama hanya assertStringContainsString
-        // atas nama berkas — dan mutation check membuktikannya lemah: begitu
-        // entri $risky dikembalikan menunjuk agregator, nama storage_disk.php
-        // masih muncul di $critical, jadi test tetap hijau. Persis mode
-        // kegagalan yang mau dicegah.
-        // Ada LEBIH dari satu blok `$risky`: yang paling atas di security_test
-        // adalah `$risky = [];` untuk kueri SQL, bukan peta berkas. Regex
-        // non-greika memadainya dan menghasilkan blok kosong -- jadi ambil
-        // blok yang paling panjang.
         preg_match_all('/\$risky\s*=\s*\[(.*?)\];/s', $security, $allBlocks);
         $this->assertNotEmpty($allBlocks[1], 'peta $risky di security_test tidak terbaca');
 
@@ -278,8 +263,6 @@ class StorageSplitTest extends TestCase
             );
         }
 
-        // Fungsi yang dipetakan functional_test harus menunjuk berkas yang
-        // benar-benar mendefinisikannya.
         preg_match_all(
             "/'([a-z_0-9]+)'\s*=>\s*'(modules\/core\/helpers\/[a-z_]+\.php)'/",
             $functional,

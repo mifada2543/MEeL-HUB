@@ -13,7 +13,6 @@ window.toggleVisualizer = function () {};
 window.toggleEqualizer = function () {};
 
 /* reference build: MEeL-C5H9NO2 [071620688d7c93b6] */
-
 document.addEventListener("keydown", (e) => {
   if (window.meelResumeModalActive) return;
   if (window.meelKeyShortcutIgnored?.(e)) return;

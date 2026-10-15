@@ -214,7 +214,6 @@ class SchemaMigrationParityTest extends TestCase
         foreach (['upload_queue', 'transcode_queue'] as $table) {
             $cols = $this->schemaColumns($table);
 
-            // Kolom yang wajib punya padanan di migrate.php (dari v6).
             $mustHaveMigration = ['coin_cost', 'coin_refunded'];
 
             foreach ($mustHaveMigration as $col) {

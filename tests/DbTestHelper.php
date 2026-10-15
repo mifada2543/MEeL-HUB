@@ -70,18 +70,6 @@ class DbTestHelper
             throw new RuntimeException('Test DB: gagal drop database lama: ' . $admin->error);
         }
 
-        // Database dibuat dan dipilih di sini, BUKAN lewat CREATE DATABASE/USE
-        // yang tertanam di schema.sql.
-        //
-        // Sebelumnya berkas ini menulis ulang nama database di dalam
-        // schema.sql lalu bergantung pada `USE` di dalamnya untuk memilih
-        // database uji. Waktu `USE` itu dihapus dari schema.sql, impor berjalan
-        // tanpa database terpilih dan gagal "No database selected" -- 113 dari
-        // 113 integration test error sekaligus.
-        //
-        // Sebutkan database target secara eksplisit, jangan lagi menulis ulang isi
-        // schema.sql: itu pola rapuh yang sama yang sudah dihapus dari
-        // install.sh dan ci.yml.
         $admin->query('CREATE DATABASE `' . $name . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         if ($admin->error) {
             throw new RuntimeException('Test DB: gagal membuat database uji: ' . $admin->error);
@@ -152,21 +140,11 @@ class DbTestHelper
         $prop = $ref->getProperty('cache');
         $prop->setAccessible(true);
 
-        // PENTING: bentuk 1-argumen `setValue([])` DEPRECATED di PHP 8.3
-        // ("Calling ReflectionProperty::setValue() with a single argument is
-        // deprecated") dan akan jadi error di PHP 9. Bentuk lama itu
-        // bekerja hanya karena Modules::exists() tidak pernah membaca argumen
-        // pertama — memusnahkan cache adalah kasus yang seharusnya punya
-        // bentuk eksplisit, bukan pintasan rapuh.
-        //
-        // Dua cara aman, berurutan dari yang paling bersih:
         if (method_exists($ref, 'setStaticPropertyValue')) {
-            // PHP >= 8.3: API eksplisit untuk static property.
+
             $ref->setStaticPropertyValue($prop->getName(), []);
         } else {
-            // PHP < 8.3: bentuk 2-argumen (objek, nilai). Untuk static
-            // property, objeknya boleh null — persis yang dilakukan
-            // bentuk 1-argumen secara internal.
+
             $prop->setValue(null, []);
         }
     }

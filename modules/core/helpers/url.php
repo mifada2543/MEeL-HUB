@@ -145,11 +145,6 @@ function meel_css_links(string $module, string $baseUrl): void
     foreach (require $manifest as $file) {
         $rel = 'assets/css/' . $module . '/' . $file;
 
-        // Jangan emit link ke file yang tidak ada. Manifest boleh menunjuk
-        // ke shared/ lewat "../shared/…", jadi path harus dinormalkan dulu.
-        // Tanpa cek ini, file yang terhapus/refactor setengah jadi 404 yang
-        // senyap: halaman tetap render, hanya jadi tanpa sebagian gaya, dan
-        // tidak ada error di mana pun.
         $abs = realpath($root . '/' . $rel);
         if ($abs === false || !is_file($abs)) {
             error_log('[meel_css_links] lewati (file tidak ada): ' . $rel);

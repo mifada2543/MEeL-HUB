@@ -118,9 +118,6 @@ class TailwindReproducibilityTest extends TestCase
             . 'mencari sendiri dan bisa diam-diam memakai config lain'
         );
 
-        // Versi WAJIB dipin, bukan `latest`: artefak ter-commit dibangun dengan
-        // versi tertentu dan build dengan versi lain bisa menghasilkan CSS
-        // berbeda tanpa error.
         $this->assertArrayHasKey(
             'tailwindcss',
             $pkg['devDependencies'] ?? [],
@@ -177,10 +174,6 @@ class TailwindReproducibilityTest extends TestCase
             'Content glob harus punya ekstensi brace (mis. {php,js,html}) agar bisa dipindai'
         );
 
-        // Daftar folder terlarang TIDAK diturunkan dari config. Kalau diambil
-        // dari config, pemeriksaan ini membandingkan config dengan dirinya
-        // sendiri: begitu Someone menghapus `!./tests/**`, folder itu ikut
-        // hilang dari daftar yang diperiksa dan tidak ada yang gagal.
         $scanned = [];
         $it = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator(MEEL_ROOT, FilesystemIterator::SKIP_DOTS)
@@ -277,10 +270,6 @@ class TailwindReproducibilityTest extends TestCase
             );
         }
 
-        // `cubic-bezier()` tanpa empat angka itu invalid menurut spesifikasi:
-        // browser membuang seluruh deklarasi animation. Dokumentasi T10 pernah
-        // menuliskan bentuk tiga angka, dan build yang mengikuti docs itu
-        // membuat ikon transcode diam-diam berhenti "pop".
         $this->assertDoesNotMatchRegularExpression(
             '/cubic-bezier\(\s*[-\d.]+\s*,\s*[-\d.]+\s*,\s*[-\d.]+\s*\)/',
             $this->config,
@@ -297,10 +286,7 @@ class TailwindReproducibilityTest extends TestCase
      */
     public function testCommittedArtifactContainsWhatConfigProduces(): void
     {
-        // Lapisan wajib: tanpa salah satu, separuh halaman kehilangan gaya.
-        // Cek pakai assertTrue + pesan pendek, bukan assertStringContainsString:
-        // kalau gagal, PHPUnit mencetak seluruh isi file yang dicek — dan itu
-        // 100 KB CSS minified di terminal, yang menutupi pesan aslinya.
+
         foreach ([
             '*,:after,:before'   => 'preflight Tailwind',
             '--tw-shadow'        => 'utility shadow',

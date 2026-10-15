@@ -375,7 +375,7 @@ class TranscoderBase
 
                 $raw = trim((string) @file_get_contents($file));
                 if ($raw !== '' && ctype_digit($raw) && self::pidIsAlive((int) $raw)) {
-                    continue;   // job masih jalan -- jangan sentuh
+                    continue;
                 }
 
                 if (@unlink($file)) {

@@ -327,9 +327,9 @@ class MediaViewerTest extends TestCase
     public function testQueueUsesDeterministicOrderWithTieBreaker(): void
     {
         $viewer = $this->buildSessionViewer([
-            [],                                                   // antrean
-            [['added_at' => '2026-08-08 10:00:00', 'id' => '5']], // track saat ini
-            [['music_id' => '7']],                                // track berikutnya
+            [],
+            [['added_at' => '2026-08-08 10:00:00', 'id' => '5']],
+            [['music_id' => '7']],
         ], 42, 5);
 
         $result = $viewer->getPlaylistQueue(3);
@@ -369,8 +369,8 @@ class MediaViewerTest extends TestCase
     public function testNextUrlEmptyWhenCurrentTrackNotInPlaylist(): void
     {
         $viewer = $this->buildSessionViewer([
-            [],   // antrean
-            [],   // track saat ini
+            [],
+            [],
         ], 42, 999);
 
         $result = $viewer->getPlaylistQueue(3);

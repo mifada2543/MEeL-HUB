@@ -1,38 +1,4 @@
 #!/usr/bin/env bash
-#
-# install.sh — Installer otomatis MEeL-HUB
-#
-# Menjalankan seluruh langkah di "Instalasi Cepat" README secara otomatis:
-#   1. Cek dependency (PHP + ekstensi, MariaDB/MySQL, Apache)
-#   2. Setup database + import schema.sql
-#   3. Buat auth/settings.php & auth/config.php dari template (+ MEEL_ENV/APP_DEBUG,
-#      path biner manual, trusted proxy, opsi X-Sendfile)
-#   4. Buat direktori storage runtime + symlink deploy ke MEEL_HDD_BASE
-#      (hardening .htaccess folder upload ikut disalin ke target)
-#   5. Aktifkan mod_rewrite + (opsional) buat VirtualHost Apache
-#   6. Jalankan database/migrate.php
-#   7. Verifikasi akhir via tests/check_deploy.php — exit 1 jika ada FAIL
-#
-# Didesain idempotent untuk sebagian besar langkah (settings.php, direktori
-# storage, migration). Pengecualian: import awal schema.sql TIDAK diulang
-# otomatis jika database sudah ada (berisi seed data Admin yang bukan
-# idempotent) — script akan melewatinya dengan aman, bukan reimport paksa.
-#
-# Uji di Ubuntu/Debian (apt). Untuk distro lain, sesuaikan bagian
-# install_dependencies().
-#
-# Pemakaian:
-#   ./install.sh                 # mode interaktif (tanya konfigurasi)
-#   ./install.sh --yes           # non-interaktif, pakai semua default
-#   ./install.sh --hdd=/path     # set MEEL_HDD_BASE langsung
-#   ./install.sh --skip-apt      # lewati instalasi paket sistem (sudah ada)
-#   ./install.sh --xsendfile     # aktifkan MEEL_USE_XSENDFILE (wajib mod_xsendfile Apache)
-#   ./install.sh --env=production|development   # set MEEL_ENV + APP_DEBUG
-#   ./install.sh --trust-proxy   # aktifkan MEEL_TRUST_PROXY_HEADERS (di balik reverse proxy)
-#   ./install.sh --vhost=meel.local  # buat VirtualHost Apache untuk domain tsb
-#   ./install.sh --help
-#
-# Semua prompt ya/tidak memakai 'y' = ya, 't' = tidak.
 set -euo pipefail
 
 if [ -t 1 ]; then
@@ -230,9 +196,6 @@ if [ "$DB_EXISTS" -gt 0 ]; then
     warn "yang bukan idempotent, reimport akan gagal 'Duplicate entry' jika data sudah ada)."
     warn "Jika Anda ingin instalasi BENAR-BENAR bersih: DROP DATABASE \`${DB_NAME}\`; lalu jalankan ulang script ini."
     if confirm "Tetap paksa reimport schema.sql sekarang? (BERISIKO gagal jika tabel/data sudah ada)" N; then
-        # schema.sql tidak lagi memuat CREATE DATABASE / USE, jadi nama
-        # database dinyatakan sekali di sini -- bukan dengan menyalin ulang
-        # pola dari dalam berkas.
         if ! mysql "${MYSQL_AUTH[@]}" "${DB_NAME}" < database/schema.sql; then
             warn "Reimport schema gagal (kemungkinan besar data sudah ada) — melanjutkan dengan database apa adanya."
         else
@@ -401,8 +364,6 @@ env, debug, ffmpeg, ffprobe, node, ytdlp, trust, path = sys.argv[1:9]
 with open(path, 'r', encoding='utf-8') as f:
     c = f.read()
 if env == 'production':
-    # uncomment baris yang nilainya sama persis (idempotent: baris lain
-    # dibiarkan sebagai komentar, tidak pernah duplikat define aktif)
     c = re.sub(r"^//\s*define\('MEEL_ENV', 'production'\).*$",
                "define('MEEL_ENV', 'production');", c, count=1, flags=re.M)
 elif env == 'development':

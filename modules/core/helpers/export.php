@@ -104,21 +104,6 @@ if (!function_exists('meel_xls_end')) {
     }
 }
 
-/* ========================================================================
- * Spesifikasi kolom
- *
- * Bentuk satu entri:
- *   [
- *     'key'     => kunci di baris hasil query,
- *     'label'   => teks header (dipakai CSV, XLS, dan pratinjau),
- *     'default' => OPSIONAL. Kalau ada, dipakai sebagai `$row[$key] ?? default`,
- *                 jadi null juga ikut berganti ke default. Kalau TIDAK ada,
- *                 nilai diteruskan apa adanya -- null tetap null.
- *     'type'    => 'int'  -> selalu di Casting ke int
- *                 'int?'  -> int, TETAPI null tetap null (baca nilai mentah)
- *   ]
- * ===================================================================== */
-
 if (!function_exists('meel_export_labels')) {
     /** @return string[] label header, sesuai urutan kolom */
     function meel_export_labels(array $cols): array

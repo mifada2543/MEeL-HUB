@@ -48,7 +48,7 @@ class SwalButtonContrastTest extends TestCase
             $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
         }
         if (!preg_match('/^[0-9a-fA-F]{6}$/', $hex)) {
-            return -1;   // bukan warna hex yang bisa dihitung
+            return -1;
         }
 
         $channels = [];
@@ -93,7 +93,7 @@ class SwalButtonContrastTest extends TestCase
                 continue;
             }
             $path = $file->getPathname();
-            // pustaka sweetalert2 itu sendiri bukan kode kita
+
             if (str_contains($path, '/compatibilitas/')) {
                 continue;
             }
@@ -116,8 +116,7 @@ class SwalButtonContrastTest extends TestCase
 
         foreach ($files as $path) {
             $src = (string)file_get_contents($path);
-            // hanya nilai literal hex; variabel/ekspresi tidak bisa dinilai
-            // di sini dan memang tidak dipakai di repo ini.
+
             if (!preg_match_all(
                 '/confirmButtonColor\s*:\s*([\'"])#([0-9a-fA-F]{3,6})\1/',
                 $src,

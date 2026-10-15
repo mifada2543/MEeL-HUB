@@ -546,9 +546,6 @@ session_write_close();
                 });
             }
         });
-        // Ikon setelah swap htmx ditangani shared/htmx-lucide.js (T23);
-        // listener manual di sini identik dengan isi file itu, jadi
-        // dihapus supaya tidak ada dua sumber kebenaran.
         window.toggleEqPresetDropdown = function() {
             const options = document.getElementById('eq-preset-options');
             if (!options) return;

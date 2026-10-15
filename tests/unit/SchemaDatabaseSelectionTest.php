@@ -47,8 +47,6 @@ class SchemaDatabaseSelectionTest extends TestCase
 
         $sql = (string) file_get_contents($path);
 
-        // Cocokkan per baris supaya blok komentar tidak ikut terhitung --
-        // dokumentasi di dalam schema.sql sah-sah menyebut `USE <nama>`.
         $offenders = [];
         foreach (preg_split('/\R/', $sql) as $no => $line) {
             $trimmed = ltrim($line);
@@ -82,8 +80,6 @@ class SchemaDatabaseSelectionTest extends TestCase
     {
         $sql = (string) file_get_contents($path);
 
-        // Berkas harus tetap punya isi -- penjaga di atas bisa lolos pada
-        // berkas kosong tanpa Exchange error.
         $this->assertGreaterThan(
             1000,
             strlen($sql),

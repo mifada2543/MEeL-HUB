@@ -223,8 +223,7 @@ class HeadScriptDeferTest extends TestCase
      */
     public function testHeadInlineScriptsDoNotTouchDeferredLibraries(): void
     {
-        // Inline head ada di partials/head.php; yang di index.php hanya script
-        // eksternal. Keduanya diperiksa karena keduanya jalan sebelum script defer.
+
         preg_match_all(
             '/<script(?![^>]*\bsrc\s*=)[^>]*>(.*?)<\/script>/s',
             $this->head,
@@ -271,7 +270,6 @@ class HeadScriptDeferTest extends TestCase
             . 'partials/head.php -- tanpa itu tema berkedip saat halaman dimuat'
         );
 
-        // Ia harus benar-benar menulis data-theme, bukan sekadar membaca.
         $antiFlickerAt = (int) strpos($this->head, 'meel_theme');
         $segment = substr($this->head, $antiFlickerAt, 900);
         $this->assertMatchesRegularExpression(
@@ -280,8 +278,6 @@ class HeadScriptDeferTest extends TestCase
             'Script anti-FOUC harus benar-benar menulis data-theme ke <html>'
         );
 
-        // partials/head.php di-include sebelum script eksternal pertama, jadi
-        // anti-FOUC selalu tampil mendahului theme.js yang sekarang di-defer.
         $this->assertLessThan(
             $this->firstExternalScriptLine(),
             $this->headIncludeLine(),
@@ -316,9 +312,6 @@ class HeadScriptDeferTest extends TestCase
             'MEEL_BASE ditulis sebelum MEEL_CSRF'
         );
 
-        // Yang menentukan: partial yang meng-inline itu harus tampil sebelum
-        // script eksternal pertama. Kalau tidak, nilainya `undefined` saat
-        // script defer (index-hub.js) mengonsumsi 소비.
         $this->assertLessThan(
             $this->firstExternalScriptLine(),
             $this->headIncludeLine(),

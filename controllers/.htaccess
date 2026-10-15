@@ -1,5 +1,3 @@
-# Security defaults for controllers
-# Direct access blocked — controllers are include-only (routed via .htaccess root)
 Options -Indexes
 
 <IfModule !mod_rewrite.c>

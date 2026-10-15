@@ -148,7 +148,6 @@ function meel_expand_globs(array $positive, array $negative): array
         exit(2);
     }
 
-    // Direktori yang dikecualikan, diturunkan dari glob `!./x/**`.
     $excludedDirs = [];
     foreach ($negative as $glob) {
         if (preg_match('#^\./([^/]+)/\*\*$#', $glob, $m)) {
@@ -172,7 +171,6 @@ function meel_expand_globs(array $positive, array $negative): array
         }
         $rel = './' . ltrim(substr($path, strlen($root)), '/');
 
-        // Yang dikecualikan: path-nya mulai `./<dir>/`.
         $skip = false;
         foreach ($excludedDirs as $dir => $_) {
             if (str_starts_with($rel, './' . $dir . '/')) {
@@ -216,11 +214,7 @@ function meel_collect_source_classes(array $files): array
                     if ($tok === '' || preg_match('/^[A-Za-z0-9:_\-\/\[\]\.#%]+$/', $tok) !== 1) {
                         continue;
                     }
-                    // Buang sisa interpolasi PHP (tag short-echo) yang mungkin menempel di token.
-// CATATAN PENTING: jangan pernah menulis tag short-echo secara harfiah di
-// dalam komentar satu-baris. Kemunculan tag tutup short-echo di baris
-// `//` mengakhiri mode PHP, dan seluruh sisa file lalu diparse sebagai
-// HTML — gejalanya "unclosed brace" yang jauh dari penyebabnya.
+
                     if (str_contains($tok, '<?') || str_contains($tok, '?>')) {
                         continue;
                     }
@@ -312,8 +306,7 @@ function meel_collect_css_rules(string $css): array
  */
 function meel_css_classes_in_selector(string $sel, string $delims): array
 {
-    // Buang pseudo-class/pseudo-element, lalu ambil senyawa terakhir
-    // (setelah combinator atau spasi).
+
     $sel = preg_replace('/::?[a-zA-Z-]+(\([^()]*\))?/', ' ', $sel) ?? $sel;
     $parts = preg_split('/\s*[>+~]\s*|\s+/', trim($sel), -1, PREG_SPLIT_NO_EMPTY);
     if ($parts === []) {
@@ -332,7 +325,7 @@ function meel_css_classes_in_selector(string $sel, string $delims): array
         while ($j < $len) {
             $ch = $subject[$j];
             if ($ch === '\\') {
-                // Escape: backslash + karakter berikutnya, keduanya bagian token.
+
                 $token .= ($subject[$j + 1] ?? '');
                 $j += 2;
                 continue;
@@ -389,14 +382,6 @@ if ($files === []) {
 $excludedCount = count($negative);
 printf("  pola pengecualian    : %d (%s)\n", $excludedCount, implode(' ', $negative));
 
-// Bukti bahwa pengecualian benar-benar bekerja.
-// Daftar folder yang WAJIB tidak pernah terpindai sengaja ditulis sebagai
-// konstanta di sini, BUKAN diturunkan dari glob di config. Kalau daftar
-// itu diambil dari config, pemeriksaan ini membandingkan config dengan
-// dirinya sendiri: begitu Someone menghapus `!./tests/**` dari config, folder
-// juga hilang dari daftar yang diperiksa — dan tidak ada yang pernah gagal.
-// Mutation check membuktikannya: tanpa daftar konstanta, penghapusan
-// eksplisit itu lolos begitu saja.
 $mustExclude = ['.git', 'vendor', 'node_modules', 'logs', 'temp', 'storage', 'data_drive', 'tests'];
 foreach ($mustExclude as $dir) {
     $leaked = array_values(array_filter(
@@ -436,7 +421,6 @@ if ($argNew === null) {
     $missing = array_values(array_diff($oldClasses, $newClasses));
     $added = array_values(array_diff($newClasses, $oldClasses));
 
-    // Regression: hilang dari build baru TETAP dipakai markup.
     $regressions = [];
     foreach ($missing as $cls) {
         if (isset($sourceClasses[$cls])) {
@@ -444,17 +428,10 @@ if ($argNew === null) {
         }
     }
 
-    // Perubahan nilai: class ada di kedua sisi, tapi deklarasinya beda.
-    // Ini kondisi yang TIDAK tertangkap perbandingan nama class saja, dan
-    // kasus nyatanya sudah terjadi: `animate-icon-pop` tetap ada setelah
-    // build ulang, tapi `cubic-bezier()`-nya berubah dari empat angka jadi
-    // tiga — sehingga browser membuang seluruh deklarasi animation dan ikon
-    // transcode berhenti "pop". Tidak ada class yang hilang, tidak ada error,
-    // halaman tetap tampil.
     $changed = [];
     foreach ($oldClasses as $cls) {
         if (!isset($newRules[$cls])) {
-            continue;   // sudah tertangani sebagai regresi / class mati
+            continue;
         }
         $old = $oldRules[$cls];
         $new = $newRules[$cls];
@@ -508,7 +485,6 @@ if ($argNew === null) {
     echo "\n";
 }
 
-// --- 4. Tema kustom wajib masih ada di config ----------------------------
 $configSrc = (string)file_get_contents($root . '/tailwind.config.js');
 $required = [
     "bg: '#080b11'",

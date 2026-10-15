@@ -46,11 +46,6 @@ class PwaManifestScopeTest extends TestCase
     {
         $script = MEEL_ROOT . '/manifest.php';
 
-        // String kosong berarti "jangan sentuh DOCUMENT_ROOT sama sekali" —
-        // inilah kondisi CLI/cron sungguhan, yang jadi pemicu path
-        // filesystem bocor ke manifest. Kalau kita mengirim string kosong,
-        // generator justru diberi DOCUMENT_ROOT="" yang eksplisit, dan
-        // itu BUKAN skenario yang sama.
         $env = '';
         if ($docRoot !== '') {
             $env = sprintf('MEEL_MANIFEST_DOCROOT=%s ', escapeshellarg($docRoot));
@@ -85,8 +80,7 @@ class PwaManifestScopeTest extends TestCase
 
     public function testScopeAndIdUseDetectedBasePath(): void
     {
-        // Kita paksa DOCUMENT_ROOT = path proyek, jadi base path relatif
-        // harus kosong ("/" — document root).
+
         $manifest = $this->renderManifest(MEEL_ROOT);
 
         $this->assertSame('/', $manifest['scope'], 'Document root → scope "/"');
@@ -105,8 +99,7 @@ class PwaManifestScopeTest extends TestCase
      */
     public function testScopeNotHardcodedToProjectDirectoryName(): void
     {
-        // Guard sederhana tapi penting: source TIDAK BOLEH punya base path
-        // yang di-hardcode di dalam string scope/id.
+
         $src = (string)file_get_contents(MEEL_ROOT . '/manifest.php');
 
         $this->assertStringNotContainsString(
@@ -115,8 +108,6 @@ class PwaManifestScopeTest extends TestCase
             "manifest.php tidak boleh hardcode '/MEeL/' — scope harus dihitung dari base path"
         );
 
-        // Sebaliknya, file JSON statis masih hardcode (fallback) — tapi
-        // yang dilayani browser adalah generator. Pastikan rewrite-nya ada.
         $htaccess = (string)file_get_contents(MEEL_ROOT . '/.htaccess');
         $this->assertMatchesRegularExpression(
             '#RewriteRule\s+\^assets/manifest\\\.json\$#',
@@ -128,12 +119,9 @@ class PwaManifestScopeTest extends TestCase
 
     public function testStartUrlAndShortcutsAreAbsoluteUnderBase(): void
     {
-        // Render dengan DOCUMENT_ROOT = parent of project ( simulating
-        // server root = one level up ), supaya base path = nama folder.
+
         $manifest = $this->renderManifest(MEEL_ROOT . '/..');
 
-        // start_url harus absolut (dimulai /), bukan relatif seperti
-        // "../index.php".
         $this->assertStringStartsWith(
             '/',
             $manifest['start_url'],
@@ -191,8 +179,7 @@ class PwaManifestScopeTest extends TestCase
 
     public function testFallbackJsonStillExistsForNoRewriteEnvironment(): void
     {
-        // Clone tanpa mod_rewrite harus tetap punya manifest yang bisa
-        // dilayani — walau scope-nya hardcode, itu lebih baik daripada 404.
+
         $this->assertFileExists(
             MEEL_ROOT . '/assets/manifest.json',
             'assets/manifest.json harus tetap ada sebagai fallback untuk '
@@ -211,7 +198,7 @@ class PwaManifestScopeTest extends TestCase
      */
     public function testNoFilesystemPathLeaksIntoUrls(): void
     {
-        // DOCUMENT_ROOT TIDAK diset — persis kondisi CLI/cron.
+
         $manifest = $this->renderManifest('');
 
         $blob = (string)json_encode($manifest);
@@ -224,8 +211,6 @@ class PwaManifestScopeTest extends TestCase
             );
         }
 
-        // Dan karena ini kondisi tanpa DOCUMENT_ROOT, scope WAJIB tepat "/"
-        // (bukan path absolut apa pun).
         $this->assertSame(
             '/',
             $manifest['scope'],
@@ -252,9 +237,6 @@ class PwaManifestScopeTest extends TestCase
         $manifest = json_decode($out, true);
         $this->assertIsArray($manifest);
 
-        // DOCUMENT_ROOT kosong → meel_base_url_path() kembalikan path
-        // proyek penuh. Generator harus memaksa scope ke "/", bukan
-        // mengeluarkan "/opt/lampp/htdocs/MEeL/" ke response.
         $projPath = str_replace('\\', '/', MEEL_ROOT);
         $this->assertStringNotContainsString(
             $projPath,

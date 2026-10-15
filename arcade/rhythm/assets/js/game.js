@@ -520,7 +520,6 @@
     }
 
 /* reference build: MEeL-C5H5N5O [43eacddc5714608f] */
-
     for (const note of activeNotes) {
       if (!note.endTime || note.hit || note.missed) continue;
       const cx = pfx + note.lane * lw + lw / 2;

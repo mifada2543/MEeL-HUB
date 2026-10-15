@@ -86,7 +86,6 @@ class CleanupStalePidFilesTest extends TestCase
         }
         $this->created = [];
 
-        // Pulihkan apa pun milik sistem yang ikut terhapus.
         foreach ($this->preexisting as $file => [$content, $mtime]) {
             if (!is_file($file)) {
                 @file_put_contents($file, $content);
@@ -211,11 +210,9 @@ class CleanupStalePidFilesTest extends TestCase
     {
         $path = $this->makePidFile($this->uid('thresh') . '.pid', (string) $this->deadPid(), 100);
 
-        // Ambang 10 menit (600 dtk) > umur 100 dtk -> belum boleh dihapus.
         TranscoderBase::cleanupStalePidFiles(600);
         $this->assertFileExists($path, 'Umur 100 dtk di bawah ambang 600 dtk harus aman');
 
-        // Ambang 10 dtk < umur 100 dtk -> harus dibuang.
         TranscoderBase::cleanupStalePidFiles(10);
         $this->assertFileDoesNotExist($path, 'Umur 100 dtk di atas ambang 10 dtk harus dibuang');
     }
@@ -251,8 +248,6 @@ class CleanupStalePidFilesTest extends TestCase
         $this->assertFileDoesNotExist($b, 'PID file basi dari proses mati harus dibuang');
         $this->assertFileExists($alive, 'PID file berproses hidup harus bertahan');
 
-        // Setelah panggilan pertama semua yang boleh dihapus sudah hilang,
-        // jadi panggilan kedua tidak boleh menghapus apa pun.
         $before2 = $this->allPidFiles();
         $cleaned2 = TranscoderBase::cleanupStalePidFiles();
         $this->assertSame(
@@ -298,8 +293,6 @@ class CleanupStalePidFilesTest extends TestCase
         $body = $this->extractMethodBody($src, 'cleanupStalePidFiles');
         $this->assertNotSame('', $body, 'Badan cleanupStalePidFiles() harus bisa dibaca');
 
-        // Syarat "proses masih hidup" harus benar-benar ada di logikanya,
-        // bukan hanya disebut di komentar.
         $this->assertMatchesRegularExpression(
             '/pidIsAlive|isProcessAlive/',
             $body,
@@ -338,15 +331,6 @@ class CleanupStalePidFilesTest extends TestCase
             . 'persis kondisi sebelum T19.'
         );
 
-        // Harus di bagian RINGAN: cleanup tidak butuh database, jadi
-        // harus tetap jalan saat cron memakai --run-only. Kalau tergeser
-        // ke bawah blok itu, `exit(0)` menyalakannya tanpa pernah
-        // membersihkan apa pun.
-        //
-        // Penandanya harus UNIK. `strpos($src, 'if ($runOnly)')` akan
-        // kena blok *preview* yang jauh lebih dulu ("Akan dijalankan:"),
-        // bukan blok early-exit -- jadi posisi yang dibandingkan tidak
-        // sesuai maksud.
         $posRunOnly = strpos($src, '[MEeL gc] --run-only: DDL');
         $this->assertNotFalse($posRunOnly, 'Blok early-exit --run-only tidak ditemukan di gc.php');
         $this->assertLessThan(
@@ -357,8 +341,6 @@ class CleanupStalePidFilesTest extends TestCase
             . 'PID file yatim. Kalau sesudahnya, exit(0) menyalakannya dulu.'
         );
 
-        // Hasilnya harus dilaporkan, kalau tidak operator tidak tahu
-        // apakah housekeeping itu benar-benar jalan.
         $this->assertMatchesRegularExpression(
             '/\$stalePids\s*>\s*0/',
             $src,

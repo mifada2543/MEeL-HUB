@@ -27,13 +27,9 @@
 function meel_transcoder_check_patterns(): array
 {
     return [
-        // Perintah ffmpeg dibangun sebagai array argumen, bukan string yang
-        // dirangkai untuk shell. Inilah yang mencegah injeksi lewat nama
-        // berkas atau judul yang mengandung karakter meta shell.
+
         'proc_open array (finalizeVideo)' => '/\$hls_cmd\s*=\s*\[\s*\$this->ffmpeg_bin/',
 
-        // Pemanggilan generik menerima array itu apa adanya. Kalau nanti
-        // berubah jadi `proc_open($cmdString, ...)`, ini yang menangkap.
         'proc_open menerima array, bukan string shell' => "/proc_open\(\\\$job\['cmd'\]/",
 
         'proc_open array (transcodeVideo)' => '/proc_open\(\$tc_cmd/',
@@ -41,9 +37,6 @@ function meel_transcoder_check_patterns(): array
         'env vars via $env (PATH)' => "/'PATH'/",
         'putenv() untuk processDownload' => "/putenv\('PATH/",
 
-        // Progress dibaca dari pipe stderr (indeks 2). Membaca dari stdout
-        // atau dari deskriptor yang salah membuat parse `time=` salah
-        // dan progress tidak pernah bergerak.
         'stderr pipe untuk progress FFmpeg' => '/\$stream\s*=\s*\$pipes\[2\]/',
         'baca progress dari stream stderr' => '/fgets\(\$stream\)/',
 

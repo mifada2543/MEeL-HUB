@@ -90,7 +90,7 @@ class UnusedGlobalImportTest extends TestCase
 
             $line = $t[2];
             $globals = [];
-            // Kumpulkan nama variabel setelah `global`
+
             for ($j = $i + 1; $j < $count; $j++) {
                 $v = $tokens[$j];
                 if (is_array($v) && in_array($v[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
@@ -106,9 +106,6 @@ class UnusedGlobalImportTest extends TestCase
                 continue;
             }
 
-            // Akan dibandingkan dengan pemakaian di seluruh berkas.
-            // Exactness is good enough here: we only flag a name that NEVER
-            // appears anywhere else in the file besides the declaration.
             $body = implode('', array_map(
                 static fn($x) => is_array($x) ? $x[1] : $x,
                 $tokens
@@ -167,7 +164,6 @@ class UnusedGlobalImportTest extends TestCase
             . 'Mengimpor $conn hanya menambah ketergantungan global yang tidak dibutuhkan.'
         );
 
-        // Dan fungsi ini harus benar-benar bisa dipanggil tanpa $conn di scope.
         $this->assertTrue(
             function_exists('log_drive_operation') || is_file($path),
             'log_drive_operation() harus tetap ada'

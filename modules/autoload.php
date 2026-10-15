@@ -22,15 +22,7 @@ spl_autoload_register(function (string $class) {
         'ValidatingProxy' => __DIR__ . '/auth/ValidatingProxy.php',
         'SearchEngine' => __DIR__ . '/media/SearchEngine.php',
         'SwPrecache' => __DIR__ . '/core/SwPrecache.php',
-        // CATATAN: entri 'DriveService' -> drive/DriveService.php DIHAPUS
-        // (T19). Kelas `DriveService` tidak pernah ada: berkas itu memuat
-        // StorageNotMountedException, DriveUserContext, DriveStorage, dan
-        // DriveViewRenderer. Tidak ada kode yang memakainya -- halaman drive
-        // me-require berkasnya langsung lalu memakai tiga kelas tadi.
-        // Harmless selama autoloader hanya menyala saat namanya disebut, tapi
-        // `new DriveService(...)` di masa depan akan me-require berkas itu
-        // lalu fatal "class not found" -- dengan pesan yang menunjuk berkas
-        // yang salah. Ditangkap ClassFileMapTest.
+
     ];
 
     if (isset($map[$class])) {

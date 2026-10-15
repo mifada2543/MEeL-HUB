@@ -26,7 +26,6 @@
     "keydown",
     function (e) {
       if (!window.meelResumeModalActive) return;
-      // Modifier tetap bebas: reload, tab baru, devtools, dll.
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       var btn = getButtons();
@@ -40,15 +39,12 @@
       };
 
       switch (e.key) {
-        /* Space mengaktifkan pilihan terfokus, bukan play/pause. */
         case " ":
         case "Spacebar":
           swallow();
           (onRestart ? btn.restart : btn.resume).click();
           return;
 
-        /* Navigasi pilihan mengikuti posisi visual tombol:
-           Lanjut di kiri, Ulang di kanan. */
         case "ArrowLeft":
           swallow();
           focusSafe(btn.resume);
@@ -57,7 +53,6 @@
           swallow();
           focusSafe(btn.restart);
           return;
-        /* Home/End tetap ke pilihan pertama/terakhir. */
         case "Home":
           swallow();
           focusSafe(btn.resume);
@@ -67,7 +62,6 @@
           focusSafe(btn.restart);
           return;
 
-        /* Enter dibiarkan native: <button> yang terfokus akan fire click. */
         case "Enter":
           if (!onResume && !onRestart) {
             swallow();
@@ -75,13 +69,10 @@
           }
           return;
 
-        /* Tab tetap siklus fokus, Escape tetap keluar dari fullscreen. */
         case "Tab":
         case "Escape":
           return;
 
-        /* Sisanya (ArrowUp/ArrowDown = volume, k, l, f, m, c, i, n, 0-9, ...)
-           diblokir supaya tidak sampai ke player. */
         default:
           swallow();
       }
@@ -107,7 +98,6 @@ window.meelResumeModal = function (options) {
   )
     return false;
 
-  // Panggil instance sebelumnya (mis. pindah track di halaman musik).
   if (typeof window.__meelResumeDismiss === "function") window.__meelResumeDismiss();
 
   let countdownEl = document.getElementById("resume-countdown");
@@ -195,7 +185,6 @@ window.meelResumeModal = function (options) {
     o.onRestart && o.onRestart();
   };
 
-  // Default ke "Lanjut": pilihan yang tidak menghapus progres.
   try {
     btnResume.focus({ preventScroll: true });
   } catch (_) {}
