@@ -56,7 +56,18 @@ class InteractionsForeignKeyMigrationIntegrationTest extends TestCase
     }
     private function importSchemaWithoutInteractionsFk(): void
     {
-        $schema = str_replace('`MEeL`', '`' . self::DB_NAME . '`', (string) file_get_contents(MEEL_ROOT . '/database/schema.sql'));
+        // Database dibuat di sini, bukan lewat `CREATE DATABASE` yang tertanam
+        // di schema.sql. schema.sql sudah tidak memilih database, jadi kalau
+        // tidak dibuat eksplisit di sini, impor gagal "No database selected".
+        $this->admin->query('CREATE DATABASE `' . self::DB_NAME . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
+        if ($this->admin->error) {
+            $this->fail('Gagal membuat database uji: ' . $this->admin->error);
+        }
+        if (!$this->admin->select_db(self::DB_NAME)) {
+            $this->fail('Gagal memilih database uji: ' . $this->admin->error);
+        }
+
+        $schema = (string) file_get_contents(MEEL_ROOT . '/database/schema.sql');
         if (!$this->admin->multi_query($schema)) {
             $this->fail('Gagal impor schema: ' . $this->admin->error);
         }

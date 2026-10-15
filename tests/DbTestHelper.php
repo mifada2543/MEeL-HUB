@@ -70,8 +70,28 @@ class DbTestHelper
             throw new RuntimeException('Test DB: gagal drop database lama: ' . $admin->error);
         }
 
+        // Database dibuat dan dipilih di sini, BUKAN lewat CREATE DATABASE/USE
+        // yang tertanam di schema.sql.
+        //
+        // Sebelumnya berkas ini menulis ulang nama database di dalam
+        // schema.sql lalu bergantung pada `USE` di dalamnya untuk memilih
+        // database uji. Waktu `USE` itu dihapus dari schema.sql, impor berjalan
+        // tanpa database terpilih dan gagal "No database selected" -- 113 dari
+        // 113 integration test error sekaligus.
+        //
+        // Sebutkan database target secara eksplisit, jangan lagi menulis ulang isi
+        // schema.sql: itu pola rapuh yang sama yang sudah dihapus dari
+        // install.sh dan ci.yml.
+        $admin->query('CREATE DATABASE `' . $name . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
+        if ($admin->error) {
+            throw new RuntimeException('Test DB: gagal membuat database uji: ' . $admin->error);
+        }
+        if (!$admin->select_db($name)) {
+            throw new RuntimeException('Test DB: gagal memilih database uji: ' . $admin->error);
+        }
+
         foreach ($schemaPaths as $schemaPath) {
-            $schema = str_replace('`MEeL`', '`' . $name . '`', (string) file_get_contents($schemaPath));
+            $schema = (string) file_get_contents($schemaPath);
 
             if (!$admin->multi_query($schema)) {
                 throw new RuntimeException('Test DB: gagal import ' . basename(dirname($schemaPath)) . '/' . basename($schemaPath) . ': ' . $admin->error);

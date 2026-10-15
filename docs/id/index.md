@@ -121,7 +121,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 | File | Deskripsi |
 |---|---|
-| `database/schema.sql` | Skema database standalone — import langsung `mysql < database/schema.sql` |
+| `database/schema.sql` | Skema database standalone — import langsung `mysql -u root -p MEeL < database/schema.sql` |
 | `auth/config.example.php` | Template entry point (copy ke `config.php`) |
 | `auth/settings.example.php` | Template data konfigurasi (copy ke `settings.php`) |
 | `sw.js.php` | Generator service worker dinamis (disajikan sebagai `/sw.js`) |

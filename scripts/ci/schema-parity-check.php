@@ -84,7 +84,6 @@ $admin->query("CREATE DATABASE `{$upgradeDb}`");
 $admin->select_db($upgradeDb);
 $legacy = preg_replace('/^\s*`coin_(cost|refunded)`[^\n]*\n/m', '', $schema);
 $legacy = preg_replace('/^\s*KEY `idx_(uq|tq)_status_created`[^\n]*\n/m', '', $legacy);
-$legacy = str_replace('`MEeL`', '`' . $upgradeDb . '`', $legacy);
 import($admin, $legacy, 'skema legacy');
 foreach (['upload_queue', 'transcode_queue'] as $t) {
     $r = $admin->query("SHOW COLUMNS FROM `{$t}` LIKE 'coin_cost'");
@@ -98,7 +97,7 @@ echo "\n═══ 2/4 Bangun DB jalur instalasi baru (schema.sql) ═══\n";
 $admin->query("DROP DATABASE IF EXISTS `{$freshDb}`");
 $admin->query("CREATE DATABASE `{$freshDb}`");
 $admin->select_db($freshDb);
-import($admin, str_replace('`MEeL`', '`' . $freshDb . '`', $schema), 'schema.sql');
+import($admin, $schema, 'schema.sql');
 echo "\n═══ 3/4 Jalankan migrate.php pada DB upgrade ═══\n";
 $cfg = $root . '/auth/settings.php';
 $cfgBackup = is_file($cfg) ? (string)file_get_contents($cfg) : null;

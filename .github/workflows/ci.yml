@@ -293,7 +293,7 @@ jobs:
           set -euo pipefail
           # ⚠️ Riwayat: langkah ini pernah dijalankan sebagai
           #   mysql ... meel_migration_check < database/schema.sql
-          # dan itu SALAH diam-diam. schema.sql memuat
+          # dan itu SALAH diam-diam. schema.sql DULU memuat
           #   CREATE DATABASE IF NOT EXISTS `MEeL` ...
           #   USE `MEeL`;
           # dan `USE` di dalam berkas MENANG atas nama database yang disebut
@@ -302,23 +302,21 @@ jobs:
           # berikutnya menguji database yang KOSONG, dan jalur upgrade yang
           # diklaim di komentar tidak pernah benar-benar diuji.
           #
-          # Karena itu nama database ditulis ulang lebih dulu, dan hasilnya
-          # diverifikasi. Kalau penulisan ulang gagal diam-diam, langkah ini
-          # berhenti di sini -- bukan melanjut ke pengujian yang tidak berarti.
-          sed -e 's/^\(CREATE DATABASE IF NOT EXISTS .\)MEeL\`/\1meel_migration_check`/' \
-              -e 's/^\(USE .\)MEeL\`/\1meel_migration_check`/' \
-              database/schema.sql > /tmp/schema-ci.sql
-
-          if grep -q 'MEeL`' /tmp/schema-ci.sql; then
-            echo "❌ schema.sql masih menyebut MEeL — impor akan mendarat di database yang salah."
-            exit 1
-          fi
-          if ! grep -q 'meel_migration_check' /tmp/schema-ci.sql; then
-            echo "❌ Penulisan ulang nama database gagal — pola sed tidak cocok."
+          # Perbaikannya di sumbernya: schema.sql tidak lagi memuat
+          # CREATE DATABASE / USE sama sekali. Tidak ada lagi yang perlu ditulis
+          # ulang di sini, jadi kelas bug "impor mendarat di database yang
+          # salah" mustahil terjadi -- bukan sekadar diperiksa setelahnya.
+          #
+          # Polanya sengaja TIDAK menyebut nama database apa pun, hanya kata
+          # kuncinya. Pola yang menyebut nama bisa diam-diam gagal cocok dan
+          # membiarkan berkas apa adanya lolos ke mysql.
+          if grep -qiE '^[[:space:]]*(CREATE[[:space:]]+DATABASE|USE[[:space:]])' database/schema.sql; then
+            echo "❌ schema.sql memuat CREATE DATABASE / USE — impor bisa mendarat di database yang salah."
+            grep -niE '^[[:space:]]*(CREATE[[:space:]]+DATABASE|USE[[:space:]])' database/schema.sql
             exit 1
           fi
 
-          mysql -h 127.0.0.1 -u root -proot meel_migration_check < /tmp/schema-ci.sql
+          mysql -h 127.0.0.1 -u root -proot meel_migration_check < database/schema.sql
 
           # Buktikan impor benar-benar mendarat di database yang dimaksud.
           N=$(mysql -h 127.0.0.1 -u root -proot -N -B \
@@ -326,6 +324,15 @@ jobs:
           echo "  tabel di meel_migration_check: $N"
           if [ "$N" -lt 20 ]; then
             echo "❌ Impor hanya menghasilkan $N tabel — hampir pasti mendarat di tempat lain."
+            exit 1
+          fi
+
+          # Dan buktikan database `MEeL` benar-benar TIDAK ikut tercipta --
+          # inilah gejala persis dari bug yang dulu ada.
+          M=$(mysql -h 127.0.0.1 -u root -proot -N -B \
+              -e "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='MEeL';")
+          if [ "$M" != "0" ]; then
+            echo "❌ Database `MEeL` ikut tercipta — masih ada pernyataan yang memilih database."
             exit 1
           fi
           echo "✅ schema.sql import OK"

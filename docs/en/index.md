@@ -121,7 +121,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 | File | Description |
 |---|---|
-| `database/schema.sql` | Standalone database schema — import directly via `mysql < database/schema.sql` |
+| `database/schema.sql` | Standalone database schema — import directly via `mysql -u root -p MEeL < database/schema.sql` |
 | `auth/config.example.php` | Entry point template (copy to `config.php`) |
 | `auth/settings.example.php` | Config data template (copy to `settings.php`) |
 | `sw.js.php` | Dynamic service worker generator (served as `/sw.js`) |

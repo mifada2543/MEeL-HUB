@@ -154,12 +154,12 @@ cd MEeL
 > **📁 The database schema file is available at [`database/schema.sql`](../../database/schema.sql).**
 > After importing, run the migration to complete the setup.
 
-> ⚠️ `schema.sql` hardcodes `CREATE DATABASE IF NOT EXISTS \`MEeL\`` + `USE \`MEeL\`;` — manual imports (CLI/phpMyAdmin) always target a database named `MEeL`. `install.sh` rewrites both lines to the configured database name, so a non-default DB name (e.g. for staging) is safe to use through the installer.
+> ⚠️ `schema.sql` does **not** contain `CREATE DATABASE` / `USE`. The database name must be given on the command line — that is what stops an import from silently landing in the wrong database. For any name other than `MEeL`, pass it directly in the command; `install.sh` does the same thing.
 
 #### Option A — Via MySQL CLI (fast):
 
 ```bash
-mysql -u root -p < database/schema.sql
+mysql -u root -p MEeL < database/schema.sql
 ```
 
 #### Option B — Via MySQL prompt:
@@ -168,6 +168,8 @@ mysql -u root -p < database/schema.sql
 mysql -u root -p
 ```
 ```sql
+CREATE DATABASE IF NOT EXISTS `MEeL` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `MEeL`;
 SOURCE /path/to/MEeL/database/schema.sql;
 ```
 
