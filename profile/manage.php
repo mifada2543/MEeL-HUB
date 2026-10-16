@@ -33,27 +33,31 @@ require_once '../controllers/profile/fun-manage.php';
 $cleaned_count = cleanupPendingDeletions();
 
 $delete_msg = '';
-if (isset($_GET['delete']) && isset($_GET['type']) && isset($_GET['id'])) {
-    $csrf_input = $_GET['csrf_token'] ?? ($_POST['csrf_token'] ?? null);
-    $csrf_input = is_string($csrf_input) ? $csrf_input : null;
-    if (!verify_csrf_token($csrf_input)) {
-        $delete_msg = 'Token tidak valid.';
+if (isset($_POST['delete']) && isset($_POST['type']) && isset($_POST['id'])) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $delete_msg = 'Metode tidak diizinkan.';
     } else {
-        $del_id = (int)$_GET['id'];
-        $del_type = $_GET['type'];
-
-        if ($del_type === 'video') {
-            $result = handleDeleteVideo($del_id, $user_id, $conn);
-        } elseif ($del_type === 'music') {
-            $result = handleDeleteMusic($del_id, $user_id, $conn);
+        $csrf_input = $_POST['csrf_token'] ?? null;
+        $csrf_input = is_string($csrf_input) ? $csrf_input : null;
+        if (!verify_csrf_token($csrf_input)) {
+            $delete_msg = 'Token tidak valid.';
         } else {
-            $result = ['success' => false, 'message' => 'Tipe tidak dikenal.'];
-        }
+            $del_id = (int)$_POST['id'];
+            $del_type = $_POST['type'];
 
-        $delete_msg = $result['message'];
-        if ($result['success']) {
-            $total_video = $profileRepo->countVideo($user_id);
-            $total_music = $profileRepo->countMusic($user_id);
+            if ($del_type === 'video') {
+                $result = handleDeleteVideo($del_id, $user_id, $conn);
+            } elseif ($del_type === 'music') {
+                $result = handleDeleteMusic($del_id, $user_id, $conn);
+            } else {
+                $result = ['success' => false, 'message' => 'Tipe tidak dikenal.'];
+            }
+
+            $delete_msg = $result['message'];
+            if ($result['success']) {
+                $total_video = $profileRepo->countVideo($user_id);
+                $total_music = $profileRepo->countMusic($user_id);
+            }
         }
     }
 }
@@ -193,11 +197,18 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                                         class="action-btn action-btn-edit" title="Edit video <?= htmlspecialchars($v['title']) ?>">
                                         <i data-lucide="edit" class="w-3 h-3"></i> Edit
                                     </a>
-                                    <a href="?tab=video&type=video&id=<?= $v['id'] ?>&delete=1&csrf_token=<?= $_SESSION['csrf_token'] ?>"
+                                    <form method="POST" class="inline" action="">
+                                        <input type="hidden" name="delete" value="1">
+                                        <input type="hidden" name="type" value="video">
+                                        <input type="hidden" name="id" value="<?= (int)$v['id'] ?>">
+                                        <input type="hidden" name="tab" value="<?= $active_tab ?>">
+                                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                                        <button type="submit"
                                         onclick="return confirmHapus(event, '<?= htmlspecialchars(addslashes($v['title']), ENT_QUOTES) ?>', 'video')"
                                         class="action-btn action-btn-delete" title="Hapus video <?= htmlspecialchars($v['title']) ?>">
                                         <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus
-                                    </a>
+                                    </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -241,11 +252,18 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                                         class="action-btn action-btn-edit" title="Edit musik <?= htmlspecialchars($m['title']) ?>">
                                         <i data-lucide="edit" class="w-3 h-3"></i> Edit
                                     </a>
-                                    <a href="?tab=music&type=music&id=<?= $m['id'] ?>&delete=1&csrf_token=<?= $_SESSION['csrf_token'] ?>"
+                                    <form method="POST" class="inline" action="">
+                                        <input type="hidden" name="delete" value="1">
+                                        <input type="hidden" name="type" value="music">
+                                        <input type="hidden" name="id" value="<?= (int)$m['id'] ?>">
+                                        <input type="hidden" name="tab" value="<?= $active_tab ?>">
+                                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                                        <button type="submit"
                                         onclick="return confirmHapus(event, '<?= htmlspecialchars(addslashes($m['title']), ENT_QUOTES) ?>', 'music')"
                                         class="action-btn action-btn-delete" title="Hapus musik <?= htmlspecialchars($m['title']) ?>">
                                         <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus
-                                    </a>
+                                    </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>

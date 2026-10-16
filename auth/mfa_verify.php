@@ -38,6 +38,14 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
             $error = 'Masukkan kode verifikasi.';
         } else {
             $temp_id = (int)$_SESSION['mfa_temp_uid'];
+            if (!$is_loopback) {
+                $mfaLimit = RateLimiter::check('mfa:' . $temp_id, 'mfa', 'user');
+                if (empty($mfaLimit['allowed'])) {
+                    unset($_SESSION['mfa_temp_uid'], $_SESSION['mfa_temp_username'], $_SESSION['mfa_temp_role']);
+                    header('Location: ../auth/login?reason=mfa_rate');
+                    exit;
+                }
+            }
             $stmt = $conn->prepare("SELECT mfa_secret, mfa_backup_codes FROM users WHERE id = ?");
             $stmt->bind_param("i", $temp_id);
             $stmt->execute();

@@ -188,7 +188,7 @@ $is_admin = $is_logged_in && is_admin($conn);
                             </svg>
                             Informasi Penting
                         </div>
-                        <?= $sidebar_data['important_content'] ?? '<span style="color:var(--muted);font-size:.75rem">Tidak ada konten penting.</span>' ?>
+                        <?= isset($sidebar_data['important_content']) && $sidebar_data['important_content'] !== '' ? nl2br(htmlspecialchars((string) $sidebar_data['important_content'], ENT_QUOTES, 'UTF-8')) : '<span style="color:var(--muted);font-size:.75rem">Tidak ada konten penting.</span>' ?>
                     </div>
 <!-- reference build: MEeL-C9H11NO2 [857ce7bc510e10e2] -->
                     <div id="pane-announcement" class="tab-pane">
@@ -200,7 +200,7 @@ $is_admin = $is_logged_in && is_admin($conn);
                             </svg>
                             Pengumuman
                         </div>
-                        <?= $sidebar_data['announcement_content'] ?? '<span style="color:var(--muted);font-size:.75rem">Tidak ada pengumuman.</span>' ?>
+                        <?= isset($sidebar_data['announcement_content']) && $sidebar_data['announcement_content'] !== '' ? nl2br(htmlspecialchars((string) $sidebar_data['announcement_content'], ENT_QUOTES, 'UTF-8')) : '<span style="color:var(--muted);font-size:.75rem">Tidak ada pengumuman.</span>' ?>
                     </div>
                 </div>
 

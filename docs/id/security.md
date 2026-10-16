@@ -20,6 +20,7 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 - [Input Validation](#input-validation)
 - [Hardening P0 (Oktober 2026)](#hardening-p0-oktober-2026)
 - [Hardening P1 (Oktober 2026)](#hardening-p1-oktober-2026)
+- [Hardening P2 (Oktober 2026)](#hardening-p2-oktober-2026)
 
 ---
 
@@ -1455,6 +1456,89 @@ root media atau drive base.
 `fetchAll()` tanpa `LIMIT` dipakai untuk menampilkan pratinjau 15 baris — seluruh
 tabel terfilter dimuat ke memori lebih dulu. Sekarang `fetchAll()` menerima batas
 (default 50.000) dan pratinjau memakai `countFiltered()` + `fetchPage(15, 0)`.
+
+---
+
+## Hardening P2 (Oktober 2026)
+
+### 18. Limiter MFA dan login tidak lagi bisa direset dengan buang cookie
+
+Penghitung MFA sebelumnya hanya `$_SESSION['mfa_fail_count']`. Membuang cookie
+saja sudah cukup untuk mulai dari nol — tidak ada penghitung sisi server per akun.
+
+`RateLimiter` kini punya dua bucket baru: `mfa` (10 permintaan / 300 detik) dan
+`login` (10 / 300). `auth/mfa_verify.php` memanggilnya dengan kunci
+`mfa:<user_id>` **sebelum** memverifikasi kode, jadi batasnya berlaku lintas sesi.
+
+### 18b. Login tidak lagi membocorkan apakah akun ada
+
+Dua oracle sebelumnya:
+
+1. **Pesan berbeda.** Akun ada tapi tidak aktif mendapat "Akun Anda sedang menunggu
+   verifikasi admin." atau "Akses ditolak untuk akun ini." — berbeda dari
+   "Username atau password salah!", jadi langsung mengonfirmasi keberadaan akun.
+2. **Timing.** `password_verify` (bcrypt, 50-100 ms) hanya dijalankan kalau user
+   ditemukan. Median beberapa puluh permintaan sudah memisahkan kedua cabang.
+   Sekarang ada `password_verify` Boneka terhadap hash statis saat user tidak
+   ditemukan.
+
+Semua kegagalan kini memakai pesan yang sama.
+
+### 19. Escape dilakukan saat render, bukan saat simpan
+
+`UpdateManager::clean()` pernah melakukan `htmlspecialchars()` **saat menulis**,
+sedangkan `update.php` melakukan `nl2br(htmlspecialchars(...))` **saat render**.
+Akibatnya konten ter-escape dua kali: admin yang mengetik `<b>cepat</b>`
+mempublikasikan `&lt;b&gt;cepat&lt;/b&gt;`, dan JS memakai triik `decodeHtml`
+untuk menutupi.
+
+Yang lebih serius: halaman `/update` bisa diakses **pengunjung anonim**, dan kedua
+sidebar di-render tanpa escaping sama sekali. Pola "escape saat tulis" berarti
+penulis kedua — instalasi, impor, atau edit `mysql>` langsung saat insiden —
+langsung menjadi stored XSS untuk semua pengunjung. `clean()` kini hanya `trim()`,
+dan escaping terjadi di titik render.
+
+`admin/index.php` juga diperbaiki: daftar file orphan (nama berkas di disk,
+berasal dari judul media kiriman user) di-echo mentah ke dalam `<li>`, dan
+`json_encode()` tanpa flag apa pun diletakkan di atribut berkoma tunggal —
+`json_encode` tidak meng-escape `'`, jadi nama berkas ber-apostrof menutup atribut
+itu. Sekarang di-escape, dan `json_encode` memakai
+`JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP`.
+
+### 20. Migrasi gagal sekarang berhenti, bukan lanjut
+
+`database/migrate.php` mencatat versi ke `db_version` meskipun langkahnya hanya
+mencetak `⚠ Warning`. Akibatnya skema bisa setengah termigrasi **permanen** —
+`SELECT MAX(version)` melewati migrasi itu selamanya di host tersebut.
+
+Ini terbukti nyata saat menjalankan migrasi v7: pembuatan unique index gagal
+karena duplikat lama, warning dicetak, tapi `db_version` tetap naik sehingga
+langkahnya tidak pernah diulang.
+
+Sekarang setiap kegagalan dikumpulkan bersama nomor langkahnya, ditulis ke STDERR,
+versi **tidak** dicatat, dan proses berhenti dengan exit 1 — jadi instalasi
+menangkapnya dan langkah yang gagal dicoba lagi di jalankan berikutnya.
+
+### 22. Token CSRF tidak lagi ada di URL
+
+`profile/manage.php` menghapus media lewat GET dengan token CSRF di query string.
+Token itu ikut masuk ke riwayat browser, access log Apache, dan header `Referer`
+halaman berikutnya.
+
+Penghapusan sekarang POST dengan token di body form, handler menolak metode lain,
+dan `confirmHapus()` mengirim form alih-alih navigasi.
+
+### 23. Fungsi otorisasi stream tidak lagi gagal-terbuka
+
+`meel_stream_path_allowed()` mengembalikan `true` untuk path apa pun yang tidak
+berawalan `video/`. Karena video dan musik memang publik pada model RBAC proyek
+ini,gate itu tidak menambah apa pun — hanya berpura-pura jadi kontrol keamanan
+lalu jadi jebakan bagi siapa pun yang memakainya untuk area privat.
+
+Pole-nya dibalik: ada allowlist prefiks publik yang eksplisit
+(`thumbnail/`, `file/`, `lyrics/`, `upload/`, `manga/`, `books/`) dan sisanya
+ditolak. Perilaku streaming publik tidak berubah — yang berubah adalah default-nya
+sekarang disengaja, bukan kebetulan.
 
 ---
 
