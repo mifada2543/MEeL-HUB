@@ -13,6 +13,8 @@ class RateLimiter
         'auto_metadata' => ['requests' => 5, 'window' => 3600],
         'api' => ['requests' => 60, 'window' => 60],
         'register' => ['requests' => 5, 'window' => 3600],
+        'mfa' => ['requests' => 10, 'window' => 300],
+        'login' => ['requests' => 10, 'window' => 300],
     ];
     private static function init(): void
     {

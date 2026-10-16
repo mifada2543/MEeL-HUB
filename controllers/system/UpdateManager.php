@@ -179,7 +179,7 @@ class UpdateManager
     private function clean(string $val): string
     {
 
-        return htmlspecialchars(trim($val), ENT_QUOTES, 'UTF-8');
+        return trim($val);
     }
 
     private function redirect(): void

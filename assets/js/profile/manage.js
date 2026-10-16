@@ -29,7 +29,12 @@ function confirmHapus(event, title, type) {
         }
     }).then(function(result) {
         if (result.isConfirmed) {
-            window.location.href = link.href;
+            var form = link.form || (link.closest && link.closest('form'));
+            if (form) {
+                form.submit();
+            } else {
+                window.location.href = link.href;
+            }
         }
     });
 

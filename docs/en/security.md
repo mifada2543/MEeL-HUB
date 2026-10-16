@@ -22,6 +22,7 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [Disk Space Validation](#disk-space-validation)
 - [P0 Hardening (October 2026)](#p0-hardening-october-2026)
 - [P1 Hardening (October 2026)](#p1-hardening-october-2026)
+- [P2 Hardening (October 2026)](#p2-hardening-october-2026)
 - [Input Validation](#input-validation)
 - [Best Practices](#best-practices)
 
@@ -1186,6 +1187,87 @@ roots or the drive base.
 `fetchAll()` without a `LIMIT` was used to render a 15-row preview — the entire
 filtered table was loaded into memory first. `fetchAll()` now takes a limit
 (default 50,000) and the preview uses `countFiltered()` plus `fetchPage(15, 0)`.
+
+---
+
+## P2 Hardening (October 2026)
+
+### 18. MFA and login limiters can no longer be reset by dropping the cookie
+
+The MFA counter lived only in `$_SESSION['mfa_fail_count']`. Discarding the cookie
+was enough to start from zero — there was no server-side counter per account.
+
+`RateLimiter` now has two new buckets: `mfa` (10 requests / 300 seconds) and
+`login` (10 / 300). `auth/mfa_verify.php` calls it with the key `mfa:<user_id>`
+**before** verifying the code, so the ceiling applies across sessions.
+
+### 18b. Login no longer reveals whether an account exists
+
+Two oracles previously:
+
+1. **Different message.** An existing but inactive account got "Akun Anda sedang
+   menunggu verifikasi admin." or "Akses ditolak untuk akun ini." — different
+   from "Username atau password salah!", directly confirming the account exists.
+2. **Timing.** `password_verify` (bcrypt, 50-100 ms) only ran when the user was
+   found. A median over a few dozen requests separates the two branches. There is
+   now a decoy `password_verify` against a static hash when the user is absent.
+
+Every failure now returns the same message.
+
+### 19. Escaping happens at render, not at write
+
+`UpdateManager::clean()` used to `htmlspecialchars()` **on write** while
+`update.php` did `nl2br(htmlspecialchars(...))` **at render**. The result was
+double-escaped content: an admin typing `<b>fast</b>` published
+`&lt;b&gt;fast&lt;/b&gt;`, and the JS worked around it with a `decodeHtml` trick.
+
+More seriously, `/update` is reachable by **anonymous visitors**, and both sidebar
+panes were rendered with no escaping at all. An "escape on write" pattern means a
+second writer — an install routine, an import, or a direct `mysql>` edit during an
+incident — becomes stored XSS for every visitor. `clean()` is now just `trim()`,
+and escaping happens at the render site.
+
+`admin/index.php` is fixed too: the orphan file list (on-disk filenames derived
+from user-supplied media titles) was echoed raw into `<li>`, and a bare
+`json_encode()` sat inside a single-quoted attribute — `json_encode` does not
+escape `'`, so a filename containing an apostrophe closed the attribute. Both are
+escaped now, and `json_encode` uses
+`JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP`.
+
+### 20. A failing migration now stops instead of continuing
+
+`database/migrate.php` recorded the version in `db_version` even when its steps
+only printed `⚠ Warning`. The schema could therefore stay **permanently**
+half-migrated — `SELECT MAX(version)` skips that migration forever on that host.
+
+This was observed live while running migration v7: creating the unique index
+failed because of the old duplicates, the warning was printed, but `db_version`
+still advanced so the step was never retried.
+
+Failures are now collected with their step index, written to STDERR, the version is
+**not** recorded, and the process exits 1 — so the installer catches it and the
+failed step is retried on the next run.
+
+### 22. CSRF token no longer in URLs
+
+`profile/manage.php` deleted media over GET with the CSRF token in the query
+string. That token ends up in browser history, the Apache access log, and the
+`Referer` header of the next page.
+
+Deletion is now a POST with the token in the form body, the handler rejects other
+methods, and `confirmHapus()` submits the form instead of navigating.
+
+### 23. The stream authorization function no longer fails open
+
+`meel_stream_path_allowed()` returned `true` for any path not starting with
+`video/`. Since video and music are public under this project's RBAC model, the
+gate adds nothing — it only pretends to be a security control while being a trap
+for anyone who reuses it for a private area.
+
+The polarity is inverted: there is now an explicit public prefix allowlist
+(`thumbnail/`, `file/`, `lyrics/`, `upload/`, `manga/`, `books/`) and everything
+else is refused. Public streaming behaviour is unchanged — what changed is that
+the default is now deliberate rather than accidental.
 
 ---
 

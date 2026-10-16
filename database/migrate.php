@@ -615,18 +615,32 @@ $latest_applied = $current_version;
 foreach ($migrations as $version => $migration) {
     if ($version > $current_version) {
         echo "[MEeL] Menjalankan migrasi v{$version}: {$migration['description']}...\n";
-        foreach ($migration['sql'] as $migration_step) {
-            if (is_callable($migration_step)) {
-                try {
-                    $migration_step($conn);
-                    $err = $conn->error;
-                    if ($err && !str_contains($err, 'Duplicate key name') && !str_contains($err, 'already exists')) {
-                        echo "[MEeL] ⚠ Warning: {$err}\n";
-                    }
-                } catch (\Throwable $e) {
-                    echo "[MEeL] ⚠ Warning: " . $e->getMessage() . "\n";
-                }
+        $failures = [];
+        foreach ($migration['sql'] as $step_index => $migration_step) {
+            if (!is_callable($migration_step)) {
+                continue;
             }
+            try {
+                $migration_step($conn);
+                $err = $conn->error;
+                if ($err && !str_contains($err, 'Duplicate key name') && !str_contains($err, 'already exists')) {
+                    $failures[] = "langkah {$step_index}: {$err}";
+                }
+            } catch (\Throwable $e) {
+                $failures[] = "langkah {$step_index}: " . $e->getMessage();
+            }
+        }
+
+        if (!empty($failures)) {
+            foreach ($failures as $failure) {
+                fwrite(STDERR, "[MEeL] GAGAL v{$version} {$failure}\n");
+            }
+            fwrite(
+                STDERR,
+                "[MEeL] Versi v{$version} TIDAK dicatat. Perbaiki masalah di atas lalu jalankan ulang;\n"
+                . "       langkah yang gagal akan dicoba lagi karena versi masih tertinggal.\n"
+            );
+            exit(1);
         }
 
         $stmt = $conn->prepare("INSERT INTO db_version (version) VALUES (?)");

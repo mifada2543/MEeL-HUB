@@ -54,12 +54,29 @@ if (!function_exists('meel_register_stream_path')) {
     }
 }
 
+if (!function_exists('meel_stream_public_prefixes')) {
+    function meel_stream_public_prefixes(): array
+    {
+        return ['thumbnail/', 'file/', 'lyrics/', 'upload/', 'manga/', 'books/'];
+    }
+}
+
 if (!function_exists('meel_stream_path_allowed')) {
     function meel_stream_path_allowed(string $relPath): bool
     {
         $rel = ltrim(str_replace('\\', '/', $relPath), '/');
-        if (!str_starts_with($rel, 'video/') && !str_contains($rel, '/video/')) {
-            return true;
+        if ($rel === '' || str_contains($rel, '..')) {
+            return false;
+        }
+
+        $isVideo = str_starts_with($rel, 'video/') || str_contains($rel, '/video/');
+        if (!$isVideo) {
+            foreach (meel_stream_public_prefixes() as $prefix) {
+                if (str_starts_with($rel, $prefix)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         $map = is_array($_SESSION['stream_paths'] ?? null) ? $_SESSION['stream_paths'] : [];
