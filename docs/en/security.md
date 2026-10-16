@@ -23,6 +23,7 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [P0 Hardening (October 2026)](#p0-hardening-october-2026)
 - [P1 Hardening (October 2026)](#p1-hardening-october-2026)
 - [P2 Hardening (October 2026)](#p2-hardening-october-2026)
+- [P4 Hardening — Comment Section (October 2026)](#p4-hardening--comment-section-october-2026)
 - [Input Validation](#input-validation)
 - [Best Practices](#best-practices)
 
@@ -1268,6 +1269,56 @@ The polarity is inverted: there is now an explicit public prefix allowlist
 (`thumbnail/`, `file/`, `lyrics/`, `upload/`, `manga/`, `books/`) and everything
 else is refused. Public streaming behaviour is unchanged — what changed is that
 the default is now deliberate rather than accidental.
+
+---
+
+## P4 Hardening — Comment Section (October 2026)
+
+Two things could make one track's comment section look permanently empty.
+
+### `parent_id` was never validated
+
+`addComment()` took `parent_id` straight from POST and stored it. It never checked
+that the parent comment exists, and never checked that the parent actually belongs
+to the same media.
+
+That cuts two ways:
+
+- A reply could attach to a comment on **different media**, so the tree rendered on
+  one page pulls in another track's data.
+- The renderer only descends from `parent_id = 0`, so a reply whose parent falls
+  outside the 200-row window is **never rendered at all** — it exists in the
+  database but is unreachable from the root.
+
+`resolveParentId()` now verifies the parent exists **and** carries the same media
+column. If not, `parent_id` is set to `NULL` so the comment becomes a root comment —
+deterministic and still visible.
+
+Verified directly against the database: a comment on media A attempting to use a
+`parent_id` belonging to media B is stored with `parent_id` NULL.
+
+### Unbounded reply chains
+
+Added `MediaViewer::MAX_COMMENT_DEPTH` = 5. Exceeding the depth promotes the comment
+to root. Without this, one person could build an unbounded chain just by replying to
+replies.
+
+### 200-row window with no pagination
+
+`getComments()` used `LIMIT 200` ordered by `created_at ASC` — oldest first. The
+consequence: once those 200 rows are filled (say, 200 chained replies under one root
+comment), every new comment is pushed outside the window and never appears again. The
+section looks empty even though the rows exist.
+
+Two changes:
+
+- The order is now `created_at DESC, id DESC`. The newest comment is always first,
+  so it can no longer be pushed out by older ones.
+- An `$offset` parameter was added so older comments remain reachable through
+  pagination.
+
+Comments that already exist are **not** deleted. Only the effect changes: new comments
+are no longer hidden by old ones.
 
 ---
 
