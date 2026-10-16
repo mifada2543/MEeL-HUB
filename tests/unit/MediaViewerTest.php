@@ -191,6 +191,60 @@ class MediaViewerTest extends TestCase
         $this->assertSame('bob', $out['user_map']['2']);
     }
 
+    public function testCommentsAreFetchedNewestFirst(): void
+    {
+        $conn = $this->buildConn([
+            [
+                ['id' => '9', 'parent_id' => null, 'username' => 'new', 'comment' => 'baru'],
+                ['id' => '1', 'parent_id' => null, 'username' => 'old', 'comment' => 'lama'],
+            ],
+        ]);
+
+        $viewer = new MediaViewer($conn, null, 'music', 5);
+        $out = $viewer->getComments();
+
+        $sql = $this->sqlMatching('LEFT JOIN users');
+        $this->assertStringContainsString('ORDER BY c.created_at DESC, c.id DESC', $sql);
+        $this->assertSame('9', $out['grouped'][0][0]['id'], 'komentar terbaru harus di baris pertama');
+    }
+
+    public function testCommentsSupportOffsetForReachingOlderPages(): void
+    {
+        $conn = $this->buildConn([
+            [['id' => '9', 'parent_id' => null, 'username' => 'new', 'comment' => 'baru']],
+        ]);
+
+        $viewer = new MediaViewer($conn, null, 'music', 5);
+        $viewer->getComments(200, 400);
+
+        $this->assertStringContainsString('LIMIT ? OFFSET ?', $this->sqlMatching('LEFT JOIN users'));
+    }
+
+    /** Parent dari media lain harus dinaikkan jadi root, bukan nempel ke komentar asing. */
+    public function testCommentWithForeignParentIsPromotedToRoot(): void
+    {
+        $this->buildSessionViewer([[]], 42, 5, owned: false);
+        $viewer = new MediaViewer($this->conn, 42, 'music', 5);
+
+        $this->assertTrue($viewer->addComment(['comments' => 'halo', 'parent_id' => 999]));
+        $this->assertNull(
+            $this->boundValueFor('INSERT INTO comments', 2),
+            'parent_id dari media lain harus NULL (jadi komentar root)'
+        );
+    }
+
+    private function boundValueFor(string $sqlNeedle, int $position)
+    {
+        foreach ($this->conn->createdStmts as $stmt) {
+            if (!str_contains($stmt->sql, $sqlNeedle)) {
+                continue;
+            }
+            $vars = $stmt->binds[0]['vars'] ?? [];
+            return $vars[$position] ?? null;
+        }
+        return null;
+    }
+
     public function testRecommendationsEmptyWhenOnlyOneItem(): void
     {
         $conn = $this->buildRecommendConn([1], 1, 1, 1, []);

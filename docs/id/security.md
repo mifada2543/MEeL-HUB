@@ -21,6 +21,7 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 - [Hardening P0 (Oktober 2026)](#hardening-p0-oktober-2026)
 - [Hardening P1 (Oktober 2026)](#hardening-p1-oktober-2026)
 - [Hardening P2 (Oktober 2026)](#hardening-p2-oktober-2026)
+- [Hardening P4 — Bagian komentar (Oktober 2026)](#hardening-p4--bagian-komentar-oktober-2026)
 
 ---
 
@@ -1539,6 +1540,58 @@ Pole-nya dibalik: ada allowlist prefiks publik yang eksplisit
 (`thumbnail/`, `file/`, `lyrics/`, `upload/`, `manga/`, `books/`) dan sisanya
 ditolak. Perilaku streaming publik tidak berubah — yang berubah adalah default-nya
 sekarang disengaja, bukan kebetulan.
+
+---
+
+## Hardening P4 — Bagian komentar (Oktober 2026)
+
+Dua hal membuat satu track bisa membuat bagian komentarnya tampak kosong
+permanen.
+
+### `parent_id` tidak pernah divalidasi
+
+`addComment()` mengambil `parent_id` dari POST lalu langsung menyimpannya. Tidak
+ada pemeriksaan bahwa komentar induknya ada, dan tidak ada pemeriksaan bahwa
+induknya benar-benar milik media yang sama.
+
+Dampaknya dua arah:
+
+- Balasan bisa menempel ke komentar milik **media lain**, sehingga pohon yang
+  dirender di satu halaman mengambil data track lain.
+- Renderer hanya turun dari `parent_id = 0`, jadi balasan yang induknya berada di
+  luar jendela 200 baris **tidak pernah tampil sama sekali** — ada di database
+  tapi tidak terjangkau dari akar.
+
+Sekarang `resolveParentId()` memeriksa induknya ada **dan** punya kolom media
+yang sama. Kalau tidak, `parent_id` diset `NULL` sehingga komentarnya menjadi
+komentar root — deterministik dan tetap terlihat.
+
+Diverifikasi langsung terhadap database: komentar pada media A yang
+mencoba memakai `parent_id` milik media B disimpan dengan `parent_id` NULL.
+
+### Rantai balasan tanpa batas
+
+Ditambahkan `MediaViewer::MAX_COMMENT_DEPTH` = 5. Melewati batas promotes to
+root. Tanpa ini satu orang bisa membuat rantai yang tidak terbatas hanya dengan
+memposting balasan ke balasan.
+
+### Jendela 200 baris tanpa paginasi
+
+`getComments()` memakai `LIMIT 200` dengan urutan `created_at ASC` — paling lama
+lebih dulu. Yang terjadi: bila 200 baris pertama sudah terisi (misalnya 200
+balasan berantai pada satu komentar akar), setiap komentar baru terdorong ke
+luar jendela dan tidak pernah muncul lagi. Bagian komentar tampak kosong padahal
+isinya ada.
+
+Dua perubahan:
+
+- Urutan dibalik menjadi `created_at DESC, id DESC`. Komentar terbaru selalu di
+  baris pertama, sehingga tidak lagi bisa terdorong keluar oleh komentar lama.
+- Parameter `$offset` ditambahkan supaya komentar lama tetap bisa dijangkau lewat
+  paginasi.
+
+Komentar yang sudah terlanjur ditulis **tidak** dihapus. Efeknya cuma berubah:
+komentar baru tidak lagi tersembunyi oleh komentar lama.
 
 ---
 
