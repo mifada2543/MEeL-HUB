@@ -256,10 +256,53 @@ Features:
 - **FFmpeg library path** — `proc_open()` env sets `LD_LIBRARY_PATH` explicitly to prevent FFmpeg hangs when the parent process env differs from the child
 - **Transcode timeout** — audio transcode has a 600-second max (`TRANSCODE_AUDIO_TIMEOUT`); HLS remux has a 120-second max; stream reads use `stream_set_timeout(30)` to detect pipe stalls
 - **Cache validation** — transcoded files are validated by both `filesize > 10KB` and `duration ≥ 50%` of source duration to reject corrupt/stub files
-- **FFmpeg exit code check** — `proc_close()` exit code is verified; non-zero exits are logged with the last 15 lines of stderr and the queue status is set to `failed`
+- **FFmpeg exit code check** — `proc_close()` exit code is verified; non-zero exits are logged with the last 15 lines of stderr and the queue status is set to `failed`. The queue row is also marked `failed` when `proc_open()` cannot start ffmpeg at all, or when ffmpeg exits cleanly but leaves no output file — previously both cases fell through and were recorded as `completed`
 - **Filename sanitization** — whitelist regex (`[^a-zA-Z0-9_\x{3000}-\x{9fff}...]`) preserves CJK characters while preventing path traversal
 - Cached directory size via `dir_size()`
 - Thumbnail sprite + VTT generation
+
+#### `transcodeVideo()` pipeline
+
+`transcodeVideo()` used to be a single 341-line method. It is now a 71-line
+orchestrator over focused private helpers, so each step can be read and tested on
+its own:
+
+| Step | Method | Responsibility |
+|---|---|---|
+| 1 | `prepareOutputDirectory()` | create the shm directory, refuse to start with under 256 MB free |
+| 2 | `purgeStaleArtifacts()` | drop outputs older than 2 h and queue rows older than 15 min |
+| 3 | `loadTranscodeSource()` | resolve the video row, HLS playlist, sorted `.ts` segments, duration, total size |
+| 4 | `enforceSourceQuota()` | non-admin ceiling of 200 MB / 10 min |
+| 5 | `claimTranscodeSlot()` | under an exclusive lock: reuse a valid cache, drop an invalid one, claim a marker, then `System::claimQueueSlot()` |
+| 6 | `writeConcatList()` | build the ffmpeg concat manifest with single quotes escaped |
+| 7 | `resolveAudioFormat()` | codec, bitrate, thumbnail eligibility, ID3 metadata |
+| 8 | `buildFfmpegArgv()` | assemble the argv array passed to `proc_open()` |
+| 9 | `runFfmpeg()` | spawn the process, stream stderr, report progress, enforce the timeout |
+| 10 | `reportProgress()` | translate ffmpeg's `time=` marker into a percentage |
+
+Private helpers follow one convention: **return `null` to continue, or return the
+final result array to stop**. `claimTranscodeSlot()` returns a third state —
+`null` means "proceed with the transcode", an array means "cache hit or failure,
+stop here". The lock in step 5 is released with `try`/`finally` instead of being
+unlocked at three separate exit points.
+
+Two things were removed rather than carried forward:
+
+- **A dead second command builder.** The old code assembled both `$cmd` (a shell
+  string) and `$tc_cmd` (an argv array). Only `$tc_cmd` was ever passed to
+  `proc_open()`; `$cmd` was built and discarded. They had already drifted apart —
+  `$cmd` asked for `-c:v copy` while the live builder used `-c:v mjpeg` — so the
+  unused copy was a trap for whoever tried to "fix" the wrong one.
+- **`escapeshellarg()` on that dead string.** With it gone, the file performs no
+  shell string-building at all; `TranscodeService` now only ever invokes ffmpeg
+  through an argv array.
+
+`tests/unit/TranscodeArgvTest.php` pins the argv invariants. It exists because
+the split initially introduced a regression: `use_thumb` was only assigned in the
+`ogg` branch of the format switch, so `mp3`/`m4a`/`flac` read an uninitialised
+variable and silently produced audio with no cover art. The tests assert
+observable behaviour (which streams get mapped, which flags appear) rather than
+re-implementing the builder.
 
 ### 6. `modules/core/System.php`
 

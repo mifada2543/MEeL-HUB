@@ -217,10 +217,54 @@ Fitur (diwarisi bersama dari `TranscoderBase` + `FfmpegUtils`):
 - **Path library FFmpeg** — `proc_open()` env mengatur `LD_LIBRARY_PATH` secara eksplisit untuk mencegah FFmpeg hang ketika env parent process berbeda dari child
 - **Timeout transcode** — audio transcode memiliki batas 600 detik (`TRANSCODE_AUDIO_TIMEOUT`); HLS remux memiliki batas 120 detik; stream read menggunakan `stream_set_timeout(30)` untuk mendeteksi pipe stall
 - **Validasi cache** — file transcode divalidasi berdasarkan `filesize > 10KB` DAN `duration ≥ 50%` dari durasi sumber untuk menolak file corrupt/stub
-- **Cek exit code FFmpeg** — `proc_close()` exit code diverifikasi; exit code non-zero di-log dengan 15 baris terakhir stderr dan status queue diatur ke `failed`
+- **Cek exit code FFmpeg** — `proc_close()` exit code diverifikasi; exit code non-zero di-log dengan 15 baris terakhir stderr dan status queue diatur ke `failed`. Baris queue juga ditandai `failed` kalau `proc_open()` gagal menjalankan ffmpeg sama sekali, atau ffmpeg keluar bersih tanpa menghasilkan file — sebelumnya kedua kasus jatuh ke bawah dan tercatat `completed`
 - **Sanitasi nama file** — regex whitelist (`[^a-zA-Z0-9_\x{3000}-\x{9fff}...]`) mempertahankan karakter CJK sambil mencegah path traversal
 - Cached directory size via `dir_size()`
 - Thumbnail sprite + VTT
+
+#### Alur internal `transcodeVideo()`
+
+`transcodeVideo()` dulunya satu metode 341 baris. Sekarang jadi orkestrator 71
+baris di atas beberapa helper privat, sehingga tiap langkah bisa dibaca dan
+diuji sendiri:
+
+| Langkah | Metode | Tanggung jawab |
+|---|---|---|
+| 1 | `prepareOutputDirectory()` | buat direktori shm, tolak mulai bila sisa RAM < 256 MB |
+| 2 | `purgeStaleArtifacts()` | buang output lebih tua dari 2 jam dan baris queue lebih tua dari 15 menit |
+| 3 | `loadTranscodeSource()` | ambil baris video, playlist HLS, segmen `.ts` terurut, durasi, total ukuran |
+| 4 | `enforceSourceQuota()` | batas non-admin 200 MB / 10 menit |
+| 5 | `claimTranscodeSlot()` | di bawah lock eksklusif: pakai cache yang valid, buang yang rusak, klaim marker, lalu `System::claimQueueSlot()` |
+| 6 | `writeConcatList()` | susun manifest concat ffmpeg dengan kutip tunggal di-escape |
+| 7 | `resolveAudioFormat()` | codec, bitrate, kelayakan thumbnail, metadata ID3 |
+| 8 | `buildFfmpegArgv()` | rakit array argv yang diteruskan ke `proc_open()` |
+| 9 | `runFfmpeg()` | jalankan proses, stream stderr, laporkan progres, tegakkan timeout |
+| 10 | `reportProgress()` | ubah penanda `time=` dari ffmpeg menjadi persentase |
+
+Semua helper privat memakai satu konvensi: **kembalikan `null` untuk lanjut, atau
+kembalikan array hasil akhir untuk berhenti**. `claimTranscodeSlot()` punya
+keadaan ketiga — `null` berarti "lanjutkan transcode", array berarti "cache hit
+atau kegagalan, berhenti di sini". Lock di langkah 5 dilepas dengan
+`try`/`finally`, bukan di tiga titik keluar yang terpisah.
+
+Dua hal dibuang, bukan dipindahkan:
+
+- **Builder perintah kedua yang tidak terpakai.** Kode lama merakit `$cmd`
+  (string shell) sekaligus `$tc_cmd` (array argv). Hanya `$tc_cmd` yang pernah
+  masuk ke `proc_open()`; `$cmd` dibangun lalu dibuang. Keduanya sudah lama tidak
+  sinkron — `$cmd` meminta `-c:v copy` sedangkan builder yang benar memakai
+  `-c:v mjpeg` — sehingga salinan yang tak terpakai itu jebakan bagi siapa pun
+  yang tanpa sengaja memperbaiki yang salah.
+- **`escapeshellarg()` pada string mati tersebut.** Setelah dihapus, berkas ini
+  tidak lagi menyusun string shell sama sekali; `TranscodeService` hanya
+  memanggil ffmpeg lewat array argv.
+
+`tests/unit/TranscodeArgvTest.php` mengikat invariant argv. Berkas ini ada karena
+pemecahan sempat memperkenalkan regresi: `use_thumb` hanya diinisialisasi
+di cabang `ogg` pada switch format, sehingga `mp3`/`m4a`/`flac` membaca variabel
+yang belum diinisialisasi dan diam-diam menghasilkan audio tanpa cover art. Test-nya
+memassert perilaku yang teramati (stream mana yang dipetakan, flag mana yang
+muncul), bukan menyalin ulang builder-nya.
 
 ### 6. `modules/core/System.php`
 
