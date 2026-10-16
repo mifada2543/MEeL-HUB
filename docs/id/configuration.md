@@ -151,9 +151,16 @@ Helper ini menolak: host berbeda, skema selain http/https, URL protocol-relative
 (`//evil.com`), serta trik `evil.meel.my.id` dan `meel.my.id.evil.com`.
 
 Semua halaman yang memakai tombol kembali memakai helper yang sama:
-`music/playlist_action.php`, `profile/notification.php`, dan
-`meel_back_url()`. Kalau nilainya kosong, `meel_back_url()` selalu mengembalikan
-default — gagal aman, bukan membuka celah.
+`music/playlist_action.php`, `profile/notification.php`,
+`profile/index.php`, `auth_back_url()` (dipakai `auth/login.php` dan
+`auth/register.php`), dan `meel_back_url()`. Kalau nilainya kosong, semua
+tautan kembali jatuh ke default — gagal aman, bukan membuka celah.
+
+Konsekuensi yang perlu diketahui: di localhost tanpa konfigurasi, tombol
+kembali menjadi generik (`../`) karena `localhost` tidak pernah dicocokkan
+lagi. Sebelumnya `profile/index.php` masih menerima `localhost`, `127.0.0.1`,
+dan `::1` — itu dihapus, karena daftar host per-situs membuat satu aturan
+yang berbeda di tiap halaman dan justru menjadi sumber open redirect.
 
 ### Batas Unduhan (`MEEL_MAX_DOWNLOAD_*`)
 

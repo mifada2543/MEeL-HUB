@@ -196,9 +196,16 @@ protocol-relative URLs (`//evil.com`), and the tricks `evil.meel.my.id` and
 `meel.my.id.evil.com`.
 
 Every page using a back button now shares this helper:
-`music/playlist_action.php`, `profile/notification.php`, and `meel_back_url()`.
-When the value is empty, `meel_back_url()` always returns the default — it fails
-closed rather than opening a hole.
+`music/playlist_action.php`, `profile/notification.php`, `profile/index.php`,
+`auth_back_url()` (used by `auth/login.php` and `auth/register.php`), and
+`meel_back_url()`. When the value is empty, every back link falls back to its
+default — it fails closed rather than opening a hole.
+
+One consequence worth knowing: on a localhost install with no configuration the
+back link becomes generic (`../`), because `localhost` is no longer matched.
+`profile/index.php` previously accepted `localhost`, `127.0.0.1`, and `::1`; that
+list was removed, since a per-site host list meant a different rule on every page
+and was itself the source of the open redirect.
 
 ### Download Limits (`MEEL_MAX_DOWNLOAD_*`)
 

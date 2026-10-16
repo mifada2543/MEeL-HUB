@@ -24,6 +24,7 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [P1 Hardening (October 2026)](#p1-hardening-october-2026)
 - [P2 Hardening (October 2026)](#p2-hardening-october-2026)
 - [P4 Hardening — Comment Section (October 2026)](#p4-hardening--comment-section-october-2026)
+- [P5 Hardening — Security Checker Rigour (October 2026)](#p5-hardening--security-checker-rigour-october-2026)
 - [Input Validation](#input-validation)
 - [Best Practices](#best-practices)
 
@@ -1319,6 +1320,125 @@ Two changes:
 
 Comments that already exist are **not** deleted. Only the effect changes: new comments
 are no longer hidden by old ones.
+
+---
+
+## P5 Hardening — Security Checker Rigour (October 2026)
+
+This section is not a change to the application itself, but to
+`tests/security_test.php`, which had been reporting green without actually
+checking what it claimed to check.
+
+### The allowlist made the check die quietly
+
+`testCommandInjection()` scanned nine files written **literally** into the code:
+
+```php
+$risky = [
+    'modules/core/Uploader.php' => ['shell_exec', 'exec', 'popen'],
+    // ... 8 more files
+];
+```
+
+If `shell_exec` moved to a new file absent from that list, the check stayed green
+— not because the code was safe, but because it was never scanned. That is
+exactly the class of bug `StorageSplitTest` first caught when `storage.php` was
+split apart.
+
+The checker now **discovers its own files** via `getPhpFiles()`, then recomputes
+`escapeshellarg`/int-cast counts for every hit:
+
+- The `$expected`/`$allowed` maps still exist, but their role changed: they are
+  no longer the list of files that get scanned, but the list of files that are
+  *expected* to still run shell. A listed file that has lost its `shell_exec`
+  calls is reported too, so a stale map becomes visible immediately.
+- A file outside the maps that runs shell now **fails**, with a message naming
+  what to change if it is genuinely legitimate.
+
+The number of files scanned went from **9 to 21**. Twelve files were previously
+never checked at all, including `controllers/api/auto_metadata.php`,
+`controllers/profile/profile_edit.php`, `arcade/rhythm/api/upload.php`, and
+`modules/auth/ValidatingProxy.php`.
+
+Verified: a temporary file containing `shell_exec('ls ' . $u)` outside the maps
+drops the score to 99/100 and produces `Fail: 1`.
+
+### Referer redirects were only checked in four files
+
+`testOpenRedirectHardening()` read only `controllers/api/delete_comment.php` and
+its three neighbours. Every other file that reads `HTTP_REFERER` was invisible —
+including the two that were actually broken (see below).
+
+The new checker scans the whole repo with **taint tracking**:
+
+1. Variables initialised from `HTTP_REFERER` are marked tainted.
+2. Assignments using a tainted variable taint the next one (two levels, which is
+   enough for the `$ref` → `$back_url` pattern).
+3. Every `header('Location: ...')` whose expression uses a tainted variable is
+   reported as an open redirect.
+
+Both levels matter, because variable-mediated redirects slip past a check that
+only looks for `HTTP_REFERER` *inside* `header()` — which is precisely the most
+common shape (`$url = $_SERVER['HTTP_REFERER']; ... header("Location: $url")`).
+
+What is **not** reported: files that read the referer and then redirect to a
+fixed local path, such as the HLS gates in `music/stream.php` and
+`modules/core/helpers/storage_stream.php` that send to `../err/?code=denied`.
+Neither is an open redirect.
+
+### Two remaining open redirects were found along the way
+
+The strengthened checker immediately surfaced two instances of the old pattern
+that had not been touched:
+
+| File | Problem | Fix |
+|---|---|---|
+| `auth/auth_helpers.php` | `auth_back_url()` compared the referer host against `$_SERVER['HTTP_HOST']`, which can be spoofed via the `Host:` header | Now uses `meel_same_origin_referer()`, which compares against `MEEL_CANONICAL_HOST` |
+| `profile/index.php` | The allowed-host list hardcoded `localhost`, `127.0.0.1`, `::1` | Removed; uses `meel_same_origin_referer()` |
+
+Both end up in the "back" link's `href` (`auth/login.php:190`), so the impact is
+that users get sent to another site through our own domain.
+
+These changes make the dependency on `MEEL_CANONICAL_HOST` explicit. If it is
+empty, `meel_same_origin_referer()` returns `null` and the back link falls back
+to `../` — failing closed, not open. On a localhost install with no
+configuration, the back link does become generic.
+
+### The `display_errors` exemption is gone
+
+The checker previously carried a list of filenames exempt from the
+`display_errors` rule. Once removed, `modules/core/bootstrap.php` was exposed:
+it contains `ini_set('display_errors', '1')`. On inspection that is correct — it
+sits in the `development` branch, while the `production` branch sets it to `0`.
+
+The rule is now branch-aware: `display_errors=1` is accepted **only** when the
+same file also contains `case 'development'` **and** a `display_errors=0`. The
+constant filename list is gone, so a new exemption can no longer hide a
+regression.
+
+### CI no longer ignores warnings
+
+`ci.yml` previously only failed on an exit code above 1; exit 1 ("passed with
+warnings") stayed green. Every warning was therefore indefinitely deferred work.
+
+All warning sources were re-audited and every one depends on the content of
+files tracked in git, not on machine state — including
+`data_drive/private_admins/.htaccess`, which is in the repository. No warning
+source depends on mounted storage. CI now fails on any non-zero exit code.
+
+Current status: `177` checks, `177` passing, `0` warnings, `0` failures.
+
+### An extra guard against regressing back
+
+`StorageSplitTest::testSecurityAndFunctionalMapsStillCoverTheRealFiles` caught
+this work the first time it ran: it looks for the `$risky` map, and after the
+maps were renamed it instead matched the unrelated `$risky = []` inside
+`testSqlInjection()`. Its assertion now accepts `$risky`, `$expected`, or
+`$allowed`, and a new assertion requires that `testCommandInjection()` really
+calls `getPhpFiles()`.
+
+If the check is ever reverted to a literal path list, that assertion fails
+first — exactly as happened when `storage.php` was split.
 
 ---
 

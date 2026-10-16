@@ -165,24 +165,28 @@ function testDisplayErrors(): void {
     $files = getPhpFiles();
     $enabled = [];
     $disabled = 0;
+    $conditional = 0;
 
     foreach ($files as $path) {
         $rel = str_replace(PROJECT_ROOT . '/', '', $path);
         $content = file_get_contents($path);
 
         if (preg_match('/ini_set\s*\(\s*["\']display_errors["\']\s*,\s*["\']?1["\']?\s*\)/', $content)) {
-            $enabled[] = $rel;
+            $branchConditional = str_contains($content, "case 'development'")
+                && preg_match('/ini_set\s*\(\s*["\']display_errors["\']\s*,\s*["\']?0["\']?\s*\)/', $content);
+            if ($branchConditional) {
+                $conditional++;
+            } else {
+                $enabled[] = $rel;
+            }
         } elseif (preg_match('/ini_set\s*\(\s*["\']display_errors["\']\s*,\s*["\']?0["\']?\s*\)/', $content)) {
             $disabled++;
         }
     }
 
-    $enabled = array_values(array_filter($enabled, fn($f) => !in_array($f, [
-        'music/stream.php',
-        'modules/core/bootstrap.php',
-    ], true)));
+    $enabled = array_values($enabled);
 
-    record("Memindai " . count($files) . " file...", true, false, "{$disabled} dimatikan, " . count($enabled) . " masih menyala");
+    record("Memindai " . count($files) . " file...", true, false, "{$disabled} dimatikan, {$conditional} kondisional per-branch, " . count($enabled) . " selalu menyala");
 
     if (empty($enabled)) {
         record("Semua file production sudah mematikan display_errors", true);
@@ -543,59 +547,99 @@ function testCspHeaders(): void {
 function testCommandInjection(): void {
     print_header('TEST 10: Command Injection ' . chr(8212) . ' Shell Execution Safety');
 
-    $risky = [
+    $expected = [
         'modules/core/Uploader.php' => ['shell_exec', 'exec', 'popen'],
         'modules/core/Transcoder.php' => ['shell_exec', 'exec', 'popen'],
         'modules/transcoder/DownloadService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
         'modules/transcoder/EncodeService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
         'modules/transcoder/TranscodeService.php' => ['shell_exec', 'exec', 'popen', 'proc_open'],
-
         'modules/core/helpers/storage_disk.php' => ['shell_exec'],
         'modules/core/System.php' => ['shell_exec'],
         'auth/config.example.php' => ['proc_open', 'shell_exec'],
         'modules/core/japanese.php' => ['proc_open'],
     ];
 
-    foreach ($risky as $file => $funcs) {
-        $full = PROJECT_ROOT . '/' . $file;
-        if (!file_exists($full)) {
-            record("{$file} \u{2014} tidak ditemukan", true, true);
+    $allowed = [
+        'auth/config.example.php' => true,
+        'scripts/' => true,
+    ];
+
+    $discovered = [];
+    foreach (getPhpFiles() as $full) {
+        $file = ltrim(str_replace(PROJECT_ROOT, '', $full), '/');
+        $content = (string) file_get_contents($full);
+        if (!preg_match('/(?:^|[^a-z_>])(shell_exec|exec|popen|proc_open|passthru)\s*\(/', $content)) {
             continue;
         }
-        $content = file_get_contents($full);
-        $escCount = countInFile($full, '/escapeshellarg\s*\(/');
-        $execCount = 0;
-        foreach ($funcs as $fn) {
-            $execCount += countInFile($full, '/' . preg_quote($fn, '/') . '\s*\(/');
-        }
-        if ($execCount === 0) {
-            record("{$file} \u{2014} tidak ada shell execution", true);
-        } elseif ($escCount >= $execCount) {
-            record("{$file} \u{2014} {$execCount} shell exec, semua pakai escapeshellarg", true);
-        } else {
+        $discovered[$file] = $content;
+    }
 
-            $unprotected = 0;
-            preg_match_all('/(?:shell_exec|exec|popen|proc_open)\s*\(([^)]+)\)/s', $content, $execMatches);
-            foreach ($execMatches[1] as $argStr) {
-                preg_match_all('/\$(\w+)/', $argStr, $execVars);
-                $allSafe = true;
-                foreach ($execVars[1] as $varName) {
-                    if (preg_match('/\(int\)\s*\$' . preg_quote($varName) . '\b/', $content) ||
-                        preg_match('/intval\s*\(\s*\$' . preg_quote($varName) . '\s*\)/', $content) ||
-                        preg_match('/int\s+\$' . preg_quote($varName) . '\b/', $content) ||
-                        preg_match('/\$' . preg_quote($varName) . '\s*=\s*\(int\)/', $content)) {
-                        continue;
-                    }
-                    $allSafe = false;
-                    break;
+    ksort($discovered);
+
+    foreach ($expected as $file => $funcs) {
+        if (!array_key_exists($file, $discovered)) {
+            record("{$file} \u{2014} tidak ada shell execution", true);
+        }
+    }
+
+    if (empty($discovered)) {
+        record('Tidak ada shell execution ditemukan sama sekali — scanner mungkin mati', false, false,
+            'Scanner tidak menemukan satupun pemanggilan shell. Periksa getPhpFiles() dan regex.');
+        return;
+    }
+
+    record(count($discovered) . ' file menjalankan shell (discovery-based, bukan allowlist)', true);
+
+    foreach ($discovered as $file => $content) {
+        $full = PROJECT_ROOT . '/' . $file;
+        $escCount = countInFile($full, '/escapeshellarg\s*\(/');
+        preg_match_all('/(?:^|[^a-z_>])(shell_exec|exec|popen|proc_open|passthru)\s*\(/', $content, $all);
+        $execCount = count($all[0]);
+        $argvArray = preg_match('/proc_open\s*\(\s*\$[a-zA-Z_][\w]*\s*,/', $content) === 1;
+
+        if ($argvArray && $escCount === 0) {
+            record("{$file} \u{2014} {$execCount} shell exec via proc_open argv (tanpa shell)", true);
+            continue;
+        }
+
+        if ($escCount >= $execCount) {
+            record("{$file} \u{2014} {$execCount} shell exec, semua pakai escapeshellarg", true);
+            continue;
+        }
+
+        $unprotected = 0;
+        preg_match_all('/(?:shell_exec|exec|popen|proc_open|passthru)\s*\(([^)]+)\)/s', $content, $execMatches);
+        foreach ($execMatches[1] as $argStr) {
+            if (trim($argStr) === '') {
+                continue;
+            }
+            preg_match_all('/\$(\w+)/', $argStr, $execVars);
+            $allSafe = true;
+            foreach ($execVars[1] as $varName) {
+                if (preg_match('/\(int\)\s*\$' . preg_quote($varName, '/') . '\b/', $content) ||
+                    preg_match('/intval\s*\(\s*\$' . preg_quote($varName, '/') . '\s*\)/', $content) ||
+                    preg_match('/int\s+\$' . preg_quote($varName, '/') . '\b/', $content) ||
+                    preg_match('/\$' . preg_quote($varName, '/') . '\s*=\s*\(int\)/', $content)) {
+                    continue;
                 }
-                if (!$allSafe) $unprotected++;
+                $allSafe = false;
+                break;
             }
-            if ($unprotected === 0) {
-                record("{$file} \u{2014} {$execCount} shell exec, {$escCount} escapeshellarg (sisanya pakai int-cast)", true);
-            } else {
-                record("{$file} \u{2014} {$execCount} shell exec, {$escCount} escapeshellarg", true, true, "{$unprotected} mungkin tidak terproteksi");
-            }
+            if (!$allSafe) $unprotected++;
+        }
+
+        $isExpected = isset($expected[$file]);
+        $isAllowed = isset($allowed[$file]) || str_starts_with($file, $allowed['scripts/'] ?? "\0");
+
+        if ($unprotected === 0) {
+            record("{$file} \u{2014} {$execCount} shell exec, {$escCount} escapeshellarg (sisanya int-cast)", true);
+        } elseif ($isExpected || $isAllowed) {
+            record("{$file} \u{2014} {$execCount} shell exec, {$escCount} escapeshellarg", true, true,
+                "{$unprotected} mungkin tidak terproteksi");
+        } else {
+            record("{$file} \u{2014} shell exec DI LUAR allowlist — perlu review", false, false,
+                "{$execCount} pemanggilan shell, {$escCount} escapeshellarg, {$unprotected} tanpa proteksi jelas. "
+                . 'Kalau memang sah, tambahkan ke $expected atau $allowed di tests/security_test.php.');
         }
     }
 }
@@ -983,6 +1027,48 @@ function testAdminContextAndPipelineHardening(): void {
 function testOpenRedirectHardening(): void {
     print_header('TEST 16: Open-Redirect & Redirect-Hardening Guard');
 
+    $viaHelper = 0;
+    $noTaintedRedirect = 0;
+    foreach (getPhpFiles() as $full) {
+        $file = ltrim(str_replace(PROJECT_ROOT, '', $full), '/');
+        $content = (string) file_get_contents($full);
+        if (!preg_match('/HTTP_REFERER/', $content)) {
+            continue;
+        }
+        if (preg_match('/meel_same_origin_referer|meel_back_url|safe_comment_back_url|playlist_back_url/', $content)) {
+            $viaHelper++;
+            continue;
+        }
+        preg_match_all('/\$(\w+)\s*=\s*[^;\n]*HTTP_REFERER[^;\n]*;/', $content, $t1);
+        $tainted = array_unique($t1[1] ?? []);
+        for ($pass = 0; $pass < 2; $pass++) {
+            foreach ($tainted as $t) {
+                if (preg_match_all('/\$(\w+)\s*=\s*[^;\n]*\b' . preg_quote($t, '/') . '\b[^;\n]*;/', $content, $t2)) {
+                    $tainted = array_unique(array_merge($tainted, $t2[1]));
+                }
+            }
+        }
+        $unsafe = 0;
+        preg_match_all('/header\s*\(\s*["\']Location:([^;]*);/is', $content, $locs);
+        foreach ($locs[1] as $target) {
+            foreach ($tainted as $t) {
+                if (preg_match('/\$\{?' . preg_quote($t, '/') . '\b/', $target)) {
+                    $unsafe++;
+                    break;
+                }
+            }
+        }
+        if ($unsafe > 0) {
+            record("{$file}: redirect Location memakai variabel yang berasal dari HTTP_REFERER - open redirect!", false, false,
+                'Redirect dari referer harus lewat meel_same_origin_referer() / meel_back_url()');
+            continue;
+        }
+        $noTaintedRedirect++;
+    }
+    if ($viaHelper > 0 || $noTaintedRedirect > 0) {
+        record("Repo-wide referer: {$viaHelper} berkas pakai helper validasi, {$noTaintedRedirect} baca referer tanpa redirect ke target tainted", true);
+    }
+
     $dcFile = PROJECT_ROOT . '/controllers/api/delete_comment.php';
     if (!file_exists($dcFile)) {
         record('controllers/api/delete_comment.php — FILE TIDAK DITEMUKAN!', false, false);
@@ -993,7 +1079,9 @@ function testOpenRedirectHardening(): void {
         $locCount = count($locMs[0]);
         preg_match_all('/header\s*\(\s*["\']Location:\s*["\']\s*\.\s*safe_comment_back_url\(\)/i', $dc, $safeMs);
         $safeCount = count($safeMs[0]);
-        if ($locCount > 0 && $locCount === $safeCount) {
+        if ($locCount === 0) {
+            record('delete_comment: tidak ada Location header - tidak ada yang perlu divalidasi', true);
+        } elseif ($locCount === $safeCount) {
             record("delete_comment: {$locCount} Location header — semua via safe_comment_back_url()", true);
         } else {
             record("delete_comment: {$locCount} Location, hanya {$safeCount} via helper tervalidasi — open redirect!", false, false,

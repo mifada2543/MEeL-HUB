@@ -22,6 +22,7 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 - [Hardening P1 (Oktober 2026)](#hardening-p1-oktober-2026)
 - [Hardening P2 (Oktober 2026)](#hardening-p2-oktober-2026)
 - [Hardening P4 — Bagian komentar (Oktober 2026)](#hardening-p4--bagian-komentar-oktober-2026)
+- [Hardening P5 — Ketelitian pemeriksa keamanan (Oktober 2026)](#hardening-p5--ketelitian-pemeriksa-keamanan-oktober-2026)
 
 ---
 
@@ -1592,6 +1593,129 @@ Dua perubahan:
 
 Komentar yang sudah terlanjur ditulis **tidak** dihapus. Efeknya cuma berubah:
 komentar baru tidak lagi tersembunyi oleh komentar lama.
+
+---
+
+## Hardening P5 — Ketelitian pemeriksa keamanan (Oktober 2026)
+
+Bagian ini bukan perubahan pada aplikasi, melainkan pada `tests/security_test.php`
+yang selama ini dilaporkan hijau tanpa benar-benar memeriksa apa yang diklaimnya.
+
+### Peta allowlist membuat pemeriksaan mati diam-diam
+
+`testCommandInjection()` memindai sembilan berkas yang ditulis **literal** ke
+dalam kode:
+
+```php
+$risky = [
+    'modules/core/Uploader.php' => ['shell_exec', 'exec', 'popen'],
+    // ... 8 berkas lainnya
+];
+```
+
+Kalau `shell_exec` dipindahkan ke berkas baru yang tidak ada di daftar itu,
+pemeriksaan tetap hijau — bukan karena kodenya aman, tapi karena tidak pernah
+dipindai. Persis kelas bug yang pertama kali tertangkap saat berkas `storage.php`
+dipecah.
+
+Sekarang pemeriksa **menemukan sendiri** berkasnya lewat `getPhpFiles()`, lalu
+menghitung ulang `escapeshellarg`/cast-int untuk setiap hasil temuan:
+
+- Peta `$expected`/`$allowed` tetap ada, tapi perannya berubah: bukan daftar
+  berkas yang dipindai, melainkan daftar yang *diharapkan* masih menjalankan
+  shell. Berkas yang terdaftar tapi kehilangan `shell_exec`-nya ikut dilaporkan,
+  supaya peta basi langsung terlihat.
+- Berkas di luar peta yang menjalankan shell **gagal**, dengan pesan yang menyebut
+  apa yang harus diubah kalau memang sah.
+
+Jumlah berkas yang dipindai naik dari **9 menjadi 21**. Dua belas berkas
+sebelumnya tidak pernah diperiksa sama sekali, termasuk
+`controllers/api/auto_metadata.php`, `controllers/profile/profile_edit.php`,
+`arcade/rhythm/api/upload.php`, dan `modules/auth/ValidatingProxy.php`.
+
+Verifikasi: berkas sementara dengan `shell_exec('ls ' . $u)` di luar peta membuat
+skor turun ke 99/100 dan memunculkan `Fail: 1`.
+
+### Redirect dari referer hanya diperiksa di empat berkas
+
+`testOpenRedirectHardening()` hanya membaca
+`controllers/api/delete_comment.php` dan tiga berkas tetangganya. Berkas lain
+yang membaca `HTTP_REFERER` sama sekali tidak terlihat — termasuk dua yang
+benar-benar bermasalah (lihat di bawah).
+
+Pemeriksa baru memindai seluruh repo dengan **pelacakan taint**:
+
+1. Variabel yang diinisialisasi dari `HTTP_REFERER` ditandai tercemar.
+2. Penugasan yang memakai variabel tercemar ikut menandai variabel berikutnya
+   (dua tingkat, sudah cukup untuk pola `$ref` → `$back_url`).
+3. Setiap `header('Location: ...')` yang ekspresinya memakai variabel tercemar
+   dilaporkan sebagai open redirect.
+
+Dua lapis ini penting karena redirect lewat variabel lolos dari pemeriksaan
+yang hanya mencari `HTTP_REFERER` di dalam `header()` — pola yang justru paling
+umum dipakai (`$url = $_SERVER['HTTP_REFERER']; ... header("Location: $url")`).
+
+Yang **tidak** dilaporkan: berkas yang membaca referer lalu mengarahkan ke path
+lokal tetap, misalnya gate HLS di `music/stream.php` dan
+`modules/core/helpers/storage_stream.php` yang mengalihkan ke
+`../err/?code=denied`. Keduanya bukan open redirect.
+
+### Dua open redirect yang masih tersisa ikut ketahuan
+
+Pemeriksa yang diperkuat langsung menemukan dua instance pola lama yang belum
+tersentuh:
+
+| Berkas | Masalah | Perbaikan |
+|---|---|---|
+| `auth/auth_helpers.php` | `auth_back_url()` membandingkan host referer dengan `$_SERVER['HTTP_HOST']`, yang bisa dipalsukan lewat header `Host:` | Sekarang memakai `meel_same_origin_referer()` yang membandingkan dengan `MEEL_CANONICAL_HOST` |
+| `profile/index.php` | Daftar host yang diizinkan memuat `localhost`, `127.0.0.1`, `::1` | Dihapus; memakai `meel_same_origin_referer()` |
+
+Keduanya berakhir di `href` tautan "kembali" (`auth/login.php:190`), jadi dampak
+nya adalah pengguna diarahkan ke situs lain melalui domain kita sendiri.
+
+Perubahan ini membuat ketergantungan pada `MEEL_CANONICAL_HOST` eksplisit.
+Kalau nilainya kosong, `meel_same_origin_referer()` mengembalikan `null` dan
+tautan kembali jatuh ke `../` — gagal-tertutup, bukan gagal-terbuka. Di
+localhost tanpa konfigurasi, tautan kembali memang jadi generik.
+
+### Pengecualian `display_errors` dihapus
+
+Pemeriksa ini memuat daftar nama berkas yang dikecualikan dari aturan `display_errors`.
+Setelah dihapus, `modules/core/bootstrap.php` langsung terbongkar: ia memuat
+`ini_set('display_errors', '1')`. Setelah ditelusuri, itu memang benar — berada
+di cabang `development`, sementara cabang `production` mengaturnya ke `0`.
+
+Aturannya sekarang sadar-cabang: `display_errors=1` diterima **hanya** bila
+berkas yang sama juga memuat `case 'development'` **dan** `display_errors=0`.
+Daftar nama berkas konstan dihapus, jadi pengecualian baru tidak lagi bisa
+menyembunyikan regresi.
+
+### Peringatan tidak lagi diabaikan CI
+
+`ci.yml` sebelumnya hanya gagal pada exit code di atas 1; exit 1 ("lulus dengan
+peringatan") tetap hijau. Karena itu setiap peringatan adalah pekerjaan yang
+ditunda tanpa batas.
+
+Semua sumber peringatan sudah diperiksa ulang dan semuanya bergantung pada isi
+berkas yang dilacak git, bukan pada keadaan mesin — termasuk
+`data_drive/private_admins/.htaccess` yang memang ada di repositori. Tidak ada
+sumber peringatan yang bergantung pada media storage yang ter-mount. CI sekarang
+gagal pada kode keluar apa pun yang bukan nol.
+
+Status saat ini: `177` pemeriksaan, `177` lulus, `0` peringatan, `0` gagal.
+
+### Penjaga tambahan agar tidak kembali korup
+
+`StorageSplitTest::testSecurityAndFunctionalMapsStillCoverTheRealFiles` sudah
+menangkap perubahan ini saat pertama dijalankan: ia mencari peta `$risky`
+menggunakan, dan setelah petanya diganti nama justru cocok dengan `$risky = []`
+yang tidak terkait di `testSqlInjection()`. Assertion-nya sekarang menerima
+`$risky`, `$expected`, atau `$allowed`, dan ditambah satu assertion baru bahwa
+`testCommandInjection()` benar-benar memanggil `getPhpFiles()`.
+
+Kalau suatu saat pemeriksaan ini dikembalikan ke daftar path literal, assertion
+tersebut gagal lebih dulu — persis seperti yang terjadi saat pemecahan
+`storage.php`.
 
 ---
 
