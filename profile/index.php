@@ -11,39 +11,21 @@ $back_url = '../';
 $is_logged_in = isset($_SESSION['user_id']);
 $is_guest_profile = false;
 
-$allowed_hosts = [
-    defined('MEEL_HOST') && !empty(MEEL_HOST) ? MEEL_HOST : ($_SERVER['HTTP_HOST'] ?? ''),
-    'localhost',
-    '127.0.0.1',
-    '::1',
-];
-
-if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref = $_SERVER['HTTP_REFERER'];
-    $ref_host = parse_url($ref, PHP_URL_HOST);
-
-    $host_valid = false;
-    foreach ($allowed_hosts as $allowed) {
-        if ($allowed !== '' && $ref_host === $allowed) {
-            $host_valid = true;
+if (!function_exists('meel_same_origin_referer')) {
+    require_once __DIR__ . '/../modules/core/helpers/url.php';
+}
+if (($ref = meel_same_origin_referer()) !== null) {
+    $ref_path = (string) parse_url($ref, PHP_URL_PATH);
+    $excluded_pages = ['profile_edit.php', 'edit', 'index.php', 'manage.php', 'manage', 'mfa_setup.php', 'mfa-setup', 'mfa_backup.php', 'edit-music.php', 'edit-video.php', '/profile'];
+    $should_exclude = false;
+    foreach ($excluded_pages as $page) {
+        if (strpos($ref_path, $page) !== false) {
+            $should_exclude = true;
             break;
         }
     }
-
-    if ($host_valid) {
-        $ref_path = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages = ['profile_edit.php', 'edit', 'index.php', 'manage.php', 'manage', 'mfa_setup.php', 'mfa-setup', 'mfa_backup.php', 'edit-music.php', 'edit-video.php', '/profile'];
-        $should_exclude = false;
-        foreach ($excluded_pages as $page) {
-            if (strpos($ref_path, $page) !== false) {
-                $should_exclude = true;
-                break;
-            }
-        }
-
-        if (!$should_exclude) {
-            $back_url = $ref;
-        }
+    if (!$should_exclude) {
+        $back_url = $ref;
     }
 }
 $target_user = $_GET['u'] ?? '';

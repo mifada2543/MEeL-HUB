@@ -34,26 +34,24 @@ if (!function_exists('auth_back_url')) {
 
     function auth_back_url(array $exclude = ['login.php', 'register.php']): string
     {
+        if (!function_exists('meel_same_origin_referer')) {
+            require_once __DIR__ . '/../modules/core/helpers/url.php';
+        }
+
         $back_url = '../';
-        if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-            $ref = $_SERVER['HTTP_REFERER'];
-            $host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST);
-
-            $refHost = parse_url($ref, PHP_URL_HOST);
-
-            if ($refHost !== null && $host !== null && strcasecmp($refHost, $host) === 0) {
-                $refPath = parse_url($ref, PHP_URL_PATH) ?? '';
-                $isExcluded = false;
-                foreach ($exclude as $file) {
-                    if (strpos($refPath, $file) !== false
-                        || strpos($refPath, pathinfo($file, PATHINFO_FILENAME)) !== false) {
-                        $isExcluded = true;
-                        break;
-                    }
+        $ref = meel_same_origin_referer();
+        if ($ref !== null) {
+            $refPath = (string) (parse_url($ref, PHP_URL_PATH) ?? '');
+            $isExcluded = false;
+            foreach ($exclude as $file) {
+                if (strpos($refPath, $file) !== false
+                    || strpos($refPath, pathinfo($file, PATHINFO_FILENAME)) !== false) {
+                    $isExcluded = true;
+                    break;
                 }
-                if (!$isExcluded) {
-                    $back_url = $ref;
-                }
+            }
+            if (!$isExcluded) {
+                $back_url = $ref;
             }
         }
 

@@ -241,11 +241,14 @@ class StorageSplitTest extends TestCase
         $security = (string) file_get_contents(MEEL_ROOT . '/tests/security_test.php');
         $functional = (string) file_get_contents(MEEL_ROOT . '/tests/functional_test.php');
 
-        preg_match_all('/\$risky\s*=\s*\[(.*?)\];/s', $security, $allBlocks);
-        $this->assertNotEmpty($allBlocks[1], 'peta $risky di security_test tidak terbaca');
+        $mapNames = implode('|', array_map(
+            static fn(string $v): string => preg_quote($v, '/'),
+            ['risky', 'expected', 'allowed']
+        ));
+        preg_match_all('/\$(?:' . $mapNames . ')\s*=\s*\[(.*?)\];/s', $security, $allBlocks);
+        $this->assertNotEmpty($allBlocks[1], 'peta allowlist di security_test tidak terbaca');
 
-        usort($allBlocks[1], static fn(string $a, string $b): int => strlen($b) <=> strlen($a));
-        $riskyBlock = [null, $allBlocks[1][0]];
+        $riskyBlock = implode("\n", $allBlocks[1]);
 
         foreach (array_keys(self::PARTS) as $part) {
             $rel = 'modules/core/helpers/' . $part;
@@ -257,11 +260,18 @@ class StorageSplitTest extends TestCase
 
             $this->assertMatchesRegularExpression(
                 "/'" . preg_quote($rel, '/') . "'\s*=>\s*\[[^\]]*\]/",
-                $riskyBlock[1],
-                "{$part} memakai perintah sistem tapi TIDAK terdaftar di peta \$risky "
+                $riskyBlock,
+                "{$part} memakai perintah sistem tapi TIDAK terdaftar di peta allowlist "
                 . 'security_test — pemindaiannya akan dilewati diam-diam'
             );
         }
+
+        $this->assertMatchesRegularExpression(
+            '/function\s+testCommandInjection\s*\(\)\s*:\s*void\s*\{.*?getPhpFiles\s*\(\)/s',
+            $security,
+            'testCommandInjection harus menemukan berkasnya sendiri lewat getPhpFiles() — '
+            . 'kalau hanya memindai peta literal, pemindahan kode ke berkas baru akan lolos tanpa diperiksa'
+        );
 
         preg_match_all(
             "/'([a-z_0-9]+)'\s*=>\s*'(modules\/core\/helpers\/[a-z_]+\.php)'/",
