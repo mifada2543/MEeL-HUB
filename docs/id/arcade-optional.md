@@ -142,7 +142,7 @@ Migrasi arcade menggunakan tabel `arcade_db_version` untuk tracking versi
 | File | Peran |
 |---|---|
 | `modules/core/Modules.php` | Gate terpusat: `exists()`, `enabled()`, `guardRedirect()`, `guardJson()`, `guardJson404()` |
-| `modules/core/Router.php` | `OPTIONAL_ROUTES` (dipisah dari `ROUTES` inti) + redirect/JSON-404 di `dispatch()` |
+| `modules/core/Router.php` | `OPTIONAL_ROUTES` (dipisah dari `ROUTES` inti) + penjaga rute opsional (`guardOptionalRoute()`), yang mengalihkan modul halaman yang nonaktif dan menjawab JSON 404 untuk modul API yang nonaktif |
 | `arcade/.htaccess` | Gate statis untuk file fisik saat flag `.disabled` terpasang |
 | `arcade/_gate.php` | Guard PHP — modul opsional, page path → 302, API path → JSON 404 |
 | `arcade/chess/controller/chess_helpers.php` | Guard JSON 404 untuk semua endpoint chess (di-skip saat CLI/PHPUnit) |
