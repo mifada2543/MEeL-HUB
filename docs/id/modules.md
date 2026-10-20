@@ -843,6 +843,53 @@ statis (HTML/JS murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm
 > (23 tabel) maupun `database/migrate.php`. Atau gunakan
 > `install.sh` yang menawarkan instalasi arcade secara interaktif.
 
+### 22. `modules/core/Router.php` — front controller
+
+`router.php` menerjemahkan path permintaan lalu menyerahkannya ke
+`MeelRouter::dispatch()`. Tabel rutenya dua konstanta: `ROUTES` untuk halaman
+inti dan `OPTIONAL_ROUTES` untuk modul yang bisa dimatikan (`arcade`).
+
+`dispatch()` dulu memuat seluruh cabangnya di satu fungsi 50 baris, dengan
+`exit` di hampir setiap cabang. Sekarang ia terbaca sebagai rangkaian
+keputusan pendek, masing-masing di tempatnya:
+
+| Langkah | Di mana | Apa yang diputuskan |
+|---|---|---|
+| Alias profil | `profileAliasRedirect()` | `/profile?u=<nama>` dan `/profile/<nama>/<tab>` sama-sama menunjuk `/profile/<nama>` dengan tab sebagai query. Murni — mengembalikan URL tujuan atau `null` |
+| Pencarian rute | `routeFor()` | tabel eksak dulu, lalu rute opsional, lalu pola slug (`music/<slug>`, `profile/<nama>`, `admin/chat/<nama>`) |
+| Penjaga opsional | `guardOptionalRoute()` | modul halaman yang nonaktif dialihkan ke hub, modul API yang nonaktif menjawab JSON 404 |
+| Menjalankan handler | `runHandler()` | menyetel `SCRIPT_NAME`, pindah ke direktori handler supaya path relatifnya bekerja, lalu me-`include` |
+
+`profileAliasRedirect()` yang murni justru inti dari ini: aturan pengalihan
+bisa diuji tanpa mengirim permintaan. `RouterDispatchTest` menguji itu, dan
+sekaligus memastikan setiap rute di kedua tabel menunjuk berkas yang benar-benar
+ada — rute yang menunjuk berkas hilang menggagalkan seluruh halaman dengan 500
+yang tidak menjelaskan apa pun.
+
+Satu rute seperti itu ada. `/arcade/rhythm/editor` menunjuk
+`arcade/rhythm/editor/index.php`, direktori yang sudah tidak ada sejak editor
+dipindah ke `arcade/rhythm/manage/`. Meminta URL itu menghasilkan
+"500 — Gagal mengubah working directory." Sekarang rute tersebut menunjuk
+`arcade/rhythm/manage/edit.php`, berkas yang sama sudah dituju dua URL editor
+lainnya.
+
+### 23. `modules/auth/` dan konfigurasi bersama
+
+`auth/config.php` di-include setiap halaman: ia memuat kredensial dari
+`auth/settings.php`, membuka koneksi database, memulai sesi, dan menyetel
+header keamanan.
+
+Jalur gagalnya dulu melapor lewat `fwrite(STDERR, ...)`. `STDERR` hanya ada di
+SAPI CLI dan CGI — di Apache konstanta itu tidak ada, jadi koneksi database
+yang gagal berubah menjadi "Undefined constant STDERR", yaitu fatal yang
+menutupi pesan yang justru ingin disampaikan. Berkas itu sekarang memakai
+`error_log()`, yang jalan di semua SAPI dan tetap menulis ke stderr di CLI.
+
+`WebSafeErrorOutputTest` menjaga supaya ini tidak kembali: sebuah berkas
+hanya boleh memakai `STDERR`, `STDOUT`, atau `STDIN` kalau ia hidup di
+direktori perkakas CLI, menjaga dirinya sendiri dengan pemeriksaan `PHP_SAPI`
+yang menghentikan eksekusi, atau tidak di-include berkas mana pun.
+
 ### Editor Media Admin (musik + video)
 
 `admin/edit-music.php` dan `admin/edit-video.php` tadinya salinan satu sama

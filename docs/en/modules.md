@@ -922,6 +922,53 @@ its own DB):
 > (23 tables) nor `database/migrate.php`. Alternatively,
 > `install.sh` offers interactive arcade installation.
 
+### 22. `modules/core/Router.php` — front controller
+
+`router.php` resolves the request path and hands it to `MeelRouter::dispatch()`.
+The route table is two constants: `ROUTES` for core pages and
+`OPTIONAL_ROUTES` for modules that may be switched off (`arcade`).
+
+`dispatch()` used to hold every branch in one 50-line method, with an `exit`
+in almost every one of them. It now reads as a short sequence of decisions,
+each one in a named place:
+
+| Step | Where | What it decides |
+|---|---|---|
+| Profile alias | `profileAliasRedirect()` | `/profile?u=<name>` and `/profile/<name>/<tab>` both point at `/profile/<name>` with the tab as a query parameter. Pure — returns the target URL or `null` |
+| Route lookup | `routeFor()` | exact table first, then optional routes, then the slug patterns (`music/<slug>`, `profile/<name>`, `admin/chat/<name>`) |
+| Optional guard | `guardOptionalRoute()` | a disabled page module redirects to the hub, a disabled API module answers JSON 404 |
+| Handler run | `runHandler()` | sets `SCRIPT_NAME`, moves to the handler's directory so its relative paths work, then includes it |
+
+`profileAliasRedirect()` being pure is the point: the redirect rules can be
+tested without sending a request. `RouterDispatchTest` does exactly that,
+and also checks that every route in both tables points at a file that
+actually exists — a route pointing at a missing file fails the whole page
+with a 500 that says nothing about the cause.
+
+One such route existed. `/arcade/rhythm/editor` pointed at
+`arcade/rhythm/editor/index.php`, a directory that has not existed since the
+editor moved into `arcade/rhythm/manage/`. Requesting it produced
+"500 — Gagal mengubah working directory." It now points at
+`arcade/rhythm/manage/edit.php`, the same file the two other editor URLs
+already reach.
+
+### 23. `modules/auth/` and the shared config
+
+`auth/config.php` is included by every page: it loads the credentials from
+`auth/settings.php`, opens the database connection, starts the session and
+sets the security headers.
+
+Its failure paths used to report through `fwrite(STDERR, ...)`. `STDERR` only
+exists in the CLI and CGI SAPIs — under Apache it does not exist, so a failed
+database connection turned into "Undefined constant STDERR", a fatal that
+hid the message it was trying to deliver. The file now uses `error_log()`,
+which works in every SAPI and still writes to stderr under the CLI.
+
+`WebSafeErrorOutputTest` keeps that from coming back: a file may only use
+`STDERR`, `STDOUT` or `STDIN` if it lives in a CLI tooling directory, if it
+guards itself with a `PHP_SAPI` check that stops execution, or if nothing
+includes it.
+
 ### Admin Media Editor (music + video)
 
 `admin/edit-music.php` and `admin/edit-video.php` used to be copies of each
