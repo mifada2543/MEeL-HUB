@@ -55,7 +55,7 @@ class TextUploadValidationTest extends TestCase
             'teks biasa' => ["[00:12.00]Halo dunia\n", true],
             'teks kosong' => ['', true],
             'tag php' => ["<?php echo 1; ?>\n", false],
-            'tag php short' => ["<?= $x ?>\n", false],
+            'tag php short' => ['<?= $x ?>' . "\n", false],
             'tag php huruf besar' => ["<?PHP echo 1;\n", false],
             'byte nul' => ["abc\x00def", false],
             'bukan php tapi mengandung kurung' => ["a <? b\n", true],

@@ -1441,8 +1441,18 @@ $tc = new Transcoder($conn, $uid, function (string $stage, array $data): void {
 | `sprite_progress` | `['pct' => int, 'label' => ?string]` | Progress sprite/VTT |
 | `done` | `['title' => string, 'url' => string]` | Video selesai difinalisasi |
 | `done_transcode` | `['title' => string, 'download_link' => string]` | Transcode audio selesai |
-| `redirect` | `['url' => string]` | Navigasi browser (music → `post_encode.php`) |
 | `error` | `['message' => string]` | Error fatal yang ditampilkan ke user |
+
+Tidak ada stage `redirect`. Observer versi lama punya case `redirect` yang
+kosong untuk navigasi browser, tapi tidak pernah ada yang memancarkannya —
+navigasi musik lewat string berawalan `REDIRECT:` yang ditangani di
+`upload_advanced.php`, bukan lewat event progres. Case itu sudah dihapus.
+
+Tiap stage ditangani method private sendiri, yang dijangkau lewat peta
+`BrowserProgressObserver::STAGE_HANDLERS`. `onProgress()` hanya mencari
+handler-nya, jadi stage yang dipancarkan tapi tak terpetakan akan hilang
+diam-diam; `BrowserProgressObserverTest` membaca sumber transcoder dan
+memastikan setiap stage yang dipancarkan punya handler.
 
 ### Jaminan
 
