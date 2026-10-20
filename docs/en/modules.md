@@ -827,6 +827,13 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 > **Why the cost must be stored rather than recomputed?** If the sweeper
 > recomputed it from `site_settings`, and an admin changed the price after a
 > user uploaded, the refunded amount would be off — the user would get less
+
+The refund itself is one transaction: the queue row is locked with
+`FOR UPDATE`, `MeelCoin::refund()` runs, and only then is `coin_refunded`
+set to 1. Any failed step rolls the whole thing back, so a user can never
+end up with the coin back but the row unmarked, or the row marked without
+the coin coming back. `refundQueueRow()` holds the transaction; the lock
+and the mark are separate helpers so the sequence stays readable.
 > or more than they paid. `coin_cost` records **the amount at transaction
 > time**, so the result is always correct.
 
