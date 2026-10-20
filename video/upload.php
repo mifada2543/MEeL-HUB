@@ -46,7 +46,7 @@ if (isset($_POST['upload'])) {
         $alert_message = 'CSRF token tidak valid. Silakan muat ulang halaman lalu coba lagi.';
     } else {
         $upload_result = meel_handle_upload($conn, 'video', function ($post, $files) use ($uploader) {
-            return $uploader->processVideo($post, $files, __DIR__ . "/");
+            return $uploader->processVideo($post, $files);
         }, 'upload_video');
 
         $status = $upload_result['status'];

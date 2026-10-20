@@ -38,10 +38,34 @@ if (!function_exists('meel_media_cache_control')) {
             : 'private, max-age=31536000, immutable';
     }
 }
-if (!function_exists('meel_serve_media_file')) {
-    function meel_serve_media_file(string $module, string $relPath, array $opts = []): void
+if (!function_exists('meel_media_type_map')) {
+    function meel_media_type_map(): array
     {
-        meel_storage_guard('binary');
+        return [
+            'm3u8' => 'application/vnd.apple.mpegurl',
+            'ts' => 'video/mp2t',
+            'vtt' => 'text/vtt',
+            'mp4' => 'video/mp4',
+            'webm' => 'video/webm',
+            'mkv' => 'video/x-matroska',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'pdf' => 'application/pdf',
+            'mp3' => 'audio/mpeg',
+            'ogg' => 'audio/ogg',
+            'm4a' => 'audio/mp4',
+            'flac' => 'audio/flac',
+            'wav' => 'audio/wav',
+            'opus' => 'audio/ogg',
+        ];
+    }
+}
+if (!function_exists('meel_resolve_media_path')) {
+    function meel_resolve_media_path(string $module, string $relPath): array
+    {
         $base = meel_media_base_path($module);
         $baseReal = realpath($base);
         if ($baseReal === false) {
@@ -64,90 +88,46 @@ if (!function_exists('meel_serve_media_file')) {
             http_response_code(404);
             exit('File tidak ditemukan.');
         }
-        $ext = strtolower(pathinfo($realFull, PATHINFO_EXTENSION));
-        $allowed = [
-            'm3u8',
-            'ts',
-            'vtt',
-            'mp4',
-            'webm',
-            'mkv',
-            'jpg',
-            'jpeg',
-            'png',
-            'webp',
-            'gif',
-            'pdf',
-            'mp3',
-            'ogg',
-            'm4a',
-            'flac',
-            'wav',
-            'opus',
-        ];
-        if (!in_array($ext, $allowed, true)) {
-            http_response_code(403);
-            exit('Tipe file tidak diizinkan.');
+
+        return ['relPath' => $relPath, 'realFull' => $realFull];
+    }
+}
+if (!function_exists('meel_apply_hls_gate')) {
+    function meel_apply_hls_gate(string $relPath, array $opts): void
+    {
+        if (empty($opts['hls_gate'])) {
+            return;
         }
-        $mimeMap = [
-            'm3u8' => 'application/vnd.apple.mpegurl',
-            'ts' => 'video/mp2t',
-            'vtt' => 'text/vtt',
-            'mp4' => 'video/mp4',
-            'webm' => 'video/webm',
-            'mkv' => 'video/x-matroska',
-            'jpg' => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'png' => 'image/png',
-            'webp' => 'image/webp',
-            'gif' => 'image/gif',
-            'pdf' => 'application/pdf',
-            'mp3' => 'audio/mpeg',
-            'ogg' => 'audio/ogg',
-            'm4a' => 'audio/mp4',
-            'flac' => 'audio/flac',
-            'wav' => 'audio/wav',
-            'opus' => 'audio/ogg',
-        ];
-        $mime = $mimeMap[$ext] ?? 'application/octet-stream';
-        $size = (int) @filesize($realFull);
-        $mtime = (int) @filemtime($realFull);
-        if ($mtime <= 0) {
-            $mtime = time();
+        if (!str_starts_with($relPath, 'video/') && !str_contains($relPath, '/video/')) {
+            return;
         }
-        $etag = meel_media_etag($realFull, $size, $mtime);
-        $lastModified = gmdate('D, d M Y H:i:s', $mtime) . ' GMT';
-        $cacheControl = meel_media_cache_control($ext);
-        if (!empty($opts['hls_gate']) && (str_starts_with($relPath, 'video/') || str_contains($relPath, '/video/'))) {
-            $referer = $_SERVER['HTTP_REFERER'] ?? '';
-            $host = $_SERVER['HTTP_HOST'] ?? '';
-            $refOk = false;
-            if ($referer !== '' && $host !== '') {
-                $parts = parse_url($referer);
-                $hostNorm = strtolower(parse_url('http://' . $host, PHP_URL_HOST) ?: $host);
-                if ($parts && isset($parts['host']) && strtolower($parts['host']) === $hostNorm) {
-                    $refPath = $parts['path'] ?? '';
-                    if (preg_match('#/video(?:/(?:watch(?:\.php)?|index(?:\.php)?|beranda))?(?:[?\#]|/?$)#i', $refPath)) {
-                        $refOk = true;
-                    }
+
+        $referer = $_SERVER['HTTP_REFERER'] ?? '';
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $refOk = false;
+        if ($referer !== '' && $host !== '') {
+            $parts = parse_url($referer);
+            $hostNorm = strtolower(parse_url('http://' . $host, PHP_URL_HOST) ?: $host);
+            if ($parts && isset($parts['host']) && strtolower($parts['host']) === $hostNorm) {
+                $refPath = $parts['path'] ?? '';
+                if (preg_match('#/video(?:/(?:watch(?:\.php)?|index(?:\.php)?|beranda))?(?:[?\#]|/?$)#i', $refPath)) {
+                    $refOk = true;
                 }
             }
-            if (!$refOk) {
-                $script = $_SERVER['SCRIPT_NAME'] ?? '';
-                $basePath = rtrim(dirname(dirname($script)), '/');
-                header('Location: ' . $basePath . '/err/?code=denied');
-                exit;
-            }
         }
-        if (meel_xsendfile_ready($realFull)) {
-            header('Content-Type: ' . $mime);
-            header('Accept-Ranges: bytes');
-            header('Cache-Control: ' . $cacheControl);
-            header('ETag: ' . $etag);
-            header('Last-Modified: ' . $lastModified);
-            header('X-Sendfile: ' . meel_xsendfile_header($realFull));
-            exit;
+        if ($refOk) {
+            return;
         }
+
+        $script = $_SERVER['SCRIPT_NAME'] ?? '';
+        $basePath = rtrim(dirname(dirname($script)), '/');
+        header('Location: ' . $basePath . '/err/?code=denied');
+        exit;
+    }
+}
+if (!function_exists('meel_resolve_byte_range')) {
+    function meel_resolve_byte_range(int $size): array
+    {
         $start = 0;
         $end = $size - 1;
         $range = $_SERVER['HTTP_RANGE'] ?? '';
@@ -173,6 +153,83 @@ if (!function_exists('meel_serve_media_file')) {
                 $isPartial = true;
             }
         }
+
+        return ['start' => $start, 'end' => $end, 'isPartial' => $isPartial];
+    }
+}
+if (!function_exists('meel_stream_media_bytes')) {
+    function meel_stream_media_bytes(string $realFull, int $start, int $end): void
+    {
+        set_time_limit(0);
+        ignore_user_abort(false);
+        while (@ob_get_level()) {
+            @ob_end_clean();
+        }
+        @ob_implicit_flush(true);
+        $fp = @fopen($realFull, 'rb');
+        if ($fp === false) {
+            http_response_code(500);
+            exit('Gagal membuka file.');
+        }
+        if ($start > 0) {
+            fseek($fp, $start);
+        }
+        $remaining = $end - $start + 1;
+        while ($remaining > 0 && !feof($fp)) {
+            $chunk = fread($fp, min(8192, $remaining));
+            if ($chunk === false) {
+                break;
+            }
+            echo $chunk;
+            $remaining -= strlen($chunk);
+            flush();
+        }
+        fclose($fp);
+    }
+}
+if (!function_exists('meel_serve_media_file')) {
+    function meel_serve_media_file(string $module, string $relPath, array $opts = []): void
+    {
+        meel_storage_guard('binary');
+
+        $target = meel_resolve_media_path($module, $relPath);
+        $relPath = $target['relPath'];
+        $realFull = $target['realFull'];
+
+        $ext = strtolower(pathinfo($realFull, PATHINFO_EXTENSION));
+        $mimeMap = meel_media_type_map();
+        if (!isset($mimeMap[$ext])) {
+            http_response_code(403);
+            exit('Tipe file tidak diizinkan.');
+        }
+        $mime = $mimeMap[$ext];
+
+        $size = (int) @filesize($realFull);
+        $mtime = (int) @filemtime($realFull);
+        if ($mtime <= 0) {
+            $mtime = time();
+        }
+        $etag = meel_media_etag($realFull, $size, $mtime);
+        $lastModified = gmdate('D, d M Y H:i:s', $mtime) . ' GMT';
+        $cacheControl = meel_media_cache_control($ext);
+
+        meel_apply_hls_gate($relPath, $opts);
+
+        if (meel_xsendfile_ready($realFull)) {
+            header('Content-Type: ' . $mime);
+            header('Accept-Ranges: bytes');
+            header('Cache-Control: ' . $cacheControl);
+            header('ETag: ' . $etag);
+            header('Last-Modified: ' . $lastModified);
+            header('X-Sendfile: ' . meel_xsendfile_header($realFull));
+            exit;
+        }
+
+        $range = meel_resolve_byte_range($size);
+        $start = $range['start'];
+        $end = $range['end'];
+        $isPartial = $range['isPartial'];
+
         if (!$isPartial && meel_cache_is_fresh($_SERVER, $etag, $mtime)) {
             http_response_code(304);
             header('ETag: ' . $etag);
@@ -191,29 +248,8 @@ if (!function_exists('meel_serve_media_file')) {
             header('HTTP/1.1 206 Partial Content');
             header('Content-Range: bytes ' . $start . '-' . $end . '/' . $size);
         }
-        set_time_limit(0);
-        ignore_user_abort(false);
-        while (@ob_get_level()) {
-            @ob_end_clean();
-        }
-        @ob_implicit_flush(true);
-        $fp = @fopen($realFull, 'rb');
-        if ($fp === false) {
-            http_response_code(500);
-            exit('Gagal membuka file.');
-        }
-        if ($start > 0) {
-            fseek($fp, $start);
-        }
-        $remaining = $end - $start + 1;
-        while ($remaining > 0 && !feof($fp)) {
-            $chunk = fread($fp, min(8192, $remaining));
-            if ($chunk === false) break;
-            echo $chunk;
-            $remaining -= strlen($chunk);
-            flush();
-        }
-        fclose($fp);
+
+        meel_stream_media_bytes($realFull, $start, $end);
         exit;
     }
 }
