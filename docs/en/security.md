@@ -26,6 +26,7 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [P4 Hardening — Comment Section (October 2026)](#p4-hardening--comment-section-october-2026)
 - [P5 Hardening — Security Checker Rigour (October 2026)](#p5-hardening--security-checker-rigour-october-2026)
 - [P6 Hardening — Path Resolution and Gate Placement (October 2026)](#p6-hardening--path-resolution-and-gate-placement-october-2026)
+- [P7 Hardening — MEeLCoin Refund Accounting (October 2026)](#p7-hardening--meelcoin-refund-accounting-october-2026)
 - [Input Validation](#input-validation)
 - [Best Practices](#best-practices)
 
@@ -1502,6 +1503,76 @@ The first version of that change was a false negative, and it was caught by
 removing the call: the check still passed, because the pattern matched the
 class definition instead of the call. The pattern is now `->authorize()`, and
 removing the call fails the check.
+
+---
+
+## P7 Hardening — MEeLCoin Refund Accounting (October 2026)
+
+### The queue never recorded what the user paid
+
+`upload_queue.coin_cost` is documented in `database/schema.sql` as "MEeLCoin
+that was deducted at INSERT time", and `coin_refunded` as "1 = the cost was
+returned by the sweeper". Neither column was ever filled in with a real value.
+
+`upload_advanced.php` charges the user through `MeelCoin::spend()` and then
+calls `processDownload()`, which creates the queue row through
+`DownloadService::lockQueue()`. `lockQueue()` writes `self::$pendingCoinCost`
+into `coin_cost` — and `setPendingCoinCost()` was only ever called from
+`modules/core/helpers/upload.php`, the flow that never creates an
+`upload_queue` row at all.
+
+The two call sites were exactly swapped. The result: `coin_cost` was always 0.
+The production database confirmed it — **0 of 160** rows in `upload_queue` had
+`coin_cost > 0`.
+
+The sweeper's own logic was correct the whole time, and
+`QueueSweeperIntegrationTest` proved it by inserting rows with a cost of 7
+directly into the database. What it could never do is refund a real amount,
+because the amount it read was always zero. A user whose upload died mid-flight
+had already been charged and the coins never came back.
+
+The fix moves `setPendingCoinCost()` to the call site that actually creates the
+row, and `upload_advanced.php` now records the amount it charged.
+
+### A second path dropped the refund on the floor
+
+`upload_advanced.php` also cleaned up stale rows with a bare statement:
+
+```php
+UPDATE upload_queue SET status = 'failed' WHERE status = 'processing' AND ...
+```
+
+No refund, and — this is the part that made it permanent — a `failed` row is
+never selected by the sweeper, which only looks at `pending` and `processing`.
+So a 30-minute cleanup removed the row from the sweeper's reach before the
+6-hour sweeper could return the money. Every coin owed to a user whose upload
+had hung was simply lost.
+
+The cleanup now goes through `GarbageCollector::releaseStaleQueueRows()`, the
+same code the sweeper uses, so the refund happens before the row is marked
+failed. One implementation, two callers, and they can no longer disagree.
+
+### The refund path is now exactly-once
+
+`releaseStaleQueueRows()` reads the cost from the row rather than from the
+current price — MEeLCoin prices change, and what must be returned is what was
+actually charged. The row is locked `FOR UPDATE` for the duration of the
+transaction, so two concurrent sweeps cannot both refund it, and
+`coin_refunded = 1` is only written *after* the coins have actually been
+returned. Every `execute()` result is now checked; previously a failed update
+was silently treated as success.
+
+`releaseQueue()` still only touches the status column. That invariant matters:
+if it also set `coin_refunded`, a row refunded by the normal failure path would
+be refunded again by the sweeper.
+
+### The notification failure no longer costs the user their upload
+
+`Notification::create()` ran after the coins were deducted but outside the
+`try` block, so a database hiccup while writing the notification raised an
+uncaught error — the user was charged, nothing was uploaded, and no refund was
+issued. The notification is cosmetic, so it is now wrapped: a failure is logged
+and the upload continues.
 
 ---
 
