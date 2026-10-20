@@ -1516,8 +1516,18 @@ $tc = new Transcoder($conn, $uid, function (string $stage, array $data): void {
 | `sprite_progress` | `['pct' => int, 'label' => ?string]` | Sprite/VTT progress |
 | `done` | `['title' => string, 'url' => string]` | Video finalized |
 | `done_transcode` | `['title' => string, 'download_link' => string]` | Audio transcode complete |
-| `redirect` | `['url' => string]` | Browser navigation (music → `post_encode.php`) |
 | `error` | `['message' => string]` | Fatal error shown to the user |
+
+There is no `redirect` stage. An older version of the observer had an empty
+`redirect` case for browser navigation, but nothing ever emitted it — music
+navigation goes through the `REDIRECT:`-prefixed message string handled in
+`upload_advanced.php`, not through a progress event. The case was removed.
+
+Each stage is handled by its own private method, reached through the
+`BrowserProgressObserver::STAGE_HANDLERS` map. `onProgress()` only looks the
+handler up, so a stage that is emitted but not mapped would be silently
+dropped; `BrowserProgressObserverTest` reads the transcoder sources and
+asserts that every stage they emit has a handler.
 
 **Guarantees:**
 - An observer exception is caught and logged inside `emit()` — it never propagates
