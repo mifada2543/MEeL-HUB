@@ -23,6 +23,7 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 - [Hardening P2 (Oktober 2026)](#hardening-p2-oktober-2026)
 - [Hardening P4 — Bagian komentar (Oktober 2026)](#hardening-p4--bagian-komentar-oktober-2026)
 - [Hardening P5 — Ketelitian pemeriksa keamanan (Oktober 2026)](#hardening-p5--ketelitian-pemeriksa-keamanan-oktober-2026)
+- [Hardening P6 — Resolusi path dan penempatan gerbang (Oktober 2026)](#hardening-p6--resolusi-path-dan-penempatan-gerbang-oktober-2026)
 
 ---
 
@@ -1716,6 +1717,68 @@ yang tidak terkait di `testSqlInjection()`. Assertion-nya sekarang menerima
 Kalau suatu saat pemeriksaan ini dikembalikan ke daftar path literal, assertion
 tersebut gagal lebih dulu — persis seperti yang terjadi saat pemecahan
 `storage.php`.
+
+---
+
+## Hardening P6 — Resolusi path dan penempatan gerbang (Oktober 2026)
+
+### Path include tidak lagi bergantung pada working directory
+
+282 statement `require` dan `include` di 66 berkas memakai path relatif terhadap
+working directory. Untuk request web, working directory kebetulan adalah direktori
+entry script, jadi mereka bekerja — tapi hanya selama berkasnya adalah entry
+point. Begitu sebuah halaman di-*include* dari tempat lain, statement yang sama
+menunjuk ke tempat yang sama sekali berbeda.
+
+Kasus paling tajam ada di `auth/auth.php`, yang mengambil saudaranya dengan
+`include 'config.php'`. PHP menyelesaikan include relatif terhadap working
+directory dulu, dan hanya kalau gagal baru ke direktori berkas pemanggil. Jadi
+berkas yang menentukan gerbang sesi sebenarnya sedang menentukan *config.php
+mana* yang dimuat, tergantung dari mana request dilayani.
+
+Semua statement itu sekarang memakai `__DIR__`. Perilakanya identik ketika
+berkas adalah entry script, dan benar ketika bukan. Tidak ada template
+ter-*include* yang punya require relatif, jadi perubahan direktori dasar untuk
+include bersarang tidak berpengaruh apa pun.
+
+Dua pemanggilan `filemtime()` di `admin/activity_log.php` punya masalah yang
+sama dan diperbaiki dengan cara yang sama ketika berkas itu dipecah.
+
+### Gerbang otorisasi drive ditulis lima kali, sekarang satu
+
+`drive/index.php`, `upload.php`, `download.php`, `stream.php`, dan `delete.php`
+semuanya dibuka dengan enam baris yang sama: tiga require, pembuatan
+`DriveUserContext`, lalu `$user->authorize()`. Gerbang peran untuk seluruh
+fitur drive ditulis lima kali, dan satu-satunya pembeda di antaranya adalah
+require mana yang ingat diubah jadi `require_once`.
+
+Sekarang mereka berbagi `drive/bootstrap.php`, yang juga masuk daftar
+`FilesMatch` di `drive/.htaccess` supaya tidak bisa diminta langsung.
+
+### `auth/config.php` tidak lagi dimuat dua kali
+
+`auth/auth.php` memuat `config.php` dengan `include` biasa, lalu halaman-halaman
+memerlukan file yang sama lagi. `config.php` memang idempoten — koneksinya
+ dijaga `if (!isset($conn))` — tapi jalur kedua mengirim ulang header keamanan
+dan mengulang bookkeeping sesi. Sekarang `require_once` di keempat berkas
+masuk, sehingga urutan `require` kedua berkas itu tidak lagi berpengaruh.
+require dua berkas itu tidak lagi berpengaruh.
+
+### Pemeriksaan stream mengikuti rantai include
+
+`tests/security_test.php` memastikan `drive/stream.php` memanggil
+`authorize()`. Setelah pemanggilan itu pindah ke bootstrap bersama, pemeriksa
+membaca berkas yang tidak lagi memuatnya.
+
+Sekarang pemeriksa membaca berkas itu *dan semua yang di-include-nya*, lewat
+helper baru `sourceWithIncludes()` di `tests/helpers.php`. Polanya juga
+diperketat dari `authorize()` menjadi `->authorize()`, karena definisi metode di
+`DriveService.php` juga cocok dengan pola lama.
+
+Versi pertama perubahan itu false negative, dan ketahuan karena pemanggilan
+dihapus sementara: pemeriksa tetap lulus, karena polanya cocok dengan definisi
+kelas, bukan dengan pemanggilannya. Polanya kini `->authorize()`, dan menghapus
+pemanggilan itu membuat gerbang gagal.
 
 ---
 

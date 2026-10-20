@@ -25,6 +25,7 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [P2 Hardening (October 2026)](#p2-hardening-october-2026)
 - [P4 Hardening — Comment Section (October 2026)](#p4-hardening--comment-section-october-2026)
 - [P5 Hardening — Security Checker Rigour (October 2026)](#p5-hardening--security-checker-rigour-october-2026)
+- [P6 Hardening — Path Resolution and Gate Placement (October 2026)](#p6-hardening--path-resolution-and-gate-placement-october-2026)
 - [Input Validation](#input-validation)
 - [Best Practices](#best-practices)
 
@@ -1439,6 +1440,68 @@ calls `getPhpFiles()`.
 
 If the check is ever reverted to a literal path list, that assertion fails
 first — exactly as happened when `storage.php` was split.
+
+---
+
+## P6 Hardening — Path Resolution and Gate Placement (October 2026)
+
+### Include paths no longer depend on the working directory
+
+282 `require` and `include` statements across 66 files used a path relative to
+the current working directory. For a web request the working directory happens
+to be the directory of the entry script, so they worked — but only while the
+file was the entry point. The moment a page is included from elsewhere, the
+same statement points somewhere else entirely.
+
+The sharpest case was in `auth/auth.php`, which pulled in its sibling with
+`include 'config.php'`. PHP resolves a relative include against the working
+directory first and only then falls back to the including file's own
+directory. So the file that decides the session gate was really deciding
+*which* `config.php` to load based on where the request happened to be served
+from.
+
+Every one of those statements now uses `__DIR__`. The behaviour is identical
+when the file is the entry script and correct when it is not. No included
+template contains a relative require, so the change of base directory for
+nested includes affects nothing.
+
+Two server-side `filemtime()` calls in `admin/activity_log.php` had the same
+problem and were fixed the same way when that file was split.
+
+### The five drive pages shared one authorization gate, written five times
+
+`drive/index.php`, `upload.php`, `download.php`, `stream.php` and `delete.php`
+each opened with the same six lines: three requires, the construction of a
+`DriveUserContext`, and `$user->authorize()`. The role gate for the whole
+drive feature was written five times, and the only thing distinguishing them
+was which of the three requires someone remembered to change to `require_once`.
+
+They now share `drive/bootstrap.php`, which is also listed in the `FilesMatch`
+of `drive/.htaccess` so it cannot be requested directly.
+
+### `auth/config.php` is no longer loaded twice
+
+`auth/auth.php` loaded `config.php` with a plain `include`, and the pages then
+required it again. `config.php` is idempotent — it guards the connection with
+`if (!isset($conn))` — but the second pass re-sent the security headers and
+re-ran the session bookkeeping. It is now `require_once` in all four entry
+files, so the order in which a page requires the two no longer matters.
+
+### The stream check follows the include chain
+
+`tests/security_test.php` checks that `drive/stream.php` calls `authorize()`.
+When the call moved into the shared bootstrap, the check read a file that no
+longer contained it.
+
+The check now reads the file *and everything it includes*, through a new
+`sourceWithIncludes()` helper in `tests/helpers.php`. It also looks for the
+`->authorize()` call rather than the bare name, because the method definition
+in `DriveService.php` matched the old pattern just as well.
+
+The first version of that change was a false negative, and it was caught by
+removing the call: the check still passed, because the pattern matched the
+class definition instead of the call. The pattern is now `->authorize()`, and
+removing the call fails the check.
 
 ---
 
