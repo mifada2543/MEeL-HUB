@@ -177,6 +177,25 @@ class ValidatingProxyTest extends TestCase
         $this->assertStringContainsStringIgnoringCase('502', $response);
     }
 
+    /**
+     * Target yang sama sekali bukan URL — cabang penolakan yang berbeda
+     * dari "skema tidak didukung" dan dari "alamat tidak diizinkan".
+     */
+    public function testAbsoluteUriThatIsNotAUrlIsRefused(): void
+    {
+        $response = $this->probeProxy(
+            "GET bukan-url HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"
+        );
+
+        $this->assertStringContainsStringIgnoringCase('502', $response);
+        $this->assertStringContainsString(
+            'URL target tidak valid',
+            $response,
+            'Target yang bukan URL harus ditolak sebagai URL rusak (dapat: '
+                . var_export(substr($response, 0, 120), true) . ')'
+        );
+    }
+
     public function testHttpsSchemeAbsoluteUriIsNotRelayed(): void
     {
 

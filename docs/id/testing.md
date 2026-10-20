@@ -66,11 +66,13 @@ logs/tests/
 | `HelpersTest.php` | 50 | format_bytes, time_ago, audio MIME, disk space, CSRF, dir_size, deteksi protokol (data provider) |
 | `JapaneseTest.php` | 15 | Romaji conversion, analyzeJapaneseText, English translation (tanpa MeCab) |
 | `GarbageCollectorTest.php` | 7 | Class existence, idempotency, graceful handling, cleanup rate-limit (dir test terisolasi), pelestarian direktori cache aktif |
+| `CacheDirectoryCleanupTest.php` | 17 | TTL cache per prefix dan per key waktu (`ts`/`time`/`checked_at`), berkas sementara, cache rusak, fallback mtime, direktori cache yang sama |
 | `SearchEngineTest.php` | 5 | Parse params, sanitizer (`sanitizeQuery`), default values, constants |
 | `MediaLibraryTest.php` | 11 | Logika pagination (pure math), BookRepository mock |
 | `MediaInteractionTest.php` | 7 | Validasi input (ID/type tidak valid) |
 | `MediaViewerTest.php` | 9 | Logika rekomendasi media / antrean playlist / next-url |
 | `RouterProfileRouteTest.php` | 9 | Resolusi route profil, route terreserved, kasus nested/trailing-slash |
+| `RouterDispatchTest.php` | 22 | Pengalihan alias profil (murni, tanpa perlu request), dan setiap rute terdaftar menunjuk berkas yang benar-benar ada |
 | `BootstrapTest.php` | 9 | Env detection, konfigurasi error reporting, timezone |
 | `CssManifestTest.php` | 18 | Manifest CSS modul — semua entri ada, **semua** folder ter-precache oleh `SwPrecache`, entri precache resolve, versi SW deterministik |
 | `SharedJsTest.php` | 7 | Shared JS harness — alur download-backup-codes |
@@ -78,7 +80,10 @@ logs/tests/
 | `SsrfGuardTest.php` | 76 | **Guard SSRF** — allowlist protokol, range IP private/publik (v4 & v6), penolakan record DNS campuran, denylist hostname, HTTP pinning (lihat bawah) |
 | `DriveSecurityTest.php` | 13 | **Private Drive** — akses cross-user, path traversal, symlink escape, boundary realpath, kuota, reservasi nama atomik (lihat bawah) |
 | `DriveStorageBasePathTest.php` | 8 | Resolusi base path storage Drive — konstanta `MEEL_HDD_DRIVE`, fallback, prioritas |
-| `ValidatingProxyTest.php` | 20 | **Validating forward proxy** — probe CONNECT/GET nyata: target private ditolak (502), target publik di-tunnel, bind loopback-only (lihat bawah) |
+| `WebSafeErrorOutputTest.php` | 2 | **Output error yang aman untuk web** — `STDERR`/`STDOUT`/`STDIN` hanya di perkakas CLI, berkas yang dijaga `PHP_SAPI`, atau berkas yang tidak di-include siapa pun |
+| `AdminFilteredRepositoryTest.php` | 13 | Basis repository admin bersama — query bersama tetap di basis, tiap repository menjaga tabel & aliasnya, perilaku filter keduanya tetap berbeda |
+| `ValidatingProxyTest.php` | 27 | **Validating forward proxy** — probe CONNECT/GET nyata: target private ditolak (502), target publik di-tunnel, bind loopback-only, absolute-URI rusak ditolak (lihat bawah) |
+| `ValidatingProxyProtocolTest.php` | 27 | **Aturan protokol proxy** — parsing kepala permintaan beserta batasannya, parsing target CONNECT, pembuangan header hop-by-hop, penyusunan permintaan yang diteruskan, pemindahan data tunnel & relay respons |
 | `ArchiveGuardTest.php` | 11 | **Guard arsip** — traversal `../`, path absolut, null byte, symlink, nesting, compression ratio, ZIP bomb, entry count (lihat bawah) |
 | `UploadValidationTest.php` | 9 | **Validasi upload** — magic bytes palsu, ekstensi ganda, null byte, oversized, eksekutabel (lihat bawah) |
 | `TranscoderConstantsTest.php` | 2 | Regresi visibilitas konstanta bersama (`TranscoderBase` → service anak) |

@@ -74,6 +74,7 @@ modules/
 │   ├── RateLimiter.php     # File-based API rate limiter
 │   ├── SsrfGuard.php       # SSRF-safe URL validation
 │   ├── ValidatingProxy.php # SSRF-defense forward proxy
+│   ├── ValidatingProxyProtocol.php # Proxy protocol rules (parsing, forwarding, relay)
 │   └── helpers/            # authz.php, csrf.php, session.php, stream_auth.php, mfa.php, user.php
 ├── media/                  # Media query modules
 │   ├── MediaLibrary.php    # DB queries, pagination, BookRepository, BookUploader
