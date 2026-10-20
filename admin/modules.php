@@ -124,8 +124,8 @@ $msg = $_GET['msg'] ?? null;
         </div>
     </div>
 
-    <script src="../assets/js/admin/shared/modal.js?v=<?= filemtime('../assets/js/admin/shared/modal.js') ?>"></script>
-    <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime('../assets/js/admin/shared/hover-effects.js') ?>"></script>
+    <script src="../assets/js/admin/shared/modal.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/modal.js') ?>"></script>
+    <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/hover-effects.js') ?>"></script>
     <script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
 </body>
 

@@ -1742,8 +1742,14 @@ berkas adalah entry script, dan benar ketika bukan. Tidak ada template
 ter-*include* yang punya require relatif, jadi perubahan direktori dasar untuk
 include bersarang tidak berpengaruh apa pun.
 
-Dua pemanggilan `filemtime()` di `admin/activity_log.php` punya masalah yang
-sama dan diperbaiki dengan cara yang sama ketika berkas itu dipecah.
+Pemanggilan `filemtime()` punya masalah yang sama. 47 panggilan di 12 berkas
+menyelesaikan `../assets/...` terhadap working directory, sehingga query versi
+cache-busting diam-diam menghasilkan nilai kosong begitu halamannya bukan entry
+script. Semuanya kini memakai `__DIR__`, dan setiap path hasil konversi
+diperiksa benar-benar menunjuk berkas yang ada.
+
+Atribut `href` dan `src` yang mengarah ke browser sengaja tidak diubah: itu
+URL yang diselesaikan browser terhadap halaman, bukan path yang dibuka server.
 
 ### Gerbang otorisasi drive ditulis lima kali, sekarang satu
 

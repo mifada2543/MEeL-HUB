@@ -72,10 +72,10 @@ if (isset($_POST['upload'])) {
     ?>
     <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('music', '../assets/css/music'); ?>
-    <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime('../assets/css/font.css') ?>">
-    <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
-    <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">
-    <link rel="stylesheet" href="../assets/css/music/upload/main.css?v=<?= filemtime('../assets/css/music/upload/main.css') ?>">
+    <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime(__DIR__ . '/../assets/css/font.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/design-tokens.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/upload-form.css') ?>">
+    <link rel="stylesheet" href="../assets/css/music/upload/main.css?v=<?= filemtime(__DIR__ . '/../assets/css/music/upload/main.css') ?>">
 </head>
 
 <body>

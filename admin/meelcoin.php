@@ -215,8 +215,8 @@ $user_list_json = json_encode($user_list);
         </div>
     </div>
 
-    <script src="../assets/js/admin/shared/modal.js?v=<?= filemtime('../assets/js/admin/shared/modal.js') ?>"></script>
-    <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime('../assets/js/admin/shared/hover-effects.js') ?>"></script>
+    <script src="../assets/js/admin/shared/modal.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/modal.js') ?>"></script>
+    <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/hover-effects.js') ?>"></script>
     <script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
     <script>
     var __userList = <?= $user_list_json ?>;

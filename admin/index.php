@@ -57,7 +57,7 @@ GarbageCollector::cleanChessRooms($conn);
     include __DIR__ . '/../partials/scripts.php';
     ?>
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
-    <link rel="stylesheet" href="../assets/css/admin/index.css?v=<?= filemtime('../assets/css/admin/index.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin/index.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin/index.css') ?>">
     <script defer src="../assets/js/compatibilitas/chart.umd.min.js<?= meel_asset_version('assets/js/compatibilitas/chart.umd.min.js') ?>"></script>
 </head>
 
@@ -589,11 +589,11 @@ GarbageCollector::cleanChessRooms($conn);
         var serverStatsUrl = <?= json_encode(base_url('/api/server-stats')) ?>;
         var serverStatsSseUrl = <?= json_encode(base_url('/api/server-stats-sse')) ?>;
     </script>
-    <script src="../assets/js/admin/shared/modal.js?v=<?= filemtime('../assets/js/admin/shared/modal.js') ?>"></script>
-    <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime('../assets/js/admin/shared/hover-effects.js') ?>"></script>
-    <script src="../assets/js/admin/shared/search.js?v=<?= filemtime('../assets/js/admin/shared/search.js') ?>"></script>
+    <script src="../assets/js/admin/shared/modal.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/modal.js') ?>"></script>
+    <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/hover-effects.js') ?>"></script>
+    <script src="../assets/js/admin/shared/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/search.js') ?>"></script>
     <script src="../assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
-    <script src="../assets/js/admin/index.js?v=<?= filemtime('../assets/js/admin/index.js') ?>"></script>
+    <script src="../assets/js/admin/index.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/index.js') ?>"></script>
 </body>
 
 </html>

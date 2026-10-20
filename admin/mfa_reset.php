@@ -39,7 +39,7 @@ $scripts_root = '../';
 include __DIR__ . '/../partials/scripts.php';
 ?>
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
-    <link rel="stylesheet" href="../assets/css/admin/mfa_reset.css?v=<?= filemtime('../assets/css/admin/mfa_reset.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin/mfa_reset.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin/mfa_reset.css') ?>">
 </head>
 
 <body class="text-gray-300 min-h-screen">
@@ -175,7 +175,7 @@ include __DIR__ . '/../partials/scripts.php';
         </div>
     </div>
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-    <script src="../assets/js/admin/mfa_reset.js?v=<?= filemtime('../assets/js/admin/mfa_reset.js') ?>"></script>
+    <script src="../assets/js/admin/mfa_reset.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/mfa_reset.js') ?>"></script>
 </body>
 
 </html>

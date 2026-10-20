@@ -1466,8 +1466,14 @@ when the file is the entry script and correct when it is not. No included
 template contains a relative require, so the change of base directory for
 nested includes affects nothing.
 
-Two server-side `filemtime()` calls in `admin/activity_log.php` had the same
-problem and were fixed the same way when that file was split.
+Server-side `filemtime()` calls had the same problem. 47 of them across 12
+files resolved `../assets/...` against the working directory, so the
+cache-busting version query silently produced an empty value whenever the
+page was not the entry script. They now use `__DIR__`, and every converted
+path was checked to resolve to a file that actually exists.
+
+Browser-facing `href` and `src` attributes were left alone on purpose: those
+are URLs the browser resolves against the page, not paths the server opens.
 
 ### The five drive pages shared one authorization gate, written five times
 

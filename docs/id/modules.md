@@ -826,6 +826,35 @@ statis (HTML/JS murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm
 > (23 tabel) maupun `database/migrate.php`. Atau gunakan
 > `install.sh` yang menawarkan instalasi arcade secara interaktif.
 
+### Editor Media Admin (musik + video)
+
+`admin/edit-music.php` dan `admin/edit-video.php` tadinya salinan satu sama
+lain: sekitar 50% logika PHP mereka identik, termasuk blok unggah thumbnail
+beserta daftar MIME, batas ukuran, dan pemanggilan ffmpeg. Graph
+`codebase-memory` menunjukkan kedua berkas berubah bersama 20 kali (coupling
+0,87) — ciri khas salinan yang seharusnya disatukan.
+
+Bagian yang sama sekarang tinggal di satu tempat:
+
+| Berkas | Tanggung jawab |
+|---|---|
+| `admin/includes/media_editor.php` | `meel_editor_media_config()` — label, nama berkas default, dan wording error per jenis media; `meel_editor_context_redirect()` — pengalihan admin/profil; `meel_editor_upload_thumbnail()` — seluruh jalur unggah |
+| `admin/partials/edit_media_uploader_card.php` | kartu "diunggah oleh" di sidebar |
+| `admin/partials/edit_media_stats.php` | deretan views/likes/dislikes |
+| `admin/edit-music.php` | bagian khusus musik: artis, album, seksi lirik, penulisan database |
+| `admin/edit-video.php` | bagian khusus video: unggah subtitle, penulisan database |
+
+`admin/edit-music.php` mengecil dari 427 ke 357 baris dan `admin/edit-video.php`
+dari 468 ke 398. Panggilan shell ke ffmpeg berpindah dari dua berkas ke satu,
+jadi ada tepat satu tempat ter-audit tempat ffmpeg dipanggil.
+
+Satu perbedaan sengaja dipertahankan. Kalau unggah thumbnail gagal, halaman
+musik tetap menyimpan judul dan deskripsi, sedangkan halaman video tidak
+menyimpan apa pun. Asimetri itu muncul dari dua salinan yang lama melenceng
+berbeda-bedanya; ini bukan efek penyatuan, dan mengubahnya adalah keputusan
+produk, bukan refactor. `AdminEditorSharedTest` menguncinya supaya tidak
+berubah tanpa sengaja.
+
 ### Admin Activity Log Viewer
 
 `admin/activity_log.php` — viewer audit trail dengan 3 tab. Berkas induknya
