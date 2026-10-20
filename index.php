@@ -1,11 +1,11 @@
 <?php
 /* reference build: MEeL-C4H9NO2 [828e0013b8f3bc1b] */
 
-require_once 'modules/core/helpers.php';
-require_once 'modules/core/Modules.php';
+require_once __DIR__ . '/modules/core/helpers.php';
+require_once __DIR__ . '/modules/core/Modules.php';
 meel_boot_session();
-include 'auth/config.php';
-require_once 'modules/media/MediaLibrary.php';
+include __DIR__ . '/auth/config.php';
+require_once __DIR__ . '/modules/media/MediaLibrary.php';
 
 $is_logged_in = isset($_SESSION['user_id']);
 
@@ -19,7 +19,7 @@ $counts = $library->getCounts();
     <?php
     $_META_TITLE = 'MEeL | Media Hub';
     $_META_DESC = 'MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.';
-    include 'partials/head.php';
+    include __DIR__ . '/partials/head.php';
     ?>
     <link rel="stylesheet" href="assets/css/index(hub).css<?= meel_asset_version('assets/css/index(hub).css') ?>">
     <link href="assets/css/tailwind.min.css<?= meel_asset_version('assets/css/tailwind.min.css') ?>" rel="stylesheet">
@@ -37,7 +37,7 @@ $counts = $library->getCounts();
 <body class="text-gray-300 min-h-screen" style="background:#05070c">
 <?php include __DIR__ . '/partials/skip-link.php'; ?>
 
-    <?php include 'partials/navbar.php'; ?>
+    <?php include __DIR__ . '/partials/navbar.php'; ?>
     <main class="relative z-10 max-w-6xl mx-auto px-6 pt-32 pb-20 flex flex-col items-center">
 
         <div class="text-center mb-20">
@@ -161,7 +161,7 @@ $counts = $library->getCounts();
                 MATI
             </button>
         </div>
-        <?php include 'partials/footer.php'; ?>
+        <?php include __DIR__ . '/partials/footer.php'; ?>
     </main>
 
     <div id="demoBanner" class="demo-banner" role="alert" aria-label="Pemberitahuan website demo">

@@ -1,11 +1,5 @@
 <?php
-require '../auth/auth.php';
-require '../auth/config.php';
-require '../modules/core/helpers.php';
-require __DIR__ . '/DriveService.php';
-
-$user = DriveUserContext::fromSession($_SESSION);
-$user->authorize();
+require_once __DIR__ . '/bootstrap.php';
 
 $isAjax = (isset($_GET['ajax']) && $_GET['ajax'] === '1');
 
@@ -40,7 +34,7 @@ if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
 
 $storage = new DriveStorage(DriveStorage::defaultBasePath(), $user, '../data_drive', $conn);
 
-require_once '../modules/core/System.php';
+require_once __DIR__ . '/../modules/core/System.php';
 $sys = new System($conn);
 $user_id = $_SESSION['user_id'];
 

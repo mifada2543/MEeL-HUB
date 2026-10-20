@@ -8,16 +8,16 @@
  */
 
 /* reference build: MEeL-C3H7NO2S [40ae36a03f3f429a] */
-include '../auth/config.php';
-include '../auth/auth.php';
-include_once '../modules/core/helpers.php';
-include_once '../modules/core/activity_logger.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
+include_once __DIR__ . '/../modules/core/helpers.php';
+include_once __DIR__ . '/../modules/core/activity_logger.php';
 
 require_admin($conn);
 
 define('MEEL_ADMIN_CONTEXT', true);
 
-include '../controllers/admin/admin_actions.php';
+include __DIR__ . '/../controllers/admin/admin_actions.php';
 
 require_once __DIR__ . '/../modules/core/helpers/settings.php';
 require_once __DIR__ . '/../modules/core/Modules.php';
@@ -41,7 +41,7 @@ $msg = $_GET['msg'] ?? null;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modules | MEeL Admin</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
 </head>
 <body class="min-h-screen">
@@ -50,7 +50,7 @@ $msg = $_GET['msg'] ?? null;
     $page_title = 'Modules';
     $media_type = 'dashboard';
     $back_url = 'index.php';
-    include 'header-admin.php';
+    include __DIR__ . '/header-admin.php';
     ?>
     <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
 

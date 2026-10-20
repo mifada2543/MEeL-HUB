@@ -1,8 +1,8 @@
 <?php
-require_once '../modules/auth/helpers/session.php';
+require_once __DIR__ . '/../modules/auth/helpers/session.php';
 meel_boot_session();
-require_once '../auth/config.php';
-require_once '../modules/media/ProfileRepository.php';
+require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/media/ProfileRepository.php';
 
 $target_user = $_GET['u'] ?? '';
 $active_tab = $_GET['tab'] ?? 'all';

@@ -1,11 +1,11 @@
 <?php
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
-require_once '../modules/core/CommentRenderer.php';
-require_once '../modules/media/MediaLibrary.php';
+include __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/core/CommentRenderer.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
 require_once __DIR__ . '/cards.php';
-require_once '../controllers/api/WatchController.php';
+require_once __DIR__ . '/../controllers/api/WatchController.php';
 $id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
 $playlist_id = isset($_GET['playlist_id']) ? (int)$_GET['playlist_id'] : 0;
@@ -35,7 +35,7 @@ session_write_close();
     $_META_IMAGE_H = '512';
     $_META_TYPE = 'music.song';
     ?>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'); ?>
     <link rel="preconnect" href="<?= $base_url ?>/" crossorigin>
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
@@ -80,7 +80,7 @@ session_write_close();
                 </button>
             </div>
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <?php include '../partials/nav.php'; ?>
+                <?php include __DIR__ . '/../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
@@ -515,7 +515,7 @@ session_write_close();
                 </div>
             </div>
         </div>
-    </main> <?php include '../partials/footer.php'; ?>
+    </main> <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script>
         window.MEEL_MUSIC_CONFIG = {
             id: <?= $id ?>,

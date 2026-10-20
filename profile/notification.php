@@ -1,10 +1,10 @@
 <?php
 /* reference build: MEeL-C8H11NO2 [1da0c33d1a4d7528] */
 
-require_once '../modules/auth/helpers/session.php';
+require_once __DIR__ . '/../modules/auth/helpers/session.php';
 meel_boot_session();
-require_once '../auth/config.php';
-require_once '../modules/core/Notification.php';
+require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/core/Notification.php';
 
 if (empty($_SESSION['user_id'])) {
     header('Location: ../auth/login');
@@ -45,13 +45,13 @@ $ICONS = [
 <head>
     <?php
     $_META_TITLE = 'Notifikasi | MEeL';
-    include '../partials/link.php';
+    include __DIR__ . '/../partials/link.php';
     ?>
     <link rel="stylesheet" href="../assets/css/profile/notification.css?v=<?= filemtime(__DIR__ . '/../assets/css/profile/notification.css') ?>">
     <div id="notif-data" data-api-root="<?= htmlspecialchars($root) ?>/api/notification" data-csrf-token="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>" style="display:none;"></div>
 </head>
 <body class="min-h-screen p-4 md:p-8">
-    <?php include '../partials/nav.php'; ?>
+    <?php include __DIR__ . '/../partials/nav.php'; ?>
     <div class="max-w-2xl mx-auto pt-6">
         <div class="flex items-center gap-3 mb-5">
             <a href="<?= htmlspecialchars($back_url) ?>" class="p-2 rounded-lg hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" aria-label="Kembali">
@@ -119,6 +119,6 @@ $ICONS = [
     </div>
 
     <script src="../assets/js/profile/notification/interactions.js?v=<?= filemtime(__DIR__ . '/../assets/js/profile/notification/interactions.js') ?>"></script>
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <?php
-include 'config.php';
+require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/../modules/core/helpers.php';
 if (!isset($_SESSION['user_id'])) {
     $next = urlencode($_SERVER['REQUEST_URI'] ?? '/');

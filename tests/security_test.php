@@ -809,9 +809,9 @@ function testSsrfAndPrivateDrive(): void {
     if (!file_exists($streamFile)) {
         record('drive/stream.php — FILE TIDAK DITEMUKAN!', false, false);
     } else {
-        $sc = file_get_contents($streamFile);
+        $sc = sourceWithIncludes('drive/stream.php');
         $need = [
-            'authorize()' => 'authorize()',
+            'authorize() dipanggil' => '->authorize()',
             'verify_csrf_token' => 'verify_csrf_token',
             'getFileForDownload' => 'getFileForDownload',
             'basename (traversal)' => 'basename(',

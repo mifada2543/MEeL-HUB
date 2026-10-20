@@ -47,7 +47,7 @@ class HeadScriptDeferTest extends TestCase
     /**
      * index.php dengan blok PHP diganti spasi, TANPA menghapus baris baru.
      *
-     * Kenapa spasi dan bukan token: statement `include 'partials/head.php';`
+     * Kenapa spasi dan bukan token: statement `include __DIR__ . '/partials/head.php';`
      * berada DI DALAM blok PHP, jadi kalau bloknya diganti token, statement
      * itu ikut hilang dan posisinya tak bisa diukur lagi. Spasi menjaga
      * jumlah baris, jadi nomor baris tetap sebanding antar dua sumber.
@@ -90,7 +90,7 @@ class HeadScriptDeferTest extends TestCase
         );
 
         $this->assertMatchesRegularExpression(
-            "/include\s+['\"][^'\"]*partials\/head\.php['\"]\s*;/",
+            "/include\s+(?:__DIR__\s*\.\s*)?['\"][^'\"]*partials\/head\.php['\"]\s*;/",
             $this->page,
             'index.php harus meng-include partials/head.php — pola include berubah'
         );
@@ -111,7 +111,7 @@ class HeadScriptDeferTest extends TestCase
     private function headIncludeLine(): int
     {
         foreach (explode("\n", $this->page) as $i => $line) {
-            if (preg_match("/include\s+['\"][^'\"]*partials\/head\.php['\"]\s*;/", $line)) {
+            if (preg_match("/include\s+(?:__DIR__\s*\.\s*)?['\"][^'\"]*partials\/head\.php['\"]\s*;/", $line)) {
                 return $i + 1;
             }
         }

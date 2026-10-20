@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/auth_helpers.php';
 auth_boot_session();
-include 'config.php';
+require_once __DIR__ . '/config.php';
 $back_url = auth_back_url(['login.php', 'register.php']);
 $message = "";
 $msg_type = "";

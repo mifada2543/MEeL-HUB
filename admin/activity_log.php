@@ -4,9 +4,9 @@
  */
 
 /* reference build: MEeL-C5H5N5O [c2c3223a89e5e36a] */
-include '../auth/config.php';
-include '../auth/auth.php';
-include_once '../modules/core/helpers.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
+include_once __DIR__ . '/../modules/core/helpers.php';
 
 require_admin($conn);
 
@@ -344,7 +344,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
     $page_title = 'Log Aktivitas';
     $media_type = 'analytics';
     $back_url = 'index.php';
-    include 'header-admin.php';
+    include __DIR__ . '/header-admin.php';
     ?>
     <div class="max-w-7xl mx-auto px-6 md:px-10 xl:px-16 pt-4">
         <div class="flex gap-0 rounded-xl overflow-hidden border border-white/10 mb-6">

@@ -1,9 +1,9 @@
 <?php
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
-require_once '../modules/core/CommentRenderer.php';
-require_once '../controllers/api/WatchController.php';
+include __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/core/CommentRenderer.php';
+require_once __DIR__ . '/../controllers/api/WatchController.php';
 require_once __DIR__ . '/cards.php';
 
 $id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
@@ -45,7 +45,7 @@ session_write_close();
     $_META_IMAGE_H = '720';
     $_META_TYPE = 'video.other';
     ?>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php if ($__thumb_path !== ''): ?>
         <link rel="preload" as="image" fetchpriority="high"
             href="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>">
@@ -109,7 +109,7 @@ session_write_close();
                     aria-label="Cari video">
                     <i data-lucide="search" class="w-4 h-4"></i>
                 </button>
-                <?php include '../partials/nav.php'; ?>
+                <?php include __DIR__ . '/../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
@@ -374,7 +374,7 @@ session_write_close();
 
     </main>
 
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>
     <script src="../assets/js/shared/head-meta.js<?= meel_asset_version('assets/js/shared/head-meta.js') ?>"></script>
     <script src="../assets/js/shared/recovery-manager.js<?= meel_asset_version('assets/js/shared/recovery-manager.js') ?>"></script>

@@ -1,10 +1,10 @@
 <?php
 define('MEEL_API_CONTEXT', true);
-require_once '../../modules/core/helpers.php';
+require_once __DIR__ . '/../../modules/core/helpers.php';
 meel_boot_session();
 
-include '../../auth/config.php';
-include '../../modules/media/MediaInteraction.php';
+include __DIR__ . '/../../auth/config.php';
+include __DIR__ . '/../../modules/media/MediaInteraction.php';
 
 if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
     http_response_code(403);

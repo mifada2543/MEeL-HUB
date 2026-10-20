@@ -36,8 +36,8 @@ if (!is_stream_authorized($id)) {
     exit;
 }
 
-include '../auth/config.php';
-include '../modules/media/MediaViewer.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../modules/media/MediaViewer.php';
 
 $viewer = new MediaViewer($conn, $_SESSION['user_id'], 'music', $id);
 $v = $viewer->getMediaData();

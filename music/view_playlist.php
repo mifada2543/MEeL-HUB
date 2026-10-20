@@ -1,11 +1,11 @@
 <?php
 
 /** @var array<string, mixed>|null $playlist, $first_song; int $playlist_id, $total_songs; \mysqli_result $songs_query */
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
-require_once '../modules/media/MediaLibrary.php';
-require_once '../modules/media/PlaylistRepository.php';
+include __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/../modules/media/PlaylistRepository.php';
 
 $playlist_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $user_id = $_SESSION['user_id'] ?? 0;
@@ -238,7 +238,7 @@ if (isset($_GET['content_only'])) {
         $_META_IMAGE_H = '512';
     }
     ?>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('music', '../assets/css/music'); ?>
     <link href="../assets/css/tailwind.min.css<?= meel_asset_version('assets/css/tailwind.min.css') ?>" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/music/playlist.css?v=<?= filemtime(__DIR__ . '/../assets/css/music/playlist.css') ?>">
@@ -277,7 +277,7 @@ if (isset($_GET['content_only'])) {
             </div>
 
             <div class="flex items-center gap-3 sm:gap-5 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <?php include '../partials/nav.php'; ?>
+                <?php include __DIR__ . '/../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
@@ -492,7 +492,7 @@ if (isset($_GET['content_only'])) {
         </div>
     </div>
 
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="../assets/js/shared/state-keys.js<?= meel_asset_version('assets/js/shared/state-keys.js') ?>"></script>
     <script src="../assets/js/shared/format-time.js<?= meel_asset_version('assets/js/shared/format-time.js') ?>"></script>
     <script src="../assets/js/shared/keyboard.js<?= meel_asset_version('assets/js/shared/keyboard.js') ?>"></script>

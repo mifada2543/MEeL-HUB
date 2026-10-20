@@ -1,6 +1,6 @@
 <?php
-include '../auth/config.php';
-require_once '../modules/media/SearchEngine.php';
+include __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/media/SearchEngine.php';
 require_once __DIR__ . '/cards.php';
 
 $engine = new SearchEngine($conn);

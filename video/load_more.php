@@ -1,6 +1,6 @@
 <?php
-include '../auth/config.php';
-require_once '../modules/media/MediaLibrary.php';
+include __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
 require_once __DIR__ . '/cards.php';
 
 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 15;

@@ -8,10 +8,10 @@
  */
 
 /* reference build: MEeL-C4H9NO2 [e87eb3aad14fb992] */
-include '../auth/config.php';
-include '../auth/auth.php';
-include_once '../modules/core/helpers.php';
-require_once '../modules/core/japanese.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
+include_once __DIR__ . '/../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/japanese.php';
 
 $_EDIT_CONTEXT = $_EDIT_CONTEXT ?? 'admin';
 
@@ -393,7 +393,7 @@ $thumb_src = !empty($music['thumbnail'])
         </div>
     </div>
 
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
     <?php $scripts_root = '../';
     include __DIR__ . '/../partials/scripts.php'; ?>
     <script src="../assets/js/admin/edit/shared/form.js?v=<?= filemtime('../assets/js/admin/edit/shared/form.js') ?>"></script>

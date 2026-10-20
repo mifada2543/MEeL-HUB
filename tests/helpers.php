@@ -103,4 +103,63 @@ function countInFile(string $path, string $pattern): int {
 }
 }
 
+if (!function_exists('sourceWithIncludes')) {
+
+/**
+ * Sumber sebuah berkas DILETAKHI file lokal yang di-require/include-nya.
+ *
+ * KENAPA INI ADA
+ * --------------
+ * Pemeriksa keamanan sering menulis "file X harus punya pola Y". Begitu
+ * kode itu dipindah ke berkas lain, pemeriksa membaca berkas yang sekarang
+ * kosong dari yang dicari, tidak menemukan apa-apa, lalu melaporkannya
+ * aman -- atau gagal, kalau ia.raises. Dua-duanya salah: yang pertama
+ *-butuh fungsi yang hilang dari pemeriksaan.
+ *
+ * Yang kedua lebih halus: kalau pemeriksa MEMBUKA berkas yang salah, hasilnya
+ * bukan "aman" tapi "gagal", jadi tidak ada pemeriksaan yang lolos diam-diam.
+ * Yang berbahaya justru ketika berkas yang dipindai adalah berkas kosong
+ * sementara yang sebenarnya dipindai sudah tidak dibaca sama sekali.
+ *
+ * Fungsi ini menutup celah itu: isinya berkas yang diminta PLUS isi
+ * berkas lokal yang di-require/include-nya, sehingga pemeriksaan tetap
+ * berlaku meski kodenya dipindah ke bootstrap bersama.
+ *
+ * @param string $relativePath path relatif terhadap PROJECT_ROOT
+ * @param int $depth kedalaman rantai include yang diikuti
+ */
+function sourceWithIncludes(string $relativePath, int $depth = 3): string {
+    $root = PROJECT_ROOT;
+    $seen = [];
+
+    $collect = function (string $path, int $level) use (&$collect, &$seen, $depth): string {
+        $real = realpath($path);
+        if ($real === false || isset($seen[$real])) {
+            return '';
+        }
+        $seen[$real] = true;
+
+        $src = (string) file_get_contents($real);
+        if ($level <= 0) {
+            return $src;
+        }
+
+        $dir = dirname($real);
+        $pattern = '/(?:require|include)(?:_once)?\s*(?:__DIR__\s*\.\s*)?[\'"]([^\'"]+)[\'"]/';
+        if (preg_match_all($pattern, $src, $m)) {
+            foreach ($m[1] as $rel) {
+                if (str_contains($rel, '$')) {
+                    continue;
+                }
+                $src .= "\n" . $collect($dir . '/' . $rel, $level - 1);
+            }
+        }
+
+        return $src;
+    };
+
+    return $collect($root . '/' . $relativePath, $depth);
+}
+}
+
 /* reference build: MEeL-C5H5N5O [216f22b749ba99a0] */
