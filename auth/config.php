@@ -2,7 +2,7 @@
 
 $meel_settings = __DIR__ . '/settings.php';
 if (!file_exists($meel_settings)) {
-    fwrite(STDERR, "[MEeL SYSTEM ERROR]\nFile auth/settings.php tidak ditemukan.\n"
+    error_log("[MEeL SYSTEM ERROR]\nFile auth/settings.php tidak ditemukan.\n"
         . "Copy dari settings.example.php lalu isi kredensial:\n"
         . "  cp auth/settings.example.php auth/settings.php\n");
 
@@ -20,11 +20,11 @@ if (!isset($conn) || $conn === null) {
     try {
         $conn = new mysqli($server, $username, $password, $db);
         if ($conn->connect_error) {
-            fwrite(STDERR, "[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $conn->connect_error . "\n");
+            error_log("[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $conn->connect_error . "\n");
             exit(1);
         }
     } catch (\mysqli_sql_exception $e) {
-        fwrite(STDERR, "[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $e->getMessage() . "\n");
+        error_log("[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $e->getMessage() . "\n");
         exit(1);
     }
     $conn->set_charset('utf8mb4');
