@@ -90,7 +90,7 @@ class TestCountDocumentationTest extends TestCase
      * jumlah sebenarnya dan bandingkan — supaya Pesan errorNYA informatif
      * (memberi tahu angka yang benar), bukan sekadar menolak.
      *
-   ��� Ini tidak menggandakan testDokumenTidakMenyebutJumlahTestEksak; ini
+   // Ini tidak menggandakan testDokumenTidakMenyebutJumlahTestEksak; ini
      * menyediakan angka acuan supaya whoever memperbaiki tidak perlu
      * menebak-nebak.
      */

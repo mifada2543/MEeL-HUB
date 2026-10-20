@@ -722,6 +722,22 @@ Key properties:
 
 The `https://` limitation is therefore resolved: even though the original HTTPS URL cannot be pinned (TLS SNI), every redirect destination is re-validated by the proxy before a connection is opened.
 
+#### The protocol rules live outside the server script
+
+`validating_proxy_server.php` runs the server at file scope, so the file could
+not be included without starting a proxy. Every rule in it — how a request head
+is parsed, which headers are stripped, how the forwarded request is assembled —
+was therefore untestable.
+
+Those rules now live in `modules/auth/ValidatingProxyProtocol.php`, which has no
+side effects: it can be included, and the rules can be exercised without a
+server and without a network. `ValidatingProxyProtocolTest` does exactly that,
+including the socket-level tunnel and response relay through a pair of local
+sockets. `ValidatingProxyTest` still drives the real server process end to end.
+
+`security_test.php` looks for the proxy's guard patterns across both files
+together, so moving a rule between them does not weaken the check.
+
 ### Defense in Depth
 
 `Transcoder::fetchMetadata()` also calls `SsrfGuard::validate()` independently and forces the proxy flag, so even a future caller that skips `processDownload()` cannot pass an unvalidated URL — or an unprotected hop — to yt-dlp.
@@ -733,6 +749,7 @@ The `https://` limitation is therefore resolved: even though the original HTTPS 
 | `modules/auth/SsrfGuard.php` | Central validation: protocol allowlist, explicit IPv4/IPv6 range checks, DNS all-record validation, HTTP pinning |
 | `modules/auth/ValidatingProxy.php` | Spawns/terminates the proxy process, exposes `--proxy` URL (loopback-only) |
 | `modules/auth/validating_proxy_server.php` | CLI forward proxy: SsrfGuard on every hop (HTTP absolute-URI + CONNECT tunnel) |
+| `modules/auth/ValidatingProxyProtocol.php` | The proxy's protocol rules, split out of the server script: request-head parsing and its limits, CONNECT target parsing, forwarded-request assembly, tunnel and response relay |
 | `modules/core/Transcoder.php` (facade → `modules/transcoder/DownloadService.php`) | `processDownload()` / `fetchMetadata()` call the guard and route yt-dlp through `--proxy`; fail closed if the proxy cannot start |
 | `modules/autoload.php` | Autoloads the `SsrfGuard` class |
 

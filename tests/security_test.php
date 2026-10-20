@@ -767,16 +767,21 @@ function testSsrfAndPrivateDrive(): void {
     }
 
     $proxyServer = PROJECT_ROOT . '/modules/auth/validating_proxy_server.php';
+    $proxyProtocol = PROJECT_ROOT . '/modules/auth/ValidatingProxyProtocol.php';
     if (!file_exists($proxyServer)) {
         record('modules/auth/validating_proxy_server.php — FILE TIDAK DITEMUKAN!', false, false);
+    } elseif (!file_exists($proxyProtocol)) {
+        record('modules/auth/ValidatingProxyProtocol.php — FILE TIDAK DITEMUKAN!', false, false);
     } else {
-        $ps = file_get_contents($proxyServer);
+        // Server dan aturan protokolnya dipisah dua berkas; pola yang dicari
+        // boleh ada di salah satu, tapi harus ada.
+        $ps = (string) file_get_contents($proxyServer) . (string) file_get_contents($proxyProtocol);
         foreach (['SsrfGuard', 'CONNECT', 'resolvePublicAddresses', 'PROXY_MAX_HEADERS', 'PROXY_MAX_HEADER_LINE'] as $pat) {
             if (strpos($ps, $pat) === false) {
-                record("validating_proxy_server: {$pat} TIDAK ditemukan", false, false);
+                record("validating_proxy: {$pat} TIDAK ditemukan", false, false);
             }
         }
-        record('validating_proxy_server: SsrfGuard diterapkan per hop (CONNECT + resolve)', true);
+        record('validating_proxy: SsrfGuard diterapkan per hop (CONNECT + resolve)', true);
     }
 
     $parentHt = PROJECT_ROOT . '/data_drive/.htaccess';

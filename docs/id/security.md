@@ -967,6 +967,23 @@ Properti kunci:
 
 Keterbatasan `https://` dengan demikian teratasi: meskipun URL HTTPS asli tidak bisa di-pin (SNI TLS), setiap tujuan redirect tetap divalidasi ulang oleh proxy sebelum koneksi dibuka.
 
+#### Aturan protokolnya tinggal di luar skrip server
+
+`validating_proxy_server.php` menjalankan server di level berkas, jadi berkasnya
+tidak bisa di-include tanpa menjalankan proxy. Semua aturan di dalamnya —
+bagaimana kepala permintaan diurai, header mana yang dibuang, bagaimana
+permintaan yang diteruskan disusun — karena itu tidak punya test.
+
+Aturan itu kini ada di `modules/auth/ValidatingProxyProtocol.php`, yang tidak
+punya efek samping: berkasnya bisa di-include, dan aturannya bisa diuji tanpa
+server dan tanpa jaringan. `ValidatingProxyProtocolTest` yang
+melakukan, termasuk tunnel dan relay respons di level soket lewat sepasang
+soket lokal. `ValidatingProxyTest` tetap menjalankan proses server sungguhan
+dari ujung ke ujung.
+
+`security_test.php` mencari pola penjaga proxy di kedua berkas sekaligus, jadi
+memindahkan aturan di antara keduanya tidak melemahkan pemeriksaannya.
+
 ### Defense in Depth
 
 `Transcoder::fetchMetadata()` juga memanggil `SsrfGuard::validate()` secara independen dan memaksa flag proxy, sehingga calon pemanggil lain yang melewati `processDownload()` pun tidak bisa meneruskan URL yang belum divalidasi — atau hop yang tidak terlindungi — ke yt-dlp.
@@ -978,6 +995,7 @@ Keterbatasan `https://` dengan demikian teratasi: meskipun URL HTTPS asli tidak 
 | `modules/auth/SsrfGuard.php` | Validasi sentral: allowlist protokol, cek range IPv4/IPv6 eksplisit, validasi semua record DNS, HTTP pinning |
 | `modules/auth/ValidatingProxy.php` | Spawn/terminate proses proxy, expose URL `--proxy` (loopback-only) |
 | `modules/auth/validating_proxy_server.php` | CLI forward proxy: SsrfGuard di setiap hop (HTTP absolute-URI + CONNECT tunnel) |
+| `modules/auth/ValidatingProxyProtocol.php` | Aturan protokol proxy, dipisah dari skrip server: parsing kepala permintaan beserta batasannya, parsing target CONNECT, penyusunan permintaan yang diteruskan, tunnel dan relay respons |
 | `modules/core/Transcoder.php` (facade → `modules/transcoder/DownloadService.php`) | `processDownload()` / `fetchMetadata()` memanggil guard dan mengarahkan yt-dlp lewat `--proxy`; fail closed jika proxy tidak bisa start |
 | `modules/autoload.php` | Mengautoload kelas `SsrfGuard` |
 

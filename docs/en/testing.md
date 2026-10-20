@@ -66,11 +66,13 @@ logs/tests/
 | `HelpersTest.php` | 50 | format_bytes, time_ago, audio MIME types, disk space, CSRF, dir_size, protocol detection (data providers) |
 | `JapaneseTest.php` | 15 | Romaji conversion, analyzeJapaneseText, English translation (MeCab-optional) |
 | `GarbageCollectorTest.php` | 7 | Class existence, idempotency, graceful handling, cleanup rate-limit (dir test terisolasi), active-cache dir preservation |
+| `CacheDirectoryCleanupTest.php` | 17 | Cache sweep TTLs per prefix and per time key (`ts`/`time`/`checked_at`), temporary files, unreadable cache, mtime fallback, shared cache directory |
 | `SearchEngineTest.php` | 5 | Parse params, sanitizer (`sanitizeQuery`), default values, constants |
 | `MediaLibraryTest.php` | 11 | Pagination logic (pure math), BookRepository mock |
 | `MediaInteractionTest.php` | 7 | Input validation (invalid IDs, types) |
 | `MediaViewerTest.php` | 9 | Media recommendations / playlist queue / next-url logic |
 | `RouterProfileRouteTest.php` | 9 | Profile route resolution, reserved routes, nested/trailing-slash cases |
+| `RouterDispatchTest.php` | 22 | Profile-alias redirects (pure, no request needed), and every registered route points at a file that exists |
 | `BootstrapTest.php` | 9 | Env detection, error reporting config, timezone |
 | `CssManifestTest.php` | 18 | CSS module manifests — every entry exists, **all** folders pre-cached by `SwPrecache`, precache entries resolve, deterministic SW version |
 | `SharedJsTest.php` | 7 | Shared JS harness — download-backup-codes flow |
@@ -78,7 +80,10 @@ logs/tests/
 | `SsrfGuardTest.php` | 76 | **SSRF guard** — protocol allowlist, private/public IP ranges (v4 & v6), DNS mixed-record rejection, hostname denylist, HTTP pinning (see below) |
 | `DriveSecurityTest.php` | 13 | **Private Drive** — cross-user access, path traversal, symlink escape, realpath boundary, quota, atomic filename reservation (see below) |
 | `DriveStorageBasePathTest.php` | 8 | Drive storage base-path resolution — `MEEL_HDD_DRIVE` constant, fallback, priority |
-| `ValidatingProxyTest.php` | 20 | **Validating forward proxy** — real CONNECT/GET probes: private targets refused (502), public targets tunneled, loopback-only bind (see below) |
+| `WebSafeErrorOutputTest.php` | 2 | **Web-safe error output** — `STDERR`/`STDOUT`/`STDIN` only in CLI tooling, CLI-guarded files, or files nothing includes |
+| `AdminFilteredRepositoryTest.php` | 13 | Shared admin repository base — the shared queries stay in the base, each repository keeps its own table and alias, the two filter behaviours stay different |
+| `ValidatingProxyTest.php` | 27 | **Validating forward proxy** — real CONNECT/GET probes: private targets refused (502), public targets tunneled, loopback-only bind, malformed absolute-URI refused (see below) |
+| `ValidatingProxyProtocolTest.php` | 27 | **Proxy protocol rules** — request-head parsing and its limits, CONNECT target parsing, hop-by-hop header stripping, forwarded-request assembly, tunnel chunk and response relay |
 | `ArchiveGuardTest.php` | 11 | **Archive guard** — `../` traversal, absolute paths, null bytes, symlinks, nesting, compression ratio, ZIP bomb, entry count (see below) |
 | `UploadValidationTest.php` | 9 | **Upload validation** — fake magic bytes, double extensions, null bytes, oversized, executable (see below) |
 | `TranscoderConstantsTest.php` | 2 | Regression guard for shared-constant visibility (`TranscoderBase` → child services) |
