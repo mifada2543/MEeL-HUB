@@ -24,6 +24,7 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 - [Hardening P4 — Bagian komentar (Oktober 2026)](#hardening-p4--bagian-komentar-oktober-2026)
 - [Hardening P5 — Ketelitian pemeriksa keamanan (Oktober 2026)](#hardening-p5--ketelitian-pemeriksa-keamanan-oktober-2026)
 - [Hardening P6 — Resolusi path dan penempatan gerbang (Oktober 2026)](#hardening-p6--resolusi-path-dan-penempatan-gerbang-oktober-2026)
+- [Hardening P7 — Akuntansi refund MEeLCoin (Oktober 2026)](#hardening-p7--akuntansi-refund-meelcoin-oktober-2026)
 
 ---
 
@@ -1779,6 +1780,77 @@ Versi pertama perubahan itu false negative, dan ketahuan karena pemanggilan
 dihapus sementara: pemeriksa tetap lulus, karena polanya cocok dengan definisi
 kelas, bukan dengan pemanggilannya. Polanya kini `->authorize()`, dan menghapus
 pemanggilan itu membuat gerbang gagal.
+
+---
+
+## Hardening P7 — Akuntansi refund MEeLCoin (Oktober 2026)
+
+### Antrean tidak pernah mencatat berapa yang dibayar user
+
+`upload_queue.coin_cost` didokumentasikan di `database/schema.sql` sebagai
+"MEeLCoin yang dipotong saat INSERT", dan `coin_refunded` sebagai "1 = biaya
+sudah dikembalikan oleh sweeper". Kedua kolom itu tidak pernah terisi nilai
+yang sebenarnya.
+
+`upload_advanced.php` memotong coin lewat `MeelCoin::spend()` lalu memanggil
+`processDownload()`, yang membuat baris antrean lewat `DownloadService::lockQueue()`.
+`lockQueue()` menulis `self::$pendingCoinCost` ke kolom `coin_cost` — dan
+`setPendingCoinCost()` hanya pernah dipanggil dari
+`modules/core/helpers/upload.php`, yaitu alir yang justru TIDAK PERNAH membuat
+baris `upload_queue`.
+
+Dua pemanggilnya terbalik. Hasilnya `coin_cost` selalu 0. Database produksi
+membuktikan: **0 dari 160** baris `upload_queue` punya `coin_cost > 0`.
+
+Logika sweeper-nya sendiri benar sepanjang waktu, dan
+`QueueSweeperIntegrationTest` membuktikannya dengan menyisipkan baris berbiaya 7
+langsung ke database. Yang tidak pernah bisa dilakukan adalah
+mengembalikan jumlah yang sebenarnya, karena jumlah yang dibaca selalu nol.
+User yang upload-nya mati di tengah sudah dipayar, dan coins-nya tidak pernah
+kembali.
+
+Perbaikannya memindahkan `setPendingCoinCost()` ke pemanggil yang memang membuat
+baris, dan `upload_advanced.php` kini mencatat jumlah yang dipungutnya.
+
+### Jalur kedua membuang refund di telanjang
+
+`upload_advanced.php` juga membersihkan baris basi dengan statement polos:
+
+```php
+UPDATE upload_queue SET status = 'failed' WHERE status = 'processing' AND ...
+```
+
+Tanpa refund — dan ini bagian yang membuatnya permanen: baris `failed` tidak
+pernah dipilih sweeper, yang hanya mengambil `pending` dan `processing`.
+Jadi pembersihan 30 menit mencabut baris itu dari jangkauan sweeper sebelum
+sweeper 6 jam sempat mengembalikan uangnya. Setiap coin yang terutang ke user
+yang upload-nya menggantung hilang begitu saja.
+
+Pembersihan itu sekarang lewat `GarbageCollector::releaseStaleQueueRows()`, kode
+yang sama dengan sweeper, jadi refund terjadi sebelum baris ditandai `failed`.
+Satu implementasi, dua pemanggil, dan keduanya tidak lagi bisa berbeda.
+
+### Jalur refund sekarang benar-benar satu kali
+
+`releaseStaleQueueRows()` membaca biaya dari baris itu sendiri, bukan dari
+harga saat ini — harga MEeLCoin bisa berubah, dan yang harus dikembalikan
+adalah jumlah yang benar-benar dipotong. Baris dikunci `FOR UPDATE` selama
+transaksi, jadi dua sweeper yang jalan bersamaan tidak bisa merefund baris yang
+sama, dan `coin_refunded = 1` hanya ditulis *setelah* coins benar-benar
+dikembalikan. Setiap hasil `execute()` kini diperiksa; sebelumnya update yang
+gagal diam-diam dianggap berhasil.
+
+`releaseQueue()` tetap hanya menyentuh kolom status. Invarian itu penting:
+kalau ia ikut menyetel `coin_refunded`, baris yang sudah direfund jalur gagal
+normal akan direfund lagi oleh sweeper.
+
+### Notifikasi yang gagal tidak lagi menguras saldo user
+
+`Notification::create()` dipanggil setelah coin dipotong tapi DI LUAR blok
+`try`, jadi error database saat menulis notifikasi melempar exception yang
+tidak tertangani — user sudah dibayar, tidak ada yang diunggah, dan refund
+tidak pernah dijalankan. Notifikasi itu kosmetik, jadi sekarang dibungkus:
+kegagalan dicatat dan upload diteruskan.
 
 ---
 

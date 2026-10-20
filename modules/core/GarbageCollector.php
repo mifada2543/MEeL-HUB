@@ -24,83 +24,7 @@ class GarbageCollector
     public static function sweepStuckQueues(\mysqli $conn, ?int $staleMinutes = null): array
     {
         $minutes = $staleMinutes ?? self::QUEUE_STUCK_MINUTES;
-        $result = ['scanned' => 0, 'failed' => 0, 'refunded' => 0];
-        $canRefund = class_exists('MeelCoin');
-        foreach ([['upload_queue', 'upload'], ['transcode_queue', 'transcode']] as [$table, $reason]) {
-            $stmt = $conn->prepare(
-                "SELECT id, user_id, coin_cost FROM {$table}
-                 WHERE status IN ('pending', 'processing')
-                   AND coin_refunded = 0
-                   AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)"
-            );
-            if (!$stmt) {
-                continue;
-            }
-            $stmt->bind_param("i", $minutes);
-            $stmt->execute();
-            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-
-            foreach ($rows as $row) {
-                $result['scanned']++;
-
-                $id = (int)$row['id'];
-                $userId = (int)$row['user_id'];
-                $cost = (int)($row['coin_cost'] ?? 0);
-                $refunded = false;
-                if ($canRefund && $cost > 0 && $userId > 0) {
-                    $conn->begin_transaction();
-                    try {
-                        $lock = $conn->prepare(
-                            "SELECT id, coin_refunded FROM {$table} WHERE id = ? FOR UPDATE"
-                        );
-                        if ($lock) {
-                            $lock->bind_param("i", $id);
-                            $lock->execute();
-                            $rowLock = $lock->get_result()->fetch_assoc();
-                            $lock->close();
-                            if ($rowLock && (int)$rowLock['coin_refunded'] === 0) {
-                                if (MeelCoin::refund($conn, $userId, $cost, 'upload_failed_refund')) {
-                                    $mark = $conn->prepare(
-                                        "UPDATE {$table} SET coin_refunded = 1 WHERE id = ?"
-                                    );
-                                    if ($mark) {
-                                        $mark->bind_param("i", $id);
-                                        $mark->execute();
-                                        $mark->close();
-                                        $refunded = true;
-                                    }
-                                }
-                            }
-                        }
-                        $conn->commit();
-                    } catch (\Throwable $e) {
-                        $conn->rollback();
-                        error_log(
-                            '[MEeL] GarbageCollector: gagal refund queue #' . $id
-                                . ' pada ' . $table . ': ' . $e->getMessage()
-                        );
-                    }
-                } elseif ($cost > 0 && !$canRefund) {
-                    error_log(
-                        '[MEeL] GarbageCollector: kelas MeelCoin tidak termuat, '
-                            . 'refund queue #' . $id . ' dilewati.'
-                    );
-                }
-                $upd = $conn->prepare("UPDATE {$table} SET status = 'failed' WHERE id = ?");
-                if ($upd) {
-                    $upd->bind_param("i", $id);
-                    $upd->execute();
-                    if ($upd->affected_rows > 0) {
-                        $result['failed']++;
-                    }
-                    $upd->close();
-                }
-                if ($refunded) {
-                    $result['refunded']++;
-                }
-            }
-        }
+        $result = self::releaseStaleQueueRows($conn, $minutes);
         if ($result['scanned'] > 0) {
             error_log(
                 sprintf(
@@ -112,6 +36,163 @@ class GarbageCollector
             );
         }
         return $result;
+    }
+
+    /**
+     * Lepaskan baris antrean yang macet: refund biaya yang tercatat, lalu tandai failed.
+     *
+     * Dipakai oleh DUA pemanggil, dan itu wajib: sweeper 6 jam
+     * (`sweepStuckQueues()`) dan pembersih 30 menit di `upload_advanced.php`.
+     * Kalau salah satu menandai `failed` tanpa refund, baris itu hilang dari
+     * jangkauan sweeper dan biaya MEeLCoin hilang permanen — user sudah bayar
+     * tapi tidak pernah dikembalikan.
+     *
+     * Urutan di dalam satu baris penting: refund dulu, baru tandai `failed`.
+     * Kalau dibalik, ada celah di mana baris sudah `failed` tapi coins belum
+     * dikembalikan, dan baris `failed` tidak lagi dipilih sweeper.
+     *
+     * `coin_cost` dibaca dari baris itu sendiri, bukan dari harga saat ini.
+     * Harga MEeLCoin bisa berubah setelah user membayar; yang harus
+     * dikembalikan adalah jumlah yang benar-benar dipotong.
+     *
+     * @param array<int, string> $tables tabel antrean yang dipindai
+     * @return array{scanned:int, failed:int, refunded:int}
+     */
+    public static function releaseStaleQueueRows(\mysqli $conn, int $staleMinutes, array $tables = ['upload_queue', 'transcode_queue']): array
+    {
+        $result = ['scanned' => 0, 'failed' => 0, 'refunded' => 0];
+        $canRefund = class_exists('MeelCoin');
+
+        foreach ($tables as $table) {
+            foreach (self::fetchStaleQueueRows($conn, $table, $staleMinutes) as $row) {
+                $result['scanned']++;
+
+                $id = (int)($row['id'] ?? 0);
+                $userId = (int)($row['user_id'] ?? 0);
+                $cost = (int)($row['coin_cost'] ?? 0);
+
+                if (self::refundQueueRow($conn, $table, $id, $userId, $cost, $canRefund)) {
+                    $result['refunded']++;
+                }
+                if (self::markQueueRowFailed($conn, $table, $id)) {
+                    $result['failed']++;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function fetchStaleQueueRows(\mysqli $conn, string $table, int $staleMinutes): array
+    {
+        $stmt = $conn->prepare(
+            "SELECT id, user_id, coin_cost FROM {$table}
+             WHERE status IN ('pending', 'processing')
+               AND coin_refunded = 0
+               AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+        );
+        if (!$stmt) {
+            return [];
+        }
+        $stmt->bind_param("i", $staleMinutes);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $rows ?: [];
+    }
+
+    /**
+     * Kembalikan biaya MEeLCoin untuk satu baris antrean.
+     *
+     * `SELECT ... FOR UPDATE` menahan baris itu selama transaksi, jadi dua
+     * sweeper yang jalan bersamaan tidak bisa keduanya merefund baris yang
+     * sama. Tanpa itu, `coin_refunded` baru ditulis setelah refund terjadi —
+     * ada jendela di mana baris sudah dibayar balik tapi penandanya belum
+     * terpasang, dan baris itu akan direfund lagi.
+     */
+    private static function refundQueueRow(\mysqli $conn, string $table, int $id, int $userId, int $cost, bool $canRefund): bool
+    {
+        if ($cost <= 0) {
+            return false;
+        }
+        if ($userId <= 0) {
+            return false;
+        }
+        if (!$canRefund) {
+            error_log(
+                '[MEeL] GarbageCollector: kelas MeelCoin tidak termuat, '
+                    . 'refund queue #' . $id . ' dilewati.'
+            );
+            return false;
+        }
+
+        $conn->begin_transaction();
+        try {
+            $lock = $conn->prepare(
+                "SELECT id, coin_refunded FROM {$table} WHERE id = ? FOR UPDATE"
+            );
+            if (!$lock) {
+                $conn->rollback();
+                return false;
+            }
+            $lock->bind_param("i", $id);
+            $lock->execute();
+            $rowLock = $lock->get_result()->fetch_assoc();
+            $lock->close();
+
+            if (!$rowLock || (int)$rowLock['coin_refunded'] !== 0) {
+                $conn->rollback();
+                return false;
+            }
+
+            if (!MeelCoin::refund($conn, $userId, $cost, 'upload_failed_refund')) {
+                $conn->rollback();
+                return false;
+            }
+
+            $mark = $conn->prepare(
+                "UPDATE {$table} SET coin_refunded = 1 WHERE id = ?"
+            );
+            if (!$mark) {
+                $conn->rollback();
+                return false;
+            }
+            $mark->bind_param("i", $id);
+            $ok = $mark->execute() && $mark->affected_rows > 0;
+            $mark->close();
+
+            if (!$ok) {
+                $conn->rollback();
+                return false;
+            }
+
+            $conn->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $conn->rollback();
+            error_log(
+                '[MEeL] GarbageCollector: gagal refund queue #' . $id
+                    . ' pada ' . $table . ': ' . $e->getMessage()
+            );
+            return false;
+        }
+    }
+
+    private static function markQueueRowFailed(\mysqli $conn, string $table, int $id): bool
+    {
+        $upd = $conn->prepare("UPDATE {$table} SET status = 'failed' WHERE id = ?");
+        if (!$upd) {
+            return false;
+        }
+        $upd->bind_param("i", $id);
+        $ok = $upd->execute() && $upd->affected_rows > 0;
+        $upd->close();
+
+        return $ok;
     }
     private static function resetGuestsAutoIncrement(\mysqli $conn): void
     {
