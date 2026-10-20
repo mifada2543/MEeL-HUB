@@ -906,6 +906,35 @@ its own DB):
 > (23 tables) nor `database/migrate.php`. Alternatively,
 > `install.sh` offers interactive arcade installation.
 
+### Admin Media Editor (music + video)
+
+`admin/edit-music.php` and `admin/edit-video.php` used to be copies of each
+other: about 50% of their PHP logic was identical, including the thumbnail
+upload block with its MIME allowlist, size limit and ffmpeg call. The
+`codebase-memory` graph showed the two files changing together 20 times
+(coupling 0.87) — the signature of a copy that should have been shared.
+
+The shared parts now live in one place:
+
+| File | Responsibility |
+|---|---|
+| `admin/includes/media_editor.php` | `meel_editor_media_config()` — per-type labels, default filenames and error wording; `meel_editor_context_redirect()` — the admin/profile redirect; `meel_editor_upload_thumbnail()` — the whole upload path |
+| `admin/partials/edit_media_uploader_card.php` | the "uploaded by" card in the sidebar |
+| `admin/partials/edit_media_stats.php` | the views/likes/dislikes strip |
+| `admin/edit-music.php` | the music-specific parts: artist, album, lyrics section, the database write |
+| `admin/edit-video.php` | the video-specific parts: subtitle upload, the database write |
+
+`admin/edit-music.php` went from 427 to 357 lines and `admin/edit-video.php`
+from 468 to 398. The shell call to ffmpeg moved from two files into one, so
+there is now a single audited place where it happens.
+
+One difference is deliberately preserved. When the thumbnail upload fails, the
+music page still saves the title and description, while the video page saves
+nothing. That asymmetry came from the two copies drifting apart over time; it
+was not introduced by the merge, and changing it would be a product decision
+rather than a refactor. `AdminEditorSharedTest` pins it so it cannot change
+by accident.
+
 ### Admin Activity Log Viewer
 
 `admin/activity_log.php` — audit trail viewer with 3 tabs. The entry file holds

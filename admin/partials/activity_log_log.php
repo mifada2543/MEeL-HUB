@@ -133,7 +133,7 @@ if (!isset($conn) || !($conn instanceof \mysqli)) {
                 </div>
             </div>
 
-            <script src="../assets/js/admin/activity_log.js?v=<?= filemtime('../assets/js/admin/activity_log.js') ?>"></script>
+            <script src="../assets/js/admin/activity_log.js?v=<?= filemtime(__DIR__ . '/../../assets/js/admin/activity_log.js') ?>"></script>
 
             <div class="glass rounded-2xl overflow-hidden relative z-0">
                 <div class="scroll-table" style="max-height:70vh;">

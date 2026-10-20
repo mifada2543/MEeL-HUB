@@ -146,7 +146,7 @@ $back_url = 'index.php';
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <?php $scripts_root = '../';
     include __DIR__ . '/../partials/scripts.php'; ?>
-    <link rel="stylesheet" href="../assets/css/admin/catur.css?v=<?= filemtime('../assets/css/admin/catur.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin/catur.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin/catur.css') ?>">
 </head>
 
 <body class="min-h-screen">
@@ -306,7 +306,7 @@ $back_url = 'index.php';
     <script>
         window.MEEL_ADMIN_CSRF = <?= json_encode($_SESSION['csrf_token'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     </script>
-    <script src="../assets/js/admin/catur.js?v=<?= filemtime('../assets/js/admin/catur.js') ?>"></script>
+    <script src="../assets/js/admin/catur.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/catur.js') ?>"></script>
 </body>
 
 </html>
