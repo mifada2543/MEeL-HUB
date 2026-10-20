@@ -1,8 +1,8 @@
 <?php
 define('MEEL_API_CONTEXT', true);
-require_once '../../modules/core/helpers.php';
+require_once __DIR__ . '/../../modules/core/helpers.php';
 meel_boot_session();
-include '../../auth/config.php';
+include __DIR__ . '/../../auth/config.php';
 require_once __DIR__ . '/../../modules/auth/helpers/csrf.php';
 require_once __DIR__ . '/../../modules/core/Notification.php';
 

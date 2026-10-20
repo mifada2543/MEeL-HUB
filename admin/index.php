@@ -31,16 +31,16 @@
  * @var float $sz_d_pub
  * @var int|null $orphan_checked_at
  */
-include '../auth/config.php';
-include '../auth/auth.php';
-include_once '../modules/core/helpers.php';
-include_once '../modules/core/activity_logger.php';
-include_once '../modules/core/GarbageCollector.php';
-include_once '../modules/auth/RateLimiter.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
+include_once __DIR__ . '/../modules/core/helpers.php';
+include_once __DIR__ . '/../modules/core/activity_logger.php';
+include_once __DIR__ . '/../modules/core/GarbageCollector.php';
+include_once __DIR__ . '/../modules/auth/RateLimiter.php';
 require_admin($conn);
 define('MEEL_ADMIN_CONTEXT', true);
-include '../controllers/admin/admin_actions.php';
-include '../controllers/admin/admin_data.php';
+include __DIR__ . '/../controllers/admin/admin_actions.php';
+include __DIR__ . '/../controllers/admin/admin_data.php';
 require_once __DIR__ . '/../modules/core/MeelCoin.php';
 GarbageCollector::cleanGuests($conn);
 GarbageCollector::cleanChessRooms($conn);
@@ -67,7 +67,7 @@ GarbageCollector::cleanChessRooms($conn);
     $page_title = 'Dasbor';
     $media_type = 'dashboard';
     $back_url = '../';
-    include 'header-admin.php';
+    include __DIR__ . '/header-admin.php';
     ?>
     <div class="max-w-5xl mx-auto px-4 md:px-8 py-8">
         <div class="flex items-center gap-4 mb-8">

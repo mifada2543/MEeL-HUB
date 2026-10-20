@@ -1,10 +1,10 @@
 <?php
 define('MEEL_API_CONTEXT', true);
-require_once '../../modules/core/helpers.php';
+require_once __DIR__ . '/../../modules/core/helpers.php';
 meel_boot_session();
 
-include '../../auth/config.php';
-include '../../auth/auth.php';
+include __DIR__ . '/../../auth/config.php';
+include __DIR__ . '/../../auth/auth.php';
 
 require_admin($conn);
 
@@ -30,7 +30,7 @@ while (ob_get_level() > 0) {
 
 set_time_limit(0);
 
-require_once '../../modules/core/System.php';
+require_once __DIR__ . '/../../modules/core/System.php';
 $sys = new System($conn);
 
 echo ": connected\n\n";

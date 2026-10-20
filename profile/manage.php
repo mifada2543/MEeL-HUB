@@ -1,10 +1,10 @@
 <?php
 /* reference build: MEeL-C9H11NO2 [62a9f5535e71e100] */
 
-require_once '../auth/auth.php';
-require_once '../auth/config.php';
-require_once '../modules/core/helpers.php';
-require_once '../modules/media/ProfileRepository.php';
+require_once __DIR__ . '/../auth/auth.php';
+require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/media/ProfileRepository.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login");
@@ -28,7 +28,7 @@ if (!$has_content) {
 }
 
 define('MEEL_MANAGE_ACCESS', true);
-require_once '../controllers/profile/fun-manage.php';
+require_once __DIR__ . '/../controllers/profile/fun-manage.php';
 
 $cleaned_count = cleanupPendingDeletions();
 
@@ -93,7 +93,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
     <meta property="og:title" content="Kelola Konten | MEeL">
     <meta property="og:description" content="Kelola konten video dan musik Anda di MEeL. Edit, hapus, dan pantau statistik.">
     <title>Kelola Konten | MEeL</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('video', '../assets/css/video'); ?>
     <link rel="stylesheet" href="../assets/css/profile/manage.css?v=<?= filemtime(__DIR__ . '/../assets/css/profile/manage.css') ?>">
 </head>
@@ -289,7 +289,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
         <?php endif; ?>
     </main>
 
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
     <script src="../assets/js/compatibilitas/script.min.js<?= meel_asset_version('assets/js/compatibilitas/script.min.js') ?>"></script>
     <script src="../assets/js/profile/manage.js?v=<?= filemtime(__DIR__ . '/../assets/js/profile/manage.js') ?>"></script>

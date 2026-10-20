@@ -1,7 +1,7 @@
 <?php
-require_once 'modules/core/helpers.php';
-include 'auth/config.php';
-require_once 'controllers/system/UpdateManager.php';
+require_once __DIR__ . '/modules/core/helpers.php';
+include __DIR__ . '/auth/config.php';
+require_once __DIR__ . '/controllers/system/UpdateManager.php';
 
 $um = new UpdateManager($conn);
 $um->handle();
@@ -53,7 +53,7 @@ $is_admin = $is_logged_in && is_admin($conn);
     <link rel="stylesheet" href="assets/css/shared/theme-tokens.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/theme-tokens.css') ?>">
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
     <script src="assets/js/shared/theme.js?v=<?= @filemtime(__DIR__ . '/assets/js/shared/theme.js') ?>" defer></script>
-    <?php include 'partials/scripts.php'; ?>
+    <?php include __DIR__ . '/partials/scripts.php'; ?>
     <link rel="stylesheet" href="assets/css/up.css<?= meel_asset_version('assets/css/up.css') ?>">
 </head>
 
@@ -359,7 +359,7 @@ $is_admin = $is_logged_in && is_admin($conn);
             });
         }
 </script>
-    <?php include 'partials/footer.php'; ?>
+    <?php include __DIR__ . '/partials/footer.php'; ?>
 </body>
 
 </html>

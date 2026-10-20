@@ -7,8 +7,8 @@
  * @var \mysqli $conn
  */
 
-include '../auth/config.php';
-include '../auth/auth.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
 require_admin($conn);
 
 $message = null;
@@ -142,16 +142,16 @@ $back_url = 'index.php';
     <meta property="og:description" content="Panel admin MEeL untuk memonitor dan mengelola sesi permainan catur.">
     <title>Chess Manager · MEeL Admin</title>
     <link rel="stylesheet" href="../assets/css/font.css<?= meel_asset_version('assets/css/font.css') ?>">
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <?php $scripts_root = '../';
-    include '../partials/scripts.php'; ?>
+    include __DIR__ . '/../partials/scripts.php'; ?>
     <link rel="stylesheet" href="../assets/css/admin/catur.css?v=<?= filemtime('../assets/css/admin/catur.css') ?>">
 </head>
 
 <body class="min-h-screen">
 <?php include __DIR__ . '/../partials/skip-link.php'; ?>
-    <?php require 'header-admin.php'; ?>
+    <?php require __DIR__ . '/header-admin.php'; ?>
     <main class="max-w-7xl mx-auto px-6 py-8 space-y-6">
         <?php if ($message): ?>
             <div class="flex items-start gap-3 px-4 py-3 rounded-lg text-sm

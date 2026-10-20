@@ -1,6 +1,6 @@
 <?php
-require_once 'modules/core/helpers.php';
-include 'auth/config.php';
+require_once __DIR__ . '/modules/core/helpers.php';
+include __DIR__ . '/auth/config.php';
 $back_url = 'index.php';
 
 if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {

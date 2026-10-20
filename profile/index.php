@@ -1,12 +1,12 @@
 <?php
 /* reference build: MEeL-C5H5N5O [353344a3b3df3693] */
 
-require_once '../modules/auth/helpers/session.php';
+require_once __DIR__ . '/../modules/auth/helpers/session.php';
 meel_boot_session();
-require_once '../auth/config.php';
-require_once '../modules/media/ProfileRepository.php';
-require_once '../modules/core/MeelCoin.php';
-require_once '../modules/auth/helpers/user.php';
+require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/media/ProfileRepository.php';
+require_once __DIR__ . '/../modules/core/MeelCoin.php';
+require_once __DIR__ . '/../modules/auth/helpers/user.php';
 $back_url = '../';
 $is_logged_in = isset($_SESSION['user_id']);
 $is_guest_profile = false;
@@ -135,7 +135,7 @@ if (!$is_guest_profile) {
     <meta property="og:title" content="<?= htmlspecialchars($u['username']) ?> — MEeL Profile">
     <meta property="og:description" content="Profil <?= htmlspecialchars($u['username']) ?> di MEeL - Platform Media Hub Pribadi.">
     <title><?= htmlspecialchars($u['username']) ?> | MEeL</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php ?>
     <meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>">
     <?php meel_css_links('profile', '../assets/css/profile'); ?>
@@ -357,7 +357,7 @@ if (!$is_guest_profile) {
                 <?php endif; ?>
             </main>
         <?php endif; ?>
-    </div> <?php include '../partials/footer.php'; ?>
+    </div> <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
     <script src="../assets/js/shared/download-backup-codes.js<?= meel_asset_version('assets/js/shared/download-backup-codes.js') ?>"></script>
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>

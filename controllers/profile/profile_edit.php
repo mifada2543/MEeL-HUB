@@ -1,6 +1,6 @@
 <?php
-require_once '../../auth/auth.php';
-require_once '../../auth/config.php';
+require_once __DIR__ . '/../../auth/auth.php';
+require_once __DIR__ . '/../../auth/config.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login");

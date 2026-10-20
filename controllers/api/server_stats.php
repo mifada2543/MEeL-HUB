@@ -1,10 +1,10 @@
 <?php
 define('MEEL_API_CONTEXT', true);
-require_once '../../modules/core/helpers.php';
+require_once __DIR__ . '/../../modules/core/helpers.php';
 meel_boot_session();
 
-include '../../auth/config.php';
-include '../../auth/auth.php';
+include __DIR__ . '/../../auth/config.php';
+include __DIR__ . '/../../auth/auth.php';
 
 header('Content-Type: application/json');
 
@@ -12,7 +12,7 @@ require_admin($conn);
 
 session_write_close();
 
-require_once '../../modules/core/System.php';
+require_once __DIR__ . '/../../modules/core/System.php';
 $sys = new System($conn);
 $server_stats = $sys->getServerStats();
 

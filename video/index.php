@@ -1,8 +1,8 @@
 <?php
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
-require_once '../modules/media/MediaLibrary.php';
+include __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
 require_once __DIR__ . '/cards.php';
 
 $library = new MediaLibrary($conn);
@@ -25,7 +25,7 @@ $totalPages = $meta['total_pages'];
     <meta property="og:title" content="MEeL Video | Koleksi">
     <meta property="og:description" content="Jelajahi koleksi video di MEeL Video. Streaming HLS dengan kualitas terbaik.">
     <title>MEeL Video | Koleksi</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('video', '../assets/css/video'); ?>
     <link rel="stylesheet" href="../assets/css/video/index/main.css<?= meel_asset_version('assets/css/video/index/main.css') ?>">
 </head>
@@ -80,7 +80,7 @@ $totalPages = $meta['total_pages'];
             </form>
 
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <?php include '../partials/nav.php'; ?>
+                <?php include __DIR__ . '/../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
@@ -122,7 +122,7 @@ $totalPages = $meta['total_pages'];
         </div>
     </main>
 
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
     <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>

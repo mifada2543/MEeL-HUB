@@ -3,10 +3,10 @@
 /** @var int $total_music Total jumlah music */
 /** @var \mysqli_result $data_init Data music dari library */
 /** @var string $format_filter Filter format dari query string */
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
-require_once '../modules/media/MediaLibrary.php';
+include __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
 require_once __DIR__ . '/cards.php';
 
 $library = new MediaLibrary($conn);
@@ -89,7 +89,7 @@ if (isset($_GET['content_only'])) {
     $_META_TITLE = 'MEeL Music | Library';
     $_META_DESC = 'Jelajahi koleksi musik di MEeL Music Library. Streaming audio lossless dengan kualitas terbaik.';
     ?>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('music', '../assets/css/music'); ?>
     <link rel="stylesheet" href="../assets/css/music/index/main.css<?= meel_asset_version('assets/css/music/index/main.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
@@ -141,7 +141,7 @@ if (isset($_GET['content_only'])) {
             </form>
 
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <?php include '../partials/nav.php'; ?>
+                <?php include __DIR__ . '/../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
@@ -420,7 +420,7 @@ if (isset($_GET['content_only'])) {
     <script src="../assets/js/music/shared/mini-player.js<?= meel_asset_version('assets/js/music/shared/mini-player.js') ?>"></script>
     <script src="../assets/js/music/index/main.js<?= meel_asset_dir_version('assets/js/music/index') ?>"></script>
     <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
 </body>
 
 </html>

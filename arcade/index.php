@@ -23,7 +23,7 @@ sort($categories);
   <meta property="og:description" content="Koleksi game arcade klasik untuk para penggemar nostalgia. Mainkan Dino Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, dan Ludo!" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Koleksi Game Arcade Klasik</title>
-  <?php include '../partials/link.php'; ?>
+  <?php include __DIR__ . '/../partials/link.php'; ?>
 </head>
 
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col selection:bg-pink-500 selection:text-white">
@@ -150,7 +150,7 @@ sort($categories);
     </div>
   </div>
 
-  <?php include "../partials/footer.php"; ?>
+  <?php include __DIR__ . '/../partials/footer.php'; ?>
   <script>
     let games = (() => {
       const init = <?= json_encode($games) ?>,

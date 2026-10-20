@@ -1,5 +1,5 @@
 <?php
-require '../../../auth/config.php';
+require __DIR__ . '/../../../auth/config.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {

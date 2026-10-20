@@ -7,16 +7,16 @@
  * @var \mysqli $conn
  */
 
-include '../auth/config.php';
-include '../auth/auth.php';
-include_once '../modules/core/helpers.php';
-include_once '../modules/core/activity_logger.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
+include_once __DIR__ . '/../modules/core/helpers.php';
+include_once __DIR__ . '/../modules/core/activity_logger.php';
 
 require_admin($conn);
 
 define('MEEL_ADMIN_CONTEXT', true);
 
-include '../controllers/admin/admin_actions.php';
+include __DIR__ . '/../controllers/admin/admin_actions.php';
 
 require_once __DIR__ . '/../modules/core/helpers/settings.php';
 require_once __DIR__ . '/../modules/core/MeelCoin.php';
@@ -52,7 +52,7 @@ $user_list_json = json_encode($user_list);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pengaturan MEeLCoin | MEeL Admin</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
 </head>
 <body class="min-h-screen">
@@ -61,7 +61,7 @@ $user_list_json = json_encode($user_list);
     $page_title = 'Pengaturan MEeLCoin';
     $media_type = 'dashboard';
     $back_url = 'index.php';
-    include 'header-admin.php';
+    include __DIR__ . '/header-admin.php';
     ?>
     <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
 

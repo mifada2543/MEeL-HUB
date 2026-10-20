@@ -1,7 +1,7 @@
 <?php
-require_once '../auth/auth.php';
-require_once '../auth/config.php';
-require_once '../modules/media/SearchEngine.php';
+require_once __DIR__ . '/../auth/auth.php';
+require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/media/SearchEngine.php';
 
 $repo = new BookRepository($conn);
 $u_id = (int)($_SESSION['user_id'] ?? 0);
@@ -29,7 +29,7 @@ if ($result) {
 
 if (count($rows) > 0) {
     foreach ($rows as $book) {
-        include 'book_card.php';
+        include __DIR__ . '/book_card.php';
     }
 
     if ($hasMore) {

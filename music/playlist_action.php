@@ -1,7 +1,7 @@
 <?php
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
+include __DIR__ . '/../auth/config.php';
 
 function playlist_back_url(): string
 {

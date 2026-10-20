@@ -1,13 +1,7 @@
 <?php
 error_reporting(0);
 
-require '../auth/auth.php';
-require '../auth/config.php';
-require '../modules/core/helpers.php';
-require __DIR__ . '/DriveService.php';
-
-$user = DriveUserContext::fromSession($_SESSION);
-$user->authorize();
+require_once __DIR__ . '/bootstrap.php';
 
 if (!isset($_GET['csrf_token']) || !verify_csrf_token($_GET['csrf_token'])) {
     http_response_code(403);

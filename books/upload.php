@@ -1,10 +1,10 @@
 <?php
-require_once '../auth/auth.php';
-require_once '../auth/config.php';
+require_once __DIR__ . '/../auth/auth.php';
+require_once __DIR__ . '/../auth/config.php';
 
-require_once '../modules/media/MediaLibrary.php';
-require_once '../modules/media/BookRepository.php';
-require_once '../modules/media/BookUploader.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/../modules/media/BookRepository.php';
+require_once __DIR__ . '/../modules/media/BookUploader.php';
 
 $repo = new BookRepository($conn);
 $user_id = (int)$_SESSION['user_id'];
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_book'])) {
     <meta property="og:title" content="MEeL | Unggah Buku">
     <meta property="og:description" content="Upload buku dan dokumen ke perpustakaan digital MEeL Books.">
     <title>MEeL | Unggah Buku</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('books', '../assets/css/books'); ?>
     <link rel="stylesheet" href="../assets/css/books/upload/main.css<?= meel_asset_version('assets/css/books/upload/main.css') ?>">
 </head>

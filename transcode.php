@@ -4,12 +4,12 @@ ignore_user_abort(false);
 @ini_set('zlib.output_compression', 'Off');
 @ob_implicit_flush(true);
 
-require_once 'modules/core/helpers.php';
-require_once 'auth/auth.php';
-require_once 'auth/config.php';
-require_once 'modules/core/Transcoder.php';
-require_once 'modules/core/BrowserProgressObserver.php';
-require_once 'modules/core/MeelCoin.php';
+require_once __DIR__ . '/modules/core/helpers.php';
+require_once __DIR__ . '/auth/auth.php';
+require_once __DIR__ . '/auth/config.php';
+require_once __DIR__ . '/modules/core/Transcoder.php';
+require_once __DIR__ . '/modules/core/BrowserProgressObserver.php';
+require_once __DIR__ . '/modules/core/MeelCoin.php';
 
 $transcoder = new Transcoder($conn, $_SESSION['user_id'], new BrowserProgressObserver());
 register_shutdown_function([$transcoder, 'terminateAllProcesses']);
@@ -328,7 +328,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
         </div>
     </div>
 
-    <?php include 'partials/footer.php'; ?>
+    <?php include __DIR__ . '/partials/footer.php'; ?>
     <script>
         lucide.createIcons();
 

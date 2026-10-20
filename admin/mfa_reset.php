@@ -7,15 +7,15 @@
  * @var \mysqli $conn
  */
 
-include '../auth/config.php';
-include '../auth/auth.php';
-include_once '../modules/core/helpers.php';
-include_once '../modules/core/activity_logger.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
+include_once __DIR__ . '/../modules/core/helpers.php';
+include_once __DIR__ . '/../modules/core/activity_logger.php';
 
 require_admin($conn);
 
 define('MEEL_ADMIN_CONTEXT', true);
-include '../controllers/admin/admin_actions.php';
+include __DIR__ . '/../controllers/admin/admin_actions.php';
 $msg = $_GET['msg'] ?? '';
 $msg_user = $_GET['user'] ?? '';
 $mfa_users = $conn->query("
@@ -48,7 +48,7 @@ include __DIR__ . '/../partials/scripts.php';
     $page_title = 'Reset MFA';
     $media_type = 'analytics';
     $back_url = 'index.php';
-    include 'header-admin.php';
+    include __DIR__ . '/header-admin.php';
     ?>
     <div class="max-w-4xl mx-auto px-4 md:px-8 py-8">
 
