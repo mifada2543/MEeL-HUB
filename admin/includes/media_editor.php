@@ -7,7 +7,7 @@
  * termasuk blok unggah thumbnail yang paling sering berubah dan paling
  * sensitif (validasi MIME, batas ukuran, pemanggilan ffmpeg). Dua salinan
  * dari kode itu berarti dua tempat yang harus dijaga serempak — dan
- *允许它们各自漂移.
+ * masing-masing bisa melenceng sendiri.
  *
  * Yang dikumpulkan di sini:
  *  - konfigurasi per jenis media (label, nama berkas default, dll.)
