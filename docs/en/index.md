@@ -57,6 +57,7 @@ Official documentation for **MEeL** — A Personal Media Hub Platform for video 
 | **PlaylistRepository** | `modules/media/PlaylistRepository.php` | Playlist queries & playlist slug routes |
 | **MediaAdminRepository** | `modules/media/MediaAdminRepository.php` | Media metadata queries for the admin panel (edit video/music) |
 | **ProfileRepository** | `modules/media/ProfileRepository.php` | Profile data queries (video/music counts) |
+| **AdminFilteredRepository** | `modules/media/AdminFilteredRepository.php` | Shared base: time filter, search, count, paging, export, purge |
 | **AdminActivityRepository** | `modules/media/AdminActivityRepository.php` | Activity-log queries & filters for the admin viewer |
 | **AdminUploadQueueRepository** | `modules/media/AdminUploadQueueRepository.php` | Upload-queue queries, stats & filters for the admin viewer |
 | **Admin Activity Log** | `admin/activity_log.php` | Audit trail viewer with 3 tabs: Activity, Admin Actions, Upload Queue |

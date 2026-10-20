@@ -84,6 +84,7 @@ modules/
 │   ├── PlaylistRepository.php # Query playlist & route slug playlist
 │   ├── MediaAdminRepository.php # Query metadata media untuk panel admin (edit video/music)
 │   ├── ProfileRepository.php # Query data profil (count video, music)
+│   ├── AdminFilteredRepository.php # Basis bersama untuk dua repository admin di bawah
 │   ├── AdminActivityRepository.php # Query & filter activity log untuk admin viewer
 │   └── AdminUploadQueueRepository.php # Query upload queue, stats & filter untuk admin viewer
 ├── exceptions/             # Class exception
@@ -870,6 +871,36 @@ menyimpan apa pun. Asimetri itu muncul dari dua salinan yang lama melenceng
 berbeda-bedanya; ini bukan efek penyatuan, dan mengubahnya adalah keputusan
 produk, bukan refactor. `AdminEditorSharedTest` menguncinya supaya tidak
 berubah tanpa sengaja.
+
+### Repository admin — basis bersama
+
+`AdminActivityRepository` dan `AdminUploadQueueRepository` menopangi dua tab
+di admin activity log viewer. Query mereka dulunya salinan satu sama lain:
+filter waktu, pencarian, hitung, halaman, ekspor, dan pembersihan identik.
+Yang benar-benar berbeda cuma nama tabel, alias-nya, dan dua kolom yang
+disaring — dan salinan yang tertinggal satu perubahan query tetap melayani
+hasil basi tanpa itu terlihat.
+
+Query bersama sekarang ada di `modules/media/AdminFilteredRepository.php`.
+Masing-masing subclass hanya menyediakan bagian yang memang berbeda:
+
+| Subclass | Tabel | Alias | Filter utama | Kolom pencarian |
+|---|---|---|---|---|
+| `AdminActivityRepository` | `activity_log` | `al` | `action` | `u.username`, `al.ip_address` |
+| `AdminUploadQueueRepository` | `upload_queue` | `uq` | `status` (dibatasi `processing`, `completed`, `failed`) | `u.username`, `uq.url` |
+
+Pembatasan status itu cocok dengan empat opsi yang ditawarkan UI admin;
+`pending` sengaja tidak termasuk. Status di luar daftar itu berarti "tanpa
+filter status", bukan "tanpa baris" — kalau tidak, memfilter nilai tak
+dikenal membuat tab terlihat kosong tanpa alasan yang jelas.
+
+Yang tetap di masing-masing subclass: `getDistinctActions()`, `getWeeklyStats()`
+dan `clearAll()` untuk activity log; `getStats()` untuk antrean.
+
+`AdminFilteredRepositoryTest` dan
+`AdminFilteredRepositoryIntegrationTest` mengunci ini: query bersama tidak
+boleh disalin balik ke subclass, tiap repository harus tetap menunjuk tabelnya
+sendiri, dan perilaku filter keduanya harus tetap berbeda.
 
 ### Admin Activity Log Viewer
 

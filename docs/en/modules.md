@@ -84,6 +84,7 @@ modules/
 │   ├── PlaylistRepository.php # Playlist queries & playlist slug routes
 │   ├── MediaAdminRepository.php # Media metadata queries for the admin panel (edit video/music)
 │   ├── ProfileRepository.php # Profile data queries (video/music counts)
+│   ├── AdminFilteredRepository.php # Shared base for the two admin repositories below
 │   ├── AdminActivityRepository.php # Activity-log queries & filters for the admin viewer
 │   └── AdminUploadQueueRepository.php # Upload-queue queries, stats & filters for the admin viewer
 ├── exceptions/             # Exception classes
@@ -949,6 +950,36 @@ nothing. That asymmetry came from the two copies drifting apart over time; it
 was not introduced by the merge, and changing it would be a product decision
 rather than a refactor. `AdminEditorSharedTest` pins it so it cannot change
 by accident.
+
+### Admin repositories — shared base
+
+`AdminActivityRepository` and `AdminUploadQueueRepository` back the two tabs of
+the admin activity log viewer. Their queries used to be copies of each other:
+the same time filter, the same search, the same count, the same paging, the
+same export and the same purge. Only the table name, its alias and the two
+filtered columns actually differed — and a copy that is one query change
+behind silently keeps serving stale results.
+
+The shared queries now live in `modules/media/AdminFilteredRepository.php`.
+Each subclass supplies what genuinely differs:
+
+| Subclass | Table | Alias | Primary filter | Search columns |
+|---|---|---|---|---|
+| `AdminActivityRepository` | `activity_log` | `al` | `action` | `u.username`, `al.ip_address` |
+| `AdminUploadQueueRepository` | `upload_queue` | `uq` | `status` (limited to `processing`, `completed`, `failed`) | `u.username`, `uq.url` |
+
+The status limit matches the four options the admin UI offers; `pending` is
+deliberately not one of them. A status outside that list means "no status
+filter", not "no rows" — filtering by an unknown value would otherwise make
+the tab look empty for no visible reason.
+
+What stays in each subclass: `getDistinctActions()`, `getWeeklyStats()` and
+`clearAll()` for the activity log; `getStats()` for the queue.
+
+`AdminFilteredRepositoryTest` and
+`AdminFilteredRepositoryIntegrationTest` pin this: the shared queries must not
+be copied back into a subclass, each repository must keep pointing at its own
+table, and the filter behaviour of the two must stay different.
 
 ### Admin Activity Log Viewer
 

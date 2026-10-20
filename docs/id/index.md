@@ -57,6 +57,7 @@ Dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untuk streaming video,
 | **PlaylistRepository** | `modules/media/PlaylistRepository.php` | Query playlist & route slug playlist |
 | **MediaAdminRepository** | `modules/media/MediaAdminRepository.php` | Query metadata media untuk panel admin (edit video/music) |
 | **ProfileRepository** | `modules/media/ProfileRepository.php` | Query data profil (count video, music) |
+| **AdminFilteredRepository** | `modules/media/AdminFilteredRepository.php` | Basis bersama: filter waktu, pencarian, hitung, halaman, ekspor, pembersihan |
 | **AdminActivityRepository** | `modules/media/AdminActivityRepository.php` | Query & filter activity log untuk admin viewer |
 | **AdminUploadQueueRepository** | `modules/media/AdminUploadQueueRepository.php` | Query upload queue, stats & filter untuk admin viewer |
 | **Admin Activity Log** | `admin/activity_log.php` | Audit trail viewer dengan 3 tab: Activity, Admin Actions, Upload Queue |
