@@ -332,7 +332,11 @@ if (isset($_GET['content_only'])) {
                         <div class="space-y-0.5 max-h-[30vh] overflow-y-auto no-scrollbar">
                             <?php
                             $my_pls = $library->getUserPlaylists($user_id);
-                            while ($pl = $my_pls->fetch_assoc()):
+                            $my_pl_rows = [];
+                            while ($pl = $my_pls->fetch_assoc()) {
+                                $my_pl_rows[] = $pl;
+                            }
+                            foreach ($my_pl_rows as $pl):
                                 $is_active = ($pl['id'] == $playlist_id);
                                 $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
                                 $pl_sep = str_contains($pl_route, '?') ? '&' : '?';
@@ -356,7 +360,7 @@ if (isset($_GET['content_only'])) {
                                         <i data-lucide="volume-2" class="w-2.5 h-2.5 text-orange-400 flex-shrink-0 ml-auto animate-pulse"></i>
                                     <?php endif; ?>
                                 </a>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -418,8 +422,7 @@ if (isset($_GET['content_only'])) {
                                     </button>
                                     <div id="playlist-options-pl" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
                                         <?php
-                                        $my_pls2 = $library->getUserPlaylists($user_id);
-                                        while ($pl = $my_pls2->fetch_assoc()):
+                                        foreach ($my_pl_rows as $pl):
                                             $pl_active = ($pl['id'] == $playlist_id);
                                             $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
                                             $pl_sep = str_contains($pl_route, '?') ? '&' : '?';
@@ -430,7 +433,7 @@ if (isset($_GET['content_only'])) {
                                                 class="w-full text-left px-4 py-2.5 text-xs transition-colors truncate <?= $pl_active ? 'text-orange-500 font-bold' : 'text-gray-300 hover:bg-white/[.04]' ?>">
                                                 <?= htmlspecialchars($pl['name']) ?>
                                             </button>
-                                        <?php endwhile; ?>
+                                        <?php endforeach; ?>
                                     </div>
                                 </div>
                             </div>

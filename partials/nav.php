@@ -17,39 +17,29 @@ $_nav_in_subdir = $_nav_is_books || $_nav_is_video || $_nav_is_music || $_nav_is
 
 $_nav_pfp_base = $_nav_in_subdir ? '../profile/upload/' : 'profile/upload/';
 $_nav_root = $_nav_in_subdir ? '../' : '';
+
+$_nav_alt_links = [];
+if ($_nav_is_video) {
+    $_nav_alt_links[] = ['url' => 'music/beranda', 'label' => 'Musik', 'icon' => 'music', 'title' => 'MEeL Music - Streaming Audio dengan kualitas terbaik', 'text' => 'text-gray-300', 'hover' => 'hover:text-orange-500', 'drawer_hover' => 'hover:text-orange-400 hover:bg-orange-500/[.06]'];
+} elseif ($_nav_is_music) {
+    $_nav_alt_links[] = ['url' => 'video/beranda', 'label' => 'Video', 'icon' => 'play', 'title' => 'MEeL Video', 'text' => 'text-gray-600', 'hover' => 'hover:text-red-500', 'drawer_hover' => 'hover:text-red-400 hover:bg-red-500/[.06]'];
+} elseif ($_nav_is_books) {
+    $_nav_alt_links[] = ['url' => 'video/beranda', 'label' => 'Video', 'icon' => 'play', 'title' => 'MEeL Video', 'text' => 'text-gray-600', 'hover' => 'hover:text-red-500', 'drawer_hover' => 'hover:text-red-400 hover:bg-red-500/[.06]'];
+    $_nav_alt_links[] = ['url' => 'music/beranda', 'label' => 'Musik', 'icon' => 'music', 'title' => 'MEeL Music - Streaming Audio dengan kualitas terbaik', 'text' => 'text-gray-600', 'hover' => 'hover:text-orange-500', 'drawer_hover' => 'hover:text-orange-400 hover:bg-orange-500/[.06]'];
+}
 ?>
 <link rel="stylesheet" href="<?= $_nav_root ?>assets/css/shared/nav.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/nav.css') ?>">
 <link rel="stylesheet" href="<?= $_nav_root ?>assets/css/shared/notification.css">
 <script src="<?= $_nav_root ?>assets/js/shared/notification.js?v=2"></script>
 
-<?php if ($_nav_is_video): ?>
-    <a href="<?= $_nav_root ?>music/beranda"
-        class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-300 hover:text-orange-500 transition-all"
-        title="MEeL Music - Streaming Audio dengan kualitas terbaik">
-        <i data-lucide="music" class="w-3.5 h-3.5"></i>
-        <span class="hidden md:inline">Musik</span>
+<?php foreach ($_nav_alt_links as $_nav_alt): ?>
+    <a href="<?= $_nav_root ?><?= $_nav_alt['url'] ?>"
+        class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] <?= $_nav_alt['text'] ?> <?= $_nav_alt['hover'] ?> transition-all"
+        title="<?= $_nav_alt['title'] ?>">
+        <i data-lucide="<?= $_nav_alt['icon'] ?>" class="w-3.5 h-3.5"></i>
+        <span class="hidden md:inline"><?= $_nav_alt['label'] ?></span>
     </a>
-<?php elseif ($_nav_is_music): ?>
-    <a href="<?= $_nav_root ?>video/beranda"
-        class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-red-500 transition-all"
-        title="MEeL Video">
-        <i data-lucide="play" class="w-3.5 h-3.5"></i>
-        <span class="hidden md:inline">Video</span>
-    </a>
-<?php elseif ($_nav_is_books): ?>
-    <a href="<?= $_nav_root ?>video/beranda"
-        class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-red-500 transition-all"
-        title="MEeL Video">
-        <i data-lucide="play" class="w-3.5 h-3.5"></i>
-        <span class="hidden md:inline">Video</span>
-    </a>
-    <a href="<?= $_nav_root ?>music/beranda"
-        class="hidden sm:flex items-center gap-1.5 bg-white/[.04] px-3 py-2 rounded-xl hover:bg-white/[.08] text-gray-600 hover:text-orange-500 transition-all"
-        title="MEeL Music - Streaming Audio dengan kualitas terbaik">
-        <i data-lucide="music" class="w-3.5 h-3.5"></i>
-        <span class="hidden md:inline">Musik</span>
-    </a>
-<?php endif; ?>
+<?php endforeach; ?>
 <?php if (isset($_SESSION['username'])): ?>
 <?php $_nav_is_notif = str_contains($_SERVER['PHP_SELF'], '/profile/notification'); ?>
 
@@ -310,30 +300,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                 <i data-lucide="compass" class="w-5 h-5 flex-shrink-0"></i>
                 <span>Cara Navigasi</span>
             </a>
-            <?php if ($_nav_is_video): ?>
-                <a href="<?= $_nav_root ?>music/beranda"
-                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
-                    <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Musik</span>
-                </a>
-            <?php elseif ($_nav_is_music): ?>
-                <a href="<?= $_nav_root ?>video/beranda"
-                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
-                    <i data-lucide="play" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Video</span>
-                </a>
-            <?php elseif ($_nav_is_books): ?>
-                <a href="<?= $_nav_root ?>video/beranda"
-                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
-                    <i data-lucide="play" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Video</span>
-                </a>
-                <a href="<?= $_nav_root ?>music/beranda"
-                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
-                    <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Musik</span>
-                </a>
-            <?php endif; ?>
+            <?php include __DIR__ . '/nav_alt_links.php'; ?>
             <?php if (isset($_SESSION['role']) && in_array($_SESSION['role'], ['member', 'admin'])): ?>
                 <a href="<?= $_nav_root ?>drive/beranda"
                     class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-blue-400 hover:bg-white/[.04] transition-all no-underline">
@@ -453,30 +420,7 @@ $_nav_root = $_nav_in_subdir ? '../' : '';
                 <span>Pengaturan</span>
             </a>
 
-            <?php if ($_nav_is_video): ?>
-                <a href="<?= $_nav_root ?>music/beranda"
-                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
-                    <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Musik</span>
-                </a>
-            <?php elseif ($_nav_is_music): ?>
-                <a href="<?= $_nav_root ?>video/beranda"
-                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
-                    <i data-lucide="play" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Video</span>
-                </a>
-            <?php elseif ($_nav_is_books): ?>
-                <a href="<?= $_nav_root ?>video/beranda"
-                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-red-400 hover:bg-red-500/[.06] transition-all no-underline">
-                    <i data-lucide="play" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Video</span>
-                </a>
-                <a href="<?= $_nav_root ?>music/beranda"
-                    class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-orange-400 hover:bg-orange-500/[.06] transition-all no-underline">
-                    <i data-lucide="music" class="w-5 h-5 flex-shrink-0"></i>
-                    <span>Musik</span>
-                </a>
-            <?php endif; ?>
+            <?php include __DIR__ . '/nav_alt_links.php'; ?>
             <a href="<?= $_nav_root ?>introduction"
                 class="flex items-center gap-4 px-6 py-4 text-base text-gray-400 hover:text-white hover:bg-white/[.04] transition-all no-underline">
                 <i data-lucide="compass" class="w-5 h-5 flex-shrink-0"></i>
