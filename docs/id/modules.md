@@ -450,6 +450,29 @@ File dengan **prefix tak dikenal** dihapus bila lebih tua dari 1 hari (86400 det
 > "apakah ada prefix yang cocok" secara eksplisit, sehingga fallback benar-benar
 > berjalan.
 
+**Bagaimana TTL-nya sebenarnya diukur.** Keluarga cache tidak sepakat soal key
+waktu: `media_stats_` dan `server_stats_info` menulis `ts`, `dirsize_` dan
+`xsendfile_roots` menulis `time`, `admin_orphans` menulis `checked_at`. Karena
+itu key-nya dicari berurutan, dan file yang tidak punya satu pun key itu jatuh
+ke waktu modifikasi supaya tidak ada cache yang menggantung selamanya.
+
+> **Shortcut yang diam-diam merusak seluruh tabel.** Pemeriksaan kedaluwarsa
+> dulu membaca `meel_read_cache_file($path, 0, [], '')`, dan helper itu
+> langsung mengembalikan `null` begitu TTL-nya `0` — artinya "belum kedaluwarsa"
+> dibaca sebagai "sudah kedaluwarsa". Akibatnya **semua** file ber-prefix yang
+> dikenal dihapus di setiap sweep, termasuk yang baru saja ditulis. Cache tidak
+> pernah berlaku: statistik, ukuran direktori, dan daftar root xsendfile
+> dihitung ulang di setiap request. Panggilan itu dihapus, dan pencarian key
+> yang ditulis sebagai fallback-nya — dan tidak pernah terjangkau — kini jadi
+> satu-satunya jalur.
+
+**Di mana cache berada.** Kolektor mencari direktori lewat
+`meel_media_cache_dir()`, helper yang sama dengan yang dipakai aplikasi.
+Dulu ia punya salinan sendiri yang hanya melihat konstanta
+`MEEL_MEDIA_CACHE_DIR` dan mengabaikan environment variable dengan nama yang
+sama — jadi deployment yang mengatur cache lewat environment menulis ke satu
+direktori sementara sweeper membersihkan direktori lain.
+
 #### Guard keamanan orphan cleaner (`controllers/admin/admin_actions.php`)
 
 Daftar orphan berasal dari cache 10 menit, jadi **tidak dipercaya buta**.

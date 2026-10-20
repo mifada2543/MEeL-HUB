@@ -501,6 +501,28 @@ Files with an **unknown prefix** are deleted once older than 1 day (86400 second
 > never deleted and `temp/cache/` grew without bound. The flag now records
 > "did any prefix match" explicitly, so the fallback actually runs.
 
+**How the TTL is actually measured.** The cache families do not agree on a
+time key: `media_stats_` and `server_stats_info` write `ts`, `dirsize_` and
+`xsendfile_roots` write `time`, `admin_orphans` writes `checked_at`. The keys
+are therefore looked up in that order, and a file with none of them falls back
+to its modification time so nothing hangs around forever.
+
+> **A shortcut that silently broke the whole table.** The expiry check used to
+> read `meel_read_cache_file($path, 0, [], '')`, and that helper returns `null`
+> outright when the TTL is `0` — which meant "not expired" was read as
+> "expired". Every file with a known prefix was therefore deleted on every
+> sweep, including one that had just been written. The cache never took
+> effect: the statistics, the directory sizes and the xsendfile root list were
+> recomputed on every request. The call is gone, and the key lookup that was
+> written as its fallback — and never reached — is now the only path.
+
+**Where the cache lives.** The collector resolves the directory through
+`meel_media_cache_dir()`, the same helper the application uses. It used to
+have its own copy that only looked at the `MEEL_MEDIA_CACHE_DIR` constant and
+ignored the environment variable of the same name, so a deployment that
+configured the cache through the environment had the application writing to
+one directory and the sweeper cleaning another.
+
 #### Orphan cleaner safety guards (`controllers/admin/admin_actions.php`)
 
 The orphan list comes from a 10-minute cache, so it is **not trusted blindly**.

@@ -359,15 +359,20 @@ class GarbageCollector
         self::cleanEmptyCacheDirs($cacheDir);
         return $deleted;
     }
+    /**
+     * Apakah satu berkas cache sudah melewati TTL-nya.
+     *
+     * Tiap keluarga cache memakai key waktu yang berbeda: `media_stats_`
+     * dan `server_stats_info` memakai `ts`, `dirsize_` dan
+     * `xsendfile_roots` memakai `time`, `admin_orphans` memakai
+     * `checked_at`. Karena itu key-nya dicari berurutan, bukan satu nama
+     * tetap.
+     *
+     * Berkas tanpa key waktu apa pun jatuh ke mtime — waktu berkas itu
+     * ditulis — supaya tidak ada cache yang bocor selamanya.
+     */
     private static function isCacheExpired(string $path, int $ttl): bool
     {
-        if (function_exists('meel_read_cache_file')) {
-            $data = @meel_read_cache_file($path, 0, [], '');
-            if ($data !== null) {
-                return false;
-            }
-            return true;
-        }
         $raw = @file_get_contents($path);
         if ($raw === false || $raw === '') {
             return true;
@@ -376,18 +381,17 @@ class GarbageCollector
         if (!is_array($decoded)) {
             return true;
         }
-        $timeKey = '';
-        foreach (['ts', 'time', 'checked_at'] as $k) {
-            if (isset($decoded[$k])) {
-                $timeKey = $k;
-                break;
+        foreach (['ts', 'time', 'checked_at'] as $key) {
+            if (isset($decoded[$key])) {
+                $age = time() - (int) $decoded[$key];
+                return $age < 0 || $age >= $ttl;
             }
         }
-        if ($timeKey === '') {
-            return false;
+        $mtime = @filemtime($path);
+        if ($mtime === false) {
+            return true;
         }
-        $age = time() - (int)$decoded[$timeKey];
-        return $age >= $ttl;
+        return (time() - $mtime) >= $ttl;
     }
     private static function getMediaCacheDir(): string
     {
