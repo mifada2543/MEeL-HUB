@@ -59,7 +59,7 @@ modules/
 │   ├── Transcoder.php      # Facade: yt-dlp download & transcoding → delegates to modules/transcoder/
 │   ├── TranscoderBase.php  # Base class: shared constants, process/PID management, path resolution
 │   ├── helpers.php         # Backward-compat shim → requires helpers/main.php + auth/loader.php
-│   ├── helpers/            # Per-domain utilities: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php, settings.php
+│   ├── helpers/            # Per-domain utilities: main.php, storage.php, audio.php, url.php, metadata.php, text_upload.php, subtitle.php, upload.php, settings.php
 │   ├── Router.php          # MeelRouter — front-controller route table (routeFor/url/dispatch)
 │   ├── bootstrap.php       # Environment detection & error reporting
 │   ├── base_url.php        # Centralized base URL computation (meel_base_url_path)
@@ -412,7 +412,22 @@ function get_audio_mime_type(string $ext): string;       // MIME type resolver
 function get_audio_format_label(string $ext): string;    // Format label
 function get_audio_format_description(string $ext): string;
 function log_drive_operation(...);                       // Drive audit trail
+function meel_validate_text_upload(string $path, int $max_bytes = 2097152): bool;  // Uploaded text file guard
 ```
+
+#### Uploaded text file validation
+
+Lyrics (`.lrc`, `.txt`) and subtitles (`.vtt`, `.srt`) accept the same kind of
+file: plain text, at most 2 MB, no NUL byte and no PHP tag. That rule used to
+be written twice — once in `helpers/lyrics.php`, once in `helpers/subtitle.php`
+— with byte-for-byte identical bodies. Two copies of a security rule means one
+of them can drift while the other has already been tightened.
+
+`meel_validate_text_upload()` in `modules/core/helpers/text_upload.php` now
+holds the rule. `validate_lyrics_file()` and `validate_subtitle_file()` are
+thin wrappers over it, so every existing caller keeps working unchanged.
+`helpers/main.php` loads the new file before both of them.
+`TextUploadValidationTest` pins that the wrappers and the shared rule agree.
 
 #### Video thumbnail naming convention
 

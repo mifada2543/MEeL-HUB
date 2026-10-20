@@ -59,7 +59,7 @@ modules/
 │   ├── Transcoder.php      # Facade download yt-dlp & transcoding → delegasi ke modules/transcoder/
 │   ├── TranscoderBase.php  # Base class: konstanta bersama, manajemen proses/PID, resolusi path
 │   ├── helpers.php         # Shim backward-compat → require helpers/main.php + auth/loader.php
-│   ├── helpers/            # Utilitas per domain: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php, settings.php
+│   ├── helpers/            # Utilitas per domain: main.php, storage.php, audio.php, url.php, metadata.php, text_upload.php, subtitle.php, upload.php, settings.php
 │   ├── Router.php          # MeelRouter — tabel rute front controller (routeFor/url/dispatch)
 │   ├── bootstrap.php       # Environment detection & error reporting
 │   ├── base_url.php        # Perhitungan base URL terpusat (meel_base_url_path)
@@ -364,8 +364,24 @@ Fungsi-fungsi dibungkus `function_exists()` guard dan tersebar di subfolder per 
 - `get_audio_format_label(string): string`
 - `get_audio_format_description(string): string`
 - `log_drive_operation(...)`
+- `meel_validate_text_upload(string $path, int $max_bytes = 2097152): bool` — Validasi berkas teks hasil unggah
 
-#### Konvensi penamaan thumbnail video
+#### Validasi berkas teks hasil unggah
+
+Lirik (`.lrc`, `.txt`) dan subtitle (`.vtt`, `.srt`) menerima jenis berkas yang
+sama: teks murni, maksimal 2 MB, tanpa byte NUL, dan tanpa tag PHP. Aturan itu
+dulu ditulis dua kali — satu di `helpers/lyrics.php`, satu di
+`helpers/subtitle.php` — dengan badan fungsi yang identik byte per byte. Dua
+salinan aturan keamanan berarti salah satunya bisa melenceng sementara yang
+lain sudah diperketat.
+
+Kini aturannya ada di `meel_validate_text_upload()` di
+`modules/core/helpers/text_upload.php`. `validate_lyrics_file()` dan
+`validate_subtitle_file()` menjadi pembungkus tipis, jadi semua pemanggil
+lama tetap bekerja tanpa perubahan. `helpers/main.php` memuat berkas baru itu
+sebelum keduanya. `TextUploadValidationTest` mengunci bahwa pembungkus dan
+aturan bersama selalu selaras.
+
 
 Aturan ini berlaku di `Uploader.php` dan dipakai ulang di mana pun nama
 varian perlu diturunkan:

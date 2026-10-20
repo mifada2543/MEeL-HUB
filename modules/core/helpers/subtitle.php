@@ -99,16 +99,7 @@ if (!function_exists('validate_subtitle_file')) {
 
 function validate_subtitle_file(string $tmp_path): bool
 {
-    if (!is_file($tmp_path) || filesize($tmp_path) > 2 * 1024 * 1024) {
-        return false;
-    }
-    $content = @file_get_contents($tmp_path);
-    if ($content === false) return false;
-
-    if (strpos($content, "\x00") !== false) return false;
-    if (preg_match('/<\?php|<\?=/i', $content)) return false;
-
-    return true;
+    return meel_validate_text_upload($tmp_path);
 }
 }
 
