@@ -114,12 +114,17 @@ class GarbageCollector
      * ada jendela di mana baris sudah dibayar balik tapi penandanya belum
      * terpasang, dan baris itu akan direfund lagi.
      */
+    /**
+     * Kembalikan biaya MEeLCoin untuk satu baris antrean yang gagal.
+     *
+     * Seluruhnya berjalan dalam satu transaksi: baris dikunci FOR UPDATE,
+     * koin dikembalikan, lalu penanda `coin_refunded` ditulis. Kalau salah
+     * satu langkah gagal, transaksinya dibatalkan — supaya koin tidak
+     * kembali tanpa penanda, atau penanda terpasang tanpa koin kembali.
+     */
     private static function refundQueueRow(\mysqli $conn, string $table, int $id, int $userId, int $cost, bool $canRefund): bool
     {
-        if ($cost <= 0) {
-            return false;
-        }
-        if ($userId <= 0) {
+        if ($cost <= 0 || $userId <= 0) {
             return false;
         }
         if (!$canRefund) {
@@ -132,19 +137,8 @@ class GarbageCollector
 
         $conn->begin_transaction();
         try {
-            $lock = $conn->prepare(
-                "SELECT id, coin_refunded FROM {$table} WHERE id = ? FOR UPDATE"
-            );
-            if (!$lock) {
-                $conn->rollback();
-                return false;
-            }
-            $lock->bind_param("i", $id);
-            $lock->execute();
-            $rowLock = $lock->get_result()->fetch_assoc();
-            $lock->close();
-
-            if (!$rowLock || (int)$rowLock['coin_refunded'] !== 0) {
+            $rowLock = self::lockQueueRow($conn, $table, $id);
+            if ($rowLock === null || (int)$rowLock['coin_refunded'] !== 0) {
                 $conn->rollback();
                 return false;
             }
@@ -154,18 +148,7 @@ class GarbageCollector
                 return false;
             }
 
-            $mark = $conn->prepare(
-                "UPDATE {$table} SET coin_refunded = 1 WHERE id = ?"
-            );
-            if (!$mark) {
-                $conn->rollback();
-                return false;
-            }
-            $mark->bind_param("i", $id);
-            $ok = $mark->execute() && $mark->affected_rows > 0;
-            $mark->close();
-
-            if (!$ok) {
+            if (!self::markQueueRowRefunded($conn, $table, $id)) {
                 $conn->rollback();
                 return false;
             }
@@ -180,6 +163,43 @@ class GarbageCollector
             );
             return false;
         }
+    }
+
+    /**
+     * Kunci baris antrean dan baca penanda refund-nya.
+     *
+     * Mengembalikan null kalau barisnya tidak ada atau statement-nya gagal.
+     */
+    private static function lockQueueRow(\mysqli $conn, string $table, int $id): ?array
+    {
+        $lock = $conn->prepare(
+            "SELECT id, coin_refunded FROM {$table} WHERE id = ? FOR UPDATE"
+        );
+        if (!$lock) {
+            return null;
+        }
+        $lock->bind_param("i", $id);
+        $lock->execute();
+        $row = $lock->get_result()->fetch_assoc();
+        $lock->close();
+        return $row;
+    }
+
+    /**
+     * Tandai baris antrean sebagai sudah direfund.
+     */
+    private static function markQueueRowRefunded(\mysqli $conn, string $table, int $id): bool
+    {
+        $mark = $conn->prepare(
+            "UPDATE {$table} SET coin_refunded = 1 WHERE id = ?"
+        );
+        if (!$mark) {
+            return false;
+        }
+        $mark->bind_param("i", $id);
+        $ok = $mark->execute() && $mark->affected_rows > 0;
+        $mark->close();
+        return $ok;
     }
 
     private static function markQueueRowFailed(\mysqli $conn, string $table, int $id): bool

@@ -752,6 +752,14 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 > jumlah yang dikembalikan akan meleset — user mendapat kurang atau lebih.
 > `coin_cost` merekam **angka saat transaksi terjadi**, jadi hasilnya selalu benar.
 
+Refund-nya sendiri berjalan dalam satu transaksi: baris antrean dikunci dengan
+`FOR UPDATE`, `MeelCoin::refund()` dijalankan, dan baru setelah itu
+`coin_refunded` di-set ke 1. Langkah yang gagal membatalkan seluruh
+transaksi — jadi user tidak mungkin menerima koinnya kembali tanpa penanda
+terpasang, atau penanda terpasang tanpa koin yang kembali.
+`refundQueueRow()` memegang transaksinya; kunci dan penanda dipisah jadi
+helper sendiri supaya urutannya tetap terbaca.
+
 Catatan migrasi:
 
 - Pemasangan FK memakai **existence check** via `information_schema` (`meel_mig_add_fk`) — menolak FK ganda, baik yang sudah bernama sama maupun FK lain pada kolom yang sama dengan nama constraint berbeda.
