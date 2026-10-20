@@ -8,6 +8,15 @@ class GarbageCollector
     private const ROOM_GAME_STALE_HOURS = 168;
     private const CHESS_CLEANUP_INTERVAL = 3600;
     public const QUEUE_STUCK_MINUTES = 360;
+    private const CACHE_TTL_MAP = [
+        'media_stats_'       => 30,
+        'admin_orphans'      => 120,
+        'dirsize_'           => 300,
+        'server_stats_info'  => 300,
+        'xsendfile_roots'    => 86400,
+    ];
+    private const CACHE_TMP_TTL = 300;
+    private const CACHE_ORPHAN_TTL = 86400;
     private static bool $hasRun = false;
     private static bool $cliOnlyRan = false;
     public static function runCliMaintenance(\mysqli $conn): void
@@ -333,51 +342,61 @@ class GarbageCollector
         if (!is_dir($cacheDir)) {
             return 0;
         }
-        $ttlMap = [
-            'media_stats_'       => 30,
-            'admin_orphans'      => 120,
-            'dirsize_'           => 300,
-            'server_stats_info'  => 300,
-            'xsendfile_roots'    => 86400,
-        ];
-        $now = time();
-        $deleted = 0;
         $items = glob(rtrim($cacheDir, '/') . '/*');
         if (empty($items)) {
             return 0;
         }
+        $now = time();
+        $deleted = 0;
         foreach ($items as $item) {
-            $base = basename($item);
-            if (preg_match('/\.tmp\.\d+\.[0-9a-f]{12}$/', $base)) {
-                $mtime = @filemtime($item);
-                if ($mtime !== false && ($now - $mtime) > 300) {
-                    if (is_file($item) && @unlink($item)) {
-                        $deleted++;
-                    }
-                }
-                continue;
-            }
-            $expired = false;
-            $prefixMatched = false;
-            foreach ($ttlMap as $prefix => $ttl) {
-                if (str_starts_with($base, $prefix)) {
-                    $prefixMatched = true;
-                    $expired = self::isCacheExpired($item, $ttl);
-                    break;
-                }
-            }
-            if (!$prefixMatched) {
-                $mtime = @filemtime($item);
-                if ($mtime !== false && ($now - $mtime) > 86400) {
-                    $expired = true;
-                }
-            }
-            if ($expired && is_file($item) && @unlink($item)) {
+            if (self::deleteCacheItemIfExpired($item, $now)) {
                 $deleted++;
             }
         }
         self::cleanEmptyCacheDirs($cacheDir);
         return $deleted;
+    }
+
+    /**
+     * Apakah satu berkas cache sudah kadaluarsa dan boleh dihapus.
+     *
+     * Tiga kelompok berkas, urut dari yang paling spesifik:
+     *  - berkas sementara (`*.tmp.<unix>.<hash>`) — dibuang setelah 5 menit
+     *  - berkas dengan prefix yang dikenal — kadaluarsa menurut isinya
+     *  - berkas lain — dibuang setelah 1 hari
+     */
+    private static function deleteCacheItemIfExpired(string $item, int $now): bool
+    {
+        $base = basename($item);
+
+        if (preg_match('/\.tmp\.\d+\.[0-9a-f]{12}$/', $base)) {
+            return self::deleteCacheItemOlderThan($item, self::CACHE_TMP_TTL, $now);
+        }
+
+        foreach (self::CACHE_TTL_MAP as $prefix => $ttl) {
+            if (str_starts_with($base, $prefix)) {
+                return self::deleteCacheItemIfStale($item, $ttl);
+            }
+        }
+
+        return self::deleteCacheItemOlderThan($item, self::CACHE_ORPHAN_TTL, $now);
+    }
+
+    private static function deleteCacheItemOlderThan(string $item, int $seconds, int $now): bool
+    {
+        $mtime = @filemtime($item);
+        if ($mtime === false || ($now - $mtime) <= $seconds) {
+            return false;
+        }
+        return is_file($item) && @unlink($item);
+    }
+
+    private static function deleteCacheItemIfStale(string $item, int $ttl): bool
+    {
+        if (!self::isCacheExpired($item, $ttl)) {
+            return false;
+        }
+        return is_file($item) && @unlink($item);
     }
     /**
      * Apakah satu berkas cache sudah melewati TTL-nya.
@@ -415,6 +434,9 @@ class GarbageCollector
     }
     private static function getMediaCacheDir(): string
     {
+        if (function_exists('meel_media_cache_dir')) {
+            return meel_media_cache_dir();
+        }
         if (defined('MEEL_MEDIA_CACHE_DIR')) {
             return MEEL_MEDIA_CACHE_DIR;
         }

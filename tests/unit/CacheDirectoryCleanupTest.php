@@ -225,6 +225,52 @@ class CacheDirectoryCleanupTest extends TestCase
             'GarbageCollector dan aplikasi harus membersihkan direktori cache yang sama'
         );
     }
+
+    /**
+     * Pada saat konstanta terdefinisi, kedua cara itu menghasilkan path
+     * yang sama, jadi perbandingan di atas tidak bisa membedakan. Yang
+     * membedakan adalah delegation-nya: helper aplikasi melihat konstanta
+     * **dan** environment variable, sedangkan salinan lama hanya melihat
+     * konstanta.
+     */
+    public function testCollectorDelegatesToTheApplicationCacheDirectoryHelper(): void
+    {
+        $src = (string) file_get_contents(MEEL_ROOT . '/modules/core/GarbageCollector.php');
+
+        $this->assertMatchesRegularExpression(
+            '/function getMediaCacheDir\(\).*?meel_media_cache_dir\(\)/s',
+            $src,
+            'getMediaCacheDir() harus memakai meel_media_cache_dir() — '
+            . 'kalau ia punya salinan sendiri, deployment yang mengatur cache lewat '
+            . 'environment variable akan punya sweeper yang membersihkan direktori lain'
+        );
+    }
+
+    /**
+     * Per gamble per-berkas sebaiknya tetap berupa helper bernama, bukan
+     * loop panjang di dalam fungsi utama.
+     */
+    public function testPerItemDecisionLivesInNamedHelpers(): void
+    {
+        $src = (string) file_get_contents(MEEL_ROOT . '/modules/core/GarbageCollector.php');
+
+        foreach (['deleteCacheItemIfExpired', 'deleteCacheItemOlderThan', 'deleteCacheItemIfStale'] as $helper) {
+            $this->assertStringContainsString(
+                'function ' . $helper . '(',
+                $src,
+                "Helper {$helper} harus ada"
+            );
+        }
+
+        $method = new ReflectionMethod(GarbageCollector::class, 'cleanCacheDirectory');
+        $lines = $method->getEndLine() - $method->getStartLine() + 1;
+
+        $this->assertLessThanOrEqual(
+            30,
+            $lines,
+            'cleanCacheDirectory() masih terlalu panjang: ' . $lines . ' baris'
+        );
+    }
 }
 
 /* reference build: MEeL-C10H15N [0544444560465] */
