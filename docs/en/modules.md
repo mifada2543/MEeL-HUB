@@ -192,9 +192,30 @@ same global functions:
 ```php
 class Uploader {
     public function processMusic($post, $files, $base_dir);
-    public function processVideo($post, $files, $upload_dir = "");
+    public function processVideo($post, $files);
 }
 ```
+
+`processVideo()` no longer takes a `$upload_dir` argument. It was never read, and
+the one caller passed `__DIR__ . "/"` to it.
+
+Both upload paths are now orchestrators over private helpers rather than one
+long method. The helpers follow a single convention: **return `null` to continue,
+or return the final result array to stop.**
+
+| Method | Responsibility |
+|---|---|
+| `assertVideoUploadAllowed()` / `assertMusicUploadAllowed()` | rate limit, concurrent-upload limit, pre-flight disk space |
+| `inspectVideoCodecs()` | magic bytes, video codec, audio codec |
+| `buildVideoCleanName()` / `buildVideoThumbnail()` | romaji-clean name, user thumbnail or ffmpeg frame, small sprite |
+| `prepareVideoWorkFolder()` | unique folder under lock, `/dev/shm` when it has room |
+| `runVideoHlsTranscode()` | the ffmpeg HLS invocation |
+| `stageVideoSubtitle()` | `.srt`/`.vtt` subtitle, only when the transcode succeeded |
+| `moveVideoFilesToHdd()` | the rename loop into storage, under a move lock |
+| `insertVideoRecord()` | the transaction; the caller cleans up files when it fails |
+| `validateMusicUpload()` / `stageMusicFile()` | extension, magic bytes, size, duration |
+| `buildMusicThumbnail()` | user thumbnail or one frame from the audio |
+| `maybeTranscodeToOgg()` | re-encode to Ogg unless the admin skipped it |
 
 ### 5. `modules/core/Transcoder.php` — facade + split services
 
@@ -887,7 +908,21 @@ its own DB):
 
 ### Admin Activity Log Viewer
 
-`admin/activity_log.php` — audit trail viewer with 3 tabs:
+`admin/activity_log.php` — audit trail viewer with 3 tabs. The entry file holds
+the request handling (324 lines); each tab's markup lives in its own partial
+under `admin/partials/`:
+
+| File | Content |
+|---|---|
+| `admin/activity_log.php` | POST handlers, export, tab dispatch — 402 lines |
+| `admin/partials/activity_log_log.php` | the activity tab |
+| `admin/partials/activity_log_views.php` | the view-stats tab |
+| `admin/partials/activity_log_uploads.php` | the upload-queue tab |
+
+The partials sit in a web-reachable directory, so each one returns 403 instead
+of running without a database connection. `admin/partials/live-monitor-manage.php`
+is the opposite case: it is fetched over AJAX, so it bootstraps itself and
+checks the admin role.
 
 **Activity Tab** (blue-600 theme):
 - Filter by action type, username/IP, date range

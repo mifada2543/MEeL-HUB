@@ -159,6 +159,27 @@ Uploader, `EncodeService`, `DownloadService`, dan admin editor memakai fungsi gl
 - `meel_insert_music_row()` — satu-satunya jalur INSERT baris tabel `music`
 - `meel_magic_extension_ok()` — validasi magic bytes + ekstensi per jenis media
 
+`processVideo()` tidak lagi menerima argumen `$upload_dir`. Argumen itu tidak
+pernah dibaca, dan satu-satunya pemanggil mengirim `__DIR__ . "/"` ke sana.
+
+Kedua jalur upload kini orkestrator di atas helper privat, bukan satu metode
+panjang. Semua helper memakai satu konvensi: **kembalikan `null` untuk lanjut,
+atau kembalikan array hasil akhir untuk berhenti.**
+
+| Metode | Tanggung jawab |
+|---|---|
+| `assertVideoUploadAllowed()` / `assertMusicUploadAllowed()` | rate limit, batas upload bersamaan, cek ruang disk |
+| `inspectVideoCodecs()` | magic bytes, codec video, codec audio |
+| `buildVideoCleanName()` / `buildVideoThumbnail()` | nama bersih romaji, thumbnail dari user atau frame ffmpeg, sprite kecil |
+| `prepareVideoWorkFolder()` | folder unik di bawah lock, `/dev/shm` bila cukup ruang |
+| `runVideoHlsTranscode()` | pemanggilan ffmpeg untuk HLS |
+| `stageVideoSubtitle()` | subtitle `.srt`/`.vtt`, hanya bila transcode berhasil |
+| `moveVideoFilesToHdd()` | loop rename ke storage, di bawah move lock |
+| `insertVideoRecord()` | transaksi; pemanggil membersihkan berkas kalau gagal |
+| `validateMusicUpload()` / `stageMusicFile()` | ekstensi, magic bytes, ukuran, durasi |
+| `buildMusicThumbnail()` | thumbnail dari user atau satu frame dari audio |
+| `maybeTranscodeToOgg()` | encode ulang ke Ogg kecuali admin melewatinya |
+
 ### 5. `modules/core/Transcoder.php` — facade + layanan terpecah
 
 **Class:** `Transcoder` — **facade** yang mempertahankan kontrak publik lama
@@ -807,7 +828,21 @@ statis (HTML/JS murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm
 
 ### Admin Activity Log Viewer
 
-`admin/activity_log.php` — viewer audit trail dengan 3 tab:
+`admin/activity_log.php` — viewer audit trail dengan 3 tab. Berkas induknya
+memegang pemrosesan request (324 baris); markup tiap tab hidup di partial
+sendiri di `admin/partials/`:
+
+| Berkas | Isi |
+|---|---|
+| `admin/activity_log.php` | handler POST, export, pemilih tab — 402 baris |
+| `admin/partials/activity_log_log.php` | tab activity |
+| `admin/partials/activity_log_views.php` | tab statistik view |
+| `admin/partials/activity_log_uploads.php` | tab antrean unggah |
+
+Partial itu berada di direktori yang bisa diakses lewat web, jadi masing-masing
+mengembalikan 403 alih-alih berjalan tanpa koneksi database.
+`admin/partials/live-monitor-manage.php` adalah kasus sebaliknya: diambil lewat
+AJAX, jadi ia memuat dirinya sendiri dan memeriksa peran admin.
 
 **Tab Activity** (tema biru-600):
 - Filter berdasarkan tipe aksi, username/IP, rentang waktu
