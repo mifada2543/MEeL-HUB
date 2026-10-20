@@ -118,6 +118,8 @@ class StorageSplitTest extends TestCase
             'meel_xsendfile_htaccess_dirs', 'meel_xsendfile_merge_flag',
             'meel_xsendfile_effective_flag', 'meel_xsendfile_ready', 'meel_xsendfile_header',
             'meel_cache_is_fresh', 'meel_media_etag', 'meel_media_cache_control',
+            'meel_media_type_map', 'meel_resolve_media_path', 'meel_apply_hls_gate',
+            'meel_resolve_byte_range', 'meel_stream_media_bytes',
             'meel_serve_media_file',
         ];
 

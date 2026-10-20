@@ -16,18 +16,13 @@ class EncodeService extends TranscoderBase
         putenv("PATH=/usr/local/bin:/usr/bin:/bin");
 
         $music_dir = meel_media_base_path('music') . '/file';
-        if (!is_dir($music_dir)) {
-            $this->ensureDir($music_dir);
-        }
-        $hdd_free = disk_free_space($music_dir);
-        if ($hdd_free !== false && $hdd_free < 500 * 1024 * 1024) {
-            return ['status' => 'error', 'msg' => 'Storage HDD untuk musik tidak mencukupi (hanya ' . sprintf('%.1f', $hdd_free / (1024 ** 3)) . ' GB free).'];
+        if (($err = $this->assertEncodeStorageReady($music_dir)) !== null) {
+            return $err;
         }
 
-        if ($temp_file === '' || !preg_match('/^[A-Za-z0-9._-]+$/', $temp_file) || str_contains($temp_file, '..')) {
-            $msg = "Token file sumber audio tidak valid.";
+        if (!$this->isValidSourceToken($temp_file)) {
             error_log("[MEeL] encodeMusic: token input tidak valid ($temp_file)");
-            return ['status' => 'error', 'msg' => $msg];
+            return ['status' => 'error', 'msg' => "Token file sumber audio tidak valid."];
         }
 
         $shm_temp = $this->getShmTempPath();
@@ -39,35 +34,17 @@ class EncodeService extends TranscoderBase
 
         try {
             if ($lock_held && !file_exists($input_path)) {
-                $stmt_recent = $this->conn->prepare(
-                    "SELECT filename FROM music
-                     WHERE user_id = ? AND upload_date >= NOW() - INTERVAL 60 SECOND
-                     ORDER BY id DESC LIMIT 1"
-                );
-                if ($stmt_recent) {
-                    $stmt_recent->bind_param("i", $this->user_id);
-                    $stmt_recent->execute();
-                    $row = $stmt_recent->get_result()->fetch_assoc();
-                    $stmt_recent->close();
-                    if (!empty($row['filename'])) {
-                        error_log("[MEeL] encodeMusic: input $temp_file sudah diproses request lain → dianggap sukses (file: {$row['filename']})");
-                        return ['status' => 'success', 'filename' => $row['filename']];
-                    }
+                $recent = $this->findRecentEncodedFile();
+                if ($recent !== null) {
+                    error_log("[MEeL] encodeMusic: input $temp_file sudah diproses request lain → dianggap sukses (file: {$recent})");
+                    return ['status' => 'success', 'filename' => $recent];
                 }
             }
 
-            $clean = meel_sanitize_clean_name(getRomajiName($title), 120);
-            if ($clean === '') {
-                $clean = 'track';
-            }
-
-            $final_fname = meel_reserve_unique_filename($music_dir, $clean, 'ogg');
-            if ($final_fname === null) {
-                $final_fname = $clean . "-" . time() . ".ogg";
-            }
-            $final_path = $music_dir . "/$final_fname";
-
-            $thumb_name = str_replace('.ogg', '.webp', $final_fname);
+            $target = $this->reserveEncodeTarget($music_dir, $title);
+            $final_fname = $target['filename'];
+            $final_path = $target['path'];
+            $thumb_name = $target['thumb'];
 
             $opus_result = meel_ffmpeg_encode_opus(
                 $this->ffmpeg_bin,
@@ -77,22 +54,10 @@ class EncodeService extends TranscoderBase
                 self::FFMPEG_THREADS,
                 ['title' => $title, 'artist' => $artist]
             );
-            $log = $opus_result[1];
+            $log = (string) ($opus_result[1] ?? '');
 
             if (!file_exists($final_path) || filesize($final_path) === 0) {
-
-                $friendly = "Gagal mengonversi audio. Silakan coba lagi nanti.";
-                if (!file_exists($input_path)) {
-                    $friendly = "File sumber audio tidak ditemukan. Media mungkin sudah diproses — periksa library Anda, atau coba upload ulang.";
-                } elseif ($log) {
-                    $lines = array_values(array_filter(array_map('trim', explode("\n", $log))));
-                    foreach (array_reverse($lines) as $line) {
-                        if (preg_match('/error|failed|invalid/i', $line)) {
-                            $friendly = "Gagal mengonversi audio: " . substr($line, 0, 160);
-                            break;
-                        }
-                    }
-                }
+                $friendly = $this->describeEncodeFailure($input_path, $log);
                 $this->removeFile($final_path);
                 error_log("[MEeL] encodeMusic GAGAL ($temp_file): " . substr(trim($log), 0, 800));
                 return ['status' => 'error', 'msg' => $friendly];
@@ -122,6 +87,93 @@ class EncodeService extends TranscoderBase
                 fclose($lock_fp);
             }
         }
+    }
+
+    private function assertEncodeStorageReady(string $music_dir): ?array
+    {
+        if (!is_dir($music_dir)) {
+            $this->ensureDir($music_dir);
+        }
+
+        $hdd_free = disk_free_space($music_dir);
+        if ($hdd_free !== false && $hdd_free < 500 * 1024 * 1024) {
+            return [
+                'status' => 'error',
+                'msg' => 'Storage HDD untuk musik tidak mencukupi (hanya '
+                    . sprintf('%.1f', $hdd_free / (1024 ** 3)) . ' GB free).',
+            ];
+        }
+
+        return null;
+    }
+
+    private function isValidSourceToken(string $temp_file): bool
+    {
+        return $temp_file !== ''
+            && preg_match('/^[A-Za-z0-9._-]+$/', $temp_file) === 1
+            && !str_contains($temp_file, '..');
+    }
+
+    private function findRecentEncodedFile(): ?string
+    {
+        $stmt_recent = $this->conn->prepare(
+            "SELECT filename FROM music
+             WHERE user_id = ? AND upload_date >= NOW() - INTERVAL 60 SECOND
+             ORDER BY id DESC LIMIT 1"
+        );
+        if (!$stmt_recent) {
+            return null;
+        }
+
+        $stmt_recent->bind_param("i", $this->user_id);
+        $stmt_recent->execute();
+        $row = $stmt_recent->get_result()->fetch_assoc();
+        $stmt_recent->close();
+
+        if (empty($row['filename'])) {
+            return null;
+        }
+
+        return (string) $row['filename'];
+    }
+
+    private function reserveEncodeTarget(string $music_dir, string $title): array
+    {
+        $clean = meel_sanitize_clean_name(getRomajiName($title), 120);
+        if ($clean === '') {
+            $clean = 'track';
+        }
+
+        $final_fname = meel_reserve_unique_filename($music_dir, $clean, 'ogg');
+        if ($final_fname === null) {
+            $final_fname = $clean . "-" . time() . ".ogg";
+        }
+
+        return [
+            'filename' => $final_fname,
+            'path' => $music_dir . "/$final_fname",
+            'thumb' => str_replace('.ogg', '.webp', $final_fname),
+        ];
+    }
+
+    private function describeEncodeFailure(string $input_path, string $log): string
+    {
+        if (!file_exists($input_path)) {
+            return "File sumber audio tidak ditemukan. Media mungkin sudah diproses — periksa library Anda, atau coba upload ulang.";
+        }
+
+        if ($log === '') {
+            return "Gagal mengonversi audio. Silakan coba lagi nanti.";
+        }
+
+        $lines = array_values(array_filter(array_map('trim', explode("\n", $log))));
+        foreach (array_reverse($lines) as $line) {
+            if (preg_match('/error|failed|invalid/i', $line)) {
+                return "Gagal mengonversi audio: " . substr($line, 0, 160);
+            }
+        }
+
+        return "Gagal mengonversi audio. Silakan coba lagi nanti.";
     }
 
     private function extractMusicThumbnail(
