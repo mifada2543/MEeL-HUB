@@ -23,7 +23,7 @@ if (!function_exists('meel_render_video_card')) {
         $thumb_ok = $thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . basename($thumb_name));
         $thumb_src = $thumb_ok
             ? 'upload/thumbnail/' . video_thumbnail_sm(rawurlencode($thumb_name))
-            : '../assets/img/video0.webp';
+            : '../assets/img/placeholder-video.svg';
         ?>
         <div class="video-card htmx-added meel-card rounded-2xl overflow-hidden group"
              title="<?= htmlspecialchars($v['title']) ?>">

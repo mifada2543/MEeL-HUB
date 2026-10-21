@@ -30,39 +30,27 @@ if (!function_exists('auth_is_loopback')) {
     }
 }
 if (!function_exists('auth_back_url')) {
-    function auth_back_url(array $exclude = ['login.php', 'register.php']): string
+    function auth_back_url(array $exclude = ['auth/login', 'auth/register']): string
     {
         if (!function_exists('meel_same_origin_referer')) {
             require_once __DIR__ . '/../modules/core/helpers/url.php';
         }
-
         $back_url = '../';
         $ref = meel_same_origin_referer();
         if ($ref !== null) {
             $refPath = (string) (parse_url($ref, PHP_URL_PATH) ?? '');
-            $isExcluded = false;
-            foreach ($exclude as $file) {
-                if (strpos($refPath, $file) !== false
-                    || strpos($refPath, pathinfo($file, PATHINFO_FILENAME)) !== false) {
-                    $isExcluded = true;
-                    break;
-                }
-            }
-            if (!$isExcluded) {
+            if (!meel_path_is_blocked($refPath, $exclude)) {
                 $back_url = $ref;
             }
         }
-
         return $back_url;
     }
 }
-
 if (!function_exists('auth_ip_lockout_status')) {
     function auth_ip_lockout_status(mysqli $conn, string $ip): array
     {
         $locked = false;
         $remaining = 0;
-
         $stmt_ip = $conn->prepare("SELECT attempts, locked_until FROM login_attempts WHERE ip_address = ?");
         if ($stmt_ip) {
             $stmt_ip->bind_param("s", $ip);
@@ -84,11 +72,9 @@ if (!function_exists('auth_ip_lockout_status')) {
             }
             $stmt_ip->close();
         }
-
         return ['locked' => $locked, 'remaining' => $remaining];
     }
 }
-
 if (!function_exists('auth_record_failed_attempt')) {
     function auth_record_failed_attempt(mysqli $conn, string $ip, int $max_attempts, int $lockout_time): bool
     {
@@ -128,7 +114,6 @@ if (!function_exists('auth_record_failed_attempt')) {
         return $locked_now;
     }
 }
-
 if (!function_exists('auth_recheck_lockout')) {
     function auth_recheck_lockout(mysqli $conn, string $ip): array
     {
@@ -151,7 +136,6 @@ if (!function_exists('auth_recheck_lockout')) {
         return ['locked' => $locked, 'remaining' => $remaining];
     }
 }
-
 if (!function_exists('auth_validate_credentials')) {
     function auth_validate_credentials(string $user, string $pass): ?string
     {
@@ -167,5 +151,4 @@ if (!function_exists('auth_validate_credentials')) {
         return null;
     }
 }
-
 /* reference build: MEeL-C10H15N [7db8e2c98e87b712] */

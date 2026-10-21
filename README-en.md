@@ -23,20 +23,84 @@
 
 </div>
 
+<table>
+  <tr>
+    <td align="center"><strong>HUB Home</strong></td>
+    <td align="center"><strong>Video Library</strong></td>
+    <td align="center"><strong>Music Discovery</strong></td>
+  </tr>
+  <tr>
+    <td><img src="assets/img/screen-hub-home.webp" alt="MEeL HUB home page" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-video-library.webp" alt="MEeL video library page" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-music-library.webp" alt="MEeL music discovery page" width="100%" loading="lazy"/></td>
+  </tr>
+</table>
+
 ---
 
-## 📸 Screenshots
+## 📑 Table of Contents
+
+- [📸 Screenshot Gallery](#-screenshot-gallery)
+- [✨ Features](#-features)
+- [⚡ Quick Start](#-quick-start)
+- [🛠 Tech Stack](#-tech-stack)
+- [📁 Project Structure](#-project-structure)
+- [📚 Documentation](#-documentation)
+- [🧪 Testing](#-testing)
+- [👥 Role-Based Access Control](#-role-based-access-control)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+
+---
+
+## 📸 Screenshot Gallery
+
+Every page below is reachable **without logging in** (guest mode). All images are captured straight from a running MEeL instance, so what you see here always matches the code that is currently running.
+
+<details>
+<summary><strong>🖼️ See 15 more screenshots</strong></summary>
+
+<h3 align="center">🎬 Video</h3>
 
 <table>
   <tr>
-    <td align="center"><strong>🎬 Video Library</strong></td>
-    <td align="center"><strong>🎵 Music Discovery</strong></td>
+    <td><img src="assets/img/screen-video-library-light.webp" alt="MEeL video library in light mode" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-video-player.webp" alt="MEeL video player with HLS streaming" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-video-player-2.webp" alt="MEeL video player" width="100%" loading="lazy"/></td>
   </tr>
   <tr>
-    <td><img src="assets/img/video0.webp" alt="Video Library" width="100%"/></td>
-    <td><img src="assets/img/music0.webp" alt="Music Discovery" width="100%"/></td>
+    <td><img src="assets/img/screen-video-player-3.webp" alt="MEeL video player" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-guide.webp" alt="MEeL user guide page" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-changelog.webp" alt="MEeL release notes page" width="100%" loading="lazy"/></td>
   </tr>
 </table>
+
+<h3 align="center">🎵 Music & Accounts</h3>
+
+<table>
+  <tr>
+    <td><img src="assets/img/screen-music-library-light.webp" alt="MEeL music discovery in light mode" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-music-player.webp" alt="MEeL music player with WebAudio visualizer" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-auth-login.webp" alt="MEeL sign-in page" width="100%" loading="lazy"/></td>
+  </tr>
+  <tr>
+    <td><img src="assets/img/screen-auth-register.webp" alt="MEeL sign-up page" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-profile.webp" alt="MEeL user profile page" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-error-404.webp" alt="MEeL 404 error page" width="100%" loading="lazy"/></td>
+  </tr>
+</table>
+
+<h3 align="center">🖥️ System</h3>
+
+<table>
+  <tr>
+    <td><img src="assets/img/screen-hub-home-light.webp" alt="MEeL HUB home page in light mode" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-landing.webp" alt="MEeL landing page" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-docs.webp" alt="MEeL documentation page" width="100%" loading="lazy"/></td>
+  </tr>
+</table>
+
+</details>
 
 ---
 
@@ -67,7 +131,7 @@
     <td colspan="2">
       <h3>🕹️ Arcade <sup>(separate extension)</sup></h3>
       <p>
-        9 mini-games: <strong>Miku & Teto Run</strong> · <strong>Chess</strong> (multiplayer) · <strong>Snake</strong> · <strong>2048</strong> · <strong>Tetris</strong> · <strong>Breakout</strong> · <strong>Simon Says</strong> · <strong>Ludo</strong> · <strong>MEeL!Mania</strong> (rhythm)
+        9 mini-games: <strong>Miku &amp; Teto Run</strong> · <strong>Chess</strong> (multiplayer) · <strong>Snake</strong> · <strong>2048</strong> · <strong>Tetris</strong> · <strong>Breakout</strong> · <strong>Simon Says</strong> · <strong>Ludo</strong> · <strong>MEeL!Mania</strong> (rhythm)
         <br><sub>Optional extension — installed separately from the HUB. See <a href="docs/en/arcade-optional.md">Arcade Guide</a>.</sub>
       </p>
     </td>
@@ -125,11 +189,11 @@ php tests/check_deploy.php
 
 </details>
 
-> 📖 [Full installation guide](docs/en/installation.md)
+> 📖 [Full installation guide](docs/en/installation.md) · [Bahasa Indonesia](docs/id/installation.md)
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠 Tech Stack
 
 |              |                                               |
 | ------------ | --------------------------------------------- |
@@ -159,7 +223,9 @@ MEeL/
 ├── drive/          # Cloud drive
 ├── modules/        # Core logic (OOP)
 ├── music/          # Music player
+├── scripts/        # Utility scripts (CSS build, audits, backup)
 ├── tests/          # PHPUnit tests
+├── tools/          # Toolchain (README screenshots, Tailwind, CI guards)
 ├── video/          # Video player
 └── install.sh      # One-command installer
 ```
@@ -168,34 +234,34 @@ MEeL/
 
 ## 📚 Documentation
 
-|                        |              🇮🇩 ID               |              🇬🇧 EN               |
-| ---------------------- | :------------------------------: | :------------------------------: |
-| Installation           |  [ID](docs/id/installation.md)   |  [EN](docs/en/installation.md)   |
-| Configuration          |  [ID](docs/id/configuration.md)  |  [EN](docs/en/configuration.md)  |
+|                       |              🇮🇩 ID               |              🇬🇧 EN               |
+| --------------------- | :------------------------------: | :------------------------------: |
+| Installation          |  [ID](docs/id/installation.md)   |  [EN](docs/en/installation.md)   |
+| Configuration         |  [ID](docs/id/configuration.md)  |  [EN](docs/en/configuration.md)  |
 | Modules & Architecture |     [ID](docs/id/modules.md)     |     [EN](docs/en/modules.md)     |
-| API                    |       [ID](docs/id/api.md)       |       [EN](docs/en/api.md)       |
-| Security               |    [ID](docs/id/security.md)     |    [EN](docs/en/security.md)     |
-| Development            |   [ID](docs/id/development.md)   |   [EN](docs/en/development.md)   |
-| Testing                |     [ID](docs/id/testing.md)     |     [EN](docs/en/testing.md)     |
-| Troubleshooting        | [ID](docs/id/troubleshooting.md) | [EN](docs/en/troubleshooting.md) |
-| PWA                    |       [ID](docs/id/pwa.md)       |       [EN](docs/en/pwa.md)       |
-| Arcade                 | [ID](docs/id/arcade-optional.md) | [EN](docs/en/arcade-optional.md) |
-| Download               |     [ID](docs/id/download.md)     |     [EN](docs/en/download.md)     |
+| API                   |       [ID](docs/id/api.md)       |       [EN](docs/en/api.md)       |
+| Security              |    [ID](docs/id/security.md)     |    [EN](docs/en/security.md)     |
+| Development           |   [ID](docs/id/development.md)   |   [EN](docs/en/development.md)   |
+| Testing               |     [ID](docs/id/testing.md)     |     [EN](docs/en/testing.md)     |
+| Troubleshooting       | [ID](docs/id/troubleshooting.md) | [EN](docs/en/troubleshooting.md) |
+| PWA                   |       [ID](docs/id/pwa.md)       |       [EN](docs/en/pwa.md)       |
+| Arcade                | [ID](docs/id/arcade-optional.md) | [EN](docs/en/arcade-optional.md) |
+| Download              |     [ID](docs/id/download.md)     |     [EN](docs/en/download.md)     |
 
 ---
 
 ## 🧪 Testing
 
-> 600+ test cases (560+ unit + 100+ integration, plus the functional & security suites) — executed automatically on every push via GitHub Actions CI.
+> **1,200+ checks** — 860+ unit, 125+ integration, 50+ functional, 175+ security. Executed automatically on every push via GitHub Actions CI.
 >
-> Figures refreshed 2026-10-14. If they look off, measure them yourself instead of trusting this line:
+> The figures are deliberately rough ranges rather than exact numbers: the test count grows over time, so exact numbers go stale quickly. To measure them yourself:
 >
 > ```bash
-> vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'  | tail -3
-> vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests' | tail -3
+> vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'    | tail -3
+> vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests'   | tail -3
+> php tests/functional_test.php                                          # summary in logs/
+> php tests/security_test.php                                            # summary in logs/
 > ```
->
-> The test count grows over time; hand-written numbers in docs go stale quickly.
 
 ```bash
 composer install
@@ -208,7 +274,7 @@ php tests/check_deploy.php                                 # Deployment
 
 ---
 
-## 👥 Roles
+## 👥 Role-Based Access Control
 
 | Role       | Access                                                                          |
 | ---------- | ------------------------------------------------------------------------------- |
@@ -235,6 +301,8 @@ Contributions in the form of bug reports, feature suggestions, or pull requests 
 
 > [!IMPORTANT]
 > Mifada (the developer) assumes no responsibility for media content uploaded, stored, or distributed by third parties who use or modify MEeL-HUB. All usage risks and copyright compliance obligations rest with each individual user.
+
+---
 
 ## 📬 Contact
 

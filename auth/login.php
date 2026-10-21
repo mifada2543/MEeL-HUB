@@ -1,10 +1,9 @@
 <?php
 /* reference build: MEeL-C3H7NO2S [e42192fd0e2a6760] */
-
 require_once __DIR__ . '/auth_helpers.php';
 auth_boot_session();
 require_once __DIR__ . '/config.php';
-$back_url = auth_back_url(['login.php', 'register.php', 'revoked.php', 'banned.php']);
+$back_url = auth_back_url(['auth/login', 'auth/register', 'auth/mfa-verify', 'auth/mfa-setup']);
 $error_msg = "";
 $max_login_attempts = 5;
 $lockout_time = 300;
@@ -79,9 +78,7 @@ if (isset($_POST['login']) && !$is_locked) {
                             $_SESSION['user_id'] = $u['id'];
                             $_SESSION['username'] = $u['username'];
                             $_SESSION['role'] = $u['role'];
-
                             log_activity($conn, $u['id'], 'login');
-
                             $upd = $conn->prepare("UPDATE users SET last_session_id = ?, last_activity = ? WHERE id = ?");
                             $session_saved = false;
                             if ($upd) {
@@ -93,7 +90,6 @@ if (isset($_POST['login']) && !$is_locked) {
                                 header("Location: ../");
                                 exit;
                             }
-
                             unset($_SESSION['user_id'], $_SESSION['username'], $_SESSION['role']);
                             $error_msg = "Terjadi kesalahan. Silakan coba lagi.";
                         }
@@ -134,7 +130,6 @@ $auth_og_desc = "Masuk ke akun MEeL untuk streaming video, musik, dan mengakses 
 include __DIR__ . '/partials/auth_head.php';
 ?>
 <main class="w-full max-w-sm" aria-labelledby="login-title">
-
     <div class="text-center mb-8">
         <div class="inline-flex p-4 bg-blue-600/10 rounded-3xl text-blue-500 mb-4 shadow-lg shadow-blue-900/10"><i data-lucide="log-in" class="w-10 h-10"></i></div>
         <h2 id="login-title" class="text-3xl font-black text-white tracking-tighter">Masuk</h2>
@@ -143,9 +138,7 @@ include __DIR__ . '/partials/auth_head.php';
     <?php if ($error_msg): ?>
         <div class="mb-6 p-4 rounded-2xl text-sm flex items-center gap-3 bg-red-500/10 text-red-400 border border-red-500/20 animate-shake"><i data-lucide="alert-circle" class="w-5 h-5"></i><?= $error_msg ?></div>
     <?php endif; ?>
-
     <form method="post" class="glass-effect p-8 rounded-[2rem] shadow-2xl space-y-6">
-
         <?php if ($is_locked): ?>
             <?php
             $countdown_seconds = $remaining;
@@ -154,11 +147,9 @@ include __DIR__ . '/partials/auth_head.php';
             include __DIR__ . '/partials/auth_countdown.php';
             ?>
         <?php else: ?>
-
             <?php if (isset($_SESSION['csrf_token'])): ?>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             <?php endif; ?>
-
             <div class="space-y-2">
                 <label for="username" class="text-[10px] font-bold text-gray-300 uppercase ml-1 tracking-widest">Nama Pengguna</label>
                 <div class="relative">
@@ -182,7 +173,6 @@ include __DIR__ . '/partials/auth_head.php';
                 <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
             </button>
         <?php endif; ?>
-
         <div class="flex items-center justify-between px-1">
             <a href="register" class="text-xs text-gray-300 hover:text-white transition" title="Daftar untuk mendapatkan akun">
                 Belum punya akun?

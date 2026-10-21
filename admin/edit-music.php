@@ -1,51 +1,39 @@
 <?php
+
 /**
- * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
- * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
- * lintas `include`.
- *
  * @var \mysqli $conn
  */
-
 /* reference build: MEeL-C4H9NO2 [e87eb3aad14fb992] */
 include __DIR__ . '/../auth/config.php';
 include __DIR__ . '/../auth/auth.php';
 include_once __DIR__ . '/../modules/core/helpers.php';
 require_once __DIR__ . '/../modules/core/japanese.php';
 require_once __DIR__ . '/includes/media_editor.php';
-
 $_EDIT_CONTEXT = $_EDIT_CONTEXT ?? 'admin';
-
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login");
     exit();
 }
-
 $user_id = $_SESSION['user_id'];
 $curr_role = get_user_role($conn, (int)$user_id);
 $is_admin = is_admin($conn);
-
 if ($curr_role === 'guest') {
     header("Location: ../");
     exit();
 }
-
 $edit_id = (int)($_GET['id'] ?? 0);
 meel_editor_context_redirect('music', $edit_id, $is_admin, $_EDIT_CONTEXT);
-
 $back_url = meel_back_url(
     $_EDIT_CONTEXT === 'admin' ? base_url('/admin/stats') : base_url('/profile/manage')
 );
 require_once __DIR__ . '/../modules/media/MediaAdminRepository.php';
 $adminMedia = new MediaAdminRepository($conn);
-
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $music = $adminMedia->getMedia('music', $id);
 if (!$music) {
     header("Location: ../err/?code=not_found");
     exit;
 }
-
 $is_owner = ((int)$music['user_id'] === (int)$user_id);
 if (!$is_admin && !$is_owner) {
     header("Location: ../err/?code=denied");
@@ -54,7 +42,6 @@ if (!$is_admin && !$is_owner) {
 $status = "";
 $error_message = "";
 $cfg = meel_editor_media_config('music');
-
 if (isset($_POST['delete_lyrics_lang']) && $_POST['delete_lyrics_lang'] !== '') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error_message = "CSRF Token tidak valid.";
@@ -64,7 +51,6 @@ if (isset($_POST['delete_lyrics_lang']) && $_POST['delete_lyrics_lang'] !== '') 
         $status = "lyrics_deleted";
     }
 }
-
 if (isset($_POST['update'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error_message = "CSRF Token tidak valid.";
@@ -103,11 +89,10 @@ if (isset($_POST['update'])) {
         }
     }
 }
-
 $record = $music;
 $thumb_src = !empty($music['thumbnail'])
     ? '../music/upload/thumbnail/' . htmlspecialchars($music['thumbnail'])
-    : '../assets/img/music0.webp';
+    : '../assets/img/placeholder-music.svg';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -127,19 +112,14 @@ $thumb_src = !empty($music['thumbnail'])
 
 <body class="theme-music">
     <div class="page-wrap">
-
         <?php
         $page_title = 'Edit Musik';
         $media_type = 'music';
         include __DIR__ . '/header-admin.php';
         ?>
-
         <div class="edit-layout">
-
             <aside class="sidebar-panel">
-
                 <div class="cover-wrap" id="cover-wrap">
-
                     <img src="<?= $thumb_src ?>"
                         alt="Sampul <?= htmlspecialchars($music['title']) ?>"
                         class="cover-img"
@@ -153,9 +133,7 @@ $thumb_src = !empty($music['thumbnail'])
                     <span class="cover-badge" id="cover-badge">Cover Art</span>
                     <span class="cover-changed-badge" id="cover-changed-badge">✓ Baru</span>
                 </div>
-
-<?php include __DIR__ . '/partials/edit_media_uploader_card.php'; ?>
-
+                <?php include __DIR__ . '/partials/edit_media_uploader_card.php'; ?>
                 <div class="meta-info">
                     <div class="meta-row">
                         <div class="meta-row-icon">
@@ -194,9 +172,7 @@ $thumb_src = !empty($music['thumbnail'])
                         </div>
                     </div>
                 </div>
-
-<?php include __DIR__ . '/partials/edit_media_stats.php'; ?>
-
+                <?php include __DIR__ . '/partials/edit_media_stats.php'; ?>
                 <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
                     <a href="<?= base_url('/music/watch?v=' . (int)$id) ?>" class="btn-secondary" style="justify-content:center;">
                         <i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Lihat Musik
@@ -212,7 +188,6 @@ $thumb_src = !empty($music['thumbnail'])
                     <?php endif; ?>
                 </div>
             </aside>
-
             <section class="form-panel">
                 <div class="form-header">
                     <div>
@@ -221,7 +196,6 @@ $thumb_src = !empty($music['thumbnail'])
                     </div>
                     <i data-lucide="music-2" style="width:36px;height:36px;color:var(--accent);opacity:.3;flex-shrink:0;margin-top:4px;"></i>
                 </div>
-
                 <?php if ($status === "success"): ?>
                     <div class="alert alert-success" style="margin-bottom:20px;">
                         <i data-lucide="check-circle" style="width:15px;height:15px;flex-shrink:0;"></i>
@@ -239,7 +213,6 @@ $thumb_src = !empty($music['thumbnail'])
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
                         <input type="file" name="thumbnail" accept="image/*" id="cover-file-hidden" style="display:none">
                     <?php endif; ?>
-
                     <div class="field-group">
                         <label class="field-label" for="f-title">Judul Lagu</label>
                         <input type="text" id="f-title" name="title" placeholder="Masukkan judul lagu..."
@@ -247,7 +220,6 @@ $thumb_src = !empty($music['thumbnail'])
                             value="<?= htmlspecialchars($music['title']) ?>"
                             oninput="document.getElementById('sidebar-title').textContent = this.value || '—'">
                     </div>
-
                     <div class="two-col">
                         <div class="field-group">
                             <label class="field-label" for="f-artist">Artis</label>
@@ -264,15 +236,12 @@ $thumb_src = !empty($music['thumbnail'])
                                 oninput="document.getElementById('sidebar-album').textContent = this.value || '—'">
                         </div>
                     </div>
-
                     <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description" placeholder="Masukkan deskripsi musik..."
                             class="field-input" style="flex:1;min-height:120px;resize:none;"><?= htmlspecialchars($music['description'] ?? '') ?></textarea>
                     </div>
-
                     <div class="divider" style="margin:0;"></div>
-
                     <div class="lyrics-section">
                         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
                             <div>
@@ -284,7 +253,6 @@ $thumb_src = !empty($music['thumbnail'])
                                 <i data-lucide="pen-tool" style="width:12px;height:12px;"></i> LRC Editor
                             </a>
                         </div>
-
                         <?php
                         $existing_lyrics = get_music_lyrics_list($id);
                         $has_lyrics = !empty($existing_lyrics);
@@ -309,7 +277,6 @@ $thumb_src = !empty($music['thumbnail'])
                             <div class="lyrics-empty">Belum ada lirik. Tambahkan via LRC Editor.</div>
                         <?php endif; ?>
                     </div>
-
                     <div class="form-actions">
                         <button type="submit" name="update" id="btn-save" class="btn-primary">
                             <i data-lucide="save" style="width:15px;height:15px;"></i>
@@ -318,10 +285,8 @@ $thumb_src = !empty($music['thumbnail'])
                     </div>
                 </form>
             </section>
-
         </div>
     </div>
-
     <?php include __DIR__ . '/../partials/footer.php'; ?>
     <?php $scripts_root = '../';
     include __DIR__ . '/../partials/scripts.php'; ?>

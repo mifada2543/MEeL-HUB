@@ -734,9 +734,14 @@ Error handling terpusat di satu halaman dinamis `err/index.php` — konten & tem
 |---|---|---|
 | `code` | `denied` / `not_found` / `banned` / `revoked` / `maintance` | Jenis error + status HTTP (403 / 404 / 403 / 401 / 503). Default `not_found` |
 | `reason` | teks | Baris alasan tambahan (dipakai redirect IP-ban) |
-| `back` | path relatif | Override target tombol "Kembali" |
 
-**Adaptasi sumber:** modul asal dideteksi dari `HTTP_REFERER` (video/music/books/drive/admin/profile) → tema warna + label tombol kembali berubah otomatis. Prioritas tombol kembali: `?back=` → referer (halaman GET) → home modul → hub (`index.php`).
+**Adaptasi sumber:** modul asal dideteksi dari `HTTP_REFERER` (video/music/books/drive/admin/profile) → warna aksen + label sumber berubah otomatis. Deteksi ini memakai `meel_same_origin_referer()`, jadi referer dari host lain diabaikan.
+
+**Target tombol "Kembali" di halaman ini** selalu beranda (`index.php`) — halaman error butuh satu jalan keluar yang pasti, bukan halaman yang mungkin juga bermasalah.
+
+> Parameter `?back=` pernah disebut di dokumen ini, tapi tidak pernah ada
+> implementasinya. Sengaja tidak ditambahkan: parameter query yang menimpa
+> tujuan redirect adalah celah open redirect kalau tidak divalidasi.
 
 ### 15c. Shortcut Keyboard
 
