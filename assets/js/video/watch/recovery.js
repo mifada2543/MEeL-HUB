@@ -15,7 +15,53 @@ function startPlaybackStartTimeout() {
         triggerPlayerRecovery());
     }, PLAYBACK_START_TIMEOUT_MS)));
 }
+function stopSelfHeal() {
+  selfHealTimer && (clearTimeout(selfHealTimer), (selfHealTimer = null));
+  selfHealUntil = 0;
+  selfHealFrom = -1;
+}
+function trySelfHealMediaError(code) {
+  if (selfHealTimer) return true;
+  if (!videoElement) return false;
+  stopWaitingTimeout();
+  try {
+    if (isHls && hls) {
+      3 === code
+        ? hls.recoverMediaError()
+        : hls.startLoad(Math.max(0, (player ? player.currentTime : 0) - 1));
+    }
+    if (player && player.paused) {
+      const e = player.play();
+      e && e.catch && e.catch(function () {});
+    }
+  } catch (e) {
+    console.warn("[MEeL] Self-heal error media gagal:", e);
+    stopSelfHeal();
+    return false;
+  }
+  selfHealFrom = player ? player.currentTime : 0;
+  selfHealUntil = Date.now() + MEDIA_ERROR_GRACE_MS;
+  selfHealTimer = setTimeout(function () {
+    selfHealTimer = null;
+    selfHealUntil = 0;
+    const e = selfHealFrom;
+    selfHealFrom = -1;
+    if (!player) return;
+    if (player.currentTime > e + 0.1 && !player.error) {
+      console.log("[MEeL] Error media self-healed, playback lanjut normal.");
+      return;
+    }
+    console.warn(
+      "[MEeL] Error media tidak pulih dalam " +
+        MEDIA_ERROR_GRACE_MS / 1e3 +
+        " detik, lanjut ke recovery.",
+    );
+    triggerPlayerRecovery();
+  }, MEDIA_ERROR_GRACE_MS);
+  return true;
+}
 function destroyPlayer() {
+  stopSelfHeal();
   if (glowRAF) {
     cancelAnimationFrame(glowRAF);
     glowRAF = null;
@@ -119,6 +165,10 @@ function checkMediaAndRecover() {
 }
 function triggerPlayerRecovery() {
   if (isRecovering || isCheckingStatus || isTransitioningNext) return;
+  if (selfHealUntil > Date.now()) {
+    console.log("Masih dalam grace period self-heal, skip recovery.");
+    return;
+  }
   if (!document.getElementById("main-video-wrapper")) return;
   if (document.hidden) {
     if (!pendingRecoveryOnVisible) {
@@ -187,6 +237,7 @@ function registerVideoErrorListener(videoEl) {
       "code:",
       mediaError.code,
     );
+    if ([2, 3].includes(mediaError.code) && trySelfHealMediaError(mediaError.code)) return;
     if ([2, 3, 4].includes(mediaError.code)) triggerPlayerRecovery();
   });
   videoEl.addEventListener("stalled", () => {
