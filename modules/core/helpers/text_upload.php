@@ -3,16 +3,11 @@
  * Validasi berkas teks yang diunggah pengguna.
  *
  * Lirik (`.lrc`, `.txt`) dan subtitle (`.vtt`, `.srt`) punya aturan yang
- * sama persis: berkas teks murni, tidak melebihi 2 MB, dan tidak boleh
- * memuat tag PHP. Sebelumnya aturannya ditulis dua kali — satu di
- * `helpers/lyrics.php`, satu di `helpers/subtitle.php` — dengan badan
- * fungsi yang identik byte per byte. Dua salinan dari aturan keamanan
- * berarti satu salinan bisa diam-diam lolos pemeriksaan sementara
- * yang lain sudah diperketat.
- *
- * Pemanggil yang butuh nama fungsi lamanya tetap bisa memakainya:
- * `validate_lyrics_file()` dan `validate_subtitle_file()` kini memanggil
+ * sama persis: berkas teks murni, maksimal 2 MB, dan tanpa tag PHP.
+ * `validate_lyrics_file()` dan `validate_subtitle_file()` memanggil
  * fungsi ini.
+ *
+ * @see docs/{id,en}/modules.md
  */
 
 if (!function_exists('meel_validate_text_upload')) {

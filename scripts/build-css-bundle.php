@@ -7,8 +7,7 @@
  * seperti di manifest karena urutan CSS menentukan kaskade (light-theme.css
  * harus tetap paling akhir).
  *
- *   php scripts/build-css-bundle.php --dry-run
- *   php scripts/build-css-bundle.php
+ * @see docs/{id,en}/modules.md
  */
 
 if (PHP_SAPI !== 'cli') {

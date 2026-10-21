@@ -369,6 +369,50 @@ saat URL staging dikonfigurasi sebagai secret GitHub:
           [ "$code" = "403" ] || { echo "Expected 403, got $code"; exit 1; }
 ```
 
+### Gate reproducibility Tailwind CSS
+
+`scripts/ci/tailwind-coverage-check.php` menjaga `assets/css/tailwind.min.css`
+— artefak hasil build yang di-commit — supaya bisa direproduksi. Tanpa gerbang
+ini, mengubah markup lalu ingin membangun ulang CSS sama saja menebak.
+
+Tiga hal yang diperiksa:
+
+1. **Glob `content` benar-benar memindai repo, dan tidak memindai yang
+   dikecualikan.** Config bisa saja salah ketik dan tetap build "sukses"
+   dengan CSS setengah kosong — tidak ada error, hanya styling hilang.
+2. **Tidak ada regresi.** Class yang ADA di CSS lama, MASIH dipakai markup,
+   tapi HILANG di CSS baru = regresi. Ini yang paling merusak: halaman
+   dirender, layout berantakan, tidak ada error.
+3. **Class yang hilang tapi tak terpakai boleh hilang.** Itu memang
+   penghematan, bukan bug; build yang sengaja memangkas stale token adalah
+   hasil yang diinginkan.
+
+Dua detail implementasi yang bukan pilihan gaya:
+
+- **Tokenisasi dilakukan pada selector ASLI** (yang masih escapes CSS), baru
+  hasilnya di-unescape. Kalau selector di-unescape dulu lalu di-tokenisasi,
+  karakter `:` (pemisah variant) ikut jadi pembatas dan semua class bertanda
+  variant runtuh jadi satu token: `hover:border-green-500/30` menjadi
+  `hover`. Akibatnya cek regresi nyaris tak berguna — `hover` jelas ada di
+  file lain.
+- **Deklarasi dikumpulkan per class dalam bentuk GABUNGAN**, bukan per rule.
+  Tailwind menggabungkan selector yang deklarasinya sama ke satu rule; saat
+  isi kelompok berubah, satu class bisa pindah dari rule gabungan ke rule
+  sendiri tanpa mengubah hasil akhirnya.
+
+Hanya senyawa terakhir selector yang dihitung sebagai pembawa deklarasi. Pada
+`.group:hover .group-hover:text-white`, yang membawa deklarasi adalah
+`group-hover:text-white`; `group` hanya leluhur dan tidak punya deklarasi
+sendiri.
+
+```bash
+php scripts/ci/tailwind-coverage-check.php                  # audit artefak ter-commit
+php scripts/ci/tailwind-coverage-check.php --new=/tmp/x.css  # bandingkan kandidat baru
+php scripts/ci/tailwind-coverage-check.php --rebuild         # build dulu ke temp, lalu banding
+```
+
+Exit code 0 = aman. Non-zero = ada regresi atau config rusak.
+
 ### Verifikasi Manual Private Drive 403 (saat deploy)
 
 Setelah deploy (atau sebelum melepas perubahan), pastikan web server benar-benar

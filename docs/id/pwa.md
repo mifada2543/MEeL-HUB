@@ -185,6 +185,32 @@ menaikkan `SW_VERSION`. **Tidak perlu mengubah `sw.js.php` atau `SwPrecache.php`
 | `scope` / `id` | `/MEeL/` | Spesifik deployment — sesuaikan jika di-host di root |
 | `shortcuts` | Video, Music, Books, Drive | Pintasan klik-kanan / long-press |
 
+### Generator `manifest.php`
+
+**File:** `manifest.php` — yang benar-benar dilayani browser adalah hasil
+generator di sini, bukan `assets/manifest.json` yang statis.
+
+Alasannya dua, keduanya soal base path:
+
+1. **Pindah folder = PWA rusak.** Repo di-clone ke folder bernama apa pun, dan
+   user bebas menamainya ulang. Kalau `scope` dan `id` tetap hardcode
+   `/MEeL/`, service worker tidak pernah controlling halaman dan shortcut
+   ikut mati.
+2. **`start_url` dan shortcut berisi `.php`.** URL yang di-cache service worker
+   jadi terikat pada nama file; mengubah nama file langsung merusak cache.
+
+Generator ini mengikuti pola yang sudah dipakai repo untuk `/sw.js` →
+`sw.js.php` (lihat `.htaccess`: `RewriteRule ^sw\.js$`): berkas `.json` statis
+tetap ada sebagai fallback — untuk clone tanpa `mod_rewrite`, atau dokumentasi
+yang dibaca langsung — tapi yang dilayani browser adalah hasil generator.
+
+Base path diambil dari `meel_base_url_path()`, sama seperti `sitemap.php`,
+`auth/config.php`, dan seluruh halaman lain, jadi cukup dipindah sekali dan
+semuanya ikut benar. URL di dalam manifest dinormalkan ke root, karena
+manifest dilayani dari `assets/`, jadi `MEeL-192.png` berarti
+`<base>/assets/MEeL-192.png` dan `../video/index.php` berarti
+`<base>/video/index.php`.
+
 ### Ikon
 
 | File | Ukuran | Digunakan Untuk |

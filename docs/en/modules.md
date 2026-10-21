@@ -359,6 +359,47 @@ variable and silently produced audio with no cover art. The tests assert
 observable behaviour (which streams get mapped, which flags appear) rather than
 re-implementing the builder.
 
+#### Video finalization in `DownloadService`
+
+`finalizeVideo()` is split into steps that each have one responsibility. Two of
+them are worth spelling out, because their shape is what makes them safe:
+
+**`runParallelFfmpeg()`** runs several ffmpeg processes at once and supervises
+them until all of them finish. This is the part most prone to going wrong:
+leaked pipes, child processes that are never reaped (zombies plus PID files
+that are never removed), and a timeout path that leaves ffmpeg running in the
+background.
+
+It was split out of `finalizeVideo()` in T19, when that method was 268 lines
+with nine phases. What decided the shape: **it stays a method, not a new class**
+(`FfmpegProcess`). Every hook it needs — `trackChildProcess()`,
+`untrackChildProcess()`, `terminateChildProcess()`, `writePidFile()`,
+`removePidFile()`, `isProcessAlive()` — is `protected` in `TranscoderBase`, and
+the child process list (`$childProcesses`) is per-instance state that
+`terminateAllProcesses()` scans at shutdown. A separate class could not reach
+that without widening those to `public` or moving the child list into a shared
+collaborator. Both land exactly on the mechanism whose job is to **prevent**
+orphaned ffmpeg processes when a request dies mid-transcode. Trading that for
+tidier file layout would be a large loss, so it was not taken. The seam is
+left open: as soon as there is a test harness that can exercise it end to end,
+the class can be extracted without rewriting its logic from scratch.
+
+**Moving the result to the HDD and recording it in the database** happen inside
+one transaction, and the important property is this: if anything fails midway,
+the system must not be left half-done — the file moved but the database row
+missing, or the other way round. That is why `moveFile()` throws instead of
+returning `false`, and the `catch` performs a database rollback **plus**
+cancellation of the filesystem effect. The cancellation order matters and must
+not be reversed:
+
+1. roll back the transaction (the database row never comes into existence)
+2. `rollbackFinalizeVideo()` (delete the target folder and the thumbnail)
+3. delete the work folder
+
+`finalizeVideo()` as the caller does not need to know those details — it only
+needs to know whether it succeeded; the error message is already emitted
+inside.
+
 ### 6. `modules/core/System.php`
 
 **Class:** `System` — queue management, monitoring, rate limiting.
@@ -462,6 +503,54 @@ holds the rule. `validate_lyrics_file()` and `validate_subtitle_file()` are
 thin wrappers over it, so every existing caller keeps working unchanged.
 `helpers/main.php` loads the new file before both of them.
 `TextUploadValidationTest` pins that the wrappers and the shared rule agree.
+
+#### Storage helper entry point
+
+`modules/core/helpers/storage.php` deliberately still exists even though its
+own body is nearly empty: `main.php` loads it in a single line, and 25+
+pages call its functions. Splitting that entry point is far riskier than the
+benefit it would bring.
+
+Its contents are already split per domain, following this folder's
+convention:
+
+| File | Contents | Functions |
+|---|---|---:|
+| `storage_paths.php` | base path, thumbnail, PID, mount guard | 14 |
+| `storage_disk.php` | disk capacity, cache file, audit log | 8 |
+| `storage_xsendfile.php` | detection & X-Sendfile header | 11 |
+| `storage_stream.php` | cache validator + media serving | 4 |
+
+The `require` order must not be shuffled, because it follows the dependency
+direction: `paths` → `disk` → `xsendfile` → `stream`. PHP defers function
+definitions until a file has been read completely, so the order only matters
+for load-time side effects — the only one being the `MEEL_HDD_CHECKED` block
+in `storage_paths.php`. Every definition stays wrapped in
+`function_exists()`, so the file is safe to load more than once.
+
+#### Data export helpers (CSV, JSON, SpreadsheetML)
+
+`admin/activity_log.php` used to have two export blocks and six identical
+row-mapping definitions in total: the SpreadsheetML preamble, the `$xls_cell`
+closure, the upload-queue header, and the six-column upload-queue row
+mapping. The consequence was not just long files — change one column and
+five other places have to change with it, and nothing tells you when you
+forget. The CSV export could silently end up with different columns than the
+JSON export.
+
+What `modules/core/helpers/export.php` collects is the shape, not the data:
+each dataset's column list stays defined in the page that uses it, because
+that is data domain, not utility.
+
+Two semantic differences that must be preserved:
+
+- `meel_export_values()` uses `??` for columns that declare a `default` — a
+  missing key **and** a `null` value both produce the default. Columns
+  without a `default` pass `null` through unchanged.
+- `meel_export_json_row()` reads the raw value for `int?` columns instead of
+  the `??` result. Applying the `default` first turns `null` into `''` and
+  then into `0`: JSON that used to report `"user_id": null` suddenly reports
+  `"user_id": 0`. Null means "unknown", 0 means "user 0".
 
 #### Video thumbnail naming convention
 
@@ -1340,6 +1429,27 @@ Upload → FFmpeg Transcode → HLS (.m3u8 + .ts)
                           DB Insert
 ```
 
+#### Video cards (`video/cards.php`)
+
+One file, two functions, and they **cannot be swapped**:
+
+| Function | Used in |
+|---|---|
+| `meel_render_video_card()` | the grid card on the video home/library |
+| `meel_render_video_rec_card()` | the recommendation sidebar card in `video/watch.php` |
+
+The pattern deliberately mirrors `music/cards.php`. The sidebar markup used to
+be copied verbatim in two places (`video/watch.php` and
+`video/search_video.php`), and two separate files with an `include` only move
+the implicit "fill this variable first before including" contract somewhere
+else — the variable still leaks into the caller's scope. A function makes the
+contract explicit through its arguments.
+
+Two data sources give the same username different column names:
+`MediaViewer::getRecommendations()` selects `u.username AS uploader`, while
+`MediaLibrary::searchVideo()` selects `u.username AS uploader_name`. Both are
+`users.username`, so both are read here.
+
 ### Audio Pipeline
 
 ```
@@ -1548,6 +1658,23 @@ Each CSS module has a `manifest.php` that registers its CSS files. `SwPrecache` 
 // assets/css/video/manifest.php
 return ['base.css', 'cards.css', 'fullscreen.css', 'glow.css', 'layout.css',
         'mini-player.css', 'navbar.css', 'player.css', 'seek.css', 'toast.css'];
+```
+
+#### Per-module CSS bundle
+
+`scripts/build-css-bundle.php` merges the files listed in `manifest.php` into
+a single `assets/css/<module>/bundle.css`.
+
+- **The manifest stays the source of truth.** One truth; the original files
+  are not deleted, so pages that do not use the bundle yet keep working.
+- **The file order is preserved exactly** as in the manifest, because CSS
+  order decides the cascade — `light-theme.css` has to stay last.
+- **The bundle is not committed.** `assets/css/*/bundle.css` is in
+  `.gitignore`, so a fresh clone falls back to the individual file list.
+
+```bash
+php scripts/build-css-bundle.php --dry-run   # show the result without writing
+php scripts/build-css-bundle.php
 ```
 
 ### Dynamic Loader

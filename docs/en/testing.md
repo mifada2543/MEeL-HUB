@@ -368,6 +368,52 @@ URL is configured as a GitHub secret:
           [ "$code" = "403" ] || { echo "Expected 403, got $code"; exit 1; }
 ```
 
+### Tailwind CSS reproducibility gate
+
+`scripts/ci/tailwind-coverage-check.php` guards `assets/css/tailwind.min.css`
+— a committed build artifact — so that it can be reproduced. Without this
+gate, changing markup and then wanting to rebuild the CSS amounts to
+guessing.
+
+Three things are checked:
+
+1. **The `content` glob really scans the repo, and does not scan what is
+   excluded.** The config can contain a typo and still build "successfully"
+   with half-empty CSS — no error, only missing styling.
+2. **No regression.** A class that IS in the old CSS, IS still used by markup,
+   but is GONE from the new CSS = a regression. This is the most damaging
+   kind: the page renders, the layout breaks, and there is no error.
+3. **A class that disappeared and is no longer used may disappear.** That is
+   a saving, not a bug; a build that deliberately prunes stale tokens is the
+   intended result.
+
+Two implementation details that are not style choices:
+
+- **Tokenisation runs on the ORIGINAL selector** (which still carries CSS
+  escapes), and only then is the result unescaped. If the selector were
+  unescaped first and then tokenised, the `:` character (the variant
+  separator) would become a boundary too and every variant-marked class
+  would collapse into a single token: `hover:border-green-500/30` becomes
+  `hover`. The regression check would then be nearly useless — `hover` is
+  obviously present in other files.
+- **Declarations are collected per class in COMBINED form**, not per rule.
+  Tailwind merges selectors with identical declarations into one rule; when
+  a group's contents change, one class can move from a combined rule to its
+  own rule (or the other way round) without changing the final result.
+
+Only the last compound of a selector counts as the declaration carrier. In
+`.group:hover .group-hover:text-white`, the declaration comes from
+`group-hover:text-white`; `group` is only an ancestor and has no declaration
+of its own.
+
+```bash
+php scripts/ci/tailwind-coverage-check.php                  # audit the committed artifact
+php scripts/ci/tailwind-coverage-check.php --new=/tmp/x.css  # compare a candidate
+php scripts/ci/tailwind-coverage-check.php --rebuild         # build to a temp file first, then compare
+```
+
+Exit code 0 = safe. Non-zero = a regression or a broken config.
+
 ### Verifying Private Drive 403 manually (deploy-time)
 
 After deploying (or before releasing a change), confirm the web server really

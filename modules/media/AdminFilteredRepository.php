@@ -1,23 +1,10 @@
 <?php
 /**
  * Basis untuk repository admin yang memfilter baris berdasarkan rentang
- * waktu.
+ * waktu. Subclass wajib menyediakan `tableName()`, `tableAlias()`,
+ * `applyPrimaryFilter()`, dan `applySearchFilter()`.
  *
- * Dua repository di panel admin — log aktivitas dan antrean unggah —
- * punya query yang nyaris sama: filter waktu, pencarian, hitung, halaman,
- * ekspor, dan pembersihan. Yang membedakan hanya nama tabel, alias-nya,
- * serta dua kolom yang disaring.
- *
- * Sebelumnya setiap repository menyalin seluruh query itu. Ketika salah
- * satu diubah — misalnya batas halaman atau urutan pengurutan — salinannya
- * diam-diam tertinggal. Query yang benar-benar berbeda tetap milik
- * masing-masing subclass.
- *
- * Subclass wajib menyediakan:
- *  - `tableName()` — nama tabel
- *  - `tableAlias()` — alias tabel di query
- *  - `applyPrimaryFilter()` — kondisi filter pertama
- *  - `applySearchFilter()` — kondisi pencarian
+ * @see docs/{id,en}/modules.md
  */
 abstract class AdminFilteredRepository
 {

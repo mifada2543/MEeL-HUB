@@ -735,31 +735,10 @@ class DownloadService extends TranscoderBase
      * Jalankan beberapa proses ffmpeg secara paralel, awasi sampai
      * semuanya selesai, lalu rapikan.
      *
-     * Dipisah dari `finalizeVideo()` pada T19. Fass itu 268 baris dengan
-     * sembilan fase; supervise-proses ini adalah sepertiga dari itu dan
-     * bagian yang paling rawan salah -- kebocoran pipe, anak proses yang
-     * tidak pernah di-reap (zombie plus PID file yang tak pernah dihapus),
-     * dan jalur timeout yang meninggalkan ffmpeg berjalan di belakang.
-     *
-     * KENAPA BUKAN KELAS BARU (`FfmpegProcess`)
-     * ---------------------------------------
-     * Semua hook yang dibutuhkan -- `trackChildProcess()`,
-     * `untrackChildProcess()`, `terminateChildProcess()`, `writePidFile()`,
-     * `removePidFile()`, `isProcessAlive()` -- ber-`protected` di
-     * `TranscoderBase`, dan daftar anak proses (`$childProcesses`) adalah
-     * state per-instance yang dipindai `terminateAllProcesses()` saat
-     * shutdown.
-     *
-     * Kelas terpisah tidak bisa menjangkau itu tanpa melebarkannya jadi
-     * `public` atau memindahkan daftar anak ke collaborator bersama.
-     * Dua-duanya jatuh persis di mekanisme yang tugasnya MENCEGAH proses
-     * ffmpeg yatim ketika request mati di tengah transcode. Menukar
-     * itu dengan tata letak berkas yang lebih rapi adalah kerugian yang
-     * besar, jadi tidak diambil.
-     *
-     * Seam-nya dibiarkan: begitu ada harness uji yang bisa mengujinya
-     * ujung ke ujung, kelasnya bisa diekstrak tanpa menurunkan logikanya
-     * dari nol.
+     * Tetap metode, bukan kelas baru: semua hook yang dibutuhkan ber-`protected`
+     * di `TranscoderBase`, dan daftar anak proses adalah state per-instance
+     * yang dipindai `terminateAllProcesses()` saat shutdown. Kelas terpisah
+     * tidak bisa menjangkau itu tanpa melebarkannya jadi `public`.
      *
      * @param array<string, array{
      *     cmd: array<int, string>,      // argumen untuk proc_open
@@ -775,6 +754,7 @@ class DownloadService extends TranscoderBase
      * @param int $timeoutSeconds batas waktu total semua proses
      * @param int $fileDur durasi media, untuk meng-hitung persen progres
      * @return array<string, array{started: bool, pid: int, exit: int|null}>
+     * @see docs/{id,en}/modules.md
      */
     private function runParallelFfmpeg(array $jobs, int $timeoutSeconds, int $fileDur): array
     {
@@ -925,23 +905,19 @@ class DownloadService extends TranscoderBase
      * Pindahkan hasil kerja dari folder kerja ke HDD, lalu catat ke
      * database dalam satu transaksi.
      *
-     * Dipisah dari `finalizeVideo()` pada T19. Fase ini punya satu
-     * sifat penting: kalau ada apa pun yang gagal di tengah, ia TIDAK
-     * boleh meninggalkan sistem dalam keadaan setengah jadi -- file sudah
-     * pindah tapi baris database belum ada, atau sebaliknya. Karena itu
-     * `moveFile()` melempar, bukan mengembalikan false, dan `catch`
-     * melakukan rollback database DITAMBAH pembatalan efek filesystem.
+     * Kalau ada apa pun yang gagal di tengah, sistem tidak boleh tertinggal
+     * setengah jadi -- file sudah pindah tapi baris database belum ada, atau
+     * sebaliknya. Karena itu `moveFile()` melempar, bukan mengembalikan false,
+     * dan `catch` melakukan rollback database DITAMBAH pembatalan efek
+     * filesystem.
      *
      * Urutan pembatalannya penting dan tidak boleh dibalik:
      *   1. rollback transaksi (baris database tidak jadi ada)
      *   2. `rollbackFinalizeVideo()` (hapus folder target + thumbnail)
      *   3. hapus folder kerja
      *
-     * Kenapa dibungkus begini: `finalizeVideo()` sebagai pemanggil
-     * tidak perlu tahu detailnya. Ia hanya perlu tahu berhasil atau
-     * tidak; pesan errornya sudah di-emit di dalam.
-     *
      * @return bool true bila sudah commit, false bila sudah di-rollback
+     * @see docs/{id,en}/modules.md
      */
     private function persistVideoToHdd(
         string $hdd_target_folder,

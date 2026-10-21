@@ -1,14 +1,11 @@
 <?php
 /**
- * Aturan protokol untuk proxy validasi.
- *
- * Server-nya ada di `validating_proxy_server.php`. Berkas ini berisi
- * bagian yang tidak perlu soket ke internet: parsing kepala permintaan,
+ * Aturan protokol untuk proxy validasi: parsing kepala permintaan,
  * penyusunan permintaan yang diteruskan, dan pemindahan data antar soket.
+ * Dipisah dari `validating_proxy_server.php` supaya bisa diuji tanpa
+ * menjalankan server.
  *
- * Pemisahan ini membuat bagian tersebut bisa diuji tanpa menjalankan
- * server sama sekali — parsing dan pembentukan header murni, dan pemindahan
- * data bisa diuji dengan sepasang soket dalam satu proses.
+ * @see docs/{id,en}/security.md
  */
 
 const PROXY_IDLE_TIMEOUT = 300;

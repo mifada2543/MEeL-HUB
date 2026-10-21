@@ -50,22 +50,15 @@ class GarbageCollector
     /**
      * Lepaskan baris antrean yang macet: refund biaya yang tercatat, lalu tandai failed.
      *
-     * Dipakai oleh DUA pemanggil, dan itu wajib: sweeper 6 jam
-     * (`sweepStuckQueues()`) dan pembersih 30 menit di `upload_advanced.php`.
-     * Kalau salah satu menandai `failed` tanpa refund, baris itu hilang dari
-     * jangkauan sweeper dan biaya MEeLCoin hilang permanen — user sudah bayar
-     * tapi tidak pernah dikembalikan.
-     *
-     * Urutan di dalam satu baris penting: refund dulu, baru tandai `failed`.
-     * Kalau dibalik, ada celah di mana baris sudah `failed` tapi coins belum
-     * dikembalikan, dan baris `failed` tidak lagi dipilih sweeper.
-     *
-     * `coin_cost` dibaca dari baris itu sendiri, bukan dari harga saat ini.
-     * Harga MEeLCoin bisa berubah setelah user membayar; yang harus
-     * dikembalikan adalah jumlah yang benar-benar dipotong.
+     * Dipakai oleh sweeper 6 jam (`sweepStuckQueues()`) dan pembersih 30
+     * menit di `upload_advanced.php`. Refund harus lebih dulu, baru status
+     * diubah — kalau dibalik, baris `failed` tidak lagi dipilih sweeper
+     * sementara coins belum kembali. `coin_cost` dibaca dari baris itu
+     * sendiri, bukan dari harga saat ini.
      *
      * @param array<int, string> $tables tabel antrean yang dipindai
      * @return array{scanned:int, failed:int, refunded:int}
+     * @see docs/{id,en}/security.md
      */
     public static function releaseStaleQueueRows(\mysqli $conn, int $staleMinutes, array $tables = ['upload_queue', 'transcode_queue']): array
     {
@@ -405,10 +398,9 @@ class GarbageCollector
      * dan `server_stats_info` memakai `ts`, `dirsize_` dan
      * `xsendfile_roots` memakai `time`, `admin_orphans` memakai
      * `checked_at`. Karena itu key-nya dicari berurutan, bukan satu nama
-     * tetap.
+     * tetap. Berkas tanpa key waktu apa pun jatuh ke mtime.
      *
-     * Berkas tanpa key waktu apa pun jatuh ke mtime — waktu berkas itu
-     * ditulis — supaya tidak ada cache yang bocor selamanya.
+     * @see docs/{id,en}/modules.md
      */
     private static function isCacheExpired(string $path, int $ttl): bool
     {

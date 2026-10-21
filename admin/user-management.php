@@ -1,15 +1,10 @@
 <?php
 /**
- * Variabel di bawah di-set oleh include di file ini: `$conn` oleh
- * `auth/config.php`, dan `$banned_ips`/`$all_users`/`$pending_users`/
- * `$result_monitor`/`$stats` oleh `controllers/admin/admin_data.php` — sah saat
- * runtime, tapi tak terlihat oleh static analyser karena tidak menelusuri
- * variabel lintas `include`.
+ * Variabel di-set oleh include di file ini: `$conn` oleh
+ * `auth/config.php`, sisanya oleh `controllers/admin/admin_data.php`.
  *
- * ⚠️ Satu variabel per baris `@var` — bentuk daftar berkoma (`@var Type $a, $b`)
- * tidak dipahami PHPStan/Intelephense, hanya baris pertama yang terbaca.
- * Blok ini juga harus diletakkan SEBELUM pemakaian pertama, karena `@var`
- * hanya berlaku ke depan.
+ * Satu variabel per baris `@var` — bentuk daftar berkoma tidak dipahami
+ * PHPStan/Intelephense. Blok ini harus diletakkan sebelum pemakaian pertama.
  *
  * @var \mysqli $conn
  * @var \mysqli_result $banned_ips

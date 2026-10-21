@@ -2,32 +2,11 @@
 /**
  * Generator manifest.json (Web App Manifest).
  *
- * Kenapa bukan file JSON statis anymore?
- * --------------------------------------
- * Sebelumnya `assets/manifest.json` adalah file statis dengan
- * `"scope": "/MEeL/"` dan `"id": "/MEeL/"` HARDCODE. Dua masalah:
+ * Base path diambil dari meel_base_url_path(), jadi PWA tetap benar saat
+ * repo dipindah folder. URL di dalam manifest dinormalkan ke root.
  *
- *  1. **Pindah folder = PWA rusak.** Repo ini di-clone ke folder bernama
- *     apa pun (README cuma bilang `git clone ... MEeL`, tapi user bebas
- *     menamai ulang). Kalau foldernya `media-hub`, `scope` tetap
- *     `/MEeL/` → service worker tidak pernah controlling halaman, dan
- *     shortcut ikut mati.
- *  2. **`start_url`/shortcut berisi `.php`.** URL yang di-cacheSW jadi
- *     terikat pada nama file; mengubah nama file langsung merusak cache.
- *
- * Pendekatan ini mengikuti pola yang SUDAH dipakai repo untuk
- * `/sw.js` → `sw.js.php` (lihat .htaccess: `RewriteRule ^sw\.js$`):
- * file `.json` statis tetap ada sebagai fallback (clone tanpa
- * mod_rewrite, atau Dokumentasi yang dibaca langsung), tapi yang
- * dilayani browser adalah hasil generator di sini.
- *
- * Base path diambil dari meel_base_url_path() — sama dengan yang dipakai
- * sitemap.php, auth/config.php, dan seluruh halaman lain. Jadi cukup
- * dipindah sekali, semua ikut benar.
+ * @see docs/{id,en}/pwa.md
  */
-
-if (PHP_SAPI !== 'cli' && !isset($_SERVER['REQUEST_METHOD'])) {
-}
 
 if (!function_exists('meel_base_url_path')) {
     require_once __DIR__ . '/modules/core/base_url.php';
@@ -79,10 +58,6 @@ if (!is_array($manifest)) {
 /**
  * Ubah URL yang tertulis di assets/manifest.json (yang relatif terhadap
  * folder `assets/`) menjadi URL absolut terhadap root aplikasi.
- *
- * Manifest dilayani dari `assets/manifest.json`, jadi `MEeL-192.png`
- * berarti `<base>/assets/MEeL-192.png`, dan `../video/index.php`
- * berarti `<base>/video/index.php`.
  *
  * Hasil SELALU di-root (dimulai dengan "/") supaya tidak bergantung
  * folder tempat manifest diletakkan.
