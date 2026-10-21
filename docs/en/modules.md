@@ -382,17 +382,14 @@ background.
 
 It was split out of `finalizeVideo()` in T19, when that method was 268 lines
 with nine phases. What decided the shape: **it stays a method, not a new class**
-(`FfmpegProcess`). Every hook it needs — `trackChildProcess()`,
-`untrackChildProcess()`, `terminateChildProcess()`, `writePidFile()`,
-`removePidFile()`, `isProcessAlive()` — is `protected` in `TranscoderBase`, and
+(`FfmpegProcess`). Every hook it needs is `protected` in `TranscoderBase`, and
 the child process list (`$childProcesses`) is per-instance state that
 `terminateAllProcesses()` scans at shutdown. A separate class could not reach
 that without widening those to `public` or moving the child list into a shared
-collaborator. Both land exactly on the mechanism whose job is to **prevent**
-orphaned ffmpeg processes when a request dies mid-transcode. Trading that for
-tidier file layout would be a large loss, so it was not taken. The seam is
-left open: as soon as there is a test harness that can exercise it end to end,
-the class can be extracted without rewriting its logic from scratch.
+collaborator — and both land exactly on the mechanism whose job is to
+**prevent** orphaned ffmpeg processes when a request dies mid-transcode. The
+seam is left open: as soon as there is a test harness that can exercise it end
+to end, the class can be extracted without rewriting its logic from scratch.
 
 **Moving the result to the HDD and recording it in the database** happen inside
 one transaction, and the important property is this: if anything fails midway,
@@ -927,20 +924,14 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 
 > ⚠️ **Read this first if you have seen a different migration number.**
 >
-> Numbers **v1–v15 are the old history**, which was *redunized* (reset) on
-> 17 Sep 2026 — all of it is now **consolidated into v1**, without losing any of
-> its functionality. So:
+> Numbers **v1–v15 are the old history**, which was *redunized* on 17 Sep 2026
+> and is now consolidated into **v1** — v13 (MEeLCoin), v14 (`view_logs`
+> indexes) and v15 (the `user_notifications` table) are all covered by it.
+> Numbers **from v2 up were recounted from zero** after the reset, and the
+> `db_version` rows were cleaned to `{1..5}`; the loop only runs versions
+> `> MAX(db_version)`.
 >
-> - **v1 today is not the "first" migration chronologically.** It is the
->   consolidation of legacy v1–v15 (v13 = MEeLCoin, v14 = `view_logs` indexes,
->   v15 = the `user_notifications` table — all now covered by v1).
-> - Numbers **from v2 up were recounted from zero** after the reset: entries
->   briefly numbered 16/17 (2 Oct) became **v2/v3**, and v4/v5 followed as
->   genuine new migrations.
-> - The old history is **no longer used**; `db_version` rows were cleaned to
->   `{1..5}`. The loop only runs versions `> MAX(db_version)`.
->
-> If you find docs or code mentioning "Migration v9" or "migration v15" as an
+> So if you find docs or code mentioning "Migration v9" or "v15" as an
 > **active version**, that is a legacy number — not a bug.
 
 **v1 — schema consolidation (result of redunizing legacy v1–v15)**

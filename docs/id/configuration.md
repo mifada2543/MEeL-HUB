@@ -562,18 +562,17 @@ private static array $limits = [
 ```
 
 > ⚠️ **Registrasi memakai bucket per-IP, dan hanya bertambah saat registrasi BERHASIL.**
-> Berbeda dengan endpoint lain yang memakai key gabungan user, `register.php`
-> memakai key `reg_ip:{IP}`. Konsekuensinya:
-> - Kuota **ikut dibagi** dengan siapa pun yang berada di IP yang sama (NAT rumah,
->   kantor, kampus, jaringan seluler). Di balik NAT, 5 akun/jam adalah batas untuk
->   seluruh gedung, bukan untuk satu orang.
+> `register.php` memakai key `reg_ip:{IP}`, jadi:
+> - Kuota **ikut dibagi** dengan siapa pun yang berada di IP yang sama (NAT
+>   rumah, kantor, kampus, jaringan seluler). Di balik NAT, 5 akun/jam adalah
+>   batas untuk seluruh gedung, bukan untuk satu orang.
 > - Loopback (`127.0.0.1`, `::1`) **selalu bebas**, jadi instalasi lokal dan
 >   environment test tidak pernah terkunci.
 > - Percobaan gagal (username bentrok, sandi terlalu lemah) **tidak**
 >   menghabiskan kuota; hanya INSERT yang berhasil yang dihitung. Artinya
 >   enumerasi username tidak dibatasi oleh bucket ini.
 >
-> Naik/turunkan angka `register` di `RateLimiter.php` bila environment Anda
+> Naikkan/turunkan angka `register` di `RateLimiter.php` bila environment Anda
 > cenderung shared-IP. Bucket tambahan per-username bisa ditambahkan, tapi
 > **harus tetap berpasangan** dengan bucket per-IP — kalau berdiri sendiri,
 > penyerang cukup melakukan cycling username untuk lolos.

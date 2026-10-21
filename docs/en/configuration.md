@@ -543,8 +543,7 @@ private static array $limits = [
 ```
 
 > ⚠️ **Registration is a per-IP bucket, and it only increments on a SUCCESSFUL
-> registration.** Unlike other endpoints (which key on the user), `register.php`
-> keys on `reg_ip:{IP}`. Consequences:
+> registration.** `register.php` keys on `reg_ip:{IP}`, so:
 > - The quota is **shared** with everyone behind the same IP (home NAT, office,
 >   campus, carrier-grade NAT). Behind NAT, 5 registrations/hour is a limit for
 >   the whole building, not per person.
