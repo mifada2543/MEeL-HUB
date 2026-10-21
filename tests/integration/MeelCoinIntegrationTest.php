@@ -192,16 +192,92 @@ class MeelCoinIntegrationTest extends TestCase
         $this->assertSame(5, MeelCoin::getBalance($this->conn, $this->userId));
     }
 
-    public function testRefillResetsTimerWhenBalanceIsAtMax(): void
+    /**
+     * DULU: `refill()` me-reset timer_refill setiap kali saldo sedang
+     * penuh. Efeknya, countdown di UI selalu kembali ke 5 jam begitu
+     * halamannya di-refresh — jadi hitung mundurnya tidak pernah turun.
+     *
+     * SEKARANG: timer hanya bergerak saat isi ulang benar-benar terjadi,
+     * atau saat saldo turun dari maksimum (lewat spend). Membuka halaman
+     * tidak mengubah apa pun.
+     */
+    public function testRefillDoesNotMoveTheTimerWhileBalanceIsAtMax(): void
     {
-        $this->setBalance($this->userId, 25, date('Y-m-d H:i:s', time() - 6 * 3600));
+        $anchor = date('Y-m-d H:i:s', time() - 6 * 3600);
+        $this->setBalance($this->userId, 25, $anchor);
 
         $this->assertFalse(MeelCoin::refill($this->conn, $this->userId, 'user'));
         $this->assertSame(25, MeelCoin::getBalance($this->conn, $this->userId));
 
-        $reset = strtotime((string)$this->lastRefill($this->userId));
-        $this->assertGreaterThan(time() - 60, $reset, 'Timer refill harus di-reset saat saldo penuh');
+        $this->assertSame(
+            $anchor,
+            $this->lastRefill($this->userId),
+            'Timer refill tidak boleh bergerak hanya karena halaman dibuka — '
+            . 'itulah yang membuat countdown mundur ke 5 jam tiap refresh'
+        );
+    }
+
+    /**
+     * Jendela isi ulang dimulai saat saldo turun dari maksimum, bukan
+     * saat halaman dibuka. Ini yang menahan penumpukan refill.
+     */
+    public function testSpendingFromFullBalanceStartsTheRefillWindow(): void
+    {
+        $this->setBalance($this->userId, 25, date('Y-m-d H:i:s', time() - 6 * 3600));
+
+        [$ok] = MeelCoin::spend($this->conn, $this->userId, 10, 'upload_advanced');
+        $this->assertTrue($ok);
+        $this->assertSame(15, MeelCoin::getBalance($this->conn, $this->userId));
+
+        $reset = strtotime((string) $this->lastRefill($this->userId));
+        $this->assertGreaterThan(time() - 60, $reset, 'Menurun dari maksimum harus memulai jendela refill baru');
         $this->assertLessThanOrEqual(time() + 5, $reset);
+    }
+
+    /**
+     * Countdown MEeLCoin tidak boleh pernah mundur.
+     *
+     * Gejala yang dilaporkan: setiap refresh, hitung mundur kembali ke 5
+     * jam — jadi tidak pernah turun sama sekali. Di versi lama, timer
+     * ditulis ulang setiap kali halaman dibuka, sehingga countdown
+     * terkunci permanen di siklus penuh.
+     */
+    public function testRefillCountdownSurvivesARefreshUnchanged(): void
+    {
+        $this->setBalance($this->userId, 25, date('Y-m-d H:i:s', time() - 2 * 3600));
+
+        MeelCoin::refill($this->conn, $this->userId, 'user');
+        $first = MeelCoin::getRefillCountdown($this->conn, $this->userId, 'user');
+
+        MeelCoin::refill($this->conn, $this->userId, 'user');
+        $second = MeelCoin::getRefillCountdown($this->conn, $this->userId, 'user');
+
+        $this->assertEqualsWithDelta(
+            3 * 3600,
+            $first,
+            60,
+            'Countdown harus 3 jam (siklus 5 jam dikurangi 2 jam), bukan 5 jam penuh'
+        );
+        $this->assertEqualsWithDelta($first, $second, 5, 'Refresh tidak boleh mengubah countdown');
+        $this->assertLessThanOrEqual($second, $first, 'Countdown tidak boleh mundur');
+    }
+
+    /**
+     * Countdown diukur terhadap jam database, jadi nilainya benar walau
+     * zona waktu PHP dan MySQL berbeda.
+     */
+    public function testRefillCountdownIsMeasuredAgainstTheDatabaseClock(): void
+    {
+        $this->setBalance($this->userId, 10, date('Y-m-d H:i:s', time() - 90 * 60));
+
+        $countdown = MeelCoin::getRefillCountdown($this->conn, $this->userId, 'user');
+
+        $this->assertEqualsWithDelta(
+            (5 * 3600) - (90 * 60),
+            $countdown,
+            60,
+            'Countdown harus dihitung dari jam database'
+        );
     }
 
     public function testSpendIsNotMaskedByPendingRefillOnNextRequest(): void

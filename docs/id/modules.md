@@ -552,6 +552,34 @@ function getMecabPath(): string;                         // MeCab binary resolve
 
 Bootstrap terpusat: auto-detect `MEEL_ENV`, konfigurasi error reporting per environment, set `MEEL_BASE_URL`, default timezone.
 
+#### Jam aplikasi
+
+Zona waktu diset **tanpa syarat** — `date_default_timezone_set()` jalan apa pun
+yang kata `php.ini`. Dulu ada penjaga `if (!ini_get('date.timezone'))`, tetapi
+default PHP untuk directive itu adalah "UTC", jadi `ini_get()` selalu
+mengembalikan "UTC" dan penjaga itu tidak pernah jalan. Hasilnya, jam aplikasi
+berbeda antar SAPI: CLI memakai UTC, Apache memakai Asia/Jakarta.
+
+ itu penting karena MySQL mengonversi kolom `TIMESTAMP` memakai `time_zone`
+**sesi** saat membacanya. Jadi nilai yang ditulis sebagai string jam PHP lalu
+dibaca kembali sebagai string jam MySQL akan melewati geseran tujuh jam setiap
+kali kedua sisi berbeda. Gejalanya: hitung mundur MEeLCoin yang kembali ke
+lima jam tiap refresh, dan indikator "online" di panel admin yang bertentangan
+dengan kenyataan.
+
+Dua aturan menjaga jam tetap satu:
+
+| Aturan | Di mana |
+|---|---|
+| PHP selalu jalan di zona waktu aplikasi (`MEEL_TIMEZONE`, default `Asia/Jakarta`) | `modules/core/bootstrap.php` |
+| `time_zone` sesi MySQL disejajarkan dengan offset PHP di setiap koneksi | `auth/config.php` |
+
+Dengan keduanya, timestamp yang ditulis PHP lalu dibaca MySQL adalah instants
+yang sama, dan kode yang membandingkan kolom database dengan jam PHP
+(`strtotime($row['last_activity'])`) jadi benar. `DateTimeSourceTest` menjaga
+kedua aturan itu, dan menyimpan daftar eksplisit berkas yang memang sengaja
+mencampur jam database dengan jam PHP.
+
 ### 15a. `modules/core/base_url.php`
 
 Perhitungan **base URL terpusat** — satu-satunya sumber kebenaran untuk path base URL proyek (relatif terhadap `DOCUMENT_ROOT`):
@@ -1158,8 +1186,8 @@ class MeelCoin {
 |---|---|
 | Potong saldo | `SET meelcoin = meelcoin - ? WHERE id = ? AND meelcoin >= ?` — 0 baris terpengaruh = saldo kurang |
 | Refund | `SET meelcoin = meelcoin + ?` (ditambah dari nilai DB terkini) |
-| Refill | Siklus per-user: grant dibatasi `LEAST(max, meelcoin + refill)` di DB; saat saldo penuh `meelcoin_last_refill` **di-reset** supaya refill tidak menumpuk dan tidak menutup potongan upload berikutnya |
-| Countdown | Mengikuti `meelcoin_last_refill` user tersebut; `0` = siap refill |
+| Refill | Siklus per-user: grant dibatasi `LEAST(max, meelcoin + refill)` di DB. Jendela refill dimulai saat saldo **turun di bawah maksimum** (yaitu saat spend), jadi refill tidak bisa menumpuk dan tidak menutup potongan upload berikutnya |
+| Countdown | Mengikuti `meelcoin_last_refill` user tersebut, diukur dengan `TIMESTAMPDIFF(..., NOW())` — jam database di kedua sisi, jadi nilainya tidak melenceng terhadap waktu server. `0` = siap refill |
 | Biaya | Wajib ≥ 1 (ditegakkan panel admin). Biaya ≤ 0 → alur coin dilewati di runtime |
 | Admin | Dikecualikan dari pemotongan (`$is_admin`) dan dari dropdown penyesuaian manual |
 | Refund `upload_advanced.php` | Hanya untuk sentinel gagal eksplisit (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); hasil tak dikenal tidak direfund + `error_log` |

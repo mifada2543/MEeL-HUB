@@ -80,6 +80,7 @@ logs/tests/
 | `SsrfGuardTest.php` | 76 | **SSRF guard** — protocol allowlist, private/public IP ranges (v4 & v6), DNS mixed-record rejection, hostname denylist, HTTP pinning (see below) |
 | `DriveSecurityTest.php` | 13 | **Private Drive** — cross-user access, path traversal, symlink escape, realpath boundary, quota, atomic filename reservation (see below) |
 | `DriveStorageBasePathTest.php` | 8 | Drive storage base-path resolution — `MEEL_HDD_DRIVE` constant, fallback, priority |
+| `DateTimeSourceTest.php` | 7 | **The application clock** — the timezone is set unconditionally, MySQL's session `time_zone` is aligned with it, columns read by `strtotime()` are never written with the database clock, and the files that deliberately mix the two are an explicit inventory |
 | `WebSafeErrorOutputTest.php` | 2 | **Web-safe error output** — `STDERR`/`STDOUT`/`STDIN` only in CLI tooling, CLI-guarded files, or files nothing includes |
 | `AdminFilteredRepositoryTest.php` | 13 | Shared admin repository base — the shared queries stay in the base, each repository keeps its own table and alias, the two filter behaviours stay different |
 | `ValidatingProxyTest.php` | 27 | **Validating forward proxy** — real CONNECT/GET probes: private targets refused (502), public targets tunneled, loopback-only bind, malformed absolute-URI refused (see below) |
@@ -97,7 +98,7 @@ logs/tests/
 | `ChessHelpersIntegrationTest.php` | 6 | Chess helper functions with real DB |
 | `ChessRematchIntegrationTest.php` | 21 | Chess rematch flow against real DB |
 | `GarbageCollectorChessRoomsIntegrationTest.php` | 15 | Chess room garbage collection with real DB |
-| `MeelCoinIntegrationTest.php` | 15 | Spend/refund/refill, role caps, countdown |
+| `MeelCoinIntegrationTest.php` | 18 | Spend/refund/refill, role caps, countdown that never goes backwards, refill window that starts at the spend |
 | `SystemTest.php` | 2 | System class existence & utilities |
 
 ### Test Helpers

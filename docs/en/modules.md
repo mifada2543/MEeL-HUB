@@ -629,6 +629,34 @@ Centralized bootstrap for all entry points:
 - Sets `MEEL_BASE_URL` constant
 - Default timezone (Asia/Jakarta)
 
+#### The application clock
+
+The timezone is set **unconditionally** — `date_default_timezone_set()` runs
+whatever `php.ini` says. It used to be guarded by `if (!ini_get('date.timezone'))`,
+but PHP's default for that directive is "UTC", so `ini_get()` always returned
+"UTC" and the guard never fired. The result was a clock that differed by SAPI:
+the CLI ran in UTC while Apache ran in Asia/Jakarta.
+
+That matters because MySQL converts `TIMESTAMP` columns using the **session**
+`time_zone` when it reads them. A value written as a PHP wall-clock string and
+read back as a MySQL wall-clock string therefore crossed a seven-hour
+displacement whenever the two sides disagreed. The symptoms were a MEeLCoin
+countdown that jumped back to five hours on every refresh, and an "online"
+indicator in the admin panel that disagreed with reality.
+
+Two rules keep the clock single:
+
+| Rule | Where |
+|---|---|
+| PHP always runs in the application timezone (`MEEL_TIMEZONE`, default `Asia/Jakarta`) | `modules/core/bootstrap.php` |
+| MySQL's session `time_zone` is aligned with PHP's offset on every connection | `auth/config.php` |
+
+With both in place, a timestamp written by PHP and read back by MySQL is the
+same instant, and code that compares a database column with PHP's clock
+(`strtotime($row['last_activity'])`) is correct. `DateTimeSourceTest` holds
+both rules in place, and keeps an explicit inventory of the files that
+deliberately mix the database clock with PHP's.
+
 ### 15a. `modules/core/base_url.php`
 
 Centralized **base URL computation** — the single source of truth for the project's base URL path (relative to `DOCUMENT_ROOT`):
@@ -1229,8 +1257,8 @@ class MeelCoin {
 |---|---|
 | Spend | `SET meelcoin = meelcoin - ? WHERE id = ? AND meelcoin >= ?` — 0 affected rows = insufficient balance |
 | Refund | `SET meelcoin = meelcoin + ?` (added on top of the current DB value) |
-| Refill | Per-user cycle: the grant is capped by `LEAST(max, meelcoin + refill)` in the DB; when the balance is full, `meelcoin_last_refill` is **reset** so refills neither pile up nor mask the next upload's deduction |
-| Countdown | Derived from that user's `meelcoin_last_refill`; `0` = ready to refill |
+| Refill | Per-user cycle: the grant is capped by `LEAST(max, meelcoin + refill)` in the DB. The refill window starts when the balance **drops below the maximum** (that is, at the moment of the spend), so a refill can neither pile up nor mask the next upload's deduction |
+| Countdown | Derived from that user's `meelcoin_last_refill`, measured with `TIMESTAMPDIFF(..., NOW())` — the database clock on both sides, so the value cannot drift with the server's timezone. `0` = ready to refill |
 | Cost | Minimum 1 (enforced in the admin panel). Cost ≤ 0 → the coin flow is skipped at runtime |
 | Admin | Excluded from deductions (`$is_admin`) and from the manual adjustment dropdown |
 | `upload_advanced.php` refund | Only for explicit failure sentinels (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); unrecognized results are not refunded and go to `error_log` |

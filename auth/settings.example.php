@@ -11,6 +11,9 @@ if (!defined('MEEL_HOST')) {
 if (!defined('MEEL_CANONICAL_HOST')) {
     define('MEEL_CANONICAL_HOST', '');
 }
+if (!defined('MEEL_TIMEZONE')) {
+    define('MEEL_TIMEZONE', 'Asia/Jakarta');
+}
 
 if (!defined('MEEL_TRUST_PROXY_HEADERS')) {
     define('MEEL_TRUST_PROXY_HEADERS', false);
