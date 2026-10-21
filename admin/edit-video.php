@@ -1,20 +1,14 @@
 <?php
+
 /**
- * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
- * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
- * lintas `include`.
- *
  * @var \mysqli $conn
  */
-
 include __DIR__ . '/../auth/config.php';
 include __DIR__ . '/../auth/auth.php';
 include_once __DIR__ . '/../modules/core/helpers.php';
 require_once __DIR__ . '/../modules/core/japanese.php';
 require_once __DIR__ . '/includes/media_editor.php';
-
 $_EDIT_CONTEXT = $_EDIT_CONTEXT ?? 'admin';
-
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login");
     exit();
@@ -26,23 +20,19 @@ if ($curr_role === 'guest') {
     header("Location: ../");
     exit();
 }
-
 $edit_id = (int)($_GET['id'] ?? 0);
 meel_editor_context_redirect('video', $edit_id, $is_admin, $_EDIT_CONTEXT);
-
 $back_url = meel_back_url(
     $_EDIT_CONTEXT === 'admin' ? base_url('/admin/stats') : base_url('/profile/manage')
 );
 require_once __DIR__ . '/../modules/media/MediaAdminRepository.php';
 $adminMedia = new MediaAdminRepository($conn);
-
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $video = $adminMedia->getMedia('video', $id);
 if (!$video) {
     header("Location: ../err/?code=not_found");
     exit;
 }
-
 $is_owner = ((int)$video['user_id'] === (int)$user_id);
 if (!$is_admin && !$is_owner) {
     header("Location: ../err/?code=denied");
@@ -76,7 +66,6 @@ if (isset($_POST['update'])) {
                         $sub_content = convert_srt_to_vtt($sub_content);
                     }
                     $sub_content = strip_utf8_bom($sub_content);
-
                     $hls_folder = basename(dirname($video['filename']));
                     $sub_dir = meel_media_base_path('video') . '/video/' . $hls_folder . '/';
                     if (is_dir($sub_dir)) {
@@ -148,7 +137,6 @@ if (isset($_POST['delete_subtitle_lang']) && $_POST['delete_subtitle_lang'] !== 
         }
     }
 }
-
 $existing_subtitles = [];
 $hls_folder_dir = basename(dirname($video['filename']));
 $sub_scan_dir = meel_media_base_path('video') . '/video/' . $hls_folder_dir . '/';
@@ -162,11 +150,10 @@ if (is_dir($sub_scan_dir)) {
     }
 }
 usort($existing_subtitles, fn($a, $b) => strcmp($a['lang'], $b['lang']));
-
 $record = $video;
 $thumb_src = !empty($video['thumbnail'])
     ? '../video/upload/thumbnail/' . htmlspecialchars($video['thumbnail'])
-    : '../assets/img/video0.webp';
+    : '../assets/img/placeholder-video.svg';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -186,18 +173,14 @@ $thumb_src = !empty($video['thumbnail'])
 
 <body class="theme-video">
     <div class="page-wrap">
-
         <?php
         $page_title = 'Edit Video';
         $media_type = 'video';
         include __DIR__ . '/header-admin.php';
         ?>
         <div class="edit-layout">
-
             <aside class="sidebar-panel">
-
                 <div class="thumb-wrap" id="thumb-wrap">
-
                     <img src="<?= $thumb_src ?>"
                         alt="Thumbnail <?= htmlspecialchars($video['title']) ?>"
                         class="thumb-img"
@@ -211,9 +194,7 @@ $thumb_src = !empty($video['thumbnail'])
                     <span class="thumb-label" id="thumb-label">Thumbnail saat ini</span>
                     <span class="thumb-changed-badge" id="thumb-changed-badge">✓ Baru</span>
                 </div>
-
-<?php include __DIR__ . '/partials/edit_media_uploader_card.php'; ?>
-
+                <?php include __DIR__ . '/partials/edit_media_uploader_card.php'; ?>
                 <div class="meta-info">
                     <div class="meta-row">
                         <div class="meta-row-icon">
@@ -234,9 +215,7 @@ $thumb_src = !empty($video['thumbnail'])
                         </div>
                     </div>
                 </div>
-
-<?php include __DIR__ . '/partials/edit_media_stats.php'; ?>
-
+                <?php include __DIR__ . '/partials/edit_media_stats.php'; ?>
                 <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto;">
                     <a href="<?= base_url('/video/watch?v=' . (int)$id) ?>" class="btn-secondary" style="justify-content:center;">
                         <i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Lihat Video
@@ -252,7 +231,6 @@ $thumb_src = !empty($video['thumbnail'])
                     <?php endif; ?>
                 </div>
             </aside>
-
             <section class="form-panel">
                 <div class="form-header">
                     <div>
@@ -279,7 +257,6 @@ $thumb_src = !empty($video['thumbnail'])
                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
                         <input type="file" name="thumbnail" accept="image/*" id="thumb-file-hidden" style="display:none">
                     <?php endif; ?>
-
                     <div class="field-group">
                         <label class="field-label" for="f-title">Judul Video</label>
                         <input type="text" id="f-title" name="title" placeholder="Masukkan judul video..."
@@ -287,14 +264,12 @@ $thumb_src = !empty($video['thumbnail'])
                             value="<?= htmlspecialchars($video['title']) ?>"
                             oninput="document.getElementById('sidebar-title').textContent = this.value || '—'">
                     </div>
-
                     <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description"
                             placeholder="Masukkan deskripsi video..."
                             class="field-input" style="flex:1;min-height:120px;resize:none;"><?= htmlspecialchars($video['description'] ?? '') ?></textarea>
                     </div>
-
                     <div class="field-group" style="gap:10px;">
                         <label class="field-label">Subtitle</label>
                         <?php if (!empty($existing_subtitles)): ?>
@@ -320,7 +295,6 @@ $thumb_src = !empty($video['thumbnail'])
                             <div style="font-size:10px;color:var(--admin-muted);">Belum ada subtitle untuk video ini.</div>
                         <?php endif; ?>
                     </div>
-
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <label class="field-label">Unggah / Ganti Subtitle</label>
 
@@ -335,7 +309,6 @@ $thumb_src = !empty($video['thumbnail'])
                                 <div class="drop-zone-sub" id="subtitle-sub">Opsional · VTT / SRT (maks 2MB)</div>
                             </div>
                         </div>
-
                         <div class="field-group" id="subtitle-lang-wrap" style="display:none;">
                             <label class="field-label" for="f-subtitle-lang-trigger">Bahasa Subtitle</label>
                             <div class="lang-dropdown" id="f-subtitle-lang-dropdown" data-name="subtitle_lang">
@@ -356,7 +329,6 @@ $thumb_src = !empty($video['thumbnail'])
                         </div>
                         <div style="font-size:9px;color:var(--admin-muted);">SRT dikonversi otomatis ke VTT</div>
                     </div>
-
                     <div class="form-actions">
                         <button type="submit" name="update" id="btn-save" class="btn-primary">
                             <i data-lucide="save" style="width:15px;height:15px;"></i>
@@ -365,10 +337,8 @@ $thumb_src = !empty($video['thumbnail'])
                     </div>
                 </form>
             </section>
-
         </div>
     </div>
-
     <?php include __DIR__ . '/../partials/footer.php'; ?>
     <?php $scripts_root = '../';
     include __DIR__ . '/../partials/scripts.php'; ?>
@@ -392,5 +362,4 @@ $thumb_src = !empty($video['thumbnail'])
 </body>
 
 </html>
-
 <!-- reference build: MEeL-C8H11NO2 [1e3a187567818dfa] -->

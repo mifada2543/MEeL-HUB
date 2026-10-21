@@ -2,7 +2,6 @@
 require_once __DIR__ . '/modules/core/helpers.php';
 include __DIR__ . '/auth/config.php';
 $back_url = 'index.php';
-
 if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
     $ref = $_SERVER['HTTP_REFERER'];
     $host = $_SERVER['HTTP_HOST'];
@@ -24,28 +23,24 @@ if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
 <html lang="id">
 
 <head>
-<?php
-$_META_TITLE = 'MEeL | Panduan Penggunaan';
-$_META_DESC = 'Panduan penggunaan fitur video & musik MEeL.';
-include __DIR__ . '/partials/link.php';
-$scripts_root = '';
-include __DIR__ . '/partials/scripts.php';
-?>
+    <?php
+    $_META_TITLE = 'MEeL | Panduan Penggunaan';
+    $_META_DESC = 'Panduan penggunaan fitur video & musik MEeL.';
+    include __DIR__ . '/partials/link.php';
+    $scripts_root = '';
+    include __DIR__ . '/partials/scripts.php';
+    ?>
     <link rel="stylesheet" href="assets/css/introduction.css<?= meel_asset_version('assets/css/introduction.css') ?>">
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
 </head>
 
 <body>
-<?php include __DIR__ . '/partials/skip-link.php'; ?>
-
+    <?php include __DIR__ . '/partials/skip-link.php'; ?>
     <div id="reading-progress"></div>
-
     <button id="hamburger" onclick="toggleSidebar()" aria-label="Buka atau tutup menu samping" title="Buka menu samping">
         <i data-lucide="menu"></i>
     </button>
-
     <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
-
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <a href="<?= htmlspecialchars($back_url) ?>" class="back-link">
@@ -58,17 +53,14 @@ include __DIR__ . '/partials/scripts.php';
                 </div>
             </a>
         </div>
-
         <nav class="sidebar-nav">
             <div class="nav-section-label">Panduan</div>
-
             <button class="nav-btn active-video" id="nav-video" onclick="showGuide('video', this)" title="Panduan fitur Video">
                 <div class="nav-btn-icon">
                     <i data-lucide="play-square" style="width:15px;height:15px;color:#ef4444;"></i>
                 </div>
                 <span class="nav-btn-label">Video</span>
             </button>
-
             <button class="nav-btn" id="nav-music" onclick="showGuide('music', this)" title="Panduan fitur Musik">
                 <div class="nav-btn-icon">
                     <i data-lucide="music-2" style="width:15px;height:15px;color:#f97316;"></i>
@@ -76,7 +68,6 @@ include __DIR__ . '/partials/scripts.php';
                 <span class="nav-btn-label">Musik</span>
             </button>
         </nav>
-
         <div class="sidebar-footer">
             <div class="version-chip">
                 <i data-lucide="book-open" style="width:10px;height:10px;"></i>
@@ -84,17 +75,14 @@ include __DIR__ . '/partials/scripts.php';
             </div>
         </div>
     </aside>
-
     <main class="main">
         <div class="main-inner">
-
             <div id="guide-video" class="guide-section active">
                 <div class="guide-header">
                     <div class="guide-eyebrow">Dokumentasi · Fitur</div>
                     <h1 class="guide-title">Panduan <span class="red">Video</span></h1>
                     <p class="guide-desc">Kenali cara bernavigasi dan menggunakan fitur pemutar video MEeL.</p>
                 </div>
-
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);">
@@ -106,7 +94,7 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/video0.webp" alt="Beranda Video" class="screenshot-img"
+                        <img src="assets/img/screen-video-library.webp" alt="Beranda Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                     </div>
                     <div class="annotation-list">
@@ -127,7 +115,6 @@ include __DIR__ . '/partials/scripts.php';
                         <?php endforeach; ?>
                     </div>
                 </div>
-
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);">
@@ -139,11 +126,11 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/video1.webp" alt="Pemutaran Video" class="screenshot-img"
+                        <img src="assets/img/screen-video-player.webp" alt="Pemutaran Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
-                        <img src="assets/img/video2.webp" alt="Pemutaran Video" class="screenshot-img"
+                        <img src="assets/img/screen-video-player-2.webp" alt="Pemutaran Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
-                        <img src="assets/img/video3.webp" alt="Pemutaran Video" class="screenshot-img"
+                        <img src="assets/img/screen-video-player-3.webp" alt="Pemutaran Video" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                     </div>
                     <div class="annotation-list">
@@ -162,7 +149,6 @@ include __DIR__ . '/partials/scripts.php';
                         <?php endforeach; ?>
                     </div>
                 </div>
-
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);">
@@ -200,7 +186,6 @@ include __DIR__ . '/partials/scripts.php';
                         <?php endforeach; ?>
                     </div>
                 </div>
-
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);">
@@ -243,14 +228,12 @@ include __DIR__ . '/partials/scripts.php';
                     </div>
                 </div>
             </div>
-
             <div id="guide-music" class="guide-section">
                 <div class="guide-header">
                     <div class="guide-eyebrow">Dokumentasi · Fitur</div>
                     <h1 class="guide-title">Panduan <span class="orange">Musik</span></h1>
                     <p class="guide-desc">Kenali cara bernavigasi dan menggunakan fitur pemutar musik MEeL.</p>
                 </div>
-
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.2);">
@@ -262,9 +245,9 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/music0.webp" alt="Beranda Musik" class="screenshot-img"
+                        <img src="assets/img/screen-music-library.webp" alt="Beranda Musik" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
-                        <img src="assets/img/music2.webp" alt="Beranda Musik" class="screenshot-img"
+                        <img src="assets/img/screen-music-library-light.webp" alt="Beranda Musik" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                     </div>
                     <div class="annotation-list">
@@ -284,7 +267,6 @@ include __DIR__ . '/partials/scripts.php';
                         <?php endforeach; ?>
                     </div>
                 </div>
-
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.2);">
@@ -296,7 +278,7 @@ include __DIR__ . '/partials/scripts.php';
                         </div>
                     </div>
                     <div class="screenshot-wrap">
-                        <img src="assets/img/music1.webp" alt="Pemutaran Musik" class="screenshot-img"
+                        <img src="assets/img/screen-music-player.webp" alt="Pemutaran Musik" class="screenshot-img"
                             onclick="openLightbox(this.src)" loading="lazy" title="Klik untuk memperbesar">
                     </div>
                     <div class="annotation-list">
@@ -315,7 +297,6 @@ include __DIR__ . '/partials/scripts.php';
                         <?php endforeach; ?>
                     </div>
                 </div>
-
                 <div class="content-card">
                     <div class="content-card-header">
                         <div class="card-header-icon" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);">
@@ -350,18 +331,16 @@ include __DIR__ . '/partials/scripts.php';
                     </div>
                 </div>
             </div>
-
         </div>
     </main>
-
     <div id="lightbox" onclick="closeLightbox()" title="Klik untuk menutup">
         <div id="lightbox-close" onclick="closeLightbox()" title="Tutup">
             <i data-lucide="x" style="width:14px;height:14px;color:#9ca3af;"></i>
         </div>
         <img id="lightbox-img" src="" alt="Pratinjau" onclick="event.stopPropagation()">
     </div>
-
-    <script>        lucide.createIcons();
+    <script>
+        lucide.createIcons();
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -371,7 +350,6 @@ include __DIR__ . '/partials/scripts.php';
             overlay.classList.toggle('open');
             hamburger.classList.toggle('open');
         }
-
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 if (window.innerWidth <= 768) {
@@ -379,25 +357,22 @@ include __DIR__ . '/partials/scripts.php';
                 }
             });
         });
-
         const mainEl = document.querySelector('.main');
         const progressBar = document.getElementById('reading-progress');
 
         function updateProgress() {
             let scrollTop, scrollHeight, clientHeight;
-
             if (window.innerWidth <= 768) {
-                            scrollTop = window.scrollY || document.documentElement.scrollTop;
+                scrollTop = window.scrollY || document.documentElement.scrollTop;
                 scrollHeight = document.documentElement.scrollHeight;
                 clientHeight = window.innerHeight;
             } else if (mainEl) {
-                            scrollTop = mainEl.scrollTop;
+                scrollTop = mainEl.scrollTop;
                 scrollHeight = mainEl.scrollHeight;
                 clientHeight = mainEl.clientHeight;
             } else {
                 return;
             }
-
             const maxScroll = scrollHeight - clientHeight;
             if (maxScroll > 0) {
                 progressBar.style.width = ((scrollTop / maxScroll) * 100) + '%';
@@ -405,8 +380,8 @@ include __DIR__ . '/partials/scripts.php';
                 progressBar.style.width = '0%';
             }
         }
+        let ticking = false;
 
-            let ticking = false;
         function onScroll() {
             if (!ticking) {
                 requestAnimationFrame(function() {
@@ -416,7 +391,6 @@ include __DIR__ . '/partials/scripts.php';
                 ticking = true;
             }
         }
-
         if (mainEl) {
             mainEl.addEventListener('scroll', onScroll);
         }
@@ -444,20 +418,17 @@ include __DIR__ . '/partials/scripts.php';
         function closeLightbox() {
             document.getElementById('lightbox').classList.remove('open');
         }
-
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') closeLightbox();
         });
-
         if (typeof MEELTheme !== 'undefined') {
             MEELTheme.init({
                 isLoggedIn: <?= isset($_SESSION['user_id']) ? 'true' : 'false' ?>,
                 csrfToken: <?= json_encode($_SESSION['csrf_token'] ?? '') ?>
             });
         }
-</script>
+    </script>
 </body>
 
 </html>
-
 <!-- reference build: MEeL-C9H11NO2 [5135ef626d0d7648] -->
