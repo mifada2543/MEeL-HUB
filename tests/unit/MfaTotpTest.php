@@ -1,5 +1,4 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -34,7 +33,6 @@ class MfaTotpTest extends TestCase
     /** @dataProvider rfcCounterProvider */
     public function testTotpMatchesRfc6238Vectors(int $counter, string $expected): void
     {
-
         $this->assertSame(
             $expected,
             generate_totp(self::RFC_SECRET, $counter),
@@ -55,7 +53,6 @@ class MfaTotpTest extends TestCase
 
     public function testRfcSecretDecodesToTwentyBytes(): void
     {
-
         $this->assertSame(
             '3132333435363738393031323334353637383930',
             bin2hex(base32_decode(self::RFC_SECRET)),
@@ -96,7 +93,6 @@ class MfaTotpTest extends TestCase
      */
     public function testBase32DecodeRejectsCharactersOutsideAlphabet(): void
     {
-
         $this->expectException(InvalidArgumentException::class);
         base32_decode('GEZDGNBVGY3TQOJQ0O1');
     }
@@ -246,7 +242,6 @@ class MfaTotpTest extends TestCase
 
     public function testVerifyTotpUsesHashEqualsForConstantTimeComparison(): void
     {
-
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/mfa.php');
 
         $compareFn = $this->extractFunction($src, 'verify_totp_step');
@@ -303,7 +298,6 @@ class MfaTotpTest extends TestCase
 
     public function testOtpauthUrlEscapesUsernameSpecialCharacters(): void
     {
-
         $url = generate_otpauth_url('ABCDEFGH', 'budi@meel.com');
         $this->assertStringNotContainsString('@', substr($url, strlen('otpauth://totp/'), 30));
         $this->assertStringContainsString(rawurlencode('MEeL:budi@meel.com'), $url);
@@ -393,7 +387,6 @@ class MfaTotpTest extends TestCase
 
     public function testVerifyBackupCodeDoesNotLeakWhichPositionMatched(): void
     {
-
         $codes = generate_backup_codes();
         $hashed = $codes['hashed'];
         $hashedJson = json_encode($hashed);

@@ -333,7 +333,6 @@ $is_admin = $is_logged_in && is_admin($conn);
         }
 
         function openEditModal(data) {
-
             const decodeHtml = (html) => {
                 const txt = document.createElement("textarea");
                 txt.innerHTML = html;

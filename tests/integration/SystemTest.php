@@ -8,7 +8,6 @@ use PHPUnit\Framework\TestCase;
 /** @covers System */
 class SystemTest extends TestCase
 {
-
     private static function cacheFile(): string
     {
         return MEEL_ROOT . '/' . ltrim(MEEL_SERVER_STATS_CACHE, '/');

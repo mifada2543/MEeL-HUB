@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Basis untuk repository admin yang memfilter baris berdasarkan rentang
  * waktu.

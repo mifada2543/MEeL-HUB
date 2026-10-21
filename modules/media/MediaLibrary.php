@@ -1,5 +1,4 @@
 <?php
-
 class MediaLibrary
 {
     private \mysqli $conn;

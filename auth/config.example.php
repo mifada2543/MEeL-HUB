@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/settings.example.php';
 
 require_once __DIR__ . '/../modules/core/bootstrap.php';

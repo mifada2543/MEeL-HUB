@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/MediaLibrary.php';
 
 class SearchEngine
@@ -116,7 +115,6 @@ class SearchEngine
 
     private static function getCacheKey(string $type, array $params): string
     {
-
         $key = $type . ':' . md5(json_encode([
             'query' => $params['query'],
             'exclude' => $params['exclude'],
@@ -196,7 +194,6 @@ class SearchEngine
         self::setCache('music', $params, $result);
         return $result;
     }
-
 }
 
 /* reference build: MEeL-C5H9NO2 [b62b2020110073f3] */

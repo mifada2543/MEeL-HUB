@@ -155,7 +155,6 @@ if (isset($_POST['update_profile'])) {
                     }
 
                     if (!$webp_ok) {
-
                         $new_name = "user_" . $user_id . ".jpg";
                         $jpg_path = $upload_dir . $new_name;
                         $tmp_jpg = $upload_dir . 'user_' . $user_id . '_tmp_' . bin2hex(random_bytes(4)) . '.jpg';

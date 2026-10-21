@@ -22,7 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ? $row['custom_theme']
             : 'dark';
     } else {
-
         $theme = 'dark';
     }
 
@@ -31,7 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
     $input = json_decode(file_get_contents('php://input'), true);
     $token = $input['csrf_token'] ?? $_POST['csrf_token'] ?? '';
 

@@ -1,5 +1,4 @@
 <?php
-
 if (!isset($server))   $server   = (getenv('MEEL_DB_HOST') ?: "localhost");
 if (!isset($username)) $username = (getenv('MEEL_DB_USER') ?: "root");
 if (!isset($password)) $password = (getenv('MEEL_DB_PASS') ?: "");

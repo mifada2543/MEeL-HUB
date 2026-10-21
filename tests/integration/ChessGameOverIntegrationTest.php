@@ -16,7 +16,6 @@ use PHPUnit\Framework\TestCase;
  */
 class ChessGameOverIntegrationTest extends ChessTestCase
 {
-
     private function insertEvent(string $code, string $type, string $color = 'w', string $reason = null): void
     {
         $extra = $reason !== null ? ['reason' => $reason] : [];

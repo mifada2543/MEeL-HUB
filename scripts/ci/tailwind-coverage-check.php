@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Penjaga reproducibility `assets/css/tailwind.min.css`.
  *
@@ -306,7 +305,6 @@ function meel_collect_css_rules(string $css): array
  */
 function meel_css_classes_in_selector(string $sel, string $delims): array
 {
-
     $sel = preg_replace('/::?[a-zA-Z-]+(\([^()]*\))?/', ' ', $sel) ?? $sel;
     $parts = preg_split('/\s*[>+~]\s*|\s+/', trim($sel), -1, PREG_SPLIT_NO_EMPTY);
     if ($parts === []) {
@@ -325,7 +323,6 @@ function meel_css_classes_in_selector(string $sel, string $delims): array
         while ($j < $len) {
             $ch = $subject[$j];
             if ($ch === '\\') {
-
                 $token .= ($subject[$j + 1] ?? '');
                 $j += 2;
                 continue;

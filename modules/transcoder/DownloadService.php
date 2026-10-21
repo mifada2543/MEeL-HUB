@@ -78,7 +78,6 @@ class DownloadService extends TranscoderBase
             return "bestvideo[height<=1080]+bestaudio/best";
         }
         if (strpos($host, 'tiktok.com') !== false) {
-
             return "bestvideo+bestaudio/best";
         }
         return "bestvideo[height<=1080]+bestaudio/best";
@@ -790,7 +789,6 @@ class DownloadService extends TranscoderBase
                 error_log("[MEeL] runParallelFfmpeg: gagal menjalankan {$job['label']}");
                 $state[$key] = ['started' => false, 'pid' => 0, 'exit' => null, 'done' => true];
                 if ($job['required']) {
-
                     break;
                 }
                 continue;

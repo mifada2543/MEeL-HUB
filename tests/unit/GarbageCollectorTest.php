@@ -397,7 +397,6 @@ public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
 
     public function testNoWebEntryPointTriggersHeavyMaintenance(): void
     {
-
         $root = realpath(MEEL_ROOT);
         $skip = ['/vendor/', '/.git/', '/tests/', '/logs/', '/temp/'];
         $offenders = [];

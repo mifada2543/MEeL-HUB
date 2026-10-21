@@ -1,5 +1,4 @@
 <?php
-
 if (empty($files)): ?>
     <div class="flex flex-col items-center justify-center py-20 opacity-20">
         <i data-lucide="folder-open" class="w-16 h-16 mb-4"></i>

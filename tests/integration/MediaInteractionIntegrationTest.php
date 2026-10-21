@@ -29,7 +29,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     protected function tearDown(): void
     {
-
         $this->dbHelper->rollback();
         $this->dbHelper->close();
         parent::tearDown();
@@ -61,7 +60,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testToggleLikeOffMusic(): void
     {
-
         $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'like');
 
         $result = $this->interaction->toggleLike(
@@ -75,7 +73,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testSwitchFromLikeToDislike(): void
     {
-
         $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'like');
 
         $result = $this->interaction->toggleLike(
@@ -88,7 +85,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testDifferentUsersIndependentLikes(): void
     {
-
         $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'like');
         $userAStatus = $this->interaction->getUserInteractionStatus(
             DbTestHelper::MUSIC_ID_1, 'music'
@@ -104,7 +100,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testGetUserInteractionStatusNoInteraction(): void
     {
-
         $status = $this->interaction->getUserInteractionStatus(
             DbTestHelper::MUSIC_ID_3, 'music'
         );
@@ -134,7 +129,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testToggleVideoLikeTwice(): void
     {
-
         $this->interaction->toggleLike(DbTestHelper::VIDEO_ID_1, 'video', 'like');
         $result = $this->interaction->toggleLike(
             DbTestHelper::VIDEO_ID_1, 'video', 'like'
@@ -146,7 +140,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testVideoLikeDislikeCountSync(): void
     {
-
         $initial = $this->dbHelper->getVideoLikesCount(DbTestHelper::VIDEO_ID_1);
 
         $this->interaction->toggleLike(DbTestHelper::VIDEO_ID_1, 'video', 'like');
@@ -181,7 +174,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testDeleteOwnComment(): void
     {
-
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::REGULAR_USER_ID,
             DbTestHelper::MUSIC_ID_1,
@@ -200,7 +192,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testDeleteOtherUsersCommentFails(): void
     {
-
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::MEMBER_USER_ID,
             DbTestHelper::MUSIC_ID_1,
@@ -224,7 +215,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testDeleteCommentAsDifferentUser(): void
     {
-
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::ADMIN_USER_ID,
             DbTestHelper::MUSIC_ID_1,
@@ -241,7 +231,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testUploaderCanDeleteOtherUsersCommentOnMusic(): void
     {
-
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::REGULAR_USER_ID,
             DbTestHelper::MUSIC_ID_1,
@@ -258,7 +247,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testUploaderCanDeleteOtherUsersCommentOnVideo(): void
     {
-
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::MEMBER_USER_ID,
             null,
@@ -274,7 +262,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testNonUploaderCannotDeleteOtherUsersComment(): void
     {
-
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::MEMBER_USER_ID,
             DbTestHelper::MUSIC_ID_1,
@@ -290,7 +277,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testAdminCanDeleteAnyCommentOnMusic(): void
     {
-
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::REGULAR_USER_ID,
             DbTestHelper::MUSIC_ID_1,
@@ -307,7 +293,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testAdminCanDeleteAnyCommentOnVideo(): void
     {
-
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::MEMBER_USER_ID,
             null,
@@ -323,7 +308,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testMultipleInteractionsOnDifferentMedia(): void
     {
-
         $r1 = $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'like');
         $r2 = $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_2, 'music', 'like');
         $r3 = $this->interaction->toggleLike(DbTestHelper::VIDEO_ID_1, 'video', 'like');
@@ -343,7 +327,6 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testLikeDislikeCountsAreAccurate(): void
     {
-
         $initial = $this->dbHelper->getMusicLikesCount(DbTestHelper::MUSIC_ID_1);
 
         $r1 = $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'like');

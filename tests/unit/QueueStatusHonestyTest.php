@@ -78,7 +78,6 @@ class QueueStatusHonestyTest extends TestCase
 
     public function testReleaseQueueHappensAfterFinalizeInBothBranches(): void
     {
-
         $finalizeVideo = $this->posOf('$this->finalizeVideo(');
         $release = $this->posOf('$this->releaseQueue($queue_id, $finalized_ok');
 
@@ -180,7 +179,6 @@ class QueueStatusHonestyTest extends TestCase
      */
     public function testNoInvalidStatusEverWrittenToQueue(): void
     {
-
         preg_match_all(
             '/releaseQueue\(\s*\$queue_id\s*,\s*([^)]+)\)/',
             $this->src,

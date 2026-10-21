@@ -1,5 +1,4 @@
 <?php
-
 $meel_settings = __DIR__ . '/settings.php';
 if (!file_exists($meel_settings)) {
     error_log("[MEeL SYSTEM ERROR]\nFile auth/settings.php tidak ditemukan.\n"
@@ -16,7 +15,6 @@ if (!isset($username)) $username = 'root';
 if (!isset($password)) $password = '';
 if (!isset($db))       $db       = 'MEeL';
 if (!isset($conn) || $conn === null) {
-
     try {
         $conn = new mysqli($server, $username, $password, $db);
         if ($conn->connect_error) {

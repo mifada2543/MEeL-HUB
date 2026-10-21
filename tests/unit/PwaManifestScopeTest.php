@@ -1,5 +1,4 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -80,7 +79,6 @@ class PwaManifestScopeTest extends TestCase
 
     public function testScopeAndIdUseDetectedBasePath(): void
     {
-
         $manifest = $this->renderManifest(MEEL_ROOT);
 
         $this->assertSame('/', $manifest['scope'], 'Document root → scope "/"');
@@ -99,7 +97,6 @@ class PwaManifestScopeTest extends TestCase
      */
     public function testScopeNotHardcodedToProjectDirectoryName(): void
     {
-
         $src = (string)file_get_contents(MEEL_ROOT . '/manifest.php');
 
         $this->assertStringNotContainsString(
@@ -119,7 +116,6 @@ class PwaManifestScopeTest extends TestCase
 
     public function testStartUrlAndShortcutsAreAbsoluteUnderBase(): void
     {
-
         $manifest = $this->renderManifest(MEEL_ROOT . '/..');
 
         $this->assertStringStartsWith(
@@ -179,7 +175,6 @@ class PwaManifestScopeTest extends TestCase
 
     public function testFallbackJsonStillExistsForNoRewriteEnvironment(): void
     {
-
         $this->assertFileExists(
             MEEL_ROOT . '/assets/manifest.json',
             'assets/manifest.json harus tetap ada sebagai fallback untuk '
@@ -198,7 +193,6 @@ class PwaManifestScopeTest extends TestCase
      */
     public function testNoFilesystemPathLeaksIntoUrls(): void
     {
-
         $manifest = $this->renderManifest('');
 
         $blob = (string)json_encode($manifest);

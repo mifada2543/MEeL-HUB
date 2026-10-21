@@ -1,5 +1,4 @@
 <?php
-
 if (!defined('MAX_ARCHIVE_ENTRIES')) {
     define('MAX_ARCHIVE_ENTRIES', 5000);
 }

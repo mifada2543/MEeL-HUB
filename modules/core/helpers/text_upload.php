@@ -16,7 +16,6 @@
  */
 
 if (!function_exists('meel_validate_text_upload')) {
-
 /**
  * @param int $max_bytes batas ukuran berkas yang diterima, dalam byte
  */

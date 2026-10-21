@@ -220,7 +220,6 @@ function testCsrfProtection(): void {
         if ($hasVerify || $hasToken) {
             $protected++;
             if ($hasPost && !$hasVerify && !strpos($rel, 'drive/')) {
-
                 $unprot[] = $rel;
             }
         } else {

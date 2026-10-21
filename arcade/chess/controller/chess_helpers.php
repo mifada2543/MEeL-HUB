@@ -145,7 +145,6 @@ function chess_reset_room_game(\mysqli $conn, string $room): void
 
 function chess_rematch(\mysqli $conn, string $room, string $color, string $action, ?int $opponentId = null): array
 {
-
     if (!chess_has_terminal_event($conn, $room)) {
         return ["success" => false, "message" => "Permainan belum selesai."];
     }

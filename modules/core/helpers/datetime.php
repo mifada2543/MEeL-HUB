@@ -1,5 +1,4 @@
 <?php
-
 if (!function_exists('meel_now')) {
     function meel_now(): string
     {

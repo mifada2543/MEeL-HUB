@@ -1,5 +1,4 @@
 <?php
-
 class BookUploader
 {
     private \mysqli $conn;

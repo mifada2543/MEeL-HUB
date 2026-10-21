@@ -1,5 +1,4 @@
 <?php
-
 final class SsrfGuard
 {
     private const ALLOWED_SCHEMES = ['http', 'https'];

@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @var \mysqli $conn
  * @var System $sys

@@ -23,7 +23,6 @@ class FakeMysqli extends mysqli
 
     public function __construct()
     {
-
     }
 
     public function query(string $query, int $result_mode = MYSQLI_STORE_RESULT): mysqli_result|bool

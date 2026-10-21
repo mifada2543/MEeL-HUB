@@ -16,7 +16,6 @@
  */
 
 if (!function_exists('meel_render_video_card')) {
-
     /**
      * Kartu grid video — dipakai video/index.php, video/load_more.php, dan
      * video/search_video.php (mode grid).
@@ -84,7 +83,6 @@ if (!function_exists('meel_render_video_card')) {
 }
 
 if (!function_exists('meel_render_video_rec_card')) {
-
     /**
      * Kartu sidebar rekomendasi — dipakai video/watch.php dan endpoint htmx-nya
      * (video/search_video.php: hasil cari + infinite scroll).

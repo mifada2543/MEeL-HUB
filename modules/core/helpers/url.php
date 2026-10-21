@@ -2,7 +2,6 @@
 if (!function_exists('resolve_binary')) {
     function resolve_binary(array $candidates): string
 {
-
     static $const_map = null;
     if ($const_map === null) {
         $const_map = [];
@@ -34,7 +33,6 @@ if (!function_exists('resolve_binary')) {
 }
 
 if (!function_exists('base_url')) {
-
 function base_url(string $path = ''): string
 {
     static $base = null;
@@ -42,7 +40,6 @@ function base_url(string $path = ''): string
         if (defined('MEEL_BASE_URL')) {
             $base = rtrim(MEEL_BASE_URL, '/');
         } else {
-
             require_once __DIR__ . '/../base_url.php';
             $base = meel_base_url_path();
         }
@@ -52,7 +49,6 @@ function base_url(string $path = ''): string
 }
 
 if (!function_exists('detectProtocol')) {
-
 function detectProtocol(): string
 {
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {

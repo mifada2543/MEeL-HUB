@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Kontainer like/dislike — SATU-SATUNYA sumber markup untuk tombol ini.
  *

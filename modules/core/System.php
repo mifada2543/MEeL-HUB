@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/../auth/RateLimiter.php';
 require_once __DIR__ . '/TranscoderBase.php';
 

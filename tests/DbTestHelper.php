@@ -1,5 +1,4 @@
 <?php
-
 class DbTestHelper
 {
     private const TEST_DB_NAME = 'MEeL-test';
@@ -141,10 +140,8 @@ class DbTestHelper
         $prop->setAccessible(true);
 
         if (method_exists($ref, 'setStaticPropertyValue')) {
-
             $ref->setStaticPropertyValue($prop->getName(), []);
         } else {
-
             $prop->setValue(null, []);
         }
     }
@@ -159,7 +156,6 @@ class DbTestHelper
 
     private function seedFixtureData(): void
     {
-
         static $hash = null;
         if ($hash === null) {
             $hash = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);

@@ -1,5 +1,4 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -77,7 +76,6 @@ class AuthzAdminGateTest extends TestCase
 
     public function testGuestWithoutSessionIsNotAdmin(): void
     {
-
         $this->assertFalse(
             is_admin($this->connWithRole('admin')),
             'Tanpa $_SESSION[\'user_id\'], is_admin() wajib false walau DB bilang admin'
@@ -126,7 +124,6 @@ class AuthzAdminGateTest extends TestCase
 
     public function testRoleIsReadFromDbWhenNotInSession(): void
     {
-
         $_SESSION['user_id'] = $this->freshUid();
         unset($_SESSION['role']);
 
@@ -138,7 +135,6 @@ class AuthzAdminGateTest extends TestCase
 
     public function testDbRoleOverridesStaleSessionRole(): void
     {
-
         $_SESSION['user_id'] = $this->freshUid();
         $_SESSION['role'] = 'admin';
 
@@ -161,7 +157,6 @@ class AuthzAdminGateTest extends TestCase
 
     public function testUserIdIsCastToIntBeforeLookup(): void
     {
-
         $_SESSION['user_id'] = '123';
         $_SESSION['role'] = 'admin';
 
@@ -242,7 +237,6 @@ class AuthzAdminGateTest extends TestCase
 
     public function testRequireAdminDoesNotLeakWhetherUserExists(): void
     {
-
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/authz.php');
         $fn = $this->extractFunction($src, 'require_admin');
 
@@ -256,7 +250,6 @@ class AuthzAdminGateTest extends TestCase
 
     public function testIsAdminDoesNotTrustRoleFromRequestGlobals(): void
     {
-
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/authz.php');
         $fn = $this->extractFunction($src, 'is_admin');
 
@@ -292,7 +285,6 @@ class AuthzAdminGateTest extends TestCase
 
     public function testUnknownUserFallsBackToUserNotAdmin(): void
     {
-
         $_SESSION['user_id'] = $this->freshUid();
         unset($_SESSION['role']);
 

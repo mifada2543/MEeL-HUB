@@ -1,5 +1,4 @@
 <?php
-
 class ProcessException extends \RuntimeException
 {
     private string $command;

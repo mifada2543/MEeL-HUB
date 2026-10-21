@@ -83,7 +83,6 @@ if (isset($_POST['update'])) {
         if ($title === '') {
             $error_message = "Judul lagu tidak boleh kosong.";
         } else {
-
             $meta = generate_search_metadata($title, $artist, $album);
             if ($adminMedia->updateMusic($id, $title, $artist, $album, $description, $thumbnail_url, $meta)) {
                 $status = "success";

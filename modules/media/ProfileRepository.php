@@ -1,5 +1,4 @@
 <?php
-
 class ProfileRepository
 {
     private \mysqli $conn;

@@ -24,7 +24,6 @@ class BookUploadFilenameTest extends TestCase
 
     public function testMediaLibraryUsesTightenedPattern(): void
     {
-
         $src = (string) file_get_contents(MEEL_ROOT . '/modules/media/BookUploader.php');
 
         $this->assertStringContainsString('(php\\d?|phtml|sh|js)(\\.|$)', $src);

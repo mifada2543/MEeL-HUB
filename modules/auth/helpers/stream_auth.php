@@ -1,6 +1,5 @@
 <?php
 if (!function_exists('authorize_stream')) {
-
     function authorize_stream(int $id): void
     {
         if ($id <= 0) return;
@@ -21,7 +20,6 @@ if (!function_exists('authorize_stream')) {
 }
 
 if (!function_exists('is_stream_authorized')) {
-
     function is_stream_authorized(int $id, int $ttl = 7200): bool
     {
         if ($id <= 0) return false;

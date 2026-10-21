@@ -1,5 +1,4 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -108,7 +107,6 @@ class ExportHelpersTest extends TestCase
             substr_count($src, "\$log_export_cols = ["),
             'Spesifikasi log aktivitas jangan didefinisikan literal di halaman lagi'
         );
-
     }
 
     /**
@@ -295,7 +293,6 @@ class ExportHelpersTest extends TestCase
 
     public function testXlsEmptyAndNumericCellsMatchTheOldClosure(): void
     {
-
         $this->assertStringContainsString(
             '<Data ss:Type="String"></Data></Cell>',
             meel_xls_cell(null)

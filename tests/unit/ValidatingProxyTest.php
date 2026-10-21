@@ -198,7 +198,6 @@ class ValidatingProxyTest extends TestCase
 
     public function testHttpsSchemeAbsoluteUriIsNotRelayed(): void
     {
-
         $response = $this->probeProxy(
             "GET https://example.com/ HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n"
         );

@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/ProgressObserver.php';
 
 /**
@@ -14,7 +13,6 @@ require_once __DIR__ . '/ProgressObserver.php';
  */
 class BrowserProgressObserver implements ProgressObserver
 {
-
     private const STAGE_HANDLERS = [
         'download_start' => 'handleDownloadStart',
         'transcode_start' => 'handleTranscodeStart',

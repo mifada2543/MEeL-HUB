@@ -1,5 +1,4 @@
 <?php
-
 if (PHP_SAPI !== 'cli') {
     exit(1);
 }
@@ -192,7 +191,6 @@ $startedAt = time();
 while (time() - $startedAt < PROXY_MAX_LIFETIME) {
     $client = @stream_socket_accept($server, 300);
     if ($client === false) {
-
         if (function_exists('pcntl_waitpid')) {
             pcntl_waitpid(-1, $status, WNOHANG);
         }
@@ -206,7 +204,6 @@ while (time() - $startedAt < PROXY_MAX_LIFETIME) {
             continue;
         }
         if ($pid === 0) {
-
             fclose($server);
             handleClient($client, $guard);
             exit(0);
