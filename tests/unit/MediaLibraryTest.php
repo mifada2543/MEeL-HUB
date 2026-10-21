@@ -21,7 +21,6 @@ class MediaLibraryTest extends TestCase
 
     public function testGetCountsReturnsArrayWithKeys(): void
     {
-
         $result = $this->library->getCounts();
         $this->assertArrayHasKey('music', $result);
         $this->assertArrayHasKey('video', $result);
@@ -31,7 +30,6 @@ class MediaLibraryTest extends TestCase
 
     public function testClearCountsCacheIsSafe(): void
     {
-
         MediaLibrary::clearCountsCache();
         $this->assertTrue(true);
     }

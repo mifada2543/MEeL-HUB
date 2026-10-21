@@ -275,6 +275,30 @@ back buffer manual.
 
 ---
 
+
+### ❌ Status Loop Playback hilang tiap refresh
+
+**Gejala:** tombol Loop aktif, tapi setelah refresh — atau setelah auto-recovery,
+atau setelah ganti kualitas — statusnya kembali normal, padahal video itu
+memang sedang diputar beruntun. Di sisi lain, loop yang tetap "nyala" ikut
+terbawa ke video berikutnya saat berpindah.
+
+**Penyebab:** status loop hanya hidup di memori player, jadi hilang setiap kali
+player dibangun ulang. Dan yang lebih halus, tidak ada yang membersihkannya
+saat pindah ke video lain.
+
+**Perbaikan (sudah masuk di MEeL core):**
+
+| Lokasi | Yang dilakukan |
+|---|---|
+| `assets/js/video/watch/state.js` | Membaca `MEEL_KEYS.VIDEO_LOOP` (`meel_video_loop`) saat boot, dan mengekspor `persistVideoLoop()`, `restoreVideoLoop()`, `clearVideoLoop()` |
+| `setupMeelPlayerEvents()` | Memanggil `restoreVideoLoop()`, sehingga loop dipulihkan di **semua** jalur pembuatan player: load awal, auto-recovery, rebuild karena ganti kualitas, dan pergantian video via mini player |
+| Pindah video & Auto Next | `clearVideoLoop()` dipanggil saat `skipToNextVideo`, klik kartu mini player, guard klik `.rekomendasi-item`, dan saat Auto Next diaktifkan — sehingga loop tidak ikut terbawa ke video berikutnya |
+
+Auto Next dan Loop saling meniadakan dua arah: menyalakan Auto Next
+membersihkan key loop, menyalakan Loop mematikan Auto Next, dan state stale
+ketika keduanya aktif dibersihkan saat boot.
+
 ## Masalah Transcoding
 
 ### ❌ Proses Transcoding Gagal / Stuck
@@ -552,6 +576,41 @@ Tunggu hingga kuota ter-reset, atau minta admin untuk meng-upload-kan.
 
 ---
 
+## Masalah Ikon
+
+### ❌ Ikon lucide tidak tampil
+
+**Solusi:**
+```html
+<script src="/MEeL/assets/js/compatibilitas/lucide.js"></script>
+<script>lucide.createIcons();</script>
+```
+
+### ❌ Ikon hilang setelah swap htmx
+
+**Gejala:** ikon ada saat halaman dimuat, tapi begitu ada bagian yang
+diganti — misalnya saat like/dislike diklik — ikon di area itu menghilang.
+Setelah halaman di-refresh ikon kembali muncul, dan swap berikutnya
+menghapusnya lagi. Tidak ada apa-apa di console.
+
+**Penyebab:** ikon adalah elemen `<i data-lucide="...">` yang diganti Lucide
+menjadi SVG. penggantian itu hanya terjadi saat `lucide.createIcons()`
+dijalankan. Server selalu mengirim markup `<i data-lucide>` apa adanya
+dalam setiap fragmen yang di-swap, jadi ada yang harus merender ulang
+setelahnya.
+
+`assets/js/shared/htmx-lucide.js` yang melakukannya pada
+`htmx:afterOnLoad`. Listener-nya didaftarkan di `document`, **bukan** di
+`document.body` — itu disengaja. Di beberapa halaman file ini dimuat di
+dalam `<head>`, dan saat itu `document.body` masih `null`; listener yang
+didaftarkan di `document.body` tidak akan pernah terpasang, dan setiap swap
+berikutnya akan meninggalkan ikon apa adanya tanpa galat apa pun.
+
+**Cek:**
+- `assets/js/shared/htmx-lucide.js` termuat di halaman tersebut
+- halaman tidak memuat salinan sendiri berkas itu
+- di console: `typeof lucide` adalah `"object"` dan `lucide.createIcons` ada
+
 ## Error Codes
 
 ### HTTP Status Codes
@@ -616,6 +675,137 @@ UPDATE users SET role = 'admin', is_active = 1 WHERE id = [user_id];
 
 ---
 
-<div align="center">
-  <sub><a href="index.md">← Kembali ke Index Dokumentasi</a></sub>
-</div>
+## Advanced Upload & Antrean
+
+Dokumentasi penanganan masalah khusus untuk fitur **Advanced Upload (yt-dlp)** dan antrean latar belakang (Background Tasks) di MEeL-HUB.
+
+---
+
+### Daftar Isi
+
+- [Daftar Isi](#daftar-isi)
+- [Masalah Database](#masalah-database)
+- [Masalah Storage & HDD](#masalah-storage--hdd)
+- [Masalah HLS Streaming](#masalah-hls-streaming)
+- [Masalah Transcoding](#masalah-transcoding)
+- [Masalah yt-dlp](#masalah-yt-dlp)
+- [Masalah Sesi & Login](#masalah-sesi--login)
+- [Masalah Upload](#masalah-upload)
+- [Masalah Performa](#masalah-performa)
+- [Masalah Ikon](#masalah-ikon)
+- [Error Codes](#error-codes)
+- [FAQ](#faq)
+- [Advanced Upload & Antrean](#advanced-upload--antrean)
+
+---
+
+### Gejala & Masalah Umum
+
+Fitur Advanced Upload menggunakan pustaka CLI `yt-dlp` yang dikombinasikan dengan pembungkus PHP asinkron untuk mengunduh media dari URL eksternal (seperti YouTube, NicoNico, TikTok) lalu mengonversinya secara otomatis. Masalah biasanya ditandai dengan status antrean yang terus menerus `"processing"` atau muncul notifikasi **"Server sedang sibuk"** meskipun tidak ada proses aktif.
+
+---
+
+### Masalah 1: Antrean (Queue) Stuck / Server Sibuk
+
+Sistem membatasi maksimal **2 proses unduhan/transcoding simultan** demi menjaga stabilitas kinerja CPU server. Jika proses terputus secara tidak wajar (misalnya koneksi putus atau server mati mendadak), status antrean di database tetap menggantung sebagai `"processing"`.
+
+#### Solusi A — Melalui Admin Panel (Direkomendasikan)
+
+1. Masuk sebagai akun **Admin**.
+2. Buka **Dashboard Admin** (`admin/index.php`).
+3. Scroll ke bagian **Active Background Tasks**.
+4. Klik tombol **Clean Stuck Queues** (akan membersihkan tugas yang menggantung lebih dari 30 menit).
+5. Atau klik ikon silang (**Force Stop** `x`) pada tugas spesifik yang mengalami macet.
+
+#### Solusi B — Melalui Database (Manual SQL)
+
+Jalankan perintah SQL berikut melalui phpMyAdmin atau MySQL Client untuk mereset antrean:
+```sql
+-- Menghapus antrean yang menggantung
+DELETE FROM `upload_queue` 
+WHERE `status` = 'processing';
+```
+
+#### Solusi C — Menghentikan Proses di OS (Linux)
+
+Jika proses FFmpeg atau yt-dlp masih berjalan di latar belakang dan memakan CPU:
+```bash
+# Cek apakah ada proses aktif
+ps aux | grep -E "yt-dlp|ffmpeg"
+
+# Hentikan paksa seluruh proses pengunduhan/transcoding
+sudo killall -9 yt-dlp
+sudo killall -9 ffmpeg
+```
+
+---
+
+### Masalah 2: Gagal Ambil / Parsing Metadata
+
+Saat memasukkan URL, sistem memanggil `yt-dlp --print-json` untuk mengekstrak informasi media sebelum mengunduhnya. Jika proses ini gagal, debug overlay akan muncul di layar.
+
+#### Langkah Pemeriksaan:
+
+1. **Verifikasi Binary Path**:
+   Pastikan executable `yt-dlp`, `ffmpeg`, dan `node` dapat ditemukan di server:
+   ```bash
+   which yt-dlp   # Harapan: /usr/local/bin/yt-dlp
+   which ffmpeg   # Harapan: /usr/bin/ffmpeg
+   which node     # Harapan: /usr/bin/node
+   ```
+2. **Sesuaikan Path di PHP**:
+   Verifikasi pencarian path binary pada metode `resolveBinary()` di trait `modules/transcoder/FfmpegUtils.php` (dipakai bersama `Uploader` & service transcoder).
+
+   > ⚠️ Konstanta path `HDD_BASE`/`HDD_VIDEO_DIR`/`HDD_THUMB_DIR` telah **dipindahkan** ke `auth/settings.php` sebagai `MEEL_HDD_*`. Konstanta transcoder (`FFMPEG_THREADS`, `DOWNLOAD_TIMEOUT`, dll.) kini di `modules/core/TranscoderBase.php`.
+3. **Uji URL Langsung di Terminal**:
+   Jalankan perintah berikut untuk melihat pesan error asli dari `yt-dlp`:
+   ```bash
+   yt-dlp --no-warnings --print-json "https://www.youtube.com/watch?v=VIDEO_ID"
+   ```
+
+---
+
+### Masalah 3: Masalah Cookies (Sign-in / Bot Detection)
+
+Platform video seperti YouTube sering kali memblokir akses otomatis dari server (Bot/Cloud Provider) dengan tantangan Captcha atau batasan login.
+
+> [!IMPORTANT]
+> Sistem membutuhkan kuki browser terkini yang disimpan dalam berkas `cookies.txt` di folder `temp/` proyek MEeL agar bisa mengunduh dengan sukses (file lama di root otomatis dimigrasikan).
+
+#### Cara Memperbarui Cookies:
+
+1. Buka browser Anda dan pasang ekstensi **Get cookies.txt LOCALLY** (Chrome/Firefox).
+2. Buka dan masuk (Sign-in) ke akun YouTube Anda.
+3. Klik ikon ekstensi dan pilih **Export / Download** cookies untuk domain youtube.com.
+4. Simpan berkas hasil download tersebut dengan nama `cookies.txt` lalu pindahkan ke folder `temp/` proyek MEeL (chmod `0600` diterapkan otomatis oleh aplikasi):
+   ```bash
+   cp /path/ke/download/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
+   sudo chown www-data:www-data /opt/lampp/htdocs/MEeL/temp/cookies.txt
+   ```
+
+---
+
+### Masalah 4: Kegagalan Transcoding Pasca-Download
+
+Terkadang file berhasil diunduh secara penuh, namun gagal saat dikonversi ke HLS (untuk video) atau Opus (untuk musik).
+
+#### Cara Mengatasi:
+
+1. **Periksa Sisa Ruang Penyimpanan**:
+   Transcoding membutuhkan sisa ruang minimal 2x dari ukuran video asli.
+   ```bash
+   df -h
+   ```
+2. **Periksa Izin Tulis Folder Staging (temp)**:
+   Pastikan folder `temp/` dapat ditulis oleh web server:
+   ```bash
+   sudo chmod -R 777 /opt/lampp/htdocs/MEeL/temp/
+   ```
+3. **Kurangi Beban CPU (CPU Throttling)**:
+   Jika server Anda mengalami crash atau restart akibat suhu tinggi saat transcoding, kurangi jumlah thread CPU yang dialokasikan untuk FFmpeg di berkas `modules/core/TranscoderBase.php` (diwarisi semua service transcoder):
+   ```php
+   // Ganti nilai dari 8 menjadi 4 atau 2 sesuai core CPU Anda
+   protected const FFMPEG_THREADS = 4;
+   ```
+
+   Cek jumlah core CPU: `nproc`

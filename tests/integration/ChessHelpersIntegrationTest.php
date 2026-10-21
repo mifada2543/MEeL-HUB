@@ -10,10 +10,8 @@ use PHPUnit\Framework\TestCase;
 
 class ChessHelpersIntegrationTest extends ChessTestCase
 {
-
     public function testRecentlyActiveUserIsOnline(): void
     {
-
         $this->conn->query(
             "UPDATE users SET last_activity = '" . meel_now() . "' WHERE id = " . DbTestHelper::REGULAR_USER_ID
         );
@@ -23,7 +21,6 @@ class ChessHelpersIntegrationTest extends ChessTestCase
 
     public function testStaleUserIsOffline(): void
     {
-
         $this->conn->query(
             "UPDATE users SET last_activity = '" . meel_now_ago(600) . "'
              WHERE id = " . DbTestHelper::REGULAR_USER_ID
@@ -34,7 +31,6 @@ class ChessHelpersIntegrationTest extends ChessTestCase
 
     public function testBoundaryJustUnderThresholdIsOnline(): void
     {
-
         $this->conn->query(
             "UPDATE users SET last_activity = '" . meel_now_ago(60) . "'
              WHERE id = " . DbTestHelper::REGULAR_USER_ID
@@ -50,7 +46,6 @@ class ChessHelpersIntegrationTest extends ChessTestCase
 
     public function testZeroIdIsOffline(): void
     {
-
         $this->assertFalse(chess_opponent_online($this->conn, 0));
     }
 

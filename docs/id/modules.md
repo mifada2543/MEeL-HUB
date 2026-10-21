@@ -7,10 +7,12 @@ Dokumentasi detail tentang arsitektur modul, class diagram, dan business logic l
 ## Daftar Isi
 
 - [Arsitektur Aplikasi](#arsitektur-aplikasi)
-- [Core Modules (`modules/`)](#core-modules-modules)
+- [Core Modules (`modules/core/`, `modules/media/`, `modules/exceptions/`, `modules/transcoder/`)](#core-modules-modulescore-modulesmedia-modulesexceptions-modulestranscoder)
 - [Media Pipeline](#media-pipeline)
 - [Autentikasi Flow](#autentikasi-flow)
-- [Upload & Transcoding Flow](#upload--transcoding-flow)
+- [26. Modularisasi JS/CSS](#26-modularisasi-jscss)
+- [27. Adaptive Aspect Ratio Player](#27-adaptive-aspect-ratio-player)
+- [28. Chat API](#28-chat-api)
 - [Arsitektur ProgressObserver](#arsitektur-progressobserver)
 - [Konvensi Keamanan Filesystem (tanpa @)](#konvensi-keamanan-filesystem-tanpa-)
 
@@ -59,7 +61,7 @@ modules/
 │   ├── Transcoder.php      # Facade download yt-dlp & transcoding → delegasi ke modules/transcoder/
 │   ├── TranscoderBase.php  # Base class: konstanta bersama, manajemen proses/PID, resolusi path
 │   ├── helpers.php         # Shim backward-compat → require helpers/main.php + auth/loader.php
-│   ├── helpers/            # Utilitas per domain: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php, settings.php
+│   ├── helpers/            # Utilitas per domain: main.php, storage.php, audio.php, url.php, metadata.php, text_upload.php, subtitle.php, upload.php, settings.php
 │   ├── Router.php          # MeelRouter — tabel rute front controller (routeFor/url/dispatch)
 │   ├── bootstrap.php       # Environment detection & error reporting
 │   ├── base_url.php        # Perhitungan base URL terpusat (meel_base_url_path)
@@ -74,6 +76,7 @@ modules/
 │   ├── RateLimiter.php     # File-based API rate limiter
 │   ├── SsrfGuard.php       # Validasi URL SSRF-safe
 │   ├── ValidatingProxy.php # Forward proxy SSRF-defense
+│   ├── ValidatingProxyProtocol.php # Aturan protokol proxy (parsing, penerusan, relay)
 │   └── helpers/            # authz.php, csrf.php, session.php, stream_auth.php, mfa.php, user.php
 ├── media/                  # Modul query media
 │   ├── MediaLibrary.php    # Query DB, pagination, BookRepository, BookUploader
@@ -84,6 +87,7 @@ modules/
 │   ├── PlaylistRepository.php # Query playlist & route slug playlist
 │   ├── MediaAdminRepository.php # Query metadata media untuk panel admin (edit video/music)
 │   ├── ProfileRepository.php # Query data profil (count video, music)
+│   ├── AdminFilteredRepository.php # Basis bersama untuk dua repository admin di bawah
 │   ├── AdminActivityRepository.php # Query & filter activity log untuk admin viewer
 │   └── AdminUploadQueueRepository.php # Query upload queue, stats & filter untuk admin viewer
 ├── exceptions/             # Class exception
@@ -140,6 +144,47 @@ query boolean-mode yang malformed jatuh ke hasil kosong, bukan error 500.
 
 **Class:** `MediaInteraction` — like/dislike dan hapus komentar.
 
+#### Tombol like/dislike (`partials/like_dislike.php`)
+
+Kontainer ini dirender dari **satu** partial, yang di-include oleh
+`music/watch.php`, `video/watch.php`, dan `controllers/api/like.php`.
+
+Itu penting karena kontainer diganti seluruhnya: tombolnya memakai
+`hx-swap="outerHTML"`, jadi apa pun yang dikirim server menjadi kontainer
+yang baru. Markup-nya dulunya ditulis tiga kali, dan ketiganya sudah
+melenceng — salinan di API masih memakai ikon `plus` dan teks "Playlist"
+padahal halamannya sudah `list-plus` dan "Simpan"; warna aksennya juga
+beda (`red-500` vs `red-600`, orange vs putih untuk dislike aktif). Yang
+basi justru yang menang, karena yang menjawab swap adalah API. Jadi begitu
+like diklik, bentuk tombolnya berubah di depan mata: kembali jadi plus polos
+bertuliskan "Playlist".
+
+Sekarang kedua sisi merender partial yang sama, jadi kontainer yang
+dimasukkan setelah swap identik byte-per-byte dengan yang sudah tampil.
+
+Partial menerima perbedaan-perbedaan itu sebagai data, bukan sebagai salinan
+kedua:
+
+| Variabel | Arti |
+|---|---|
+| `$like_dislike_media_id` | id media |
+| `$like_dislike_media_type` | `music` atau `video` — menentukan warna aksen dan apakah tombol simpan muncul |
+| `$like_dislike_state` | `''`, `like`, atau `dislike` |
+| `$like_dislike_likes` / `$like_dislike_dislikes` | pencacah |
+| `$like_dislike_csrf` | token CSRF untuk payload `hx-vals` |
+| `$like_dislike_rate_limit` | detik tersisa saat rate limiter menolak; `0` berarti normal |
+
+`LikeDislikePartialTest` menjaga agar salinannya tidak muncul lagi: testnya
+gagal kalau markup kontainer ada di lebih dari satu berkas.
+
+#### Aturan Balas Komentar
+
+| Aturan | Nilai |
+|---|---|
+| Validasi induk | `resolveParentId()` memeriksa induknya ada **dan** punya kolom media yang sama. Kalau tidak, `parent_id` diset `NULL` sehingga komentarnya menjadi komentar root — deterministik dan tetap terlihat. |
+| Kedalaman rantai | `MediaViewer::MAX_COMMENT_DEPTH` = 5. Melewati batas dipromosikan ke root, jadi satu orang tidak bisa membuat rantai tak terbatas hanya dengan memposting balasan ke balasan. |
+| Urutan & paginasi | `getComments()` memakai urutan `created_at DESC, id DESC` dan menerima parameter `$offset`. Dengan urutan lama (`created_at ASC` + `LIMIT 200`), komentar baru bisa terdorong keluar jendela dan tidak pernah muncul lagi. Komentar yang sudah terlanjur ditulis tidak dihapus. |
+
 ### 4. `modules/core/Uploader.php`
 
 **Class:** `Uploader` (menggunakan `FfmpegUtils` trait) — upload file lokal dengan:
@@ -158,6 +203,27 @@ Uploader, `EncodeService`, `DownloadService`, dan admin editor memakai fungsi gl
 - `meel_ffmpeg_encode_opus()` — satu-satunya jalur encode audio → Ogg/Opus
 - `meel_insert_music_row()` — satu-satunya jalur INSERT baris tabel `music`
 - `meel_magic_extension_ok()` — validasi magic bytes + ekstensi per jenis media
+
+`processVideo()` tidak lagi menerima argumen `$upload_dir`. Argumen itu tidak
+pernah dibaca, dan satu-satunya pemanggil mengirim `__DIR__ . "/"` ke sana.
+
+Kedua jalur upload kini orkestrator di atas helper privat, bukan satu metode
+panjang. Semua helper memakai satu konvensi: **kembalikan `null` untuk lanjut,
+atau kembalikan array hasil akhir untuk berhenti.**
+
+| Metode | Tanggung jawab |
+|---|---|
+| `assertVideoUploadAllowed()` / `assertMusicUploadAllowed()` | rate limit, batas upload bersamaan, cek ruang disk |
+| `inspectVideoCodecs()` | magic bytes, codec video, codec audio |
+| `buildVideoCleanName()` / `buildVideoThumbnail()` | nama bersih romaji, thumbnail dari user atau frame ffmpeg, sprite kecil |
+| `prepareVideoWorkFolder()` | folder unik di bawah lock, `/dev/shm` bila cukup ruang |
+| `runVideoHlsTranscode()` | pemanggilan ffmpeg untuk HLS |
+| `stageVideoSubtitle()` | subtitle `.srt`/`.vtt`, hanya bila transcode berhasil |
+| `moveVideoFilesToHdd()` | loop rename ke storage, di bawah move lock |
+| `insertVideoRecord()` | transaksi; pemanggil membersihkan berkas kalau gagal |
+| `validateMusicUpload()` / `stageMusicFile()` | ekstensi, magic bytes, ukuran, durasi |
+| `buildMusicThumbnail()` | thumbnail dari user atau satu frame dari audio |
+| `maybeTranscodeToOgg()` | encode ulang ke Ogg kecuali admin melewatinya |
 
 ### 5. `modules/core/Transcoder.php` — facade + layanan terpecah
 
@@ -217,10 +283,92 @@ Fitur (diwarisi bersama dari `TranscoderBase` + `FfmpegUtils`):
 - **Path library FFmpeg** — `proc_open()` env mengatur `LD_LIBRARY_PATH` secara eksplisit untuk mencegah FFmpeg hang ketika env parent process berbeda dari child
 - **Timeout transcode** — audio transcode memiliki batas 600 detik (`TRANSCODE_AUDIO_TIMEOUT`); HLS remux memiliki batas 120 detik; stream read menggunakan `stream_set_timeout(30)` untuk mendeteksi pipe stall
 - **Validasi cache** — file transcode divalidasi berdasarkan `filesize > 10KB` DAN `duration ≥ 50%` dari durasi sumber untuk menolak file corrupt/stub
-- **Cek exit code FFmpeg** — `proc_close()` exit code diverifikasi; exit code non-zero di-log dengan 15 baris terakhir stderr dan status queue diatur ke `failed`
+- **Cek exit code FFmpeg** — `proc_close()` exit code diverifikasi; exit code non-zero di-log dengan 15 baris terakhir stderr dan status queue diatur ke `failed`. Baris queue juga ditandai `failed` kalau `proc_open()` gagal menjalankan ffmpeg sama sekali, atau ffmpeg keluar bersih tanpa menghasilkan file — sebelumnya kedua kasus jatuh ke bawah dan tercatat `completed`
 - **Sanitasi nama file** — regex whitelist (`[^a-zA-Z0-9_\x{3000}-\x{9fff}...]`) mempertahankan karakter CJK sambil mencegah path traversal
 - Cached directory size via `dir_size()`
 - Thumbnail sprite + VTT
+
+#### Alur internal `transcodeVideo()`
+
+`transcodeVideo()` dulunya satu metode 341 baris. Sekarang jadi orkestrator 71
+baris di atas beberapa helper privat, sehingga tiap langkah bisa dibaca dan
+diuji sendiri:
+
+| Langkah | Metode | Tanggung jawab |
+|---|---|---|
+| 1 | `prepareOutputDirectory()` | buat direktori shm, tolak mulai bila sisa RAM < 256 MB |
+| 2 | `purgeStaleArtifacts()` | buang output lebih tua dari 2 jam dan baris queue lebih tua dari 15 menit |
+| 3 | `loadTranscodeSource()` | ambil baris video, playlist HLS, segmen `.ts` terurut, durasi, total ukuran |
+| 4 | `enforceSourceQuota()` | batas non-admin 200 MB / 10 menit |
+| 5 | `claimTranscodeSlot()` | di bawah lock eksklusif: pakai cache yang valid, buang yang rusak, klaim marker, lalu `System::claimQueueSlot()` |
+| 6 | `writeConcatList()` | susun manifest concat ffmpeg dengan kutip tunggal di-escape |
+| 7 | `resolveAudioFormat()` | codec, bitrate, kelayakan thumbnail, metadata ID3 |
+| 8 | `buildFfmpegArgv()` | rakit array argv yang diteruskan ke `proc_open()` |
+| 9 | `runFfmpeg()` | jalankan proses, stream stderr, laporkan progres, tegakkan timeout |
+| 10 | `reportProgress()` | ubah penanda `time=` dari ffmpeg menjadi persentase |
+
+Semua helper privat memakai satu konvensi: **kembalikan `null` untuk lanjut, atau
+kembalikan array hasil akhir untuk berhenti**. `claimTranscodeSlot()` punya
+keadaan ketiga — `null` berarti "lanjutkan transcode", array berarti "cache hit
+atau kegagalan, berhenti di sini". Lock di langkah 5 dilepas dengan
+`try`/`finally`, bukan di tiga titik keluar yang terpisah.
+
+Dua hal dibuang, bukan dipindahkan:
+
+- **Builder perintah kedua yang tidak terpakai.** Kode lama merakit `$cmd`
+  (string shell) sekaligus `$tc_cmd` (array argv). Hanya `$tc_cmd` yang pernah
+  masuk ke `proc_open()`; `$cmd` dibangun lalu dibuang. Keduanya sudah lama tidak
+  sinkron — `$cmd` meminta `-c:v copy` sedangkan builder yang benar memakai
+  `-c:v mjpeg` — sehingga salinan yang tak terpakai itu jebakan bagi siapa pun
+  yang tanpa sengaja memperbaiki yang salah.
+- **`escapeshellarg()` pada string mati tersebut.** Setelah dihapus, berkas ini
+  tidak lagi menyusun string shell sama sekali; `TranscodeService` hanya
+  memanggil ffmpeg lewat array argv.
+
+`tests/unit/TranscodeArgvTest.php` mengikat invariant argv. Berkas ini ada karena
+pemecahan sempat memperkenalkan regresi: `use_thumb` hanya diinisialisasi
+di cabang `ogg` pada switch format, sehingga `mp3`/`m4a`/`flac` membaca variabel
+yang belum diinisialisasi dan diam-diam menghasilkan audio tanpa cover art. Test-nya
+memassert perilaku yang teramati (stream mana yang dipetakan, flag mana yang
+muncul), bukan menyalin ulang builder-nya.
+
+#### Finalisasi video di `DownloadService`
+
+`finalizeVideo()` dipecah menjadi beberapa langkah yang masing-masing punya
+satu tanggung jawab. Dua di antaranya perlu dicatat karena bentuknya menentukan
+betapa amannya langkah itu:
+
+**`runParallelFfmpeg()`** menjalankan beberapa proses ffmpeg sekaligus lalu
+mengawasi sampai semuanya selesai. Ini bagian yang paling rawan salah:
+kebocoran pipe, anak proses yang tidak pernah di-reap (zombie plus PID file
+yang tak pernah dihapus), dan jalur timeout yang meninggalkan ffmpeg berjalan
+di belakang.
+
+Dipisah dari `finalizeVideo()` pada T19, saat metodenya 268 baris dengan
+sembilan fase. Yang menentukan bentuknya: **ini tetap metode, bukan kelas
+baru** (`FfmpegProcess`). Semua hook yang dibutuhkan ber-`protected` di
+`TranscoderBase`, dan daftar anak proses (`$childProcesses`) adalah
+state per-instance yang dipindai `terminateAllProcesses()` saat shutdown.
+Kelas terpisah tidak bisa menjangkau itu tanpa melebarkannya jadi `public`
+atau memindahkan daftar anak ke collaborator bersama — dan dua-duanya jatuh
+persis di mekanisme yang tugasnya **mencegah** proses ffmpeg yatim ketika
+request mati di tengah transcode. Seam-nya dibiarkan: begitu ada harness uji
+yang bisa mengujinya ujung ke ujung, kelasnya bisa diekstrak tanpa menurunkan
+logikanya dari nol.
+
+**Pemindahan ke HDD + pencatatan database** dibungkus dalam satu transaksi,
+dan sifat pentingnya: kalau ada apa pun yang gagal di tengah, sistem TIDAK
+boleh tertinggal setengah jadi — file sudah pindah tapi baris database belum
+ada, atau sebaliknya. Karena itu `moveFile()` melempar, bukan mengembalikan
+`false`, dan `catch` melakukan rollback database **ditambah** pembatalan efek
+filesystem. Urutan pembatalannya penting dan tidak boleh dibalik:
+
+1. rollback transaksi (baris database tidak jadi ada)
+2. `rollbackFinalizeVideo()` (hapus folder target + thumbnail)
+3. hapus folder kerja
+
+`finalizeVideo()` sebagai pemanggil tidak perlu tahu detailnya — ia hanya
+perlu tahu berhasil atau tidak; pesan errornya sudah di-emit di dalam.
 
 ### 6. `modules/core/System.php`
 
@@ -299,8 +447,72 @@ Fungsi-fungsi dibungkus `function_exists()` guard dan tersebar di subfolder per 
 - `get_audio_format_label(string): string`
 - `get_audio_format_description(string): string`
 - `log_drive_operation(...)`
+- `meel_validate_text_upload(string $path, int $max_bytes = 2097152): bool` — Validasi berkas teks hasil unggah
 
-#### Konvensi penamaan thumbnail video
+#### Validasi berkas teks hasil unggah
+
+Lirik (`.lrc`, `.txt`) dan subtitle (`.vtt`, `.srt`) menerima jenis berkas yang
+sama: teks murni, maksimal 2 MB, tanpa byte NUL, dan tanpa tag PHP. Aturan itu
+dulu ditulis dua kali — satu di `helpers/lyrics.php`, satu di
+`helpers/subtitle.php` — dengan badan fungsi yang identik byte per byte. Dua
+salinan aturan keamanan berarti salah satunya bisa melenceng sementara yang
+lain sudah diperketat.
+
+Kini aturannya ada di `meel_validate_text_upload()` di
+`modules/core/helpers/text_upload.php`. `validate_lyrics_file()` dan
+`validate_subtitle_file()` menjadi pembungkus tipis, jadi semua pemanggil
+lama tetap bekerja tanpa perubahan. `helpers/main.php` memuat berkas baru itu
+sebelum keduanya. `TextUploadValidationTest` mengunci bahwa pembungkus dan
+aturan bersama selalu selaras.
+
+#### Titik muat helper penyimpanan
+
+`modules/core/helpers/storage.php` sengaja tetap ada meski isinya nyaris
+kosong: `main.php` memuatnya dengan satu baris, dan hampir 50 berkas di luar
+tests/ memanggil fungsi-fungsinya. Memecah titik muat itu jauh lebih berisiko
+daripada manfaatnya.
+
+Isinya sudah dipecah per domain, mengikuti konvensi folder ini:
+
+| Berkas | Isi | Fungsi |
+|---|---|---:|
+| `storage_paths.php` | base path, thumbnail, PID, guard mount | 14 |
+| `storage_disk.php` | kapasitas disk, cache file, audit log | 8 |
+| `storage_xsendfile.php` | deteksi & header X-Sendfile | 11 |
+| `storage_stream.php` | validator cache + serving media | 9 |
+
+Urutan `require` tidak boleh diacak, karena mengikuti arah ketergantungan:
+`paths` → `disk` → `xsendfile` → `stream`. PHP menunda definisi fungsi sampai
+berkas selesai dibaca, jadi urutan hanya penting untuk efek samping saat
+muat — satu-satunya efek samping itu blok `MEEL_HDD_CHECKED` di
+`storage_paths.php`. Semua definisi tetap dibungkus `function_exists()`, jadi
+berkas aman dimuat berkali-kali.
+
+#### Helper ekspor data (CSV, JSON, SpreadsheetML)
+
+`admin/activity_log.php` dulunya punya dua blok ekspor dan total enam
+definisi pemetaan baris yang identik: preamble XML SpreadsheetML, closure
+`$xls_cell`, header antrean unggah, serta pemetaan enam kolom baris antrean.
+Konsekuensinya bukan cuma berkas panjang — kalau satu kolom diubah, ada lima
+tempat lain yang harus ikut berubah dan tidak ada yang memberi tahu kalau
+lupa. Ekspor CSV bisa diam-diam punya kolom berbeda dari ekspor JSON.
+
+Yang dikumpulkan di `modules/core/helpers/export.php` adalah bentuk, bukan isi
+data: daftar kolom milik tiap dataset tetap didefinisikan di halaman yang
+memakainya, karena itu domain data, bukan utilitas.
+
+Dua perbedaan semantik yang harus dijaga:
+
+- `meel_export_values()` memakai `??` untuk kolom yang punya `default` — kunci
+  yang tidak ada **dan** kunci bernilai `null` sama-sama menghasilkan
+  default. Kolom tanpa `default` meneruskan null apa adanya.
+- `meel_export_map()` untuk kolom bertipe `int?` membaca nilai mentah, bukan
+  hasil `??`. Kalau `default` ikut diterapkan lebih dulu, null berubah jadi
+  `''` lalu jadi `0`: JSON yang tadinya `"user_id": null` tiba-tiba
+  melaporkan `"user_id": 0`. Null berarti "tidak diketahui", 0 berarti
+  "user 0".
+
+#### Penamaan thumbnail video
 
 Aturan ini berlaku di `Uploader.php` dan dipakai ulang di mana pun nama
 varian perlu diturunkan:
@@ -367,6 +579,29 @@ File dengan **prefix tak dikenal** dihapus bila lebih tua dari 1 hari (86400 det
 > dihapus dan `temp/cache/` tumbuh tanpa batas. Sekarang flag-nya mencatat
 > "apakah ada prefix yang cocok" secara eksplisit, sehingga fallback benar-benar
 > berjalan.
+
+**Bagaimana TTL-nya sebenarnya diukur.** Keluarga cache tidak sepakat soal key
+waktu: `media_stats_` dan `server_stats_info` menulis `ts`, `dirsize_` dan
+`xsendfile_roots` menulis `time`, `admin_orphans` menulis `checked_at`. Karena
+itu key-nya dicari berurutan, dan file yang tidak punya satu pun key itu jatuh
+ke waktu modifikasi supaya tidak ada cache yang menggantung selamanya.
+
+> **Shortcut yang diam-diam merusak seluruh tabel.** Pemeriksaan kedaluwarsa
+> dulu membaca `meel_read_cache_file($path, 0, [], '')`, dan helper itu
+> langsung mengembalikan `null` begitu TTL-nya `0` — artinya "belum kedaluwarsa"
+> dibaca sebagai "sudah kedaluwarsa". Akibatnya **semua** file ber-prefix yang
+> dikenal dihapus di setiap sweep, termasuk yang baru saja ditulis. Cache tidak
+> pernah berlaku: statistik, ukuran direktori, dan daftar root xsendfile
+> dihitung ulang di setiap request. Panggilan itu dihapus, dan pencarian key
+> yang ditulis sebagai fallback-nya — dan tidak pernah terjangkau — kini jadi
+> satu-satunya jalur.
+
+**Di mana cache berada.** Kolektor mencari direktori lewat
+`meel_media_cache_dir()`, helper yang sama dengan yang dipakai aplikasi.
+Dulu ia punya salinan sendiri yang hanya melihat konstanta
+`MEEL_MEDIA_CACHE_DIR` dan mengabaikan environment variable dengan nama yang
+sama — jadi deployment yang mengatur cache lewat environment menulis ke satu
+direktori sementara sweeper membersihkan direktori lain.
 
 #### Guard keamanan orphan cleaner (`controllers/admin/admin_actions.php`)
 
@@ -446,6 +681,34 @@ function getMecabPath(): string;                         // MeCab binary resolve
 
 Bootstrap terpusat: auto-detect `MEEL_ENV`, konfigurasi error reporting per environment, set `MEEL_BASE_URL`, default timezone.
 
+#### Jam aplikasi
+
+Zona waktu diset **tanpa syarat** — `date_default_timezone_set()` jalan apa pun
+yang kata `php.ini`. Dulu ada penjaga `if (!ini_get('date.timezone'))`, tetapi
+default PHP untuk directive itu adalah "UTC", jadi `ini_get()` selalu
+mengembalikan "UTC" dan penjaga itu tidak pernah jalan. Hasilnya, jam aplikasi
+berbeda antar SAPI: CLI memakai UTC, Apache memakai Asia/Jakarta.
+
+ itu penting karena MySQL mengonversi kolom `TIMESTAMP` memakai `time_zone`
+**sesi** saat membacanya. Jadi nilai yang ditulis sebagai string jam PHP lalu
+dibaca kembali sebagai string jam MySQL akan melewati geseran tujuh jam setiap
+kali kedua sisi berbeda. Gejalanya: hitung mundur MEeLCoin yang kembali ke
+lima jam tiap refresh, dan indikator "online" di panel admin yang bertentangan
+dengan kenyataan.
+
+Dua aturan menjaga jam tetap satu:
+
+| Aturan | Di mana |
+|---|---|
+| PHP selalu jalan di zona waktu aplikasi (`MEEL_TIMEZONE`, default `Asia/Jakarta`) | `modules/core/bootstrap.php` |
+| `time_zone` sesi MySQL disejajarkan dengan offset PHP di setiap koneksi | `auth/config.php` |
+
+Dengan keduanya, timestamp yang ditulis PHP lalu dibaca MySQL adalah instants
+yang sama, dan kode yang membandingkan kolom database dengan jam PHP
+(`strtotime($row['last_activity'])`) jadi benar. `DateTimeSourceTest` menjaga
+kedua aturan itu, dan menyimpan daftar eksplisit berkas yang memang sengaja
+mencampur jam database dengan jam PHP.
+
 ### 15a. `modules/core/base_url.php`
 
 Perhitungan **base URL terpusat** — satu-satunya sumber kebenaran untuk path base URL proyek (relatif terhadap `DOCUMENT_ROOT`):
@@ -505,6 +768,25 @@ Shortcut keyboard diimplementasikan dalam JavaScript dan di-guard oleh `assets/j
 > lalu `Enter` atau `Spasi` menjalankan pilihan yang disorot.
 > Dijaga oleh `window` listener fase `capture` di `assets/js/shared/resume-modal.js`
 > yang beating Plyr (`window` bubble) dan `mini-player.js` (`window` capture).
+
+**Ikon setelah swap htmx (`assets/js/shared/htmx-lucide.js`):**
+
+Ikon lucide adalah elemen `<i data-lucide="...">` yang diganti Lucide
+menjadi SVG, dan penggantian itu hanya terjadi saat `lucide.createIcons()`
+dijalankan. Setiap fragmen yang dikirim server berisi markup
+`<i data-lucide>` apa adanya, jadi ada yang harus merender ulang setelah
+swap — itulah yang dilakukan berkas ini, pada `htmx:afterOnLoad`.
+
+Listener-nya didaftarkan di `document`, **bukan** di `document.body`. Di
+beberapa halaman (`music/watch.php`, `books/index.php`) berkas ini dimuat di
+dalam `<head>`, dan saat itu `document.body` masih `null`; listener yang
+didaftarkan di `document.body` tidak akan pernah terpasang, dan setiap swap
+berikutnya akan meninggalkan ikon apa adanya tanpa galat apa pun. Gejalanya:
+ikon muncul lagi setelah refresh, lalu menghilang lagi begitu like/dislike
+diklik.
+
+`partials/link.php` memasang stub pengantre untuk `window.lucide` sebelum
+`lucide.js` termuat, jadi panggilan yang terlalu dini tidak hilang.
 
 **Music Watch (`assets/js/music/watch/`):**
 
@@ -567,21 +849,15 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 
 > ⚠️ **Baca dulu kalau pernah melihat nomor migrasi yang berbeda.**
 >
-> Nomor **v1–v15 adalah riwayat lama** yang sudah di-*redunisasi* (direset)
-> pada 17 Sep 2026 — seluruhnya kini **dikonsolidasikan menjadi v1**, tanpa
-> menghilangkan fungsinya. Jadi:
+> Nomor **v1–v15 adalah riwayat lama** yang sudah di-*redunisasi* pada
+> 17 Sep 2026 dan kini terkonsolidasi menjadi **v1** — v13 (MEeLCoin), v14
+> (index `view_logs`), dan v15 (tabel `user_notifications`) semuanya tercakup
+> di dalamnya. Nomor **v2 ke atas dihitung ulang dari nol** setelah reset, dan
+> baris `db_version` dibersihkan menjadi `{1..5}`; loop hanya mengeksekusi
+> versi `> MAX(db_version)`.
 >
-> - **v1 sekarang bukan "migrasi pertama" dalam arti kronologis.** Ia adalah
->   hasil konsolidasi legacy v1–v15 (v13 = MEeLCoin, v14 = index `view_logs`,
->   v15 = tabel `user_notifications` — semuanya kini tercakup di v1).
-> - Nomor **v2 ke atas dihitung ulang dari nol** setelah reset: entri yang
->   sempat bernomor 16/17 (2 Okt) diganti menjadi **v2/v3**, lalu v4/v5
->   menyusul sebagai migrasi baru sungguhan.
-> - Riwayat lama **tidak lagi dipakai**; baris `db_version` dibersihkan menjadi
->   `{1..5}`. Loop hanya mengeksekusi versi `> MAX(db_version)`.
->
-> Kalau kamu menemukan docs atau kode yang menyebut "Migration v9" atau
-> "migration v15" sebagai **versi aktif**, itu angka legacy — bukan bug.
+> Jadi dokumen atau kode yang menyebut "Migration v9" atau "v15" sebagai
+> **versi aktif** memakai angka legacy — bukan bug.
 
 **v1 — konsolidasi skema (hasil redunisasi legacy v1–v15)**
 
@@ -645,6 +921,14 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 > ulang dari `site_settings`, dan admin mengubah harga setelah user upload,
 > jumlah yang dikembalikan akan meleset — user mendapat kurang atau lebih.
 > `coin_cost` merekam **angka saat transaksi terjadi**, jadi hasilnya selalu benar.
+
+Refund-nya sendiri berjalan dalam satu transaksi: baris antrean dikunci dengan
+`FOR UPDATE`, `MeelCoin::refund()` dijalankan, dan baru setelah itu
+`coin_refunded` di-set ke 1. Langkah yang gagal membatalkan seluruh
+transaksi — jadi user tidak mungkin menerima koinnya kembali tanpa penanda
+terpasang, atau penanda terpasang tanpa koin yang kembali.
+`refundQueueRow()` memegang transaksinya; kunci dan penanda dipisah jadi
+helper sendiri supaya urutannya tetap terbaca.
 
 Catatan migrasi:
 
@@ -761,9 +1045,182 @@ statis (HTML/JS murni, tanpa backend) + Chess (PHP multiplayer) + Rhythm
 > (23 tabel) maupun `database/migrate.php`. Atau gunakan
 > `install.sh` yang menawarkan instalasi arcade secara interaktif.
 
+### 22. `modules/core/Router.php` — front controller
+
+`router.php` menerjemahkan path permintaan lalu menyerahkannya ke
+`MeelRouter::dispatch()`. Tabel rutenya dua konstanta: `ROUTES` untuk halaman
+inti dan `OPTIONAL_ROUTES` untuk modul yang bisa dimatikan (`arcade`).
+
+`dispatch()` dulu memuat seluruh cabangnya di satu fungsi 50 baris, dengan
+`exit` di hampir setiap cabang. Sekarang ia terbaca sebagai rangkaian
+keputusan pendek, masing-masing di tempatnya:
+
+| Langkah | Di mana | Apa yang diputuskan |
+|---|---|---|
+| Alias profil | `profileAliasRedirect()` | `/profile?u=<nama>` dan `/profile/<nama>/<tab>` sama-sama menunjuk `/profile/<nama>` dengan tab sebagai query. Murni — mengembalikan URL tujuan atau `null` |
+| Pencarian rute | `routeFor()` | tabel eksak dulu, lalu rute opsional, lalu pola slug (`music/<slug>`, `profile/<nama>`, `admin/chat/<nama>`) |
+| Penjaga opsional | `guardOptionalRoute()` | modul halaman yang nonaktif dialihkan ke hub, modul API yang nonaktif menjawab JSON 404 |
+| Menjalankan handler | `runHandler()` | menyetel `SCRIPT_NAME`, pindah ke direktori handler supaya path relatifnya bekerja, lalu me-`include` |
+
+`profileAliasRedirect()` yang murni justru inti dari ini: aturan pengalihan
+bisa diuji tanpa mengirim permintaan. `RouterDispatchTest` menguji itu, dan
+sekaligus memastikan setiap rute di kedua tabel menunjuk berkas yang benar-benar
+ada — rute yang menunjuk berkas hilang menggagalkan seluruh halaman dengan 500
+yang tidak menjelaskan apa pun.
+
+Satu rute seperti itu ada. `/arcade/rhythm/editor` menunjuk
+`arcade/rhythm/editor/index.php`, direktori yang sudah tidak ada sejak editor
+dipindah ke `arcade/rhythm/manage/`. Meminta URL itu menghasilkan
+"500 — Gagal mengubah working directory." Sekarang rute tersebut menunjuk
+`arcade/rhythm/manage/edit.php`, berkas yang sama sudah dituju dua URL editor
+lainnya.
+
+#### Tabel Rute Utama
+
+Sejak migrasi routing, semua URL publik menggunakan URL bersih (tanpa ekstensi `.php`). Request masuk ke front controller `router.php` yang me-resolve path ke file handler melalui tabel rute di `modules/core/Router.php`.
+
+**Cara kerja:**
+
+```
+Request: /MEeL/music/beranda?format=ogg
+  → .htaccess: semua request non-file/non-dir di-rewrite ke router.php (kecuali media upload/)
+  → modules/core/Router.php: routeFor('music/beranda') → handler 'music/index.php'
+  → require music/index.php dengan query string asli
+```
+
+**Aturan `.htaccess` (root):**
+- Semua URL bersih (contoh `video/watch`, `music/beranda`, `admin/stats`) → `router.php`
+- File `.php` lama (contoh `video/watch.php`, `music/index.php`, `upload_advanced.php`,
+  `admin/cookies.php`, `admin/analys`, `admin/content.php`, `admin/content`) → **301** ke URL bersih (query terjaga, bookmark lama tetap jalan)
+- Varian trailing-slash (contoh `/video/upload/`) → **301** ke non-slash
+- `DirectorySlash Off` di direktori media (`video/upload`, `music/upload`, `books/upload`)
+  agar `/video/upload` dilayani router (bukan redirect mod_dir)
+
+**Skema `beranda`:** tiap modul punya halaman utama `beranda`
+(`video/beranda`, `music/beranda`, `books/beranda`, `drive/beranda`, `admin/beranda`,
+`arcade/beranda`). Halaman `index.php` lama tetap jalan sebagai alias.
+
+**Tabel rute utama (`modules/core/Router.php`):**
+
+| URL | Handler (file) |
+|---|---|
+| `/`, `/beranda` | `index.php` (hub) |
+| `/introduction`, `/update`, `/upload`, `/transcode` | `introduction.php`, `update.php`, `upload_advanced.php`, `transcode.php` |
+| `/err`, `/err/offline` | `err/index.php` (dinamis `?code=`), `err/offline.php` (PWA) |
+| `/video/beranda`, `/video/watch`, `/video/search`, `/video/load-more`, `/video/upload`, `/video/stream` | `video/*.php` |
+| `/music/beranda`, `/music/watch`, `/music/search`, `/music/load-more`, `/music/upload`, `/music/playlist`, `/music/playlist-action`, `/music/stream`, `/music/file` | `music/*.php` |
+| `/music/<nama-playlist>` | `music/view_playlist.php` (route slug playlist — lihat di bawah) |
+| `/books/beranda`, `/books/read`, `/books/read-pdf`, `/books/search`, `/books/upload`, `/books/file` | `books/*.php` |
+| `/drive/beranda`, `/drive/upload`, `/drive/delete`, `/drive/download`, `/drive/stream` | `drive/*.php` |
+| `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profil + grid channel publik, tab via query), `profile/channel_more.php` (fragment HTMX), `profile/edit-video.php` (pemilik, non-admin), `profile/edit-music.php` (pemilik, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
+| `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat` | `admin/*.php` (edit-video/edit-music khusus admin), `controllers/admin/*.php` |
+| `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
+| `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` *(ekstensi — memerlukan folder arcade terpasang)*. Ketiga URL editor (`/arcade/rhythm/editor`, `/arcade/rhythm/edit`, `/arcade/rhythm/manage/edit`) menuju berkas yang sama, `arcade/rhythm/manage/edit.php` |
+| `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) *(ekstensi)* |
+| `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/notification`, `/api/chat`, `/api/meelcoin` | `controllers/api/*.php` |
+| `/system/mfa` | `controllers/system/mfa.php` |
+
+> **Route slug playlist:** playlist punya URL berbasis nama — `/music/<nama-playlist>`
+> (contoh `/music/leo-need`). Slug dibuat dari nama playlist (`playlistSlug()`),
+> dijamin unik per user (`getUserPlaylistRoutes()`); nama non-ASCII jatuh ke `playlist`,
+> nama bentrok dengan rute modul atau slug lain diberi akhiran `-<id>`. Route eksak
+> (`beranda`, `watch`, dll.) selalu menang; selain itu dianggap slug playlist
+> (`resolvePlaylistSlug()`). URL lama `music/playlist?id=X` tetap didukung.
+
+
+### 23. `modules/auth/` dan konfigurasi bersama
+
+`auth/config.php` di-include setiap halaman: ia memuat kredensial dari
+`auth/settings.php`, membuka koneksi database, memulai sesi, dan menyetel
+header keamanan.
+
+Jalur gagalnya dulu melapor lewat `fwrite(STDERR, ...)`. `STDERR` hanya ada di
+SAPI CLI dan CGI — di Apache konstanta itu tidak ada, jadi koneksi database
+yang gagal berubah menjadi "Undefined constant STDERR", yaitu fatal yang
+menutupi pesan yang justru ingin disampaikan. Berkas itu sekarang memakai
+`error_log()`, yang jalan di semua SAPI dan tetap menulis ke stderr di CLI.
+
+`WebSafeErrorOutputTest` menjaga supaya ini tidak kembali: sebuah berkas
+hanya boleh memakai `STDERR`, `STDOUT`, atau `STDIN` kalau ia hidup di
+direktori perkakas CLI, menjaga dirinya sendiri dengan pemeriksaan `PHP_SAPI`
+yang menghentikan eksekusi, atau tidak di-include berkas mana pun.
+
+### Editor Media Admin (musik + video)
+
+`admin/edit-music.php` dan `admin/edit-video.php` tadinya salinan satu sama
+lain: sekitar 50% logika PHP mereka identik, termasuk blok unggah thumbnail
+beserta daftar MIME, batas ukuran, dan pemanggilan ffmpeg. Graph
+`codebase-memory` menunjukkan kedua berkas berubah bersama 20 kali (coupling
+0,87) — ciri khas salinan yang seharusnya disatukan.
+
+Bagian yang sama sekarang tinggal di satu tempat:
+
+| Berkas | Tanggung jawab |
+|---|---|
+| `admin/includes/media_editor.php` | `meel_editor_media_config()` — label, nama berkas default, dan wording error per jenis media; `meel_editor_context_redirect()` — pengalihan admin/profil; `meel_editor_upload_thumbnail()` — seluruh jalur unggah |
+| `admin/partials/edit_media_uploader_card.php` | kartu "diunggah oleh" di sidebar |
+| `admin/partials/edit_media_stats.php` | deretan views/likes/dislikes |
+| `admin/edit-music.php` | bagian khusus musik: artis, album, seksi lirik, penulisan database |
+| `admin/edit-video.php` | bagian khusus video: unggah subtitle, penulisan database |
+
+`admin/edit-music.php` mengecil dari 427 ke 357 baris dan `admin/edit-video.php`
+dari 468 ke 398. Panggilan shell ke ffmpeg berpindah dari dua berkas ke satu,
+jadi ada tepat satu tempat ter-audit tempat ffmpeg dipanggil.
+
+Satu perbedaan sengaja dipertahankan. Kalau unggah thumbnail gagal, halaman
+musik tetap menyimpan judul dan deskripsi, sedangkan halaman video tidak
+menyimpan apa pun. Asimetri itu muncul dari dua salinan yang lama melenceng
+berbeda-bedanya; ini bukan efek penyatuan, dan mengubahnya adalah keputusan
+produk, bukan refactor. `AdminEditorSharedTest` menguncinya supaya tidak
+berubah tanpa sengaja.
+
+### Repository admin — basis bersama
+
+`AdminActivityRepository` dan `AdminUploadQueueRepository` menopangi dua tab
+di admin activity log viewer. Query mereka dulunya salinan satu sama lain:
+filter waktu, pencarian, hitung, halaman, ekspor, dan pembersihan identik.
+Yang benar-benar berbeda cuma nama tabel, alias-nya, dan dua kolom yang
+disaring — dan salinan yang tertinggal satu perubahan query tetap melayani
+hasil basi tanpa itu terlihat.
+
+Query bersama sekarang ada di `modules/media/AdminFilteredRepository.php`.
+Masing-masing subclass hanya menyediakan bagian yang memang berbeda:
+
+| Subclass | Tabel | Alias | Filter utama | Kolom pencarian |
+|---|---|---|---|---|
+| `AdminActivityRepository` | `activity_log` | `al` | `action` | `u.username`, `al.ip_address` |
+| `AdminUploadQueueRepository` | `upload_queue` | `uq` | `status` (dibatasi `processing`, `completed`, `failed`) | `u.username`, `uq.url` |
+
+Pembatasan status itu cocok dengan empat opsi yang ditawarkan UI admin;
+`pending` sengaja tidak termasuk. Status di luar daftar itu berarti "tanpa
+filter status", bukan "tanpa baris" — kalau tidak, memfilter nilai tak
+dikenal membuat tab terlihat kosong tanpa alasan yang jelas.
+
+Yang tetap di masing-masing subclass: `getDistinctActions()`, `getWeeklyStats()`
+dan `clearAll()` untuk activity log; `getStats()` untuk antrean.
+
+`AdminFilteredRepositoryTest` dan
+`AdminFilteredRepositoryIntegrationTest` mengunci ini: query bersama tidak
+boleh disalin balik ke subclass, tiap repository harus tetap menunjuk tabelnya
+sendiri, dan perilaku filter keduanya harus tetap berbeda.
+
 ### Admin Activity Log Viewer
 
-`admin/activity_log.php` — viewer audit trail dengan 3 tab:
+`admin/activity_log.php` — viewer audit trail dengan 3 tab. Berkas induknya
+memegang pemrosesan request (324 baris); markup tiap tab hidup di partial
+sendiri di `admin/partials/`:
+
+| Berkas | Isi |
+|---|---|
+| `admin/activity_log.php` | handler POST, export, pemilih tab — 402 baris |
+| `admin/partials/activity_log_log.php` | tab activity |
+| `admin/partials/activity_log_views.php` | tab statistik view |
+| `admin/partials/activity_log_uploads.php` | tab antrean unggah |
+
+Partial itu berada di direktori yang bisa diakses lewat web, jadi masing-masing
+mengembalikan 403 alih-alih berjalan tanpa koneksi database.
+`admin/partials/live-monitor-manage.php` adalah kasus sebaliknya: diambil lewat
+AJAX, jadi ia memuat dirinya sendiri dan memeriksa peran admin.
 
 **Tab Activity** (tema biru-600):
 - Filter berdasarkan tipe aksi, username/IP, rentang waktu
@@ -924,8 +1381,8 @@ class MeelCoin {
 |---|---|
 | Potong saldo | `SET meelcoin = meelcoin - ? WHERE id = ? AND meelcoin >= ?` — 0 baris terpengaruh = saldo kurang |
 | Refund | `SET meelcoin = meelcoin + ?` (ditambah dari nilai DB terkini) |
-| Refill | Siklus per-user: grant dibatasi `LEAST(max, meelcoin + refill)` di DB; saat saldo penuh `meelcoin_last_refill` **di-reset** supaya refill tidak menumpuk dan tidak menutup potongan upload berikutnya |
-| Countdown | Mengikuti `meelcoin_last_refill` user tersebut; `0` = siap refill |
+| Refill | Siklus per-user: grant dibatasi `LEAST(max, meelcoin + refill)` di DB. Jendela refill dimulai saat saldo **turun di bawah maksimum** (yaitu saat spend), jadi refill tidak bisa menumpuk dan tidak menutup potongan upload berikutnya |
+| Countdown | Mengikuti `meelcoin_last_refill` user tersebut, diukur dengan `TIMESTAMPDIFF(..., NOW())` — jam database di kedua sisi, jadi nilainya tidak melenceng terhadap waktu server. `0` = siap refill |
 | Biaya | Wajib ≥ 1 (ditegakkan panel admin). Biaya ≤ 0 → alur coin dilewati di runtime |
 | Admin | Dikecualikan dari pemotongan (`$is_admin`) dan dari dropdown penyesuaian manual |
 | Refund `upload_advanced.php` | Hanya untuk sentinel gagal eksplisit (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); hasil tak dikenal tidak direfund + `error_log` |
@@ -956,6 +1413,27 @@ Upload → FFmpeg Transcode → HLS (.m3u8 + .ts)
                                 ↓
                           DB Insert
 ```
+
+#### Kartu video (`video/cards.php`)
+
+Satu berkas, dua fungsi, dan keduanya **tidak bisa ditukar**:
+
+| Fungsi | Dipakai di |
+|---|---|
+| `meel_render_video_card()` | kartu grid di beranda/library video |
+| `meel_render_video_rec_card()` | kartu sidebar rekomendasi di `video/watch.php` |
+
+Pola ini sengaja meniru `music/cards.php`. Markup sidebar sebelumnya disalin
+mentah di dua tempat (`video/watch.php` dan `video/search_video.php`), dan dua
+berkas terpisah dengan `include` hanya memindahkan kontrak implisit "isi
+variabel ini dulu sebelum include" ke tempat lain — variabelnya tetap bocor ke
+scope pemanggil. Fungsi membuat kontraknya eksplisit lewat argumen.
+
+Dua sumber data memberi nama kolom berbeda untuk username yang sama:
+`MediaViewer::getRecommendations()` menyelect `u.username AS uploader`,
+sedangkan `MediaLibrary::searchVideo()` menyelect
+`u.username AS uploader_name`. Dua-duanya `users.username`, jadi di sini
+keduanya dibaca.
 
 ### Audio Pipeline
 
@@ -1168,6 +1646,23 @@ return ['base.css', 'cards.css', 'fullscreen.css', 'glow.css', 'layout.css',
         'mini-player.css', 'navbar.css', 'player.css', 'seek.css', 'toast.css'];
 ```
 
+#### Bundle CSS per modul
+
+`scripts/build-css-bundle.php` menggabungkan file-file yang terdaftar di
+`manifest.php` menjadi satu `assets/css/<module>/bundle.css`.
+
+- **Manifest tetap daftar utama.** Satu kebenaran; file asli tidak dihapus,
+  jadi halaman yang belum memakai bundle tetap jalan.
+- **Urutan file dijaga persis** seperti di manifest, karena urutan CSS
+  menentukan kaskade — `light-theme.css` harus tetap paling akhir.
+- **Bundle tidak di-commit.** `assets/css/*/bundle.css` ada di `.gitignore`,
+  jadi clone baru otomatis jatuh ke daftar file individual.
+
+```bash
+php scripts/build-css-bundle.php --dry-run   # lihat hasilnya tanpa menulis
+php scripts/build-css-bundle.php
+```
+
 ### Loader Dinamis
 
 JavaScript dimuat secara dinamis oleh `main.js` di setiap halaman modul. File-file JS di-load berurutan sesuai dependency:
@@ -1317,10 +1812,18 @@ $tc = new Transcoder($conn, $uid, function (string $stage, array $data): void {
 | `sprite_progress` | `['pct' => int, 'label' => ?string]` | Progress sprite/VTT |
 | `done` | `['title' => string, 'url' => string]` | Video selesai difinalisasi |
 | `done_transcode` | `['title' => string, 'download_link' => string]` | Transcode audio selesai |
-| `redirect` | `['url' => string]` | Navigasi browser (music → `post_encode.php`) |
 | `error` | `['message' => string]` | Error fatal yang ditampilkan ke user |
 
-### Jaminan
+Tidak ada stage `redirect`. Observer versi lama punya case `redirect` yang
+kosong untuk navigasi browser, tapi tidak pernah ada yang memancarkannya —
+navigasi musik lewat string berawalan `REDIRECT:` yang ditangani di
+`upload_advanced.php`, bukan lewat event progres. Case itu sudah dihapus.
+
+Tiap stage ditangani method private sendiri, yang dijangkau lewat peta
+`BrowserProgressObserver::STAGE_HANDLERS`. `onProgress()` hanya mencari
+handler-nya, jadi stage yang dipancarkan tapi tak terpetakan akan hilang
+diam-diam; `BrowserProgressObserverTest` membaca sumber transcoder dan
+memastikan setiap stage yang dipancarkan punya handler.
 
 **Jaminan:**
 - Exception observer ditangkap dan di-log di dalam `emit()` — tidak pernah merambat ke pipeline media (tidak ada proses yatim atau file setengah pindah)

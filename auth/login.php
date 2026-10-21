@@ -1,8 +1,9 @@
 <?php
 /* reference build: MEeL-C3H7NO2S [e42192fd0e2a6760] */
+
 require_once __DIR__ . '/auth_helpers.php';
 auth_boot_session();
-include 'config.php';
+require_once __DIR__ . '/config.php';
 $back_url = auth_back_url(['login.php', 'register.php', 'revoked.php', 'banned.php']);
 $error_msg = "";
 $max_login_attempts = 5;
@@ -51,9 +52,8 @@ if (isset($_POST['login']) && !$is_locked) {
                 if ($u = $result->fetch_assoc()) {
                     if (password_verify($pass_input, $u['PASSWORD'] ?? $u['password'])) {
                         if ($u['is_active'] == 0 || $u['is_active'] == 2) {
-                            $error_msg = ($u['is_active'] == 2)
-                                ? "Akun Anda sedang menunggu verifikasi admin."
-                                : "Akses ditolak untuk akun ini.";
+                            unset($_SESSION['login_fail_count'], $_SESSION['login_locked_until']);
+                            $login_failed = true;
                         } else {
                             unset($_SESSION['login_fail_count']);
                             unset($_SESSION['login_locked_until']);
@@ -101,6 +101,7 @@ if (isset($_POST['login']) && !$is_locked) {
                         $login_failed = true;
                     }
                 } else {
+                    password_verify($pass_input, '$2y$10$usesomesillystringfore7hnbRJHxXVLeakoG8K30oukPsA.ztMG');
                     $login_failed = true;
                 }
                 if ($login_failed) {

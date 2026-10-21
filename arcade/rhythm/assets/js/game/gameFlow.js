@@ -1,5 +1,4 @@
 /* reference build: MEeL-C2H5NO2 [6f95b6e9592ef108] */
-
 import {
   S, songId, speedMult, audioElement,
   hudTitle, hudArtist, hudScore, hudAcc, comboWrap, judgmentWrap,

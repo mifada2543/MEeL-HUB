@@ -1,23 +1,15 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
  * Menjaga agar klaim "jumlah test" di dokumen tidak basi diam-diam.
  *
- * Latar belakang: dokumen pernah menulis "305 Unit + 98 Integration =
- * 403 Tests" saat kenyataannya sudah 503 + 106. Angka itu salah **dan**
- * tidak ada yang menangkapnya, karena tidak ada test yang membandingkan
- * angka di docs dengan hasil run sebenarnya.
+ * Dokumen pernah menulis "305 Unit + 98 Integration = 403 Tests" saat
+ * kenyataannya sudah 503 + 106, dan tidak ada yang menangkapnya.
  *
- * Pendekatan: dokumen **tidak boleh** menyebut angka persis. Kalau ada
- * angka eksak, test ini menghitung jumlah test sebenarnya lalu gagal —
- * jadi whoever mengubah angka jadi salah akan langsung tahu (dan diberi
- * cara memperbaruinya di pesan error).
- *
- * Kalau kamu memang perlu angka eksak di dokumen, jalankan:
- *   vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests' | tail -3
- * lalu perbarui nilainya di sini DAN di dokumen dalam satu commit.
+ * Pendekatan: dokumen **tidak boleh** menyebut angka persis. Kalau ada angka
+ * eksak, test ini menghitung jumlah test sebenarnya lalu gagal — jadi
+ * whoever mengubah angka jadi salah akan langsung tahu.
  */
 
 /** @coversNothing */
@@ -70,7 +62,6 @@ class TestCountDocumentationTest extends TestCase
             }
             $src = (string)file_get_contents($path);
 
-            // Pola: angka yang langsung diikuti kata test/Unit/Integration/kasus uji.
             if (preg_match('/(?<![+\d])\b(\d{2,4})\s+(Unit|Integration|Tests?\b|kasus uji|test cases)/i', $src, $m)) {
                 $violations[] = sprintf('%s: "%s"', $file, trim($m[0]));
             }
@@ -88,10 +79,10 @@ class TestCountDocumentationTest extends TestCase
 
     /**
      * Penjaga utama: kalau ada dokumen yang menyebut angka eksak, hitung
-     * jumlah sebenarnya dan bandingkan — supaya Pesan errorNYA informatif
+     * jumlah sebenarnya dan bandingkan — supaya pesan errornya informatif
      * (memberi tahu angka yang benar), bukan sekadar menolak.
      *
-   ��� Ini tidak menggandakan testDokumenTidakMenyebutJumlahTestEksak; ini
+     * Ini tidak menggandakan testDokumenTidakMenyebutJumlahTestEksak; ini
      * menyediakan angka acuan supaya whoever memperbaiki tidak perlu
      * menebak-nebak.
      */
@@ -104,10 +95,6 @@ class TestCountDocumentationTest extends TestCase
         $unitDir = MEEL_ROOT . '/tests/unit';
         $this->assertDirectoryExists($unitDir, 'tests/unit tidak ditemukan');
 
-        // Hitung file test sebagai cara kasar yang stabil & cepat —
-        // angkaPasti dari PHPUnit bisa berubah karena filter/skip, dan
-        // tujuankan di sini bukan pengukuran, tapi bukti bahwa repo punya
-        // test dalam jumlah yang jauh dari "0".
         $files = glob($unitDir . '/*Test.php') ?: [];
         $this->assertGreaterThanOrEqual(
             40,
@@ -129,19 +116,12 @@ class TestCountDocumentationTest extends TestCase
 
     /**
      * Error log tidak boleh penuh deprecation — ini yang diam-diam sekali
-     * menutupi bug (lihat T29: deprecation System.php tersembunyi di
-     * balik deprecation DbTestHelper.php).
+     * menutupi bug (deprecation System.php tersembunyi di balik deprecation
+     * DbTestHelper.php).
      *
-     * Versi pertama guard ini hanya memeriksa SATU file
-     * (`tests/DbTestHelper.php`) dan SATU literal (`setValue([])`).
-     * Padahal ada 11 call site lain di 5 file test yang bentuk 1-argumennya
-     * sama persis — semuanya terhadap properti statis, jadi semuanya
-     * memang memicu deprecation PHP 8.3 dan semuanya sudah diperbaiki.
-     *
-     * Guard sekarang memindai SELURUH repo (di luar vendor) dan poked
-     * bentuk 1-argumen secara umum, bukan hanya literal `[]`. Memakai
-     * balance parens, bukan regex, supaya argumen bertanda kurung —mis.
-     * `setValue(MEEL_ROOT . '/temp/x/')`— tidak lolos salah baca.
+     * Guard memindai SELURUH repo (di luar vendor) dan poked bentuk
+     * 1-argumen secara umum. Memakai balance parens, bukan regex, supaya
+     * argumen bertanda kurung tidak lolos salah baca.
      */
     public function testNoDeprecatedSingleArgumentSetValueAnywhere(): void
     {
@@ -204,7 +184,6 @@ class TestCountDocumentationTest extends TestCase
             $c = $src[$i];
             $n = $src[$i + 1] ?? '';
 
-            // komentar satu baris
             if ($c === '/' && $n === '/') {
                 while ($i < $len && $src[$i] !== "\n") {
                     $out .= ' ';
@@ -219,7 +198,7 @@ class TestCountDocumentationTest extends TestCase
                 }
                 continue;
             }
-            // komentar blok
+
             if ($c === '/' && $n === '*') {
                 $out .= '  ';
                 $i += 2;
@@ -233,7 +212,7 @@ class TestCountDocumentationTest extends TestCase
                 }
                 continue;
             }
-            // string literal
+
             if ($c === "'" || $c === '"') {
                 $quote = $c;
                 $out .= ' ';
@@ -277,7 +256,7 @@ class TestCountDocumentationTest extends TestCase
 
         if (preg_match_all('/->setValue\(/', $src, $m, PREG_OFFSET_CAPTURE)) {
             foreach ($m[0] as [$needle, $offset]) {
-                $i = $offset + strlen($needle) - 1;   // posisi "("
+                $i = $offset + strlen($needle) - 1;
                 $depth = 0;
                 $hasTopLevelComma = false;
 
@@ -296,7 +275,7 @@ class TestCountDocumentationTest extends TestCase
                 }
 
                 if ($depth !== 0 || $hasTopLevelComma) {
-                    continue;   // tidak tertutup, atau memang 2+ argumen
+                    continue;
                 }
                 $lines[] = substr_count(substr($src, 0, $offset), "\n") + 1;
             }
@@ -313,10 +292,6 @@ class TestCountDocumentationTest extends TestCase
         }
         $src = (string)file_get_contents($path);
 
-        // Bentuk yang memicu deprecation PHP 8.3:
-        // atau bentuk float-modulo dengan nama variabel apa pun:
-        //
-        // Pola yang benar: bulatkan ke integer dulu, lalu intdiv():
         $this->assertDoesNotMatchRegularExpression(
             '/\(int\)\s*floor\(\s*\$[A-Za-z_][A-Za-z0-9_]*\s*[%\/]/',
             $src,
@@ -324,7 +299,6 @@ class TestCountDocumentationTest extends TestCase
             . 'from float … loses precision" di PHP 8.3. Bulatkan ke integer dulu lalu pakai intdiv().'
         );
 
-        // Sebaliknya, pastikan pola yang benar benar-benar dipakai.
         $this->assertMatchesRegularExpression(
             '/intdiv\(\s*\$uptime_int\s*,/',
             $src,

@@ -1,10 +1,5 @@
 <?php
-require '../auth/auth.php';
-require '../auth/config.php';
-require '../modules/core/helpers.php';
-require __DIR__ . '/DriveService.php';
-$user = DriveUserContext::fromSession($_SESSION);
-$user->authorize();
+require_once __DIR__ . '/bootstrap.php';
 $user->loadProfilePicture($conn);
 $storage = new DriveStorage(DriveStorage::defaultBasePath(), $user);
 $renderer = new DriveViewRenderer();
@@ -31,7 +26,7 @@ if ($user->isMember()) {
     <meta property="og:title" content="MEeL Cloud | Dasbor">
     <meta property="og:description" content="MEeL Cloud Drive - Kelola dan simpan file Anda dengan aman di cloud pribadi.">
     <title>MEeL Cloud | Dasbor</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
     <script src="../assets/js/compatibilitas/script.min.js<?= meel_asset_version('assets/js/compatibilitas/script.min.js') ?>"></script>
     <?php meel_css_links('drive', '../assets/css/drive'); ?>
@@ -274,12 +269,12 @@ if ($user->isMember()) {
 
         </div>
     </div>
-    <script src="../assets/js/drive/navigation.js?v=<?= filemtime('../assets/js/drive/navigation.js') ?>"></script>
-    <script src="../assets/js/drive/file-input.js?v=<?= filemtime('../assets/js/drive/file-input.js') ?>"></script>
-    <script src="../assets/js/drive/preview.js?v=<?= filemtime('../assets/js/drive/preview.js') ?>"></script>
-    <script src="../assets/js/drive/search.js?v=<?= filemtime('../assets/js/drive/search.js') ?>"></script>
+    <script src="../assets/js/drive/navigation.js?v=<?= filemtime(__DIR__ . '/../assets/js/drive/navigation.js') ?>"></script>
+    <script src="../assets/js/drive/file-input.js?v=<?= filemtime(__DIR__ . '/../assets/js/drive/file-input.js') ?>"></script>
+    <script src="../assets/js/drive/preview.js?v=<?= filemtime(__DIR__ . '/../assets/js/drive/preview.js') ?>"></script>
+    <script src="../assets/js/drive/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/drive/search.js') ?>"></script>
     <script src="../assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
-    <script src="../assets/js/drive/upload.js?v=<?= filemtime('../assets/js/drive/upload.js') ?>"></script>
+    <script src="../assets/js/drive/upload.js?v=<?= filemtime(__DIR__ . '/../assets/js/drive/upload.js') ?>"></script>
     <script>
         (function() {
             if (typeof MEELTheme !== 'undefined') {
@@ -290,7 +285,7 @@ if ($user->isMember()) {
             }
         })();
     </script>
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
 </body>
 
 </html>

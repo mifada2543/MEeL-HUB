@@ -85,58 +85,128 @@ class Uploader
     public function processMusic(array $post, array $files, string $base_dir): array
     {
         GarbageCollector::run();
+        if (($err = $this->assertMusicUploadAllowed($base_dir)) !== null) {
+            return $err;
+        }
+
+        $title = trim($post['title'] ?? '');
+        $artist = trim($post['artist'] ?? 'Artis Tidak Diketahui');
+        $album = trim($post['album'] ?? 'Single');
+        $description = trim($post['description'] ?? '');
+
+        $max_size = ($this->user_role === 'admin') ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
+        $check = $this->validateMusicUpload($files, $max_size);
+        if (isset($check['error'])) {
+            return $check['error'];
+        }
+
+        $staged = $this->stageMusicFile($files, $check['clean_name'], $check['ext'], $base_dir, $max_size);
+        if (isset($staged['error'])) {
+            return $staged['error'];
+        }
+        $file_name = $staged['filename'];
+        $target_file = $staged['path'];
+
+        $thumb_name = $this->buildMusicThumbnail($files, $file_name, $target_file, $base_dir);
+
+        $file_name = $this->maybeTranscodeToOgg($post, $file_name, $target_file, $base_dir);
+
+        $meta = generate_search_metadata($title, $artist, $album);
+        $this->conn->begin_transaction();
+        try {
+            $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $meta, $file_name, $thumb_name);
+            if (!$ins[0]) {
+                throw new \RuntimeException($ins[1]);
+            }
+            $music_id = $this->conn->insert_id;
+            $this->conn->commit();
+            if ($music_id > 0) {
+                $this->processMusicLyrics($music_id, $post, $files);
+            }
+            return ['status' => 'success'];
+        } catch (\Throwable $e) {
+            $this->conn->rollback();
+            $target_file = $base_dir . "upload/file/" . $file_name;
+            $this->removeFile($target_file);
+            if ($thumb_name !== 'music_default.png') {
+                $thumb_path = $base_dir . "upload/thumbnail/" . $thumb_name;
+                $this->removeFile($thumb_path);
+            }
+            return ['status' => 'error', 'msg' => "Database error! [" . $e->getMessage() . "]"];
+        }
+    }
+
+    private function assertMusicUploadAllowed(string $base_dir): ?array
+    {
         $limit = $this->checkRateLimit('music');
         if (!$limit['allowed']) {
             return ['status' => 'error', 'msg' => "Batas upload tercapai! Tunggu {$limit['minutes']} menit lagi.", 'alert' => true];
         }
         if (!$this->checkActiveUploadLimit()) {
-            return ['status' => 'error', 'msg' => "Terlalu banyak proses upload bersamaan. Coba lagi nanti.", 'alert' => true];
+            return ['status' => 'error', 'msg' => 'Terlalu banyak proses upload bersamaan. Coba lagi nanti.', 'alert' => true];
         }
+
         try {
             require_disk_space(500 * 1024 * 1024, $base_dir . 'upload/file/', 'storage musik HDD');
         } catch (\RuntimeException $e) {
             return ['status' => 'error', 'msg' => $e->getMessage(), 'alert' => true];
         }
-        $title = trim($post['title'] ?? '');
-        $artist = trim($post['artist'] ?? 'Artis Tidak Diketahui');
-        $album = trim($post['album'] ?? 'Single');
-        $description = trim($post['description'] ?? '');
-        if (empty($files['media']['name'])) return ['status' => 'no_file', 'msg' => 'File audio tidak ditemukan.'];
+
+        return null;
+    }
+
+    private function validateMusicUpload(array $files, int $max_size): array
+    {
+        if (empty($files['media']['name'])) {
+            return ['error' => ['status' => 'no_file', 'msg' => 'File audio tidak ditemukan.']];
+        }
+
         $raw_filename = pathinfo($files['media']['name'], PATHINFO_FILENAME);
         $ext = strtolower(pathinfo($files['media']['name'], PATHINFO_EXTENSION));
         $clean_name = getRomajiName($raw_filename);
         $allowed_ext = ['mp3', 'opus', 'ogg', 'm4a', 'wav', 'flac'];
         if (!in_array($ext, $allowed_ext, true) || preg_match('/\.(php\d?|phtml|sh)(\.|$)/i', $files['media']['name']) || str_contains($files['media']['name'], "\0")) {
-            return ['status' => 'error', 'msg' => "Security Error / Format ditolak!"];
+            return ['error' => ['status' => 'error', 'msg' => "Security Error / Format ditolak!"]];
         }
-        $max_size = ($this->user_role === 'admin') ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
         if ((int)($files['media']['size'] ?? 0) > $max_size) {
-            return ['status' => 'error', 'msg' => "File terlalu besar!", 'alert' => true];
+            return ['error' => ['status' => 'error', 'msg' => "File terlalu besar!", 'alert' => true]];
         }
         $magic_err = meel_magic_extension_ok($files['media']['tmp_name'], $ext, 'audio');
         if ($magic_err !== '') {
-            return ['status' => 'error', 'msg' => "File tidak valid sebagai audio.", 'alert' => true];
+            return ['error' => ['status' => 'error', 'msg' => "File tidak valid sebagai audio.", 'alert' => true]];
         }
+
+        return ['ext' => $ext, 'clean_name' => $clean_name];
+    }
+
+    private function stageMusicFile(array $files, string $clean_name, string $ext, string $base_dir, int $max_size): array
+    {
         $file_name = $this->getUniqueFilename($clean_name, $ext, $base_dir . "upload/file/");
         $target_file = $base_dir . "upload/file/" . $file_name;
         if (!move_uploaded_file($files['media']['tmp_name'], $target_file)) {
             @unlink($target_file);
-            return ['status' => 'upload_failed', 'msg' => 'Gagal memindahkan file upload ke server.'];
+            return ['error' => ['status' => 'upload_failed', 'msg' => 'Gagal memindahkan file upload ke server.']];
         }
         if (filesize($target_file) > $max_size) {
             unlink($target_file);
-            return ['status' => 'error', 'msg' => "File terlalu besar!", 'alert' => true];
+            return ['error' => ['status' => 'error', 'msg' => "File terlalu besar!", 'alert' => true]];
         }
         $duration = $this->probeDuration($target_file);
         if ($duration <= 0) {
             unlink($target_file);
-            return ['status' => 'error', 'msg' => "Gagal memverifikasi durasi file. File mungkin korup atau tidak valid.", 'alert' => true];
+            return ['error' => ['status' => 'error', 'msg' => "Gagal memverifikasi durasi file. File mungkin korup atau tidak valid.", 'alert' => true]];
         }
         $max_dur = ($this->user_role === 'admin') ? 3600 : 300;
         if ($duration > $max_dur) {
             unlink($target_file);
-            return ['status' => 'error', 'msg' => "Durasi maksimal 5 menit!", 'alert' => true];
+            return ['error' => ['status' => 'error', 'msg' => "Durasi maksimal " . (int) round($max_dur / 60) . ' menit!', 'alert' => true]];
         }
+
+        return ['filename' => $file_name, 'path' => $target_file];
+    }
+
+    private function buildMusicThumbnail(array $files, string $file_name, string $target_file, string $base_dir): string
+    {
         $thumb_name = "music_default.png";
         $thumb_base = getRomajiName(pathinfo($file_name, PATHINFO_FILENAME));
         $thumb_dir = $base_dir . "upload/thumbnail/";
@@ -163,44 +233,32 @@ class Uploader
                 $this->removeFile($abs_out);
             }
         }
-        $skip_transcode = (isset($post['skip_transcode']) && $this->user_role === 'admin');
-        if (!$skip_transcode && strtolower(pathinfo($file_name, PATHINFO_EXTENSION)) !== 'ogg') {
-            $opus_base = pathinfo($file_name, PATHINFO_FILENAME);
-            $opus_file = $this->getUniqueFilename($opus_base, 'ogg', $base_dir . "upload/file/");
-            $opus_path = $base_dir . "upload/file/" . $opus_file;
-            $opus_result = meel_ffmpeg_encode_opus($this->ffmpeg_bin, $target_file, $opus_path, $this->getEnvPrefix());
-            $ret = $opus_result[0];
-            if ($ret === 0 && file_exists($opus_path) && filesize($opus_path) > 0) {
-                unlink($target_file);
-                $file_name = $opus_file;
-            } else {
-                $this->removeFile($opus_path);
-            }
-        }
-        $meta = generate_search_metadata($title, $artist, $album);
-        $this->conn->begin_transaction();
-        try {
-            $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $meta, $file_name, $thumb_name);
-            if (!$ins[0]) {
-                throw new \RuntimeException($ins[1]);
-            }
-            $music_id = $this->conn->insert_id;
-            $this->conn->commit();
-            if ($music_id > 0) {
-                $this->processMusicLyrics($music_id, $post, $files);
-            }
-            return ['status' => 'success'];
-        } catch (\Throwable $e) {
-            $this->conn->rollback();
-            $target_file = $base_dir . "upload/file/" . $file_name;
-            $this->removeFile($target_file);
-            if ($thumb_name !== 'music_default.png') {
-                $thumb_path = $base_dir . "upload/thumbnail/" . $thumb_name;
-                $this->removeFile($thumb_path);
-            }
-            return ['status' => 'error', 'msg' => "Database error! [" . $e->getMessage() . "]"];
-        }
+
+        return $thumb_name;
     }
+
+    private function maybeTranscodeToOgg(array $post, string $file_name, string $target_file, string $base_dir): string
+    {
+        $skip_transcode = (isset($post['skip_transcode']) && $this->user_role === 'admin');
+        if ($skip_transcode || strtolower(pathinfo($file_name, PATHINFO_EXTENSION)) === 'ogg') {
+            return $file_name;
+        }
+
+        $opus_base = pathinfo($file_name, PATHINFO_FILENAME);
+        $opus_file = $this->getUniqueFilename($opus_base, 'ogg', $base_dir . "upload/file/");
+        $opus_path = $base_dir . "upload/file/" . $opus_file;
+        $opus_result = meel_ffmpeg_encode_opus($this->ffmpeg_bin, $target_file, $opus_path, $this->getEnvPrefix());
+        $ret = $opus_result[0] ?? null;
+        if ($ret === 0 && file_exists($opus_path) && filesize($opus_path) > 0) {
+            unlink($target_file);
+            return $opus_file;
+        }
+
+        $this->removeFile($opus_path);
+
+        return $file_name;
+    }
+
     private function processMusicLyrics(int $music_id, array $post, array $files): void
     {
         $lyrics_lang = sanitize_subtitle_lang($post['lyrics_lang'] ?? 'id');
@@ -223,16 +281,114 @@ class Uploader
             }
         }
     }
-    public function processVideo(array $post, array $files, string $upload_dir = ""): array
+    public function processVideo(array $post, array $files): array
     {
         GarbageCollector::run();
+        if (($err = $this->assertVideoUploadAllowed()) !== null) {
+            return $err;
+        }
+        if (empty($files['video']['tmp_name']) || !is_uploaded_file($files['video']['tmp_name'])) {
+            return ['status' => 'error', 'msg' => 'Tidak ada file video yang diterima.', 'alert' => true];
+        }
+
+        $video_name_orig = $files['video']['name'];
+        $ext = strtolower(pathinfo($video_name_orig, PATHINFO_EXTENSION));
+        if (!in_array($ext, ['mp4', 'webm', 'mkv'], true)) {
+            return ['status' => 'error', 'msg' => "Format video tidak didukung! Gunakan MP4, WebM, atau MKV.", 'alert' => true];
+        }
+
+        $temp_video = $files['video']['tmp_name'];
+        $codec = $this->inspectVideoCodecs($temp_video);
+        if ($codec['error'] !== '') {
+            return ['status' => 'error', 'msg' => $codec['error'], 'alert' => true];
+        }
+
+        $clean_name = $this->buildVideoCleanName($video_name_orig);
+
+        $work = $this->prepareVideoWorkFolder($clean_name);
+        if (isset($work['error'])) {
+            return $work['error'];
+        }
+        $folder_name = $work['folder_name'];
+        $work_folder = $work['work_folder'];
+        $hdd_video_dir = $this->base_dir . "video/";
+        $hdd_thumb_dir = $this->base_dir . "thumbnail/";
+
+        $staged_video = $work_folder . $clean_name . "_staged." . $ext;
+        if (!copy($temp_video, $staged_video)) {
+            $this->removeDir($work_folder);
+            return ['status' => 'error', 'msg' => 'Gagal menyalin file upload ke staging area.', 'alert' => true];
+        }
+
+        $thumb = $this->buildVideoThumbnail($files, $folder_name, $work_folder, $staged_video);
+        $thumb_name = $thumb['thumb_name'];
+        $sm_name = $thumb['sm_name'];
+        $thumb_from_user = $thumb['from_user'];
+
+        $work_m3u8 = $work_folder . $folder_name . ".m3u8";
+        $db_filename = "video/" . $folder_name . "/" . $folder_name . ".m3u8";
+
+        $transcode = $this->runVideoHlsTranscode(
+            $staged_video,
+            $work_folder,
+            $folder_name,
+            $work_m3u8,
+            $codec['has_audio'],
+            $codec['needs_audio_transcode']
+        );
+        $result = $transcode['result'];
+
+        if ($result === 0) {
+            $this->generateSpriteAndVTT($staged_video, $work_folder);
+        }
+
+        $this->stageVideoSubtitle($files, $post, $work_folder, $folder_name, $result);
+
+        $this->removeFile($staged_video);
+        if ($result !== 0) {
+            $this->removeDir($work_folder);
+            return ['status' => 'error', 'msg' => 'FFmpeg Error: ' . implode("\n", $transcode['output'])];
+        }
+
+        $hdd_target_folder = $hdd_video_dir . $folder_name . "/";
+        if (!$this->moveVideoFilesToHdd($work_folder, $hdd_target_folder, $hdd_thumb_dir, $thumb_name, $sm_name, $thumb_from_user)) {
+            $this->removeDir($hdd_target_folder);
+            if (!meel_is_default_thumbnail($thumb_name)) {
+                $this->removeFile($hdd_thumb_dir . $thumb_name);
+            }
+            if (!meel_is_default_thumbnail($sm_name)) {
+                $this->removeFile($hdd_thumb_dir . $sm_name);
+            }
+            return ['status' => 'error', 'msg' => 'Gagal memindahkan file ke storage. Cek permission HDD.', 'alert' => true];
+        }
+
+        $title = trim($post['title'] ?? 'Untitled Video');
+        $description = trim($post['description'] ?? '');
+        $db_result = $this->insertVideoRecord($title, $description, $db_filename, $thumb_name);
+        if ($db_result['status'] !== 'success') {
+            $this->removeDir($hdd_target_folder);
+            if (!meel_is_default_thumbnail($thumb_name)) {
+                $this->removeFile($hdd_thumb_dir . $thumb_name);
+            }
+            if (!meel_is_default_thumbnail($sm_name)) {
+                $this->removeFile($hdd_thumb_dir . $sm_name);
+            }
+            return $db_result;
+        }
+
+        return ['status' => 'success'];
+    }
+
+    private function assertVideoUploadAllowed(): ?array
+    {
         $limit = $this->checkRateLimit('video');
         if (!$limit['allowed']) {
             return ['status' => 'error', 'msg' => "Batas upload tercapai! Tunggu {$limit['minutes']} menit lagi.", 'alert' => true];
         }
         if (!$this->checkActiveUploadLimit()) {
-            return ['status' => 'error', 'msg' => "Terlalu banyak proses upload bersamaan. Coba lagi nanti.", 'alert' => true];
+            return ['status' => 'error', 'msg' => 'Terlalu banyak proses upload bersamaan. Coba lagi nanti.', 'alert' => true];
         }
+
         try {
             require_disk_space(1024 * 1024 * 1024, $this->base_dir . 'video/', 'storage video HDD');
             $shm_path = '/dev/shm';
@@ -242,43 +398,57 @@ class Uploader
         } catch (\RuntimeException $e) {
             return ['status' => 'error', 'msg' => $e->getMessage(), 'alert' => true];
         }
-        if (empty($files['video']['tmp_name']) || !is_uploaded_file($files['video']['tmp_name'])) {
-            return ['status' => 'error', 'msg' => 'Tidak ada file video yang diterima.', 'alert' => true];
-        }
-        $title = trim($post['title'] ?? 'Untitled Video');
-        $temp_video = $files['video']['tmp_name'];
-        $video_name_orig = $files['video']['name'];
-        $ext = strtolower(pathinfo($video_name_orig, PATHINFO_EXTENSION));
-        if (!in_array($ext, ['mp4', 'webm', 'mkv'], true)) {
-            return ['status' => 'error', 'msg' => "Format video tidak didukung! Gunakan MP4, WebM, atau MKV.", 'alert' => true];
-        }
+
+        return null;
+    }
+
+    private function inspectVideoCodecs(string $temp_video): array
+    {
         if (!$this->validateVideoMagicBytes($temp_video)) {
-            return ['status' => 'error', 'msg' => "File tidak valid sebagai video (magic bytes mismatch).", 'alert' => true];
+            return ['error' => "File tidak valid sebagai video (magic bytes mismatch)."];
         }
+
         $codec_error = $this->validateVideoCodec($temp_video);
         if ($codec_error !== '') {
-            return ['status' => 'error', 'msg' => $codec_error, 'alert' => true];
+            return ['error' => $codec_error];
         }
+
         $audio_result = $this->validateAudioCodec($temp_video);
         if ($audio_result['error'] !== '') {
-            return ['status' => 'error', 'msg' => $audio_result['error'], 'alert' => true];
+            return ['error' => $audio_result['error']];
         }
-        $has_audio = $audio_result['has_audio'];
-        $needs_audio_transcode = $audio_result['needs_audio_transcode'];
+
+        return [
+            'error' => '',
+            'has_audio' => $audio_result['has_audio'],
+            'needs_audio_transcode' => $audio_result['needs_audio_transcode'],
+        ];
+    }
+
+    private function buildVideoCleanName(string $video_name_orig): string
+    {
         $raw_clean_name = pathinfo($video_name_orig, PATHINFO_FILENAME);
         $clean_name = getRomajiName($raw_clean_name);
         $clean_name = substr($clean_name, 0, 60);
         $clean_name = trim($clean_name, '-');
-        if ($clean_name === '') $clean_name = 'video-' . time();
+        if ($clean_name === '') {
+            $clean_name = 'video-' . time();
+        }
+
+        return $clean_name;
+    }
+
+    private function prepareVideoWorkFolder(string $clean_name): array
+    {
         $lock_file = sys_get_temp_dir() . '/meel_upload_video.lock';
         $lock_fp = fopen($lock_file, 'c');
         if (!$lock_fp) {
-            return ['status' => 'error', 'msg' => 'Gagal menginisialisasi lock file.', 'alert' => true];
+            return ['error' => ['status' => 'error', 'msg' => 'Gagal menginisialisasi lock file.', 'alert' => true]];
         }
+
         flock($lock_fp, LOCK_EX);
         try {
-            $hdd_video_dir = $this->base_dir . "video/";
-            $folder_name = meel_allocate_unique_dir($hdd_video_dir, $clean_name);
+            $folder_name = meel_allocate_unique_dir($this->base_dir . "video/", $clean_name);
             $shm_path = '/dev/shm';
             $use_shm = false;
             if (is_dir($shm_path) && is_writable($shm_path)) {
@@ -288,23 +458,27 @@ class Uploader
                 }
             }
             $meel_base = $use_shm ? ($shm_path . '/meel/upload') : (dirname(__DIR__, 2) . '/temp');
-            if (!is_dir($meel_base)) $this->ensureDir($meel_base);
+            if (!is_dir($meel_base)) {
+                $this->ensureDir($meel_base);
+            }
             $work_folder = $meel_base . '/' . $folder_name . '/';
             $this->ensureDir($work_folder);
         } finally {
             flock($lock_fp, LOCK_UN);
             fclose($lock_fp);
         }
-        $staged_video = $work_folder . $clean_name . "_staged." . $ext;
-        if (!copy($temp_video, $staged_video)) {
-            $this->removeDir($work_folder);
-            return ['status' => 'error', 'msg' => 'Gagal menyalin file upload ke staging area.', 'alert' => true];
-        }
-        $thumb_name = "default_thumb.webp";
+
+        return ['folder_name' => $folder_name, 'work_folder' => $work_folder];
+    }
+
+    private function buildVideoThumbnail(array $files, string $folder_name, string $work_folder, string $staged_video): array
+    {
         $thumb_dir = $this->base_dir . "thumbnail/";
+        $thumb_name = "default_thumb.webp";
         $thumb_from_user = false;
         $sm_name = $folder_name . "_thumb_sm.webp";
         $sm_done = false;
+
         if (
             !empty($files['thumbnail']['tmp_name']) && is_uploaded_file($files['thumbnail']['tmp_name'])
             && $files['thumbnail']['error'] === UPLOAD_ERR_OK
@@ -333,6 +507,7 @@ class Uploader
                 }
             }
         }
+
         if (!$thumb_from_user) {
             $thumb_name = $folder_name . "_thumb.webp";
             $work_thumb = $work_folder . $thumb_name;
@@ -353,11 +528,26 @@ class Uploader
                 );
             }
         }
+
         if (!$sm_done && !$thumb_from_user) {
             @unlink($work_folder . $sm_name);
         }
-        $work_m3u8 = $work_folder . $folder_name . ".m3u8";
-        $db_filename = "video/" . $folder_name . "/" . $folder_name . ".m3u8";
+
+        return [
+            'thumb_name' => $thumb_name,
+            'sm_name' => $sm_name,
+            'from_user' => $thumb_from_user,
+        ];
+    }
+
+    private function runVideoHlsTranscode(
+        string $staged_video,
+        string $work_folder,
+        string $folder_name,
+        string $work_m3u8,
+        bool $has_audio,
+        bool $needs_audio_transcode
+    ): array {
         $audio_codec_arg = $needs_audio_transcode
             ? '-c:a aac -b:a 128k'
             : '-c:a copy';
@@ -374,50 +564,60 @@ class Uploader
             . " -start_number 0 -hls_time 20 -hls_list_size 0"
             . " -hls_segment_filename " . escapeshellarg($work_folder . $folder_name . "_%03d.ts")
             . " -f hls " . escapeshellarg($work_m3u8) . " 2>&1";
+
+        $output = [];
+        $result = 0;
         exec($cmd, $output, $result);
-        if ($result === 0) {
-            $this->generateSpriteAndVTT($staged_video, $work_folder);
-        }
 
+        return ['result' => $result, 'output' => $output];
+    }
+
+    private function stageVideoSubtitle(array $files, array $post, string $work_folder, string $folder_name, int $result): void
+    {
         if (
-            $result === 0
-            && !empty($files['subtitle']['tmp_name'])
-            && is_uploaded_file($files['subtitle']['tmp_name'])
-            && $files['subtitle']['error'] === UPLOAD_ERR_OK
+            $result !== 0
+            || empty($files['subtitle']['tmp_name'])
+            || !is_uploaded_file($files['subtitle']['tmp_name'])
+            || $files['subtitle']['error'] !== UPLOAD_ERR_OK
         ) {
-            $sub_ext = strtolower(pathinfo($files['subtitle']['name'] ?? '', PATHINFO_EXTENSION));
-            $sub_lang = sanitize_subtitle_lang($post['subtitle_lang'] ?? 'id');
-            $sub_allowed = ['vtt', 'srt'];
+            return;
+        }
 
-            if (in_array($sub_ext, $sub_allowed, true) && validate_subtitle_file($files['subtitle']['tmp_name'])) {
-                $sub_content = (string)file_get_contents($files['subtitle']['tmp_name']);
-                if ($sub_content !== '') {
-                    if ($sub_ext === 'srt') {
-                        $sub_content = convert_srt_to_vtt($sub_content);
-                    }
-                    $sub_content = strip_utf8_bom($sub_content);
-                    $sub_target = $work_folder . $folder_name . '.' . $sub_lang . '.vtt';
-                    if (file_put_contents($sub_target, $sub_content, LOCK_EX) === false) {
-                        error_log("[MEeL] Gagal menulis subtitle ke work_folder: " . $sub_target);
-                    }
+        $sub_ext = strtolower(pathinfo($files['subtitle']['name'] ?? '', PATHINFO_EXTENSION));
+        $sub_lang = sanitize_subtitle_lang($post['subtitle_lang'] ?? 'id');
+        $sub_allowed = ['vtt', 'srt'];
+
+        if (in_array($sub_ext, $sub_allowed, true) && validate_subtitle_file($files['subtitle']['tmp_name'])) {
+            $sub_content = (string) file_get_contents($files['subtitle']['tmp_name']);
+            if ($sub_content !== '') {
+                if ($sub_ext === 'srt') {
+                    $sub_content = convert_srt_to_vtt($sub_content);
                 }
-            } else {
-                error_log("[MEeL] Subtitle ditolak (format/validasi): " . ($files['subtitle']['name'] ?? 'unknown'));
+                $sub_content = strip_utf8_bom($sub_content);
+                $sub_target = $work_folder . $folder_name . '.' . $sub_lang . '.vtt';
+                if (file_put_contents($sub_target, $sub_content, LOCK_EX) === false) {
+                    error_log("[MEeL] Gagal menulis subtitle ke work_folder: " . $sub_target);
+                }
             }
+        } else {
+            error_log("[MEeL] Subtitle ditolak (format/validasi): " . ($files['subtitle']['name'] ?? 'unknown'));
         }
-        $this->removeFile($staged_video);
-        if ($result !== 0) {
+    }
 
-            $this->removeDir($work_folder);
-            return ['status' => 'error', 'msg' => 'FFmpeg Error: ' . implode("\n", $output)];
-        }
-        $hdd_target_folder = $hdd_video_dir . $folder_name . "/";
-        $hdd_thumb_dir = $this->base_dir . "thumbnail/";
+    private function moveVideoFilesToHdd(
+        string $work_folder,
+        string $hdd_target_folder,
+        string $hdd_thumb_dir,
+        string $thumb_name,
+        string $sm_name,
+        bool $thumb_from_user
+    ): bool {
         $lock_move = fopen(sys_get_temp_dir() . '/meel_move_hdd.lock', 'c');
         $move_locked = $lock_move && flock($lock_move, LOCK_EX);
         if (!is_dir($hdd_target_folder)) {
             mkdir($hdd_target_folder, 0755, true);
         }
+
         $move_failed = false;
         foreach (glob($work_folder . "*") as $work_file) {
             $filename = basename($work_file);
@@ -438,18 +638,12 @@ class Uploader
             fclose($lock_move);
         }
         $this->removeDir($work_folder);
-        if ($move_failed) {
-            $this->removeDir($hdd_target_folder);
-            if (!meel_is_default_thumbnail($thumb_name)) {
-                $this->removeFile($hdd_thumb_dir . $thumb_name);
-            }
-            if (!meel_is_default_thumbnail($sm_name)) {
-                $this->removeFile($hdd_thumb_dir . $sm_name);
-            }
-            return ['status' => 'error', 'msg' => 'Gagal memindahkan file ke storage. Cek permission HDD.', 'alert' => true];
-        }
-        $title = trim($post['title'] ?? 'Untitled Video');
-        $description = trim($post['description'] ?? '');
+
+        return !$move_failed;
+    }
+
+    private function insertVideoRecord(string $title, string $description, string $db_filename, string $thumb_name): array
+    {
         $meta = generate_search_metadata($title);
         $this->conn->begin_transaction();
         try {
@@ -472,16 +666,6 @@ class Uploader
             return ['status' => 'success'];
         } catch (\Throwable $e) {
             $this->conn->rollback();
-            $hdd_target_folder = $hdd_video_dir . $folder_name . "/";
-            $this->removeDir($hdd_target_folder);
-            $hdd_thumb_dir = $this->base_dir . "thumbnail/";
-            if (!meel_is_default_thumbnail($thumb_name)) {
-                $this->removeFile($hdd_thumb_dir . $thumb_name);
-            }
-            if (!meel_is_default_thumbnail($sm_name)) {
-                $this->removeFile($hdd_thumb_dir . $sm_name);
-            }
-
             return ['status' => 'error', 'msg' => 'Database error! [' . $e->getMessage() . '] | title_len=' . strlen($title) . ' meta_len=' . strlen($meta) . ' filename=' . $db_filename];
         }
     }

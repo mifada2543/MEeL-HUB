@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/config.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -196,14 +195,11 @@ if (isset($_FILES['cover']) && $_FILES['cover']['error'] === UPLOAD_ERR_OK) {
     }
 
     if ($cover_filename === $cover_name) {
-
         move_uploaded_file($cover_tmp, $cover_out);
     } else {
-
         @unlink($cover_out);
     }
     if ($webp_name !== null) {
-
         @unlink($COVER_DIR . $webp_name);
     }
 }
@@ -242,7 +238,7 @@ try {
              WHERE id = ?"
         );
         $stmt->bind_param(
-            "ssiiiiisssissi",
+            "ssiisiississsi",
             $title, $artist, $bpm, $difficulty, $diff_label,
             $beatmap_duration, $note_count, $audio_filename, $final_mime,
             $audio_bitrate, $cover_filename, $color_primary, $color_secondary,
@@ -263,7 +259,7 @@ try {
         );
         if (!$stmt) throw new RuntimeException('Prepare failed: ' . $conn->error);
         $stmt->bind_param(
-            "issiiiiisssiss",
+            "issiisiississs",
             $user_id, $title, $artist, $bpm, $difficulty, $diff_label,
             $beatmap_duration, $note_count, $audio_filename, $final_mime,
             $audio_bitrate, $cover_filename, $color_primary, $color_secondary
@@ -297,7 +293,6 @@ try {
         'song_id' => $song_id,
         'message' => 'Beatmap berhasil diupload!',
     ]);
-
 } catch (Throwable $e) {
     $conn->rollback();
     @unlink($AUDIO_DIR . $audio_filename);

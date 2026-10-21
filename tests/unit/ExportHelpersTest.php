@@ -1,39 +1,22 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
- * Penjaga helper ekspor danqed rsp yang menggantikannya di
+ * Penjaga helper ekspor yang menggantikannya di
  * `admin/activity_log.php` (T19).
  *
- * APA YANG SEBENARNYA DUPLIKAT
- * ---------------------------
- * Todo menyebut "`Exporter::csv|json|xls()`" dengan rujukan baris
- * `:70-160` ≡ `:292-397`. Kelas `Exporter` **tidak pernah ada** dalam
- * seluruh riwayat git repo ini -- jadi nama dan bentuk yang disebut Todo
- * keliru. Yang benar ada, dan lebih buruk dari yang tertulis: ada DUA blok
- * ekspor di `admin/activity_log.php`, masing-masing dengan mode unduh dan
- * pratinjau, masing-masing dengan tiga format.
+ * `admin/activity_log.php` punya DUA blok ekspor, masing-masing dengan mode
+ * unduh dan pratinjau, masing-masing dengan tiga format. Pemetaan kolom yang
+ * sama ditulis ulang dua belas kali, plus preamble XML SpreadsheetML dan
+ * closure $xls_cell yang duplikat byte-identik di dua blok.
  *
- * ArtinyaSpecification kolom yang sama ditulis ulang **dua belas kali**:
+ * Bahaya yang sesungguhnya bukan panjang berkas: kalau satu kolom ditambah,
+ * ada sebelas tempat lain yang harus ikut berubah tanpa ada yang memberi
+ * tahu kalau lupa — ekspor CSV bisa diam-diam punya kolom berbeda dari
+ * ekspor JSON.
  *
- *   antrean unggah: csv/json/xls unduh + csv/json/xls pratinjau  = 6
- *   log aktivitas:  csv/json/xls unduh + csv/json/xls pratinjau  = 6
- *
- * Plus premable XML SpreadsheetML (9 baris) dan closure $xls_cell, keduanya
- * duplikat byte-identik di dua blok.
- *
- * Bahaya yang sesungguhnya bukan panjang berkas. Kalau satu kolom ditambah
- * atau diurutkan ulang, ada sebelas tempat lain yang harus ikut berubah dan
- * tidak ada yang memberi tahu kalau lupa -- ekspor CSV bisa diam-diam punya
- * kolom berbeda dari ekspor JSON.
- *
- * APA YANG DIJAGA TEST INI
- * -----------------------
- * Test membandingkan helper baru dengan SEMANTIKA KODE LAMA yang ditulis
- * ulang di sini, bukan dengan output lama. Kalau kode lamanya
- * sendiri yang keliru, test ini tidak akan menangkapnya -- dan itu memang
- * di luar jangkauan. Yang dijaga: pemindahan tidak mengubah apa pun.
+ * Test membandingkan helper baru dengan SEMANTIKA KODE LAMA, bukan dengan
+ * output lama. Yang dijaga: pemindahan tidak mengubah apa pun.
  *
  * @coversNothing
  */
@@ -98,7 +81,6 @@ class ExportHelpersTest extends TestCase
             'Halaman tidak memakai meel_export_cols_activity_log()'
         );
 
-        // Definisi literal hanya boleh ADA di berkas spesifikasi.
         $this->assertSame(
             0,
             substr_count($src, "\$uq_export_cols = ["),
@@ -109,7 +91,6 @@ class ExportHelpersTest extends TestCase
             substr_count($src, "\$log_export_cols = ["),
             'Spesifikasi log aktivitas jangan didefinisikan literal di halaman lagi'
         );
-
     }
 
     /**
@@ -120,11 +101,6 @@ class ExportHelpersTest extends TestCase
     {
         $src = (string) file_get_contents(MEEL_ROOT . '/admin/activity_log.php');
 
-        // Header ini dulu ditulis empat kali (csv, json, xls, pratinjau).
-        //
-        // Pencocokan harus tahan whitespace. Kalau needle-nya persis seperti
-        // format lama termasuk spasinya, menulis ulang daftar yang sama
-        // dengan spasi berbeda saja sudah cukup lolos dari test ini.
         $this->assertSame(
             0,
             preg_match_all("/\[\s*'ID'\s*,\s*'User'\s*,\s*'URL'\s*,\s*'Tipe'\s*,\s*'Status'/", $src),
@@ -136,14 +112,12 @@ class ExportHelpersTest extends TestCase
             'Daftar header log aktivitas masih ditulis inline'
         );
 
-        // Dan bentuk tanpa spasi pun harus tertangkap.
         $this->assertSame(
             0,
             preg_match_all("/\[\s*'ID'\s*,\s*'User'\s*,\s*'URL'\s*,\s*'Tipe'/", $src),
             'Daftar header antrean unggah ditulis inline dengan spasi berbeda'
         );
 
-        // Premable XML dan closure sel, dulu dua salinan byte-identik.
         $this->assertSame(
             0,
             substr_count($src, 'urn:schemas-microsoft-com:office:spreadsheet'),
@@ -188,7 +162,6 @@ class ExportHelpersTest extends TestCase
             'Baris lengkap harus diteruskan apa adanya'
         );
 
-        // Kolom BER-default: null -> default (persis `??` di kode lama)
         $expectedNull = [null, '—', '', '', '', null];
         $this->assertSame(
             $expectedNull,
@@ -197,7 +170,6 @@ class ExportHelpersTest extends TestCase
             . 'Kolom tanpa default (id, created_at) harus meneruskan null.'
         );
 
-        // Kolom TANPA default: null tetap null
         $this->assertSame(
             $expectedNull,
             meel_export_values($hilang, $this->uqCols()),
@@ -226,15 +198,13 @@ class ExportHelpersTest extends TestCase
 
         $this->assertNull($map['user_id'], 'user_id null harus tetap null, bukan 0');
         $this->assertNull($map['media_id'], 'media_id null harus tetap null, bukan 0');
-        // Kolom tanpa default: null diteruskan apa adanya (kode lama memakai
-        // `$r['action']` polos, bukan `$r['action'] ?? ...`).
+
         $tanpaDefault = ['action' => null] + $row;
         $this->assertNull(
             meel_export_map($tanpaDefault, $this->logCols())['action'],
             'Kolom tanpa default harus meneruskan null, bukan mengganti dengan default'
         );
 
-        // Tapi kolom nullable-int yang memang berisi angka tetap jadi int.
         $angka = $row;
         $angka['user_id'] = '42';
         $angka['media_id'] = '7';
@@ -242,7 +212,6 @@ class ExportHelpersTest extends TestCase
         $this->assertSame(42, $mapAngka['user_id']);
         $this->assertSame(7, $mapAngka['media_id']);
 
-        // Kolom int (tidak nullable) tetap jadi 0, seperti kode lama.
         $this->assertSame(0, meel_export_map(['id' => null] + $row, $this->logCols())['id']);
     }
 
@@ -281,7 +250,6 @@ class ExportHelpersTest extends TestCase
             'media_type' => 'video', 'status' => 'done', 'created_at' => '2026-10-14 10:00:00',
         ];
 
-        // Persis array yang dulu ditulis inline di blok fputcsv.
         $expected = [$row['id'], $row['username'] ?? '—', $row['url'] ?? '',
                       $row['media_type'] ?? '', $row['status'] ?? '', $row['created_at']];
 
@@ -309,7 +277,6 @@ class ExportHelpersTest extends TestCase
 
     public function testXlsEmptyAndNumericCellsMatchTheOldClosure(): void
     {
-        // Closure lama: null DAN string kosong -> sel String kosong.
         $this->assertStringContainsString(
             '<Data ss:Type="String"></Data></Cell>',
             meel_xls_cell(null)
@@ -319,7 +286,6 @@ class ExportHelpersTest extends TestCase
             meel_xls_cell('')
         );
 
-        // Angka harus benar-benar bertipe Number, bukan teks.
         $num = meel_xls_cell('42', 'Number');
         $this->assertStringContainsString('ss:Type="Number"', $num);
         $this->assertStringContainsString('>42<', $num);
@@ -357,9 +323,7 @@ class ExportHelpersTest extends TestCase
             $doc,
             "Keluaran SpreadsheetML harus XML yang valid.\n" . $xml
         );
-        // `ss:` bukan namespace default, jadi SimpleXML tidak bisa
-        // menjangkau atributnya lewat $doc->Worksheet. Harus lewat
-        // children() dengan URI namespace yang sama.
+
         $ss = $doc->children('urn:schemas-microsoft-com:office:spreadsheet');
         $this->assertNotNull($ss->Worksheet, 'Elemen Worksheet tidak ditemukan pada namespace ss');
         $this->assertSame(

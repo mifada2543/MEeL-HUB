@@ -2,27 +2,10 @@
 /**
  * Pulihkan baris media yang hilang dari file yang masih ada di disk.
  *
- * LATAR BELAKANG
- * --------------
- * Database MEeL di-DROP lalu dibangun ulang dari skema. Data dipulihkan dari
- * backup 22 Juli 2026, sehingga semua media yang diunggah SETELAH tanggal itu
- * kehilangan baris DB-nya -- padahal file fisiknya masih utuh di disk.
- * Dashboard admin melaporkan 1805 "file sampah (tidak ada di DB)".
- *
- * ANGKA 1805 MENYESATKAN, TAPI BUKAN BERARTI 1805 DATA HILANG
- * ----------------------------------------------------------
- * Pemetaan file ke baris tidak 1:1. Video dicocokkan per FOLDER (satu video =
- * satu stream HLS berisi ~30 file), musik per file, thumbnail per nama.
- *
- *   video/upload/video/   10.845 file -> 1.725 orphan ->  53 baris hilang
- *   video thumbnail/         496 file ->   52 orphan -> ikut pulih bersama induk
- *   music/upload/file/        96 file ->   14 orphan ->  14 baris hilang
- *   music thumbnail/          94 file ->   14 orphan -> ikut pulih bersama induk
- *   books/upload/manga/    2.255 file ->    0 orphan ->  tidak ada yang hilang
- *
- * Jadi yang harus dibangun ulang hanya 53 video + 14 musik. Sisanya segmen .ts,
- * subtitle .vtt, sprite, dan thumbnail turunan -- terlihat "sampah" hanya karena
- * induknya hilang.
+ * Pemetaan file ke baris tidak 1:1. Video dicocokkan per FOLDER (satu video
+ * = satu stream HLS berisi ~30 file), musik per file, thumbnail per nama.
+ * Segmen .ts, subtitle .vtt, sprite, dan thumbnail turunan terlihat "sampah"
+ * hanya karena induknya hilang.
  *
  * ATURAN YANG MENGIKAT
  * --------------------
@@ -100,10 +83,6 @@ if (!isset($conn) || !$conn instanceof mysqli) {
     exit(1);
 }
 
-// video.user_id dan music.user_id punya FOREIGN KEY ke users(id). Menulis
-// user_id yang tidak ada akan ditolak seluruh transaksi -- dan pesannya
-// (errno 1452) tidak menunjukkan sejak mana asalnya. Jadi dicek lebih dulu,
-// dan ini HANYA membaca tabel users, tidak pernah menulisnya.
 $cekUser = $conn->prepare("SELECT id, username, role FROM users WHERE id = ? LIMIT 1");
 $cekUser->bind_param('i', $opt['user-id']);
 $cekUser->execute();
@@ -196,9 +175,6 @@ while ($x = $r->fetch_assoc()) {
     }
 }
 
-// Kalau tidak, skrip akan menimpa $opt['report'] dengan hasil pindai ulang
-// yang BELUM punya metadata YouTube -- persis merusak laporan yang sedang
-// ditinjau. Laporan adalah masukan, bukan keluaran, pada mode ini.
 if ($opt['dari-laporan'] !== '') {
     goto terapkan;
 }
@@ -208,14 +184,13 @@ $videoThumbDir = meel_media_base_path('video') . '/thumbnail/';
 $musicDir = meel_media_base_path('music') . '/file/';
 $musicThumbDir = meel_media_base_path('music') . '/thumbnail/';
 
-// Indeks thumbnail di disk, untuk mencocokkan stem.
 function meel_recover_thumb_index(string $dir): array
 {
     $idx = [];
     foreach (meel_recover_scan($dir) as $p) {
         $name = basename($p);
         if (preg_match('/_sm\.[^.]+$/', $name)) {
-            continue; // varian turunan, bukan poster
+            continue;
         }
         $idx[pathinfo($name, PATHINFO_FILENAME)] = $name;
         $idx[$name] = $name;
@@ -227,21 +202,6 @@ $musicThumbIdx = meel_recover_thumb_index($musicThumbDir);
 
 $candidates = ['video' => [], 'music' => []];
 
-// PENTING: hanya direktori TINGKAT-1 yang diperiksa, bukan rekursif.
-// Video multi-kualitas menyimpan rendition di dalam foldernya sendiri, contoh
-// nyata `HPJSekai_1775268953` (baris #100, sudah ada di DB) berisi:
-//   HPJSekai_1775268953/HPJSekai.m3u8     <- master playlist
-//   HPJSekai_1775268953/1080p/index.m3u8  <- rendition 1080p
-//   HPJSekai_1775268953/720p/index.m3u8   <- rendition 720p
-//   (952 file total)
-// Memindai rekursif sambil memakai basename(dirname()) akan salah menangkap
-// `1080p`, `720p`, `v1`, `v2` sebagai "video" tersendiri -- sempat ketemu
-// 4 kandidat palsu, padahal video nyatanya cuma 53. Admin memakai pencocokan
-// segmen path sehingga tidak salah di titik ini; di sini cukup enumerasi
-// tingkat-1 dan rendition tersaring dengan sendirinya.
-// Syarat tambahan: folder harus punya .m3u8 DI DALAMNYA SENDIRI. Folder tanpa
-// .m3u8 adalah unggahan yang terputus di tengah jalan dan memang tidak dapat
-// dipulihkan -- dilaporkan terpisah, bukan diam-diam diabaikan.
 $folderTidakLengkap = [];
 foreach (scandir($videoDir) as $entry) {
     if ($entry === '.' || $entry === '..' || !is_dir($videoDir . $entry)) {
@@ -249,7 +209,7 @@ foreach (scandir($videoDir) as $entry) {
     }
     $folder = $entry;
     if (isset($dbVideoFolders[$folder])) {
-        continue;   // video ini sudah ada di DB
+        continue;
     }
 
     $m3u8 = null;
@@ -359,13 +319,6 @@ if ($opt['lookup']) {
             printf("  [%d/%d] %s %-42s ", $i, count($all), $k === 'video' ? 'V' : 'M',
                 mb_strimwidth($query, 0, 40, '…'));
 
-            // Template itu rusak untuk tujuan ini: %(description) disisipkan
-            // mentah ke dalam JSON, sedangkan deskripsi YouTube hampir selalu
-            // mengandung tanda kutip dan baris baru. Satu kutip saja sudah
-            // membuat json_decode() gagal, sehingga SETIAP hasil pencarian
-            // terbaca "tidak cocok" -- bukan karena durasinya beda, tapi karena
-            // JSON-nya tidak pernah bisa diurai. --dump-json meng-escape dengan
-            // benar oleh yt-dlp sendiri.
             $cmd = escapeshellarg($ytdlp)
                 . ' --skip-download --no-warnings --ignore-errors'
                 . ' --playlist-end 5 --dump-json'
@@ -381,7 +334,7 @@ if ($opt['lookup']) {
                 }
                 $d = (int) ($j['duration'] ?? 0);
                 $loc = $c['durasi'];
-                // Toleransi: 20 detik ATAU 10%, mana yang longgar.
+
                 $toler = max($opt['toleransi-abs'], (int) ($loc * $opt['toleransi-rel']));
                 if ($loc > 0 && $d > 0 && abs($d - $loc) <= $toler) {
                     $dipakai = $j;
@@ -447,11 +400,7 @@ foreach ($rows as $c) {
 }
 
 terapkan:
-// `--apply` tanpa opsi lain akan mengulang seluruh pencarian YouTube dari awal
-// (puluhan menit, dan hasilnya bisa BERUBAH karena pencarian YouTube tidak
-// deterministik). Kalau laporan CSV-nya sudah ditinjau, lebih baik terapkan
-// persis isi CSV itu: cepat, tanpa jaringan, dan tidak bergantung pada hasil pencarian
-// yang kebetulan berubah.
+
 if ($opt['dari-laporan'] !== '') {
     $src = $opt['dari-laporan'];
     if (!is_file($src)) {
@@ -470,7 +419,7 @@ if ($opt['dari-laporan'] !== '') {
     }
     while (($r = fgetcsv($fh)) !== false) {
         if (count($r) !== count($head)) {
-            continue;   // baris rusak, lewati
+            continue;
         }
         $c = array_combine($head, $r);
         $c['deskripsi'] = ($c['deskripsi'] ?? '') !== '' ? $c['deskripsi'] : null;
@@ -519,23 +468,13 @@ try {
         $cek->close();
         if ($ada) {
             $lewat++;
-            continue;   // idempoten
+            continue;
         }
 
         $meta = generate_search_metadata($c['judul'], (string) $c['artist'], (string) $c['album']);
         $uid  = $opt['user-id'];
         $tgl  = $c['upload_date'];
 
-        // Panjang string tipe HARUS sama persis dengan jumlah placeholder, dan
-        // harus urut. Dua kekeliruan sudah terjadi di sini dan keduanya hanya
-        // ketahuan lewat uji ke database tiruan, bukan lewat membaca kode:
-        //   - 'ssssisiss' (9) untuk 8 placeholder -- ada huruf `t` nyasar.
-        //   - musik terikat 'ssssssisss' sehingga user_id (int) ikut terikat
-        //     sebagai string.
-        // Konvensi app sendiri (modules/core/helpers/upload.php:294):
-        // duration = i, user_id = i, sisanya s.
-        // bind_param juga mewajibkan argumen BY REFERENCE; ekspresi cast
-        // tidak bisa. Karena itu semua nilai ditampung di variabel dulu.
         $dur = (int) $c['durasi'];
         $jdl = (string) $c['judul'];
         $fil = (string) $c['filename'];
@@ -546,23 +485,17 @@ try {
 
         if ($c['jenis'] === 'video') {
             $stmt = $insVideo;
-            // title, description, filename, thumbnail, duration, user_id,
-            // search_metadata, upload_date  ->  s s s s i i s s
+
             $stmt->bind_param('ssssiiss', $jdl, $dsk, $fil, $thm, $dur, $uid, $meta, $tgl);
         } else {
             $stmt = $insMusic;
-            // title, artist, album, description, filename, thumbnail,
-            // duration, user_id, search_metadata, upload_date -> s x6 i i s s
+
             $stmt->bind_param('ssssssiiss', $jdl, $art, $alb, $dsk, $fil, $thm, $dur, $uid, $meta, $tgl);
         }
         if (!$stmt->execute()) {
             throw new RuntimeException("INSERT gagal ({$c['filename']}): " . $stmt->error);
         }
-        // JANGAN $stmt->close() di sini. $stmt adalah salinan dari $insVideo /
-        // $insMusic yang sama setiap iterasi; menutupnya membuat objeknya
-        // closed, dan iterasi berikutnya gagal dengan "mysqli_stmt object is
-        // already closed" -- hanya satu baris yang sempat masuk. Statement-nya
-        // ditutup sekali setelah loop, di bawah.
+
         $baru++;
     }
 

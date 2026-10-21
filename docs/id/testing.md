@@ -66,19 +66,27 @@ logs/tests/
 | `HelpersTest.php` | 50 | format_bytes, time_ago, audio MIME, disk space, CSRF, dir_size, deteksi protokol (data provider) |
 | `JapaneseTest.php` | 15 | Romaji conversion, analyzeJapaneseText, English translation (tanpa MeCab) |
 | `GarbageCollectorTest.php` | 7 | Class existence, idempotency, graceful handling, cleanup rate-limit (dir test terisolasi), pelestarian direktori cache aktif |
+| `CacheDirectoryCleanupTest.php` | 17 | TTL cache per prefix dan per key waktu (`ts`/`time`/`checked_at`), berkas sementara, cache rusak, fallback mtime, direktori cache yang sama |
 | `SearchEngineTest.php` | 5 | Parse params, sanitizer (`sanitizeQuery`), default values, constants |
 | `MediaLibraryTest.php` | 11 | Logika pagination (pure math), BookRepository mock |
 | `MediaInteractionTest.php` | 7 | Validasi input (ID/type tidak valid) |
 | `MediaViewerTest.php` | 9 | Logika rekomendasi media / antrean playlist / next-url |
 | `RouterProfileRouteTest.php` | 9 | Resolusi route profil, route terreserved, kasus nested/trailing-slash |
+| `RouterDispatchTest.php` | 22 | Pengalihan alias profil (murni, tanpa perlu request), dan setiap rute terdaftar menunjuk berkas yang benar-benar ada |
 | `BootstrapTest.php` | 9 | Env detection, konfigurasi error reporting, timezone |
 | `CssManifestTest.php` | 18 | Manifest CSS modul — semua entri ada, **semua** folder ter-precache oleh `SwPrecache`, entri precache resolve, versi SW deterministik |
 | `SharedJsTest.php` | 7 | Shared JS harness — alur download-backup-codes |
+| `LikeDislikePartialTest.php` | 7 | **Tombol like/dislike** — markup kontainer hanya ada di satu berkas, semua pemakai memakai partial bersama, dan varian musik & video hanya berbeda pada warna aksen, label, dan tombol simpan |
+| `LucideLoadOrderTest.php` | 6 | **Lucide + HTMX** — helper render termuat, stub antrean di `partials/link.php` bersifat sinkron, dan listener swap tetap terdaftar walau `document.body` belum ada (skrip dimuat di `<head>`) |
 | `StreamAuthTest.php` | 8 | Guard otorisasi endpoint stream |
 | `SsrfGuardTest.php` | 76 | **Guard SSRF** — allowlist protokol, range IP private/publik (v4 & v6), penolakan record DNS campuran, denylist hostname, HTTP pinning (lihat bawah) |
 | `DriveSecurityTest.php` | 13 | **Private Drive** — akses cross-user, path traversal, symlink escape, boundary realpath, kuota, reservasi nama atomik (lihat bawah) |
 | `DriveStorageBasePathTest.php` | 8 | Resolusi base path storage Drive — konstanta `MEEL_HDD_DRIVE`, fallback, prioritas |
-| `ValidatingProxyTest.php` | 20 | **Validating forward proxy** — probe CONNECT/GET nyata: target private ditolak (502), target publik di-tunnel, bind loopback-only (lihat bawah) |
+| `DateTimeSourceTest.php` | 7 | **Jam aplikasi** — zona waktu diset tanpa syarat, `time_zone` sesi MySQL disejajarkan dengannya, kolom yang dibaca `strtotime()` tidak pernah ditulis dengan jam database, dan berkas yang sengaja mencampur keduanya ada di daftar eksplisit |
+| `WebSafeErrorOutputTest.php` | 2 | **Output error yang aman untuk web** — `STDERR`/`STDOUT`/`STDIN` hanya di perkakas CLI, berkas yang dijaga `PHP_SAPI`, atau berkas yang tidak di-include siapa pun |
+| `AdminFilteredRepositoryTest.php` | 13 | Basis repository admin bersama — query bersama tetap di basis, tiap repository menjaga tabel & aliasnya, perilaku filter keduanya tetap berbeda |
+| `ValidatingProxyTest.php` | 27 | **Validating forward proxy** — probe CONNECT/GET nyata: target private ditolak (502), target publik di-tunnel, bind loopback-only, absolute-URI rusak ditolak (lihat bawah) |
+| `ValidatingProxyProtocolTest.php` | 27 | **Aturan protokol proxy** — parsing kepala permintaan beserta batasannya, parsing target CONNECT, pembuangan header hop-by-hop, penyusunan permintaan yang diteruskan, pemindahan data tunnel & relay respons |
 | `ArchiveGuardTest.php` | 11 | **Guard arsip** — traversal `../`, path absolut, null byte, symlink, nesting, compression ratio, ZIP bomb, entry count (lihat bawah) |
 | `UploadValidationTest.php` | 9 | **Validasi upload** — magic bytes palsu, ekstensi ganda, null byte, oversized, eksekutabel (lihat bawah) |
 | `TranscoderConstantsTest.php` | 2 | Regresi visibilitas konstanta bersama (`TranscoderBase` → service anak) |
@@ -92,7 +100,7 @@ logs/tests/
 | `ChessHelpersIntegrationTest.php` | 6 | Helper catur dengan DB real |
 | `ChessRematchIntegrationTest.php` | 21 | Alur rematch catur dengan DB real |
 | `GarbageCollectorChessRoomsIntegrationTest.php` | 15 | Garbage collection room catur dengan DB real |
-| `MeelCoinIntegrationTest.php` | 15 | Spend/refund/refill, batas role, countdown |
+| `MeelCoinIntegrationTest.php` | 18 | Spend/refund/refill, batas role, countdown yang tidak pernah mundur, jendela refill yang dimulai saat spend |
 | `SystemTest.php` | 2 | Class existence & utilitas System |
 
 ### Test Helpers
@@ -360,6 +368,50 @@ saat URL staging dikonfigurasi sebagai secret GitHub:
             "$STAGING_URL/data_drive/private_admins/" || true)
           [ "$code" = "403" ] || { echo "Expected 403, got $code"; exit 1; }
 ```
+
+### Gate reproducibility Tailwind CSS
+
+`scripts/ci/tailwind-coverage-check.php` menjaga `assets/css/tailwind.min.css`
+— artefak hasil build yang di-commit — supaya bisa direproduksi. Tanpa gerbang
+ini, mengubah markup lalu ingin membangun ulang CSS sama saja menebak.
+
+Tiga hal yang diperiksa:
+
+1. **Glob `content` benar-benar memindai repo, dan tidak memindai yang
+   dikecualikan.** Config bisa saja salah ketik dan tetap build "sukses"
+   dengan CSS setengah kosong — tidak ada error, hanya styling hilang.
+2. **Tidak ada regresi.** Class yang ADA di CSS lama, MASIH dipakai markup,
+   tapi HILANG di CSS baru = regresi. Ini yang paling merusak: halaman
+   dirender, layout berantakan, tidak ada error.
+3. **Class yang hilang tapi tak terpakai boleh hilang.** Itu memang
+   penghematan, bukan bug; build yang sengaja memangkas stale token adalah
+   hasil yang diinginkan.
+
+Dua detail implementasi yang bukan pilihan gaya:
+
+- **Tokenisasi dilakukan pada selector ASLI** (yang masih escapes CSS), baru
+  hasilnya di-unescape. Kalau selector di-unescape dulu lalu di-tokenisasi,
+  karakter `:` (pemisah variant) ikut jadi pembatas dan semua class bertanda
+  variant runtuh jadi satu token: `hover:border-green-500/30` menjadi
+  `hover`. Akibatnya cek regresi nyaris tak berguna — `hover` jelas ada di
+  file lain.
+- **Deklarasi dikumpulkan per class dalam bentuk GABUNGAN**, bukan per rule.
+  Tailwind menggabungkan selector yang deklarasinya sama ke satu rule; saat
+  isi kelompok berubah, satu class bisa pindah dari rule gabungan ke rule
+  sendiri tanpa mengubah hasil akhirnya.
+
+Hanya senyawa terakhir selector yang dihitung sebagai pembawa deklarasi. Pada
+`.group:hover .group-hover:text-white`, yang membawa deklarasi adalah
+`group-hover:text-white`; `group` hanya leluhur dan tidak punya deklarasi
+sendiri.
+
+```bash
+php scripts/ci/tailwind-coverage-check.php                  # audit artefak ter-commit
+php scripts/ci/tailwind-coverage-check.php --new=/tmp/x.css  # bandingkan kandidat baru
+php scripts/ci/tailwind-coverage-check.php --rebuild         # build dulu ke temp, lalu banding
+```
+
+Exit code 0 = aman. Non-zero = ada regresi atau config rusak.
 
 ### Verifikasi Manual Private Drive 403 (saat deploy)
 

@@ -67,7 +67,6 @@ class RegisterRateLimitTest extends TestCase
 
     public function testRegistrationKeyIsIndependentFromLogin(): void
     {
-        
         $ip = '203.0.113.8';
         for ($i = 0; $i < 5; $i++) {
             RateLimiter::check('reg_ip:' . $ip, 'register');

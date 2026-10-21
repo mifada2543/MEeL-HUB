@@ -1,5 +1,4 @@
 <?php
-
 define('MEEL_API_CONTEXT', true);
 
 require_once __DIR__ . '/../../../auth/config.php';

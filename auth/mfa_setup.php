@@ -1,5 +1,6 @@
 <?php
 /* reference build: MEeL-C8H11NO2 [19f23f9494c5fa3e] */
+
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../modules/core/helpers.php';
@@ -22,13 +23,33 @@ if (isset($_POST['disable_mfa']) && $mfa_enabled) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error = 'Sesi keamanan kadaluarsa. Silakan refresh halaman.';
     } else {
-        $stmt = $conn->prepare("UPDATE users SET mfa_enabled = 0, mfa_secret = NULL, mfa_backup_codes = NULL WHERE id = ?");
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $stmt->close();
-        $_SESSION['mfa_verified'] = false;
-        $mfa_enabled = 0;
-        $step = 'setup';
+        $pw_input = (string) ($_POST['password'] ?? '');
+        $cur_code = trim((string) ($_POST['current_code'] ?? ''));
+
+        $stmt_chk = $conn->prepare("SELECT password, mfa_secret FROM users WHERE id = ?");
+        $stmt_chk->bind_param("i", $user_id);
+        $stmt_chk->execute();
+        $account = $stmt_chk->get_result()->fetch_assoc();
+        $stmt_chk->close();
+
+        if (!$account
+            || !password_verify($pw_input, (string) ($account['password'] ?? ''))
+        ) {
+            $error = 'Kata sandi salah. MFA tidak dinonaktifkan.';
+        } elseif (empty($account['mfa_secret'])
+            || !preg_match('/^[0-9]{6}$/', $cur_code)
+            || !verify_totp((string) $account['mfa_secret'], $cur_code)
+        ) {
+            $error = 'Kode autentikator salah. MFA tidak dinonaktifkan.';
+        } else {
+            $stmt = $conn->prepare("UPDATE users SET mfa_enabled = 0, mfa_secret = NULL, mfa_backup_codes = NULL WHERE id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $stmt->close();
+            $_SESSION['mfa_verified'] = false;
+            $mfa_enabled = 0;
+            $step = 'setup';
+        }
     }
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_secret']) && !$mfa_enabled) {
@@ -82,14 +103,7 @@ if ($step === 'backup' && isset($_POST['backup_done'])) {
     $step = 'done';
 }
 if ($mfa_enabled && $step === 'setup') {
-    $stmt = $conn->prepare("SELECT mfa_secret FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $existing_secret = $stmt->get_result()->fetch_assoc()['mfa_secret'] ?? '';
-    $stmt->close();
-    if (!empty($existing_secret)) {
-        $otpauth = generate_otpauth_url($existing_secret, $username);
-    }
+    $otpauth = '';
 }
 $auth_title = "Keamanan Akun | MEeL";
 $auth_description = "MEeL - Kelola autentikasi dua faktor (MFA) akun Anda.";
@@ -205,7 +219,17 @@ include __DIR__ . '/partials/auth_head.php';
                             if (result.isConfirmed) {
                                 const form = document.createElement('form');
                                 form.method = 'POST';
-                                form.innerHTML = '<input type="hidden" name="disable_mfa" value="1"><input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">';
+                                form.innerHTML = ''
+                                    + '<div style="text-align:left;padding:0.25rem 0 0.5rem">'
+                                    + '<label style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;margin-bottom:.25rem">Kata Sandi</label>'
+                                    + '<input type="password" name="password" required autocomplete="current-password" '
+                                    + 'style="width:100%;background:#0b0e14;border:1px solid #1f2937;border-radius:.75rem;padding:.6rem .75rem;color:#fff;font-size:.875rem">'
+                                    + '<label style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;margin:.75rem 0 .25rem">Kode Authenticator</label>'
+                                    + '<input type="text" name="current_code" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" '
+                                    + 'style="width:100%;background:#0b0e14;border:1px solid #1f2937;border-radius:.75rem;padding:.6rem .75rem;color:#fff;font-size:.875rem;letter-spacing:.3em">'
+                                    + '</div>'
+                                    + '<input type="hidden" name="disable_mfa" value="1">'
+                                    + '<input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">';
                                 document.body.appendChild(form);
                                 form.submit();
                             }

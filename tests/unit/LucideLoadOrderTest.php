@@ -1,34 +1,20 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
  * Penjaga urutan muat `assets/js/shared/htmx-lucide.js`.
  *
- * Latar belakang
- * --------------
- * File itu memanggil `lucide.createIcons()` di dua tempat: sekali saat
- * load, sekali lagi di setiap `htmx:afterOnLoad`. `lucide` sendiri
- * dimuat `defer` oleh `partials/link.php` — jadi pada halaman yang
- * memuat `htmx-lucide.js` di dalam `<head>`, library asli BELUM ada
- * saat file itu dieksekusi.
+ * `lucide` sendiri dimuat `defer` oleh `partials/link.php` — jadi pada
+ * halaman yang memuat `htmx-lucide.js` di dalam `<head>`, library asli
+ * BELUM ada saat file itu dieksekusi. Yang menyelamatkan: stub `window.lucide`
+ * di `partials/link.php`, dan cek `typeof lucide` di `htmx-lucide.js`.
  *
- * Dua hal menyelamatkan itu sungguhan terjadi:
+ * Tanpa cek itu file melempar `ReferenceError`, dan karena penanganannya
+ * melempar, listener tidak pernah teregistrasi — semua swap htmx berikutnya
+ * diam-diam tidak merender ikon.
  *
- *   1. `partials/link.php` mendefinisikan `window.lucide` sebagai stub
- *      pengantre secara SINKRON sebelum tag `<script>` mana pun, lalu
- *      me-flush antrean itu setelah `lucide.js` termuat.
- *   2. `htmx-lucide.js` sendiri mengecek `typeof lucide`.
- *
- * Yang kedua adalah penutup yang bisa diuji. Tanpa cek (1) saja, file
- * ini melempar `ReferenceError` — dan karena penanganannya melempar,
- * `document.body.addEventListener` TIDAK PERNAH teregistrasi, jadi
- * semua swap htmx berikutnya diam-diam tidak merender ikon. Gejalanya
- * tidak muncul di server, tidak muncul di log: hanya ikon hilang.
- *
- * Test ini menjalankan file-nya sungguhan di Node dengan DOM palsu
- * (`tests/js/htmx-lucide.harness.js`), karena cacat ini tidak terlihat
- * dari membaca source — file tetap tampak benar.
+ * Test ini menjalankan file-nya sungguhan di Node dengan DOM palsu, karena
+ * cacat ini tidak terlihat dari membaca source.
  *
  * @coversNothing
  */
@@ -98,14 +84,9 @@ class LucideLoadOrderTest extends TestCase
     /**
      * PENJAGA REGRESI UTAMA.
      *
-     * Kalau htmx-lucide.js dimuat di halaman yang tidak punya stub
-     * (mis. partials/link.php ikut dihapus, atau halaman baru yang
-     * menulis ulang `<head>`-nya sendiri), `lucide` belum ada. Tanpa
-     * guard, file ini melempar — dan listener tidak pernah terpasang,
-     * sehingga setiap swap htmx berikutnya diam-diam tidak merender
-     * ikon tanpa satu pun error di log.
-     *
-     * Skenario ini sengaja tidak memasang `lucide` sama sekali.
+     * Tanpa stub `lucide`, file melempar dan listener tidak pernah terpasang —
+     * setiap swap htmx berikutnya diam-diam tidak merender ikon tanpa satu pun
+     * error di log. Skenario ini sengaja tidak memasang `lucide` sama sekali.
      */
     public function testSurvivesMissingLucideAndStillRendersOnceItAppears(): void
     {
@@ -122,6 +103,34 @@ class LucideLoadOrderTest extends TestCase
             'Tidak boleh memanggil createIcons pada objek yang tidak ada');
         $this->assertSame(1, $r['callsAfterLucideArrived'],
             'Setelah lucide muncul, swap htmx berikutnya harus benar-benar merender');
+        $this->assertSame('swapped-node', $r['lastScope']);
+    }
+
+    /**
+     * PENJAGA REGRESI KEDUA.
+     *
+     * `htmx-lucide.js` dimuat di dalam <head> pada beberapa halaman. Saat file
+     * itu jalan, `document.body` masih null — sehingga listener yang
+     * didaftarkan di `document.body` tidak pernah terdaftar, dan setiap swap
+     * htmx berikutnya meninggalkan ikon apa adanya. Skenario `no-body`
+     * mensimulasikan itu.
+     */
+    public function testRegistersListenerEvenWhenBodyDoesNotExistYet(): void
+    {
+        $r = $this->runHarness('no-body');
+
+        $this->assertNull($r['threw'], 'File tidak boleh melempar');
+        $this->assertSame(
+            1,
+            $r['listenerRegisteredOnDocument'],
+            'Listener harus terdaftar di document — document.body belum ada saat skrip dimuat di <head>'
+        );
+        $this->assertSame(1, $r['callsOnLoad'], 'Harus render sekali saat load');
+        $this->assertSame(
+            2,
+            $r['callsAfterSwap'],
+            'Swap htmx setelahnya harus benar-benar merender ikon lagi'
+        );
         $this->assertSame('swapped-node', $r['lastScope']);
     }
 
@@ -143,8 +152,6 @@ class LucideLoadOrderTest extends TestCase
         $this->assertNotFalse($stubAt, 'partials/link.php harus memasang stub window.lucide');
         $this->assertNotFalse($libAt, 'partials/link.php harus memuat lucide.js');
 
-        // Stub sebelum tag script-nya, dan tag itu sendiri tidak boleh defer
-        // (defer menundanya ke setelah parse — persis yang harus dihindari).
         $this->assertLessThan(
             $libAt,
             $stubAt,

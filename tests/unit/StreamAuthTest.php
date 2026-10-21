@@ -39,7 +39,6 @@ class StreamAuthTest extends TestCase
 
     public function testExpiredMarkerDenied(): void
     {
-
         $_SESSION['stream_ok'] = [145 => time() - 99999];
         $this->assertFalse(is_stream_authorized(145));
     }

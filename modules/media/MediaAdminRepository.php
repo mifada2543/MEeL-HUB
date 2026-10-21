@@ -1,5 +1,4 @@
 <?php
-
 class MediaAdminRepository
 {
     private \mysqli $conn;

@@ -16,11 +16,7 @@ if (!function_exists('get_user_role')) {
         if (isset($cache[$user_id])) {
             return $cache[$user_id];
         }
-        if (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === $user_id && isset($_SESSION['role'])) {
-            $role = $_SESSION['role'];
-            $cache[$user_id] = $role;
-            return $role;
-        }
+
         $stmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
         $stmt->bind_param("i", $user_id);
         $stmt->execute();

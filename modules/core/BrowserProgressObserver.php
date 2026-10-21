@@ -1,9 +1,29 @@
 <?php
-
 require_once __DIR__ . '/ProgressObserver.php';
 
+/**
+ * Observer progres yang menuliskan JS langsung ke respons.
+ *
+ * Peta stage ke handler di bawah adalah satu-satunya tempat yang tahu
+ * stage apa saja yang ada, sehingga menambah stage baru berarti menyentuh
+ * satu daftar, bukan satu switch yang panjang.
+ *
+ * Setiap handler menerima isi data stage itu dan tidak tahu apa pun
+ * tentang stage lain.
+ */
 class BrowserProgressObserver implements ProgressObserver
 {
+    private const STAGE_HANDLERS = [
+        'download_start' => 'handleDownloadStart',
+        'transcode_start' => 'handleTranscodeStart',
+        'phase' => 'handlePhase',
+        'download_progress' => 'handleDownloadProgress',
+        'transcode_progress' => 'handleTranscodeProgress',
+        'sprite_progress' => 'handleSpriteProgress',
+        'done' => 'handleDone',
+        'done_transcode' => 'handleDoneTranscode',
+        'error' => 'handleError',
+    ];
 
     private bool $overlayInjected = false;
     private bool $isAdmin;
@@ -15,69 +35,100 @@ class BrowserProgressObserver implements ProgressObserver
 
     public function onProgress(string $stage, array $data = []): void
     {
-        switch ($stage) {
-            case 'download_start':
-                $this->injectOverlay('download');
-                $this->emitJs('meelDlInfo(' . json_encode($data['url'] ?? '') . ');');
-                break;
-
-            case 'transcode_start':
-                $this->injectOverlay('transcode');
-                break;
-
-            case 'phase':
-                $this->emitJs(
-                    'if(typeof meelPhase==="function"){meelPhase(' . json_encode($data['phase'] ?? '') . ');}'
-                );
-                break;
-
-            case 'download_progress':
-                $this->emitDownloadProgress($data);
-                break;
-
-            case 'transcode_progress':
-            case 'sprite_progress':
-                $this->emitJs(
-                    ($stage === 'transcode_progress' ? 'meelTcPct' : 'meelSpPct')
-                    . '(' . json_encode($data['pct'] ?? 0)
-                    . (isset($data['label']) ? ', ' . json_encode($data['label']) : '')
-                    . ');'
-                );
-                break;
-
-            case 'done':
-                $this->emitJs(
-                    'meelDone(' . json_encode($data['title'] ?? '') . ', '
-                    . json_encode($data['url'] ?? '') . ');'
-                );
-                break;
-
-            case 'done_transcode':
-                $this->emitJs(
-                    'meelDoneTranscode(' . json_encode($data['title'] ?? '') . ', '
-                    . json_encode($data['download_link'] ?? '') . ');'
-                );
-                break;
-
-            case 'redirect':
-
-                break;
-
-            case 'error':
-                if ($this->isAdmin) {
-                    if (!$this->overlayInjected) {
-                        $this->injectOverlay('error');
-                    }
-                    $this->emitJs('meelError(' . json_encode($data['message'] ?? '') . ');');
-                } else {
-                    $this->emitJs('window.location.href="err/index.php?code=server_error";');
-                }
-                break;
-
-            default:
-
-                break;
+        $handler = self::STAGE_HANDLERS[$stage] ?? null;
+        if ($handler === null) {
+            return;
         }
+        $this->$handler($data);
+    }
+
+    private function handleDownloadStart(array $data): void
+    {
+        $this->injectOverlay('download');
+        $this->emitJs('meelDlInfo(' . json_encode($data['url'] ?? '') . ');');
+    }
+
+    private function handleTranscodeStart(array $data): void
+    {
+        $this->injectOverlay('transcode');
+    }
+
+    private function handlePhase(array $data): void
+    {
+        $this->emitJs(
+            'if(typeof meelPhase==="function"){meelPhase(' . json_encode($data['phase'] ?? '') . ');}'
+        );
+    }
+
+    private function handleDownloadProgress(array $data): void
+    {
+        if (array_key_exists('eta', $data)) {
+            $args = implode(',', array_map(
+                'json_encode',
+                [
+                    $data['pct'] ?? 0,
+                    $data['eta'] ?? '',
+                    $data['speed'] ?? '',
+                    $data['size'] ?? '',
+                    $data['frag'] ?? '',
+                ]
+            ));
+            $this->emitJs('meelDlPct(' . $args . ');');
+            return;
+        }
+
+        if (isset($data['pct'])) {
+            $this->emitJs('meelDlPct(' . json_encode($data['pct']) . ');');
+        }
+    }
+
+    private function handleTranscodeProgress(array $data): void
+    {
+        $this->emitPercent('meelTcPct', $data);
+    }
+
+    private function handleSpriteProgress(array $data): void
+    {
+        $this->emitPercent('meelSpPct', $data);
+    }
+
+    private function emitPercent(string $fn, array $data): void
+    {
+        $this->emitJs(
+            $fn
+            . '(' . json_encode($data['pct'] ?? 0)
+            . (isset($data['label']) ? ', ' . json_encode($data['label']) : '')
+            . ');'
+        );
+    }
+
+    private function handleDone(array $data): void
+    {
+        $this->emitJs(
+            'meelDone(' . json_encode($data['title'] ?? '') . ', '
+            . json_encode($data['url'] ?? '') . ');'
+        );
+    }
+
+    private function handleDoneTranscode(array $data): void
+    {
+        $this->emitJs(
+            'meelDoneTranscode(' . json_encode($data['title'] ?? '') . ', '
+            . json_encode($data['download_link'] ?? '') . ');'
+        );
+    }
+
+    private function handleError(array $data): void
+    {
+        if (!$this->isAdmin) {
+            $this->emitJs('window.location.href="err/index.php?code=server_error";');
+            return;
+        }
+
+        if (!$this->overlayInjected) {
+            $this->injectOverlay('error');
+        }
+        $this->emitJs('meelError(' . json_encode($data['message'] ?? '') . ');');
     }
 
     private function emitJs(string $js): void
@@ -122,29 +173,6 @@ class BrowserProgressObserver implements ProgressObserver
             }
         } catch (\Throwable $e) {
             error_log('[MEeL] BrowserProgressObserver::injectOverlay error: ' . $e->getMessage());
-        }
-    }
-
-    private function emitDownloadProgress(array $data): void
-    {
-
-        if (array_key_exists('eta', $data)) {
-            $args = implode(',', array_map(
-                'json_encode',
-                [
-                    $data['pct'] ?? 0,
-                    $data['eta'] ?? '',
-                    $data['speed'] ?? '',
-                    $data['size'] ?? '',
-                    $data['frag'] ?? '',
-                ]
-            ));
-            $this->emitJs('meelDlPct(' . $args . ');');
-            return;
-        }
-
-        if (isset($data['pct'])) {
-            $this->emitJs('meelDlPct(' . json_encode($data['pct']) . ');');
         }
     }
 }

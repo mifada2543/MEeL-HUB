@@ -1,24 +1,15 @@
 <?php
-
 /**
  * Pola pemeriksaan keamanan untuk orkestrasi transcoder.
  *
- * MENGAPA DI LUAR `security_test.php`
- * ----------------------------------
- * Pola-pola ini mengikat ke bentuk kode, bukan ke perilakunya. Begitu
+ * Pola-pola ini mengikat ke bentuk kode, bukan ke perilakunya: begitu
  * sebuah method dipecah dan variabelnya berubah nama, polanya tidak lagi
- * cocok -- dan gerbang akan melaporkannya sebagai kegagalan, memaksa
- * seseorang mencari letaknya. Itu hasil yang baik. Yang buruk adalah kalau
- * pola itu dihapus atau dipoles diam-diam supaya cocok lagi tanpa pernah
- * ditinjau ulang: gerbang tetap hijau, tapi tidak ada yang memeriksa apa pun.
+ * cocok — dan gerbang akan melaporkannya sebagai kegagalan. Yang buruk
+ * adalah kalau pola itu dipoles diam-diam supaya cocok lagi: gerbang tetap
+ * hijau, tapi tidak ada yang memeriksa apa pun.
  *
  * Dipisah ke berkas sendiri supaya unit test bisa memuat peta yang sama dan
  * memastikan SETIAP pola masih benar-benar cocok dengan kode hari ini.
- * Kalau ada pola yang mati, penuhnya gagal di unit test, bukan produksi.
- *
- * Catatan: pola di sini memang memeriksa bentuk, bukan hasil. Pemeriksaan
- * security yang sesungguhnya tetap butuh uji perilaku; peta ini hanya
- * memastikan tidak ada penjaga yang hilang di jalan.
  */
 
 /**
@@ -27,13 +18,9 @@
 function meel_transcoder_check_patterns(): array
 {
     return [
-        // Perintah ffmpeg dibangun sebagai array argumen, bukan string yang
-        // dirangkai untuk shell. Inilah yang mencegah injeksi lewat nama
-        // berkas atau judul yang mengandung karakter meta shell.
+
         'proc_open array (finalizeVideo)' => '/\$hls_cmd\s*=\s*\[\s*\$this->ffmpeg_bin/',
 
-        // Pemanggilan generik menerima array itu apa adanya. Kalau nanti
-        // berubah jadi `proc_open($cmdString, ...)`, ini yang menangkap.
         'proc_open menerima array, bukan string shell' => "/proc_open\(\\\$job\['cmd'\]/",
 
         'proc_open array (transcodeVideo)' => '/proc_open\(\$tc_cmd/',
@@ -41,9 +28,6 @@ function meel_transcoder_check_patterns(): array
         'env vars via $env (PATH)' => "/'PATH'/",
         'putenv() untuk processDownload' => "/putenv\('PATH/",
 
-        // Progress dibaca dari pipe stderr (indeks 2). Membaca dari stdout
-        // atau dari deskriptor yang salah membuat parse `time=` salah
-        // dan progress tidak pernah bergerak.
         'stderr pipe untuk progress FFmpeg' => '/\$stream\s*=\s*\$pipes\[2\]/',
         'baca progress dari stream stderr' => '/fgets\(\$stream\)/',
 

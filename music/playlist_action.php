@@ -1,18 +1,12 @@
 <?php
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
+include __DIR__ . '/../auth/config.php';
 
 function playlist_back_url(): string
 {
-    $back = 'beranda';
-    if (isset($_SERVER['HTTP_REFERER']) && $_SERVER['HTTP_REFERER'] !== '') {
-        $ref_host = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST);
-        if ($ref_host === ($_SERVER['HTTP_HOST'] ?? '')) {
-            $back = $_SERVER['HTTP_REFERER'];
-        }
-    }
-    return $back;
+    $ref = meel_same_origin_referer();
+    return $ref ?? 'beranda';
 }
 
 if (!isset($_SESSION['user_id'])) {
@@ -95,7 +89,6 @@ if ($action === 'add_to_playlist') {
 
     $conn->begin_transaction();
     try {
-
         $own = $conn->prepare('SELECT p.id FROM playlists p WHERE p.id = ? AND p.user_id = ?');
         $own->bind_param('ii', $playlist_id, $user_id);
         $own->execute();
@@ -144,24 +137,43 @@ if ($action === 'remove_from_playlist') {
 if ($action === 'delete_playlist') {
     $playlist_id = (int) ($_POST['playlist_id'] ?? 0);
 
+    $own = $conn->prepare('SELECT id FROM playlists WHERE id = ? AND user_id = ?');
+    $own->bind_param('ii', $playlist_id, $user_id);
+    $own->execute();
+    $is_owner = (int) $own->get_result()->num_rows > 0;
+    $own->close();
+    if (!$is_owner) {
+        redirect(base_url('/music/beranda?msg=denied'));
+    }
+
     $conn->begin_transaction();
     try {
-        $stmt_tracks = $conn->prepare('DELETE FROM playlist_tracks WHERE playlist_id = ?');
-        $stmt_tracks->bind_param('i', $playlist_id);
-        $stmt_tracks->execute();
+        $stmt_tracks = $conn->prepare(
+            'DELETE pt FROM playlist_tracks pt
+               JOIN playlists p ON p.id = pt.playlist_id
+              WHERE pt.playlist_id = ? AND p.user_id = ?'
+        );
+        $stmt_tracks->bind_param('ii', $playlist_id, $user_id);
+        if (!$stmt_tracks->execute()) {
+            throw new \RuntimeException('Gagal menghapus track playlist');
+        }
         $stmt_tracks->close();
 
         $stmt = $conn->prepare('DELETE FROM playlists WHERE id = ? AND user_id = ?');
         $stmt->bind_param('ii', $playlist_id, $user_id);
         if (!$stmt->execute()) {
-            throw new \RuntimeException('Gagal menghapus playlist: ' . $stmt->error);
+            throw new \RuntimeException('Gagal menghapus playlist');
+        }
+        if ($stmt->affected_rows === 0) {
+            throw new \RuntimeException('Playlist tidak ada atau bukan milik Anda');
         }
         $stmt->close();
 
         $conn->commit();
     } catch (\Throwable $e) {
         $conn->rollback();
-        die('Error: ' . $e->getMessage());
+        error_log('[MEeL] playlist_action delete_playlist gagal: ' . $e->getMessage());
+        redirect(base_url('/music/beranda?msg=delete_failed'));
     }
     redirect(base_url('/music/beranda?msg=playlist_deleted'));
 }

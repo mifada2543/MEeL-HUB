@@ -1,11 +1,11 @@
 <?php
-require_once '../modules/core/helpers.php';
-include '../auth/auth.php';
-include '../modules/core/Uploader.php';
-require_once '../modules/core/GarbageCollector.php';
-require_once '../modules/media/MediaLibrary.php';
-require_once '../modules/core/MeelCoin.php';
-require_once '../modules/core/Notification.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
+include __DIR__ . '/../auth/auth.php';
+include __DIR__ . '/../modules/core/Uploader.php';
+require_once __DIR__ . '/../modules/core/GarbageCollector.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/../modules/core/MeelCoin.php';
+require_once __DIR__ . '/../modules/core/Notification.php';
 meel_storage_guard();
 GarbageCollector::run();
 
@@ -70,12 +70,12 @@ if (isset($_POST['upload'])) {
     $_META_TITLE = 'Upload | MEeL Music';
     $_META_DESC = 'Upload musik ke MEeL Music Library. Format audio: FLAC, MP3, WAV, OPUS, OGG, M4A.';
     ?>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('music', '../assets/css/music'); ?>
-    <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime('../assets/css/font.css') ?>">
-    <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
-    <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">
-    <link rel="stylesheet" href="../assets/css/music/upload/main.css?v=<?= filemtime('../assets/css/music/upload/main.css') ?>">
+    <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime(__DIR__ . '/../assets/css/font.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/design-tokens.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/upload-form.css') ?>">
+    <link rel="stylesheet" href="../assets/css/music/upload/main.css?v=<?= filemtime(__DIR__ . '/../assets/css/music/upload/main.css') ?>">
 </head>
 
 <body>
@@ -324,7 +324,7 @@ if (isset($_POST['upload'])) {
         </main>
     </div>
 
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
 
     <div id="upload-overlay">
         <div class="overlay-card">

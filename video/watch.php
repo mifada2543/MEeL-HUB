@@ -1,9 +1,9 @@
 <?php
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
-require_once '../modules/core/CommentRenderer.php';
-require_once '../controllers/api/WatchController.php';
+include __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/core/CommentRenderer.php';
+require_once __DIR__ . '/../controllers/api/WatchController.php';
 require_once __DIR__ . '/cards.php';
 
 $id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
@@ -45,7 +45,7 @@ session_write_close();
     $_META_IMAGE_H = '720';
     $_META_TYPE = 'video.other';
     ?>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php if ($__thumb_path !== ''): ?>
         <link rel="preload" as="image" fetchpriority="high"
             href="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>">
@@ -109,7 +109,7 @@ session_write_close();
                     aria-label="Cari video">
                     <i data-lucide="search" class="w-4 h-4"></i>
                 </button>
-                <?php include '../partials/nav.php'; ?>
+                <?php include __DIR__ . '/../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
@@ -235,31 +235,14 @@ session_write_close();
                                 title="Unduh audio saja">
                                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Audio
                             </a>
-                            <div id="like-dislike-container" class="flex items-center gap-2">
-                                <button
-                                    hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
-                                    hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"like","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
-                                    title="Suka video"
-                                    class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
-                                   <?= $user_interaction === 'like'
-                                        ? 'bg-red-600/15 border-red-600/30 text-red-400'
-                                        : 'bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300' ?>">
-                                    <i data-lucide="thumbs-up" class="w-3.5 h-3.5 <?= $user_interaction === 'like' ? 'fill-current' : '' ?>"></i>
-                                    Like<?= ($v['likes'] ?? 0) > 0 ? " <span class='tabular-nums ml-0.5'>{$v['likes']}</span>" : '' ?>
-                                </button>
-                                <button
-                                    hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
-                                    hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
-                                    title="Tidak suka video"
-                                    aria-label="Dislike<?= ($v['dislikes'] ?? 0) > 0 ? ' (' . $v['dislikes'] . ')' : '' ?>"
-                                    class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
-                                   <?= $user_interaction === 'dislike'
-                                        ? 'bg-white/10 border-white/15 text-white'
-                                        : 'bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300' ?>">
-                                    <i data-lucide="thumbs-down" class="w-3.5 h-3.5 <?= $user_interaction === 'dislike' ? 'fill-current' : '' ?>"></i>
-                                    <?= ($v['dislikes'] ?? 0) > 0 ? "<span class='tabular-nums'>{$v['dislikes']}</span>" : '' ?>
-                                </button>
-                            </div>
+                            <?php
+                            $like_dislike_media_id = $id;
+                            $like_dislike_media_type = 'video';
+                            $like_dislike_state = $user_interaction;
+                            $like_dislike_likes = (int) ($v['likes'] ?? 0);
+                            $like_dislike_dislikes = (int) ($v['dislikes'] ?? 0);
+                            include __DIR__ . '/../partials/like_dislike.php';
+                            ?>
                         <?php endif; ?>
                     </div>
                 </div> <?php if (!empty($v['description'])): ?>
@@ -374,7 +357,7 @@ session_write_close();
 
     </main>
 
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>
     <script src="../assets/js/shared/head-meta.js<?= meel_asset_version('assets/js/shared/head-meta.js') ?>"></script>
     <script src="../assets/js/shared/recovery-manager.js<?= meel_asset_version('assets/js/shared/recovery-manager.js') ?>"></script>

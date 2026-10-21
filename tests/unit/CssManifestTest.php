@@ -4,7 +4,6 @@ use PHPUnit\Framework\TestCase;
 /** @covers SwPrecache */
 class CssManifestTest extends TestCase
 {
-
     public static function manifestProvider(): array
     {
         $out = [];

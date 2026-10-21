@@ -1,10 +1,10 @@
 <?php
-require_once '../modules/core/helpers.php';
-require_once '../auth/auth.php';
-require_once '../auth/config.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
+require_once __DIR__ . '/../auth/auth.php';
+require_once __DIR__ . '/../auth/config.php';
 
-require_once '../modules/media/MediaLibrary.php';
-require_once '../modules/media/BookRepository.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/../modules/media/BookRepository.php';
 
 if (!isset($_GET['id']) || !ctype_digit($_GET['id'])) {
     header("Location: ..");
@@ -87,7 +87,7 @@ function _scanSubdirs(string $dir): array {
     <meta property="og:title" content="<?= htmlspecialchars($book['title']) ?> — MEeL Read">
     <meta property="og:description" content="Baca <?= htmlspecialchars($book['title']) ?> di MEeL Books - Platform Media Hub Pribadi.">
     <title>MEeL Read | <?= htmlspecialchars($book['title']) ?></title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('books', '../assets/css/books'); ?>
     <link rel="stylesheet" href="../assets/css/books/read/main.css<?= meel_asset_version('assets/css/books/read/main.css') ?>">
     <div id="reader-data"
@@ -426,7 +426,7 @@ function _scanSubdirs(string $dir): array {
                 <?php endif; ?>
             </div>
         <?php endif; ?>
-        <?php include '../partials/footer.php'; ?>
+        <?php include __DIR__ . '/../partials/footer.php'; ?>
     </div>
 
     <?php if ($total_pages > 0): ?>

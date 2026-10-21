@@ -1,7 +1,7 @@
 <?php
-require_once 'modules/core/helpers.php';
-include 'auth/config.php';
-require_once 'controllers/system/UpdateManager.php';
+require_once __DIR__ . '/modules/core/helpers.php';
+include __DIR__ . '/auth/config.php';
+require_once __DIR__ . '/controllers/system/UpdateManager.php';
 
 $um = new UpdateManager($conn);
 $um->handle();
@@ -11,7 +11,7 @@ $sidebar_data = $um->getSidebarData();
 $updates = $um->getUpdates();
 
 $is_logged_in = isset($_SESSION['user_id']);
-$is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 'admin');
+$is_admin = $is_logged_in && is_admin($conn);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -53,7 +53,7 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
     <link rel="stylesheet" href="assets/css/shared/theme-tokens.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/theme-tokens.css') ?>">
     <link rel="stylesheet" href="assets/css/shared/light-theme.css?v=<?= @filemtime(__DIR__ . '/assets/css/shared/light-theme.css') ?>">
     <script src="assets/js/shared/theme.js?v=<?= @filemtime(__DIR__ . '/assets/js/shared/theme.js') ?>" defer></script>
-    <?php include 'partials/scripts.php'; ?>
+    <?php include __DIR__ . '/partials/scripts.php'; ?>
     <link rel="stylesheet" href="assets/css/up.css<?= meel_asset_version('assets/css/up.css') ?>">
 </head>
 
@@ -188,7 +188,7 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
                             </svg>
                             Informasi Penting
                         </div>
-                        <?= $sidebar_data['important_content'] ?? '<span style="color:var(--muted);font-size:.75rem">Tidak ada konten penting.</span>' ?>
+                        <?= isset($sidebar_data['important_content']) && $sidebar_data['important_content'] !== '' ? nl2br(htmlspecialchars((string) $sidebar_data['important_content'], ENT_QUOTES, 'UTF-8')) : '<span style="color:var(--muted);font-size:.75rem">Tidak ada konten penting.</span>' ?>
                     </div>
 <!-- reference build: MEeL-C9H11NO2 [857ce7bc510e10e2] -->
                     <div id="pane-announcement" class="tab-pane">
@@ -200,7 +200,7 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
                             </svg>
                             Pengumuman
                         </div>
-                        <?= $sidebar_data['announcement_content'] ?? '<span style="color:var(--muted);font-size:.75rem">Tidak ada pengumuman.</span>' ?>
+                        <?= isset($sidebar_data['announcement_content']) && $sidebar_data['announcement_content'] !== '' ? nl2br(htmlspecialchars((string) $sidebar_data['announcement_content'], ENT_QUOTES, 'UTF-8')) : '<span style="color:var(--muted);font-size:.75rem">Tidak ada pengumuman.</span>' ?>
                     </div>
                 </div>
 
@@ -333,7 +333,6 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
         }
 
         function openEditModal(data) {
-
             const decodeHtml = (html) => {
                 const txt = document.createElement("textarea");
                 txt.innerHTML = html;
@@ -359,7 +358,7 @@ $is_admin = ($is_logged_in && isset($_SESSION['role']) && $_SESSION['role'] === 
             });
         }
 </script>
-    <?php include 'partials/footer.php'; ?>
+    <?php include __DIR__ . '/partials/footer.php'; ?>
 </body>
 
 </html>

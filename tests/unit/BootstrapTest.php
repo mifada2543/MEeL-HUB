@@ -4,7 +4,6 @@ use PHPUnit\Framework\TestCase;
 /** @coversNothing */
 class BootstrapTest extends TestCase
 {
-
     private function probe(string $remoteAddr, string $serverName, string $prelude = ''): array
     {
         $bootstrap = realpath(__DIR__ . '/../../modules/core/bootstrap.php');
@@ -53,7 +52,6 @@ class BootstrapTest extends TestCase
 
     public static function baseUrlProvider(): array
     {
-
         $projectRoot = rtrim(str_replace('\\', '/', realpath(__DIR__ . '/../..')), '/');
         $docRoot = dirname($projectRoot);
         $expected = '/' . basename($projectRoot);
@@ -96,8 +94,9 @@ class BootstrapTest extends TestCase
             'localhost auto-detect → development, debug ON' => [
                 '127.0.0.1', 'localhost', '', 'development', true, true,
             ],
-            'server_name localhost → development, debug ON' => [
-                '8.8.8.8', 'localhost', '', 'development', true, true,
+
+            'server_name localhost DARI PENYERANG → tetap production' => [
+                '8.8.8.8', 'localhost', '', 'production', false, true,
             ],
             'remote host → production, debug OFF' => [
                 '8.8.8.8', 'meel.example.com', '', 'production', false, true,

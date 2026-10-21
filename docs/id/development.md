@@ -11,10 +11,16 @@ Panduan untuk pengembang yang ingin berkontribusi atau memahami standar koding d
 - [Struktur Database](#struktur-database)
 - [Coding Conventions](#coding-conventions)
 - [Catatan `.htaccess` & Route Legacy](#catatan-htaccess--route-legacy)
-- [Keputusan Teknis & Konfirmasi Perbaikan](#keputusan-teknis--konfirmasi-perbaikan-2026-10-03)
 - [Testing](#testing)
+- [MFA / TOTP Development](#mfa--totp-development)
 - [Pull Request Guide](#pull-request-guide)
 - [Troubleshooting Development](#troubleshooting-development)
+- [Kontrak Waktu](#kontrak-waktu)
+- [Housekeeping & Throttle](#housekeeping--throttle)
+- [Cache & Performa](#cache--performa)
+- [Anotasi untuk Static Analyzer](#anotasi-untuk-static-analyzer)
+- [Notifikasi](#notifikasi)
+- [Resource untuk Developer](#resource-untuk-developer)
 
 ---
 
@@ -60,6 +66,12 @@ ini_set('display_errors', 1);
 - Database: MySQL Workbench / phpMyAdmin
 - API Testing: Postman / Insomnia
 - Browser: Chrome DevTools untuk debugging HTMX
+
+### Catatan Lingkungan Dev
+
+- ⚠️ `MEEL_TEST_DB_HOST=127.0.0.1` **wajib** untuk integration test. Socket MariaDB XAMPP ada di `/opt/lampp/var/mysql/mysql.sock`, sedangkan PHP CLI mencari `/var/run/mysqld/mysqld.sock` (`mysqli.default_socket`) → `No such file or directory`. `localhost` gagal, TCP `127.0.0.1` jalan. Ini masalah mesin dev saja — CI sudah benar (`ci.yml` memakai `127.0.0.1`).
+- ⚠️ `StorageMountGuardTest` (menjalankan subprocess PHP via `proc_open`) pernah gagal 1× (`exit 255`) bila suite dijalankan **bersamaan** dengan proses test lain yang menyentuh `temp/`. Jangan dijalankan paralel dengan `security_test` / `check_deploy`.
+- Angka pada kolom **IO/R** di `htop` adalah *laju baca*, bukan RSS.
 
 ---
 
@@ -538,25 +550,6 @@ User klik toggle → MEELTheme.toggle()
 ---
 
 ## Testing
-
-### Manual Testing Checklist
-
-Setiap perubahan harus di-test:
-
-**Frontend:**
-- [ ] Halaman tidak error di browser console
-- [ ] HTMX request/response bekerja
-- [ ] Mobile responsive (min width 320px)
-- [ ] Dark mode konsisten
-- [ ] Semua tombol dan link berfungsi
-
-**Backend:**
-- [ ] Prepared statements tidak error
-- [ ] CSRF validation berfungsi
-- [ ] Role-based access berfungsi
-- [ ] File upload validasi berfungsi
-- [ ] Error handling menampilkan pesan yang sesuai
-
 ### Debug Tools
 
 ```php
@@ -576,6 +569,60 @@ $stmt = $conn->prepare("SELECT ...");
 if (!$stmt) error_log("SQL Error: " . $conn->error);
 ```
 
+### Properti Internal mysqli Tidak Bisa di-Fake
+
+`num_rows`, `affected_rows`, dan properti internal serupa adalah **read-only virtual property** di PHP 8.x. Override method maupun `__get()` sama-sama **tidak mengintervensi** — `ReflectionMethod('mysqli_result', 'num_rows')` bahkan melempar *method does not exist*, yang membuktikan murni itu property.
+
+Konsekuensi praktis: **kode produksi jangan bergantung pada membaca properti internal tersebut** kalau pemanggilannya ingin bisa diuji dengan `tests/unit/support/MysqlFake.php`. Kalau memang butuh nilai tersebut, kirim lewat parameter atau kembalikan lewat jalur lain.
+
+### Cache Statis Lintas-Test
+
+`get_user_role()` dan `get_user_active()` memakai `static $cache` per proses PHP. Cache ini **tidak** di-reset antar-test, jadi satu test bisa meracuni test lain yang jalan belakangan di proses yang sama. Contoh nyata: `MediaViewerTest` membuat `MediaViewer` dengan **koneksi mock**, dan konstruktor memanggil `get_user_role($mock, 1)`. Mock tidak punya baris, jadi fungsi itu mengembalikan fallback `'user'` — dan **memoisasi** nilai fallback itu ke `static $cache[1]`. Beberapa test kemudian, di proses yang sama, memakai DB test sungguhan dengan `role = 'admin'`, tapi cache basal lebih dulu.
+
+Yang membuat ini sulit dideteksi: testnya **lulus saat dijalankan sendiri** (`--filter`), gagal hanya saat seluruh suite jalan.
+
+Aturannya: **cache hanya boleh menyimpan fakta, bukan ketidakpastian.** Baris yang tidak ditemukan berarti "belum tahu", bukan "user ini punya role `user`". Jadi hasil negatif sengaja **tidak** di-memoisasi:
+
+```php
+$row = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if ($row === null) {
+    return 'user';          // fallback, TIDAK masuk cache
+}
+
+$role = (string)$row['role'];
+$cache[$user_id] = $role;   // fakta → aman di-cache
+```
+
+`get_user_active()` punya masalah kembar: ia memoisasi `false` turunan dari baris yang tidak ada, sehingga user yang baru aktif tetap terbaca non-aktif sampai proses berakhir. Dikunci oleh `tests/unit/UserRoleCacheNotFoundTest.php`.
+
+### Konstanta Media Dikunci di `tests/bootstrap.php`
+
+Konstanta path media (`MEEL_HDD_*`) ditetapkan di `tests/bootstrap.php`, **sebelum** file produksi mana pun yang bisa mendefinisikannya saat di-`require`. `modules/core/TranscoderBase.php` mendefinisikan `MEEL_HDD_BASE` sebagai placeholder `'/path/to/your/media'` kalau konstantanya belum ada — dan `require_once` **tidak bisa dibatalkan**, jadi setiap test yang jalan sesudahnya melihat `meel_media_base_path('video')` bernilai placeholder yang tidak writable.
+
+Solusinya konstantanya dikunci lebih dulu ke `temp/media-test/`. Dua efek sekaligus: urutan test tidak lagi menentukan hasil, dan tidak ada lagi direktori media yang bocor ke luar repo saat test berjalan.
+
+### Infrastruktur Test
+
+**`createMock(mysqli::class)` menghabiskan 8,86 GiB RAM.** PHPUnit membangun kelas mock lewat `eval()` dan **menahannya di static cache selama proses**. `mysqli` punya `bind_param(string $types, mixed &...$vars)` — parameter by-reference + variadik — sehingga kelas hasil generate-nya sangat besar, dan menumpuknya di beberapa test memindahkan proses ke territory GB.
+
+Solusi: `tests/unit/support/MysqlFake.php` — `FakeMysqli`, `FakeMysqliStmt`, `FakeMysqliResult` sebagai subclass yang **tidak memanggil constructor parent** (tanpa koneksi, tanpa kelas yang di-generate, RAM ≈ 0). Ditambah `phpunit.xml` → `<ini name="memory_limit" value="2G"/>`; tanpa itu satu test salah bisa menghabiskan RAM mesin sebelum ketahuan. Hasil: **8,86 GiB → 453 MiB** (~19× lebih ringan), OOM hilang.
+
+> **Aturan:** kalau menambah test yang butuh `mysqli`, pakai `FakeMysqli` — **jangan** `createMock(mysqli::class)`. Kalau memang perlu mock, buat di `setUp` **sekali** lalu pakai ulang.
+
+### Gate Verifikasi
+
+```bash
+vendor/bin/phpunit --testsuite='MEeL Core Unit Tests'
+MEEL_TEST_DB_HOST=127.0.0.1 vendor/bin/phpunit --testsuite='MEeL Integration Tests'
+php tests/functional_test.php
+php tests/security_test.php
+php tests/check_deploy.php
+php database/migrate.php   # 2× untuk idempotensi
+php scripts/gc.php          # housekeeping berat (butuh $server = TCP)
+```
+
 ---
 
 ## MFA / TOTP Development
@@ -592,80 +639,19 @@ MEeL mengimplementasikan TOTP sesuai [RFC 6238](https://datatracker.ietf.org/doc
 | Window | ±1 (90 detik toleransi) |
 | Encoding | Base32 |
 
-### Helper Functions (di `modules/auth/helpers/mfa.php`)
+### Helper Functions
 
-```php
-// ─── GENERATE SECRET ───────────────────────────────────────
-function generate_mfa_secret(): string {
-    $random = random_bytes(20);  // 160-bit
-    // Base32 encode (A-Z, 2-7)
-    $base32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    $secret = '';
-    $bits = 0; $buffer = 0;
-    foreach (str_split($random) as $byte) {
-        $buffer = ($buffer << 8) | ord($byte);
-        $bits += 8;
-        while ($bits >= 5) {
-            $bits -= 5;
-            $secret .= $base32[($buffer >> $bits) & 31];
-        }
-    }
-    return $secret;
-}
-
-// ─── GENERATE TOTP ─────────────────────────────────────────
-function generate_totp(string $secret): string {
-    $decoded = base32_decode($secret);  // Base32 → raw bytes
-    $counter = pack('N*', 0) . pack('N*', intdiv(time(), 30));
-    $hash = hash_hmac('sha1', $counter, $decoded, true);
-    $offset = ord($hash[19]) & 0xf;
-    $code = (
-        ((ord($hash[$offset]) & 0x7f) << 24) |
-        ((ord($hash[$offset+1]) & 0xff) << 16) |
-        ((ord($hash[$offset+2]) & 0xff) << 8) |
-        (ord($hash[$offset+3]) & 0xff)
-    ) % 1000000;
-    return str_pad((string)$code, 6, '0', STR_PAD_LEFT);
-}
-
-// ─── VERIFY TOTP (dengan window ±1) ────────────────────────
-function verify_totp(string $secret, string $code): bool {
-    for ($i = -1; $i <= 1; $i++) {
-        // Generate TOTP dengan offset waktu $i step
-        $expected = generate_totp_at($secret, time() + ($i * 30));
-        if (hash_equals($expected, $code)) return true;
-    }
-    return false;
-}
-```
+Implementasinya ada di `modules/auth/helpers/mfa.php` — berkas itu satu-satunya
+sumber kebenaran, jadi tidak disalin ke dokumentasi. Fungsinya: `generate_mfa_secret()`,
+`generate_totp()`, `verify_totp()`, `verify_totp_step()`, `generate_backup_codes()`,
+`verify_backup_code()`, `generate_otpauth_url()`, `base32_decode()`.
 
 ### Backup Codes System
 
-```php
-// ─── GENERATE 8 BACKUP CODES ───────────────────────────────
-function generate_backup_codes(): array {
-    $plain = [];
-    $hashed = [];
-    for ($i = 0; $i < 8; $i++) {
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);  // 6 digit
-        $plain[] = $code;
-        $hashed[] = password_hash($code, PASSWORD_DEFAULT);  // bcrypt
-    }
-    return ['plain' => $plain, 'hashed' => $hashed];
-}
-
-// ─── VERIFY BACKUP CODE (single-use) ───────────────────────
-function verify_backup_code(string $hashedJson, string $code): array {
-    $codes = json_decode($hashedJson, true) ?? [];
-    foreach ($codes as $i => $hash) {
-        if (password_verify($code, $hash)) {
-            array_splice($codes, $i, 1);  // Hapus yang sudah dipakai
-            return ['valid' => true, 'remaining' => $codes];
-        }
-    }
-    return ['valid' => false, 'remaining' => $codes];
-}
-```
+Delapan kode cadangan, masing-masing 6 digit, disimpan sebagai hash
+`password_hash()` (bcrypt, one-way) dan tidak bisa dibaca balik. Kode yang
+sudah dipakai dihapus dari daftar saat diverifikasi, jadi satu kode hanya bisa
+dipakai sekali. Implementasinya di `modules/auth/helpers/mfa.php`.
 
 ### Database Schema
 
@@ -749,21 +735,6 @@ GPL v3 mewajibkan (Pasal 5a):
 1. Setiap file yang dimodifikasi harus diberi **notice perubahan** yang jelas
 2. File yang dimodifikasi harus tetap **mengacu pada lisensi GPL v3**
 3. **Karya turunan** (derivative work) harus dirilis di bawah **lisensi yang sama**
-
----
-
-### Checklist Kontribusi
-
-- [ ] Gunakan **Prepared Statements** untuk semua query database
-- [ ] Sanitasi input POST/GET
-- [ ] CSRF token di setiap form POST baru
-- [ ] Role check sebelum operasi sensitif
-- [ ] Update `update.php` dengan changelog
-- [ ] Test upload file besar di lokal
-- [ ] Test di mode incognito (session test)
-- [ ] Setiap file baru memiliki **copyright header GPL v3**
-- [ ] Perubahan ditandai dengan **notice modifikasi** yang jelas
-
 ### Git Commit Convention
 
 ```
@@ -852,667 +823,181 @@ if (!headers_sent()) {
 
 ---
 
-## Keputusan Teknis & Konfirmasi Perbaikan (2026-10-03)
 
-> Berkas ini memuatkan keputusan yang diambil saat optimalisasi performa & perbaikan
-> bug. Semua catatan ini **dipindahkan dari komentar di dalam kode** sesuai
-> [Gaya Komomentar](#gaya-komentar) aturan 8 — kode cukup jauh lebih ringkas,
-> semua konteks panjang hidup di sini.
->
-> Cakupan: Fase 1 (T11–T16) selesai 6/6, T20 (`release.yml`), plus
-> T26 (bug timezone). Detail status per tugas ada di `.agents/Todo.md`.
+## Kontrak Waktu
 
-### Kontrak Jam: `DATETIME` adalah *wall clock* tanpa timezone
+Kolom `DATETIME` di MySQL **tidak menyimpan timezone**. Nilai yang ditulis bisa datang dari dua jam berbeda:
 
-Aturan ini yang mendasari T26 dan jadi patokan wajib di seluruh repo.
+| Sumber | Jam yang dipakai |
+|---|---|
+| `NOW()` / `CURRENT_TIMESTAMP` | jam server MySQL (`@@time_zone`) |
+| `date()` / `time()` / `strtotime()` | jam PHP (`date_default_timezone_get()`) |
 
-Kolom `DATETIME` di MySQL **tidak menyimpan timezone**. Nilai yang ditulis bisa datang
-dari dua jam berbeda:
+Hampir seluruh kode repo membaca kolom datetime lewat `strtotime()` → selalu jam PHP. Begitu jam PHP berbeda dari `time_zone` MySQL, kolom yang ditulis `NOW()` terlihat di masa depan, dan dua hal rusak: `$elapsed = max(0, time() - $ts)` jadi negatif lalu di-clamp `0` (countdown dan umur selalu penuh), serta ambang `col <= $threshold` tidak pernah true (logika refill/lockout mati total).
 
-| Sumber | Dipakai oleh |
-| --- | --- |
-| `NOW()` / `CURRENT_TIMESTAMP` | **jam server MySQL** (`@@time_zone`) |
-| `date()` / `time()` / `strtotime()` | **jam PHP** (`date_default_timezone_get()`) |
-
-Hampir seluruh kode repo **membaca** kolom datetime lewat `strtotime()` → selalu
-jam PHP. Begitu `date_default_timezone` PHP berbeda dari `time_zone` MySQL, kolom
-yang ditulis `NOW()` terlihat **di masa depan**, dan dua hal rusak:
-
-- `$elapsed = max(0, time() - $ts)` → negatif → di-clamp `0` → **countdown/umur
-  selalu penuh** (UI menampilkan angka yang tidak pernah terjadi);
-- ambang `col <= $threshold` → tidak pernah true → **logika refill/lockout mati
-  total** (user terkunci saldo habis).
-
-**Aturan repo:** kalau sebuah kolom `DATETIME` dibaca lewat `strtotime()`/`time()`
-dari PHP, kolom itu **wajib ditulis dari jam PHP**. Gunakan
-`meel_now()` / `meel_now_ago()` dari `modules/core/helpers/datetime.php`.
-`NOW()` hanya boleh tetap dipakai bila kolomnya dibaca murni sebagai DATETIME SQL
-(mis. `ORDER BY created_at DESC`) tanpa pernah dibandingkan dengan jam PHP.
-
-#### Skema yang sudah diperbaiki
+**Aturan repo:** kalau sebuah kolom `DATETIME` dibaca lewat `strtotime()`/`time()` dari PHP, kolom itu **wajib ditulis dari jam PHP**. Gunakan `meel_now()` / `meel_now_ago()` dari `modules/core/helpers/datetime.php`. `NOW()` hanya boleh tetap dipakai bila kolomnya dibaca murni sebagai DATETIME SQL (mis. `ORDER BY created_at DESC`) tanpa pernah dibandingkan dengan jam PHP.
 
 | Kolom | Ditulis | Dibaca | Gejala kalau timezone meleset |
-| --- | --- | --- | --- |
+|---|---|---|---|
 | `users.meelcoin_last_refill` | `MeelCoin.php` (3 titik) | `MeelCoin.php` `$threshold` + `$elapsed` | refill mati, countdown selalu penuh |
-| `users.last_activity` | 5 titik produksi (lihat di bawah) | 6+ titik | **user yang di-"kick" tetap tampil ONLINE**, `live-monitor` menampilkan waktu di masa depan |
+| `users.last_activity` | 5 titik produksi (lihat di bawah) | 6+ titik | user yang di-"kick" tetap tampil ONLINE |
 
-Titik tulis `last_activity` yang sudah dikonversi: `activity_logger.php` (UPDATE
-user terautentikasi + INSERT guest `ON DUPLICATE KEY UPDATE`), `auth/login.php` (×2),
-`auth/mfa_verify.php`, `auth/auth.php`, dan `admin_actions.php` (`kick_user`, yang
-sebelumnya memakai `DATE_SUB(NOW(), INTERVAL 10 MINUTE)`).
+Titik tulis `last_activity` yang sudah dikonversi: `activity_logger.php` (UPDATE user terautentikasi + INSERT guest `ON DUPLICATE KEY UPDATE`), `auth/login.php` (×2), `auth/mfa_verify.php`, `auth/auth.php`, dan `admin_actions.php` (`kick_user`, yang sebelumnya memakai `DATE_SUB(NOW(), INTERVAL 10 MINUTE)`).
 
-#### ⚠️ Audit yang BELUM selesai
+**Audit yang belum selesai:** kolom `created_at`, `login_attempts`, dan `rate_limit` **masih ditulis `NOW()`**. Untuk `created_at` dampaknya display-only (drift jam di `admin/activity_log.php`) — belum diaudit per-kolom. Lakukan audit ini sebelum membangun worker berbasis waktu, karena scheduler berbasis waktu makin sensitif terhadap skew.
 
-Kolom `created_at`, `login_attempts`, dan `rate_limit` **masih ditulis `NOW()`**.
-Untuk `created_at` dampaknya **display-only** (drift jam di
-`admin/activity_log.php`) — belum diaudit per-kolom. **Lakukan audit ini sebelum
-membangun worker (T17)**, karena scheduler berbasis waktu akan makin sensitif
-terhadap skew.
+Di mesin dev, PHP CLI memakai `date.timezone = UTC` sementara MariaDB `@@time_zone = SYSTEM` = WIB (UTC+7) — selisih 25195 detik ≈ 7 jam. `MeelCoinIntegrationTest::testRefillResetsTimerWhenBalanceIsAtMax` menangkap selisih itu.
 
-#### Reproduksi di mesin dev
+## Housekeeping & Throttle
 
-PHP CLI memakai `date.timezone = UTC` (`/etc/php/8.3/cli/php.ini`) sedangkan
-MariaDB XAMPP `@@time_zone = SYSTEM` = **WIB (UTC+7)** → selisih **25195 detik
-≈ 7 jam**. Griffiths test `MeelCoinIntegrationTest::testRefillResetsTimerWhenBalanceIsAtMax`
-tepatnya menangkap selisih 7 jam ini sebelum perbaikannya.
+### ActivityLogger
 
----
+`ActivityLogger::onRequest($conn)` dipanggil dari `auth/config.php`. Yang dijaga adalah **biaya**, bukan perilakunya:
 
-### Housekeeping per-request: throttle vs. bagian keamanan
+- **Throttle 60 detik.** Signature `last_page|device|access_via|ip_address` disimpan di `$_SESSION['_meel_touch']`; payload identik dalam window itu tidak ditulis ulang. Signature sengaja memuat halaman + perangkat + jaringan supaya perpindahan halaman tetap tercatat seketika, bukan menunggu window habis.
+- **Skip respons non-HTML.** `shouldSkipTelemetry()` menolak partial htmx (`HTTP_HX_REQUEST`), `Accept` yang tidak memuat `text/html`/`*/*` (JSON & segmen HLS), dan endpoint `stream.php` / `file.php`.
+- 🔒 **Bagian keamanan TIDAK di-throttle.** `enforceIpBan()` dan `enforceSingleSession()` selalu jalan. Throttle hanya untuk telemetry — throttle di sini akan membuka celah revoke.
+- ⚠️ **`$hasRun` static tidak berguna di PHP-FPM.** Static tidak di-share antar-request, jadi guard itu hanya berguna di dalam satu proses. Motif sebenarnya throttle adalah **file**, bukan static.
 
-#### `ActivityLogger` (T11)
+### GarbageCollector
 
-Blok prosedural di `modules/core/activity_logger.php` dirapikan jadi kelas
-`ActivityLogger::onRequest($conn)` yang dipanggil dari `auth/config.php`. Yang
-berubah adalah **biaya**, bukan perilakunya:
+`run()` menjalankan dua hal mahal pada **setiap request**: scan direktori storage dan `RateLimiter::cleanup()`. Keduanya berada di balik satu file throttle (`temp/gc_run_last_run.txt`, `RUN_INTERVAL_SECONDS = 60`), dengan batas waktu 3 detik.
 
-- **Throttle 60 detik.** Signature `last_page|device|access_via|ip_address`
-  disimpan di `$_SESSION['_meel_touch']`. Payload identik dalam window itu tidak
-  ditulis ulang. Signature sengaja memuat halaman + perangkat + jaringan supaya
-  perpindahan halaman tetap tercatat seketika, bukan menunggu window habis.
-- **Skip respons non-HTML.** `shouldSkipTelemetry()` menolak: partial htmx
-  (`HTTP_HX_REQUEST`), `Accept` yang tidak memuat `text/html`/`*/*` (JSON & segmen
-  HLS), dan endpoint `stream.php` / `file.php` (binary).
-- 🔒 **Bagian keamanan TIDAK di-throttle.** `enforceIpBan()` (redirect ban IP) dan
-  `enforceSingleSession()` (cabut sesi) selalu jalan. Throttle hanya untuk
-  telemetry. Ini keputusan yang tidak bisa ditawar — throttle di sini akan
-  membuka celah revoke.
-- ⚠️ **`$hasRun` static tidak berguna di PHP-FPM.** Static tidak di-share antar-request,
-  jadi guard itu hanya berguna di dalam satu proses. **Motif sebenarnya throttle
-  adalah file**, bukan static. Test menutup keduanya (mock `mysqli` membuktikan
-  idempoten di satu proses; test terpisah membuktikan throttle bertahan setelah
-  static di-reset).
+**Pemisahan CLI/web:** `ALTER TABLE ... AUTO_INCREMENT` memblokir metadata MySQL dan `syncViewsFromLogs()` menulis ulang kolom agregat — keduanya terlalu berat untuk request. Dipindah ke `GarbageCollector::runCliMaintenance()`, yang memiliki **seatbelt `PHP_SAPI !== 'cli'`**: dipanggil dari web request menjadi no-op, bukan error. Entry point `scripts/gc.php` (mode `--run-only` untuk housekeeping ringan).
 
-#### `GarbageCollector` (T11 + T16)
+## Cache & Performa
 
-`run()` menjalankan dua hal mahal pada **setiap request**: scan direktori storage
-dan `RateLimiter::cleanup()`. Keduanya kini berada di balik satu file throttle
-(`temp/gc_run_last_run.txt`, `RUN_INTERVAL_SECONDS = 60`). Scan dihentikan setelah
-batas waktu 3 detik seperti sebelumnya.
+### Query yang benar-benar mahal
 
-**Pemisahan CLI/web (T16):** `ALTER TABLE ... AUTO_INCREMENT` memblokir metadata
-MySQL dan `syncViewsFromLogs()` menulis ulang kolom agregat — keduanya terlalu
-berat untuk request. Dipindah ke `GarbageCollector::runCliMaintenance()`, yang
-memiliki **seatbelt `PHP_SAPI !== 'cli'`**: dipanggil dari web Request menjadi
-no-op, bukan error. Entry point: `scripts/gc.php` (mode `--run-only` untuk
-housekeeping ringan). Seatbelt diuji lewat SAPI `cgi-fcgi` sungguhan, bukan
-hanya diasumsikan.
+`isServerBusy()` hanya butuh **angka**, jadi memakai `COUNT(*)` per tabel — bukan menarik seluruh baris antrean (URL, username, `created_at`) lengkap dengan JOIN dan filesort. `getActiveQueues()` **dipertahankan** karena `server_stats.php`, `server_stats_sse.php`, dan `admin_actions.php` memang butuh detail baris.
 
-**Known-gap yang masih ada:** tak ada sweeper untuk `upload_queue` /
-`transcode_queue` berstatus `processing` yang mati karena crash → baris menggantung
-selamanya dan user tidak pernah mendapat refund-nya.
+Jumlah query tidak berkurang (`Com_select` tetap 2 di kedua jalur). Benefit-nya ada di **payload dan parse**: pada 2.001 baris `processing` × 200, jalur count 109 ms · 0 B, jalur penuh 7.088 ms · 1.366.920 B. `EXPLAIN`: jalur `COUNT(*)` → `type: ref`, `key: status`, `Using index` (covering, tak perlu menyentuh baris); jalur penuh → JOIN `users` + `Using temporary; Using filesort`.
 
----
+`MediaViewer::__construct()` memakai `get_user_role()` dan `get_user_active()` (`modules/auth/helpers/user.php`, cached, `LIMIT 1`) — hampir selalu kena cache karena `MediaViewer` dipakai di halaman yang sudah punya sesi.
 
-### Query: mana yang benar-benar mahal
-
-#### `System::countActiveQueues()` (T12)
-
-`isServerBusy()` hanya butuh **angka**, tapi sebelumnya memanggil
-`getActiveQueues()` yang menarik seluruh baris antrean (URL, username,
-`created_at`) lengkap dengan JOIN dan filesort. Kini memakai `COUNT(*)` per tabel.
-`getActiveQueues()` **dipertahankan** karena `server_stats.php`,
-`server_stats_sse.php`, dan `admin_actions.php` memang butuh detail baris.
-
-#### Angka pengukuran — baca dengan jujur
-
-⚠️ **Jumlah query tidak berkurang.** `Com_select` tetap **2** di kedua jalur
-(keduanya menyentuh 2 tabel). Ini `COUNT(*)`-only, bukan pengurangan jumlah query.
-Benefit-nya ada di **payload dan parse**:
-
-| Skenario | `isServerBusy()` (baru) | `getActiveQueues()` (lama) |
-| --- | --- | --- |
-| 2 baris `processing`, 300× | 57 ms · 0 B | 78 ms · 2.216 B |
-| 2.001 baris `processing`, 200× | **109 ms · 0 B** | **7.088 ms · 1.366.920 B** |
-
-Pada beban realistis yang penting (antrean menumpuk), jalur count **~65× lebih
-cepat**. `EXPLAIN`: jalur `COUNT(*)` → `type: ref`, `key: status`,
-`Using index` (covering, tak perlu menyentuh baris). Jalur penuh → JOIN `users`
-+ `Using temporary; Using filesort`.
-
-#### `MediaViewer::__construct()` (T12)
-
-Sebelumnya query `users` langsung. Kini memakai `get_user_role()` (sudah ada,
-cached + session-aware) dan helper baru **`get_user_active()`**
-(`modules/auth/helpers/user.php`, cached, `LIMIT 1`, `close()` — mencerminkan
-`get_user_role()`). Hampir selalu kena cache karena `MediaViewer` dipakai di
-halaman yang sudah punya sesi.
-
-#### `MediaViewer::getMediaData()`
-
-`($result && $result->num_rows > 0) ? $result->fetch_assoc() : null` →
-`return $result ? $result->fetch_assoc() : null;`. `num_rows` butuh panggilan
-handler tambahan tanpa mengubah apa pun, dan **tidak bisa di-fake di test double**
-(karena `num_rows` adalah *read-only virtual property* — lihat
-[Test Infrastructure](#test-infrastructure-catatan-penting)).
-
----
-
-### Sampling id acak tanpa `ORDER BY RAND()` (T13)
-
-Helper bersama di `modules/core/helpers/media.php`:
+### Sampling id acak tanpa `ORDER BY RAND()`
 
 | Fungsi | Peran |
-| --- | --- |
+|---|---|
 | `meel_media_stats_all()` | **Satu** query `UNION ALL` untuk `video`/`music`/`books` (COUNT + MIN(id) + MAX(id)), cache file per tabel 30 detik |
 | `meel_media_stats()` | Satu tabel; cache miss menghangatkan **ketiganya** sekaligus |
 | `meel_pick_random_ids()` | Sampling **rentang acak** untuk rekomendasi |
 | `meel_invalidate_media_stats_cache()` | Buang cache (dipanggil di 5 titik mutasi) **sekaligus** cache orphan admin |
 | `meel_media_table_whitelist()` | Validasi nama tabel (anti injeksi lewat nama tabel) |
 
-**Strategi sampling:** beberapa jendela `id >= ? ORDER BY id LIMIT ?` dengan titik
-awal acak, digabung jadi himpunan unik. Setiap jendela memakai indeks id
-(range scan) → biaya `O(log n + limit)`, tanpa filesort, dan tetap unbiased ke
-seluruh rentang id.
+Strategi sampling: beberapa jendela `id >= ? ORDER BY id LIMIT ?` dengan titik awal acak, digabung jadi himpunan unik. Setiap jendela memakai indeks id (range scan) → biaya `O(log n + limit)`, tanpa filesort, dan tetap unbiased ke seluruh rentang id. **`ORDER BY RAND()` kini nol tersisa di seluruh query repo.**
 
-**`ORDER BY RAND()` kini nol tersisa di seluruh query repo.**
+Advice "ambil 500 id pertama dengan `LIMIT 500`" **ditolak** — itu akan membiasakan rekomendasi ke id terkecil. Sampling rentang acak tetap unbiased ke seluruh rentang dan **selalu** punya `LIMIT`, jadi memenuhi maksud "jangan tarik seluruh tabel" tanpa mengorbankan sebaran.
 
-#### Keputusan: kenapa **tidak** memakai `LIMIT 500`
+### Konvensi cache file
 
-Advice awal Take list `LIMIT 500` untuk pengambilan id. **Ditolak** — mengambil
-500 id pertama akan membiasakan rekomendasi ke id terkecil. Dipakai sampling rentang
-acak yang unbiased, dan **selalu** punya `LIMIT` — jadi memenuhi maksud "jangan
-tarik seluruh tabel" tanpa mengorbankan sebaran.
-
-#### Sumber kebenaran tunggal untuk hitungan media
-
-Sebelumnya ada **dua** cache: `media_counts.json` (di `MediaLibrary`) dan hitungan
-yang dikomputasi on-the-fly (di `MediaViewer`). Keduanya kini memakai
-`meel_media_stats_all()`. `MediaLibrary::clearCountsCache()` cukup memanggil
-`meel_invalidate_media_stats_cache()`.
-
-Titik invalidasi: upload video (`Uploader.php`, `DownloadService.php`), upload
-musik (`helpers/upload.php`), hapus video & musik (`fun-manage.php`).
-
-Cache bisa dialihkan lewat konstanta **`MEEL_MEDIA_CACHE_DIR`** (mengikuti pola
-`MEEL_SERVER_STATS_CACHE`) supaya test tidak bergantung pada hak akses
-`temp/cache/` milik Apache. Cache orphan admin mengikuti konstanta yang sama lewat
-`meel_admin_orphan_cache_path()` (dengan override `MEEL_ADMIN_ORPHANS_CACHE`).
-
-#### Konvensi cache file
-
-1. **Tulis lewat `meel_write_cache_file()` saja** — tidak pernah `file_put_contents()`
-   langsung. Fungsi itu menulis file sementara lalu `rename()`, sehingga atomic.
-   `LOCK_EX` **bukan** padanan atomic: ia hanya mengunci penulis, sedangkan pembaca
-   tetap bisa membaca file yang sedang ditulis (terukur 58%–81% pembacaan gagal saat
-   ada writer bersamaan).
-2. **Baca lewat `meel_read_cache_file()` saja** — jangan tulis ulang logika TTL per
-   file. Kunci waktu yang dipakai: `ts` (bawaan), `time` (`dir_size`), `checked_at`
-   (orphan admin).
-3. **TTL pendek + invalidasi saat mutasi** — TTL bukan alat kesegaran. Untuk cache
-   yang harus disegarkan, invalidasi dilakukan di titik mutasi (lihat
-   `meel_invalidate_media_stats_cache()`, yang juga membuang cache orphan). TTL hanya
-   menahan scan berulang saat refresh cepat.
+1. **Tulis lewat `meel_write_cache_file()` saja** — tidak pernah `file_put_contents()` langsung. Fungsi itu menulis file sementara lalu `rename()`, sehingga atomic. `LOCK_EX` **bukan** padanan atomic: ia hanya mengunci penulis, sedangkan pembaca tetap bisa membaca file yang sedang ditulis.
+2. **Baca lewat `meel_read_cache_file()` saja** — jangan tulis ulang logika TTL per file. Kunci waktu yang dipakai: `ts` (bawaan), `time` (`dir_size`), `checked_at` (orphan admin).
+3. **TTL pendek + invalidasi saat mutasi** — TTL bukan alat kesegaran. Cache yang harus disegarkan di-invalidate di titik mutasi (`meel_invalidate_media_stats_cache()` juga membuang cache orphan). TTL hanya menahan scan berulang saat refresh cepat.
 4. **Hanya JSON** — tidak ada `serialize()`/pickle di cache.
-5. **Direktori harus group-writable** — `temp/cache/` dibuat dengan mode `0775`.
-   Untuk instalasi lama: `sudo chgrp daemon temp/cache && sudo chmod 775 temp/cache`.
+5. **Direktori harus group-writable** — `temp/cache/` dibuat dengan mode `0775`. Untuk instalasi lama: `sudo chgrp daemon temp/cache && sudo chmod 775 temp/cache`.
 
-#### Dua bug yang ditemukan oleh test
+Path cache bisa dialihkan lewat konstanta **`MEEL_MEDIA_CACHE_DIR`** (mengikuti pola `MEEL_SERVER_STATS_CACHE`) supaya test tidak bergantung pada hak akses `temp/cache/` milik Apache. Cache orphan admin mengikuti konstanta yang sama lewat `meel_admin_orphan_cache_path()` (override `MEEL_ADMIN_ORPHANS_CACHE`).
 
-1. `array_keys()` yang diaplikasikan pada list id mengubah pool menjadi `[0, 1, …]`
-   sehingga kondisi "semua kandidat sudah pernah dilihat" tidak pernah terdeteksi.
-2. Cache memakai path yang tidak writable oleh proses CLI — memicu kebutuhan
-   konstanta `MEEL_MEDIA_CACHE_DIR`.
-
----
-
-### Conditional request untuk media streaming (T14)
+### Conditional request untuk media streaming
 
 Tiga fungsi murni (bukan inline di dalam fungsi yang me-`exit()`), supaya bisa diuji:
 
 | Fungsi | Peran |
-| --- | --- |
+|---|---|
 | `meel_cache_is_fresh()` | Keputusan 304 dari `If-None-Match` / `If-Modified-Since` |
 | `meel_media_etag()` | Strong ETag dari path+size+mtime |
 | `meel_media_cache_control()` | `m3u8` → `private, no-cache`; lainnya → `private, max-age=31536000, immutable` |
 
 Aturan yang harus dijaga:
 
-- 🔒 **Tidak pernah 304 pada Range request.** 304 + 206/`Content-Range` bersamaan
-  itu respons invalid. Syaratnya `if (!$isPartial && …)`.
-- 🔒 **Tetap `private`, tidak pernah `public`.** Konten di-gate per sesi/pengguna;
-  `public` berisiko bocor lewat shared cache/CDN ke pengguna lain.
-- Playlist HLS berubah terus (segmen baru ditambahkan) → wajib divalidasi ulang.
-  Segmen/berkas media immutable setelah ditulis → boleh dicache lama.
-- `ETag`, `Last-Modified`, `Cache-Control` dikirim di **kedua** jalur
-  (X-Sendfile **dan** streaming), bukan hanya satu.
+- 🔒 **Tidak pernah 304 pada Range request.** 304 + 206/`Content-Range` bersamaan itu respons invalid. Syaratnya `if (!$isPartial && …)`.
+- 🔒 **Tetap `private`, tidak pernah `public`.** Konten di-gate per sesi/pengguna; `public` berisiko bocor lewat shared cache/CDN ke pengguna lain.
+- Playlist HLS berubah terus (segmen baru ditambahkan) → wajib divalidasi ulang. Segmen/berkas media immutable setelah ditulis → boleh dicache lama.
+- `ETag`, `Last-Modified`, `Cache-Control` dikirim di **kedua** jalur (X-Sendfile **dan** streaming), bukan hanya satu.
 
-**Bug yang ditemukan test:** `If-None-Match: *` sempat tidak dianggap fresh,
-melanggar RFC 7232 §3.2 ("*" = "jika ada representasi apa pun").
+`If-None-Match: *` harus dianggap fresh (RFC 7232 §3.2).
 
----
+### Versi aset
 
-### Versi aset: kenapa `meel_asset_dir_version()` sengaja max-mtime direktori
+`meel_asset_dir_version()` sengaja memakai max-mtime **direktori**, bukan versi per-file. Alasannya: `assets/js/{video/watch,music/index,music/watch}/main.js` membaca `?v=` dari `document.currentScript.src` lalu meneruskannya ke seluruh modul anak yang dimuat dinamis — kalau versinya per-file, perubahan pada modul anak **tidak akan menginvalidasi cache browser sama sekali**, hanya file entry yang berubah. Closure penuhnya ada di build content-hash. Daftar pemanggil `meel_asset_dir_version()` dikunci di `AssetVersioningTest`.
 
-T11 (T15) memberi `?v=` pada 48 URL aset telanjang di 25 file. Tapi advice awal
-"ganti max-mtime direktori dengan versi per-file" **ditolak**, karena akan menjadi
-**regresi**:
+## Anotasi untuk Static Analyzer
 
-`assets/js/{video/watch,music/index,music/watch}/main.js` membaca `?v=` dari
-`document.currentScript.src`, lalu **meneruskannya ke seluruh modul anak** yang
-dimuat dinamis. Kalau versinya per-file, perubahan pada modul anak **tidak akan
-menginvalidasi cache browser sama sekali** — hanya file entry yang berubah.
+Halaman admin mewarisi variabel dari file yang di-`include` (`auth/config.php`, `controllers/admin/admin_data.php`) — sah saat runtime, tapi tidak terlihat oleh static analyzer karena analyzer tidak menelusuri variabel lintas `include`. Karena itu 12 halaman admin punya blok `@var` di awal file.
 
-Closure penuhnya tetap **T22** (content-hash saat build), bukan `?v=filemtime`.
-Daftar pemanggil `meel_asset_dir_version()` dikunci di `AssetVersioningTest`.
-
----
-
-### Anotasi `@var` untuk analyzer (T20)
-
-Halaman admin mewarisi variabel dari file yang di-`include` (`auth/config.php`,
-`controllers/admin/admin_data.php`) — sah saat runtime, tapi tidak terlihat oleh
-static analyzer karena analyzer tidak menelusuri variabel lintas `include`.
-Karena itu 12 halaman admin punya blok `@var` di awal file.
-
-#### Akar masalahnya satu pola: `@var` ditulis berkoma
+### Satu Variabel per Baris `@var`
 
 ```php
 /** @var \mysqli_result $a, $b, $c; @var array $d */   // ❌ hanya baris pertama terbaca
 ```
 
-Bentuk daftar berkoma **tidak dipahami analyzer mana pun** — hanya baris `@var`
-pertama yang dibaca, sisanya diabaikan diam-diam. Intelephense yang melaporkan
-`P1008 Undefined variable` kalau bentuk ini dipakai. Perbaikannya:
+Bentuk daftar berkoma **tidak dipahami analyzer mana pun** — hanya baris `@var` pertama yang dibaca, sisanya diabaikan diam-diam. Perbaikannya:
 
 - satu variabel per baris `@var`;
-- blok docblock **harus diletakkan sebelum pemakaian pertama** — `@var` hanya
-  berlaku ke depan. Inilah alasan `$conn` di baris 8 masih dilaporkan error saat
-  bloknya diletakkan di baris 15.
+- blok docblock **harus diletakkan sebelum pemakaian pertama** — `@var` hanya berlaku ke depan. Inilah alasan `$conn` masih dilaporkan error saat bloknya diletakkan setelah pemakaian pertama.
 
-`$conn` berasal dari `auth/config.php` dan dipakai 10 halaman admin, jadi blok
-`@var \mysqli $conn` ditambahkan ke masing-masing. Baris `@var` ini **fungsional**
-(bukan komentar hiasan) — menghapusnya mengembalikan ratusan `P1008` di editor.
+Baris `@var` ini **fungsional** (bukan komentar hiasan) — menghapusnya mengembalikan ratusan `P1008` di editor.
 
-> **Catatan:** PHPStan pernah dicoba di sini (level 2, scope `admin/`) dan berhasil
-> menurunkan 165 error menjadi 0 — tapi **dicabut lagi** (2026-10-03). Alasannya:
-> config `scanFiles`-nya rapuh (34 path absolut; kalau salah satu di-rename,
-> PHPStan hanya print "Scanned file … does not exist" lalu keluar diam-diam dan
-> hasilnya menyesatkan), belum ada job CI yang menjalankannya, dan
-> `require-dev` tidak ikut terpasang di build produksi. `@var` yang diperbaiki
-> tetap valuable untuk IDE.
+> **Catatan:** PHPStan pernah dicoba (level 2, scope `admin/`) dan berhasil menurunkan 165 error menjadi 0 — tapi **dicabut lagi**. Alasannya: config `scanFiles`-nya rapuh (path absolut; kalau salah satu di-rename, PHPStan hanya print "Scanned file … does not exist" lalu keluar diam-diam dan hasilnya menyesatkan), belum ada job CI yang menjalankannya, dan `require-dev` tidak ikut terpasang di build produksi. `@var` yang diperbaiki tetap valuable untuk IDE.
 
-#### ⚠️ Intelephense P1038 pada `FakeMysqliStmt::bind_param()`
+### `P1038` pada `FakeMysqliStmt::bind_param()`
 
-`P1038` = "method signature incompatible with parent". Satu-satunya trigger di repo
-ini adalah test double mysqli, dan itu **false positive dari stub Intelephense**:
+`P1038` = "method signature incompatible with parent". Satu-satunya trigger di repo ini adalah test double mysqli, dan itu **false positive dari stub Intelephense**:
 
 | Bentuk | Diterima PHP 8.3? |
-| --- | --- |
+|---|---|
 | Stub Intelephense 1.18.5: `bind_param($types, &$var1, &...$_)` | ❌ **DITOLAK engine** |
-| Nyata: `bind_param(string $types, mixed &...$vars): bool` | ✅ DITERIMA |
+| Nyata: `bind_param(string $types, mixed &...$vars): bool` | �
+ DITERIMA |
 
-Stub Intelephense belum menyusul perubahan signature `mysqli_stmt::bind_param()`
-di PHP 8.0, jadi analyzer dan engine **tidak bisa dipenuhi bersamaan**. Ditutup
-lewat `.vscode/settings.json` → `intelephense.diagnostics.exclude`, dikunci ke file
-dan kode saja (`["P1038"]`) supaya pemeriksaan lain di file yang sama tetap aktif.
-File `.vscode/` sudah masuk `.gitignore`, jadi kontributor lain tidak terpengaruh.
+Stub Intelephense belum menyusul perubahan signature `mysqli_stmt::bind_param()` di PHP 8.0, jadi analyzer dan engine **tidak bisa dipenuhi bersamaan**. Ditutup lewat `.vscode/settings.json` → `intelephense.diagnostics.exclude`, dikunci ke file dan kode saja (`["P1038"]`) supaya pemeriksaan lain di file yang sama tetap aktif. Konsekuensi praktis: `FakeMysqliResult::close()` ditulis `: void` mengikuti stub analyzer, meski runtime PHP menerima juga bentuk untyped — bentuk `: void` memenuhi keduanya.
 
-> Konsekuensi praktis: `FakeMysqliResult::close()` ditulis `: void` mengikuti stub
-> analyzer, meski runtime PHP menerima juga bentuk untyped. Bentuk `: void`
-> memenuhi keduanya, jadi itu pilihannya.
+## Notifikasi
 
----
+Tujuan: notifikasi MEeLCoin **isi ulang** otomatis, sekaligus menghentikan pertumbuhan `user_notifications` tanpa batas.
 
-### Notifikasi: coalescing `like` & retensi (2026-10-03)
+### Aturan 1 — Notifikasi isi ulang otomatis
 
-Tujuan: notifikasi MEeLCoin **isi ulang** otomatis, sekaligus menghentikan
-pertumbuhan `user_notifications` tanpa batas.
+Dibuat di dalam `MeelCoin::refill()`, bukan di titik pemanggil. Alasannya: jumlah yang dikreditkan hanya diketahui di sana, jadi tidak ada pemanggil yang bisa lupa. `refill()` dipanggil dari 7 tempat produksi dan **tidak satu pun berubah**. Role `admin` sudah keluar lebih dulu di `refill()` (`if ($role === 'admin') return true;`), sehingga otomatis tidak menerima notifikasi.
 
-#### Latar belakang (dihitung dari data, bukan asumsi)
-
-Sebelum perubahan ini tabel `user_notifications` **tidak punya pruning sama
-sekali** — satu-satunya `DELETE` berasal dari aksi user (`deleteOne`,
-`deleteAllByUser`, `deleteByChat`). Tidak ada batas umur maupun batas jumlah.
-
-Yang membuatnya tidakurgency: halaman notifikasi hanya mengambil **50 baris
-terbaru** (`profile/notification.php` → `getList($conn, $userId, 50, …)`; API
-meng-imposed `min(50, …)`). Jadi **baris di luar 50 terbaru per pengguna tidak
-pernah tampil** — murni ballast.
-
-Kondisi saat itu: 30 baris / 3.351 B, rata-rata 112 B per baris. Tipe `meelcoin`
-menyumbang 27 dari 30 baris — karena `message`-nya menyisipkan **URL dan judul
-upload penuh**. Dari 30 baris itu hanya **27 yang unik**: ada 3 duplikat persis,
-salah satunya jejak **retry upload**.
-
-#### Aturan 1 — Notifikasi isi ulang otomatis
-
-Dibuat di dalam `MeelCoin::refill()`, bukan di titik pemanggil. Alasannya: jumlah
-yang dikreditkan hanya diketahui di sana, jadi tidak ada pemanggil yang bisa lupa.
-`refill()` dipanggil dari 7 tempat produksi dan **tidak satu pun berubah**.
-
-`admin` sudah keluar lebih dulu di `refill()` (`if ($role === 'admin') return true;`)
-sehingga role itu otomatis tidak menerima notifikasi.
-
-**Pesannya memakai jumlah yang benar-benar dikreditkan, bukan angka tetap:**
+Pesannya memakai jumlah yang benar-benar dikreditkan, bukan angka tetap:
 
 > Saldo Anda bertambah {jumlah} dari isi ulang.
 
 Hardcode "25" akan berbohong di dua kasus nyata:
 
 | Sumber | Nilai |
-| --- | --- |
+|---|---|
 | Default `meelcoin_user_refill` | **15** |
 | Default `meelcoin_member_refill` | 25 |
 | Semua nilai | bisa diubah admin di `admin/meelcoin.php` → `site_settings` |
 | Jumlah nyata | `min($refillAmt, $maxCoins - $current)` — **dipotong sisa kapasitas** |
 
-Jadi user `member` dengan saldo 45 (max 50) dan refill 25 hanya menerima **+5**.
-Tipe notifikasi memakai ulang `meelcoin` (bukan tipe baru), supaya
-`$validTypes`, `$ICONS`, dan filter di `notification.js` tidak perlu berubah dan
-seluruh histori koin tetap dalam satu tab.
+Jadi user `member` dengan saldo 45 (max 50) dan refill 25 hanya menerima **+5**. Tipe notifikasi memakai ulang `meelcoin` (bukan tipe baru), supaya `$validTypes`, `$ICONS`, dan filter di `notification.js` tidak perlu berubah dan seluruh histori koin tetap dalam satu tab.
 
-#### Aturan 2 — Coalescing notifikasi `like`
+### Aturan 2 — Coalescing notifikasi `like`
 
-Satu video viral bisa menghasilkan ratusan like dalam hitungan menit. Tanpa
-penggabungan,uploader menerima ratusan baris notifikasi yang isinya cuma
-"X menyukai karyamu".
-
-Jadi `Notification::create()` menjadi no-op bila notifikasi `like` untuk pengguna
-yang sama sudah dibuat dalam **60 menit terakhir**. Atribut yang dikorbankan:
-identitas peng-`like` di dalam jendela tersebut (notifikasi menampilkan orang
- pertama yang memicu) dan video mana pun ikut tertunda. Ini memang disengaja —
-batasnya jadi jelas: **maksimal satu notifikasi like per jam per pengguna**.
+Satu video viral bisa menghasilkan ratusan like dalam hitungan menit. Tanpa penggabungan, uploader menerima ratusan baris notifikasi yang isinya cuma "X menyukai karyamu". Jadi `Notification::create()` menjadi no-op bila notifikasi `like` untuk pengguna yang sama sudah dibuat dalam **60 menit terakhir**. Atribut yang dikorbankan: identitas peng-`like` di dalam jendela tersebut (notifikasi menampilkan orang pertama yang memicu) dan video mana pun ikut tertunda. Batasnya jadi jelas: **maksimal satu notifikasi like per jam per pengguna**.
 
 Hanya `like` yang digabung. Tipe lain **tidak boleh** di-throttle:
 
 | Tipe | Alasan |
-| --- | --- |
+|---|---|
 | `reply` | percakapan — tanpa notifikasi berarti komentar hilang |
 | `admin_chat` | pesan admin harus masuk semuanya |
 | `meelcoin` | terikat pada saldo — user perlu riwayat utuh |
 | `system` | pengumuman sistem |
 
-#### Aturan 3 — Retensi: 50 baris & 15 hari
+### Aturan 3 — Retensi: 50 baris & 15 hari
 
-`Notification::pruneUser()` menghapus baris yang:
+`Notification::pruneUser()` menghapus baris yang berumur lebih dari **15 hari**, atau berada di luar **50 terbaru** (urut `created_at DESC, id DESC`). Baris yang belum dibaca juga ikut terhapus bila sudah terdorong keluar batas 50 — sah karena halaman notifikasi memang tidak pernah menampilkan lebih dari itu.
 
-1. berumur lebih dari **15 hari**, atau
-2. berada di luar **50 terbaru** (urut `created_at DESC, id DESC`).
+Dijalankan dari `scripts/gc.php` (CLI/cron), bukan dari web request — prune membuat `DELETE` dan tidak pantas dipanggil per-request. `pruneAll()` mengembalikan jumlah **pengguna** yang dipangkas, bukan jumlah baris: `mysqli_stmt::$affected_rows` adalah properti internal yang tidak bisa dibaca pada test double, jadi menghitung baris akan membuat kode sulit diuji tanpa manfaat nyata.
 
-Baris yang belum dibaca juga ikut terhapus bila sudah terdorong keluar batas 50 —
-sah karena halaman notifikasi memang tidak pernah menampilkan lebih dari itu.
+Indeks `idx_un_user_type_created (user_id, type, created_at)` menopang lookup coalescing `like` sekaligus jadi covering untuk query pruning. Migrasi **v4** + `schema.sql` sudah disinkronkan (keduanya wajib ikut, sesuai konvensi T9) dan sudah diverifikasi idempoten 2×.
 
-Dijalankan dari `scripts/gc.php` (CLI/cron), bukan dari web request — prune
-membuat `DELETE` dan tidak pantas dipanggil per-request. `pruneAll()` mengembalikan
-jumlah **pengguna** yang dipangkas, bukan jumlah baris: `mysqli_stmt::$affected_rows`
-termasuk properti internal yang tidak bisa dibaca pada test double, jadi menghitung
-baris akan membuat kode sulit diuji tanpa manfaat nyata.
-
-#### Yang perlu migration
-
-Indeks baru `idx_un_user_type_created (user_id, type, created_at)` — menopang
-lookup coalescing `like` sekaligus jadi covering untuk query pruning. Tanpa ini,
-`isCoalesced()` menyisir seluruh baris pengguna tersebut per-press like.
-
-Migrasi **v4** + `schema.sql` sudah disinkronkan (keduanya wajib ikut, sesuai
-konvensi T9). Sudah diverifikasi idempoten 2×.
-
-> ⚠️ Nomor "v4" di sini = nomor **saat ini** (setelah redunisasi 17 Sep 2026).
-> Angka v1–v15 yang muncul di dokumen lain adalah riwayat lama yang
-> dikonsolidasikan menjadi v1 — lihat `docs/id/modules.md` § *Migration System*.
-
-#### Verifikasi
-
-`tests/unit/NotificationRetentionTest.php` (**11 test**) mengunci: hanya `like`
-yang punya jendela coalescing, tipe lain tidak menyentuh DB sama sekali, kedua
-batas retensi benar, argumen tidak masuk akal di-clamp (keep ≥ 1), dan prune tidak
-menyentuh pengguna lain.
-
-Ditambah verifikasi langsung ke DB (6 skenario, semua lulus):
-
-| # | Skenario | Hasil |
-| --- | --- | --- |
-| 1 | 5× like dalam 1 jam | **1** baris |
-| 2 | 3× reply | **3** baris (tidak di-throttle) |
-| 3 | 120 baris → prune | **50** baris |
-| 4 | umur 20 hari | terhapus; yang baru **utuh** |
-| 5 | pengguna lain | **tidak terpengaruh** |
-| 6 | refill role `user` | notifikasi tampil: "bertambah **15**" |
-
-Skenario 6 sekaligus membuktikan koreksi di atas: angka yang muncul adalah **15**
-(default role `user`), bukan 25.
-
----
-
-### Test doubles: properti internal mysqli tidak bisa di-fake
-
-
-Discovery yang berlaku untuk test double: `num_rows`,
-`affected_rows`, dan properti internal serupa adalah **read-only virtual property**
-di PHP 8.x. Override method maupun `__get()` sama-sama **tidak mengintervensi** —
-`ReflectionMethod('mysqli_result', 'num_rows')` bahkan melempar *method does not
-exist*, yang membuktikan murni itu property.
-
-Konsekuensi praktis: **kode produksi jangan bergantung pada membaca properti
-internal tersebut** kalau pemanggilannya ingin bisa diuji dengan
-`tests/unit/support/MysqlFake.php`. Kalau memang butuh nilai tersebut, kirim
-melewat parameter atau kembalikan lewat jalur lain — bukan lewat properti stmt.
-
----
-
-### Cache statis lintas-test: `get_user_role()` & `get_user_active()`
-
-Keduanya memakai `static $cache` per proses PHP. Cache ini **tidak** di-reset di
-antar test, jadi satu test bisa meracuni test lain yang jalan belakangan di
-proses yang sama. Kasus nyata yang pernah terjadi:
-
-`MediaViewerTest` membuat `MediaViewer` dengan **koneksi mock**, dan konstruktor
-memanggil `get_user_role($mock, 1)`. Mock tidak punya baris, jadi fungsi itu
-mengembalikan fallback `'user'` — dan **memoisasi** nilai fallback itu ke
-`static $cache[1]`. Beberapa test kemudian, di proses yang sama,
-`MediaInteractionIntegrationTest` memanggil `get_user_role($conn, 1)` dengan DB
-test sungguhan yang isinya `role = 'admin'` — tapi cache basal lebih dulu, jadi
-`isAdmin()` mengembalikan `false` dan penghapusan komentar admin gagal 404.
-
-Yang membuat ini sulit dideteksi: testnya **lulus saat dijalankan sendiri**
-(`--filter`), gagal hanya saat seluruh suite jalan.
-
-Aturannya: **cache hanya boleh menyimpan fakta, bukan ketidakpastian.** Baris
-yang tidak ditemukan berarti "belum tahu", bukan "user ini punya role `user`".
-Jadi hasil negatif sengaja **tidak** di-memoisasi:
-
-```php
-$row = $stmt->get_result()->fetch_assoc();
-$stmt->close();
-
-if ($row === null) {
-    return 'user';          // fallback, TIDAK masuk cache
-}
-
-$role = (string)$row['role'];
-$cache[$user_id] = $role;   // fakta → aman di-cache
-```
-
-`get_user_active()` punya masalah kembar: ia memoisasi `false` turunan dari
-baris yang tidak ada, sehingga user yang baru aktif tetap terbaca non-aktif
-sampai proses berakhir. Diperbaiki dengan pola yang sama.
-
- Dikunci oleh `tests/unit/UserRoleCacheNotFoundTest.php`. Kalau test itu mulai
-gagal setelah Anda mengubah salah satu fungsi, cari dulu apakah ada pemanggil
-yang bisarahasia melakukan lookup negatif lebih dulu.
-
----
-
-### Konstanta media harus dikunci di `tests/bootstrap.php`
-
-Konstanta path media (`MEEL_HDD_*`) ditetapkan di `tests/bootstrap.php`,
-**sebelum** file produksi mana pun yang bisa mendefinisikannya saat di-`require`.
-
-Masalahnya: `modules/core/TranscoderBase.php` mendefinisikan `MEEL_HDD_BASE`
-sebagai placeholder `'/path/to/your/media'` kalau konstantanya belum ada.
-Begitu file itu ter-`require` — dan `require_once` **tidak bisa dibatalkan** —
-setiap test yang jalan sesudahnya akan melihat
-`meel_media_base_path('video')` bernilai placeholder yang tidak writable.
-
-Gejalanyalooked innocuous tapi menyesatkan:
-
-```
-file_put_contents(/path/to/your/media/video/upload/thumbnail/x_thumb.webp):
-Failed to open stream: No such file or directory
-```
-
-Test-nya **lulus saat dijalankan sendiri** (`--filter`) dan gagal hanya ketika
-seluruh suite berjalan — karena test yang memuat `TranscoderBase.php` kebetulan
-berjalan sebelum test yang butuh path writable.
-
-Solusinya konstantanya dikunci lebih dulu ke `temp/media-test/`. Dua efek
-menyenangkan sekaligus:
-
-1. urutan test tidak lagi menentukan hasil;
-2. tidak ada lagi direktori media yang bocor ke luar repo saat test berjalan.
-
----
-
-### Overlay engine: kenapa pakai antre (queue), bukan panggilan langsung
-
-Gejala yang pernah muncul: setelah submit, halaman jadi **putih kosong** —
-overlay "MEeL Engine" tidak pernah tampil, padahal prosesnya jalan.
-
-#### Akar masalahnya
-
-`assets/css/engine/base.css` menyembunyikan overlay secara default:
-
-```css
-#meel-overlay { display: none; }
-```
-
-Artinya overlay **hanya** bisa tampil kalau `meelPhase()` sempat dieksekusi.
-Jika tidak, respons POST itu hanya berisi fragmen (`partials/ui.php` tidak
-punya `<html>`/`<body>`) sehingga yang tampil adalah halaman putih kosong.
-
-Urutan pemuatan yang Mennonjolkan race:
-
-1. `main.js` (`<script src>`) dieksekusi — **parser-blocking**
-2. `main.js` menyisipkan `core.js` & friends via `document.head.appendChild` —
-   script yang disisipkan dinamis **tidak memblokir parser**, walau `async = false`
-3. Parser lanjut ke inline `<script>meelPhase("download")</script>`
-4. `core.js` baru selesai diunduh & baru mendefinisikan `meelPhase`
-
-Pada langkah 3, `meelPhase` belum ada → `ReferenceError`. Karena bergantung
-kecepatan jaringan/cache, gejalanya **intermiten**.
-
-#### Solusinya: antre di `main.js`
-
-`main.js` dipanggil sebelum inline script, jadi shim di sana selalu siap.
-Panggilan yang datang terlalu dini diantre, lalu diputar begitu `core.js`
-menjalankan `__meelPhaseBind()`:
-
-```js
-window.meelPhase = function (phase) {
-  if (real) { real(phase); return; }
-  queue.push(phase);          // engine belum siap
-};
-```
-
-Dengan begitu **urutan muat tidak lagi relevan** — overlay tetap tampil walau
-halaman sudah streaming beberapa menit sebelum engine JS selesai diunduh.
-
-#### Phase `encode`
-
-`upload_advanced.php` memanggil `meelPhase("encode")` untuk alur musik, tapi
-tidak ada `meel-phase-encode` di `core.js` maupun `partials/engine/`. Akibatnya
-semua phase kehilangan `.active` dan tidak ada yang diaktifkan — card kosong
-tanpa indikator loading. Sekarang ada `partials/engine/encode.php` dan
-`'encode'` masuk daftar `MEEL_PHASES`.
-
-Dikunci oleh `tests/unit/EnginePhaseJsTest.php` (7 test, menjalankan
-`tests/js/engine-phase.harness.js` lewat Node untuk mensimulasikan urutan
-muat terburuk). Dokumen `.agents/PRD.md` sengaja tidak ikut karena hanya ada di
-mesin lokal.
-
----
-
-### Test Infrastructure — catatan penting
-
-#### 🚨 `createMock(mysqli::class)` menghabiskan 8,86 GiB RAM
-
-Gejala: `phpunit --testsuite='MEeL Core Unit Tests'` naik ke **8,86 GiB RSS** lalu
-OOM di `MockClass.php`.
-
-Akar masalah: PHPUnit membangun kelas mock lewat `eval()` dan **menahannya di static
-cache selama proses**. `mysqli` punya `bind_param(string $types, mixed &...$vars)`
-— parameter by-reference + variadik — sehingga kelas hasil generate-nya sangat
-besar. Menumpuknya di beberapa test memindahkan proses ke territory GB.
-
-Solusi: `tests/unit/support/MysqlFake.php` — `FakeMysqli`, `FakeMysqliStmt`,
-`FakeMysqliResult` sebagai subclass yang **tidak memanggil constructor parent**
-(tanpa koneksi, tanpa kelas yang di-generate, RAM ≈ 0).
-
-Ditambah `phpunit.xml` → `<ini name="memory_limit" value="2G"/>` karena
-`phpunit.xml` CLI repo ini memakai `memory_limit = -1` (tak terbatas); tanpa itu
-satu test salah bisa menghabiskan RAM mesin sebelum ketahuan.
-
-Hasil: **8,86 GiB → 453 MiB** (~19× lebih ringan), OOM hilang.
-
-> **Aturan:** kalau menambah test yang butuh `mysqli`, pakai `FakeMysqli` — **jangan**
-> `createMock(mysqli::class)`. Kalau memang perlu mock, buat di `setUp` **sekali**
-> lalu pakai ulang.
-
-#### `mysqli_result::$num_rows` tidak bisa di-fake
-
-Di PHP 8.3 `num_rows` adalah **read-only virtual property**, bukan method.
-Override `num_rows()` maupun `__get()` sama-sama **tidak mengintervensi** — akses
-`$result->num_rows` tetap melempar `object is already closed`.
-`ReflectionMethod('mysqli_result', 'num_rows')` bahkan melempar *method does not
-exist*, yang membuktikan conclusively bahwa ini murni property. Produksi
-`MediaViewer::getMediaData()` sengaja tidak memakainya.
-
-#### Catatan lingkungan dev
-
-- ⚠️ `MEEL_TEST_DB_HOST=127.0.0.1` **wajib** untuk integration test. Socket
-  MariaDB XAMPP ada di `/opt/lampp/var/mysql/mysql.sock`, sedangkan PHP CLI
-  mencari `/var/run/mysqld/mysqld.sock` (`mysqli.default_socket`) →
-  `No such file or directory`. `localhost` gagal, TCP `127.0.0.1` jalan. Ini
-  masalah mesin dev saja — CI sudah benar (`ci.yml` memakai `127.0.0.1`).
-- ⚠️ `StorageMountGuardTest` (menjalankan subprocess PHP via `proc_open`) pernah
-  gagal 1× (`exit 255`) bila suite dijalankan **bersamaan** dengan proses test lain
-  yang menyentuh `temp/`. Jangan dijalankan paralel dengan `security_test` /
-  `check_deploy`.
-- Angka pada kolom **IO/R** di `htop` adalah *laju baca*, bukan RSS.
-
-#### `release.yml` sebelumnya mustahil hijau
-
-Job `test-gate` menjalankan `vendor/bin/phpunit` (**kedua** suite, termasuk
-integration) tanpa service MySQL → 96 integration test ERROR. kini service
-`mysql:8.0` + healthcheck + `extensions: mysqli` + env `MEEL_TEST_DB_*`.
-
----
-
-### Gate yang dipakai untuk memverifikasi perubahan
-
-```bash
-vendor/bin/phpunit --testsuite='MEeL Core Unit Tests'
-MEEL_TEST_DB_HOST=127.0.0.1 vendor/bin/phpunit --testsuite='MEeL Integration Tests'
-php tests/functional_test.php
-php tests/security_test.php
-php tests/check_deploy.php
-php database/migrate.php   # 2× untuk idempotensi
-php scripts/gc.php          # housekeeping berat (butuh $server = TCP)
-```
-
----
-
+`tests/unit/NotificationRetentionTest.php` (11 test) mengunci: hanya `like` yang punya jendela coalescing, tipe lain tidak menyentuh DB sama sekali, kedua batas retensi benar, argumen tidak masuk akal di-clamp (keep ≥ 1), dan prune tidak menyentuh pengguna lain.
 ## Resource untuk Developer
 
 ### File Penting untuk Dipahami

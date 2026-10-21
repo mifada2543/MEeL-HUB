@@ -1,34 +1,125 @@
 <?php
-
 require_once __DIR__ . '/../core/TranscoderBase.php';
 
 class TranscodeService extends TranscoderBase
 {
+    private const SHM_MIN_BYTES = 256 * 1024 * 1024;
+    private const STALE_OUTPUT_SECONDS = 7200;
+    private const STALE_QUEUE_MINUTES = 15;
+    private const SOURCE_SIZE_LIMIT = 200 * 1024 * 1024;
+    private const SOURCE_DURATION_LIMIT = 600;
+    private const CACHE_MIN_BYTES = 10240;
+    private const CACHE_UNPROBED_BYTES = 50000;
+    private const MARKER_STALE_SECONDS = 600;
+
     public function transcodeVideo(int $video_id, string $format = 'mp3'): array
     {
-
         $output_dir = $this->getShmTranscodePath() . '/';
+        if (($err = $this->prepareOutputDirectory($output_dir)) !== null) {
+            return $err;
+        }
+        $this->purgeStaleArtifacts($output_dir);
+
+        $source = $this->loadTranscodeSource($video_id);
+        if (isset($source['error'])) {
+            return $source['error'];
+        }
+
+        if (($err = $this->enforceSourceQuota($source['duration'], $source['total_bytes'])) !== null) {
+            return $err;
+        }
+
+        $output_filename = $this->sanitizeFilename($source['video']['title']) . '.' . $format;
+        $output_path = $output_dir . $output_filename;
+        $marker_file = $output_path . '.processing';
+        $queue_id = 0;
+
+        $slot = $this->claimTranscodeSlot(
+            $output_filename,
+            $output_path,
+            $marker_file,
+            $source['duration'],
+            $source['video'],
+            $queue_id
+        );
+        if ($slot !== null) {
+            return $slot;
+        }
+
+        $concat_list_path = $this->writeConcatList($source['ts_files'], $output_dir, $video_id);
+        $audio = $this->resolveAudioFormat($format, $source['hls_base'], $source['video']);
+        $tc_cmd = $this->buildFfmpegArgv($audio, $concat_list_path, $output_path, $format);
+        $tc_env = $this->transcodeEnv();
+
+        $exit = $this->runFfmpeg($tc_cmd, $tc_env, $source['duration'], $format, $output_filename, $queue_id);
+        if ($exit === null) {
+            $this->removeFile($concat_list_path);
+            return $this->failJob(
+                $queue_id,
+                'FFmpeg gagal dijalankan.',
+                ['status' => 'error', 'msg' => 'FFmpeg gagal dijalankan.'],
+                [$concat_list_path, $marker_file]
+            );
+        }
+        if ($exit !== 0) {
+            $this->removeFile($concat_list_path);
+            return $this->failJob(
+                $queue_id,
+                'FFmpeg gagal memproses audio (exit code: ' . $exit . ').',
+                ['status' => 'error', 'msg' => 'FFmpeg gagal memproses audio (exit code: ' . $exit . ').'],
+                [$output_path, $concat_list_path, $marker_file]
+            );
+        }
+
+        $this->removeFile($concat_list_path);
+        $this->removeFile($marker_file);
+
+        if (!file_exists($output_path) || filesize($output_path) === 0) {
+            $this->setQueueStatus($queue_id, 'failed');
+            $this->emit('error', ['message' => 'FFmpeg gagal menghasilkan file output.']);
+            return ['status' => 'error', 'msg' => 'FFmpeg gagal menghasilkan file.'];
+        }
+
+        $this->setQueueStatus($queue_id, 'completed');
+        return $this->completeTranscode($output_filename, $source['video']);
+    }
+
+    private function prepareOutputDirectory(string $output_dir): ?array
+    {
         if (!is_dir($output_dir)) {
             $this->ensureDir($output_dir);
         }
 
         $shm_free = disk_free_space($output_dir);
-        if ($shm_free !== false && $shm_free < 256 * 1024 * 1024) {
-            return ['status' => 'error', 'msg' => 'RAM disk tidak mencukupi untuk transcode. Hanya tersedia ' . sprintf('%.1f', $shm_free / (1024 ** 3)) . ' GB.'];
+        if ($shm_free !== false && $shm_free < self::SHM_MIN_BYTES) {
+            return [
+                'status' => 'error',
+                'msg' => 'RAM disk tidak mencukupi untuk transcode. Hanya tersedia '
+                    . sprintf('%.1f', $shm_free / (1024 ** 3)) . ' GB.',
+            ];
         }
 
+        return null;
+    }
+
+    private function purgeStaleArtifacts(string $output_dir): void
+    {
         foreach (glob($output_dir . "*") as $file) {
-            if (is_file($file) && time() - filemtime($file) >= 7200) {
+            if (is_file($file) && time() - filemtime($file) >= self::STALE_OUTPUT_SECONDS) {
                 $this->removeFile($file);
             }
         }
 
         $stmt_clean = $this->conn->prepare(
-            "DELETE FROM transcode_queue WHERE created_at < NOW() - INTERVAL 15 MINUTE"
+            'DELETE FROM transcode_queue WHERE created_at < NOW() - INTERVAL '
+            . self::STALE_QUEUE_MINUTES . ' MINUTE'
         );
         $stmt_clean->execute();
         $stmt_clean->close();
+    }
 
+    private function loadTranscodeSource(int $video_id): array
+    {
         $stmt = $this->conn->prepare(
             "SELECT v.title, v.filename, v.thumbnail, v.description, v.upload_date, u.username
              FROM video v
@@ -41,134 +132,138 @@ class TranscodeService extends TranscoderBase
         $stmt->close();
 
         if (!$res || $res->num_rows === 0) {
-            return ['status' => 'error', 'msg' => 'ID Video tidak ditemukan!'];
+            return ['error' => ['status' => 'error', 'msg' => 'ID Video tidak ditemukan!']];
         }
 
         $v_data = $res->fetch_assoc();
-        $db_file = $v_data['filename'];
-
         $hls_base = MEEL_HDD_VIDEO_UPLOAD;
-        $m3u8_path = $hls_base . $db_file;
-        $hls_folder = dirname($m3u8_path) . "/";
+        $m3u8_path = $hls_base . $v_data['filename'];
 
         if (!file_exists($m3u8_path)) {
-            return ['status' => 'error', 'msg' => "File HLS tidak ditemukan di: $m3u8_path"];
+            return ['error' => ['status' => 'error', 'msg' => "File HLS tidak ditemukan di: $m3u8_path"]];
         }
 
-        $ts_files = glob($hls_folder . "*.ts");
+        $ts_files = glob(dirname($m3u8_path) . "/" . "*.ts");
         if (empty($ts_files)) {
-            return ['status' => 'error', 'msg' => 'File segmen HLS (.ts) tidak ditemukan!'];
+            return ['error' => ['status' => 'error', 'msg' => 'File segmen HLS (.ts) tidak ditemukan!']];
         }
         natsort($ts_files);
         $ts_files = array_values($ts_files);
 
-        $file_dur = $this->probeDuration($m3u8_path);
-        $total_size = array_sum(array_map('filesize', $ts_files));
+        return [
+            'video' => $v_data,
+            'hls_base' => $hls_base,
+            'm3u8_path' => $m3u8_path,
+            'ts_files' => $ts_files,
+            'duration' => $this->probeDuration($m3u8_path),
+            'total_bytes' => array_sum(array_map('filesize', $ts_files)),
+        ];
+    }
 
-        if ($this->user_role !== 'admin') {
-            if ($total_size > 200 * 1024 * 1024 || $file_dur > 600) {
-                $reasons = [];
-                if ($total_size > 200 * 1024 * 1024) {
-                    $reasons[] = 'ukuran ' . round($total_size / (1024 * 1024), 1) . 'MB (maks 200MB)';
-                }
-                if ($file_dur > 600) {
-                    $reasons[] = 'durasi ' . round($file_dur / 60, 1) . ' menit (maks 10 menit)';
-                }
-                return [
-                    'status' => 'error',
-                    'msg' => 'File tidak memenuhi syarat: ' . implode(' dan ', $reasons) . '.'
-                ];
-            }
+    private function enforceSourceQuota(float $file_dur, int $total_size): ?array
+    {
+        if ($this->user_role === 'admin') {
+            return null;
         }
 
-        $output_filename = $this->sanitizeFilename($v_data['title']) . '.' . $format;
-        $output_path = $output_dir . $output_filename;
+        $reasons = [];
+        if ($total_size > self::SOURCE_SIZE_LIMIT) {
+            $reasons[] = 'ukuran ' . round($total_size / (1024 * 1024), 1) . 'MB (maks 200MB)';
+        }
+        if ($file_dur > self::SOURCE_DURATION_LIMIT) {
+            $reasons[] = 'durasi ' . round($file_dur / 60, 1) . ' menit (maks 10 menit)';
+        }
 
-        $marker_file = $output_path . '.processing';
+        if ($reasons === []) {
+            return null;
+        }
 
-        $mtx_path = sys_get_temp_dir() . '/meel_transcode_marker.lock';
-        $mtx_fp = fopen($mtx_path, 'c');
+        return [
+            'status' => 'error',
+            'msg' => 'File tidak memenuhi syarat: ' . implode(' dan ', $reasons) . '.',
+        ];
+    }
+
+    private function isCacheUsable(string $output_path, float $file_dur): bool
+    {
+        $cache_size = (int) filesize($output_path);
+        if ($cache_size <= self::CACHE_MIN_BYTES) {
+            return false;
+        }
+
+        $cache_dur = $this->probeDuration($output_path);
+        if ($cache_dur > 0 && $file_dur > 0) {
+            return $cache_dur >= $file_dur * 0.5;
+        }
+
+        return $cache_dur <= 0 && $cache_size > self::CACHE_UNPROBED_BYTES;
+    }
+
+    private function claimTranscodeSlot(
+        string $output_filename,
+        string $output_path,
+        string $marker_file,
+        float $file_dur,
+        array $video,
+        int &$queue_id
+    ): ?array {
+        $mtx_fp = fopen(sys_get_temp_dir() . '/meel_transcode_marker.lock', 'c');
         $mtx_locked = $mtx_fp !== false && flock($mtx_fp, LOCK_EX);
 
-        $cache_valid = false;
-        if (file_exists($output_path)) {
-            $cache_size = filesize($output_path);
-            if ($cache_size > 10240) {
-
-                $cache_dur = $this->probeDuration($output_path);
-                if ($cache_dur > 0 && $file_dur > 0 && $cache_dur >= $file_dur * 0.5) {
-                    $cache_valid = true;
-                } elseif ($cache_dur <= 0 && $cache_size > 50000) {
-
-                    $cache_valid = true;
+        try {
+            if (file_exists($output_path)) {
+                if ($this->isCacheUsable($output_path, $file_dur)) {
+                    $this->emit('transcode_start');
+                    return $this->completeTranscode($output_filename, $video);
                 }
+                $reason = filesize($output_path) <= self::CACHE_MIN_BYTES
+                    ? 'too small (' . filesize($output_path) . ' bytes)'
+                    : 'duration mismatch';
+                error_log("[MEeL] transcodeVideo: hapus cache invalid ({$output_path}, {$reason})");
+                $this->removeFile($output_path);
             }
-        }
-        if ($cache_valid) {
+
+            if (file_exists($marker_file) && time() - filemtime($marker_file) < self::MARKER_STALE_SECONDS) {
+                return ['status' => 'error', 'msg' => 'Output sedang diproses oleh antrean lain. Tunggu beberapa saat.'];
+            }
+
+            if (!touch($marker_file)) {
+                error_log("[MEeL] Gagal membuat marker file: {$marker_file}");
+            }
+        } finally {
             if ($mtx_locked) {
                 flock($mtx_fp, LOCK_UN);
                 fclose($mtx_fp);
             }
-            $this->grantTranscodeOwnership($output_filename);
-            $download_link = "api/download-transcode?file=" . rawurlencode($output_filename) . "&title=" . rawurlencode($v_data['title']);
-            $this->emit('transcode_start');
-            $this->emit('done_transcode', ['title' => $v_data['title'], 'download_link' => $download_link]);
-            return ['status' => 'success', 'download_link' => $download_link, 'output_filename' => $output_filename, 'title' => $v_data['title']];
-        }
-
-        if (file_exists($output_path)) {
-            $reason = filesize($output_path) <= 10240 ? 'too small (' . filesize($output_path) . ' bytes)' : 'duration mismatch';
-            error_log("[MEeL] transcodeVideo: hapus cache invalid ($output_path, $reason)");
-            $this->removeFile($output_path);
-        }
-
-        if (file_exists($marker_file)) {
-            $marker_age = time() - filemtime($marker_file);
-            if ($marker_age < 600) {
-                if ($mtx_locked) {
-                    flock($mtx_fp, LOCK_UN);
-                    fclose($mtx_fp);
-                }
-                return ['status' => 'error', 'msg' => 'Output sedang diproses oleh antrean lain. Tunggu beberapa saat.'];
-            }
-        }
-
-        if (!touch($marker_file)) {
-            error_log("[MEeL] Gagal membuat marker file: {$marker_file}");
-        }
-
-        if ($mtx_locked) {
-            flock($mtx_fp, LOCK_UN);
-            fclose($mtx_fp);
         }
 
         require_once __DIR__ . '/../core/System.php';
         $sys = new System($this->conn);
-        if ($sys->isServerBusy()) {
+        if (!$sys->claimQueueSlot('transcode_queue', $this->user_id)) {
             $this->removeFile($marker_file);
             return ['status' => 'error', 'msg' => 'Silahkan Menunggu. Server sedang sibuk memproses antrean lain.'];
         }
+        $queue_id = (int) $this->conn->insert_id;
 
-        $stmt_q = $this->conn->prepare(
-            "INSERT INTO transcode_queue (user_id, status, created_at) VALUES (?, 'processing', NOW())"
-        );
-        $stmt_q->bind_param("i", $this->user_id);
-        $stmt_q->execute();
-        $queue_id = (int)$this->conn->insert_id;
-        $stmt_q->close();
+        return null;
+    }
 
+    private function writeConcatList(array $ts_files, string $output_dir, int $video_id): string
+    {
         $concat_list_path = $output_dir . "concat_{$video_id}_" . time() . ".txt";
-        $concat_content = "";
+
+        $lines = '';
         foreach ($ts_files as $ts) {
-
-            $safe_ts = str_replace("'", "'\\''", $ts);
-            $concat_content .= "file '$safe_ts'\n";
+            $lines .= "file '" . str_replace("'", "'\\''", $ts) . "'\n";
         }
-        file_put_contents($concat_list_path, $concat_content);
+        file_put_contents($concat_list_path, $lines);
 
-        $thumb_path = $hls_base . "thumbnail/" . $v_data['thumbnail'];
-        $use_thumb = file_exists($thumb_path) && !empty($v_data['thumbnail']);
+        return $concat_list_path;
+    }
 
+    private function resolveAudioFormat(string $format, string $hls_base, array $video): array
+    {
+        $use_thumb = true;
         switch ($format) {
             case 'ogg':
                 $codec = "libopus";
@@ -185,36 +280,35 @@ class TranscodeService extends TranscoderBase
                 break;
         }
 
-        $cmd = self::ENV_PREFIX . escapeshellarg($this->ffmpeg_bin)
-            . " -y -threads " . self::FFMPEG_THREADS
-            . " -f concat -safe 0 -i " . escapeshellarg($concat_list_path);
-        if ($use_thumb) $cmd .= " -i " . escapeshellarg($thumb_path);
-        $cmd .= " -map 0:a";
-        if ($use_thumb) {
-            $cmd .= " -map 1:v -c:v copy -disposition:v:0 attached_pic";
-            if ($format === 'mp3') $cmd .= " -id3v2_version 3";
-        }
-        $meta_title = $v_data['title'] ?? 'Untitled';
-        $meta_artist = $v_data['username'] ?? 'MEeL Transcoder';
-        $meta_album = 'MEeL';
-        $meta_date = !empty($v_data['upload_date']) ? date('Y-m-d', strtotime($v_data['upload_date'])) : date('Y-m-d');
-        $meta_comment = !empty($v_data['description']) ? mb_substr($v_data['description'], 0, 256) : 'Transcoded by MEeL';
+        $thumb_path = $hls_base . "thumbnail/" . $video['thumbnail'];
 
-        $cmd .= " -c:a $codec $bitrate"
-            . " -metadata title=" . escapeshellarg($meta_title)
-            . " -metadata artist=" . escapeshellarg($meta_artist)
-            . " -metadata album=" . escapeshellarg($meta_album)
-            . " -metadata date=" . escapeshellarg($meta_date)
-            . " -metadata comment=" . escapeshellarg($meta_comment)
-            . " -metadata album_artist=" . escapeshellarg('MEeL')
-            . " " . escapeshellarg($output_path) . " 2>&1";
+        return [
+            'codec' => $codec,
+            'bitrate' => $bitrate,
+            'thumb_path' => $thumb_path,
+            'use_thumb' => $use_thumb && file_exists($thumb_path) && !empty($video['thumbnail']),
+            'meta' => [
+                'title' => $video['title'] ?? 'Untitled',
+                'artist' => $video['username'] ?? 'MEeL Transcoder',
+                'album' => 'MEeL',
+                'date' => !empty($video['upload_date'])
+                    ? date('Y-m-d', strtotime($video['upload_date']))
+                    : date('Y-m-d'),
+                'comment' => !empty($video['description'])
+                    ? mb_substr($video['description'], 0, 256)
+                    : 'Transcoded by MEeL',
+                'album_artist' => 'MEeL',
+            ],
+        ];
+    }
 
-        $tc_env = ['LD_LIBRARY_PATH' => self::FFMPEG_LIB_PATH, 'PATH' => '/usr/local/bin:/usr/bin:/bin', 'LC_ALL' => 'en_US.UTF-8'];
+    private function buildFfmpegArgv(array $audio, string $concat_list_path, string $output_path, string $format): array
+    {
         $tc_cmd = [
             $this->ffmpeg_bin,
             '-y',
             '-threads',
-            (string)self::FFMPEG_THREADS,
+            (string) self::FFMPEG_THREADS,
             '-f',
             'concat',
             '-safe',
@@ -222,16 +316,18 @@ class TranscodeService extends TranscoderBase
             '-i',
             $concat_list_path,
         ];
-        if ($use_thumb) {
+
+        if ($audio['use_thumb']) {
             $tc_cmd[] = '-i';
-            $tc_cmd[] = $thumb_path;
+            $tc_cmd[] = $audio['thumb_path'];
         }
+
         $tc_cmd[] = '-map';
         $tc_cmd[] = '0:a';
-        if ($use_thumb) {
+
+        if ($audio['use_thumb']) {
             $tc_cmd[] = '-map';
             $tc_cmd[] = '1:v';
-
             $tc_cmd[] = '-c:v';
             $tc_cmd[] = 'mjpeg';
             $tc_cmd[] = '-disposition:v:0';
@@ -241,115 +337,145 @@ class TranscodeService extends TranscoderBase
                 $tc_cmd[] = '3';
             }
         }
+
         $tc_cmd[] = '-c:a';
-        $tc_cmd[] = $codec;
-        if (!empty($bitrate)) {
-            $parts = explode(' ', $bitrate);
-            foreach ($parts as $p) $tc_cmd[] = $p;
+        $tc_cmd[] = $audio['codec'];
+        foreach (array_filter(explode(' ', $audio['bitrate'])) as $part) {
+            $tc_cmd[] = $part;
         }
-        $tc_cmd[] = '-metadata';
-        $tc_cmd[] = "title=" . $meta_title;
-        $tc_cmd[] = '-metadata';
-        $tc_cmd[] = "artist=" . $meta_artist;
-        $tc_cmd[] = '-metadata';
-        $tc_cmd[] = "album=" . $meta_album;
-        $tc_cmd[] = '-metadata';
-        $tc_cmd[] = "date=" . $meta_date;
-        $tc_cmd[] = '-metadata';
-        $tc_cmd[] = "comment=" . $meta_comment;
-        $tc_cmd[] = '-metadata';
-        $tc_cmd[] = "album_artist=MEeL";
+
+        foreach ($audio['meta'] as $key => $value) {
+            $tc_cmd[] = '-metadata';
+            $tc_cmd[] = $key . '=' . $value;
+        }
+
         $tc_cmd[] = $output_path;
 
+        return $tc_cmd;
+    }
+
+    private function transcodeEnv(): array
+    {
+        return [
+            'LD_LIBRARY_PATH' => self::FFMPEG_LIB_PATH,
+            'PATH' => '/usr/local/bin:/usr/bin:/bin',
+            'LC_ALL' => 'en_US.UTF-8',
+        ];
+    }
+
+    private function runFfmpeg(
+        array $tc_cmd,
+        array $tc_env,
+        float $file_dur,
+        string $format,
+        string $output_filename,
+        int $queue_id
+    ): ?int {
         $this->emit('transcode_start');
 
         $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+        $tc_pipes = [];
         $tc_proc = proc_open($tc_cmd, $desc, $tc_pipes, null, $tc_env);
-        if (is_resource($tc_proc)) {
-            fclose($tc_pipes[0]);
-            fclose($tc_pipes[1]);
-            $tc_out = $tc_pipes[2];
-
-            $tc_status = proc_get_status($tc_proc);
-            $tc_pid = (int)($tc_status['pid'] ?? 0);
-            $this->trackChildProcess($tc_pid, false, 'ffmpeg transcode audio (' . $output_filename . ')');
-            $this->writePidFile('transcode', $queue_id, $tc_pid);
-
-            stream_set_timeout($tc_out, 30);
-            $ffmpeg_stderr = [];
-            $tc_start = time();
-            while (!feof($tc_out)) {
-                if (time() - $tc_start > self::TRANSCODE_AUDIO_TIMEOUT) {
-                    error_log("[MEeL] transcodeVideo: timeout setelah " . self::TRANSCODE_AUDIO_TIMEOUT . "s");
-                    $this->terminateChildProcess($tc_pid, 'ffmpeg transcode audio timeout', false);
-                    break;
-                }
-                $line = fgets($tc_out);
-                if ($line === false) break;
-                $ffmpeg_stderr[] = $line;
-                $fmt = strtoupper($format);
-                if (preg_match('/time=((\d+):(\d+):(\d+)\.(\d+))/', $line, $m)) {
-                    if ($file_dur > 0) {
-                        $cur = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
-                        $pct = min(100, round(($cur / $file_dur) * 100));
-                        $label = "$pct% — CONVERTING TO $fmt";
-                        $this->emit('transcode_progress', ['pct' => $pct, 'label' => $label]);
-                    } else {
-
-                        $elapsed = time() - $tc_start;
-                        $pct = min(95, (int)round(($elapsed / self::TRANSCODE_AUDIO_TIMEOUT) * 100));
-                        $label = "$pct% — CONVERTING TO $fmt (estimasi)";
-                        $this->emit('transcode_progress', ['pct' => $pct, 'label' => $label]);
-                    }
-                }
-            }
-            fclose($tc_pipes[2]);
-
-            $tc_exit = proc_close($tc_proc);
-            $this->untrackChildProcess($tc_pid);
-            $this->removePidFile('transcode', $queue_id);
-
-            if ($tc_exit !== 0) {
-                $tail = implode('', array_slice($ffmpeg_stderr, -15));
-                error_log("[MEeL] transcodeVideo: ffmpeg exit=$tc_exit | $output_filename | stderr: $tail");
-                $friendly_msg = 'FFmpeg gagal memproses audio (exit code: ' . $tc_exit . ').';
-                $this->emit('error', ['message' => $friendly_msg]);
-                $this->removeFile($output_path);
-                $this->removeFile($concat_list_path);
-                $this->removeFile($marker_file);
-                $stmt_upd = $this->conn->prepare("UPDATE transcode_queue SET status = 'failed' WHERE id = ?");
-                $stmt_upd->bind_param("i", $queue_id);
-                $stmt_upd->execute();
-                $stmt_upd->close();
-                return ['status' => 'error', 'msg' => 'FFmpeg gagal memproses audio (exit code: ' . $tc_exit . ').'];
-            }
+        if (!is_resource($tc_proc)) {
+            error_log("[MEeL] transcodeVideo: proc_open gagal untuk {$output_filename}");
+            return null;
         }
 
-        $this->removeFile($concat_list_path);
+        fclose($tc_pipes[0]);
+        fclose($tc_pipes[1]);
+        $tc_out = $tc_pipes[2];
 
-        $stmt_upd = $this->conn->prepare(
-            "UPDATE transcode_queue SET status = 'completed' WHERE id = ?"
-        );
-        $stmt_upd->bind_param("i", $queue_id);
-        $stmt_upd->execute();
-        $stmt_upd->close();
+        $tc_status = proc_get_status($tc_proc);
+        $tc_pid = (int) ($tc_status['pid'] ?? 0);
+        $this->trackChildProcess($tc_pid, false, 'ffmpeg transcode audio (' . $output_filename . ')');
+        $this->writePidFile('transcode', $queue_id, $tc_pid);
 
-        $this->removeFile($marker_file);
+        stream_set_timeout($tc_out, 30);
+        $stderr = [];
+        $started = time();
+        $fmt = strtoupper($format);
 
-        if (!file_exists($output_path) || filesize($output_path) === 0) {
-            $this->emit('error', ['message' => 'FFmpeg gagal menghasilkan file output.']);
-            return ['status' => 'error', 'msg' => 'FFmpeg gagal menghasilkan file.'];
+        while (!feof($tc_out)) {
+            if (time() - $started > self::TRANSCODE_AUDIO_TIMEOUT) {
+                error_log("[MEeL] transcodeVideo: timeout setelah " . self::TRANSCODE_AUDIO_TIMEOUT . "s");
+                $this->terminateChildProcess($tc_pid, 'ffmpeg transcode audio timeout', false);
+                break;
+            }
+            $line = fgets($tc_out);
+            if ($line === false) {
+                break;
+            }
+            $stderr[] = $line;
+            $this->reportProgress($line, $file_dur, $fmt, $started);
         }
 
+        fclose($tc_pipes[2]);
+        $tc_exit = proc_close($tc_proc);
+        $this->untrackChildProcess($tc_pid);
+        $this->removePidFile('transcode', $queue_id);
+
+        if ($tc_exit !== 0) {
+            error_log("[MEeL] transcodeVideo: ffmpeg exit=$tc_exit | $output_filename | stderr: "
+                . implode('', array_slice($stderr, -15)));
+        }
+
+        return $tc_exit;
+    }
+
+    private function reportProgress(string $line, float $file_dur, string $fmt, int $started): void
+    {
+        if (!preg_match('/time=((\d+):(\d+):(\d+)\.(\d+))/', $line, $m)) {
+            return;
+        }
+
+        if ($file_dur > 0) {
+            $cur = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
+            $pct = min(100, round(($cur / $file_dur) * 100));
+            $this->emit('transcode_progress', ['pct' => $pct, 'label' => "$pct% — CONVERTING TO $fmt"]);
+            return;
+        }
+
+        $elapsed = time() - $started;
+        $pct = min(95, (int) round(($elapsed / self::TRANSCODE_AUDIO_TIMEOUT) * 100));
+        $this->emit('transcode_progress', ['pct' => $pct, 'label' => "$pct% — CONVERTING TO $fmt (estimasi)"]);
+    }
+
+    private function setQueueStatus(int $queue_id, string $status): void
+    {
+        if ($queue_id <= 0) {
+            return;
+        }
+
+        $stmt = $this->conn->prepare("UPDATE transcode_queue SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $status, $queue_id);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    private function failJob(int $queue_id, string $emit_message, array $result, array $files): array
+    {
+        $this->setQueueStatus($queue_id, 'failed');
+        $this->emit('error', ['message' => $emit_message]);
+        foreach ($files as $file) {
+            $this->removeFile($file);
+        }
+
+        return $result;
+    }
+
+    private function completeTranscode(string $output_filename, array $video): array
+    {
         $this->grantTranscodeOwnership($output_filename);
-        $download_link = "api/download-transcode?file=" . rawurlencode($output_filename) . "&title=" . rawurlencode($v_data['title']);
-        $this->emit('done_transcode', ['title' => $v_data['title'], 'download_link' => $download_link]);
+        $download_link = "api/download-transcode?file=" . rawurlencode($output_filename)
+            . "&title=" . rawurlencode($video['title']);
+
+        $this->emit('done_transcode', ['title' => $video['title'], 'download_link' => $download_link]);
 
         return [
             'status' => 'success',
             'download_link' => $download_link,
             'output_filename' => $output_filename,
-            'title' => $v_data['title'],
+            'title' => $video['title'],
         ];
     }
 

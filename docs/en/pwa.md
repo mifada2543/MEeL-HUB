@@ -187,6 +187,34 @@ That's it — on the next visit the SW auto-includes the new folder and bumps
 | `scope` / `id` | `/MEeL/` | Deployment-specific — adjust if hosted at root |
 | `shortcuts` | Video, Music, Books, Drive | Right-click / long-press launch shortcuts |
 
+### The `manifest.php` generator
+
+**File:** `manifest.php` — what the browser actually receives is the output of
+this generator, not the static `assets/manifest.json`.
+
+The reason is twofold, and both reasons are about the base path:
+
+1. **Moving the folder breaks the PWA.** The repo is cloned into a folder with
+   any name, and the user is free to rename it. If `scope` and `id` stay
+   hardcoded to `/MEeL/`, the service worker never controls the page and the
+   shortcuts break with it.
+2. **`start_url` and the shortcuts contain `.php`.** URLs cached by the service
+   worker become bound to the file name; renaming a file breaks the cache
+   outright.
+
+The generator follows the pattern the repo already uses for `/sw.js` →
+`sw.js.php` (see `.htaccess`: `RewriteRule ^sw\.js$`): the static `.json`
+file stays as a fallback — for clones without `mod_rewrite`, or for the
+documentation that is read directly — but what the browser is served is the
+generator's output.
+
+The base path comes from `meel_base_url_path()`, the same helper used by
+`sitemap.php`, `auth/config.php` and every other page, so moving the
+installation once is enough to keep everything correct. URLs inside the
+manifest are normalised to the root, because the manifest is served from
+`assets/`: `MEeL-192.png` means `<base>/assets/MEeL-192.png` and
+`../video/index.php` means `<base>/video/index.php`.
+
 ### Icons
 
 | File | Size | Used for |

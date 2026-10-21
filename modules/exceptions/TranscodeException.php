@@ -1,5 +1,4 @@
 <?php
-
 class TranscodeException extends \RuntimeException
 {
     private string $input;

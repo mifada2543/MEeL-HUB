@@ -1,10 +1,10 @@
 <?php
 define('MEEL_API_CONTEXT', true);
 
-require_once '../../modules/core/helpers.php';
+require_once __DIR__ . '/../../modules/core/helpers.php';
 meel_boot_session();
 
-include '../../auth/config.php';
+include __DIR__ . '/../../auth/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -22,7 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ? $row['custom_theme']
             : 'dark';
     } else {
-
         $theme = 'dark';
     }
 
@@ -31,7 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
     $input = json_decode(file_get_contents('php://input'), true);
     $token = $input['csrf_token'] ?? $_POST['csrf_token'] ?? '';
 

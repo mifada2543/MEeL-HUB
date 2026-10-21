@@ -1,11 +1,7 @@
 <?php
-// Contoh entry point: cp settings.example.php settings.php, cp config.example.php
-// config.php, lalu isi nilai. Semua path media terpusat di MEEL_HDD_BASE.
 require_once __DIR__ . '/settings.example.php';
 
 require_once __DIR__ . '/../modules/core/bootstrap.php';
-
-// define('MEEL_ENV', 'production');
 
 if (!isset($conn) || $conn === null) {
     $conn = new mysqli($server, $username, $password, $db);
@@ -15,7 +11,6 @@ if (!isset($conn) || $conn === null) {
     $conn->set_charset('utf8mb4');
 }
 
-// BASE URL & HOST dihitung relatif terhadap DOCUMENT_ROOT — konsisten di semua kedalaman include.
 if (!defined('MEEL_BASE_URL')) {
     require_once __DIR__ . '/../modules/core/base_url.php';
     define('MEEL_BASE_URL', meel_base_url_path());

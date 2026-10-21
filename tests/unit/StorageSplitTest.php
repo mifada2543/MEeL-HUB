@@ -1,35 +1,18 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
  * Penjaga hasil pemecahan `modules/core/helpers/storage.php` (T27).
  *
- * LATAR BELAKANG
- * --------------
- * `storage.php` tadinya 941 baris / 37 fungsi dalam satu file. Dipecah
- * menjadi empat per domain, mengikuti konvensi yang sudah dipakai folder
- * `helpers/` (`media.php`, `audio.php`, `upload.php`, …):
+ * `storage.php` tadinya 941 baris / 37 fungsi dalam satu file, dipecah
+ * menjadi empat per domain; `storage.php` sengaja TETAP ada sebagai
+ * aggregator supaya `helpers/main.php` dan hampir 50 pemanggil tidak pecah.
  *
- *   storage_paths.php     base path, thumbnail, PID, guard mount   (14 fn)
- *   storage_disk.php      kapasitas disk, cache file, audit log     (8 fn)
- *   storage_xsendfile.php deteksi & header X-Sendfile             (11 fn)
- *   storage_stream.php    validator cache + serving media          (4 fn)
- *
- * `storage.php` sengaja TETAP ada sebagai aggregator supaya
- * `helpers/main.php` (satu baris) dan 25+ pemanggil tidak pecah.
- *
- * BUG SENYAP YANG SUDAH TERJADI SEBELUM TEST INI
- * ----------------------------------------------
- * `tests/security_test.php` punya peta "berkas → fungsi berbahaya yang
- * diizinkan". Entri `storage.php => ['shell_exec']` masih menunjuk ke
- * agregator — yang kini hanya 40 baris dan tidak punya `shell_exec`
- * sama sekali. Test itu **tetap melaporkan 100/100** sementara
- * `dir_size()` yang memanggil `du -sb` via `shell_exec` tidak lagi
- * dipindai sama sekali.
- *
- * Itu kelas bug yang paling berbahaya: check yangreports hijau karena
- * tidak lagi memeriksa apa pun. Test di bawah menutupnya.
+ * BUG SENYAP YANG SUDAH TERJADI: peta "berkas → fungsi berbahaya yang
+ * diizinkan" di `security_test.php` masih menunjuk ke agregator, yang kini
+ * tidak punya `shell_exec` sama sekali. Test itu tetap melaporkan 100/100
+ * sementara `dir_size()` yang memanggil `du -sb` via `shell_exec` tidak lagi
+ * dipindai. Test di bawah menutupnya.
  *
  * @coversNothing
  */
@@ -104,8 +87,6 @@ class StorageSplitTest extends TestCase
             }
         }
 
-        // Daftar ini diambil dari storage.php sebelum dipecah (git HEAD
-        // sebelum T27). Kalau ada yang hilang,_test ini yang menangkapnya.
         $expected = [
             'meel_media_base_path', 'video_thumbnail_sm_name', 'video_thumbnail_sm',
             'meel_is_default_thumbnail', 'music_thumbnail_url', 'meel_storage_base_path',
@@ -120,6 +101,8 @@ class StorageSplitTest extends TestCase
             'meel_xsendfile_htaccess_dirs', 'meel_xsendfile_merge_flag',
             'meel_xsendfile_effective_flag', 'meel_xsendfile_ready', 'meel_xsendfile_header',
             'meel_cache_is_fresh', 'meel_media_etag', 'meel_media_cache_control',
+            'meel_media_type_map', 'meel_resolve_media_path', 'meel_apply_hls_gate',
+            'meel_resolve_byte_range', 'meel_stream_media_bytes',
             'meel_serve_media_file',
         ];
 
@@ -243,24 +226,14 @@ class StorageSplitTest extends TestCase
         $security = (string) file_get_contents(MEEL_ROOT . '/tests/security_test.php');
         $functional = (string) file_get_contents(MEEL_ROOT . '/tests/functional_test.php');
 
-        // Berkas pecahan yang nyata memakai shell harus terdaftar di peta
-        // "risky" milik security_test.
-        //
-        // PENTING: yang diperiksa adalah ISI PETA $risky, bukan keseluruhan
-        // teks security_test. Versi pertama hanya assertStringContainsString
-        // atas nama berkas — dan mutation check membuktikannya lemah: begitu
-        // entri $risky dikembalikan menunjuk agregator, nama storage_disk.php
-        // masih muncul di $critical, jadi test tetap hijau. Persis mode
-        // kegagalan yang mau dicegah.
-        // Ada LEBIH dari satu blok `$risky`: yang paling atas di security_test
-        // adalah `$risky = [];` untuk kueri SQL, bukan peta berkas. Regex
-        // non-greika memadainya dan menghasilkan blok kosong -- jadi ambil
-        // blok yang paling panjang.
-        preg_match_all('/\$risky\s*=\s*\[(.*?)\];/s', $security, $allBlocks);
-        $this->assertNotEmpty($allBlocks[1], 'peta $risky di security_test tidak terbaca');
+        $mapNames = implode('|', array_map(
+            static fn(string $v): string => preg_quote($v, '/'),
+            ['risky', 'expected', 'allowed']
+        ));
+        preg_match_all('/\$(?:' . $mapNames . ')\s*=\s*\[(.*?)\];/s', $security, $allBlocks);
+        $this->assertNotEmpty($allBlocks[1], 'peta allowlist di security_test tidak terbaca');
 
-        usort($allBlocks[1], static fn(string $a, string $b): int => strlen($b) <=> strlen($a));
-        $riskyBlock = [null, $allBlocks[1][0]];
+        $riskyBlock = implode("\n", $allBlocks[1]);
 
         foreach (array_keys(self::PARTS) as $part) {
             $rel = 'modules/core/helpers/' . $part;
@@ -272,14 +245,19 @@ class StorageSplitTest extends TestCase
 
             $this->assertMatchesRegularExpression(
                 "/'" . preg_quote($rel, '/') . "'\s*=>\s*\[[^\]]*\]/",
-                $riskyBlock[1],
-                "{$part} memakai perintah sistem tapi TIDAK terdaftar di peta \$risky "
+                $riskyBlock,
+                "{$part} memakai perintah sistem tapi TIDAK terdaftar di peta allowlist "
                 . 'security_test — pemindaiannya akan dilewati diam-diam'
             );
         }
 
-        // Fungsi yang dipetakan functional_test harus menunjuk berkas yang
-        // benar-benar mendefinisikannya.
+        $this->assertMatchesRegularExpression(
+            '/function\s+testCommandInjection\s*\(\)\s*:\s*void\s*\{.*?getPhpFiles\s*\(\)/s',
+            $security,
+            'testCommandInjection harus menemukan berkasnya sendiri lewat getPhpFiles() — '
+            . 'kalau hanya memindai peta literal, pemindahan kode ke berkas baru akan lolos tanpa diperiksa'
+        );
+
         preg_match_all(
             "/'([a-z_0-9]+)'\s*=>\s*'(modules\/core\/helpers\/[a-z_]+\.php)'/",
             $functional,

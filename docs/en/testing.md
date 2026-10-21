@@ -66,19 +66,27 @@ logs/tests/
 | `HelpersTest.php` | 50 | format_bytes, time_ago, audio MIME types, disk space, CSRF, dir_size, protocol detection (data providers) |
 | `JapaneseTest.php` | 15 | Romaji conversion, analyzeJapaneseText, English translation (MeCab-optional) |
 | `GarbageCollectorTest.php` | 7 | Class existence, idempotency, graceful handling, cleanup rate-limit (dir test terisolasi), active-cache dir preservation |
+| `CacheDirectoryCleanupTest.php` | 17 | Cache sweep TTLs per prefix and per time key (`ts`/`time`/`checked_at`), temporary files, unreadable cache, mtime fallback, shared cache directory |
 | `SearchEngineTest.php` | 5 | Parse params, sanitizer (`sanitizeQuery`), default values, constants |
 | `MediaLibraryTest.php` | 11 | Pagination logic (pure math), BookRepository mock |
 | `MediaInteractionTest.php` | 7 | Input validation (invalid IDs, types) |
 | `MediaViewerTest.php` | 9 | Media recommendations / playlist queue / next-url logic |
 | `RouterProfileRouteTest.php` | 9 | Profile route resolution, reserved routes, nested/trailing-slash cases |
+| `RouterDispatchTest.php` | 22 | Profile-alias redirects (pure, no request needed), and every registered route points at a file that exists |
 | `BootstrapTest.php` | 9 | Env detection, error reporting config, timezone |
 | `CssManifestTest.php` | 18 | CSS module manifests — every entry exists, **all** folders pre-cached by `SwPrecache`, precache entries resolve, deterministic SW version |
 | `SharedJsTest.php` | 7 | Shared JS harness — download-backup-codes flow |
+| `LikeDislikePartialTest.php` | 7 | **Like/dislike buttons** — the container markup lives in exactly one file, every caller uses the shared partial, and the music and video variants differ only in the accent colour, the label and the save button |
+| `LucideLoadOrderTest.php` | 6 | **Lucide + HTMX** — the render helper is loaded, the queue stub in `partials/link.php` is synchronous, and the swap listener is registered even when `document.body` does not exist yet (script loaded in `<head>`) |
 | `StreamAuthTest.php` | 8 | Stream endpoint authorization guards |
 | `SsrfGuardTest.php` | 76 | **SSRF guard** — protocol allowlist, private/public IP ranges (v4 & v6), DNS mixed-record rejection, hostname denylist, HTTP pinning (see below) |
 | `DriveSecurityTest.php` | 13 | **Private Drive** — cross-user access, path traversal, symlink escape, realpath boundary, quota, atomic filename reservation (see below) |
 | `DriveStorageBasePathTest.php` | 8 | Drive storage base-path resolution — `MEEL_HDD_DRIVE` constant, fallback, priority |
-| `ValidatingProxyTest.php` | 20 | **Validating forward proxy** — real CONNECT/GET probes: private targets refused (502), public targets tunneled, loopback-only bind (see below) |
+| `DateTimeSourceTest.php` | 7 | **The application clock** — the timezone is set unconditionally, MySQL's session `time_zone` is aligned with it, columns read by `strtotime()` are never written with the database clock, and the files that deliberately mix the two are an explicit inventory |
+| `WebSafeErrorOutputTest.php` | 2 | **Web-safe error output** — `STDERR`/`STDOUT`/`STDIN` only in CLI tooling, CLI-guarded files, or files nothing includes |
+| `AdminFilteredRepositoryTest.php` | 13 | Shared admin repository base — the shared queries stay in the base, each repository keeps its own table and alias, the two filter behaviours stay different |
+| `ValidatingProxyTest.php` | 27 | **Validating forward proxy** — real CONNECT/GET probes: private targets refused (502), public targets tunneled, loopback-only bind, malformed absolute-URI refused (see below) |
+| `ValidatingProxyProtocolTest.php` | 27 | **Proxy protocol rules** — request-head parsing and its limits, CONNECT target parsing, hop-by-hop header stripping, forwarded-request assembly, tunnel chunk and response relay |
 | `ArchiveGuardTest.php` | 11 | **Archive guard** — `../` traversal, absolute paths, null bytes, symlinks, nesting, compression ratio, ZIP bomb, entry count (see below) |
 | `UploadValidationTest.php` | 9 | **Upload validation** — fake magic bytes, double extensions, null bytes, oversized, executable (see below) |
 | `TranscoderConstantsTest.php` | 2 | Regression guard for shared-constant visibility (`TranscoderBase` → child services) |
@@ -92,7 +100,7 @@ logs/tests/
 | `ChessHelpersIntegrationTest.php` | 6 | Chess helper functions with real DB |
 | `ChessRematchIntegrationTest.php` | 21 | Chess rematch flow against real DB |
 | `GarbageCollectorChessRoomsIntegrationTest.php` | 15 | Chess room garbage collection with real DB |
-| `MeelCoinIntegrationTest.php` | 15 | Spend/refund/refill, role caps, countdown |
+| `MeelCoinIntegrationTest.php` | 18 | Spend/refund/refill, role caps, countdown that never goes backwards, refill window that starts at the spend |
 | `SystemTest.php` | 2 | System class existence & utilities |
 
 ### Test Helpers
@@ -359,6 +367,52 @@ URL is configured as a GitHub secret:
             "$STAGING_URL/data_drive/private_admins/" || true)
           [ "$code" = "403" ] || { echo "Expected 403, got $code"; exit 1; }
 ```
+
+### Tailwind CSS reproducibility gate
+
+`scripts/ci/tailwind-coverage-check.php` guards `assets/css/tailwind.min.css`
+— a committed build artifact — so that it can be reproduced. Without this
+gate, changing markup and then wanting to rebuild the CSS amounts to
+guessing.
+
+Three things are checked:
+
+1. **The `content` glob really scans the repo, and does not scan what is
+   excluded.** The config can contain a typo and still build "successfully"
+   with half-empty CSS — no error, only missing styling.
+2. **No regression.** A class that IS in the old CSS, IS still used by markup,
+   but is GONE from the new CSS = a regression. This is the most damaging
+   kind: the page renders, the layout breaks, and there is no error.
+3. **A class that disappeared and is no longer used may disappear.** That is
+   a saving, not a bug; a build that deliberately prunes stale tokens is the
+   intended result.
+
+Two implementation details that are not style choices:
+
+- **Tokenisation runs on the ORIGINAL selector** (which still carries CSS
+  escapes), and only then is the result unescaped. If the selector were
+  unescaped first and then tokenised, the `:` character (the variant
+  separator) would become a boundary too and every variant-marked class
+  would collapse into a single token: `hover:border-green-500/30` becomes
+  `hover`. The regression check would then be nearly useless — `hover` is
+  obviously present in other files.
+- **Declarations are collected per class in COMBINED form**, not per rule.
+  Tailwind merges selectors with identical declarations into one rule; when
+  a group's contents change, one class can move from a combined rule to its
+  own rule (or the other way round) without changing the final result.
+
+Only the last compound of a selector counts as the declaration carrier. In
+`.group:hover .group-hover:text-white`, the declaration comes from
+`group-hover:text-white`; `group` is only an ancestor and has no declaration
+of its own.
+
+```bash
+php scripts/ci/tailwind-coverage-check.php                  # audit the committed artifact
+php scripts/ci/tailwind-coverage-check.php --new=/tmp/x.css  # compare a candidate
+php scripts/ci/tailwind-coverage-check.php --rebuild         # build to a temp file first, then compare
+```
+
+Exit code 0 = safe. Non-zero = a regression or a broken config.
 
 ### Verifying Private Drive 403 manually (deploy-time)
 

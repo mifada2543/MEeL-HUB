@@ -1,27 +1,20 @@
 <?php
-
 class DbTestHelper
 {
     private const TEST_DB_NAME = 'MEeL-test';
-
     private static ?string $testDbName = null;
-
     private ?mysqli $conn = null;
     private bool $inTransaction = false;
-
     const ADMIN_USER_ID = 1;
     const ADMIN2_USER_ID = 9;
     const MEMBER_USER_ID = 10;
     const REGULAR_USER_ID = 39;
-
     const MUSIC_ID_1 = 49;
     const MUSIC_ID_2 = 50;
     const MUSIC_ID_3 = 51;
-
     const VIDEO_ID_1 = 4;
     const VIDEO_ID_2 = 5;
     const VIDEO_ID_3 = 6;
-
     private static function serverCreds(): array
     {
         return [
@@ -30,15 +23,12 @@ class DbTestHelper
             'pass' => getenv('MEEL_TEST_DB_PASS') ?: '',
         ];
     }
-
     private static function ensureTestDatabase(): void
     {
         if (self::$testDbName !== null) {
             return;
         }
-
         $creds = self::serverCreds();
-
         $admin = null;
         for ($i = 0; $i < 10; $i++) {
             $admin = @new mysqli($creds['host'], $creds['user'], $creds['pass']);
@@ -53,7 +43,6 @@ class DbTestHelper
             );
         }
         $admin->set_charset('utf8mb4');
-
         $name = self::TEST_DB_NAME;
         $schemaPaths = [
             dirname(__DIR__) . '/database/schema.sql',
@@ -64,24 +53,10 @@ class DbTestHelper
                 throw new RuntimeException('Test DB: schema tidak ditemukan: ' . $schemaPath);
             }
         }
-
         $admin->query('DROP DATABASE IF EXISTS `' . $name . '`');
         if ($admin->error) {
             throw new RuntimeException('Test DB: gagal drop database lama: ' . $admin->error);
         }
-
-        // Database dibuat dan dipilih di sini, BUKAN lewat CREATE DATABASE/USE
-        // yang tertanam di schema.sql.
-        //
-        // Sebelumnya berkas ini menulis ulang nama database di dalam
-        // schema.sql lalu bergantung pada `USE` di dalamnya untuk memilih
-        // database uji. Waktu `USE` itu dihapus dari schema.sql, impor berjalan
-        // tanpa database terpilih dan gagal "No database selected" -- 113 dari
-        // 113 integration test error sekaligus.
-        //
-        // Sebutkan database target secara eksplisit, jangan lagi menulis ulang isi
-        // schema.sql: itu pola rapuh yang sama yang sudah dihapus dari
-        // install.sh dan ci.yml.
         $admin->query('CREATE DATABASE `' . $name . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         if ($admin->error) {
             throw new RuntimeException('Test DB: gagal membuat database uji: ' . $admin->error);
@@ -89,10 +64,8 @@ class DbTestHelper
         if (!$admin->select_db($name)) {
             throw new RuntimeException('Test DB: gagal memilih database uji: ' . $admin->error);
         }
-
         foreach ($schemaPaths as $schemaPath) {
             $schema = (string) file_get_contents($schemaPath);
-
             if (!$admin->multi_query($schema)) {
                 throw new RuntimeException('Test DB: gagal import ' . basename(dirname($schemaPath)) . '/' . basename($schemaPath) . ': ' . $admin->error);
             }
@@ -104,9 +77,7 @@ class DbTestHelper
             }
         }
         $admin->close();
-
         self::$testDbName = $name;
-
         register_shutdown_function(static function () use ($name, $creds): void {
             $c = @new mysqli($creds['host'], $creds['user'], $creds['pass']);
             if (!$c->connect_error) {
@@ -115,7 +86,6 @@ class DbTestHelper
             }
         });
     }
-
     public function getConnection(): mysqli
     {
         if ($this->conn === null) {
@@ -128,7 +98,13 @@ class DbTestHelper
                 );
             }
             $this->conn->set_charset('utf8mb4');
-
+            $tzOffset = date('P');
+            if ($tzOffset !== '') {
+                try {
+                    $this->conn->query("SET time_zone = '" . $this->conn->real_escape_string($tzOffset) . "'");
+                } catch (\Throwable $e) {
+                }
+            }
             $this->conn->autocommit(true);
             $this->seedFixtureData();
             self::exposeAsGlobalConnection($this->conn);
@@ -137,11 +113,9 @@ class DbTestHelper
         }
         return $this->conn;
     }
-
     private static function exposeAsGlobalConnection(mysqli $conn): void
     {
         $GLOBALS['conn'] = $conn;
-
         if (!class_exists('Modules', false)) {
             return;
         }
@@ -151,26 +125,12 @@ class DbTestHelper
         }
         $prop = $ref->getProperty('cache');
         $prop->setAccessible(true);
-
-        // PENTING: bentuk 1-argumen `setValue([])` DEPRECATED di PHP 8.3
-        // ("Calling ReflectionProperty::setValue() with a single argument is
-        // deprecated") dan akan jadi error di PHP 9. Bentuk lama itu
-        // bekerja hanya karena Modules::exists() tidak pernah membaca argumen
-        // pertama — memusnahkan cache adalah kasus yang seharusnya punya
-        // bentuk eksplisit, bukan pintasan rapuh.
-        //
-        // Dua cara aman, berurutan dari yang paling bersih:
         if (method_exists($ref, 'setStaticPropertyValue')) {
-            // PHP >= 8.3: API eksplisit untuk static property.
             $ref->setStaticPropertyValue($prop->getName(), []);
         } else {
-            // PHP < 8.3: bentuk 2-argumen (objek, nilai). Untuk static
-            // property, objeknya boleh null — persis yang dilakukan
-            // bentuk 1-argumen secara internal.
             $prop->setValue(null, []);
         }
     }
-
     public function rollback(): void
     {
         if ($this->conn !== null && $this->inTransaction) {
@@ -178,24 +138,19 @@ class DbTestHelper
             $this->inTransaction = false;
         }
     }
-
     private function seedFixtureData(): void
     {
-
         static $hash = null;
         if ($hash === null) {
             $hash = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);
         }
-
         $users = [
             [self::ADMIN_USER_ID, 'Admin', 'admin'],
             [self::ADMIN2_USER_ID, 'Admin2', 'admin'],
             [self::MEMBER_USER_ID, 'Member1', 'member'],
             [self::REGULAR_USER_ID, 'User1', 'user'],
         ];
-        $stmt = $this->conn->prepare(
-            'INSERT IGNORE INTO users (id, username, role, password, is_active) VALUES (?, ?, ?, ?, 1)'
-        );
+        $stmt = $this->conn->prepare('INSERT IGNORE INTO users (id, username, role, password, is_active) VALUES (?, ?, ?, ?, 1)');
         foreach ($users as $u) {
             $id = $u[0];
             $name = $u[1];
@@ -204,7 +159,6 @@ class DbTestHelper
             $stmt->execute();
         }
         $stmt->close();
-
         $artist = 'Test Fixture';
         $uploader = self::ADMIN2_USER_ID;
         $stmt = $this->conn->prepare(
@@ -217,10 +171,7 @@ class DbTestHelper
             $stmt->execute();
         }
         $stmt->close();
-
-        $stmt = $this->conn->prepare(
-            'INSERT IGNORE INTO video (id, title, filename, user_id) VALUES (?, ?, ?, ?)'
-        );
+        $stmt = $this->conn->prepare('INSERT IGNORE INTO video (id, title, filename, user_id) VALUES (?, ?, ?, ?)');
         foreach ([self::VIDEO_ID_1, self::VIDEO_ID_2, self::VIDEO_ID_3] as $id) {
             $title = 'Fixture Video ' . $id;
             $filename = 'fixture_' . $id . '.mp4';
@@ -229,7 +180,6 @@ class DbTestHelper
         }
         $stmt->close();
     }
-
     public function commit(): void
     {
         if ($this->conn !== null && $this->inTransaction) {
@@ -237,7 +187,6 @@ class DbTestHelper
             $this->inTransaction = false;
         }
     }
-
     public function close(): void
     {
         if ($this->conn !== null) {
@@ -246,7 +195,6 @@ class DbTestHelper
             $this->conn = null;
         }
     }
-
     public function getMusicLikesCount(int $musicId): array
     {
         $stmt = $this->conn->prepare("SELECT likes, dislikes FROM music WHERE id = ?");
@@ -259,7 +207,6 @@ class DbTestHelper
             'dislikes' => (int)($result['dislikes'] ?? 0)
         ];
     }
-
     public function getVideoLikesCount(int $videoId): array
     {
         $stmt = $this->conn->prepare("SELECT likes, dislikes FROM video WHERE id = ?");
@@ -272,31 +219,24 @@ class DbTestHelper
             'dislikes' => (int)($result['dislikes'] ?? 0)
         ];
     }
-
     public function interactionExists(int $userId, string $col, int $mediaId): ?string
     {
-        $stmt = $this->conn->prepare(
-            "SELECT `TYPE` FROM interactions WHERE user_id = ? AND $col = ?"
-        );
+        $stmt = $this->conn->prepare("SELECT `TYPE` FROM interactions WHERE user_id = ? AND $col = ?");
         $stmt->bind_param("ii", $userId, $mediaId);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         return $result['TYPE'] ?? null;
     }
-
     public function createTestComment(int $userId, ?int $musicId, ?int $videoId, string $text): int
     {
-        $stmt = $this->conn->prepare(
-            "INSERT INTO comments (user_id, music_id, video_id, comment) VALUES (?, ?, ?, ?)"
-        );
+        $stmt = $this->conn->prepare("INSERT INTO comments (user_id, music_id, video_id, comment) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("iiss", $userId, $musicId, $videoId, $text);
         $stmt->execute();
         $id = $stmt->insert_id;
         $stmt->close();
         return $id;
     }
-
     public function getCommentOwner(int $commentId): ?int
     {
         $stmt = $this->conn->prepare("SELECT user_id FROM comments WHERE id = ?");
@@ -306,11 +246,9 @@ class DbTestHelper
         $stmt->close();
         return $result ? (int)$result['user_id'] : null;
     }
-
     public function __destruct()
     {
         $this->close();
     }
 }
-
 /* reference build: MEeL-C5H9NO2 [7e926dab7eccb635] */

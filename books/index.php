@@ -1,10 +1,11 @@
 <?php
 /* reference build: MEeL-C2H5NO2 [fd200049e1f66c7e] */
-require_once '../modules/core/helpers.php';
-require_once '../auth/auth.php';
-require_once '../auth/config.php';
-require_once '../modules/media/MediaLibrary.php';
-require_once '../modules/media/BookRepository.php';
+
+require_once __DIR__ . '/../modules/core/helpers.php';
+require_once __DIR__ . '/../auth/auth.php';
+require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/../modules/media/BookRepository.php';
 $repo = new BookRepository($conn);
 $u_id = (int)$_SESSION['user_id'];
 $role = $repo->getUserRole($u_id);
@@ -28,7 +29,7 @@ $totalPagesBooks = $meta_books['total_pages'];
     <meta property="og:title" content="MEeL | Buku">
     <meta property="og:description" content="MEeL Books - Perpustakaan digital untuk membaca manga, komik, dan dokumen PDF.">
     <title>MEeL | Buku</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('books', '../assets/css/books'); ?>
     <link rel="stylesheet" href="../assets/css/books/index/main.css<?= meel_asset_version('assets/css/books/index/main.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>"></script>
@@ -81,7 +82,7 @@ $totalPagesBooks = $meta_books['total_pages'];
             </form>
 
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <?php include '../partials/nav.php'; ?>
+                <?php include __DIR__ . '/../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
@@ -135,7 +136,7 @@ $totalPagesBooks = $meta_books['total_pages'];
         <div id="book-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
             <?php if ($total > 0): ?>
                 <?php while ($book = $books->fetch_assoc()): ?>
-                    <?php include 'book_card.php'; ?>
+                    <?php include __DIR__ . '/book_card.php'; ?>
                 <?php endwhile; ?>
             <?php else: ?>
 
@@ -186,7 +187,7 @@ $totalPagesBooks = $meta_books['total_pages'];
             <?php endif; ?>
         </div>
     <?php endif; ?>
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script>
         lucide.createIcons();
 
@@ -218,7 +219,6 @@ $totalPagesBooks = $meta_books['total_pages'];
                 titleEl.textContent = label;
                 linkEl.href = '<?= base_url('/books/read?id=') ?>' + data.id + (data.ch ? '&ch=' + encodeURIComponent(data.ch) : '');
                 banner.classList.add('visible');
-
             } catch (e) {
                 console.warn('[Continue] Gagal baca progress:', e);
             }

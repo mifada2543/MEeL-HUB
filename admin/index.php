@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @var \mysqli $conn
  * @var System $sys
@@ -31,16 +30,16 @@
  * @var float $sz_d_pub
  * @var int|null $orphan_checked_at
  */
-include '../auth/config.php';
-include '../auth/auth.php';
-include_once '../modules/core/helpers.php';
-include_once '../modules/core/activity_logger.php';
-include_once '../modules/core/GarbageCollector.php';
-include_once '../modules/auth/RateLimiter.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
+include_once __DIR__ . '/../modules/core/helpers.php';
+include_once __DIR__ . '/../modules/core/activity_logger.php';
+include_once __DIR__ . '/../modules/core/GarbageCollector.php';
+include_once __DIR__ . '/../modules/auth/RateLimiter.php';
 require_admin($conn);
 define('MEEL_ADMIN_CONTEXT', true);
-include '../controllers/admin/admin_actions.php';
-include '../controllers/admin/admin_data.php';
+include __DIR__ . '/../controllers/admin/admin_actions.php';
+include __DIR__ . '/../controllers/admin/admin_data.php';
 require_once __DIR__ . '/../modules/core/MeelCoin.php';
 GarbageCollector::cleanGuests($conn);
 GarbageCollector::cleanChessRooms($conn);
@@ -57,7 +56,7 @@ GarbageCollector::cleanChessRooms($conn);
     include __DIR__ . '/../partials/scripts.php';
     ?>
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
-    <link rel="stylesheet" href="../assets/css/admin/index.css?v=<?= filemtime('../assets/css/admin/index.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin/index.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin/index.css') ?>">
     <script defer src="../assets/js/compatibilitas/chart.umd.min.js<?= meel_asset_version('assets/js/compatibilitas/chart.umd.min.js') ?>"></script>
 </head>
 
@@ -67,7 +66,7 @@ GarbageCollector::cleanChessRooms($conn);
     $page_title = 'Dasbor';
     $media_type = 'dashboard';
     $back_url = '../';
-    include 'header-admin.php';
+    include __DIR__ . '/header-admin.php';
     ?>
     <div class="max-w-5xl mx-auto px-4 md:px-8 py-8">
         <div class="flex items-center gap-4 mb-8">
@@ -498,8 +497,8 @@ GarbageCollector::cleanChessRooms($conn);
             <?php if (count($orphans) > 0): ?>
                 <div class="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl">
                     <p class="text-xs text-red-400 mb-2">Ditemukan <?= count($orphans) ?> file sampah (tidak ada di DB):</p>
-                    <ul class="text-[9px] font-mono text-gray-400 max-h-24 overflow-y-auto mb-4"><?php foreach ($orphans as $o) echo "<li>- $o</li>"; ?></ul>
-                    <form method="POST"><input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>"><input type="hidden" name="files_to_delete" value='<?= json_encode($orphans) ?>'> <button name="clean_orphans" class="bg-red-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl hover:bg-red-700 transition-all uppercase" title="Hapus file sampah yang tidak ada di database">Bersihkan SSD Thinkpad</button></form>
+                    <ul class="text-[9px] font-mono text-gray-400 max-h-24 overflow-y-auto mb-4"><?php foreach ($orphans as $o): ?><li>- <?= htmlspecialchars((string) $o, ENT_QUOTES, 'UTF-8') ?></li><?php endforeach; ?></ul>
+                    <form method="POST"><input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>"><input type="hidden" name="files_to_delete" value='<?= htmlspecialchars((string) json_encode($orphans, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>'> <button name="clean_orphans" class="bg-red-600 text-white text-[10px] font-bold px-4 py-2 rounded-xl hover:bg-red-700 transition-all uppercase" title="Hapus file sampah yang tidak ada di database">Bersihkan SSD Thinkpad</button></form>
                 </div>
             <?php else: ?>
                 <p class="text-xs text-green-500 font-bold uppercase tracking-widest flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> Semua file di SSD sinkron dengan Database</p>
@@ -589,11 +588,11 @@ GarbageCollector::cleanChessRooms($conn);
         var serverStatsUrl = <?= json_encode(base_url('/api/server-stats')) ?>;
         var serverStatsSseUrl = <?= json_encode(base_url('/api/server-stats-sse')) ?>;
     </script>
-    <script src="../assets/js/admin/shared/modal.js?v=<?= filemtime('../assets/js/admin/shared/modal.js') ?>"></script>
-    <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime('../assets/js/admin/shared/hover-effects.js') ?>"></script>
-    <script src="../assets/js/admin/shared/search.js?v=<?= filemtime('../assets/js/admin/shared/search.js') ?>"></script>
+    <script src="../assets/js/admin/shared/modal.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/modal.js') ?>"></script>
+    <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/hover-effects.js') ?>"></script>
+    <script src="../assets/js/admin/shared/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/search.js') ?>"></script>
     <script src="../assets/js/shared/format-helpers.js?v=<?= meel_asset_version('assets/js/shared/format-helpers.js') ?>"></script>
-    <script src="../assets/js/admin/index.js?v=<?= filemtime('../assets/js/admin/index.js') ?>"></script>
+    <script src="../assets/js/admin/index.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/index.js') ?>"></script>
 </body>
 
 </html>

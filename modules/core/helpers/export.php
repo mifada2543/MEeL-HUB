@@ -1,31 +1,14 @@
 <?php
-
 /**
  * Helper ekspor data: CSV, JSON, dan SpreadsheetML (format yang dibaca Excel
  * dari berkas berekstensi ".xls").
  *
- * MENGAPA ADA
- * -----------
- * `admin/activity_log.php` dulunya punya DUA blok ekspor dan total ENAM definisi
- * pemetaan baris yang sama persis. Yang berduplikasi:
- *
- *   - premable XML SpreadsheetML (9 baris)  -> 2 salinan, byte-identik
- *   - closure $xls_cell                      -> 2 salinan, byte-identik
- *   - header upload queue ['ID','User',...] -> 4 salinan
- *   - pemetaan 6 kolom baris upload queue   -> 6 salinan (csv/json/xls,
- *                                             masing-masing untuk unduhan
- *                                             dan pratinjau)
- *
- * Konsekuensinya bukan cuma berkas panjang. Kalau satu kolom diubah --
- * ditambah, diurutkan ulang, atau diganti label -- ada lima tempat lain
- * yang HARUS ikut berubah, dan tidak ada yang memberi tahu kalau lupa.
- * Ekspor CSV bisa diam-diam punya kolom berbeda dari ekspor JSON.
- *
- * Yang dikumpulkan di sini adalah BENTUR, bukan isi data. Daftar kolom
- * milik tiap dataset tetap didefinisikan di halaman yang memakainya,
- * karena itu domain data, bukan utilitas.
+ * Yang dikumpulkan di sini adalah bentuk, bukan isi data: daftar kolom milik
+ * tiap dataset tetap didefinisikan di halaman yang memakainya, karena itu
+ * domain data, bukan utilitas.
  *
  * @see admin/activity_log.php
+ * @see docs/{id,en}/modules.md
  */
 
 if (!function_exists('meel_xls_begin')) {
@@ -104,21 +87,6 @@ if (!function_exists('meel_xls_end')) {
     }
 }
 
-/* ========================================================================
- * Spesifikasi kolom
- *
- * Bentuk satu entri:
- *   [
- *     'key'     => kunci di baris hasil query,
- *     'label'   => teks header (dipakai CSV, XLS, dan pratinjau),
- *     'default' => OPSIONAL. Kalau ada, dipakai sebagai `$row[$key] ?? default`,
- *                 jadi null juga ikut berganti ke default. Kalau TIDAK ada,
- *                 nilai diteruskan apa adanya -- null tetap null.
- *     'type'    => 'int'  -> selalu di Casting ke int
- *                 'int?'  -> int, TETAPI null tetap null (baca nilai mentah)
- *   ]
- * ===================================================================== */
-
 if (!function_exists('meel_export_labels')) {
     /** @return string[] label header, sesuai urutan kolom */
     function meel_export_labels(array $cols): array
@@ -131,11 +99,9 @@ if (!function_exists('meel_export_values')) {
     /**
      * Nilai per baris, sesuai urutan kolom. Dipakai CSV dan XLS.
      *
-     * `??` di sini bukan sekadar kenyamanan -- itu SEMANTIKA ASLI kode
-     * yang digantikan: kolom dengan `default` memakai `$row[$key] ?? default`,
-     * jadi kunci yang tidak ada DAN kunci bernilai null keduanya
-     * menghasilkan default. Kolom tanpa `default` meneruskan null apa
-     * adanya.
+     * Kolom dengan `default` memakai `$row[$key] ?? default`, jadi kunci yang
+     * tidak ada DAN kunci bernilai null keduanya menghasilkan default. Kolom
+     * tanpa `default` meneruskan null apa adanya.
      *
      * @return array<int, mixed>
      */
@@ -154,14 +120,10 @@ if (!function_exists('meel_export_map')) {
      * Bentuk asosiatif untuk keluaran JSON: kunci = key kolom, nilai sudah
      * di Casting sesuai `type`.
      *
-     * Bedanya dari `meel_export_values()` ada di kolom `int?`: JSON asli
-     * memakai `$r[$key] !== null ? (int)$r[$key] : null`, jadi null HARUS
-     * tetap null. Kalau `default` ikut diterapkan lebih dulu, null berubah
-     * jadi `''` lalu jadi `0` -- dan JSON yang tadinya `"user_id": null`
-     * tiba-tiba melaporkan `"user_id": 0`. Itu bukan detail kecil: null
-     * berarti "tidak diketahui", 0 berarti "user 0".
-     *
-     * Karena itu `int?` membaca nilai mentah, bukan hasil `??`.
+     * Kolom bertipe `int?` membaca nilai mentah, bukan hasil `??` — kalau
+     * `default` ikut diterapkan lebih dulu, null berubah jadi `''` lalu jadi
+     * `0`, dan JSON yang tadinya `"user_id": null` tiba-tiba melaporkan
+     * `"user_id": 0`. Null berarti "tidak diketahui", 0 berarti "user 0".
      *
      * @return array<string, mixed>
      */

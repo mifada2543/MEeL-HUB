@@ -1,10 +1,10 @@
 <?php
 define('MEEL_API_CONTEXT', true);
-require_once '../../modules/core/helpers.php';
-require_once '../../auth/auth.php';
-require_once '../../auth/config.php';
-require_once '../../modules/core/Transcoder.php';
-require_once '../../modules/core/GarbageCollector.php';
+require_once __DIR__ . '/../../modules/core/helpers.php';
+require_once __DIR__ . '/../../auth/auth.php';
+require_once __DIR__ . '/../../auth/config.php';
+require_once __DIR__ . '/../../modules/core/Transcoder.php';
+require_once __DIR__ . '/../../modules/core/GarbageCollector.php';
 GarbageCollector::run();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {

@@ -83,11 +83,6 @@ if (!$yes) {
 GarbageCollector::run();
 echo "[MEeL gc] scan storage + rate-limit selesai\n";
 
-// Bersihkan PID file yatim. `killByPidFile()` membuat berkas `.pid` saat
-// job mulai dan menghapusnya saat selesai; kalau proses dibunuh mendadak
-// (OOM, kill -9, crash), berkasnya tertinggal tanpa ada yang membersihkannya.
-// Tidak butuh database, jadi masuk bagian ringan -- tetap jalan pada
-// `--run-only`.
 require_once __DIR__ . '/../modules/core/TranscoderBase.php';
 $stalePids = TranscoderBase::cleanupStalePidFiles();
 if ($stalePids > 0) {
@@ -126,4 +121,5 @@ if ($notifUsers > 0) {
 }
 
 echo "[MEeL gc] housekeeping berat selesai (" . date('c') . ")\n";
+
 /* reference build: MEeL-C1H1N1O2 [2f6a0d5b8c41e937] */

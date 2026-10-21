@@ -144,7 +144,6 @@ if ($hdd === '') {
         'MEEL_HDD_DRIVE' => ['drive', 'auto'],
     ];
     foreach ($derived as $const => [$rel, $mode]) {
-
         $dir = ($hddOverride !== null || !defined($const))
             ? $hdd . '/' . $rel
             : rtrim((string) constant($const), '/');
@@ -365,7 +364,6 @@ $body = @file_get_contents($probeUrl, false, $ctx);
 $status = 0;
 $ct = '';
 if (isset($http_response_header) && is_array($http_response_header)) {
-
     if (preg_match('/\s(\d{3})\s/', $http_response_header[0] ?? '', $m)) {
         $status = (int) $m[1];
     }

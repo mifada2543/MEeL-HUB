@@ -1,18 +1,11 @@
 <?php
-require '../auth/auth.php';
-require '../auth/config.php';
-require '../modules/core/helpers.php';
-require __DIR__ . '/DriveService.php';
-
-$user = DriveUserContext::fromSession($_SESSION);
-$user->authorize();
+require_once __DIR__ . '/bootstrap.php';
 
 $isAjax = (isset($_GET['ajax']) && $_GET['ajax'] === '1');
 
 meel_storage_guard($isAjax ? 'json' : 'html');
 
 if ($isAjax) {
-
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_FILES['file_drive'])) {
         http_response_code(400);
         header('Content-Type: application/json');
@@ -38,9 +31,9 @@ if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
     exit();
 }
 
-$storage = new DriveStorage(DriveStorage::defaultBasePath(), $user);
+$storage = new DriveStorage(DriveStorage::defaultBasePath(), $user, '../data_drive', $conn);
 
-require_once '../modules/core/System.php';
+require_once __DIR__ . '/../modules/core/System.php';
 $sys = new System($conn);
 $user_id = $_SESSION['user_id'];
 

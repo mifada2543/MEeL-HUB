@@ -1,4 +1,3 @@
-# Security defaults for database directory
 Options -Indexes
 
 <IfModule mod_headers.c>

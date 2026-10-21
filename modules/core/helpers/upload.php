@@ -5,6 +5,12 @@ if (!defined('MEEL_MAX_BOOK_FILE_BYTES')) {
 if (!defined('MEEL_MAX_THUMBNAIL_BYTES')) {
     define('MEEL_MAX_THUMBNAIL_BYTES', 25 * 1024 * 1024);
 }
+if (!defined('MEEL_MAX_DOWNLOAD_BYTES')) {
+    define('MEEL_MAX_DOWNLOAD_BYTES', 2 * 1024 * 1024 * 1024);
+}
+if (!defined('MEEL_MAX_DOWNLOAD_SECONDS')) {
+    define('MEEL_MAX_DOWNLOAD_SECONDS', 7200);
+}
 if (!function_exists('meel_read_magic_bytes')) {
     function meel_read_magic_bytes(string $path, int $length = 16): string
     {
@@ -308,6 +314,7 @@ if (!function_exists('meel_insert_music_row')) {
     }
 }
 /* reference build: MEeL-C4H9NO2 [78a1c65c4d60c8d8] */
+
 if (!function_exists('meel_handle_upload')) {
     function meel_handle_upload(\mysqli $conn, string $media_type, callable $process_fn, string $log_action): array
     {

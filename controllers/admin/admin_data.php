@@ -1,5 +1,4 @@
 <?php
-
 if (!defined('MEEL_ADMIN_CONTEXT')) {
     header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
     exit;
@@ -175,12 +174,6 @@ foreach ($check_map as $rel_path => $table) {
         $fname = basename($full_path);
         if (isset($__ignored_flip[$fname])) continue;
 
-        // Varian thumbnail turunan (mis. foo_sm.webp dari foo.jpg) sengaja TIDAK
-        // didaftarkan di DB: ditulis sekali di Uploader.php:370/394/417 (lebar 256px)
-        // lalu dipakai saat render lewat video_thumbnail_sm() yang mencocokkan stem.
-        // Jadi varian ini bukan sampah, meski induknya sudah tidak ada di DB.
-        // Thumbnail asli tidak akan tertangkap: video/music asli selalu berakhiran
-        // _thumb.* atau .thumb.* sehingga stem-nya tidak pernah persis "_sm".
         $is_thumb_variant = $is_thumb_table && preg_match('/_sm\.[^.]+$/', $fname);
         if ($is_thumb_variant) {
             $variants_kept++;

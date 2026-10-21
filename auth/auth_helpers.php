@@ -1,6 +1,5 @@
 <?php
 if (!function_exists('auth_boot_session')) {
-
     function auth_boot_session(): void
     {
         require_once __DIR__ . '/../modules/auth/helpers/session.php';
@@ -31,29 +30,26 @@ if (!function_exists('auth_is_loopback')) {
     }
 }
 if (!function_exists('auth_back_url')) {
-
     function auth_back_url(array $exclude = ['login.php', 'register.php']): string
     {
+        if (!function_exists('meel_same_origin_referer')) {
+            require_once __DIR__ . '/../modules/core/helpers/url.php';
+        }
+
         $back_url = '../';
-        if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-            $ref = $_SERVER['HTTP_REFERER'];
-            $host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST);
-
-            $refHost = parse_url($ref, PHP_URL_HOST);
-
-            if ($refHost !== null && $host !== null && strcasecmp($refHost, $host) === 0) {
-                $refPath = parse_url($ref, PHP_URL_PATH) ?? '';
-                $isExcluded = false;
-                foreach ($exclude as $file) {
-                    if (strpos($refPath, $file) !== false
-                        || strpos($refPath, pathinfo($file, PATHINFO_FILENAME)) !== false) {
-                        $isExcluded = true;
-                        break;
-                    }
+        $ref = meel_same_origin_referer();
+        if ($ref !== null) {
+            $refPath = (string) (parse_url($ref, PHP_URL_PATH) ?? '');
+            $isExcluded = false;
+            foreach ($exclude as $file) {
+                if (strpos($refPath, $file) !== false
+                    || strpos($refPath, pathinfo($file, PATHINFO_FILENAME)) !== false) {
+                    $isExcluded = true;
+                    break;
                 }
-                if (!$isExcluded) {
-                    $back_url = $ref;
-                }
+            }
+            if (!$isExcluded) {
+                $back_url = $ref;
             }
         }
 
@@ -62,7 +58,6 @@ if (!function_exists('auth_back_url')) {
 }
 
 if (!function_exists('auth_ip_lockout_status')) {
-
     function auth_ip_lockout_status(mysqli $conn, string $ip): array
     {
         $locked = false;
@@ -95,10 +90,8 @@ if (!function_exists('auth_ip_lockout_status')) {
 }
 
 if (!function_exists('auth_record_failed_attempt')) {
-
     function auth_record_failed_attempt(mysqli $conn, string $ip, int $max_attempts, int $lockout_time): bool
     {
-
         if (auth_is_loopback()) {
             return false;
         }
@@ -137,7 +130,6 @@ if (!function_exists('auth_record_failed_attempt')) {
 }
 
 if (!function_exists('auth_recheck_lockout')) {
-
     function auth_recheck_lockout(mysqli $conn, string $ip): array
     {
         $locked = false;
@@ -161,7 +153,6 @@ if (!function_exists('auth_recheck_lockout')) {
 }
 
 if (!function_exists('auth_validate_credentials')) {
-
     function auth_validate_credentials(string $user, string $pass): ?string
     {
         if (strlen($user) < 8 || strlen($pass) < 8) {

@@ -67,7 +67,6 @@ function get_connection_protocol()
 }
 
 if (!function_exists('log_activity')) {
-
     function log_activity(mysqli $conn, int $user_id, string $action, string $media_type = '', ?int $media_id = null): void
     {
         $ip = '0.0.0.0';
@@ -103,7 +102,6 @@ if (!function_exists('log_activity')) {
 
 class ActivityLogger
 {
-
     public const TOUCH_THROTTLE_SECONDS = 60;
 
     private const SESSION_KEY = '_meel_touch';
@@ -118,7 +116,6 @@ class ActivityLogger
         self::$hasRun = true;
 
         if (!isset($_SESSION['role'])) {
-
             self::enforceIpBan($conn, self::clientIp());
             return;
         }

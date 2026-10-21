@@ -1,6 +1,7 @@
 <?php
 /* reference build: MEeL-C3H7NO2S [a7af141dc4ed461b] */
-require_once 'modules/core/helpers.php';
+
+require_once __DIR__ . '/modules/core/helpers.php';
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ignore_user_abort(true);
@@ -8,15 +9,15 @@ set_time_limit(0);
 putenv("LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib");
 putenv("PATH=/usr/local/bin:/usr/bin:/bin");
 
-require_once 'auth/auth.php';
-require_once 'auth/config.php';
-require_once 'modules/core/activity_logger.php';
-require_once 'modules/core/Transcoder.php';
-require_once 'modules/core/BrowserProgressObserver.php';
-require_once 'modules/core/GarbageCollector.php';
-require_once 'modules/media/MediaLibrary.php';
-require_once 'modules/core/MeelCoin.php';
-require_once 'modules/core/Notification.php';
+require_once __DIR__ . '/auth/auth.php';
+require_once __DIR__ . '/auth/config.php';
+require_once __DIR__ . '/modules/core/activity_logger.php';
+require_once __DIR__ . '/modules/core/Transcoder.php';
+require_once __DIR__ . '/modules/core/BrowserProgressObserver.php';
+require_once __DIR__ . '/modules/core/GarbageCollector.php';
+require_once __DIR__ . '/modules/media/MediaLibrary.php';
+require_once __DIR__ . '/modules/core/MeelCoin.php';
+require_once __DIR__ . '/modules/core/Notification.php';
 meel_storage_guard();
 GarbageCollector::run();
 
@@ -46,7 +47,7 @@ register_shutdown_function(function () {
 $message = "";
 $rate_limit_msg = "";
 
-require_once 'modules/core/System.php';
+require_once __DIR__ . '/modules/core/System.php';
 $sys = new System($conn);
 $is_busy = $sys->isServerBusy();
 
@@ -68,7 +69,7 @@ $transcoder = new Transcoder($conn, $_SESSION['user_id'], new BrowserProgressObs
 register_shutdown_function([$transcoder, 'terminateAllProcesses']);
 
 if (!$is_admin) {
-    $conn->query("UPDATE upload_queue SET status = 'failed' WHERE status = 'processing' AND created_at < DATE_SUB(NOW(), INTERVAL 30 MINUTE)");
+    GarbageCollector::releaseStaleQueueRows($conn, 30, ['upload_queue']);
 }
 
 $q_active = $conn->query("SELECT COUNT(*) FROM upload_queue WHERE status='processing'");
@@ -140,10 +141,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 } else {
                     $new_balance = MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
                     $clean_url = filter_var(trim($_POST['url']), FILTER_SANITIZE_URL) ?: trim($_POST['url']);
-                    Notification::create($conn, (int)$_SESSION['user_id'], 'meelcoin',
-                        'Penggunaan MEeLCoin',
-                        'Upload URL berhasil. URL: ' . htmlspecialchars($clean_url) . ' — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
-                    );
+                    if (class_exists('DownloadService', false) || class_exists('DownloadService')) {
+                        DownloadService::setPendingCoinCost($coin_cost);
+                    }
+                    try {
+                        Notification::create($conn, (int)$_SESSION['user_id'], 'meelcoin',
+                            'Penggunaan MEeLCoin',
+                            'Upload URL berhasil. URL: ' . htmlspecialchars($clean_url) . ' — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
+                        );
+                    } catch (\Throwable $e) {
+                        error_log('[MEeL-Upload] Gagal membuat notifikasi MEeLCoin: ' . $e->getMessage());
+                    }
                 }
             }
         }
@@ -341,7 +349,7 @@ include __DIR__ . '/partials/scripts.php';
 <?php include __DIR__ . '/partials/skip-link.php'; ?>
 
     <?php if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $message === 'busy' || $message === 'rate_limit'): ?>
-        <?php include 'partials/ui.php'; ?>
+        <?php include __DIR__ . '/partials/ui.php'; ?>
     <?php endif; ?>
     <main class="flex-grow" style="position:relative;z-index:1;">
         <div class="wrap">
@@ -725,7 +733,7 @@ include __DIR__ . '/partials/scripts.php';
         </div>
     </main>
 
-    <?php include 'partials/footer.php'; ?>
+    <?php include __DIR__ . '/partials/footer.php'; ?>
     <script src="assets/js/up/main.js<?= meel_asset_version('assets/js/up/main.js') ?>"></script>
 </body>
 

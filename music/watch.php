@@ -1,11 +1,11 @@
 <?php
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
-require_once '../modules/core/CommentRenderer.php';
-require_once '../modules/media/MediaLibrary.php';
+include __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/core/CommentRenderer.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
 require_once __DIR__ . '/cards.php';
-require_once '../controllers/api/WatchController.php';
+require_once __DIR__ . '/../controllers/api/WatchController.php';
 $id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
 $playlist_id = isset($_GET['playlist_id']) ? (int)$_GET['playlist_id'] : 0;
@@ -35,7 +35,7 @@ session_write_close();
     $_META_IMAGE_H = '512';
     $_META_TYPE = 'music.song';
     ?>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'); ?>
     <link rel="preconnect" href="<?= $base_url ?>/" crossorigin>
     <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
@@ -80,7 +80,7 @@ session_write_close();
                 </button>
             </div>
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <?php include '../partials/nav.php'; ?>
+                <?php include __DIR__ . '/../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
@@ -229,33 +229,14 @@ session_write_close();
                     </div>
                     <?php if (isset($_SESSION['username'])): ?>
                         <div class="flex items-center gap-2 flex-wrap">
-                            <div id="like-dislike-container" class="flex items-center gap-2 flex-wrap">
-                                <button
-                                    hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
-                                    hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"like","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
-                                    class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
-                                   <?= $user_interaction === 'like'
-                                        ? 'bg-orange-500/15 border-orange-500/30 text-orange-400'
-                                        : 'bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300' ?>">
-                                    <i data-lucide="thumbs-up" class="w-3.5 h-3.5 <?= $user_interaction === 'like' ? 'fill-current' : '' ?>"></i>
-                                    Like<?= ($v['likes'] ?? 0) > 0 ? " <span class='tabular-nums ml-0.5'>{$v['likes']}</span>" : '' ?>
-                                </button>
-                                <button
-                                    hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
-                                    hx-vals='{"id":"<?= $id ?>","media_type":"music","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
-                                    aria-label="Dislike<?= ($v['dislikes'] ?? 0) > 0 ? ' (' . $v['dislikes'] . ')' : '' ?>"
-                                    class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
-                                   <?= $user_interaction === 'dislike'
-                                        ? 'bg-white/10 border-white/15 text-white'
-                                        : 'bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300' ?>">
-                                    <i data-lucide="thumbs-down" class="w-3.5 h-3.5 <?= $user_interaction === 'dislike' ? 'fill-current' : '' ?>"></i>
-                                    <?= ($v['dislikes'] ?? 0) > 0 ? "<span class='tabular-nums'>{$v['dislikes']}</span>" : '' ?>
-                                </button>
-                                <button onclick="document.getElementById('playlist-modal').classList.remove('hidden')"
-                                    class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300">
-                                    <i data-lucide="list-plus" class="w-3.5 h-3.5"></i> Simpan
-                                </button>
-                            </div>
+                            <?php
+                            $like_dislike_media_id = $id;
+                            $like_dislike_media_type = 'music';
+                            $like_dislike_state = $user_interaction;
+                            $like_dislike_likes = (int) ($v['likes'] ?? 0);
+                            $like_dislike_dislikes = (int) ($v['dislikes'] ?? 0);
+                            include __DIR__ . '/../partials/like_dislike.php';
+                            ?>
                             <?php
                             $can_edit = $is_logged_in && (
                                 ($_SESSION['role'] ?? '') === 'admin' ||
@@ -515,7 +496,7 @@ session_write_close();
                 </div>
             </div>
         </div>
-    </main> <?php include '../partials/footer.php'; ?>
+    </main> <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script>
         window.MEEL_MUSIC_CONFIG = {
             id: <?= $id ?>,
@@ -546,9 +527,6 @@ session_write_close();
                 });
             }
         });
-        // Ikon setelah swap htmx ditangani shared/htmx-lucide.js (T23);
-        // listener manual di sini identik dengan isi file itu, jadi
-        // dihapus supaya tidak ada dua sumber kebenaran.
         window.toggleEqPresetDropdown = function() {
             const options = document.getElementById('eq-preset-options');
             if (!options) return;

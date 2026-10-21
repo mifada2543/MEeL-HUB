@@ -1,4 +1,3 @@
-# Security defaults for video
 Options -Indexes
 DirectoryIndex index.php index.html
 

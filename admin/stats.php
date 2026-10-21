@@ -1,12 +1,11 @@
 <?php
-
 /** @var \mysqli $conn */
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
+include __DIR__ . '/../auth/config.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login");
@@ -225,7 +224,7 @@ while ($rc = $r->fetch_assoc()) {
     <meta property="og:description" content="Panel admin MEeL untuk memonitor dan menganalisis statistik konten video dan musik.">
     <title>MEeL | Analitik Media</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link rel="stylesheet" href="../assets/css/admin/stats.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin/stats.css') ?>">
     <script>
@@ -243,7 +242,7 @@ while ($rc = $r->fetch_assoc()) {
     $is_admin = true;
     $page_title = 'Analitik Media';
     $media_type = 'analytics';
-    include 'header-admin.php';
+    include __DIR__ . '/header-admin.php';
     ?>
     <div class="max-w-6xl mx-auto px-4 md:px-6 py-8">
         <div class="flex items-center gap-4 mb-8">

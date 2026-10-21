@@ -1,5 +1,4 @@
 <?php
-
 class DownloadException extends \RuntimeException
 {
     private string $url;

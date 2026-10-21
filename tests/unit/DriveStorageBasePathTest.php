@@ -39,7 +39,6 @@ class DriveStorageBasePathTest extends TestCase
 
     public function testDefaultBasePathWithoutOverrideUsesCurrentEnvironment(): void
     {
-
         $expected = defined('MEEL_HDD_DRIVE') && (string) MEEL_HDD_DRIVE !== ''
             ? rtrim((string) MEEL_HDD_DRIVE, '/\\')
             : MEEL_ROOT . '/data_drive';
@@ -69,7 +68,6 @@ class DriveStorageBasePathTest extends TestCase
 
     public function testEnsureDirectoryCreatesRealFoldersUnderFallbackBase(): void
     {
-
         $base = MEEL_ROOT . '/temp/drive_base_test_' . bin2hex(random_bytes(4));
         $user = DriveUserContext::fromSession(['user_id' => 1, 'role' => 'admin', 'username' => 'admin']);
         $storage = new DriveStorage($base, $user);

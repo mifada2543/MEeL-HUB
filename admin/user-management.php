@@ -1,15 +1,10 @@
 <?php
 /**
- * Variabel di bawah di-set oleh include di file ini: `$conn` oleh
- * `auth/config.php`, dan `$banned_ips`/`$all_users`/`$pending_users`/
- * `$result_monitor`/`$stats` oleh `controllers/admin/admin_data.php` — sah saat
- * runtime, tapi tak terlihat oleh static analyser karena tidak menelusuri
- * variabel lintas `include`.
+ * Variabel di-set oleh include di file ini: `$conn` oleh
+ * `auth/config.php`, sisanya oleh `controllers/admin/admin_data.php`.
  *
- * ⚠️ Satu variabel per baris `@var` — bentuk daftar berkoma (`@var Type $a, $b`)
- * tidak dipahami PHPStan/Intelephense, hanya baris pertama yang terbaca.
- * Blok ini juga harus diletakkan SEBELUM pemakaian pertama, karena `@var`
- * hanya berlaku ke depan.
+ * Satu variabel per baris `@var` — bentuk daftar berkoma tidak dipahami
+ * PHPStan/Intelephense. Blok ini harus diletakkan sebelum pemakaian pertama.
  *
  * @var \mysqli $conn
  * @var \mysqli_result $banned_ips
@@ -19,18 +14,18 @@
  * @var array<string,mixed> $stats
  */
 
-include '../auth/config.php';
-include '../auth/auth.php';
-include_once '../modules/core/helpers.php';
-include_once '../modules/core/activity_logger.php';
-include_once '../modules/core/GarbageCollector.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
+include_once __DIR__ . '/../modules/core/helpers.php';
+include_once __DIR__ . '/../modules/core/activity_logger.php';
+include_once __DIR__ . '/../modules/core/GarbageCollector.php';
 
 require_admin($conn);
 
 define('MEEL_ADMIN_CONTEXT', true);
 
-include '../controllers/admin/admin_actions.php';
-include '../controllers/admin/admin_data.php';
+include __DIR__ . '/../controllers/admin/admin_actions.php';
+include __DIR__ . '/../controllers/admin/admin_data.php';
 
 require_once __DIR__ . '/../modules/core/System.php';
 $sys = new System($conn);
@@ -43,7 +38,7 @@ $msg = $_GET['msg'] ?? null;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pengelolaan Pengguna | MEeL Admin</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link href="../assets/css/admin/index.css<?= meel_asset_version('assets/css/admin/index.css') ?>" rel="stylesheet">
 </head>
@@ -53,7 +48,7 @@ $msg = $_GET['msg'] ?? null;
     $page_title = 'Pengelolaan Pengguna';
     $media_type = 'dashboard';
     $back_url = 'index.php';
-    include 'header-admin.php';
+    include __DIR__ . '/header-admin.php';
     ?>
     <div class="max-w-5xl mx-auto px-4 md:px-8 py-8">
 
@@ -356,9 +351,9 @@ $msg = $_GET['msg'] ?? null;
         </div>
     </div>
 
-    <script src="../assets/js/admin/shared/modal.js?v=<?= filemtime('../assets/js/admin/shared/modal.js') ?>"></script>
-    <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime('../assets/js/admin/shared/hover-effects.js') ?>"></script>
-    <script src="../assets/js/admin/shared/search.js?v=<?= filemtime('../assets/js/admin/shared/search.js') ?>"></script>
+    <script src="../assets/js/admin/shared/modal.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/modal.js') ?>"></script>
+    <script src="../assets/js/admin/shared/hover-effects.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/hover-effects.js') ?>"></script>
+    <script src="../assets/js/admin/shared/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/shared/search.js') ?>"></script>
     <script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
     <script>
     (function() {

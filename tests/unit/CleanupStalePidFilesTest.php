@@ -1,39 +1,18 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
  * Penjaga `TranscoderBase::cleanupStalePidFiles()` (T19).
  *
- * MASALAH YANG DIPERBAIKI
- * ------------------------
- * Fungsi ini dulu tidak pernah dipanggil siapa pun -- `scripts/gc.php`
- * menjalankan `GarbageCollector::run()` + `runCliMaintenance()` tapi
- * tidak pernah memanggilnya, padahal `killByPidFile()` membuat berkas
- * `.pid` yang tidak ada yang membersihkannya. Jadi ini celah nyata.
+ * `writePidFile()` dipanggil sekali di awal job dan tidak pernah
+ * di-refresh, jadi mtime berkas = waktu job mulai. Transcode bisa berjalan
+ * jauh melebihi 30 menit, sehingga job sah yang MASIH HIDUP punya PID file
+ * yang terbaca "basi" dan ikut terhapus — prosesnya lalu tidak bisa
+ * direbut saat shutdown.
  *
- * Tapi menyambungkannya apa adanya justru MEMBUAT bug baru. Versi lama
- * hanya bergantung pada mtime:
- *
- *     if (time() - filemtime($file) > 1800) unlink($file);
- *
- * `writePidFile()` dipanggil SEKALI di awal job dan tidak pernah
- * di-refresh, jadi mtime berkas = waktu job mulai, bukan waktu terakhir
- * job bergerak. Transcode bisa berjalan jauh melebihi 30 menit -- ambang
- * sweeper antrean sendiri 6 jam -- sehingga job sah yang MASIH HIDUP
- * punya PID file yang terbaca "basi" dan ikut terhapus.
- *
- * Akibatnya `killByPidFile()` tidak menemukan PID-nya, jadi saat
- * shutdown prosesnya tidak bisa direbut: proses yatim yang tak terlihat.
- * Kebersihan yang dibeli dengan kehilangan kemampuan merebut proses.
- *
- * SYARAT YANG BENAR: dua syarat, bukan satu.
- *   1. berkasnya sudah tua, DAN
- *   2. proses di dalamnya sudah tidak hidup.
- *
- * Test di bawah mengunci kedua syarat itu, termasuk kasus yang paling
- * mudah salah: PID file yang umurnya sudah 2 jam tapi prosesnya masih
- * hidup (skenario transcode panjang yang tidak boleh dirusak).
+ * SYARAT YANG BENAR: berkasnya sudah tua DAN proses di dalamnya sudah
+ * tidak hidup. Test di bawah mengunci kedua syarat itu, termasuk PID file
+ * berumur 2 jam dengan prosesnya masih hidup.
  *
  * @coversNothing
  */
@@ -86,7 +65,6 @@ class CleanupStalePidFilesTest extends TestCase
         }
         $this->created = [];
 
-        // Pulihkan apa pun milik sistem yang ikut terhapus.
         foreach ($this->preexisting as $file => [$content, $mtime]) {
             if (!is_file($file)) {
                 @file_put_contents($file, $content);
@@ -211,11 +189,9 @@ class CleanupStalePidFilesTest extends TestCase
     {
         $path = $this->makePidFile($this->uid('thresh') . '.pid', (string) $this->deadPid(), 100);
 
-        // Ambang 10 menit (600 dtk) > umur 100 dtk -> belum boleh dihapus.
         TranscoderBase::cleanupStalePidFiles(600);
         $this->assertFileExists($path, 'Umur 100 dtk di bawah ambang 600 dtk harus aman');
 
-        // Ambang 10 dtk < umur 100 dtk -> harus dibuang.
         TranscoderBase::cleanupStalePidFiles(10);
         $this->assertFileDoesNotExist($path, 'Umur 100 dtk di atas ambang 10 dtk harus dibuang');
     }
@@ -251,8 +227,6 @@ class CleanupStalePidFilesTest extends TestCase
         $this->assertFileDoesNotExist($b, 'PID file basi dari proses mati harus dibuang');
         $this->assertFileExists($alive, 'PID file berproses hidup harus bertahan');
 
-        // Setelah panggilan pertama semua yang boleh dihapus sudah hilang,
-        // jadi panggilan kedua tidak boleh menghapus apa pun.
         $before2 = $this->allPidFiles();
         $cleaned2 = TranscoderBase::cleanupStalePidFiles();
         $this->assertSame(
@@ -298,8 +272,6 @@ class CleanupStalePidFilesTest extends TestCase
         $body = $this->extractMethodBody($src, 'cleanupStalePidFiles');
         $this->assertNotSame('', $body, 'Badan cleanupStalePidFiles() harus bisa dibaca');
 
-        // Syarat "proses masih hidup" harus benar-benar ada di logikanya,
-        // bukan hanya disebut di komentar.
         $this->assertMatchesRegularExpression(
             '/pidIsAlive|isProcessAlive/',
             $body,
@@ -312,15 +284,10 @@ class CleanupStalePidFilesTest extends TestCase
     /**
      * KABLAMENYA SENDIRI harus dijaga.
      *
-     * Fungsi ini sudah ada sejak lama dan tetap tidak terpakai selama
-     * situasionya belum disambungkan. Plot-nya rapuh: `gc.php` adalah
-     * skrip, bukan kelas yang diuji, jadi melepas satu baris panggilan
-     * dari sana tidak menggagalkan test mana pun -- persis seperti
-     * peta berkas->fungsi di `security_test.php` yang diam-diam berhenti
-     * memindai apa pun sambil tetap melaporkan 100/100.
-     *
-     * Diuji mutasinya: menghapus panggilan → gagal. Memindahkannya
-     * setelah blok `--run-only` → gagal.
+     * `gc.php` adalah skrip, bukan kelas yang diuji, jadi melepas satu baris
+     * panggilan dari sana tidak menggagalkan test mana pun. Diuji mutasinya:
+     * menghapus panggilan gagal, memindahkannya setelah blok `--run-only`
+     * juga gagal.
      */
     public function testGcScriptActuallyCallsCleanup(): void
     {
@@ -338,15 +305,6 @@ class CleanupStalePidFilesTest extends TestCase
             . 'persis kondisi sebelum T19.'
         );
 
-        // Harus di bagian RINGAN: cleanup tidak butuh database, jadi
-        // harus tetap jalan saat cron memakai --run-only. Kalau tergeser
-        // ke bawah blok itu, `exit(0)` menyalakannya tanpa pernah
-        // membersihkan apa pun.
-        //
-        // Penandanya harus UNIK. `strpos($src, 'if ($runOnly)')` akan
-        // kena blok *preview* yang jauh lebih dulu ("Akan dijalankan:"),
-        // bukan blok early-exit -- jadi posisi yang dibandingkan tidak
-        // sesuai maksud.
         $posRunOnly = strpos($src, '[MEeL gc] --run-only: DDL');
         $this->assertNotFalse($posRunOnly, 'Blok early-exit --run-only tidak ditemukan di gc.php');
         $this->assertLessThan(
@@ -357,8 +315,6 @@ class CleanupStalePidFilesTest extends TestCase
             . 'PID file yatim. Kalau sesudahnya, exit(0) menyalakannya dulu.'
         );
 
-        // Hasilnya harus dilaporkan, kalau tidak operator tidak tahu
-        // apakah housekeeping itu benar-benar jalan.
         $this->assertMatchesRegularExpression(
             '/\$stalePids\s*>\s*0/',
             $src,

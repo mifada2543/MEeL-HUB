@@ -1,8 +1,8 @@
 <?php
 define('MEEL_API_CONTEXT', true);
-require '../../auth/auth.php';
-require '../../auth/config.php';
-require '../../modules/core/helpers.php';
+require_once __DIR__ . '/../../auth/auth.php';
+require_once __DIR__ . '/../../auth/config.php';
+require_once __DIR__ . '/../../modules/core/helpers.php';
 require_once __DIR__ . '/../../drive/DriveService.php';
 
 header('Content-Type: application/json');

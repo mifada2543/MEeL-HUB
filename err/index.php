@@ -2,7 +2,6 @@
 require_once __DIR__ . '/../modules/core/base_url.php';
 $meel_base = meel_base_url_path();
 if (!function_exists('meel_err_alpha')) {
-
     function meel_err_alpha(string $hex, int $alpha): string
     {
         return $hex . str_pad(dechex($alpha), 2, '0', STR_PAD_LEFT);

@@ -24,7 +24,6 @@ class JapaneseTest extends TestCase
 
     public function testGetRomajiNameWithLatinText(): void
     {
-
         $result = getRomajiName('hello world');
         $this->assertStringContainsString('hello', $result);
     }
@@ -83,7 +82,6 @@ class JapaneseTest extends TestCase
 
     public function testAnalyzeJapaneseTextWithNicknameAlias(): void
     {
-
         $result = analyzeJapaneseText('プロセカ ワンオポ');
         $this->assertStringContainsString('Project Sekai', $result['english']);
         $this->assertStringContainsString('Wonderlands x Showtime', $result['english']);
@@ -108,14 +106,12 @@ class JapaneseTest extends TestCase
 
     public function testAnalyzeJapaneseTextFullCoverAliasWins(): void
     {
-
         $result = analyzeJapaneseText('君が飛び降りるのならば');
         $this->assertSame("In case you're gonna jump", $result['english']);
     }
 
     public function testAnalyzeJapaneseTextConditionalPatternAlias(): void
     {
-
         $result = analyzeJapaneseText('跳べるならば');
         $this->assertStringContainsString('if', $result['english']);
     }
@@ -159,7 +155,6 @@ class JapaneseTest extends TestCase
 
         $this->assertSame('a-b', getRomajiName('A x B'));
     }
-
 }
 
 /* reference build: MEeL-C5H5N5O [53d7e14930b8e361] */

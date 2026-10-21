@@ -1,10 +1,11 @@
 <?php
-
 require_once __DIR__ . '/../auth/RateLimiter.php';
 require_once __DIR__ . '/TranscoderBase.php';
 
 class System
 {
+    public const MAX_CONCURRENT_QUEUES = 2;
+
     private mysqli $conn;
     public function __construct(mysqli $db_connection)
     {
@@ -120,7 +121,76 @@ class System
     }
     public function isServerBusy(): bool
     {
-        return $this->countActiveQueues() >= 2;
+        return $this->countActiveQueues() >= self::MAX_CONCURRENT_QUEUES;
+    }
+
+    public static function maxConcurrentQueues(): int
+    {
+        $configured = defined('MEEL_MAX_CONCURRENT_QUEUES') ? (int) MEEL_MAX_CONCURRENT_QUEUES : 2;
+        return max(1, $configured);
+    }
+
+    public function claimQueueSlot(string $table, int $userId, array $extraColumns = [], array $extraValues = []): bool
+    {
+        if (!in_array($table, ['upload_queue', 'transcode_queue'], true)) {
+            throw new InvalidArgumentException('Tabel antrean tidak dikenal: ' . $table);
+        }
+
+        $lockName = 'meel_queue_slot_' . $table;
+        $got = $this->conn->query('SELECT GET_LOCK(' . $this->quote($lockName) . ', 10) AS g');
+        $row = $got ? $got->fetch_assoc() : null;
+        if ($got) {
+            $got->free();
+        }
+        if ((int) ($row['g'] ?? 0) !== 1) {
+            return false;
+        }
+
+        try {
+            if ($this->countActiveQueues() >= self::maxConcurrentQueues()) {
+                return false;
+            }
+
+            $cols = ['user_id', 'status', 'created_at'];
+            $vals = [$userId];
+            $binds = 'i';
+            $placeholders = ['?', "'processing'", 'NOW()'];
+
+            foreach ($extraColumns as $idx => $col) {
+                if (!preg_match('/^[a-z_][a-z0-9_]*$/i', $col)) {
+                    throw new InvalidArgumentException('Nama kolom tidak valid: ' . $col);
+                }
+                $cols[] = $col;
+                $placeholders[] = '?';
+                $val = $extraValues[$idx] ?? null;
+                $vals[] = $val;
+                $binds .= is_int($val) ? 'i' : 's';
+            }
+
+            $sql = sprintf(
+                'INSERT INTO `%s` (%s) VALUES (%s)',
+                $table,
+                implode(', ', array_map(fn($c) => '`' . $c . '`', $cols)),
+                implode(', ', $placeholders)
+            );
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bind_param($binds, ...$vals);
+            $stmt->execute();
+            $insertId = (int) $this->conn->insert_id;
+            $stmt->close();
+
+            return $insertId > 0;
+        } finally {
+            $rel = $this->conn->query('SELECT RELEASE_LOCK(' . $this->quote($lockName) . ') AS r');
+            if ($rel) {
+                $rel->free();
+            }
+        }
+    }
+
+    private function quote(string $value): string
+    {
+        return "'" . $this->conn->real_escape_string($value) . "'";
     }
     public function checkRateLimit(int $user_id, string $type, string $user_role): array
     {
@@ -168,11 +238,7 @@ class System
         $swap_perc = ($swap_total > 0) ? round(($swap_used / $swap_total) * 100, 1) : 0;
         $uptime_raw = @file_get_contents('/proc/uptime');
         $uptime_sec = (float) explode(' ', (string) $uptime_raw)[0];
-        // floor() selalu mengembalikan FLOAT di PHP, dan operator % / / pada
-        // float non-integral menghasilkan float non-integral — sehingga
-        // (int)floor(...) memicu "Implicit conversion from float ... loses
-        // precision" di PHP 8.3 (error di PHP 9). Solusi: bulatkan detik ke
-        // integer DULU, lalu pakai intdiv() — tanpa loss dan tanpa deprecation.
+
         $uptime_int = (int) $uptime_sec;
         $days = intdiv($uptime_int, 86400);
         $hours = intdiv($uptime_int % 86400, 3600);
@@ -318,4 +384,5 @@ class System
         return false;
     }
 }
+
 /* reference build: MEeL-C8H11NO2 [b2fdcd8a80692ce3] */

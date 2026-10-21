@@ -7,8 +7,7 @@
  * seperti di manifest karena urutan CSS menentukan kaskade (light-theme.css
  * harus tetap paling akhir).
  *
- *   php scripts/build-css-bundle.php --dry-run
- *   php scripts/build-css-bundle.php
+ * @see docs/{id,en}/modules.md
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -64,6 +63,7 @@ foreach ($manifests as $manifest) {
     $header = "/* MEeL CSS bundle — Generated oleh scripts/build-css-bundle.php.\n"
         . "   Sumber: assets/css/{$module}/manifest.php (urutan dipertahankan).\n"
         . "   Jangan edit berkas ini langsung; edit sumber lalu bangun ulang. */\n\n";
+    $parts = array_map(static fn(string $part): string => rtrim($part, "\r\n"), $parts);
     $out = $header . implode("\n\n", $parts) . "\n";
 
     if (is_file($bundleAbs) && file_get_contents($bundleAbs) === $out) {

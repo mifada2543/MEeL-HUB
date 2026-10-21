@@ -1,5 +1,4 @@
 <?php
-
 class UpdateManager
 {
     private mysqli $db;
@@ -13,7 +12,7 @@ class UpdateManager
     public function handle(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
-        if (($_SESSION['role'] ?? '') !== 'admin') return;
+        if (!function_exists('is_admin') || !is_admin($this->db)) return;
 
         if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
             $this->setFlash('error', 'CSRF Token tidak valid.');
@@ -178,13 +177,11 @@ class UpdateManager
 
     private function clean(string $val): string
     {
-
-        return htmlspecialchars(trim($val), ENT_QUOTES, 'UTF-8');
+        return trim($val);
     }
 
     private function redirect(): void
     {
-
         header("Location: " . base_url('/update'));
         exit;
     }

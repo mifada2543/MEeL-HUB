@@ -1,4 +1,3 @@
-# Deny all web access — PHP include-only files
 Options -Indexes
 
 <IfModule mod_rewrite.c>

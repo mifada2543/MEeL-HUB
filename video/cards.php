@@ -5,18 +5,12 @@
  * 1. meel_render_video_card()     — kartu grid di beranda/library video.
  * 2. meel_render_video_rec_card() — kartu sidebar rekomendasi di watch.php.
  *
- * Pola ini sengaja meniru music/cards.php: satu file, dua fungsi. Markup
- * sidebar sebelumnya disalin mentah di dua tempat (video/watch.php dan
- * video/search_video.php), dan dua file terpisah dengan include hanya memindahkan
- * kontrak implisit "isi variabel ini dulu sebelum include" ke tempat lain —
- * variabelnya tetap bocor ke scope pemanggil. Fungsi membuat kontraknya
- * eksplisit lewat argumen.
- *
  * Pemanggil wajib: require_once __DIR__ . '/cards.php';
+ *
+ * @see docs/{id,en}/modules.md
  */
 
 if (!function_exists('meel_render_video_card')) {
-
     /**
      * Kartu grid video — dipakai video/index.php, video/load_more.php, dan
      * video/search_video.php (mode grid).
@@ -84,15 +78,12 @@ if (!function_exists('meel_render_video_card')) {
 }
 
 if (!function_exists('meel_render_video_rec_card')) {
-
     /**
      * Kartu sidebar rekomendasi — dipakai video/watch.php dan endpoint htmx-nya
      * (video/search_video.php: hasil cari + infinite scroll).
      *
      * Dua sumber data memberi nama kolom berbeda untuk username yang sama:
-     * MediaViewer::getRecommendations() menyelect `u.username AS uploader`,
-     * sedangkan MediaLibrary::searchVideo() menyelect
-     * `u.username AS uploader_name`. Dua-duanya users.username, jadi di sini
+     * `uploader` dan `uploader_name`. Dua-duanya users.username, jadi di sini
      * keduanya dibaca.
      *
      * @param array<string, mixed> $rec Satu baris rekomendasi.

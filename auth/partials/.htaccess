@@ -1,4 +1,3 @@
-# Deny all web access — PHP include-only files (dipakai auth/login.php & auth/register.php)
 Options -Indexes
 
 <IfModule mod_authz_core.c>

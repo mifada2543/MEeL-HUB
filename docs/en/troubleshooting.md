@@ -284,6 +284,30 @@ Verify the mount point exists and is accessible.
 <script>lucide.createIcons();</script>
 ```
 
+### ❌ Icons disappear after an HTMX swap
+
+**Symptom:** the icons are there when the page loads, but as soon as
+something is swapped in place — pressing like/dislike, for example — the
+icons in that area vanish. A refresh brings them back, and the next swap
+takes them away again. Nothing appears in the console.
+
+**Cause:** icons are `<i data-lucide="...">` elements that Lucide replaces
+with an SVG. The replacement only happens when `lucide.createIcons()` runs.
+The server sends plain `<i data-lucide>` markup back with every swapped
+fragment, so something has to render them again afterwards.
+
+`assets/js/shared/htmx-lucide.js` does that on `htmx:afterOnLoad`. It
+registers that listener on `document`, **not** on `document.body` — on
+purpose. The file is loaded in `<head>` on some pages, and at that point
+`document.body` is still `null`; a listener registered on `document.body`
+would never be attached, and every later swap would silently leave the
+icons unrendered.
+
+**Check:**
+- `assets/js/shared/htmx-lucide.js` is loaded on the page
+- the page does not bundle its own copy of the file
+- in the console: `typeof lucide` is `"object"` and `lucide.createIcons` exists
+
 ### ❌ HTMX not working
 
 **Check:**
@@ -291,6 +315,29 @@ Verify the mount point exists and is accessible.
 2. Target element exists in DOM
 3. Response is valid HTML
 4. No JavaScript errors
+
+### ❌ Loop Playback Status Is Reset On Every Refresh
+
+**Symptom:** the Loop button is on, but after a refresh — or after an
+auto-recovery, or after a quality change — it is back to normal, even though
+that video really was playing in a loop. The other way round, a loop that
+stays "on" gets carried over to the next video.
+
+**Cause:** the loop status only lived in the player instance, so it was lost
+every time the player was rebuilt. And more subtly, nothing cleared it when
+moving to another video.
+
+**Fix (already in MEeL core):**
+
+| Location | What it does |
+|---|---|
+| `assets/js/video/watch/state.js` | Reads `MEEL_KEYS.VIDEO_LOOP` (`meel_video_loop`) at boot, and exports `persistVideoLoop()`, `restoreVideoLoop()`, `clearVideoLoop()` |
+| `setupMeelPlayerEvents()` | Calls `restoreVideoLoop()`, so the loop is restored on **every** player creation path: initial load, auto-recovery, rebuild after a quality change, and switching video through the mini player |
+| Switching video & Auto Next | `clearVideoLoop()` is called on `skipToNextVideo`, clicking a mini player card, the `.recommendation-item` click guard, and when Auto Next is enabled — so the loop is not carried into the next video |
+
+Auto Next and Loop cancel each other out in both directions: enabling Auto Next
+clears the loop key, enabling Loop turns Auto Next off, and stale state while
+both are active is cleaned at boot.
 
 ---
 
@@ -536,6 +583,194 @@ UPDATE users SET role = 'admin', is_active = 1 WHERE id = [user_id];
 
 ---
 
-<div align="center">
-  <sub><a href="index.md">← Back to Documentation Index</a></sub>
-</div>
+## Advanced Upload & Queue
+
+Troubleshooting guide for yt-dlp downloads and background queue processing.
+
+---
+
+### Table of Contents
+
+- [Table of Contents](#table-of-contents)
+- [HLS Streaming Issues](#hls-streaming-issues)
+- [Upload Problems](#upload-problems)
+- [FFmpeg/yt-dlp Errors](#ffmpegyt-dlp-errors)
+- [Database Issues](#database-issues)
+- [Permission Problems](#permission-problems)
+- [Browser/Player Issues](#browserplayer-issues)
+- [Session & Auth Issues](#session--auth-issues)
+- [Storage & Disk Issues](#storage--disk-issues)
+- [Performance Issues](#performance-issues)
+- [Error Codes](#error-codes)
+- [FAQ](#faq)
+- [Advanced Upload & Queue](#advanced-upload--queue)
+
+---
+
+### Download Queue System
+
+#### How the Queue Works
+
+```
+Request → Queue → Process → Download → Transcode → Complete
+                          
+                          ↓ (if failed)
+                        Retry (3x max)
+                          ↓ (if still failed)
+                        Mark as failed
+```
+
+The system uses `upload_queue` and `transcode_queue` tables to manage concurrent downloads.
+
+#### Queue Limitations
+
+- Maximum 2 simultaneous processes
+- Maximum 3 retry attempts per download
+- Queue timeout: 900 seconds (15 minutes)
+
+---
+
+### Common Download Issues
+
+#### ❌ Download stuck at 0%
+
+**Causes:**
+1. **yt-dlp not found**: Check installation
+2. **No internet connection**: Verify network
+3. **URL blocked**: Check if URL is accessible
+4. **Cookies expired**: Re-export cookies.txt
+
+**Solutions:**
+```bash
+# Verify yt-dlp
+yt-dlp --version
+
+# Test URL directly
+yt-dlp --simulate "https://www.youtube.com/watch?v=..."
+```
+
+#### ❌ "HTTP Error 403" when downloading
+
+**Cause:** YouTube blocking automated requests.
+
+**Solutions:**
+1. **Update yt-dlp:**
+   ```bash
+   sudo yt-dlp -U
+   ```
+2. **Re-export cookies:**
+   - Use browser extension to export cookies
+   - Save as `cookies.txt` in `temp/` (legacy root files are auto-migrated)
+3. **Try different user-agent**
+
+#### ❌ Download completes but no file found
+
+**Causes:**
+- Wrong format selection
+- FFmpeg not installed or too old
+- Disk space full
+
+**Solutions:**
+```bash
+# Check FFmpeg
+ffmpeg -version
+
+# Check disk space
+df -h
+
+# Clear temp directory
+rm -rf /opt/lampp/htdocs/MEeL/temp/*
+```
+
+---
+
+### YouTube & Platform Issues
+
+#### ❌ "This video is unavailable" / Private video
+
+**Solutions:**
+- Ensure you're logged into YouTube in browser before exporting cookies
+- Check if the video is region-locked
+- Some private/age-restricted videos may not be downloadable
+
+#### ❌ "Sign in to confirm your age"
+
+**Solution:**
+Export cookies after signing into a YouTube account that has age verification.
+
+#### ❌ Geo-restricted content
+
+**Workarounds:**
+- Use a VPN in the target country
+- Use proxy settings with yt-dlp
+
+---
+
+### Process Management
+
+#### ❌ Stuck queue items
+
+**Solution:**
+Use the admin panel:
+1. Go to Admin Panel → Queue Management
+2. Click "Clean Stuck Queues"
+3. Or manually force stop individual queues
+
+#### ❌ Too many processes running
+
+**Check active downloads:**
+```bash
+ps aux | grep yt-dlp
+ps aux | grep ffmpeg
+```
+
+**Kill stuck processes:**
+```bash
+sudo killall yt-dlp
+sudo killall ffmpeg
+```
+
+---
+
+### Resource Issues
+
+#### ❌ CPU usage too high during transcoding
+
+**Adjust FFmpeg threads:**
+```php
+// modules/core/TranscoderBase.php (inherited by all transcoder services)
+protected const FFMPEG_THREADS = 4; // Reduce from 8
+```
+
+#### ❌ Not enough disk space
+
+**Check space:**
+```bash
+df -h
+du -sh /opt/lampp/htdocs/MEeL/temp/
+```
+
+**Clean temp directory:**
+```bash
+rm -rf /opt/lampp/htdocs/MEeL/temp/*
+```
+
+---
+
+### Queue Stuck Resolution
+
+#### Force Reset All Queues
+
+```bash
+# Via MySQL
+mysql -u root -p -e "UPDATE MEeL.upload_queue SET status='failed' WHERE status='processing';"
+mysql -u root -p -e "UPDATE MEeL.transcode_queue SET status='failed' WHERE status='processing';"
+```
+
+#### Manual Process Kill
+
+```bash
+# Find and kill stuck processes
+ps aux | grep -E 'yt-dlp|ffmpeg' | grep -v grep
+sudo kill -9 [PID]
+```

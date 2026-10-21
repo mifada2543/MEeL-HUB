@@ -251,7 +251,6 @@ class SsrfGuardTest extends TestCase
 
     public function testHttpsUrlIsNotPinnedButStillValidated(): void
     {
-
         [$pinned, $extra] = $this->guard->pinHttpUrl('https://8.8.8.8/x');
         $this->assertSame('https://8.8.8.8/x', $pinned);
         $this->assertSame('', $extra);

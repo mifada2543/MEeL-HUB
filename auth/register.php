@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/auth_helpers.php';
 auth_boot_session();
-include 'config.php';
+require_once __DIR__ . '/config.php';
 $back_url = auth_back_url(['login.php', 'register.php']);
 $message = "";
 $msg_type = "";
@@ -165,4 +165,5 @@ include __DIR__ . '/partials/auth_head.php';
     </form>
     <?php include __DIR__ . '/partials/auth_footer.php';
     /* reference build: MEeL-C5H5N5O [ba29c193899ba422] */
+
     ?>

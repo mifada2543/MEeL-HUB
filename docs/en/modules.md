@@ -7,10 +7,12 @@ In-depth documentation of module architecture, class diagrams, and business logi
 ## Table of Contents
 
 - [Application Architecture](#application-architecture)
-- [Core Modules (`modules/`)](#core-modules-modules)
+- [Core Modules (`modules/core/`, `modules/media/`, `modules/exceptions/`, `modules/transcoder/`)](#core-modules-modulescore-modulesmedia-modulesexceptions-modulestranscoder)
 - [Media Pipeline](#media-pipeline)
 - [Authentication Flow](#authentication-flow)
-- [Upload & Transcoding Flow](#upload--transcoding-flow)
+- [26. JS/CSS Modularization](#26-jscss-modularization)
+- [27. Adaptive Aspect Ratio Player](#27-adaptive-aspect-ratio-player)
+- [28. Chat API](#28-chat-api)
 - [ProgressObserver Architecture](#progressobserver-architecture)
 - [Filesystem Safety Convention (no @ suppression)](#filesystem-safety-convention-no--suppression)
 
@@ -59,7 +61,7 @@ modules/
 │   ├── Transcoder.php      # Facade: yt-dlp download & transcoding → delegates to modules/transcoder/
 │   ├── TranscoderBase.php  # Base class: shared constants, process/PID management, path resolution
 │   ├── helpers.php         # Backward-compat shim → requires helpers/main.php + auth/loader.php
-│   ├── helpers/            # Per-domain utilities: main.php, storage.php, audio.php, url.php, metadata.php, subtitle.php, upload.php, settings.php
+│   ├── helpers/            # Per-domain utilities: main.php, storage.php, audio.php, url.php, metadata.php, text_upload.php, subtitle.php, upload.php, settings.php
 │   ├── Router.php          # MeelRouter — front-controller route table (routeFor/url/dispatch)
 │   ├── bootstrap.php       # Environment detection & error reporting
 │   ├── base_url.php        # Centralized base URL computation (meel_base_url_path)
@@ -74,6 +76,7 @@ modules/
 │   ├── RateLimiter.php     # File-based API rate limiter
 │   ├── SsrfGuard.php       # SSRF-safe URL validation
 │   ├── ValidatingProxy.php # SSRF-defense forward proxy
+│   ├── ValidatingProxyProtocol.php # Proxy protocol rules (parsing, forwarding, relay)
 │   └── helpers/            # authz.php, csrf.php, session.php, stream_auth.php, mfa.php, user.php
 ├── media/                  # Media query modules
 │   ├── MediaLibrary.php    # DB queries, pagination, BookRepository, BookUploader
@@ -84,6 +87,7 @@ modules/
 │   ├── PlaylistRepository.php # Playlist queries & playlist slug routes
 │   ├── MediaAdminRepository.php # Media metadata queries for the admin panel (edit video/music)
 │   ├── ProfileRepository.php # Profile data queries (video/music counts)
+│   ├── AdminFilteredRepository.php # Shared base for the two admin repositories below
 │   ├── AdminActivityRepository.php # Activity-log queries & filters for the admin viewer
 │   └── AdminUploadQueueRepository.php # Upload-queue queries, stats & filters for the admin viewer
 ├── exceptions/             # Exception classes
@@ -169,6 +173,46 @@ class MediaViewer {
 
 **Class:** `MediaInteraction` — like/dislike and comment deletion.
 
+#### The like/dislike buttons (`partials/like_dislike.php`)
+
+The container is rendered from **one** partial, included by `music/watch.php`,
+`video/watch.php` and `controllers/api/like.php`.
+
+That matters because the container is replaced wholesale: the buttons carry
+`hx-swap="outerHTML"`, so whatever the server sends back becomes the new
+container. The markup used to be written out three times, and the copies had
+drifted apart — the API copy still had the old `plus` icon and the word
+"Playlist" where the pages had `list-plus` and "Simpan", and the accent
+colour differed too (`red-500` vs `red-600`, orange vs white for the active
+dislike). Whichever copy was stale was the one that won, because the API
+answers the swap. So pressing like made the button change shape in front of
+you: it came back as a plain plus, labelled "Playlist" instead of "Simpan".
+
+Now both sides render the same partial, so the swapped-in container is
+byte-for-byte the one that was already on screen.
+
+The partial takes the differences as data instead of as a second copy:
+
+| Variable | Meaning |
+|---|---|
+| `$like_dislike_media_id` | media id |
+| `$like_dislike_media_type` | `music` or `video` — picks the accent colour and whether the save button appears |
+| `$like_dislike_state` | `''`, `like` or `dislike` |
+| `$like_dislike_likes` / `$like_dislike_dislikes` | counters |
+| `$like_dislike_csrf` | CSRF token for the `hx-vals` payload |
+| `$like_dislike_rate_limit` | seconds left when the rate limiter rejects the request; `0` means normal |
+
+`LikeDislikePartialTest` keeps the copies from coming back: it fails if the
+container markup exists in more than one file.
+
+#### Comment Reply Rules
+
+| Rule | Value |
+|---|---|
+| Parent validation | `resolveParentId()` checks that the parent exists **and** has the same media column. Otherwise `parent_id` is set to `NULL` so the comment becomes a root comment — deterministic and still visible. |
+| Reply depth | `MediaViewer::MAX_COMMENT_DEPTH` = 5. Going past the limit is promoted to root, so one person cannot build an unbounded chain just by replying to a reply. |
+| Order & pagination | `getComments()` uses `created_at DESC, id DESC` and takes an `$offset` parameter. With the old order (`created_at ASC` + `LIMIT 200`), new comments could be pushed out of the window and never appear again. Comments already written are not deleted. |
+
 ### 4. `modules/core/Uploader.php`
 
 **Class:** `Uploader` (uses `FfmpegUtils` trait) — local file uploads with:
@@ -192,9 +236,30 @@ same global functions:
 ```php
 class Uploader {
     public function processMusic($post, $files, $base_dir);
-    public function processVideo($post, $files, $upload_dir = "");
+    public function processVideo($post, $files);
 }
 ```
+
+`processVideo()` no longer takes a `$upload_dir` argument. It was never read, and
+the one caller passed `__DIR__ . "/"` to it.
+
+Both upload paths are now orchestrators over private helpers rather than one
+long method. The helpers follow a single convention: **return `null` to continue,
+or return the final result array to stop.**
+
+| Method | Responsibility |
+|---|---|
+| `assertVideoUploadAllowed()` / `assertMusicUploadAllowed()` | rate limit, concurrent-upload limit, pre-flight disk space |
+| `inspectVideoCodecs()` | magic bytes, video codec, audio codec |
+| `buildVideoCleanName()` / `buildVideoThumbnail()` | romaji-clean name, user thumbnail or ffmpeg frame, small sprite |
+| `prepareVideoWorkFolder()` | unique folder under lock, `/dev/shm` when it has room |
+| `runVideoHlsTranscode()` | the ffmpeg HLS invocation |
+| `stageVideoSubtitle()` | `.srt`/`.vtt` subtitle, only when the transcode succeeded |
+| `moveVideoFilesToHdd()` | the rename loop into storage, under a move lock |
+| `insertVideoRecord()` | the transaction; the caller cleans up files when it fails |
+| `validateMusicUpload()` / `stageMusicFile()` | extension, magic bytes, size, duration |
+| `buildMusicThumbnail()` | user thumbnail or one frame from the audio |
+| `maybeTranscodeToOgg()` | re-encode to Ogg unless the admin skipped it |
 
 ### 5. `modules/core/Transcoder.php` — facade + split services
 
@@ -256,10 +321,91 @@ Features:
 - **FFmpeg library path** — `proc_open()` env sets `LD_LIBRARY_PATH` explicitly to prevent FFmpeg hangs when the parent process env differs from the child
 - **Transcode timeout** — audio transcode has a 600-second max (`TRANSCODE_AUDIO_TIMEOUT`); HLS remux has a 120-second max; stream reads use `stream_set_timeout(30)` to detect pipe stalls
 - **Cache validation** — transcoded files are validated by both `filesize > 10KB` and `duration ≥ 50%` of source duration to reject corrupt/stub files
-- **FFmpeg exit code check** — `proc_close()` exit code is verified; non-zero exits are logged with the last 15 lines of stderr and the queue status is set to `failed`
+- **FFmpeg exit code check** — `proc_close()` exit code is verified; non-zero exits are logged with the last 15 lines of stderr and the queue status is set to `failed`. The queue row is also marked `failed` when `proc_open()` cannot start ffmpeg at all, or when ffmpeg exits cleanly but leaves no output file — previously both cases fell through and were recorded as `completed`
 - **Filename sanitization** — whitelist regex (`[^a-zA-Z0-9_\x{3000}-\x{9fff}...]`) preserves CJK characters while preventing path traversal
 - Cached directory size via `dir_size()`
 - Thumbnail sprite + VTT generation
+
+#### `transcodeVideo()` pipeline
+
+`transcodeVideo()` used to be a single 341-line method. It is now a 71-line
+orchestrator over focused private helpers, so each step can be read and tested on
+its own:
+
+| Step | Method | Responsibility |
+|---|---|---|
+| 1 | `prepareOutputDirectory()` | create the shm directory, refuse to start with under 256 MB free |
+| 2 | `purgeStaleArtifacts()` | drop outputs older than 2 h and queue rows older than 15 min |
+| 3 | `loadTranscodeSource()` | resolve the video row, HLS playlist, sorted `.ts` segments, duration, total size |
+| 4 | `enforceSourceQuota()` | non-admin ceiling of 200 MB / 10 min |
+| 5 | `claimTranscodeSlot()` | under an exclusive lock: reuse a valid cache, drop an invalid one, claim a marker, then `System::claimQueueSlot()` |
+| 6 | `writeConcatList()` | build the ffmpeg concat manifest with single quotes escaped |
+| 7 | `resolveAudioFormat()` | codec, bitrate, thumbnail eligibility, ID3 metadata |
+| 8 | `buildFfmpegArgv()` | assemble the argv array passed to `proc_open()` |
+| 9 | `runFfmpeg()` | spawn the process, stream stderr, report progress, enforce the timeout |
+| 10 | `reportProgress()` | translate ffmpeg's `time=` marker into a percentage |
+
+Private helpers follow one convention: **return `null` to continue, or return the
+final result array to stop**. `claimTranscodeSlot()` returns a third state —
+`null` means "proceed with the transcode", an array means "cache hit or failure,
+stop here". The lock in step 5 is released with `try`/`finally` instead of being
+unlocked at three separate exit points.
+
+Two things were removed rather than carried forward:
+
+- **A dead second command builder.** The old code assembled both `$cmd` (a shell
+  string) and `$tc_cmd` (an argv array). Only `$tc_cmd` was ever passed to
+  `proc_open()`; `$cmd` was built and discarded. They had already drifted apart —
+  `$cmd` asked for `-c:v copy` while the live builder used `-c:v mjpeg` — so the
+  unused copy was a trap for whoever tried to "fix" the wrong one.
+- **`escapeshellarg()` on that dead string.** With it gone, the file performs no
+  shell string-building at all; `TranscodeService` now only ever invokes ffmpeg
+  through an argv array.
+
+`tests/unit/TranscodeArgvTest.php` pins the argv invariants. It exists because
+the split initially introduced a regression: `use_thumb` was only assigned in the
+`ogg` branch of the format switch, so `mp3`/`m4a`/`flac` read an uninitialised
+variable and silently produced audio with no cover art. The tests assert
+observable behaviour (which streams get mapped, which flags appear) rather than
+re-implementing the builder.
+
+#### Video finalization in `DownloadService`
+
+`finalizeVideo()` is split into steps that each have one responsibility. Two of
+them are worth spelling out, because their shape is what makes them safe:
+
+**`runParallelFfmpeg()`** runs several ffmpeg processes at once and supervises
+them until all of them finish. This is the part most prone to going wrong:
+leaked pipes, child processes that are never reaped (zombies plus PID files
+that are never removed), and a timeout path that leaves ffmpeg running in the
+background.
+
+It was split out of `finalizeVideo()` in T19, when that method was 268 lines
+with nine phases. What decided the shape: **it stays a method, not a new class**
+(`FfmpegProcess`). Every hook it needs is `protected` in `TranscoderBase`, and
+the child process list (`$childProcesses`) is per-instance state that
+`terminateAllProcesses()` scans at shutdown. A separate class could not reach
+that without widening those to `public` or moving the child list into a shared
+collaborator — and both land exactly on the mechanism whose job is to
+**prevent** orphaned ffmpeg processes when a request dies mid-transcode. The
+seam is left open: as soon as there is a test harness that can exercise it end
+to end, the class can be extracted without rewriting its logic from scratch.
+
+**Moving the result to the HDD and recording it in the database** happen inside
+one transaction, and the important property is this: if anything fails midway,
+the system must not be left half-done — the file moved but the database row
+missing, or the other way round. That is why `moveFile()` throws instead of
+returning `false`, and the `catch` performs a database rollback **plus**
+cancellation of the filesystem effect. The cancellation order matters and must
+not be reversed:
+
+1. roll back the transaction (the database row never comes into existence)
+2. `rollbackFinalizeVideo()` (delete the target folder and the thumbnail)
+3. delete the work folder
+
+`finalizeVideo()` as the caller does not need to know those details — it only
+needs to know whether it succeeded; the error message is already emitted
+inside.
 
 ### 6. `modules/core/System.php`
 
@@ -348,7 +494,70 @@ function get_audio_mime_type(string $ext): string;       // MIME type resolver
 function get_audio_format_label(string $ext): string;    // Format label
 function get_audio_format_description(string $ext): string;
 function log_drive_operation(...);                       // Drive audit trail
+function meel_validate_text_upload(string $path, int $max_bytes = 2097152): bool;  // Uploaded text file guard
 ```
+
+#### Uploaded text file validation
+
+Lyrics (`.lrc`, `.txt`) and subtitles (`.vtt`, `.srt`) accept the same kind of
+file: plain text, at most 2 MB, no NUL byte and no PHP tag. That rule used to
+be written twice — once in `helpers/lyrics.php`, once in `helpers/subtitle.php`
+— with byte-for-byte identical bodies. Two copies of a security rule means one
+of them can drift while the other has already been tightened.
+
+`meel_validate_text_upload()` in `modules/core/helpers/text_upload.php` now
+holds the rule. `validate_lyrics_file()` and `validate_subtitle_file()` are
+thin wrappers over it, so every existing caller keeps working unchanged.
+`helpers/main.php` loads the new file before both of them.
+`TextUploadValidationTest` pins that the wrappers and the shared rule agree.
+
+#### Storage helper entry point
+
+`modules/core/helpers/storage.php` deliberately still exists even though its
+own body is nearly empty: `main.php` loads it in a single line, and almost 50
+files outside tests/ call its functions. Splitting that entry point is far
+riskier than the benefit it would bring.
+
+Its contents are already split per domain, following this folder's
+convention:
+
+| File | Contents | Functions |
+|---|---|---:|
+| `storage_paths.php` | base path, thumbnail, PID, mount guard | 14 |
+| `storage_disk.php` | disk capacity, cache file, audit log | 8 |
+| `storage_xsendfile.php` | detection & X-Sendfile header | 11 |
+| `storage_stream.php` | cache validator + media serving | 9 |
+
+The `require` order must not be shuffled, because it follows the dependency
+direction: `paths` → `disk` → `xsendfile` → `stream`. PHP defers function
+definitions until a file has been read completely, so the order only matters
+for load-time side effects — the only one being the `MEEL_HDD_CHECKED` block
+in `storage_paths.php`. Every definition stays wrapped in
+`function_exists()`, so the file is safe to load more than once.
+
+#### Data export helpers (CSV, JSON, SpreadsheetML)
+
+`admin/activity_log.php` used to have two export blocks and six identical
+row-mapping definitions in total: the SpreadsheetML preamble, the `$xls_cell`
+closure, the upload-queue header, and the six-column upload-queue row
+mapping. The consequence was not just long files — change one column and
+five other places have to change with it, and nothing tells you when you
+forget. The CSV export could silently end up with different columns than the
+JSON export.
+
+What `modules/core/helpers/export.php` collects is the shape, not the data:
+each dataset's column list stays defined in the page that uses it, because
+that is data domain, not utility.
+
+Two semantic differences that must be preserved:
+
+- `meel_export_values()` uses `??` for columns that declare a `default` — a
+  missing key **and** a `null` value both produce the default. Columns
+  without a `default` pass `null` through unchanged.
+- `meel_export_map()` reads the raw value for `int?` columns instead of the
+  `??` result. Applying the `default` first turns `null` into `''` and then
+  into `0`: JSON that used to report `"user_id": null` suddenly reports
+  `"user_id": 0`. Null means "unknown", 0 means "user 0".
 
 #### Video thumbnail naming convention
 
@@ -420,6 +629,28 @@ Files with an **unknown prefix** are deleted once older than 1 day (86400 second
 > always `true` and the fallback became dead code — unknown-prefix files were
 > never deleted and `temp/cache/` grew without bound. The flag now records
 > "did any prefix match" explicitly, so the fallback actually runs.
+
+**How the TTL is actually measured.** The cache families do not agree on a
+time key: `media_stats_` and `server_stats_info` write `ts`, `dirsize_` and
+`xsendfile_roots` write `time`, `admin_orphans` writes `checked_at`. The keys
+are therefore looked up in that order, and a file with none of them falls back
+to its modification time so nothing hangs around forever.
+
+> **A shortcut that silently broke the whole table.** The expiry check used to
+> read `meel_read_cache_file($path, 0, [], '')`, and that helper returns `null`
+> outright when the TTL is `0` — which meant "not expired" was read as
+> "expired". Every file with a known prefix was therefore deleted on every
+> sweep, including one that had just been written. The cache never took
+> effect: the statistics, the directory sizes and the xsendfile root list were
+> recomputed on every request. The call is gone, and the key lookup that was
+> written as its fallback — and never reached — is now the only path.
+
+**Where the cache lives.** The collector resolves the directory through
+`meel_media_cache_dir()`, the same helper the application uses. It used to
+have its own copy that only looked at the `MEEL_MEDIA_CACHE_DIR` constant and
+ignored the environment variable of the same name, so a deployment that
+configured the cache through the environment had the application writing to
+one directory and the sweeper cleaning another.
 
 #### Orphan cleaner safety guards (`controllers/admin/admin_actions.php`)
 
@@ -526,6 +757,34 @@ Centralized bootstrap for all entry points:
 - Sets `MEEL_BASE_URL` constant
 - Default timezone (Asia/Jakarta)
 
+#### The application clock
+
+The timezone is set **unconditionally** — `date_default_timezone_set()` runs
+whatever `php.ini` says. It used to be guarded by `if (!ini_get('date.timezone'))`,
+but PHP's default for that directive is "UTC", so `ini_get()` always returned
+"UTC" and the guard never fired. The result was a clock that differed by SAPI:
+the CLI ran in UTC while Apache ran in Asia/Jakarta.
+
+That matters because MySQL converts `TIMESTAMP` columns using the **session**
+`time_zone` when it reads them. A value written as a PHP wall-clock string and
+read back as a MySQL wall-clock string therefore crossed a seven-hour
+displacement whenever the two sides disagreed. The symptoms were a MEeLCoin
+countdown that jumped back to five hours on every refresh, and an "online"
+indicator in the admin panel that disagreed with reality.
+
+Two rules keep the clock single:
+
+| Rule | Where |
+|---|---|
+| PHP always runs in the application timezone (`MEEL_TIMEZONE`, default `Asia/Jakarta`) | `modules/core/bootstrap.php` |
+| MySQL's session `time_zone` is aligned with PHP's offset on every connection | `auth/config.php` |
+
+With both in place, a timestamp written by PHP and read back by MySQL is the
+same instant, and code that compares a database column with PHP's clock
+(`strtotime($row['last_activity'])`) is correct. `DateTimeSourceTest` holds
+both rules in place, and keeps an explicit inventory of the files that
+deliberately mix the database clock with PHP's.
+
 ### 15a. `modules/core/base_url.php`
 
 Centralized **base URL computation** — the single source of truth for the project's base URL path (relative to `DOCUMENT_ROOT`):
@@ -585,6 +844,24 @@ Keyboard shortcuts are implemented in JavaScript and guarded by `assets/js/share
 > highlighted choice. Enforced by a `window` listener in the **capture** phase in
 > `assets/js/shared/resume-modal.js`, which pre-empts Plyr (`window` bubble) and
 > `mini-player.js` (`window` capture).
+
+**Icons after an HTMX swap (`assets/js/shared/htmx-lucide.js`):**
+
+Lucide icons are `<i data-lucide="...">` elements that Lucide replaces with an
+SVG, and the replacement only happens when `lucide.createIcons()` runs. Every
+fragment the server sends back contains plain `<i data-lucide>` markup, so
+something has to render it again after the swap — that is what this file
+does, on `htmx:afterOnLoad`.
+
+The listener is registered on `document`, **not** on `document.body`. The file
+is loaded in `<head>` on some pages (`music/watch.php`, `books/index.php`),
+and at that point `document.body` is still `null`; a listener registered on
+`document.body` would never be attached, and every later swap would silently
+leave the icons unrendered. The symptom is icons that reappear on refresh and
+disappear again after pressing like/dislike.
+
+`partials/link.php` installs a queueing stub for `window.lucide` before
+`lucide.js` loads, so a call made too early is not lost.
 
 **Music Watch (`assets/js/music/watch/`):**
 
@@ -647,20 +924,14 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 
 > ⚠️ **Read this first if you have seen a different migration number.**
 >
-> Numbers **v1–v15 are the old history**, which was *redunized* (reset) on
-> 17 Sep 2026 — all of it is now **consolidated into v1**, without losing any of
-> its functionality. So:
+> Numbers **v1–v15 are the old history**, which was *redunized* on 17 Sep 2026
+> and is now consolidated into **v1** — v13 (MEeLCoin), v14 (`view_logs`
+> indexes) and v15 (the `user_notifications` table) are all covered by it.
+> Numbers **from v2 up were recounted from zero** after the reset, and the
+> `db_version` rows were cleaned to `{1..5}`; the loop only runs versions
+> `> MAX(db_version)`.
 >
-> - **v1 today is not the "first" migration chronologically.** It is the
->   consolidation of legacy v1–v15 (v13 = MEeLCoin, v14 = `view_logs` indexes,
->   v15 = the `user_notifications` table — all now covered by v1).
-> - Numbers **from v2 up were recounted from zero** after the reset: entries
->   briefly numbered 16/17 (2 Oct) became **v2/v3**, and v4/v5 followed as
->   genuine new migrations.
-> - The old history is **no longer used**; `db_version` rows were cleaned to
->   `{1..5}`. The loop only runs versions `> MAX(db_version)`.
->
-> If you find docs or code mentioning "Migration v9" or "migration v15" as an
+> So if you find docs or code mentioning "Migration v9" or "v15" as an
 > **active version**, that is a legacy number — not a bug.
 
 **v1 — schema consolidation (result of redunizing legacy v1–v15)**
@@ -724,6 +995,13 @@ The migration system is **idempotent** — safe to run multiple times. The `db_v
 > **Why the cost must be stored rather than recomputed?** If the sweeper
 > recomputed it from `site_settings`, and an admin changed the price after a
 > user uploaded, the refunded amount would be off — the user would get less
+
+The refund itself is one transaction: the queue row is locked with
+`FOR UPDATE`, `MeelCoin::refund()` runs, and only then is `coin_refunded`
+set to 1. Any failed step rolls the whole thing back, so a user can never
+end up with the coin back but the row unmarked, or the row marked without
+the coin coming back. `refundQueueRow()` holds the transaction; the lock
+and the mark are separate helpers so the sequence stays readable.
 > or more than they paid. `coin_cost` records **the amount at transaction
 > time**, so the result is always correct.
 
@@ -842,9 +1120,182 @@ its own DB):
 > (23 tables) nor `database/migrate.php`. Alternatively,
 > `install.sh` offers interactive arcade installation.
 
+### 22. `modules/core/Router.php` — front controller
+
+`router.php` resolves the request path and hands it to `MeelRouter::dispatch()`.
+The route table is two constants: `ROUTES` for core pages and
+`OPTIONAL_ROUTES` for modules that may be switched off (`arcade`).
+
+`dispatch()` used to hold every branch in one 50-line method, with an `exit`
+in almost every one of them. It now reads as a short sequence of decisions,
+each one in a named place:
+
+| Step | Where | What it decides |
+|---|---|---|
+| Profile alias | `profileAliasRedirect()` | `/profile?u=<name>` and `/profile/<name>/<tab>` both point at `/profile/<name>` with the tab as a query parameter. Pure — returns the target URL or `null` |
+| Route lookup | `routeFor()` | exact table first, then optional routes, then the slug patterns (`music/<slug>`, `profile/<name>`, `admin/chat/<name>`) |
+| Optional guard | `guardOptionalRoute()` | a disabled page module redirects to the hub, a disabled API module answers JSON 404 |
+| Handler run | `runHandler()` | sets `SCRIPT_NAME`, moves to the handler's directory so its relative paths work, then includes it |
+
+`profileAliasRedirect()` being pure is the point: the redirect rules can be
+tested without sending a request. `RouterDispatchTest` does exactly that,
+and also checks that every route in both tables points at a file that
+actually exists — a route pointing at a missing file fails the whole page
+with a 500 that says nothing about the cause.
+
+One such route existed. `/arcade/rhythm/editor` pointed at
+`arcade/rhythm/editor/index.php`, a directory that has not existed since the
+editor moved into `arcade/rhythm/manage/`. Requesting it produced
+"500 — Gagal mengubah working directory." It now points at
+`arcade/rhythm/manage/edit.php`, the same file the two other editor URLs
+already reach.
+
+#### Main Route Table
+
+Since the routing migration, all public URLs use clean URLs (no `.php` extension). Requests are handled by the `router.php` front controller, which resolves paths to handler files via the route table in `modules/core/Router.php`.
+
+**How it works:**
+
+```
+Request: /MEeL/music/beranda?format=ogg
+  → .htaccess: every non-file/non-dir request is rewritten to router.php (except media upload/)
+  → modules/core/Router.php: routeFor('music/beranda') → handler 'music/index.php'
+  → require music/index.php with the original query string
+```
+
+**`.htaccess` rules (root):**
+- All clean URLs (e.g. `video/watch`, `music/beranda`, `admin/stats`) → `router.php`
+- Legacy `.php` files (e.g. `video/watch.php`, `music/index.php`, `upload_advanced.php`,
+  `admin/cookies.php`, `admin/analys`, `admin/content.php`, `admin/content`) → **301** to the clean URL (query preserved, old bookmarks still work)
+- Trailing-slash variants (e.g. `/video/upload/`) → **301** to the non-slash form
+- `DirectorySlash Off` in media directories (`video/upload`, `music/upload`, `books/upload`)
+  so `/video/upload` is served by the router (not a mod_dir redirect)
+
+**`beranda` scheme:** each module has a `beranda` home page
+(`video/beranda`, `music/beranda`, `books/beranda`, `drive/beranda`, `admin/beranda`,
+`arcade/beranda`). Legacy `index.php` pages remain as aliases.
+
+**Main route table (`modules/core/Router.php`):**
+
+| URL | Handler (file) |
+|---|---|
+| `/`, `/beranda` | `index.php` (hub) |
+| `/introduction`, `/update`, `/upload`, `/transcode` | `introduction.php`, `update.php`, `upload_advanced.php`, `transcode.php` |
+| `/err`, `/err/offline` | `err/index.php` (dynamic `?code=`), `err/offline.php` (PWA) |
+| `/video/beranda`, `/video/watch`, `/video/search`, `/video/load-more`, `/video/upload`, `/video/stream` | `video/*.php` |
+| `/music/beranda`, `/music/watch`, `/music/search`, `/music/load-more`, `/music/upload`, `/music/playlist`, `/music/playlist-action`, `/music/stream`, `/music/file` | `music/*.php` |
+| `/music/<playlist-name>` | `music/view_playlist.php` (playlist slug route — see below) |
+| `/books/beranda`, `/books/read`, `/books/read-pdf`, `/books/search`, `/books/upload`, `/books/file` | `books/*.php` |
+| `/drive/beranda`, `/drive/upload`, `/drive/delete`, `/drive/download`, `/drive/stream` | `drive/*.php` |
+| `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profile + public channel grid, tab via query), `profile/channel_more.php` (HTMX fragment), `profile/edit-video.php` (owner, non-admin), `profile/edit-music.php` (owner, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
+| `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat` | `admin/*.php` (edit-video/edit-music admin-only), `controllers/admin/*.php` |
+| `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
+| `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` *(extension — requires arcade folder installed)*. All three editor URLs (`/arcade/rhythm/editor`, `/arcade/rhythm/edit`, `/arcade/rhythm/manage/edit`) reach the same file, `arcade/rhythm/manage/edit.php` |
+| `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) *(extension)* |
+| `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/notification`, `/api/chat`, `/api/meelcoin` | `controllers/api/*.php` |
+| `/system/mfa` | `controllers/system/mfa.php` |
+
+> **Playlist slug route:** playlists have name-based URLs — `/music/<playlist-name>`
+> (e.g. `/music/leo-need`). The slug is derived from the playlist name (`playlistSlug()`),
+> guaranteed unique per user (`getUserPlaylistRoutes()`); non-ASCII names fall back to
+> `playlist`, and names colliding with module routes or other slugs get a `-<id>` suffix.
+> Exact routes (`beranda`, `watch`, etc.) always win; anything else is treated as a
+> playlist slug (`resolvePlaylistSlug()`). The legacy URL `music/playlist?id=X` still works.
+
+
+### 23. `modules/auth/` and the shared config
+
+`auth/config.php` is included by every page: it loads the credentials from
+`auth/settings.php`, opens the database connection, starts the session and
+sets the security headers.
+
+Its failure paths used to report through `fwrite(STDERR, ...)`. `STDERR` only
+exists in the CLI and CGI SAPIs — under Apache it does not exist, so a failed
+database connection turned into "Undefined constant STDERR", a fatal that
+hid the message it was trying to deliver. The file now uses `error_log()`,
+which works in every SAPI and still writes to stderr under the CLI.
+
+`WebSafeErrorOutputTest` keeps that from coming back: a file may only use
+`STDERR`, `STDOUT` or `STDIN` if it lives in a CLI tooling directory, if it
+guards itself with a `PHP_SAPI` check that stops execution, or if nothing
+includes it.
+
+### Admin Media Editor (music + video)
+
+`admin/edit-music.php` and `admin/edit-video.php` used to be copies of each
+other: about 50% of their PHP logic was identical, including the thumbnail
+upload block with its MIME allowlist, size limit and ffmpeg call. The
+`codebase-memory` graph showed the two files changing together 20 times
+(coupling 0.87) — the signature of a copy that should have been shared.
+
+The shared parts now live in one place:
+
+| File | Responsibility |
+|---|---|
+| `admin/includes/media_editor.php` | `meel_editor_media_config()` — per-type labels, default filenames and error wording; `meel_editor_context_redirect()` — the admin/profile redirect; `meel_editor_upload_thumbnail()` — the whole upload path |
+| `admin/partials/edit_media_uploader_card.php` | the "uploaded by" card in the sidebar |
+| `admin/partials/edit_media_stats.php` | the views/likes/dislikes strip |
+| `admin/edit-music.php` | the music-specific parts: artist, album, lyrics section, the database write |
+| `admin/edit-video.php` | the video-specific parts: subtitle upload, the database write |
+
+`admin/edit-music.php` went from 427 to 357 lines and `admin/edit-video.php`
+from 468 to 398. The shell call to ffmpeg moved from two files into one, so
+there is now a single audited place where it happens.
+
+One difference is deliberately preserved. When the thumbnail upload fails, the
+music page still saves the title and description, while the video page saves
+nothing. That asymmetry came from the two copies drifting apart over time; it
+was not introduced by the merge, and changing it would be a product decision
+rather than a refactor. `AdminEditorSharedTest` pins it so it cannot change
+by accident.
+
+### Admin repositories — shared base
+
+`AdminActivityRepository` and `AdminUploadQueueRepository` back the two tabs of
+the admin activity log viewer. Their queries used to be copies of each other:
+the same time filter, the same search, the same count, the same paging, the
+same export and the same purge. Only the table name, its alias and the two
+filtered columns actually differed — and a copy that is one query change
+behind silently keeps serving stale results.
+
+The shared queries now live in `modules/media/AdminFilteredRepository.php`.
+Each subclass supplies what genuinely differs:
+
+| Subclass | Table | Alias | Primary filter | Search columns |
+|---|---|---|---|---|
+| `AdminActivityRepository` | `activity_log` | `al` | `action` | `u.username`, `al.ip_address` |
+| `AdminUploadQueueRepository` | `upload_queue` | `uq` | `status` (limited to `processing`, `completed`, `failed`) | `u.username`, `uq.url` |
+
+The status limit matches the four options the admin UI offers; `pending` is
+deliberately not one of them. A status outside that list means "no status
+filter", not "no rows" — filtering by an unknown value would otherwise make
+the tab look empty for no visible reason.
+
+What stays in each subclass: `getDistinctActions()`, `getWeeklyStats()` and
+`clearAll()` for the activity log; `getStats()` for the queue.
+
+`AdminFilteredRepositoryTest` and
+`AdminFilteredRepositoryIntegrationTest` pin this: the shared queries must not
+be copied back into a subclass, each repository must keep pointing at its own
+table, and the filter behaviour of the two must stay different.
+
 ### Admin Activity Log Viewer
 
-`admin/activity_log.php` — audit trail viewer with 3 tabs:
+`admin/activity_log.php` — audit trail viewer with 3 tabs. The entry file holds
+the request handling (324 lines); each tab's markup lives in its own partial
+under `admin/partials/`:
+
+| File | Content |
+|---|---|
+| `admin/activity_log.php` | POST handlers, export, tab dispatch — 402 lines |
+| `admin/partials/activity_log_log.php` | the activity tab |
+| `admin/partials/activity_log_views.php` | the view-stats tab |
+| `admin/partials/activity_log_uploads.php` | the upload-queue tab |
+
+The partials sit in a web-reachable directory, so each one returns 403 instead
+of running without a database connection. `admin/partials/live-monitor-manage.php`
+is the opposite case: it is fetched over AJAX, so it bootstraps itself and
+checks the admin role.
 
 **Activity Tab** (blue-600 theme):
 - Filter by action type, username/IP, date range
@@ -999,8 +1450,8 @@ class MeelCoin {
 |---|---|
 | Spend | `SET meelcoin = meelcoin - ? WHERE id = ? AND meelcoin >= ?` — 0 affected rows = insufficient balance |
 | Refund | `SET meelcoin = meelcoin + ?` (added on top of the current DB value) |
-| Refill | Per-user cycle: the grant is capped by `LEAST(max, meelcoin + refill)` in the DB; when the balance is full, `meelcoin_last_refill` is **reset** so refills neither pile up nor mask the next upload's deduction |
-| Countdown | Derived from that user's `meelcoin_last_refill`; `0` = ready to refill |
+| Refill | Per-user cycle: the grant is capped by `LEAST(max, meelcoin + refill)` in the DB. The refill window starts when the balance **drops below the maximum** (that is, at the moment of the spend), so a refill can neither pile up nor mask the next upload's deduction |
+| Countdown | Derived from that user's `meelcoin_last_refill`, measured with `TIMESTAMPDIFF(..., NOW())` — the database clock on both sides, so the value cannot drift with the server's timezone. `0` = ready to refill |
 | Cost | Minimum 1 (enforced in the admin panel). Cost ≤ 0 → the coin flow is skipped at runtime |
 | Admin | Excluded from deductions (`$is_admin`) and from the manual adjustment dropdown |
 | `upload_advanced.php` refund | Only for explicit failure sentinels (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); unrecognized results are not refunded and go to `error_log` |
@@ -1031,6 +1482,27 @@ Upload → FFmpeg Transcode → HLS (.m3u8 + .ts)
                                 ↓
                           DB Insert
 ```
+
+#### Video cards (`video/cards.php`)
+
+One file, two functions, and they **cannot be swapped**:
+
+| Function | Used in |
+|---|---|
+| `meel_render_video_card()` | the grid card on the video home/library |
+| `meel_render_video_rec_card()` | the recommendation sidebar card in `video/watch.php` |
+
+The pattern deliberately mirrors `music/cards.php`. The sidebar markup used to
+be copied verbatim in two places (`video/watch.php` and
+`video/search_video.php`), and two separate files with an `include` only move
+the implicit "fill this variable first before including" contract somewhere
+else — the variable still leaks into the caller's scope. A function makes the
+contract explicit through its arguments.
+
+Two data sources give the same username different column names:
+`MediaViewer::getRecommendations()` selects `u.username AS uploader`, while
+`MediaLibrary::searchVideo()` selects `u.username AS uploader_name`. Both are
+`users.username`, so both are read here.
 
 ### Audio Pipeline
 
@@ -1242,6 +1714,23 @@ return ['base.css', 'cards.css', 'fullscreen.css', 'glow.css', 'layout.css',
         'mini-player.css', 'navbar.css', 'player.css', 'seek.css', 'toast.css'];
 ```
 
+#### Per-module CSS bundle
+
+`scripts/build-css-bundle.php` merges the files listed in `manifest.php` into
+a single `assets/css/<module>/bundle.css`.
+
+- **The manifest stays the source of truth.** One truth; the original files
+  are not deleted, so pages that do not use the bundle yet keep working.
+- **The file order is preserved exactly** as in the manifest, because CSS
+  order decides the cascade — `light-theme.css` has to stay last.
+- **The bundle is not committed.** `assets/css/*/bundle.css` is in
+  `.gitignore`, so a fresh clone falls back to the individual file list.
+
+```bash
+php scripts/build-css-bundle.php --dry-run   # show the result without writing
+php scripts/build-css-bundle.php
+```
+
 ### Dynamic Loader
 
 JavaScript is loaded dynamically by `main.js` on each module page. JS files are loaded sequentially according to dependencies:
@@ -1394,8 +1883,18 @@ $tc = new Transcoder($conn, $uid, function (string $stage, array $data): void {
 | `sprite_progress` | `['pct' => int, 'label' => ?string]` | Sprite/VTT progress |
 | `done` | `['title' => string, 'url' => string]` | Video finalized |
 | `done_transcode` | `['title' => string, 'download_link' => string]` | Audio transcode complete |
-| `redirect` | `['url' => string]` | Browser navigation (music → `post_encode.php`) |
 | `error` | `['message' => string]` | Fatal error shown to the user |
+
+There is no `redirect` stage. An older version of the observer had an empty
+`redirect` case for browser navigation, but nothing ever emitted it — music
+navigation goes through the `REDIRECT:`-prefixed message string handled in
+`upload_advanced.php`, not through a progress event. The case was removed.
+
+Each stage is handled by its own private method, reached through the
+`BrowserProgressObserver::STAGE_HANDLERS` map. `onProgress()` only looks the
+handler up, so a stage that is emitted but not mapped would be silently
+dropped; `BrowserProgressObserverTest` reads the transcoder sources and
+asserts that every stage they emit has a handler.
 
 **Guarantees:**
 - An observer exception is caught and logged inside `emit()` — it never propagates

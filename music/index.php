@@ -3,10 +3,10 @@
 /** @var int $total_music Total jumlah music */
 /** @var \mysqli_result $data_init Data music dari library */
 /** @var string $format_filter Filter format dari query string */
-require_once '../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include '../auth/config.php';
-require_once '../modules/media/MediaLibrary.php';
+include __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
 require_once __DIR__ . '/cards.php';
 
 $library = new MediaLibrary($conn);
@@ -89,7 +89,7 @@ if (isset($_GET['content_only'])) {
     $_META_TITLE = 'MEeL Music | Library';
     $_META_DESC = 'Jelajahi koleksi musik di MEeL Music Library. Streaming audio lossless dengan kualitas terbaik.';
     ?>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('music', '../assets/css/music'); ?>
     <link rel="stylesheet" href="../assets/css/music/index/main.css<?= meel_asset_version('assets/css/music/index/main.css') ?>">
     <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
@@ -141,7 +141,7 @@ if (isset($_GET['content_only'])) {
             </form>
 
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
-                <?php include '../partials/nav.php'; ?>
+                <?php include __DIR__ . '/../partials/nav.php'; ?>
             </div>
         </div>
     </nav>
@@ -220,8 +220,12 @@ if (isset($_GET['content_only'])) {
                         <div class="space-y-0.5 max-h-[30vh] overflow-y-auto no-scrollbar">
                             <?php
                             $pl_routes = $library->getUserPlaylistRoutes($_SESSION['user_id']);
+                            $playlist_rows = [];
                             $playlists = $library->getUserPlaylists($_SESSION['user_id']);
-                            while ($pl = $playlists->fetch_assoc()):
+                            while ($pl = $playlists->fetch_assoc()) {
+                                $playlist_rows[] = $pl;
+                            }
+                            foreach ($playlist_rows as $pl):
                                 $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
                                 $pl_sep = str_contains($pl_route, '?') ? '&' : '?';
                             ?>
@@ -237,7 +241,7 @@ if (isset($_GET['content_only'])) {
                                     <i data-lucide="disc-3" class="w-3 h-3 flex-shrink-0"></i>
                                     <span class="truncate"><?= htmlspecialchars($pl['name']) ?></span>
                                 </a>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -327,8 +331,7 @@ if (isset($_GET['content_only'])) {
                                     </button>
                                     <div id="playlist-options" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
                                         <?php
-                                        $playlists_mobile = $library->getUserPlaylists($_SESSION['user_id']);
-                                        while ($pl = $playlists_mobile->fetch_assoc()):
+                                        foreach ($playlist_rows as $pl):
                                             $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);
                                             $pl_sep = str_contains($pl_route, '?') ? '&' : '?';
                                         ?>
@@ -338,7 +341,7 @@ if (isset($_GET['content_only'])) {
                                                 class="w-full text-left px-4 py-2.5 text-xs text-gray-300 hover:bg-white/[.04] transition-colors truncate">
                                                 <?= htmlspecialchars($pl['name']) ?>
                                             </button>
-                                        <?php endwhile; ?>
+                                        <?php endforeach; ?>
                                     </div>
                                 </div>
                             </div>
@@ -420,7 +423,7 @@ if (isset($_GET['content_only'])) {
     <script src="../assets/js/music/shared/mini-player.js<?= meel_asset_version('assets/js/music/shared/mini-player.js') ?>"></script>
     <script src="../assets/js/music/index/main.js<?= meel_asset_dir_version('assets/js/music/index') ?>"></script>
     <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
 </body>
 
 </html>

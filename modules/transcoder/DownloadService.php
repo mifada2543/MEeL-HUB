@@ -78,205 +78,102 @@ class DownloadService extends TranscoderBase
             return "bestvideo[height<=1080]+bestaudio/best";
         }
         if (strpos($host, 'tiktok.com') !== false) {
-
             return "bestvideo+bestaudio/best";
         }
         return "bestvideo[height<=1080]+bestaudio/best";
     }
+    private function assertWithinDownloadLimits(array $meta, string $url): void
+    {
+        $maxSeconds = defined('MEEL_MAX_DOWNLOAD_SECONDS') ? (int) MEEL_MAX_DOWNLOAD_SECONDS : 7200;
+        $maxBytes = defined('MEEL_MAX_DOWNLOAD_BYTES') ? (int) MEEL_MAX_DOWNLOAD_BYTES : (2 * 1024 * 1024 * 1024);
+
+        $duration = (int) ($meta['duration'] ?? 0);
+        if ($duration > $maxSeconds) {
+            throw new DownloadException(
+                sprintf('Durasi %d detik melebihi batas %d detik.', $duration, $maxSeconds),
+                $url,
+                'limits'
+            );
+        }
+
+        $filesize = (int) ($meta['filesize'] ?? ($meta['filesize_approx'] ?? 0));
+        if ($filesize > $maxBytes) {
+            throw new DownloadException(
+                sprintf('Ukuran %s melebihi batas %s.', self::formatBytes($filesize), self::formatBytes($maxBytes)),
+                $url,
+                'limits'
+            );
+        }
+    }
+
+    private static function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = 0;
+        $value = (float) $bytes;
+        while ($value >= 1024 && $i < count($units) - 1) {
+            $value /= 1024;
+            $i++;
+        }
+        return round($value, $i === 0 ? 0 : 1) . ' ' . $units[$i];
+    }
+
     public function processDownload(string $url, string $type): string
     {
         $url = trim($url);
-        if (!in_array($type, ['video', 'music'], true)) {
-            throw new DownloadException("Tipe media tidak valid.", $url, 'validation');
-        }
-        if (strlen($url) > 500) {
-            throw new DownloadException("URL terlalu panjang.", $url, 'validation');
-        }
-        try {
-            $ssrf = new SsrfGuard();
-            $ssrf->validate($url);
-            [$dl_url, $dl_extra] = $ssrf->pinHttpUrl($url);
-        } catch (\RuntimeException $e) {
-            throw new DownloadException("URL tidak diizinkan: " . $e->getMessage(), $url, 'validation');
-        }
-        try {
-            $dl_extra = $this->ensureDownloadProxy() . $dl_extra;
-        } catch (\RuntimeException $e) {
-            throw new DownloadException(
-                "Layanan keamanan download tidak tersedia. Coba lagi nanti.",
-                $url,
-                'proxy'
-            );
-        }
-        require_disk_space(512 * 1024 * 1024, $this->getShmTempPath(), 'RAM disk staging');
-        $hdd_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : dirname(__DIR__, 2);
-        require_disk_space(2 * 1024 * 1024 * 1024, $hdd_path, 'HDD storage');
+        $this->assertDownloadRequest($url, $type);
+
+        [$dl_url, $dl_extra] = $this->prepareDownloadTarget($url);
+        $this->assertDownloadDiskSpace();
+
         $queue_id = $this->lockQueue($url, $type);
+
         try {
-            $meta = $this->fetchMetadata($dl_url, $dl_extra);
-            if (!$meta) {
-                throw new DownloadException("Gagal ambil metadata dari yt-dlp.", $url, 'metadata');
-            }
+            $meta = $this->fetchAndValidateMetadata($dl_url, $dl_extra, $url);
         } catch (Throwable $e) {
             $this->releaseQueue($queue_id, 'failed');
             throw $e;
         }
-        try {
-            $title_candidates = array_values(array_filter(
-                [$meta['title'] ?? '', $meta['fulltitle'] ?? '', $meta['alt_title'] ?? '', $meta['track'] ?? ''],
-                fn($t) => $t !== '' && mb_substr(trim($t), -3) !== '...'
-            ));
-            usort($title_candidates, fn($a, $b) => mb_strlen($b) <=> mb_strlen($a));
-            $title = $title_candidates[0] ?? $meta['title'] ?? "Upload_" . time();
-            $artist = $meta['artist'] ?? ($meta['uploader'] ?? 'Unknown Artist');
-            $album = $meta['album'] ?? 'Single';
-            $duration = (int)($meta['duration'] ?? 0);
-            $clean = getRomajiName($title);
-            $description = !empty($meta['description']) ? $meta['description'] : 'Upload by MEeL Engine';
-            $shm_temp = null;
-            $temp_id = null;
-            $staging_dir = null;
-            $basename = null;
-            if ($type === 'music') {
-                $shm_temp = $this->getShmTempPath();
-                $temp_id = "raw_" . time() . "_" . substr(md5(uniqid('', true)), 0, 4);
-                $temp_path = "$shm_temp/$temp_id.%(ext)s";
-                $cmd_dl = $this->base_cmd . $dl_extra
-                    . "-f bestaudio -o " . escapeshellarg($temp_path)
-                    . " --write-thumbnail --embed-thumbnail"
-                    . " --newline " . escapeshellarg($dl_url) . " 2>&1";
-            } else {
-                $staging_dir = $this->getShmTempPath() . '/';
-                $basename = $clean;
 
-                if (file_exists($staging_dir . $basename . ".mp4")) {
-                    $basename .= "-" . substr(md5(uniqid('', true)), -4);
-                }
-                $output_tpl = $staging_dir . $basename . ".%(ext)s";
-                $format = $this->resolveVideoFormat($url);
-                $cmd_dl = $this->base_cmd . $dl_extra
-                    . "-f " . escapeshellarg($format)
-                    . " --merge-output-format mp4 -o " . escapeshellarg($output_tpl)
-                    . " --write-thumbnail --newline "
-                    . escapeshellarg($dl_url) . " 2>&1";
-            }
+        try {
+            $track = $this->resolveTrackMetadata($meta);
+            $ctx = $this->buildDownloadContext($type, $track, $url, $dl_url, $dl_extra);
+
             $this->emit('download_start', ['url' => $url]);
-            $error_log = "";
-            $start = time();
-            putenv('PATH=/usr/local/bin:/usr/bin:/bin');
-            putenv('LC_ALL=en_US.UTF-8');
-            $full_cmd = "exec setsid timeout " . self::DOWNLOAD_TIMEOUT
-                . " sh -c " . escapeshellarg($cmd_dl);
-            $dl_desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
-            $dl_proc = proc_open($full_cmd, $dl_desc, $dl_pipes, null, null);
-            if (!is_resource($dl_proc)) {
+            $outcome = $this->runDownloadProcess($ctx, $queue_id);
+
+            if ($outcome['status'] === 'spawn_failed') {
                 $this->releaseQueue($queue_id, 'failed');
                 $this->emit('error', ['message' => 'Gagal menjalankan yt-dlp. Cek permission atau install yt-dlp.']);
                 return "";
             }
-            fclose($dl_pipes[0]);
-            fclose($dl_pipes[2]);
-            $dl_status = proc_get_status($dl_proc);
-            $dl_pgid = (int)($dl_status['pid'] ?? 0);
-            $dl_label = ($type === 'music') ? ($temp_id ?? 'music') : ($basename ?? 'video');
-            $this->trackChildProcess($dl_pgid, true, 'yt-dlp download (' . $dl_label . ')');
-            $this->writePidFile('download', $queue_id, $dl_pgid);
-            $frag_retry_abort = false;
-            $php_timeout_abort = false;
-            $client_disconnected = false;
-            $frag_total = 0;
-            $dl_out = $dl_pipes[1];
-            while (!feof($dl_out)) {
-                if (time() - $start > self::DOWNLOAD_TIMEOUT) {
-                    $error_log .= "\n[ERROR] Timeout exceeded";
-                    $php_timeout_abort = true;
-                    break;
-                }
-                $line = fgets($dl_out);
-                if ($line === false) break;
-                if (strlen($error_log) < 65536) {
-                    $error_log .= $line;
-                }
-                if (preg_match('/Retrying\s+fragment[s]?\b/i', $line)) {
-                    $frag_total++;
-                    if ($frag_total >= self::FRAGMENT_RETRY_LIMIT) {
-                        $error_log .= "\n[ERROR] Fragment retry timeout (yt-dlp retrying repeatedly)";
-                        $frag_retry_abort = true;
-                        break;
-                    }
-                }
-                if (!$this->isClientConnected()) {
-                    $client_disconnected = true;
-                    error_log("[MEeL] DownloadService: client disconnected, download continue in background (queue_id=$queue_id)");
-                    continue;
-                }
-                if (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%\s+of\s+([\d.]+\s*\S+)\s+at\s+([\d.]+\s*\S+\/s)(?:\s+ETA\s+([\d:]+))?(?:\s+\(frag\s+(\d+)\/(\d+)\))?/', $line, $m)) {
-                    $pct = (int)$m[1];
-                    $size = $m[2] ?? '';
-                    $speed = $m[3] ?? '';
-                    $eta = isset($m[4]) ? 'ETA ' . $m[4] : '';
-                    $frag = (isset($m[5], $m[6]) && $m[6]) ? $m[5] . ' / ' . $m[6] : '';
-                    $this->emit('download_progress', [
-                        'pct' => $pct,
-                        'eta' => $eta,
-                        'speed' => $speed,
-                        'size' => $size,
-                        'frag' => $frag,
-                    ]);
-                } elseif (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%/', $line, $m)) {
-                    $this->emit('download_progress', ['pct' => (int)$m[1]]);
-                }
-            }
-            if ($frag_retry_abort || $php_timeout_abort) {
-                $this->terminateChildProcess(
-                    $dl_pgid,
-                    'yt-dlp ' . ($frag_retry_abort ? 'fragment retry abort' : 'PHP timeout abort'),
-                    true
-                );
-                if ($type === 'music' && !empty($temp_id)) {
-                    foreach (glob($shm_temp . "/$temp_id.*") ?: [] as $f) {
-                        $this->removeFile($f);
-                    }
-                } elseif ($type === 'video' && !empty($basename)) {
-                    foreach (glob($staging_dir . $basename . ".*") ?: [] as $f) {
-                        $this->removeFile($f);
-                    }
-                }
-            }
-            fclose($dl_out);
-            proc_close($dl_proc);
-            $this->untrackChildProcess($dl_pgid);
-            $this->removePidFile('download', $queue_id);
-            $is_success = false;
-            if ($type === 'music') {
-                $files = glob("$shm_temp/$temp_id.*");
-                $is_success = !empty($files);
-            } else {
-                $expected = $staging_dir . $basename . ".mp4";
-                $is_success = file_exists($expected) && filesize($expected) > 0;
-            }
-            if (!$is_success) {
+
+            if ($outcome['status'] !== 'ok') {
                 $this->releaseQueue($queue_id, 'failed');
-                file_put_contents('/tmp/ytdlp_error.log', $error_log);
-                if ($frag_retry_abort) {
-                    $error_msg = "Timeout: yt-dlp gagal mengunduh fragment berulang kali (retry 1/10, 2/10, dst). "
-                        . "Proses dihentikan otomatis. Coba lagi nanti atau gunakan URL lain.";
-                } else {
-                    $lines = array_filter(explode("\n", $error_log), fn($l) => $l !== '');
-                    $lines = array_slice($lines, -10);
-                    $detail = trim(implode("\n", $lines));
-                    $error_msg = $detail !== ''
-                        ? "Download gagal:\n" . $detail
-                        : 'Download gagal tanpa detail error.';
-                }
-                $this->emit('error', ['message' => $error_msg]);
-                return $client_disconnected ? "DISCONNECTED" : "";
+                file_put_contents('/tmp/ytdlp_error.log', $outcome['error_log']);
+                $this->emit('error', ['message' => $outcome['message']]);
+                return $outcome['disconnected'] ? "DISCONNECTED" : "";
             }
+
             if ($type === 'music') {
-                $result = $this->finalizeMusic($temp_id, $title, $artist, $album, $duration, $description);
+                $result = $this->finalizeMusic(
+                    $ctx['temp_id'],
+                    $track['title'],
+                    $track['artist'],
+                    $track['album'],
+                    $track['duration'],
+                    $track['description']
+                );
                 $finalized_ok = str_starts_with($result, 'ENCODE_MUSIC:');
             } else {
-                $result = $this->finalizeVideo($basename, $basename . ".webp", $title, $duration, $description, $queue_id);
+                $result = $this->finalizeVideo(
+                    $ctx['basename'],
+                    $ctx['basename'] . ".webp",
+                    $track['title'],
+                    $track['duration'],
+                    $track['description'],
+                    $queue_id
+                );
                 $finalized_ok = str_starts_with($result, 'DONE:');
             }
             $this->releaseQueue($queue_id, $finalized_ok ? 'completed' : 'failed');
@@ -288,6 +185,258 @@ class DownloadService extends TranscoderBase
             }
             throw $e;
         }
+    }
+
+    private function assertDownloadRequest(string $url, string $type): void
+    {
+        if (!in_array($type, ['video', 'music'], true)) {
+            throw new DownloadException("Tipe media tidak valid.", $url, 'validation');
+        }
+        if (strlen($url) > 500) {
+            throw new DownloadException("URL terlalu panjang.", $url, 'validation');
+        }
+    }
+
+    private function prepareDownloadTarget(string $url): array
+    {
+        try {
+            $ssrf = new SsrfGuard();
+            $ssrf->validate($url);
+            [$dl_url, $dl_extra] = $ssrf->pinHttpUrl($url);
+        } catch (\RuntimeException $e) {
+            throw new DownloadException("URL tidak diizinkan: " . $e->getMessage(), $url, 'validation');
+        }
+
+        try {
+            $dl_extra = $this->ensureDownloadProxy() . $dl_extra;
+        } catch (\RuntimeException $e) {
+            throw new DownloadException(
+                "Layanan keamanan download tidak tersedia. Coba lagi nanti.",
+                $url,
+                'proxy'
+            );
+        }
+
+        return [$dl_url, $dl_extra];
+    }
+
+    private function assertDownloadDiskSpace(): void
+    {
+        require_disk_space(512 * 1024 * 1024, $this->getShmTempPath(), 'RAM disk staging');
+        $hdd_path = defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : dirname(__DIR__, 2);
+        require_disk_space(2 * 1024 * 1024 * 1024, $hdd_path, 'HDD storage');
+    }
+
+    private function fetchAndValidateMetadata(string $dl_url, string $dl_extra, string $url): array
+    {
+        $meta = $this->fetchMetadata($dl_url, $dl_extra);
+        if (!$meta) {
+            throw new DownloadException("Gagal ambil metadata dari yt-dlp.", $url, 'metadata');
+        }
+        $this->assertWithinDownloadLimits($meta, $url);
+
+        return $meta;
+    }
+
+    private function resolveTrackMetadata(array $meta): array
+    {
+        $title_candidates = array_values(array_filter(
+            [$meta['title'] ?? '', $meta['fulltitle'] ?? '', $meta['alt_title'] ?? '', $meta['track'] ?? ''],
+            fn($t) => $t !== '' && mb_substr(trim($t), -3) !== '...'
+        ));
+        usort($title_candidates, fn($a, $b) => mb_strlen($b) <=> mb_strlen($a));
+
+        return [
+            'title' => $title_candidates[0] ?? $meta['title'] ?? "Upload_" . time(),
+            'artist' => $meta['artist'] ?? ($meta['uploader'] ?? 'Unknown Artist'),
+            'album' => $meta['album'] ?? 'Single',
+            'duration' => (int)($meta['duration'] ?? 0),
+            'description' => !empty($meta['description']) ? $meta['description'] : 'Upload by MEeL Engine',
+        ];
+    }
+
+    private function buildDownloadContext(string $type, array $track, string $url, string $dl_url, string $dl_extra): array
+    {
+        $clean = getRomajiName($track['title']);
+
+        $ctx = [
+            'type' => $type,
+            'shm_temp' => null,
+            'temp_id' => null,
+            'staging_dir' => null,
+            'basename' => null,
+            'cmd' => '',
+        ];
+
+        if ($type === 'music') {
+            $ctx['shm_temp'] = $this->getShmTempPath();
+            $ctx['temp_id'] = "raw_" . time() . "_" . substr(md5(uniqid('', true)), 0, 4);
+            $temp_path = $ctx['shm_temp'] . "/" . $ctx['temp_id'] . ".%(ext)s";
+            $ctx['cmd'] = $this->base_cmd . $dl_extra
+                . "-f bestaudio -o " . escapeshellarg($temp_path)
+                . " --write-thumbnail --embed-thumbnail"
+                . " --newline " . escapeshellarg($dl_url) . " 2>&1";
+
+            return $ctx;
+        }
+
+        $ctx['staging_dir'] = $this->getShmTempPath() . '/';
+        $ctx['basename'] = $clean;
+        if (file_exists($ctx['staging_dir'] . $ctx['basename'] . ".mp4")) {
+            $ctx['basename'] .= "-" . substr(md5(uniqid('', true)), -4);
+        }
+        $output_tpl = $ctx['staging_dir'] . $ctx['basename'] . ".%(ext)s";
+        $format = $this->resolveVideoFormat($url);
+        $ctx['cmd'] = $this->base_cmd . $dl_extra
+            . "-f " . escapeshellarg($format)
+            . " --merge-output-format mp4 -o " . escapeshellarg($output_tpl)
+            . " --write-thumbnail --newline "
+            . escapeshellarg($dl_url) . " 2>&1";
+
+        return $ctx;
+    }
+
+    private function runDownloadProcess(array $ctx, int $queue_id): array
+    {
+        $error_log = "";
+        $start = time();
+        putenv('PATH=/usr/local/bin:/usr/bin:/bin');
+        putenv('LC_ALL=en_US.UTF-8');
+        $full_cmd = "exec setsid timeout " . self::DOWNLOAD_TIMEOUT
+            . " sh -c " . escapeshellarg($ctx['cmd']);
+        $dl_desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+        $dl_pipes = [];
+        $dl_proc = proc_open($full_cmd, $dl_desc, $dl_pipes, null, null);
+        if (!is_resource($dl_proc)) {
+            return ['status' => 'spawn_failed', 'error_log' => '', 'message' => '', 'disconnected' => false];
+        }
+
+        fclose($dl_pipes[0]);
+        fclose($dl_pipes[2]);
+        $dl_status = proc_get_status($dl_proc);
+        $dl_pgid = (int)($dl_status['pid'] ?? 0);
+        $dl_label = ($ctx['type'] === 'music') ? ($ctx['temp_id'] ?? 'music') : ($ctx['basename'] ?? 'video');
+        $this->trackChildProcess($dl_pgid, true, 'yt-dlp download (' . $dl_label . ')');
+        $this->writePidFile('download', $queue_id, $dl_pgid);
+
+        $frag_retry_abort = false;
+        $php_timeout_abort = false;
+        $client_disconnected = false;
+        $frag_total = 0;
+        $dl_out = $dl_pipes[1];
+
+        while (!feof($dl_out)) {
+            if (time() - $start > self::DOWNLOAD_TIMEOUT) {
+                $error_log .= "\n[ERROR] Timeout exceeded";
+                $php_timeout_abort = true;
+                break;
+            }
+            $line = fgets($dl_out);
+            if ($line === false) {
+                break;
+            }
+            if (strlen($error_log) < 65536) {
+                $error_log .= $line;
+            }
+            if (preg_match('/Retrying\s+fragment[s]?\b/i', $line)) {
+                $frag_total++;
+                if ($frag_total >= self::FRAGMENT_RETRY_LIMIT) {
+                    $error_log .= "\n[ERROR] Fragment retry timeout (yt-dlp retrying repeatedly)";
+                    $frag_retry_abort = true;
+                    break;
+                }
+            }
+            if (!$this->isClientConnected()) {
+                $client_disconnected = true;
+                error_log("[MEeL] DownloadService: client disconnected, download continue in background (queue_id=$queue_id)");
+                continue;
+            }
+            $this->reportDownloadProgress($line);
+        }
+
+        if ($frag_retry_abort || $php_timeout_abort) {
+            $this->terminateChildProcess(
+                $dl_pgid,
+                'yt-dlp ' . ($frag_retry_abort ? 'fragment retry abort' : 'PHP timeout abort'),
+                true
+            );
+            $this->cleanStagedArtifacts($ctx);
+        }
+        fclose($dl_out);
+        proc_close($dl_proc);
+        $this->untrackChildProcess($dl_pgid);
+        $this->removePidFile('download', $queue_id);
+
+        if ($this->stagedArtifactsExist($ctx)) {
+            return ['status' => 'ok', 'error_log' => $error_log, 'message' => '', 'disconnected' => $client_disconnected];
+        }
+
+        return [
+            'status' => 'download_failed',
+            'error_log' => $error_log,
+            'message' => $this->describeDownloadFailure($error_log, $frag_retry_abort),
+            'disconnected' => $client_disconnected,
+        ];
+    }
+
+    private function reportDownloadProgress(string $line): void
+    {
+        if (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%\s+of\s+([\d.]+\s*\S+)\s+at\s+([\d.]+\s*\S+\/s)(?:\s+ETA\s+([\d:]+))?(?:\s+\(frag\s+(\d+)\/(\d+)\))?/', $line, $m)) {
+            $this->emit('download_progress', [
+                'pct' => (int) $m[1],
+                'eta' => isset($m[4]) ? 'ETA ' . $m[4] : '',
+                'speed' => $m[3] ?? '',
+                'size' => $m[2] ?? '',
+                'frag' => (isset($m[5], $m[6]) && $m[6]) ? $m[5] . ' / ' . $m[6] : '',
+            ]);
+            return;
+        }
+
+        if (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%/', $line, $m)) {
+            $this->emit('download_progress', ['pct' => (int) $m[1]]);
+        }
+    }
+
+    private function cleanStagedArtifacts(array $ctx): void
+    {
+        if ($ctx['type'] === 'music' && !empty($ctx['temp_id'])) {
+            foreach (glob($ctx['shm_temp'] . "/" . $ctx['temp_id'] . ".*") ?: [] as $f) {
+                $this->removeFile($f);
+            }
+            return;
+        }
+
+        if ($ctx['type'] === 'video' && !empty($ctx['basename'])) {
+            foreach (glob($ctx['staging_dir'] . $ctx['basename'] . ".*") ?: [] as $f) {
+                $this->removeFile($f);
+            }
+        }
+    }
+
+    private function stagedArtifactsExist(array $ctx): bool
+    {
+        if ($ctx['type'] === 'music') {
+            return !empty(glob($ctx['shm_temp'] . "/" . $ctx['temp_id'] . ".*"));
+        }
+
+        $expected = $ctx['staging_dir'] . $ctx['basename'] . ".mp4";
+        return file_exists($expected) && filesize($expected) > 0;
+    }
+
+    private function describeDownloadFailure(string $error_log, bool $frag_retry_abort): string
+    {
+        if ($frag_retry_abort) {
+            return "Timeout: yt-dlp gagal mengunduh fragment berulang kali (retry 1/10, 2/10, dst). "
+                . "Proses dihentikan otomatis. Coba lagi nanti atau gunakan URL lain.";
+        }
+
+        $lines = array_filter(explode("\n", $error_log), fn($l) => $l !== '');
+        $lines = array_slice($lines, -10);
+        $detail = trim(implode("\n", $lines));
+
+        return $detail !== ''
+            ? "Download gagal:\n" . $detail
+            : 'Download gagal tanpa detail error.';
     }
     private function finalizeMusic(
         string $temp_id,
@@ -337,19 +486,107 @@ class DownloadService extends TranscoderBase
     ): string {
         $shm_temp = $this->getShmTempPath();
         $staging_mp4 = "$shm_temp/{$basename}.mp4";
-        $dl_thumb_src = null;
-        foreach (glob("$shm_temp/{$basename}.*") as $f) {
-            $ext = pathinfo($f, PATHINFO_EXTENSION);
-            if (in_array(strtolower($ext), ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
-                $dl_thumb_src = $f;
-                break;
-            }
-        }
+        $dl_thumb_src = $this->findDownloadedThumbnail($shm_temp, $basename);
+
         if (!file_exists($staging_mp4)) {
             $this->emit('error', ['message' => "File MP4 staging tidak ditemukan: $staging_mp4"]);
             return "";
         }
         $this->emit('phase', ['phase' => 'transcode']);
+
+        $work = $this->prepareWorkFolder($basename);
+        $folder_name = $work['folder_name'];
+        $db_filename = $work['db_filename'];
+        $work_folder = $work['work_folder'];
+
+        $thumb = $this->stageThumbnail($dl_thumb_src, $work_folder, $db_thumb);
+        $db_thumb = $thumb['db_thumb'];
+        $thumb_generated = $thumb['generated'];
+
+        $file_dur = $this->probeDuration($staging_mp4);
+        $work_m3u8 = $work_folder . $folder_name . ".m3u8";
+
+        $sprite = $this->prepareSpriteFolder();
+        $ram_folder = $sprite['folder'];
+        $sprite_file = $sprite['sprite'];
+        $vtt_file = $sprite['vtt'];
+
+        $sprite_data = $this->buildSpriteCommand($staging_mp4, $sprite_file);
+
+        $this->emit('phase', ['phase' => 'transcode']);
+        $this->emit('sprite_progress', ['pct' => 0, 'label' => 'Memproses HLS & sprite...']);
+
+        $paralel = $this->runParallelFfmpeg(
+            $this->buildParallelJobs($folder_name, $queue_id, $work_folder, $staging_mp4, $work_m3u8, $sprite_data),
+            max(120, (int)($file_dur * 2)),
+            $file_dur
+        );
+
+        if (!$paralel['hls']['started']) {
+            $this->removeDir($ram_folder);
+            $this->removeDir($work_folder);
+            $this->emit('error', ['message' => 'Gagal menjalankan ffmpeg untuk transcode HLS. Cek instalasi ffmpeg.']);
+            return "";
+        }
+        if (array_key_exists('sprite', $paralel) && !$paralel['sprite']['started']) {
+            error_log("[MEeL] finalizeVideo: gagal jalankan sprite ffmpeg — melanjutkan tanpa sprite");
+            $sprite_data = null;
+        }
+
+        $hls_exit = $paralel['hls']['exit'] ?? null;
+        $sprite_exit = $paralel['sprite']['exit'] ?? null;
+        if (!file_exists($work_m3u8) || filesize($work_m3u8) === 0) {
+            $this->removeDir($ram_folder);
+            $this->removeDir($work_folder);
+            $this->removeFile($staging_mp4);
+            $this->emit('error', ['message' => 'Transcode HLS gagal. File .m3u8 tidak terbentuk.']);
+            return "";
+        }
+        if ($hls_exit !== null && $hls_exit !== 0) {
+            error_log("[MEeL] finalizeVideo: ffmpeg HLS exit=$hls_exit — m3u8 tetap dipakai karena terbentuk dan tidak kosong");
+        }
+        if ($sprite_data && $sprite_exit !== 0) {
+            error_log("[MEeL] finalizeVideo: sprite ffmpeg exit=$sprite_exit — video tetap lanjut tanpa sprite");
+        }
+
+        $this->emit('phase', ['phase' => 'sprite']);
+        $this->collectSpriteArtifacts($sprite_data, $sprite_file, $vtt_file, $work_folder);
+
+        $this->removeDir($ram_folder);
+        $this->emit('sprite_progress', ['pct' => 100, 'label' => 'Sprite & VTT selesai.']);
+        $this->removeFile($staging_mp4);
+
+        $hdd_target_folder = MEEL_HDD_VIDEO_DIR . $folder_name . "/";
+        if (!$this->persistVideoToHdd(
+            $hdd_target_folder,
+            $work_folder,
+            $db_filename,
+            $db_thumb,
+            $thumb_generated,
+            $title,
+            $description,
+            $duration
+        )) {
+            return "";
+        }
+        $this->emit('done', ['title' => $title, 'url' => 'index.php']);
+        return "DONE:" . $title;
+    }
+
+    private function findDownloadedThumbnail(string $shm_temp, string $basename): ?string
+    {
+        foreach (glob("$shm_temp/{$basename}.*") as $f) {
+            $ext = pathinfo($f, PATHINFO_EXTENSION);
+            if (in_array(strtolower($ext), ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+                return $f;
+            }
+        }
+
+        return null;
+    }
+
+    private function prepareWorkFolder(string $basename): array
+    {
         $flock_path = sys_get_temp_dir() . '/meel_transcode_folder.lock';
         $lock_fp = fopen($flock_path, 'c');
         $locked = $lock_fp !== false && flock($lock_fp, LOCK_EX);
@@ -364,6 +601,16 @@ class DownloadService extends TranscoderBase
             flock($lock_fp, LOCK_UN);
             fclose($lock_fp);
         }
+
+        return [
+            'folder_name' => $folder_name,
+            'db_filename' => $db_filename,
+            'work_folder' => $work_folder,
+        ];
+    }
+
+    private function stageThumbnail(?string $dl_thumb_src, string $work_folder, string $db_thumb): array
+    {
         $work_thumb = $work_folder . $db_thumb;
         if ($dl_thumb_src && file_exists($dl_thumb_src)) {
             $thumb_ok = meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $dl_thumb_src, $work_thumb, 1280, '', self::ENV_PREFIX, 1);
@@ -372,10 +619,38 @@ class DownloadService extends TranscoderBase
             }
             $this->removeFile($dl_thumb_src);
         }
+
         $thumb_generated = file_exists($work_thumb) && filesize($work_thumb) > 0;
-        if (!$thumb_generated) $db_thumb = "default_thumb.webp";
-        $file_dur = $this->probeDuration($staging_mp4);
-        $work_m3u8 = $work_folder . $folder_name . ".m3u8";
+        if (!$thumb_generated) {
+            $db_thumb = "default_thumb.webp";
+        }
+
+        return ['db_thumb' => $db_thumb, 'generated' => $thumb_generated];
+    }
+
+    private function prepareSpriteFolder(): array
+    {
+        $shm_base = (is_writable('/dev/shm') ? '/dev/shm' : sys_get_temp_dir());
+        $ram_folder = $shm_base . '/meel_sprite_' . uniqid() . '/';
+        if (!is_dir($ram_folder)) {
+            $this->ensureDir($ram_folder, 0777);
+        }
+
+        return [
+            'folder' => $ram_folder,
+            'sprite' => $ram_folder . 'thumb_sprite.webp',
+            'vtt' => $ram_folder . 'thumbnails.vtt',
+        ];
+    }
+
+    private function buildParallelJobs(
+        string $folder_name,
+        int $queue_id,
+        string $work_folder,
+        string $staging_mp4,
+        string $work_m3u8,
+        ?array $sprite_data
+    ): array {
         $lib_path = '/usr/lib/x86_64-linux-gnu:/usr/local/lib';
         $hls_env = ['LD_LIBRARY_PATH' => $lib_path, 'PATH' => '/usr/local/bin:/usr/bin:/bin', 'LC_ALL' => 'en_US.UTF-8'];
         $hls_cmd = [
@@ -398,81 +673,53 @@ class DownloadService extends TranscoderBase
             'hls',
             $work_m3u8,
         ];
-        $shm_base = (is_writable('/dev/shm') ? '/dev/shm' : sys_get_temp_dir());
-        $ram_folder = $shm_base . '/meel_sprite_' . uniqid() . '/';
-        if (!is_dir($ram_folder)) {
-            $this->ensureDir($ram_folder, 0777);
-        }
-        $sprite_file = $ram_folder . 'thumb_sprite.webp';
-        $vtt_file = $ram_folder . 'thumbnails.vtt';
-        $sprite_data = $this->buildSpriteCommand($staging_mp4, $sprite_file);
-        $this->emit('phase', ['phase' => 'transcode']);
-        $this->emit('sprite_progress', ['pct' => 0, 'label' => 'Memproses HLS & sprite...']);
-        $paralel = $this->runParallelFfmpeg(
-            [
-                'hls' => [
-                    'cmd' => $hls_cmd,
-                    'env' => $hls_env,
-                    'label' => 'ffmpeg HLS (' . $folder_name . ')',
-                    'task_type' => 'transcode_dl',
-                    'queue_id' => $queue_id,
-                    'pid_file' => true,
-                    'required' => true,
-                    'progress' => true,
-                    'max_pct' => 99,
-                ],
-            ]
-            + ($sprite_data ? [
-                'sprite' => [
-                    'cmd' => $sprite_data['cmd'],
-                    'env' => $sprite_data['env'],
-                    'label' => 'ffmpeg sprite (' . $folder_name . ')',
-                    'task_type' => '',
-                    'queue_id' => 0,
-                    'pid_file' => false,
-                    'required' => false,
-                    'progress' => false,
-                    'max_pct' => 99,
-                ],
-            ] : []),
-            max(120, (int)($file_dur * 2)),
-            $file_dur
-        );
 
-        if (!$paralel['hls']['started']) {
-            $this->removeDir($ram_folder);
-            $this->removeDir($work_folder);
-            $this->emit('error', ['message' => 'Gagal menjalankan ffmpeg untuk transcode HLS. Cek instalasi ffmpeg.']);
-            return "";
+        $jobs = [
+            'hls' => [
+                'cmd' => $hls_cmd,
+                'env' => $hls_env,
+                'label' => 'ffmpeg HLS (' . $folder_name . ')',
+                'task_type' => 'transcode_dl',
+                'queue_id' => $queue_id,
+                'pid_file' => true,
+                'required' => true,
+                'progress' => true,
+                'max_pct' => 99,
+            ],
+        ];
+
+        if ($sprite_data) {
+            $jobs['sprite'] = [
+                'cmd' => $sprite_data['cmd'],
+                'env' => $sprite_data['env'],
+                'label' => 'ffmpeg sprite (' . $folder_name . ')',
+                'task_type' => '',
+                'queue_id' => 0,
+                'pid_file' => false,
+                'required' => false,
+                'progress' => false,
+                'max_pct' => 99,
+            ];
         }
-        if (array_key_exists('sprite', $paralel) && !$paralel['sprite']['started']) {
-            error_log("[MEeL] finalizeVideo: gagal jalankan sprite ffmpeg — melanjutkan tanpa sprite");
-            $sprite_data = null;
-        }
-        // CATATAN: exit code HLS sengaja tidak dipakai untuk memutuskan
-        // sukses/tidak. Success dinilai dari artefak: `.m3u8` harus ada dan
-        // tidak nol (penentuannya di bawah). Ini sudah begitu sejak sebelum
-        // T19 -- nilainya hanya dicatat, tidak pernah dibaca. Jangan
-        // ffmpeg bisa exit non-nol sementara segment HLS-nya tetap lengkap,
-        // jadi exit code bukan indikator yang bisa diandalkan di sini.
-        $hls_exit = $paralel['hls']['exit'];
-        $sprite_exit = $paralel['sprite']['exit'] ?? null;
-        if (!file_exists($work_m3u8) || filesize($work_m3u8) === 0) {
-            $this->removeDir($ram_folder);
-            $this->removeDir($work_folder);
-            $this->removeFile($staging_mp4);
-            $this->emit('error', ['message' => 'Transcode HLS gagal. File .m3u8 tidak terbentuk.']);
-            return "";
-        }
-        if ($sprite_data && $sprite_exit !== 0) {
-            error_log("[MEeL] finalizeVideo: sprite ffmpeg exit=$sprite_exit — video tetap lanjut tanpa sprite");
-        }
-        $this->emit('phase', ['phase' => 'sprite']);
+
+        return $jobs;
+    }
+
+    private function collectSpriteArtifacts(?array $sprite_data, string $sprite_file, string $vtt_file, string $work_folder): void
+    {
         if ($sprite_data && file_exists($sprite_file) && filesize($sprite_file) > 0) {
-            $this->generateVTT($vtt_file, $sprite_data['total_frames'], $sprite_data['interval'], $sprite_data['duration'], $sprite_data['w'], $sprite_data['cols']);
+            $this->generateVTT(
+                $vtt_file,
+                $sprite_data['total_frames'],
+                $sprite_data['interval'],
+                $sprite_data['duration'],
+                $sprite_data['w'],
+                $sprite_data['cols']
+            );
         } else {
             error_log("[MEeL] WARN: sprite webp tidak terbentuk — skip VTT generation");
         }
+
         if (file_exists($sprite_file)) {
             if (!$this->moveFile($sprite_file, $work_folder . 'thumb_sprite.webp')) {
                 error_log("[MEeL] WARN: Gagal move thumb_sprite.webp dari RAM ke: $work_folder");
@@ -483,54 +730,15 @@ class DownloadService extends TranscoderBase
                 error_log("[MEeL] WARN: Gagal move thumbnails.vtt dari RAM ke: $work_folder");
             }
         }
-        $this->removeDir($ram_folder);
-        $this->emit('sprite_progress', ['pct' => 100, 'label' => 'Sprite & VTT selesai.']);
-        $this->removeFile($staging_mp4);
-        $hdd_target_folder = MEEL_HDD_VIDEO_DIR . $folder_name . "/";
-        if (!$this->persistVideoToHdd(
-            $hdd_target_folder,
-            $work_folder,
-            $db_filename,
-            $db_thumb,
-            $thumb_generated,
-            $title,
-            $description,
-            $duration
-        )) {
-            return "";
-        }
-        $this->emit('done', ['title' => $title, 'url' => 'index.php']);
-        return "DONE:" . $title;
     }
     /**
      * Jalankan beberapa proses ffmpeg secara paralel, awasi sampai
      * semuanya selesai, lalu rapikan.
      *
-     * Dipisah dari `finalizeVideo()` pada T19. Fass itu 268 baris dengan
-     * sembilan fase; supervise-proses ini adalah sepertiga dari itu dan
-     * bagian yang paling rawan salah -- kebocoran pipe, anak proses yang
-     * tidak pernah di-reap (zombie plus PID file yang tak pernah dihapus),
-     * dan jalur timeout yang meninggalkan ffmpeg berjalan di belakang.
-     *
-     * KENAPA BUKAN KELAS BARU (`FfmpegProcess`)
-     * ---------------------------------------
-     * Semua hook yang dibutuhkan -- `trackChildProcess()`,
-     * `untrackChildProcess()`, `terminateChildProcess()`, `writePidFile()`,
-     * `removePidFile()`, `isProcessAlive()` -- ber-`protected` di
-     * `TranscoderBase`, dan daftar anak proses (`$childProcesses`) adalah
-     * state per-instance yang dipindai `terminateAllProcesses()` saat
-     * shutdown.
-     *
-     * Kelas terpisah tidak bisa menjangkau itu tanpa melebarkannya jadi
-     * `public` atau memindahkan daftar anak ke collaborator bersama.
-     * Dua-duanya jatuh persis di mekanisme yang tugasnya MENCEGAH proses
-     * ffmpeg yatim ketika request mati di tengah transcode. Menukar
-     * itu dengan tata letak berkas yang lebih rapi adalah kerugian yang
-     * besar, jadi tidak diambil.
-     *
-     * Seam-nya dibiarkan: begitu ada harness uji yang bisa mengujinya
-     * ujung ke ujung, kelasnya bisa diekstrak tanpa menurunkan logikanya
-     * dari nol.
+     * Tetap metode, bukan kelas baru: semua hook yang dibutuhkan ber-`protected`
+     * di `TranscoderBase`, dan daftar anak proses adalah state per-instance
+     * yang dipindai `terminateAllProcesses()` saat shutdown. Kelas terpisah
+     * tidak bisa menjangkau itu tanpa melebarkannya jadi `public`.
      *
      * @param array<string, array{
      *     cmd: array<int, string>,      // argumen untuk proc_open
@@ -546,6 +754,7 @@ class DownloadService extends TranscoderBase
      * @param int $timeoutSeconds batas waktu total semua proses
      * @param int $fileDur durasi media, untuk meng-hitung persen progres
      * @return array<string, array{started: bool, pid: int, exit: int|null}>
+     * @see docs/{id,en}/modules.md
      */
     private function runParallelFfmpeg(array $jobs, int $timeoutSeconds, int $fileDur): array
     {
@@ -560,8 +769,6 @@ class DownloadService extends TranscoderBase
                 error_log("[MEeL] runParallelFfmpeg: gagal menjalankan {$job['label']}");
                 $state[$key] = ['started' => false, 'pid' => 0, 'exit' => null, 'done' => true];
                 if ($job['required']) {
-                    // Jangan melepas job sisanya -- proses yang tidak
-                    // diperlukan jangan sampai sempat jalan.
                     break;
                 }
                 continue;
@@ -613,10 +820,6 @@ class DownloadService extends TranscoderBase
                 break;
             }
 
-            // Peta stream -> kunci job. array_column TIDAK bisa dipakai di sini:
-            // ia menyimpan ulang indeks, jadi array_search mengembalikan posisi
-            // integer, bukan kunci aslinya -- dan kunci job itu string ('hls',
-            // 'sprite'). Peta stream -> kunci dibuat eksplisit.
             $streamToKey = [];
             $read = [];
             foreach ($pending as $key => $s) {
@@ -669,9 +872,6 @@ class DownloadService extends TranscoderBase
             }
         }
 
-        // Job yang tidak sempat dijalankan karena `required` gagal di
-        // tengah jalan harus tetap punya entri, kalau tidak caller tidak
-        // bisa membedakan "tidak diminta" dari "gagal start".
         foreach ($jobs as $key => $unused) {
             $result[$key] ??= ['started' => false, 'pid' => 0, 'exit' => null];
         }
@@ -705,23 +905,19 @@ class DownloadService extends TranscoderBase
      * Pindahkan hasil kerja dari folder kerja ke HDD, lalu catat ke
      * database dalam satu transaksi.
      *
-     * Dipisah dari `finalizeVideo()` pada T19. Fase ini punya satu
-     * sifat penting: kalau ada apa pun yang gagal di tengah, ia TIDAK
-     * boleh meninggalkan sistem dalam keadaan setengah jadi -- file sudah
-     * pindah tapi baris database belum ada, atau sebaliknya. Karena itu
-     * `moveFile()` melempar, bukan mengembalikan false, dan `catch`
-     * melakukan rollback database DITAMBAH pembatalan efek filesystem.
+     * Kalau ada apa pun yang gagal di tengah, sistem tidak boleh tertinggal
+     * setengah jadi -- file sudah pindah tapi baris database belum ada, atau
+     * sebaliknya. Karena itu `moveFile()` melempar, bukan mengembalikan false,
+     * dan `catch` melakukan rollback database DITAMBAH pembatalan efek
+     * filesystem.
      *
      * Urutan pembatalannya penting dan tidak boleh dibalik:
      *   1. rollback transaksi (baris database tidak jadi ada)
      *   2. `rollbackFinalizeVideo()` (hapus folder target + thumbnail)
      *   3. hapus folder kerja
      *
-     * Kenapa dibungkus begini: `finalizeVideo()` sebagai pemanggil
-     * tidak perlu tahu detailnya. Ia hanya perlu tahu berhasil atau
-     * tidak; pesan errornya sudah di-emit di dalam.
-     *
      * @return bool true bila sudah commit, false bila sudah di-rollback
+     * @see docs/{id,en}/modules.md
      */
     private function persistVideoToHdd(
         string $hdd_target_folder,
@@ -804,4 +1000,5 @@ class DownloadService extends TranscoderBase
         }
     }
 }
+
 /* reference build: MEeL-C2H5NO2 [c00bc760f367fc1d] */

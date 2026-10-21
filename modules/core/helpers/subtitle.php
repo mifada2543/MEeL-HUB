@@ -26,7 +26,6 @@ function convert_srt_to_vtt(string $srt): string
 }
 
 if (!function_exists('strip_utf8_bom')) {
-
 function strip_utf8_bom(string $content): string
 {
     return preg_replace('/^\xEF\xBB\xBF/', '', $content) ?? $content;
@@ -34,7 +33,6 @@ function strip_utf8_bom(string $content): string
 }
 
 if (!function_exists('sanitize_subtitle_lang')) {
-
 function sanitize_subtitle_lang(?string $lang, string $default = 'id'): string
 {
     $lang = strtolower(trim((string)$lang));
@@ -46,7 +44,6 @@ function sanitize_subtitle_lang(?string $lang, string $default = 'id'): string
 }
 
 if (!function_exists('lang_map')) {
-
 function lang_map(): array
 {
     return [
@@ -70,7 +67,6 @@ function lang_map(): array
 }
 
 if (!function_exists('subtitle_lang_map')) {
-
 function subtitle_lang_map(): array
 {
     return lang_map();
@@ -78,7 +74,6 @@ function subtitle_lang_map(): array
 }
 
 if (!function_exists('lang_label')) {
-
 function lang_label(string $lang): string
 {
     $lang = strtolower(trim($lang));
@@ -88,7 +83,6 @@ function lang_label(string $lang): string
 }
 
 if (!function_exists('subtitle_lang_label')) {
-
 function subtitle_lang_label(string $lang): string
 {
     return lang_label($lang);
@@ -96,19 +90,9 @@ function subtitle_lang_label(string $lang): string
 }
 
 if (!function_exists('validate_subtitle_file')) {
-
 function validate_subtitle_file(string $tmp_path): bool
 {
-    if (!is_file($tmp_path) || filesize($tmp_path) > 2 * 1024 * 1024) {
-        return false;
-    }
-    $content = @file_get_contents($tmp_path);
-    if ($content === false) return false;
-
-    if (strpos($content, "\x00") !== false) return false;
-    if (preg_match('/<\?php|<\?=/i', $content)) return false;
-
-    return true;
+    return meel_validate_text_upload($tmp_path);
 }
 }
 

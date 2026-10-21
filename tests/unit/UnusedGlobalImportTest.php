@@ -1,28 +1,19 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
  * Penjaga: `global $x;` di dalam fungsi yang tidak pernah memakai `$x`.
  *
- * KASUS NYATA (T19, 2026-10-14)
- * -----------------------------
- * `log_drive_operation()` di `storage.php` (kini `storage_disk.php`)
- * diawali `global $conn;` — padahal `$conn` **tidak muncul sekali pun**
- * di badan fungsinya. Fungsi itu menulis audit log ke berkas; ia tidak
- * pernah menyentuh database.
+ * KASUS NYATA (T19, 2026-10-14): `log_drive_operation()` diawali
+ * `global $conn;` padahal `$conn` tidak muncul sekali pun di badan
+ * fungsinya. Kerugiannya bukan cuma satu baris mubazir — fungsi itu jadi
+ * bergantung pada global yang harus ada di scope, dan saat dipanggil dari
+ * konteks yang belum punya `$conn`, perilakunya bergantung pada apakah ada
+ * global lain bernama sama.
  *
- * Kerugiannya bukan cuma satu baris mubazir. `global $conn;` membuat
- * fungsi itu **bergantung pada global yang harus ada di scope**, padahal
- * tidak butuh. Setiap pemanggil jadi wajib menyediakan `$conn` tanpa
- * alasan. Dan saat `log_drive_operation()` dipanggil dari konteks yang
- * belum punya `$conn`, perilakunya bergantung pada apakah ada global
- * lain bernama sama — jenis ketergantungan tersembunyi yang sulit
- * ditelusuri.
- *
- * Test ini memakai tokenizer PHP, bukan regex, supaya bodies fungsi
- * dibaca akurat: string, heredoc, dan brace di dalam string mudah
- * membuat regex salah hitung.
+ * Test ini memakai tokenizer PHP, bukan regex, supaya bodies fungsi dibaca
+ * akurat: string, heredoc, dan brace di dalam string mudah membuat regex
+ * salah hitung.
  *
  * @coversNothing
  */
@@ -90,7 +81,7 @@ class UnusedGlobalImportTest extends TestCase
 
             $line = $t[2];
             $globals = [];
-            // Kumpulkan nama variabel setelah `global`
+
             for ($j = $i + 1; $j < $count; $j++) {
                 $v = $tokens[$j];
                 if (is_array($v) && in_array($v[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
@@ -106,9 +97,6 @@ class UnusedGlobalImportTest extends TestCase
                 continue;
             }
 
-            // Akan dibandingkan dengan pemakaian di seluruh berkas.
-            // Exactness is good enough here: we only flag a name that NEVER
-            // appears anywhere else in the file besides the declaration.
             $body = implode('', array_map(
                 static fn($x) => is_array($x) ? $x[1] : $x,
                 $tokens
@@ -167,7 +155,6 @@ class UnusedGlobalImportTest extends TestCase
             . 'Mengimpor $conn hanya menambah ketergantungan global yang tidak dibutuhkan.'
         );
 
-        // Dan fungsi ini harus benar-benar bisa dipanggil tanpa $conn di scope.
         $this->assertTrue(
             function_exists('log_drive_operation') || is_file($path),
             'log_drive_operation() harus tetap ada'

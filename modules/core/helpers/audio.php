@@ -1,6 +1,5 @@
 <?php
 if (!function_exists('get_audio_mime_type')) {
-
 function get_audio_mime_type(string $ext): string
 {
     return match (strtolower($ext)) {
@@ -15,7 +14,6 @@ function get_audio_mime_type(string $ext): string
 }
 
 if (!function_exists('get_audio_format_label')) {
-
 function get_audio_format_label(string $ext): string
 {
     $lower = strtolower($ext);
@@ -24,7 +22,6 @@ function get_audio_format_label(string $ext): string
 }
 
 if (!function_exists('get_audio_format_description')) {
-
 function get_audio_format_description(string $ext): string
 {
     return match (strtolower($ext)) {

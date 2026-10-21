@@ -1,12 +1,13 @@
 <?php
 /* reference build: MEeL-C2H5NO2 [e1adc0928ab7ba85] */
-require_once '../modules/core/helpers.php';
-include '../auth/auth.php';
-include '../modules/core/Uploader.php';
-require_once '../modules/core/GarbageCollector.php';
-require_once '../modules/media/MediaLibrary.php';
-require_once '../modules/core/MeelCoin.php';
-require_once '../modules/core/Notification.php';
+
+require_once __DIR__ . '/../modules/core/helpers.php';
+include __DIR__ . '/../auth/auth.php';
+include __DIR__ . '/../modules/core/Uploader.php';
+require_once __DIR__ . '/../modules/core/GarbageCollector.php';
+require_once __DIR__ . '/../modules/media/MediaLibrary.php';
+require_once __DIR__ . '/../modules/core/MeelCoin.php';
+require_once __DIR__ . '/../modules/core/Notification.php';
 meel_storage_guard();
 GarbageCollector::run();
 
@@ -45,7 +46,7 @@ if (isset($_POST['upload'])) {
         $alert_message = 'CSRF token tidak valid. Silakan muat ulang halaman lalu coba lagi.';
     } else {
         $upload_result = meel_handle_upload($conn, 'video', function ($post, $files) use ($uploader) {
-            return $uploader->processVideo($post, $files, __DIR__ . "/");
+            return $uploader->processVideo($post, $files);
         }, 'upload_video');
 
         $status = $upload_result['status'];
@@ -70,12 +71,12 @@ if (isset($_POST['upload'])) {
     <meta property="og:title" content="MEeL Video | Unggah">
     <meta property="og:description" content="Unggah video ke MEeL Video. Format: MP4, WEBM, MKV. Transcoding otomatis ke HLS.">
     <title>MEeL Video | Unggah</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('video', '../assets/css/video'); ?>
-    <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime('../assets/css/font.css') ?>">
-    <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
-    <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">
-    <link rel="stylesheet" href="../assets/css/video/upload/main.css?v=<?= filemtime('../assets/css/video/upload/main.css') ?>">
+    <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime(__DIR__ . '/../assets/css/font.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/design-tokens.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/upload-form.css') ?>">
+    <link rel="stylesheet" href="../assets/css/video/upload/main.css?v=<?= filemtime(__DIR__ . '/../assets/css/video/upload/main.css') ?>">
 </head>
 
 <body>
@@ -307,7 +308,7 @@ if (isset($_POST['upload'])) {
 
     </div>
 
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
 
     <div id="upload-overlay">
         <div class="overlay-card">

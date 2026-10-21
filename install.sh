@@ -1,38 +1,4 @@
 #!/usr/bin/env bash
-#
-# install.sh — Installer otomatis MEeL-HUB
-#
-# Menjalankan seluruh langkah di "Instalasi Cepat" README secara otomatis:
-#   1. Cek dependency (PHP + ekstensi, MariaDB/MySQL, Apache)
-#   2. Setup database + import schema.sql
-#   3. Buat auth/settings.php & auth/config.php dari template (+ MEEL_ENV/APP_DEBUG,
-#      path biner manual, trusted proxy, opsi X-Sendfile)
-#   4. Buat direktori storage runtime + symlink deploy ke MEEL_HDD_BASE
-#      (hardening .htaccess folder upload ikut disalin ke target)
-#   5. Aktifkan mod_rewrite + (opsional) buat VirtualHost Apache
-#   6. Jalankan database/migrate.php
-#   7. Verifikasi akhir via tests/check_deploy.php — exit 1 jika ada FAIL
-#
-# Didesain idempotent untuk sebagian besar langkah (settings.php, direktori
-# storage, migration). Pengecualian: import awal schema.sql TIDAK diulang
-# otomatis jika database sudah ada (berisi seed data Admin yang bukan
-# idempotent) — script akan melewatinya dengan aman, bukan reimport paksa.
-#
-# Uji di Ubuntu/Debian (apt). Untuk distro lain, sesuaikan bagian
-# install_dependencies().
-#
-# Pemakaian:
-#   ./install.sh                 # mode interaktif (tanya konfigurasi)
-#   ./install.sh --yes           # non-interaktif, pakai semua default
-#   ./install.sh --hdd=/path     # set MEEL_HDD_BASE langsung
-#   ./install.sh --skip-apt      # lewati instalasi paket sistem (sudah ada)
-#   ./install.sh --xsendfile     # aktifkan MEEL_USE_XSENDFILE (wajib mod_xsendfile Apache)
-#   ./install.sh --env=production|development   # set MEEL_ENV + APP_DEBUG
-#   ./install.sh --trust-proxy   # aktifkan MEEL_TRUST_PROXY_HEADERS (di balik reverse proxy)
-#   ./install.sh --vhost=meel.local  # buat VirtualHost Apache untuk domain tsb
-#   ./install.sh --help
-#
-# Semua prompt ya/tidak memakai 'y' = ya, 't' = tidak.
 set -euo pipefail
 
 if [ -t 1 ]; then
@@ -121,7 +87,7 @@ echo -e "${C_RESET}"
 echo " Installer — clone → install → run"
 echo " Project root: $PROJECT_ROOT"
 
-step "1/7 — Cek dependency sistem"
+step "1/9 — Cek dependency sistem"
 
 SUDO=""
 CAN_ELEVATE=true
@@ -202,7 +168,7 @@ for bin in ffmpeg ffprobe yt-dlp mecab; do
     fi
 done
 
-step "2/7 — Konfigurasi Database"
+step "2/9 — Konfigurasi Database"
 
 DB_HOST="$(ask "Host database" "localhost")"
 DB_NAME="$(ask "Nama database" "MEeL")"
@@ -230,9 +196,6 @@ if [ "$DB_EXISTS" -gt 0 ]; then
     warn "yang bukan idempotent, reimport akan gagal 'Duplicate entry' jika data sudah ada)."
     warn "Jika Anda ingin instalasi BENAR-BENAR bersih: DROP DATABASE \`${DB_NAME}\`; lalu jalankan ulang script ini."
     if confirm "Tetap paksa reimport schema.sql sekarang? (BERISIKO gagal jika tabel/data sudah ada)" N; then
-        # schema.sql tidak lagi memuat CREATE DATABASE / USE, jadi nama
-        # database dinyatakan sekali di sini -- bukan dengan menyalin ulang
-        # pola dari dalam berkas.
         if ! mysql "${MYSQL_AUTH[@]}" "${DB_NAME}" < database/schema.sql; then
             warn "Reimport schema gagal (kemungkinan besar data sudah ada) — melanjutkan dengan database apa adanya."
         else
@@ -320,7 +283,7 @@ else
     fi
 fi
 
-step "3/8 — Buat auth/settings.php & auth/config.php"
+step "3/9 — Buat auth/settings.php & auth/config.php"
 
 if [ -f "auth/settings.php" ]; then
     warn "auth/settings.php sudah ada — tidak ditimpa (hapus manual jika ingin regenerasi)."
@@ -344,27 +307,63 @@ else
 fi
 HDD_BASE="${HDD_BASE%/}"
 
-python3 - "$DB_HOST" "$DB_USER" "$DB_PASS" "$DB_NAME" "$HDD_BASE" "auth/settings.php" <<'PYEOF' 2>/dev/null || {
+if ! python3 - "$DB_HOST" "$DB_USER" "$DB_PASS" "$DB_NAME" "$HDD_BASE" "auth/settings.php" <<'PYEOF'
 import sys, re
 host, user, passwd, db, hdd, path = sys.argv[1:7]
 with open(path, 'r', encoding='utf-8') as f:
     content = f.read()
-content = re.sub(r'\$server\s*=\s*"localhost";', f'$server   = "{host}";', content, count=1)
-content = re.sub(r'\$username\s*=\s*"root";', f'$username = "{user}";', content, count=1)
-content = re.sub(r'\$password\s*=\s*"";', f'$password = "{passwd}";', content, count=1)
-content = re.sub(r'\$db\s*=\s*"MEeL";', f'$db       = "{db}";', content, count=1)
-content = content.replace("define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');", f"define('MEEL_HDD_BASE', '{hdd}');")
+
+def php_str(value):
+    return "'" + str(value).replace('\\', '\\\\').replace("'", "\\'") + "'"
+
+define_re = re.compile(r"(define\(\s*'MEEL_HDD_BASE'\s*,\s*)('[^']*')(\s*\))")
+if define_re.search(content):
+    content = define_re.sub(lambda m: m.group(1) + php_str(hdd) + m.group(3), content, count=1)
+else:
+    print("ERROR: define('MEEL_HDD_BASE', ...) tidak ditemukan", file=sys.stderr)
+    sys.exit(1)
+
+override = (
+    "\n// Ditulis install.sh — jangan diubah manual.\n"
+    "$server   = %s;\n"
+    "$username = %s;\n"
+    "$password = %s;\n"
+    "$db       = %s;\n"
+) % (php_str(host), php_str(user), php_str(passwd), php_str(db))
+
+if "// Ditulis install.sh" in content:
+    lines = [l for l in content.split('\n') if "// Ditulis install.sh" not in l]
+    cut = content.find(lines[-1]) if lines else 0
+    content = '\n'.join(lines)
+else:
+    content = content.rstrip('\n')
+
+content = content.rstrip('\n') + '\n' + override
+
 with open(path, 'w', encoding='utf-8') as f:
     f.write(content)
-print("patched via python3")
+
+verify = open(path, 'r', encoding='utf-8').read()
+missing = []
+for label, expected in (('server', host), ('username', user), ('db', db)):
+    if not re.search(r'^\$%s\s*=\s*%s\s*;' % (label, re.escape(php_str(expected))), verify, re.M):
+        missing.append('$' + label)
+if not re.search(r"define\(\s*'MEEL_HDD_BASE'\s*,\s*%s\s*\)" % re.escape(php_str(hdd)), verify):
+    missing.append('MEEL_HDD_BASE')
+if missing:
+    print("ERROR: nilai berikut tidak tersimpan: " + ", ".join(missing), file=sys.stderr)
+    sys.exit(1)
+print("patched via python3 (terverifikasi)")
 PYEOF
-    sed -i "s#\$server   = \"localhost\";#\$server   = \"${DB_HOST}\";#" auth/settings.php
-    sed -i "s#\$username = \"root\";#\$username = \"${DB_USER}\";#" auth/settings.php
-    sed -i "s#\$password = \"\";#\$password = \"${DB_PASS}\";#" auth/settings.php
-    sed -i "s#\$db       = \"MEeL\";#\$db       = \"${DB_NAME}\";#" auth/settings.php
-    sed -i "s#define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');#define('MEEL_HDD_BASE', '${HDD_BASE}');#" auth/settings.php
-}
-ok "auth/settings.php dikonfigurasi (DB: ${DB_NAME}@${DB_HOST}, storage: ${HDD_BASE})"
+then
+    die "Gagal menulis auth/settings.php — konfigurasi DB tidak tersimpan. Perbaiki manual lalu ulangi."
+fi
+
+if php -r 'require "auth/settings.php";' 2>/dev/null; then
+    ok "auth/settings.php dikonfigurasi & bisa dimuat (DB: ${DB_NAME}@${DB_HOST}, storage: ${HDD_BASE})"
+else
+    die "auth/settings.php tersimpan tapi tidak bisa dimuat PHP — periksa manual."
+fi
 
 ENV_CHOICE="production"
 if [ -n "$ENV_OVERRIDE" ]; then
@@ -401,8 +400,6 @@ env, debug, ffmpeg, ffprobe, node, ytdlp, trust, path = sys.argv[1:9]
 with open(path, 'r', encoding='utf-8') as f:
     c = f.read()
 if env == 'production':
-    # uncomment baris yang nilainya sama persis (idempotent: baris lain
-    # dibiarkan sebagai komentar, tidak pernah duplikat define aktif)
     c = re.sub(r"^//\s*define\('MEEL_ENV', 'production'\).*$",
                "define('MEEL_ENV', 'production');", c, count=1, flags=re.M)
 elif env == 'development':
@@ -503,7 +500,7 @@ else
     warn "X-Sendfile TIDAK diaktifkan — streaming memakai PHP langsung (default aman)."
 fi
 
-step "4/8 — Buat direktori storage runtime"
+step "4/9 — Buat direktori storage runtime"
 
 mkdir -p "$HDD_BASE/video/upload/video" \
          "$HDD_BASE/video/upload/thumbnail" \
@@ -575,7 +572,7 @@ else
     warn "User '${WEB_USER}' tidak ditemukan atau tanpa sudo — atur ownership/permission storage manual sesuai web server Anda."
 fi
 
-step "5/8 — Aktifkan mod_rewrite & VirtualHost Apache"
+step "5/9 — Aktifkan mod_rewrite & VirtualHost Apache"
 
 if command -v a2enmod >/dev/null 2>&1 && $CAN_ELEVATE; then
     if confirm "Aktifkan mod_rewrite & restart Apache sekarang?" Y; then
@@ -601,6 +598,7 @@ if [ -n "$VHOST_DOMAIN" ]; then
     VHOST_FILE="/etc/apache2/sites-available/meel.conf"
     VHOST_CONFIG="<VirtualHost *:80>
     ServerName ${VHOST_DOMAIN}
+    UseCanonicalName On
     DocumentRoot ${PROJECT_ROOT}
     <Directory ${PROJECT_ROOT}>
         Options Indexes FollowSymLinks
@@ -628,7 +626,42 @@ else
     ok "VirtualHost dilewati — akses via DocumentRoot/subfolder (mis. http://host/MEeL) memakai .htaccess langsung."
 fi
 
-step "6/8 — Jalankan migration database"
+step "6/9 — Tutup direktori dependency & tooling dari akses web"
+
+for DENY_DIR in vendor node_modules tools storage assets/dict; do
+    DENY_PATH="${PROJECT_ROOT}/${DENY_DIR}"
+    [ -d "$DENY_PATH" ] || continue
+    if [ -f "$DENY_PATH/.htaccess" ] && grep -q 'Require all denied\|Deny from all' "$DENY_PATH/.htaccess"; then
+        ok "Hardening ${DENY_DIR}/ sudah ada"
+    else
+        if cat > "$DENY_PATH/.htaccess" <<'HTEOF'
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} ^(.*/)[^/]+/?$
+    RewriteRule ^ - [F,L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</IfModule>
+HTEOF
+        then
+            ok "Hardening .htaccess dibuat di ${DENY_DIR}/"
+        else
+            warn "Gagal menulis .htaccess di ${DENY_DIR} — salin manual sebelum produksi."
+        fi
+    fi
+done
+
+step "7/9 — Jalankan migration database"
 
 if php database/migrate.php; then
     ok "Migration selesai (idempotent — aman diulang)."
@@ -649,7 +682,7 @@ if [ -d "arcade" ] && [ -f "arcade/migrate.php" ]; then
     fi
 fi
 
-step "7/8 — Verifikasi deployment (tests/check_deploy.php)"
+step "8/9 — Verifikasi deployment (tests/check_deploy.php)"
 
 CHECK_OK=true
 if [ -f "tests/check_deploy.php" ]; then

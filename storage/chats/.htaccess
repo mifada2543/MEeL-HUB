@@ -1,4 +1,3 @@
-# Block direct access to chat JSON files
 <FilesMatch "\.json$">
     Require all denied
 </FilesMatch>

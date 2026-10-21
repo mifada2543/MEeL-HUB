@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
-include 'config.php';
+require_once __DIR__ . '/config.php';
 if (isset($_SESSION['user_id'])) {
     log_activity($conn, (int)$_SESSION['user_id'], 'logout');
     $stmt = $conn->prepare("UPDATE users SET last_session_id = NULL WHERE id = ?");

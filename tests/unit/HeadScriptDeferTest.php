@@ -1,41 +1,20 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
  * Penjaga rantai `defer` di halaman root (`index.php`).
  *
- * KONTEKS
- * -------
- * Halaman root punya 6 script eksternal di dalam `<head>` yang semuanya
- * blocking: lucide, sweetalert2, script.min, state-keys, health-reminder,
- * theme — ditambah `index-hub.js` di akhir body. Semuanya kini di-defer.
+ * Halaman root punya 6 script eksternal di `<head>` yang semuanya blocking.
+ * Semuanya kini di-defer; `admin/index.php` sengaja hanya men-defer
+ * `chart.umd.min.js` karena konsumennya dipanggil dari listener
+ * `DOMContentLoaded` — test ini tidak memaksakan aturan "harus semua defer".
  *
- * Hasil terukur (Lighthouse headless, median 3–4 run):
- *
- *   Performance  90 -> 94
- *   FCP        2509 ms -> 1206 ms
- *   TBT          80 ms -> 40 ms
- *   render-blocking saving 2245 ms -> 609 ms
- *
- * BUKAN semua halaman bisa memakai pola yang sama. `admin/index.php`
- * sengaja hanya men-defer `chart.umd.min.js` sementara 5 script lain
- * tetap klasik — dan itu benar, karena konsumennya (`setupNetChart`,
- * `new Chart(ctx2)`) dipanggil dari dalam listener `DOMContentLoaded`,
- * yang berjalan SETELAH seluruh script defer. Karena itu test ini tidak
- * memaksakan aturan "harus semua defer": aturan tersebut akan salah dan
- * membuat orang "memperbaiki" halaman yang justru sudah benar.
- *
- * Yang dikunci di sini justru invarian yang membuatnya bekerja:
+ * Yang dikunci adalah invarian yang membuatnya bekerja:
  *
  *  1. Script defer dijalankan SETELAH parsing selesai, dalam urutan dokumen.
- *     Mengacak urutannya diam-diam merusak dependensi.
- *  2. Script INLINE (tanpa src) di `<head>` berjalan saat parsing — yaitu
- *     SEBELUM script defer. Inline head di halaman ini justru kebalikannya:
- *     ia men-*define* global (`MEEL_BASE`, `MEEL_CSRF`) dan menjalankan
- *     anti-FOUC tema. Script defer tinggal mengonsumsi.
- *  3. Script inline tidak boleh menyentuh global milik pustaka yang di-defer
- *     (lucide, Swal) — pada saat inline berjalan, pustaka itu belum ada.
+ *  2. Script INLINE di `<head>` berjalan saat parsing — yaitu SEBELUM script
+ *     defer. Inline head di halaman ini justru men-*define* global.
+ *  3. Script inline tidak boleh menyentuh global milik pustaka yang di-defer.
  *
  * @coversNothing
  */
@@ -47,15 +26,10 @@ class HeadScriptDeferTest extends TestCase
     /**
      * index.php dengan blok PHP diganti spasi, TANPA menghapus baris baru.
      *
-     * Kenapa spasi dan bukan token: statement `include 'partials/head.php';`
-     * berada DI DALAM blok PHP, jadi kalau bloknya diganti token, statement
-     * itu ikut hilang dan posisinya tak bisa diukur lagi. Spasi menjaga
-     * jumlah baris, jadi nomor baris tetap sebanding antar dua sumber.
-     *
-     * Dan kenapa bukan offset karakter: dulu offset dihitung pada string
-     * ternormalisasi sementara yang lain pada string mentah. Normalisasi
-     * memendekkan string, jadi kedua angka tidak sebanding — perbandingannya
-     * terlihat masuk akal tapi tidak bermakna.
+     * Spasi menjaga jumlah baris, jadi nomor baris tetap sebanding antar dua
+     * sumber. Dan kenapa bukan offset karakter: normalisasi memendekkan string,
+     * jadi offset pada string ternormalisasi dan pada string mentah tidak
+     * sebanding — perbandingannya terlihat masuk akal tapi tidak bermakna.
      */
     private string $masked;
 
@@ -64,15 +38,9 @@ class HeadScriptDeferTest extends TestCase
 
     /**
      * Dua file dibaca TERPISAH, lalu urutan render dipulihkan lewat posisi
-     * `include` -- bukan dengan menyalin isi partial ke dalam halaman.
+     * `include` — bukan dengan menyalin isi partial ke dalam halaman.
      *
-     * Percobaan menempelkan isi `partials/head.php` ke tempat `include`
-     * menghasilkan halaman dengan urutan yang salah diam-diam, dan test
-     * lalu menyimpang "MEEL_BASE tidak ada sebelum script eksternal"
-     * padahal di render nyata keduanya berurutan benar. Menyusun ulang
-     * markup supaya tes lebih ease adalah cara memastikan tes salah.
-     *
-     * Yang perlu dijaga sebenarnya sederhana:
+     * Yang dijaga:
      *   - partials/head.php meng-inline MEEL_BASE & MEEL_CSRF
      *   - partials/head.php di-include SEBELUM tag script pertama di index.php
      *   - script anti-FOUC tema juga ada di head.php, dan tema itu harus
@@ -90,7 +58,7 @@ class HeadScriptDeferTest extends TestCase
         );
 
         $this->assertMatchesRegularExpression(
-            "/include\s+['\"][^'\"]*partials\/head\.php['\"]\s*;/",
+            "/include\s+(?:__DIR__\s*\.\s*)?['\"][^'\"]*partials\/head\.php['\"]\s*;/",
             $this->page,
             'index.php harus meng-include partials/head.php — pola include berubah'
         );
@@ -111,7 +79,7 @@ class HeadScriptDeferTest extends TestCase
     private function headIncludeLine(): int
     {
         foreach (explode("\n", $this->page) as $i => $line) {
-            if (preg_match("/include\s+['\"][^'\"]*partials\/head\.php['\"]\s*;/", $line)) {
+            if (preg_match("/include\s+(?:__DIR__\s*\.\s*)?['\"][^'\"]*partials\/head\.php['\"]\s*;/", $line)) {
                 return $i + 1;
             }
         }
@@ -121,14 +89,10 @@ class HeadScriptDeferTest extends TestCase
     /**
      * Tag script eksternal beserta nama file dan status defer.
      *
-     * Blok PHP dinormalkan lebih dulu. Ini bukan-detail kecil: atribut `src`
-     * di repo ini hampir selalu berisi short-echo, misalnya
-     * `src="…lucide.js<?= meel_asset_version('…') ?>"`. Karakter `>` di
-     * dalam `?>` adalah penutup tag bagi pola `[^>]*>`, jadi tag terpotong
-     * tepat SEBELUM `defer` -- dan setiap script akan terbaca blocking
-     * walau jelas bertanda defer. Pola yang sama sudah-damagedmetahun
-     * Angela lalu merusak perintah hitung baku di `.agents/Todo.md`; di sini
-     * ia muncul lagi, di test yang ditulis untuk menjaganya.
+     * Blok PHP dinormalkan lebih dulu: atribut `src` di repo ini hampir selalu
+     * berisi short-echo, dan karakter `>` di dalam `?>` adalah penutup tag bagi
+     * pola `[^>]*>` — sehingga tag terpotong tepat SEBELUM `defer` dan setiap
+     * script terbaca blocking walau jelas bertanda defer.
      *
      * @return array<int, array{0:int, 1:string, 2:bool}> [baris, nama, defer]
      */
@@ -223,8 +187,6 @@ class HeadScriptDeferTest extends TestCase
      */
     public function testHeadInlineScriptsDoNotTouchDeferredLibraries(): void
     {
-        // Inline head ada di partials/head.php; yang di index.php hanya script
-        // eksternal. Keduanya diperiksa karena keduanya jalan sebelum script defer.
         preg_match_all(
             '/<script(?![^>]*\bsrc\s*=)[^>]*>(.*?)<\/script>/s',
             $this->head,
@@ -271,7 +233,6 @@ class HeadScriptDeferTest extends TestCase
             . 'partials/head.php -- tanpa itu tema berkedip saat halaman dimuat'
         );
 
-        // Ia harus benar-benar menulis data-theme, bukan sekadar membaca.
         $antiFlickerAt = (int) strpos($this->head, 'meel_theme');
         $segment = substr($this->head, $antiFlickerAt, 900);
         $this->assertMatchesRegularExpression(
@@ -280,8 +241,6 @@ class HeadScriptDeferTest extends TestCase
             'Script anti-FOUC harus benar-benar menulis data-theme ke <html>'
         );
 
-        // partials/head.php di-include sebelum script eksternal pertama, jadi
-        // anti-FOUC selalu tampil mendahului theme.js yang sekarang di-defer.
         $this->assertLessThan(
             $this->firstExternalScriptLine(),
             $this->headIncludeLine(),
@@ -316,9 +275,6 @@ class HeadScriptDeferTest extends TestCase
             'MEEL_BASE ditulis sebelum MEEL_CSRF'
         );
 
-        // Yang menentukan: partial yang meng-inline itu harus tampil sebelum
-        // script eksternal pertama. Kalau tidak, nilainya `undefined` saat
-        // script defer (index-hub.js) mengonsumsi 소비.
         $this->assertLessThan(
             $this->firstExternalScriptLine(),
             $this->headIncludeLine(),

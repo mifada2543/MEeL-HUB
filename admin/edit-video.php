@@ -1,5 +1,4 @@
 <?php
-
 /**
  * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
  * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
@@ -8,10 +7,11 @@
  * @var \mysqli $conn
  */
 
-include '../auth/config.php';
-include '../auth/auth.php';
-include_once '../modules/core/helpers.php';
-require_once '../modules/core/japanese.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
+include_once __DIR__ . '/../modules/core/helpers.php';
+require_once __DIR__ . '/../modules/core/japanese.php';
+require_once __DIR__ . '/includes/media_editor.php';
 
 $_EDIT_CONTEXT = $_EDIT_CONTEXT ?? 'admin';
 
@@ -28,15 +28,7 @@ if ($curr_role === 'guest') {
 }
 
 $edit_id = (int)($_GET['id'] ?? 0);
-if ($_EDIT_CONTEXT === 'admin') {
-    if (!$is_admin) {
-        header('Location: ' . base_url('/profile/edit-video?id=' . $edit_id));
-        exit;
-    }
-} elseif ($is_admin) {
-    header('Location: ' . base_url('/admin/edit-video?id=' . $edit_id));
-    exit;
-}
+meel_editor_context_redirect('video', $edit_id, $is_admin, $_EDIT_CONTEXT);
 
 $back_url = meel_back_url(
     $_EDIT_CONTEXT === 'admin' ? base_url('/admin/stats') : base_url('/profile/manage')
@@ -58,6 +50,7 @@ if (!$is_admin && !$is_owner) {
 }
 $status = "";
 $error_message = "";
+$cfg = meel_editor_media_config('video');
 if (isset($_POST['update'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error_message = "CSRF Token tidak valid.";
@@ -66,47 +59,10 @@ if (isset($_POST['update'])) {
         $description = trim($_POST['description'] ?? '');
         $old_thumb_name = $video['thumbnail'];
         $thumbnail_url = $old_thumb_name;
-        if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
-            $max_size = 5 * 1024 * 1024;
-            if ($_FILES['thumbnail']['size'] > $max_size) {
-                $error_message = 'Ukuran file thumbnail maksimal 5MB.';
-            }
-            if (empty($error_message)) {
-                $allowed_mime = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
-                $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                $upload_mime = finfo_file($finfo, $_FILES['thumbnail']['tmp_name']);
-                finfo_close($finfo);
-                if (!in_array($upload_mime, $allowed_mime, true)) {
-                    $error_message = 'File thumbnail harus berupa gambar (JPEG, PNG, WebP, GIF, atau AVIF).';
-                }
-            }
-            if (empty($error_message)) {
-                $target_dir = meel_media_base_path('video') . '/thumbnail/';
-                if (!is_dir($target_dir)) {
-                    @mkdir($target_dir, 0755, true);
-                }
-                $clean_title = getRomajiName($title);
-                if (empty($clean_title)) $clean_title = 'video-thumb';
-
-                $new_name = meel_reserve_unique_filename($target_dir, $clean_title . '_thumb', 'webp', 200, '_');
-                $upload_path = $new_name !== null ? $target_dir . $new_name : null;
-                $ffmpeg_bin = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
-
-                $cmd = escapeshellarg($ffmpeg_bin) . " -y -i " . escapeshellarg($_FILES['thumbnail']['tmp_name'])
-                    . " -vf \"scale=500:500:force_original_aspect_ratio=decrease,pad=500:500:(ow-iw)/2:(oh-ih)/2\" -c:v libwebp -q:v 78 "
-                    . escapeshellarg($upload_path) . " 2>&1";
-                exec($cmd, $out, $ret);
-                if ($ret === 0 && file_exists($upload_path) && filesize($upload_path) > 0) {
-                    $thumbnail_url = $new_name;
-                } else {
-                    if (move_uploaded_file($_FILES['thumbnail']['tmp_name'], $upload_path)) {
-                        $thumbnail_url = $new_name;
-                    } else {
-                        @unlink($upload_path);
-                        $error_message = 'Gagal mengupload thumbnail ke server.';
-                    }
-                }
-            }
+        $thumb_upload = meel_editor_upload_thumbnail($_FILES, $cfg, $title, $old_thumb_name, $error_message);
+        $thumbnail_url = $thumb_upload['url'];
+        if ($thumb_upload['error'] !== '') {
+            $error_message = $thumb_upload['error'];
         }
         if (empty($error_message) && isset($_FILES['subtitle']) && $_FILES['subtitle']['error'] === UPLOAD_ERR_OK) {
             $sub_ext = strtolower(pathinfo($_FILES['subtitle']['name'], PATHINFO_EXTENSION));
@@ -143,7 +99,6 @@ if (isset($_POST['update'])) {
         if ($title === '') {
             $error_message = "Judul video tidak boleh kosong.";
         } elseif ($error_message === '') {
-
             $meta = generate_search_metadata($title);
             if ($adminMedia->updateVideo($id, $title, $description, $thumbnail_url, $meta)) {
                 $status = "success";
@@ -208,6 +163,7 @@ if (is_dir($sub_scan_dir)) {
 }
 usort($existing_subtitles, fn($a, $b) => strcmp($a['lang'], $b['lang']));
 
+$record = $video;
 $thumb_src = !empty($video['thumbnail'])
     ? '../video/upload/thumbnail/' . htmlspecialchars($video['thumbnail'])
     : '../assets/img/video0.webp';
@@ -221,11 +177,11 @@ $thumb_src = !empty($video['thumbnail'])
     $_META_DESC = 'Edit detail video di MEeL. Ubah judul, deskripsi, dan thumbnail video.';
     include __DIR__ . '/../partials/link.php';
     ?>
-    <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
-    <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/design-tokens.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime(__DIR__ . '/../assets/css/shared/upload-form.css') ?>">
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
-    <link rel="stylesheet" href="../assets/css/admin/edit/shared/main.css?v=<?= filemtime('../assets/css/admin/edit/shared/main.css') ?>">
-    <link rel="stylesheet" href="../assets/css/admin/edit/video/main.css?v=<?= filemtime('../assets/css/admin/edit/video/main.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin/edit/shared/main.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin/edit/shared/main.css') ?>">
+    <link rel="stylesheet" href="../assets/css/admin/edit/video/main.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin/edit/video/main.css') ?>">
 </head>
 
 <body class="theme-video">
@@ -256,22 +212,7 @@ $thumb_src = !empty($video['thumbnail'])
                     <span class="thumb-changed-badge" id="thumb-changed-badge">✓ Baru</span>
                 </div>
 
-                <div class="uploader-card">
-                    <?php if (!empty($video['uploader_pfp'])): ?>
-                        <img src="../profile/upload/<?= htmlspecialchars($video['uploader_pfp']) ?>"
-                            alt="<?= htmlspecialchars($video['uploader'] ?? '') ?>"
-                            class="uploader-avatar">
-                    <?php else: ?>
-                        <div class="uploader-avatar-fallback">
-                            <?= strtoupper(substr($video['uploader'] ?? 'U', 0, 1)) ?>
-                        </div>
-                    <?php endif; ?>
-                    <div class="uploader-info">
-                        <div class="uploader-label">Diunggah oleh</div>
-                        <div class="uploader-name">@<?= htmlspecialchars($video['uploader'] ?? '—') ?></div>
-                    </div>
-                    <div class="uploader-role-badge"><?= $is_admin && !$is_owner ? 'Admin Edit' : 'Uploader' ?></div>
-                </div>
+<?php include __DIR__ . '/partials/edit_media_uploader_card.php'; ?>
 
                 <div class="meta-info">
                     <div class="meta-row">
@@ -294,20 +235,7 @@ $thumb_src = !empty($video['thumbnail'])
                     </div>
                 </div>
 
-                <div class="stats-strip">
-                    <div class="stat-chip">
-                        <div class="stat-number"><?= number_format($video['views'] ?? 0) ?></div>
-                        <div class="stat-label">Views</div>
-                    </div>
-                    <div class="stat-chip">
-                        <div class="stat-number"><?= number_format($video['likes'] ?? 0) ?></div>
-                        <div class="stat-label">Likes</div>
-                    </div>
-                    <div class="stat-chip">
-                        <div class="stat-number" style="color:#f87171;"><?= number_format($video['dislikes'] ?? 0) ?></div>
-                        <div class="stat-label">Dislikes</div>
-                    </div>
-                </div>
+<?php include __DIR__ . '/partials/edit_media_stats.php'; ?>
 
                 <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto;">
                     <a href="<?= base_url('/video/watch?v=' . (int)$id) ?>" class="btn-secondary" style="justify-content:center;">
@@ -441,14 +369,14 @@ $thumb_src = !empty($video['thumbnail'])
         </div>
     </div>
 
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
     <?php $scripts_root = '../';
     include __DIR__ . '/../partials/scripts.php'; ?>
-    <script src="../assets/js/admin/edit/shared/form.js?v=<?= filemtime('../assets/js/admin/edit/shared/form.js') ?>"></script>
-    <script src="../assets/js/admin/edit/shared/thumbnail.js?v=<?= filemtime('../assets/js/admin/edit/shared/thumbnail.js') ?>"></script>
-    <script src="../assets/js/admin/edit/shared/dragdrop.js?v=<?= filemtime('../assets/js/admin/edit/shared/dragdrop.js') ?>"></script>
-    <script src="../assets/js/admin/edit/video.js?v=<?= filemtime('../assets/js/admin/edit/video.js') ?>"></script>
-    <script src="../assets/js/shared/lang-dropdown.js?v=<?= filemtime('../assets/js/shared/lang-dropdown.js') ?>"></script>
+    <script src="../assets/js/admin/edit/shared/form.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/edit/shared/form.js') ?>"></script>
+    <script src="../assets/js/admin/edit/shared/thumbnail.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/edit/shared/thumbnail.js') ?>"></script>
+    <script src="../assets/js/admin/edit/shared/dragdrop.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/edit/shared/dragdrop.js') ?>"></script>
+    <script src="../assets/js/admin/edit/video.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/edit/video.js') ?>"></script>
+    <script src="../assets/js/shared/lang-dropdown.js?v=<?= filemtime(__DIR__ . '/../assets/js/shared/lang-dropdown.js') ?>"></script>
     <script>
         <?php if ($status === "success"): ?>
             Swal.fire({

@@ -1,5 +1,4 @@
 <?php
-
 return [
     'base.css',
     'mfa-switch.css',

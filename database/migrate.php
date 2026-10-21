@@ -35,6 +35,19 @@ function meel_mig_add_index(\mysqli $conn, string $table, string $index, string 
         }
     }
 }
+function meel_mig_add_unique_index(\mysqli $conn, string $table, string $index, string $cols): void
+{
+    if (meel_mig_has_index($conn, $table, $index)) {
+        return;
+    }
+    $result = $conn->query("ALTER TABLE `{$table}` ADD UNIQUE INDEX `{$index}` ({$cols})");
+    if (!$result) {
+        $err = $conn->error;
+        if (!str_contains($err, 'Duplicate') && !str_contains($err, 'already exists') && !str_contains($err, 'already added')) {
+            echo "[MEeL] ⚠ Warning ({$table}.{$index} UNIQUE): {$err}\n";
+        }
+    }
+}
 function meel_mig_add_fulltext(\mysqli $conn, string $table, string $index, string $cols): void
 {
     if (meel_mig_has_index($conn, $table, $index)) {
@@ -527,12 +540,62 @@ $migrations = [
                         COMMENT '1 = biaya sudah dikembalikan oleh sweeper'");
                 }
             },
-            // Indeks untuk sweeper: cari baris macet per status.
+
             function ($conn) {
                 meel_mig_add_index($conn, 'upload_queue', 'idx_uq_status_created', 'status, created_at');
             },
             function ($conn) {
                 meel_mig_add_index($conn, 'transcode_queue', 'idx_tq_status_created', 'status, created_at');
+            },
+        ],
+    ],
+    7 => [
+        'description' => 'Anti-replay TOTP (mfa_last_step) + perbaikan unique view_logs (P0)',
+        'sql' => [
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'users', 'mfa_last_step')) {
+                    $conn->query("ALTER TABLE users
+                        ADD COLUMN mfa_last_step BIGINT NULL DEFAULT NULL
+                        COMMENT 'Time-step TOTP terakhir yang dipakai; kode dengan step <= ini ditolak'");
+                }
+            },
+            function ($conn) {
+                $conn->query("DELETE FROM view_logs WHERE video_id IS NOT NULL AND video_id <> 0 AND id NOT IN (
+                    SELECT keep_id FROM (
+                        SELECT MIN(id) AS keep_id FROM view_logs
+                         WHERE video_id IS NOT NULL AND video_id <> 0
+                         GROUP BY user_id, video_id
+                    ) AS keep_rows
+                )");
+            },
+            function ($conn) {
+                $conn->query("DELETE FROM view_logs WHERE music_id IS NOT NULL AND music_id <> 0 AND id NOT IN (
+                    SELECT keep_id FROM (
+                        SELECT MIN(id) AS keep_id FROM view_logs
+                         WHERE music_id IS NOT NULL AND music_id <> 0
+                         GROUP BY user_id, music_id
+                    ) AS keep_rows
+                )");
+            },
+            function ($conn) {
+                $conn->query("ALTER TABLE view_logs
+                    MODIFY COLUMN video_id INT(11) DEFAULT NULL,
+                    MODIFY COLUMN music_id INT(11) DEFAULT NULL");
+            },
+            function ($conn) {
+                $conn->query("UPDATE view_logs SET music_id = NULL WHERE video_id IS NOT NULL AND video_id <> 0");
+                $conn->query("UPDATE view_logs SET video_id = NULL WHERE music_id IS NOT NULL AND music_id <> 0");
+            },
+            function ($conn) {
+                if (meel_mig_has_index($conn, 'view_logs', 'unique_view')) {
+                    $conn->query("ALTER TABLE view_logs DROP INDEX unique_view");
+                }
+            },
+            function ($conn) {
+                meel_mig_add_unique_index($conn, 'view_logs', 'uq_view_video', 'user_id, video_id');
+            },
+            function ($conn) {
+                meel_mig_add_unique_index($conn, 'view_logs', 'uq_view_music', 'user_id, music_id');
             },
         ],
     ],
@@ -552,18 +615,32 @@ $latest_applied = $current_version;
 foreach ($migrations as $version => $migration) {
     if ($version > $current_version) {
         echo "[MEeL] Menjalankan migrasi v{$version}: {$migration['description']}...\n";
-        foreach ($migration['sql'] as $migration_step) {
-            if (is_callable($migration_step)) {
-                try {
-                    $migration_step($conn);
-                    $err = $conn->error;
-                    if ($err && !str_contains($err, 'Duplicate key name') && !str_contains($err, 'already exists')) {
-                        echo "[MEeL] ⚠ Warning: {$err}\n";
-                    }
-                } catch (\Throwable $e) {
-                    echo "[MEeL] ⚠ Warning: " . $e->getMessage() . "\n";
-                }
+        $failures = [];
+        foreach ($migration['sql'] as $step_index => $migration_step) {
+            if (!is_callable($migration_step)) {
+                continue;
             }
+            try {
+                $migration_step($conn);
+                $err = $conn->error;
+                if ($err && !str_contains($err, 'Duplicate key name') && !str_contains($err, 'already exists')) {
+                    $failures[] = "langkah {$step_index}: {$err}";
+                }
+            } catch (\Throwable $e) {
+                $failures[] = "langkah {$step_index}: " . $e->getMessage();
+            }
+        }
+
+        if (!empty($failures)) {
+            foreach ($failures as $failure) {
+                fwrite(STDERR, "[MEeL] GAGAL v{$version} {$failure}\n");
+            }
+            fwrite(
+                STDERR,
+                "[MEeL] Versi v{$version} TIDAK dicatat. Perbaiki masalah di atas lalu jalankan ulang;\n"
+                . "       langkah yang gagal akan dicoba lagi karena versi masih tertinggal.\n"
+            );
+            exit(1);
         }
 
         $stmt = $conn->prepare("INSERT INTO db_version (version) VALUES (?)");

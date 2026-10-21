@@ -1,5 +1,3 @@
-# Deny all web access — helper (url, storage, audio, metadata, subtitle,
-# upload) hanya boleh di-include via PHP.
 Options -Indexes
 
 <IfModule mod_rewrite.c>

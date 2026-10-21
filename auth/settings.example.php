@@ -1,12 +1,4 @@
 <?php
-// Contoh konfigurasi server: cp settings.example.php settings.php lalu isi nilai.
-// Hanya data — tanpa session, header, atau logic.
-
-// define('MEEL_ENV', 'production');
-// define('APP_DEBUG', true);   // guard error_log di controllers
-
-// Kredensial database. MEEL_DB_* = override untuk CI/container; `?:` dipakai
-// supaya env yang belum di-set tidak berubah jadi string kosong.
 if (!isset($server))   $server   = (getenv('MEEL_DB_HOST') ?: "localhost");
 if (!isset($username)) $username = (getenv('MEEL_DB_USER') ?: "root");
 if (!isset($password)) $password = (getenv('MEEL_DB_PASS') ?: "");
@@ -15,9 +7,13 @@ if (!isset($db))       $db       = (getenv('MEEL_DB_NAME') ?: "MEeL");
 if (!defined('MEEL_HOST')) {
     define('MEEL_HOST', $_SERVER['HTTP_HOST'] ?? '');
 }
+if (!defined('MEEL_CANONICAL_HOST')) {
+    define('MEEL_CANONICAL_HOST', '');
+}
+if (!defined('MEEL_TIMEZONE')) {
+    define('MEEL_TIMEZONE', 'Asia/Jakarta');
+}
 
-// TRUSTED PROXY — cegah IP spoofing: header proxy HANYA dipercaya bila REMOTE_ADDR ada di MEEL_TRUSTED_PROXIES.
-// Diset true padahal server diakses langsung → attacker bisa memalsukan IP untuk bypass IP-ban.
 if (!defined('MEEL_TRUST_PROXY_HEADERS')) {
     define('MEEL_TRUST_PROXY_HEADERS', false);
 }
@@ -39,7 +35,6 @@ if (!defined('MEEL_YTDLP_PATH')) {
     define('MEEL_YTDLP_PATH', '');
 }
 
-// Jangan commit path yang mengandung username OS asli Anda.
 if (!defined('MEEL_HDD_BASE')) {
     define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');
 
@@ -51,8 +46,6 @@ if (!defined('MEEL_HDD_BASE')) {
     define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
 }
 
-// Aktifkan hanya jika mod_xsendfile sudah terinstall & terkonfigurasi di Apache
-// (lihat docs/id/installation.md → "Aktifkan mod_xsendfile").
 if (!defined('MEEL_USE_XSENDFILE')) {
     define('MEEL_USE_XSENDFILE', false);
 }

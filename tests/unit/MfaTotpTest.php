@@ -1,22 +1,18 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
  * Test untuk modules/auth/helpers/mfa.php — SELURUH logika TOTP/MFA.
  *
- * Sebelum test ini: file berisi 7 fungsi (base32_decode, generate_mfa_secret,
- * generate_totp, verify_totp, generate_otpauth_url, generate_backup_codes,
- * verify_backup_code) dan TIDAK SATU pun punya test. Test yang ada
- * (LoginNowVariableTest, security_test) hanya memeriksa STRUKTUR kode —
- * letak variabel `$now`, daftar file — bukan logikanya.
+ * Sebelum test ini, file berisi 7 fungsi tanpa satu pun test; test yang ada
+ * hanya memeriksa struktur kode, bukan logikanya.
  *
  * Yang dikunci di sini:
- *  1. Kesesuaian dengan RFC 6238 (test vector) — proves the algorithm is right.
+ *  1. Kesesuaian dengan RFC 6238 (test vector).
  *  2. generate_mfa_secret() hanya menghasilkan karakter base32 yang sah.
- *  3. Jendela waktu verify_totp (±1 slice = toleransi 30 detik, sesuai RFC 6238 §5.2).
+ *  3. Jendela waktu verify_totp (±1 slice = toleransi 30 detik).
  *  4. Backup code: hash, sekali pakai, dan tidak bocor lewat return value.
- *  5. base32_decode menolak input tak valid (bug yang ditemukan 2026-10-14).
+ *  5. base32_decode menolak input tak invalid.
  */
 
 /** @coversNothing */
@@ -34,8 +30,6 @@ class MfaTotpTest extends TestCase
     /** @dataProvider rfcCounterProvider */
     public function testTotpMatchesRfc6238Vectors(int $counter, string $expected): void
     {
-        // RFC 6238 Appendix B. 8 digit mode truncated ke 6 digit
-        // (TOTP dengan digits=6 memakai mod 10^6 dari nilai yang sama).
         $this->assertSame(
             $expected,
             generate_totp(self::RFC_SECRET, $counter),
@@ -56,7 +50,6 @@ class MfaTotpTest extends TestCase
 
     public function testRfcSecretDecodesToTwentyBytes(): void
     {
-        // "12345678901234567890" — kunci HMAC yang dipakai test vector.
         $this->assertSame(
             '3132333435363738393031323334353637383930',
             bin2hex(base32_decode(self::RFC_SECRET)),
@@ -85,21 +78,16 @@ class MfaTotpTest extends TestCase
     }
 
     /**
-     * BUG 2026-10-14: karakter di luar alfabet sebelumnya DILEWATI diam-diam
-     * (`if ($pos === false) continue;`). Akibatnya dua secret berbeda bisa
-     * collapse ke byte yang sama sehingga menghasilkan kode TOTP identik —
-     * secret "AAAA…AAAA" (32 A) dan "AAAA…AAAA1" (31 A + "1") memakai
-     * HMAC key yang sama.
+     * BUG 2026-10-14: karakter di luar alfabet sebelumnya DILEWATI diam-diam.
+     * Akibatnya dua secret berbeda bisa collapse ke byte yang sama sehingga
+     * menghasilkan kode TOTP identik.
      *
-     * Dampak produksi saat ini terbatas karena mfa_secret hanya bisa diset
-     * oleh generate_mfa_secret() (selalu 32 karakter sah). Tapi begitu ada
-     * impor/penyuntingan secret, dua akun bisa diam-diam berbagi satu kunci.
+     * Dampak produksi saat ini terbatas karena mfa_secret hanya bisa diset oleh
+     * generate_mfa_secret(). Tapi begitu ada impor/penyuntingan secret, dua
+     * akun bisa diam-diam berbagi satu kunci.
      */
     public function testBase32DecodeRejectsCharactersOutsideAlphabet(): void
     {
-        // '0' (nol) dan '1' (satu) TIDAK ada di alfabet RFC 4648 A-Z2-7.
-        // base32_decode() sekarang MELEMPARK exception, bukan diam-diam
-        // membuang karakter.
         $this->expectException(InvalidArgumentException::class);
         base32_decode('GEZDGNBVGY3TQOJQ0O1');
     }
@@ -112,17 +100,13 @@ class MfaTotpTest extends TestCase
     public function testInvalidSecretCannotShareHmacKeyWithValidSecret(): void
     {
         $valid = str_repeat('A', 32);
-        $injected = str_repeat('A', 32) . '10'; // 32 A + karakter tak valid
+        $injected = str_repeat('A', 32) . '10';
 
         $this->assertFalse(
             base32_decode_is_valid($injected),
             'Secret dengan karakter tak valid harus ditandai invalid'
         );
 
-        // Saat dulu base32_decode('...AAAA10') menghasilkan key yang sama
-        // dengan '...AAAA', sehingga kode TOTP-nya identik. Sekarang
-        // base32_decode() menolak, jadi verify_totp() tidak akan pernah
-        // mencocokkan kode dari secret lain.
         $this->assertFalse(
             verify_totp($injected, generate_totp($valid, (int)floor(time() / 30))),
             'Secret yang dikontaminasi karakter tak valid tidak boleh mengaktifkan kode secret lain'
@@ -157,7 +141,7 @@ class MfaTotpTest extends TestCase
         $now = (int)floor(time() / 30);
 
         $validCode = generate_totp($valid, $now);
-        // Secret rusak: hanya karakter 'A' yang valid, sisanya tak valid.
+
         $broken = str_repeat('A', 32) . '10';
 
         $this->assertFalse(
@@ -234,8 +218,6 @@ class MfaTotpTest extends TestCase
     {
         $secret = generate_mfa_secret();
 
-        // hash_equals() menolak panjang berbeda secara implisit, tapi kode
-        // dengan karakter non-digit harus tetap ditolak dan tidak fatal.
         foreach (['', '12345', '1234567', 'abcdef', '12 456'] as $bad) {
             $this->assertIsBool(
                 verify_totp($secret, $bad),
@@ -255,21 +237,48 @@ class MfaTotpTest extends TestCase
 
     public function testVerifyTotpUsesHashEqualsForConstantTimeComparison(): void
     {
-        // Guard statis: perbandingan kode TOTP wajib timing-safe supaya
-        // penyerang tidak bisa menebak digit satu per satu lewat timing.
         $src = (string)file_get_contents(MEEL_ROOT . '/modules/auth/helpers/mfa.php');
 
-        $verifyFn = $this->extractFunction($src, 'verify_totp');
+        $compareFn = $this->extractFunction($src, 'verify_totp_step');
         $this->assertStringContainsString(
             'hash_equals(',
-            $verifyFn,
-            'verify_totp() harus pakai hash_equals(), bukan === atau =='
+            $compareFn,
+            'verify_totp_step() harus pakai hash_equals(), bukan === atau =='
         );
         $this->assertDoesNotMatchRegularExpression(
             '/hash_equals\(.*\)\s*===/',
-            $verifyFn,
+            $compareFn,
             'Jangan membandingkan hasil hash_equals dengan ==='
         );
+
+        $verifyFn = $this->extractFunction($src, 'verify_totp');
+        $this->assertStringContainsString(
+            'verify_totp_step(',
+            $verifyFn,
+            'verify_totp() harus mendelegasikan ke verify_totp_step()'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/(\$expected|\$code)\s*(===|==)\s*(\$expected|\$code)/',
+            $verifyFn,
+            'verify_totp() tidak boleh membandingkan kode dengan === atau =='
+        );
+    }
+
+    /** Anti-replay: verify_totp_step() harus mengembalikan step, bukan bool. */
+    public function testVerifyTotpStepReturnsMatchedStep(): void
+    {
+        $secret = generate_mfa_secret();
+        $now = (int)floor(time() / 30);
+        $code = generate_totp($secret, $now);
+
+        $this->assertSame($now, verify_totp_step($secret, $code));
+
+        $oldCode = generate_totp($secret, $now - 1);
+        $this->assertSame($now - 1, verify_totp_step($secret, $oldCode));
+
+        $this->assertNull(verify_totp_step($secret, '000000'), 'kode asal-asalan harus null');
+        $this->assertNull(verify_totp_step($secret, '12345'), 'kode 5 digit harus null');
+        $this->assertNull(verify_totp_step($secret, ''), 'kode kosong harus null');
     }
 
     public function testOtpauthUrlFormat(): void
@@ -284,7 +293,6 @@ class MfaTotpTest extends TestCase
 
     public function testOtpauthUrlEscapesUsernameSpecialCharacters(): void
     {
-        // Username dengan karakter khusus harus ter-encode supaya label valid.
         $url = generate_otpauth_url('ABCDEFGH', 'budi@meel.com');
         $this->assertStringNotContainsString('@', substr($url, strlen('otpauth://totp/'), 30));
         $this->assertStringContainsString(rawurlencode('MEeL:budi@meel.com'), $url);
@@ -348,7 +356,6 @@ class MfaTotpTest extends TestCase
         $first = verify_backup_code($hashedJson, $target);
         $this->assertTrue($first['valid']);
 
-        // Pakai lagi kode yang sama, dengan daftar sudah 7-item.
         $second = verify_backup_code(json_encode($first['remaining']), $target);
         $this->assertFalse(
             $second['valid'],
@@ -362,7 +369,7 @@ class MfaTotpTest extends TestCase
         $hashedJson = json_encode($codes['hashed']);
 
         $result = verify_backup_code($hashedJson, '111111');
-        // 111111 mungkin kebetulan ada; yang pasti: kandidat tak ada harus ditolak.
+
         if (!$result['valid']) {
             $this->assertIsBool($result['valid']);
         }
@@ -375,8 +382,6 @@ class MfaTotpTest extends TestCase
 
     public function testVerifyBackupCodeDoesNotLeakWhichPositionMatched(): void
     {
-        // Tidak ada kanal timing yang discouraging; yang diuji di sini adalah
-        // bahwa remaining benar-benar_COPY dan tidak mengubah array asli.
         $codes = generate_backup_codes();
         $hashed = $codes['hashed'];
         $hashedJson = json_encode($hashed);

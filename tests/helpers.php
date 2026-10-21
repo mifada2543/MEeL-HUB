@@ -1,5 +1,4 @@
 <?php
-
 if (!defined('PROJECT_ROOT')) {
     define('PROJECT_ROOT', realpath(__DIR__ . '/..'));
 }
@@ -13,7 +12,6 @@ if (!defined('CLR_RESET')) { define('CLR_RESET', "\033[0m"); }
 if (!defined('CLR_GRAY')) { define('CLR_GRAY', "\033[90m"); }
 
 if (!function_exists('p')) {
-
 function p(string $msg = '', string $color = ''): void {
     $prefix = match($color) {
         CLR_GREEN => '  ✓ ',
@@ -26,7 +24,6 @@ function p(string $msg = '', string $color = ''): void {
 }
 
 if (!function_exists('print_header')) {
-
 function print_header(string $title): void {
     echo "\n" . CLR_CYAN . CLR_BOLD . "╔══ " . str_repeat('═', 60) . "╗\n";
     echo "║   " . str_pad($title, 56) . "║\n";
@@ -35,7 +32,6 @@ function print_header(string $title): void {
 }
 
 if (!function_exists('record')) {
-
 function record(string $name, bool $pass, bool $isWarning = false, string $detail = ''): void {
     $GLOBALS['total_tests']++;
     if ($pass && !$isWarning) {
@@ -53,7 +49,6 @@ function record(string $name, bool $pass, bool $isWarning = false, string $detai
 }
 
 if (!function_exists('getPhpFiles')) {
-
 function getPhpFiles(): array {
     static $exclude_dirs = null;
     if ($exclude_dirs === null) {
@@ -83,9 +78,7 @@ function getPhpFiles(): array {
 }
 
 if (!function_exists('stripPhpComments')) {
-
 function stripPhpComments(string $code): string {
-
     $code = preg_replace('/\/\*.*?\*\//s', '', $code);
 
     $code = preg_replace('/\/\/.*$/m', '', $code);
@@ -95,11 +88,57 @@ function stripPhpComments(string $code): string {
 }
 
 if (!function_exists('countInFile')) {
-
 function countInFile(string $path, string $pattern): int {
     $content = file_get_contents($path);
     $content = stripPhpComments($content);
     return preg_match_all($pattern, $content);
+}
+}
+
+if (!function_exists('sourceWithIncludes')) {
+/**
+ * Sumber sebuah berkas DILETAKHI file lokal yang di-require/include-nya.
+ *
+ * Pemeriksa keamanan sering menulis "file X harus punya pola Y". Begitu
+ * kode itu dipindah ke berkas lain, pemeriksa membaca berkas yang sekarang
+ * kosong dari yang dicari, tidak menemukan apa-apa, lalu melaporkannya
+ * aman. Fungsi ini menutup celah itu: isinya berkas yang diminta PLUS isi
+ * berkas lokal yang di-require/include-nya.
+ *
+ * @param string $relativePath path relatif terhadap PROJECT_ROOT
+ * @param int $depth kedalaman rantai include yang diikuti
+ */
+function sourceWithIncludes(string $relativePath, int $depth = 3): string {
+    $root = PROJECT_ROOT;
+    $seen = [];
+
+    $collect = function (string $path, int $level) use (&$collect, &$seen, $depth): string {
+        $real = realpath($path);
+        if ($real === false || isset($seen[$real])) {
+            return '';
+        }
+        $seen[$real] = true;
+
+        $src = (string) file_get_contents($real);
+        if ($level <= 0) {
+            return $src;
+        }
+
+        $dir = dirname($real);
+        $pattern = '/(?:require|include)(?:_once)?\s*(?:__DIR__\s*\.\s*)?[\'"]([^\'"]+)[\'"]/';
+        if (preg_match_all($pattern, $src, $m)) {
+            foreach ($m[1] as $rel) {
+                if (str_contains($rel, '$')) {
+                    continue;
+                }
+                $src .= "\n" . $collect($dir . '/' . $rel, $level - 1);
+            }
+        }
+
+        return $src;
+    };
+
+    return $collect($root . '/' . $relativePath, $depth);
 }
 }
 

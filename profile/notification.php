@@ -1,9 +1,10 @@
 <?php
 /* reference build: MEeL-C8H11NO2 [1da0c33d1a4d7528] */
-require_once '../modules/auth/helpers/session.php';
+
+require_once __DIR__ . '/../modules/auth/helpers/session.php';
 meel_boot_session();
-require_once '../auth/config.php';
-require_once '../modules/core/Notification.php';
+require_once __DIR__ . '/../auth/config.php';
+require_once __DIR__ . '/../modules/core/Notification.php';
 
 if (empty($_SESSION['user_id'])) {
     header('Location: ../auth/login');
@@ -14,15 +15,10 @@ $userId = (int)$_SESSION['user_id'];
 
 $root = meel_base_url_path();
 $back_url = $root . '/profile/' . rawurlencode($_SESSION['username']);
-if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref = $_SERVER['HTTP_REFERER'];
-    $ref_host = parse_url($ref, PHP_URL_HOST);
-    $current_host = $_SERVER['HTTP_HOST'] ?? '';
-    if ($ref_host === $current_host || $ref_host === 'localhost' || $ref_host === '127.0.0.1') {
-        $ref_path = parse_url($ref, PHP_URL_PATH);
-        if (strpos($ref_path, '/profile/notification') === false) {
-            $back_url = $ref;
-        }
+if (($ref = meel_same_origin_referer()) !== null) {
+    $ref_path = (string) parse_url($ref, PHP_URL_PATH);
+    if (strpos($ref_path, '/profile/notification') === false) {
+        $back_url = $ref;
     }
 }
 
@@ -49,13 +45,13 @@ $ICONS = [
 <head>
     <?php
     $_META_TITLE = 'Notifikasi | MEeL';
-    include '../partials/link.php';
+    include __DIR__ . '/../partials/link.php';
     ?>
     <link rel="stylesheet" href="../assets/css/profile/notification.css?v=<?= filemtime(__DIR__ . '/../assets/css/profile/notification.css') ?>">
     <div id="notif-data" data-api-root="<?= htmlspecialchars($root) ?>/api/notification" data-csrf-token="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>" style="display:none;"></div>
 </head>
 <body class="min-h-screen p-4 md:p-8">
-    <?php include '../partials/nav.php'; ?>
+    <?php include __DIR__ . '/../partials/nav.php'; ?>
     <div class="max-w-2xl mx-auto pt-6">
         <div class="flex items-center gap-3 mb-5">
             <a href="<?= htmlspecialchars($back_url) ?>" class="p-2 rounded-lg hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" aria-label="Kembali">
@@ -123,6 +119,6 @@ $ICONS = [
     </div>
 
     <script src="../assets/js/profile/notification/interactions.js?v=<?= filemtime(__DIR__ . '/../assets/js/profile/notification/interactions.js') ?>"></script>
-    <?php include '../partials/footer.php'; ?>
+    <?php include __DIR__ . '/../partials/footer.php'; ?>
 </body>
 </html>

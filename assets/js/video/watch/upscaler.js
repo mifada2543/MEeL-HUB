@@ -50,6 +50,25 @@
     { id: "1.5", label: "1.5× resolusi video", short: "1.5×" },
     { id: "2", label: "2× resolusi video", short: "2×" },
   ];
+  var MODEL_GPU_LOAD = {
+    anime4k: 3,
+    meelscale: 2,
+    meelsharp: 1,
+  };
+  var MODEL_WARN = {
+    anime4k:
+      "Anime4K adalah model paling berat — tiap frame menjalankan banyak pass komputasi GPU. Beban GPU paling tinggi dari semua model dan frame bisa tersendat. Ingin lanjutkan?",
+    meelscale:
+      "MEeLScale memakai GPU untuk resampling resolusi — beban kerja sedang, lebih ringan dari Anime4K tapi lebih berat dari MEeLSharp. Ingin lanjutkan?",
+    meelsharp:
+      "MEeLSharp adalah model paling ringan di sini (Lanczos-3 + CAS), tapi GPU tetap bekerja penuh. Ingin lanjutkan?",
+  };
+  var SCALE_WARN = {
+    "1.5":
+      "Skala 1,5× membuat tekstur hasil upscale lebih besar dari video asli (1920×1080 → 2880×1620). Beban GPU naik cukup besar. Ingin lanjutkan?",
+    "2":
+      "Skala 2× membuat tekstur hasil upscale dua kali resolusi video (1920×1080 → 3840×2160). Beban GPU naik paling besar. Ingin lanjutkan?",
+  };
 
   function currentVideoId() {
     var id = window.playerConfig && window.playerConfig.id;
@@ -1023,6 +1042,313 @@ function turnOff() {
     if (state.enabled) turnOff();
   }
 
+  var confirming = false;
+  var confirmGuardBound = false;
+  function needsEnableConfirm(next) {
+    return next === true;
+  }
+  function needsModelConfirm(prev, next) {
+    return !!next && prev !== next;
+  }
+  function needsScaleConfirm(prev, next) {
+    return !!next && next !== "auto" && prev !== next;
+  }
+  function canUseTopLayer() {
+    return (
+      typeof HTMLElement !== "undefined" && "popover" in HTMLElement.prototype
+    );
+  }
+  function swalConfirm(opts) {
+    if (typeof Swal === "undefined" || !Swal || typeof Swal.fire !== "function") {
+      if (typeof window.confirm !== "function") return Promise.resolve(false);
+      return Promise.resolve(window.confirm(opts.text || opts.title || "Lanjutkan?"));
+    }
+    var cfg = {
+      title: opts.title,
+      text: opts.text,
+      icon: "warning",
+      iconColor: "#ef4444",
+      background: "#141820",
+      color: "#ffffff",
+      showCancelButton: true,
+      confirmButtonText: opts.confirmText || "YA, LANJUTKAN",
+      cancelButtonText: "BATAL",
+      reverseButtons: true,
+      buttonsStyling: false,
+      allowOutsideClick: false,
+      customClass: {
+        popup:
+          "border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl shadow-2xl",
+        title: "text-sm font-black uppercase tracking-wider pt-4 text-red-500",
+        htmlContainer:
+          "text-[11px] text-gray-300 normal-case tracking-normal leading-relaxed",
+        actions: "flex gap-2 w-full mt-4 px-3",
+        confirmButton:
+          "flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider py-2.5 rounded-xl transition-all border-none cursor-pointer",
+        cancelButton:
+          "flex-1 bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-black uppercase tracking-wider py-2.5 rounded-xl border border-white/10 cursor-pointer transition-all",
+      },
+    };
+    if (canUseTopLayer()) cfg.topLayer = true;
+    return Swal.fire(cfg).then(function (res) {
+      return !!(res && res.isConfirmed);
+    });
+  }
+  function fullscreenElement() {
+    return (
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement ||
+      null
+    );
+  }
+  function fullscreenTarget() {
+    if (!plyr || !plyr.elements) return null;
+    return plyr.elements.fullscreen || plyr.elements.container || null;
+  }
+  function isPlayerFullscreen() {
+    if (!plyr) return false;
+    try {
+      if (plyr.fullscreen && plyr.fullscreen.active) return true;
+    } catch (e) {}
+    var el = fullscreenElement();
+    var target = fullscreenTarget();
+    if (!el || !target) return false;
+    return el === target || !!(target.contains && target.contains(el));
+  }
+  function waitFullscreenChange() {
+    return new Promise(function (resolve) {
+      var done = false;
+      var finish = function () {
+        if (done) return;
+        done = true;
+        document.removeEventListener("fullscreenchange", finish);
+        document.removeEventListener("webkitfullscreenchange", finish);
+        resolve();
+      };
+      document.addEventListener("fullscreenchange", finish);
+      document.addEventListener("webkitfullscreenchange", finish);
+      setTimeout(finish, 400);
+    });
+  }
+  function leaveFullscreen() {
+    var el = fullscreenElement();
+    if (el) {
+      var fn =
+        document.exitFullscreen ||
+        document.webkitExitFullscreen ||
+        document.mozCancelFullScreen ||
+        document.msExitFullscreen;
+      if (fn) {
+        try {
+          var p = fn.call(document);
+          if (p && typeof p.catch === "function") p.catch(function () {});
+        } catch (e) {}
+      }
+      return waitFullscreenChange();
+    }
+    if (plyr && plyr.fullscreen && typeof plyr.fullscreen.exit === "function") {
+      try {
+        plyr.fullscreen.exit();
+      } catch (e) {}
+    }
+    return new Promise(function (resolve) {
+      setTimeout(resolve, 80);
+    });
+  }
+  function enterFullscreen() {
+    var target = fullscreenTarget();
+    if (!target) return Promise.resolve(false);
+    if (fullscreenElement()) return Promise.resolve(true);
+    var attempt = function (withOptions) {
+      try {
+        var p = withOptions
+          ? target.requestFullscreen({ navigationUI: "hide" })
+          : target.requestFullscreen();
+        if (p && typeof p.then === "function") {
+          return p.then(
+            function () {
+              return true;
+            },
+            function () {
+              return false;
+            },
+          );
+        }
+        return Promise.resolve(true);
+      } catch (e) {
+        return Promise.resolve(false);
+      }
+    };
+    var verify = function () {
+      return new Promise(function (resolve) {
+        setTimeout(function () {
+          resolve(!!fullscreenElement());
+        }, 250);
+      });
+    };
+    var plyrEnter = function () {
+      if (
+        plyr &&
+        plyr.fullscreen &&
+        typeof plyr.fullscreen.enter === "function"
+      ) {
+        try {
+          plyr.fullscreen.enter();
+          return true;
+        } catch (e) {}
+      }
+      return false;
+    };
+    return attempt(true)
+      .then(function (ok) {
+        return ok ? true : attempt(false);
+      })
+      .then(function () {
+        return verify();
+      })
+      .then(function (verified) {
+        if (verified) return true;
+        if (!plyrEnter()) return attempt(true);
+        return verify().then(function (afterPlyr) {
+          return afterPlyr ? true : attempt(true);
+        });
+      })
+      .then(function (ok) {
+        return !!ok;
+      });
+  }
+  function bindConfirmGuard() {
+    if (confirmGuardBound) return;
+    confirmGuardBound = true;
+    window.addEventListener(
+      "keydown",
+      function (e) {
+        if (!confirming) return;
+        var t = e.target;
+        if (t && t.closest && t.closest(".swal2-container")) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.key === "Tab" || e.key === "Enter" || e.key === "Escape") return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      },
+      true,
+    );
+  }
+  function confirmUpscale(opts) {
+    if (confirming) return Promise.resolve(false);
+    confirming = true;
+    bindConfirmGuard();
+    var wasFullscreen = isPlayerFullscreen();
+    var videoId = currentVideoId();
+    var prepare = wasFullscreen ? leaveFullscreen() : Promise.resolve();
+    return prepare
+      .then(function () {
+        return swalConfirm(opts);
+      })
+      .then(function (result) {
+        if (!wasFullscreen || isPlayerFullscreen()) return result;
+        if (currentVideoId() !== videoId) return result;
+        return enterFullscreen().then(function (restored) {
+          if (!restored) toast("Layar penuh gagal dipulihkan otomatis", 4000);
+          return result;
+        });
+      })
+      .then(
+        function (result) {
+          confirming = false;
+          return result;
+        },
+        function () {
+          confirming = false;
+          return false;
+        },
+      );
+  }
+  function requestEnable() {
+    if (state.enabled) return Promise.resolve(false);
+    if (!supported) {
+      if (supportChecking || supportPromise) {
+        toast("Memeriksa WebGPU…");
+        checkSupport(true).then(function (ok) {
+          if (ok && !state.enabled) requestEnable();
+        });
+        return Promise.resolve(false);
+      }
+      checkSupport(true).then(function (ok) {
+        if (!ok) {
+          toast(
+            supportLabel() === "Butuh HTTPS"
+              ? "WebGPU butuh halaman HTTPS"
+              : "WebGPU tidak didukung di browser ini",
+            4000,
+          );
+          return;
+        }
+        if (!state.enabled) requestEnable();
+      });
+      return Promise.resolve(false);
+    }
+    return confirmUpscale({
+      title: "Aktifkan AI Upscale",
+      text: "Mengaktifkan upscaler akan membuat GPU bekerja lebih keras, ingin lanjutkan?",
+      confirmText: "YA, AKTIFKAN",
+    }).then(function (ok) {
+      if (!ok) {
+        updateUI();
+        return false;
+      }
+      setEnabled(true, { announce: true });
+      return true;
+    });
+  }
+  function requestSelectModel(id) {
+    if (state.loading || !needsModelConfirm(state.modelId, id)) {
+      if (!state.loading) showPanel("upscale");
+      return Promise.resolve(false);
+    }
+    var m = getModel(id);
+    if (!m) return Promise.resolve(false);
+    return confirmUpscale({
+      title: "Ganti Model AI Upscale",
+      text:
+        MODEL_WARN[id] ||
+        "Mengganti model AI Upscale mengubah beban kerja GPU. Ingin lanjutkan?",
+      confirmText: "YA, GANTI MODEL",
+    }).then(function (ok) {
+      if (!ok) {
+        updateUI();
+        return false;
+      }
+      selectModel(id);
+      return true;
+    });
+  }
+  function requestSelectScale(id) {
+    if (!id || state.scaleId === id) {
+      showPanel("upscale");
+      return Promise.resolve(false);
+    }
+    if (!needsScaleConfirm(state.scaleId, id)) {
+      selectScale(id);
+      return Promise.resolve(true);
+    }
+    return confirmUpscale({
+      title: "Ubah Skala AI Upscale",
+      text:
+        SCALE_WARN[id] ||
+        "Mengganti skala AI Upscale menambah beban kerja GPU. Ingin lanjutkan?",
+      confirmText: "YA, UBAH SKALA",
+    }).then(function (ok) {
+      if (!ok) {
+        updateUI();
+        return false;
+      }
+      selectScale(id);
+      return true;
+    });
+  }
   function setEnabled(on, opts) {
     if (on === state.enabled) return;
     if (on) {
@@ -1134,8 +1460,13 @@ function turnOff() {
     b.addEventListener("click", function (e) {
       e.stopPropagation();
       if (state.loading) return;
-      setEnabled(b.getAttribute("aria-checked") !== "true", { announce: true });
-      updateUI();
+      var want = b.getAttribute("aria-checked") !== "true";
+      if (!needsEnableConfirm(want)) {
+        setEnabled(false, { announce: true });
+        updateUI();
+        return;
+      }
+      requestEnable();
     });
     return b;
   }
@@ -1188,7 +1519,7 @@ function turnOff() {
       var m = models[id];
       menu.appendChild(
         radioItem(id, m.label, state.modelId === id, function () {
-          selectModel(id);
+          requestSelectModel(id);
         }),
       );
     });
@@ -1212,7 +1543,7 @@ function turnOff() {
     SCALES.forEach(function (sc) {
       menu.appendChild(
         radioItem(sc.id, sc.label, state.scaleId === sc.id, function () {
-          selectScale(sc.id);
+          requestSelectScale(sc.id);
         }),
       );
     });
@@ -1831,21 +2162,30 @@ function turnOff() {
     buildHomeRow: buildHomeRow,
     refreshHomeRow: setHomeRowValue,
     enable: function () {
-      setEnabled(true, { announce: true });
+      requestEnable();
     },
     disable: function () {
       setEnabled(false);
+    },
+    rules: {
+      needsEnableConfirm: needsEnableConfirm,
+      needsModelConfirm: needsModelConfirm,
+      needsScaleConfirm: needsScaleConfirm,
+      gpuLoad: MODEL_GPU_LOAD,
     },
     state: state,
   };
 
   window.toggleUpscale = function () {
+    var U = window.MEEL_UPSCALER;
+    if (U && U.state && U.state.enabled) {
+      U.disable();
+      updateUI();
+      return;
+    }
     var row = document.getElementById("plyr-setting-upscale");
     if (row) return row.click();
-    var U = window.MEEL_UPSCALER;
-    if (!U) return;
-    if (U.state && U.state.enabled) U.disable();
-    else U.enable();
+    if (U) U.enable();
   };
 })();
 

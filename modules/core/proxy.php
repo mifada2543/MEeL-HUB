@@ -1,5 +1,4 @@
 <?php
-
 function meel_normalize_ip(string $ip): string
 {
     $ip = trim($ip);

@@ -18,12 +18,12 @@ Kompatibilitas minimum versi core HUB dicatat di setiap entri (mis. "Membutuhkan
 > + `arcade/migrate.php`, dan v12 core menjadi no-op.
 
 ## [Unreleased]
-### Added
--
+
 ### Changed
--
+- **Resolusi path tidak lagi bergantung pada working directory:** seluruh `require`/`include` di `arcade/` memakai `__DIR__`, jadi controller yang di-`include` dari tempat lain tidak lagi bisa memuat berkas yang salah.
+
 ### Fixed
--
+- **`bind_param` merusak data saat unggah rhythm:** kolom string di `arcade/rhythm/api/upload.php` di-bind dengan tipe integer, sehingga nilainya tersimpan `'0'`. Tipe bindnya dikoreksi dan sekarang diuji terhadap skema.
 
 ## [1.0.0] - 2026-09-19
 

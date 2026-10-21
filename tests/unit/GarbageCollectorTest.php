@@ -3,6 +3,8 @@ use PHPUnit\Framework\TestCase;
 
 class GarbageCollectorTest extends TestCase
 {
+    private const STALE_WINDOW = 1200;
+
     private string $testTempDir;
 
     protected function setUp(): void
@@ -65,20 +67,20 @@ class GarbageCollectorTest extends TestCase
     {
         $stale = $this->testTempDir . '/stale.tmp';
         $fresh = $this->testTempDir . '/fresh.tmp';
-        $this->touchAged($stale, 400);
+        $this->touchAged($stale, self::STALE_WINDOW + 300);
         $this->touchAged($fresh, 10);
 
         $this->cleanDirectory($this->testTempDir);
 
-        $this->assertFileDoesNotExist($stale, 'File dengan mtime > 5 menit harus dihapus');
-        $this->assertFileExists($fresh, 'File dengan mtime < 5 menit harus dipertahankan');
+        $this->assertFileDoesNotExist($stale, 'File dengan mtime > jendela stale harus dihapus');
+        $this->assertFileExists($fresh, 'File dengan mtime < jendela stale harus dipertahankan');
     }
 
     public function testCleanDirectoryRemovesStaleDirectoryRecursively(): void
     {
         $sub = $this->testTempDir . '/stale-sub';
-        $this->touchAged($sub . '/nested/file.bin', 400);
-        touch($sub, time() - 400);
+        $this->touchAged($sub . '/nested/file.bin', self::STALE_WINDOW + 300);
+        touch($sub, time() - (self::STALE_WINDOW + 300));
 
         $this->cleanDirectory($this->testTempDir);
 
@@ -253,16 +255,10 @@ class GarbageCollectorTest extends TestCase
     /**
      * Dulu test di sini memanggil markTestSkipped() kalau PHP_SAPI === 'cli'.
      *
-     * Masalahnya: PHPUnit SELALU jalan di SAPI CLI — lokal maupun CI. Jadi
-     * test itu tidak pernah mengeksekusi apa pun, di environment mana pun,
-     * dan yang tersisa hanya baris skip-nya. Test yang terlihat hijau
-     * padahal nol coverage adalah lebih berbahaya daripada tidak ada test,
-     * karena ia memberi keyakinan palsu.
-     *
-     * Cabang non-CLI memang mustahil diuji dari unit test (tidak ada cara
-     * memalsukan PHP_SAPI), tapi guard-nya bisa dikunci lewat source, dan
-     * yang justru lebih berharga — latch "sekali per proses" — bisa
-     * diuji beneran karena kita memang berjalan di CLI.
+     * PHPUnit SELALU jalan di SAPI CLI — lokal maupun CI — jadi test itu tidak
+     * pernah mengeksekusi apa pun, dan yang tersisa hanya baris skip-nya. Test
+     * yang terlihat hijau padahal nol coverage lebih berbahaya daripada tidak
+     * ada test, karena ia memberi keyakinan palsu.
      */
 public function testRunCliMaintenanceGuardsAgainstNonCliSapi(): void
     {
@@ -275,9 +271,6 @@ public function testRunCliMaintenanceGuardsAgainstNonCliSapi(): void
             . 'housekeeping berat akan jalan di setiap request'
         );
 
-        // Guard harus jadi kondisi PERTAMA, sebelum efek samping apa pun.
-        // Kalau latch diperiksa lebih dulu, guard SAPI jadi tidak terjangkau
-        // pada panggilan kedua dan mulai kedengaran tidak sengaja lulus.
         $this->assertMatchesRegularExpression(
             '/if\s*\(\s*PHP_SAPI\s*!==\s*\'cli\'\s*\|\|\s*self::\$cliOnlyRan\s*\)\s*\{\s*return;/',
             $src,
@@ -289,15 +282,9 @@ public function testRunCliMaintenanceGuardsAgainstNonCliSapi(): void
  * Latch `self::$cliOnlyRan`: housekeeping berat hanya boleh jalan SEKALI per
  * proses, berapa kali pun runCliMaintenance() dipanggil.
  *
- * Ini perilaku yang benar-benar terjadi di produksi -- `scripts/gc.php` bisa
- * dipanggil dari cron sekaligus ikut ter-hit dari jalur lain dalam proses
- * yang sama -- dan sebelumnya nol coverage.
- *
- * Dua file throttle disentuh supaya test ini deterministik. `syncViews` dan
- * `cleanGuests` mengecek throttle LEBIH DAHULU sebelum menyentuh apa pun;
- * tanpa itu keduanya ikut jalan dan MediaViewer asli dieksekusi dengan
- * koneksi palsu -- bukan yang ingin diuji di sini, dan hanya menambah
- * ketergantungan pada state mesin.
+ * Dua file throttle disentuh supaya test ini deterministik: tanpa itu
+ * keduanya ikut jalan dan MediaViewer asli dieksekusi dengan koneksi
+ * palsu — bukan yang ingin diuji di sini.
  */
 public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
     {
@@ -309,18 +296,10 @@ public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
         foreach ($throttles as $f) {
             $backup[$f] = is_file($f) ? (string)file_get_contents($f) : null;
 
-            // File throttle bisa dimiliki proses lain (Apache/daemon) dengan
-            // mode 644, sementara test jalan sebagai user dev. Menimpanya
-            // langsung gagal dengan "Permission denied" -- dan itu bukan
-            // kegagalan kode, melainkan kegagalan setup.
-            //
-            // Isinya cuma timestamp unix untuk throttle; menghapusnya
-            // bratarti satu siklus throttle dilewati, dan test menulis ulang
-            // nilai fresh di bawah. Tidak ada state bisnis yang hilang.
             if (is_file($f) && !is_writable($f)) {
                 @unlink($f);
             }
-            file_put_contents($f, (string)time());   // isWithinThrottle() -> true
+            file_put_contents($f, (string)time());
         }
 
         try {
@@ -328,9 +307,6 @@ public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
             $latch->setAccessible(true);
             $latch->setValue(null, false);
 
-            // prepare() mengembalikan false supaya melintas di cabang
-            // "if (!$stmt) continue" -- tidak ada stmt nyata yang dieksekusi,
-            // jadi yang dihitung murni berapa kali DB disentuh.
             $calls = 0;
             $conn = $this->createMock(mysqli::class);
             $conn->method('prepare')->willReturnCallback(function () use (&$calls) {
@@ -357,7 +333,7 @@ public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
                 . 'housekeeping berat diulang tiap kali entry point ini dipanggil'
             );
 
-            $latch->setValue(null, false);   // jangan bocorkan state ke test lain
+            $latch->setValue(null, false);
         } finally {
             foreach ($backup as $f => $content) {
                 if ($content === null) {
@@ -409,7 +385,6 @@ public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
 
     public function testNoWebEntryPointTriggersHeavyMaintenance(): void
     {
-
         $root = realpath(MEEL_ROOT);
         $skip = ['/vendor/', '/.git/', '/tests/', '/logs/', '/temp/'];
         $offenders = [];

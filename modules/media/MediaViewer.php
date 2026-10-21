@@ -83,20 +83,55 @@ class MediaViewer
         }
 
         $raw = trim($post_data['comments']);
-        $parent_id = !empty($post_data['parent_id']) ? (int)$post_data['parent_id'] : null;
         $col = ($this->media_type === 'video') ? 'video_id' : 'music_id';
+        $parent_id = $this->resolveParentId((int)($post_data['parent_id'] ?? 0), $col);
 
         $stmt = $this->conn->prepare("INSERT INTO comments ($col, user_id, parent_id, comment, created_at) VALUES (?, ?, ?, ?, NOW())");
         $stmt->bind_param("iiis", $this->media_id, $this->user_id, $parent_id, $raw);
         return $stmt->execute();
     }
 
-    public function getComments(int $limit = 200)
+    public const MAX_COMMENT_DEPTH = 5;
+
+    private function resolveParentId(int $parent_id, string $col): ?int
+    {
+        if ($parent_id <= 0) {
+            return null;
+        }
+
+        $stmt = $this->conn->prepare("SELECT id, parent_id FROM comments WHERE id = ? AND $col = ?");
+        $stmt->bind_param("ii", $parent_id, $this->media_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$row) {
+            return null;
+        }
+
+        $depth = 0;
+        $cursor = (int)($row['parent_id'] ?? 0);
+        while ($cursor > 0 && $depth < 50) {
+            $up = $this->conn->prepare("SELECT parent_id FROM comments WHERE id = ?");
+            $up->bind_param("i", $cursor);
+            $up->execute();
+            $upRow = $up->get_result()->fetch_assoc();
+            $up->close();
+            if (!$upRow) {
+                break;
+            }
+            $cursor = (int)($upRow['parent_id'] ?? 0);
+            $depth++;
+        }
+
+        return $depth >= self::MAX_COMMENT_DEPTH ? null : $parent_id;
+    }
+
+    public function getComments(int $limit = 200, int $offset = 0)
     {
         $col = ($this->media_type === 'video') ? 'video_id' : 'music_id';
 
-        $stmt = $this->conn->prepare("SELECT c.*, u.username, u.role FROM comments c LEFT JOIN users u ON c.user_id = u.id WHERE c.$col = ? ORDER BY c.created_at ASC LIMIT ?");
-        $stmt->bind_param("ii", $this->media_id, $limit);
+        $stmt = $this->conn->prepare("SELECT c.*, u.username, u.role FROM comments c LEFT JOIN users u ON c.user_id = u.id WHERE c.$col = ? ORDER BY c.created_at DESC, c.id DESC LIMIT ? OFFSET ?");
+        $stmt->bind_param("iii", $this->media_id, $limit, $offset);
         $stmt->execute();
         $raw_comments = $stmt->get_result();
 
@@ -196,6 +231,14 @@ class MediaViewer
     {
         if ($this->media_type !== 'music' || !$playlist_id) return null;
         $playlist_id = (int)$playlist_id;
+
+        if (!$this->user_id) return null;
+        $own = $this->conn->prepare('SELECT id FROM playlists WHERE id = ? AND user_id = ?');
+        $own->bind_param('ii', $playlist_id, $this->user_id);
+        $own->execute();
+        $owned = $own->get_result()->fetch_assoc();
+        $own->close();
+        if (!$owned) return null;
 
         $stmt_q = $this->conn->prepare("SELECT m.*, pt.added_at FROM music m JOIN playlist_tracks pt ON m.id = pt.music_id WHERE pt.playlist_id = ? ORDER BY pt.added_at DESC, pt.id DESC");
         $stmt_q->bind_param("i", $playlist_id);

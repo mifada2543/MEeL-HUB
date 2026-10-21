@@ -1,5 +1,4 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /* reference build: MEeL-C1H1N1O2 [2f6a0d5b8c41e937] */
@@ -132,10 +131,6 @@ class MediaCacheHeadersTest extends TestCase
 
     public function testConditionalResponseIsSkippedForRangeRequests(): void
     {
-        // T27: meel_serve_media_file() pindah ke storage_stream.php (2026-10-14).
-        // Test ini mengunci URUTAN blok lewat posisi string, jadi file yang
-        // dibaca harus file yang benar-benar memuat fungsi itu -- bukan
-        // storage.php yang sekarang hanya aggregator.
         $src = file_get_contents(MEEL_ROOT . '/modules/core/helpers/storage_stream.php');
 
         $posIsPartial = strpos($src, '$isPartial = false;');

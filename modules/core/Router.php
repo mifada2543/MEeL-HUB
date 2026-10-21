@@ -97,7 +97,7 @@ final class MeelRouter
         'arcade/chess' => ['handler' => 'arcade/chess/index.php', 'script' => '/arcade/chess/index.php'],
         'arcade/rhythm' => ['handler' => 'arcade/rhythm/index.php', 'script' => '/arcade/rhythm/index.php'],
         'arcade/rhythm/game'=> ['handler' => 'arcade/rhythm/game.php', 'script' => '/arcade/rhythm/game.php'],
-        'arcade/rhythm/editor' => ['handler' => 'arcade/rhythm/editor/index.php', 'script' => '/arcade/rhythm/editor/index.php'],
+        'arcade/rhythm/editor' => ['handler' => 'arcade/rhythm/manage/edit.php', 'script' => '/arcade/rhythm/manage/edit.php'],
         'arcade/rhythm/manage' => ['handler' => 'arcade/rhythm/manage/index.php', 'script' => '/arcade/rhythm/manage/index.php'],
         'arcade/rhythm/edit' => ['handler' => 'arcade/rhythm/manage/edit.php', 'script' => '/arcade/rhythm/manage/edit.php'],
         'arcade/rhythm/manage/edit' => ['handler' => 'arcade/rhythm/manage/edit.php', 'script' => '/arcade/rhythm/manage/edit.php'],
@@ -167,37 +167,75 @@ final class MeelRouter
 
     public static function dispatch(string $path): void
     {
-        if ($path === 'profile' && isset($_GET['u']) && $_GET['u'] !== '') {
-            $q = [];
-            if (isset($_GET['tab']) && in_array($_GET['tab'], ['all', 'video', 'music'], true)) {
-                $q['tab'] = $_GET['tab'];
-            }
-            header('Location: ' . self::url('profile/' . rawurlencode((string) $_GET['u']), $q), true, 301);
-            exit;
-        }
-
-        if (preg_match('#^profile/([^/]+)/(all|video|music)$#', $path, $m)) {
-            header('Location: ' . self::url('profile/' . rawurlencode($m[1]), ['tab' => $m[2]]), true, 301);
+        $alias = self::profileAliasRedirect($path);
+        if ($alias !== null) {
+            header('Location: ' . $alias, true, 301);
             exit;
         }
 
         $route = self::routeFor($path);
 
         if ($route === null) {
-            if (isset(self::OPTIONAL_ROUTES[$path])) {
-                require_once __DIR__ . '/Modules.php';
-                foreach (self::OPTIONAL_API_PREFIXES as $prefix) {
-                    if (str_starts_with($path, $prefix)) {
-                        Modules::guardJson404();
-                    }
-                }
-                Modules::guardRedirect('arcade');
-            }
-
+            self::guardOptionalRoute($path);
             header('Location: ' . self::basePath() . '/err?code=not_found', true, 302);
             exit;
         }
 
+        self::runHandler($route);
+    }
+
+    /**
+     * Tujuan pengalihan untuk alias profil, atau null kalau path ini bukan
+     * alias profil.
+     *
+     * Dua bentuk alias dikenali:
+     *  - `/profile?u=<username>` — nama pengguna lewat query string
+     *  - `/profile/<username>/<tab>` — tab di dalam path
+     *
+     * Keduanya dipetakan ke `/profile/<username>` dengan tab sebagai query.
+     */
+    public static function profileAliasRedirect(string $path): ?string
+    {
+        if ($path === 'profile' && isset($_GET['u']) && $_GET['u'] !== '') {
+            $q = [];
+            if (isset($_GET['tab']) && in_array($_GET['tab'], ['all', 'video', 'music'], true)) {
+                $q['tab'] = $_GET['tab'];
+            }
+            return self::url('profile/' . rawurlencode((string) $_GET['u']), $q);
+        }
+
+        if (preg_match('#^profile/([^/]+)/(all|video|music)$#', $path, $m)) {
+            return self::url('profile/' . rawurlencode($m[1]), ['tab' => $m[2]]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Rute opsional yang tidak aktif harus dijaga: API-nya menjawab 404
+     * JSON, sedangkan halaman biasa dialihkan ke beranda.
+     */
+    private static function guardOptionalRoute(string $path): void
+    {
+        if (!isset(self::OPTIONAL_ROUTES[$path])) {
+            return;
+        }
+
+        require_once __DIR__ . '/Modules.php';
+        foreach (self::OPTIONAL_API_PREFIXES as $prefix) {
+            if (str_starts_with($path, $prefix)) {
+                Modules::guardJson404();
+            }
+        }
+        Modules::guardRedirect('arcade');
+    }
+
+    /**
+     * Jalankan handler rute: set SCRIPT_NAME, pindah ke direktori handler
+     * supaya path relatif di dalamnya bekerja, lalu include.
+     */
+    private static function runHandler(array $route): void
+    {
         $root = dirname(__DIR__, 2);
         $handler = $root . '/' . $route['handler'];
         $base = self::basePath();
@@ -228,7 +266,6 @@ final class MeelRouter
         }
         return $url;
     }
-
 }
 
 /* reference build: MEeL-C6H9N3O3 [25300fded7026a1e] */

@@ -1,9 +1,8 @@
 <?php
-
 if (!defined('MEEL_ENV')) {
     $remote_ip = $_SERVER['REMOTE_ADDR'] ?? '';
-    $is_local = in_array($remote_ip, ['127.0.0.1', '::1', 'localhost'], true)
-             || (isset($_SERVER['SERVER_NAME']) && in_array($_SERVER['SERVER_NAME'], ['localhost', '127.0.0.1'], true));
+    $is_local = ($remote_ip !== '')
+        && in_array($remote_ip, ['127.0.0.1', '::1', 'localhost'], true);
 
     if ($is_local) {
         require_once __DIR__ . '/proxy.php';
@@ -51,8 +50,6 @@ if (!defined('MEEL_BASE_URL') && isset($_SERVER['SCRIPT_NAME'])) {
     define('MEEL_BASE_URL', meel_base_url_path());
 }
 
-if (!ini_get('date.timezone')) {
-    date_default_timezone_set('Asia/Jakarta');
-}
+date_default_timezone_set(defined('MEEL_TIMEZONE') ? (string) MEEL_TIMEZONE : 'Asia/Jakarta');
 
 /* reference build: MEeL-C10H15N [d56a31b456a15f2b] */

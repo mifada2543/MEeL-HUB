@@ -2,7 +2,6 @@
 if (!function_exists('resolve_binary')) {
     function resolve_binary(array $candidates): string
 {
-
     static $const_map = null;
     if ($const_map === null) {
         $const_map = [];
@@ -34,7 +33,6 @@ if (!function_exists('resolve_binary')) {
 }
 
 if (!function_exists('base_url')) {
-
 function base_url(string $path = ''): string
 {
     static $base = null;
@@ -42,7 +40,6 @@ function base_url(string $path = ''): string
         if (defined('MEEL_BASE_URL')) {
             $base = rtrim(MEEL_BASE_URL, '/');
         } else {
-
             require_once __DIR__ . '/../base_url.php';
             $base = meel_base_url_path();
         }
@@ -52,7 +49,6 @@ function base_url(string $path = ''): string
 }
 
 if (!function_exists('detectProtocol')) {
-
 function detectProtocol(): string
 {
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
@@ -145,11 +141,6 @@ function meel_css_links(string $module, string $baseUrl): void
     foreach (require $manifest as $file) {
         $rel = 'assets/css/' . $module . '/' . $file;
 
-        // Jangan emit link ke file yang tidak ada. Manifest boleh menunjuk
-        // ke shared/ lewat "../shared/…", jadi path harus dinormalkan dulu.
-        // Tanpa cek ini, file yang terhapus/refactor setengah jadi 404 yang
-        // senyap: halaman tetap render, hanya jadi tanpa sebagian gaya, dan
-        // tidak ada error di mana pun.
         $abs = realpath($root . '/' . $rel);
         if ($abs === false || !is_file($abs)) {
             error_log('[meel_css_links] lewati (file tidak ada): ' . $rel);
@@ -178,18 +169,46 @@ function meel_asset_dir_version(string $dir): string
 }
 }
 
+if (!function_exists('meel_canonical_host')) {
+function meel_canonical_host(): string
+{
+    if (defined('MEEL_CANONICAL_HOST')) {
+        return strtolower(trim((string) constant('MEEL_CANONICAL_HOST')));
+    }
+    return '';
+}
+}
+if (!function_exists('meel_same_origin_referer')) {
+function meel_same_origin_referer(?string $ref = null): ?string
+{
+    $ref = $ref ?? ($_SERVER['HTTP_REFERER'] ?? '');
+    if (!is_string($ref) || $ref === '') {
+        return null;
+    }
+
+    $host = meel_canonical_host();
+    if ($host === '') {
+        return null;
+    }
+
+    $scheme = strtolower((string) parse_url($ref, PHP_URL_SCHEME));
+    if ($scheme !== '' && $scheme !== 'http' && $scheme !== 'https') {
+        return null;
+    }
+
+    $refHost = parse_url($ref, PHP_URL_HOST);
+    if (!is_string($refHost) || $refHost === '' || strcasecmp($refHost, $host) !== 0) {
+        return null;
+    }
+
+    return $ref;
+}
+}
 if (!function_exists('meel_back_url')) {
 function meel_back_url(string $default, array $extra_block = []): string
 {
-    $ref = $_SERVER['HTTP_REFERER'] ?? '';
-    if (!is_string($ref) || $ref === '') {
-        return $default;
-    }
-
-    $ref_host = parse_url($ref, PHP_URL_HOST);
-    $cur_host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
-    if (!is_string($ref_host) || !is_string($cur_host) || $ref_host === ''
-        || strcasecmp($ref_host, $cur_host) !== 0) {
+    $ref = meel_same_origin_referer();
+    if ($ref === null) {
         return $default;
     }
 

@@ -1,5 +1,4 @@
 /* reference build: MEeL-C6H9N3O3 [d1b5f7073b4b4292] */
-
 (function () {
     var SENTINEL_SEL = '[hx-trigger="revealed"], [data-hx-trigger="revealed"]';
 

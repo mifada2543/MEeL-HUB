@@ -1,13 +1,22 @@
 <?php
 class GarbageCollector
 {
-    private const STALE_SECONDS = 300;
+    private const STALE_SECONDS = 1200;
     private const GUEST_STALE_HOURS = 2;
     private const GUEST_CLEANUP_INTERVAL = 3600;
     private const ROOM_LOBBY_STALE_HOURS = 24;
     private const ROOM_GAME_STALE_HOURS = 168;
     private const CHESS_CLEANUP_INTERVAL = 3600;
     public const QUEUE_STUCK_MINUTES = 360;
+    private const CACHE_TTL_MAP = [
+        'media_stats_'       => 30,
+        'admin_orphans'      => 120,
+        'dirsize_'           => 300,
+        'server_stats_info'  => 300,
+        'xsendfile_roots'    => 86400,
+    ];
+    private const CACHE_TMP_TTL = 300;
+    private const CACHE_ORPHAN_TTL = 86400;
     private static bool $hasRun = false;
     private static bool $cliOnlyRan = false;
     public static function runCliMaintenance(\mysqli $conn): void
@@ -24,83 +33,7 @@ class GarbageCollector
     public static function sweepStuckQueues(\mysqli $conn, ?int $staleMinutes = null): array
     {
         $minutes = $staleMinutes ?? self::QUEUE_STUCK_MINUTES;
-        $result = ['scanned' => 0, 'failed' => 0, 'refunded' => 0];
-        $canRefund = class_exists('MeelCoin');
-        foreach ([['upload_queue', 'upload'], ['transcode_queue', 'transcode']] as [$table, $reason]) {
-            $stmt = $conn->prepare(
-                "SELECT id, user_id, coin_cost FROM {$table}
-                 WHERE status IN ('pending', 'processing')
-                   AND coin_refunded = 0
-                   AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)"
-            );
-            if (!$stmt) {
-                continue;
-            }
-            $stmt->bind_param("i", $minutes);
-            $stmt->execute();
-            $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-
-            foreach ($rows as $row) {
-                $result['scanned']++;
-
-                $id = (int)$row['id'];
-                $userId = (int)$row['user_id'];
-                $cost = (int)($row['coin_cost'] ?? 0);
-                $refunded = false;
-                if ($canRefund && $cost > 0 && $userId > 0) {
-                    $conn->begin_transaction();
-                    try {
-                        $lock = $conn->prepare(
-                            "SELECT id, coin_refunded FROM {$table} WHERE id = ? FOR UPDATE"
-                        );
-                        if ($lock) {
-                            $lock->bind_param("i", $id);
-                            $lock->execute();
-                            $rowLock = $lock->get_result()->fetch_assoc();
-                            $lock->close();
-                            if ($rowLock && (int)$rowLock['coin_refunded'] === 0) {
-                                if (MeelCoin::refund($conn, $userId, $cost, 'upload_failed_refund')) {
-                                    $mark = $conn->prepare(
-                                        "UPDATE {$table} SET coin_refunded = 1 WHERE id = ?"
-                                    );
-                                    if ($mark) {
-                                        $mark->bind_param("i", $id);
-                                        $mark->execute();
-                                        $mark->close();
-                                        $refunded = true;
-                                    }
-                                }
-                            }
-                        }
-                        $conn->commit();
-                    } catch (\Throwable $e) {
-                        $conn->rollback();
-                        error_log(
-                            '[MEeL] GarbageCollector: gagal refund queue #' . $id
-                                . ' pada ' . $table . ': ' . $e->getMessage()
-                        );
-                    }
-                } elseif ($cost > 0 && !$canRefund) {
-                    error_log(
-                        '[MEeL] GarbageCollector: kelas MeelCoin tidak termuat, '
-                            . 'refund queue #' . $id . ' dilewati.'
-                    );
-                }
-                $upd = $conn->prepare("UPDATE {$table} SET status = 'failed' WHERE id = ?");
-                if ($upd) {
-                    $upd->bind_param("i", $id);
-                    $upd->execute();
-                    if ($upd->affected_rows > 0) {
-                        $result['failed']++;
-                    }
-                    $upd->close();
-                }
-                if ($refunded) {
-                    $result['refunded']++;
-                }
-            }
-        }
+        $result = self::releaseStaleQueueRows($conn, $minutes);
         if ($result['scanned'] > 0) {
             error_log(
                 sprintf(
@@ -112,6 +45,176 @@ class GarbageCollector
             );
         }
         return $result;
+    }
+
+    /**
+     * Lepaskan baris antrean yang macet: refund biaya yang tercatat, lalu tandai failed.
+     *
+     * Dipakai oleh sweeper 6 jam (`sweepStuckQueues()`) dan pembersih 30
+     * menit di `upload_advanced.php`. Refund harus lebih dulu, baru status
+     * diubah — kalau dibalik, baris `failed` tidak lagi dipilih sweeper
+     * sementara coins belum kembali. `coin_cost` dibaca dari baris itu
+     * sendiri, bukan dari harga saat ini.
+     *
+     * @param array<int, string> $tables tabel antrean yang dipindai
+     * @return array{scanned:int, failed:int, refunded:int}
+     * @see docs/{id,en}/security.md
+     */
+    public static function releaseStaleQueueRows(\mysqli $conn, int $staleMinutes, array $tables = ['upload_queue', 'transcode_queue']): array
+    {
+        $result = ['scanned' => 0, 'failed' => 0, 'refunded' => 0];
+        $canRefund = class_exists('MeelCoin');
+
+        foreach ($tables as $table) {
+            foreach (self::fetchStaleQueueRows($conn, $table, $staleMinutes) as $row) {
+                $result['scanned']++;
+
+                $id = (int)($row['id'] ?? 0);
+                $userId = (int)($row['user_id'] ?? 0);
+                $cost = (int)($row['coin_cost'] ?? 0);
+
+                if (self::refundQueueRow($conn, $table, $id, $userId, $cost, $canRefund)) {
+                    $result['refunded']++;
+                }
+                if (self::markQueueRowFailed($conn, $table, $id)) {
+                    $result['failed']++;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function fetchStaleQueueRows(\mysqli $conn, string $table, int $staleMinutes): array
+    {
+        $stmt = $conn->prepare(
+            "SELECT id, user_id, coin_cost FROM {$table}
+             WHERE status IN ('pending', 'processing')
+               AND coin_refunded = 0
+               AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)"
+        );
+        if (!$stmt) {
+            return [];
+        }
+        $stmt->bind_param("i", $staleMinutes);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $rows ?: [];
+    }
+
+    /**
+     * Kembalikan biaya MEeLCoin untuk satu baris antrean.
+     *
+     * `SELECT ... FOR UPDATE` menahan baris itu selama transaksi, jadi dua
+     * sweeper yang jalan bersamaan tidak bisa keduanya merefund baris yang
+     * sama. Tanpa itu, `coin_refunded` baru ditulis setelah refund terjadi —
+     * ada jendela di mana baris sudah dibayar balik tapi penandanya belum
+     * terpasang, dan baris itu akan direfund lagi.
+     */
+    /**
+     * Kembalikan biaya MEeLCoin untuk satu baris antrean yang gagal.
+     *
+     * Seluruhnya berjalan dalam satu transaksi: baris dikunci FOR UPDATE,
+     * koin dikembalikan, lalu penanda `coin_refunded` ditulis. Kalau salah
+     * satu langkah gagal, transaksinya dibatalkan — supaya koin tidak
+     * kembali tanpa penanda, atau penanda terpasang tanpa koin kembali.
+     */
+    private static function refundQueueRow(\mysqli $conn, string $table, int $id, int $userId, int $cost, bool $canRefund): bool
+    {
+        if ($cost <= 0 || $userId <= 0) {
+            return false;
+        }
+        if (!$canRefund) {
+            error_log(
+                '[MEeL] GarbageCollector: kelas MeelCoin tidak termuat, '
+                    . 'refund queue #' . $id . ' dilewati.'
+            );
+            return false;
+        }
+
+        $conn->begin_transaction();
+        try {
+            $rowLock = self::lockQueueRow($conn, $table, $id);
+            if ($rowLock === null || (int)$rowLock['coin_refunded'] !== 0) {
+                $conn->rollback();
+                return false;
+            }
+
+            if (!MeelCoin::refund($conn, $userId, $cost, 'upload_failed_refund')) {
+                $conn->rollback();
+                return false;
+            }
+
+            if (!self::markQueueRowRefunded($conn, $table, $id)) {
+                $conn->rollback();
+                return false;
+            }
+
+            $conn->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $conn->rollback();
+            error_log(
+                '[MEeL] GarbageCollector: gagal refund queue #' . $id
+                    . ' pada ' . $table . ': ' . $e->getMessage()
+            );
+            return false;
+        }
+    }
+
+    /**
+     * Kunci baris antrean dan baca penanda refund-nya.
+     *
+     * Mengembalikan null kalau barisnya tidak ada atau statement-nya gagal.
+     */
+    private static function lockQueueRow(\mysqli $conn, string $table, int $id): ?array
+    {
+        $lock = $conn->prepare(
+            "SELECT id, coin_refunded FROM {$table} WHERE id = ? FOR UPDATE"
+        );
+        if (!$lock) {
+            return null;
+        }
+        $lock->bind_param("i", $id);
+        $lock->execute();
+        $row = $lock->get_result()->fetch_assoc();
+        $lock->close();
+        return $row;
+    }
+
+    /**
+     * Tandai baris antrean sebagai sudah direfund.
+     */
+    private static function markQueueRowRefunded(\mysqli $conn, string $table, int $id): bool
+    {
+        $mark = $conn->prepare(
+            "UPDATE {$table} SET coin_refunded = 1 WHERE id = ?"
+        );
+        if (!$mark) {
+            return false;
+        }
+        $mark->bind_param("i", $id);
+        $ok = $mark->execute() && $mark->affected_rows > 0;
+        $mark->close();
+        return $ok;
+    }
+
+    private static function markQueueRowFailed(\mysqli $conn, string $table, int $id): bool
+    {
+        $upd = $conn->prepare("UPDATE {$table} SET status = 'failed' WHERE id = ?");
+        if (!$upd) {
+            return false;
+        }
+        $upd->bind_param("i", $id);
+        $ok = $upd->execute() && $upd->affected_rows > 0;
+        $upd->close();
+
+        return $ok;
     }
     private static function resetGuestsAutoIncrement(\mysqli $conn): void
     {
@@ -232,61 +335,75 @@ class GarbageCollector
         if (!is_dir($cacheDir)) {
             return 0;
         }
-        $ttlMap = [
-            'media_stats_'       => 30,
-            'admin_orphans'      => 120,
-            'dirsize_'           => 300,
-            'server_stats_info'  => 300,
-            'xsendfile_roots'    => 86400,
-        ];
-        $now = time();
-        $deleted = 0;
         $items = glob(rtrim($cacheDir, '/') . '/*');
         if (empty($items)) {
             return 0;
         }
+        $now = time();
+        $deleted = 0;
         foreach ($items as $item) {
-            $base = basename($item);
-            if (preg_match('/\.tmp\.\d+\.[0-9a-f]{12}$/', $base)) {
-                $mtime = @filemtime($item);
-                if ($mtime !== false && ($now - $mtime) > 300) {
-                    if (is_file($item) && @unlink($item)) {
-                        $deleted++;
-                    }
-                }
-                continue;
-            }
-            $expired = false;
-            $prefixMatched = false;
-            foreach ($ttlMap as $prefix => $ttl) {
-                if (str_starts_with($base, $prefix)) {
-                    $prefixMatched = true;
-                    $expired = self::isCacheExpired($item, $ttl);
-                    break;
-                }
-            }
-            if (!$prefixMatched) {
-                $mtime = @filemtime($item);
-                if ($mtime !== false && ($now - $mtime) > 86400) {
-                    $expired = true;
-                }
-            }
-            if ($expired && is_file($item) && @unlink($item)) {
+            if (self::deleteCacheItemIfExpired($item, $now)) {
                 $deleted++;
             }
         }
         self::cleanEmptyCacheDirs($cacheDir);
         return $deleted;
     }
+
+    /**
+     * Apakah satu berkas cache sudah kadaluarsa dan boleh dihapus.
+     *
+     * Tiga kelompok berkas, urut dari yang paling spesifik:
+     *  - berkas sementara (`*.tmp.<unix>.<hash>`) — dibuang setelah 5 menit
+     *  - berkas dengan prefix yang dikenal — kadaluarsa menurut isinya
+     *  - berkas lain — dibuang setelah 1 hari
+     */
+    private static function deleteCacheItemIfExpired(string $item, int $now): bool
+    {
+        $base = basename($item);
+
+        if (preg_match('/\.tmp\.\d+\.[0-9a-f]{12}$/', $base)) {
+            return self::deleteCacheItemOlderThan($item, self::CACHE_TMP_TTL, $now);
+        }
+
+        foreach (self::CACHE_TTL_MAP as $prefix => $ttl) {
+            if (str_starts_with($base, $prefix)) {
+                return self::deleteCacheItemIfStale($item, $ttl);
+            }
+        }
+
+        return self::deleteCacheItemOlderThan($item, self::CACHE_ORPHAN_TTL, $now);
+    }
+
+    private static function deleteCacheItemOlderThan(string $item, int $seconds, int $now): bool
+    {
+        $mtime = @filemtime($item);
+        if ($mtime === false || ($now - $mtime) <= $seconds) {
+            return false;
+        }
+        return is_file($item) && @unlink($item);
+    }
+
+    private static function deleteCacheItemIfStale(string $item, int $ttl): bool
+    {
+        if (!self::isCacheExpired($item, $ttl)) {
+            return false;
+        }
+        return is_file($item) && @unlink($item);
+    }
+    /**
+     * Apakah satu berkas cache sudah melewati TTL-nya.
+     *
+     * Tiap keluarga cache memakai key waktu yang berbeda: `media_stats_`
+     * dan `server_stats_info` memakai `ts`, `dirsize_` dan
+     * `xsendfile_roots` memakai `time`, `admin_orphans` memakai
+     * `checked_at`. Karena itu key-nya dicari berurutan, bukan satu nama
+     * tetap. Berkas tanpa key waktu apa pun jatuh ke mtime.
+     *
+     * @see docs/{id,en}/modules.md
+     */
     private static function isCacheExpired(string $path, int $ttl): bool
     {
-        if (function_exists('meel_read_cache_file')) {
-            $data = @meel_read_cache_file($path, 0, [], '');
-            if ($data !== null) {
-                return false;
-            }
-            return true;
-        }
         $raw = @file_get_contents($path);
         if ($raw === false || $raw === '') {
             return true;
@@ -295,21 +412,23 @@ class GarbageCollector
         if (!is_array($decoded)) {
             return true;
         }
-        $timeKey = '';
-        foreach (['ts', 'time', 'checked_at'] as $k) {
-            if (isset($decoded[$k])) {
-                $timeKey = $k;
-                break;
+        foreach (['ts', 'time', 'checked_at'] as $key) {
+            if (isset($decoded[$key])) {
+                $age = time() - (int) $decoded[$key];
+                return $age < 0 || $age >= $ttl;
             }
         }
-        if ($timeKey === '') {
-            return false;
+        $mtime = @filemtime($path);
+        if ($mtime === false) {
+            return true;
         }
-        $age = time() - (int)$decoded[$timeKey];
-        return $age >= $ttl;
+        return (time() - $mtime) >= $ttl;
     }
     private static function getMediaCacheDir(): string
     {
+        if (function_exists('meel_media_cache_dir')) {
+            return meel_media_cache_dir();
+        }
         if (defined('MEEL_MEDIA_CACHE_DIR')) {
             return MEEL_MEDIA_CACHE_DIR;
         }

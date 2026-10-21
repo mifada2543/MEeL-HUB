@@ -1,11 +1,10 @@
 <?php
-
 /**
  * @var \mysqli $conn
  */
-include '../auth/config.php';
-include '../auth/auth.php';
-include_once '../modules/core/helpers.php';
+include __DIR__ . '/../auth/config.php';
+include __DIR__ . '/../auth/auth.php';
+include_once __DIR__ . '/../modules/core/helpers.php';
 require_admin($conn);
 define('MEEL_ADMIN_CONTEXT', true);
 $chat_username = $_GET['username'] ?? '';
@@ -49,7 +48,7 @@ if ($chat_username !== '' && !$chat_user) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Obrolan Admin | MEeL</title>
-    <?php include '../partials/link.php'; ?>
+    <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php $root = meel_base_url_path(); ?>
     <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link rel="stylesheet" href="<?= $root ?>/assets/css/admin/chat.css?v=<?= filemtime($_SERVER['DOCUMENT_ROOT'] . meel_base_url_path() . '/assets/css/admin/chat.css') ?>">
@@ -62,7 +61,7 @@ if ($chat_username !== '' && !$chat_user) {
     $page_title = 'Obrolan Admin';
     $media_type = 'dashboard';
     $back_url = 'index.php';
-    include 'header-admin.php';
+    include __DIR__ . '/header-admin.php';
     ?>
     <div style="max-width:640px;margin:0 auto;padding:32px 16px;">
         <?php if ($chat_user): ?>

@@ -21,7 +21,8 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [Exception Handling](#exception-handling)
 - [Disk Space Validation](#disk-space-validation)
 - [Input Validation](#input-validation)
-- [Best Practices](#best-practices)
+- [Security Checker](#security-checker)
+- [MEeLCoin Accounting](#meelcoin-accounting)
 
 ---
 
@@ -76,6 +77,16 @@ Documentation about authentication, authorization, and protection systems in MEe
 └─────────────────────────────────────────────────────────┘
 ```
 
+### Baseline Rules That Apply
+
+| Area | Rule |
+|---|---|
+| Environment detection | `MEEL_ENV` is read only from `REMOTE_ADDR` — never from a client-sent header. `install.sh` writes `UseCanonicalName On`; if `MEEL_ENV` must be forced, set it explicitly in `auth/settings.php`. |
+| Path resolution | Every `require`/`include` and `filemtime()` call uses `__DIR__`, not a path relative to the working directory. `href`/`src` attributes are left alone — those are URLs the browser resolves. |
+| Configuration loading | `auth/config.php` is loaded with `require_once`. The whole drive authorization gate shares `drive/bootstrap.php`. |
+| Referer validation | `meel_same_origin_referer()` compares the referer host against the configured `MEEL_CANONICAL_HOST`, accepts only http/https schemes, and rejects protocol-relative URLs. If `MEEL_CANONICAL_HOST` is empty, every external referer is rejected — fail safe. Used by `music/playlist_action.php`, `profile/notification.php`, and `meel_back_url()`. |
+| Stream check | `drive/stream.php` calls `authorize()`; the checker reads that file together with its whole `include` chain via `sourceWithIncludes()` in `tests/helpers.php`. The pattern is `->authorize()`. |
+
 ---
 
 ## Role-Based Access Control (RBAC)
@@ -126,6 +137,21 @@ Non-admin users are redirected to `/err?code=not_found` (HTTP 404) instead of sh
 The same redirect pattern is used in:
 - `controllers/admin/admin_actions.php` — `MEEL_ADMIN_CONTEXT` guard + `is_admin()` guard
 - `controllers/admin/admin_data.php` — `MEEL_ADMIN_CONTEXT` guard
+
+### Source of Truth for Roles
+
+The database is the source of truth. `$_SESSION['role']` is a display cache only — badges and "edit" links may read it, but the gate always re-checks against the database. Every caller uses `is_admin($conn)` or `require_admin($conn)`; `update.php`, `profile/manage.php`, and `controllers/system/UpdateManager.php` no longer read `$_SESSION['role']` directly.
+
+`UpdateManager` is the **write** path for `sidebar_settings` and `updates`, which are rendered to every anonymous visitor.
+
+### Resource Authorization (IDOR)
+
+Ownership is checked in the **data layer**, not in the caller, so the next caller cannot forget it.
+
+| Operation | Rule |
+|---|---|
+| Delete playlist | Check ownership first, then delete the `playlist_tracks` rows through a `JOIN`, then check `affected_rows`. A `DELETE` scoped by `user_id` still succeeds on 0 rows without giving any sign. |
+| Read playlist queue | `getPlaylistQueue()` has an ownership gate — without it, `?playlist_id=N` on the public watch page leaks another user's queue. |
 
 ---
 
@@ -191,6 +217,12 @@ $stmt_kick = $conn->prepare("UPDATE users SET
     last_activity = DATE_SUB(NOW(), INTERVAL 10 MINUTE) 
     WHERE username = ?");
 ```
+
+### Login Does Not Leak Whether an Account Exists
+
+Every login failure uses the **same** message — there is no longer a different message for "account exists but is inactive" versus "username or password wrong".
+
+A dummy `password_verify` runs against a static hash when the user is not found, so response time cannot separate the two branches.
 
 ---
 
@@ -268,6 +300,10 @@ All `arcade/chess/controller/*.php` endpoints require:
 - **Login** — JSON `401` + `login_required: true` (client `arcade/chess/assets/js/api.js` redirects to login)
 - **CSRF** — every state-changing POST carries `csrf_token` (JSON body for `save_move`, `FormData` for `create_room`/`join_room`)
 - The token is **never stored** in `moves.move_data` (not exposed to opponents)
+
+### The Token Is Never in the URL
+
+The CSRF token never lives in the query string — there it would end up in the browser history, the Apache access log, and the `Referer` header of the next page. Media deletion uses POST with the token in the form body, the handler rejects other methods, and `confirmHapus()` submits a form instead of navigating.
 
 ---
 
@@ -405,6 +441,14 @@ disabling rate limiting entirely. Failures are logged via `error_log()`.
 
 Expired files (>1 hour) are automatically cleaned by `GarbageCollector::run()` called on every request.
 
+### Buckets That Apply
+
+| Bucket | Limit | Key |
+|---|---|---|
+| `mfa` | 10 / 300 seconds | `mfa:<user_id>` — holds across sessions |
+| `login` | 10 / 300 seconds | per account |
+| `drive_files` | 10 files / hour | `DriveStorage::recordUpload()` records every upload |
+
 ---
 
 ## Multi-Factor Authentication (MFA)
@@ -520,6 +564,24 @@ Guests (unauthenticated users) can view any user's profile page without login. T
 
 Session initialization uses `meel_boot_session()` to set `session_name('meel')` and hardened cookie flags. Using raw `session_start()` would look for a `PHPSESSID` cookie instead of `meel`, causing the session to appear empty.
 
+### Disabling MFA
+
+Disabling MFA requires `password_verify` **and** a currently valid TOTP code — the same pattern as resetting the backup codes. The TOTP seed is never re-rendered for any logged-in session.
+
+### Anti-Replay
+
+`verify_totp()` uses a ±1 time-step window, so a single code is valid for roughly 90 seconds. The anti-replay mechanism:
+
+- `verify_totp_step()` returns the matching time-step (not a `bool`)
+- `auth/mfa_verify.php` stores it in `users.mfa_last_step`
+- the update uses `UPDATE ... WHERE mfa_last_step IS NULL OR mfa_last_step < ?` — two concurrent requests with the same code cannot both pass
+
+`verify_totp()` remains as a safe wrapper for ordinary callers. When a backup code is used, the step is reset so the next TOTP code is not rejected.
+
+### Limiter
+
+`RateLimiter` has two buckets: `mfa` (10 requests / 300 seconds) and `login` (10 / 300). `auth/mfa_verify.php` calls it with the key `mfa:<user_id>` **before** verifying the code, so the limit holds across sessions — dropping the cookie does not reset it.
+
 ---
 
 ## File Upload Security
@@ -608,6 +670,26 @@ Rejected: absolute paths, `../`, `..\`, null bytes, symlinks, excessive depth, n
 - **Archives** — the entry/size/ratio limits above (zip-bomb protection)
 - **Transcode** — audio timeout 600s (`TRANSCODE_AUDIO_TIMEOUT`), HLS remux 120s, `stream_set_timeout(30)`, and output duration validated ≥ 50% of source
 
+### Download Limits
+
+The yt-dlp command uses `--max-filesize` and `--match-filter "duration < N"`, and `DownloadService::assertWithinDownloadLimits()` checks the metadata (`duration`, `filesize`/`filesize_approx`) before the download starts. The values are `MEEL_MAX_DOWNLOAD_BYTES` (2 GB) and `MEEL_MAX_DOWNLOAD_SECONDS` (7200), defined together with the other upload limit constants in `modules/core/helpers/upload.php`.
+
+### Atomic Queue Slot Claim
+
+`System::claimQueueSlot()` wraps the check and the INSERT in a MySQL `GET_LOCK()` — one advisory lock, so only one party may check and then insert. The limit is `System::MAX_CONCURRENT_QUEUES` (default 2).
+
+### Artifacts of Running Jobs
+
+`GarbageCollector::STALE_SECONDS` = **1200**, larger than `TRANSCODE_AUDIO_TIMEOUT` (600) and `DOWNLOAD_TIMEOUT` (900). The `.processing` marker is the only guard against two transcodes colliding on the same output, so it must never be below those two timeout values.
+
+### Pending Deletion Queue
+
+`cleanupPendingDeletions()` may only delete paths whose `realpath()` lies inside one of the media or drive base roots. The queue file sits in a world-writable directory, so without a containment check a local user could schedule the deletion of any file or directory as the web user.
+
+### Admin Export Limit
+
+`fetchAll()` takes a limit (default 50,000) — the 15-row preview uses `countFiltered()` + `fetchPage(15, 0)` instead of loading the whole filtered table into memory.
+
 ---
 
 ## Apache .htaccess Protection
@@ -628,6 +710,16 @@ Rejected: absolute paths, `../`, `..\`, null bytes, symlinks, excessive depth, n
 > **Media uploads are not served directly by the web server.** Since the portability refactor, `books/upload/`, `music/upload/`, and `video/upload/` are real tracked directories (placeholder `.gitkeep` + hardened `.htaccess`) whose contents are served through PHP endpoints mapped by an internal rewrite in the root `.htaccess`: `video/upload/...` → `video/stream.php`, `music/upload/...` → `music/file.php`, `books/upload/...` → `books/file.php` (see [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)). All of them — plus the final serve step of `music/stream.php` — delegate to one shared function, `meel_serve_media_file()` in `modules/core/helpers/storage.php`, which implements: realpath containment against path traversal (`..`, null byte → `403`), an extension whitelist, automatic MIME mapping, HTTP Range support (`206 Partial Content`), output buffer cleanup before streaming, and an optional referer gate for HLS. When `MEEL_USE_XSENDFILE` is on, the `mod_xsendfile` module is loaded, and the file falls under `XSendFilePath` in Apache's configuration, delivery switches to the `X-Sendfile` header (Apache sends the file straight from disk; `Range`/`206` are computed by Apache and PHP never reads the file body) — automatically falling back to regular PHP streaming when any condition is not met, so the response is never empty. The fourth condition is the `XSendFile on` directive in effect for the request (read from Apache's configuration **and** the `.htaccess` files along the URL path/script directory, most specific wins; a missing directive counts as `off`): if Apache would ignore the header (flag `off`), the app never sends it — preventing an empty response as well as leaking the server's absolute paths to the client. Security note: every gate (login, CSRF, `authorize()`, realpath containment, extension whitelist, HLS referer gate) runs **before** the X-Sendfile branch, so enabling or disabling X-Sendfile does not change the authorization model.
 >
 > **`books/file.php` requires login** (`auth/auth.php`), consistent with the rest of the Books module — `index.php`, `read.php`, `read_pdf.php`, and `controllers/api/pdf.php` are all login-gated. Without this, manga images and PDFs could be downloaded directly without authentication (the raw paths were reachable with `HTTP 200` before the fix). Music audio stays behind `music/stream.php` (session marker + strict referer gate); `music/file.php` and `video/stream.php` intentionally have **no** login gate because the Music/Video index & watch pages are public by design (thumbnails must render for anonymous visitors). `video/stream.php` additionally passes `hls_gate => true` — `.m3u8`/`.ts` segment requests must carry a same-host referer from a video page (`/video`, `/video/watch`), otherwise the request is redirected to `err/?code=denied` (anti-hotlink). `video/stream.php` and `music/stream.php` also call `session_write_close()` before streaming so parallel segment requests don't block each other on the PHP session file lock. Token gate: the watch pages register a path → media-id mapping in the session (`meel_register_stream_path`, **100-entry** FIFO cap) and the stream endpoints verify it via `meel_stream_path_allowed` — verified access **without a DB query per segment**; thumbnails (`thumbnail/`) and display files stay public for cards/OG-images. The mapping applies to the **entire video-folder subtree** (ancestor walk from the path up to a registered key): multibitrate variant playlists (`#EXT-X-STREAM-INF` → subfolders like `v1/`, `720p/`, …) and their segments are verified as long as that video folder is registered — other video folders remain denied, and `video/` can never become a subtree root.
+
+### The Webroot Is Closed
+
+`.htaccess` denies `vendor/`, `node_modules/`, `tools/`, `assets/dict/`, and `storage/`. The `vendor/` and `node_modules/` rules cannot be committed (both are git-ignored), so `install.sh` writes them and `tests/security_test.php` watches every sensitive directory so a regression is caught.
+
+The root `FilesMatch` also covers `phpunit.xml`, `composer.*`, `package*.json`, `install.sh`, `.vscode`, and backup suffixes (`~`, `.bak`, `.old`, `.orig`, `.swp`, `.dist`, `.sample`). It deliberately does **not** blanket `*.json`/`*.xml`/`*.md`, because `assets/manifest.json` and `sitemap.xml` must stay public. Tooling directory segments are closed with a `RewriteRule`, because `FilesMatch` only catches a file named `.vscode`, not a path containing that segment.
+
+### Apache 2.4 Compatibility
+
+Every `Deny from all` is wrapped in `IfModule`. Without that wrapper, Apache 2.4 without `mod_access_compat` treats the directive as a configuration error — and the whole `.htaccess` is discarded, so `controllers/` loses all access control.
 
 ---
 
@@ -715,6 +807,22 @@ Key properties:
 
 The `https://` limitation is therefore resolved: even though the original HTTPS URL cannot be pinned (TLS SNI), every redirect destination is re-validated by the proxy before a connection is opened.
 
+#### The protocol rules live outside the server script
+
+`validating_proxy_server.php` runs the server at file scope, so the file could
+not be included without starting a proxy. Every rule in it — how a request head
+is parsed, which headers are stripped, how the forwarded request is assembled —
+was therefore untestable.
+
+Those rules now live in `modules/auth/ValidatingProxyProtocol.php`, which has no
+side effects: it can be included, and the rules can be exercised without a
+server and without a network. `ValidatingProxyProtocolTest` does exactly that,
+including the socket-level tunnel and response relay through a pair of local
+sockets. `ValidatingProxyTest` still drives the real server process end to end.
+
+`security_test.php` looks for the proxy's guard patterns across both files
+together, so moving a rule between them does not weaken the check.
+
 ### Defense in Depth
 
 `Transcoder::fetchMetadata()` also calls `SsrfGuard::validate()` independently and forces the proxy flag, so even a future caller that skips `processDownload()` cannot pass an unvalidated URL — or an unprotected hop — to yt-dlp.
@@ -726,6 +834,7 @@ The `https://` limitation is therefore resolved: even though the original HTTPS 
 | `modules/auth/SsrfGuard.php` | Central validation: protocol allowlist, explicit IPv4/IPv6 range checks, DNS all-record validation, HTTP pinning |
 | `modules/auth/ValidatingProxy.php` | Spawns/terminates the proxy process, exposes `--proxy` URL (loopback-only) |
 | `modules/auth/validating_proxy_server.php` | CLI forward proxy: SsrfGuard on every hop (HTTP absolute-URI + CONNECT tunnel) |
+| `modules/auth/ValidatingProxyProtocol.php` | The proxy's protocol rules, split out of the server script: request-head parsing and its limits, CONNECT target parsing, forwarded-request assembly, tunnel and response relay |
 | `modules/core/Transcoder.php` (facade → `modules/transcoder/DownloadService.php`) | `processDownload()` / `fetchMetadata()` call the guard and route yt-dlp through `--proxy`; fail closed if the proxy cannot start |
 | `modules/autoload.php` | Autoloads the `SsrfGuard` class |
 
@@ -822,6 +931,10 @@ Two TOCTOU races were closed in `DriveStorage::upload()`:
 
 **Run everything with one command:** `scripts/verify_security.sh` runs the three security suites (PHPUnit security subset, `security_test.php`, `functional_test.php`) plus a live Private Drive 403 probe and exits with a CI-friendly code (see [testing.md](testing.md)).
 
+### Stream Authorization Fails Closed
+
+`meel_stream_path_allowed()` uses an explicit allowlist of public prefixes — `thumbnail/`, `file/`, `lyrics/`, `upload/`, `manga/`, `books/` — and rejects everything else. Video and music are public under this project's RBAC model, so public streaming behaviour is unchanged; what changes is that the default is now deliberate rather than accidental, and a private area can no longer pass simply because its path does not start with `video/`.
+
 ---
 
 ## Exception Handling
@@ -898,7 +1011,6 @@ Output is always escaped with `htmlspecialchars()`:
 ```php
 echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
 ```
-
 ### Stored XSS (hardening): the database stores raw (canonical) data; escaping happens **at output time**, per context:
 
 - Plain-text HTML → `htmlspecialchars($v, ENT_QUOTES, 'UTF-8')`
@@ -907,11 +1019,22 @@ echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
 
 The audit covers every rendered user-controlled value: profile bios, media title/description, comments, filenames, playlists, search results, chat usernames, and data shown in the admin panel. For inline JS template literals (e.g. admin chat search results), a dedicated `escapeHtml()` function wraps user-derived values before HTML injection. Regression tests (`tests/security_test.php`) verify payloads such as `<script>alert(1)</script>` and `<img src=x onerror=alert(1)>` are never executed as HTML.
 
+### CSRF in All Forms
+
+Every POST form carries a CSRF token, and the handler rejects a request without a valid one. The token is verified with `hash_equals()` so a comparison cannot be timed.
+
 ### Login Rate Limiting
 
 ```php
 $max_login_attempts = 5;
 $lockout_time = 300; // 5 minutes
+```
+
+### Register Rate Limiting
+
+```php
+$max_reg_attempts = 3;
+$reg_time_window = 3600; // 1 hour
 ```
 
 ### Theme System Security
@@ -924,33 +1047,69 @@ Theme preference is stored securely:
 4. **CSRF protection:** POST requires valid CSRF token
 5. **No XSS risk:** Theme value is not escaped to HTML, only used for `data-theme` attribute
 
----
+### Escape at Render Time, Not at Write Time
 
-## Best Practices
+`UpdateManager::clean()` only does `trim()`. Escaping happens at the render point, per context. The `/update` page is reachable by anonymous visitors, so "escape at write time" means a second author — an install, an import, or a direct `mysql>` edit during an incident — becomes stored XSS for every visitor.
 
-### For Developers
+`admin/index.php` also uses `json_encode` with the flags `JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP`; plain `json_encode` does not escape `'`, so a filename with an apostrophe could close the single-quoted attribute.
 
-1. **Always use Prepared Statements** for database queries
-2. **Sanitize all input** POST/GET
-3. **Verify CSRF token** on every form POST
-4. **Don't trust user input** — validate file type, size, and content
-5. **Escape output** with `htmlspecialchars()`
-6. **Don't expose error details** to non-admin users
+### View Inflation
 
-### Security Checklist
+`UNIQUE (user_id, video_id, music_id)` **holds nothing back**: MySQL treats NULL as a distinct value in a unique index, so `(9, 299, NULL)` and `(9, 299, NULL)` stay two different rows. The correct pattern is two separate unique constraints per media kind, like the `interactions` table.
 
-- [ ] Database credentials only in `auth/settings.php`
-- [ ] All `.htaccess` files installed in sensitive directories
-- [ ] Prepared statements in all SQL queries
-- [ ] CSRF token in all POST forms
-- [ ] Session timeout active (12 hours)
-- [ ] IP banning system active
-- [ ] File upload validation (type, size, magic bytes)
-- [ ] Role checking before sensitive actions
-- [ ] Theme preference doesn't store sensitive data
+> ⚠️ **Trap:** an unused column **must stay `NULL`, not `0`**. Filling in `0` makes every music row share `video_id=0` and collide in `uq_view_video`. It is the fact that NULL *passes* that makes this two-unique pattern work.
+
+### `bind_param` Types Follow the Schema
+
+`bind_param` must use the column's real type. `difficulty_label` and `cover_file` are varchar and must not be bound as `"i"` — mysqli raises no warning, it converts the value to the requested type, so both end up stored as `'0'`. `tests/unit/BindParamTypeTest.php` derives the expected types from `arcade/schema.sql` instead of a hardcoded list.
 
 ---
 
-<div align="center">
-  <sub><a href="index.md">← Back to Documentation Index</a></sub>
-</div>
+
+## Security Checker
+
+The checker in `tests/security_test.php` must genuinely scan what it claims to. Three rules apply:
+
+### The Allowlist Map Is Not the List of Scanned Files
+
+The checker **finds its own files** via `getPhpFiles()`, then recomputes `escapeshellarg`/int-cast for every hit. The `$expected`/`$allowed` map stays, but its role changes: it is no longer the list of files that get scanned, but the list that is *expected* to still run a shell. A file outside the map that runs a shell **fails**, with a message naming what to change if it is genuinely legitimate. A file that is listed but has lost its `shell_exec` is reported too, so a stale map becomes visible immediately.
+
+Number of files scanned: **21**.
+
+### Taint Tracking for Open Redirects
+
+A variable initialized from `HTTP_REFERER` is marked tainted; an assignment that uses a tainted variable taints the next one (two levels — enough for the `$ref` → `$back_url` pattern); every `header('Location: ...')` whose expression uses a tainted variable is reported as an open redirect. Both layers matter, because a redirect through a variable slips past a checker that only looks for `HTTP_REFERER` inside `header()`.
+
+What is **not** reported: files that read the referer and then redirect to a local path — the HLS gate in `music/stream.php` and `modules/core/helpers/storage_stream.php` redirecting to `../err/?code=denied`.
+
+### A Branch-Aware Rule
+
+`display_errors=1` is accepted **only** when the same file also contains `case 'development'` **and** `display_errors=0`. There is no list of exempted filenames, so a new exemption cannot hide a regression.
+
+CI fails on any non-zero exit code — warnings are red too.
+
+### A Guard Against Regressing
+
+`StorageSplitTest::testSecurityAndFunctionalMapsStillCoverTheRealFiles` looks for the `$risky`, `$expected`, or `$allowed` map, and adds an assertion that `testCommandInjection()` really calls `getPhpFiles()`. If the check is ever reverted to a literal list of paths, that assertion fails first.
+
+## MEeLCoin Accounting
+
+The refund accounting rules for queue rows. All of them are pinned by `QueueRefundAccountingTest` and `QueueRefundRecoveryIntegrationTest`.
+
+### The Recorded Cost Is the Amount Actually Charged
+
+`upload_queue.coin_cost` records the MEeLCoin that was really deducted when the row was created — the caller that creates the row is the one that must record the amount, not some other flow. `coin_refunded` = 1 means the cost has been returned.
+
+### One Implementation, Two Callers
+
+Clearing stuck rows uses `GarbageCollector::releaseStaleQueueRows()` — the same code as the 6-hour sweeper. If one of them marks a row `failed` without refunding it, that row leaves the sweeper's reach and the MEeLCoin cost is lost for good. The order inside a row matters: **refund first, then mark `failed`**. Reversed, there is a window where the row is already `failed` but the coins have not come back, and `failed` rows are no longer picked by the sweeper.
+
+### A Refund Happens Exactly Once
+
+`releaseStaleQueueRows()` reads the cost from the row itself, not from the current price — the MEeLCoin price can change, and what must be returned is the amount that was really deducted. Rows are locked `FOR UPDATE` for the duration of the transaction, so two concurrent sweepers cannot refund the same row. `coin_refunded = 1` is written **only after** the coins have actually been returned, and every `execute()` result is checked.
+
+`releaseQueue()` still touches only the status column. That invariant matters: if it also set `coin_refunded`, a row already refunded by the normal failure path would be refunded again by the sweeper.
+
+### A Failed Notification Must Not Cancel the Upload
+
+`Notification::create()` is wrapped in error handling — the notification is cosmetic, so its failure is logged and the upload continues. Otherwise the user has paid, nothing was uploaded, and the refund never ran.

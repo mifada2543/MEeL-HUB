@@ -1,5 +1,5 @@
 <?php
-require '../../../auth/config.php';
+require __DIR__ . '/../../../auth/config.php';
 require_once __DIR__ . '/chess_helpers.php';
 header('Content-Type: application/json');
 

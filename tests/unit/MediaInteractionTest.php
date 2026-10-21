@@ -4,10 +4,8 @@ use PHPUnit\Framework\TestCase;
 /** @covers MediaInteraction */
 class MediaInteractionTest extends TestCase
 {
-
     private function createInteraction(int $userId = 1): MediaInteraction
     {
-
         $conn = $this->getMockBuilder(mysqli::class)
             ->disableOriginalConstructor()
             ->getMock();

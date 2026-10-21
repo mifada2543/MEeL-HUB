@@ -38,6 +38,14 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
             $error = 'Masukkan kode verifikasi.';
         } else {
             $temp_id = (int)$_SESSION['mfa_temp_uid'];
+            if (!$is_loopback) {
+                $mfaLimit = RateLimiter::check('mfa:' . $temp_id, 'mfa', 'user');
+                if (empty($mfaLimit['allowed'])) {
+                    unset($_SESSION['mfa_temp_uid'], $_SESSION['mfa_temp_username'], $_SESSION['mfa_temp_role']);
+                    header('Location: ../auth/login?reason=mfa_rate');
+                    exit;
+                }
+            }
             $stmt = $conn->prepare("SELECT mfa_secret, mfa_backup_codes FROM users WHERE id = ?");
             $stmt->bind_param("i", $temp_id);
             $stmt->execute();
@@ -49,8 +57,16 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
                 exit;
             }
             $valid = false;
-            if (verify_totp($u['mfa_secret'], $user_code)) {
-                $valid = true;
+            $used_step = null;
+            $step = verify_totp_step((string)$u['mfa_secret'], $user_code);
+            if ($step !== null) {
+                $stmt_step = $conn->prepare(
+                    "UPDATE users SET mfa_last_step = ? WHERE id = ? AND (mfa_last_step IS NULL OR mfa_last_step < ?)"
+                );
+                $stmt_step->bind_param("iii", $step, $temp_id, $step);
+                $valid = $stmt_step->execute() && $stmt_step->affected_rows === 1;
+                $stmt_step->close();
+                $used_step = $valid ? $step : null;
             }
             if (!$valid && !empty($u['mfa_backup_codes'])) {
                 $result = verify_backup_code($u['mfa_backup_codes'], $user_code);
@@ -64,6 +80,12 @@ if (isset($_POST['verify']) || isset($_POST['code'])) {
                 }
             }
             if ($valid) {
+                if ($used_step === null) {
+                    $stmt_reset = $conn->prepare("UPDATE users SET mfa_last_step = NULL WHERE id = ?");
+                    $stmt_reset->bind_param("i", $temp_id);
+                    $stmt_reset->execute();
+                    $stmt_reset->close();
+                }
                 session_regenerate_id(true);
                 $_SESSION['user_id'] = $temp_id;
                 $_SESSION['username'] = $_SESSION['mfa_temp_username'];
