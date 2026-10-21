@@ -7,10 +7,12 @@ In-depth documentation of module architecture, class diagrams, and business logi
 ## Table of Contents
 
 - [Application Architecture](#application-architecture)
-- [Core Modules (`modules/`)](#core-modules-modules)
+- [Core Modules (`modules/core/`, `modules/media/`, `modules/exceptions/`, `modules/transcoder/`)](#core-modules-modulescore-modulesmedia-modulesexceptions-modulestranscoder)
 - [Media Pipeline](#media-pipeline)
 - [Authentication Flow](#authentication-flow)
-- [Upload & Transcoding Flow](#upload--transcoding-flow)
+- [26. JS/CSS Modularization](#26-jscss-modularization)
+- [27. Adaptive Aspect Ratio Player](#27-adaptive-aspect-ratio-player)
+- [28. Chat API](#28-chat-api)
 - [ProgressObserver Architecture](#progressobserver-architecture)
 - [Filesystem Safety Convention (no @ suppression)](#filesystem-safety-convention-no--suppression)
 
@@ -202,6 +204,14 @@ The partial takes the differences as data instead of as a second copy:
 
 `LikeDislikePartialTest` keeps the copies from coming back: it fails if the
 container markup exists in more than one file.
+
+#### Comment Reply Rules
+
+| Rule | Value |
+|---|---|
+| Parent validation | `resolveParentId()` checks that the parent exists **and** has the same media column. Otherwise `parent_id` is set to `NULL` so the comment becomes a root comment — deterministic and still visible. |
+| Reply depth | `MediaViewer::MAX_COMMENT_DEPTH` = 5. Going past the limit is promoted to root, so one person cannot build an unbounded chain just by replying to a reply. |
+| Order & pagination | `getComments()` uses `created_at DESC, id DESC` and takes an `$offset` parameter. With the old order (`created_at ASC` + `LIMIT 200`), new comments could be pushed out of the window and never appear again. Comments already written are not deleted. |
 
 ### 4. `modules/core/Uploader.php`
 

@@ -6,15 +6,10 @@ Steps to set up MEeL on your local server.
 
 ## Table of Contents
 
-- [Automatic Installer (install.sh)](#automatic-installer-installsh)
+- [⚡ Automatic Installer (install.sh)](#-automatic-installer-installsh)
 - [System Requirements](#system-requirements)
 - [Step-by-Step Installation](#step-by-step-installation)
-- [Database Setup](#database-setup)
-- [Application Configuration](#application-configuration)
-- [Runtime Directories & Permissions](#runtime-directories--permissions)
-- [Apache Configuration](#apache-configuration)
 - [Installation Verification](#installation-verification)
-- [FFmpeg & yt-dlp Setup](#ffmpeg--yt-dlp-setup)
 - [Installation Troubleshooting](#installation-troubleshooting)
 
 ---
@@ -535,6 +530,14 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 3. Login with the credentials you created during installation (`install.sh` prompts you to create an admin account)
 
 4. Check Admin page: `http://localhost/MEeL/admin/`
+
+### Installation Security Checks
+
+| Rule | Why |
+|---|---|
+| The installer never overwrites the database credentials | The patcher verifies its own result with `re.search`, stops with `die` on failure, then checks `php -r 'require auth/settings.php'`. A silent failure here means the install reports success while the operator's credentials were discarded and the defaults were used instead. |
+| A failed migration stops instead of continuing | `database/migrate.php` collects the failures together with their step numbers, writes them to STDERR, does **not** record the version, and exits with code 1. If the version still rose while a step failed, the schema could stay half-migrated for good — `SELECT MAX(version)` would skip that migration forever. |
+| `UseCanonicalName On` in the VirtualHost | `install.sh` writes it into the generated VirtualHost. Without it `SERVER_NAME` is copied from the client-sent `Host:` header, and `MEEL_ENV` can be influenced by an outside requester. |
 
 ---
 

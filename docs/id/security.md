@@ -9,22 +9,20 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 - [Arsitektur Keamanan](#arsitektur-keamanan)
 - [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
 - [Session Management](#session-management)
+- [Multi-Factor Authentication (MFA)](#multi-factor-authentication-mfa)
 - [CSRF Protection](#csrf-protection)
 - [IP Banning & Firewall](#ip-banning--firewall)
 - [Activity Logging](#activity-logging)
+- [API Rate Limiting](#api-rate-limiting)
 - [File Upload Security](#file-upload-security)
 - [Apache .htaccess Protection](#apache-htaccess-protection)
 - [Proteksi SSRF (Advanced Upload)](#proteksi-ssrf-advanced-upload)
 - [Proteksi Private Drive](#proteksi-private-drive)
-- [Multi-Factor Authentication (MFA)](#multi-factor-authentication-mfa)
+- [Exception Handling](#exception-handling)
+- [Disk Space Validation](#disk-space-validation)
 - [Input Validation](#input-validation)
-- [Hardening P0 (Oktober 2026)](#hardening-p0-oktober-2026)
-- [Hardening P1 (Oktober 2026)](#hardening-p1-oktober-2026)
-- [Hardening P2 (Oktober 2026)](#hardening-p2-oktober-2026)
-- [Hardening P4 — Bagian komentar (Oktober 2026)](#hardening-p4--bagian-komentar-oktober-2026)
-- [Hardening P5 — Ketelitian pemeriksa keamanan (Oktober 2026)](#hardening-p5--ketelitian-pemeriksa-keamanan-oktober-2026)
-- [Hardening P6 — Resolusi path dan penempatan gerbang (Oktober 2026)](#hardening-p6--resolusi-path-dan-penempatan-gerbang-oktober-2026)
-- [Hardening P7 — Akuntansi refund MEeLCoin (Oktober 2026)](#hardening-p7--akuntansi-refund-meelcoin-oktober-2026)
+- [Pemeriksa Keamanan](#pemeriksa-keamanan)
+- [Akuntansi MEeLCoin](#akuntansi-meelcoin)
 
 ---
 
@@ -78,6 +76,16 @@ Dokumentasi tentang sistem keamanan, autentikasi, otorisasi, dan proteksi yang a
 │  • No raw SQL concatenation with user input             │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### Aturan Dasar yang Berlaku
+
+| Area | Aturan |
+|---|---|
+| Deteksi lingkungan | `MEEL_ENV` hanya dibaca dari `REMOTE_ADDR` — tidak pernah dari header kiriman klien. `install.sh` menulis `UseCanonicalName On`; kalau `MEEL_ENV` perlu dipaksa, setel eksplisit di `auth/settings.php`. |
+| Resolusi path | Semua `require`/`include` dan `filemtime()` memakai `__DIR__`, bukan path relatif ke working directory. Atribut `href`/`src` dibiarkan — itu URL yang diselesaikan browser. |
+| Pemuatan konfigurasi | `auth/config.php` dimuat `require_once`. Seluruh gerbang otorisasi drive berbagi `drive/bootstrap.php`. |
+| Alur secret | `meel_same_origin_referer()` membandingkan host referer dengan `MEEL_CANONICAL_HOST` yang dikonfigurasi, hanya menerima skema http/https, dan menolak URL protocol-relative. Kalau `MEEL_CANONICAL_HOST` kosong, semua referer luar ditolak — gagal aman. Dipakai `music/playlist_action.php`, `profile/notification.php`, dan `meel_back_url()`. |
+| Pemeriksaan stream | `drive/stream.php` memanggil `authorize()`; pemeriksa membacanya beserta seluruh rantai `include`-nya lewat `sourceWithIncludes()` di `tests/helpers.php`. Polanya `->authorize()`. |
 
 ---
 
@@ -180,6 +188,21 @@ Pola redirect yang sama digunakan di:
 | Transcoder | ✅ | ✅ | ✅ | ❌ |
 | Admin Panel | ✅ | ❌ | ❌ | ❌ |
 | Chess Multiplayer | ✅ | ✅ | ✅ | ❌ |
+
+### Sumber Kebenaran Role
+
+Database adalah sumber kebenaran. `$_SESSION['role']` hanya cache tampilan — badge dan link "edit" boleh membacanya, tapi gerbang selalu memeriksa ulang ke DB. Semua pemanggil memakai `is_admin($conn)` atau `require_admin($conn)`; `update.php`, `profile/manage.php`, dan `controllers/system/UpdateManager.php` tidak lagi membaca `$_SESSION['role']` langsung.
+
+`UpdateManager` adalah jalur **tulis** untuk `sidebar_settings` dan `updates`, yang dirender ke setiap pengunjung anonim.
+
+### Otorisasi Sumber Daya (IDOR)
+
+Kepemilikan dicek di **lapisan data**, bukan di pemanggil, supaya pemanggil berikutnya tidak bisa lupa.
+
+| Operasi | Aturan |
+|---|---|
+| Hapus playlist | Cek kepemilikan dulu, baru hapus baris `playlist_tracks` lewat `JOIN`, lalu periksa `affected_rows`. `DELETE` yang di-scope `user_id` tetap sukses pada 0 baris tanpa memberi tanda. |
+| Baca antrean playlist | `getPlaylistQueue()` punya gate kepemilikan — tanpa itu, `?playlist_id=N` di halaman watch yang publik membocorkan antrean user lain. |
 
 ---
 
@@ -288,6 +311,12 @@ $stmt_kick = $conn->prepare("UPDATE users SET
     WHERE username = ?");
 $stmt_kick->bind_param("s", $target_username);
 ```
+
+### Login Tidak Membocorkan Keberadaan Akun
+
+Semua kegagalan login memakai **pesan yang sama** — tidak ada lagi pesan berbeda untuk "akun ada tapi tidak aktif" versus "username atau password salah".
+
+`password_verify` Boneka dijalankan terhadap hash statis ketika user tidak ditemukan, sehingga waktu respons tidak memisahkan kedua cabang.
 
 ---
 
@@ -404,6 +433,24 @@ Guest (pengguna tanpa autentikasi) bisa melihat halaman profil pengguna lain tan
 
 Inisialisasi session menggunakan `meel_boot_session()` untuk mengatur `session_name('meel')` dan cookie flags yang di-hardened. Menggunakan `session_start()` mentah akan mencari cookie `PHPSESSID` bukan `meel`, menyebabkan session terlihat kosong.
 
+### Menonaktifkan MFA
+
+Menonaktifkan MFA mewajibkan `password_verify` **dan** kode TOTP yang sedang berlaku — pola yang sama dengan reset kode cadangan. Seed TOTP tidak pernah dirender ulang untuk sesi mana pun yang login.
+
+### Anti-Replay
+
+`verify_totp()` memakai jendela ±1 time-step, jadi satu kode sah sekitar 90 detik. Anti-replay-nya:
+
+- `verify_totp_step()` mengembalikan time-step yang cocok (bukan `bool`)
+- `auth/mfa_verify.php` menyimpannya ke `users.mfa_last_step`
+- pembaruan memakai `UPDATE ... WHERE mfa_last_step IS NULL OR mfa_last_step < ?` — dua permintaan bersamaan dengan kode sama tidak bisa dua-duanya lolos
+
+`verify_totp()` tetap ada sebagai pembungkus aman untuk pemanggil biasa. Kalau kode cadangan yang dipakai, step di-reset agar kode TOTP berikutnya tidak tertolak.
+
+### Limiter
+
+Bucket `mfa` (10 permintaan / 300 detik) dan `login` (10 / 300) pada `RateLimiter`. `auth/mfa_verify.php` memanggilnya dengan kunci `mfa:<user_id>` **sebelum** memverifikasi kode, jadi batasnya berlaku lintas sesi — membuang cookie tidak meresetnya.
+
 ---
 
 ## CSRF Protection
@@ -490,6 +537,10 @@ Semua endpoint `arcade/chess/controller/*.php` mewajibkan:
 - **Login** — JSON `401` + `login_required: true` (client `arcade/chess/assets/js/api.js` redirect ke login)
 - **CSRF** — setiap POST yang mengubah state membawa `csrf_token` (body JSON untuk `save_move`, `FormData` untuk `create_room`/`join_room`)
 - Token **tidak pernah disimpan** di `moves.move_data` (tidak ter-expose ke lawan)
+
+### Token Tidak Berada di URL
+
+Token CSRF tidak pernah ada di query string — di sana ia ikut masuk ke riwayat browser, access log Apache, dan header `Referer` halaman berikutnya. Penghapusan media memakai POST dengan token di body form, handler menolak metode lain, dan `confirmHapus()` mengirim form alih-alih navigasi.
 
 ---
 
@@ -734,6 +785,14 @@ Rate limit status bisa dimonitor di admin dashboard:
 
 File expired (>1 jam) otomatis dibersihkan oleh `GarbageCollector::run()` yang dipanggil di setiap request.
 
+### Bucket yang Berlaku
+
+| Bucket | Batas | Kunci |
+|---|---|---|
+| `mfa` | 10 / 300 detik | `mfa:<user_id>` — berlaku lintas sesi |
+| `login` | 10 / 300 detik | per akun |
+| `drive_files` | 10 file / jam | `DriveStorage::recordUpload()` mencatat setiap unggahan |
+
 ---
 
 ## File Upload Security
@@ -843,6 +902,26 @@ Ditolak: absolute path, `../`, `..\`, null byte, symlink, kedalaman berlebihan, 
 - **Arsip** — limit entri/ukuran/rasio di atas (anti zip bomb)
 - **Transcode** — timeout audio 600s (`TRANSCODE_AUDIO_TIMEOUT`), HLS remux 120s, `stream_set_timeout(30)`, durasi hasil divalidasi ≥ 50% sumber
 
+### Batas Unduhan
+
+Perintah yt-dlp memakai `--max-filesize` dan `--match-filter "duration < N"`, dan `DownloadService::assertWithinDownloadLimits()` memeriksa metadata (`duration`, `filesize`/`filesize_approx`) sebelum unduhan dimulai. Nilainya `MEEL_MAX_DOWNLOAD_BYTES` (2 GB) dan `MEEL_MAX_DOWNLOAD_SECONDS` (7200), didefinisikan bersama konstanta batas upload lain di `modules/core/helpers/upload.php`.
+
+### Klaim Slot Antrean
+
+`System::claimQueueSlot()` membungkus pemeriksaan dan INSERT di dalam `GET_LOCK()` MySQL — satu Advisory Lock, jadi hanya satu pihak yang boleh memeriksa lalu inserting. Batasnya `System::MAX_CONCURRENT_QUEUES` (default 2).
+
+### Artefak Job yang Sedang Jalan
+
+`GarbageCollector::STALE_SECONDS` = **1200**, lebih besar dari `TRANSCODE_AUDIO_TIMEOUT` (600) dan `DOWNLOAD_TIMEOUT` (900). Marker `.processing` adalah satu-satunya pelindung tabrakan dua transcode atas output yang sama, jadi nilainya tidak boleh di bawah kedua batas timeout itu.
+
+### Antrean Hapus Tertunda
+
+`cleanupPendingDeletions()` hanya boleh menghapus path yang `realpath()`-nya berada di dalam salah satu root media atau drive base. Berkas antrean berada di direktori world-writable, jadi tanpa cek containment user lokal bisa menjadwalkan penghapusan file atau direktori mana pun sebagai user web.
+
+### Batas Ekspor Admin
+
+`fetchAll()` menerima batas (default 50.000) — pratinjau 15 baris memakai `countFiltered()` + `fetchPage(15, 0)`, bukan memuat seluruh tabel terfilter ke memori.
+
 ---
 
 ## Apache .htaccess Protection
@@ -880,6 +959,16 @@ RewriteEngine On
 ```
 
 Direktori private Drive juga di-deny untuk akses HTTP langsung — lihat [Proteksi Private Drive](#proteksi-private-drive).
+
+### Webroot Ditutup
+
+`.htaccess` deny untuk `vendor/`, `node_modules/`, `tools/`, `assets/dict/`, dan `storage/`. Aturan `vendor/` dan `node_modules/` tidak bisa di-commit (keduanya diabaikan git), jadi `install.sh` menulisnya dan `tests/security_test.php` mengawasi seluruh direktori sensitif agar regresi ketahuan.
+
+`FilesMatch` root juga menutupi `phpunit.xml`, `composer.*`, `package*.json`, `install.sh`, `.vscode`, dan sufiks cadangan (`~`, `.bak`, `.old`, `.orig`, `.swp`, `.dist`, `.sample`). **Tidak** memakai `*.json`/`*.xml`/`*.md` blanket, karena `assets/manifest.json` dan `sitemap.xml` harus tetap publik. Segmen direktori tooling ditutup dengan `RewriteRule`, karena `FilesMatch` hanya menangkap file bernama `.vscode`, bukan path yang memuat segmen itu.
+
+### Kompatibilitas Apache 2.4
+
+Semua `Deny from all` dibungkus `IfModule`. Tanpa pembungkus itu, Apache 2.4 tanpa `mod_access_compat` memperlakukan direktif itu sebagai error config — dan seluruh `.htaccess` dibuang, sehingga `controllers/` kehilangan seluruh kontrol akses.
 
 ---
 
@@ -1092,6 +1181,10 @@ Dua race TOCTOU ditutup di `DriveStorage::upload()`:
 
 **Jalankan semuanya dengan satu perintah:** `scripts/verify_security.sh` menjalankan ketiga suite keamanan (subset PHPUnit keamanan, `security_test.php`, `functional_test.php`) plus probe live 403 Private Drive dan keluar dengan exit code ramah-CI (lihat [testing.md](testing.md)).
 
+### Otorisasi Stream Fail-Closed
+
+`meel_stream_path_allowed()` memakai allowlist prefiks publik yang eksplisit — `thumbnail/`, `file/`, `lyrics/`, `upload/`, `manga/`, `books/` — dan sisanya ditolak. Video dan musik memang publik pada model RBAC proyek ini, jadi perilaku streaming publik tidak berubah; yang berubah adalah default-nya sekarang disengaja, bukan kebetulan, dan area privat tidak lagi bisa lolos hanya karena tidak berawalan `video/`.
+
 ---
 
 ## Exception Handling
@@ -1176,6 +1269,14 @@ echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
 
 Audit mencakup seluruh nilai user-controlled yang dirender: bio profil, judul/deskripsi media, komentar, nama file, playlist, hasil pencarian, username chat, dan data yang tampil di panel admin. Untuk inline JS template literal (contoh: hasil pencarian chat admin), fungsi `escapeHtml()` khusus membungkus nilai user-derived sebelum injeksi HTML. Regression test (`tests/security_test.php`) memverifikasi payload `<script>alert(1)</script>`, `<img src=x onerror=alert(1)>`, dll. tidak pernah dieksekusi sebagai HTML.
 
+### Stored XSS (hardening): database menyimpan data mentah (kanonik), escaping terjadi **saat render**, per konteks:
+
+- Teks HTML polos → `htmlspecialchars($v, ENT_QUOTES, 'UTF-8')`
+- Atribut/URL → escaping konteks-atribut + `urlencode`/allowlist
+- JSON/JS → `json_encode(..., JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)`
+
+Auditnya mencakup setiap nilai yang dikendalikan user dan dirender: bio profil, judul/deskripsi media, komentar, nama berkas, playlist, hasil pencarian, username chat, dan data yang ditampilkan di panel admin. Untuk template literal JS inline (mis. hasil pencarian chat admin), fungsi `escapeHtml()` membungkus nilai turunan user sebelum injeksi HTML. Test regresi (`tests/security_test.php`) memverifikasi payload seperti `<script>alert(1)</script>` dan `<img src=x onerror=alert(1)>` tidak pernah dieksekusi sebagai HTML.
+
 ### CSRF in All Forms
 
 ```php
@@ -1203,31 +1304,6 @@ $max_reg_attempts = 3;
 $reg_time_window = 3600; // 1 jam
 ```
 
----
-
-## Best Practices
-
-### Untuk Developer
-
-1. **Selalu gunakan Prepared Statements** untuk query database
-2. **Sanitasi semua input** POST/GET
-3. **Verifikasi CSRF token** di setiap form POST
-4. **Jangan percaya user input** — validasi tipe file, ukuran, dan konten
-5. **Escape output** dengan `htmlspecialchars()`
-6. **Jangan expose error detail** ke user non-admin
-
-### Security Checklist
-
-- [ ] Database credentials hanya di `auth/settings.php`
-- [ ] Semua `.htaccess` terpasang di direktori sensitif
-- [ ] Prepared statements di semua query SQL
-- [ ] CSRF token di semua form POST
-- [ ] Session timeout aktif (12 jam)
-- [ ] IP banning system aktif
-- [ ] File upload validation (tipe, ukuran, magic bytes)
-- [ ] Role checking sebelum aksi sensitif
-- [ ] Theme preference tidak menyimpan data sensitif
-
 ### Theme System Security
 
 Theme preference disimpan dengan aman:
@@ -1238,646 +1314,65 @@ Theme preference disimpan dengan aman:
 4. **CSRF protection:** POST memerlukan valid CSRF token
 5. **No XSS risk:** Theme value tidak di-escape ke HTML, hanya digunakan untuk `data-theme` attribute
 
----
+### Escape Saat Render, Bukan Saat Simpan
 
-## Hardening P0 (Oktober 2026)
+`UpdateManager::clean()` hanya melakukan `trim()`. Escaping terjadi di titik render, per konteks. Halaman `/update` bisa diakses pengunjung anonim, jadi "escape saat tulis" berarti penulis kedua — instalasi, impor, atau edit `mysql>` langsung — menjadi stored XSS untuk semua pengunjung.
 
-Catatan perubahan keamanan yang masuk pada satu batch, beserta alasannya.
-Bagian ini menggantikan komentar panjang yang sebelumnya ditaruh di dalam file
-produksi — penjelasan seperti ini lebih pantas di dokumen.
+`admin/index.php` juga memakai `json_encode` dengan flag `JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP`; `json_encode` polos tidak meng-escape `'`, jadi nama berkas ber-apostrof bisa menutup atribut berkoma tunggal.
 
-### 1. `MEEL_ENV` tidak lagi dipengaruhi header klien
+### View Inflation
 
-`modules/core/bootstrap.php` menentukan `development` vs `production`.
-Sempat ikut-or `$_SERVER['SERVER_NAME']`. Di Apache dengan `UseCanonicalName Off`
-(nilai default) `SERVER_NAME` disalin dari header `Host:` yang dikirim klien,
-jadi `Host: localhost` dari penyerang luar cukup untuk:
+`UNIQUE (user_id, video_id, music_id)` **tidak menahan apa pun**: MySQL memperlakukan NULL sebagai nilai berbeda satu sama lain di unique index, jadi `(9, 299, NULL)` dan `(9, 299, NULL)` tetap dua baris berbeda. Pola yang benar adalah dua unique terpisah per jenis media, seperti tabel `interactions`.
 
-- menyalakan `display_errors=1` (bocor path absolut, SQL, internal session di seluruh situs)
-- menambahkan `'unsafe-eval'` ke CSP
-- membuat `Modules::flaggedOff()` mengabaikan kill-switch `.disabled`
+> ⚠️ **Jebakan:** kolom yang tidak dipakai **harus tetap `NULL`, bukan `0`**. Mengisi `0` membuat semua baris musik berbagi `video_id=0` dan saling bentrok di `uq_view_video`. Sifat NULL yang *lolos* justru yang membuat pola dua-unique ini bekerja.
 
-Koreksinya ada dua sisi:
+### Tipe `bind_param` Mengikuti Skema
 
-- `bootstrap.php` hanya memakai `REMOTE_ADDR` (loopback tetap dikenali)
-- `install.sh` menulis `UseCanonicalName On` ke VirtualHost yang di-generate
+`bind_param` harus memakai tipe kolom yang sebenarnya. `difficulty_label` dan `cover_file` bertipe varchar tidak boleh di-bind `"i"` — mysqli tidak memberi warning, ia mengonversi nilai sesuai tipe yang diminta, jadi keduanya tersimpan `'0'`. `tests/unit/BindParamTypeTest.php` menurunkan tipe yang diharapkan dari `arcade/schema.sql`, bukan dari daftar hardcode.
+## Pemeriksa Keamanan
 
-Kalau `MEEL_ENV` memang perlu dipaksa, setel eksplisit di `auth/settings.php` —
-jangan andalkan deteksi otomatis.
+Pemeriksa di `tests/security_test.php` harus benar-benar memindai apa yang diklaimnya. Tiga aturan yang berlaku:
 
-### 2. Otorisasi admin selalu baca DB
+### Peta allowlist bukan daftar berkas yang dipindai
 
-`get_user_role()` sempat memakai `$_SESSION['role']` sebagai sumber otoritatif.
-Karena repo ini tidak punya UI untuk menurunkan role, pencabutan admin selalu
-dilakukan manual lewat SQL — dan tidak berlaku selama sesinya masih hidup.
+Pemeriksa **menemukan sendiri** berkasnya lewat `getPhpFiles()`, lalu menghitung ulang `escapeshellarg`/cast-int untuk setiap hasil temuan. Peta `$expected`/`$allowed` tetap ada, tapi perannya berubah: bukan daftar berkas yang dipindai, melainkan daftar yang *diharapkan* masih menjalankan shell. Berkas di luar peta yang menjalankan shell **gagal**, dengan pesan yang menyebut apa yang harus diubah kalau memang sah. Berkas yang terdaftar tapi kehilangan `shell_exec`-nya ikut dilaporkan, supaya peta basi langsung terlihat.
 
-Sekarang DB yang jadi sumber kebenaran; `$_SESSION['role'` tetap ada hanya sebagai
-cache tampilan. Berkas yang memanggil `is_admin($conn)` otomatis ikut aman:
+Jumlah berkas yang dipindai: **21**.
 
-| Berkas | Sebelum | Sesudah |
-| --- | --- | --- |
-| `admin/stats.php` | `is_admin()` → cache session | tetap, kini baca DB |
-| `controllers/api/chat.php` | `is_admin()` → cache session | tetap, kini baca DB |
-| `admin/partials/live-monitor-manage.php` | `require_admin()` → cache session | tetap, kini baca DB |
-| `update.php` | baca `$_SESSION['role']` langsung | `is_admin($conn)` |
-| `profile/manage.php` | baca `$_SESSION['role']` langsung | `is_admin($conn)` |
-| `controllers/system/UpdateManager.php` | baca `$_SESSION['role']` langsung | `is_admin($this->db)` |
+### Pelacakan taint untuk open redirect
 
-`UpdateManager` adalah yang paling penting: itu jalur **tulis** untuk
-`sidebar_settings` dan `updates`, yang dirender ke setiap pengunjung anonim.
+Variabel yang diinisialisasi dari `HTTP_REFERER` ditandai tercemar; penugasan yang memakai variabel tercemar ikut menandai variabel berikutnya (dua tingkat — cukup untuk pola `$ref` → `$back_url`); setiap `header('Location: ...')` yang ekspresinya memakai variabel tercemar dilaporkan sebagai open redirect. Dua lapis itu penting karena redirect lewat variabel lolos dari pemeriksaan yang hanya mencari `HTTP_REFERER` di dalam `header()`.
 
-> Pembacaan `$_SESSION['role']` yang tersisa (badge, link "edit") murni tampilan.
-> Gerbang sebenarnya tetap memeriksa ulang di server.
+Yang **tidak** dilaporkan: berkas yang membaca referer lalu mengarahkan ke path lokal tetap — misalnya gate HLS di `music/stream.php` dan `modules/core/helpers/storage_stream.php` yang mengalihkan ke `../err/?code=denied`.
 
-### 3. Nonaktifkan MFA wajib password + kode TOTP
+### Aturan pemeriksaan yang sadar-cabang
 
-Sempat cukup cookie sesi + token CSRF. Sesi yang dibajak (atau browser bersama
-yang tidak terkunci) langsung menurunkan akun ke 1FA **dan** menghapus kode
-cadangan. Sekarang memakai `password_verify` + kode TOTP yang sedang berlaku,
-pola yang sama dengan reset kode cadangan di `controllers/system/mfa.php`.
+`display_errors=1` diterima **hanya** bila berkas yang sama juga memuat `case 'development'` **dan** `display_errors=0`. Daftar nama berkas yang dikecualikan tidak ada, jadi pengecualian baru tidak lagi bisa menyembunyikan regresi.
 
-Seed TOTP juga tidak lagi dirender ulang untuk sesi mana pun yang login.
-Versi lama membangun ulang `otpauth://` dari `mfa_secret` di DB, jadi sesi yang
-dibajak bisa menyalin seed-nya dan tetap memegang 2FA di perangkat penyerang.
+CI gagal pada kode keluar apa pun yang bukan nol — peringatan pun merah.
 
-### 4. Kode TOTP single-use (anti-replay)
+### Penjaga agar tidak kembali korup
 
-`verify_totp()` memakai jendela ±1 time-step dan tidak menyimpan apa pun, jadi
-satu kode sah sekitar **90 detik** dan bisa dipakai berulang tanpa batas —
-phishing, shoulder-surfing, atau kode yang bocor lewat log proxy tetap sah
-setelah pemilik sah sudah memakainya. RFC 6238 §5.2 mensyaratkan counter monoton.
+`StorageSplitTest::testSecurityAndFunctionalMapsStillCoverTheRealFiles` mencari peta `$risky`, `$expected`, atau `$allowed`, dan menambahkan assertion bahwa `testCommandInjection()` benar-benar memanggil `getPhpFiles()`. Kalau suatu saat pemeriksaan ini dikembalikan ke daftar path literal, assertion tersebut gagal lebih dulu.
 
-Perbaikannya:
+## Akuntansi MEeLCoin
 
-- `verify_totp_step()` mengembalikan time-step yang cocok (bukan `bool`)
-- `auth/mfa_verify.php` menyimpannya ke kolom baru `users.mfa_last_step`
-- pembaruan memakai `UPDATE ... WHERE mfa_last_step IS NULL OR mfa_last_step < ?`
-  sehingga dua permintaan bersamaan dengan kode sama tidak bisa dua-duanya lolos
+Aturan akuntansi refund di baris antrean. Semuanya dijaga `QueueRefundAccountingTest` dan `QueueRefundRecoveryIntegrationTest`.
 
-`verify_totp()` tetap ada sebagai pembungkus yang aman untuk pemanggil biasa.
-Bila kode cadangan yang dipakai, step di-reset agar kode TOTP berikutnya tidak
-tertolak.
+### Biaya yang dicatat adalah jumlah yang dipungut
 
-### 5. `view_logs` benar-benar menahan view inflation
+`upload_queue.coin_cost` mencatat MEeLCoin yang benar-benar dipotong saat baris dibuat — pemanggil yang membuat baris yang wajib mencatat jumlahnya, bukan alir lain. `coin_refunded` = 1 berarti biaya sudah dikembalikan.
 
-`UNIQUE (user_id, video_id, music_id)` **tidak pernah menahan apa pun**: MySQL
-memperlakukan NULL sebagai nilai berbeda satu sama lain di unique index, jadi
-`(9, 299, NULL)` dan `(9, 299, NULL)` tetap dua baris berbeda. Akibatnya setiap
-buka halaman menambah `views` — persis kebalikan dari komentar di `schema.sql`.
+### Satu implementasi untuk dua pemanggil
 
-Pola yang benar sudah dipakai tabel `interactions`: dua unique terpisah per jenis
-media.
+Pembersihan baris basi memakai `GarbageCollector::releaseStaleQueueRows()` — kode yang sama dengan sweeper 6 jam. Kalau salah satu menandai `failed` tanpa refund, baris itu hilang dari jangkauan sweeper dan biaya MEeLCoin hilang permanen. Urutan di dalam satu baris penting: **refund dulu, baru tandai `failed`**. Kalau dibalik, ada celah di mana baris sudah `failed` tapi coins belum dikembalikan, dan baris `failed` tidak lagi dipilih sweeper.
 
-> ⚠️ **Jebakan:** kolom yang tidak dipakai **harus tetap `NULL`, bukan `0`**.
-> Mengisi `0` membuat semua baris musik berbagi `video_id=0` dan saling bentrok
-> di `uq_view_video`. Sifat NULL yang *lolos* justru yang membuat pola dua-unique
-> ini bekerja.
+### Refund hanya satu kali
 
-Migrasi v7 juga menghapus baris duplikat yang sudah terlanjur menumpuk —
-justru karena unique lama tidak pernah berfungsi.
+`releaseStaleQueueRows()` membaca biaya dari baris itu sendiri, bukan dari harga saat ini — harga MEeLCoin bisa berubah, dan yang harus dikembalikan adalah jumlah yang benar-benar dipotong. Baris dikunci `FOR UPDATE` selama transaksi, jadi dua sweeper yang jalan bersamaan tidak bisa merefund baris yang sama. `coin_refunded = 1` hanya ditulis **setelah** coins benar-benar dikembalikan, dan setiap hasil `execute()` diperiksa.
 
-### 6. IDOR playlist
+`releaseQueue()` tetap hanya menyentuh kolom status. Invarian itu penting: kalau ia ikut menyetel `coin_refunded`, baris yang sudah direfund jalur gagal normal akan direfund lagi oleh sweeper.
 
-- **Hapus:** `delete_playlist` menghapus baris `playlist_tracks` **sebelum**
-  memeriksa kepemilikan. `DELETE playlists` yang di-scope `user_id` tetap sukses
-  pada 0 baris, jadi tidak ada error yang menandakan pivot milik orang sudah
-  hilang. Sekarang: kepemilikan dicek dulu, pivot dihapus lewat `JOIN`, dan
-  `affected_rows` diperiksa.
-- **Baca:** `getPlaylistQueue()` tidak punya gate kepemilikan, jadi `?playlist_id=N`
-  di halaman watch yang publik membocorkan antrean playlist user lain. Gate
-  dipasang **di lapisan data**, bukan di pemanggil, supaya pemanggil berikutnya
-  tidak bisa lupa.
+### Notifikasi gagal tidak boleh membatalkan upload
 
-### 7. Webroot ditutup
-
-Sebelum batch ini, nine path bisa diunduh tanpa autentikasi, termasuk kamus SQLite
-42 MB (`/assets/dict/jmdict.sqlite3`) yang bisa diunduh ulang setiap permintaan.
-
-- `.htaccess` deny untuk `vendor/`, `node_modules/`, `tools/`, `assets/dict/`, dan
-  `storage/` (tadinya berkas 0 byte)
-- `vendor/` dan `node_modules/` diabaikan git, jadi aturan `.htaccess`-nya tidak
-  bisa di-commit. `install.sh` sekarang menulisnya (langkah 6/9), dan
-  `tests/security_test.php` mengawasi seluruh direktori sensitif supaya regresi
-  ketahuan
-- `FilesMatch` root ditambah untuk `phpunit.xml`, `composer.*`, `package*.json`,
-  `install.sh`, `.vscode`, dan sufiks cadangan (`~`, `.bak`, `.old`, `.orig`, `.swp`,
-  `.dist`, `.sample`)
-- **Tidak** memakai `*.json`/`*.xml`/`*.md` blanket, karena
-  `assets/manifest.json` dan `sitemap.xml` harus tetap publik
-- `RewriteRule` memblokir segmen direktori tooling — `FilesMatch` hanya menangkap
-  file bernama `.vscode`, bukan path yang memuat segmen itu
-
-### 8. `.htaccess` dengan direktif Apache 2.2 polos
-
-`controllers/.htaccess` dan `logs/tests/.htaccess` memakai `Deny from all` tanpa
-pembungkus. Di Apache 2.4 tanpa `mod_access_compat` itu error config, sehingga
-**seluruh** `.htaccess` dibuang dan `controllers/` kehilangan seluruh kontrol akses.
-Sekarang dibungkus `IfModule` seperti berkas lain di repo.
-
----
-
-## Hardening P1 (Oktober 2026)
-
-Lanjutan dari bagian sebelumnya, dengan alasan yang sama: penjelasan berhenti di
-dokumen, bukan di file produksi.
-
-### 9. Batas ukuran dan durasi unduhan
-
-Dulu `base_cmd` untuk yt-dlp tidak punya batas apa pun. Satu URL dengan aliran
-1080p yang panjang menulis ke staging `/dev/shm/meel/temp` tanpa plafon, sementara
-`memory_limit` 10 GB. Sekarang:
-
-- `--max-filesize` dan `--match-filter "duration < N"` pada perintah yt-dlp
-- `DownloadService::assertWithinDownloadLimits()` memeriksa metadata
-  (`duration`, `filesize`/`filesize_approx`) sebelum unduhan dimulai
-
-Nilainya `MEEL_MAX_DOWNLOAD_BYTES` (2 GB) dan `MEEL_MAX_DOWNLOAD_SECONDS` (7200),
-didefinisikan bersama konstanta batas upload lain di
-`modules/core/helpers/upload.php`.
-
-### 10. Klaim slot antrean jadi atomik
-
-`isServerBusy()` hanya `SELECT COUNT(*) ... WHERE status = 'processing'`, lalu
-caller terpisah melakukan INSERT. Dua puluh permintaan bersamaan bisa semuanya
-melihat angka di bawah ambang dan semuanya menjalankan ffmpeg (masing-masing 8
-thread).
-
-`System::claimQueueSlot()` sekarang membungkus pemeriksaan dan INSERT di dalam
-`GET_LOCK()` MySQL — satu Advisory Lock, jadi hanya satu pihak yang boleh
-memeriksa lalu inserting. Diverifikasi dengan 8 proses PHP paralel: tepat 2 klaim
-berhasil, sisanya ditolak.
-
-Batasnya `System::MAX_CONCURRENT_QUEUES` (default 2).
-
-### 11. GC tidak lagi menghapus artefak job yang masih jalan
-
-`GarbageCollector::STALE_SECONDS` bernilai 300, lebih kecil dari
-`TRANSCODE_AUDIO_TIMEOUT` 600 dan `DOWNLOAD_TIMEOUT` 900. Request lain yang
-menyentuh transcoder bisa membuat GC menghapus marker `.processing` milik job
-yang sedang berjalan — dan marker itu justru satu-satunya pelindung tabrakan dua
-transcode atas output yang sama. Dinaikkan ke 1200.
-
-### 12. Installer tidak lagi membuang kredensial database
-
-Patcher lama cocokkan pola `$server = "localhost";`, padahal
-`auth/settings.example.php` sudah berubah ke
-`if (!isset($server)) $server = (getenv(...) ?: "localhost")`. Errornya juga
-ditelan `2>/dev/null ||` — jadi instalasi tetap melapor sukses padahal kredensial
-yang diinput operator dibuang dan yang dipakai adalah nilai default.
-
-Patcher sekarang memakai regex yang tahan untuk
-`define('MEEL_HDD_BASE', ...)` sehingga idempoten, menulis ulang blok override,
-memverifikasi hasilnya dengan `re.search`, berhenti dengan `die` bila gagal, lalu
-mengecek `php -r 'require auth/settings.php'`.
-
-### 13. Open redirect: satu helper, bukan tujuh implementasi
-
-Tujuh salinan validasi referer berbeda, hampir semuanya membandingkan host referer
-dengan `$_SERVER['HTTP_HOST']` — yaitu header kiriman klien. Dengan
-`Host: evil.com` + `Referer: https://evil.com/`, pemeriksaan itu lolos sebagai
-"same origin". Beberapa versi bahkan menerima `localhost` dan `127.0.0.1` tanpa
-syarat.
-
-`meel_same_origin_referer()` menggantinya: host harus cocok dengan
-`MEEL_CANONICAL_HOST` yang dikonfigurasi, skema hanya http/https, dan URL
-protocol-relative ditolak. Kalau `MEEL_CANONICAL_HOST` kosong, semua referer luar
-ditolak — gagal aman.
-
-Dipakai oleh `music/playlist_action.php`, `profile/notification.php`, dan
-`meel_back_url()`. Sisa pembacaan `HTTP_REFERER` (misalnya gate HLS) bukan
-kontrol keamanan dan memang sudah begitu sejak awal.
-
-### 14. Kerusakan data senyap di bind_param arcade
-
-`difficulty_label` dan `cover_file` bertipe varchar, tapi di-bind sebagai `"i"`.
-mysqli tidak memberi warning — ia mengonversi nilai sesuai tipe yang diminta, jadi
-keduanya tersimpan `'0'`. Nama tingkat kesulitan jadi `0` dan cover art rusak
-padahal filenya ada.
-
-`tests/unit/BindParamTypeTest.php` menurunkan tipe yang diharapkan dari
-`arcade/schema.sql`, bukan dari daftar hardcode, jadi test tetap benar saat skema
-berubah.
-
-### 15. Rate limit drive yang tidak pernah aktif
-
-`System::checkRateLimit('drive_files')` menghitung baris di `drive_files`, tapi
-tidak ada satu pun INSERT ke tabel itu — `num_rows` selalu 0 sehingga batas 10
-file/jam tidak pernah berlaku. `DriveStorage::recordUpload()` kini mencatat
-setiap unggahan.
-
-### 16. Antrean hapus tertunda dibatasi ke root media
-
-`cleanupPendingDeletions()` menghapus path apa pun yang tertulis di
-`temp/pending_delete.json`, tanpa cek containment. Berkas itu berada di direktori
-world-writable, jadi user lokal bisa menjadwalkan penghapusan file atau direktori
-mana pun sebagai user web. Sekarang `realpath()` harus berada di dalam salah satu
-root media atau drive base.
-
-### 17. Ekspor admin dibatasi
-
-`fetchAll()` tanpa `LIMIT` dipakai untuk menampilkan pratinjau 15 baris — seluruh
-tabel terfilter dimuat ke memori lebih dulu. Sekarang `fetchAll()` menerima batas
-(default 50.000) dan pratinjau memakai `countFiltered()` + `fetchPage(15, 0)`.
-
----
-
-## Hardening P2 (Oktober 2026)
-
-### 18. Limiter MFA dan login tidak lagi bisa direset dengan buang cookie
-
-Penghitung MFA sebelumnya hanya `$_SESSION['mfa_fail_count']`. Membuang cookie
-saja sudah cukup untuk mulai dari nol — tidak ada penghitung sisi server per akun.
-
-`RateLimiter` kini punya dua bucket baru: `mfa` (10 permintaan / 300 detik) dan
-`login` (10 / 300). `auth/mfa_verify.php` memanggilnya dengan kunci
-`mfa:<user_id>` **sebelum** memverifikasi kode, jadi batasnya berlaku lintas sesi.
-
-### 18b. Login tidak lagi membocorkan apakah akun ada
-
-Dua oracle sebelumnya:
-
-1. **Pesan berbeda.** Akun ada tapi tidak aktif mendapat "Akun Anda sedang menunggu
-   verifikasi admin." atau "Akses ditolak untuk akun ini." — berbeda dari
-   "Username atau password salah!", jadi langsung mengonfirmasi keberadaan akun.
-2. **Timing.** `password_verify` (bcrypt, 50-100 ms) hanya dijalankan kalau user
-   ditemukan. Median beberapa puluh permintaan sudah memisahkan kedua cabang.
-   Sekarang ada `password_verify` Boneka terhadap hash statis saat user tidak
-   ditemukan.
-
-Semua kegagalan kini memakai pesan yang sama.
-
-### 19. Escape dilakukan saat render, bukan saat simpan
-
-`UpdateManager::clean()` pernah melakukan `htmlspecialchars()` **saat menulis**,
-sedangkan `update.php` melakukan `nl2br(htmlspecialchars(...))` **saat render**.
-Akibatnya konten ter-escape dua kali: admin yang mengetik `<b>cepat</b>`
-mempublikasikan `&lt;b&gt;cepat&lt;/b&gt;`, dan JS memakai triik `decodeHtml`
-untuk menutupi.
-
-Yang lebih serius: halaman `/update` bisa diakses **pengunjung anonim**, dan kedua
-sidebar di-render tanpa escaping sama sekali. Pola "escape saat tulis" berarti
-penulis kedua — instalasi, impor, atau edit `mysql>` langsung saat insiden —
-langsung menjadi stored XSS untuk semua pengunjung. `clean()` kini hanya `trim()`,
-dan escaping terjadi di titik render.
-
-`admin/index.php` juga diperbaiki: daftar file orphan (nama berkas di disk,
-berasal dari judul media kiriman user) di-echo mentah ke dalam `<li>`, dan
-`json_encode()` tanpa flag apa pun diletakkan di atribut berkoma tunggal —
-`json_encode` tidak meng-escape `'`, jadi nama berkas ber-apostrof menutup atribut
-itu. Sekarang di-escape, dan `json_encode` memakai
-`JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP`.
-
-### 20. Migrasi gagal sekarang berhenti, bukan lanjut
-
-`database/migrate.php` mencatat versi ke `db_version` meskipun langkahnya hanya
-mencetak `⚠ Warning`. Akibatnya skema bisa setengah termigrasi **permanen** —
-`SELECT MAX(version)` melewati migrasi itu selamanya di host tersebut.
-
-Ini terbukti nyata saat menjalankan migrasi v7: pembuatan unique index gagal
-karena duplikat lama, warning dicetak, tapi `db_version` tetap naik sehingga
-langkahnya tidak pernah diulang.
-
-Sekarang setiap kegagalan dikumpulkan bersama nomor langkahnya, ditulis ke STDERR,
-versi **tidak** dicatat, dan proses berhenti dengan exit 1 — jadi instalasi
-menangkapnya dan langkah yang gagal dicoba lagi di jalankan berikutnya.
-
-### 22. Token CSRF tidak lagi ada di URL
-
-`profile/manage.php` menghapus media lewat GET dengan token CSRF di query string.
-Token itu ikut masuk ke riwayat browser, access log Apache, dan header `Referer`
-halaman berikutnya.
-
-Penghapusan sekarang POST dengan token di body form, handler menolak metode lain,
-dan `confirmHapus()` mengirim form alih-alih navigasi.
-
-### 23. Fungsi otorisasi stream tidak lagi gagal-terbuka
-
-`meel_stream_path_allowed()` mengembalikan `true` untuk path apa pun yang tidak
-berawalan `video/`. Karena video dan musik memang publik pada model RBAC proyek
-ini,gate itu tidak menambah apa pun — hanya berpura-pura jadi kontrol keamanan
-lalu jadi jebakan bagi siapa pun yang memakainya untuk area privat.
-
-Pole-nya dibalik: ada allowlist prefiks publik yang eksplisit
-(`thumbnail/`, `file/`, `lyrics/`, `upload/`, `manga/`, `books/`) dan sisanya
-ditolak. Perilaku streaming publik tidak berubah — yang berubah adalah default-nya
-sekarang disengaja, bukan kebetulan.
-
----
-
-## Hardening P4 — Bagian komentar (Oktober 2026)
-
-Dua hal membuat satu track bisa membuat bagian komentarnya tampak kosong
-permanen.
-
-### `parent_id` tidak pernah divalidasi
-
-`addComment()` mengambil `parent_id` dari POST lalu langsung menyimpannya. Tidak
-ada pemeriksaan bahwa komentar induknya ada, dan tidak ada pemeriksaan bahwa
-induknya benar-benar milik media yang sama.
-
-Dampaknya dua arah:
-
-- Balasan bisa menempel ke komentar milik **media lain**, sehingga pohon yang
-  dirender di satu halaman mengambil data track lain.
-- Renderer hanya turun dari `parent_id = 0`, jadi balasan yang induknya berada di
-  luar jendela 200 baris **tidak pernah tampil sama sekali** — ada di database
-  tapi tidak terjangkau dari akar.
-
-Sekarang `resolveParentId()` memeriksa induknya ada **dan** punya kolom media
-yang sama. Kalau tidak, `parent_id` diset `NULL` sehingga komentarnya menjadi
-komentar root — deterministik dan tetap terlihat.
-
-Diverifikasi langsung terhadap database: komentar pada media A yang
-mencoba memakai `parent_id` milik media B disimpan dengan `parent_id` NULL.
-
-### Rantai balasan tanpa batas
-
-Ditambahkan `MediaViewer::MAX_COMMENT_DEPTH` = 5. Melewati batas promotes to
-root. Tanpa ini satu orang bisa membuat rantai yang tidak terbatas hanya dengan
-memposting balasan ke balasan.
-
-### Jendela 200 baris tanpa paginasi
-
-`getComments()` memakai `LIMIT 200` dengan urutan `created_at ASC` — paling lama
-lebih dulu. Yang terjadi: bila 200 baris pertama sudah terisi (misalnya 200
-balasan berantai pada satu komentar akar), setiap komentar baru terdorong ke
-luar jendela dan tidak pernah muncul lagi. Bagian komentar tampak kosong padahal
-isinya ada.
-
-Dua perubahan:
-
-- Urutan dibalik menjadi `created_at DESC, id DESC`. Komentar terbaru selalu di
-  baris pertama, sehingga tidak lagi bisa terdorong keluar oleh komentar lama.
-- Parameter `$offset` ditambahkan supaya komentar lama tetap bisa dijangkau lewat
-  paginasi.
-
-Komentar yang sudah terlanjur ditulis **tidak** dihapus. Efeknya cuma berubah:
-komentar baru tidak lagi tersembunyi oleh komentar lama.
-
----
-
-## Hardening P5 — Ketelitian pemeriksa keamanan (Oktober 2026)
-
-Bagian ini bukan perubahan pada aplikasi, melainkan pada `tests/security_test.php`
-yang selama ini dilaporkan hijau tanpa benar-benar memeriksa apa yang diklaimnya.
-
-### Peta allowlist membuat pemeriksaan mati diam-diam
-
-`testCommandInjection()` memindai sembilan berkas yang ditulis **literal** ke
-dalam kode:
-
-```php
-$risky = [
-    'modules/core/Uploader.php' => ['shell_exec', 'exec', 'popen'],
-    // ... 8 berkas lainnya
-];
-```
-
-Kalau `shell_exec` dipindahkan ke berkas baru yang tidak ada di daftar itu,
-pemeriksaan tetap hijau — bukan karena kodenya aman, tapi karena tidak pernah
-dipindai. Persis kelas bug yang pertama kali tertangkap saat berkas `storage.php`
-dipecah.
-
-Sekarang pemeriksa **menemukan sendiri** berkasnya lewat `getPhpFiles()`, lalu
-menghitung ulang `escapeshellarg`/cast-int untuk setiap hasil temuan:
-
-- Peta `$expected`/`$allowed` tetap ada, tapi perannya berubah: bukan daftar
-  berkas yang dipindai, melainkan daftar yang *diharapkan* masih menjalankan
-  shell. Berkas yang terdaftar tapi kehilangan `shell_exec`-nya ikut dilaporkan,
-  supaya peta basi langsung terlihat.
-- Berkas di luar peta yang menjalankan shell **gagal**, dengan pesan yang menyebut
-  apa yang harus diubah kalau memang sah.
-
-Jumlah berkas yang dipindai naik dari **9 menjadi 21**. Dua belas berkas
-sebelumnya tidak pernah diperiksa sama sekali, termasuk
-`controllers/api/auto_metadata.php`, `controllers/profile/profile_edit.php`,
-`arcade/rhythm/api/upload.php`, dan `modules/auth/ValidatingProxy.php`.
-
-Verifikasi: berkas sementara dengan `shell_exec('ls ' . $u)` di luar peta membuat
-skor turun ke 99/100 dan memunculkan `Fail: 1`.
-
-### Redirect dari referer hanya diperiksa di empat berkas
-
-`testOpenRedirectHardening()` hanya membaca
-`controllers/api/delete_comment.php` dan tiga berkas tetangganya. Berkas lain
-yang membaca `HTTP_REFERER` sama sekali tidak terlihat — termasuk dua yang
-benar-benar bermasalah (lihat di bawah).
-
-Pemeriksa baru memindai seluruh repo dengan **pelacakan taint**:
-
-1. Variabel yang diinisialisasi dari `HTTP_REFERER` ditandai tercemar.
-2. Penugasan yang memakai variabel tercemar ikut menandai variabel berikutnya
-   (dua tingkat, sudah cukup untuk pola `$ref` → `$back_url`).
-3. Setiap `header('Location: ...')` yang ekspresinya memakai variabel tercemar
-   dilaporkan sebagai open redirect.
-
-Dua lapis ini penting karena redirect lewat variabel lolos dari pemeriksaan
-yang hanya mencari `HTTP_REFERER` di dalam `header()` — pola yang justru paling
-umum dipakai (`$url = $_SERVER['HTTP_REFERER']; ... header("Location: $url")`).
-
-Yang **tidak** dilaporkan: berkas yang membaca referer lalu mengarahkan ke path
-lokal tetap, misalnya gate HLS di `music/stream.php` dan
-`modules/core/helpers/storage_stream.php` yang mengalihkan ke
-`../err/?code=denied`. Keduanya bukan open redirect.
-
-### Dua open redirect yang masih tersisa ikut ketahuan
-
-Pemeriksa yang diperkuat langsung menemukan dua instance pola lama yang belum
-tersentuh:
-
-| Berkas | Masalah | Perbaikan |
-|---|---|---|
-| `auth/auth_helpers.php` | `auth_back_url()` membandingkan host referer dengan `$_SERVER['HTTP_HOST']`, yang bisa dipalsukan lewat header `Host:` | Sekarang memakai `meel_same_origin_referer()` yang membandingkan dengan `MEEL_CANONICAL_HOST` |
-| `profile/index.php` | Daftar host yang diizinkan memuat `localhost`, `127.0.0.1`, `::1` | Dihapus; memakai `meel_same_origin_referer()` |
-
-Keduanya berakhir di `href` tautan "kembali" (`auth/login.php:190`), jadi dampak
-nya adalah pengguna diarahkan ke situs lain melalui domain kita sendiri.
-
-Perubahan ini membuat ketergantungan pada `MEEL_CANONICAL_HOST` eksplisit.
-Kalau nilainya kosong, `meel_same_origin_referer()` mengembalikan `null` dan
-tautan kembali jatuh ke `../` — gagal-tertutup, bukan gagal-terbuka. Di
-localhost tanpa konfigurasi, tautan kembali memang jadi generik.
-
-### Pengecualian `display_errors` dihapus
-
-Pemeriksa ini memuat daftar nama berkas yang dikecualikan dari aturan `display_errors`.
-Setelah dihapus, `modules/core/bootstrap.php` langsung terbongkar: ia memuat
-`ini_set('display_errors', '1')`. Setelah ditelusuri, itu memang benar — berada
-di cabang `development`, sementara cabang `production` mengaturnya ke `0`.
-
-Aturannya sekarang sadar-cabang: `display_errors=1` diterima **hanya** bila
-berkas yang sama juga memuat `case 'development'` **dan** `display_errors=0`.
-Daftar nama berkas konstan dihapus, jadi pengecualian baru tidak lagi bisa
-menyembunyikan regresi.
-
-### Peringatan tidak lagi diabaikan CI
-
-`ci.yml` sebelumnya hanya gagal pada exit code di atas 1; exit 1 ("lulus dengan
-peringatan") tetap hijau. Karena itu setiap peringatan adalah pekerjaan yang
-ditunda tanpa batas.
-
-Semua sumber peringatan sudah diperiksa ulang dan semuanya bergantung pada isi
-berkas yang dilacak git, bukan pada keadaan mesin — termasuk
-`data_drive/private_admins/.htaccess` yang memang ada di repositori. Tidak ada
-sumber peringatan yang bergantung pada media storage yang ter-mount. CI sekarang
-gagal pada kode keluar apa pun yang bukan nol.
-
-Status saat ini: `177` pemeriksaan, `177` lulus, `0` peringatan, `0` gagal.
-
-### Penjaga tambahan agar tidak kembali korup
-
-`StorageSplitTest::testSecurityAndFunctionalMapsStillCoverTheRealFiles` sudah
-menangkap perubahan ini saat pertama dijalankan: ia mencari peta `$risky`
-menggunakan, dan setelah petanya diganti nama justru cocok dengan `$risky = []`
-yang tidak terkait di `testSqlInjection()`. Assertion-nya sekarang menerima
-`$risky`, `$expected`, atau `$allowed`, dan ditambah satu assertion baru bahwa
-`testCommandInjection()` benar-benar memanggil `getPhpFiles()`.
-
-Kalau suatu saat pemeriksaan ini dikembalikan ke daftar path literal, assertion
-tersebut gagal lebih dulu — persis seperti yang terjadi saat pemecahan
-`storage.php`.
-
----
-
-## Hardening P6 — Resolusi path dan penempatan gerbang (Oktober 2026)
-
-### Path include tidak lagi bergantung pada working directory
-
-282 statement `require` dan `include` di 66 berkas memakai path relatif terhadap
-working directory. Untuk request web, working directory kebetulan adalah direktori
-entry script, jadi mereka bekerja — tapi hanya selama berkasnya adalah entry
-point. Begitu sebuah halaman di-*include* dari tempat lain, statement yang sama
-menunjuk ke tempat yang sama sekali berbeda.
-
-Kasus paling tajam ada di `auth/auth.php`, yang mengambil saudaranya dengan
-`include 'config.php'`. PHP menyelesaikan include relatif terhadap working
-directory dulu, dan hanya kalau gagal baru ke direktori berkas pemanggil. Jadi
-berkas yang menentukan gerbang sesi sebenarnya sedang menentukan *config.php
-mana* yang dimuat, tergantung dari mana request dilayani.
-
-Semua statement itu sekarang memakai `__DIR__`. Perilakanya identik ketika
-berkas adalah entry script, dan benar ketika bukan. Tidak ada template
-ter-*include* yang punya require relatif, jadi perubahan direktori dasar untuk
-include bersarang tidak berpengaruh apa pun.
-
-Pemanggilan `filemtime()` punya masalah yang sama. 47 panggilan di 12 berkas
-menyelesaikan `../assets/...` terhadap working directory, sehingga query versi
-cache-busting diam-diam menghasilkan nilai kosong begitu halamannya bukan entry
-script. Semuanya kini memakai `__DIR__`, dan setiap path hasil konversi
-diperiksa benar-benar menunjuk berkas yang ada.
-
-Atribut `href` dan `src` yang mengarah ke browser sengaja tidak diubah: itu
-URL yang diselesaikan browser terhadap halaman, bukan path yang dibuka server.
-
-### Gerbang otorisasi drive ditulis lima kali, sekarang satu
-
-`drive/index.php`, `upload.php`, `download.php`, `stream.php`, dan `delete.php`
-semuanya dibuka dengan enam baris yang sama: tiga require, pembuatan
-`DriveUserContext`, lalu `$user->authorize()`. Gerbang peran untuk seluruh
-fitur drive ditulis lima kali, dan satu-satunya pembeda di antaranya adalah
-require mana yang ingat diubah jadi `require_once`.
-
-Sekarang mereka berbagi `drive/bootstrap.php`, yang juga masuk daftar
-`FilesMatch` di `drive/.htaccess` supaya tidak bisa diminta langsung.
-
-### `auth/config.php` tidak lagi dimuat dua kali
-
-`auth/auth.php` memuat `config.php` dengan `include` biasa, lalu halaman-halaman
-memerlukan file yang sama lagi. `config.php` memang idempoten — koneksinya
- dijaga `if (!isset($conn))` — tapi jalur kedua mengirim ulang header keamanan
-dan mengulang bookkeeping sesi. Sekarang `require_once` di keempat berkas
-masuk, sehingga urutan `require` kedua berkas itu tidak lagi berpengaruh.
-require dua berkas itu tidak lagi berpengaruh.
-
-### Pemeriksaan stream mengikuti rantai include
-
-`tests/security_test.php` memastikan `drive/stream.php` memanggil
-`authorize()`. Setelah pemanggilan itu pindah ke bootstrap bersama, pemeriksa
-membaca berkas yang tidak lagi memuatnya.
-
-Sekarang pemeriksa membaca berkas itu *dan semua yang di-include-nya*, lewat
-helper baru `sourceWithIncludes()` di `tests/helpers.php`. Polanya juga
-diperketat dari `authorize()` menjadi `->authorize()`, karena definisi metode di
-`DriveService.php` juga cocok dengan pola lama.
-
-Versi pertama perubahan itu false negative, dan ketahuan karena pemanggilan
-dihapus sementara: pemeriksa tetap lulus, karena polanya cocok dengan definisi
-kelas, bukan dengan pemanggilannya. Polanya kini `->authorize()`, dan menghapus
-pemanggilan itu membuat gerbang gagal.
-
----
-
-## Hardening P7 — Akuntansi refund MEeLCoin (Oktober 2026)
-
-### Antrean tidak pernah mencatat berapa yang dibayar user
-
-`upload_queue.coin_cost` didokumentasikan di `database/schema.sql` sebagai
-"MEeLCoin yang dipotong saat INSERT", dan `coin_refunded` sebagai "1 = biaya
-sudah dikembalikan oleh sweeper". Kedua kolom itu tidak pernah terisi nilai
-yang sebenarnya.
-
-`upload_advanced.php` memotong coin lewat `MeelCoin::spend()` lalu memanggil
-`processDownload()`, yang membuat baris antrean lewat `DownloadService::lockQueue()`.
-`lockQueue()` menulis `self::$pendingCoinCost` ke kolom `coin_cost` — dan
-`setPendingCoinCost()` hanya pernah dipanggil dari
-`modules/core/helpers/upload.php`, yaitu alir yang justru TIDAK PERNAH membuat
-baris `upload_queue`.
-
-Dua pemanggilnya terbalik. Hasilnya `coin_cost` selalu 0. Database produksi
-membuktikan: **0 dari 160** baris `upload_queue` punya `coin_cost > 0`.
-
-Logika sweeper-nya sendiri benar sepanjang waktu, dan
-`QueueSweeperIntegrationTest` membuktikannya dengan menyisipkan baris berbiaya 7
-langsung ke database. Yang tidak pernah bisa dilakukan adalah
-mengembalikan jumlah yang sebenarnya, karena jumlah yang dibaca selalu nol.
-User yang upload-nya mati di tengah sudah dipayar, dan coins-nya tidak pernah
-kembali.
-
-Perbaikannya memindahkan `setPendingCoinCost()` ke pemanggil yang memang membuat
-baris, dan `upload_advanced.php` kini mencatat jumlah yang dipungutnya.
-
-### Jalur kedua membuang refund di telanjang
-
-`upload_advanced.php` juga membersihkan baris basi dengan statement polos:
-
-```php
-UPDATE upload_queue SET status = 'failed' WHERE status = 'processing' AND ...
-```
-
-Tanpa refund — dan ini bagian yang membuatnya permanen: baris `failed` tidak
-pernah dipilih sweeper, yang hanya mengambil `pending` dan `processing`.
-Jadi pembersihan 30 menit mencabut baris itu dari jangkauan sweeper sebelum
-sweeper 6 jam sempat mengembalikan uangnya. Setiap coin yang terutang ke user
-yang upload-nya menggantung hilang begitu saja.
-
-Pembersihan itu sekarang lewat `GarbageCollector::releaseStaleQueueRows()`, kode
-yang sama dengan sweeper, jadi refund terjadi sebelum baris ditandai `failed`.
-Satu implementasi, dua pemanggil, dan keduanya tidak lagi bisa berbeda.
-
-### Jalur refund sekarang benar-benar satu kali
-
-`releaseStaleQueueRows()` membaca biaya dari baris itu sendiri, bukan dari
-harga saat ini — harga MEeLCoin bisa berubah, dan yang harus dikembalikan
-adalah jumlah yang benar-benar dipotong. Baris dikunci `FOR UPDATE` selama
-transaksi, jadi dua sweeper yang jalan bersamaan tidak bisa merefund baris yang
-sama, dan `coin_refunded = 1` hanya ditulis *setelah* coins benar-benar
-dikembalikan. Setiap hasil `execute()` kini diperiksa; sebelumnya update yang
-gagal diam-diam dianggap berhasil.
-
-`releaseQueue()` tetap hanya menyentuh kolom status. Invarian itu penting:
-kalau ia ikut menyetel `coin_refunded`, baris yang sudah direfund jalur gagal
-normal akan direfund lagi oleh sweeper.
-
-### Notifikasi yang gagal tidak lagi menguras saldo user
-
-`Notification::create()` dipanggil setelah coin dipotong tapi DI LUAR blok
-`try`, jadi error database saat menulis notifikasi melempar exception yang
-tidak tertangani — user sudah dibayar, tidak ada yang diunggah, dan refund
-tidak pernah dijalankan. Notifikasi itu kosmetik, jadi sekarang dibungkus:
-kegagalan dicatat dan upload diteruskan.
-
----
-
-<div align="center">
-  <sub><a href="index.md">← Kembali ke Index Dokumentasi</a></sub>
-</div>
+`Notification::create()` dibungkus penanganan error — notifikasi itu kosmetik, jadi kegagalannya dicatat dan upload diteruskan. Kalau tidak, user sudah membayar, tidak ada yang diunggah, dan refund tidak pernah dijalankan.

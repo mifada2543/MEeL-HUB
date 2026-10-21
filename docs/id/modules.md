@@ -7,10 +7,12 @@ Dokumentasi detail tentang arsitektur modul, class diagram, dan business logic l
 ## Daftar Isi
 
 - [Arsitektur Aplikasi](#arsitektur-aplikasi)
-- [Core Modules (`modules/`)](#core-modules-modules)
+- [Core Modules (`modules/core/`, `modules/media/`, `modules/exceptions/`, `modules/transcoder/`)](#core-modules-modulescore-modulesmedia-modulesexceptions-modulestranscoder)
 - [Media Pipeline](#media-pipeline)
 - [Autentikasi Flow](#autentikasi-flow)
-- [Upload & Transcoding Flow](#upload--transcoding-flow)
+- [26. Modularisasi JS/CSS](#26-modularisasi-jscss)
+- [27. Adaptive Aspect Ratio Player](#27-adaptive-aspect-ratio-player)
+- [28. Chat API](#28-chat-api)
 - [Arsitektur ProgressObserver](#arsitektur-progressobserver)
 - [Konvensi Keamanan Filesystem (tanpa @)](#konvensi-keamanan-filesystem-tanpa-)
 
@@ -174,6 +176,14 @@ kedua:
 
 `LikeDislikePartialTest` menjaga agar salinannya tidak muncul lagi: testnya
 gagal kalau markup kontainer ada di lebih dari satu berkas.
+
+#### Aturan Balas Komentar
+
+| Aturan | Nilai |
+|---|---|
+| Validasi induk | `resolveParentId()` memeriksa induknya ada **dan** punya kolom media yang sama. Kalau tidak, `parent_id` diset `NULL` sehingga komentarnya menjadi komentar root — deterministik dan tetap terlihat. |
+| Kedalaman rantai | `MediaViewer::MAX_COMMENT_DEPTH` = 5. Melewati batas dipromosikan ke root, jadi satu orang tidak bisa membuat rantai tak terbatas hanya dengan memposting balasan ke balasan. |
+| Urutan & paginasi | `getComments()` memakai urutan `created_at DESC, id DESC` dan menerima parameter `$offset`. Dengan urutan lama (`created_at ASC` + `LIMIT 200`), komentar baru bisa terdorong keluar jendela dan tidak pernah muncul lagi. Komentar yang sudah terlanjur ditulis tidak dihapus. |
 
 ### 4. `modules/core/Uploader.php`
 

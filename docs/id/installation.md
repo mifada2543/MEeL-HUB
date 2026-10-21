@@ -6,15 +6,10 @@ Langkah-langkah setup MEeL di server lokal Anda.
 
 ## Daftar Isi
 
-- [Instalasi Otomatis (install.sh)](#instalasi-otomatis-installsh)
+- [⚡ Instalasi Otomatis (install.sh)](#-instalasi-otomatis-installsh)
 - [Persyaratan Sistem](#persyaratan-sistem)
 - [Instalasi Langkah demi Langkah](#instalasi-langkah-demi-langkah)
-- [Setup Database](#setup-database)
-- [Konfigurasi Aplikasi](#konfigurasi-aplikasi)
-- [Direktori Runtime & Perizinan](#direktori-runtime--perizinan)
-- [Konfigurasi Apache](#konfigurasi-apache)
 - [Verifikasi Instalasi](#verifikasi-instalasi)
-- [Setup FFmpeg & yt-dlp](#setup-ffmpeg--yt-dlp)
 - [Troubleshooting Instalasi](#troubleshooting-instalasi)
 
 ---
@@ -537,6 +532,14 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 3. Login dengan kredensial yang Anda buat saat instalasi (`install.sh` meminta membuat akun admin)
 
 4. Cek halaman Admin: `http://localhost/MEeL/admin/`
+
+### Pemeriksaan Keamanan Instalasi
+
+| Aturan | Kenapa |
+|---|---|
+| Installer tidak pernah menimpa kredensial database | Patcher memverifikasi hasilnya dengan `re.search`, berhenti dengan `die` bila gagal, lalu mengecek `php -r 'require auth/settings.php'`. Kegagalan diam-diam di sini berarti instalasi melapor sukses padahal kredensial operator dibuang dan yang dipakai adalah nilai default. |
+| Migrasi gagal berhenti, bukan melanjutkan | `database/migrate.php` mengumpulkan kegagalan bersama nomor langkahnya, menulis ke STDERR, **tidak** mencatat versi, dan keluar dengan kode 1. Kalau versi tetap naik padahal langkahnya gagal, skema bisa setengah termigrasi permanen — `SELECT MAX(version)` melewati migrasi itu selamanya. |
+| `UseCanonicalName On` di VirtualHost | `install.sh` menulisnya ke VirtualHost yang di-generate. Tanpa itu `SERVER_NAME` disalin dari header `Host:` kiriman klien, dan `MEEL_ENV` bisa dipengaruhi penyerang luar. |
 
 ---
 
