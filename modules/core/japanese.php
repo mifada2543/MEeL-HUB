@@ -170,7 +170,10 @@ if (!function_exists('analyzeJapaneseText')) {
                     $dict_stmt->execute([':w' => $candidate]);
                     $row = $dict_stmt->fetch(PDO::FETCH_ASSOC);
                     if ($row && !empty($row['glosses'])) {
-                        $glosses[] = explode(';', $row['glosses'])[0];
+                        $gloss = trim(preg_replace('/\s*\([^)]*\)/u', '', explode(';', $row['glosses'])[0]));
+                        if ($gloss !== '') {
+                            $glosses[] = $gloss;
+                        }
                         break;
                     }
                 }

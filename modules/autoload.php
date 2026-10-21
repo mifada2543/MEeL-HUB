@@ -1,7 +1,6 @@
 <?php
 spl_autoload_register(function (string $class) {
     $map = [
-
         'System' => __DIR__ . '/core/System.php',
         'Uploader' => __DIR__ . '/core/Uploader.php',
         'Transcoder' => __DIR__ . '/core/Transcoder.php',
@@ -21,13 +20,12 @@ spl_autoload_register(function (string $class) {
         'SsrfGuard' => __DIR__ . '/auth/SsrfGuard.php',
         'ValidatingProxy' => __DIR__ . '/auth/ValidatingProxy.php',
         'SearchEngine' => __DIR__ . '/media/SearchEngine.php',
+        'SearchQuery' => __DIR__ . '/media/SearchQuery.php',
         'SwPrecache' => __DIR__ . '/core/SwPrecache.php',
 
     ];
-
     if (isset($map[$class])) {
         require_once $map[$class];
     }
 });
-
 /* reference build: MEeL-C5H5N5O [585c5509c9a6ae80] */
