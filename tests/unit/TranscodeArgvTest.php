@@ -6,21 +6,14 @@ require_once MEEL_ROOT . '/modules/autoload.php';
 /**
  * Mengikat perilaku perakitan argumen FFmpeg di `TranscodeService`.
  *
- * DASAR MASALAH
- * -------------
- * Builders argumen FFmpeg dulu hidup di dalam `transcodeVideo()` dan tidak pernah
- * diuji. Saat fungsi itu dipecah, penyimpangan kecil tidak terlihat di gerbang:
+ * Builders argumen FFmpeg dulu hidup di dalam `transcodeVideo()` dan tidak
+ * pernah diuji. Saat fungsi itu dipecah, penyimpangan kecil tidak terlihat
+ * di gerbang: `use_thumb` hanya diinisialisasi di cabang `ogg`, sehingga
+ * `mp3`/`m4a`/`flac` kehilangan thumbnail dan PHP melempar "Undefined
+ * variable" tanpa error yang terlihat karena DisplayErrors dimatikan di
+ * produksi.
  *
- * - `use_thumb` hanya diinisialisasi di cabang `ogg`. Cabang `m4a` dan `default`
- *   membacanya tanpa pernah diinisialisasi, sehingga `mp3`/`m4a`/`flac` kehilangan thumbnail
- *   dan PHP melempar "Undefined variable". Gejalanya: file audio keluar tanpa
- *   gambar, tanpa error yang terlihat karena DisplayErrors dimatikan di produksi.
- * - Dua builder paralel (`$cmd` string dan `$tc_cmd` argv) sudah tidak sinkron
- *   jauh sebelum itu: `$cmd` memakai `-c:v copy`, argv yang benar memakai
- *   `-c:v mjpeg`. Builder yang salah tidak pernah dieksekusi.
- *
- * Test ini memeriksa INVARIANT, bukan menyalin implementasi. Kalau implementasi
- * diganti, test tetap berlaku selama perilakunya benar.
+ * Test ini memeriksa INVARIANT, bukan menyalin implementasi.
  *
  * @covers TranscodeService
  */

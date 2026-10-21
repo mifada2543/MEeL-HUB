@@ -4,20 +4,9 @@ use PHPUnit\Framework\TestCase;
 /**
  * Penjaga penyatuan editor admin musik & video.
  *
- * DULU
- * ----
- * `admin/edit-music.php` dan `admin/edit-video.php` adalah salinan satu sama
- * lain. Sekitar 50% baris logika PHP mereka identik, termasuk blok unggah
- * thumbnail: validasi MIME, batas ukuran, pemanggilan ffmpeg, dan pemesanan
- * nama berkas. Dua salinan berarti dua tempat yang harus dijaga serempak —
- * dan graph `codebase-memory` menunjukkan keduanya berubah bersama 20 kali
- * (coupling 0,87), yang persis ciri salinan yang harus disatukan.
- *
- * SEKARANG
- * --------
- * Logikanya ada di `admin/includes/media_editor.php`, markup sidebar bersama
- * di `admin/partials/`, dan dua halaman itu tinggal mengonfigurasi jenis
- * medianya.
+ * `admin/edit-music.php` dan `admin/edit-video.php` dulunya salinan satu
+ * sama lain, termasuk blok unggah thumbnail. Logikanya kini ada di
+ * `admin/includes/media_editor.php`.
  *
  * Test ini menahan dua hal:
  *  1. Kode tidak boleh diduplikasi balik ke kedua halaman.

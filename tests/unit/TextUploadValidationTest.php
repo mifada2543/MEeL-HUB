@@ -4,22 +4,14 @@ use PHPUnit\Framework\TestCase;
 /**
  * Validasi berkas teks yang diunggah (lirik & subtitle).
  *
- * DULU
- * ----
- * `validate_lyrics_file()` (helpers/lyrics.php) dan
- * `validate_subtitle_file()` (helpers/subtitle.php) punya badan fungsi
- * yang identik byte per byte: cek ukuran 2 MB, tolak byte NUL, tolak tag
- * PHP. Dua salinan dari aturan keamanan berarti satu salinan bisa
- * diam-diam lolos pemeriksaan sementara yang lain sudah diperketat.
- *
- * SEKARANG
- * --------
- * Keduanya memanggil `meel_validate_text_upload()` di
- * `modules/core/helpers/text_upload.php`.
+ * `validate_lyrics_file()` dan `validate_subtitle_file()` punya badan fungsi
+ * yang identik byte per byte — dua salinan aturan keamanan berarti salah
+ * satunya bisa diam-diam lolos pemeriksaan. Keduanya kini memanggil
+ * `meel_validate_text_upload()`.
  *
  * Test ini menahan dua hal:
  *  1. Ketiga fungsi harus berperilaku sama persis pada semua masukan.
- *  2. Aturannya tidak boleh ditulis ulanginline di file aslinya.
+ *  2. Aturannya tidak boleh ditulis ulang inline di file aslinya.
  *
  * @coversNothing
  */

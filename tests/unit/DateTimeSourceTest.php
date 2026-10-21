@@ -4,27 +4,13 @@ use PHPUnit\Framework\TestCase;
 /**
  * Satu sumber jam untuk seluruh aplikasi.
  *
- * DULU
- * ----
- * `bootstrap.php` menjalankan `date_default_timezone_set('Asia/Jakarta')`
- * hanya `if (!ini_get('date.timezone'))`. Tapi PHP punya default
- * `date.timezone` = "UTC", jadi `ini_get()` selalu mengembalikan "UTC"
- * — yang berarti guard itu **tidak pernah benar-benar jalan**. Akibatnya
- * zona waktu PHP berbeda antar SAPI: CLI = UTC, Apache = Asia/Jakarta.
+ * `bootstrap.php` dulu hanya melakukan `date_default_timezone_set()` kalau
+ * `date.timezone` kosong — padahal default PHP adalah "UTC", jadi guard itu
+ * tidak pernah benar-benar jalan. Akibatnya zona waktu PHP berbeda antar
+ * SAPI, dan kolom TIMESTAMP MySQL ikut bergeser 7 jam.
  *
- * Dan karena kolom `TIMESTAMP` di MySQL dikonversi saat dibaca memakai
- * `time_zone` sesi, kedua sisi jadi berbeda. `users.last_activity` ditulis
- * sebagai string PHP lalu dibaca lagi sebagai string MySQL — perpindahan
- * bolak-balik itu menggeser nilainya 7 jam, tepat selisih WIB vs UTC.
- *
- * Gejalanya: hitung mundur MEeLCoin yang selalu kembali ke 5 jam, dan
- * indikator "online" yang salah di panel admin.
- *
- * SEKARANG
- * --------
- * Zona waktu aplikasi diset tanpa syarat di `bootstrap.php`, dan
+ * Kini zona waktu aplikasi diset tanpa syarat di `bootstrap.php`, dan
  * `auth/config.php` menyamakan `time_zone` sesi MySQL dengan offset PHP.
- * Karena itu jam database dan jam PHP selalu referring instants yang sama.
  *
  * Test ini mengunci invarian itu, plus daftar file yang sengaja mencampur
  * dua jam — supaya berkas baru yang mencampur harus dipilih dengan sadar.
@@ -219,6 +205,9 @@ class DateTimeSourceTest extends TestCase
      * Berkas yang mencampur `NOW()` dengan `strtotime()` atas kolom
      * database boleh ada — asal invarian zona waktu di atas berlaku, dan
      * asal daftarnya disengaja.
+     *
+     * Pencocokan `NOW()` sengaja peka huruf besar: SQL menulis NOW(),
+     * JavaScript menulis Date.now().
      */
     public function testMixedClockFilesAreAnExplicitInventory(): void
     {
@@ -226,7 +215,6 @@ class DateTimeSourceTest extends TestCase
 
         foreach (self::productionPhpFiles() as $file) {
             $src = (string)file_get_contents($file);
-            // Huruf besar: SQL menulis NOW(), JavaScript menulis Date.now().
             if (!preg_match('/\bNOW\s*\(/', $src)) {
                 continue;
             }

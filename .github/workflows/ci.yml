@@ -76,12 +76,12 @@ jobs:
       - name: Run Functional Tests
         run: |
           if [ -f tests/functional_test.php ]; then
-            # Catat rc via || (bukan baris terpisah) karena run: di GitHub Actions
-            # berjalan dengan `bash -e` — perintah yang return 1 langsung menghentikan
-            # shell sebelum rc=$? sempat dieksekusi; || membuatnya exempt dari set -e.
+            # `|| rc=$?` (bukan baris terpisah) karena `run:` berjalan dengan
+            # `bash -e` — exit 1 akan menghentikan shell sebelum rc=$? sempat
+            # dieksekusi; `||` membuatnya exempt dari set -e.
             rc=0
             php tests/functional_test.php || rc=$?
-            # 1 = lulus dengan peringatan (storage/HDD belum ter-mount, dll.) → tetap hijau
+            # 1 = lulus dengan peringatan (storage/HDD belum ter-mount) → hijau
             if [ "$rc" -gt 1 ]; then exit "$rc"; fi
             if [ "$rc" -eq 1 ]; then echo "⚠️  Functional test passed with warnings (exit 1)"; fi
           else
@@ -110,13 +110,13 @@ jobs:
       - name: Run Security Tests
         run: |
           if [ -f tests/security_test.php ]; then
-            # Catat rc via || (bukan baris terpisah) karena run: di GitHub Actions
-            # berjalan dengan `bash -e` — perintah yang return 1 langsung menghentikan
-            # shell sebelum rc=$? sempat dieksekusi; || membuatnya exempt dari set -e.
+            # `|| rc=$?` (bukan baris terpisah) karena `run:` berjalan dengan
+            # `bash -e` — exit 1 akan menghentikan shell sebelum rc=$? sempat
+            # dieksekusi; `||` membuatnya exempt dari set -e.
             rc=0
             php tests/security_test.php || rc=$?
-            # 1 = lulus dengan peringatan, 2+ = gagal. Keduanya merah: peringatan
-            # berarti "perlu review" dan membiarkan CI hijau membuatnya tak pernah ditindaklanjuti.
+            # Semua rc non-nol = merah: peringatan berarti "perlu review" dan
+            # membiarkan CI hijau membuatnya tak pernah ditindaklanjuti.
             if [ "$rc" -ne 0 ]; then exit "$rc"; fi
           else
             echo "⚠️  Security test not found, skipping."
@@ -174,11 +174,10 @@ jobs:
           echo "テスト" | mecab || echo "⚠️  mecab gagal diuji — Japanese tests akan skip"
       - name: Verify JS harness prerequisites
         run: |
-          # Guard anti-skip-senyap: kalau ada tests/js/*.harness.js tapi Node
-          # tidak tersedia, test akan markTestSkipped() dan suite tetap hijau
-          # tanpa benar-benar menguji apa pun. Di runner GitHub Node sudah
-          # diinstall di langkah "Setup Node.js"; langkah ini hanya memastikan
-          # keadaan itu, dan GAGAL kalau suatu saat langkahnya hilang.
+          # Guard anti-skip-senyap: tanpa Node, test JS akan markTestSkipped()
+          # dan suite tetap hijau tanpa benar-benar menguji apa pun. Langkah ini
+          # hanya memastikan keadaan itu, dan GAGAL kalau langkah setup-node
+          # suatu saat hilang.
           shopt -s nullglob
           harnesses=(tests/js/*.harness.js)
           if [ ${#harnesses[@]} -eq 0 ]; then
@@ -195,8 +194,7 @@ jobs:
       - name: Run PHPUnit Tests
         run: |
           if [ -f vendor/bin/phpunit ]; then
-            # Hanya suite unit: integration tests membutuhkan MySQL + data nyata
-            # yang tidak tersedia di runner (lihat docs/en/testing.md).
+            # Hanya suite unit: integration test butuh MySQL + data nyata.
             php vendor/bin/phpunit --no-coverage --verbose --testsuite='MEeL Core Unit Tests'
           else
             echo "⚠️  PHPUnit not installed, skipping."
@@ -291,25 +289,11 @@ jobs:
       - name: Import schema.sql (fresh install path)
         run: |
           set -euo pipefail
-          # ⚠️ Riwayat: langkah ini pernah dijalankan sebagai
-          #   mysql ... meel_migration_check < database/schema.sql
-          # dan itu SALAH diam-diam. schema.sql DULU memuat
-          #   CREATE DATABASE IF NOT EXISTS `MEeL` ...
-          #   USE `MEeL`;
-          # dan `USE` di dalam berkas MENANG atas nama database yang disebut
-          # di baris perintah. Hasilnya seluruh impor mendarat di database
-          # `MEeL`, bukan meel_migration_check -- sehingga langkah migrasi
-          # berikutnya menguji database yang KOSONG, dan jalur upgrade yang
-          # diklaim di komentar tidak pernah benar-benar diuji.
-          #
-          # Perbaikannya di sumbernya: schema.sql tidak lagi memuat
-          # CREATE DATABASE / USE sama sekali. Tidak ada lagi yang perlu ditulis
-          # ulang di sini, jadi kelas bug "impor mendarat di database yang
-          # salah" mustahil terjadi -- bukan sekadar diperiksa setelahnya.
-          #
-          # Polanya sengaja TIDAK menyebut nama database apa pun, hanya kata
-          # kuncinya. Pola yang menyebut nama bisa diam-diam gagal cocok dan
-          # membiarkan berkas apa adanya lolos ke mysql.
+          # schema.sql tidak boleh memuat CREATE DATABASE / USE: `USE` di dalam
+          # berkas menang atas nama database di baris perintah, jadi impor bisa
+          # mendarat di database yang salah dan langkah berikutnya menguji
+          # database kosong. Polanya sengaja hanya menyebut kata kuncinya —
+          # pola yang menyebut nama bisa diam-diam gagal cocok.
           if grep -qiE '^[[:space:]]*(CREATE[[:space:]]+DATABASE|USE[[:space:]])' database/schema.sql; then
             echo "❌ schema.sql memuat CREATE DATABASE / USE — impor bisa mendarat di database yang salah."
             grep -niE '^[[:space:]]*(CREATE[[:space:]]+DATABASE|USE[[:space:]])' database/schema.sql
@@ -327,8 +311,7 @@ jobs:
             exit 1
           fi
 
-          # Dan buktikan database `MEeL` benar-benar TIDAK ikut tercipta --
-          # inilah gejala persis dari bug yang dulu ada.
+          # Dan buktikan database `MEeL` benar-benar TIDAK ikut tercipta.
           M=$(mysql -h 127.0.0.1 -u root -proot -N -B \
               -e "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='MEeL';")
           if [ "$M" != "0" ]; then
@@ -340,17 +323,9 @@ jobs:
       - name: Run migrate.php on top of existing schema (upgrade path)
         run: |
           set -euo pipefail
-          # ⚠️ Riwayat: langkah ini pernah memakai Empat `sed -i "s/define('DB_HOST'.*/..."`
-          # yang mencari konstanta TIDAK PERNAH ADA di settings.example.php --
-          # berkas itu memakai variabel polos ($server/$username/$password/$db).
-          # Keempat sed tidak pernah cocok, dan `|| true` menutupi itu, jadi CI
-          # diam-diam menjalankan migrate.php dengan $password="" ke host
-          # "localhost" (socket unix yang tidak ada di runner). Hasilnya fatal
-          # error 255 tanpa penjelasan apa pun.
-          #
-          # Sekarang: set variabel lingkungan, yang dibaca settings.example.php.
-          # Tidak ada lagi penulisan teks ke berkas konfigurasi, jadi tidak ada
-          # lagi pola regex yang bisa gagal diam-diam.
+          # Set variabel lingkungan, yang dibaca settings.example.php. Tidak ada
+          # penulisan teks ke berkas konfigurasi, jadi tidak ada pola regex
+          # yang bisa gagal diam-diam.
           export MEEL_DB_HOST=127.0.0.1
           export MEEL_DB_NAME=meel_migration_check
           export MEEL_DB_USER=root
@@ -390,23 +365,19 @@ jobs:
 
       - name: Verify schema parity (upgrade path vs fresh install path)
         run: |
-          # Konvensi T9: hasil upgrade (migrate.php di atas skema LAMA)
-          # harus identik dengan instalasi baru (import schema.sql).
+          # Konvensi T9: hasil upgrade (migrate.php di atas skema LAMA) harus
+          # identik dengan instalasi baru (import schema.sql).
           #
-          # Penting: DB pertama dibangun dari schema.sql, jadi keduanya
-          # akan selalu sama — itu tidak membuktikan apa pun. Yang diuji
-          # di sini adalah jalur UPGRADE: mulai dari skema versi LAMA
-          # (tanpa kolom v6+), lalu jalankan migrate.php. Kalau ada
-          # migrasi yang lupa ditulis balik ke schema.sql, hasil upgrade
-          # akan punya kolom yang tidak ada di instalasi baru.
+          # Penting: DB pertama dibangun dari schema.sql, jadi keduanya akan
+          # selalu sama — itu tidak membuktikan apa pun. Yang diuji di sini
+          # adalah jalur UPGRADE: mulai dari skema versi LAMA (tanpa kolom v6+),
+          # lalu jalankan migrate.php. Kalau ada migrasi yang lupa ditulis
+          # balik ke schema.sql, hasil upgrade akan punya kolom yang tidak ada
+          # di instalasi baru.
           #
-          # Kredensial dideklarasikan ULANG di sini, bukan mengandalkan
-          # `export` dari langkah sebelumnya. Setiap `run:` adalah shell BARU,
-          # jadi `export` tidak bertahan antar langkah. Langkah ini sebelumnya
-          # berjalan tanpa apa pun, sehingga skrip jatuh ke bawaan "localhost"
-          # (= socket unix) dan gagal "No such file or directory" -- karena di
-          # runner MySQL berada di container terpisah lewat TCP 127.0.0.1, dan
-          # socket unix itu tidak ada.
+          # Kredensial dideklarasikan ULANG di sini, bukan mengandalkan `export`
+          # dari langkah sebelumnya: setiap `run:` adalah shell BARU, jadi
+          # `export` tidak bertahan antar langkah.
           #
           # Skripnya sendiri sudah bisa membaca CI_PARITY_* maupun MEEL_DB_*,
           # dan menolak jalan bila host-nya "localhost".
@@ -521,11 +492,10 @@ jobs:
           # buat layout tiruan yang valid di $RUNNER_TEMP lalu arahkan upload
           # dir ke sana (check_deploy memeriksa target symlink).
           #
-          # Sejak refactor portabilitas: books/music/video/upload adalah folder
-          # NYATA ter-track di repo (placeholder .gitkeep/.htaccess), bukan
-          # symlink. Di sini folder-nya di-remove lalu diganti symlink ke
-          # storage temp — mensimulasikan layout deploy produksi (symlink dibuat
-          # saat deploy, TIDAK pernah di-commit).
+          # books/music/video/upload adalah folder NYATA ter-track di repo
+          # (placeholder .gitkeep/.htaccess), bukan symlink. Di sini folder-nya
+          # di-remove lalu diganti symlink ke storage temp — mensimulasikan
+          # layout deploy produksi (symlink dibuat saat deploy, tidak di-commit).
           #
           # data_drive/public & data_drive/private_admins juga folder nyata
           # ter-track — modul Drive membaca storage langsung dari
@@ -580,7 +550,7 @@ jobs:
           node-version: "20"
 
       - name: Install build toolchain
-        # Versi tailwindcss DIPIN di package.json, bukanlatest: artefak
+        # Versi tailwindcss DIPIN di package.json, bukan latest: artefak
         # ter-commit dibangun dengan versi tertentu, dan versi berbeda bisa
         # menghasilkan CSS berbeda tanpa error sama sekali.
         run: npm install --no-audit --no-fund
@@ -588,20 +558,19 @@ jobs:
       - name: Rebuild to a temp file and audit against the committed artifact
         run: |
           set -e
-          # PENTING: jangan `npm run css:build` di sini. Perintah itu
-          # MENULIS assets/css/tailwind.min.css, jadi artefak ter-commit
-          # tertimpa dan perbandingan dengan dirinya sendiri selalu lolos --
-          # gerbang hampa. --rebuild membangun ke file sementara lalu
-          # membandingkannya tanpa menyentuh isi repo.
+          # PENTING: jangan `npm run css:build` di sini. Perintah itu MENULIS
+          # assets/css/tailwind.min.css, jadi artefak ter-commit tertimpa dan
+          # perbandingan dengan dirinya sendiri selalu lolos — gerbang hampa.
+          # --rebuild membangun ke file sementara lalu membandingkannya tanpa
+          # menyentuh isi repo.
           #
           # Gate-nya sengaja di tingkat class + deklarasi, bukan byte.
-          # package-lock.json tidak di-commit (sudah ada di .gitignore),
-          # jadi dependensi transitif bisa naik versi dan mengubah urutan
-          # atau format output tanpa mengubah isinya. Perbandingan byte
-          # akan gagalkan semua orang karena patch bump yang tak ada
-          # kaitannya dengan kode mereka. Yang benar-benar berbahaya --
-          # class hilang, atau deklarasi yang berubah nilainya -- tetap
-          # tertangkap di sini.
+          # package-lock.json tidak di-commit, jadi dependensi transitif bisa
+          # naik versi dan mengubah urutan atau format output tanpa mengubah
+          # isinya. Perbandingan byte akan gagalkan semua orang karena patch
+          # bump yang tak ada kaitannya dengan kode mereka. Yang benar-benar
+          # berbahaya — class hilang, atau deklarasi yang berubah nilainya —
+          # tetap tertangkap di sini.
           npm run css:check
   drive-storage-check:
     name: Drive Storage Integrity

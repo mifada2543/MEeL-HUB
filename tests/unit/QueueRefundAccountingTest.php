@@ -4,30 +4,13 @@ use PHPUnit\Framework\TestCase;
 /**
  * T8 — akuntansi refund MEeLCoin pada baris antrean.
  *
- * BUG YANG DITUTUP
- * ----------------
- * `upload_queue.coin_cost` didokumentasikan di `database/schema.sql` sebagai
- * "MEeLCoin yang dipotong saat INSERT", dan `coin_refunded` sebagai "1 =
- * biaya sudah dikembalikan oleh sweeper". Dua kolom itu tidak pernah
- * terisi.
- *
- * `upload_advanced.php` memotong coin lewat `MeelCoin::spend()` lalu memanggil
- * `processDownload()`, yang membuat baris antrean lewat `lockQueue()`. Tapi
- * `lockQueue()` menulis `self::$pendingCoinCost` ke kolom `coin_cost`, dan
- * `setPendingCoinCost()` hanya dipanggil dari `modules/core/helpers/upload.php`
- * — alir yang justru TIDAK PERNAH membuat baris `upload_queue`.
- *
- * Hasilnya: kedua pemanggil terbalik, dan `coin_cost` selalu 0. Di database
- * produksi, 160 dari 160 baris `upload_queue` punya `coin_cost = 0`.
- *
- * Akibatnya sweeper tidak pernah bisa mengembalikan biaya yang sebenarnya:
- * `MeelCoin::refund()` diberi jumlah 0. User yang upload-nya macet sudah
- * membayar, tapi coins-nya tidak kembali.
+ * `upload_queue.coin_cost` dan `coin_refunded` tidak pernah terisi:
+ * `setPendingCoinCost()` hanya dipanggil dari alir yang justru tidak pernah
+ * membuat baris `upload_queue`, jadi `coin_cost` selalu 0 dan sweeper tidak
+ * pernah bisa mengembalikan biaya yang sebenarnya.
  *
  * Bug kedua: `upload_advanced.php` menandai baris `processing` yang basi jadi
- * `failed` dengan `UPDATE` polos, tanpa refund. Baris `failed` tidak lagi
- * dipilih sweeper (yang hanya mengambil `pending`/`processing`), jadi pengembalian
- * yang mestinya terjadi 6 jam kemudian hilang selamanya.
+ * `failed` tanpa refund, dan baris `failed` tidak lagi dipilih sweeper.
  *
  * Test ini mengunci kedua sisi: nilai yang dicatat harus benar, dan setiap
  * jalur yang melepas baris macet harus lewat mekanisme refund yang sama.

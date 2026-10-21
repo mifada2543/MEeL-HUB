@@ -4,34 +4,16 @@ use PHPUnit\Framework\TestCase;
 /**
  * Penjaga kontras WCAG AA untuk tombol SweetAlert2.
  *
- * TEMUAN (Lighthouse, 2026-10-14)
- * --------------------------------
- * Audit `color-contrast` pada halaman root gagal dengan:
+ * TEMUAN (Lighthouse, 2026-10-14): SweetAlert2 memberi tombol konfirmasi
+ * teks putih di atas warna latar yang dipilih lewat `confirmButtonColor`.
+ * Semua warna terang Tailwind (shade 400/500) gagal jauh dari ambang AA
+ * 4.5:1, dan hanya terlihat kalau dialog-nya kebetulan muncul saat
+ * pengukuran. Sebagian besar halaman memakai Swal berada di balik login,
+ * jadi audit anonim tidak akan pernah sampai ke sana.
  *
- *   <button class="swal2-confirm swal2-styled"
- *           style="--swal2-confirm-button-background-color:#f97316">
- *
- *   insufficient contrast of 2.8 (foreground #ffffff, background #f97316)
- *
- * SweetAlert2 memberi tombol konfirmasi teks **putih** di atas warna latar
- * yang dipilih lewat `confirmButtonColor`. Semua warna terang Tailwind
- * (shade 400/500) gagal jauh dari ambang AA 4.5:1, dan hanya terlihat kalau
- * dialog-nya kebetulan muncul saat pengukuran. Sebagian besar halaman yang
- * memakai Swal berada di balik login, jadi audit tidak pernah sampai ke
- * sana tanpa sengaja.
- *
- * Kenapa harus diuji di kode, bukan diserahkan ke audit:
- *
- *  - Audit hanya melaporkan apa yang kebetulan ter-render. Dialog health
- *    reminder, reset MFA, dan upload berada di halaman yang butuh sesi --
- *    audit anonim tidak akan pernah sampai ke sana, jadi masalahnya bisa
- *    bertahan bertahun-tahun tanpa terdeteksi.
- *  - Menunggu audit berarti satu gegalan warna bisa keluar ke produksi lebih
- *    dulu.
- *
- * Semua warna yang dipakai sudah diperbaiki ke shade lebih tua dari keluarga
- * Tailwind yang sama (identitas warna terjaga, kontras-naik). Test ini
- * menjaga agar tidak ada yang menambahkan warna baru yang gagal.
+ * Semua warna yang dipakai sudah diperfixed ke shade lebih tua dari keluarga
+ * Tailwind yang sama. Test ini menjaga agar tidak ada yang menambahkan
+ * warna baru yang gagal.
  *
  * @coversNothing
  */
@@ -166,24 +148,15 @@ class SwalButtonContrastTest extends TestCase
     /**
      * Tombol yang TIDAK diberi `confirmButtonColor` memakai default library.
      *
-     * KOREKSI 2026-10-14 — versi test sebelumnya sini menyatakan default
-     * SweetAlert2 adalah `#3088d6` (3.74:1, gagal AA). Itu SALAH: nilainya
-     * diambil dari ingatan versi library yang lebih lama, bukan dari berkas
-     * yang benar-benar dipakai. Nilai aslinya dibaca dari
+     * Nilai default dibaca langsung dari berkas library
      * `assets/js/compatibilitas/sweetalert2.all.min.js` v11.26.25:
      *
      *   confirm  #7066e0 -> 4.5008:1
      *   deny     #dc3741 -> 4.5007:1
      *   cancel   #6e7881 -> 4.5001:1
      *
-     * Ketiganya LULUS AA, dan luminance-nya nyaris identik (0.183293 /
-     * 0.183297 / 0.183329) — jadi library itu sengaja menyetel semua tombol
-     * aksi ke bobot visual sama persis di batas AA. 22 dialog tanpa warna
-     * eksplisit karena itu AMAN, bukan gap.
-     *
-     * Test ini sekarang membacanya langsung dari berkas library, bukan
-     * dari angka yang diketik tangan. Kalau suatu saat default berubah,
-     * test inilah yang harus remembers — bukan catatan di dokumentasi.
+     * Ketiganya LULUS AA. Test membacanya dari berkas library, bukan dari angka
+     * yang diketik tangan.
      */
     public function testLibraryDefaultButtonsMeetWcagAa(): void
     {

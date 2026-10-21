@@ -5,7 +5,7 @@
  * Isinya sudah dipecah per domain ke `storage_paths.php`,
  * `storage_disk.php`, `storage_xsendfile.php`, dan `storage_stream.php`.
  * Berkas ini sengaja tetap ada: `main.php` memuatnya dengan satu baris dan
- * 25+ halaman memanggil fungsi-fungsinya.
+ * hampir 50 berkas di luar tests/ memanggil fungsi-fungsinya.
  *
  * @see docs/{id,en}/modules.md
  */

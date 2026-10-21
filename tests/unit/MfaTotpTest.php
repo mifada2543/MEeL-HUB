@@ -4,18 +4,15 @@ use PHPUnit\Framework\TestCase;
 /**
  * Test untuk modules/auth/helpers/mfa.php — SELURUH logika TOTP/MFA.
  *
- * Sebelum test ini: file berisi 7 fungsi (base32_decode, generate_mfa_secret,
- * generate_totp, verify_totp, generate_otpauth_url, generate_backup_codes,
- * verify_backup_code) dan TIDAK SATU pun punya test. Test yang ada
- * (LoginNowVariableTest, security_test) hanya memeriksa STRUKTUR kode —
- * letak variabel `$now`, daftar file — bukan logikanya.
+ * Sebelum test ini, file berisi 7 fungsi tanpa satu pun test; test yang ada
+ * hanya memeriksa struktur kode, bukan logikanya.
  *
  * Yang dikunci di sini:
- *  1. Kesesuaian dengan RFC 6238 (test vector) — proves the algorithm is right.
+ *  1. Kesesuaian dengan RFC 6238 (test vector).
  *  2. generate_mfa_secret() hanya menghasilkan karakter base32 yang sah.
- *  3. Jendela waktu verify_totp (±1 slice = toleransi 30 detik, sesuai RFC 6238 §5.2).
+ *  3. Jendela waktu verify_totp (±1 slice = toleransi 30 detik).
  *  4. Backup code: hash, sekali pakai, dan tidak bocor lewat return value.
- *  5. base32_decode menolak input tak valid (bug yang ditemukan 2026-10-14).
+ *  5. base32_decode menolak input tak invalid.
  */
 
 /** @coversNothing */
@@ -81,15 +78,13 @@ class MfaTotpTest extends TestCase
     }
 
     /**
-     * BUG 2026-10-14: karakter di luar alfabet sebelumnya DILEWATI diam-diam
-     * (`if ($pos === false) continue;`). Akibatnya dua secret berbeda bisa
-     * collapse ke byte yang sama sehingga menghasilkan kode TOTP identik —
-     * secret "AAAA…AAAA" (32 A) dan "AAAA…AAAA1" (31 A + "1") memakai
-     * HMAC key yang sama.
+     * BUG 2026-10-14: karakter di luar alfabet sebelumnya DILEWATI diam-diam.
+     * Akibatnya dua secret berbeda bisa collapse ke byte yang sama sehingga
+     * menghasilkan kode TOTP identik.
      *
-     * Dampak produksi saat ini terbatas karena mfa_secret hanya bisa diset
-     * oleh generate_mfa_secret() (selalu 32 karakter sah). Tapi begitu ada
-     * impor/penyuntingan secret, dua akun bisa diam-diam berbagi satu kunci.
+     * Dampak produksi saat ini terbatas karena mfa_secret hanya bisa diset oleh
+     * generate_mfa_secret(). Tapi begitu ada impor/penyuntingan secret, dua
+     * akun bisa diam-diam berbagi satu kunci.
      */
     public function testBase32DecodeRejectsCharactersOutsideAlphabet(): void
     {

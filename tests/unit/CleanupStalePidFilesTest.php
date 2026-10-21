@@ -4,35 +4,15 @@ use PHPUnit\Framework\TestCase;
 /**
  * Penjaga `TranscoderBase::cleanupStalePidFiles()` (T19).
  *
- * MASALAH YANG DIPERBAIKI
- * ------------------------
- * Fungsi ini dulu tidak pernah dipanggil siapa pun -- `scripts/gc.php`
- * menjalankan `GarbageCollector::run()` + `runCliMaintenance()` tapi
- * tidak pernah memanggilnya, padahal `killByPidFile()` membuat berkas
- * `.pid` yang tidak ada yang membersihkannya. Jadi ini celah nyata.
+ * `writePidFile()` dipanggil sekali di awal job dan tidak pernah
+ * di-refresh, jadi mtime berkas = waktu job mulai. Transcode bisa berjalan
+ * jauh melebihi 30 menit, sehingga job sah yang MASIH HIDUP punya PID file
+ * yang terbaca "basi" dan ikut terhapus — prosesnya lalu tidak bisa
+ * direbut saat shutdown.
  *
- * Tapi menyambungkannya apa adanya justru MEMBUAT bug baru. Versi lama
- * hanya bergantung pada mtime:
- *
- *     if (time() - filemtime($file) > 1800) unlink($file);
- *
- * `writePidFile()` dipanggil SEKALI di awal job dan tidak pernah
- * di-refresh, jadi mtime berkas = waktu job mulai, bukan waktu terakhir
- * job bergerak. Transcode bisa berjalan jauh melebihi 30 menit -- ambang
- * sweeper antrean sendiri 6 jam -- sehingga job sah yang MASIH HIDUP
- * punya PID file yang terbaca "basi" dan ikut terhapus.
- *
- * Akibatnya `killByPidFile()` tidak menemukan PID-nya, jadi saat
- * shutdown prosesnya tidak bisa direbut: proses yatim yang tak terlihat.
- * Kebersihan yang dibeli dengan kehilangan kemampuan merebut proses.
- *
- * SYARAT YANG BENAR: dua syarat, bukan satu.
- *   1. berkasnya sudah tua, DAN
- *   2. proses di dalamnya sudah tidak hidup.
- *
- * Test di bawah mengunci kedua syarat itu, termasuk kasus yang paling
- * mudah salah: PID file yang umurnya sudah 2 jam tapi prosesnya masih
- * hidup (skenario transcode panjang yang tidak boleh dirusak).
+ * SYARAT YANG BENAR: berkasnya sudah tua DAN proses di dalamnya sudah
+ * tidak hidup. Test di bawah mengunci kedua syarat itu, termasuk PID file
+ * berumur 2 jam dengan prosesnya masih hidup.
  *
  * @coversNothing
  */
@@ -304,15 +284,10 @@ class CleanupStalePidFilesTest extends TestCase
     /**
      * KABLAMENYA SENDIRI harus dijaga.
      *
-     * Fungsi ini sudah ada sejak lama dan tetap tidak terpakai selama
-     * situasionya belum disambungkan. Plot-nya rapuh: `gc.php` adalah
-     * skrip, bukan kelas yang diuji, jadi melepas satu baris panggilan
-     * dari sana tidak menggagalkan test mana pun -- persis seperti
-     * peta berkas->fungsi di `security_test.php` yang diam-diam berhenti
-     * memindai apa pun sambil tetap melaporkan 100/100.
-     *
-     * Diuji mutasinya: menghapus panggilan → gagal. Memindahkannya
-     * setelah blok `--run-only` → gagal.
+     * `gc.php` adalah skrip, bukan kelas yang diuji, jadi melepas satu baris
+     * panggilan dari sana tidak menggagalkan test mana pun. Diuji mutasinya:
+     * menghapus panggilan gagal, memindahkannya setelah blok `--run-only`
+     * juga gagal.
      */
     public function testGcScriptActuallyCallsCleanup(): void
     {

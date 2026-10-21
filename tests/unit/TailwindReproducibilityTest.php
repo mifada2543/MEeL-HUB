@@ -4,30 +4,21 @@ use PHPUnit\Framework\TestCase;
 /**
  * Penjaga reproducibility `assets/css/tailwind.min.css`.
  *
- * LATAR BELAKANG
- * --------------
- * `assets/css/tailwind.min.css` adalah artefak hasil build yang di-commit.
- * Sampai 2026-10-14 tidak ada konfigurasi maupun perintah build-nya di
- * repo — tidak ada `package.json`, tidak ada `tailwind.config.js`. Artinya
- * artefak itu tidak bisa direproduksi: siapa pun yang mengubah markup lalu
- * ingin membangun ulang CSS tidak punya cara memastikan hasilnya setara.
- *
- * Yang lebih halus dan lebih berbahaya: config bisa saja salah ketik dan
- * build tetap "sukses" dengan CSS setengah kosong. Tailwind tidak pernah
- * gagal pada glob yang salah — ia hanya diam-diam menghasilkan CSS yang
- * lebih kecil. Tidak ada error, tidak ada peringatan.
+ * Artefak hasil build yang di-commit harus bisa direproduksi. Yang lebih
+ * halus dan lebih berbahaya: config bisa saja salah ketik dan build tetap
+ * "sukses" dengan CSS setengah kosong — Tailwind tidak pernah gagal pada
+ * glob yang salah, ia hanya diam-diam menghasilkan CSS yang lebih kecil.
  *
  * Test ini mengunci tiga hal, semuanya analisis statis supaya jalan di
  * suite unit biasa tanpa Node:
  *
  *   1. Entry build-nya ada dan saling konsisten.
- *   2. Glob `content` benar-benar memindai repo, dan tidak memindai
- *      folder yang harus dikecualikan (test, vendor, cache).
+ *   2. Glob `content` benar-benar memindai repo, dan tidak memindai folder
+ *      yang harus dikecualikan (test, vendor, cache).
  *   3. Tema kustom yang dibutuhkan halaman tetap ada di config.
  *
- * Perbandingan nilai CSS yang dunkompute (regresi & perubahan deklarasi)
- * ada di `scripts/ci/tailwind-coverage-check.php` — butuh Tailwind CLI,
- * jadi tidak dibuat jadi test unit.
+ * Perbandingan nilai CSS ada di `scripts/ci/tailwind-coverage-check.php` —
+ * butuh Tailwind CLI, jadi tidak dibuat jadi test unit.
  *
  * @coversNothing
  */

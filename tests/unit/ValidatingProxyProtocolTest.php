@@ -6,16 +6,11 @@ require_once MEEL_ROOT . '/modules/auth/ValidatingProxyProtocol.php';
 /**
  * Aturan protokol proxy validasi.
  *
- * DULU
- * ----
- * Semua aturan ini berada di `validating_proxy_server.php` — berkas yang
- * top-level-nya langsung menjalankan server._artinya berkas itu tidak bisa
- * di-include tanpa menjalankan proxy, jadi tidak ada satu pun aturan
- * protokolnya yang punya test.
+ * Semuanya berada di `validating_proxy_server.php` — berkas yang top-level-nya
+ * langsung menjalankan server, jadi tidak ada satu pun aturan protokolnya
+ * yang punya test.
  *
- * SEKARANG
- * --------
- * Aturannya dipisah ke `modules/auth/ValidatingProxyProtocol.php`:
+ * Aturannya kini dipisah ke `modules/auth/ValidatingProxyProtocol.php`:
  * parsing kepala permintaan, parsing target, penyusunan permintaan yang
  * diteruskan, dan pemindahan data antar soket. Semuanya bisa diuji tanpa
  * server dan tanpa jaringan.
@@ -24,8 +19,6 @@ require_once MEEL_ROOT . '/modules/auth/ValidatingProxyProtocol.php';
  */
 class ValidatingProxyProtocolTest extends TestCase
 {
-    // ---------- parseRequestHead ----------
-
     public function testValidRequestHeadIsParsed(): void
     {
         $head = "GET http://example.com/ HTTP/1.1\r\nHost: example.com\r\nAccept: */*\r\n\r\n";
@@ -69,10 +62,12 @@ class ValidatingProxyProtocolTest extends TestCase
         $this->assertNull(parseRequestHead("GET http://example.com/ HTTP/1.1\r\nHost: exa\x00mple\r\n\r\n"));
     }
 
+    /**
+     * Kepala selalu diakhiri \r\n\r\n, jadi dua baris kosong ikut terhitung
+     * dalam batas.
+     */
     public function testTooManyHeadersIsRejected(): void
     {
-        // Kepala selalu diakhiri \r\n\r\n, jadi dua baris kosong ikut
-        // terhitung dalam batas.
         $atLimit = PROXY_MAX_HEADERS - 2;
         $ok = "GET http://example.com/ HTTP/1.1\r\n" . str_repeat("X-H: v\r\n", $atLimit) . "\r\n";
         $tooMany = "GET http://example.com/ HTTP/1.1\r\n" . str_repeat("X-H: v\r\n", $atLimit + 1) . "\r\n";
@@ -90,8 +85,6 @@ class ValidatingProxyProtocolTest extends TestCase
         $this->assertNotNull(parseRequestHead($ok));
         $this->assertNull(parseRequestHead($tooLong));
     }
-
-    // ---------- parseTarget ----------
 
     public function testTargetWithExplicitPort(): void
     {
@@ -120,8 +113,6 @@ class ValidatingProxyProtocolTest extends TestCase
     {
         $this->assertSame(['', 443], parseTarget('[2001:db8::1', 443));
     }
-
-    // ---------- buildForwardedRequest ----------
 
     public function testForwardedRequestKeepsPathAndQuery(): void
     {
@@ -192,8 +183,6 @@ class ValidatingProxyProtocolTest extends TestCase
         $this->assertSame(1, substr_count($out, 'Host: '));
     }
 
-    // ---------- forwardTunnelChunk ----------
-
     /**
      * Dua pasang soket: satu untuk sumber (data ditulis ke $srcPeer, dibaca
      * dari $src) dan satu untuk tujuan (data ditulis ke $dst, dibaca dari
@@ -226,13 +215,14 @@ class ValidatingProxyProtocolTest extends TestCase
         fclose($dstPeer);
     }
 
+    /**
+     * Soket blocking di PHP mengembalikan `false` saat tidak ada data, jadi
+     * cabang "kosong tapi belum EOF" hanya terjangkau lewat mode non-blocking.
+     */
     public function testTunnelChunkReportsIdleWhenNothingIsAvailable(): void
     {
         [$src, $srcPeer, $dst, $dstPeer] = $this->socketQuads();
 
-        // Soket blocking di PHP mengembalikan `false` saat tidak ada data,
-        // jadi cabang "kosong tapi belum EOF" hanya terjangkau lewat mode
-        // non-blocking.
         stream_set_blocking($src, false);
         $status = forwardTunnelChunk($src, $dst);
 
@@ -257,8 +247,6 @@ class ValidatingProxyProtocolTest extends TestCase
         fclose($dst);
         fclose($dstPeer);
     }
-
-    // ---------- relayResponse ----------
 
     public function testRelayResponseCopiesUpstreamBodyToClient(): void
     {

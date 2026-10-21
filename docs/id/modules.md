@@ -461,9 +461,9 @@ aturan bersama selalu selaras.
 #### Titik muat helper penyimpanan
 
 `modules/core/helpers/storage.php` sengaja tetap ada meski isinya nyaris
-kosong: `main.php` memuatnya dengan satu baris, dan 25+ halaman memanggil
-fungsi-fungsinya. Memecah titik muat itu jauh lebih berisiko daripada
-manfaatnya.
+kosong: `main.php` memuatnya dengan satu baris, dan hampir 50 berkas di luar
+tests/ memanggil fungsi-fungsinya. Memecah titik muat itu jauh lebih berisiko
+daripada manfaatnya.
 
 Isinya sudah dipecah per domain, mengikuti konvensi folder ini:
 
@@ -472,7 +472,7 @@ Isinya sudah dipecah per domain, mengikuti konvensi folder ini:
 | `storage_paths.php` | base path, thumbnail, PID, guard mount | 14 |
 | `storage_disk.php` | kapasitas disk, cache file, audit log | 8 |
 | `storage_xsendfile.php` | deteksi & header X-Sendfile | 11 |
-| `storage_stream.php` | validator cache + serving media | 4 |
+| `storage_stream.php` | validator cache + serving media | 9 |
 
 Urutan `require` tidak boleh diacak, karena mengikuti arah ketergantungan:
 `paths` → `disk` → `xsendfile` → `stream`. PHP menunda definisi fungsi sampai
@@ -499,9 +499,9 @@ Dua perbedaan semantik yang harus dijaga:
 - `meel_export_values()` memakai `??` untuk kolom yang punya `default` — kunci
   yang tidak ada **dan** kunci bernilai `null` sama-sama menghasilkan
   default. Kolom tanpa `default` meneruskan null apa adanya.
-- `meel_export_json_row()` untuk kolom bertipe `int?` membaca nilai mentah,
-  bukan hasil `??`. Kalau `default` ikut diterapkan lebih dulu, null berubah
-  jadi `''` lalu jadi `0`: JSON yang tadinya `"user_id": null` tiba-tiba
+- `meel_export_map()` untuk kolom bertipe `int?` membaca nilai mentah, bukan
+  hasil `??`. Kalau `default` ikut diterapkan lebih dulu, null berubah jadi
+  `''` lalu jadi `0`: JSON yang tadinya `"user_id": null` tiba-tiba
   melaporkan `"user_id": 0`. Null berarti "tidak diketahui", 0 berarti
   "user 0".
 
@@ -1770,8 +1770,6 @@ Tiap stage ditangani method private sendiri, yang dijangkau lewat peta
 handler-nya, jadi stage yang dipancarkan tapi tak terpetakan akan hilang
 diam-diam; `BrowserProgressObserverTest` membaca sumber transcoder dan
 memastikan setiap stage yang dipancarkan punya handler.
-
-### Jaminan
 
 **Jaminan:**
 - Exception observer ditangkap dan di-log di dalam `emit()` — tidak pernah merambat ke pipeline media (tidak ada proses yatim atau file setengah pindah)

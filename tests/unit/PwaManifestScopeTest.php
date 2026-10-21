@@ -4,25 +4,14 @@ use PHPUnit\Framework\TestCase;
 /**
  * Penjaga PWA manifest: `scope` & `id` harus mengikuti base path aplikasi.
  *
- * Latar belakang
- * --------------
- * `assets/manifest.json` dulu file statis dengan `"scope": "/MEeL/"` dan
- * `"id": "/MEeL/"` HARDCODE. Kalau repo dipindah ke folder lain — yang
- * README mengizinkan begitu saja (`git clone ... MEeL`, tapi user
- * bebas menamai ulang) — `scope` tetap `/MEeL/` sehingga:
+ * `assets/manifest.json` dulu statis dengan `scope` dan `id` hardcode
+ * `/MEeL/`. Kalau repo dipindah ke folder lain, service worker tidak pernah
+ * controlling halaman, shortcut dan ikon menunjuk path yang salah.
  *
- *   - Service worker tidak pernah "controlling" halaman di path baru
- *   - Shortcut & start_url menunjuk ke path yang salah
- *   - Ikon gagal dimuat (path relatif jadi salah folder)
- *
- * Solusi: `manifest.php` di root sebagai generator (pola yang sama
- * dengan `sw.js` → `sw.js.php`), dilayani lewat rewrite
- * `^assets/manifest\.json$` di `.htaccess`. File `.json` statis tetap
- * ada sebagai fallback untuk clone tanpa `mod_rewrite`.
- *
- * Test ini menjalankan generator sungguhan dengan `DOCUMENT_ROOT`
- * dikontrol, sehingga base path bisa diuji tanpa benar-benar memindahkan
- * repo.
+ * Solusi: `manifest.php` sebagai generator (pola `sw.js` → `sw.js.php`),
+ * dilayani lewat rewrite di `.htaccess`, dengan berkas `.json` statis
+ * sebagai fallback. Test ini menjalankan generator sungguhan dengan
+ * `DOCUMENT_ROOT` dikontrol.
  */
 
 /** @coversNothing */
@@ -31,15 +20,9 @@ class PwaManifestScopeTest extends TestCase
     /**
      * Jalankan manifest.php dengan DOCUMENT_ROOT yang kita tentukan.
      *
-     * PENTING: `$_SERVER` TIDAK diwariskan ke subprocess PHP CLI, jadi
-     * meel_base_url_path() di dalam generator selalu melihat
-     * DOCUMENT_ROOT kosong kalau dijalankan via shell_exec biasa. Agar
-     * test benar-benar menguji base path yang berbeda, kita:inject
-     * DOCUMENT_ROOT lewat env var yang dibaca generator saat
-     * MEEL_MANIFEST_DOCROOT diset, lalu fallback ke $_SERVER.
-     *
-     * Env var ini HANYA untuk keperluan test — production tetap
-     * memakai DOCUMENT_ROOT dari web server.
+     * PENTING: `$_SERVER` TIDAK diwariskan ke subprocess PHP CLI. Env var ini
+     * HANYA untuk keperluan test — production tetap memakai DOCUMENT_ROOT dari
+     * web server.
      */
     private function renderManifest(string $docRoot): array
     {

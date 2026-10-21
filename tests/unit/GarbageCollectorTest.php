@@ -255,16 +255,10 @@ class GarbageCollectorTest extends TestCase
     /**
      * Dulu test di sini memanggil markTestSkipped() kalau PHP_SAPI === 'cli'.
      *
-     * Masalahnya: PHPUnit SELALU jalan di SAPI CLI — lokal maupun CI. Jadi
-     * test itu tidak pernah mengeksekusi apa pun, di environment mana pun,
-     * dan yang tersisa hanya baris skip-nya. Test yang terlihat hijau
-     * padahal nol coverage adalah lebih berbahaya daripada tidak ada test,
-     * karena ia memberi keyakinan palsu.
-     *
-     * Cabang non-CLI memang mustahil diuji dari unit test (tidak ada cara
-     * memalsukan PHP_SAPI), tapi guard-nya bisa dikunci lewat source, dan
-     * yang justru lebih berharga — latch "sekali per proses" — bisa
-     * diuji beneran karena kita memang berjalan di CLI.
+     * PHPUnit SELALU jalan di SAPI CLI — lokal maupun CI — jadi test itu tidak
+     * pernah mengeksekusi apa pun, dan yang tersisa hanya baris skip-nya. Test
+     * yang terlihat hijau padahal nol coverage lebih berbahaya daripada tidak
+     * ada test, karena ia memberi keyakinan palsu.
      */
 public function testRunCliMaintenanceGuardsAgainstNonCliSapi(): void
     {
@@ -288,15 +282,9 @@ public function testRunCliMaintenanceGuardsAgainstNonCliSapi(): void
  * Latch `self::$cliOnlyRan`: housekeeping berat hanya boleh jalan SEKALI per
  * proses, berapa kali pun runCliMaintenance() dipanggil.
  *
- * Ini perilaku yang benar-benar terjadi di produksi -- `scripts/gc.php` bisa
- * dipanggil dari cron sekaligus ikut ter-hit dari jalur lain dalam proses
- * yang sama -- dan sebelumnya nol coverage.
- *
- * Dua file throttle disentuh supaya test ini deterministik. `syncViews` dan
- * `cleanGuests` mengecek throttle LEBIH DAHULU sebelum menyentuh apa pun;
- * tanpa itu keduanya ikut jalan dan MediaViewer asli dieksekusi dengan
- * koneksi palsu -- bukan yang ingin diuji di sini, dan hanya menambah
- * ketergantungan pada state mesin.
+ * Dua file throttle disentuh supaya test ini deterministik: tanpa itu
+ * keduanya ikut jalan dan MediaViewer asli dieksekusi dengan koneksi
+ * palsu — bukan yang ingin diuji di sini.
  */
 public function testRunCliMaintenanceRunsOnlyOncePerProcess(): void
     {

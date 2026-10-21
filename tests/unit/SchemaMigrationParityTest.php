@@ -6,24 +6,14 @@ use PHPUnit\Framework\TestCase;
  * `database/migrate.php` (untuk DB lama yang perlu upgrade) dan
  * `database/schema.sql` (untuk instalasi baru yang import langsung).
  *
- * Kenapa ini penting dan belum dijaga sebelumnya:
+ * Kenapa ini penting: `tests/DbTestHelper.php` membangun database test dari
+ * `schema.sql`, BUKAN dengan menjalankan `migrate.php`. Kalau keduanya
+ * berbeda, seluruh test integrasi tetap hijau — karena yang diuji adalah
+ * hasil import schema, bukan hasil migrasi.
  *
- * `tests/DbTestHelper.php` membangun database test dari `schema.sql`,
- * BUKAN dengan menjalankan `migrate.php`. Artinya kalau `migrate.php`
- * dan `schema.sql` berbeda, **seluruh test integrasi tetap hijau** —
- * karena yang diuji adalah hasil import schema, bukan hasil migrasi.
- * Installasi baru (import schema.sql) dan hasil upgrade (jalanin
- * migrate.php) jadi dua dunia berbeda, dan tidak ada yang mengetahuinya.
- *
- * Kasus nyata yang ditemukan 2026-10-14 (T17a): sebelum migrasi v6,
- * `schema.sql` tertinggal dari DB nyata — `upload_queue` tidak punya
- * `updated_at` maupun status `'pending'`, `transcode_queue` tidak punya
- * `file_path`. Baru ketahuan karena kebetulan sedang membaca kedua
- * file itu. Test di bawah mencegah terulangnya.
- *
- * Pendekatan: bandingkan **nama kolom & indeks** per tabel antara
- * `schema.sql` dan apa yang dideklarasikan `migrate.php`. Ini analisis
- * statis (tanpa DB) supaya bisa jalan di suite unit biasa.
+ * Pendekatan: bandingkan nama kolom & indeks per tabel antara `schema.sql`
+ * dan apa yang dideklarasikan `migrate.php`. Ini analisis statis supaya
+ * bisa jalan di suite unit biasa.
  */
 
 /** @coversNothing */

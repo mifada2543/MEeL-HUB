@@ -4,19 +4,12 @@ use PHPUnit\Framework\TestCase;
 /**
  * Menjaga agar klaim "jumlah test" di dokumen tidak basi diam-diam.
  *
- * Latar belakang: dokumen pernah menulis "305 Unit + 98 Integration =
- * 403 Tests" saat kenyataannya sudah 503 + 106. Angka itu salah **dan**
- * tidak ada yang menangkapnya, karena tidak ada test yang membandingkan
- * angka di docs dengan hasil run sebenarnya.
+ * Dokumen pernah menulis "305 Unit + 98 Integration = 403 Tests" saat
+ * kenyataannya sudah 503 + 106, dan tidak ada yang menangkapnya.
  *
- * Pendekatan: dokumen **tidak boleh** menyebut angka persis. Kalau ada
- * angka eksak, test ini menghitung jumlah test sebenarnya lalu gagal —
- * jadi whoever mengubah angka jadi salah akan langsung tahu (dan diberi
- * cara memperbaruinya di pesan error).
- *
- * Kalau kamu memang perlu angka eksak di dokumen, jalankan:
- *   vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests' | tail -3
- * lalu perbarui nilainya di sini DAN di dokumen dalam satu commit.
+ * Pendekatan: dokumen **tidak boleh** menyebut angka persis. Kalau ada angka
+ * eksak, test ini menghitung jumlah test sebenarnya lalu gagal — jadi
+ * whoever mengubah angka jadi salah akan langsung tahu.
  */
 
 /** @coversNothing */
@@ -86,10 +79,10 @@ class TestCountDocumentationTest extends TestCase
 
     /**
      * Penjaga utama: kalau ada dokumen yang menyebut angka eksak, hitung
-     * jumlah sebenarnya dan bandingkan — supaya Pesan errorNYA informatif
+     * jumlah sebenarnya dan bandingkan — supaya pesan errornya informatif
      * (memberi tahu angka yang benar), bukan sekadar menolak.
      *
-   // Ini tidak menggandakan testDokumenTidakMenyebutJumlahTestEksak; ini
+     * Ini tidak menggandakan testDokumenTidakMenyebutJumlahTestEksak; ini
      * menyediakan angka acuan supaya whoever memperbaiki tidak perlu
      * menebak-nebak.
      */
@@ -123,19 +116,12 @@ class TestCountDocumentationTest extends TestCase
 
     /**
      * Error log tidak boleh penuh deprecation — ini yang diam-diam sekali
-     * menutupi bug (lihat T29: deprecation System.php tersembunyi di
-     * balik deprecation DbTestHelper.php).
+     * menutupi bug (deprecation System.php tersembunyi di balik deprecation
+     * DbTestHelper.php).
      *
-     * Versi pertama guard ini hanya memeriksa SATU file
-     * (`tests/DbTestHelper.php`) dan SATU literal (`setValue([])`).
-     * Padahal ada 11 call site lain di 5 file test yang bentuk 1-argumennya
-     * sama persis — semuanya terhadap properti statis, jadi semuanya
-     * memang memicu deprecation PHP 8.3 dan semuanya sudah diperbaiki.
-     *
-     * Guard sekarang memindai SELURUH repo (di luar vendor) dan poked
-     * bentuk 1-argumen secara umum, bukan hanya literal `[]`. Memakai
-     * balance parens, bukan regex, supaya argumen bertanda kurung —mis.
-     * `setValue(MEEL_ROOT . '/temp/x/')`— tidak lolos salah baca.
+     * Guard memindai SELURUH repo (di luar vendor) dan poked bentuk
+     * 1-argumen secara umum. Memakai balance parens, bukan regex, supaya
+     * argumen bertanda kurung tidak lolos salah baca.
      */
     public function testNoDeprecatedSingleArgumentSetValueAnywhere(): void
     {

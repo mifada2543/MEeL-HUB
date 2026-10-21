@@ -507,9 +507,9 @@ thin wrappers over it, so every existing caller keeps working unchanged.
 #### Storage helper entry point
 
 `modules/core/helpers/storage.php` deliberately still exists even though its
-own body is nearly empty: `main.php` loads it in a single line, and 25+
-pages call its functions. Splitting that entry point is far riskier than the
-benefit it would bring.
+own body is nearly empty: `main.php` loads it in a single line, and almost 50
+files outside tests/ call its functions. Splitting that entry point is far
+riskier than the benefit it would bring.
 
 Its contents are already split per domain, following this folder's
 convention:
@@ -519,7 +519,7 @@ convention:
 | `storage_paths.php` | base path, thumbnail, PID, mount guard | 14 |
 | `storage_disk.php` | disk capacity, cache file, audit log | 8 |
 | `storage_xsendfile.php` | detection & X-Sendfile header | 11 |
-| `storage_stream.php` | cache validator + media serving | 4 |
+| `storage_stream.php` | cache validator + media serving | 9 |
 
 The `require` order must not be shuffled, because it follows the dependency
 direction: `paths` → `disk` → `xsendfile` → `stream`. PHP defers function
@@ -547,9 +547,9 @@ Two semantic differences that must be preserved:
 - `meel_export_values()` uses `??` for columns that declare a `default` — a
   missing key **and** a `null` value both produce the default. Columns
   without a `default` pass `null` through unchanged.
-- `meel_export_json_row()` reads the raw value for `int?` columns instead of
-  the `??` result. Applying the `default` first turns `null` into `''` and
-  then into `0`: JSON that used to report `"user_id": null` suddenly reports
+- `meel_export_map()` reads the raw value for `int?` columns instead of the
+  `??` result. Applying the `default` first turns `null` into `''` and then
+  into `0`: JSON that used to report `"user_id": null` suddenly reports
   `"user_id": 0`. Null means "unknown", 0 means "user 0".
 
 #### Video thumbnail naming convention

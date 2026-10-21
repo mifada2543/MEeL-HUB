@@ -2,22 +2,14 @@
 /**
  * Pola pemeriksaan keamanan untuk orkestrasi transcoder.
  *
- * MENGAPA DI LUAR `security_test.php`
- * ----------------------------------
- * Pola-pola ini mengikat ke bentuk kode, bukan ke perilakunya. Begitu
+ * Pola-pola ini mengikat ke bentuk kode, bukan ke perilakunya: begitu
  * sebuah method dipecah dan variabelnya berubah nama, polanya tidak lagi
- * cocok -- dan gerbang akan melaporkannya sebagai kegagalan, memaksa
- * seseorang mencari letaknya. Itu hasil yang baik. Yang buruk adalah kalau
- * pola itu dihapus atau dipoles diam-diam supaya cocok lagi tanpa pernah
- * ditinjau ulang: gerbang tetap hijau, tapi tidak ada yang memeriksa apa pun.
+ * cocok — dan gerbang akan melaporkannya sebagai kegagalan. Yang buruk
+ * adalah kalau pola itu dipoles diam-diam supaya cocok lagi: gerbang tetap
+ * hijau, tapi tidak ada yang memeriksa apa pun.
  *
  * Dipisah ke berkas sendiri supaya unit test bisa memuat peta yang sama dan
  * memastikan SETIAP pola masih benar-benar cocok dengan kode hari ini.
- * Kalau ada pola yang mati, penuhnya gagal di unit test, bukan produksi.
- *
- * Catatan: pola di sini memang memeriksa bentuk, bukan hasil. Pemeriksaan
- * security yang sesungguhnya tetap butuh uji perilaku; peta ini hanya
- * memastikan tidak ada penjaga yang hilang di jalan.
  */
 
 /**
