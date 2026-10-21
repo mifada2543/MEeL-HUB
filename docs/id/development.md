@@ -550,25 +550,6 @@ User klik toggle → MEELTheme.toggle()
 ---
 
 ## Testing
-
-### Manual Testing Checklist
-
-Setiap perubahan harus di-test:
-
-**Frontend:**
-- [ ] Halaman tidak error di browser console
-- [ ] HTMX request/response bekerja
-- [ ] Mobile responsive (min width 320px)
-- [ ] Dark mode konsisten
-- [ ] Semua tombol dan link berfungsi
-
-**Backend:**
-- [ ] Prepared statements tidak error
-- [ ] CSRF validation berfungsi
-- [ ] Role-based access berfungsi
-- [ ] File upload validasi berfungsi
-- [ ] Error handling menampilkan pesan yang sesuai
-
 ### Debug Tools
 
 ```php
@@ -658,80 +639,19 @@ MEeL mengimplementasikan TOTP sesuai [RFC 6238](https://datatracker.ietf.org/doc
 | Window | ±1 (90 detik toleransi) |
 | Encoding | Base32 |
 
-### Helper Functions (di `modules/auth/helpers/mfa.php`)
+### Helper Functions
 
-```php
-// ─── GENERATE SECRET ───────────────────────────────────────
-function generate_mfa_secret(): string {
-    $random = random_bytes(20);  // 160-bit
-    // Base32 encode (A-Z, 2-7)
-    $base32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    $secret = '';
-    $bits = 0; $buffer = 0;
-    foreach (str_split($random) as $byte) {
-        $buffer = ($buffer << 8) | ord($byte);
-        $bits += 8;
-        while ($bits >= 5) {
-            $bits -= 5;
-            $secret .= $base32[($buffer >> $bits) & 31];
-        }
-    }
-    return $secret;
-}
-
-// ─── GENERATE TOTP ─────────────────────────────────────────
-function generate_totp(string $secret): string {
-    $decoded = base32_decode($secret);  // Base32 → raw bytes
-    $counter = pack('N*', 0) . pack('N*', intdiv(time(), 30));
-    $hash = hash_hmac('sha1', $counter, $decoded, true);
-    $offset = ord($hash[19]) & 0xf;
-    $code = (
-        ((ord($hash[$offset]) & 0x7f) << 24) |
-        ((ord($hash[$offset+1]) & 0xff) << 16) |
-        ((ord($hash[$offset+2]) & 0xff) << 8) |
-        (ord($hash[$offset+3]) & 0xff)
-    ) % 1000000;
-    return str_pad((string)$code, 6, '0', STR_PAD_LEFT);
-}
-
-// ─── VERIFY TOTP (dengan window ±1) ────────────────────────
-function verify_totp(string $secret, string $code): bool {
-    for ($i = -1; $i <= 1; $i++) {
-        // Generate TOTP dengan offset waktu $i step
-        $expected = generate_totp_at($secret, time() + ($i * 30));
-        if (hash_equals($expected, $code)) return true;
-    }
-    return false;
-}
-```
+Implementasinya ada di `modules/auth/helpers/mfa.php` — berkas itu satu-satunya
+sumber kebenaran, jadi tidak disalin ke dokumentasi. Fungsinya: `generate_mfa_secret()`,
+`generate_totp()`, `verify_totp()`, `verify_totp_step()`, `generate_backup_codes()`,
+`verify_backup_code()`, `generate_otpauth_url()`, `base32_decode()`.
 
 ### Backup Codes System
 
-```php
-// ─── GENERATE 8 BACKUP CODES ───────────────────────────────
-function generate_backup_codes(): array {
-    $plain = [];
-    $hashed = [];
-    for ($i = 0; $i < 8; $i++) {
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);  // 6 digit
-        $plain[] = $code;
-        $hashed[] = password_hash($code, PASSWORD_DEFAULT);  // bcrypt
-    }
-    return ['plain' => $plain, 'hashed' => $hashed];
-}
-
-// ─── VERIFY BACKUP CODE (single-use) ───────────────────────
-function verify_backup_code(string $hashedJson, string $code): array {
-    $codes = json_decode($hashedJson, true) ?? [];
-    foreach ($codes as $i => $hash) {
-        if (password_verify($code, $hash)) {
-            array_splice($codes, $i, 1);  // Hapus yang sudah dipakai
-            return ['valid' => true, 'remaining' => $codes];
-        }
-    }
-    return ['valid' => false, 'remaining' => $codes];
-}
-```
+Delapan kode cadangan, masing-masing 6 digit, disimpan sebagai hash
+`password_hash()` (bcrypt, one-way) dan tidak bisa dibaca balik. Kode yang
+sudah dipakai dihapus dari daftar saat diverifikasi, jadi satu kode hanya bisa
+dipakai sekali. Implementasinya di `modules/auth/helpers/mfa.php`.
 
 ### Database Schema
 
@@ -815,21 +735,6 @@ GPL v3 mewajibkan (Pasal 5a):
 1. Setiap file yang dimodifikasi harus diberi **notice perubahan** yang jelas
 2. File yang dimodifikasi harus tetap **mengacu pada lisensi GPL v3**
 3. **Karya turunan** (derivative work) harus dirilis di bawah **lisensi yang sama**
-
----
-
-### Checklist Kontribusi
-
-- [ ] Gunakan **Prepared Statements** untuk semua query database
-- [ ] Sanitasi input POST/GET
-- [ ] CSRF token di setiap form POST baru
-- [ ] Role check sebelum operasi sensitif
-- [ ] Update `update.php` dengan changelog
-- [ ] Test upload file besar di lokal
-- [ ] Test di mode incognito (session test)
-- [ ] Setiap file baru memiliki **copyright header GPL v3**
-- [ ] Perubahan ditandai dengan **notice modifikasi** yang jelas
-
 ### Git Commit Convention
 
 ```
@@ -1043,7 +948,7 @@ Baris `@var` ini **fungsional** (bukan komentar hiasan) — menghapusnya mengemb
 | Bentuk | Diterima PHP 8.3? |
 |---|---|
 | Stub Intelephense 1.18.5: `bind_param($types, &$var1, &...$_)` | ❌ **DITOLAK engine** |
-| Nyata: `bind_param(string $types, mixed &...$vars): bool` | �
+| Nyata: `bind_param(string $types, mixed &...$vars): bool` | �
  DITERIMA |
 
 Stub Intelephense belum menyusul perubahan signature `mysqli_stmt::bind_param()` di PHP 8.0, jadi analyzer dan engine **tidak bisa dipenuhi bersamaan**. Ditutup lewat `.vscode/settings.json` → `intelephense.diagnostics.exclude`, dikunci ke file dan kode saja (`["P1038"]`) supaya pemeriksaan lain di file yang sama tetap aktif. Konsekuensi praktis: `FakeMysqliResult::close()` ditulis `: void` mengikuti stub analyzer, meski runtime PHP menerima juga bentuk untyped — bentuk `: void` memenuhi keduanya.

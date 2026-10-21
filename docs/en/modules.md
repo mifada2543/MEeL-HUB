@@ -1159,6 +1159,59 @@ editor moved into `arcade/rhythm/manage/`. Requesting it produced
 `arcade/rhythm/manage/edit.php`, the same file the two other editor URLs
 already reach.
 
+#### Main Route Table
+
+Since the routing migration, all public URLs use clean URLs (no `.php` extension). Requests are handled by the `router.php` front controller, which resolves paths to handler files via the route table in `modules/core/Router.php`.
+
+**How it works:**
+
+```
+Request: /MEeL/music/beranda?format=ogg
+  → .htaccess: every non-file/non-dir request is rewritten to router.php (except media upload/)
+  → modules/core/Router.php: routeFor('music/beranda') → handler 'music/index.php'
+  → require music/index.php with the original query string
+```
+
+**`.htaccess` rules (root):**
+- All clean URLs (e.g. `video/watch`, `music/beranda`, `admin/stats`) → `router.php`
+- Legacy `.php` files (e.g. `video/watch.php`, `music/index.php`, `upload_advanced.php`,
+  `admin/cookies.php`, `admin/analys`, `admin/content.php`, `admin/content`) → **301** to the clean URL (query preserved, old bookmarks still work)
+- Trailing-slash variants (e.g. `/video/upload/`) → **301** to the non-slash form
+- `DirectorySlash Off` in media directories (`video/upload`, `music/upload`, `books/upload`)
+  so `/video/upload` is served by the router (not a mod_dir redirect)
+
+**`beranda` scheme:** each module has a `beranda` home page
+(`video/beranda`, `music/beranda`, `books/beranda`, `drive/beranda`, `admin/beranda`,
+`arcade/beranda`). Legacy `index.php` pages remain as aliases.
+
+**Main route table (`modules/core/Router.php`):**
+
+| URL | Handler (file) |
+|---|---|
+| `/`, `/beranda` | `index.php` (hub) |
+| `/introduction`, `/update`, `/upload`, `/transcode` | `introduction.php`, `update.php`, `upload_advanced.php`, `transcode.php` |
+| `/err`, `/err/offline` | `err/index.php` (dynamic `?code=`), `err/offline.php` (PWA) |
+| `/video/beranda`, `/video/watch`, `/video/search`, `/video/load-more`, `/video/upload`, `/video/stream` | `video/*.php` |
+| `/music/beranda`, `/music/watch`, `/music/search`, `/music/load-more`, `/music/upload`, `/music/playlist`, `/music/playlist-action`, `/music/stream`, `/music/file` | `music/*.php` |
+| `/music/<playlist-name>` | `music/view_playlist.php` (playlist slug route — see below) |
+| `/books/beranda`, `/books/read`, `/books/read-pdf`, `/books/search`, `/books/upload`, `/books/file` | `books/*.php` |
+| `/drive/beranda`, `/drive/upload`, `/drive/delete`, `/drive/download`, `/drive/stream` | `drive/*.php` |
+| `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profile + public channel grid, tab via query), `profile/channel_more.php` (HTMX fragment), `profile/edit-video.php` (owner, non-admin), `profile/edit-music.php` (owner, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
+| `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat` | `admin/*.php` (edit-video/edit-music admin-only), `controllers/admin/*.php` |
+| `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
+| `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` *(extension — requires arcade folder installed)*. All three editor URLs (`/arcade/rhythm/editor`, `/arcade/rhythm/edit`, `/arcade/rhythm/manage/edit`) reach the same file, `arcade/rhythm/manage/edit.php` |
+| `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) *(extension)* |
+| `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/notification`, `/api/chat`, `/api/meelcoin` | `controllers/api/*.php` |
+| `/system/mfa` | `controllers/system/mfa.php` |
+
+> **Playlist slug route:** playlists have name-based URLs — `/music/<playlist-name>`
+> (e.g. `/music/leo-need`). The slug is derived from the playlist name (`playlistSlug()`),
+> guaranteed unique per user (`getUserPlaylistRoutes()`); non-ASCII names fall back to
+> `playlist`, and names colliding with module routes or other slugs get a `-<id>` suffix.
+> Exact routes (`beranda`, `watch`, etc.) always win; anything else is treated as a
+> playlist slug (`resolvePlaylistSlug()`). The legacy URL `music/playlist?id=X` still works.
+
+
 ### 23. `modules/auth/` and the shared config
 
 `auth/config.php` is included by every page: it loads the credentials from
