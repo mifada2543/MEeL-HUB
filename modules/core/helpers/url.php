@@ -233,7 +233,17 @@ if (!function_exists('meel_path_segments')) {
         if (!function_exists('meel_base_url_path')) {
             require_once __DIR__ . '/../base_url.php';
         }
-        $base = meel_base_url_path();
+        $base = str_replace('\\', '/', meel_base_url_path());
+        if ($base !== '') {
+            $projectRoot = str_replace('\\', '/', dirname(__DIR__, 3));
+            if (
+                $base === $projectRoot
+                || str_starts_with($projectRoot, $base . '/')
+                || str_starts_with($base, $projectRoot . '/')
+            ) {
+                $base = '';
+            }
+        }
         if ($base !== '' && str_starts_with($path, $base)) {
             $path = substr($path, strlen($base));
         }
@@ -294,6 +304,14 @@ if (!function_exists('meel_current_path')) {
 if (!function_exists('meel_same_path')) {
     function meel_same_path(string $a, string $b): bool
     {
+        $raw = static function (string $p): string {
+            return implode('/', array_values(array_filter(explode('/', $p), static function ($s) {
+                return $s !== '';
+            })));
+        };
+        if ($raw($a) === $raw($b)) {
+            return true;
+        }
         return implode('/', meel_path_segments($a)) === implode('/', meel_path_segments($b));
     }
 }
