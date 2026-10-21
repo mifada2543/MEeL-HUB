@@ -316,6 +316,29 @@ icons unrendered.
 3. Response is valid HTML
 4. No JavaScript errors
 
+### ❌ Loop Playback Status Is Reset On Every Refresh
+
+**Symptom:** the Loop button is on, but after a refresh — or after an
+auto-recovery, or after a quality change — it is back to normal, even though
+that video really was playing in a loop. The other way round, a loop that
+stays "on" gets carried over to the next video.
+
+**Cause:** the loop status only lived in the player instance, so it was lost
+every time the player was rebuilt. And more subtly, nothing cleared it when
+moving to another video.
+
+**Fix (already in MEeL core):**
+
+| Location | What it does |
+|---|---|
+| `assets/js/video/watch/state.js` | Reads `MEEL_KEYS.VIDEO_LOOP` (`meel_video_loop`) at boot, and exports `persistVideoLoop()`, `restoreVideoLoop()`, `clearVideoLoop()` |
+| `setupMeelPlayerEvents()` | Calls `restoreVideoLoop()`, so the loop is restored on **every** player creation path: initial load, auto-recovery, rebuild after a quality change, and switching video through the mini player |
+| Switching video & Auto Next | `clearVideoLoop()` is called on `skipToNextVideo`, clicking a mini player card, the `.recommendation-item` click guard, and when Auto Next is enabled — so the loop is not carried into the next video |
+
+Auto Next and Loop cancel each other out in both directions: enabling Auto Next
+clears the loop key, enabling Loop turns Auto Next off, and stale state while
+both are active is cleaned at boot.
+
 ---
 
 ## Session & Auth Issues
