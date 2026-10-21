@@ -20,15 +20,9 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [Private Drive Protection](#private-drive-protection)
 - [Exception Handling](#exception-handling)
 - [Disk Space Validation](#disk-space-validation)
-- [P0 Hardening (October 2026)](#p0-hardening-october-2026)
-- [P1 Hardening (October 2026)](#p1-hardening-october-2026)
-- [P2 Hardening (October 2026)](#p2-hardening-october-2026)
-- [P4 Hardening — Comment Section (October 2026)](#p4-hardening--comment-section-october-2026)
-- [P5 Hardening — Security Checker Rigour (October 2026)](#p5-hardening--security-checker-rigour-october-2026)
-- [P6 Hardening — Path Resolution and Gate Placement (October 2026)](#p6-hardening--path-resolution-and-gate-placement-october-2026)
-- [P7 Hardening — MEeLCoin Refund Accounting (October 2026)](#p7-hardening--meelcoin-refund-accounting-october-2026)
 - [Input Validation](#input-validation)
-- [Best Practices](#best-practices)
+- [Security Checker](#security-checker)
+- [MEeLCoin Accounting](#meelcoin-accounting)
 
 ---
 
@@ -83,6 +77,16 @@ Documentation about authentication, authorization, and protection systems in MEe
 └─────────────────────────────────────────────────────────┘
 ```
 
+### Baseline Rules That Apply
+
+| Area | Rule |
+|---|---|
+| Environment detection | `MEEL_ENV` is read only from `REMOTE_ADDR` — never from a client-sent header. `install.sh` writes `UseCanonicalName On`; if `MEEL_ENV` must be forced, set it explicitly in `auth/settings.php`. |
+| Path resolution | Every `require`/`include` and `filemtime()` call uses `__DIR__`, not a path relative to the working directory. `href`/`src` attributes are left alone — those are URLs the browser resolves. |
+| Configuration loading | `auth/config.php` is loaded with `require_once`. The whole drive authorization gate shares `drive/bootstrap.php`. |
+| Referer validation | `meel_same_origin_referer()` compares the referer host against the configured `MEEL_CANONICAL_HOST`, accepts only http/https schemes, and rejects protocol-relative URLs. If `MEEL_CANONICAL_HOST` is empty, every external referer is rejected — fail safe. Used by `music/playlist_action.php`, `profile/notification.php`, and `meel_back_url()`. |
+| Stream check | `drive/stream.php` calls `authorize()`; the checker reads that file together with its whole `include` chain via `sourceWithIncludes()` in `tests/helpers.php`. The pattern is `->authorize()`. |
+
 ---
 
 ## Role-Based Access Control (RBAC)
@@ -133,6 +137,21 @@ Non-admin users are redirected to `/err?code=not_found` (HTTP 404) instead of sh
 The same redirect pattern is used in:
 - `controllers/admin/admin_actions.php` — `MEEL_ADMIN_CONTEXT` guard + `is_admin()` guard
 - `controllers/admin/admin_data.php` — `MEEL_ADMIN_CONTEXT` guard
+
+### Source of Truth for Roles
+
+The database is the source of truth. `$_SESSION['role']` is a display cache only — badges and "edit" links may read it, but the gate always re-checks against the database. Every caller uses `is_admin($conn)` or `require_admin($conn)`; `update.php`, `profile/manage.php`, and `controllers/system/UpdateManager.php` no longer read `$_SESSION['role']` directly.
+
+`UpdateManager` is the **write** path for `sidebar_settings` and `updates`, which are rendered to every anonymous visitor.
+
+### Resource Authorization (IDOR)
+
+Ownership is checked in the **data layer**, not in the caller, so the next caller cannot forget it.
+
+| Operation | Rule |
+|---|---|
+| Delete playlist | Check ownership first, then delete the `playlist_tracks` rows through a `JOIN`, then check `affected_rows`. A `DELETE` scoped by `user_id` still succeeds on 0 rows without giving any sign. |
+| Read playlist queue | `getPlaylistQueue()` has an ownership gate — without it, `?playlist_id=N` on the public watch page leaks another user's queue. |
 
 ---
 
@@ -198,6 +217,12 @@ $stmt_kick = $conn->prepare("UPDATE users SET
     last_activity = DATE_SUB(NOW(), INTERVAL 10 MINUTE) 
     WHERE username = ?");
 ```
+
+### Login Does Not Leak Whether an Account Exists
+
+Every login failure uses the **same** message — there is no longer a different message for "account exists but is inactive" versus "username or password wrong".
+
+A dummy `password_verify` runs against a static hash when the user is not found, so response time cannot separate the two branches.
 
 ---
 
@@ -275,6 +300,10 @@ All `arcade/chess/controller/*.php` endpoints require:
 - **Login** — JSON `401` + `login_required: true` (client `arcade/chess/assets/js/api.js` redirects to login)
 - **CSRF** — every state-changing POST carries `csrf_token` (JSON body for `save_move`, `FormData` for `create_room`/`join_room`)
 - The token is **never stored** in `moves.move_data` (not exposed to opponents)
+
+### The Token Is Never in the URL
+
+The CSRF token never lives in the query string — there it would end up in the browser history, the Apache access log, and the `Referer` header of the next page. Media deletion uses POST with the token in the form body, the handler rejects other methods, and `confirmHapus()` submits a form instead of navigating.
 
 ---
 
@@ -412,6 +441,14 @@ disabling rate limiting entirely. Failures are logged via `error_log()`.
 
 Expired files (>1 hour) are automatically cleaned by `GarbageCollector::run()` called on every request.
 
+### Buckets That Apply
+
+| Bucket | Limit | Key |
+|---|---|---|
+| `mfa` | 10 / 300 seconds | `mfa:<user_id>` — holds across sessions |
+| `login` | 10 / 300 seconds | per account |
+| `drive_files` | 10 files / hour | `DriveStorage::recordUpload()` records every upload |
+
 ---
 
 ## Multi-Factor Authentication (MFA)
@@ -527,6 +564,24 @@ Guests (unauthenticated users) can view any user's profile page without login. T
 
 Session initialization uses `meel_boot_session()` to set `session_name('meel')` and hardened cookie flags. Using raw `session_start()` would look for a `PHPSESSID` cookie instead of `meel`, causing the session to appear empty.
 
+### Disabling MFA
+
+Disabling MFA requires `password_verify` **and** a currently valid TOTP code — the same pattern as resetting the backup codes. The TOTP seed is never re-rendered for any logged-in session.
+
+### Anti-Replay
+
+`verify_totp()` uses a ±1 time-step window, so a single code is valid for roughly 90 seconds. The anti-replay mechanism:
+
+- `verify_totp_step()` returns the matching time-step (not a `bool`)
+- `auth/mfa_verify.php` stores it in `users.mfa_last_step`
+- the update uses `UPDATE ... WHERE mfa_last_step IS NULL OR mfa_last_step < ?` — two concurrent requests with the same code cannot both pass
+
+`verify_totp()` remains as a safe wrapper for ordinary callers. When a backup code is used, the step is reset so the next TOTP code is not rejected.
+
+### Limiter
+
+`RateLimiter` has two buckets: `mfa` (10 requests / 300 seconds) and `login` (10 / 300). `auth/mfa_verify.php` calls it with the key `mfa:<user_id>` **before** verifying the code, so the limit holds across sessions — dropping the cookie does not reset it.
+
 ---
 
 ## File Upload Security
@@ -615,6 +670,26 @@ Rejected: absolute paths, `../`, `..\`, null bytes, symlinks, excessive depth, n
 - **Archives** — the entry/size/ratio limits above (zip-bomb protection)
 - **Transcode** — audio timeout 600s (`TRANSCODE_AUDIO_TIMEOUT`), HLS remux 120s, `stream_set_timeout(30)`, and output duration validated ≥ 50% of source
 
+### Download Limits
+
+The yt-dlp command uses `--max-filesize` and `--match-filter "duration < N"`, and `DownloadService::assertWithinDownloadLimits()` checks the metadata (`duration`, `filesize`/`filesize_approx`) before the download starts. The values are `MEEL_MAX_DOWNLOAD_BYTES` (2 GB) and `MEEL_MAX_DOWNLOAD_SECONDS` (7200), defined together with the other upload limit constants in `modules/core/helpers/upload.php`.
+
+### Atomic Queue Slot Claim
+
+`System::claimQueueSlot()` wraps the check and the INSERT in a MySQL `GET_LOCK()` — one advisory lock, so only one party may check and then insert. The limit is `System::MAX_CONCURRENT_QUEUES` (default 2).
+
+### Artifacts of Running Jobs
+
+`GarbageCollector::STALE_SECONDS` = **1200**, larger than `TRANSCODE_AUDIO_TIMEOUT` (600) and `DOWNLOAD_TIMEOUT` (900). The `.processing` marker is the only guard against two transcodes colliding on the same output, so it must never be below those two timeout values.
+
+### Pending Deletion Queue
+
+`cleanupPendingDeletions()` may only delete paths whose `realpath()` lies inside one of the media or drive base roots. The queue file sits in a world-writable directory, so without a containment check a local user could schedule the deletion of any file or directory as the web user.
+
+### Admin Export Limit
+
+`fetchAll()` takes a limit (default 50,000) — the 15-row preview uses `countFiltered()` + `fetchPage(15, 0)` instead of loading the whole filtered table into memory.
+
 ---
 
 ## Apache .htaccess Protection
@@ -635,6 +710,16 @@ Rejected: absolute paths, `../`, `..\`, null bytes, symlinks, excessive depth, n
 > **Media uploads are not served directly by the web server.** Since the portability refactor, `books/upload/`, `music/upload/`, and `video/upload/` are real tracked directories (placeholder `.gitkeep` + hardened `.htaccess`) whose contents are served through PHP endpoints mapped by an internal rewrite in the root `.htaccess`: `video/upload/...` → `video/stream.php`, `music/upload/...` → `music/file.php`, `books/upload/...` → `books/file.php` (see [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)). All of them — plus the final serve step of `music/stream.php` — delegate to one shared function, `meel_serve_media_file()` in `modules/core/helpers/storage.php`, which implements: realpath containment against path traversal (`..`, null byte → `403`), an extension whitelist, automatic MIME mapping, HTTP Range support (`206 Partial Content`), output buffer cleanup before streaming, and an optional referer gate for HLS. When `MEEL_USE_XSENDFILE` is on, the `mod_xsendfile` module is loaded, and the file falls under `XSendFilePath` in Apache's configuration, delivery switches to the `X-Sendfile` header (Apache sends the file straight from disk; `Range`/`206` are computed by Apache and PHP never reads the file body) — automatically falling back to regular PHP streaming when any condition is not met, so the response is never empty. The fourth condition is the `XSendFile on` directive in effect for the request (read from Apache's configuration **and** the `.htaccess` files along the URL path/script directory, most specific wins; a missing directive counts as `off`): if Apache would ignore the header (flag `off`), the app never sends it — preventing an empty response as well as leaking the server's absolute paths to the client. Security note: every gate (login, CSRF, `authorize()`, realpath containment, extension whitelist, HLS referer gate) runs **before** the X-Sendfile branch, so enabling or disabling X-Sendfile does not change the authorization model.
 >
 > **`books/file.php` requires login** (`auth/auth.php`), consistent with the rest of the Books module — `index.php`, `read.php`, `read_pdf.php`, and `controllers/api/pdf.php` are all login-gated. Without this, manga images and PDFs could be downloaded directly without authentication (the raw paths were reachable with `HTTP 200` before the fix). Music audio stays behind `music/stream.php` (session marker + strict referer gate); `music/file.php` and `video/stream.php` intentionally have **no** login gate because the Music/Video index & watch pages are public by design (thumbnails must render for anonymous visitors). `video/stream.php` additionally passes `hls_gate => true` — `.m3u8`/`.ts` segment requests must carry a same-host referer from a video page (`/video`, `/video/watch`), otherwise the request is redirected to `err/?code=denied` (anti-hotlink). `video/stream.php` and `music/stream.php` also call `session_write_close()` before streaming so parallel segment requests don't block each other on the PHP session file lock. Token gate: the watch pages register a path → media-id mapping in the session (`meel_register_stream_path`, **100-entry** FIFO cap) and the stream endpoints verify it via `meel_stream_path_allowed` — verified access **without a DB query per segment**; thumbnails (`thumbnail/`) and display files stay public for cards/OG-images. The mapping applies to the **entire video-folder subtree** (ancestor walk from the path up to a registered key): multibitrate variant playlists (`#EXT-X-STREAM-INF` → subfolders like `v1/`, `720p/`, …) and their segments are verified as long as that video folder is registered — other video folders remain denied, and `video/` can never become a subtree root.
+
+### The Webroot Is Closed
+
+`.htaccess` denies `vendor/`, `node_modules/`, `tools/`, `assets/dict/`, and `storage/`. The `vendor/` and `node_modules/` rules cannot be committed (both are git-ignored), so `install.sh` writes them and `tests/security_test.php` watches every sensitive directory so a regression is caught.
+
+The root `FilesMatch` also covers `phpunit.xml`, `composer.*`, `package*.json`, `install.sh`, `.vscode`, and backup suffixes (`~`, `.bak`, `.old`, `.orig`, `.swp`, `.dist`, `.sample`). It deliberately does **not** blanket `*.json`/`*.xml`/`*.md`, because `assets/manifest.json` and `sitemap.xml` must stay public. Tooling directory segments are closed with a `RewriteRule`, because `FilesMatch` only catches a file named `.vscode`, not a path containing that segment.
+
+### Apache 2.4 Compatibility
+
+Every `Deny from all` is wrapped in `IfModule`. Without that wrapper, Apache 2.4 without `mod_access_compat` treats the directive as a configuration error — and the whole `.htaccess` is discarded, so `controllers/` loses all access control.
 
 ---
 
@@ -846,6 +931,10 @@ Two TOCTOU races were closed in `DriveStorage::upload()`:
 
 **Run everything with one command:** `scripts/verify_security.sh` runs the three security suites (PHPUnit security subset, `security_test.php`, `functional_test.php`) plus a live Private Drive 403 probe and exits with a CI-friendly code (see [testing.md](testing.md)).
 
+### Stream Authorization Fails Closed
+
+`meel_stream_path_allowed()` uses an explicit allowlist of public prefixes — `thumbnail/`, `file/`, `lyrics/`, `upload/`, `manga/`, `books/` — and rejects everything else. Video and music are public under this project's RBAC model, so public streaming behaviour is unchanged; what changes is that the default is now deliberate rather than accidental, and a private area can no longer pass simply because its path does not start with `video/`.
+
 ---
 
 ## Exception Handling
@@ -922,7 +1011,6 @@ Output is always escaped with `htmlspecialchars()`:
 ```php
 echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
 ```
-
 ### Stored XSS (hardening): the database stores raw (canonical) data; escaping happens **at output time**, per context:
 
 - Plain-text HTML → `htmlspecialchars($v, ENT_QUOTES, 'UTF-8')`
@@ -931,11 +1019,22 @@ echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
 
 The audit covers every rendered user-controlled value: profile bios, media title/description, comments, filenames, playlists, search results, chat usernames, and data shown in the admin panel. For inline JS template literals (e.g. admin chat search results), a dedicated `escapeHtml()` function wraps user-derived values before HTML injection. Regression tests (`tests/security_test.php`) verify payloads such as `<script>alert(1)</script>` and `<img src=x onerror=alert(1)>` are never executed as HTML.
 
+### CSRF in All Forms
+
+Every POST form carries a CSRF token, and the handler rejects a request without a valid one. The token is verified with `hash_equals()` so a comparison cannot be timed.
+
 ### Login Rate Limiting
 
 ```php
 $max_login_attempts = 5;
 $lockout_time = 300; // 5 minutes
+```
+
+### Register Rate Limiting
+
+```php
+$max_reg_attempts = 3;
+$reg_time_window = 3600; // 1 hour
 ```
 
 ### Theme System Security
@@ -948,657 +1047,69 @@ Theme preference is stored securely:
 4. **CSRF protection:** POST requires valid CSRF token
 5. **No XSS risk:** Theme value is not escaped to HTML, only used for `data-theme` attribute
 
----
+### Escape at Render Time, Not at Write Time
 
-## Best Practices
+`UpdateManager::clean()` only does `trim()`. Escaping happens at the render point, per context. The `/update` page is reachable by anonymous visitors, so "escape at write time" means a second author — an install, an import, or a direct `mysql>` edit during an incident — becomes stored XSS for every visitor.
 
-### For Developers
+`admin/index.php` also uses `json_encode` with the flags `JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP`; plain `json_encode` does not escape `'`, so a filename with an apostrophe could close the single-quoted attribute.
 
-1. **Always use Prepared Statements** for database queries
-2. **Sanitize all input** POST/GET
-3. **Verify CSRF token** on every form POST
-4. **Don't trust user input** — validate file type, size, and content
-5. **Escape output** with `htmlspecialchars()`
-6. **Don't expose error details** to non-admin users
+### View Inflation
 
-### Security Checklist
+`UNIQUE (user_id, video_id, music_id)` **holds nothing back**: MySQL treats NULL as a distinct value in a unique index, so `(9, 299, NULL)` and `(9, 299, NULL)` stay two different rows. The correct pattern is two separate unique constraints per media kind, like the `interactions` table.
 
-- [ ] Database credentials only in `auth/settings.php`
-- [ ] All `.htaccess` files installed in sensitive directories
-- [ ] Prepared statements in all SQL queries
-- [ ] CSRF token in all POST forms
-- [ ] Session timeout active (12 hours)
-- [ ] IP banning system active
-- [ ] File upload validation (type, size, magic bytes)
-- [ ] Role checking before sensitive actions
-- [ ] Theme preference doesn't store sensitive data
----
+> ⚠️ **Trap:** an unused column **must stay `NULL`, not `0`**. Filling in `0` makes every music row share `video_id=0` and collide in `uq_view_video`. It is the fact that NULL *passes* that makes this two-unique pattern work.
 
-## P0 Hardening (October 2026)
+### `bind_param` Types Follow the Schema
 
-Notes on the security changes landed in a single batch, with the reasoning behind
-each. This section replaces the long comments that used to live inside production
-files — explanation like this belongs in documentation.
-
-### 1. `MEEL_ENV` is no longer influenced by client headers
-
-`modules/core/bootstrap.php` decides `development` vs `production`. It used to
-consult `$_SERVER['SERVER_NAME']`. On Apache with `UseCanonicalName Off` (the
-default) `SERVER_NAME` is copied from the client's `Host:` header, so
-`Host: localhost` from a remote attacker was enough to:
-
-- turn on `display_errors=1` (leaking absolute paths, SQL, session internals site-wide)
-- add `'unsafe-eval'` to the CSP
-- make `Modules::flaggedOff()` ignore the `.disabled` kill switch
-
-The fix has two sides:
-
-- `bootstrap.php` now uses `REMOTE_ADDR` only (loopback is still recognised)
-- `install.sh` writes `UseCanonicalName On` into the generated VirtualHost
-
-If `MEEL_ENV` must be forced, set it explicitly in `auth/settings.php` — don't rely
-on auto-detection.
-
-### 2. Admin authorization always reads the database
-
-`get_user_role()` used to treat `$_SESSION['role']` as authoritative. Since this
-repo has no UI for demoting a role, revoking an admin always means running SQL by
-hand — and that never took effect while the session stayed alive.
-
-The database is now the source of truth; `$_SESSION['role']` remains only as a
-display cache. Every file calling `is_admin($conn)` is fixed as a consequence:
-
-| File | Before | After |
-| --- | --- | --- |
-| `admin/stats.php` | `is_admin()` → session cache | unchanged, now reads DB |
-| `controllers/api/chat.php` | `is_admin()` → session cache | unchanged, now reads DB |
-| `admin/partials/live-monitor-manage.php` | `require_admin()` → session cache | unchanged, now reads DB |
-| `update.php` | read `$_SESSION['role']` directly | `is_admin($conn)` |
-| `profile/manage.php` | read `$_SESSION['role']` directly | `is_admin($conn)` |
-| `controllers/system/UpdateManager.php` | read `$_SESSION['role']` directly | `is_admin($this->db)` |
-
-`UpdateManager` matters most: it is the **write** path for `sidebar_settings` and
-`updates`, which are rendered to every anonymous visitor.
-
-> The remaining `$_SESSION['role']` reads (badges, "edit" links) are display only —
-> the real gates re-check on the server.
-
-### 3. Disabling MFA requires a password and a TOTP code
-
-It used to require nothing but a session cookie and a CSRF token. A hijacked
-session (or an unlocked shared browser) could drop the account to 1FA **and**
-destroy the backup codes. It now uses `password_verify` plus a currently valid TOTP
-code — the same pattern as the backup-code regeneration in
-`controllers/system/mfa.php`.
-
-The TOTP seed is also no longer re-rendered for any logged-in session. The old code
-rebuilt `otpauth://` from `mfa_secret` in the DB, so a hijacked session could copy
-the seed and keep 2FA on the attacker's own device.
-
-### 4. TOTP codes are single-use (anti-replay)
-
-`verify_totp()` used a ±1 time-step window and stored nothing, so a single code
-stayed valid for roughly **90 seconds** and could be replayed without limit — a
-phished, shoulder-surfed, or proxy-logged code still worked after the legitimate
-user had already consumed it. RFC 6238 §5.2 requires a monotonic counter.
-
-The fix:
-
-- `verify_totp_step()` returns the matched time-step (not `bool`)
-- `auth/mfa_verify.php` stores it in the new `users.mfa_last_step` column
-- the update is `UPDATE ... WHERE mfa_last_step IS NULL OR mfa_last_step < ?`, so
-  two concurrent requests carrying the same code cannot both succeed
-
-`verify_totp()` remains as a safe wrapper for ordinary callers. When a backup code
-is used, the step is reset so a pending TOTP code isn't rejected.
-
-### 5. `view_logs` actually stops view inflation
-
-`UNIQUE (user_id, video_id, music_id)` **never blocked anything**: MySQL treats NULL
-as distinct from other NULLs in a unique index, so `(9, 299, NULL)` and
-`(9, 299, NULL)` stay two separate rows. Every page load incremented `views` —
-the exact opposite of what the `schema.sql` comment claimed.
-
-The working pattern is already used by the `interactions` table: two separate unique
-keys, one per media type.
-
-> ⚠️ **Trap:** the unused column **must stay `NULL`, not `0`**. Filling it with `0`
-> makes every music row share `video_id=0`, and they collide in `uq_view_video`.
-> The fact that NULL *escapes* uniqueness is exactly what makes this two-unique-key
-> pattern work.
-
-Migration v7 also removed the duplicate rows that had already piled up — precisely
-because the old unique key never worked.
-
-### 6. Playlist IDOR
-
-- **Delete:** `delete_playlist` removed `playlist_tracks` rows **before** checking
-  ownership. The `user_id`-scoped `DELETE playlists` still reports success at 0 rows,
-  so nothing signalled that someone else's tracks were gone. Now ownership is
-  verified first, the pivot is deleted through a `JOIN`, and `affected_rows` is
-  checked.
-- **Read:** `getPlaylistQueue()` had no ownership gate, so `?playlist_id=N` on the
-  public watch page leaked another user's playlist queue. The gate is now placed
-  **in the data layer**, not the caller, so the next caller cannot forget it.
-
-### 7. Webroot closed off
-
-Before this batch, nine paths were downloadable without authentication, including a
-42 MB SQLite dictionary (`/assets/dict/jmdict.sqlite3`) that could be re-downloaded
-on every request.
-
-- deny `.htaccess` for `vendor/`, `node_modules/`, `tools/`, `assets/dict/`, and
-  `storage/` (the last was a 0-byte file)
-- `vendor/` and `node_modules/` are gitignored, so their `.htaccess` cannot be
-  committed. `install.sh` now writes them (step 6/9), and `tests/security_test.php`
-  guards every sensitive directory so regressions are caught
-- root `FilesMatch` extended for `phpunit.xml`, `composer.*`, `package*.json`,
-  `install.sh`, `.vscode`, and backup suffixes (`~`, `.bak`, `.old`, `.orig`, `.swp`,
-  `.dist`, `.sample`)
-- deliberately **not** a blanket `*.json`/`*.xml`/`*.md`, since
-  `assets/manifest.json` and `sitemap.xml` must stay public
-- a `RewriteRule` blocks tooling directory segments — `FilesMatch` only catches a
-  file literally named `.vscode`, not a path containing that segment
-
-### 8. `.htaccess` using bare Apache 2.2 directives
-
-`controllers/.htaccess` and `logs/tests/.htaccess` used a bare `Deny from all`. On
-Apache 2.4 without `mod_access_compat` that is a config error, so the **entire**
-`.htaccess` is discarded and `controllers/` loses all access control. They are now
-wrapped in `IfModule` like the rest of the repo.
+`bind_param` must use the column's real type. `difficulty_label` and `cover_file` are varchar and must not be bound as `"i"` — mysqli raises no warning, it converts the value to the requested type, so both end up stored as `'0'`. `tests/unit/BindParamTypeTest.php` derives the expected types from `arcade/schema.sql` instead of a hardcoded list.
 
 ---
 
-## P1 Hardening (October 2026)
 
-Follow-up to the previous section, for the same reason: the explanation lives in
-documentation, not in production files.
+## Security Checker
 
-### 9. Download size and duration limits
+The checker in `tests/security_test.php` must genuinely scan what it claims to. Three rules apply:
 
-The yt-dlp `base_cmd` had no ceiling at all. A single URL with a long 1080p stream
-wrote into `/dev/shm/meel/temp` staging with no bound, alongside a 10 GB
-`memory_limit`. Now:
+### The Allowlist Map Is Not the List of Scanned Files
 
-- `--max-filesize` and `--match-filter "duration < N"` on the yt-dlp command
-- `DownloadService::assertWithinDownloadLimits()` checks the metadata
-  (`duration`, `filesize`/`filesize_approx`) before the download starts
+The checker **finds its own files** via `getPhpFiles()`, then recomputes `escapeshellarg`/int-cast for every hit. The `$expected`/`$allowed` map stays, but its role changes: it is no longer the list of files that get scanned, but the list that is *expected* to still run a shell. A file outside the map that runs a shell **fails**, with a message naming what to change if it is genuinely legitimate. A file that is listed but has lost its `shell_exec` is reported too, so a stale map becomes visible immediately.
 
-Values are `MEEL_MAX_DOWNLOAD_BYTES` (2 GB) and `MEEL_MAX_DOWNLOAD_SECONDS`
-(7200), defined alongside the other upload limits in
-`modules/core/helpers/upload.php`.
+Number of files scanned: **21**.
 
-### 10. Queue slot claiming is now atomic
+### Taint Tracking for Open Redirects
 
-`isServerBusy()` was a plain `SELECT COUNT(*) ... WHERE status = 'processing'`,
-with the INSERT done separately by the caller. Twenty concurrent requests could
-all observe a count below the threshold and all start ffmpeg (8 threads each).
+A variable initialized from `HTTP_REFERER` is marked tainted; an assignment that uses a tainted variable taints the next one (two levels — enough for the `$ref` → `$back_url` pattern); every `header('Location: ...')` whose expression uses a tainted variable is reported as an open redirect. Both layers matter, because a redirect through a variable slips past a checker that only looks for `HTTP_REFERER` inside `header()`.
 
-`System::claimQueueSlot()` now wraps the check and the INSERT inside MySQL
-`GET_LOCK()` — one Advisory Lock, so only one party gets to check then insert.
-Verified with 8 parallel PHP processes: exactly 2 claims succeed, the rest are
-refused.
+What is **not** reported: files that read the referer and then redirect to a local path — the HLS gate in `music/stream.php` and `modules/core/helpers/storage_stream.php` redirecting to `../err/?code=denied`.
 
-The ceiling is `System::MAX_CONCURRENT_QUEUES` (default 2).
+### A Branch-Aware Rule
 
-### 11. GC no longer deletes artifacts of running jobs
+`display_errors=1` is accepted **only** when the same file also contains `case 'development'` **and** `display_errors=0`. There is no list of exempted filenames, so a new exemption cannot hide a regression.
 
-`GarbageCollector::STALE_SECONDS` was 300, below `TRANSCODE_AUDIO_TIMEOUT` 600
-and `DOWNLOAD_TIMEOUT` 900. Any other request touching the transcoder could make
-the GC delete the `.processing` marker of a running job — and that marker is the
-only thing preventing two transcodes from colliding on the same output. Raised to
-1200.
+CI fails on any non-zero exit code — warnings are red too.
 
-### 12. The installer no longer discards database credentials
+### A Guard Against Regressing
 
-The old patcher matched `$server = "localhost";`, but
-`auth/settings.example.php` had already moved to
-`if (!isset($server)) $server = (getenv(...) ?: "localhost")`. The error was also
-swallowed by `2>/dev/null ||`, so the install still reported success while the
-operator's answers were thrown away and the defaults were used.
+`StorageSplitTest::testSecurityAndFunctionalMapsStillCoverTheRealFiles` looks for the `$risky`, `$expected`, or `$allowed` map, and adds an assertion that `testCommandInjection()` really calls `getPhpFiles()`. If the check is ever reverted to a literal list of paths, that assertion fails first.
 
-The new patcher uses a durable regex for `define('MEEL_HDD_BASE', ...)` so it is
-idempotent, rewrites the override block, verifies the result with `re.search`,
-stops with `die` on failure, and finally checks
-`php -r 'require auth/settings.php'`.
+## MEeLCoin Accounting
 
-### 13. Open redirect: one helper instead of seven implementations
+The refund accounting rules for queue rows. All of them are pinned by `QueueRefundAccountingTest` and `QueueRefundRecoveryIntegrationTest`.
 
-Seven separate copies of referer validation, nearly all comparing the referer host
-against `$_SERVER['HTTP_HOST']` — the client-supplied header. With
-`Host: evil.com` plus `Referer: https://evil.com/` the check passes as "same
-origin". Some variants accepted `localhost` and `127.0.0.1` unconditionally.
+### The Recorded Cost Is the Amount Actually Charged
 
-`meel_same_origin_referer()` replaces them: the host must match the configured
-`MEEL_CANONICAL_HOST`, only http/https schemes are allowed, and protocol-relative
-URLs are rejected. When `MEEL_CANONICAL_HOST` is empty, every external referer is
-rejected — it fails closed.
+`upload_queue.coin_cost` records the MEeLCoin that was really deducted when the row was created — the caller that creates the row is the one that must record the amount, not some other flow. `coin_refunded` = 1 means the cost has been returned.
 
-Used by `music/playlist_action.php`, `profile/notification.php`, and
-`meel_back_url()`. The remaining `HTTP_REFERER` reads (such as the HLS gate) are
-not security controls and never were.
+### One Implementation, Two Callers
 
-### 14. Silent data corruption in an arcade bind_param
+Clearing stuck rows uses `GarbageCollector::releaseStaleQueueRows()` — the same code as the 6-hour sweeper. If one of them marks a row `failed` without refunding it, that row leaves the sweeper's reach and the MEeLCoin cost is lost for good. The order inside a row matters: **refund first, then mark `failed`**. Reversed, there is a window where the row is already `failed` but the coins have not come back, and `failed` rows are no longer picked by the sweeper.
 
-`difficulty_label` and `cover_file` are varchar columns, but they were bound as
-`"i"`. mysqli emits no warning — it coerces the value to the requested type, so
-both were stored as `'0'`. Difficulty names became `0` and cover art broke even
-though the file was on disk.
+### A Refund Happens Exactly Once
 
-`tests/unit/BindParamTypeTest.php` derives the expected types from
-`arcade/schema.sql` rather than a hardcoded list, so the test stays correct when
-the schema changes.
+`releaseStaleQueueRows()` reads the cost from the row itself, not from the current price — the MEeLCoin price can change, and what must be returned is the amount that was really deducted. Rows are locked `FOR UPDATE` for the duration of the transaction, so two concurrent sweepers cannot refund the same row. `coin_refunded = 1` is written **only after** the coins have actually been returned, and every `execute()` result is checked.
 
-### 15. Drive rate limit that never fired
+`releaseQueue()` still touches only the status column. That invariant matters: if it also set `coin_refunded`, a row already refunded by the normal failure path would be refunded again by the sweeper.
 
-`System::checkRateLimit('drive_files')` counts rows in `drive_files`, but nothing
-ever inserted into that table — `num_rows` stayed 0, so the 10 files/hour limit
-never applied. `DriveStorage::recordUpload()` now records every upload.
+### A Failed Notification Must Not Cancel the Upload
 
-### 16. Pending deletion queue limited to media roots
-
-`cleanupPendingDeletions()` deleted whatever path appeared in
-`temp/pending_delete.json`, with no containment check. That file lives in a
-world-writable directory, so a local user could schedule deletion of any file or
-directory as the web user. `realpath()` must now resolve inside one of the media
-roots or the drive base.
-
-### 17. Admin exports bounded
-
-`fetchAll()` without a `LIMIT` was used to render a 15-row preview — the entire
-filtered table was loaded into memory first. `fetchAll()` now takes a limit
-(default 50,000) and the preview uses `countFiltered()` plus `fetchPage(15, 0)`.
-
----
-
-## P2 Hardening (October 2026)
-
-### 18. MFA and login limiters can no longer be reset by dropping the cookie
-
-The MFA counter lived only in `$_SESSION['mfa_fail_count']`. Discarding the cookie
-was enough to start from zero — there was no server-side counter per account.
-
-`RateLimiter` now has two new buckets: `mfa` (10 requests / 300 seconds) and
-`login` (10 / 300). `auth/mfa_verify.php` calls it with the key `mfa:<user_id>`
-**before** verifying the code, so the ceiling applies across sessions.
-
-### 18b. Login no longer reveals whether an account exists
-
-Two oracles previously:
-
-1. **Different message.** An existing but inactive account got "Akun Anda sedang
-   menunggu verifikasi admin." or "Akses ditolak untuk akun ini." — different
-   from "Username atau password salah!", directly confirming the account exists.
-2. **Timing.** `password_verify` (bcrypt, 50-100 ms) only ran when the user was
-   found. A median over a few dozen requests separates the two branches. There is
-   now a decoy `password_verify` against a static hash when the user is absent.
-
-Every failure now returns the same message.
-
-### 19. Escaping happens at render, not at write
-
-`UpdateManager::clean()` used to `htmlspecialchars()` **on write** while
-`update.php` did `nl2br(htmlspecialchars(...))` **at render**. The result was
-double-escaped content: an admin typing `<b>fast</b>` published
-`&lt;b&gt;fast&lt;/b&gt;`, and the JS worked around it with a `decodeHtml` trick.
-
-More seriously, `/update` is reachable by **anonymous visitors**, and both sidebar
-panes were rendered with no escaping at all. An "escape on write" pattern means a
-second writer — an install routine, an import, or a direct `mysql>` edit during an
-incident — becomes stored XSS for every visitor. `clean()` is now just `trim()`,
-and escaping happens at the render site.
-
-`admin/index.php` is fixed too: the orphan file list (on-disk filenames derived
-from user-supplied media titles) was echoed raw into `<li>`, and a bare
-`json_encode()` sat inside a single-quoted attribute — `json_encode` does not
-escape `'`, so a filename containing an apostrophe closed the attribute. Both are
-escaped now, and `json_encode` uses
-`JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP`.
-
-### 20. A failing migration now stops instead of continuing
-
-`database/migrate.php` recorded the version in `db_version` even when its steps
-only printed `⚠ Warning`. The schema could therefore stay **permanently**
-half-migrated — `SELECT MAX(version)` skips that migration forever on that host.
-
-This was observed live while running migration v7: creating the unique index
-failed because of the old duplicates, the warning was printed, but `db_version`
-still advanced so the step was never retried.
-
-Failures are now collected with their step index, written to STDERR, the version is
-**not** recorded, and the process exits 1 — so the installer catches it and the
-failed step is retried on the next run.
-
-### 22. CSRF token no longer in URLs
-
-`profile/manage.php` deleted media over GET with the CSRF token in the query
-string. That token ends up in browser history, the Apache access log, and the
-`Referer` header of the next page.
-
-Deletion is now a POST with the token in the form body, the handler rejects other
-methods, and `confirmHapus()` submits the form instead of navigating.
-
-### 23. The stream authorization function no longer fails open
-
-`meel_stream_path_allowed()` returned `true` for any path not starting with
-`video/`. Since video and music are public under this project's RBAC model, the
-gate adds nothing — it only pretends to be a security control while being a trap
-for anyone who reuses it for a private area.
-
-The polarity is inverted: there is now an explicit public prefix allowlist
-(`thumbnail/`, `file/`, `lyrics/`, `upload/`, `manga/`, `books/`) and everything
-else is refused. Public streaming behaviour is unchanged — what changed is that
-the default is now deliberate rather than accidental.
-
----
-
-## P4 Hardening — Comment Section (October 2026)
-
-Two things could make one track's comment section look permanently empty.
-
-### `parent_id` was never validated
-
-`addComment()` took `parent_id` straight from POST and stored it. It never checked
-that the parent comment exists, and never checked that the parent actually belongs
-to the same media.
-
-That cuts two ways:
-
-- A reply could attach to a comment on **different media**, so the tree rendered on
-  one page pulls in another track's data.
-- The renderer only descends from `parent_id = 0`, so a reply whose parent falls
-  outside the 200-row window is **never rendered at all** — it exists in the
-  database but is unreachable from the root.
-
-`resolveParentId()` now verifies the parent exists **and** carries the same media
-column. If not, `parent_id` is set to `NULL` so the comment becomes a root comment —
-deterministic and still visible.
-
-Verified directly against the database: a comment on media A attempting to use a
-`parent_id` belonging to media B is stored with `parent_id` NULL.
-
-### Unbounded reply chains
-
-Added `MediaViewer::MAX_COMMENT_DEPTH` = 5. Exceeding the depth promotes the comment
-to root. Without this, one person could build an unbounded chain just by replying to
-replies.
-
-### 200-row window with no pagination
-
-`getComments()` used `LIMIT 200` ordered by `created_at ASC` — oldest first. The
-consequence: once those 200 rows are filled (say, 200 chained replies under one root
-comment), every new comment is pushed outside the window and never appears again. The
-section looks empty even though the rows exist.
-
-Two changes:
-
-- The order is now `created_at DESC, id DESC`. The newest comment is always first,
-  so it can no longer be pushed out by older ones.
-- An `$offset` parameter was added so older comments remain reachable through
-  pagination.
-
-Comments that already exist are **not** deleted. Only the effect changes: new comments
-are no longer hidden by old ones.
-
----
-
-## P5 Hardening — Security Checker Rigour (October 2026)
-
-This section is not a change to the application itself, but to
-`tests/security_test.php`, which had been reporting green without actually
-checking what it claimed to check.
-
-### The allowlist made the check die quietly
-
-`testCommandInjection()` scanned nine files written **literally** into the code:
-
-```php
-$risky = [
-    'modules/core/Uploader.php' => ['shell_exec', 'exec', 'popen'],
-    // ... 8 more files
-];
-```
-
-If `shell_exec` moved to a new file absent from that list, the check stayed green
-— not because the code was safe, but because it was never scanned. That is
-exactly the class of bug `StorageSplitTest` first caught when `storage.php` was
-split apart.
-
-The checker now **discovers its own files** via `getPhpFiles()`, then recomputes
-`escapeshellarg`/int-cast counts for every hit:
-
-- The `$expected`/`$allowed` maps still exist, but their role changed: they are
-  no longer the list of files that get scanned, but the list of files that are
-  *expected* to still run shell. A listed file that has lost its `shell_exec`
-  calls is reported too, so a stale map becomes visible immediately.
-- A file outside the maps that runs shell now **fails**, with a message naming
-  what to change if it is genuinely legitimate.
-
-The number of files scanned went from **9 to 21**. Twelve files were previously
-never checked at all, including `controllers/api/auto_metadata.php`,
-`controllers/profile/profile_edit.php`, `arcade/rhythm/api/upload.php`, and
-`modules/auth/ValidatingProxy.php`.
-
-Verified: a temporary file containing `shell_exec('ls ' . $u)` outside the maps
-drops the score to 99/100 and produces `Fail: 1`.
-
-### Referer redirects were only checked in four files
-
-`testOpenRedirectHardening()` read only `controllers/api/delete_comment.php` and
-its three neighbours. Every other file that reads `HTTP_REFERER` was invisible —
-including the two that were actually broken (see below).
-
-The new checker scans the whole repo with **taint tracking**:
-
-1. Variables initialised from `HTTP_REFERER` are marked tainted.
-2. Assignments using a tainted variable taint the next one (two levels, which is
-   enough for the `$ref` → `$back_url` pattern).
-3. Every `header('Location: ...')` whose expression uses a tainted variable is
-   reported as an open redirect.
-
-Both levels matter, because variable-mediated redirects slip past a check that
-only looks for `HTTP_REFERER` *inside* `header()` — which is precisely the most
-common shape (`$url = $_SERVER['HTTP_REFERER']; ... header("Location: $url")`).
-
-What is **not** reported: files that read the referer and then redirect to a
-fixed local path, such as the HLS gates in `music/stream.php` and
-`modules/core/helpers/storage_stream.php` that send to `../err/?code=denied`.
-Neither is an open redirect.
-
-### Two remaining open redirects were found along the way
-
-The strengthened checker immediately surfaced two instances of the old pattern
-that had not been touched:
-
-| File | Problem | Fix |
-|---|---|---|
-| `auth/auth_helpers.php` | `auth_back_url()` compared the referer host against `$_SERVER['HTTP_HOST']`, which can be spoofed via the `Host:` header | Now uses `meel_same_origin_referer()`, which compares against `MEEL_CANONICAL_HOST` |
-| `profile/index.php` | The allowed-host list hardcoded `localhost`, `127.0.0.1`, `::1` | Removed; uses `meel_same_origin_referer()` |
-
-Both end up in the "back" link's `href` (`auth/login.php:190`), so the impact is
-that users get sent to another site through our own domain.
-
-These changes make the dependency on `MEEL_CANONICAL_HOST` explicit. If it is
-empty, `meel_same_origin_referer()` returns `null` and the back link falls back
-to `../` — failing closed, not open. On a localhost install with no
-configuration, the back link does become generic.
-
-### The `display_errors` exemption is gone
-
-The checker previously carried a list of filenames exempt from the
-`display_errors` rule. Once removed, `modules/core/bootstrap.php` was exposed:
-it contains `ini_set('display_errors', '1')`. On inspection that is correct — it
-sits in the `development` branch, while the `production` branch sets it to `0`.
-
-The rule is now branch-aware: `display_errors=1` is accepted **only** when the
-same file also contains `case 'development'` **and** a `display_errors=0`. The
-constant filename list is gone, so a new exemption can no longer hide a
-regression.
-
-### CI no longer ignores warnings
-
-`ci.yml` previously only failed on an exit code above 1; exit 1 ("passed with
-warnings") stayed green. Every warning was therefore indefinitely deferred work.
-
-All warning sources were re-audited and every one depends on the content of
-files tracked in git, not on machine state — including
-`data_drive/private_admins/.htaccess`, which is in the repository. No warning
-source depends on mounted storage. CI now fails on any non-zero exit code.
-
-Current status: `177` checks, `177` passing, `0` warnings, `0` failures.
-
-### An extra guard against regressing back
-
-`StorageSplitTest::testSecurityAndFunctionalMapsStillCoverTheRealFiles` caught
-this work the first time it ran: it looks for the `$risky` map, and after the
-maps were renamed it instead matched the unrelated `$risky = []` inside
-`testSqlInjection()`. Its assertion now accepts `$risky`, `$expected`, or
-`$allowed`, and a new assertion requires that `testCommandInjection()` really
-calls `getPhpFiles()`.
-
-If the check is ever reverted to a literal path list, that assertion fails
-first — exactly as happened when `storage.php` was split.
-
----
-
-## P6 Hardening — Path Resolution and Gate Placement (October 2026)
-
-### Include paths no longer depend on the working directory
-
-282 `require` and `include` statements across 66 files used a path relative to
-the current working directory. For a web request the working directory happens
-to be the directory of the entry script, so they worked — but only while the
-file was the entry point. The moment a page is included from elsewhere, the
-same statement points somewhere else entirely.
-
-The sharpest case was in `auth/auth.php`, which pulled in its sibling with
-`include 'config.php'`. PHP resolves a relative include against the working
-directory first and only then falls back to the including file's own
-directory. So the file that decides the session gate was really deciding
-*which* `config.php` to load based on where the request happened to be served
-from.
-
-Every one of those statements now uses `__DIR__`. The behaviour is identical
-when the file is the entry script and correct when it is not. No included
-template contains a relative require, so the change of base directory for
-nested includes affects nothing.
-
-Server-side `filemtime()` calls had the same problem. 47 of them across 12
-files resolved `../assets/...` against the working directory, so the
-cache-busting version query silently produced an empty value whenever the
-page was not the entry script. They now use `__DIR__`, and every converted
-path was checked to resolve to a file that actually exists.
-
-Browser-facing `href` and `src` attributes were left alone on purpose: those
-are URLs the browser resolves against the page, not paths the server opens.
-
-### The five drive pages shared one authorization gate, written five times
-
-`drive/index.php`, `upload.php`, `download.php`, `stream.php` and `delete.php`
-each opened with the same six lines: three requires, the construction of a
-`DriveUserContext`, and `$user->authorize()`. The role gate for the whole
-drive feature was written five times, and the only thing distinguishing them
-was which of the three requires someone remembered to change to `require_once`.
-
-They now share `drive/bootstrap.php`, which is also listed in the `FilesMatch`
-of `drive/.htaccess` so it cannot be requested directly.
-
-### `auth/config.php` is no longer loaded twice
-
-`auth/auth.php` loaded `config.php` with a plain `include`, and the pages then
-required it again. `config.php` is idempotent — it guards the connection with
-`if (!isset($conn))` — but the second pass re-sent the security headers and
-re-ran the session bookkeeping. It is now `require_once` in all four entry
-files, so the order in which a page requires the two no longer matters.
-
-### The stream check follows the include chain
-
-`tests/security_test.php` checks that `drive/stream.php` calls `authorize()`.
-When the call moved into the shared bootstrap, the check read a file that no
-longer contained it.
-
-The check now reads the file *and everything it includes*, through a new
-`sourceWithIncludes()` helper in `tests/helpers.php`. It also looks for the
-`->authorize()` call rather than the bare name, because the method definition
-in `DriveService.php` matched the old pattern just as well.
-
-The first version of that change was a false negative, and it was caught by
-removing the call: the check still passed, because the pattern matched the
-class definition instead of the call. The pattern is now `->authorize()`, and
-removing the call fails the check.
-
----
-
-## P7 Hardening — MEeLCoin Refund Accounting (October 2026)
-
-### The queue never recorded what the user paid
-
-`upload_queue.coin_cost` is documented in `database/schema.sql` as "MEeLCoin
-that was deducted at INSERT time", and `coin_refunded` as "1 = the cost was
-returned by the sweeper". Neither column was ever filled in with a real value.
-
-`upload_advanced.php` charges the user through `MeelCoin::spend()` and then
-calls `processDownload()`, which creates the queue row through
-`DownloadService::lockQueue()`. `lockQueue()` writes `self::$pendingCoinCost`
-into `coin_cost` — and `setPendingCoinCost()` was only ever called from
-`modules/core/helpers/upload.php`, the flow that never creates an
-`upload_queue` row at all.
-
-The two call sites were exactly swapped. The result: `coin_cost` was always 0.
-The production database confirmed it — **0 of 160** rows in `upload_queue` had
-`coin_cost > 0`.
-
-The sweeper's own logic was correct the whole time, and
-`QueueSweeperIntegrationTest` proved it by inserting rows with a cost of 7
-directly into the database. What it could never do is refund a real amount,
-because the amount it read was always zero. A user whose upload died mid-flight
-had already been charged and the coins never came back.
-
-The fix moves `setPendingCoinCost()` to the call site that actually creates the
-row, and `upload_advanced.php` now records the amount it charged.
-
-### A second path dropped the refund on the floor
-
-`upload_advanced.php` also cleaned up stale rows with a bare statement:
-
-```php
-UPDATE upload_queue SET status = 'failed' WHERE status = 'processing' AND ...
-```
-
-No refund, and — this is the part that made it permanent — a `failed` row is
-never selected by the sweeper, which only looks at `pending` and `processing`.
-So a 30-minute cleanup removed the row from the sweeper's reach before the
-6-hour sweeper could return the money. Every coin owed to a user whose upload
-had hung was simply lost.
-
-The cleanup now goes through `GarbageCollector::releaseStaleQueueRows()`, the
-same code the sweeper uses, so the refund happens before the row is marked
-failed. One implementation, two callers, and they can no longer disagree.
-
-### The refund path is now exactly-once
-
-`releaseStaleQueueRows()` reads the cost from the row rather than from the
-current price — MEeLCoin prices change, and what must be returned is what was
-actually charged. The row is locked `FOR UPDATE` for the duration of the
-transaction, so two concurrent sweeps cannot both refund it, and
-`coin_refunded = 1` is only written *after* the coins have actually been
-returned. Every `execute()` result is now checked; previously a failed update
-was silently treated as success.
-
-`releaseQueue()` still only touches the status column. That invariant matters:
-if it also set `coin_refunded`, a row refunded by the normal failure path would
-be refunded again by the sweeper.
-
-### The notification failure no longer costs the user their upload
-
-`Notification::create()` ran after the coins were deducted but outside the
-`try` block, so a database hiccup while writing the notification raised an
-uncaught error — the user was charged, nothing was uploaded, and no refund was
-issued. The notification is cosmetic, so it is now wrapped: a failure is logged
-and the upload continues.
-
----
-
-<div align="center">
-  <sub><a href="index.md">← Back to Documentation Index</a></sub>
-</div>
+`Notification::create()` is wrapped in error handling — the notification is cosmetic, so its failure is logged and the upload continues. Otherwise the user has paid, nothing was uploaded, and the refund never ran.
