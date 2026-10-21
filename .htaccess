@@ -1,11 +1,9 @@
 Options -Indexes
 DirectoryIndex index.php index.html
-
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
-
 <FilesMatch "(\.env|\.git|\.htaccess|\.htpasswd|\.sql|\.log|config\.php|settings\.php|settings\.example\.php|cookies\.txt|auth\.php|sitemap\.php|robots\.php|phpunit\.xml|\.vscode|composer\.(json|lock)|package(-lock)?\.json|install\.sh|docker-compose\.ya?ml)$">
     <IfModule mod_authz_core.c>
         Require all denied
@@ -15,6 +13,7 @@ DirectoryIndex index.php index.html
         Deny from all
     </IfModule>
 </FilesMatch>
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -26,6 +25,8 @@ DirectoryIndex index.php index.html
 # Sisa file cadangan/editor yang sering tertinggal dan membocorkan sumber.
 =======
 >>>>>>> 47df0f54 (docs(security): pindahkan penjelasan hardening P0 ke docs, buang dari kode)
+=======
+>>>>>>> 381997d3 (penyesuaian & fix test)
 <FilesMatch "(~|\.bak$|\.old$|\.orig$|\.swp$|\.dist$|\.sample$)">
     <IfModule mod_authz_core.c>
         Require all denied
@@ -35,13 +36,19 @@ DirectoryIndex index.php index.html
         Deny from all
     </IfModule>
 </FilesMatch>
-
+<IfModule mod_alias.c>
+    RedirectMatch 403 "(^|/)(vendor|node_modules)/"
+</IfModule>
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule "(^|/)\.(vscode|idea|git|freebuff)(/|$)" - [F,L]
+    RewriteRule ^(vendor|node_modules)/ - [F,L]
 </IfModule>
+<<<<<<< HEAD
 
 >>>>>>> 7082117f (fix(security): tutup direktori dependency & tooling dari akses web)
+=======
+>>>>>>> 381997d3 (penyesuaian & fix test)
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/html
     AddOutputFilterByType DEFLATE text/plain
@@ -57,18 +64,22 @@ DirectoryIndex index.php index.html
     AddOutputFilterByType DEFLATE image/svg+xml
     AddOutputFilterByType DEFLATE text/vtt
 </IfModule>
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 >>>>>>> dc4108be (penyesuaian light-house)
 # ── PWA: /sw.js disajikan dari generator PHP (precache dinamis dari manifest.php) ──
 =======
 >>>>>>> e161aaa8 (style: sweepcomments non-docblock menyeluruh, watermark dipertahankan)
+=======
+>>>>>>> 381997d3 (penyesuaian & fix test)
 <IfModule mod_rewrite.c>
     RewriteRule ^arcade/testgeneric\.php$ - [E=ROOTPROC:1]
     RewriteEngine On
     RewriteRule ^sw\.js$ sw.js.php [END]
     RewriteRule ^assets/manifest\.json$ manifest.php [END]
 </IfModule>
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 >>>>>>> c6ed0b59 (penyesuaian fungsi)
@@ -87,25 +98,28 @@ DirectoryIndex index.php index.html
 #  dipanggil langsung agar performa & header tidak terganggu)
 =======
 >>>>>>> e161aaa8 (style: sweepcomments non-docblock menyeluruh, watermark dipertahankan)
+=======
+>>>>>>> 381997d3 (penyesuaian & fix test)
 <IfModule mod_rewrite.c>
     RewriteRule ^video/upload/(.+)$ video/stream.php?f=$1 [END,QSA,B]
     RewriteRule ^music/upload/(.+)$ music/file.php?f=$1 [END,QSA,B]
     RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [END,QSA,B]
 </IfModule>
-
 <IfModule mod_rewrite.c>
+<<<<<<< HEAD
     RewriteEngine On
 
     # ── 0. PWA: /sw.js → sw.js.php (MUST be first — before any R=301) ──
     RewriteRule ^sw\.js$ sw.js.php [END]
 
+=======
+>>>>>>> 381997d3 (penyesuaian & fix test)
     RewriteCond %{REQUEST_URI} ^(.*)/(video|music|books|drive|admin|arcade)/index\.php$ [NC]
     RewriteRule ^ %1/%2/beranda [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/err/index\.php$ [NC]
     RewriteRule ^ %1/err/ [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/index\.php$ [NC]
     RewriteRule ^ %1/ [R=301,L,QSA]
-
     RewriteCond %{REQUEST_URI} ^(.*)/upload_advanced\.php$ [NC]
     RewriteRule ^ %1/upload [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/upload-advanced([?#]?)$ [NC]
@@ -142,7 +156,6 @@ DirectoryIndex index.php index.html
     RewriteRule ^ %1/admin/stats.php [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/admin/content([?#]?)$ [NC]
     RewriteRule ^ %1/admin/stats.php [R=301,L,QSA]
-
     RewriteCond %{REQUEST_URI} ^(.*)/controllers/api/delete_comment\.php$ [NC]
     RewriteRule ^ %1/api/delete-comment [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/controllers/api/auto_metadata\.php$ [NC]
@@ -169,18 +182,15 @@ DirectoryIndex index.php index.html
     RewriteRule ^ %1/admin [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/controllers/admin/admin_data\.php$ [NC]
     RewriteRule ^ %1/admin [R=301,L,QSA]
-
     RewriteCond %{REQUEST_URI} !(^|/)arcade/chess/
     RewriteCond %{REQUEST_URI} ^(.*)/([a-z0-9_-]+)\.php$ [NC]
     RewriteRule ^ %1/%2 [R=301,L,QSA]
-
     RewriteCond %{REQUEST_URI} ^(.*)/(video|music|books|drive|admin|arcade)/?([?#]?)$ [NC]
     RewriteRule ^ %1/%2/beranda [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/profile([?#]?)$ [NC]
     RewriteRule ^ %1/profile/ [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/err([?#]?)$ [NC]
     RewriteRule ^ %1/err/ [R=301,L,QSA]
-
     RewriteCond %{REQUEST_URI} ^(.*)/(video|music|books|drive)/upload/$ [NC]
     RewriteRule ^ %1/%2/upload [R=301,L,QSA]
     RewriteRule ^video/upload/?$ router.php [END,QSA]
@@ -191,7 +201,6 @@ DirectoryIndex index.php index.html
     RewriteRule ^err/?$ router.php [END,QSA]
     RewriteRule ^arcade/chess/?$ router.php [END,QSA]
     RewriteRule ^$ router.php [END]
-
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ router.php [END,QSA]
