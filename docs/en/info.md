@@ -101,6 +101,32 @@ function meel_drive_base_path(?string $hddDriveOverride = null): string
 
 ---
 
+### `meel_storage_ready(): bool` & `meel_storage_guard(string $mode = 'html'): void`
+
+Guards every storage path against an unmounted `MEEL_HDD_BASE` volume, so the app degrades to the safe `err/?code=storage` screen instead of a fatal `mkdir()` error.
+
+```php
+function meel_storage_ready(): bool
+function meel_storage_guard(string $mode = 'html'): void   // 'html' | 'json' | 'binary'
+```
+
+**File:** `modules/core/helpers/storage.php`
+**Return:** `meel_storage_ready()` → `true` when storage can be used. `meel_storage_guard()` → returns when ready, otherwise exits (throws `RuntimeException` on CLI).
+
+**Logic:**
+- `MEEL_HDD_BASE` not set → always ready (repo `data_drive/` fallback)
+- `MEEL_HDD_BASE` missing on disk → **not ready** (volume not mounted)
+- marker `<MEEL_HDD_BASE>/.meel_mount` present → ready
+- no marker → ready only when the folder has content (legacy volume); an empty folder is treated as *not mounted* (fails safe: block)
+
+| Mode | Used by | Behaviour when not ready |
+|------|---------|--------------------------|
+| `html` | `drive/index.php`, upload pages | `303` redirect to `err/?code=storage` |
+| `json` | `drive/upload.php`, `drive/delete.php` | `503` + `{"status":"error","code":"storage_unmounted"}` |
+| `binary` | `drive/stream.php`, `meel_serve_media_file()` | `503` with an empty body |
+
+---
+
 ### `meel_serve_media_file(string $module, string $relPath, array $opts = [])`
 
 Serves media files with Range support (HTTP 206), referer gate for HLS, and security validation.
@@ -123,12 +149,13 @@ function meel_serve_media_file(string $module, string $relPath, array $opts = []
 - Automatic MIME type mapping
 - Range request support (206 Partial Content) for HLS `.ts` and large video
 - Referer gate for HLS video (anti-hotlink)
+- Output buffer cleanup (`ob_end_clean` + `ob_implicit_flush`) before streaming — prevents binary data corruption
 
 ---
 
 ### `meel_write_cache_file(string $path, string $content)`
 
-Writes cache file atomically with `LOCK_EX` (prevents race conditions).
+Writes a cache file **atomically**: the content is written to a uniquely named temp file, then `rename()`d onto the target path. `rename()` is atomic on POSIX, so readers never observe a half-written file.
 
 ```php
 function meel_write_cache_file(string $path, string $content): void
@@ -139,9 +166,44 @@ function meel_write_cache_file(string $path, string $content): void
 | `$path` | `string` | Full path to cache file |
 | `$content` | `string` | Content to write |
 
-**File:** `modules/core/helpers/storage.php:196`
+**File:** `modules/core/helpers/storage.php:395`
 **Return:** void.
-**Notes:** Logs error to error_log if directory is not writable.
+
+> **`LOCK_EX` is not a substitute for atomicity.** It only locks the *writer*; readers can still read a file mid-write because `file_put_contents()` truncates first. Measured under concurrency: **58%** of reads fail for small payloads (64 B) and **81%** for a 10 KB payload — all of them read as a cache miss, so the cache fails exactly when it matters most. After switching to `tmp` + `rename()`: **0%**.
+
+**Notes:**
+- Non-writable directory → `error_log` (not fatal).
+- Leftover `.tmp.*` files from a process that died mid-write are swept automatically by `meel_sweep_stale_cache_tmp()` (older than 300 s).
+- Safe because `temp/.htaccess` denies all web access. If `MEEL_MEDIA_CACHE_DIR` points outside `temp/`, protect that directory equivalently.
+
+---
+
+### `meel_read_cache_file(string $path, int $ttl, array $required_keys = [], string $time_key = 'ts'): ?array`
+
+Reads a JSON cache file while still fresh. The only cache-read implementation in the project — used by all four call sites so the timestamp key name is no longer reinvented per file.
+
+```php
+function meel_read_cache_file(string $path, int $ttl, array $required_keys = [], string $time_key = 'ts'): ?array
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$path` | `string` | Path to cache file |
+| `$ttl` | `int` | Max age in seconds. `<= 0` always returns `null` (cache disabled) |
+| `$required_keys` | `string[]` | Keys that must be present for the cache to be considered valid |
+| `$time_key` | `string` | Timestamp key; empty string = use the file mtime |
+
+**File:** `modules/core/helpers/storage.php:425`
+**Returns:** decoded `array`, or `null` when missing / corrupt / missing keys / expired.
+
+**Call sites:**
+
+| Call site | TTL | Required keys | `time_key` |
+|---|---|---|---|
+| `controllers/admin/admin_data.php` (orphan) | 120 s | `orphans` | `checked_at` |
+| `modules/core/helpers/media.php` (media stats) | param | `total`,`min_id`,`max_id`,`ts` | `ts` |
+| `modules/core/helpers/storage.php` (`dir_size`) | param | `size`,`time` | `time` |
+| `modules/core/System.php` (server info) | 300 s | `hostname`,`os`,`kernel`,`php_version`,`cores`,`ts` | `ts` |
 
 ---
 
@@ -203,7 +265,7 @@ function meel_sanitize_upload_filename(string $original, string $fallback = 'fil
 | `$original` | `string` | Original filename from user |
 | `$fallback` | `string` | Fallback name if result is empty (default: `'file'`) |
 
-**File:** `modules/core/helpers/upload.php:84`
+**File:** `modules/core/helpers/upload.php:203`
 **Return:** Clean filename (only `[a-zA-Z0-9._-]`), no path separators, no null bytes, no traversal.
 **Notes:** Original user name can still be stored separately as metadata.
 
@@ -222,7 +284,7 @@ function meel_sanitize_clean_name(string $raw, int $max_len = 120): string
 | `$raw` | `string` | Raw name to clean |
 | `$max_len` | `int` | Maximum result length (default: 120) |
 
-**File:** `modules/core/helpers/upload.php:146`
+**File:** `modules/core/helpers/upload.php:265`
 **Return:** Clean name, or `''` if result is empty.
 **Notes:** Replaces unsafe characters with `_`, truncates to `$max_len`.
 
@@ -244,7 +306,7 @@ function meel_reserve_unique_filename(string $dir, string $clean_name, string $e
 | `$max_attempts` | `int` | Maximum attempts (default: 1000) |
 | `$suffix_sep` | `string` | Suffix separator (default: `'-'`) |
 
-**File:** `modules/core/helpers/upload.php:171`
+**File:** `modules/core/helpers/upload.php:290`
 **Return:** Unique filename that was successfully reserved, or `null` if all attempts failed.
 **Features:**
 - Empty placeholder created first → caller overwrites with `move_uploaded_file` / `ffmpeg -y`
@@ -266,7 +328,7 @@ function meel_allocate_unique_dir(string $parent, string $base): string
 | `$parent` | `string` | Parent directory |
 | `$base` | `string` | Base directory name |
 
-**File:** `modules/core/helpers/upload.php:240`
+**File:** `modules/core/helpers/upload.php:359`
 **Return:** Unique directory name without trailing slash.
 **Example:** `meel_allocate_unique_dir('/tmp', 'encode')` → `'encode'` or `'encode-1'` or `'encode-2'`, ...
 
@@ -284,7 +346,7 @@ function meel_upload_allowed_table(string $table): string
 |-----------|------|-------------|
 | `$table` | `string` | Table name to validate |
 
-**File:** `modules/core/helpers/upload.php:96`
+**File:** `modules/core/helpers/upload.php:215`
 **Return:** `string` table name if valid (`'music'` or `'video'`), or `''` if invalid.
 
 ---
@@ -321,13 +383,70 @@ function meel_insert_music_row(
 | `$thumbnail` | `string` | Thumbnail filename |
 | `$duration` | `?int` | Duration in seconds (optional) |
 
-**File:** `modules/core/helpers/upload.php:311`
+**File:** `modules/core/helpers/upload.php:430`
 **Return:** `[bool $ok, string $error]` — `$ok = true` on success, `$error` contains mysqli message on failure.
 **Notes:** `duration` column only included if != null (preserves legacy behavior).
 
 ---
 
 ## FFmpeg & Encoding
+
+### `meel_validate_video_codec(string $file_path, string $ffprobe_bin = '/usr/bin/ffprobe', string $env_prefix = '')`
+
+Validates the video codec via ffprobe before upload — only H.264 (AVC) and H.265 (HEVC) are allowed (required for HLS MPEG-TS stream-copy).
+
+```php
+function meel_validate_video_codec(
+    string $file_path,
+    string $ffprobe_bin = '/usr/bin/ffprobe',
+    string $env_prefix = ''
+): string
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$file_path` | `string` | Path to the video file to validate |
+| `$ffprobe_bin` | `string` | Path to ffprobe binary (default: `'/usr/bin/ffprobe'`) |
+| `$env_prefix` | `string` | Environment prefix (e.g., `'export LD_LIBRARY_PATH=''; '`) |
+
+**File:** `modules/core/helpers/upload.php:90`
+**Return:** `''` if valid; error message if not.
+**Notes:** Rejects other codecs (VP9, AV1, etc.) since they cannot be stream-copied into HLS MPEG-TS.
+
+**Used by:** `modules/core/Uploader.php` (video upload pipeline)
+
+---
+
+### `meel_validate_audio_codec(string $file_path, string $ffprobe_bin = '/usr/bin/ffprobe', string $env_prefix = '')`
+
+Validates audio codec compatibility with legacy HLS MPEG-TS — decides between stream-copy and AAC transcoding, or rejects the file.
+
+```php
+function meel_validate_audio_codec(
+    string $file_path,
+    string $ffprobe_bin = '/usr/bin/ffprobe',
+    string $env_prefix = ''
+): array
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$file_path` | `string` | Path to the video file to validate |
+| `$ffprobe_bin` | `string` | Path to ffprobe binary (default: `'/usr/bin/ffprobe'`) |
+| `$env_prefix` | `string` | Environment prefix |
+
+**File:** `modules/core/helpers/upload.php:145`
+**Return:** `['error' => string, 'has_audio' => bool, 'needs_audio_transcode' => bool]`
+- `error` — rejection message; `''` if the file passes
+- `has_audio` — `true` if the video has an audio stream
+- `needs_audio_transcode` — `true` if audio must be transcoded to AAC
+**Rules:**
+- Compatible (stream-copy): AAC, MP3, AC3, E-AC3
+- Incompatible (Opus, Vorbis, DTS, FLAC, ...) with duration > 5 minutes → rejected (transcoding long audio is too heavy for the server)
+
+**Used by:** `modules/core/Uploader.php` (video upload pipeline)
+
+---
 
 ### `meel_ffmpeg_thumbnail_webp(string $ffmpeg_bin, string $src, string $dst, int $max_width, string $extra = '', string $env_prefix = '', int $threads = 0)`
 
@@ -355,7 +474,7 @@ function meel_ffmpeg_thumbnail_webp(
 | `$env_prefix` | `string` | Environment prefix (e.g., `'export LD_LIBRARY_PATH=''; '`) |
 | `$threads` | `int` | ffmpeg `-threads` value (0 = default) |
 
-**File:** `modules/core/helpers/upload.php:208`
+**File:** `modules/core/helpers/upload.php:327`
 **Return:** `true` if output file exists and contains data.
 **Example:**
 ```php
@@ -394,7 +513,7 @@ function meel_ffmpeg_encode_opus(
 | `$threads` | `int` | ffmpeg `-threads` value (0 = default) |
 | `$metadata` | `array` | Metadata tags `['title' => ..., 'artist' => ...]` |
 
-**File:** `modules/core/helpers/upload.php:275`
+**File:** `modules/core/helpers/upload.php:394`
 **Return:** `[int $exit_code, string $log]` — log contains combined stdout+stderr for error messages.
 **Example:**
 ```php
@@ -407,6 +526,65 @@ function meel_ffmpeg_encode_opus(
     ['title' => 'Song Title', 'artist' => 'Artist Name']
 );
 ```
+
+---
+
+### `meel_handle_upload(mysqli $conn, string $media_type, callable $process_fn, string $log_action): array`
+
+Centralized upload handler — CSRF check, MeelCoin spend/refund, process callback, and activity logging for video & music uploads.
+
+```php
+function meel_handle_upload(mysqli $conn, string $media_type, callable $process_fn, string $log_action): array
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$conn` | `mysqli` | Active database connection (passed explicitly from the upload page) |
+| `$media_type` | `string` | `'video'` or `'music'` |
+| `$process_fn` | `callable` | `fn($_POST, $_FILES) → ['status'=>'success'|'error', 'id'=>int?, 'msg'=>string]` |
+| `$log_action` | `string` | Action name for `log_activity()` |
+
+**File:** `modules/core/helpers/upload.php:486`
+**Return:** `['status' => 'success'|'', 'alert_message' => string, 'extra' => array]`
+- `extra['coin_balance']` — new MeelCoin balance (when MeelCoin enabled)
+- `extra['hour_count']` — hourly upload count (when MeelCoin disabled)
+- `extra['total_uploads']` — total upload count
+
+**Used by:** `video/upload.php`, `music/upload.php`
+
+---
+
+### `meel_asset_version(string $file): string`
+
+Returns `?v=<filemtime>` query string for cache-busting. Uses static cache to avoid repeated `filemtime()` syscalls.
+
+```php
+function meel_asset_version(string $file): string
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$file` | `string` | Path to file relative to project root (e.g., `'assets/js/shared/media-session.js'`) |
+
+**File:** `modules/core/helpers/url.php:108`
+**Return:** `?v=<unix_timestamp>` string.
+
+---
+
+### `meel_asset_dir_version(string $dir): string`
+
+Returns `?v=<max_mtime>` for the newest `.js` file in a directory. Used for bundle cache-busting.
+
+```php
+function meel_asset_dir_version(string $dir): string
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$dir` | `string` | Path to directory relative to project root (e.g., `'assets/js/music/watch'`) |
+
+**File:** `modules/core/helpers/url.php:120`
+**Return:** `?v=<unix_timestamp>` string. Uses glob + static cache.
 
 ---
 
@@ -446,8 +624,92 @@ function meel_mig_has_index(\mysqli $conn, string $table, string $index): bool
 | `$table` | `string` | Table name |
 | `$index` | `string` | Index name |
 
-**File:** `database/migrate.php:24`
+**File:** `database/migrate.php:22`
 **Return:** `true` if index exists.
+
+---
+
+### `meel_mig_add_index(\mysqli $conn, string $table, string $index, string $cols)`
+
+Idempotent `ADD INDEX` — skipped automatically if the index already exists.
+
+```php
+function meel_mig_add_index(\mysqli $conn, string $table, string $index, string $cols): void
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$conn` | `\mysqli` | Database connection |
+| `$table` | `string` | Table name |
+| `$index` | `string` | Index name |
+| `$cols` | `string` | Column list (e.g., `'user_id, created_at'`) |
+
+**File:** `database/migrate.php:30`
+**Return:** void.
+**Notes:** Duplicate/already-exists errors are silenced; other failures print a CLI warning (`[MEeL] ⚠ Warning`).
+
+---
+
+### `meel_mig_add_fulltext(\mysqli $conn, string $table, string $index, string $cols)`
+
+Idempotent `ADD FULLTEXT INDEX` — for FULLTEXT search indexes.
+
+```php
+function meel_mig_add_fulltext(\mysqli $conn, string $table, string $index, string $cols): void
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$conn` | `\mysqli` | Database connection |
+| `$table` | `string` | Table name |
+| `$index` | `string` | Index name |
+| `$cols` | `string` | Column list (e.g., `'title, description'`) |
+
+**File:** `database/migrate.php:44`
+**Return:** void.
+**Notes:** Same idempotent behavior as `meel_mig_add_index`.
+
+---
+
+### `meel_mig_add_unique(\mysqli $conn, string $table, string $index, string $cols)`
+
+Idempotent `ADD UNIQUE INDEX` — for unique constraints.
+
+```php
+function meel_mig_add_unique(\mysqli $conn, string $table, string $index, string $cols): void
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$conn` | `\mysqli` | Database connection |
+| `$table` | `string` | Table name |
+| `$index` | `string` | Index name |
+| `$cols` | `string` | Column list (e.g., `'username'`) |
+
+**File:** `database/migrate.php:58`
+**Return:** void.
+**Notes:** Same idempotent behavior as `meel_mig_add_index`.
+
+---
+
+### `meel_mig_add_fk(\mysqli $conn, string $table, string $constraint, string $fk_def)`
+
+Adds a foreign key constraint — duplicate errors are silenced.
+
+```php
+function meel_mig_add_fk(\mysqli $conn, string $table, string $constraint, string $fk_def): void
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$conn` | `\mysqli` | Database connection |
+| `$table` | `string` | Table name |
+| `$constraint` | `string` | Constraint name |
+| `$fk_def` | `string` | FK definition (e.g., `'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE'`) |
+
+**File:** `database/migrate.php:72`
+**Return:** void.
+**Notes:** Existence is not pre-checked (unlike the `add_*` helpers) — duplicates are filtered by the same error check.
 
 ---
 

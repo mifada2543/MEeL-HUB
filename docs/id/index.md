@@ -42,7 +42,7 @@ Dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untuk streaming video,
 | **UpdateManager** | `controllers/system/UpdateManager.php` | CRUD changelog entries (OOP) |
 | **DriveService** | `drive/DriveService.php` | 3 class: DriveUserContext, DriveStorage, DriveViewRenderer |
 | **Profile Manager** | `controllers/profile/fun-manage.php` | Delete media, pending deletions, cleanup |
-| **Migration System** | `database/migrate.php` | Sync database ke skema terbaru (idempotent, migrasi v1 tunggal) |
+| **Migration System** | `database/migrate.php` | Sync database ke skema terbaru (idempotent, migrasi v1–v5; v1 = konsolidasi legacy v1–v15) |
 | **PWA Precache** | `modules/core/SwPrecache.php` | Generator precache service worker dinamis — membaca `assets/css/*/manifest.php`, `SW_VERSION` otomatis dari hash konten |
 | **PWA Generator** | `sw.js.php` | Service worker dibangkitkan per request (disajikan sebagai `/sw.js` via rewrite `.htaccess`) |
 | **Autoloader** | `modules/autoload.php` | Class-map autoloading |
@@ -100,8 +100,8 @@ Request: /MEeL/music/beranda?format=ogg
 | `/music/<nama-playlist>` | `music/view_playlist.php` (route slug playlist — lihat di bawah) |
 | `/books/beranda`, `/books/read`, `/books/read-pdf`, `/books/search`, `/books/upload`, `/books/file` | `books/*.php` |
 | `/drive/beranda`, `/drive/upload`, `/drive/delete`, `/drive/download`, `/drive/stream` | `drive/*.php` |
-| `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/manage-action`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profil + grid channel publik, tab via query), `profile/channel_more.php` (fragment HTMX), `profile/edit-video.php` (pemilik, non-admin), `profile/edit-music.php` (pemilik, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
-| `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat`, `/admin/actions`, `/admin/data` | `admin/*.php` (edit-video/edit-music khusus admin), `controllers/admin/*.php` |
+| `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profil + grid channel publik, tab via query), `profile/channel_more.php` (fragment HTMX), `profile/edit-video.php` (pemilik, non-admin), `profile/edit-music.php` (pemilik, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
+| `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat` | `admin/*.php` (edit-video/edit-music khusus admin), `controllers/admin/*.php` |
 | `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
 | `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` *(ekstensi — memerlukan folder arcade terpasang)* |
 | `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) *(ekstensi)* |
@@ -121,7 +121,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 | File | Deskripsi |
 |---|---|
-| `database/schema.sql` | Skema database standalone — import langsung `mysql < database/schema.sql` |
+| `database/schema.sql` | Skema database standalone — import langsung `mysql -u root -p MEeL < database/schema.sql` |
 | `auth/config.example.php` | Template entry point (copy ke `config.php`) |
 | `auth/settings.example.php` | Template data konfigurasi (copy ke `settings.php`) |
 | `sw.js.php` | Generator service worker dinamis (disajikan sebagai `/sw.js`) |
@@ -130,16 +130,20 @@ Request: /MEeL/music/beranda?format=ogg
 
 ## 🔧 Perubahan Terbaru
 
+- **Infinite Scroll (Video & Music):** Tombol "Muat Lebih Banyak" di video, music, hasil search, dan sidebar rekomendasi watch diganti sentinel auto-load (`hx-trigger="revealed"` — htmx memicu saat elemen masuk viewport). Respons berisi kartu + sentinel pengganti, berakhir dengan end box **"Out Of Content · Konten sudah tidak ada lagi"**. Teks progres halaman dan protokol `.lm-meta` dihapus; `assets/js/music/index/load-more.js` dihapus
+- **Sentinel Retry:** File baru `assets/js/shared/sentinel-retry.js` — me-re-arm `data-hx-revealed` saat request load-more gagal agar scroll berikutnya mencoba ulang; juga menyembunyikan `.rec-sentinel` hanya setelah rekomendasi watch berhasil dimuat
+- **Fix Paginasi SearchEngine:** `searchVideo()` / `searchMusic()` tetap menghitung `total` untuk query kosong — memperbaiki tampilan paginasi "1/1 → 2/1" yang salah
+- **Fix Sentakan Halaman saat Load-More:** Guard `isFragmentSwap` di `assets/js/music/index/index.js` — `htmx:afterSwap` menyala sekali per elemen hasil swap `outerHTML`, sehingga `bootPlayerIndex()` (termasuk efek scroll artist-menu ke item aktif) terpanggil per kartu dan menarik halaman kembali ke atas saat infinite scroll
 - **Path terpusat:** Semua path penyimpanan media (Video, Music, Books, Drive) diatur dari `MEEL_HDD_BASE` di `auth/settings.php` — cukup ubah 1 baris
 - **Skema database standalone:** File `database/schema.sql` untuk import cepat
 - **Type hints:** Properti class dan parameter constructor sekarang menggunakan type hints (`\mysqli`, `int`, `string`, dll.)
 - **Activity Log Integration:** `log_activity()` function + integrasi di login, logout, upload, dan admin actions — audit trail penuh ke tabel `activity_log`
 - **Admin Activity Log Viewer:** Halaman `admin/activity_log.php` untuk melihat, filter, dan cleanup trail audit
-- **Database Alignment:** `schema.sql` dan `migrate.php` tersinkronisasi — satu migrasi v1 tunggal mengkonsolidasi semua perubahan skema (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, index comments, interactions, user_notifications)
+- **Database Alignment:** `schema.sql` dan `migrate.php` tersinkronisasi — migrasi v1 mengkonsolidasi semua perubahan skema (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, index comments, interactions, user_notifications), migrasi v2 menormalkan state MEeLCoin (biaya upload minimum 1), v3 menambah indeks hot query + FK `comments.video_id`, v4 indeks coalescing notifikasi, v5 FK `interactions` (user/video/music). ⚠️ Nomor v1–v15 adalah **riwayat lama** yang sudah di-redunisasi menjadi v1 — lihat [Migration System](modules.md#19-migration-system-databasemigratephp)
 - **Modul Anime dihapus:** Modul placeholder "Coming Soon" yang sudah tidak relevan dihapus dari kodebase
 - **API Rate Limiting:** File-based rate limiter (`modules/auth/RateLimiter.php`) — proteksi endpoint like, comment, upload dari abuse dengan per-user limits dan role-based adjustment (admin=unlimited, member=2x)
 - **Security Module (`modules/auth/`):** Helper & class keamanan dikonsolidasi ke satu direktori agar mudah diaudit — `helpers/` (authz, csrf, session, stream_auth, mfa, user) + `RateLimiter.php` + `SsrfGuard.php`, dimuat lewat `modules/auth/loader.php` (shim lama `modules/core/helpers.php` tetap jalan)
-- **Pagination Metadata:** `MediaLibrary` & `BookRepository` sekarang mengembalikan metadata pagination (`total_pages`, `from`, `to`) — UI menampilkan info halaman
+- **Pagination Metadata:** `MediaLibrary` & `BookRepository` sekarang mengembalikan metadata pagination (`total_pages`, `from`, `to`) — mendorong end state infinite scroll (teks progres halaman dihapus dari UI)
 - **Admin Dashboard Charts:** Chart.js 7-Day Activity Chart — views, uploads, active users dalam 7 hari terakhir
 - **Player Enhancement:** Auto-next overlay dengan backdrop gelap + sembunyikan replay button Plyr + mutual exclusion Auto-Next ↔ Loop
 - **MFA Support:** Multi-Factor Authentication (TOTP) — setup, verify, backup codes, admin reset, brute-force protection (10 attempts → 5 menit lock)
@@ -166,6 +170,19 @@ Request: /MEeL/music/beranda?format=ogg
 - **Error Page Redirect Pattern:** Semua pola `die(include __DIR__ . '/err/index.php')` dikonversi ke `header('Location: .../err?code=...')` redirect via `meel_base_url_path()` — lebih bersih, tanpa rendering error inline
 - **Root `/beranda` Route:** Route `/beranda` baru di root level — map ke `index.php` (HUB home), konsisten dengan skema `/module/beranda`
 - **Keyboard Shortcuts Terdokumentasi:** Shortcut Video (N=next, I=mini-player) dan Musik (E=equalizer, V=visualizer, I=mini-player) sekarang terdokumentasi di `introduction.php` dan `docs/`
+- **Media Session API:** Player video & music sekarang menampilkan artwork/thumbnail di kontrol media OS (Windows, macOS, Android) melalui `shared/media-session.js`
+- **Shared Recovery Manager:** Sistem auto-recovery video & music diekstrak ke `shared/recovery-manager.js` — factory function `meelCreateStuckDetector()`, `meelCreateWaitingTimeout()`, `meelCreateReconnectOverlay()` menggantikan logika duplikat
+- **Upload Handler Dedup:** `meel_handle_upload()` di `modules/core/helpers/upload.php` — memusatkan pengecekan CSRF, MeelCoin spend/refund, process callback, dan activity logging untuk upload video & music (~40 LOC per modul)
+- **MediaLibrary Search Dedup:** Method generic `searchMedia(array $cfg)` dan `countSearchMedia(array $cfg)` — `searchVideo()` dan `searchMusic()` sekarang thin wrapper (~50 LOC dihapus)
+- **Asset Version Helpers:** `meel_asset_version()` dan `meel_asset_dir_version()` di `modules/core/helpers/url.php` — menggantikan closure `$__v`/`$__vdir` per-file dengan helper global static cache
+- **Music Stream Refactor:** `music/stream.php` ditulis ulang menggunakan `meel_serve_media_file()` dari `storage.php` — menambahkan output buffer cleanup (`ob_end_clean` + `ob_implicit_flush`), penanganan MIME konsisten, dan range request support (~110 LOC dihapus)
+- **Description Toggle Fix:** Tombol "Selengkapnya" deskripsi music sekarang berfungsi dengan benar setelah navigasi SPA — `description-toggle.js` ditambahkan ke `DIRECT_SCRIPTS` view-router
+- **Resume Modal Terlihat di Layar Penuh:** Modal "Lanjutkan Sesi?" tidak lagi hilang saat user berada di fullscreen. Akar masalahnya Plyr membuat container `<div class="plyr">` sendiri di antara `#video-glow-container` dan `#main-video-wrapper`, sementara `fullscreen.css` menaikkan keduanya ke `position:fixed` + `z-index:999999` sehingga overlay tertimpa area video. Diperbaiki dengan `body.meel-fs-active #resume-modal { z-index: 1000001 }`
+- **Keyboard Guard saat Resume Modal:** Selama modal tampil, seluruh pintasan playback (Space, K, ↑↓, L, F, C, angka 0–9, I, N, A) dinonaktifkan — sebelumnya user bisa tetap memutar/mencari video di belakang modal. `←` `→` memilih **Lanjut**/**Ulang**, `Enter` atau `Spasi` menjalankan pilihan yang disorot, `Esc` tetap berfungsi untuk keluar fullscreen. Dijaga listener `window` fase capture di `shared/resume-modal.js` (mengalahkan Plyr yang fase bubble) + flag `meelResumeModalActive` sebagai pertahanan lapis kedua
+- **Pintasan `S` — AI Upscale:** Tombol baru di `video/watch/misc.js` yang memanggil `window.toggleUpscale()` di `upscaler.js`. Memakai bar toggle `#plyr-setting-upscale` yang sudah ada sehingga support check WebGPU, toast, dan sinkronisasi UI tetap satu sumber kebenaran
+- **Pintasan `B` — Ambient Glow:** `assets/js/video/watch/misc.js` kini memetakan `B` ke `window.toggleGlow()` di `player-events.js`, supaya efek cahaya ambient di sekitar video bisa dinyalakan/matikan dari keyboard tanpa membuka menu Settings. `B` tidak dipakai sebagai shortcut bawaan Plyr, dan tetap dikunci selama modal "Lanjutkan Sesi?" tampil karena guard `meelResumeModalActive`
+- **Semantik & Aksesibilitas Modal:** `#resume-modal` kini memakai `role="dialog"` + `aria-modal="true"` + `aria-labelledby` / `aria-describedby`, dengan cincin fokus keyboard yang terlihat. Fokus otomatis ke pilihan "Lanjut" dan dikembalikan ke player setelah modal ditutup
+- **Bug Countdown Modal:** `countdownTimer` tidak pernah di-`clearInterval()` saat modal disembunyikan sehingga label hitung mundur masih berubah selama 15 detik di DOM — sekarang semua timer dibersihkan lewat satu fungsi `close()`
 
 ## 📖 Tentang Proyek
 
@@ -181,7 +198,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 | Komponen | Teknologi |
 |---|---|
-| Backend | PHP 8.0+, MySQL/MariaDB |
+| Backend | PHP 8.1+, MySQL/MariaDB |
 | Frontend | TailwindCSS, HTMX, Vanilla JS |
 | Media Player | Plyr.js, HLS.js |
 | Transcoding | FFmpeg 6.0+, FFprobe |

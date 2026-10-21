@@ -33,7 +33,7 @@ An automatic installer that runs most steps of this guide in a single command (t
 
 Steps it runs (idempotent for most of them):
 
-1. **Check dependencies** — PHP 8.0+ with the `mysqli`, `pdo_mysql`,
+1. **Check dependencies** — PHP 8.1+ with the `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl` extensions, plus
    MariaDB/MySQL; installed via apt when needed (`--skip-apt` to skip).
 2. **Database setup** — create the database and import `database/schema.sql`
@@ -69,7 +69,7 @@ Steps it runs (idempotent for most of them):
 
 | Component | Version | Notes |
 |---|---|---|
-| **PHP** | 8.0+ | **8.1+** highly recommended |
+| **PHP** | **8.1+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Requires `mod_rewrite` |
 | **FFmpeg** | 6.0+ | For HLS & transcoding |
@@ -154,12 +154,12 @@ cd MEeL
 > **📁 The database schema file is available at [`database/schema.sql`](../../database/schema.sql).**
 > After importing, run the migration to complete the setup.
 
-> ⚠️ `schema.sql` hardcodes `CREATE DATABASE IF NOT EXISTS \`MEeL\`` + `USE \`MEeL\`;` — manual imports (CLI/phpMyAdmin) always target a database named `MEeL`. `install.sh` rewrites both lines to the configured database name, so a non-default DB name (e.g. for staging) is safe to use through the installer.
+> ⚠️ `schema.sql` does **not** contain `CREATE DATABASE` / `USE`. The database name must be given on the command line — that is what stops an import from silently landing in the wrong database. For any name other than `MEeL`, pass it directly in the command; `install.sh` does the same thing.
 
 #### Option A — Via MySQL CLI (fast):
 
 ```bash
-mysql -u root -p < database/schema.sql
+mysql -u root -p MEeL < database/schema.sql
 ```
 
 #### Option B — Via MySQL prompt:
@@ -168,6 +168,8 @@ mysql -u root -p < database/schema.sql
 mysql -u root -p
 ```
 ```sql
+CREATE DATABASE IF NOT EXISTS `MEeL` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `MEeL`;
 SOURCE /path/to/MEeL/database/schema.sql;
 ```
 
@@ -184,6 +186,8 @@ cd /opt/lampp/htdocs/MEeL/auth
 cp settings.example.php settings.php
 cp config.example.php config.php
 ```
+
+> 💡 `install.sh` only runs `chmod 640` on `auth/settings.php` **when `$CAN_ELEVATE` is set** (privilege elevation detected) — on a fresh install without elevation the file stays at its default and the DB config is never made world-readable.
 
 Edit `auth/settings.php`:
 ```php
@@ -239,17 +243,19 @@ define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');
 The repository tracks `books/upload`, `music/upload`, and `video/upload` as real directories (placeholder `.gitkeep` + hardened `.htaccess`) — the built-in fallback storage. **No symlinks are committed or required.** Uploaded media is stored under `MEEL_HDD_BASE` (via the derived `MEEL_HDD_*_UPLOAD` constants) and served through **PHP endpoints** mapped by an **internal rewrite** in the root `.htaccess`:
 
 ```apache
-RewriteRule ^video/upload/(.+)$ video/stream.php?f=$1 [L,QSA,B]
-RewriteRule ^music/upload/(.+)$ music/file.php?f=$1 [L,QSA,B]
-RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [L,QSA,B]
+<IfModule mod_rewrite.c>
+    RewriteRule ^video/upload/(.+)$ video/stream.php?f=$1 [END,QSA,B]
+    RewriteRule ^music/upload/(.+)$ music/file.php?f=$1 [END,QSA,B]
+    RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [END,QSA,B]
+</IfModule>
 ```
 
-The browser URL stays `.../upload/...` (so relative HLS segments like `.ts` resolve correctly), but Apache internally hands the request to the endpoint, which resolves the real file via `meel_media_base_path()`. The `B` flag escapes backreferences so filenames containing spaces or special characters survive the rewrite without breaking the query string:
+The browser URL stays `.../upload/...` (so relative HLS segments like `.ts` resolve correctly), but Apache internally hands the request to the endpoint, which resolves the real file via `meel_media_base_path()`. The rules are wrapped in `<IfModule mod_rewrite.c>` and sit **before** the front controller routing (`router.php`) — an explicit exception so streaming/range requests hit the endpoints directly without going through the router. The `END` flag stops all rewrite processing (not just the current round, unlike `L`), and the `B` flag escapes backreferences so filenames containing spaces or special characters survive the rewrite without breaking the query string:
 
 - `MEEL_HDD_*_UPLOAD` defined → file read from the HDD path;
 - not defined → file read from the repo fallback folder `<root>/{module}/upload`
 
-Endpoints enforce path-traversal protection, an extension whitelist, Range support (206 — needed for HLS `.ts` and large video), and a referer gate for HLS video (anti-hotlink). Audio playback uses `music/stream?id=...` (session authorization + strict referer gate; optional X-Sendfile acceleration — see [mod_xsendfile](#enable-mod_xsendfile-optional--for-streaming-acceleration)).
+Endpoints enforce path-traversal protection, an extension whitelist, Range support (206 — needed for HLS `.ts` and large video), and a referer gate for HLS video (anti-hotlink). All modules (video, music, books, drive) also support optional X-Sendfile acceleration with automatic fallback — see [mod_xsendfile](#enable-mod_xsendfile-optional--for-streaming-acceleration). Audio playback uses `music/stream?id=...` (session authorization + strict referer gate).
 
 `.gitignore` explicitly blocks committing symlinks named after these folders (they were previously committed as absolute `/media/<user>/...` symlinks that leaked the OS username and broke on other machines).
 
@@ -289,7 +295,10 @@ mkdir -p "$BASE"/video/upload/video "$BASE"/video/upload/thumbnail
 mkdir -p "$BASE"/music/upload/file   "$BASE"/music/upload/thumbnail
 mkdir -p "$BASE"/books/upload/manga  "$BASE"/books/upload/pdf "$BASE"/books/upload/thumbnail
 mkdir -p "$BASE"/drive/public "$BASE"/drive/private_admins
+touch "$BASE"/.meel_mount
 ```
+
+`.meel_mount` is the **mounted-volume marker**: `install.sh` creates it, `.gitignore` blocks it, and `meel_storage_ready()` uses it to tell a mounted volume apart from a leftover empty folder on the mountpoint. Without it, an empty storage folder is treated as *not mounted* and every Drive/media page falls back to the safe `err/?code=storage` screen (HTTP 503) instead of crashing.
 
 #### 3. No symlinks to create
 
@@ -416,16 +425,23 @@ mod_xsendfile speeds up streaming large files (FLAC 33MB+, MKV 4K) by letting Ap
    ```apache
    LoadModule xsendfile_module modules/mod_xsendfile.so
 
+   # Kernel sendfile: optional, makes Apache deliver static files even faster
+   EnableSendfile on
+
    <IfModule xsendfile_module>
        XSendFile on
        # Media files are now read directly from centralized storage (MEEL_HDD_BASE),
        # not from the webroot folder — whitelist the HDD path:
        XSendFilePath "/media/<user>/MEeL/media"
-       XSendFilePath "/opt/lampp/htdocs/MEeL/data_drive"
+       # Webroot fallback storage + temporary transcode output:
+       XSendFilePath "/opt/lampp/htdocs/MEeL"
+       XSendFilePath "/dev/shm/meel"
    </IfModule>
    ```
 
-   > ⚠️ `XSendFilePath` must include the path where media files actually reside (the `MEEL_HDD_BASE` value in `auth/settings.php`). Since the portability refactor, `music/upload` etc. are real directories in the repo (not symlinks), so old webroot paths like `/opt/lampp/htdocs/MEeL/music/upload/file` are **no longer** the file location — only the correct HDD path works. If `XSendFilePath` doesn't cover the storage, Apache returns 404 "Object not found" during streaming (see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
+   > ⚠️ `XSendFilePath` must include the path where media files actually reside (the `MEEL_HDD_BASE` value in `auth/settings.php`) — including `/dev/shm/meel` for transcode output. Since the portability refactor, `music/upload` etc. are real directories in the repo (not symlinks), so old webroot paths like `/opt/lampp/htdocs/MEeL/music/upload/file` are **no longer** the file location — only the correct HDD path works.
+   >
+   > ✅ If `XSendFilePath` doesn't cover the storage, **streaming does not break**: the app reads `XSendFilePath` from Apache's configuration and only sends the `X-Sendfile` header for whitelisted paths — everything else automatically falls back to PHP streaming (you only lose the acceleration).
 
 5. Restart Apache:
    ```bash
@@ -495,10 +511,10 @@ To download from YouTube and other platforms, export your browser cookies:
 1. Install the [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) extension
 2. Log in to YouTube in your browser
 3. Export cookies to Netscape format
-4. Save as `cookies.txt` in the project root:
+4. Save as `cookies.txt` in `temp/` (an `.htaccess`-protected folder; legacy files in the root are auto-migrated):
 
 ```bash
-cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
+cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 ```
 
 ---

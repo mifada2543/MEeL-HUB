@@ -14,7 +14,6 @@
             return r.json();
         });
     }
-
     window.loadChatMessages = function(userId) {
         currentUserId = userId;
         var container = document.getElementById('chat-messages');
@@ -47,17 +46,14 @@
                 container.innerHTML = '<div style="text-align:center;color:#ef4444;font-size:11px;padding:32px 0;">Gagal memuat pesan. Coba refresh halaman.</div>';
             });
     };
-
     window.deleteChatMsg = function(index) {
         if (!currentUserId) return;
         if (!confirm('Hapus pesan ini?')) return;
-
         var fd = new FormData();
         fd.append('action', 'delete');
         fd.append('user_id', currentUserId);
         fd.append('index', index);
         fd.append('csrf_token', window.MEEL_CSRF || '');
-
         safeFetch(API_BASE, {
             method: 'POST',
             body: fd,
@@ -72,19 +68,16 @@
             alert('Gagal menghapus pesan.');
         });
     };
-
     window.sendChat = function(e) {
         e.preventDefault();
         var input = document.getElementById('chat-input');
         var msg = input.value.trim();
         if (!msg || !currentUserId) return false;
-
         var fd = new FormData();
         fd.append('action', 'send');
         fd.append('user_id', currentUserId);
         fd.append('message', msg);
         fd.append('csrf_token', window.MEEL_CSRF || '');
-
         safeFetch(API_BASE, {
             method: 'POST',
             body: fd,
@@ -101,16 +94,8 @@
         });
         return false;
     };
-
-    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-    function timeAgo(ts) {
-        var diff = (Date.now() - new Date(ts).getTime()) / 1000;
-        if (diff < 60) return 'Baru saja';
-        if (diff < 3600) return Math.floor(diff / 60) + 'm lalu';
-        if (diff < 86400) return Math.floor(diff / 3600) + 'j lalu';
-        return Math.floor(diff / 86400) + 'h lalu';
-    }
-
+    var escapeHtml = window.escapeHtml;
+    var timeAgo = window.timeAgo;
     if (currentUserId) {
         setInterval(function() { loadChatMessages(currentUserId); }, 10000);
     }

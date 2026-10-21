@@ -1,8 +1,5 @@
 <?php
 
-
-
-
 while (ob_get_level()) ob_end_clean();
 
 error_reporting(E_ERROR | E_PARSE);
@@ -43,8 +40,6 @@ if ($safe_filename !== $filename) {
     die('Nama file tidak valid.');
 }
 
-// Allowlist ketat: nama output transcoder dihasilkan server (sanitizeFilename),
-// hanya karakter aman + rentang unicode yang diizinkan + satu titik ekstensi.
 if (!preg_match('/^[a-zA-Z0-9_\-\x{3000}-\x{9fff}\x{30a0}-\x{30ff}\x{3040}-\x{309f}\x{ff00}-\x{ffef}]+\.[a-z0-9]{2,5}$/u', $safe_filename)) {
     http_response_code(400);
     header('Content-Type: text/plain');
@@ -63,8 +58,6 @@ $filename = $safe_filename;
 
 $transcoder = new Transcoder($conn, $_SESSION['user_id']);
 
-// Ownership: hanya user yang memicu transcode (sesi ini) boleh mengambil
-// file output-nya — mencegah menebak nama file transcode milik user lain.
 if (!Transcoder::ownsTranscodeFile($filename)) {
     http_response_code(403);
     header('Content-Type: text/plain');
@@ -87,9 +80,9 @@ if ($file_size === false || $file_size < 10240) {
 }
 
 $mime_types = [
-    'mp3'  => 'audio/mpeg',
-    'ogg'  => 'audio/ogg',
-    'm4a'  => 'audio/mp4',
+    'mp3' => 'audio/mpeg',
+    'ogg' => 'audio/ogg',
+    'm4a' => 'audio/mp4',
     'opus' => 'audio/ogg',
 ];
 $mime = $mime_types[$ext] ?? 'application/octet-stream';
@@ -118,13 +111,19 @@ header('Content-Length: ' . $file_size);
 header('Content-Disposition: attachment; filename="' . addcslashes($download_name, '"\\') . '"; filename*=UTF-8\'\'' . rawurlencode($download_name));
 header('X-Accel-Buffering: no');
 header('Cache-Control: no-cache, must-revalidate');
-header('Accept-Ranges: none');
 
 if (function_exists('apache_setenv')) {
     @apache_setenv('no-gzip', '1');
 }
 @ini_set('zlib.output_compression', '0');
 
+if (meel_xsendfile_ready($file_path)) {
+    header('Accept-Ranges: bytes');
+    header('X-Sendfile: ' . meel_xsendfile_header($file_path));
+    exit();
+}
+
+header('Accept-Ranges: none');
 readfile($file_path);
 exit;
 

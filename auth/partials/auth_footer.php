@@ -15,7 +15,7 @@
             const isHidden = passwordInput.type === 'password';
             passwordInput.type = isHidden ? 'text' : 'password';
             togglePassword.setAttribute('aria-pressed', String(isHidden));
-            togglePassword.setAttribute('aria-label', isHidden ? 'Sembunyikan password' : 'Tampilkan password');
+            togglePassword.setAttribute('aria-label', isHidden ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
             iconEye.classList.toggle('hidden', !isHidden);
             iconEyeOff.classList.toggle('hidden', isHidden);
         });

@@ -72,6 +72,46 @@ Solutions for common issues encountered while using MEeL-HUB.
 
 ---
 
+### ❌ "Connection lost" overlay appears on its own while looping a video
+
+**Symptom:** after the video has looped 2–4 times (~10 minutes), the
+"Sambungan Terputus" overlay appears and playback jumps / changes position by
+itself. Console shows:
+
+```
+HTML5 video error: PipelineStatus::PIPELINE_ERROR_DECODE: video decode error! code: 3
+Mengecek ketersediaan file media di: upload/video/.../....m3u8
+Media terdeteksi online! Memulai pemulihan via HTMX...
+```
+
+**Cause:** the native `loop` attribute makes the browser seek
+`duration → 0` without telling hls.js. `HLS_CONFIG.backBufferLength` is only
+**10 seconds**, so the data at position 0 has already been evicted from the
+`SourceBuffer`. Chromium then seeks outside the buffer and throws
+`PIPELINE_ERROR_DECODE` — even though the media file is perfectly healthy (the
+`.m3u8` HEAD probe returns 200).
+
+The previous version escalated error code 3 straight to *full recovery*: HEAD
+probe → `htmx` swap → the entire player rebuilt, for no actual fault.
+
+**Fix (shipped in MEeL core):**
+
+| Layer | File | What it does |
+|-------|------|--------------|
+| Self-heal | `recovery.js` | Codes 2 & 3 get an 8-second *grace period* — `hls.recoverMediaError()`, then watch whether `currentTime` advances. If it moves, done: no recovery. |
+| Loop wrap | `player-events.js` | The `ended` handler tells hls.js the target position (`hls.startLoad()`) so it reloads segments instead of reacting blindly to the seek. |
+| Back buffer | `player-init.js` | Short videos (≤2 min) stay fully buffered, so looping needs no flush at all. |
+
+The log `[MEeL] Error media self-healed, playback lanjut normal.` means the
+grace period worked. If you instead see
+`Error media tidak pulih dalam 8 detik, lanjut ke recovery`, the media really
+is broken and recovery ran as designed.
+
+**Still happening?** Raise `MEDIA_ERROR_GRACE_MS` in
+`assets/js/video/watch/state.js` (default `8e3`).
+
+---
+
 ## Upload Problems
 
 ### ❌ Upload fails with no error message
@@ -281,6 +321,43 @@ $timeout = 43200; // 12 hours in seconds
 
 ## Storage & Disk Issues
 
+### ⚠️ Redirected to `err/?code=storage` — "Storage Not Ready" (HTTP 503)
+
+**Symptoms:**
+- Opening Drive / an upload page redirects to `err/?code=storage` (HTTP 503)
+- Video/music/books streaming responds with an **empty 503** (no body)
+- Drive `upload`/`delete` endpoints respond with JSON
+  `{"status":"error","code":"storage_unmounted"}`
+- Log contains
+  `[MEeL] Peringatan: MEEL_HDD_BASE tidak dapat diakses: /media/<user>/MEeL/media`
+
+**Cause:** the `MEEL_HDD_BASE` volume (`auth/settings.php`) is not mounted —
+external HDD unplugged, `mount` not run yet, or a wrong path. This used to end
+in a fatal `mkdir(): Permission denied ... RuntimeException: Folder
+penyimpanan gagal dibuat`; every path is now checked by `meel_storage_ready()`
+first and routed to a safe error page, so no garbage folders are created on
+the root filesystem.
+
+**Diagnosis:**
+```bash
+df -h | grep MEeL
+ls -la "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")"
+php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; var_dump(meel_storage_ready());"
+```
+
+**Fix:**
+```bash
+sudo mount /dev/sdX? /media/<user>/MEeL          # match your fstab
+touch "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")/.meel_mount"
+```
+
+**The `.meel_mount` marker** is created by `install.sh` and is in `.gitignore`
+(**never commit it**). It tells `meel_storage_ready()` that the folder is a
+mounted volume rather than a leftover empty directory on the mountpoint.
+Without a marker: an **empty** folder counts as unmounted (fails safe: block),
+a folder with content (legacy volume) is still served with a warning in the
+log. A missing marker is also reported by `tests/check_deploy.php`.
+
 ### ❌ Drive module crashes: "Storage folder creation failed" (RuntimeException)
 
 **Symptoms:**
@@ -306,8 +383,8 @@ $timeout = 43200; // 12 hours in seconds
    from `MEEL_HDD_BASE` in `auth/settings.php`) — **no symlink is involved**.
    Verify where the app actually resolves storage:
    ```bash
-   php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_DRIVE') ? MEEL_HDD_DRIVE : 'NOT SET';"
-   php -r "require 'modules/core/helpers.php'; echo meel_drive_base_path();"
+    php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_DRIVE') ? MEEL_HDD_DRIVE : 'NOT SET';"
+    php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; echo meel_drive_base_path();"
    ```
    If the resolved path doesn't exist or isn't writable, fix `MEEL_HDD_BASE` in
    `auth/settings.php` (or leave it unset to use the `data_drive/` fallback).
@@ -339,6 +416,8 @@ du -sh /media/[user]/MEeL/
 - Delete unnecessary files
 - Move storage to larger HDD
 - Run orphan cleanup from admin panel
+
+> **Note on "Database Sync Check":** the line *"{n} 256px thumbnail variants (X MB) kept — not orphans"* is expected. Every video has two thumbnail files: the original (registered in the DB) and a derived 256px variant `<stem>_sm.webp` that is deliberately not registered because it is used for grid cards. Do not remove them by hand via "Bersihkan SSD Thinkpad" — that line is informational only.
 
 ---
 
@@ -388,6 +467,8 @@ du -sh /media/[user]/MEeL/
 3. Clean inactive guests: Admin Panel → **Clean Inactive Guests**
 4. Delete stuck queues: Admin Panel → **Clean Stuck Queues**
 5. Delete unnecessary drive files
+
+> **Note on "Database Sync Check":** the line *"{n} 256px thumbnail variants (X MB) kept — not orphans"* is expected. Every video has two thumbnail files: the original (registered in the DB) and a derived 256px variant `<stem>_sm.webp` that is deliberately not registered because it is used for grid cards. Do not remove them by hand via "Bersihkan SSD Thinkpad" — that line is informational only.
 
 ---
 

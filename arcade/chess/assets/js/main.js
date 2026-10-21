@@ -20,21 +20,21 @@ let suppressNetworkSync = false;
 let localBoardFlipped = false;
 let pendingCaptureSvg = null;
 
-let drawOfferPending = false; 
-let drawModalShown = false; 
+let drawOfferPending = false;
+let drawModalShown = false;
 
-let rematchOfferPending = false; 
-let rematchModalShown = false; 
+let rematchOfferPending = false;
+let rematchModalShown = false;
 let rematchLeaving = false;
-const REMATCH_WAIT_MS = 30000; 
-let rematchTimeoutTimer = null; 
+const REMATCH_WAIT_MS = 30000;
+let rematchTimeoutTimer = null;
 let exitToLocalModeFn = null;
 let opponentJoined = false;
-let opponentOnline = true; 
-let opponentOfflineNotified = false; 
-let opponentOfflineNextPromptAt = 0; 
-let opponentOfflineModalOpen = false; 
-let gameOverEventSent = false; 
+let opponentOnline = true;
+let opponentOfflineNotified = false;
+let opponentOfflineNextPromptAt = 0;
+let opponentOfflineModalOpen = false;
+let gameOverEventSent = false;
 const boardEl = document.getElementById("chess-board");
 const moveHistoryList = document.getElementById("move-history-list");
 const promotionModal = document.getElementById("promotion-modal");
@@ -47,7 +47,7 @@ const cpRoomCode = document.getElementById("cp-room-code");
 const btnPickWhite = document.getElementById("btn-pick-white");
 const btnPickBlack = document.getElementById("btn-pick-black");
 const btnCancelWaiting = document.getElementById("btn-cancel-waiting");
-let colorPickerHideTimer = null; 
+let colorPickerHideTimer = null;
 function resetAllModes() {
   const panel = document.getElementById("multiplayer-panel");
   if (panel) panel.classList.add("hidden");
@@ -104,7 +104,7 @@ function hideColorPicker() {
   colorPickerHideTimer = setTimeout(() => {
     colorPickerOverlay.classList.add("hidden");
     colorPickerHideTimer = null;
-    
+
     updateActionButtons();
   }, 300);
 }
@@ -134,7 +134,7 @@ async function syncRoomState(resetBoard = false) {
         ? JSON.parse(move.move_data)
         : move.move_data;
     if (payload.type) {
-      
+
       const evResult = handleGameEvent(payload, true);
       if (evResult) terminalResult = evResult;
       continue;
@@ -171,7 +171,7 @@ function startPolling() {
           typeof move.move_data === "string"
             ? JSON.parse(move.move_data)
             : move.move_data;
-        
+
         if (payload.type) {
           const evResult = handleGameEvent(payload);
           if (evResult) lastResult = evResult;
@@ -218,11 +218,11 @@ function tungguLawanBergabung(code) {
       if (data.success && data.joined) {
         clearInterval(roomStatusTimer);
         roomStatusTimer = null;
-        opponentJoined = true; 
-        hideColorPicker(); 
+        opponentJoined = true;
+        hideColorPicker();
         document.getElementById("room-status").innerText =
           "Lawan bergabung! Menunggu langkah...";
-        
+
         if (blackName) blackName.innerText = "Pemain Hitam (Online)";
         startPolling();
       }
@@ -323,7 +323,7 @@ function renderBoard() {
           cell.appendChild(pieceWrapper);
         }
       }
-      
+
       if (viewC === 0) {
         const rankLabel = document.createElement("span");
         rankLabel.style.cssText = `position:absolute;top:2px;left:3px;font-size:10px;font-weight:700;z-index:30;pointer-events:none;user-select:none;line-height:1;color:${isDark ? "rgba(238,238,210,0.85)" : "rgba(118,150,86,0.85)"}`;
@@ -420,7 +420,7 @@ function handleCellClick(r, c) {
         saveMoveAPI(roomCode, game.history[game.history.length - 1]).then(
           (d) => {
             if (d.success) lastMoveId = d.id;
-            
+
             notifyGameOver(result);
           },
         );
@@ -460,7 +460,7 @@ function triggerAiMove() {
   if (game.isGameOver || game.turn !== "b" || game.gameMode !== "ai") return;
   const aiDecision = game.getBestMove();
   if (aiDecision) {
-    
+
     const aiTarget = game.getPiece(aiDecision.to.r, aiDecision.to.c);
     const isEnPassant = aiDecision.to && aiDecision.to.isEnPassant;
     if (aiTarget) {
@@ -704,7 +704,7 @@ function updateActionButtons() {
   offerBtn.disabled = !myTurn || drawOfferPending || drawModalShown || waiting;
   offerBtn.innerText = drawOfferPending ? "Menunggu jawaban..." : "Tawarkan Seri";
   resignBtn.classList.toggle("hidden", !showActions);
-  
+
   resignBtn.classList.toggle("col-span-2", showActions && !offerVisible);
   resignBtn.disabled = !online || !roomCode || game.isGameOver || waiting;
 }
@@ -713,9 +713,9 @@ function handleGameEvent(payload, silent = false) {
   const type = payload.type;
   const color = payload.color;
   const isSelf = color === myColor;
-  
+
   if (type === "resign") {
-    if (!silent && isSelf) return null; 
+    if (!silent && isSelf) return null;
     return { status: "resign", winner: color === "w" ? "b" : "w" };
   }
   if (type === "disconnect") {
@@ -732,17 +732,17 @@ function handleGameEvent(payload, silent = false) {
     };
   }
   if (type === "draw_offer") {
-    if (isSelf) return null; 
+    if (isSelf) return null;
     if (!silent && !drawModalShown && !game.isGameOver) showDrawOfferModal();
     return null;
   }
   if (type === "draw_accept") {
-    if (!silent && isSelf) return null; 
+    if (!silent && isSelf) return null;
     return { status: "draw", reason: "Agreement" };
   }
   if (type === "draw_decline") {
     if (!isSelf) {
-      drawOfferPending = false; 
+      drawOfferPending = false;
       updateActionButtons();
 
       if (!silent) {
@@ -757,7 +757,7 @@ function handleGameEvent(payload, silent = false) {
   }
   if (type === "rematch_offer") {
     if (isSelf) {
-      
+
       if (silent) {
         rematchOfferPending = true;
         updateRematchButton();
@@ -769,13 +769,13 @@ function handleGameEvent(payload, silent = false) {
     return null;
   }
   if (type === "rematch_accept") {
-    if (!silent && isSelf) return null; 
-    startRematch(); 
+    if (!silent && isSelf) return null;
+    startRematch();
     return null;
   }
   if (type === "rematch_decline") {
     if (isSelf) {
-      
+
       rematchOfferPending = false;
       updateRematchButton();
       return null;
@@ -838,7 +838,7 @@ function handleOfferDraw() {
     colorPickerOverlay &&
     !colorPickerOverlay.classList.contains("hidden")
   )
-    return; 
+    return;
   if (game.turn !== myColor) {
     window.meelAlert({
       title: "Bukan Giliran",
@@ -866,7 +866,7 @@ function handleResign() {
     colorPickerOverlay &&
     !colorPickerOverlay.classList.contains("hidden")
   )
-    return; 
+    return;
   window
     .meelConfirm({
       title: "Mengalah?",
@@ -903,7 +903,7 @@ function startRematch() {
   clearRematchTimeout();
   rematchOfferPending = false;
   rematchModalShown = false;
-  restartGame(); 
+  restartGame();
 }
 
 function clearRematchTimeout() {
@@ -916,7 +916,7 @@ function startRematchTimeout() {
   clearRematchTimeout();
   rematchTimeoutTimer = setTimeout(async () => {
     rematchTimeoutTimer = null;
-    
+
     try {
       const d = roomCode
         ? await sendGameActionAPI(roomCode, "rematch_decline")
@@ -971,7 +971,7 @@ function showRematchModal() {
             return;
           }
           if (d && d.message === "Tidak ada tawaran tanding ulang yang menunggu.") {
-            
+
             showRematchRejectedThenExit();
             return;
           }
@@ -979,7 +979,7 @@ function showRematchModal() {
           showRematchModal();
         })
         .catch(() => {
-          showRematchModal(); 
+          showRematchModal();
         });
     } else if (result.dismiss === window.Swal.DismissReason.cancel) {
       sendGameActionAPI(roomCode, "rematch_decline").then(() => {});
@@ -1010,7 +1010,7 @@ function handleRematch() {
     }
     rematchOfferPending = true;
     updateRematchButton();
-    startRematchTimeout(); 
+    startRematchTimeout();
   });
 }
 function handleExitGame() {
@@ -1028,10 +1028,10 @@ function showRematchRejectedThenExit(
 ) {
   rematchOfferPending = false;
   rematchModalShown = false;
-  rematchLeaving = true; 
+  rematchLeaving = true;
   clearRematchTimeout();
   updateRematchButton();
-  if (window.Swal) window.Swal.close(); 
+  if (window.Swal) window.Swal.close();
   window.Swal.fire({
     title,
     html: `${message}<br>Kembali ke mode <b>Lawan Rakan</b> dalam 5 saat...`,
@@ -1056,7 +1056,7 @@ function handleOpponentStatus(online) {
   if (game.gameMode !== "online" || !roomCode || game.isGameOver) return;
   if (online === opponentOnline) return;
   if (online) {
-    
+
     opponentOnline = true;
     opponentOfflineNotified = false;
     opponentOfflineNextPromptAt = 0;
@@ -1098,7 +1098,7 @@ function showOpponentOfflineModal() {
     if (result.isConfirmed) {
       claimDisconnectWin();
     } else if (result.dismiss === window.Swal.DismissReason.cancel) {
-      
+
       opponentOfflineNotified = true;
       opponentOfflineNextPromptAt = Date.now() + 60000;
     }
@@ -1113,7 +1113,7 @@ function claimDisconnectWin() {
         text: d.message || "Gagal mengklaim kemenangan.",
         icon: "error",
       });
-      
+
       opponentOfflineNotified = false;
       opponentOfflineNextPromptAt = Date.now() + 30000;
       return;
@@ -1140,11 +1140,11 @@ function notifyGameOver(result) {
     .then((d) => {
 
       if (d && !d.success && d.message !== "Permainan sudah berakhir.") {
-        gameOverEventSent = false; 
+        gameOverEventSent = false;
       }
     })
     .catch(() => {
-      gameOverEventSent = false; 
+      gameOverEventSent = false;
     });
 }
 function restartGame() {
@@ -1188,7 +1188,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnAi = document.getElementById("mode-vs-ai");
   const diffCont = document.getElementById("ai-difficulty-container");
   const panel = document.getElementById("multiplayer-panel");
-  
+
   function confirmSwitchMode(proceed) {
     if (game.history.length > 0 && !game.isGameOver) {
       window.Swal.fire({
@@ -1209,7 +1209,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  
   function confirmExitMultiplayer(proceed, html) {
     window.Swal.fire({
       title: "Keluar dari Mode Multiplayer?",
@@ -1229,7 +1228,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (onlineBtn) {
-    
+
     function enterOnlineMode() {
 
       if (roomStatusTimer) {
@@ -1258,13 +1257,13 @@ document.addEventListener("DOMContentLoaded", () => {
       if (blackName) blackName.innerText = "Pemain Hitam";
       updateRoomUI();
       restartGame();
-      showColorPicker(); 
+      showColorPicker();
     }
     onlineBtn.addEventListener("click", () => {
-      
+
       if (game.gameMode === "online") return;
       confirmSwitchMode(() => {
-        
+
         window.Swal.fire({
           title: "Mode Multiplayer",
           html: 'Bermain dengan pemain lain memerlukan <b>akun login</b>.<br>Anda akan membuat atau bergabung room menggunakan <b>Room Code</b> yang dibagikan.',
@@ -1281,8 +1280,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   }
-  
-  
+
   function highlightLocalModeButton() {
     resetAllModes();
     if (!btnLocal) return;
@@ -1337,7 +1335,7 @@ document.addEventListener("DOMContentLoaded", () => {
       confirmSwitchMode(enterAiMode);
     });
   }
-  
+
   async function createRoom() {
     if (roomStatusTimer) {
       clearInterval(roomStatusTimer);
@@ -1362,7 +1360,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("room-color").innerText = "Putih";
     document.getElementById("room-status").innerText =
       "Room dibuat. Bagi code ini ke rakan.";
-    showWaitingState(roomCode); 
+    showWaitingState(roomCode);
     tungguLawanBergabung(roomCode);
   }
 
@@ -1391,24 +1389,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     roomCode = data.room;
     myColor = "b";
-    opponentJoined = true; 
+    opponentJoined = true;
     lastMoveId = 0;
     document.getElementById("room-code-display").innerText = roomCode;
     document.getElementById("room-color").innerText = "Hitam";
     document.getElementById("room-status").innerText =
       "Sudah masuk room. Sync papan...";
     restartGame();
-    
+
     try {
       await syncRoomState(true);
     } finally {
-      hideColorPicker(); 
+      hideColorPicker();
       startPolling();
     }
     updateRoomUI();
   }
 
-  
   function stopOnlineSession() {
     if (game.gameMode === "online" && roomCode) {
       sendGameActionAPI(roomCode, "rematch_decline").catch(() => {});
@@ -1428,7 +1425,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (panelEl) panelEl.classList.add("hidden");
   }
 
-  
   function leaveRoom() {
     stopOnlineSession();
     document.getElementById("room-code-display").innerText = "-";
@@ -1535,7 +1531,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!sounds.initialized) sounds.init();
     },
     { once: true },
-  );    if (window.lucide) {
+  ); if (window.lucide) {
     window.lucide.createIcons();
   }
   renderBoard();

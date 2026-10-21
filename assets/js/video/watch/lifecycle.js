@@ -36,9 +36,11 @@
       player && (lastPlayTime = player.currentTime);
     }
   }),
-  document.addEventListener("DOMContentLoaded", () => {
-    initPlayer();
-  }),
+  document.readyState === "loading"
+    ? document.addEventListener("DOMContentLoaded", () => {
+        initPlayer();
+      })
+    : initPlayer(),
   document.addEventListener("htmx:beforeSwap", function (e) {
     if ("main-video-wrapper" === e.detail.target.id && isRecovering) {
       const t = e.detail.xhr;
@@ -73,9 +75,6 @@
       t && attachMiniPlayerVideoCardListeners(t);
     }
   }),
-  
-
-
 
   document.addEventListener("htmx:afterSettle", function (e) {
     if ("main-video-wrapper" !== e.detail.target.id || !isMiniPlayerActive)

@@ -1,5 +1,4 @@
 /* reference build: MEeL-C5H9NO2 [bf8984aed70b015f] */
-
 const config = window.playerConfig || {};
 let videoElement,
   player,
@@ -14,6 +13,8 @@ let videoElement,
   isAutoRecovering = !1,
   isRecovering = !1,
   isCheckingStatus = !1,
+  pendingRecoveryOnVisible = !1,
+  pendingPlayRetry = !1,
   waitingTimeout = null,
   recoveryRetryCount = 0;
 const MAX_RECOVERY_RETRIES = 20;
@@ -22,6 +23,10 @@ const POST_RECOVERY_COOLDOWN_MS = 5e3;
 let hasEverPlayed = !1,
   playbackStartTimeout = null;
 const PLAYBACK_START_TIMEOUT_MS = 2e4;
+let selfHealUntil = 0,
+  selfHealTimer = null,
+  selfHealFrom = -1;
+const MEDIA_ERROR_GRACE_MS = 8e3;
 let recoveryDelay = 1e4,
   lastRecoveryTime = 0,
   recoveryTimeoutId = null,
@@ -46,10 +51,49 @@ let glowTargetData = new Float32Array(GLOW_W * GLOW_H * 4),
   glowStopFn = null,
   glowEnabled = "false" !== localStorage.getItem(MEEL_KEYS.GLOW_ENABLED),
   glowNavbar = null;
-
 const _meelAutoNavFlag = sessionStorage.getItem(MEEL_KEYS.AUTONAV) === "1";
 sessionStorage.removeItem(MEEL_KEYS.AUTONAV);
 let autoNextEnabled = localStorage.getItem(MEEL_KEYS.AUTONEXT_ENABLED) === "true";
+let loopEnabled = localStorage.getItem(MEEL_KEYS.VIDEO_LOOP) === "true";
+if (autoNextEnabled && loopEnabled) {
+  loopEnabled = false;
+  try {
+    localStorage.removeItem(MEEL_KEYS.VIDEO_LOOP);
+  } catch (e) {
+    console.warn("[MEeL] Gagal membersihkan state loop:", e);
+  }
+}
+function persistVideoLoop(enabled) {
+  loopEnabled = !!enabled;
+  try {
+    if (loopEnabled) localStorage.setItem(MEEL_KEYS.VIDEO_LOOP, "true");
+    else localStorage.removeItem(MEEL_KEYS.VIDEO_LOOP);
+  } catch (e) {
+    console.warn("[MEeL] Gagal menyimpan state loop:", e);
+  }
+  return loopEnabled;
+}
+function restoreVideoLoop() {
+  const want = loopEnabled && !autoNextEnabled;
+  if (player) {
+    try {
+      player.loop = want;
+    } catch (e) {
+      console.warn("[MEeL] Gagal menerapkan state loop:", e);
+    }
+  }
+  window.updateLoopMenuUI && window.updateLoopMenuUI();
+  return want;
+}
+function clearVideoLoop() {
+  persistVideoLoop(false);
+  if (player) {
+    try {
+      player.loop = false;
+    } catch (e) {}
+  }
+  window.updateLoopMenuUI && window.updateLoopMenuUI();
+}
 window.lucide && lucide.createIcons();
 const plyrOptions = {
     ...MEEL_PLYR_COMMON,
@@ -67,7 +111,7 @@ const plyrOptions = {
       "airplay",
       "fullscreen",
     ],
-    settings: ["quality", "speed"],
+    settings: ["quality", "speed", "upscale"],
     i18n: {
       play: "Putar video",
       pause: "Jeda video",
@@ -82,6 +126,7 @@ const plyrOptions = {
       unmute: "Suarakan",
       captions: "Teks",
       settings: "Pengaturan",
+      upscale: "AI Upscale",
       fullscreen: "Layar penuh",
       exitFullscreen: "Keluar layar penuh",
       pip: "Gambar dalam gambar",
@@ -91,7 +136,7 @@ const plyrOptions = {
     fullscreen: { enabled: !0, fallback: !0, iosNative: !1 },
     clickToPlay: !isTouchDevice,
     previewThumbnails: { enabled: "" !== vttSrc, src: vttSrc },
-    mediaMetadata: {},
+    mediaMetadata: buildPlyrMediaMetadata(),
   },
   HLS_CONFIG = {
     maxBufferLength: 45,
@@ -107,3 +152,18 @@ const plyrOptions = {
     fragLoadingTimeOut: 2e4,
     manifestLoadingTimeOut: 1e4,
   };
+function buildPlyrMediaMetadata() {
+  var cfg = window.playerConfig || {};
+  return cfg.title
+    ? {
+        title: cfg.title,
+        artist: cfg.uploader || "",
+        artwork: cfg.thumbnail
+          ? [{ src: cfg.thumbnail, sizes: "512x512", type: "image/jpeg" }]
+          : [],
+      }
+    : {};
+}
+function refreshPlyrMediaMetadata() {
+  plyrOptions.mediaMetadata = buildPlyrMediaMetadata();
+}

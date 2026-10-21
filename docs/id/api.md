@@ -11,6 +11,7 @@ Dokumentasi endpoint API, controllers, dan handler AJAX/HTMX di MEeL-HUB.
 - [MFA Endpoints](#mfa-endpoints)
 - [Media Interaction Endpoints](#media-interaction-endpoints)
 - [Upload Endpoints](#upload-endpoints)
+- [Media Streaming Endpoints](#media-streaming-endpoints)
 - [Profile Endpoints](#profile-endpoints)
 - [Admin Endpoints](#admin-endpoints)
 
@@ -593,7 +594,14 @@ Streaming PDF untuk viewer buku:
 ```php
 // Proteksi akses file PDF — tidak bisa diakses langsung dari URL
 header("Content-Type: application/pdf");
-readfile($filePath);
+
+// Akselerasi X-Sendfile: Apache mengirim file langsung dari disk
+// (Range/206 dihitung Apache), PHP tidak membaca isi file
+if (meel_xsendfile_ready($file_path)) {
+    header('X-Sendfile: ' . meel_xsendfile_header($file_path));
+    exit;
+}
+readfile($file_path);
 ```
 
 ### Download Transcode
@@ -619,6 +627,8 @@ Download file hasil transcoding video → audio dengan header Content-Dispositio
 - `Content-Type`: MIME type yang benar untuk format
 - `Content-Disposition`: `attachment` dengan nama file UTF-8 (RFC 5987)
 - `X-Accel-Buffering: no` (nonaktifkan buffering proxy)
+- `Accept-Ranges: bytes` + `X-Sendfile` (jika akselerasi aktif — Apache
+  mengirim file dari `/dev/shm/meel/transcode`; tanpa akselerasi: `Accept-Ranges: none`)
 
 **Kode error:**
 | Kode | Arti |
@@ -734,6 +744,59 @@ Phase 4: Done (links to media)
 
 ---
 
+## Media Streaming Endpoints
+
+Semua byte media disajikan melalui endpoint PHP yang mendelegasikan ke satu fungsi bersama, `meel_serve_media_file()` (`modules/core/helpers/storage.php`). Path mentah seperti `/video/upload/...` adalah rewrite internal dari `.htaccess` root — tidak ada akses file langsung.
+
+| Endpoint | Menyajikan | Auth / Gate |
+|---|---|---|
+| `video/stream.php` | Playlist HLS (`.m3u8`), segment (`.ts`), subtitle (`.vtt`), thumbnail | Publik + referer gate HLS (`hls_gate => true`) |
+| `music/file.php` | File audio, thumbnail (path mentah `upload/...`) | Publik |
+| `music/stream.php` | Audio berdasarkan ID media (`?id=`) dengan referer gate + `is_stream_authorized()` | Publik (referer-gated) |
+| `books/file.php` | Gambar manga, PDF | **Wajib login** (`auth/auth.php`) |
+
+### Perilaku Bersama (`meel_serve_media_file()`)
+
+- **Validasi path:** traversal (`..`) dan null byte → `403`; path hasil resolve harus tetap di dalam root upload modul via containment `realpath()`, jika tidak → `404`.
+- **Whitelist ekstensi:** `m3u8, ts, vtt, mp4, webm, mkv, jpg, jpeg, png, webp, gif, pdf, mp3, ogg, m4a, flac, wav, opus` — selain itu → `403`.
+- **MIME mapping:** otomatis per ekstensi (mis. `m3u8` → `application/vnd.apple.mpegurl`, `ts` → `video/mp2t`).
+- **Range request:** `Range: bytes=...` → `206 Partial Content` dengan `Accept-Ranges`/`Content-Range` — memungkinkan seeking segment HLS dan scrubbing audio.
+- **Pembersihan output buffer:** `ob_end_clean` + `ob_implicit_flush` sebelum streaming untuk mencegah korupsi data biner.
+
+### Ukuran Thumbnail Video
+
+Upload video menghasilkan **dua** ukuran thumbnail sekaligus (lewat `meel_ffmpeg_thumbnail_webp()` di `modules/core/Uploader.php`):
+
+| Berkas | Lebar | Dipakai oleh |
+|---|---|---|
+| `<name>_thumb.webp` | 1280px | poster player (`data-poster`) dan OG image |
+| `<name>_thumb_sm.webp` | 256px | sidebar watch (slot 128px) dan kartu grid library |
+
+**Tidak ada cache dan tidak ada lapisan varian on-demand** — kedua berkas ditulis sekali saat upload, jadi storage tidak bertambah sendiri. `video_thumbnail_sm($thumbnail)` mengembalikan nama berkas kecil bila ada, selain itu nama aslinya, sehingga thumbnail yang diunggah sebelum fitur ini tetap tampil benar (hanya tidak hemat byte). Penamaan menyisipkan `_sm` sebelum ekstensi apa pun hasilnya, karena penamaan thumbnail lama di storage tidak konsisten (`*_thumb.webp`, `*_vthumb.jpg`, `*.png`, …).
+
+Backfill sekali jalan untuk media lama:
+
+
+
+### Referer Gate HLS (video)
+
+`video/stream.php?f=...` melewatkan `hls_gate => true`. Request untuk path di bawah `video/` harus membawa `Referer` same-host dari halaman video (`/video`, `/video/watch`, `/video/index`, `/video/beranda`); jika tidak, request di-redirect ke `err/?code=denied`. Ini mencegah situs pihak ketiga meng-hotlink segment HLS.
+
+### Music Stream by ID
+
+`music/stream.php?id=<music_id>` — referer harus same-host dan dari `/music`, `/admin`, atau `/profile`; lalu `is_stream_authorized($id)` dijalankan sebelum file di-resolve via `MediaViewer` dan disajikan sebagai `file/<filename>`. `video/stream.php` dan `music/stream.php` juga memanggil `session_write_close()` sebelum streaming agar request segment/audio paralel tidak saling memblokir karena lock file session PHP.
+
+### Response Error
+
+| Status | Kondisi |
+|---|---|
+| `400` | Parameter `f` / `id` tidak ada atau tidak valid |
+| `403` | Path traversal, ekstensi tidak diizinkan, referer gate gagal (redirect) |
+| `404` | File tidak ditemukan (atau keluar dari root upload) |
+| `503` | Path base storage tidak tersedia |
+
+---
+
 ## Profile Endpoints
 
 ### Edit Profile
@@ -783,9 +846,11 @@ Phase 4: Done (links to media)
 |---|---|---|
 | `u` | Ya | Username target |
 | `tab` | Tidak | `all` (default), `video`, `music` |
-| `offset` | Ya | Offset paginasi (mulai dari 12) |
+| `offset` | Ya | Offset paginasi (mulai dari 12, bertambah 12 tiap batch) |
 
-Mengembalikan fragment HTML (kartu konten + tombol load more atau penanda "Semua Konten Dimuat"). Digunakan oleh `profile/index.php` via `hx-get` untuk infinite scroll.
+Mengembalikan fragment HTML berisi kartu konten (dari partial `profile/content_card.php`) **plus sentinel pengganti** `#channel-more-area` dengan trigger `hx-trigger='revealed'`, atau end box **Konten Habis · Semua konten sudah ditampilkan** saat batch terakhir. Dipakai `profile/index.php` via `hx-get` untuk infinite scroll — tanpa tombol klik.
+
+> Batch dimuat otomatis saat sentinel masuk viewport (pola `revealed`, sama seperti `video/load-more` dan `music/load-more`). Jika request gagal, `assets/js/shared/sentinel-retry.js` menghapus `data-hx-revealed` sehingga scroll berikutnya mencoba lagi. Batch kosong juga menghasilkan end box, sehingga rantai tidak pernah looping.
 
 ### Media Deletion & Cleanup
 
@@ -851,6 +916,13 @@ Setiap POST wajib menyertakan `csrf_token`.
 | Action | Parameter | Method | Deskripsi |
 |---|---|---|---|
 | Clean Orphans | `clean_orphans=1` + `files_to_delete` (JSON) | POST | Delete files not in DB |
+| Recheck | `recheck_orphans=1` | POST | Hapus cache pindai lalu tampilkan hasil terbaru |
+
+Hasil pindai disimpan di `temp/cache/admin_orphans.json` dengan TTL **120 detik** (`checked_at`, `orphans`, `variant_count`, `variant_bytes`) — pindai 13.686 berkas hanya butuh ~40 ms, jadi TTL pendek cukup mencegah scan berulang tanpa menahan data basi. Cache juga dibuang otomatis oleh `meel_invalidate_media_stats_cache()` setiap kali media berubah (upload/hapus), sehingga panel akurat langsung tanpa harus menunggu TTL habis atau klik "Cek Ulang".
+
+> **Varian thumbnail bukan sampah.** Tiap video punya dua berkas thumbnail di `video/upload/thumbnail/`: `<stem>.<ext>` (asli, terdaftar di `video.thumbnail`) dan `<stem>_sm.webp` (varian turunan lebar 256px). Varian ditulis sekali saat upload (`Uploader.php`) dan dipakai saat render lewat `video_thumbnail_sm()` yang mencocokkan stem — jadi **sengaja tidak didaftarkan di DB**. Pemindai mengecualikan pola `_sm.<ext>` di ketiga direktori thumbnail (video, music, books) dan melaporkan jumlahnya sebagai baris info, bukan sebagai orphan.
+>
+> **Pengaman ganda sebelum hapus.** Karena daftar berasal dari cache 10 menit, `clean_orphans` melakukan query ulang ke DB sebelum `unlink`: varian `_sm`, berkas yang ternyata masih terdaftar (`video.thumbnail`, `music.filename`, `books.thumbnail`), dan berkas di dalam folder yang masih hidup (`video.filename`, `books.path_folder`) dilewati dengan status *skipped*, tidak dihapus.
 
 ### Guest Cleanup
 
@@ -877,12 +949,17 @@ Setiap POST wajib menyertakan `csrf_token`.
 **Target:** `#video-container`
 **Swap:** `innerHTML`
 
-### Video Load More
+Hasil search menyematkan sentinel `#load-more-area` yang sama — infinite scroll lanjut dengan query saat ini (`search?search=…&exclude=…&offset=+15`).
 
-**Trigger:** Click "Muat Lebih Banyak"
-**Request:** `video/load-more?offset=15` (handler: `video/load_more.php`)
-**Target:** `#load-more-area`
+### Video Load More (Infinite Scroll)
+
+**Trigger:** Auto-scroll — sentinel `#load-more-area` dengan `hx-trigger="revealed"` (dipicu saat sentinel masuk viewport; tombol "Muat Lebih Banyak" sudah dihapus)
+**Request:** `video/load-more?offset=15&page=N` (handler: `video/load_more.php`)
+**Target:** `#load-more-area` (elemen itu sendiri)
 **Swap:** `outerHTML`
+**Response:** 15 kartu + sentinel pengganti (rantai berlanjut otomatis), atau end box **"Out Of Content · Konten sudah tidak ada lagi"** saat `offset + limit ≥ total`. Respons kosong juga menghasilkan end box.
+
+Rekomendasi sidebar watch memakai pola auto-load yang sama: `.rec-sentinel` dengan `hx-trigger="revealed"` menambahkan konten ke `#recommendation-column` (`search?exclude=<id>`, swap `beforeend`).
 
 ### Music Search
 
@@ -891,13 +968,18 @@ Setiap POST wajib menyertakan `csrf_token`.
 **Target:** `#music-list`
 **Swap:** `innerHTML`
 
-### Music Load More
+Hasil search menyematkan sentinel sendiri `#load-more-music-search` (id terpisah, agar pembersihan `#load-more-music` pasca-search tidak mematikannya) — infinite scroll lanjut dengan query saat ini (`search?search=…&exclude=…&offset=+10`).
 
-**Trigger:** Click "Load More"
-**Request:** `music/load-more?offset=10&format=all&artist=all` (handler: `music/load_more_music.php`)
-**Target:** `#music-list`
-**Swap:** `beforeend`
-**Pagination server-side** — search musik kini punya pagination (offset).
+### Music Load More (Infinite Scroll)
+
+**Trigger:** Auto-scroll — sentinel `#load-more-music` (di dalam `#music-list`) dengan `hx-trigger="revealed"`
+**Request:** `music/load-more?offset=10&page=N&format=all&artist=all` (handler: `music/load_more_music.php`)
+**Target:** `#load-more-music` (elemen itu sendiri)
+**Swap:** `outerHTML`
+**Response:** 10 kartu + sentinel pengganti (rantai berlanjut otomatis), atau end box **"Out Of Content · Konten sudah tidak ada lagi"** di akhir hasil.
+**Catatan:** Id sentinel wajib dipertahankan — CSS `overflow-anchor: none` pada `#load-more-music` dan pengecekan `isFromLoadMore` di `assets/js/music/index/index.js` bergantung padanya.
+
+Rekomendasi sidebar watch memakai pola auto-load yang sama: `.rec-sentinel` dengan `hx-trigger="revealed"` menambahkan konten ke `#music-recommendation-column` (`search?exclude=<id>`, swap `beforeend`).
 
 ### Books Search
 
@@ -948,7 +1030,7 @@ dan helper auth yang sama dengan modul lain).
 | `arcade/rhythm/api/delete` | POST | login + CSRF | Hapus lagu custom — owner atau admin; hapus audio + cover + beatmap.json + record DB (transaksional) |
 
 > ⚠️ Tabel `arcade_song` & `arcade_score` dibuat lewat `arcade/rhythm/migration.sql`
-> (terpisah dari `database/schema.sql` / `database/migrate.php` v1–v15).
+> (terpisah dari `database/schema.sql` / `database/migrate.php`).
 
 ---
 

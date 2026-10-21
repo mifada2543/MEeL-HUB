@@ -1,7 +1,3 @@
-
-
-
-
 window.meelUploadProgress = function (options) {
   const status = document.getElementById("overlay-status");
   const bar = document.getElementById("progress-bar");

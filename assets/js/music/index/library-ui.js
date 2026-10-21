@@ -1,6 +1,5 @@
 /* reference build: MEeL-C4H9NO2 [2a6553473e66a275] */
 
-
 function setupMusicItemClicks() {
   const allItems = () => Array.from(document.querySelectorAll(".music-item"));
   document.querySelectorAll(".music-item").forEach((item) => {
@@ -73,6 +72,7 @@ function loadPlaylistById(id) {
       if (typeof history !== "undefined") {
         history.pushState(null, "", url);
       }
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       if (typeof lucide !== "undefined") lucide.createIcons();
       if (savedLMUrl) {
         var newBtn = document.getElementById("load-more-btn");
@@ -107,22 +107,22 @@ window.togglePlaylistDropdown = function () {
   if (dropdown) {
     const isHidden = dropdown.classList.contains("hidden");
     if (isHidden) {
-      
+
       var artistDrop = document.getElementById("artist-options");
       if (artistDrop && !artistDrop.classList.contains("hidden")) {
         artistDrop.classList.add("hidden");
-        
+
         var artistContainer = document.getElementById("custom-artist-dropdown");
         if (artistContainer) artistContainer.style.zIndex = '';
       }
       dropdown.classList.remove("hidden");
-      
+
       var plContainer = document.getElementById("custom-playlist-dropdown");
       if (plContainer) plContainer.style.zIndex = '110';
       document.body.classList.add("artist-dropdown-active");
     } else {
       dropdown.classList.add("hidden");
-      
+
       var plContainer = document.getElementById("custom-playlist-dropdown");
       if (plContainer) plContainer.style.zIndex = '';
       setTimeout(function () {
@@ -134,7 +134,7 @@ window.togglePlaylistDropdown = function () {
 window.closePlaylistDropdown = function () {
   const dropdown = document.getElementById("playlist-options");
   if (dropdown) dropdown.classList.add("hidden");
-  
+
   var plContainer = document.getElementById("custom-playlist-dropdown");
   if (plContainer) plContainer.style.zIndex = '';
   setTimeout(function () {
@@ -183,16 +183,16 @@ window.toggleArtistDropdown = function () {
   if (dropdown) {
     const isHidden = dropdown.classList.contains("hidden");
     if (isHidden) {
-      
+
       var playlistDrop = document.getElementById("playlist-options");
       if (playlistDrop && !playlistDrop.classList.contains("hidden")) {
         playlistDrop.classList.add("hidden");
-        
+
         var plContainer = document.getElementById("custom-playlist-dropdown");
         if (plContainer) plContainer.style.zIndex = '';
       }
       dropdown.classList.remove("hidden");
-      
+
       var artistContainer = document.getElementById("custom-artist-dropdown");
       if (artistContainer) artistContainer.style.zIndex = '110';
       document.body.classList.add("artist-dropdown-active");
@@ -202,7 +202,7 @@ window.toggleArtistDropdown = function () {
       }
     } else {
       dropdown.classList.add("hidden");
-      
+
       var artistContainer = document.getElementById("custom-artist-dropdown");
       if (artistContainer) artistContainer.style.zIndex = '';
       setTimeout(function () {
@@ -214,7 +214,7 @@ window.toggleArtistDropdown = function () {
 window.closeArtistDropdown = function () {
   const dropdown = document.getElementById("artist-options");
   if (dropdown) dropdown.classList.add("hidden");
-  
+
   var artistContainer = document.getElementById("custom-artist-dropdown");
   if (artistContainer) artistContainer.style.zIndex = '';
   setTimeout(() => {
@@ -281,7 +281,6 @@ window.resetArtistHighlight = function () {
   });
 };
 
-
 window.resetFormatPills = function () {
   document.querySelectorAll(".format-pill").forEach(function (el) {
     el.classList.remove("active-orange", "active-green", "active-blue");
@@ -292,7 +291,6 @@ window.resetFormatPills = function () {
       el.classList.add("active-orange");
     });
 };
-
 
 window.resetLibraryFilters = function () {
   if (typeof resetArtistHighlight === "function") resetArtistHighlight();

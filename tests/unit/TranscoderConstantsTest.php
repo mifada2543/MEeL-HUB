@@ -7,12 +7,6 @@ require_once MEEL_ROOT . '/modules/transcoder/EncodeService.php';
 require_once MEEL_ROOT . '/modules/transcoder/TranscodeService.php';
 
 /**
- * Regression: setelah Transcoder.php dipecah, konstanta bersama hidup di
- * TranscoderBase. Konstanta harus terlihat dari tiap service subclass —
- * kalau visibility-nya `private` di parent, referensi `self::CONST` di
- * child akan fatal "Undefined constant" saat encode/download/transcode
- * benar-benar berjalan (tidak ter-trigger test biasa karena butuh ffmpeg).
- *
  * @covers TranscoderBase
  * @covers EncodeService
  * @covers DownloadService
@@ -40,7 +34,6 @@ class TranscoderConstantsTest extends TestCase
                     $ref->hasConstant($const),
                     "{$class} tidak bisa mengakses konstanta {$const} dari TranscoderBase"
                 );
-                // Nilai harus non-empty — memastikan bukan null/stub.
                 $this->assertNotEmpty(
                     $ref->getReflectionConstant($const)->getValue(),
                     "Konstanta {$const} kosong pada {$class}"
@@ -52,7 +45,6 @@ class TranscoderConstantsTest extends TestCase
     public function testFacadeStillDelegatesStaticOwnership(): void
     {
         require_once MEEL_ROOT . '/modules/core/Transcoder.php';
-        // Permukaan publik yang dipakai caller eksternal (controllers/views).
         $this->assertTrue(method_exists('Transcoder', 'ownsTranscodeFile'));
         $this->assertTrue(method_exists('Transcoder', 'resolveMusicInputPath'));
         $this->assertTrue(method_exists('Transcoder', 'processDownload'));

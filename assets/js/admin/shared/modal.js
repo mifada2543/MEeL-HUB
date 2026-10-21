@@ -2,7 +2,7 @@
 
 (function () {
   'use strict';
-  
+
   document.addEventListener('DOMContentLoaded', function () {
     var deleteModal = document.getElementById('delete-modal');
     if (deleteModal) {
@@ -14,7 +14,7 @@
       if (e.key === 'Escape') closeDeleteModal();
     });
   });
-  
+
   window.confirmDelete = function (id, type, title) {
     var idEl = document.getElementById('modal-media-id');
     var typeEl = document.getElementById('modal-media-type');
@@ -35,7 +35,7 @@
     }
     if (modal) modal.classList.add('open');
   };
-  
+
   window.closeDeleteModal = function () {
     var modal = document.getElementById('delete-modal');
     if (modal) modal.classList.remove('open');

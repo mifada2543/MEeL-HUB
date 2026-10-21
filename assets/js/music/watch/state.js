@@ -1,4 +1,3 @@
-
 let player,
   audio,
   storageKeyMusic,
@@ -14,16 +13,16 @@ let player,
   eqPreset = "flat";
 const ZERO_GAINS = Array(eqBands.length).fill(0),
   EQ_PRESET_LABELS = {
-    flat: "Flat",
-    bass: "Bass Boost",
-    treble: "Treble Boost",
-    vocal: "Vocal Boost",
+    flat: "Datar",
+    bass: "Penguat Bass",
+    treble: "Penguat Treble",
+    vocal: "Penguat Vokal",
     rock: "Rock",
-    classical: "Classical",
+    classical: "Klasik",
     pop: "Pop",
     jazz: "Jazz",
-    electronic: "Electronic",
-    acoustic: "Acoustic",
+    electronic: "Elektronik",
+    acoustic: "Akustik",
     gaming: "Gaming",
     podcast: "Podcast",
   },
@@ -42,13 +41,6 @@ const ZERO_GAINS = Array(eqBands.length).fill(0),
     podcast: [0, -1, 2, 3, 1, -1],
   };
 let miniEls = null;
-
-
-
-
-
-
-
 
 window.__meelResumeSessionActive = !1;
 

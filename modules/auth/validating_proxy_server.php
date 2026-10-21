@@ -1,34 +1,7 @@
 <?php
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if (PHP_SAPI !== 'cli') {
-    exit(1); 
+    exit(1);
 }
 
 require_once __DIR__ . '/SsrfGuard.php';
@@ -36,11 +9,11 @@ require_once __DIR__ . '/SsrfGuard.php';
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
 ini_set('display_errors', '0');
 
-const PROXY_IDLE_TIMEOUT = 300; 
-const PROXY_MAX_LIFETIME = 3600; 
+const PROXY_IDLE_TIMEOUT = 300;
+const PROXY_MAX_LIFETIME = 3600;
 const PROXY_CHUNK = 65536;
-
-
+const PROXY_MAX_HEADERS = 100;
+const PROXY_MAX_HEADER_LINE = 8192;
 
 $server = @stream_socket_server('tcp://127.0.0.1:0', $errno, $errstr);
 if ($server === false) {
@@ -50,13 +23,10 @@ if ($server === false) {
 $name = stream_socket_get_name($server, false);
 $port = (int) substr(strrchr($name, ':'), 1);
 
-
 fwrite(STDOUT, "PORT $port\nREADY\n");
 fflush(STDOUT);
 
 $guard = new SsrfGuard();
-
-
 
 if (function_exists('pcntl_async_signals') && function_exists('pcntl_signal')) {
     pcntl_async_signals(true);
@@ -64,12 +34,6 @@ if (function_exists('pcntl_async_signals') && function_exists('pcntl_signal')) {
         pcntl_waitpid(-1, $status, WNOHANG);
     });
 }
-
-
-
-
-
-
 
 function readRequestHead($client): ?array
 {
@@ -83,27 +47,38 @@ function readRequestHead($client): ?array
         if ($chunk !== '') {
             $head .= $chunk;
             if (strlen($head) > 65536) {
-                return null; 
+                return null;
             }
         }
         if (microtime(true) > $deadline) {
             return null;
         }
-        
+
         usleep(2000);
     }
 
-    $lines   = explode("\r\n", $head);
+    $lines = explode("\r\n", $head);
     $request = array_shift($lines);
-    $parts   = preg_split('/\s+/', trim($request));
+
+    if (count($lines) > PROXY_MAX_HEADERS) {
+        return null;
+    }
+    if (preg_match('/[\r\n\x00]/', $request)) {
+        return null;
+    }
+    foreach ($lines as $line) {
+        if (strlen($line) > PROXY_MAX_HEADER_LINE || preg_match('/[\r\n\x00]/', $line)) {
+            return null;
+        }
+    }
+
+    $parts = preg_split('/\s+/', trim($request));
     if (count($parts) < 3) {
         return null;
     }
 
     return [$parts[0], $parts[1], $parts[2], $lines];
 }
-
-
 
 function parseTarget(string $target, int $defaultPort): array
 {
@@ -123,15 +98,13 @@ function parseTarget(string $target, int $defaultPort): array
     }
 
     $parts = explode(':', $target);
-    $host  = $parts[0];
-    $port  = isset($parts[1]) && is_numeric($parts[1]) ? (int) $parts[1] : $defaultPort;
+    $host = $parts[0];
+    $port = isset($parts[1]) && is_numeric($parts[1]) ? (int) $parts[1] : $defaultPort;
     if ($port <= 0 || $port > 65535) {
         $port = $defaultPort;
     }
     return [$host, $port];
 }
-
-
 
 function connectValidated(SsrfGuard $guard, string $host, int $port)
 {
@@ -139,15 +112,12 @@ function connectValidated(SsrfGuard $guard, string $host, int $port)
         throw new RuntimeException('target kosong');
     }
 
-    
-    
-    
     $addresses = $guard->resolvePublicAddresses($host);
     if ($addresses === []) {
         throw new RuntimeException('tidak ada alamat publik');
     }
 
-    $ip  = $addresses[0];
+    $ip = $addresses[0];
     $url = (strpos($ip, ':') !== false) ? "tcp://[$ip]:$port" : "tcp://$ip:$port";
 
     $errno = 0;
@@ -160,13 +130,11 @@ function connectValidated(SsrfGuard $guard, string $host, int $port)
     return $upstream;
 }
 
-
 function refuse($client, string $reason): void
 {
     @fwrite($client, "HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-Type: text/plain\r\n\r\nPROXY REFUSED: $reason");
     @fclose($client);
 }
-
 
 function tunnel($client, $upstream): void
 {
@@ -188,13 +156,13 @@ function tunnel($client, $upstream): void
         $except = null;
         $selected = @stream_select($read, $write, $except, PROXY_IDLE_TIMEOUT);
         if ($selected === false || $selected === 0) {
-            break; 
+            break;
         }
 
         foreach ($read as $socket) {
             $data = @fread($socket, PROXY_CHUNK);
             if ($data === false || ($data === '' && feof($socket))) {
-                
+
                 if ($socket === $client) {
                     $clientEof = true;
                     @stream_socket_shutdown($upstream, STREAM_SHUT_WR);
@@ -205,7 +173,7 @@ function tunnel($client, $upstream): void
                 continue;
             }
             if ($data === '') {
-                continue; 
+                continue;
             }
             $target = ($socket === $client) ? $upstream : $client;
             @fwrite($target, $data);
@@ -216,7 +184,6 @@ function tunnel($client, $upstream): void
     @fclose($upstream);
 }
 
-
 function relayHttp(SsrfGuard $guard, $client, string $method, string $target, string $version, array $headerLines): void
 {
     $parts = parse_url($target);
@@ -226,7 +193,7 @@ function relayHttp(SsrfGuard $guard, $client, string $method, string $target, st
     }
     $scheme = strtolower((string) $parts['scheme']);
     if ($scheme !== 'http') {
-        
+
         refuse($client, 'skema tidak didukung');
         return;
     }
@@ -244,7 +211,6 @@ function relayHttp(SsrfGuard $guard, $client, string $method, string $target, st
         return;
     }
 
-    
     $path = ($parts['path'] ?? '');
     if ($path === '') {
         $path = '/';
@@ -259,10 +225,7 @@ function relayHttp(SsrfGuard $guard, $client, string $method, string $target, st
         if ($trimmed === '') {
             continue;
         }
-        
-        
-        
-        
+
         if (preg_match('/^(host|connection|proxy-connection|keep-alive|te|upgrade|transfer-encoding):/i', $trimmed)) {
             continue;
         }
@@ -273,11 +236,10 @@ function relayHttp(SsrfGuard $guard, $client, string $method, string $target, st
 
     @fwrite($upstream, $out);
 
-    
     $relayDeadline = microtime(true) + PROXY_IDLE_TIMEOUT;
     while (!feof($upstream)) {
         if (microtime(true) > $relayDeadline) {
-            break; 
+            break;
         }
         $chunk = @fread($upstream, PROXY_CHUNK);
         if ($chunk === false) {
@@ -286,7 +248,7 @@ function relayHttp(SsrfGuard $guard, $client, string $method, string $target, st
         if ($chunk === '') {
             $meta = stream_get_meta_data($upstream);
             if (!empty($meta['timed_out'])) {
-                break; 
+                break;
             }
             continue;
         }
@@ -298,7 +260,6 @@ function relayHttp(SsrfGuard $guard, $client, string $method, string $target, st
     @fclose($upstream);
     @fclose($client);
 }
-
 
 function handleClient($client, SsrfGuard $guard): void
 {
@@ -325,17 +286,14 @@ function handleClient($client, SsrfGuard $guard): void
         return;
     }
 
-    
     relayHttp($guard, $client, $method, $target, $version, $headerLines);
 }
-
-
 
 $startedAt = time();
 while (time() - $startedAt < PROXY_MAX_LIFETIME) {
     $client = @stream_socket_accept($server, 300);
     if ($client === false) {
-        
+
         if (function_exists('pcntl_waitpid')) {
             pcntl_waitpid(-1, $status, WNOHANG);
         }
@@ -345,22 +303,21 @@ while (time() - $startedAt < PROXY_MAX_LIFETIME) {
     if (function_exists('pcntl_fork')) {
         $pid = pcntl_fork();
         if ($pid === -1) {
-            @fclose($client); 
+            @fclose($client);
             continue;
         }
         if ($pid === 0) {
-            
+
             fclose($server);
             handleClient($client, $guard);
             exit(0);
         }
-        
+
         fclose($client);
         pcntl_waitpid(-1, $status, WNOHANG);
         continue;
     }
 
-    
     handleClient($client, $guard);
 }
 

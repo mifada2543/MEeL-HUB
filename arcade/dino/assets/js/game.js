@@ -156,7 +156,7 @@ document.getElementById("themeToggle").addEventListener("change", (e) => {
     miku = new Miku();
     miku.y = 220 - miku.height;
   }
-});  document
+}); document
   .getElementById("godModeToggle")
   .addEventListener("change", (e) => (cheatState.godMode = e.target.checked));
 document
@@ -183,7 +183,7 @@ class Miku {
     this.isDucking = false;
     this.runFrame = 0;
     this.animTimer = 0;
-    
+
     this.scaleY = 1;
     this.scaleX = 1;
   }
@@ -191,7 +191,7 @@ class Miku {
     if (!this.isJumping && !this.isDucking) {
       this.vy = this.jumpForce;
       this.isJumping = true;
-      
+
       this.scaleY = 1.18;
       this.scaleX = 0.86;
     }
@@ -212,12 +212,12 @@ class Miku {
       this.vy = 0;
       this.isJumping = false;
       if (wasAirborne) {
-        
+
         this.scaleY = 0.82;
         this.scaleX = 1.16;
       }
     }
-    
+
     this.scaleY += (1 - this.scaleY) * 0.18;
     this.scaleX += (1 - this.scaleX) * 0.18;
     if (!this.isJumping && !this.isDucking) {
@@ -231,7 +231,7 @@ class Miku {
   draw() {
     ctx.save();
 /* reference build: MEeL-C2H5NO2 [fea37f50cca4eccc] */
-    
+
     const cx = this.x + this.width / 2;
     const bottom = this.y + this.height;
     ctx.translate(cx, bottom);

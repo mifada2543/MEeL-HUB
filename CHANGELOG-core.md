@@ -7,15 +7,10 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), versi mengikut
 [Semantic Versioning](https://semver.org/) dengan tag `core-vX.Y.Z`.
 
 ## [Unreleased]
-### Added
--
-### Changed
--
-### Fixed
--
 
-<!--
-## [1.0.0] - YYYY-MM-DD
 ### Added
-- Rilis stabil pertama HUB core.
--->
+- **Pintasan keyboard `B` — Ambient Glow:** `assets/js/video/watch/misc.js` sekarang memetakan `B` ke `window.toggleGlow()` (diekspor di `assets/js/video/watch/player-events.js`). Efek ambient glow sebelumnya hanya bisa diubah lewat bar menu `#plyr-setting-glow`; sekarang bisa dari keyboard tanpa membuka menu Settings. `B` tidak bentrok dengan shortcut bawaan Plyr (`0–9`, `Space`/`K`, `←`/`→`, `↑`/`↓`, `M`, `F`, `C`) maupun shortcut MEeL lain (`L`, `A`, `S`, `N`, `I`), dan tetap terblokir selama modal "Lanjutkan Sesi?" tampil karena early-return `window.meelResumeModalActive`. Ditambahkan juga ke `introduction.php` dan tabel shortcut di `docs/{id,en}/modules.md`
+
+### Fixed
+- **Recovery muncul sendiri saat meng-loop video:** video yang diulang 2–4 kali (±10 menit) memicu overlay "Sambungan Terputus" lalu player dibangun ulang, padahal media-nya sehat. Akar masalahnya tiga lapis: (1) atribut native `loop` menyuruh browser seek `duration → 0` tanpa memberi tahu hls.js, padahal `HLS_CONFIG.backBufferLength` hanya 10 detik sehingga data di posisi 0 sudah dievict dan Chromium melempar `PIPELINE_ERROR_DECODE` (code 3); (2) `recovery.js` menaikkan kode 2/3 langsung ke *full recovery* tanpa attempt pemulihan — probe HEAD membalas 200, lalu `htmx` swap membongkar seluruh player; (3) pemicu kedua (stuck detector, senyap) naik ~12 detik kemudian sehingga recovery tetap terjadi meski pemicu pertama sudah di-skip. Perbaikan: `trySelfHealMediaError()` memberi *grace period* 8 detik — `hls.recoverMediaError()` untuk kode 3, `hls.startLoad()` untuk kode 2 — lalu memantau apakah `currentTime` bergerak; bergerak berarti selesai tanpa recovery, membeku berarti baru eskalasi. Selama grace window `triggerPlayerRecovery()` menepi sehingga stuck detector ikut tertahan. Handler `ended` kini memberi tahu hls.js posisi tujuan saat loop (`hls.startLoad()`) dan menyalakan kembali stuck detector, dan `MANIFEST_PARSED` menaikkan `backBufferLength` ke durasi penuh untuk video ≤2 menit sehingga loop tidak perlu flush sama sekali
+- **Status Loop Playback ter-reset setiap refresh:** `assets/js/video/watch/state.js` kini membaca `MEEL_KEYS.VIDEO_LOOP` (`meel_video_loop`) saat boot dan mengekspor tiga helper — `persistVideoLoop()`, `restoreVideoLoop()`, `clearVideoLoop()`. `setupMeelPlayerEvents()` memanggil `restoreVideoLoop()`, sehingga loop dipulihkan di **semua** jalur pembuatan player — load awal, auto-recovery, rebuild karena ganti kualitas, dan pergantian video via mini player — bukan hanya saat refresh biasa. Lawanannya, `clearVideoLoop()` dipanggil saat pindah ke video lain (`skipToNextVideo`, klik kartu mini player, guard klik `.rekomendasi-item`) dan saat Auto Next diaktifkan, sehingga loop tidak ikut terbawa ke video berikutnya. Auto Next dan Loop tetap saling meniadakan dua arah: menyalakan Auto Next membersihkan key loop, menyalakan Loop mematikan Auto Next, dan state stale ketika keduanya aktif dibersihkan saat boot

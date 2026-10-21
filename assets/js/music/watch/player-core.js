@@ -1,32 +1,6 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 (function () {
   "use strict";
 
-  
-  
-  
-  
-  
   var isWatchDocFreshLoad = true;
 
   function updateVisualizerUI(on) {
@@ -34,14 +8,13 @@
       label = document.getElementById("vis-text"),
       cava = document.getElementById("cava-container");
     _setTogglePillUI(btn, on);
-    if (label) label.innerText = on ? "Vis On" : "Vis Off";
+    if (label) label.innerText = on ? "Vis Aktif" : "Vis Mati";
     if (cava) {
       cava.style.display = on ? "flex" : "none";
       cava.classList.toggle("hidden", !on);
     }
   }
 
-  
   function buildVisualizerBars(engine) {
     const cava = document.getElementById("cava-container");
     if (!cava) return;
@@ -79,9 +52,6 @@
     }
   }
 
-  
-  
-  
   function bindEngineOnce(engine) {
     if (engine.player.__meelCoreBound) return;
     engine.player.__meelCoreBound = true;
@@ -89,7 +59,6 @@
     const audio = engine.audio,
       player = engine.player;
 
-    
     let loadingTimeout = null,
       secondaryTimeout = null,
       metadataLoaded = false,
@@ -97,51 +66,36 @@
       errorHandled = false,
       audioEndedNaturally = false;
 
-    
     const RECOVERY_MAX_RETRIES = 15;
-    const STUCK_CHECK_INTERVAL_MS = 3000;
-    const STUCK_THRESHOLD_S = 6;
     const RECOVERY_COOLDOWN_MS = 8000;
     let recoveryRetryCount = 0;
     let isRecovering = false;
     let lastRecoveryTime = 0;
-    let stuckCheckInterval = null;
-    let lastPlayTime = -1;
-    let lastTimeUpdateTs = 0;
     let hasEverPlayed = false;
-    let waitingTimeout = null;
 
-    function showReconnectIndicator() {
-      var container = document.getElementById('player-container');
-      if (!container) return;
-      var existing = document.getElementById('meel-music-reconnect');
-      if (existing) return;
-      var el = document.createElement('div');
-      el.id = 'meel-music-reconnect';
-      el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(8,10,15,.88);z-index:60;gap:10px;padding:20px;text-align:center;';
-      el.innerHTML = '<div class="animate-spin h-7 w-7 border-2 border-orange-500 border-t-transparent rounded-full"></div>' +
-        '<div style="color:#f97316;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;">Sambungan Terputus</div>' +
-        '<div style="color:#6b7280;font-size:10px;">Menghubungkan kembali secara otomatis...</div>';
-      container.appendChild(el);
-    }
+    var _musicOverlay = meelCreateReconnectOverlay({
+      containerId: "player-container",
+      color: "orange",
+    });
 
-    function hideReconnectIndicator() {
-      var el = document.getElementById('meel-music-reconnect');
-      if (el) el.remove();
-    }
+    var _musicStuckDetector = meelCreateStuckDetector({
+      interval: 3000,
+      threshold: 6,
+      isPaused: function () { return player.paused; },
+      getCurrentTime: function () { return player.currentTime; },
+      onStuck: function () {
+        console.warn('⚠️ Music stream stalled');
+        triggerStreamRecovery();
+      },
+    });
 
-    function showReconnectFailed() {
-      var container = document.getElementById('player-container');
-      if (!container) return;
-      var existing = document.getElementById('meel-music-reconnect');
-      if (existing) existing.remove();
-      var el = document.createElement('div');
-      el.id = 'meel-music-reconnect';
-      el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(8,10,15,.88);z-index:60;gap:12px;padding:20px;text-align:center;';
-      el.innerHTML = '<div style="color:#6b7280;font-size:11px;">Tidak dapat terhubung ke media.</div>' +
-        '<button onclick="window.location.reload()" style="background:#ea580c;color:#000;border:none;padding:8px 20px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;">Muat Ulang</button>';
-      container.appendChild(el);
-    }
+    var _musicWaitingTimeout = meelCreateWaitingTimeout({
+      timeout: 10000,
+      onTimeout: function () {
+        console.warn('⚠️ Music audio waiting >10s, trigger recovery');
+        triggerStreamRecovery();
+      },
+    });
 
     function triggerStreamRecovery() {
       if (isRecovering || !hasEverPlayed || player.paused) return;
@@ -149,21 +103,20 @@
       if (now - lastRecoveryTime < RECOVERY_COOLDOWN_MS) return;
       if (recoveryRetryCount >= RECOVERY_MAX_RETRIES) {
         console.warn('⚠️ Music recovery: max retries reached');
-        showReconnectFailed();
+        _musicOverlay.showFailed();
         return;
       }
       isRecovering = true;
       lastRecoveryTime = now;
       recoveryRetryCount++;
-      stopStuckDetector();
-      showReconnectIndicator();
+      _musicStuckDetector.stop();
+      _musicOverlay.show();
       console.log('🔄 Music stream recovery #' + recoveryRetryCount + '...');
 
       var savedTime = player.currentTime || 0;
       var streamUrl = (window.MEEL_MUSIC_CONFIG && window.MEEL_MUSIC_CONFIG.streamUrl) || '';
       if (!streamUrl) { isRecovering = false; return; }
 
-      
       var sep = streamUrl.indexOf('?') >= 0 ? '&' : '?';
       var freshUrl = streamUrl + sep + '_r=' + Date.now();
 
@@ -176,13 +129,13 @@
         audio.play().then(function () {
           isRecovering = false;
           recoveryRetryCount = 0;
-          hideReconnectIndicator();
-          startStuckDetector();
+          _musicOverlay.hide();
+          _musicStuckDetector.start();
           console.log('✅ Music stream recovered at ' + Math.floor(savedTime) + 's');
         }).catch(function (err) {
           console.warn('⚠️ Music recovery play() failed:', err);
           isRecovering = false;
-          
+
           setTimeout(triggerStreamRecovery, RECOVERY_COOLDOWN_MS);
         });
       }
@@ -192,55 +145,39 @@
     }
 
     function startStuckDetector() {
-      stopStuckDetector();
-      lastPlayTime = -1;
-      lastTimeUpdateTs = Date.now();
-      stuckCheckInterval = setInterval(function () {
-        if (!player || player.paused || isRecovering || isNavigating) return;
-        if (document.hidden) return;
-        var ct = player.currentTime;
-        var now = Date.now();
-        if (ct === lastPlayTime) {
-          if ((now - lastTimeUpdateTs) / 1000 >= STUCK_THRESHOLD_S) {
-            console.warn('⚠️ Music stream stalled (no progress for ' + STUCK_THRESHOLD_S + 's)');
-            triggerStreamRecovery();
-          }
-        } else {
-          lastPlayTime = ct;
-          lastTimeUpdateTs = now;
-        }
-      }, STUCK_CHECK_INTERVAL_MS);
+      _musicStuckDetector.start();
     }
 
     function stopStuckDetector() {
-      if (stuckCheckInterval) {
-        clearInterval(stuckCheckInterval);
-        stuckCheckInterval = null;
-      }
+      _musicStuckDetector.stop();
     }
 
     function startWaitingTimeout() {
-      stopWaitingTimeout();
-      waitingTimeout = setTimeout(function () {
-        console.warn('⚠️ Music audio waiting >10s, trigger recovery');
-        triggerStreamRecovery();
-      }, 10000);
+      _musicWaitingTimeout.start();
     }
 
     function stopWaitingTimeout() {
-      if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
+      _musicWaitingTimeout.stop();
     }
 
-    
     audio.addEventListener('error', function () {
       var code = audio.error ? audio.error.code : 0;
       if (code === 2 && hasEverPlayed && !isRecovering) {
         console.warn('⚠️ Audio network error, attempting recovery...');
         triggerStreamRecovery();
+        return;
+      }
+      if (errorHandled) return;
+      errorHandled = true;
+      audioEndedNaturally = false;
+      clearAllTimeouts();
+      hideLoadingOverlay();
+      console.error("❌ Audio error [" + code + "]:", audio.error ? audio.error.message : "Gagal memuat audio");
+      if (isFlacNow()) {
+        showLoadingOverlay("⚠️ FLAC tidak dapat dimuat. Coba refresh halaman atau gunakan format lain.");
       }
     });
 
-    
     audio.addEventListener('stalled', function () {
       if (!player.paused && hasEverPlayed && !isRecovering) {
         console.warn('⚠️ Audio stalled event, starting waiting timeout...');
@@ -257,7 +194,7 @@
       if (isRecovering) {
         isRecovering = false;
         recoveryRetryCount = 0;
-        hideReconnectIndicator();
+        _musicOverlay.hide();
         startStuckDetector();
       }
     });
@@ -272,7 +209,7 @@
       loadingTimeout = secondaryTimeout = null;
     }
     function showLoadingOverlay(msg) {
-      hideReconnectIndicator();
+      _musicOverlay.hide();
       const container = document.getElementById("player-container");
       if (!container) return;
       let overlay = document.getElementById("flac-loading-overlay");
@@ -301,7 +238,7 @@
       const overlay = document.getElementById("flac-loading-overlay");
       if (overlay) overlay.style.display = "none";
     }
-    
+
     engine.__armLoadingTimeout = function () {
       metadataLoaded = false;
       errorHandled = false;
@@ -327,20 +264,6 @@
       }, LOADING_TIMEOUT_MS);
     };
 
-    audio.addEventListener("error", function () {
-      if (errorHandled) return;
-      const errCode = audio.error ? audio.error.code : 0;
-      
-      if (errCode === 2 && hasEverPlayed) return;
-      errorHandled = true;
-      audioEndedNaturally = false;
-      clearAllTimeouts();
-      hideLoadingOverlay();
-      console.error("❌ Audio error [" + errCode + "]:", audio.error ? audio.error.message : "Gagal memuat audio");
-      if (isFlacNow()) {
-        showLoadingOverlay("⚠️ FLAC tidak dapat dimuat. Coba refresh halaman atau gunakan format lain.");
-      }
-    });
     audio.addEventListener("loadedmetadata", function () {
       metadataLoaded = true;
       clearAllTimeouts();
@@ -353,7 +276,6 @@
       stopWaitingTimeout();
     });
 
-    
     let rafId = null,
       visLastTs = 0,
       visualizerOn = window.innerWidth >= 1024,
@@ -454,8 +376,6 @@
       updateVisualizerUI(next);
     };
 
-    
-    
     function applyPlayingVisualState(isPlaying) {
       const container = document.getElementById("player-container");
       const vinyl = document.querySelector(".vinyl-wrap .vinyl-spin");
@@ -499,8 +419,7 @@
         if (sec !== lastSecond) {
           lastSecond = sec;
           localStorage.setItem(storageKeyMusic, player.currentTime);
-          
-          
+
           if (sec % 5 === 0) saveAudioState();
         }
       }
@@ -518,7 +437,7 @@
       stopWaitingTimeout();
       hasEverPlayed = false;
       isRecovering = false;
-      hideReconnectIndicator();
+      _musicOverlay.hide();
       const isGenuineEnd =
         audioEndedNaturally ||
         (player.duration > 0 && Math.abs(player.currentTime - player.duration) < 1.5) ||
@@ -538,7 +457,7 @@
         isNavigating = false;
         return;
       }
-      
+
       if (window.meelNavigateView) {
         window.meelNavigateView(target, "watch", {
           onAfterSwap: function () {
@@ -557,17 +476,14 @@
 
   window.meelInitWatchPlayer = function () {
     window.__meelCurrentView = "watch";
-    
-    
-    
+
     if (typeof window.meelRebuildCommentPreview === "function") {
       const _ptxt = document.getElementById("comment-preview-text");
       if (_ptxt && !_ptxt.textContent.trim()) {
         window.meelRebuildCommentPreview();
       }
     }
-    
-    
+
     isMiniPlayerActive = false;
     const engine = window.meelGetAudioEngine();
     const slot = document.getElementById("player-audio-slot");
@@ -579,7 +495,6 @@
     watchUrl = window.location.href;
     storageKeyMusic = "music_pos_" + window.MEEL_MUSIC_CONFIG.id;
 
-    
     engine.mount(slot, { compact: false });
     audio = engine.audio;
     player = engine.player;
@@ -588,8 +503,6 @@
 
     bindEngineOnce(engine);
 
-    
-    
     if (engine.__syncPlayingVisualState) {
       engine.__syncPlayingVisualState(!engine.audio.paused);
     }
@@ -597,11 +510,9 @@
     const globalLoop = "true" === localStorage.getItem(MEEL_KEYS.GLOBAL_LOOP);
     loadEqState();
     updateEqUI();
-    
-    
+
     applyEqToFilters();
 
-    
     let savedActive = false,
       savedTime = 0,
       savedPlaying = false,
@@ -624,21 +535,11 @@
       }
     }
 
-    
-    
     const skipFromIndex = sessionStorage.getItem(MEEL_KEYS.SKIP_RESUME_ONCE) === "true";
     if (skipFromIndex) sessionStorage.removeItem(MEEL_KEYS.SKIP_RESUME_ONCE);
-    
-    
+
     if (skipFromIndex) window.__meelResumeSessionActive = true;
 
-    
-    
-    
-    
-    
-    
-    
     if (isWatchDocFreshLoad) {
       isWatchDocFreshLoad = false;
       savedActive = false;
@@ -646,7 +547,6 @@
       savedPlaying = false;
     }
 
-    
     const isFreshTrack = engine.loadTrack(
       {
         id: window.MEEL_MUSIC_CONFIG.id,
@@ -654,8 +554,7 @@
         isLooping: savedLoop,
       },
       {
-        
-        
+
         autoplay: savedActive ? savedPlaying : false,
         startTime: savedActive ? savedTime : 0,
       },
@@ -665,20 +564,17 @@
     updateVisualizerUI(engine.__vis ? engine.__vis.isOn() : window.innerWidth >= 1024);
 
     if (!isFreshTrack) {
-      
-      
-      
+
       const wantStream = window.MEEL_MUSIC_CONFIG.streamUrl || "";
       const haveSrc = engine.audio.currentSrc || engine.audio.src || "";
       const wantId = String(window.MEEL_MUSIC_CONFIG.id);
-      
+
       let haveId = null;
       try {
         haveId = new URL(haveSrc, window.location.href).searchParams.get("id");
       } catch (e) {}
       if (wantStream && haveSrc && haveId !== null && haveId !== wantId) {
-        
-        
+
         engine.audio.src = wantStream;
         engine.audio.load();
         if (savedActive && savedPlaying) {
@@ -694,28 +590,29 @@
             });
         }
       } else if (savedActive && savedPlaying && engine.audio.paused) {
-        
+
         if (savedTime > 5 && engine.audio.currentTime < 1) {
           engine.audio.currentTime = savedTime;
         }
         engine.audio.play().catch(function () {});
       }
-      
-      
+
       player.loop = engine.audio.loop;
       _applyLoopUI(player.loop);
       return;
     }
 
-    
-    
     engine.setLoop(savedLoop);
     updateLoopUI();
-    
-    
-    
-    
+
     saveAudioState();
+    if (window.meelUpdateMediaSession) {
+      meelUpdateMediaSession({
+        title: window.MEEL_MUSIC_CONFIG.title || "",
+        artist: window.MEEL_MUSIC_CONFIG.artist || "",
+        artwork: window.MEEL_MUSIC_CONFIG.thumbnailUrl || "",
+      });
+    }
     if (engine.__armLoadingTimeout) engine.__armLoadingTimeout();
 
     const modalEl = document.getElementById("resume-modal"),
@@ -723,8 +620,7 @@
       btnRestart = document.getElementById("btn-restart"),
       timeEl = document.getElementById("resume-time");
     if (modalEl && btnResume && btnRestart && timeEl) {
-      
-      
+
       if (skipFromIndex && !savedActive) skipResumeModalOnce = true;
 
       function showResumeModal() {
@@ -746,12 +642,12 @@
           },
           onResume: function (pos) {
             player.currentTime = pos;
-            player.play();
+            player.play().catch(function () {});
           },
           onRestart: function () {
             localStorage.removeItem(storageKeyMusic);
             audio.currentTime = 0;
-            player.play();
+            player.play().catch(function () {});
           },
         });
       }
@@ -771,17 +667,15 @@
           if (needsResume) {
             const shown = showResumeModal();
             if (!shown) {
-              
-              
+
               localStorage.removeItem(storageKeyMusic);
               audio.currentTime = 0;
-              player.play();
+              player.play().catch(function () {});
             }
           } else {
-            
-            
+
             skipResumeModalOnce = false;
-            player.play();
+            player.play().catch(function () {});
           }
         }
       }

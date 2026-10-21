@@ -2,7 +2,6 @@
 require '../../../auth/config.php';
 header('Content-Type: application/json');
 
-
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     die(json_encode([
@@ -11,7 +10,6 @@ if (!isset($_SESSION['user_id'])) {
         "message" => "Anda harus login untuk membuat room multiplayer."
     ]));
 }
-
 
 if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
     http_response_code(403);
@@ -34,7 +32,6 @@ if (!$stmt) {
 }
 $stmt->bind_param("si", $room, $user_id);
 $stmt->execute();
-
 
 GarbageCollector::cleanChessRooms($conn);
 

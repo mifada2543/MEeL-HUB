@@ -42,7 +42,7 @@ Official documentation for **MEeL** — A Personal Media Hub Platform for video 
 | **UpdateManager** | `controllers/system/UpdateManager.php` | CRUD changelog entries (OOP) |
 | **DriveService** | `drive/DriveService.php` | 3 classes: DriveUserContext, DriveStorage, DriveViewRenderer |
 | **Profile Manager** | `controllers/profile/fun-manage.php` | Delete media, pending deletions, cleanup |
-| **Migration System** | `database/migrate.php` | Sync database to latest schema (idempotent, single v1 migration) |
+| **Migration System** | `database/migrate.php` | Sync database to latest schema (idempotent, migrations v1–v5; v1 = consolidation of legacy v1–v15) |
 | **PWA Precache** | `modules/core/SwPrecache.php` | Dynamic service worker precache generator — reads `assets/css/*/manifest.php`, auto `SW_VERSION` from content hash |
 | **PWA Generator** | `sw.js.php` | Service worker generated per request (served as `/sw.js` via `.htaccess` rewrite) |
 | **Autoloader** | `modules/autoload.php` | Class-map autoloading |
@@ -100,8 +100,8 @@ Request: /MEeL/music/beranda?format=ogg
 | `/music/<playlist-name>` | `music/view_playlist.php` (playlist slug route — see below) |
 | `/books/beranda`, `/books/read`, `/books/read-pdf`, `/books/search`, `/books/upload`, `/books/file` | `books/*.php` |
 | `/drive/beranda`, `/drive/upload`, `/drive/delete`, `/drive/download`, `/drive/stream` | `drive/*.php` |
-| `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/manage-action`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profile + public channel grid, tab via query), `profile/channel_more.php` (HTMX fragment), `profile/edit-video.php` (owner, non-admin), `profile/edit-music.php` (owner, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
-| `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat`, `/admin/actions`, `/admin/data` | `admin/*.php` (edit-video/edit-music admin-only), `controllers/admin/*.php` |
+| `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profile + public channel grid, tab via query), `profile/channel_more.php` (HTMX fragment), `profile/edit-video.php` (owner, non-admin), `profile/edit-music.php` (owner, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
+| `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat` | `admin/*.php` (edit-video/edit-music admin-only), `controllers/admin/*.php` |
 | `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
 | `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` *(extension — requires arcade folder installed)* |
 | `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) *(extension)* |
@@ -121,7 +121,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 | File | Description |
 |---|---|
-| `database/schema.sql` | Standalone database schema — import directly via `mysql < database/schema.sql` |
+| `database/schema.sql` | Standalone database schema — import directly via `mysql -u root -p MEeL < database/schema.sql` |
 | `auth/config.example.php` | Entry point template (copy to `config.php`) |
 | `auth/settings.example.php` | Config data template (copy to `settings.php`) |
 | `sw.js.php` | Dynamic service worker generator (served as `/sw.js`) |
@@ -130,16 +130,20 @@ Request: /MEeL/music/beranda?format=ogg
 
 ## 🔧 Recent Changes
 
+- **Infinite Scroll (Video & Music):** The "Load More" buttons on video, music, search results, and watch recommendation sidebars were replaced by auto-load sentinels (`hx-trigger="revealed"` — htmx fires when the element enters the viewport). Responses return cards + a replacement sentinel, ending with an **"Out Of Content · Konten sudah tidak ada lagi"** box. Page-progress text and the `.lm-meta` protocol were removed; `assets/js/music/index/load-more.js` was deleted
+- **Sentinel Retry:** New shared `assets/js/shared/sentinel-retry.js` — re-arms `data-hx-revealed` on failed load-more requests so the next scroll retries; also hides `.rec-sentinel` only after a successful watch recommendation load
+- **SearchEngine Pagination Fix:** `searchVideo()` / `searchMusic()` still compute `total` for empty queries — fixes the bogus "1/1 → 2/1" pagination display
+- **Load-More Scroll Jump Fix:** `isFragmentSwap` guard in `assets/js/music/index/index.js` — `htmx:afterSwap` fires once per swapped element on `outerHTML`, so `bootPlayerIndex()` (including the artist-menu scroll-to-active effect) was invoked per card and yanked the page back to the top during infinite scroll
 - **Centralized paths:** All media storage paths (Video, Music, Books, Drive) managed from `MEEL_HDD_BASE` in `auth/settings.php` — change just 1 line
 - **Standalone database schema:** `database/schema.sql` for quick import
 - **Type hints:** Class properties and constructor parameters now use type hints (`\mysqli`, `int`, `string`, etc.)
 - **Activity Log Integration:** `log_activity()` function integrated at login, logout, upload, and admin actions — full audit trail to `activity_log` table
 - **Admin Activity Log Viewer:** `admin/activity_log.php` page for viewing, filtering, and cleaning audit trails
-- **Database Alignment:** `schema.sql` and `migrate.php` are synchronized — single v1 migration consolidates all schema changes (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, comments indexes, interactions, user_notifications)
+- **Database Alignment:** `schema.sql` and `migrate.php` are synchronized — migration v1 consolidates all schema changes (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, comments indexes, interactions, user_notifications), migration v2 normalizes MEeLCoin state (upload cost minimum 1), v3 adds hot-query indexes + the `comments.video_id` FK, v4 adds the notification coalescing index, v5 adds the `interactions` FKs (user/video/music). ⚠️ Numbers v1–v15 are the **old history** that was redunized into v1 — see [Migration System](modules.md#19-migration-system-databasemigratephp)
 - **Anime Module Removed:** The "Coming Soon" placeholder module has been removed from the codebase
 - **API Rate Limiting:** File-based rate limiter (`modules/auth/RateLimiter.php`) — protects like, comment, upload endpoints from abuse with per-user limits with role-based adjustment (admin=unlimited, member=2x)
 - **Security Module (`modules/auth/`):** Security helpers & classes consolidated into one directory for easy auditing — `helpers/` (authz, csrf, session, stream_auth, mfa, user) + `RateLimiter.php` + `SsrfGuard.php`, loaded via `modules/auth/loader.php` (the legacy `modules/core/helpers.php` shim still works)
-- **Pagination Metadata:** `MediaLibrary` & `BookRepository` now return pagination metadata (`total_pages`, `from`, `to`) — UI displays page info
+- **Pagination Metadata:** `MediaLibrary` & `BookRepository` now return pagination metadata (`total_pages`, `from`, `to`) — drives the infinite-scroll end state (the page-progress text was removed from the UI)
 - **Admin Dashboard Charts:** Chart.js 7-Day Activity Chart — views, uploads, active users in the last 7 days
 - **Player Enhancement:** Auto-next overlay with dark backdrop + hide Plyr replay button + mutual exclusion Auto-Next ↔ Loop
 - **MFA Support:** Multi-Factor Authentication (TOTP) — setup, verify, backup codes, admin reset, brute-force protection (10 attempts → 5 min lockout)
@@ -166,6 +170,19 @@ Request: /MEeL/music/beranda?format=ogg
 - **Error Page Redirect Pattern:** All `die(include __DIR__ . '/err/index.php')` patterns converted to `header('Location: .../err?code=...')` redirects via `meel_base_url_path()` — cleaner, no more inline error rendering
 - **Root `/beranda` Route:** New `/beranda` route at root level — maps to `index.php` (HUB home), consistent with module-level `/module/beranda` scheme
 - **Keyboard Shortcuts Documented:** Video (N=next, I=mini-player) and Music (E=equalizer, V=visualizer, I=mini-player) shortcuts now documented in `introduction.php` and `docs/`
+- **Media Session API:** Video & music players now show artwork/thumbnail in OS media controls (Windows, macOS, Android) via `shared/media-session.js`
+- **Shared Recovery Manager:** Video & music auto-recovery system extracted to `shared/recovery-manager.js` — factory functions `meelCreateStuckDetector()`, `meelCreateWaitingTimeout()`, `meelCreateReconnectOverlay()` replace duplicated inline logic
+- **Upload Handler Dedup:** `meel_handle_upload()` in `modules/core/helpers/upload.php` — centralizes CSRF check, MeelCoin spend/refund, process callback, and activity logging for video & music uploads (~40 LOC saved per module)
+- **MediaLibrary Search Dedup:** Generic `searchMedia(array $cfg)` and `countSearchMedia(array $cfg)` methods — `searchVideo()` and `searchMusic()` are now thin config wrappers (~50 LOC removed)
+- **Asset Version Helpers:** `meel_asset_version()` and `meel_asset_dir_version()` in `modules/core/helpers/url.php` — replace per-file `$__v`/`$__vdir` closures with static-cached global helpers
+- **Music Stream Refactor:** `music/stream.php` rewritten to use `meel_serve_media_file()` from `storage.php` — adds output buffer cleanup (`ob_end_clean` + `ob_implicit_flush`), consistent MIME handling, and range request support (~110 LOC removed)
+- **Description Toggle Fix:** Music description "Selengkapnya" button now works correctly after SPA navigation — `description-toggle.js` added to view-router `DIRECT_SCRIPTS`
+- **Resume Modal Now Visible in Fullscreen:** The "Lanjutkan Sesi?" modal no longer disappears while the user is in fullscreen. Root cause: Plyr creates its own `<div class="plyr">` container *between* `#video-glow-container` and `#main-video-wrapper`, while `fullscreen.css` promotes both to `position:fixed` + `z-index:999999`, so the overlay was painted behind the video area. Fixed with `body.meel-fs-active #resume-modal { z-index: 1000001 }`
+- **Keyboard Guard During Resume Modal:** While the modal is visible, all playback shortcuts (Space, K, ↑↓, L, F, C, 0–9, I, N, A) are disabled — previously the user could still play and seek behind the dialog. `←` `→` select **Lanjut**/**Ulang**, `Enter` or `Space` runs the highlighted choice, `Esc` still exits fullscreen. Enforced by a `window` capture-phase listener in `shared/resume-modal.js` (which pre-empts Plyr's bubble-phase handler) plus a `meelResumeModalActive` flag as a second layer
+- **`S` Shortcut — AI Upscale:** New key in `video/watch/misc.js` calling `window.toggleUpscale()` in `upscaler.js`. It clicks the existing `#plyr-setting-upscale` toggle row so the WebGPU support check, toast, and UI sync stay in one place
+- **`B` Shortcut — Ambient Glow:** `assets/js/video/watch/misc.js` now maps `B` to `window.toggleGlow()` in `player-events.js`, so the ambient glow around the video can be turned on/off from the keyboard without opening the Settings menu. `B` is not a Plyr default shortcut, and it stays locked while the "Lanjutkan Sesi?" modal is open thanks to the `meelResumeModalActive` guard
+- **Modal Semantics & Accessibility:** `#resume-modal` now uses `role="dialog"` + `aria-modal="true"` + `aria-labelledby` / `aria-describedby`, with a visible keyboard focus ring. Focus defaults to the "Lanjut" choice and returns to the player when the modal closes
+- **Modal Countdown Bug:** `countdownTimer` was never `clearInterval()`-ed when the modal was hidden, so the countdown label kept mutating in the DOM for 15 seconds — all timers now go through a single `close()` function
 
 ## 📖 About the Project
 
@@ -181,7 +198,7 @@ Request: /MEeL/music/beranda?format=ogg
 
 | Component | Technology |
 |---|---|
-| Backend | PHP 8.0+, MySQL/MariaDB |
+| Backend | PHP 8.1+, MySQL/MariaDB |
 | Frontend | TailwindCSS, HTMX, Vanilla JS |
 | Media Player | Plyr.js, HLS.js |
 | Transcoding | FFmpeg 6.0+, FFprobe |

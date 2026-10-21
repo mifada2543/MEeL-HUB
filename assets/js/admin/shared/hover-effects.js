@@ -1,8 +1,7 @@
-
 (function () {
   "use strict";
   function initHoverEffects() {
-    
+
     document.querySelectorAll(".admin-table tbody tr").forEach(function (row) {
       row.addEventListener("mouseenter", function () {
         this.style.background = "rgba(255, 255, 255, 0.02)";
@@ -11,7 +10,7 @@
         this.style.background = "transparent";
       });
     });
-    
+
     document.querySelectorAll(".action-btn-edit").forEach(function (btn) {
       btn.addEventListener("mouseenter", function () {
         this.style.background = "#2563eb";

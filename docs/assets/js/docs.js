@@ -77,7 +77,6 @@ function renderNavbar(lang, activeFile) {
 
     if (!linksContainer) return;
 
-    // Build nav links
     let linksHtml = '';
     docs.nav.forEach(([slug, label]) => {
         const active = slug === activeFile ? 'active' : '';
@@ -85,7 +84,6 @@ function renderNavbar(lang, activeFile) {
     });
     linksContainer.innerHTML = linksHtml;
 
-    // Language switcher
     if (langSwitch) {
         langSwitch.href = `?lang=${otherLang}&file=${activeFile}`;
         langSwitch.textContent = `${otherDocs.flag} ${otherDocs.label}`;
@@ -110,13 +108,11 @@ async function loadDoc(lang, file) {
     if (content) content.style.display = 'none';
     if (error) error.style.display = 'none';
 
-    // Update navbar
     renderNavbar(lang, file);
 
     const mdPath = `${lang}/${file}.md`;
 
     try {
-        // Check if marked library is loaded
         if (typeof marked === 'undefined') {
             throw new Error('Markdown parser (marked.js) not loaded. Check network tab to verify the library is accessible.');
         }
@@ -143,7 +139,6 @@ async function loadDoc(lang, file) {
         if (loading) loading.style.display = 'none';
         content.style.display = 'block';
 
-        // Update page title from first h1
         const titleEl = content.querySelector('h1');
         document.title = titleEl
             ? titleEl.textContent.replace(/[:|].*/, '').trim() + ' | MEeL Docs'
@@ -172,7 +167,6 @@ function initDocViewer() {
     loadDoc(params.lang, params.file);
 }
 
-// Auto-init
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('content')) {
         initDocViewer();

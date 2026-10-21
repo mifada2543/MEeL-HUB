@@ -1,4 +1,7 @@
 <?php
+
+/** @var \mysqli $conn */
+
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 require_once '../modules/core/helpers.php';
@@ -15,23 +18,7 @@ if (!is_admin($conn)) {
     exit();
 }
 
-$back_url = '../index.php';
-if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref      = $_SERVER['HTTP_REFERER'];
-    $host     = $_SERVER['HTTP_HOST'];
-    if (parse_url($ref, PHP_URL_HOST) === $host) {
-        $ref_path       = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages = ['stats.php', 'stats', 'content.php', 'content', 'cookies.php', 'cookies', 'analys.php', 'analys', 'edit-music.php', 'edit-music', 'edit-video.php', 'edit-video', 'index.php'];
-        $should_exclude = false;
-        foreach ($excluded_pages as $page) {
-            if (strpos($ref_path, $page) !== false) {
-                $should_exclude = true;
-                break;
-            }
-        }
-        if (!$should_exclude) $back_url = $ref;
-    }
-}
+$back_url = meel_back_url('../index.php', ['stats', 'content', 'cookies', 'analys', 'index.php']);
 
 function meel_remove_media_dir(string $dir, int &$counter, array &$failed): void
 {
@@ -63,31 +50,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $delete_msg = ['type' => 'error', 'text' => 'CSRF Token tidak valid.'];
     } else {
-        $del_id   = (int)($_POST['media_id'] ?? 0);
+        $del_id = (int)($_POST['media_id'] ?? 0);
         $del_type = $_POST['media_type'] ?? '';
 
         if ($del_id > 0 && in_array($del_type, ['video', 'music'])) {
             $del_table = ($del_type === 'video') ? 'video' : 'music';
-
             $stmt_fetch = $conn->prepare("SELECT filename, thumbnail FROM {$del_table} WHERE id = ? LIMIT 1");
             $stmt_fetch->bind_param("i", $del_id);
             $stmt_fetch->execute();
             $media_row = $stmt_fetch->get_result()->fetch_assoc();
             $stmt_fetch->close();
-
             $stmt_del = $conn->prepare("DELETE FROM {$del_table} WHERE id = ?");
             $stmt_del->bind_param("i", $del_id);
-
             if ($stmt_del->execute() && $stmt_del->affected_rows > 0) {
                 $files_deleted = 0;
-                $files_failed  = [];
+                $files_failed = [];
                 if ($media_row) {
                     if ($del_type === 'video') {
-                        $video_base  = meel_media_base_path('video');
-                        $filename    = $media_row['filename'];
-                        $folder_rel  = dirname($filename);
+                        $video_base = meel_media_base_path('video');
+                        $filename = $media_row['filename'];
+                        $folder_rel = dirname($filename);
                         $folder_name = ($folder_rel !== '.' && $folder_rel !== '') ? basename($folder_rel) : '';
-                        $folder_abs  = $video_base . '/video/' . $folder_name;
+                        $folder_abs = $video_base . '/video/' . $folder_name;
                         if ($folder_name !== '' && $folder_name !== '..' && is_dir($folder_abs)) {
                             meel_remove_media_dir($folder_abs, $files_deleted, $files_failed);
                         } elseif ($folder_name !== '' && $folder_name !== '..') {
@@ -95,8 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         }
                         if (
                             !empty($media_row['thumbnail'])
-                            && $media_row['thumbnail'] !== 'default_thumb.jpg'
-                            && $media_row['thumbnail'] !== 'default_thumb.webp'
+                            && !meel_is_default_thumbnail($media_row['thumbnail'])
                         ) {
                             $thumb_abs = $video_base . '/thumbnail/' . $media_row['thumbnail'];
                             if (file_exists($thumb_abs)) {
@@ -108,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             }
                         }
                     } elseif ($del_type === 'music') {
-                        $music_base     = meel_media_base_path('music');
+                        $music_base = meel_media_base_path('music');
                         $music_file_abs = $music_base . '/file/' . $media_row['filename'];
                         if (file_exists($music_file_abs)) {
                             if (@unlink($music_file_abs)) $files_deleted++;
@@ -150,18 +133,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-$sort        = $_GET['sort'] ?? 'views';
-$sort_dir    = strtolower($_GET['dir'] ?? '');
+$sort = $_GET['sort'] ?? 'views';
+$sort_dir = strtolower($_GET['dir'] ?? '');
 $type_filter = $_GET['type'] ?? 'all';
 if (empty($type_filter)) $type_filter = 'all';
-$search      = $_GET['search'] ?? '';
+$search = $_GET['search'] ?? '';
 
 $allowed_sort_columns = [
-    'views'    => 'views',
-    'likes'    => 'likes',
+    'views' => 'views',
+    'likes' => 'likes',
     'dislikes' => 'dislikes',
-    'title'    => 'title',
-    'id'       => 'id',
+    'title' => 'title',
+    'id' => 'id',
 ];
 
 if (!isset($allowed_sort_columns[$sort])) {
@@ -188,21 +171,21 @@ $query_media = "
     ) AS combined_media
     WHERE 1=1";
 $conditions = [];
-$params     = [];
-$types      = '';
+$params = [];
+$types = '';
 
 if (!empty($search)) {
     $conditions[] = "(search_metadata LIKE ? OR id LIKE ?)";
-    $like_param   = '%' . $search . '%';
-    $params[]     = $like_param;
-    $params[]     = $like_param;
-    $types       .= 'ss';
+    $like_param = '%' . $search . '%';
+    $params[] = $like_param;
+    $params[] = $like_param;
+    $types .= 'ss';
 }
 
 if ($type_filter !== 'all') {
     $conditions[] = "media_type = ?";
-    $params[]     = $type_filter;
-    $types       .= 's';
+    $params[] = $type_filter;
+    $types .= 's';
 }
 
 if (!empty($conditions)) {
@@ -237,45 +220,41 @@ while ($rc = $r->fetch_assoc()) {
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MEeL Admin - Media Analytics. Monitor dan kelola seluruh konten video dan musik, lihat statistik views, likes, dan dislikes.">
-    <meta property="og:title" content="MEeL | Media Analytics">
+    <meta name="description" content="MEeL Admin - Analitik Media. Monitor dan kelola seluruh konten video dan musik, lihat statistik views, likes, dan dislikes.">
+    <meta property="og:title" content="MEeL | Analitik Media">
     <meta property="og:description" content="Panel admin MEeL untuk memonitor dan menganalisis statistik konten video dan musik.">
-    <title>MEeL | Media Analytics</title>
+    <title>MEeL | Analitik Media</title>
     <link rel="icon" type="image/png" href="../assets/MEeL.png">
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link rel="stylesheet" href="../assets/css/admin/<?= $__f ?>?v=<?= filemtime(__DIR__ . '/../assets/css/admin/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
     <link rel="stylesheet" href="../assets/css/admin/stats.css?v=<?= filemtime(__DIR__ . '/../assets/css/admin/stats.css') ?>">
     <script>
-    window.addEventListener('pageshow', function(e) {
-        if (e.persisted) { location.reload(); }
-    });
+        window.addEventListener('pageshow', function(e) {
+            if (e.persisted) {
+                location.reload();
+            }
+        });
     </script>
 </head>
 
 <body class="text-gray-300 min-h-screen">
-<!-- reference build: MEeL-C2H5NO2 [1332c720962ac63b] -->
-
+    <!-- reference build: MEeL-C2H5NO2 [1332c720962ac63b] -->
     <?php
-    $is_admin    = true;
-    $page_title  = 'Media Analytics';
-    $media_type  = 'analytics';
+    $is_admin = true;
+    $page_title = 'Analitik Media';
+    $media_type = 'analytics';
     include 'header-admin.php';
     ?>
-
     <div class="max-w-6xl mx-auto px-4 md:px-6 py-8">
-
         <div class="flex items-center gap-4 mb-8">
             <div class="w-12 h-12 rounded-2xl bg-blue-600/15 border border-blue-600/25 flex items-center justify-center shrink-0">
-                <i data-lucide="bar-chart-2" class="text-blue-600" style="width:22px;height:22px;"></i>
+                <i data-lucide="bar-chart-2" class="text-blue-500" style="width:22px;height:22px;"></i>
             </div>
             <div>
-                <h1 class="text-[22px] font-extrabold text-white leading-tight">Media Analytics</h1>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-[#455060] mt-0.5">Monitor & Kelola Seluruh Konten</p>
+                <h1 class="text-[22px] font-extrabold text-white leading-tight">Analitik Media</h1>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-[#455060] mt-0.5">Pantau & Kelola Seluruh Konten</p>
             </div>
         </div>
-
         <?php if ($delete_msg): ?>
             <div class="alert-banner <?= $delete_msg['type'] === 'success' ? 'alert-success' : ($delete_msg['type'] === 'warning' ? 'alert-warning' : 'alert-error') ?>">
                 <i data-lucide="<?= $delete_msg['type'] === 'success' ? 'check-circle' : ($delete_msg['type'] === 'warning' ? 'alert-circle' : 'alert-triangle') ?>" class="w-3.5 h-3.5 shrink-0"></i>
@@ -286,9 +265,9 @@ while ($rc = $r->fetch_assoc()) {
         <div class="flex gap-2.5 flex-wrap mb-6">
             <?php
             $chips = [
-                'all'   => ['label' => 'Semua Media', 'color' => '#2563eb', 'bg' => 'rgba(37,99,235,.1)', 'border' => 'rgba(37,99,235,.2)', 'icon' => 'layers'],
-                'video' => ['label' => 'Video',        'color' => '#ef4444', 'bg' => 'rgba(239,68,68,.1)',  'border' => 'rgba(239,68,68,.2)',  'icon' => 'film'],
-                'music' => ['label' => 'Musik',        'color' => '#f97316', 'bg' => 'rgba(249,115,22,.1)', 'border' => 'rgba(249,115,22,.2)', 'icon' => 'music'],
+                'all' => ['label' => 'Semua Media', 'color' => '#2563eb', 'bg' => 'rgba(37,99,235,.1)', 'border' => 'rgba(37,99,235,.2)', 'icon' => 'layers'],
+                'video' => ['label' => 'Video', 'color' => '#ef4444', 'bg' => 'rgba(239,68,68,.1)', 'border' => 'rgba(239,68,68,.2)', 'icon' => 'film'],
+                'music' => ['label' => 'Musik', 'color' => '#f97316', 'bg' => 'rgba(249,115,22,.1)', 'border' => 'rgba(249,115,22,.2)', 'icon' => 'music'],
             ];
             foreach ($chips as $key => $chip): ?>
                 <a href="?sort=<?= urlencode($sort) ?>&dir=<?= urlencode($sort_dir) ?>&type=<?= urlencode($key) ?>&search=<?= urlencode($search) ?>"
@@ -300,12 +279,11 @@ while ($rc = $r->fetch_assoc()) {
                     </div>
                     <div>
                         <div class="stat-chip-number" style="color:<?= $chip['color'] ?>;"><?= number_format($total_counts[$key]) ?></div>
-                        <div class="stat-chip-label" style="color:#455060;"><?= $chip['label'] ?></div>
+                        <div class="stat-chip-label" style="color:var(--admin-muted);"><?= $chip['label'] ?></div>
                     </div>
                 </a>
             <?php endforeach; ?>
         </div>
-
         <div id="analytics-panel">
             <div class="flex flex-wrap gap-3 mb-5 items-center">
 
@@ -320,7 +298,6 @@ while ($rc = $r->fetch_assoc()) {
                             class="admin-search-input">
                     </form>
                 </div>
-
                 <?php
                 $type_labels = ['all' => 'Semua', 'video' => 'Video', 'music' => 'Musik'];
                 $current_type_label = $type_labels[$type_filter] ?? 'Semua';
@@ -340,7 +317,6 @@ while ($rc = $r->fetch_assoc()) {
                         <?php endforeach; ?>
                     </div>
                 </div>
-
                 <div class="ml-auto flex items-center gap-3">
                     <div class="text-[11px] font-semibold text-[#455060]">
                         <?= $result_media ? $result_media->num_rows : 0 ?> item ditemukan
@@ -352,7 +328,6 @@ while ($rc = $r->fetch_assoc()) {
                     <?php endif; ?>
                 </div>
             </div>
-
             <div class="glass rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,.4)]">
                 <div class="admin-table-wrap">
                     <table class="admin-table">
@@ -391,12 +366,12 @@ while ($rc = $r->fetch_assoc()) {
                                 $row_i = 0;
                                 while ($row = $result_media->fetch_assoc()):
                                     $row_i++;
-                                    $is_video   = ($row['media_type'] === 'video');
-                                    $watch_url  = $is_video ? base_url('/video/watch?v=' . (int)$row['id']) : base_url('/music/watch?v=' . (int)$row['id']);
-                                    $edit_url   = $is_video ? base_url('/admin/edit-video?id=' . (int)$row['id']) : base_url('/admin/edit-music?id=' . (int)$row['id']);
+                                    $is_video = ($row['media_type'] === 'video');
+                                    $watch_url = $is_video ? base_url('/video/watch?v=' . (int)$row['id']) : base_url('/music/watch?v=' . (int)$row['id']);
+                                    $edit_url = $is_video ? base_url('/admin/edit-video?id=' . (int)$row['id']) : base_url('/admin/edit-music?id=' . (int)$row['id']);
                                     $type_color = $is_video ? '#ef4444' : '#f97316';
-                                    $type_bg    = $is_video ? 'rgba(239,68,68,.1)' : 'rgba(249,115,22,.1)';
-                                    $type_bdr   = $is_video ? 'rgba(239,68,68,.2)' : 'rgba(249,115,22,.2)';
+                                    $type_bg = $is_video ? 'rgba(239,68,68,.1)' : 'rgba(249,115,22,.1)';
+                                    $type_bdr = $is_video ? 'rgba(239,68,68,.2)' : 'rgba(249,115,22,.2)';
                             ?>
                                     <tr title="<?= htmlspecialchars($row['title']) ?>">
                                         <td class="td-left" style="max-width:400px;">
@@ -415,12 +390,12 @@ while ($rc = $r->fetch_assoc()) {
                                                 }
                                                 ?>
                                                 <img src="<?= htmlspecialchars($media_thumb) ?>"
-                                                     alt=""
-                                                     class="media-thumb"
-                                                     loading="lazy"
-                                                     width="40" height="40">
+                                                    alt=""
+                                                    class="media-thumb"
+                                                    loading="lazy"
+                                                    width="40" height="40">
                                                 <div>
-                                                    <a href="<?= $watch_url ?>" target="_blank" class="content-title">
+                                                    <a href="<?= $watch_url ?>" target="_blank" rel="noopener" class="content-title">
                                                         <?= htmlspecialchars($row['title']) ?>
                                                     </a>
                                                     <span class="content-id">ID #<?= (int)$row['id'] ?></span>
@@ -466,14 +441,13 @@ while ($rc = $r->fetch_assoc()) {
             </div>
         </div>
     </div>
-
     <div id="delete-modal">
         <div class="modal-box" style="max-width:440px;">
             <div class="modal-icon-wrap">
                 <i data-lucide="trash-2" class="text-red-500" style="width:22px;height:22px;"></i>
             </div>
             <h3 class="modal-title">Hapus Konten?</h3>
-            <p style="font-size:13px;color:#6b7280;margin:0 0 10px;">Anda akan menghapus:</p>
+            <p style="font-size:13px;color:#8b93a1;margin:0 0 10px;">Anda akan menghapus:</p>
             <div class="modal-media-preview">
                 <img id="modal-thumb" src="" alt="" class="modal-thumb-img">
                 <div class="modal-media-info">
@@ -510,9 +484,7 @@ while ($rc = $r->fetch_assoc()) {
             </form>
         </div>
     </div>
-
     <script src="../assets/js/admin/stats.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/stats.js') ?>"></script>
-
 </body>
 
 </html>

@@ -4,10 +4,8 @@ class AdminActivityRepository
 {
     private \mysqli $conn;
 
-    
     private array $where_conditions = ['1=1'];
 
-    
     private array $params = [];
 
     private string $types = '';
@@ -19,13 +17,11 @@ class AdminActivityRepository
         $this->conn = $conn;
     }
 
-    
-
     public function buildFilter(string $action_filter, string $search_q, int $days): void
     {
         $this->where_conditions = ['1=1'];
-        $this->params           = [];
-        $this->types            = '';
+        $this->params = [];
+        $this->types = '';
 
         if ($action_filter !== '') {
             $this->where_conditions[] = 'al.action = ?';
@@ -48,7 +44,6 @@ class AdminActivityRepository
         $this->where_sql = implode(' AND ', $this->where_conditions);
     }
 
-    
     public function clearOlderThan(int $days): int
     {
         $stmt = $this->conn->prepare('DELETE FROM activity_log WHERE created_at < NOW() - INTERVAL ? DAY');
@@ -67,13 +62,11 @@ class AdminActivityRepository
         return $deleted;
     }
 
-    
     public function clearAll(): bool
     {
         return $this->conn->query('TRUNCATE TABLE activity_log') !== false;
     }
 
-    
     public function countFiltered(): int
     {
         $stmt = $this->conn->prepare(
@@ -88,7 +81,6 @@ class AdminActivityRepository
         return $total;
     }
 
-    
     public function fetchPage(int $limit, int $offset)
     {
         $stmt = $this->conn->prepare(
@@ -100,7 +92,7 @@ class AdminActivityRepository
              LIMIT ? OFFSET ?"
         );
         $all_params = array_merge($this->params, [$limit, $offset]);
-        $all_types  = $this->types . 'ii';
+        $all_types = $this->types . 'ii';
         $stmt->bind_param($all_types, ...$all_params);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -108,7 +100,6 @@ class AdminActivityRepository
         return $result;
     }
 
-    
     public function fetchAll(): array
     {
         $stmt = $this->conn->prepare(
@@ -131,7 +122,6 @@ class AdminActivityRepository
         return $rows;
     }
 
-    
     public function getDistinctActions(): array
     {
         $actions = [];
@@ -144,7 +134,6 @@ class AdminActivityRepository
         return $actions;
     }
 
-    
     public function getWeeklyStats(): array
     {
         $res = $this->conn->query(

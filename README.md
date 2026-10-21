@@ -14,7 +14,7 @@
   <sub>Video streaming, musik, e-book, dan file storage — semuanya dari server Anda sendiri. <a href="docs/id/arcade-optional.md">Arcade</a> tersedia sebagai ekstensi terpisah.</sub>
   <br><br>
 
-[![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
+[![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-6.0%2B-007808?style=flat-square&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue?style=flat-square)](LICENSE)
@@ -50,7 +50,7 @@
     </td>
     <td width="50%">
       <h3>🎵 Musik</h3>
-      <p>Pemutar audio untuk MP3, FLAC, OGG, M4A dengan visualizer WebAudio. Pembuatan playlist, antrean cerdas, dan mini-player persisten di bagian bawah layar.</p>
+      <p>Pemutar audio untuk MP3, FLAC, OGG, M4A dengan visualizer WebAudio. Lirik karaoke real-time dengan sinkronisasi timestamp (LRC). Pembuatan playlist, antrean cerdas, dan mini-player persisten di bagian bawah layar.</p>
     </td>
   </tr>
   <tr>
@@ -133,14 +133,14 @@ php tests/check_deploy.php
 
 |              |                                               |
 | ------------ | --------------------------------------------- |
-| **Backend**  | PHP 8.0+ · MySQL/MariaDB · Apache             |
+| **Backend**  | PHP 8.1+ · MySQL/MariaDB · Apache             |
 | **Frontend** | TailwindCSS · HTMX · Vanilla JS               |
 | **Media**    | Plyr.js · HLS.js · FFmpeg · yt-dlp            |
 | **Testing**  | PHPUnit 9.6 · GitHub Actions CI               |
 | **Keamanan** | CSRF · Rate Limiting · MFA · Audit Log · RBAC |
 | **Lainnya**  | PWA · Service Worker · Class-Map Autoloader   |
 
-> Butuh: PHP 8.0+ dengan ekstensi `mysqli`, `pdo_mysql`, `gd`, `intl`, `zip`, `curl` · FFmpeg 6.0+ · Apache 2.4+ dengan `mod_rewrite`
+> Butuh: PHP 8.1+ dengan ekstensi `mysqli`, `pdo_mysql`, `gd`, `intl`, `zip`, `curl` · FFmpeg 6.0+ · Apache 2.4+ dengan `mod_rewrite`
 
 ---
 
@@ -184,7 +184,16 @@ MEeL/
 
 ## 🧪 Testing
 
-> 369+ kasus uji (288 unit + 81 integrasi, fungsional, keamanan) — dijalankan secara otomatis pada setiap push melalui GitHub Actions CI.
+> 600+ kasus uji (560+ unit + 100+ integrasi, plus suite fungsional & keamanan) — dijalankan secara otomatis pada setiap push melalui GitHub Actions CI.
+>
+> Angka di atas diperbarui 2026-10-14. Kalau terlihat melenceng, ukur ulang sendiri — jangan percaya angka yang tertulis:
+>
+> ```bash
+> vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'  | tail -3
+> vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests' | tail -3
+> ```
+>
+> Jumlah test hampir selalu naik seiring waktu; angka yang ditulis manual di dokumen cepat basi.
 
 ```bash
 composer install

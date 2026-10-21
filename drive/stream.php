@@ -18,6 +18,8 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
 
+meel_storage_guard('binary');
+
 $storage = new DriveStorage(DriveStorage::defaultBasePath(), $user);
 
 try {
@@ -26,6 +28,9 @@ try {
         isset($_GET['type']) ? basename($_GET['type']) : null,
         $_GET['scope'] ?? DriveStorage::SCOPE_PUBLIC
     );
+} catch (StorageNotMountedException $exception) {
+    http_response_code(503);
+    exit;
 } catch (RuntimeException $exception) {
     http_response_code(404);
     exit;
@@ -34,19 +39,19 @@ try {
 $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
 $mimeTypes = [
-    'mp4'  => 'video/mp4',
+    'mp4' => 'video/mp4',
     'webm' => 'video/webm',
-    'mkv'  => 'video/x-matroska',
-    'mov'  => 'video/quicktime',
-    'avi'  => 'video/x-msvideo',
-    'm4v'  => 'video/mp4',
-    'jpg'  => 'image/jpeg',
+    'mkv' => 'video/x-matroska',
+    'mov' => 'video/quicktime',
+    'avi' => 'video/x-msvideo',
+    'm4v' => 'video/mp4',
+    'jpg' => 'image/jpeg',
     'jpeg' => 'image/jpeg',
-    'png'  => 'image/png',
-    'gif'  => 'image/gif',
+    'png' => 'image/png',
+    'gif' => 'image/gif',
     'webp' => 'image/webp',
-    'pdf'  => 'application/pdf',
-    'txt'  => 'text/plain; charset=utf-8',
+    'pdf' => 'application/pdf',
+    'txt' => 'text/plain; charset=utf-8',
 ];
 $audioExts = ['mp3', 'm4a', 'ogg', 'opus', 'flac', 'wav', 'aac'];
 $mimeType = $mimeTypes[$ext] ?? (in_array($ext, $audioExts, true) ? get_audio_mime_type($ext) : 'application/octet-stream');
@@ -71,6 +76,11 @@ header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
 header('X-Content-Type-Options: nosniff');
+
+if (meel_xsendfile_ready($file['path'])) {
+    header('X-Sendfile: ' . meel_xsendfile_header($file['path']));
+    exit;
+}
 
 if (isset($_SERVER['HTTP_RANGE'])) {
     $c_start = $start;

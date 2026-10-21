@@ -1,12 +1,6 @@
 /** MEeL - Media Hub Platform
  * @copyright Copyright (C) 2026 Mifada
  * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
-/*
- * upload/upload.js — JS halaman music/upload.php: drop-zone handler (audio & cover), overlay upload (progress manual), drag-and-drop, dan auto-fill metadata dari file audio via auto_metadata.php.
- * Depends on: shared/upload-progress.js (meelUploadProgress)
- * */
-// True jika user memilih cover manual — Auto-fill TIDAK menimpa cover manual
-// (konsisten dgn prioritas cover di Uploader::processMusic: manual > embedded).
 let coverManual = false;
 function handleAudioFile(input) {
   if (!input.files || !input.files[0]) return;
@@ -17,7 +11,7 @@ function handleAudioFile(input) {
 }
 function handleCoverFile(input) {
   if (!input.files || !input.files[0]) return;
-  coverManual = true; // pilihan manual — Auto-fill tidak boleh menimpa
+  coverManual = true;
   const reader = new FileReader();
   reader.onload = function (e) {
     const preview = document.getElementById("cover-preview");
@@ -48,11 +42,10 @@ function handleSubmit() {
   btn.style.opacity = ".5";
   btn.style.pointerEvents = "none";
   overlay.classList.add("active");
-  // Animasi progress-bar via helper bersama shared/upload-progress.js
   const fileSizeMB = audioInput.files[0]
     ? audioInput.files[0].size / 1024 / 1024
     : 20;
-  const baseDelay = Math.max(2000, Math.min(fileSizeMB * 200, 18000)); // 2s–18s
+  const baseDelay = Math.max(2000, Math.min(fileSizeMB * 200, 18000));
   window.meelUploadProgress({
     phases: [
       {
@@ -115,8 +108,6 @@ coverZone.addEventListener("drop", (e) => {
     handleCoverFile(coverInput);
   }
 });
-/** Konversi base64 (JPEG dari server) menjadi FileList utk input file.
- * Dipakai supaya cover hasil Auto-fill benar-benar terupload (bukan cuma preview). */
 function coverFromBase64(b64) {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
@@ -128,8 +119,6 @@ function coverFromBase64(b64) {
   dt.items.add(file);
   return dt.files;
 }
-/** Auto-fill metadata dari file audio via ffprobe di server.
- * Upload file ke auto_metadata.php → parse response → isi form + cover. */
 function autoFillMetadata() {
   const audioInput = document.getElementById("audio-input");
   if (!audioInput.files || !audioInput.files[0]) {
@@ -137,7 +126,8 @@ function autoFillMetadata() {
       title: "Pilih file dulu!",
       text: "Silakan pilih file audio terlebih dahulu sebelum menggunakan Auto-fill.",
       icon: "warning",
-      confirmButtonColor: "#f97316",
+      confirmButtonText: "Mengerti",
+      confirmButtonColor: "#c2410c",
       background: "#0e1118",
       color: "#fff",
     });
@@ -148,7 +138,6 @@ function autoFillMetadata() {
   btn.innerHTML = '<div class="auto-spinner"></div> Memproses...';
   const formData = new FormData();
   formData.append("audio", audioInput.files[0]);
-  // Sertakan CSRF token (di-verify server di auto_metadata.php)
   const csrfInput = document.querySelector('input[name="csrf_token"]');
   if (csrfInput && csrfInput.value) {
     formData.append("csrf_token", csrfInput.value);
@@ -173,7 +162,6 @@ function autoFillMetadata() {
           document.getElementById("f-album").value = data.album.trim();
         if (hasDesc)
           document.getElementById("f-desc").value = data.description.trim();
-        // Isi cover art dari metadata (hanya jika user belum pilih cover manual)
         if (data.cover && data.cover.length > 0 && !coverManual) {
           const preview = document.getElementById("cover-preview");
           const iconWrap = document.getElementById("cover-icon-wrap");
@@ -186,8 +174,6 @@ function autoFillMetadata() {
           label.textContent = "Cover dari metadata";
           sub.textContent = "";
           zone.classList.add("has-file");
-          // Persist ke file input agar cover benar-benar ikut terupload saat submit
-          // (PRIORITAS 1 di Uploader::processMusic: thumbnail dari form).
           const coverInput = document.getElementById("cover-input");
           coverInput.files = coverFromBase64(data.cover);
         }
@@ -196,7 +182,8 @@ function autoFillMetadata() {
             title: "Metadata tidak ditemukan",
             text: "File ini tidak memiliki metadata ID3/FLAC yang bisa dibaca.",
             icon: "info",
-            confirmButtonColor: "#f97316",
+            confirmButtonText: "Mengerti",
+            confirmButtonColor: "#c2410c",
             background: "#0e1118",
             color: "#fff",
           });
@@ -205,7 +192,7 @@ function autoFillMetadata() {
             title: "Metadata ditemukan!",
             text: "Formulir telah diisi otomatis dari metadata file audio.",
             icon: "success",
-            confirmButtonColor: "#f97316",
+            confirmButtonColor: "#c2410c",
             background: "#0e1118",
             color: "#fff",
             timer: 2000,
@@ -217,7 +204,8 @@ function autoFillMetadata() {
           title: "Gagal",
           text: data.message || "Tidak dapat membaca metadata dari file ini.",
           icon: "error",
-          confirmButtonColor: "#f97316",
+          confirmButtonText: "Mengerti",
+          confirmButtonColor: "#c2410c",
           background: "#0e1118",
           color: "#fff",
         });
@@ -226,10 +214,11 @@ function autoFillMetadata() {
     .catch((err) => {
       console.error("Auto-metadata error:", err);
       Swal.fire({
-        title: "Error",
+        title: "Kesalahan",
         text: "Terjadi kesalahan koneksi saat memproses metadata.",
         icon: "error",
-        confirmButtonColor: "#f97316",
+        confirmButtonText: "Mengerti",
+        confirmButtonColor: "#c2410c",
         background: "#0e1118",
         color: "#fff",
       });

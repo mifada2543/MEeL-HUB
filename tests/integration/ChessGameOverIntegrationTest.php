@@ -1,5 +1,4 @@
 <?php
-// Arcade = modul opsional: lewati seluruh suite bila foldernya tidak ada.
 if (!is_file(MEEL_ROOT . '/arcade/chess/controller/chess_helpers.php')) {
     echo 'arcade tidak terpasang — ChessGameOverIntegrationTest dilewati.' . PHP_EOL;
     return;
@@ -10,7 +9,6 @@ require_once __DIR__ . '/ChessTestCase.php';
 use PHPUnit\Framework\TestCase;
 
 /**
- * @requires extension mysqli
  * @group integration
  * @covers chess_record_game_over
  * @covers chess_has_terminal_event
@@ -18,7 +16,7 @@ use PHPUnit\Framework\TestCase;
  */
 class ChessGameOverIntegrationTest extends ChessTestCase
 {
-    
+
     private function insertEvent(string $code, string $type, string $color = 'w', string $reason = null): void
     {
         $extra = $reason !== null ? ['reason' => $reason] : [];
@@ -38,7 +36,6 @@ class ChessGameOverIntegrationTest extends ChessTestCase
         return 'GO' . strtoupper(substr(uniqid('', true), -6));
     }
 
-    
     private function countEvents(string $code, string $type): int
     {
         $stmt = $this->conn->prepare(
@@ -53,7 +50,6 @@ class ChessGameOverIntegrationTest extends ChessTestCase
         return (int) $row['n'];
     }
 
-    
     private function lastGameOverData(string $code): ?array
     {
         $stmt = $this->conn->prepare(
@@ -69,12 +65,11 @@ class ChessGameOverIntegrationTest extends ChessTestCase
         return $row ? json_decode($row['move_data'], true) : null;
     }
 
-    
     public function testValidCheckmateAfterWhiteMoveRecordsBlackLoser(): void
     {
         $code = $this->newCode();
         $this->insertRoom($code);
-        $this->insertMove($code, 'w'); 
+        $this->insertMove($code, 'w');
 
         $result = chess_record_game_over($this->conn, $code, 'b', 'checkmate');
 
@@ -91,7 +86,7 @@ class ChessGameOverIntegrationTest extends ChessTestCase
     {
         $code = $this->newCode();
         $this->insertRoom($code);
-        $this->insertMove($code, 'b'); 
+        $this->insertMove($code, 'b');
 
         $result = chess_record_game_over($this->conn, $code, 'w', 'stalemate');
 
@@ -105,7 +100,7 @@ class ChessGameOverIntegrationTest extends ChessTestCase
     {
         $code = $this->newCode();
         $this->insertRoom($code);
-        $this->insertMove($code, 'w'); 
+        $this->insertMove($code, 'w');
 
         $result = chess_record_game_over($this->conn, $code, 'w', 'checkmate');
 
@@ -117,7 +112,7 @@ class ChessGameOverIntegrationTest extends ChessTestCase
     public function testGameOverWithoutAnyMoveIsRejected(): void
     {
         $code = $this->newCode();
-        $this->insertRoom($code); 
+        $this->insertRoom($code);
 
         $result = chess_record_game_over($this->conn, $code, 'b', 'checkmate');
 
@@ -152,7 +147,6 @@ class ChessGameOverIntegrationTest extends ChessTestCase
         $this->assertSame(0, $this->countEvents($code, 'game_over'));
     }
 
-    
     public function testDuplicateGameOverIsRejected(): void
     {
         $code = $this->newCode();
@@ -210,7 +204,6 @@ class ChessGameOverIntegrationTest extends ChessTestCase
         $this->assertSame(0, $this->countEvents($code, 'game_over'));
     }
 
-    
     public function testHasTerminalEventReflectsGameState(): void
     {
         $code = $this->newCode();
@@ -232,7 +225,6 @@ class ChessGameOverIntegrationTest extends ChessTestCase
         $this->insertMove($code, 'w');
         $this->assertSame('w', chess_last_move_color($this->conn, $code));
 
-        
         $this->insertEvent($code, 'draw_offer', 'w');
         $this->assertSame('w', chess_last_move_color($this->conn, $code));
     }

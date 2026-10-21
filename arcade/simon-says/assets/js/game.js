@@ -29,14 +29,14 @@ const gameState = {
 
 let sequence = [];
 let inputIdx = 0;
-let mode = "idle"; 
+let mode = "idle";
 let litPad = -1;
 let timers = [];
 let audioCtx = null;
 
 let glowDecay = 0;
 let frameCount = 0;
-let roundSplash = 0; 
+let roundSplash = 0;
 
 const pad = (n) => String(n).padStart(5, "0");
 
@@ -51,7 +51,6 @@ function scorePop() {
   void el.offsetWidth;
   el.classList.add("score-pop");
 }
-
 
 function beep(freq, dur = 0.16, type = "sine") {
   try {
@@ -68,14 +67,13 @@ function beep(freq, dur = 0.16, type = "sine") {
     osc.start();
     osc.stop(audioCtx.currentTime + dur);
   } catch (_) {
-    
+
   }
 }
 
 function buzzWrong() {
   beep(110, 0.4, "sawtooth");
 }
-
 
 function clearTimers() {
   timers.forEach(clearTimeout);
@@ -116,7 +114,7 @@ function playSequence() {
 
 function nextRound() {
   sequence.push(Math.floor(Math.random() * 4));
-  roundSplash = 1.0; 
+  roundSplash = 1.0;
   playSequence();
 }
 
@@ -139,7 +137,6 @@ function startGame() {
   gos.style.opacity = "0";
   gos.style.pointerEvents = "none";
 
-  
   timers.push(setTimeout(nextRound, 600));
 }
 
@@ -184,14 +181,13 @@ function handlePad(idx) {
   }
   inputIdx++;
   if (inputIdx === sequence.length) {
-    
+
     gameState.score++;
     scorePop();
     renderHUD();
     timers.push(setTimeout(nextRound, 900));
   }
 }
-
 
 function roundRect(x, y, w, h, r) {
   ctx.beginPath();
@@ -209,7 +205,7 @@ function draw() {
 
   PADS.forEach((p, i) => {
     const lit = litPad === i;
-    
+
     const glow = lit ? Math.max(glowDecay, 0.55) : glowDecay * 0.9;
     ctx.save();
     if (glow > 0.05) {
@@ -217,7 +213,7 @@ function draw() {
       ctx.shadowBlur = 34 * glow;
     }
     const col = lit ? p.color : p.dark;
-    
+
     ctx.fillStyle = lit
       ? col
       : `rgb(${Math.round(18 + (34 - 18) * glow)}, ${Math.round(40 + (92 - 40) * glow)}, ${Math.round(18 + (84 - 18) * glow)})`;
@@ -232,7 +228,6 @@ function draw() {
     }
   });
 
-  
   if (roundSplash > 0 && gameState.isPlaying && !gameState.isGameOver) {
     const a = Math.min(1, roundSplash * 2.5);
     ctx.save();
@@ -248,7 +243,6 @@ function draw() {
     ctx.restore();
   }
 
-  
   if (gameState.isPlaying && !gameState.isGameOver) {
     const label = `RONDE ${gameState.score + 1}`;
     ctx.font = 'bold 11px "Press Start 2P", monospace';
@@ -265,13 +259,12 @@ function draw() {
 
 function gameLoop() {
   frameCount++;
-  
+
   if (glowDecay > 0) glowDecay = Math.max(0, glowDecay - 0.06);
   if (roundSplash > 0) roundSplash -= 1 / 60;
   draw();
   requestAnimationFrame(gameLoop);
 }
-
 
 function padFromPointer(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
@@ -338,7 +331,6 @@ document.getElementById("resetScoreBtn").addEventListener("click", () => {
     }
   });
 });
-
 
 renderHUD();
 gameLoop();

@@ -1,13 +1,11 @@
 <?php
 
-
 if (!function_exists('get_csrf_token')) {
 function get_csrf_token(): string
 {
     return $_SESSION['csrf_token'] ?? '';
 }
 }
-
 
 if (!function_exists('verify_csrf_token')) {
 function verify_csrf_token(?string $token = null): bool

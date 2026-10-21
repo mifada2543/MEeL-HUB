@@ -1,11 +1,8 @@
 /* reference build: MEeL-C3H7NO2S [20fcfdefc875d5c3] */
-
-
-
-
 (function () {
   "use strict";
-  if (document.readyState !== "loading") return;
+  if (window.__meelUpLoaded) return;
+  window.__meelUpLoaded = true;
   var src =
     (document.currentScript && document.currentScript.src) ||
     (function () {
@@ -17,6 +14,9 @@
   var qs = m ? "?v=" + encodeURIComponent(m[1]) : "";
   var files = ["init.js", "url-preview.js", "submit.js"];
   for (var i = 0; i < files.length; i++) {
-    document.write('<script src="' + base + files[i] + qs + '"><\/script>');
+    var s = document.createElement("script");
+    s.src = base + files[i] + qs;
+    s.async = false;
+    document.head.appendChild(s);
   }
 })();

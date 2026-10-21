@@ -3,7 +3,6 @@ require '../../../auth/config.php';
 require_once __DIR__ . '/chess_helpers.php';
 header('Content-Type: application/json');
 
-
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     die(json_encode([
@@ -13,7 +12,6 @@ if (!isset($_SESSION['user_id'])) {
     ]));
 }
 
-
 if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
     http_response_code(403);
     die(json_encode([
@@ -22,7 +20,7 @@ if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
     ]));
 }
 
-$room   = $_POST['room'] ?? '';
+$room = $_POST['room'] ?? '';
 $action = $_POST['action'] ?? '';
 $user_id = (int)$_SESSION['user_id'];
 
@@ -119,10 +117,10 @@ $turn = $lastMoveColor ? ($lastMoveColor === 'w' ? 'b' : 'w') : 'w';
 
 $lastEv = chess_last_event($conn, $room);
 $pendingOffer = false;
-$pendingBy    = null;
+$pendingBy = null;
 if ($lastEv && $lastEv['type'] === 'draw_offer') {
     $pendingOffer = true;
-    $pendingBy    = $lastEv['color'];
+    $pendingBy = $lastEv['color'];
 }
 
 if ($action === 'draw_offer') {

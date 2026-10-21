@@ -33,7 +33,7 @@ Installer otomatis yang menjalankan sebagian besar langkah panduan ini dalam sat
 
 Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
 
-1. **Cek dependency** — PHP 8.0+ dengan ekstensi `mysqli`, `pdo_mysql`,
+1. **Cek dependency** — PHP 8.1+ dengan ekstensi `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl`, plus
    MariaDB/MySQL; diinstall via apt bila perlu (`--skip-apt` untuk melewati).
 2. **Setup database** — buat database + import `database/schema.sql` (baris
@@ -68,7 +68,7 @@ Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
 
 | Komponen | Versi | Keterangan |
 |---|---|---|
-| **PHP** | 8.0+ | **8.1+** sangat disarankan |
+| **PHP** | **8.1+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Wajib `mod_rewrite` |
 | **FFmpeg** | 6.0+ | Untuk HLS & transcoding |
@@ -153,12 +153,12 @@ cd MEeL
 > **📁 File skema database sudah tersedia di [`database/schema.sql`](../../database/schema.sql).**
 > Setelah impor, jalankan migrasi untuk menyelesaikan setup.
 
-> ⚠️ `schema.sql` meng-hardcode `CREATE DATABASE IF NOT EXISTS \`MEeL\`` + `USE \`MEeL\`;` — impor manual (CLI/phpMyAdmin) selalu menargetkan database bernama `MEeL`. `install.sh` menulis ulang kedua baris itu sesuai nama DB konfigurasi, jadi nama DB non-default (mis. untuk staging) aman dipakai lewat installer.
+> ⚠️ `schema.sql` **tidak** memuat `CREATE DATABASE` / `USE`. Nama database wajib disebut di baris perintah — inilah yang mencegah impor mendarat diam-diam di database yang salah. Untuk nama DB selain `MEeL`, sebutkan nama itu langsung di perintah; `install.sh` memakai cara yang sama.
 
 #### Opsi A — Via MySQL CLI (cepat):
 
 ```bash
-mysql -u root -p < database/schema.sql
+mysql -u root -p MEeL < database/schema.sql
 ```
 
 #### Opsi B — Via MySQL prompt:
@@ -167,6 +167,8 @@ mysql -u root -p < database/schema.sql
 mysql -u root -p
 ```
 ```sql
+CREATE DATABASE IF NOT EXISTS `MEeL` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `MEeL`;
 SOURCE /path/ke/MEeL/database/schema.sql;
 ```
 
@@ -183,6 +185,8 @@ cd /opt/lampp/htdocs/MEeL/auth
 cp settings.example.php settings.php
 cp config.example.php config.php
 ```
+
+> 💡 `install.sh` menyalakan `chmod 640` untuk `auth/settings.php` **hanya bila variabel `$CAN_ELEVATE` terisi** (privilege elevation terdeteksi) — di instalasi baru tanpa privilege, file tetap default dan konfigurasi DB tidak pernah dipojokkan ke world-readable.
 
 Edit `auth/settings.php`:
 ```php
@@ -238,18 +242,20 @@ define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');
 Repositori men-track `books/upload`, `music/upload`, dan `video/upload` sebagai folder nyata (placeholder `.gitkeep` + `.htaccess` hardening) — storage fallback bawaan. **Tidak ada symlink yang di-commit atau diperlukan.** File media disimpan di bawah `MEEL_HDD_BASE` (via konstanta turunan `MEEL_HDD_*_UPLOAD`) dan disajikan lewat **endpoint PHP** yang dipetakan oleh **internal rewrite** di `.htaccess` root:
 
 ```apache
-RewriteRule ^video/upload/(.+)$ video/stream.php?f=$1 [L,QSA,B]
-RewriteRule ^music/upload/(.+)$ music/file.php?f=$1 [L,QSA,B]
-RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [L,QSA,B]
+<IfModule mod_rewrite.c>
+    RewriteRule ^video/upload/(.+)$ video/stream.php?f=$1 [END,QSA,B]
+    RewriteRule ^music/upload/(.+)$ music/file.php?f=$1 [END,QSA,B]
+    RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [END,QSA,B]
+</IfModule>
 ```
 
-URL di browser tetap `.../upload/...` (segmen HLS relatif seperti `.ts` tetap resolve dengan benar), tetapi Apache secara internal meneruskan request ke endpoint, yang me-resolve file asli via `meel_media_base_path()`. Flag `B` meng-escape backreference sehingga nama file yang mengandung spasi atau karakter khusus tetap lolos rewrite tanpa merusak query string:
+URL di browser tetap `.../upload/...` (segmen HLS relatif seperti `.ts` tetap resolve dengan benar), tetapi Apache secara internal meneruskan request ke endpoint, yang me-resolve file asli via `meel_media_base_path()`. Rule-rule ini dibungkus `<IfModule mod_rewrite.c>` dan ditempatkan **sebelum** routing front controller (`router.php`) — pengecualian eksplisit agar request streaming/range langsung mengenai endpoint tanpa lewat router. Flag `END` menghentikan seluruh proses rewrite (bukan hanya ronde saat ini, beda dengan `L`), dan flag `B` meng-escape backreference sehingga nama file yang mengandung spasi atau karakter khusus tetap lolos rewrite tanpa merusak query string:
 
 - `MEEL_HDD_*_UPLOAD` terdefinisi → file dibaca dari path HDD;
 - tidak terdefinisi → file dibaca dari folder fallback repo
   `<root>/{module}/upload`.
 
-Endpoint menerapkan proteksi path traversal, whitelist ekstensi, dukungan Range (206 — diperlukan untuk HLS `.ts` dan video besar), serta referer gate untuk HLS video (anti-hotlink). Pemutaran audio memakai `music/stream?id=...` (otorisasi session + referer gate ketat; akselerasi X-Sendfile opsional — lihat [mod_xsendfile](#aktifkan-mod_xsendfile-opsional--untuk-akselerasi-streaming)).
+Endpoint menerapkan proteksi path traversal, whitelist ekstensi, dukungan Range (206 — diperlukan untuk HLS `.ts` dan video besar), serta referer gate untuk HLS video (anti-hotlink). Seluruh module (video, music, books, drive) juga mendukung akselerasi X-Sendfile opsional dengan fallback otomatis — lihat [mod_xsendfile](#aktifkan-mod_xsendfile-opsional--untuk-akselerasi-streaming). Pemutaran audio memakai `music/stream?id=...` (otorisasi session + referer gate ketat).
 
 `.gitignore` secara eksplisit memblokir commit symlink dengan nama folder ini (sebelumnya pernah ter-commit symlink absolut `/media/<user>/...` yang membocorkan username OS dan broken di mesin lain).
 
@@ -289,7 +295,10 @@ mkdir -p "$BASE"/video/upload/video "$BASE"/video/upload/thumbnail
 mkdir -p "$BASE"/music/upload/file   "$BASE"/music/upload/thumbnail
 mkdir -p "$BASE"/books/upload/manga  "$BASE"/books/upload/pdf "$BASE"/books/upload/thumbnail
 mkdir -p "$BASE"/drive/public "$BASE"/drive/private_admins
+touch "$BASE"/.meel_mount
 ```
+
+`.meel_mount` adalah **penanda volume ter-mount**: dibuat `install.sh`, diblokir `.gitignore`, dan dibaca `meel_storage_ready()` untuk membedakan volume yang benar-benar ter-mount dengan folder kosong sisa di mountpoint. Tanpa penanda, folder storage yang kosong dianggap *belum ter-mount* dan semua halaman Drive/media jatuh ke layar aman `err/?code=storage` (HTTP 503) alih-alih crash.
 
 #### 3. Tidak ada symlink yang perlu dibuat
 
@@ -416,16 +425,23 @@ mod_xsendfile mempercepat streaming file besar (FLAC 33MB+, MKV 4K) dengan membi
    ```apache
    LoadModule xsendfile_module modules/mod_xsendfile.so
 
+   # Kernel sendfile: opsi, mempercepat pengiriman file statis oleh Apache
+   EnableSendfile on
+
    <IfModule xsendfile_module>
        XSendFile on
        # File media kini dibaca langsung dari storage terpusat (MEEL_HDD_BASE),
        # bukan dari folder webroot — whitelist path HDD-nya:
        XSendFilePath "/media/<user>/MEeL/media"
-       XSendFilePath "/opt/lampp/htdocs/MEeL/data_drive"
+       # Fallback storage di webroot + output transcode sementara:
+       XSendFilePath "/opt/lampp/htdocs/MEeL"
+       XSendFilePath "/dev/shm/meel"
    </IfModule>
    ```
 
-   > ⚠️ `XSendFilePath` harus mencakup path tempat file media sebenarnya berada (nilai `MEEL_HDD_BASE` di `auth/settings.php`). Sejak refactor portabilitas, `music/upload` dkk adalah folder nyata di repo (bukan symlink), jadi path webroot lama seperti `/opt/lampp/htdocs/MEeL/music/upload/file` BUKAN lagi lokasi file — hanya path HDD yang benar. Jika `XSendFilePath` tidak mencakup storage, Apache mengembalikan 404 "Object not found" saat streaming (lihat [5a. Media Storage](#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
+   > ⚠️ `XSendFilePath` harus mencakup path tempat file media sebenarnya berada (nilai `MEEL_HDD_BASE` di `auth/settings.php`) — termasuk `/dev/shm/meel` untuk output transcode. Sejak refactor portabilitas, `music/upload` dkk adalah folder nyata di repo (bukan symlink), jadi path webroot lama seperti `/opt/lampp/htdocs/MEeL/music/upload/file` BUKAN lagi lokasi file — hanya path HDD yang benar.
+   >
+   > ✅ Jika `XSendFilePath` tidak mencakup storage, **streaming tidak rusak**: aplikasi membaca `XSendFilePath` dari konfigurasi Apache dan hanya mengirim header `X-Sendfile` untuk path yang di-whitelist — selain itu otomatis fallback ke streaming PHP (hanya kehilangan akselerasi).
 
 5. Restart Apache:
    ```bash
@@ -485,7 +501,7 @@ Migration bersifat **idempotent** — aman dijalankan berulang kali. Mensync dat
 
 > 💡 **Ekstensi arcade (MEeL!Mania, Chess, dll.) punya migration DB sendiri** — tabel `rooms`, `moves`, `arcade_song` & `arcade_score` dibuat lewat `arcade/migrate.php`, **bukan** bagian dari `database/migrate.php`. Install opsional:
 
-> 💡 **Ekstensi Arcade (MEeL!Mania, Chess, dll.) punya migrasi DB sendiri** — tabel `rooms`, `moves`, `arcade_song` & `arcade_score` dibuat lewat `arcade/migrate.php`, **bukan** bagian dari `database/migrate.php` (v1–v15). Install opsional:
+> 💡 **Ekstensi Arcade (MEeL!Mania, Chess, dll.) punya migrasi DB sendiri** — tabel `rooms`, `moves`, `arcade_song` & `arcade_score` dibuat lewat `arcade/migrate.php`, **bukan** bagian dari `database/migrate.php`. Install opsional:
 > ```bash
 > php arcade/migrate.php
 > ```
@@ -497,10 +513,10 @@ Untuk download dari YouTube dan platform lain, ekspor cookie browser:
 1. Install ekstensi [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
 2. Login ke YouTube di browser
 3. Ekspor cookies ke format Netscape
-4. Simpan sebagai `cookies.txt` di root proyek:
+4. Simpan sebagai `cookies.txt` di `temp/` (folder terproteksi `.htaccess`; file lama di root otomatis dimigrasikan):
 
 ```bash
-cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/cookies.txt
+cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 ```
 
 ---

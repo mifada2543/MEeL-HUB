@@ -1,32 +1,29 @@
 <?php
-/** MEeL-HUB — Contoh Konfigurasi Server (Template)
- * Copy file ini ke settings.php dan sesuaikan dengan environment Anda:
- * cp auth/settings.example.php auth/settings.php
- * File ini HANYA memuat data konfigurasi (DB credentials + MEEL_*
- * constants) — tanpa session, header, atau logic lain.
- */
+// Contoh konfigurasi server: cp settings.example.php settings.php lalu isi nilai.
+// Hanya data — tanpa session, header, atau logic.
 
 // define('MEEL_ENV', 'production');
-// define('MEEL_ENV', 'development');
+// define('APP_DEBUG', true);   // guard error_log di controllers
 
-// Guard error_log di controllers (pola: if (defined('APP_DEBUG') && APP_DEBUG)).
-// define('APP_DEBUG', true); // paksa aktif (debugging)
-// define('APP_DEBUG', false); // paksa nonaktif
-
-if (!isset($server))   $server   = "localhost";
-if (!isset($username)) $username = "root";
-if (!isset($password)) $password = "";
-if (!isset($db))       $db       = "MEeL";
+// Kredensial database. MEEL_DB_* = override untuk CI/container; `?:` dipakai
+// supaya env yang belum di-set tidak berubah jadi string kosong.
+if (!isset($server))   $server   = (getenv('MEEL_DB_HOST') ?: "localhost");
+if (!isset($username)) $username = (getenv('MEEL_DB_USER') ?: "root");
+if (!isset($password)) $password = (getenv('MEEL_DB_PASS') ?: "");
+if (!isset($db))       $db       = (getenv('MEEL_DB_NAME') ?: "MEeL");
 
 if (!defined('MEEL_HOST')) {
     define('MEEL_HOST', $_SERVER['HTTP_HOST'] ?? '');
 }
 
-// TRUSTED PROXY (CEGAH IP SPOOFING)
-// (mis. Cloudflare, Nginx reverse proxy). Jika diset true padahal server
-// diakses langsung, attacker bisa memalsukan IP untuk bypass IP-ban atau
+// TRUSTED PROXY — cegah IP spoofing: header proxy HANYA dipercaya bila REMOTE_ADDR ada di MEEL_TRUSTED_PROXIES.
+// Diset true padahal server diakses langsung → attacker bisa memalsukan IP untuk bypass IP-ban.
 if (!defined('MEEL_TRUST_PROXY_HEADERS')) {
     define('MEEL_TRUST_PROXY_HEADERS', false);
+}
+
+if (!defined('MEEL_TRUSTED_PROXIES')) {
+    define('MEEL_TRUSTED_PROXIES', ['127.0.0.1', '::1']);
 }
 
 if (!defined('MEEL_FFMPEG_PATH')) {
@@ -52,8 +49,11 @@ if (!defined('MEEL_HDD_BASE')) {
     define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
     define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
     define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
+}
 
-    // Aktifkan jika mod_xsendfile sudah terinstall di Apache.
+// Aktifkan hanya jika mod_xsendfile sudah terinstall & terkonfigurasi di Apache
+// (lihat docs/id/installation.md → "Aktifkan mod_xsendfile").
+if (!defined('MEEL_USE_XSENDFILE')) {
     define('MEEL_USE_XSENDFILE', false);
 }
 

@@ -10,6 +10,8 @@ Panduan untuk pengembang yang ingin berkontribusi atau memahami standar koding d
 - [Standar Koding](#standar-koding)
 - [Struktur Database](#struktur-database)
 - [Coding Conventions](#coding-conventions)
+- [Catatan `.htaccess` & Route Legacy](#catatan-htaccess--route-legacy)
+- [Keputusan Teknis & Konfirmasi Perbaikan](#keputusan-teknis--konfirmasi-perbaikan-2026-10-03)
 - [Testing](#testing)
 - [Pull Request Guide](#pull-request-guide)
 - [Troubleshooting Development](#troubleshooting-development)
@@ -170,7 +172,7 @@ define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
 
 #### 7. Type Hints
 
-Properti class dan parameter constructor **wajib** memiliki type hints (PHP 8.0+):
+Properti class dan parameter constructor **wajib** memiliki type hints (PHP 8.1+):
 
 ```php
 // ✅ BENAR - Type hints
@@ -326,6 +328,49 @@ music ──1:N── playlist_tracks
 
 ## Coding Conventions
 
+### Gaya Komentar
+
+- **Bebas untuk *why*** — alasan desain, trade-off, jebakan yang pernah terjadi
+  (mis. "tanpa reset ini loop render berhenti senyap"), dan kontrak yang tidak
+  terbaca dari kode.
+- **Dilarang mengulang kode** — komentar yang hanya menceritakan apa yang baris
+  di bawahnya lakukan tidak menambah informasi dan cepat basi.
+- **Detail teknis panjang → dokumentasi** — kontrak API, alur pipeline, dan
+  catatan perilaku yang butuh konteks panjang ditulis di file MD; file kode
+  cukup menunjuk ke sana.
+- **Tanpa banner seksi** — jangan pakai blok pemisah `/* ==== 1. Nama ==== */`;
+  pemisah bab di file JS cukup baris kosong.
+
+#### Kapan komentar dihapus
+
+Berlaku untuk kode first-party. **Dikecualikan:** file vendor/pihak ketiga
+(`assets/js/compatibilitas/`, `*.min.js`, `plyr.css`, `tailwind.min.css`,
+`font.css`, dll.), marker `reference build:` hasil `marks.php`, dan file
+konfigurasi (`.htaccess`, `install.sh`, `.github/workflows`).
+
+**Dihapus:**
+
+1. Banner & pemisah — `/* ==== */`, `/* ---- */`, `────`, `════`, `// 1. Nama`;
+   blok cukup dipisah baris kosong.
+2. Komentar yang mengulang kode (apa yang baris di bawahnya lakukan).
+3. Komentar kosong dan duplikat berurutan (`//`, `/** */`).
+4. Kode mati yang dikomentari — hapus kodenya, jangan disimpan sebagai komentar.
+5. Docblock yang hanya mengulang nama fungsi/konstanta
+   (`/** Tolak (nonaktif)? */` di atas `return ...`).
+6. `@param`/`@return` yang hanya menduplikasi tipe dari signature; **disisakan**
+   bila menambah kontrak (nilai balik khusus, format array, enum status).
+7. Komentar langkah-demi-langkah di test (`// buat data`) — sisakan yang
+   menjelaskan *mengapa* skenario itu dipilih.
+8. Header naratif panjang → pindahkan ke `docs/id/development.md`
+   (`docs/en/development.md`), file cukup pointer 1–2 baris.
+
+**Dipertahankan:**
+
+- Komentar *why*: trade-off, invarian keamanan/race, perilaku browser/GPU/DB
+  yang tidak terbaca dari kode.
+- PHPDoc yang menjelaskan kontrak nyata, bukan tipe ulangan.
+- Marker `reference build:`, lisensi, dan attribution vendor.
+
 ### Keamanan
 
 1. **Selalu Prepared Statement** — Tidak ada SQL concat
@@ -354,7 +399,7 @@ contoh `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch
 ├── watch.php          # Player / detail (URL: [module]/watch?v=X)
 ├── upload.php         # Form upload (URL: [module]/upload)
 ├── search_[module].php  # Pencarian (HTMX) (URL: [module]/search)
-├── load_more.php      # Pagination (HTMX) (URL: [module]/load-more)
+├── load_more.php      # Infinite scroll — batch berikutnya + rantai sentinel (hx-trigger=revealed) (URL: [module]/load-more)
 └── [module]_item.php  # Komponen kartu
 ```
 
@@ -378,6 +423,45 @@ contoh `video/beranda` → `video/index.php`, `music/watch?v=X` → `music/watch
     <div class="animate-spin">⏳</div>
 </div>
 ```
+
+### Pola Infinite Scroll (Sentinel)
+
+Dipakai library video & music, hasil search, sidebar rekomendasi watch, dan grid channel profil — menggantikan tombol "Muat Lebih Banyak" lama:
+
+```html
+<!-- Sentinel: elemen yang sama menjadi requester sekaligus target -->
+<div id="load-more-area" role="status"
+    hx-get="load-more?offset=15&page=1"
+    hx-target="#load-more-area"
+    hx-swap="outerHTML"
+    hx-trigger="revealed">          <!-- htmx memicu saat masuk viewport -->
+    <div class="animate-spin …"></div>
+    <span>Memuat...</span>
+</div>
+```
+
+**Aturan:**
+- **Semantik rantai:** setiap respons berisi kartu berikutnya **plus sentinel
+  pengganti**. Elemen hasil swap baru mulai tanpa `data-hx-revealed`, sehingga
+  rantai terus terpicu selama sentinel terlihat di viewport.
+- **Terminal:** saat `offset + limit ≥ total` (atau `hasMore` false) server
+  mengirim end box **"Out Of Content · Konten sudah tidak ada lagi"** — respons
+  kosong juga menghasilkan end box yang sama.
+- **Retry saat gagal:** `assets/js/shared/sentinel-retry.js` menghapus
+  `data-hx-revealed` dari sentinel yang request-nya gagal, sehingga scroll
+  *berikutnya* memicunya lagi (retry by user scroll — tanpa loop otomatis).
+- **Id itu penta:** pertahankan id sentinel (`#load-more-area`, `#load-more-music`,
+  `#load-more-music-search`, `#channel-more-area`) — CSS `overflow-anchor: none`
+  dan guard `isFromLoadMore` di `assets/js/music/index/index.js` bergantung padanya.
+  Hasil search memakai id sentinel terpisah agar pembersihan pasca-search tidak mematikannya.
+- **Gotcha:** pada swap `outerHTML`, `htmx:afterSwap` menyala **sekali per elemen
+  baru** — kartu tidak punya `id` sehingga `targetId === ""`. Perlakukan fragment
+  swap sebagai content update (lihat `isFragmentSwap` di
+  `assets/js/music/index/index.js`), kalau tidak logika view-boot
+  (`bootPlayerIndex()` termasuk scroll-to-active) jalan per kartu dan menarik
+  halaman saat scroll.
+- **Jangan** memasangkan `revealed` dengan smooth-scroll programatik — loop
+  `scrollTo` akan terus menarik halaman tanpa henti (alasan `load-more.js` lama dihapus).
 
 ### CSS File Organization
 
@@ -430,6 +514,26 @@ User klik toggle → MEELTheme.toggle()
 → Save ke localStorage + DB (jika login)
 → Update CSS variables + icon + label
 ```
+
+---
+
+## Catatan `.htaccess` & Route Legacy
+
+### `auto_prepend_file` gerbang arcade (portabel & fail-closed)
+
+- `arcade/.htaccess` memakai `php_value auto_prepend_file _gate.php` dengan **filename polos tanpa path**: PHP me-resolve relatif terhadap cwd = direktori script utama yang dieksekusi, sehingga portabel di mesin mana pun (tanpa path absolut hardcoded).
+- Konsekuensi fail-closed: skrip yang dieksekusi langsung di subdirektori wajib punya `_gate.php` sendiri — cukup satu baris `require __DIR__ . '/../../_gate.php';` (lihat `arcade/chess/controller/_gate.php`).
+- Request clean-URL (router di root) **tidak** kena `php_value` ini — gating-nya oleh `modules/core/Modules.php` di Router.
+
+### `controllers/.htaccess` menaungi aturan 301 legacy
+
+`Deny from all` di `controllers/.htaccess` (file include-only; akses langsung 403 by design, diuji `security_test.php:419`) menaungi seluruh aturan 301 `controllers/*` di root `.htaccess` — aturan itu terlihat mati padahal hidup. Sifatnya **latent**: bila deny dilepas, aturan tetap mengarah 301 ke rute induk yang benar.
+
+### Route dihapus (Fase 0/T7) & rute bersih
+
+- `profile/manage-action`, `admin/actions`, `admin/data` dihapus dari `Router.php` — keduanya fragment include ber-guard `MEEL_MANAGE_ACCESS`/`MEEL_ADMIN_CONTEXT` sehingga route mandiri mustahil berdiri. URL lama di-301 ke induk (`/profile/manage`, `/admin`) di root `.htaccess`.
+- `assets/js/drive/upload.js` memakai rute bersih `../api/ajax-refresh`; URL lama `controllers/api/ajax_refresh.php` selalu 403 oleh deny di atas.
+- Catatan empiris: root 301 generik **tidak** diproses untuk subtree `arcade/` (seluruh `*.php` arcade dieksekusi langsung).
 
 ---
 
@@ -565,7 +669,7 @@ function verify_backup_code(string $hashedJson, string $code): array {
 
 ### Database Schema
 
-3 kolom baru di tabel `users` (Migration v9):
+3 kolom baru di tabel `users` (sekarang tercakup di migrasi **v1** — dulunya legacy v9):
 
 ```sql
 ALTER TABLE users
@@ -748,6 +852,667 @@ if (!headers_sent()) {
 
 ---
 
+## Keputusan Teknis & Konfirmasi Perbaikan (2026-10-03)
+
+> Berkas ini memuatkan keputusan yang diambil saat optimalisasi performa & perbaikan
+> bug. Semua catatan ini **dipindahkan dari komentar di dalam kode** sesuai
+> [Gaya Komomentar](#gaya-komentar) aturan 8 — kode cukup jauh lebih ringkas,
+> semua konteks panjang hidup di sini.
+>
+> Cakupan: Fase 1 (T11–T16) selesai 6/6, T20 (`release.yml`), plus
+> T26 (bug timezone). Detail status per tugas ada di `.agents/Todo.md`.
+
+### Kontrak Jam: `DATETIME` adalah *wall clock* tanpa timezone
+
+Aturan ini yang mendasari T26 dan jadi patokan wajib di seluruh repo.
+
+Kolom `DATETIME` di MySQL **tidak menyimpan timezone**. Nilai yang ditulis bisa datang
+dari dua jam berbeda:
+
+| Sumber | Dipakai oleh |
+| --- | --- |
+| `NOW()` / `CURRENT_TIMESTAMP` | **jam server MySQL** (`@@time_zone`) |
+| `date()` / `time()` / `strtotime()` | **jam PHP** (`date_default_timezone_get()`) |
+
+Hampir seluruh kode repo **membaca** kolom datetime lewat `strtotime()` → selalu
+jam PHP. Begitu `date_default_timezone` PHP berbeda dari `time_zone` MySQL, kolom
+yang ditulis `NOW()` terlihat **di masa depan**, dan dua hal rusak:
+
+- `$elapsed = max(0, time() - $ts)` → negatif → di-clamp `0` → **countdown/umur
+  selalu penuh** (UI menampilkan angka yang tidak pernah terjadi);
+- ambang `col <= $threshold` → tidak pernah true → **logika refill/lockout mati
+  total** (user terkunci saldo habis).
+
+**Aturan repo:** kalau sebuah kolom `DATETIME` dibaca lewat `strtotime()`/`time()`
+dari PHP, kolom itu **wajib ditulis dari jam PHP**. Gunakan
+`meel_now()` / `meel_now_ago()` dari `modules/core/helpers/datetime.php`.
+`NOW()` hanya boleh tetap dipakai bila kolomnya dibaca murni sebagai DATETIME SQL
+(mis. `ORDER BY created_at DESC`) tanpa pernah dibandingkan dengan jam PHP.
+
+#### Skema yang sudah diperbaiki
+
+| Kolom | Ditulis | Dibaca | Gejala kalau timezone meleset |
+| --- | --- | --- | --- |
+| `users.meelcoin_last_refill` | `MeelCoin.php` (3 titik) | `MeelCoin.php` `$threshold` + `$elapsed` | refill mati, countdown selalu penuh |
+| `users.last_activity` | 5 titik produksi (lihat di bawah) | 6+ titik | **user yang di-"kick" tetap tampil ONLINE**, `live-monitor` menampilkan waktu di masa depan |
+
+Titik tulis `last_activity` yang sudah dikonversi: `activity_logger.php` (UPDATE
+user terautentikasi + INSERT guest `ON DUPLICATE KEY UPDATE`), `auth/login.php` (×2),
+`auth/mfa_verify.php`, `auth/auth.php`, dan `admin_actions.php` (`kick_user`, yang
+sebelumnya memakai `DATE_SUB(NOW(), INTERVAL 10 MINUTE)`).
+
+#### ⚠️ Audit yang BELUM selesai
+
+Kolom `created_at`, `login_attempts`, dan `rate_limit` **masih ditulis `NOW()`**.
+Untuk `created_at` dampaknya **display-only** (drift jam di
+`admin/activity_log.php`) — belum diaudit per-kolom. **Lakukan audit ini sebelum
+membangun worker (T17)**, karena scheduler berbasis waktu akan makin sensitif
+terhadap skew.
+
+#### Reproduksi di mesin dev
+
+PHP CLI memakai `date.timezone = UTC` (`/etc/php/8.3/cli/php.ini`) sedangkan
+MariaDB XAMPP `@@time_zone = SYSTEM` = **WIB (UTC+7)** → selisih **25195 detik
+≈ 7 jam**. Griffiths test `MeelCoinIntegrationTest::testRefillResetsTimerWhenBalanceIsAtMax`
+tepatnya menangkap selisih 7 jam ini sebelum perbaikannya.
+
+---
+
+### Housekeeping per-request: throttle vs. bagian keamanan
+
+#### `ActivityLogger` (T11)
+
+Blok prosedural di `modules/core/activity_logger.php` dirapikan jadi kelas
+`ActivityLogger::onRequest($conn)` yang dipanggil dari `auth/config.php`. Yang
+berubah adalah **biaya**, bukan perilakunya:
+
+- **Throttle 60 detik.** Signature `last_page|device|access_via|ip_address`
+  disimpan di `$_SESSION['_meel_touch']`. Payload identik dalam window itu tidak
+  ditulis ulang. Signature sengaja memuat halaman + perangkat + jaringan supaya
+  perpindahan halaman tetap tercatat seketika, bukan menunggu window habis.
+- **Skip respons non-HTML.** `shouldSkipTelemetry()` menolak: partial htmx
+  (`HTTP_HX_REQUEST`), `Accept` yang tidak memuat `text/html`/`*/*` (JSON & segmen
+  HLS), dan endpoint `stream.php` / `file.php` (binary).
+- 🔒 **Bagian keamanan TIDAK di-throttle.** `enforceIpBan()` (redirect ban IP) dan
+  `enforceSingleSession()` (cabut sesi) selalu jalan. Throttle hanya untuk
+  telemetry. Ini keputusan yang tidak bisa ditawar — throttle di sini akan
+  membuka celah revoke.
+- ⚠️ **`$hasRun` static tidak berguna di PHP-FPM.** Static tidak di-share antar-request,
+  jadi guard itu hanya berguna di dalam satu proses. **Motif sebenarnya throttle
+  adalah file**, bukan static. Test menutup keduanya (mock `mysqli` membuktikan
+  idempoten di satu proses; test terpisah membuktikan throttle bertahan setelah
+  static di-reset).
+
+#### `GarbageCollector` (T11 + T16)
+
+`run()` menjalankan dua hal mahal pada **setiap request**: scan direktori storage
+dan `RateLimiter::cleanup()`. Keduanya kini berada di balik satu file throttle
+(`temp/gc_run_last_run.txt`, `RUN_INTERVAL_SECONDS = 60`). Scan dihentikan setelah
+batas waktu 3 detik seperti sebelumnya.
+
+**Pemisahan CLI/web (T16):** `ALTER TABLE ... AUTO_INCREMENT` memblokir metadata
+MySQL dan `syncViewsFromLogs()` menulis ulang kolom agregat — keduanya terlalu
+berat untuk request. Dipindah ke `GarbageCollector::runCliMaintenance()`, yang
+memiliki **seatbelt `PHP_SAPI !== 'cli'`**: dipanggil dari web Request menjadi
+no-op, bukan error. Entry point: `scripts/gc.php` (mode `--run-only` untuk
+housekeeping ringan). Seatbelt diuji lewat SAPI `cgi-fcgi` sungguhan, bukan
+hanya diasumsikan.
+
+**Known-gap yang masih ada:** tak ada sweeper untuk `upload_queue` /
+`transcode_queue` berstatus `processing` yang mati karena crash → baris menggantung
+selamanya dan user tidak pernah mendapat refund-nya.
+
+---
+
+### Query: mana yang benar-benar mahal
+
+#### `System::countActiveQueues()` (T12)
+
+`isServerBusy()` hanya butuh **angka**, tapi sebelumnya memanggil
+`getActiveQueues()` yang menarik seluruh baris antrean (URL, username,
+`created_at`) lengkap dengan JOIN dan filesort. Kini memakai `COUNT(*)` per tabel.
+`getActiveQueues()` **dipertahankan** karena `server_stats.php`,
+`server_stats_sse.php`, dan `admin_actions.php` memang butuh detail baris.
+
+#### Angka pengukuran — baca dengan jujur
+
+⚠️ **Jumlah query tidak berkurang.** `Com_select` tetap **2** di kedua jalur
+(keduanya menyentuh 2 tabel). Ini `COUNT(*)`-only, bukan pengurangan jumlah query.
+Benefit-nya ada di **payload dan parse**:
+
+| Skenario | `isServerBusy()` (baru) | `getActiveQueues()` (lama) |
+| --- | --- | --- |
+| 2 baris `processing`, 300× | 57 ms · 0 B | 78 ms · 2.216 B |
+| 2.001 baris `processing`, 200× | **109 ms · 0 B** | **7.088 ms · 1.366.920 B** |
+
+Pada beban realistis yang penting (antrean menumpuk), jalur count **~65× lebih
+cepat**. `EXPLAIN`: jalur `COUNT(*)` → `type: ref`, `key: status`,
+`Using index` (covering, tak perlu menyentuh baris). Jalur penuh → JOIN `users`
++ `Using temporary; Using filesort`.
+
+#### `MediaViewer::__construct()` (T12)
+
+Sebelumnya query `users` langsung. Kini memakai `get_user_role()` (sudah ada,
+cached + session-aware) dan helper baru **`get_user_active()`**
+(`modules/auth/helpers/user.php`, cached, `LIMIT 1`, `close()` — mencerminkan
+`get_user_role()`). Hampir selalu kena cache karena `MediaViewer` dipakai di
+halaman yang sudah punya sesi.
+
+#### `MediaViewer::getMediaData()`
+
+`($result && $result->num_rows > 0) ? $result->fetch_assoc() : null` →
+`return $result ? $result->fetch_assoc() : null;`. `num_rows` butuh panggilan
+handler tambahan tanpa mengubah apa pun, dan **tidak bisa di-fake di test double**
+(karena `num_rows` adalah *read-only virtual property* — lihat
+[Test Infrastructure](#test-infrastructure-catatan-penting)).
+
+---
+
+### Sampling id acak tanpa `ORDER BY RAND()` (T13)
+
+Helper bersama di `modules/core/helpers/media.php`:
+
+| Fungsi | Peran |
+| --- | --- |
+| `meel_media_stats_all()` | **Satu** query `UNION ALL` untuk `video`/`music`/`books` (COUNT + MIN(id) + MAX(id)), cache file per tabel 30 detik |
+| `meel_media_stats()` | Satu tabel; cache miss menghangatkan **ketiganya** sekaligus |
+| `meel_pick_random_ids()` | Sampling **rentang acak** untuk rekomendasi |
+| `meel_invalidate_media_stats_cache()` | Buang cache (dipanggil di 5 titik mutasi) **sekaligus** cache orphan admin |
+| `meel_media_table_whitelist()` | Validasi nama tabel (anti injeksi lewat nama tabel) |
+
+**Strategi sampling:** beberapa jendela `id >= ? ORDER BY id LIMIT ?` dengan titik
+awal acak, digabung jadi himpunan unik. Setiap jendela memakai indeks id
+(range scan) → biaya `O(log n + limit)`, tanpa filesort, dan tetap unbiased ke
+seluruh rentang id.
+
+**`ORDER BY RAND()` kini nol tersisa di seluruh query repo.**
+
+#### Keputusan: kenapa **tidak** memakai `LIMIT 500`
+
+Advice awal Take list `LIMIT 500` untuk pengambilan id. **Ditolak** — mengambil
+500 id pertama akan membiasakan rekomendasi ke id terkecil. Dipakai sampling rentang
+acak yang unbiased, dan **selalu** punya `LIMIT` — jadi memenuhi maksud "jangan
+tarik seluruh tabel" tanpa mengorbankan sebaran.
+
+#### Sumber kebenaran tunggal untuk hitungan media
+
+Sebelumnya ada **dua** cache: `media_counts.json` (di `MediaLibrary`) dan hitungan
+yang dikomputasi on-the-fly (di `MediaViewer`). Keduanya kini memakai
+`meel_media_stats_all()`. `MediaLibrary::clearCountsCache()` cukup memanggil
+`meel_invalidate_media_stats_cache()`.
+
+Titik invalidasi: upload video (`Uploader.php`, `DownloadService.php`), upload
+musik (`helpers/upload.php`), hapus video & musik (`fun-manage.php`).
+
+Cache bisa dialihkan lewat konstanta **`MEEL_MEDIA_CACHE_DIR`** (mengikuti pola
+`MEEL_SERVER_STATS_CACHE`) supaya test tidak bergantung pada hak akses
+`temp/cache/` milik Apache. Cache orphan admin mengikuti konstanta yang sama lewat
+`meel_admin_orphan_cache_path()` (dengan override `MEEL_ADMIN_ORPHANS_CACHE`).
+
+#### Konvensi cache file
+
+1. **Tulis lewat `meel_write_cache_file()` saja** — tidak pernah `file_put_contents()`
+   langsung. Fungsi itu menulis file sementara lalu `rename()`, sehingga atomic.
+   `LOCK_EX` **bukan** padanan atomic: ia hanya mengunci penulis, sedangkan pembaca
+   tetap bisa membaca file yang sedang ditulis (terukur 58%–81% pembacaan gagal saat
+   ada writer bersamaan).
+2. **Baca lewat `meel_read_cache_file()` saja** — jangan tulis ulang logika TTL per
+   file. Kunci waktu yang dipakai: `ts` (bawaan), `time` (`dir_size`), `checked_at`
+   (orphan admin).
+3. **TTL pendek + invalidasi saat mutasi** — TTL bukan alat kesegaran. Untuk cache
+   yang harus disegarkan, invalidasi dilakukan di titik mutasi (lihat
+   `meel_invalidate_media_stats_cache()`, yang juga membuang cache orphan). TTL hanya
+   menahan scan berulang saat refresh cepat.
+4. **Hanya JSON** — tidak ada `serialize()`/pickle di cache.
+5. **Direktori harus group-writable** — `temp/cache/` dibuat dengan mode `0775`.
+   Untuk instalasi lama: `sudo chgrp daemon temp/cache && sudo chmod 775 temp/cache`.
+
+#### Dua bug yang ditemukan oleh test
+
+1. `array_keys()` yang diaplikasikan pada list id mengubah pool menjadi `[0, 1, …]`
+   sehingga kondisi "semua kandidat sudah pernah dilihat" tidak pernah terdeteksi.
+2. Cache memakai path yang tidak writable oleh proses CLI — memicu kebutuhan
+   konstanta `MEEL_MEDIA_CACHE_DIR`.
+
+---
+
+### Conditional request untuk media streaming (T14)
+
+Tiga fungsi murni (bukan inline di dalam fungsi yang me-`exit()`), supaya bisa diuji:
+
+| Fungsi | Peran |
+| --- | --- |
+| `meel_cache_is_fresh()` | Keputusan 304 dari `If-None-Match` / `If-Modified-Since` |
+| `meel_media_etag()` | Strong ETag dari path+size+mtime |
+| `meel_media_cache_control()` | `m3u8` → `private, no-cache`; lainnya → `private, max-age=31536000, immutable` |
+
+Aturan yang harus dijaga:
+
+- 🔒 **Tidak pernah 304 pada Range request.** 304 + 206/`Content-Range` bersamaan
+  itu respons invalid. Syaratnya `if (!$isPartial && …)`.
+- 🔒 **Tetap `private`, tidak pernah `public`.** Konten di-gate per sesi/pengguna;
+  `public` berisiko bocor lewat shared cache/CDN ke pengguna lain.
+- Playlist HLS berubah terus (segmen baru ditambahkan) → wajib divalidasi ulang.
+  Segmen/berkas media immutable setelah ditulis → boleh dicache lama.
+- `ETag`, `Last-Modified`, `Cache-Control` dikirim di **kedua** jalur
+  (X-Sendfile **dan** streaming), bukan hanya satu.
+
+**Bug yang ditemukan test:** `If-None-Match: *` sempat tidak dianggap fresh,
+melanggar RFC 7232 §3.2 ("*" = "jika ada representasi apa pun").
+
+---
+
+### Versi aset: kenapa `meel_asset_dir_version()` sengaja max-mtime direktori
+
+T11 (T15) memberi `?v=` pada 48 URL aset telanjang di 25 file. Tapi advice awal
+"ganti max-mtime direktori dengan versi per-file" **ditolak**, karena akan menjadi
+**regresi**:
+
+`assets/js/{video/watch,music/index,music/watch}/main.js` membaca `?v=` dari
+`document.currentScript.src`, lalu **meneruskannya ke seluruh modul anak** yang
+dimuat dinamis. Kalau versinya per-file, perubahan pada modul anak **tidak akan
+menginvalidasi cache browser sama sekali** — hanya file entry yang berubah.
+
+Closure penuhnya tetap **T22** (content-hash saat build), bukan `?v=filemtime`.
+Daftar pemanggil `meel_asset_dir_version()` dikunci di `AssetVersioningTest`.
+
+---
+
+### Anotasi `@var` untuk analyzer (T20)
+
+Halaman admin mewarisi variabel dari file yang di-`include` (`auth/config.php`,
+`controllers/admin/admin_data.php`) — sah saat runtime, tapi tidak terlihat oleh
+static analyzer karena analyzer tidak menelusuri variabel lintas `include`.
+Karena itu 12 halaman admin punya blok `@var` di awal file.
+
+#### Akar masalahnya satu pola: `@var` ditulis berkoma
+
+```php
+/** @var \mysqli_result $a, $b, $c; @var array $d */   // ❌ hanya baris pertama terbaca
+```
+
+Bentuk daftar berkoma **tidak dipahami analyzer mana pun** — hanya baris `@var`
+pertama yang dibaca, sisanya diabaikan diam-diam. Intelephense yang melaporkan
+`P1008 Undefined variable` kalau bentuk ini dipakai. Perbaikannya:
+
+- satu variabel per baris `@var`;
+- blok docblock **harus diletakkan sebelum pemakaian pertama** — `@var` hanya
+  berlaku ke depan. Inilah alasan `$conn` di baris 8 masih dilaporkan error saat
+  bloknya diletakkan di baris 15.
+
+`$conn` berasal dari `auth/config.php` dan dipakai 10 halaman admin, jadi blok
+`@var \mysqli $conn` ditambahkan ke masing-masing. Baris `@var` ini **fungsional**
+(bukan komentar hiasan) — menghapusnya mengembalikan ratusan `P1008` di editor.
+
+> **Catatan:** PHPStan pernah dicoba di sini (level 2, scope `admin/`) dan berhasil
+> menurunkan 165 error menjadi 0 — tapi **dicabut lagi** (2026-10-03). Alasannya:
+> config `scanFiles`-nya rapuh (34 path absolut; kalau salah satu di-rename,
+> PHPStan hanya print "Scanned file … does not exist" lalu keluar diam-diam dan
+> hasilnya menyesatkan), belum ada job CI yang menjalankannya, dan
+> `require-dev` tidak ikut terpasang di build produksi. `@var` yang diperbaiki
+> tetap valuable untuk IDE.
+
+#### ⚠️ Intelephense P1038 pada `FakeMysqliStmt::bind_param()`
+
+`P1038` = "method signature incompatible with parent". Satu-satunya trigger di repo
+ini adalah test double mysqli, dan itu **false positive dari stub Intelephense**:
+
+| Bentuk | Diterima PHP 8.3? |
+| --- | --- |
+| Stub Intelephense 1.18.5: `bind_param($types, &$var1, &...$_)` | ❌ **DITOLAK engine** |
+| Nyata: `bind_param(string $types, mixed &...$vars): bool` | ✅ DITERIMA |
+
+Stub Intelephense belum menyusul perubahan signature `mysqli_stmt::bind_param()`
+di PHP 8.0, jadi analyzer dan engine **tidak bisa dipenuhi bersamaan**. Ditutup
+lewat `.vscode/settings.json` → `intelephense.diagnostics.exclude`, dikunci ke file
+dan kode saja (`["P1038"]`) supaya pemeriksaan lain di file yang sama tetap aktif.
+File `.vscode/` sudah masuk `.gitignore`, jadi kontributor lain tidak terpengaruh.
+
+> Konsekuensi praktis: `FakeMysqliResult::close()` ditulis `: void` mengikuti stub
+> analyzer, meski runtime PHP menerima juga bentuk untyped. Bentuk `: void`
+> memenuhi keduanya, jadi itu pilihannya.
+
+---
+
+### Notifikasi: coalescing `like` & retensi (2026-10-03)
+
+Tujuan: notifikasi MEeLCoin **isi ulang** otomatis, sekaligus menghentikan
+pertumbuhan `user_notifications` tanpa batas.
+
+#### Latar belakang (dihitung dari data, bukan asumsi)
+
+Sebelum perubahan ini tabel `user_notifications` **tidak punya pruning sama
+sekali** — satu-satunya `DELETE` berasal dari aksi user (`deleteOne`,
+`deleteAllByUser`, `deleteByChat`). Tidak ada batas umur maupun batas jumlah.
+
+Yang membuatnya tidakurgency: halaman notifikasi hanya mengambil **50 baris
+terbaru** (`profile/notification.php` → `getList($conn, $userId, 50, …)`; API
+meng-imposed `min(50, …)`). Jadi **baris di luar 50 terbaru per pengguna tidak
+pernah tampil** — murni ballast.
+
+Kondisi saat itu: 30 baris / 3.351 B, rata-rata 112 B per baris. Tipe `meelcoin`
+menyumbang 27 dari 30 baris — karena `message`-nya menyisipkan **URL dan judul
+upload penuh**. Dari 30 baris itu hanya **27 yang unik**: ada 3 duplikat persis,
+salah satunya jejak **retry upload**.
+
+#### Aturan 1 — Notifikasi isi ulang otomatis
+
+Dibuat di dalam `MeelCoin::refill()`, bukan di titik pemanggil. Alasannya: jumlah
+yang dikreditkan hanya diketahui di sana, jadi tidak ada pemanggil yang bisa lupa.
+`refill()` dipanggil dari 7 tempat produksi dan **tidak satu pun berubah**.
+
+`admin` sudah keluar lebih dulu di `refill()` (`if ($role === 'admin') return true;`)
+sehingga role itu otomatis tidak menerima notifikasi.
+
+**Pesannya memakai jumlah yang benar-benar dikreditkan, bukan angka tetap:**
+
+> Saldo Anda bertambah {jumlah} dari isi ulang.
+
+Hardcode "25" akan berbohong di dua kasus nyata:
+
+| Sumber | Nilai |
+| --- | --- |
+| Default `meelcoin_user_refill` | **15** |
+| Default `meelcoin_member_refill` | 25 |
+| Semua nilai | bisa diubah admin di `admin/meelcoin.php` → `site_settings` |
+| Jumlah nyata | `min($refillAmt, $maxCoins - $current)` — **dipotong sisa kapasitas** |
+
+Jadi user `member` dengan saldo 45 (max 50) dan refill 25 hanya menerima **+5**.
+Tipe notifikasi memakai ulang `meelcoin` (bukan tipe baru), supaya
+`$validTypes`, `$ICONS`, dan filter di `notification.js` tidak perlu berubah dan
+seluruh histori koin tetap dalam satu tab.
+
+#### Aturan 2 — Coalescing notifikasi `like`
+
+Satu video viral bisa menghasilkan ratusan like dalam hitungan menit. Tanpa
+penggabungan,uploader menerima ratusan baris notifikasi yang isinya cuma
+"X menyukai karyamu".
+
+Jadi `Notification::create()` menjadi no-op bila notifikasi `like` untuk pengguna
+yang sama sudah dibuat dalam **60 menit terakhir**. Atribut yang dikorbankan:
+identitas peng-`like` di dalam jendela tersebut (notifikasi menampilkan orang
+ pertama yang memicu) dan video mana pun ikut tertunda. Ini memang disengaja —
+batasnya jadi jelas: **maksimal satu notifikasi like per jam per pengguna**.
+
+Hanya `like` yang digabung. Tipe lain **tidak boleh** di-throttle:
+
+| Tipe | Alasan |
+| --- | --- |
+| `reply` | percakapan — tanpa notifikasi berarti komentar hilang |
+| `admin_chat` | pesan admin harus masuk semuanya |
+| `meelcoin` | terikat pada saldo — user perlu riwayat utuh |
+| `system` | pengumuman sistem |
+
+#### Aturan 3 — Retensi: 50 baris & 15 hari
+
+`Notification::pruneUser()` menghapus baris yang:
+
+1. berumur lebih dari **15 hari**, atau
+2. berada di luar **50 terbaru** (urut `created_at DESC, id DESC`).
+
+Baris yang belum dibaca juga ikut terhapus bila sudah terdorong keluar batas 50 —
+sah karena halaman notifikasi memang tidak pernah menampilkan lebih dari itu.
+
+Dijalankan dari `scripts/gc.php` (CLI/cron), bukan dari web request — prune
+membuat `DELETE` dan tidak pantas dipanggil per-request. `pruneAll()` mengembalikan
+jumlah **pengguna** yang dipangkas, bukan jumlah baris: `mysqli_stmt::$affected_rows`
+termasuk properti internal yang tidak bisa dibaca pada test double, jadi menghitung
+baris akan membuat kode sulit diuji tanpa manfaat nyata.
+
+#### Yang perlu migration
+
+Indeks baru `idx_un_user_type_created (user_id, type, created_at)` — menopang
+lookup coalescing `like` sekaligus jadi covering untuk query pruning. Tanpa ini,
+`isCoalesced()` menyisir seluruh baris pengguna tersebut per-press like.
+
+Migrasi **v4** + `schema.sql` sudah disinkronkan (keduanya wajib ikut, sesuai
+konvensi T9). Sudah diverifikasi idempoten 2×.
+
+> ⚠️ Nomor "v4" di sini = nomor **saat ini** (setelah redunisasi 17 Sep 2026).
+> Angka v1–v15 yang muncul di dokumen lain adalah riwayat lama yang
+> dikonsolidasikan menjadi v1 — lihat `docs/id/modules.md` § *Migration System*.
+
+#### Verifikasi
+
+`tests/unit/NotificationRetentionTest.php` (**11 test**) mengunci: hanya `like`
+yang punya jendela coalescing, tipe lain tidak menyentuh DB sama sekali, kedua
+batas retensi benar, argumen tidak masuk akal di-clamp (keep ≥ 1), dan prune tidak
+menyentuh pengguna lain.
+
+Ditambah verifikasi langsung ke DB (6 skenario, semua lulus):
+
+| # | Skenario | Hasil |
+| --- | --- | --- |
+| 1 | 5× like dalam 1 jam | **1** baris |
+| 2 | 3× reply | **3** baris (tidak di-throttle) |
+| 3 | 120 baris → prune | **50** baris |
+| 4 | umur 20 hari | terhapus; yang baru **utuh** |
+| 5 | pengguna lain | **tidak terpengaruh** |
+| 6 | refill role `user` | notifikasi tampil: "bertambah **15**" |
+
+Skenario 6 sekaligus membuktikan koreksi di atas: angka yang muncul adalah **15**
+(default role `user`), bukan 25.
+
+---
+
+### Test doubles: properti internal mysqli tidak bisa di-fake
+
+
+Discovery yang berlaku untuk test double: `num_rows`,
+`affected_rows`, dan properti internal serupa adalah **read-only virtual property**
+di PHP 8.x. Override method maupun `__get()` sama-sama **tidak mengintervensi** —
+`ReflectionMethod('mysqli_result', 'num_rows')` bahkan melempar *method does not
+exist*, yang membuktikan murni itu property.
+
+Konsekuensi praktis: **kode produksi jangan bergantung pada membaca properti
+internal tersebut** kalau pemanggilannya ingin bisa diuji dengan
+`tests/unit/support/MysqlFake.php`. Kalau memang butuh nilai tersebut, kirim
+melewat parameter atau kembalikan lewat jalur lain — bukan lewat properti stmt.
+
+---
+
+### Cache statis lintas-test: `get_user_role()` & `get_user_active()`
+
+Keduanya memakai `static $cache` per proses PHP. Cache ini **tidak** di-reset di
+antar test, jadi satu test bisa meracuni test lain yang jalan belakangan di
+proses yang sama. Kasus nyata yang pernah terjadi:
+
+`MediaViewerTest` membuat `MediaViewer` dengan **koneksi mock**, dan konstruktor
+memanggil `get_user_role($mock, 1)`. Mock tidak punya baris, jadi fungsi itu
+mengembalikan fallback `'user'` — dan **memoisasi** nilai fallback itu ke
+`static $cache[1]`. Beberapa test kemudian, di proses yang sama,
+`MediaInteractionIntegrationTest` memanggil `get_user_role($conn, 1)` dengan DB
+test sungguhan yang isinya `role = 'admin'` — tapi cache basal lebih dulu, jadi
+`isAdmin()` mengembalikan `false` dan penghapusan komentar admin gagal 404.
+
+Yang membuat ini sulit dideteksi: testnya **lulus saat dijalankan sendiri**
+(`--filter`), gagal hanya saat seluruh suite jalan.
+
+Aturannya: **cache hanya boleh menyimpan fakta, bukan ketidakpastian.** Baris
+yang tidak ditemukan berarti "belum tahu", bukan "user ini punya role `user`".
+Jadi hasil negatif sengaja **tidak** di-memoisasi:
+
+```php
+$row = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if ($row === null) {
+    return 'user';          // fallback, TIDAK masuk cache
+}
+
+$role = (string)$row['role'];
+$cache[$user_id] = $role;   // fakta → aman di-cache
+```
+
+`get_user_active()` punya masalah kembar: ia memoisasi `false` turunan dari
+baris yang tidak ada, sehingga user yang baru aktif tetap terbaca non-aktif
+sampai proses berakhir. Diperbaiki dengan pola yang sama.
+
+ Dikunci oleh `tests/unit/UserRoleCacheNotFoundTest.php`. Kalau test itu mulai
+gagal setelah Anda mengubah salah satu fungsi, cari dulu apakah ada pemanggil
+yang bisarahasia melakukan lookup negatif lebih dulu.
+
+---
+
+### Konstanta media harus dikunci di `tests/bootstrap.php`
+
+Konstanta path media (`MEEL_HDD_*`) ditetapkan di `tests/bootstrap.php`,
+**sebelum** file produksi mana pun yang bisa mendefinisikannya saat di-`require`.
+
+Masalahnya: `modules/core/TranscoderBase.php` mendefinisikan `MEEL_HDD_BASE`
+sebagai placeholder `'/path/to/your/media'` kalau konstantanya belum ada.
+Begitu file itu ter-`require` — dan `require_once` **tidak bisa dibatalkan** —
+setiap test yang jalan sesudahnya akan melihat
+`meel_media_base_path('video')` bernilai placeholder yang tidak writable.
+
+Gejalanyalooked innocuous tapi menyesatkan:
+
+```
+file_put_contents(/path/to/your/media/video/upload/thumbnail/x_thumb.webp):
+Failed to open stream: No such file or directory
+```
+
+Test-nya **lulus saat dijalankan sendiri** (`--filter`) dan gagal hanya ketika
+seluruh suite berjalan — karena test yang memuat `TranscoderBase.php` kebetulan
+berjalan sebelum test yang butuh path writable.
+
+Solusinya konstantanya dikunci lebih dulu ke `temp/media-test/`. Dua efek
+menyenangkan sekaligus:
+
+1. urutan test tidak lagi menentukan hasil;
+2. tidak ada lagi direktori media yang bocor ke luar repo saat test berjalan.
+
+---
+
+### Overlay engine: kenapa pakai antre (queue), bukan panggilan langsung
+
+Gejala yang pernah muncul: setelah submit, halaman jadi **putih kosong** —
+overlay "MEeL Engine" tidak pernah tampil, padahal prosesnya jalan.
+
+#### Akar masalahnya
+
+`assets/css/engine/base.css` menyembunyikan overlay secara default:
+
+```css
+#meel-overlay { display: none; }
+```
+
+Artinya overlay **hanya** bisa tampil kalau `meelPhase()` sempat dieksekusi.
+Jika tidak, respons POST itu hanya berisi fragmen (`partials/ui.php` tidak
+punya `<html>`/`<body>`) sehingga yang tampil adalah halaman putih kosong.
+
+Urutan pemuatan yang Mennonjolkan race:
+
+1. `main.js` (`<script src>`) dieksekusi — **parser-blocking**
+2. `main.js` menyisipkan `core.js` & friends via `document.head.appendChild` —
+   script yang disisipkan dinamis **tidak memblokir parser**, walau `async = false`
+3. Parser lanjut ke inline `<script>meelPhase("download")</script>`
+4. `core.js` baru selesai diunduh & baru mendefinisikan `meelPhase`
+
+Pada langkah 3, `meelPhase` belum ada → `ReferenceError`. Karena bergantung
+kecepatan jaringan/cache, gejalanya **intermiten**.
+
+#### Solusinya: antre di `main.js`
+
+`main.js` dipanggil sebelum inline script, jadi shim di sana selalu siap.
+Panggilan yang datang terlalu dini diantre, lalu diputar begitu `core.js`
+menjalankan `__meelPhaseBind()`:
+
+```js
+window.meelPhase = function (phase) {
+  if (real) { real(phase); return; }
+  queue.push(phase);          // engine belum siap
+};
+```
+
+Dengan begitu **urutan muat tidak lagi relevan** — overlay tetap tampil walau
+halaman sudah streaming beberapa menit sebelum engine JS selesai diunduh.
+
+#### Phase `encode`
+
+`upload_advanced.php` memanggil `meelPhase("encode")` untuk alur musik, tapi
+tidak ada `meel-phase-encode` di `core.js` maupun `partials/engine/`. Akibatnya
+semua phase kehilangan `.active` dan tidak ada yang diaktifkan — card kosong
+tanpa indikator loading. Sekarang ada `partials/engine/encode.php` dan
+`'encode'` masuk daftar `MEEL_PHASES`.
+
+Dikunci oleh `tests/unit/EnginePhaseJsTest.php` (7 test, menjalankan
+`tests/js/engine-phase.harness.js` lewat Node untuk mensimulasikan urutan
+muat terburuk). Dokumen `.agents/PRD.md` sengaja tidak ikut karena hanya ada di
+mesin lokal.
+
+---
+
+### Test Infrastructure — catatan penting
+
+#### 🚨 `createMock(mysqli::class)` menghabiskan 8,86 GiB RAM
+
+Gejala: `phpunit --testsuite='MEeL Core Unit Tests'` naik ke **8,86 GiB RSS** lalu
+OOM di `MockClass.php`.
+
+Akar masalah: PHPUnit membangun kelas mock lewat `eval()` dan **menahannya di static
+cache selama proses**. `mysqli` punya `bind_param(string $types, mixed &...$vars)`
+— parameter by-reference + variadik — sehingga kelas hasil generate-nya sangat
+besar. Menumpuknya di beberapa test memindahkan proses ke territory GB.
+
+Solusi: `tests/unit/support/MysqlFake.php` — `FakeMysqli`, `FakeMysqliStmt`,
+`FakeMysqliResult` sebagai subclass yang **tidak memanggil constructor parent**
+(tanpa koneksi, tanpa kelas yang di-generate, RAM ≈ 0).
+
+Ditambah `phpunit.xml` → `<ini name="memory_limit" value="2G"/>` karena
+`phpunit.xml` CLI repo ini memakai `memory_limit = -1` (tak terbatas); tanpa itu
+satu test salah bisa menghabiskan RAM mesin sebelum ketahuan.
+
+Hasil: **8,86 GiB → 453 MiB** (~19× lebih ringan), OOM hilang.
+
+> **Aturan:** kalau menambah test yang butuh `mysqli`, pakai `FakeMysqli` — **jangan**
+> `createMock(mysqli::class)`. Kalau memang perlu mock, buat di `setUp` **sekali**
+> lalu pakai ulang.
+
+#### `mysqli_result::$num_rows` tidak bisa di-fake
+
+Di PHP 8.3 `num_rows` adalah **read-only virtual property**, bukan method.
+Override `num_rows()` maupun `__get()` sama-sama **tidak mengintervensi** — akses
+`$result->num_rows` tetap melempar `object is already closed`.
+`ReflectionMethod('mysqli_result', 'num_rows')` bahkan melempar *method does not
+exist*, yang membuktikan conclusively bahwa ini murni property. Produksi
+`MediaViewer::getMediaData()` sengaja tidak memakainya.
+
+#### Catatan lingkungan dev
+
+- ⚠️ `MEEL_TEST_DB_HOST=127.0.0.1` **wajib** untuk integration test. Socket
+  MariaDB XAMPP ada di `/opt/lampp/var/mysql/mysql.sock`, sedangkan PHP CLI
+  mencari `/var/run/mysqld/mysqld.sock` (`mysqli.default_socket`) →
+  `No such file or directory`. `localhost` gagal, TCP `127.0.0.1` jalan. Ini
+  masalah mesin dev saja — CI sudah benar (`ci.yml` memakai `127.0.0.1`).
+- ⚠️ `StorageMountGuardTest` (menjalankan subprocess PHP via `proc_open`) pernah
+  gagal 1× (`exit 255`) bila suite dijalankan **bersamaan** dengan proses test lain
+  yang menyentuh `temp/`. Jangan dijalankan paralel dengan `security_test` /
+  `check_deploy`.
+- Angka pada kolom **IO/R** di `htop` adalah *laju baca*, bukan RSS.
+
+#### `release.yml` sebelumnya mustahil hijau
+
+Job `test-gate` menjalankan `vendor/bin/phpunit` (**kedua** suite, termasuk
+integration) tanpa service MySQL → 96 integration test ERROR. kini service
+`mysql:8.0` + healthcheck + `extensions: mysqli` + env `MEEL_TEST_DB_*`.
+
+---
+
+### Gate yang dipakai untuk memverifikasi perubahan
+
+```bash
+vendor/bin/phpunit --testsuite='MEeL Core Unit Tests'
+MEEL_TEST_DB_HOST=127.0.0.1 vendor/bin/phpunit --testsuite='MEeL Integration Tests'
+php tests/functional_test.php
+php tests/security_test.php
+php tests/check_deploy.php
+php database/migrate.php   # 2× untuk idempotensi
+php scripts/gc.php          # housekeeping berat (butuh $server = TCP)
+```
+
+---
+
 ## Resource untuk Developer
 
 ### File Penting untuk Dipahami
@@ -775,13 +1540,13 @@ if (!headers_sent()) {
 | `admin/mfa_reset.php` | Admin MFA reset panel |
 | `partials/ui.php` | Overlay UI system (JS heavy) |
 | `assets/js/shared/keyboard.js` | Guard shortcut keyboard bersama (meelKeyShortcutIgnored) — dipakai misc/mini-player video & music |
-| `assets/js/video/watch/misc.js` | Shortcut spesifik video (L=loop, A=auto-next) |
+| `assets/js/video/watch/misc.js` | Shortcut spesifik video (L=loop, A=auto-next, S=AI-upscale, B=ambient-glow) |
 | `assets/js/video/watch/mini-player.js` | Shortcut video (N=next, I=mini-player) + logika mini-player |
 | `assets/js/music/watch/misc.js` | Shortcut musik (L=loop, E=equalizer, V=visualizer, I=mini-player) |
 | `assets/js/shared/temp-index.js` | Loader bersama index.php ke #temp-index-content tanpa reload (meelLoadTempIndex) — dipakai mini-player video & music |
 | `assets/js/shared/plyr-config.js` | Konfigurasi dasar Plyr bersama (MEEL_PLYR_COMMON: iconUrl, speed, keyboard, tooltips) — dipakai player video & music |
 | `assets/js/shared/upload-progress.js` | Animasi progress-bar upload bersama (meelUploadProgress) — dipakai halaman upload music & video |
-| `assets/js/shared/resume-modal.js` | Modal resume bersama (meelResumeModal) — dipakai player-events video & player-core music |
+| `assets/js/shared/resume-modal.js` | Modal resume bersama (meelResumeModal) + keyboard guard (flag `meelResumeModalActive`) — dipakai player-events video & player-core music |
 | `assets/js/shared/format-time.js` | Formatter waktu mm:ss bersama (formatTime) — dipindah dari music/shared/utils.js, dipakai mini-player music & resume-modal |
 | `assets/js/shared/mini-player-popstate.js` | Handler popstate bersama untuk keluar dari mode mini-player (meelMiniPlayerPopstate) — dipakai mini-player watch video & music |
 | `assets/js/video/watch/main.js` | Entry point folder watch/ — memuat sibling secara sinkron (document.write) |
@@ -789,11 +1554,14 @@ if (!headers_sent()) {
 | `assets/js/video/watch/player-init.js` | Plyr + HLS.js initialization |
 | `assets/js/video/watch/player-events.js` | Event orchestration (auto-next, glow, resume) |
 | `assets/js/video/watch/mini-player.js` | Mini-player floating mode |
-| `assets/js/video/watch/recovery.js` | Player auto-recovery system |
+| `assets/js/video/watch/recovery.js` | Player auto-recovery system — menggunakan factory dari `recovery-manager.js`, plus self-heal ber-grace-period untuk error decode/network |
 | `assets/js/video/watch/gestures.js` | Mobile touch gestures |
 | `assets/js/music/watch/main.js` | Entry point folder watch/ — memuat sibling secara sinkron (document.write) |
 | `assets/js/music/watch/mini-player.js` | Mode mini-player music (Spotify-style) — dipisah dari player-core.js |
-| `assets/js/music/watch/player-core.js` | Inti player music (visualizer, EQ, bitrate, logika resume-modal & sesi) |
+| `assets/js/music/watch/player-core.js` | Inti player music (visualizer, EQ, bitrate, Media Session, logika resume-modal & sesi) |
+| `assets/js/music/watch/description-toggle.js` | Toggle "Selengkapnya" deskripsi music + deteksi overflow |
+| `assets/js/shared/recovery-manager.js` | Recovery factory — stuck detector, waiting timeout, reconnect overlay (shared video & music) |
+| `assets/js/shared/media-session.js` | Media Session API helper — memperbarui kontrol media OS dengan artwork/metadata |
 | `assets/js/music/watch/state.js` | Music player state, preset equalizer & marker sesi resume (`window.__meelResumeSessionActive`) |
 | `assets/js/profile/manage.js` | Profile management (edit, delete media) |
 | `assets/js/profile/avatar-crop.js` | Avatar cropping tool |
@@ -805,6 +1573,89 @@ if (!headers_sent()) {
 | `assets/js/shared/notification.js` | Notification polling system |
 | `assets/css/video/player.css` | Plyr video player overrides (object-fit: contain) |
 | `assets/css/profile/*.css` | Profile module CSS (10 files: base, cards, coin, edit, manage, notification, stat, mfa-switch, type-badge, empty-state) |
+| `assets/js/video/watch/upscaler.js` | AI Upscale berbasis WebGPU (model/mode/scale, glow) — mengekspor `window.MEEL_UPSCALER` + `window.toggleUpscale()` untuk pintasan `S` |
+| `assets/css/video/resume-modal.css` | Modal resume video — z-index fullscreen + cincin fokus tombol navigasi keyboard |
+
+### Video — Perilaku Resume Modal & Keyboard Guard
+
+Player video menampilkan modal **"Lanjutkan Sesi?"** ketika video punya posisi
+putar tersimpan (`video_pos_<id>` di `localStorage`) di atas 10 detik dan belum
+dekat ke ujung durasi.
+
+**Pemicu & jendela waktu.** `meelResumeModal()` dipanggil dari
+`player.on("ready")`. Untuk HLS pemanggilan ini ** tertunda**: menunggu event
+`FRAG_BUFFERED` (buffer ≥ 15 detik) atau **timeout 8 detik** (`player-events.js`).
+Artinya user tetap bisa menekan layar penuh sebelum modal muncul — dan
+`skipToNextVideo()` otomatis memanggil `player.fullscreen.toggle()` lagi setelah
+transisi video seamless. Kombinasi ini yang membuat modal pernah tampil (atau
+gagal tampil) dalam keadaan fullscreen.
+
+#### Why modal tidak muncul di layar penuh
+
+Plyr **tidak pernah memakai** `#main-video-wrapper` sebagai container-nya.
+Constructor-nya selalu membuat `<div class="plyr">` baru dan menyisipkannya di
+antara `#video-glow-container` dan `#main-video-wrapper`:
+
+```html
+#video-glow-container
+└─ div.plyr.plyr--full-ui…          ← container Plyr + target fullscreen
+   └─ #main-video-wrapper           ← z-index:2 (layout.css)
+      ├─ .plyr__video-wrapper > video, .plyr__poster
+      └─ #resume-modal              ← z-index:20
+```
+
+Modal yang ditulis di `watch.php` sebagai saudara `<video>` berakhir **satu
+level di bawah** container Plyr. Pada mode normal `#main-video-wrapper` hanya
+`position:relative; z-index:2` sehingga `z-index:20` masih menang atas
+`.plyr__poster`(1), tombol play besar(2), dan `.plyr__controls`(3).
+
+Pada fullscreen, `assets/css/video/fullscreen.css` menaikkan **tiga elemen
+bersarang** sekaligus ke `position:fixed` + `z-index:999999`:
+`#video-glow-container`, `.plyr`, dan `#main-video-wrapper`. Akibatnya
+`.plyr__video-wrapper` menutupi modal — overlay tertimpa area video dan tidak
+terlihat sama sekali. Terukur: `z-index:999999` masih tertimpa, `z-index:1000000`
+sudah di atas. Perbaikannya `body.meel-fs-active #resume-modal { z-index: 1000001 }`
+di `assets/css/video/resume-modal.css`.
+
+> **Catatan:** `#meel-reconnect-overlay` (`recovery-manager.js`) memakai
+> `z-index:60` dan juga di-append ke `#main-video-wrapper`, sehingga memiliki
+> masalah yang sama di layar penuh. Belum diperbaiki.
+
+#### Keyboard guard
+
+Plyr mendaftarkan `keydown keyup` di `window` fase **bubble** dengan
+`config.keyboard.global`, dan `keyboard.js`/`misc.js`/`mini-player.js`
+mendaftarkan listener sendiri. Plyr hanya mengecualikan `Space` saat fokus berada
+di `<button>`, sehingga `k`, `↑`/`↓`, `←`/`→`, `f`, `m`, `c`, `l`, dan angka `0–9`
+tetap bereaksi walau fokus sudah di tombol modal.
+
+`assets/js/shared/resume-modal.js` menutupnya dengan satu listener `window` fase
+**capture** yang didaftarkan sekali saat file dimuat. Karena `resume-modal.js`
+dimuat pada `video/watch.php` **sebelum** module loader `video/watch/main.js`,
+pendaftarannya mendahului `mini-player.js` (yang juga capture di `window`).
+
+| Kelas | Perlakuan |
+|---|---|
+| **Diizinkan** | `Tab` · `Shift+Tab` · `←` → Lanjut · `→` → Ulang (mengikuti posisi tombol) · `Home` `End` (pilihan pertama/terakhir) · `Enter` (native aktivasi `<button>`) · `Esc` (tetap keluar layar penuh) · semua kombinasi `Ctrl`/`Meta`/`Alt` |
+| **Diblokir** | `Space` (dialihkan ke aktivasi pilihan terfokus) · `↑` `↓` · `k` `j` `l` `m` `f` `c` · `0`–`9` · `i` `n` `a` · dan key lain |
+| **Pengaman tambahan** | `window.meelResumeModalActive` = `true` selama modal tampil; dipakai sebagai early-return di `video/watch/misc.js`, `video/watch/mini-player.js`, dan `music/watch/misc.js` |
+
+Detail tambahan:
+
+- Fokus awal otomatis ke `#btn-resume` (**Lanjut** — pilihan yang tidak menghapus
+  progres). Setelah modal ditutup, fokus dikembalikan ke container player.
+- `player-events.js` mengirim `onShow: () => player.pause()` agar video tidak
+  tetap berjalan di belakang modal.
+- `#resume-modal` memakai `role="dialog"` + `aria-modal="true"` +
+  `aria-labelledby` / `aria-describedby`, dengan cincin fokus `:focus` yang
+  terlihat di `assets/css/{video,music}/resume-modal.css`.
+- **Bug yang ikut diperbaiki:** `countdownTimer` tidak pernah di-`clearInterval()`
+  saat modal disembunyikan, sehingga label hitung mundur masih berubah selama 15
+  detik di DOM. Sekarang semua timer dibersihkan lewat satu fungsi `close()`.
+- Auto-restart 15 detik kini juga melewati `close()` sehingga flag dan hook ikut
+  dibersihkan.
+- `window.__meelResumeDismiss()` menutup instance sebelumnya — dipakai saat pindah
+  track di halaman musik agar tidak ada dua timer aktif.
 
 ### Musik — Perilaku Resume Modal
 
@@ -840,6 +1691,242 @@ datang dari sesi mini-player yang aktif.
 > **Keputusan desain (2026-08):** sesi mendengarkan aktif auto-continue tanpa
 > interupsi; hanya kunjungan dingin yang menanyakan resume.
 
+### Video — AI Upscale & Play Recovery
+
+Catatan perilaku player video yang tidak terbaca sekilas dari kode; rujukan
+utamanya `assets/js/video/watch/upscaler.js` dan `recovery.js`.
+
+#### Ketersediaan opsi (gating WebGPU)
+
+Baris **AI Upscale** di menu Pengaturan selalu ada, termasuk saat browser tidak
+mendukung WebGPU — tidak ada toast otomatis saat halaman dibuka:
+
+- Tak didukung → baris diberi `aria-disabled="true"` + class
+  `meel-upscale-unavail` (redup tapi **tetap bisa diklik**), nilai kolom jadi
+  `Tidak tersedia`, dan panel normal (toggle/Model/Mode/Skala) tidak terjangkau.
+- Klik baris → sub-panel read-only `upscale-why` berisi judul, alasan spesifik
+  per penyebab, daftar persyaratan, dan tombol **"Cek ulang dukungan"** yang
+  menjalankan `checkSupport(true)`; bila kini didukung → toast + panel beralih
+  ke toggle normal.
+- Saat pemeriksaan berjalan (`supportChecking`) baris menampilkan spinner dan
+  **belum** disabled — anti-kedip, menu tidak berubah sendiri di tengah cek.
+- Setelah cek selesai, `updateUI()` menyinkronkan baris (nilai + aria-disabled)
+  lewat `setHomeRowValue()` → `applyHomeRowState()`.
+
+Alasan bersumber tunggal: `unsupportedReason()` (juga diekspos sebagai
+`MEEL_UPSCALER.unsupportedReason()`), dipakai `supportLabel()` dan
+`diagnose()` lewat konstanta `WHY` — urutan pemeriksaan sama dengan `diagnose()`:
+
+| Kode | Kondisi | Alasan |
+| ---- | ------- | ------ |
+| `insecure` | `!window.isSecureContext` | halaman non-HTTPS/non-localhost |
+| `nogpu` | `!navigator.gpu` | browser tanpa WebGPU |
+| `no-adapter` | `requestAdapter()` → `null` | GPU/driver diblokir, GPU blank, atau flag WebGPU mati |
+
+#### Status on/off per video (sessionStorage)
+
+Status AI Upscale disimpan di **sessionStorage** (`MEEL_KEYS.UPSCALE_ENABLED`:
+`"true|<videoId>"` saat ON, `"false"` saat OFF) — bukan localStorage — sehingga
+default-nya **OFF** dan hanya bertahan selama video yang sama:
+
+| Peristiwa | Status |
+| --------- | ------ |
+| Tab baru / belum pernah dinyalakan | **OFF** (default) |
+| Refresh halaman (video yang sama) | **ON tetap** |
+| Video loop / ulang sendiri tanpa pindah halaman | **ON tetap** |
+| Klik video lain (rekomendasi, tombol next, kartu mini-player) | **OFF** |
+| Auto-next saat video habis | **OFF** |
+| Buka URL video lain di tab yang sama (navigasi penuh) | **OFF** |
+
+Dua lapis penjagaannya:
+
+- `readEnabled()` hanya menganggap `"true|<videoId>"` bila id video saat ini
+  cocok. `validateState()` menjalankannya lagi pada setiap `attach()` —
+  termasuk saat instance Plyr tidak berubah — sehingga navigasi penuh ke video
+  lain mematikan upscale sekaligus membuang nilai basi dari video sebelumnya.
+- Jalur transisi in-place (tanpa reload halaman) memanggil
+  `MEEL_UPSCALER.resetForNewVideo()`: `skipToNextVideo()` di `player-events.js`
+  (klik manual **dan** auto-next sama-sama lewat sana) serta listener kartu
+  mini-player di `mini-player.js`. Reset berjalan tanpa toast agar transisi
+  tidak dibanjiri notifikasi; mati total disatukan di `turnOff()`.
+
+`modelId`/`modeId`/`scaleId` tetap di localStorage sebagai preferensi lintas
+sesi — hanya status on/off yang bersifat per video. Nilai `localStorage` lama
+untuk key yang sama dihapus sekali saat skrip dimuat.
+
+#### Skala: ukuran tekstur keluaran
+
+Panel **Skala** hanya memilih ukuran *tekstur* hasil upscale — bukan ukuran
+tampilan video (video selalu melar ke kotaknya sendiri lewat blit linear, jadi
+membesarkan Skala tidak membuat video tampak lebih besar):
+
+| Pilihan | Ukuran tekstur |
+| ------- | -------------- |
+| `auto` — *Auto (ikuti layar)* | pas dengan kotak tampilan × `devicePixelRatio` (maks 2×), **tidak pernah mengecil** dari resolusi native video |
+| `1.5` | 1,5× piksel video (1920×1080 → 2880×1620) |
+| `2` | 2× piksel video (1920×1080 → 3840×2160) |
+
+- Cap `MAX_W × MAX_H` (3840×2160) tetap otoritas terakhir untuk semua pilihan
+  — termasuk `auto`.
+- `auto` dulu boleh menghasilkan tekstur **lebih kecil** dari native (kotak
+  tampilan ~1217×685 pada layar 1080p): Skala terlihat "tak berpengaruh"
+  karena tekstur dikecilkan lalu direntangkan ke kotak yang sama — kerja GPU
+  tambahan tanpa hasil terlihat. Kini `s = max(s, 1)` (lihat
+  `computeTarget()`), jadi hasil minimal setara native; saat target memang
+  native, jalur resample dilewati (lihat MEeLScale).
+- Baris info di bawah menu Skala (`<p class="meel-upscale-scale-info">`,
+  `aria-live="polite"`) menampilkan `Video WxH → keluaran WxH (n×)` plus
+  petunjuk bahwa Skala mengatur tekstur, bukan tampilan. Elemen itu disisipkan
+  **sesudah** `<div role="menu">` (lihat `buildScaleList()`) supaya kontrak
+  ARIA menu tetap utuh; teksnya dihitung dari `computeTarget()` yang sama
+  dengan rebuild sehingga langsung benar walau rantai GPU belum selesai.
+  Gaya di `assets/css/video/upscaler.css`.
+
+#### Kontrak API model upscale
+
+Model pluggable lewat `MEEL_UPSCALER.registerModel()`:
+
+```javascript
+MEEL_UPSCALER.registerModel({
+  id, label, short,
+  modes: [{ id, label, short }, ...],
+  load: function () { return Promise; },      // lazy-load berat (bundle / bobot)
+  buildChain: function ({ device, modeId, inputTexture, native, target }) {
+    return [node, ...];
+    // node = {
+    //   pass(encoder): void,            // encode pass untuk frame ini
+    //   getOutputTexture(): GPUTexture, // tekstur output node terakhir
+    //   pipelines?: [GPUPipelineBase],  // didaftarkan untuk pembersihan
+    //   destroy?(): void,               // opsional: bebaskan resource milik node;
+    //                                   // bila ada, menggantikan getOutputTexture
+    // };
+  },
+});
+```
+
+- `inputTexture` bertipe `rgba16float` seukuran `native`; ukuran akhir boleh
+  berbeda dari `target` — blit linear meregangkannya ke ukuran canvas.
+- File model ada di `assets/models/<id>/model.js` dan diinjeksi saat pertama
+  dipilih. `registerModel()` di dalam file itu **menimpa** deskriptor statis
+  yang didaftarkan shell, jadi `doRebuild()` selalu mengambil entri terbaru
+  sebelum memanggil `buildChain()`.
+- Model bawaan: `anime4k` (bundle vendor), `meelscale` (resampler lokal) dan
+  `meelsharp` — **MEeLSharp** (Lanczos-3 + CAS, tanpa bobot). `meelvision` —
+  **MEeLVision** (bobot di `assets/models/meelvision/weights.js`) masih ada
+  filenya, tetapi sudah tidak didaftarkan di menu AI Upscaler.
+
+#### Catatan model: MEeLVision (arsitektur FSRCNN) & MEeLScale
+
+Keduanya model lokal di `assets/models/<id>/` — tanpa unduhan internet.
+MEeLVision sudah tidak tampil di menu (deskriptornya dihapus dari `upscaler.js`);
+catatan di bawah tetap berlaku untuk filenya.
+
+**MEeLVision ×2** (`meelvision/model.js` + `meelvision/weights.js`)
+
+- Nama produk **MEeLVision** (id `meelvision`, folder `assets/models/meelvision/`);
+  istilah arsitektur tetap FSRCNN. Bobot = base64 `Float32Array(13163)` di
+  `window.MEEL_VISION_WEIGHTS_B64`, dilatih lokal dengan trainer vanilla JS
+  yang tidak ikut repo (regenerasi: `node scripts/train-meelvision.js` pada
+  checkout lokal).
+- Arsitektur: input LR (dikurangi 0.5) → conv1 5×5 pad2 3→24 + PReLU →
+  shrink 1×1 24→16 + PReLU → 3× map 3×3 pad1 16→16 + PReLU → deconv 9×9
+  stride2 fase (16→3) + bias 0.5 → clamp 0..1.
+- Offset dalam blob (konstanta `OFF` di `model.js` wajib identik):
+  `c1w 0, c1b 1800, c1p 1824, sw 1848, sb 2232, sp 2248, m1w 2264, m1b 4568,
+  m1p 4584, m2w 4600, m2b 6904, m2p 6920, m3w 6936, m3b 9240, m3p 9256,
+  dw 9272, db 13160`.
+- Eksekusi bertile (T=512 px LR, halo 5/sisi) agar jejak memori antara tetap
+  kecil berapa pun resolusi video; 16 kanal antara = 4 tekstur rgba16float
+  per lapisan. Tiap tile = 5 render pass (P1 conv1+shrink terfusion, P2–P4 map,
+  P5 deconv ke tekstur keluaran 2× dengan scissor) dan urutannya **tile-major**:
+  rantai P1→P5 satu tile selesai dulu karena tekstur antara dipakai bersama.
+- Semantik tepi identik dengan trainer CPU: baca di luar batas frame di-skip
+  (zero-pad).
+- Evaluasi (n=150, patch 64×64 HR, 1500 step): PSNR **32.409 dB** (bicubic
+  32.390 dB, bilinear 31.308 dB).
+
+**MEeLScale** (`meelscale/model.js`)
+
+- Resampler separable tanpa bobot. `buildChain()` memilih jalur termurah dari
+  selisih `target` vs `native`:
+
+  | Selisih | Rantai pass |
+  | ------- | ----------- |
+  | `target == native` | **CAS saja** (resample dilewati — satu pass) |
+  | hanya lebar beda | horizontal → CAS |
+  | hanya tinggi beda | vertikal → CAS |
+  | kedua sumbu beda | horizontal → vertikal → CAS (teksel antara `rgba16float`) |
+
+  Tiap node memakai `destroy()` untuk membebaskan tekstur miliknya.
+- Konvensi koordinat `src = pos * scale - 0.5` dengan `pos` = pusat piksel
+  hasil (`@builtin(position)` sudah +0.5), sehingga pada `scale 1` hasil
+  identik dengan sumber. Rumus lama `(pos + 0.5) * scale - 0.5` menambahkan
+  geseran **setengah piksel** yang tampak sebagai blur pada resolusi native;
+  konvensi yang sama ikut diperbaiki di `meelsharp/model.js`.
+- Mode = nama algoritma (`bilinear`, `mitchell` B=1/3 C=1/3, `catrom` B=0
+  C=1/2, `lanczos2`, `lanczos3`). Saat mengecilkan resolusi tap diperluas:
+  `rx/ry = clamp(scale, 1, 8)`, jendela tap dibatasi 63 tap/sumbu, tepi
+  clamp-to-edge lalu hasil dibagi total bobot (bila `wsum ≤ 0` jatuh ke sampel
+  terdekat, bukan piksel hitam).
+- Pass terakhir **CAS** (FidelityFX milik AMD, lisensi MIT — atensi dipertahankan
+  di header file) selalu aktif dengan `SHARPNESS 0.45`, termasuk pada jalur 1:1,
+  sehingga target native tetap mendapat penajeman adaptif.
+
+#### Pipeline render & backpressure
+
+- Hanya ada satu submit GPU *in-flight*: `renderFrame()` menahan submit
+  selama `onSubmittedWorkDone()` sebelumnya belum selesai (`loopBp.busy`);
+  frame yang dilewati ditandai `pendingRender` dan di-*catch-up* begitu GPU
+  selesai. Tanpa aturan ini antrian menumpuk → GPU idle mendadak → video berhenti.
+- Timeout antrian 3 detik sebanyak 3 kali berturut-turut → upscale dimatikan +
+  toast. Bila `queue.onSubmittedWorkDone` tidak tersedia, jalur berjalan tanpa
+  backpressure (bukan error).
+- Metrik (jendela 120 sampel) dibaca lewat `MEEL_UPSCALER.diagnose().perf`
+  atau `stats().perf` → `{msAvg, msP95, videoFps, renderFps, budgetMs,
+  fitsBudget, samples, skipped, timeouts}`; `fitsBudget === null` berarti
+  belum ada sampel.
+- `stats()` juga memantau state loop (`loopPending`, `loopRvfc`, `loopRaf`,
+  `pendingRender`, `gpuBusy`) dan `rebuildReason`
+  (`enable|model|mode|scale|resolution|resize|attach`) untuk membedakan
+  rebuild normal dari loop yang macet.
+
+#### Anti-hitam, debounce resolusi, watchdog rVFC
+
+- **Transisi anti-hitam:** class `meel-upscale-active` (menyembunyikan video
+  asli) hanya dipasang `renderFrame()` setelah frame baru sukses, dan dilepas
+  saat rebuild mulai serta selama debounce resolusi. Jangan memasang class ini
+  di tempat lain.
+- **Debounce resolusi 600 ms:** ganti kualitas HLS bisa membuat `videoWidth`
+  berubah beberapa kali sebelum stabil; selama menunggu copy lintas ukuran
+  dilewati (`skipped`) dan video asli tampil. Metadata yang belum siap menunda
+  timer, bukan menyerah. Ukuran yang kembali sama cukup melanjutkan loop.
+- **Watchdog rVFC tiap 500 ms:** Chrome membuang `requestVideoFrameCallback`
+  saat transisi hidden↔visible atau saat `load()`; bila pemicu pertama jatuh,
+  `loop.pending` mentok `true` dan canvas beku walau video terus bermain.
+  Watchdog mendaftarkan ulang callback bila tab aktif, video bermain, tapi tak
+  ada tick >700 ms. `loadstart` me-reset `loop.pending`, `loadeddata` men-kick
+  loop kembali.
+
+#### Recovery saat tab di-background
+
+- `triggerPlayerRecovery()` menunda pemulihan sampai `visibilitychange` →
+  aktif (aturan cooldown tetap berlaku untuk pemulihan tertunda), autoplay
+  retry (`pendingPlayRetry`) menunggu tab aktif, dan `RecoveryManager`
+  me-reset baseline `lastTime`/`lastTs` saat hidden — durasi ter-hidden tidak
+  dihitung sebagai "stuck".
+- Tanpa gate itu `play()` ditolak senyap oleh browser dan video freeze ketika
+  user kembali ke tab.
+
+#### Catatan CSP `blankVideo`
+
+- Plyr memanggil `cancelRequests()` dengan `blankVideo` bawaan
+  `https://cdn.plyr.io/static/blank.mp4`; URL eksternal itu melanggar
+  `media-src 'self' data: blob:` dan memicu `MEDIA_ELEMENT_ERROR` berantai
+  setelah `player.destroy()`.
+- `assets/js/shared/plyr-config.js` menyetel `blankVideo` ke data URI lokal
+  (berlaku untuk video, musik, dan audio). **Jangan kembalikan URL CDN** dan
+  jangan melonggarkan CSP.
+
 ### Proses yang Perlu Dipahami
 
 1. **Upload Pipeline** — Uploader → FFmpeg → HDD → DB
@@ -848,6 +1935,7 @@ datang dari sesi mini-player yang aktif.
 4. **HTMX Flow** — Event → Request → Server → Response → DOM swap
 5. **MFA Flow** — Login password valid → Cek mfa_enabled → Redirect auth/mfa-verify → Verify TOTP → Set session penuh
 6. **Sesi Music Player & Resume** — Tap kartu/playlist → mini-player (set `skip_resume_once`) → expand → watch (konsumsi flag, aktifkan marker sesi) → auto-continue; kunjungan dingin menampilkan resume-modal
+7. **Video Upscale & Recovery** — toggle → lazy-load model → rebuild pipeline → satu submit in-flight (tunggu GPU, frame dilewati di-catch-up); ganti kualitas di-debounce 600 ms tanpa frame hitam; recovery & autoplay ditunda sampai tab aktif
 
 ---
 

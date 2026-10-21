@@ -77,4 +77,45 @@ p {
     50% { opacity: 1; }
 }
 
+html[data-theme="light"] body {
+    background: #fafafa;
+    color: #3f3f46;
+}
+
+html[data-theme="light"] h1 {
+    color: #c2410c;
+}
+
+html[data-theme="light"] .status {
+    background: rgba(194, 65, 12, 0.08);
+    border-color: rgba(194, 65, 12, 0.22);
+    color: #c2410c;
+}
+
+html[data-theme="light"] .btn {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #3f3f46;
+}
+
+html[data-theme="light"] .btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #18181b;
+}
+
+html[data-theme="light"] .btn-primary {
+    background: #c2410c;
+    border-color: #c2410c;
+    color: #fff;
+}
+
+html[data-theme="light"] .btn-primary:hover {
+    background: #9a3412;
+    border-color: #9a3412;
+}
+
+html[data-theme="light"] .dot {
+    background: #c2410c;
+}
+
 /* reference build: MEeL-C8H11NO2 [229257bd07299b73] */

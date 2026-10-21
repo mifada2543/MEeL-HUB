@@ -3,7 +3,6 @@ require '../../../auth/config.php';
 require_once __DIR__ . '/chess_helpers.php';
 header('Content-Type: application/json');
 
-
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     die(json_encode([
@@ -53,7 +52,7 @@ $opponentId = ((int)$roomRow['white_user_id'] === $user_id)
 $opponentOnline = chess_opponent_online($conn, $opponentId);
 
 echo json_encode([
-    "moves"           => $moves,
+    "moves" => $moves,
     "opponent_online" => $opponentOnline,
 ]);
 

@@ -3,9 +3,7 @@ use PHPUnit\Framework\TestCase;
 
 require_once MEEL_ROOT . '/modules/core/Router.php';
 
-/**
- * @covers MeelRouter
- */
+/** @covers MeelRouter */
 class RouterProfileRouteTest extends TestCase
 {
     protected function tearDown(): void
@@ -29,7 +27,7 @@ class RouterProfileRouteTest extends TestCase
 
     public function testReservedProfileRoutesKeepPriority(): void
     {
-        foreach (['profile/manage', 'profile/edit', 'profile/manage-action', 'profile/edit-video', 'profile/edit-music'] as $path) {
+        foreach (['profile/manage', 'profile/edit', 'profile/edit-video', 'profile/edit-music'] as $path) {
             $route = MeelRouter::routeFor($path);
             $this->assertNotSame('profile/index.php', $route['handler'], "{$path} harus tetap rute eksak, bukan profil user");
             $this->assertArrayNotHasKey('u', $_GET, "{$path} tidak boleh mengisi \$_GET['u']");
@@ -64,15 +62,12 @@ class RouterProfileRouteTest extends TestCase
     {
         $route = MeelRouter::routeFor('profile/channel-more');
         $this->assertSame('profile/channel_more.php', $route['handler']);
-        // Route eksak menang atas pattern username — tidak boleh mengisi GET.
         $this->assertArrayNotHasKey('u', $_GET);
         $this->assertArrayNotHasKey('tab', $_GET);
     }
 
     public function testMultiSegmentProfileTypeNotRouted(): void
     {
-        // /profile/<user>/<all|video|music> di-handle via 301 redirect di
-        // dispatch(), bukan route — jadi routeFor harus null tanpa mengisi GET.
         foreach (['all', 'video', 'music', 'other'] as $type) {
             $this->assertNull(MeelRouter::routeFor('profile/john_doe/' . $type));
         }

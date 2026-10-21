@@ -3,6 +3,7 @@ define('MEEL_API_CONTEXT', true);
 require_once '../../auth/auth.php';
 require_once '../../auth/config.php';
 require_once '../../modules/media/MediaLibrary.php';
+require_once '../../modules/media/BookRepository.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($id < 1) {
@@ -35,6 +36,11 @@ header('Cache-Control: public, max-age=86400');
 header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
 header('Pragma: public');
 header('Accept-Ranges: bytes');
+
+if (meel_xsendfile_ready($file_path)) {
+    header('X-Sendfile: ' . meel_xsendfile_header($file_path));
+    exit();
+}
 
 readfile($file_path);
 exit();

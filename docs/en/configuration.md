@@ -31,13 +31,15 @@ Reference guide for all configuration files and parameters in MEeL-HUB.
 | `modules/core/TranscoderBase.php` | FFmpeg, yt-dlp, CPU threads | `FFMPEG_THREADS`, `DOWNLOAD_TIMEOUT`, `TRANSCODE_AUDIO_TIMEOUT` |
 | `modules/core/Uploader.php` | Upload paths, FFmpeg | `$ffmpeg_bin`, `$ffprobe_bin` |
 | `modules/core/helpers.php` | **Shim** — requires `helpers/main.php` + `modules/auth/loader.php` (backward-compat) | — |
-| `modules/core/helpers/*.php` | Per-domain utilities (main, storage, audio, url) | `dir_size()`, `check_disk_space()`, `get_audio_mime_type()`, `resolve_binary()`, `log_drive_operation()` |
+| `modules/core/helpers/*.php` | Per-domain utilities (main, storage, upload, audio, url) | `dir_size()`, `check_disk_space()`, `get_audio_mime_type()`, `resolve_binary()`, `log_drive_operation()`, `meel_serve_media_file()`, `meel_handle_upload()` |
 | `modules/auth/helpers/user.php` | User & role helpers | `get_user_role()`, `get_user_usage()`, `invalidate_user_role_cache()` |
 | `modules/core/System.php` | Queue management | Rate limit constants |
 | `modules/core/GarbageCollector.php` | Auto-cleanup temp files + guests + chess rooms + rate limits | `STALE_SECONDS`, `GUEST_STALE_HOURS`, `ROOM_LOBBY_STALE_HOURS`, `ROOM_GAME_STALE_HOURS`, `CHESS_CLEANUP_INTERVAL` |
 | `modules/auth/RateLimiter.php` | File-based API rate limiter | Per-endpoint limits (30 likes/min, 10 comments/min, etc.) |
 | `modules/core/japanese.php` | Japanese text processing (MeCab + transliterator) | `getRomajiName()`, `analyzeJapaneseText()` |
 | `modules/core/activity_logger.php` | Activity logging, IP banning, session kick | `get_real_ip()`, `log_activity()`, `validate_and_format_ip()` |
+| `modules/core/helpers/upload.php` | Upload/file helpers (sanitization, unique-name reservation, codec validation, ffmpeg, centralized upload handler) | `meel_sanitize_upload_filename()`, `meel_reserve_unique_filename()`, `meel_validate_video_codec()`, `meel_validate_audio_codec()`, `meel_handle_upload()` |
+| `modules/core/helpers/storage.php` | Media/Drive storage helpers + media serving | `meel_media_base_path()`, `meel_drive_base_path()`, `meel_storage_ready()`, `meel_storage_guard()`, `meel_serve_media_file()`, `meel_write_cache_file()` |
 | `modules/core/bootstrap.php` | Bootstrap (env detection, error reporting, timezone) | `MEEL_ENV`, error log config |
 | `modules/core/base_url.php` | Centralized base URL computation (`meel_base_url_path()`) | `MEEL_BASE_URL` (via `bootstrap.php`/`config.php`) |
 | `modules/transcoder/FfmpegUtils.php` | **Trait** for FFmpeg utilities | `resolveBinary()`, `probeDuration()`, `generateSpriteAndVTT()` |
@@ -110,6 +112,8 @@ define('MEEL_TRUST_PROXY_HEADERS', false);
 ```
 
 Header `HTTP_X_FORWARDED_FOR` / `HTTP_CF_CONNECTING_IP` should only be trusted if the request actually goes through a proxy/CDN you control (Cloudflare, Nginx reverse proxy). If set to `true` while the server is accessed directly, an attacker can spoof IPs to bypass IP bans or flood the activity log.
+
+**`MEEL_TRUSTED_PROXIES` allowlist** (default `['127.0.0.1', '::1']`): proxy headers are only trusted when `REMOTE_ADDR` is in this list. IP resolution is centralized in `modules/core/proxy.php` — `CF-Connecting-IP` → `X-Forwarded-For` right-to-left (Cloudflare puts the real client IP at the far right; trusted entries are skipped) → fallback `REMOTE_ADDR`. Without the allowlist, anyone can send `X-Forwarded-For: 127.0.0.1` to bypass login rate limits, MFA lockout, and IP bans. `proxy.php` has no side effects — safe to require from bootstrap, logger, or tests.
 
 ### Connection Charset (`utf8mb4`)
 
@@ -206,6 +210,21 @@ define('MEEL_USE_XSENDFILE', false);
 ```
 
 X-Sendfile speeds up streaming of large files like FLAC (33MB+) by letting Apache serve files directly from disk (zero-copy), without PHP reading the file at all.
+
+**Endpoints that support X-Sendfile** (all via the `meel_xsendfile_*` helpers in `modules/core/helpers/storage.php`):
+
+| Endpoint | Module |
+|---|---|
+| `video/stream.php` (incl. rewrite `/video/upload/...`) | Video |
+| `music/stream.php`, `music/file.php` (incl. rewrite `/music/upload/...`) | Music |
+| `books/file.php` (incl. rewrite `/books/upload/...`) | Books |
+| `drive/stream.php`, `drive/download.php` | Drive |
+| `controllers/api/pdf.php` (PDF viewer) | Books |
+| `controllers/api/download_transcode.php` | Music (transcode) |
+
+**Safe behaviour (automatic fallback):** the app only sends the `X-Sendfile` header when **all four** conditions hold: (1) `MEEL_USE_XSENDFILE === true`, (2) the `mod_xsendfile` module is actually loaded in Apache, (3) the file lies under one of the `XSendFilePath` entries read from Apache's configuration, and (4) the `XSendFile on` directive is in effect for the request — the `XSendFile on|off` value is read from Apache's configuration files **and** from the `.htaccess` files along the URL path/script directory (most specific wins; a missing directive counts as `off`, matching the `mod_xsendfile` default). If any condition fails, the endpoint falls back to PHP chunk streaming — the response stays valid and is never empty/404.
+
+**Range note:** while X-Sendfile is active, PHP does **not** send the `206` status itself (mod_xsendfile only runs on status `200`); `Range`/`Content-Range` and `416` are computed by Apache. `XSendFileUnescape On` (default) decodes `%XX` in the header, so filenames containing `%` are escaped automatically by the app.
 
 **Performance impact based on testing (FLAC 33MB):**
 
@@ -375,11 +394,11 @@ return $active >= 2; // isServerBusy()
 
 ## Cookies & yt-dlp Authentication
 
-The `cookies.txt` file in the project root is used for yt-dlp authentication:
+The `cookies.txt` file is used for yt-dlp authentication. Since T2 it lives in **`temp/`** (an `.htaccess`-protected folder, not the docroot — the file contains real YouTube sessions); legacy files in the project root are **auto-migrated** on first open, and chmod `0600` is applied best-effort by `TranscoderBase`:
 
 ```php
-// Path: /opt/lampp/htdocs/MEeL/cookies.txt
-$this->cookies_path = $this->base_path . "/cookies.txt";
+// Path: <root>/temp/cookies.txt (auto-migrated from <root>/cookies.txt)
+$this->cookies_path = $this->base_path . "/temp/cookies.txt";
 ```
 
 ### How to Get cookies.txt
@@ -387,7 +406,7 @@ $this->cookies_path = $this->base_path . "/cookies.txt";
 1. Install browser extension "Get cookies.txt LOCALLY"
 2. Log in to YouTube (or other platform) in your browser
 3. Click the extension → Export cookies
-4. Save the file as `cookies.txt` in the project root
+4. Save the file as `cookies.txt` in `temp/` (or the project root — auto-migrated)
 
 ---
 
@@ -421,6 +440,7 @@ File-based rate limiter for API endpoints (fail-closed on storage errors):
 | Upload | 3 | 1 hour | — |
 | Transcode | 5 | 1 hour | —
 | Auto Metadata | 5 | 1 hour | `controllers/api/auto_metadata.php` |
+| Registration | 5 | 1 hour | `auth/register.php` |
 | API Generic | 60 | 1 minute | — |
 
 **Configuration:** Edit directly in `modules/auth/RateLimiter.php`:
@@ -431,9 +451,27 @@ private static array $limits = [
     'upload'        => ['requests' => 3,  'window' => 3600],
     'transcode'     => ['requests' => 5,  'window' => 3600],
     'auto_metadata' => ['requests' => 5,  'window' => 3600],
+    'register'      => ['requests' => 5,  'window' => 3600],
     'api'           => ['requests' => 60, 'window' => 60],
 ];
 ```
+
+> ⚠️ **Registration is a per-IP bucket, and it only increments on a SUCCESSFUL
+> registration.** Unlike other endpoints (which key on the user), `register.php`
+> keys on `reg_ip:{IP}`. Consequences:
+> - The quota is **shared** with everyone behind the same IP (home NAT, office,
+>   campus, carrier-grade NAT). Behind NAT, 5 registrations/hour is a limit for
+>   the whole building, not per person.
+> - Loopback (`127.0.0.1`, `::1`) is **always exempt**, so local installs and test
+>   environments are never locked out.
+> - Failed attempts (duplicate username, weak password) **do not** consume quota;
+>   only a successful INSERT counts. Username enumeration is therefore not
+>   throttled by this bucket.
+>
+> Raise or lower the `register` value in `RateLimiter.php` if your deployment is
+> mostly shared-IP. A per-username bucket can be layered on top, but it **must
+> stay paired** with the per-IP bucket — on its own an attacker just cycles
+> usernames to get around it.
 
 ---
 

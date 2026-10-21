@@ -4,7 +4,7 @@
 <p class="text-center text-[10px] text-gray-600 mt-8 uppercase tracking-[0.3em]">©MEeL - 2025</p>
 </main>
 
-<script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
+<script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
 <script>    lucide.createIcons();
     const mfaCodeInput = document.getElementById('code');
     if (mfaCodeInput) {

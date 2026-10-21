@@ -25,9 +25,41 @@ Kompatibilitas minimum versi core HUB dicatat di setiap entri (mis. "Membutuhkan
 ### Fixed
 -
 
+## [1.0.0] - 2026-09-19
+
+> Membutuhkan core >= v1.0.0
+
+### Added
+
+- **Miku & Teto Run:** Game endless runner dengan karakter Miku dan Teto
+- **Chess:** Catur multiplayer online dengan room system
+- **Snake:** Klasik snake game
+- **2048:** Puzzle game angka
+- **Tetris:** Klasik block stacking
+- **Breakout:** Pemecah brick dengan bola
+- **Simon Says:** Memory game dengan pola warna dan suara
+- **Ludo:** Board game klasik
+- **MEeL!Mania:** Rhythm game dengan musik dari library MEeL Music
+- **Room System:** Pembuatan dan pengelolaan room untuk chess multiplayer
+- **Score System:** High score tracking untuk semua game
+- **Separate Database:** Schema dan migration terpisah dari core (`arcade/schema.sql` + `arcade/migrate.php`)
+- **Module System:** 3-lapis keputusan (Physical, Flag, Toggle) untuk enable/disable arcade
+- **Admin Toggle:** Panel admin untuk mengaktifkan/menonaktifkan arcade tanpa restart
+- **HTMX Integration:** Pembaruan dinamis untuk leaderboard dan room status
+
+### Changed
+- Arcade di-extract dari core HUB menjadi ekstensi terpisah
+- Database tables (`rooms`, `moves`, `arcade_song`, `arcade_score`) dipindahkan ke `arcade/schema.sql`
+- Migration dijalankan terpisah via `php arcade/migrate.php`
+
+### Fixed
+- Garbage collector tidak error saat arcade tidak terpasang
+- PHPUnit tests chess auto-skip saat arcade disabled
+- Router mengarahkan arcade routes ke optional route map saat tidak tersedia
+
 <!--
-## [1.0.0] - YYYY-MM-DD
+## [1.1.0] - YYYY-MM-DD
 > Membutuhkan core >= v1.0.0
 ### Added
-- Rilis stabil pertama modul arcade (9 game bawaan).
+-
 -->

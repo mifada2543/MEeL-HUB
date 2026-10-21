@@ -7,16 +7,17 @@ require_once '../modules/core/GarbageCollector.php';
 require_once '../modules/media/MediaLibrary.php';
 require_once '../modules/core/MeelCoin.php';
 require_once '../modules/core/Notification.php';
+meel_storage_guard();
 GarbageCollector::run();
 
 set_time_limit(0);
-$status        = "";
-$user          = $_SESSION['username'];
-$user_id       = $_SESSION['user_id'];
+$status = "";
+$user = $_SESSION['username'];
+$user_id = $_SESSION['user_id'];
 $alert_message = "";
 
 $user_role = get_user_role($conn, $user_id);
-$is_admin  = ($user_role === 'admin');
+$is_admin = ($user_role === 'admin');
 
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 $hour_count = 0;
@@ -26,14 +27,13 @@ if ($meelcoin_enabled) {
     if (!$is_admin) {
         MeelCoin::refill($conn, $user_id, $user_role);
     }
-    $coin_balance   = $is_admin ? -1 : MeelCoin::getBalance($conn, $user_id);
-    $coin_max       = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
-    $coin_cost      = MeelCoin::getCost($conn, 'upload');
+    $coin_balance = $is_admin ? -1 : MeelCoin::getBalance($conn, $user_id);
+    $coin_max = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
+    $coin_cost = MeelCoin::getCost($conn, 'upload');
     $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, $user_id, $user_role);
 } else {
-    $hour_count     = get_hourly_upload_count($conn, $user_id, 'video');
-    $total_uploads  = get_total_upload_count($conn, $user_id, 'video');
-    $hourly_limit   = $is_admin ? '∞' : get_upload_hourly_limit($user_role);
+    $hour_count = get_hourly_upload_count($conn, $user_id, 'video');
+    $hourly_limit = $is_admin ? '∞' : get_upload_hourly_limit($user_role);
 }
 
 $total_uploads = get_total_upload_count($conn, $user_id, 'video');
@@ -42,62 +42,23 @@ $uploader = new Uploader($conn, $user_id, $user);
 
 if (isset($_POST['upload'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
-        $alert_message = 'CSRF token tidak valid.';
+        $alert_message = 'CSRF token tidak valid. Silakan muat ulang halaman lalu coba lagi.';
     } else {
-        if ($meelcoin_enabled && !$is_admin) {
-            if (!MeelCoin::canAfford($conn, $user_id, $coin_cost)) {
-                $alert_message = "MEeLCoin tidak cukup! Dibutuhkan {$coin_cost} coin, saldo Anda: {$coin_balance}.";
-            }
+        $upload_result = meel_handle_upload($conn, 'video', function ($post, $files) use ($uploader) {
+            return $uploader->processVideo($post, $files, __DIR__ . "/");
+        }, 'upload_video');
+
+        $status = $upload_result['status'];
+        $alert_message = $upload_result['alert_message'];
+        if (isset($upload_result['extra']['coin_balance'])) {
+            $coin_balance = $upload_result['extra']['coin_balance'];
+        } elseif ($upload_result['status'] === 'success') {
+            $hour_count = $upload_result['extra']['hour_count'] ?? $hour_count;
         }
-
-            if ($alert_message === '') {
-            $coin_deducted = false;
-            if ($meelcoin_enabled && !$is_admin) {
-                [$spent_ok, $spent_err] = MeelCoin::spend($conn, $user_id, $coin_cost, 'upload');
-                if (!$spent_ok) {
-                    $alert_message = $spent_err;
-                } else {
-                    $coin_deducted = true;
-                    $new_balance = MeelCoin::getBalance($conn, $user_id);
-                    Notification::create($conn, $user_id, 'meelcoin',
-                        'Penggunaan MEeLCoin',
-                        'Upload video "' . htmlspecialchars(trim($_POST['title'])) . '" — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
-                    );
-                }
-            }
-
-            if ($alert_message === '') {
-                $result = $uploader->processVideo($_POST, $_FILES, __DIR__ . "/");
-
-                if ($result['status'] === 'success') {
-                    $status = "success";
-                    if ($meelcoin_enabled && !$is_admin) {
-                        $coin_balance = MeelCoin::getBalance($conn, $user_id);
-                    } else {
-                        $hour_count++;
-                    }
-                    $total_uploads++;
-                    MediaLibrary::clearCountsCache();
-                    log_activity($conn, $user_id, 'upload_video', 'video', (int)($result['id'] ?? 0));
-                } else {
-                    $alert_message = $result['msg'];
-                    if ($coin_deducted) {
-                        MeelCoin::refund($conn, $user_id, $coin_cost, 'upload_failed_refund');
-                    }
-                }
-            }
-        }
+        $total_uploads = $upload_result['extra']['total_uploads'] ?? $total_uploads;
     }
 }
 
-$__v = function($f) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/../' . $f;
-    if (!isset($mtimeCache[$path])) {
-        $mtimeCache[$path] = @filemtime($path);
-    }
-    return '?v=' . $mtimeCache[$path];
-};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -105,14 +66,12 @@ $__v = function($f) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Upload video ke MEeL Video Library. Format video didukung: MP4, WEBM, MKV. Transcoding otomatis ke HLS.">
-    <meta property="og:title" content="MEeL Video | Upload">
-    <meta property="og:description" content="Upload video ke MEeL Video Library. Format: MP4, WEBM, MKV. Transcoding otomatis ke HLS.">
-    <title>MEeL Video | Upload</title>
+    <meta name="description" content="Unggah video ke MEeL Video. Format video didukung: MP4, WEBM, MKV. Transcoding otomatis ke HLS.">
+    <meta property="og:title" content="MEeL Video | Unggah">
+    <meta property="og:description" content="Unggah video ke MEeL Video. Format: MP4, WEBM, MKV. Transcoding otomatis ke HLS.">
+    <title>MEeL Video | Unggah</title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= $__v('assets/css/video/' . $__f) ?>">
-    <?php endforeach; ?>
+    <?php meel_css_links('video', '../assets/css/video'); ?>
     <link rel="stylesheet" href="../assets/css/font.css?v=<?= filemtime('../assets/css/font.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/design-tokens.css?v=<?= filemtime('../assets/css/shared/design-tokens.css') ?>">
     <link rel="stylesheet" href="../assets/css/shared/upload-form.css?v=<?= filemtime('../assets/css/shared/upload-form.css') ?>">
@@ -122,13 +81,12 @@ $__v = function($f) {
 <body>
     <div class="page-wrap">
 
-        
         <nav class="top-nav">
             <a href="../" class="nav-brand">MEeL<span>Video</span></a>
             <div class="nav-sep"></div>
-            <a href="beranda" class="nav-crumb">Library</a>
+            <a href="beranda" class="nav-crumb">Koleksi</a>
             <span class="nav-chevron">›</span>
-            <span class="nav-crumb-current">Upload</span>
+            <span class="nav-crumb-current">Unggah</span>
             <?php if ($is_admin): ?>
                 <span class="admin-badge"><i data-lucide="shield" style="width:10px;height:10px;"></i> Admin</span>
             <?php endif; ?>
@@ -136,60 +94,56 @@ $__v = function($f) {
 
         <div class="upload-layout">
 
-            
             <aside class="sidebar-panel">
 
-                
                 <div class="hero-icon">
                     <div class="hero-icon-ring">
                         <i data-lucide="clapperboard" style="width:28px;height:28px;color:var(--accent);"></i>
                     </div>
                     <div style="position:relative;z-index:1;text-align:center;">
-                        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#e2e6ef;text-transform:uppercase;letter-spacing:.1em;">Upload Video</div>
+                        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#e2e6ef;text-transform:uppercase;letter-spacing:.1em;">Unggah Video</div>
                         <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;margin-top:3px;">MP4 · WEBM · MKV</div>
                     </div>
                 </div>
 
-                
                 <div class="stats-strip">
                     <?php if ($meelcoin_enabled): ?>
                         <div class="stat-chip" style="grid-column:1/-1;">
                             <div class="stat-number" style="font-size:15px;color:#facc15;<?= $is_admin ? '' : 'cursor:help;' ?>"
                                 <?php if (!$is_admin): ?>
-                                    title="Refill berikutnya: <?= $coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill' ?>"
+                                    title="Refill berikutnya: <?= htmlspecialchars($coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill', ENT_QUOTES, 'UTF-8') ?>"
                                 <?php endif; ?>
-                            ><?= $is_admin ? '∞' : $coin_balance ?></div>
+                            ><?= $is_admin ? '∞' : htmlspecialchars((string) $coin_balance) ?></div>
                             <div class="stat-label">MEeLCoin</div>
                         </div>
                         <?php if (!$is_admin): ?>
                             <div class="stat-chip">
-                                <div class="stat-number" style="font-size:11px;color:#f97316;"><?= $coin_cost ?></div>
+                                <div class="stat-number" style="font-size:11px;color:#f97316;"><?= htmlspecialchars((string) $coin_cost) ?></div>
                                 <div class="stat-label">Biaya</div>
                             </div>
                             <div class="stat-chip">
-                                <div class="stat-number" style="font-size:11px;"><?= $total_uploads ?></div>
+                                <div class="stat-number" style="font-size:11px;"><?= htmlspecialchars((string) $total_uploads) ?></div>
                                 <div class="stat-label">Total</div>
                             </div>
                         <?php endif; ?>
                     <?php else: ?>
                         <div class="stat-chip">
-                            <div class="stat-number"><?= $hour_count ?></div>
+                            <div class="stat-number"><?= htmlspecialchars((string) $hour_count) ?></div>
                             <div class="stat-label">Jam Ini</div>
                         </div>
                         <div class="stat-chip">
-                            <div class="stat-number"><?= $total_uploads ?></div>
+                            <div class="stat-number"><?= htmlspecialchars((string) $total_uploads) ?></div>
                             <div class="stat-label">Total</div>
                         </div>
                         <div class="stat-chip">
-                            <div class="stat-number" style="font-size:15px;"><?= $hourly_limit ?></div>
+                            <div class="stat-number" style="font-size:15px;"><?= htmlspecialchars((string) $hourly_limit) ?></div>
                             <div class="stat-label">Limit/Jam</div>
                         </div>
                     <?php endif; ?>
                 </div>
 
-                
                 <div class="guide-list">
-                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;padding-left:2px;">Panduan Upload</div>
+                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.16em;color:#455060;padding-left:2px;">Panduan Unggah</div>
                     <div class="guide-item">
                         <div class="guide-icon"><i data-lucide="file-video" style="width:13px;height:13px;color:var(--accent);"></i></div>
                         <div>
@@ -207,7 +161,7 @@ $__v = function($f) {
                     <div class="guide-item">
                         <div class="guide-icon"><i data-lucide="clock" style="width:13px;height:13px;color:var(--accent);"></i></div>
                         <div>
-                            <div class="guide-title">Proses Upload</div>
+                            <div class="guide-title">Proses Unggah</div>
                             <div class="guide-desc">Video besar memerlukan waktu lebih lama. Jangan tutup tab saat proses berlangsung.</div>
                         </div>
                     </div>
@@ -216,7 +170,7 @@ $__v = function($f) {
                             <div class="guide-icon"><i data-lucide="shield" style="width:13px;height:13px;color:var(--accent);"></i></div>
                             <div>
                                 <div class="guide-title" style="color:var(--accent);">Mode Admin</div>
-                                <div class="guide-desc">Tidak ada limit upload. Ukuran & durasi maksimum ditingkatkan.</div>
+                                <div class="guide-desc">Tidak ada batas unggah. Ukuran & durasi maksimum ditingkatkan.</div>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -224,12 +178,11 @@ $__v = function($f) {
 
             </aside>
 
-            
             <section class="form-panel">
                 <div class="form-header">
                     <div>
                         <h1 class="form-title">Halo, <span><?= htmlspecialchars($user) ?></span></h1>
-                        <p class="form-subtitle">Tambahkan koleksi video ke library</p>
+                        <p class="form-subtitle">Tambahkan video ke koleksi</p>
                     </div>
                     <i data-lucide="upload-cloud" style="width:36px;height:36px;color:var(--accent);opacity:.3;flex-shrink:0;margin-top:4px;"></i>
                 </div>
@@ -242,9 +195,9 @@ $__v = function($f) {
                 <?php endif; ?>
                 <form method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
                     <?php if (isset($_SESSION['csrf_token'])): ?>
-                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     <?php endif; ?>
-                    
+
                     <div class="field-group">
                         <div style="display:flex;align-items:center;justify-content:space-between;">
                             <label class="field-label" for="f-title">Judul Video</label>
@@ -260,7 +213,6 @@ $__v = function($f) {
                             class="field-input">
                     </div>
 
-                    
                     <div class="field-group" style="flex:1;display:flex;flex-direction:column;">
                         <label class="field-label" for="f-desc">Deskripsi / Keterangan</label>
                         <textarea id="f-desc" name="description"
@@ -270,26 +222,24 @@ $__v = function($f) {
 
                     <div class="divider" style="margin:0;"></div>
 
-                    
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <label class="field-label">File & Thumbnail</label>
                         <div class="drop-grid">
-                            
+
                             <div class="drop-zone" id="video-zone">
                                 <input type="file" name="video" accept=".mp4,.webm,.mkv" required
-                                    id="video-input" onchange="handleVideoFile(this)" aria-label="Pilih atau drop file video (format: MP4, WEBM, MKV)">
+                                    id="video-input" onchange="handleVideoFile(this)" aria-label="Pilih atau jatuhkan file video (format: MP4, WEBM, MKV)">
                                 <div class="drop-zone-icon">
                                     <i data-lucide="file-video" style="width:18px;height:18px;color:var(--accent);"></i>
                                 </div>
-                                <div class="drop-zone-label" id="video-label">Pilih / Drop Video</div>
+                                <div class="drop-zone-label" id="video-label">Pilih / Jatuhkan Video</div>
                                 <div class="drop-zone-sub">MP4 · WEBM · MKV</div>
                             </div>
 
-                            
                             <div class="drop-zone" id="thumb-zone">
                                 <input type="file" name="thumbnail" accept="image/*"
-                                    id="thumb-input" onchange="handleThumbFile(this)" aria-label="Pilih atau drop file thumbnail (opsional)">
-                                <img id="thumb-preview" class="thumb-mini" alt="preview">
+                                    id="thumb-input" onchange="handleThumbFile(this)" aria-label="Pilih atau jatuhkan file thumbnail (opsional)">
+                                <img id="thumb-preview" class="thumb-mini" alt="pratinjau">
                                 <div class="drop-zone-icon" id="thumb-icon-wrap">
                                     <i data-lucide="image" style="width:18px;height:18px;color:#4a5568;"></i>
                                 </div>
@@ -299,13 +249,12 @@ $__v = function($f) {
                         </div>
                     </div>
 
-                    
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <label class="field-label">Subtitle (Opsional)</label>
-                        
+
                         <div class="drop-zone drop-zone-subtitle" id="subtitle-zone">
                             <input type="file" name="subtitle" accept=".vtt,.srt"
-                                id="subtitle-input" onchange="handleSubtitleFile(this)" aria-label="Pilih atau drop file subtitle (format: VTT, SRT)">
+                                id="subtitle-input" onchange="handleSubtitleFile(this)" aria-label="Pilih atau jatuhkan file subtitle (format: VTT, SRT)">
                             <div class="drop-zone-icon">
                                 <i data-lucide="captions" style="width:18px;height:18px;color:var(--accent);"></i>
                             </div>
@@ -315,7 +264,6 @@ $__v = function($f) {
                             </div>
                         </div>
 
-                        
                         <div class="field-group" id="subtitle-lang-wrap" style="display:none;">
                             <label class="field-label" for="f-subtitle-lang-trigger">Bahasa Subtitle</label>
                             <div class="lang-dropdown" id="f-subtitle-lang-dropdown" data-name="subtitle_lang">
@@ -336,7 +284,6 @@ $__v = function($f) {
                         </div>
                     </div>
 
-                    
                     <div style="margin-top:auto;">
                         <button type="submit" name="upload" id="btn-upload" class="btn-primary">
                             <i data-lucide="upload" style="width:15px;height:15px;"></i>
@@ -344,11 +291,10 @@ $__v = function($f) {
                         </button>
                     </div>
 
-                    
                     <div class="footer-links">
-                        <a href="beranda" class="footer-link">Library</a>
+                        <a href="beranda" class="footer-link">Koleksi</a>
                         <a href="../" class="footer-link">Portal</a>
-                        <a href="../music/upload" class="footer-link accent">Go to Music</a>
+                        <a href="../music/upload" class="footer-link accent">Buka Musik</a>
                         <a href="../upload" class="footer-link"
                             onclick="return meelAlertRedirect({ title:'Upload Lanjutan', text:'Anda dan Server memerlukan koneksi internet', icon:'info', redirectUrl:'../upload' })">
                             Upload Lanjutan
@@ -358,19 +304,18 @@ $__v = function($f) {
             </section>
 
         </div>
-        </main>
 
     </div>
 
     <?php include '../partials/footer.php'; ?>
-    
+
     <div id="upload-overlay">
         <div class="overlay-card">
             <div class="upload-ring">
                 <div class="upload-ring-inner"></div>
             </div>
             <div style="width:100%;text-align:center;display:flex;flex-direction:column;gap:8px;">
-                <div class="overlay-title">Mengupload Video...</div>
+                <div class="overlay-title">Mengunggah Video...</div>
                 <div class="overlay-filename" id="overlay-filename">Mempersiapkan file</div>
             </div>
             <div style="width:100%;display:flex;flex-direction:column;gap:8px;">
@@ -388,14 +333,14 @@ $__v = function($f) {
             </div>
         </div>
     </div>
-    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js"></script>
-    <script src="../assets/js/compatibilitas/script.min.js"></script>
-    <script src="../assets/js/shared/lang-dropdown.js<?= $__v('assets/js/shared/lang-dropdown.js') ?>"></script>
-    <script src="../assets/js/shared/htmx-lucide.js<?= $__v('assets/js/shared/htmx-lucide.js') ?>"></script>
+    <script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
+    <script src="../assets/js/compatibilitas/script.min.js<?= meel_asset_version('assets/js/compatibilitas/script.min.js') ?>"></script>
+    <script src="../assets/js/shared/lang-dropdown.js<?= meel_asset_version('assets/js/shared/lang-dropdown.js') ?>"></script>
+    <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
     <script>
         <?php if ($alert_message !== ""): ?>
             meelAlertRedirect({
-                title: 'Upload Video',
+                title: 'Unggah Video',
                 text: <?= json_encode($alert_message) ?>,
                 icon: 'warning',
                 redirectUrl: 'upload'
@@ -406,14 +351,14 @@ $__v = function($f) {
                 title: 'Berhasil!',
                 text: 'Video telah diupload dan sedang diproses.',
                 icon: 'success',
-                confirmButtonColor: '#ef4444',
+                confirmButtonColor: '#dc2626',
                 background: '#0e1118',
                 color: '#fff'
             });
         <?php endif; ?>
     </script>
-    <script src="../assets/js/shared/upload-progress.js<?= $__v('assets/js/shared/upload-progress.js') ?>"></script>
-    <script src="../assets/js/video/upload/upload.js<?= $__v('assets/js/video/upload/upload.js') ?>"></script>
+    <script src="../assets/js/shared/upload-progress.js<?= meel_asset_version('assets/js/shared/upload-progress.js') ?>"></script>
+    <script src="../assets/js/video/upload/upload.js<?= meel_asset_version('assets/js/video/upload/upload.js') ?>"></script>
 </body>
 
 </html>

@@ -4,16 +4,23 @@ if (!function_exists('base32_decode')) {
 function base32_decode(string $input): string
 {
     $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    $input = strtoupper($input);
+    $input = strtoupper(rtrim($input, '='));
     $output = '';
     $buffer = 0;
     $bits_left = 0;
 
+    if ($input === '') {
+        throw new InvalidArgumentException('base32_decode(): secret kosong');
+    }
+
     for ($i = 0; $i < strlen($input); $i++) {
         $ch = $input[$i];
-        if ($ch === '=') break;
         $pos = strpos($alphabet, $ch);
-        if ($pos === false) continue;
+        if ($pos === false) {
+            throw new InvalidArgumentException(
+                "base32_decode(): karakter tak valid \"{$ch}\" (harus A-Z atau 2-7)"
+            );
+        }
 
         $buffer = ($buffer << 5) | $pos;
         $bits_left += 5;
@@ -23,6 +30,23 @@ function base32_decode(string $input): string
         }
     }
     return $output;
+}
+}
+
+if (!function_exists('base32_decode_is_valid')) {
+
+function base32_decode_is_valid(string $input): bool
+{
+    $trimmed = strtoupper(rtrim($input, '='));
+
+    if ($trimmed === '') {
+        return false;
+    }
+    if (!preg_match('/^[A-Z2-7]+$/', $trimmed)) {
+        return false;
+    }
+    // Secret TOTP minimal 16 char (80 bit); generator membuat 32.
+    return strlen($trimmed) >= 16;
 }
 }
 
@@ -65,9 +89,24 @@ if (!function_exists('verify_totp')) {
 
 function verify_totp(string $secret, string $code): bool
 {
+    // Kode harus persis 6 digit — menolak input malformed lebih awal
+    // supaya tidak ada jalur yang lolos karena perbandingan longgar.
+    if ($code === '' || !preg_match('/^\d{6}$/', $code)) {
+        return false;
+    }
+
     $time_slice = (int)floor(time() / 30);
+
     for ($i = -1; $i <= 1; $i++) {
-        if (hash_equals(generate_totp($secret, $time_slice + $i), $code)) {
+        try {
+            $expected = generate_totp($secret, $time_slice + $i);
+        } catch (InvalidArgumentException $e) {
+            // Secret tak sah (karakter di luar base32, atau kosong).
+            // Tidak bocor detailnya ke pemanggil — tetap "gagal".
+            return false;
+        }
+
+        if (hash_equals($expected, $code)) {
             return true;
         }
     }
@@ -103,15 +142,20 @@ function generate_backup_codes(): array
 
 if (!function_exists('verify_backup_code')) {
 
-
 function verify_backup_code(string $hashed_json, string $input): array
 {
     $codes = json_decode($hashed_json, true);
-    if (!is_array($codes)) {
+    if (!is_array($codes) || $codes === []) {
+        return ['valid' => false, 'remaining' => null];
+    }
+    if ($input === '') {
         return ['valid' => false, 'remaining' => null];
     }
 
     foreach ($codes as $i => $hash) {
+        if (!is_string($hash)) {
+            continue;
+        }
         if (password_verify($input, $hash)) {
             array_splice($codes, $i, 1);
             return ['valid' => true, 'remaining' => $codes];

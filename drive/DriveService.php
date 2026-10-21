@@ -1,4 +1,8 @@
 <?php
+final class StorageNotMountedException extends RuntimeException
+{
+}
+
 final class DriveUserContext
 {
     public const ROLE_ADMIN = 'admin';
@@ -99,8 +103,6 @@ final class DriveStorage
         $this->webBasePath = $webBasePath;
     }
 
-    
-
     public static function defaultBasePath(?string $hddDriveOverride = null): string
     {
         return meel_drive_base_path($hddDriveOverride);
@@ -141,8 +143,6 @@ final class DriveStorage
                 continue;
             }
 
-            
-            
             $path = 'stream?file=' . rawurlencode($fileInfo->getFilename())
                 . '&type=' . rawurlencode($type)
                 . '&scope=' . rawurlencode($scope)
@@ -164,8 +164,6 @@ final class DriveStorage
 
         return $files;
     }
-
-    
 
     public function upload(array $file, ?string $requestedScope, int $quotaLimitBytes = 0): array
     {
@@ -350,6 +348,15 @@ final class DriveStorage
 
     private function ensureDirectoryExists(string $directory): void
     {
+        if (
+            function_exists('meel_storage_path_in_volume')
+            && meel_storage_path_in_volume($directory)
+            && function_exists('meel_storage_ready')
+            && !meel_storage_ready()
+        ) {
+            throw new StorageNotMountedException('Penyimpanan media belum ter-mount.');
+        }
+
         if (is_dir($directory)) {
             return;
         }
@@ -427,8 +434,6 @@ final class DriveStorage
 
         return $safeFilename;
     }
-
-    
 
     private function reserveUniqueFilename(string $directory, string $filename): string
     {

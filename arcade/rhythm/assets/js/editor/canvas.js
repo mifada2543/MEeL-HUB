@@ -1,8 +1,3 @@
-
-
-
-
-
 import { S, DOM, CONST } from "./state.js";
 
 export function getBPM() {
@@ -70,11 +65,7 @@ export function resizeCanvas() {
 export function getCanvasPos(e) {
   var canvas = DOM.canvas, wrap = DOM.wrap;
   var rect = canvas.getBoundingClientRect();
-  
-  
-  
-  
-  
+
   var scaleX = canvas.width / rect.width;
   var scaleY = canvas.height / rect.height;
   return {
@@ -84,7 +75,7 @@ export function getCanvasPos(e) {
 }
 
 export function getLaneAndTime(pos) {
-  var offset = 50; 
+  var offset = 50;
   var lane = Math.floor((pos.x - offset) / S.laneWidth);
   if (lane < 0 || lane >= CONST.LANE_COUNT) return null;
   var ms = snapMs(yToMs(pos.y));

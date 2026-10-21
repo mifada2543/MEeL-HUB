@@ -1,7 +1,6 @@
-
 (function () {
   'use strict';
-  
+
   window.setupImageDragDrop = function (wrapId, inputId, previewId, badgeId, onChange) {
     var wrap = document.getElementById(wrapId);
     var input = document.getElementById(inputId);

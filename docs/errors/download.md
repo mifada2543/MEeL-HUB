@@ -50,7 +50,7 @@ $this->base_path = dirname(__DIR__, 2); // → .../MEeL/
 ### What it affects (when `base_path` is wrong):
 | Path used | Correct location | Wrong location |
 |---|---|---|
-| `cookies.txt` | `.../MEeL/cookies.txt` | `.../MEeL/modules/cookies.txt` |
+| `cookies.txt` | `.../MEeL/temp/cookies.txt` | `.../MEeL/modules/cookies.txt` |
 | `partials/ui.php` | `.../MEeL/partials/ui.php` | `.../MEeL/modules/partials/ui.php` |
 | `music/upload/file/` | `.../MEeL/music/upload/file/` | `.../MEeL/modules/music/upload/file/` |
 
@@ -71,7 +71,7 @@ which yt-dlp          # Must be installed
 which ffmpeg          # Must be installed
 which ffprobe         # Must be installed
 which node            # Must be installed (yt-dlp JS runtime)
-ls -la cookies.txt    # Must exist at project root
+ls -la temp/cookies.txt   # Must exist in temp/ (root auto-migrated)
 php -v                # Must be 7.0+ (for dirname($path, 2))
 ```
 

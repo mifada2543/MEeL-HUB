@@ -5,6 +5,7 @@ DirectoryIndex index.php index.html
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set X-RootProc "%{ROOTPROC}e" env=ROOTPROC
 </IfModule>
 
 <FilesMatch "(\.env|\.git|\.htaccess|\.htpasswd|\.sql|\.log|config\.php|settings\.php|settings\.example\.php|cookies\.txt|auth\.php|sitemap\.php|robots\.php)$">
@@ -17,15 +18,44 @@ DirectoryIndex index.php index.html
     </IfModule>
 </FilesMatch>
 
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/manifest+json
+    AddOutputFilterByType DEFLATE image/svg+xml
+    AddOutputFilterByType DEFLATE text/vtt
+</IfModule>
+
 # ── PWA: /sw.js disajikan dari generator PHP (precache dinamis dari manifest.php) ──
 <IfModule mod_rewrite.c>
+    RewriteRule ^arcade/testgeneric\.php$ - [E=ROOTPROC:1]
     RewriteEngine On
     RewriteRule ^sw\.js$ sw.js.php [END]
+    # /assets/manifest.json disajikan dari generator PHP supaya scope & id
+    # ikut base path aplikasi. Kalau repo dipindah ke folder lain (mis.
+    # /media-hub), manifest hardcode "/MEeL/" akan membuat SW tidak pernah
+    # controlling halaman. File assets/manifest.json tetap ada sebagai
+    # fallback untuk clone tanpa mod_rewrite.
+    RewriteRule ^assets/manifest\.json$ manifest.php [END]
 </IfModule>
 
 # ── SEO: /sitemap.xml & /robots.txt disajikan dari FILE FISIK (regenerate
 # via CLI: php sitemap.php [base-url]). Generator sitemap.php/robots.php
 # TIDAK boleh dieksekusi lewat browser — diblokir di FilesMatch di atas ──
+
+# Catatan: /manifest.php TIDAK diblokir seperti sitemap.php/robots.php.
+# Bedanya: manifest.php memang WAJIB dieksekusi browser — diakses lewat
+# rewrite ^assets/manifest\.json$ di atas (pola yang sama dengan
+# /sw.js -> sw.js.php). Akses langsung ke /manifest.php tidak berguna
+# bagi siapa pun, dan isinya hanya data manifest publik.
 
 # ── Media storage: serve file upload dari MEEL_HDD_*_UPLOAD via PHP ──
 # (pengecualian front controller — endpoint streaming/range request tetap
@@ -134,11 +164,11 @@ DirectoryIndex index.php index.html
     RewriteCond %{REQUEST_URI} ^(.*)/controllers/profile/profile_edit\.php$ [NC]
     RewriteRule ^ %1/profile/edit [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/controllers/profile/fun-manage\.php$ [NC]
-    RewriteRule ^ %1/profile/manage-action [R=301,L,QSA]
+    RewriteRule ^ %1/profile/manage [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/controllers/admin/admin_actions\.php$ [NC]
-    RewriteRule ^ %1/admin/actions [R=301,L,QSA]
+    RewriteRule ^ %1/admin [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/controllers/admin/admin_data\.php$ [NC]
-    RewriteRule ^ %1/admin/data [R=301,L,QSA]
+    RewriteRule ^ %1/admin [R=301,L,QSA]
 
     # Generik: file.php → route dengan nama sama (watch, read, upload, login,
     # register, logout, update, introduction, transcode, cookies, catur, dll.)

@@ -1,5 +1,3 @@
-
-
 .top-nav {
   position: sticky;
   top: 0;
@@ -36,4 +34,8 @@
   .admin-page {
     padding: 2rem 4rem;
   }
+}
+
+html[data-theme="light"] .top-nav {
+  background: rgba(255, 255, 255, 0.92);
 }

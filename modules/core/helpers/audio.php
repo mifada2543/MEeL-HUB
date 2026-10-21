@@ -4,12 +4,12 @@ if (!function_exists('get_audio_mime_type')) {
 function get_audio_mime_type(string $ext): string
 {
     return match (strtolower($ext)) {
-        'mp3'        => 'audio/mpeg',
-        'm4a'        => 'audio/mp4',
+        'mp3' => 'audio/mpeg',
+        'm4a' => 'audio/mp4',
         'ogg', 'opus' => 'audio/ogg',
-        'flac'       => 'audio/flac',
-        'wav'        => 'audio/wav',
-        default      => 'audio/ogg',
+        'flac' => 'audio/flac',
+        'wav' => 'audio/wav',
+        default => 'audio/ogg',
     };
 }
 }
@@ -29,10 +29,10 @@ function get_audio_format_description(string $ext): string
 {
     return match (strtolower($ext)) {
         'ogg', 'opus' => 'Opus adalah codec audio modern untuk web',
-        'm4a'         => 'M4a adalah codec audio terbaik dalam hal kompatibilitas',
-        'mp3'         => 'Ini adalah codec audio universal yang sangat populer',
-        'flac'        => 'Ini adalah codec audio yang memiliki kualitas audio terbaik',
-        default       => 'Format audio tidak dikenal',
+        'm4a' => 'M4a adalah codec audio terbaik dalam hal kompatibilitas',
+        'mp3' => 'Ini adalah codec audio universal yang sangat populer',
+        'flac' => 'Ini adalah codec audio yang memiliki kualitas audio terbaik',
+        default => 'Format audio tidak dikenal',
     };
 }
 }

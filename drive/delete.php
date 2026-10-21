@@ -7,12 +7,13 @@ require __DIR__ . '/DriveService.php';
 $user = DriveUserContext::fromSession($_SESSION);
 $user->authorize();
 
-
 if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
     http_response_code(403);
     echo htmlspecialchars('CSRF token tidak valid.', ENT_QUOTES, 'UTF-8');
     exit();
 }
+
+meel_storage_guard('json');
 
 $storage = new DriveStorage(DriveStorage::defaultBasePath(), $user);
 
@@ -54,6 +55,19 @@ try {
 
     header('Location: .?scope=' . urlencode($normalizedScope) . '&status=deleted');
     exit();
+} catch (StorageNotMountedException $exception) {
+    log_drive_operation(
+        $_SESSION['user_id'],
+        $user->username,
+        'delete',
+        $_POST['file'] ?? 'unknown',
+        $_POST['type'] ?? 'unknown',
+        $_POST['scope'] ?? 'unknown',
+        'failed: ' . $exception->getMessage()
+    );
+
+    http_response_code(503);
+    echo htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8');
 } catch (RuntimeException $exception) {
     log_drive_operation(
         $_SESSION['user_id'],

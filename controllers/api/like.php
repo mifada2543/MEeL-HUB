@@ -36,9 +36,9 @@ if (!$rateCheck['allowed']) {
     exit;
 }
 
-$id         = isset($_POST['id'])         ? intval($_POST['id'])       : 0;
+$id = isset($_POST['id']) ? intval($_POST['id']) : 0;
 $media_type = isset($_POST['media_type']) ? trim($_POST['media_type']) : '';
-$type       = isset($_POST['type'])       ? trim($_POST['type'])       : '';
+$type = isset($_POST['type']) ? trim($_POST['type']) : '';
 
 if (defined('APP_DEBUG') && APP_DEBUG) { error_log("LIKE.PHP - POST: " . json_encode(['id' => $id, 'media_type' => $media_type, 'type' => $type])); }
 
@@ -84,8 +84,8 @@ if ($type === 'like' && isset($result['data']['user_interaction']) && $result['d
 }
 
 $user_interaction = $result['data']['user_interaction'];
-$likes            = $result['data']['likes'];
-$dislikes         = $result['data']['dislikes'];
+$likes = $result['data']['likes'];
+$dislikes = $result['data']['dislikes'];
 $table = ($media_type === 'music') ? 'music' : 'video';
 
 $like_active_class = ($media_type === 'music')

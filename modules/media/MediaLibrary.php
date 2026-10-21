@@ -11,47 +11,18 @@ class MediaLibrary
 
     public function getCounts(): array
     {
-        $cache_file = __DIR__ . '/../../temp/cache/media_counts.json';
-        $cache_ttl  = 30;
-
-        if (file_exists($cache_file) && (time() - filemtime($cache_file)) < $cache_ttl) {
-            $cached = json_decode(file_get_contents($cache_file), true);
-            if (is_array($cached) && isset($cached['music'], $cached['video'], $cached['books'])) {
-                return $cached;
-            }
-        }
-
+        $all = meel_media_stats_all($this->conn);
         $counts = ['music' => 0, 'video' => 0, 'books' => 0];
-        $sql = "SELECT 'music' AS type, COUNT(*) AS total FROM music
-                UNION ALL
-                SELECT 'video', COUNT(*) FROM video
-                UNION ALL
-                SELECT 'books', COUNT(*) FROM books";
-        $res = $this->conn->query($sql);
-        if ($res) {
-            while ($row = $res->fetch_assoc()) {
-                $counts[$row['type']] = (int)$row['total'];
-            }
+        foreach ($counts as $table => $_) {
+            $counts[$table] = $all[$table]['total'] ?? 0;
         }
-
-        $cache_dir = dirname($cache_file);
-        if (!is_dir($cache_dir)) {
-            @mkdir($cache_dir, 0755, true);
-        }
-        @file_put_contents($cache_file, json_encode($counts, JSON_UNESCAPED_UNICODE), LOCK_EX);
-
         return $counts;
     }
 
     public static function clearCountsCache(): void
     {
-        $cache_file = __DIR__ . '/../../temp/cache/media_counts.json';
-        if (file_exists($cache_file)) {
-            @unlink($cache_file);
-        }
+        meel_invalidate_media_stats_cache();
     }
-
-    
 
     protected function paginateResult(\mysqli_result|null $result, int $total, int $page, int $perPage): array
     {
@@ -59,23 +30,21 @@ class MediaLibrary
         $page = max(1, min($page, $totalPages));
 
         return [
-            'data'        => $result,
-            'total'       => $total,
-            'page'        => $page,
-            'per_page'    => $perPage,
+            'data' => $result,
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
             'total_pages' => $totalPages,
-            'from'        => ($page - 1) * $perPage + 1,
-            'to'          => min($page * $perPage, $total),
+            'from' => ($page - 1) * $perPage + 1,
+            'to' => min($page * $perPage, $total),
         ];
     }
-
-    
 
     public function getVideosWithMeta(int $page = 1, int $perPage = 15): array
     {
         $offset = ($page - 1) * $perPage;
-        $total  = $this->countVideos();
-        $data   = $this->getVideos($perPage, $offset);
+        $total = $this->countVideos();
+        $data = $this->getVideos($perPage, $offset);
         return $this->paginateResult($data, $total, $page, $perPage);
     }
 
@@ -89,94 +58,71 @@ class MediaLibrary
 
     public function countVideos(): int
     {
-        $res = $this->conn->query("SELECT COUNT(*) AS total FROM video");
-        return (int)$res->fetch_assoc()['total'];
+        return meel_media_stats($this->conn, 'video')['total'];
     }
 
-    public function searchVideo(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0, int $fetchLimit = 21)
+    private function searchMedia(array $cfg): ?\mysqli_result
     {
-        $limit = $fetchLimit; 
+        $table = $cfg['table'];
+        $alias = $cfg['alias'];
+        $matchCols = $cfg['matchCols'];
+        $selectCols = $cfg['selectCols'];
+        $sessionKey = $cfg['sessionKey'];
+        $q = $cfg['q'];
+        $exclude = $cfg['exclude'];
+        $sidebar = $cfg['sidebar'];
+        $offset = $cfg['offset'];
+        $limit = $cfg['limit'];
+        $orderBy = $cfg['orderBy'] ?? "{$alias}.id DESC";
+
+        $a = $alias;
+        $ua = $cfg['uploaderAlias'] ?? 'uploader_name';
 
         if (empty($q)) {
             if ($sidebar) {
                 $sidebar_limit = 15;
-                $count_res = $this->conn->query("SELECT COUNT(*) AS total FROM video");
-                $total = (int)($count_res ? $count_res->fetch_assoc()['total'] : 0);
-
-                $seen_ids = $_SESSION['seen_video_ids'] ?? [];
-                $exclude_ids = array_merge([$exclude], $seen_ids);
-
-                if ($total < 1000) {
-                    $id_result = $this->conn->query("SELECT id FROM video WHERE id != {$exclude}");
-                    $all_ids = [];
-                    if ($id_result) {
-                        while ($row = $id_result->fetch_assoc()) {
-                            $all_ids[] = (int)$row['id'];
-                        }
-                    }
-                    $available = array_values(array_diff($all_ids, $exclude_ids));
-                    if (empty($available)) {
-                        $_SESSION['seen_video_ids'] = [];
-                        $available = array_values(array_diff($all_ids, [$exclude]));
-                    }
-                    shuffle($available);
-                    $picked_ids = array_slice($available, 0, $sidebar_limit);
-                } else {
-                    $extra = min($sidebar_limit * 2, 40);
-                    $sql = "SELECT id FROM video WHERE id != ? ORDER BY RAND() LIMIT ?";
-                    $stmt_ids = $this->conn->prepare($sql);
-                    $stmt_ids->bind_param("ii", $exclude, $extra);
-                    $stmt_ids->execute();
-                    $id_result = $stmt_ids->get_result();
-                    $candidate_ids = [];
-                    if ($id_result) {
-                        while ($row = $id_result->fetch_assoc()) {
-                            $candidate_ids[] = (int)$row['id'];
-                        }
-                    }
-                    $available = array_values(array_diff($candidate_ids, $exclude_ids));
-                    if (empty($available)) {
-                        $_SESSION['seen_video_ids'] = [];
-                        $available = array_values(array_diff($candidate_ids, [$exclude]));
-                    }
-                    shuffle($available);
-                    $picked_ids = array_slice($available, 0, $sidebar_limit);
-                }
+                $picked_ids = meel_pick_random_ids(
+                    $this->conn,
+                    $table,
+                    $sidebar_limit,
+                    $exclude,
+                    $_SESSION[$sessionKey] ?? [],
+                    $sessionKey
+                );
 
                 if (empty($picked_ids)) {
                     $stmt = $this->conn->prepare(
-                        "SELECT v.*, u.username AS uploader_name FROM video v
-                         JOIN users u ON v.user_id = u.id WHERE 1 = 0"
+                        "SELECT {$selectCols} FROM {$table} {$a}
+                         JOIN users u ON {$a}.user_id = u.id WHERE 1 = 0"
                     );
                 } else {
                     $placeholders = implode(',', array_fill(0, count($picked_ids), '?'));
                     $types = str_repeat('i', count($picked_ids));
-                    $sql = "SELECT v.*, u.username AS uploader_name FROM video v
-                            JOIN users u ON v.user_id = u.id
-                            WHERE v.id IN ({$placeholders}) ORDER BY FIELD(v.id, {$placeholders})";
+                    $sql = "SELECT {$selectCols} FROM {$table} {$a}
+                            JOIN users u ON {$a}.user_id = u.id
+                            WHERE {$a}.id IN ({$placeholders}) ORDER BY FIELD({$a}.id, {$placeholders})";
                     $all_params = array_merge($picked_ids, $picked_ids);
                     $stmt = $this->conn->prepare($sql);
                     $stmt->bind_param($types . $types, ...$all_params);
                 }
             } else {
-                
                 $stmt = $this->conn->prepare(
-                    "SELECT v.*, u.username AS uploader_name FROM video v
-                     JOIN users u ON v.user_id = u.id
-                     WHERE v.id != ? ORDER BY v.upload_date DESC LIMIT ? OFFSET ?"
+                    "SELECT {$selectCols} FROM {$table} {$a}
+                     JOIN users u ON {$a}.user_id = u.id
+                     WHERE {$a}.id != ? ORDER BY {$orderBy} LIMIT ? OFFSET ?"
                 );
                 $stmt->bind_param("iii", $exclude, $limit, $offset);
             }
         } else {
+            $matchStr = implode(', ', $matchCols);
             $stmt = $this->conn->prepare(
-                "SELECT v.*, u.username AS uploader_name,
-                 MATCH(v.title, v.search_metadata) AGAINST (? IN BOOLEAN MODE) AS rank
-                 FROM video v
-                 JOIN users u ON v.user_id = u.id
-                 WHERE MATCH(v.title, v.search_metadata) AGAINST (? IN BOOLEAN MODE) AND v.id != ?
-                 ORDER BY rank DESC, v.upload_date DESC LIMIT ? OFFSET ?"
+                "SELECT {$selectCols},
+                 MATCH({$matchStr}) AGAINST (? IN BOOLEAN MODE) AS rank
+                 FROM {$table} {$a}
+                 JOIN users u ON {$a}.user_id = u.id
+                 WHERE MATCH({$matchStr}) AGAINST (? IN BOOLEAN MODE) AND {$a}.id != ?
+                 ORDER BY rank DESC, {$orderBy} LIMIT ? OFFSET ?"
             );
-
             $stmt->bind_param("ssiii", $q, $q, $exclude, $limit, $offset);
         }
         try {
@@ -188,21 +134,29 @@ class MediaLibrary
         return $result ?: null;
     }
 
-    public function countSearchVideo(string $q, int $exclude = 0): int
+    private function countSearchMedia(array $cfg): int
     {
+        $table = $cfg['table'];
+        $alias = $cfg['alias'];
+        $matchCols = $cfg['matchCols'];
+        $q = $cfg['q'];
+        $exclude = $cfg['exclude'];
+        $a = $alias;
+
         if (empty($q)) {
             $stmt = $this->conn->prepare(
-                "SELECT COUNT(*) AS total FROM video v
-                 JOIN users u ON v.user_id = u.id
-                 WHERE v.id != ?"
+                "SELECT COUNT(*) AS total FROM {$table} {$a}
+                 JOIN users u ON {$a}.user_id = u.id
+                 WHERE {$a}.id != ?"
             );
             $stmt->bind_param("i", $exclude);
         } else {
+            $matchStr = implode(', ', $matchCols);
             $stmt = $this->conn->prepare(
-                "SELECT COUNT(*) AS total FROM video v
-                 JOIN users u ON v.user_id = u.id
-                 WHERE MATCH(v.title, v.search_metadata) AGAINST (? IN BOOLEAN MODE)
-                   AND v.id != ?"
+                "SELECT COUNT(*) AS total FROM {$table} {$a}
+                 JOIN users u ON {$a}.user_id = u.id
+                 WHERE MATCH({$matchStr}) AGAINST (? IN BOOLEAN MODE)
+                   AND {$a}.id != ?"
             );
             $stmt->bind_param("si", $q, $exclude);
         }
@@ -216,13 +170,40 @@ class MediaLibrary
         return $res ? (int)$res->fetch_assoc()['total'] : 0;
     }
 
-    
+    public function searchVideo(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0, int $fetchLimit = 21)
+    {
+        return $this->searchMedia([
+            'table' => 'video',
+            'alias' => 'v',
+            'selectCols' => 'v.*, u.username AS uploader_name',
+            'uploaderAlias' => 'uploader_name',
+            'matchCols' => ['v.title', 'v.search_metadata'],
+            'sessionKey' => 'seen_video_ids',
+            'orderBy' => 'v.upload_date DESC',
+            'q' => $q,
+            'exclude' => $exclude,
+            'sidebar' => $sidebar,
+            'offset' => $offset,
+            'limit' => $fetchLimit,
+        ]);
+    }
+
+    public function countSearchVideo(string $q, int $exclude = 0): int
+    {
+        return $this->countSearchMedia([
+            'table' => 'video',
+            'alias' => 'v',
+            'matchCols' => ['v.title', 'v.search_metadata'],
+            'q' => $q,
+            'exclude' => $exclude,
+        ]);
+    }
 
     public function getMusicListWithMeta(string $format = 'all', string $artist = 'all', int $page = 1, int $perPage = 10): array
     {
         $offset = ($page - 1) * $perPage;
-        $total  = $this->countMusic($format, $artist);
-        $data   = $this->getMusicList($format, $artist, $perPage, $offset);
+        $total = $this->countMusic($format, $artist);
+        $data = $this->getMusicList($format, $artist, $perPage, $offset);
         return $this->paginateResult($data, $total, $page, $perPage);
     }
 
@@ -266,8 +247,6 @@ class MediaLibrary
         return $stmt->get_result();
     }
 
-    
-
     public static function playlistSlug(string $name): string
     {
         $slug = strtolower(trim($name));
@@ -276,22 +255,18 @@ class MediaLibrary
         return $slug !== '' ? $slug : 'playlist';
     }
 
-    
-
     private const RESERVED_MUSIC_ROUTES = [
         'index', 'beranda', 'watch', 'upload', 'search', 'load-more', 'stream',
         'file', 'playlist', 'playlist-action',
     ];
 
-    
-
     public function getUserPlaylistRoutes(int $user_id): array
     {
         $routes = [];
-        $used   = [];
-        $res    = $this->conn->query("SELECT id, name FROM playlists WHERE user_id = " . (int) $user_id . " ORDER BY id ASC");
+        $used = [];
+        $res = $this->conn->query("SELECT id, name FROM playlists WHERE user_id = " . (int) $user_id . " ORDER BY id ASC");
         while ($row = $res->fetch_assoc()) {
-            $id   = (int) $row['id'];
+            $id = (int) $row['id'];
             $base = self::playlistSlug((string) $row['name']);
             $slug = $base;
             if (isset($used[$slug]) || in_array($slug, self::RESERVED_MUSIC_ROUTES, true)) {
@@ -302,8 +277,6 @@ class MediaLibrary
         }
         return $routes;
     }
-
-    
 
     public function resolvePlaylistSlug(string $slug, int $user_id): int
     {
@@ -317,124 +290,31 @@ class MediaLibrary
 
     public function searchMusic(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0, int $fetchLimit = 21)
     {
-        $limit = $fetchLimit; 
-
-        if (empty($q)) {
-            if ($sidebar) {
-                $sidebar_limit = 15;
-                $count_res = $this->conn->query("SELECT COUNT(*) AS total FROM music");
-                $total = (int)($count_res ? $count_res->fetch_assoc()['total'] : 0);
-
-                $seen_ids = $_SESSION['seen_music_ids'] ?? [];
-                $exclude_ids = array_merge([$exclude], $seen_ids);
-
-                if ($total < 1000) {
-                    $id_result = $this->conn->query("SELECT id FROM music WHERE id != {$exclude}");
-                    $all_ids = [];
-                    if ($id_result) {
-                        while ($row = $id_result->fetch_assoc()) {
-                            $all_ids[] = (int)$row['id'];
-                        }
-                    }
-                    $available = array_values(array_diff($all_ids, $exclude_ids));
-                    if (empty($available)) {
-                        $_SESSION['seen_music_ids'] = [];
-                        $available = array_values(array_diff($all_ids, [$exclude]));
-                    }
-                    shuffle($available);
-                    $picked_ids = array_slice($available, 0, $sidebar_limit);
-                } else {
-                    $extra = min($sidebar_limit * 2, 40);
-                    $sql = "SELECT id FROM music WHERE id != ? ORDER BY RAND() LIMIT ?";
-                    $stmt_ids = $this->conn->prepare($sql);
-                    $stmt_ids->bind_param("ii", $exclude, $extra);
-                    $stmt_ids->execute();
-                    $id_result = $stmt_ids->get_result();
-                    $candidate_ids = [];
-                    if ($id_result) {
-                        while ($row = $id_result->fetch_assoc()) {
-                            $candidate_ids[] = (int)$row['id'];
-                        }
-                    }
-                    $available = array_values(array_diff($candidate_ids, $exclude_ids));
-                    if (empty($available)) {
-                        $_SESSION['seen_music_ids'] = [];
-                        $available = array_values(array_diff($candidate_ids, [$exclude]));
-                    }
-                    shuffle($available);
-                    $picked_ids = array_slice($available, 0, $sidebar_limit);
-                }
-
-                if (empty($picked_ids)) {
-                    $stmt = $this->conn->prepare(
-                        "SELECT m.*, u.username AS uploader FROM music m
-                         JOIN users u ON m.user_id = u.id WHERE 1 = 0"
-                    );
-                } else {
-                    $placeholders = implode(',', array_fill(0, count($picked_ids), '?'));
-                    $types = str_repeat('i', count($picked_ids));
-                    $sql = "SELECT m.*, u.username AS uploader FROM music m
-                            JOIN users u ON m.user_id = u.id
-                            WHERE m.id IN ({$placeholders}) ORDER BY FIELD(m.id, {$placeholders})";
-                    $all_params = array_merge($picked_ids, $picked_ids);
-                    $stmt = $this->conn->prepare($sql);
-                    $stmt->bind_param($types . $types, ...$all_params);
-                }
-            } else {
-
-                $stmt = $this->conn->prepare(
-                    "SELECT m.*, u.username AS uploader FROM music m
-                     JOIN users u ON m.user_id = u.id
-                     ORDER BY m.id DESC LIMIT ? OFFSET ?"
-                );
-                $stmt->bind_param("ii", $limit, $offset);
-            }
-        } else {
-            $stmt = $this->conn->prepare(
-                "SELECT m.*, u.username AS uploader,
-                 (MATCH(m.title, m.artist, m.search_metadata) AGAINST (? IN BOOLEAN MODE)) AS rank
-                 FROM music m
-                 JOIN users u ON m.user_id = u.id
-                 WHERE MATCH(m.title, m.artist, m.search_metadata) AGAINST (? IN BOOLEAN MODE) AND m.id != ?
-                 ORDER BY rank DESC, m.title ASC LIMIT ? OFFSET ?"
-            );
-            $stmt->bind_param("ssiii", $q, $q, $exclude, $limit, $offset);
-        }
-        try {
-            $stmt->execute();
-        } catch (\mysqli_sql_exception $e) {
-            return null;
-        }
-        $result = $stmt->get_result();
-        return $result ?: null;
+        return $this->searchMedia([
+            'table' => 'music',
+            'alias' => 'm',
+            'selectCols' => 'm.*, u.username AS uploader',
+            'uploaderAlias' => 'uploader',
+            'matchCols' => ['m.title', 'm.artist', 'm.search_metadata'],
+            'sessionKey' => 'seen_music_ids',
+            'orderBy' => 'm.id DESC',
+            'q' => $q,
+            'exclude' => $exclude,
+            'sidebar' => $sidebar,
+            'offset' => $offset,
+            'limit' => $fetchLimit,
+        ]);
     }
 
     public function countSearchMusic(string $q, int $exclude = 0): int
     {
-        if (empty($q)) {
-            $stmt = $this->conn->prepare(
-                "SELECT COUNT(*) AS total FROM music m
-                 JOIN users u ON m.user_id = u.id
-                 WHERE m.id != ?"
-            );
-            $stmt->bind_param("i", $exclude);
-        } else {
-            $stmt = $this->conn->prepare(
-                "SELECT COUNT(*) AS total FROM music m
-                 JOIN users u ON m.user_id = u.id
-                 WHERE MATCH(m.title, m.artist, m.search_metadata) AGAINST (? IN BOOLEAN MODE)
-                   AND m.id != ?"
-            );
-            $stmt->bind_param("si", $q, $exclude);
-        }
-
-        try {
-            $stmt->execute();
-        } catch (\mysqli_sql_exception $e) {
-            return 0;
-        }
-        $res = $stmt->get_result();
-        return $res ? (int)$res->fetch_assoc()['total'] : 0;
+        return $this->countSearchMedia([
+            'table' => 'music',
+            'alias' => 'm',
+            'matchCols' => ['m.title', 'm.artist', 'm.search_metadata'],
+            'q' => $q,
+            'exclude' => $exclude,
+        ]);
     }
 
     private function buildMusicWhere(string $format, string $artist): array
@@ -461,327 +341,6 @@ class MediaLibrary
             'params' => $params,
             'types' => $types
         ];
-    }
-}
-
-class BookRepository
-{
-    private \mysqli $conn;
-
-    public function __construct(\mysqli $db_connection)
-    {
-        $this->conn = $db_connection;
-    }
-
-    
-    public function getBooks(string $filter = 'all', int $limit = 0, int $offset = 0)
-    {
-        $allowed = ['manga', 'pdf'];
-        $limitSql = ($limit > 0) ? " LIMIT ? OFFSET ?" : "";
-
-        if (in_array($filter, $allowed, true)) {
-            $stmt = $this->conn->prepare(
-                "SELECT * FROM books WHERE type = ? ORDER BY upload_date DESC{$limitSql}"
-            );
-            if ($limit > 0) {
-                $stmt->bind_param("sii", $filter, $limit, $offset);
-            } else {
-                $stmt->bind_param("s", $filter);
-            }
-        } else {
-            $stmt = $this->conn->prepare(
-                "SELECT * FROM books ORDER BY upload_date DESC{$limitSql}"
-            );
-            if ($limit > 0) {
-                $stmt->bind_param("ii", $limit, $offset);
-            }
-        }
-
-        $stmt->execute();
-        return $stmt->get_result();
-    }
-
-    
-    public function countBooks(string $filter = 'all'): int
-    {
-        $allowed = ['manga', 'pdf'];
-
-        if (in_array($filter, $allowed, true)) {
-            $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM books WHERE type = ?");
-            $stmt->bind_param("s", $filter);
-        } else {
-            $stmt = $this->conn->prepare("SELECT COUNT(*) AS total FROM books");
-        }
-
-        $stmt->execute();
-        return (int)$stmt->get_result()->fetch_assoc()['total'];
-    }
-
-    
-
-    public function searchBooks(string $q, string $type = 'all', int $offset = 0, int $limit = 24)
-    {
-        $allowed    = ['manga', 'pdf'];
-        $type_where = in_array($type, $allowed, true) ? " AND type = ?" : "";
-
-        if (empty($q)) {
-            $stmt = $this->conn->prepare(
-                "SELECT * FROM books WHERE 1=1{$type_where} ORDER BY upload_date DESC LIMIT ? OFFSET ?"
-            );
-            if ($type_where !== '') {
-                $stmt->bind_param("sii", $type, $limit, $offset);
-            } else {
-                $stmt->bind_param("ii", $limit, $offset);
-            }
-        } else {
-            $stmt = $this->conn->prepare(
-                "SELECT *, MATCH(title, author) AGAINST (? IN BOOLEAN MODE) AS rank
-                 FROM books
-                 WHERE MATCH(title, author) AGAINST (? IN BOOLEAN MODE){$type_where}
-                 ORDER BY rank DESC, upload_date DESC
-                 LIMIT ? OFFSET ?"
-            );
-            if ($type_where !== '') {
-                $stmt->bind_param("sssii", $q, $q, $type, $limit, $offset);
-            } else {
-                $stmt->bind_param("ssii", $q, $q, $limit, $offset);
-            }
-        }
-
-        try {
-            $stmt->execute();
-        } catch (\mysqli_sql_exception $e) {
-            return null;
-        }
-        $result = $stmt->get_result();
-        return $result ?: null;
-    }
-
-    
-
-    public function getBooksPaginated(string $filter = 'all', int $page = 1, int $perPage = 24): array
-    {
-        $total  = $this->countBooks($filter);
-        $totalPages = max(1, (int)ceil($total / max($perPage, 1)));
-        $page   = max(1, min($page, $totalPages));
-        $offset = ($page - 1) * $perPage;
-        $data   = $this->getBooks($filter, $perPage, $offset);
-
-        return [
-            'data'        => $data,
-            'total'       => $total,
-            'page'        => $page,
-            'per_page'    => $perPage,
-            'total_pages' => $totalPages,
-            'from'        => $offset + 1,
-            'to'          => min($page * $perPage, $total),
-        ];
-    }
-
-    public function getBookById(int $id): ?array
-    {
-        $stmt = $this->conn->prepare("SELECT * FROM books WHERE id = ? LIMIT 1");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return ($result && $result->num_rows > 0) ? $result->fetch_assoc() : null;
-    }
-
-    public function getUserRole(int $user_id): ?string
-    {
-        return get_user_role($this->conn, $user_id);
-    }
-}
-
-class BookUploader
-{
-    private \mysqli $conn;
-    private string $base_path;
-
-    public function __construct(\mysqli $db_connection, string $base_path)
-    {
-        $this->conn = $db_connection;
-        $this->base_path = rtrim($base_path, '/');
-    }
-
-    public function handleUpload(array $post, array $files): array
-    {
-        $title    = trim($post['title'] ?? '');
-        $author   = trim($post['author'] ?? 'Unknown');
-        $type     = $post['type'] ?? '';
-        $category = trim($post['category'] ?? '');
-        $user_id  = (int)($post['user_id'] ?? 0);
-
-        if (empty($title) || !in_array($type, ['manga', 'pdf'], true)) {
-            return ['success' => false, 'message' => 'Error: Data tidak lengkap atau tipe tidak valid.'];
-        }
-
-        $thumb_name = $this->handleThumbnail($files['thumbnail'] ?? []);
-
-        $content = ($type === 'pdf')
-            ? $this->handlePdf($files['book_file'] ?? [], $title)
-            : $this->handleManga($files['book_file'] ?? [], $title);
-
-        if (!$content['success']) {
-            return $content;
-        }
-
-        if (isset($content['existing']) && $content['existing'] === true) {
-            return ['success' => true, 'message' => $content['message']];
-        }
-
-        return $this->insertBook($title, $author, $type, $content['has_chapters'], $category, $content['path_result'], $thumb_name, $user_id);
-    }
-
-    private function handleThumbnail(array $file): string
-    {
-        if (
-            !empty($file['name']) && !empty($file['tmp_name'])
-            && is_uploaded_file($file['tmp_name'])
-            && $file['error'] === UPLOAD_ERR_OK
-        ) {
-            if ((int)($file['size'] ?? 0) > MEEL_MAX_THUMBNAIL_BYTES) {
-                return 'default_cover.webp';
-            }
-
-            $name = time() . '_' . bin2hex(random_bytes(4)) . '.webp';
-            $target_path = $this->base_path . '/upload/thumbnail/' . $name;
-            $ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== '' ? MEEL_FFMPEG_PATH : resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
-            // Konversi via helper bersama (ffmpeg → webp).
-            if (meel_ffmpeg_thumbnail_webp($ffmpeg_bin, $file['tmp_name'], $target_path, 500)) {
-                return $name;
-            }
-
-            // Fallback hanya jika file BENAR-BENAR gambar (magic bytes),
-            // bukan sembarang konten dengan nama .webp.
-            if (meel_magic_extension_ok($file['tmp_name'], 'webp', 'image') === '') {
-                if (move_uploaded_file($file['tmp_name'], $target_path)) {
-                    return $name;
-                }
-            }
-        }
-        return 'default_cover.webp';
-    }
-
-    private function handlePdf(array $file, string $title): array
-    {
-        if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
-            return ['success' => false, 'message' => 'Error: Tidak ada file PDF yang diterima.'];
-        }
-
-        $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
-        if ($ext !== 'pdf' || preg_match('/\.(php|phtml|sh|js)/i', $file['name'] ?? '') || str_contains($file['name'] ?? '', "\0")) {
-            return ['success' => false, 'message' => 'Error: File harus berformat PDF!'];
-        }
-
-        // Jangan percaya extension saja — verifikasi signature %PDF server-side.
-        if (meel_magic_extension_ok($file['tmp_name'], 'pdf', 'pdf') !== '') {
-            return ['success' => false, 'message' => 'Error: File tidak valid sebagai PDF (magic bytes mismatch).'];
-        }
-
-        if ((int)($file['size'] ?? 0) > MEEL_MAX_BOOK_FILE_BYTES) {
-            return ['success' => false, 'message' => 'Error: File PDF terlalu besar.'];
-        }
-
-        $clean = preg_replace('/[^a-zA-Z0-9]/', '_', $title);
-        $clean = trim(substr((string)$clean, 0, 120), '_');
-        if ($clean === '') {
-            $clean = 'book';
-        }
-
-        $final = $clean . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.pdf';
-
-        if (!move_uploaded_file($file['tmp_name'], $this->base_path . '/upload/pdf/' . $final)) {
-            return ['success' => false, 'message' => 'Error: Gagal memindahkan file PDF!'];
-        }
-
-        return ['success' => true, 'has_chapters' => 0, 'path_result' => $final];
-    }
-
-    private function handleManga(array $file, string $title): array
-    {
-        if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
-            return ['success' => false, 'message' => 'Error: Tidak ada file arsip yang diterima.'];
-        }
-
-        $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
-        if (!in_array($ext, ['zip', 'cbz'], true) || str_contains($file['name'] ?? '', "\0")) {
-            return ['success' => false, 'message' => 'Error: Harap upload file ZIP atau CBZ!'];
-        }
-
-        // Verifikasi signature ZIP server-side (bukan hanya extension).
-        if (meel_magic_extension_ok($file['tmp_name'], $ext, 'archive') !== '') {
-            return ['success' => false, 'message' => 'Error: File tidak valid sebagai arsip ZIP.'];
-        }
-
-        if ((int)($file['size'] ?? 0) > MEEL_MAX_BOOK_FILE_BYTES) {
-            return ['success' => false, 'message' => 'Error: File arsip terlalu besar.'];
-        }
-
-        $clean        = preg_replace('/[^a-zA-Z0-9]/', '_', $title);
-        $manga_folder = $this->base_path . '/upload/manga/' . $clean;
-        $has_chapters = 0;
-
-        $check = $this->conn->prepare("SELECT id FROM books WHERE path_folder = ? LIMIT 1");
-        $check->bind_param("s", $clean);
-        $check->execute();
-        $exists = $check->get_result()->num_rows > 0;
-
-        require_once __DIR__ . '/ArchiveGuard.php';
-        $guard  = new ArchiveGuard($this->base_path . '/upload/manga');
-        $result = $guard->extractSafe($file['tmp_name'], $manga_folder);
-
-        if (!$result['ok']) {
-            return ['success' => false, 'message' => 'Error: ' . $result['error']];
-        }
-
-        // Deteksi chapter: entry pertama yang mengandung '/' berarti ada subfolder.
-        $first_entry = $this->firstEntryHasSubdir($file['tmp_name']);
-        if ($first_entry) {
-            $has_chapters = 1;
-        }
-
-        if ($exists) {
-            $stmt = $this->conn->prepare(
-                "UPDATE books SET has_chapters = 1 WHERE path_folder = ?"
-            );
-            $stmt->bind_param("s", $clean);
-            $stmt->execute();
-            return [
-                'success'  => true,
-                'existing' => true,
-                'message'  => 'Success: Chapter tambahan berhasil digabungkan!'
-            ];
-        }
-
-        return ['success' => true, 'has_chapters' => $has_chapters, 'path_result' => $clean];
-    }
-
-    private function firstEntryHasSubdir(string $archivePath): bool
-    {
-        $zip = new ZipArchive();
-        if ($zip->open($archivePath) !== true) {
-            return false;
-        }
-        $first = $zip->getNameIndex(0);
-        $zip->close();
-        return is_string($first) && str_contains(str_replace('\\', '/', $first), '/');
-    }
-
-    private function insertBook(string $title, string $author, string $type, int $has_chapters, string $category, string $path_folder, string $thumbnail, int $user_id): array
-    {
-        $stmt = $this->conn->prepare(
-            "INSERT INTO books (title, author, type, has_chapters, category, path_folder, thumbnail, user_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        );
-        $stmt->bind_param("sssisssi", $title, $author, $type, $has_chapters, $category, $path_folder, $thumbnail, $user_id);
-
-        if ($stmt->execute()) {
-            $label = ($type === 'manga') ? 'Manga' : 'Buku';
-            return ['success' => true, 'message' => "Success: $label berhasil ditambahkan!"];
-        }
-
-        return ['success' => false, 'message' => 'Error: Gagal menyimpan ke database.'];
     }
 }
 

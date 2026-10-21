@@ -9,7 +9,6 @@ require __DIR__ . '/DriveService.php';
 $user = DriveUserContext::fromSession($_SESSION);
 $user->authorize();
 
-
 if (!isset($_GET['csrf_token']) || !verify_csrf_token($_GET['csrf_token'])) {
     http_response_code(403);
     echo htmlspecialchars('CSRF token tidak valid.', ENT_QUOTES, 'UTF-8');
@@ -20,6 +19,8 @@ if (session_status() === PHP_SESSION_ACTIVE) {
 }
 
 set_time_limit(0);
+
+meel_storage_guard('binary');
 
 $storage = new DriveStorage(DriveStorage::defaultBasePath(), $user);
 
@@ -51,13 +52,26 @@ try {
         @ob_end_clean();
     }
 
-    if (defined('MEEL_USE_XSENDFILE') && MEEL_USE_XSENDFILE === true) {
-        header('X-Sendfile: ' . $file['path']);
+    if (meel_xsendfile_ready($file['path'])) {
+        header('X-Sendfile: ' . meel_xsendfile_header($file['path']));
         exit();
     }
 
     readfile($file['path']);
     exit();
+} catch (StorageNotMountedException $exception) {
+    log_drive_operation(
+        $user->userId,
+        $user->username,
+        'download',
+        $_GET['file'] ?? 'unknown',
+        $_GET['type'] ?? 'unknown',
+        $_GET['scope'] ?? 'unknown',
+        'failed: ' . $exception->getMessage()
+    );
+
+    http_response_code(503);
+    echo htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8');
 } catch (RuntimeException $exception) {
     log_drive_operation(
         $user->userId,

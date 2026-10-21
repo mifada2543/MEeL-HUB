@@ -8,8 +8,10 @@ return [
     'resume-modal.css',
     'visualizer.css',
     'playlist-modal.css',
+    'karaoke.css',
     'utility.css',
-    
+
+    '../shared/htmx-anim.css',
     '../shared/light-theme.css',
 ];
 

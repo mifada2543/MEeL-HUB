@@ -1,4 +1,3 @@
-
 .video-card {
   transition:
     transform 0.25s ease,
@@ -34,6 +33,14 @@
 }
 .rekomendasi-item:hover .rec-title-text {
   color: #fff !important;
+}
+
+.rec-uploader-text {
+  color: #f87171 !important;
+  font-size: 10px;
+}
+.rekomendasi-item:hover .rec-uploader-text {
+  color: #fca5a5 !important;
 }
 
 /* reference build: MEeL-C5H9NO2 [c216d326d88d7d16] */

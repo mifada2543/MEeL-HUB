@@ -1,8 +1,5 @@
 /* reference build: MEeL-C2H5NO2 [6f95b6e9592ef108] */
 
-
-
-
 import {
   S, songId, speedMult, audioElement,
   hudTitle, hudArtist, hudScore, hudAcc, comboWrap, judgmentWrap,
@@ -19,12 +16,11 @@ function isMobile() {
   return "ontouchstart" in window || navigator.maxTouchPoints > 0;
 }
 
-
 export function gameLoop(ts) {
   if (S.gameState !== "playing") return;
 
   try {
-    
+
     if (S._audioPlaying && audioElement && audioElement.duration) {
       S.songTime = audioElement.currentTime * 1000;
     } else {
@@ -37,17 +33,15 @@ export function gameLoop(ts) {
 
     const hy = hitY();
 
-    
     while (S.noteIndex < S.notes.length && S.notes[S.noteIndex].time - S.songTime <= APPROACH_TIME) {
       S.activeNotes.push({ ...S.notes[S.noteIndex] });
       S.noteIndex++;
     }
 
-    
     for (const n of S.activeNotes) {
       if (n.hit || n.missed) continue;
       if (n.holding) continue;
-      
+
       if (!n.endTime && n.time - S.songTime < -TIMING.bad - 30) {
         n.missed = true;
         S.judgmentCounts.miss++;
@@ -56,7 +50,7 @@ export function gameLoop(ts) {
         updateHUD();
         playSFX("miss");
       }
-      
+
       if (n.endTime && !n.holding && n.time - S.songTime < -TIMING.bad * 1.4 - 30) {
         n.missed = true;
         S.judgmentCounts.miss++;
@@ -67,13 +61,12 @@ export function gameLoop(ts) {
       }
     }
 
-    
     const holdLanes = Object.keys(S.holdNotes).map(Number);
     for (const lane of holdLanes) {
       try {
         checkHoldSustain(lane);
       } catch (e) {
-        
+
         const hold = S.holdNotes[lane];
         if (hold) {
           hold.hit = true;
@@ -87,20 +80,17 @@ export function gameLoop(ts) {
       }
     }
 
-    
     S.activeNotes = S.activeNotes.filter((n) => {
       if (n.hit || n.missed) return (n.time - S.songTime) > -500;
       return true;
     });
 
-    
     if (S.songDuration > 0) {
       progressFill.style.width = Math.min(S.songTime / S.songDuration * 100, 100) + "%";
     }
 
     draw();
 
-    
     const allSpawned = S.noteIndex >= S.notes.length;
     const allProcessed = S.activeNotes.length === 0 && allSpawned;
     if (allSpawned && S.songTime >= S.songDuration + 2000 && (allProcessed || S.activeNotes.every((n) => n.hit || n.missed))) {
@@ -113,7 +103,6 @@ export function gameLoop(ts) {
 
   S.animFrame = requestAnimationFrame(gameLoop);
 }
-
 
 let fpsDisplay = null;
 let fpsFrames = 0;
@@ -129,7 +118,6 @@ function updateFPS() {
     fpsLastTime = now;
   }
 }
-
 
 function runCountdown(callback) {
   S.gameState = "countdown";
@@ -155,7 +143,7 @@ function runCountdown(callback) {
       countdownNum.style.animation = "";
       playCountdownBeep(440, 0.15);
     } else if (count === 0) {
-      countdownNum.textContent = "GO!";
+      countdownNum.textContent = "MULAI!";
       countdownNum.className = "countdown-go";
       void countdownNum.offsetWidth;
       countdownNum.style.animation = "none";
@@ -169,7 +157,6 @@ function runCountdown(callback) {
     }
   }, 800);
 }
-
 
 export function startGame() {
   initAudio();
@@ -228,7 +215,6 @@ export function startGame() {
   });
 }
 
-
 export function pauseGame() {
   if (S.gameState !== "playing") return;
   S.gameState = "paused";
@@ -238,7 +224,6 @@ export function pauseGame() {
   S.lanePressed = [false, false, false, false];
   S.holdPending = {};
 
-  
   for (const laneStr of Object.keys(S.holdNotes)) {
     const hold = S.holdNotes[laneStr];
     if (hold) {
@@ -283,7 +268,6 @@ window.restartGame = function () {
     S.animFrame = requestAnimationFrame(gameLoop);
   });
 };
-
 
 export function loadOptions() {
   try {
@@ -358,7 +342,6 @@ window.quitToLobby = function () {
   window.location.href = window.MEEL_BASE + "/arcade/rhythm/";
 };
 
-
 function showResults() {
   S.gameState = "results";
   stopBGM();
@@ -399,5 +382,3 @@ function showResults() {
   hud.classList.add("hidden");
   touchLanes.classList.add("hidden");
 }
-
-

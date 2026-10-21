@@ -104,4 +104,111 @@ function format_bytes(int|float $bytes, int $precision = 2): string
 }
 }
 
+if (!function_exists('meel_asset_version')) {
+function meel_asset_version(string $file): string
+{
+    static $cache = [];
+    $path = dirname(__DIR__, 3) . '/' . ltrim($file, '/');
+    if (!isset($cache[$path])) {
+        $cache[$path] = @filemtime($path);
+    }
+    return '?v=' . $cache[$path];
+}
+}
+
+if (!function_exists('meel_css_links')) {
+/**
+ * Cetak <link rel="stylesheet"> untuk sebuah modul CSS.
+ *
+ * Kalau `assets/css/<module>/bundle.css` sudah dibangun
+ * (scripts/build-css-bundle.php) emit satu request saja; kalau belum ada,
+ * jatuh ke daftar individual dari manifest.php. Clone baru tanpa build
+ * tetap tampil benar, dan urutan kaskade manifest tetap terjaga di kedua
+ * jalur karena bundle disusun persis dari urutan itu.
+ */
+function meel_css_links(string $module, string $baseUrl): void
+{
+    $root = dirname(__DIR__, 3);
+    $module = trim($module, '/');
+
+    $bundleRel = 'assets/css/' . $module . '/bundle.css';
+    if (is_file($root . '/' . $bundleRel)) {
+        echo '<link rel="stylesheet" href="' . rtrim($baseUrl, '/') . '/bundle.css'
+            . meel_asset_version($bundleRel) . '">' . "\n";
+        return;
+    }
+
+    $manifest = $root . '/assets/css/' . $module . '/manifest.php';
+    if (!is_file($manifest)) {
+        return;
+    }
+    foreach (require $manifest as $file) {
+        $rel = 'assets/css/' . $module . '/' . $file;
+
+        // Jangan emit link ke file yang tidak ada. Manifest boleh menunjuk
+        // ke shared/ lewat "../shared/…", jadi path harus dinormalkan dulu.
+        // Tanpa cek ini, file yang terhapus/refactor setengah jadi 404 yang
+        // senyap: halaman tetap render, hanya jadi tanpa sebagian gaya, dan
+        // tidak ada error di mana pun.
+        $abs = realpath($root . '/' . $rel);
+        if ($abs === false || !is_file($abs)) {
+            error_log('[meel_css_links] lewati (file tidak ada): ' . $rel);
+            continue;
+        }
+
+        echo '<link rel="stylesheet" href="' . rtrim($baseUrl, '/') . '/' . $file
+            . meel_asset_version($rel) . '">' . "\n";
+    }
+}
+}
+
+if (!function_exists('meel_asset_dir_version')) {
+function meel_asset_dir_version(string $dir): string
+{
+    static $cache = [];
+    $full = dirname(__DIR__, 3) . '/' . ltrim($dir, '/');
+    if (!isset($cache[$full])) {
+        $max = 0;
+        foreach (glob($full . '/*.js') ?: [] as $f) {
+            $max = max($max, (int)@filemtime($f));
+        }
+        $cache[$full] = $max;
+    }
+    return '?v=' . $cache[$full];
+}
+}
+
+if (!function_exists('meel_back_url')) {
+function meel_back_url(string $default, array $extra_block = []): string
+{
+    $ref = $_SERVER['HTTP_REFERER'] ?? '';
+    if (!is_string($ref) || $ref === '') {
+        return $default;
+    }
+
+    $ref_host = parse_url($ref, PHP_URL_HOST);
+    $cur_host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST);
+    if (!is_string($ref_host) || !is_string($cur_host) || $ref_host === ''
+        || strcasecmp($ref_host, $cur_host) !== 0) {
+        return $default;
+    }
+
+    $path = (string) (parse_url($ref, PHP_URL_PATH) ?? '');
+
+    $blocked = array_merge(['edit-music', 'edit-video', 'lrc-editor'], $extra_block);
+    $current = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    if ($current !== '' && $current !== '/') {
+        $blocked[] = $current;
+    }
+
+    foreach ($blocked as $page) {
+        if (is_string($page) && $page !== '' && stripos($path, $page) !== false) {
+            return $default;
+        }
+    }
+
+    return $ref;
+}
+}
+
 /* reference build: MEeL-C6H9N3O3 [c8a10b194723c915] */

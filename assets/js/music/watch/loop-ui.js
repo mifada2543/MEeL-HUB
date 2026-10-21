@@ -1,4 +1,3 @@
-
 function _setTogglePillUI(e, t) {
   e &&
     (e.classList.toggle("bg-gray-800", !t),
@@ -12,7 +11,7 @@ function _applyLoopUI(e) {
   _setTogglePillUI(document.getElementById("btn-loop"), e);
   const t = document.getElementById("loop-text"),
     n = document.getElementById("mini-loop-btn");
-  (t && (t.innerText = e ? "Loop On" : "Loop Off"),
+  (t && (t.innerText = e ? "Loop Aktif" : "Loop Mati"),
   n &&
     (n.classList.toggle("mp-loop-active", e),
     (n.style.color = e ? "#f97316" : ""),

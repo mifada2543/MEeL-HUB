@@ -29,13 +29,15 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 | `modules/core/TranscoderBase.php` | FFmpeg, yt-dlp, CPU threads | `FFMPEG_THREADS`, `DOWNLOAD_TIMEOUT`, `TRANSCODE_AUDIO_TIMEOUT` |
 | `modules/core/Uploader.php` | Upload paths, FFmpeg | `$ffmpeg_bin`, `$ffprobe_bin` |
 | `modules/core/helpers.php` | **Shim** — me-require `helpers/main.php` + `modules/auth/loader.php` (backward-compat) | — |
-| `modules/core/helpers/*.php` | Utilitas per domain (main, storage, audio, url) | `dir_size()`, `check_disk_space()`, `get_audio_mime_type()`, `resolve_binary()`, `log_drive_operation()` |
+| `modules/core/helpers/*.php` | Utilitas per domain (main, storage, upload, audio, url) | `dir_size()`, `check_disk_space()`, `get_audio_mime_type()`, `resolve_binary()`, `log_drive_operation()`, `meel_serve_media_file()`, `meel_handle_upload()` |
 | `modules/auth/helpers/user.php` | Helper user & role | `get_user_role()`, `get_user_usage()`, `invalidate_user_role_cache()` |
 | `modules/core/System.php` | Queue management | Rate limit constants |
 | `modules/core/GarbageCollector.php` | Auto-cleanup temp files + guest + chess rooms + rate limit | `STALE_SECONDS`, `GUEST_STALE_HOURS`, `ROOM_LOBBY_STALE_HOURS`, `ROOM_GAME_STALE_HOURS`, `CHESS_CLEANUP_INTERVAL` |
 | `modules/auth/RateLimiter.php` | File-based API rate limiter | Per-endpoint limits (30 likes/min, 10 comments/min, dll.) |
 | `modules/core/japanese.php` | Pemrosesan teks Jepang (MeCab + transliterasi) | `getRomajiName()`, `analyzeJapaneseText()` |
-| `modules/core/activity_logger.php` | Activity logging, IP banning, session kick | `get_real_ip()`, `log_activity()` |
+| `modules/core/activity_logger.php` | Activity logging, IP banning, session kick | `get_real_ip()`, `log_activity()`, `validate_and_format_ip()` |
+| `modules/core/helpers/upload.php` | Helper upload/file (sanitasi, reserve nama unik, validasi codec, ffmpeg, handler upload terpusat) | `meel_sanitize_upload_filename()`, `meel_reserve_unique_filename()`, `meel_validate_video_codec()`, `meel_validate_audio_codec()`, `meel_handle_upload()` |
+| `modules/core/helpers/storage.php` | Helper storage media/Drive + penyajian media | `meel_media_base_path()`, `meel_drive_base_path()`, `meel_storage_ready()`, `meel_storage_guard()`, `meel_serve_media_file()`, `meel_write_cache_file()` |
 | `modules/core/bootstrap.php` | Bootstrap (env detection, error reporting, timezone) | `MEEL_ENV`, log error config |
 | `modules/core/base_url.php` | Perhitungan base URL terpusat (`meel_base_url_path()`) | `MEEL_BASE_URL` (via `bootstrap.php`/`config.php`) |
 | `modules/transcoder/FfmpegUtils.php` | **Trait** utilitas FFmpeg | `resolveBinary()`, `probeDuration()`, `generateSpriteAndVTT()` |
@@ -117,6 +119,15 @@ Header `HTTP_X_FORWARDED_FOR` / `HTTP_CF_CONNECTING_IP` hanya boleh dipercaya
 jika request benar-benar lewat proxy/CDN yang Anda kendalikan (Cloudflare,
 Nginx reverse proxy). Jika diset `true` padahal server diakses langsung,
 attacker bisa memalsukan IP untuk mem-bypass IP-ban atau membanjiri activity log.
+
+**Allowlist `MEEL_TRUSTED_PROXIES`** (nilai default `['127.0.0.1', '::1']`):
+header proxy hanya dipercaya bila `REMOTE_ADDR` ada di daftar ini. Resolusi IP
+terpusat di `modules/core/proxy.php` — `CF-Connecting-IP` → `X-Forwarded-For`
+kanan-ke-kiri (Cloudflare menaruh IP klien asli di ujung kanan; entri yang
+terpercaya dilewati) → fallback `REMOTE_ADDR`. Tanpa allowlist, siapa pun bisa
+mengirim `X-Forwarded-For: 127.0.0.1` untuk bypass rate-limit login, lockout
+MFA, dan IP-ban. `proxy.php` tanpa side-effect — aman di-require dari
+bootstrap, logger, maupun test.
 
 ### Charset Koneksi (`utf8mb4`)
 
@@ -217,6 +228,34 @@ define('MEEL_USE_XSENDFILE', false);
 X-Sendfile mempercepat streaming file besar seperti FLAC (33MB+) dengan
 membiarkan Apache mengirim file langsung dari disk (zero-copy), tanpa PHP
 membaca file sama sekali.
+
+**Endpoint yang mendukung X-Sendfile** (semuanya lewat helper `meel_xsendfile_*`
+di `modules/core/helpers/storage.php`):
+
+| Endpoint | Module |
+|---|---|
+| `video/stream.php` (termasuk rewrite `/video/upload/...`) | Video |
+| `music/stream.php`, `music/file.php` (termasuk rewrite `/music/upload/...`) | Music |
+| `books/file.php` (termasuk rewrite `/books/upload/...`) | Books |
+| `drive/stream.php`, `drive/download.php` | Drive |
+| `controllers/api/pdf.php` (viewer PDF) | Books |
+| `controllers/api/download_transcode.php` | Music (transcode) |
+
+**Perilaku aman (fallback otomatis):** aplikasi hanya mengirim header
+`X-Sendfile` jika **keempatnya** terpenuhi: (1) `MEEL_USE_XSENDFILE === true`,
+(2) modul `mod_xsendfile` benar-benar terpasang di Apache, (3) file berada
+di salah satu `XSendFilePath` yang terbaca dari konfigurasi Apache, dan (4)
+direktif `XSendFile on` berlaku untuk request tersebut — nilai `XSendFile
+on|off` dibaca dari file konfigurasi Apache **dan** dari `.htaccess` sepanjang
+jalur URL/direktori skrip (yang paling spesifik menang; tidak adanya direktif
+dianggap `off`, sama seperti default `mod_xsendfile`). Jika salah satu syarat
+gagal, endpoint otomatis kembali ke streaming PHP (chunking) — respons tetap
+valid, tidak pernah kosong/404.
+
+**Catatan Range:** saat X-Sendfile aktif, PHP **tidak** mengirim status `206`
+sendiri (mod_xsendfile hanya jalan pada status `200`); `Range`/`Content-Range`
+dan `416` dihitung oleh Apache. `XSendFileUnescape On` (default) men-decode
+`%XX` pada header, jadi nama file ber-% otomatis di-escape oleh aplikasi.
 
 **Dampak performa berdasarkan hasil tes (FLAC 33MB):**
 
@@ -420,6 +459,7 @@ if ($user_role === 'admin') return ['allowed' => true];
 | Upload | 3 | 1 jam | — |
 | Transcode | 5 | 1 jam | — |
 | Auto Metadata | 5 | 1 jam | `controllers/api/auto_metadata.php` |
+| Registrasi | 5 | 1 jam | `auth/register.php` |
 | API Generic | 60 | 1 menit | — |
 
 **Konfigurasi:** Edit langsung di `modules/auth/RateLimiter.php`:
@@ -430,9 +470,27 @@ private static array $limits = [
     'upload'        => ['requests' => 3,  'window' => 3600],
     'transcode'     => ['requests' => 5,  'window' => 3600],
     'auto_metadata' => ['requests' => 5,  'window' => 3600],
+    'register'      => ['requests' => 5,  'window' => 3600],
     'api'           => ['requests' => 60, 'window' => 60],
 ];
 ```
+
+> ⚠️ **Registrasi memakai bucket per-IP, dan hanya bertambah saat registrasi BERHASIL.**
+> Berbeda dengan endpoint lain yang memakai key gabungan user, `register.php`
+> memakai key `reg_ip:{IP}`. Konsekuensinya:
+> - Kuota **ikut dibagi** dengan siapa pun yang berada di IP yang sama (NAT rumah,
+>   kantor, kampus, jaringan seluler). Di balik NAT, 5 akun/jam adalah batas untuk
+>   seluruh gedung, bukan untuk satu orang.
+> - Loopback (`127.0.0.1`, `::1`) **selalu bebas**, jadi instalasi lokal dan
+>   environment test tidak pernah terkunci.
+> - Percobaan gagal (username bentrok, sandi terlalu lemah) **tidak**
+>   menghabiskan kuota; hanya INSERT yang berhasil yang dihitung. Artinya
+>   enumerasi username tidak dibatasi oleh bucket ini.
+>
+> Naik/turunkan angka `register` di `RateLimiter.php` bila environment Anda
+> cenderung shared-IP. Bucket tambahan per-username bisa ditambahkan, tapi
+> **harus tetap berpasangan** dengan bucket per-IP — kalau berdiri sendiri,
+> penyerang cukup melakukan cycling username untuk lolos.
 
 **Storage:** File JSON di `temp/ratelimit/` dengan `flock()` untuk race condition safety. Auto-cleanup via `GarbageCollector::run()`.
 
@@ -440,11 +498,14 @@ private static array $limits = [
 
 ## Cookies & yt-dlp Authentication
 
-File `cookies.txt` di root proyek digunakan untuk autentikasi yt-dlp:
+File `cookies.txt` digunakan untuk autentikasi yt-dlp. Sejak T2 file ini
+disimpan di **`temp/`** (folder terproteksi `.htaccess`, bukan docroot — file
+berisi sesi YouTube asli); file lama di root **otomatis dimigrasikan** saat
+pertama dibuka, dan chmod `0600` diterapkan best-effort oleh `TranscoderBase`:
 
 ```php
-// Path: /opt/lampp/htdocs/MEeL/cookies.txt
-$this->cookies_path = $this->base_path . "/cookies.txt";
+// Path: <root>/temp/cookies.txt (migrasi otomatis dari <root>/cookies.txt)
+$this->cookies_path = $this->base_path . "/temp/cookies.txt";
 ```
 
 ### Cara Mendapatkan Cookies.txt
@@ -452,7 +513,7 @@ $this->cookies_path = $this->base_path . "/cookies.txt";
 1. Install ekstensi browser "Get cookies.txt LOCALLY"
 2. Login ke YouTube (atau platform lain) di browser
 3. Klik ekstensi → Export cookies
-4. Simpan file sebagai `cookies.txt` di root proyek
+4. Simpan file sebagai `cookies.txt` di `temp/` (atau root proyek — otomatis dimigrasikan)
 
 ---
 

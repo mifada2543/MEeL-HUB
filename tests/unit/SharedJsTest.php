@@ -1,23 +1,26 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @coversNothing
- */
+/** @coversNothing */
 class SharedJsTest extends TestCase
 {
-    
+
     private const EXPECTED_KEYS = [
-        'AUDIO_STATE'       => 'meel_audio_state',
-        'SKIP_RESUME_ONCE'  => 'skip_resume_once',
-        'GLOBAL_LOOP'       => 'meel_global_loop',
-        'LAST_PLAYLIST_ID'  => 'meel_last_playlist_id',
-        'AUTONEXT_ENABLED'  => 'meel_autonext_enabled',
-        'AUTONAV'           => 'meel_autonav',
-        'EQ_STATE'          => 'meel_music_eq_state',
-        'HEALTH_ALERT'      => 'meel_health_alert',
-        'GLOW_ENABLED'      => 'meel_glow_enabled',
-        'MINI_PLAYER_POS'   => 'meel_mini_player_pos',
+        'AUDIO_STATE' => 'meel_audio_state',
+        'SKIP_RESUME_ONCE' => 'skip_resume_once',
+        'GLOBAL_LOOP' => 'meel_global_loop',
+        'VIDEO_LOOP' => 'meel_video_loop',
+        'LAST_PLAYLIST_ID' => 'meel_last_playlist_id',
+        'AUTONEXT_ENABLED' => 'meel_autonext_enabled',
+        'AUTONAV' => 'meel_autonav',
+        'EQ_STATE' => 'meel_music_eq_state',
+        'HEALTH_ALERT' => 'meel_health_alert',
+        'GLOW_ENABLED' => 'meel_glow_enabled',
+        'MINI_PLAYER_POS' => 'meel_mini_player_pos',
+        'UPSCALE_ENABLED' => 'meel_upscale_enabled',
+        'UPSCALE_MODEL' => 'meel_upscale_model',
+        'UPSCALE_MODE' => 'meel_upscale_mode',
+        'UPSCALE_SCALE' => 'meel_upscale_scale',
     ];
 
     private function rootPath(): string
@@ -34,35 +37,50 @@ class SharedJsTest extends TestCase
         return $content;
     }
 
-    
-
     private function allAssetsJsFiles(): array
     {
-        $root = $this->rootPath() . '/assets/js';
+        $roots = ['/assets/js', '/assets/models'];
+        $exclude = [
+            'assets/js/compatibilitas/',
+            'assets/js/shared/state-keys.js',
+            'assets/models/anime4k/',
+        ];
         $files = [];
-        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
-        foreach ($it as $f) {
-            if ($f->getExtension() !== 'js') {
+        foreach ($roots as $r) {
+            $root = $this->rootPath() . $r;
+            if (!is_dir($root)) {
                 continue;
             }
-            $rel = str_replace('\\', '/', substr($f->getPathname(), strlen($this->rootPath() . '/')));
-            if (strpos($rel, 'assets/js/compatibilitas/') === 0 || $rel === 'assets/js/shared/state-keys.js') {
-                continue;
+            $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+            foreach ($it as $f) {
+                if ($f->getExtension() !== 'js') {
+                    continue;
+                }
+                $rel = str_replace('\\', '/', substr($f->getPathname(), strlen($this->rootPath() . '/')));
+                $skip = false;
+                foreach ($exclude as $ex) {
+                    if (strpos($rel, $ex) === 0) {
+                        $skip = true;
+                        break;
+                    }
+                }
+                if ($skip) {
+                    continue;
+                }
+                $files[] = $rel;
             }
-            $files[] = $rel;
         }
         sort($files);
         return $files;
     }
 
-    
     private function parseStateKeys(): array
     {
         $src = $this->readSource('assets/js/shared/state-keys.js');
         if (!preg_match('/Object\.freeze\(\{([\s\S]*?)\}\)\s*;/', $src, $m)) {
             $this->fail('state-keys.js: blok Object.freeze tidak ditemukan.');
         }
-        preg_match_all('/^\s*([A-Z_]+):\s*\'([^\']*)\',?\s*$/m', $m[1], $pairs, PREG_SET_ORDER);
+        preg_match_all('/^\s*([A-Z_]+):\s*[\'"]([^\'\"]*)[\'"],?\s*$/m', $m[1], $pairs, PREG_SET_ORDER);
         $map = [];
         foreach ($pairs as $p) {
             $map[$p[1]] = $p[2];
@@ -72,10 +90,10 @@ class SharedJsTest extends TestCase
 
     public function testStateKeysConstantsMatchOriginals(): void
     {
-        $map      = $this->parseStateKeys();
+        $map = $this->parseStateKeys();
         $expected = self::EXPECTED_KEYS;
         $this->assertCount(count($expected), $map, 'Jumlah konstanta tidak sesuai.');
-        
+
         ksort($expected);
         ksort($map);
         $this->assertSame(
@@ -87,9 +105,9 @@ class SharedJsTest extends TestCase
 
     public function testNoStrayKeyLiteralsRemainInSource(): void
     {
-        $keys    = array_values(self::EXPECTED_KEYS);
+        $keys = array_values(self::EXPECTED_KEYS);
         $pattern = '/["\'](' . implode('|', array_map('preg_quote', $keys)) . ')["\']/';
-        $files   = $this->allAssetsJsFiles();
+        $files = $this->allAssetsJsFiles();
         $this->assertNotEmpty($files, 'Tidak ada file JS yang dipindai.');
         foreach ($files as $rel) {
             $src = $this->readSource($rel);
@@ -119,17 +137,14 @@ class SharedJsTest extends TestCase
         }
     }
 
-    
-
     private static function nodeAvailable(): bool
     {
         $output = [];
-        $code   = 0;
+        $code = 0;
         exec('node --version 2>&1', $output, $code);
         return $code === 0;
     }
 
-    
     private function runNodeHarness(string $scenario): array
     {
         if (!self::nodeAvailable()) {
@@ -138,7 +153,7 @@ class SharedJsTest extends TestCase
         $harness = $this->rootPath() . '/tests/js/download-backup-codes.harness.js';
         $this->assertFileExists($harness, 'Harness tidak ditemukan.');
         $output = [];
-        $exit   = 0;
+        $exit = 0;
         exec('node ' . escapeshellarg($harness) . ' ' . escapeshellarg($scenario) . ' 2>&1', $output, $exit);
         $this->assertSame(0, $exit, 'Harness gagal: ' . implode("\n", $output));
         $decoded = json_decode(end($output), true);
@@ -192,7 +207,7 @@ class SharedJsTest extends TestCase
         $this->assertTrue($r['frozen'], 'MEEL_KEYS harus Object.freeze.');
         $this->assertTrue($r['mutationBlocked'], 'Mutasi properti MEEL_KEYS harus gagal.');
         $expected = self::EXPECTED_KEYS;
-        $actual   = $r['keys'];
+        $actual = $r['keys'];
         ksort($expected);
         ksort($actual);
         $this->assertSame($expected, $actual, 'Nilai runtime harus identik.');

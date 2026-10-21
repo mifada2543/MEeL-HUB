@@ -1,5 +1,14 @@
 /* reference build: MEeL-C10H12N2O [43937707902ac654] */
 
+#main-video-wrapper {
+  aspect-ratio: var(--meel-video-ar, 16 / 9);
+}
+
+#main-video-wrapper > .plyr,
+#main-video-wrapper .plyr__video-wrapper {
+  height: 100%;
+}
+
 .plyr__video-wrapper {
   background: #000 !important;
   display: flex;
@@ -72,4 +81,3 @@ button[data-plyr="meel-miniplayer"] {
 button[data-plyr="meel-miniplayer"] .plyr__tooltip {
   white-space: nowrap;
 }
-

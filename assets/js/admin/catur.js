@@ -1,10 +1,9 @@
-
 (function () {
   'use strict';
   document.addEventListener('DOMContentLoaded', function () {
     if (typeof lucide !== 'undefined') lucide.createIcons();
-    
-    var INTERVAL_MS = 10 * 60 * 1000; 
+
+    var INTERVAL_MS = 10 * 60 * 1000;
     var remaining = INTERVAL_MS / 1000;
     var countdownEl = document.getElementById('countdown');
     var liveLog = document.getElementById('live-log');

@@ -21,10 +21,10 @@ class MediaViewer
         }
 
         if ($this->user_id) {
-            $stmt_user = $this->conn->prepare("SELECT is_active, role FROM users WHERE id = ? LIMIT 1");
-            $stmt_user->bind_param("i", $this->user_id);
-            $stmt_user->execute();
-            $this->user_data = $stmt_user->get_result()->fetch_assoc();
+            $this->user_data = [
+                'is_active' => get_user_active($this->conn, $this->user_id) ? 1 : 0,
+                'role'      => get_user_role($this->conn, $this->user_id),
+            ];
         }
     }
 
@@ -59,7 +59,8 @@ class MediaViewer
         $stmt->bind_param("i", $this->media_id);
         $stmt->execute();
         $result = $stmt->get_result();
-        return ($result && $result->num_rows > 0) ? $result->fetch_assoc() : null;
+
+        return $result ? $result->fetch_assoc() : null;
     }
 
     public function getUserInteraction()
@@ -118,56 +119,23 @@ class MediaViewer
     {
         $limit = (int)$limit;
         $table = $this->table;
+        $seenKey = "seen_{$table}_ids";
 
-        $count_res = $this->conn->query("SELECT COUNT(*) AS total FROM {$table}");
-        $total = (int)($count_res ? $count_res->fetch_assoc()['total'] : 0);
-
-        if ($total <= 1) {
+        if (meel_media_stats($this->conn, $table)['total'] <= 1) {
             return $this->conn->query(
                 "SELECT m.*, u.username AS uploader FROM {$table} m
                  JOIN users u ON m.user_id = u.id WHERE 1 = 0"
             );
         }
 
-        $exclude_ids = $_SESSION["seen_{$table}_ids"] ?? [];
-        $exclude_ids[] = $this->media_id;
-
-        if ($total < 1000) {
-            $id_result = $this->conn->query("SELECT id FROM {$table} WHERE id != {$this->media_id}");
-            $all_ids = [];
-            if ($id_result) {
-                while ($row = $id_result->fetch_assoc()) {
-                    $all_ids[] = (int)$row['id'];
-                }
-            }
-            $available = array_values(array_diff($all_ids, $exclude_ids));
-            if (empty($available)) {
-                $_SESSION["seen_{$table}_ids"] = [];
-                $available = array_values(array_diff($all_ids, [$this->media_id]));
-            }
-            shuffle($available);
-            $picked_ids = array_slice($available, 0, $limit);
-        } else {
-            $sql = "SELECT id FROM {$table} WHERE id != ? ORDER BY RAND() LIMIT ?";
-            $extra = min($limit * 2, 40);
-            $stmt_ids = $this->conn->prepare($sql);
-            $stmt_ids->bind_param("ii", $this->media_id, $extra);
-            $stmt_ids->execute();
-            $id_result = $stmt_ids->get_result();
-            $candidate_ids = [];
-            if ($id_result) {
-                while ($row = $id_result->fetch_assoc()) {
-                    $candidate_ids[] = (int)$row['id'];
-                }
-            }
-            $available = array_values(array_diff($candidate_ids, $exclude_ids));
-            if (empty($available)) {
-                $_SESSION["seen_{$table}_ids"] = [];
-                $available = array_values(array_diff($candidate_ids, [$this->media_id]));
-            }
-            shuffle($available);
-            $picked_ids = array_slice($available, 0, $limit);
-        }
+        $picked_ids = meel_pick_random_ids(
+            $this->conn,
+            $table,
+            $limit,
+            $this->media_id,
+            $_SESSION[$seenKey] ?? [],
+            $seenKey
+        );
 
         if (empty($picked_ids)) {
             return $this->conn->query(

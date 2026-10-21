@@ -11,11 +11,10 @@
   var qs = m ? '?v=' + encodeURIComponent(m[1]) : '';
   var files = [
     'library-ui.js',
-    'load-more.js',
     'index.js'
   ];
 /* reference build: MEeL-C5H9NO2 [1e101a9669f1392b] */
-  
+
   window.MEEL_INDEX_BUNDLE = {
     base: base,
     qs: qs,
@@ -25,6 +24,9 @@
   };
   if (document.readyState !== 'loading') return;
   for (var i = 0; i < files.length; i++) {
-    document.write('<script src="' + base + files[i] + qs + '"><\/script>');
+    var s = document.createElement('script');
+    s.src = base + files[i] + qs;
+    s.async = false;
+    document.head.appendChild(s);
   }
 })();

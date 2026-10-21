@@ -2,7 +2,6 @@
 require '../../../auth/config.php';
 header('Content-Type: application/json');
 
-
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     die(json_encode([

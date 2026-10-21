@@ -6,6 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline — MEeL</title>
     <meta name="theme-color" content="#05070c">
+    <script>
+        (function() {
+            var t = null;
+            try { t = localStorage.getItem('meel_theme'); } catch (e) {}
+            var light = (t === 'light');
+            document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+            if (light) {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+            var m = document.querySelector('meta[name="theme-color"]');
+            if (m) { m.setAttribute('content', light ? '#fafafa' : '#05070c'); }
+        })();
+    </script>
     <link rel="stylesheet" href="../assets/css/err/offline.css?v=<?= filemtime(__DIR__ . '/../assets/css/err/offline.css') ?>">
 </head>
 <body>

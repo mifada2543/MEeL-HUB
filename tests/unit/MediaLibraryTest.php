@@ -15,14 +15,13 @@ class MediaLibraryTest extends TestCase
     {
         parent::setUp();
 
-        
         $this->mockConn = $this->createMock(mysqli::class);
         $this->library = new MediaLibrary($this->mockConn);
     }
 
     public function testGetCountsReturnsArrayWithKeys(): void
     {
-        
+
         $result = $this->library->getCounts();
         $this->assertArrayHasKey('music', $result);
         $this->assertArrayHasKey('video', $result);
@@ -48,7 +47,7 @@ class MediaLibraryTest extends TestCase
         $this->assertSame(50, $result['total']);
         $this->assertSame(1, $result['page']);
         $this->assertSame(15, $result['per_page']);
-        $this->assertSame(4, $result['total_pages']); 
+        $this->assertSame(4, $result['total_pages']);
         $this->assertSame(1, $result['from']);
         $this->assertSame(15, $result['to']);
     }
@@ -72,9 +71,8 @@ class MediaLibraryTest extends TestCase
         $method = $reflection->getMethod('paginateResult');
         $method->setAccessible(true);
 
-        
         $result = $method->invokeArgs($this->library, [null, 50, 10, 15]);
-        $this->assertSame(4, $result['page']); 
+        $this->assertSame(4, $result['page']);
     }
 
     public function testPaginateResultLargeNumbers(): void
@@ -84,8 +82,8 @@ class MediaLibraryTest extends TestCase
         $method->setAccessible(true);
 
         $result = $method->invokeArgs($this->library, [null, 1000, 50, 20]);
-        $this->assertSame(50, $result['total_pages']); 
-        $this->assertSame(50, $result['page']); 
+        $this->assertSame(50, $result['total_pages']);
+        $this->assertSame(50, $result['page']);
     }
 
     public function testPaginateResultEdgeCase(): void
@@ -94,13 +92,10 @@ class MediaLibraryTest extends TestCase
         $method = $reflection->getMethod('paginateResult');
         $method->setAccessible(true);
 
-        
         $result = $method->invokeArgs($this->library, [null, 0, 1, 15]);
         $this->assertSame(1, $result['total_pages']);
         $this->assertSame(0, $result['total']);
     }
-
-    
 
     public function testBookRepositoryConstructs(): void
     {

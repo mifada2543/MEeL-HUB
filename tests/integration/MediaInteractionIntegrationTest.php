@@ -2,7 +2,6 @@
 use PHPUnit\Framework\TestCase;
 
 /**
- * @requires extension mysqli
  * @group integration
  * @covers MediaInteraction
  */
@@ -22,7 +21,6 @@ class MediaInteractionIntegrationTest extends TestCase
         $this->dbHelper = new DbTestHelper();
         $this->conn = $this->dbHelper->getConnection();
 
-        
         $this->interaction = new MediaInteraction($this->conn, DbTestHelper::REGULAR_USER_ID);
         $this->memberInteraction = new MediaInteraction($this->conn, DbTestHelper::MEMBER_USER_ID);
         $this->adminInteraction = new MediaInteraction($this->conn, DbTestHelper::ADMIN_USER_ID);
@@ -31,13 +29,12 @@ class MediaInteractionIntegrationTest extends TestCase
 
     protected function tearDown(): void
     {
-        
+
         $this->dbHelper->rollback();
         $this->dbHelper->close();
         parent::tearDown();
     }
 
-    
     public function testLikeMusic(): void
     {
         $result = $this->interaction->toggleLike(
@@ -64,10 +61,9 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testToggleLikeOffMusic(): void
     {
-        
+
         $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'like');
 
-        
         $result = $this->interaction->toggleLike(
             DbTestHelper::MUSIC_ID_1, 'music', 'like'
         );
@@ -79,10 +75,9 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testSwitchFromLikeToDislike(): void
     {
-        
+
         $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'like');
 
-        
         $result = $this->interaction->toggleLike(
             DbTestHelper::MUSIC_ID_1, 'music', 'dislike'
         );
@@ -93,13 +88,12 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testDifferentUsersIndependentLikes(): void
     {
-        
+
         $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'like');
         $userAStatus = $this->interaction->getUserInteractionStatus(
             DbTestHelper::MUSIC_ID_1, 'music'
         );
 
-        
         $userBStatus = $this->memberInteraction->getUserInteractionStatus(
             DbTestHelper::MUSIC_ID_1, 'music'
         );
@@ -110,14 +104,13 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testGetUserInteractionStatusNoInteraction(): void
     {
-        
+
         $status = $this->interaction->getUserInteractionStatus(
             DbTestHelper::MUSIC_ID_3, 'music'
         );
         $this->assertNull($status);
     }
 
-    
     public function testLikeVideo(): void
     {
         $result = $this->interaction->toggleLike(
@@ -141,7 +134,7 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testToggleVideoLikeTwice(): void
     {
-        
+
         $this->interaction->toggleLike(DbTestHelper::VIDEO_ID_1, 'video', 'like');
         $result = $this->interaction->toggleLike(
             DbTestHelper::VIDEO_ID_1, 'video', 'like'
@@ -153,10 +146,9 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testVideoLikeDislikeCountSync(): void
     {
-        
+
         $initial = $this->dbHelper->getVideoLikesCount(DbTestHelper::VIDEO_ID_1);
 
-        
         $this->interaction->toggleLike(DbTestHelper::VIDEO_ID_1, 'video', 'like');
         $result = $this->interaction->toggleLike(
             DbTestHelper::VIDEO_ID_1, 'video', 'like'
@@ -167,7 +159,6 @@ class MediaInteractionIntegrationTest extends TestCase
         $this->assertArrayHasKey('dislikes', $result['data']);
     }
 
-    
     public function testGetLikesCountForMusic(): void
     {
         $counts = $this->interaction->getLikesCount('music', DbTestHelper::MUSIC_ID_1);
@@ -188,10 +179,9 @@ class MediaInteractionIntegrationTest extends TestCase
         $this->assertIsInt($counts['dislikes']);
     }
 
-    
     public function testDeleteOwnComment(): void
     {
-        
+
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::REGULAR_USER_ID,
             DbTestHelper::MUSIC_ID_1,
@@ -199,11 +189,9 @@ class MediaInteractionIntegrationTest extends TestCase
             'Integration test comment'
         );
 
-        
         $ownerId = $this->dbHelper->getCommentOwner($commentId);
         $this->assertSame(DbTestHelper::REGULAR_USER_ID, $ownerId);
 
-        
         $result = $this->interaction->deleteComment($commentId);
         $this->assertTrue($result['success']);
         $this->assertSame(200, $result['http_code']);
@@ -212,7 +200,7 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testDeleteOtherUsersCommentFails(): void
     {
-        
+
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::MEMBER_USER_ID,
             DbTestHelper::MUSIC_ID_1,
@@ -220,7 +208,6 @@ class MediaInteractionIntegrationTest extends TestCase
             'Comment by member'
         );
 
-        
         $result = $this->interaction->deleteComment($commentId);
 
         $this->assertFalse($result['success']);
@@ -237,7 +224,7 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testDeleteCommentAsDifferentUser(): void
     {
-        
+
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::ADMIN_USER_ID,
             DbTestHelper::MUSIC_ID_1,
@@ -245,18 +232,16 @@ class MediaInteractionIntegrationTest extends TestCase
             'Admin comment'
         );
 
-        
         $result = $this->memberInteraction->deleteComment($commentId);
         $this->assertFalse($result['success']);
 
-        
         $result = $this->adminInteraction->deleteComment($commentId);
         $this->assertTrue($result['success']);
     }
 
     public function testUploaderCanDeleteOtherUsersCommentOnMusic(): void
     {
-        
+
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::REGULAR_USER_ID,
             DbTestHelper::MUSIC_ID_1,
@@ -273,7 +258,7 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testUploaderCanDeleteOtherUsersCommentOnVideo(): void
     {
-        
+
         $commentId = $this->dbHelper->createTestComment(
             DbTestHelper::MEMBER_USER_ID,
             null,
@@ -297,7 +282,6 @@ class MediaInteractionIntegrationTest extends TestCase
             'Comment by member'
         );
 
-        
         $result = $this->interaction->deleteComment($commentId);
 
         $this->assertFalse($result['success']);
@@ -337,10 +321,9 @@ class MediaInteractionIntegrationTest extends TestCase
         $this->assertSame(200, $result['http_code']);
     }
 
-    
     public function testMultipleInteractionsOnDifferentMedia(): void
     {
-        
+
         $r1 = $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'like');
         $r2 = $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_2, 'music', 'like');
         $r3 = $this->interaction->toggleLike(DbTestHelper::VIDEO_ID_1, 'video', 'like');
@@ -349,7 +332,6 @@ class MediaInteractionIntegrationTest extends TestCase
         $this->assertTrue($r2['success']);
         $this->assertTrue($r3['success']);
 
-        
         $s1 = $this->interaction->getUserInteractionStatus(DbTestHelper::MUSIC_ID_1, 'music');
         $s2 = $this->interaction->getUserInteractionStatus(DbTestHelper::MUSIC_ID_2, 'music');
         $s3 = $this->interaction->getUserInteractionStatus(DbTestHelper::VIDEO_ID_1, 'video');
@@ -361,28 +343,23 @@ class MediaInteractionIntegrationTest extends TestCase
 
     public function testLikeDislikeCountsAreAccurate(): void
     {
-        
+
         $initial = $this->dbHelper->getMusicLikesCount(DbTestHelper::MUSIC_ID_1);
 
-        
         $r1 = $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'like');
         $this->assertTrue($r1['success']);
 
-        
         $afterLike = $this->dbHelper->getMusicLikesCount(DbTestHelper::MUSIC_ID_1);
         $this->assertSame($initial['likes'] + 1, $afterLike['likes']);
 
-        
         $r2 = $this->interaction->toggleLike(DbTestHelper::MUSIC_ID_1, 'music', 'dislike');
         $this->assertTrue($r2['success']);
 
-        
         $afterDislike = $this->dbHelper->getMusicLikesCount(DbTestHelper::MUSIC_ID_1);
         $this->assertSame($initial['likes'], $afterDislike['likes']);
         $this->assertSame($initial['dislikes'] + 1, $afterDislike['dislikes']);
     }
 
-    
     public function testGuestCannotInteract(): void
     {
         $guestInteraction = new MediaInteraction($this->conn, 0);

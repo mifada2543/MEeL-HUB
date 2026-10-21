@@ -1,10 +1,5 @@
 /* reference build: MEeL-C8H11NO2 [621e2031d16b9c81] */
 
-
-
-
-
-
 import { S } from "./state.js";
 import { showToast } from "./toast.js";
 
@@ -58,7 +53,7 @@ export function uploadBeatmap() {
         showToast(res.error || "Upload gagal", "error");
       }
     } catch (ex) {
-      showToast("Response tidak valid dari server (HTTP " + xhr.status + ")", "error");
+      showToast("Respons tidak valid dari server (HTTP " + xhr.status + ")", "error");
     }
   };
 

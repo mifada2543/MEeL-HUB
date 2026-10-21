@@ -1,0 +1,40 @@
+/**
+ * Shared utility CSS — blok animasi htmx.
+ *
+ * Awalnya blok identik ini disalin ke beberapa modul:
+ *   assets/css/video/utility.css
+ *   assets/css/books/utility.css
+ *   assets/css/music/utility.css   (bersama override warna modul)
+ *
+ * Perbedaannya cuma watermark "reference build" di tiap salinan --
+ * isi CSS-nya sama persis byte per byte. Duplikasi seperti ini berarti
+ * satu animasi diubah di satu modul dan tiga modul lain diam-diam
+ * memakai versi lama.
+ *
+ * Modul yang butuh utility tambahan (mis. .glass-panel, .badge,
+ * .preview-modal di drive) TETAP punya utility.css sendiri; file itu
+ * sekarang cukup mengimpor blok ini lewat meel_css_links() yang sudah
+ * menunjuk ke shared/.
+ */
+
+.htmx-added {
+  animation: fadeSlideIn 0.35s ease-out both;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.htmx-request {
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+/* reference build: MEeL-C8H11NO2 [shared-htmx-anim] */

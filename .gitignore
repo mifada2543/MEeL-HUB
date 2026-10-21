@@ -38,6 +38,11 @@ data_drive/private_admins/*
 !**/temp/.gitkeep
 !**/temp/.htaccess
 
+# ─── PENANDA VOLUME STORAGE (runtime, jangan pernah di-commit) ───
+# Dibuat install.sh di MEEL_HDD_BASE; dipakai meel_storage_ready().
+# Kalau ter-commit, deteksi "volume belum ter-mount" jadi selalu lulus.
+.meel_mount
+
 # ─── SEO (file & generator — khusus lokal/personal, tidak untuk di-commit) ───
 sitemap.xml
 robots.txt
@@ -130,6 +135,14 @@ dist/
 build/
 out/
 
+# Training files for MeelVision (if applicable)
+scripts/train-meelvision.js
+scripts/train-meelvision-colab.ipynb
+meelvision-ref*.json
+*.weights.bin
+scripts/.train-*/
+*.train.log
+
 # ─── LOGS ─────────────────────────────────────────────
 error_log
 *.log
@@ -186,3 +199,7 @@ storage/chats/**/*.json
 # ---Another----
 skills-lock.json
 marks.php
+# ---GENERATED BUNDLE CSS---
+# Hasil build scripts/build-css-bundle.php dari manifest.php.
+# Tidak di-commit supaya clone baru otomatis jatuh ke daftar file individual.
+assets/css/*/bundle.css

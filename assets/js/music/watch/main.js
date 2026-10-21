@@ -1,7 +1,3 @@
-
-
-
-
 (function () {
   "use strict";
   var src =
@@ -21,9 +17,9 @@
     "misc.js",
     "mini-player.js",
     "player-core.js",
+    "karaoke.js",
   ];
-  
-  
+
   window.MEEL_WATCH_BUNDLE = {
     base: base,
     qs: qs,
@@ -33,7 +29,10 @@
   };
   if (document.readyState !== "loading") return;
   for (var i = 0; i < files.length; i++) {
-    document.write('<script src="' + base + files[i] + qs + '"><\/script>');
+    var s = document.createElement("script");
+    s.src = base + files[i] + qs;
+    s.async = false;
+    document.head.appendChild(s);
   }
 })();
 

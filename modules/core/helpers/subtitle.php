@@ -5,7 +5,7 @@ function convert_srt_to_vtt(string $srt): string
     $srt = strip_utf8_bom($srt);
     $srt = str_replace(["\r\n", "\r"], "\n", $srt);
     $lines = explode("\n", $srt);
-    $out   = ['WEBVTT', ''];
+    $out = ['WEBVTT', ''];
 
     foreach ($lines as $line) {
         $trimmed = trim($line);
@@ -34,7 +34,6 @@ function strip_utf8_bom(string $content): string
 }
 
 if (!function_exists('sanitize_subtitle_lang')) {
-
 
 function sanitize_subtitle_lang(?string $lang, string $default = 'id'): string
 {

@@ -25,7 +25,6 @@ Choose your language / Pilih bahasa:
 - [👨‍💻 Development Guide](en/development.md) — Coding standards & contribution
 - [📥 Advanced Upload Issues](en/upload-issues.md) — yt-dlp & queue issues
 - [📱 PWA](en/pwa.md) — Progressive Web App: dynamic service worker, offline
-- [📋 Project Analysis](en/analysis.md) — Full project analysis & metrics
 
 ### 🇮🇩 Dokumentasi Indonesia
 
@@ -40,7 +39,6 @@ Choose your language / Pilih bahasa:
 - [👨‍💻 Panduan Development](id/development.md) — Standar koding & kontribusi
 - [📥 Advanced Upload Issues](id/upload-issues.md) — Masalah yt-dlp & queue
 - [📱 PWA](id/pwa.md) — Progressive Web App: service worker dinamis, offline
-- [📋 Analisis Proyek](id/analysis.md) — Analisis & metrik proyek
 
 ---
 
@@ -50,6 +48,7 @@ Choose your language / Pilih bahasa:
 |---|---|
 | Project README (ID) | [🇮🇩](../README.md) |
 | Project README (EN) | [🇬🇧](../README-en.md) |
+| Core Changelog | [📜](../CHANGELOG-core.md) |
 | GitHub Repository | [github.com/mifada2543/MEeL](https://github.com/mifada2543/MEeL) |
 | Bug Report | [📝](../.github/ISSUE_TEMPLATE/bug_report.md) |
 | License | [📄](../LICENSE) |

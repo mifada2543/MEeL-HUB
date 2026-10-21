@@ -13,8 +13,8 @@ if (!function_exists('meel_boot_session')) {
                 || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
             session_set_cookie_params([
                 'lifetime' => $timeout,
-                'path'     => '/',
-                'secure'   => $secure_cookie,
+                'path' => '/',
+                'secure' => $secure_cookie,
                 'httponly' => true,
                 'samesite' => 'Lax',
             ]);

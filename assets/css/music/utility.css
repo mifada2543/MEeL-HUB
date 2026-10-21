@@ -1,5 +1,3 @@
-
-
 .text-gray-500,
 .format-pill,
 .sidebar-link {
@@ -23,25 +21,10 @@ a.text-gray-600 {
 .text-gray-800 {
   color: #6a7290;
 }
-/* reference build: MEeL-C8H11NO2 [0cb9977cb30825ab] */
+/* Blok animasi htmx dipindah ke assets/css/shared/htmx-anim.css (T23).
+   Yang tersisa di sini khusus override warna modul musik. */
 
-.htmx-added {
-  animation: fadeSlideIn 0.35s ease-out both;
-}
-@keyframes fadeSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.htmx-request {
-  opacity: 0.5;
-  transition: opacity 0.2s;
-}
+/* reference build: MEeL-C8H11NO2 [0cb9977cb30825ab] */
 
 select option {
   background-color: #0d1017 !important;

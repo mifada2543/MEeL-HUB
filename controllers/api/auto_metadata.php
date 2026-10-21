@@ -20,7 +20,7 @@ if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
     exit;
 }
 
-$rateKey  = 'user_' . ($_SESSION['user_id'] ?? 0);
+$rateKey = 'user_' . ($_SESSION['user_id'] ?? 0);
 $rateRole = get_user_role($conn, (int)$_SESSION['user_id']);
 $rateCheck = RateLimiter::check($rateKey, 'auto_metadata', $rateRole);
 if (!$rateCheck['allowed']) {
@@ -41,9 +41,9 @@ if (empty($_FILES[$file_key]['tmp_name']) || !is_uploaded_file($_FILES[$file_key
 if (isset($_FILES[$file_key]['error']) && (int)$_FILES[$file_key]['error'] !== UPLOAD_ERR_OK) {
     http_response_code(400);
     $upload_errors = [
-        UPLOAD_ERR_INI_SIZE   => 'File melebihi batas upload server (upload_max_filesize).',
-        UPLOAD_ERR_FORM_SIZE  => 'File melebihi batas upload form.',
-        UPLOAD_ERR_PARTIAL    => 'File hanya terupload sebagian.',
+        UPLOAD_ERR_INI_SIZE => 'File melebihi batas upload server (upload_max_filesize).',
+        UPLOAD_ERR_FORM_SIZE => 'File melebihi batas upload form.',
+        UPLOAD_ERR_PARTIAL => 'File hanya terupload sebagian.',
     ];
     echo json_encode(['status' => 'error', 'message' => $upload_errors[(int)$_FILES[$file_key]['error']] ?? 'Gagal mengupload file.']);
     exit;
@@ -61,7 +61,7 @@ if (!in_array($ext, $allowed, true)) {
 }
 
 $user_role = get_user_role($conn, (int)$_SESSION['user_id']);
-$max_size  = ($user_role === 'admin') ? 500 * 1024 * 1024 : 100 * 1024 * 1024;
+$max_size = ($user_role === 'admin') ? 500 * 1024 * 1024 : 100 * 1024 * 1024;
 if ((int)($_FILES[$file_key]['size'] ?? 0) > $max_size) {
     http_response_code(413);
     echo json_encode(['status' => 'error', 'message' => 'File terlalu besar untuk diproses metadata.']);
@@ -69,7 +69,7 @@ if ((int)($_FILES[$file_key]['size'] ?? 0) > $max_size) {
 }
 
 $ffprobe = resolve_binary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
-$ffmpeg  = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+$ffmpeg = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
 
 if (!is_executable($ffprobe)) {
     http_response_code(500);
@@ -77,7 +77,7 @@ if (!is_executable($ffprobe)) {
     exit;
 }
 
-$temp_dir  = sys_get_temp_dir() . '/meel_auto_meta';
+$temp_dir = sys_get_temp_dir() . '/meel_auto_meta';
 if (!is_dir($temp_dir)) @mkdir($temp_dir, 0755, true);
 
 $temp_file = $temp_dir . '/' . uniqid('meta_', true) . '.' . $ext;
@@ -86,12 +86,12 @@ if (!move_uploaded_file($_FILES[$file_key]['tmp_name'], $temp_file)) {
     exit;
 }
 
-$title       = '';
-$artist      = '';
-$album       = '';
+$title = '';
+$artist = '';
+$album = '';
 $description = '';
-$cover_b64   = '';
-$duration    = 0;
+$cover_b64 = '';
+$duration = 0;
 
 if ($is_video) {
     $meta_cmd = 'export LD_LIBRARY_PATH=\'\'; '
@@ -104,9 +104,9 @@ if ($is_video) {
     if ($meta_json) {
         $parsed = json_decode($meta_json, true);
         $tags = array_change_key_case($parsed['format']['tags'] ?? [], CASE_LOWER);
-        $title       = trim($tags['title'] ?? '');
+        $title = trim($tags['title'] ?? '');
         $description = trim($tags['comment'] ?? ($tags['description'] ?? ''));
-        $duration    = (float)($parsed['format']['duration'] ?? 0);
+        $duration = (float)($parsed['format']['duration'] ?? 0);
 
         foreach (($parsed['streams'] ?? []) as $stream) {
             $st = array_change_key_case($stream['tags'] ?? [], CASE_LOWER);
@@ -117,10 +117,9 @@ if ($is_video) {
         }
     }
 
-    
     if (is_executable($ffmpeg)) {
         $cover_path = $temp_dir . '/' . uniqid('thumb_', true) . '.jpg';
-        $cover_cmd  = 'export LD_LIBRARY_PATH=\'\'; ' . escapeshellarg($ffmpeg)
+        $cover_cmd = 'export LD_LIBRARY_PATH=\'\'; ' . escapeshellarg($ffmpeg)
             . ' -y -i ' . escapeshellarg($temp_file)
             . ' -ss 00:00:01 -vframes 1'
             . ' -vf "scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2"'
@@ -144,27 +143,26 @@ if ($is_video) {
         $parsed = json_decode($meta_json, true);
 
         $tags = array_change_key_case($parsed['format']['tags'] ?? [], CASE_LOWER);
-        $title  = trim($tags['title']  ?? '');
+        $title = trim($tags['title'] ?? '');
         $artist = trim($tags['artist'] ?? '');
-        $album  = trim($tags['album']  ?? '');
+        $album = trim($tags['album'] ?? '');
         $description = trim($tags['comment'] ?? ($tags['description'] ?? ''));
 
         foreach (($parsed['streams'] ?? []) as $stream) {
             if (($stream['codec_type'] ?? '') !== 'audio') continue;
             $st = array_change_key_case($stream['tags'] ?? [], CASE_LOWER);
             if (!$st) continue;
-            if ($title  === '') $title  = trim($st['title']  ?? '');
+            if ($title === '') $title = trim($st['title'] ?? '');
             if ($artist === '') $artist = trim($st['artist'] ?? '');
-            if ($album  === '') $album  = trim($st['album']  ?? '');
+            if ($album === '') $album = trim($st['album'] ?? '');
             if ($description === '') $description = trim($st['comment'] ?? ($st['description'] ?? ''));
             if ($title !== '' && $artist !== '' && $album !== '' && $description !== '') break;
         }
     }
 
-    
     if (is_executable($ffmpeg)) {
         $cover_path = $temp_dir . '/' . uniqid('cover_', true) . '.jpg';
-        $cover_cmd  = 'export LD_LIBRARY_PATH=\'\'; ' . escapeshellarg($ffmpeg)
+        $cover_cmd = 'export LD_LIBRARY_PATH=\'\'; ' . escapeshellarg($ffmpeg)
             . ' -y -i ' . escapeshellarg($temp_file)
             . ' -an -vframes 1'
             . ' -vf "scale=500:500:force_original_aspect_ratio=decrease,pad=500:500:(ow-iw)/2:(oh-ih)/2"'
@@ -183,14 +181,14 @@ if (!empty($cover_path) && file_exists($cover_path)) @unlink($cover_path);
 @rmdir($temp_dir);
 
 echo json_encode([
-    'status'      => 'success',
-    'title'       => $title,
-    'artist'      => $artist,
-    'album'       => $album,
+    'status' => 'success',
+    'title' => $title,
+    'artist' => $artist,
+    'album' => $album,
     'description' => $description,
-    'cover'       => $cover_b64,
-    'duration'    => $duration,
-    'is_video'    => $is_video,
+    'cover' => $cover_b64,
+    'duration' => $duration,
+    'is_video' => $is_video,
 ]);
 
 /* reference build: MEeL-C4H9NO2 [69636e4692103c24] */

@@ -117,6 +117,8 @@ class MediaLibrary {
     public function getVideosWithMeta(int $page = 1, int $perPage = 15): array;
     public function getVideos(int $limit, int $offset);
     public function countVideos(): int;
+    private function searchMedia(array $cfg): ?\mysqli_result;
+    private function countSearchMedia(array $cfg): int;
     public function searchVideo(string $q, int $exclude = 0, bool $sidebar = false, int $offset = 0);
     public function getMusicListWithMeta(string $format, string $artist, int $page = 1, int $perPage = 10): array;
     public function getMusicList(string $format, string $artist, int $limit, int $offset);
@@ -127,6 +129,8 @@ class MediaLibrary {
     public function getUserPlaylists(int $user_id);
 }
 ```
+
+`searchVideo()` and `searchMusic()` are thin wrappers that call `searchMedia()` / `countSearchMedia()` with module-specific config (table, match columns, session key).
 
 **Pagination Metadata Array:**
 ```php
@@ -266,6 +270,40 @@ Key method — `forceStopQueue(int $id, string $task_type): bool`:
 - Deletes the queue record from `upload_queue` or `transcode_queue`
 - Returns `true` on success, `false` on failure
 
+#### PID identity verification (`killByPidFile`)
+
+PID files can be **stale**: once the process is gone, the OS recycles that PID
+number for something else. Killing without verification means the admin panel
+could kill a process it has **nothing to do with**. So the PID's cmdline is
+checked first (`ffmpeg`, `ffprobe`, `yt-dlp`, `youtube-dl`, `setsid`, `sh`).
+
+Two failure conditions are deliberately treated differently:
+
+| Condition | Behaviour | Why |
+|---|---|---|
+| `/proc` available, cmdline doesn't match | **fail-closed** (refuse to kill) | The PID was most likely recycled — this is the case being protected |
+| `/proc` unavailable (platform without procfs, or `hidepid`) | **fail-open** (kill anyway) + `error_log` | Nothing can be proven; refusing would orphan ffmpeg forever |
+
+When the PID is a *process group leader*, the kill is aimed at `-PID` so the
+whole ffmpeg child tree dies with it. `kill -- -PID` uses `--` so a negative PID
+isn't parsed as an option.
+
+#### Queue records are NOT deleted when the process survives
+
+`forceStopQueue()` only deletes the queue record **when there is no live
+process left to stop**. If a PID file exists but the kill was refused, the
+record is **kept** — otherwise the process becomes a permanent orphan with no
+trace in the DB and can never be stopped from the UI.
+
+The two cases are distinguished via `TranscoderBase::hadPidFile()`, which
+**must be called before `killByPidFile()`** because that function removes the
+PID file at the end (on success and on failure alike):
+
+| Condition | Result |
+|---|---|
+| No PID file (job finished / never started) | Record deleted — the queue must not jam |
+| PID file present, kill refused | Record kept, `error_log`, `return false` |
+
 ### 7. `modules/core/activity_logger.php`
 
 Activity logging & IP Banning:
@@ -312,6 +350,33 @@ function get_audio_format_description(string $ext): string;
 function log_drive_operation(...);                       // Drive audit trail
 ```
 
+#### Video thumbnail naming convention
+
+These rules live in `Uploader.php` and are reused wherever a variant name must
+be derived:
+
+| Kind | Name pattern | Source |
+|---|---|---|
+| Main thumbnail | `{folder_name}_thumb.webp` | `Uploader.php` |
+| 256px variant (sm) | `{folder_name}_thumb_sm.webp` | `Uploader.php` |
+| Default (fallback) | `default_thumb.webp` / `default_thumb.jpg` | never deleted |
+
+Three things that are easy to get wrong:
+
+1. **`folder_name`, not `clean_name`.** `folder_name` comes from
+   `meel_allocate_unique_dir()` and is therefore guaranteed unique;
+   `clean_name` (from `getRomajiName()`) can collide between videos. If
+   thumbnails were derived from `clean_name`, two videos with the same title
+   would overwrite each other's thumbnail file.
+2. **The `_sm` variant is deliberately NOT stored in the DB.** Only
+   `video.thumbnail` is persisted; the `_sm` variant's existence is probed via
+   `is_file()`. The admin "Check Database Sync" scan therefore uses the same
+   exemption so the variant is never mistaken for junk.
+3. **`default_thumb.*` is never deleted.** Every deletion path (thumbnail
+   replacement in `admin/edit-video.php`, media deletion in `fun-manage.php`,
+   and rollback in `Uploader.php`) checks `meel_is_default_thumbnail()` first.
+   Deleting the default thumbnail would break the image fallback entirely.
+
 ### 9. `modules/core/CommentRenderer.php`
 
 **Functions:** `render_comments()` — nested comment rendering with 2 themes (video/music); `comment_preview()` — latest comment preview for the comment header.
@@ -326,10 +391,53 @@ function log_drive_operation(...);                       // Drive audit trail
   - Abandoned mid-game: started, **no terminal event** (`resign`/`draw_accept`/`disconnect`/`game_over`) and no activity for >7 days (moves history removed too)
   - **Finished games are never deleted** — their history is preserved
 - Expired rate limit cache via `RateLimiter::cleanup()`
+- Deferred deletion queue (`temp/pending_delete.json`) via
+  `cleanPendingFileDeletions()` (throttle 1x/5 minutes, entry TTL 30 minutes)
 - Timeboxed execution (max 3 seconds)
 - Static `removeFile()`/`removeDirectory()` helpers with proactive `is_writable()`
   guards — subtrees owned by other users (e.g. `temp/cache/` owned by another
   process) are skipped with an error log instead of a PHP warning
+
+#### Media cache TTLs (`cleanCacheDirectory()`)
+
+Each cache prefix has its own TTL; files **still within** their TTL are
+protected (never deleted):
+
+| Prefix | TTL | Source |
+|---|:---:|---|
+| `media_stats_` | 30 seconds | `media.php` |
+| `admin_orphans` | 120 seconds | `admin_data.php` |
+| `dirsize_` | 300 seconds | `storage.php` |
+| `server_stats_info` | 300 seconds | `System.php` |
+| `xsendfile_roots` | 86400 seconds | `storage.php` |
+| `.tmp.<epoch>.<hash>` | 300 seconds | orphaned temp |
+
+Files with an **unknown prefix** are deleted once older than 1 day (86400 seconds).
+
+> **Why the fallback uses a `$prefixMatched` flag instead of `isset($ttlMap)`?**
+> The old code read `if (!$expired && !isset($ttlMap))`. `$ttlMap` is a local
+> array that is **always** assigned before the loop, so `isset($ttlMap)` was
+> always `true` and the fallback became dead code — unknown-prefix files were
+> never deleted and `temp/cache/` grew without bound. The flag now records
+> "did any prefix match" explicitly, so the fallback actually runs.
+
+#### Orphan cleaner safety guards (`controllers/admin/admin_actions.php`)
+
+The orphan list comes from a 10-minute cache, so it is **not trusted blindly**.
+Before deleting anything, entries are re-verified against the DB, with two
+exclusions:
+- `*_sm.*` thumbnail variants (never stored in the DB, only checked via `is_file()`)
+- files that turn out to still be registered in the DB
+
+#### `users` AUTO_INCREMENT is deliberately NOT reset
+
+After guests are deleted, `ALTER TABLE users AUTO_INCREMENT = MAX(id)+1` was
+historically used to "tidy up" numbering. This was **removed** because
+`auth/auth.php` validates `$_SESSION['user_id']` straight against the `users`
+table: a recycled id means a session belonging to user A can silently become
+user B. Ids now grow monotonically, and
+`GarbageCollector::resetGuestsAutoIncrement()` (method name kept for history)
+only calls `cleanGuests()`.
 
 ### 11. `modules/auth/RateLimiter.php`
 
@@ -342,9 +450,12 @@ File-based rate limiter with `flock()` safety. Role-based limits (admin = unlimi
 | `upload` | 3/hour | — |
 | `transcode` | 5/hour | — |
 | `auto_metadata` | 5/hour | CPU-intensive (ffprobe + ffmpeg) |
+| `register` | 5/hour | **Per-IP** bucket, only successful inserts counted, loopback exempt |
 | `api` | 60/min | Generic fallback |
 
 **Fail-closed behavior:** When the storage directory (`temp/ratelimit/`) is not writable or `flock()` fails, the rate limiter **denies all requests** instead of silently allowing them. This prevents a broken filesystem from disabling rate limiting. Failures are logged via `error_log()`.
+
+The `transcode` endpoint is checked **before** the coin spend and heavy work start (order in `transcode.php`: rate-limit → validation → spend); admins pass without a limit (delegated to the internal `RateLimiter`).
 
 ### 12. `modules/exceptions/`
 
@@ -461,8 +572,19 @@ Keyboard shortcuts are implemented in JavaScript and guarded by `assets/js/share
 | `C` | Toggle captions | Plyr default |
 | `L` | Toggle loop | `misc.js` |
 | `A` | Toggle auto-next | `misc.js` |
+| `S` | Toggle AI Upscale | `misc.js` → `toggleUpscale()` in `upscaler.js` |
+| `B` | Toggle ambient glow | `misc.js` → `toggleGlow()` in `player-events.js` |
 | `N` | Skip to next video | `mini-player.js` |
 | `I` | Toggle mini player | `mini-player.js` |
+
+> **Locked while the resume modal is open.** While the "Lanjutkan Sesi?" modal is
+> visible, `meelResumeModalActive` is `true` and every shortcut above is disabled
+> (except `Esc`), so the video cannot be controlled behind the dialog. `←` / `→`
+> move the selection following button position — **← Lanjut**, **→ Ulang**;
+> `Home` / `End` jump to the first/last choice; `Enter` or `Space` runs the
+> highlighted choice. Enforced by a `window` listener in the **capture** phase in
+> `assets/js/shared/resume-modal.js`, which pre-empts Plyr (`window` bubble) and
+> `mini-player.js` (`window` capture).
 
 **Music Watch (`assets/js/music/watch/`):**
 
@@ -503,6 +625,9 @@ class SearchEngine {
   the FULLTEXT syntax is always valid (no `mysqli_sql_exception` on malformed input).
 - `parseParams()` reads `$_GET['search']` + `$_GET['offset']`; offset is included
   in the **cache key**, so pagination never serves a stale page.
+- `searchVideo()` / `searchMusic()` always compute the **total** — even for an
+  empty result set — so `hasMore` and the pagination metadata are trustworthy
+  (fixes the bogus "1/1 → 2/1" progress display).
 - `MIN_SEARCH_QUERY = 3` — shorter queries are ignored (index efficiency)
 
 ### 17. `modules/autoload.php`
@@ -518,7 +643,27 @@ class MusicWatchController { public function getViewData(): array; public functi
 
 ### 19. Migration System (`database/migrate.php`)
 
-The migration system consolidates all schema changes into a single **v1** migration. It is **idempotent** — safe to run multiple times. The `db_version` table tracks which migrations have been applied.
+The migration system is **idempotent** — safe to run multiple times. The `db_version` table tracks which migrations have been applied (one row per version; each version runs exactly once).
+
+> ⚠️ **Read this first if you have seen a different migration number.**
+>
+> Numbers **v1–v15 are the old history**, which was *redunized* (reset) on
+> 17 Sep 2026 — all of it is now **consolidated into v1**, without losing any of
+> its functionality. So:
+>
+> - **v1 today is not the "first" migration chronologically.** It is the
+>   consolidation of legacy v1–v15 (v13 = MEeLCoin, v14 = `view_logs` indexes,
+>   v15 = the `user_notifications` table — all now covered by v1).
+> - Numbers **from v2 up were recounted from zero** after the reset: entries
+>   briefly numbered 16/17 (2 Oct) became **v2/v3**, and v4/v5 followed as
+>   genuine new migrations.
+> - The old history is **no longer used**; `db_version` rows were cleaned to
+>   `{1..5}`. The loop only runs versions `> MAX(db_version)`.
+>
+> If you find docs or code mentioning "Migration v9" or "migration v15" as an
+> **active version**, that is a legacy number — not a bug.
+
+**v1 — schema consolidation (result of redunizing legacy v1–v15)**
 
 | What v1 Syncs | Detail |
 |---|---|
@@ -535,6 +680,57 @@ The migration system consolidates all schema changes into a single **v1** migrat
 | MEeLCoin system | `meelcoin` + `meelcoin_last_refill` columns, `site_settings`, `meelcoin_log` tables |
 | view_logs indexes | `(video_id)`, `(music_id)` — accelerates `syncViewsFromLogs` |
 | user_notifications | Notification system for likes, replies, MEeLCoin, admin chat |
+
+**v2 — MEeLCoin state normalization**
+
+| What v2 Syncs | Detail |
+|---|---|
+| MEeLCoin upload costs | `meelcoin_upload_cost` & `meelcoin_advanced_cost` normalized to a minimum of `1` (a cost of `0` makes `spend()` deduct nothing) |
+
+**v3 — hot-query indexes + comment FK**
+
+| What v3 Syncs | Detail |
+|---|---|
+| `activity_log` | `(created_at)`, `(user_id, created_at)`, `(action, created_at)` — admin feed (time-ordered), per-user & per-action filters |
+| `upload_queue` | `(status, created_at)` (status polling), `(user_id, media_type, id)` (per-user/media queue listing) |
+| `transcode_queue` | `(status)` (polling), `(created_at)` (history) |
+| `interactions` | `(video_id, type)`, `(music_id, type)` — like/dislike counts per media |
+| `users` | `(role, is_active, last_activity)` (admin listing + idle detection), `(last_activity)` |
+| FK `comments.video_id → video.id` | `ON DELETE CASCADE`; orphan rows are cleaned up before the FK is added |
+| Dropped redundant indexes | `site_settings.idx_setting_key`, `view_logs.idx_vl_user_video` (duplicates of UNIQUE/PRIMARY) |
+
+**v4 — notification coalescing index**
+
+| What v4 Syncs | Detail |
+|---|---|
+| `user_notifications` | `idx_un_user_type_created (user_id, type, created_at)` — supports the `like` coalescing lookup and doubles as a covering index for retention pruning. Without it `isCoalesced()` scans every notification row of that user on each like press |
+
+**v5 — `interactions` foreign keys**
+
+| What v5 Syncs | Detail |
+|---|---|
+| Orphan cleanup | `interactions` rows whose `user_id`/`video_id`/`music_id` no longer exist are deleted first |
+| FK `interactions.user_id → users.id` | `ON DELETE CASCADE` |
+| FK `interactions.video_id → video.id` | `ON DELETE CASCADE` |
+| FK `interactions.music_id → music.id` | `ON DELETE CASCADE` |
+
+**v6 — record MEeLCoin cost in the queues (basis for refunds)**
+
+| What v6 Syncs | Detail |
+|---|---|
+| `upload_queue` / `transcode_queue` | Columns `coin_cost` (the MEeLCoin actually deducted when the job was created) and `coin_refunded` (0/1, prevents double refunds) |
+| Sweeper indexes | `idx_uq_status_created`, `idx_tq_status_created` for finding stuck rows |
+
+> **Why the cost must be stored rather than recomputed?** If the sweeper
+> recomputed it from `site_settings`, and an admin changed the price after a
+> user uploaded, the refunded amount would be off — the user would get less
+> or more than they paid. `coin_cost` records **the amount at transaction
+> time**, so the result is always correct.
+
+Migration notes:
+
+- FK installation uses an **existence check** via `information_schema` (`meel_mig_add_fk`) — rejects duplicate FKs, whether same-named or another FK on the same column under a different constraint name.
+- The FULLTEXT + `idx_*_upload_date` entries remain in **v1 in addition to** `schema.sql` — idempotent (`has_index`) and supporting old databases that never imported the latest schema; fresh installs only need to import `schema.sql`.
 
 > Fresh installs use `database/schema.sql` (import directly). The migration is for **existing databases** to sync to the latest schema.
 
@@ -643,7 +839,7 @@ its own DB):
 
 > ⚠️ **Installation:** run the arcade migration once:
 > `php arcade/migrate.php` — not part of `database/schema.sql`
-> (23 tables) nor `database/migrate.php` (v1–v15). Alternatively,
+> (23 tables) nor `database/migrate.php`. Alternatively,
 > `install.sh` offers interactive arcade installation.
 
 ### Admin Activity Log Viewer
@@ -664,7 +860,7 @@ its own DB):
 - Maintenance: clear older than 7–365 days
 
 **Upload Queue Tab** (green-600 theme):
-- Filter by status (pending/processing/transcoding/completed/failed), uploader, date range
+- Filter by status (`processing`/`completed`/`failed` — matching the `upload_queue.status` enum), uploader, date range
 - Stats cards (total uploads, completed, failed, active)
 - Color-coded status badges
 - Export CSV/JSON/XLS with preview modal
@@ -723,7 +919,8 @@ User profile page with role-based visibility, theme toggle, and public channel g
 | Component | Role |
 |---|---|
 | `profile/index.php` | Profile page — displays avatar, bio, stats, action buttons, content channel grid |
-| `profile/channel_more.php` | HTMX fragment for infinite scroll load-more on profile channel |
+| `profile/channel_more.php` | HTMX fragment for infinite scroll load-more on profile channel (auto-load sentinel) |
+| `profile/content_card.php` | Channel content card component, shared by `index.php` and `channel_more.php` |
 | `controllers/profile/profile_edit.php` | Profile edit handler |
 | `controllers/profile/manage.php` | Content management (video/music) |
 | `modules/media/ProfileRepository.php` | Profile data queries (count video, music, paginated feed) |
@@ -746,7 +943,7 @@ User profile page with role-based visibility, theme toggle, and public channel g
 | Bio | from DB | from DB | "Akun Guest" |
 | Badge | Staff/Member | Staff/Member | Guest |
 
-**Profile as Channel:** The profile page doubles as a public channel. For logged-in users, it renders a content grid with initial batch of 12 items. HTMX-powered infinite scroll loads more via `profile/channel-more`. Guest profiles only show the profile card — tabs and content grid are hidden.
+**Profile as Channel:** The profile page doubles as a public channel. For logged-in users, it renders a content grid with initial batch of 12 items. HTMX-powered infinite scroll loads more via `profile/channel-more` — the `#channel-more-area` sentinel uses `hx-trigger=revealed`, so the next batch loads on its own when it enters the viewport (retry via `assets/js/shared/sentinel-retry.js`, end box once content runs out). Cards render through the `profile/content_card.php` partial. Guest profiles only show the profile card — tabs and content grid are hidden.
 
 **Canonical redirects:**
 - `profile/?u=X` → 301 → `profile/X`
@@ -760,7 +957,7 @@ User profile page with role-based visibility, theme toggle, and public channel g
 
 Database-backed notification system with user scoping and actor tracking.
 
-**Database:** `user_notifications` table (migration v15)
+**Database:** `user_notifications` table (part of migration **v1** — formerly legacy v15, now consolidated)
 
 ```php
 class Notification {
@@ -780,6 +977,42 @@ class Notification {
 **Link generation:** The `related_slug` column stores the media type (`video`/`music`) or a compound key (`type:id` for replies). The notification page builds links dynamically using `meel_base_url_path()` prefix.
 
 **API:** `controllers/api/notification.php` — POST-only for state-changing actions (mark_read, delete, delete_all) with CSRF verification. Read-only actions (unread_count, list) accept GET.
+
+---
+
+### 26. MEeLCoin System (`modules/core/MeelCoin.php`)
+
+Internal currency that limits uploads per user. Every balance change uses **a single `UPDATE` with a balance guard** — no read-modify-write — so a deduction can no longer be overwritten by a concurrent request.
+
+**Database:** `users.meelcoin` & `users.meelcoin_last_refill` columns, `site_settings` table (`meelcoin_*` keys), `meelcoin_log` table (credit/debit audit trail).
+
+```php
+class MeelCoin {
+    public static function spend(mysqli $conn, int $userId, int $amount, string $reason): array; // [ok, error]
+    public static function refund(mysqli $conn, int $userId, int $amount, string $reason): bool;
+    public static function refill(mysqli $conn, int $userId, string $role): bool;
+    public static function getRefillCountdown(mysqli $conn, int $userId, string $role): int;     // 0 = ready to refill
+}
+```
+
+| Rule | Implementation |
+|---|---|
+| Spend | `SET meelcoin = meelcoin - ? WHERE id = ? AND meelcoin >= ?` — 0 affected rows = insufficient balance |
+| Refund | `SET meelcoin = meelcoin + ?` (added on top of the current DB value) |
+| Refill | Per-user cycle: the grant is capped by `LEAST(max, meelcoin + refill)` in the DB; when the balance is full, `meelcoin_last_refill` is **reset** so refills neither pile up nor mask the next upload's deduction |
+| Countdown | Derived from that user's `meelcoin_last_refill`; `0` = ready to refill |
+| Cost | Minimum 1 (enforced in the admin panel). Cost ≤ 0 → the coin flow is skipped at runtime |
+| Admin | Excluded from deductions (`$is_admin`) and from the manual adjustment dropdown |
+| `upload_advanced.php` refund | Only for explicit failure sentinels (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); unrecognized results are not refunded and go to `error_log` |
+| Failed-queue refund | Runs **at the moment of failure**: `modules/core/helpers/upload.php` (`upload_failed_refund` — download/upload) and `transcode.php` (`transcode_refund` — transcode). Idempotent via a unique `reason` |
+
+**Queue status & PID (`modules/transcoder/DownloadService.php`):**
+
+- Status is written honestly by `releaseQueue()` **after** `finalizeVideo()`/`finalizeMusic()` succeeds (`DONE:…` / `ENCODE_MUSIC:…` → `completed`; anything else → `failed`). The `upload_queue.status` enum only holds `processing/completed/failed` — there is no `orphaned` value.
+- The `QueueReconciler` class was **removed**: zero production callers, `checkDownloadedFile()` ignored its arguments (marking a failed queue as `completed` based on anyone's temp file), and it wrote/queried the out-of-enum `orphaned` status. There is no global sweeper for stale `processing` queues — if needed, build a CLI job (planned T16/T17) instead of guessing from temp files.
+- PID files use taskType `transcode_dl_{upload_queue_id}` (not `transcode`): `transcode` is used by `TranscodeService` with ids from `transcode_queue` — different tables → different id ranges → key collisions if the name were shared. The real `queue_id` (not `0`) keeps parallel jobs from overwriting each other's PID files.
+
+**UI sync:** `meelRefreshCoinBalance()` (`assets/js/engine/result.js`) refreshes the `#coin-balance` element after the `meelDone`/`meelError` overlay — the page itself is not re-rendered by the overlay.
 
 ---
 
@@ -970,7 +1203,7 @@ assets/
 │   │   ├── seek-indicator.js # Seek visual feedback
 │   │   ├── vtt-sprites.js # VTT sprite thumbnails
 │   │   └── misc.js      # Miscellaneous utilities
-│   ├── shared/          # Shared JS (19 files)
+│   ├── shared/          # Shared JS (21 files)
 │   │   ├── nav.js       # Navigation behavior
 │   │   ├── theme.js     # Theme toggle
 │   │   ├── keyboard.js  # Keyboard shortcuts
@@ -979,6 +1212,8 @@ assets/
 │   │   ├── plyr-config.js # Plyr configuration
 │   │   ├── format-time.js # Time formatting
 │   │   ├── resume-modal.js # Resume playback modal
+│   │   ├── recovery-manager.js # Recovery factory: stuck detector, waiting timeout, reconnect overlay
+│   │   ├── media-session.js # Media Session API: OS media controls artwork/metadata
 │   │   ├── index-hub.js # Homepage hub
 │   │   └── ...          # Other shared utilities
 │   ├── profile/         # Profile JS (5 files)
@@ -990,7 +1225,10 @@ assets/
 │   │   ├── activity_log.js # Activity log viewer
 │   │   └── chat/        # Admin chat
 │   ├── music/           # Music JS
-│   └── books/           # Books JS
+│   │   └── watch/       # Music watch page JS
+│   │       ├── player-core.js # Music player core (visualizer, EQ, Media Session)
+│   │       ├── description-toggle.js # "Selengkapnya" toggle for music description
+│   │       └── ...
 │       └── read/reader.js # Book reader
 ```
 
@@ -1016,6 +1254,8 @@ const scripts = [
     'seek-indicator.js', 'misc.js'
 ];
 ```
+
+Music watch pages also use a view-router (`shared/view-router.js`) for SPA navigation. Scripts listed in `DIRECT_SCRIPTS` (e.g., `recovery-manager.js`, `description-toggle.js`) are loaded via `loadScriptOnce()` during SPA transitions — ensuring globals like `meelCreateReconnectOverlay` are available when `player-core.js` executes.
 
 ---
 
@@ -1194,7 +1434,9 @@ Every filesystem access follows three rules:
 | `moveFile()` | `FfmpegUtils` trait | Cross-device move with `stat()` device check |
 | `GarbageCollector::removeFile()` | `GarbageCollector.php` | Static guarded unlink |
 | `GarbageCollector::removeDirectory()` | `GarbageCollector.php` | Recursive guarded cleanup (skips non-writable subtrees, `rmdir` only when empty) |
-| `meel_write_cache_file()` | `helpers/storage.php` | Guarded cache write with `LOCK_EX` |
+| `meel_write_cache_file()` | `helpers/storage.php` | **Atomic** cache write (temp file + `rename()`), not `LOCK_EX` |
+| `meel_read_cache_file()` | `helpers/storage.php` | Read JSON cache + check TTL + required keys (the only implementation in the repo) |
+| `meel_sweep_stale_cache_tmp()` | `helpers/storage.php` | Drop leftover `.tmp.*` files from processes that died mid-write |
 
 ---
 

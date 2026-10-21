@@ -6,7 +6,6 @@ require_once __DIR__ . '/DbTestHelper.php';
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
-
 if (!isset($_SERVER['SCRIPT_NAME'])) {
     $_SERVER['SCRIPT_NAME'] = '/MEeL/index.php';
 }
@@ -17,8 +16,23 @@ if (!isset($_SERVER['REMOTE_ADDR'])) {
     $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 }
 
-
-
+if (!defined('MEEL_HDD_BASE')) {
+    define('MEEL_HDD_BASE', MEEL_ROOT . '/temp/media-test');
+    define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+    define('MEEL_HDD_VIDEO_DIR', MEEL_HDD_VIDEO_UPLOAD . 'video/');
+    define('MEEL_HDD_THUMB_DIR', MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+    define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
+    define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
+    define('MEEL_HDD_DRIVE', MEEL_HDD_BASE . '/drive/');
+}
+foreach ([
+    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/',
+    MEEL_HDD_MUSIC_UPLOAD . 'thumbnail/',
+] as $dir) {
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+}
 
 if (!function_exists('meel_mecab_available')) {
     function meel_mecab_available(): bool
@@ -46,8 +60,7 @@ if (!function_exists('meel_mecab_available')) {
         }
         $out = [];
         $exit = 1;
-        
-        
+
         $proc = @proc_open(
             $bin . ' 2>/dev/null',
             [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
@@ -67,7 +80,6 @@ if (!function_exists('meel_mecab_available')) {
     }
 }
 
-
 $tempDirs = [
     MEEL_ROOT . '/temp',
     MEEL_ROOT . '/temp/ratelimit',
@@ -77,7 +89,7 @@ foreach ($tempDirs as $dir) {
     if (!is_dir($dir)) {
         @mkdir($dir, 0755, true);
     }
-    
+
     @chmod($dir, 0777);
 }
 

@@ -12,6 +12,7 @@ Documentation of API endpoints, controllers, and AJAX/HTMX handlers in MEeL-HUB.
 - [MFA Endpoints](#mfa-endpoints)
 - [Media Interaction Endpoints](#media-interaction-endpoints)
 - [Upload Endpoints](#upload-endpoints)
+- [Media Streaming Endpoints](#media-streaming-endpoints)
 - [Profile Endpoints](#profile-endpoints)
 - [Admin Endpoints](#admin-endpoints)
 
@@ -661,6 +662,59 @@ Phase 4: Done (links to media)
 
 ---
 
+## Media Streaming Endpoints
+
+All media bytes are served through PHP endpoints that delegate to one shared function, `meel_serve_media_file()` (`modules/core/helpers/storage.php`). Raw paths like `/video/upload/...` are internal rewrites from the root `.htaccess` — there is no direct file access.
+
+| Endpoint | Serves | Auth / Gate |
+|---|---|---|
+| `video/stream.php` | HLS playlists (`.m3u8`), segments (`.ts`), subtitles (`.vtt`), thumbnails | Public + HLS referer gate (`hls_gate => true`) |
+| `music/file.php` | Audio files, thumbnails (raw `upload/...` paths) | Public |
+| `music/stream.php` | Audio by media ID (`?id=`) with referer gate + `is_stream_authorized()` | Public (referer-gated) |
+| `books/file.php` | Manga images, PDFs | **Login required** (`auth/auth.php`) |
+
+### Common Behavior (`meel_serve_media_file()`)
+
+- **Path validation:** traversal (`..`) and null bytes → `403`; resolved path must stay inside the module upload root via `realpath()` containment, otherwise `404`.
+- **Extension whitelist:** `m3u8, ts, vtt, mp4, webm, mkv, jpg, jpeg, png, webp, gif, pdf, mp3, ogg, m4a, flac, wav, opus` — anything else → `403`.
+- **MIME mapping:** automatic per extension (e.g., `m3u8` → `application/vnd.apple.mpegurl`, `ts` → `video/mp2t`).
+- **Range requests:** `Range: bytes=...` → `206 Partial Content` with `Accept-Ranges`/`Content-Range` — enables HLS segment seeking and audio scrubbing.
+- **Output buffer cleanup:** `ob_end_clean` + `ob_implicit_flush` before streaming to prevent binary corruption.
+
+### Video Thumbnail Sizes
+
+Video uploads produce **two** thumbnail sizes at once (via `meel_ffmpeg_thumbnail_webp()` in `modules/core/Uploader.php`):
+
+| File | Width | Used by |
+|---|---|---|
+| `<name>_thumb.webp` | 1280px | player poster (`data-poster`) and the OG image |
+| `<name>_thumb_sm.webp` | 256px | watch sidebar (128px slot) and library grid cards |
+
+There is **no cache and no on-demand variant layer** — both files are written once during upload, so storage does not grow on its own. `video_thumbnail_sm($thumbnail)` returns the small filename when it exists, otherwise the original name, so thumbnails uploaded before this change keep rendering correctly (just without the byte saving). Naming inserts `_sm` before the extension regardless of the source naming, because existing thumbnails in storage are not consistently named (`*_thumb.webp`, `*_vthumb.jpg`, `*.png`, …).
+
+One-off backfill for pre-existing media:
+
+
+
+### HLS Referer Gate (video)
+
+`video/stream.php?f=...` passes `hls_gate => true`. Requests for paths under `video/` must carry a same-host `Referer` from a video page (`/video`, `/video/watch`, `/video/index`, `/video/beranda`); otherwise the request is redirected to `err/?code=denied`. This prevents third-party sites from hotlinking HLS segments.
+
+### Music Stream by ID
+
+`music/stream.php?id=<music_id>` — referer must be same-host and from `/music`, `/admin`, or `/profile`; then `is_stream_authorized($id)` runs before the file is resolved via `MediaViewer` and served as `file/<filename>`. Both `video/stream.php` and `music/stream.php` call `session_write_close()` before streaming so parallel segment/audio requests don't block each other on the PHP session file lock.
+
+### Error Responses
+
+| Status | Condition |
+|---|---|
+| `400` | Missing `f` / invalid `id` parameter |
+| `403` | Path traversal, disallowed extension, failed referer gate (redirect) |
+| `404` | File not found (or escaped the upload root) |
+| `503` | Storage base path unavailable |
+
+---
+
 ## Profile Endpoints
 
 ### Edit Profile
@@ -701,9 +755,11 @@ Phase 4: Done (links to media)
 |---|---|---|
 | `u` | Yes | Target username |
 | `tab` | No | `all` (default), `video`, `music` |
-| `offset` | Yes | Pagination offset (starts at 12) |
+| `offset` | Yes | Pagination offset (starts at 12, +12 per batch) |
 
-Returns HTML fragment (content cards + next load-more button or "All Content Loaded" marker). Used by `profile/index.php` via `hx-get` for infinite scroll.
+Returns an HTML fragment with content cards (from the `profile/content_card.php` partial) **plus a replacement sentinel** `#channel-more-area` carrying `hx-trigger='revealed'`, or the end box **Konten Habis · Semua konten sudah ditampilkan** on the final batch. Used by `profile/index.php` via `hx-get` for infinite scroll — no click button.
+
+> Each batch loads automatically once the sentinel enters the viewport (`revealed` pattern, same as `video/load-more` and `music/load-more`). On a failed request, `assets/js/shared/sentinel-retry.js` drops `data-hx-revealed` so the next scroll retries. An empty batch also renders the end box, so the chain never loops.
 
 ### Media Deletion & Cleanup
 
@@ -753,6 +809,19 @@ Every POST must carry `csrf_token`.
 |---|---|---|---|
 | Clean Logs | `clean_logs=1` + `days` | POST | Delete logs older than N days |
 
+### Orphan File Cleanup
+
+| Action | Parameter | Method | Description |
+|---|---|---|---|
+| Clean Orphans | `clean_orphans=1` + `files_to_delete` (JSON) | POST | Delete files not in DB |
+| Recheck | `recheck_orphans=1` | POST | Drop the scan cache and show fresh results |
+
+Scan results are cached in `temp/cache/admin_orphans.json` for **120 seconds** (`checked_at`, `orphans`, `variant_count`, `variant_bytes`) — scanning 13,686 files only takes ~40 ms, so a short TTL prevents repeated scans without holding stale data. The cache is also dropped automatically by `meel_invalidate_media_stats_cache()` whenever media changes (upload/delete), so the panel is accurate immediately without waiting out the TTL or clicking "Cek Ulang".
+
+> **Thumbnail variants are not orphans.** Every video has two thumbnail files in `video/upload/thumbnail/`: `<stem>.<ext>` (the original, registered in `video.thumbnail`) and `<stem>_sm.webp` (a derived 256px variant). The variant is written once during upload (`Uploader.php`) and used at render time by `video_thumbnail_sm()`, which matches on stem — so it is deliberately **not** registered in the DB. The scanner excludes the `_sm.<ext>` pattern in all three thumbnail directories (video, music, books) and reports the count as an info line rather than as orphans.
+>
+> **Double guard before deleting.** Because the list comes from a cache, `clean_orphans` re-queries the DB before `unlink`: `_sm` variants, files that turn out to be registered (`video.thumbnail`, `music.filename`, `books.thumbnail`), and files inside still-live folders (`video.filename`, `books.path_folder`) are counted as *skipped*, never deleted.
+
 ---
 
 ## HTMX Endpoints
@@ -764,12 +833,17 @@ Every POST must carry `csrf_token`.
 **Target:** `#video-container`
 **Swap:** `innerHTML`
 
-### Video Load More
+Search results embed the same `#load-more-area` sentinel — infinite scroll continues with the current query (`search?search=…&exclude=…&offset=+15`).
 
-**Trigger:** Click "Load More"
-**Request:** `video/load-more?offset=15` (handler: `video/load_more.php`)
-**Target:** `#load-more-area`
+### Video Load More (Infinite Scroll)
+
+**Trigger:** Auto-scroll — sentinel `#load-more-area` with `hx-trigger="revealed"` (fires when the sentinel enters the viewport; the "Load More" button was removed)
+**Request:** `video/load-more?offset=15&page=N` (handler: `video/load_more.php`)
+**Target:** `#load-more-area` (itself)
 **Swap:** `outerHTML`
+**Response:** 15 cards + a replacement sentinel (the chain continues automatically), or the end box **"Out Of Content · Konten sudah tidak ada lagi"** when `offset + limit ≥ total`. An empty response also renders the end box.
+
+Watch sidebar recommendations use the same auto-load pattern: a `.rec-sentinel` with `hx-trigger="revealed"` appends to `#recommendation-column` (`search?exclude=<id>`, swap `beforeend`).
 
 ### Music Search
 
@@ -778,12 +852,18 @@ Every POST must carry `csrf_token`.
 **Target:** `#music-list`
 **Swap:** `innerHTML`
 
-### Music Load More
+Search results embed their own sentinel `#load-more-music-search` (separate id, so the post-search cleanup of `#load-more-music` doesn't disable it) — infinite scroll continues with the current query (`search?search=…&exclude=…&offset=+10`).
 
-**Trigger:** Click "Load More"
-**Request:** `music/load-more?offset=10&format=all&artist=all` (handler: `music/load_more_music.php`)
-**Target:** `#music-list`
-**Swap:** `beforeend`
+### Music Load More (Infinite Scroll)
+
+**Trigger:** Auto-scroll — sentinel `#load-more-music` (inside `#music-list`) with `hx-trigger="revealed"`
+**Request:** `music/load-more?offset=10&page=N&format=all&artist=all` (handler: `music/load_more_music.php`)
+**Target:** `#load-more-music` (itself)
+**Swap:** `outerHTML`
+**Response:** 10 cards + a replacement sentinel (the chain continues automatically), or the end box **"Out Of Content · Konten sudah tidak ada lagi"** at the end of results.
+**Note:** The sentinel id must be kept — CSS `overflow-anchor: none` on `#load-more-music` and the `isFromLoadMore` check in `assets/js/music/index/index.js` depend on it.
+
+Watch sidebar recommendations use the same auto-load pattern: a `.rec-sentinel` with `hx-trigger="revealed"` appends to `#music-recommendation-column` (`search?exclude=<id>`, swap `beforeend`).
 
 ### Books Search
 
@@ -834,7 +914,7 @@ and the same auth helpers as the other modules).
 | `arcade/rhythm/api/delete` | POST | login + CSRF | Delete custom song — owner or admin; removes audio + cover + beatmap.json + DB record (transactional) |
 
 > ⚠️ The `arcade_song` & `arcade_score` tables come from `arcade/rhythm/migration.sql`
-> (separate from `database/schema.sql` / `database/migrate.php` v1–v15).
+> (separate from `database/schema.sql` / `database/migrate.php`).
 
 ---
 

@@ -1,20 +1,14 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @coversNothing
- */
 class JapaneseTest extends TestCase
 {
     protected function setUp(): void
     {
         parent::setUp();
 
-        
         require_once MEEL_ROOT . '/modules/core/japanese.php';
     }
-
-    
 
     protected function skipIfNoMecab(): void
     {
@@ -30,7 +24,7 @@ class JapaneseTest extends TestCase
 
     public function testGetRomajiNameWithLatinText(): void
     {
-        
+
         $result = getRomajiName('hello world');
         $this->assertStringContainsString('hello', $result);
     }
@@ -38,9 +32,9 @@ class JapaneseTest extends TestCase
     public function testGetRomajiNameWithSpecialChars(): void
     {
         $this->skipIfNoMecab();
-        
+
         $result = getRomajiName('初音ミク【テスト】');
-        
+
         $this->assertStringContainsString('hatsune', $result);
     }
 
@@ -68,8 +62,6 @@ class JapaneseTest extends TestCase
         $this->assertStringContainsString('Colorful Stage', $result['english']);
     }
 
-    
-
     public function testAnalyzeJapaneseTextWithTouhouAlias(): void
     {
         $result = analyzeJapaneseText('東方プロジェクト ボスラッシュ');
@@ -91,7 +83,7 @@ class JapaneseTest extends TestCase
 
     public function testAnalyzeJapaneseTextWithNicknameAlias(): void
     {
-        
+
         $result = analyzeJapaneseText('プロセカ ワンオポ');
         $this->assertStringContainsString('Project Sekai', $result['english']);
         $this->assertStringContainsString('Wonderlands x Showtime', $result['english']);
@@ -103,11 +95,10 @@ class JapaneseTest extends TestCase
         $this->assertStringContainsString('Ensemble Stars', $result['english']);
     }
 
-    
     public function testAnalyzeJapaneseTextDoesNotGlossParticlesAsHomophones(): void
     {
         $this->skipIfNoMecab();
-        
+
         $result = analyzeJapaneseText('君が飛び降りるのならば');
         $this->assertStringContainsString('kimi-ga-tobioriru-no-nara-ba', $result['romaji']);
         $this->assertStringNotContainsString('moth', $result['english']);
@@ -117,14 +108,14 @@ class JapaneseTest extends TestCase
 
     public function testAnalyzeJapaneseTextFullCoverAliasWins(): void
     {
-        
+
         $result = analyzeJapaneseText('君が飛び降りるのならば');
         $this->assertSame("In case you're gonna jump", $result['english']);
     }
 
     public function testAnalyzeJapaneseTextConditionalPatternAlias(): void
     {
-        
+
         $result = analyzeJapaneseText('跳べるならば');
         $this->assertStringContainsString('if', $result['english']);
     }
@@ -135,6 +126,38 @@ class JapaneseTest extends TestCase
         $this->assertStringContainsString('Kafu', $result['english']);
         $this->assertStringNotContainsString('acceptable', $result['english']);
         $this->assertStringNotContainsString('un-', $result['english']);
+    }
+
+    public function testNormalizeSeparatorsKeepsLetterXInWords(): void
+    {
+        $this->assertSame('Maximum Xylophone', meel_japanese_normalize_separators('Maximum Xylophone'));
+        $this->assertSame('Remix', meel_japanese_normalize_separators('Remix'));
+    }
+
+    public function testNormalizeSeparatorsTreatsStandaloneXAsSpace(): void
+    {
+        $out = meel_japanese_normalize_separators('A x B');
+        $this->assertStringNotContainsString('x', $out);
+        $this->assertSame('AB', str_replace(' ', '', $out));
+
+        $sym = meel_japanese_normalize_separators('A × B');
+        $this->assertStringNotContainsString('×', $sym);
+        $this->assertSame('AB', str_replace(' ', '', $sym));
+    }
+
+    public function testGetRomajiNamePreservesLetterX(): void
+    {
+        $this->skipIfNoMecab();
+
+        $this->assertSame('maximum-xylophone', getRomajiName('Maximum Xylophone'));
+        $this->assertSame('remix', getRomajiName('Remix'));
+    }
+
+    public function testGetRomajiNameSplitsStandaloneX(): void
+    {
+        $this->skipIfNoMecab();
+
+        $this->assertSame('a-b', getRomajiName('A x B'));
     }
 
 }

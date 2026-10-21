@@ -72,7 +72,7 @@
 }
 
 .mfa-label--off {
-    color: #6b7280;
+    color: #8b93a1;
 }
 
 .mfa-label-sub {
@@ -80,7 +80,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: #6b7280;
+    color: #8b93a1;
     display: block;
     margin-top: -1px;
 }

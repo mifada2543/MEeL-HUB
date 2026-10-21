@@ -1,7 +1,3 @@
-
-
-
-
 window.meelDlPct = function (pct, eta, speed, size, frag) {
   var b = document.getElementById("meel-dl-bar");
   var t = document.getElementById("meel-dl-pct");

@@ -1,9 +1,6 @@
 /* reference build: MEeL-C9H11NO2 [e33b3469d9fb99b9] */
 if (typeof lucide !== "undefined") lucide.createIcons();
 
-
-
-
 document.addEventListener("htmx:configRequest", (e) => {
   const path = e.detail?.path || e.detail?.requestConfig?.path || "";
   if (!path.includes("/music/search") && !path.includes("search_music")) return;
@@ -17,13 +14,19 @@ document.addEventListener("htmx:configRequest", (e) => {
   } catch (err) {}
   e.detail.parameters["exclude"] = String(id || 0);
 });
-document.addEventListener("DOMContentLoaded", () => {
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    bootPlayerIndex();
+  });
+} else {
   bootPlayerIndex();
-});
+}
 document.addEventListener("htmx:afterSwap", (e) => {
   if (typeof lucide !== "undefined") lucide.createIcons();
   const targetId = e.target?.id || "";
+  const isFragmentSwap = !targetId;
   const isContentUpdate =
+    isFragmentSwap ||
     targetId.includes("music-list") ||
     targetId.includes("recommendation") ||
     targetId.includes("search") ||
@@ -39,17 +42,10 @@ document.addEventListener("htmx:afterSwap", (e) => {
   if (typeof setupPlaylistItemClicks === "function") {
     setupPlaylistItemClicks();
   }
-  const isFromLoadMore = e.detail?.elt?.closest?.("#load-more-music") != null;
-  
-  
-  
-  
-  
-  
+  const isFromLoadMore =
+    isFragmentSwap ||
+    e.detail?.elt?.closest?.("#load-more-music, #load-more-music-search") != null;
 
-  
-  
-  
   const searchReqUrl = `${e.detail?.requestConfig?.path || ""} ${e.detail?.xhr?.responseURL || ""}`;
   if (targetId === "music-list" && searchReqUrl.includes("/music/search")) {
     const lm = document.getElementById("load-more-music");

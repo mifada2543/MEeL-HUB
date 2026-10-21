@@ -1,19 +1,9 @@
 <?php
 
-
-
-
-
-
-
-
-
-
 final class SsrfGuard
 {
     private const ALLOWED_SCHEMES = ['http', 'https'];
 
-    
     private const BLOCKED_EXACT_HOSTS = [
         'localhost',
         'localhost.localdomain',
@@ -33,8 +23,6 @@ final class SsrfGuard
         '.invalid',
         '.onion',
     ];
-
-    
 
     public function validate(string $url): void
     {
@@ -69,18 +57,13 @@ final class SsrfGuard
             throw new \RuntimeException('Alamat tujuan tidak diizinkan.');
         }
 
-        
-        
         $this->resolvePublicAddresses($host);
     }
-
-    
 
     public function resolvePublicAddresses(string $host): array
     {
         $host = strtolower(rtrim($host, '.'));
 
-        
         $literal = $this->extractIpLiteral($host);
         if ($literal !== null) {
             if ($this->isPrivateIp($literal)) {
@@ -128,8 +111,6 @@ final class SsrfGuard
         return $addresses;
     }
 
-    
-
     public function isPrivateIp(string $ip): bool
     {
         $binary = @inet_pton($ip);
@@ -147,8 +128,6 @@ final class SsrfGuard
 
         return true;
     }
-
-    
 
     public function pinHttpUrl(string $url): array
     {
@@ -183,10 +162,6 @@ final class SsrfGuard
             $headerHost = '[' . $headerHost . ']';
         }
 
-        
-        
-        
-        
         $extra = '--add-header ' . escapeshellarg('Host: ' . $headerHost . $port);
         return [$pinnedUrl, $extra];
     }
@@ -218,7 +193,7 @@ final class SsrfGuard
 
         if ($binary === str_repeat("\0", 16)) return true;
         if (substr($binary, 0, 15) === str_repeat("\0", 15) && $bytes[15] === 1) return true;
-        
+
         if (substr($binary, 0, 12) === "\0\0\0\0\0\0\0\0\0\0\xff\xff") {
             return $this->isPrivateIpv4(substr($binary, 12, 4));
         }
@@ -253,8 +228,6 @@ final class SsrfGuard
     {
         return preg_match('/^[\x00-\x7F]+$/D', $host) === 1;
     }
-
-    
 
     private function extractIpLiteral(string $host): ?string
     {

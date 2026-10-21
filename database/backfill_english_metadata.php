@@ -5,9 +5,8 @@ if (PHP_SAPI !== 'cli') {
     die('Access denied. Jalankan dari terminal: php database/backfill_english_metadata.php');
 }
 
-
 $dryRun = false;
-$limit  = null;
+$limit = null;
 foreach (array_slice($argv, 1) as $arg) {
     if ($arg === '--dry-run') {
         $dryRun = true;
@@ -15,7 +14,6 @@ foreach (array_slice($argv, 1) as $arg) {
         $limit = (int)$m[1];
     }
 }
-
 
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../modules/core/helpers.php';
@@ -28,18 +26,17 @@ if (!isset($conn) || !$conn instanceof \mysqli || $conn->connect_error) {
 
 echo "[MEeL] " . ($dryRun ? 'DRY-RUN (tidak menulis DB)' : 'BACKFILL') . " dimulai...\n";
 
-
 function backfill_process_table(\mysqli $conn, string $table, string $columns, int $batchSize, ?int $limit, bool $dryRun, array &$stats): void
 {
-    $offset    = 0;
+    $offset = 0;
     $processed = 0;
-    $updated   = 0;
+    $updated = 0;
 
     while (true) {
 
         $fetchLimit = $batchSize;
         if ($limit !== null) {
-            $remaining  = $limit - $processed;
+            $remaining = $limit - $processed;
             if ($remaining <= 0) break;
             $fetchLimit = min($batchSize, $remaining);
         }
@@ -52,16 +49,15 @@ function backfill_process_table(\mysqli $conn, string $table, string $columns, i
         while ($row = $res->fetch_assoc()) $rows[] = $row;
 
         foreach ($rows as $row) {
-            $id    = (int)$row['id'];
+            $id = (int)$row['id'];
             $title = trim((string)($row['title'] ?? ''));
 
-            
             if ($table === 'video') {
                 $meta = generate_search_metadata($title);
             } else {
                 $artist = trim((string)($row['artist'] ?? ''));
-                $album  = trim((string)($row['album'] ?? ''));
-                $meta   = generate_search_metadata($title, $artist, $album);
+                $album = trim((string)($row['album'] ?? ''));
+                $meta = generate_search_metadata($title, $artist, $album);
             }
 
             $oldMeta = $row['search_metadata'] ?? null;
@@ -95,7 +91,7 @@ function backfill_process_table(\mysqli $conn, string $table, string $columns, i
 }
 
 $batchSize = 50;
-$stats     = ['processed' => 0];
+$stats = ['processed' => 0];
 
 backfill_process_table($conn, 'video', 'title, search_metadata', $batchSize, $limit, $dryRun, $stats);
 backfill_process_table($conn, 'music', 'title, artist, album, search_metadata', $batchSize, $limit, $dryRun, $stats);

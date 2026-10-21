@@ -8,6 +8,7 @@ Panduan pemecahan masalah umum di MEeL-HUB.
 
 - [Masalah Database](#masalah-database)
 - [Masalah Storage & HDD](#masalah-storage--hdd)
+- [Masalah HLS Streaming](#masalah-hls-streaming)
 - [Masalah Transcoding](#masalah-transcoding)
 - [Masalah yt-dlp](#masalah-yt-dlp)
 - [Masalah Sesi & Login](#masalah-sesi--login)
@@ -145,6 +146,44 @@ sudo chmod -R 777 /opt/lampp/htdocs/MEeL/temp/
 Halaman maintenance kini terpadu di `err/?code=maintance` (HTTP 503) dan hanya menampilkan status perawatan.
 Diagnosa path storage dilakukan lewat perintah filesystem (contoh `ls -la` dan `df -h` di atas).
 
+### ⚠️ Dialihkan ke `err/?code=storage` — "Storage Belum Siap" (HTTP 503)
+
+**Gejala:**
+- Membuka Drive / halaman upload dialihkan ke `err/?code=storage` (HTTP 503)
+- Streaming video/musik/books membalas **503 kosong** (tanpa body)
+- Endpoint Drive `upload`/`delete` membalas JSON
+  `{"status":"error","code":"storage_unmounted"}`
+- Log berisi `[MEeL] Peringatan: MEEL_HDD_BASE tidak dapat diakses: /media/<user>/MEeL/media`
+
+**Penyebab:** volume `MEEL_HDD_BASE` (di `auth/settings.php`) belum ter-mount —
+HDD belum dicolok, `mount` belum dijalankan, atau path salah. Dulu kasus ini
+berujung fatal `mkdir(): Permission denied ... RuntimeException: Folder
+penyimpanan gagal dibuat`; sekarang semua jalur dicek lebih dulu oleh
+`meel_storage_ready()` lalu diarahkan ke halaman error yang aman, sehingga
+tidak ada folder sampah yang terbentuk di filesystem root.
+
+**Diagnosis:**
+```bash
+df -h | grep MEeL
+ls -la "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")"
+php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; var_dump(meel_storage_ready());"
+```
+
+**Solusi:**
+```bash
+sudo mount /dev/sdX? /media/<user>/MEeL          # sesuaikan dengan fstab
+touch "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")/.meel_mount"
+```
+
+**Penanda `.meel_mount`** dibuat `install.sh` dan masuk `.gitignore`
+(**jangan pernah di-commit**). Ia memberi tahu `meel_storage_ready()` bahwa
+folder itu adalah volume ter-mount, bukan sisa folder kosong di mountpoint.
+Tanpa penanda: folder **kosong** dianggap belum ter-mount (arah aman: blokir),
+folder berisi (volume lama) tetap dilayani dengan log peringatan. Hilangnya
+penanda juga diperingatkan `tests/check_deploy.php`.
+
+---
+
 ### ❌ Modul Drive crash: "Folder penyimpanan gagal dibuat" (RuntimeException)
 
 **Gejala:**
@@ -171,7 +210,7 @@ Diagnosa path storage dilakukan lewat perintah filesystem (contoh `ls -la` dan `
    mana aplikasi benar-benar me-resolve storage:
    ```bash
    php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_DRIVE') ? MEEL_HDD_DRIVE : 'NOT SET';"
-   php -r "require 'modules/core/helpers.php'; echo meel_drive_base_path();"
+   php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; echo meel_drive_base_path();"
    ```
    Jika path hasil resolve tidak ada atau tidak writable, perbaiki `MEEL_HDD_BASE`
    di `auth/settings.php` (atau biarkan tidak di-set agar memakai fallback
@@ -191,6 +230,48 @@ Diagnosa path storage dilakukan lewat perintah filesystem (contoh `ls -la` dan `
 > ke dalam `MEEL_HDD_DRIVE` dinilai PASS. Lihat
 > [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)
 > untuk layout storage Drive (`MEEL_HDD_DRIVE` vs fallback `data_drive/`).
+
+---
+
+## Masalah HLS Streaming
+
+### ❌ Overlay "Sambungan Terputus" muncul sendiri saat meng-loop video
+
+**Gejala:** setelah video diulang 2–4 kali (±10 menit), muncul overlay
+"Sambungan Terputus", lalu video *jumped* / posisi playback berubah sendiri.
+Console menunjukkan:
+
+```
+HTML5 video error: PipelineStatus::PIPELINE_ERROR_DECODE: video decode error! code: 3
+Mengecek ketersediaan file media di: upload/video/.../....m3u8
+Media terdeteksi online! Memulai pemulihan via HTMX...
+```
+
+**Penyebab:** atribut native `loop` menyuruh browser melakukan seek
+`duration → 0` tanpa memberi tahu hls.js. `HLS_CONFIG.backBufferLength` hanya
+**10 detik**, sehingga data di posisi 0 sudah dievict dari `SourceBuffer`.
+Chromium lalu menjalankan seek di luar buffer dan melempar `PIPELINE_ERROR_DECODE`
+— padahal file medianya sehat (HEAD `.m3u8` membalas 200).
+
+Versi lama langsung menaikkan kode error 3 ke *full recovery*: probe HEAD →
+`htmx` swap → seluruh player dibangun ulang, padahal tidak ada yang rusak.
+
+**Perbaikan (sudah masuk di MEeL core):**
+
+| Lapis | Lokasi | Yang dilakukan |
+|-------|--------|-----------------|
+| Self-heal | `recovery.js` | Kode 2 & 3 diberi *grace period* 8 detik — `hls.recoverMediaError()` lalu dipantau apakah `currentTime` bergerak. Bergerak → selesai, tidak ada recovery. |
+| Loop wrap | `player-events.js` | Handler `ended` memberi tahu hls.js posisi tujuan (`hls.startLoad()`) agar ia memuat ulang segmen, bukan buta terhadap seek. |
+| Back buffer | `player-init.js` | Video pendek (≤2 menit) disimpan utuh di back buffer, sehingga loop tidak perlu flush sama sekali. |
+
+Log `[MEeL] Error media self-healed, playback lanjut normal.` menandakan
+grace period berhasil. Kalau Anda melihat
+`Error media tidak pulih dalam 8 detik, lanjut ke recovery`, berarti media
+memang bermasalah dan recovery berjalan seperti seharusnya.
+
+**Kalau masih terjadi:** naikkan `MEDIA_ERROR_GRACE_MS` di
+`assets/js/video/watch/state.js` (default `8e3`), atau turunkan ambang
+back buffer manual.
 
 ---
 
@@ -282,7 +363,7 @@ sudo apt install nodejs
 **Penyebab 3: Cookies tidak valid/expired**
 - Export ulang cookies dari browser
 - Pastikan Anda login ke YouTube/platform target
-- Simpan sebagai `cookies.txt` di root proyek
+- Simpan sebagai `cookies.txt` di `temp/` (file lama di root otomatis dimigrasikan)
 
 **Penyebab 4: Update yt-dlp**
 ```bash
@@ -466,6 +547,8 @@ Tunggu hingga kuota ter-reset, atau minta admin untuk meng-upload-kan.
 3. Bersihkan guest users: Admin Panel → **Clean Inactive Guests**
 4. Hapus queue stuck: Admin Panel → **Clean Stuck Queues**
 5. Hapus file drive yang tidak perlu
+
+> **Catatan "Cek Sinkronisasi Database":** baris *"{n} varian thumbnail 256px (X MB) dipertahankan — bukan sampah"* itu normal. Tiap video punya dua berkas thumbnail: yang asli (terdaftar di DB) dan varian turunan 256px `<stem>_sm.webp` yang sengaja tidak didaftarkan di DB karena dipakai untuk kartu grid. Jangan dihapus manual lewat "Bersihkan SSD Thinkpad" — baris itu hanya informasi.
 
 ---
 

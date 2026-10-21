@@ -1,5 +1,18 @@
-html,
+html {
+    overflow-x: clip !important;
+}
 body {
     overflow-x: hidden !important;
+    padding-top: 3.5rem;
+}
+body > nav {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(8, 10, 15, 0.92) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    z-index: 50;
 }
 /* reference build: MEeL-C10H15N [59af81707cfcd2a7] */

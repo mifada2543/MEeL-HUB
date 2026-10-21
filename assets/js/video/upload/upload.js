@@ -2,11 +2,6 @@
 /** MEeL - Media Hub Platform
  * @copyright Copyright (C) 2026 Mifada
  * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
-/*
- * upload/upload.js — JS halaman video/upload.php: drop-zone handler,
- * overlay upload (progress manual), drag-and-drop, dan @keyframes spin.
- * Depends on: shared/upload-progress.js (meelUploadProgress)
- * */
 function handleVideoFile(input) {
   const file = input.files[0];
   if (!file) return;
@@ -46,13 +41,12 @@ function handleSubtitleFile(input) {
   label.textContent = file.name;
   sub.textContent = ext === "srt" ? "SRT · akan dikonversi otomatis" : "VTT";
   zone.classList.add("has-file");
-  // Tampilkan dropdown bahasa subtitle
   const langWrap = document.getElementById("subtitle-lang-wrap");
   if (langWrap) langWrap.style.display = "";
 }
 function handleThumbFile(input) {
   if (!input.files || !input.files[0]) return;
-  thumbManual = true; // pilihan manual — Auto-fill tidak boleh menimpa
+  thumbManual = true;
   const reader = new FileReader();
   reader.onload = function (e) {
     const preview = document.getElementById("thumb-preview");
@@ -86,7 +80,7 @@ function handleSubmit() {
   const fileSizeMB = videoInput.files[0]
     ? videoInput.files[0].size / 1024 / 1024
     : 50;
-  const baseDelay = Math.max(3000, Math.min(fileSizeMB * 120, 20000)); // 3s–20s
+  const baseDelay = Math.max(3000, Math.min(fileSizeMB * 120, 20000));
   window.meelUploadProgress({
     phases: [
       {
@@ -169,10 +163,8 @@ thumbZone.addEventListener("drop", (e) => {
     handleThumbFile(thumbInput);
   }
 });
-// Flag: apakah user sudah pilih thumbnail manual
 let thumbManual = false;
 
-/** Auto-fill metadata dari file video via ffprobe di server. */
 function autoFillMetadata() {
   const videoInput = document.getElementById("video-input");
   if (!videoInput.files || !videoInput.files[0]) {
@@ -180,7 +172,8 @@ function autoFillMetadata() {
       title: "Pilih file dulu!",
       text: "Silakan pilih file video terlebih dahulu sebelum menggunakan Auto-fill.",
       icon: "warning",
-      confirmButtonColor: "#ef4444",
+      confirmButtonText: "Mengerti",
+      confirmButtonColor: "#b91c1c",
       background: "#0e1118",
       color: "#fff",
     });
@@ -208,7 +201,6 @@ function autoFillMetadata() {
           document.getElementById("f-title").value = data.title.trim();
         if (hasDesc)
           document.getElementById("f-desc").value = data.description.trim();
-        // Isi thumbnail dari metadata (hanya jika user belum pilih manual)
         if (data.cover && data.cover.length > 0 && !thumbManual) {
           const preview = document.getElementById("thumb-preview");
           const iconWrap = document.getElementById("thumb-icon-wrap");
@@ -221,7 +213,6 @@ function autoFillMetadata() {
           label.textContent = "Thumbnail dari metadata";
           sub.textContent = "";
           zone.classList.add("has-file");
-          // Convert base64 ke File agar ikut terupload saat submit
           const binary = atob(data.cover);
           const bytes = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -235,7 +226,8 @@ function autoFillMetadata() {
             title: "Metadata tidak ditemukan",
             text: "File ini tidak memiliki metadata yang bisa dibaca.",
             icon: "info",
-            confirmButtonColor: "#ef4444",
+            confirmButtonText: "Mengerti",
+            confirmButtonColor: "#b91c1c",
             background: "#0e1118",
             color: "#fff",
           });
@@ -244,7 +236,7 @@ function autoFillMetadata() {
             title: "Metadata ditemukan!",
             text: "Formulir telah diisi otomatis dari metadata file video.",
             icon: "success",
-            confirmButtonColor: "#ef4444",
+            confirmButtonColor: "#b91c1c",
             background: "#0e1118",
             color: "#fff",
             timer: 2000,
@@ -256,7 +248,8 @@ function autoFillMetadata() {
           title: "Gagal",
           text: data.message || "Tidak dapat membaca metadata dari file ini.",
           icon: "error",
-          confirmButtonColor: "#ef4444",
+          confirmButtonText: "Mengerti",
+          confirmButtonColor: "#b91c1c",
           background: "#0e1118",
           color: "#fff",
         });
@@ -265,10 +258,11 @@ function autoFillMetadata() {
     .catch((err) => {
       console.error("Auto-metadata error:", err);
       Swal.fire({
-        title: "Error",
+        title: "Kesalahan",
         text: "Terjadi kesalahan koneksi saat memproses metadata.",
         icon: "error",
-        confirmButtonColor: "#ef4444",
+        confirmButtonText: "Mengerti",
+        confirmButtonColor: "#b91c1c",
         background: "#0e1118",
         color: "#fff",
       });

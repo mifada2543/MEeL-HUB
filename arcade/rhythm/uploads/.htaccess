@@ -1,0 +1,50 @@
+# =================================================================
+# MEeL Rhythm — zona upload user (audio/ beatmap/ cover/)
+# Pola penguatan data_drive/.htaccess: file hasil upload TIDAK BOLEH
+# dieksekusi atau dirender sebagai HTML/JS/SVG (XSS tersimpan via upload).
+# =================================================================
+
+# 1. Matikan mesin eksekusi PHP (mod_php)
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+# 2. Handler CGI/FastCGI: paksa default-handler untuk skrip
+<FilesMatch "\.(php|php3|php4|php5|phtml|phps|pl|py|jsp|asp|sh|cgi|bat|cmd)$">
+SetHandler default-handler
+RemoveHandler .php .php3 .php4 .php5 .phtml .pl .py .jsp .asp .sh .cgi
+RemoveType .php .php3 .php4 .php5 .phtml .pl .py .jsp .asp .sh .cgi
+</FilesMatch>
+
+# 3. Fallback biner untuk ekstensi TAK dikenal (negasi allowlist di #5).
+#    JANGAN pakai "ForceType inherit" — Apache mengirim header literal
+#    "Content-Type: inherit" yang rusak (digagalkan X-Content-Type-Options).
+<FilesMatch "(?i)^(?!(?:.+\.)(?:mp3|ogg|opus|flac|wav|m4a|jpg|jpeg|png|gif|webp|json)(?:$)).+$">
+ForceType application/octet-stream
+</FilesMatch>
+
+# 4. Tipe berbahaya (HTML/JS/SVG berpotensi XSS) → plain text
+#    (ditaruh SETELAH #3 agar menimpa fallback biner)
+<FilesMatch "(?i)\.(php|phtml|pl|py|sh|cgi|exe|bat|cmd|html|htm|js|svg|xml|xsl|xhtml|swf)$">
+ForceType text/plain
+</FilesMatch>
+
+# 5. Media sah hasil upload → MIME alami mod_mime
+#    (audio: mp3/ogg/opus/flac/wav/m4a · gambar: jpg/png/gif/webp · json: beatmap)
+#    Tanpa ForceType — sengaja, agar header Content-Type asli dipakai.
+#    Catatan: mime.types LAMPP tidak memuat sebagian ekstensi di bawah.
+AddType application/json .json
+AddType image/webp .webp
+AddType audio/ogg .ogg
+AddType audio/ogg .opus
+AddType audio/flac .flac
+AddType audio/mp4 .m4a
+
+# 6. Tanpa directory listing
+Options -Indexes

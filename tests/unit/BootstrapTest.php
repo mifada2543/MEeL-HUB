@@ -1,12 +1,9 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @coversNothing
- */
+/** @coversNothing */
 class BootstrapTest extends TestCase
 {
-    
 
     private function probe(string $remoteAddr, string $serverName, string $prelude = ''): array
     {
@@ -20,7 +17,7 @@ class BootstrapTest extends TestCase
             . 'echo MEEL_ENV . "|" . (APP_DEBUG ? "1" : "0");';
 
         $output = [];
-        $exit   = 0;
+        $exit = 0;
         exec(PHP_BINARY . ' -d display_errors=0 -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit);
 
         $this->assertSame(0, $exit, 'Subprocess bootstrap gagal: ' . implode("\n", $output));
@@ -31,9 +28,7 @@ class BootstrapTest extends TestCase
         return [$env, $debug === '1'];
     }
 
-    /**
-     * @dataProvider baseUrlProvider
-     */
+    /** @dataProvider baseUrlProvider */
     public function testBaseUrlFallbackFromProjectRoot(
         string $scriptName,
         string $documentRoot,
@@ -48,7 +43,7 @@ class BootstrapTest extends TestCase
             . 'echo MEEL_BASE_URL;';
 
         $output = [];
-        $exit   = 0;
+        $exit = 0;
         exec(PHP_BINARY . ' -d display_errors=0 -r ' . escapeshellarg($code) . ' 2>&1', $output, $exit);
 
         $this->assertSame(0, $exit, 'Subprocess bootstrap gagal: ' . implode("\n", $output));
@@ -60,8 +55,8 @@ class BootstrapTest extends TestCase
     {
 
         $projectRoot = rtrim(str_replace('\\', '/', realpath(__DIR__ . '/../..')), '/');
-        $docRoot     = dirname($projectRoot);
-        $expected    = '/' . basename($projectRoot);
+        $docRoot = dirname($projectRoot);
+        $expected = '/' . basename($projectRoot);
 
         return [
             'halaman admin di subdirektori → root proyek' => [
@@ -76,16 +71,14 @@ class BootstrapTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider environmentProvider
-     */
+    /** @dataProvider environmentProvider */
     public function testAppDebugFollowsEnvironment(
         string $remoteAddr,
         string $serverName,
         string $prelude,
         string $expectedEnv,
-        bool   $expectedDebug,
-        bool   $expectInvariant
+        bool $expectedDebug,
+        bool $expectInvariant
     ): void {
         [$env, $debug] = $this->probe($remoteAddr, $serverName, $prelude);
 
@@ -100,24 +93,24 @@ class BootstrapTest extends TestCase
     public static function environmentProvider(): array
     {
         return [
-            'localhost auto-detect → development, debug ON'  => [
+            'localhost auto-detect → development, debug ON' => [
                 '127.0.0.1', 'localhost', '', 'development', true, true,
             ],
-            'server_name localhost → development, debug ON'  => [
+            'server_name localhost → development, debug ON' => [
                 '8.8.8.8', 'localhost', '', 'development', true, true,
             ],
-            'remote host → production, debug OFF'            => [
+            'remote host → production, debug OFF' => [
                 '8.8.8.8', 'meel.example.com', '', 'production', false, true,
             ],
-            'maintenance mode → debug OFF'                   => [
+            'maintenance mode → debug OFF' => [
                 '127.0.0.1', 'localhost', "define('MEEL_ENV', 'maintenance');",
                 'maintenance', false, true,
             ],
-            'override true menang di produksi'               => [
+            'override true menang di produksi' => [
                 '8.8.8.8', 'meel.example.com', "define('APP_DEBUG', true);",
                 'production', true, false,
             ],
-            'override false menang di development'           => [
+            'override false menang di development' => [
                 '127.0.0.1', 'localhost', "define('APP_DEBUG', false);",
                 'development', false, false,
             ],

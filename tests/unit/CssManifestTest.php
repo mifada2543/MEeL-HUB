@@ -1,12 +1,10 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers SwPrecache
- */
+/** @covers SwPrecache */
 class CssManifestTest extends TestCase
 {
-    
+
     public static function manifestProvider(): array
     {
         $out = [];
@@ -18,9 +16,7 @@ class CssManifestTest extends TestCase
         return $out;
     }
 
-    /**
-     * @dataProvider manifestProvider
-     */
+    /** @dataProvider manifestProvider */
     public function testEveryManifestEntryResolvesToFile(string $manifest): void
     {
         $mods = require $manifest;
@@ -38,13 +34,11 @@ class CssManifestTest extends TestCase
         }
     }
 
-    /**
-     * @dataProvider manifestProvider
-     */
+    /** @dataProvider manifestProvider */
     public function testAllManifestFoldersArePrecached(string $manifest): void
     {
         $folder = basename(dirname($manifest));
-        $mods   = require $manifest;
+        $mods = require $manifest;
 
         $expected = [];
         foreach ($mods as $mod) {

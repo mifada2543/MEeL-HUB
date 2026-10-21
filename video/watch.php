@@ -1,13 +1,12 @@
 <?php
 require_once '../modules/core/helpers.php';
 meel_boot_session();
-
 include '../auth/config.php';
-require_once '../modules/core/helpers.php';
 require_once '../modules/core/CommentRenderer.php';
 require_once '../controllers/api/WatchController.php';
+require_once __DIR__ . '/cards.php';
 
-$id      = isset($_GET['v']) ? (int)$_GET['v'] : 0;
+$id = isset($_GET['v']) ? (int)$_GET['v'] : 0;
 $user_id = $_SESSION['user_id'] ?? null;
 
 $ctrl = new VideoWatchController($conn, $user_id, $id);
@@ -15,29 +14,12 @@ $ctrl->handleRequest();
 
 extract($ctrl->getViewData(), EXTR_SKIP);
 
+if ($id > 0 && !empty($v['filename']) && function_exists('meel_register_stream_path')) {
+    authorize_stream($id);
+    meel_register_stream_path((string) $v['filename'], $id);
+}
+
 session_write_close();
-
-$__v = function($f) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/../' . $f;
-    if (!isset($mtimeCache[$path])) {
-        $mtimeCache[$path] = @filemtime($path);
-    }
-    return '?v=' . $mtimeCache[$path];
-};
-
-$__vdir = function($dir) {
-    static $mtimeCache = [];
-    $path = __DIR__ . '/../' . $dir;
-    if (!isset($mtimeCache[$path])) {
-        $max = 0;
-        foreach (glob($path . '/*.js') ?: [] as $f) {
-            $max = max($max, (int)@filemtime($f));
-        }
-        $mtimeCache[$path] = $max;
-    }
-    return '?v=' . $mtimeCache[$path];
-};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -45,33 +27,41 @@ $__vdir = function($dir) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Library.">
-    <meta property="og:title" content="<?= htmlspecialchars($v['title']) ?> — MEeL Video">
-    <meta property="og:description" content="Tonton <?= htmlspecialchars($v['title']) ?> di MEeL Video - Streaming HLS dengan kualitas terbaik.">
     <?php
-    $__thumb_name = $v['thumbnail'] ?? '';
-    $__thumb_ok   = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . basename($__thumb_name));
-    $__og_image   = $__thumb_ok
-        ? detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/video/upload/thumbnail/' . rawurlencode($__thumb_name)
-        : detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/assets/img/video0.webp';
+    $__thumb_name = basename(trim((string)($v['thumbnail'] ?? '')));
+    $__thumb_ok = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . $__thumb_name);
+    $__thumb_path = $__thumb_ok ? 'upload/thumbnail/' . rawurlencode($__thumb_name) : '';
+    $__og_image = $__thumb_ok
+        ? base_url('/video/upload/thumbnail/' . rawurlencode($__thumb_name))
+        : base_url('/assets/img/video0.webp');
+    if (!preg_match('#^https?://#i', $__og_image)) {
+        $__og_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__og_image;
+    }
+
+    $_META_TITLE = ($v['title'] ?? '') . ' | MEeL Video';
+    $_META_DESC = 'Tonton ' . ($v['title'] ?? '') . ' di MEeL Video - Streaming HLS dengan kualitas terbaik.';
+    $_META_IMAGE = $__og_image;
+    $_META_IMAGE_W = '1280';
+    $_META_IMAGE_H = '720';
+    $_META_TYPE = 'video.other';
     ?>
-    <meta property="og:image" content="<?= htmlspecialchars($__og_image, ENT_QUOTES, 'UTF-8') ?>">
-    <meta property="og:image:width" content="1280">
-    <meta property="og:image:height" content="720">
-    <meta property="og:type" content="video.other">
-    <title><?= htmlspecialchars($v['title']) ?> | MEeL Video</title>
     <?php include '../partials/link.php'; ?>
-    <link rel="stylesheet" href="../assets/css/plyr.css<?= $__v('assets/css/plyr.css') ?>">
-    <?php foreach (require __DIR__ . '/../assets/css/video/manifest.php' as $__f): ?>
-    <link rel="stylesheet" href="../assets/css/video/<?= $__f ?><?= $__v('assets/css/video/' . $__f) ?>">
-    <?php endforeach; ?>
-    <link rel="stylesheet" href="../assets/css/video/watch/main.css<?= $__v('assets/css/video/watch/main.css') ?>">
-    <link rel="stylesheet" href="../assets/css/shared/comment.css<?= $__v('assets/css/shared/comment.css') ?>">
-    <script src="../assets/js/compatibilitas/htmx.min.js"></script>
-    <script src="../assets/js/compatibilitas/hls.js"></script>
+    <?php if ($__thumb_path !== ''): ?>
+        <link rel="preload" as="image" fetchpriority="high"
+            href="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>">
+    <?php endif; ?>
+    <link rel="stylesheet" href="../assets/css/plyr.css<?= meel_asset_version('assets/css/plyr.css') ?>">
+    <?php meel_css_links('video', '../assets/css/video'); ?>
+    <link rel="stylesheet" href="../assets/css/video/watch/main.css<?= meel_asset_version('assets/css/video/watch/main.css') ?>">
+    <link rel="stylesheet" href="../assets/css/shared/comment.css<?= meel_asset_version('assets/css/shared/comment.css') ?>">
+    <script src="../assets/js/compatibilitas/htmx.min.js<?= meel_asset_version('assets/js/compatibilitas/htmx.min.js') ?>" defer></script>
+    <?php if ($is_hls): ?>
+    <script src="../assets/js/compatibilitas/hls.js<?= meel_asset_version('assets/js/compatibilitas/hls.js') ?>" defer></script>
+    <?php endif; ?>
 </head>
 
 <body class="text-gray-400 min-h-screen">
+<?php include __DIR__ . '/../partials/skip-link.php'; ?>
 
     <nav class="border-b border-white/[.04] sticky top-0 z-50">
         <div class="w-full px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
@@ -106,7 +96,7 @@ $__vdir = function($dir) {
                     hx-include="#v-search-watch"
                     hx-target="#recommendation-column"
                     hx-indicator="#search-indicator"
-                    class="px-3 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase text-gray-500 hover:text-red-400 hover:border-red-500/30 transition-all flex-shrink-0">
+                    class="px-3 py-2 bg-white/[.04] border border-white/[.06] rounded-xl text-[10px] font-bold uppercase text-gray-400 hover:text-red-400 hover:border-red-500/30 transition-all flex-shrink-0">
                     Cari
                 </button>
             </div>
@@ -114,7 +104,7 @@ $__vdir = function($dir) {
             <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider flex-shrink-0">
                 <button id="navbar-search-icon-btn"
                     onclick="document.getElementById('mobile-search-overlay').classList.toggle('open')"
-                    class="hidden items-center justify-center w-8 h-8 text-gray-500 hover:text-red-400 bg-white/[.04] hover:bg-white/[.08] rounded-xl transition-all"
+                    class="hidden items-center justify-center w-8 h-8 text-gray-400 hover:text-red-400 bg-white/[.04] hover:bg-white/[.08] rounded-xl transition-all"
                     title="Cari"
                     aria-label="Cari video">
                     <i data-lucide="search" class="w-4 h-4"></i>
@@ -148,9 +138,10 @@ $__vdir = function($dir) {
         <div id="left-column" class="flex-1 space-y-2 sm:space-y-3 px-4 sm:px-5">
             <div id="video-glow-container" class="relative w-full">
                 <canvas id="video-glow-canvas" class="block"></canvas>
-                <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" style="aspect-ratio: 16/9;">
+                <div id="main-video-wrapper" class="relative bg-black rounded-none sm:rounded-none overflow-hidden border-0 shadow-2xl w-full" data-video-aspect="1.7778" style="--meel-video-ar: 1.7778;">
                     <video id="main-video" playsinline controls preload="metadata"
-                        data-poster="upload/thumbnail/<?= htmlspecialchars($v['thumbnail']) ?>"
+                        poster="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>"
+                        data-poster="<?= htmlspecialchars($__thumb_path, ENT_QUOTES, 'UTF-8') ?>"
                         data-src="<?= htmlspecialchars($video_src) ?>"
                         aria-label="Pemutar video: <?= htmlspecialchars($v['title']) ?>"
                         data-ishls="<?= $is_hls ? 'true' : 'false' ?>"
@@ -168,9 +159,11 @@ $__vdir = function($dir) {
                                 label="<?= htmlspecialchars($_sub['label']) ?>">
                         <?php endforeach; ?>
                     </video>
-                    <div id="resume-modal" class="hidden">
+                    <div id="resume-modal" class="hidden" role="dialog" aria-modal="true"
+                        aria-labelledby="resume-modal-title" aria-describedby="resume-countdown">
                         <div class="bg-[#141820] border border-red-600/25 border-t-2 border-t-red-600 rounded-2xl text-center">
-                            <div class="font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
+                            <div id="resume-modal-title"
+                                class="font-black text-white uppercase tracking-wider mb-2">Lanjutkan Sesi?</div>
                             <div class="text-[10px] text-gray-400 uppercase tracking-widest mb-1">
                                 Menit ke‑ <span id="resume-time" class="text-red-400 font-mono">0:00</span>
                             </div>
@@ -238,8 +231,8 @@ $__vdir = function($dir) {
                     <div class="flex items-center gap-2 flex-wrap">
                         <?php if (isset($_SESSION['username'])): ?>
                             <a href="../transcode?id=<?= $id ?>"
-                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300 no-underline"
-                                title="Download audio saja">
+                                class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all bg-gray-800/50 border border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300 no-underline"
+                                title="Unduh audio saja">
                                 <i data-lucide="download" class="w-3.5 h-3.5"></i> Audio
                             </a>
                             <div id="like-dislike-container" class="flex items-center gap-2">
@@ -250,7 +243,7 @@ $__vdir = function($dir) {
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'like'
                                         ? 'bg-red-600/15 border-red-600/30 text-red-400'
-                                        : 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300' ?>">
+                                        : 'bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300' ?>">
                                     <i data-lucide="thumbs-up" class="w-3.5 h-3.5 <?= $user_interaction === 'like' ? 'fill-current' : '' ?>"></i>
                                     Like<?= ($v['likes'] ?? 0) > 0 ? " <span class='tabular-nums ml-0.5'>{$v['likes']}</span>" : '' ?>
                                 </button>
@@ -258,10 +251,11 @@ $__vdir = function($dir) {
                                     hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
                                     hx-vals='{"id":"<?= $id ?>","media_type":"video","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION["csrf_token"]) ?>"}'
                                     title="Tidak suka video"
+                                    aria-label="Dislike<?= ($v['dislikes'] ?? 0) > 0 ? ' (' . $v['dislikes'] . ')' : '' ?>"
                                     class="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer
                                    <?= $user_interaction === 'dislike'
                                         ? 'bg-white/10 border-white/15 text-white'
-                                        : 'bg-gray-800/50 border-white/[.05] text-gray-500 hover:bg-gray-700 hover:text-gray-300' ?>">
+                                        : 'bg-gray-800/50 border-white/[.05] text-gray-400 hover:bg-gray-700 hover:text-gray-300' ?>">
                                     <i data-lucide="thumbs-down" class="w-3.5 h-3.5 <?= $user_interaction === 'dislike' ? 'fill-current' : '' ?>"></i>
                                     <?= ($v['dislikes'] ?? 0) > 0 ? "<span class='tabular-nums'>{$v['dislikes']}</span>" : '' ?>
                                 </button>
@@ -295,14 +289,13 @@ $__vdir = function($dir) {
                             title="Buka / tutup komentar">
                             <i data-lucide="message-square" class="w-3.5 h-3.5 text-red-500"></i>
                             <span class="text-[10px] font-bold uppercase tracking-[.25em] text-gray-300">Komentar</span>
-                            <i data-lucide="chevron-up" id="comment-chevron-open" class="w-3.5 h-3.5 ml-auto text-gray-500 hidden"></i>
-                            <i data-lucide="chevron-down" id="comment-chevron-closed" class="w-3.5 h-3.5 ml-auto text-gray-500"></i>
+                            <i data-lucide="chevron-up" id="comment-chevron-open" class="w-3.5 h-3.5 ml-auto text-gray-400 hidden"></i>
+                            <i data-lucide="chevron-down" id="comment-chevron-closed" class="w-3.5 h-3.5 ml-auto text-gray-400"></i>
                         </button>
                         <div id="comment-preview" class="px-4 sm:px-6 py-3">
                             <?php
-                            
-                            
-                            $preview       = comment_preview($comments_grouped ?? []);
+
+                            $preview = comment_preview($comments_grouped ?? []);
                             $preview_items = $preview['items'];
                             ?>
                             <div id="comment-preview-text" class="space-y-1 text-sm text-gray-400 <?= empty($preview_items) ? 'italic' : '' ?>">
@@ -310,8 +303,8 @@ $__vdir = function($dir) {
                                     <span>Jadilah komentar pertama</span>
                                 <?php else: foreach ($preview_items as $_pc): ?>
                                     <div class="line-clamp-1"
-                                        title="<?= htmlspecialchars('@' . ($_pc['username'] ?? 'Guest') . ': ' . preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? '')), ENT_QUOTES) ?>">
-                                        <span class="font-bold text-red-400">@<?= htmlspecialchars($_pc['username'] ?? 'Guest') ?></span>: <?= htmlspecialchars(preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? ''))) ?>
+                                        title="<?= htmlspecialchars('@' . ($_pc['username'] ?? 'Tamu') . ': ' . preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? '')), ENT_QUOTES) ?>">
+                                        <span class="font-bold text-red-400">@<?= htmlspecialchars($_pc['username'] ?? 'Tamu') ?></span>: <?= htmlspecialchars(preg_replace('/\s+/', ' ', (string)($_pc['comment'] ?? ''))) ?>
                                     </div>
                                 <?php endforeach; endif; ?>
                             </div>
@@ -363,27 +356,9 @@ $__vdir = function($dir) {
                 <span id="rec-title-text" class="truncate" title="Video Lainnya">Video Lainnya</span>
             </div>
             <div id="recommendation-column" class="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-0 lg:space-y-1">
-                <?php while ($r = $rekom->fetch_assoc()): ?>
-                    <a href="<?= base_url('/video/watch?v=' . (int)$r['id']) ?>"
-                        class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline"
-                        title="<?= htmlspecialchars($r['title']) ?>">
-                        <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                            <img src="upload/thumbnail/<?= htmlspecialchars($r['thumbnail']) ?>"
-                                class="rec-thumb-img w-full h-full object-cover transition-transform duration-300" loading="lazy" alt="Thumbnail video <?= htmlspecialchars($r['title']) ?>">
-                        </div>
-                        <div class="flex-1 min-w-0 flex flex-col justify-center">
-                            <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
-                                <?= htmlspecialchars($r['title']) ?>
-                            </div>
-                            <div class="text-[9px] text-gray-300 mt-1"><?= number_format($r['views'] ?? 0) ?> views</div>
-                            <?php if (!empty($r['uploader'])): ?>
-                                <div class="text-[9px] font-bold text-red-500/60 uppercase tracking-wider mt-0.5 truncate">
-                                    <?= htmlspecialchars($r['uploader']) ?>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </a>
-                <?php endwhile; ?>
+                <?php while ($r = $rekom->fetch_assoc()):
+                    meel_render_video_rec_card($r);
+                endwhile; ?>
                 <?php if ($rekom->num_rows >= 15): ?>
                     <div class="py-3 text-center rec-sentinel"
                         hx-get="search?exclude=<?= (int)$id ?>"
@@ -400,7 +375,10 @@ $__vdir = function($dir) {
     </main>
 
     <?php include '../partials/footer.php'; ?>
-    <script src="../assets/js/compatibilitas/plyr.min.js"></script>
+    <script src="../assets/js/shared/media-session.js<?= meel_asset_version('assets/js/shared/media-session.js') ?>"></script>
+    <script src="../assets/js/shared/head-meta.js<?= meel_asset_version('assets/js/shared/head-meta.js') ?>"></script>
+    <script src="../assets/js/shared/recovery-manager.js<?= meel_asset_version('assets/js/shared/recovery-manager.js') ?>"></script>
+    <script src="../assets/js/compatibilitas/plyr.min.js<?= meel_asset_version('assets/js/compatibilitas/plyr.min.js') ?>"></script>
 
     <script>
         window.playerConfig = <?= json_encode([
@@ -409,19 +387,42 @@ $__vdir = function($dir) {
                                     'vttSrc' => $vtt_src ?? '',
                                                         'id' => (int)$id,
                                     'title' => $v['title'] ?? '',
-                                    'uploader' => $v['uploader'] ?? ''
+                                    'uploader' => $v['uploader'] ?? '',
+                                    'thumbnail' => $__og_image
                                 ]); ?>;
     </script>
-    <script src="../assets/js/shared/state-keys.js<?= $__v('assets/js/shared/state-keys.js') ?>"></script>
-    <script src="../assets/js/shared/keyboard.js<?= $__v('assets/js/shared/keyboard.js') ?>"></script>
-    <script src="../assets/js/shared/temp-index.js<?= $__v('assets/js/shared/temp-index.js') ?>"></script>
-    <script src="../assets/js/shared/plyr-config.js<?= $__v('assets/js/shared/plyr-config.js') ?>"></script>
-    <script src="../assets/js/shared/format-time.js<?= $__v('assets/js/shared/format-time.js') ?>"></script>
-    <script src="../assets/js/shared/resume-modal.js<?= $__v('assets/js/shared/resume-modal.js') ?>"></script>
-    <script src="../assets/js/shared/mini-player-popstate.js<?= $__v('assets/js/shared/mini-player-popstate.js') ?>"></script>
-    <script src="../assets/js/video/watch/main.js<?= $__vdir('assets/js/video/watch') ?>"></script>
-    <script src="../assets/js/shared/comment.js<?= $__v('assets/js/shared/comment.js') ?>"></script>
-    <script src="../assets/js/shared/htmx-lucide.js<?= $__v('assets/js/shared/htmx-lucide.js') ?>"></script>
+    <script>
+        (function () {
+            var wrapper = document.getElementById('main-video-wrapper');
+            var video = document.getElementById('main-video');
+            if (!wrapper || !video) return;
+            function applyIntrinsicRatio() {
+                var w = video.videoWidth;
+                var h = video.videoHeight;
+                if (!w || !h) return;
+                var ratio = w / h;
+                if (!(ratio > 0.2 && ratio < 5)) return;
+
+                wrapper.style.setProperty('--meel-video-ar', w + ' / ' + h);
+                wrapper.style.removeProperty('aspect-ratio');
+                wrapper.setAttribute('data-video-aspect', ratio.toFixed(4));
+            }
+
+            video.addEventListener('loadedmetadata', applyIntrinsicRatio);
+            if (video.readyState >= 1) applyIntrinsicRatio();
+        })();
+    </script>
+    <script src="../assets/js/shared/state-keys.js<?= meel_asset_version('assets/js/shared/state-keys.js') ?>"></script>
+    <script src="../assets/js/shared/keyboard.js<?= meel_asset_version('assets/js/shared/keyboard.js') ?>"></script>
+    <script src="../assets/js/shared/temp-index.js<?= meel_asset_version('assets/js/shared/temp-index.js') ?>"></script>
+    <script src="../assets/js/shared/plyr-config.js<?= meel_asset_version('assets/js/shared/plyr-config.js') ?>"></script>
+    <script src="../assets/js/shared/format-time.js<?= meel_asset_version('assets/js/shared/format-time.js') ?>"></script>
+    <script src="../assets/js/shared/resume-modal.js<?= meel_asset_version('assets/js/shared/resume-modal.js') ?>"></script>
+    <script src="../assets/js/shared/mini-player-popstate.js<?= meel_asset_version('assets/js/shared/mini-player-popstate.js') ?>"></script>
+    <script src="../assets/js/video/watch/main.js<?= meel_asset_dir_version('assets/js/video/watch') ?>"></script>
+    <script src="../assets/js/shared/comment.js<?= meel_asset_version('assets/js/shared/comment.js') ?>"></script>
+    <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
+    <script src="../assets/js/shared/sentinel-retry.js<?= meel_asset_version('assets/js/shared/sentinel-retry.js') ?>"></script>
 
     <script src="../assets/js/video/watch/search.js?v=<?= filemtime(__DIR__ . '/../assets/js/video/watch/search.js') ?>"></script>
     <script>
@@ -440,10 +441,6 @@ $__vdir = function($dir) {
                 titleEl.textContent = 'Video Lainnya';
                 titleEl.title = 'Video Lainnya';
             }
-        });
-        document.addEventListener('htmx:afterRequest', function(e) {
-            var sentinel = e.target.closest('.rec-sentinel');
-            if (sentinel) sentinel.style.display = 'none';
         });
     </script>
 </body>

@@ -1,13 +1,8 @@
 /* reference build: MEeL-C5H5N5O [a1aea3f52d2c6947] */
 
-
-
-
-
 (function () {
   "use strict";
 
-  
   let allSongs = [];
   let selectedSong = null;
   let selectedSongData = null;
@@ -16,7 +11,6 @@
   let scores = loadScores();
   let previewAudio = null;
 
-  
   function loadSettings() {
     try {
       return JSON.parse(localStorage.getItem("mania_settings")) || {
@@ -37,7 +31,6 @@
     try { localStorage.setItem("mania_scores", JSON.stringify(scores)); } catch (e) {}
   }
 
-  
   const bgCanvas = document.getElementById("bgCanvas");
   const bgCtx = bgCanvas.getContext("2d");
   let particles = [];
@@ -94,19 +87,17 @@
     requestAnimationFrame(drawBg);
   }
 
-  
   function loadSongs(sortKey) {
-    
+
     if (window.MANIA_SONGS) {
       allSongs = window.MANIA_SONGS;
     }
-    
+
     if (sortKey === 'bpm') allSongs.sort((a, b) => b.bpm - a.bpm);
     else if (sortKey === 'difficulty') allSongs.sort((a, b) => b.difficulty - a.difficulty);
     renderSongs();
   }
 
-  
   const songGrid = document.getElementById("songGrid");
 
   function renderSongs() {
@@ -162,7 +153,6 @@
     });
     updatePlayButton();
 
-    
     if (previewAudio) { previewAudio.pause(); previewAudio = null; }
   }
 
@@ -177,7 +167,6 @@
     }
   }
 
-  
   document.querySelectorAll(".speed-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".speed-btn").forEach((b) => b.classList.remove("selected"));
@@ -186,7 +175,6 @@
     });
   });
 
-  
   document.querySelectorAll(".sort-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".sort-btn").forEach((b) => b.classList.remove("active"));
@@ -195,7 +183,6 @@
     });
   });
 
-  
   const settingsPanel = document.getElementById("settingsPanel");
   document.getElementById("btnSettings").addEventListener("click", () => {
     settingsPanel.classList.remove("hidden");
@@ -252,7 +239,6 @@
     }
   });
 
-  
   const statsPanel = document.getElementById("statsPanel");
   document.getElementById("btnStats").addEventListener("click", () => {
     statsPanel.classList.remove("hidden");
@@ -293,7 +279,6 @@
     document.getElementById('statsBody').innerHTML = html;
   }
 
-  
   document.getElementById("btnPlay").addEventListener("click", () => {
     if (!selectedSongData) return;
     const params = new URLSearchParams({
@@ -304,7 +289,6 @@
     window.location.href = `game?${params.toString()}`;
   });
 
-  
   function showToast(msg) {
     const t = document.getElementById("toast");
     t.textContent = msg;
@@ -318,7 +302,6 @@
     return active ? active.dataset.sort : "default";
   }
 
-  
   async function init() {
     resizeBg();
     initParticles();
@@ -327,7 +310,6 @@
 
     await loadSongs("default");
 
-    
     try {
       const params = new URLSearchParams(window.location.search);
       const scoreBack = params.get("score");
@@ -347,7 +329,6 @@
     } catch (e) {}
   }
 
-  
   window.addEventListener("pageshow", (e) => {
     if (e.persisted) {
       window.location.reload();

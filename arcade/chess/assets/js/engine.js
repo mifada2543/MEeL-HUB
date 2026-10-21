@@ -20,7 +20,7 @@ export class ChessGame {
     this.promotionPending = null;
     this.lastCapturedPiece = null;
     this.lastMoveType = null;
-    
+
     this.halfMoveClock = 0;
     this.positionHistory = {};
   }
@@ -91,10 +91,10 @@ export class ChessGame {
     for (let r = 0; r < 8; r++)
       for (let c = 0; c < 8; c++)
         if (this.board[r][c]) pieces.push(this.board[r][c]);
-    if (pieces.length === 2) return true; 
+    if (pieces.length === 2) return true;
     if (pieces.length === 3) {
       const types = pieces.map((p) => p.type);
-      if (types.includes("n") || types.includes("b")) return true; 
+      if (types.includes("n") || types.includes("b")) return true;
     }
     return false;
   }
@@ -376,7 +376,7 @@ export class ChessGame {
     this.validMoves = [];
     const enemyColor = this.turn;
     const enemyInCheck = this.isKingInCheck(enemyColor);
-    
+
     const noMovesLeft = !this.hasAnyValidMoves(enemyColor);
     if (enemyInCheck) {
       this.history[this.history.length - 1].algebraic += noMovesLeft
@@ -406,7 +406,7 @@ export class ChessGame {
       return { status: "stalemate", reason: "Threefold repetition" };
     }
     return { status: "success", check: enemyInCheck };
-  }    cloneState() {
+  } cloneState() {
     return {
       board: this.board.map((row) => row.map((p) => (p ? { ...p } : null))),
       kingPositions: JSON.parse(JSON.stringify(this.kingPositions)),
@@ -559,7 +559,7 @@ export class ChessGame {
           }
         }
       }
-    
+
     const mvvLva = { q: 9, r: 5, b: 3, n: 3, p: 1, k: 0 };
       moves.sort((a, b) => {
         const capA = this.board[a.to.r][a.to.c];

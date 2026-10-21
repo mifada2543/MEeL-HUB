@@ -1,9 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/**
- * @covers SearchEngine
- */
+/** @covers SearchEngine */
 class SearchEngineTest extends TestCase
 {
     private \mysqli $mockConn;
@@ -23,7 +21,7 @@ class SearchEngineTest extends TestCase
 
     public function testParseParamsDefaults(): void
     {
-        
+
         unset($_GET['search'], $_GET['exclude'], $_GET['offset']);
 
         $params = $this->searchEngine->parseParams();
@@ -57,14 +55,13 @@ class SearchEngineTest extends TestCase
 
     public function testSanitizeQueryNeutralizesFulltextBreakingInput(): void
     {
-        
+
         $this->assertSame('', SearchEngine::sanitizeQuery('*'));
         $this->assertSame('', SearchEngine::sanitizeQuery('-'));
         $this->assertSame('', SearchEngine::sanitizeQuery('+'));
         $this->assertSame('', SearchEngine::sanitizeQuery('"'));
         $this->assertSame('', SearchEngine::sanitizeQuery('<<>>()~@'));
 
-        
         $this->assertSame('foo', SearchEngine::sanitizeQuery('foo -'));
         $this->assertSame('foo', SearchEngine::sanitizeQuery('*foo'));
         $this->assertSame('a b', SearchEngine::sanitizeQuery('a - b'));
@@ -73,10 +70,8 @@ class SearchEngineTest extends TestCase
         $this->assertSame('hello', SearchEngine::sanitizeQuery('hello"'));
         $this->assertSame('"a b"', SearchEngine::sanitizeQuery('"a b"'));
 
-        
         $this->assertSame('foo*', SearchEngine::sanitizeQuery('foo*'));
 
-        
         $this->assertSame('test query', SearchEngine::sanitizeQuery('test query'));
     }
 }

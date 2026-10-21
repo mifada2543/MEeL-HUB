@@ -1,4 +1,12 @@
 <?php
+/**
+ * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
+ * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
+ * lintas `include`.
+ *
+ * @var \mysqli $conn
+ */
+
 /* reference build: MEeL-C3H7NO2S [40ae36a03f3f429a] */
 include '../auth/config.php';
 include '../auth/auth.php';
@@ -14,32 +22,29 @@ include '../controllers/admin/admin_actions.php';
 require_once __DIR__ . '/../modules/core/helpers/settings.php';
 require_once __DIR__ . '/../modules/core/Modules.php';
 
-// Daftar modul opsional yang dapat di-toggle admin (key = Modules::OPTIONAL).
 $modules = [
     [
-        'key'     => 'arcade',
-        'label'   => 'MEeL Arcade',
-        'desc'    => 'Koleksi 9 mini-game (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania). Nonaktifkan untuk menyembunyikan arcade dari seluruh platform tanpa menghapus file.',
+        'key' => 'arcade',
+        'label' => 'MEeL Arcade',
+        'desc' => 'Koleksi 9 mini-game (Miku & Teto Run, Chess, Snake, 2048, Tetris, Breakout, Simon Says, Ludo, MEeL!Mania). Nonaktifkan untuk menyembunyikan arcade dari seluruh platform tanpa menghapus file.',
         'setting' => 'modules_arcade',
-        'home'    => 'arcade/beranda',
-        'color'   => '#ec4899',
+        'home' => 'arcade/beranda',
+        'color' => '#ec4899',
     ],
 ];
 
 $msg = $_GET['msg'] ?? null;
 ?>
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modules | MEeL Admin</title>
     <?php include '../partials/link.php'; ?>
-    <?php foreach (require __DIR__ . '/../assets/css/admin/manifest.php' as $__f): ?>
-        <link href="../assets/css/admin/<?= $__f ?>" rel="stylesheet">
-    <?php endforeach; ?>
+    <?php meel_css_links('admin', '../assets/css/admin'); ?>
 </head>
-<body class="bg-[#0b0e14] min-h-screen">
+<body class="min-h-screen">
     <?php
     $is_admin = true;
     $page_title = 'Modules';
@@ -54,8 +59,8 @@ $msg = $_GET['msg'] ?? null;
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             </div>
             <div>
-                <h1 style="font-size:22px;font-weight:800;color:#fff;line-height:1.2;margin:0;">Modules</h1>
-                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-top:4px;">Modul Opsional Platform</p>
+                <h1 style="font-size:22px;font-weight:800;color:var(--admin-text);line-height:1.2;margin:0;">Modules</h1>
+                <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#8b93a1;margin-top:4px;">Modul Opsional Platform</p>
             </div>
         </div>
 
@@ -68,15 +73,15 @@ $msg = $_GET['msg'] ?? null;
         <div style="display:flex;flex-direction:column;gap:16px;">
             <?php foreach ($modules as $mod): ?>
                 <?php
-                $exists  = Modules::exists($mod['key']);
+                $exists = Modules::exists($mod['key']);
                 $enabled = Modules::enabled($mod['key']);
-                $toggle  = get_site_setting($conn, $mod['setting'], '1') !== '0';
+                $toggle = get_site_setting($conn, $mod['setting'], '1') !== '0';
                 ?>
                 <div class="glass" style="border-radius:20px;padding:20px;border:1px solid rgba(255,255,255,0.06);">
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
                         <div style="min-width:0;">
                             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                                <span style="font-size:14px;font-weight:800;color:#fff;"><?= htmlspecialchars($mod['label']) ?></span>
+                                <span style="font-size:14px;font-weight:800;color:var(--admin-text);"><?= htmlspecialchars($mod['label']) ?></span>
                                 <?php if (!$exists): ?>
                                     <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;padding:3px 8px;border-radius:999px;background:rgba(107,114,128,0.15);border:1px solid rgba(107,114,128,0.3);color:#9ca3af;">Tidak Terpasang</span>
                                 <?php elseif (!$enabled): ?>
@@ -87,7 +92,7 @@ $msg = $_GET['msg'] ?? null;
                             </div>
                             <p style="font-size:11px;color:#9ca3af;line-height:1.6;margin-top:8px;"><?= htmlspecialchars($mod['desc']) ?></p>
                             <?php if ($exists && !$enabled): ?>
-                                <p style="font-size:10px;color:#6b7280;margin-top:6px;">Seluruh URL <code style="color:#93c5fd;">/arcade/*</code> dialihkan ke HUB &amp; semua jejaknya (link, menu, sitemap) disembunyikan otomatis.</p>
+                                <p style="font-size:10px;color:#8b93a1;margin-top:6px;">Seluruh URL <code style="color:#93c5fd;">/arcade/*</code> dialihkan ke HUB &amp; semua jejaknya (link, menu, sitemap) disembunyikan otomatis.</p>
                             <?php endif; ?>
                         </div>
                         <form method="POST" action="modules" style="flex-shrink:0;">
@@ -103,14 +108,14 @@ $msg = $_GET['msg'] ?? null;
                         </form>
                     </div>
                     <?php if ($exists): ?>
-                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#6b7280;">
-                        <span>Toggle ini disimpan di database (site_settings: <code><?= htmlspecialchars($mod['setting']) ?></code>) — berlaku untuk semua user secara langsung.</span>
+                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#8b93a1;">
+                        <span>Sakelar ini disimpan di database (site_settings: <code><?= htmlspecialchars($mod['setting']) ?></code>) — berlaku untuk semua pengguna secara langsung.</span>
                         <?php if ($enabled): ?>
                             <a href="../<?= htmlspecialchars($mod['home']) ?>" target="_blank" rel="noopener" style="color:<?= $mod['color'] ?>;font-weight:700;text-decoration:none;">Buka modul ↗</a>
                         <?php endif; ?>
                     </div>
                     <?php else: ?>
-                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);font-size:10px;color:#6b7280;">
+                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);font-size:10px;color:#8b93a1;">
                         Folder modul tidak ditemukan di server — toggle tidak berpengaruh. MEeL-HUB tetap berfungsi normal tanpa modul ini.
                     </div>
                     <?php endif; ?>

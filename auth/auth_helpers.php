@@ -31,18 +31,18 @@ if (!function_exists('auth_is_loopback')) {
     }
 }
 if (!function_exists('auth_back_url')) {
-    
+
     function auth_back_url(array $exclude = ['login.php', 'register.php']): string
     {
         $back_url = '../';
         if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-            $ref  = $_SERVER['HTTP_REFERER'];
+            $ref = $_SERVER['HTTP_REFERER'];
             $host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST);
 
             $refHost = parse_url($ref, PHP_URL_HOST);
 
             if ($refHost !== null && $host !== null && strcasecmp($refHost, $host) === 0) {
-                $refPath    = parse_url($ref, PHP_URL_PATH) ?? '';
+                $refPath = parse_url($ref, PHP_URL_PATH) ?? '';
                 $isExcluded = false;
                 foreach ($exclude as $file) {
                     if (strpos($refPath, $file) !== false
@@ -62,10 +62,10 @@ if (!function_exists('auth_back_url')) {
 }
 
 if (!function_exists('auth_ip_lockout_status')) {
-    
+
     function auth_ip_lockout_status(mysqli $conn, string $ip): array
     {
-        $locked    = false;
+        $locked = false;
         $remaining = 0;
 
         $stmt_ip = $conn->prepare("SELECT attempts, locked_until FROM login_attempts WHERE ip_address = ?");
@@ -77,7 +77,7 @@ if (!function_exists('auth_ip_lockout_status')) {
                 if ($ip_row['locked_until'] !== null) {
                     $lock_ts = strtotime($ip_row['locked_until']);
                     if (time() < $lock_ts) {
-                        $locked    = true;
+                        $locked = true;
                         $remaining = $lock_ts - time();
                     } else {
                         $stmt_del = $conn->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
@@ -95,7 +95,7 @@ if (!function_exists('auth_ip_lockout_status')) {
 }
 
 if (!function_exists('auth_record_failed_attempt')) {
-    
+
     function auth_record_failed_attempt(mysqli $conn, string $ip, int $max_attempts, int $lockout_time): bool
     {
 
@@ -137,10 +137,10 @@ if (!function_exists('auth_record_failed_attempt')) {
 }
 
 if (!function_exists('auth_recheck_lockout')) {
-    
+
     function auth_recheck_lockout(mysqli $conn, string $ip): array
     {
-        $locked    = false;
+        $locked = false;
         $remaining = 0;
         $stmt_ip2 = $conn->prepare("SELECT locked_until FROM login_attempts WHERE ip_address = ? AND locked_until IS NOT NULL");
         if ($stmt_ip2) {
@@ -150,7 +150,7 @@ if (!function_exists('auth_recheck_lockout')) {
             if ($ip2_row = $ip2_res->fetch_assoc()) {
                 $lock_ts = strtotime($ip2_row['locked_until']);
                 if (time() < $lock_ts) {
-                    $locked    = true;
+                    $locked = true;
                     $remaining = $lock_ts - time();
                 }
             }
@@ -161,17 +161,17 @@ if (!function_exists('auth_recheck_lockout')) {
 }
 
 if (!function_exists('auth_validate_credentials')) {
-    
+
     function auth_validate_credentials(string $user, string $pass): ?string
     {
         if (strlen($user) < 8 || strlen($pass) < 8) {
-            return "Username min 8 karakter, Password min 8 karakter!";
+            return "Nama Pengguna min 8 karakter, Kata Sandi min 8 karakter!";
         }
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $user)) {
-            return "Username hanya boleh berisi huruf, angka, dan underscore (_)!";
+            return "Nama pengguna hanya boleh berisi huruf, angka, dan underscore (_)!";
         }
         if (stripos($user, 'guest') !== false) {
-            return "Username 'Guest' tidak dapat didaftarkan karena dicadangkan untuk sistem!";
+            return "Nama pengguna 'Guest' tidak dapat didaftarkan karena dicadangkan untuk sistem!";
         }
         return null;
     }

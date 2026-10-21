@@ -1,4 +1,3 @@
-
 let isMiniPlayerActive = !1,
   watchUrl = window.location.href,
   savedWatchScrollY = 0,
@@ -7,7 +6,6 @@ let isMiniPlayerActive = !1,
   miniDragSuppressClick = !1,
   miniSnapPending = null;
 const MINI_POS_KEY = MEEL_KEYS.MINI_PLAYER_POS,
-  
   MINI_DRAG_SCALE = 1.02;
 
 const MINI_ICON_EXPAND =
@@ -77,7 +75,7 @@ function applyMiniPlayerPos(e) {
   e.style.top =
     Math.min(Math.max(0, t.top), Math.max(0, window.innerHeight - o - 8)) +
     "px";
-  (e.style.right = "auto"), (e.style.bottom = "auto");
+  ((e.style.right = "auto"), (e.style.bottom = "auto"));
 }
 function cancelMiniSnap() {
   miniSnapPending &&
@@ -90,7 +88,6 @@ function cancelMiniSnap() {
     (miniSnapPending.shell.style.bottom = "auto"),
     (miniSnapPending = null));
 }
-
 
 function pickMiniCorner(left, top, w, h) {
   const vw = window.innerWidth,
@@ -116,12 +113,9 @@ function pickMiniCorner(left, top, w, h) {
   return best;
 }
 
-
-
-
 function snapMiniPlayer(e, base, applied) {
   cancelMiniSnap();
-  
+
   const curLeft = base.left + applied.x,
     curTop = base.top + applied.y,
     corner = pickMiniCorner(curLeft, curTop, base.width, base.height),
@@ -135,11 +129,11 @@ function snapMiniPlayer(e, base, applied) {
     top: corner.top,
     timer: setTimeout(() => {
       e.classList.remove("mini-snapping");
-      (e.style.transform = "none"),
+      ((e.style.transform = "none"),
         (e.style.left = corner.left + "px"),
         (e.style.top = corner.top + "px"),
         (e.style.right = "auto"),
-        (e.style.bottom = "auto");
+        (e.style.bottom = "auto"));
       miniSnapPending = null;
     }, 320),
   };
@@ -154,7 +148,7 @@ function initMiniPlayerDrag(e) {
     rafId = null;
     const t = miniDragState;
     if (!t) return;
-    
+
     const n = t.rect,
       o = t.curX - t.startX,
       l = t.curY - t.startY,
@@ -162,7 +156,7 @@ function initMiniPlayerDrag(e) {
       c = Math.max(0, window.innerHeight - n.height),
       d = Math.min(Math.max(0, n.left + o), a),
       h = Math.min(Math.max(0, n.top + l), c);
-    (appliedX = d - n.left), (appliedY = h - n.top);
+    ((appliedX = d - n.left), (appliedY = h - n.top));
     e.style.transform = `translate3d(${appliedX}px, ${appliedY}px, 0) scale(${MINI_DRAG_SCALE})`;
   };
   const endDrag = () => {
@@ -172,8 +166,7 @@ function initMiniPlayerDrag(e) {
     const n = t.rect,
       o = { x: appliedX, y: appliedY };
     captured &&
-      (e.hasPointerCapture(t.pointerId) &&
-        e.releasePointerCapture(t.pointerId),
+      (e.hasPointerCapture(t.pointerId) && e.releasePointerCapture(t.pointerId),
       (captured = !1));
     miniDragState = null;
     e.classList.remove("mini-dragging");
@@ -206,26 +199,22 @@ function initMiniPlayerDrag(e) {
   const t = (t) => {
     const n = miniDragState;
     if (!n || t.pointerId !== n.pointerId) return;
-    (n.curX = t.clientX),
-      (n.curY = t.clientY);
+    ((n.curX = t.clientX), (n.curY = t.clientY));
     if (
       Math.abs(n.curX - n.startX) + Math.abs(n.curY - n.startY) > 4 &&
       !n.moved
     ) {
-      
-      
-      
       n.moved = !0;
       if (!captured)
         try {
-          e.setPointerCapture(t.pointerId), (captured = !0);
+          (e.setPointerCapture(t.pointerId), (captured = !0));
         } catch (e) {}
     }
     rafId === null && (rafId = requestAnimationFrame(applyTransform));
   };
   const n = (t) => {
     const n = miniDragState;
-    (!n || t.pointerId !== n.pointerId) || endDrag();
+    !n || t.pointerId !== n.pointerId || endDrag();
   };
   window.addEventListener("pointermove", t);
   window.addEventListener("pointerup", n);
@@ -238,8 +227,7 @@ function initMiniPlayerDrag(e) {
 document.addEventListener(
   "click",
   (e) => {
-    miniDragSuppressClick &&
-      (e.stopPropagation(), e.preventDefault());
+    miniDragSuppressClick && (e.stopPropagation(), e.preventDefault());
   },
   !0,
 );
@@ -248,9 +236,9 @@ function updateMiniMuteBtn() {
   const e = document.getElementById("mini-mute-btn");
   if (!e) return;
   const t = !!(player && (player.muted || player.volume === 0));
-  (e.innerHTML = t ? MINI_ICON_MUTED : MINI_ICON_VOLUME),
+  ((e.innerHTML = t ? MINI_ICON_MUTED : MINI_ICON_VOLUME),
     (e.title = t ? "Suarakan" : "Bisukan"),
-    e.setAttribute("aria-label", e.title);
+    e.setAttribute("aria-label", e.title));
 }
 let _miniMuteWiredPlayer = null;
 function wireMiniMuteToPlayer() {
@@ -266,15 +254,12 @@ function wireMiniMuteToPlayer() {
   _miniMuteWiredPlayer = player || null;
 }
 
-
 let miniShellResizeObserver = null;
 function watchMiniShellSize(e) {
   if (!window.ResizeObserver) return;
   miniShellResizeObserver ||
     (miniShellResizeObserver = new ResizeObserver(() => {
-      isMiniPlayerActive &&
-        !miniDragState &&
-        clampMiniPlayerToViewport(e);
+      isMiniPlayerActive && !miniDragState && clampMiniPlayerToViewport(e);
     }));
   miniShellResizeObserver.observe(e);
 }
@@ -283,11 +268,9 @@ function buildMiniInfo() {
   const e = document.createElement("div");
   e.style.cssText = "flex:1;min-width:0;";
   const t = document.createElement("div");
-  (t.id = "mini-info-title"),
-    (t.textContent = videoTitle || "");
+  ((t.id = "mini-info-title"), (t.textContent = videoTitle || ""));
   const n = document.createElement("div");
-  (n.id = "mini-info-uploader"),
-    (n.textContent = videoUploader || "");
+  ((n.id = "mini-info-uploader"), (n.textContent = videoUploader || ""));
   return (e.appendChild(t), e.appendChild(n), e);
 }
 function getMiniShell() {
@@ -311,8 +294,7 @@ function getMiniShell() {
       (e.stopPropagation(), closeMiniPlayer());
     }));
   const o = document.createElement("div");
-  (o.id = "mini-player-info"),
-    (o.title = "Kembali ke video");
+  ((o.id = "mini-player-info"), (o.title = "Kembali ke video"));
   const l = buildMiniInfo(),
     a = document.createElement("button");
   ((a.id = "mini-mute-btn"),
@@ -324,7 +306,7 @@ function getMiniShell() {
         player && (player.muted = !player.muted),
         updateMiniMuteBtn());
     }));
-  (o.appendChild(l), o.appendChild(a)),
+  ((o.appendChild(l), o.appendChild(a)),
     o.addEventListener("click", () => toggleMiniPlayer()),
     e.appendChild(o),
     e.appendChild(t),
@@ -335,30 +317,25 @@ function getMiniShell() {
     initMiniPlayerDrag(e),
     watchMiniShellSize(e),
     wireMiniMuteToPlayer(),
-    updateMiniMuteBtn();
+    updateMiniMuteBtn());
   return e;
 }
 function closeMiniPlayer() {
   if (!isMiniPlayerActive) return;
   isMiniPlayerActive = false;
-/* reference build: MEeL-C4H9NO2 [edca1e6fcbd54a93] */
-  
-  
-  
-  
+  /* reference build: MEeL-C4H9NO2 [edca1e6fcbd54a93] */
+
   isRecovering = !0;
   isCheckingStatus = !1;
   stopStuckDetector();
   stopWaitingTimeout();
   stopPlaybackStartTimeout();
-  
-  
+
   try {
     player && player.pause();
   } catch (e) {}
   destroyPlayer();
-  
-  
+
   if (miniShell) {
     miniShell.remove();
     miniShell = null;
@@ -368,12 +345,10 @@ function closeMiniPlayer() {
   if (typeof glowNavbar !== "undefined" && glowNavbar) {
     glowNavbar.style.removeProperty("--navbar-glow-color");
   }
-  
-  
-  
+
   const grid = document.getElementById("app-content-grid");
   grid && grid.remove();
-  
+
   setNavbarSearchTarget("#video-container");
   const tempTitle = window.__meelTempIndexTitle;
   tempTitle && (document.title = tempTitle);
@@ -386,114 +361,135 @@ function updateMiniPlayerInfo(e, t) {
 }
 function attachMiniPlayerVideoCardListeners(e) {
   e &&
-    e.querySelectorAll('a[href*="watch.php"], a[href*="/video/watch"]').forEach((e) => {
-      e.dataset.miniIntercepted ||
-        ((e.dataset.miniIntercepted = "1"),
-        e.addEventListener("click", async (t) => {
-          if (!isMiniPlayerActive) return;
-          t.preventDefault();
-          autoNextEnabled = false;
-          localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false");
-          const n = e.href;
-          try {
-            const e = await fetch(n),
-              t = await e.text(),
-              o = new DOMParser().parseFromString(t, "text/html");
-            let l = {};
-            o.querySelectorAll("script:not([src])").forEach((e) => {
-              const t = e.textContent.match(
-                /window\.playerConfig\s*=\s*(\{[\s\S]*?\});/,
-              );
-              if (t)
-                try {
-                  l = JSON.parse(t[1]);
-                } catch (e) {
-                  console.error("Gagal parse playerConfig:", e);
-                }
-            });
-            const a = o.getElementById("main-video"),
-              r = l.title || "",
-              i = l.uploader || "",
-              s = l.videoSrc || a?.dataset?.src || "",
-              c =
-                !0 === l.isHls ||
-                "true" === l.isHls ||
-                "true" === a?.dataset?.ishls,
-              d = a?.dataset?.poster || "",
-              p = l.id || new URL(n).searchParams.get("id") || (n.match(/[?&]id=(\d+)/) || [])[1] || "";
-            updateSearchExcludeId(p);
-            const u = l.vttSrc || "";
-            if (!s) return void (window.location.href = n);
-            ((storageKeyVideo = `video_pos_${p}`),
-              (videoSrc = s),
-              (isHls = c),
-              (vttSrc = u),
-              (videoId = p),
-              destroyPlayer());
-            const m = document.getElementById("main-video");
-            (m &&
-              ((m.innerHTML = ""),
-              Array.from(
-                a.querySelectorAll('track[kind="captions"]') || [],
-              ).forEach((t) => {
-                const track = document.createElement("track");
-                track.kind = "captions";
-                track.src = t.getAttribute("src") || "";
-                track.srclang = t.getAttribute("srclang") || "und";
-                track.label = t.getAttribute("label") || "";
-                m.appendChild(track);
-              }),
-              (m.dataset.src = s),
-              (m.dataset.ishls = c ? "true" : "false"),
-              (m.dataset.poster = d),
-              (m.poster = d),
-              c ? m.removeAttribute("src") : (m.src = s),
-              m.load()),
-              (videoTitle = r),
-              (videoUploader = i),
-              (window.playerConfig = {
-                videoSrc: s,
-                isHls: c,
-                vttSrc: u,
-                id: p,
-                title: r,
-                uploader: i,
-              }),
-              initPlayer(),
-              updateMiniPlayerInfo(r, i),
-              (document.title = o.title),
-              ["watch-details-wrapper", "recommendation-column"].forEach(
-                (e) => {
-                  const t = document.getElementById(e),
-                    n = o.getElementById(e);
-                  t && n && (t.innerHTML = n.innerHTML);
-                },
-              ),
-              (() => {
-                const el = document.getElementById("rec-title-text");
-                if (el) { el.textContent = "Video Lainnya"; el.title = "Video Lainnya"; }
-              })(),
-              window.lucide && window.lucide.createIcons(),
-              ["main-video", "watch-details-wrapper", "recommendation-column"].forEach(
-                (e) => {
+    e
+      .querySelectorAll('a[href*="watch.php"], a[href*="/video/watch"]')
+      .forEach((e) => {
+        e.dataset.miniIntercepted ||
+          ((e.dataset.miniIntercepted = "1"),
+          e.addEventListener("click", async (t) => {
+            if (!isMiniPlayerActive) return;
+            if (window.meelHealthAlertActive) return;
+            t.preventDefault();
+            clearVideoLoop();
+            autoNextEnabled = false;
+            localStorage.setItem(MEEL_KEYS.AUTONEXT_ENABLED, "false");
+            const n = e.href;
+            try {
+              const e = await fetch(n),
+                t = await e.text(),
+                o = new DOMParser().parseFromString(t, "text/html");
+              let l = {};
+              o.querySelectorAll("script:not([src])").forEach((e) => {
+                const t = e.textContent.match(
+                  /window\.playerConfig\s*=\s*(\{[\s\S]*?\});/,
+                );
+                if (t)
+                  try {
+                    l = JSON.parse(t[1]);
+                  } catch (e) {
+                    console.error("Gagal parse playerConfig:", e);
+                  }
+              });
+              const a = o.getElementById("main-video"),
+                r = l.title || "",
+                i = l.uploader || "",
+                s = l.videoSrc || a?.dataset?.src || "",
+                c =
+                  !0 === l.isHls ||
+                  "true" === l.isHls ||
+                  "true" === a?.dataset?.ishls,
+                d = a?.dataset?.poster || "",
+                p =
+                  l.id ||
+                  new URL(n).searchParams.get("id") ||
+                  (n.match(/[?&]id=(\d+)/) || [])[1] ||
+                  "";
+              updateSearchExcludeId(p);
+              const u = l.vttSrc || "";
+              if (!s) return void (window.location.href = n);
+              ((storageKeyVideo = `video_pos_${p}`),
+                (videoSrc = s),
+                (isHls = c),
+                (vttSrc = u),
+                (videoId = p),
+                destroyPlayer());
+              window.MEEL_UPSCALER && window.MEEL_UPSCALER.resetForNewVideo();
+              const m = document.getElementById("main-video");
+              (m &&
+                ((m.innerHTML = ""),
+                Array.from(
+                  a.querySelectorAll('track[kind="captions"]') || [],
+                ).forEach((t) => {
+                  const track = document.createElement("track");
+                  track.kind = "captions";
+                  track.src = t.getAttribute("src") || "";
+                  track.srclang = t.getAttribute("srclang") || "und";
+                  track.label = t.getAttribute("label") || "";
+                  m.appendChild(track);
+                }),
+                (m.dataset.src = s),
+                (m.dataset.ishls = c ? "true" : "false"),
+                (m.dataset.poster = d),
+                (m.poster = d),
+                c ? m.removeAttribute("src") : (m.src = s),
+                m.load()),
+                (videoTitle = r),
+                (videoUploader = i),
+                (window.playerConfig = {
+                  videoSrc: s,
+                  isHls: c,
+                  vttSrc: u,
+                  id: p,
+                  title: r,
+                  uploader: i,
+                  thumbnail: l.thumbnail || "",
+                }),
+                meelUpdateMediaSession({
+                  title: r,
+                  artist: i,
+                  artwork: l.thumbnail || "",
+                }),
+                initPlayer(),
+                updateMiniPlayerInfo(r, i),
+                (document.title = o.title),
+                window.meelUpdateHeadMeta && meelUpdateHeadMeta(o),
+                ["watch-details-wrapper", "recommendation-column"].forEach(
+                  (e) => {
+                    const t = document.getElementById(e),
+                      n = o.getElementById(e);
+                    t && n && (t.innerHTML = n.innerHTML);
+                  },
+                ),
+                (() => {
+                  const el = document.getElementById("rec-title-text");
+                  if (el) {
+                    el.textContent = "Video Lainnya";
+                    el.title = "Video Lainnya";
+                  }
+                })(),
+                window.lucide && window.lucide.createIcons(),
+                [
+                  "main-video",
+                  "watch-details-wrapper",
+                  "recommendation-column",
+                ].forEach((e) => {
                   const t = document.getElementById(e);
                   t && window.htmx && htmx.process(t);
-                },
-              ),
-              wireMiniMuteToPlayer(),
-              updateMiniMuteBtn(),
-              syncMiniPlayerBodyPadding(),
-              clampMiniPlayerToViewport(miniShell),
-              (watchUrl = n),
-              window.history.pushState({ miniPlayer: !0 }, "", n));
-            const y = document.getElementById("temp-index-content");
-            y && attachMiniPlayerVideoCardListeners(y);
-          } catch (e) {
-            (console.error("Gagal ganti video di mini-player:", e),
-              (window.location.href = n));
-          }
-        }));
-    });
+                }),
+                wireMiniMuteToPlayer(),
+                updateMiniMuteBtn(),
+                syncMiniPlayerBodyPadding(),
+                clampMiniPlayerToViewport(miniShell),
+                (watchUrl = n),
+                window.history.pushState({ miniPlayer: !0 }, "", n));
+              const y = document.getElementById("temp-index-content");
+              y && attachMiniPlayerVideoCardListeners(y);
+            } catch (e) {
+              (console.error("Gagal ganti video di mini-player:", e),
+                (window.location.href = n));
+            }
+          }));
+      });
 }
 ((window.toggleMiniPlayer = async function () {
   const e = document.getElementById("main-video-wrapper"),
@@ -554,7 +550,11 @@ function attachMiniPlayerVideoCardListeners(e) {
           videoElement.videoWidth &&
           videoElement.videoHeight
         ) {
-          window.applyMeelVideoAspect?.(e, videoElement.videoWidth, videoElement.videoHeight);
+          window.applyMeelVideoAspect?.(
+            e,
+            videoElement.videoWidth,
+            videoElement.videoHeight,
+          );
         }
         const t = document.getElementById("desc-text"),
           n = document.getElementById("btn-read-more");
@@ -585,10 +585,10 @@ function attachMiniPlayerVideoCardListeners(e) {
           videoWrapper.style.removeProperty("margin-right"),
           videoWrapper.style.removeProperty("width")));
       const shell = getMiniShell();
-      (shell.style.display = ""),
+      ((shell.style.display = ""),
         videoWrapper.classList.add("mini-player-mode"),
         shell.insertBefore(videoWrapper, shell.firstChild),
-        applyMiniPlayerPos(shell);
+        applyMiniPlayerPos(shell));
       if (videoElement && videoElement.videoWidth && videoElement.videoHeight) {
         videoWrapper.style.aspectRatio = `${videoElement.videoWidth} / ${videoElement.videoHeight}`;
       }
@@ -624,7 +624,9 @@ function attachMiniPlayerVideoCardListeners(e) {
           const t = document.getElementById("video-glow-container");
           if (t) {
             const n = t.querySelector("canvas");
-            n ? t.insertBefore(videoWrapper, n.nextSibling) : t.appendChild(videoWrapper);
+            n
+              ? t.insertBefore(videoWrapper, n.nextSibling)
+              : t.appendChild(videoWrapper);
           }
         }
       }
@@ -641,6 +643,7 @@ function attachMiniPlayerVideoCardListeners(e) {
   window.addEventListener(
     "keydown",
     (e) => {
+      if (window.meelResumeModalActive) return;
       if (!["INPUT", "TEXTAREA"].includes(document.activeElement.tagName))
         return isMiniPlayerActive && "f" === e.key.toLowerCase()
           ? (e.preventDefault(), void e.stopPropagation())
@@ -652,9 +655,6 @@ function attachMiniPlayerVideoCardListeners(e) {
                   ),
                   0)) &&
                 toggleMiniPlayer()) ||
-              
-              
-              
               ("n" === e.key.toLowerCase() &&
                 !e.ctrlKey &&
                 !e.altKey &&
