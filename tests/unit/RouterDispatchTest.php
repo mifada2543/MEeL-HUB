@@ -1,15 +1,10 @@
 <?php
+
 use PHPUnit\Framework\TestCase;
 
 require_once MEEL_ROOT . '/modules/core/Router.php';
-
 /**
  * Keputusan pengalihan pada `MeelRouter`.
- *
- * `dispatch()` dulu 50 baris dalam satu fungsi, dengan `exit` di hampir
- * setiap cabang. Cabang pengalihan profil kini menjadi `profileAliasRedirect()`
- * yang murni; sisanya dipisah ke `guardOptionalRoute()` dan `runHandler()`.
- *
  * Test ini menahan:
  *  1. Aturan pengalihan profil tidak boleh berubah.
  *  2. Rute yang terdaftar harus menunjuk berkas yang benar-benar ada.
@@ -23,28 +18,17 @@ class RouterDispatchTest extends TestCase
     {
         unset($_GET['u'], $_GET['tab']);
     }
-
     public function testProfileWithUsernameQueryRedirectsToTheCleanPath(): void
     {
         $_GET['u'] = 'john_doe';
-
-        $this->assertSame(
-            MeelRouter::basePath() . '/profile/john_doe',
-            MeelRouter::profileAliasRedirect('profile')
-        );
+        $this->assertSame(MeelRouter::basePath() . '/profile/john_doe',MeelRouter::profileAliasRedirect('profile'));
     }
-
     public function testProfileWithUsernameAndTabKeepsTheTab(): void
     {
         $_GET['u'] = 'john_doe';
         $_GET['tab'] = 'video';
-
-        $this->assertSame(
-            MeelRouter::basePath() . '/profile/john_doe?tab=video',
-            MeelRouter::profileAliasRedirect('profile')
-        );
+        $this->assertSame(MeelRouter::basePath() . '/profile/john_doe?tab=video',MeelRouter::profileAliasRedirect('profile'));
     }
-
     /**
      * @dataProvider tabProvider
      */
@@ -52,14 +36,11 @@ class RouterDispatchTest extends TestCase
     {
         $_GET['u'] = 'john_doe';
         $_GET['tab'] = $tab;
-
         $expected = in_array($tab, ['all', 'video', 'music'], true)
             ? MeelRouter::basePath() . '/profile/john_doe?tab=' . $tab
             : MeelRouter::basePath() . '/profile/john_doe';
-
         $this->assertSame($expected, MeelRouter::profileAliasRedirect('profile'));
     }
-
     public static function tabProvider(): array
     {
         return [
@@ -72,46 +53,37 @@ class RouterDispatchTest extends TestCase
             'pakai spasi' => [' video'],
         ];
     }
-
     public function testUsernameIsUrlEncoded(): void
     {
         $_GET['u'] = 'a b&c';
-
         $this->assertSame(
             MeelRouter::basePath() . '/profile/a%20b%26c',
             MeelRouter::profileAliasRedirect('profile')
         );
     }
-
     public function testEmptyUsernameIsNotAnAlias(): void
     {
         $_GET['u'] = '';
-
         $this->assertNull(MeelRouter::profileAliasRedirect('profile'));
     }
-
     public function testProfileWithoutUsernameIsNotAnAlias(): void
     {
         $this->assertNull(MeelRouter::profileAliasRedirect('profile'));
     }
-
     /**
      * @dataProvider tabInPathProvider
      */
     public function testTabInsideThePathRedirectsToTheQueryForm(string $path, bool $isAlias): void
     {
         $result = MeelRouter::profileAliasRedirect($path);
-
         if (!$isAlias) {
             $this->assertNull($result, "{$path} bukan alias profil");
             return;
         }
-
         $this->assertNotNull($result);
         $this->assertStringContainsString('/profile/', (string) $result);
         $this->assertStringContainsString('tab=', (string) $result);
     }
-
     public static function tabInPathProvider(): array
     {
         return [
@@ -123,7 +95,6 @@ class RouterDispatchTest extends TestCase
             'tanpa username' => ['profile//video', false],
         ];
     }
-
     public function testOrdinaryPathsAreNotAliases(): void
     {
         foreach (['', 'video/watch', 'music/playlist', 'admin/edit-video', 'profile/manage'] as $path) {
@@ -133,20 +104,13 @@ class RouterDispatchTest extends TestCase
             );
         }
     }
-
-    /**
-     * Rute yang menunjuk berkas yang hilang akan menggagalkan seluruh
-     * halaman dengan 500 yang tidak menjelaskan apa pun.
-     */
     public function testEveryRegisteredRoutePointsAtAFileThatExists(): void
     {
-        $root = dirname(MEEL_ROOT) . '/MEeL';
+        $root = MEEL_ROOT;
         $missing = [];
-
         foreach (['ROUTES', 'OPTIONAL_ROUTES'] as $constant) {
             $routes = (new ReflectionClass(MeelRouter::class))->getConstant($constant);
             $this->assertIsArray($routes, "{$constant} harus berupa array");
-
             foreach ($routes as $path => $route) {
                 $handler = $root . '/' . $route['handler'];
                 if (!is_file($handler)) {
@@ -154,47 +118,24 @@ class RouterDispatchTest extends TestCase
                 }
             }
         }
-
         $this->assertSame([], $missing, "Rute menunjuk berkas yang tidak ada:\n" . implode("\n", $missing));
     }
-
     public function testDispatchStaysShortAndDelegatesToNamedHelpers(): void
     {
         $src = (string) file_get_contents(MEEL_ROOT . '/modules/core/Router.php');
-
         foreach (['profileAliasRedirect', 'guardOptionalRoute', 'runHandler'] as $helper) {
-            $this->assertStringContainsString(
-                'self::' . $helper . '(',
-                $src,
-                "dispatch() harus memakai helper {$helper}"
-            );
+            $this->assertStringContainsString('self::' . $helper . '(',$src,"dispatch() harus memakai helper {$helper}");
         }
-
         $method = new ReflectionMethod(MeelRouter::class, 'dispatch');
         $lines = $method->getEndLine() - $method->getStartLine() + 1;
-
-        $this->assertLessThanOrEqual(
-            25,
-            $lines,
-            'dispatch() masih terlalu panjang: ' . $lines . ' baris'
-        );
+        $this->assertLessThanOrEqual(25,$lines,'dispatch() masih terlalu panjang: ' . $lines . ' baris');
     }
-
-    /**
-     * Rute opsional punya dua jenis guard: API-nya menjawab 404 JSON,
-     * halaman biasa dialihkan. Keduanya harus tetap ada.
-     */
     public function testOptionalRouteGuardsAreStillDistinct(): void
     {
         $src = (string) file_get_contents(MEEL_ROOT . '/modules/core/Router.php');
-
         $this->assertStringContainsString('Modules::guardJson404();', $src);
         $this->assertStringContainsString("Modules::guardRedirect('arcade');", $src);
-        $this->assertStringContainsString(
-            "private const OPTIONAL_API_PREFIXES = ['arcade/rhythm/api/'];",
-            $src
-        );
+        $this->assertStringContainsString("private const OPTIONAL_API_PREFIXES = ['arcade/rhythm/api/'];",$src);
     }
 }
-
 /* reference build: MEeL-C5H22N9O [router-dispatch] */
