@@ -640,6 +640,25 @@ Shortcut keyboard diimplementasikan dalam JavaScript dan di-guard oleh `assets/j
 > Dijaga oleh `window` listener fase `capture` di `assets/js/shared/resume-modal.js`
 > yang beating Plyr (`window` bubble) dan `mini-player.js` (`window` capture).
 
+**Ikon setelah swap htmx (`assets/js/shared/htmx-lucide.js`):**
+
+Ikon lucide adalah elemen `<i data-lucide="...">` yang diganti Lucide
+menjadi SVG, dan penggantian itu hanya terjadi saat `lucide.createIcons()`
+dijalankan. Setiap fragmen yang dikirim server berisi markup
+`<i data-lucide>` apa adanya, jadi ada yang harus merender ulang setelah
+swap — itulah yang dilakukan berkas ini, pada `htmx:afterOnLoad`.
+
+Listener-nya didaftarkan di `document`, **bukan** di `document.body`. Di
+beberapa halaman (`music/watch.php`, `books/index.php`) berkas ini dimuat di
+dalam `<head>`, dan saat itu `document.body` masih `null`; listener yang
+didaftarkan di `document.body` tidak akan pernah terpasang, dan setiap swap
+berikutnya akan meninggalkan ikon apa adanya tanpa galat apa pun. Gejalanya:
+ikon muncul lagi setelah refresh, lalu menghilang lagi begitu like/dislike
+diklik.
+
+`partials/link.php` memasang stub pengantre untuk `window.lucide` sebelum
+`lucide.js` termuat, jadi panggilan yang terlalu dini tidak hilang.
+
 **Music Watch (`assets/js/music/watch/`):**
 
 | Key | Aksi | Sumber |

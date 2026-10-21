@@ -126,6 +126,43 @@ class LucideLoadOrderTest extends TestCase
     }
 
     /**
+     * PENJAGA REGRESI KEDUA.
+     *
+     * `htmx-lucide.js` dimuat di dalam <head> pada beberapa halaman
+     * (`music/watch.php`, `books/index.php`). Saat file itu jalan,
+     * `document.body` masih null — sehingga listener yang didaftarkan di
+     * `document.body` tidak pernah terdaftar. Akibatnya setiap swap htmx
+     * berikutnya diam-diam tidak merender ikon: yang tersisa cuma
+     * `<i data-lucide>` yang kosong.
+     *
+     * Gejalanya persis seperti yang dilaporkan: ikon baru muncul setelah
+     * halaman di-refresh, lalu menghilang lagi begitu like/dislike diklik.
+     * Halaman yang memuat file-nya di akhir <body> tidak kena — makanya
+     * bug ini sempat tidak terlihat.
+     *
+     * Skenario `no-body` mensimulasikan itu: skrip jalan saat
+     * `document.body` masih null.
+     */
+    public function testRegistersListenerEvenWhenBodyDoesNotExistYet(): void
+    {
+        $r = $this->runHarness('no-body');
+
+        $this->assertNull($r['threw'], 'File tidak boleh melempar');
+        $this->assertSame(
+            1,
+            $r['listenerRegisteredOnDocument'],
+            'Listener harus terdaftar di document — document.body belum ada saat skrip dimuat di <head>'
+        );
+        $this->assertSame(1, $r['callsOnLoad'], 'Harus render sekali saat load');
+        $this->assertSame(
+            2,
+            $r['callsAfterSwap'],
+            'Swap htmx setelahnya harus benar-benar merender ikon lagi'
+        );
+        $this->assertSame('swapped-node', $r['lastScope']);
+    }
+
+    /**
      * Jaga kontrak shim di `partials/link.php`.
      *
      * Stub-nya HARUS sinkron: kalau ikut `defer`, `window.lucide` belum

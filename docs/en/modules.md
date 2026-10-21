@@ -717,6 +717,24 @@ Keyboard shortcuts are implemented in JavaScript and guarded by `assets/js/share
 > `assets/js/shared/resume-modal.js`, which pre-empts Plyr (`window` bubble) and
 > `mini-player.js` (`window` capture).
 
+**Icons after an HTMX swap (`assets/js/shared/htmx-lucide.js`):**
+
+Lucide icons are `<i data-lucide="...">` elements that Lucide replaces with an
+SVG, and the replacement only happens when `lucide.createIcons()` runs. Every
+fragment the server sends back contains plain `<i data-lucide>` markup, so
+something has to render it again after the swap — that is what this file
+does, on `htmx:afterOnLoad`.
+
+The listener is registered on `document`, **not** on `document.body`. The file
+is loaded in `<head>` on some pages (`music/watch.php`, `books/index.php`),
+and at that point `document.body` is still `null`; a listener registered on
+`document.body` would never be attached, and every later swap would silently
+leave the icons unrendered. The symptom is icons that reappear on refresh and
+disappear again after pressing like/dislike.
+
+`partials/link.php` installs a queueing stub for `window.lucide` before
+`lucide.js` loads, so a call made too early is not lost.
+
 **Music Watch (`assets/js/music/watch/`):**
 
 | Key | Action | Source |

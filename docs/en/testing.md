@@ -76,6 +76,7 @@ logs/tests/
 | `BootstrapTest.php` | 9 | Env detection, error reporting config, timezone |
 | `CssManifestTest.php` | 18 | CSS module manifests — every entry exists, **all** folders pre-cached by `SwPrecache`, precache entries resolve, deterministic SW version |
 | `SharedJsTest.php` | 7 | Shared JS harness — download-backup-codes flow |
+| `LucideLoadOrderTest.php` | 6 | **Lucide + HTMX** — the render helper is loaded, the queue stub in `partials/link.php` is synchronous, and the swap listener is registered even when `document.body` does not exist yet (script loaded in `<head>`) |
 | `StreamAuthTest.php` | 8 | Stream endpoint authorization guards |
 | `SsrfGuardTest.php` | 76 | **SSRF guard** — protocol allowlist, private/public IP ranges (v4 & v6), DNS mixed-record rejection, hostname denylist, HTTP pinning (see below) |
 | `DriveSecurityTest.php` | 13 | **Private Drive** — cross-user access, path traversal, symlink escape, realpath boundary, quota, atomic filename reservation (see below) |
