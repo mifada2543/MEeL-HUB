@@ -1,23 +1,16 @@
 <?php
 require_once __DIR__ . '/modules/core/helpers.php';
 include __DIR__ . '/auth/config.php';
-$back_url = 'index.php';
-if (isset($_SERVER['HTTP_REFERER']) && !empty($_SERVER['HTTP_REFERER'])) {
-    $ref = $_SERVER['HTTP_REFERER'];
-    $host = $_SERVER['HTTP_HOST'];
-    if (parse_url($ref, PHP_URL_HOST) === $host) {
-        $ref_path = parse_url($ref, PHP_URL_PATH);
-        $excluded_pages = ['profile_edit.php', 'edit', 'index.php'];
-        $should_exclude = false;
-        foreach ($excluded_pages as $page) {
-            if (strpos($ref_path, $page) !== false) {
-                $should_exclude = true;
-                break;
-            }
-        }
-        if (!$should_exclude) $back_url = $ref;
-    }
-}
+$back_url = meel_back_url('index.php', [
+    'profile/edit',
+    'edit-music',
+    'edit-video',
+    'lrc-editor',
+    'auth/login',
+    'auth/register',
+    'profile/manage',
+    'profile/notification',
+]);
 ?>
 <!DOCTYPE html>
 <html lang="id">

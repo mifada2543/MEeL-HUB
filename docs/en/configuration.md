@@ -173,38 +173,59 @@ function getRomajiName($text) {
 
 ---
 
-### Canonical Host (`MEEL_CANONICAL_HOST`)
+### Trusted Hosts (`MEEL_CANONICAL_HOST` + `MEEL_TRUSTED_HOSTS`)
 
 **File:** `auth/settings.example.php` (and `auth/settings.php`)
 
 ```php
 // Your production host, WITHOUT port and WITHOUT scheme.
-// Empty = every external referer is rejected (back-link falls back to default).
+// Empty = only loopback hosts are trusted.
 define('MEEL_CANONICAL_HOST', 'meel.my.id');
+
+// Extra hosts allowed as a "back" target (no scheme, no port).
+// Kept apart from MEEL_CANONICAL_HOST so a single production host does not
+// block access through a LAN IP or a domain alias.
+define('MEEL_TRUSTED_HOSTS', 'localhost,127.0.0.1,::1');
 ```
 
-This host is used by `meel_same_origin_referer()` in `modules/core/helpers/url.php`
-to decide whether `HTTP_REFERER` may be used as a "back" target.
+Both constants feed `meel_trusted_hosts()` in `modules/core/helpers/url.php`,
+which is what `meel_same_origin_referer()` consults to decide whether
+`HTTP_REFERER` may be used as a "back" target.
+
+**Trusted hosts:**
+
+| Source | Example | Notes |
+|---|---|---|
+| `MEEL_CANONICAL_HOST` | `meel.my.id` | Production host |
+| Loopback (built in) | `localhost`, `127.0.0.1`, `::1` | Always trusted |
+| `MEEL_TRUSTED_HOSTS` | `192.168.1.5, meel.local` | Extra hosts, optional |
+
+Loopback is trusted without any configuration: it only ever points at the
+machine itself, so it can never be used to send a user to an attacker's site.
+The practical upshot is that the back button keeps working on a local install
+reached through `localhost` — impossible when only one canonical host exists.
 
 Why not compare against `HTTP_HOST`: on an Apache default vhost, `HTTP_HOST` is
 the header sent by the client. If the comparison used it, an attacker sending
 `Host: evil.com` plus `Referer: https://evil.com/` would pass as "same origin" —
-that is an open redirect.
+that is an open redirect. `HTTP_HOST` is therefore **never** used as an allowlist.
 
 The helper rejects: a different host, any scheme other than http/https,
 protocol-relative URLs (`//evil.com`), and the tricks `evil.meel.my.id` and
-`meel.my.id.evil.com`.
+`meel.my.id.evil.com`. The port is ignored when comparing — the same host on a
+different port is still the same site.
 
-Every page using a back button now shares this helper:
-`music/playlist_action.php`, `profile/notification.php`, `profile/index.php`,
-`auth_back_url()` (used by `auth/login.php` and `auth/register.php`), and
-`meel_back_url()`. When the value is empty, every back link falls back to its
-default — it fails closed rather than opening a hole.
+Every page using a back button now shares this helper: `introduction.php`,
+`err/index.php`, `music/playlist_action.php`, `profile/notification.php`,
+`profile/index.php`, `auth_back_url()` (used by `auth/login.php` and
+`auth/register.php`), `safe_comment_back_url()` (in
+`controllers/api/delete_comment.php`), and `meel_back_url()`. When there is no
+valid referer, every back link falls back to its default — it fails closed
+rather than opening a hole.
 
-One consequence worth knowing: on a localhost install with no configuration the
-back link becomes generic (`../`), because `localhost` is no longer matched.
-`profile/index.php` previously accepted `localhost`, `127.0.0.1`, and `::1`; that
-list was removed, since a per-site host list meant a different rule on every page
+> **Warning:** never put a third party's host in `MEEL_TRUSTED_HOSTS`. A host
+> listed there may become a redirect target, so any site on that domain could
+> steer users there. Only add hosts you own.
 and was itself the source of the open redirect.
 
 ### Download Limits (`MEEL_MAX_DOWNLOAD_*`)

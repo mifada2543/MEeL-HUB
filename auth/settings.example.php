@@ -10,6 +10,9 @@ if (!defined('MEEL_HOST')) {
 if (!defined('MEEL_CANONICAL_HOST')) {
     define('MEEL_CANONICAL_HOST', '');
 }
+if (!defined('MEEL_TRUSTED_HOSTS')) {
+    define('MEEL_TRUSTED_HOSTS', 'localhost,127.0.0.1,::1');
+}
 if (!defined('MEEL_TIMEZONE')) {
     define('MEEL_TIMEZONE', 'Asia/Jakarta');
 }
