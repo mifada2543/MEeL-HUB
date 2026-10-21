@@ -4,21 +4,10 @@
  *
  * SEKALI PAKAI. Bukan perkakas yang dijadwalkan.
  *
- * DAFTAR ID DIBEKUAN
- * ------------------
- * Skrip ini TIDAK memindai disk untuk mencari file yang hilang. Daftar id di
- * bawah berasal dari pindai yang sudah diverifikasi pada 15 Oktober 2026, dan
- * id-nya dikunci di dalam berkas ini.
- *
- * Alasannya keselamatan, bukan sekadar-Praktis:
- *
- * Drive media TIDAK ada di /etc/fstab. Storage ada di /dev/sda1 yang dipasang
- * manual, jadi tidak terpasang otomatis saat boot. Kalau drive sedang tidak
- * terpasang, direktori media kosong dan SETIAP file terbaca hilang. Skrip yang
- * memindai saat eksekusi akan menyimpulkan "13.837 file hilang" lalu menghapus
- * seluruh pustaka dari database -- dan itu tidak bisa dibatalkan.
- *
- * Daftar yang dibekukan tidak bisa salah baca karena mount hilang.
+ * Daftar id dibekukan di dalam berkas ini, bukan hasil pindai disk. Alasannya
+ * keselamatan: drive media tidak ada di /etc/fstab, jadi kalau drive sedang
+ * tidak terpasang, pindai saat eksekusi akan menyimpulkan semua file hilang
+ * lalu menghapus seluruh pustaka — dan itu tidak bisa dibatalkan.
  *
  * PEMAKAIAN
  * ---------

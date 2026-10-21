@@ -2,29 +2,9 @@
 /**
  * Menautkan 4 thumbnail video yang menggantung.
  *
- * Konteks: setelah pemulihan media, tinggal 4 "file sampah" di dashboard.
- * Tiga di antaranya adalah thumbnail ASLI yang gagal terpasang karena
- * ketidakkonsistenan nama pada saat unggah -- bukan file orphan sungguhan:
- *
- *   folder video                nama thumbnail di disk      masalah
- *   --------------------------   -------------------------   -----------------------
- *   assasin-class-room          assasin-class-rom_thumb     typo: rom vs room
- *   porutagaisuto-hatsune-miku-kai  porutagaisuto-hatsune-miku_thumb   tanpa akhiran -kai
- *   rbonhero-1                   rbonhero_thumb             tanpa akhiran -1
- *   karakuri-piero-...-hatsune-miku-1  karakuri-piero-...-hatsune-miku.webp  tanpa akhiran -1
- *
- * Yang terakhir bukan ketidakkonsistenan nama, melainkan unggahan ulang: ia
- * punya durasi yang sama persan (260 s) dan nama dasar yang sama dengan baris
- * #299, hanya diberi akhiran `-1`. Satu-satunya thumbnail yang ada untuk kedua
- * folder itu adalah `karakuri-piero-more-more-jump-hatsune-miku.webp`, jadi
- * keduanya memakainya. Berkasnya 139 KB, bukan placeholder.
- *
- * Semuanya saat ini menunjuk `default_thumb.webp` yang TIDAK ADA di direktori
- * thumbnail mana pun -- jadi kartu di grid memakai gambar rusak.
- *
- * File keempat, `music/upload/thumbnail/thumb.thumb.webp`, sengaja TIDAK
- * disentuh: namanya tidak berkorelasi dengan lagu mana pun, dan menautkannya
- * ke lagu tertentu berarti menebak.
+ * Yang ditautkan adalah thumbnail asli yang gagal terpasang karena
+ * ketidakkonsistenan nama saat unggah, plus satu pasang folder unggahan
+ * ulang yang memakai thumbnail yang sama.
  *
  * Hanya menulis kolom `thumbnail` pada empat baris video. Tidak menyentuh
  * file, tidak menyentuh tabel lain.

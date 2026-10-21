@@ -1,26 +1,10 @@
 <?php
 /**
- * Kontainer like/dislike — SATU-SATUNYA sumber markup untuk tombol ini.
+ * Kontainer like/dislike — satu-satunya sumber markup untuk tombol ini.
  *
- * Markup ini sebelumnya ditulis tiga kali: di `music/watch.php`,
- * `video/watch.php`, dan `controllers/api/like.php`. Tiga salinan itu
- * melenceng satu sama lain, dan yang paling basi justru yang menang: begitu
- * like/dislike diklik, htmx menukar kontainer dengan salinan API — yang
- * tombol "Simpan"-nya masih `plus` + "Playlist" dan warnanya beda. Jadi
- * setelah diklik, tombolnya berubah bentuk di depan mata.
- *
- * Karena container ini ditukar lewat `hx-swap="outerHTML"`, markup yang
- * dikirim server WAJIB sama persis dengan yang ada di halaman — kalau
- * berbeda, setiap klik mengubah tampilannya.
- *
- * Kontrak pemanggil (semua opsional, punya nilai default):
- *   $like_dislike_media_id    int    id media
- *   $like_dislike_media_type  string 'music' atau 'video'
- *   $like_dislike_state       string '', 'like', atau 'dislike'
- *   $like_dislike_likes       int
- *   $like_dislike_dislikes    int
- *   $like_dislike_csrf        string token CSRF
- *   $like_dislike_rate_limit  int    detik tersisa kalau rate limit aktif
+ * Markup yang dikirim server WAJIB sama persis dengan yang ada di halaman,
+ * karena kontainer diganti lewat `hx-swap="outerHTML"`. Kontrak pemanggil
+ * ada di docs/{id,en}/modules.md.
  */
 
 $__ld_id = (int) ($like_dislike_media_id ?? 0);

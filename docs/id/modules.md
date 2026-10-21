@@ -322,6 +322,47 @@ yang belum diinisialisasi dan diam-diam menghasilkan audio tanpa cover art. Test
 memassert perilaku yang teramati (stream mana yang dipetakan, flag mana yang
 muncul), bukan menyalin ulang builder-nya.
 
+#### Finalisasi video di `DownloadService`
+
+`finalizeVideo()` dipecah menjadi beberapa langkah yang masing-masing punya
+satu tanggung jawab. Dua di antaranya perlu dicatat karena bentuknya menentukan
+betapa amannya langkah itu:
+
+**`runParallelFfmpeg()`** menjalankan beberapa proses ffmpeg sekaligus lalu
+mengawasi sampai semuanya selesai. Ini bagian yang paling rawan salah:
+kebocoran pipe, anak proses yang tidak pernah di-reap (zombie plus PID file
+yang tak pernah dihapus), dan jalur timeout yang meninggalkan ffmpeg berjalan
+di belakang.
+
+Dipisah dari `finalizeVideo()` pada T19, saat metodenya 268 baris dengan
+sembilan fase. Yang menentukan bentuknya: **ini tetap metode, bukan kelas
+baru** (`FfmpegProcess`). Semua hook yang dibutuhkan — `trackChildProcess()`,
+`untrackChildProcess()`, `terminateChildProcess()`, `writePidFile()`,
+`removePidFile()`, `isProcessAlive()` — ber-`protected` di `TranscoderBase`,
+dan daftar anak proses (`$childProcesses`) adalah state per-instance yang
+dipindai `terminateAllProcesses()` saat shutdown. Kelas terpisah tidak bisa
+menjangkau itu tanpa melebarkannya jadi `public` atau memindahkan daftar anak
+ke collaborator bersama. Dua-duanya jatuh persis di mekanisme yang tugasnya
+**mencegah** proses ffmpeg yatim ketika request mati di tengah transcode.
+Menukar itu dengan tata letak berkas yang lebih rapi adalah kerugian besar,
+jadi tidak diambil. Seam-nya dibiarkan: begitu ada harness uji yang bisa
+mengujinya ujung ke ujung, kelasnya bisa diekstrak tanpa menurunkan logikanya
+dari nol.
+
+**Pemindahan ke HDD + pencatatan database** dibungkus dalam satu transaksi,
+dan sifat pentingnya: kalau ada apa pun yang gagal di tengah, sistem TIDAK
+boleh tertinggal setengah jadi — file sudah pindah tapi baris database belum
+ada, atau sebaliknya. Karena itu `moveFile()` melempar, bukan mengembalikan
+`false`, dan `catch` melakukan rollback database **ditambah** pembatalan efek
+filesystem. Urutan pembatalannya penting dan tidak boleh dibalik:
+
+1. rollback transaksi (baris database tidak jadi ada)
+2. `rollbackFinalizeVideo()` (hapus folder target + thumbnail)
+3. hapus folder kerja
+
+`finalizeVideo()` sebagai pemanggil tidak perlu tahu detailnya — ia hanya
+perlu tahu berhasil atau tidak; pesan errornya sudah di-emit di dalam.
+
 ### 6. `modules/core/System.php`
 
 **Class:** `System` — queue management, storage monitoring, rate limiting.
@@ -417,6 +458,54 @@ lama tetap bekerja tanpa perubahan. `helpers/main.php` memuat berkas baru itu
 sebelum keduanya. `TextUploadValidationTest` mengunci bahwa pembungkus dan
 aturan bersama selalu selaras.
 
+#### Titik muat helper penyimpanan
+
+`modules/core/helpers/storage.php` sengaja tetap ada meski isinya nyaris
+kosong: `main.php` memuatnya dengan satu baris, dan 25+ halaman memanggil
+fungsi-fungsinya. Memecah titik muat itu jauh lebih berisiko daripada
+manfaatnya.
+
+Isinya sudah dipecah per domain, mengikuti konvensi folder ini:
+
+| Berkas | Isi | Fungsi |
+|---|---|---:|
+| `storage_paths.php` | base path, thumbnail, PID, guard mount | 14 |
+| `storage_disk.php` | kapasitas disk, cache file, audit log | 8 |
+| `storage_xsendfile.php` | deteksi & header X-Sendfile | 11 |
+| `storage_stream.php` | validator cache + serving media | 4 |
+
+Urutan `require` tidak boleh diacak, karena mengikuti arah ketergantungan:
+`paths` → `disk` → `xsendfile` → `stream`. PHP menunda definisi fungsi sampai
+berkas selesai dibaca, jadi urutan hanya penting untuk efek samping saat
+muat — satu-satunya efek samping itu blok `MEEL_HDD_CHECKED` di
+`storage_paths.php`. Semua definisi tetap dibungkus `function_exists()`, jadi
+berkas aman dimuat berkali-kali.
+
+#### Helper ekspor data (CSV, JSON, SpreadsheetML)
+
+`admin/activity_log.php` dulunya punya dua blok ekspor dan total enam
+definisi pemetaan baris yang identik: preamble XML SpreadsheetML, closure
+`$xls_cell`, header antrean unggah, serta pemetaan enam kolom baris antrean.
+Konsekuensinya bukan cuma berkas panjang — kalau satu kolom diubah, ada lima
+tempat lain yang harus ikut berubah dan tidak ada yang memberi tahu kalau
+lupa. Ekspor CSV bisa diam-diam punya kolom berbeda dari ekspor JSON.
+
+Yang dikumpulkan di `modules/core/helpers/export.php` adalah bentuk, bukan isi
+data: daftar kolom milik tiap dataset tetap didefinisikan di halaman yang
+memakainya, karena itu domain data, bukan utilitas.
+
+Dua perbedaan semantik yang harus dijaga:
+
+- `meel_export_values()` memakai `??` untuk kolom yang punya `default` — kunci
+  yang tidak ada **dan** kunci bernilai `null` sama-sama menghasilkan
+  default. Kolom tanpa `default` meneruskan null apa adanya.
+- `meel_export_json_row()` untuk kolom bertipe `int?` membaca nilai mentah,
+  bukan hasil `??`. Kalau `default` ikut diterapkan lebih dulu, null berubah
+  jadi `''` lalu jadi `0`: JSON yang tadinya `"user_id": null` tiba-tiba
+  melaporkan `"user_id": 0`. Null berarti "tidak diketahui", 0 berarti
+  "user 0".
+
+#### Penamaan thumbnail video
 
 Aturan ini berlaku di `Uploader.php` dan dipakai ulang di mana pun nama
 varian perlu diturunkan:
@@ -1271,6 +1360,27 @@ Upload → FFmpeg Transcode → HLS (.m3u8 + .ts)
                           DB Insert
 ```
 
+#### Kartu video (`video/cards.php`)
+
+Satu berkas, dua fungsi, dan keduanya **tidak bisa ditukar**:
+
+| Fungsi | Dipakai di |
+|---|---|
+| `meel_render_video_card()` | kartu grid di beranda/library video |
+| `meel_render_video_rec_card()` | kartu sidebar rekomendasi di `video/watch.php` |
+
+Pola ini sengaja meniru `music/cards.php`. Markup sidebar sebelumnya disalin
+mentah di dua tempat (`video/watch.php` dan `video/search_video.php`), dan dua
+berkas terpisah dengan `include` hanya memindahkan kontrak implisit "isi
+variabel ini dulu sebelum include" ke tempat lain — variabelnya tetap bocor ke
+scope pemanggil. Fungsi membuat kontraknya eksplisit lewat argumen.
+
+Dua sumber data memberi nama kolom berbeda untuk username yang sama:
+`MediaViewer::getRecommendations()` menyelect `u.username AS uploader`,
+sedangkan `MediaLibrary::searchVideo()` menyelect
+`u.username AS uploader_name`. Dua-duanya `users.username`, jadi di sini
+keduanya dibaca.
+
 ### Audio Pipeline
 
 ```
@@ -1480,6 +1590,23 @@ Setiap modul CSS memiliki `manifest.php` yang mendaftarkan file-file CSS-nya. `S
 // assets/css/video/manifest.php
 return ['base.css', 'cards.css', 'fullscreen.css', 'glow.css', 'layout.css',
         'mini-player.css', 'navbar.css', 'player.css', 'seek.css', 'toast.css'];
+```
+
+#### Bundle CSS per modul
+
+`scripts/build-css-bundle.php` menggabungkan file-file yang terdaftar di
+`manifest.php` menjadi satu `assets/css/<module>/bundle.css`.
+
+- **Manifest tetap daftar utama.** Satu kebenaran; file asli tidak dihapus,
+  jadi halaman yang belum memakai bundle tetap jalan.
+- **Urutan file dijaga persis** seperti di manifest, karena urutan CSS
+  menentukan kaskade — `light-theme.css` harus tetap paling akhir.
+- **Bundle tidak di-commit.** `assets/css/*/bundle.css` ada di `.gitignore`,
+  jadi clone baru otomatis jatuh ke daftar file individual.
+
+```bash
+php scripts/build-css-bundle.php --dry-run   # lihat hasilnya tanpa menulis
+php scripts/build-css-bundle.php
 ```
 
 ### Loader Dinamis

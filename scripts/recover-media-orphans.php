@@ -2,27 +2,10 @@
 /**
  * Pulihkan baris media yang hilang dari file yang masih ada di disk.
  *
- * LATAR BELAKANG
- * --------------
- * Database MEeL di-DROP lalu dibangun ulang dari skema. Data dipulihkan dari
- * backup 22 Juli 2026, sehingga semua media yang diunggah SETELAH tanggal itu
- * kehilangan baris DB-nya -- padahal file fisiknya masih utuh di disk.
- * Dashboard admin melaporkan 1805 "file sampah (tidak ada di DB)".
- *
- * ANGKA 1805 MENYESATKAN, TAPI BUKAN BERARTI 1805 DATA HILANG
- * ----------------------------------------------------------
- * Pemetaan file ke baris tidak 1:1. Video dicocokkan per FOLDER (satu video =
- * satu stream HLS berisi ~30 file), musik per file, thumbnail per nama.
- *
- *   video/upload/video/   10.845 file -> 1.725 orphan ->  53 baris hilang
- *   video thumbnail/         496 file ->   52 orphan -> ikut pulih bersama induk
- *   music/upload/file/        96 file ->   14 orphan ->  14 baris hilang
- *   music thumbnail/          94 file ->   14 orphan -> ikut pulih bersama induk
- *   books/upload/manga/    2.255 file ->    0 orphan ->  tidak ada yang hilang
- *
- * Jadi yang harus dibangun ulang hanya 53 video + 14 musik. Sisanya segmen .ts,
- * subtitle .vtt, sprite, dan thumbnail turunan -- terlihat "sampah" hanya karena
- * induknya hilang.
+ * Pemetaan file ke baris tidak 1:1. Video dicocokkan per FOLDER (satu video
+ * = satu stream HLS berisi ~30 file), musik per file, thumbnail per nama.
+ * Segmen .ts, subtitle .vtt, sprite, dan thumbnail turunan terlihat "sampah"
+ * hanya karena induknya hilang.
  *
  * ATURAN YANG MENGIKAT
  * --------------------

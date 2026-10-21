@@ -1,23 +1,12 @@
 <?php
 /**
- * Logika bersama untuk editor admin musik & video.
+ * Logika bersama untuk editor admin musik & video: konfigurasi per jenis
+ * media, pemeriksaan konteks admin/profil, dan blok unggah thumbnail.
  *
- * Dua halaman ini (`admin/edit-music.php` dan `admin/edit-video.php`)
- * dulunya salinan satu sama lain: sekitar 50% logika PHP mereka identik,
- * termasuk blok unggah thumbnail yang paling sering berubah dan paling
- * sensitif (validasi MIME, batas ukuran, pemanggilan ffmpeg). Dua salinan
- * dari kode itu berarti dua tempat yang harus dijaga serempak — dan
- * masing-masing bisa melenceng sendiri.
+ * Penulisan ke database dan pembersihan thumbnail lama tetap di halaman
+ * masing-masing karena keduanya berbeda antar jenis media.
  *
- * Yang dikumpulkan di sini:
- *  - konfigurasi per jenis media (label, nama berkas default, dll.)
- *  - pemeriksaan konteks admin/profil
- *  - blok unggah thumbnail
- *
- * Yang TIDAK dikumpulkan: penulisan ke database dan pembersihan thumbnail
- * lama. Keduanya berbeda antar jenis media dan tetap di halaman masing-masing.
- *
- * @var array $cfg hasil meel_editor_media_config()
+ * @see docs/{id,en}/modules.md
  */
 
 if (!function_exists('meel_editor_media_config')) {
@@ -85,13 +74,10 @@ if (!function_exists('meel_editor_upload_thumbnail')) {
  * Unggah thumbnail untuk editor admin.
  *
  * Mengembalikan nama berkas thumbnail yang berlaku (lama kalau unggahan
- * gagal) beserta pesan error kalau ada. Nama lama dikembalikan, bukan string
- * kosong, supaya halaman bisa menyimpan judul dan deskripsi tanpa ikut
- * replaces thumbnail yang gagal diunggah.
- *
- * `$error` adalah pesan error yang sudah ada sebelum blok ini dipanggil.
- * Kalau sudah terisi, pemeriksaan MIME dan konversi dilewati — sama seperti
- * perilaku aslinya, di mana blok itu berada di dalam `if (empty($error_message))`.
+ * gagal) beserta pesan error kalau ada, supaya halaman bisa menyimpan
+ * judul dan deskripsi tanpa ikut replaces thumbnail yang gagal diunggah.
+ * Kalau `$error` sudah terisi sebelum blok ini dipanggil, pemeriksaan MIME
+ * dan konversi dilewati.
  *
  * @return array{url:string, error:string}
  */

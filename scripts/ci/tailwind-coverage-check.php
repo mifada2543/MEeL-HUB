@@ -2,18 +2,6 @@
 /**
  * Penjaga reproducibility `assets/css/tailwind.min.css`.
  *
- * LATAR BELAKANG
- * --------------
- * `assets/css/tailwind.min.css` adalah artefak hasil build yang di-commit,
- * tapi sampai 2026-10-14 tidak ada konfigurasi maupun perintah build-nya
- * di repo. File itu tidak bisa direproduksi: mengubah markup lalu ingin
- * membangun ulang CSS sama saja menebak.
- *
- * Entry build sekarang (T22): `tailwind.config.js` + `tools/tailwind/input.css`
- * + `npm run css:build`. Nilai di config diekstrak dari build yang benar-benar
- * menghasilkan artefak yang sekarang dipakai (Tailwind CLI v3.4.19), bukan
- * ditebak — sumber: `.agents/progress.md` § Khusus T10.
- *
  * TIGA HAL YANG DIPERIKSA
  * -----------------------
  * 1. **Glob `content` benar-benar memindai repo, dan tidak memindai yang
@@ -22,8 +10,8 @@
  * 2. **Tidak ada regresi.** Class yang ADA di CSS lama, MASIH dipakai markup,
  *    tapi HILANG di CSS baru = regresi. Ini yang paling merusak: halaman
  *    dirender, layout berantakan, tidak ada error.
- * 3. **Class yang hilang tapi tak terpakai boleh hilang.** Itu Kebun, bukan
- *    bug; build yang sengaja memangkas stale token justru hasil T10.
+ * 3. **Class yang hilang tapi tak terpakai boleh hilang.** Itu memang
+ *    penghematan, bukan bug.
  *
  * PEMAKAIAN
  * ---------
@@ -32,6 +20,8 @@
  *   php scripts/ci/tailwind-coverage-check.php --rebuild        # build dulu ke temp, lalu banding
  *
  * Exit code 0 = aman. Non-zero = ada regresi atau config rusak.
+ *
+ * @see docs/{id,en}/testing.md
  */
 
 declare(strict_types=1);
@@ -230,24 +220,19 @@ function meel_collect_source_classes(array $files): array
  * Kumpulkan nama class + deklarasinya dari CSS.
  *
  * Tokenisasi dilakukan pada selector ASLI (yang masih escapes CSS), baru
- * hasilnya di-unescape. Urutannya penting dan bukan pilihan gaya:
- *
- *   - Kalau selector di-unescape DULUAN lalu di-tokenisasi, karakter `:`
- *     (pemisah variant) ikut jadi pembatas dan semua class bertanda variant
- *     runtuh jadi satu token: `hover:border-green-500/30` menjadi `hover`,
- *     `sm:hover:bg-gray-800` menjadi `sm`. AkibatnyaELA check regresi
- *     nyaris tak berguna — `hover` jelas ada di file lain, jadi class yang
- *     benar-benar hilang tidak akan pernah terdeteksi.
- *   - Kalau selector asli yang dipindai, `:` muncul sebagai pasangan escape
- *     (`\:`) dan ikut terbawa ke dalam token dengan benar.
+ * hasilnya di-unescape. Kalau selector di-unescape DULUAN lalu di-tokenisasi,
+ * karakter `:` (pemisah variant) ikut jadi pembatas dan semua class bertanda
+ * variant runtuh jadi satu token: `hover:border-green-500/30` menjadi `hover`.
+ * Akibatnya check regresi nyaris tak berguna — `hover` jelas ada di file lain.
  *
  * Deklarasi dikumpulkan per class dalam bentuk GABUNGAN, bukan per rule.
  * Tailwind menggabungkan selector yang deklarasinya sama ke satu rule; saat
  * isi kelompok berubah, satu class bisa pindah dari rule gabungan ke rule
- * sendiri (atau sebaliknya) tanpa mengubah hasil akhirnya. Membandingkan
- * per rule akan memunculkan palsu di setiap kelompok yang bergeser.
+ * sendiri tanpa mengubah hasil akhirnya. Membandingkan per rule akan
+ * memunculkan palsu di setiap kelompok yang bergeser.
  *
  * @return array<string, string[]> class => deklarasi (diurutkan)
+ * @see docs/{id,en}/testing.md
  */
 function meel_collect_css_rules(string $css): array
 {
