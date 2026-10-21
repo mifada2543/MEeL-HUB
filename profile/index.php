@@ -1,35 +1,25 @@
 <?php
 /* reference build: MEeL-C5H5N5O [353344a3b3df3693] */
-
 require_once __DIR__ . '/../modules/auth/helpers/session.php';
 meel_boot_session();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../modules/media/ProfileRepository.php';
 require_once __DIR__ . '/../modules/core/MeelCoin.php';
 require_once __DIR__ . '/../modules/auth/helpers/user.php';
-$back_url = '../';
 $is_logged_in = isset($_SESSION['user_id']);
 $is_guest_profile = false;
-
 if (!function_exists('meel_same_origin_referer')) {
     require_once __DIR__ . '/../modules/core/helpers/url.php';
 }
-if (($ref = meel_same_origin_referer()) !== null) {
-    $ref_path = (string) parse_url($ref, PHP_URL_PATH);
-    $excluded_pages = ['profile_edit.php', 'edit', 'index.php', 'manage.php', 'manage', 'mfa_setup.php', 'mfa-setup', 'mfa_backup.php', 'edit-music.php', 'edit-video.php', '/profile'];
-    $should_exclude = false;
-    foreach ($excluded_pages as $page) {
-        if (strpos($ref_path, $page) !== false) {
-            $should_exclude = true;
-            break;
-        }
-    }
-    if (!$should_exclude) {
-        $back_url = $ref;
-    }
-}
+$back_url = meel_back_url('../', [
+    'profile/edit',
+    'profile/manage',
+    'profile/notification',
+    'auth/login',
+    'auth/register',
+]);
+$back_is_referer = ($back_url !== '../');
 $target_user = $_GET['u'] ?? '';
-
 if (empty($target_user)) {
     if ($is_logged_in) {
         header("Location: " . base_url('/profile/' . rawurlencode($_SESSION['username'])));
@@ -81,14 +71,12 @@ if (empty($target_user)) {
     $total_uploads = $total_video + $total_music;
     $is_online = (strtotime($u['last_activity']) > strtotime("-5 minutes"));
 }
-
 $coin_enabled = false;
 $coin_balance = 0;
 $coin_max = 0;
 $coin_countdown = 0;
 $coin_refill_hours = 5;
 $coin_is_owner = $is_logged_in && !empty($u['id']) && ($_SESSION['username'] === $u['username']);
-
 if ($coin_is_owner) {
     $user_role = get_user_role($conn, (int)$_SESSION['user_id']);
     $coin_enabled = MeelCoin::isEnabled($conn);
@@ -102,16 +90,13 @@ if ($coin_is_owner) {
         $coin_refill_hours = MeelCoin::getRefillHours($conn);
     }
 }
-
 $active_tab = $_GET['tab'] ?? 'all';
 if (!in_array($active_tab, ['all', 'video', 'music'], true)) {
     $active_tab = 'all';
 }
-
 $items = [];
 $initial_batch = 12;
 $has_more = false;
-
 if (!$is_guest_profile) {
     if ($active_tab === 'video') {
         $items = $profileRepo->getVideosPaginated($profile_id, $initial_batch, 0);
@@ -143,30 +128,29 @@ if (!$is_guest_profile) {
 </head>
 
 <body class="text-gray-300">
-<?php include __DIR__ . '/../partials/skip-link.php'; ?>
-
+    <?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <?php $root = meel_base_url_path(); ?>
     <div class="max-w-5xl mx-auto mt-10 p-4">
         <div class="flex items-center justify-between mb-4">
-            <a href="<?= htmlspecialchars($root) ?>/" class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" title="Kembali ke beranda">
+            <a href="<?= htmlspecialchars($back_url) ?>" class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/[.04] transition" style="color:var(--meel-text-secondary)" title="<?= $back_is_referer ? 'Kembali ke halaman sebelumnya' : 'Kembali ke beranda' ?>">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="m15 18-6-6 6-6" />
                 </svg>
-                <span class="text-xs font-semibold hidden sm:inline">Beranda</span>
+                <span class="text-xs font-semibold hidden sm:inline"><?= $back_is_referer ? 'Kembali' : 'Beranda' ?></span>
             </a>
             <?php if ($coin_enabled && $coin_is_owner): ?>
                 <div class="coin-indicator <?= ($u['role'] === 'admin') ? 'coin-admin' : ($coin_balance >= $coin_max ? 'coin-maxed' : '') ?>"
-                     id="coin-indicator"
-                     data-countdown="<?= (int)$coin_countdown ?>"
-                     data-max="<?= ($u['role'] === 'admin') ? -1 : (int)$coin_max ?>"
-                     data-role="<?= htmlspecialchars($u['role']) ?>"
-                     data-refill-hours="<?= (int)$coin_refill_hours ?>"
-                     data-user-id="<?= (int)($_SESSION['user_id'] ?? 0) ?>"
-                     data-api-base="<?= htmlspecialchars($root) ?>/api/meelcoin"
-                     title="MEeLCoin saldo Anda">
+                    id="coin-indicator"
+                    data-countdown="<?= (int)$coin_countdown ?>"
+                    data-max="<?= ($u['role'] === 'admin') ? -1 : (int)$coin_max ?>"
+                    data-role="<?= htmlspecialchars($u['role']) ?>"
+                    data-refill-hours="<?= (int)$coin_refill_hours ?>"
+                    data-user-id="<?= (int)($_SESSION['user_id'] ?? 0) ?>"
+                    data-api-base="<?= htmlspecialchars($root) ?>/api/meelcoin"
+                    title="MEeLCoin saldo Anda">
                     <svg class="coin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 6v12M8 10h8M8 14h8"/>
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 6v12M8 10h8M8 14h8" />
                     </svg>
                     <span class="coin-balance">
                         <?php if ($u['role'] === 'admin'): ?>
@@ -178,8 +162,8 @@ if (!$is_guest_profile) {
                     <?php if ($u['role'] !== 'admin'): ?>
                         <span class="coin-countdown" id="coin-countdown-wrap">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
                             </svg>
                             <span id="coin-countdown"><?= $coin_countdown > 0 ? gmdate('H:i:s', $coin_countdown) : 'Siap' ?></span>
                         </span>
@@ -205,7 +189,6 @@ if (!$is_guest_profile) {
                 <img src="upload/<?= htmlspecialchars($banner_pic, ENT_QUOTES, 'UTF-8') ?>?v=<?= $banner_v ?>" alt="Foto sampul <?= htmlspecialchars($u['username']) ?>" class="block h-full w-full scale-110" style="object-fit:cover;object-position:center;filter:blur(2px)" loading="eager" decoding="async" onerror="this.onerror=null;this.src='upload/default_avatar.png'">
                 <div class="absolute inset-0 profile-banner-gradient"></div>
             </div>
-
             <div class="px-8 pb-8">
                 <div class="relative flex justify-between items-end -mt-12">
                     <div class="relative">
@@ -215,7 +198,6 @@ if (!$is_guest_profile) {
                             <div class="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-4 border-[var(--meel-bg,#0b0e14)] rounded-full"></div>
                         <?php endif; ?>
                     </div>
-
                     <?php
                     $is_owner = $is_logged_in && !empty($u['id']) && ($_SESSION['username'] === $u['username']);
                     if ($is_owner):
@@ -232,7 +214,6 @@ if (!$is_guest_profile) {
                                 title="Kelola konten video dan musik Anda">
                                 <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Kelola Konten
                             </a>
-
                             <a href="../auth/mfa-setup"
                                 class="mfa-switch justify-center"
                                 role="link"
@@ -246,7 +227,6 @@ if (!$is_guest_profile) {
                                     <span class="mfa-label-sub"><?= $_mfa_on ? 'Aktif' : 'Nonaktif' ?></span>
                                 </span>
                             </a>
-
                             <button type="button" id="theme-toggle" onclick="MEELTheme.toggle()"
                                 class="mfa-switch justify-center cursor-pointer ml-auto"
                                 style="background:none;border:none;padding:0;margin-left:auto;outline:none"
@@ -259,7 +239,6 @@ if (!$is_guest_profile) {
                                     <span class="mfa-label-sub" id="theme-label">Gelap</span>
                                 </span>
                             </button>
-
                             <?php if ($_mfa_on): ?>
                                 <button type="button" onclick="showBackupModal()"
                                     class="bg-yellow-600/10 hover:bg-yellow-600/20 text-yellow-400 border border-yellow-600/20 hover:border-yellow-500/40 px-4 py-3 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-2"
@@ -286,7 +265,6 @@ if (!$is_guest_profile) {
                         </div>
                     <?php endif; ?>
                 </div>
-
                 <div class="mt-6">
                     <h1 class="text-3xl font-black text-white tracking-tight italic">
                         <?= htmlspecialchars($u['username']) ?>
@@ -305,7 +283,6 @@ if (!$is_guest_profile) {
                             <?= $is_guest_profile ? 'Akun Guest' : htmlspecialchars($u['bio'] ?: "Pengguna ini belum menulis bio.", ENT_QUOTES, 'UTF-8') ?>
                         </p>
                     </div>
-
                     <?php if (!$is_guest_profile): ?>
                         <div class="flex gap-4 mt-8">
                             <a href="?tab=all" class="flex-1 glass p-4 rounded-2xl text-center group transition-all <?= $active_tab === 'all' ? 'stat-active-total' : 'stat-total' ?>">
@@ -325,7 +302,6 @@ if (!$is_guest_profile) {
                 </div>
             </div>
         </div>
-
         <?php if (!$is_guest_profile): ?>
             <main class="mt-8">
                 <?php if (empty($items)): ?>
@@ -340,7 +316,6 @@ if (!$is_guest_profile) {
                         <?php foreach ($items as $item): ?>
                             <?php include __DIR__ . '/content_card.php'; ?>
                         <?php endforeach; ?>
-
                         <?php if ($has_more): ?>
                             <div id="channel-more-area" role="status"
                                 class="col-span-full flex items-center justify-center gap-2.5 py-6 bg-white/[.02] border border-dashed border-white/[.06] rounded-2xl transition-all"
@@ -471,7 +446,6 @@ if (!$is_guest_profile) {
                     });
             });
         }
-
         window._meelBackupUser = '<?= htmlspecialchars($_SESSION['username'] ?? 'user') ?>';
     </script>
 </body>

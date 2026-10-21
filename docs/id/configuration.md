@@ -129,38 +129,63 @@ mengirim `X-Forwarded-For: 127.0.0.1` untuk bypass rate-limit login, lockout
 MFA, dan IP-ban. `proxy.php` tanpa side-effect — aman di-require dari
 bootstrap, logger, maupun test.
 
-### Canonical Host (`MEEL_CANONICAL_HOST`)
+### Host Tepercaya (`MEEL_CANONICAL_HOST` + `MEEL_TRUSTED_HOSTS`)
 
 **File:** `auth/settings.example.php` (dan `auth/settings.php`)
 
 ```php
 // Host produksi Anda, TANPA port dan tanpa skema.
-// Kosong = semua referer dari luar ditolak (back-link jatuh ke default).
+// Kosong = hanya host loopback yang dipercaya.
 define('MEEL_CANONICAL_HOST', 'meel.my.id');
+
+// Host tambahan yang boleh jadi target tombol "kembali" (tanpa skema & port).
+// Dipisah dari MEEL_CANONICAL_HOST supaya satu host produksi tidak
+// memblokir akses lewat IP LAN atau alias domain.
+define('MEEL_TRUSTED_HOSTS', 'localhost,127.0.0.1,::1');
 ```
 
-Host ini dipakai `meel_same_origin_referer()` di `modules/core/helpers/url.php`
-untuk memutuskan apakah `HTTP_REFERER` boleh dipakai sebagai tombol "kembali".
+Kedua konstanta ini dipakai `meel_trusted_hosts()` di
+`modules/core/helpers/url.php`, yang jadi dasar keputusan
+`meel_same_origin_referer()` apakah `HTTP_REFERER` boleh dipakai sebagai
+tombol "kembali".
+
+**Host yang dipercaya:**
+
+| Sumber | Contoh | Keterangan |
+|---|---|---|
+| `MEEL_CANONICAL_HOST` | `meel.my.id` | Host produksi |
+| Host loopback (baku) | `localhost`, `127.0.0.1`, `::1` | Selalu dipercaya |
+| `MEEL_TRUSTED_HOSTS` | `192.168.1.5, meel.local` | Host tambahan, opsional |
+
+Host loopback selalu dipercaya tanpa perlu konfigurasi: loopback hanya
+menunjuk ke mesin sendiri, jadi tidak pernah bisa dipakai mengarahkan
+pengguna ke situs penyerang. Konsekuensinya, tombol "kembali" tetap jalan
+di instalasi lokal yang diakses lewat `localhost` — hal yang mustahil
+ketika hanya ada satu host kanonis.
 
 Kenapa tidak memakai `HTTP_HOST` saja: pada vhost default Apache, `HTTP_HOST`
 adalah header yang dikirim klien. Kalau pembandingannya memakainya, penyerang
 dengan `Host: evil.com` + `Referer: https://evil.com/` lolos sebagai "same
-origin" — itu open redirect.
+origin" — itu open redirect. Karena itu `HTTP_HOST` **tidak pernah** dipakai
+sebagai allowlist.
 
 Helper ini menolak: host berbeda, skema selain http/https, URL protocol-relative
 (`//evil.com`), serta trik `evil.meel.my.id` dan `meel.my.id.evil.com`.
+Port diabaikan saat perbandingan — host yang sama dengan port berbeda tetap
+satu situs.
 
 Semua halaman yang memakai tombol kembali memakai helper yang sama:
-`music/playlist_action.php`, `profile/notification.php`,
-`profile/index.php`, `auth_back_url()` (dipakai `auth/login.php` dan
-`auth/register.php`), dan `meel_back_url()`. Kalau nilainya kosong, semua
-tautan kembali jatuh ke default — gagal aman, bukan membuka celah.
+`introduction.php`, `err/index.php`, `music/playlist_action.php`,
+`profile/notification.php`, `profile/index.php`, `auth_back_url()` (dipakai
+`auth/login.php` dan `auth/register.php`), `safe_comment_back_url()` (di
+`controllers/api/delete_comment.php`), dan `meel_back_url()`. Kalau tidak ada
+referer yang sah, semua tautan kembali jatuh ke default — gagal aman, bukan
+membuka celah.
 
-Konsekuensi yang perlu diketahui: di localhost tanpa konfigurasi, tombol
-kembali menjadi generik (`../`) karena `localhost` tidak pernah dicocokkan
-lagi. Sebelumnya `profile/index.php` masih menerima `localhost`, `127.0.0.1`,
-dan `::1` — itu dihapus, karena daftar host per-situs membuat satu aturan
-yang berbeda di tiap halaman dan justru menjadi sumber open redirect.
+> **Perhatian:** jangan menambahkan `MEEL_TRUSTED_HOSTS` berisi host milik
+> pihak ketiga. Host yang tercantum di sini boleh jadi tujuan redirect, jadi
+> situs yang memakai domain itu bisa mengarahkan pengguna ke sana. Tambahkan
+> hanya host milik Anda sendiri.
 
 ### Batas Unduhan (`MEEL_MAX_DOWNLOAD_*`)
 

@@ -1,37 +1,27 @@
 <?php
 /* reference build: MEeL-C8H11NO2 [1da0c33d1a4d7528] */
-
 require_once __DIR__ . '/../modules/auth/helpers/session.php';
 meel_boot_session();
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../modules/core/Notification.php';
-
 if (empty($_SESSION['user_id'])) {
     header('Location: ../auth/login');
     exit;
 }
-
 $userId = (int)$_SESSION['user_id'];
-
 $root = meel_base_url_path();
-$back_url = $root . '/profile/' . rawurlencode($_SESSION['username']);
-if (($ref = meel_same_origin_referer()) !== null) {
-    $ref_path = (string) parse_url($ref, PHP_URL_PATH);
-    if (strpos($ref_path, '/profile/notification') === false) {
-        $back_url = $ref;
-    }
-}
-
+$back_url = meel_back_url(
+    $root . '/profile/' . rawurlencode($_SESSION['username']),
+    ['profile/notification']
+);
 $validTypes = ['like', 'reply', 'meelcoin', 'admin_chat', 'system'];
 $typeFilter = $_GET['type'] ?? null;
 if ($typeFilter && !in_array($typeFilter, $validTypes)) {
     $typeFilter = null;
 }
-
 $notifications = Notification::getList($conn, $userId, 50, $typeFilter);
 Notification::markAllRead($conn, $userId);
 $unreadCount = Notification::getUnreadCount($conn, $userId);
-
 $ICONS = [
     'like' => '❤️',
     'reply' => '💬',
@@ -65,7 +55,6 @@ $ICONS = [
                 <button type="button" onclick="deleteAllNotif()" class="notif-clear ml-auto" title="Hapus semua notifikasi" aria-label="Hapus semua notifikasi">Hapus semua</button>
             <?php endif; ?>
         </div>
-
         <div class="flex gap-2 mb-4 flex-wrap">
             <a href="notification" class="filter-btn <?= !$typeFilter ? 'active' : '' ?>" <?= !$typeFilter ? 'aria-current="page"' : '' ?>>Semua</a>
             <a href="notification?type=like" class="filter-btn <?= $typeFilter === 'like' ? 'active' : '' ?>" <?= $typeFilter === 'like' ? 'aria-current="page"' : '' ?>>❤️ Like</a>
@@ -73,7 +62,6 @@ $ICONS = [
             <a href="notification?type=meelcoin" class="filter-btn <?= $typeFilter === 'meelcoin' ? 'active' : '' ?>" <?= $typeFilter === 'meelcoin' ? 'aria-current="page"' : '' ?>>🪙 Coin</a>
             <a href="notification?type=admin_chat" class="filter-btn <?= $typeFilter === 'admin_chat' ? 'active' : '' ?>" <?= $typeFilter === 'admin_chat' ? 'aria-current="page"' : '' ?>>✉️ Chat</a>
         </div>
-
         <?php if (empty($notifications)): ?>
             <div class="empty-state">
                 <div class="text-3xl mb-3 opacity-30" aria-hidden="true">🔔</div>
@@ -117,7 +105,6 @@ $ICONS = [
         <?php endif; ?>
         <div id="notif-live" class="sr-only" aria-live="polite"></div>
     </div>
-
     <script src="../assets/js/profile/notification/interactions.js?v=<?= filemtime(__DIR__ . '/../assets/js/profile/notification/interactions.js') ?>"></script>
     <?php include __DIR__ . '/../partials/footer.php'; ?>
 </body>

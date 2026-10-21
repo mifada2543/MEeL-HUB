@@ -2,7 +2,7 @@
 require_once __DIR__ . '/auth_helpers.php';
 auth_boot_session();
 require_once __DIR__ . '/config.php';
-$back_url = auth_back_url(['login.php', 'register.php']);
+$back_url = auth_back_url(['auth/login', 'auth/register']);
 $message = "";
 $msg_type = "";
 $max_reg_attempts = 3;
@@ -117,7 +117,7 @@ include __DIR__ . '/partials/auth_head.php';
                 <p class="text-xs text-gray-300 leading-relaxed">Anda telah mencapai batas maksimal pendaftaran (<?= (int)$reg_block_limit ?> akun per jam). Silakan coba lagi nanti.</p>
                 <div class="flex justify-center gap-3 pt-2">
                     <a href="login" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all" title="Masuk ke akun yang sudah ada">Masuk</a>
-                    <a href="../" class="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-bold rounded-xl transition-all" title="Kembali ke beranda">Kembali</a>
+                    <a href="<?= htmlspecialchars($back_url) ?>" class="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-bold rounded-xl transition-all" title="Kembali ke halaman sebelumnya">Kembali</a>
                 </div>
             </div>
         <?php elseif ($is_locked): ?>
@@ -158,7 +158,7 @@ include __DIR__ . '/partials/auth_head.php';
                 </button>
                 <div class="flex items-center justify-between px-1">
                     <a href="login" class="text-xs text-gray-300 hover:text-white transition" title="Masuk ke akun yang sudah ada">Sudah punya akun?</a>
-                    <a href="../" class="text-xs text-red-500 font-bold hover:underline" title="Kembali ke beranda">Kembali</a>
+                    <a href="<?= htmlspecialchars($back_url) ?>" class="text-xs text-red-500 font-bold hover:underline" title="Kembali ke halaman sebelumnya">Kembali</a>
                 </div>
             </div>
         <?php endif; ?>

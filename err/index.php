@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../modules/core/base_url.php';
+require_once __DIR__ . '/../modules/core/helpers/url.php';
 $meel_base = meel_base_url_path();
 if (!function_exists('meel_err_alpha')) {
     function meel_err_alpha(string $hex, int $alpha): string
@@ -127,16 +128,13 @@ $modules = [
 ];
 $module = null;
 $ref_path = '';
-if (isset($_SERVER['HTTP_REFERER']) && $_SERVER['HTTP_REFERER'] !== '') {
-    $ref = $_SERVER['HTTP_REFERER'];
-    if (parse_url($ref, PHP_URL_HOST) === ($_SERVER['HTTP_HOST'] ?? '')) {
-        $ref_path = parse_url($ref, PHP_URL_PATH) ?? '';
-        $rel_path = ltrim(substr($ref_path, strlen($meel_base)), '/');
-        $seg = explode('/', $rel_path)[0] ?? '';
-        if (isset($modules[$seg])) {
-            $module = $modules[$seg];
-            $module['key'] = $seg;
-        }
+if (($ref = meel_same_origin_referer()) !== null) {
+    $ref_path = (string) (parse_url($ref, PHP_URL_PATH) ?? '');
+    $rel_path = ltrim(substr($ref_path, strlen($meel_base)), '/');
+    $seg = explode('/', $rel_path)[0] ?? '';
+    if (isset($modules[$seg])) {
+        $module = $modules[$seg];
+        $module['key'] = $seg;
     }
 }
 $accent = $module['accent'] ?? $type['accent'];
@@ -176,11 +174,9 @@ $reason = (isset($_GET['reason']) && is_string($_GET['reason'])) ? htmlspecialch
             --acc-a15shadow: <?= meel_err_alpha($accent, 38) ?>;
             --acc-a25shadow: <?= meel_err_alpha($accent, 64) ?>;
             --acc-a45shadow: <?= meel_err_alpha($accent, 115) ?>;
-
             --acc-text: <?= $accent ?>;
             --acc2-text: <?= $accent2 ?>;
         }
-
         html[data-theme="light"] {
             --acc-text: <?= meel_err_shade($accent) ?>;
             --acc2-text: <?= meel_err_shade($accent2) ?>;
@@ -194,40 +190,31 @@ $reason = (isset($_GET['reason']) && is_string($_GET['reason'])) ? htmlspecialch
         <div class="absolute top-1/4 left-1/3 -translate-x-1/2 w-[500px] h-[500px] rounded-full blur-[140px]" style="background: var(--acc-a10)"></div>
         <div class="absolute bottom-1/4 right-1/3 translate-x-1/2 w-[400px] h-[400px] rounded-full blur-[120px]" style="background: var(--acc-a10)"></div>
     </div>
-
     <div class="err-scanlines absolute inset-0 pointer-events-none opacity-5 z-0" style="background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 6px 100%;"></div>
-
     <main class="relative z-10 flex-grow flex items-center justify-center p-6">
         <div class="max-w-md w-full glass-panel rounded-3xl p-8 text-center relative overflow-hidden">
-
             <div class="absolute top-0 left-0 right-0 h-[2px]"
                 style="background: linear-gradient(to right, transparent, var(--acc), transparent)"></div>
-
             <div class="relative inline-block mb-8 mt-4">
                 <div class="absolute inset-0 icon-ring rounded-full animate-pulse"></div>
                 <div class="relative w-24 h-24 bg-slate-900/80 rounded-2xl flex items-center justify-center mx-auto icon-box">
                     <i data-lucide="<?= $type['icon'] ?>" class="w-12 h-12 glow-effect animate-pulse" style="color: var(--acc-text)"></i>
                 </div>
             </div>
-
             <p class="text-[10px] font-bold uppercase tracking-[0.5em] mb-3" style="color: var(--acc2-text)">
                 Error Protocol :: <?= $type['protocol'] ?>
             </p>
-
             <h1 class="text-3xl sm:text-4xl font-black tracking-tight mb-4 text-white uppercase glitch-text">
                 <?= htmlspecialchars($type['title']) ?>
             </h1>
-
             <p class="text-slate-400 text-sm leading-relaxed mb-6 max-w-xs mx-auto">
                 <?= htmlspecialchars($type['desc']) ?>
             </p>
-
             <?php if ($reason !== ''): ?>
                 <div class="mb-6 mx-auto max-w-xs text-left text-[10px] leading-relaxed text-slate-500 font-mono border border-white/10 rounded-xl px-4 py-3">
                     <span style="color: var(--acc2-text)">alasan:</span> <?= $reason ?>
                 </div>
             <?php endif; ?>
-
             <div class="flex flex-col gap-3 mb-4">
                 <a href="<?= htmlspecialchars($meel_base . '/') ?>"
                     class="group relative w-full inline-flex items-center justify-center gap-3 px-8 py-4 back-btn text-white font-bold uppercase tracking-widest text-xs rounded-2xl">
@@ -235,7 +222,6 @@ $reason = (isset($_GET['reason']) && is_string($_GET['reason'])) ? htmlspecialch
                     Ke Halaman Utama
                 </a>
             </div>
-
             <div class="pt-4 border-t border-white/10 text-[9px] text-slate-500 font-mono tracking-wider flex justify-between items-center px-2">
                 <span><?= $module ? 'SRC: ' . htmlspecialchars($module['key']) : 'SYS_URI: ' . htmlspecialchars($_SERVER['REQUEST_URI'] ?? 'UNKNOWN') ?></span>
                 <span class="font-semibold animate-pulse" style="color: var(--acc-text)">● <?= $type['dot'] ?></span>
@@ -243,7 +229,6 @@ $reason = (isset($_GET['reason']) && is_string($_GET['reason'])) ? htmlspecialch
 
         </div>
     </main>
-
     <div class="w-full text-center pb-6 relative z-20">
         <?php include __DIR__ . '/../partials/footer.php'; ?>
     </div>

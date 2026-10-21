@@ -13,18 +13,10 @@ $is_ajax = !empty($_SERVER['HTTP_HX_REQUEST']);
 if (!function_exists('safe_comment_back_url')) {
     function safe_comment_back_url(): string
     {
-        $ref_url = $_SERVER['HTTP_REFERER'] ?? '';
-        if ($ref_url !== '') {
-            $allowed_host = parse_url('http://' . ($_SERVER['HTTP_HOST'] ?? 'localhost'), PHP_URL_HOST);
-            $ref_host = parse_url($ref_url, PHP_URL_HOST);
-            if ($ref_host !== $allowed_host) {
-                $ref_url = '';
-            }
-        }
-        return $ref_url !== '' ? $ref_url : 'index.php';
+        $ref = meel_same_origin_referer();
+        return $ref !== null ? $ref : base_url('/');
     }
 }
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     if ($is_ajax) {
@@ -36,7 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     }
     exit;
 }
-
 if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
     if ($is_ajax) {
         http_response_code(403);
@@ -49,7 +40,6 @@ if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
     }
     exit;
 }
-
 $rateKey = 'user_' . ($_SESSION['user_id'] ?? 0);
 $rateRole = get_user_role($conn, (int)($_SESSION['user_id'] ?? 0));
 $rateCheck = RateLimiter::check($rateKey, 'comment', $rateRole);
@@ -65,16 +55,12 @@ if (!$rateCheck['allowed']) {
     }
     exit;
 }
-
 $comment_id = (int)($_POST['id'] ?? ($_GET['id'] ?? 0));
-
 if (defined('APP_DEBUG') && APP_DEBUG) { error_log("DELETE_COMMENT.PHP - ID: $comment_id"); }
-
 $interaction = new MediaInteraction($conn, $_SESSION['user_id'] ?? null);
 $result = $interaction->deleteComment($comment_id);
 
 if (defined('APP_DEBUG') && APP_DEBUG) { error_log("DELETE_COMMENT.PHP - Result: " . json_encode($result)); }
-
 if (!$result['success']) {
     if (defined('APP_DEBUG') && APP_DEBUG) { error_log("DELETE_COMMENT - ERROR: {$result['message']}"); }
     if ($is_ajax) {
@@ -88,11 +74,9 @@ if (!$result['success']) {
     }
     exit;
 }
-
 if ($is_ajax) {
     require_once __DIR__ . '/../../modules/media/MediaViewer.php';
     require_once __DIR__ . '/../../modules/core/CommentRenderer.php';
-
     $media_type = (($_POST['media_type'] ?? 'video') === 'music') ? 'music' : 'video';
     $media_id = (int)($_POST['media_id'] ?? 0);
     if ($media_id <= 0) {
@@ -102,20 +86,15 @@ if ($is_ajax) {
         echo '<div class="p-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-red-500/30 bg-red-500/10 text-red-400">Media tidak valid.</div>';
         exit;
     }
-
     $playlist_context = (int)($_POST['playlist_id'] ?? 0);
-
     $viewer = new MediaViewer($conn, (int)($_SESSION['user_id'] ?? 0), $media_type, $media_id);
     $comments_data = $viewer->getComments();
     $grouped = $comments_data['grouped'];
     $user_map = $comments_data['user_map'];
-
     $media_row = $viewer->getMediaData();
     $GLOBALS['uploader_id'] = (int)($media_row['user_id'] ?? 0);
-
     $GLOBALS['id'] = $media_id;
     $GLOBALS['user_map'] = $user_map;
-
     if (empty($grouped)) {
         render_comment_empty_state($media_type);
     } else {
@@ -123,7 +102,6 @@ if ($is_ajax) {
     }
     exit;
 }
-
 $_SESSION['success'] = $result['message'];
 header('Location: ' . safe_comment_back_url());
 exit;

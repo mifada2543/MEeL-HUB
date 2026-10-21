@@ -810,9 +810,14 @@ Error handling is centralized in one dynamic page `err/index.php` — content & 
 |---|---|---|
 | `code` | `denied` / `not_found` / `banned` / `revoked` / `maintance` | Error type + HTTP status (403 / 404 / 403 / 401 / 503). Default `not_found` |
 | `reason` | text | Extra reason line (used by IP-ban redirect) |
-| `back` | relative path | Overrides the "Back" button target |
 
-**Source adaptation:** the origin module is detected from `HTTP_REFERER` (video/music/books/drive/admin/profile) → accent color & back-button label change automatically. Back-button priority: `?back=` → referer (GET page) → module home → hub (`index.php`).
+**Source adaptation:** the origin module is detected from `HTTP_REFERER` (video/music/books/drive/admin/profile) → accent color & source label change automatically. Detection goes through `meel_same_origin_referer()`, so a referer from another host is ignored.
+
+**The "Back" target on this page** is always the home page (`index.php`) — an error page needs one reliable way out, not another page that might be broken too.
+
+> The `?back=` parameter used to be listed here but was never implemented. It is
+> deliberately not added: a query parameter that overrides a redirect target is
+> an open redirect hole unless it is validated.
 
 ### 15c. Keyboard Shortcuts
 
