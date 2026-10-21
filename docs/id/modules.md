@@ -1084,6 +1084,59 @@ dipindah ke `arcade/rhythm/manage/`. Meminta URL itu menghasilkan
 `arcade/rhythm/manage/edit.php`, berkas yang sama sudah dituju dua URL editor
 lainnya.
 
+#### Tabel Rute Utama
+
+Sejak migrasi routing, semua URL publik menggunakan URL bersih (tanpa ekstensi `.php`). Request masuk ke front controller `router.php` yang me-resolve path ke file handler melalui tabel rute di `modules/core/Router.php`.
+
+**Cara kerja:**
+
+```
+Request: /MEeL/music/beranda?format=ogg
+  → .htaccess: semua request non-file/non-dir di-rewrite ke router.php (kecuali media upload/)
+  → modules/core/Router.php: routeFor('music/beranda') → handler 'music/index.php'
+  → require music/index.php dengan query string asli
+```
+
+**Aturan `.htaccess` (root):**
+- Semua URL bersih (contoh `video/watch`, `music/beranda`, `admin/stats`) → `router.php`
+- File `.php` lama (contoh `video/watch.php`, `music/index.php`, `upload_advanced.php`,
+  `admin/cookies.php`, `admin/analys`, `admin/content.php`, `admin/content`) → **301** ke URL bersih (query terjaga, bookmark lama tetap jalan)
+- Varian trailing-slash (contoh `/video/upload/`) → **301** ke non-slash
+- `DirectorySlash Off` di direktori media (`video/upload`, `music/upload`, `books/upload`)
+  agar `/video/upload` dilayani router (bukan redirect mod_dir)
+
+**Skema `beranda`:** tiap modul punya halaman utama `beranda`
+(`video/beranda`, `music/beranda`, `books/beranda`, `drive/beranda`, `admin/beranda`,
+`arcade/beranda`). Halaman `index.php` lama tetap jalan sebagai alias.
+
+**Tabel rute utama (`modules/core/Router.php`):**
+
+| URL | Handler (file) |
+|---|---|
+| `/`, `/beranda` | `index.php` (hub) |
+| `/introduction`, `/update`, `/upload`, `/transcode` | `introduction.php`, `update.php`, `upload_advanced.php`, `transcode.php` |
+| `/err`, `/err/offline` | `err/index.php` (dinamis `?code=`), `err/offline.php` (PWA) |
+| `/video/beranda`, `/video/watch`, `/video/search`, `/video/load-more`, `/video/upload`, `/video/stream` | `video/*.php` |
+| `/music/beranda`, `/music/watch`, `/music/search`, `/music/load-more`, `/music/upload`, `/music/playlist`, `/music/playlist-action`, `/music/stream`, `/music/file` | `music/*.php` |
+| `/music/<nama-playlist>` | `music/view_playlist.php` (route slug playlist — lihat di bawah) |
+| `/books/beranda`, `/books/read`, `/books/read-pdf`, `/books/search`, `/books/upload`, `/books/file` | `books/*.php` |
+| `/drive/beranda`, `/drive/upload`, `/drive/delete`, `/drive/download`, `/drive/stream` | `drive/*.php` |
+| `/profile/<username>` (`?tab=all\|video\|music`), `/profile/channel-more`, `/profile/edit`, `/profile/manage`, `/profile/edit-video`, `/profile/edit-music`, `/profile/notification` | `profile/index.php` (profil + grid channel publik, tab via query), `profile/channel_more.php` (fragment HTMX), `profile/edit-video.php` (pemilik, non-admin), `profile/edit-music.php` (pemilik, non-admin), `profile/notification.php`, `controllers/profile/*.php` |
+| `/admin/beranda`, `/admin/edit-video`, `/admin/edit-music`, `/admin/stats`, `/admin/user-management`, `/admin/meelcoin`, `/admin/activity-log`, `/admin/catur`, `/admin/mfa-reset`, `/admin/chat` | `admin/*.php` (edit-video/edit-music khusus admin), `controllers/admin/*.php` |
+| `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/mfa-setup`, `/auth/mfa-verify` | `auth/*.php` |
+| `/arcade/beranda`, `/arcade/chess`, `/arcade/rhythm`, `/arcade/rhythm/game`, `/arcade/rhythm/editor`, `/arcade/rhythm/manage`, `/arcade/rhythm/edit` | `arcade/*.php` *(ekstensi — memerlukan folder arcade terpasang)*. Ketiga URL editor (`/arcade/rhythm/editor`, `/arcade/rhythm/edit`, `/arcade/rhythm/manage/edit`) menuju berkas yang sama, `arcade/rhythm/manage/edit.php` |
+| `/arcade/rhythm/api/songs`, `/arcade/rhythm/api/beatmap`, `/arcade/rhythm/api/upload`, `/arcade/rhythm/api/delete` | `arcade/rhythm/api/*.php` (MEeL!Mania) *(ekstensi)* |
+| `/api/like`, `/api/comment`, `/api/delete-comment`, `/api/auto-metadata`, `/api/pdf`, `/api/download-transcode`, `/api/post-encode`, `/api/theme`, `/api/ajax-refresh`, `/api/server-stats`, `/api/server-stats-sse`, `/api/notification`, `/api/chat`, `/api/meelcoin` | `controllers/api/*.php` |
+| `/system/mfa` | `controllers/system/mfa.php` |
+
+> **Route slug playlist:** playlist punya URL berbasis nama — `/music/<nama-playlist>`
+> (contoh `/music/leo-need`). Slug dibuat dari nama playlist (`playlistSlug()`),
+> dijamin unik per user (`getUserPlaylistRoutes()`); nama non-ASCII jatuh ke `playlist`,
+> nama bentrok dengan rute modul atau slug lain diberi akhiran `-<id>`. Route eksak
+> (`beranda`, `watch`, dll.) selalu menang; selain itu dianggap slug playlist
+> (`resolvePlaylistSlug()`). URL lama `music/playlist?id=X` tetap didukung.
+
+
 ### 23. `modules/auth/` dan konfigurasi bersama
 
 `auth/config.php` di-include setiap halaman: ia memuat kredensial dari

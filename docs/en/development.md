@@ -361,23 +361,6 @@ assets/css/shared/
 ---
 
 ## Testing
-
-### Manual Testing Checklist
-
-**Frontend:**
-- [ ] No errors in browser console
-- [ ] HTMX request/response working
-- [ ] Mobile responsive (min width 320px)
-- [ ] Dark mode consistent
-- [ ] All buttons and links functional
-
-**Backend:**
-- [ ] Prepared statements not erroring
-- [ ] CSRF validation working
-- [ ] Role-based access working
-- [ ] File upload validation working
-- [ ] Error handling showing appropriate messages
-
 ### Internal mysqli Properties Cannot Be Faked
 
 `num_rows`, `affected_rows`, and similar internal properties are **read-only virtual properties** in PHP 8.x. Overriding the method and `__get()` alike **do not intervene** — `ReflectionMethod('mysqli_result', 'num_rows')` even throws *method does not exist*, which proves it is purely a property.
@@ -448,80 +431,20 @@ MEeL implements TOTP per [RFC 6238](https://datatracker.ietf.org/doc/html/rfc623
 | Window | ±1 (90 seconds tolerance) |
 | Encoding | Base32 |
 
-### Helper Functions (in `modules/auth/helpers/mfa.php`)
+### Helper Functions
 
-```php
-// ─── GENERATE SECRET ───────────────────────────────────────
-function generate_mfa_secret(): string {
-    $random = random_bytes(20);  // 160-bit
-    // Base32 encode (A-Z, 2-7)
-    $base32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    $secret = '';
-    $bits = 0; $buffer = 0;
-    foreach (str_split($random) as $byte) {
-        $buffer = ($buffer << 8) | ord($byte);
-        $bits += 8;
-        while ($bits >= 5) {
-            $bits -= 5;
-            $secret .= $base32[($buffer >> $bits) & 31];
-        }
-    }
-    return $secret;
-}
-
-// ─── GENERATE TOTP ─────────────────────────────────────────
-function generate_totp(string $secret): string {
-    $decoded = base32_decode($secret);  // Base32 → raw bytes
-    $counter = pack('N*', 0) . pack('N*', intdiv(time(), 30));
-    $hash = hash_hmac('sha1', $counter, $decoded, true);
-    $offset = ord($hash[19]) & 0xf;
-    $code = (
-        ((ord($hash[$offset]) & 0x7f) << 24) |
-        ((ord($hash[$offset+1]) & 0xff) << 16) |
-        ((ord($hash[$offset+2]) & 0xff) << 8) |
-        (ord($hash[$offset+3]) & 0xff)
-    ) % 1000000;
-    return str_pad((string)$code, 6, '0', STR_PAD_LEFT);
-}
-
-// ─── VERIFY TOTP (with window ±1) ────────────────────────
-function verify_totp(string $secret, string $code): bool {
-    for ($i = -1; $i <= 1; $i++) {
-        // Generate TOTP with time offset $i step
-        $expected = generate_totp_at($secret, time() + ($i * 30));
-        if (hash_equals($expected, $code)) return true;
-    }
-    return false;
-}
-```
+The implementation is in `modules/auth/helpers/mfa.php` — that file is the single
+source of truth, so it is not copied into the documentation. Its functions:
+`generate_mfa_secret()`, `generate_totp()`, `verify_totp()`, `verify_totp_step()`,
+`generate_backup_codes()`, `verify_backup_code()`, `generate_otpauth_url()`,
+`base32_decode()`.
 
 ### Backup Codes System
 
-```php
-// ─── GENERATE 8 BACKUP CODES ───────────────────────────────
-function generate_backup_codes(): array {
-    $plain = [];
-    $hashed = [];
-    for ($i = 0; $i < 8; $i++) {
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);  // 6 digits
-        $plain[] = $code;
-        $hashed[] = password_hash($code, PASSWORD_DEFAULT);  // bcrypt
-    }
-    return ['plain' => $plain, 'hashed' => $hashed];
-}
-
-// ─── VERIFY BACKUP CODE (single-use) ───────────────────────
-function verify_backup_code(string $hashedJson, string $code): array {
-    $codes = json_decode($hashedJson, true) ?? [];
-    foreach ($codes as $i => $hash) {
-        if (password_verify($code, $hash)) {
-            array_splice($codes, $i, 1);  // Remove used code
-            return ['valid' => true, 'remaining' => $codes];
-        }
-    }
-    return ['valid' => false, 'remaining' => $codes];
-}
-```
+Eight backup codes, each 6 digits, stored as a `password_hash()` (bcrypt,
+one-way) hash that cannot be read back. A code that has been used is removed
+from the list when it is verified, so each code works exactly once. The
+implementation is in `modules/auth/helpers/mfa.php`.
 
 ### Database Schema
 
@@ -596,17 +519,6 @@ This project is licensed under **GNU General Public License v3.0 (GPLv3)**. See 
  * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3
  */
 ```
-
-### Contribution Checklist
-
-- [ ] Use **Prepared Statements** for all database queries
-- [ ] Sanitize POST/GET input
-- [ ] CSRF token on every new POST form
-- [ ] Role check before sensitive operations
-- [ ] Update `update.php` with changelog
-- [ ] Every new file has **GPL v3 copyright header**
-- [ ] Changes clearly marked with **modification notice**
-
 ### Git Commit Convention
 
 ```
@@ -811,8 +723,7 @@ These `@var` lines are **functional** (not decorative comments) — removing the
 | Form | Accepted by PHP 8.3? |
 |---|---|
 | Intelephense 1.18.5 stub: `bind_param($types, &$var1, &...$_)` | ❌ **REJECTED by the engine** |
-| Real: `bind_param(string $types, mixed &...$vars): bool` | �
- ACCEPTED |
+| Real: `bind_param(string $types, mixed &...$vars): bool` | ✅ **ACCEPTED** |
 
 The Intelephense stub has not caught up with the `mysqli_stmt::bind_param()` signature change in PHP 8.0, so the analyzer and the engine **cannot both be satisfied**. It is handled through `.vscode/settings.json` → `intelephense.diagnostics.exclude`, locked to that file and code only (`["P1038"]`) so the other checks in the same file stay active. Practical consequence: `FakeMysqliResult::close()` is written `: void` to match the analyzer stub, even though the PHP runtime also accepts the untyped form — the `: void` form satisfies both.
 

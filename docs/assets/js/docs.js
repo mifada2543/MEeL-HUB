@@ -12,10 +12,9 @@ const DOCS = {
             ['development',       '👨‍💻 Dev'],
             ['testing',           '🧪 Test'],
             ['troubleshooting',   '🔧 Troubleshoot'],
-            ['problem-solved',    '🌍 Problems'],
-            ['upload-issues',     '📥 Upload'],
             ['pwa',               '📱 PWA'],
-            ['info',              '📖 Info'],
+            ['arcade-optional',   '🕹️ Arcade'],
+            ['download',          '🤖 Download'],
         ]
     },
     id: {
@@ -31,10 +30,9 @@ const DOCS = {
             ['development',       '👨‍💻 Dev'],
             ['testing',           '🧪 Test'],
             ['troubleshooting',   '🔧 Troubleshoot'],
-            ['problem-solved',    '🌍 Masalah'],
-            ['upload-issues',     '📥 Upload'],
             ['pwa',               '📱 PWA'],
-            ['info',              '📖 Info'],
+            ['arcade-optional',   '🕹️ Arcade'],
+            ['download',          '🤖 Download'],
         ]
     }
 };
