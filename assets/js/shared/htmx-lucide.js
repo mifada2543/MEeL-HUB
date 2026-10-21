@@ -32,11 +32,17 @@
 
   renderIcons();
 
-  if (document.body) {
-    document.body.addEventListener('htmx:afterOnLoad', function (e) {
-      renderIcons((e.detail && e.detail.target) || document.body);
-    });
-  }
+  // Listener-nya didaftarkan di `document`, bukan `document.body`.
+  //
+  // File ini bisa dimuat di dalam <head> — dan saat itu `document.body`
+  // masih null. Guard `if (document.body)` akan lolos, listener tidak
+  // pernah terdaftar, dan setiap swap htmx berikutnya diam-diam tidak
+  // merender ikon: yang tersisa cuma <i data-lucide> yang kosong.
+  // Event htmx memakai bubbles:true, jadi mendaftarkannya di `document`
+  // aman dari mana pun file ini dimuat.
+  document.addEventListener('htmx:afterOnLoad', function (e) {
+    renderIcons((e.detail && e.detail.target) || document.body);
+  });
 })();
 
 /* reference build: MEeL-C3H7NO2S [1d53d43664654045] */

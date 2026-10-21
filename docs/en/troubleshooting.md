@@ -284,6 +284,30 @@ Verify the mount point exists and is accessible.
 <script>lucide.createIcons();</script>
 ```
 
+### ❌ Icons disappear after an HTMX swap
+
+**Symptom:** the icons are there when the page loads, but as soon as
+something is swapped in place — pressing like/dislike, for example — the
+icons in that area vanish. A refresh brings them back, and the next swap
+takes them away again. Nothing appears in the console.
+
+**Cause:** icons are `<i data-lucide="...">` elements that Lucide replaces
+with an SVG. The replacement only happens when `lucide.createIcons()` runs.
+The server sends plain `<i data-lucide>` markup back with every swapped
+fragment, so something has to render them again afterwards.
+
+`assets/js/shared/htmx-lucide.js` does that on `htmx:afterOnLoad`. It
+registers that listener on `document`, **not** on `document.body` — on
+purpose. The file is loaded in `<head>` on some pages, and at that point
+`document.body` is still `null`; a listener registered on `document.body`
+would never be attached, and every later swap would silently leave the
+icons unrendered.
+
+**Check:**
+- `assets/js/shared/htmx-lucide.js` is loaded on the page
+- the page does not bundle its own copy of the file
+- in the console: `typeof lucide` is `"object"` and `lucide.createIcons` exists
+
 ### ❌ HTMX not working
 
 **Check:**

@@ -552,6 +552,41 @@ Tunggu hingga kuota ter-reset, atau minta admin untuk meng-upload-kan.
 
 ---
 
+## Masalah Ikon
+
+### ❌ Ikon lucide tidak tampil
+
+**Solusi:**
+```html
+<script src="/MEeL/assets/js/compatibilitas/lucide.js"></script>
+<script>lucide.createIcons();</script>
+```
+
+### ❌ Ikon hilang setelah swap htmx
+
+**Gejala:** ikon ada saat halaman dimuat, tapi begitu ada bagian yang
+diganti — misalnya saat like/dislike diklik — ikon di area itu menghilang.
+Setelah halaman di-refresh ikon kembali muncul, dan swap berikutnya
+menghapusnya lagi. Tidak ada apa-apa di console.
+
+**Penyebab:** ikon adalah elemen `<i data-lucide="...">` yang diganti Lucide
+menjadi SVG. penggantian itu hanya terjadi saat `lucide.createIcons()`
+dijalankan. Server selalu mengirim markup `<i data-lucide>` apa adanya
+dalam setiap fragmen yang di-swap, jadi ada yang harus merender ulang
+setelahnya.
+
+`assets/js/shared/htmx-lucide.js` yang melakukannya pada
+`htmx:afterOnLoad`. Listener-nya didaftarkan di `document`, **bukan** di
+`document.body` — itu disengaja. Di beberapa halaman file ini dimuat di
+dalam `<head>`, dan saat itu `document.body` masih `null`; listener yang
+didaftarkan di `document.body` tidak akan pernah terpasang, dan setiap swap
+berikutnya akan meninggalkan ikon apa adanya tanpa galat apa pun.
+
+**Cek:**
+- `assets/js/shared/htmx-lucide.js` termuat di halaman tersebut
+- halaman tidak memuat salinan sendiri berkas itu
+- di console: `typeof lucide` adalah `"object"` dan `lucide.createIcons` ada
+
 ## Error Codes
 
 ### HTTP Status Codes
