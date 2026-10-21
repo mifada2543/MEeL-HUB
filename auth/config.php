@@ -28,6 +28,15 @@ if (!isset($conn) || $conn === null) {
         exit(1);
     }
     $conn->set_charset('utf8mb4');
+
+    $tzOffset = date('P');
+    if ($tzOffset !== '') {
+        try {
+            $conn->query("SET time_zone = '" . $conn->real_escape_string($tzOffset) . "'");
+        } catch (\Throwable $e) {
+            error_log('[MEeL] gagal menyamakan time_zone MySQL: ' . $e->getMessage());
+        }
+    }
 }
 if (!defined('MEEL_BASE_URL')) {
     require_once __DIR__ . '/../modules/core/base_url.php';

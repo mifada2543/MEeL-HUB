@@ -1,5 +1,6 @@
 <?php
 define('MEEL_ROOT', dirname(__DIR__));
+require_once MEEL_ROOT . '/modules/core/bootstrap.php';
 require_once MEEL_ROOT . '/modules/autoload.php';
 require_once MEEL_ROOT . '/modules/core/helpers.php';
 require_once __DIR__ . '/DbTestHelper.php';

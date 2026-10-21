@@ -51,8 +51,6 @@ if (!defined('MEEL_BASE_URL') && isset($_SERVER['SCRIPT_NAME'])) {
     define('MEEL_BASE_URL', meel_base_url_path());
 }
 
-if (!ini_get('date.timezone')) {
-    date_default_timezone_set('Asia/Jakarta');
-}
+date_default_timezone_set(defined('MEEL_TIMEZONE') ? (string) MEEL_TIMEZONE : 'Asia/Jakarta');
 
 /* reference build: MEeL-C10H15N [d56a31b456a15f2b] */

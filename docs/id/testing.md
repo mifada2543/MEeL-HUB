@@ -80,6 +80,7 @@ logs/tests/
 | `SsrfGuardTest.php` | 76 | **Guard SSRF** — allowlist protokol, range IP private/publik (v4 & v6), penolakan record DNS campuran, denylist hostname, HTTP pinning (lihat bawah) |
 | `DriveSecurityTest.php` | 13 | **Private Drive** — akses cross-user, path traversal, symlink escape, boundary realpath, kuota, reservasi nama atomik (lihat bawah) |
 | `DriveStorageBasePathTest.php` | 8 | Resolusi base path storage Drive — konstanta `MEEL_HDD_DRIVE`, fallback, prioritas |
+| `DateTimeSourceTest.php` | 7 | **Jam aplikasi** — zona waktu diset tanpa syarat, `time_zone` sesi MySQL disejajarkan dengannya, kolom yang dibaca `strtotime()` tidak pernah ditulis dengan jam database, dan berkas yang sengaja mencampur keduanya ada di daftar eksplisit |
 | `WebSafeErrorOutputTest.php` | 2 | **Output error yang aman untuk web** — `STDERR`/`STDOUT`/`STDIN` hanya di perkakas CLI, berkas yang dijaga `PHP_SAPI`, atau berkas yang tidak di-include siapa pun |
 | `AdminFilteredRepositoryTest.php` | 13 | Basis repository admin bersama — query bersama tetap di basis, tiap repository menjaga tabel & aliasnya, perilaku filter keduanya tetap berbeda |
 | `ValidatingProxyTest.php` | 27 | **Validating forward proxy** — probe CONNECT/GET nyata: target private ditolak (502), target publik di-tunnel, bind loopback-only, absolute-URI rusak ditolak (lihat bawah) |
@@ -97,7 +98,7 @@ logs/tests/
 | `ChessHelpersIntegrationTest.php` | 6 | Helper catur dengan DB real |
 | `ChessRematchIntegrationTest.php` | 21 | Alur rematch catur dengan DB real |
 | `GarbageCollectorChessRoomsIntegrationTest.php` | 15 | Garbage collection room catur dengan DB real |
-| `MeelCoinIntegrationTest.php` | 15 | Spend/refund/refill, batas role, countdown |
+| `MeelCoinIntegrationTest.php` | 18 | Spend/refund/refill, batas role, countdown yang tidak pernah mundur, jendela refill yang dimulai saat spend |
 | `SystemTest.php` | 2 | Class existence & utilitas System |
 
 ### Test Helpers
