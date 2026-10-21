@@ -171,6 +171,38 @@ class MediaViewer {
 
 **Class:** `MediaInteraction` — like/dislike and comment deletion.
 
+#### The like/dislike buttons (`partials/like_dislike.php`)
+
+The container is rendered from **one** partial, included by `music/watch.php`,
+`video/watch.php` and `controllers/api/like.php`.
+
+That matters because the container is replaced wholesale: the buttons carry
+`hx-swap="outerHTML"`, so whatever the server sends back becomes the new
+container. The markup used to be written out three times, and the copies had
+drifted apart — the API copy still had the old `plus` icon and the word
+"Playlist" where the pages had `list-plus` and "Simpan", and the accent
+colour differed too (`red-500` vs `red-600`, orange vs white for the active
+dislike). Whichever copy was stale was the one that won, because the API
+answers the swap. So pressing like made the button change shape in front of
+you: it came back as a plain plus, labelled "Playlist" instead of "Simpan".
+
+Now both sides render the same partial, so the swapped-in container is
+byte-for-byte the one that was already on screen.
+
+The partial takes the differences as data instead of as a second copy:
+
+| Variable | Meaning |
+|---|---|
+| `$like_dislike_media_id` | media id |
+| `$like_dislike_media_type` | `music` or `video` — picks the accent colour and whether the save button appears |
+| `$like_dislike_state` | `''`, `like` or `dislike` |
+| `$like_dislike_likes` / `$like_dislike_dislikes` | counters |
+| `$like_dislike_csrf` | CSRF token for the `hx-vals` payload |
+| `$like_dislike_rate_limit` | seconds left when the rate limiter rejects the request; `0` means normal |
+
+`LikeDislikePartialTest` keeps the copies from coming back: it fails if the
+container markup exists in more than one file.
+
 ### 4. `modules/core/Uploader.php`
 
 **Class:** `Uploader` (uses `FfmpegUtils` trait) — local file uploads with:

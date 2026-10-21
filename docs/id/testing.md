@@ -76,6 +76,7 @@ logs/tests/
 | `BootstrapTest.php` | 9 | Env detection, konfigurasi error reporting, timezone |
 | `CssManifestTest.php` | 18 | Manifest CSS modul — semua entri ada, **semua** folder ter-precache oleh `SwPrecache`, entri precache resolve, versi SW deterministik |
 | `SharedJsTest.php` | 7 | Shared JS harness — alur download-backup-codes |
+| `LikeDislikePartialTest.php` | 7 | **Tombol like/dislike** — markup kontainer hanya ada di satu berkas, semua pemakai memakai partial bersama, dan varian musik & video hanya berbeda pada warna aksen, label, dan tombol simpan |
 | `LucideLoadOrderTest.php` | 6 | **Lucide + HTMX** — helper render termuat, stub antrean di `partials/link.php` bersifat sinkron, dan listener swap tetap terdaftar walau `document.body` belum ada (skrip dimuat di `<head>`) |
 | `StreamAuthTest.php` | 8 | Guard otorisasi endpoint stream |
 | `SsrfGuardTest.php` | 76 | **Guard SSRF** — allowlist protokol, range IP private/publik (v4 & v6), penolakan record DNS campuran, denylist hostname, HTTP pinning (lihat bawah) |
