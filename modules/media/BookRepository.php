@@ -1,5 +1,4 @@
 <?php
-
 class BookRepository
 {
     private \mysqli $conn;

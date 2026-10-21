@@ -1,10 +1,8 @@
 <?php
-
 require_once __DIR__ . '/../core/helpers.php';
 
 trait FfmpegUtils
 {
-
     protected function getEnvPrefix(): string
     {
         return "export LD_LIBRARY_PATH=''; export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8; ";

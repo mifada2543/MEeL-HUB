@@ -1,5 +1,4 @@
 <?php
-
 class MeelCoin
 {
     private static ?array $settingsCache = null;

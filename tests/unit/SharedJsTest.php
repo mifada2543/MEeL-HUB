@@ -4,7 +4,6 @@ use PHPUnit\Framework\TestCase;
 /** @coversNothing */
 class SharedJsTest extends TestCase
 {
-
     private const EXPECTED_KEYS = [
         'AUDIO_STATE' => 'meel_audio_state',
         'SKIP_RESUME_ONCE' => 'skip_resume_once',

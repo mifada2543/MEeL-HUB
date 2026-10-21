@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Aturan protokol untuk proxy validasi.
  *

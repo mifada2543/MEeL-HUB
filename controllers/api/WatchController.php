@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/../../modules/core/helpers.php';
 require_once __DIR__ . '/../../modules/auth/RateLimiter.php';
 require_once __DIR__ . '/../../modules/media/MediaViewer.php';
@@ -62,7 +61,6 @@ abstract class AbstractWatchController
 
     protected function baseViewData(array $v, $rekom = null): array
     {
-
         $comments_data = $this->isLoggedIn()
             ? $this->viewer->getComments()
             : ['grouped' => [], 'user_map' => []];

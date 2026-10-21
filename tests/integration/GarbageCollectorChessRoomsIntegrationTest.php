@@ -39,7 +39,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     protected function tearDown(): void
     {
-
         if ($this->throttleBackup !== null) {
             @file_put_contents($this->throttleFile, $this->throttleBackup);
         } else {
@@ -166,7 +165,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testStartedGameWithoutMovesFallsBackToCreatedAt(): void
     {
-
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 8 * 86400));
 
@@ -192,7 +190,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testFinishedGameWithGameOverEventIsKept(): void
     {
-
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 30 * 86400));
         $this->insertMove($code, date('Y-m-d H:i:s', time() - 8 * 86400));
@@ -218,7 +215,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testStaleLobbyWithMovesCleansBoth(): void
     {
-
         $code = $this->newCode();
         $this->insertRoom($code, false, date('Y-m-d H:i:s', time() - 2 * 86400));
         $this->insertMove($code, date('Y-m-d H:i:s', time() - 2 * 86400));
@@ -233,7 +229,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testFinishedGameWithResignIsKept(): void
     {
-
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 30 * 86400));
         $this->insertMove($code, date('Y-m-d H:i:s', time() - 8 * 86400));
@@ -247,7 +242,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testFinishedGameWithGameOverIsKept(): void
     {
-
         $code = $this->newCode();
         $this->insertRoom($code, true, date('Y-m-d H:i:s', time() - 30 * 86400));
         $this->insertMove($code, date('Y-m-d H:i:s', time() - 8 * 86400));
@@ -261,7 +255,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testMixedRunKeepsFinishedAndCleansStuckInSameCall(): void
     {
-
         $finished = $this->newCode();
         $this->insertRoom($finished, true, date('Y-m-d H:i:s', time() - 30 * 86400));
         $this->insertMove($finished, date('Y-m-d H:i:s', time() - 8 * 86400));
@@ -282,7 +275,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testMixedRunOnlyRemovesStaleRooms(): void
     {
-
         $stale = $this->newCode();
         $this->insertRoom($stale, false, date('Y-m-d H:i:s', time() - 2 * 86400));
 
@@ -304,7 +296,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testThrottleSkipsCleanupWhenRecentlyRun(): void
     {
-
         @file_put_contents($this->throttleFile, time());
         $code = $this->newCode();
         $this->insertRoom($code, false, date('Y-m-d H:i:s', time() - 2 * 86400));
@@ -317,7 +308,6 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testThrottleFileNotWritableIsReclaimedWithoutWarning(): void
     {
-
         $file = $this->throttleFile;
         @file_put_contents($file, '123');
         chmod($file, 0444);

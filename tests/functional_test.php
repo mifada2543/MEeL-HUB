@@ -1,5 +1,4 @@
 <?php
-
 define('PROJECT_ROOT', realpath(__DIR__ . '/..'));
 define('EXCLUDE_DIRS', ['vendor', 'node_modules', '.git', 'assets/dict', 'data_drive']);
 define('EXCLUDE_FILES', ['config.example.php', 'settings.example.php', 'test.php', '.gitkeep']);
@@ -212,7 +211,6 @@ function testConfigCheck(): void {
     $csrfContent = file_exists($csrfFile) ? file_get_contents($csrfFile) : '';
 
     foreach ($checks as $name => $pattern) {
-
         if (preg_match($pattern, $content) || preg_match($pattern, $sessionContent) || preg_match($pattern, $csrfContent)) {
             record("{$name} ✓", true);
         } else {
@@ -247,7 +245,6 @@ function testDatabaseConnectivity(): void {
     }
 
     try {
-
         $content = file_get_contents($configFile);
 
         $hasConfig = preg_match('/\$conn\s*=\s*new\s+mysqli\(/', $content);
@@ -289,18 +286,15 @@ function testIndexPages(): void {
             $found = false;
 
             if ($partial === 'header-admin') {
-
                 if (strpos($content, 'header-admin.php') !== false) {
                     $found = true;
                 }
             } elseif ($partial === 'head') {
-
                 $found = (
                     strpos($content, 'partials/head.php') !== false ||
                     strpos($content, 'partials/link.php') !== false
                 );
             } else {
-
                 if (strpos($content, "partials/{$partial}.php") !== false) {
                     $found = true;
                 }
@@ -317,7 +311,6 @@ function testIndexPages(): void {
         }
 
         if ($hasInclusions) {
-
             $hasHtml5 = (strpos($content, '<!DOCTYPE html') !== false);
             $hasClosing = (strpos($content, '</html>') !== false);
 

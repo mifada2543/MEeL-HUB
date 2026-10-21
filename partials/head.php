@@ -129,14 +129,10 @@ $_e_robots = htmlspecialchars($_META_ROBOTS, ENT_QUOTES, 'UTF-8');
 
 <script>
 if ('serviceWorker' in navigator) {
-
     const swUrl = (<?= json_encode(rtrim($_head_root_rel, '/')) ?> || '') + '/sw.js';
     window.addEventListener('load', function() {
-
         navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' }).then(function(reg) {
-
             reg.update().catch(function() {
-
             });
 
             reg.addEventListener('updatefound', function() {
@@ -144,7 +140,6 @@ if ('serviceWorker' in navigator) {
                 if (!installing) return;
                 installing.addEventListener('statechange', function() {
                     if (this.state === 'installed' && navigator.serviceWorker.controller) {
-
                         sessionStorage.setItem('meel_pwa_update', '1');
                     }
                 });

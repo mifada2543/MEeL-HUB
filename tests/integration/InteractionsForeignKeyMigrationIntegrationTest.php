@@ -1,5 +1,4 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 class InteractionsForeignKeyMigrationIntegrationTest extends TestCase
@@ -56,7 +55,6 @@ class InteractionsForeignKeyMigrationIntegrationTest extends TestCase
     }
     private function importSchemaWithoutInteractionsFk(): void
     {
-
         $this->admin->query('CREATE DATABASE `' . self::DB_NAME . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci');
         if ($this->admin->error) {
             $this->fail('Gagal membuat database uji: ' . $this->admin->error);

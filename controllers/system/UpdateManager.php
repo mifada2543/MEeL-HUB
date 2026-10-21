@@ -1,5 +1,4 @@
 <?php
-
 class UpdateManager
 {
     private mysqli $db;
@@ -178,13 +177,11 @@ class UpdateManager
 
     private function clean(string $val): string
     {
-
         return trim($val);
     }
 
     private function redirect(): void
     {
-
         header("Location: " . base_url('/update'));
         exit;
     }

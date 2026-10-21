@@ -1,7 +1,5 @@
 <?php
-
 if (!function_exists('render_comments')) {
-
 function render_comments(int $parent_id, array $grouped, int $level = 0, string $theme = 'video', int $playlist_context = 0): void
 {
     global $id, $user_map, $uploader_id;
@@ -136,7 +134,6 @@ function render_comments(int $parent_id, array $grouped, int $level = 0, string 
 }
 
 if (!function_exists('comment_preview')) {
-
 function comment_preview(array $grouped, int $limit = 4): array
 {
     $preview_txt = 'Jadilah komentar pertama';
@@ -165,7 +162,6 @@ function comment_preview(array $grouped, int $limit = 4): array
 }
 
 if (!function_exists('render_comment_empty_state')) {
-
 function render_comment_empty_state(string $theme = 'video'): void
 {
     $color = ($theme === 'music') ? 'text-gray-700' : 'text-gray-300';

@@ -6,7 +6,6 @@ $isAjax = (isset($_GET['ajax']) && $_GET['ajax'] === '1');
 meel_storage_guard($isAjax ? 'json' : 'html');
 
 if ($isAjax) {
-
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_FILES['file_drive'])) {
         http_response_code(400);
         header('Content-Type: application/json');

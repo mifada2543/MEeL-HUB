@@ -27,7 +27,6 @@ class MediaInteraction {
             $this->syncLikesCount($table, $col, $media_id);
             $data = $this->getLikesData($table, $media_id, $col);
             return $this->getResponse(true, 'Berhasil', 200, $data);
-
         } catch (RuntimeException $e) {
             return $this->getResponse(false, $e->getMessage(), 500);
         }
@@ -115,7 +114,6 @@ class MediaInteraction {
             }
 
             return $this->getResponse(true, 'Komentar berhasil dihapus', 200);
-
         } catch (RuntimeException $e) {
             return $this->getResponse(false, $e->getMessage(), 500);
         }

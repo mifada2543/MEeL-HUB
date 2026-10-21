@@ -89,7 +89,6 @@ if ($action === 'add_to_playlist') {
 
     $conn->begin_transaction();
     try {
-
         $own = $conn->prepare('SELECT p.id FROM playlists p WHERE p.id = ? AND p.user_id = ?');
         $own->bind_param('ii', $playlist_id, $user_id);
         $own->execute();

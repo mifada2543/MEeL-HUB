@@ -173,7 +173,6 @@ if ($active_tab === 'uploads') {
         ]);
         exit;
     }
-
 }
 
 $action_filter = $_GET['action'] ?? '';
@@ -373,7 +372,6 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
     <?php if ($active_tab === 'uploads'): ?>
         <?php include __DIR__ . '/partials/activity_log_uploads.php'; ?>
     <?php endif; ?>
-
 
     <script>
         if (typeof lucide !== 'undefined') lucide.createIcons();

@@ -1,5 +1,4 @@
 <?php
-
 while (ob_get_level()) ob_end_clean();
 
 error_reporting(E_ERROR | E_PARSE);

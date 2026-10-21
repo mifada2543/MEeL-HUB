@@ -106,7 +106,6 @@ register_shutdown_function(static function () use ($upgradeDb, $freshDb, $host, 
         return;
     }
     foreach ([$upgradeDb, $freshDb] as $db) {
-
         if (str_starts_with($db, 'meel_parity_')) {
             $c->query("DROP DATABASE IF EXISTS `{$db}`");
         }

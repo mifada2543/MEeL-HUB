@@ -27,7 +27,6 @@
  */
 
 if (PHP_SAPI !== 'cli' && !isset($_SERVER['REQUEST_METHOD'])) {
-
 }
 
 if (!function_exists('meel_base_url_path')) {
@@ -96,7 +95,6 @@ $absolutize = static function (string $url) use ($base): string {
         return $url;
     }
     if (str_starts_with($url, '/')) {
-
         return $base . ltrim($url, '/');
     }
 
@@ -132,7 +130,6 @@ if (isset($manifest['shortcuts']) && is_array($manifest['shortcuts'])) {
 }
 
 $absolutizeAsset = static function (string $src) use ($absolutize, $base): string {
-
     if (str_starts_with($src, '/') || preg_match('#^[a-z][a-z0-9+.-]*:#i', $src)) {
         return $absolutize($src);
     }

@@ -219,7 +219,6 @@ $totalPagesBooks = $meta_books['total_pages'];
                 titleEl.textContent = label;
                 linkEl.href = '<?= base_url('/books/read?id=') ?>' + data.id + (data.ch ? '&ch=' + encodeURIComponent(data.ch) : '');
                 banner.classList.add('visible');
-
             } catch (e) {
                 console.warn('[Continue] Gagal baca progress:', e);
             }

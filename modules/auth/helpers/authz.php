@@ -1,5 +1,4 @@
 <?php
-
 if (!function_exists('is_admin')) {
 function is_admin(mysqli $conn): bool
 {

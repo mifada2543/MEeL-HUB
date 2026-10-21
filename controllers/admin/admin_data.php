@@ -1,5 +1,4 @@
 <?php
-
 if (!defined('MEEL_ADMIN_CONTEXT')) {
     header('Location: ' . meel_base_url_path() . '/err?code=not_found', true, 302);
     exit;

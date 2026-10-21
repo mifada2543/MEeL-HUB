@@ -1,5 +1,4 @@
 <?php
-
 if (!function_exists('get_csrf_token')) {
 function get_csrf_token(): string
 {

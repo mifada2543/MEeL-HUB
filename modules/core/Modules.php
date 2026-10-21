@@ -1,5 +1,4 @@
 <?php
-
 final class Modules
 {
     private const OPTIONAL = [

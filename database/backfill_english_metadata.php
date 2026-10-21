@@ -1,5 +1,4 @@
 <?php
-
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
     die('Access denied. Jalankan dari terminal: php database/backfill_english_metadata.php');
@@ -33,7 +32,6 @@ function backfill_process_table(\mysqli $conn, string $table, string $columns, i
     $updated = 0;
 
     while (true) {
-
         $fetchLimit = $batchSize;
         if ($limit !== null) {
             $remaining = $limit - $processed;

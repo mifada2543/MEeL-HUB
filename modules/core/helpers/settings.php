@@ -1,5 +1,4 @@
 <?php
-
 if (!function_exists('get_site_setting')) {
 function get_site_setting(\mysqli $conn, string $key, string $default = ''): string
 {

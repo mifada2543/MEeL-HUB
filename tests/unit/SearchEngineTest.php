@@ -21,7 +21,6 @@ class SearchEngineTest extends TestCase
 
     public function testParseParamsDefaults(): void
     {
-
         unset($_GET['search'], $_GET['exclude'], $_GET['offset']);
 
         $params = $this->searchEngine->parseParams();
@@ -55,7 +54,6 @@ class SearchEngineTest extends TestCase
 
     public function testSanitizeQueryNeutralizesFulltextBreakingInput(): void
     {
-
         $this->assertSame('', SearchEngine::sanitizeQuery('*'));
         $this->assertSame('', SearchEngine::sanitizeQuery('-'));
         $this->assertSame('', SearchEngine::sanitizeQuery('+'));

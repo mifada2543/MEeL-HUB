@@ -1,5 +1,4 @@
 <?php
-
 /**
  * `$conn` di-set oleh `auth/config.php` (di-include di bawah) — sah saat runtime,
  * tapi tak terlihat oleh static analyser karena tidak menelusuri variabel
@@ -100,7 +99,6 @@ if (isset($_POST['update'])) {
         if ($title === '') {
             $error_message = "Judul video tidak boleh kosong.";
         } elseif ($error_message === '') {
-
             $meta = generate_search_metadata($title);
             if ($adminMedia->updateVideo($id, $title, $description, $thumbnail_url, $meta)) {
                 $status = "success";

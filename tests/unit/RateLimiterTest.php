@@ -24,7 +24,6 @@ class RateLimiterTest extends TestCase
 
     protected function tearDown(): void
     {
-
         $ref = new ReflectionClass(RateLimiter::class);
         $prop = $ref->getProperty('storageDir');
         $prop->setAccessible(true);
@@ -51,7 +50,6 @@ class RateLimiterTest extends TestCase
 
     public function testMemberGetsDoubleLimit(): void
     {
-
         $result1 = RateLimiter::check('member_user', 'comment', 'member');
 
         $this->assertTrue($result1['allowed']);
@@ -97,7 +95,6 @@ class RateLimiterTest extends TestCase
 
     public function testGetRoleLimit(): void
     {
-
         $this->assertSame(100, RateLimiter::getRoleLimit(100, 'user'));
 
         $this->assertSame(200, RateLimiter::getRoleLimit(100, 'member'));
@@ -109,7 +106,6 @@ class RateLimiterTest extends TestCase
 
     public function testCleanupRemovesExpiredFiles(): void
     {
-
         $testDir = MEEL_ROOT . '/temp/ratelimit-test/';
         $expiredFile = $testDir . 'expired_test.cache';
         $expiredData = json_encode([
@@ -125,7 +121,6 @@ class RateLimiterTest extends TestCase
 
     public function testGetStatsReturnsNonEmpty(): void
     {
-
         RateLimiter::check('stats_user', 'api', 'user');
 
         $stats = RateLimiter::getStats();
@@ -147,7 +142,6 @@ class RateLimiterTest extends TestCase
 
     public function testDifferentKeysAreIndependent(): void
     {
-
         for ($i = 0; $i < 10; $i++) {
             RateLimiter::check('user_a', 'comment', 'user');
         }

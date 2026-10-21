@@ -1,5 +1,4 @@
 <?php
-
 $_nav_pfp = null;
 if (isset($_SESSION['user_id']) && isset($conn)) {
     $stmt_nav = $conn->prepare("SELECT profile_picture FROM users WHERE id = ? LIMIT 1");

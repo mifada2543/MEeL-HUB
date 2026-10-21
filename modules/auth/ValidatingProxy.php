@@ -1,5 +1,4 @@
 <?php
-
 final class ValidatingProxy
 {
     private const START_TIMEOUT_SECONDS = 8;
@@ -118,7 +117,6 @@ final class ValidatingProxy
         if (is_resource($this->process)) {
             $status = proc_get_status($this->process);
             if (!empty($status['running'])) {
-
                 $pid = (int) ($status['pid'] ?? 0);
                 $hasPosix = function_exists('posix_kill') && defined('SIGTERM') && defined('SIGKILL');
                 if ($pid > 0 && $hasPosix) {

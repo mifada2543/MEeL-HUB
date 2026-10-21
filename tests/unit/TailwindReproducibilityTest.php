@@ -1,5 +1,4 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -286,7 +285,6 @@ class TailwindReproducibilityTest extends TestCase
      */
     public function testCommittedArtifactContainsWhatConfigProduces(): void
     {
-
         foreach ([
             '*,:after,:before'   => 'preflight Tailwind',
             '--tw-shadow'        => 'utility shadow',

@@ -33,7 +33,6 @@ function meel_admin_orphan_cache_path(): string
 }
 
 if (!function_exists('meel_media_stats_all')) {
-
 function meel_media_stats_all(mysqli $conn, int $ttl = 30): array
 {
     $tables = meel_media_table_whitelist();
@@ -106,7 +105,6 @@ function meel_media_stats_all(mysqli $conn, int $ttl = 30): array
 }
 
 if (!function_exists('meel_media_stats')) {
-
 function meel_media_stats(mysqli $conn, string $table, int $ttl = 30): array
 {
     if (!in_array($table, meel_media_table_whitelist(), true)) {
@@ -119,7 +117,6 @@ function meel_media_stats(mysqli $conn, string $table, int $ttl = 30): array
 }
 
 if (!function_exists('meel_invalidate_media_stats_cache')) {
-
 function meel_invalidate_media_stats_cache(?string $table = null): void
 {
     $dir = meel_media_cache_dir();
@@ -139,7 +136,6 @@ function meel_invalidate_media_stats_cache(?string $table = null): void
 }
 
 if (!function_exists('meel_pick_random_ids')) {
-
 function meel_pick_random_ids(
     mysqli $conn,
     string $table,

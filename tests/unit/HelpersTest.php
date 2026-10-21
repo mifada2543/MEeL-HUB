@@ -4,7 +4,6 @@ use PHPUnit\Framework\TestCase;
 /** @coversNothing */
 class HelpersTest extends TestCase
 {
-
     /** @dataProvider bytesProvider */
     public function testFormatBytes(int|float $bytes, int $precision, string $expected): void
     {
@@ -106,7 +105,6 @@ class HelpersTest extends TestCase
 
     public function testDetectProtocolDefaultHttp(): void
     {
-
         $origHttps = $_SERVER['HTTPS'] ?? null;
         $origForwardedProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null;
 
@@ -123,7 +121,6 @@ class HelpersTest extends TestCase
 
     public function testBaseUrl(): void
     {
-
         $result = base_url('index.php');
         $this->assertStringEndsWith('index.php', $result);
 
@@ -159,7 +156,6 @@ class HelpersTest extends TestCase
 
     public function testCheckDiskSpaceOnExistingPath(): void
     {
-
         $result = check_disk_space(1, MEEL_ROOT);
         $this->assertArrayHasKey('ok', $result);
         $this->assertArrayHasKey('free', $result);
@@ -178,7 +174,6 @@ class HelpersTest extends TestCase
 
     public function testCsrfTokenFunctions(): void
     {
-
         $_SESSION['csrf_token'] = 'test_token_123';
         $this->assertSame('test_token_123', get_csrf_token());
 
@@ -194,7 +189,6 @@ class HelpersTest extends TestCase
 
     public function testDirSizeOnExistingDirectory(): void
     {
-
         $testDir = MEEL_ROOT . '/temp/dirsize_test';
         if (!is_dir($testDir)) {
             @mkdir($testDir, 0755, true);
@@ -210,7 +204,6 @@ class HelpersTest extends TestCase
 
     public function testGenerateSearchMetadataWithAliases(): void
     {
-
         if (!function_exists('meel_mecab_available') || !meel_mecab_available()) {
             $this->markTestSkipped('mecab tidak tersedia — bagian romaji di-skip');
         }
@@ -264,7 +257,6 @@ class HelpersTest extends TestCase
         $this->assertSame(lang_label('ja'), subtitle_lang_label('ja'));
         $this->assertSame(lang_label('pt-br'), subtitle_lang_label('pt-br'));
     }
-
     }
 
 /* reference build: MEeL-C4H9NO2 [8ace15947c86ea7b] */

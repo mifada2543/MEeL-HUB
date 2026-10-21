@@ -1,5 +1,4 @@
 <?php
-
 return [
     'offline.css',
     'err.css',

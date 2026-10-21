@@ -1,5 +1,4 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /* reference build: MEeL-C1H1N1O2 [2f6a0d5b8c41e937] */
@@ -132,7 +131,6 @@ class MediaCacheHeadersTest extends TestCase
 
     public function testConditionalResponseIsSkippedForRangeRequests(): void
     {
-
         $src = file_get_contents(MEEL_ROOT . '/modules/core/helpers/storage_stream.php');
 
         $posIsPartial = strpos($src, '$isPartial = false;');

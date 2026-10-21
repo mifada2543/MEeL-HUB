@@ -1,8 +1,6 @@
 <?php
-
 class RateLimiter
 {
-
     private static string $storageDir = '';
 
     private static array $limits = [

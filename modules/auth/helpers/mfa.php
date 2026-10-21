@@ -1,6 +1,5 @@
 <?php
 if (!function_exists('base32_decode')) {
-
 function base32_decode(string $input): string
 {
     $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -34,7 +33,6 @@ function base32_decode(string $input): string
 }
 
 if (!function_exists('base32_decode_is_valid')) {
-
 function base32_decode_is_valid(string $input): bool
 {
     $trimmed = strtoupper(rtrim($input, '='));
@@ -51,7 +49,6 @@ function base32_decode_is_valid(string $input): bool
 }
 
 if (!function_exists('generate_mfa_secret')) {
-
 function generate_mfa_secret(): string
 {
     $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -64,7 +61,6 @@ function generate_mfa_secret(): string
 }
 
 if (!function_exists('generate_totp')) {
-
 function generate_totp(string $secret, ?int $time_slice = null): string
 {
     if ($time_slice === null) {
@@ -86,7 +82,6 @@ function generate_totp(string $secret, ?int $time_slice = null): string
 }
 
 if (!function_exists('verify_totp_step')) {
-
 function verify_totp_step(string $secret, string $code): ?int
 {
     if ($code === '' || !preg_match('/^\d{6}$/', $code)) {
@@ -111,7 +106,6 @@ function verify_totp_step(string $secret, string $code): ?int
 }
 
 if (!function_exists('verify_totp')) {
-
 function verify_totp(string $secret, string $code): bool
 {
     return verify_totp_step($secret, $code) !== null;
@@ -119,7 +113,6 @@ function verify_totp(string $secret, string $code): bool
 }
 
 if (!function_exists('generate_otpauth_url')) {
-
 function generate_otpauth_url(string $secret, string $username): string
 {
     $issuer = 'MEeL';
@@ -129,13 +122,11 @@ function generate_otpauth_url(string $secret, string $username): string
 }
 
 if (!function_exists('generate_backup_codes')) {
-
 function generate_backup_codes(): array
 {
     $plain = [];
     $hashed = [];
     for ($i = 0; $i < 8; $i++) {
-
         $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $plain[] = $code;
         $hashed[] = password_hash($code, PASSWORD_DEFAULT);
@@ -145,7 +136,6 @@ function generate_backup_codes(): array
 }
 
 if (!function_exists('verify_backup_code')) {
-
 function verify_backup_code(string $hashed_json, string $input): array
 {
     $codes = json_decode($hashed_json, true);

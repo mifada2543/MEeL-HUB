@@ -51,7 +51,6 @@ if ($result['count'] > 0) {
         }
     }
 } elseif ($result['offset'] === 0) {
-
     echo '<div class="py-16 text-center text-[10px] text-gray-700 uppercase tracking-widest">Tidak ada lagu ditemukan.</div>';
 } else {
     echo '<div class="w-full py-6 text-center border border-dashed border-white/[.04] rounded-xl"><span class="text-[9px] text-gray-800 uppercase tracking-widest">Konten Habis · Semua konten sudah ditampilkan</span></div>';

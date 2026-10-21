@@ -1,5 +1,4 @@
 <?php
-
 if (!defined('MEEL_ENV')) {
     $remote_ip = $_SERVER['REMOTE_ADDR'] ?? '';
     $is_local = ($remote_ip !== '')

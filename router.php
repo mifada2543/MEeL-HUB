@@ -1,5 +1,4 @@
 <?php
-
 if (PHP_SAPI === 'cli') {
     fwrite(STDERR, "router.php hanya untuk request HTTP.\n");
     exit(1);

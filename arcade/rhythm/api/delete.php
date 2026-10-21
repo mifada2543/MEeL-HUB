@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/config.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -56,7 +55,6 @@ try {
         'success' => true,
         'message' => 'Beatmap berhasil dihapus.',
     ]);
-
 } catch (Throwable $e) {
     $conn->rollback();
     api_error('Gagal menghapus beatmap: ' . $e->getMessage(), 500);

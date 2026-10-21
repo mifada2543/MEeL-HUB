@@ -1,8 +1,6 @@
 <?php
-
 class SwPrecache
 {
-
     private static function root(): string
     {
         return dirname(__DIR__, 2);

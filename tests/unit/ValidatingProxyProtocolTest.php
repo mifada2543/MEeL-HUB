@@ -1,5 +1,4 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 require_once MEEL_ROOT . '/modules/auth/ValidatingProxyProtocol.php';

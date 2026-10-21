@@ -1,5 +1,4 @@
 <?php
-
 /** @var array<string, mixed>|null $playlist, $first_song; int $playlist_id, $total_songs; \mysqli_result $songs_query */
 require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();

@@ -21,7 +21,6 @@
  */
 
 if (!function_exists('meel_editor_media_config')) {
-
 /**
  * Konfigurasi per jenis media untuk editor admin.
  *
@@ -56,7 +55,6 @@ function meel_editor_media_config(string $media_type): array
 }
 
 if (!function_exists('meel_editor_context_redirect')) {
-
 /**
  * Alihkan ke versi halaman yang sesuai dengan konteks pemanggil.
  *
@@ -83,7 +81,6 @@ function meel_editor_context_redirect(string $media_type, int $edit_id, bool $is
 }
 
 if (!function_exists('meel_editor_upload_thumbnail')) {
-
 /**
  * Unggah thumbnail untuk editor admin.
  *

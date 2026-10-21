@@ -100,7 +100,6 @@ class TranscoderBase
 
     public function __destruct()
     {
-
         $this->validatingProxy?->stop();
         $this->terminateAllProcesses();
     }
@@ -179,7 +178,6 @@ class TranscoderBase
             $termSent = posix_kill($target, SIGTERM);
         }
         if (!$termSent) {
-
             shell_exec('kill -TERM -- ' . $prefix . $pid . ' 2>/dev/null');
         }
 

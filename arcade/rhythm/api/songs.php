@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/config.php';
 
 $sort = $_GET['sort'] ?? 'default';

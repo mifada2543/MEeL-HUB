@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/AdminFilteredRepository.php';
 
 class AdminUploadQueueRepository extends AdminFilteredRepository

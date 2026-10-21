@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/../core/TranscoderBase.php';
 
 class TranscodeService extends TranscoderBase

@@ -1,5 +1,4 @@
 <?php
-
 require_once __DIR__ . '/modules/core/SwPrecache.php';
 
 $sw_precache_urls = SwPrecache::all();
@@ -28,7 +27,6 @@ self.addEventListener('install', (event) => {
         console.warn('[SW] Pre-cache warning:', err.message);
       });
     }).then(() => {
-
       return self.skipWaiting();
     })
   );
@@ -52,12 +50,10 @@ self.addEventListener('activate', (event) => {
           })
       );
     }).then(() => {
-
       if (self.registration.navigationPreload) {
         return self.registration.navigationPreload.enable().catch(() => {});
       }
     }).then(() => {
-
       return self.clients.claim();
     })
   );
@@ -90,7 +86,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isStaticAsset(url)) {
-
     if (url.searchParams.has('v')) {
       event.respondWith(cacheFirst(request, STATIC_CACHE));
     } else {
@@ -119,7 +114,6 @@ async function cacheFirst(request, cacheName) {
     }
     return network;
   } catch (err) {
-
     if (request.destination === 'document') {
       return caches.match(OFFLINE_URL);
     }
@@ -146,7 +140,6 @@ async function staleWhileRevalidate(request, cacheName) {
 
 async function networkFirst(request, cacheName, preloadPromise) {
   try {
-
     let network = null;
     if (preloadPromise) {
       const preload = await preloadPromise.catch(() => null);
@@ -178,7 +171,6 @@ function isStaticAsset(url) {
 }
 
 function isApiRequest(url) {
-
   const p = url.pathname;
 
   return p.includes('/controllers/') ||
@@ -208,7 +200,6 @@ function isApiRequest(url) {
 }
 
 function isStreamingMedia(url) {
-
   return /\.(mp4|webm|mkv|avi|mov|m4v|mp3|m4a|ogg|oga|wav|flac|aac|opus|pdf|epub|zip|rar|7z|tar|gz)$/i.test(url.pathname);
 }
 
@@ -221,7 +212,6 @@ async function trimCache(cacheName, maxEntries) {
   const cache = await caches.open(cacheName);
   const keys = await cache.keys();
   if (keys.length > maxEntries) {
-
     await cache.delete(keys[0]);
   }
 }

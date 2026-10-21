@@ -1,5 +1,4 @@
 <?php
-
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -223,7 +222,6 @@ class HeadScriptDeferTest extends TestCase
      */
     public function testHeadInlineScriptsDoNotTouchDeferredLibraries(): void
     {
-
         preg_match_all(
             '/<script(?![^>]*\bsrc\s*=)[^>]*>(.*?)<\/script>/s',
             $this->head,

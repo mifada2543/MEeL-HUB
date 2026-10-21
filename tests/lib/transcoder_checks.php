@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Pola pemeriksaan keamanan untuk orkestrasi transcoder.
  *
