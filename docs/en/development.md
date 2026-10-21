@@ -11,10 +11,16 @@ Guide for developers who want to contribute or understand coding standards in ME
 - [Database Structure](#database-structure)
 - [Coding Conventions](#coding-conventions)
 - [`.htaccess` & Legacy Route Notes](#htaccess--legacy-route-notes)
-- [Technical Decisions & Fix Confirmations](#technical-decisions--fix-confirmations-2026-10-03)
 - [Testing](#testing)
+- [MFA / TOTP Development](#mfa--totp-development)
 - [Pull Request Guide](#pull-request-guide)
 - [Troubleshooting Development](#troubleshooting-development)
+- [Time Contract](#time-contract)
+- [Housekeeping & Throttle](#housekeeping--throttle)
+- [Cache & Performance](#cache--performance)
+- [Annotations for the Static Analyzer](#annotations-for-the-static-analyzer)
+- [Notifications](#notifications)
+- [Resource for Developers](#resource-for-developers)
 
 ---
 
@@ -47,6 +53,12 @@ ini_set('display_errors', 1);
 - Database: MySQL Workbench / phpMyAdmin
 - API Testing: Postman / Insomnia
 - Browser: Chrome DevTools for HTMX debugging
+
+### Dev Environment Notes
+
+- ⚠️ `MEEL_TEST_DB_HOST=127.0.0.1` is **required** for integration tests. The XAMPP MariaDB socket is at `/opt/lampp/var/mysql/mysql.sock`, while the PHP CLI looks for `/var/run/mysqld/mysqld.sock` (`mysqli.default_socket`) → `No such file or directory`. `localhost` fails, TCP `127.0.0.1` works. This is a dev machine issue only — CI is already correct (`ci.yml` uses `127.0.0.1`).
+- ⚠️ `StorageMountGuardTest` (it spawns a PHP subprocess via `proc_open`) has failed once with `exit 255` when the suite runs **at the same time** as another test process touching `temp/`. Do not run it in parallel with `security_test` / `check_deploy`.
+- The **IO/R** column in `htop` is a read rate, not RSS.
 
 ---
 
@@ -366,6 +378,60 @@ assets/css/shared/
 - [ ] File upload validation working
 - [ ] Error handling showing appropriate messages
 
+### Internal mysqli Properties Cannot Be Faked
+
+`num_rows`, `affected_rows`, and similar internal properties are **read-only virtual properties** in PHP 8.x. Overriding the method and `__get()` alike **do not intervene** — `ReflectionMethod('mysqli_result', 'num_rows')` even throws *method does not exist*, which proves it is purely a property.
+
+Practical consequence: **production code must not depend on reading those internal properties** if the call is meant to be testable with `tests/unit/support/MysqlFake.php`. If the value is really needed, pass it through a parameter or return it through another path.
+
+### Static Cache Across Tests
+
+`get_user_role()` and `get_user_active()` use a per-process `static $cache`. That cache is **not** reset between tests, so one test can poison a later test running in the same process. A real case: `MediaViewerTest` builds a `MediaViewer` with a **mock connection**, and the constructor calls `get_user_role($mock, 1)`. The mock has no row, so the function returns the fallback `'user'` — and **memoizes** that fallback into `static $cache[1]`. Several tests later, in the same process, use the real test database where `role = 'admin'`, but the stale cache wins.
+
+What makes this hard to detect: the test **passes when run alone** (`--filter`) and fails only when the whole suite runs.
+
+The rule: **a cache may only hold facts, not uncertainty.** A row that is not found means "not known yet", not "this user has role `user`". So a negative result is deliberately **not** memoized:
+
+```php
+$row = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if ($row === null) {
+    return 'user';          // fallback, NOT cached
+}
+
+$role = (string)$row['role'];
+$cache[$user_id] = $role;   // a fact → safe to cache
+```
+
+`get_user_active()` has the twin problem: it memoizes a `false` derived from a missing row, so a user who just became active still reads as inactive until the process ends. Pinned by `tests/unit/UserRoleCacheNotFoundTest.php`.
+
+### Media Constants Are Locked in `tests/bootstrap.php`
+
+The media path constants (`MEEL_HDD_*`) are set in `tests/bootstrap.php`, **before** any production file that could define them while being `require`d. `modules/core/TranscoderBase.php` defines `MEEL_HDD_BASE` as the placeholder `'/path/to/your/media'` if the constant is not there yet — and `require_once` **cannot be undone**, so every test running after that sees `meel_media_base_path('video')` pointing at a non-writable placeholder.
+
+The fix is to lock the constants to `temp/media-test/` first. Two effects at once: test order no longer determines the result, and no media directory leaks outside the repo while tests run.
+
+### Test Infrastructure
+
+**`createMock(mysqli::class)` burns 8.86 GiB of RAM.** PHPUnit builds a mock class through `eval()` and **keeps it in a static cache for the lifetime of the process**. `mysqli` has `bind_param(string $types, mixed &...$vars)` — by-reference plus variadic — so the generated class is very large, and stacking it across several tests pushes the process into gigabyte territory.
+
+The solution is `tests/unit/support/MysqlFake.php` — `FakeMysqli`, `FakeMysqliStmt`, `FakeMysqliResult` as subclasses that **do not call the parent constructor** (no connection, no generated class, RAM ≈ 0). Plus `phpunit.xml` → `<ini name="memory_limit" value="2G"/>`; without it a single bad test can exhaust the machine's RAM before it is noticed. Result: **8.86 GiB → 453 MiB** (~19× lighter), OOM gone.
+
+> **Rule:** when adding a test that needs `mysqli`, use `FakeMysqli` — **not** `createMock(mysqli::class)`. If a mock is really needed, build it once in `setUp` and reuse it.
+
+### Verification Gate
+
+```bash
+vendor/bin/phpunit --testsuite='MEeL Core Unit Tests'
+MEEL_TEST_DB_HOST=127.0.0.1 vendor/bin/phpunit --testsuite='MEeL Integration Tests'
+php tests/functional_test.php
+php tests/security_test.php
+php tests/check_deploy.php
+php database/migrate.php   # 2× for idempotence
+php scripts/gc.php          # heavy housekeeping (needs $server = TCP)
+```
+
 ---
 
 ## MFA / TOTP Development
@@ -620,628 +686,181 @@ if (!headers_sent()) {
 
 ---
 
-## Technical Decisions & Fix Confirmations (2026-10-03)
 
-> This file captures the decisions made during the performance work and bug
-> fixes. Every note here was **moved out of in-code comments** per
-> [Comment Style](#comment-style) rule 8 — the code is now much leaner while all
-> the long-form context lives here.
->
-> Scope: Phase 1 (T11–T16) completed 6/6, T20 (`release.yml`), plus T26
-> (the timezone bug). Per-task status lives in `.agents/Todo.md`.
+## Time Contract
 
-### The Clock Contract: `DATETIME` is a *wall clock* with no timezone
+A MySQL `DATETIME` column **does not store a timezone**. The value written can come from two different clocks:
 
-This rule underpins T26 and is a hard requirement across the whole repo.
+| Source | Clock used |
+|---|---|
+| `NOW()` / `CURRENT_TIMESTAMP` | the MySQL server clock (`@@time_zone`) |
+| `date()` / `time()` / `strtotime()` | the PHP clock (`date_default_timezone_get()`) |
 
-A MySQL `DATETIME` column **stores no timezone**. The value written can therefore
-come from two different clocks:
+Almost every datetime read in this repo goes through `strtotime()` → always the PHP clock. As soon as the PHP clock differs from MySQL's `time_zone`, a column written with `NOW()` looks like it is in the future, and two things break: `$elapsed = max(0, time() - $ts)` goes negative and is clamped to `0` (countdowns and ages always full), and the `col <= $threshold` threshold is never true (refill/lockout logic dead entirely).
 
-| Source | Used by |
-| --- | --- |
-| `NOW()` / `CURRENT_TIMESTAMP` | the **MySQL server clock** (`@@time_zone`) |
-| `date()` / `time()` / `strtotime()` | the **PHP clock** (`date_default_timezone_get()`) |
+**Repo rule:** if a `DATETIME` column is read from PHP via `strtotime()`/`time()`, that column **must be written from the PHP clock**. Use `meel_now()` / `meel_now_ago()` from `modules/core/helpers/datetime.php`. `NOW()` may stay only when the column is read purely as a SQL DATETIME (e.g. `ORDER BY created_at DESC`) and never compared against the PHP clock.
 
-Nearly all repo code **reads** datetime columns through `strtotime()` — always the
-PHP clock. As soon as PHP's `date_default_timezone` differs from MySQL's
-`time_zone`, a column written with `NOW()` appears to be **in the future**, and two
-things break:
+| Column | Written by | Read by | Symptom when the timezone drifts |
+|---|---|---|---|
+| `users.meelcoin_last_refill` | `MeelCoin.php` (3 points) | `MeelCoin.php` `$threshold` + `$elapsed` | refill dead, countdown always full |
+| `users.last_activity` | 5 production points (see below) | 6+ points | a "kicked" user still shows as ONLINE |
 
-- `$elapsed = max(0, time() - $ts)` goes negative, gets clamped to `0` →
-  **countdowns/ages are permanently full** (the UI shows a number that can never
-  occur);
-- the `col <= $threshold` comparison is never true → **refill/lockout logic dies
-  outright** (users stuck with a drained balance).
+The `last_activity` write points already converted: `activity_logger.php` (authenticated user UPDATE + guest INSERT `ON DUPLICATE KEY UPDATE`), `auth/login.php` (×2), `auth/mfa_verify.php`, `auth/auth.php`, and `admin_actions.php` (`kick_user`, which previously used `DATE_SUB(NOW(), INTERVAL 10 MINUTE)`).
 
-**Repo rule:** if a `DATETIME` column is read via `strtotime()`/`time()` from PHP,
-it **must be written from the PHP clock**. Use `meel_now()` / `meel_now_ago()` from
-`modules/core/helpers/datetime.php`. `NOW()` may stay only when the column is read
-purely as a SQL DATETIME (e.g. `ORDER BY created_at DESC`) and never compared
-against the PHP clock.
+**Audit not finished yet:** the columns `created_at`, `login_attempts`, and `rate_limit` are **still written with `NOW()`**. For `created_at` the impact is display-only (clock drift in `admin/activity_log.php`) and has not been audited per column. Do that audit before building a time-based worker, because a time-based scheduler gets more sensitive to skew as it grows.
 
-#### Schemas already fixed
+On a dev machine the PHP CLI uses `date.timezone = UTC` while MariaDB's `@@time_zone = SYSTEM` is WIB (UTC+7) — a difference of 25195 seconds ≈ 7 hours. `MeelCoinIntegrationTest::testRefillResetsTimerWhenBalanceIsAtMax` caught exactly that gap.
 
-| Column | Written by | Read by | Symptom when timezones skew |
-| --- | --- | --- | --- |
-| `users.meelcoin_last_refill` | `MeelCoin.php` (3 sites) | `MeelCoin.php` `$threshold` + `$elapsed` | refill never fires, countdown always full |
-| `users.last_activity` | 5 production sites (below) | 6+ sites | a **"kicked" user still shows as ONLINE**, and `live-monitor` displays times in the future |
+## Housekeeping & Throttle
 
-`last_activity` write sites converted: `activity_logger.php` (authenticated user
-UPDATE + guest INSERT `ON DUPLICATE KEY UPDATE`), `auth/login.php` (×2),
-`auth/mfa_verify.php`, `auth/auth.php`, and `admin_actions.php` (`kick_user`, which
-previously used `DATE_SUB(NOW(), INTERVAL 10 MINUTE)`).
+### ActivityLogger
 
-#### ⚠️ Audit not yet done
+`ActivityLogger::onRequest($conn)` is called from `auth/config.php`. What is guarded is the **cost**, not the behaviour:
 
-The `created_at`, `login_attempts` and `rate_limit` columns **still use `NOW()`**.
-For `created_at` the impact is **display-only** (clock drift in
-`admin/activity_log.php`) and has not been audited per column. **Do this audit
-before building the worker (T17)** — time-based scheduling gets increasingly
-sensitive to skew.
+- **60-second throttle.** The signature `last_page|device|access_via|ip_address` is stored in `$_SESSION['_meel_touch']`; an identical payload inside that window is not written again. The signature deliberately includes page + device + network so that a page change is still recorded immediately instead of waiting for the window to expire.
+- **Skip non-HTML responses.** `shouldSkipTelemetry()` rejects htmx partials (`HTTP_HX_REQUEST`), an `Accept` header without `text/html`/`*/*` (JSON and HLS segments), and the `stream.php` / `file.php` endpoints.
+- 🔒 **The security part is NOT throttled.** `enforceIpBan()` and `enforceSingleSession()` always run. Throttling is for telemetry only — a throttle here would open a revocation gap.
+- ⚠️ **The `$hasRun` static is useless under PHP-FPM.** Statics are not shared between requests, so that guard is only useful inside one process. The real throttle mechanism is the **file**, not the static.
 
-#### Reproducing on a dev machine
+### GarbageCollector
 
-The PHP CLI uses `date.timezone = UTC` (`/etc/php/8.3/cli/php.ini`) while XAMPP's
-MariaDB has `@@time_zone = SYSTEM` = **WIB (UTC+7)** → a skew of **25,195 seconds
-≈ 7 hours**. The integration test
-`MeelCoinIntegrationTest::testRefillResetsTimerWhenBalanceIsAtMax` captured exactly
-that 7-hour gap before the fix.
+`run()` does two expensive things on **every request**: scanning the storage directory and `RateLimiter::cleanup()`. Both now sit behind a single file throttle (`temp/gc_run_last_run.txt`, `RUN_INTERVAL_SECONDS = 60`), with the 3-second time limit unchanged.
 
----
+**CLI/web split:** `ALTER TABLE ... AUTO_INCREMENT` blocks MySQL metadata and `syncViewsFromLogs()` rewrites aggregate columns — both are too heavy for a request. They moved to `GarbageCollector::runCliMaintenance()`, which has a **`PHP_SAPI !== 'cli'` seatbelt**: called from a web request it becomes a no-op, not an error. Entry point `scripts/gc.php` (mode `--run-only` for light housekeeping).
 
-### Per-request housekeeping: throttling vs. the security path
+## Cache & Performance
 
-#### `ActivityLogger` (T11)
+### The queries that are genuinely expensive
 
-The procedural block in `modules/core/activity_logger.php` was reorganised into an
-`ActivityLogger::onRequest($conn)` class called from `auth/config.php`. What changed
-is **cost**, not behaviour:
+`isServerBusy()` only needs a **number**, so it uses `COUNT(*)` per table instead of pulling every queue row (URL, username, `created_at`) complete with JOIN and filesort. `getActiveQueues()` is **kept** because `server_stats.php`, `server_stats_sse.php`, and `admin_actions.php` really do need the row details.
 
-- **60-second throttle.** The signature `last_page|device|access_via|ip_address` is
-  stored in `$_SESSION['_meel_touch']`. An identical payload inside that window is
-  not rewritten. The signature deliberately includes page + device + network so
-  that navigating between pages is still recorded immediately instead of waiting
-  for the window to expire.
-- **Skip non-HTML responses.** `shouldSkipTelemetry()` skips htmx partials
-  (`HTTP_HX_REQUEST`), an `Accept` header without `text/html`/`*/*` (JSON & HLS
-  segments), and the `stream.php` / `file.php` endpoints (binary).
-- 🔒 **The security path is NOT throttled.** `enforceIpBan()` (IP-ban redirect) and
-  `enforceSingleSession()` (session revocation) always run. Throttling is limited to
-  telemetry. This is not negotiable — throttling here would open a revocation gap.
-- ⚠️ **The `$hasRun` static is useless under PHP-FPM.** Statics are not shared
-  across requests, so the guard only helps within a single process. **The real
-  reason for the throttle is the file**, not the static. Tests cover both (a mocked
-  `mysqli` proves idempotency within one process; a separate test proves the
-  throttle survives a static reset).
+The query count does not drop (`Com_select` stays at 2 on both paths). The benefit is in **payload and parsing**: at 2,001 `processing` rows × 200, the count path takes 109 ms · 0 B, the full path 7,088 ms · 1,366,920 B. `EXPLAIN`: the `COUNT(*)` path → `type: ref`, `key: status`, `Using index` (covering, no row access); the full path → JOIN `users` + `Using temporary; Using filesort`.
 
-#### `GarbageCollector` (T11 + T16)
+`MediaViewer::__construct()` uses `get_user_role()` and `get_user_active()` (`modules/auth/helpers/user.php`, cached, `LIMIT 1`) — almost always a cache hit, because `MediaViewer` runs on pages that already have a session.
 
-`run()` performed two expensive things on **every request**: scanning storage
-directories and calling `RateLimiter::cleanup()`. Both now sit behind a single file
-throttle (`temp/gc_run_last_run.txt`, `RUN_INTERVAL_SECONDS = 60`). The scan still
-stops after its 3-second budget as before.
-
-**CLI/web split (T16):** `ALTER TABLE ... AUTO_INCREMENT` blocks MySQL metadata and
-`syncViewsFromLogs()` rewrites aggregate columns — both too heavy for a request.
-They moved to `GarbageCollector::runCliMaintenance()`, which carries a
-**`PHP_SAPI !== 'cli'` seatbelt**: called from a web request it becomes a no-op
-rather than an error. Entry point: `scripts/gc.php` (with `--run-only` for light
-housekeeping). The seatbelt was verified against a real `cgi-fcgi` SAPI rather than
-merely assumed.
-
-**Known gap that remains:** there is no sweeper for `upload_queue` /
-`transcode_queue` rows stuck in `processing` after a crash — they hang forever and
-the user never gets their refund.
-
----
-
-### Queries: what was actually expensive
-
-#### `System::countActiveQueues()` (T12)
-
-`isServerBusy()` only needs a **number**, yet it called `getActiveQueues()`, which
-pulls every queue row (URL, username, `created_at`) with a JOIN and a filesort. It
-now issues `COUNT(*)` per table. `getActiveQueues()` is **kept**, because
-`server_stats.php`, `server_stats_sse.php` and `admin_actions.php` genuinely need the
-row detail.
-
-#### Measured numbers — read these honestly
-
-⚠️ **The query count did not go down.** `Com_select` stays at **2** on both paths
-(both touch 2 tables). This is `COUNT(*)`-only, not a reduction in query count. The
-benefit is in **payload and parsing**:
-
-| Scenario | `isServerBusy()` (new) | `getActiveQueues()` (old) |
-| --- | --- | --- |
-| 2 `processing` rows, 300× | 57 ms · 0 B | 78 ms · 2,216 B |
-| 2,001 `processing` rows, 200× | **109 ms · 0 B** | **7,088 ms · 1,366,920 B** |
-
-On the realistic load that matters (queues backing up) the count path is **~65×
-faster**. `EXPLAIN`: the `COUNT(*)` path is `type: ref`, `key: status`,
-`Using index` (covering, no row touches); the full path adds a `users` JOIN plus
-`Using temporary; Using filesort`.
-
-#### `MediaViewer::__construct()` (T12)
-
-It used to query `users` directly. It now uses `get_user_role()` (already present,
-cached and session-aware) plus a new **`get_user_active()`** helper
-(`modules/auth/helpers/user.php`, cached, `LIMIT 1`, `close()` — mirroring
-`get_user_role()`). It almost always hits the cache because `MediaViewer` is used on
-pages that already have a session.
-
-#### `MediaViewer::getMediaData()`
-
-`($result && $result->num_rows > 0) ? $result->fetch_assoc() : null` became
-`return $result ? $result->fetch_assoc() : null;`. `num_rows` costs an extra handler
-call and changes nothing, and it **cannot be faked in a test double** (because
-`num_rows` is a *read-only virtual property* — see
-[Test Infrastructure](#test-infrastructure-important-notes)).
-
----
-
-### Random id sampling without `ORDER BY RAND()` (T13)
-
-Shared helpers in `modules/core/helpers/media.php`:
+### Random id sampling without `ORDER BY RAND()`
 
 | Function | Role |
-| --- | --- |
-| `meel_media_stats_all()` | **One** `UNION ALL` query for `video`/`music`/`books` (COUNT + MIN(id) + MAX(id)), 30-second per-table file cache |
+|---|---|
+| `meel_media_stats_all()` | **One** `UNION ALL` query for `video`/`music`/`books` (COUNT + MIN(id) + MAX(id)), cache file per table for 30 seconds |
 | `meel_media_stats()` | One table; a cache miss warms **all three** at once |
-| `meel_pick_random_ids()` | **Random-range sampling** for recommendations |
-| `meel_invalidate_media_stats_cache()` | Drop the cache (called from 5 mutation sites) **and** the admin orphan cache |
-| `meel_media_table_whitelist()` | Table-name validation (guards against injection via table name) |
+| `meel_pick_random_ids()` | **Random range** sampling for recommendations |
+| `meel_invalidate_media_stats_cache()` | Drops the cache (called at 5 mutation points) **and** the admin orphan cache with it |
+| `meel_media_table_whitelist()` | Validates the table name (anti injection through the table name) |
 
-**Sampling strategy:** several `id >= ? ORDER BY id LIMIT ?` windows at random
-start offsets, merged into a unique set. Each window uses the id index (a range
-scan), so the cost is `O(log n + limit)` with no filesort, and it stays unbiased
-across the whole id range.
+The sampling strategy: several `id >= ? ORDER BY id LIMIT ?` windows with a random start, merged into a unique set. Each window uses the id index (range scan) → cost `O(log n + limit)`, no filesort, and still unbiased across the whole id range. **`ORDER BY RAND()` is now zero across every query in the repo.**
 
-**`ORDER BY RAND()` is now gone from every query in the repo.**
+The advice to "take the first 500 ids with `LIMIT 500`" was **rejected** — that would bias recommendations toward the smallest ids. Random range sampling stays unbiased across the whole range and **always** carries a `LIMIT`, so it satisfies "do not pull the whole table" without giving up the spread.
 
-#### Decision: why we do **not** use `LIMIT 500`
+### File cache convention
 
-The original suggestion was to cap the id fetch at `LIMIT 500`. **Rejected** —
-fetching the first 500 ids would bias recommendations towards the lowest ids. Random
--range sampling is used instead, which is unbiased and **always** carries a `LIMIT`,
-satisfying the intent ("don't pull the whole table") without sacrificing spread.
+1. **Write only through `meel_write_cache_file()`** — never `file_put_contents()` directly. That function writes a temporary file and then `rename()`s it, which is atomic. `LOCK_EX` is **not** an atomic substitute: it only locks the writer, while a reader can still read a file that is being written.
+2. **Read only through `meel_read_cache_file()`** — do not re-implement per-file TTL logic. The time keys used are: `ts` (default), `time` (`dir_size`), `checked_at` (admin orphan).
+3. **Short TTL + invalidation on mutation** — TTL is not a freshness tool. A cache that has to be fresh is invalidated at the mutation point (`meel_invalidate_media_stats_cache()` also drops the orphan cache). The TTL only holds back repeated scans during a fast refresh.
+4. **JSON only** — no `serialize()`/pickle in the cache.
+5. **The directory must be group-writable** — `temp/cache/` is created with mode `0775`. For older installs: `sudo chgrp daemon temp/cache && sudo chmod 775 temp/cache`.
 
-#### Single source of truth for media counts
+The cache path can be redirected through the constant **`MEEL_MEDIA_CACHE_DIR`** (following the `MEEL_SERVER_STATS_CACHE` pattern) so tests do not depend on Apache's ownership of `temp/cache/`. The admin orphan cache follows the same constant through `meel_admin_orphan_cache_path()` (override `MEEL_ADMIN_ORPHANS_CACHE`).
 
-There used to be **two** caches: `media_counts.json` (in `MediaLibrary`) and counts
-computed on the fly (in `MediaViewer`). Both now go through
-`meel_media_stats_all()`. `MediaLibrary::clearCountsCache()` just calls
-`meel_invalidate_media_stats_cache()`.
+### Conditional request for media streaming
 
-Invalidation points: video upload (`Uploader.php`, `DownloadService.php`), music
-upload (`helpers/upload.php`), video & music deletion (`fun-manage.php`).
-
-The cache can be redirected via the **`MEEL_MEDIA_CACHE_DIR`** constant (following
-the `MEEL_SERVER_STATS_CACHE` pattern) so tests don't depend on write access to
-Apache's `temp/cache/`. The admin orphan cache follows the same directory via
-`meel_admin_orphan_cache_path()` (with a `MEEL_ADMIN_ORPHANS_CACHE` override).
-
-#### File cache convention
-
-1. **Write only through `meel_write_cache_file()`** — never call `file_put_contents()`
-   directly. It writes a temp file then `rename()`s, which is atomic. `LOCK_EX` is
-   **not** an atomic substitute: it only locks the writer, and readers can still read
-   a file mid-write (measured at 58%–81% failed reads while a writer was active).
-2. **Read only through `meel_read_cache_file()`** — don't re-implement TTL logic per
-   file. Timestamp keys in use: `ts` (default), `time` (`dir_size`), `checked_at`
-   (admin orphan).
-3. **Short TTL + invalidation on mutation** — a TTL is not a freshness mechanism.
-   Anything a reader must see invalidated at the mutation site (see
-   `meel_invalidate_media_stats_cache()`, which also drops the orphan cache). The TTL
-   only prevents a repeated scan on a quick refresh.
-4. **JSON only** — no `serialize()`/pickle in caches.
-5. **The directory must be group-writable** — `temp/cache/` is created with mode
-   `0775`. For existing installs:
-   `sudo chgrp daemon temp/cache && sudo chmod 775 temp/cache`.
-
-#### Two real bugs the tests caught
-
-1. Applying `array_keys()` to an id list turned the pool into `[0, 1, …]`, so the
-   "every candidate already seen" condition was never detected.
-2. The cache used a path not writable by the CLI process — which surfaced the need
-   for the `MEEL_MEDIA_CACHE_DIR` constant.
-
----
-
-### Conditional requests for media streaming (T14)
-
-Three pure functions (rather than inline inside a function that `exit()`s), so they
-can be tested:
+Three pure functions (not inlined into a function that `exit()`s), so they can be tested:
 
 | Function | Role |
-| --- | --- |
+|---|---|
 | `meel_cache_is_fresh()` | The 304 decision from `If-None-Match` / `If-Modified-Since` |
 | `meel_media_etag()` | Strong ETag from path+size+mtime |
 | `meel_media_cache_control()` | `m3u8` → `private, no-cache`; everything else → `private, max-age=31536000, immutable` |
 
 Rules that must hold:
 
-- 🔒 **Never return 304 for a Range request.** 304 alongside 206/`Content-Range` is
-  an invalid response. The condition is `if (!$isPartial && …)`.
-- 🔒 **Stay `private`, never `public`.** Content is gated per session/user;
-  `public` risks leaking through shared caches/CDNs to other users.
-- HLS playlists keep changing (segments get appended) so they must be revalidated.
-  Media segments/files are immutable once written and may be cached long-term.
-- `ETag`, `Last-Modified` and `Cache-Control` are sent on **both** paths (X-Sendfile
-  **and** streaming), not just one.
+- 🔒 **Never 304 on a Range request.** 304 together with 206/`Content-Range` is an invalid response. The condition is `if (!$isPartial && …)`.
+- 🔒 **Stay `private`, never `public`.** The content is gated per session/user; `public` risks leaking through a shared cache/CDN to other users.
+- HLS playlists change constantly (new segments are added) → they must be revalidated. Media segments/files are immutable once written → they may be cached long.
+- `ETag`, `Last-Modified`, `Cache-Control` are sent on **both** paths (X-Sendfile **and** streaming), not just one.
 
-**Bug caught by the tests:** `If-None-Match: *` was initially not treated as fresh,
-violating RFC 7232 §3.2 ("*" means "if any representation exists").
+`If-None-Match: *` must be treated as fresh (RFC 7232 §3.2).
 
----
+### Asset versioning
 
-### Asset versioning: why `meel_asset_dir_version()` is intentionally directory-mtime
+`meel_asset_dir_version()` deliberately uses the max mtime of the **directory**, not a per-file version. The reason: `assets/js/{video/watch,music/index,music/watch}/main.js` reads `?v=` from `document.currentScript.src` and forwards it to every dynamically loaded child module — with a per-file version, a change in a child module would **not invalidate the browser cache at all**, only the entry file would. The full closure lives in the content-hash build. The list of `meel_asset_dir_version()` callers is pinned by `AssetVersioningTest`.
 
-T11 (T15) added `?v=` to 48 bare asset URLs across 25 files. But the original
-suggestion to "switch from directory max-mtime to per-file versioning" was
-**rejected**, because it would be a **regression**:
+## Annotations for the Static Analyzer
 
-`assets/js/{video/watch,music/index,music/watch}/main.js` reads `?v=` from
-`document.currentScript.src` and then **propagates it to every child module** it
-loads dynamically. With per-file versioning, a change in a child module would
-**not invalidate the browser cache at all** — only the entry file would change.
+Admin pages inherit variables from files that are `include`d (`auth/config.php`, `controllers/admin/admin_data.php`) — valid at runtime, but invisible to a static analyzer because analyzers do not follow variables across `include`. That is why 12 admin pages carry an `@var` block at the top of the file.
 
-Full closure still belongs to **T22** (content-hash at build time), not
-`?v=filemtime`. The list of `meel_asset_dir_version()` callers is locked down in
-`AssetVersioningTest`.
-
----
-
-### `@var` annotations for analyzers (T20)
-
-Admin pages inherit variables from files they `include` (`auth/config.php`,
-`controllers/admin/admin_data.php`) — valid at runtime, but invisible to a static
-analyzer because it does not trace variables across `include`. That is why 12 admin
-pages carry an `@var` block at the top of the file.
-
-#### The root cause was a single pattern: comma-separated `@var`
+### One Variable per `@var` Line
 
 ```php
 /** @var \mysqli_result $a, $b, $c; @var array $d */   // ❌ only the first line is read
 ```
 
-The comma-list form is **understood by no analyzer** — only the first `@var` tag is
-read and the rest are silently ignored. Intelephense reports `P1008 Undefined
-variable` when this form is used. The fix:
+The comma-list form is **not understood by any analyzer** — only the first `@var` line is read and the rest are silently ignored. The fix:
 
 - one variable per `@var` line;
-- the docblock **must sit before the first use** — `@var` only applies forward.
-  That is why `$conn` on line 8 was still reported while the block sat on line 15.
+- the docblock block **must be placed before the first use** — `@var` only applies forwards. That is why `$conn` is still reported as an error when its block is placed after the first use.
 
-`$conn` comes from `auth/config.php` and is used by 10 admin pages, so an
-`@var \mysqli $conn` block was added to each. These `@var` lines are **functional**
-(not decorative comments) — deleting them brings hundreds of `P1008` back in the
-editor.
+These `@var` lines are **functional** (not decorative comments) — removing them brings back hundreds of `P1008` in the editor.
 
-> **Note:** PHPStan was tried here (level 2, scope `admin/`) and did drive 165
-> errors down to 0 — but it was **removed again** (2026-10-03). Reasons: its
-> `scanFiles` config is brittle (34 explicit paths; if any one is renamed PHPStan
-> merely prints "Scanned file … does not exist", bails, and produces misleadingly
-> clean results), no CI job ran it, and `require-dev` is not installed in
-> production builds. The corrected `@var` blocks remain valuable for IDEs.
+> **Note:** PHPStan was tried here (level 2, scope `admin/`) and successfully brought 165 errors down to 0 — but it was **withdrawn again**. The reasons: its `scanFiles` config is fragile (absolute paths; if one is renamed, PHPStan only prints "Scanned file … does not exist" and then exits silently, with a misleading result), there is no CI job running it, and `require-dev` is not installed in the production build. The corrected `@var` blocks remain valuable for the IDE.
 
-#### ⚠️ Intelephense P1038 on `FakeMysqliStmt::bind_param()`
+### `P1038` on `FakeMysqliStmt::bind_param()`
 
-`P1038` means "method signature incompatible with parent". The only trigger in this
-repo is the mysqli test double, and it is a **false positive from Intelephense's
-own stub**:
+`P1038` means "method signature incompatible with parent". The only trigger for it in this repo is the mysqli test double, and that is a **false positive from the Intelephense stub**:
 
 | Form | Accepted by PHP 8.3? |
-| --- | --- |
+|---|---|
 | Intelephense 1.18.5 stub: `bind_param($types, &$var1, &...$_)` | ❌ **REJECTED by the engine** |
-| Actual: `bind_param(string $types, mixed &...$vars): bool` | ✅ ACCEPTED |
+| Real: `bind_param(string $types, mixed &...$vars): bool` | �
+ ACCEPTED |
 
-Intelephense's stub has not caught up with the `mysqli_stmt::bind_param()`
-signature change in PHP 8.0, so the analyzer and the engine **cannot both be
-satisfied**. It is closed via `.vscode/settings.json` →
-`intelephense.diagnostics.exclude`, locked to that file and code only (`["P1038"]`)
-so every other check in the same file stays active. `.vscode/` is already in
-`.gitignore`, so other contributors are unaffected.
+The Intelephense stub has not caught up with the `mysqli_stmt::bind_param()` signature change in PHP 8.0, so the analyzer and the engine **cannot both be satisfied**. It is handled through `.vscode/settings.json` → `intelephense.diagnostics.exclude`, locked to that file and code only (`["P1038"]`) so the other checks in the same file stay active. Practical consequence: `FakeMysqliResult::close()` is written `: void` to match the analyzer stub, even though the PHP runtime also accepts the untyped form — the `: void` form satisfies both.
 
-> Practical consequence: `FakeMysqliResult::close()` is written `: void` to match
-> the analyzer's stub, even though PHP's runtime also accepts an untyped form. The
-> `: void` form satisfies both, so it is the chosen one.
+## Notifications
 
----
+Goal: an automatic MEeLCoin **top-up** notification, while stopping `user_notifications` from growing without bound.
 
-### Test doubles: properti internal mysqli tidak bisa di-fake
+### Rule 1 — Automatic top-up notification
 
-Discovery yang berlaku untuk test double: `num_rows`,
-`affected_rows`, dan properti internal serupa adalah **read-only virtual property**
-di PHP 8.x. Override method maupun `__get()` sama-sama **tidak mengintervensi** —
-`ReflectionMethod('mysqli_result', 'num_rows')` bahkan melempar *method does not
-exist*, yang membuktikan murni itu property.
+Created inside `MeelCoin::refill()`, not at the call site. The reason: the amount that was credited is only known there, so no caller can forget it. `refill()` is called from 7 production places and **not one of them changed**. The `admin` role already returns early in `refill()` (`if ($role === 'admin') return true;`), so that role automatically gets no notification.
 
-Konsekuensi praktis: **kode produksi jangan bergantung pada membaca properti
-internal tersebut** kalau pemanggilannya ingin bisa diuji dengan
-`tests/unit/support/MysqlFake.php`. Kalau memang butuh nilai tersebut, kirim
-melewat parameter atau kembalikan lewat jalur lain — bukan lewat properti stmt.
+The message uses the amount that was really credited, never a fixed number:
 
----
-
-### Notifications: `like` coalescing & retention (2026-10-03)
-
-Goal: automatic **refill** MEeLCoin notifications, while stopping the unbounded
-growth of `user_notifications`.
-
-#### Background (measured, not assumed)
-
-Before this change `user_notifications` had **no pruning whatsoever** — the only
-`DELETE` statements came from user actions (`deleteOne`, `deleteAllByUser`,
-`deleteByChat`). No age limit, no count limit.
-
-What made it not urgent: the notifications page only ever fetches the **50 newest
-rows** (`profile/notification.php` → `getList($conn, $userId, 50, …)`; the API
-caps at `min(50, …)`). So **rows beyond the newest 50 per user are never shown** —
-pure ballast.
-
-State at the time: 30 rows / 3,351 B, averaging 112 B per row. The `meelcoin` type
-accounted for 27 of those 30, because its `message` embeds the **full upload URL and
-title**. Only **27 of the 30 were unique**: there were 3 exact duplicates, one of
-them the fingerprint of an **upload retry**.
-
-#### Rule 1 — Automatic refill notification
-
-Created inside `MeelCoin::refill()` rather than at each call site, because the
-credited amount is only known there — no caller can forget. `refill()` is invoked
-from 7 production places and **none of them changed**.
-
-`admin` already returns early inside `refill()`
-(`if ($role === 'admin') return true;`), so that role automatically gets no
-notification.
-
-**The message uses the amount actually credited, never a fixed number:**
-
-> Saldo Anda bertambah {amount} dari isi ulang.
-> *(Your balance increased by {amount} from the refill.)*
+> Saldo Anda bertambah {jumlah} dari isi ulang.
 
 Hardcoding "25" would lie in two real cases:
 
 | Source | Value |
-| --- | --- |
+|---|---|
 | Default `meelcoin_user_refill` | **15** |
 | Default `meelcoin_member_refill` | 25 |
-| All of them | admin-editable in `admin/meelcoin.php` → `site_settings` |
-| Actual credited | `min($refillAmt, $maxCoins - $current)` — **clamped by remaining headroom** |
+| All values | changeable by an admin in `admin/meelcoin.php` → `site_settings` |
+| Real amount | `min($refillAmt, $maxCoins - $current)` — **cut by the remaining headroom** |
 
-So a `member` with a balance of 45 (max 50) and a refill of 25 only receives
-**+5**. The notification reuses the existing `meelcoin` type (not a new one), so
-`$validTypes`, `$ICONS` and the filters in `notification.js` need no changes and
-all coin history stays in a single tab.
+So a `member` user with a balance of 45 (max 50) and a refill of 25 receives only **+5**. The notification reuses the `meelcoin` type (not a new type), so `$validTypes`, `$ICONS`, and the filter in `notification.js` do not need to change and the whole coin history stays in one tab.
 
-#### Rule 2 — Coalescing `like` notifications
+### Rule 2 — Coalescing `like` notifications
 
-One viral video can produce hundreds of likes within minutes. Without
-coalescing, the uploader receives hundreds of rows all reading "X liked your
-work".
+One viral video can produce hundreds of likes within minutes. Without coalescing, the uploader receives hundreds of notification rows that all say "X liked your work". So `Notification::create()` becomes a no-op when a `like` notification for the same user was already created within the **last 60 minutes**. What is sacrificed: the identity of the liker within that window (the notification shows whoever triggered it first) and any video that also got a like is deferred. That is deliberate — the limit becomes clear: **at most one like notification per hour per user**.
 
-`Notification::create()` therefore becomes a no-op when a `like` notification for
-the same user was already created within the **last 60 minutes**. What is traded
-away: the identity of the liker inside that window (the notification names whoever
-triggered it first) and the specific video is deferred too. That is deliberate —
-the bound becomes clear: **at most one like notification per hour per user**.
-
-Only `like` is coalesced. Every other type **must not** be throttled:
+Only `like` is coalesced. Other types **must not** be throttled:
 
 | Type | Reason |
-| --- | --- |
-| `reply` | conversation — a dropped notification means a lost comment |
-| `admin_chat` | admin messages must all get through |
-| `meelcoin` | tied to balance — the user needs the full history |
+|---|---|
+| `reply` | a conversation — without the notification the comment is lost |
+| `admin_chat` | admin messages must all come through |
+| `meelcoin` | tied to the balance — the user needs the full history |
 | `system` | system announcements |
 
-#### Rule 3 — Retention: 50 rows & 15 days
+### Rule 3 — Retention: 50 rows and 15 days
 
-`Notification::pruneUser()` deletes rows that are either:
+`Notification::pruneUser()` deletes rows that are **older than 15 days**, or that fall outside the **50 newest** (ordered `created_at DESC, id DESC`). Unread rows are deleted too once they are pushed past the 50-row limit — legitimate, because the notification page never shows more than that anyway.
 
-1. older than **15 days**, or
-2. outside the **50 newest** (ordered `created_at DESC, id DESC`).
+It runs from `scripts/gc.php` (CLI/cron), not from a web request — pruning issues a `DELETE` and does not belong in a per-request path. `pruneAll()` returns the number of **users** pruned, not the number of rows: `mysqli_stmt::$affected_rows` is an internal property that cannot be read on a test double, so counting rows would make the code hard to test for no real benefit.
 
-Unread rows are pruned too once they fall outside the 50-row bound — which is
-fair, since the notifications page never renders more than that anyway.
+The index `idx_un_user_type_created (user_id, type, created_at)` supports the `like` coalescing lookup and doubles as a covering index for the pruning query. Migration **v4** and `schema.sql` are in sync (both must change together, per the T9 convention) and verified idempotent twice.
 
-It runs from `scripts/gc.php` (CLI/cron), never from a web request — pruning
-issues `DELETE` and does not belong in the per-request path. `pruneAll()` returns
-the number of **users** pruned rather than rows: `mysqli_stmt::$affected_rows` is
-an internal property that cannot be read from a test double, so counting rows
-would make the code hard to test for no real benefit.
-
-#### What needed a migration
-
-A new index `idx_un_user_type_created (user_id, type, created_at)` — it backs the
-`like` coalescing lookup and doubles as covering for the pruning query. Without it,
-`isCoalesced()` scans all of that user's rows on every like press.
-
-Migration **v4** plus `schema.sql` were kept in sync (both must move together, per
-the T9 convention). Verified idempotent across 2 runs.
-
-#### Verification
-
-`tests/unit/NotificationRetentionTest.php` (**11 tests**) locks in: only `like` has a
-coalescing window, other types touch no database at all, both retention bounds hold,
-nonsensical arguments are clamped (keep ≥ 1), and pruning never touches other users.
-
-Plus direct database verification (6 scenarios, all passing):
-
-| # | Scenario | Result |
-| --- | --- | --- |
-| 1 | 5× like within 1 hour | **1** row |
-| 2 | 3× reply | **3** rows (not throttled) |
-| 3 | 120 rows → prune | **50** rows |
-| 4 | 20 days old | removed; the new one **survived** |
-| 5 | Another user | **untouched** |
-| 6 | refill, role `user` | notification shown: "increased by **15**" |
-
-Scenario 6 also proves the correction above: the number displayed is **15** (the
-`user` role default), not 25.
-
----
-
-### Test doubles: internal mysqli properties cannot be faked
-
-A finding that applies to any fake: `num_rows`, `affected_rows` and similar
-internals are **read-only virtual properties** in PHP 8.x. Overriding the method
-and adding `__get()` **both fail to intercept** —
-`ReflectionMethod('mysqli_result', 'num_rows')` even throws *method does not
-exist*, which proves it is purely a property.
-
-Practical consequence: **production code should not depend on reading those internal
-properties** if it is meant to be testable with
-`tests/unit/support/MysqlFake.php`. When such a value is genuinely needed, pass it
-in as a parameter or return it through another path — never through a statement
-property.
-
----
-
-### Cross-test static caches: `get_user_role()` & `get_user_active()`
-
-Both use a per-process `static $cache`. It is **not** reset between tests, so
-one test can poison a later test running in the same process. This actually
-happened:
-
-`MediaViewerTest` constructs a `MediaViewer` with a **mock connection**, and the
-constructor calls `get_user_role($mock, 1)`. The mock has no rows, so the
-function returns the `'user'` fallback — and **memoizes** that fallback into
-`static $cache[1]`. Several tests later, in the same process,
-`MediaInteractionIntegrationTest` calls `get_user_role($conn, 1)` against the
-real test DB where the row is `role = 'admin'` — but the stale cache wins, so
-`isAdmin()` returns `false` and the admin comment deletion fails with 404.
-
-What made this hard to spot: the test **passes when run on its own**
-(`--filter`) and only fails when the whole suite runs.
-
-The rule: **a cache may only store facts, not uncertainty.** A missing row means
-"don't know yet", not "this user is a `user`". So a negative result is
-deliberately **not** memoized:
-
-```php
-$row = $stmt->get_result()->fetch_assoc();
-$stmt->close();
-
-if ($row === null) {
-    return 'user';          // fallback, NOT cached
-}
-
-$role = (string)$row['role'];
-$cache[$user_id] = $role;   // a fact → safe to cache
-```
-
-`get_user_active()` has the twin bug: it memoizes a `false` derived from a
-missing row, so a user who has just been activated stays "inactive" for the rest
-of the process. Fixed the same way.
-
-Locked in by `tests/unit/UserRoleCacheNotFoundTest.php`. If that test starts
-failing after you touch either function, first look for a caller that performs a
-negative lookup earlier.
-
----
-
-### Media constants must be pinned in `tests/bootstrap.php`
-
-The media path constants (`MEEL_HDD_*`) are pinned in `tests/bootstrap.php`,
-**before** any production file that could define them at `require` time.
-
-The problem: `modules/core/TranscoderBase.php` defines `MEEL_HDD_BASE` as the
-placeholder `'/path/to/your/media'` when the constant is not already set. Once
-that file is `require`d — and `require_once` **cannot be undone** — every test
-running afterwards sees `meel_media_base_path('video')` pointing at an
-unwritable placeholder.
-
-The symptom looks innocuous but is deeply misleading:
-
-```
-file_put_contents(/path/to/your/media/video/upload/thumbnail/x_thumb.webp):
-Failed to open stream: No such file or directory
-```
-
-The test **passes when run on its own** (`--filter`) and only fails when the
-whole suite runs — because the test that pulls in `TranscoderBase.php` happened
-to run before the one that needs a writable path.
-
-The fix pins the constants to `temp/media-test/` up front. Two pleasant effects
-at once:
-
-1. test ordering stops determining results;
-2. no media directory leaks outside the repo while tests run.
-
----
-
-### Test Infrastructure — important notes
-
-#### 🚨 `createMock(mysqli::class)` consumed 8.86 GiB of RAM
-
-Symptom: `phpunit --testsuite='MEeL Core Unit Tests'` climbed to **8.86 GiB RSS**
-and then OOM'd inside `MockClass.php`.
-
-Root cause: PHPUnit builds mock classes via `eval()` and **holds them in a static
-cache for the lifetime of the process**. `mysqli` has
-`bind_param(string $types, mixed &...$vars)` — by-reference plus variadic
-parameters — so the generated class is very large. Accumulating them across several
-tests pushed the process into gigabyte territory.
-
-Solution: `tests/unit/support/MysqlFake.php` — `FakeMysqli`, `FakeMysqliStmt` and
-`FakeMysqliResult` as subclasses that **never call the parent constructor** (no
-connection, no generated class, ≈0 RAM).
-
-Also added `phpunit.xml` → `<ini name="memory_limit" value="2G"/>` because this
-repo's CLI php.ini uses `memory_limit = -1` (unlimited); without it a single bad
-test can exhaust the machine's RAM before anyone notices.
-
-Result: **8.86 GiB → 453 MiB** (~19× lighter) and the OOM is gone.
-
-> **Rule:** when adding a test that needs `mysqli`, use `FakeMysqli` — **never**
-> `createMock(mysqli::class)`. If a mock is genuinely required, build it **once**
-> in `setUp` and reuse it.
-
-#### `mysqli_result::$num_rows` cannot be faked
-
-In PHP 8.3 `num_rows` is a **read-only virtual property**, not a method. Overriding
-`num_rows()` and `__get()` **both fail to intercept** — accessing
-`$result->num_rows` still throws `object is already closed`.
-`ReflectionMethod('mysqli_result', 'num_rows')` even throws *method does not exist*,
-which conclusively proves it is purely a property. Production code in
-`MediaViewer::getMediaData()` deliberately avoids it.
-
-#### Dev environment notes
-
-- ⚠️ `MEEL_TEST_DB_HOST=127.0.0.1` is **mandatory** for integration tests. XAMPP's
-  MariaDB socket lives at `/opt/lampp/var/mysql/mysql.sock`, while the PHP CLI looks
-  in `/var/run/mysqld/mysqld.sock` (`mysqli.default_socket`) → *No such file or
-  directory*. `localhost` fails, TCP `127.0.0.1` works. This is a dev-machine quirk
-  only — CI is already correct (`ci.yml` uses `127.0.0.1`).
-- ⚠️ `StorageMountGuardTest` (which spawns PHP subprocesses via `proc_open`) has
-  failed once with `exit 255` when the suite runs **concurrently** with another test
-  process touching `temp/`. Do not run it in parallel with `security_test` /
-  `check_deploy`.
-- The **IO/R** column in `htop` is a read *rate*, not RSS.
-
-#### `release.yml` could previously never go green
-
-The `test-gate` job runs `vendor/bin/phpunit` (**both** suites, including
-integration) with no MySQL service, so all 96 integration tests ERRORed. It now has
-a `mysql:8.0` service + healthcheck + `extensions: mysqli` + the `MEEL_TEST_DB_*`
-env vars.
-
----
-
-### The gate used to verify changes
-
-```bash
-vendor/bin/phpunit --testsuite='MEeL Core Unit Tests'
-MEEL_TEST_DB_HOST=127.0.0.1 vendor/bin/phpunit --testsuite='MEeL Integration Tests'
-php tests/functional_test.php
-php tests/security_test.php
-php tests/check_deploy.php
-php database/migrate.php   # run twice to prove idempotency
-php scripts/gc.php          # heavy housekeeping (needs $server = TCP)
-```
-
----
-
+`tests/unit/NotificationRetentionTest.php` (11 tests) pins: only `like` has a coalescing window, other types never touch the database, both retention limits are correct, nonsensical arguments are clamped (keep ≥ 1), and pruning never touches another user.
 ## Resource for Developers
 
 ### Key Files to Understand
