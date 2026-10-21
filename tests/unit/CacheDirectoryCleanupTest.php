@@ -4,24 +4,10 @@ use PHPUnit\Framework\TestCase;
 /**
  * Pembersihan direktori cache.
  *
- * `GarbageCollector::cleanCacheDirectory()` membuang berkas cache yang
- * sudah lewat TTL. Berkas cache datang dari beberapa keluarga, masing-masing
- * dengan key waktu yang berbeda: `media_stats_` dan `server_stats_info`
- * memakai `ts`, `dirsize_` dan `xsendfile_roots` memakai `time`,
- * `admin_orphans` memakai `checked_at`.
- *
- * DULU
- * ----
- * Pemeriksaan kedaluwarsa memanggil `meel_read_cache_file($path, 0, [], '')`,
- * dan fungsi itu mengembalikan `null` begitu saja saat TTL-nya `0` — yang
- * artinya "belum kedaluwarsa" dibaca sebagai "sudah kedaluwarsa". Akibatnya
- * **setiap** berkas cache ber-prefix yang dikenal dihapus di setiap sweep,
- * termasuk yang baru saja ditulis. Cache tidak pernah berlaku.
- *
- * SEKARANG
- * --------
- * Key waktu dicari berurutan (`ts`, `time`, `checked_at`), dan berkas tanpa
- * key waktu apa pun jatuh ke mtime.
+ * Tiap keluarga cache memakai key waktu yang berbeda: `media_stats_` dan
+ * `server_stats_info` memakai `ts`, `dirsize_` dan `xsendfile_roots` memakai
+ * `time`, `admin_orphans` memakai `checked_at`. Key waktu dicari berurutan,
+ * dan berkas tanpa key waktu apa pun jatuh ke mtime.
  *
  * @coversNothing
  */

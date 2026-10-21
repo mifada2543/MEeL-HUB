@@ -4,29 +4,17 @@ use PHPUnit\Framework\TestCase;
 /**
  * Penjaga: tidak ada schema.sql yang boleh memilih database sendiri.
  *
- * LATAR BELAKANG
- * --------------
- * schema.sql DULU memuat
- *     CREATE DATABASE IF NOT EXISTS `MEeL` ...
- *     USE `MEeL`;
- * dan `USE` di dalam berkas MENANG atas nama database yang disebut di baris
- * perintah. Akibatnya `mysql -u root meel_ci < database/schema.sql` tetap
- * mendarat di `MEeL`: impor berjalan, exit 0, tabel tidak ada di database yang
- * dimaksud -- dan langkah apa pun yang menyusul menguji database kosong tanpa
- * memberi tahu apa pun.
+ * schema.sql DULU memuat `CREATE DATABASE` dan `USE`, dan `USE` di dalam
+ * berkas menang atas nama database di baris perintah — impor berjalan, exit
+ * 0, tabel tidak ada di database yang dimaksud, dan langkah apa pun yang
+ * menyusul menguji database kosong tanpa memberi tahu apa pun.
  *
- * Perbaikannya menghapus kedua baris itu, bukan menambahkan lebih banyak
- Penjaga. Tiap pemanggil impor menyebut nama database sebagai argumen.
+ * Berkas ini adalah jaring pengaman kedua; penjaga yang sama juga ada di
+ * .github/workflows/ci.yml, tapi penjaga itu hanya berjalan kalau CI
+ * berjalan.
  *
- * Berkas ini ada sebagai jaring pengaman kedua. Penjaga yang sama juga ada di
- * .github/workflows/ci.yml, tapi penjaga itu hanya berjalan kalau CI berjalan;
- * ini berjalan di suite unit dan gagal dalam hitungan detik.
- *
- * PERAWATAN
- * ---------
- * Pola di sini sengaja TIDAK menyebut nama database apa pun. Pola yang menyebut
- * nama bisa diam-diam gagal cocok -- misalnya kalau nama di schema.sql diubah
- * menjadi huruf kecil -- dan membiarkan berkas apa adanya lolos.
+ * PERAWATAN: pola di sini sengaja TIDAK menyebut nama database apa pun.
+ * Pola yang menyebut nama bisa diam-diam gagal cocok.
  */
 class SchemaDatabaseSelectionTest extends TestCase
 {

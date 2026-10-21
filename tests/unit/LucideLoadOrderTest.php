@@ -4,30 +4,17 @@ use PHPUnit\Framework\TestCase;
 /**
  * Penjaga urutan muat `assets/js/shared/htmx-lucide.js`.
  *
- * Latar belakang
- * --------------
- * File itu memanggil `lucide.createIcons()` di dua tempat: sekali saat
- * load, sekali lagi di setiap `htmx:afterOnLoad`. `lucide` sendiri
- * dimuat `defer` oleh `partials/link.php` — jadi pada halaman yang
- * memuat `htmx-lucide.js` di dalam `<head>`, library asli BELUM ada
- * saat file itu dieksekusi.
+ * `lucide` sendiri dimuat `defer` oleh `partials/link.php` — jadi pada
+ * halaman yang memuat `htmx-lucide.js` di dalam `<head>`, library asli
+ * BELUM ada saat file itu dieksekusi. Yang menyelamatkan: stub `window.lucide`
+ * di `partials/link.php`, dan cek `typeof lucide` di `htmx-lucide.js`.
  *
- * Dua hal menyelamatkan itu sungguhan terjadi:
+ * Tanpa cek itu file melempar `ReferenceError`, dan karena penanganannya
+ * melempar, listener tidak pernah teregistrasi — semua swap htmx berikutnya
+ * diam-diam tidak merender ikon.
  *
- *   1. `partials/link.php` mendefinisikan `window.lucide` sebagai stub
- *      pengantre secara SINKRON sebelum tag `<script>` mana pun, lalu
- *      me-flush antrean itu setelah `lucide.js` termuat.
- *   2. `htmx-lucide.js` sendiri mengecek `typeof lucide`.
- *
- * Yang kedua adalah penutup yang bisa diuji. Tanpa cek (1) saja, file
- * ini melempar `ReferenceError` — dan karena penanganannya melempar,
- * `document.body.addEventListener` TIDAK PERNAH teregistrasi, jadi
- * semua swap htmx berikutnya diam-diam tidak merender ikon. Gejalanya
- * tidak muncul di server, tidak muncul di log: hanya ikon hilang.
- *
- * Test ini menjalankan file-nya sungguhan di Node dengan DOM palsu
- * (`tests/js/htmx-lucide.harness.js`), karena cacat ini tidak terlihat
- * dari membaca source — file tetap tampak benar.
+ * Test ini menjalankan file-nya sungguhan di Node dengan DOM palsu, karena
+ * cacat ini tidak terlihat dari membaca source.
  *
  * @coversNothing
  */
@@ -97,14 +84,9 @@ class LucideLoadOrderTest extends TestCase
     /**
      * PENJAGA REGRESI UTAMA.
      *
-     * Kalau htmx-lucide.js dimuat di halaman yang tidak punya stub
-     * (mis. partials/link.php ikut dihapus, atau halaman baru yang
-     * menulis ulang `<head>`-nya sendiri), `lucide` belum ada. Tanpa
-     * guard, file ini melempar — dan listener tidak pernah terpasang,
-     * sehingga setiap swap htmx berikutnya diam-diam tidak merender
-     * ikon tanpa satu pun error di log.
-     *
-     * Skenario ini sengaja tidak memasang `lucide` sama sekali.
+     * Tanpa stub `lucide`, file melempar dan listener tidak pernah terpasang —
+     * setiap swap htmx berikutnya diam-diam tidak merender ikon tanpa satu pun
+     * error di log. Skenario ini sengaja tidak memasang `lucide` sama sekali.
      */
     public function testSurvivesMissingLucideAndStillRendersOnceItAppears(): void
     {
@@ -127,20 +109,11 @@ class LucideLoadOrderTest extends TestCase
     /**
      * PENJAGA REGRESI KEDUA.
      *
-     * `htmx-lucide.js` dimuat di dalam <head> pada beberapa halaman
-     * (`music/watch.php`, `books/index.php`). Saat file itu jalan,
-     * `document.body` masih null — sehingga listener yang didaftarkan di
-     * `document.body` tidak pernah terdaftar. Akibatnya setiap swap htmx
-     * berikutnya diam-diam tidak merender ikon: yang tersisa cuma
-     * `<i data-lucide>` yang kosong.
-     *
-     * Gejalanya persis seperti yang dilaporkan: ikon baru muncul setelah
-     * halaman di-refresh, lalu menghilang lagi begitu like/dislike diklik.
-     * Halaman yang memuat file-nya di akhir <body> tidak kena — makanya
-     * bug ini sempat tidak terlihat.
-     *
-     * Skenario `no-body` mensimulasikan itu: skrip jalan saat
-     * `document.body` masih null.
+     * `htmx-lucide.js` dimuat di dalam <head> pada beberapa halaman. Saat file
+     * itu jalan, `document.body` masih null — sehingga listener yang
+     * didaftarkan di `document.body` tidak pernah terdaftar, dan setiap swap
+     * htmx berikutnya meninggalkan ikon apa adanya. Skenario `no-body`
+     * mensimulasikan itu.
      */
     public function testRegistersListenerEvenWhenBodyDoesNotExistYet(): void
     {

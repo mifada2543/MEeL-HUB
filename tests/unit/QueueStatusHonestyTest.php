@@ -4,27 +4,15 @@ use PHPUnit\Framework\TestCase;
 /**
  * T6 — status antrean harus jujur.
  *
- * Bug yang ditutup: `releaseQueue()` dulu dipanggil SEBELUM
- * `finalizeVideo()`/`finalizeMusic()`, sehingga baris antrean ditandai
- * `completed` walau finalize lalu gagal. Akibatnya user melihat upload
- * sukses padahal tidak ada file di storage dan tidak ada baris di DB —
- * dan MEeLCoin yang sudah dipotong tidak dikembalikan.
- *
- * Perbaikan sudah ada di produksi (releaseQueue pindah ke SESUDAH
- * finalize, statusnya ditentukan hasil finalize). Yang belum ada adalah
- * **jaminan**-nya: tidak ada satu pun test yang mengunci urutan itu, atau
- * kondisi penentuan statusnya.
+ * `releaseQueue()` dulu dipanggil SEBELUM finalize, sehingga baris ditandai
+ * `completed` walau finalize lalu gagal — user melihat upload sukses padahal
+ * tidak ada file dan tidak ada baris di DB, dan MEeLCoin yang dipotong tidak
+ * dikembalikan.
  *
  * Test ini menutup dua hal sekaligus:
  *  1. Guard statis — releaseQueue harus dipanggil setelah finalize, dan
- *     statusnya harus bergantung pada hasilnya (bukan hardcode).
- *  2. Perilaku releaseQueue() — hanya boleh menulis status yang valid,
- *     dan harus benar-benar menandai baris yang dituju.
- *
- * Kenapa statis + behavior, bukan hanya behavior: urutan pemanggilan
- * sulit diamati dari luar tanpa menjalankan download sungguhan (ffmpeg,
- * network). Guard statis menutupnya secara deterministik — pola yang sama
- * dipakai InteractionsFkSourceTest untuk FK database.
+ *     statusnya harus bergantung pada hasilnya.
+ *  2. Perilaku releaseQueue() — hanya boleh menulis status yang valid.
  */
 
 /** @coversNothing */

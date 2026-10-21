@@ -4,23 +4,15 @@ use PHPUnit\Framework\TestCase;
 /**
  * Konstanta stream CLI di berkas yang bisa jalan di konteks web.
  *
- * `STDERR`, `STDOUT`, dan `STDIN` hanya didefinisikan oleh SAPI CLI dan
- * CGI. Di bawah Apache (mod_php) dan di built-in server, konstanta itu
- * TIDAK ada — memakai `fwrite(STDERR, ...)` di sana berakhir sebagai
- * "Undefined constant STDERR", yaitu fatal yang menutupi pesan asli.
+ * `STDERR`, `STDOUT`, dan `STDIN` hanya didefinisikan oleh SAPI CLI dan CGI.
+ * Di bawah Apache (mod_php) konstanta itu TIDAK ada — memakai
+ * `fwrite(STDERR, ...)` di sana berakhir sebagai "Undefined constant STDERR",
+ * yaitu fatal yang menutupi pesan asli.
  *
- * `auth/config.php` pernah seperti itu: berkasnya di-include setiap
- * halaman, jadi begitu koneksi database gagal, pesan "Koneksi ke database
- * gagal" yang dimaksud operator justru tidak pernah terlihat — yang
- * tampil adalah error yang tidak menjelaskan apa pun.
- *
- * Aturan yang dijaga test ini: berkas yang memakai STDERR/STDOUT/STDIN
- * hanya boleh doing so kalau
- *  - ia hidup di direktori perkakas CLI (scripts/, database/, tests/), atau
- *  - ia menjaga dirinya sendiri dengan pemeriksaan PHP_SAPI yang
- *    menghentikan eksekusi, atau
- *  - ia tidak pernah di-include berkas lain, jadi tidak mungkin jalan
- *    sebagai bagian dari permintaan web.
+ * Aturan yang dijaga: berkas yang memakai STDERR/STDOUT/STDIN hanya boleh
+ * doing so kalau ia hidup di direktori perkakas CLI, atau menjaga dirinya
+ * sendiri dengan pemeriksaan PHP_SAPI, atau tidak pernah di-include berkas
+ * lain.
  *
  * @coversNothing
  */

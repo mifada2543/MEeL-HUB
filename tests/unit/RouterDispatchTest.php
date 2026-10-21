@@ -6,17 +6,9 @@ require_once MEEL_ROOT . '/modules/core/Router.php';
 /**
  * Keputusan pengalihan pada `MeelRouter`.
  *
- * DULU
- * ----
- * `dispatch()` memuat semuanya: dua cabang pengalihan profil, pencarian
- * rute, penanganan rute opsional, dan eksekusi handler — 50 baris dalam
- * satu fungsi, dengan `exit` di hampir setiap cabang.
- *
- * SEKARANG
- * --------
- * Cabang pengalihan profil menjadi `profileAliasRedirect()`, yang murni:
- * mengembalikan URL tujuan atau null. `dispatch()` tinggal memakai
- * hasilnya, dan sisanya (`guardOptionalRoute()`, `runHandler()`) dipisah.
+ * `dispatch()` dulu 50 baris dalam satu fungsi, dengan `exit` di hampir
+ * setiap cabang. Cabang pengalihan profil kini menjadi `profileAliasRedirect()`
+ * yang murni; sisanya dipisah ke `guardOptionalRoute()` dan `runHandler()`.
  *
  * Test ini menahan:
  *  1. Aturan pengalihan profil tidak boleh berubah.

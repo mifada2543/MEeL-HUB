@@ -4,31 +4,15 @@ use PHPUnit\Framework\TestCase;
 /**
  * Penjaga peta pola pemeriksaan transcoder di `security_test.php`.
  *
- * THE PROBLEM
- * -----------
- * Pola keamanan adalah string yang mengikat ke BENTUK kode, bukan ke
- * perilakunya. Awalnya dua di antaranya mengikat pada nama variabel:
+ * Pola keamanan mengikat ke BENTUK kode, bukan ke perilakunya. Ketika
+ * `finalizeVideo()` dipecah, dua pola tidak lagi cocok dan gerbang melaporkan
+ * 99/100 — hasil yang baik, karena memaksa seseorang melacak letaknya.
  *
- *   'proc_open array (finalizeVideo)'  => '/proc_open\(\$hls_cmd/'
- *   'stderr pipe untuk progress FFmpeg' => '/\$hls_pipes\[2\]/'
+ * Yang buruk adalah arah yang lain: pola mati dipoles supaya gerbang hijau
+ * lagi tanpa pernah ditinjau ulang. Test ini menutup arah itu: setiap pola
+ * di peta WAJIB cocok dengan kode yang ada hari ini.
  *
- * Waktu `finalizeVideo()` dipecah (T19) dan siklus hidup prosesnya
- * pindah ke `runParallelFfmpeg()`, kedua pola itu tidak lagi cocok. Gerbang
- * laporkan 99/100 dengan dua kegagalan -- hasil yang BAik, karena memaksa
- * seseorang melacak letaknya.
- *
- * Yang buruk adalah arah yang lain: pola yang mati dipoles atau dihapus supaya
- * gerbang hijau lagi, tanpa pernah ditinjau ulang. Tidak ada error, tidak
- * ada skor yang turun, dan penjaga yang sebelumnya aktif kini tidak
- * memeriksa apa pun.
- *
- * Test ini menutup arah yang itu: setiap pola di peta WAJIB cocok dengan
- * kode yang ada hari ini. Pola mati gagal di sini, di unit test, bukan
- bukan diam-diam menunggu produksi.
- *
- * Catatan jujur: pola memeriksa bentuk, bukan hasil. Pemeriksaan security
- * yang sesungguhnya tetap butuh uji perilaku. Yang bisa dijaga di sini
- * adalah tidak adanya penjaga yang hilang dalam perjalanan refactor.
+ * Catatan jujur: pola memeriksa bentuk, bukan hasil.
  *
  * @coversNothing
  */

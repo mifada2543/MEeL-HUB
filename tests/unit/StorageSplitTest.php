@@ -4,31 +4,15 @@ use PHPUnit\Framework\TestCase;
 /**
  * Penjaga hasil pemecahan `modules/core/helpers/storage.php` (T27).
  *
- * LATAR BELAKANG
- * --------------
- * `storage.php` tadinya 941 baris / 37 fungsi dalam satu file. Dipecah
- * menjadi empat per domain, mengikuti konvensi yang sudah dipakai folder
- * `helpers/` (`media.php`, `audio.php`, `upload.php`, …):
+ * `storage.php` tadinya 941 baris / 37 fungsi dalam satu file, dipecah
+ * menjadi empat per domain; `storage.php` sengaja TETAP ada sebagai
+ * aggregator supaya `helpers/main.php` dan hampir 50 pemanggil tidak pecah.
  *
- *   storage_paths.php     base path, thumbnail, PID, guard mount   (14 fn)
- *   storage_disk.php      kapasitas disk, cache file, audit log     (8 fn)
- *   storage_xsendfile.php deteksi & header X-Sendfile             (11 fn)
- *   storage_stream.php    validator cache + serving media          (4 fn)
- *
- * `storage.php` sengaja TETAP ada sebagai aggregator supaya
- * `helpers/main.php` (satu baris) dan 25+ pemanggil tidak pecah.
- *
- * BUG SENYAP YANG SUDAH TERJADI SEBELUM TEST INI
- * ----------------------------------------------
- * `tests/security_test.php` punya peta "berkas → fungsi berbahaya yang
- * diizinkan". Entri `storage.php => ['shell_exec']` masih menunjuk ke
- * agregator — yang kini hanya 40 baris dan tidak punya `shell_exec`
- * sama sekali. Test itu **tetap melaporkan 100/100** sementara
- * `dir_size()` yang memanggil `du -sb` via `shell_exec` tidak lagi
- * dipindai sama sekali.
- *
- * Itu kelas bug yang paling berbahaya: check yangreports hijau karena
- * tidak lagi memeriksa apa pun. Test di bawah menutupnya.
+ * BUG SENYAP YANG SUDAH TERJADI: peta "berkas → fungsi berbahaya yang
+ * diizinkan" di `security_test.php` masih menunjuk ke agregator, yang kini
+ * tidak punya `shell_exec` sama sekali. Test itu tetap melaporkan 100/100
+ * sementara `dir_size()` yang memanggil `du -sb` via `shell_exec` tidak lagi
+ * dipindai. Test di bawah menutupnya.
  *
  * @coversNothing
  */

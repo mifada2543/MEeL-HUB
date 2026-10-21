@@ -7,23 +7,13 @@ require_once MEEL_ROOT . '/modules/media/AdminUploadQueueRepository.php';
 /**
  * Penyatuan dua repository panel admin.
  *
- * DULU
- * ----
- * `AdminActivityRepository` dan `AdminUploadQueueRepository` menyalin
- * seluruh query satu sama lain: filter waktu, pencarian, hitung, halaman,
- * ekspor, dan pembersihan. Yang berbeda cuma nama tabel, alias-nya, dan
- * dua kolom yang disaring. Kalau salah satu diubah — misalnya batas
- * halaman atau urutan pengurutan — salinannya diam-diam tertinggal.
- *
- * SEKARANG
- * --------
- * Query bersama ada di `modules/media/AdminFilteredRepository.php`.
- * Subclass hanya supplying nama tabel, alias, dan kondisi filternya.
+ * `AdminActivityRepository` dan `AdminUploadQueueRepository` dulunya
+ * menyalin seluruh query satu sama lain; query bersama kini ada di
+ * `modules/media/AdminFilteredRepository.php`.
  *
  * Test ini menahan:
  *  1. Subclass tidak boleh menyalin query bersama balik.
- *  2. Tiap repository harus tetap menunjuk tabel dan alias yang benar —
- *     nama tabel yang salah akan diam-diam querying tabel yang lain.
+ *  2. Tiap repository harus tetap menunjuk tabel dan alias yang benar.
  *  3. Perilaku filter tiap jenis repository harus tetap berbeda.
  *
  * @coversNothing

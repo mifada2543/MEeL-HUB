@@ -5,19 +5,8 @@
  * mengganti potongan DOM, ikon <i data-lucide> yang baru ikut masuk
  * perlu di-render ulang.
  *
- * Ketergantungan
- * --------------
- * Halaman normal memuat partials/link.php lebih dulu, yang mendefinisikan
- * window.lucide sebagai stub pengantre (lihat shim di sana) lalu memuat
- * lucide.js asli dengan `defer`. Karena stub itu ada, panggilan di bawah
- * aman walau lucide.js belum selesai diunduh.
- *
- * Tapi file ini dipakai bersama, jadi tidak boleh mengasumsikan shim
- * selalu ada. Tanpa guard, satu halaman yang memuat file ini tanpa
- * partials/link.php akan ReferenceError saat htmx:afterOnLoad menyala —
- * dan karena penanganannya melempar, tidak ada listener lain yang jalan.
- * Guard di bawah membuat file ini aman berdiri sendiri: tanpa lucide,
- * dia hanya tidak melakukan apa-apa.
+ * Berkas ini aman berdiri sendiri: tanpa `lucide` dia hanya tidak
+ * melakukan apa-apa, bukan melempar.
  */
 
 (function () {
@@ -32,14 +21,9 @@
 
   renderIcons();
 
-  // Listener-nya didaftarkan di `document`, bukan `document.body`.
-  //
-  // File ini bisa dimuat di dalam <head> — dan saat itu `document.body`
-  // masih null. Guard `if (document.body)` akan lolos, listener tidak
-  // pernah terdaftar, dan setiap swap htmx berikutnya diam-diam tidak
-  // merender ikon: yang tersisa cuma <i data-lucide> yang kosong.
-  // Event htmx memakai bubbles:true, jadi mendaftarkannya di `document`
-  // aman dari mana pun file ini dimuat.
+  // Listener didaftarkan di `document`, bukan `document.body` — berkas ini
+  // bisa dimuat di dalam <head> saat document.body masih null.
+  // Lihat docs/{id,en}/troubleshooting.md.
   document.addEventListener('htmx:afterOnLoad', function (e) {
     renderIcons((e.detail && e.detail.target) || document.body);
   });

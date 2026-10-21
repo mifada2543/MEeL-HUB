@@ -4,21 +4,9 @@ use PHPUnit\Framework\TestCase;
 /**
  * Kontainer like/dislike — satu sumber markup.
  *
- * DULU
- * ----
- * Markup tombol like/dislike ditulis tiga kali: di `music/watch.php`,
- * `video/watch.php`, dan `controllers/api/like.php`. Ketiganya melenceng:
- * tombol simpan di halaman pakai ikon `list-plus` + teks "Simpan", sedangkan
- * salinan di API masih `plus` + "Playlist" dan warnanya beda. Karena
- * kontainer itu ditukar lewat `hx-swap="outerHTML"`, yang menang adalah
- * salinan API — sehingga begitu like/dislike diklik, tombolnya berubah
- * bentuk di depan mata.
- *
- * SEKARANG
- * --------
- * Semuanya dirender dari `partials/like_dislike.php`. Halaman dan API
- * memanggil partial yang sama, jadi markup yang dikirim di respons API
- * dijamin sama dengan yang ada di halaman.
+ * Markup tombol like/dislike dulunya ditulis tiga kali dan melenceng: yang
+ * menang adalah salinan API, sehingga begitu diklik tombolnya berubah bentuk
+ * di depan mata. Semuanya kini dirender dari `partials/like_dislike.php`.
  *
  * Test ini menahan supaya salinan tidak muncul lagi.
  *

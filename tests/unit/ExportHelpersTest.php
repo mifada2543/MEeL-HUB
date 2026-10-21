@@ -2,37 +2,21 @@
 use PHPUnit\Framework\TestCase;
 
 /**
- * Penjaga helper ekspor danqed rsp yang menggantikannya di
+ * Penjaga helper ekspor yang menggantikannya di
  * `admin/activity_log.php` (T19).
  *
- * APA YANG SEBENARNYA DUPLIKAT
- * ---------------------------
- * Todo menyebut "`Exporter::csv|json|xls()`" dengan rujukan baris
- * `:70-160` ≡ `:292-397`. Kelas `Exporter` **tidak pernah ada** dalam
- * seluruh riwayat git repo ini -- jadi nama dan bentuk yang disebut Todo
- * keliru. Yang benar ada, dan lebih buruk dari yang tertulis: ada DUA blok
- * ekspor di `admin/activity_log.php`, masing-masing dengan mode unduh dan
- * pratinjau, masing-masing dengan tiga format.
+ * `admin/activity_log.php` punya DUA blok ekspor, masing-masing dengan mode
+ * unduh dan pratinjau, masing-masing dengan tiga format. Pemetaan kolom yang
+ * sama ditulis ulang dua belas kali, plus preamble XML SpreadsheetML dan
+ * closure $xls_cell yang duplikat byte-identik di dua blok.
  *
- * ArtinyaSpecification kolom yang sama ditulis ulang **dua belas kali**:
+ * Bahaya yang sesungguhnya bukan panjang berkas: kalau satu kolom ditambah,
+ * ada sebelas tempat lain yang harus ikut berubah tanpa ada yang memberi
+ * tahu kalau lupa — ekspor CSV bisa diam-diam punya kolom berbeda dari
+ * ekspor JSON.
  *
- *   antrean unggah: csv/json/xls unduh + csv/json/xls pratinjau  = 6
- *   log aktivitas:  csv/json/xls unduh + csv/json/xls pratinjau  = 6
- *
- * Plus premable XML SpreadsheetML (9 baris) dan closure $xls_cell, keduanya
- * duplikat byte-identik di dua blok.
- *
- * Bahaya yang sesungguhnya bukan panjang berkas. Kalau satu kolom ditambah
- * atau diurutkan ulang, ada sebelas tempat lain yang harus ikut berubah dan
- * tidak ada yang memberi tahu kalau lupa -- ekspor CSV bisa diam-diam punya
- * kolom berbeda dari ekspor JSON.
- *
- * APA YANG DIJAGA TEST INI
- * -----------------------
- * Test membandingkan helper baru dengan SEMANTIKA KODE LAMA yang ditulis
- * ulang di sini, bukan dengan output lama. Kalau kode lamanya
- * sendiri yang keliru, test ini tidak akan menangkapnya -- dan itu memang
- * di luar jangkauan. Yang dijaga: pemindahan tidak mengubah apa pun.
+ * Test membandingkan helper baru dengan SEMANTIKA KODE LAMA, bukan dengan
+ * output lama. Yang dijaga: pemindahan tidak mengubah apa pun.
  *
  * @coversNothing
  */

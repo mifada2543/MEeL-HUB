@@ -4,27 +4,10 @@ use PHPUnit\Framework\TestCase;
 /**
  * Test untuk modules/auth/helpers/authz.php — gerbang otorisasi.
  *
- * Sebelum test ini: `is_admin()` & `require_admin()` hanya "tersentuh"
- * oleh security_test.php lewat pemindaian daftar file (memastikan file ada),
- * bukan uji perilaku. Gerbang admin adalah kontrol akses utama — harusnya
- * punya test perilaku, bukan sekadar cek keberadaan file.
- *
- * ⚠️ Kendala teknis yang membentuk desain test ini:
- * `get_user_role()` memakai `static $cache` per-fungsi. PHP **tidak
- * menyediakan cara menulis static variable dari luar** — hanya
- * `ReflectionFunction::getStaticVariables()` yang bisa MEMBACA. Artinya
- * cache itu **tidak bisa di-reset antar-test**.
- *
- * Konsekuensinya test ini memakai **user_id unik per test** (lihat
- * USER_ID_POOL) sehingga tidak saling menipu: user 1 jadi admin di test A
- * tidak akan bocor jadi "admin" saat test B memakai user_id lain.
- * Test yang butuh role sama berulang WAJIB memakai user_id yang sama,
- * bukan dengan hoping reset cache bekerja.
- *
- * (Catatan: cache yang bocor antar-test juga berarti role tak ter-refresh
- * selama satu request PHP-FPM — itu perilaku yang disengaja untuk
- * mengurangi query, lihat memo T12. Yang diuji di sini adalah
- * kebenarannya, bukanStrategi caching-nya.)
+ * `get_user_role()` memakai `static $cache` per-fungsi, dan PHP tidak
+ * menyediakan cara menulis static variable dari luar — cache itu tidak bisa
+ * di-reset antar-test. Konsekuensinya test ini memakai user_id unik per
+ * test, sehingga role yang bocor dari test satu tidak menipu test lain.
  */
 
 /** @coversNothing */

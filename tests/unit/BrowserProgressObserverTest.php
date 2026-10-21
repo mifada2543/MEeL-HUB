@@ -6,23 +6,12 @@ require_once MEEL_ROOT . '/modules/core/BrowserProgressObserver.php';
 /**
  * Pemetaan stage progres di `BrowserProgressObserver`.
  *
- * DULU
- * ----
- * `onProgress()` adalah satu `switch` dengan sembilan case, masing-masing
- * case merangkai string JS-nya sendiri. Panjang fungsi grew into 66 baris
- * dan menambah stage baru berarti menyunting switch yang sudah panjang.
- *
- * SEKARANG
- * --------
- * Stage dipetakan ke handler lewat `BrowserProgressObserver::STAGE_HANDLERS`.
- * `onProgress()` tinggal mencari handler-nya; tiap stage punya method
- * sendiri yang tidak tahu apa pun tentang stage lain.
+ * Stage dipetakan ke handler lewat `BrowserProgressObserver::STAGE_HANDLERS`;
+ * `onProgress()` tinggal mencari handler-nya.
  *
  * Test ini menahan:
- *  1. Setiap stage yang benar-benar dipancarkan transcoder harus punya
- *     handler — stage yang dilupakan akan diam-diam hilang.
- *  2. Setiap handler yang dipetakan harus benar-benar ada sebagai method
- *     (perlindungan terhadap rename yang tidak_diikuti pemetaan).
+ *  1. Setiap stage yang dipancarkan transcoder harus punya handler.
+ *  2. Setiap handler yang dipetakan harus benar-benar ada sebagai method.
  *  3. String JS yang dipancarkan tidak boleh berubah.
  *
  * @coversNothing

@@ -99,22 +99,11 @@ if (!function_exists('sourceWithIncludes')) {
 /**
  * Sumber sebuah berkas DILETAKHI file lokal yang di-require/include-nya.
  *
- * KENAPA INI ADA
- * --------------
  * Pemeriksa keamanan sering menulis "file X harus punya pola Y". Begitu
  * kode itu dipindah ke berkas lain, pemeriksa membaca berkas yang sekarang
  * kosong dari yang dicari, tidak menemukan apa-apa, lalu melaporkannya
- * aman -- atau gagal, kalau ia.raises. Dua-duanya salah: yang pertama
- *-butuh fungsi yang hilang dari pemeriksaan.
- *
- * Yang kedua lebih halus: kalau pemeriksa MEMBUKA berkas yang salah, hasilnya
- * bukan "aman" tapi "gagal", jadi tidak ada pemeriksaan yang lolos diam-diam.
- * Yang berbahaya justru ketika berkas yang dipindai adalah berkas kosong
- * sementara yang sebenarnya dipindai sudah tidak dibaca sama sekali.
- *
- * Fungsi ini menutup celah itu: isinya berkas yang diminta PLUS isi
- * berkas lokal yang di-require/include-nya, sehingga pemeriksaan tetap
- * berlaku meski kodenya dipindah ke bootstrap bersama.
+ * aman. Fungsi ini menutup celah itu: isinya berkas yang diminta PLUS isi
+ * berkas lokal yang di-require/include-nya.
  *
  * @param string $relativePath path relatif terhadap PROJECT_ROOT
  * @param int $depth kedalaman rantai include yang diikuti

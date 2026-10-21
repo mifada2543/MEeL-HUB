@@ -4,31 +4,15 @@ use PHPUnit\Framework\TestCase;
 /**
  * Penjaga setiap peta "nama -> berkas" yang ada di repo.
  *
- * BUG SENYAP YANG SUDAH TERJADI DUA KALI DI REPO INI
- * --------------------------------------------------
- * Peta-peta ini memetakan nama (kelas atau fungsi) ke berkas tempat
- * nama itu HARUS ada. Kalau pemecahan berkas memindahkan sesuatu ke
- * tempat lain dan peta tidak ikut diperbarui, pemeriksa yang memetakannya
- * **tidak menggagalkan** -- ia hanya mencari di berkas yang sekarang
- * kosong dari yang dicari, tidak menemukan apa-apa, lalu melaporkannya
- * aman. Tidak ada error. Tidak ada stack trace. Skor tetap 100/100.
- *
- * Kejadian 1 (T27): `security_test.php` punya peta "berkas -> fungsi
- * berbahaya yang diizinkan" dengan entri `storage.php => ['shell_exec']`.
- * Setelah `storage.php` dipecah jadi aggregator 40 baris, entri itu
- * menunjuk ke berkas yang tidak punya `shell_exec` sama sekali. Yang
- * tidak dipindai lagi adalah `dir_size()` yang memanggil `du -sb` lewat
- * `shell_exec` -- kini ada di `storage_disk.php`. Skor tetap 100/100.
- *
- * Kejadian 2 (T19): `MediaLibrary.php` memuat tiga kelas. Pemeriksaan
- * ArchiveGuard dan pemeriksaan pola nama file keduanya menyasar kode
- * yang sebenarnya berada di `BookUploader`. Setelah `BookUploader.php`
- * dipisah, keduanya membaca `MediaLibrary.php`, tidak menemukan apa-apa,
- * lalu melaporkannya aman.
+ * Peta-peta ini memetakan nama (kelas atau fungsi) ke berkas tempat nama
+ * itu HARUS ada. Kalau pemecahan berkas memindahkan sesuatu dan peta tidak
+ * ikut diperbarui, pemeriksa tidak menggagalkan — ia hanya mencari di
+ * berkas yang sekarang kosong, tidak menemukan apa-apa, lalu melaporkannya
+ * aman. Skor tetap 100/100.
  *
  * Test ini menutup kelas bug itu secara umum: setiap entri peta wajib
  * (a) berkasnya ada, dan (b) isinya benar-benar mendeklarasikan nama
- * yang dipetakan ke sana. Kalau (b) gagal, peta itu sudah mati.
+ * yang dipetakan ke sana.
  *
  * @coversNothing
  */
@@ -52,16 +36,10 @@ class ClassFileMapTest extends TestCase
     }
 
     /**
-     * Peta di `tests/functional_test.php`. Ada DUA, dan keduanya wajib
-     * dijaga tapi dengan aturan berbeda:
-     *
-     *   $classes   = [ 'MediaLibrary'   => 'modules/media/MediaLibrary.php', ... ]
-     *   $functions = [ 'log_activity'   => 'modules/core/activity_logger.php', ... ]
-     *
-     * Kalau keduanya diparse sebagai satu, setiap entri fungsi akan
-     * dilaporkan "mati" padahal berkasnya memang benar -- dan yang lebih
-     * buruk, laporan salah yang palsu tenggelam di antara laporan yang
-     * benar. Test yang Always melaporkan semua hal tidak ada gunanya.
+     * Peta di `tests/functional_test.php`. Ada DUA, dan keduanya wajib dijaga
+     * tapi dengan aturan berbeda: kalau keduanya diparse sebagai satu, setiap
+     * entri fungsi dilaporkan "mati" padahal berkasnya benar — dan laporan
+     * salah yang palsu tenggelem di antara laporan yang benar.
      *
      * @return array{classes: array<int, array{0:string,1:string}>, functions: array<int, array{0:string,1:string}>}
      */

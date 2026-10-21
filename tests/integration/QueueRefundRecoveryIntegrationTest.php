@@ -4,14 +4,10 @@ use PHPUnit\Framework\TestCase;
 /**
  * T8 — refund MEeLCoin untuk baris antrean yang macet.
  *
- * Test ini menutup jalur yang dipakai `upload_advanced.php`: pembersihan
- * 30 menit. Sebelumnya jalur itu menandai baris `failed` dengan `UPDATE` polos
- * tanpa refund, sehingga baris itu hilang dari jangkauan sweeper dan biaya
- * MEeLCoin yang sudah dipotong tidak pernah kembali.
- *
- * Yang diuji di sini bukan bentuk kode, tapi hasilnya: saldo user naik
- * tepat sebesar biaya yang tercatat, penanda `coin_refunded` terisi, dan
- * refund hanya boleh terjadi satu kali.
+ * Jalur pembersihan 30 menit di `upload_advanced.php` dulu menandai baris
+ * `failed` tanpa refund, sehingga baris itu hilang dari jangkauan sweeper
+ * dan biaya MEeLCoin tidak pernah kembali. Yang diuji: saldo naik tepat
+ * sebesar biaya yang tercatat, `coin_refunded` terisi, refund satu kali.
  */
 class QueueRefundRecoveryIntegrationTest extends TestCase
 {
