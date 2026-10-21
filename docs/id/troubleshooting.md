@@ -275,6 +275,30 @@ back buffer manual.
 
 ---
 
+
+### ❌ Status Loop Playback hilang tiap refresh
+
+**Gejala:** tombol Loop aktif, tapi setelah refresh — atau setelah auto-recovery,
+atau setelah ganti kualitas — statusnya kembali normal, padahal video itu
+memang sedang diputar beruntun. Di sisi lain, loop yang tetap "nyala" ikut
+terbawa ke video berikutnya saat berpindah.
+
+**Penyebab:** status loop hanya hidup di memori player, jadi hilang setiap kali
+player dibangun ulang. Dan yang lebih halus, tidak ada yang membersihkannya
+saat pindah ke video lain.
+
+**Perbaikan (sudah masuk di MEeL core):**
+
+| Lokasi | Yang dilakukan |
+|---|---|
+| `assets/js/video/watch/state.js` | Membaca `MEEL_KEYS.VIDEO_LOOP` (`meel_video_loop`) saat boot, dan mengekspor `persistVideoLoop()`, `restoreVideoLoop()`, `clearVideoLoop()` |
+| `setupMeelPlayerEvents()` | Memanggil `restoreVideoLoop()`, sehingga loop dipulihkan di **semua** jalur pembuatan player: load awal, auto-recovery, rebuild karena ganti kualitas, dan pergantian video via mini player |
+| Pindah video & Auto Next | `clearVideoLoop()` dipanggil saat `skipToNextVideo`, klik kartu mini player, guard klik `.rekomendasi-item`, dan saat Auto Next diaktifkan — sehingga loop tidak ikut terbawa ke video berikutnya |
+
+Auto Next dan Loop saling meniadakan dua arah: menyalakan Auto Next
+membersihkan key loop, menyalakan Loop mematikan Auto Next, dan state stale
+ketika keduanya aktif dibersihkan saat boot.
+
 ## Masalah Transcoding
 
 ### ❌ Proses Transcoding Gagal / Stuck
