@@ -346,18 +346,15 @@ di belakang.
 
 Dipisah dari `finalizeVideo()` pada T19, saat metodenya 268 baris dengan
 sembilan fase. Yang menentukan bentuknya: **ini tetap metode, bukan kelas
-baru** (`FfmpegProcess`). Semua hook yang dibutuhkan — `trackChildProcess()`,
-`untrackChildProcess()`, `terminateChildProcess()`, `writePidFile()`,
-`removePidFile()`, `isProcessAlive()` — ber-`protected` di `TranscoderBase`,
-dan daftar anak proses (`$childProcesses`) adalah state per-instance yang
-dipindai `terminateAllProcesses()` saat shutdown. Kelas terpisah tidak bisa
-menjangkau itu tanpa melebarkannya jadi `public` atau memindahkan daftar anak
-ke collaborator bersama. Dua-duanya jatuh persis di mekanisme yang tugasnya
-**mencegah** proses ffmpeg yatim ketika request mati di tengah transcode.
-Menukar itu dengan tata letak berkas yang lebih rapi adalah kerugian besar,
-jadi tidak diambil. Seam-nya dibiarkan: begitu ada harness uji yang bisa
-mengujinya ujung ke ujung, kelasnya bisa diekstrak tanpa menurunkan logikanya
-dari nol.
+baru** (`FfmpegProcess`). Semua hook yang dibutuhkan ber-`protected` di
+`TranscoderBase`, dan daftar anak proses (`$childProcesses`) adalah
+state per-instance yang dipindai `terminateAllProcesses()` saat shutdown.
+Kelas terpisah tidak bisa menjangkau itu tanpa melebarkannya jadi `public`
+atau memindahkan daftar anak ke collaborator bersama — dan dua-duanya jatuh
+persis di mekanisme yang tugasnya **mencegah** proses ffmpeg yatim ketika
+request mati di tengah transcode. Seam-nya dibiarkan: begitu ada harness uji
+yang bisa mengujinya ujung ke ujung, kelasnya bisa diekstrak tanpa menurunkan
+logikanya dari nol.
 
 **Pemindahan ke HDD + pencatatan database** dibungkus dalam satu transaksi,
 dan sifat pentingnya: kalau ada apa pun yang gagal di tengah, sistem TIDAK
@@ -852,21 +849,15 @@ Migration system bersifat **idempotent** — aman dijalankan berulang kali. Tabe
 
 > ⚠️ **Baca dulu kalau pernah melihat nomor migrasi yang berbeda.**
 >
-> Nomor **v1–v15 adalah riwayat lama** yang sudah di-*redunisasi* (direset)
-> pada 17 Sep 2026 — seluruhnya kini **dikonsolidasikan menjadi v1**, tanpa
-> menghilangkan fungsinya. Jadi:
+> Nomor **v1–v15 adalah riwayat lama** yang sudah di-*redunisasi* pada
+> 17 Sep 2026 dan kini terkonsolidasi menjadi **v1** — v13 (MEeLCoin), v14
+> (index `view_logs`), dan v15 (tabel `user_notifications`) semuanya tercakup
+> di dalamnya. Nomor **v2 ke atas dihitung ulang dari nol** setelah reset, dan
+> baris `db_version` dibersihkan menjadi `{1..5}`; loop hanya mengeksekusi
+> versi `> MAX(db_version)`.
 >
-> - **v1 sekarang bukan "migrasi pertama" dalam arti kronologis.** Ia adalah
->   hasil konsolidasi legacy v1–v15 (v13 = MEeLCoin, v14 = index `view_logs`,
->   v15 = tabel `user_notifications` — semuanya kini tercakup di v1).
-> - Nomor **v2 ke atas dihitung ulang dari nol** setelah reset: entri yang
->   sempat bernomor 16/17 (2 Okt) diganti menjadi **v2/v3**, lalu v4/v5
->   menyusul sebagai migrasi baru sungguhan.
-> - Riwayat lama **tidak lagi dipakai**; baris `db_version` dibersihkan menjadi
->   `{1..5}`. Loop hanya mengeksekusi versi `> MAX(db_version)`.
->
-> Kalau kamu menemukan docs atau kode yang menyebut "Migration v9" atau
-> "migration v15" sebagai **versi aktif**, itu angka legacy — bukan bug.
+> Jadi dokumen atau kode yang menyebut "Migration v9" atau "v15" sebagai
+> **versi aktif** memakai angka legacy — bukan bug.
 
 **v1 — konsolidasi skema (hasil redunisasi legacy v1–v15)**
 

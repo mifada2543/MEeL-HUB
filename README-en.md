@@ -179,6 +179,8 @@ MEeL/
 | Testing                |     [ID](docs/id/testing.md)     |     [EN](docs/en/testing.md)     |
 | Troubleshooting        | [ID](docs/id/troubleshooting.md) | [EN](docs/en/troubleshooting.md) |
 | PWA                    |       [ID](docs/id/pwa.md)       |       [EN](docs/en/pwa.md)       |
+| Arcade                 | [ID](docs/id/arcade-optional.md) | [EN](docs/en/arcade-optional.md) |
+| Download               |     [ID](docs/id/download.md)     |     [EN](docs/en/download.md)     |
 
 ---
 
