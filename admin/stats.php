@@ -1,24 +1,20 @@
 <?php
-/** @var \mysqli $conn */
 
+/** @var \mysqli $conn */
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
 include __DIR__ . '/../auth/config.php';
-
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login");
     exit();
 }
-
 if (!is_admin($conn)) {
     header("Location: ../");
     exit();
 }
-
 $back_url = meel_back_url('../index.php', ['stats', 'content', 'cookies', 'analys', 'index.php']);
-
 function meel_remove_media_dir(string $dir, int &$counter, array &$failed): void
 {
     if (!is_dir($dir)) return;
@@ -43,7 +39,6 @@ function meel_remove_media_dir(string $dir, int &$counter, array &$failed): void
         error_log("[MEeL] Admin delete: gagal hapus direktori kosong: {$dir}");
     }
 }
-
 $delete_msg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
@@ -51,7 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } else {
         $del_id = (int)($_POST['media_id'] ?? 0);
         $del_type = $_POST['media_type'] ?? '';
-
         if ($del_id > 0 && in_array($del_type, ['video', 'music'])) {
             $del_table = ($del_type === 'video') ? 'video' : 'music';
             $stmt_fetch = $conn->prepare("SELECT filename, thumbnail FROM {$del_table} WHERE id = ? LIMIT 1");
@@ -131,13 +125,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
     }
 }
-
 $sort = $_GET['sort'] ?? 'views';
 $sort_dir = strtolower($_GET['dir'] ?? '');
 $type_filter = $_GET['type'] ?? 'all';
 if (empty($type_filter)) $type_filter = 'all';
 $search = $_GET['search'] ?? '';
-
 $allowed_sort_columns = [
     'views' => 'views',
     'likes' => 'likes',
@@ -145,17 +137,13 @@ $allowed_sort_columns = [
     'title' => 'title',
     'id' => 'id',
 ];
-
 if (!isset($allowed_sort_columns[$sort])) {
     $sort = 'views';
 }
-
 if (!in_array($sort_dir, ['asc', 'desc'], true)) {
     $sort_dir = 'desc';
 }
-
 $order_by = $allowed_sort_columns[$sort] . ' ' . strtoupper($sort_dir);
-
 $query_media = "
     SELECT * FROM (
         SELECT id, title, thumbnail, search_metadata, 'video' AS media_type, views,
@@ -172,7 +160,6 @@ $query_media = "
 $conditions = [];
 $params = [];
 $types = '';
-
 if (!empty($search)) {
     $conditions[] = "(search_metadata LIKE ? OR id LIKE ?)";
     $like_param = '%' . $search . '%';
@@ -180,18 +167,15 @@ if (!empty($search)) {
     $params[] = $like_param;
     $types .= 'ss';
 }
-
 if ($type_filter !== 'all') {
     $conditions[] = "media_type = ?";
     $params[] = $type_filter;
     $types .= 's';
 }
-
 if (!empty($conditions)) {
     $query_media .= " AND " . implode(' AND ', $conditions);
 }
 $query_media .= " ORDER BY $order_by";
-
 $stmt = $conn->prepare($query_media);
 if (!$stmt) {
     error_log('stats.php: prepare media query gagal: ' . $conn->error);
@@ -204,7 +188,6 @@ if (!$stmt) {
     $result_media = $stmt->get_result();
     $stmt->close();
 }
-
 $total_counts = ['all' => 0, 'video' => 0, 'music' => 0];
 $r = $conn->query("SELECT 'video' as t, COUNT(*) as c FROM video UNION ALL SELECT 'music', COUNT(*) FROM music");
 while ($rc = $r->fetch_assoc()) {
@@ -260,7 +243,6 @@ while ($rc = $r->fetch_assoc()) {
                 <?= htmlspecialchars($delete_msg['text']) ?>
             </div>
         <?php endif; ?>
-
         <div class="flex gap-2.5 flex-wrap mb-6">
             <?php
             $chips = [
@@ -285,7 +267,6 @@ while ($rc = $r->fetch_assoc()) {
         </div>
         <div id="analytics-panel">
             <div class="flex flex-wrap gap-3 mb-5 items-center">
-
                 <div class="relative flex items-center">
                     <i data-lucide="search" class="absolute left-3 w-3.5 h-3.5 text-[#455060] pointer-events-none"></i>
                     <form method="GET" id="search-form" class="flex gap-0">
@@ -381,11 +362,11 @@ while ($rc = $r->fetch_assoc()) {
                                                 if ($is_video) {
                                                     $media_thumb = !empty($thumb_val)
                                                         ? '../video/upload/thumbnail/' . rawurlencode($thumb_val)
-                                                        : '../assets/img/video0.webp';
+                                                        : '../assets/img/placeholder-video.svg';
                                                 } else {
                                                     $media_thumb = !empty($thumb_val)
                                                         ? '../music/upload/thumbnail/' . rawurlencode($thumb_val)
-                                                        : '../assets/img/music0.webp';
+                                                        : '../assets/img/placeholder-music.svg';
                                                 }
                                                 ?>
                                                 <img src="<?= htmlspecialchars($media_thumb) ?>"

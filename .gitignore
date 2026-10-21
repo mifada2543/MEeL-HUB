@@ -201,7 +201,9 @@ storage/chats/**/*.json
 # ---Another----
 skills-lock.json
 marks.php
+# Toolchain lokal: hanya dipakai maintainer untuk membangun ulang
+# screenshot README + placeholder artwork. Hasilnya yang ikut commit,
+# bukan skripnya.
+tools/
 # ---GENERATED BUNDLE CSS---
-# Hasil build scripts/build-css-bundle.php dari manifest.php.
-# Tidak di-commit supaya clone baru otomatis jatuh ke daftar file individual.
 assets/css/*/bundle.css

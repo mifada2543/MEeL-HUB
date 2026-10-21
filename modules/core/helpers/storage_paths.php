@@ -55,7 +55,7 @@ if (!function_exists('music_thumbnail_url')) {
     {
         $thumbnail = trim((string)$thumbnail);
         $thumb_dir = meel_media_base_path('music') . '/thumbnail/';
-        $fallback = '../assets/img/music0.webp';
+        $fallback = '../assets/img/placeholder-music.svg';
         static $default_thumb = null;
         if ($thumbnail === '') {
             if ($default_thumb === null) {
@@ -122,7 +122,6 @@ if (!function_exists('meel_storage_ready')) {
             error_log('[MEeL] Folder storage kosong tanpa penanda .meel_mount, diasumsikan belum ter-mount: ' . $base);
             return false;
         }
-
         error_log('[MEeL] Penanda .meel_mount belum ada di ' . $base . ' — jalankan: touch "' . $base . '/.meel_mount"');
         return true;
     }
@@ -219,7 +218,6 @@ if (!function_exists('meel_storage_guard')) {
         exit;
     }
 }
-
 if (PHP_SAPI !== 'cli' && !defined('MEEL_HDD_CHECKED')) {
     define('MEEL_HDD_CHECKED', true);
     if (!meel_storage_ready()) {
@@ -236,5 +234,4 @@ if (!function_exists('meel_drive_base_path')) {
         return dirname(__DIR__, 3) . '/data_drive';
     }
 }
-
 /* reference build: MEeL-C6H5N3 [storage-split] */

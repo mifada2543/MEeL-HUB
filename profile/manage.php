@@ -1,37 +1,27 @@
 <?php
 /* reference build: MEeL-C9H11NO2 [62a9f5535e71e100] */
-
 require_once __DIR__ . '/../auth/auth.php';
 require_once __DIR__ . '/../auth/config.php';
 require_once __DIR__ . '/../modules/core/helpers.php';
 require_once __DIR__ . '/../modules/media/ProfileRepository.php';
-
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login");
     exit();
 }
-
 $user_id = (int)$_SESSION['user_id'];
 $username = htmlspecialchars($_SESSION['username'] ?? '');
 $is_admin = is_admin($conn);
-
 $profileRepo = new ProfileRepository($conn);
-
 $total_video = $profileRepo->countVideo($user_id);
 $total_music = $profileRepo->countMusic($user_id);
-
 $has_content = ($total_video + $total_music) > 0;
-
 if (!$has_content) {
     header("Location: ../upload?first=1");
     exit();
 }
-
 define('MEEL_MANAGE_ACCESS', true);
 require_once __DIR__ . '/../controllers/profile/fun-manage.php';
-
 $cleaned_count = cleanupPendingDeletions();
-
 $delete_msg = '';
 if (isset($_POST['delete']) && isset($_POST['type']) && isset($_POST['id'])) {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -61,17 +51,13 @@ if (isset($_POST['delete']) && isset($_POST['type']) && isset($_POST['id'])) {
         }
     }
 }
-
 $active_tab = $_GET['tab'] ?? 'video';
 if (!in_array($active_tab, ['video', 'music'])) $active_tab = 'video';
-
 $page_size = 20;
 $page = max(1, (int)($_GET['p'] ?? 1));
 $offset = ($page - 1) * $page_size;
-
 $videos = [];
 $music_list = [];
-
 if ($active_tab === 'video') {
     $videos = $profileRepo->getVideosPaginated($user_id, $page_size, $offset);
     $total_items = $profileRepo->countVideo($user_id);
@@ -79,7 +65,6 @@ if ($active_tab === 'video') {
     $music_list = $profileRepo->getMusicPaginated($user_id, $page_size, $offset);
     $total_items = $profileRepo->countMusic($user_id);
 }
-
 $total_pages = max(1, ceil($total_items / $page_size));
 $back_url = "../profile/" . urlencode($_SESSION['username']);
 ?>
@@ -99,8 +84,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
 </head>
 
 <body class="text-gray-400 min-h-screen">
-<?php include __DIR__ . '/../partials/skip-link.php'; ?>
-
+    <?php include __DIR__ . '/../partials/skip-link.php'; ?>
     <nav class="border-b border-white/[.04] bg-[#080a0f]/95 sticky top-0 z-50 backdrop-blur-md">
         <div class="w-full px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
             <a href="<?= $back_url ?>" class="flex items-center gap-2 flex-shrink-0" title="Kembali ke Profil">
@@ -111,9 +95,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
             </a>
         </div>
     </nav>
-
     <main class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-20">
-
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
                 <div class="text-[9px] text-gray-700 uppercase tracking-[.25em] mb-1">Dasbor</div>
@@ -121,7 +103,6 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                     <span class="text-blue-500">@<?= htmlspecialchars($username, ENT_QUOTES, 'UTF-8') ?></span>
                 </h1>
             </div>
-
             <div class="stats-bar">
                 <div class="stat-item stat-video">
                     <i data-lucide="play"></i>
@@ -142,14 +123,12 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                 <?php endif; ?>
             </div>
         </div>
-
         <?php if (!empty($delete_msg)): ?>
             <div class="alert-bar <?= strpos($delete_msg, 'berhasil') !== false || strpos($delete_msg, 'dibersihkan') !== false ? 'alert-success' : 'alert-error' ?>">
                 <i data-lucide="<?= strpos($delete_msg, 'berhasil') !== false || strpos($delete_msg, 'dibersihkan') !== false ? 'check-circle' : 'alert-triangle' ?>" class="w-4 h-4 flex-shrink-0"></i>
                 <?= htmlspecialchars($delete_msg) ?>
             </div>
         <?php endif; ?>
-
         <div class="manage-tabs mb-6 max-w-sm">
             <a href="?tab=video<?= isset($_GET['csrf_token']) ? '&csrf_token=' . urlencode($_GET['csrf_token']) : '' ?>"
                 class="manage-tab <?= $active_tab === 'video' ? 'active-video' : '' ?>" title="Kelola video Anda">
@@ -162,14 +141,13 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                 Music
             </a>
         </div>
-
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <?php if ($active_tab === 'video'): ?>
                 <?php if (!empty($videos)): ?>
                     <?php foreach ($videos as $v):
                         $thumb = !empty($v['thumbnail'])
                             ? '../video/upload/thumbnail/' . htmlspecialchars($v['thumbnail'])
-                            : '../assets/img/video0.webp';
+                            : '../assets/img/placeholder-video.svg';
                     ?>
                         <div class="content-card">
                             <a href="<?= base_url('/video/watch?v=' . (int)$v['id']) ?>" class="block card-thumb" title="<?= htmlspecialchars($v['title']) ?>">
@@ -204,10 +182,10 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                                         <input type="hidden" name="tab" value="<?= $active_tab ?>">
                                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                         <button type="submit"
-                                        onclick="return confirmHapus(event, '<?= htmlspecialchars(addslashes($v['title']), ENT_QUOTES) ?>', 'video')"
-                                        class="action-btn action-btn-delete" title="Hapus video <?= htmlspecialchars($v['title']) ?>">
-                                        <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus
-                                    </button>
+                                            onclick="return confirmHapus(event, '<?= htmlspecialchars(addslashes($v['title']), ENT_QUOTES) ?>', 'video')"
+                                            class="action-btn action-btn-delete" title="Hapus video <?= htmlspecialchars($v['title']) ?>">
+                                            <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus
+                                        </button>
                                     </form>
                                 </div>
                             </div>
@@ -224,7 +202,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                     <?php foreach ($music_list as $m):
                         $thumb = !empty($m['thumbnail'])
                             ? '../music/upload/thumbnail/' . htmlspecialchars($m['thumbnail'])
-                            : '../assets/img/music0.webp';
+                            : '../assets/img/placeholder-music.svg';
                     ?>
                         <div class="content-card">
                             <a href="<?= base_url('/music/watch?v=' . (int)$m['id']) ?>" class="block card-thumb" title="<?= htmlspecialchars($m['title']) ?>">
@@ -259,10 +237,10 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                                         <input type="hidden" name="tab" value="<?= $active_tab ?>">
                                         <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                         <button type="submit"
-                                        onclick="return confirmHapus(event, '<?= htmlspecialchars(addslashes($m['title']), ENT_QUOTES) ?>', 'music')"
-                                        class="action-btn action-btn-delete" title="Hapus musik <?= htmlspecialchars($m['title']) ?>">
-                                        <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus
-                                    </button>
+                                            onclick="return confirmHapus(event, '<?= htmlspecialchars(addslashes($m['title']), ENT_QUOTES) ?>', 'music')"
+                                            class="action-btn action-btn-delete" title="Hapus musik <?= htmlspecialchars($m['title']) ?>">
+                                            <i data-lucide="trash-2" class="w-3 h-3"></i> Hapus
+                                        </button>
                                     </form>
                                 </div>
                             </div>
@@ -276,7 +254,6 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                 <?php endif; ?>
             <?php endif; ?>
         </div>
-
         <?php if ($total_pages > 1): ?>
             <div class="pagination">
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
@@ -288,7 +265,6 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
             </div>
         <?php endif; ?>
     </main>
-
     <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="../assets/js/compatibilitas/sweetalert2.all.min.js<?= meel_asset_version('assets/js/compatibilitas/sweetalert2.all.min.js') ?>"></script>
     <script src="../assets/js/compatibilitas/script.min.js<?= meel_asset_version('assets/js/compatibilitas/script.min.js') ?>"></script>

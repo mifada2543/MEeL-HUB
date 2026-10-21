@@ -1,11 +1,11 @@
 <?php
+
 /** @var array<string, mixed> $item      Baris data dari ProfileRepository.
  *  @var string               $active_tab Tab aktif: all|video|music.*/
-
 $is_music = ($item['type'] ?? $active_tab) === 'music';
 $thumb = !empty($item['thumbnail'])
     ? ($is_music ? '../music/upload/thumbnail/' : '../video/upload/thumbnail/') . rawurlencode($item['thumbnail'])
-    : ($is_music ? '../assets/img/music0.webp' : '../assets/img/video0.webp');
+    : ($is_music ? '../assets/img/placeholder-music.svg' : '../assets/img/placeholder-video.svg');
 $watch = base_url(($is_music ? '/music' : '/video') . '/watch?v=' . (int)$item['id']);
 $artist = trim((string)($item['artist'] ?? ''));
 ?>
@@ -29,5 +29,4 @@ $artist = trim((string)($item['artist'] ?? ''));
         </div>
     </div>
 </div>
-
 <!-- reference build: MEeL-C₄H₉NO₂ [18939171f0076118] -->

@@ -23,20 +23,84 @@
 
 </div>
 
+<table>
+  <tr>
+    <td align="center"><strong>Beranda HUB</strong></td>
+    <td align="center"><strong>Koleksi Video</strong></td>
+    <td align="center"><strong>Music Discovery</strong></td>
+  </tr>
+  <tr>
+    <td><img src="assets/img/screen-hub-home.webp" alt="Beranda MEeL HUB" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-video-library.webp" alt="Halaman koleksi video MEeL" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-music-library.webp" alt="Halaman penemuan musik MEeL" width="100%" loading="lazy"/></td>
+  </tr>
+</table>
+
 ---
 
-## 📸 Screenshots
+## 📑 Daftar Isi
+
+- [📸 Galeri Screenshot](#-galeri-screenshot)
+- [✨ Fitur](#-fitur)
+- [⚡ Quick Start](#-quick-start)
+- [🛠 Tech Stack](#-tech-stack)
+- [📁 Struktur Proyek](#-struktur-proyek)
+- [📚 Dokumentasi](#-dokumentasi)
+- [🧪 Testing](#-testing)
+- [👥 Role-Based Access Control](#-role-based-access-control)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+
+---
+
+## 📸 Galeri Screenshot
+
+Seluruh halaman di bawah ini bisa dibuka **tanpa login** (mode tamu). Semua gambar diambil langsung dari instance MEeL yang sedang berjalan, jadi tampilan di README selalu cocok dengan kode yang aktif.
+
+<details>
+<summary><strong>🖼️ Lihat 15 screenshot lainnya</strong></summary>
+
+<h3 align="center">🎬 Video</h3>
 
 <table>
   <tr>
-    <td align="center"><strong>🎬 Video Library</strong></td>
-    <td align="center"><strong>🎵 Music Discovery</strong></td>
+    <td><img src="assets/img/screen-video-library-light.webp" alt="Koleksi video MEeL dalam mode terang" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-video-player.webp" alt="Pemutar video MEeL dengan streaming HLS" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-video-player-2.webp" alt="Pemutar video MEeL" width="100%" loading="lazy"/></td>
   </tr>
   <tr>
-    <td><img src="assets/img/video0.webp" alt="Video Library" width="100%"/></td>
-    <td><img src="assets/img/music0.webp" alt="Music Discovery" width="100%"/></td>
+    <td><img src="assets/img/screen-video-player-3.webp" alt="Pemutar video MEeL" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-guide.webp" alt="Halaman panduan penggunaan MEeL" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-changelog.webp" alt="Halaman catatan perubahan MEeL" width="100%" loading="lazy"/></td>
   </tr>
 </table>
+
+<h3 align="center">🎵 Musik & Akun</h3>
+
+<table>
+  <tr>
+    <td><img src="assets/img/screen-music-library-light.webp" alt="Music discovery MEeL dalam mode terang" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-music-player.webp" alt="Pemutar musik MEeL dengan visualizer WebAudio" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-auth-login.webp" alt="Halaman masuk MEeL" width="100%" loading="lazy"/></td>
+  </tr>
+  <tr>
+    <td><img src="assets/img/screen-auth-register.webp" alt="Halaman pendaftaran MEeL" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-profile.webp" alt="Halaman profil pengguna MEeL" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-error-404.webp" alt="Halaman kesalahan 404 MEeL" width="100%" loading="lazy"/></td>
+  </tr>
+</table>
+
+<h3 align="center">🖥️ Sistem</h3>
+
+<table>
+  <tr>
+    <td><img src="assets/img/screen-hub-home-light.webp" alt="Beranda MEeL HUB dalam mode terang" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-landing.webp" alt="Landing page MEeL" width="100%" loading="lazy"/></td>
+    <td><img src="assets/img/screen-docs.webp" alt="Halaman dokumentasi MEeL" width="100%" loading="lazy"/></td>
+  </tr>
+</table>
+
+</details>
 
 ---
 
@@ -46,7 +110,7 @@
   <tr>
     <td width="50%">
       <h3>🎬 Video</h3>
-      <p>Pemain video berbasis HLS adaptive streaming. Mendukung subtitle, pemilihan resolusi, picture-in-picture, resume otomatis, pratinjau thumbnail, countdown auto-next, ambient glow, dan pemulihanoneksi.</p>
+      <p>Pemain video berbasis HLS adaptive streaming. Mendukung subtitle, pemilihan resolusi, picture-in-picture, resume otomatis, pratinjau thumbnail, countdown auto-next, ambient glow, dan pemulihan koneksi.</p>
     </td>
     <td width="50%">
       <h3>🎵 Musik</h3>
@@ -67,7 +131,7 @@
     <td colspan="2">
       <h3>🕹️ Arcade <sup>(ekstensi terpisah)</sup></h3>
       <p>
-        9 mini-game: <strong>Miku & Teto Run</strong> · <strong>Catur</strong> (multiplayer) · <strong>Snake</strong> · <strong>2048</strong> · <strong>Tetris</strong> · <strong>Breakout</strong> · <strong>Simon Says</strong> · <strong>Ludo</strong> · <strong>MEeL!Mania</strong> (rhythm)
+        9 mini-game: <strong>Miku &amp; Teto Run</strong> · <strong>Catur</strong> (multiplayer) · <strong>Snake</strong> · <strong>2048</strong> · <strong>Tetris</strong> · <strong>Breakout</strong> · <strong>Simon Says</strong> · <strong>Ludo</strong> · <strong>MEeL!Mania</strong> (rhythm)
         <br><sub>Ekstensi opsional — diinstal terpisah dari HUB. Lihat <a href="docs/id/arcade-optional.md">Panduan Arcade</a>.</sub>
       </p>
     </td>
@@ -129,7 +193,7 @@ php tests/check_deploy.php
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠 Tech Stack
 
 |              |                                               |
 | ------------ | --------------------------------------------- |
@@ -159,7 +223,9 @@ MEeL/
 ├── drive/          # Cloud drive
 ├── modules/        # Core logic (OOP)
 ├── music/          # Pemutar musik
+├── scripts/        # Skrip utilitas (build CSS, audit, backup)
 ├── tests/          # PHPUnit tests
+├── tools/          # Toolchain (screenshot README, Tailwind, CI guard)
 ├── video/          # Pemutar video
 └── install.sh      # Installer satu komando
 ```
@@ -168,34 +234,34 @@ MEeL/
 
 ## 📚 Dokumentasi
 
-|                    |              🇮🇩 ID               |              🇬🇧 EN               |
-| ------------------ | :------------------------------: | :------------------------------: |
-| Instalasi          |  [ID](docs/id/installation.md)   |  [EN](docs/en/installation.md)   |
-| Konfigurasi        |  [ID](docs/id/configuration.md)  |  [EN](docs/en/configuration.md)  |
-| Modul & Arsitektur |     [ID](docs/id/modules.md)     |     [EN](docs/en/modules.md)     |
-| API                |       [ID](docs/id/api.md)       |       [EN](docs/en/api.md)       |
-| Keamanan           |    [ID](docs/id/security.md)     |    [EN](docs/en/security.md)     |
-| Development        |   [ID](docs/id/development.md)   |   [EN](docs/en/development.md)   |
-| Testing            |     [ID](docs/id/testing.md)     |     [EN](docs/en/testing.md)     |
-| Troubleshooting    | [ID](docs/id/troubleshooting.md) | [EN](docs/en/troubleshooting.md) |
-| PWA                |       [ID](docs/id/pwa.md)       |       [EN](docs/en/pwa.md)       |
-| Arcade             | [ID](docs/id/arcade-optional.md) | [EN](docs/en/arcade-optional.md) |
-| Download           |     [ID](docs/id/download.md)     |     [EN](docs/en/download.md)     |
+|                       |              🇮🇩 ID               |              🇬🇧 EN               |
+| --------------------- | :------------------------------: | :------------------------------: |
+| Instalasi             |  [ID](docs/id/installation.md)   |  [EN](docs/en/installation.md)   |
+| Konfigurasi           |  [ID](docs/id/configuration.md)  |  [EN](docs/en/configuration.md)  |
+| Modul & Arsitektur    |     [ID](docs/id/modules.md)     |     [EN](docs/en/modules.md)     |
+| API                   |       [ID](docs/id/api.md)       |       [EN](docs/en/api.md)       |
+| Keamanan              |    [ID](docs/id/security.md)     |    [EN](docs/en/security.md)     |
+| Development           |   [ID](docs/id/development.md)   |   [EN](docs/en/development.md)   |
+| Testing               |     [ID](docs/id/testing.md)     |     [EN](docs/en/testing.md)     |
+| Troubleshooting       | [ID](docs/id/troubleshooting.md) | [EN](docs/en/troubleshooting.md) |
+| PWA                   |       [ID](docs/id/pwa.md)       |       [EN](docs/en/pwa.md)       |
+| Arcade                | [ID](docs/id/arcade-optional.md) | [EN](docs/en/arcade-optional.md) |
+| Download              |     [ID](docs/id/download.md)     |     [EN](docs/en/download.md)     |
 
 ---
 
 ## 🧪 Testing
 
-> 600+ kasus uji (560+ unit + 100+ integrasi, plus suite fungsional & keamanan) — dijalankan secara otomatis pada setiap push melalui GitHub Actions CI.
+> **1.200+ pemeriksaan** — 860+ unit, 125+ integration, 50+ fungsional, 175+ security. Dijalankan otomatis pada setiap push melalui GitHub Actions CI.
 >
-> Angka di atas diperbarui 2026-10-14. Kalau terlihat melenceng, ukur ulang sendiri — jangan percaya angka yang tertulis:
+> Angka sengaja ditulis sebagai rentang kasar, bukan angka eksak: jumlah test naik terus seiring waktu, jadi angka eksak cepat basi. Kalau ingin mengukur sendiri:
 >
 > ```bash
-> vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'  | tail -3
-> vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests' | tail -3
+> vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'    | tail -3
+> vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests'   | tail -3
+> php tests/functional_test.php                                          # ringkasan di logs/
+> php tests/security_test.php                                            # ringkasan di logs/
 > ```
->
-> Jumlah test hampir selalu naik seiring waktu; angka yang ditulis manual di dokumen cepat basi.
 
 ```bash
 composer install
@@ -235,6 +301,8 @@ Kontribusi dalam bentuk laporan bug, saran fitur, atau pull request sangat diter
 
 > [!IMPORTANT]
 > Mifada (pengembang) tidak bertanggung jawab atas konten media yang diunggah, disimpan, atau didistribusikan oleh pihak ketiga yang menggunakan atau memodifikasi MEeL-HUB. Segala risiko penggunaan dan kepatuhan hak cipta merupakan tanggung jawab masing-masing pengguna.
+
+---
 
 ## 📬 Kontak
 
