@@ -16,23 +16,12 @@ $rateRole = get_user_role($conn, (int)($_SESSION['user_id'] ?? 0));
 $rateCheck = RateLimiter::check($rateKey, 'like', $rateRole);
 if (!$rateCheck['allowed']) {
     http_response_code(429);
-    header('HX-Retarget: #like-dislike-container');
-    header('HX-Reswap: innerHTML');
     $media_type = isset($_POST['media_type']) ? trim($_POST['media_type']) : 'video';
-    $inactive_class = 'bg-gray-900/40 border-gray-800 text-gray-400 hover:bg-gray-800/60 hover:text-gray-300';
-    ?>
-    <div id="like-dislike-container" class="flex items-center gap-2 mt-4 sm:mt-0">
-        <div class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border border-yellow-500/30 bg-yellow-500/10 text-yellow-500">
-            ⏱️ Wait <?= $rateCheck['retry_after'] ?>s
-        </div>
-        <button class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer <?= $inactive_class ?>">
-            Like
-        </button>
-        <button class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer <?= $inactive_class ?>">
-            Dislike
-        </button>
-    </div>
-    <?php
+    header('HX-Retarget: #like-dislike-container');
+    $like_dislike_media_id = (int) ($_POST['id'] ?? 0);
+    $like_dislike_media_type = $media_type;
+    $like_dislike_rate_limit = (int) $rateCheck['retry_after'];
+    include __DIR__ . '/../../partials/like_dislike.php';
     exit;
 }
 
@@ -86,42 +75,13 @@ if ($type === 'like' && isset($result['data']['user_interaction']) && $result['d
 $user_interaction = $result['data']['user_interaction'];
 $likes = $result['data']['likes'];
 $dislikes = $result['data']['dislikes'];
-$table = ($media_type === 'music') ? 'music' : 'video';
 
-$like_active_class = ($media_type === 'music')
-    ? 'bg-orange-500/15 border-orange-500/30 text-orange-400'
-    : 'bg-red-500/15 border-red-500/30 text-red-400';
-
-$dislike_active_class = ($media_type === 'music')
-    ? 'bg-orange-500/15 border-orange-500/30 text-orange-400'
-    : 'bg-red-500/15 border-red-500/30 text-red-400';
-
-$inactive_class = 'bg-gray-900/40 border-gray-800 text-gray-400 hover:bg-gray-800/60 hover:text-gray-300';
+$like_dislike_media_id = $id;
+$like_dislike_media_type = $media_type;
+$like_dislike_state = $user_interaction;
+$like_dislike_likes = $likes;
+$like_dislike_dislikes = $dislikes;
+include __DIR__ . '/../../partials/like_dislike.php';
 ?>
-<div id="like-dislike-container" class="flex items-center gap-2 mt-4 sm:mt-0" hx-get-trigger="load">
-    <button
-        hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
-        hx-vals='{"id":"<?= $id ?>","media_type":"<?= htmlspecialchars($media_type, ENT_QUOTES) ?>","type":"like","csrf_token":"<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"}'
-        class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer <?= $user_interaction === 'like' ? $like_active_class : $inactive_class ?>">
-        <i data-lucide="thumbs-up" class="w-3.5 h-3.5 <?= $user_interaction === 'like' ? 'fill-current' : '' ?>"></i>
-        Like<?= $likes > 0 ? " <span class='tabular-nums ml-0.5'>{$likes}</span>" : '' ?>
-    </button>
-
-    <button
-        hx-post="../api/like" hx-target="#like-dislike-container" hx-swap="outerHTML"
-        hx-vals='{"id":"<?= $id ?>","media_type":"<?= htmlspecialchars($media_type, ENT_QUOTES) ?>","type":"dislike","csrf_token":"<?= htmlspecialchars($_SESSION['csrf_token'] ?? '') ?>"}'
-        class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer <?= $user_interaction === 'dislike' ? $dislike_active_class : $inactive_class ?>">
-        <i data-lucide="thumbs-down" class="w-3.5 h-3.5 <?= $user_interaction === 'dislike' ? 'fill-current' : '' ?>"></i>
-        <?= $dislikes > 0 ? "<span class='tabular-nums'>{$dislikes}</span>" : '' ?>
-    </button>
-
-    <?php if ($media_type === 'music'): ?>
-        <button onclick="document.getElementById('playlist-modal').classList.remove('hidden')"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border cursor-pointer bg-gray-900/40 border-gray-800 text-gray-400 hover:bg-gray-800/60 hover:text-gray-300">
-            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-            Playlist
-        </button>
-    <?php endif; ?>
-</div>
 
 <!-- reference build: MEeL-C3H7NO2S [26928cf156376bc8] -->

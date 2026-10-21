@@ -142,6 +142,39 @@ query boolean-mode yang malformed jatuh ke hasil kosong, bukan error 500.
 
 **Class:** `MediaInteraction` — like/dislike dan hapus komentar.
 
+#### Tombol like/dislike (`partials/like_dislike.php`)
+
+Kontainer ini dirender dari **satu** partial, yang di-include oleh
+`music/watch.php`, `video/watch.php`, dan `controllers/api/like.php`.
+
+Itu penting karena kontainer diganti seluruhnya: tombolnya memakai
+`hx-swap="outerHTML"`, jadi apa pun yang dikirim server menjadi kontainer
+yang baru. Markup-nya dulunya ditulis tiga kali, dan ketiganya sudah
+melenceng — salinan di API masih memakai ikon `plus` dan teks "Playlist"
+padahal halamannya sudah `list-plus` dan "Simpan"; warna aksennya juga
+beda (`red-500` vs `red-600`, orange vs putih untuk dislike aktif). Yang
+basi justru yang menang, karena yang menjawab swap adalah API. Jadi begitu
+like diklik, bentuk tombolnya berubah di depan mata: kembali jadi plus polos
+bertuliskan "Playlist".
+
+Sekarang kedua sisi merender partial yang sama, jadi kontainer yang
+dimasukkan setelah swap identik byte-per-byte dengan yang sudah tampil.
+
+Partial menerima perbedaan-perbedaan itu sebagai data, bukan sebagai salinan
+kedua:
+
+| Variabel | Arti |
+|---|---|
+| `$like_dislike_media_id` | id media |
+| `$like_dislike_media_type` | `music` atau `video` — menentukan warna aksen dan apakah tombol simpan muncul |
+| `$like_dislike_state` | `''`, `like`, atau `dislike` |
+| `$like_dislike_likes` / `$like_dislike_dislikes` | pencacah |
+| `$like_dislike_csrf` | token CSRF untuk payload `hx-vals` |
+| `$like_dislike_rate_limit` | detik tersisa saat rate limiter menolak; `0` berarti normal |
+
+`LikeDislikePartialTest` menjaga agar salinannya tidak muncul lagi: testnya
+gagal kalau markup kontainer ada di lebih dari satu berkas.
+
 ### 4. `modules/core/Uploader.php`
 
 **Class:** `Uploader` (menggunakan `FfmpegUtils` trait) — upload file lokal dengan:
