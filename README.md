@@ -227,7 +227,7 @@ MEeL/
 ├── tests/          # PHPUnit tests
 ├── tools/          # Toolchain (screenshot README, Tailwind, CI guard)
 ├── video/          # Pemutar video
-└── install.sh      # Installer satu komando
+└── install.sh      📄 # Installer satu komando
 ```
 
 ---
@@ -236,6 +236,7 @@ MEeL/
 
 |                       |              🇮🇩 ID               |              🇬🇧 EN               |
 | --------------------- | :------------------------------: | :------------------------------: |
+| Landing Page          |  [ID](docs/id/index.md)          |  [EN](docs/en/index.md)          |
 | Instalasi             |  [ID](docs/id/installation.md)   |  [EN](docs/en/installation.md)   |
 | Konfigurasi           |  [ID](docs/id/configuration.md)  |  [EN](docs/en/configuration.md)  |
 | Modul & Arsitektur    |     [ID](docs/id/modules.md)     |     [EN](docs/en/modules.md)     |
@@ -252,7 +253,7 @@ MEeL/
 
 ## 🧪 Testing
 
-> **1.200+ pemeriksaan** — 860+ unit, 125+ integration, 50+ fungsional, 175+ security. Dijalankan otomatis pada setiap push melalui GitHub Actions CI.
+> **1.255+ pemeriksaan** — 895+ unit, 129+ integrasi, 55+ fungsional, 176+ security. Dijalankan otomatis pada setiap push melalui GitHub Actions CI.
 >
 > Angka sengaja ditulis sebagai rentang kasar, bukan angka eksak: jumlah test naik terus seiring waktu, jadi angka eksak cepat basi. Kalau ingin mengukur sendiri:
 >
@@ -301,6 +302,12 @@ Kontribusi dalam bentuk laporan bug, saran fitur, atau pull request sangat diter
 
 > [!IMPORTANT]
 > Mifada (pengembang) tidak bertanggung jawab atas konten media yang diunggah, disimpan, atau didistribusikan oleh pihak ketiga yang menggunakan atau memodifikasi MEeL-HUB. Segala risiko penggunaan dan kepatuhan hak cipta merupakan tanggung jawab masing-masing pengguna.
+
+---
+
+## 📚 Dokumentasi Lanjutan
+
+- [Landing Page Dokumentasi (ID)](docs/id/index.md) · [Documentation Landing (EN)](docs/en/index.md)
 
 ---
 

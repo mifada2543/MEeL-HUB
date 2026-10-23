@@ -1,8 +1,6 @@
 Options -Indexes
 DirectoryIndex index.php index.html
 
-php_value auto_prepend_file _gate.php
-
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
