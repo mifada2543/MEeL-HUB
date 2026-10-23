@@ -416,20 +416,20 @@ function testHtaccessSecurity(): void
         if ($ok) record("{$file} \u{2014} semua security directive OK", true);
         else record("{$file} \u{2014} kurang: " . implode(', ', $miss), true, true);
     }
-    $arcHt = PROJECT_ROOT . '/arcade/.htaccess';
-    if (!file_exists($arcHt)) {
-        record("arcade/.htaccess \u{2014} FILE TIDAK DITEMUKAN!", false, false);
+    $arcIni = PROJECT_ROOT . '/arcade/.user.ini';
+    if (!file_exists($arcIni)) {
+        record("arcade/.user.ini \u{2014} FILE TIDAK DITEMUKAN!", false, false);
     } else {
-        $arc = file_get_contents($arcHt);
-        if (preg_match('/auto_prepend_file\s+_gate\.php\b/', $arc)) {
-            record("arcade/.htaccess \u{2014} auto_prepend filename polos (_gate.php)", true);
+        $arc = file_get_contents($arcIni);
+        if (preg_match('/auto_prepend_file\s*=\s*_gate\.php\b/', $arc)) {
+            record("arcade/.user.ini \u{2014} auto_prepend filename polos (_gate.php)", true);
         } else {
-            record("arcade/.htaccess \u{2014} auto_prepend BUKAN filename polos", true, true);
+            record("arcade/.user.ini \u{2014} auto_prepend BUKAN filename polos", true, true);
         }
-        if (preg_match('#auto_prepend_file\s+/#', $arc)) {
-            record("arcade/.htaccess \u{2014} auto_prepend masih MEMAKAI PATH ABSOLUT", true, true);
+        if (preg_match('#auto_prepend_file\s*=\s*/#', $arc)) {
+            record("arcade/.user.ini \u{2014} auto_prepend masih MEMAKAI PATH ABSOLUT", true, true);
         } else {
-            record("arcade/.htaccess \u{2014} auto_prepend tanpa path absolut", true);
+            record("arcade/.user.ini \u{2014} auto_prepend tanpa path absolut", true);
         }
     }
     $shims = [
