@@ -203,7 +203,7 @@ class MeelCoinIntegrationTest extends TestCase
         $second = MeelCoin::getRefillCountdown($this->conn, $this->userId, 'user');
         $this->assertEqualsWithDelta(3 * 3600, $first, 60, 'Countdown harus 3 jam (siklus 5 jam dikurangi 2 jam), bukan 5 jam penuh');
         $this->assertEqualsWithDelta($first, $second, 5, 'Refresh tidak boleh mengubah countdown');
-        $this->assertLessThanOrEqual($second, $first, 'Countdown tidak boleh mundur');
+        $this->assertLessThanOrEqual($first, $second, 'Countdown tidak boleh mundur');
     }
     public function testRefillCountdownIsMeasuredAgainstTheDatabaseClock(): void
     {
