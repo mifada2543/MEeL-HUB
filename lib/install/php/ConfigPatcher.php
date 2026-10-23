@@ -66,10 +66,10 @@ class ConfigPatcher
     }
 
     /** Patch a define() constant - handles string, bare values (true/false/null), and numeric */
-    private function patchDefine(string $name, string $value): self
+    private function patchDefine(string $name, string $value, bool $quote = true): self
     {
         $this->load();
-        $escapedValue = $this->phpStr($value);
+        $escapedValue = $quote ? $this->phpStr($value) : $value;
         // Match string values, bare values (true/false/null), and numeric literals
         $pattern = "/define\(\s*'" . preg_quote($name, '/') . "'\s*,\s*(?:'[^']*'|\"[^\"]*\"|true|false|null|[0-9]+)\s*\)/";
 
@@ -86,6 +86,23 @@ class ConfigPatcher
             } else {
                 throw new \RuntimeException("define('{$name}', ...) not found in {$this->settingsPath}");
             }
+        }
+        return $this;
+    }
+
+    /** Patch a define() whose current value may be an expression (arithmetic, guarded defines) */
+    private function patchDefineExpression(string $name, string $value): self
+    {
+        $this->load();
+        $escapedValue = $this->phpStr($value);
+        $pattern = "/^([ \t]*)define\(\s*'" . preg_quote($name, '/') . "'\s*,\s*[^;]+?\)\s*;/m";
+
+        if (preg_match($pattern, $this->content)) {
+            $replacement = '${1}' . "define('{$name}', {$escapedValue});";
+            $this->content = preg_replace($pattern, $replacement, $this->content, 1);
+            $this->recordChange("define('{$name}')", "expression", $escapedValue);
+        } else {
+            throw new \RuntimeException("define('{$name}', ...) not found in {$this->settingsPath}");
         }
         return $this;
     }
@@ -109,10 +126,10 @@ class ConfigPatcher
     }
 
     /** Patch a commented define to uncomment and set value */
-    private function patchDefineUncomment(string $name, string $value): self
+    private function patchDefineUncomment(string $name, string $value, bool $quote = true): self
     {
         $this->load();
-        $escapedValue = $this->phpStr($value);
+        $escapedValue = $quote ? $this->phpStr($value) : $value;
         // Match commented define with either quoted string or bare value (true/false/null)
         $pattern = "/^\/\/\s*define\(\s*'" . preg_quote($name, '/') . "'\s*,\s*(?:'[^']*'|\"[^\"]*\"|true|false|null)\s*\)\s*;/m";
 
@@ -122,7 +139,7 @@ class ConfigPatcher
             $this->recordChange("define('{$name}') [uncommented]", "commented", $escapedValue);
         } else {
             // Try non-commented
-            return $this->patchDefine($name, $value);
+            return $this->patchDefine($name, $value, $quote);
         }
         return $this;
     }
@@ -251,7 +268,7 @@ class ConfigPatcher
     public function patchEnvironment(string $env, bool $debug): self
     {
         $this->patchDefineUncomment('MEEL_ENV', $env);
-        $this->patchDefineUncomment('APP_DEBUG', $debug ? 'true' : 'false');
+        $this->patchDefineUncomment('APP_DEBUG', $debug ? 'true' : 'false', quote: false);
         return $this;
     }
 
@@ -276,7 +293,7 @@ class ConfigPatcher
     /** Patch proxy settings */
     public function patchProxy(bool $trust, array $trustedProxies = []): self
     {
-        $this->patchDefineUncomment('MEEL_TRUST_PROXY_HEADERS', $trust ? 'true' : 'false');
+        $this->patchDefineUncomment('MEEL_TRUST_PROXY_HEADERS', $trust ? 'true' : 'false', quote: false);
         if ($trust && !empty($trustedProxies)) {
             $this->patchDefine('MEEL_TRUSTED_PROXIES', implode(',', $trustedProxies));
         }
@@ -286,7 +303,7 @@ class ConfigPatcher
     /** Patch X-Sendfile setting */
     public function patchXSendfile(bool $enable): self
     {
-        $this->patchDefine('MEEL_USE_XSENDFILE', $enable ? 'true' : 'false');
+        $this->patchDefine('MEEL_USE_XSENDFILE', $enable ? 'true' : 'false', quote: false);
         return $this;
     }
 
@@ -313,7 +330,7 @@ class ConfigPatcher
 
         foreach ($map as $const => $value) {
             if ($value !== '') {
-                $this->patchDefine($const, (string)$value);
+                $this->patchDefineExpression($const, (string)$value);
             }
         }
         return $this;
@@ -456,6 +473,7 @@ if (php_sapi_name() === 'cli' && isset($argv[0]) && basename($argv[0]) === 'Conf
         echo "  --no-xsendfile        Disable MEEL_USE_XSENDFILE\n";
         echo "  --canonical-host=HOST Production domain\n";
         echo "  --trusted-hosts=HOSTS Comma-separated trusted hosts\n";
+        echo "  --rate-limits=K=V,..  Rate limits (max_download_bytes, max_download_seconds, max_concurrent_queues)\n";
         echo "  --ffmpeg=PATH         FFmpeg binary path\n";
         echo "  --ffprobe=PATH        FFprobe binary path\n";
         echo "  --node=PATH           Node binary path\n";
@@ -466,6 +484,7 @@ if (php_sapi_name() === 'cli' && isset($argv[0]) && basename($argv[0]) === 'Conf
         exit(0);
     }
 
+    /** @var array<string, string|bool> $args */
     $args = [];
     for ($i = 1; $i < count($argv); $i++) {
         $arg = $argv[$i];
@@ -473,6 +492,10 @@ if (php_sapi_name() === 'cli' && isset($argv[0]) && basename($argv[0]) === 'Conf
             $key = substr($arg, 2);
             if (str_contains($key, '=')) {
                 [$key, $value] = explode('=', $key, 2);
+                // Normalize documented boolean options (--debug=false, --trust-proxy=false, ...)
+                if (in_array($key, ['debug', 'trust-proxy', 'xsendfile'], true)) {
+                    $value = (bool) filter_var($value, FILTER_VALIDATE_BOOL);
+                }
                 $args[$key] = $value;
             } else {
                 // Handle boolean flags
@@ -489,34 +512,43 @@ if (php_sapi_name() === 'cli' && isset($argv[0]) && basename($argv[0]) === 'Conf
         }
     }
 
-    // Parse complex args
-    if (isset($args['db-host'])) $args['db']['host'] = $args['db-host'];
-    if (isset($args['db-user'])) $args['db']['user'] = $args['db-user'];
-    if (isset($args['db-pass'])) $args['db']['pass'] = $args['db-pass'];
-    if (isset($args['db-name'])) $args['db']['name'] = $args['db-name'];
+    // Group database credentials
+    $db = [];
+    foreach (['host' => 'db-host', 'user' => 'db-user', 'pass' => 'db-pass', 'name' => 'db-name'] as $field => $option) {
+        if (isset($args[$option])) {
+            $db[$field] = (string) $args[$option];
+        }
+    }
 
-    // Parse binary paths
+    // Group binary paths
     $binaries = [];
-    if (isset($args['ffmpeg'])) $binaries['ffmpeg'] = $args['ffmpeg'];
-    if (isset($args['ffprobe'])) $binaries['ffprobe'] = $args['ffprobe'];
-    if (isset($args['node'])) $binaries['node'] = $args['node'];
-    if (isset($args['ytdlp'])) $binaries['ytdlp'] = $args['ytdlp'];
-    if (!empty($binaries)) $args['binaries'] = $binaries;
+    foreach (['ffmpeg', 'ffprobe', 'node', 'ytdlp'] as $binary) {
+        if (isset($args[$binary])) {
+            $binaries[$binary] = (string) $args[$binary];
+        }
+    }
+
+    // Parse rate limits: --rate-limits=max_download_bytes=5368709120,max_download_seconds=14400
+    $rateLimits = [];
+    if (isset($args['rate-limits'])) {
+        foreach (explode(',', (string) $args['rate-limits']) as $pair) {
+            [$name, $value] = array_pad(explode('=', $pair, 2), 2, '');
+            if (trim($name) !== '' && trim($value) !== '') {
+                $rateLimits[trim($name)] = trim($value);
+            }
+        }
+    }
 
     // Parse settings file
-    if (isset($args['settings'])) {
-        $settingsPath = $args['settings'];
-    } else {
-        $settingsPath = 'auth/settings.php';
-    }
+    $settingsPath = isset($args['settings']) ? (string) $args['settings'] : 'auth/settings.php';
 
     // Parse dry-run
     $dryRun = isset($args['dry-run']);
-    if ($dryRun) unset($args['dry-run']);
 
     // Parse trusted proxies string to array
-    if (isset($args['trusted-proxies']) && is_string($args['trusted-proxies'])) {
-        $args['trusted_proxies'] = array_map('trim', explode(',', $args['trusted-proxies']));
+    $trustedProxies = [];
+    if (isset($args['trusted-proxies'])) {
+        $trustedProxies = array_map('trim', explode(',', (string) $args['trusted-proxies']));
     }
 
     // Create patcher with settings path
@@ -524,33 +556,32 @@ if (php_sapi_name() === 'cli' && isset($argv[0]) && basename($argv[0]) === 'Conf
 
     // Apply patches based on args
     try {
-        if (!empty($args['db'])) {
-            $patcher->patchDatabase($args['db']);
+        if ($db !== []) {
+            $patcher->patchDatabase($db);
         }
         if (!empty($args['hdd'])) {
-            $patcher->patchHddBase($args['hdd']);
+            $patcher->patchHddBase((string) $args['hdd']);
         }
         if (!empty($args['env'])) {
-            $patcher->patchEnvironment($args['env'], $args['debug'] ?? false);
+            $patcher->patchEnvironment((string) $args['env'], (bool) ($args['debug'] ?? false));
         }
-        if (!empty($args['binaries'])) {
-            $patcher->patchBinaries($args['binaries']);
+        if ($binaries !== []) {
+            $patcher->patchBinaries($binaries);
         }
         if (isset($args['trust-proxy'])) {
-            $proxies = $args['trusted_proxies'] ?? ($args['trusted-proxies'] ?? []);
-            if (is_string($proxies)) {
-                $proxies = array_map('trim', explode(',', $proxies));
-            }
-            $patcher->patchProxy($args['trust-proxy'], $proxies);
+            $patcher->patchProxy((bool) $args['trust-proxy'], $trustedProxies);
         }
         if (isset($args['xsendfile'])) {
-            $patcher->patchXSendfile($args['xsendfile']);
+            $patcher->patchXSendfile((bool) $args['xsendfile']);
         }
         if (!empty($args['canonical-host'])) {
-            $patcher->patchCanonicalHost($args['canonical-host'], $args['trusted-hosts'] ?? '');
+            $patcher->patchCanonicalHost(
+                (string) $args['canonical-host'],
+                (string) ($args['trusted-hosts'] ?? '')
+            );
         }
-        if (!empty($args['rate-limits'])) {
-            $patcher->patchRateLimits($args['rate-limits']);
+        if ($rateLimits !== []) {
+            $patcher->patchRateLimits($rateLimits);
         }
 
         $patcher->apply();

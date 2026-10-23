@@ -140,7 +140,7 @@ $patcher->patchEnvironment('development', true)->apply();
 
 $content = file_get_contents($targetPath);
 assert_equals('MEEL_ENV', 'development', extract_define($content, 'MEEL_ENV'));
-assert_equals('APP_DEBUG', 'true', extract_define($content, 'APP_DEBUG'));
+assert_equals('APP_DEBUG', 'true', extract_define_raw($content, 'APP_DEBUG'));
 
 // Test production/false
 copy($templatePath, $targetPath);
@@ -148,7 +148,7 @@ $patcher = new ConfigPatcher($targetPath);
 $patcher->patchEnvironment('production', false)->apply();
 $content = file_get_contents($targetPath);
 assert_equals('MEEL_ENV (prod)', 'production', extract_define($content, 'MEEL_ENV'));
-assert_equals('APP_DEBUG (false)', 'false', extract_define($content, 'APP_DEBUG'));
+assert_equals('APP_DEBUG (false)', 'false', extract_define_raw($content, 'APP_DEBUG'));
 
 // ─── Test 4: patchBinaries ───
 echo "\nTest 4: patchBinaries()\n";
@@ -174,7 +174,7 @@ $patcher = new ConfigPatcher($targetPath);
 $patcher->patchProxy(true, ['10.0.0.1', '192.168.1.1'])->apply();
 
 $content = file_get_contents($targetPath);
-assert_equals('MEEL_TRUST_PROXY_HEADERS', 'true', extract_define($content, 'MEEL_TRUST_PROXY_HEADERS'));
+assert_equals('MEEL_TRUST_PROXY_HEADERS', 'true', extract_define_raw($content, 'MEEL_TRUST_PROXY_HEADERS'));
 assert_equals('MEEL_TRUSTED_PROXIES', '10.0.0.1,192.168.1.1', extract_define($content, 'MEEL_TRUSTED_PROXIES'));
 
 // ─── Test 6: patchXSendfile ───
@@ -184,7 +184,7 @@ $patcher = new ConfigPatcher($targetPath);
 $patcher->patchXSendfile(true)->apply();
 
 $content = file_get_contents($targetPath);
-assert_equals('MEEL_USE_XSENDFILE', 'true', extract_define($content, 'MEEL_USE_XSENDFILE'));
+assert_equals('MEEL_USE_XSENDFILE', 'true', extract_define_raw($content, 'MEEL_USE_XSENDFILE'));
 
 // ─── Test 7: patchCanonicalHost ───
 echo "\nTest 7: patchCanonicalHost()\n";
@@ -210,6 +210,32 @@ $content = file_get_contents($targetPath);
 assert_equals('MEEL_MAX_DOWNLOAD_BYTES', '5368709120', extract_define($content, 'MEEL_MAX_DOWNLOAD_BYTES'));
 assert_equals('MEEL_MAX_DOWNLOAD_SECONDS', '14400', extract_define($content, 'MEEL_MAX_DOWNLOAD_SECONDS'));
 assert_equals('MEEL_MAX_CONCURRENT_QUEUES', '4', extract_define($content, 'MEEL_MAX_CONCURRENT_QUEUES'));
+
+// ─── Test 8b: patchRateLimits() with guarded/expression defines ───
+echo "\nTest 8b: patchRateLimits() with expression defines\n";
+$expressionPath = $tempDir . '/settings-expression.php';
+file_put_contents($expressionPath, <<<'PHP'
+<?php
+if (!defined('MEEL_MAX_DOWNLOAD_BYTES')) {
+    define('MEEL_MAX_DOWNLOAD_BYTES', 2 * 1024 * 1024 * 1024);
+}
+if (!defined('MEEL_MAX_DOWNLOAD_SECONDS')) {
+    define('MEEL_MAX_DOWNLOAD_SECONDS', 2 * 60 * 60);
+}
+define('MEEL_MAX_CONCURRENT_QUEUES', 2);
+PHP);
+
+$patcher = new ConfigPatcher($expressionPath);
+$patcher->patchRateLimits([
+    'max_download_bytes' => 5368709120,
+    'max_download_seconds' => 14400,
+    'max_concurrent_queues' => 4,
+])->apply();
+
+$content = file_get_contents($expressionPath);
+assert_equals('MEEL_MAX_DOWNLOAD_BYTES (expression)', '5368709120', extract_define($content, 'MEEL_MAX_DOWNLOAD_BYTES'));
+assert_equals('MEEL_MAX_DOWNLOAD_SECONDS (expression)', '14400', extract_define($content, 'MEEL_MAX_DOWNLOAD_SECONDS'));
+assert_equals('MEEL_MAX_CONCURRENT_QUEUES (expression)', '4', extract_define($content, 'MEEL_MAX_CONCURRENT_QUEUES'));
 
 // ─── Test 9: verify() method ───
 echo "\nTest 9: verify()\n";
