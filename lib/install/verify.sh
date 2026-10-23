@@ -53,20 +53,20 @@ verify_summary() {
     echo "  Storage media     : ${HDD_BASE:-not set}"
     echo ""
 
-    if [ "$check_ok" -eq 0 ]; then
-        echo -e "${C_GREEN}${C_BOLD}════════════════════════════════════════════════════${C_RESET}"
+    if [ "$check_ok" -eq 1 ]; then
+        echo -e "${C_GREEN}${C_BOLD}═══════════════════════════════════════════════════${C_RESET}"
         echo -e "${C_GREEN}${C_BOLD} Instalasi selesai — deployment sehat!${C_RESET}"
-        echo -e "${C_GREEN}${C_BOLD}════════════════════════════════════════════════════${C_RESET}"
+        echo -e "${C_GREEN}${C_BOLD}═══════════════════════════════════════════════════${C_RESET}"
         echo ""
         echo "  Ada WARN di verifikasi di atas? Lihat docs/id/installation.md atau"
         echo "  docs/id/troubleshooting.md untuk catatan."
         echo ""
         return 0
     else
-        echo -e "${C_RED}${C_BOLD}════════════════════════════════════════════════════${C_RESET}"
+        echo -e "${C_RED}${C_BOLD}═══════════════════════════════════════════════════${C_RESET}"
         echo -e "${C_RED}${C_BOLD} Instalasi selesai TAPI verifikasi deployment GAGAL${C_RESET}"
         echo -e "${C_RED}${C_BOLD} — server BELUM siap dipakai.${C_RESET}"
-        echo -e "${C_RED}${C_BOLD}════════════════════════════════════════════════════${C_RESET}"
+        echo -e "${C_RED}${C_BOLD}═══════════════════════════════════════════════════${C_RESET}"
         echo ""
         echo "  Perbaiki penyebab FAIL di output check_deploy di atas (lihat"
         echo "  docs/id/installation.md atau docs/id/troubleshooting.md), lalu"
