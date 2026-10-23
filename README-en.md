@@ -227,7 +227,7 @@ MEeL/
 ├── tests/          # PHPUnit tests
 ├── tools/          # Toolchain (README screenshots, Tailwind, CI guards)
 ├── video/          # Video player
-└── install.sh      # One-command installer
+└── install.sh      📄 # One-command installer
 ```
 
 ---
@@ -236,6 +236,7 @@ MEeL/
 
 |                       |              🇮🇩 ID               |              🇬🇧 EN               |
 | --------------------- | :------------------------------: | :------------------------------: |
+| Landing Page          |  [ID](docs/id/index.md)          |  [EN](docs/en/index.md)          |
 | Installation          |  [ID](docs/id/installation.md)   |  [EN](docs/en/installation.md)   |
 | Configuration         |  [ID](docs/id/configuration.md)  |  [EN](docs/en/configuration.md)  |
 | Modules & Architecture |     [ID](docs/id/modules.md)     |     [EN](docs/en/modules.md)     |
@@ -252,7 +253,7 @@ MEeL/
 
 ## 🧪 Testing
 
-> **1,200+ checks** — 860+ unit, 125+ integration, 50+ functional, 175+ security. Executed automatically on every push via GitHub Actions CI.
+> **1,255 checks** — 895 unit, 129 integration, 55 functional, 176 security. Executed automatically on every push via GitHub Actions CI.
 >
 > The figures are deliberately rough ranges rather than exact numbers: the test count grows over time, so exact numbers go stale quickly. To measure them yourself:
 >
@@ -301,6 +302,12 @@ Contributions in the form of bug reports, feature suggestions, or pull requests 
 
 > [!IMPORTANT]
 > Mifada (the developer) assumes no responsibility for media content uploaded, stored, or distributed by third parties who use or modify MEeL-HUB. All usage risks and copyright compliance obligations rest with each individual user.
+
+---
+
+## 📚 Further Documentation
+
+- [Documentation Landing (EN)](docs/en/index.md) · [Landing Page Dokumentasi (ID)](docs/id/index.md)
 
 ---
 
