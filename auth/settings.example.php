@@ -1,56 +1,60 @@
 <?php
-if (!isset($server))   $server   = (getenv('MEEL_DB_HOST') ?: "localhost");
-if (!isset($username)) $username = (getenv('MEEL_DB_USER') ?: "root");
-if (!isset($password)) $password = (getenv('MEEL_DB_PASS') ?: "");
-if (!isset($db))       $db       = (getenv('MEEL_DB_NAME') ?: "MEeL");
+/**
+ * MEeL Configuration Template
+ * Copy this file to auth/settings.php and customize.
+ *
+ * All configuration is centralized here. The installer (install.sh) will patch
+ * this file with your settings. Do not edit the patched file directly —
+ * re-run install.sh to make changes.
+ */
 
-if (!defined('MEEL_HOST')) {
-    define('MEEL_HOST', $_SERVER['HTTP_HOST'] ?? '');
-}
-if (!defined('MEEL_CANONICAL_HOST')) {
-    define('MEEL_CANONICAL_HOST', '');
-}
-if (!defined('MEEL_TRUSTED_HOSTS')) {
-    define('MEEL_TRUSTED_HOSTS', 'localhost,127.0.0.1,::1');
-}
-if (!defined('MEEL_TIMEZONE')) {
-    define('MEEL_TIMEZONE', 'Asia/Jakarta');
-}
+// ─── Database Connection ───
+// These can also be set via environment variables: MEEL_DB_HOST, MEEL_DB_USER, MEEL_DB_PASS, MEEL_DB_NAME
+$server   = "localhost";   // Database host
+$username = "root";        // Database username
+$password = "";            // Database password
+$db       = "MEeL";        // Database name
 
-if (!defined('MEEL_TRUST_PROXY_HEADERS')) {
-    define('MEEL_TRUST_PROXY_HEADERS', false);
-}
+// ─── Host Configuration ───
+define('MEEL_HOST', $_SERVER['HTTP_HOST'] ?? '');
+define('MEEL_CANONICAL_HOST', '');           // Your production domain (e.g., 'meel.example.com')
+define('MEEL_TRUSTED_HOSTS', 'localhost,127.0.0.1,::1');  // Additional trusted hosts for referer gate
+define('MEEL_TIMEZONE', 'Asia/Jakarta');     // Application timezone
 
-if (!defined('MEEL_TRUSTED_PROXIES')) {
-    define('MEEL_TRUSTED_PROXIES', ['127.0.0.1', '::1']);
-}
+// ─── Environment ───
+// Uncomment and set to 'development' for local development
+// define('MEEL_ENV', 'production');
+// define('APP_DEBUG', false);
 
-if (!defined('MEEL_FFMPEG_PATH')) {
-    define('MEEL_FFMPEG_PATH', '');
-}
-if (!defined('MEEL_FFPROBE_PATH')) {
-    define('MEEL_FFPROBE_PATH', '');
-}
-if (!defined('MEEL_NODE_PATH')) {
-    define('MEEL_NODE_PATH', '');
-}
-if (!defined('MEEL_YTDLP_PATH')) {
-    define('MEEL_YTDLP_PATH', '');
-}
+// ─── Trusted Proxy (for reverse proxy / Cloudflare) ───
+define('MEEL_TRUST_PROXY_HEADERS', false);   // Set true ONLY if behind trusted proxy
+define('MEEL_TRUSTED_PROXIES', '127.0.0.1,::1');  // Comma-separated list of trusted proxy IPs
 
-if (!defined('MEEL_HDD_BASE')) {
-    define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');
+// ─── Media Storage Paths (TERPUSAT) ───
+// ★ CHANGE THIS to your actual storage mount point before production!
+define('MEEL_HDD_BASE', '/media/CHANGE_ME/MEeL/media');
 
-    define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
-    define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
-    define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
-    define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
-    define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
-    define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
-}
+// Derived paths (computed from MEEL_HDD_BASE — do not edit manually)
+define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
+define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
+define('MEEL_HDD_MUSIC_UPLOAD', MEEL_HDD_BASE . '/music/upload/');
+define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
+define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
 
-if (!defined('MEEL_USE_XSENDFILE')) {
-    define('MEEL_USE_XSENDFILE', false);
-}
+// ─── External Binary Paths ───
+// Leave empty for auto-detection (resolveBinary searches PATH + common locations)
+define('MEEL_FFMPEG_PATH', '');
+define('MEEL_FFPROBE_PATH', '');
+define('MEEL_NODE_PATH', '');
+define('MEEL_YTDLP_PATH', '');
+
+// ─── X-Sendfile (Apache acceleration) ───
+define('MEEL_USE_XSENDFILE', false);  // Set true if mod_xsendfile is installed & configured
+
+// ─── Rate Limits & Concurrency ───
+define('MEEL_MAX_DOWNLOAD_BYTES', 2147483648);   // 2 GB max download size
+define('MEEL_MAX_DOWNLOAD_SECONDS', 7200);       // 2 hours max download duration
+define('MEEL_MAX_CONCURRENT_QUEUES', 2);         // Max simultaneous transcode jobs
 
 /* reference build: MEeL-C8H11NO2 [cad21924ae703bf5] */
