@@ -10,30 +10,27 @@ function meel_env_or_null(string $name): ?string
     $v = getenv($name);
     return ($v === false || $v === '') ? null : $v;
 }
-
 $host = meel_env_or_null('CI_PARITY_HOST') ?? meel_env_or_null('MEEL_DB_HOST');
 $user = meel_env_or_null('CI_PARITY_USER') ?? meel_env_or_null('MEEL_DB_USER');
 $pass = meel_env_or_null('CI_PARITY_PASS') ?? meel_env_or_null('MEEL_DB_PASS');
 $port = meel_env_or_null('CI_PARITY_PORT') ?? meel_env_or_null('MEEL_DB_PORT');
-
 if ($host === null || $user === null) {
     foreach ([$root . '/auth/settings.php', $root . '/auth/settings.example.php'] as $settingsFile) {
         if (!is_file($settingsFile)) {
             continue;
         }
         $src = (string) file_get_contents($settingsFile);
-        if ($host === null && preg_match('/\$server\s*=\s*"([^"]*)"/', $src, $m)) {
+        if ($host === null && preg_match('/\$server\s*=\s*[\'"]([^\'"]*)[\'"]/', $src, $m)) {
             $host = $m[1];
         }
-        if ($user === null && preg_match('/\$username\s*=\s*"([^"]*)"/', $src, $m)) {
+        if ($user === null && preg_match('/\$username\s*=\s*[\'"]([^\'"]*)[\'"]/', $src, $m)) {
             $user = $m[1];
         }
-        if ($pass === null && preg_match('/\$password\s*=\s*"([^"]*)"/', $src, $m)) {
+        if ($pass === null && preg_match('/\$password\s*=\s*[\'"]([^\'"]*)[\'"]/', $src, $m)) {
             $pass = $m[1];
         }
     }
 }
-
 if ($host === null || $host === '') {
     $host = '127.0.0.1';
 }
@@ -44,7 +41,6 @@ if ($pass === null) {
     $pass = '';
 }
 $port = $port !== null ? (int)$port : 3306;
-
 fwrite(STDOUT, "═══ 0/4 Kredensial ═══\n");
 fwrite(STDOUT, sprintf("  %s@%s:%d (database: %s)\n", $user, $host, $port, $pass === '' ? '<tanpa password>' : '<ada password>'));
 if ($host === 'localhost') {
@@ -52,7 +48,6 @@ if ($host === 'localhost') {
     fwrite(STDERR, "   Set CI_PARITY_HOST=127.0.0.1 (atau MEEL_DB_HOST).\n");
     exit(1);
 }
-
 try {
     $admin = new mysqli($host, $user, $pass, '', $port);
     if ($admin->connect_error) {
@@ -87,7 +82,6 @@ function import(mysqli $admin, string $sql, string $label): void
 }
 $upgradeDb = 'meel_parity_upgrade';
 $freshDb   = 'meel_parity_fresh';
-
 foreach ([$upgradeDb, $freshDb] as $kandidat) {
     if (!str_starts_with($kandidat, 'meel_parity_')) {
         fwrite(STDERR, "❌ Nama database skrip ini tidak boleh dibDROP: \"{$kandidat}\".\n");
@@ -95,7 +89,6 @@ foreach ([$upgradeDb, $freshDb] as $kandidat) {
         exit(1);
     }
 }
-
 register_shutdown_function(static function () use ($upgradeDb, $freshDb, $host, $user, $pass, $port): void {
     try {
         $c = @new mysqli($host, $user, $pass, '', $port);
@@ -112,7 +105,6 @@ register_shutdown_function(static function () use ($upgradeDb, $freshDb, $host, 
     }
     $c->close();
 });
-
 echo "═══ 1/4 Bangun DB jalur upgrade (skema versi LAMA) ═══\n";
 $admin->query("DROP DATABASE IF EXISTS `{$upgradeDb}`");
 $admin->query("CREATE DATABASE `{$upgradeDb}`");
@@ -141,14 +133,11 @@ if (!is_file($example)) {
     fwrite(STDERR, "auth/settings.example.php tidak ditemukan — tidak bisa menyiapkan kredensial.\n");
     exit(1);
 }
-
 file_put_contents($cfg, file_get_contents($example));
-
 $env = 'MEEL_DB_HOST=' . escapeshellarg((string)$host)
      . ' MEEL_DB_NAME=' . escapeshellarg($upgradeDb)
      . ' MEEL_DB_USER=' . escapeshellarg((string)$user)
      . ' MEEL_DB_PASS=' . escapeshellarg((string)$pass);
-
 $probe = [];
 $probeRc = 0;
 exec($env . ' ' . escapeshellarg(PHP_BINARY) . ' -r '
@@ -166,7 +155,6 @@ if ($terhubung !== $upgradeDb) {
     exit(1);
 }
 echo "  ✅ Target migrate.php terverifikasi: {$terhubung}\n";
-
 $out = [];
 $rc = 0;
 exec($env . ' ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($root . '/database/migrate.php') . ' 2>&1', $out, $rc);
@@ -229,3 +217,4 @@ if ($bad) {
 }
 echo "✅ Paritas skema OK — upgrade dan instalasi baru menghasilkan skema identik.\n";
 exit(0);
+/* reference build: MEeL-C4H9NO2 [5879204a5a3bd92d] */

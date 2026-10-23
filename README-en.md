@@ -253,7 +253,7 @@ MEeL/
 
 ## 🧪 Testing
 
-> **1,255 checks** — 895 unit, 129 integration, 55 functional, 176 security. Executed automatically on every push via GitHub Actions CI.
+> **1,255+ checks** — 895+ unit, 129+ integration, 55+ functional, 176+ security. Executed automatically on every push via GitHub Actions CI.
 >
 > The figures are deliberately rough ranges rather than exact numbers: the test count grows over time, so exact numbers go stale quickly. To measure them yourself:
 >

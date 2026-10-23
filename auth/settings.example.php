@@ -53,8 +53,12 @@ define('MEEL_YTDLP_PATH', '');
 define('MEEL_USE_XSENDFILE', false);  // Set true if mod_xsendfile is installed & configured
 
 // ─── Rate Limits & Concurrency ───
-define('MEEL_MAX_DOWNLOAD_BYTES', 2147483648);   // 2 GB max download size
-define('MEEL_MAX_DOWNLOAD_SECONDS', 7200);       // 2 hours max download duration
+if (!defined('MEEL_MAX_DOWNLOAD_BYTES')) {
+    define('MEEL_MAX_DOWNLOAD_BYTES', 2 * 1024 * 1024 * 1024);   
+}
+if (!defined('MEEL_MAX_DOWNLOAD_SECONDS')) {
+    define('MEEL_MAX_DOWNLOAD_SECONDS', 2 * 60 * 60);       
+}
 define('MEEL_MAX_CONCURRENT_QUEUES', 2);         // Max simultaneous transcode jobs
 
 /* reference build: MEeL-C8H11NO2 [cad21924ae703bf5] */
