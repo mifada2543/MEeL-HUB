@@ -9,24 +9,72 @@ if (!file_exists($meel_settings)) {
 }
 require_once $meel_settings;
 require_once __DIR__ . '/../modules/core/bootstrap.php';
-
 if (!isset($server))   $server   = 'localhost';
 if (!isset($username)) $username = 'root';
 if (!isset($password)) $password = '';
 if (!isset($db))       $db       = 'MEeL';
+$meel_env = static function (string $name): ?string {
+    $value = getenv($name);
+    return $value === false ? null : $value;
+};
+$server   = $meel_env('MEEL_DB_HOST') ?? $server;
+$username = $meel_env('MEEL_DB_USER') ?? $username;
+$password = $meel_env('MEEL_DB_PASS') ?? $password;
+$db       = $meel_env('MEEL_DB_NAME') ?? $db;
+unset($meel_env);
+if (!function_exists('meel_database_unavailable')) {
+    function meel_database_unavailable(): void
+    {
+        if (!headers_sent()) {
+            http_response_code(503);
+            header('Retry-After: 30');
+            header('Cache-Control: no-store, max-age=0');
+        }
+        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+        $xhr    = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+        $wants_json = defined('MEEL_API_CONTEXT')
+            || stripos((string) $accept, 'application/json') !== false
+            || strcasecmp((string) $xhr, 'XMLHttpRequest') === 0;
+        if ($wants_json) {
+            if (!headers_sent()) {
+                header('Content-Type: application/json; charset=utf-8');
+            }
+            echo json_encode([
+                'ok'      => false,
+                'error'   => 'database_unavailable',
+                'message' => 'Layanan database sedang tidak tersedia. Coba lagi beberapa saat lagi.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return;
+        }
+        $code = 'db_unavailable';
+        require __DIR__ . '/../err/index.php';
+    }
+}
 if (!isset($conn) || $conn === null) {
+    $meel_db_error = 'Unknown error';
     try {
-        $conn = new mysqli($server, $username, $password, $db);
-        if ($conn->connect_error) {
-            error_log("[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $conn->connect_error . "\n");
+        $conn = @new mysqli($server, $username, $password, $db);
+        if ($conn->connect_errno) {
+            throw new \RuntimeException(
+                (string) ($conn->connect_error ?: 'Unknown error'),
+                (int) $conn->connect_errno
+            );
+        }
+    } catch (\Throwable $e) {
+        $meel_db_error = $e->getMessage();
+        $conn = null;
+    }
+    if (!$conn instanceof \mysqli) {
+        error_log("[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $meel_db_error . "\n");
+        if (PHP_SAPI === 'cli') {
             exit(1);
         }
-    } catch (\mysqli_sql_exception $e) {
-        error_log("[MEeL SYSTEM ERROR]\nKoneksi ke database gagal: " . $e->getMessage() . "\n");
+        meel_database_unavailable();
         exit(1);
     }
+    unset($meel_db_error);
+    $GLOBALS['conn'] = $conn;
     $conn->set_charset('utf8mb4');
-
     $tzOffset = date('P');
     if ($tzOffset !== '') {
         try {

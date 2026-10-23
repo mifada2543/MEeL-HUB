@@ -109,8 +109,22 @@ $types = [
         'meta_t' => 'Kesalahan Server | MEeL',
         'meta_d' => 'Terjadi kesalahan server. Silakan coba lagi.',
     ],
+    'db_unavailable' => [
+        'status' => 503,
+        'protocol' => '503_Database_Unavailable',
+        'title' => 'Database Tidak Tersedia',
+        'desc' => 'Server tidak dapat terhubung ke database. Layanan sedang dipulihkan — silakan coba lagi beberapa saat lagi.',
+        'icon' => 'database',
+        'dot' => 'DB_DOWN',
+        'accent' => '#f97316',
+        'accent2' => '#fbbf24',
+        'meta_t' => 'Database Tidak Tersedia | MEeL',
+        'meta_d' => 'Layanan database sedang tidak tersedia. Silakan coba lagi nanti.',
+    ],
 ];
-$code = (isset($_GET['code']) && is_string($_GET['code'])) ? $_GET['code'] : 'not_found';
+$code = (isset($code) && is_string($code) && $code !== '')
+    ? $code
+    : ((isset($_GET['code']) && is_string($_GET['code'])) ? $_GET['code'] : 'not_found');
 if (!isset($types[$code])) {
     $code = 'not_found';
 }

@@ -2,24 +2,12 @@
 use PHPUnit\Framework\TestCase;
 
 /**
- * Konstanta stream CLI di berkas yang bisa jalan di konteks web.
- *
- * `STDERR`, `STDOUT`, dan `STDIN` hanya didefinisikan oleh SAPI CLI dan CGI.
- * Di bawah Apache (mod_php) konstanta itu TIDAK ada — memakai
- * `fwrite(STDERR, ...)` di sana berakhir sebagai "Undefined constant STDERR",
- * yaitu fatal yang menutupi pesan asli.
- *
- * Aturan yang dijaga: berkas yang memakai STDERR/STDOUT/STDIN hanya boleh
- * doing so kalau ia hidup di direktori perkakas CLI, atau menjaga dirinya
- * sendiri dengan pemeriksaan PHP_SAPI, atau tidak pernah di-include berkas
- * lain.
  *
  * @coversNothing
  */
 class WebSafeErrorOutputTest extends TestCase
 {
-    private const CLI_TOOL_DIRS = ['scripts/', 'database/', 'tests/', 'vendor/', 'node_modules/'];
-
+    private const CLI_TOOL_DIRS = ['scripts/', 'database/', 'tests/', 'vendor/', 'node_modules/', 'lib/install/'];
     /**
      * @return list<string>
      */
@@ -48,7 +36,6 @@ class WebSafeErrorOutputTest extends TestCase
         sort($files);
         return $files;
     }
-
     /**
      * @return list<string>
      */
@@ -56,7 +43,6 @@ class WebSafeErrorOutputTest extends TestCase
     {
         $included = [];
         $pattern = '/(?:require|include)(?:_once)?\s*\(?\s*([^;]{0,200}?)\'([^\']+\.php)\'/';
-
         foreach ($this->phpFiles() as $relative) {
             $src = (string) file_get_contents(MEEL_ROOT . '/' . $relative);
             if (!preg_match_all($pattern, $src, $matches, PREG_SET_ORDER)) {
@@ -87,10 +73,8 @@ class WebSafeErrorOutputTest extends TestCase
                 }
             }
         }
-
         return array_keys($included);
     }
-
     private function hasCliGuard(string $src): bool
     {
         return (bool) preg_match(
@@ -98,15 +82,12 @@ class WebSafeErrorOutputTest extends TestCase
             $src
         );
     }
-
     public function testNoWebReachableFileUsesCliOnlyStreamConstants(): void
     {
         $included = array_flip($this->includedFiles());
         $violations = [];
-
         foreach ($this->phpFiles() as $relative) {
             $src = (string) file_get_contents(MEEL_ROOT . '/' . $relative);
-
             if (!preg_match('/\bSTDERR\b|\bSTDOUT\b|\bSTDIN\b/', $src)) {
                 continue;
             }
@@ -121,10 +102,8 @@ class WebSafeErrorOutputTest extends TestCase
             if (!isset($included[$relative])) {
                 continue;
             }
-
             $violations[] = $relative;
         }
-
         $this->assertSame(
             [],
             $violations,
@@ -133,15 +112,9 @@ class WebSafeErrorOutputTest extends TestCase
             . implode("\n  - ", $violations)
         );
     }
-
-    /**
-     * Berkas yang di-include setiap halaman wajib punya jalur error yang
-     * benar-benar bisa bekerja.
-     */
     public function testTheSharedConfigErrorPathWorksWithoutCliConstants(): void
     {
         $src = (string) file_get_contents(MEEL_ROOT . '/auth/config.php');
-
         $this->assertStringNotContainsString(
             'STDERR',
             $src,
@@ -159,5 +132,4 @@ class WebSafeErrorOutputTest extends TestCase
         );
     }
 }
-
 /* reference build: MEeL-C8H23N10O [web-safe-error-output] */

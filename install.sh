@@ -1,733 +1,236 @@
 #!/usr/bin/env bash
+# shellcheck shell=bash
 set -euo pipefail
 
-if [ -t 1 ]; then
-    C_RESET='\033[0m'; C_BOLD='\033[1m'
-    C_RED='\033[1;31m'; C_GREEN='\033[1;32m'; C_YELLOW='\033[1;33m'; C_CYAN='\033[1;36m'
-else
-    C_RESET=''; C_BOLD=''; C_RED=''; C_GREEN=''; C_YELLOW=''; C_CYAN=''
-fi
+# ─── MEeL Installer — Modular Orchestrator ───
+# This is the main entry point. It sources modules from lib/install/ and
+# executes them in sequence. Each module is independent and testable.
+# ─── Load core modules ───
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+export PROJECT_ROOT
+source "$SCRIPT_DIR/lib/install/common.sh"
+source "$SCRIPT_DIR/lib/install/detect.sh"
+# ─── Parse command line arguments ───
+parse_args() {
+    ASSUME_YES=false
+    SKIP_APT=false
+    DRY_RUN=false
+    VERBOSE=false
+    STEP=0
+    RESUME_FROM=1
+    HDD_OVERRIDE=""
+    XSENDFILE_OVERRIDE=""
+    ENV_OVERRIDE=""
+    TRUST_PROXY_OVERRIDE=""
+    VHOST_OVERRIDE=""
+    WEB_USER_OVERRIDE=""
+    DB_HOST_OVERRIDE=""
+    DB_NAME_OVERRIDE=""
+    DB_USER_OVERRIDE=""
+    DB_PASS_OVERRIDE=""
+    ADMIN_USER_OVERRIDE=""
+    ADMIN_PASS_OVERRIDE=""
+    CREATE_APP_USER_OVERRIDE=""
+    ENABLE_REWRITE_OVERRIDE=""
+    VERIFY_URL_OVERRIDE=""
+    VERIFY_HDD_OVERRIDE=""
+    VERIFY_NO_COLOR_OVERRIDE=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --yes|-y) ASSUME_YES=true ;;
+            --skip-apt) SKIP_APT=true ;;
+            --dry-run) DRY_RUN=true; VERBOSE=true ;;
+            --verbose|-v) VERBOSE=true ;;
+            --step=*) STEP="${1#--step=}" ;;
+            --resume-from=*) RESUME_FROM="${1#--resume-from=}" ;;
+            --hdd=*) HDD_OVERRIDE="${1#--hdd=}" ;;
+            --xsendfile) XSENDFILE_OVERRIDE=1 ;;
+            --no-xsendfile) XSENDFILE_OVERRIDE=0 ;;
+            --env=*) ENV_OVERRIDE="${1#--env=}" ;;
+            --trust-proxy) TRUST_PROXY_OVERRIDE=1 ;;
+            --no-trust-proxy) TRUST_PROXY_OVERRIDE=0 ;;
+            --vhost=*) VHOST_OVERRIDE="${1#--vhost=}" ;;
+            --web-user=*) WEB_USER_OVERRIDE="${1#--web-user=}" ;;
+            --db-host=*) DB_HOST_OVERRIDE="${1#--db-host=}" ;;
+            --db-name=*) DB_NAME_OVERRIDE="${1#--db-name=}" ;;
+            --db-user=*) DB_USER_OVERRIDE="${1#--db-user=}" ;;
+            --db-pass=*) DB_PASS_OVERRIDE="${1#--db-pass=}" ;;
+            --admin-user=*) ADMIN_USER_OVERRIDE="${1#--admin-user=}" ;;
+            --admin-pass=*) ADMIN_PASS_OVERRIDE="${1#--admin-pass=}" ;;
+            --create-app-user) CREATE_APP_USER_OVERRIDE=1 ;;
+            --no-create-app-user) CREATE_APP_USER_OVERRIDE=0 ;;
+            --enable-rewrite) ENABLE_REWRITE_OVERRIDE=1 ;;
+            --disable-rewrite) ENABLE_REWRITE_OVERRIDE=0 ;;
+            --verify-url=*) VERIFY_URL_OVERRIDE="${1#--verify-url=}" ;;
+            --verify-hdd=*) VERIFY_HDD_OVERRIDE="${1#--verify-hdd=}" ;;
+            --verify-no-color) VERIFY_NO_COLOR_OVERRIDE=true ;;
+            --help|-h)
+                show_help
+                exit 0
+                ;;
+            *)
+                log_die "Unknown argument: $1 (see --help)"
+                ;;
+        esac
+        shift
+    done
+    # Export for modules
+    export ASSUME_YES SKIP_APT DRY_RUN VERBOSE STEP RESUME_FROM
+    export HDD_OVERRIDE XSENDFILE_OVERRIDE ENV_OVERRIDE TRUST_PROXY_OVERRIDE
+    export VHOST_OVERRIDE WEB_USER_OVERRIDE DB_HOST_OVERRIDE DB_NAME_OVERRIDE
+    export DB_USER_OVERRIDE DB_PASS_OVERRIDE ADMIN_USER_OVERRIDE ADMIN_PASS_OVERRIDE
+    export CREATE_APP_USER_OVERRIDE ENABLE_REWRITE_OVERRIDE
+    export VERIFY_URL_OVERRIDE VERIFY_HDD_OVERRIDE VERIFY_NO_COLOR_OVERRIDE
+}
+# ─── Help text ───
+show_help() {
+    cat <<'HELP'
+MEeL Installer — Modular, idempotent, testable
 
-step() { echo -e "\n${C_CYAN}==>${C_RESET} ${C_BOLD}$1${C_RESET}"; }
-ok() { echo -e "  ${C_GREEN}✔${C_RESET} $1"; }
-warn() { echo -e "  ${C_YELLOW}⚠${C_RESET} $1"; }
-fail() { echo -e "  ${C_RED}✘${C_RESET} $1"; }
-die() { fail "$1"; exit 1; }
+Usage: ./install.sh [OPTIONS]
 
-ASSUME_YES=false
-SKIP_APT=false
-HDD_OVERRIDE=""
-XSENDFILE_OVERRIDE=""
-ENV_OVERRIDE=""
-TRUST_PROXY_OVERRIDE=""
-VHOST_OVERRIDE=""
-WEB_USER="www-data"
+Options:
+  --yes, -y                    Non-interactive, accept all defaults
+  --skip-apt                   Skip system package installation
+  --dry-run                    Print actions without executing (implies --verbose)
+  --verbose, -v                Verbose output (show commands before execution)
+  --step=N                     Run only step N (1=deps, 2=db, 3=config, 4=storage,
+                               5=apache, 6=hardening, 7=migrate, 8=verify)
+  --resume-from=N              Resume from step N (skip completed steps)
+  --hdd=PATH                   Override MEEL_HDD_BASE (storage location)
+  --xsendfile                  Enable MEEL_USE_XSENDFILE (requires mod_xsendfile)
+  --no-xsendfile               Disable MEEL_USE_XSENDFILE
+  --env=production|development Set MEEL_ENV
+  --trust-proxy                Enable MEEL_TRUST_PROXY_HEADERS
+  --no-trust-proxy             Disable MEEL_TRUST_PROXY_HEADERS
+  --vhost=DOMAIN               Create VirtualHost for DOMAIN
+  --web-user=USER              Override detected web server user
+  --db-host=HOST               Database host (default: localhost)
+  --db-name=NAME               Database name (default: MEeL)
+  --db-user=USER               Database user (default: root)
+  --db-pass=PASS               Database password (default: empty)
+  --admin-user=USER            Admin username (required in --yes mode)
+  --admin-pass=PASS            Admin password (required in --yes mode)
+  --create-app-user            Create dedicated DB user (default: yes if root)
+  --no-create-app-user         Skip dedicated DB user creation
+  --enable-rewrite             Enable mod_rewrite (default: yes)
+  --disable-rewrite            Disable mod_rewrite
+  --verify-url=URL             URL for deployment verification (default: auto)
+  --verify-hdd=PATH            Override HDD for verification
+  --verify-no-color            Disable colors in verification output
+  --help, -h                   Show this help
 
-for arg in "$@"; do
-    case "$arg" in
-        --yes|-y) ASSUME_YES=true ;;
-        --skip-apt) SKIP_APT=true ;;
-        --hdd=*) HDD_OVERRIDE="${arg#--hdd=}" ;;
-        --xsendfile) XSENDFILE_OVERRIDE=1 ;;
-        --no-xsendfile) XSENDFILE_OVERRIDE=0 ;;
-        --env=*) ENV_OVERRIDE="${arg#--env=}" ;;
-        --trust-proxy) TRUST_PROXY_OVERRIDE=1 ;;
-        --no-trust-proxy) TRUST_PROXY_OVERRIDE=0 ;;
-        --vhost=*) VHOST_OVERRIDE="${arg#--vhost=}" ;;
-        --help|-h)
-            sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'
-            exit 0
-            ;;
-        *)
-            die "Argumen tidak dikenal: $arg (lihat --help)"
-            ;;
-    esac
-done
+Steps:
+  1. deps       — System dependencies (PHP, extensions, MariaDB, optional tools)
+  2. database   — Database setup, schema import, admin user creation
+  3. config     — auth/settings.php & auth/config.php configuration
+  4. storage    — Storage directories, symlinks, permissions, .htaccess
+  5. apache     — mod_rewrite, VirtualHost, mod_xsendfile hints
+  6. hardening  — Security hardening (.htaccess deny for sensitive dirs)
+  7. migrate    — Core + Arcade database migrations
+  8. verify     — Deployment health check (tests/check_deploy.php)
 
-confirm() {
-    local prompt="$1" default="${2:-Y}" reply
-    if $ASSUME_YES; then
-        [ "$default" = "Y" ]
-        return
+Examples:
+  ./install.sh                           # Interactive
+  ./install.sh --yes                     # Non-interactive with defaults
+  ./install.sh --yes --hdd=/mnt/media    # Non-interactive with custom storage
+  ./install.sh --step=3                  # Run only config step
+  ./install.sh --resume-from=4           # Resume from storage step
+  ./install.sh --dry-run --yes           # Preview what would be done
+
+HELP
+}
+# ─── Step runner ───
+# Usage: run_step STEP_NUMBER STEP_NAME MODULE_FUNCTION
+run_step() {
+    local step_num="$1"
+    local step_name="$2"
+    local module_func="$3"
+    # Skip if not in range
+    if [ "$STEP" -gt 0 ] && [ "$STEP" -ne "$step_num" ]; then
+        log_info "Skipping step $step_num: $step_name (--step=$STEP)"
+        return 0
     fi
-    read -r -p "  $prompt (y = ya, t = tidak) " reply || true
-    reply="${reply:-$default}"
-    [[ "$reply" =~ ^[Yy]$ ]]
+    if [ "$step_num" -lt "$RESUME_FROM" ]; then
+        log_info "Skipping step $step_num: $step_name (--resume-from=$RESUME_FROM)"
+        return 0
+    fi
+    log_step "$step_num/8 — $step_name"
+    # Source the module on demand
+    local module_file="$SCRIPT_DIR/lib/install/${module_func%%_*}.sh"
+    if [ -f "$module_file" ]; then
+        # shellcheck source=/dev/null
+        source "$module_file"
+    else
+        log_fail "Module file not found: $module_file"
+        return 1
+    fi
+    if ! declare -f "$module_func" >/dev/null; then
+        log_fail "Function $module_func not found after sourcing $module_file"
+        return 1
+    fi
+    # Debug: show function definition
+    if [ "${VERBOSE:-false}" = "true" ]; then
+        log_verbose "Calling $module_func..."
+    fi
+
+    if $module_func; then
+        log_ok "Step $step_num ($step_name) completed"
+        return 0
+    else
+        log_fail "Step $step_num ($step_name) failed with exit code $?"
+        return 1
+    fi
+
+    log_ok "Step $step_num ($step_name) completed"
+    return 0
 }
 
-ask() {
-    local prompt="$1" default="$2" reply
-    if $ASSUME_YES; then echo "$default"; return; fi
-    read -r -p "  $prompt [$default]: " reply || true
-    echo "${reply:-$default}"
+# ─── Main orchestration ───
+main() {
+    parse_args "$@"
+
+    # Banner
+    print_banner
+
+    # Detect environment (required for all steps)
+    detect_environment
+
+    # Apply web user override if provided
+    if [ -n "$WEB_USER_OVERRIDE" ]; then
+        WEB_USER="$WEB_USER_OVERRIDE"
+        log_verbose "Web user override: $WEB_USER"
+    fi
+
+    # Apply DB overrides
+    [ -n "$DB_HOST_OVERRIDE" ] && export DB_HOST="$DB_HOST_OVERRIDE"
+    [ -n "$DB_NAME_OVERRIDE" ] && export DB_NAME="$DB_NAME_OVERRIDE"
+    [ -n "$DB_USER_OVERRIDE" ] && export DB_USER="$DB_USER_OVERRIDE"
+    [ -n "$DB_PASS_OVERRIDE" ] && export DB_PASS="$DB_PASS_OVERRIDE"
+    [ -n "$ADMIN_USER_OVERRIDE" ] && export ADMIN_USER="$ADMIN_USER_OVERRIDE"
+    [ -n "$ADMIN_PASS_OVERRIDE" ] && export ADMIN_PASS="$ADMIN_PASS_OVERRIDE"
+    [ -n "$CREATE_APP_USER_OVERRIDE" ] && export CREATE_APP_USER="$CREATE_APP_USER_OVERRIDE"
+    [ -n "$ENABLE_REWRITE_OVERRIDE" ] && export ENABLE_REWRITE="$ENABLE_REWRITE_OVERRIDE"
+    [ -n "$VERIFY_URL_OVERRIDE" ] && export VERIFY_URL="$VERIFY_URL_OVERRIDE"
+    [ -n "$VERIFY_HDD_OVERRIDE" ] && export VERIFY_HDD_OVERRIDE="$VERIFY_HDD_OVERRIDE"
+    [ -n "$VERIFY_NO_COLOR_OVERRIDE" ] && export VERIFY_NO_COLOR="$VERIFY_NO_COLOR_OVERRIDE"
+
+    # Set verbose mode
+    [ "$VERBOSE" = "true" ] && export VERBOSE=true
+    [ "$DRY_RUN" = "true" ] && export DRY_RUN=true
+
+    # Execute steps
+    run_step 1 "System Dependencies" "deps_run" || exit 1
+    run_step 2 "Database Setup" "database_run" || exit 1
+    run_step 3 "Application Config" "config_run" || exit 1
+    log_verbose "DEBUG: HDD_BASE after config = ${HDD_BASE:-not set}"
+    run_step 4 "Storage & Symlinks" "storage_run" || exit 1
+    run_step 5 "Apache Configuration" "apache_run" || exit 1
+    run_step 6 "Security Hardening" "hardening_run" || exit 1
+    run_step 7 "Database Migrations" "migrate_run" || exit 1
+    run_step 8 "Deployment Verification" "verify_run" || exit 1
 }
 
-ask_secret() {
-    local prompt="$1" default="$2" reply
-    if $ASSUME_YES; then echo "$default"; return; fi
-    read -r -s -p "  $prompt: " reply || true
-    echo ""
-    echo "${reply:-$default}"
-}
-
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$PROJECT_ROOT"
-
-if [ ! -f "auth/settings.example.php" ] || [ ! -f "database/schema.sql" ]; then
-    die "Script ini harus dijalankan dari root repo MEeL-HUB (auth/settings.example.php atau database/schema.sql tidak ditemukan di $PROJECT_ROOT)."
-fi
-
-echo -e "${C_BOLD}"
-echo "  __  __ _____     _        _   _ _   _ ____  "
-echo " |  \/  | ____|___| |      | | | | | | | __ ) "
-echo " | |\/| |  _| / _ \ |______| |_| | | | |  _ \ "
-echo " | |  | | |__|  __/ |______|  _  | |_| | |_) |"
-echo " |_|  |_|_____\___|_|      |_| |_|\___/|____/ "
-echo -e "${C_RESET}"
-echo " Installer — clone → install → run"
-echo " Project root: $PROJECT_ROOT"
-
-step "1/9 — Cek dependency sistem"
-
-SUDO=""
-CAN_ELEVATE=true
-if [ "$(id -u)" -ne 0 ]; then
-    if command -v sudo >/dev/null 2>&1; then
-        SUDO="sudo"
-    else
-        CAN_ELEVATE=false
-        warn "Bukan root dan 'sudo' tidak tersedia — instalasi paket sistem mungkin gagal."
-    fi
-fi
-
-HAS_APT=false
-command -v apt-get >/dev/null 2>&1 && HAS_APT=true
-
-REQUIRED_APT_PKGS="php-cli php-mysqli php-pdo-mysql php-fileinfo php-mbstring php-intl php-gd php-zip php-xml php-curl mariadb-server"
-OPTIONAL_APT_PKGS="ffmpeg mecab mecab-ipadic-utf8 apache2 libapache2-mod-php composer"
-
-if ! $SKIP_APT && $HAS_APT; then
-    if confirm "Install/verifikasi paket sistem via apt sekarang? (PHP, ekstensi, MariaDB, dll.)" Y; then
-        step "Update apt & install paket wajib"
-        $SUDO apt-get update -y || warn "apt-get update gagal sebagian (repo pihak ketiga?) — lanjut coba install paket."
-        $SUDO apt-get install -y $REQUIRED_APT_PKGS
-        ok "Paket wajib terpasang: $REQUIRED_APT_PKGS"
-
-        if confirm "Install juga paket opsional (ffmpeg, mecab, apache2, composer)?" Y; then
-            $SUDO apt-get install -y $OPTIONAL_APT_PKGS || warn "Sebagian paket opsional gagal terpasang — cek manual nanti."
-        fi
-    fi
-elif ! $HAS_APT; then
-    warn "apt-get tidak terdeteksi (bukan Debian/Ubuntu) — lewati instalasi paket otomatis."
-    warn "Pastikan manual: PHP 8.1+ (mysqli, mbstring, intl, gd, zip, xml, curl), MariaDB/MySQL, Apache+mod_rewrite."
-else
-    ok "Instalasi apt dilewati (--skip-apt)."
-fi
-
-MISSING=()
-command -v php >/dev/null 2>&1 || MISSING+=("php")
-command -v mysql >/dev/null 2>&1 || MISSING+=("mysql (client)")
-if [ ${#MISSING[@]} -gt 0 ]; then
-    die "Dependency wajib belum ada: ${MISSING[*]}. Install manual lalu jalankan ulang script ini."
-fi
-ok "php: $(php -v | head -n1)"
-
-REQUIRED_EXT="mysqli pdo_mysql fileinfo mbstring intl gd zip xml curl"
-MISSING_EXT=()
-for ext in $REQUIRED_EXT; do
-    if php -m | grep -qi "^${ext}\$"; then
-        continue
-    fi
-    if command -v phpenmod >/dev/null 2>&1 && $CAN_ELEVATE; then
-        $SUDO phpenmod "$ext" >/dev/null 2>&1 || true
-    fi
-    FOUND=false
-    for _try in 1 2 3; do
-        if php -m | grep -qi "^${ext}\$"; then
-            FOUND=true
-            break
-        fi
-        sleep 1
-    done
-    if $FOUND; then
-        ok "Ekstensi '$ext' aktif."
-    else
-        MISSING_EXT+=("$ext")
-    fi
-done
-if [ ${#MISSING_EXT[@]} -gt 0 ]; then
-    die "Ekstensi PHP wajib belum aktif: ${MISSING_EXT[*]}. Install manual (apt install php-<ext>) lalu jalankan ulang."
-fi
-ok "Ekstensi PHP wajib lengkap: $REQUIRED_EXT"
-
-for bin in ffmpeg ffprobe yt-dlp mecab; do
-    if command -v "$bin" >/dev/null 2>&1; then
-        ok "$bin terdeteksi"
-    else
-        warn "$bin tidak ditemukan — fitur terkait ($bin) tidak akan berfungsi sampai diinstall."
-    fi
-done
-
-step "2/9 — Konfigurasi Database"
-
-DB_HOST="$(ask "Host database" "localhost")"
-DB_NAME="$(ask "Nama database" "MEeL")"
-DB_USER="$(ask "User database" "root")"
-DB_PASS="$(ask_secret "Password database (kosongkan jika tanpa password)" "")"
-
-MYSQL_AUTH=(-h "$DB_HOST" -u "$DB_USER")
-[ -n "$DB_PASS" ] && MYSQL_AUTH+=(-p"$DB_PASS")
-
-if command -v service >/dev/null 2>&1; then
-    $SUDO service mariadb start 2>/dev/null || $SUDO service mysql start 2>/dev/null || true
-elif command -v systemctl >/dev/null 2>&1; then
-    $SUDO systemctl start mariadb 2>/dev/null || $SUDO systemctl start mysql 2>/dev/null || true
-fi
-sleep 1
-
-if ! mysql "${MYSQL_AUTH[@]}" -e "SELECT 1;" >/dev/null 2>&1; then
-    die "Tidak bisa konek ke MySQL/MariaDB dengan kredensial di atas. Pastikan service jalan & kredensial benar."
-fi
-ok "Koneksi database berhasil."
-
-DB_EXISTS=$(mysql "${MYSQL_AUTH[@]}" -N -e "SHOW DATABASES LIKE '${DB_NAME}';" 2>/dev/null | wc -l)
-if [ "$DB_EXISTS" -gt 0 ]; then
-    warn "Database '${DB_NAME}' sudah ada — dilewati apa adanya (schema.sql berisi seed data Admin"
-    warn "yang bukan idempotent, reimport akan gagal 'Duplicate entry' jika data sudah ada)."
-    warn "Jika Anda ingin instalasi BENAR-BENAR bersih: DROP DATABASE \`${DB_NAME}\`; lalu jalankan ulang script ini."
-    if confirm "Tetap paksa reimport schema.sql sekarang? (BERISIKO gagal jika tabel/data sudah ada)" N; then
-        if ! mysql "${MYSQL_AUTH[@]}" "${DB_NAME}" < database/schema.sql; then
-            warn "Reimport schema gagal (kemungkinan besar data sudah ada) — melanjutkan dengan database apa adanya."
-        else
-            ok "Schema di-import ulang ke '${DB_NAME}'."
-        fi
-    fi
-else
-    mysql "${MYSQL_AUTH[@]}" -e "CREATE DATABASE \`${DB_NAME}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-    mysql "${MYSQL_AUTH[@]}" "${DB_NAME}" < database/schema.sql
-    ok "Database '${DB_NAME}' dibuat & schema di-import."
-fi
-
-if [ "$DB_USER" = "root" ]; then
-    warn "Anda memakai user 'root' untuk setup database — TIDAK disarankan untuk kredensial aplikasi."
-    CREATE_APP_USER=true
-    if ! $ASSUME_YES; then
-        confirm "Buat dedicated DB user untuk aplikasi (disarankan)?" Y || CREATE_APP_USER=false
-    fi
-    if $CREATE_APP_USER; then
-        APP_DB_USER="$(ask "Nama user DB aplikasi" "meel_app")"
-        APP_DB_PASS="$(openssl rand -hex 16 2>/dev/null || head -c16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-        if mysql "${MYSQL_AUTH[@]}" -e "
-            CREATE USER IF NOT EXISTS '${APP_DB_USER}'@'${DB_HOST}' IDENTIFIED BY '${APP_DB_PASS}';
-            GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${APP_DB_USER}'@'${DB_HOST}';
-            FLUSH PRIVILEGES;
-        " 2>/dev/null; then
-            ok "User DB aplikasi '${APP_DB_USER}'@'${DB_HOST}' dibuat — auth/settings.php TIDAK akan memakai root."
-            DB_USER="$APP_DB_USER"
-            DB_PASS="$APP_DB_PASS"
-        else
-            warn "Gagal membuat user DB aplikasi — melanjutkan dengan kredensial 'root' apa adanya (TIDAK disarankan)."
-        fi
-    else
-        warn "Melanjutkan dengan kredensial 'root' di auth/settings.php — TIDAK disarankan untuk production."
-    fi
-fi
-
-step "2c — Buat Akun Admin"
-
-ADMIN_EXISTS=$(mysql "${MYSQL_AUTH[@]}" "$DB_NAME" -N -e "SELECT COUNT(*) FROM users WHERE role='admin';" 2>/dev/null || echo "0")
-if [ "$ADMIN_EXISTS" -gt 0 ]; then
-    warn "Sudah ada akun admin di database — dilewati."
-    ADMIN_USER=$(mysql "${MYSQL_AUTH[@]}" "$DB_NAME" -N -e "SELECT username FROM users WHERE role='admin' LIMIT 1;" 2>/dev/null || echo "(unknown)")
-    warn "Akun admin existing: ${ADMIN_USER}"
-else
-    ADMIN_USER=""
-    while true; do
-        ADMIN_USER="$(ask "Username admin" "")"
-        ADMIN_USER="$(echo "$ADMIN_USER" | xargs)"
-        if [ -z "$ADMIN_USER" ]; then
-            warn "Username tidak boleh kosong. Silakan coba lagi."
-            continue
-        fi
-        if echo "$ADMIN_USER" | grep -q ' '; then
-            warn "Username tidak boleh mengandung spasi. Silakan coba lagi."
-            continue
-        fi
-        break
-    done
-
-    ADMIN_PASS=""
-    while true; do
-        ADMIN_PASS="$(ask_secret "Password admin" "")"
-        if [ -z "$ADMIN_PASS" ]; then
-            warn "Password tidak boleh kosong. Silakan coba lagi."
-            continue
-        fi
-        break
-    done
-
-    ADMIN_HASH=$(php -r "echo password_hash('${ADMIN_PASS//\'/\\\'}', PASSWORD_DEFAULT);" 2>/dev/null)
-    if [ -z "$ADMIN_HASH" ]; then
-        die "Gagal generate password hash — pastikan PHP tersedia."
-    fi
-
-    ADMIN_USER_ESC=$(printf '%s' "$ADMIN_USER" | sed "s/'/''/g")
-
-    if mysql "${MYSQL_AUTH[@]}" "$DB_NAME" -e "
-        INSERT INTO \`users\` (\`username\`, \`role\`, \`password\`, \`is_active\`)
-        VALUES ('${ADMIN_USER_ESC}', 'admin', '${ADMIN_HASH}', 1);
-    " 2>/dev/null; then
-        ok "Akun admin '${ADMIN_USER}' berhasil dibuat."
-    else
-        die "Gagal membuat akun admin — cek log MySQL di atas."
-    fi
-fi
-
-step "3/9 — Buat auth/settings.php & auth/config.php"
-
-if [ -f "auth/settings.php" ]; then
-    warn "auth/settings.php sudah ada — tidak ditimpa (hapus manual jika ingin regenerasi)."
-else
-    cp auth/settings.example.php auth/settings.php
-    ok "auth/settings.php dibuat dari template."
-fi
-
-if [ -f "auth/config.php" ]; then
-    ok "auth/config.php sudah ada — dilewati."
-else
-    cp auth/config.example.php auth/config.php
-    ok "auth/config.php dibuat dari template."
-fi
-
-if [ -n "$HDD_OVERRIDE" ]; then
-    HDD_BASE="$HDD_OVERRIDE"
-else
-    DEFAULT_HDD="$PROJECT_ROOT/storage/media"
-    HDD_BASE="$(ask "Lokasi storage media (MEEL_HDD_BASE) — bisa HDD eksternal atau folder lokal" "$DEFAULT_HDD")"
-fi
-HDD_BASE="${HDD_BASE%/}"
-
-if ! python3 - "$DB_HOST" "$DB_USER" "$DB_PASS" "$DB_NAME" "$HDD_BASE" "auth/settings.php" <<'PYEOF'
-import sys, re
-host, user, passwd, db, hdd, path = sys.argv[1:7]
-with open(path, 'r', encoding='utf-8') as f:
-    content = f.read()
-
-def php_str(value):
-    return "'" + str(value).replace('\\', '\\\\').replace("'", "\\'") + "'"
-
-define_re = re.compile(r"(define\(\s*'MEEL_HDD_BASE'\s*,\s*)('[^']*')(\s*\))")
-if define_re.search(content):
-    content = define_re.sub(lambda m: m.group(1) + php_str(hdd) + m.group(3), content, count=1)
-else:
-    print("ERROR: define('MEEL_HDD_BASE', ...) tidak ditemukan", file=sys.stderr)
-    sys.exit(1)
-
-override = (
-    "\n// Ditulis install.sh — jangan diubah manual.\n"
-    "$server   = %s;\n"
-    "$username = %s;\n"
-    "$password = %s;\n"
-    "$db       = %s;\n"
-) % (php_str(host), php_str(user), php_str(passwd), php_str(db))
-
-if "// Ditulis install.sh" in content:
-    lines = [l for l in content.split('\n') if "// Ditulis install.sh" not in l]
-    cut = content.find(lines[-1]) if lines else 0
-    content = '\n'.join(lines)
-else:
-    content = content.rstrip('\n')
-
-content = content.rstrip('\n') + '\n' + override
-
-with open(path, 'w', encoding='utf-8') as f:
-    f.write(content)
-
-verify = open(path, 'r', encoding='utf-8').read()
-missing = []
-for label, expected in (('server', host), ('username', user), ('db', db)):
-    if not re.search(r'^\$%s\s*=\s*%s\s*;' % (label, re.escape(php_str(expected))), verify, re.M):
-        missing.append('$' + label)
-if not re.search(r"define\(\s*'MEEL_HDD_BASE'\s*,\s*%s\s*\)" % re.escape(php_str(hdd)), verify):
-    missing.append('MEEL_HDD_BASE')
-if missing:
-    print("ERROR: nilai berikut tidak tersimpan: " + ", ".join(missing), file=sys.stderr)
-    sys.exit(1)
-print("patched via python3 (terverifikasi)")
-PYEOF
-then
-    die "Gagal menulis auth/settings.php — konfigurasi DB tidak tersimpan. Perbaiki manual lalu ulangi."
-fi
-
-if php -r 'require "auth/settings.php";' 2>/dev/null; then
-    ok "auth/settings.php dikonfigurasi & bisa dimuat (DB: ${DB_NAME}@${DB_HOST}, storage: ${HDD_BASE})"
-else
-    die "auth/settings.php tersimpan tapi tidak bisa dimuat PHP — periksa manual."
-fi
-
-ENV_CHOICE="production"
-if [ -n "$ENV_OVERRIDE" ]; then
-    ENV_CHOICE="$ENV_OVERRIDE"
-else
-    ENV_CHOICE="$(ask "Environment aplikasi (production/development)" "production")"
-fi
-case "$ENV_CHOICE" in
-    production|development) ;;
-    *) warn "Environment '$ENV_CHOICE' tidak dikenal — pakai production."; ENV_CHOICE="production" ;;
-esac
-DEBUG_CHOICE=false
-[ "$ENV_CHOICE" = "development" ] && DEBUG_CHOICE=true
-
-FFMPEG_PATH=""; FFPROBE_PATH=""; NODE_PATH=""; YTDLP_PATH=""
-if ! $ASSUME_YES && confirm "Set path biner manual (ffmpeg/ffprobe/node/yt-dlp)? (kosongkan semua = auto-detect)" N; then
-    FFMPEG_PATH="$(ask "Path ffmpeg (kosong = auto-detect)" "")"
-    FFPROBE_PATH="$(ask "Path ffprobe (kosong = auto-detect)" "")"
-    NODE_PATH="$(ask "Path node (kosong = auto-detect)" "")"
-    YTDLP_PATH="$(ask "Path yt-dlp (kosong = auto-detect)" "")"
-fi
-
-TRUST_PROXY=false
-if [ "$TRUST_PROXY_OVERRIDE" = "1" ]; then
-    TRUST_PROXY=true
-elif [ "$TRUST_PROXY_OVERRIDE" != "0" ] && confirm "Aplikasi di balik reverse proxy (nginx/caddy/Cloudflare)? (IP asli berasal dari header proxy)" N; then
-    TRUST_PROXY=true
-fi
-
-patch_optional_settings() {
-    python3 - "$@" "auth/settings.php" <<'PYEOF' 2>/dev/null || {
-import re, sys
-env, debug, ffmpeg, ffprobe, node, ytdlp, trust, path = sys.argv[1:9]
-with open(path, 'r', encoding='utf-8') as f:
-    c = f.read()
-if env == 'production':
-    c = re.sub(r"^//\s*define\('MEEL_ENV', 'production'\).*$",
-               "define('MEEL_ENV', 'production');", c, count=1, flags=re.M)
-elif env == 'development':
-    c = re.sub(r"^//\s*define\('MEEL_ENV', 'development'\).*$",
-               "define('MEEL_ENV', 'development');", c, count=1, flags=re.M)
-if debug == 'true':
-    c = re.sub(r"^//\s*define\('APP_DEBUG', true\).*$",
-               "define('APP_DEBUG', true);", c, count=1, flags=re.M)
-elif debug == 'false':
-    c = re.sub(r"^//\s*define\('APP_DEBUG', false\).*$",
-               "define('APP_DEBUG', false);", c, count=1, flags=re.M)
-for name, val in (('MEEL_FFMPEG_PATH', ffmpeg), ('MEEL_FFPROBE_PATH', ffprobe),
-                  ('MEEL_NODE_PATH', node), ('MEEL_YTDLP_PATH', ytdlp)):
-    if val:
-        c = re.sub(r"define\('%s'\s*,\s*''\)" % name,
-                   "define('%s', '%s')" % (name, val), c, count=1)
-if trust == 'true':
-    c = re.sub(r"define\('MEEL_TRUST_PROXY_HEADERS'\s*,\s*false\)",
-               "define('MEEL_TRUST_PROXY_HEADERS', true)", c, count=1)
-with open(path, 'w', encoding='utf-8') as f:
-    f.write(c)
-print("patched via python3")
-PYEOF
-    case "$1" in
-        production) sed -i "s#^// define('MEEL_ENV', 'production');#define('MEEL_ENV', 'production');#" auth/settings.php ;;
-        development) sed -i "s#^// define('MEEL_ENV', 'development');#define('MEEL_ENV', 'development');#" auth/settings.php ;;
-    esac
-    if [ "$2" = "true" ]; then
-        sed -i "s#^// define('APP_DEBUG', true);.*#define('APP_DEBUG', true);#" auth/settings.php
-    elif [ "$2" = "false" ]; then
-        sed -i "s#^// define('APP_DEBUG', false);.*#define('APP_DEBUG', false);#" auth/settings.php
-    fi
-    [ -n "$3" ] && sed -i "s#define('MEEL_FFMPEG_PATH', '');#define('MEEL_FFMPEG_PATH', '$3');#" auth/settings.php
-    [ -n "$4" ] && sed -i "s#define('MEEL_FFPROBE_PATH', '');#define('MEEL_FFPROBE_PATH', '$4');#" auth/settings.php
-    [ -n "$5" ] && sed -i "s#define('MEEL_NODE_PATH', '');#define('MEEL_NODE_PATH', '$5');#" auth/settings.php
-    [ -n "$6" ] && sed -i "s#define('MEEL_YTDLP_PATH', '');#define('MEEL_YTDLP_PATH', '$6');#" auth/settings.php
-    [ "$7" = "true" ] && sed -i "s#define('MEEL_TRUST_PROXY_HEADERS', false);#define('MEEL_TRUST_PROXY_HEADERS', true);#" auth/settings.php
-    }
-}
-
-patch_optional_settings "$ENV_CHOICE" "$DEBUG_CHOICE" "$FFMPEG_PATH" "$FFPROBE_PATH" "$NODE_PATH" "$YTDLP_PATH" "$TRUST_PROXY"
-ok "MEEL_ENV=${ENV_CHOICE} (APP_DEBUG=${DEBUG_CHOICE}) ditulis ke auth/settings.php."
-[ -n "$FFMPEG_PATH" ] && ok "MEEL_FFMPEG_PATH → $FFMPEG_PATH"
-[ -n "$FFPROBE_PATH" ] && ok "MEEL_FFPROBE_PATH → $FFPROBE_PATH"
-[ -n "$NODE_PATH" ] && ok "MEEL_NODE_PATH → $NODE_PATH"
-[ -n "$YTDLP_PATH" ] && ok "MEEL_YTDLP_PATH → $YTDLP_PATH"
-if $TRUST_PROXY; then
-    ok "MEEL_TRUST_PROXY_HEADERS diaktifkan — header proxy hanya dipercaya dari IP di MEEL_TRUSTED_PROXIES."
-    warn "Pastikan IP reverse proxy Anda tercantum di MEEL_TRUSTED_PROXIES (auth/settings.php; default 127.0.0.1/::1 untuk cloudflared lokal)."
-else
-    warn "MEEL_TRUST_PROXY_HEADERS tetap nonaktif (default aman — jangan aktifkan tanpa proxy)."
-fi
-
-if [ -f "auth/settings.php" ] && id "$WEB_USER" >/dev/null 2>&1 && $CAN_ELEVATE; then
-    if $SUDO chgrp "$WEB_USER" auth/settings.php auth/config.php 2>/dev/null \
-        && $SUDO chmod 640 auth/settings.php auth/config.php 2>/dev/null; then
-        ok "auth/settings.php & auth/config.php → 640 (owner + group ${WEB_USER})."
-    else
-        warn "Gagal mengatur permission auth/*.php — lakukan manual: chgrp ${WEB_USER} + chmod 640."
-    fi
-fi
-
-USE_XSENDFILE=false
-if [ "$XSENDFILE_OVERRIDE" = "1" ]; then
-    USE_XSENDFILE=true
-elif [ "$XSENDFILE_OVERRIDE" != "0" ]; then
-    if confirm "Aktifkan X-Sendfile di settings.php? (HANYA jika mod_xsendfile Apache sudah terpasang & terkonfigurasi)" N; then
-        USE_XSENDFILE=true
-    fi
-fi
-
-if $USE_XSENDFILE; then
-    python3 - "auth/settings.php" <<'PYEOF' 2>/dev/null || {
-import re, sys
-path = sys.argv[1]
-with open(path, 'r', encoding='utf-8') as f:
-    c = f.read()
-c = re.sub(r"define\('MEEL_USE_XSENDFILE', false\);", "define('MEEL_USE_XSENDFILE', true);", c, count=1)
-with open(path, 'w', encoding='utf-8') as f:
-    f.write(c)
-print("patched via python3")
-PYEOF
-    sed -i "s#define('MEEL_USE_XSENDFILE', false);#define('MEEL_USE_XSENDFILE', true);#" auth/settings.php
-    }
-    ok "MEEL_USE_XSENDFILE diaktifkan di auth/settings.php."
-    warn "Konfigurasi Apache agar akselerasi benar-benar aktif (tanpa ini streaming tetap jalan via fallback PHP):"
-    warn "  LoadModule xsendfile_module modules/mod_xsendfile.so"
-    warn "  EnableSendfile on"
-    warn "  <IfModule xsendfile_module>"
-    warn "      XSendFile on"
-    warn "      XSendFilePath \"${HDD_BASE}\""
-    warn "      XSendFilePath \"${PROJECT_ROOT}\""
-    warn "      XSendFilePath \"/dev/shm/meel\"   # output transcode"
-    warn "  </IfModule>"
-    warn "  Restart Apache, lalu verifikasi: apachectl -M | grep xsend"
-    warn "  (detail: docs/id/installation.md → 'Aktifkan mod_xsendfile')"
-else
-    warn "X-Sendfile TIDAK diaktifkan — streaming memakai PHP langsung (default aman)."
-fi
-
-step "4/9 — Buat direktori storage runtime"
-
-mkdir -p "$HDD_BASE/video/upload/video" \
-         "$HDD_BASE/video/upload/thumbnail" \
-         "$HDD_BASE/music/upload/file" \
-         "$HDD_BASE/music/upload/thumbnail" \
-         "$HDD_BASE/books/upload/manga" \
-         "$HDD_BASE/books/upload/pdf" \
-         "$HDD_BASE/books/upload/thumbnail" \
-         "$HDD_BASE/drive/public" \
-         "$HDD_BASE/drive/private_admins"
-ok "Storage media dibuat di: $HDD_BASE"
-echo "    video : $HDD_BASE/video/upload/{video,thumbnail}"
-echo "    music : $HDD_BASE/music/upload/{file,thumbnail}"
-echo "    books : $HDD_BASE/books/upload/{manga,pdf,thumbnail}"
-echo "    drive : $HDD_BASE/drive/{public,private_admins}"
-
-touch "$HDD_BASE/.meel_mount"
-ok "Penanda volume .meel_mount dibuat."
-
-mkdir -p data_drive/public data_drive/private_admins temp profile/upload
-ok "Folder runtime lokal (data_drive, temp, profile/upload) siap."
-
-if [ "$HDD_BASE" != "$PROJECT_ROOT/video/upload" ]; then
-    for m in video music books; do
-        target="$HDD_BASE/${m}/upload"
-        link="$PROJECT_ROOT/${m}/upload"
-        if [ -L "$link" ]; then
-            warn "${m}/upload sudah symlink — dilewati (hapus manual jika ingin diarahkan ulang)."
-            [ -f "$target/.htaccess" ] || warn "  Target symlink tidak punya .htaccess hardening — salin manual dari repo."
-        elif [ -d "$link" ] && [ -n "$(find "$link" -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name '.htaccess' -print -quit 2>/dev/null)" ]; then
-            warn "${m}/upload adalah folder nyata berisi data — TIDAK diganti symlink otomatis. Pindahkan manual jika ingin pakai storage terpusat."
-        else
-            if [ -f "$link/.htaccess" ] && [ ! -f "$target/.htaccess" ]; then
-                if cp "$link/.htaccess" "$target/.htaccess" 2>/dev/null; then
-                    ok "Hardening .htaccess disalin ke ${target}"
-                else
-                    warn "Gagal menyalin .htaccess ke ${target} — salin manual dari repo sebelum produksi."
-                fi
-            fi
-            rm -rf "$link"
-            ln -s "$target" "$link"
-            ok "Symlink dibuat: ${m}/upload → ${target}"
-        fi
-    done
-fi
-
-if [ "$HDD_BASE" != "$PROJECT_ROOT/data_drive" ]; then
-    drive_target="$HDD_BASE/drive/public"
-    drive_link="$PROJECT_ROOT/data_drive/public"
-    if [ -L "$drive_link" ]; then
-        warn "data_drive/public sudah symlink — dilewati (hapus manual jika ingin diarahkan ulang)."
-    elif [ -d "$drive_link" ] && [ -n "$(find "$drive_link" -mindepth 1 -maxdepth 1 ! -name '.gitkeep' ! -name '.htaccess' -print -quit 2>/dev/null)" ]; then
-        warn "data_drive/public berisi data — TIDAK diganti symlink otomatis. Pindahkan manual jika ingin pakai storage terpusat."
-    else
-        rm -rf "$drive_link"
-        ln -s "$drive_target" "$drive_link"
-        ok "Symlink dibuat: data_drive/public → ${drive_target}"
-    fi
-fi
-
-if id "$WEB_USER" >/dev/null 2>&1 && $CAN_ELEVATE; then
-    if confirm "Set ownership folder storage ke ${WEB_USER} (user Apache umum)?" Y; then
-        $SUDO chown -R "$WEB_USER:$WEB_USER" data_drive temp profile/upload "$HDD_BASE" 2>/dev/null || \
-            warn "Gagal chown — jalankan manual sesuai user web server Anda."
-        $SUDO chmod -R 775 data_drive temp profile/upload "$HDD_BASE" 2>/dev/null || true
-        ok "Ownership & permission diatur."
-    fi
-else
-    warn "User '${WEB_USER}' tidak ditemukan atau tanpa sudo — atur ownership/permission storage manual sesuai web server Anda."
-fi
-
-step "5/9 — Aktifkan mod_rewrite & VirtualHost Apache"
-
-if command -v a2enmod >/dev/null 2>&1 && $CAN_ELEVATE; then
-    if confirm "Aktifkan mod_rewrite & restart Apache sekarang?" Y; then
-        $SUDO a2enmod rewrite >/dev/null 2>&1 || true
-        $SUDO systemctl restart apache2 2>/dev/null || $SUDO service apache2 restart 2>/dev/null || \
-            warn "Gagal restart Apache otomatis — restart manual."
-        ok "mod_rewrite diaktifkan (jika Apache terpasang)."
-    fi
-else
-    warn "a2enmod tidak ditemukan — jika pakai Apache, aktifkan mod_rewrite manual:"
-    warn "  sudo a2enmod rewrite && sudo systemctl restart apache2"
-    warn "Pastikan juga 'AllowOverride All' aktif di konfigurasi VirtualHost (lihat docs/id/installation.md)."
-fi
-
-VHOST_DOMAIN=""
-if [ -n "$VHOST_OVERRIDE" ]; then
-    VHOST_DOMAIN="$VHOST_OVERRIDE"
-elif ! $ASSUME_YES && confirm "Buat file VirtualHost Apache untuk MEeL (DocumentRoot: ${PROJECT_ROOT})?" N; then
-    VHOST_DOMAIN="$(ask "Domain/ServerName (mis. meel.local)" "meel.local")"
-fi
-
-if [ -n "$VHOST_DOMAIN" ]; then
-    VHOST_FILE="/etc/apache2/sites-available/meel.conf"
-    VHOST_CONFIG="<VirtualHost *:80>
-    ServerName ${VHOST_DOMAIN}
-    UseCanonicalName On
-    DocumentRoot ${PROJECT_ROOT}
-    <Directory ${PROJECT_ROOT}>
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-    ErrorLog \${APACHE_LOG_DIR}/meel-error.log
-    CustomLog \${APACHE_LOG_DIR}/meel-access.log combined
-</VirtualHost>"
-    if command -v a2ensite >/dev/null 2>&1 && $CAN_ELEVATE; then
-        printf '%s\n' "$VHOST_CONFIG" | $SUDO tee "$VHOST_FILE" >/dev/null
-        $SUDO a2ensite meel >/dev/null 2>&1 || true
-        $SUDO systemctl restart apache2 2>/dev/null || $SUDO service apache2 restart 2>/dev/null || \
-            warn "Gagal restart Apache otomatis — restart manual."
-        ok "VirtualHost '${VHOST_DOMAIN}' dibuat & diaktifkan (${VHOST_FILE})."
-        warn "Untuk akses lokal, tambahkan ke /etc/hosts:  127.0.0.1 ${VHOST_DOMAIN}"
-    else
-        warn "a2ensite tidak tersedia / tanpa sudo — VirtualHost TIDAK ditulis otomatis. Salin manual:"
-        echo ""
-        printf '%s\n' "$VHOST_CONFIG"
-        echo ""
-        warn "Simpan ke ${VHOST_FILE}, lalu: sudo a2ensite meel && sudo systemctl restart apache2"
-    fi
-else
-    ok "VirtualHost dilewati — akses via DocumentRoot/subfolder (mis. http://host/MEeL) memakai .htaccess langsung."
-fi
-
-step "6/9 — Tutup direktori dependency & tooling dari akses web"
-
-for DENY_DIR in vendor node_modules tools storage assets/dict; do
-    DENY_PATH="${PROJECT_ROOT}/${DENY_DIR}"
-    [ -d "$DENY_PATH" ] || continue
-    if [ -f "$DENY_PATH/.htaccess" ] && grep -q 'Require all denied\|Deny from all' "$DENY_PATH/.htaccess"; then
-        ok "Hardening ${DENY_DIR}/ sudah ada"
-    else
-        if cat > "$DENY_PATH/.htaccess" <<'HTEOF'
-Options -Indexes
-
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteCond %{REQUEST_URI} ^(.*/)[^/]+/?$
-    RewriteRule ^ - [F,L]
-</IfModule>
-
-<IfModule !mod_rewrite.c>
-    <IfModule mod_authz_core.c>
-        Require all denied
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Order allow,deny
-        Deny from all
-    </IfModule>
-</IfModule>
-HTEOF
-        then
-            ok "Hardening .htaccess dibuat di ${DENY_DIR}/"
-        else
-            warn "Gagal menulis .htaccess di ${DENY_DIR} — salin manual sebelum produksi."
-        fi
-    fi
-done
-
-step "7/9 — Jalankan migration database"
-
-if php database/migrate.php; then
-    ok "Migration selesai (idempotent — aman diulang)."
-else
-    warn "Migration selesai dengan warning — cek output di atas."
-fi
-
-if [ -d "arcade" ] && [ -f "arcade/migrate.php" ]; then
-    if confirm "Aktifkan modul Arcade? (akan membuat tabel rooms, moves, arcade_song, arcade_score)" N; then
-        step "6b — Jalankan migration arcade"
-        if php arcade/migrate.php; then
-            ok "Arcade migration selesai."
-        else
-            warn "Arcade migration selesai dengan warning — cek output di atas."
-        fi
-    else
-        ok "Arcade dilewati — modul tidak diaktifkan. MEeL-HUB berjalan tanpa arcade."
-    fi
-fi
-
-step "8/9 — Verifikasi deployment (tests/check_deploy.php)"
-
-CHECK_OK=true
-if [ -f "tests/check_deploy.php" ]; then
-    if php tests/check_deploy.php; then
-        ok "Deployment check: sehat (exit 0)."
-    else
-        CHECK_OK=false
-        fail "Deployment check melaporkan FAIL — perbaiki sesuai output di atas, lalu jalankan ulang."
-    fi
-else
-    warn "tests/check_deploy.php tidak ditemukan — lewati verifikasi otomatis."
-fi
-
-echo ""
-echo "  Login admin     : ${ADMIN_USER}"
-echo "  Database         : ${DB_NAME}@${DB_HOST}"
-echo "  Environment      : ${ENV_CHOICE} (APP_DEBUG=${DEBUG_CHOICE})"
-echo "  Storage media     : ${HDD_BASE}"
-echo ""
-echo "  Jalankan cepat via PHP built-in server (untuk testing):"
-echo "    php -S 0.0.0.0:8080"
-echo ""
-echo "  Untuk produksi, arahkan Apache VirtualHost ke: ${PROJECT_ROOT}"
-echo "  (pastikan AllowOverride All + mod_rewrite aktif)"
-echo ""
-
-if $CHECK_OK; then
-    echo -e "${C_GREEN}${C_BOLD}════════════════════════════════════════════════════${C_RESET}"
-    echo -e "${C_GREEN}${C_BOLD} Instalasi selesai — deployment sehat!${C_RESET}"
-    echo -e "${C_GREEN}${C_BOLD}════════════════════════════════════════════════════${C_RESET}"
-    echo ""
-    echo "  Ada WARN di verifikasi di atas? Lihat docs/id/installation.md atau"
-    echo "  docs/id/troubleshooting.md untuk catatan."
-    echo ""
-    exit 0
-else
-    echo -e "${C_RED}${C_BOLD}════════════════════════════════════════════════════${C_RESET}"
-    echo -e "${C_RED}${C_BOLD} Instalasi selesai TAPI verifikasi deployment GAGAL${C_RESET}"
-    echo -e "${C_RED}${C_BOLD} — server BELUM siap dipakai.${C_RESET}"
-    echo -e "${C_RED}${C_BOLD}════════════════════════════════════════════════════${C_RESET}"
-    echo ""
-    echo "  Perbaiki penyebab FAIL di output check_deploy di atas (lihat"
-    echo "  docs/id/installation.md atau docs/id/troubleshooting.md), lalu"
-    echo "  jalankan ulang verifikasi:"
-    echo "    php tests/check_deploy.php"
-    echo ""
-    exit 1
-fi
+# ─── Run ───
+main "$@"
