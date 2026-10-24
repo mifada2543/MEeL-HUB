@@ -10,7 +10,7 @@ if (!function_exists('authorize_stream')) {
 
         $_SESSION['stream_ok'][$id] = time();
 
-        if (count($_SESSION['stream_ok']) > 100) {
+        if (count($_SESSION['stream_ok']) > 500) {
             $oldest = array_search(min($_SESSION['stream_ok']), $_SESSION['stream_ok'], true);
             if ($oldest !== false) {
                 unset($_SESSION['stream_ok'][$oldest]);
@@ -20,13 +20,23 @@ if (!function_exists('authorize_stream')) {
 }
 
 if (!function_exists('is_stream_authorized')) {
-    function is_stream_authorized(int $id, int $ttl = 7200): bool
+    function is_stream_authorized(int $id, int $ttl = 43200): bool
     {
         if ($id <= 0) return false;
         if (!is_array($_SESSION['stream_ok'] ?? null)) return false;
         if (empty($_SESSION['stream_ok'][$id])) return false;
 
-        return (time() - (int)$_SESSION['stream_ok'][$id]) <= $ttl;
+        $age = time() - (int)$_SESSION['stream_ok'][$id];
+        if ($age > $ttl) {
+            return false;
+        }
+
+        // Perpanjang otomatis selama segmen masih diminta (playback aktif).
+        if ($age > 300) {
+            $_SESSION['stream_ok'][$id] = time();
+        }
+
+        return true;
     }
 }
 
@@ -46,7 +56,7 @@ if (!function_exists('meel_register_stream_path')) {
             $_SESSION['stream_paths'][$dir] = $id;
         }
 
-        while (count($_SESSION['stream_paths']) > 100) {
+        while (count($_SESSION['stream_paths']) > 500) {
             array_shift($_SESSION['stream_paths']);
         }
     }
