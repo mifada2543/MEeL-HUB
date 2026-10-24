@@ -618,7 +618,8 @@ function setupMeelPlayerEvents() {
         stopPlaybackStartTimeout(),
         (lastTimeUpdateTimestamp = Date.now()),
         player && (lastPlayTime = player.currentTime),
-        startStuckDetector());
+        startStuckDetector(),
+        window.isRecovering && (window.isRecovering = !1, window.recoveryRetryCount = 0, window._videoReconnectOverlay?.hide()));
     }),
     player.on("pause", () => {
       (stopStuckDetector(),
