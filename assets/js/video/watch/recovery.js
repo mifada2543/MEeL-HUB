@@ -30,7 +30,7 @@ function trySelfHealMediaError(code) {
         ? hls.recoverMediaError()
         : hls.startLoad(Math.max(0, (player ? player.currentTime : 0) - 1));
     }
-    if (player && player.paused) {
+    if (player && !player.paused) {
       const e = player.play();
       e && e.catch && e.catch(function () {});
     }
@@ -117,6 +117,11 @@ function checkMediaAndRecover() {
       window._videoReconnectOverlay.showFailed()
     );
   }
+  if (player && player.paused && hasEverPlayed) {
+    console.log("Video sedang di-paused, skip recovery check.");
+    isCheckingStatus = !1;
+    return;
+  }
   ((isCheckingStatus = !0),
     showReconnectingIndicator(),
     console.log(`Mengecek ketersediaan file media di: ${videoSrc}`));
@@ -124,7 +129,7 @@ function checkMediaAndRecover() {
     t = setTimeout(() => {
       e.abort();
     }, 3e3);
-  fetch(videoSrc, { method: "HEAD", signal: e.signal })
+  fetch(videoSrc, { method: "GET", signal: e.signal })
     .then((e) => {
       clearTimeout(t);
       const n = e.headers.get("content-type") || "";
