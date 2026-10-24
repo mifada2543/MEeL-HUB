@@ -120,7 +120,8 @@ if (!function_exists('meel_invalidate_media_stats_cache')) {
 function meel_invalidate_media_stats_cache(?string $table = null): void
 {
     $dir = meel_media_cache_dir();
-    $pattern = $table !== null && in_array($table, meel_media_table_whitelist(), true)
+    $validTable = $table !== null && in_array($table, meel_media_table_whitelist(), true);
+    $pattern = $validTable
         ? $dir . '/media_stats_' . $table . '.json'
         : $dir . '/media_stats_*.json';
 
@@ -131,6 +132,14 @@ function meel_invalidate_media_stats_cache(?string $table = null): void
     $orphan_cache = meel_admin_orphan_cache_path();
     if (is_file($orphan_cache)) {
         @unlink($orphan_cache);
+    }
+
+    // Ukuran direktori ikut dihitung ulang agar dashboard tidak menampilkan angka lama.
+    if (function_exists('invalidate_dir_size_cache_path') && function_exists('meel_media_base_path')) {
+        $tables = $validTable ? [(string) $table] : meel_media_table_whitelist();
+        foreach ($tables as $mediaTable) {
+            invalidate_dir_size_cache_path(meel_media_base_path($mediaTable));
+        }
     }
 }
 }

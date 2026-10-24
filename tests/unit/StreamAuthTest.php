@@ -50,14 +50,38 @@ class StreamAuthTest extends TestCase
         $this->assertFalse(is_stream_authorized(7, 30));
     }
 
+    public function testDefaultTtlAllowsTwelveHourSession(): void
+    {
+        $_SESSION['stream_ok'] = [145 => time() - 43000];
+        $this->assertTrue(is_stream_authorized(145));
+    }
+
+    public function testSlidingRefreshExtendsActivePlayback(): void
+    {
+        $issuedAt = time() - 400;
+        $_SESSION['stream_ok'] = [145 => $issuedAt];
+
+        $this->assertTrue(is_stream_authorized(145));
+        $this->assertGreaterThan($issuedAt, $_SESSION['stream_ok'][145]);
+    }
+
+    public function testRecentlyIssuedTokenIsNotRewritten(): void
+    {
+        $issuedAt = time() - 60;
+        $_SESSION['stream_ok'] = [145 => $issuedAt];
+
+        $this->assertTrue(is_stream_authorized(145));
+        $this->assertSame($issuedAt, $_SESSION['stream_ok'][145]);
+    }
+
     public function testMarkerListIsCapped(): void
     {
-        for ($i = 1; $i <= 150; $i++) {
+        for ($i = 1; $i <= 550; $i++) {
             authorize_stream($i);
         }
-        $this->assertLessThanOrEqual(100, count($_SESSION['stream_ok']));
+        $this->assertLessThanOrEqual(500, count($_SESSION['stream_ok']));
 
-        $this->assertTrue(is_stream_authorized(150));
+        $this->assertTrue(is_stream_authorized(550));
     }
 
     public function testEmptySessionDenied(): void
@@ -106,10 +130,10 @@ class StreamAuthTest extends TestCase
 
     public function testRegisteredPathMapIsCapped(): void
     {
-        for ($i = 1; $i <= 120; $i++) {
+        for ($i = 1; $i <= 550; $i++) {
             meel_register_stream_path('video/clip' . $i . '/clip' . $i . '.m3u8', $i);
         }
-        $this->assertLessThanOrEqual(100, count($_SESSION['stream_paths']));
+        $this->assertLessThanOrEqual(500, count($_SESSION['stream_paths']));
     }
 
     public function testInvalidRegistrationIgnored(): void
