@@ -105,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         }
                     }
                 }
+                meel_invalidate_media_stats_cache($del_type);
                 $label = ucfirst($del_type);
                 if (empty($files_failed)) {
                     $delete_msg = [

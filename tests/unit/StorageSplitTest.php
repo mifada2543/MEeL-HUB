@@ -94,6 +94,7 @@ class StorageSplitTest extends TestCase
             'meel_pid_dir_candidates', 'meel_pid_dir', 'meel_pid_filename',
             'meel_storage_guard', 'meel_drive_base_path',
             'check_disk_space', 'require_disk_space', 'dir_size', 'invalidate_dir_size_cache',
+            'invalidate_dir_size_cache_path',
             'meel_sweep_stale_cache_tmp', 'meel_write_cache_file', 'meel_read_cache_file',
             'log_drive_operation',
             'meel_xsendfile_enabled', 'meel_xsendfile_config_files', 'meel_xsendfile_flag_from_text',

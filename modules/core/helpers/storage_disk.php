@@ -73,18 +73,37 @@ if (!function_exists('dir_size')) {
         return $size;
     }
 }
+if (!function_exists('invalidate_dir_size_cache_path')) {
+    function invalidate_dir_size_cache_path(string $path): void
+    {
+        if ($path === '') return;
+
+        $paths = [$path];
+        $real = realpath($path);
+        if ($real !== false && $real !== $path) {
+            $paths[] = $real;
+        }
+
+        foreach (array_unique($paths) as $candidate) {
+            $cacheFile = dirname(__DIR__, 3) . '/temp/dirsize_' . md5($candidate) . '.cache';
+            if (!is_file($cacheFile)) continue;
+            if (!is_writable(dirname($cacheFile))) {
+                error_log("[MEeL] invalidate_dir_size_cache_path: direktori tidak writable: " . dirname($cacheFile));
+                continue;
+            }
+            if (!unlink($cacheFile)) {
+                error_log("[MEeL] invalidate_dir_size_cache_path: gagal menghapus cache: {$cacheFile}");
+            }
+        }
+    }
+}
 if (!function_exists('invalidate_dir_size_cache')) {
     function invalidate_dir_size_cache(string $username): void
     {
-        $userPath = meel_drive_base_path() . '/private_admins/' . $username;
-        $cacheFile = dirname(__DIR__, 3) . '/temp/dirsize_' . md5($userPath) . '.cache';
-        if (is_file($cacheFile)) {
-            if (!is_writable(dirname($cacheFile))) {
-                error_log("[MEeL] invalidate_dir_size_cache: direktori tidak writable: " . dirname($cacheFile));
-            } elseif (!unlink($cacheFile)) {
-                error_log("[MEeL] invalidate_dir_size_cache: gagal menghapus cache: {$cacheFile}");
-            }
-        }
+        $drivePath = rtrim(meel_drive_base_path(), '/\\');
+        invalidate_dir_size_cache_path($drivePath . '/private_admins/' . $username);
+        invalidate_dir_size_cache_path($drivePath . '/private_admins');
+        invalidate_dir_size_cache_path($drivePath . '/public');
     }
 }
 if (!function_exists('meel_sweep_stale_cache_tmp')) {
