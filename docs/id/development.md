@@ -73,6 +73,41 @@ ini_set('display_errors', 1);
 - ⚠️ `StorageMountGuardTest` (menjalankan subprocess PHP via `proc_open`) pernah gagal 1× (`exit 255`) bila suite dijalankan **bersamaan** dengan proses test lain yang menyentuh `temp/`. Jangan dijalankan paralel dengan `security_test` / `check_deploy`.
 - Angka pada kolom **IO/R** di `htop` adalah *laju baca*, bukan RSS.
 
+## Prinsip Zero-Build & Peta Cache
+
+MEeL sengaja tetap **zero-build**: tidak ada bundler, tidak ada `node_modules` yang wajib, dan CSS/JS dikirim sebagai aset jadi. Tailwind hanya dibangun manual lewat `scripts/build-css-bundle.php` bila memang perlu; hasilnya tetap file statis.
+
+### Aturan yang tidak boleh dilanggar
+
+- Jangan menambahkan Vite/Webpack/PostCSS/npm build ke runtime.
+- Jangan menambahkan Redis/APCu/Memcached/Node/systemd worker. Runtime web saat ini PHP 8.0.30 (XAMPP) dan tidak memuat ekstensi tersebut.
+- Cache persisten hanya lewat helper file di `temp/`: `meel_read_cache_file()`, `meel_write_cache_file()`, dan invalidator yang sudah ada.
+- Optimasi hanya dilakukan setelah ada angka before/after. Jangan mengganti arsitektur tanpa bukti.
+- Usahakan ≤3 file per perubahan; satu tujuan per commit.
+
+### Peta cache
+
+| Cache | Lokasi | TTL | Invalidasi |
+|---|---|---|---|
+| Statistik media | `temp/cache/media_stats_*.json` | 30 detik | `meel_invalidate_media_stats_cache($table)` |
+| Ukuran direktori | `temp/dirsize_<md5>.cache` | 300 detik | `invalidate_dir_size_cache_path($path)` / `invalidate_dir_size_cache($username)` |
+| Statistik server | `temp/cache/server_stats_info.json` | 300 detik | TTL / `GarbageCollector` |
+| Orphan admin | `temp/cache/admin_orphans.json` | — | ikut invalidasi statistik media |
+
+`temp/.htaccess` menolak akses web ke seluruh isi `temp/`. `GarbageCollector` membersihkan cache yang sudah kedaluwarsa; invalidator di atas dipakai saat upload/hapus agar angka langsung segar.
+
+### Stream video
+
+`authorize_stream()` dipanggil saat halaman watch dibuka. Token berlaku 12 jam, di-refresh otomatis setiap lebih dari 5 menit selama segmen masih diminta, dan daftar path/token dibatasi 500 entri per session. Jangan menurunkan TTL tanpa menguji playback panjang dan pause lama.
+
+### Verifikasi wajib
+
+```bash
+/opt/lampp/bin/php -l path/ke/file.php
+/opt/lampp/bin/php vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'
+php tests/security_test.php
+```
+
 ---
 
 ## Standar Koding
