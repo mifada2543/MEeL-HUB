@@ -46,7 +46,9 @@ class TranscodeArgvTest extends TestCase
     private function argv(string $format, array $video): array
     {
         $resolve = new ReflectionMethod(TranscodeService::class, 'resolveAudioFormat');
+        $resolve->setAccessible(true);
         $build = new ReflectionMethod(TranscodeService::class, 'buildFfmpegArgv');
+        $build->setAccessible(true);
 
         $audio = $resolve->invoke($this->service, $format, $this->thumbDir . '/', $video);
 
@@ -262,6 +264,7 @@ class TranscodeArgvTest extends TestCase
     public function testConcatListEscapesSingleQuotes(): void
     {
         $method = new ReflectionMethod(TranscodeService::class, 'writeConcatList');
+        $method->setAccessible(true);
         $outDir = $this->thumbDir . '/';
         $segments = ["/hdd/seg'1.ts", '/hdd/seg 2.ts', '/hdd/seg`x`$(y).ts'];
 
@@ -278,7 +281,9 @@ class TranscodeArgvTest extends TestCase
 
     public function testTranscodeEnvPinsLibraryPathAndLocale(): void
     {
-        $env = (new ReflectionMethod(TranscodeService::class, 'transcodeEnv'))->invoke($this->service);
+        $envMethod = new ReflectionMethod(TranscodeService::class, 'transcodeEnv');
+        $envMethod->setAccessible(true);
+        $env = $envMethod->invoke($this->service);
 
         $libPath = (new ReflectionClassConstant(TranscoderBase::class, 'FFMPEG_LIB_PATH'))->getValue();
         $this->assertSame($libPath, $env['LD_LIBRARY_PATH']);
