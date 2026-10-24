@@ -24,11 +24,12 @@ defaults:
 jobs:
   php-syntax:
     name: PHP Syntax (php -l)
-    runs-on: ubuntu-latest
+    # Runtime web saat ini XAMPP PHP 8.0.30; runner 22.04 memastikan PHP 8.0 tersedia.
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        php-version: ["8.1", "8.2", "8.3"]
+        php-version: ["8.0", "8.1", "8.2", "8.3"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
