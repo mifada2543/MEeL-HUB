@@ -251,19 +251,6 @@ require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
 ```
 
-### Path Configuration
-
-Semua path penyimpanan media dikelola melalui konstanta terpusat:
-
-```php
-// auth/config.php
-define('MEEL_HDD_BASE', '/media/[user]/MEeL/media');
-define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
-define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
-define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
-// ... dan seterusnya
-```
-
 ### Session Hijacking Prevention
 
 **Mechanism:** Setiap user memiliki `last_session_id` di database. Jika session ID di browser berbeda dengan yang di database, session dianggap dibajak/ditendang.
@@ -708,7 +695,7 @@ Detil yang ditampilkan:
 
 ## API Rate Limiting
 
-### Arsitektur
+### Arsitektur Rate Limiter
 
 `modules/auth/RateLimiter.php` menyediakan **file-based rate limiter** yang melindungi API endpoint dari abuse:
 
@@ -914,13 +901,7 @@ Perintah yt-dlp memakai `--max-filesize` dan `--match-filter "duration < N"`, da
 
 `GarbageCollector::STALE_SECONDS` = **1200**, lebih besar dari `TRANSCODE_AUDIO_TIMEOUT` (600) dan `DOWNLOAD_TIMEOUT` (900). Marker `.processing` adalah satu-satunya pelindung tabrakan dua transcode atas output yang sama, jadi nilainya tidak boleh di bawah kedua batas timeout itu.
 
-### Antrean Hapus Tertunda
-
-`cleanupPendingDeletions()` hanya boleh menghapus path yang `realpath()`-nya berada di dalam salah satu root media atau drive base. Berkas antrean berada di direktori world-writable, jadi tanpa cek containment user lokal bisa menjadwalkan penghapusan file atau direktori mana pun sebagai user web.
-
-### Batas Ekspor Admin
-
-`fetchAll()` menerima batas (default 50.000) — pratinjau 15 baris memakai `countFiltered()` + `fetchPage(15, 0)`, bukan memuat seluruh tabel terfilter ke memori.
+Antrean hapus tertunda dan batas ekspor admin didokumentasikan di **[Panduan Konfigurasi](configuration.md#antrean-hapus-tertunda)**.
 
 ---
 
@@ -976,7 +957,7 @@ Semua `Deny from all` dibungkus `IfModule`. Tanpa pembungkus itu, Apache 2.4 tan
 
 Fitur Advanced Upload (`upload_advanced.php`) mengizinkan user terautentikasi mengunduh media dari URL eksternal melalui yt-dlp. Karena yt-dlp berjalan **di server**, URL yang di-supply attacker dan me-resolve ke alamat internal bisa disalahgunakan sebagai vektor Server-Side Request Forgery (SSRF) — memindai layanan loopback, endpoint metadata cloud (`169.254.169.254`), atau mesin lain di jaringan lokal.
 
-### Arsitektur
+### Arsitektur SSRF Guard
 
 `modules/auth/SsrfGuard.php` adalah **satu-satunya sumber kebenaran** untuk setiap request keluar yang dibuat atas nama user:
 
@@ -1268,14 +1249,6 @@ echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
 - JSON/JS → `json_encode(..., JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)`
 
 Audit mencakup seluruh nilai user-controlled yang dirender: bio profil, judul/deskripsi media, komentar, nama file, playlist, hasil pencarian, username chat, dan data yang tampil di panel admin. Untuk inline JS template literal (contoh: hasil pencarian chat admin), fungsi `escapeHtml()` khusus membungkus nilai user-derived sebelum injeksi HTML. Regression test (`tests/security_test.php`) memverifikasi payload `<script>alert(1)</script>`, `<img src=x onerror=alert(1)>`, dll. tidak pernah dieksekusi sebagai HTML.
-
-### Stored XSS (hardening): database menyimpan data mentah (kanonik), escaping terjadi **saat render**, per konteks:
-
-- Teks HTML polos → `htmlspecialchars($v, ENT_QUOTES, 'UTF-8')`
-- Atribut/URL → escaping konteks-atribut + `urlencode`/allowlist
-- JSON/JS → `json_encode(..., JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)`
-
-Auditnya mencakup setiap nilai yang dikendalikan user dan dirender: bio profil, judul/deskripsi media, komentar, nama berkas, playlist, hasil pencarian, username chat, dan data yang ditampilkan di panel admin. Untuk template literal JS inline (mis. hasil pencarian chat admin), fungsi `escapeHtml()` membungkus nilai turunan user sebelum injeksi HTML. Test regresi (`tests/security_test.php`) memverifikasi payload seperti `<script>alert(1)</script>` dan `<img src=x onerror=alert(1)>` tidak pernah dieksekusi sebagai HTML.
 
 ### CSRF in All Forms
 

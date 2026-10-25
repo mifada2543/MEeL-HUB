@@ -9,7 +9,7 @@ Reference guide for all configuration files and parameters in MEeL-HUB.
 - [Main Configuration Files](#main-configuration-files)
 - [Database (`auth/settings.php`)](#database-authsettingsphp)
 - [Session & Security](#session--security)
-- [Media Storage Paths](#media-storage-paths)
+- [Media Storage Paths (CENTRALIZED)](#media-storage-paths-centralized)
 - [Transcoder Configuration](#transcoder-configuration)
 - [Uploader Configuration](#uploader-configuration)
 - [System Configuration](#system-configuration)
@@ -71,35 +71,29 @@ $conn->set_charset('utf8mb4'); // charset forced to utf8mb4
 
 ### Error Handling
 
+
+```php
+// In auth/config.php
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) return false;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if ($error && in_array($error["type"], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        meel_log_critical("Fatal error: " . $error["message"] . " in " . $error["file"] . ":" . $error["line"]);
+    }
+});
+```
+
 If database credentials are empty, the system displays an educational error message.
 
 ---
 
 ## Session & Security
 
-### Session Configuration
-
-```php
-// In auth/config.php
-$timeout = 43200;     // 12 hour session timeout
-ini_set('session.gc_maxlifetime', $timeout);
-
-// Secure cookie flags (auto-detect HTTPS / X-Forwarded-Proto)
-$secure_cookie = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
-
-session_set_cookie_params([
-    'lifetime' => $timeout,
-    'path'     => '/',
-    'secure'   => $secure_cookie,  // only sent via HTTPS
-    'httponly' => true,            // not readable by JavaScript
-    'samesite' => 'Lax',           // CSRF level-1 protection
-]);
-session_name('meel');  // Session cookie name: "meel"
-session_start();
-```
-
-> `auth/auth_helpers.php` (`auth_boot_session()`) uses the same cookie parameters.
+Session configuration, CSRF protection, and security headers are documented in the **[Security Guide](security.md#session-management)**.
 
 ### Trusted Proxy (`MEEL_TRUST_PROXY_HEADERS`)
 
@@ -124,37 +118,7 @@ $conn->set_charset('utf8mb4');
 
 MySQL connection is forced to `utf8mb4` to match the schema — emoji, Japanese scripts, and multibyte text store/retrieve correctly.
 
-### CSRF Protection
-
-```php
-// Auto-generated token
-$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-// Verification function (defined in modules/auth/helpers/csrf.php)
-// Uses hash_equals() for timing-attack safety
-function verify_csrf_token(?string $token = null): bool
-{
-    if ($token === null && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $token = $_POST['csrf_token'] ?? '';
-    }
-    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
-}
-```
-
-### Session Timeout Check
-
-```php
-if (isset($_SESSION['LAST_ACTIVITY'])) {
-    $elapsed_time = time() - $_SESSION['LAST_ACTIVITY'];
-    if ($elapsed_time > $timeout) {  // 12 hours
-        session_unset();
-        session_destroy();
-        header("Location: ../auth/login?reason=expired");
-        exit;
-    }
-}
-$_SESSION['LAST_ACTIVITY'] = time();
-```
+CSRF protection and session timeout handling are documented in the **[Security Guide](security.md#csrf-protection)**.
 
 ### Transliterator (Romaji Conversion)
 
@@ -466,6 +430,29 @@ else                       $interval = 10;    // ≤ 5 min → every 10 seconds
 
 ### File: `modules/core/Uploader.php`
 
+
+```php
+// In modules/core/Uploader.php
+class Uploader {
+    public function __construct(
+        private string $basePath,
+        private array $allowedMimes,
+        private int $maxSize
+    ) {}
+
+    public function handleUpload(array $file, string $module): array {
+        // Validate MIME, size, extension
+        // Generate secure filename
+        // Move to temporary location
+        // Return metadata array
+    }
+
+    private function validateMime(string $mime): bool {
+        return in_array($mime, $this->allowedMimes, true);
+    }
+}
+```
+
 ### Upload Limits
 
 ```php
@@ -536,16 +523,33 @@ protected const ENV_PREFIX = "export LD_LIBRARY_PATH='/usr/lib/x86_64-linux-gnu:
 
 ## Rate Limiting
 
-### File: `modules/auth/RateLimiter.php`
+### Upload Rate Limiting (`System.php`)
 
-File-based rate limiter for API endpoints (fail-closed on storage errors):
+Upload and drive rate limits are enforced in `modules/core/System.php`:
+
+```php
+// Default: 2 upload per hour (non-admin)
+$max_upload = 2;
+
+// Drive: 10 uploads per hour
+if ($type === 'drive_files') {
+    $max_upload = 10;
+}
+
+// Admin: unlimited
+if ($user_role === 'admin') return ['allowed' => true];
+```
+
+### API Rate Limiting (`RateLimiter.php`)
+
+`modules/auth/RateLimiter.php` — file-based rate limiter for API endpoints (fail-closed on storage errors):
 
 | Endpoint | Limit | Window | File |
 |---|:---:|:---:|---|
 | Like/Dislike | 30 | 1 minute | `controllers/api/like.php` |
 | Comment | 10 | 1 minute | `controllers/api/delete_comment.php`, `WatchController.php` |
 | Upload | 3 | 1 hour | — |
-| Transcode | 5 | 1 hour | —
+| Transcode | 5 | 1 hour | — |
 | Auto Metadata | 5 | 1 hour | `controllers/api/auto_metadata.php` |
 | Registration | 5 | 1 hour | `auth/register.php` |
 | API Generic | 60 | 1 minute | — |
@@ -557,8 +561,8 @@ private static array $limits = [
     'comment'       => ['requests' => 10, 'window' => 60],
     'upload'        => ['requests' => 3,  'window' => 3600],
     'transcode'     => ['requests' => 5,  'window' => 3600],
-    'auto_metadata' => ['requests' => 5,  'window' => 3600],
-    'register'      => ['requests' => 5,  'window' => 3600],
+    'auto_metadata' => ['requests' => 5, 'window' => 3600],
+    'register'      => ['requests' => 5, 'window' => 3600],
     'api'           => ['requests' => 60, 'window' => 60],
 ];
 ```
@@ -578,6 +582,8 @@ private static array $limits = [
 > mostly shared-IP. A per-username bucket can be layered on top, but it **must
 > stay paired** with the per-IP bucket — on its own an attacker just cycles
 > usernames to get around it.
+
+**Storage:** JSON files in `temp/ratelimit/` with `flock()` for race condition safety. Auto-cleanup via `GarbageCollector::run()`.
 
 ---
 

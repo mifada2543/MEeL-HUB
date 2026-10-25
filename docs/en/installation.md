@@ -28,13 +28,10 @@ An automatic installer that runs most steps of this guide in a single command (t
 
 Steps it runs (idempotent for most of them):
 
-1. **Check dependencies** — PHP 8.1+ with the `mysqli`, `pdo_mysql`,
+1. **Check dependencies** — PHP 8.2+ with the `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl` extensions, plus
    MariaDB/MySQL; installed via apt when needed (`--skip-apt` to skip).
-2. **Database setup** — create the database and import `database/schema.sql`
-   (the hardcoded `USE \`MEeL\`` line in the schema is rewritten to the
-   configured DB name); if the DB already exists it is safely skipped
-   (reimport only on explicit confirmation).
+2. **Database setup** — schema has no CREATE DATABASE/USE; installer creates DB if missing and imports schema.sql with explicit DB name. Original schema unchanged. If schema contains USE/CREATE DATABASE, installer warns. If DB already exists with tables, import is skipped (reimport only on explicit confirmation; `--yes` mode forces reimport).
 3. **Create admin account** — You **must** create your own username and password
    (no default credentials exist). The script prompts for input and stores it
    in the database with a bcrypt hash.
@@ -64,7 +61,7 @@ Steps it runs (idempotent for most of them):
 
 | Component | Version | Notes |
 |---|---|---|
-| **PHP** | **8.1+** | — |
+| **PHP** | **8.2+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Requires `mod_rewrite` |
 | **FFmpeg** | 6.0+ | For HLS & transcoding |
@@ -83,8 +80,8 @@ sudo apt install mecab mecab-ipadic-utf8 libmecab-dev
 
 ```bash
 # On Ubuntu/Debian
-sudo apt install php8.1-mysqli php8.1-pdo-mysql php8.1-gd php8.1-fileinfo \
-                 php8.1-mbstring php8.1-intl php8.1-zip php8.1-xml
+sudo apt install php8.2-mysqli php8.2-pdo-mysql php8.2-gd php8.2-fileinfo \
+                 php8.2-mbstring php8.2-intl php8.2-zip php8.2-xml
 ```
 
 Or enable in `php.ini`:
@@ -103,7 +100,7 @@ extension=zip
 > ⚠️ **`zip` extension** is required for manga uploads (ZIP/CBZ).
 > ⚠️ **mecab extension** is required for better translation support.
 
-> 💡 `install.sh` installs and verifies all of the extensions above automatically (including `pdo_mysql` and `fileinfo`) — see [Automatic Installer](#automatic-installer-installsh).
+> 💡 `install.sh` installs and verifies all of the extensions above automatically (including `pdo_mysql` and `fileinfo`) — see [Automatic Installer](#-automatic-installer-installsh).
 
 ### Recommended OS
 
@@ -129,8 +126,8 @@ sudo ./xampp-linux-*.run
 **Option B — Manual (Ubuntu/Debian):**
 ```bash
 sudo apt update
-sudo apt install apache2 mysql-server php8.1 php8.1-mysqli php8.1-gd \
-                 php8.1-mbstring php8.1-intl php8.1-zip php8.1-fileinfo
+sudo apt install apache2 mysql-server php8.2 php8.2-mysqli php8.2-gd \
+                 php8.2-mbstring php8.2-intl php8.2-zip php8.2-fileinfo
 ```
 
 ### 2. Clone Repository
@@ -140,7 +137,7 @@ cd /opt/lampp/htdocs  # For XAMPP/LAMPP
 # or
 cd /var/www/html      # For manual Apache
 
-git clone https://github.com/mifada2543/MEeL.git MEeL
+git clone https://github.com/mifada2543/MEeL-HUB.git MEeL
 cd MEeL
 ```
 
@@ -170,9 +167,10 @@ SOURCE /path/to/MEeL/database/schema.sql;
 
 #### Option C — Via phpMyAdmin / other GUI:
 
-1. Open phpMyAdmin → **Import** tab
-2. Select the `database/schema.sql` file
-3. Click **Go**
+1. Open phpMyAdmin → **select or create the target database first**
+2. Go to the **Import** tab
+3. Select the `database/schema.sql` file
+4. Click **Go**
 
 ### 4. Application Configuration
 
@@ -182,7 +180,11 @@ cp settings.example.php settings.php
 cp config.example.php config.php
 ```
 
-> 💡 `install.sh` only runs `chmod 640` on `auth/settings.php` **when `$CAN_ELEVATE` is set** (privilege elevation detected) — on a fresh install without elevation the file stays at its default and the DB config is never made world-readable.
+> 💡 `install.sh` applies `chmod 640` + `chgrp` to the web group on `auth/settings.php` **when `$CAN_ELEVATE` is set** (privilege elevation detected). On a fresh install without elevation the file stays at its default (typically 644) — the DB config is **not** "never world-readable" by default. For production, explicitly run:
+> ```bash
+> sudo chgrp "$WEB_GROUP" auth/settings.php auth/config.php
+> sudo chmod 640 auth/settings.php auth/config.php
+> ```
 
 Edit `auth/settings.php`:
 ```php
@@ -207,15 +209,27 @@ php database/migrate.php
 cd /opt/lampp/htdocs/MEeL
 mkdir -p data_drive/public data_drive/private_admins temp profile/upload music/upload/file music/upload/thumbnail books/upload/manga books/upload/pdf books/upload/thumbnail
 
-sudo chown -R www-data:www-data data_drive temp profile/upload music/upload books/upload
-sudo chmod -R 775 data_drive temp profile/upload music/upload books/upload
+# Detect web server user (Apache: www-data on Debian/Ubuntu, apache on RHEL/CentOS, _www on macOS)
+WEB_USER="${WEB_USER:-$(ps aux | grep -E '(apache|httpd)' | grep -v grep | head -1 | awk '{print $1}')}"
+WEB_USER="${WEB_USER:-www-data}"
+WEB_GROUP="${WEB_GROUP:-$(id -gn "$WEB_USER" 2>/dev/null || echo "$WEB_USER")}"
+
+# Baseline: dirs 750, files 640 (no world access, no executable files)
+sudo find data_drive temp profile/upload music/upload books/upload -type d -exec chmod 750 {} \;
+sudo find data_drive temp profile/upload music/upload books/upload -type f -exec chmod 640 {} \;
+
+# Writable dirs: 770 (group write) — only where the app writes at runtime
+sudo chmod 770 data_drive/public data_drive/private_admins temp profile/upload music/upload/file music/upload/thumbnail books/upload/manga books/upload/pdf books/upload/thumbnail
+
+# Ownership: only the runtime dirs, not the entire repo
+sudo chown -R "$WEB_USER:$WEB_GROUP" data_drive temp profile/upload music/upload books/upload
 ```
 
-> 💡 If `www-data` doesn't work, try `daemon` or `nobody`.
-> ⚠️ `books/upload`, `music/upload`, `video/upload` are real directories tracked in the repo (placeholder `.gitkeep` + hardened `.htaccess`) — **not symlinks**. Their contents (uploaded files) are gitignored; media files live under `MEEL_HDD_BASE` and are served through PHP endpoints (see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
+> 💡 Override with `WEB_USER=apache WEB_GROUP=apache` if auto-detection picks the wrong user. Do **not** `chown` the entire repo or `MEEL_HDD_BASE` — only the runtime directories listed above.
+> ⚠️ `books/upload`, `music/upload`, `video/upload` are real directories tracked in the repo (placeholder `.gitkeep` + hardened `.htaccess`) — **not symlinks**. Their contents (uploaded files) are gitignored; media files live under `MEEL_HDD_BASE` and are served through PHP endpoints (see [6. Media Storage](#6-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
 > ℹ️ `data_drive/public` and `data_drive/private_admins` are real directories tracked in the repo (not symlinks) — they are the built-in fallback storage for the Drive module and are created/used automatically. For Drive storage on an external HDD, set `MEEL_HDD_DRIVE` in `auth/settings.php` (see below). **Never commit symlinks inside `data_drive/`** — `.gitignore` blocks them.
 
-### 5a. Media Storage (MEEL_HDD_BASE) — PHP Endpoint + Rewrite (no symlinks)
+### 6. Media Storage (MEEL_HDD_BASE) — PHP Endpoint + Rewrite (no symlinks)
 
 All media paths are centralized in `auth/settings.php` — change one line and the whole system follows:
 
@@ -250,7 +264,7 @@ The browser URL stays `.../upload/...` (so relative HLS segments like `.ts` reso
 - `MEEL_HDD_*_UPLOAD` defined → file read from the HDD path;
 - not defined → file read from the repo fallback folder `<root>/{module}/upload`
 
-Endpoints enforce path-traversal protection, an extension whitelist, Range support (206 — needed for HLS `.ts` and large video), and a referer gate for HLS video (anti-hotlink). All modules (video, music, books, drive) also support optional X-Sendfile acceleration with automatic fallback — see [mod_xsendfile](#enable-mod_xsendfile-optional--for-streaming-acceleration). Audio playback uses `music/stream?id=...` (session authorization + strict referer gate).
+Endpoints enforce path-traversal protection, an extension whitelist, Range support (206 — needed for HLS `.ts` and large video), and a referer gate for HLS video (anti-hotlink). All modules (video, music, books, drive) also support optional X-Sendfile acceleration with automatic fallback — see [mod_xsendfile](#-enable-mod_xsendfile-optional--advanced--for-streaming-acceleration). Audio playback uses `music/stream?id=...` (session authorization + strict referer gate).
 
 `.gitignore` explicitly blocks committing symlinks named after these folders (they were previously committed as absolute `/media/<user>/...` symlinks that leaked the OS username and broke on other machines).
 
@@ -272,7 +286,7 @@ define('MEEL_HDD_DRIVE', MEEL_HDD_BASE . '/drive/'); // base = public/ + private
 - **Never commit symlinks inside `data_drive/`**: `.gitignore` blocks `data_drive/public` / `data_drive/private_admins` as symlinks. `tests/check_deploy.php` only warns about symlinks pointing outside `MEEL_HDD_DRIVE` (e.g. `/media/<user>/...`); deploy-time symlinks pointing inside `MEEL_HDD_DRIVE` are rated PASS. A committed absolute symlink leaks your OS username through the public repo and crashes the Drive module on other machines (`RuntimeException: Folder penyimpanan gagal dibuat`)
 - The private subtree stays hard-denied by the tracked `data_drive/.htaccess` (`RewriteRule ^private_admins/ - [F,L]`) plus `data_drive/private_admins/.htaccess` (`Require all denied` — tracked in the fallback folder and recreated at deploy time on the external storage target)
 
-#### 1. Mount / create the storage
+#### Mount / Create the Storage
 
 ```bash
 df -h   # check available mount points
@@ -282,7 +296,7 @@ df -h   # check available mount points
 sudo mount -a
 ```
 
-#### 2. Create the storage tree
+#### Create the Storage Tree
 
 ```bash
 BASE=/media/<user>/MEeL/media   # replace with YOUR path
@@ -295,7 +309,7 @@ touch "$BASE"/.meel_mount
 
 `.meel_mount` is the **mounted-volume marker**: `install.sh` creates it, `.gitignore` blocks it, and `meel_storage_ready()` uses it to tell a mounted volume apart from a leftover empty folder on the mountpoint. Without it, an empty storage folder is treated as *not mounted* and every Drive/media page falls back to the safe `err/?code=storage` screen (HTTP 503) instead of crashing.
 
-#### 3. No symlinks to create
+#### No Symlinks to Create
 
 The books/music/video upload folders are real directories in the repo — there is nothing to symlink for a manual install. **`install.sh` automatically creates deploy-time symlinks** `<root>/{video,music,books}/upload → $MEEL_HDD_BASE/{m}/upload` when `MEEL_HDD_BASE` differs from the repo folder, and **copies the `.htaccess` hardening to the target** so `check_deploy` keeps passing (symlinks are never committed — `.gitignore` blocks them).
 
@@ -312,14 +326,31 @@ ls -la books/upload music/upload video/upload   # should point to your BASE
 
 > ⚠️ If you create symlinks manually, make sure the `.htaccess` hardening (pattern of `data_drive/.htaccess`: `php_flag engine off` + `ForceType` + `Options -Indexes`) exists on the **target** storage — `install.sh` does this automatically. `tests/check_deploy.php` rates symlinks pointing at `MEEL_HDD_BASE` as PASS and anything else as FAIL.
 
-#### 5. Permissions
+#### Permissions
 
 ```bash
-sudo chown -R www-data:www-data "$BASE"
-sudo chmod -R 775 "$BASE"
+# Detect web server user (same as step 5)
+WEB_USER="${WEB_USER:-$(ps aux | grep -E '(apache|httpd)' | grep -v grep | head -1 | awk '{print $1}')}"
+WEB_USER="${WEB_USER:-www-data}"
+WEB_GROUP="${WEB_GROUP:-$(id -gn "$WEB_USER" 2>/dev/null || echo "$WEB_USER")}"
+
+# Only chown the created storage tree, not the entire mount point
+sudo chown -R "$WEB_USER:$WEB_GROUP" "$BASE"
+
+# Baseline: dirs 750, files 640
+sudo find "$BASE" -type d -exec chmod 750 {} \;
+sudo find "$BASE" -type f -exec chmod 640 {} \;
+
+# Writable subdirs: 770
+sudo chmod 770 "$BASE"/video/upload/video "$BASE"/video/upload/thumbnail \
+    "$BASE"/music/upload/file "$BASE"/music/upload/thumbnail \
+    "$BASE"/books/upload/manga "$BASE"/books/upload/pdf "$BASE"/books/upload/thumbnail \
+    "$BASE"/drive/public "$BASE"/drive/private_admins
 ```
 
-#### 6. Security .htaccess in upload dirs (required)
+> ⚠️ Do **not** run `chmod -R 775` or `chown -R` on the entire mount point — it makes files executable and can affect unrelated files on shared mounts. Only the MEeL storage subdirectories need adjusted permissions.
+
+#### Security .htaccess in Upload Dirs (Required)
 
 Every upload directory must contain a `.htaccess` that disables PHP execution (`php_flag engine off`), a `ForceType` MIME guard, and `Options -Indexes` — the same pattern as `data_drive/.htaccess`. `tests/security_test.php` verifies these:
 
@@ -327,9 +358,9 @@ Every upload directory must contain a `.htaccess` that disables PHP execution (`
 php tests/security_test.php
 ```
 
-> The security test now reports **0 failures in all environments** — the upload-dir `.htaccess` deny rules are tracked in the repo and verified statically. It may emit **5 non-critical warnings** (MediaViewer raw-query review, profile_edit MIME check, session parameter detection) — those are review items, not deployment issues. For storage-level verification use `tests/check_deploy.php` (see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
+> The security test now reports **0 failures in all environments** — the upload-dir `.htaccess` deny rules are tracked in the repo and verified statically. It may emit **5 non-critical warnings** (MediaViewer raw-query review, profile_edit MIME check, session parameter detection) — those are review items, not deployment issues. For storage-level verification use `tests/check_deploy.php` (see [6. Media Storage](#6-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
 
-#### 7. Verify storage
+#### Verify Storage
 
 ```bash
 df -h "$BASE"
@@ -337,9 +368,9 @@ test -d "$BASE/video/upload/video" && echo "storage OK"
 php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : 'NOT SET';"
 ```
 
-#### 8. Automated deployment check (one command)
+#### Automated Deployment Check (One Command)
 
-The project ships a CLI health-check that verifies the deployment-critical areas in a single run — `MEEL_HDD_BASE`, upload dirs (real folders or deploy-time symlinks), **non-auto-created subdirectories** (`music/upload/file`, `music/upload/thumbnail`, `books/upload/pdf`, `books/upload/thumbnail` — the music/books modules do **not** create them automatically, so a missing one is a **FAIL** → deployment not ready, exit code `1`), upload-dir `.htaccess` hardening, the `data_drive/` portability guard (deploy-time symlinks inside `MEEL_HDD_DRIVE` = PASS; pointing outside = WARN), and the PWA `mod_rewrite` rule:
+The project ships a CLI health-check (`tests/check_deploy.php`) that verifies deployment-critical areas. Full documentation is in the **[Testing Guide](testing.md#deployment-check-check_deployphp)**.
 
 ```bash
 php tests/check_deploy.php                           # local check + auto HTTP probe
@@ -348,11 +379,9 @@ php tests/check_deploy.php --hdd=/tmp/meel-storage/media  # override MEEL_HDD_BA
 php tests/check_deploy.php --no-color                # no ANSI colors (for CI/logs)
 ```
 
-Each item is reported as `PASS` / `WARN` / `FAIL` with a summary; exit code is `0` when healthy and `1` when at least one check fails (CI-friendly). If the storage is not mounted yet, the script reports `FAIL` on the storage / upload dir / upload-`.htaccess` areas — mount the storage, set `MEEL_HDD_BASE`, ensure upload dirs have their `.htaccess`, then re-run until you see `✅ Deployment sehat.`
-
 > 💡 `install.sh` runs this health-check as its final verification step **without `--hdd`** (the real `auth/settings.php` config is tested) and **exits with code `1`** on any FAIL — the final banner distinguishes "deployment healthy" from "server not ready".
 
-### 6. Apache Configuration
+### 7. Apache Configuration
 
 #### Enable mod_rewrite:
 
@@ -361,16 +390,24 @@ sudo a2enmod rewrite
 sudo systemctl restart apache2
 ```
 
-#### Ensure AllowOverride is active:
+#### Configure AllowOverride for MEeL (development only — production should use a VirtualHost with `AllowOverride None`):
 
-Edit `/etc/apache2/apache2.conf`:
+Edit `/etc/apache2/apache2.conf` or a site-specific config in `/etc/apache2/sites-available/`:
 ```apache
-<Directory /var/www/html>
-    Options Indexes FollowSymLinks
-    AllowOverride All
+# Scoped to MEeL only — not the entire /var/www/html
+<Directory /opt/lampp/htdocs/MEeL>
+    Options -Indexes +FollowSymLinks
+    # Minimal set for .htaccess to work (dev only):
+    #   Options — for Options -Indexes in .htaccess
+    #   FileInfo — for mod_rewrite, AddType, etc.
+    #   AuthConfig — for Require directives
+    #   Limit — for Order/Allow/Deny (legacy)
+    AllowOverride Options FileInfo AuthConfig Limit
     Require all granted
 </Directory>
 ```
+
+> ⚠️ **Development only.** The broad `<Directory /var/www/html>` with `AllowOverride All` and `Options Indexes` is insecure — it enables directory listing and allows `.htaccess` everywhere. Production deployments should use a dedicated VirtualHost with `AllowOverride None` and place all rewrite/access rules directly in the VirtualHost config.
 
 #### 📱 mod_rewrite & PWA (required)
 
@@ -383,78 +420,109 @@ curl -sI http://localhost/MEeL/sw.js | grep -i content-type
 
 If `.htaccess` is not processed (`AllowOverride` disabled), `/sw.js` returns 404 and the PWA silently degrades — the site still works, but **offline mode and "Add to Home Screen" stop working**.
 
-#### ⚡ Enable mod_xsendfile (Optional — for streaming acceleration)
+#### ⚡ Enable mod_xsendfile (Optional / Advanced — for streaming acceleration)
 
-mod_xsendfile speeds up streaming large files (FLAC 33MB+, MKV 4K) by letting Apache send files directly from disk without going through PHP.
+mod_xsendfile speeds up streaming large files (FLAC 33MB+, MKV 4K) by letting Apache send files directly from disk without going through PHP. This is **optional** — the app automatically falls back to PHP streaming if the module is absent or paths aren't whitelisted.
 
-**Steps:**
+**Installation differs by Apache flavor:**
 
-1. Download source:
-   ```bash
-   git clone --depth 1 https://github.com/nmaier/mod_xsendfile.git /tmp/mod_xsendfile
-   cd /tmp/mod_xsendfile
-   ```
+---
 
-2. Compile with server's `apxs`:
-   ```bash
-   # For LAMPP:
-   /opt/lampp/bin/apxs -c mod_xsendfile.c
-   
-   # For standard Apache:
-   sudo apxs -c mod_xsendfile.c
-   ```
+**A. Standard Apache (Ubuntu/Debian — installed via `apt`)**
 
-   > 💡 If `apxs` fails with `libtool: compile: you must specify a compilation command`, compile manually with gcc:
-   > ```bash
-   > gcc -c -I/opt/lampp/include -I/opt/lampp/include/apr-1 -fPIC -DPIC mod_xsendfile.c -o mod_xsendfile.o
-   > gcc -shared -o mod_xsendfile.so mod_xsendfile.o -L/opt/lampp/lib -lapr-1
-   > ```
+Use the distro package — no manual compilation needed:
 
-3. Install module:
-   ```bash
-   sudo cp mod_xsendfile.so /opt/lampp/modules/
-   sudo chmod 755 /opt/lampp/modules/mod_xsendfile.so
-   ```
+```bash
+sudo apt update
+sudo apt install libapache2-mod-xsendfile
+sudo a2enmod xsendfile
+sudo systemctl restart apache2
+```
 
-4. Add to `httpd.conf`:
-   ```apache
-   LoadModule xsendfile_module modules/mod_xsendfile.so
+**B. XAMPP / LAMPP (Apache from Apache Friends)**
 
-   # Kernel sendfile: optional, makes Apache deliver static files even faster
-   EnableSendfile on
+No distro package exists — compile manually against XAMPP's `apxs`:
 
-   <IfModule xsendfile_module>
-       XSendFile on
-       # Media files are now read directly from centralized storage (MEEL_HDD_BASE),
-       # not from the webroot folder — whitelist the HDD path:
-       XSendFilePath "/media/<user>/MEeL/media"
-       # Webroot fallback storage + temporary transcode output:
-       XSendFilePath "/opt/lampp/htdocs/MEeL"
-       XSendFilePath "/dev/shm/meel"
-   </IfModule>
-   ```
+```bash
+git clone --depth 1 https://github.com/nmaier/mod_xsendfile.git /tmp/mod_xsendfile
+cd /tmp/mod_xsendfile
 
-   > ⚠️ `XSendFilePath` must include the path where media files actually reside (the `MEEL_HDD_BASE` value in `auth/settings.php`) — including `/dev/shm/meel` for transcode output. Since the portability refactor, `music/upload` etc. are real directories in the repo (not symlinks), so old webroot paths like `/opt/lampp/htdocs/MEeL/music/upload/file` are **no longer** the file location — only the correct HDD path works.
-   >
-   > ✅ If `XSendFilePath` doesn't cover the storage, **streaming does not break**: the app reads `XSendFilePath` from Apache's configuration and only sends the `X-Sendfile` header for whitelisted paths — everything else automatically falls back to PHP streaming (you only lose the acceleration).
+# Compile with XAMPP's apxs
+/opt/lampp/bin/apxs -c mod_xsendfile.c
 
-5. Restart Apache:
-   ```bash
-   sudo /opt/lampp/lampp restart
-   ```
+# If apxs fails with libtool error, compile manually:
+# gcc -c -I/opt/lampp/include -I/opt/lampp/include/apr-1 -fPIC -DPIC mod_xsendfile.c -o mod_xsendfile.o
+# gcc -shared -o mod_xsendfile.so mod_xsendfile.o -L/opt/lampp/lib -lapr-1
 
-6. Verify:
-   ```bash
-   sudo /opt/lampp/bin/httpd -M | grep xsend
-   # Output: xsendfile_module (shared)
-   ```
+sudo cp mod_xsendfile.so /opt/lampp/modules/
+sudo chmod 755 /opt/lampp/modules/mod_xsendfile.so
+```
 
-7. Enable in app — edit `auth/settings.php`:
-   ```php
-   define('MEEL_USE_XSENDFILE', true);
-   ```
+**Configuration (both flavors)**
 
-### 7. FFmpeg Setup
+Add to your Apache config (e.g., `/etc/apache2/conf-available/meel-xsendfile.conf` for standard Apache, or `httpd.conf` for XAMPP):
+
+```apache
+LoadModule xsendfile_module modules/mod_xsendfile.so
+
+# Kernel sendfile: optional, makes Apache deliver static files even faster
+EnableSendfile on
+
+<IfModule xsendfile_module>
+    XSendFile on
+    # Whitelist ONLY the actual media/storage directories that need acceleration:
+    # 1. Centralized media storage (MEEL_HDD_BASE from auth/settings.php)
+    XSendFilePath "/media/<user>/MEeL/media"
+    # 2. Profile uploads (if MEEL_HDD_BASE is not used for profile)
+    XSendFilePath "/opt/lampp/htdocs/MEeL/profile/upload"
+    # 3. Temporary transcode output (HLS segments, etc.)
+    XSendFilePath "/dev/shm/meel"
+    # 4. Drive public storage (if using external MEEL_HDD_DRIVE)
+    # XSendFilePath "/media/<user>/MEeL/media/drive/public"
+</IfModule>
+```
+
+> ⚠️ **Do NOT use** `XSendFilePath "/opt/lampp/htdocs/MEeL"` — it whitelists the entire webroot. Only whitelist the specific subdirectories where media files actually reside.
+>
+> ✅ If `XSendFilePath` doesn't cover a storage path, **streaming does not break**: the app reads `XSendFilePath` from Apache's configuration and only sends the `X-Sendfile` header for whitelisted paths — everything else automatically falls back to PHP streaming (you only lose the acceleration).
+
+**Restart Apache:**
+
+```bash
+# Standard Apache:
+sudo systemctl restart apache2
+
+# XAMPP/LAMPP:
+sudo /opt/lampp/lampp restart
+```
+
+**Verify the module is loaded:**
+
+```bash
+# Standard Apache:
+apache2ctl -M | grep xsendfile
+# Output: xsendfile_module (shared)
+
+# XAMPP/LAMPP:
+/opt/lampp/bin/httpd -M | grep xsendfile
+# Output: xsendfile_module (shared)
+```
+
+**Enable in app** — edit `auth/settings.php`:
+
+```php
+define('MEEL_USE_XSENDFILE', true);
+```
+
+**Test acceleration works:**
+
+1. Play a large FLAC or 4K MKV file
+2. Check Apache access log: `X-Sendfile` header should appear in the response (use `curl -I` or browser devtools)
+3. CPU usage during playback should be significantly lower than PHP streaming
+
+---
+
+### 8. FFmpeg Setup
 
 ```bash
 # Ubuntu/Debian
@@ -469,7 +537,7 @@ which ffmpeg    # Output: /usr/bin/ffmpeg
 which ffprobe   # Output: /usr/bin/ffprobe
 ```
 
-### 8. yt-dlp Setup
+### 9. yt-dlp Setup
 
 ```bash
 # Install via pip
@@ -512,9 +580,24 @@ To download from YouTube and other platforms, export your browser cookies:
 cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 ```
 
+#### ⚠️ Security Warnings
+
+- **NEVER commit `cookies.txt`** to version control
+- **NEVER share** cookies in chat, issues, logs, or screenshots
+- Set strict permissions:
+  ```bash
+  chmod 600 /opt/lampp/htdocs/MEeL/temp/cookies.txt
+  chown www-data:www-data /opt/lampp/htdocs/MEeL/temp/cookies.txt
+  ```
+- Use a **dedicated YouTube account**, not your main account
+- **Rotate cookies immediately** if ever exposed
+- Verify protection: check `.gitignore` includes `temp/cookies.txt` and `temp/.htaccess` blocks web access
+
+> See [Configuration](configuration.md#cookies-management) for more details on cookie handling and rotation.
+
 ---
 
-## Installation Verification
+### 12. Installation Verification
 
 1. Start Apache & MySQL:
    ```bash
@@ -561,14 +644,14 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
   php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; echo meel_media_base_path('video');"
   # Output should be your storage path, e.g. /media/<user>/MEeL/media/video/upload
   ```
-- The upload folders (`books/upload`, `music/upload`, `video/upload`) are real directories tracked in the repo (no symlinks needed). Media is served through the PHP endpoints (`video/stream.php`, `music/file.php`, `books/file.php`) mapped by the `.htaccess` rewrite — see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)
+- The upload folders (`books/upload`, `music/upload`, `video/upload`) are real directories tracked in the repo (no symlinks needed). Media is served through the PHP endpoints (`video/stream.php`, `music/file.php`, `books/file.php`) mapped by the `.htaccess` rewrite — see [6. Media Storage](#6-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)
 - Or disable temporarily for development
 
 ### ❌ Deployment Check reports FAIL on upload folders
 
 - **Symptom:** `php tests/check_deploy.php` → `FAIL` on upload dirs / `.htaccess` upload dirs (storage not mounted or `MEEL_HDD_BASE` wrong)
 - **Cause:** storage HDD (`MEEL_HDD_BASE`) not mounted / misconfigured in `auth/settings.php`. Upload folders are real directories in the repo — no symlinks to fix. A deploy-time symlink pointing at the wrong target also triggers a warning
-- **Fix:** mount the storage, set `MEEL_HDD_BASE` correctly, and ensure each upload dir has its `.htaccess` (see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)). Re-run `php tests/check_deploy.php` until it reports `✅ Deployment sehat.`
+- **Fix:** mount the storage, set `MEEL_HDD_BASE` correctly, and ensure each upload dir has its `.htaccess` (see [6. Media Storage](#6-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)). Re-run `php tests/check_deploy.php` until it reports `✅ Deployment sehat.`
 
 ### ❌ "403 Forbidden" on pages
 

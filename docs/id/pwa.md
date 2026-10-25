@@ -7,7 +7,7 @@ Dokumentasi lapisan PWA MEeL: service worker dinamis, strategi cache, web app ma
 ## Daftar Isi
 
 - [Ringkasan Arsitektur](#ringkasan-arsitektur)
-- [Service Worker Dinamis (`sw.js.php`)](#service-worker-dinamis-swjphp)
+- [Service Worker Dinamis (`sw.js.php`)](#service-worker-dinamis-swjsphp)
 - [Generator Precache (`SwPrecache`)](#generator-precache-swprecache)
 - [SW_VERSION Otomatis](#sw_version-otomatis)
 - [Strategi Cache](#strategi-cache)

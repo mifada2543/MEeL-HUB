@@ -7,6 +7,7 @@ Panduan untuk pengembang yang ingin berkontribusi atau memahami standar koding d
 ## Daftar Isi
 
 - [Lingkungan Development](#lingkungan-development)
+- [Prinsip Zero-Build & Peta Cache](#prinsip-zero-build--peta-cache)
 - [Standar Koding](#standar-koding)
 - [Struktur Database](#struktur-database)
 - [Coding Conventions](#coding-conventions)
@@ -31,7 +32,7 @@ Panduan untuk pengembang yang ingin berkontribusi atau memahami standar koding d
 1. **Install dependencies:**
 ```bash
 # Clone repo
-git clone https://github.com/mifada2543/MEeL.git
+git clone https://github.com/mifada2543/MEeL-HUB.git MEeL
 cd MEeL
 
 # Copy config
@@ -812,13 +813,7 @@ main (stable)
 
 ## Troubleshooting Development
 
-### ❌ HTMX tidak bekerja
-
-**Cek:**
-1. File `assets/js/compatibilitas/htmx.min.js` ter-load (cek Network tab)
-2. Element target (`hx-target`) ada di DOM
-3. Tidak ada JavaScript error di console
-4. Response dari server valid HTML
+Troubleshooting HTMX didokumentasikan di **[Panduan Troubleshooting](troubleshooting.md#masalah-ikon)**.
 
 ### ❌ "Headers already sent" error
 

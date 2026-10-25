@@ -9,11 +9,13 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 - [File Konfigurasi Utama](#file-konfigurasi-utama)
 - [Database (`auth/settings.php`)](#database-authsettingsphp)
 - [Session & Security](#session--security)
-- [Media Storage Paths](#media-storage-paths)
+- [Media Storage Paths (TERPUSAT)](#media-storage-paths-terpusat)
 - [Transcoder Configuration](#transcoder-configuration)
 - [Uploader Configuration](#uploader-configuration)
 - [System Configuration](#system-configuration)
 - [Rate Limiting](#rate-limiting)
+- [Cookies & yt-dlp Authentication](#cookies--yt-dlp-authentication)
+- [Environment Variables](#environment-variables)
 
 ---
 
@@ -81,29 +83,7 @@ Kamu belum mengisi konfigurasi database di file 'auth/config.php'.
 
 ## Session & Security
 
-### Session Configuration
-
-```php
-// Di auth/config.php
-$timeout = 43200;     // 12 jam session timeout
-ini_set('session.gc_maxlifetime', $timeout);
-
-// Flag cookie aman (auto-detect HTTPS / X-Forwarded-Proto)
-$secure_cookie = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
-
-session_set_cookie_params([
-    'lifetime' => $timeout,
-    'path'     => '/',
-    'secure'   => $secure_cookie,  // hanya terkirim via HTTPS
-    'httponly' => true,            // tidak bisa dibaca JavaScript
-    'samesite' => 'Lax',           // proteksi CSRF level-1
-]);
-session_name('meel');  // Session cookie name: "meel"
-session_start();
-```
-
-> `auth/auth_helpers.php` (`auth_boot_session()`) menggunakan parameter cookie yang sama.
+Konfigurasi session, proteksi CSRF, dan header keamanan didokumentasikan di **[Panduan Keamanan](security.md#session-management)**.
 
 ### Trusted Proxy (`MEEL_TRUST_PROXY_HEADERS`)
 
@@ -223,37 +203,7 @@ $conn->set_charset('utf8mb4');
 Koneksi MySQL dipaksa `utf8mb4` agar cocok dengan schema — emoji, aksara
 Jepang, dan teks multibyte tersimpan/terbaca dengan benar.
 
-### CSRF Protection
-
-```php
-// Auto-generated token
-$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-// Fungsi verifikasi (didefinisikan di modules/auth/helpers/csrf.php)
-// Menggunakan hash_equals() untuk timing-attack safety
-function verify_csrf_token(?string $token = null): bool
-{
-    if ($token === null && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $token = $_POST['csrf_token'] ?? '';
-    }
-    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
-}
-```
-
-### Session Timeout Check
-
-```php
-if (isset($_SESSION['LAST_ACTIVITY'])) {
-    $elapsed_time = time() - $_SESSION['LAST_ACTIVITY'];
-    if ($elapsed_time > $timeout) {  // 12 jam
-        session_unset();
-        session_destroy();
-        header("Location: ../auth/login?reason=expired");
-        exit;
-    }
-}
-$_SESSION['LAST_ACTIVITY'] = time();
-```
+Proteksi CSRF dan pengecekan timeout session didokumentasikan di **[Panduan Keamanan](security.md#csrf-protection)**.
 
 ### Transliterator (Romaji Conversion)
 
@@ -269,6 +219,34 @@ function getRomajiName($text) {
 ```
 
 > ⚠️ Fungsi ini membutuhkan ekstensi PHP `intl`.
+
+### Rate Limit Drive (`drive_files`)
+
+Tabel `drive_files` menyimpan satu baris per unggahan drive, dan
+`System::checkRateLimit('drive_files')` menghitung baris tersebut untuk
+menerapkan batas 10 file/jam per pengguna.
+
+Kalau tabel ini kosong — misalnya instalasi lama yang belum pernah mencatat —
+`num_rows` selalu 0 sehingga batasnya tidak pernah aktif. `DriveStorage` kini
+menulis baris itu setiap unggahan berhasil (`recordUpload()`), jadi penghitungnya
+punya data.
+
+### Antrean Hapus Tertunda (`pending_delete.json`)
+
+Berkas `temp/pending_delete.json` berisi path yang akan dihapus setelah 30 menit.
+`cleanupPendingDeletions()` hanya menghapus path yang `realpath()`-nya berada
+di dalam salah satu root media (video/music/books) atau drive base. Path di luar
+root dicatat ke `php_error.log` lalu dilewati.
+
+Antrean ini berada di `temp/` yang world-writable, jadi tanpa cek containment
+user lokal bisa menjadwalkan penghapusan file atau direktori mana pun sebagai user
+web.
+
+### Batas Ekspor Admin
+
+`AdminActivityRepository::fetchAll()` dan `AdminUploadQueueRepository::fetchAll()`
+menerima batas baris (default 50.000). Pratinjau 15 baris memakai
+`countFiltered()` + `fetchPage(15, 0)` — bukan memuat seluruh tabel filter dulu.
 
 ---
 
@@ -393,34 +371,6 @@ Jika `MEEL_HDD_BASE` tidak sesuai dengan mount point, halaman maintenance `err/?
 
 ---
 
-### Rate Limit Drive (`drive_files`)
-
-Tabel `drive_files` menyimpan satu baris per unggahan drive, dan
-`System::checkRateLimit('drive_files')` menghitung baris tersebut untuk
-menerapkan batas 10 file/jam per pengguna.
-
-Kalau tabel ini kosong — misalnya instalasi lama yang belum pernah mencatat —
-`num_rows` selalu 0 sehingga batasnya tidak pernah aktif. `DriveStorage` kini
-menulis baris itu setiap unggahan berhasil (`recordUpload()`), jadi penghitungnya
-punya data.
-
-### Antrean Hapus Tertunda (`pending_delete.json`)
-
-Berkas `temp/pending_delete.json` berisi path yang akan dihapus setelah 30 menit.
-`cleanupPendingDeletions()` hanya menghapus path yang `realpath()`-nya berada
-di dalam salah satu root media (video/music/books) atau drive base. Path di luar
-root dicatat ke `php_error.log` lalu dilewati.
-
-Antrean ini berada di `temp/` yang world-writable, jadi tanpa cek containment
-user lokal bisa menjadwalkan penghapusan file atau direktori mana pun sebagai user
-web.
-
-### Batas Ekspor Admin
-
-`AdminActivityRepository::fetchAll()` dan `AdminUploadQueueRepository::fetchAll()`
-menerima batas baris (default 50.000). Pratinjau 15 baris memakai
-`countFiltered()` + `fetchPage(15, 0)` — bukan memuat seluruh tabel filter dulu.
-
 ## Transcoder Configuration
 
 ### File: `modules/core/TranscoderBase.php`
@@ -543,6 +493,10 @@ $allowed_ext = ['mp3', 'opus', 'ogg', 'm4a', 'wav', 'flac'];
 $active = count($this->getActiveQueues());
 return $active >= 2; // isServerBusy()
 ```
+
+---
+
+## Rate Limiting
 
 ### Upload Rate Limiting (System.php)
 

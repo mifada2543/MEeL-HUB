@@ -8,6 +8,7 @@ Guide for developers who want to contribute or understand coding standards in ME
 
 - [Development Environment](#development-environment)
 - [Coding Standards](#coding-standards)
+- [Zero-Build Principle & Cache Map](#zero-build-principle--cache-map)
 - [Database Structure](#database-structure)
 - [Coding Conventions](#coding-conventions)
 - [`.htaccess` & Legacy Route Notes](#htaccess--legacy-route-notes)
@@ -30,7 +31,7 @@ Guide for developers who want to contribute or understand coding standards in ME
 
 1. **Install dependencies:**
 ```bash
-git clone https://github.com/mifada2543/MEeL.git
+git clone https://github.com/mifada2543/MEeL-HUB.git MEeL
 cd MEeL
 cp auth/settings.example.php auth/settings.php
 cp auth/config.example.php auth/config.php
@@ -122,21 +123,92 @@ private string $username;
 public function __construct(\mysqli $db, int $user_id, string $username) { }
 ```
 
+#### 5. Parameter Binding Types
+
+| Type | PHP Type | SQL Type |
+|---|---|---|
+| `i` | int | INTEGER |
+| `d` | float | DOUBLE/FLOAT |
+| `s` | string | VARCHAR/TEXT |
+| `b` | blob | BLOB/BINARY |
+
+#### 6. Error Handling
+
+```php
+try {
+    $stmt = $conn->prepare("INSERT INTO video (...) VALUES (...)");
+    if (!$stmt) {
+        throw new Exception($conn->error);
+    }
+    $stmt->bind_param("sss", $title, $filename, $description);
+    if (!$stmt->execute()) {
+        throw new Exception($stmt->error);
+    }
+} catch (Exception $e) {
+    error_log("[MEeL] ERROR: " . $e->getMessage());
+    return ['status' => 'error', 'msg' => $e->getMessage()];
+}
+```
+
+#### 7. Constants
+
+```php
+// Class constants: UPPER_SNAKE_CASE
+private const FFMPEG_THREADS = 8;
+private const HLS_SEGMENT_DURATION = 10;
+private const DOWNLOAD_TIMEOUT = 900;
+
+// Global constants: MEEL_HDD_* for centralized paths (in auth/settings.php)
+define('MEEL_HDD_BASE', '/media/username/MEeL/media');
+define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
+```
+
 ### JavaScript
+
+#### 1. Event Handlers
 
 ```javascript
 // ✅ CORRECT - Named functions
 function handleSearch(event) {
     const query = event.target.value;
+    // ...logic
 }
 
-// Event listeners preferred over inline HTML
-document.getElementById('search-input').addEventListener('input', handleSearch);
+// ❌ WRONG - Inline anonymous functions in HTML
+// onclick="doSomething()"
+```
 
-// HTMX event monitoring
+```javascript
+// ✅ CORRECT - Event listeners
+document.getElementById('search-input').addEventListener('input', handleSearch);
+```
+
+#### 2. HTMX Integration
+
+```javascript
+// Monitor HTMX events
 document.body.addEventListener('htmx:afterOnLoad', function(evt) {
+    // Re-initialize Lucide icons after HTMX swap
     lucide.createIcons();
+    
+    // Re-attach event listeners
+    setupMusicItemClicks();
 });
+```
+
+#### 3. Variables & Functions
+
+```javascript
+// Variables: camelCase
+let isMiniPlayerActive = false;
+const miniPlayerIndex = document.getElementById('mini-player-index');
+
+// Functions: camelCase
+function updateIndexUI() {}
+function toggleMiniLoopIndex() {}
+
+// Global functions for HTML onclick: window scoped
+window.miniPlayPauseIndex = function() {};
 ```
 
 ### CSS
@@ -145,7 +217,73 @@ Project uses **TailwindCSS (self-hosted, purged)** for main styling with minimal
 
 ---
 
+## Zero-Build Principle & Cache Map
+
+MEeL intentionally remains **zero-build**: no bundler, no mandatory `node_modules`, and CSS/JS are shipped as static assets. Tailwind is only built manually via `scripts/build-css-bundle.php` when needed; the output remains a static file.
+
+### Rules That Must Not Be Broken
+
+- Do not add Vite/Webpack/PostCSS/npm build to the runtime.
+- Do not add Redis/APCu/Memcached/Node/systemd workers. The current web runtime is PHP 8.0.30 (XAMPP) and does not load those extensions.
+- Persistent cache only via file helpers in `temp/`: `meel_read_cache_file()`, `meel_write_cache_file()`, and existing invalidators.
+- Optimize only after before/after numbers exist. Do not swap architecture without proof.
+- Aim for ≤3 files per change; one goal per commit.
+
+### Cache Map
+
+| Cache | Location | TTL | Invalidation |
+|---|---|---|---|
+| Media stats | `temp/cache/media_stats_*.json` | 30 sec | `meel_invalidate_media_stats_cache($table)` |
+| Directory size | `temp/dirsize_<md5>.cache` | 300 sec | `invalidate_dir_size_cache_path($path)` / `invalidate_dir_size_cache($username)` |
+| Server stats | `temp/cache/server_stats_info.json` | 300 sec | TTL / `GarbageCollector` |
+| Admin orphan | `temp/cache/admin_orphans.json` | — | tied to media stats invalidation |
+
+`temp/.htaccess` denies web access to all of `temp/`. `GarbageCollector` cleans expired cache; invalidators above are used on upload/delete so numbers refresh immediately.
+
+### Video Stream
+
+`authorize_stream()` is called when the watch page opens. Token valid for 12 hours, auto-refreshed every >5 minutes while segments are still requested, and the path/token list is capped at 500 entries per session. Do not lower TTL without testing long playback and long pauses.
+
+### Mandatory Verification
+
+```bash
+/opt/lampp/bin/php -l path/to/file.php
+/opt/lampp/bin/php vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'
+php tests/security_test.php
+```
+
+---
+
 ## Database Structure
+
+### Naming Convention
+
+```sql
+-- Tables: lowercase, plural
+CREATE TABLE video (...);
+CREATE TABLE music (...);
+CREATE TABLE playlists (...);
+CREATE TABLE playlist_tracks (...);
+
+-- Columns: snake_case
+id, user_id, created_at, is_active, path_folder
+
+-- Foreign keys: descriptive
+CONSTRAINT fk_parent_comment FOREIGN KEY (parent_id) REFERENCES comments (id)
+```
+
+### Migration Pattern
+
+Since MEeL does not yet use a migration framework, follow this pattern:
+
+```sql
+-- File: migrations/001_add_description_column.sql
+ALTER TABLE video ADD COLUMN description text DEFAULT NULL;
+ALTER TABLE music ADD COLUMN description text DEFAULT NULL;
+
+-- Update in update.php
+-- Add entry to updates table
+```
 
 ### Entity Relationship Diagram
 
@@ -338,6 +476,27 @@ assets/css/shared/
 - If you must use Tailwind hardcoded (`bg-[#0d1017]`), add override in `light-theme.css`
 - Logo/icons must be excluded from color overrides (use `:not(.nav-logo-text)`)
 
+### CSS File Organization
+
+```css
+/* assets/css/[module].css */
+
+/* 1. CSS Variables */
+:root {
+    --bg-main: #0b0f1a;
+    --accent: #3b82f6;
+}
+
+/* 2. Base styles */
+body { ... }
+
+/* 3. Component styles */
+.glass { ... }
+
+/* 4. Utility overrides */
+@media (max-width: 768px) { ... }
+```
+
 ---
 
 ## `.htaccess` & Legacy Route Notes
@@ -361,6 +520,26 @@ assets/css/shared/
 ---
 
 ## Testing
+
+### Debug Tools
+
+```php
+// 1. PHP Error Log
+error_log("[MEeL] Debug message: " . $variable);
+
+// 2. AJAX Response Log (server-side)
+error_log("LIKE.PHP - POST: " . json_encode($_POST));
+
+// 3. Browser Console
+console.log('HTMX response received');
+console.error('Error:', error);
+
+// 4. Query Logging
+$stmt = $conn->prepare("SELECT ...");
+// Ensure prepared statement does not error
+if (!$stmt) error_log("SQL Error: " . $conn->error);
+```
+
 ### Internal mysqli Properties Cannot Be Faked
 
 `num_rows`, `affected_rows`, and similar internal properties are **read-only virtual properties** in PHP 8.x. Overriding the method and `__get()` alike **do not intervene** — `ReflectionMethod('mysqli_result', 'num_rows')` even throws *method does not exist*, which proves it is purely a property.
@@ -511,6 +690,8 @@ This project is licensed under **GNU Affero General Public License v3.0 (AGPLv3)
 
 #### Copyright Header on New Files
 
+Every new source file (PHP, JavaScript, CSS) **must** include the following copyright header:
+
 ```php
 /**
  * MEeL - Media Hub Platform
@@ -519,6 +700,14 @@ This project is licensed under **GNU Affero General Public License v3.0 (AGPLv3)
  * @license   https://www.gnu.org/licenses/agpl-3.0.html GNU AGPL v3
  */
 ```
+
+#### Attribution & Modified Version
+
+AGPL v3 requires (Section 5a):
+1. Every modified file must carry a clear **change notice**
+2. Modified files must still **reference the AGPL v3 license**
+3. **Derivative works** must be released under the **same license**
+
 ### Git Commit Convention
 
 ```
@@ -552,13 +741,7 @@ main (stable)
 
 ## Troubleshooting Development
 
-### ❌ HTMX not working
-
-**Check:**
-1. File `assets/js/compatibilitas/htmx.min.js` is loaded (check Network tab)
-2. Target element (`hx-target`) exists in DOM
-3. No JavaScript errors in console
-4. Server response is valid HTML
+HTMX troubleshooting is documented in the **[Troubleshooting Guide](troubleshooting.md#htmxajax-issues)**.
 
 ### ❌ "Headers already sent" error
 

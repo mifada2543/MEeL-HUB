@@ -9,11 +9,11 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [Security Architecture](#security-architecture)
 - [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
 - [Session Management](#session-management)
+- [Multi-Factor Authentication (MFA)](#multi-factor-authentication-mfa)
 - [CSRF Protection](#csrf-protection)
 - [IP Banning & Firewall](#ip-banning--firewall)
 - [Activity Logging](#activity-logging)
 - [API Rate Limiting](#api-rate-limiting)
-- [Multi-Factor Authentication (MFA)](#multi-factor-authentication-mfa)
 - [File Upload Security](#file-upload-security)
 - [Apache .htaccess Protection](#apache-htaccess-protection)
 - [SSRF Protection (Advanced Upload)](#ssrf-protection-advanced-upload)
@@ -100,7 +100,58 @@ Documentation about authentication, authorization, and protection systems in MEe
 | **User** | 30 | Media + comments (no Drive) |
 | **Guest** | 0 | View-only, no interaction |
 
-### Feature Gating per Role
+### Implementation in Code
+
+**Auth Middleware (`auth/auth.php`):**
+```php
+// Page protection - redirect if not logged in
+if (!isset($_SESSION['user_id'])) {
+    $next = urlencode($_SERVER['REQUEST_URI'] ?? '/');
+    header("Location: ../auth/login?next={$next}");
+    exit;
+}
+```
+
+**Role Check Pattern:**
+```php
+// Check admin role
+$stmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$user_role = $stmt->get_result()->fetch_assoc()['role'] ?? 'user';
+
+if ($user_role !== 'admin') {
+    header("Location: ../?error=denied");
+    exit();
+}
+```
+
+**Guest Blocking (Like/Dislike):**
+```php
+// In like.php and MediaViewer.php
+if ($user['is_active'] != 1 || $user['role'] === 'guest') {
+    http_response_code(403);
+    exit;
+}
+```
+
+**Drive Access Control (`DriveService.php`):**
+```php
+final class DriveUserContext {
+    public function authorize(): void {
+        if (!$this->isAllowedRole()) {
+            header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302);
+            exit;
+        }
+    }
+    
+    public function isAllowedRole(): bool {
+        return in_array($this->role, ['admin', 'member'], true);
+    }
+}
+```
+
+### Admin Page Guard (`require_admin()`)
 
 | Feature | Admin | Member | User | Guest |
 |---|---|---|---|---|
@@ -403,7 +454,7 @@ Page `admin/activity_log.php` provides a dedicated audit trail viewer with 3 tab
 
 ## API Rate Limiting
 
-### Architecture
+### Rate Limiter Architecture
 
 `modules/auth/RateLimiter.php` provides **file-based rate limiting** that protects API endpoints from abuse:
 
@@ -682,13 +733,7 @@ The yt-dlp command uses `--max-filesize` and `--match-filter "duration < N"`, an
 
 `GarbageCollector::STALE_SECONDS` = **1200**, larger than `TRANSCODE_AUDIO_TIMEOUT` (600) and `DOWNLOAD_TIMEOUT` (900). The `.processing` marker is the only guard against two transcodes colliding on the same output, so it must never be below those two timeout values.
 
-### Pending Deletion Queue
-
-`cleanupPendingDeletions()` may only delete paths whose `realpath()` lies inside one of the media or drive base roots. The queue file sits in a world-writable directory, so without a containment check a local user could schedule the deletion of any file or directory as the web user.
-
-### Admin Export Limit
-
-`fetchAll()` takes a limit (default 50,000) — the 15-row preview uses `countFiltered()` + `fetchPage(15, 0)` instead of loading the whole filtered table into memory.
+The pending deletion queue and admin export limits are documented in the **[Configuration Guide](configuration.md#pending-deletion-queue)**.
 
 ---
 
@@ -727,7 +772,7 @@ Every `Deny from all` is wrapped in `IfModule`. Without that wrapper, Apache 2.4
 
 The Advanced Upload feature (`upload_advanced.php`) lets authenticated users download media from external URLs via yt-dlp. Because yt-dlp runs **on the server**, an attacker-supplied URL that resolves to an internal address could be abused as a Server-Side Request Forgery (SSRF) vector — probing loopback services, cloud metadata endpoints (`169.254.169.254`), or other machines on the local network.
 
-### Architecture
+### SSRF Guard Architecture
 
 `modules/auth/SsrfGuard.php` is the **single source of truth** for every outbound request made on behalf of a user:
 

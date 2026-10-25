@@ -165,9 +165,9 @@ class ComposerScriptsConsistencyTest extends TestCase
     {
         $this->assertArrayHasKey('php', $this->composer['require'] ?? []);
         $this->assertSame(
-            '>=8.1',
+            '>=8.2',
             $this->composer['require']['php'],
-            'composer.json harus tetap mensyaratkan PHP >= 8.1 (sesuai matriks CI)'
+            'composer.json harus tetap mensyaratkan PHP >= 8.2 (sesuai matriks CI)'
         );
     }
 }
