@@ -31,7 +31,7 @@ Panduan untuk pengembang yang ingin berkontribusi atau memahami standar koding d
 1. **Install dependencies:**
 ```bash
 # Clone repo
-git clone https://github.com/mifada2543/MEeL.git
+git clone https://github.com/mifada2543/MEeL-HUB.git MEeL
 cd MEeL
 
 # Copy config

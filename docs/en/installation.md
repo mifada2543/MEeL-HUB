@@ -137,7 +137,7 @@ cd /opt/lampp/htdocs  # For XAMPP/LAMPP
 # or
 cd /var/www/html      # For manual Apache
 
-git clone https://github.com/mifada2543/MEeL.git MEeL
+git clone https://github.com/mifada2543/MEeL-HUB.git MEeL
 cd MEeL
 ```
 
