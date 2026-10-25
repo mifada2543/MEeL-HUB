@@ -39,6 +39,7 @@ detect_php() {
 
     # Prefer explicit PHP_BIN, then look in common locations
     if [ -z "$PHP_BIN" ]; then
+        local candidate
         for candidate in \
             "/opt/lampp/bin/php" \
             "/usr/bin/php" \
@@ -70,6 +71,7 @@ detect_php() {
 check_php_ext() {
     local required="$1"
     local missing=()
+    local ext
 
     for ext in $required; do
         if ! echo "$PHP_MODULES" | grep -qi "\\b${ext}\\b"; then
@@ -94,6 +96,7 @@ detect_apache() {
     APACHE_ENABLED_DIR="/etc/apache2/sites-enabled"
 
     if [ -z "$APACHE_BIN" ]; then
+        local candidate
         for candidate in \
             "/opt/lampp/bin/httpd" \
             "/opt/lampp/bin/apachectl" \
@@ -148,6 +151,7 @@ detect_mariadb() {
     MYSQL_BIN="${MYSQL_BIN:-}"
 
     if [ -z "$MARIADB_BIN" ]; then
+        local candidate
         for candidate in \
             "/opt/lampp/bin/mysql" \
             "/usr/bin/mysql" \
@@ -178,28 +182,48 @@ detect_fpm_user() {
     WEB_USER="${WEB_USER_OVERRIDE:-}"
     WEB_GROUP="${WEB_GROUP_OVERRIDE:-}"
 
-    # If explicitly set via override, use that
+    # --web-user alone is enough: derive its primary group so we do not fall
+    # through to FPM detection and silently replace the requested user.
+    if [ -n "$WEB_USER" ] && [ -z "$WEB_GROUP" ]; then
+        if WEB_GROUP=$(id -gn "$WEB_USER" 2>/dev/null); then
+            log_verbose "FPM user (override): $WEB_USER:$WEB_GROUP"
+        else
+            WEB_GROUP="$WEB_USER"
+            log_warn "Could not resolve primary group for '$WEB_USER' -- using '$WEB_GROUP'"
+        fi
+        export WEB_USER WEB_GROUP
+        return
+    fi
+
+    # If both overrides are set, use them as-is.
     if [ -n "$WEB_USER" ] && [ -n "$WEB_GROUP" ]; then
         export WEB_USER WEB_GROUP
         log_verbose "FPM user (override): $WEB_USER:$WEB_GROUP"
         return
     fi
 
-    # Try to detect from php-fpm pool config
-    local pool_configs=(
-        "/etc/php/8.3/fpm/pool.d/www.conf"
-        "/etc/php/8.2/fpm/pool.d/www.conf"
-        "/etc/php/8.1/fpm/pool.d/www.conf"
-        "/etc/php-fpm.d/www.conf"
-        "/usr/local/etc/php-fpm.d/www.conf"
-        "/opt/lampp/etc/php-fpm.d/www.conf"
-    )
+    # Pool config paths are overridable for tests/diagnostics. On the normal
+    # path this is exactly the previous list.
+    local -a pool_configs
+    if [ -n "${MEEL_FPM_POOL_CONFIGS:-}" ]; then
+        IFS=':' read -r -a pool_configs <<< "$MEEL_FPM_POOL_CONFIGS"
+    else
+        pool_configs=(
+            "/etc/php/8.3/fpm/pool.d/www.conf"
+            "/etc/php/8.2/fpm/pool.d/www.conf"
+            "/etc/php/8.1/fpm/pool.d/www.conf"
+            "/etc/php-fpm.d/www.conf"
+            "/usr/local/etc/php-fpm.d/www.conf"
+            "/opt/lampp/etc/php-fpm.d/www.conf"
+        )
+    fi
 
+    local config
     for config in "${pool_configs[@]}"; do
         if [ -f "$config" ]; then
             local user group
-            user=$(grep -E '^user\s*=' "$config" | head -n1 | sed 's/.*=\s*//' | tr -d ' ')
-            group=$(grep -E '^group\s*=' "$config" | head -n1 | sed 's/.*=\s*//' | tr -d ' ')
+            user=$(grep -E '^user\s*=' "$config" | head -n1 | sed 's/.*=\s*//' | tr -d ' ' || true)
+            group=$(grep -E '^group\s*=' "$config" | head -n1 | sed 's/.*=\s*//' | tr -d ' ' || true)
             if [ -n "$user" ] && [ -n "$group" ]; then
                 WEB_USER="$user"
                 WEB_GROUP="$group"
@@ -210,10 +234,12 @@ detect_fpm_user() {
         fi
     done
 
-    # Try to detect from running processes
+    # Try to detect from running processes. `|| true` is required here: with
+    # `set -euo pipefail`, grep exits 1 when no php-fpm process exists, which
+    # used to abort the whole installer without an error message.
     if command -v ps >/dev/null 2>&1; then
         local fpm_user
-        fpm_user=$(ps aux | grep -E 'php-fpm: pool' | grep -v grep | head -n1 | awk '{print $1}')
+        fpm_user=$(ps aux | grep -E 'php-fpm: pool' | grep -v grep | head -n1 | awk '{print $1}' || true)
         if [ -n "$fpm_user" ] && [ "$fpm_user" != "root" ]; then
             WEB_USER="$fpm_user"
             WEB_GROUP="$fpm_user"

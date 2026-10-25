@@ -153,6 +153,7 @@ apache_check_xsendfile() {
 
 # ─── Get loaded Apache modules ───
 apache_get_modules() {
+    local bin
     for bin in "/opt/lampp/bin/apachectl" "/opt/lampp/bin/httpd" "apache2ctl" "apachectl" "httpd"; do
         if [ -x "$bin" ]; then
             "$bin" -M 2>/dev/null && return 0
@@ -183,9 +184,9 @@ apache_verify_pwa() {
         local response
         response=$(curl -sS -w '\nHTTP:%{http_code}\nCT:%{content_type}' --max-time 5 "$probe_url" 2>/dev/null || true)
         local http_code
-        http_code=$(echo "$response" | grep '^HTTP:' | cut -d: -f2)
+        http_code=$(printf '%s\n' "$response" | grep '^HTTP:' | cut -d: -f2 || true)
         local content_type
-        content_type=$(echo "$response" | grep '^CT:' | cut -d: -f2)
+        content_type=$(printf '%s\n' "$response" | grep '^CT:' | cut -d: -f2 || true)
 
         if [ "$http_code" = "200" ] && echo "$content_type" | grep -qi javascript; then
             log_ok "PWA rewrite working: $probe_url → HTTP 200 (JavaScript)"
