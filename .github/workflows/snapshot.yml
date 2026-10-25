@@ -1,0 +1,80 @@
+name: MEeL Snapshot
+
+# Snapshot = paket build tanpa tag dan tanpa GitHub Release.
+#
+# Kapan berjalan:
+#   - push ke main/master/develop (hasil merge atau commit langsung)
+#   - PR yang di-merge ke branch selain main/master/develop/Experiment
+#   - workflow_dispatch (manual, untuk branch/tag/SHA tertentu)
+#
+# Snapshot TIDAK dibuat untuk push biasa di branch Experiment, dan tidak
+# dibuat untuk setiap commit di feature branch. Artefak disimpan 7 hari.
+on:
+  push:
+    branches: ["main", "master", "develop"]
+  pull_request:
+    types: [closed]
+    branches-ignore: ["main", "master", "develop", "Experiment"]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag, atau SHA yang mau di-snapshot (default: branch terpilih)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snapshot-${{ inputs.ref || github.event.pull_request.merge_commit_sha || github.sha }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  snapshot:
+    name: Build snapshot packages
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true &&
+       github.base_ref != 'Experiment' &&
+       !contains(fromJSON('["main", "master", "develop"]'), github.base_ref))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout snapshot commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || (github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha) }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Build core, arcade, and full packages
+        run: |
+          set -euo pipefail
+          LABEL="$(git rev-parse --short=12 HEAD)"
+          mkdir -p dist
+
+          bash scripts/ci/build-package.sh --track core   --label "$LABEL" --out-dir dist
+          bash scripts/ci/build-package.sh --track arcade --label "$LABEL" --out-dir dist
+          bash scripts/ci/build-package.sh --track full   --label "$LABEL" --out-dir dist
+
+          {
+            echo "## 📦 Snapshot \`$LABEL\`"
+            echo ""
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MEeL-snapshot-${{ github.run_id }}
+          path: dist/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7

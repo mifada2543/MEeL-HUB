@@ -25,6 +25,7 @@ OPTIONAL_APK_PKGS="apache2 php83-apache2 mecab mecab-ipadic"
 # ─── Check required packages ───
 deps_check_required() {
     local missing=()
+    local pkg
 
     case "$PKG_MGR" in
         apt)
@@ -140,6 +141,7 @@ deps_install_optional() {
 deps_verify_php_ext() {
     local required_ext="mysqli pdo_mysql fileinfo mbstring intl gd zip xml curl"
     local missing_ext=()
+    local ext
 
     for ext in $required_ext; do
         if ! php -m 2>/dev/null | grep -qi "^${ext}$"; then
@@ -165,6 +167,7 @@ deps_verify_php_ext() {
 deps_check_optional_bins() {
     local bins="ffmpeg ffprobe yt-dlp mecab composer node npm"
     local missing=()
+    local bin
 
     for bin in $bins; do
         if ! command -v "$bin" >/dev/null 2>&1; then

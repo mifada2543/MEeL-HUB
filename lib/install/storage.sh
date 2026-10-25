@@ -61,6 +61,7 @@ storage_copy_htaccess() {
         return 1
     fi
 
+    local target
     for target in \
         "$base/video/upload" \
         "$base/music/upload" \
@@ -89,6 +90,7 @@ HTEOF
 storage_create_symlinks() {
     local base="${HDD_BASE:-}"
     local project_root="${PROJECT_ROOT:-}"
+    local module target link
     [ -z "$base" ] || [ -z "$project_root" ] && return 1
 
     if [ "${DRY_RUN:-false}" = "true" ]; then
@@ -99,8 +101,8 @@ storage_create_symlinks() {
     log_step "Creating storage symlinks"
 
     for module in video music books; do
-        local target="$base/${module}/upload"
-        local link="$project_root/${module}/upload"
+        target="$base/${module}/upload"
+        link="$project_root/${module}/upload"
 
         if [ -L "$link" ]; then
             log_warn "${module}/upload already symlinked — skipping"
@@ -198,6 +200,7 @@ storage_verify() {
 
     log_step "Verifying storage setup"
     local failed=0
+    local target expected ht subdir module u
 
     if [ ! -d "$base" ]; then
         log_fail "MEEL_HDD_BASE not a directory: $base"; failed=1
@@ -222,14 +225,19 @@ storage_verify() {
         if [ ! -L "$link" ]; then
             log_warn "${module}/upload is not a symlink (fallback mode)"
         else
-            local target; target=$(readlink "$link")
-            local expected="$base/${module}/upload"
-            [ "$target" != "$expected" ] && log_warn "${module}/upload target mismatch: $target (expected $expected)" || log_ok "${module}/upload → $target"
+            target=$(readlink "$link")
+            expected="$base/${module}/upload"
+            if [ "$target" != "$expected" ]; then
+                log_fail "${module}/upload target mismatch: $target (expected $expected)"
+                failed=1
+            else
+                log_ok "${module}/upload → $target"
+            fi
         fi
     done
 
     for u in books/upload music/upload video/upload; do
-        local ht="$project_root/$u/.htaccess"
+        ht="$project_root/$u/.htaccess"
         if [ ! -f "$ht" ]; then
             log_fail "$u/.htaccess missing"; failed=1
         elif ! grep -q "php_flag engine off" "$ht" || ! grep -q "ForceType" "$ht" || ! grep -q "Options -Indexes" "$ht"; then

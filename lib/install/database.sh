@@ -34,11 +34,12 @@ db_create_if_missing() {
     local mysql_cmd=("$MYSQL_BIN" -h "$host" -u "$user")
     [ -n "$pass" ] && mysql_cmd+=(-p"$pass")
 
-    if "${mysql_cmd[@]}" -e "CREATE DATABASE IF NOT EXISTS \`${db}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>/dev/null; then
-        log_ok "Database '\${db}' ready"
+    local mysql_err
+    if mysql_err=$("${mysql_cmd[@]}" -e "CREATE DATABASE IF NOT EXISTS \`${db}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>&1); then
+        log_ok "Database '$db' ready"
         return 0
     else
-        log_fail "Failed to create database '\${db}'"
+        log_fail "Failed to create database '$db': ${mysql_err:-unknown error}"
         return 1
     fi
 }
@@ -65,11 +66,12 @@ db_import_schema() {
         log_warn "schema.sql contains CREATE DATABASE / USE -- this may cause import issues"
     fi
 
-    if "${mysql_cmd[@]}" "$db" < "$schema_file" 2>/dev/null; then
-        log_ok "Schema imported to '\${db}'"
+    local mysql_err
+    if mysql_err=$("${mysql_cmd[@]}" "$db" < "$schema_file" 2>&1); then
+        log_ok "Schema imported to '$db'"
         return 0
     else
-        log_fail "Schema import failed"
+        log_fail "Schema import failed: ${mysql_err:-unknown error}"
         return 1
     fi
 }
@@ -103,11 +105,21 @@ db_create_app_user() {
     [ -n "$root_pass" ] && mysql_cmd+=(-p"$root_pass")
 
     # Execute each statement separately to avoid quoting issues
-    "${mysql_cmd[@]}" -e "CREATE USER IF NOT EXISTS '${app_user}'@'${host}' IDENTIFIED BY '${app_pass}';" 2>/dev/null || return 1
-    "${mysql_cmd[@]}" -e "GRANT ALL PRIVILEGES ON \`${db}\`.* TO '${app_user}'@'${host}';" 2>/dev/null || return 1
-    "${mysql_cmd[@]}" -e "FLUSH PRIVILEGES;" 2>/dev/null || return 1
+    local mysql_err
+    if ! mysql_err=$("${mysql_cmd[@]}" -e "CREATE USER IF NOT EXISTS '${app_user}'@'${host}' IDENTIFIED BY '${app_pass}';" 2>&1); then
+        log_fail "Failed to create app user '$app_user'@'$host': ${mysql_err:-unknown error}"
+        return 1
+    fi
+    if ! mysql_err=$("${mysql_cmd[@]}" -e "GRANT ALL PRIVILEGES ON \`${db}\`.* TO '${app_user}'@'${host}';" 2>&1); then
+        log_fail "Failed to grant privileges to '$app_user'@'$host': ${mysql_err:-unknown error}"
+        return 1
+    fi
+    if ! mysql_err=$("${mysql_cmd[@]}" -e "FLUSH PRIVILEGES;" 2>&1); then
+        log_fail "Failed to flush database privileges: ${mysql_err:-unknown error}"
+        return 1
+    fi
 
-    log_ok "App database user '\${app_user}'@'\${host}' created"
+    log_ok "App database user '$app_user'@'$host' created"
     return 0
 }
 
@@ -128,12 +140,15 @@ db_create_admin_user() {
     if [ "$existing" -gt 0 ]; then
         local existing_user
         existing_user=$("${mysql_cmd[@]}" "$db" -N -e "SELECT username FROM users WHERE role='admin' LIMIT 1;" 2>/dev/null || echo "(unknown)")
-        log_warn "Admin user already exists: \${existing_user}"
+        log_warn "Admin user already exists: $existing_user"
         return 0
     fi
 
     local admin_hash
-    admin_hash=$(MEEL_ADMIN_PASS="$admin_pass" "$PHP_BIN" -r 'echo password_hash((string) getenv("MEEL_ADMIN_PASS"), PASSWORD_DEFAULT);' 2>/dev/null)
+    if ! admin_hash=$(MEEL_ADMIN_PASS="$admin_pass" "$PHP_BIN" -r 'echo password_hash((string) getenv("MEEL_ADMIN_PASS"), PASSWORD_DEFAULT);' 2>&1); then
+        log_fail "Failed to generate password hash: ${admin_hash:-unknown error}"
+        return 1
+    fi
     if [ -z "$admin_hash" ]; then
         log_fail "Failed to generate password hash"
         return 1
@@ -144,11 +159,12 @@ db_create_admin_user() {
 
     local sql="INSERT INTO \`users\` (\`username\`, \`role\`, \`password\`, \`is_active\`) VALUES ('${admin_user_esc}', 'admin', '${admin_hash}', 1);"
 
-    if "${mysql_cmd[@]}" -e "$sql" 2>/dev/null; then
-        log_ok "Admin user '\${admin_user}' created"
+    local mysql_err
+    if mysql_err=$("${mysql_cmd[@]}" "$db" -e "$sql" 2>&1); then
+        log_ok "Admin user '$admin_user' created"
         return 0
     else
-        log_fail "Failed to create admin user"
+        log_fail "Failed to create admin user: ${mysql_err:-unknown error}"
         return 1
     fi
 }
@@ -160,7 +176,7 @@ db_verify_migration_ready() {
     local mysql_cmd=("$MYSQL_BIN" -h "$host" -u "$user")
     [ -n "$pass" ] && mysql_cmd+=(-p"$pass")
 
-    "${mysql_cmd[@]}" "$db" -e "DESCRIBE \`migrations\`;" >/dev/null 2>&1
+    "${mysql_cmd[@]}" "$db" -e "DESCRIBE \`db_version\`;" >/dev/null 2>&1
 }
 
 # ─── Main database step ───
@@ -190,7 +206,7 @@ database_run() {
     sleep 1
 
     if db_exists_and_populated "$db_host" "$db_user" "$db_pass" "$db_name"; then
-        log_warn "Database '\${db_name}' already exists with tables -- skipping import"
+        log_warn "Database '$db_name' already exists with tables -- skipping import"
         log_info "To reimport: DROP DATABASE \`${db_name}\`; then re-run installer"
         if [ "${ASSUME_YES:-false}" = "true" ] || confirm "Force reimport schema.sql now? (may fail on duplicate data)" N; then
             db_import_schema "$db_host" "$db_user" "$db_pass" "$db_name" || log_warn "Reimport failed -- continuing with existing data"

@@ -68,21 +68,23 @@ migrate_verify() {
         return 0
     fi
 
-    if "$PHP_BIN" -r '
+    local migration_version
+    if migration_version=$("$PHP_BIN" -r '
         require "auth/settings.php";
         require "auth/config.php";
-        $result = $conn->query("SELECT MAX(version) as v FROM migrations");
-        if ($result) {
-            $v = $result->fetch_assoc();
+        try {
+            $result = $conn->query("SELECT MAX(version) AS v FROM db_version");
+            $v = $result ? $result->fetch_assoc() : null;
             echo "Current migration version: " . ($v["v"] ?? "none");
-        } else {
-            echo "Migrations table not found or query failed";
+        } catch (\Throwable $e) {
+            fwrite(STDERR, $e->getMessage() . "\n");
+            exit(1);
         }
-    ' 2>/dev/null; then
-        log_ok "Migration verification passed"
+    ' 2>&1); then
+        log_ok "Migration verification passed: $migration_version"
         return 0
     else
-        log_warn "Could not verify migration version"
+        log_warn "Could not verify migration version: ${migration_version:-unknown error}"
         return 0
     fi
 }
