@@ -18,8 +18,8 @@
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-6.0%2B-007808?style=flat-square&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue?style=flat-square)](LICENSE)
-[![CI](https://github.com/mifada2543/MEeL/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/MEeL/actions/workflows/ci.yml)
-[![GitHub Stars](https://img.shields.io/github/stars/mifada2543/MEeL?style=social)](https://github.com/mifada2543/MEeL)
+[![CI](https://github.com/mifada2543/MEeL-HUB/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/MEeL-HUB/actions/workflows/ci.yml)
+[![GitHub Stars](https://img.shields.io/github/stars/mifada2543/MEeL-HUB?style=social)](https://github.com/mifada2543/MEeL-HUB)
 
 </div>
 
@@ -147,7 +147,7 @@ Every page below is reachable **without logging in** (guest mode). All images ar
 ## ⚡ Quick Start
 
 ```bash
-git clone https://github.com/mifada2543/MEeL.git MEeL
+git clone https://github.com/mifada2543/MEeL-HUB.git MEeL
 cd MEeL
 chmod +x install.sh
 ./install.sh
@@ -160,7 +160,7 @@ A single command to set up everything — database, configuration, storage direc
 
 ```bash
 # 1. Clone
-git clone https://github.com/mifada2543/MEeL.git MEeL && cd MEeL
+git clone https://github.com/mifada2543/MEeL-HUB.git MEeL && cd MEeL
 
 # 2. Database
 mysql -u root -p -e "CREATE DATABASE MEeL DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
