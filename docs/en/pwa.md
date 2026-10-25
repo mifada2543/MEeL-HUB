@@ -7,7 +7,7 @@ Documentation of MEeL's PWA layer: the dynamic service worker, cache strategies,
 ## Table of Contents
 
 - [Architecture Overview](#architecture-overview)
-- [Dynamic Service Worker (`sw.js.php`)](#dynamic-service-worker-swjphp)
+- [Dynamic Service Worker (`sw.js.php`)](#dynamic-service-worker-swjsphp)
 - [Precache Generator (`SwPrecache`)](#precache-generator-swprecache)
 - [Automatic SW_VERSION](#automatic-sw_version)
 - [Cache Strategies](#cache-strategies)

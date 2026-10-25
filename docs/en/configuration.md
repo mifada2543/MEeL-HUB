@@ -9,7 +9,7 @@ Reference guide for all configuration files and parameters in MEeL-HUB.
 - [Main Configuration Files](#main-configuration-files)
 - [Database (`auth/settings.php`)](#database-authsettingsphp)
 - [Session & Security](#session--security)
-- [Media Storage Paths](#media-storage-paths)
+- [Media Storage Paths (CENTRALIZED)](#media-storage-paths-centralized)
 - [Transcoder Configuration](#transcoder-configuration)
 - [Uploader Configuration](#uploader-configuration)
 - [System Configuration](#system-configuration)

@@ -18,6 +18,7 @@ Solutions for common issues encountered while using MEeL-HUB.
 - [Performance Issues](#performance-issues)
 - [Error Codes](#error-codes)
 - [FAQ](#faq)
+- [Advanced Upload & Queue](#advanced-upload--queue)
 
 ---
 
@@ -267,22 +268,15 @@ Verify the mount point exists and is accessible.
 
 ---
 
-## Browser/Player Issues
+## HTMX/AJAX Issues
 
-### ❌ Player controls not showing
+### ❌ HTMX not working
 
 **Check:**
-- Plyr.js is loaded (check Network tab)
-- No JavaScript console errors
-- CSS files are loading
-
-### ❌ "Lucide icons not loading"
-
-**Solution:**
-```html
-<script src="/MEeL/assets/js/compatibilitas/lucide.js"></script>
-<script>lucide.createIcons();</script>
-```
+1. HTMX script is loaded
+2. Target element exists in DOM
+3. Response is valid HTML
+4. No JavaScript errors
 
 ### ❌ Icons disappear after an HTMX swap
 
@@ -308,13 +302,24 @@ icons unrendered.
 - the page does not bundle its own copy of the file
 - in the console: `typeof lucide` is `"object"` and `lucide.createIcons` exists
 
-### ❌ HTMX not working
+---
+
+## Browser/Player Issues
+
+### ❌ Player controls not showing
 
 **Check:**
-1. HTMX script is loaded
-2. Target element exists in DOM
-3. Response is valid HTML
-4. No JavaScript errors
+- Plyr.js is loaded (check Network tab)
+- No JavaScript console errors
+- CSS files are loading
+
+### ❌ "Lucide icons not loading"
+
+**Solution:**
+```html
+<script src="/MEeL/assets/js/compatibilitas/lucide.js"></script>
+<script>lucide.createIcons();</script>
+```
 
 ### ❌ Loop Playback Status Is Reset On Every Refresh
 
@@ -586,26 +591,6 @@ UPDATE users SET role = 'admin', is_active = 1 WHERE id = [user_id];
 ## Advanced Upload & Queue
 
 Troubleshooting guide for yt-dlp downloads and background queue processing.
-
----
-
-### Table of Contents
-
-- [Table of Contents](#table-of-contents)
-- [HLS Streaming Issues](#hls-streaming-issues)
-- [Upload Problems](#upload-problems)
-- [FFmpeg/yt-dlp Errors](#ffmpegyt-dlp-errors)
-- [Database Issues](#database-issues)
-- [Permission Problems](#permission-problems)
-- [Browser/Player Issues](#browserplayer-issues)
-- [Session & Auth Issues](#session--auth-issues)
-- [Storage & Disk Issues](#storage--disk-issues)
-- [Performance Issues](#performance-issues)
-- [Error Codes](#error-codes)
-- [FAQ](#faq)
-- [Advanced Upload & Queue](#advanced-upload--queue)
-
----
 
 ### Download Queue System
 

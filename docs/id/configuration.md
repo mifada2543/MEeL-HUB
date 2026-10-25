@@ -9,11 +9,13 @@ Panduan referensi untuk semua file konfigurasi dan parameter di MEeL-HUB.
 - [File Konfigurasi Utama](#file-konfigurasi-utama)
 - [Database (`auth/settings.php`)](#database-authsettingsphp)
 - [Session & Security](#session--security)
-- [Media Storage Paths](#media-storage-paths)
+- [Media Storage Paths (TERPUSAT)](#media-storage-paths-terpusat)
 - [Transcoder Configuration](#transcoder-configuration)
 - [Uploader Configuration](#uploader-configuration)
 - [System Configuration](#system-configuration)
 - [Rate Limiting](#rate-limiting)
+- [Cookies & yt-dlp Authentication](#cookies--yt-dlp-authentication)
+- [Environment Variables](#environment-variables)
 
 ---
 
@@ -543,6 +545,10 @@ $allowed_ext = ['mp3', 'opus', 'ogg', 'm4a', 'wav', 'flac'];
 $active = count($this->getActiveQueues());
 return $active >= 2; // isServerBusy()
 ```
+
+---
+
+## Rate Limiting
 
 ### Upload Rate Limiting (System.php)
 
