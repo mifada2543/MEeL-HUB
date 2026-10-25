@@ -179,7 +179,11 @@ cp settings.example.php settings.php
 cp config.example.php config.php
 ```
 
-> 💡 `install.sh` menyalakan `chmod 640` untuk `auth/settings.php` **hanya bila variabel `$CAN_ELEVATE` terisi** (privilege elevation terdeteksi) — di instalasi baru tanpa privilege, file tetap default dan konfigurasi DB tidak pernah dipojokkan ke world-readable.
+> 💡 `install.sh` menerapkan `chmod 640` + `chgrp` ke grup web pada `auth/settings.php` **hanya bila `$CAN_ELEVATE` terisi** (privilege elevation terdeteksi). Pada instalasi baru tanpa elevation, file tetap default (biasanya 644) — konfigurasi DB **bukan** "never world-readable" secara default. Untuk production, jalankan eksplisit:
+> ```bash
+> sudo chgrp "$WEB_GROUP" auth/settings.php auth/config.php
+> sudo chmod 640 auth/settings.php auth/config.php
+> ```
 
 Edit `auth/settings.php`:
 ```php
@@ -204,11 +208,23 @@ php database/migrate.php
 cd /opt/lampp/htdocs/MEeL
 mkdir -p data_drive/public data_drive/private_admins temp profile/upload music/upload/file music/upload/thumbnail books/upload/manga books/upload/pdf books/upload/thumbnail
 
-sudo chown -R www-data:www-data data_drive temp profile/upload music/upload books/upload
-sudo chmod -R 775 data_drive temp profile/upload music/upload books/upload
+# Deteksi user web server (Apache: www-data di Debian/Ubuntu, apache di RHEL/CentOS, _www di macOS)
+WEB_USER="${WEB_USER:-$(ps aux | grep -E '(apache|httpd)' | grep -v grep | head -1 | awk '{print $1}')}"
+WEB_USER="${WEB_USER:-www-data}"
+WEB_GROUP="${WEB_GROUP:-$(id -gn "$WEB_USER" 2>/dev/null || echo "$WEB_USER")}"
+
+# Baseline: dirs 750, files 640 (tanpa akses world, file tidak executable)
+sudo find data_drive temp profile/upload music/upload books/upload -type d -exec chmod 750 {} \;
+sudo find data_drive temp profile/upload music/upload books/upload -type f -exec chmod 640 {} \;
+
+# Direktori writable: 770 (group write) — hanya tempat app menulis saat runtime
+sudo chmod 770 data_drive/public data_drive/private_admins temp profile/upload music/upload/file music/upload/thumbnail books/upload/manga books/upload/pdf books/upload/thumbnail
+
+# Ownership: hanya direktori runtime, bukan seluruh repo
+sudo chown -R "$WEB_USER:$WEB_GROUP" data_drive temp profile/upload music/upload books/upload
 ```
 
-> 💡 Jika `www-data` tidak berfungsi, coba `daemon` atau `nobody`.
+> 💡 Override dengan `WEB_USER=apache WEB_GROUP=apache` jika auto-deteksi salah pilih user. **Jangan** `chown` seluruh repo atau `MEEL_HDD_BASE` — hanya direktori runtime yang tercantum di atas.
 > ⚠️ `books/upload`, `music/upload`, `video/upload` adalah folder nyata yang ter-track di repo (placeholder `.gitkeep` + `.htaccess` hardening) — **bukan symlink**. Isinya (file upload) di-ignore; file media disimpan di bawah `MEEL_HDD_BASE` dan disajikan lewat endpoint PHP (lihat [5a. Media Storage](#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
 > ℹ️ `data_drive/public` dan `data_drive/private_admins` adalah folder nyata yang ter-track di repo (bukan symlink) — keduanya storage bawaan (fallback) modul Drive dan dibuat/dipakai otomatis. Untuk storage Drive di HDD eksternal, set `MEEL_HDD_DRIVE` di `auth/settings.php` (lihat di bawah). **Jangan pernah commit symlink di dalam `data_drive/`** — `.gitignore` memblokirnya.
 
@@ -313,9 +329,26 @@ ls -la books/upload music/upload video/upload   # harus menunjuk ke BASE Anda
 #### 5. Perizinan
 
 ```bash
-sudo chown -R www-data:www-data "$BASE"
-sudo chmod -R 775 "$BASE"
+# Deteksi user web server (sama seperti langkah 5)
+WEB_USER="${WEB_USER:-$(ps aux | grep -E '(apache|httpd)' | grep -v grep | head -1 | awk '{print $1}')}"
+WEB_USER="${WEB_USER:-www-data}"
+WEB_GROUP="${WEB_GROUP:-$(id -gn "$WEB_USER" 2>/dev/null || echo "$WEB_USER")}"
+
+# Hanya chown storage tree yang dibuat, bukan seluruh mount point
+sudo chown -R "$WEB_USER:$WEB_GROUP" "$BASE"
+
+# Baseline: dirs 750, files 640
+sudo find "$BASE" -type d -exec chmod 750 {} \;
+sudo find "$BASE" -type f -exec chmod 640 {} \;
+
+# Subdir writable: 770
+sudo chmod 770 "$BASE"/video/upload/video "$BASE"/video/upload/thumbnail \
+    "$BASE"/music/upload/file "$BASE"/music/upload/thumbnail \
+    "$BASE"/books/upload/manga "$BASE"/books/upload/pdf "$BASE"/books/upload/thumbnail \
+    "$BASE"/drive/public "$BASE"/drive/private_admins
 ```
+
+> ⚠️ **Jangan** jalankan `chmod -R 775` atau `chown -R` pada seluruh mount point — membuat file executable dan bisa memengaruhi file tak terkait di mount bersama. Hanya subdirektori storage MEeL yang butuh permission disesuaikan.
 
 #### 6. .htaccess keamanan di folder upload (wajib)
 
@@ -359,16 +392,24 @@ sudo a2enmod rewrite
 sudo systemctl restart apache2
 ```
 
-#### Pastikan AllowOverride aktif:
+#### Konfigurasi AllowOverride untuk MEeL (hanya development — production harus pakai VirtualHost dengan `AllowOverride None`):
 
-Edit `/etc/apache2/apache2.conf`:
+Edit `/etc/apache2/apache2.conf` atau config site-specific di `/etc/apache2/sites-available/`:
 ```apache
-<Directory /var/www/html>
-    Options Indexes FollowSymLinks
-    AllowOverride All
+# Scoped ke MEeL saja — bukan seluruh /var/www/html
+<Directory /opt/lampp/htdocs/MEeL>
+    Options -Indexes +FollowSymLinks
+    # Set minimal untuk .htaccess jalan (dev only):
+    #   Options — untuk Options -Indexes di .htaccess
+    #   FileInfo — untuk mod_rewrite, AddType, dll.
+    #   AuthConfig — untuk directive Require
+    #   Limit — untuk Order/Allow/Deny (legacy)
+    AllowOverride Options FileInfo AuthConfig Limit
     Require all granted
 </Directory>
 ```
+
+> ⚠️ **Hanya development.** `<Directory /var/www/html>` luas dengan `AllowOverride All` dan `Options Indexes` tidak aman — mengaktifkan directory listing dan mengizinkan `.htaccess` di mana saja. Deployment production harus pakai VirtualHost dedicated dengan `AllowOverride None` dan taruh semua rewrite/access rule langsung di config VirtualHost.
 
 #### 📱 mod_rewrite & PWA (wajib)
 
