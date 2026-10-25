@@ -100,7 +100,7 @@ extension=zip
 > ⚠️ **`zip` extension** is required for manga uploads (ZIP/CBZ).
 > ⚠️ **mecab extension** is required for better translation support.
 
-> 💡 `install.sh` installs and verifies all of the extensions above automatically (including `pdo_mysql` and `fileinfo`) — see [Automatic Installer](#automatic-installer-installsh).
+> 💡 `install.sh` installs and verifies all of the extensions above automatically (including `pdo_mysql` and `fileinfo`) — see [Automatic Installer](#-automatic-installer-installsh).
 
 ### Recommended OS
 

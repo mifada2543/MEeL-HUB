@@ -99,7 +99,7 @@ extension=zip
 > ⚠️ **Ekstensi `zip`** diperlukan untuk upload manga (ZIP/CBZ).
 > ⚠️ **Ekstensi `mecab`** diperlukan untuk translate yang lebih baik
 
-> 💡 `install.sh` menginstal dan memverifikasi semua ekstensi di atas otomatis (termasuk `pdo_mysql` dan `fileinfo`) — lihat [Instalasi Otomatis](#instalasi-otomatis-installsh).
+> 💡 `install.sh` menginstal dan memverifikasi semua ekstensi di atas otomatis (termasuk `pdo_mysql` dan `fileinfo`) — lihat [Instalasi Otomatis](#-instalasi-otomatis-installsh).
 
 ### OS yang Direkomendasikan
 
