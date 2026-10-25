@@ -253,7 +253,7 @@ MEeL/
 
 ## 🧪 Testing
 
-> **1,255+ checks** — 895+ unit, 129+ integration, 55+ functional, 176+ security. Executed automatically on every push via GitHub Actions CI.
+> Run `php vendor/bin/phpunit --list-tests` for current test counts. CI runs unit, integration, functional, and security suites.
 >
 > The figures are deliberately rough ranges rather than exact numbers: the test count grows over time, so exact numbers go stale quickly. To measure them yourself:
 >
