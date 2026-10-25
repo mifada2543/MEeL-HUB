@@ -264,7 +264,7 @@ URL di browser tetap `.../upload/...` (segmen HLS relatif seperti `.ts` tetap re
 - tidak terdefinisi → file dibaca dari folder fallback repo
   `<root>/{module}/upload`.
 
-Endpoint menerapkan proteksi path traversal, whitelist ekstensi, dukungan Range (206 — diperlukan untuk HLS `.ts` dan video besar), serta referer gate untuk HLS video (anti-hotlink). Seluruh module (video, music, books, drive) juga mendukung akselerasi X-Sendfile opsional dengan fallback otomatis — lihat [mod_xsendfile](#aktifkan-mod_xsendfile-opsional--untuk-akselerasi-streaming). Pemutaran audio memakai `music/stream?id=...` (otorisasi session + referer gate ketat).
+Endpoint menerapkan proteksi path traversal, whitelist ekstensi, dukungan Range (206 — diperlukan untuk HLS `.ts` dan video besar), serta referer gate untuk HLS video (anti-hotlink). Seluruh module (video, music, books, drive) juga mendukung akselerasi X-Sendfile opsional dengan fallback otomatis — lihat [mod_xsendfile](#-aktifkan-mod_xsendfile-opsional--lanjutan--untuk-akselerasi-streaming). Pemutaran audio memakai `music/stream?id=...` (otorisasi session + referer gate ketat).
 
 `.gitignore` secara eksplisit memblokir commit symlink dengan nama folder ini (sebelumnya pernah ter-commit symlink absolut `/media/<user>/...` yang membocorkan username OS dan broken di mesin lain).
 
@@ -422,76 +422,107 @@ curl -sI http://localhost/MEeL/sw.js | grep -i content-type
 
 Jika `.htaccess` tidak diproses (`AllowOverride` dinonaktifkan), `/sw.js` mengembalikan 404 dan PWA menurun secara diam-diam — situs tetap berfungsi, tetapi **mode offline dan "Add to Home Screen" berhenti bekerja**.
 
-#### ⚡ Aktifkan mod_xsendfile (Opsional — untuk akselerasi streaming)
+#### ⚡ Aktifkan mod_xsendfile (Opsional / Lanjutan — untuk akselerasi streaming)
 
-mod_xsendfile mempercepat streaming file besar (FLAC 33MB+, MKV 4K) dengan membiarkan Apache mengirim file langsung dari disk tanpa melalui PHP.
+mod_xsendfile mempercepat streaming file besar (FLAC 33MB+, MKV 4K) dengan membiarkan Apache mengirim file langsung dari disk tanpa melalui PHP. Ini **opsional** — aplikasi otomatis fallback ke streaming PHP jika modul tidak ada atau path tidak di-whitelist.
 
-**Langkah-langkah:**
+**Instalasi berbeda tergantung flavor Apache:**
 
-1. Download source:
-   ```bash
-   git clone --depth 1 https://github.com/nmaier/mod_xsendfile.git /tmp/mod_xsendfile
-   cd /tmp/mod_xsendfile
-   ```
+---
 
-2. Kompilasi dengan `apxs` milik server:
-   ```bash
-   # Untuk LAMPP:
-   /opt/lampp/bin/apxs -c mod_xsendfile.c
-   
-   # Untuk Apache standar:
-   sudo apxs -c mod_xsendfile.c
-   ```
+**A. Apache Standar (Ubuntu/Debian — terinstall via `apt`)**
 
-   > 💡 Jika `apxs` gagal dengan `libtool: compile: you must specify a compilation command`, kompilasi manual dengan gcc:
-   > ```bash
-   > gcc -c -I/opt/lampp/include -I/opt/lampp/include/apr-1 -fPIC -DPIC mod_xsendfile.c -o mod_xsendfile.o
-   > gcc -shared -o mod_xsendfile.so mod_xsendfile.o -L/opt/lampp/lib -lapr-1
-   > ```
+Gunakan paket distro — tidak perlu kompilasi manual:
 
-3. Install modul:
-   ```bash
-   sudo cp mod_xsendfile.so /opt/lampp/modules/  # atau direktori modules Apache Anda
-   sudo chmod 755 /opt/lampp/modules/mod_xsendfile.so
-   ```
+```bash
+sudo apt update
+sudo apt install libapache2-mod-xsendfile
+sudo a2enmod xsendfile
+sudo systemctl restart apache2
+```
 
-4. Tambahkan ke `httpd.conf`:
-   ```apache
-   LoadModule xsendfile_module modules/mod_xsendfile.so
+**B. XAMPP / LAMPP (Apache dari Apache Friends)**
 
-   # Kernel sendfile: opsi, mempercepat pengiriman file statis oleh Apache
-   EnableSendfile on
+Tidak ada paket distro — kompilasi manual terhadap `apxs` milik XAMPP:
 
-   <IfModule xsendfile_module>
-       XSendFile on
-       # File media kini dibaca langsung dari storage terpusat (MEEL_HDD_BASE),
-       # bukan dari folder webroot — whitelist path HDD-nya:
-       XSendFilePath "/media/<user>/MEeL/media"
-       # Fallback storage di webroot + output transcode sementara:
-       XSendFilePath "/opt/lampp/htdocs/MEeL"
-       XSendFilePath "/dev/shm/meel"
-   </IfModule>
-   ```
+```bash
+git clone --depth 1 https://github.com/nmaier/mod_xsendfile.git /tmp/mod_xsendfile
+cd /tmp/mod_xsendfile
 
-   > ⚠️ `XSendFilePath` harus mencakup path tempat file media sebenarnya berada (nilai `MEEL_HDD_BASE` di `auth/settings.php`) — termasuk `/dev/shm/meel` untuk output transcode. Sejak refactor portabilitas, `music/upload` dkk adalah folder nyata di repo (bukan symlink), jadi path webroot lama seperti `/opt/lampp/htdocs/MEeL/music/upload/file` BUKAN lagi lokasi file — hanya path HDD yang benar.
-   >
-   > ✅ Jika `XSendFilePath` tidak mencakup storage, **streaming tidak rusak**: aplikasi membaca `XSendFilePath` dari konfigurasi Apache dan hanya mengirim header `X-Sendfile` untuk path yang di-whitelist — selain itu otomatis fallback ke streaming PHP (hanya kehilangan akselerasi).
+# Kompilasi dengan apxs XAMPP
+/opt/lampp/bin/apxs -c mod_xsendfile.c
 
-5. Restart Apache:
-   ```bash
-   sudo /opt/lampp/lampp restart
-   ```
+# Jika apxs gagal dengan error libtool, kompilasi manual:
+# gcc -c -I/opt/lampp/include -I/opt/lampp/include/apr-1 -fPIC -DPIC mod_xsendfile.c -o mod_xsendfile.o
+# gcc -shared -o mod_xsendfile.so mod_xsendfile.o -L/opt/lampp/lib -lapr-1
 
-6. Verifikasi:
-   ```bash
-   sudo /opt/lampp/bin/httpd -M | grep xsend
-   # Output: xsendfile_module (shared)
-   ```
+sudo cp mod_xsendfile.so /opt/lampp/modules/
+sudo chmod 755 /opt/lampp/modules/mod_xsendfile.so
+```
 
-7. Aktifkan di aplikasi — edit `auth/settings.php`:
-   ```php
-   define('MEEL_USE_XSENDFILE', true);
-   ```
+**Konfigurasi (kedua flavor)**
+
+Tambahkan ke config Apache (mis. `/etc/apache2/conf-available/meel-xsendfile.conf` untuk Apache standar, atau `httpd.conf` untuk XAMPP):
+
+```apache
+LoadModule xsendfile_module modules/mod_xsendfile.so
+
+# Kernel sendfile: opsional, mempercepat pengiriman file statis oleh Apache
+EnableSendfile on
+
+<IfModule xsendfile_module>
+    XSendFile on
+    # Whitelist HANYA direktori media/storage aktual yang butuh akselerasi:
+    # 1. Storage media terpusat (MEEL_HDD_BASE dari auth/settings.php)
+    XSendFilePath "/media/<user>/MEeL/media"
+    # 2. Upload profile (jika MEEL_HDD_BASE tidak dipakai untuk profile)
+    XSendFilePath "/opt/lampp/htdocs/MEeL/profile/upload"
+    # 3. Output transcode sementara (segmen HLS, dll.)
+    XSendFilePath "/dev/shm/meel"
+    # 4. Drive public storage (jika pakai MEEL_HDD_DRIVE eksternal)
+    # XSendFilePath "/media/<user>/MEeL/media/drive/public"
+</IfModule>
+```
+
+> ⚠️ **JANGAN** gunakan `XSendFilePath "/opt/lampp/htdocs/MEeL"` — ini me-whitelist seluruh webroot. Hanya whitelist subdirektori spesifik tempat file media benar-benar berada.
+>
+> ✅ Jika `XSendFilePath` tidak mencakup path storage, **streaming tidak rusak**: aplikasi membaca `XSendFilePath` dari konfigurasi Apache dan hanya mengirim header `X-Sendfile` untuk path yang di-whitelist — sisanya otomatis fallback ke streaming PHP (hanya kehilangan akselerasi).
+
+**Restart Apache:**
+
+```bash
+# Apache Standar:
+sudo systemctl restart apache2
+
+# XAMPP/LAMPP:
+sudo /opt/lampp/lampp restart
+```
+
+**Verifikasi modul ter-load:**
+
+```bash
+# Apache Standar:
+apache2ctl -M | grep xsendfile
+# Output: xsendfile_module (shared)
+
+# XAMPP/LAMPP:
+/opt/lampp/bin/httpd -M | grep xsendfile
+# Output: xsendfile_module (shared)
+```
+
+**Aktifkan di aplikasi** — edit `auth/settings.php`:
+
+```php
+define('MEEL_USE_XSENDFILE', true);
+```
+
+**Uji akselerasi bekerja:**
+
+1. Putar file FLAC besar atau MKV 4K
+2. Cek log akses Apache: header `X-Sendfile` harus muncul di response (pakai `curl -I` atau devtools browser)
+3. Penggunaan CPU saat playback harus signifikan lebih rendah dibanding streaming PHP
+
+---
 
 ### 7. Setup FFmpeg
 

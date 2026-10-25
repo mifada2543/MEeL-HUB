@@ -264,7 +264,7 @@ The browser URL stays `.../upload/...` (so relative HLS segments like `.ts` reso
 - `MEEL_HDD_*_UPLOAD` defined → file read from the HDD path;
 - not defined → file read from the repo fallback folder `<root>/{module}/upload`
 
-Endpoints enforce path-traversal protection, an extension whitelist, Range support (206 — needed for HLS `.ts` and large video), and a referer gate for HLS video (anti-hotlink). All modules (video, music, books, drive) also support optional X-Sendfile acceleration with automatic fallback — see [mod_xsendfile](#enable-mod_xsendfile-optional--for-streaming-acceleration). Audio playback uses `music/stream?id=...` (session authorization + strict referer gate).
+Endpoints enforce path-traversal protection, an extension whitelist, Range support (206 — needed for HLS `.ts` and large video), and a referer gate for HLS video (anti-hotlink). All modules (video, music, books, drive) also support optional X-Sendfile acceleration with automatic fallback — see [mod_xsendfile](#-enable-mod_xsendfile-optional--advanced--for-streaming-acceleration). Audio playback uses `music/stream?id=...` (session authorization + strict referer gate).
 
 `.gitignore` explicitly blocks committing symlinks named after these folders (they were previously committed as absolute `/media/<user>/...` symlinks that leaked the OS username and broke on other machines).
 
@@ -422,76 +422,107 @@ curl -sI http://localhost/MEeL/sw.js | grep -i content-type
 
 If `.htaccess` is not processed (`AllowOverride` disabled), `/sw.js` returns 404 and the PWA silently degrades — the site still works, but **offline mode and "Add to Home Screen" stop working**.
 
-#### ⚡ Enable mod_xsendfile (Optional — for streaming acceleration)
+#### ⚡ Enable mod_xsendfile (Optional / Advanced — for streaming acceleration)
 
-mod_xsendfile speeds up streaming large files (FLAC 33MB+, MKV 4K) by letting Apache send files directly from disk without going through PHP.
+mod_xsendfile speeds up streaming large files (FLAC 33MB+, MKV 4K) by letting Apache send files directly from disk without going through PHP. This is **optional** — the app automatically falls back to PHP streaming if the module is absent or paths aren't whitelisted.
 
-**Steps:**
+**Installation differs by Apache flavor:**
 
-1. Download source:
-   ```bash
-   git clone --depth 1 https://github.com/nmaier/mod_xsendfile.git /tmp/mod_xsendfile
-   cd /tmp/mod_xsendfile
-   ```
+---
 
-2. Compile with server's `apxs`:
-   ```bash
-   # For LAMPP:
-   /opt/lampp/bin/apxs -c mod_xsendfile.c
-   
-   # For standard Apache:
-   sudo apxs -c mod_xsendfile.c
-   ```
+**A. Standard Apache (Ubuntu/Debian — installed via `apt`)**
 
-   > 💡 If `apxs` fails with `libtool: compile: you must specify a compilation command`, compile manually with gcc:
-   > ```bash
-   > gcc -c -I/opt/lampp/include -I/opt/lampp/include/apr-1 -fPIC -DPIC mod_xsendfile.c -o mod_xsendfile.o
-   > gcc -shared -o mod_xsendfile.so mod_xsendfile.o -L/opt/lampp/lib -lapr-1
-   > ```
+Use the distro package — no manual compilation needed:
 
-3. Install module:
-   ```bash
-   sudo cp mod_xsendfile.so /opt/lampp/modules/
-   sudo chmod 755 /opt/lampp/modules/mod_xsendfile.so
-   ```
+```bash
+sudo apt update
+sudo apt install libapache2-mod-xsendfile
+sudo a2enmod xsendfile
+sudo systemctl restart apache2
+```
 
-4. Add to `httpd.conf`:
-   ```apache
-   LoadModule xsendfile_module modules/mod_xsendfile.so
+**B. XAMPP / LAMPP (Apache from Apache Friends)**
 
-   # Kernel sendfile: optional, makes Apache deliver static files even faster
-   EnableSendfile on
+No distro package exists — compile manually against XAMPP's `apxs`:
 
-   <IfModule xsendfile_module>
-       XSendFile on
-       # Media files are now read directly from centralized storage (MEEL_HDD_BASE),
-       # not from the webroot folder — whitelist the HDD path:
-       XSendFilePath "/media/<user>/MEeL/media"
-       # Webroot fallback storage + temporary transcode output:
-       XSendFilePath "/opt/lampp/htdocs/MEeL"
-       XSendFilePath "/dev/shm/meel"
-   </IfModule>
-   ```
+```bash
+git clone --depth 1 https://github.com/nmaier/mod_xsendfile.git /tmp/mod_xsendfile
+cd /tmp/mod_xsendfile
 
-   > ⚠️ `XSendFilePath` must include the path where media files actually reside (the `MEEL_HDD_BASE` value in `auth/settings.php`) — including `/dev/shm/meel` for transcode output. Since the portability refactor, `music/upload` etc. are real directories in the repo (not symlinks), so old webroot paths like `/opt/lampp/htdocs/MEeL/music/upload/file` are **no longer** the file location — only the correct HDD path works.
-   >
-   > ✅ If `XSendFilePath` doesn't cover the storage, **streaming does not break**: the app reads `XSendFilePath` from Apache's configuration and only sends the `X-Sendfile` header for whitelisted paths — everything else automatically falls back to PHP streaming (you only lose the acceleration).
+# Compile with XAMPP's apxs
+/opt/lampp/bin/apxs -c mod_xsendfile.c
 
-5. Restart Apache:
-   ```bash
-   sudo /opt/lampp/lampp restart
-   ```
+# If apxs fails with libtool error, compile manually:
+# gcc -c -I/opt/lampp/include -I/opt/lampp/include/apr-1 -fPIC -DPIC mod_xsendfile.c -o mod_xsendfile.o
+# gcc -shared -o mod_xsendfile.so mod_xsendfile.o -L/opt/lampp/lib -lapr-1
 
-6. Verify:
-   ```bash
-   sudo /opt/lampp/bin/httpd -M | grep xsend
-   # Output: xsendfile_module (shared)
-   ```
+sudo cp mod_xsendfile.so /opt/lampp/modules/
+sudo chmod 755 /opt/lampp/modules/mod_xsendfile.so
+```
 
-7. Enable in app — edit `auth/settings.php`:
-   ```php
-   define('MEEL_USE_XSENDFILE', true);
-   ```
+**Configuration (both flavors)**
+
+Add to your Apache config (e.g., `/etc/apache2/conf-available/meel-xsendfile.conf` for standard Apache, or `httpd.conf` for XAMPP):
+
+```apache
+LoadModule xsendfile_module modules/mod_xsendfile.so
+
+# Kernel sendfile: optional, makes Apache deliver static files even faster
+EnableSendfile on
+
+<IfModule xsendfile_module>
+    XSendFile on
+    # Whitelist ONLY the actual media/storage directories that need acceleration:
+    # 1. Centralized media storage (MEEL_HDD_BASE from auth/settings.php)
+    XSendFilePath "/media/<user>/MEeL/media"
+    # 2. Profile uploads (if MEEL_HDD_BASE is not used for profile)
+    XSendFilePath "/opt/lampp/htdocs/MEeL/profile/upload"
+    # 3. Temporary transcode output (HLS segments, etc.)
+    XSendFilePath "/dev/shm/meel"
+    # 4. Drive public storage (if using external MEEL_HDD_DRIVE)
+    # XSendFilePath "/media/<user>/MEeL/media/drive/public"
+</IfModule>
+```
+
+> ⚠️ **Do NOT use** `XSendFilePath "/opt/lampp/htdocs/MEeL"` — it whitelists the entire webroot. Only whitelist the specific subdirectories where media files actually reside.
+>
+> ✅ If `XSendFilePath` doesn't cover a storage path, **streaming does not break**: the app reads `XSendFilePath` from Apache's configuration and only sends the `X-Sendfile` header for whitelisted paths — everything else automatically falls back to PHP streaming (you only lose the acceleration).
+
+**Restart Apache:**
+
+```bash
+# Standard Apache:
+sudo systemctl restart apache2
+
+# XAMPP/LAMPP:
+sudo /opt/lampp/lampp restart
+```
+
+**Verify the module is loaded:**
+
+```bash
+# Standard Apache:
+apache2ctl -M | grep xsendfile
+# Output: xsendfile_module (shared)
+
+# XAMPP/LAMPP:
+/opt/lampp/bin/httpd -M | grep xsendfile
+# Output: xsendfile_module (shared)
+```
+
+**Enable in app** — edit `auth/settings.php`:
+
+```php
+define('MEEL_USE_XSENDFILE', true);
+```
+
+**Test acceleration works:**
+
+1. Play a large FLAC or 4K MKV file
+2. Check Apache access log: `X-Sendfile` header should appear in the response (use `curl -I` or browser devtools)
+3. CPU usage during playback should be significantly lower than PHP streaming
+
+---
 
 ### 7. FFmpeg Setup
 
