@@ -552,13 +552,7 @@ main (stable)
 
 ## Troubleshooting Development
 
-### ❌ HTMX not working
-
-**Check:**
-1. File `assets/js/compatibilitas/htmx.min.js` is loaded (check Network tab)
-2. Target element (`hx-target`) exists in DOM
-3. No JavaScript errors in console
-4. Server response is valid HTML
+HTMX troubleshooting is documented in the **[Troubleshooting Guide](troubleshooting.md#htmxajax-issues)**.
 
 ### ❌ "Headers already sent" error
 

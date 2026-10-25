@@ -633,7 +633,7 @@ File-based rate limiter dengan `flock()` safety. Role-based (admin = unlimited, 
 | `register` | 5/jam | Bucket **per-IP**, hanya sukses yang dihitung, loopback bebas |
 | `api` | 60/menit | Generic fallback |
 
-**Fail-closed behavior:** Ketika direktori penyimpanan (`temp/ratelimit/`) tidak writable atau `flock()` gagal, rate limiter **menolak semua request** (fail-closed) daripada diam-diam membiarkannya lewat. Kegagalan dicatat via `error_log()`.
+Perilaku fail-closed rate limiter didokumentasikan di **[Panduan Keamanan](security.md#api-rate-limiting)**.
 
 Endpoint `transcode` diperiksa **sebelum** spend koin dan pekerjaan berat dimulai (urutan di `transcode.php`: rate-limit → validasi → spend); admin lolos tanpa batas (diteruskan ke `RateLimiter` internal).
 
@@ -774,24 +774,7 @@ Shortcut keyboard diimplementasikan dalam JavaScript dan di-guard oleh `assets/j
 > Dijaga oleh `window` listener fase `capture` di `assets/js/shared/resume-modal.js`
 > yang beating Plyr (`window` bubble) dan `mini-player.js` (`window` capture).
 
-**Ikon setelah swap htmx (`assets/js/shared/htmx-lucide.js`):**
-
-Ikon lucide adalah elemen `<i data-lucide="...">` yang diganti Lucide
-menjadi SVG, dan penggantian itu hanya terjadi saat `lucide.createIcons()`
-dijalankan. Setiap fragmen yang dikirim server berisi markup
-`<i data-lucide>` apa adanya, jadi ada yang harus merender ulang setelah
-swap — itulah yang dilakukan berkas ini, pada `htmx:afterOnLoad`.
-
-Listener-nya didaftarkan di `document`, **bukan** di `document.body`. Di
-beberapa halaman (`music/watch.php`, `books/index.php`) berkas ini dimuat di
-dalam `<head>`, dan saat itu `document.body` masih `null`; listener yang
-didaftarkan di `document.body` tidak akan pernah terpasang, dan setiap swap
-berikutnya akan meninggalkan ikon apa adanya tanpa galat apa pun. Gejalanya:
-ikon muncul lagi setelah refresh, lalu menghilang lagi begitu like/dislike
-diklik.
-
-`partials/link.php` memasang stub pengantre untuk `window.lucide` sebelum
-`lucide.js` termuat, jadi panggilan yang terlalu dini tidak hilang.
+Troubleshooting ikon/HTMX didokumentasikan di **[Panduan Troubleshooting](troubleshooting.md#masalah-ikon)**.
 
 **Music Watch (`assets/js/music/watch/`):**
 
@@ -1738,43 +1721,7 @@ Keduanya memiliki height yang sama — video 4:3 lebih kecil dan centered, seper
 
 ## 28. Chat API
 
-Sistem chat real-time antar user dengan HTMX polling.
-
-### Endpoint
-
-| Endpoint | Method | Deskripsi |
-|---|---|---|
-| `/api/chat` | GET | Ambil pesan chat (parameter: `after_id`, `limit`) |
-| `/api/chat` | POST | Kirim pesan chat (parameter: `message`, `csrf_token`) |
-
-### Database Schema
-
-```sql
-CREATE TABLE chat_messages (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    message TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-```
-
-### Fitur
-
-- Pesan diurutkan berdasarkan `created_at` ASC
-- HTMX polling setiap 3 detik untuk pesan baru
-- Delete pesan sendiri (dengan validasi ownership)
-- Notification type `admin_chat` untuk pesan ke admin
-- Rate limiting: 30 pesan per menit per user
-
-### File Terkait Chat
-
-| File | Peran |
-|---|---|
-| `controllers/api/chat.php` | Chat API endpoint |
-| `admin/chat.php` | Admin chat interface |
-| `assets/js/shared/notification.js` | Polling notifikasi termasuk chat |
-| `assets/css/admin/chat.css` | Admin chat styles |
+Sistem chat didokumentasikan di **[Referensi API](api.md#chat-api)**.
 
 ---
 

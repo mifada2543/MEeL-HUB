@@ -469,8 +469,17 @@ du -sh /media/[user]/MEeL/
 - Move storage to larger HDD
 - Run orphan cleanup from admin panel
 
-> **Note on "Database Sync Check":** the line *"{n} 256px thumbnail variants (X MB) kept — not orphans"* is expected. Every video has two thumbnail files: the original (registered in the DB) and a derived 256px variant `<stem>_sm.webp` that is deliberately not registered because it is used for grid cards. Do not remove them by hand via "Bersihkan SSD Thinkpad" — that line is informational only.
+**Routine cleanup:**
+1. Admin Panel → **Database Sync Check** → Clean orphan files
+2. Delete temporary files:
+   ```bash
+   rm -rf /opt/lampp/htdocs/MEeL/temp/*
+   ```
+3. Clean inactive guests: Admin Panel → **Clean Inactive Guests**
+4. Delete stuck queues: Admin Panel → **Clean Stuck Queues**
+5. Delete unnecessary drive files
 
+> **Note on "Database Sync Check":** the line *"{n} 256px thumbnail variants (X MB) kept — not orphans"* is expected. Every video has two thumbnail files: the original (registered in the DB) and a derived 256px variant `<stem>_sm.webp` that is deliberately not registered because it is used for grid cards. Do not remove them by hand via "Bersihkan SSD Thinkpad" — that line is informational only.
 ---
 
 ## Performance Issues
@@ -508,19 +517,6 @@ du -sh /media/[user]/MEeL/
 2. Limit concurrent processes (already implemented: max 2)
 3. Schedule transcoding during off-peak hours using cron
 
-### ❌ HDD/SSD Full
-
-**Routine cleanup:**
-1. Admin Panel → **Database Sync Check** → Clean orphan files
-2. Delete temporary files:
-   ```bash
-   rm -rf /opt/lampp/htdocs/MEeL/temp/*
-   ```
-3. Clean inactive guests: Admin Panel → **Clean Inactive Guests**
-4. Delete stuck queues: Admin Panel → **Clean Stuck Queues**
-5. Delete unnecessary drive files
-
-> **Note on "Database Sync Check":** the line *"{n} 256px thumbnail variants (X MB) kept — not orphans"* is expected. Every video has two thumbnail files: the original (registered in the DB) and a derived 256px variant `<stem>_sm.webp` that is deliberately not registered because it is used for grid cards. Do not remove them by hand via "Bersihkan SSD Thinkpad" — that line is informational only.
 
 ---
 
@@ -634,20 +630,6 @@ yt-dlp --version
 yt-dlp --simulate "https://www.youtube.com/watch?v=..."
 ```
 
-#### ❌ "HTTP Error 403" when downloading
-
-**Cause:** YouTube blocking automated requests.
-
-**Solutions:**
-1. **Update yt-dlp:**
-   ```bash
-   sudo yt-dlp -U
-   ```
-2. **Re-export cookies:**
-   - Use browser extension to export cookies
-   - Save as `cookies.txt` in `temp/` (legacy root files are auto-migrated)
-3. **Try different user-agent**
-
 #### ❌ Download completes but no file found
 
 **Causes:**
@@ -719,26 +701,6 @@ sudo killall ffmpeg
 
 ### Resource Issues
 
-#### ❌ CPU usage too high during transcoding
-
-**Adjust FFmpeg threads:**
-```php
-// modules/core/TranscoderBase.php (inherited by all transcoder services)
-protected const FFMPEG_THREADS = 4; // Reduce from 8
-```
-
-#### ❌ Not enough disk space
-
-**Check space:**
-```bash
-df -h
-du -sh /opt/lampp/htdocs/MEeL/temp/
-```
-
-**Clean temp directory:**
-```bash
-rm -rf /opt/lampp/htdocs/MEeL/temp/*
-```
 
 ---
 

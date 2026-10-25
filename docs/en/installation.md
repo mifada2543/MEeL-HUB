@@ -370,7 +370,7 @@ php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_BASE') ? MEEL_HDD_BA
 
 #### Automated Deployment Check (One Command)
 
-The project ships a CLI health-check that verifies the deployment-critical areas in a single run — `MEEL_HDD_BASE`, upload dirs (real folders or deploy-time symlinks), **non-auto-created subdirectories** (`music/upload/file`, `music/upload/thumbnail`, `books/upload/pdf`, `books/upload/thumbnail` — the music/books modules do **not** create them automatically, so a missing one is a **FAIL** → deployment not ready, exit code `1`), upload-dir `.htaccess` hardening, the `data_drive/` portability guard (deploy-time symlinks inside `MEEL_HDD_DRIVE` = PASS; pointing outside = WARN), and the PWA `mod_rewrite` rule:
+The project ships a CLI health-check (`tests/check_deploy.php`) that verifies deployment-critical areas. Full documentation is in the **[Testing Guide](testing.md#deployment-check-check_deployphp)**.
 
 ```bash
 php tests/check_deploy.php                           # local check + auto HTTP probe
@@ -378,8 +378,6 @@ php tests/check_deploy.php --url=http://localhost/MEeL   # explicit HTTP probe
 php tests/check_deploy.php --hdd=/tmp/meel-storage/media  # override MEEL_HDD_BASE (testing/CI)
 php tests/check_deploy.php --no-color                # no ANSI colors (for CI/logs)
 ```
-
-Each item is reported as `PASS` / `WARN` / `FAIL` with a summary; exit code is `0` when healthy and `1` when at least one check fails (CI-friendly). If the storage is not mounted yet, the script reports `FAIL` on the storage / upload dir / upload-`.htaccess` areas — mount the storage, set `MEEL_HDD_BASE`, ensure upload dirs have their `.htaccess`, then re-run until you see `✅ Deployment sehat.`
 
 > 💡 `install.sh` runs this health-check as its final verification step **without `--hdd`** (the real `auth/settings.php` config is tested) and **exits with code `1`** on any FAIL — the final banner distinguishes "deployment healthy" from "server not ready".
 
