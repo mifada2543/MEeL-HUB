@@ -551,6 +551,21 @@ To download from YouTube and other platforms, export your browser cookies:
 cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 ```
 
+#### ⚠️ Security Warnings
+
+- **NEVER commit `cookies.txt`** to version control
+- **NEVER share** cookies in chat, issues, logs, or screenshots
+- Set strict permissions:
+  ```bash
+  chmod 600 /opt/lampp/htdocs/MEeL/temp/cookies.txt
+  chown www-data:www-data /opt/lampp/htdocs/MEeL/temp/cookies.txt
+  ```
+- Use a **dedicated YouTube account**, not your main account
+- **Rotate cookies immediately** if ever exposed
+- Verify protection: check `.gitignore` includes `temp/cookies.txt` and `temp/.htaccess` blocks web access
+
+> See [Configuration](configuration.md#cookies-management) for more details on cookie handling and rotation.
+
 ---
 
 ## Installation Verification

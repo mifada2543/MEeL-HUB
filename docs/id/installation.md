@@ -553,6 +553,21 @@ Untuk download dari YouTube dan platform lain, ekspor cookie browser:
 cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 ```
 
+#### ⚠️ Peringatan Keamanan
+
+- **JANGAN PERNAH commit `cookies.txt`** ke version control
+- **JANGAN PERNAH bagikan** cookies di chat, issue, log, atau screenshot
+- Set permission ketat:
+  ```bash
+  chmod 600 /opt/lampp/htdocs/MEeL/temp/cookies.txt
+  chown www-data:www-data /opt/lampp/htdocs/MEeL/temp/cookies.txt
+  ```
+- Gunakan **akun YouTube khusus**, bukan akun utama Anda
+- **Rotasi cookies segera** jika pernah terekspos
+- Verifikasi proteksi: cek `.gitignore` mengandung `temp/cookies.txt` dan `temp/.htaccess` memblokir akses web
+
+> Lihat [Konfigurasi](configuration.md#cookies-management) untuk detail lebih lanjut tentang penanganan dan rotasi cookie.
+
 ---
 
 ## Verifikasi Instalasi
