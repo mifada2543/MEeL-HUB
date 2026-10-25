@@ -682,13 +682,7 @@ The yt-dlp command uses `--max-filesize` and `--match-filter "duration < N"`, an
 
 `GarbageCollector::STALE_SECONDS` = **1200**, larger than `TRANSCODE_AUDIO_TIMEOUT` (600) and `DOWNLOAD_TIMEOUT` (900). The `.processing` marker is the only guard against two transcodes colliding on the same output, so it must never be below those two timeout values.
 
-### Pending Deletion Queue
-
-`cleanupPendingDeletions()` may only delete paths whose `realpath()` lies inside one of the media or drive base roots. The queue file sits in a world-writable directory, so without a containment check a local user could schedule the deletion of any file or directory as the web user.
-
-### Admin Export Limit
-
-`fetchAll()` takes a limit (default 50,000) — the 15-row preview uses `countFiltered()` + `fetchPage(15, 0)` instead of loading the whole filtered table into memory.
+The pending deletion queue and admin export limits are documented in the **[Configuration Guide](configuration.md#pending-deletion-queue)**.
 
 ---
 

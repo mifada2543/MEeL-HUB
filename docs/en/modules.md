@@ -684,7 +684,7 @@ File-based rate limiter with `flock()` safety. Role-based limits (admin = unlimi
 | `register` | 5/hour | **Per-IP** bucket, only successful inserts counted, loopback exempt |
 | `api` | 60/min | Generic fallback |
 
-**Fail-closed behavior:** When the storage directory (`temp/ratelimit/`) is not writable or `flock()` fails, the rate limiter **denies all requests** instead of silently allowing them. This prevents a broken filesystem from disabling rate limiting. Failures are logged via `error_log()`.
+The rate limiter's fail-closed behavior is documented in the **[Security Guide](security.md#api-rate-limiting)**.
 
 The `transcode` endpoint is checked **before** the coin spend and heavy work start (order in `transcode.php`: rate-limit → validation → spend); admins pass without a limit (delegated to the internal `RateLimiter`).
 
@@ -850,23 +850,7 @@ Keyboard shortcuts are implemented in JavaScript and guarded by `assets/js/share
 > `assets/js/shared/resume-modal.js`, which pre-empts Plyr (`window` bubble) and
 > `mini-player.js` (`window` capture).
 
-**Icons after an HTMX swap (`assets/js/shared/htmx-lucide.js`):**
-
-Lucide icons are `<i data-lucide="...">` elements that Lucide replaces with an
-SVG, and the replacement only happens when `lucide.createIcons()` runs. Every
-fragment the server sends back contains plain `<i data-lucide>` markup, so
-something has to render it again after the swap — that is what this file
-does, on `htmx:afterOnLoad`.
-
-The listener is registered on `document`, **not** on `document.body`. The file
-is loaded in `<head>` on some pages (`music/watch.php`, `books/index.php`),
-and at that point `document.body` is still `null`; a listener registered on
-`document.body` would never be attached, and every later swap would silently
-leave the icons unrendered. The symptom is icons that reappear on refresh and
-disappear again after pressing like/dislike.
-
-`partials/link.php` installs a queueing stub for `window.lucide` before
-`lucide.js` loads, so a call made too early is not lost.
+Icon/HTMX troubleshooting is documented in the **[Troubleshooting Guide](troubleshooting.md#htmxajax-issues)**.
 
 **Music Watch (`assets/js/music/watch/`):**
 
@@ -1806,43 +1790,7 @@ Both have the same height — the 4:3 video is smaller and centered, just like Y
 
 ## 28. Chat API
 
-Real-time chat system between users with HTMX polling.
-
-### Endpoints
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/chat` | GET | Get chat messages (params: `after_id`, `limit`) |
-| `/api/chat` | POST | Send chat message (params: `message`, `csrf_token`) |
-
-### Database Schema
-
-```sql
-CREATE TABLE chat_messages (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    message TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-```
-
-### Features
-
-- Messages ordered by `created_at` ASC
-- HTMX polling every 3 seconds for new messages
-- Delete own messages (with ownership validation)
-- `admin_chat` notification type for messages to admin
-- Rate limiting: 30 messages per minute per user
-
-### Chat Related Files
-
-| File | Role |
-|---|---|
-| `controllers/api/chat.php` | Chat API endpoint |
-| `admin/chat.php` | Admin chat interface |
-| `assets/js/shared/notification.js` | Notification polling including chat |
-| `assets/css/admin/chat.css` | Admin chat styles |
+The chat system is documented in the **[API Reference](api.md#chat-api)**.
 
 ---
 

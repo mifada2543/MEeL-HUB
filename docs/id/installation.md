@@ -370,7 +370,7 @@ php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_BASE') ? MEEL_HDD_BA
 
 #### Cek Deployment Otomatis (Satu Perintah)
 
-Project menyertakan health-check CLI yang memverifikasi area kritis deployment dalam satu kali jalan — `MEEL_HDD_BASE`, folder upload (folder nyata atau symlink saat deploy), **subdirektori non-auto-create** (`music/upload/file`, `music/upload/thumbnail`, `books/upload/pdf`, `books/upload/thumbnail` — modul music/books **tidak** membuatnya otomatis, jadi jika salah satu hilang: **FAIL** → deployment belum siap, exit code `1`), hardening `.htaccess` folder upload, guard portabilitas `data_drive/` (symlink deploy ke `MEEL_HDD_DRIVE` = PASS; menunjuk ke luar = WARN), dan aturan `mod_rewrite` PWA:
+Project menyertakan health-check CLI (`tests/check_deploy.php`) yang memverifikasi area kritis deployment. Dokumentasi lengkap ada di **[Panduan Testing](testing.md#deployment-check-check_deployphp)**.
 
 ```bash
 php tests/check_deploy.php                           # cek lokal + probe HTTP otomatis
@@ -378,8 +378,6 @@ php tests/check_deploy.php --url=http://localhost/MEeL   # probe HTTP eksplisit
 php tests/check_deploy.php --hdd=/tmp/meel-storage/media  # override MEEL_HDD_BASE (testing/CI)
 php tests/check_deploy.php --no-color                # tanpa warna ANSI (untuk CI/log)
 ```
-
-Setiap item dilaporkan sebagai `PASS` / `WARN` / `FAIL` beserta ringkasan; exit code `0` saat sehat dan `1` saat ada minimal satu FAIL (ramah CI). Jika storage belum ter-mount, script melaporkan FAIL pada area storage / folder upload / `.htaccess` upload — mount storage, set `MEEL_HDD_BASE`, pastikan folder upload punya `.htaccess`, lalu jalankan ulang sampai muncul `✅ Deployment sehat.`
 
 > 💡 `install.sh` menjalankan health-check ini sebagai langkah verifikasi terakhir **tanpa `--hdd`** (konfigurasi asli `auth/settings.php` yang diuji) dan **keluar dengan code `1`** jika ada minimal satu FAIL — banner akhir dibedakan antara "deployment sehat" dan "server belum siap dipakai".
 

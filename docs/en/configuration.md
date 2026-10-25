@@ -77,31 +77,7 @@ If database credentials are empty, the system displays an educational error mess
 
 ## Session & Security
 
-### Session Configuration
-
-```php
-// In modules/auth/helpers/session.php (meel_boot_session())
-// auth/config.php delegates to it
-$timeout = 43200;     // 12 hour session timeout
-ini_set('session.gc_maxlifetime', $timeout);
-
-// Secure cookie flags (auto-detect HTTPS / X-Forwarded-Proto)
-$secure_cookie = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
-
-session_set_cookie_params([
-    'lifetime' => $timeout,
-    'path'     => '/',
-    'secure'   => $secure_cookie,  // only sent via HTTPS
-    'httponly' => true,            // not readable by JavaScript
-    'samesite' => 'Lax',           // CSRF level-1 protection
-]);
-session_name('meel');  // Session cookie name: "meel"
-session_start();
-```
-
-> **Note:** Implementation is in `modules/auth/helpers/session.php` as `meel_boot_session()`. `auth/config.php` only delegates to it.
-> `auth/auth_helpers.php` (`auth_boot_session()`) uses the same cookie parameters.
+Session configuration, CSRF protection, and security headers are documented in the **[Security Guide](security.md#session-management)**.
 
 ### Trusted Proxy (`MEEL_TRUST_PROXY_HEADERS`)
 
@@ -126,37 +102,7 @@ $conn->set_charset('utf8mb4');
 
 MySQL connection is forced to `utf8mb4` to match the schema — emoji, Japanese scripts, and multibyte text store/retrieve correctly.
 
-### CSRF Protection
-
-```php
-// Auto-generated token
-$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
-// Verification function (defined in modules/auth/helpers/csrf.php)
-// Uses hash_equals() for timing-attack safety
-function verify_csrf_token(?string $token = null): bool
-{
-    if ($token === null && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $token = $_POST['csrf_token'] ?? '';
-    }
-    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token ?? '');
-}
-```
-
-### Session Timeout Check
-
-```php
-if (isset($_SESSION['LAST_ACTIVITY'])) {
-    $elapsed_time = time() - $_SESSION['LAST_ACTIVITY'];
-    if ($elapsed_time > $timeout) {  // 12 hours
-        session_unset();
-        session_destroy();
-        header("Location: ../auth/login?reason=expired");
-        exit;
-    }
-}
-$_SESSION['LAST_ACTIVITY'] = time();
-```
+CSRF protection and session timeout handling are documented in the **[Security Guide](security.md#csrf-protection)**.
 
 ### Transliterator (Romaji Conversion)
 

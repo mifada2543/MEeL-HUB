@@ -813,13 +813,7 @@ main (stable)
 
 ## Troubleshooting Development
 
-### ❌ HTMX tidak bekerja
-
-**Cek:**
-1. File `assets/js/compatibilitas/htmx.min.js` ter-load (cek Network tab)
-2. Element target (`hx-target`) ada di DOM
-3. Tidak ada JavaScript error di console
-4. Response dari server valid HTML
+Troubleshooting HTMX didokumentasikan di **[Panduan Troubleshooting](troubleshooting.md#masalah-ikon)**.
 
 ### ❌ "Headers already sent" error
 

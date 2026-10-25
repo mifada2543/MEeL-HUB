@@ -251,19 +251,6 @@ require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
 ```
 
-### Path Configuration
-
-Semua path penyimpanan media dikelola melalui konstanta terpusat:
-
-```php
-// auth/settings.php
-define('MEEL_HDD_BASE', '/media/[user]/MEeL/media');
-define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
-define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
-define('MEEL_HDD_THUMB_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'thumbnail/');
-// ... dan seterusnya
-```
-
 ### Session Hijacking Prevention
 
 **Mechanism:** Setiap user memiliki `last_session_id` di database. Jika session ID di browser berbeda dengan yang di database, session dianggap dibajak/ditendang.
@@ -914,13 +901,7 @@ Perintah yt-dlp memakai `--max-filesize` dan `--match-filter "duration < N"`, da
 
 `GarbageCollector::STALE_SECONDS` = **1200**, lebih besar dari `TRANSCODE_AUDIO_TIMEOUT` (600) dan `DOWNLOAD_TIMEOUT` (900). Marker `.processing` adalah satu-satunya pelindung tabrakan dua transcode atas output yang sama, jadi nilainya tidak boleh di bawah kedua batas timeout itu.
 
-### Antrean Hapus Tertunda
-
-`cleanupPendingDeletions()` hanya boleh menghapus path yang `realpath()`-nya berada di dalam salah satu root media atau drive base. Berkas antrean berada di direktori world-writable, jadi tanpa cek containment user lokal bisa menjadwalkan penghapusan file atau direktori mana pun sebagai user web.
-
-### Batas Ekspor Admin
-
-`fetchAll()` menerima batas (default 50.000) — pratinjau 15 baris memakai `countFiltered()` + `fetchPage(15, 0)`, bukan memuat seluruh tabel terfilter ke memori.
+Antrean hapus tertunda dan batas ekspor admin didokumentasikan di **[Panduan Konfigurasi](configuration.md#antrean-hapus-tertunda)**.
 
 ---
 
