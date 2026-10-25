@@ -1269,14 +1269,6 @@ echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
 
 Audit mencakup seluruh nilai user-controlled yang dirender: bio profil, judul/deskripsi media, komentar, nama file, playlist, hasil pencarian, username chat, dan data yang tampil di panel admin. Untuk inline JS template literal (contoh: hasil pencarian chat admin), fungsi `escapeHtml()` khusus membungkus nilai user-derived sebelum injeksi HTML. Regression test (`tests/security_test.php`) memverifikasi payload `<script>alert(1)</script>`, `<img src=x onerror=alert(1)>`, dll. tidak pernah dieksekusi sebagai HTML.
 
-### Stored XSS (hardening): database menyimpan data mentah (kanonik), escaping terjadi **saat render**, per konteks:
-
-- Teks HTML polos → `htmlspecialchars($v, ENT_QUOTES, 'UTF-8')`
-- Atribut/URL → escaping konteks-atribut + `urlencode`/allowlist
-- JSON/JS → `json_encode(..., JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)`
-
-Auditnya mencakup setiap nilai yang dikendalikan user dan dirender: bio profil, judul/deskripsi media, komentar, nama berkas, playlist, hasil pencarian, username chat, dan data yang ditampilkan di panel admin. Untuk template literal JS inline (mis. hasil pencarian chat admin), fungsi `escapeHtml()` membungkus nilai turunan user sebelum injeksi HTML. Test regresi (`tests/security_test.php`) memverifikasi payload seperti `<script>alert(1)</script>` dan `<img src=x onerror=alert(1)>` tidak pernah dieksekusi sebagai HTML.
-
 ### CSRF in All Forms
 
 ```php
