@@ -505,9 +505,9 @@ ALTER TABLE users
 
 ### 📜 License & Contribution
 
-This project is licensed under **GNU General Public License v3.0 (GPLv3)**. See the [`LICENSE`](../../LICENSE) file for full text.
+This project is licensed under **GNU Affero General Public License v3.0 (AGPLv3)**. See the [`LICENSE`](../../LICENSE) file for full text.
 
-> **By submitting a Pull Request, you agree that your contributions will be licensed under GPL v3.**
+> **By submitting a Pull Request, you agree that your contributions will be licensed under AGPL v3.**
 
 #### Copyright Header on New Files
 
@@ -516,7 +516,7 @@ This project is licensed under **GNU General Public License v3.0 (GPLv3)**. See 
  * MEeL - Media Hub Platform
  *
  * @copyright Copyright (C) 2026 Mifada
- * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3
+ * @license   https://www.gnu.org/licenses/agpl-3.0.html GNU AGPL v3
  */
 ```
 ### Git Commit Convention

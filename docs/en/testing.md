@@ -309,16 +309,105 @@ guide: [Installation §5a](installation.md).
 The CI pipeline runs automatically on push/pull request:
 
 ```
-PHP Syntax (8.1, 8.2, 8.3)
+PHP Syntax (8.0–8.3)
     ├── Functional Tests          → php tests/functional_test.php
     ├── Security Tests            → php tests/security_test.php
     ├── PHPUnit Unit Tests        → php vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'
     ├── PHPUnit Integration Tests → php vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests' (MySQL service)
+    ├── Installer Regression Tests → bash tests/installer/run_all.sh (MariaDB service)
+    ├── Migration Test            → schema.sql import + idempotent migrate.php + schema parity
     ├── HTACCESS & Integrity      → .htaccess presence + permissions
+    ├── ShellCheck                → shellcheck every *.sh
     ├── Deployment Check         → php tests/check_deploy.php --no-color --hdd=…
+    ├── Tailwind Reproducibility  → npm run css:check
     └── Drive Storage Integrity   → storage path verification
             └── CI Summary
 ```
+
+### Build artifacts: snapshots vs releases
+
+CI only validates code. ZIP packages are **not** built on every commit/push,
+to avoid wasting runner time and artifact storage.
+
+| Path | Trigger | Result |
+|---|---|---|
+| **Snapshot** (`.github/workflows/snapshot.yml`) | Push to `main`/`master`/`develop`, a PR merged into another branch (except `Experiment`), or manual | 3 packages labelled with the commit SHA, 7-day artifact, **no** GitHub Release |
+| **Release** (`.github/workflows/release.yml`) | `core-vX.Y.Z` / `arcade-vX.Y.Z` tag, or `workflow_dispatch` | Final packages + `SHA256SUMS`, published as a GitHub Release |
+
+A snapshot can also be started from Actions → **MEeL Snapshot** → **Run
+workflow**, for example to package a feature branch or a specific commit.
+Snapshots never create tags or overwrite a Release. A snapshot only packages
+the source (no test gate); releases still pass syntax, unit, integration,
+security, functional, installer, and Tailwind checks.
+
+#### Package contents
+
+| Package | Contents | Requires Core? | Asset name |
+|---|---|---|---|
+| **Core** | Everything except `arcade/` | No, standalone | `MEeL-HUB-core-v2.1.0.zip` |
+| **Arcade addon** | `arcade/` only | Yes — copy into the Core root and run the Arcade migration | `MEeL-Arcade-v2.1.0.zip` |
+| **Full** | Core + `arcade/` | No, already complete | `MEeL-HUB-full-v2.1.0.zip` |
+
+A `core-v2.1.0` tag builds **all three** packages in one Release.
+An `arcade-v2.1.0` tag builds only the Arcade addon (for Arcade-only fixes).
+
+Installing the Arcade addon on top of Core:
+
+```bash
+unzip MEeL-Arcade-v2.1.0.zip -d /path/to/MEeL
+cd /path/to/MEeL && php arcade/migrate.php
+```
+
+Build locally without a tag (for testing):
+
+```bash
+bash scripts/ci/build-package.sh --track core --label local --out-dir dist
+```
+
+The script archives a commit (`HEAD`), not the working tree — commit first or
+use `--ref <tag>` to package a specific commit.
+
+#### Creating the v2.1.0 release
+
+Make sure the commit to release is on the main branch, the working tree is
+clean, and this workflow is already part of that commit (a tag points to a
+commit, not to uncommitted changes):
+
+```bash
+git tag -a core-v2.1.0 -m "MEeL Core v2.1.0"
+git push origin core-v2.1.0
+```
+
+For an Arcade-only release:
+
+```bash
+git tag -a arcade-v2.1.0 -m "MEeL Arcade v2.1.0"
+git push origin arcade-v2.1.0
+```
+
+Re-release/backfill a tag that already contains this workflow (the workflow
+runs from the default branch, then checks out the tagged commit):
+
+```bash
+gh workflow run release.yml -f tag=core-v2.1.0
+gh workflow run release.yml -f tag=core-v2.1.0 -f dry_run=true
+```
+
+`dry_run=true` only builds and uploads the artifact; it does not create or
+modify a GitHub Release. After publishing, download the assets from the
+**Releases** page or verify the checksums:
+
+```bash
+sha256sum -c SHA256SUMS
+# or verify a single asset only:
+grep 'MEeL-HUB-core-v2.1.0.zip' SHA256SUMS | sha256sum -c -
+unzip -l MEeL-HUB-core-v2.1.0.zip | head
+```
+
+> ⚠️ The tag must point to a commit that already contains this workflow,
+> including `scripts/ci/php-lint.sh` and `scripts/ci/build-package.sh`. For
+> older tags that do not, create a new tag from a commit that contains this
+> workflow; do not move an already-published tag.
 
 ### How the security regression tests run in CI
 

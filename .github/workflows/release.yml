@@ -1,8 +1,13 @@
 name: MEeL Release
 
-# ─── Trigger hanya dari tag versi ───
-# core-v*    → rilis UTAMA (HUB core)
-# arcade-v*  → rilis modul Arcade
+# ─── Trigger hanya dari tag versi ─────────────────────────────────────────
+# core-vX.Y.Z    → rilis Core + Arcade addon + Full (satu Release)
+# arcade-vX.Y.Z  → rilis Arcade addon saja
+#
+# workflow_dispatch dipakai untuk re-release tag yang sudah ada. Workflow
+# dijalankan dari branch default, lalu checkout commit yang ditunjuk tag.
+# Tag harus sudah memuat workflow ini (termasuk scripts/ci/php-lint.sh dan
+# scripts/ci/build-package.sh).
 on:
   push:
     tags:
@@ -11,19 +16,28 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag yang mau dirilis ulang (mis. core-v1.2.0-beta.1)'
+        description: 'Tag rilis (mis. core-v2.1.0 atau arcade-v2.1.0)'
         required: true
         type: string
+      dry_run:
+        description: 'Build + upload artifact saja, tanpa publish Release'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  # ─── Job 1: Tentukan track (core/arcade), versi, dan status pre-release ───
+  # ─── Job 1: validasi tag & tentukan metadata ────────────────────────────
   resolve:
     name: Resolve release metadata
     runs-on: ubuntu-latest
@@ -31,43 +45,88 @@ jobs:
       tag: ${{ steps.meta.outputs.tag }}
       track: ${{ steps.meta.outputs.track }}
       version: ${{ steps.meta.outputs.version }}
+      label: ${{ steps.meta.outputs.label }}
       prerelease: ${{ steps.meta.outputs.prerelease }}
+      dry_run: ${{ steps.meta.outputs.dry_run }}
     steps:
+      - name: Checkout (fetch tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
       - name: Resolve metadata from tag name
         id: meta
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          DRY_RUN_INPUT: ${{ inputs.dry_run }}
         run: |
-          TAG="${{ inputs.tag || github.ref_name }}"
-          if [[ "$TAG" == core-v* ]]; then
-            TRACK="core"
-            VERSION="${TAG#core-v}"
-          elif [[ "$TAG" == arcade-v* ]]; then
-            TRACK="arcade"
-            VERSION="${TAG#arcade-v}"
-          else
-            echo "❌ Tag '$TAG' tidak cocok pola core-v* atau arcade-v*"
+          set -euo pipefail
+
+          TAG="${INPUT_TAG:-$REF_NAME}"
+          if [[ ! "$TAG" =~ ^(core|arcade)-v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
+            echo "❌ Tag '$TAG' tidak cocok pola core-vX.Y.Z atau arcade-vX.Y.Z"
             exit 1
           fi
+          TRACK="${BASH_REMATCH[1]}"
+          VERSION="${BASH_REMATCH[2]}"
+
+          if ! git rev-parse --verify "refs/tags/${TAG}^{commit}" >/dev/null 2>&1; then
+            echo "❌ Tag '$TAG' tidak ditemukan pada repository ini."
+            echo "   Pastikan tag sudah di-push dan workflow dijalankan dari repo yang benar."
+            exit 1
+          fi
+          COMMIT="$(git rev-parse "refs/tags/${TAG}^{commit}")"
 
           PRERELEASE="false"
-          if [[ "$VERSION" == *-beta.* || "$VERSION" == *-rc.* || "$VERSION" == *-alpha.* ]]; then
+          if [[ "$VERSION" == *-* ]]; then
             PRERELEASE="true"
           fi
 
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "track=$TRACK" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          DRY_RUN="${DRY_RUN_INPUT:-false}"
+
+          {
+            echo "tag=$TAG"
+            echo "track=$TRACK"
+            echo "version=$VERSION"
+            echo "label=v$VERSION"
+            echo "prerelease=$PRERELEASE"
+            echo "dry_run=$DRY_RUN"
+          } >> "$GITHUB_OUTPUT"
 
           echo "▶️  Track: $TRACK | Versi: $VERSION | Pre-release: $PRERELEASE"
+          echo "▶️  Commit: $COMMIT | Dry run: $DRY_RUN"
 
-  # ─── Job 2: Jalankan test suite penuh sebelum build paket rilis ───
+  # ─── Job 2: syntax gate (PHP runtime minimum) ───────────────────────────
+  php-syntax:
+    name: PHP Syntax 8.0
+    needs: resolve
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup PHP 8.0
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          coverage: none
+          tools: none
+
+      - name: Check PHP syntax
+        run: bash scripts/ci/php-lint.sh
+
+  # ─── Job 3: test gate ───────────────────────────────────────────────────
   test-gate:
     name: Test gate sebelum release
     needs: resolve
     runs-on: ubuntu-latest
-    # WAJIB: `vendor/bin/phpunit` di bawah menjalankan KEDUA suite, termasuk
-    # 'MEeL Integration Tests' yang butuh MySQL. Tanpa service di sini seluruh
-    # integration test ERROR dan gate ini mustahil hijau.
     services:
       mysql:
         image: mysql:8.0
@@ -81,82 +140,165 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     steps:
-      - name: Checkout
+      - name: Checkout tagged commit
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.resolve.outputs.tag }}
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
           coverage: none
-          extensions: mysqli
+          extensions: mysqli, pdo_mysql, fileinfo, mbstring, intl, gd, zip, xml, curl
           tools: composer
 
-      - name: Install dependencies
-        run: composer install --no-progress --prefer-dist
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Run full test suite (unit + integration)
+      - name: Install PHP dependencies
+        run: composer install --no-progress --no-interaction --prefer-dist
+
+      - name: Install build toolchain
+        run: npm install --no-audit --no-fund
+
+      - name: Install MeCab and MySQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mecab default-mysql-client
+          # Nama paket kamus berbeda antar versi Ubuntu:
+          #   < 20.04: mecab-ipadic-utf8 ; >= 20.04: mecab-ipadic
+          sudo apt-get install -y mecab-ipadic-utf8 || sudo apt-get install -y mecab-ipadic || true
+          echo "テスト" | mecab || echo "⚠️  mecab gagal diuji — Japanese tests akan skip"
+
+      - name: Run unit tests
+        run: php vendor/bin/phpunit --no-coverage --verbose --testsuite='MEeL Core Unit Tests'
+
+      - name: Run security tests
+        run: php tests/security_test.php
+
+      - name: Run functional tests
+        run: |
+          rc=0
+          php tests/functional_test.php || rc=$?
+          # 1 = lulus dengan warning (storage/HDD belum ter-mount)
+          if [ "$rc" -gt 1 ]; then exit "$rc"; fi
+          if [ "$rc" -eq 1 ]; then
+            echo "⚠️  Functional test passed with warnings (exit 1)"
+          fi
+
+      - name: Run integration tests
         env:
           MEEL_TEST_DB_HOST: 127.0.0.1
           MEEL_TEST_DB_USER: root
           MEEL_TEST_DB_PASS: root
-        run: vendor/bin/phpunit
+        run: php vendor/bin/phpunit --no-coverage --verbose --testsuite='MEeL Integration Tests'
 
-      - name: Run arcade-specific integration tests
-        if: needs.resolve.outputs.track == 'arcade'
-        run: vendor/bin/phpunit --filter Chess
+      - name: Run installer regression tests
+        env:
+          MEEL_TEST_DB_HOST: 127.0.0.1
+          MEEL_TEST_DB_USER: root
+          MEEL_TEST_DB_PASS: root
+        run: bash tests/installer/run_all.sh
 
-  # ─── Job 3: Build paket zip & publish GitHub Release ───
-  build-and-release:
-    name: Build & publish release
-    needs: [resolve, test-gate]
+      - name: Verify Tailwind artifact is reproducible
+        run: npm run css:check
+
+  # ─── Job 4: build & verifikasi paket ────────────────────────────────────
+  build:
+    name: Build & verify packages
+    needs: [resolve, php-syntax, test-gate]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - name: Checkout
+      - name: Checkout tagged commit
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.resolve.outputs.tag }}
           fetch-depth: 1
+          persist-credentials: false
 
-      - name: Prepare clean export (tanpa file dev/test)
+      - name: Build packages
+        env:
+          TRACK: ${{ needs.resolve.outputs.track }}
+          LABEL: ${{ needs.resolve.outputs.label }}
         run: |
-          mkdir -p /tmp/export
-          rsync -a --exclude-from='.github/release-exclude.txt' ./ /tmp/export/
+          set -euo pipefail
+          mkdir -p dist
+          echo "▶️  Building $(git rev-parse HEAD) — $TRACK $LABEL"
 
-      - name: Build package — Arcade addon (arcade/ saja)
-        if: needs.resolve.outputs.track == 'arcade'
-        run: |
-          cd /tmp/export
-          zip -r "$GITHUB_WORKSPACE/MEeL-Arcade-v${{ needs.resolve.outputs.version }}.zip" arcade/
+          case "$TRACK" in
+            core)
+              # Satu tag core menghasilkan tiga varian unduhan.
+              bash scripts/ci/build-package.sh --track core   --label "$LABEL" --out-dir dist
+              bash scripts/ci/build-package.sh --track arcade --label "$LABEL" --out-dir dist
+              bash scripts/ci/build-package.sh --track full   --label "$LABEL" --out-dir dist
+              ;;
+            arcade)
+              bash scripts/ci/build-package.sh --track arcade --label "$LABEL" --out-dir dist
+              ;;
+            *)
+              echo "❌ Track tidak dikenal: $TRACK"
+              exit 1
+              ;;
+          esac
 
-      - name: Build package — Core only (tanpa folder arcade/)
-        if: needs.resolve.outputs.track == 'core'
+      - name: Show package summary
         run: |
-          rm -rf /tmp/export/arcade
-          cd /tmp/export
-          zip -r "$GITHUB_WORKSPACE/MEeL-HUB-core-v${{ needs.resolve.outputs.version }}.zip" .
+          ls -lh dist
+          {
+            echo "## 📦 Release packages"
+            echo ""
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Build package — Full (core + arcade, default download)
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages-${{ needs.resolve.outputs.tag }}
+          path: dist/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+  # ─── Job 5: publish GitHub Release ─────────────────────────────────────
+  publish:
+    name: Publish GitHub Release
+    needs: [resolve, build]
+    if: needs.resolve.outputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages-${{ needs.resolve.outputs.tag }}
+          path: dist
+
+      - name: Verify checksums
         run: |
-          # Rebuild export penuh (dengan arcade) khusus untuk paket "full"
-          rm -rf /tmp/export-full && mkdir -p /tmp/export-full
-          rsync -a --exclude-from='.github/release-exclude.txt' ./ /tmp/export-full/
-          cd /tmp/export-full
-          zip -r "$GITHUB_WORKSPACE/MEeL-HUB-full-v${{ needs.resolve.outputs.version }}.zip" .
+          cd dist
+          sha256sum -c SHA256SUMS
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.resolve.outputs.tag }}
           name: >-
-            ${{ needs.resolve.outputs.track == 'core' && 'MEeL-HUB Core' || 'MEeL Arcade' }}
+            ${{ needs.resolve.outputs.track == 'core' && 'MEeL-HUB' || 'MEeL Arcade' }}
             v${{ needs.resolve.outputs.version }}
           prerelease: ${{ needs.resolve.outputs.prerelease == 'true' }}
+          make_latest: ${{ needs.resolve.outputs.track == 'core' && needs.resolve.outputs.prerelease == 'false' && 'true' || 'false' }}
           generate_release_notes: true
+          fail_on_unmatched_files: true
           files: |
-            MEeL-HUB-full-v*.zip
-            MEeL-HUB-core-v*.zip
-            MEeL-Arcade-v*.zip
+            dist/*.zip
+            dist/SHA256SUMS
