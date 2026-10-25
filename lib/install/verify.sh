@@ -45,12 +45,13 @@ verify_run_check_deploy() {
 # ─── Print summary ───
 verify_summary() {
     local check_ok="${1:-0}"
+    local storage="${HDD_BASE:-${HDD_OVERRIDE:-${VERIFY_HDD_OVERRIDE:-not set}}}"
 
     echo ""
     echo "  Login admin     : ${ADMIN_USER:-unknown}"
     echo "  Database         : ${DB_NAME:-MEeL}@${DB_HOST:-localhost}"
     echo "  Environment      : ${ENV_CHOICE:-production} (APP_DEBUG=${DEBUG_CHOICE:-false})"
-    echo "  Storage media     : ${HDD_BASE:-not set}"
+    echo "  Storage media     : $storage"
     echo ""
 
     if [ "$check_ok" -eq 1 ]; then
