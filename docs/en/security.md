@@ -9,11 +9,11 @@ Documentation about authentication, authorization, and protection systems in MEe
 - [Security Architecture](#security-architecture)
 - [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
 - [Session Management](#session-management)
+- [Multi-Factor Authentication (MFA)](#multi-factor-authentication-mfa)
 - [CSRF Protection](#csrf-protection)
 - [IP Banning & Firewall](#ip-banning--firewall)
 - [Activity Logging](#activity-logging)
 - [API Rate Limiting](#api-rate-limiting)
-- [Multi-Factor Authentication (MFA)](#multi-factor-authentication-mfa)
 - [File Upload Security](#file-upload-security)
 - [Apache .htaccess Protection](#apache-htaccess-protection)
 - [SSRF Protection (Advanced Upload)](#ssrf-protection-advanced-upload)
@@ -100,7 +100,58 @@ Documentation about authentication, authorization, and protection systems in MEe
 | **User** | 30 | Media + comments (no Drive) |
 | **Guest** | 0 | View-only, no interaction |
 
-### Feature Gating per Role
+### Implementation in Code
+
+**Auth Middleware (`auth/auth.php`):**
+```php
+// Page protection - redirect if not logged in
+if (!isset($_SESSION['user_id'])) {
+    $next = urlencode($_SERVER['REQUEST_URI'] ?? '/');
+    header("Location: ../auth/login?next={$next}");
+    exit;
+}
+```
+
+**Role Check Pattern:**
+```php
+// Check admin role
+$stmt = $conn->prepare("SELECT role FROM users WHERE id = ? LIMIT 1");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$user_role = $stmt->get_result()->fetch_assoc()['role'] ?? 'user';
+
+if ($user_role !== 'admin') {
+    header("Location: ../?error=denied");
+    exit();
+}
+```
+
+**Guest Blocking (Like/Dislike):**
+```php
+// In like.php and MediaViewer.php
+if ($user['is_active'] != 1 || $user['role'] === 'guest') {
+    http_response_code(403);
+    exit;
+}
+```
+
+**Drive Access Control (`DriveService.php`):**
+```php
+final class DriveUserContext {
+    public function authorize(): void {
+        if (!$this->isAllowedRole()) {
+            header('Location: ' . meel_base_url_path() . '/err?code=denied', true, 302);
+            exit;
+        }
+    }
+    
+    public function isAllowedRole(): bool {
+        return in_array($this->role, ['admin', 'member'], true);
+    }
+}
+```
+
+### Admin Page Guard (`require_admin()`)
 
 | Feature | Admin | Member | User | Guest |
 |---|---|---|---|---|

@@ -543,28 +543,5 @@ sebelum rilis.
 
 ---
 
-## 📊 Hasil Test Terkini
+> Jalankan `php vendor/bin/phpunit --list-tests` untuk jumlah test terkini. Angka exact sengaja tidak diduplikasi di sini karena berubah setiap kali test ditambahkan.
 
-| Suite | Test | Lulus | Gagal | Skor |
-|---|---|---|---|---|
-| **PHPUnit (unit + integration)** | 403 | 403 | 0 | ✅ 100% |
-| **PHPUnit subset keamanan** (SsrfGuard + Drive + Proxy) | 109 | 109 | 0 | ✅ 100% |
-| **Functional Test** | 55 | 55 pass, 0 warn | 0 | ✅ 100/100 |
-| **Security Test** | 153 | 153 pass, 0 warn | 0 | ✅ 100/100 |
-| **Deployment Check** | 15 | 12 pass, 3 warn | 0 | ✅ 0 FAIL |
-
-> Angka diambil dari verifikasi September 2026. Jalankan sendiri suite tersebut
-> untuk kondisi terkini — pemeriksaan keamanan bisa memunculkan warning tambahan
-> saat storage HDD (`MEEL_HDD_BASE` / storage belum ter-mount) belum disiapkan di
-> lingkungan pengembangan. 3 **WARN Deployment** yang tersisa bersifat informatif:
-> `books/upload`, `music/upload` dan `video/upload` adalah folder fallback asli
-> (ter-track), bukan symlink ke `MEEL_HDD_BASE`; storage runtime sendiri
-> mengikuti konstanta `MEEL_HDD_*` (lihat
-> [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
-> Folder media disajikan lewat endpoint PHP — tanpa symlink sama sekali.
-
----
-
-<div align="center">
-  <sub><a href="index.md">← Kembali ke Indeks Dokumentasi</a></sub>
-</div>
