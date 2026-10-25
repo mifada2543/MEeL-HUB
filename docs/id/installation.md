@@ -564,8 +564,6 @@ Setelah semua setup selesai, jalankan migrasi database untuk mengoptimalkan skem
 
 Migration bersifat **idempotent** — aman dijalankan berulang kali. Mensync database ke skema terbaru (FULLTEXT, FK, UNIQUE KEY, MFA, MEeLCoin, index comments, interactions, user_notifications):
 
-> 💡 **Ekstensi arcade (MEeL!Mania, Chess, dll.) punya migration DB sendiri** — tabel `rooms`, `moves`, `arcade_song` & `arcade_score` dibuat lewat `arcade/migrate.php`, **bukan** bagian dari `database/migrate.php`. Install opsional:
-
 > 💡 **Ekstensi Arcade (MEeL!Mania, Chess, dll.) punya migrasi DB sendiri** — tabel `rooms`, `moves`, `arcade_song` & `arcade_score` dibuat lewat `arcade/migrate.php`, **bukan** bagian dari `database/migrate.php`. Install opsional:
 > ```bash
 > php arcade/migrate.php
