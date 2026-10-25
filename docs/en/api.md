@@ -181,24 +181,6 @@ Comment helpers shared by the watch pages & AJAX endpoints:
 **Method:** GET
 **Auth:** Required
 
-### Registration
-
-**Endpoint:** `auth/register` (handler: `auth/register.php`)
-**Method:** POST
-**Auth:** None (public)
-
-**Validation:**
-- Username min 8 characters, alphanumeric + underscore
-- Password min 8 characters
-- Username must not contain "guest"
-- Max 3 registrations per hour per session
-
-**Flow:**
-```
-Register → CSRF Check → Validation → Insert DB (is_active=2) 
-  → Wait for admin approval
-```
-
 ### MFA Verification Flow
 
 ```
@@ -221,6 +203,24 @@ Increment fail count → max 10 → Lock 5 minutes
 Set full session (user_id, username, role) + mfa_verified
   ↓
 Remove mfa_temp_uid → Redirect to index.php
+```
+
+### Registration
+
+**Endpoint:** `auth/register` (handler: `auth/register.php`)
+**Method:** POST
+**Auth:** None (public)
+
+**Validation:**
+- Username min 8 characters, alphanumeric + underscore
+- Password min 8 characters
+- Username must not contain "guest"
+- Max 3 registrations per hour per session
+
+**Flow:**
+```
+Register → CSRF Check → Validation → Insert DB (is_active=2) 
+  → Wait for admin approval
 ```
 
 ---
@@ -528,6 +528,14 @@ Redirect to admin/mfa-reset?msg=reset_ok&user={username}
 | `media_type` | string | `video` or `music` |
 | `type` | string | `like` or `dislike` |
 
+**Response:** HTML fragment (button container with updated counts):
+```html
+<div id="like-dislike-container" class="flex items-center gap-2">
+  <button class="...">Like <span>42</span></button>
+  <button class="...">Dislike <span>3</span></button>
+</div>
+```
+
 **Error Responses:**
 - `401 Unauthorized` — User not logged in
 - `403 Forbidden` — User inactive/guest
@@ -565,7 +573,17 @@ Redirect to admin/mfa-reset?msg=reset_ok&user={username}
 **Auth:** User (login required)
 **Rate Limit:** 5 requests per hour per user (CPU-intensive: runs ffprobe + ffmpeg)
 
-Fetches automatic metadata from URL (yt-dlp) for upload forms.
+Fetches automatic metadata from URL (yt-dlp) for upload forms:
+```json
+// Response
+{
+  "title": "Video Title",
+  "description": "Description...",
+  "duration": 360,
+  "thumbnail": "https://...",
+  "uploader": "Channel Name"
+}
+```
 
 ### PDF Proxy
 
@@ -573,7 +591,19 @@ Fetches automatic metadata from URL (yt-dlp) for upload forms.
 **Method:** GET
 **Auth:** User/Admin
 
-Streams PDF for book viewer with access protection.
+Streams PDF for book viewer with access protection:
+```php
+// PDF file access protection — cannot be accessed directly from URL
+header("Content-Type: application/pdf");
+
+// X-Sendfile acceleration: Apache sends file directly from disk
+// (Range/206 handled by Apache), PHP doesn't read file contents
+if (meel_xsendfile_ready($file_path)) {
+    header('X-Sendfile: ' . meel_xsendfile_header($file_path));
+    exit;
+}
+readfile($file_path);
+```
 
 ### Download Transcode
 
@@ -598,6 +628,8 @@ Downloads transcoded video→audio files with proper Content-Disposition headers
 - `Content-Type`: correct MIME type for the format
 - `Content-Disposition`: `attachment` with UTF-8 filename (RFC 5987)
 - `X-Accel-Buffering: no` (disable proxy buffering)
+- `Accept-Ranges: bytes` + `X-Sendfile` (if acceleration active — Apache
+  sends file from `/dev/shm/meel/transcode`; without acceleration: `Accept-Ranges: none`)
 
 **Error codes:**
 | Code | Meaning |
@@ -634,17 +666,53 @@ Downloads transcoded video→audio files with proper Content-Disposition headers
 **Method:** POST
 **Auth:** User/Admin
 
+**Form Data:**
+```html
+<form enctype="multipart/form-data">
+  <input type="file" name="media" accept=".mp3,.ogg,.flac,.wav,.m4a">
+  <input type="text" name="title">
+  <input type="text" name="artist">
+  <input type="text" name="album">
+  <input type="file" name="thumbnail" accept="image/*">
+</form>
+```
+
 ### Upload Book
 
 **Endpoint:** `books/upload` (handler: `books/upload.php`)
 **Method:** POST
 **Auth:** User/Admin
 
+**Form Data:**
+```html
+<form enctype="multipart/form-data">
+  <input type="file" name="book_file" accept=".pdf,.zip,.cbz">
+  <input type="text" name="title">
+  <input type="text" name="author">
+  <select name="type">
+    <option value="manga">Manga</option>
+    <option value="pdf">PDF</option>
+  </select>
+  <input type="file" name="thumbnail">
+</form>
+```
+
 ### Advanced Upload (yt-dlp URL)
 
 **Endpoint:** `upload` (handler: `upload_advanced.php`)
 **Method:** POST
 **Auth:** Admin
+
+**Form Data:**
+```html
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="...">
+  <input type="url" name="url" placeholder="https://youtube.com/watch?v=...">
+  <input type="radio" name="type" value="video"> Video
+  <input type="radio" name="type" value="music"> Music
+  <button name="start_upload">Start Upload</button>
+</form>
+```
 
 **Response:** Real-time streaming via overlay (`partials/ui.php`):
 ```
@@ -659,6 +727,21 @@ Phase 4: Done (links to media)
 **Endpoint:** `transcode.php`
 **Method:** POST
 **Auth:** User/Admin
+
+**Form Data:**
+```html
+<form method="POST">
+  <input type="number" name="video_id" placeholder="Video ID">
+  <select name="format">
+    <option value="mp3">MP3 (128kbps)</option>
+    <option value="ogg">OGG (Opus)</option>
+    <option value="m4a">M4A (AAC)</option>
+  </select>
+  <button name="start_transcode">Start Transcode</button>
+</form>
+```
+
+**Response:** Download link to converted file
 
 ---
 
@@ -721,6 +804,15 @@ One-off backfill for pre-existing media:
 **Method:** POST
 **Auth:** User
 
+**Form Data:**
+```html
+<form enctype="multipart/form-data" method="POST">
+  <textarea name="bio" placeholder="Bio..."></textarea>
+  <input type="file" name="avatar" accept="image/*">
+  <button name="update_profile">Save</button>
+</form>
+```
+
 **Process:**
 1. Update bio in database
 2. Upload & compress avatar (400px max, JPEG quality 80)
@@ -766,8 +858,20 @@ Returns an HTML fragment with content cards (from the `profile/content_card.php`
 | Function | Description |
 |---|---|
 | `handleDeleteVideo(int $id, int $user_id, mysqli $conn): array` | Delete video + HLS segments + DB record |
-| `handleDeleteMusic(int $id, int $user_id, mysqli $conn): array` | Delete audio + thumbnail + DB record |
+| `handleDeleteMusic(int $id, int $user_id, mysqli $conn): array` | Delete audio file + thumbnail + DB record |
+| `savePendingDeletions(array $pending): void` | Save pending deletion queue (batch) |
 | `cleanupPendingDeletions(): int` | Execute pending deletion queue |
+| `removeDirectoryRecursive(string $dir): void` | Delete directory recursively (HLS segments) |
+| `logActivity(mysqli $conn, int $user_id, string $action, string $media_type, int $media_id): void` | Log deletion activity |
+
+**Flow delete video:**
+```
+handleDeleteVideo()
+  → Delete HLS files (.m3u8, .ts) in storage
+  → Delete thumbnail
+  → DELETE FROM video WHERE id = ?
+  → logActivity()
+```
 
 ---
 
@@ -801,12 +905,6 @@ Every POST must carry `csrf_token`.
 | Clean Stuck | `clean_stuck_queues=1` | POST | Delete all stuck queues |
 | Force Stop | `force_stop_queue=1` + `queue_id` + `task_type` | POST | Stop specific queue |
 
-### Activity Log Cleanup
-
-| Action | Parameter | Method | Description |
-|---|---|---|---|
-| Clean Logs | `clean_logs=1` + `days` | POST | Delete logs older than N days |
-
 ### Orphan File Cleanup
 
 | Action | Parameter | Method | Description |
@@ -819,6 +917,20 @@ Scan results are cached in `temp/cache/admin_orphans.json` for **120 seconds** (
 > **Thumbnail variants are not orphans.** Every video has two thumbnail files in `video/upload/thumbnail/`: `<stem>.<ext>` (the original, registered in `video.thumbnail`) and `<stem>_sm.webp` (a derived 256px variant). The variant is written once during upload (`Uploader.php`) and used at render time by `video_thumbnail_sm()`, which matches on stem — so it is deliberately **not** registered in the DB. The scanner excludes the `_sm.<ext>` pattern in all three thumbnail directories (video, music, books) and reports the count as an info line rather than as orphans.
 >
 > **Double guard before deleting.** Because the list comes from a cache, `clean_orphans` re-queries the DB before `unlink`: `_sm` variants, files that turn out to be registered (`video.thumbnail`, `music.filename`, `books.thumbnail`), and files inside still-live folders (`video.filename`, `books.path_folder`) are counted as *skipped*, never deleted.
+
+### Guest Cleanup
+
+| Action | Parameter | Method | Description |
+|---|---|---|---|
+| Clear Guests | `clear_all_guests=1` | POST | Delete inactive guests |
+
+### Content Management
+
+| Action | Endpoint | Description |
+|---|---|---|
+| Edit Video | `admin/edit-video?id=123` (admin) / `profile/edit-video?id=123` (owner non-admin) | Edit title, description, delete |
+| Edit Music | `admin/edit-music?id=123` (admin) / `profile/edit-music?id=123` (owner non-admin) | Edit title, artist, album, delete |
+| Update Log | `controllers/UpdateManager.php` | CRUD changelog entries |
 
 ---
 
@@ -995,6 +1107,16 @@ Admin chat storage: JSON files in `storage/chats/{user_id}/isipesan.json`
 **Method:** POST
 **Auth:** Member/Admin
 
+**Form Data:**
+```html
+<form method="POST" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="...">
+  <input type="hidden" name="scope" value="public|private">
+  <input type="file" name="file_drive">
+  <button name="submit_upload">Upload</button>
+</form>
+```
+
 ### Download File
 
 **Endpoint:** `drive/download?file=xxx&type=video&scope=public&csrf_token=...` (handler: `drive/download.php`)
@@ -1006,7 +1128,17 @@ Admin chat storage: JSON files in `storage/chats/{user_id}/isipesan.json`
 **Endpoint:** `drive/delete` (handler: `drive/delete.php`)
 **Method:** POST
 **Auth:** Member/Admin
-**Body:** `csrf_token` + `file` + `type` + `scope`
+
+**Form Data:**
+```html
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="...">
+  <input type="hidden" name="file" value="filename.mp4">
+  <input type="hidden" name="type" value="video">
+  <input type="hidden" name="scope" value="public">
+  <button type="submit">Delete</button>
+</form>
+```
 
 ---
 

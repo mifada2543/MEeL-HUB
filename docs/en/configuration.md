@@ -71,6 +71,22 @@ $conn->set_charset('utf8mb4'); // charset forced to utf8mb4
 
 ### Error Handling
 
+
+```php
+// In auth/config.php
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) return false;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if ($error && in_array($error["type"], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        meel_log_critical("Fatal error: " . $error["message"] . " in " . $error["file"] . ":" . $error["line"]);
+    }
+});
+```
+
 If database credentials are empty, the system displays an educational error message.
 
 ---
@@ -414,6 +430,29 @@ else                       $interval = 10;    // ≤ 5 min → every 10 seconds
 
 ### File: `modules/core/Uploader.php`
 
+
+```php
+// In modules/core/Uploader.php
+class Uploader {
+    public function __construct(
+        private string $basePath,
+        private array $allowedMimes,
+        private int $maxSize
+    ) {}
+
+    public function handleUpload(array $file, string $module): array {
+        // Validate MIME, size, extension
+        // Generate secure filename
+        // Move to temporary location
+        // Return metadata array
+    }
+
+    private function validateMime(string $mime): bool {
+        return in_array($mime, $this->allowedMimes, true);
+    }
+}
+```
+
 ### Upload Limits
 
 ```php
@@ -484,16 +523,33 @@ protected const ENV_PREFIX = "export LD_LIBRARY_PATH='/usr/lib/x86_64-linux-gnu:
 
 ## Rate Limiting
 
-### File: `modules/auth/RateLimiter.php`
+### Upload Rate Limiting (`System.php`)
 
-File-based rate limiter for API endpoints (fail-closed on storage errors):
+Upload and drive rate limits are enforced in `modules/core/System.php`:
+
+```php
+// Default: 2 upload per hour (non-admin)
+$max_upload = 2;
+
+// Drive: 10 uploads per hour
+if ($type === 'drive_files') {
+    $max_upload = 10;
+}
+
+// Admin: unlimited
+if ($user_role === 'admin') return ['allowed' => true];
+```
+
+### API Rate Limiting (`RateLimiter.php`)
+
+`modules/auth/RateLimiter.php` — file-based rate limiter for API endpoints (fail-closed on storage errors):
 
 | Endpoint | Limit | Window | File |
 |---|:---:|:---:|---|
 | Like/Dislike | 30 | 1 minute | `controllers/api/like.php` |
 | Comment | 10 | 1 minute | `controllers/api/delete_comment.php`, `WatchController.php` |
 | Upload | 3 | 1 hour | — |
-| Transcode | 5 | 1 hour | —
+| Transcode | 5 | 1 hour | — |
 | Auto Metadata | 5 | 1 hour | `controllers/api/auto_metadata.php` |
 | Registration | 5 | 1 hour | `auth/register.php` |
 | API Generic | 60 | 1 minute | — |
@@ -505,8 +561,8 @@ private static array $limits = [
     'comment'       => ['requests' => 10, 'window' => 60],
     'upload'        => ['requests' => 3,  'window' => 3600],
     'transcode'     => ['requests' => 5,  'window' => 3600],
-    'auto_metadata' => ['requests' => 5,  'window' => 3600],
-    'register'      => ['requests' => 5,  'window' => 3600],
+    'auto_metadata' => ['requests' => 5, 'window' => 3600],
+    'register'      => ['requests' => 5, 'window' => 3600],
     'api'           => ['requests' => 60, 'window' => 60],
 ];
 ```
@@ -526,6 +582,8 @@ private static array $limits = [
 > mostly shared-IP. A per-username bucket can be layered on top, but it **must
 > stay paired** with the per-IP bucket — on its own an attacker just cycles
 > usernames to get around it.
+
+**Storage:** JSON files in `temp/ratelimit/` with `flock()` for race condition safety. Auto-cleanup via `GarbageCollector::run()`.
 
 ---
 

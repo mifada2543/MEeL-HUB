@@ -213,65 +213,16 @@ touch "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")/.meel_mount"
 
 ## HLS Streaming Issues
 
-### ❌ Video doesn't play (black screen)
-
-**Symptoms:**
-- Player loads but screen stays black
-- "No compatible source" error
-- Infinite buffering
-
-**Causes & Solutions:**
-
-1. **HLS segments not generated:**
-   ```bash
-   # Check if .m3u8 and .ts files exist
-   ls /media/[user]/MEeL/media/video/upload/video/[folder]/
-   # Should show: [name].m3u8, [name]_000.ts, ...
-   ```
-   If missing, re-transcode the video.
-
-2. **FFmpeg version too old:**
-   ```bash
-   ffmpeg -version  # Must be 6.0+
-   # Update if needed
-   sudo apt update && sudo apt upgrade ffmpeg
-   ```
-
-3. **Wrong file path in database:**
-   Check `video` table — `path_folder` must match actual folder name.
-
-4. **Browser doesn't support HLS:**
-   - HLS.js works on all modern browsers
-   - Check console for HLS.js errors
-   - Try Chrome/Firefox/Edge (Safari has native HLS)
-
-5. **CORS issues:**
-   If using external storage, ensure proper CORS headers:
-   ```apache
-   Header set Access-Control-Allow-Origin "*"
-   ```
-
-### ❌ Video stutters or buffers frequently
-
-**Causes & Solutions:**
-
-1. **Network bandwidth:** HLS adaptive bitrate should handle this
-2. **Server load:** Check CPU usage during streaming
-3. **HDD speed:** If using USB HDD, ensure USB 3.0+
-4. **Too many concurrent streams:** Each stream uses ~10-50 Mbps for 1080p
-
----
-
 ### ❌ "Connection lost" overlay appears on its own while looping a video
 
 **Symptom:** after the video has looped 2–4 times (~10 minutes), the
-"Sambungan Terputus" overlay appears and playback jumps / changes position by
+"Connection Lost" overlay appears and playback jumps / changes position by
 itself. Console shows:
 
 ```
 HTML5 video error: PipelineStatus::PIPELINE_ERROR_DECODE: video decode error! code: 3
-Mengecek ketersediaan file media di: upload/video/.../....m3u8
-Media terdeteksi online! Memulai pemulihan via HTMX...
+Checking media file availability at: upload/video/.../....m3u8
+Media detected online! Starting recovery via HTMX...
 ```
 
 **Cause:** the native `loop` attribute makes the browser seek
@@ -292,9 +243,9 @@ probe → `htmx` swap → the entire player rebuilt, for no actual fault.
 | Loop wrap | `player-events.js` | The `ended` handler tells hls.js the target position (`hls.startLoad()`) so it reloads segments instead of reacting blindly to the seek. |
 | Back buffer | `player-init.js` | Short videos (≤2 min) stay fully buffered, so looping needs no flush at all. |
 
-The log `[MEeL] Error media self-healed, playback lanjut normal.` means the
+The log `[MEeL] Error media self-healed, playback continues normal.` means the
 grace period worked. If you instead see
-`Error media tidak pulih dalam 8 detik, lanjut ke recovery`, the media really
+`Error media not recovered within 8 seconds, proceeding to recovery`, the media really
 is broken and recovery ran as designed.
 
 **Still happening?** Raise `MEDIA_ERROR_GRACE_MS` in
@@ -445,13 +396,13 @@ cat /tmp/ytdlp_error.log
 When metadata fails to parse, Transcoder displays a debug overlay:
 ```
 ╔═══════════════════════════════════════════════════╗
-║ ⚠️ DEBUG: GAGAL PARSING METADATA                 ║
+║ ⚠️ DEBUG: FAILED PARSING METADATA                 ║
 ║                                                   ║
 ║ URL: https://youtube.com/watch?v=...              ║
 ║ Return Code: 1 (0 = success)                      ║
 ║ Output: ...                                       ║
 ║                                                   ║
-║ Cek Path System:                                  ║
+║ Check System Paths:                               ║
 ║ - Node:    /usr/bin/node                          ║
 ║ - yt-dlp:  /usr/local/bin/yt-dlp                  ║
 ║ - ffmpeg:  /usr/bin/ffmpeg                        ║
@@ -657,10 +608,10 @@ icons unrendered.
 | Message | Meaning | Solution |
 |---|---|---|
 | "Storage Offline" | External HDD not mounted | Check `df -h` and path in `helpers.php` |
-| "Server sedang sibuk" (Server is busy) | Queue full (max 2) | Wait or clean stuck queues |
-| "Batas upload tercapai!" (Upload limit reached) | Rate limit active | Wait 1 hour or ask admin |
-| "File terlalu besar!" (File too large) | Exceeds quota | Upload smaller file |
-| "Durasi terlalu panjang!" (Duration too long) | Exceeds duration limit | Use shorter video |
+| "Server is busy" | Queue full (max 2) | Wait or clean stuck queues |
+| "Upload limit reached!" | Rate limit active | Wait 1 hour or ask admin |
+| "File too large!" | Exceeds quota | Upload smaller file |
+| "Duration too long!" | Exceeds duration limit | Use shorter video |
 | "Security Error" | Suspicious file | Upload file with correct format |
 
 ---
@@ -708,32 +659,48 @@ UPDATE users SET role = 'admin', is_active = 1 WHERE id = [user_id];
 
 Troubleshooting guide for yt-dlp downloads and background queue processing.
 
-### Download Queue System
+### Common Symptoms & Issues
 
-#### How the Queue Works
-
-```
-Request → Queue → Process → Download → Transcode → Complete
-                          
-                          ↓ (if failed)
-                        Retry (3x max)
-                          ↓ (if still failed)
-                        Mark as failed
-```
-
-The system uses `upload_queue` and `transcode_queue` tables to manage concurrent downloads.
-
-#### Queue Limitations
-
-- Maximum 2 simultaneous processes
-- Maximum 3 retry attempts per download
-- Queue timeout: 900 seconds (15 minutes)
+Advanced Upload uses the `yt-dlp` CLI library combined with an async PHP wrapper to download media from external URLs (YouTube, NicoNico, TikTok, etc.) and transcode it automatically. Issues usually manifest as queue status stuck at `"processing"` or **"Server is busy"** notifications despite no active processes.
 
 ---
 
-### Common Download Issues
+### Problem 1: Queue Stuck / Server Busy
 
-#### ❌ Download stuck at 0%
+The system limits to a maximum of **2 simultaneous download/transcode processes** to maintain CPU stability. If a process is interrupted unexpectedly (e.g., connection loss or sudden server crash), the queue status in the database remains stuck as `"processing"`.
+
+#### Solution A — Via Admin Panel (Recommended)
+
+1. Log in as **Admin**.
+2. Open **Admin Dashboard** (`admin/index.php`).
+3. Scroll to **Active Background Tasks** section.
+4. Click **Clean Stuck Queues** (clears tasks stuck over 30 minutes).
+5. Or click the **Force Stop** (×) icon on a specific stuck task.
+
+#### Solution B — Via Database (Manual SQL)
+
+Run the following SQL via phpMyAdmin or MySQL Client to reset queues:
+```sql
+-- Remove stuck queues
+DELETE FROM `upload_queue` 
+WHERE `status` = 'processing';
+```
+
+#### Solution C — Kill Processes at OS Level (Linux)
+
+If FFmpeg or yt-dlp processes are still running in background consuming CPU:
+```bash
+# Check for active processes
+ps aux | grep -E "yt-dlp|ffmpeg"
+
+# Force kill all download/transcode processes
+sudo killall -9 yt-dlp
+sudo killall -9 ffmpeg
+```
+
+---
+
+### Problem 2: Download Stuck at 0%
 
 **Causes:**
 1. **yt-dlp not found**: Check installation
@@ -750,7 +717,9 @@ yt-dlp --version
 yt-dlp --simulate "https://www.youtube.com/watch?v=..."
 ```
 
-#### ❌ Download completes but no file found
+---
+
+### Problem 3: Download Completes but No File Found
 
 **Causes:**
 - Wrong format selection
@@ -771,7 +740,7 @@ rm -rf /opt/lampp/htdocs/MEeL/temp/*
 
 ---
 
-### YouTube & Platform Issues
+### Problem 4: YouTube & Platform-Specific Issues
 
 #### ❌ "This video is unavailable" / Private video
 
@@ -793,40 +762,7 @@ Export cookies after signing into a YouTube account that has age verification.
 
 ---
 
-### Process Management
-
-#### ❌ Stuck queue items
-
-**Solution:**
-Use the admin panel:
-1. Go to Admin Panel → Queue Management
-2. Click "Clean Stuck Queues"
-3. Or manually force stop individual queues
-
-#### ❌ Too many processes running
-
-**Check active downloads:**
-```bash
-ps aux | grep yt-dlp
-ps aux | grep ffmpeg
-```
-
-**Kill stuck processes:**
-```bash
-sudo killall yt-dlp
-sudo killall ffmpeg
-```
-
----
-
-### Resource Issues
-
-
----
-
-### Queue Stuck Resolution
-
-#### Force Reset All Queues
+### Force Reset All Queues
 
 ```bash
 # Via MySQL
@@ -834,7 +770,7 @@ mysql -u root -p -e "UPDATE MEeL.upload_queue SET status='failed' WHERE status='
 mysql -u root -p -e "UPDATE MEeL.transcode_queue SET status='failed' WHERE status='processing';"
 ```
 
-#### Manual Process Kill
+### Manual Process Kill
 
 ```bash
 # Find and kill stuck processes

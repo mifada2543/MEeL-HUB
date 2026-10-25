@@ -136,38 +136,13 @@ class MediaLibrary {
 
 `searchVideo()` and `searchMusic()` are thin wrappers that call `searchMedia()` / `countSearchMedia()` with module-specific config (table, match columns, session key).
 
-**Pagination Metadata Array:**
-```php
-[
-    'data'        => mysqli_result,
-    'total'       => 100,
-    'page'        => 1,
-    'per_page'    => 15,
-    'total_pages' => 7,
-    'from'        => 1,
-    'to'          => 15,
-]
-```
-
 **Search resilience:** `searchVideo()`, `searchMusic()`, and `searchBooks()`
 wrap their FULLTEXT queries in `try/catch (\mysqli_sql_exception)` — a malformed
 boolean-mode query falls back to an empty result instead of a 500 error.
 
 ### 2. `modules/media/MediaViewer.php`
 
-**Class:** `MediaViewer` — view tracking, comments, recommendations:
-
-```php
-class MediaViewer {
-    public function recordView();
-    public function getMediaData();
-    public function getUserInteraction();
-    public function addComment($post_data);
-    public function getComments();
-    public function getRecommendations($limit);
-    public function getPlaylistQueue($playlist_id);
-}
-```
+**Class:** `MediaViewer` — view tracking, comments, recommendations.
 
 ### 3. `modules/media/MediaInteraction.php`
 
@@ -232,13 +207,6 @@ same global functions:
 - `meel_ffmpeg_encode_opus()` — single audio → Ogg/Opus encode path
 - `meel_insert_music_row()` — single INSERT path for the `music` table
 - `meel_magic_extension_ok()` — magic-bytes + extension validation per media kind
-
-```php
-class Uploader {
-    public function processMusic($post, $files, $base_dir);
-    public function processVideo($post, $files);
-}
-```
 
 `processVideo()` no longer takes a `$upload_dir` argument. It was never read, and
 the one caller passed `__DIR__ . "/"` to it.
@@ -453,14 +421,11 @@ PID file at the end (on success and on failure alike):
 ### 7. `modules/core/activity_logger.php`
 
 Activity logging & IP Banning:
-
-```php
-function get_real_ip();              // Anti-Cloudflare masking
-function validate_and_format_ip();   // Normalize IP
-function get_access_method();        // Direct/Proxy/Cloudflare
-function get_connection_protocol();  // IPv4 vs IPv6 detection
-function log_activity(...);          // INSERT INTO activity_log (audit trail)
-```
+- `get_real_ip()` — Anti-Cloudflare masking
+- `validate_and_format_ip()` — Normalize IP
+- `get_access_method()` — Direct/Proxy/Cloudflare
+- `get_connection_protocol()` — IPv4 vs IPv6 detection
+- `log_activity(...)` — INSERT INTO activity_log (audit trail)
 
 **Features:**
 - Guest auto-registration with `ON DUPLICATE KEY UPDATE`
@@ -474,28 +439,25 @@ function log_activity(...);          // INSERT INTO activity_log (audit trail)
 
 `helpers.php` is now a shim that requires `helpers/main.php` + `modules/auth/loader.php`.
 Functions are wrapped in `function_exists()` guard and split across per-domain subfolders:
-
-```php
-function resolve_binary(array $candidates): string;     // Binary path discovery (with MEEL_*_PATH constant override)
-function base_url(string $path = ''): string;           // Dynamic base URL (fallback via meel_base_url_path(), see base_url.php)
-function detectProtocol(): string;                       // HTTPS detection with Cloudflare support
-function time_ago($timestamp);                           // Relative time (ID locale)
-function format_bytes($bytes);                           // Human-readable file size
-function music_thumbnail_url($thumbnail);                // Thumbnail path resolver
-function get_user_usage($username);                      // User drive usage
-function get_user_role(mysqli $conn, int $user_id): string;   // Role with 3-level cache
-function invalidate_user_role_cache();                   // Force refresh role cache
-function get_csrf_token();                               // Get CSRF token
-function verify_csrf_token($token = null);               // Verify CSRF
-function check_disk_space(int $required, string $path);  // Disk capacity check
-function require_disk_space(...);                        // Pre-flight disk guard
-function dir_size(string $path, int $cache_ttl = 300): float;  // Cached directory size
-function get_audio_mime_type(string $ext): string;       // MIME type resolver
-function get_audio_format_label(string $ext): string;    // Format label
-function get_audio_format_description(string $ext): string;
-function log_drive_operation(...);                       // Drive audit trail
-function meel_validate_text_upload(string $path, int $max_bytes = 2097152): bool;  // Uploaded text file guard
-```
+- `resolve_binary(array $candidates): string` — Binary path discovery (with MEEL_*_PATH constant override)
+- `base_url(string $path = ''): string` — Dynamic base URL (fallback via meel_base_url_path(), see base_url.php)
+- `detectProtocol(): string` — HTTPS detection with Cloudflare support
+- `time_ago($timestamp)` — Relative time (ID locale)
+- `format_bytes($bytes)` — Human-readable file size
+- `music_thumbnail_url($thumbnail)` — Thumbnail path resolver
+- `get_user_usage($username)` — User drive usage
+- `get_user_role(mysqli $conn, int $user_id): string` — Role with 3-level cache
+- `invalidate_user_role_cache()` — Force refresh role cache
+- `get_csrf_token()` — Get CSRF token
+- `verify_csrf_token($token = null)` — Verify CSRF
+- `check_disk_space(int $required, string $path)` — Disk capacity check
+- `require_disk_space(...)` — Pre-flight disk guard
+- `dir_size(string $path, int $cache_ttl = 300): float` — Cached directory size
+- `get_audio_mime_type(string $ext): string` — MIME type resolver
+- `get_audio_format_label(string $ext): string` — Format label
+- `get_audio_format_description(string $ext): string`
+- `log_drive_operation(...)` — Drive audit trail
+- `meel_validate_text_upload(string $path, int $max_bytes = 2097152): bool` — Uploaded text file guard
 
 #### Uploaded text file validation
 
@@ -692,24 +654,11 @@ The `transcode` endpoint is checked **before** the coin spend and heavy work sta
 
 Three typed exception classes extending `\RuntimeException`:
 
-```php
-class ProcessException extends \RuntimeException {      // External process failure
-    public function getCommand(): string;
-    public function getExitCode(): int;
-    public function getOutput(): ?string;
-}
-
-class DownloadException extends \RuntimeException {      // URL download failure
-    public function getUrl(): string;
-    public function getStage(): ?string;  // 'validation' | 'metadata' | 'download'
-}
-
-class TranscodeException extends \RuntimeException {    // FFmpeg transcoding failure
-    public function getInput(): string;
-    public function getOutput(): ?string;
-    public function getFfmpegLog(): ?string;
-}
-```
+| Class | Description | Extra Methods |
+|---|---|---|
+| `ProcessException` | External process failure (FFmpeg, yt-dlp) | `getCommand()`, `getExitCode()`, `getOutput()` |
+| `DownloadException` | URL download failure | `getUrl()`, `getStage()` (validation/metadata/download) |
+| `TranscodeException` | FFmpeg transcoding failure | `getInput()`, `getOutput()`, `getFfmpegLog()` |
 
 ### 13. `modules/transcoder/FfmpegUtils.php` (Trait)
 
