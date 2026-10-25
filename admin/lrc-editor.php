@@ -98,9 +98,10 @@ if (is_file($lrc_path)) {
         $lines_display = [];
         foreach ($current_lines as $cl) {
             if (($cl['time'] ?? 0) > 0) {
-                $m = (int)floor($cl['time'] / 60);
-                $s = (int)floor($cl['time'] % 60);
-                $ms = (int)round(($cl['time'] - floor($cl['time'])) * 100);
+                $total_seconds = (int)floor($cl['time']);
+                $m = $total_seconds / 60;
+                $s = $total_seconds % 60;
+                $ms = (int)round(($cl['time'] - $total_seconds) * 100);
                 $lines_display[] = sprintf('[%02d:%02d.%02d] %s', $m, $s, $ms, $cl['text']);
             } else {
                 $lines_display[] = $cl['text'];
