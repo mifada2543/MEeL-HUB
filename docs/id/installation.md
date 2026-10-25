@@ -31,10 +31,7 @@ Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
 1. **Cek dependency** — PHP 8.1+ dengan ekstensi `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl`, plus
    MariaDB/MySQL; diinstall via apt bila perlu (`--skip-apt` untuk melewati).
-2. **Setup database** — buat database + import `database/schema.sql` (baris
-   `USE \`MEeL\`` yang hardcoded di schema ditulis ulang ke nama DB
-   konfigurasi); jika DB sudah ada, dilewati dengan aman (reimport hanya atas
-   konfirmasi eksplisit).
+2. **Setup database** — schema tidak punya CREATE DATABASE/USE; installer buat DB jika belum ada dan import schema.sql dengan nama DB eksplisit. Schema asli tidak diubah. Jika schema mengandung USE/CREATE DATABASE, installer peringatkan. Jika DB sudah ada berisi tabel, import dilewati (reimport hanya atas konfirmasi eksplisit; mode `--yes` memaksa reimport).
 3. **Buat akun admin** — Anda **wajib** membuat username dan password sendiri
    (tidak ada kredensial default). Script akan meminta input dan menyimpannya
    ke database dengan bcrypt hash.
@@ -169,9 +166,10 @@ SOURCE /path/ke/MEeL/database/schema.sql;
 
 #### Opsi C — Via phpMyAdmin / GUI lainnya:
 
-1. Buka phpMyAdmin → tab **Import**
-2. Pilih file `database/schema.sql`
-3. Klik **Go**
+1. Buka phpMyAdmin → **pilih atau buat database target terlebih dahulu**
+2. Pergi ke tab **Import**
+3. Pilih file `database/schema.sql`
+4. Klik **Go**
 
 ### 4. Konfigurasi Aplikasi
 
