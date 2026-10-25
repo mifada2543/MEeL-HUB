@@ -30,19 +30,19 @@ Dokumentasi detail tentang arsitektur modul, class diagram, dan business logic l
 ┌──────────────────────▼──────────────────────────────────────┐
 │              Apache Web Server (mod_rewrite)                │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────┐  │
-│  │ Video   │ │ Music    │ │ Books    │ │ Cloud Drive    │  │
-│  │ Module  │ │ Module   │ │ Module   │ │ Module         │  │
-│  └────┬────┘ └────┬─────┘ └────┬─────┘ └───────┬────────┘  │
-│       │           │            │               │           │
-│  ┌────▼───────────▼────────────▼───────────────▼────────┐  │
-│  │              Core Modules (modules/)                  │  │
-│  │  MediaLibrary · MediaViewer · MediaInteraction        │  │
-│  │  Uploader · Transcoder · System · activity_logger     │  │
-│  └──────────────────────┬────────────────────────────────┘  │
+│  ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────┐   │
+│  │ Video   │ │ Music    │ │ Books    │ │ Cloud Drive    │   │
+│  │ Module  │ │ Module   │ │ Module   │ │ Module         │   │
+│  └────┬────┘ └────┬─────┘ └────┬─────┘ └───────┬────────┘   │
+│       │           │            │               │            │
+│  ┌────▼───────────▼────────────▼───────────────▼────────┐   │
+│  │              Core Modules (modules/)                 │   │
+│  │  MediaLibrary · MediaViewer · MediaInteraction       │   │
+│  │  Uploader · Transcoder · System · activity_logger    │   │
+│  └──────────────────────┬───────────────────────────────┘   │
 │                         │                                   │
 │  ┌──────────────────────▼────────────────────────────────┐  │
-│  │              Database (MySQL/MariaDB)                  │  │
+│  │              Database (MySQL/MariaDB)                 │  │
 │  └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
