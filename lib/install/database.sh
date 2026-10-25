@@ -176,7 +176,7 @@ db_verify_migration_ready() {
     local mysql_cmd=("$MYSQL_BIN" -h "$host" -u "$user")
     [ -n "$pass" ] && mysql_cmd+=(-p"$pass")
 
-    "${mysql_cmd[@]}" "$db" -e "DESCRIBE \`migrations\`;" >/dev/null 2>&1
+    "${mysql_cmd[@]}" "$db" -e "DESCRIBE \`db_version\`;" >/dev/null 2>&1
 }
 
 # ─── Main database step ───
