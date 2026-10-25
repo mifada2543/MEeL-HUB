@@ -708,7 +708,7 @@ Detil yang ditampilkan:
 
 ## API Rate Limiting
 
-### Arsitektur
+### Arsitektur Rate Limiter
 
 `modules/auth/RateLimiter.php` menyediakan **file-based rate limiter** yang melindungi API endpoint dari abuse:
 
@@ -976,7 +976,7 @@ Semua `Deny from all` dibungkus `IfModule`. Tanpa pembungkus itu, Apache 2.4 tan
 
 Fitur Advanced Upload (`upload_advanced.php`) mengizinkan user terautentikasi mengunduh media dari URL eksternal melalui yt-dlp. Karena yt-dlp berjalan **di server**, URL yang di-supply attacker dan me-resolve ke alamat internal bisa disalahgunakan sebagai vektor Server-Side Request Forgery (SSRF) — memindai layanan loopback, endpoint metadata cloud (`169.254.169.254`), atau mesin lain di jaringan lokal.
 
-### Arsitektur
+### Arsitektur SSRF Guard
 
 `modules/auth/SsrfGuard.php` adalah **satu-satunya sumber kebenaran** untuk setiap request keluar yang dibuat atas nama user:
 

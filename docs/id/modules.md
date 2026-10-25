@@ -51,7 +51,7 @@ Dokumentasi detail tentang arsitektur modul, class diagram, dan business logic l
 
 ## Core Modules (`modules/core/`, `modules/media/`, `modules/exceptions/`, `modules/transcoder/`)
 
-### 📁 Struktur Direktori
+### 📁 Struktur Direktori Modul
 
 ```
 modules/
@@ -1534,7 +1534,7 @@ Redirect ke index.php
 
 MEeL menggunakan pendekatan modular untuk JavaScript dan CSS — setiap modul memiliki file-file terpisah yang dimuat secara dinamis.
 
-### Struktur Direktori
+### Struktur Direktori Assets
 
 ```
 assets/
@@ -1726,7 +1726,7 @@ Keduanya memiliki height yang sama — video 4:3 lebih kecil dan centered, seper
 }
 ```
 
-### File Terkait
+### File Terkait Video Player
 
 | File | Peran |
 |---|---|
@@ -1767,7 +1767,7 @@ CREATE TABLE chat_messages (
 - Notification type `admin_chat` untuk pesan ke admin
 - Rate limiting: 30 pesan per menit per user
 
-### File Terkait
+### File Terkait Chat
 
 | File | Peran |
 |---|---|

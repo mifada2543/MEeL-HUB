@@ -403,7 +403,7 @@ Page `admin/activity_log.php` provides a dedicated audit trail viewer with 3 tab
 
 ## API Rate Limiting
 
-### Architecture
+### Rate Limiter Architecture
 
 `modules/auth/RateLimiter.php` provides **file-based rate limiting** that protects API endpoints from abuse:
 
@@ -727,7 +727,7 @@ Every `Deny from all` is wrapped in `IfModule`. Without that wrapper, Apache 2.4
 
 The Advanced Upload feature (`upload_advanced.php`) lets authenticated users download media from external URLs via yt-dlp. Because yt-dlp runs **on the server**, an attacker-supplied URL that resolves to an internal address could be abused as a Server-Side Request Forgery (SSRF) vector — probing loopback services, cloud metadata endpoints (`169.254.169.254`), or other machines on the local network.
 
-### Architecture
+### SSRF Guard Architecture
 
 `modules/auth/SsrfGuard.php` is the **single source of truth** for every outbound request made on behalf of a user:
 

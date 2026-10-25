@@ -871,7 +871,7 @@ Watch sidebar recommendations use the same auto-load pattern: a `.rec-sentinel` 
 **Swap:** `innerHTML`
 **Server-side pagination** via `BookRepository::searchBooks()` (24 per page).
 
-### Like/Dislike
+### Like/Dislike (HTMX swap)
 
 **Trigger:** Click like/dislike button
 **Request:** `api/like` (handler: `controllers/api/like.php`) with `hx-vals`

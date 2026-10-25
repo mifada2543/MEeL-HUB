@@ -987,7 +987,7 @@ Rekomendasi sidebar watch memakai pola auto-load yang sama: `.rec-sentinel` deng
 **Swap:** `innerHTML`
 **Pagination server-side** via `BookRepository::searchBooks()` (24 per halaman).
 
-### Like/Dislike
+### Like/Dislike (Swap HTMX)
 
 **Trigger:** Click like/dislike button
 **Request:** `api/like` (handler: `controllers/api/like.php`) with `hx-vals`
