@@ -81,3 +81,27 @@ exit 0
 EOF
     chmod +x "$bin/ps"
 }
+
+# The installer invokes sudo for file ownership and service restarts. Keep the
+# test runnable on a developer machine that has sudo but not passwordless sudo
+# by providing a no-op shim; file operations on the disposable tree are owned
+# by the current user anyway. CI uses its real passwordless sudo.
+meel_test_prepare_bin() {
+    local bin="$1"
+    meel_test_make_no_fpm_bin "$bin"
+    if sudo -n true 2>/dev/null; then
+        return 0
+    fi
+    cat > "$bin/sudo" <<'EOF'
+#!/usr/bin/env bash
+case "$1" in
+    systemctl|service|chown|chmod|chgrp|a2enmod|a2ensite|a2dismod|a2dissite|phpenmod|/opt/lampp/lampp)
+        exit 0
+        ;;
+    *)
+        exec "$@"
+        ;;
+esac
+EOF
+    chmod +x "$bin/sudo"
+}
