@@ -6,28 +6,22 @@
  *
  * @var \mysqli $conn
  */
-
 require_once __DIR__ . '/../modules/core/helpers.php';
 meel_boot_session();
 include __DIR__ . '/../auth/auth.php';
 require_once __DIR__ . '/../modules/media/MediaAdminRepository.php';
-
 $_LRC_CONTEXT = $_LRC_CONTEXT ?? 'admin';
-
 if (!isset($_SESSION['user_id'])) {
     header('Location: ' . base_url('/auth/login'));
     exit;
 }
-
 $user_id = $_SESSION['user_id'];
 $is_admin = is_admin($conn);
 $edit_id = (int)($_GET['id'] ?? 0);
-
 if ($edit_id <= 0) {
     header('Location: ' . base_url('/music/beranda'));
     exit;
 }
-
 if ($_LRC_CONTEXT === 'admin' && !$is_admin) {
     header('Location: ' . base_url('/profile/lrc-editor?id=' . $edit_id));
     exit;
@@ -35,24 +29,19 @@ if ($_LRC_CONTEXT === 'admin' && !$is_admin) {
     header('Location: ' . base_url('/admin/lrc-editor?id=' . $edit_id));
     exit;
 }
-
 $adminMedia = new MediaAdminRepository($conn);
 $music = $adminMedia->getMedia('music', $edit_id);
-
 if (!$music) {
     header('Location: ' . base_url('/err/?code=not_found'));
     exit;
 }
-
 $is_owner = ((int)$music['user_id'] === (int)$user_id);
 if (!$is_admin && !$is_owner) {
     header('Location: ' . base_url('/err/?code=denied'));
     exit;
 }
-
 $save_status = "";
 $error_msg = "";
-
 if (isset($_POST['save_lyrics'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $error_msg = "CSRF token tidak valid.";
@@ -61,7 +50,6 @@ if (isset($_POST['save_lyrics'])) {
         $title = trim($_POST['song_title'] ?? $music['title']);
         $artist = trim($_POST['song_artist'] ?? $music['artist'] ?? '');
         $content = trim($_POST['lyrics_content'] ?? '');
-
         if ($content !== '') {
             $lines_raw = explode("\n", str_replace(["\r\n", "\r"], "\n", $content));
             $lrc_lines = [];
@@ -86,10 +74,8 @@ if (isset($_POST['save_lyrics'])) {
         }
     }
 }
-
 $current_content = '';
 $current_lines = [];
-
 $lrc_path = get_music_lyrics_path($edit_id, 'id');
 if (is_file($lrc_path)) {
     $raw = @file_get_contents($lrc_path);
@@ -110,7 +96,9 @@ if (is_file($lrc_path)) {
         $current_content = implode("\n", $lines_display);
     }
 }
-
+$has_existing_lyrics = !empty(trim($current_content));
+$search_query = urlencode($music['title'] . ($music['album'] ? ' ' . $music['album'] : ''));
+$search_url = "https://www.google.com/search?q={$search_query}+lirik";
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -164,6 +152,15 @@ if (is_file($lrc_path)) {
                     <div class="editor-mode-tabs">
                         <button type="button" class="editor-mode-tab active" data-mode="simple" onclick="switchMode('simple')">Sederhana</button>
                         <button type="button" class="editor-mode-tab" data-mode="synced" onclick="switchMode('synced')">Disinkronkan</button>
+                        <button type="button" class="editor-mode-tab" onclick="window.open('<?= $search_url ?>', '_blank')" title="Cari lirik di Google">
+                            <i data-lucide="search"></i> Cari Lirik
+                        </button>
+                        <button type="button" class="editor-mode-tab simple-only" onclick="openPasteModal()" title="Buka dialog tempel lirik">
+                            <i data-lucide="clipboard"></i> Tempel Lirik
+                        </button>
+                        <button type="button" class="editor-mode-tab simple-only" id="btn-copy-lyrics" onclick="copyLyrics()" <?= $has_existing_lyrics ? '' : 'disabled' ?> title="<?= $has_existing_lyrics ? 'Salin lirik yang ada ke clipboard' : 'Tidak ada lirik untuk disalin' ?>">
+                            <i data-lucide="copy"></i> Salin Lirik
+                        </button>
                     </div>
                 </div>
                 <div class="editor-top-right">
@@ -172,13 +169,11 @@ if (is_file($lrc_path)) {
                     </button>
                 </div>
             </div>
-
             <form id="editor-form" method="POST" style="display:flex;flex-direction:column;flex:1;overflow:hidden;" onsubmit="return beforeSubmit()">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                 <input type="hidden" name="save_lyrics" value="1">
                 <input type="hidden" name="song_title" value="<?= htmlspecialchars($music['title']) ?>">
                 <input type="hidden" name="song_artist" value="<?= htmlspecialchars($music['artist'] ?? '') ?>">
-
                 <div id="mode-simple" class="editor-mode-panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
                     <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:16px;">
                         <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:var(--admin-muted);margin-bottom:8px;">Lirik Tertanam</label>
@@ -187,7 +182,6 @@ if (is_file($lrc_path)) {
                             style="flex:1;border-radius:12px;padding:16px;font-size:14px;line-height:1.8;resize:none;font-family:inherit;"><?= htmlspecialchars($current_content) ?></textarea>
                     </div>
                 </div>
-
                 <div id="mode-synced" class="editor-mode-panel" style="flex:1;display:none;flex-direction:column;overflow:hidden;">
                     <div id="synced-lines-container" style="flex:1;overflow-y:auto;padding:12px 16px;">
                     </div>
@@ -198,7 +192,6 @@ if (is_file($lrc_path)) {
                     </div>
                 </div>
             </form>
-
             <div id="editor-player-bar" class="editor-player-bar" style="display:none;">
                 <div class="editor-seekbar-wrap">
                     <input type="range" id="editor-seekbar" min="0" max="1000" value="0" step="1"
@@ -222,7 +215,6 @@ if (is_file($lrc_path)) {
             </div>
         </main>
     </div>
-
     <?php include __DIR__ . '/../partials/footer.php'; ?>
     <script src="../assets/js/compatibilitas/plyr.min.js<?= meel_asset_version('assets/js/compatibilitas/plyr.min.js') ?>"></script>
     <script src="../assets/js/shared/htmx-lucide.js<?= meel_asset_version('assets/js/shared/htmx-lucide.js') ?>"></script>
@@ -232,7 +224,98 @@ if (is_file($lrc_path)) {
         var MUSIC_FILENAME = <?= json_encode($music['filename']) ?>;
         var STREAM_URL = '<?= base_url('/music/stream?id=' . (int)$edit_id) ?>';
         var EXISTING_LINES = <?= json_encode($current_lines) ?>;
-
+        var CURRENT_CONTENT = <?= json_encode($current_content) ?>;
+        var HAS_EXISTING_LYRICS = <?= json_encode($has_existing_lyrics) ?>;
+        (function() {
+            var originalSwitchMode = window.switchMode;
+            window.switchMode = function(mode) {
+                if (typeof originalSwitchMode === 'function') {
+                    originalSwitchMode(mode);
+                }
+                var isSimple = mode === 'simple';
+                var simpleOnlyTabs = document.querySelectorAll('.editor-mode-tab.simple-only');
+                simpleOnlyTabs.forEach(function(tab) {
+                    tab.style.display = isSimple ? '' : 'none';
+                });
+            };
+        })();
+        function openPasteModal() {
+            var modal = document.createElement('div');
+            modal.id = 'paste-lyrics-modal';
+            modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px;';
+            modal.innerHTML = 
+                '<div style="background:#141820;border:1px solid rgba(255,255,255,0.08);border-radius:16px;width:100%;max-width:560px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;">' +
+                '  <div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;">' +
+                '    <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#f97316;">Tempel Lirik</span>' +
+                '    <button onclick="closePasteModal()" style="background:none;border:none;color:#888;cursor:pointer;padding:4px;" title="Tutup"><i data-lucide="x" style="width:20px;height:20px;"></i></button>' +
+                '  </div>' +
+                '  <div style="padding:20px;overflow:auto;flex:1;">' +
+                '    <textarea id="paste-lyrics-textarea" placeholder="Paste lirik mentah di sini (tanpa timestamp)...&#10;&#10;Setiap baris akan jadi satu lirik.&#10;Timestamp akan ditambahkan otomatis saat disimpan." style="width:100%;min-height:280px;border-radius:10px;padding:16px;font-size:14px;line-height:1.8;resize:none;font-family:inherit;background:#0d1017;border:1px solid rgba(255,255,255,0.06);color:#e5e7eb;outline:none;box-sizing:border-box;"></textarea>' +
+                '  </div>' +
+                '  <div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:flex-end;gap:12px;">' +
+                '    <button onclick="closePasteModal()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#aaa;padding:10px 20px;border-radius:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;">Batal</button>' +
+                '    <button onclick="applyPasteLyricsFromModal()" style="background:#f97316;border:none;color:#000;padding:10px 20px;border-radius:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;"><i data-lucide="check" style="width:14px;height:14px;vertical-align:middle;"></i> Gunakan Lirik Ini</button>' +
+                '  </div>' +
+                '</div>';
+            document.body.appendChild(modal);
+            if (typeof lucide !== 'undefined') lucide.createIcons({}, modal);
+            setTimeout(function() {
+                var ta = document.getElementById('paste-lyrics-textarea');
+                if (ta) ta.focus();
+            }, 50);
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) closePasteModal();
+            });
+        }
+        function closePasteModal() {
+            var modal = document.getElementById('paste-lyrics-modal');
+            if (modal) modal.remove();
+        }
+        function applyPasteLyricsFromModal() {
+            var pasteTextarea = document.getElementById('paste-lyrics-textarea');
+            var mainTextarea = document.getElementById('lyrics-textarea');
+            if (pasteTextarea && mainTextarea) {
+                var content = pasteTextarea.value.trim();
+                if (content) {
+                    mainTextarea.value = content;
+                    closePasteModal();
+                    showToast('Lirik diterapkan ke mode Sederhana');
+                } else {
+                    showToast('Tidak ada lirik untuk diterapkan');
+                }
+            }
+        }
+        function copyLyrics() {
+            if (!HAS_EXISTING_LYRICS || !CURRENT_CONTENT.trim()) {
+                showToast('Tidak ada lirik untuk disalin');
+                return;
+            }
+            navigator.clipboard.writeText(CURRENT_CONTENT).then(function() {
+                showToast('Lirik berhasil disalin ke clipboard');
+            }).catch(function() {
+                showToast('Gagal menyalin lirik');
+            });
+        }
+        function showToast(message) {
+            var existing = document.getElementById('editor-toast');
+            if (existing) existing.remove();
+            var toast = document.createElement('div');
+            toast.id = 'editor-toast';
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1f2937;color:#f97316;padding:12px 20px;border-radius:8px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3);animation:slideIn 0.3s ease;';
+            var style = document.getElementById('toast-style');
+            if (!style) {
+                style = document.createElement('style');
+                style.id = 'toast-style';
+                style.textContent = '@keyframes slideIn { from {opacity:0;transform:translateY(20px);} to {opacity:1;transform:translateY(0);} } @keyframes slideOut { from {opacity:1;transform:translateY(0);} to {opacity:0;transform:translateY(20px);} }';
+                document.head.appendChild(style);
+            }
+            document.body.appendChild(toast);
+            setTimeout(function() {
+                toast.style.animation = 'slideOut 0.3s ease forwards';
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 3000);
+        }
         (function () {
             var alert = document.getElementById("save-status-alert");
             if (!alert) return;

@@ -171,7 +171,18 @@
     activeLineIdx = -1;
     var triggerBtn = document.getElementById("btn-karaoke");
     if (triggerBtn) {
-      triggerBtn.style.display = lyricsData.length > 0 ? "" : "none";
+      var config = window.MEEL_MUSIC_CONFIG;
+      var canEdit = config && config.canEditLyrics;
+      triggerBtn.style.display = (lyricsData.length > 0 || canEdit) ? "" : "none";
+      if (lyricsData.length === 0 && canEdit) {
+        triggerBtn.innerHTML = '<i data-lucide="plus" class="w-3 h-3"></i>Tambahkan Lirik';
+        triggerBtn.onclick = function() { location.href = config.lyricEditorUrl || "/profile/lrc-editor?id=" + config.id; };
+        if (typeof lucide !== "undefined") lucide.createIcons({}, triggerBtn);
+      } else if (lyricsData.length > 0) {
+        triggerBtn.innerHTML = '<i data-lucide="mic" class="w-3 h-3"></i>Lirik';
+        triggerBtn.onclick = window.openKaraoke;
+        if (typeof lucide !== "undefined") lucide.createIcons({}, triggerBtn);
+      }
     }
   };
   function timeupdateHandler() {
