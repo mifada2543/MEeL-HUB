@@ -97,6 +97,27 @@ for DIR in tools storage assets/dict; do
     grep -q 'Require all denied\|Deny from all' "$PROJECT/$DIR/.htaccess"
 done
 
+# check_deploy must reject a symlink that escapes the configured HDD, not just
+# print a warning and still exit successfully.
+CHECK_LOG="$TMP/check-deploy-wrong.log"
+rm -f "$PROJECT/video/upload"
+ln -s "$HDD/drive/private_admins" "$PROJECT/video/upload"
+set +e
+(
+    cd "$PROJECT" || exit 1
+    "$PHP_BIN" tests/check_deploy.php --hdd="$HDD" --no-color
+) >"$CHECK_LOG" 2>&1
+CHECK_RC=$?
+set -e
+if [ "$CHECK_RC" -eq 0 ]; then
+    echo "check_deploy accepted a symlink outside MEEL_HDD_BASE" >&2
+    tail -40 "$CHECK_LOG" >&2
+    exit 1
+fi
+grep -q 'FAIL.*target' "$CHECK_LOG"
+rm -f "$PROJECT/video/upload"
+ln -s "$HDD/video/upload" "$PROJECT/video/upload"
+
 # Regression assertions for the logs and final verdict.
 if grep -qi 'target mismatch' "$LOG"; then
     echo "installer reported a symlink target mismatch" >&2
