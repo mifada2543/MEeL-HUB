@@ -44,6 +44,21 @@ assets/manifest.json             linguist-vendored
 # MEeL Logo
 assets/MEeL.png                  linguist-vendored
 
+# ─── RELEASE ARCHIVE (git archive) ────────────────────────
+# Berkas berikut tidak ikut ke ZIP rilis. Daftar ini menggantikan
+# .github/release-exclude.txt dan berlaku untuk semua paket.
+# Jaga agar tetap sinkron dengan ARCHIVE_EXCLUDES di
+# scripts/ci/build-package.sh (skrip memakai pathspec eksplisit agar
+# tag lama tanpa aturan ini tetap menghasilkan paket bersih).
+/.github            export-ignore
+/.gitignore         export-ignore
+/.gitattributes     export-ignore
+/tests              export-ignore
+/phpunit.xml        export-ignore
+/composer.lock      export-ignore
+/CHANGELOG-core.md  export-ignore
+/CHANGELOG-arcade.md  export-ignore
+
 # ─── FORCE HTML DETECTION ─────────────────────────────────
 # Mencegah inline JS/CSS di index.html mempengaruhi statistik
 index.html                       linguist-language=HTML

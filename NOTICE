@@ -7,8 +7,8 @@ MEeL-HUB is a self-hosted personal media hub for video streaming, music playback
 digital books, cloud storage, media transcoding, and optional arcade features.
 
 Unless a file or component states otherwise, the source code in this repository is
-licensed under the GNU General Public License, version 3 (GPLv3). A copy of the
-license is available in the LICENSE file.
+licensed under the GNU Affero General Public License, version 3 (AGPLv3). A
+copy of the license is available in the LICENSE file.
 
 This NOTICE file is informational only. It does not modify, replace, or add to the
 terms of any applicable license. When redistributing MEeL-HUB, preserve this file,

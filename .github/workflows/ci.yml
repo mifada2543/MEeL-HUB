@@ -42,18 +42,7 @@ jobs:
           coverage: none
           tools: none
       - name: PHP Syntax Check (php -l)
-        run: |
-          failed=0
-          count=0
-          while IFS= read -r -d '' file; do
-            if ! php -l "$file" 2>&1; then
-              echo "❌ Syntax error in: $file"
-              failed=1
-            fi
-            count=$((count + 1))
-          done < <(find . -name '*.php' -not -path './vendor/*' -not -path './.git/*' -not -path './assets/dict/*' -print0)
-          if [ $failed -eq 1 ]; then exit 1; fi
-          echo "✅ All $count PHP files passed syntax check on PHP ${{ matrix.php-version }}."
+        run: bash scripts/ci/php-lint.sh
   functional-tests:
     name: Functional Tests
     runs-on: ubuntu-latest
@@ -681,15 +670,13 @@ jobs:
             local result="$2"
             if [ "$result" == "success" ]; then
               echo "| ✅ $name | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-            elif [ "$result" == "cancelled" ]; then
+            elif [ "$result" == "skipped" ] || [ "$result" == "cancelled" ]; then
               echo "| ⏭️  $name | ⏭️ Skipped |" >> $GITHUB_STEP_SUMMARY
             else
               echo "| ❌ $name | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
             fi
           }
-          report_job "PHP Syntax (8.1)" "${{ needs.php-syntax.result }}"
-          report_job "PHP Syntax (8.2)" "${{ needs.php-syntax.result }}"
-          report_job "PHP Syntax (8.3)" "${{ needs.php-syntax.result }}"
+          report_job "PHP Syntax (8.0–8.3)" "${{ needs.php-syntax.result }}"
           report_job "Functional Tests" "${{ needs.functional-tests.result }}"
           report_job "Security Tests" "${{ needs.security-tests.result }}"
           report_job "PHPUnit Unit Tests" "${{ needs.phpunit-tests.result }}"
@@ -706,7 +693,7 @@ jobs:
             echo "### ⚡ Optimizations applied" >> "$GITHUB_STEP_SUMMARY"
             cat <<'EOF'
           - **Parallel jobs** — syntax check, tests, security, and integrity run in parallel
-          - **Matrix strategy** — syntax check across PHP 8.1, 8.2, 8.3
+          - **Matrix strategy** — syntax check across PHP 8.0, 8.1, 8.2, 8.3
           - **Shallow clone** — `fetch-depth: 1` for faster checkout
           - **Concurrency** — cancels redundant runs on the same branch
           - **Xdebug disabled** — `coverage: none` for faster PHP execution
@@ -715,3 +702,8 @@ jobs:
           - **Job dependency** — functional/security tests wait for syntax check
           EOF
           } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ contains(needs.*.result, 'failure') }}" = "true" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "❌ **One or more jobs failed.**" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi

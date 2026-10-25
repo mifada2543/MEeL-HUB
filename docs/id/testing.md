@@ -310,16 +310,106 @@ lengkap: [Instalasi §5a](installation.md).
 CI pipeline berjalan otomatis pada push/pull request:
 
 ```
-PHP Syntax (8.1, 8.2, 8.3)
+PHP Syntax (8.0–8.3)
     ├── Functional Tests          → php tests/functional_test.php
     ├── Security Tests            → php tests/security_test.php
     ├── PHPUnit Unit Tests        → php vendor/bin/phpunit --no-coverage --testsuite='MEeL Core Unit Tests'
     ├── PHPUnit Integration Tests → php vendor/bin/phpunit --no-coverage --testsuite='MEeL Integration Tests' (service MySQL)
+    ├── Installer Regression Tests → bash tests/installer/run_all.sh (service MariaDB)
+    ├── Migration Test            → impor schema.sql + migrate.php idempoten + schema parity
     ├── HTACCESS & Integrity      → kehadiran .htaccess + permission
+    ├── ShellCheck                → shellcheck semua *.sh
     ├── Deployment Check         → php tests/check_deploy.php --no-color --hdd=…
+    ├── Tailwind Reproducibility  → npm run css:check
     └── Drive Storage Integrity   → verifikasi path storage
             └── CI Summary
 ```
+
+### Build paket: snapshot vs release
+
+CI hanya memvalidasi kode. Paket ZIP **tidak** dibangun pada setiap
+commit/push, supaya tidak memboroskan runner dan storage.
+
+| Jalur | Trigger | Hasil |
+|---|---|---|
+| **Snapshot** (`.github/workflows/snapshot.yml`) | Push ke `main`/`master`/`develop`, PR yang di-merge ke branch lain (kecuali `Experiment`), atau manual | 3 paket dengan label SHA, artifact 7 hari, **tanpa** GitHub Release |
+| **Release** (`.github/workflows/release.yml`) | Tag `core-vX.Y.Z` / `arcade-vX.Y.Z`, atau `workflow_dispatch` | Paket final + `SHA256SUMS`, dipublikasikan sebagai GitHub Release |
+
+Snapshot juga bisa dijalankan manual dari tab Actions → **MEeL Snapshot** →
+**Run workflow**, misalnya untuk branch fitur atau commit tertentu. Snapshot
+tidak membuat tag dan tidak menimpa Release. Snapshot hanya mengemas kode
+(tanpa test gate); rilis tetap melewati syntax, unit, integration, security,
+functional, installer, dan Tailwind.
+
+#### Isi paket
+
+| Paket | Isi | Butuh Core? | Nama aset |
+|---|---|---|---|
+| **Core** | Semua berkas kecuali `arcade/` | Tidak, berdiri sendiri | `MEeL-HUB-core-v2.1.0.zip` |
+| **Arcade addon** | Hanya `arcade/` | Ya — seperti plugin, copy ke root Core lalu jalankan migrasi Arcade | `MEeL-Arcade-v2.1.0.zip` |
+| **Full** | Core + `arcade/` | Tidak, sudah lengkap | `MEeL-HUB-full-v2.1.0.zip` |
+
+Tag `core-v2.1.0` membangun **ketiga** paket dalam satu Release.
+Tag `arcade-v2.1.0` hanya membangun paket Arcade addon (untuk rilis
+perbaikan modul Arcade saja).
+
+Memasang Arcade addon di atas Core:
+
+```bash
+unzip MEeL-Arcade-v2.1.0.zip -d /path/ke/MEeL
+cd /path/ke/MEeL && php arcade/migrate.php
+```
+
+Build lokal tanpa tag (untuk uji coba):
+
+```bash
+bash scripts/ci/build-package.sh --track core --label local --out-dir dist
+```
+
+Skrip mengarsipkan commit (`HEAD`), bukan working tree — commit dulu atau
+pakai `--ref <tag>` bila ingin mengemas commit tertentu.
+
+#### Membuat rilis v2.1.0
+
+Pastikan commit yang akan dirilis sudah ada di branch utama, working tree
+bersih, dan workflow sudah ikut ter-commit (tag hanya menunjuk commit, bukan
+perubahan yang belum di-commit):
+
+```bash
+git tag -a core-v2.1.0 -m "MEeL Core v2.1.0"
+git push origin core-v2.1.0
+```
+
+Untuk rilis modul Arcade saja:
+
+```bash
+git tag -a arcade-v2.1.0 -m "MEeL Arcade v2.1.0"
+git push origin arcade-v2.1.0
+```
+
+Re-release/backfill tag yang sudah memuat workflow ini (workflow dijalankan
+dari branch default, lalu checkout commit tag):
+
+```bash
+gh workflow run release.yml -f tag=core-v2.1.0
+gh workflow run release.yml -f tag=core-v2.1.0 -f dry_run=true
+```
+
+`dry_run=true` hanya membangun dan mengunggah artifact, tanpa membuat/mengubah
+GitHub Release. Setelah rilis, unduh aset dari halaman **Releases** atau
+verifikasi checksum:
+
+```bash
+sha256sum -c SHA256SUMS
+# atau verifikasi satu aset saja:
+grep 'MEeL-HUB-core-v2.1.0.zip' SHA256SUMS | sha256sum -c -
+unzip -l MEeL-HUB-core-v2.1.0.zip | head
+```
+
+> ⚠️ Tag harus menunjuk commit yang sudah memuat workflow versi ini, termasuk
+> `scripts/ci/php-lint.sh` dan `scripts/ci/build-package.sh`. Untuk tag lama
+> yang belum memilikinya, buat tag baru dari commit yang sudah memuat workflow
+> ini; jangan pindahkan tag yang sudah dipublikasikan.
 
 ### Bagaimana test regresi keamanan berjalan di CI
 

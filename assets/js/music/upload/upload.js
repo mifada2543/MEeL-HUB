@@ -1,6 +1,6 @@
 /** MEeL - Media Hub Platform
  * @copyright Copyright (C) 2026 Mifada
- * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3 */
+ * @license   https://www.gnu.org/licenses/agpl-3.0.html GNU AGPL v3 */
 let coverManual = false;
 function handleAudioFile(input) {
   if (!input.files || !input.files[0]) return;

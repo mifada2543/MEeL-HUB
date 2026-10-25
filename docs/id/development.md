@@ -747,9 +747,9 @@ ALTER TABLE users
 
 ### 📜 Lisensi & Kontribusi
 
-Proyek ini dilisensikan di bawah **GNU General Public License v3.0 (GPLv3)**. Lihat file [`LICENSE`](../../LICENSE) untuk teks lengkap.
+Proyek ini dilisensikan di bawah **GNU Affero General Public License v3.0 (AGPLv3)**. Lihat file [`LICENSE`](../../LICENSE) untuk teks lengkap.
 
-> **Dengan mengirimkan Pull Request, Anda menyetujui bahwa kontribusi Anda akan dilisensikan di bawah GPL v3** — lihat [Pasal 10](https://www.gnu.org/licenses/gpl-3.0.html#section10) (Automatic Licensing of Downstream Recipients).
+> **Dengan mengirimkan Pull Request, Anda menyetujui bahwa kontribusi Anda akan dilisensikan di bawah AGPL v3** — lihat [Pasal 10](https://www.gnu.org/licenses/agpl-3.0.html#section10) (Automatic Licensing of Downstream Recipients).
 
 #### Copyright Header pada File Baru
 
@@ -760,15 +760,15 @@ Setiap file sumber baru (PHP, JavaScript, CSS) **wajib** menyertakan header copy
  * MEeL - Media Hub Platform
  *
  * @copyright Copyright (C) 2026 Mifada
- * @license   https://www.gnu.org/licenses/gpl-3.0.html GNU GPL v3
+ * @license   https://www.gnu.org/licenses/agpl-3.0.html GNU AGPL v3
  */
 ```
 
 #### Atribusi & Modified Version
 
-GPL v3 mewajibkan (Pasal 5a):
+AGPL v3 mewajibkan (Pasal 5a):
 1. Setiap file yang dimodifikasi harus diberi **notice perubahan** yang jelas
-2. File yang dimodifikasi harus tetap **mengacu pada lisensi GPL v3**
+2. File yang dimodifikasi harus tetap **mengacu pada lisensi AGPL v3**
 3. **Karya turunan** (derivative work) harus dirilis di bawah **lisensi yang sama**
 ### Git Commit Convention
 
