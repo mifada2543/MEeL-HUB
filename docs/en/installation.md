@@ -31,10 +31,7 @@ Steps it runs (idempotent for most of them):
 1. **Check dependencies** — PHP 8.1+ with the `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl` extensions, plus
    MariaDB/MySQL; installed via apt when needed (`--skip-apt` to skip).
-2. **Database setup** — create the database and import `database/schema.sql`
-   (the hardcoded `USE \`MEeL\`` line in the schema is rewritten to the
-   configured DB name); if the DB already exists it is safely skipped
-   (reimport only on explicit confirmation).
+2. **Database setup** — schema has no CREATE DATABASE/USE; installer creates DB if missing and imports schema.sql with explicit DB name. Original schema unchanged. If schema contains USE/CREATE DATABASE, installer warns. If DB already exists with tables, import is skipped (reimport only on explicit confirmation; `--yes` mode forces reimport).
 3. **Create admin account** — You **must** create your own username and password
    (no default credentials exist). The script prompts for input and stores it
    in the database with a bcrypt hash.
@@ -170,9 +167,10 @@ SOURCE /path/to/MEeL/database/schema.sql;
 
 #### Option C — Via phpMyAdmin / other GUI:
 
-1. Open phpMyAdmin → **Import** tab
-2. Select the `database/schema.sql` file
-3. Click **Go**
+1. Open phpMyAdmin → **select or create the target database first**
+2. Go to the **Import** tab
+3. Select the `database/schema.sql` file
+4. Click **Go**
 
 ### 4. Application Configuration
 
