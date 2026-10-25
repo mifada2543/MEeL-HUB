@@ -110,6 +110,16 @@ grep -q 'FAIL: 0' "$LOG"
 grep -q 'Step 6 (Security Hardening) completed' "$LOG"
 grep -q 'Step 8 (Deployment Verification) completed' "$LOG"
 
+# migrate_verify must query the table the migration runner actually writes.
+if ! grep -q 'Migration verification passed' "$LOG"; then
+    echo "migration verification did not pass" >&2
+    exit 1
+fi
+if grep -q 'Could not verify migration version' "$LOG"; then
+    echo "migration verification reported a false failure" >&2
+    exit 1
+fi
+
 # --resume-from skips the config step, but the final summary must still show
 # the --hdd value instead of "not set".
 if ! run_install "$RESUME_LOG" --resume-from=8; then
