@@ -192,7 +192,7 @@ foreach (['books', 'music', 'video'] as $m) {
         }
         $expected = $hdd !== '' ? rtrim($hdd, '/') . "/{$m}/upload" : '';
         if ($expected !== '' && $targetDir !== rtrim($expected, '/')) {
-            report('WARN', $label, "target ≠ MEEL_HDD_BASE: {$target} (diharapkan {$expected})");
+            report('FAIL', $label, "target ≠ MEEL_HDD_BASE: {$target} (diharapkan {$expected})");
         } elseif (!is_writable($targetDir)) {
             report('FAIL', $label, "target tidak writable: {$target}");
         } else {

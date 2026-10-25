@@ -310,7 +310,7 @@ done
 ls -la books/upload music/upload video/upload   # harus menunjuk ke BASE Anda
 ```
 
-> ⚠️ Jika membuat symlink manual, pastikan `.htaccess` hardening (pola `data_drive/.htaccess`: `php_flag engine off` + `ForceType` + `Options -Indexes`) ada di **target** storage — `install.sh` melakukannya otomatis. `tests/check_deploy.php` menilai symlink yang menunjuk ke `MEEL_HDD_BASE` sebagai PASS, yang menunjuk ke tempat lain sebagai WARN.
+> ⚠️ Jika membuat symlink manual, pastikan `.htaccess` hardening (pola `data_drive/.htaccess`: `php_flag engine off` + `ForceType` + `Options -Indexes`) ada di **target** storage — `install.sh` melakukannya otomatis. `tests/check_deploy.php` menilai symlink yang menunjuk ke `MEEL_HDD_BASE` sebagai PASS, yang menunjuk ke tempat lain sebagai FAIL.
 
 #### 5. Perizinan
 
