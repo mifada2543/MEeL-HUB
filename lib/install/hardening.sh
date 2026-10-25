@@ -41,12 +41,13 @@ Options -Indexes
 </IfModule>
 '
 
+    local dir target_dir ht_file
     for dir in "${deny_dirs[@]}"; do
-        local target_dir="$project_root/$dir"
-        local ht_file="$target_dir/.htaccess"
+        target_dir="$project_root/$dir"
+        ht_file="$target_dir/.htaccess"
 
         if [ ! -d "$target_dir" ]; then
-            log_verbose "Directory not found (skipping): $target_dir"
+            log_info "Directory not found (skipping): $target_dir"
             continue
         fi
 
@@ -79,9 +80,15 @@ hardening_verify() {
     )
 
     local failed=0
+    local dir target_dir ht_file
 
     for dir in "${deny_dirs[@]}"; do
-        local ht_file="$project_root/$dir/.htaccess"
+        target_dir="$project_root/$dir"
+        ht_file="$target_dir/.htaccess"
+        if [ ! -d "$target_dir" ]; then
+            log_info "$dir/ not present -- skipping"
+            continue
+        fi
         if [ ! -f "$ht_file" ]; then
             log_fail "$dir/.htaccess missing"
             failed=1
