@@ -112,7 +112,7 @@ function testFunctionExistence(): void {
                     continue;
                 }
             }
-            $detail = $isWarn ? 'Fungsi ini opsional — lihat docs/security.md' : '';
+            $detail = $isWarn ? 'Fungsi ini opsional — lihat docs/id/security.md' : '';
             record("Fungsi {$name}() TIDAK ditemukan di {$file}", $isWarn, $isWarn, $detail);
         }
     }
