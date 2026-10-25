@@ -226,10 +226,10 @@ sudo chown -R "$WEB_USER:$WEB_GROUP" data_drive temp profile/upload music/upload
 ```
 
 > 💡 Override with `WEB_USER=apache WEB_GROUP=apache` if auto-detection picks the wrong user. Do **not** `chown` the entire repo or `MEEL_HDD_BASE` — only the runtime directories listed above.
-> ⚠️ `books/upload`, `music/upload`, `video/upload` are real directories tracked in the repo (placeholder `.gitkeep` + hardened `.htaccess`) — **not symlinks**. Their contents (uploaded files) are gitignored; media files live under `MEEL_HDD_BASE` and are served through PHP endpoints (see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
+> ⚠️ `books/upload`, `music/upload`, `video/upload` are real directories tracked in the repo (placeholder `.gitkeep` + hardened `.htaccess`) — **not symlinks**. Their contents (uploaded files) are gitignored; media files live under `MEEL_HDD_BASE` and are served through PHP endpoints (see [6. Media Storage](#6-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
 > ℹ️ `data_drive/public` and `data_drive/private_admins` are real directories tracked in the repo (not symlinks) — they are the built-in fallback storage for the Drive module and are created/used automatically. For Drive storage on an external HDD, set `MEEL_HDD_DRIVE` in `auth/settings.php` (see below). **Never commit symlinks inside `data_drive/`** — `.gitignore` blocks them.
 
-### 5a. Media Storage (MEEL_HDD_BASE) — PHP Endpoint + Rewrite (no symlinks)
+### 6. Media Storage (MEEL_HDD_BASE) — PHP Endpoint + Rewrite (no symlinks)
 
 All media paths are centralized in `auth/settings.php` — change one line and the whole system follows:
 
@@ -286,7 +286,7 @@ define('MEEL_HDD_DRIVE', MEEL_HDD_BASE . '/drive/'); // base = public/ + private
 - **Never commit symlinks inside `data_drive/`**: `.gitignore` blocks `data_drive/public` / `data_drive/private_admins` as symlinks. `tests/check_deploy.php` only warns about symlinks pointing outside `MEEL_HDD_DRIVE` (e.g. `/media/<user>/...`); deploy-time symlinks pointing inside `MEEL_HDD_DRIVE` are rated PASS. A committed absolute symlink leaks your OS username through the public repo and crashes the Drive module on other machines (`RuntimeException: Folder penyimpanan gagal dibuat`)
 - The private subtree stays hard-denied by the tracked `data_drive/.htaccess` (`RewriteRule ^private_admins/ - [F,L]`) plus `data_drive/private_admins/.htaccess` (`Require all denied` — tracked in the fallback folder and recreated at deploy time on the external storage target)
 
-#### 1. Mount / create the storage
+#### Mount / Create the Storage
 
 ```bash
 df -h   # check available mount points
@@ -296,7 +296,7 @@ df -h   # check available mount points
 sudo mount -a
 ```
 
-#### 2. Create the storage tree
+#### Create the Storage Tree
 
 ```bash
 BASE=/media/<user>/MEeL/media   # replace with YOUR path
@@ -309,7 +309,7 @@ touch "$BASE"/.meel_mount
 
 `.meel_mount` is the **mounted-volume marker**: `install.sh` creates it, `.gitignore` blocks it, and `meel_storage_ready()` uses it to tell a mounted volume apart from a leftover empty folder on the mountpoint. Without it, an empty storage folder is treated as *not mounted* and every Drive/media page falls back to the safe `err/?code=storage` screen (HTTP 503) instead of crashing.
 
-#### 3. No symlinks to create
+#### No Symlinks to Create
 
 The books/music/video upload folders are real directories in the repo — there is nothing to symlink for a manual install. **`install.sh` automatically creates deploy-time symlinks** `<root>/{video,music,books}/upload → $MEEL_HDD_BASE/{m}/upload` when `MEEL_HDD_BASE` differs from the repo folder, and **copies the `.htaccess` hardening to the target** so `check_deploy` keeps passing (symlinks are never committed — `.gitignore` blocks them).
 
@@ -326,7 +326,7 @@ ls -la books/upload music/upload video/upload   # should point to your BASE
 
 > ⚠️ If you create symlinks manually, make sure the `.htaccess` hardening (pattern of `data_drive/.htaccess`: `php_flag engine off` + `ForceType` + `Options -Indexes`) exists on the **target** storage — `install.sh` does this automatically. `tests/check_deploy.php` rates symlinks pointing at `MEEL_HDD_BASE` as PASS and anything else as FAIL.
 
-#### 5. Permissions
+#### Permissions
 
 ```bash
 # Detect web server user (same as step 5)
@@ -350,7 +350,7 @@ sudo chmod 770 "$BASE"/video/upload/video "$BASE"/video/upload/thumbnail \
 
 > ⚠️ Do **not** run `chmod -R 775` or `chown -R` on the entire mount point — it makes files executable and can affect unrelated files on shared mounts. Only the MEeL storage subdirectories need adjusted permissions.
 
-#### 6. Security .htaccess in upload dirs (required)
+#### Security .htaccess in Upload Dirs (Required)
 
 Every upload directory must contain a `.htaccess` that disables PHP execution (`php_flag engine off`), a `ForceType` MIME guard, and `Options -Indexes` — the same pattern as `data_drive/.htaccess`. `tests/security_test.php` verifies these:
 
@@ -358,9 +358,9 @@ Every upload directory must contain a `.htaccess` that disables PHP execution (`
 php tests/security_test.php
 ```
 
-> The security test now reports **0 failures in all environments** — the upload-dir `.htaccess` deny rules are tracked in the repo and verified statically. It may emit **5 non-critical warnings** (MediaViewer raw-query review, profile_edit MIME check, session parameter detection) — those are review items, not deployment issues. For storage-level verification use `tests/check_deploy.php` (see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
+> The security test now reports **0 failures in all environments** — the upload-dir `.htaccess` deny rules are tracked in the repo and verified statically. It may emit **5 non-critical warnings** (MediaViewer raw-query review, profile_edit MIME check, session parameter detection) — those are review items, not deployment issues. For storage-level verification use `tests/check_deploy.php` (see [6. Media Storage](#6-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
 
-#### 7. Verify storage
+#### Verify Storage
 
 ```bash
 df -h "$BASE"
@@ -368,7 +368,7 @@ test -d "$BASE/video/upload/video" && echo "storage OK"
 php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_BASE') ? MEEL_HDD_BASE : 'NOT SET';"
 ```
 
-#### 8. Automated deployment check (one command)
+#### Automated Deployment Check (One Command)
 
 The project ships a CLI health-check that verifies the deployment-critical areas in a single run — `MEEL_HDD_BASE`, upload dirs (real folders or deploy-time symlinks), **non-auto-created subdirectories** (`music/upload/file`, `music/upload/thumbnail`, `books/upload/pdf`, `books/upload/thumbnail` — the music/books modules do **not** create them automatically, so a missing one is a **FAIL** → deployment not ready, exit code `1`), upload-dir `.htaccess` hardening, the `data_drive/` portability guard (deploy-time symlinks inside `MEEL_HDD_DRIVE` = PASS; pointing outside = WARN), and the PWA `mod_rewrite` rule:
 
@@ -383,7 +383,7 @@ Each item is reported as `PASS` / `WARN` / `FAIL` with a summary; exit code is `
 
 > 💡 `install.sh` runs this health-check as its final verification step **without `--hdd`** (the real `auth/settings.php` config is tested) and **exits with code `1`** on any FAIL — the final banner distinguishes "deployment healthy" from "server not ready".
 
-### 6. Apache Configuration
+### 7. Apache Configuration
 
 #### Enable mod_rewrite:
 
@@ -524,7 +524,7 @@ define('MEEL_USE_XSENDFILE', true);
 
 ---
 
-### 7. FFmpeg Setup
+### 8. FFmpeg Setup
 
 ```bash
 # Ubuntu/Debian
@@ -539,7 +539,7 @@ which ffmpeg    # Output: /usr/bin/ffmpeg
 which ffprobe   # Output: /usr/bin/ffprobe
 ```
 
-### 8. yt-dlp Setup
+### 9. yt-dlp Setup
 
 ```bash
 # Install via pip
@@ -599,7 +599,7 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 
 ---
 
-## Installation Verification
+### 12. Installation Verification
 
 1. Start Apache & MySQL:
    ```bash
@@ -646,14 +646,14 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
   php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; echo meel_media_base_path('video');"
   # Output should be your storage path, e.g. /media/<user>/MEeL/media/video/upload
   ```
-- The upload folders (`books/upload`, `music/upload`, `video/upload`) are real directories tracked in the repo (no symlinks needed). Media is served through the PHP endpoints (`video/stream.php`, `music/file.php`, `books/file.php`) mapped by the `.htaccess` rewrite — see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)
+- The upload folders (`books/upload`, `music/upload`, `video/upload`) are real directories tracked in the repo (no symlinks needed). Media is served through the PHP endpoints (`video/stream.php`, `music/file.php`, `books/file.php`) mapped by the `.htaccess` rewrite — see [6. Media Storage](#6-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)
 - Or disable temporarily for development
 
 ### ❌ Deployment Check reports FAIL on upload folders
 
 - **Symptom:** `php tests/check_deploy.php` → `FAIL` on upload dirs / `.htaccess` upload dirs (storage not mounted or `MEEL_HDD_BASE` wrong)
 - **Cause:** storage HDD (`MEEL_HDD_BASE`) not mounted / misconfigured in `auth/settings.php`. Upload folders are real directories in the repo — no symlinks to fix. A deploy-time symlink pointing at the wrong target also triggers a warning
-- **Fix:** mount the storage, set `MEEL_HDD_BASE` correctly, and ensure each upload dir has its `.htaccess` (see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)). Re-run `php tests/check_deploy.php` until it reports `✅ Deployment sehat.`
+- **Fix:** mount the storage, set `MEEL_HDD_BASE` correctly, and ensure each upload dir has its `.htaccess` (see [6. Media Storage](#6-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)). Re-run `php tests/check_deploy.php` until it reports `✅ Deployment sehat.`
 
 ### ❌ "403 Forbidden" on pages
 
