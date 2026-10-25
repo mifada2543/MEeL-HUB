@@ -80,7 +80,8 @@ If database credentials are empty, the system displays an educational error mess
 ### Session Configuration
 
 ```php
-// In auth/config.php
+// In modules/auth/helpers/session.php (meel_boot_session())
+// auth/config.php delegates to it
 $timeout = 43200;     // 12 hour session timeout
 ini_set('session.gc_maxlifetime', $timeout);
 
@@ -99,6 +100,7 @@ session_name('meel');  // Session cookie name: "meel"
 session_start();
 ```
 
+> **Note:** Implementation is in `modules/auth/helpers/session.php` as `meel_boot_session()`. `auth/config.php` only delegates to it.
 > `auth/auth_helpers.php` (`auth_boot_session()`) uses the same cookie parameters.
 
 ### Trusted Proxy (`MEEL_TRUST_PROXY_HEADERS`)

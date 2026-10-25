@@ -256,7 +256,7 @@ meel_boot_session();
 Semua path penyimpanan media dikelola melalui konstanta terpusat:
 
 ```php
-// auth/config.php
+// auth/settings.php
 define('MEEL_HDD_BASE', '/media/[user]/MEeL/media');
 define('MEEL_HDD_VIDEO_UPLOAD', MEEL_HDD_BASE . '/video/upload/');
 define('MEEL_HDD_VIDEO_DIR',    MEEL_HDD_VIDEO_UPLOAD . 'video/');
