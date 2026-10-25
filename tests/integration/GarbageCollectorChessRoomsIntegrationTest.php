@@ -308,6 +308,10 @@ class GarbageCollectorChessRoomsIntegrationTest extends TestCase
 
     public function testThrottleFileNotWritableIsReclaimedWithoutWarning(): void
     {
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $this->markTestSkipped('Root selalu dapat menulis file 0444; test izin file harus berjalan sebagai non-root.');
+        }
+
         $file = $this->throttleFile;
         @file_put_contents($file, '123');
         chmod($file, 0444);
