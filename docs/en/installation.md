@@ -310,7 +310,7 @@ done
 ls -la books/upload music/upload video/upload   # should point to your BASE
 ```
 
-> ⚠️ If you create symlinks manually, make sure the `.htaccess` hardening (pattern of `data_drive/.htaccess`: `php_flag engine off` + `ForceType` + `Options -Indexes`) exists on the **target** storage — `install.sh` does this automatically. `tests/check_deploy.php` rates symlinks pointing at `MEEL_HDD_BASE` as PASS and anything else as WARN.
+> ⚠️ If you create symlinks manually, make sure the `.htaccess` hardening (pattern of `data_drive/.htaccess`: `php_flag engine off` + `ForceType` + `Options -Indexes`) exists on the **target** storage — `install.sh` does this automatically. `tests/check_deploy.php` rates symlinks pointing at `MEEL_HDD_BASE` as PASS and anything else as FAIL.
 
 #### 5. Permissions
 
