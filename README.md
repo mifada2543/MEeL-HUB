@@ -253,7 +253,7 @@ MEeL/
 
 ## 🧪 Testing
 
-> **1.255+ pemeriksaan** — 895+ unit, 129+ integrasi, 55+ fungsional, 176+ security. Dijalankan otomatis pada setiap push melalui GitHub Actions CI.
+> Jalankan `php vendor/bin/phpunit --list-tests` untuk jumlah test terkini. CI menjalankan unit, integration, functional, dan security suites.
 >
 > Angka sengaja ditulis sebagai rentang kasar, bukan angka eksak: jumlah test naik terus seiring waktu, jadi angka eksak cepat basi. Kalau ingin mengukur sendiri:
 >

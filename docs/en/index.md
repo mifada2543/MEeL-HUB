@@ -20,5 +20,5 @@ Official documentation for **MEeL** — A Personal Media Hub Platform for video 
 | 10 | [🕹️ Arcade](arcade-optional.md) | The optional extension: chess and the rhythm game |
 | 11 | [🤖 Download Guide](download.md) | The download flow, `base_path` diagnosis, and the test procedure |
 <div align="center">
-  <sub>MEeL © 2026 — Mifada | Dokumentasi v2.0</sub>
+  <sub>MEeL © 2026 — Mifada | Documentation</sub>
 </div>

@@ -1,7 +1,6 @@
 # 🧪 Testing Guide
 
-**Document Version:** 1.0
-**Date:** July 25, 2026
+**Last updated:** October 25, 2026
 
 ---
 
@@ -20,7 +19,7 @@ MEeL uses a multi-layered testing approach:
 
 ---
 
-## 🧪 PHPUnit Test Suite (560+ Unit + 100+ Integration)
+## 🧪 PHPUnit Test Suite
 
 ### Installation
 
@@ -543,28 +542,5 @@ for `data_drive/` — fix `httpd.conf` (`AllowOverride All`) before release.
 
 ---
 
-## 📊 Current Test Results
+> Run `php vendor/bin/phpunit --list-tests` for current counts. Exact numbers intentionally not duplicated here as they change with each test addition.
 
-| Suite | Tests | Pass | Fail | Score |
-|---|---|---|---|---|
-| **PHPUnit (unit + integration)** | 403 | 403 | 0 | ✅ 100% |
-| **PHPUnit security subset** (SsrfGuard + Drive + Proxy) | 109 | 109 | 0 | ✅ 100% |
-| **Functional Test** | 55 | 55 pass, 0 warn | 0 | ✅ 100/100 |
-| **Security Test** | 153 | 153 pass, 0 warn | 0 | ✅ 100/100 |
-| **Deployment Check** | 15 | 12 pass, 3 warn | 0 | ✅ 0 FAIL |
-
-> Numbers are from the September 2026 verification pass. Run the suites yourself
-> to get the current state — the security checks may additionally produce
-> warnings when HDD storage (`MEEL_HDD_BASE` / storage not mounted) is not
-> set up in a development environment. The 3 remaining **Deployment WARNs** are
-> informational only: `books/upload`, `music/upload` and `video/upload` are real
-> tracked fallback folders rather than symlinks to `MEEL_HDD_BASE`; the runtime
-> storage itself resolves through `MEEL_HDD_*` constants (see
-> [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
-> Media folders are served through PHP endpoints — no symlinks involved.
-
----
-
-<div align="center">
-  <sub><a href="index.md">← Back to Documentation Index</a></sub>
-</div>

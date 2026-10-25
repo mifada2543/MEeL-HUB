@@ -20,5 +20,5 @@ Dokumentasi resmi **MEeL** — Platform Media Hub Pribadi untuk streaming video,
 | 10 | [🕹️ Arcade](arcade-optional.md) | Ekstensi opsional: catur & rhythm game |
 | 11 | [🤖 Panduan Download](download.md) | Alur unduhan, diagnosis `base_path`, dan prosedur uji |
 <div align="center">
-  <sub>MEeL © 2026 — Mifada | Dokumentasi v2.0</sub>
+  <sub>MEeL © 2026 — Mifada | Dokumentasi</sub>
 </div>
