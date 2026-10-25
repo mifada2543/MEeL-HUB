@@ -3,17 +3,17 @@ use PHPUnit\Framework\TestCase;
 
 class PhpVersionDocumentationTest extends TestCase
 {
-    public function testReadmeAdvertisesPhp81(): void
+    public function testReadmeAdvertisesPhp82(): void
     {
         foreach (['README.md', 'README-en.md'] as $file) {
             $src = (string) file_get_contents(MEEL_ROOT . '/' . $file);
-            $this->assertStringContainsString('PHP-8.1%2B', $src, $file . ' badge harus 8.1+');
-            $this->assertStringContainsString('PHP 8.1+', $src, $file . ' harus menyebut PHP 8.1+');
-            $this->assertStringNotContainsString('PHP-8.0%2B', $src, $file . ' badge lama masih ada');
-            $this->assertStringNotContainsString('PHP 8.0+', $src, $file . ' klaim 8.0+ masih ada');
+            $this->assertStringContainsString('PHP-8.2%2B', $src, $file . ' badge harus 8.2+');
+            $this->assertStringContainsString('PHP 8.2+', $src, $file . ' harus menyebut PHP 8.2+');
+            $this->assertStringNotContainsString('PHP-8.1%2B', $src, $file . ' badge lama masih ada');
+            $this->assertStringNotContainsString('PHP 8.1+', $src, $file . ' klaim 8.1+ masih ada');
         }
     }
-    public function testInstallerWarnsPhp81(): void
+    public function testInstallerWarnsPhp82(): void
     {
         $src = '';
         foreach (['install.sh', 'lib/install/deps.sh'] as $file) {
@@ -22,10 +22,10 @@ class PhpVersionDocumentationTest extends TestCase
                 $src .= (string) file_get_contents($path) . "\n";
             }
         }
-        $this->assertStringContainsString('PHP 8.1+', $src);
-        $this->assertStringNotContainsString('PHP 8.0+', $src);
+        $this->assertStringContainsString('PHP 8.2+', $src);
+        $this->assertStringNotContainsString('PHP 8.1+', $src);
     }
-    public function testDocsAndLandingPageDoNotClaimPhp80(): void
+    public function testDocsAndLandingPageDoNotClaimPhp81(): void
     {
         $checked = 0;
         foreach ([
@@ -42,7 +42,7 @@ class PhpVersionDocumentationTest extends TestCase
             }
             $checked++;
             $src = (string) file_get_contents($path);
-            $this->assertStringNotContainsString('PHP 8.0', $src, $file . ' masih menyebut PHP 8.0');
+            $this->assertStringNotContainsString('PHP 8.1', $src, $file . ' masih menyebut PHP 8.1');
         }
         $this->assertGreaterThan(
             0,
@@ -50,10 +50,10 @@ class PhpVersionDocumentationTest extends TestCase
             'Tidak ada satu pun file yang diperiksa — test ini akan selalu hijau tanpa makna'
         );
     }
-    public function testComposerRequiresPhp81(): void
+    public function testComposerRequiresPhp82(): void
     {
         $json = json_decode((string) file_get_contents(MEEL_ROOT . '/composer.json'), true);
-        $this->assertSame('>=8.1', $json['require']['php'] ?? null);
+        $this->assertSame('>=8.2', $json['require']['php'] ?? null);
     }
 }
 /* reference build: MEeL-C10H15N [602550037] */

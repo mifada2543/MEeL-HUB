@@ -28,7 +28,7 @@ Installer otomatis yang menjalankan sebagian besar langkah panduan ini dalam sat
 
 Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
 
-1. **Cek dependency** — PHP 8.1+ dengan ekstensi `mysqli`, `pdo_mysql`,
+1. **Cek dependency** — PHP 8.2+ dengan ekstensi `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl`, plus
    MariaDB/MySQL; diinstall via apt bila perlu (`--skip-apt` untuk melewati).
 2. **Setup database** — schema tidak punya CREATE DATABASE/USE; installer buat DB jika belum ada dan import schema.sql dengan nama DB eksplisit. Schema asli tidak diubah. Jika schema mengandung USE/CREATE DATABASE, installer peringatkan. Jika DB sudah ada berisi tabel, import dilewati (reimport hanya atas konfirmasi eksplisit; mode `--yes` memaksa reimport).
@@ -60,7 +60,7 @@ Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
 
 | Komponen | Versi | Keterangan |
 |---|---|---|
-| **PHP** | **8.1+** | — |
+| **PHP** | **8.2+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Wajib `mod_rewrite` |
 | **FFmpeg** | 6.0+ | Untuk HLS & transcoding |
@@ -79,8 +79,8 @@ sudo apt install mecab mecab-ipadic-utf8 libmecab-dev
 
 ```bash
 # Pada Ubuntu/Debian
-sudo apt install php8.1-mysqli php8.1-pdo-mysql php8.1-gd php8.1-fileinfo \
-                 php8.1-mbstring php8.1-intl php8.1-zip php8.1-xml
+sudo apt install php8.2-mysqli php8.2-pdo-mysql php8.2-gd php8.2-fileinfo \
+                 php8.2-mbstring php8.2-intl php8.2-zip php8.2-xml
 ```
 
 Atau aktifkan di `php.ini`:
@@ -125,8 +125,8 @@ sudo ./xampp-linux-*.run
 **Opsi B — Manual (Ubuntu/Debian):**
 ```bash
 sudo apt update
-sudo apt install apache2 mysql-server php8.1 php8.1-mysqli php8.1-gd \
-                 php8.1-mbstring php8.1-intl php8.1-zip php8.1-fileinfo
+sudo apt install apache2 mysql-server php8.2 php8.2-mysqli php8.2-gd \
+                 php8.2-mbstring php8.2-intl php8.2-zip php8.2-fileinfo
 ```
 
 ### 2. Kloning Repositori

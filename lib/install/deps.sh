@@ -194,7 +194,7 @@ deps_run() {
     fi
 
     if [ "${PHP_VERSION:-}" = "missing" ]; then
-        log_fail "PHP not found. Install PHP 8.1+ first."
+        log_fail "PHP not found. Install PHP 8.2+ first."
         return 1
     fi
 
@@ -202,9 +202,9 @@ deps_run() {
     php_major=$(echo "$PHP_VERSION" | cut -d. -f1)
     local php_minor
     php_minor=$(echo "$PHP_VERSION" | cut -d. -f2)
-    if [ "$php_major" -lt 8 ] || { [ "$php_major" -eq 8 ] && [ "$php_minor" -lt 1 ]; }; then
-        log_warn "PHP CLI is $PHP_VERSION (8.1+ recommended). FPM may be newer."
-        log_warn "Use --skip-apt to bypass this check if FPM is 8.1+"
+    if [ "$php_major" -lt 8 ] || { [ "$php_major" -eq 8 ] && [ "$php_minor" -lt 2 ]; }; then
+        log_warn "PHP CLI is $PHP_VERSION (8.2+ recommended). FPM may be newer."
+        log_warn "Use --skip-apt to bypass this check if FPM is 8.2+"
         if [ "${ASSUME_YES:-false}" != "true" ] && ! confirm "Continue anyway?" N; then
             return 1
         fi
@@ -233,7 +233,7 @@ deps_run() {
         fi
     else
         log_warn "No supported package manager found -- please install dependencies manually"
-        log_info "Required: PHP 8.1+ (mysqli, pdo_mysql, fileinfo, mbstring, intl, gd, zip, xml, curl), MariaDB/MySQL"
+        log_info "Required: PHP 8.2+ (mysqli, pdo_mysql, fileinfo, mbstring, intl, gd, zip, xml, curl), MariaDB/MySQL"
     fi
 
     deps_check_optional_bins || true

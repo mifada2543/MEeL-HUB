@@ -24,12 +24,12 @@ defaults:
 jobs:
   php-syntax:
     name: PHP Syntax (php -l)
-    # Runtime web saat ini XAMPP PHP 8.0.30; runner 22.04 memastikan PHP 8.0 tersedia.
+    # Runtime web saat ini XAMPP PHP 8.2+; runner 22.04 memastikan PHP 8.2 tersedia.
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
-        php-version: ["8.0", "8.1", "8.2", "8.3"]
+        php-version: ["8.2", "8.3", "8.4"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -676,7 +676,7 @@ jobs:
               echo "| ❌ $name | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
             fi
           }
-          report_job "PHP Syntax (8.0–8.3)" "${{ needs.php-syntax.result }}"
+          report_job "PHP Syntax (8.2–8.4)" "${{ needs.php-syntax.result }}"
           report_job "Functional Tests" "${{ needs.functional-tests.result }}"
           report_job "Security Tests" "${{ needs.security-tests.result }}"
           report_job "PHPUnit Unit Tests" "${{ needs.phpunit-tests.result }}"
@@ -693,7 +693,7 @@ jobs:
             echo "### ⚡ Optimizations applied" >> "$GITHUB_STEP_SUMMARY"
             cat <<'EOF'
           - **Parallel jobs** — syntax check, tests, security, and integrity run in parallel
-          - **Matrix strategy** — syntax check across PHP 8.0, 8.1, 8.2, 8.3
+          - **Matrix strategy** — syntax check across PHP 8.2, 8.3, 8.4
           - **Shallow clone** — `fetch-depth: 1` for faster checkout
           - **Concurrency** — cancels redundant runs on the same branch
           - **Xdebug disabled** — `coverage: none` for faster PHP execution

@@ -28,7 +28,7 @@ An automatic installer that runs most steps of this guide in a single command (t
 
 Steps it runs (idempotent for most of them):
 
-1. **Check dependencies** — PHP 8.1+ with the `mysqli`, `pdo_mysql`,
+1. **Check dependencies** — PHP 8.2+ with the `mysqli`, `pdo_mysql`,
    `fileinfo`, `mbstring`, `intl`, `gd`, `zip`, `xml`, `curl` extensions, plus
    MariaDB/MySQL; installed via apt when needed (`--skip-apt` to skip).
 2. **Database setup** — schema has no CREATE DATABASE/USE; installer creates DB if missing and imports schema.sql with explicit DB name. Original schema unchanged. If schema contains USE/CREATE DATABASE, installer warns. If DB already exists with tables, import is skipped (reimport only on explicit confirmation; `--yes` mode forces reimport).
@@ -61,7 +61,7 @@ Steps it runs (idempotent for most of them):
 
 | Component | Version | Notes |
 |---|---|---|
-| **PHP** | **8.1+** | — |
+| **PHP** | **8.2+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Requires `mod_rewrite` |
 | **FFmpeg** | 6.0+ | For HLS & transcoding |
@@ -80,8 +80,8 @@ sudo apt install mecab mecab-ipadic-utf8 libmecab-dev
 
 ```bash
 # On Ubuntu/Debian
-sudo apt install php8.1-mysqli php8.1-pdo-mysql php8.1-gd php8.1-fileinfo \
-                 php8.1-mbstring php8.1-intl php8.1-zip php8.1-xml
+sudo apt install php8.2-mysqli php8.2-pdo-mysql php8.2-gd php8.2-fileinfo \
+                 php8.2-mbstring php8.2-intl php8.2-zip php8.2-xml
 ```
 
 Or enable in `php.ini`:
@@ -126,8 +126,8 @@ sudo ./xampp-linux-*.run
 **Option B — Manual (Ubuntu/Debian):**
 ```bash
 sudo apt update
-sudo apt install apache2 mysql-server php8.1 php8.1-mysqli php8.1-gd \
-                 php8.1-mbstring php8.1-intl php8.1-zip php8.1-fileinfo
+sudo apt install apache2 mysql-server php8.2 php8.2-mysqli php8.2-gd \
+                 php8.2-mbstring php8.2-intl php8.2-zip php8.2-fileinfo
 ```
 
 ### 2. Clone Repository
