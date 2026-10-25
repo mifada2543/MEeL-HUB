@@ -14,7 +14,10 @@ Panduan pemecahan masalah umum di MEeL-HUB.
 - [Masalah Sesi & Login](#masalah-sesi--login)
 - [Masalah Upload](#masalah-upload)
 - [Masalah Performa](#masalah-performa)
+- [Masalah Ikon](#masalah-ikon)
 - [Error Codes](#error-codes)
+- [FAQ](#faq)
+- [Advanced Upload & Antrean](#advanced-upload--antrean)
 
 ---
 
@@ -678,26 +681,6 @@ UPDATE users SET role = 'admin', is_active = 1 WHERE id = [user_id];
 ## Advanced Upload & Antrean
 
 Dokumentasi penanganan masalah khusus untuk fitur **Advanced Upload (yt-dlp)** dan antrean latar belakang (Background Tasks) di MEeL-HUB.
-
----
-
-### Daftar Isi
-
-- [Daftar Isi](#daftar-isi)
-- [Masalah Database](#masalah-database)
-- [Masalah Storage & HDD](#masalah-storage--hdd)
-- [Masalah HLS Streaming](#masalah-hls-streaming)
-- [Masalah Transcoding](#masalah-transcoding)
-- [Masalah yt-dlp](#masalah-yt-dlp)
-- [Masalah Sesi & Login](#masalah-sesi--login)
-- [Masalah Upload](#masalah-upload)
-- [Masalah Performa](#masalah-performa)
-- [Masalah Ikon](#masalah-ikon)
-- [Error Codes](#error-codes)
-- [FAQ](#faq)
-- [Advanced Upload & Antrean](#advanced-upload--antrean)
-
----
 
 ### Gejala & Masalah Umum
 
