@@ -180,7 +180,11 @@ cp settings.example.php settings.php
 cp config.example.php config.php
 ```
 
-> 💡 `install.sh` only runs `chmod 640` on `auth/settings.php` **when `$CAN_ELEVATE` is set** (privilege elevation detected) — on a fresh install without elevation the file stays at its default and the DB config is never made world-readable.
+> 💡 `install.sh` applies `chmod 640` + `chgrp` to the web group on `auth/settings.php` **when `$CAN_ELEVATE` is set** (privilege elevation detected). On a fresh install without elevation the file stays at its default (typically 644) — the DB config is **not** "never world-readable" by default. For production, explicitly run:
+> ```bash
+> sudo chgrp "$WEB_GROUP" auth/settings.php auth/config.php
+> sudo chmod 640 auth/settings.php auth/config.php
+> ```
 
 Edit `auth/settings.php`:
 ```php
@@ -205,11 +209,23 @@ php database/migrate.php
 cd /opt/lampp/htdocs/MEeL
 mkdir -p data_drive/public data_drive/private_admins temp profile/upload music/upload/file music/upload/thumbnail books/upload/manga books/upload/pdf books/upload/thumbnail
 
-sudo chown -R www-data:www-data data_drive temp profile/upload music/upload books/upload
-sudo chmod -R 775 data_drive temp profile/upload music/upload books/upload
+# Detect web server user (Apache: www-data on Debian/Ubuntu, apache on RHEL/CentOS, _www on macOS)
+WEB_USER="${WEB_USER:-$(ps aux | grep -E '(apache|httpd)' | grep -v grep | head -1 | awk '{print $1}')}"
+WEB_USER="${WEB_USER:-www-data}"
+WEB_GROUP="${WEB_GROUP:-$(id -gn "$WEB_USER" 2>/dev/null || echo "$WEB_USER")}"
+
+# Baseline: dirs 750, files 640 (no world access, no executable files)
+sudo find data_drive temp profile/upload music/upload books/upload -type d -exec chmod 750 {} \;
+sudo find data_drive temp profile/upload music/upload books/upload -type f -exec chmod 640 {} \;
+
+# Writable dirs: 770 (group write) — only where the app writes at runtime
+sudo chmod 770 data_drive/public data_drive/private_admins temp profile/upload music/upload/file music/upload/thumbnail books/upload/manga books/upload/pdf books/upload/thumbnail
+
+# Ownership: only the runtime dirs, not the entire repo
+sudo chown -R "$WEB_USER:$WEB_GROUP" data_drive temp profile/upload music/upload books/upload
 ```
 
-> 💡 If `www-data` doesn't work, try `daemon` or `nobody`.
+> 💡 Override with `WEB_USER=apache WEB_GROUP=apache` if auto-detection picks the wrong user. Do **not** `chown` the entire repo or `MEEL_HDD_BASE` — only the runtime directories listed above.
 > ⚠️ `books/upload`, `music/upload`, `video/upload` are real directories tracked in the repo (placeholder `.gitkeep` + hardened `.htaccess`) — **not symlinks**. Their contents (uploaded files) are gitignored; media files live under `MEEL_HDD_BASE` and are served through PHP endpoints (see [5a. Media Storage](#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)).
 > ℹ️ `data_drive/public` and `data_drive/private_admins` are real directories tracked in the repo (not symlinks) — they are the built-in fallback storage for the Drive module and are created/used automatically. For Drive storage on an external HDD, set `MEEL_HDD_DRIVE` in `auth/settings.php` (see below). **Never commit symlinks inside `data_drive/`** — `.gitignore` blocks them.
 
@@ -313,9 +329,26 @@ ls -la books/upload music/upload video/upload   # should point to your BASE
 #### 5. Permissions
 
 ```bash
-sudo chown -R www-data:www-data "$BASE"
-sudo chmod -R 775 "$BASE"
+# Detect web server user (same as step 5)
+WEB_USER="${WEB_USER:-$(ps aux | grep -E '(apache|httpd)' | grep -v grep | head -1 | awk '{print $1}')}"
+WEB_USER="${WEB_USER:-www-data}"
+WEB_GROUP="${WEB_GROUP:-$(id -gn "$WEB_USER" 2>/dev/null || echo "$WEB_USER")}"
+
+# Only chown the created storage tree, not the entire mount point
+sudo chown -R "$WEB_USER:$WEB_GROUP" "$BASE"
+
+# Baseline: dirs 750, files 640
+sudo find "$BASE" -type d -exec chmod 750 {} \;
+sudo find "$BASE" -type f -exec chmod 640 {} \;
+
+# Writable subdirs: 770
+sudo chmod 770 "$BASE"/video/upload/video "$BASE"/video/upload/thumbnail \
+    "$BASE"/music/upload/file "$BASE"/music/upload/thumbnail \
+    "$BASE"/books/upload/manga "$BASE"/books/upload/pdf "$BASE"/books/upload/thumbnail \
+    "$BASE"/drive/public "$BASE"/drive/private_admins
 ```
+
+> ⚠️ Do **not** run `chmod -R 775` or `chown -R` on the entire mount point — it makes files executable and can affect unrelated files on shared mounts. Only the MEeL storage subdirectories need adjusted permissions.
 
 #### 6. Security .htaccess in upload dirs (required)
 
@@ -359,16 +392,24 @@ sudo a2enmod rewrite
 sudo systemctl restart apache2
 ```
 
-#### Ensure AllowOverride is active:
+#### Configure AllowOverride for MEeL (development only — production should use a VirtualHost with `AllowOverride None`):
 
-Edit `/etc/apache2/apache2.conf`:
+Edit `/etc/apache2/apache2.conf` or a site-specific config in `/etc/apache2/sites-available/`:
 ```apache
-<Directory /var/www/html>
-    Options Indexes FollowSymLinks
-    AllowOverride All
+# Scoped to MEeL only — not the entire /var/www/html
+<Directory /opt/lampp/htdocs/MEeL>
+    Options -Indexes +FollowSymLinks
+    # Minimal set for .htaccess to work (dev only):
+    #   Options — for Options -Indexes in .htaccess
+    #   FileInfo — for mod_rewrite, AddType, etc.
+    #   AuthConfig — for Require directives
+    #   Limit — for Order/Allow/Deny (legacy)
+    AllowOverride Options FileInfo AuthConfig Limit
     Require all granted
 </Directory>
 ```
+
+> ⚠️ **Development only.** The broad `<Directory /var/www/html>` with `AllowOverride All` and `Options Indexes` is insecure — it enables directory listing and allows `.htaccess` everywhere. Production deployments should use a dedicated VirtualHost with `AllowOverride None` and place all rewrite/access rules directly in the VirtualHost config.
 
 #### 📱 mod_rewrite & PWA (required)
 
