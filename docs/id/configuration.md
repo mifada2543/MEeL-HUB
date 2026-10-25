@@ -272,6 +272,34 @@ function getRomajiName($text) {
 
 > ⚠️ Fungsi ini membutuhkan ekstensi PHP `intl`.
 
+### Rate Limit Drive (`drive_files`)
+
+Tabel `drive_files` menyimpan satu baris per unggahan drive, dan
+`System::checkRateLimit('drive_files')` menghitung baris tersebut untuk
+menerapkan batas 10 file/jam per pengguna.
+
+Kalau tabel ini kosong — misalnya instalasi lama yang belum pernah mencatat —
+`num_rows` selalu 0 sehingga batasnya tidak pernah aktif. `DriveStorage` kini
+menulis baris itu setiap unggahan berhasil (`recordUpload()`), jadi penghitungnya
+punya data.
+
+### Antrean Hapus Tertunda (`pending_delete.json`)
+
+Berkas `temp/pending_delete.json` berisi path yang akan dihapus setelah 30 menit.
+`cleanupPendingDeletions()` hanya menghapus path yang `realpath()`-nya berada
+di dalam salah satu root media (video/music/books) atau drive base. Path di luar
+root dicatat ke `php_error.log` lalu dilewati.
+
+Antrean ini berada di `temp/` yang world-writable, jadi tanpa cek containment
+user lokal bisa menjadwalkan penghapusan file atau direktori mana pun sebagai user
+web.
+
+### Batas Ekspor Admin
+
+`AdminActivityRepository::fetchAll()` dan `AdminUploadQueueRepository::fetchAll()`
+menerima batas baris (default 50.000). Pratinjau 15 baris memakai
+`countFiltered()` + `fetchPage(15, 0)` — bukan memuat seluruh tabel filter dulu.
+
 ---
 
 ## Media Storage Paths (TERPUSAT)
@@ -394,34 +422,6 @@ Jika `MEEL_HDD_BASE` tidak sesuai dengan mount point, halaman maintenance `err/?
 ```
 
 ---
-
-### Rate Limit Drive (`drive_files`)
-
-Tabel `drive_files` menyimpan satu baris per unggahan drive, dan
-`System::checkRateLimit('drive_files')` menghitung baris tersebut untuk
-menerapkan batas 10 file/jam per pengguna.
-
-Kalau tabel ini kosong — misalnya instalasi lama yang belum pernah mencatat —
-`num_rows` selalu 0 sehingga batasnya tidak pernah aktif. `DriveStorage` kini
-menulis baris itu setiap unggahan berhasil (`recordUpload()`), jadi penghitungnya
-punya data.
-
-### Antrean Hapus Tertunda (`pending_delete.json`)
-
-Berkas `temp/pending_delete.json` berisi path yang akan dihapus setelah 30 menit.
-`cleanupPendingDeletions()` hanya menghapus path yang `realpath()`-nya berada
-di dalam salah satu root media (video/music/books) atau drive base. Path di luar
-root dicatat ke `php_error.log` lalu dilewati.
-
-Antrean ini berada di `temp/` yang world-writable, jadi tanpa cek containment
-user lokal bisa menjadwalkan penghapusan file atau direktori mana pun sebagai user
-web.
-
-### Batas Ekspor Admin
-
-`AdminActivityRepository::fetchAll()` dan `AdminUploadQueueRepository::fetchAll()`
-menerima batas baris (default 50.000). Pratinjau 15 baris memakai
-`countFiltered()` + `fetchPage(15, 0)` — bukan memuat seluruh tabel filter dulu.
 
 ## Transcoder Configuration
 

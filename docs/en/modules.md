@@ -51,7 +51,7 @@ In-depth documentation of module architecture, class diagrams, and business logi
 
 ## Core Modules (`modules/core/`, `modules/media/`, `modules/exceptions/`, `modules/transcoder/`)
 
-### 📁 Directory Structure
+### 📁 Modules Directory Structure
 
 ```
 modules/
@@ -1603,7 +1603,7 @@ Redirect to index.php
 
 MEeL uses a modular approach for JavaScript and CSS — each module has separate files that are loaded dynamically.
 
-### Directory Structure
+### Assets Directory Structure
 
 ```
 assets/
@@ -1794,7 +1794,7 @@ Both have the same height — the 4:3 video is smaller and centered, just like Y
 }
 ```
 
-### Related Files
+### Video Player Related Files
 
 | File | Role |
 |---|---|
@@ -1835,7 +1835,7 @@ CREATE TABLE chat_messages (
 - `admin_chat` notification type for messages to admin
 - Rate limiting: 30 messages per minute per user
 
-### Related Files
+### Chat Related Files
 
 | File | Role |
 |---|---|
