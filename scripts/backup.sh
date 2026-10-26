@@ -35,7 +35,8 @@ eval "$("$PHP_BIN" -r '
 $src = @file_get_contents($argv[1]) ?: "";
 $o = [];
 foreach (["server" => "H", "username" => "U", "password" => "P", "db" => "D"] as $k => $v) {
-    if (preg_match("/\\\$" . $k . "\s*=\s*\"([^\"]*)\"/", $src, $m)) { $o[$v] = $m[1]; }
+    $p = "/\\\$" . $k . "\s*=\s*[\x27\x22]([^\x27\x22]*)[\x27\x22]/";
+    if (preg_match($p, $src, $m)) { $o[$v] = $m[1]; }
 }
 if (isset($o["D"], $o["H"])) {
     printf("DB_HOST=%s\nDB_USER=%s\nDB_PASS=%s\nDB_NAME=%s\n",
@@ -44,7 +45,8 @@ if (isset($o["D"], $o["H"])) {
 }
 ' "$SETTINGS")" || die "gagal membaca kredensial dari settings.php"
 
-: "${DB_HOST:?}" "${DB_NAME:?}"
+[ -n "${DB_HOST:-}" ] && [ -n "${DB_NAME:-}" ] \
+  || die "kredensial DB tidak terbaca dari $SETTINGS (butuh \$server dan \$db)"
 DB_USER="${DB_USER:-root}"
 DB_PASS="${DB_PASS:-}"
 

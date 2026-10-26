@@ -26,10 +26,10 @@ class DefaultThumbnailGuardTest extends TestCase
     {
         $src = (string) file_get_contents(MEEL_ROOT . '/modules/core/Uploader.php');
 
-        $this->assertSame(
+        $this->assertGreaterThanOrEqual(
             2,
             substr_count($src, '!meel_is_default_thumbnail($thumb_name)'),
-            'Kedua jalur cleanup di Uploader (move gagal & rollback DB) harus menjaga default thumbnail'
+            'Jalur cleanup di Uploader (move gagal & rollback DB) harus menjaga default thumbnail'
         );
     }
 

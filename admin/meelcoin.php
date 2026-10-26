@@ -36,7 +36,7 @@ $meelcoin_settings = [
 
 $msg = $_GET['msg'] ?? null;
 
-$all_users = $conn->query("SELECT id, username, role, meelcoin FROM users WHERE role NOT IN ('guest', 'admin') ORDER BY role ASC, username ASC");
+$all_users = $conn->query("SELECT id, username, role, meelcoin, meelcoin_held FROM users WHERE role NOT IN ('guest', 'admin') ORDER BY role ASC, username ASC");
 $user_list = [];
 if ($all_users) {
     while ($u = $all_users->fetch_assoc()) {
@@ -194,7 +194,7 @@ $user_list_json = json_encode($user_list);
                                 <option value="">Pilih Pengguna...</option>
                                 <?php foreach ($user_list as $u): ?>
                                     <option value="<?= $u['id'] ?>">
-                                        #<?= $u['id'] ?> — <?= htmlspecialchars($u['username']) ?> (<?= ucfirst($u['role']) ?>) — <?= $u['meelcoin'] ?> coin
+                                        #<?= $u['id'] ?> — <?= htmlspecialchars($u['username']) ?> (<?= ucfirst($u['role']) ?>) — <?= $u['meelcoin'] ?> coin (ditahan <?= (int)($u['meelcoin_held'] ?? 0) ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -254,7 +254,7 @@ $user_list_json = json_encode($user_list);
         if (!val) { info.style.display = 'none'; return; }
         var u = __userList.find(function(x){ return x.id === val; });
         if (!u) { info.style.display = 'none'; return; }
-        info.innerHTML = '<strong>' + escapeHtml(u.username) + '</strong> — ID: #' + parseInt(u.id) + ' — Role: ' + escapeHtml(u.role.charAt(0).toUpperCase() + u.role.slice(1)) + ' — Coin saat ini: <strong>' + parseInt(u.meelcoin) + '</strong>';
+        info.innerHTML = '<strong>' + escapeHtml(u.username) + '</strong> — ID: #' + parseInt(u.id) + ' — Role: ' + escapeHtml(u.role.charAt(0).toUpperCase() + u.role.slice(1)) + ' — Coin total: <strong>' + parseInt(u.meelcoin) + '</strong>' + (parseInt(u.meelcoin_held || 0) > 0 ? ' — ditahan: <strong>' + parseInt(u.meelcoin_held) + '</strong> — tersedia: <strong>' + Math.max(0, parseInt(u.meelcoin) - parseInt(u.meelcoin_held)) + '</strong>' : '');
         info.style.display = '';
     });
     </script>

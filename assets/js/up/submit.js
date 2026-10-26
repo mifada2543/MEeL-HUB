@@ -11,5 +11,6 @@ function startAdvancedUpload(form) {
       '<div style="width:14px;height:14px;border:1.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:meel-spin .7s linear infinite;"></div> Memproses...';
   }
   if (typeof meelPhase === "function") meelPhase("download");
+  if (typeof meelStartUploadHeartbeat === "function") meelStartUploadHeartbeat(form);
   return true;
 }

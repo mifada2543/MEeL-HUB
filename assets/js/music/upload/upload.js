@@ -67,6 +67,9 @@ function handleSubmit() {
     ],
     baseDelay: baseDelay,
   });
+  if (window.meelStartUploadHeartbeat) {
+    window.meelStartUploadHeartbeat(audioInput.closest("form"));
+  }
 }
 const audioZone = document.getElementById("audio-zone");
 const audioInput = document.getElementById("audio-input");

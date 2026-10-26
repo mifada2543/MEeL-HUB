@@ -18,6 +18,11 @@ window.meelRefreshCoinBalance = function () {
     .then(function (d) {
       if (!d || d.is_admin || typeof d.balance === "undefined") return;
       el.textContent = d.balance;
+      var held = document.getElementById("coin-held");
+      if (held && typeof d.held !== "undefined") held.textContent = d.held;
+      var available = document.getElementById("coin-available");
+      if (available && typeof d.available !== "undefined")
+        available.textContent = d.available;
     })
     .catch(function () {});
 };

@@ -59,6 +59,7 @@ CREATE TABLE
     `mfa_enabled` tinyint (1) DEFAULT 0,
     `mfa_last_step` bigint DEFAULT NULL,
     `meelcoin` int (11) NOT NULL DEFAULT 0,
+    `meelcoin_held` int (11) NOT NULL DEFAULT 0 COMMENT 'MEeLCoin yang direservasi untuk upload yang belum terverifikasi',
     `meelcoin_last_refill` timestamp NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `idx_username_unique` (`username`),
@@ -68,6 +69,63 @@ CREATE TABLE
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Admin user dibuat otomatis oleh install.sh atau migrasi.
+
+-- =============================================================================
+-- TABEL: coin_holds
+-- Reservasi MEeLCoin. Saldo total (users.meelcoin) tidak berubah sampai
+-- upload terbukti menghasilkan baris media dan file yang valid.
+-- =============================================================================
+CREATE TABLE
+  IF NOT EXISTS `coin_holds` (
+    `id` bigint (20) NOT NULL AUTO_INCREMENT,
+    `user_id` int (11) NOT NULL,
+    `amount` int (11) NOT NULL,
+    `status` enum ('held', 'captured', 'released', 'expired') NOT NULL DEFAULT 'held',
+    `reason` varchar (50) NOT NULL DEFAULT 'upload',
+    `media_type` varchar (20) NOT NULL DEFAULT '',
+    `upload_attempt_id` bigint (20) DEFAULT NULL,
+    `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+    `last_heartbeat` timestamp NOT NULL DEFAULT current_timestamp(),
+    `expires_at` timestamp NOT NULL,
+    `captured_at` timestamp NULL DEFAULT NULL,
+    `released_at` timestamp NULL DEFAULT NULL,
+    `release_reason` varchar (50) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_coin_holds_user_status` (`user_id`, `status`),
+    KEY `idx_coin_holds_status_heartbeat` (`status`, `last_heartbeat`),
+    KEY `idx_coin_holds_expires` (`status`, `expires_at`),
+    CONSTRAINT `coin_holds_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- =============================================================================
+-- TABEL: upload_attempts
+-- Sesi upload per form GET. Token dipakai untuk heartbeat dan mengikat
+-- reservasi coin ke proses upload yang benar.
+-- =============================================================================
+CREATE TABLE
+  IF NOT EXISTS `upload_attempts` (
+    `id` bigint (20) NOT NULL AUTO_INCREMENT,
+    `token` varchar (64) NOT NULL,
+    `user_id` int (11) NOT NULL,
+    `media_type` varchar (20) NOT NULL DEFAULT '',
+    `hold_id` bigint (20) DEFAULT NULL,
+    `status` enum ('active', 'completed', 'failed', 'expired') NOT NULL DEFAULT 'active',
+    `stage` varchar (50) NOT NULL DEFAULT 'created',
+    `cleanup_json` text DEFAULT NULL,
+    `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+    `last_heartbeat` timestamp NOT NULL DEFAULT current_timestamp(),
+    `client_heartbeat_at` timestamp NULL DEFAULT NULL COMMENT 'Heartbeat terakhir dari browser; dipakai sebelum capture',
+    `expires_at` timestamp NOT NULL,
+    `finished_at` timestamp NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `idx_upload_attempt_token` (`token`),
+    KEY `idx_upload_attempt_user_status` (`user_id`, `status`),
+    KEY `idx_upload_attempt_status_heartbeat` (`status`, `last_heartbeat`),
+    KEY `idx_upload_attempt_expires` (`status`, `expires_at`),
+    KEY `idx_upload_attempt_hold` (`hold_id`),
+    CONSTRAINT `upload_attempts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `upload_attempts_ibfk_2` FOREIGN KEY (`hold_id`) REFERENCES `coin_holds` (`id`) ON DELETE SET NULL
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =============================================================================
 -- TABEL: video
@@ -241,13 +299,16 @@ CREATE TABLE
     `status` enum ('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
     `coin_cost` int (11) NOT NULL DEFAULT 0 COMMENT 'MEeLCoin yang dipotong saat INSERT, 0 = tidak dipotong',
     `coin_refunded` tinyint (1) NOT NULL DEFAULT 0 COMMENT '1 = biaya sudah dikembalikan oleh sweeper',
+    `hold_id` bigint (20) DEFAULT NULL COMMENT 'Reservasi MEeLCoin untuk upload ini',
     `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
     `updated_at` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     KEY `user_id` (`user_id`),
     KEY `idx_uq_status_created` (`status`, `created_at`),
     KEY `idx_uq_user_media` (`user_id`, `media_type`, `id`),
-    CONSTRAINT `upload_queue_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    KEY `idx_uq_hold` (`hold_id`),
+    CONSTRAINT `upload_queue_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `upload_queue_ibfk_2` FOREIGN KEY (`hold_id`) REFERENCES `coin_holds` (`id`) ON DELETE SET NULL
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =============================================================================
@@ -441,11 +502,14 @@ CREATE TABLE
     `amount` int (11) NOT NULL COMMENT 'Positive=credit, Negative=debit',
     `balance_after` int (11) NOT NULL,
     `reason` varchar (50) NOT NULL COMMENT 'refill, upload, upload_advanced, admin_adjust, init',
+    `hold_id` bigint (20) DEFAULT NULL COMMENT 'Reservasi coin yang di-capture untuk transaksi ini',
     `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
     PRIMARY KEY (`id`),
     KEY `idx_mcl_user` (`user_id`),
     KEY `idx_mcl_created` (`created_at`),
-    CONSTRAINT `meelcoin_log_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    KEY `idx_mcl_hold` (`hold_id`),
+    CONSTRAINT `meelcoin_log_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `meelcoin_log_ibfk_2` FOREIGN KEY (`hold_id`) REFERENCES `coin_holds` (`id`) ON DELETE SET NULL
   ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =============================================================================

@@ -287,31 +287,61 @@ if (isset($_POST['adjust_meelcoin_user'])) {
     $action = $_POST['coin_action'] ?? 'add';
     $reason = !empty($_POST['coin_reason']) ? substr(trim($_POST['coin_reason']), 0, 50) : 'admin_adjust';
     if ($target_id > 0 && $amount > 0) {
-        $current = MeelCoin::getBalance($conn, $target_id);
-        $role_stmt = $conn->prepare("SELECT role, username FROM users WHERE id = ?");
-        $role_stmt->bind_param("i", $target_id);
-        $role_stmt->execute();
-        $target_row = $role_stmt->get_result()->fetch_assoc();
-        $target_role = $target_row['role'] ?? 'user';
-        $target_username = $target_row['username'] ?? 'unknown';
-        $role_stmt->close();
-        $coin_max = MeelCoin::getMax($conn, $target_role);
-        if ($action === 'add') {
-            $new = min($current + $amount, $coin_max);
-            $actual = max(0, $new - $current);
-        } else {
-            $new = max(0, $current - $amount);
-            $actual = $amount;
-        }
-        if ($actual <= 0 && $action === 'add') {
-            header("Location: meelcoin.php?msg=Balance_at_max#manual-coin");
+        $conn->begin_transaction();
+        try {
+            $stmt = $conn->prepare(
+                "SELECT meelcoin, meelcoin_held, role, username
+                 FROM users WHERE id = ? FOR UPDATE"
+            );
+            $stmt->bind_param("i", $target_id);
+            $stmt->execute();
+            $target_row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$target_row) {
+                throw new RuntimeException('User tidak ditemukan.');
+            }
+            $current = (int)$target_row['meelcoin'];
+            $held = (int)$target_row['meelcoin_held'];
+            $target_role = $target_row['role'] ?? 'user';
+            $target_username = $target_row['username'] ?? 'unknown';
+            $coin_max = MeelCoin::getMax($conn, $target_role);
+
+            if ($action === 'add') {
+                $new = min($current + $amount, $coin_max);
+                $actual = max(0, $new - $current);
+            } else {
+                // Coin yang sedang ditahan upload belum boleh dianggap tersedia.
+                $new = max($held, $current - $amount);
+                $actual = max(0, $current - $new);
+            }
+            if ($actual <= 0 && $action === 'add') {
+                $conn->rollback();
+                header("Location: meelcoin.php?msg=Balance_at_max#manual-coin");
+                exit();
+            }
+            if ($actual <= 0 && $action === 'remove') {
+                $conn->rollback();
+                header("Location: meelcoin.php?msg=Balance_held#manual-coin");
+                exit();
+            }
+            $stmt = $conn->prepare("UPDATE users SET meelcoin = ? WHERE id = ?");
+            $stmt->bind_param("ii", $new, $target_id);
+            $stmt->execute();
+            if ($stmt->affected_rows < 1) {
+                $stmt->close();
+                throw new RuntimeException('Update gagal.');
+            }
+            $stmt->close();
+
+            MeelCoin::log($conn, $target_id, $action === 'add' ? $actual : -$actual, $new, $reason);
+            $conn->commit();
+        } catch (\Throwable $e) {
+            $conn->rollback();
+            error_log('[MEeL] Admin coin adjust error: ' . $e->getMessage());
+            header("Location: meelcoin.php?msg=Adjust_Error#manual-coin");
             exit();
         }
-        $stmt = $conn->prepare("UPDATE users SET meelcoin = ? WHERE id = ?");
-        $stmt->bind_param("ii", $new, $target_id);
-        $stmt->execute();
-        $stmt->close();
-        MeelCoin::log($conn, $target_id, $action === 'add' ? $actual : -$amount, $new, $reason);
+
         MeelCoin::clearCache();
         $admin_id = (int)($_SESSION['user_id'] ?? 0);
         $action_label = $action === 'add' ? 'tambah' : 'kurang';
@@ -383,4 +413,4 @@ if (isset($_POST['toggle_module'])) {
     exit();
 }
 
-/* reference build: MEeL-C9H11NO2 [65f507d8f3d7514c] */
+/* reference build: MEeL-C9H11NO2 [ffd332a] */

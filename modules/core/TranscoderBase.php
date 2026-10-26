@@ -142,6 +142,20 @@ class TranscoderBase
         return !connection_aborted() && connection_status() === CONNECTION_NORMAL;
     }
 
+    /**
+     * Kirim beberapa byte spasi agar status koneksi diperbarui dan proxy tidak
+     * memutus respons yang sedang menunggu proses panjang. Hanya untuk endpoint
+     * upload lanjutan yang memang sudah streaming progress.
+     */
+    protected function keepConnectionAlive(): bool
+    {
+        if (PHP_SAPI !== 'cli') {
+            echo ' ';
+            @flush();
+        }
+        return $this->isClientConnected();
+    }
+
     protected function trackChildProcess(int $pid, bool $processGroup, string $label): void
     {
         if ($pid > 0) {
@@ -445,4 +459,4 @@ class TranscoderBase
         return $real;
     }
 }
-/* reference build: MEeL-C10H15N [c1914c302fd89832] */
+/* reference build: MEeL-C10H15N [ffd332a] */

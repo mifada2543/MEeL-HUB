@@ -90,7 +90,8 @@ class StorageSplitTest extends TestCase
         $expected = [
             'meel_media_base_path', 'video_thumbnail_sm_name', 'video_thumbnail_sm',
             'meel_is_default_thumbnail', 'music_thumbnail_url', 'meel_storage_base_path',
-            'meel_storage_marker_path', 'meel_storage_ready', 'meel_storage_path_in_volume',
+            'meel_storage_marker_path', 'meel_storage_ready', 'meel_storage_is_mountpoint',
+            'meel_storage_path_in_volume',
             'meel_pid_dir_candidates', 'meel_pid_dir', 'meel_pid_filename',
             'meel_storage_guard', 'meel_drive_base_path',
             'check_disk_space', 'require_disk_space', 'dir_size', 'invalidate_dir_size_cache',

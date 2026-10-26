@@ -2,18 +2,12 @@
 use PHPUnit\Framework\TestCase;
 
 /**
- * T8 — akuntansi refund MEeLCoin pada baris antrean.
+ * Akuntansi MEeLCoin pada baris antrean upload lanjutan.
  *
- * `upload_queue.coin_cost` dan `coin_refunded` tidak pernah terisi:
- * `setPendingCoinCost()` hanya dipanggil dari alir yang justru tidak pernah
- * membuat baris `upload_queue`, jadi `coin_cost` selalu 0 dan sweeper tidak
- * pernah bisa mengembalikan biaya yang sebenarnya.
- *
- * Bug kedua: `upload_advanced.php` menandai baris `processing` yang basi jadi
- * `failed` tanpa refund, dan baris `failed` tidak lagi dipilih sweeper.
- *
- * Test ini mengunci kedua sisi: nilai yang dicatat harus benar, dan setiap
- * jalur yang melepas baris macet harus lewat mekanisme refund yang sama.
+ * Alur baru memakai hold: saldo total tidak berubah sampai media dan file
+ * terverifikasi. `coin_cost` tetap dicatat supaya baris legacy dan sweeper
+ * tahu berapa yang harus diselesaikan, sedangkan `hold_id` menunjuk
+ * reservasi yang harus dilepas kalau job gagal.
  *
  * @coversNothing
  */
@@ -41,25 +35,33 @@ class QueueRefundAccountingTest extends TestCase
     }
 
     /**
-     * Biaya yang dipotong harus dicatat di baris antrean, bukan hanya
-     * dikembalikan ke saldo.
+     * Upload lanjutan harus mereservasi hold, bukan memotong saldo di awal.
+     * Biaya dan hold tetap dicatat di baris antrean untuk penyelesaian.
      */
-    public function testAdvancedUploadRecordsTheChargedAmountInTheQueueRow(): void
+    public function testAdvancedUploadReservesBeforeRecordingQueueCost(): void
     {
-        $spendPos = strpos($this->advanced, 'MeelCoin::spend(');
-        $this->assertNotFalse($spendPos, 'upload_advanced.php harus memanggil MeelCoin::spend()');
+        $this->assertStringNotContainsString(
+            'MeelCoin::spend(',
+            $this->advanced,
+            'upload_advanced.php tidak boleh memotong saldo sebelum media terverifikasi'
+        );
+
+        $holdPos = strpos($this->advanced, 'MeelCoin::hold(');
+        $this->assertNotFalse($holdPos, 'upload_advanced.php harus memanggil MeelCoin::hold()');
+
+        $attachPos = strpos($this->advanced, 'UploadAttempt::attachHold(');
+        $this->assertNotFalse($attachPos, 'hold harus diikat ke sesi upload');
+        $this->assertGreaterThan($holdPos, $attachPos, 'attachHold() harus setelah hold dibuat');
 
         $recordPos = strpos($this->advanced, 'DownloadService::setPendingCoinCost(');
         $this->assertNotFalse(
             $recordPos,
-            'upload_advanced.php harus memanggil DownloadService::setPendingCoinCost() setelah '
-            . 'MeelCoin::spend() — tanpa itu, upload_queue.coin_cost tetap 0 dan sweeper '
-            . 'tidak pernah bisa mengembalikan biaya yang sebenarnya'
+            'upload_advanced.php harus mencatat biaya ke DownloadService setelah hold terikat'
         );
         $this->assertGreaterThan(
-            $spendPos,
+            $attachPos,
             $recordPos,
-            'setPendingCoinCost() harus dipanggil SETELAH spend(), bukan sebelumnya'
+            'setPendingCoinCost() harus dipanggil setelah hold terikat ke attempt'
         );
     }
 
@@ -81,8 +83,8 @@ class QueueRefundAccountingTest extends TestCase
         );
         $this->assertStringContainsString(
             'DownloadService::setPendingCoinCost($coin_cost)',
-            $this->uploadHelper,
-            'jalur upload biasa harus mencatat biaya yang dipotong'
+            $this->advanced,
+            'upload lanjutan harus mencatat biaya sebelum membuat baris antrean'
         );
     }
 
@@ -123,21 +125,31 @@ class QueueRefundAccountingTest extends TestCase
     }
 
     /**
-     * Refund memakai biaya yang tercatat di baris itu, bukan harga saat ini.
-     * Harga MEeLCoin bisa berubah setelah user membayar.
+     * Penyelesaian memakai biaya/hold yang tercatat di baris itu, bukan
+     * harga saat ini. Harga MEeLCoin bisa berubah setelah job dibuat.
      */
-    public function testRefundUsesTheCostRecordedOnTheRow(): void
+    public function testSettlementUsesTheCostAndHoldRecordedOnTheRow(): void
     {
-        $this->assertMatchesRegularExpression(
-            '/SELECT id, user_id, coin_cost FROM/',
+        $this->assertStringContainsString(
+            'SELECT id, user_id, coin_cost,',
             $this->gc,
             'baris macet harus dibaca lengkap dengan coin_cost-nya'
+        );
+        $this->assertStringContainsString(
+            'hold_id',
+            $this->gc,
+            'sweeper harus membaca hold_id untuk jalur hold'
+        );
+        $this->assertStringContainsString(
+            'releaseHoldInTransaction(',
+            $this->gc,
+            'baris ber-hold harus diselesaikan dengan melepas hold, bukan refund tunai'
         );
         $this->assertStringNotContainsString(
             'getCost(',
             $this->gc,
-            'GarbageCollector tidak boleh mengambil harga saat ini — yang direfund adalah '
-            . 'jumlah yang benar-benar dipotong saat baris dibuat'
+            'GarbageCollector tidak boleh mengambil harga saat ini — yang diselesaikan adalah '
+            . 'jumlah yang benar-benar dicatat saat baris dibuat'
         );
     }
 
