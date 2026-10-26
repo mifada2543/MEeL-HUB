@@ -119,7 +119,7 @@ html[data-theme="light"]{--bg-base:#fafafa!important;--bg-card:#fff!important;--
 & nav{transition:background-color .35s ease,border-color .35s ease}
 & nav::before{background:radial-gradient(ellipse 70% 50% at 50% calc(100% - 10px),rgba(0,0,0,.08) 0%,rgba(0,0,0,.03) 40%,transparent 70%)!important;filter:blur(20px);opacity:0!important}
 .top-nav{background:var(--meel-glass)!important;border-bottom-color:var(--meel-border)!important}
-.nav-brand{color:#fff!important}
+.nav-brand{color:var(--meel-text-heading)!important}
 .nav-brand span{color:var(--meel-red)!important}
 .nav-logo-icon{color:#fff!important;fill:#fff!important}
 .nav-logo-text{color:var(--meel-text-heading)!important}

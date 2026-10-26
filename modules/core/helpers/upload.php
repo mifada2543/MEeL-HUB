@@ -318,61 +318,125 @@ if (!function_exists('meel_insert_music_row')) {
 if (!function_exists('meel_handle_upload')) {
     function meel_handle_upload(\mysqli $conn, string $media_type, callable $process_fn, string $log_action): array
     {
-        $user_id = $_SESSION['user_id'];
+        $user_id = (int)($_SESSION['user_id'] ?? 0);
         $is_admin = (get_user_role($conn, $user_id) === 'admin');
         $result = ['status' => '', 'alert_message' => '', 'extra' => []];
         if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
             $result['alert_message'] = 'CSRF token tidak valid.';
             return $result;
         }
+
         $meelcoin_enabled = MeelCoin::isEnabled($conn);
         $coin_cost = 0;
         if ($meelcoin_enabled && !$is_admin) {
             $coin_cost = MeelCoin::getCost($conn, 'upload');
         }
         $coin_active = $meelcoin_enabled && !$is_admin && $coin_cost > 0;
+
+        $coin_hold_id = 0;
+        $attempt_id = 0;
         if ($coin_active) {
-            $coin_balance = MeelCoin::getBalance($conn, $user_id);
-            if (!MeelCoin::canAfford($conn, $user_id, $coin_cost)) {
-                $result['alert_message'] = "MEeLCoin tidak cukup! Dibutuhkan {$coin_cost} coin, saldo Anda: {$coin_balance}.";
+            $summary = MeelCoin::getBalanceSummary($conn, $user_id);
+            if ($summary['available'] < $coin_cost) {
+                $result['alert_message'] = "MEeLCoin tersedia tidak cukup! Dibutuhkan {$coin_cost} coin, tersedia: {$summary['available']} (saldo total {$summary['total']}, ditahan {$summary['held']}).";
                 return $result;
             }
-        }
-        $coin_deducted = false;
-        if ($coin_active) {
-            [$spent_ok, $spent_err] = MeelCoin::spend($conn, $user_id, $coin_cost, 'upload');
-            if (!$spent_ok) {
-                $result['alert_message'] = $spent_err;
+
+            $token = trim((string)($_POST['upload_attempt'] ?? ''));
+            $attempt = UploadAttempt::findActiveByToken($conn, $token, $user_id);
+            if ($attempt === null) {
+                $newAttempt = UploadAttempt::create($conn, $user_id, $media_type);
+                if ($newAttempt === null) {
+                    $result['alert_message'] = 'Sesi upload tidak valid atau akun tidak aktif. Muat ulang halaman lalu coba lagi.';
+                    return $result;
+                }
+                $attempt_id = (int)$newAttempt['id'];
+            } else {
+                $attempt_id = (int)$attempt['id'];
+            }
+
+            $hold = MeelCoin::hold($conn, $user_id, $coin_cost, 'upload', $media_type);
+            if (!$hold['ok']) {
+                UploadAttempt::fail($conn, $attempt_id, 'hold_failed');
+                $result['alert_message'] = $hold['error'];
                 return $result;
             }
-            $coin_deducted = true;
-            if (class_exists('DownloadService', false) || class_exists('DownloadService')) {
-                DownloadService::setPendingCoinCost($coin_cost);
+            $coin_hold_id = (int)$hold['hold_id'];
+
+            if (!UploadAttempt::attachHold($conn, $attempt_id, $coin_hold_id, $user_id)) {
+                MeelCoin::releaseHold($conn, $coin_hold_id, 'attempt_bind_failed');
+                UploadAttempt::fail($conn, $attempt_id, 'attempt_bind_failed');
+                $result['alert_message'] = 'Gagal mengikat sesi upload ke reservasi MEeLCoin. Coba lagi.';
+                return $result;
             }
-            $new_balance = MeelCoin::getBalance($conn, $user_id);
-            Notification::create(
-                $conn,
-                $user_id,
-                'meelcoin',
-                'Penggunaan MEeLCoin',
-                'Upload ' . $media_type . ' "' . htmlspecialchars(trim($_POST['title'] ?? '')) . '" — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
-            );
+            UploadAttempt::registerShutdownGuard($conn, $attempt_id);
+            UploadAttempt::setStage($conn, $attempt_id, 'processing');
         }
-        $process_result = $process_fn($_POST, $_FILES);
-        if ($process_result['status'] === 'success') {
+
+        try {
+            // Lepaskan session lock sebelum proses panjang supaya heartbeat
+            // browser tidak menunggu sampai upload selesai.
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+            $process_result = $process_fn($_POST, $_FILES, $coin_hold_id, $attempt_id);
+        } catch (Throwable $e) {
+            error_log('[MEeL] Upload exception: ' . $e->getMessage());
+            $process_result = ['status' => 'error', 'msg' => 'Upload gagal diproses: ' . $e->getMessage()];
+        }
+        if (!is_array($process_result)) {
+            $process_result = ['status' => 'error', 'msg' => 'Upload gagal: hasil proses tidak valid.'];
+        }
+
+        if (($process_result['status'] ?? '') === 'success') {
+            if ($coin_active) {
+                $hold = MeelCoin::getHold($conn, $coin_hold_id);
+                if ($hold === null || (string)$hold['status'] !== 'captured') {
+                    UploadAttempt::fail($conn, $attempt_id, 'coin_not_captured');
+                    $result['alert_message'] = 'Upload tidak dapat diverifikasi; MEeLCoin tidak dipotong.';
+                    return $result;
+                }
+                UploadAttempt::complete($conn, $attempt_id);
+                try {
+                    $new_balance = MeelCoin::getBalance($conn, $user_id);
+                    if (class_exists('Notification')) {
+                        Notification::create(
+                            $conn,
+                            $user_id,
+                            'meelcoin',
+                            'Penggunaan MEeLCoin',
+                            'Upload ' . $media_type . ' "' . htmlspecialchars(trim((string)($_POST['title'] ?? ''))) . '" — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
+                        );
+                    }
+                } catch (Throwable $e) {
+                    error_log('[MEeL] Gagal membuat notifikasi MEeLCoin: ' . $e->getMessage());
+                }
+            }
+
             $result['status'] = 'success';
             if ($meelcoin_enabled && !$is_admin) {
-                $result['extra']['coin_balance'] = MeelCoin::getBalance($conn, $user_id);
+                $summary = MeelCoin::getBalanceSummary($conn, $user_id);
+                $result['extra']['coin_balance'] = $summary['total'];
+                $result['extra']['coin_held'] = $summary['held'];
+                $result['extra']['coin_available'] = $summary['available'];
             } else {
                 $result['extra']['hour_count'] = get_hourly_upload_count($conn, $user_id, $media_type);
             }
             $result['extra']['total_uploads'] = get_total_upload_count($conn, $user_id, $media_type);
-            MediaLibrary::clearCountsCache();
-            log_activity($conn, $user_id, $log_action, $media_type, (int)($process_result['id'] ?? 0));
+            try {
+                MediaLibrary::clearCountsCache();
+                log_activity($conn, $user_id, $log_action, $media_type, (int)($process_result['id'] ?? 0));
+            } catch (Throwable $e) {
+                error_log('[MEeL] Upload sukses tetapi logging gagal: ' . $e->getMessage());
+            }
         } else {
-            $result['alert_message'] = $process_result['msg'];
-            if ($coin_deducted) {
-                MeelCoin::refund($conn, $user_id, $coin_cost, 'upload_failed_refund');
+            $result['alert_message'] = (string)($process_result['msg'] ?? 'Upload gagal.');
+            if ($coin_active) {
+                UploadAttempt::fail($conn, $attempt_id, 'upload_failed');
+                $summary = MeelCoin::getBalanceSummary($conn, $user_id);
+                $result['extra']['coin_balance'] = $summary['total'];
+                $result['extra']['coin_held'] = $summary['held'];
+                $result['extra']['coin_available'] = $summary['available'];
             }
         }
         return $result;

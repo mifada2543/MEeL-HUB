@@ -13,6 +13,12 @@ authorize_stream($id);
 $ctrl = new MusicWatchController($conn, $user_id, $id, $playlist_id);
 $ctrl->handleRequest();
 extract($ctrl->getViewData(), EXTR_SKIP);
+$has_lyrics = !empty($lyrics);
+$is_owner = $is_logged_in && (int)$_SESSION['user_id'] === (int)($v['user_id'] ?? -1);
+$show_lyric_btn = $has_lyrics || ($is_owner && !$has_lyrics);
+$lyric_btn_text = $has_lyrics ? 'Lirik' : 'Tambahkan Lirik';
+$lyric_btn_action = $has_lyrics ? 'openKaraoke()' : "location.href='" . base_url("/profile/lrc-editor?id=$id") . "'";
+$lyric_btn_icon = $has_lyrics ? 'mic' : 'plus';
 session_write_close();
 ?>
 <!DOCTYPE html>
@@ -149,11 +155,13 @@ session_write_close();
                                 <i data-lucide="sliders-horizontal" class="w-3 h-3"></i>
                                 <span id="eq-text">EQ Mati</span>
                             </button>
-                            <button id="btn-karaoke" onclick="openKaraoke()" style="display:none;"
+                            <?php if ($show_lyric_btn): ?>
+                            <button id="btn-karaoke" onclick="<?= htmlspecialchars($lyric_btn_action) ?>"
                                 class="bg-gray-800 text-gray-400 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border border-transparent transition-all cursor-pointer">
-                                <i data-lucide="mic" class="w-3 h-3"></i>
-                                Lirik
+                                <i data-lucide="<?= $lyric_btn_icon ?>" class="w-3 h-3"></i>
+                                <?= $lyric_btn_text ?>
                             </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div id="cava-container" class="hidden w-full sm:flex-1 sm:min-w-[160px] bg-black/20 border border-white/[.04] rounded-xl sm:rounded-xl p-2 sm:p-3 items-end justify-center gap-[2px]"></div>
@@ -510,7 +518,9 @@ session_write_close();
             filename: <?= json_encode($v['filename']) ?>,
             streamUrl: <?= json_encode('stream?id=' . $id) ?>,
             mimeType: <?= json_encode($mimeType) ?>,
-            lyrics: <?= json_encode($lyrics ?? []) ?>
+            lyrics: <?= json_encode($lyrics ?? []) ?>,
+            canEditLyrics: <?= json_encode($is_owner && !$has_lyrics) ?>,
+            lyricEditorUrl: <?= json_encode(base_url("/profile/lrc-editor?id=$id")) ?>
         };
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') {

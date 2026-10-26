@@ -1,5 +1,5 @@
 <?php
-/* reference build: MEeL-C3H7NO2S [a7af141dc4ed461b] */
+/* reference build: MEeL-C3H7NO2S [ffd332a] */
 
 require_once __DIR__ . '/modules/core/helpers.php';
 error_reporting(E_ALL);
@@ -70,6 +70,7 @@ register_shutdown_function([$transcoder, 'terminateAllProcesses']);
 
 if (!$is_admin) {
     GarbageCollector::releaseStaleQueueRows($conn, 30, ['upload_queue']);
+    GarbageCollector::sweepUploadAccounting($conn);
 }
 
 $q_active = $conn->query("SELECT COUNT(*) FROM upload_queue WHERE status='processing'");
@@ -78,6 +79,8 @@ $active_count = $q_active ? (int)$q_active->fetch_row()[0] : 0;
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 
 $coin_balance = 0;
+$coin_held = 0;
+$coin_available = 0;
 $coin_max = 0;
 $coin_cost = 0;
 $coin_countdown = 0;
@@ -92,6 +95,12 @@ if ($meelcoin_enabled) {
         MeelCoin::refill($conn, (int)$_SESSION['user_id'], $user_role);
     }
     $coin_balance = $is_admin ? -1 : MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
+    if (!$is_admin) {
+        $coin_summary = MeelCoin::getBalanceSummary($conn, (int)$_SESSION['user_id']);
+        $coin_balance = $coin_summary['total'];
+        $coin_held = $coin_summary['held'];
+        $coin_available = $coin_summary['available'];
+    }
     $coin_max = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
     $coin_cost = MeelCoin::getCost($conn, 'advanced');
     $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, (int)$_SESSION['user_id'], $user_role);
@@ -104,6 +113,45 @@ if ($meelcoin_enabled) {
 }
 
 $coin_active = $meelcoin_enabled && !$is_admin && $coin_cost > 0;
+
+$upload_attempt_token = '';
+$upload_attempt_id = 0;
+$coin_hold_id = 0;
+if ($coin_active && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $new_attempt = UploadAttempt::create($conn, (int)$_SESSION['user_id'], 'advanced');
+    if ($new_attempt !== null) {
+        $upload_attempt_id = (int)$new_attempt['id'];
+        $upload_attempt_token = (string)$new_attempt['token'];
+    }
+}
+
+$fail_upload_attempt = static function (string $reason) use (&$upload_attempt_id, $conn): void {
+    if ($upload_attempt_id > 0) {
+        UploadAttempt::fail($conn, $upload_attempt_id, $reason);
+    }
+};
+$complete_upload_attempt = static function () use (&$upload_attempt_id, $conn): void {
+    if ($upload_attempt_id > 0) {
+        UploadAttempt::complete($conn, $upload_attempt_id);
+    }
+};
+$send_coin_notification = static function (string $detail) use ($conn, $coin_cost): void {
+    if (!class_exists('Notification')) {
+        return;
+    }
+    try {
+        $summary = MeelCoin::getBalanceSummary($conn, (int)$_SESSION['user_id']);
+        Notification::create(
+            $conn,
+            (int)$_SESSION['user_id'],
+            'meelcoin',
+            'Penggunaan MEeLCoin',
+            $detail . ' — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $summary['total'] . ', tersedia: ' . $summary['available'] . ')'
+        );
+    } catch (\Throwable $e) {
+        error_log('[MEeL-Upload] Gagal membuat notifikasi MEeLCoin: ' . $e->getMessage());
+    }
+};
 
 $is_confirmed_download_failure = static function (string $msg): bool {
     if ($msg === '' || $msg === 'DISCONNECTED') return true;
@@ -126,38 +174,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
         $message = 'busy';
     } else {
         if ($coin_active) {
-            if (!MeelCoin::canAfford($conn, (int)$_SESSION['user_id'], $coin_cost)) {
+            if ($coin_available < $coin_cost) {
                 $message = 'rate_limit';
-                $rate_limit_msg = "MEeLCoin tidak cukup! Dibutuhkan {$coin_cost} coin, saldo Anda: {$coin_balance}.";
+                $rate_limit_msg = "MEeLCoin tersedia tidak cukup! Dibutuhkan {$coin_cost} coin, tersedia: {$coin_available} (saldo total {$coin_balance}, ditahan {$coin_held}).";
             }
         }
 
         if ($message === '') {
             if ($coin_active) {
-                [$spent_ok, $spent_err] = MeelCoin::spend($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced');
-                if (!$spent_ok) {
-                    $message = 'rate_limit';
-                    $rate_limit_msg = $spent_err;
-                } else {
-                    $new_balance = MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
-                    $clean_url = filter_var(trim($_POST['url']), FILTER_SANITIZE_URL) ?: trim($_POST['url']);
-                    if (class_exists('DownloadService', false) || class_exists('DownloadService')) {
-                        DownloadService::setPendingCoinCost($coin_cost);
+                $post_token = trim((string)($_POST['upload_attempt'] ?? ''));
+                $attempt = UploadAttempt::findActiveByToken($conn, $post_token, (int)$_SESSION['user_id']);
+                if ($attempt === null) {
+                    $new_attempt = UploadAttempt::create($conn, (int)$_SESSION['user_id'], 'advanced');
+                    if ($new_attempt !== null) {
+                        $attempt = UploadAttempt::get($conn, (int)$new_attempt['id']);
+                        $upload_attempt_token = (string)$new_attempt['token'];
                     }
-                    try {
-                        Notification::create($conn, (int)$_SESSION['user_id'], 'meelcoin',
-                            'Penggunaan MEeLCoin',
-                            'Upload URL berhasil. URL: ' . htmlspecialchars($clean_url) . ' — Biaya: ' . $coin_cost . ' MEeLCoin (Sisa: ' . $new_balance . ')'
-                        );
-                    } catch (\Throwable $e) {
-                        error_log('[MEeL-Upload] Gagal membuat notifikasi MEeLCoin: ' . $e->getMessage());
+                } else {
+                    $upload_attempt_token = $post_token;
+                }
+
+                if ($attempt === null) {
+                    $message = 'rate_limit';
+                    $rate_limit_msg = 'Sesi upload tidak valid. Muat ulang halaman lalu coba lagi.';
+                } else {
+                    $upload_attempt_id = (int)$attempt['id'];
+                    $hold = MeelCoin::hold($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced', 'advanced');
+                    if (!$hold['ok']) {
+                        UploadAttempt::fail($conn, $upload_attempt_id, 'hold_failed');
+                        $message = 'rate_limit';
+                        $rate_limit_msg = $hold['error'];
+                    } else {
+                        $coin_hold_id = (int)$hold['hold_id'];
+                        if (!UploadAttempt::attachHold($conn, $upload_attempt_id, $coin_hold_id, (int)$_SESSION['user_id'])) {
+                            MeelCoin::releaseHold($conn, $coin_hold_id, 'attempt_bind_failed');
+                            UploadAttempt::fail($conn, $upload_attempt_id, 'attempt_bind_failed');
+                            $coin_hold_id = 0;
+                            $message = 'rate_limit';
+                            $rate_limit_msg = 'Gagal mengikat sesi upload ke reservasi MEeLCoin. Coba lagi.';
+                        } else {
+                            UploadAttempt::registerShutdownGuard($conn, $upload_attempt_id);
+                            UploadAttempt::setStage($conn, $upload_attempt_id, 'starting');
+                            DownloadService::setPendingCoinCost($coin_cost);
+                            DownloadService::setPendingCoinHold($coin_hold_id);
+                            DownloadService::setPendingAttemptId($upload_attempt_id);
+                        }
                     }
                 }
             }
         }
 
         if ($message === '') {
-            $coin_deducted = $coin_active;
+            $coin_deducted = $coin_hold_id > 0;
 
             $type = $_POST['type'] ?? '';
             if (!$meelcoin_enabled) {
@@ -170,6 +238,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
             }
 
             if ($message === '') {
+                // Lepaskan session lock supaya heartbeat browser bisa masuk
+                // selama download/transcode berjalan lama.
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    session_write_close();
+                }
                 try {
                     $url = trim($_POST['url']);
                     $message = $transcoder->processDownload($url, $type);
@@ -196,27 +269,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                     $enc_duration = (int)($pending['duration'] ?? 0);
                     $enc_desc = (string)($pending['description'] ?? 'Upload by MEeL Engine');
 
-                    try {
-                        $result = $transcoder->encodeMusic(
-                            $temp_file, $enc_title, $enc_artist, $enc_album, $enc_duration, $enc_desc
-                        );
+                    $queue_id = $transcoder->getLastQueueId();
+                        try {
+                            $result = $transcoder->encodeMusic(
+                                $temp_file, $enc_title, $enc_artist, $enc_album, $enc_duration, $enc_desc,
+                                $coin_hold_id, $upload_attempt_id, $queue_id
+                            );
                     } catch (\Throwable $e) {
                         error_log('[MEeL-Upload] encodeMusic exception: ' . $e->getMessage());
                         $result = ['status' => 'error', 'msg' => 'Gagal mengonversi audio: ' . $e->getMessage()];
                     }
 
                     if ($result['status'] === 'success') {
-                        MediaLibrary::clearCountsCache();
-                        log_activity($conn, (int)$_SESSION['user_id'], 'upload_music', 'music');
+                        $already_processed = !empty($result['already_processed']);
+                        if ($coin_active && !$already_processed) {
+                            $hold = MeelCoin::getHold($conn, $coin_hold_id);
+                            if ($hold === null || (string)$hold['status'] !== 'captured') {
+                                $fail_upload_attempt('coin_not_captured');
+                                $err_msg = json_encode('Upload musik tidak dapat diverifikasi; MEeLCoin tidak dipotong.', JSON_HEX_TAG | JSON_HEX_AMP);
+                                echo '<script>if(typeof meelError==="function"){meelError(' . $err_msg . ');}</script>';
+                                echo str_repeat(' ', 1024);
+                                flush();
+                                exit;
+                            }
+                        }
+                        $complete_upload_attempt();
+                        if ($coin_active && !$already_processed) {
+                            $send_coin_notification('Upload URL musik "' . $enc_title . '".');
+                        }
+                        try {
+                            MediaLibrary::clearCountsCache();
+                            log_activity($conn, (int)$_SESSION['user_id'], 'upload_music', 'music');
+                        } catch (\Throwable $e) {
+                            error_log('[MEeL-Upload] Musik tersimpan tetapi logging gagal: ' . $e->getMessage());
+                        }
                         $done_title = json_encode($enc_title, JSON_HEX_TAG | JSON_HEX_AMP);
                         echo '<script>'
                            . 'if(typeof meelDone==="function"){meelDone(' . $done_title . ',"music/index.php");}'
                            . 'else{window.location.href="upload?success=1&file="+encodeURIComponent(' . json_encode($result['filename'], JSON_HEX_TAG | JSON_HEX_AMP) . ');}'
                            . '</script>';
                     } else {
-                        if ($coin_deducted) {
-                            MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_encode_refund');
-                        }
+                        $fail_upload_attempt('encode_failed');
                         $err_msg = json_encode($result['msg'] ?? 'Gagal mengonversi audio.', JSON_HEX_TAG | JSON_HEX_AMP);
                         echo '<script>'
                            . 'if(typeof meelError==="function"){meelError(' . $err_msg . ');}'
@@ -246,8 +339,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
 
                 if (is_string($message) && str_starts_with($message, 'DONE:')) {
                     $done_title = substr($message, strlen('DONE:'));
-                    MediaLibrary::clearCountsCache();
-                    log_activity($conn, (int)$_SESSION['user_id'], 'upload_video', 'video');
+                    if ($coin_active) {
+                        $hold = MeelCoin::getHold($conn, $coin_hold_id);
+                        if ($hold === null || (string)$hold['status'] !== 'captured') {
+                            $fail_upload_attempt('coin_not_captured');
+                            while (ob_get_level()) {
+                                ob_end_clean();
+                            }
+                            $err_msg = json_encode('Upload video tidak dapat diverifikasi; MEeLCoin tidak dipotong.', JSON_HEX_TAG | JSON_HEX_AMP);
+                            echo '<script>if(typeof meelError==="function"){meelError(' . $err_msg . ');}</script>';
+                            echo str_repeat(' ', 1024);
+                            flush();
+                            exit;
+                        }
+                        $send_coin_notification('Upload URL video "' . $done_title . '".');
+                    }
+                    $complete_upload_attempt();
+                    try {
+                        MediaLibrary::clearCountsCache();
+                        log_activity($conn, (int)$_SESSION['user_id'], 'upload_video', 'video');
+                    } catch (\Throwable $e) {
+                        error_log('[MEeL-Upload] Video tersimpan tetapi logging gagal: ' . $e->getMessage());
+                    }
                     while (ob_get_level()) {
                         ob_end_clean();
                     }
@@ -262,13 +375,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 }
 
                 if ($coin_deducted) {
-                    $confirmed_failure = $is_confirmed_download_failure((string)$message);
-                    if (!$confirmed_failure) {
-                        error_log('[MEeL-Upload] Hasil tak dikenali dari engine, coin TIDAK direfund: ' . (string)$message);
-                    }
+                    $fail_upload_attempt('download_failed');
                     if (is_string($message) && $message === 'DISCONNECTED') {
-                        MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_download_refund');
-                        $err_msg = json_encode('Download terputus. Coin sudah dikembalikan.', JSON_HEX_TAG | JSON_HEX_AMP);
+                        $err_msg = json_encode('Download terputus. MEeLCoin tidak dipotong.', JSON_HEX_TAG | JSON_HEX_AMP);
                         echo '<script>'
                            . 'if(typeof meelError==="function"){meelError(' . $err_msg . ',"upload_advanced.php");}'
                            . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ Download Terputus</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
@@ -277,11 +386,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                         flush();
                         exit;
                     }
-                    if ($confirmed_failure) {
-                        MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_download_refund');
-                    }
                     $err_msg = $message !== '' ? json_encode($message, JSON_HEX_TAG | JSON_HEX_AMP) : '"Download gagal: media tidak tersimpan di server."';
-                    $err_label = $message !== '' ? 'Download Gagal' : 'Download Gagal';
+                    $err_label = 'Download Gagal';
                     echo '<script>'
                        . 'if(typeof meelError==="function"){meelError(' . $err_msg . ');}'
                        . 'else{document.open();document.write("<pre style=\\"padding:2em;font:13px/1.6 monospace;color:#e55;background:#1a0000;white-space:pre-wrap;word-break:break-all\\">"+"<b style=\\"color:#f44\\">⚠ ' . $err_label . '</b><br><br>"+document.createTextNode(' . $err_msg . ').textContent.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>");document.close();}'
@@ -292,8 +398,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 }
             } catch (Exception $e) {
                 error_log('[MEeL-Upload] ' . $e->getMessage());
-                if ($coin_deducted) {
-                    MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_error_refund');
+                if ($coin_active) {
+                    $fail_upload_attempt('upload_exception');
                 }
                 if ($is_admin) {
                     $msg = $e->getMessage();
@@ -308,8 +414,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url'])) {
                 exit;
             } catch (Throwable $e) {
                 error_log('[MEeL-Upload] ' . $e->getMessage());
-                if ($coin_deducted) {
-                    MeelCoin::refund($conn, (int)$_SESSION['user_id'], $coin_cost, 'upload_advanced_error_refund');
+                if ($coin_active) {
+                    $fail_upload_attempt('upload_exception');
                 }
                 if ($is_admin) {
                     $msg = $e->getMessage();
@@ -470,6 +576,9 @@ include __DIR__ . '/partials/scripts.php';
                                 <?php if (isset($_SESSION['csrf_token'])): ?>
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES) ?>">
                                 <?php endif; ?>
+                                <input type="hidden" name="upload_attempt" id="upload-attempt"
+                                    value="<?= htmlspecialchars($upload_attempt_token, ENT_QUOTES) ?>"
+                                    data-heartbeat-url="api/upload-heartbeat">
 
                                 <div>
                                     <label class="f-label">URL Sumber</label>
@@ -593,6 +702,14 @@ include __DIR__ . '/partials/scripts.php';
                                             ><?= $is_admin ? '∞' : $coin_balance ?></span>
                                         </div>
                                         <?php if (!$is_admin): ?>
+                                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                                            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Ditahan</span>
+                                            <span id="coin-held" style="font-family:var(--font-mono);font-size:.7rem;color:#fb923c;"><?= (int)$coin_held ?> coin</span>
+                                        </div>
+                                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                                            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Tersedia</span>
+                                            <span id="coin-available" style="font-family:var(--font-mono);font-size:.7rem;color:#4ade80;"><?= (int)$coin_available ?> coin</span>
+                                        </div>
                                         <div style="display:flex;align-items:center;justify-content:space-between;">
                                             <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--muted);">Biaya</span>
                                             <span style="font-family:var(--font-mono);font-size:.7rem;color:#f97316;"><?= $coin_cost ?> coin</span>
@@ -734,6 +851,7 @@ include __DIR__ . '/partials/scripts.php';
     </main>
 
     <?php include __DIR__ . '/partials/footer.php'; ?>
+    <script src="assets/js/shared/upload-heartbeat.js<?= meel_asset_version('assets/js/shared/upload-heartbeat.js') ?>"></script>
     <script src="assets/js/up/main.js<?= meel_asset_version('assets/js/up/main.js') ?>"></script>
 </body>
 

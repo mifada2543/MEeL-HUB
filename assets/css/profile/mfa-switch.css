@@ -10,6 +10,21 @@
     text-decoration: none;
     transition: opacity 0.2s;
 }
+#theme-toggle.mfa-switch {
+    width: auto;
+    height: auto;
+    box-shadow: none !important;
+}
+#theme-toggle.mfa-switch:hover {
+    transform: none;
+    opacity: 1;
+    filter: brightness(0.9);
+}
+
+#theme-toggle.mfa-switch:active {
+    transform: none;
+    filter: brightness(0.8);
+}
 
 .mfa-switch:hover {
     opacity: 0.85;
@@ -58,6 +73,14 @@
 
 .mfa-track--on .mfa-knob {
     transform: translateX(20px);
+}
+
+/* Saat tema diganti, theme.js menambahkan .theme-transition ke <html>.
+   Rule global `html.theme-transition *` mengunci transition tanpa transform,
+   sehingga knob langsung melompat. Kembalikan transisi transform khusus knob
+   agar animasi geser kanan <-> kiri tetap berjalan. */
+html.theme-transition .mfa-knob {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
 .mfa-label {

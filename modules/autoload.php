@@ -17,6 +17,7 @@ spl_autoload_register(function (string $class) {
         'RateLimiter' => __DIR__ . '/auth/RateLimiter.php',
         'Notification' => __DIR__ . '/core/Notification.php',
         'MeelCoin' => __DIR__ . '/core/MeelCoin.php',
+        'UploadAttempt' => __DIR__ . '/core/UploadAttempt.php',
         'SsrfGuard' => __DIR__ . '/auth/SsrfGuard.php',
         'ValidatingProxy' => __DIR__ . '/auth/ValidatingProxy.php',
         'SearchEngine' => __DIR__ . '/media/SearchEngine.php',

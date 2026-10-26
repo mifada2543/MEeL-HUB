@@ -88,6 +88,7 @@ final class MeelRouter
         'api/notification' => ['handler' => 'controllers/api/notification.php', 'script' => '/controllers/api/notification.php'],
         'api/chat' => ['handler' => 'controllers/api/chat.php', 'script' => '/controllers/api/chat.php'],
         'api/meelcoin' => ['handler' => 'controllers/api/meelcoin.php', 'script' => '/controllers/api/meelcoin.php'],
+        'api/upload-heartbeat' => ['handler' => 'controllers/api/upload_heartbeat.php', 'script' => '/controllers/api/upload_heartbeat.php'],
         'system/mfa' => ['handler' => 'controllers/system/mfa.php', 'script' => '/controllers/system/mfa.php'],
     ];
 

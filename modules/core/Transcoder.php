@@ -63,13 +63,21 @@ class Transcoder extends TranscoderBase
         return $this->downloadService->processDownload($url, $type);
     }
 
+    public function getLastQueueId(): int
+    {
+        return $this->downloadService?->getLastQueueId() ?? 0;
+    }
+
     public function encodeMusic(
         string $temp_file,
         string $title,
         string $artist,
         string $album,
         int $duration,
-        string $description = 'Upload by MEeL Engine'
+        string $description = 'Upload by MEeL Engine',
+        int $holdId = 0,
+        int $attemptId = 0,
+        int $queueId = 0
     ): array {
         if ($this->encodeService === null) {
             $this->encodeService = new EncodeService($this->conn, $this->user_id);
@@ -81,7 +89,9 @@ class Transcoder extends TranscoderBase
             $artist,
             $album,
             $duration,
-            $description
+            $description,
+            $holdId,
+            $attemptId
         );
     }
 
@@ -100,4 +110,4 @@ class Transcoder extends TranscoderBase
     }
 }
 
-/* reference build: MEeL-C10H12N2O [6aa5534624d9760b] */
+/* reference build: MEeL-C10H12N2O [ffd332a] */

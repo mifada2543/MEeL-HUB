@@ -60,9 +60,10 @@ function generate_lrc(array $lines, ?string $title = null, ?string $artist = nul
     foreach ($lines as $line) {
         $time = (float)($line['time'] ?? 0);
         $text = $line['text'] ?? '';
-        $min = (int)floor($time / 60);
-        $sec = (int)floor($time % 60);
-        $ms = (int)round(($time - floor($time)) * 100);
+        $total_seconds = (int)floor($time);
+        $min = $total_seconds / 60;
+        $sec = $total_seconds % 60;
+        $ms = (int)round(($time - $total_seconds) * 100);
         $out[] = sprintf('[%02d:%02d.%02d]%s', $min, $sec, $ms, $text);
     }
 

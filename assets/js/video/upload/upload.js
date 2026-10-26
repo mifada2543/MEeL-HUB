@@ -102,6 +102,9 @@ function handleSubmit() {
     ],
     baseDelay: baseDelay,
   });
+  if (window.meelStartUploadHeartbeat) {
+    window.meelStartUploadHeartbeat(videoInput.closest("form"));
+  }
 }
 const videoZone = document.getElementById("video-zone");
 const videoInput = document.getElementById("video-input");

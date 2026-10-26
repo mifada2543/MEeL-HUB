@@ -104,6 +104,17 @@ if (!function_exists('meel_storage_marker_path')) {
         return $base === '' ? '' : $base . '/.meel_mount';
     }
 }
+if (!function_exists('meel_storage_is_mountpoint')) {
+    function meel_storage_is_mountpoint(string $path): bool
+    {
+        $self = @stat($path);
+        $parent = @stat(dirname($path));
+        if (!is_array($self) || !is_array($parent)) {
+            return false;
+        }
+        return (int)$self['dev'] !== (int)$parent['dev'];
+    }
+}
 if (!function_exists('meel_storage_ready')) {
     function meel_storage_ready(): bool
     {
@@ -117,13 +128,28 @@ if (!function_exists('meel_storage_ready')) {
         if (is_file($base . '/.meel_mount')) {
             return true;
         }
-        $entries = @scandir($base);
-        if (!is_array($entries) || count(array_diff($entries, ['.', '..'])) === 0) {
-            error_log('[MEeL] Folder storage kosong tanpa penanda .meel_mount, diasumsikan belum ter-mount: ' . $base);
-            return false;
+        if (meel_storage_is_mountpoint($base)) {
+            return true;
         }
-        error_log('[MEeL] Penanda .meel_mount belum ada di ' . $base . ' — jalankan: touch "' . $base . '/.meel_mount"');
-        return true;
+
+        // Test/dev storage di dalam folder proyek tidak punya mount terpisah.
+        // Produksi wajib punya mount asli atau penanda .meel_mount.
+        $projectRoot = defined('MEEL_ROOT') ? MEEL_ROOT : dirname(__DIR__, 3);
+        $projectTemp = realpath($projectRoot . '/temp');
+        $baseReal = realpath($base);
+        if ($projectTemp !== false && $baseReal !== false
+            && ($baseReal === $projectTemp || str_starts_with($baseReal, $projectTemp . DIRECTORY_SEPARATOR))) {
+            $entries = @scandir($base);
+            if (is_array($entries) && count(array_diff($entries, ['.', '..'])) > 0) {
+                return true;
+            }
+        }
+
+        error_log(
+            '[MEeL] Storage belum siap: ' . $base
+            . ' bukan mountpoint dan tidak punya penanda .meel_mount.'
+        );
+        return false;
     }
 }
 if (!function_exists('meel_storage_path_in_volume')) {
