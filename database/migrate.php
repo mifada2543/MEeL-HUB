@@ -599,6 +599,101 @@ $migrations = [
             },
         ],
     ],
+    8 => [
+        'description' => 'MEeLCoin hold/capture + heartbeat upload attempts (anti debit palsu)',
+        'sql' => [
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'users', 'meelcoin_held')) {
+                    $conn->query("ALTER TABLE users
+                        ADD COLUMN meelcoin_held INT(11) NOT NULL DEFAULT 0
+                        COMMENT 'MEeLCoin yang direservasi untuk upload yang belum terverifikasi'");
+                }
+            },
+            function ($conn) {
+                $conn->query("CREATE TABLE IF NOT EXISTS coin_holds (
+                    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+                    user_id INT(11) NOT NULL,
+                    amount INT(11) NOT NULL,
+                    status ENUM('held','captured','released','expired') NOT NULL DEFAULT 'held',
+                    reason VARCHAR(50) NOT NULL DEFAULT 'upload',
+                    media_type VARCHAR(20) NOT NULL DEFAULT '',
+                    upload_attempt_id BIGINT(20) DEFAULT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    last_heartbeat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP NOT NULL,
+                    captured_at TIMESTAMP NULL DEFAULT NULL,
+                    released_at TIMESTAMP NULL DEFAULT NULL,
+                    release_reason VARCHAR(50) DEFAULT NULL,
+                    PRIMARY KEY (id),
+                    KEY idx_coin_holds_user_status (user_id, status),
+                    KEY idx_coin_holds_status_heartbeat (status, last_heartbeat),
+                    KEY idx_coin_holds_expires (status, expires_at),
+                    CONSTRAINT coin_holds_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+            },
+            function ($conn) {
+                $conn->query("CREATE TABLE IF NOT EXISTS upload_attempts (
+                    id BIGINT(20) NOT NULL AUTO_INCREMENT,
+                    token VARCHAR(64) NOT NULL,
+                    user_id INT(11) NOT NULL,
+                    media_type VARCHAR(20) NOT NULL DEFAULT '',
+                    hold_id BIGINT(20) DEFAULT NULL,
+                    status ENUM('active','completed','failed','expired') NOT NULL DEFAULT 'active',
+                    stage VARCHAR(50) NOT NULL DEFAULT 'created',
+                    cleanup_json TEXT DEFAULT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    last_heartbeat TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    client_heartbeat_at TIMESTAMP NULL DEFAULT NULL COMMENT 'Heartbeat terakhir dari browser; dipakai sebelum capture',
+                    expires_at TIMESTAMP NOT NULL,
+                    finished_at TIMESTAMP NULL DEFAULT NULL,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY idx_upload_attempt_token (token),
+                    KEY idx_upload_attempt_user_status (user_id, status),
+                    KEY idx_upload_attempt_status_heartbeat (status, last_heartbeat),
+                    KEY idx_upload_attempt_expires (status, expires_at),
+                    KEY idx_upload_attempt_hold (hold_id),
+                    CONSTRAINT upload_attempts_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+                    CONSTRAINT upload_attempts_ibfk_2 FOREIGN KEY (hold_id) REFERENCES coin_holds (id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+            },
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'upload_queue', 'hold_id')) {
+                    $conn->query("ALTER TABLE upload_queue
+                        ADD COLUMN hold_id BIGINT(20) DEFAULT NULL
+                        COMMENT 'Reservasi MEeLCoin untuk upload ini'");
+                }
+            },
+            function ($conn) {
+                meel_mig_add_index($conn, 'upload_queue', 'idx_uq_hold', '`hold_id`');
+            },
+            function ($conn) {
+                meel_mig_add_fk(
+                    $conn,
+                    'upload_queue',
+                    'upload_queue_ibfk_2',
+                    'FOREIGN KEY (`hold_id`) REFERENCES `coin_holds` (`id`) ON DELETE SET NULL'
+                );
+            },
+            function ($conn) {
+                if (!meel_mig_has_column($conn, 'meelcoin_log', 'hold_id')) {
+                    $conn->query("ALTER TABLE meelcoin_log
+                        ADD COLUMN hold_id BIGINT(20) DEFAULT NULL
+                        COMMENT 'Reservasi coin yang di-capture untuk transaksi ini'");
+                }
+            },
+            function ($conn) {
+                meel_mig_add_index($conn, 'meelcoin_log', 'idx_mcl_hold', '`hold_id`');
+            },
+            function ($conn) {
+                meel_mig_add_fk(
+                    $conn,
+                    'meelcoin_log',
+                    'meelcoin_log_ibfk_2',
+                    'FOREIGN KEY (`hold_id`) REFERENCES `coin_holds` (`id`) ON DELETE SET NULL'
+                );
+            },
+        ],
+    ],
 ];
 $conn->query("CREATE TABLE IF NOT EXISTS db_version (
     id INT AUTO_INCREMENT PRIMARY KEY,

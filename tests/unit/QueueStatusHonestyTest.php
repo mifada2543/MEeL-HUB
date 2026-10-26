@@ -66,36 +66,41 @@ class QueueStatusHonestyTest extends TestCase
 
     public function testReleaseQueueHappensAfterFinalizeInBothBranches(): void
     {
-        $finalizeVideo = $this->posOf('$this->finalizeVideo(');
-        $release = $this->posOf('$this->releaseQueue($queue_id, $finalized_ok');
+        $body = $this->methodBody('processDownload');
+        $finalizeVideo = strpos($body, '$this->finalizeVideo(');
+        $finalizeMusic = strpos($body, '$this->finalizeMusic(');
+        $release = strpos($body, '$this->releaseQueue($queue_id, \'completed\')');
 
+        $this->assertNotFalse($finalizeVideo);
+        $this->assertNotFalse($finalizeMusic);
+        $this->assertNotFalse($release);
         $this->assertGreaterThan(
             $finalizeVideo,
             $release,
-            'releaseQueue() untuk video harus dipanggil SESUDAH finalizeVideo(). '
-            . 'Kalau dibalik, antrean ditandai completed walau finalize gagal '
-            . '(bug T6 yang asli).'
+            'releaseQueue(completed) untuk video harus dipanggil SESUDAH finalizeVideo().'
         );
-
-        $finalizeMusic = $this->posOf('$this->finalizeMusic(');
         $this->assertGreaterThan(
             $finalizeMusic,
             $release,
-            'releaseQueue() untuk musik juga harus setelah finalizeMusic()'
+            'releaseQueue(completed) untuk musik juga harus setelah finalizeMusic()'
         );
     }
 
     /**
-     * Status tidak boleh hardcode 'completed' — harus bergantung pada
-     * hasil finalize.
+     * Status hanya boleh 'completed' kalau finalize berhasil; kegagalan harus
+     * lewat failQueue() supaya hold ikut dilepas.
      */
     public function testReleaseStatusDependsOnFinalizeOutcome(): void
     {
+        $body = $this->methodBody('processDownload');
+
         $this->assertMatchesRegularExpression(
-            '/\$this->releaseQueue\(\s*\$queue_id\s*,\s*\$finalized_ok\s*\?\s*\'completed\'\s*:\s*\'failed\'\s*\)/',
-            $this->src,
-            "releaseQueue() harus memakai \$finalized_ok ? 'completed' : 'failed' — "
-            . 'status hardcode berarti upload bisa ditandai sukses padahal finalize gagal'
+            '/if\s*\(\s*\$finalized_ok\s*\)\s*\{\s*'
+            . '\$this->releaseQueue\(\s*\$queue_id\s*,\s*\'completed\'\s*\);\s*'
+            . '\}\s*else\s*\{\s*\$this->failQueue\(\s*\$queue_id\s*\);\s*\}/s',
+            $body,
+            'Status antrean harus bergantung pada $finalized_ok: completed hanya setelah '
+            . 'finalize sukses, sedangkan kegagalan wajib lewat failQueue() agar hold dilepas.'
         );
 
         $this->assertMatchesRegularExpression(
@@ -111,26 +116,50 @@ class QueueStatusHonestyTest extends TestCase
     }
 
     /**
-     * Setiap jalur gagal sebelum finalize harus menandai 'failed'.
+     * Setiap jalur gagal sebelum finalize harus lewat failQueue(), yang
+     * melepas hold dan baru kemudian menandai baris failed.
      */
-    public function testEveryEarlyExitMarksQueueFailed(): void
+    public function testEveryEarlyExitSettlesThroughFailQueue(): void
     {
         $body = $this->methodBody('processDownload');
+        $failCalls = substr_count($body, '$this->failQueue($queue_id)');
 
-        $failedCalls = substr_count($body, "releaseQueue(\$queue_id, 'failed')");
         $this->assertGreaterThanOrEqual(
             3,
-            $failedCalls,
-            "Ada {$failedCalls} jalur 'failed' di processDownload(). Dulu ada jalur gagal "
-            . '(download error, disk penuh, exception) yang HARUS menandai antrean failed — '
-            . 'kalau tidak, baris menggantung selamanya dan user tidak dapat refund.'
+            $failCalls,
+            "Ada {$failCalls} jalur failQueue() di processDownload(). Setiap kegagalan "
+            . '(metadata, download, disk, exception) harus melepas hold lewat jalur yang sama.'
         );
-
-        $this->assertDoesNotMatchRegularExpression(
-            "/releaseQueue\(\s*\\\$queue_id\s*,\s*'completed'\s*\)/",
+        $this->assertStringNotContainsString(
+            "releaseQueue(\$queue_id, 'failed')",
             $body,
-            "processDownload() tidak boleh pernah menandai 'completed' secara langsung — "
-            . "hanya lewat \$finalized_ok setelah finalize benar-benar sukses"
+            'processDownload() tidak boleh menulis status failed langsung — gunakan '
+            . 'failQueue() agar hold/refund selalu diselesaikan lebih dulu.'
+        );
+    }
+
+    /**
+     * failQueue() tidak boleh menandai captured hold sebagai gagal: media
+     * sudah sah dan coin memang sudah dipakai.
+     */
+    public function testFailQueueKeepsCapturedHoldAsCompleted(): void
+    {
+        $body = $this->methodBody('failQueue');
+
+        $this->assertStringContainsString(
+            "=== 'captured'",
+            $body,
+            'failQueue() harus mendeteksi hold yang sudah captured'
+        );
+        $this->assertMatchesRegularExpression(
+            '/releaseQueue\(\s*\$queue_id\s*,\s*\'completed\'\s*\)/',
+            $body,
+            'Hold yang captured berarti media sudah sah, jadi antrean harus completed'
+        );
+        $this->assertMatchesRegularExpression(
+            '/releaseQueue\(\s*\$queue_id\s*,\s*\'failed\'\s*\)/',
+            $body,
+            'Jalur gagal biasa tetap harus menandai antrean failed'
         );
     }
 

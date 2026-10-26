@@ -1,25 +1,61 @@
 <?php
 require_once __DIR__ . '/../core/TranscoderBase.php';
+require_once __DIR__ . '/../core/MeelCoin.php';
+require_once __DIR__ . '/../core/UploadAttempt.php';
 class DownloadService extends TranscoderBase
 {
+    private int $currentHoldId = 0;
+    private int $currentAttemptId = 0;
+    private int $lastQueueId = 0;
+
     private function lockQueue(string $url, string $type): int
     {
+        $holdId = self::$pendingHoldId > 0 ? self::$pendingHoldId : 0;
+        $attemptId = self::$pendingAttemptId > 0 ? self::$pendingAttemptId : 0;
         $stmt = $this->conn->prepare(
-            "INSERT INTO upload_queue (url, media_type, user_id, status, coin_cost)
-             VALUES (?, ?, ?, 'processing', ?)"
+            "INSERT INTO upload_queue (url, media_type, user_id, status, coin_cost, hold_id)
+             VALUES (?, ?, ?, 'processing', ?, NULLIF(?, 0))"
         );
-        $stmt->bind_param("ssii", $url, $type, $this->user_id, self::$pendingCoinCost);
+        $stmt->bind_param("ssiii", $url, $type, $this->user_id, self::$pendingCoinCost, $holdId);
         $stmt->execute();
         $id = (int)$this->conn->insert_id;
         $stmt->close();
+        $this->currentHoldId = $holdId;
+        $this->currentAttemptId = $attemptId;
+        $this->lastQueueId = $id;
         self::$pendingCoinCost = 0;
+        self::$pendingHoldId = 0;
+        self::$pendingAttemptId = 0;
+        if ($this->currentAttemptId > 0) {
+            UploadAttempt::setStage($this->conn, $this->currentAttemptId, 'queue_processing');
+        }
         return $id;
     }
+
+    public function getLastQueueId(): int
+    {
+        return $this->lastQueueId;
+    }
+
     private static int $pendingCoinCost = 0;
+    private static int $pendingHoldId = 0;
+    private static int $pendingAttemptId = 0;
+
     public static function setPendingCoinCost(int $amount): void
     {
         self::$pendingCoinCost = $amount > 0 ? $amount : 0;
     }
+
+    public static function setPendingCoinHold(int $holdId): void
+    {
+        self::$pendingHoldId = $holdId > 0 ? $holdId : 0;
+    }
+
+    public static function setPendingAttemptId(int $attemptId): void
+    {
+        self::$pendingAttemptId = $attemptId > 0 ? $attemptId : 0;
+    }
+
     private function releaseQueue(int $queue_id, string $status = 'failed'): void
     {
         $allowed = ['completed', 'failed'];
@@ -28,6 +64,39 @@ class DownloadService extends TranscoderBase
         $stmt->bind_param("si", $status, $queue_id);
         $stmt->execute();
         $stmt->close();
+    }
+
+    private function failQueue(int $queue_id): void
+    {
+        if ($this->currentHoldId > 0) {
+            $release = MeelCoin::releaseHold($this->conn, $this->currentHoldId, 'queue_failed', 'released');
+            if ($release['ok'] && (string)($release['status'] ?? '') === 'captured') {
+                // Media sudah sah dan coin memang dipakai. Jangan tandai gagal.
+                $this->releaseQueue($queue_id, 'completed');
+                $this->currentHoldId = 0;
+                return;
+            }
+            if ($release['ok']) {
+                $stmt = $this->conn->prepare(
+                    "UPDATE upload_queue SET coin_refunded = 1 WHERE id = ? AND hold_id = ?"
+                );
+                $stmt->bind_param("ii", $queue_id, $this->currentHoldId);
+                $stmt->execute();
+                $stmt->close();
+            }
+            $this->currentHoldId = 0;
+        }
+        $this->releaseQueue($queue_id, 'failed');
+    }
+
+    private function touchAccounting(string $stage = ''): void
+    {
+        if ($stage !== '' && $this->currentAttemptId > 0) {
+            UploadAttempt::setStage($this->conn, $this->currentAttemptId, $stage);
+        }
+        if ($this->currentHoldId > 0) {
+            MeelCoin::touchHold($this->conn, $this->currentHoldId, $this->currentAttemptId > 0 ? $this->currentAttemptId : null);
+        }
     }
     private function ensureDownloadProxy(): string
     {
@@ -122,6 +191,8 @@ class DownloadService extends TranscoderBase
     {
         $url = trim($url);
         $this->assertDownloadRequest($url, $type);
+        $this->currentHoldId = 0;
+        $this->currentAttemptId = 0;
 
         [$dl_url, $dl_extra] = $this->prepareDownloadTarget($url);
         $this->assertDownloadDiskSpace();
@@ -131,7 +202,7 @@ class DownloadService extends TranscoderBase
         try {
             $meta = $this->fetchAndValidateMetadata($dl_url, $dl_extra, $url);
         } catch (Throwable $e) {
-            $this->releaseQueue($queue_id, 'failed');
+            $this->failQueue($queue_id);
             throw $e;
         }
 
@@ -139,17 +210,18 @@ class DownloadService extends TranscoderBase
             $track = $this->resolveTrackMetadata($meta);
             $ctx = $this->buildDownloadContext($type, $track, $url, $dl_url, $dl_extra);
 
+            $this->touchAccounting('downloading');
             $this->emit('download_start', ['url' => $url]);
             $outcome = $this->runDownloadProcess($ctx, $queue_id);
 
             if ($outcome['status'] === 'spawn_failed') {
-                $this->releaseQueue($queue_id, 'failed');
+                $this->failQueue($queue_id);
                 $this->emit('error', ['message' => 'Gagal menjalankan yt-dlp. Cek permission atau install yt-dlp.']);
                 return "";
             }
 
             if ($outcome['status'] !== 'ok') {
-                $this->releaseQueue($queue_id, 'failed');
+                $this->failQueue($queue_id);
                 file_put_contents('/tmp/ytdlp_error.log', $outcome['error_log']);
                 $this->emit('error', ['message' => $outcome['message']]);
                 return $outcome['disconnected'] ? "DISCONNECTED" : "";
@@ -165,6 +237,11 @@ class DownloadService extends TranscoderBase
                     $track['description']
                 );
                 $finalized_ok = str_starts_with($result, 'ENCODE_MUSIC:');
+                // Untuk musik, jangan tandai queue completed di sini -- EncodeService
+                // yang akan menandai completed/failed setelah encode selesai.
+                if (!$finalized_ok) {
+                    $this->failQueue($queue_id);
+                }
             } else {
                 $result = $this->finalizeVideo(
                     $ctx['basename'],
@@ -175,12 +252,16 @@ class DownloadService extends TranscoderBase
                     $queue_id
                 );
                 $finalized_ok = str_starts_with($result, 'DONE:');
+                if ($finalized_ok) {
+                    $this->releaseQueue($queue_id, 'completed');
+                } else {
+                    $this->failQueue($queue_id);
+                }
             }
-            $this->releaseQueue($queue_id, $finalized_ok ? 'completed' : 'failed');
             return $result;
         } catch (\Throwable $e) {
             try {
-                $this->releaseQueue($queue_id, 'failed');
+                $this->failQueue($queue_id);
             } catch (\Throwable $ignore) {
             }
             throw $e;
@@ -323,6 +404,7 @@ class DownloadService extends TranscoderBase
         $php_timeout_abort = false;
         $client_disconnected = false;
         $frag_total = 0;
+        $lastTouch = 0;
         $dl_out = $dl_pipes[1];
 
         while (!feof($dl_out)) {
@@ -330,6 +412,10 @@ class DownloadService extends TranscoderBase
                 $error_log .= "\n[ERROR] Timeout exceeded";
                 $php_timeout_abort = true;
                 break;
+            }
+            if (time() - $lastTouch >= 30) {
+                $lastTouch = time();
+                $this->touchAccounting();
             }
             $line = fgets($dl_out);
             if ($line === false) {
@@ -348,16 +434,17 @@ class DownloadService extends TranscoderBase
             }
             if (!$this->isClientConnected()) {
                 $client_disconnected = true;
-                error_log("[MEeL] DownloadService: client disconnected, download continue in background (queue_id=$queue_id)");
-                continue;
+                $error_log .= "\n[ERROR] Client disconnected";
+                error_log("[MEeL] DownloadService: client disconnected; download dibatalkan (queue_id=$queue_id)");
+                break;
             }
             $this->reportDownloadProgress($line);
         }
 
-        if ($frag_retry_abort || $php_timeout_abort) {
+        if ($frag_retry_abort || $php_timeout_abort || $client_disconnected) {
             $this->terminateChildProcess(
                 $dl_pgid,
-                'yt-dlp ' . ($frag_retry_abort ? 'fragment retry abort' : 'PHP timeout abort'),
+                'yt-dlp ' . ($frag_retry_abort ? 'fragment retry abort' : ($php_timeout_abort ? 'PHP timeout abort' : 'client disconnected')),
                 true
             );
             $this->cleanStagedArtifacts($ctx);
@@ -446,7 +533,17 @@ class DownloadService extends TranscoderBase
         int $duration,
         string $description = 'Upload by MEeL Engine'
     ): string {
-        $found = glob($this->getShmTempPath() . "/$temp_id.*");
+        $found = glob($this->getShmTempPath() . "/$temp_id.*") ?: [];
+        if (class_exists('UploadAttempt') && $this->currentAttemptId > 0 && !empty($found)) {
+            UploadAttempt::addCleanupPaths($this->conn, $this->currentAttemptId, $found);
+        }
+        $this->touchAccounting('music_downloaded');
+        if (!$this->isClientConnected()) {
+            foreach ($found as $f) {
+                $this->removeFile($f);
+            }
+            return "Koneksi upload terputus; file sementara dibersihkan.";
+        }
         $raw_file = "";
         foreach ($found as $f) {
             $ext = pathinfo($f, PATHINFO_EXTENSION);
@@ -498,10 +595,19 @@ class DownloadService extends TranscoderBase
         $folder_name = $work['folder_name'];
         $db_filename = $work['db_filename'];
         $work_folder = $work['work_folder'];
+        if (class_exists('UploadAttempt') && $this->currentAttemptId > 0) {
+            UploadAttempt::addCleanupPaths($this->conn, $this->currentAttemptId, [$work_folder]);
+        }
 
         $thumb = $this->stageThumbnail($dl_thumb_src, $work_folder, $db_thumb);
         $db_thumb = $thumb['db_thumb'];
         $thumb_generated = $thumb['generated'];
+        if ($thumb_generated && class_exists('UploadAttempt') && $this->currentAttemptId > 0) {
+            UploadAttempt::addCleanupPaths($this->conn, $this->currentAttemptId, [
+                $work_folder . $db_thumb,
+                MEEL_HDD_THUMB_DIR . $db_thumb,
+            ]);
+        }
 
         $file_dur = $this->probeDuration($staging_mp4);
         $work_m3u8 = $work_folder . $folder_name . ".m3u8";
@@ -510,9 +616,13 @@ class DownloadService extends TranscoderBase
         $ram_folder = $sprite['folder'];
         $sprite_file = $sprite['sprite'];
         $vtt_file = $sprite['vtt'];
+        if (class_exists('UploadAttempt') && $this->currentAttemptId > 0) {
+            UploadAttempt::addCleanupPaths($this->conn, $this->currentAttemptId, [$ram_folder]);
+        }
 
         $sprite_data = $this->buildSpriteCommand($staging_mp4, $sprite_file);
 
+        $this->touchAccounting('transcoding');
         $this->emit('phase', ['phase' => 'transcode']);
         $this->emit('sprite_progress', ['pct' => 0, 'label' => 'Memproses HLS & sprite...']);
 
@@ -521,6 +631,16 @@ class DownloadService extends TranscoderBase
             max(120, (int)($file_dur * 2)),
             $file_dur
         );
+
+        // Jika timeout atau client disconnect, bersihkan dan gagal.
+        if (!empty($paralel['_timed_out']) || !empty($paralel['_client_disconnected'])) {
+            $this->removeDir($ram_folder);
+            $this->removeDir($work_folder);
+            $this->removeFile($staging_mp4);
+            $reason = !empty($paralel['_timed_out']) ? 'Transcode timeout' : 'Client disconnected';
+            $this->emit('error', ['message' => $reason]);
+            return "";
+        }
 
         if (!$paralel['hls']['started']) {
             $this->removeDir($ram_folder);
@@ -557,6 +677,16 @@ class DownloadService extends TranscoderBase
         $this->removeFile($staging_mp4);
 
         $hdd_target_folder = MEEL_HDD_VIDEO_DIR . $folder_name . "/";
+        if (class_exists('UploadAttempt') && $this->currentAttemptId > 0) {
+            UploadAttempt::addCleanupPaths($this->conn, $this->currentAttemptId, [$hdd_target_folder]);
+        }
+        if (!$this->isClientConnected()) {
+            $this->removeDir($ram_folder);
+            $this->removeDir($work_folder);
+            $this->removeFile($staging_mp4);
+            $this->emit('error', ['message' => 'Koneksi upload terputus; proses dibatalkan sebelum commit.']);
+            return "";
+        }
         if (!$this->persistVideoToHdd(
             $hdd_target_folder,
             $work_folder,
@@ -760,6 +890,8 @@ class DownloadService extends TranscoderBase
     {
         $desc = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
         $state = [];
+        $timedOut = false;
+        $clientDisconnected = false;
 
         foreach ($jobs as $key => $job) {
             $pipes = [];
@@ -797,7 +929,24 @@ class DownloadService extends TranscoderBase
         }
 
         $startAll = time();
+        $lastTouch = 0;
         while (true) {
+            if (time() - $lastTouch >= 30) {
+                $lastTouch = time();
+                $this->touchAccounting();
+                if (PHP_SAPI !== 'cli' && !$this->keepConnectionAlive()) {
+                    error_log('[MEeL] runParallelFfmpeg: client disconnected; transcode dibatalkan');
+                    $clientDisconnected = true;
+                    foreach ($state as $s) {
+                        if (!$s['started'] || $s['done']) {
+                            continue;
+                        }
+                        $this->closePipes($s);
+                        $this->terminateChildProcess($s['pid'], $s['label'] . ' client disconnected', false);
+                    }
+                    break;
+                }
+            }
             $pending = [];
             foreach ($state as $key => $s) {
                 if ($s['started'] && !$s['done']) {
@@ -810,6 +959,7 @@ class DownloadService extends TranscoderBase
 
             if (time() - $startAll > $timeoutSeconds) {
                 error_log("[MEeL] runParallelFfmpeg: parallel processing timeout setelah {$timeoutSeconds}s");
+                $timedOut = true;
                 foreach ($state as $s) {
                     if (!$s['started'] || $s['done']) {
                         continue;
@@ -876,6 +1026,8 @@ class DownloadService extends TranscoderBase
             $result[$key] ??= ['started' => false, 'pid' => 0, 'exit' => null];
         }
 
+        $result['_timed_out'] = $timedOut;
+        $result['_client_disconnected'] = $clientDisconnected;
         return $result;
     }
 
@@ -929,6 +1081,11 @@ class DownloadService extends TranscoderBase
         string $description,
         int $duration
     ): bool {
+        $this->touchAccounting('persisting');
+        if (!$this->isClientConnected()) {
+            $this->emit('error', ['message' => 'Koneksi upload terputus sebelum commit.']);
+            return false;
+        }
         $this->conn->begin_transaction();
         try {
             if (!is_dir($hdd_target_folder)) {
@@ -951,10 +1108,25 @@ class DownloadService extends TranscoderBase
                 }
             }
             $this->removeDir($work_folder);
+            
+            // Verifikasi storage masih ter-mount setelah pindah file
+            if (!meel_storage_ready()) {
+                throw new \RuntimeException('Storage tidak siap (HDD terlepas?) setelah memindahkan file.');
+            }
+
             $hdd_m3u8_full = MEEL_HDD_VIDEO_UPLOAD . $db_filename;
             $hdd_thumb_full = MEEL_HDD_THUMB_DIR . $db_thumb;
             if (!file_exists($hdd_m3u8_full) || filesize($hdd_m3u8_full) === 0) {
                 throw new \RuntimeException("File M3U8 tidak ditemukan di HDD setelah dipindahkan: $hdd_m3u8_full");
+            }
+            $segments = glob($hdd_target_folder . basename($db_filename, '.m3u8') . '_*.ts') ?: [];
+            if (empty($segments)) {
+                throw new \RuntimeException("Segmen .ts tidak ditemukan di HDD setelah dipindahkan.");
+            }
+            foreach ($segments as $segment) {
+                if (!is_file($segment) || filesize($segment) < 1) {
+                    throw new \RuntimeException("Segmen .ts rusak/kosong: " . basename($segment));
+                }
             }
             if ($thumb_generated && (!file_exists($hdd_thumb_full) || filesize($hdd_thumb_full) === 0)) {
                 throw new \RuntimeException("Thumbnail tidak ditemukan di HDD setelah dipindahkan: $hdd_thumb_full");
@@ -972,7 +1144,24 @@ class DownloadService extends TranscoderBase
             if (!$stmt->execute()) {
                 throw new \RuntimeException("Database insert error: " . $stmt->error);
             }
+            $videoId = (int)$this->conn->insert_id;
             $stmt->close();
+
+            if ($this->currentHoldId > 0) {
+                $capture = MeelCoin::captureHoldInTransaction(
+                    $this->conn,
+                    $this->currentHoldId,
+                    $this->user_id,
+                    'upload_advanced',
+                    $this->currentAttemptId > 0 ? $this->currentAttemptId : null,
+                    'video',
+                    $videoId
+                );
+                if (!$capture['ok']) {
+                    throw new \RuntimeException($capture['error']);
+                }
+            }
+
             $this->conn->commit();
             if (function_exists('meel_invalidate_media_stats_cache')) {
                 meel_invalidate_media_stats_cache('video');
@@ -1001,4 +1190,4 @@ class DownloadService extends TranscoderBase
     }
 }
 
-/* reference build: MEeL-C2H5NO2 [c00bc760f367fc1d] */
+/* reference build: MEeL-C2H5NO2 [ffd332a] */

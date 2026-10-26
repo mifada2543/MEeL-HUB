@@ -113,6 +113,8 @@ DirectoryIndex index.php index.html
     RewriteRule ^ %1/api/server-stats [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/controllers/api/server_stats_sse\.php$ [NC]
     RewriteRule ^ %1/api/server-stats-sse [R=301,L,QSA]
+    RewriteCond %{REQUEST_URI} ^(.*)/controllers/api/upload_heartbeat\.php$ [NC]
+    RewriteRule ^ %1/api/upload-heartbeat [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/controllers/api/(like|comment|pdf)\.php$ [NC]
     RewriteRule ^ %1/api/%2 [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/controllers/system/mfa\.php$ [NC]

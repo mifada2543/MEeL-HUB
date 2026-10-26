@@ -8,7 +8,9 @@ require_once __DIR__ . '/../modules/core/MeelCoin.php';
 require_once __DIR__ . '/../modules/core/Notification.php';
 meel_storage_guard();
 GarbageCollector::run();
+GarbageCollector::sweepUploadAccounting($conn);
 
+ignore_user_abort(true);
 set_time_limit(0);
 $status = "";
 $user = $_SESSION['username'];
@@ -21,18 +23,35 @@ $is_admin = ($user_role === 'admin');
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 $hour_count = 0;
 $hourly_limit = '∞';
+$coin_held = 0;
+$coin_available = 0;
 
 if ($meelcoin_enabled) {
     if (!$is_admin) {
         MeelCoin::refill($conn, $user_id, $user_role);
     }
     $coin_balance = $is_admin ? -1 : MeelCoin::getBalance($conn, $user_id);
+    if (!$is_admin) {
+        $coin_summary = MeelCoin::getBalanceSummary($conn, $user_id);
+        $coin_balance = $coin_summary['total'];
+        $coin_held = $coin_summary['held'];
+        $coin_available = $coin_summary['available'];
+    }
     $coin_max = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
     $coin_cost = MeelCoin::getCost($conn, 'upload');
     $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, $user_id, $user_role);
 } else {
     $hour_count = get_hourly_upload_count($conn, $user_id, 'music');
     $hourly_limit = $is_admin ? '∞' : get_upload_hourly_limit($user_role);
+}
+
+$coin_active = $meelcoin_enabled && !$is_admin && $coin_cost > 0;
+$upload_attempt_token = '';
+if ($coin_active && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $new_attempt = UploadAttempt::create($conn, (int)$user_id, 'music');
+    if ($new_attempt !== null) {
+        $upload_attempt_token = (string)$new_attempt['token'];
+    }
 }
 
 $total_uploads = get_total_upload_count($conn, $user_id, 'music');
@@ -43,19 +62,28 @@ if (isset($_POST['upload'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
         $alert_message = 'CSRF token tidak valid. Silakan muat ulang halaman lalu coba lagi.';
     } else {
-        $upload_result = meel_handle_upload($conn, 'music', function ($post, $files) use ($uploader) {
+        $upload_result = meel_handle_upload($conn, 'music', function ($post, $files, $holdId = 0, $attemptId = 0) use ($uploader) {
             $music_base = dirname(meel_media_base_path('music')) . '/';
-            return $uploader->processMusic($post, $files, $music_base);
+            return $uploader->processMusic($post, $files, $music_base, $holdId, $attemptId);
         }, 'upload_music');
 
         $status = $upload_result['status'];
         $alert_message = $upload_result['alert_message'];
         if (isset($upload_result['extra']['coin_balance'])) {
             $coin_balance = $upload_result['extra']['coin_balance'];
+            $coin_held = $upload_result['extra']['coin_held'] ?? $coin_held;
+            $coin_available = $upload_result['extra']['coin_available'] ?? $coin_available;
         } elseif ($upload_result['status'] === 'success') {
             $hour_count = $upload_result['extra']['hour_count'] ?? $hour_count;
         }
         $total_uploads = $upload_result['extra']['total_uploads'] ?? $total_uploads;
+
+        if ($coin_active) {
+            // Form tetap di halaman setelah sukses/gagal; token lama sudah
+            // selesai, jadi siapkan sesi baru untuk upload berikutnya.
+            $new_attempt = UploadAttempt::create($conn, (int)$user_id, 'music');
+            $upload_attempt_token = $new_attempt !== null ? (string)$new_attempt['token'] : '';
+        }
     }
 }
 
@@ -119,6 +147,11 @@ if (isset($_POST['upload'])) {
                                 <?php endif; ?>
                             ><?= $is_admin ? '∞' : htmlspecialchars((string) $coin_balance) ?></div>
                             <div class="stat-label">MEeLCoin</div>
+                            <?php if (!$is_admin): ?>
+                                <div class="stat-label" style="font-size:8px;letter-spacing:.08em;margin-top:2px;">
+                                    Ditahan <span id="coin-held"><?= (int)$coin_held ?></span> · Tersedia <span id="coin-available"><?= (int)$coin_available ?></span>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         <?php if (!$is_admin): ?>
                             <div class="stat-chip">
@@ -201,6 +234,9 @@ if (isset($_POST['upload'])) {
                     <?php if (isset($_SESSION['csrf_token'])): ?>
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     <?php endif; ?>
+                    <input type="hidden" name="upload_attempt" id="upload-attempt"
+                        value="<?= htmlspecialchars($upload_attempt_token, ENT_QUOTES, 'UTF-8') ?>"
+                        data-heartbeat-url="../api/upload-heartbeat">
 
                     <div class="field-group">
                         <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -375,6 +411,7 @@ if (isset($_POST['upload'])) {
         <?php endif; ?>
     </script>
     <script src="../assets/js/shared/upload-progress.js<?= meel_asset_version('assets/js/shared/upload-progress.js') ?>"></script>
+    <script src="../assets/js/shared/upload-heartbeat.js<?= meel_asset_version('assets/js/shared/upload-heartbeat.js') ?>"></script>
     <script src="../assets/js/music/upload/upload.js<?= meel_asset_version('assets/js/music/upload/upload.js') ?>"></script>
     <script>
         function handleLyricsFile(input) {

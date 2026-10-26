@@ -1,16 +1,30 @@
 <?php
 require_once __DIR__ . '/../core/TranscoderBase.php';
+require_once __DIR__ . '/../core/MeelCoin.php';
+require_once __DIR__ . '/../core/UploadAttempt.php';
 
 class EncodeService extends TranscoderBase
 {
+    private int $currentHoldId = 0;
+    private int $currentAttemptId = 0;
+    private int $currentQueueId = 0;
+    private const ENCODE_TIMEOUT = 7200; // 2 jam hard cap
+    private const ENCODE_KEEPALIVE_INTERVAL = 30; // detik
+
     public function encodeMusic(
         string $temp_file,
         string $title,
         string $artist,
         string $album,
         int $duration,
-        string $description = 'Upload by MEeL Engine'
+        string $description = 'Upload by MEeL Engine',
+        int $holdId = 0,
+        int $attemptId = 0,
+        int $queueId = 0
     ): array {
+        $this->currentHoldId = max(0, $holdId);
+        $this->currentAttemptId = max(0, $attemptId);
+        $this->currentQueueId = max(0, $queueId);
         putenv("LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib");
         putenv("PATH=/usr/local/bin:/usr/bin:/bin");
 
@@ -36,7 +50,13 @@ class EncodeService extends TranscoderBase
                 $recent = $this->findRecentEncodedFile();
                 if ($recent !== null) {
                     error_log("[MEeL] encodeMusic: input $temp_file sudah diproses request lain → dianggap sukses (file: {$recent})");
-                    return ['status' => 'success', 'filename' => $recent];
+                    if ($this->currentHoldId > 0) {
+                        MeelCoin::releaseHold($this->conn, $this->currentHoldId, 'already_processed', 'released');
+                    }
+                    if ($this->currentQueueId > 0) {
+                        $this->settleQueue('completed');
+                    }
+                    return ['status' => 'success', 'filename' => $recent, 'already_processed' => true];
                 }
             }
 
@@ -44,47 +64,228 @@ class EncodeService extends TranscoderBase
             $final_fname = $target['filename'];
             $final_path = $target['path'];
             $thumb_name = $target['thumb'];
+            if ($this->currentAttemptId > 0 && class_exists('UploadAttempt')) {
+                UploadAttempt::addCleanupPaths($this->conn, $this->currentAttemptId, [
+                    $final_path,
+                    meel_media_base_path('music') . '/thumbnail/' . $thumb_name,
+                ]);
+            }
+            $this->touchAccounting();
 
-            $opus_result = meel_ffmpeg_encode_opus(
-                $this->ffmpeg_bin,
-                $input_path,
-                $final_path,
-                '',
-                self::FFMPEG_THREADS,
-                ['title' => $title, 'artist' => $artist]
-            );
-            $log = (string) ($opus_result[1] ?? '');
-
-            if (!file_exists($final_path) || filesize($final_path) === 0) {
+            $opus_result = $this->runOpusEncode($input_path, $final_path, [
+                'title' => $title,
+                'artist' => $artist,
+            ]);
+            if ($opus_result['exit'] !== 0) {
+                $log = $opus_result['log'];
                 $friendly = $this->describeEncodeFailure($input_path, $log);
                 $this->removeFile($final_path);
                 error_log("[MEeL] encodeMusic GAGAL ($temp_file): " . substr(trim($log), 0, 800));
+                $this->settleQueue('failed');
                 return ['status' => 'error', 'msg' => $friendly];
+            }
+            if (!$this->isClientConnected()) {
+                $this->removeFile($final_path);
+                return ['status' => 'error', 'msg' => 'Koneksi upload terputus; encode dibatalkan tanpa memotong coin.'];
             }
 
             $temp_base = pathinfo($temp_file, PATHINFO_FILENAME);
             $temp_dir = $this->getShmTempPath();
             $thumb_result = $this->extractMusicThumbnail($input_path, $temp_dir, $temp_base, $thumb_name);
-
-            $this->removeFile($input_path);
-
-            foreach (glob("$temp_dir/$temp_base.*") as $leftover) {
-                $this->removeFile($leftover);
+            if ($thumb_result !== 'music_default.png') {
+                $thumb_path = meel_media_base_path('music') . '/thumbnail/' . $thumb_result;
+                if (!is_file($thumb_path) || filesize($thumb_path) < 1) {
+                    $this->removeFile($final_path);
+                    return ['status' => 'error', 'msg' => 'Thumbnail musik tidak ditemukan setelah encode.'];
+                }
             }
 
             $metadata = generate_search_metadata($title, $artist, $album);
+            $this->touchAccounting();
+            $this->conn->begin_transaction();
+            try {
+                $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $metadata, $final_fname, $thumb_result, $duration);
+                if (!$ins[0]) {
+                    throw new \RuntimeException($ins[1]);
+                }
+                $musicId = (int)$this->conn->insert_id;
 
-            $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $metadata, $final_fname, $thumb_result, $duration);
-
-            if ($ins[0]) {
-                return ['status' => 'success', 'filename' => $final_fname];
+                if ($this->currentHoldId > 0) {
+                    $capture = MeelCoin::captureHoldInTransaction(
+                        $this->conn,
+                        $this->currentHoldId,
+                        $this->user_id,
+                        'upload_advanced',
+                        $this->currentAttemptId > 0 ? $this->currentAttemptId : null,
+                        'music',
+                        $musicId
+                    );
+                    if (!$capture['ok']) {
+                        throw new \RuntimeException($capture['error']);
+                    }
+                }
+                $this->conn->commit();
+            } catch (\Throwable $e) {
+                $this->conn->rollback();
+                $this->removeFile($final_path);
+                if ($thumb_result !== 'music_default.png') {
+                    $this->removeFile(meel_media_base_path('music') . '/thumbnail/' . $thumb_result);
+                }
+                return ['status' => 'error', 'msg' => 'Upload musik gagal diverifikasi: ' . $e->getMessage()];
             }
-            return ['status' => 'error', 'msg' => 'Database error: ' . $ins[1]];
+
+            $this->removeFile($input_path);
+            foreach (glob("$temp_dir/$temp_base.*") ?: [] as $leftover) {
+                $this->removeFile($leftover);
+            }
+
+            if ($this->currentQueueId > 0) {
+                $this->settleQueue('completed');
+            }
+
+            return ['status' => 'success', 'filename' => $final_fname, 'id' => $musicId];
         } finally {
             if ($lock_held) {
                 flock($lock_fp, LOCK_UN);
                 fclose($lock_fp);
             }
+        }
+    }
+
+    private function runOpusEncode(string $input, string $output, array $metadata): array
+    {
+        $timeout = self::ENCODE_TIMEOUT;
+        if ($this->currentAttemptId > 0 && class_exists('UploadAttempt')) {
+            UploadAttempt::setStage($this->conn, $this->currentAttemptId, 'encoding_music');
+        }
+
+        $args = [
+            $this->ffmpeg_bin,
+            '-y',
+            '-i', $input,
+            '-c:a', 'libopus',
+            '-vbr', 'on',
+            '-compression_level', '10',
+        ];
+        foreach ($metadata as $key => $value) {
+            $args[] = '-metadata';
+            $args[] = $key . '=' . $value;
+        }
+        $args[] = $output;
+
+        $descriptors = [
+            0 => ['file', '/dev/null', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+        $env = [
+            'PATH' => '/usr/local/bin:/usr/bin:/bin',
+            'LD_LIBRARY_PATH' => '/usr/lib/x86_64-linux-gnu:/usr/local/lib',
+            'LANG' => 'C.UTF-8',
+            'LC_ALL' => 'C.UTF-8',
+        ];
+
+        $process = proc_open($args, $descriptors, $pipes, null, $env);
+        if (!is_resource($process)) {
+            return ['exit' => -1, 'log' => 'Gagal menjalankan FFmpeg.'];
+        }
+
+        fclose($pipes[0]);
+        $stdout = $pipes[1];
+        $stderr = $pipes[2];
+        stream_set_blocking($stdout, false);
+        stream_set_blocking($stderr, false);
+
+        $start = time();
+        $lastKeepalive = $start;
+        $log = '';
+        $exitCode = -1;
+
+        while (true) {
+            $now = time();
+            if ($now - $start > $timeout) {
+                proc_terminate($process);
+                proc_close($process);
+                return ['exit' => 124, 'log' => $log . "\n[ERROR] Encode timeout ({$timeout}s)"]; 
+            }
+
+            if ($now - $lastKeepalive >= self::ENCODE_KEEPALIVE_INTERVAL) {
+                $lastKeepalive = $now;
+                if (PHP_SAPI !== 'cli') {
+                    echo ' ';
+                    @flush();
+                }
+                if (!$this->isClientConnected()) {
+                    proc_terminate($process);
+                    proc_close($process);
+                    return ['exit' => 130, 'log' => $log . "\n[ERROR] Client disconnected during encode"];
+                }
+                $this->touchAccounting();
+            }
+
+            $read = [$stdout, $stderr];
+            $write = $except = null;
+            if (stream_select($read, $write, $except, 1) === false) {
+                break;
+            }
+
+            foreach ($read as $stream) {
+                $data = fread($stream, 8192);
+                if ($data === '' || $data === false) {
+                    continue;
+                }
+                $log .= $data;
+                if (strlen($log) > 100000) {
+                    $log = substr($log, -100000);
+                }
+            }
+
+            $status = proc_get_status($process);
+            if (!$status['running']) {
+                $exitCode = (int)$status['exitcode'];
+                break;
+            }
+        }
+
+        if ($exitCode === -1) {
+            $exitCode = proc_close($process);
+        } else {
+            proc_close($process);
+        }
+
+        fclose($stdout);
+        fclose($stderr);
+
+        return ['exit' => $exitCode, 'log' => $log];
+    }
+
+    private function settleQueue(string $status): void
+    {
+        if ($this->currentQueueId <= 0) {
+            return;
+        }
+        $stmt = $this->conn->prepare(
+            "UPDATE upload_queue SET status = ? WHERE id = ? AND status IN ('pending', 'processing')"
+        );
+        if (!$stmt) {
+            return;
+        }
+        $stmt->bind_param("si", $status, $this->currentQueueId);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    private function touchAccounting(): void
+    {
+        if ($this->currentHoldId > 0) {
+            MeelCoin::touchHold(
+                $this->conn,
+                $this->currentHoldId,
+                $this->currentAttemptId > 0 ? $this->currentAttemptId : null
+            );
+        }
+        if ($this->currentAttemptId > 0 && class_exists('UploadAttempt')) {
+            UploadAttempt::setStage($this->conn, $this->currentAttemptId, 'encoding_music');
         }
     }
 
@@ -256,4 +457,4 @@ class EncodeService extends TranscoderBase
     }
 }
 
-/* reference build: MEeL-C3H7NO2S [2b68eb9617e464ba] */
+/* reference build: MEeL-C3H7NO2S [ffd332a] */

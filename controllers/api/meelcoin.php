@@ -31,7 +31,10 @@ if ($enabled && !$isAdmin) {
     MeelCoin::refill($conn, $userId, $userRole);
 }
 
-$balance = $isAdmin ? -1 : MeelCoin::getBalance($conn, $userId);
+$summary = $isAdmin
+    ? ['total' => -1, 'held' => 0, 'available' => -1]
+    : MeelCoin::getBalanceSummary($conn, $userId);
+$balance = $isAdmin ? -1 : $summary['total'];
 $max = $isAdmin ? -1 : MeelCoin::getMax($conn, $userRole);
 $countdown = $isAdmin ? 0 : MeelCoin::getRefillCountdown($conn, $userId, $userRole);
 $refillH = MeelCoin::getRefillHours($conn);
@@ -40,6 +43,9 @@ echo json_encode([
     'enabled' => $enabled,
     'is_admin' => $isAdmin,
     'balance' => $balance,
+    'total' => $balance,
+    'held' => $isAdmin ? 0 : $summary['held'],
+    'available' => $isAdmin ? -1 : $summary['available'],
     'max' => $max,
     'countdown' => $countdown,
     'refill_hours' => $refillH,
