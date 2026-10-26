@@ -197,34 +197,60 @@ class MeelCoin
         self::log($conn, $userId, -$amount, self::getBalance($conn, $userId), $reason);
         return [true, ''];
     }
-
     public static function databaseInTransaction(\mysqli $conn): bool
     {
-        $queries = [
-            "SELECT @@in_transaction AS in_tx",
-            "SELECT @@session.in_transaction AS in_tx",
-        ];
-        foreach ($queries as $sql) {
-            $r = @$conn->query($sql);
-            if ($r) {
-                $row = $r->fetch_assoc();
-                $r->free();
-                return (int)($row['in_tx'] ?? 0) === 1;
-            }
+        $row = self::queryRow($conn, "SELECT @@in_transaction AS in_tx");
+        if ($row !== null) {
+            return (int)($row['in_tx'] ?? 0) === 1;
         }
-        return false;
-    }
 
+        if (self::savepointProbeInTransaction($conn)) {
+            return true;
+        }
+
+        $row = self::queryRow(
+            $conn,
+            "SELECT COUNT(*) AS in_tx FROM information_schema.INNODB_TRX
+              WHERE trx_mysql_thread_id = CONNECTION_ID()"
+        );
+        return $row !== null && (int)($row['in_tx'] ?? 0) > 0;
+    }
+    /**
+     * @return array<string,mixed>|null
+     */
+    private static function queryRow(\mysqli $conn, string $sql): ?array
+    {
+        try {
+            $result = $conn->query($sql);
+        } catch (Throwable $e) {
+            return null;
+        }
+        if (!$result instanceof \mysqli_result) {
+            return null;
+        }
+        $row = $result->fetch_assoc();
+        $result->free();
+        return is_array($row) ? $row : null;
+    }
+    private static function savepointProbeInTransaction(\mysqli $conn): bool
+    {
+        $name = 'meel_tx_probe_' . bin2hex(random_bytes(4));
+        try {
+            $conn->query("SAVEPOINT `{$name}`");
+        } catch (Throwable $e) {
+            return false;
+        }
+        try {
+            $conn->query("RELEASE SAVEPOINT `{$name}`");
+        } catch (Throwable $e) {
+            return false;
+        }
+        return true;
+    }
     private static function ownsTransaction(\mysqli $conn): bool
     {
         return !self::databaseInTransaction($conn);
     }
-
-    /**
-     * Verifikasi user yang boleh memakai MEeLCoin.
-     *
-     * Guest dan akun nonaktif tidak boleh melakukan upload berbayar.
-     */
     public static function isEligibleUser(\mysqli $conn, int $userId): bool
     {
         $stmt = $conn->prepare("SELECT role, is_active FROM users WHERE id = ? LIMIT 1");
@@ -244,24 +270,15 @@ class MeelCoin
         $role = strtolower((string)($row['role'] ?? ''));
         return $role !== '' && $role !== 'guest';
     }
-
     /**
-     * Reservasi coin tanpa mengubah saldo total.
-     *
      * @return array{ok:bool,error:string,hold_id:int,available:int,held:int}
      */
-    public static function hold(
-        \mysqli $conn,
-        int $userId,
-        int $amount,
-        string $reason = 'upload',
-        string $mediaType = ''
+    public static function hold(\mysqli $conn,int $userId,int $amount,string $reason = 'upload',string $mediaType = ''
     ): array {
         $empty = ['ok' => false, 'error' => '', 'hold_id' => 0, 'available' => 0, 'held' => 0];
         if ($amount <= 0) {
             return ['ok' => true, 'error' => '', 'hold_id' => 0, 'available' => self::getAvailable($conn, $userId), 'held' => self::getHeld($conn, $userId)];
         }
-
         $owns = self::ownsTransaction($conn);
         if ($owns) {
             $conn->begin_transaction();
@@ -338,7 +355,6 @@ class MeelCoin
             return $empty;
         }
     }
-
     /**
      * @return array<string,mixed>|null
      */
@@ -354,7 +370,6 @@ class MeelCoin
         $stmt->close();
         return $row ?: null;
     }
-
     public static function touchHold(\mysqli $conn, int $holdId, ?int $attemptId = null): bool
     {
         if ($holdId <= 0) {
@@ -368,7 +383,6 @@ class MeelCoin
         $stmt->execute();
         $ok = $stmt->affected_rows > 0;
         $stmt->close();
-
         if ($attemptId !== null && $attemptId > 0) {
             $stmt = $conn->prepare(
                 "UPDATE upload_attempts SET last_heartbeat = NOW()
@@ -380,12 +394,7 @@ class MeelCoin
         }
         return $ok;
     }
-
     /**
-     * Capture hold di dalam transaksi milik caller.
-     *
-     * Caller wajib sudah meng-insert baris media pada transaksi yang sama.
-     *
      * @return array{ok:bool,error:string,balance:int,amount:int,status:string}
      */
     public static function captureHoldInTransaction(
@@ -401,7 +410,6 @@ class MeelCoin
         if ($holdId <= 0) {
             return ['ok' => true, 'error' => '', 'balance' => self::getBalance($conn, $userId), 'amount' => 0, 'status' => 'none'];
         }
-
         try {
             $stmt = $conn->prepare(
                 "SELECT id, user_id, amount, status
@@ -441,7 +449,6 @@ class MeelCoin
             if ((int)$userRow['is_active'] !== 1 || $role === '' || $role === 'guest') {
                 throw new RuntimeException('Akun tidak valid atau tidak aktif.');
             }
-
             if ($attemptId !== null && $attemptId > 0) {
                 $stmt = $conn->prepare(
                     "SELECT id, user_id, hold_id, status, media_type, client_heartbeat_at,
@@ -459,9 +466,6 @@ class MeelCoin
                 if ((string)$attempt['status'] !== 'active') {
                     throw new RuntimeException('Sesi upload sudah ' . (string)$attempt['status'] . '.');
                 }
-                // Upload lanjutan sudah mengirim progress lewat flush, sehingga
-                // browser wajar melempar pagehide dan heartbeat berhenti. Proses
-                // server yang memverifikasi koneksi sebelum capture.
                 if (strtolower((string)$attempt['media_type']) !== 'advanced') {
                     $clientAge = $attempt['client_age'] === null ? null : (int)$attempt['client_age'];
                     if ($clientAge === null || $clientAge > self::CLIENT_HEARTBEAT_MAX_AGE) {
@@ -486,13 +490,11 @@ class MeelCoin
                     throw new RuntimeException('Baris media tidak ditemukan pada transaksi ini.');
                 }
             }
-
             $total = (int)$userRow['meelcoin'];
             $held = (int)$userRow['meelcoin_held'];
             if ($total < $amount || $held < $amount) {
                 throw new RuntimeException('Saldo MEeLCoin tidak konsisten dengan reservasi.');
             }
-
             $stmt = $conn->prepare(
                 "UPDATE users
                     SET meelcoin = meelcoin - ?, meelcoin_held = meelcoin_held - ?
@@ -505,7 +507,6 @@ class MeelCoin
                 throw new RuntimeException('Gagal memotong MEeLCoin dari reservasi.');
             }
             $stmt->close();
-
             $stmt = $conn->prepare(
                 "UPDATE coin_holds
                     SET status = 'captured', captured_at = NOW()
@@ -518,7 +519,6 @@ class MeelCoin
                 throw new RuntimeException('Gagal menandai reservasi MEeLCoin sebagai captured.');
             }
             $stmt->close();
-
             $newBalance = $total - $amount;
             $reason = substr($reason !== '' ? $reason : 'upload', 0, 50);
             self::log($conn, $userId, -$amount, $newBalance, $reason, $holdId);
@@ -533,7 +533,6 @@ class MeelCoin
                 $stmt->execute();
                 $stmt->close();
             }
-
             return ['ok' => true, 'error' => '', 'balance' => $newBalance, 'amount' => $amount, 'status' => 'captured'];
         } catch (Throwable $e) {
             $result['error'] = $e->getMessage();
@@ -541,15 +540,7 @@ class MeelCoin
             return $result;
         }
     }
-
-    public static function captureHold(
-        \mysqli $conn,
-        int $holdId,
-        int $userId,
-        string $reason = 'upload',
-        ?int $attemptId = null,
-        ?string $mediaTable = null,
-        ?int $mediaId = null
+    public static function captureHold(\mysqli $conn,int $holdId,int $userId,string $reason = 'upload',?int $attemptId = null,?string $mediaTable = null,?int $mediaId = null
     ): array {
         $owns = self::ownsTransaction($conn);
         if ($owns) {
@@ -565,15 +556,10 @@ class MeelCoin
         }
         return $result;
     }
-
     /**
      * @return array{ok:bool,error:string,released:int,status:string}
      */
-    public static function releaseHoldInTransaction(
-        \mysqli $conn,
-        int $holdId,
-        string $reason = 'released',
-        string $status = 'released'
+    public static function releaseHoldInTransaction(\mysqli $conn,int $holdId,string $reason = 'released',string $status = 'released'
     ): array {
         if (!in_array($status, ['released', 'expired'], true)) {
             $status = 'released';
@@ -600,7 +586,6 @@ class MeelCoin
             if ($current === 'released' || $current === 'expired') {
                 return ['ok' => true, 'error' => '', 'released' => 0, 'status' => $current];
             }
-
             $userId = (int)$hold['user_id'];
             $amount = max(0, (int)$hold['amount']);
             if ($amount > 0) {
@@ -613,7 +598,6 @@ class MeelCoin
                 $stmt->execute();
                 $stmt->close();
             }
-
             $reason = substr($reason !== '' ? $reason : 'released', 0, 50);
             $stmt = $conn->prepare(
                 "UPDATE coin_holds
@@ -632,12 +616,7 @@ class MeelCoin
             return ['ok' => false, 'error' => $e->getMessage(), 'released' => 0, 'status' => ''];
         }
     }
-
-    public static function releaseHold(
-        \mysqli $conn,
-        int $holdId,
-        string $reason = 'released',
-        string $status = 'released'
+    public static function releaseHold(\mysqli $conn,int $holdId,string $reason = 'released',string $status = 'released'
     ): array {
         if ($holdId <= 0) {
             return ['ok' => true, 'error' => '', 'released' => 0, 'status' => 'none'];
@@ -656,7 +635,6 @@ class MeelCoin
         }
         return $result;
     }
-
     public static function releaseExpiredHolds(\mysqli $conn, int $limit = 100): int
     {
         $limit = max(1, min(1000, $limit));
@@ -683,7 +661,6 @@ class MeelCoin
         }
         return $released;
     }
-
     private static function roleOf(\mysqli $conn, int $userId): ?string
     {
         if (!function_exists('get_user_role')) {
@@ -692,13 +669,6 @@ class MeelCoin
         $role = get_user_role($conn, $userId);
         return is_string($role) && $role !== '' ? $role : null;
     }
-
-    /**
-     * Mulai jendela isi ulang dari sekarang.
-     *
-     * Dipanggil ketika saldo turun dari maksimum: dari titik itu user
-     * menunggu `meelcoin_refill_hours` jam sebelum isi ulang berikutnya.
-     */
     private static function restartRefillWindow(\mysqli $conn, int $userId): void
     {
         $stmt = $conn->prepare("UPDATE users SET meelcoin_last_refill = NOW() WHERE id = ?");
@@ -709,7 +679,6 @@ class MeelCoin
         $stmt->execute();
         $stmt->close();
     }
-
     public static function refund(\mysqli $conn, int $userId, int $amount, string $reason): bool
     {
         if ($amount <= 0) return true;
@@ -718,17 +687,14 @@ class MeelCoin
         $stmt->bind_param("ii", $amount, $userId);
         $ok = $stmt->execute() && $stmt->affected_rows > 0;
         $stmt->close();
-
         if ($ok) {
             self::log($conn, $userId, $amount, self::getBalance($conn, $userId), $reason);
         }
         return $ok;
     }
-
     public static function refill(\mysqli $conn, int $userId, string $role): bool
     {
         if ($role === 'admin') return true;
-
         $refillHours = self::getRefillHours($conn);
         $maxCoins = self::getMax($conn, $role);
         $refillAmt = self::getRefillAmount($conn, $role);
@@ -737,7 +703,6 @@ class MeelCoin
         if ($current >= $maxCoins) {
             return false;
         }
-
         $stmt = $conn->prepare(
             "UPDATE users
                 SET meelcoin = LEAST(?, meelcoin + ?),
@@ -759,7 +724,6 @@ class MeelCoin
         self::notifyRefill($conn, $userId, $added);
         return true;
     }
-
     private static function notifyRefill(\mysqli $conn, int $userId, int $added): void
     {
         if ($added <= 0 || !class_exists('Notification')) {
@@ -773,11 +737,9 @@ class MeelCoin
             'Saldo Anda bertambah ' . $added . ' dari isi ulang.'
         );
     }
-
     public static function getRefillCountdown(\mysqli $conn, int $userId, string $role): int
     {
         if ($role === 'admin') return 0;
-
         $cycleSeconds = max(1, self::getRefillHours($conn) * 3600);
         $stmt = $conn->prepare(
             "SELECT meelcoin_last_refill AS last_refill,
@@ -789,24 +751,17 @@ class MeelCoin
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-
         $last = (string) ($row['last_refill'] ?? '');
         if ($last === '' || str_starts_with($last, '0000-00-00')) {
             return 0;
         }
-
         $elapsed = max(0, (int) ($row['elapsed'] ?? 0));
         return max(0, $cycleSeconds - $elapsed);
     }
-
     public static function initialize(\mysqli $conn, int $userId, string $role): void
     {
         if ($role === 'admin') return;
-
         $maxCoins = self::getMax($conn, $role);
-
-        // Jangan tinggalkan hold aktif saat saldo di-reset: hold itu tidak
-        // boleh bisa di-capture setelah saldo baru dipasang.
         $stmt = $conn->prepare("SELECT id FROM coin_holds WHERE user_id = ? AND status = 'held'");
         if ($stmt) {
             $stmt->bind_param("i", $userId);
@@ -817,22 +772,13 @@ class MeelCoin
                 self::releaseHold($conn, (int)$hold['id'], 'account_initialized', 'released');
             }
         }
-
         $stmt = $conn->prepare("UPDATE users SET meelcoin = ?, meelcoin_held = 0, meelcoin_last_refill = NOW() WHERE id = ?");
         $stmt->bind_param("ii", $maxCoins, $userId);
         $stmt->execute();
         $stmt->close();
-
         self::log($conn, $userId, $maxCoins, $maxCoins, 'init');
     }
-
-    public static function log(
-        \mysqli $conn,
-        int $userId,
-        int $amount,
-        int $balanceAfter,
-        string $reason,
-        ?int $holdId = null
+    public static function log(\mysqli $conn,int $userId,int $amount,int $balanceAfter,string $reason,?int $holdId = null
     ): void {
         $stmt = $conn->prepare(
             "INSERT INTO meelcoin_log (user_id, amount, balance_after, reason, hold_id)
@@ -850,5 +796,4 @@ class MeelCoin
         $stmt->close();
     }
 }
-
 /* reference build: MEeL-C5H9NO2 [ffd332a] */
