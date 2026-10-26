@@ -9,7 +9,8 @@
 
 $__ld_id = (int) ($like_dislike_media_id ?? 0);
 $__ld_type = ($like_dislike_media_type ?? 'video') === 'music' ? 'music' : 'video';
-$__ld_state = in_array($like_dislike_state ?? '', ['like', 'dislike'], true) ? $like_dislike_state : '';
+$__ld_state = (string) ($like_dislike_state ?? '');
+$__ld_state = in_array($__ld_state, ['like', 'dislike'], true) ? $__ld_state : '';
 $__ld_likes = (int) ($like_dislike_likes ?? 0);
 $__ld_dislikes = (int) ($like_dislike_dislikes ?? 0);
 $__ld_csrf = htmlspecialchars((string) ($like_dislike_csrf ?? ($_SESSION['csrf_token'] ?? '')), ENT_QUOTES);
