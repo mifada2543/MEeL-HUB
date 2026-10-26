@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/proxy.php';
 require_once __DIR__ . '/helpers/datetime.php';
-
 function validate_and_format_ip(string $ip): array
 {
     $ip = trim($ip);
@@ -11,29 +10,23 @@ function validate_and_format_ip(string $ip): array
     if ($ip === '::1') {
         return ['ip' => 'LOCAL', 'display' => 'Local Access (IPv6)', 'is_local' => true, 'version' => 'ipv6'];
     }
-
     if (strpos($ip, '::ffff:') === 0) {
         $ipv4 = substr($ip, 7);
         if (filter_var($ipv4, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             return ['ip' => $ipv4, 'display' => $ipv4 . ' (IPv4-mapped)', 'is_local' => false, 'version' => 'ipv4-mapped'];
         }
     }
-
     if ($ip === 'localhost') {
         return ['ip' => 'LOCAL', 'display' => 'Local Access (localhost)', 'is_local' => true, 'version' => 'hostname'];
     }
-
     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
         return ['ip' => $ip, 'display' => $ip . ' (IPv6)', 'is_local' => false, 'version' => 'ipv6'];
     }
-
     if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
         return ['ip' => $ip, 'display' => $ip . ' (IPv4)', 'is_local' => false, 'version' => 'ipv4'];
     }
-
     return ['ip' => 'Unknown', 'display' => 'Unknown', 'is_local' => false, 'version' => 'unknown'];
 }
-
 function get_access_method()
 {
     $trusted = trust_proxy_headers();
@@ -54,18 +47,15 @@ function get_access_method()
     }
     return 'Direct';
 }
-
 function get_connection_protocol()
 {
     $ip = get_real_ip();
-
     if (strpos($ip, ':') !== false) {
         return 'IPv6';
     }
 
     return 'IPv4';
 }
-
 if (!function_exists('log_activity')) {
     function log_activity(mysqli $conn, int $user_id, string $action, string $media_type = '', ?int $media_id = null): void
     {
@@ -75,7 +65,6 @@ if (!function_exists('log_activity')) {
         } elseif (isset($_SERVER['REMOTE_ADDR'])) {
             $ip = $_SERVER['REMOTE_ADDR'];
         }
-
         if ($media_id === null) {
             $stmt = $conn->prepare(
                 "INSERT INTO activity_log (user_id, action, media_type, ip_address, created_at)
@@ -99,48 +88,32 @@ if (!function_exists('log_activity')) {
         }
     }
 }
-
 class ActivityLogger
 {
     public const TOUCH_THROTTLE_SECONDS = 60;
-
     private const SESSION_KEY = '_meel_touch';
-
     private static bool $hasRun = false;
-
     public static function onRequest(mysqli $conn): void
     {
         if (self::$hasRun) {
             return;
         }
         self::$hasRun = true;
-
-        if (!isset($_SESSION['role'])) {
-            self::enforceIpBan($conn, self::clientIp());
-            return;
-        }
-
         $ip = self::clientIp();
-
         self::enforceIpBan($conn, $ip);
-
         if (!isset($_SESSION['user_id'])) {
             if (!self::shouldSkipTelemetry()) {
                 self::touchGuest($conn, $ip);
             }
             return;
         }
-
         $uid = (int)$_SESSION['user_id'];
         $status = self::enforceSingleSession($conn, $uid);
-
         if (self::shouldSkipTelemetry()) {
             return;
         }
-
         self::touchUser($conn, $uid, $ip, $status);
     }
-
     private static function clientIp(): string
     {
         if (PHP_SAPI !== 'cli' && function_exists('get_real_ip')) {
@@ -148,24 +121,20 @@ class ActivityLogger
         }
         return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
     }
-
     private static function shouldSkipTelemetry(): bool
     {
         if (isset($_SERVER['HTTP_HX_REQUEST'])) {
             return true;
         }
-
         $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
         if ($accept !== ''
             && stripos($accept, 'text/html') === false
             && stripos($accept, '*/*') === false) {
             return true;
         }
-
         $self = basename((string)($_SERVER['PHP_SELF'] ?? ''));
         return in_array($self, ['stream.php', 'file.php'], true);
     }
-
     private static function enforceIpBan(mysqli $conn, string $ip): void
     {
         if (basename(dirname((string)($_SERVER['PHP_SELF'] ?? ''))) === 'err') {
@@ -174,7 +143,6 @@ class ActivityLogger
         if (($_SESSION['role'] ?? null) === 'admin') {
             return;
         }
-
         $stmt = $conn->prepare("SELECT reason FROM ip_ban WHERE ip_address = ?");
         if (!$stmt) {
             return;
@@ -183,18 +151,15 @@ class ActivityLogger
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-
         if (!$row) {
             return;
         }
-
         $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
         $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
         $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
         header("Location: " . $relative_base . "/err/?code=banned&reason=" . urlencode($row['reason']));
         exit();
     }
-
     private static function enforceSingleSession(mysqli $conn, int $uid): array
     {
         $stmt = $conn->prepare("SELECT last_session_id, role FROM users WHERE id = ?");
@@ -202,11 +167,9 @@ class ActivityLogger
         $stmt->execute();
         $status = $stmt->get_result()->fetch_assoc() ?: [];
         $stmt->close();
-
         if (basename(dirname((string)($_SERVER['PHP_SELF'] ?? ''))) === 'err') {
             return $status;
         }
-
         $currentSid = session_id();
         $role = $_SESSION['role'] ?? null;
         if (($status['role'] ?? null) !== 'admin'
@@ -214,17 +177,14 @@ class ActivityLogger
             && $status['last_session_id'] !== $currentSid) {
             session_unset();
             session_destroy();
-
             $root_dir = str_replace('\\', '/', realpath(__DIR__ . '/../..'));
             $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
             $relative_base = rtrim('/' . ltrim(str_replace($doc_root, '', $root_dir), '/'), '/');
             header("Location: " . $relative_base . "/err/?code=revoked");
             exit();
         }
-
         return $status;
     }
-
     private static function touchUser(mysqli $conn, int $uid, string $ip, array $status): void
     {
         $currentSid = session_id();
@@ -234,12 +194,10 @@ class ActivityLogger
             $sidStmt->execute();
             $sidStmt->close();
         }
-
         $payload = self::buildPayload($conn, $ip);
         if (self::isThrottled($payload)) {
             return;
         }
-
         $now = meel_now();
         $stmt = $conn->prepare(
             "UPDATE users
@@ -257,24 +215,21 @@ class ActivityLogger
         );
         $stmt->execute();
         $stmt->close();
-
         self::markThrottled($payload);
     }
-
     private static function touchGuest(mysqli $conn, string $ip): void
     {
         $payload = self::buildPayload($conn, $ip);
         if (self::isThrottled($payload)) {
             return;
         }
-
         $guest_id = 'g_' . substr(md5(session_id()), 0, 10);
-
         $guest_pass = bin2hex(random_bytes(24));
         $stmt = $conn->prepare(
-            "INSERT INTO users (username, password, role, last_page, user_agent, access_via, ip_address, last_activity)
-             VALUES (?, ?, 'guest', ?, ?, ?, ?, ?)
+            "INSERT INTO users (username, password, role, is_active, last_page, user_agent, access_via, ip_address, last_activity)
+             VALUES (?, ?, 'guest', 1, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
+                is_active = 1,
                 last_page = VALUES(last_page),
                 user_agent = VALUES(user_agent),
                 access_via = VALUES(access_via),
@@ -286,7 +241,7 @@ class ActivityLogger
         }
         $now = meel_now();
         $stmt->bind_param(
-            "ssssssss",
+            "sssssss",
             $guest_id,
             $guest_pass,
             $payload['last_page'],
@@ -297,10 +252,8 @@ class ActivityLogger
         );
         $stmt->execute();
         $stmt->close();
-
         self::markThrottled($payload);
     }
-
     private static function buildPayload(mysqli $conn, string $ip): array
     {
         return [
@@ -310,7 +263,6 @@ class ActivityLogger
             'ip_address' => $ip,
         ];
     }
-
     private static function signature(array $payload): string
     {
         return implode("\0", [
@@ -320,7 +272,6 @@ class ActivityLogger
             $payload['ip_address'],
         ]);
     }
-
     private static function isThrottled(array $payload): bool
     {
         $last = $_SESSION[self::SESSION_KEY] ?? null;
@@ -330,12 +281,10 @@ class ActivityLogger
         return $last['sig'] === self::signature($payload)
             && (time() - (int)$last['ts']) < self::TOUCH_THROTTLE_SECONDS;
     }
-
     private static function markThrottled(array $payload): void
     {
         $_SESSION[self::SESSION_KEY] = ['sig' => self::signature($payload), 'ts' => time()];
     }
-
     private static function detectDevice(string $ua): string
     {
         if (strpos($ua, 'Android') !== false) return 'Smartphone';
@@ -345,14 +294,12 @@ class ActivityLogger
         if (strpos($ua, 'iPhone') !== false) return 'iPhone';
         return 'Unknown';
     }
-
     private static function resolveCurrentPage(mysqli $conn): string
     {
         $self = (string)($_SERVER['PHP_SELF'] ?? '');
         $currentPage = basename($self);
         $dirName = basename(dirname($self));
         $id = $_GET['id'] ?? $_GET['v'] ?? null;
-
         if ($id) {
             if ($currentPage === 'watch.php') {
                 return (($dirName === 'music') ? 'Listening: ' : 'Watching: ')
@@ -386,7 +333,6 @@ class ActivityLogger
                 'profile' => 'Browsing Profiles',
             ][$dirName] ?? 'Browsing HUB';
         }
-
         return $currentPage;
     }
 
@@ -406,13 +352,10 @@ class ActivityLogger
         return $row['title'] ?? null;
     }
 }
-
 if (PHP_SAPI === 'cli') {
     return;
 }
-
 if (isset($conn) && $conn instanceof mysqli) {
     ActivityLogger::onRequest($conn);
 }
-
 /* reference build: MEeL-C2H5NO2 [a0d28a942a0fe642] */
