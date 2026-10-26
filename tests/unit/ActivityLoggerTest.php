@@ -140,7 +140,7 @@ class ActivityLoggerTest extends TestCase
         $_SERVER['PHP_SELF'] = '/MEeL/video/index.php';
 
         $conn = $this->createMock(mysqli::class);
-        $conn->expects($this->once())
+        $conn->expects($this->exactly(2))
             ->method('prepare')
             ->willReturn(false);
 
@@ -149,24 +149,58 @@ class ActivityLoggerTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
-
+    public function testAnonymousRequestEntersGuestTouchPath(): void
+    {
+        $this->requireLogger();
+        $this->resetStaticGuard();
+        $_SESSION = [];
+        $_SERVER['PHP_SELF'] = '/MEeL/video/index.php';
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (X11; Linux x86_64)';
+        unset($_SERVER['HTTP_HX_REQUEST'], $_SERVER['HTTP_ACCEPT']);
+        $statements = [];
+        $conn = $this->createMock(mysqli::class);
+        $conn->method('prepare')->willReturnCallback(
+            static function (string $query) use (&$statements) {
+                $statements[] = $query;
+                return false;
+            }
+        );
+        ActivityLogger::onRequest($conn);
+        $guestInserts = array_values(array_filter(
+            $statements,
+            static fn (string $s): bool => stripos($s, 'INSERT INTO users') !== false
+        ));
+        $this->assertCount(1, $guestInserts, 'tamu anonim harus masuk ke touchGuest()');
+        $this->assertSame(
+            0,
+            count(array_filter($statements, static fn (string $s): bool => stripos($s, 'UPDATE users') !== false)),
+            'tamu tidak boleh memakai jalur touchUser()'
+        );
+        $insert = $guestInserts[0];
+        $this->assertMatchesRegularExpression(
+            "/VALUES \(\?, \?, 'guest', 1, \?, \?, \?, \?, \?\)/",
+            $insert,
+            'tamu harus ditulis dengan is_active = 1'
+        );
+        $this->assertSame(
+            7,
+            substr_count($insert, '?'),
+            'jumlah placeholder harus sama dengan jumlah nilai yang di-bind (7)'
+        );
+        $this->assertStringContainsString('is_active = 1', $insert, 'tamu yang kembali online harus diaktifkan lagi');
+    }
     public function testHasRunGuardIsSetAfterFirstCall(): void
     {
         $this->requireLogger();
         $this->resetStaticGuard();
-
         $prop = new ReflectionProperty(ActivityLogger::class, 'hasRun');
         $prop->setAccessible(true);
         $this->assertFalse($prop->getValue(), 'guard harus false sebelum request pertama');
-
         $_SESSION = [];
         $_SERVER['PHP_SELF'] = '/MEeL/video/index.php';
-
         $conn = $this->createMock(mysqli::class);
         $conn->method('prepare')->willReturn(false);
-
         ActivityLogger::onRequest($conn);
-
         $this->assertTrue($prop->getValue(), 'guard harus true setelah request pertama');
     }
 }
