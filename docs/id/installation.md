@@ -63,8 +63,8 @@ Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
 | **PHP** | **8.2+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Wajib `mod_rewrite` |
-| **FFmpeg** | 6.0+ | Untuk HLS & transcoding |
-| **FFprobe** | (bundled with FFmpeg) | Untuk probing media |
+| **FFmpeg** | 6.1.1 (ffmpeg-lite bundled) | Untuk HLS & transcoding — sudah termasuk encoder AAC, demuxer HLS, filter pad/crop |
+| **FFprobe** | (bundled with ffmpeg-lite) | Untuk probing media |
 | **yt-dlp** | Versi terbaru | Untuk download URL |
 | **RAM** | 2 GB (4 GB+) | 4 GB+ untuk transcoding |
 | **Storage** | 10 GB+ | Tergantung ukuran media |
@@ -81,6 +81,8 @@ sudo apt install mecab mecab-ipadic-utf8 libmecab-dev
 # Pada Ubuntu/Debian
 sudo apt install php8.2-mysqli php8.2-pdo-mysql php8.2-gd php8.2-fileinfo \
                  php8.2-mbstring php8.2-intl php8.2-zip php8.2-xml
+
+# FFmpeg tidak perlu diinstall via apt — sudah bundled (tools/ffmpeg-lite)
 ```
 
 Atau aktifkan di `php.ini`:
@@ -522,20 +524,22 @@ define('MEEL_USE_XSENDFILE', true);
 
 ---
 
-### 8. Setup FFmpeg
+### 8. Setup FFmpeg (ffmpeg-lite — bundled)
+
+MEeL menyertakan `ffmpeg-lite` yang sudah dikompilasi dengan komponen yang dibutuhkan (H.264, HEVC, AAC, HLS, filter pad/crop, decoder AV1). Tidak perlu instalasi via apt.
 
 ```bash
-# Ubuntu/Debian
-sudo apt install ffmpeg
+# Verifikasi ffmpeg-lite terpasang
+./tools/ffmpeg-lite/ffmpeg -version
+./tools/ffmpeg-lite/ffprobe -version
 
-# Verifikasi
-ffmpeg -version
-ffprobe -version
-
-# Cek lokasi binary
-which ffmpeg    # Output: /usr/bin/ffmpeg
-which ffprobe   # Output: /usr/bin/ffprobe
+# Jalankan test suite
+./tools/ffmpeg-lite/test-ffmpeg-lite.sh
 ```
+
+Binary sistem (`/usr/bin/ffmpeg`) opsional — jika ada, dipakai sebagai fallback. Konfigurasi default di `auth/settings.php` mengarah ke `tools/ffmpeg-lite`.
+
+> 💡 `install.sh` otomatis mengonfigurasi `auth/settings.php` untuk memakai ffmpeg-lite. Jika ingin rebuild dengan komponen tambahan, lihat `tools/ffmpeg-lite/build-ffmpeg-lite.sh`.
 
 ### 9. Setup yt-dlp
 

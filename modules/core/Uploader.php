@@ -19,8 +19,12 @@ class Uploader
         $this->conn = $db_connection;
         $this->user_id = (int)$session_user_id;
         $this->base_dir = defined('MEEL_HDD_VIDEO_UPLOAD') ? MEEL_HDD_VIDEO_UPLOAD : "/path/to/your/media/video/upload/";
-        $this->ffmpeg_bin = resolve_binary(['/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
-        $this->ffprobe_bin = resolve_binary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+        $this->ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
+            ? MEEL_FFMPEG_PATH
+            : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
+        $this->ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
+            ? MEEL_FFPROBE_PATH
+            : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
         $this->user_role = get_user_role($this->conn, $this->user_id);
     }
 

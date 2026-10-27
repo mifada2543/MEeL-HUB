@@ -70,8 +70,12 @@ class TranscoderBase
         }
         @chmod($this->cookies_path, 0600);
         $this->user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
-        $this->ffmpeg_bin = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
-        $this->ffprobe_bin = resolve_binary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+        $this->ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
+            ? MEEL_FFMPEG_PATH
+            : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+        $this->ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
+            ? MEEL_FFPROBE_PATH
+            : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
 
         $this->user_role = get_user_role($this->conn, $this->user_id);
 

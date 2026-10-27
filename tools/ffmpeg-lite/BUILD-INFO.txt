@@ -1,0 +1,37 @@
+ffmpeg-lite untuk MEeL
+Sumber     : https://github.com/FFmpeg/FFmpeg  tag n6.1.1  commit e38092ef9395d7049f871ef4d5411eb410e283e0
+Dibangun   : built with gcc 13 (Ubuntu 13.3.0-6ubuntu2~24.04.1)
+Platform   : Linux x86_64 (dibangun di Ubuntu 24.04), glibc >= 2.35
+Lisensi    : LGPL 2.1 atau lebih baru (lihat COPYING.LGPLv2.1)
+Library dinamis: libopus0 libmp3lame0 libwebp7 libsharpyuv0 libdav1d7 zlib1g
+Cara build : build-ffmpeg-lite.sh (flag configure identik dengan yang dipakai biner ini)
+Konfigurasi penuh:
+  --prefix=/tmp/opencode/ffmpeg-meel-build/out
+  --disable-everything
+  --disable-autodetect
+  --disable-doc
+  --disable-debug
+  --disable-ffplay
+  --disable-network
+  --disable-avdevice
+  --enable-ffmpeg
+  --enable-ffprobe
+  --enable-zlib
+  --enable-libopus
+  --enable-libmp3lame
+  --enable-libwebp
+  --enable-libdav1d
+  --enable-protocol='file,pipe'
+  --enable-demuxer='mov,matroska,mpegts,hls,flac,wav,ogg,mp3,aac,ac3,eac3,concat,image2,image_jpeg_pipe,image_png_pipe,image_webp_pipe,image_gif_pipe,image_bmp_pipe'
+  --enable-muxer='hls,mpegts,ogg,opus,mp3,ipod,mp4,webp,image2,mjpeg,null'
+  --enable-decoder='h264,hevc,aac,aac_latm,mp3,mp3float,flac,vorbis,opus,alac,ac3,eac3,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_u8,mjpeg,png,webp,gif,bmp,libdav1d,av1'
+  --enable-encoder='libopus,libmp3lame,libwebp,mjpeg,png,aac'
+  --enable-parser='h264,hevc,aac,aac_latm,mpegaudio,flac,vorbis,opus,ac3,mjpeg,png,webp,gif,bmp'
+  --enable-bsf='h264_mp4toannexb,hevc_mp4toannexb,aac_adtstoasc,extract_extradata,null'
+  --enable-filter='scale,pad,crop,fps,tile,format,aresample,anull,null,aformat,buffer,buffersink,abuffer,abuffersink'
+
+Perubahan dari 6.1.1 (paket lama):
+  + demuxer: hls           (diperlukan probeDuration HLS di TranscodeService)
+  + encoder: aac           (diperlukan transcode audio non-AAC ke HLS di Uploader)
+  + filter:  pad, crop     (diperlukan auto_metadata, media_editor, profile_edit)
+  + decoder: libdav1d,av1  (dukungan AVIF di admin/includes/media_editor.php)

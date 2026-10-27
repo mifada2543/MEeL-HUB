@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Mencatat setiap panggilan lalu meneruskan ke biner lite di folder induk.
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+echo "$(date +%T) ffprobe $*" >> "${MEEL_FF_LOG:-/tmp/meel-ff.log}" 2>/dev/null
+exec "$DIR/ffprobe" "$@"

@@ -28,7 +28,7 @@ class TranscodeArgvTest extends TestCase
 
         $binary = new ReflectionProperty(TranscoderBase::class, 'ffmpeg_bin');
         $binary->setAccessible(true);
-        $binary->setValue($this->service, '/usr/bin/ffmpeg');
+        $binary->setValue($this->service, dirname(__DIR__, 2) . '/tools/ffmpeg-lite/ffmpeg');
 
         $this->thumbDir = sys_get_temp_dir() . '/meel_argv_' . bin2hex(random_bytes(6));
         mkdir($this->thumbDir . '/thumbnail', 0777, true);

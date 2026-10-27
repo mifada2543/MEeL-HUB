@@ -66,9 +66,14 @@ if (!function_exists('meel_magic_extension_ok')) {
 if (!function_exists('meel_validate_video_codec')) {
     function meel_validate_video_codec(
         string $file_path,
-        string $ffprobe_bin = '/usr/bin/ffprobe',
+        string $ffprobe_bin = '',
         string $env_prefix = ''
     ): string {
+        if ($ffprobe_bin === '') {
+            $ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
+                ? MEEL_FFPROBE_PATH
+                : '/usr/bin/ffprobe';
+        }
         if (!is_file($file_path) || filesize($file_path) < 4) {
             return 'File tidak valid atau terlalu kecil.';
         }
@@ -94,9 +99,14 @@ if (!function_exists('meel_validate_video_codec')) {
 if (!function_exists('meel_validate_audio_codec')) {
     function meel_validate_audio_codec(
         string $file_path,
-        string $ffprobe_bin = '/usr/bin/ffprobe',
+        string $ffprobe_bin = '',
         string $env_prefix = ''
     ): array {
+        if ($ffprobe_bin === '') {
+            $ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
+                ? MEEL_FFPROBE_PATH
+                : '/usr/bin/ffprobe';
+        }
         if (!is_file($file_path) || filesize($file_path) < 4) {
             return ['error' => 'File tidak valid atau terlalu kecil.', 'has_audio' => false, 'needs_audio_transcode' => false];
         }
