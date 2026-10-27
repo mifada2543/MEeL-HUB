@@ -201,9 +201,8 @@ storage/chats/**/*.json
 # ---Another----
 skills-lock.json
 marks.php
-# Toolchain lokal: hanya dipakai maintainer untuk membangun ulang
-# screenshot README + placeholder artwork. Hasilnya yang ikut commit,
-# bukan skripnya.
-tools/
+tools/*
+!tools/tailwind
+!tools/ffmpeg-lite
 # ---GENERATED BUNDLE CSS---
 assets/css/*/bundle.css

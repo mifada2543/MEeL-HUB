@@ -378,14 +378,22 @@ protected const TRANSCODE_AUDIO_TIMEOUT = 600;
 
 ### Binary Path Resolution
 
-```php
-// Trait modules/transcoder/FfmpegUtils.php - Auto-detect FFmpeg path (resolveBinary)
-$this->ffmpeg_bin  = $this->resolveBinary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
-$this->ffprobe_bin = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+MEeL uses `ffmpeg-lite` bundled in `tools/ffmpeg-lite` by default. The `resolveBinary()` helper checks `MEEL_FFMPEG_PATH` constant first, then falls back to the bundled binary, and finally to system paths.
 
-// Uploader.php
-$this->ffmpeg_bin  = $this->resolveBinary(['/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
-$this->ffprobe_bin = $this->resolveBinary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+```php
+// Default resolution pattern (used in TranscoderBase.php, Uploader.php, etc.)
+$this->ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
+    ? MEEL_FFMPEG_PATH
+    : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+$this->ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
+    ? MEEL_FFPROBE_PATH
+    : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+```
+
+To use a custom FFmpeg path, set the constant in `auth/settings.php`:
+```php
+define('MEEL_FFMPEG_PATH', '/opt/ffmpeg/ffmpeg');
+define('MEEL_FFPROBE_PATH', '/opt/ffmpeg/ffprobe');
 ```
 
 ### yt-dlp Configuration
