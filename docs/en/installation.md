@@ -64,8 +64,8 @@ Steps it runs (idempotent for most of them):
 | **PHP** | **8.2+** | — |
 | **MySQL** | 5.7+ / MariaDB 10.2+ | Encoding `utf8mb4` |
 | **Apache** | 2.4+ | Requires `mod_rewrite` |
-| **FFmpeg** | 6.0+ | For HLS & transcoding |
-| **FFprobe** | (bundled with FFmpeg) | For media probing |
+| **FFmpeg** | 6.1.1 (ffmpeg-lite bundled) | For HLS & transcoding — includes AAC encoder, HLS demuxer, pad/crop filters |
+| **FFprobe** | (bundled with ffmpeg-lite) | For media probing |
 | **yt-dlp** | Latest version | For URL downloads |
 | **RAM** | 2 GB (4 GB+) | 4 GB+ for transcoding |
 | **Storage** | 10 GB+ | Depends on media size |
@@ -82,6 +82,8 @@ sudo apt install mecab mecab-ipadic-utf8 libmecab-dev
 # On Ubuntu/Debian
 sudo apt install php8.2-mysqli php8.2-pdo-mysql php8.2-gd php8.2-fileinfo \
                  php8.2-mbstring php8.2-intl php8.2-zip php8.2-xml
+
+# FFmpeg is NOT required via apt — ffmpeg-lite is bundled in tools/ffmpeg-lite
 ```
 
 Or enable in `php.ini`:
@@ -522,20 +524,22 @@ define('MEEL_USE_XSENDFILE', true);
 
 ---
 
-### 8. FFmpeg Setup
+### 8. FFmpeg Setup (ffmpeg-lite — bundled)
+
+MEeL includes `ffmpeg-lite` pre-compiled with required components (H.264, HEVC, AAC, HLS, pad/crop filters, AV1 decoder). No apt installation needed.
 
 ```bash
-# Ubuntu/Debian
-sudo apt install ffmpeg
+# Verify ffmpeg-lite is installed
+./tools/ffmpeg-lite/ffmpeg -version
+./tools/ffmpeg-lite/ffprobe -version
 
-# Verify
-ffmpeg -version
-ffprobe -version
-
-# Check binary location
-which ffmpeg    # Output: /usr/bin/ffmpeg
-which ffprobe   # Output: /usr/bin/ffprobe
+# Run test suite
+./tools/ffmpeg-lite/test-ffmpeg-lite.sh
 ```
+
+System binary (`/usr/bin/ffmpeg`) is optional — if present, used as fallback. Default configuration in `auth/settings.php` points to `tools/ffmpeg-lite`.
+
+> 💡 `install.sh` automatically configures `auth/settings.php` to use ffmpeg-lite. To rebuild with additional components, see `tools/ffmpeg-lite/build-ffmpeg-lite.sh`.
 
 ### 9. yt-dlp Setup
 

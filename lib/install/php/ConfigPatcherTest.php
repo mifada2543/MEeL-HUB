@@ -154,16 +154,18 @@ assert_equals('APP_DEBUG (false)', 'false', extract_define_raw($content, 'APP_DE
 echo "\nTest 4: patchBinaries()\n";
 copy($templatePath, $targetPath);
 $patcher = new ConfigPatcher($targetPath);
+$ffmpeg_lite_path = dirname(__DIR__, 3) . '/tools/ffmpeg-lite/ffmpeg';
+$ffprobe_lite_path = dirname(__DIR__, 3) . '/tools/ffmpeg-lite/ffprobe';
 $patcher->patchBinaries([
-    'ffmpeg' => '/usr/bin/ffmpeg',
-    'ffprobe' => '/usr/bin/ffprobe',
+    'ffmpeg' => $ffmpeg_lite_path,
+    'ffprobe' => $ffprobe_lite_path,
     'node' => '/usr/bin/node',
     'ytdlp' => '/usr/local/bin/yt-dlp',
 ])->apply();
 
 $content = file_get_contents($targetPath);
-assert_equals('MEEL_FFMPEG_PATH', '/usr/bin/ffmpeg', extract_define($content, 'MEEL_FFMPEG_PATH'));
-assert_equals('MEEL_FFPROBE_PATH', '/usr/bin/ffprobe', extract_define($content, 'MEEL_FFPROBE_PATH'));
+assert_equals('MEEL_FFMPEG_PATH', $ffmpeg_lite_path, extract_define($content, 'MEEL_FFMPEG_PATH'));
+assert_equals('MEEL_FFPROBE_PATH', $ffprobe_lite_path, extract_define($content, 'MEEL_FFPROBE_PATH'));
 assert_equals('MEEL_NODE_PATH', '/usr/bin/node', extract_define($content, 'MEEL_NODE_PATH'));
 assert_equals('MEEL_YTDLP_PATH', '/usr/local/bin/yt-dlp', extract_define($content, 'MEEL_YTDLP_PATH'));
 

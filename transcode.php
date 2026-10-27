@@ -18,7 +18,8 @@ $output_filename = "";
 $format = "mp3";
 $alert_message = "";
 $video_title = "";
-$user_role = get_user_role($conn, $_SESSION['user_id']);
+$user_role = get_user_role($conn, (int)($_SESSION['user_id'] ?? 0));
+$is_admin = ($user_role === 'admin');
 
 if (isset($_POST['start_transcode'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
@@ -46,7 +47,7 @@ if (isset($_POST['start_transcode'])) {
 
             $coin_spent = false;
             $coin_cost = 0;
-            if (MeelCoin::isEnabled($conn)) {
+            if (MeelCoin::isEnabled($conn) && !$is_admin) {
                 $coin_cost = MeelCoin::getTranscodeCost($conn, $user_role);
                 if ($coin_cost > 0) {
                     [$ok, $err] = MeelCoin::spend($conn, (int)$_SESSION['user_id'], $coin_cost, 'transcode');
@@ -77,8 +78,6 @@ if (isset($_POST['start_transcode'])) {
 
 $video_id_value = isset($_GET['id']) ? (int)$_GET['id'] : "";
 
-$user_role = get_user_role($conn, (int)$_SESSION['user_id']);
-$is_admin = ($user_role === 'admin');
 $meelcoin_enabled = MeelCoin::isEnabled($conn);
 
 if ($meelcoin_enabled) {

@@ -118,7 +118,9 @@ function meel_editor_upload_thumbnail(array $files, array $cfg, string $title, s
 
     $new_name = meel_reserve_unique_filename($target_dir, $clean_title . $cfg['suffix'], 'webp', 200, '_');
     $upload_path = $new_name !== null ? $target_dir . $new_name : null;
-    $ffmpeg_bin = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+    $ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
+        ? MEEL_FFMPEG_PATH
+        : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
 
     $cmd = escapeshellarg($ffmpeg_bin) . " -y -i " . escapeshellarg($files['thumbnail']['tmp_name'])
         . " -vf \"scale=500:500:force_original_aspect_ratio=decrease,pad=500:500:(ow-iw)/2:(oh-ih)/2\" -c:v libwebp -q:v 78 "

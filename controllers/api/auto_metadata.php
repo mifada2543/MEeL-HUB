@@ -68,8 +68,12 @@ if ((int)($_FILES[$file_key]['size'] ?? 0) > $max_size) {
     exit;
 }
 
-$ffprobe = resolve_binary(['/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
-$ffmpeg = resolve_binary(['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+$ffprobe = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
+    ? MEEL_FFPROBE_PATH
+    : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+$ffmpeg = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
+    ? MEEL_FFMPEG_PATH
+    : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
 
 if (!is_executable($ffprobe)) {
     http_response_code(500);

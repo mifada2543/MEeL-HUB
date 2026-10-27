@@ -12,10 +12,10 @@ REQUIRED_DNF_PKGS="php-cli php-mysqlnd php-pdo php-fileinfo php-mbstring php-int
 REQUIRED_PACMAN_PKGS="php php-gd php-intl php-mbstring php-xml php-zip mariadb"
 REQUIRED_APK_PKGS="php83 php83-mysqli php83-pdo_mysql php83-fileinfo php83-mbstring php83-intl php83-gd php83-zip php83-xml php83-curl mariadb"
 
-RECOMMENDED_APT_PKGS="ffmpeg yt-dlp composer"
-RECOMMENDED_DNF_PKGS="ffmpeg yt-dlp composer"
-RECOMMENDED_PACMAN_PKGS="ffmpeg yt-dlp composer"
-RECOMMENDED_APK_PKGS="ffmpeg yt-dlp composer"
+RECOMMENDED_APT_PKGS="yt-dlp composer"
+RECOMMENDED_DNF_PKGS="yt-dlp composer"
+RECOMMENDED_PACMAN_PKGS="yt-dlp composer"
+RECOMMENDED_APK_PKGS="yt-dlp composer"
 
 OPTIONAL_APT_PKGS="apache2 libapache2-mod-php mecab mecab-ipadic-utf8"
 OPTIONAL_DNF_PKGS="httpd php-apache mecab mecab-ipadic"
@@ -165,7 +165,7 @@ deps_verify_php_ext() {
 
 # ─── Check optional binaries ───
 deps_check_optional_bins() {
-    local bins="ffmpeg ffprobe yt-dlp mecab composer node npm"
+    local bins="yt-dlp mecab composer node npm"
     local missing=()
     local bin
 
@@ -176,6 +176,13 @@ deps_check_optional_bins() {
             log_verbose "$bin found: $(command -v "$bin")"
         fi
     done
+
+    # ffmpeg/ffprobe checked separately via tools/ffmpeg-lite
+    if [ -x "$PROJECT_ROOT/tools/ffmpeg-lite/ffmpeg" ] && [ -x "$PROJECT_ROOT/tools/ffmpeg-lite/ffprobe" ]; then
+        log_ok "ffmpeg-lite found: $PROJECT_ROOT/tools/ffmpeg-lite/ffmpeg"
+    else
+        missing+=("ffmpeg-lite (tools/ffmpeg-lite)")
+    fi
 
     if [ ${#missing[@]} -gt 0 ]; then
         log_warn "Optional binaries not found: ${missing[*]}"
