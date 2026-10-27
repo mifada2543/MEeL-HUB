@@ -25,7 +25,7 @@ if (!function_exists('meel_japanese_normalize_separators')) {
     function meel_japanese_normalize_separators(string $text): string
     {
         static $search = ['×', '*', '&', '/', '【', '】', '「', '」', '(', ')', '鏡音', '巡音', '初音'];
-        static $replace = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'かがみね', 'めぐりね', 'hatsune'];
+        static $replace = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'kagamine', 'megurine', 'hatsune'];
         $text = str_replace($search, $replace, $text);
         return preg_replace('/(?<![\p{L}\p{N}])[xX](?![\p{L}\p{N}])/u', ' ', $text);
     }
@@ -88,6 +88,11 @@ if (!function_exists('analyzeJapaneseText')) {
             $alias_path = __DIR__ . '/japanese_aliases.php';
             $aliases = file_exists($alias_path) ? require $alias_path : [];
             uksort($aliases, fn($a, $b) => mb_strlen($b) - mb_strlen($a));
+        }
+        static $gloss_overrides = null;
+        if ($gloss_overrides === null) {
+            $override_path = __DIR__ . '/japanese_gloss_overrides.php';
+            $gloss_overrides = file_exists($override_path) ? require $override_path : [];
         }
         $alias_glosses = [];
         $full_cover = null;
@@ -154,8 +159,14 @@ if (!function_exists('analyzeJapaneseText')) {
             $parsed_romaji .= ' ' . (($yomi !== '*' && !preg_match('/[a-zA-Z]/', $yomi)) ? $yomi : $surface);
             $pos = $features[0] ?? '';
             $sub = $features[1] ?? '';
-            $is_functional = in_array($pos, ['助詞', '助動詞', '接続詞', '感動詞', '連体詞', '記号', '補助記号'], true)
-                || ($pos === '名詞' && $sub === '非自立' && $surface === 'の');
+            $base_form = $features[6] ?? '*';
+            $is_functional = in_array($pos, ['助詞', '助動詞', '接続詞', '感動詞', '連体詞', '記号', '補助記号', '接頭詞'], true)
+                || ($pos === '名詞' && $sub === '非自立')
+                || ($pos === '名詞' && $sub === '接頭')
+                || ($pos === '動詞' && $sub === '接尾')
+                || ($pos === '名詞' && $sub === '接尾' && ($features[2] ?? '') === '形容動詞語幹');
+            $is_single_kana = mb_strlen($surface, 'UTF-8') === 1
+                && preg_match('/^[\x{3040}-\x{30FF}]$/u', $surface) === 1;
             $inside_alias = false;
             foreach ($matched_phrases as $phrase) {
                 if ($phrase !== '' && mb_strpos($phrase, $surface) !== false) {
@@ -163,8 +174,20 @@ if (!function_exists('analyzeJapaneseText')) {
                     break;
                 }
             }
-            if ($dict_ready && !$is_functional && !$inside_alias) {
-                $base_form = $features[6] ?? '*';
+            if ($is_functional || $inside_alias) continue;
+            if ($is_single_kana) continue;
+            $override = $gloss_overrides[$surface] ?? $gloss_overrides[$base_form] ?? null;
+            if ($override !== null) {
+                $glosses[] = $override;
+                continue;
+            }
+            $is_proper_noun = $pos === '名詞' && $sub === '固有名詞';
+            if ($is_proper_noun) {
+                $is_loanword = preg_match('/^[\x{30A0}-\x{30FF}]+$/u', $surface) === 1
+                    && mb_strlen($surface, 'UTF-8') >= 4;
+                $is_proper_noun = !$is_loanword;
+            }
+            if ($dict_ready && !$is_proper_noun) {
                 foreach (array_unique([$surface, $base_form]) as $candidate) {
                     if ($candidate === '*' || $candidate === '') continue;
                     $dict_stmt->execute([':w' => $candidate]);
