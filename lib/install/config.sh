@@ -79,7 +79,7 @@ config_set_permissions() {
         return 0
     fi
 
-    if [ "${CAN_ELEVATE:-true}" = "true" ] && [ -n "${SUDO:-}" ] && id "${WEB_USER:-www-data}" >/dev/null 2>&1; then
+    if [ "${CAN_ELEVATE:-true}" = "true" ] && id "${WEB_USER:-www-data}" >/dev/null 2>&1; then
         if $SUDO chgrp "${WEB_USER}" auth/settings.php auth/config.php 2>/dev/null \
             && $SUDO chmod 640 auth/settings.php auth/config.php 2>/dev/null; then
             log_ok "auth/settings.php & auth/config.php → 640 (group: ${WEB_USER})"
@@ -146,22 +146,21 @@ config_run() {
         fi
     fi
 
-    # Binary paths (optional). Bundled ffmpeg-lite is the default for a fresh
-    # install. On an existing install leave the values empty so this step does
-    # not overwrite a custom path; runtime resolve_binary() handles empty.
-    local default_ffmpeg="" default_ffprobe=""
+    local default_ffmpeg="" default_ffprobe="" default_ytdlp=""
     if [ ! -f "${PROJECT_ROOT:-}/auth/settings.php" ]; then
         default_ffmpeg="$PROJECT_ROOT/tools/ffmpeg-lite/ffmpeg"
         default_ffprobe="$PROJECT_ROOT/tools/ffmpeg-lite/ffprobe"
+        default_ytdlp="$PROJECT_ROOT/tools/yt-dlp/yt-dlp"
         [ -x "$default_ffmpeg" ] || default_ffmpeg=""
         [ -x "$default_ffprobe" ] || default_ffprobe=""
+        [ -x "$default_ytdlp" ] || default_ytdlp=""
     fi
-    local ffmpeg_path="${FFMPEG_PATH-$default_ffmpeg}" ffprobe_path="${FFPROBE_PATH-$default_ffprobe}" node_path="" ytdlp_path=""
+    local ffmpeg_path="${FFMPEG_PATH-$default_ffmpeg}" ffprobe_path="${FFPROBE_PATH-$default_ffprobe}" node_path="" ytdlp_path="${YTDLP_PATH-$default_ytdlp}"
     if ! [ "${ASSUME_YES:-false}" = "true" ] && confirm "Set binary paths manually? (empty = auto-detect)" N; then
         ffmpeg_path=$(ask "ffmpeg path" "$ffmpeg_path")
         ffprobe_path=$(ask "ffprobe path" "$ffprobe_path")
         node_path=$(ask "node path" "")
-        ytdlp_path=$(ask "yt-dlp path" "")
+        ytdlp_path=$(ask "yt-dlp path" "$ytdlp_path")
     fi
 
     # Export for sub-functions
