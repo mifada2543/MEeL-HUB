@@ -58,6 +58,10 @@ jobs:
       - name: Checkout (fetch tags)
         uses: actions/checkout@v4
         with:
+          # Jangan checkout tag di job ini. actions/checkout force-update
+          # ref tag menjadi lightweight, sehingga pesan anotasi
+          # "packages: ..." hilang sebelum metadata dibaca.
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
@@ -99,6 +103,7 @@ jobs:
               packages:*) PACKAGES="${line#packages:}" ;;
             esac
           done <<< "$TAG_MESSAGE"
+          PACKAGES_ANNOTATION="$PACKAGES"
           PACKAGES="${PACKAGES:-$DEFAULT_PACKAGES}"
           PACKAGES="${PACKAGES//,/ }"
           PACKAGES="$(printf '%s\n' "$PACKAGES" | xargs)"
@@ -117,6 +122,12 @@ jobs:
             fi
           done
           PACKAGES="$NORMALIZED"
+
+          if [ -n "$PACKAGES_ANNOTATION" ]; then
+            echo "▶️  Tag packages: $PACKAGES_ANNOTATION"
+          else
+            echo "ℹ️  Tag tanpa anotasi packages; memakai default: $DEFAULT_PACKAGES"
+          fi
 
           PRERELEASE="false"
           if [[ "$VERSION" == *-* ]]; then
