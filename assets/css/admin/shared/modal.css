@@ -1,5 +1,4 @@
 /* reference build: MEeL-C10H12N2O [1e2d16033beaab00] */
-
 #delete-modal {
     display: none;
     position: fixed;
@@ -118,7 +117,6 @@
     background: rgba(239, 68, 68, 0.06);
     border: 1px solid rgba(239, 68, 68, 0.15);
 }
-
 .modal-actions {
     display: flex;
     gap: 10px;
@@ -159,7 +157,6 @@
 .btn-modal-delete:hover {
     background: #f87171;
 }
-
 html[data-theme="light"] .modal-box {
     background: #ffffff;
     border-color: rgba(0, 0, 0, 0.1);

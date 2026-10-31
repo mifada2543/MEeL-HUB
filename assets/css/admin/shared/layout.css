@@ -12,14 +12,12 @@
   align-items: center;
   gap: 12px;
 }
-
 @media (max-width: 768px) {
   .top-nav {
     padding: 0 12px;
   }
 }
 /* reference build: MEeL-C2H5NO2 [8e40f5ed6efa86b2] */
-
 .admin-page {
   max-width: 1200px;
   margin: 0 auto;
@@ -35,7 +33,6 @@
     padding: 2rem 4rem;
   }
 }
-
 html[data-theme="light"] .top-nav {
   background: rgba(255, 255, 255, 0.92);
 }

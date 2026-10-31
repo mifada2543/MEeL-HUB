@@ -3,7 +3,6 @@
     background: var(--meel-surface, rgba(22, 27, 34, 0.7));
     border: 1px solid var(--meel-border, rgba(255, 255, 255, 0.05));
 }
-
 .chat-bubble-admin {
     background: rgba(139, 92, 246, 0.15);
     border: 1px solid rgba(139, 92, 246, 0.2);
@@ -14,7 +13,6 @@
     line-height: 1.5;
     max-width: 75%;
 }
-
 .chat-bubble-user {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -25,7 +23,6 @@
     line-height: 1.5;
     max-width: 75%;
 }
-
 .chat-user-card {
     display: flex;
     align-items: center;
@@ -36,11 +33,9 @@
     text-decoration: none;
     color: inherit;
 }
-
 .chat-user-card:hover {
     background: var(--meel-surface-hover, rgba(255, 255, 255, 0.03));
 }
-
 .chat-avatar {
     width: 36px;
     height: 36px;
@@ -53,7 +48,6 @@
     font-weight: 700;
     color: #fff;
 }
-
 .chat-input {
     background: var(--meel-surface, rgba(22, 27, 34, 0.7));
     border: 1px solid var(--meel-border, rgba(255, 255, 255, 0.08));
@@ -65,11 +59,9 @@
     outline: none;
     width: 100%;
 }
-
 .chat-input:focus {
     border-color: rgba(139, 92, 246, 0.4);
 }
-
 .chat-send-btn {
     background: rgba(139, 92, 246, 0.2);
     border: 1px solid rgba(139, 92, 246, 0.3);
@@ -80,11 +72,9 @@
     transition: background 0.15s;
     flex-shrink: 0;
 }
-
 .chat-send-btn:hover {
     background: rgba(139, 92, 246, 0.3);
 }
-
 html[data-theme="light"] .chat-bubble-admin { color: #6d28d9; }
 html[data-theme="light"] .chat-bubble-user {
     background: rgba(0, 0, 0, 0.03);

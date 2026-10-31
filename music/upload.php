@@ -6,6 +6,7 @@ require_once __DIR__ . '/../modules/core/GarbageCollector.php';
 require_once __DIR__ . '/../modules/media/MediaLibrary.php';
 require_once __DIR__ . '/../modules/core/MeelCoin.php';
 require_once __DIR__ . '/../modules/core/Notification.php';
+$conn = $GLOBALS['conn'] ?? null;
 meel_storage_guard();
 GarbageCollector::run();
 GarbageCollector::sweepUploadAccounting($conn);
@@ -249,7 +250,7 @@ if (isset($_POST['upload'])) {
                             </button>
                         </div>
                         <input type="text" id="f-title" name="title" required
-                            placeholder="Song Title..."
+                            placeholder="Judul Lagu..."
                             class="field-input">
                     </div>
 
@@ -317,7 +318,7 @@ if (isset($_POST['upload'])) {
                                 <div class="drop-zone-icon" id="cover-icon-wrap">
                                     <i data-lucide="image" style="width:18px;height:18px;color:#4a5568;"></i>
                                 </div>
-                                <div class="drop-zone-label" id="cover-label">Cover Art</div>
+                                <div class="drop-zone-label" id="cover-label">Sampul</div>
                                 <div class="drop-zone-sub" id="cover-sub">Opsional · Auto dari ID3</div>
                             </div>
                         </div>
@@ -340,7 +341,7 @@ if (isset($_POST['upload'])) {
                     <div style="margin-top:auto;">
                         <button type="submit" name="upload" id="btn-upload" class="btn-primary">
                             <i data-lucide="upload" style="width:15px;height:15px;"></i>
-                            Save to MEeL Music
+                            Simpan ke MEeL Musik
                         </button>
                     </div>
 

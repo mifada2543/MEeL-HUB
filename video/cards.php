@@ -52,7 +52,7 @@ if (!function_exists('meel_render_video_card')) {
 
                 <div class="absolute bottom-2 right-2 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] font-bold"
                      style="background:rgba(0,0,0,0.6); color:var(--meel-text-secondary)">
-                    <?= number_format($v['views'] ?? 0) ?> views
+                    <?= number_format($v['views'] ?? 0) ?> tayangan
                 </div>
             </div>
 
@@ -106,7 +106,7 @@ if (!function_exists('meel_render_video_rec_card')) {
                 <div class="text-[11px] sm:text-[12px] font-bold text-gray-400 uppercase tracking-tight leading-snug rec-title-text">
                     <?= htmlspecialchars($rec['title']) ?>
                 </div>
-                <div class="text-[9px] text-gray-300 mt-1"><?= number_format($rec['views'] ?? 0) ?> views</div>
+                <div class="text-[9px] text-gray-300 mt-1"><?= number_format($rec['views'] ?? 0) ?> tayangan</div>
                 <?php if (!empty($uploader)): ?>
                     <div class="rec-uploader-text font-bold uppercase tracking-wider mt-0.5 truncate">
                         <?= htmlspecialchars($uploader) ?>

@@ -7,9 +7,7 @@
 include __DIR__ . '/../auth/config.php';
 include __DIR__ . '/../auth/auth.php';
 include_once __DIR__ . '/../modules/core/helpers.php';
-
 require_admin($conn);
-
 require_once __DIR__ . '/includes/export_columns.php';
 require_once __DIR__ . '/../modules/core/helpers/export.php';
 
@@ -20,6 +18,7 @@ require_once __DIR__ . '/../modules/media/AdminActivityRepository.php';
 $logRepo = new AdminActivityRepository($conn);
 $valid_tabs = ['log', 'views', 'uploads'];
 $active_tab = in_array($_GET['tab'] ?? '', $valid_tabs) ? $_GET['tab'] : 'log';
+$preview_limit = 15;
 
 $sync_msg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['sync_views_now'])) {
@@ -43,14 +42,12 @@ $uq_total_pages = 1;
 $uq_rows = null;
 $uq_stats = ['total' => 0, 'completed_count' => 0, 'failed_count' => 0, 'processing_count' => 0];
 $uq_clear_msg = '';
-
 if ($active_tab === 'uploads') {
     $uq_status = $_GET['status'] ?? '';
     $uq_search = trim($_GET['q'] ?? '');
     $uq_days = max(1, min(365, (int)($_GET['days'] ?? 30)));
     $uq_page = max(1, (int)($_GET['page'] ?? 1));
     $uq_per_page = 50;
-
     require_once __DIR__ . '/../modules/media/AdminUploadQueueRepository.php';
     $uqRepo = new AdminUploadQueueRepository($conn);
     $uqRepo->buildFilter($uq_status, $uq_search, $uq_days);
@@ -126,7 +123,8 @@ if ($active_tab === 'uploads') {
     if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['format'] ?? '', ['csv', 'json', 'xls'], true)) {
         $preview_format = $_GET['format'];
         $preview_total = $uqRepo->countFiltered();
-        $preview_rows = $uqRepo->fetchPage(15, 0);
+        $preview_rows = $uqRepo->fetchPage($preview_limit, 0);
+        $preview_rows = is_array($preview_rows) ? $preview_rows : [];
 
         $content = '';
         switch ($preview_format) {
@@ -147,7 +145,7 @@ if ($active_tab === 'uploads') {
                     static fn(array $r): array => meel_export_map($r, $uq_export_cols),
                     $preview_rows
                 );
-                $content = json_encode($json_out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                $content = (string)(json_encode($json_out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]');
                 if ($preview_total > $preview_limit) {
                     $content .= "\n\n/* ... dan {$preview_total} total baris (ditampilkan {$preview_limit}) */";
                 }
@@ -274,7 +272,8 @@ if (in_array($export_format, ['csv', 'json', 'xls'], true)) {
 if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['format'] ?? '', ['csv', 'json', 'xls'], true)) {
     $preview_format = $_GET['format'];
     $preview_total = $logRepo->countFiltered();
-    $preview_rows = $logRepo->fetchPage(15, 0);
+    $preview_rows = $logRepo->fetchPage($preview_limit, 0);
+    $preview_rows = is_array($preview_rows) ? $preview_rows : [];
 
     $content = '';
     switch ($preview_format) {
@@ -294,7 +293,7 @@ if (isset($_GET['preview']) && $_GET['preview'] === '1' && in_array($_GET['forma
                 static fn(array $r): array => meel_export_map($r, $log_export_cols),
                 $preview_rows
             );
-            $content = json_encode($json_out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $content = (string)(json_encode($json_out, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]');
             if ($preview_total > $preview_limit) {
                 $content .= "\n\n/* ... dan {$preview_total} total baris (ditampilkan {$preview_limit}) */";
             }

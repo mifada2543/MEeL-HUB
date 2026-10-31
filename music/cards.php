@@ -107,7 +107,7 @@ if (!function_exists('meel_render_music_rec_card')) {
                 </div>
                 <div class="rec-meta-text mt-1 text-[9px] uppercase tracking-wider truncate"><?= htmlspecialchars($rec['artist']) ?></div>
                 <div class="flex items-center gap-1.5 mt-1">
-                    <span class="text-[9px] text-gray-300"><?= number_format($rec['views'] ?? 0) ?> views</span>
+                    <span class="text-[9px] text-gray-300"><?= number_format($rec['views'] ?? 0) ?> tayangan</span>
                     <span class="rec-meta-text text-[8px] px-1.5 py-0.5 rounded bg-white/[.04] border border-white/[.05] uppercase"><?= $lbl ?></span>
                 </div>
             </div>
