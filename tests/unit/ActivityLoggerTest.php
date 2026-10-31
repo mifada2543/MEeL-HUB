@@ -107,7 +107,7 @@ class ActivityLoggerTest extends TestCase
         $this->assertSame('Windows PC', $m->invoke(null, 'Mozilla/5.0 (Windows NT 10.0)'));
         $this->assertSame('Mac', $m->invoke(null, 'Mozilla/5.0 (Macintosh; Intel)'));
         $this->assertSame('iPhone', $m->invoke(null, 'Mozilla/5.0 (iPhone; CPU iPhone OS)'));
-        $this->assertSame('Unknown', $m->invoke(null, 'curl/8.0'));
+        $this->assertSame('Tidak diketahui', $m->invoke(null, 'curl/8.0'));
     }
     public function testOnRequestIsIdempotentAcrossRepeatedCalls(): void
     {

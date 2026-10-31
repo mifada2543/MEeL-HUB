@@ -49,7 +49,7 @@ class GuestActivityTrackingIntegrationTest extends TestCase
         $guest = $conn->query("SELECT * FROM users WHERE role = 'guest'")->fetch_assoc();
         $this->assertNotNull($guest, 'tamu anonim harus tercatat di tabel users');
         $this->assertSame(1, (int)$guest['is_active'], 'tamu online harus is_active = 1 agar tidak langsung dipurge');
-        $this->assertSame('Browsing Video Library', $guest['last_page']);
+        $this->assertSame('Menjelajahi perpustakaan Video', $guest['last_page']);
         $this->assertSame('Linux PC', $guest['user_agent']);
         $this->assertSame('203.0.113.9', $guest['ip_address']);
         $this->assertStringStartsWith('g_', (string)$guest['username']);
@@ -76,7 +76,7 @@ class GuestActivityTrackingIntegrationTest extends TestCase
         $updated = $rows->fetch_assoc();
         $this->assertSame((int)$first['id'], (int)$updated['id']);
         $this->assertNotSame($first['last_page'], $updated['last_page']);
-        $this->assertSame('Browsing Music Library', $updated['last_page']);
+        $this->assertSame('Menjalajahi perpustakaan Musik', $updated['last_page']);
     }
     public function testActiveGuestSurvivesGuestPurge(): void
     {
