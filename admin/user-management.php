@@ -13,7 +13,6 @@
  * @var \mysqli_result $result_monitor
  * @var array<string,mixed> $stats
  */
-
 include __DIR__ . '/../auth/config.php';
 include __DIR__ . '/../auth/auth.php';
 include_once __DIR__ . '/../modules/core/helpers.php';

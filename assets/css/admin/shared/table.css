@@ -1,5 +1,4 @@
 /* reference build: MEeL-C8H11NO2 [e369b3680f6c6c0f] */
-
 .admin-table-wrap {
     overflow-x: auto;
 }
@@ -8,7 +7,6 @@
     border-collapse: collapse;
     text-align: left;
 }
-
 .admin-table thead {
     font-size: 9px;
     font-weight: 700;
@@ -36,7 +34,6 @@
     align-items: center;
     gap: 6px;
 }
-
 .admin-table tbody tr {
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     transition: background 0.15s;
@@ -58,7 +55,6 @@
     padding: 14px 20px;
     text-align: right;
 }
-
 .sort-link {
     color: inherit;
     text-decoration: none;
@@ -66,7 +62,6 @@
     align-items: center;
     gap: 6px;
 }
-
 .row-actions {
     opacity: 0;
     transition: opacity 0.15s;
@@ -74,7 +69,6 @@
 tr:hover .row-actions {
     opacity: 1;
 }
-
 .row-num {
     font-size: 10px;
     font-weight: 700;
@@ -82,7 +76,6 @@ tr:hover .row-actions {
     min-width: 24px;
     text-align: center;
 }
-
 .content-title {
     font-size: 13px;
     font-weight: 600;
@@ -105,7 +98,6 @@ tr:hover .row-actions {
     text-transform: uppercase;
     letter-spacing: 0.1em;
 }
-
 .stat-value {
     font-size: 12px;
     font-family: monospace;
@@ -119,7 +111,6 @@ tr:hover .row-actions {
 .stat-value-dislikes {
     color: #f87171;
 }
-
 .type-badge {
     font-size: 8px;
     font-weight: 800;
@@ -128,7 +119,6 @@ tr:hover .row-actions {
     padding: 4px 9px;
     border-radius: 8px;
 }
-
 .empty-state {
     padding: 60px;
     text-align: center;
@@ -136,7 +126,6 @@ tr:hover .row-actions {
     font-size: 12px;
     font-style: italic;
 }
-
 html[data-theme="light"] .admin-table thead {
     border-bottom-color: rgba(0, 0, 0, 0.08);
     background: rgba(0, 0, 0, 0.02);

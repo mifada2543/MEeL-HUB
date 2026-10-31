@@ -292,7 +292,7 @@ class ActivityLogger
         if (strpos($ua, 'Windows') !== false) return 'Windows PC';
         if (strpos($ua, 'Macintosh') !== false) return 'Mac';
         if (strpos($ua, 'iPhone') !== false) return 'iPhone';
-        return 'Unknown';
+        return 'Tidak diketahui';
     }
     private static function resolveCurrentPage(mysqli $conn): string
     {
@@ -302,11 +302,11 @@ class ActivityLogger
         $id = $_GET['id'] ?? $_GET['v'] ?? null;
         if ($id) {
             if ($currentPage === 'watch.php') {
-                return (($dirName === 'music') ? 'Listening: ' : 'Watching: ')
+                return (($dirName === 'music') ? 'Mendengar: ' : 'Menonton: ')
                     . (self::lookupTitle($conn, $dirName === 'music' ? 'music' : 'video', (int)$id) ?? '');
             }
             if ($currentPage === 'read.php') {
-                return 'Reading: ' . (self::lookupTitle($conn, 'books', (int)$id) ?? '');
+                return 'Membaca: ' . (self::lookupTitle($conn, 'books', (int)$id) ?? '');
             }
             if ($currentPage === 'stream.php' && $dirName === 'music') {
                 if (($_SESSION['_last_stream_id'] ?? null) !== $id) {
@@ -321,17 +321,17 @@ class ActivityLogger
                 return (string)($_SESSION['_last_stream_page'] ?? $currentPage);
             }
             if ($currentPage === 'index.php' && $dirName === 'profile') {
-                return 'Viewing Profile: ' . htmlspecialchars((string)($_GET['u'] ?? 'Someone'), ENT_QUOTES);
+                return 'Melihat Profile: ' . htmlspecialchars((string)($_GET['u'] ?? 'Someone'), ENT_QUOTES);
             }
         } elseif ($currentPage === 'index.php') {
             return [
-                'video'   => 'Browsing Video Library',
-                'music'   => 'Browsing Music Library',
-                'books'   => 'Browsing Books Library',
-                'arcade'  => 'Browsing Arcade',
-                'drive'   => 'Browsing Drive',
-                'profile' => 'Browsing Profiles',
-            ][$dirName] ?? 'Browsing HUB';
+                'video'   => 'Menjelajahi perpustakaan Video',
+                'music'   => 'Menjalajahi perpustakaan Musik',
+                'books'   => 'Membaca perpustakaan Buku',
+                'arcade'  => 'Membaca perpustakaan Arcade',
+                'drive'   => 'Membaca perpustakaan Drive',
+                'profile' => 'Membaca Profil',
+            ][$dirName] ?? 'Menjelajahi HUB';
         }
         return $currentPage;
     }

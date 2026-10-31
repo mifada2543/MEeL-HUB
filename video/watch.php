@@ -29,11 +29,11 @@ session_write_close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <?php
     $__thumb_name = basename(trim((string)($v['thumbnail'] ?? '')));
-    $__thumb_ok = $__thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . $__thumb_name);
-    $__thumb_path = $__thumb_ok ? 'upload/thumbnail/' . rawurlencode($__thumb_name) : '';
-    $__og_image = $__thumb_ok
-        ? base_url('/video/upload/thumbnail/' . rawurlencode($__thumb_name))
-        : base_url('/assets/img/video0.webp');
+    $__thumb_path = video_thumbnail_url($__thumb_name, 'upload/thumbnail/', false);
+    $__og_image = video_thumbnail_url($__thumb_name, base_url('/video/upload/thumbnail/'), false);
+    if ($__og_image === '') {
+        $__og_image = base_url('/assets/img/video0.webp');
+    }
     if (!preg_match('#^https?://#i', $__og_image)) {
         $__og_image = detectProtocol() . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $__og_image;
     }
@@ -210,7 +210,7 @@ session_write_close();
                             class="w-10 h-10 rounded-full overflow-hidden border border-red-600/25 flex-shrink-0 block"
                             aria-label="Lihat profil <?= htmlspecialchars($v['uploader']) ?>">
                             <?php if (!empty($v['uploader_pfp'])): ?>
-                                <img src="../profile/upload/<?= htmlspecialchars($v['uploader_pfp']) ?>" class="w-full h-full object-cover" alt="Foto profil <?= htmlspecialchars($v['uploader']) ?>">
+                                <img src="<?= htmlspecialchars(meel_profile_image_url($v['uploader_pfp'] ?? '', '../profile/upload/'), ENT_QUOTES, 'UTF-8') ?>" class="w-full h-full object-cover" alt="Foto profil <?= htmlspecialchars($v['uploader']) ?>">
                             <?php else: ?>
                                 <div class="w-full h-full bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center text-white text-sm font-bold">
                                     <?= strtoupper(substr($v['uploader'], 0, 1)) ?>

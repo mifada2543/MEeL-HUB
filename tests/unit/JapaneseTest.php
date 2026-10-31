@@ -124,6 +124,167 @@ class JapaneseTest extends TestCase
         $this->assertStringNotContainsString('un-', $result['english']);
     }
 
+    public function testAnalyzeJapaneseTextDoesNotGlossAliasFragments(): void
+    {
+        $this->skipIfNoMecab();
+
+        $megurine = analyzeJapaneseText('ハローセカイ / 初音ミク × 巡音ルカ');
+        $this->assertStringContainsString('Megurine Luka', $megurine['english']);
+        $this->assertStringNotContainsString('circumference', $megurine['english']);
+
+        $kagamine = analyzeJapaneseText('ラヴィ 25時、ナイトコードで。 × 鏡音レン');
+        $this->assertStringContainsString('Kagamine Len', $kagamine['english']);
+        $this->assertStringNotContainsString('peak', $kagamine['english']);
+        $this->assertStringNotContainsString('mirror', $kagamine['english']);
+    }
+
+    public function testGetRomajiNameKeepsAliasNamesWhole(): void
+    {
+        $this->skipIfNoMecab();
+
+        $this->assertSame('megurine-ruka', getRomajiName('巡音ルカ'));
+        $this->assertSame('kagamine-rin', getRomajiName('鏡音リン'));
+    }
+
+    public function testAnalyzeJapaneseTextSkipsProperNounHomophones(): void
+    {
+        $this->skipIfNoMecab();
+
+        $result = analyzeJapaneseText('天馬');
+        $this->assertStringNotContainsString('flying horse', $result['english']);
+        $this->assertStringNotContainsString('pegasus', mb_strtolower($result['english']));
+
+        $this->assertStringNotContainsString('phosphorus', analyzeJapaneseText('リン')['english']);
+    }
+
+    public function testAnalyzeJapaneseTextKeepsKatakanaLoanwords(): void
+    {
+        $this->skipIfNoMecab();
+
+        $this->assertStringContainsString('nightmare', analyzeJapaneseText('ナイトメア')['english']);
+        $this->assertStringContainsString('fusion', analyzeJapaneseText('フュージョン')['english']);
+        $this->assertStringContainsString('pentatonic', analyzeJapaneseText('ペンタトニック')['english']);
+    }
+
+    public function testAnalyzeJapaneseTextAliasesVoicebanksAndProducers(): void
+    {
+        $cases = [
+            '歌愛ユキ' => 'Kaai Yuki',
+            '鳴花ミコト' => 'Meika Mikoto',
+            'カイト' => 'KAITO',
+            'かいりきベア' => 'Kairiki Bear',
+            'まらしぃ' => 'Marasy',
+            '八王子P' => 'Hachioji P',
+            '稲葉曇' => 'Inaba Kumori',
+            'すりぃ' => 'Surii',
+        ];
+
+        foreach ($cases as $input => $expected) {
+            $this->assertStringContainsString($expected, analyzeJapaneseText($input)['english'], $input);
+        }
+
+        $this->assertStringNotContainsString('song love', analyzeJapaneseText('歌愛ユキ')['english']);
+        $this->assertStringNotContainsString('kite', analyzeJapaneseText('カイト')['english']);
+        $this->assertStringNotContainsString('dissociation', analyzeJapaneseText('かいりきベア')['english']);
+    }
+
+    public function testAnalyzeJapaneseTextOverridesMisleadingHomophones(): void
+    {
+        $this->skipIfNoMecab();
+
+        $cases = [
+            'エス' => 'S',
+            'きみのためのうた' => 'you',
+            '人マニア' => 'person',
+            'リン' => 'Rin',
+            '空に免じて' => 'sky',
+            '心予報' => 'heart',
+            '天才ロック' => 'rock',
+            'ビート' => 'beat',
+            '命に嫌われている' => 'to be',
+            'potatoになっていく' => 'to go',
+            'はぐ' => 'Hug',
+            'そうだった' => 'so',
+            'PV付' => 'with',
+            'ゴミ分別団' => 'separation',
+        ];
+        foreach ($cases as $input => $expected) {
+            $this->assertStringContainsString($expected, analyzeJapaneseText($input)['english'], $input);
+        }
+
+        $this->assertStringNotContainsString('jesus', mb_strtolower(analyzeJapaneseText('エス')['english']));
+        $this->assertStringNotContainsString('egg yolk', analyzeJapaneseText('きみのためのうた')['english']);
+        $this->assertStringNotContainsString('-ian', analyzeJapaneseText('人マニア')['english']);
+        $this->assertStringNotContainsString('phosphorus', analyzeJapaneseText('リン')['english']);
+    }
+
+    public function testAnalyzeJapaneseTextSkipsGrammaticalFragments(): void
+    {
+        $this->skipIfNoMecab();
+
+        $this->assertSame('', trim(analyzeJapaneseText('い')['english']));
+        $this->assertSame('', trim(analyzeJapaneseText('的')['english']));
+        $this->assertStringNotContainsString('good', analyzeJapaneseText('きみのためのうた')['english']);
+        $this->assertStringNotContainsString('prefix for forming ordinal numbers', analyzeJapaneseText('第三審')['english']);
+        $this->assertStringNotContainsString('indicates passive voice', analyzeJapaneseText('神のまにまに - れるりり')['english']);
+    }
+
+    public function testAnalyzeJapaneseTextProtectsCuratedNameFragments(): void
+    {
+        $this->skipIfNoMecab();
+
+        $cases = [
+            'かぐや姫' => 'Princess Kaguya',
+            'とうほう' => 'Touhou',
+            'デビルじゃないもん' => 'Devil',
+            '星界' => 'Sekai',
+            'アマネ' => 'Amane',
+            'よみぃ' => 'Yomii',
+            'いよわ' => 'Iyowa',
+            'うそつきマカロン' => 'Liar',
+            'どりーみんチュチュ' => "Dreamin' Chuchu",
+            'かみさま' => 'God',
+            'いーあるふぁんくらぶ' => 'Ii Aru Fan Club',
+            'れるりり' => 'Rerulili',
+            'ビートまりお' => 'Beat Mario',
+            'わんだぴょい' => 'Wonder Pyo',
+            'なんでもにうむ' => 'Nan Demo Niumu',
+            'ずんだもん' => 'Zundamon',
+            'かてらざわ' => 'Katerazawa',
+            'あいしていたのに' => 'Even Though I Loved You',
+        ];
+        foreach ($cases as $input => $expected) {
+            $this->assertStringContainsString($expected, analyzeJapaneseText($input)['english'], $input);
+        }
+
+        $this->assertStringNotContainsString('furniture', analyzeJapaneseText('かぐや姫')['english']);
+        $this->assertStringNotContainsString('multi-floor building', analyzeJapaneseText('デビルじゃないもん')['english']);
+        $this->assertStringNotContainsString('desk', analyzeJapaneseText('うそつきマカロン')['english']);
+    }
+
+    public function testAnalyzeJapaneseTextCuratedTitlesHaveEnglish(): void
+    {
+        $this->skipIfNoMecab();
+
+        $cases = [
+            'ワールドワイドワンダー' => 'Worldwide Wonder',
+            'ハッピーシンセサイザ' => 'Happy Synthesizer',
+            'モザイクロール' => 'Mosaic Roll',
+            'ブループラネット' => 'Blue Planet',
+            'シャルル' => 'Charles',
+            'ハローセカイ' => 'Hello Sekai',
+            'エス' => 'S',
+            '승인해주세요 지니님! / 카사네 테토・오토마치 우나' => 'Please Approve, Genie-nim',
+        ];
+        foreach ($cases as $input => $expected) {
+            $this->assertStringContainsString($expected, analyzeJapaneseText($input)['english'], $input);
+        }
+
+        $korean = analyzeJapaneseText('승인해주세요 지니님! / 카사네 테토・오토마치 우나')['english'];
+        $this->assertStringContainsString('Kasane Teto', $korean);
+        $this->assertStringContainsString('Otomachi Una', $korean);
+    }
+
     public function testNormalizeSeparatorsKeepsLetterXInWords(): void
     {
         $this->assertSame('Maximum Xylophone', meel_japanese_normalize_separators('Maximum Xylophone'));

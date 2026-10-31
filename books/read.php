@@ -84,9 +84,9 @@ function _scanSubdirs(string $dir): array {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.">
-    <meta property="og:title" content="<?= htmlspecialchars($book['title']) ?> — MEeL Read">
+    <meta property="og:title" content="<?= htmlspecialchars($book['title']) ?> — MEeL Baca">
     <meta property="og:description" content="Baca <?= htmlspecialchars($book['title']) ?> di MEeL Books - Platform Media Hub Pribadi.">
-    <title>MEeL Read | <?= htmlspecialchars($book['title']) ?></title>
+    <title>MEeL Baca | <?= htmlspecialchars($book['title']) ?></title>
     <?php include __DIR__ . '/../partials/link.php'; ?>
     <?php meel_css_links('books', '../assets/css/books'); ?>
     <link rel="stylesheet" href="../assets/css/books/read/main.css<?= meel_asset_version('assets/css/books/read/main.css') ?>">
@@ -160,7 +160,7 @@ function _scanSubdirs(string $dir): array {
                 <div class="pdf-body pdf-iframe-wrap" id="readPdfBody">
                     <iframe src="<?= base_url('/api/pdf?id=' . (int)$book['id']) ?>"
                             id="pdfFrame"
-                            title="PDF Viewer"
+                            title="Penampil PDF"
                             style="width:100%;height:100%;border:none;display:block;"></iframe>
                 </div>
 

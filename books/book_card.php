@@ -1,5 +1,6 @@
 <?php
 /** @var array<string, mixed> $book Baris data buku dari loop pemanggil (books/index.php, load_more.php, search_books.php). */
+$book_thumb = book_thumbnail_url($book['thumbnail'] ?? '');
 ?>
 <div class="relative group">
     <?php if (isset($role) && $role === 'admin'): ?>
@@ -13,7 +14,7 @@
     <?php endif; ?>
     <a href="<?= base_url('/books/read?id=' . (int)$book['id']) ?>" class="block">
         <div class="book-card relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/[.06] bg-[#0b0e14] shadow-lg">
-            <img src="upload/thumbnail/<?= htmlspecialchars($book['thumbnail']) ?>"
+            <img src="<?= htmlspecialchars($book_thumb, ENT_QUOTES, 'UTF-8') ?>"
                 loading="lazy"
                 decoding="async"
                 width="512"

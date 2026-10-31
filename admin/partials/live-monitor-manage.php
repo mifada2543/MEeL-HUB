@@ -2,23 +2,17 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
 if (empty($_SESSION['user_id'])) {
     http_response_code(403);
     exit;
 }
-
 if (!isset($conn) || !$conn instanceof \mysqli) {
     require_once __DIR__ . '/../../auth/config.php';
 }
-
 require_once __DIR__ . '/../../modules/auth/helpers/authz.php';
 require_admin($conn);
-
 header('Content-Type: text/html; charset=utf-8');
-
 $server_time = time();
-
 $result_monitor = $conn->query(
     "SELECT id, username, role, last_activity, last_page, user_agent, access_via, ip_address
      FROM users
@@ -47,13 +41,11 @@ $result_monitor = $conn->query(
                     <span class="text-xs font-bold text-white">
                         <?= htmlspecialchars($row['user_agent']) ?>
                     </span>
-
                     <div class="flex items-center gap-1 mt-1 flex-wrap">
                         <?php
                         $ip_display = $row['ip_address'] ?? 'Tidak diketahui';
                         $is_local = ($ip_display === 'LOCAL' || strpos($ip_display, 'Local') !== false);
-
-                        $ip_type = 'Unknown';
+                        $ip_type = 'Tidak diketahui';
                         $ip_color_class = 'bg-gray-800 text-gray-400 border-gray-700';
                         if ($is_local) {
                             $ip_color_class = 'bg-amber-800 text-amber-300 border-amber-700';

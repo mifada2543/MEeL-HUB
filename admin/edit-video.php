@@ -152,8 +152,11 @@ if (is_dir($sub_scan_dir)) {
 usort($existing_subtitles, fn($a, $b) => strcmp($a['lang'], $b['lang']));
 $record = $video;
 $thumb_src = !empty($video['thumbnail'])
-    ? '../video/upload/thumbnail/' . htmlspecialchars($video['thumbnail'])
-    : '../assets/img/placeholder-video.svg';
+    ? video_thumbnail_url($video['thumbnail'], '../video/upload/thumbnail/', false)
+    : '';
+if ($thumb_src === '') {
+    $thumb_src = '../assets/img/placeholder-video.svg';
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -181,7 +184,7 @@ $thumb_src = !empty($video['thumbnail'])
         <div class="edit-layout">
             <aside class="sidebar-panel">
                 <div class="thumb-wrap" id="thumb-wrap">
-                    <img src="<?= $thumb_src ?>"
+                    <img src="<?= htmlspecialchars($thumb_src, ENT_QUOTES, 'UTF-8') ?>"
                         alt="Thumbnail <?= htmlspecialchars($video['title']) ?>"
                         class="thumb-img"
                         id="thumb-preview">

@@ -31,8 +31,13 @@ if (!function_exists('meel_media_etag')) {
     }
 }
 if (!function_exists('meel_media_cache_control')) {
-    function meel_media_cache_control(string $ext): string
+    function meel_media_cache_control(string $ext, bool $public = true): string
     {
+        $images = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'];
+        if (in_array(strtolower($ext), $images, true)) {
+            $scope = $public ? 'public' : 'private';
+            return $scope . ', max-age=604800, stale-while-revalidate=86400';
+        }
         return $ext === 'm3u8'
             ? 'private, no-cache'
             : 'private, max-age=31536000, immutable';
@@ -211,7 +216,16 @@ if (!function_exists('meel_serve_media_file')) {
         }
         $etag = meel_media_etag($realFull, $size, $mtime);
         $lastModified = gmdate('D, d M Y H:i:s', $mtime) . ' GMT';
-        $cacheControl = meel_media_cache_control($ext);
+        // Books memerlukan login; jangan izinkan cache bersama (proxy/CDN)
+        // menyimpan cover yang hanya boleh dilihat pengguna terautentikasi.
+        $cacheControl = meel_media_cache_control($ext, $module !== 'books');
+
+        // session_start() mengirim Pragma/Expires no-cache; buang agar tidak
+        // bertabrakan dengan Cache-Control milik media (terutama thumbnail).
+        if (!headers_sent()) {
+            header_remove('Pragma');
+            header_remove('Expires');
+        }
 
         meel_apply_hls_gate($relPath, $opts);
 

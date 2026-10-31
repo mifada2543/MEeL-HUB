@@ -421,6 +421,7 @@ if (isset($_GET['content_only'])) {
                                     </button>
                                     <div id="playlist-options-pl" class="hidden absolute left-0 right-0 mt-1 bg-[#0d1017] border border-white/[.08] rounded-xl shadow-2xl z-[100] max-h-60 overflow-y-auto no-scrollbar backdrop-blur-xl">
                                         <?php
+                                        $my_pl_rows = [];
                                         foreach ($my_pl_rows as $pl):
                                             $pl_active = ($pl['id'] == $playlist_id);
                                             $pl_route = $pl_routes[$pl['id']] ?? ('playlist?id=' . (int) $pl['id']);

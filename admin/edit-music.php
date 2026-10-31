@@ -91,7 +91,7 @@ if (isset($_POST['update'])) {
 }
 $record = $music;
 $thumb_src = !empty($music['thumbnail'])
-    ? '../music/upload/thumbnail/' . htmlspecialchars($music['thumbnail'])
+    ? music_thumbnail_url($music['thumbnail'], '../music/upload/thumbnail/')
     : '../assets/img/placeholder-music.svg';
 ?>
 <!DOCTYPE html>
@@ -120,7 +120,7 @@ $thumb_src = !empty($music['thumbnail'])
         <div class="edit-layout">
             <aside class="sidebar-panel">
                 <div class="cover-wrap" id="cover-wrap">
-                    <img src="<?= $thumb_src ?>"
+                    <img src="<?= htmlspecialchars($thumb_src, ENT_QUOTES, 'UTF-8') ?>"
                         alt="Sampul <?= htmlspecialchars($music['title']) ?>"
                         class="cover-img"
                         id="cover-preview">
