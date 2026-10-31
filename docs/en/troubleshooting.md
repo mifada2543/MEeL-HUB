@@ -344,16 +344,21 @@ lscpu  # CPU details
 
 ---
 
+---
+
 ## yt-dlp Issues
 
 ### ❌ "Failed to fetch metadata" or "Failed to parse metadata"
 
-**Cause 1: yt-dlp not installed**
+**Cause 1: yt-dlp not found in expected paths**
+MEeL now bundles yt-dlp at `tools/yt-dlp/yt-dlp` (static standalone binary).
 ```bash
-which yt-dlp
-# If not found:
-sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
-sudo chmod +x /usr/local/bin/yt-dlp
+# Check bundled binary
+ls -la tools/yt-dlp/yt-dlp
+tools/yt-dlp/yt-dlp --version
+
+# Update bundled binary
+cd tools/yt-dlp && ./update.sh
 ```
 
 **Cause 2: Node.js not installed**
@@ -370,6 +375,10 @@ sudo apt install nodejs
 
 **Cause 4: Update yt-dlp**
 ```bash
+# Update bundled binary (recommended)
+cd tools/yt-dlp && ./update.sh
+
+# Or if using system yt-dlp
 yt-dlp -U
 # or
 pip3 install -U yt-dlp
@@ -383,11 +392,11 @@ cat /tmp/ytdlp_error.log
 ```
 
 **Common solutions:**
-1. Update yt-dlp to latest version
+1. Update yt-dlp to latest version (bundled: `cd tools/yt-dlp && ./update.sh`)
 2. Update cookies.txt
 3. Try URL directly in terminal:
    ```bash
-   yt-dlp --cookies cookies.txt "https://youtube.com/watch?v=..."
+   tools/yt-dlp/yt-dlp --cookies temp/cookies.txt "https://youtube.com/watch?v=..."
    ```
 4. If video is private/region-locked, it cannot be downloaded
 
@@ -404,12 +413,13 @@ When metadata fails to parse, Transcoder displays a debug overlay:
 ║                                                   ║
 ║ Check System Paths:                               ║
 ║ - Node:    /usr/bin/node                          ║
-║ - yt-dlp:  /usr/local/bin/yt-dlp                  ║
-║ - ffmpeg:  /usr/bin/ffmpeg                        ║
+║ - yt-dlp:  tools/yt-dlp/yt-dlp (bundled)          ║
+║ - ffmpeg:  tools/ffmpeg-lite/ffmpeg (bundled)     ║
 ╚═══════════════════════════════════════════════════╝
 ```
 
 ---
+
 
 ## Session & Login Issues
 

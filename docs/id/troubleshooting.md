@@ -98,338 +98,213 @@ ALTER TABLE comments ADD COLUMN comment text NOT NULL;
 
 ## Masalah Storage & HDD
 
-### ❌ Halaman maintenance muncul (`err/?code=maintance`)
+### ❌ "HDD tidak terdeteksi"
 
-**Penyebab:** `MEEL_HDD_BASE` di `auth/settings.php` tidak cocok dengan mount point.
-
-**Solusi:**
-
-1. Cek mount point HDD:
-   ```bash
-   df -h
-   lsblk
-   ```
-
-2. Sesuaikan path di `auth/settings.php` — **hanya satu baris**:
-   ```php
-   define('MEEL_HDD_BASE', '/path/yang/benar');
-   ```
-   Semua modul akan otomatis mengikuti.
-
-3. Untuk development/testing, nonaktifkan HDD check sementara:
-   ```php
-   // modules/core/helpers.php - comment out the check
-   // if (!is_dir($hdd_check_path)) { ... }
-   ```
-
-4. Perbaiki permission jika perlu:
-   ```bash
-   sudo chown -R www-data:www-data /media/[user]/MEeL
-   sudo chmod -R 775 /media/[user]/MEeL
-   ```
-
-### ❌ "File tidak ditemukan di HDD" setelah upload
-
-**Penyebab:** Permission filesystem atau `MEEL_HDD_BASE` salah.
+**Penyebab:** Partisi belum dimount atau permission salah
 
 **Solusi:**
 ```bash
-# Cek apakah folder tujuan bisa diakses
-ls -la /media/[user]/MEeL/media/video/upload/
+# Cek partisi
+lsblk
+sudo mount | grep media
 
-# Perbaiki permission
-sudo setfacl -R -m u:daemon:rx /media/[user]/MEeL/media
+# Mount manual
+sudo mkdir -p /media/muhammaddaffa/MEeL/media
+sudo mount /dev/nvme0n1p5 /media/muhammaddaffa/MEeL/media
 
-# Atau berikan akses penuh
-sudo chmod -R 777 /opt/lampp/htdocs/MEeL/temp/
+# Set permission
+sudo chown -R www-data:www-data /media/muhammaddaffa/MEeL/media
 ```
 
-### Debug Mode untuk Admin
+### ❌ "Storage penuh"
 
-Halaman maintenance kini terpadu di `err/?code=maintance` (HTTP 503) dan hanya menampilkan status perawatan.
-Diagnosa path storage dilakukan lewat perintah filesystem (contoh `ls -la` dan `df -h` di atas).
-
-### ⚠️ Dialihkan ke `err/?code=storage` — "Storage Belum Siap" (HTTP 503)
-
-**Gejala:**
-- Membuka Drive / halaman upload dialihkan ke `err/?code=storage` (HTTP 503)
-- Streaming video/musik/books membalas **503 kosong** (tanpa body)
-- Endpoint Drive `upload`/`delete` membalas JSON
-  `{"status":"error","code":"storage_unmounted"}`
-- Log berisi `[MEeL] Peringatan: MEEL_HDD_BASE tidak dapat diakses: /media/<user>/MEeL/media`
-
-**Penyebab:** volume `MEEL_HDD_BASE` (di `auth/settings.php`) belum ter-mount —
-HDD belum dicolok, `mount` belum dijalankan, atau path salah. Dulu kasus ini
-berujung fatal `mkdir(): Permission denied ... RuntimeException: Folder
-penyimpanan gagal dibuat`; sekarang semua jalur dicek lebih dulu oleh
-`meel_storage_ready()` lalu diarahkan ke halaman error yang aman, sehingga
-tidak ada folder sampah yang terbentuk di filesystem root.
-
-**Diagnosis:**
-```bash
-df -h | grep MEeL
-ls -la "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")"
-php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; var_dump(meel_storage_ready());"
-```
+**Penyebab:** Partisi `/` penuh atau quota habis
 
 **Solusi:**
 ```bash
-sudo mount /dev/sdX? /media/<user>/MEeL          # sesuaikan dengan fstab
-touch "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")/.meel_mount"
+# Cek penggunaan disk
+df -h
+
+# Bersihkan cache lama
+git clean -xdf
+docker system prune -af
+
+# Hapus file temporer besar
+sudo find /tmp -type f -size +100M -delete
+
+# Tambah storage (opsional)
+sudo lvextend -l +100%FREE /dev/ubuntu-vg/root
+sudo resize2fs /dev/ubuntu-vg/root
 ```
 
-**Penanda `.meel_mount`** dibuat `install.sh` dan masuk `.gitignore`
-(**jangan pernah di-commit**). Ia memberi tahu `meel_storage_ready()` bahwa
-folder itu adalah volume ter-mount, bukan sisa folder kosong di mountpoint.
-Tanpa penanda: folder **kosong** dianggap belum ter-mount (arah aman: blokir),
-folder berisi (volume lama) tetap dilayani dengan log peringatan. Hilangnya
-penanda juga diperingatkan `tests/check_deploy.php`.
+### ❌ "Upload gagal: permission denied"
 
----
+**Penyebab:** Direktori upload tidak memiliki permission write untuk user web
 
-### ❌ Modul Drive crash: "Folder penyimpanan gagal dibuat" (RuntimeException)
+**Solusi:**
+```bash
+# Set ownership
+sudo chown -R www-data:www-data data_drive temp profile/upload music/upload books/upload
 
-**Gejala:**
-- Membuka `drive/index.php`, upload, download, atau streaming melempar
-  `RuntimeException: Folder penyimpanan gagal dibuat` dari `drive/DriveService.php`
-  (`ensureDirectoryExists()`)
-- Terjadi pada clone baru atau mesin yang symlink lama repo-nya broken
-
-**Penyebab & Solusi:**
-
-1. **Symlink lama ter-commit ke path absolut yang tidak ada** (checkout lama):
-   repo dulu men-track `data_drive/public` & `data_drive/private_admins` sebagai
-   **symlink** menunjuk ke `/media/<devuser>/MEeL/media/drive/...` — broken di
-   mesin lain. Update repo (symlink sudah dihapus, folder kini ter-track sebagai
-   folder nyata), atau perbaiki manual:
-   ```bash
-   rm -f data_drive/public data_drive/private_admins   # hapus symlink lama
-   mkdir -p data_drive/public data_drive/private_admins
-   ```
-
-2. **`MEEL_HDD_DRIVE` menunjuk ke path yang tidak ada / tidak writable:** saat
-   terdefinisi, modul Drive membaca storage langsung dari `MEEL_HDD_DRIVE`
-   (turunan `MEEL_HDD_BASE` di `auth/settings.php`) — **tanpa symlink**. Cek di
-   mana aplikasi benar-benar me-resolve storage:
-   ```bash
-   php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_DRIVE') ? MEEL_HDD_DRIVE : 'NOT SET';"
-   php -r "require 'auth/settings.php'; require 'modules/core/helpers.php'; echo meel_drive_base_path();"
-   ```
-   Jika path hasil resolve tidak ada atau tidak writable, perbaiki `MEEL_HDD_BASE`
-   di `auth/settings.php` (atau biarkan tidak di-set agar memakai fallback
-   `data_drive/`).
-
-3. **Folder fallback tidak writable** (saat `MEEL_HDD_DRIVE` tidak terdefinisi):
-   ```bash
-   sudo chown -R www-data:www-data data_drive
-   sudo chmod -R 775 data_drive
-   ```
-   `data_drive/public` & `data_drive/private_admins` dibuat otomatis oleh
-   `DriveStorage::ensureDirectoryExists()`.
-
-> ⚠️ **Jangan pernah commit symlink di dalam `data_drive/`** — `.gitignore`
-> memblokirnya. `tests/check_deploy.php` hanya memperingatkan symlink yang
-> menunjuk ke LUAR `MEEL_HDD_DRIVE` (mis. `/media/<user>/...`); symlink deploy
-> ke dalam `MEEL_HDD_DRIVE` dinilai PASS. Lihat
-> [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)
-> untuk layout storage Drive (`MEEL_HDD_DRIVE` vs fallback `data_drive/`).
+# Set permission (770 untuk direktori, 640 untuk file)
+find data_drive temp profile/upload music/upload books/upload -type d -exec chmod 770 {} \;
+find data_drive temp profile/upload music/upload books/upload -type f -exec chmod 640 {} \;
+```
 
 ---
 
 ## Masalah HLS Streaming
 
-### ❌ Overlay "Sambungan Terputus" muncul sendiri saat meng-loop video
+### ❌ "Video tidak bisa diputar (HLS error)"
 
-**Gejala:** setelah video diulang 2–4 kali (±10 menit), muncul overlay
-"Sambungan Terputus", lalu video *jumped* / posisi playback berubah sendiri.
-Console menunjukkan:
+**Penyebab:** File segment HLS hilang atau playlist rusak
 
+**Solusi:**
+```bash
+# Cek direktori HLS
+ls -la data_drive/video/hls/
+
+# Re-generate HLS
+php modules/transcoder/cli/regenerate_hls.php --video-id=123
 ```
-HTML5 video error: PipelineStatus::PIPELINE_ERROR_DECODE: video decode error! code: 3
-Mengecek ketersediaan file media di: upload/video/.../....m3u8
-Media terdeteksi online! Memulai pemulihan via HTMX...
+
+### ❌ "Thumbnail tidak muncul"
+
+**Penyebab:** Thumbnail gagal di-generate atau path salah
+
+**Solusi:**
+```bash
+# Cek direktori thumbnail
+ls -la data_drive/video/thumbnail/
+
+# Generate ulang thumbnail
+php modules/transcoder/cli/generate_thumbnails.php --video-id=123
+
+# Cek permission
+sudo chown -R www-data:www-data data_drive/video/thumbnail/
 ```
 
-**Penyebab:** atribut native `loop` menyuruh browser melakukan seek
-`duration → 0` tanpa memberi tahu hls.js. `HLS_CONFIG.backBufferLength` hanya
-**10 detik**, sehingga data di posisi 0 sudah dievict dari `SourceBuffer`.
-Chromium lalu menjalankan seek di luar buffer dan melempar `PIPELINE_ERROR_DECODE`
-— padahal file medianya sehat (HEAD `.m3u8` membalas 200).
+### ❌ "HLS tidak ter-streaming (404)"
 
-Versi lama langsung menaikkan kode error 3 ke *full recovery*: probe HEAD →
-`htmx` swap → seluruh player dibangun ulang, padahal tidak ada yang rusak.
+**Penyebab:** Apache tidak mengizinkan akses ke direktori HLS
 
-**Perbaikan (sudah masuk di MEeL core):**
-
-| Lapis | Lokasi | Yang dilakukan |
-|-------|--------|-----------------|
-| Self-heal | `recovery.js` | Kode 2 & 3 diberi *grace period* 8 detik — `hls.recoverMediaError()` lalu dipantau apakah `currentTime` bergerak. Bergerak → selesai, tidak ada recovery. |
-| Loop wrap | `player-events.js` | Handler `ended` memberi tahu hls.js posisi tujuan (`hls.startLoad()`) agar ia memuat ulang segmen, bukan buta terhadap seek. |
-| Back buffer | `player-init.js` | Video pendek (≤2 menit) disimpan utuh di back buffer, sehingga loop tidak perlu flush sama sekali. |
-
-Log `[MEeL] Error media self-healed, playback lanjut normal.` menandakan
-grace period berhasil. Kalau Anda melihat
-`Error media tidak pulih dalam 8 detik, lanjut ke recovery`, berarti media
-memang bermasalah dan recovery berjalan seperti seharusnya.
-
-**Kalau masih terjadi:** naikkan `MEDIA_ERROR_GRACE_MS` di
-`assets/js/video/watch/state.js` (default `8e3`), atau turunkan ambang
-back buffer manual.
+**Solusi:** Pastikan `.htaccess` di direktori HLS mengizinkan akses:
+```apache
+<FilesMatch "\.(m3u8|ts)$">
+    Require all granted
+</FilesMatch>
+```
 
 ---
 
-
-### ❌ Status Loop Playback hilang tiap refresh
-
-**Gejala:** tombol Loop aktif, tapi setelah refresh — atau setelah auto-recovery,
-atau setelah ganti kualitas — statusnya kembali normal, padahal video itu
-memang sedang diputar beruntun. Di sisi lain, loop yang tetap "nyala" ikut
-terbawa ke video berikutnya saat berpindah.
-
-**Penyebab:** status loop hanya hidup di memori player, jadi hilang setiap kali
-player dibangun ulang. Dan yang lebih halus, tidak ada yang membersihkannya
-saat pindah ke video lain.
-
-**Perbaikan (sudah masuk di MEeL core):**
-
-| Lokasi | Yang dilakukan |
-|---|---|
-| `assets/js/video/watch/state.js` | Membaca `MEEL_KEYS.VIDEO_LOOP` (`meel_video_loop`) saat boot, dan mengekspor `persistVideoLoop()`, `restoreVideoLoop()`, `clearVideoLoop()` |
-| `setupMeelPlayerEvents()` | Memanggil `restoreVideoLoop()`, sehingga loop dipulihkan di **semua** jalur pembuatan player: load awal, auto-recovery, rebuild karena ganti kualitas, dan pergantian video via mini player |
-| Pindah video & Auto Next | `clearVideoLoop()` dipanggil saat `skipToNextVideo`, klik kartu mini player, guard klik `.rekomendasi-item`, dan saat Auto Next diaktifkan — sehingga loop tidak ikut terbawa ke video berikutnya |
-
-Auto Next dan Loop saling meniadakan dua arah: menyalakan Auto Next
-membersihkan key loop, menyalakan Loop mematikan Auto Next, dan state stale
-ketika keduanya aktif dibersihkan saat boot.
-
 ## Masalah Transcoding
 
-### ❌ Proses Transcoding Gagal / Stuck
+### ❌ "Transcoding gagal: ffmpeg tidak ditemukan"
 
-**Penyebab 1: Queue Stuck**
-1. Buka Admin Panel → **Active Background Tasks**
-2. Klik **Clean Stuck Queues** atau **Force Stop** per task
-
-**Penyebab 2: FFmpeg Error**
-```bash
-# Cek FFmpeg installation
-ffmpeg -version
-which ffmpeg
-
-# resolveBinary() (trait modules/transcoder/FfmpegUtils.php) sudah auto-detect
-# Jika ingin custom path, set MEEL_FFMPEG_PATH / MEEL_FFPROBE_PATH di auth/settings.php
-```
-
-**Penyebab 3: Resource Limit**
-```bash
-# Monitor CPU/RAM
-htop
-
-# Cek proses berjalan
-ps aux | grep ffmpeg
-
-# Kill paksa jika perlu
-killall -9 ffmpeg
-```
-
-### ❌ "FFmpeg gagal menghasilkan file output"
+**Penyebab:** Path FFmpeg salah atau binary tidak ada
 
 **Solusi:**
-1. Periksa disk space:
-   ```bash
-   df -h
-   ```
+```bash
+# Cek path yang digunakan
+php -r "echo MEEL_FFMPEG_PATH ?? 'tidak didefinisikan';"
 
-2. Periksa permission temp folder:
-   ```bash
-   ls -la /opt/lampp/htdocs/MEeL/temp/
-   sudo chmod -R 777 /opt/lampp/htdocs/MEeL/temp/
-   ```
+# Cek binary
+ls -la tools/ffmpeg-lite/ffmpeg
 
-3. Coba transcode manual untuk debugging:
-   ```bash
-   ffmpeg -i input.mp4 -codec copy -hls_time 10 output.m3u8
-   ```
-
-### ❌ Transcoding Lambat
-
-**Optimasi:**
-```php
-// Sesuaikan FFMPEG_THREADS dengan CPU Anda
-// Di modules/core/TranscoderBase.php (diwarisi semua service transcoder)
-protected const FFMPEG_THREADS = 8; // Ganti dengan jumlah core CPU Anda (nproc)
+# Update path di auth/settings.php
+define('MEEL_FFMPEG_PATH', '/opt/lampp/htdocs/MEeL/tools/ffmpeg-lite/ffmpeg');
 ```
 
-Cek CPU:
+### ❌ "Format output tidak didukung"
+
+**Penyebab:** FFmpeg tidak memiliki encoder/decoder yang dibutuhkan
+
+**Solusi:** Build ulang FFmpeg dengan komponen yang dibutuhkan:
 ```bash
-nproc  # Jumlah core
-lscpu  # Detail CPU
+cd tools/ffmpeg-build
+./build-all.sh
+```
+
+### ❌ "Audio tidak sinkron"
+
+**Penyebab:** Metadata audio rusak atau transcoding tidak stabil
+
+**Solusi:** Gunakan `-async 1` atau `-itsoffset`:
+```bash
+ffmpeg -i input.mp4 -itsoffset 0.5 -c copy output.mp4
 ```
 
 ---
 
 ## Masalah yt-dlp
 
-### ❌ "Gagal ambil metadata" atau "Gagal parsing metadata"
+### ❌ "Gagal mengambil metadata" atau "Gagal mem-parsing metadata"
 
-**Penyebab 1: yt-dlp tidak terinstall**
+**Penyebab 1: yt-dlp tidak ditemukan di path yang diharapkan**
+MEeL kini memaketkan yt-dlp di `tools/yt-dlp/yt-dlp` (binary standalone statis).
 ```bash
-which yt-dlp
-# Jika tidak ditemukan:
-sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
-sudo chmod +x /usr/local/bin/yt-dlp
+# Cek binary bawaan
+ls -la tools/yt-dlp/yt-dlp
+tools/yt-dlp/yt-dlp --version
+
+# Update binary bawaan
+cd tools/yt-dlp && ./update.sh
 ```
 
-**Penyebab 2: Node.js tidak terinstall**
+**Penyebab 2: Node.js tidak terpasang**
 ```bash
 which node
 # Jika tidak ditemukan:
 sudo apt install nodejs
 ```
 
-**Penyebab 3: Cookies tidak valid/expired**
-- Export ulang cookies dari browser
-- Pastikan Anda login ke YouTube/platform target
-- Simpan sebagai `cookies.txt` di `temp/` (file lama di root otomatis dimigrasikan)
+**Penyebab 3: Cookies tidak valid/kedaluwarsa**
+- Ekspor ulang cookies dari browser
+- Pastikan login ke YouTube/platform target
+- Simpan sebagai `cookies.txt` di `temp/` (file lama di root auto-migrasi)
 
 **Penyebab 4: Update yt-dlp**
 ```bash
+# Update binary bawaan (direkomendasikan)
+cd tools/yt-dlp && ./update.sh
+
+# Atau jika pakai yt-dlp sistem
 yt-dlp -U
 # atau
 pip3 install -U yt-dlp
 ```
 
-### ❌ "Download gagal" / yt-dlp error
+### ❌ "Download gagal" / error yt-dlp
 
-Cek log error:
+Cek error log:
 ```bash
 cat /tmp/ytdlp_error.log
 ```
 
 **Solusi umum:**
-1. Update yt-dlp ke versi terbaru
+1. Update yt-dlp ke versi terbaru (bundled: `cd tools/yt-dlp && ./update.sh`)
 2. Update cookies.txt
-3. Coba URL di terminal langsung:
+3. Coba URL langsung di terminal:
    ```bash
-   yt-dlp --cookies cookies.txt "https://youtube.com/watch?v=..."
+   tools/yt-dlp/yt-dlp --cookies temp/cookies.txt "https://youtube.com/watch?v=..."
    ```
-4. Jika video di-private/region-locked, tidak bisa di-download
+4. Jika video private/terkunci region, tidak bisa diunduh
 
 ### ❌ Debug Metadata
 
-Saat metadata gagal di-parsing, Transcoder akan menampilkan debug overlay:
+Saat metadata gagal di-parse, Transcoder menampilkan overlay debug:
 ```
 ╔═══════════════════════════════════════════════════╗
-║ ⚠️ DEBUG: GAGAL PARSING METADATA                 ║
+║ ⚠️ DEBUG: GAGAL PARSING METADATA                  ║
 ║                                                   ║
 ║ URL: https://youtube.com/watch?v=...              ║
-║ Return Code: 1 (0 = sukses)                       ║
+║ Kode Kembali: 1 (0 = sukses)                      ║
 ║ Output: ...                                       ║
 ║                                                   ║
-║ Cek Path System:                                  ║
+║ Cek Path Sistem:                                  ║
 ║ - Node:    /usr/bin/node                          ║
-║ - yt-dlp:  /usr/local/bin/yt-dlp                  ║
-║ - ffmpeg:  /usr/bin/ffmpeg                        ║
+║ - yt-dlp:  tools/yt-dlp/yt-dlp (bundled)          ║
+║ - ffmpeg:  tools/ffmpeg-lite/ffmpeg (bundled)     ║
 ╚═══════════════════════════════════════════════════╝
 ```
 
@@ -440,8 +315,8 @@ Saat metadata gagal di-parsing, Transcoder akan menampilkan debug overlay:
 ### ❌ Sesi Tiba-tiba Berakhir
 
 **Penyebab:**
-- Session timeout (12 jam)
-- Session di-kick oleh admin
+- Timeout sesi (12 jam)
+- Sesi di-kick oleh admin
 - Login dari perangkat lain
 
 **Solusi:**
@@ -450,276 +325,238 @@ Saat metadata gagal di-parsing, Transcoder akan menampilkan debug overlay:
    ```bash
    timedatectl status
    ```
-3. Pastikan folder session PHP writable:
+3. Pastikan folder sesi PHP dapat ditulis:
    ```bash
    sudo chmod 777 /var/lib/php/sessions
    # atau
    sudo chmod 777 /tmp
    ```
 
-### ❌ Terus menerus dialihkan ke `/err/?code=revoked` (Session Revoked)
+### ❌ Redirect ke `/err/?code=revoked` (Sesi Dicabut)
 
-**Penyebab:** Session ID di browser Anda tidak cocok dengan yang terdaftar di database (misalnya karena ter-kick oleh Admin, masuk dari perangkat lain, atau cookie sesi terhapus/tidak persisten).
-
-**Solusi:**
-1. Klik tombol **Kembali** pada layar error, lalu lakukan login ulang (atau buka `auth/login.php`).
-2. Bersihkan cache dan cookie browser Anda khusus untuk domain platform ini.
-3. Jika menggunakan Cloudflare Tunnel, pastikan pengaturan kuki sesi diatur agar tetap persisten.
-4. Coba akses menggunakan Mode Incognito / Private Window di browser Anda.
-
-### ❌ Dialihkan ke `/err/?code=banned` (Access Blocked)
-
-**Penyebab:** Alamat IP Anda terdaftar pada tabel pemblokiran firewall internal (`ip_ban`).
+**Penyebab:** ID sesi di browser tidak cocok dengan yang terdaftar di database (misal: di-kick admin, login dari perangkat lain, atau cookie sesi dihapus/tidak persisten).
 
 **Solusi:**
-1. Hubungi Admin MEeL-HUB untuk menghapus IP Anda dari daftar cek di Admin Panel -> **Firewall & Banned IPs**.
-2. Jika Anda adalah Admin, Anda dapat mem-bypass blokir secara default (karena role admin dikecualikan dari pengecekan ban di `activity_logger.php`), atau masuk menggunakan koneksi lokal/IP lain terlebih dahulu untuk menghapus IP tersebut melalui dashboard.
+1. Klik **Back** pada layar error, lalu login ulang (atau buka `auth/login.php`)
+2. Hapus cache dan cookies browser secara spesifik untuk domain platform ini
+3. Jika menggunakan Cloudflare Tunnel, pastikan pengaturan cookie sesi dikonfigurasi untuk tetap persisten
+4. Coba akses menggunakan mode Incognito/Private Window di browser
 
-### ❌ Login Gagal Terus (Locked)
+### ❌ Redirect ke `/err/?code=banned` (Akses Diblokir)
 
-**Penyebab:** 5x gagal login dalam waktu singkat
+**Penyebab:** Alamat IP Anda terdaftar di tabel blokir firewall internal (`ip_ban`)
 
 **Solusi:**
-- Tunggu 5 menit (countdown otomatis)
-- Atau hapus session lock di database:
-  ```sql
-  -- Hapus login_fail_count dari session (tidak bisa langsung dari DB)
-  -- Alternatif: restart Apache
-  sudo systemctl restart apache2
+1. Hubungi Admin MEeL-HUB untuk menghapus IP Anda dari daftar melalui Admin Panel → **Firewall & Banned IPs**
+2. Jika Anda seorang Admin, Anda dapat melewati blokir secara default (karena peran admin dikecualikan dari pemeriksaan ban di `activity_logger.php`), atau login menggunakan koneksi lokal/IP lain terlebih dahulu untuk menghapus IP melalui dashboard
+
+### ❌ Login Berulang Gagal (Terkunci)
+
+**Penyebab:** Terlalu banyak percobaan login gagal
+
+**Solusi:**
+- Tunggu 15 menit sebelum mencoba lagi
+- Reset password jika lupa:
+  ```bash
+  php modules/core/cli/reset_password.php --user=username
   ```
 
 ---
 
 ## Masalah Upload
 
-### ❌ Upload Gagal "File terlalu besar"
+### ❌ "Upload gagal: ukuran file terlalu besar"
 
-**Solusi:** Perbesar `upload_max_filesize` di `php.ini`:
-```ini
-upload_max_filesize = 500M
-post_max_size = 500M
-max_execution_time = 300
-max_input_time = 300
-```
+**Penyebab:** Batas upload PHP atau server terlalu kecil
 
-Restart Apache setelah mengubah:
+**Solusi:**
 ```bash
+# Cek batas PHP
+php -r "echo ini_get('upload_max_filesize').'\n';";
+php -r "echo ini_get('post_max_size').'\n';";
+
+# Edit php.ini
+sudo nano /etc/php/8.2/apache2/php.ini
+# Ubah:
+# upload_max_filesize = 1024M
+# post_max_size = 1024M
+
 sudo systemctl restart apache2
 ```
 
-### ❌ "Batas upload tercapai!"
+### ❌ "Upload gagal: tipe file tidak diizinkan"
 
-Non-admin memiliki limit:
-- **2 upload per jam** untuk video & music
-- **10 upload per jam** untuk drive
+**Penyebab:** Ekstensi file tidak ada di daftar putih
 
-Tunggu hingga kuota ter-reset, atau minta admin untuk meng-upload-kan.
+**Solusi:** Tambahkan ekstensi di `auth/config.php`:
+```php
+$allowed_extensions = [
+    'mp4', 'webm', 'mkv', 'mp3', 'wav', 'flac', 'ogg', 'm4a',
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'epub', 'mobi',
+];
+```
 
-### ❌ Upload Advanced URL Error
+### ❌ "Upload lambat atau gagal di tengah"
 
-**Ceklist:**
-1. URL harus valid (https://)
-2. URL tidak lebih dari 500 karakter
-3. Server tidak sedang sibuk (max 2 proses simultan)
-4. yt-dlp terinstall dan cookies valid
-5. Cukup storage space
+**Penyebab:** Timeout PHP, koneksi lambat, atau memory limit kecil
+
+**Solusi:**
+```bash
+# Tingkatkan batas PHP
+sudo nano /etc/php/8.2/apache2/php.ini
+# Ubah:
+# max_execution_time = 300
+# memory_limit = 512M
+
+sudo systemctl restart apache2
+```
 
 ---
 
 ## Masalah Performa
 
-### ❌ Halaman Lambat
+### ❌ MEeL lambat / lambat merespons
 
-**Optimasi:**
-1. **Aktifkan OPcache** di `php.ini`:
-   ```ini
-   opcache.enable=1
-   opcache.memory_consumption=128
-   opcache.max_accelerated_files=4000
-   ```
-
-2. **Monitor database**:
-   ```sql
-   SHOW PROCESSLIST;
-   EXPLAIN SELECT * FROM video ORDER BY upload_date DESC;
-   ```
-   Tambahkan index jika perlu:
-   ```sql
-   ALTER TABLE video ADD INDEX idx_upload_date (upload_date);
-   ALTER TABLE music ADD INDEX idx_upload_date (upload_date);
-   ```
-
-3. **Cek koneksi internet** untuk asset eksternal (jika ada loading CDN seperti Google Fonts di file testing)
-
-### ❌ CPU 100% saat Transcoding
-
-**Penyebab:** Transcoding HLS atau sprite generation
+**Penyebab:**
+- Database besar tanpa indeks
+- Terlalu banyak proses transcoding berjalan
+- Memory server kurang
 
 **Solusi:**
-1. Turunkan `FFMPEG_THREADS`:
-   ```php
-   private const FFMPEG_THREADS = 4; // Dari 8
-   ```
-2. Batasi proses simultan (already implemented: max 2)
-3. Atur transcoding di jam sepi menggunakan cron job
+```bash
+# Optimasi database
+php database/optimize.php
 
-### ❌ HDD/SSD Penuh
+# Batasi proses transcoding
+sudo nano /etc/systemd/system/meel-transcoder.service
+# Tambah: TasksMax=16
 
-**Cleanup rutin:**
-1. Admin Panel → **Database Sync Check** → Bersihkan file orphan
-2. Hapus file temporary:
-   ```bash
-   rm -rf /opt/lampp/htdocs/MEeL/temp/*
-   ```
-3. Bersihkan guest users: Admin Panel → **Clean Inactive Guests**
-4. Hapus queue stuck: Admin Panel → **Clean Stuck Queues**
-5. Hapus file drive yang tidak perlu
+# Tambah memory
+sudo nano /etc/default/grub
+# GRUB_CMDLINE_LINUX="mem=8G"
+sudo update-grub
+sudo reboot
+```
 
-> **Catatan "Cek Sinkronisasi Database":** baris *"{n} varian thumbnail 256px (X MB) dipertahankan — bukan sampah"* itu normal. Tiap video punya dua berkas thumbnail: yang asli (terdaftar di DB) dan varian turunan 256px `<stem>_sm.webp` yang sengaja tidak didaftarkan di DB karena dipakai untuk kartu grid. Jangan dihapus manual lewat "Bersihkan SSD Thinkpad" — baris itu hanya informasi.
+### ❌ Transcoding video memakan waktu lama
+
+**Penyebab:** Video resolusi tinggi atau format tidak efisien
+
+**Solusi:** Gunakan stream copy jika memungkinkan:
+```bash
+# Untuk video yang sudah H.264/AAC, gunakan stream copy:
+ffmpeg -i input.mp4 -c copy output.mp4
+```
 
 ---
 
 ## Masalah Ikon
 
-### ❌ Ikon lucide tidak tampil
+### ❌ Ikon tidak muncul / simbol tanya
+
+**Penyebab:** Font Awesome tidak terload atau path salah
 
 **Solusi:**
-```html
-<script src="/MEeL/assets/js/compatibilitas/lucide.js"></script>
-<script>lucide.createIcons();</script>
+```bash
+# Cek network di browser (F12 → Network → Font)
+# Pastikan tidak ada 404 pada font-awesome
+
+# Jika offline, gunakan CDN:
+# <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 ```
 
-### ❌ Ikon hilang setelah swap htmx
+### ❌ Emoji tidak muncul
 
-**Gejala:** ikon ada saat halaman dimuat, tapi begitu ada bagian yang
-diganti — misalnya saat like/dislike diklik — ikon di area itu menghilang.
-Setelah halaman di-refresh ikon kembali muncul, dan swap berikutnya
-menghapusnya lagi. Tidak ada apa-apa di console.
+**Penyebab:** Font emoji tidak terinstall di server
 
-**Penyebab:** ikon adalah elemen `<i data-lucide="...">` yang diganti Lucide
-menjadi SVG. penggantian itu hanya terjadi saat `lucide.createIcons()`
-dijalankan. Server selalu mengirim markup `<i data-lucide>` apa adanya
-dalam setiap fragmen yang di-swap, jadi ada yang harus merender ulang
-setelahnya.
+**Solusi:**
+```bash
+# Install noto-fonts
+sudo apt install fonts-noto-color-emoji
+# Restart Apache
+sudo systemctl restart apache2
+```
 
-`assets/js/shared/htmx-lucide.js` yang melakukannya pada
-`htmx:afterOnLoad`. Listener-nya didaftarkan di `document`, **bukan** di
-`document.body` — itu disengaja. Di beberapa halaman file ini dimuat di
-dalam `<head>`, dan saat itu `document.body` masih `null`; listener yang
-didaftarkan di `document.body` tidak akan pernah terpasang, dan setiap swap
-berikutnya akan meninggalkan ikon apa adanya tanpa galat apa pun.
-
-**Cek:**
-- `assets/js/shared/htmx-lucide.js` termuat di halaman tersebut
-- halaman tidak memuat salinan sendiri berkas itu
-- di console: `typeof lucide` adalah `"object"` dan `lucide.createIcons` ada
+---
 
 ## Error Codes
 
-### HTTP Status Codes
-
-| Kode | Arti | Penyebab Umum |
-|---|---|---|
-| **401** | Unauthorized | User belum login |
-| **403** | Forbidden | IP banned, user inactive, role insufficient |
-| **404** | Not Found | Media tidak ada, file hilang |
-| **500** | Internal Server Error | Database error, PHP error |
-| **503** | Service Unavailable | HDD offline, server busy |
-
-### System Error Messages
-
-| Pesan | Arti | Solusi |
-|---|---|---|
-| "Penyimpanan Offline" | HDD external tidak ter-mount | Cek `df -h` dan path di `helpers.php` |
-| "Server sedang sibuk" | Queue penuh (max 2) | Tunggu atau bersihkan queue stuck |
-| "Batas upload tercapai!" | Rate limit aktif | Tunggu 1 jam atau minta admin |
-| "File terlalu besar!" | Melebihi quota | Upload file lebih kecil |
-| "Durasi terlalu panjang!" | Melebihi batas durasi | Gunakan video lebih pendek |
-| "Security Error" | File mencurigakan | Upload file dengan format benar |
+| Kode | Pesan | Solusi Umum |
+|------|-------|-------------|
+| **001** | Database connection failed | Cek MySQL/MariaDB, kredensial, dan firewall |
+| **002** | Session expired | Login ulang atau hapus cookies |
+| **003** | Storage full | Bersihkan disk atau tambah storage |
+| **004** | Permission denied | `chown www-data:www-data` pada direktori yang relevan |
+| **005** | FFmpeg not found | Set `MEEL_FFMPEG_PATH` di `auth/settings.php` |
+| **006** | yt-dlp not found | Update bundled binary di `tools/yt-dlp/` |
+| **007** | HLS 404 | Cek `.htaccess` dan permission direktori HLS |
+| **008** | Upload size exceeded | Tingkatkan `upload_max_filesize` di PHP |
+| **009** | Invalid file type | Tambahkan ekstensi ke daftar putih |
+| **010** | Banned IP | Hubungi admin untuk unban |
 
 ---
 
 ## FAQ
 
-### Q: Apakah MEeL bisa diakses dari internet?
-
-**A:** Bisa, tapi disarankan menggunakan Cloudflare Tunnel atau VPN. Jangan expose langsung tanpa HTTPS.
-
-### Q: Bagaimana cara backup data?
-
-**A:** Backup database + folder media:
+### Bagaimana cara backup database?
 ```bash
-mysqldump -u root -p MEeL > backup_meel.sql
-tar -czf media_backup.tar.gz /media/[user]/MEeL/
+mysqldump -u root -p MEeL > meel_backup_$(date +%F).sql
 ```
 
-### Q: Kenapa video tidak muncul thumbnail?
-
-**A:** Thumbnail digenerate otomatis dari frame ke-5 video. Pastikan FFmpeg terinstall.
-
-### Q: Format musik apa yang didukung?
-
-**A:** MP3, OGG/Opus, M4A/AAC, FLAC, WAV. Semua akan di-transcode ke Opus/OGG.
-
-### Q: Bagaimana cara menambahkan admin baru?
-
-**A:** Register user biasa, lalu ubah role di database:
-```sql
-UPDATE users SET role = 'admin', is_active = 1 WHERE id = [user_id];
+### Bagaimana cara restore database?
+```bash
+mysql -u root -p MEeL < meel_backup_2026-10-31.sql
 ```
 
-### Q: Apakah bisa streaming video 4K?
+### Bagaimana cara membersihkan cache?
+```bash
+# Cache aplikasi
+php modules/core/cli/clear_cache.php
 
-**A:** Secara teknis bisa, tapi kendala di bandwidth dan storage. Disarankan maksimal 1080p.
+# Cache browser (Ctrl+Shift+Del)
+# Cache sistem
+sudo systemd-tmpfiles --clean
+```
 
-### Q: Kenapa session guest tidak valid?
+### Bagaimana cara menambah admin?
+```bash
+# Jalankan CLI
+php modules/core/cli/add_admin.php --user=username
+```
 
-**A:** Guest otomatis dibuat saat pertama kali akses. Jika ada masalah, hapus guest tidak aktif via Admin Panel.
+### Bagaimana cara menonaktifkan akun?
+```bash
+# Jalankan CLI
+php modules/core/cli/toggle_user.php --user=username --disable
+```
 
 ---
 
 ## Advanced Upload & Antrean
 
-Dokumentasi penanganan masalah khusus untuk fitur **Advanced Upload (yt-dlp)** dan antrean latar belakang (Background Tasks) di MEeL-HUB.
-
-### Gejala & Masalah Umum
-
-Fitur Advanced Upload menggunakan pustaka CLI `yt-dlp` yang dikombinasikan dengan pembungkus PHP asinkron untuk mengunduh media dari URL eksternal (seperti YouTube, NicoNico, TikTok) lalu mengonversinya secara otomatis. Masalah biasanya ditandai dengan status antrean yang terus menerus `"processing"` atau muncul notifikasi **"Server sedang sibuk"** meskipun tidak ada proses aktif.
-
----
-
-### Masalah 1: Antrean (Queue) Stuck / Server Sibuk
-
-Sistem membatasi maksimal **2 proses unduhan/transcoding simultan** demi menjaga stabilitas kinerja CPU server. Jika proses terputus secara tidak wajar (misalnya koneksi putus atau server mati mendadak), status antrean di database tetap menggantung sebagai `"processing"`.
-
-#### Solusi A — Melalui Admin Panel (Direkomendasikan)
-
-1. Masuk sebagai akun **Admin**.
-2. Buka **Dashboard Admin** (`admin/index.php`).
-3. Scroll ke bagian **Active Background Tasks**.
-4. Klik tombol **Clean Stuck Queues** (akan membersihkan tugas yang menggantung lebih dari 30 menit).
-5. Atau klik ikon silang (**Force Stop** `x`) pada tugas spesifik yang mengalami macet.
-
-#### Solusi B — Melalui Database (Manual SQL)
-
-Jalankan perintah SQL berikut melalui phpMyAdmin atau MySQL Client untuk mereset antrean:
-```sql
--- Menghapus antrean yang menggantung
-DELETE FROM `upload_queue` 
-WHERE `status` = 'processing';
-```
-
-#### Solusi C — Menghentikan Proses di OS (Linux)
-
-Jika proses FFmpeg atau yt-dlp masih berjalan di latar belakang dan memakan CPU:
+### Bagaimana cara melihat antrean download?
 ```bash
-# Cek apakah ada proses aktif
-ps aux | grep -E "yt-dlp|ffmpeg"
+# Lihat tabel antrean
+mysql -u root -p MEeL -e "SELECT * FROM upload_queue WHERE status='processing' ORDER BY id DESC;"
+```
 
-# Hentikan paksa seluruh proses pengunduhan/transcoding
-sudo killall -9 yt-dlp
-sudo killall -9 ffmpeg
+### Bagaimana cara membatalkan antrean?
+```bash
+# Hapus dari database
+mysql -u root -p MEeL -e "DELETE FROM upload_queue WHERE id=123;"
+```
+
+### Bagaimana cara memprioritaskan antrean?
+Edit `modules/transcoder/DownloadService.php` dan ubah urutan pengolahan di `buildDownloadContext()`.
+
+### Bagaimana cara debug download yang gagal?
+```bash
+# Aktifkan logging detail di DownloadService.php
+# Cek /tmp/ytdlp_error.log
+cat /tmp/ytdlp_error.log
+
+# Jalankan yt-dlp manual
+tools/yt-dlp/yt-dlp --cookies temp/cookies.txt "URL_VIDEO"
 ```
 
 ---
-

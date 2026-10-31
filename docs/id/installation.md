@@ -385,12 +385,16 @@ php tests/check_deploy.php --no-color                # tanpa warna ANSI (untuk C
 
 ### 7. Konfigurasi Apache
 
-#### Aktifkan mod_rewrite:
+#### Aktifkan mod_rewrite dan mod_headers:
 
 ```bash
-sudo a2enmod rewrite
+sudo a2enmod rewrite headers
 sudo systemctl restart apache2
 ```
+
+> 💡 `.htaccess` root memakai `Header` (nosniff, Referrer-Policy, cache thumbnail). Tanpa `mod_headers`, blok tersebut dilewati diam-diam. `install.sh` mengaktifkan keduanya.
+
+> ⚠️ **Letakkan proyek secara fisik di dalam DocumentRoot** (mis. `/var/www/html/MEeL`), seperti langkah [2. Kloning Repositori](#2-kloning-repositori). Base URL dihitung dari path fisik proyek dikurangi `DOCUMENT_ROOT`; proyek yang hanya di-*symlink* ke dalam docroot menghasilkan redirect loop (`…/MEeL-HUB-main/err/MEeL-HUB-main/err/…`). Gunakan VirtualHost (`--vhost=DOMAIN`) bila proyek harus berada di luar docroot.
 
 #### Konfigurasi AllowOverride untuk MEeL (hanya development — production harus pakai VirtualHost dengan `AllowOverride None`):
 
@@ -404,7 +408,8 @@ Edit `/etc/apache2/apache2.conf` atau config site-specific di `/etc/apache2/site
     #   FileInfo — untuk mod_rewrite, AddType, dll.
     #   AuthConfig — untuk directive Require
     #   Limit — untuk Order/Allow/Deny (legacy)
-    AllowOverride Options FileInfo AuthConfig Limit
+    #   Indexes — untuk DirectoryIndex (dipakai .htaccess root; tanpa ini → 500)
+    AllowOverride Options FileInfo AuthConfig Limit Indexes
     Require all granted
 </Directory>
 ```
@@ -657,6 +662,11 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 - **Penyebab:** storage HDD (`MEEL_HDD_BASE`) tidak ter-mount / salah di `auth/settings.php`. Folder upload adalah folder nyata di repo — tidak ada symlink yang perlu diperbaiki. Symlink saat deploy yang menunjuk ke target salah juga memicu peringatan
 - **Perbaikan:** mount storage, set `MEEL_HDD_BASE` dengan benar, dan pastikan setiap folder upload punya `.htaccess` (lihat [6. Media Storage](#6-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)). Jalankan ulang `php tests/check_deploy.php` sampai muncul `✅ Deployment sehat.`
 
+### ❌ Redirect loop `…/MEeL-HUB-main/err/MEeL-HUB-main/err/…`
+
+- Penyebab: proyek hanya di-*symlink* ke DocumentRoot, sehingga base URL (path fisik − `DOCUMENT_ROOT`) salah
+- Perbaikan: pindahkan/clone proyek secara fisik ke dalam DocumentRoot (mis. `/var/www/html/MEeL`), atau pakai VirtualHost. Setelah dipindah, perbarui path absolut `MEEL_FFMPEG_PATH` / `MEEL_FFPROBE_PATH` di `auth/settings.php`
+
 ### ❌ "403 Forbidden" pada halaman
 
 - Periksa `.htaccess` di direktori terkait
@@ -665,6 +675,7 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 ### ❌ "500 Internal Server Error"
 
 - Cek error log: `sudo tail -f /var/log/apache2/error.log`
+- Pesan `.htaccess: DirectoryIndex not allowed here` → tambahkan `Indexes` ke `AllowOverride` (lihat [7. Konfigurasi Apache](#7-konfigurasi-apache))
 - Aktifkan error reporting di PHP: `ini_set('display_errors', 1);`
 
 ### ❌ FFmpeg/yt-dlp tidak ditemukan

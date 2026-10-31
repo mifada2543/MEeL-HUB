@@ -414,19 +414,23 @@ $this->ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
 $this->ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
     ? MEEL_FFPROBE_PATH
     : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+$this->ytdlp_bin = defined('MEEL_YTDLP_PATH') && MEEL_YTDLP_PATH !== ''
+    ? MEEL_YTDLP_PATH
+    : resolve_binary([__DIR__ . '/../../tools/yt-dlp/yt-dlp', '/usr/local/bin/yt-dlp', '/usr/bin/yt-dlp', 'yt-dlp']);
 ```
 
-Untuk menggunakan path FFmpeg kustom, set konstanta di `auth/settings.php`:
+Untuk menggunakan path FFmpeg/yt-dlp kustom, set konstanta di `auth/settings.php`:
 ```php
 define('MEEL_FFMPEG_PATH', '/opt/ffmpeg/ffmpeg');
 define('MEEL_FFPROBE_PATH', '/opt/ffmpeg/ffprobe');
+define('MEEL_YTDLP_PATH', '/opt/yt-dlp/yt-dlp');
 ```
 
 ### yt-dlp Configuration
 
 ```php
 $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; "
-    . " /usr/local/bin/yt-dlp --js-runtime node:/usr/bin/node"
+    . " " . escapeshellarg($this->ytdlp_bin) . " --js-runtime node:/usr/bin/node"
     . " --no-warnings --restrict-filenames"
     . " --user-agent " . escapeshellarg($this->user_agent)
     . " --referer " . escapeshellarg("https://www.youtube.com/")
