@@ -409,10 +409,11 @@ $this->ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
 $this->ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
     ? MEEL_FFPROBE_PATH
     : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
-$this->ytdlp_bin = defined('MEEL_YTDLP_PATH') && MEEL_YTDLP_PATH !== ''
-    ? MEEL_YTDLP_PATH
-    : resolve_binary([__DIR__ . '/../../tools/yt-dlp/yt-dlp', '/usr/local/bin/yt-dlp', '/usr/bin/yt-dlp', 'yt-dlp']);
+$this->ytdlp_bin = resolve_ytdlp_binary();
+$this->ytdlp_available = binary_is_runnable($this->ytdlp_bin);
 ```
+
+`resolve_ytdlp_binary()` checks `MEEL_YTDLP_PATH`, then `tools/yt-dlp/yt-dlp`, then the system PATH. The yt-dlp binary is not bundled in release packages; the installer downloads it to `tools/yt-dlp/yt-dlp`.
 
 To use a custom FFmpeg/yt-dlp path, set the constants in `auth/settings.php`:
 ```php

@@ -38,6 +38,7 @@ PHP_BIN="${PHP_BIN:-$(command -v php)}"
 ARGS=(
     --yes
     --skip-apt
+    --skip-ytdlp
     --db-host="$HOST"
     --db-name="$DB"
     --db-user="$USER"

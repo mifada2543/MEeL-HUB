@@ -12,15 +12,19 @@ REQUIRED_DNF_PKGS="php-cli php-mysqlnd php-pdo php-fileinfo php-mbstring php-int
 REQUIRED_PACMAN_PKGS="php php-gd php-intl php-mbstring php-xml php-zip mariadb"
 REQUIRED_APK_PKGS="php83 php83-mysqli php83-pdo_mysql php83-fileinfo php83-mbstring php83-intl php83-gd php83-zip php83-xml php83-curl mariadb"
 
-RECOMMENDED_APT_PKGS="yt-dlp composer"
-RECOMMENDED_DNF_PKGS="yt-dlp composer"
-RECOMMENDED_PACMAN_PKGS="yt-dlp composer"
-RECOMMENDED_APK_PKGS="yt-dlp composer"
+RECOMMENDED_APT_PKGS="composer"
+RECOMMENDED_DNF_PKGS="composer"
+RECOMMENDED_PACMAN_PKGS="composer"
+RECOMMENDED_APK_PKGS="composer"
 
 OPTIONAL_APT_PKGS="apache2 libapache2-mod-php mecab mecab-ipadic-utf8"
 OPTIONAL_DNF_PKGS="httpd php-apache mecab mecab-ipadic"
 OPTIONAL_PACMAN_PKGS="apache php-apache mecab mecab-ipadic"
 OPTIONAL_APK_PKGS="apache2 php83-apache2 mecab mecab-ipadic"
+
+# ─── Letak unduhan yt-dlp ───
+# Bisa dioverride untuk cermin/internal: YTDLP_DOWNLOAD_BASE=/path/atau/url
+YTDLP_DOWNLOAD_BASE="${YTDLP_DOWNLOAD_BASE:-https://github.com/yt-dlp/yt-dlp/releases/latest/download}"
 
 # ─── Check required packages ───
 deps_check_required() {
@@ -121,6 +125,125 @@ deps_install_recommended() {
     deps_install_packages "$packages" "recommended packages"
 }
 
+# ─── yt-dlp: unduh binary standalone (tidak lagi dibundel di paket) ───
+deps_ytdlp_asset() {
+    case "$(uname -m 2>/dev/null)" in
+        x86_64|amd64) printf '%s\n' 'yt-dlp_linux' ;;
+        aarch64|arm64) printf '%s\n' 'yt-dlp_linux_aarch64' ;;
+        *) return 1 ;;
+    esac
+}
+
+deps_download() {
+    local url="$1" out="$2"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL --retry 3 --connect-timeout 15 --max-time 300 -o "$out" "$url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O "$out" "$url"
+    else
+        return 127
+    fi
+}
+
+deps_sha256() {
+    local file="$1"
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$file" | awk '{ print $1 }'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$file" | awk '{ print $1 }'
+    else
+        return 1
+    fi
+}
+
+deps_install_ytdlp() {
+    local project_root="${PROJECT_ROOT:-$(pwd)}"
+    local dest="$project_root/tools/yt-dlp/yt-dlp"
+
+    if [ -x "$dest" ]; then
+        log_ok "yt-dlp found: $dest"
+        return 0
+    fi
+    if [ "${YTDLP_FORCE_DOWNLOAD:-false}" != "true" ] && command -v yt-dlp >/dev/null 2>&1; then
+        log_ok "yt-dlp found: $(command -v yt-dlp)"
+        return 0
+    fi
+    if [ "${DRY_RUN:-false}" = "true" ]; then
+        log_info "[dry-run] would download yt-dlp to $dest"
+        return 0
+    fi
+    if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+        log_warn "curl/wget tidak tersedia — yt-dlp tidak bisa diunduh"
+        return 1
+    fi
+
+    local asset
+    if ! asset="$(deps_ytdlp_asset)"; then
+        log_warn "Arsitektur $(uname -m 2>/dev/null || echo tidak dikenal) belum didukung unduhan otomatis yt-dlp"
+        log_info "Pasang yt-dlp manual lalu set MEEL_YTDLP_PATH di auth/settings.php"
+        return 1
+    fi
+
+    local base="${YTDLP_DOWNLOAD_BASE%/}"
+    local tmpdir
+    tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/meel-ytdlp.XXXXXX")" || return 1
+
+    log_step "Mengunduh yt-dlp ($asset)"
+    if ! deps_download "$base/$asset" "$tmpdir/$asset"; then
+        log_warn "Unduhan yt-dlp gagal: $base/$asset"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+
+    if deps_download "$base/SHA2-256SUMS" "$tmpdir/SHA2-256SUMS"; then
+        local expected actual
+        expected="$(awk -v name="$asset" '$2 == name { print $1; exit }' "$tmpdir/SHA2-256SUMS")"
+        actual="$(deps_sha256 "$tmpdir/$asset" || true)"
+        if [ -z "$expected" ] || [ -z "$actual" ] || [ "$expected" != "$actual" ]; then
+            log_warn "Checksum yt-dlp tidak cocok — unduhan dibatalkan"
+            rm -rf "$tmpdir"
+            return 1
+        fi
+        log_ok "Checksum yt-dlp terverifikasi"
+    else
+        log_warn "SHA2-256SUMS tidak tersedia — checksum yt-dlp dilewati"
+    fi
+
+    mkdir -p "$(dirname "$dest")" || { rm -rf "$tmpdir"; return 1; }
+    if ! mv "$tmpdir/$asset" "$dest" || ! chmod 0755 "$dest"; then
+        log_warn "Gagal memasang yt-dlp ke $dest"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    if ! "$dest" --version >/dev/null 2>&1; then
+        log_warn "Binary yt-dlp tidak bisa dijalankan — dihapus"
+        rm -f "$dest"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+
+    log_ok "yt-dlp terpasang: $("$dest" --version)"
+    rm -rf "$tmpdir"
+    return 0
+}
+
+# ─── Tawarkan unduhan yt-dlp tanpa menggagalkan instalasi ───
+deps_offer_ytdlp() {
+    if [ "${SKIP_YTDLP:-false}" = "true" ]; then
+        log_info "Melewati unduhan yt-dlp (--skip-ytdlp)"
+        return 0
+    fi
+    if [ "${DRY_RUN:-false}" = "true" ]; then
+        log_info "[dry-run] would offer yt-dlp download"
+        return 0
+    fi
+    if [ "${ASSUME_YES:-false}" = "true" ] || confirm "Unduh yt-dlp terbaru (~40 MB)?" Y; then
+        deps_install_ytdlp || log_warn "yt-dlp tidak tersedia — fitur unduh video nonaktif"
+    else
+        log_warn "yt-dlp dilewati — fitur unduh video nonaktif"
+    fi
+}
+
 # ─── Install optional packages ───
 deps_install_optional() {
     local packages=""
@@ -172,9 +295,18 @@ deps_verify_php_ext() {
 
 # ─── Check optional binaries ───
 deps_check_optional_bins() {
-    local bins="yt-dlp mecab composer node npm"
+    local bins="mecab composer node npm"
     local missing=()
     local bin
+    local project_root="${PROJECT_ROOT:-$(pwd)}"
+
+    if [ -x "$project_root/tools/yt-dlp/yt-dlp" ]; then
+        log_verbose "yt-dlp found: $project_root/tools/yt-dlp/yt-dlp"
+    elif command -v yt-dlp >/dev/null 2>&1; then
+        log_verbose "yt-dlp found: $(command -v yt-dlp)"
+    else
+        missing+=("yt-dlp")
+    fi
 
     for bin in $bins; do
         if ! command -v "$bin" >/dev/null 2>&1; then
@@ -275,6 +407,7 @@ deps_run() {
     if [ "${SKIP_APT:-false}" = "true" ]; then
         log_info "Skipping package installation (--skip-apt)"
         deps_verify_php_ext || return 1
+        deps_offer_ytdlp
         deps_check_optional_bins || true
         return 0
     fi
@@ -284,7 +417,7 @@ deps_run() {
             deps_install_required || log_warn "Some required packages may have failed"
             deps_verify_php_ext || return 1
 
-            if [ "${ASSUME_YES:-false}" = "true" ] || confirm "Install recommended packages (ffmpeg, yt-dlp, composer)?" Y; then
+            if [ "${ASSUME_YES:-false}" = "true" ] || confirm "Install recommended packages (composer)?" Y; then
                 deps_install_recommended || log_warn "Some recommended packages may have failed"
             fi
 
@@ -297,6 +430,7 @@ deps_run() {
         log_info "Required: PHP 8.2+ (mysqli, pdo_mysql, fileinfo, mbstring, intl, gd, zip, xml, curl), MariaDB/MySQL"
     fi
 
+    deps_offer_ytdlp
     deps_check_optional_bins || true
 }
 
@@ -304,5 +438,6 @@ deps_run() {
 if [ -n "${BASH_VERSION:-}" ]; then
     export -f deps_php_has_ext deps_bootstrap_php deps_check_required deps_install_packages deps_install_required 2>/dev/null || true
     export -f deps_install_recommended deps_install_optional deps_verify_php_ext 2>/dev/null || true
+    export -f deps_install_ytdlp deps_offer_ytdlp deps_download deps_sha256 deps_ytdlp_asset 2>/dev/null || true
     export -f deps_check_optional_bins deps_run 2>/dev/null || true
 fi

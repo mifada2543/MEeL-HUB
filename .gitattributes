@@ -58,6 +58,7 @@ assets/MEeL.png                  linguist-vendored
 /composer.lock      export-ignore
 /CHANGELOG-core.md  export-ignore
 /CHANGELOG-arcade.md  export-ignore
+/tools/yt-dlp/yt-dlp export-ignore
 
 # ─── FORCE HTML DETECTION ─────────────────────────────────
 # Mencegah inline JS/CSS di index.html mempengaruhi statistik

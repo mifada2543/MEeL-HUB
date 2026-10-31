@@ -10,6 +10,12 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), versi mengikut
 > masalah, aturan yang berlaku, dan detail implementasi ada di
 > [docs/](docs/) — bukan di berkas ini.
 
+## [2.2.2] - 2026-10-31
+
+### Changed
+
+- **Paket distribusi lebih kecil:** binary `yt-dlp` tidak lagi ikut ZIP; installer mengunduhnya ke `tools/yt-dlp/yt-dlp` (bisa dilewati dengan `--skip-ytdlp`). Kamus JMdict dinormalisasi ke skema v2 (41 MB → 21 MB) tanpa mengubah hasil lookup. Paket core/full kini sekitar 19 MB, dengan batas keras 30 MB di `scripts/ci/build-package.sh`.
+
 ## [Released]
 
 ### Added

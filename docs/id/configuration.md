@@ -414,10 +414,11 @@ $this->ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
 $this->ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
     ? MEEL_FFPROBE_PATH
     : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
-$this->ytdlp_bin = defined('MEEL_YTDLP_PATH') && MEEL_YTDLP_PATH !== ''
-    ? MEEL_YTDLP_PATH
-    : resolve_binary([__DIR__ . '/../../tools/yt-dlp/yt-dlp', '/usr/local/bin/yt-dlp', '/usr/bin/yt-dlp', 'yt-dlp']);
+$this->ytdlp_bin = resolve_ytdlp_binary();
+$this->ytdlp_available = binary_is_runnable($this->ytdlp_bin);
 ```
+
+`resolve_ytdlp_binary()` memeriksa `MEEL_YTDLP_PATH`, lalu `tools/yt-dlp/yt-dlp`, lalu PATH sistem. Binary yt-dlp tidak dibundel di paket rilis; installer mengunduhnya ke `tools/yt-dlp/yt-dlp`.
 
 Untuk menggunakan path FFmpeg/yt-dlp kustom, set konstanta di `auth/settings.php`:
 ```php

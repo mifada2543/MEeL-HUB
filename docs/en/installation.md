@@ -23,6 +23,7 @@ An automatic installer that runs most steps of this guide in a single command (t
 ./install.sh --yes           # non-interactive, uses all defaults
 ./install.sh --hdd=/path     # set MEEL_HDD_BASE directly
 ./install.sh --skip-apt      # skip system package installation (already present)
+./install.sh --skip-ytdlp    # skip yt-dlp download (install manually)
 ./install.sh --xsendfile     # enable MEEL_USE_XSENDFILE (requires Apache mod_xsendfile)
 ```
 
@@ -547,6 +548,10 @@ System binary (`/usr/bin/ffmpeg`) is optional — if present, used as fallback. 
 > 💡 `install.sh` automatically configures `auth/settings.php` to use ffmpeg-lite. To rebuild with additional components, see `tools/ffmpeg-lite/build-ffmpeg-lite.sh`.
 
 ### 9. yt-dlp Setup
+
+> 📦 Release packages do not bundle yt-dlp. `install.sh` downloads the latest binary to `tools/yt-dlp/yt-dlp` (or uses system yt-dlp if present). The manual steps below are only needed if automatic download fails.
+>
+> **Offline mode:** download the binary on another machine, place it at `tools/yt-dlp/yt-dlp` (or set `MEEL_YTDLP_PATH`), then run `./install.sh --skip-ytdlp`.
 
 ```bash
 # Install via pip

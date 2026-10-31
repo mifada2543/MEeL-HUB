@@ -32,6 +32,8 @@ class TranscoderBase
     protected string $base_cmd;
     protected string $ffmpeg_bin;
     protected string $ffprobe_bin;
+    protected string $ytdlp_bin;
+    protected bool $ytdlp_available = false;
 
     protected ?ProgressObserver $progressObserver = null;
 
@@ -79,9 +81,9 @@ class TranscoderBase
 
         $this->user_role = get_user_role($this->conn, $this->user_id);
 
-        $ytdlp_bin = defined('MEEL_YTDLP_PATH') && MEEL_YTDLP_PATH !== ''
-            ? MEEL_YTDLP_PATH
-            : resolve_binary(['/usr/local/bin/yt-dlp', '/usr/bin/yt-dlp', 'yt-dlp']);
+        $ytdlp_bin = resolve_ytdlp_binary();
+        $this->ytdlp_bin = $ytdlp_bin;
+        $this->ytdlp_available = binary_is_runnable($ytdlp_bin);
         $node_bin = defined('MEEL_NODE_PATH') && MEEL_NODE_PATH !== ''
             ? MEEL_NODE_PATH
             : '/usr/bin/node';
@@ -89,17 +91,33 @@ class TranscoderBase
         $maxBytes = defined('MEEL_MAX_DOWNLOAD_BYTES') ? (int) MEEL_MAX_DOWNLOAD_BYTES : (2 * 1024 * 1024 * 1024);
         $maxSeconds = defined('MEEL_MAX_DOWNLOAD_SECONDS') ? (int) MEEL_MAX_DOWNLOAD_SECONDS : 7200;
 
-        $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8;"
-            . " " . escapeshellarg($ytdlp_bin) . " --js-runtime " . escapeshellarg($node_bin)
-            . " --remote-components ejs:github"
-            . " --no-warnings --restrict-filenames"
-            . " --max-filesize " . escapeshellarg((string) $maxBytes)
-            . " --match-filter " . escapeshellarg('duration < ' . $maxSeconds)
-            . " --user-agent " . escapeshellarg($this->user_agent)
-            . " --referer " . escapeshellarg("https://www.youtube.com/")
-            . " --cookies " . escapeshellarg($this->cookies_path) . " ";
+        if ($this->ytdlp_available) {
+            $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; export LC_ALL=en_US.UTF-8;"
+                . " " . escapeshellarg($ytdlp_bin) . " --js-runtime " . escapeshellarg($node_bin)
+                . " --remote-components ejs:github"
+                . " --no-warnings --restrict-filenames"
+                . " --max-filesize " . escapeshellarg((string) $maxBytes)
+                . " --match-filter " . escapeshellarg('duration < ' . $maxSeconds)
+                . " --user-agent " . escapeshellarg($this->user_agent)
+                . " --referer " . escapeshellarg("https://www.youtube.com/")
+                . " --cookies " . escapeshellarg($this->cookies_path) . " ";
+        } else {
+            $this->base_cmd = '';
+        }
 
         $this->setProgressListener($progressListener);
+    }
+
+    protected function requireYtdlp(): string
+    {
+        if (!$this->ytdlp_available) {
+            throw new DownloadException(
+                'yt-dlp tidak ditemukan. Pasang yt-dlp atau set MEEL_YTDLP_PATH di auth/settings.php.',
+                '',
+                'dependency'
+            );
+        }
+        return $this->base_cmd;
     }
 
     public function __destruct()

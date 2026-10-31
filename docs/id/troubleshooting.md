@@ -241,13 +241,13 @@ ffmpeg -i input.mp4 -itsoffset 0.5 -c copy output.mp4
 ### ❌ "Gagal mengambil metadata" atau "Gagal mem-parsing metadata"
 
 **Penyebab 1: yt-dlp tidak ditemukan di path yang diharapkan**
-MEeL kini memaketkan yt-dlp di `tools/yt-dlp/yt-dlp` (binary standalone statis).
+Paket MEeL tidak lagi membundel yt-dlp. `install.sh` mengunduh binary ke `tools/yt-dlp/yt-dlp`; jika gagal, pasang yt-dlp sistem dan set `MEEL_YTDLP_PATH` di `auth/settings.php`.
 ```bash
-# Cek binary bawaan
+# Cek binary lokal
 ls -la tools/yt-dlp/yt-dlp
 tools/yt-dlp/yt-dlp --version
 
-# Update binary bawaan
+# Update binary lokal
 cd tools/yt-dlp && ./update.sh
 ```
 
@@ -265,7 +265,7 @@ sudo apt install nodejs
 
 **Penyebab 4: Update yt-dlp**
 ```bash
-# Update binary bawaan (direkomendasikan)
+# Update binary lokal (direkomendasikan)
 cd tools/yt-dlp && ./update.sh
 
 # Atau jika pakai yt-dlp sistem
@@ -282,7 +282,7 @@ cat /tmp/ytdlp_error.log
 ```
 
 **Solusi umum:**
-1. Update yt-dlp ke versi terbaru (bundled: `cd tools/yt-dlp && ./update.sh`)
+1. Update yt-dlp ke versi terbaru (lokal: `cd tools/yt-dlp && ./update.sh`)
 2. Update cookies.txt
 3. Coba URL langsung di terminal:
    ```bash
@@ -303,7 +303,7 @@ Saat metadata gagal di-parse, Transcoder menampilkan overlay debug:
 ║                                                   ║
 ║ Cek Path Sistem:                                  ║
 ║ - Node:    /usr/bin/node                          ║
-║ - yt-dlp:  tools/yt-dlp/yt-dlp (bundled)          ║
+║ - yt-dlp:  tools/yt-dlp/yt-dlp (lokal)            ║
 ║ - ffmpeg:  tools/ffmpeg-lite/ffmpeg (bundled)     ║
 ╚═══════════════════════════════════════════════════╝
 ```
@@ -488,7 +488,7 @@ sudo systemctl restart apache2
 | **003** | Storage full | Bersihkan disk atau tambah storage |
 | **004** | Permission denied | `chown www-data:www-data` pada direktori yang relevan |
 | **005** | FFmpeg not found | Set `MEEL_FFMPEG_PATH` di `auth/settings.php` |
-| **006** | yt-dlp not found | Update bundled binary di `tools/yt-dlp/` |
+| **006** | yt-dlp not found | Update binary lokal di `tools/yt-dlp/` |
 | **007** | HLS 404 | Cek `.htaccess` dan permission direktori HLS |
 | **008** | Upload size exceeded | Tingkatkan `upload_max_filesize` di PHP |
 | **009** | Invalid file type | Tambahkan ekstensi ke daftar putih |

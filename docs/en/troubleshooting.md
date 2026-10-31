@@ -351,13 +351,13 @@ lscpu  # CPU details
 ### ❌ "Failed to fetch metadata" or "Failed to parse metadata"
 
 **Cause 1: yt-dlp not found in expected paths**
-MEeL now bundles yt-dlp at `tools/yt-dlp/yt-dlp` (static standalone binary).
+MEeL packages no longer bundle yt-dlp. `install.sh` downloads the binary to `tools/yt-dlp/yt-dlp`; if that fails, install system yt-dlp and set `MEEL_YTDLP_PATH` in `auth/settings.php`.
 ```bash
-# Check bundled binary
+# Check local binary
 ls -la tools/yt-dlp/yt-dlp
 tools/yt-dlp/yt-dlp --version
 
-# Update bundled binary
+# Update local binary
 cd tools/yt-dlp && ./update.sh
 ```
 
@@ -375,7 +375,7 @@ sudo apt install nodejs
 
 **Cause 4: Update yt-dlp**
 ```bash
-# Update bundled binary (recommended)
+# Update local binary (recommended)
 cd tools/yt-dlp && ./update.sh
 
 # Or if using system yt-dlp
@@ -392,7 +392,7 @@ cat /tmp/ytdlp_error.log
 ```
 
 **Common solutions:**
-1. Update yt-dlp to latest version (bundled: `cd tools/yt-dlp && ./update.sh`)
+1. Update yt-dlp to latest version (local: `cd tools/yt-dlp && ./update.sh`)
 2. Update cookies.txt
 3. Try URL directly in terminal:
    ```bash
@@ -413,7 +413,7 @@ When metadata fails to parse, Transcoder displays a debug overlay:
 ║                                                   ║
 ║ Check System Paths:                               ║
 ║ - Node:    /usr/bin/node                          ║
-║ - yt-dlp:  tools/yt-dlp/yt-dlp (bundled)          ║
+║ - yt-dlp:  tools/yt-dlp/yt-dlp (local)            ║
 ║ - ffmpeg:  tools/ffmpeg-lite/ffmpeg (bundled)     ║
 ╚═══════════════════════════════════════════════════╝
 ```

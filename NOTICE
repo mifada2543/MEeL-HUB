@@ -31,6 +31,8 @@ independent software and technologies:
 * HTMX — https://htmx.org/
 * Plyr — https://plyr.io/
 * HLS.js — https://github.com/video-dev/hls.js/
+* JMdict (Electronic Dictionary Research and Development Group) — https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project
+  Bundled as a derived SQLite dictionary under CC BY-SA 4.0; see assets/dict/README.md.
 
 These projects are separate works and are governed by their own licenses and
 notices. Their names and trademarks belong to their respective owners. The

@@ -15,6 +15,7 @@ source "$SCRIPT_DIR/lib/install/detect.sh"
 parse_args() {
     ASSUME_YES=false
     SKIP_APT=false
+    SKIP_YTDLP=false
     DRY_RUN=false
     VERBOSE=false
     STEP=0
@@ -40,6 +41,7 @@ parse_args() {
         case "$1" in
             --yes|-y) ASSUME_YES=true ;;
             --skip-apt) SKIP_APT=true ;;
+            --skip-ytdlp) SKIP_YTDLP=true ;;
             --dry-run) DRY_RUN=true; VERBOSE=true ;;
             --verbose|-v) VERBOSE=true ;;
             --step=*) STEP="${1#--step=}" ;;
@@ -76,7 +78,7 @@ parse_args() {
         shift
     done
     # Export for modules
-    export ASSUME_YES SKIP_APT DRY_RUN VERBOSE STEP RESUME_FROM
+    export ASSUME_YES SKIP_APT SKIP_YTDLP DRY_RUN VERBOSE STEP RESUME_FROM
     export HDD_OVERRIDE XSENDFILE_OVERRIDE ENV_OVERRIDE TRUST_PROXY_OVERRIDE
     export VHOST_OVERRIDE WEB_USER_OVERRIDE DB_HOST_OVERRIDE DB_NAME_OVERRIDE
     export DB_USER_OVERRIDE DB_PASS_OVERRIDE ADMIN_USER_OVERRIDE ADMIN_PASS_OVERRIDE
@@ -93,6 +95,7 @@ Usage: ./install.sh [OPTIONS]
 Options:
   --yes, -y                    Non-interactive, accept all defaults
   --skip-apt                   Skip system package installation
+  --skip-ytdlp                 Skip automatic yt-dlp download
   --dry-run                    Print actions without executing (implies --verbose)
   --verbose, -v                Verbose output (show commands before execution)
   --step=N                     Run only step N (1=deps, 2=db, 3=config, 4=storage,
