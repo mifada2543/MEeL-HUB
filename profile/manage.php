@@ -158,7 +158,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                                     <?= htmlspecialchars($v['title']) ?>
                                 </a>
                                 <div class="card-meta">
-                                    <span><?= number_format($v['views'] ?? 0) ?> views</span>
+                                    <span><?= number_format($v['views'] ?? 0) ?> tayangan</span>
                                     <span class="flex items-center gap-1 text-green-500/80">
                                         <i data-lucide="thumbs-up" class="w-3 h-3"></i>
                                         <?= number_format($v['likes'] ?? 0) ?>
@@ -215,7 +215,7 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                                 <div class="card-meta">
                                     <span><?= htmlspecialchars($m['artist'] ?? 'Tidak diketahui') ?></span>
                                     <span>•</span>
-                                    <span><?= number_format($m['views']) ?> views</span>
+                                    <span><?= number_format($m['views']) ?> tayangan</span>
                                     <span class="flex items-center gap-1 text-green-500/80">
                                         <i data-lucide="thumbs-up" class="w-3 h-3"></i>
                                         <?= number_format($m['likes']) ?>

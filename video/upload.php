@@ -8,6 +8,7 @@ require_once __DIR__ . '/../modules/core/GarbageCollector.php';
 require_once __DIR__ . '/../modules/media/MediaLibrary.php';
 require_once __DIR__ . '/../modules/core/MeelCoin.php';
 require_once __DIR__ . '/../modules/core/Notification.php';
+$conn = $GLOBALS['conn'] ?? null;
 meel_storage_guard();
 GarbageCollector::run();
 GarbageCollector::sweepUploadAccounting($conn);

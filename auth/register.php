@@ -94,9 +94,9 @@ if (!$is_loopback && !$is_locked && !$reg_blocked) {
         $remaining = $recheck['remaining'];
     }
 }
-$auth_title = "MEeL | Register";
+$auth_title = "MEeL | Daftar";
 $auth_description = "MEeL - Platform Media Hub Pribadi untuk Streaming Video, Musik, dan E-Book.";
-$auth_og_title = "MEeL | Register";
+$auth_og_title = "MEeL | Daftar";
 $auth_og_desc = "Buat akun MEeL dan nikmati streaming video, musik, dan akses perpustakaan digital.";
 include __DIR__ . '/partials/auth_head.php';
 ?>
