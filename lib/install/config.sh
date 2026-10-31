@@ -146,11 +146,20 @@ config_run() {
         fi
     fi
 
-    # Binary paths (optional)
-    local ffmpeg_path="" ffprobe_path="" node_path="" ytdlp_path=""
+    # Binary paths (optional). Bundled ffmpeg-lite is the default for a fresh
+    # install. On an existing install leave the values empty so this step does
+    # not overwrite a custom path; runtime resolve_binary() handles empty.
+    local default_ffmpeg="" default_ffprobe=""
+    if [ ! -f "${PROJECT_ROOT:-}/auth/settings.php" ]; then
+        default_ffmpeg="$PROJECT_ROOT/tools/ffmpeg-lite/ffmpeg"
+        default_ffprobe="$PROJECT_ROOT/tools/ffmpeg-lite/ffprobe"
+        [ -x "$default_ffmpeg" ] || default_ffmpeg=""
+        [ -x "$default_ffprobe" ] || default_ffprobe=""
+    fi
+    local ffmpeg_path="${FFMPEG_PATH-$default_ffmpeg}" ffprobe_path="${FFPROBE_PATH-$default_ffprobe}" node_path="" ytdlp_path=""
     if ! [ "${ASSUME_YES:-false}" = "true" ] && confirm "Set binary paths manually? (empty = auto-detect)" N; then
-        ffmpeg_path=$(ask "ffmpeg path" "")
-        ffprobe_path=$(ask "ffprobe path" "")
+        ffmpeg_path=$(ask "ffmpeg path" "$ffmpeg_path")
+        ffprobe_path=$(ask "ffprobe path" "$ffprobe_path")
         node_path=$(ask "node path" "")
         ytdlp_path=$(ask "yt-dlp path" "")
     fi
