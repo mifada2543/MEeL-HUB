@@ -19,6 +19,34 @@ apache_enable_rewrite() {
     fi
 }
 
+# ─── Enable mod_headers ───
+apache_enable_headers() {
+    if [ "${HAS_A2ENMOD:-false}" = "true" ] && [ "${CAN_ELEVATE:-true}" = "true" ]; then
+        if sudo_cmd "a2enmod headers" "Enable mod_headers"; then
+            log_ok "mod_headers enabled"
+        else
+            log_warn "Failed to enable mod_headers via a2enmod"
+        fi
+    else
+        log_warn "a2enmod not available or no sudo — enable mod_headers manually"
+    fi
+}
+
+# ─── Warn when project is not physically under a web root ───
+apache_check_project_location() {
+    local root="${PROJECT_ROOT:-$PWD}"
+    local base
+    for base in /var/www /opt/lampp/htdocs /srv/www /srv/http /usr/local/apache2/htdocs /Library/WebServer/Documents; do
+        case "$root" in
+            "$base"|"$base"/*) return 0 ;;
+        esac
+    done
+    log_warn "Project root ($root) is not under a common web root."
+    log_info "MEeL derives its base URL from its physical path minus DOCUMENT_ROOT."
+    log_info "Place/clone it inside DocumentRoot (e.g. /var/www/html/MEeL) or use --vhost=DOMAIN."
+    log_info "Do NOT symlink the project into the web root."
+}
+
 # ─── Restart Apache ───
 apache_restart() {
     if [ "${HAS_SYSTEMD:-false}" = "true" ] && [ "${CAN_ELEVATE:-true}" = "true" ]; then
@@ -103,7 +131,8 @@ apache_create_vhost() {
     local vhost_config
     vhost_config=$(apache_generate_vhost "$domain")
 
-    if [ "${CAN_ELEVATE:-true}" = "true" ] && [ -n "${SUDO:-}" ]; then
+    # SUDO kosong berarti sudah root -- tetap boleh menulis.
+    if [ "${CAN_ELEVATE:-true}" = "true" ]; then
         printf '%s\n' "$vhost_config" | $SUDO tee "$vhost_file" >/dev/null
         log_ok "VirtualHost written to $vhost_file"
 
@@ -196,6 +225,24 @@ apache_verify_pwa() {
     fi
 }
 
+# ─── Default probe URL (ikut subfolder DocumentRoot) ───
+# Proyek di /var/www/html/MEeL → http://localhost/MEeL/. Di luar docroot dikenal
+# → http://localhost/ (probe tetap berupa peringatan, bukan kegagalan).
+apache_default_probe_url() {
+    local root="${PROJECT_ROOT:-$PWD}" base rel
+    for base in /var/www/html /opt/lampp/htdocs /srv/www/htdocs /srv/http /var/www /usr/local/apache2/htdocs; do
+        case "$root" in
+            "$base") echo "http://localhost/"; return 0 ;;
+            "$base"/*)
+                rel="${root#"$base"/}"
+                echo "http://localhost/${rel}/"
+                return 0
+                ;;
+        esac
+    done
+    echo "http://localhost/"
+}
+
 # ─── Main Apache step ───
 apache_run() {
     local vhost_domain="${VHOST_OVERRIDE:-}"
@@ -207,8 +254,14 @@ apache_run() {
     if [ "$enable_rewrite" = "true" ]; then
         if [ "${ASSUME_YES:-false}" = "true" ] || confirm "Enable mod_rewrite and restart Apache?" Y; then
             apache_enable_rewrite
+            apache_enable_headers
             apache_restart
         fi
+    fi
+
+    # Warn if the project location will break base-URL detection
+    if [ -z "$vhost_domain" ]; then
+        apache_check_project_location
     fi
 
     # Create VirtualHost if domain provided
@@ -226,12 +279,12 @@ apache_run() {
     fi
 
     # Verify PWA rewrite
-    apache_verify_pwa "http://localhost/"
+    apache_verify_pwa "${VERIFY_URL:-$(apache_default_probe_url)}"
 }
 
 # Export functions
 if [ -n "${BASH_VERSION:-}" ]; then
-    export -f apache_enable_rewrite apache_restart apache_generate_vhost 2>/dev/null || true
+    export -f apache_default_probe_url apache_enable_rewrite apache_enable_headers apache_check_project_location apache_restart apache_generate_vhost 2>/dev/null || true
     export -f apache_create_vhost apache_check_xsendfile apache_get_modules 2>/dev/null || true
     export -f apache_verify_pwa apache_run 2>/dev/null || true
 fi

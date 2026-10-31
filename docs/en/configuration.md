@@ -397,11 +397,35 @@ define('MEEL_FFMPEG_PATH', '/opt/ffmpeg/ffmpeg');
 define('MEEL_FFPROBE_PATH', '/opt/ffmpeg/ffprobe');
 ```
 
+### Binary Path Resolution
+
+MEeL uses `ffmpeg-lite` bundled in `tools/ffmpeg-lite` by default. The `resolveBinary()` helper checks `MEEL_FFMPEG_PATH` constant first, then falls back to the bundled binary, and finally to system paths.
+
+```php
+// Default resolution pattern (used in TranscoderBase.php, Uploader.php, etc.)
+$this->ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
+    ? MEEL_FFMPEG_PATH
+    : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+$this->ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
+    ? MEEL_FFPROBE_PATH
+    : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+$this->ytdlp_bin = defined('MEEL_YTDLP_PATH') && MEEL_YTDLP_PATH !== ''
+    ? MEEL_YTDLP_PATH
+    : resolve_binary([__DIR__ . '/../../tools/yt-dlp/yt-dlp', '/usr/local/bin/yt-dlp', '/usr/bin/yt-dlp', 'yt-dlp']);
+```
+
+To use a custom FFmpeg/yt-dlp path, set the constants in `auth/settings.php`:
+```php
+define('MEEL_FFMPEG_PATH', '/opt/ffmpeg/ffmpeg');
+define('MEEL_FFPROBE_PATH', '/opt/ffmpeg/ffprobe');
+define('MEEL_YTDLP_PATH', '/opt/yt-dlp/yt-dlp');
+```
+
 ### yt-dlp Configuration
 
 ```php
 $this->base_cmd = "export PATH=/usr/local/bin:/usr/bin:/bin; "
-    . " /usr/local/bin/yt-dlp --js-runtime node:/usr/bin/node"
+    . " " . escapeshellarg($this->ytdlp_bin) . " --js-runtime node:/usr/bin/node"
     . " --no-warnings --restrict-filenames"
     . " --user-agent " . escapeshellarg($this->user_agent)
     . " --referer " . escapeshellarg("https://www.youtube.com/")

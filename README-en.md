@@ -178,7 +178,7 @@ mkdir -p data_drive/public data_drive/private_admins temp profile/upload \
 sudo chown -R www-data:www-data data_drive temp profile/upload music/upload books/upload
 
 # 5. Apache
-sudo a2enmod rewrite && sudo systemctl restart apache2
+sudo a2enmod rewrite headers && sudo systemctl restart apache2
 
 # 6. Migrate
 php database/migrate.php

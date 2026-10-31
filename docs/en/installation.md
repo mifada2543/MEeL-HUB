@@ -385,12 +385,16 @@ php tests/check_deploy.php --no-color                # no ANSI colors (for CI/lo
 
 ### 7. Apache Configuration
 
-#### Enable mod_rewrite:
+#### Enable mod_rewrite and mod_headers:
 
 ```bash
-sudo a2enmod rewrite
+sudo a2enmod rewrite headers
 sudo systemctl restart apache2
 ```
+
+> 💡 The root `.htaccess` uses `Header` (nosniff, Referrer-Policy, thumbnail caching). Without `mod_headers` that block is silently skipped. `install.sh` enables both.
+
+> ⚠️ **Place the project physically inside DocumentRoot** (e.g. `/var/www/html/MEeL`), as in [2. Clone Repository](#2-clone-repository). The base URL is derived from the project's physical path minus `DOCUMENT_ROOT`; a project that is merely *symlinked* into the docroot causes a redirect loop (`…/MEeL-HUB-main/err/MEeL-HUB-main/err/…`). Use a VirtualHost (`--vhost=DOMAIN`) if the project must live outside the docroot.
 
 #### Configure AllowOverride for MEeL (development only — production should use a VirtualHost with `AllowOverride None`):
 
@@ -404,7 +408,8 @@ Edit `/etc/apache2/apache2.conf` or a site-specific config in `/etc/apache2/site
     #   FileInfo — for mod_rewrite, AddType, etc.
     #   AuthConfig — for Require directives
     #   Limit — for Order/Allow/Deny (legacy)
-    AllowOverride Options FileInfo AuthConfig Limit
+    #   Indexes — for DirectoryIndex (used by the root .htaccess; without it → 500)
+    AllowOverride Options FileInfo AuthConfig Limit Indexes
     Require all granted
 </Directory>
 ```
@@ -657,6 +662,11 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 - **Cause:** storage HDD (`MEEL_HDD_BASE`) not mounted / misconfigured in `auth/settings.php`. Upload folders are real directories in the repo — no symlinks to fix. A deploy-time symlink pointing at the wrong target also triggers a warning
 - **Fix:** mount the storage, set `MEEL_HDD_BASE` correctly, and ensure each upload dir has its `.htaccess` (see [6. Media Storage](#6-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)). Re-run `php tests/check_deploy.php` until it reports `✅ Deployment sehat.`
 
+### ❌ Redirect loop `…/MEeL-HUB-main/err/MEeL-HUB-main/err/…`
+
+- Cause: the project is only *symlinked* into the DocumentRoot, so the base URL (physical path − `DOCUMENT_ROOT`) is wrong
+- Fix: move/clone the project physically inside the DocumentRoot (e.g. `/var/www/html/MEeL`) or use a VirtualHost. After moving, update the absolute `MEEL_FFMPEG_PATH` / `MEEL_FFPROBE_PATH` in `auth/settings.php`
+
 ### ❌ "403 Forbidden" on pages
 
 - Check `.htaccess` in the relevant directory
@@ -665,6 +675,7 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 ### ❌ "500 Internal Server Error"
 
 - Check error log: `sudo tail -f /var/log/apache2/error.log`
+- `.htaccess: DirectoryIndex not allowed here` → add `Indexes` to `AllowOverride` (see [7. Apache Configuration](#7-apache-configuration))
 - Enable error reporting in PHP: `ini_set('display_errors', 1);`
 
 ### ❌ FFmpeg/yt-dlp not found
