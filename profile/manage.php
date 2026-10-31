@@ -146,12 +146,15 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                 <?php if (!empty($videos)): ?>
                     <?php foreach ($videos as $v):
                         $thumb = !empty($v['thumbnail'])
-                            ? '../video/upload/thumbnail/' . htmlspecialchars($v['thumbnail'])
-                            : '../assets/img/placeholder-video.svg';
+                            ? video_thumbnail_url($v['thumbnail'], '../video/upload/thumbnail/', false)
+                            : '';
+                        if ($thumb === '') {
+                            $thumb = '../assets/img/placeholder-video.svg';
+                        }
                     ?>
                         <div class="content-card">
                             <a href="<?= base_url('/video/watch?v=' . (int)$v['id']) ?>" class="block card-thumb" title="<?= htmlspecialchars($v['title']) ?>">
-                                <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($v['title']) ?>" loading="lazy" width="640" height="360">
+                                <img src="<?= htmlspecialchars($thumb, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($v['title']) ?>" loading="lazy" width="640" height="360">
                             </a>
                             <div class="card-body">
                                 <a href="<?= base_url('/video/watch?v=' . (int)$v['id']) ?>" class="card-title no-underline hover:text-red-400 transition-colors" title="<?= htmlspecialchars($v['title']) ?>">
@@ -201,12 +204,12 @@ $back_url = "../profile/" . urlencode($_SESSION['username']);
                 <?php if (!empty($music_list)): ?>
                     <?php foreach ($music_list as $m):
                         $thumb = !empty($m['thumbnail'])
-                            ? '../music/upload/thumbnail/' . htmlspecialchars($m['thumbnail'])
+                            ? music_thumbnail_url($m['thumbnail'], '../music/upload/thumbnail/')
                             : '../assets/img/placeholder-music.svg';
                     ?>
                         <div class="content-card">
                             <a href="<?= base_url('/music/watch?v=' . (int)$m['id']) ?>" class="block card-thumb" title="<?= htmlspecialchars($m['title']) ?>">
-                                <img src="<?= $thumb ?>" alt="<?= htmlspecialchars($m['title']) ?>" loading="lazy" width="640" height="360">
+                                <img src="<?= htmlspecialchars($thumb, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($m['title']) ?>" loading="lazy" width="640" height="360">
                             </a>
                             <div class="card-body">
                                 <a href="<?= base_url('/music/watch?v=' . (int)$m['id']) ?>" class="card-title no-underline hover:text-orange-400 transition-colors" title="<?= htmlspecialchars($m['title']) ?>">

@@ -13,6 +13,9 @@ const SW_VERSION = <?php echo json_encode($sw_version) ?>;
 const STATIC_CACHE = 'meel-static-' + SW_VERSION;
 const PAGE_CACHE = 'meel-pages-' + SW_VERSION;
 const PAGE_CACHE_MAX = 100;
+const THUMB_CACHE = 'meel-thumbs-' + SW_VERSION;
+const THUMB_TTL = 7 * 24 * 60 * 60 * 1000;
+const THUMB_CACHE_MAX = 400;
 
 const OFFLINE_URL = new URL('err/offline.php', self.registration.scope).href;
 
@@ -42,7 +45,8 @@ self.addEventListener('activate', (event) => {
           .filter((name) => {
             return name.startsWith('meel-') &&
                    name !== STATIC_CACHE &&
-                   name !== PAGE_CACHE;
+                   name !== PAGE_CACHE &&
+                   name !== THUMB_CACHE;
           })
           .map((name) => {
             console.log('[SW] Delete old cache:', name);
@@ -71,12 +75,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (isStreamingMedia(url)) {
+  if (isMediaImage(url)) {
+    event.respondWith(cacheFirstWithTtl(request, THUMB_CACHE, THUMB_TTL));
     return;
   }
 
-  if (url.pathname.includes('/profile/upload/')) {
-    event.respondWith(networkFirst(request, PAGE_CACHE));
+  if (isStreamingMedia(url)) {
     return;
   }
 
@@ -138,6 +142,36 @@ async function staleWhileRevalidate(request, cacheName) {
   return new Response('', { status: 503, headers: { 'Content-Type': 'text/plain' } });
 }
 
+async function cacheFirstWithTtl(request, cacheName, ttl) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  if (cached) {
+    const cachedAt = Number(cached.headers.get('x-meel-cached-at') || 0);
+    if (cachedAt > 0 && Date.now() - cachedAt < ttl) return cached;
+  }
+
+  try {
+    const network = await fetch(request);
+    const contentType = (network.headers.get('content-type') || '').toLowerCase();
+    if (network.ok && contentType.startsWith('image/')) {
+      const copy = network.clone();
+      const headers = new Headers(copy.headers);
+      headers.set('x-meel-cached-at', String(Date.now()));
+      const body = await copy.blob();
+      await cache.put(request, new Response(body, {
+        status: copy.status,
+        statusText: copy.statusText,
+        headers
+      }));
+      await trimCache(cacheName, THUMB_CACHE_MAX);
+    }
+    return network;
+  } catch (err) {
+    if (cached) return cached;
+    return new Response('', { status: 504, headers: { 'Content-Type': 'text/plain' } });
+  }
+}
+
 async function networkFirst(request, cacheName, preloadPromise) {
   try {
     let network = null;
@@ -164,6 +198,14 @@ async function networkFirst(request, cacheName, preloadPromise) {
 
     return new Response('', { status: 503, headers: { 'Content-Type': 'text/plain' } });
   }
+}
+
+function isThumbnail(url) {
+  return /\/(video|music|books)\/upload\/thumbnail\//.test(url.pathname);
+}
+
+function isMediaImage(url) {
+  return isThumbnail(url) || url.pathname.includes('/profile/upload/');
 }
 
 function isStaticAsset(url) {

@@ -181,18 +181,17 @@ if (!$is_guest_profile) {
         </div>
         <div class="glass rounded-[2.5rem] overflow-hidden shadow-2xl">
             <?php
-            $banner_pic = $u['profile_picture'] ?: 'default_avatar.png';
-            $banner_path = __DIR__ . '/upload/' . $banner_pic;
-            $banner_v = is_file($banner_path) ? (int)@filemtime($banner_path) : time();
+            $banner_src = meel_profile_image_url($u['profile_picture'] ?? '', 'upload/');
+            $avatar_src = meel_profile_image_url($u['profile_picture'] ?? '', 'upload/');
             ?>
             <div class="relative h-32 w-full overflow-hidden bg-gray-800">
-                <img src="upload/<?= htmlspecialchars($banner_pic, ENT_QUOTES, 'UTF-8') ?>?v=<?= $banner_v ?>" alt="Foto sampul <?= htmlspecialchars($u['username']) ?>" class="block h-full w-full scale-110" style="object-fit:cover;object-position:center;filter:blur(2px)" loading="eager" decoding="async" onerror="this.onerror=null;this.src='upload/default_avatar.png'">
+                <img src="<?= htmlspecialchars($banner_src, ENT_QUOTES, 'UTF-8') ?>" alt="Foto sampul <?= htmlspecialchars($u['username']) ?>" class="block h-full w-full scale-110" style="object-fit:cover;object-position:center;filter:blur(2px)" loading="eager" decoding="async" onerror="this.onerror=null;this.src='upload/default_avatar.png'">
                 <div class="absolute inset-0 profile-banner-gradient"></div>
             </div>
             <div class="px-8 pb-8">
                 <div class="relative flex justify-between items-end -mt-12">
                     <div class="relative">
-                        <img src="upload/<?= htmlspecialchars($u['profile_picture'] ?: 'default_avatar.png', ENT_QUOTES, 'UTF-8') ?>"
+                        <img src="<?= htmlspecialchars($avatar_src, ENT_QUOTES, 'UTF-8') ?>"
                             class="w-32 h-32 rounded-3xl border-4 border-[var(--meel-bg,#0b0e14)] object-cover bg-gray-800 shadow-xl" title="Foto profil <?= htmlspecialchars($u['username']) ?>">
                         <?php if ($is_online): ?>
                             <div class="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-4 border-[var(--meel-bg,#0b0e14)] rounded-full"></div>

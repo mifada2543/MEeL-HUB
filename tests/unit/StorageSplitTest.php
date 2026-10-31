@@ -5,7 +5,7 @@ use PHPUnit\Framework\TestCase;
  * Penjaga hasil pemecahan `modules/core/helpers/storage.php` (T27).
  *
  * `storage.php` tadinya 941 baris / 37 fungsi dalam satu file, dipecah
- * menjadi empat per domain; `storage.php` sengaja TETAP ada sebagai
+ * menjadi lima bagian per domain; `storage.php` sengaja TETAP ada sebagai
  * aggregator supaya `helpers/main.php` dan hampir 50 pemanggil tidak pecah.
  *
  * BUG SENYAP YANG SUDAH TERJADI: peta "berkas → fungsi berbahaya yang
@@ -21,6 +21,7 @@ class StorageSplitTest extends TestCase
     /** @var array<string, string> berkas pecahan => peran */
     private const PARTS = [
         'storage_paths.php'     => 'path',
+        'storage_media_urls.php' => 'media-urls',
         'storage_disk.php'      => 'disk',
         'storage_xsendfile.php' => 'xsendfile',
         'storage_stream.php'    => 'stream',
@@ -89,7 +90,8 @@ class StorageSplitTest extends TestCase
 
         $expected = [
             'meel_media_base_path', 'video_thumbnail_sm_name', 'video_thumbnail_sm',
-            'meel_is_default_thumbnail', 'music_thumbnail_url', 'meel_storage_base_path',
+            'meel_media_file_version', 'video_thumbnail_url', 'book_thumbnail_url',
+            'meel_profile_image_url', 'meel_is_default_thumbnail', 'music_thumbnail_url', 'meel_storage_base_path',
             'meel_storage_marker_path', 'meel_storage_ready', 'meel_storage_is_mountpoint',
             'meel_storage_path_in_volume',
             'meel_pid_dir_candidates', 'meel_pid_dir', 'meel_pid_filename',
@@ -139,9 +141,9 @@ class StorageSplitTest extends TestCase
         }
 
         $this->assertSame(
-            ['storage_paths.php', 'storage_disk.php', 'storage_xsendfile.php', 'storage_stream.php'],
+            ['storage_paths.php', 'storage_media_urls.php', 'storage_disk.php', 'storage_xsendfile.php', 'storage_stream.php'],
             $order,
-            'urutan require di storage.php harus paths -> disk -> xsendfile -> stream. '
+            'urutan require di storage.php harus paths -> media_urls -> disk -> xsendfile -> stream. '
             . 'Bloc MEEL_HDD_CHECKED di storage_paths.php memanggil meel_storage_ready(); '
             . 'kalau file itu dimuat belakangan, efek sampingnya hilang diam-diam.'
         );

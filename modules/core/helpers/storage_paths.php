@@ -51,23 +51,34 @@ if (!function_exists('meel_is_default_thumbnail')) {
     }
 }
 if (!function_exists('music_thumbnail_url')) {
-    function music_thumbnail_url(?string $thumbnail): string
+    function music_thumbnail_url(?string $thumbnail, string $urlPrefix = 'upload/thumbnail/'): string
     {
         $thumbnail = trim((string)$thumbnail);
         $thumb_dir = meel_media_base_path('music') . '/thumbnail/';
         $fallback = '../assets/img/placeholder-music.svg';
-        static $default_thumb = null;
-        if ($thumbnail === '') {
-            if ($default_thumb === null) {
-                $default_thumb = is_file($thumb_dir . 'default.thumb.webp') ? 'upload/thumbnail/default.thumb.webp'
-                    : (is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp'
-                        : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback));
+        $prefix = rtrim($urlPrefix, '/') . '/';
+
+        $default = '';
+        $defaultVersion = '';
+        foreach (['default.thumb.webp', 'default.webp', 'default.png'] as $candidate) {
+            $version = meel_media_file_version($thumb_dir . $candidate);
+            if ($version !== '') {
+                $default = $candidate;
+                $defaultVersion = $version;
+                break;
             }
-            return $default_thumb;
+        }
+        $defaultUrl = $default !== ''
+            ? $prefix . rawurlencode($default) . $defaultVersion
+            : $fallback;
+
+        if ($thumbnail === '') {
+            return $defaultUrl;
         }
         $thumbnail = basename($thumbnail);
-        if (str_ends_with($thumbnail, '.thumb.webp') && is_file($thumb_dir . $thumbnail)) {
-            return 'upload/thumbnail/' . rawurlencode($thumbnail);
+        $version = meel_media_file_version($thumb_dir . $thumbnail);
+        if (str_ends_with($thumbnail, '.thumb.webp') && $version !== '') {
+            return $prefix . rawurlencode($thumbnail) . $version;
         }
         $base = preg_replace('/\\.thumb$/', '', pathinfo($thumbnail, PATHINFO_FILENAME)) ?: pathinfo($thumbnail, PATHINFO_FILENAME);
         $candidates = [
@@ -76,16 +87,12 @@ if (!function_exists('music_thumbnail_url')) {
             $thumbnail
         ];
         foreach ($candidates as $candidate) {
-            if (is_file($thumb_dir . $candidate)) {
-                return 'upload/thumbnail/' . rawurlencode($candidate);
+            $version = meel_media_file_version($thumb_dir . $candidate);
+            if ($version !== '') {
+                return $prefix . rawurlencode($candidate) . $version;
             }
         }
-        if ($default_thumb === null) {
-            $default_thumb = is_file($thumb_dir . 'default.thumb.webp') ? 'upload/thumbnail/default.thumb.webp'
-                : (is_file($thumb_dir . 'default.webp') ? 'upload/thumbnail/default.webp'
-                    : (is_file($thumb_dir . 'default.png') ? 'upload/thumbnail/default.png' : $fallback));
-        }
-        return $default_thumb;
+        return $defaultUrl;
     }
 }
 if (!function_exists('meel_storage_base_path')) {

@@ -77,7 +77,7 @@ if ($_nav_is_video) {
 
             <div class="w-8 h-8 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
                 <?php if (!empty($_nav_pfp)): ?>
-                    <img src="<?= $_nav_pfp_base . htmlspecialchars($_nav_pfp) ?>"
+                    <img src="<?= htmlspecialchars(meel_profile_image_url($_nav_pfp, $_nav_pfp_base), ENT_QUOTES, 'UTF-8') ?>"
                         class="w-full h-full object-cover"
                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
                     <span class="hidden w-full h-full items-center justify-center text-white text-xs font-bold">
@@ -100,7 +100,7 @@ if ($_nav_is_video) {
             <div class="px-4 py-3 flex items-center gap-3" style="border-bottom:1px solid var(--meel-border)">
                 <div class="w-9 h-9 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
                     <?php if (!empty($_nav_pfp)): ?>
-                        <img src="<?= $_nav_pfp_base . htmlspecialchars($_nav_pfp) ?>"
+                        <img src="<?= htmlspecialchars(meel_profile_image_url($_nav_pfp, $_nav_pfp_base), ENT_QUOTES, 'UTF-8') ?>"
                             class="w-full h-full object-cover"
                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
                         <span class="hidden w-full h-full items-center justify-center text-white text-xs font-bold">
@@ -230,7 +230,7 @@ if ($_nav_is_video) {
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
                     <?php if (!empty($_nav_pfp)): ?>
-                        <img src="<?= $_nav_pfp_base . htmlspecialchars($_nav_pfp) ?>"
+                        <img src="<?= htmlspecialchars(meel_profile_image_url($_nav_pfp, $_nav_pfp_base), ENT_QUOTES, 'UTF-8') ?>"
                             class="w-full h-full object-cover"
                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
                         <span class="hidden w-full h-full items-center justify-center text-white text-sm font-bold">
@@ -389,7 +389,7 @@ if ($_nav_is_video) {
         <div class="flex items-center justify-between px-5 py-4 border-b border-white/[.05]">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full overflow-hidden border border-white/10 flex-shrink-0 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                    <img src="<?= $_nav_pfp_base ?>default_avatar.png" class="w-full h-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
+                    <img src="<?= htmlspecialchars(meel_profile_image_url('default_avatar.png', $_nav_pfp_base), ENT_QUOTES, 'UTF-8') ?>" class="w-full h-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
                     <span class="hidden w-full h-full items-center justify-center text-white text-sm font-bold">?</span>
                 </div>
                 <div>

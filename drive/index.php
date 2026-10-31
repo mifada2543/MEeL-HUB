@@ -69,7 +69,7 @@ if ($user->isMember()) {
             <div class="mt-auto p-4 border-t border-gray-800 bg-black/20">
                 <div class="flex items-center gap-3">
                     <?php if (!empty($user->profile_picture) && is_file(__DIR__ . '/../profile/upload/' . $user->profile_picture)): ?>
-                        <img src="../profile/upload/<?= htmlspecialchars($user->profile_picture, ENT_QUOTES, 'UTF-8') ?>"
+                        <img src="<?= htmlspecialchars(meel_profile_image_url($user->profile_picture, '../profile/upload/'), ENT_QUOTES, 'UTF-8') ?>"
                             alt="<?= htmlspecialchars($user->username, ENT_QUOTES, 'UTF-8') ?>"
                             class="w-10 h-10 rounded-full object-cover border border-gray-800">
                     <?php else: ?>
@@ -93,7 +93,7 @@ if ($user->isMember()) {
                     </div>
                 </div>
                 <?php if (!empty($user->profile_picture) && is_file(__DIR__ . '/../profile/upload/' . $user->profile_picture)): ?>
-                    <img src="../profile/upload/<?= htmlspecialchars($user->profile_picture, ENT_QUOTES, 'UTF-8') ?>"
+                    <img src="<?= htmlspecialchars(meel_profile_image_url($user->profile_picture, '../profile/upload/'), ENT_QUOTES, 'UTF-8') ?>"
                         alt="<?= htmlspecialchars($user->username, ENT_QUOTES, 'UTF-8') ?>"
                         class="w-8 h-8 rounded-full object-cover border border-gray-800">
                 <?php else: ?>

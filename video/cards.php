@@ -19,17 +19,16 @@ if (!function_exists('meel_render_video_card')) {
      */
     function meel_render_video_card(array $v): void
     {
-        $thumb_name = $v['thumbnail'] ?? '';
-        $thumb_ok = $thumb_name !== '' && is_file(meel_media_base_path('video') . '/thumbnail/' . basename($thumb_name));
-        $thumb_src = $thumb_ok
-            ? 'upload/thumbnail/' . video_thumbnail_sm(rawurlencode($thumb_name))
-            : '../assets/img/placeholder-video.svg';
+        $thumb_src = video_thumbnail_url($v['thumbnail'] ?? '');
+        if ($thumb_src === '') {
+            $thumb_src = '../assets/img/placeholder-video.svg';
+        }
         ?>
         <div class="video-card htmx-added meel-card rounded-2xl overflow-hidden group"
              title="<?= htmlspecialchars($v['title']) ?>">
 
             <div class="aspect-video relative overflow-hidden" style="background:#000">
-                <img src="<?= $thumb_src ?>"
+                <img src="<?= htmlspecialchars($thumb_src, ENT_QUOTES, 'UTF-8') ?>"
                      class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                      loading="lazy"
                      decoding="async"
@@ -92,12 +91,16 @@ if (!function_exists('meel_render_video_rec_card')) {
     function meel_render_video_rec_card(array $rec, bool $htmx = false): void
     {
         $uploader = $rec['uploader_name'] ?? $rec['uploader'] ?? '';
+        $rec_thumb = video_thumbnail_url($rec['thumbnail'] ?? '');
+        if ($rec_thumb === '') {
+            $rec_thumb = '../assets/img/placeholder-video.svg';
+        }
         ?>
         <a href="<?= base_url('/video/watch?v=' . (int)$rec['id']) ?>"
            class="rekomendasi-item flex flex-col lg:flex-row gap-2 lg:gap-3 px-2 py-2.5 rounded-xl no-underline<?= $htmx ? ' htmx-added' : '' ?>"
            title="<?= htmlspecialchars($rec['title']) ?>">
             <div class="w-full lg:w-32 aspect-video lg:h-20 lg:aspect-auto rounded-xl overflow-hidden flex-shrink-0 bg-white/[.04] border border-white/[.05]">
-                <img src="upload/thumbnail/<?= video_thumbnail_sm($rec['thumbnail']) ?>"
+                <img src="<?= htmlspecialchars($rec_thumb, ENT_QUOTES, 'UTF-8') ?>"
                      class="rec-thumb-img w-full h-full object-cover transition-transform duration-300"
                      loading="lazy" decoding="async" width="256" height="144"
                      alt="Thumbnail video <?= htmlspecialchars($rec['title']) ?>">

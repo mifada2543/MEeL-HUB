@@ -218,7 +218,7 @@ session_write_close();
                             title="Profil @<?= htmlspecialchars($v['uploader']) ?>"
                             class="w-9 h-9 rounded-full overflow-hidden border border-orange-500/25 flex-shrink-0 block">
                             <?php if (!empty($v['uploader_pfp'])): ?>
-                                <img src="../profile/upload/<?= htmlspecialchars($v['uploader_pfp']) ?>" alt="Foto profil <?= htmlspecialchars($v['uploader']) ?>" width="68" height="68" class="w-full h-full object-cover" loading="lazy" decoding="async">
+                                <img src="<?= htmlspecialchars(meel_profile_image_url($v['uploader_pfp'] ?? '', '../profile/upload/'), ENT_QUOTES, 'UTF-8') ?>" alt="Foto profil <?= htmlspecialchars($v['uploader']) ?>" width="68" height="68" class="w-full h-full object-cover" loading="lazy" decoding="async">
                             <?php else: ?>
                                 <div class="w-full h-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-sm font-bold">
                                     <?= strtoupper(substr($v['uploader'], 0, 1)) ?>

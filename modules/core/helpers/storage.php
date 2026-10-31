@@ -11,6 +11,7 @@
  */
 
 require_once __DIR__ . '/storage_paths.php';
+require_once __DIR__ . '/storage_media_urls.php';
 require_once __DIR__ . '/storage_disk.php';
 require_once __DIR__ . '/storage_xsendfile.php';
 require_once __DIR__ . '/storage_stream.php';
