@@ -150,10 +150,13 @@ config_run() {
     if [ ! -f "${PROJECT_ROOT:-}/auth/settings.php" ]; then
         default_ffmpeg="$PROJECT_ROOT/tools/ffmpeg-lite/ffmpeg"
         default_ffprobe="$PROJECT_ROOT/tools/ffmpeg-lite/ffprobe"
-        default_ytdlp="$PROJECT_ROOT/tools/yt-dlp/yt-dlp"
+        if [ -x "$PROJECT_ROOT/tools/yt-dlp/yt-dlp" ]; then
+            default_ytdlp="$PROJECT_ROOT/tools/yt-dlp/yt-dlp"
+        elif command -v yt-dlp >/dev/null 2>&1; then
+            default_ytdlp="$(command -v yt-dlp)"
+        fi
         [ -x "$default_ffmpeg" ] || default_ffmpeg=""
         [ -x "$default_ffprobe" ] || default_ffprobe=""
-        [ -x "$default_ytdlp" ] || default_ytdlp=""
     fi
     local ffmpeg_path="${FFMPEG_PATH-$default_ffmpeg}" ffprobe_path="${FFPROBE_PATH-$default_ffprobe}" node_path="" ytdlp_path="${YTDLP_PATH-$default_ytdlp}"
     if ! [ "${ASSUME_YES:-false}" = "true" ] && confirm "Set binary paths manually? (empty = auto-detect)" N; then

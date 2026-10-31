@@ -23,6 +23,7 @@ Installer otomatis yang menjalankan sebagian besar langkah panduan ini dalam sat
 ./install.sh --yes           # non-interaktif, pakai semua default
 ./install.sh --hdd=/path     # set MEEL_HDD_BASE langsung
 ./install.sh --skip-apt      # lewati instalasi paket sistem (sudah ada)
+./install.sh --skip-ytdlp    # lewati unduhan yt-dlp (pasang manual)
 ./install.sh --xsendfile     # aktifkan MEEL_USE_XSENDFILE (wajib mod_xsendfile Apache)
 ```
 
@@ -547,6 +548,10 @@ Binary sistem (`/usr/bin/ffmpeg`) opsional — jika ada, dipakai sebagai fallbac
 > 💡 `install.sh` otomatis mengonfigurasi `auth/settings.php` untuk memakai ffmpeg-lite. Jika ingin rebuild dengan komponen tambahan, lihat `tools/ffmpeg-lite/build-ffmpeg-lite.sh`.
 
 ### 9. Setup yt-dlp
+
+> 📦 Paket rilis tidak membundel yt-dlp. `install.sh` mengunduh binary terbaru ke `tools/yt-dlp/yt-dlp` (atau memakai yt-dlp sistem jika sudah ada). Langkah manual di bawah hanya diperlukan jika unduhan otomatis gagal.
+>
+> **Mode offline:** unduh binary di mesin lain, letakkan di `tools/yt-dlp/yt-dlp` (atau set `MEEL_YTDLP_PATH`), lalu jalankan `./install.sh --skip-ytdlp`.
 
 ```bash
 # Install via pip

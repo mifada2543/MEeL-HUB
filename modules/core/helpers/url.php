@@ -32,6 +32,37 @@ if (!function_exists('resolve_binary')) {
     }
 }
 
+if (!function_exists('binary_is_runnable')) {
+    function binary_is_runnable(string $binary): bool
+    {
+        if ($binary === '') {
+            return false;
+        }
+        if (strpos($binary, '/') !== false) {
+            return is_executable($binary);
+        }
+        return trim((string) shell_exec('command -v ' . escapeshellarg($binary) . ' 2>/dev/null')) !== '';
+    }
+}
+
+if (!function_exists('resolve_ytdlp_binary')) {
+    function resolve_ytdlp_binary(?string $projectRoot = null): string
+    {
+        $projectRoot ??= dirname(__DIR__, 3);
+
+        $candidates = [];
+        if (defined('MEEL_YTDLP_PATH') && MEEL_YTDLP_PATH !== '') {
+            $candidates[] = MEEL_YTDLP_PATH;
+        }
+        $candidates[] = $projectRoot . '/tools/yt-dlp/yt-dlp';
+        $candidates[] = '/usr/local/bin/yt-dlp';
+        $candidates[] = '/usr/bin/yt-dlp';
+        $candidates[] = 'yt-dlp';
+
+        return resolve_binary($candidates);
+    }
+}
+
 if (!function_exists('base_url')) {
     function base_url(string $path = ''): string
     {

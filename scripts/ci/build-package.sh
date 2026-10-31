@@ -21,6 +21,7 @@ Options:
   --out-dir <dir>             Direktori output (default: dist)
   --ref <git-ref>             Ref git yang diarsipkan (default: HEAD)
   --repo <dir>                Repo git sumber (default: root skrip ini)
+  --max-size-mb <mb>          Batas ukuran ZIP utama (default: 30)
   -h, --help                  Tampilkan bantuan
 
 Contoh:
@@ -40,6 +41,7 @@ LABEL=""
 OUT_DIR="dist"
 REF="HEAD"
 REPO_DIR=""
+MAX_SIZE_MB=30
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -68,6 +70,11 @@ while [ "$#" -gt 0 ]; do
       REPO_DIR="$2"
       shift 2
       ;;
+    --max-size-mb)
+      [ "$#" -ge 2 ] || die "--max-size-mb membutuhkan nilai"
+      MAX_SIZE_MB="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -88,6 +95,10 @@ esac
 
 if [[ ! "$LABEL" =~ ^[0-9A-Za-z][0-9A-Za-z._+-]*$ ]] || [[ "$LABEL" == *".."* ]]; then
   die "--label hanya boleh berisi huruf, angka, titik, garis bawah, plus, dan minus"
+fi
+
+if [[ ! "$MAX_SIZE_MB" =~ ^[1-9][0-9]*$ ]]; then
+  die "--max-size-mb harus bilangan bulat positif"
 fi
 
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -129,6 +140,7 @@ ARCHIVE_EXCLUDES=(
   ':(exclude,top)CHANGELOG-arcade.md'
   ':(exclude,top)vendor'
   ':(exclude,top)node_modules'
+  ':(exclude,top)tools/yt-dlp/yt-dlp'
 )
 
 case "$TRACK" in
@@ -173,6 +185,7 @@ require_core() {
   require_entry "auth/settings.example.php"
   require_entry "database/schema.sql"
   require_entry "assets/css/tailwind.min.css"
+  require_entry "assets/dict/jmdict.sqlite3"
   require_entry "router.php"
   require_entry "modules/autoload.php"
 }
@@ -194,6 +207,7 @@ forbid_entries() {
 
 forbid_entries '^(tests|\.github|vendor|node_modules|\.git)/' "berkas dev/test"
 forbid_entries '^(phpunit\.xml|composer\.lock|CHANGELOG-core\.md|CHANGELOG-arcade\.md|\.gitignore|\.gitattributes)$' "berkas metadata dev"
+forbid_entries '^tools/yt-dlp/yt-dlp$' "binary yt-dlp"
 
 case "$TRACK" in
   core)
@@ -224,6 +238,12 @@ SIZE="$(du -h "$ZIP" | cut -f1)"
 HASH="$(awk -v name="$(basename "$ZIP")" '$2 == name { print $1 }' "$OUT_DIR/SHA256SUMS")"
 [ -n "$HASH" ] || die "checksum untuk $(basename "$ZIP") tidak ditemukan"
 
-printf '✅ %s package: %s (%s)\n' "$TRACK" "$(basename "$ZIP")" "$SIZE"
+ZIP_BYTES="$(wc -c < "$ZIP" | tr -d '[:space:]')"
+MAX_BYTES=$((MAX_SIZE_MB * 1024 * 1024))
+if [ "$ZIP_BYTES" -gt "$MAX_BYTES" ]; then
+  die "paket $(basename "$ZIP") melebihi batas ${MAX_SIZE_MB}MB ($(awk -v b="$ZIP_BYTES" 'BEGIN { printf "%.1f", b / 1048576 }')MB)"
+fi
+
+printf '✅ %s package: %s (%s / batas %sMB)\n' "$TRACK" "$(basename "$ZIP")" "$SIZE" "$MAX_SIZE_MB"
 printf '   sha256: %s\n' "$HASH"
 printf '   entries: %s\n' "$(wc -l <<<"$ENTRIES")"
