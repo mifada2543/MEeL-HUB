@@ -10,6 +10,16 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), versi mengikut
 > masalah, aturan yang berlaku, dan detail implementasi ada di
 > [docs/](docs/) — bukan di berkas ini.
 
+## [Unreleased]
+
+### Fixed
+
+- **Installer dari ZIP tidak lagi gagal di verifikasi akhir:** health check deployment dipindah ke `tools/check_deploy.php` dan ikut paket core/full. `tests/` tetap tidak masuk paket utama, tetapi tersedia sebagai asset rilis opsional `MEeL-HUB-tests-*.zip`.
+
+### Added
+
+- **Pemilihan paket rilis:** tag anotasi dapat memuat baris `packages: ...` sehingga workflow hanya membangun/mengunggah paket yang dipilih. `scripts/ci/build-tests-package.sh` membangun asset tests opsional.
+
 ## [2.2.2] - 2026-10-31
 
 ### Changed
@@ -211,5 +221,3 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/), versi mengikut
 ### Security
 
 - **Peningkatan validasi unduhan:** yt-dlp kini menggunakan `--max-filesize` dan `--match-filter` untuk membatasi ukuran dan durasi unduhan, mencegah abuse bandwidth.
-
-<!--

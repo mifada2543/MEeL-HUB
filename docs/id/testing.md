@@ -1,6 +1,6 @@
 # 🧪 Panduan Testing
 
-**Terakhir diperbarui:** 25 Oktober 2026
+**Terakhir diperbarui:** 1 November 2026
 
 ---
 
@@ -14,8 +14,12 @@ MEeL menggunakan pendekatan testing berlapis:
 | **Integration Test** | PHPUnit 9.6 | Operasi DB real | `tests/integration/` |
 | **Functional Test** | Custom PHP | Alur kerja aplikasi | `tests/functional_test.php` |
 | **Security Test** | Custom PHP | Pemindaian kerentanan | `tests/security_test.php` |
-| **Deployment Check** | Custom PHP | Verifikasi environment (storage, folder upload, .htaccess, mod_rewrite) | `tests/check_deploy.php` |
+| **Deployment Check** | Custom PHP | Verifikasi environment (storage, folder upload, .htaccess, mod_rewrite) | `tools/check_deploy.php` |
 | **CI Pipeline** | GitHub Actions | Validasi otomatis | `.github/workflows/ci.yml` |
+
+> ZIP distribusi utama tidak memuat `tests/`. Asset rilis opsional
+> `MEeL-HUB-tests-*.zip` berisi suite tersebut; ekstrak di atas paket
+> core/full, lalu jalankan `composer install` sebelum memakai PHPUnit.
 
 ---
 
@@ -164,7 +168,7 @@ Skrip menjalankan, secara berurutan:
 3. **Functional Test** — `php tests/functional_test.php` (verifikasi patch)
 4. **Probe 403 Private Drive** — akses HTTP langsung ke `data_drive/private_admins/`
    dan path file tiruan harus sama-sama mengembalikan `403` (aturan deny `.htaccess`)
-5. *Opsional* (`--deploy`) — `php tests/check_deploy.php --no-color [--hdd=...]`
+5. *Opsional* (`--deploy`) — `php tools/check_deploy.php --no-color [--hdd=...]`
 
 Exit code `0` = semua suite lulus (warning diperbolehkan), `1` = minimal satu
 gagal — ramah CI. Tool yang tidak ada (`vendor/bin/phpunit`) atau web server
@@ -277,16 +281,17 @@ php tests/security_test.php
 - Open Redirect — semua redirect referer wajib lewat validasi host; `playlist_action.php` tolak `//host` & skema `://`
 - Fatal-Bug Regression — include kelas ganda (RateLimiter) & redirect mentah `HTTP_REFERER` terdeteksi
 
-## 🚀 Deployment Check (`tests/check_deploy.php`)
+<a id="deployment-check-check_deployphp"></a>
+## 🚀 Deployment Check (`tools/check_deploy.php`)
 
 Health-check cepat environment deployment — mencerminkan apa yang dicek security
 test, tapi fokus pada infrastruktur:
 
 ```bash
-php tests/check_deploy.php                          # cek lokal + probe HTTP otomatis
-php tests/check_deploy.php --url=http://localhost/MEeL   # probe HTTP eksplisit
-php tests/check_deploy.php --hdd=/tmp/meel-storage/media  # override MEEL_HDD_BASE (testing/CI)
-php tests/check_deploy.php --no-color               # tanpa warna ANSI (untuk CI/log)
+php tools/check_deploy.php                          # cek lokal + probe HTTP otomatis
+php tools/check_deploy.php --url=http://localhost/MEeL   # probe HTTP eksplisit
+php tools/check_deploy.php --hdd=/tmp/meel-storage/media  # override MEEL_HDD_BASE (testing/CI)
+php tools/check_deploy.php --no-color               # tanpa warna ANSI (untuk CI/log)
 ```
 
 **Memverifikasi:**
@@ -318,7 +323,7 @@ PHP Syntax (8.0–8.3)
     ├── Migration Test            → impor schema.sql + migrate.php idempoten + schema parity
     ├── HTACCESS & Integrity      → kehadiran .htaccess + permission
     ├── ShellCheck                → shellcheck semua *.sh
-    ├── Deployment Check         → php tests/check_deploy.php --no-color --hdd=…
+    ├── Deployment Check         → php tools/check_deploy.php --no-color --hdd=…
     ├── Tailwind Reproducibility  → npm run css:check
     └── Drive Storage Integrity   → verifikasi path storage
             └── CI Summary
@@ -436,10 +441,10 @@ kehadiran `.htaccess`; aturan deny level repo untuk `data_drive/private_admins`
 ditegaskan oleh pemeriksaan `data_drive/.htaccess` di security test (lapisan 1),
 plus `data_drive/private_admins/.htaccess` ter-track (`Require all denied`,
 lapisan 2) yang diperiksa oleh `tests/security_test.php` (TEST 13) dan
-`tests/check_deploy.php`.
+`tools/check_deploy.php`.
 
 Job `deploy-check` di `.github/workflows/ci.yml` menjalankan suite ini
-(`php tests/check_deploy.php --no-color --hdd=...`) pada layout storage yang
+(`php tools/check_deploy.php --no-color --hdd=...`) pada layout storage yang
 disimulasikan, dan menyertakan probe 403 live opsional yang berjalan hanya
 saat URL staging dikonfigurasi sebagai secret GitHub:
 
@@ -537,8 +542,8 @@ rm -rf "$TARGET/zz_403_probe"
 tidak aktif untuk `data_drive/` — perbaiki `httpd.conf` (`AllowOverride All`)
 sebelum rilis.
 
-> 💡 Tip: pemeriksaan yang sama juga bagian dari `tests/check_deploy.php`
-> (aturan deny `.htaccess`) — jalankan `php tests/check_deploy.php --url=http://localhost/MEeL`
+> 💡 Tip: pemeriksaan yang sama juga bagian dari `tools/check_deploy.php`
+> (aturan deny `.htaccess`) — jalankan `php tools/check_deploy.php --url=http://localhost/MEeL`
 > untuk laporan kesehatan deployment lengkap.
 
 ---

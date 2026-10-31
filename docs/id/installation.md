@@ -47,7 +47,7 @@ Urutan langkah yang dijalankan (idempotent untuk sebagian besar langkah):
    di-commit).
 6. **Apache** — aktifkan `mod_rewrite` (best-effort).
 7. **Migration** — `php database/migrate.php`.
-8. **Verifikasi akhir** — `php tests/check_deploy.php`; **exit code `1` jika
+8. **Verifikasi akhir** — `php tools/check_deploy.php`; **exit code `1` jika
    ada FAIL** dan banner akhir dibedakan antara "deployment sehat" vs "server
    belum siap dipakai".
 
@@ -284,9 +284,9 @@ define('MEEL_HDD_DRIVE', MEEL_HDD_BASE . '/drive/'); // base = public/ + private
   ```bash
   rm -f data_drive/public && ln -s "$BASE/drive/public" data_drive/public
   ```
-  `tests/check_deploy.php` menilai symlink deploy ini **PASS** (target di dalam `MEEL_HDD_DRIVE`) dan hanya memberi WARN bila target menunjuk ke luar storage Drive (mis. symlink ter-commit `/media/<user>/...`).
+  `tools/check_deploy.php` menilai symlink deploy ini **PASS** (target di dalam `MEEL_HDD_DRIVE`) dan hanya memberi WARN bila target menunjuk ke luar storage Drive (mis. symlink ter-commit `/media/<user>/...`).
 - **Mode fallback (`MEEL_HDD_DRIVE` tidak terdefinisi):** Drive memakai folder ter-track `data_drive/public` & `data_drive/private_admins` (folder nyata, dibuat otomatis oleh `DriveStorage::ensureDirectoryExists()`). Ini perilaku bawaan pada clone baru
-- **Jangan pernah commit symlink di dalam `data_drive/`**: `.gitignore` memblokir `data_drive/public` / `data_drive/private_admins` sebagai symlink. `tests/check_deploy.php` hanya memperingatkan symlink yang menunjuk ke LUAR `MEEL_HDD_DRIVE` (mis. `/media/<user>/...`); symlink deploy ke dalam `MEEL_HDD_DRIVE` dinilai PASS. Symlink absolut yang ter-commit membocorkan username OS lewat repo publik dan membuat modul Drive crash di mesin lain (`RuntimeException: Folder penyimpanan gagal dibuat`)
+- **Jangan pernah commit symlink di dalam `data_drive/`**: `.gitignore` memblokir `data_drive/public` / `data_drive/private_admins` sebagai symlink. `tools/check_deploy.php` hanya memperingatkan symlink yang menunjuk ke LUAR `MEEL_HDD_DRIVE` (mis. `/media/<user>/...`); symlink deploy ke dalam `MEEL_HDD_DRIVE` dinilai PASS. Symlink absolut yang ter-commit membocorkan username OS lewat repo publik dan membuat modul Drive crash di mesin lain (`RuntimeException: Folder penyimpanan gagal dibuat`)
 - Subtree private tetap di-deny oleh `data_drive/.htaccess` yang ter-track (`RewriteRule ^private_admins/ - [F,L]`) plus `data_drive/private_admins/.htaccess` (`Require all denied` — ter-track di folder fallback dan dibuat ulang saat deploy pada target storage eksternal)
 
 #### Mount / Buat Storage
@@ -327,7 +327,7 @@ done
 ls -la books/upload music/upload video/upload   # harus menunjuk ke BASE Anda
 ```
 
-> ⚠️ Jika membuat symlink manual, pastikan `.htaccess` hardening (pola `data_drive/.htaccess`: `php_flag engine off` + `ForceType` + `Options -Indexes`) ada di **target** storage — `install.sh` melakukannya otomatis. `tests/check_deploy.php` menilai symlink yang menunjuk ke `MEEL_HDD_BASE` sebagai PASS, yang menunjuk ke tempat lain sebagai FAIL.
+> ⚠️ Jika membuat symlink manual, pastikan `.htaccess` hardening (pola `data_drive/.htaccess`: `php_flag engine off` + `ForceType` + `Options -Indexes`) ada di **target** storage — `install.sh` melakukannya otomatis. `tools/check_deploy.php` menilai symlink yang menunjuk ke `MEEL_HDD_BASE` sebagai PASS, yang menunjuk ke tempat lain sebagai FAIL.
 
 #### Perizinan
 
@@ -361,7 +361,7 @@ Setiap direktori upload wajib berisi `.htaccess` yang mematikan eksekusi PHP (`p
 php tests/security_test.php
 ```
 
-> Security test sekarang melaporkan **0 FAIL di semua environment** — aturan deny `.htaccess` folder upload ter-track di repo dan diverifikasi secara statis. Ia bisa mengeluarkan **5 warning non-kritis** (review query mentah MediaViewer, cek MIME profile_edit, dan deteksi parameter session) — itu item review, bukan masalah deployment. Untuk verifikasi level storage gunakan `tests/check_deploy.php` (lihat [6. Media Storage](#6-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
+> Security test sekarang melaporkan **0 FAIL di semua environment** — aturan deny `.htaccess` folder upload ter-track di repo dan diverifikasi secara statis. Ia bisa mengeluarkan **5 warning non-kritis** (review query mentah MediaViewer, cek MIME profile_edit, dan deteksi parameter session) — itu item review, bukan masalah deployment. Untuk verifikasi level storage gunakan `tools/check_deploy.php` (lihat [6. Media Storage](#6-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)).
 
 #### Verifikasi Storage
 
@@ -373,13 +373,13 @@ php -r "require 'auth/settings.php'; echo defined('MEEL_HDD_BASE') ? MEEL_HDD_BA
 
 #### Cek Deployment Otomatis (Satu Perintah)
 
-Project menyertakan health-check CLI (`tests/check_deploy.php`) yang memverifikasi area kritis deployment. Dokumentasi lengkap ada di **[Panduan Testing](testing.md#deployment-check-check_deployphp)**.
+Project menyertakan health-check CLI (`tools/check_deploy.php`) yang memverifikasi area kritis deployment. Dokumentasi lengkap ada di **[Panduan Testing](testing.md#deployment-check-check_deployphp)**.
 
 ```bash
-php tests/check_deploy.php                           # cek lokal + probe HTTP otomatis
-php tests/check_deploy.php --url=http://localhost/MEeL   # probe HTTP eksplisit
-php tests/check_deploy.php --hdd=/tmp/meel-storage/media  # override MEEL_HDD_BASE (testing/CI)
-php tests/check_deploy.php --no-color                # tanpa warna ANSI (untuk CI/log)
+php tools/check_deploy.php                           # cek lokal + probe HTTP otomatis
+php tools/check_deploy.php --url=http://localhost/MEeL   # probe HTTP eksplisit
+php tools/check_deploy.php --hdd=/tmp/meel-storage/media  # override MEEL_HDD_BASE (testing/CI)
+php tools/check_deploy.php --no-color                # tanpa warna ANSI (untuk CI/log)
 ```
 
 > 💡 `install.sh` menjalankan health-check ini sebagai langkah verifikasi terakhir **tanpa `--hdd`** (konfigurasi asli `auth/settings.php` yang diuji) dan **keluar dengan code `1`** jika ada minimal satu FAIL — banner akhir dibedakan antara "deployment sehat" dan "server belum siap dipakai".
@@ -663,9 +663,9 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 
 ### ❌ Deployment Check melaporkan FAIL pada folder upload
 
-- **Gejala:** `php tests/check_deploy.php` → `FAIL` pada folder upload / `.htaccess` folder upload (storage tidak ter-mount atau `MEEL_HDD_BASE` salah)
+- **Gejala:** `php tools/check_deploy.php` → `FAIL` pada folder upload / `.htaccess` folder upload (storage tidak ter-mount atau `MEEL_HDD_BASE` salah)
 - **Penyebab:** storage HDD (`MEEL_HDD_BASE`) tidak ter-mount / salah di `auth/settings.php`. Folder upload adalah folder nyata di repo — tidak ada symlink yang perlu diperbaiki. Symlink saat deploy yang menunjuk ke target salah juga memicu peringatan
-- **Perbaikan:** mount storage, set `MEEL_HDD_BASE` dengan benar, dan pastikan setiap folder upload punya `.htaccess` (lihat [6. Media Storage](#6-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)). Jalankan ulang `php tests/check_deploy.php` sampai muncul `✅ Deployment sehat.`
+- **Perbaikan:** mount storage, set `MEEL_HDD_BASE` dengan benar, dan pastikan setiap folder upload punya `.htaccess` (lihat [6. Media Storage](#6-media-storage-meel_hdd_base--endpoint-php--rewrite-tanpa-symlink)). Jalankan ulang `php tools/check_deploy.php` sampai muncul `✅ Deployment sehat.`
 
 ### ❌ Redirect loop `…/MEeL-HUB-main/err/MEeL-HUB-main/err/…`
 

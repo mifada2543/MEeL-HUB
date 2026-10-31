@@ -20,12 +20,12 @@ verify_run_check_deploy() {
 
     log_step "Running deployment verification"
 
-    if [ ! -f "tests/check_deploy.php" ]; then
-        log_fail "tests/check_deploy.php not found"
+    if [ ! -f "tools/check_deploy.php" ]; then
+        log_fail "tools/check_deploy.php not found"
         return 1
     fi
 
-    local cmd=("$PHP_BIN" "tests/check_deploy.php")
+    local cmd=("$PHP_BIN" "tools/check_deploy.php")
     [ -n "$url" ] && cmd+=("--url=$url")
     [ -n "$hdd_override" ] && cmd+=("--hdd=$hdd_override")
     [ "$no_color" = "true" ] && cmd+=("--no-color")
@@ -72,7 +72,7 @@ verify_summary() {
         echo "  Perbaiki penyebab FAIL di output check_deploy di atas (lihat"
         echo "  docs/id/installation.md atau docs/id/troubleshooting.md), lalu"
         echo "  jalankan ulang verifikasi:"
-        echo "    php tests/check_deploy.php"
+        echo "    php tools/check_deploy.php"
         echo ""
         return 1
     fi

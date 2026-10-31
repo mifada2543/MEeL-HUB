@@ -184,7 +184,7 @@ sudo a2enmod rewrite headers && sudo systemctl restart apache2
 php database/migrate.php
 
 # 7. Verify
-php tests/check_deploy.php
+php tools/check_deploy.php
 ```
 
 </details>
@@ -224,8 +224,8 @@ MEeL/
 ├── modules/        # Core logic (OOP)
 ├── music/          # Music player
 ├── scripts/        # Utility scripts (CSS build, audits, backup)
-├── tests/          # PHPUnit tests
-├── tools/          # Toolchain (README screenshots, Tailwind, CI guards)
+├── tests/          # PHPUnit tests (source repo; not in the main ZIP)
+├── tools/          # Toolchain + health check (tools/check_deploy.php)
 ├── video/          # Video player
 └── install.sh      📄 # One-command installer
 ```
@@ -270,7 +270,7 @@ vendor/bin/phpunit --testsuite='MEeL Core Unit Tests'    # Unit
 vendor/bin/phpunit --testsuite='MEeL Integration Tests'   # Integration (MySQL)
 php tests/functional_test.php                              # Functional
 php tests/security_test.php                                # Security
-php tests/check_deploy.php                                 # Deployment
+php tools/check_deploy.php                                 # Deployment
 ```
 
 ---

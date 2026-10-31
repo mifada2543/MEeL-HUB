@@ -654,7 +654,7 @@ vendor/bin/phpunit --testsuite='MEeL Core Unit Tests'
 MEEL_TEST_DB_HOST=127.0.0.1 vendor/bin/phpunit --testsuite='MEeL Integration Tests'
 php tests/functional_test.php
 php tests/security_test.php
-php tests/check_deploy.php
+php tools/check_deploy.php
 php database/migrate.php   # 2× untuk idempotensi
 php scripts/gc.php          # housekeeping berat (butuh $server = TCP)
 ```

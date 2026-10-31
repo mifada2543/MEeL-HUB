@@ -19,7 +19,7 @@
     "test:integration": "phpunit --no-coverage --testsuite='MEeL Integration Tests'",
     "test:security": "php tests/security_test.php",
     "test:functional": "php tests/functional_test.php",
-    "test:deploy": "php tests/check_deploy.php",
+    "test:deploy": "php tools/check_deploy.php",
     "test:migration": "php scripts/ci/schema-parity-check.php",
     "test:tailwind": "php scripts/ci/tailwind-coverage-check.php --rebuild",
     "build:css": "php scripts/build-css-bundle.php",
