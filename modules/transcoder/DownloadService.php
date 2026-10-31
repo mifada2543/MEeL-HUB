@@ -115,7 +115,7 @@ class DownloadService extends TranscoderBase
             throw new DownloadException($e->getMessage(), $url, 'validation');
         }
         $proxyArgs = str_contains($extraArgs, '--proxy') ? '' : $this->ensureDownloadProxy();
-        $cmd = $this->base_cmd . $proxyArgs . $extraArgs . "--skip-download --print-json " . escapeshellarg($url) . " 2>&1";
+        $cmd = $this->requireYtdlp() . $proxyArgs . $extraArgs . "--skip-download --print-json " . escapeshellarg($url) . " 2>&1";
         exec($cmd, $output_array, $return_var);
         $output = implode("\n", $output_array);
         $start = strpos($output, '{');
@@ -353,7 +353,7 @@ class DownloadService extends TranscoderBase
             $ctx['shm_temp'] = $this->getShmTempPath();
             $ctx['temp_id'] = "raw_" . time() . "_" . substr(md5(uniqid('', true)), 0, 4);
             $temp_path = $ctx['shm_temp'] . "/" . $ctx['temp_id'] . ".%(ext)s";
-            $ctx['cmd'] = $this->base_cmd . $dl_extra
+            $ctx['cmd'] = $this->requireYtdlp() . $dl_extra
                 . "-f bestaudio -o " . escapeshellarg($temp_path)
                 . " --write-thumbnail --embed-thumbnail"
                 . " --newline " . escapeshellarg($dl_url) . " 2>&1";
@@ -368,7 +368,7 @@ class DownloadService extends TranscoderBase
         }
         $output_tpl = $ctx['staging_dir'] . $ctx['basename'] . ".%(ext)s";
         $format = $this->resolveVideoFormat($url);
-        $ctx['cmd'] = $this->base_cmd . $dl_extra
+        $ctx['cmd'] = $this->requireYtdlp() . $dl_extra
             . "-f " . escapeshellarg($format)
             . " --merge-output-format mp4 -o " . escapeshellarg($output_tpl)
             . " --write-thumbnail --newline "

@@ -289,9 +289,9 @@ if ($nVideo === 0 && $nMusic === 0) {
 }
 
 if ($opt['lookup']) {
-    $ytdlp = trim((string) shell_exec('command -v yt-dlp 2>/dev/null'));
-    if ($ytdlp === '') {
-        fwrite(STDERR, "yt-dlp tidak ditemukan di PATH — lookup dilewati.\n");
+    $ytdlp = resolve_ytdlp_binary(dirname(__DIR__));
+    if (!binary_is_runnable($ytdlp)) {
+        fwrite(STDERR, "yt-dlp tidak ditemukan (cek tools/yt-dlp/yt-dlp atau MEEL_YTDLP_PATH) — lookup dilewati.\n");
     } else {
         echo "═══ Mencari judul & deskripsi di YouTube ═══\n";
         echo "    (divalidasi lewat durasi; yang tidak cocok dibiarkan dari slug)\n\n";

@@ -10,6 +10,7 @@ for TEST in \
     storage_symlink_test.sh \
     hardening_missing_dirs_test.sh \
     log_placeholders_test.sh \
+    ytdlp_install_test.sh \
     install_clean_test.sh; do
     echo "==> $TEST"
     bash "$HERE/$TEST"

@@ -25,7 +25,7 @@ Di `auth/settings.php` (atau lewat `install.sh`):
 ```php
 define('MEEL_FFMPEG_PATH',  '/path/ke/MEeL/tools/ffmpeg-lite/ffmpeg');
 define('MEEL_FFPROBE_PATH', '/path/ke/MEeL/tools/ffmpeg-lite/ffprobe');
-define('MEEL_YTDLP_PATH',   '/path/ke/MEeL/tools/yt-dlp/yt-dlp');  // baru
+define('MEEL_YTDLP_PATH',   '/path/ke/MEeL/tools/yt-dlp/yt-dlp');  // hasil unduhan installer
 ```
 
 Atau biarkan kosong `''` → auto-detect via `resolveBinary()` (cari di PATH + lokasi umum).
@@ -108,7 +108,7 @@ tools/
 │   │   ├── ffmpeg
 │   │   └── ffprobe
 │   └── README.md              # File ini
-└── yt-dlp/                    # yt-dlp standalone
+└── yt-dlp/                    # yt-dlp (diunduh installer, tidak ikut ZIP)
     ├── yt-dlp                 # Binary dari GitHub Releases
     ├── update.sh              # Script update manual
     └── VERSION.txt            # Versi & timestamp

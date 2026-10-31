@@ -134,7 +134,13 @@ if (!function_exists('analyzeJapaneseText')) {
             if (file_exists($dict_path)) {
                 try {
                     $pdo = new PDO('sqlite:' . $dict_path);
-                    $dict_stmt = $pdo->prepare("SELECT glosses FROM entries WHERE reading = :w LIMIT 1");
+                    $schema_version = (int) $pdo->query('PRAGMA user_version')->fetchColumn();
+                    $dict_stmt = $pdo->prepare(
+                        $schema_version >= 2
+                            ? "SELECT e.glosses FROM keys k JOIN entries e ON e.id = k.entry_id"
+                                . " WHERE k.reading = :w ORDER BY k.pos LIMIT 1"
+                            : "SELECT glosses FROM entries WHERE reading = :w ORDER BY rowid LIMIT 1"
+                    );
                     $dict_ready = true;
                 } catch (RuntimeException $e) {
                     $dict_ready = false;
