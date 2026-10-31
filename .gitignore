@@ -204,5 +204,6 @@ marks.php
 tools/*
 !tools/tailwind
 !tools/ffmpeg-lite
+!tools/yt-dlp
 # ---GENERATED BUNDLE CSS---
 assets/css/*/bundle.css
