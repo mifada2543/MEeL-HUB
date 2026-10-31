@@ -206,9 +206,13 @@ database_run() {
     sleep 1
 
     if db_exists_and_populated "$db_host" "$db_user" "$db_pass" "$db_name"; then
-        log_warn "Database '$db_name' already exists with tables -- skipping import"
-        log_info "To reimport: DROP DATABASE \`${db_name}\`; then re-run installer"
-        if [ "${ASSUME_YES:-false}" = "true" ] || confirm "Force reimport schema.sql now? (may fail on duplicate data)" N; then
+        log_warn "Database '$db_name' already exists with tables"
+        if [ "${ASSUME_YES:-false}" = "true" ]; then
+            log_info "--yes: re-running schema.sql (idempotent: CREATE TABLE IF NOT EXISTS / INSERT IGNORE, existing data kept)"
+        else
+            log_info "Import is skipped unless you confirm. To start clean: DROP DATABASE \`${db_name}\`; then re-run installer"
+        fi
+        if [ "${ASSUME_YES:-false}" = "true" ] || confirm "Re-run schema.sql now? (idempotent; existing data kept)" N; then
             db_import_schema "$db_host" "$db_user" "$db_pass" "$db_name" || log_warn "Reimport failed -- continuing with existing data"
         fi
     else

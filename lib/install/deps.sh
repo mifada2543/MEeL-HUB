@@ -30,7 +30,7 @@ deps_check_required() {
     case "$PKG_MGR" in
         apt)
             for pkg in $REQUIRED_APT_PKGS; do
-                dpkg -l "$pkg" 2>/dev/null | grep -q '^ii' || missing+=("$pkg")
+                [ "$(dpkg-query -W -f='${db:Status-Abbrev}' "$pkg" 2>/dev/null | tr -d ' ')" = "ii" ] || missing+=("$pkg")
             done
             ;;
         dnf)
@@ -137,6 +137,13 @@ deps_install_optional() {
     deps_install_packages "$packages" "optional packages"
 }
 
+# ─── Check one PHP extension ───
+deps_php_has_ext() {
+    local ext="$1" mods
+    mods="$(php -m 2>/dev/null || true)"
+    grep -qi "^${ext}\$" <<<"$mods"
+}
+
 # ─── Verify PHP extensions ───
 deps_verify_php_ext() {
     local required_ext="mysqli pdo_mysql fileinfo mbstring intl gd zip xml curl"
@@ -144,12 +151,12 @@ deps_verify_php_ext() {
     local ext
 
     for ext in $required_ext; do
-        if ! php -m 2>/dev/null | grep -qi "^${ext}$"; then
+        if ! deps_php_has_ext "$ext"; then
             if command -v phpenmod >/dev/null 2>&1; then
                 sudo_cmd "phpenmod $ext" "Enable PHP extension: $ext" || true
                 sleep 1
             fi
-            if ! php -m 2>/dev/null | grep -qi "^${ext}$"; then
+            if ! deps_php_has_ext "$ext"; then
                 missing_ext+=("$ext")
             fi
         fi
@@ -192,6 +199,50 @@ deps_check_optional_bins() {
     return 0
 }
 
+# ─── Bootstrap PHP CLI (diperlukan sebelum cek versi/ekstensi) ───
+deps_bootstrap_php() {
+    local pkg=""
+    case "$PKG_MGR" in
+        apt) pkg="php-cli" ;;
+        dnf) pkg="php-cli" ;;
+        pacman) pkg="php" ;;
+        apk) pkg="php83" ;;
+        *)
+            log_fail "PHP not found and no supported package manager detected. Install PHP 8.2+ manually."
+            return 1
+            ;;
+    esac
+
+    if [ "${SKIP_APT:-false}" = "true" ]; then
+        log_fail "PHP not found. Install PHP 8.2+ first (--skip-apt prevents the installer from doing it)."
+        return 1
+    fi
+
+    if [ "${ASSUME_YES:-false}" != "true" ] && ! confirm "PHP not found. Install PHP CLI ($pkg) via $PKG_MGR now?" Y; then
+        log_fail "PHP not found. Install PHP 8.2+ first."
+        return 1
+    fi
+
+    deps_install_packages "$pkg" "PHP CLI" || {
+        log_fail "Failed to install PHP CLI ($pkg)"
+        return 1
+    }
+
+    # Dry-run tidak benar-benar memasang apa pun -- jangan gagal karena itu.
+    if [ "${DRY_RUN:-false}" = "true" ]; then
+        log_verbose "[DRY-RUN] Would re-detect PHP after installing $pkg"
+        return 0
+    fi
+
+    PHP_BIN=""
+    detect_php
+    if [ "${PHP_VERSION:-missing}" = "missing" ]; then
+        log_fail "PHP still not found after installing $pkg"
+        return 1
+    fi
+    log_ok "PHP CLI installed: $PHP_VERSION"
+}
+
 # ─── Main dependency step ───
 deps_run() {
     log_step "Checking system dependencies"
@@ -201,8 +252,11 @@ deps_run() {
     fi
 
     if [ "${PHP_VERSION:-}" = "missing" ]; then
-        log_fail "PHP not found. Install PHP 8.2+ first."
-        return 1
+        deps_bootstrap_php || return 1
+        # Dry-run: PHP tidak sungguh terpasang, lewati cek versi/ekstensi.
+        if [ "${PHP_VERSION:-}" = "missing" ]; then
+            return 0
+        fi
     fi
 
     local php_major
@@ -248,7 +302,7 @@ deps_run() {
 
 # Export functions
 if [ -n "${BASH_VERSION:-}" ]; then
-    export -f deps_check_required deps_install_packages deps_install_required 2>/dev/null || true
+    export -f deps_php_has_ext deps_bootstrap_php deps_check_required deps_install_packages deps_install_required 2>/dev/null || true
     export -f deps_install_recommended deps_install_optional deps_verify_php_ext 2>/dev/null || true
     export -f deps_check_optional_bins deps_run 2>/dev/null || true
 fi

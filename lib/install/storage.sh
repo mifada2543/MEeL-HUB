@@ -163,26 +163,31 @@ storage_set_permissions() {
         return 0
     fi
 
-    if [ "${CAN_ELEVATE:-true}" = "true" ] && [ -n "${SUDO:-}" ] && id "${WEB_USER:-www-data}" >/dev/null 2>&1; then
+    if [ "${CAN_ELEVATE:-true}" = "true" ] && id "${WEB_USER:-www-data}" >/dev/null 2>&1; then
         if confirm "Set storage ownership to ${WEB_USER}:${WEB_USER}?" Y; then
             $SUDO chown -R "${WEB_USER}:${WEB_USER}" \
                 "$project_root/data_drive" \
                 "$project_root/temp" \
                 "$project_root/profile/upload" \
                 "$base" 2>/dev/null || log_warn "chown failed — set manually"
-
-            $SUDO chmod -R 775 \
+            local perm_dir
+            for perm_dir in \
                 "$project_root/data_drive" \
                 "$project_root/temp" \
                 "$project_root/profile/upload" \
-                "$base" 2>/dev/null || true
+                "$base"; do
+                [ -e "$perm_dir" ] || continue
+                $SUDO find -P "$perm_dir" -type d -exec chmod 770 {} + 2>/dev/null || true
+                $SUDO find -P "$perm_dir" -type f -exec chmod 640 {} + 2>/dev/null || true
+            done
 
             log_ok "Storage ownership & permissions set"
         fi
     else
         log_warn "Cannot set permissions automatically — run manually:"
         log_info "  chown -R ${WEB_USER}:${WEB_USER} data_drive temp profile/upload $base"
-        log_info "  chmod -R 775 data_drive temp profile/upload $base"
+        log_info "  find data_drive temp profile/upload $base -type d -exec chmod 770 {} +"
+        log_info "  find data_drive temp profile/upload $base -type f -exec chmod 640 {} +"
     fi
     return 0
 }
