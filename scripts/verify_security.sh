@@ -26,7 +26,7 @@ for arg in "$@"; do
 Opsi:
   --url=URL    basis URL target (default http://localhost/MEeL)
   --skip-403   lewati probe 403 data_drive/private_admins
-  --deploy     jalankan juga php tests/check_deploy.php
+  --deploy     jalankan juga php tools/check_deploy.php
   --hdd=PATH   basis HDD untuk check_deploy
   --no-color   matikan warna ANSI
 USAGE
@@ -121,10 +121,10 @@ if [ "$RUN_403" = "1" ]; then
 fi
 
 if [ "$RUN_DEPLOY" = "1" ]; then
-  if [ ! -f tests/check_deploy.php ]; then
-    warn "tests/check_deploy.php tidak ditemukan (langkah dilewati)"
+  if [ ! -f tools/check_deploy.php ]; then
+    warn "tools/check_deploy.php tidak ditemukan (langkah dilewati)"
   else
-    run_step "Deployment Check (tests/check_deploy.php)" -1 php tests/check_deploy.php --no-color $HDD_ARG
+    run_step "Deployment Check (tools/check_deploy.php)" -1 php tools/check_deploy.php --no-color $HDD_ARG
   fi
 fi
 

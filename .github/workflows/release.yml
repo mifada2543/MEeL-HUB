@@ -4,10 +4,15 @@ name: MEeL Release
 # core-vX.Y.Z    → rilis Core + Arcade addon + Full (satu Release)
 # arcade-vX.Y.Z  → rilis Arcade addon saja
 #
+# Tag anotasi boleh memuat baris khusus:
+#   packages: core full arcade tests
+# Workflow hanya membangun/mengunggah paket yang dipilih. Tanpa baris itu,
+# perilaku lama dipertahankan: core = core+full+arcade, arcade = arcade.
+#
 # workflow_dispatch dipakai untuk re-release tag yang sudah ada. Workflow
 # dijalankan dari branch default, lalu checkout commit yang ditunjuk tag.
-# Tag harus sudah memuat workflow ini (termasuk scripts/ci/php-lint.sh dan
-# scripts/ci/build-package.sh).
+# Tag harus sudah memuat workflow ini (termasuk scripts/ci/php-lint.sh,
+# scripts/ci/build-package.sh, dan scripts/ci/build-tests-package.sh).
 on:
   push:
     tags:
@@ -46,6 +51,7 @@ jobs:
       track: ${{ steps.meta.outputs.track }}
       version: ${{ steps.meta.outputs.version }}
       label: ${{ steps.meta.outputs.label }}
+      packages: ${{ steps.meta.outputs.packages }}
       prerelease: ${{ steps.meta.outputs.prerelease }}
       dry_run: ${{ steps.meta.outputs.dry_run }}
     steps:
@@ -80,6 +86,38 @@ jobs:
           fi
           COMMIT="$(git rev-parse "refs/tags/${TAG}^{commit}")"
 
+          # Tag anotasi dapat menyimpan pilihan paket:
+          #   packages: core full arcade tests
+          # Tanpa anotasi, pertahankan perilaku rilis lama.
+          DEFAULT_PACKAGES="core full arcade"
+          [ "$TRACK" = "arcade" ] && DEFAULT_PACKAGES="arcade"
+
+          PACKAGES=""
+          TAG_MESSAGE="$(git tag -l --format='%(contents)' "$TAG" || true)"
+          while IFS= read -r line; do
+            case "$line" in
+              packages:*) PACKAGES="${line#packages:}" ;;
+            esac
+          done <<< "$TAG_MESSAGE"
+          PACKAGES="${PACKAGES:-$DEFAULT_PACKAGES}"
+          PACKAGES="${PACKAGES//,/ }"
+          PACKAGES="$(printf '%s\n' "$PACKAGES" | xargs)"
+          [ -n "$PACKAGES" ] || { echo "❌ Daftar packages kosong"; exit 1; }
+
+          declare -A SEEN=()
+          NORMALIZED=""
+          for pkg in $PACKAGES; do
+            case "$pkg" in
+              core|full|arcade|tests) ;;
+              *) echo "❌ Paket tidak dikenal: $pkg"; exit 1 ;;
+            esac
+            if [ -z "${SEEN[$pkg]:-}" ]; then
+              SEEN[$pkg]=1
+              NORMALIZED="${NORMALIZED:+$NORMALIZED }$pkg"
+            fi
+          done
+          PACKAGES="$NORMALIZED"
+
           PRERELEASE="false"
           if [[ "$VERSION" == *-* ]]; then
             PRERELEASE="true"
@@ -92,11 +130,13 @@ jobs:
             echo "track=$TRACK"
             echo "version=$VERSION"
             echo "label=v$VERSION"
+            echo "packages=$PACKAGES"
             echo "prerelease=$PRERELEASE"
             echo "dry_run=$DRY_RUN"
           } >> "$GITHUB_OUTPUT"
 
           echo "▶️  Track: $TRACK | Versi: $VERSION | Pre-release: $PRERELEASE"
+          echo "▶️  Packages: $PACKAGES"
           echo "▶️  Commit: $COMMIT | Dry run: $DRY_RUN"
 
   # ─── Job 2: syntax gate (PHP runtime minimum) ───────────────────────────
@@ -227,26 +267,30 @@ jobs:
         env:
           TRACK: ${{ needs.resolve.outputs.track }}
           LABEL: ${{ needs.resolve.outputs.label }}
+          PACKAGES: ${{ needs.resolve.outputs.packages }}
         run: |
           set -euo pipefail
           mkdir -p dist
           echo "▶️  Building $(git rev-parse HEAD) — $TRACK $LABEL"
+          echo "▶️  Packages: $PACKAGES"
 
-          case "$TRACK" in
-            core)
-              # Satu tag core menghasilkan tiga varian unduhan.
-              bash scripts/ci/build-package.sh --track core   --label "$LABEL" --out-dir dist
-              bash scripts/ci/build-package.sh --track arcade --label "$LABEL" --out-dir dist
-              bash scripts/ci/build-package.sh --track full   --label "$LABEL" --out-dir dist
-              ;;
-            arcade)
-              bash scripts/ci/build-package.sh --track arcade --label "$LABEL" --out-dir dist
-              ;;
-            *)
-              echo "❌ Track tidak dikenal: $TRACK"
-              exit 1
-              ;;
-          esac
+          for pkg in $PACKAGES; do
+            case "$pkg" in
+              core|full|arcade)
+                bash scripts/ci/build-package.sh --track "$pkg" --label "$LABEL" --out-dir dist
+                ;;
+              tests)
+                bash scripts/ci/build-tests-package.sh --label "$LABEL" --out-dir dist
+                ;;
+              *)
+                echo "❌ Paket tidak dikenal: $pkg"
+                exit 1
+                ;;
+            esac
+          done
+
+          [ -f dist/SHA256SUMS ] || { echo "❌ SHA256SUMS tidak dibuat"; exit 1; }
+          ( cd dist && sha256sum -c SHA256SUMS )
 
       - name: Show package summary
         run: |

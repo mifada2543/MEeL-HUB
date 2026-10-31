@@ -188,6 +188,8 @@ require_core() {
   require_entry "assets/dict/jmdict.sqlite3"
   require_entry "router.php"
   require_entry "modules/autoload.php"
+  require_entry "tools/check_deploy.php"
+  require_entry "tools/.htaccess"
 }
 
 require_arcade() {
@@ -207,6 +209,7 @@ forbid_entries() {
 
 forbid_entries '^(tests|\.github|vendor|node_modules|\.git)/' "berkas dev/test"
 forbid_entries '^(phpunit\.xml|composer\.lock|CHANGELOG-core\.md|CHANGELOG-arcade\.md|\.gitignore|\.gitattributes)$' "berkas metadata dev"
+forbid_entries '^push\.sh$' "helper rilis lokal"
 forbid_entries '^tools/yt-dlp/yt-dlp$' "binary yt-dlp"
 
 case "$TRACK" in

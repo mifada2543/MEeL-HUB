@@ -8,6 +8,11 @@
 
 # ─── Create config files from templates ───
 config_create_from_templates() {
+    if [ "${DRY_RUN:-false}" = "true" ]; then
+        log_info "[DRY-RUN] Would create auth/settings.php and auth/config.php from templates (if missing)"
+        return 0
+    fi
+
     if [ ! -f "auth/settings.php" ]; then
         cp auth/settings.example.php auth/settings.php
         log_ok "auth/settings.php created from template"
@@ -40,7 +45,12 @@ config_patch_settings() {
 
     # Build ConfigPatcher command
     local cmd=("php" "lib/install/php/ConfigPatcher.php")
-    cmd+=("--settings=auth/settings.php")
+    local settings_file="auth/settings.php"
+    # Dry-run tidak membuat file; patcher cukup membaca template.
+    if [ "${DRY_RUN:-false}" = "true" ] && [ ! -f "$settings_file" ]; then
+        settings_file="auth/settings.example.php"
+    fi
+    cmd+=("--settings=${settings_file}")
     cmd+=("--db-host=${DB_HOST:-localhost}")
     cmd+=("--db-user=${DB_USER:-root}")
     cmd+=("--db-pass=${DB_PASS:-}")
@@ -94,6 +104,10 @@ config_set_permissions() {
 # ─── Verify config loads ───
 config_verify() {
     log_step "Verifying configuration"
+    if [ "${DRY_RUN:-false}" = "true" ]; then
+        log_info "[DRY-RUN] Skipping config load check (no files were written)"
+        return 0
+    fi
     if "$PHP_BIN" -r 'require "auth/settings.php"; require "auth/config.php";' 2>/dev/null; then
         log_ok "Configuration loads successfully"
         return 0
