@@ -557,8 +557,8 @@ jobs:
 
       - name: Run Deployment Check
         run: |
-          if [ -f tests/check_deploy.php ]; then
-            php tests/check_deploy.php --no-color --hdd="$HDD" || exit $?
+          if [ -f tools/check_deploy.php ]; then
+            php tools/check_deploy.php --no-color --hdd="$HDD" || exit $?
           else
             echo "⚠️  Deployment check not found, skipping."
           fi

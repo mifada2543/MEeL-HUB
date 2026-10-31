@@ -106,7 +106,7 @@ ln -s "$HDD/drive/private_admins" "$PROJECT/video/upload"
 set +e
 (
     cd "$PROJECT" || exit 1
-    "$PHP_BIN" tests/check_deploy.php --hdd="$HDD" --no-color
+    "$PHP_BIN" tools/check_deploy.php --hdd="$HDD" --no-color
 ) >"$CHECK_LOG" 2>&1
 CHECK_RC=$?
 set -e

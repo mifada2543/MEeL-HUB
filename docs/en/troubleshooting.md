@@ -159,7 +159,7 @@ sudo mount /dev/sdX? /media/<user>/MEeL          # match your fstab
 touch "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")/.meel_mount"
 ```
 
-**The `.meel_mount` marker** is created by `install.sh` and is in `.gitignore` (**never commit it**). It tells `meel_storage_ready()` that the folder is a mounted volume rather than a leftover empty directory on the mountpoint. Without a marker: an **empty** folder counts as unmounted (fails safe: block), a folder with content (legacy volume) is still served with a warning in the log. A missing marker is also reported by `tests/check_deploy.php`.
+**The `.meel_mount` marker** is created by `install.sh` and is in `.gitignore` (**never commit it**). It tells `meel_storage_ready()` that the folder is a mounted volume rather than a leftover empty directory on the mountpoint. Without a marker: an **empty** folder counts as unmounted (fails safe: block), a folder with content (legacy volume) is still served with a warning in the log. A missing marker is also reported by `tools/check_deploy.php`.
 
 ---
 
@@ -203,7 +203,7 @@ touch "$(php -r "require 'auth/settings.php'; echo MEEL_HDD_BASE;")/.meel_mount"
    `DriveStorage::ensureDirectoryExists()`.
 
 > ⚠️ **Never commit symlinks inside `data_drive/`** — `.gitignore` blocks them.
-> `tests/check_deploy.php` only warns about symlinks pointing OUTSIDE
+> `tools/check_deploy.php` only warns about symlinks pointing OUTSIDE
 > `MEEL_HDD_DRIVE` (e.g. `/media/<user>/...`); deploy-time symlinks pointing
 > inside `MEEL_HDD_DRIVE` are rated PASS. See
 > [Installation §5a](installation.md#5a-media-storage-meel_hdd_base--php-endpoint--rewrite-no-symlinks)

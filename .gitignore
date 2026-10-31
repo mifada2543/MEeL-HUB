@@ -170,6 +170,8 @@ logs/tests/
 # ─── DEPLOYMENT FILES ─────────────────────────────────
 deploy.sh
 *.deploy
+# Helper rilis lokal (personal, jangan pernah di-commit)
+/push.sh
 
 # ─── BACKUP FILES ─────────────────────────────────────
 *.bak
@@ -205,5 +207,6 @@ tools/*
 !tools/tailwind
 !tools/ffmpeg-lite
 !tools/yt-dlp
+!tools/check_deploy.php
 # ---GENERATED BUNDLE CSS---
 assets/css/*/bundle.css

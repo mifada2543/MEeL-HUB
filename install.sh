@@ -132,7 +132,7 @@ Steps:
   5. apache     — mod_rewrite, VirtualHost, mod_xsendfile hints
   6. hardening  — Security hardening (.htaccess deny for sensitive dirs)
   7. migrate    — Core + Arcade database migrations
-  8. verify     — Deployment health check (tests/check_deploy.php)
+  8. verify     — Deployment health check (tools/check_deploy.php)
 
 Examples:
   ./install.sh                           # Interactive
@@ -213,8 +213,9 @@ main() {
     [ -n "$DB_PASS_OVERRIDE" ] && export DB_PASS="$DB_PASS_OVERRIDE"
     [ -n "$ADMIN_USER_OVERRIDE" ] && export ADMIN_USER="$ADMIN_USER_OVERRIDE"
     [ -n "$ADMIN_PASS_OVERRIDE" ] && export ADMIN_PASS="$ADMIN_PASS_OVERRIDE"
-    [ -n "$CREATE_APP_USER_OVERRIDE" ] && export CREATE_APP_USER="$CREATE_APP_USER_OVERRIDE"
-    [ -n "$ENABLE_REWRITE_OVERRIDE" ] && export ENABLE_REWRITE="$ENABLE_REWRITE_OVERRIDE"
+    # Modul membandingkan dengan string "true"; flag CLI memakai 1/0 → normalisasi.
+    [ -n "$CREATE_APP_USER_OVERRIDE" ] && export CREATE_APP_USER="$([ "$CREATE_APP_USER_OVERRIDE" = "1" ] && echo true || echo false)"
+    [ -n "$ENABLE_REWRITE_OVERRIDE" ] && export ENABLE_REWRITE="$([ "$ENABLE_REWRITE_OVERRIDE" = "1" ] && echo true || echo false)"
     [ -n "$VERIFY_URL_OVERRIDE" ] && export VERIFY_URL="$VERIFY_URL_OVERRIDE"
     [ -n "$VERIFY_HDD_OVERRIDE" ] && export VERIFY_HDD_OVERRIDE="$VERIFY_HDD_OVERRIDE"
     [ -n "$VERIFY_NO_COLOR_OVERRIDE" ] && export VERIFY_NO_COLOR="$VERIFY_NO_COLOR_OVERRIDE"

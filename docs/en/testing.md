@@ -1,6 +1,6 @@
 # 🧪 Testing Guide
 
-**Last updated:** October 25, 2026
+**Last updated:** November 1, 2026
 
 ---
 
@@ -14,8 +14,12 @@ MEeL uses a multi-layered testing approach:
 | **Integration Tests** | PHPUnit 9.6 | Real DB operations | `tests/integration/` |
 | **Functional Tests** | Custom PHP | Application workflows | `tests/functional_test.php` |
 | **Security Tests** | Custom PHP | Vulnerability scanning | `tests/security_test.php` |
-| **Deployment Check** | Custom PHP | Environment verification (storage, upload dirs, .htaccess, mod_rewrite) | `tests/check_deploy.php` |
+| **Deployment Check** | Custom PHP | Environment verification (storage, upload dirs, .htaccess, mod_rewrite) | `tools/check_deploy.php` |
 | **CI Pipeline** | GitHub Actions | Automated validation | `.github/workflows/ci.yml` |
+
+> The main distribution ZIP does not include `tests/`. An optional
+> `MEeL-HUB-tests-*.zip` release asset contains the suite; extract it over the
+> core/full package, then run `composer install` before using PHPUnit.
 
 ---
 
@@ -164,7 +168,7 @@ The script runs, in order:
 3. **Functional Test** — `php tests/functional_test.php` (patch verification)
 4. **Private Drive 403 probe** — direct HTTP access to `data_drive/private_admins/`
    and a throwaway file path must both return `403` (the `.htaccess` deny rule)
-5. *Optional* (`--deploy`) — `php tests/check_deploy.php --no-color [--hdd=...]`
+5. *Optional* (`--deploy`) — `php tools/check_deploy.php --no-color [--hdd=...]`
 
 Exit code `0` = all suites passed (warnings allowed), `1` = at least one
 failure — CI-friendly. Missing tools (`vendor/bin/phpunit`) or an unreachable
@@ -276,16 +280,17 @@ php tests/security_test.php
 - Open Redirect — all referer redirects must pass host validation; `playlist_action.php` rejects `//host` & `://` schemes
 - Fatal-Bug Regression — duplicate class includes (RateLimiter) & raw `HTTP_REFERER` redirects are detected
 
-## 🚀 Deployment Check (`tests/check_deploy.php`)
+<a id="deployment-check-check_deployphp"></a>
+## 🚀 Deployment Check (`tools/check_deploy.php`)
 
 Quick health-check of the deployment environment — mirrors what the security
 test checks, but focused on infrastructure:
 
 ```bash
-php tests/check_deploy.php                          # local check + auto HTTP probe
-php tests/check_deploy.php --url=http://localhost/MEeL   # explicit HTTP probe
-php tests/check_deploy.php --hdd=/tmp/meel-storage/media  # override MEEL_HDD_BASE (testing/CI)
-php tests/check_deploy.php --no-color               # no ANSI colors (for CI/logs)
+php tools/check_deploy.php                          # local check + auto HTTP probe
+php tools/check_deploy.php --url=http://localhost/MEeL   # explicit HTTP probe
+php tools/check_deploy.php --hdd=/tmp/meel-storage/media  # override MEEL_HDD_BASE (testing/CI)
+php tools/check_deploy.php --no-color               # no ANSI colors (for CI/logs)
 ```
 
 **Verifies:**
@@ -317,7 +322,7 @@ PHP Syntax (8.0–8.3)
     ├── Migration Test            → schema.sql import + idempotent migrate.php + schema parity
     ├── HTACCESS & Integrity      → .htaccess presence + permissions
     ├── ShellCheck                → shellcheck every *.sh
-    ├── Deployment Check         → php tests/check_deploy.php --no-color --hdd=…
+    ├── Deployment Check         → php tools/check_deploy.php --no-color --hdd=…
     ├── Tailwind Reproducibility  → npm run css:check
     └── Drive Storage Integrity   → storage path verification
             └── CI Summary
@@ -434,10 +439,10 @@ The **static wiring checks** for the same boundaries are exercised by the
 is asserted by the security test's `data_drive/.htaccess` check (layer 1),
 plus the tracked `data_drive/private_admins/.htaccess` (`Require all denied`,
 layer 2) which is checked by both `tests/security_test.php` (TEST 13) and
-`tests/check_deploy.php`.
+`tools/check_deploy.php`.
 
 The `deploy-check` job in `.github/workflows/ci.yml` runs this suite
-(`php tests/check_deploy.php --no-color --hdd=...`) on a simulated storage
+(`php tools/check_deploy.php --no-color --hdd=...`) on a simulated storage
 layout, and includes an optional live-403 probe that runs only when a staging
 URL is configured as a GitHub secret:
 
@@ -536,8 +541,8 @@ rm -rf "$TARGET/zz_403_probe"
 404 served by the storage) means `AllowOverride` / `mod_rewrite` is not active
 for `data_drive/` — fix `httpd.conf` (`AllowOverride All`) before release.
 
-> 💡 Tip: this exact check is also part of `tests/check_deploy.php`
-> (`.htaccess` deny rule) — run `php tests/check_deploy.php --url=http://localhost/MEeL`
+> 💡 Tip: this exact check is also part of `tools/check_deploy.php`
+> (`.htaccess` deny rule) — run `php tools/check_deploy.php --url=http://localhost/MEeL`
 > for the full deployment health report.
 
 ---
