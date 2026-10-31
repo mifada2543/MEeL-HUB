@@ -16,7 +16,7 @@
 
 [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com/)
-[![FFmpeg](https://img.shields.io/badge/FFmpeg-lite-6.1.1%20(bundled)-007808?style=flat-square&logo=ffmpeg&logoColor=white)](tools/ffmpeg-lite)
+[![FFmpeg](https://img.shields.io/badge/FFmpeg-n6.1.1%20(bundled)-007808?style=flat-square&logo=ffmpeg&logoColor=white)](tools/ffmpeg-lite)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue?style=flat-square)](LICENSE)
 [![CI](https://github.com/mifada2543/MEeL-HUB/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/MEeL-HUB/actions/workflows/ci.yml)
 [![GitHub Stars](https://img.shields.io/github/stars/mifada2543/MEeL-HUB?style=social)](https://github.com/mifada2543/MEeL-HUB)
