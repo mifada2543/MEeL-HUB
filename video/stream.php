@@ -4,7 +4,6 @@ if (is_file(__DIR__ . '/../auth/settings.php')) {
     require_once __DIR__ . '/../auth/settings.php';
 }
 require_once __DIR__ . '/../modules/core/helpers.php';
-meel_boot_session();
 
 $f = isset($_GET['f']) ? (string) $_GET['f'] : '';
 if ($f === '') {
@@ -12,8 +11,17 @@ if ($f === '') {
     exit('Parameter f wajib diisi.');
 }
 
+// Thumbnail bersifat publik; jangan buka session agar response tidak
+// membawa Set-Cookie/Pragma/Expires yang menghalangi cache browser.
+$__rel = ltrim(str_replace('\\', '/', $f), '/');
+if (!str_starts_with($__rel, 'thumbnail/')) {
+    meel_boot_session();
+}
+
 $__allowed = meel_stream_path_allowed($f);
-session_write_close();
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 
 if (!$__allowed) {
     $__script = $_SERVER['SCRIPT_NAME'] ?? '';

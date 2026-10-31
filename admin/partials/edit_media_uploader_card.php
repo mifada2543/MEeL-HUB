@@ -8,7 +8,7 @@
 ?>
 <div class="uploader-card">
     <?php if (!empty($record['uploader_pfp'])): ?>
-        <img src="../profile/upload/<?= htmlspecialchars($record['uploader_pfp']) ?>"
+        <img src="<?= htmlspecialchars(meel_profile_image_url($record['uploader_pfp'], '../profile/upload/'), ENT_QUOTES, 'UTF-8') ?>"
             alt="<?= htmlspecialchars($record['uploader'] ?? '') ?>"
             class="uploader-avatar">
     <?php else: ?>

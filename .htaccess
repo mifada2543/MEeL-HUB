@@ -1,8 +1,34 @@
 Options -Indexes
 DirectoryIndex index.php index.html
+AddType image/webp .webp
+AddType image/avif .avif
+<IfModule mod_setenvif.c>
+    # Thumbnail publik: cache 7 hari, revalidasi murah. Gambar profil
+    # diatur oleh profile/.htaccess; cover books tetap private (perlu login).
+    SetEnvIf Request_URI "^/(?:.*/)?(?:video|music|books)/upload/thumbnail/" MEEL_MEDIA_THUMB=1
+    SetEnvIf Request_URI "^/(?:.*/)?(?:video|music)/upload/thumbnail/" MEEL_MEDIA_PUBLIC_CACHE=1
+</IfModule>
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Cache-Control "public, max-age=604800, stale-while-revalidate=86400" env=MEEL_MEDIA_PUBLIC_CACHE
+    # Sebagian .htaccess storage lama memakai ForceType inherit yang membuat
+    # Content-Type literal "inherit"; paksa MIME yang benar untuk thumbnail.
+    <FilesMatch "\.webp$">
+        Header always set Content-Type "image/webp" env=MEEL_MEDIA_THUMB
+    </FilesMatch>
+    <FilesMatch "\.avif$">
+        Header always set Content-Type "image/avif" env=MEEL_MEDIA_THUMB
+    </FilesMatch>
+    <FilesMatch "\.(jpg|jpeg)$">
+        Header always set Content-Type "image/jpeg" env=MEEL_MEDIA_THUMB
+    </FilesMatch>
+    <FilesMatch "\.png$">
+        Header always set Content-Type "image/png" env=MEEL_MEDIA_THUMB
+    </FilesMatch>
+    <FilesMatch "\.gif$">
+        Header always set Content-Type "image/gif" env=MEEL_MEDIA_THUMB
+    </FilesMatch>
 </IfModule>
 <FilesMatch "(\.env|\.git|\.htaccess|\.htpasswd|\.sql|\.log|config\.php|settings\.php|settings\.example\.php|cookies\.txt|auth\.php|sitemap\.php|robots\.php|phpunit\.xml|\.vscode|composer\.(json|lock)|package(-lock)?\.json|install\.sh|docker-compose\.ya?ml)$">
     <IfModule mod_authz_core.c>
@@ -52,6 +78,10 @@ DirectoryIndex index.php index.html
     RewriteRule ^assets/manifest\.json$ manifest.php [END]
 </IfModule>
 <IfModule mod_rewrite.c>
+    # Thumbnail publik: layani langsung oleh Apache bila file tersedia
+    # (symlink storage → HDD). Kalau tidak ada, fallback ke handler PHP.
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^(video|music)/upload/thumbnail/.+\.(webp|jpe?g|png|gif|avif)$ - [END,NC]
     RewriteRule ^video/upload/(.+)$ video/stream.php?f=$1 [END,QSA,B]
     RewriteRule ^music/upload/(.+)$ music/file.php?f=$1 [END,QSA,B]
     RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [END,QSA,B]

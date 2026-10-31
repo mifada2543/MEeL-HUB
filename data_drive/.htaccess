@@ -14,13 +14,16 @@ RemoveHandler .php .php3 .php4 .php5 .phtml .pl .py .jsp .asp .sh .cgi
 RemoveType .php .php3 .php4 .php5 .phtml .pl .py .jsp .asp .sh .cgi
 </FilesMatch>
 
+AddType image/webp .webp
+AddType image/avif .avif
+
 ForceType application/octet-stream
 <FilesMatch "(?i)\.(php|phtml|pl|py|sh|cgi|exe|bat|cmd|html|htm|js)$">
 ForceType text/plain
 </FilesMatch>
 
-<FilesMatch "(?i)\.(mp3|mp4|webm|mkv|opus|ogg|wav|jpg|jpeg|png|gif|webp|pdf|txt)$">
-ForceType inherit
+<FilesMatch "(?i)\.(mp3|mp4|webm|mkv|opus|ogg|wav|jpg|jpeg|png|gif|webp|avif|pdf|txt)$">
+ForceType none
 </FilesMatch>
 
 Options -Indexes

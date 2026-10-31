@@ -362,15 +362,18 @@ while ($rc = $r->fetch_assoc()) {
                                                 $thumb_val = $row['thumbnail'] ?? '';
                                                 if ($is_video) {
                                                     $media_thumb = !empty($thumb_val)
-                                                        ? '../video/upload/thumbnail/' . rawurlencode($thumb_val)
-                                                        : '../assets/img/placeholder-video.svg';
+                                                        ? video_thumbnail_url($thumb_val, '../video/upload/thumbnail/', false)
+                                                        : '';
+                                                    if ($media_thumb === '') {
+                                                        $media_thumb = '../assets/img/placeholder-video.svg';
+                                                    }
                                                 } else {
                                                     $media_thumb = !empty($thumb_val)
-                                                        ? '../music/upload/thumbnail/' . rawurlencode($thumb_val)
+                                                        ? music_thumbnail_url($thumb_val, '../music/upload/thumbnail/')
                                                         : '../assets/img/placeholder-music.svg';
                                                 }
                                                 ?>
-                                                <img src="<?= htmlspecialchars($media_thumb) ?>"
+                                                <img src="<?= htmlspecialchars($media_thumb, ENT_QUOTES, 'UTF-8') ?>"
                                                     alt=""
                                                     class="media-thumb"
                                                     loading="lazy"

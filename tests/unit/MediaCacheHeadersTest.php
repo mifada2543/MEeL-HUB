@@ -116,9 +116,11 @@ class MediaCacheHeadersTest extends TestCase
         $this->assertSame('private, max-age=31536000, immutable', meel_media_cache_control('m4a'));
     }
 
-    public function testMediaIsNeverPubliclyCacheable(): void
+    public function testStreamingMediaIsNeverPubliclyCacheable(): void
     {
-        foreach (['m3u8', 'ts', 'mp4', 'webm', 'mkv', 'mp3', 'm4a', 'vtt', 'jpg', 'png', 'pdf'] as $ext) {
+        // Video/audio/PDF tetap private. Thumbnail gambar sengaja public
+        // (7 hari) supaya browser & service worker tidak menariknya terus.
+        foreach (['m3u8', 'ts', 'mp4', 'webm', 'mkv', 'mp3', 'm4a', 'vtt', 'pdf'] as $ext) {
             $cc = meel_media_cache_control($ext);
             $this->assertStringStartsNotWith(
                 'public',
@@ -127,6 +129,22 @@ class MediaCacheHeadersTest extends TestCase
             );
             $this->assertStringStartsWith('private', $cc);
         }
+    }
+
+    public function testThumbnailsArePubliclyCacheableForSevenDays(): void
+    {
+        $expected = 'public, max-age=604800, stale-while-revalidate=86400';
+        foreach (['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif'] as $ext) {
+            $this->assertSame($expected, meel_media_cache_control($ext), "Cache-Control thumbnail .$ext");
+        }
+    }
+
+    public function testAuthenticatedBookThumbnailsStayPrivate(): void
+    {
+        $this->assertSame(
+            'private, max-age=604800, stale-while-revalidate=86400',
+            meel_media_cache_control('webp', false)
+        );
     }
 
     public function testConditionalResponseIsSkippedForRangeRequests(): void
