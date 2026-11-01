@@ -39,20 +39,6 @@ AddType image/avif .avif
         Deny from all
     </IfModule>
 </FilesMatch>
-<<<<<<< HEAD
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
-=======
-# Sisa file cadangan/editor yang sering tertinggal dan membocorkan sumber.
-=======
->>>>>>> 47df0f54 (docs(security): pindahkan penjelasan hardening P0 ke docs, buang dari kode)
-=======
->>>>>>> 381997d3 (penyesuaian & fix test)
 <FilesMatch "(~|\.bak$|\.old$|\.orig$|\.swp$|\.dist$|\.sample$)">
     <IfModule mod_authz_core.c>
         Require all denied
@@ -70,11 +56,6 @@ AddType image/avif .avif
     RewriteRule "(^|/)\.(vscode|idea|git|freebuff)(/|$)" - [F,L]
     RewriteRule ^(vendor|node_modules)/ - [F,L]
 </IfModule>
-<<<<<<< HEAD
-
->>>>>>> 7082117f (fix(security): tutup direktori dependency & tooling dari akses web)
-=======
->>>>>>> 381997d3 (penyesuaian & fix test)
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/html
     AddOutputFilterByType DEFLATE text/plain
@@ -90,25 +71,13 @@ AddType image/avif .avif
     AddOutputFilterByType DEFLATE image/svg+xml
     AddOutputFilterByType DEFLATE text/vtt
 </IfModule>
-<<<<<<< HEAD
-
-<<<<<<< HEAD
->>>>>>> dc4108be (penyesuaian light-house)
 # ── PWA: /sw.js disajikan dari generator PHP (precache dinamis dari manifest.php) ──
-=======
->>>>>>> e161aaa8 (style: sweepcomments non-docblock menyeluruh, watermark dipertahankan)
-=======
->>>>>>> 381997d3 (penyesuaian & fix test)
 <IfModule mod_rewrite.c>
     RewriteRule ^arcade/testgeneric\.php$ - [E=ROOTPROC:1]
     RewriteEngine On
     RewriteRule ^sw\.js$ sw.js.php [END]
     RewriteRule ^assets/manifest\.json$ manifest.php [END]
 </IfModule>
-<<<<<<< HEAD
-
-<<<<<<< HEAD
->>>>>>> c6ed0b59 (penyesuaian fungsi)
 # ── SEO: /sitemap.xml & /robots.txt disajikan dari FILE FISIK (regenerate
 # via CLI: php sitemap.php [base-url]). Generator sitemap.php/robots.php
 # TIDAK boleh dieksekusi lewat browser — diblokir di FilesMatch di atas ──
@@ -122,10 +91,6 @@ AddType image/avif .avif
 # ── Media storage: serve file upload dari MEEL_HDD_*_UPLOAD via PHP ──
 # (pengecualian front controller — endpoint streaming/range request tetap
 #  dipanggil langsung agar performa & header tidak terganggu)
-=======
->>>>>>> e161aaa8 (style: sweepcomments non-docblock menyeluruh, watermark dipertahankan)
-=======
->>>>>>> 381997d3 (penyesuaian & fix test)
 <IfModule mod_rewrite.c>
     # Thumbnail publik: layani langsung oleh Apache bila file tersedia
     # (symlink storage → HDD). Kalau tidak ada, fallback ke handler PHP.
@@ -136,14 +101,6 @@ AddType image/avif .avif
     RewriteRule ^books/upload/(.+)$ books/file.php?f=$1 [END,QSA,B]
 </IfModule>
 <IfModule mod_rewrite.c>
-<<<<<<< HEAD
-    RewriteEngine On
-
-    # ── 0. PWA: /sw.js → sw.js.php (MUST be first — before any R=301) ──
-    RewriteRule ^sw\.js$ sw.js.php [END]
-
-=======
->>>>>>> 381997d3 (penyesuaian & fix test)
     RewriteCond %{REQUEST_URI} ^(.*)/(video|music|books|drive|admin|arcade)/index\.php$ [NC]
     RewriteRule ^ %1/%2/beranda [R=301,L,QSA]
     RewriteCond %{REQUEST_URI} ^(.*)/err/index\.php$ [NC]
