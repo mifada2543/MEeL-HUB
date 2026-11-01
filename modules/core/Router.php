@@ -80,20 +80,6 @@ final class MeelRouter
         'api/auto-metadata' => ['handler' => 'controllers/api/auto_metadata.php', 'script' => '/controllers/api/auto_metadata.php'],
         'api/pdf' => ['handler' => 'controllers/api/pdf.php', 'script' => '/controllers/api/pdf.php'],
         'api/download-transcode' => ['handler' => 'controllers/api/download_transcode.php','script' => '/controllers/api/download_transcode.php'],
-<<<<<<< HEAD
-        'api/post-encode'        => ['handler' => 'controllers/api/post_encode.php',       'script' => '/controllers/api/post_encode.php'],
-        'api/theme'              => ['handler' => 'controllers/api/theme.php',              'script' => '/controllers/api/theme.php'],
-        'api/ajax-refresh'       => ['handler' => 'controllers/api/ajax_refresh.php',      'script' => '/controllers/api/ajax_refresh.php'],
-        'api/server-stats'       => ['handler' => 'controllers/api/server_stats.php',      'script' => '/controllers/api/server_stats.php'],
-        'api/server-stats-sse'   => ['handler' => 'controllers/api/server_stats_sse.php',  'script' => '/controllers/api/server_stats_sse.php'],
-        'api/notification'       => ['handler' => 'controllers/api/notification.php',      'script' => '/controllers/api/notification.php'],
-        'api/chat'               => ['handler' => 'controllers/api/chat.php',              'script' => '/controllers/api/chat.php'],
-        'api/meelcoin'           => ['handler' => 'controllers/api/meelcoin.php',           'script' => '/controllers/api/meelcoin.php'],
-        'system/mfa'             => ['handler' => 'controllers/system/mfa.php',            'script' => '/controllers/system/mfa.php'],
-
-        // PWA: sw.js served via PHP (fallback if .htaccess rewrite fails)
-        'sw.js'                  => ['handler' => 'sw.js.php',                              'script' => '/sw.js.php'],
-=======
         'api/post-encode' => ['handler' => 'controllers/api/post_encode.php', 'script' => '/controllers/api/post_encode.php'],
         'api/theme' => ['handler' => 'controllers/api/theme.php', 'script' => '/controllers/api/theme.php'],
         'api/ajax-refresh' => ['handler' => 'controllers/api/ajax_refresh.php', 'script' => '/controllers/api/ajax_refresh.php'],
@@ -104,7 +90,9 @@ final class MeelRouter
         'api/meelcoin' => ['handler' => 'controllers/api/meelcoin.php', 'script' => '/controllers/api/meelcoin.php'],
         'api/upload-heartbeat' => ['handler' => 'controllers/api/upload_heartbeat.php', 'script' => '/controllers/api/upload_heartbeat.php'],
         'system/mfa' => ['handler' => 'controllers/system/mfa.php', 'script' => '/controllers/system/mfa.php'],
->>>>>>> 37894cfe (redunisasi)
+
+        // PWA: sw.js served via PHP (fallback if .htaccess rewrite fails)
+        'sw.js' => ['handler' => 'sw.js.php', 'script' => '/sw.js.php'],
     ];
 
     private const OPTIONAL_ROUTES = [
