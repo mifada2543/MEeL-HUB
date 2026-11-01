@@ -1,0 +1,84 @@
+MEeL-HUB — PEMBERITAHUAN
+========================
+
+Hak Cipta (C) 2026 Mifada
+
+MEeL-HUB adalah media hub pribadi yang di-host sendiri untuk streaming video,
+pemutaran musik, buku digital, penyimpanan cloud, transcoding media, dan fitur
+arcade opsional.
+
+Kecuali dinyatakan lain pada file atau komponennya, kode sumber pada repositori
+ini dilisensikan di bawah GNU Affero General Public License versi 3 (AGPLv3).
+Salinan lisensi tersedia pada file LICENSE.
+
+File NOTICE ini hanya bersifat informatif. File ini tidak mengubah, mengganti,
+atau menambahkan ketentuan pada lisensi yang berlaku. Saat mendistribusikan ulang
+MEeL-HUB, pertahankan file ini, file LICENSE, serta seluruh pemberitahuan hak cipta
+dan lisensi lain yang disertakan pada karya terkait.
+
+PERANGKAT LUNAK DAN TEKNOLOGI PIHAK KETIGA
+------------------------------------------
+
+MEeL-HUB dirancang untuk bekerja dengan, atau dapat menyertakan integrasi terhadap,
+perangkat lunak dan teknologi independen berikut:
+
+* PHP — https://www.php.net/
+* MySQL dan MariaDB — https://www.mysql.com/ dan https://mariadb.org/
+* Apache HTTP Server — https://httpd.apache.org/
+* FFmpeg — https://ffmpeg.org/
+* yt-dlp — https://github.com/yt-dlp/yt-dlp
+* PHPUnit — https://phpunit.de/
+* Tailwind CSS — https://tailwindcss.com/
+* HTMX — https://htmx.org/
+* Plyr — https://plyr.io/
+* HLS.js — https://github.com/video-dev/hls.js/
+* JMdict (Electronic Dictionary Research and Development Group) — https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project
+  Dibundel sebagai turunan kamus SQLite di bawah CC BY-SA 4.0; lihat assets/dict/README.md.
+
+Proyek-proyek tersebut merupakan karya terpisah dan diatur oleh lisensi serta
+pemberitahuan masing-masing. Nama dan merek dagangnya adalah milik pemilik
+masing-masing. Kehadiran suatu teknologi pada daftar ini tidak otomatis berarti
+salinan teknologi tersebut selalu didistribusikan pada setiap instalasi MEeL-HUB.
+
+Jika Anda mendistribusikan paket yang mencakup file pihak ketiga, aset bundel,
+komponen yang dimodifikasi, media hasil generasi, font, ikon, aset game, atau
+karya lain yang bukan dibuat oleh Mifada, Anda bertanggung jawab menyertakan teks
+lisensi dan pemberitahuan atribusi yang diwajibkan oleh karya tersebut. Tinjau
+file lisensi dan file pemberitahuan yang disertakan setiap dependensi sebelum
+redistribusi.
+
+KONTEN PENGGUNA DAN LAYANAN EKSTERNAL
+-------------------------------------
+
+MEeL-HUB dapat digunakan untuk mengunggah, menyimpan, streaming, mengunduh,
+mentranskode, atau menampilkan konten yang disediakan pengguna atau diperoleh
+dari layanan eksternal. Pengguna dan operator sepenuhnya bertanggung jawab untuk
+memastikan bahwa konten, unduhan, dan penggunaan layanan eksternal mereka mematuhi
+hukum yang berlaku, hak cipta, ketentuan layanan, serta kewajiban privasi.
+
+Penulis proyek tidak memberikan izin untuk mendistribusikan ulang media berhak
+cipta, buku, musik, video, karya seni, merek dagang, atau konten pihak ketiga
+lainnya hanya karena MEeL-HUB dapat memproses atau menampilkannya.
+
+MEREK DAGANG
+------------
+
+MEeL-HUB serta nama dan logo MEeL digunakan untuk mengidentifikasi proyek ini.
+Nama dan logo tersebut tidak boleh digunakan untuk menyiratkan dukungan terhadap
+versi yang dimodifikasi atau didistribusikan ulang tanpa izin. Nama produk,
+logo, dan merek lain yang dirujuk dalam repositori ini adalah milik pemilik
+masing-masing.
+
+KONTAK
+------
+
+Proyek: https://github.com/mifada2543/MEeL-HUB
+Penulis: Mifada
+Email:   mifada2543@gmail.com
+
+PEMBERITAHUAN TAMBAHAN
+----------------------
+
+Mohon maaf jika Anda terlempar ke sini (https://github.com/mifada2543/MEeL-HUB)
+setelah Anda klik short link yang ada di halaman About. Itu berarti web demo
+sedang down atau terkendala. Mohon coba lagi nanti.
