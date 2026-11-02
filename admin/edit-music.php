@@ -9,6 +9,7 @@ include __DIR__ . '/../auth/auth.php';
 include_once __DIR__ . '/../modules/core/helpers.php';
 require_once __DIR__ . '/../modules/core/japanese.php';
 require_once __DIR__ . '/includes/media_editor.php';
+meel_storage_guard();
 $_EDIT_CONTEXT = $_EDIT_CONTEXT ?? 'admin';
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login");
@@ -41,6 +42,9 @@ if (!$is_admin && !$is_owner) {
 }
 $status = "";
 $error_message = "";
+if (meel_post_upload_too_large()) {
+    $error_message = 'Ukuran upload melebihi batas server (post_max_size = ' . ini_get('post_max_size') . ').';
+}
 $cfg = meel_editor_media_config('music');
 if (isset($_POST['delete_lyrics_lang']) && $_POST['delete_lyrics_lang'] !== '') {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
@@ -68,7 +72,7 @@ if (isset($_POST['update'])) {
         }
         if ($title === '') {
             $error_message = "Judul lagu tidak boleh kosong.";
-        } else {
+        } elseif ($error_message === '') {
             $meta = generate_search_metadata($title, $artist, $album);
             if ($adminMedia->updateMusic($id, $title, $artist, $album, $description, $thumbnail_url, $meta)) {
                 $status = "success";
@@ -209,10 +213,11 @@ $thumb_src = !empty($music['thumbnail'])
                     </div>
                 <?php endif; ?>
                 <form id="edit-form" method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
-                    <?php if (isset($_SESSION['csrf_token'])): ?>
-                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
-                        <input type="file" name="thumbnail" accept="image/*" id="cover-file-hidden" style="display:none">
-                    <?php endif; ?>
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="MAX_FILE_SIZE" value="5242880">
+                    <input type="file" name="thumbnail"
+                        accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.bmp,.ico,image/*"
+                        id="cover-file-hidden" style="display:none">
                     <div class="field-group">
                         <label class="field-label" for="f-title">Judul Lagu</label>
                         <input type="text" id="f-title" name="title" placeholder="Masukkan judul lagu..."
@@ -263,13 +268,11 @@ $thumb_src = !empty($music['thumbnail'])
                                     <div class="lyrics-row">
                                         <i data-lucide="file-text" style="width:13px;height:13px;color:var(--accent);flex-shrink:0;"></i>
                                         <span class="lyrics-filename"><?= htmlspecialchars($_ly['file']) ?></span>
-                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Hapus lirik ini?')">
-                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                                            <input type="hidden" name="delete_lyrics_lang" value="<?= htmlspecialchars($_ly['lang']) ?>">
-                                            <button type="submit" class="lyrics-delete-btn" title="Hapus lirik">
-                                                <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" class="lyrics-delete-btn" title="Hapus lirik"
+                                            data-lang="<?= htmlspecialchars($_ly['lang']) ?>"
+                                            data-csrf="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                                            <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
+                                        </button>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -295,6 +298,29 @@ $thumb_src = !empty($music['thumbnail'])
     <script src="../assets/js/admin/edit/shared/dragdrop.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/edit/shared/dragdrop.js') ?>"></script>
     <script src="../assets/js/admin/edit/music.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/edit/music.js') ?>"></script>
     <script>
+        document.querySelectorAll('.lyrics-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const lang = this.dataset.lang;
+                const csrf = this.dataset.csrf;
+                if (!lang || !confirm('Hapus lirik ini?')) return;
+
+                const formData = new FormData();
+                formData.append('csrf_token', csrf);
+                formData.append('delete_lyrics_lang', lang);
+
+                try {
+                    const res = await fetch('', { method: 'POST', body: formData });
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        Swal.fire('Gagal', 'Gagal menghapus lirik.', 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+                }
+            });
+        });
+
         <?php if ($status === "success"): ?>
             Swal.fire({
                 title: 'Berhasil!',

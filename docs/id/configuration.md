@@ -404,27 +404,27 @@ protected const TRANSCODE_AUDIO_TIMEOUT = 600;
 
 ### Binary Path Resolution
 
-MEeL menggunakan `ffmpeg-lite` yang bundled di `tools/ffmpeg-lite` secara default. Helper `resolveBinary()` memeriksa konstanta `MEEL_FFMPEG_PATH` terlebih dahulu, lalu jatuh ke binary bundled, dan akhirnya ke path sistem.
+MEeL menggunakan `ffmpeg-lite` yang bundled di `tools/ffmpeg-lite` secara default. Resolver terpusat `meel_ffmpeg_bin()` / `meel_ffprobe_bin()` (di `modules/core/helpers/media_binary.php`) memeriksa:
+
+1. Konstanta eksplisit `MEEL_FFMPEG_PATH` / `MEEL_FFPROBE_PATH` (jika di-set)
+2. Binary bundled di `tools/ffmpeg-lite/ffmpeg` (atau `ffprobe`)
+3. **System PATH** — hanya jika `MEEL_FFMPEG_ALLOW_SYSTEM=true` (opt-in eksplisit)
 
 ```php
 // Pola resolusi default (digunakan di TranscoderBase.php, Uploader.php, dll.)
-$this->ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
-    ? MEEL_FFMPEG_PATH
-    : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
-$this->ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
-    ? MEEL_FFPROBE_PATH
-    : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
-$this->ytdlp_bin = resolve_ytdlp_binary();
-$this->ytdlp_available = binary_is_runnable($this->ytdlp_bin);
+$this->ffmpeg_bin = meel_ffmpeg_bin();
+$this->ffprobe_bin = meel_ffprobe_bin();
 ```
 
-`resolve_ytdlp_binary()` memeriksa `MEEL_YTDLP_PATH`, lalu `tools/yt-dlp/yt-dlp`, lalu PATH sistem. Binary yt-dlp tidak dibundel di paket rilis; installer mengunduhnya ke `tools/yt-dlp/yt-dlp`.
-
-Untuk menggunakan path FFmpeg/yt-dlp kustom, set konstanta di `auth/settings.php`:
+Untuk menggunakan path FFmpeg kustom, set konstanta di `auth/settings.php`:
 ```php
 define('MEEL_FFMPEG_PATH', '/opt/ffmpeg/ffmpeg');
 define('MEEL_FFPROBE_PATH', '/opt/ffmpeg/ffprobe');
-define('MEEL_YTDLP_PATH', '/opt/yt-dlp/yt-dlp');
+```
+
+Untuk secara eksplisit mengizinkan system FFmpeg sebagai fallback (bukan default):
+```php
+define('MEEL_FFMPEG_ALLOW_SYSTEM', true);
 ```
 
 ### yt-dlp Configuration

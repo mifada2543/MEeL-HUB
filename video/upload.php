@@ -141,7 +141,7 @@ if (isset($_POST['upload'])) {
                         <div class="stat-chip" style="grid-column:1/-1;">
                             <div class="stat-number" style="font-size:15px;color:#facc15;<?= $is_admin ? '' : 'cursor:help;' ?>"
                                 <?php if (!$is_admin): ?>
-                                    title="Refill berikutnya: <?= htmlspecialchars($coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill', ENT_QUOTES, 'UTF-8') ?>"
+                                    title="<?= htmlspecialchars($coin_balance >= $coin_max ? 'Saldo penuh' : 'Refill berikutnya: ' . ($coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill'), ENT_QUOTES, 'UTF-8') ?>"
                                 <?php endif; ?>
                             ><?= $is_admin ? '∞' : htmlspecialchars((string) $coin_balance) ?></div>
                             <div class="stat-label">MEeLCoin</div>
@@ -275,7 +275,7 @@ if (isset($_POST['upload'])) {
                             </div>
 
                             <div class="drop-zone" id="thumb-zone">
-                                <input type="file" name="thumbnail" accept="image/*"
+                                <input type="file" name="thumbnail" accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.bmp,.ico,image/*"
                                     id="thumb-input" onchange="handleThumbFile(this)" aria-label="Pilih atau jatuhkan file thumbnail (opsional)">
                                 <img id="thumb-preview" class="thumb-mini" alt="pratinjau">
                                 <div class="drop-zone-icon" id="thumb-icon-wrap">

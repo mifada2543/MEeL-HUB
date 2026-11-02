@@ -19,6 +19,7 @@ class AdminEditorSharedTest extends TestCase
     private string $music;
     private string $video;
     private string $helper;
+    private string $uploadHelper;
 
     protected function setUp(): void
     {
@@ -26,6 +27,7 @@ class AdminEditorSharedTest extends TestCase
         $this->music = $this->read('admin/edit-music.php');
         $this->video = $this->read('admin/edit-video.php');
         $this->helper = $this->read('admin/includes/media_editor.php');
+        $this->uploadHelper = $this->read('modules/core/helpers/upload.php');
     }
 
     private function read(string $rel): string
@@ -80,10 +82,20 @@ class AdminEditorSharedTest extends TestCase
             );
         }
 
+        $this->assertStringNotContainsString(
+            'exec(',
+            $this->helper,
+            'helper editor tidak boleh menjalankan ffmpeg/ImageMagick sendiri — konversi ada di meel_convert_image_to_webp()'
+        );
+        $this->assertStringContainsString(
+            'meel_convert_image_to_webp(',
+            $this->helper,
+            'helper editor harus memakai satu jalur konversi bersama'
+        );
         $this->assertSame(
             1,
-            substr_count($this->helper, 'exec($cmd, $out, $ret)'),
-            'hanya boleh ada satu pemanggilan ffmpeg di helper'
+            substr_count($this->uploadHelper, 'function meel_convert_image_to_webp('),
+            'tidak boleh ada salinan meel_convert_image_to_webp di tempat lain'
         );
     }
 
@@ -93,19 +105,26 @@ class AdminEditorSharedTest extends TestCase
     public function testSharedHelperKeepsTheUploadSafetyChecks(): void
     {
         $this->assertStringContainsString(
-            "'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'",
+            'meel_image_mime_allowlist()',
             $this->helper,
-            'daftar MIME yang diizinkan harus tetap ada di helper'
+            'helper harus memakai matriks MIME bersama, bukan daftar sendiri'
         );
+        foreach (['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/bmp', 'image/x-icon', 'image/vnd.microsoft.icon'] as $mime) {
+            $this->assertStringContainsString(
+                "'" . $mime . "'",
+                $this->uploadHelper,
+                'matriks MIME bersama harus memuat ' . $mime
+            );
+        }
         $this->assertStringContainsString(
             '5 * 1024 * 1024',
             $this->helper,
             'batas ukuran unggahan harus tetap ada di helper'
         );
-        $this->assertStringContainsString(
-            'escapeshellarg(',
-            $this->helper,
-            'path ke ffmpeg dan berkas tujuan harus tetap di-escape'
+        $this->assertGreaterThanOrEqual(
+            2,
+            substr_count($this->uploadHelper, 'escapeshellarg('),
+            'path ke ffmpeg/ImageMagick dan berkas tujuan harus tetap di-escape'
         );
         $this->assertStringContainsString(
             "UPLOAD_ERR_OK",
@@ -194,26 +213,31 @@ class AdminEditorSharedTest extends TestCase
     }
 
     /**
-     * Perilaku yang TIDAK sama antara kedua halaman harus tetap berbeda.
-     *
-     * Musik menyimpan perubahan walau unggah thumbnail gagal; video tidak
-     * menyimpan apa pun kalau ada error. Perbedaan ini bukan disengaja saat
-     * disatukan — ia muncul dari dua salinan yang terpisah lama. Menyatukan
-     * kode tidak boleh diam-diam mengubahnya; kalau memang mau disamakan,
-     * itu keputusan produk dan harus lewat review.
+     * Kedua halaman harus membatalkan penyimpanan kalau ada error, termasuk
+     * thumbnail yang gagal diunggah. Dulu musik tetap menyimpan dan bisa
+     * menampilkan sukses meski thumbnail lama tidak berubah.
      */
-    public function testTheSaveBehaviourDifferenceIsStillExplicit(): void
+    public function testBothPagesAbortSaveWhenThereIsAnError(): void
     {
-        $this->assertStringContainsString(
-            'if ($title === \'\') {',
-            $this->music,
-            'halaman musik harus menyimpan walau ada error'
-        );
-        $this->assertStringContainsString(
-            "} elseif (\$error_message === '') {",
-            $this->video,
-            'halaman video harus membatalkan simpan kalau ada error'
-        );
+        foreach (['edit-music.php' => $this->music, 'edit-video.php' => $this->video] as $page => $src) {
+            $this->assertStringContainsString(
+                "} elseif (\$error_message === '') {",
+                $src,
+                $page . ' harus membatalkan simpan kalau ada error'
+            );
+        }
+    }
+
+    /**
+     * Pemilik memakai halaman yang sama lewat /profile/edit-music.
+     * Konteks owner harus dipertahankan supaya redirect admin tidak
+     * memblokir pemilik non-admin.
+     */
+    public function testOwnerRouteUsesTheSameEditorWithOwnerContext(): void
+    {
+        $owner = $this->read('profile/edit-music.php');
+        $this->assertStringContainsString("\$_EDIT_CONTEXT = 'owner';", $owner);
+        $this->assertStringContainsString("admin/edit-music.php", $owner);
     }
 }
 

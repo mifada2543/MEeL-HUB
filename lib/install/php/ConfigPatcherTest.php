@@ -80,6 +80,7 @@ define('MEEL_HDD_DRIVE', MEEL_HDD_BASE . '/drive/');
 
 define('MEEL_FFMPEG_PATH', '');
 define('MEEL_FFPROBE_PATH', '');
+define('MEEL_FFMPEG_ALLOW_SYSTEM', false);
 define('MEEL_NODE_PATH', '');
 define('MEEL_YTDLP_PATH', '');
 
@@ -168,6 +169,20 @@ assert_equals('MEEL_FFMPEG_PATH', $ffmpeg_lite_path, extract_define($content, 'M
 assert_equals('MEEL_FFPROBE_PATH', $ffprobe_lite_path, extract_define($content, 'MEEL_FFPROBE_PATH'));
 assert_equals('MEEL_NODE_PATH', '/usr/bin/node', extract_define($content, 'MEEL_NODE_PATH'));
 assert_equals('MEEL_YTDLP_PATH', '/usr/local/bin/yt-dlp', extract_define($content, 'MEEL_YTDLP_PATH'));
+
+// ─── Test 4b: patchFfmpegPolicy ───
+echo "\nTest 4b: patchFfmpegPolicy()\n";
+copy($templatePath, $targetPath);
+$patcher = new ConfigPatcher($targetPath);
+$patcher->patchFfmpegPolicy(true)->apply();
+$content = file_get_contents($targetPath);
+assert_equals('MEEL_FFMPEG_ALLOW_SYSTEM true', 'true', extract_define_raw($content, 'MEEL_FFMPEG_ALLOW_SYSTEM'));
+
+copy($templatePath, $targetPath);
+$patcher = new ConfigPatcher($targetPath);
+$patcher->patchFfmpegPolicy(false)->apply();
+$content = file_get_contents($targetPath);
+assert_equals('MEEL_FFMPEG_ALLOW_SYSTEM false', 'false', extract_define_raw($content, 'MEEL_FFMPEG_ALLOW_SYSTEM'));
 
 // ─── Test 5: patchProxy ───
 echo "\nTest 5: patchProxy()\n";

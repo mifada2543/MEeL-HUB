@@ -101,10 +101,13 @@ class EncodeService extends TranscoderBase
             }
 
             $metadata = generate_search_metadata($title, $artist, $album);
+            // Pemanggil bisa mengirim durasi 0 (mis. sesi pending lama);
+            // ukur dari hasil encode supaya kolom duration tidak tersimpan 0.
+            $final_duration = $duration > 0 ? $duration : (int) round($this->probeDuration($final_path));
             $this->touchAccounting();
             $this->conn->begin_transaction();
             try {
-                $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $metadata, $final_fname, $thumb_result, $duration);
+                $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $metadata, $final_fname, $thumb_result, $final_duration > 0 ? $final_duration : null);
                 if (!$ins[0]) {
                     throw new \RuntimeException($ins[1]);
                 }
@@ -408,25 +411,23 @@ class EncodeService extends TranscoderBase
         $target_path = "$target_dir/$target_name";
         $src_ext = strtolower(pathinfo($source_image, PATHINFO_EXTENSION));
 
-        if ($src_ext === 'webp') {
+        if ($src_ext === 'webp' && meel_is_valid_webp($source_image)) {
             if (copy($source_image, $target_path)) {
                 $this->removeFile($source_image);
                 return $target_name;
             }
         }
 
-        $ok = meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $source_image, $target_path, 500, '', self::ENV_PREFIX, 1);
+        $ok = meel_convert_image_to_webp($source_image, $target_path, 500, 500, false, $this->ffmpeg_bin, self::ENV_PREFIX);
 
-        if ($ok) {
+        if ($ok && meel_is_valid_webp($target_path)) {
             $this->removeFile($source_image);
             return $target_name;
         }
 
-        if (copy($source_image, $target_path)) {
-            $this->removeFile($source_image);
-            return $target_name;
+        if (is_file($target_path)) {
+            $this->removeFile($target_path);
         }
-
         $this->removeFile($source_image);
         return 'music_default.png';
     }

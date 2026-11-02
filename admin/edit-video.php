@@ -8,6 +8,7 @@ include __DIR__ . '/../auth/auth.php';
 include_once __DIR__ . '/../modules/core/helpers.php';
 require_once __DIR__ . '/../modules/core/japanese.php';
 require_once __DIR__ . '/includes/media_editor.php';
+meel_storage_guard();
 $_EDIT_CONTEXT = $_EDIT_CONTEXT ?? 'admin';
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login");
@@ -40,6 +41,9 @@ if (!$is_admin && !$is_owner) {
 }
 $status = "";
 $error_message = "";
+if (meel_post_upload_too_large()) {
+    $error_message = 'Ukuran upload melebihi batas server (post_max_size = ' . ini_get('post_max_size') . ').';
+}
 $cfg = meel_editor_media_config('video');
 if (isset($_POST['update'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
@@ -256,10 +260,11 @@ if ($thumb_src === '') {
                     </div>
                 <?php endif; ?>
                 <form id="edit-form" method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
-                    <?php if (isset($_SESSION['csrf_token'])): ?>
-                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
-                        <input type="file" name="thumbnail" accept="image/*" id="thumb-file-hidden" style="display:none">
-                    <?php endif; ?>
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="MAX_FILE_SIZE" value="5242880">
+                    <input type="file" name="thumbnail"
+                        accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.bmp,.ico,image/*"
+                        id="thumb-file-hidden" style="display:none">
                     <div class="field-group">
                         <label class="field-label" for="f-title">Judul Video</label>
                         <input type="text" id="f-title" name="title" placeholder="Masukkan judul video..."
@@ -282,15 +287,12 @@ if ($thumb_src === '') {
                                         <i data-lucide="captions" style="width:13px;height:13px;color:var(--accent);flex-shrink:0;"></i>
                                         <span class="sub-lang"><?= htmlspecialchars(subtitle_lang_label($_sub['lang'])) ?></span>
                                         <span class="sub-file"><?= htmlspecialchars($_sub['file']) ?></span>
-                                        <form method="POST" style="display:inline;margin:0;"
-                                            onsubmit="return meelConfirmForm(event, { title:'Hapus Subtitle', text:'Hapus subtitle bahasa <?= htmlspecialchars(subtitle_lang_label($_sub['lang'])) ?>?', confirmButtonText:'HAPUS' })">
-                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                                            <input type="hidden" name="delete_subtitle_lang" value="<?= htmlspecialchars($_sub['lang']) ?>">
-                                            <button type="submit" title="Hapus subtitle" class="sub-delete"
-                                                aria-label="Hapus subtitle <?= htmlspecialchars($_sub['lang']) ?>">
-                                                <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" title="Hapus subtitle" class="sub-delete"
+                                            aria-label="Hapus subtitle <?= htmlspecialchars(subtitle_lang_label($_sub['lang'])) ?>"
+                                            data-lang="<?= htmlspecialchars($_sub['lang']) ?>"
+                                            data-csrf="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                                            <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+                                        </button>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -351,6 +353,41 @@ if ($thumb_src === '') {
     <script src="../assets/js/admin/edit/video.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/edit/video.js') ?>"></script>
     <script src="../assets/js/shared/lang-dropdown.js?v=<?= filemtime(__DIR__ . '/../assets/js/shared/lang-dropdown.js') ?>"></script>
     <script>
+        document.querySelectorAll('.sub-delete').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const lang = this.dataset.lang;
+                const csrf = this.dataset.csrf;
+                if (!lang) return;
+
+                const confirmed = await Swal.fire({
+                    title: 'Hapus Subtitle',
+                    text: `Hapus subtitle bahasa ${subtitle_lang_label ? subtitle_lang_label(lang) : lang}?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'HAPUS',
+                    cancelButtonText: 'Batal',
+                    background: '#0e1118',
+                    color: '#fff'
+                });
+                if (!confirmed.isConfirmed) return;
+                const formData = new FormData();
+                formData.append('csrf_token', csrf);
+                formData.append('delete_subtitle_lang', lang);
+                try {
+                    const res = await fetch('', { method: 'POST', body: formData });
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        Swal.fire('Gagal', 'Gagal menghapus subtitle.', 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+                }
+            });
+        });
+
         <?php if ($status === "success"): ?>
             Swal.fire({
                 title: 'Berhasil!',

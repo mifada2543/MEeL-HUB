@@ -28,26 +28,32 @@ function setupMeelPlayerEvents() {
 
   function applyMeelVideoAspect(wrapper, videoW, videoH) {
     if (!wrapper || !videoW || !videoH) return;
+    const ratio = videoW / videoH;
     wrapper.style.setProperty("--meel-video-ar", `${videoW} / ${videoH}`);
     wrapper.style.removeProperty("aspect-ratio");
-    wrapper.setAttribute("data-video-aspect", (videoW / videoH).toFixed(4));
-    if (videoW < videoH) {
-      wrapper.style.maxHeight = "80vh";
-      wrapper.style.width = "auto";
-      wrapper.style.marginLeft = "auto";
-      wrapper.style.marginRight = "auto";
-    } else if (videoW / videoH < 16 / 9) {
-      wrapper.style.maxWidth = `calc(100% * 9 * ${videoW} / (16 * ${videoH}))`;
-      wrapper.style.maxHeight = "";
-      wrapper.style.width = "";
-      wrapper.style.marginLeft = "auto";
-      wrapper.style.marginRight = "auto";
-    } else {
-      wrapper.style.maxWidth = "";
-      wrapper.style.maxHeight = "";
-      wrapper.style.width = "";
-      wrapper.style.marginLeft = "";
-      wrapper.style.marginRight = "";
+    wrapper.setAttribute("data-video-aspect", ratio.toFixed(4));
+    wrapper.style.removeProperty("max-height");
+    wrapper.style.removeProperty("max-width");
+    wrapper.style.removeProperty("width");
+    wrapper.style.removeProperty("margin-left");
+    wrapper.style.removeProperty("margin-right");
+    const stage =
+      wrapper.closest("#video-glow-container") || wrapper.parentElement;
+    if (stage) {
+      (stage.style.removeProperty("max-height"),
+        stage.style.removeProperty("max-width"),
+        stage.style.removeProperty("width"),
+        stage.style.removeProperty("margin-left"),
+        stage.style.removeProperty("margin-right"));
+      if (ratio < 1) {
+        stage.style.width = `min(100%, calc(80vh * ${ratio.toFixed(4)}))`;
+        stage.style.marginLeft = "auto";
+        stage.style.marginRight = "auto";
+      } else if (ratio < 16 / 9) {
+        stage.style.maxWidth = `calc(100% * 9 * ${videoW} / (16 * ${videoH}))`;
+        stage.style.marginLeft = "auto";
+        stage.style.marginRight = "auto";
+      }
     }
   }
   window.applyMeelVideoAspect = applyMeelVideoAspect;
@@ -881,6 +887,15 @@ function setupMeelPlayerEvents() {
         delete e_xsGlow._meelSavedHeight;
         delete e_xsGlow._meelSavedWidth;
       }
+      e_xsWrap &&
+        videoElement &&
+        videoElement.videoWidth &&
+        videoElement.videoHeight &&
+        applyMeelVideoAspect(
+          e_xsWrap,
+          videoElement.videoWidth,
+          videoElement.videoHeight,
+        );
       const e = player.elements.container;
       if (e) {
         (e._fsGlowStop && e._fsGlowStop(),

@@ -7,6 +7,8 @@ require_once __DIR__ . '/../../modules/core/MeelCoin.php';
 require_once __DIR__ . '/../../modules/auth/helpers/user.php';
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 
 if (empty($_SESSION['user_id'])) {
     http_response_code(401);
@@ -36,7 +38,7 @@ $summary = $isAdmin
     : MeelCoin::getBalanceSummary($conn, $userId);
 $balance = $isAdmin ? -1 : $summary['total'];
 $max = $isAdmin ? -1 : MeelCoin::getMax($conn, $userRole);
-$countdown = $isAdmin ? 0 : MeelCoin::getRefillCountdown($conn, $userId, $userRole);
+$status = MeelCoin::getRefillStatus($conn, $userId, $userRole);
 $refillH = MeelCoin::getRefillHours($conn);
 
 echo json_encode([
@@ -47,8 +49,11 @@ echo json_encode([
     'held' => $isAdmin ? 0 : $summary['held'],
     'available' => $isAdmin ? -1 : $summary['available'],
     'max' => $max,
-    'countdown' => $countdown,
+    'countdown' => $status['countdown'],
     'refill_hours' => $refillH,
+    'cycle_seconds' => $status['cycle_seconds'],
+    'server_time' => $status['server_time'],
+    'next_refill_at' => $status['next_refill_at'],
 ]);
 
 /* reference build: MEeL-C5H9NO2 [3d4c077888676f32] */

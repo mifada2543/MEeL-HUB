@@ -269,7 +269,9 @@ if (isset($_POST['save_meelcoin_settings'])) {
         $value = $_POST[$key] ?? $default;
         if (in_array($key, ['meelcoin_upload_cost', 'meelcoin_advanced_cost'], true)) {
             $value = max(1, (int)$value);
-        } elseif (in_array($key, ['meelcoin_transcode_user_cost', 'meelcoin_transcode_member_cost', 'meelcoin_user_max', 'meelcoin_user_refill', 'meelcoin_member_max', 'meelcoin_member_refill', 'meelcoin_refill_hours'], true)) {
+        } elseif ($key === 'meelcoin_refill_hours') {
+            $value = max(1, (int)$value);
+        } elseif (in_array($key, ['meelcoin_transcode_user_cost', 'meelcoin_transcode_member_cost', 'meelcoin_user_max', 'meelcoin_user_refill', 'meelcoin_member_max', 'meelcoin_member_refill'], true)) {
             $value = max(0, (int)$value);
         }
         set_site_setting($conn, $key, (string)$value);
@@ -324,8 +326,14 @@ if (isset($_POST['adjust_meelcoin_user'])) {
                 header("Location: meelcoin.php?msg=Balance_held#manual-coin");
                 exit();
             }
-            $stmt = $conn->prepare("UPDATE users SET meelcoin = ? WHERE id = ?");
-            $stmt->bind_param("ii", $new, $target_id);
+            $resetRefill = $action === 'remove' && $current >= $coin_max && $new < $coin_max ? 1 : 0;
+            $stmt = $conn->prepare(
+                "UPDATE users
+                    SET meelcoin = ?,
+                        meelcoin_last_refill = IF(?, NOW(), meelcoin_last_refill)
+                  WHERE id = ?"
+            );
+            $stmt->bind_param("iii", $new, $resetRefill, $target_id);
             $stmt->execute();
             if ($stmt->affected_rows < 1) {
                 $stmt->close();

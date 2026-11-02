@@ -190,6 +190,13 @@ require_core() {
   require_entry "modules/autoload.php"
   require_entry "tools/check_deploy.php"
   require_entry "tools/.htaccess"
+  require_entry "tools/ffmpeg-lite/ffmpeg"
+  require_entry "tools/ffmpeg-lite/ffprobe"
+  require_entry "tools/ffmpeg-lite/ffmpeg.bin"
+  require_entry "tools/ffmpeg-lite/ffprobe.bin"
+  require_entry "tools/ffmpeg-lite/BUILD-INFO.txt"
+  require_entry "tools/ffmpeg-lite/SHA256SUMS"
+  require_entry "tools/ffmpeg-lite/README.md"
 }
 
 require_arcade() {

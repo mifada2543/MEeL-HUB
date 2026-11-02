@@ -532,7 +532,7 @@ define('MEEL_USE_XSENDFILE', true);
 
 ### 8. FFmpeg Setup (ffmpeg-lite — bundled)
 
-MEeL includes `ffmpeg-lite` pre-compiled with required components (H.264, HEVC, AAC, HLS, pad/crop filters, AV1 decoder). No apt installation needed.
+MEeL includes `ffmpeg-lite` pre-compiled with required components (H.264, HEVC, AAC, HLS, pad/crop filters, AV1 decoder) and **bundled runtime libraries** in `tools/ffmpeg-lite/lib/`. No apt installation needed.
 
 ```bash
 # Verify ffmpeg-lite is installed
@@ -543,7 +543,7 @@ MEeL includes `ffmpeg-lite` pre-compiled with required components (H.264, HEVC, 
 ./tools/ffmpeg-lite/test-ffmpeg-lite.sh
 ```
 
-System binary (`/usr/bin/ffmpeg`) is optional — if present, used as fallback. Default configuration in `auth/settings.php` points to `tools/ffmpeg-lite`.
+System binary (`/usr/bin/ffmpeg`) is **not used as a fallback** by default. To explicitly opt in to system FFmpeg, set `MEEL_FFMPEG_ALLOW_SYSTEM=true` in `auth/settings.php` or run `./install.sh --use-system-ffmpeg`. Default configuration in `auth/settings.php` points to `tools/ffmpeg-lite`.
 
 > 💡 `install.sh` automatically configures `auth/settings.php` to use ffmpeg-lite. To rebuild with additional components, see `tools/ffmpeg-lite/build-ffmpeg-lite.sh`.
 
@@ -627,6 +627,26 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 3. Login with the credentials you created during installation (`install.sh` prompts you to create an admin account)
 
 4. Check Admin page: `http://localhost/MEeL/admin/`
+
+### 13. MEeLCoin Refill Cron
+
+MEeLCoin refill must not depend on an online user. Install a cron job every 5 minutes so every due user is topped up automatically:
+
+```bash
+crontab -e
+```
+
+```cron
+*/5 * * * * /usr/bin/php /opt/lampp/htdocs/MEeL/scripts/meelcoin_refill.php >> /opt/lampp/htdocs/MEeL/logs/meelcoin_refill.log 2>&1
+```
+
+Adjust the PHP path and project directory. Use the same PHP CLI as the web server (at least PHP 8.2). Verify without changing balances:
+
+```bash
+php scripts/meelcoin_refill.php --dry-run --limit=20
+```
+
+The script uses a lock file under `temp/`, so two cron runs cannot overlap. Lazy refill from pages/API remains the fallback when cron is late.
 
 ### Installation Security Checks
 

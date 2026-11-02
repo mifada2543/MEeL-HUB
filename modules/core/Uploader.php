@@ -19,12 +19,8 @@ class Uploader
         $this->conn = $db_connection;
         $this->user_id = (int)$session_user_id;
         $this->base_dir = defined('MEEL_HDD_VIDEO_UPLOAD') ? MEEL_HDD_VIDEO_UPLOAD : "/path/to/your/media/video/upload/";
-        $this->ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
-            ? MEEL_FFMPEG_PATH
-            : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/local/bin/ffmpeg', '/usr/bin/ffmpeg', 'ffmpeg']);
-        $this->ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
-            ? MEEL_FFPROBE_PATH
-            : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
+        $this->ffmpeg_bin = meel_ffmpeg_bin();
+        $this->ffprobe_bin = meel_ffprobe_bin();
         $this->user_role = get_user_role($this->conn, $this->user_id);
     }
 
@@ -314,6 +310,7 @@ class Uploader
         }
         $file_name = $staged['filename'];
         $target_file = $staged['path'];
+        $duration = (int) ($staged['duration'] ?? 0);
         $this->trackCleanup([$target_file]);
         $this->touchAccounting('music_staged');
 
@@ -344,7 +341,18 @@ class Uploader
         $meta = generate_search_metadata($title, $artist, $album);
         $this->conn->begin_transaction();
         try {
-            $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $meta, $file_name, $thumb_name);
+            $ins = meel_insert_music_row(
+                $this->conn,
+                $this->user_id,
+                $title,
+                $artist,
+                $album,
+                $description,
+                $meta,
+                $file_name,
+                $thumb_name,
+                $duration > 0 ? $duration : null
+            );
             if (!$ins[0]) {
                 throw new \RuntimeException($ins[1]);
             }
@@ -452,7 +460,7 @@ class Uploader
             return ['error' => ['status' => 'error', 'msg' => "Durasi maksimal " . (int) round($max_dur / 60) . ' menit!', 'alert' => true]];
         }
 
-        return ['filename' => $file_name, 'path' => $target_file];
+        return ['filename' => $file_name, 'path' => $target_file, 'duration' => (int) round($duration)];
     }
 
     private function buildMusicThumbnail(array $files, string $file_name, string $target_file, string $base_dir): string
@@ -461,13 +469,13 @@ class Uploader
         $thumb_base = getRomajiName(pathinfo($file_name, PATHINFO_FILENAME));
         $thumb_dir = $base_dir . "upload/thumbnail/";
         if (!empty($files['thumbnail']['name']) && !empty($files['thumbnail']['tmp_name']) && is_uploaded_file($files['thumbnail']['tmp_name']) && ($files['thumbnail']['error'] ?? -1) === UPLOAD_ERR_OK) {
-            if (meel_magic_extension_ok($files['thumbnail']['tmp_name'], 'img', 'image') !== '') {
-                error_log("[MEeL] Music upload: thumbnail user ditolak (bukan gambar): " . ($files['thumbnail']['name'] ?? 'unknown'));
+            if (!meel_image_source_ok($files['thumbnail']['tmp_name'])) {
+                error_log("[MEeL] Music upload: thumbnail user ditolak (format tidak didukung): " . ($files['thumbnail']['name'] ?? 'unknown'));
             } else {
                 $t_clean = getRomajiName(pathinfo($files['thumbnail']['name'], PATHINFO_FILENAME));
                 $thumb_candidate = $this->getUniqueFilename($t_clean, "thumb.webp", $thumb_dir);
                 $abs_out = $thumb_dir . $thumb_candidate;
-                if (meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $files['thumbnail']['tmp_name'], $abs_out, 256, '', $this->getEnvPrefix())) {
+                if (meel_convert_image_to_webp($files['thumbnail']['tmp_name'], $abs_out, 256, 256, false, $this->ffmpeg_bin, $this->getEnvPrefix())) {
                     $thumb_name = $thumb_candidate;
                 } else {
                     $this->removeFile($abs_out);
@@ -770,17 +778,18 @@ class Uploader
             !empty($files['thumbnail']['tmp_name']) && is_uploaded_file($files['thumbnail']['tmp_name'])
             && $files['thumbnail']['error'] === UPLOAD_ERR_OK
         ) {
-            if (meel_magic_extension_ok($files['thumbnail']['tmp_name'], 'img', 'image') !== '') {
-                error_log("[MEeL] Video upload: thumbnail ditolak (bukan gambar): " . ($files['thumbnail']['name'] ?? 'unknown'));
+            if (!meel_image_source_ok($files['thumbnail']['tmp_name'])) {
+                error_log("[MEeL] Video upload: thumbnail ditolak (format tidak didukung): " . ($files['thumbnail']['name'] ?? 'unknown'));
             } else {
                 $t_name = $folder_name . "_thumb.webp";
                 $t_dst = $thumb_dir . $t_name;
-                if (meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $files['thumbnail']['tmp_name'], $t_dst, 1280, '', $this->getEnvPrefix())) {
+                // Konversi ke WebP; tidak ada lagi fallback yang menyalin byte
+                // PNG/JPEG asli ke dalam file berekstensi .webp.
+                if (meel_convert_image_to_webp($files['thumbnail']['tmp_name'], $t_dst, 1280, 1280, false, $this->ffmpeg_bin, $this->getEnvPrefix())) {
                     $thumb_name = $t_name;
                     $thumb_from_user = true;
-                } elseif (move_uploaded_file($files['thumbnail']['tmp_name'], $t_dst)) {
-                    $thumb_name = $t_name;
-                    $thumb_from_user = true;
+                } else {
+                    $this->removeFile($t_dst);
                 }
                 if ($thumb_from_user) {
                     $sm_done = meel_ffmpeg_thumbnail_webp(

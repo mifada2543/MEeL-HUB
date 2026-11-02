@@ -17,7 +17,7 @@ cd "$SRC"
  --enable-ffmpeg --enable-ffprobe --enable-zlib --enable-libopus --enable-libmp3lame --enable-libwebp \
  --enable-libdav1d \
  --enable-protocol=file,pipe \
- --enable-demuxer=mov,matroska,mpegts,hls,flac,wav,ogg,mp3,aac,ac3,eac3,concat,image2,image_jpeg_pipe,image_png_pipe,image_webp_pipe,image_gif_pipe,image_bmp_pipe \
+ --enable-demuxer=mov,matroska,mpegts,hls,flac,wav,ogg,mp3,aac,ac3,eac3,concat,image2,image_jpeg_pipe,image_png_pipe,image_webp_pipe,image_gif_pipe,image_bmp_pipe,ico \
  --enable-muxer=hls,mpegts,ogg,opus,mp3,ipod,mp4,webp,image2,mjpeg,null \
  --enable-decoder=h264,hevc,aac,aac_latm,mp3,mp3float,flac,vorbis,opus,alac,ac3,eac3,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_u8,mjpeg,png,webp,gif,bmp,libdav1d,av1 \
  --enable-encoder=libopus,libmp3lame,libwebp,mjpeg,png,aac \

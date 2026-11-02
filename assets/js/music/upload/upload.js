@@ -104,11 +104,34 @@ coverZone.addEventListener("drop", (e) => {
   e.preventDefault();
   coverZone.classList.remove("drag-over");
   const files = e.dataTransfer.files;
-  if (files[0] && files[0].type.startsWith("image/")) {
+  if (!files[0]) return;
+  const file = files[0];
+  const lowerName = (file.name || "").toLowerCase();
+  const looksLikeImage = (file.type && file.type.startsWith("image/")) ||
+    /\.(jpe?g|png|webp|gif|avif|bmp|ico)$/.test(lowerName);
+  if (!looksLikeImage) {
+    if (typeof window.meelAlert === "function") {
+      window.meelAlert({
+        title: "Format Tidak Didukung",
+        text: "Gunakan JPEG, PNG, WebP, GIF, AVIF, BMP, atau ICO.",
+        icon: "error",
+      });
+    }
+    return;
+  }
+  try {
     const dt = new DataTransfer();
-    dt.items.add(files[0]);
+    dt.items.add(file);
     coverInput.files = dt.files;
     handleCoverFile(coverInput);
+  } catch (err) {
+    if (typeof window.meelAlert === "function") {
+      window.meelAlert({
+        title: "Gagal Menempel File",
+        text: "Browser ini tidak mendukung drag & drop. Klik area cover untuk memilih file.",
+        icon: "error",
+      });
+    }
   }
 });
 function coverFromBase64(b64) {

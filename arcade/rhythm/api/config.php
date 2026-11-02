@@ -3,8 +3,12 @@ define('MEEL_API_CONTEXT', true);
 
 require_once __DIR__ . '/../../../auth/config.php';
 
-$FFMPEG_BIN = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== '' ? MEEL_FFMPEG_PATH : 'ffmpeg';
-$FFPROBE_BIN = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== '' ? MEEL_FFPROBE_PATH : 'ffprobe';
+$FFMPEG_BIN = function_exists('meel_ffmpeg_bin')
+    ? meel_ffmpeg_bin()
+    : (defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== '' ? MEEL_FFMPEG_PATH : 'ffmpeg');
+$FFPROBE_BIN = function_exists('meel_ffprobe_bin')
+    ? meel_ffprobe_bin()
+    : (defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== '' ? MEEL_FFPROBE_PATH : 'ffprobe');
 
 $UPLOAD_DIR = __DIR__ . '/../uploads/';
 $AUDIO_DIR = $UPLOAD_DIR . 'audio/';

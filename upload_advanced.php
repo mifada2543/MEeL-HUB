@@ -698,7 +698,7 @@ include __DIR__ . '/partials/scripts.php';
                                                 data-coin-api="<?= htmlspecialchars(meel_base_url_path(), ENT_QUOTES) ?>/api/meelcoin"
                                                 data-coin-user="<?= (int)($_SESSION['user_id'] ?? 0) ?>"
                                                 style="font-family:var(--font-mono);font-size:.85rem;color:#facc15;font-weight:700;cursor:help;"
-                                                title="Refill berikutnya: <?= $coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill' ?>"
+                                                title="<?= $is_admin ? '' : ($coin_balance >= $coin_max ? 'Saldo penuh' : 'Refill berikutnya: ' . ($coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill')) ?>"
                                             ><?= $is_admin ? '∞' : $coin_balance ?></span>
                                         </div>
                                         <?php if (!$is_admin): ?>

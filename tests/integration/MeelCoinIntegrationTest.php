@@ -238,6 +238,134 @@ class MeelCoinIntegrationTest extends TestCase
         $this->assertTrue(MeelCoin::refill($this->conn, DbTestHelper::MEMBER_USER_ID, 'member'));
         $this->assertSame(50, MeelCoin::getBalance($this->conn, DbTestHelper::MEMBER_USER_ID));
     }
+    public function testRefillCatchesUpEveryMissedCycleAndKeepsTheSchedule(): void
+    {
+        $this->setSetting('meelcoin_user_max', '100');
+        $this->setSetting('meelcoin_user_refill', '15');
+        $this->setSetting('meelcoin_refill_hours', '5');
+        $this->setBalance($this->userId, 10, $this->dbNow(16 * 3600));
+
+        $this->assertTrue(MeelCoin::refill($this->conn, $this->userId, 'user'));
+
+        $this->assertSame(55, MeelCoin::getBalance($this->conn, $this->userId), 'Tiga siklus terlewat harus diberikan sekaligus');
+        $logs = $this->coinLogs($this->userId, 'refill');
+        $this->assertCount(1, $logs);
+        $this->assertSame(45, $logs[0]['amount']);
+        $this->assertSame(55, $logs[0]['balance_after']);
+
+        $anchor = strtotime((string) $this->lastRefill($this->userId));
+        $this->assertEqualsWithDelta(
+            $this->dbUnixNow() - 3600,
+            $anchor,
+            60,
+            'Anchor harus maju tiga siklus (15 jam), bukan di-reset ke NOW()'
+        );
+        $this->assertEqualsWithDelta(
+            4 * 3600,
+            MeelCoin::getRefillCountdown($this->conn, $this->userId, 'user'),
+            60,
+            'Sisa waktu harus mengikuti jadwal asli, bukan siklus penuh dari NOW()'
+        );
+    }
+    public function testRefillCapsCatchUpAtMaxAndDoesNotGrantTwice(): void
+    {
+        $this->setBalance($this->userId, 0, $this->dbNow(16 * 3600));
+
+        $this->assertTrue(MeelCoin::refill($this->conn, $this->userId, 'user'));
+        $this->assertSame(25, MeelCoin::getBalance($this->conn, $this->userId));
+        $this->assertCount(1, $this->coinLogs($this->userId, 'refill'));
+
+        $this->assertFalse(MeelCoin::refill($this->conn, $this->userId, 'user'));
+        $this->assertSame(25, MeelCoin::getBalance($this->conn, $this->userId));
+        $this->assertCount(1, $this->coinLogs($this->userId, 'refill'), 'Refill kedua tidak boleh menambah log');
+
+        $anchor = strtotime((string) $this->lastRefill($this->userId));
+        $this->assertEqualsWithDelta(
+            $this->dbUnixNow() - (6 * 3600),
+            $anchor,
+            60,
+            'Anchor hanya maju dua siklus (10 jam) dari 16 jam lalu, yaitu 6 jam sebelum sekarang'
+        );
+    }
+    public function testCaptureFromFullBalanceStartsTheRefillWindow(): void
+    {
+        $this->setBalance($this->userId, 25, $this->dbNow(6 * 3600));
+
+        $hold = MeelCoin::hold($this->conn, $this->userId, 10, 'upload', 'video');
+        $this->assertTrue($hold['ok'], $hold['error']);
+
+        $capture = MeelCoin::captureHold($this->conn, $hold['hold_id'], $this->userId, 'upload');
+        $this->assertTrue($capture['ok'], $capture['error']);
+        $this->assertSame(15, MeelCoin::getBalance($this->conn, $this->userId));
+
+        $reset = strtotime((string) $this->lastRefill($this->userId));
+        $this->assertGreaterThan(
+            $this->dbUnixNow() - 60,
+            $reset,
+            'Capture dari saldo penuh harus memulai jendela refill baru'
+        );
+        $this->assertLessThanOrEqual($this->dbUnixNow() + 5, $reset);
+
+        $this->assertFalse(
+            MeelCoin::refill($this->conn, $this->userId, 'user'),
+            'Refill tidak boleh langsung jalan setelah capture dari saldo penuh'
+        );
+        $this->assertSame(15, MeelCoin::getBalance($this->conn, $this->userId));
+    }
+    public function testRefillDueUsersRefillsEligibleUsersWithoutASession(): void
+    {
+        $this->setSetting('meelcoin_member_max', '50');
+        $this->setSetting('meelcoin_member_refill', '25');
+        $this->setBalance($this->userId, 0, $this->dbNow(16 * 3600));
+        $this->setBalance(DbTestHelper::MEMBER_USER_ID, 0, $this->dbNow(16 * 3600));
+        $this->setBalance(DbTestHelper::ADMIN_USER_ID, 1, $this->dbNow(16 * 3600));
+        $this->conn->query("UPDATE users SET is_active = 0 WHERE id = " . $this->userId);
+
+        $stats = MeelCoin::refillDueUsers($this->conn, 100);
+
+        $this->assertSame(0, MeelCoin::getBalance($this->conn, $this->userId), 'Akun nonaktif tidak boleh diisi');
+        $this->assertSame(50, MeelCoin::getBalance($this->conn, DbTestHelper::MEMBER_USER_ID));
+        $this->assertSame(1, MeelCoin::getBalance($this->conn, DbTestHelper::ADMIN_USER_ID), 'Admin tidak boleh diisi');
+        $this->assertGreaterThanOrEqual(1, $stats['refilled']);
+    }
+    public function testRefillRejectsGuestAndInactiveAccounts(): void
+    {
+        $guestId = 434;
+        $password = password_hash('guest-test', PASSWORD_BCRYPT);
+        $stmt = $this->conn->prepare(
+            "INSERT INTO users (id, username, role, password, is_active)
+             VALUES (?, 'guest_refill_test', 'guest', ?, 1)
+             ON DUPLICATE KEY UPDATE role = 'guest', is_active = 1"
+        );
+        $stmt->bind_param("is", $guestId, $password);
+        $stmt->execute();
+        $stmt->close();
+        $this->setBalance($guestId, 0, $this->dbNow(16 * 3600));
+        $this->assertFalse(MeelCoin::refill($this->conn, $guestId, 'guest'));
+        $this->assertSame(0, MeelCoin::getBalance($this->conn, $guestId));
+
+        $this->conn->query("UPDATE users SET is_active = 0 WHERE id = " . DbTestHelper::MEMBER_USER_ID);
+        $this->setBalance(DbTestHelper::MEMBER_USER_ID, 0, $this->dbNow(16 * 3600));
+        $this->assertFalse(MeelCoin::refill($this->conn, DbTestHelper::MEMBER_USER_ID, 'member'));
+        $this->assertSame(0, MeelCoin::getBalance($this->conn, DbTestHelper::MEMBER_USER_ID));
+    }
+    public function testRefillHoursAreClampedToOneHour(): void
+    {
+        $this->setSetting('meelcoin_refill_hours', '0');
+        $this->assertSame(1, MeelCoin::getRefillHours($this->conn));
+    }
+    public function testRefillStatusUsesServerClockAndNextRefillTimestamp(): void
+    {
+        $this->setBalance($this->userId, 10, $this->dbNow(2 * 3600));
+
+        $status = MeelCoin::getRefillStatus($this->conn, $this->userId, 'user');
+
+        $this->assertSame(['countdown', 'server_time', 'next_refill_at', 'cycle_seconds'], array_keys($status));
+        $this->assertEqualsWithDelta(3 * 3600, $status['countdown'], 60);
+        $this->assertEqualsWithDelta($this->dbUnixNow(), $status['server_time'], 2);
+        $this->assertSame(5 * 3600, $status['cycle_seconds']);
+        $this->assertSame($status['server_time'] + $status['countdown'], $status['next_refill_at']);
+    }
     public function testGetRefillCountdownFollowsPerUserTimestamp(): void
     {
         $user = $this->userId;
