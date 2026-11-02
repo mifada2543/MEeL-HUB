@@ -141,7 +141,7 @@ if (isset($_POST['upload'])) {
                         <div class="stat-chip" style="grid-column:1/-1;">
                             <div class="stat-number" style="font-size:15px;color:#facc15;<?= $is_admin ? '' : 'cursor:help;' ?>"
                                 <?php if (!$is_admin): ?>
-                                    title="Refill berikutnya: <?= htmlspecialchars($coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill', ENT_QUOTES, 'UTF-8') ?>"
+                                    title="<?= htmlspecialchars($coin_balance >= $coin_max ? 'Saldo penuh' : 'Refill berikutnya: ' . ($coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill'), ENT_QUOTES, 'UTF-8') ?>"
                                 <?php endif; ?>
                             ><?= $is_admin ? '∞' : htmlspecialchars((string) $coin_balance) ?></div>
                             <div class="stat-label">MEeLCoin</div>

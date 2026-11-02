@@ -49,20 +49,20 @@ class BookUploader
             if ((int)($file['size'] ?? 0) > MEEL_MAX_THUMBNAIL_BYTES) {
                 return 'default_cover.webp';
             }
+            if (!meel_image_source_ok($file['tmp_name'])) {
+                return 'default_cover.webp';
+            }
 
             $name = time() . '_' . bin2hex(random_bytes(4)) . '.webp';
             $target_path = $this->base_path . '/upload/thumbnail/' . $name;
             $ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
                 ? MEEL_FFMPEG_PATH
                 : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
-            if (meel_ffmpeg_thumbnail_webp($ffmpeg_bin, $file['tmp_name'], $target_path, 500)) {
+            if (meel_convert_image_to_webp($file['tmp_name'], $target_path, 500, 500, false, $ffmpeg_bin)) {
                 return $name;
             }
-
-            if (meel_magic_extension_ok($file['tmp_name'], 'webp', 'image') === '') {
-                if (move_uploaded_file($file['tmp_name'], $target_path)) {
-                    return $name;
-                }
+            if (is_file($target_path)) {
+                @unlink($target_path);
             }
         }
         return 'default_cover.webp';

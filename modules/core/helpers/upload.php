@@ -49,7 +49,11 @@ if (!function_exists('meel_magic_extension_ok')) {
             $ok = str_starts_with($head, "\xFF\xD8\xFF")
                 || str_starts_with($head, "\x89PNG\x0D\x0A\x1A\x0A")
                 || (str_starts_with($head, 'RIFF') && substr($head, 8, 4) === 'WEBP')
-                || str_starts_with($head, 'GIF8');
+                || str_starts_with($head, 'GIF8')
+                || str_starts_with($head, 'BM')
+                || (strlen($head) >= 4 && substr($head, 0, 4) === "\x00\x00\x01\x00")
+                || (strlen($head) >= 4 && substr($head, 0, 4) === "\x00\x00\x02\x00")
+                || (strlen($head) >= 8 && substr($head, 4, 4) === 'ftyp');
             return $ok ? '' : 'File tidak valid sebagai gambar (magic bytes mismatch).';
         }
         if ($mediaKind === 'pdf') {
@@ -238,7 +242,149 @@ if (!function_exists('meel_ffmpeg_thumbnail_webp')) {
         $cmd .= ' -vf ' . escapeshellarg("scale='min({$max_width},iw)':-1")
             . ' -c:v libwebp -q:v 78 ' . escapeshellarg($dst) . ' 2>&1';
         @shell_exec($cmd);
-        return is_file($dst) && filesize($dst) > 0;
+        // Verifikasi hasil: file yang hanya setengah tertulis tidak dianggap sukses.
+        return meel_is_valid_webp($dst);
+    }
+}
+if (!function_exists('meel_image_mime_allowlist')) {
+    /**
+     * Satu-satunya sumber kebenaran format gambar yang boleh diunggah
+     * sebagai thumbnail/cover (upload musik, video, buku, dan halaman edit).
+     *
+     * @return string[]
+     */
+    function meel_image_mime_allowlist(): array
+    {
+        return [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/gif',
+            'image/avif',
+            'image/bmp',
+            'image/x-icon',
+            'image/vnd.microsoft.icon',
+        ];
+    }
+}
+if (!function_exists('meel_image_format_label')) {
+    function meel_image_format_label(): string
+    {
+        return 'JPEG, PNG, WebP, GIF, AVIF, BMP, atau ICO';
+    }
+}
+if (!function_exists('meel_image_mime_of')) {
+    function meel_image_mime_of(string $path): string
+    {
+        if (!is_file($path)) {
+            return '';
+        }
+        $info = @getimagesize($path);
+        if (is_array($info) && !empty($info['mime'])) {
+            return strtolower((string) $info['mime']);
+        }
+        // getimagesize() tidak mengenali semua format (mis. AVIF pada PHP lama).
+        $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+        if (!$finfo) {
+            return '';
+        }
+        $mime = @finfo_file($finfo, $path);
+        finfo_close($finfo);
+        return is_string($mime) ? strtolower($mime) : '';
+    }
+}
+if (!function_exists('meel_image_source_ok')) {
+    /**
+     * Validasi file gambar sumber (upload) memakai getimagesize(), bukan
+     * hanya magic bytes, supaya ICO/BMP/AVIF ikut tervalidasi.
+     */
+    function meel_image_source_ok(string $path): bool
+    {
+        if (!is_file($path) || filesize($path) < 16) {
+            return false;
+        }
+        $mime = meel_image_mime_of($path);
+        if ($mime === '') {
+            return meel_magic_extension_ok($path, 'img', 'image') === '';
+        }
+        return in_array($mime, meel_image_mime_allowlist(), true);
+    }
+}
+if (!function_exists('meel_is_valid_webp')) {
+    /**
+     * Pastikan file hasil konversi benar-benar WebP dengan dimensi valid,
+     * supaya tidak ada byte PNG/JPEG yang tersimpan dengan ekstensi .webp.
+     */
+    function meel_is_valid_webp(string $path): bool
+    {
+        if (!is_file($path) || filesize($path) < 16) {
+            return false;
+        }
+        $info = @getimagesize($path);
+        if (!is_array($info)) {
+            return false;
+        }
+        return strtolower((string) ($info['mime'] ?? '')) === 'image/webp'
+            && (int) ($info[0] ?? 0) > 0
+            && (int) ($info[1] ?? 0) > 0;
+    }
+}
+if (!function_exists('meel_convert_image_to_webp')) {
+    /**
+     * Convert image to WebP using fallback chain:
+     * 1. Bundled ffmpeg-lite (via MEEL_FFMPEG_PATH or resolve_binary)
+     * 2. System ffmpeg (/usr/bin/ffmpeg, /usr/local/bin/ffmpeg)
+     * 3. ImageMagick convert (if available)
+     * Returns true on success, false on failure.
+     */
+    function meel_convert_image_to_webp(string $src, string $dst, int $max_w, int $max_h, bool $pad = false, string $ffmpeg_bin = '', string $env_prefix = ''): bool
+    {
+        $vf = $pad
+            ? "scale={$max_w}:{$max_h}:force_original_aspect_ratio=decrease,pad={$max_w}:{$max_h}:(ow-iw)/2:(oh-ih)/2:color=black"
+            : "scale='min({$max_w},iw)':-1";
+
+        $bins = [];
+        if ($ffmpeg_bin !== '') {
+            $bins[] = $ffmpeg_bin;
+        }
+        if (defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== '') {
+            $bins[] = MEEL_FFMPEG_PATH;
+        }
+        $bins = array_merge($bins, ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg']);
+        $bins = array_unique(array_filter($bins));
+
+        foreach ($bins as $bin) {
+            $cmd = $env_prefix . escapeshellarg($bin) . " -y -i " . escapeshellarg($src)
+                . " -vf " . escapeshellarg($vf)
+                . " -c:v libwebp -q:v 78 " . escapeshellarg($dst) . " 2>&1";
+            $out = [];
+            $ret = -1;
+            exec($cmd, $out, $ret);
+            if ($ret === 0 && meel_is_valid_webp($dst)) {
+                return true;
+            }
+            if (is_file($dst)) {
+                @unlink($dst);
+            }
+        }
+
+        if (is_executable('/usr/bin/convert')) {
+            $im_cmd = '/usr/bin/convert ' . escapeshellarg($src)
+                . ' -resize ' . escapeshellarg("{$max_w}x{$max_h}>")
+                . ' -background black -gravity center -extent ' . escapeshellarg("{$max_w}x{$max_h}")
+                . ' ' . escapeshellarg($dst) . ' 2>&1';
+            $out = [];
+            $ret = -1;
+            exec($im_cmd, $out, $ret);
+            if ($ret === 0 && meel_is_valid_webp($dst)) {
+                return true;
+            }
+            if (is_file($dst)) {
+                @unlink($dst);
+            }
+        }
+
+        return false;
     }
 }
 if (!function_exists('meel_allocate_unique_dir')) {

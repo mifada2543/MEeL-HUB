@@ -628,6 +628,26 @@ cp /path/to/cookies.txt /opt/lampp/htdocs/MEeL/temp/cookies.txt
 
 4. Cek halaman Admin: `http://localhost/MEeL/admin/`
 
+### 13. Cron Refill MEeLCoin
+
+Refill MEeLCoin tidak boleh bergantung pada user yang sedang online. Pasang cron setiap 5 menit agar saldo semua user yang due terisi otomatis:
+
+```bash
+crontab -e
+```
+
+```cron
+*/5 * * * * /usr/bin/php /opt/lampp/htdocs/MEeL/scripts/meelcoin_refill.php >> /opt/lampp/htdocs/MEeL/logs/meelcoin_refill.log 2>&1
+```
+
+Sesuaikan path PHP dan folder proyek. Gunakan PHP CLI yang sama dengan web server (minimal PHP 8.2). Verifikasi tanpa mengubah saldo:
+
+```bash
+php scripts/meelcoin_refill.php --dry-run --limit=20
+```
+
+Script memakai lock file di `temp/`, jadi dua proses cron tidak akan berjalan bersamaan. Refill lazy di halaman/API tetap menjadi fallback bila cron terlambat.
+
 ### Pemeriksaan Keamanan Instalasi
 
 | Aturan | Kenapa |

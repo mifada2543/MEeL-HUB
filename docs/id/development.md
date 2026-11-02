@@ -869,14 +869,16 @@ Hampir seluruh kode repo membaca kolom datetime lewat `strtotime()` → selalu j
 
 | Kolom | Ditulis | Dibaca | Gejala kalau timezone meleset |
 |---|---|---|---|
-| `users.meelcoin_last_refill` | `MeelCoin.php` (3 titik) | `MeelCoin.php` `$threshold` + `$elapsed` | refill mati, countdown selalu penuh |
+| `users.meelcoin_last_refill` | Jam SQL (`NOW()` / `DATE_ADD`) | Jam SQL (`TIMESTAMPDIFF`, `NOW()`) | Tidak terpengaruh; jangan campur dengan jam PHP |
 | `users.last_activity` | 5 titik produksi (lihat di bawah) | 6+ titik | user yang di-"kick" tetap tampil ONLINE |
+
+`users.meelcoin_last_refill` sengaja dikecualikan dari aturan konversi PHP: `MeelCoin::refill()` menghitung siklus, memajukan anchor, dan menghitung countdown sepenuhnya dengan jam database. API membawa `server_time` + `next_refill_at` ke UI, jadi browser tidak perlu membandingkan jam lokal dengan nilai DATETIME. Jangan mengubah jalur ini menjadi `strtotime()`/`time()`.
 
 Titik tulis `last_activity` yang sudah dikonversi: `activity_logger.php` (UPDATE user terautentikasi + INSERT guest `ON DUPLICATE KEY UPDATE`), `auth/login.php` (×2), `auth/mfa_verify.php`, `auth/auth.php`, dan `admin_actions.php` (`kick_user`, yang sebelumnya memakai `DATE_SUB(NOW(), INTERVAL 10 MINUTE)`).
 
 **Audit yang belum selesai:** kolom `created_at`, `login_attempts`, dan `rate_limit` **masih ditulis `NOW()`**. Untuk `created_at` dampaknya display-only (drift jam di `admin/activity_log.php`) — belum diaudit per-kolom. Lakukan audit ini sebelum membangun worker berbasis waktu, karena scheduler berbasis waktu makin sensitif terhadap skew.
 
-Di mesin dev, PHP CLI memakai `date.timezone = UTC` sementara MariaDB `@@time_zone = SYSTEM` = WIB (UTC+7) — selisih 25195 detik ≈ 7 jam. `MeelCoinIntegrationTest::testRefillResetsTimerWhenBalanceIsAtMax` menangkap selisih itu.
+Di mesin dev, PHP CLI memakai `date.timezone = UTC` sementara MariaDB `@@time_zone = SYSTEM` = WIB (UTC+7) — selisih 25195 detik ≈ 7 jam. Test integrasi refill menjaga agar perhitungan tetap memakai jam database, bukan jam PHP.
 
 ## Housekeeping & Throttle
 

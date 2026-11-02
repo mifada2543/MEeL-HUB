@@ -76,6 +76,7 @@ $coin_balance = 0;
 $coin_max = 0;
 $coin_countdown = 0;
 $coin_refill_hours = 5;
+$user_role = null;
 $coin_is_owner = $is_logged_in && !empty($u['id']) && ($_SESSION['username'] === $u['username']);
 if ($coin_is_owner) {
     $user_role = get_user_role($conn, (int)$_SESSION['user_id']);
@@ -88,6 +89,14 @@ if ($coin_is_owner) {
             $coin_countdown = MeelCoin::getRefillCountdown($conn, (int)$_SESSION['user_id'], $user_role);
         }
         $coin_refill_hours = MeelCoin::getRefillHours($conn);
+    }
+}
+$coin_countdown_label = 'Siap';
+if ($coin_is_owner && $user_role !== 'admin') {
+    if ($coin_max > 0 && $coin_balance >= $coin_max) {
+        $coin_countdown_label = 'Maks';
+    } elseif ($coin_countdown > 0) {
+        $coin_countdown_label = meel_format_duration($coin_countdown);
     }
 }
 $active_tab = $_GET['tab'] ?? 'all';
@@ -142,6 +151,7 @@ if (!$is_guest_profile) {
                 <div class="coin-indicator <?= ($u['role'] === 'admin') ? 'coin-admin' : ($coin_balance >= $coin_max ? 'coin-maxed' : '') ?>"
                     id="coin-indicator"
                     data-countdown="<?= (int)$coin_countdown ?>"
+                    data-balance="<?= ($u['role'] === 'admin') ? -1 : (int)$coin_balance ?>"
                     data-max="<?= ($u['role'] === 'admin') ? -1 : (int)$coin_max ?>"
                     data-role="<?= htmlspecialchars($u['role']) ?>"
                     data-refill-hours="<?= (int)$coin_refill_hours ?>"
@@ -165,7 +175,7 @@ if (!$is_guest_profile) {
                                 <circle cx="12" cy="12" r="10" />
                                 <polyline points="12 6 12 12 16 14" />
                             </svg>
-                            <span id="coin-countdown"><?= $coin_countdown > 0 ? gmdate('H:i:s', $coin_countdown) : 'Siap' ?></span>
+                            <span id="coin-countdown"><?= htmlspecialchars($coin_countdown_label, ENT_QUOTES, 'UTF-8') ?></span>
                         </span>
                     <?php endif; ?>
                 </div>

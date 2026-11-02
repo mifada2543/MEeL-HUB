@@ -8,6 +8,7 @@ include __DIR__ . '/../auth/auth.php';
 include_once __DIR__ . '/../modules/core/helpers.php';
 require_once __DIR__ . '/../modules/core/japanese.php';
 require_once __DIR__ . '/includes/media_editor.php';
+meel_storage_guard();
 $_EDIT_CONTEXT = $_EDIT_CONTEXT ?? 'admin';
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login");

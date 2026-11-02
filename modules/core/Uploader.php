@@ -314,6 +314,7 @@ class Uploader
         }
         $file_name = $staged['filename'];
         $target_file = $staged['path'];
+        $duration = (int) ($staged['duration'] ?? 0);
         $this->trackCleanup([$target_file]);
         $this->touchAccounting('music_staged');
 
@@ -344,7 +345,18 @@ class Uploader
         $meta = generate_search_metadata($title, $artist, $album);
         $this->conn->begin_transaction();
         try {
-            $ins = meel_insert_music_row($this->conn, $this->user_id, $title, $artist, $album, $description, $meta, $file_name, $thumb_name);
+            $ins = meel_insert_music_row(
+                $this->conn,
+                $this->user_id,
+                $title,
+                $artist,
+                $album,
+                $description,
+                $meta,
+                $file_name,
+                $thumb_name,
+                $duration > 0 ? $duration : null
+            );
             if (!$ins[0]) {
                 throw new \RuntimeException($ins[1]);
             }
@@ -452,7 +464,7 @@ class Uploader
             return ['error' => ['status' => 'error', 'msg' => "Durasi maksimal " . (int) round($max_dur / 60) . ' menit!', 'alert' => true]];
         }
 
-        return ['filename' => $file_name, 'path' => $target_file];
+        return ['filename' => $file_name, 'path' => $target_file, 'duration' => (int) round($duration)];
     }
 
     private function buildMusicThumbnail(array $files, string $file_name, string $target_file, string $base_dir): string
@@ -467,7 +479,7 @@ class Uploader
                 $t_clean = getRomajiName(pathinfo($files['thumbnail']['name'], PATHINFO_FILENAME));
                 $thumb_candidate = $this->getUniqueFilename($t_clean, "thumb.webp", $thumb_dir);
                 $abs_out = $thumb_dir . $thumb_candidate;
-                if (meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $files['thumbnail']['tmp_name'], $abs_out, 256, '', $this->getEnvPrefix())) {
+                if (meel_convert_image_to_webp($files['thumbnail']['tmp_name'], $abs_out, 256, 256, false, $this->ffmpeg_bin, $this->getEnvPrefix())) {
                     $thumb_name = $thumb_candidate;
                 } else {
                     $this->removeFile($abs_out);
@@ -775,12 +787,13 @@ class Uploader
             } else {
                 $t_name = $folder_name . "_thumb.webp";
                 $t_dst = $thumb_dir . $t_name;
-                if (meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $files['thumbnail']['tmp_name'], $t_dst, 1280, '', $this->getEnvPrefix())) {
+                // Konversi ke WebP; tidak ada lagi fallback yang menyalin byte
+                // PNG/JPEG asli ke dalam file berekstensi .webp.
+                if (meel_convert_image_to_webp($files['thumbnail']['tmp_name'], $t_dst, 1280, 1280, false, $this->ffmpeg_bin, $this->getEnvPrefix())) {
                     $thumb_name = $t_name;
                     $thumb_from_user = true;
-                } elseif (move_uploaded_file($files['thumbnail']['tmp_name'], $t_dst)) {
-                    $thumb_name = $t_name;
-                    $thumb_from_user = true;
+                } else {
+                    $this->removeFile($t_dst);
                 }
                 if ($thumb_from_user) {
                     $sm_done = meel_ffmpeg_thumbnail_webp(

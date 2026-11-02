@@ -797,14 +797,16 @@ Almost every datetime read in this repo goes through `strtotime()` → always th
 
 | Column | Written by | Read by | Symptom when the timezone drifts |
 |---|---|---|---|
-| `users.meelcoin_last_refill` | `MeelCoin.php` (3 points) | `MeelCoin.php` `$threshold` + `$elapsed` | refill dead, countdown always full |
+| `users.meelcoin_last_refill` | SQL clock (`NOW()` / `DATE_ADD`) | SQL clock (`TIMESTAMPDIFF`, `NOW()`) | Unaffected; do not mix it with the PHP clock |
 | `users.last_activity` | 5 production points (see below) | 6+ points | a "kicked" user still shows as ONLINE |
+
+`users.meelcoin_last_refill` is deliberately exempt from the PHP-clock conversion rule: `MeelCoin::refill()` calculates cycles, advances the anchor, and derives the countdown entirely with the database clock. The API passes `server_time` + `next_refill_at` to the UI, so the browser never compares a DATETIME value against the local clock. Do not change this path to `strtotime()`/`time()`.
 
 The `last_activity` write points already converted: `activity_logger.php` (authenticated user UPDATE + guest INSERT `ON DUPLICATE KEY UPDATE`), `auth/login.php` (×2), `auth/mfa_verify.php`, `auth/auth.php`, and `admin_actions.php` (`kick_user`, which previously used `DATE_SUB(NOW(), INTERVAL 10 MINUTE)`).
 
 **Audit not finished yet:** the columns `created_at`, `login_attempts`, and `rate_limit` are **still written with `NOW()`**. For `created_at` the impact is display-only (clock drift in `admin/activity_log.php`) and has not been audited per column. Do that audit before building a time-based worker, because a time-based scheduler gets more sensitive to skew as it grows.
 
-On a dev machine the PHP CLI uses `date.timezone = UTC` while MariaDB's `@@time_zone = SYSTEM` is WIB (UTC+7) — a difference of 25195 seconds ≈ 7 hours. `MeelCoinIntegrationTest::testRefillResetsTimerWhenBalanceIsAtMax` caught exactly that gap.
+On a dev machine the PHP CLI uses `date.timezone = UTC` while MariaDB's `@@time_zone = SYSTEM` is WIB (UTC+7) — a difference of 25195 seconds ≈ 7 hours. The refill integration tests keep the calculation on the database clock instead of the PHP clock.
 
 ## Housekeeping & Throttle
 

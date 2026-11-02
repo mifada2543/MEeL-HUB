@@ -85,6 +85,7 @@ if ($meelcoin_enabled) {
         MeelCoin::refill($conn, (int)$_SESSION['user_id'], $user_role);
     }
     $coin_balance = $is_admin ? -1 : MeelCoin::getBalance($conn, (int)$_SESSION['user_id']);
+    $coin_max = $is_admin ? -1 : MeelCoin::getMax($conn, $user_role);
     $coin_cost = $is_admin ? 0 : MeelCoin::getTranscodeCost($conn, $user_role);
     $coin_countdown = $is_admin ? 0 : MeelCoin::getRefillCountdown($conn, (int)$_SESSION['user_id'], $user_role);
 }
@@ -292,7 +293,7 @@ $chosen = $format_meta[$format] ?? $format_meta['mp3'];
                                             data-coin-api="<?= htmlspecialchars(meel_base_url_path(), ENT_QUOTES) ?>/api/meelcoin"
                                             data-coin-user="<?= (int)($_SESSION['user_id'] ?? 0) ?>"
                                             <?php if (!$is_admin): ?>
-                                                title="Refill berikutnya: <?= $coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill' ?>"
+                                                title="<?= $coin_balance >= $coin_max ? 'Saldo penuh' : 'Refill berikutnya: ' . ($coin_countdown > 0 ? floor($coin_countdown / 3600) . 'j ' . floor(($coin_countdown % 3600) / 60) . 'm lagi' : 'Siap refill') ?>"
                                             <?php endif; ?>
                                         ><?= $is_admin ? '∞' : $coin_balance ?></div>
                                     </div>

@@ -73,19 +73,20 @@ if (!function_exists('meel_editor_upload_thumbnail')) {
             return ['url' => $current, 'error' => $error];
         }
 
-        $allowed_mime = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $upload_mime = $finfo ? finfo_file($finfo, $files['thumbnail']['tmp_name']) : '';
-        if ($finfo) {
-            finfo_close($finfo);
+        $upload_mime = meel_image_mime_of($files['thumbnail']['tmp_name']);
+        if (!in_array($upload_mime, meel_image_mime_allowlist(), true)) {
+            return ['url' => $current, 'error' => 'File ' . $cfg['label'] . ' harus berupa gambar (' . meel_image_format_label() . ').'];
         }
-        if (!in_array($upload_mime, $allowed_mime, true)) {
-            return ['url' => $current, 'error' => 'File ' . $cfg['label'] . ' harus berupa gambar (JPEG, PNG, WebP, GIF, atau AVIF).'];
+        if (!meel_image_source_ok($files['thumbnail']['tmp_name'])) {
+            return ['url' => $current, 'error' => 'File ' . $cfg['label'] . ' tidak terbaca sebagai gambar yang valid.'];
         }
 
         $target_dir = meel_media_base_path($cfg['type']) . '/thumbnail/';
         if (!is_dir($target_dir)) {
             @mkdir($target_dir, 0755, true);
+        }
+        if (!is_writable($target_dir)) {
+            return ['url' => $current, 'error' => 'Direktori thumbnail tidak dapat ditulis.'];
         }
 
         $clean_title = getRomajiName($title);
@@ -94,25 +95,20 @@ if (!function_exists('meel_editor_upload_thumbnail')) {
         }
 
         $new_name = meel_reserve_unique_filename($target_dir, $clean_title . $cfg['suffix'], 'webp', 200, '_');
-        $upload_path = $new_name !== null ? $target_dir . $new_name : null;
-        $ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
-            ? MEEL_FFMPEG_PATH
-            : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+        if ($new_name === null) {
+            return ['url' => $current, 'error' => 'Gagal menyiapkan nama file unik.'];
+        }
+        $upload_path = $target_dir . $new_name;
 
-        $cmd = escapeshellarg($ffmpeg_bin) . " -y -i " . escapeshellarg($files['thumbnail']['tmp_name'])
-            . " -vf \"scale=500:500:force_original_aspect_ratio=decrease,pad=500:500:(ow-iw)/2:(oh-ih)/2\" -c:v libwebp -q:v 78 "
-            . escapeshellarg($upload_path) . " 2>&1";
-        exec($cmd, $out, $ret);
-        if ($ret === 0 && file_exists($upload_path) && filesize($upload_path) > 0) {
+        // Konversi ke WebP (ffmpeg-lite -> system ffmpeg -> ImageMagick).
+        // Tidak ada fallback yang menyalin byte asli ke nama .webp.
+        if (meel_convert_image_to_webp($files['thumbnail']['tmp_name'], $upload_path, 500, 500, true)) {
             return ['url' => $new_name, 'error' => ''];
         }
 
-        if (move_uploaded_file($files['thumbnail']['tmp_name'], $upload_path)) {
-            return ['url' => $new_name, 'error' => ''];
+        if (is_file($upload_path)) {
+            @unlink($upload_path);
         }
-
-        @unlink($upload_path);
-
-        return ['url' => $current, 'error' => $cfg['upload_error']];
+        return ['url' => $current, 'error' => $cfg['upload_error'] . ' Konversi gambar gagal.'];
     }
 }

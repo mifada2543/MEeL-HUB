@@ -203,7 +203,10 @@ same global functions:
 - `meel_reserve_unique_filename()` — atomic `fopen(..., 'x')` name reservation (race-safe)
 - `meel_allocate_unique_dir()` — unique directory allocation without overwrites
 - `meel_sanitize_clean_name()` / `meel_sanitize_upload_filename()` — name sanitization
-- `meel_ffmpeg_thumbnail_webp()` — single image → WebP conversion path (`libwebp`)
+- `meel_convert_image_to_webp()` — the only image → WebP path (ffmpeg-lite → system ffmpeg → ImageMagick)
+- `meel_is_valid_webp()` — verifies the converted file really is WebP with valid dimensions
+- `meel_image_mime_allowlist()` / `meel_image_source_ok()` — the single image format matrix
+- `meel_ffmpeg_thumbnail_webp()` — one-shot ffmpeg call for frame extraction and re-scaling
 - `meel_ffmpeg_encode_opus()` — single audio → Ogg/Opus encode path
 - `meel_insert_music_row()` — single INSERT path for the `music` table
 - `meel_magic_extension_ok()` — magic-bytes + extension validation per media kind
@@ -228,6 +231,32 @@ or return the final result array to stop.**
 | `validateMusicUpload()` / `stageMusicFile()` | extension, magic bytes, size, duration |
 | `buildMusicThumbnail()` | user thumbnail or one frame from the audio |
 | `maybeTranscodeToOgg()` | re-encode to Ogg unless the admin skipped it |
+
+#### Image format matrix (thumbnail & cover uploads)
+
+There is exactly one list of accepted image formats, in
+`modules/core/helpers/upload.php`. Upload pages, the admin editors and
+`BookUploader` all read it, so a format can no longer be accepted on one page and
+rejected on another.
+
+| | Detail |
+|---|---|
+| Accepted formats | JPEG, PNG, WebP, GIF, AVIF, BMP, ICO |
+| Detection | `meel_image_source_ok()` — `getimagesize()` first (it recognises ICO/BMP), libmagic as fallback for formats PHP cannot parse (some AVIF builds) |
+| Conversion chain | bundled `ffmpeg-lite` → `/usr/bin/ffmpeg` → ImageMagick `convert` |
+| Output check | `meel_is_valid_webp()` — MIME must be `image/webp` **and** both dimensions > 0, otherwise the file is deleted |
+| Stored form | always real WebP under a `.webp` name |
+
+Two rules keep the files honest:
+
+1. **No fake WebP.** A failed conversion never falls back to copying the source
+   bytes into the `.webp` target. Callers either get a verified WebP or a
+   default thumbnail / error. This is what previously produced
+   `fire-bird_cover.webp` whose bytes were actually PNG.
+2. **ICO is handled by the bundled binary.** `ffmpeg-lite` is built with
+   `--enable-demuxer=ico`, so ICO decoding no longer relies on the system ffmpeg
+   or ImageMagick; those two stay in the chain only as fallbacks for formats the
+   lite build cannot read. See `tools/ffmpeg-lite/BUILD-INFO.txt`.
 
 ### 5. `modules/core/Transcoder.php` — facade + split services
 
@@ -1177,8 +1206,10 @@ The shared parts now live in one place:
 | `admin/edit-video.php` | the video-specific parts: subtitle upload, the database write |
 
 `admin/edit-music.php` went from 427 to 357 lines and `admin/edit-video.php`
-from 468 to 398. The shell call to ffmpeg moved from two files into one, so
-there is now a single audited place where it happens.
+from 468 to 398. The shell call to ffmpeg moved out of both pages entirely: the
+editor now calls `meel_convert_image_to_webp()` from `helpers/upload.php`, the
+same function the upload paths use, so there is a single audited place where
+image conversion happens.
 
 One difference is deliberately preserved. When the thumbnail upload fails, the
 music page still saves the title and description, while the video page saves
@@ -1379,21 +1410,38 @@ Internal currency that limits uploads per user. Every balance change uses **a si
 class MeelCoin {
     public static function spend(mysqli $conn, int $userId, int $amount, string $reason): array; // [ok, error]
     public static function refund(mysqli $conn, int $userId, int $amount, string $reason): bool;
-    public static function refill(mysqli $conn, int $userId, string $role): bool;
-    public static function getRefillCountdown(mysqli $conn, int $userId, string $role): int;     // 0 = ready to refill
+    public static function refill(mysqli $conn, int $userId, string $role): bool;              // catch-up + transaction
+    public static function getDueRefillUsers(mysqli $conn, int $limit = 500): array;           // cron helper
+    public static function refillDueUsers(mysqli $conn, int $limit = 500): array;               // cron helper
+    public static function getRefillStatus(mysqli $conn, int $userId, string $role): array;     // countdown + server time
+    public static function getRefillCountdown(mysqli $conn, int $userId, string $role): int;    // 0 = ready to refill
 }
 ```
 
 | Rule | Implementation |
 |---|---|
 | Spend | `SET meelcoin = meelcoin - ? WHERE id = ? AND meelcoin >= ?` — 0 affected rows = insufficient balance |
-| Refund | `SET meelcoin = meelcoin + ?` (added on top of the current DB value) |
-| Refill | Per-user cycle: the grant is capped by `LEAST(max, meelcoin + refill)` in the DB. The refill window starts when the balance **drops below the maximum** (that is, at the moment of the spend), so a refill can neither pile up nor mask the next upload's deduction |
-| Countdown | Derived from that user's `meelcoin_last_refill`, measured with `TIMESTAMPDIFF(..., NOW())` — the database clock on both sides, so the value cannot drift with the server's timezone. `0` = ready to refill |
+| Window reset | When the balance **drops from the maximum to below it**, `meelcoin_last_refill = NOW()` in the same `UPDATE`. Applies to `spend()`, hold capture (`captureHoldInTransaction()`), and admin manual removal — not only spend |
+| Refill | Catch up every missed cycle. `cycles = floor(TIMESTAMPDIFF(SECOND, meelcoin_last_refill, NOW()) / cycle)`, grant = `min(cycles * refill, max - balance)`, then advance the anchor by `applied_cycles * cycle` via `DATE_ADD`, **not** a reset to `NOW()`. A `NULL` anchor counts as one cycle. Guests, admins, and inactive accounts are skipped; `meelcoin_refill_hours` is clamped to at least 1 |
+| Scheduler | `scripts/meelcoin_refill.php` runs from cron every 5 minutes; a lock file prevents overlapping runs. Supports `--dry-run`, `--limit`, and `--user`. Lazy refill from pages/API remains a fallback when cron is late |
+| Countdown | Derived from that user's `meelcoin_last_refill`, measured with `TIMESTAMPDIFF(..., NOW())` — the database clock on both sides. The API returns `server_time`, `next_refill_at`, and `cycle_seconds`; the UI computes the remainder from server time + `performance.now()`, polls every 60 seconds, and refetches when the tab becomes active again. A full balance is displayed as **Maks** |
 | Cost | Minimum 1 (enforced in the admin panel). Cost ≤ 0 → the coin flow is skipped at runtime |
 | Admin | Excluded from deductions (`$is_admin`) and from the manual adjustment dropdown |
 | `upload_advanced.php` refund | Only for explicit failure sentinels (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); unrecognized results are not refunded and go to `error_log` |
 | Failed-queue refund | Runs **at the moment of failure**: `modules/core/helpers/upload.php` (`upload_failed_refund` — download/upload) and `transcode.php` (`transcode_refund` — transcode). Idempotent via a unique `reason` |
+
+Production cron (adjust paths for your installation):
+
+```cron
+*/5 * * * * /usr/bin/php /opt/lampp/htdocs/MEeL/scripts/meelcoin_refill.php >> /opt/lampp/htdocs/MEeL/logs/meelcoin_refill.log 2>&1
+```
+
+Verify without changing balances:
+
+```bash
+php scripts/meelcoin_refill.php --dry-run --limit=20
+php scripts/meelcoin_refill.php --user=123
+```
 
 **Queue status & PID (`modules/transcoder/DownloadService.php`):**
 

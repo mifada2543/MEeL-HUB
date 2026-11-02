@@ -199,7 +199,10 @@ Uploader, `EncodeService`, `DownloadService`, dan admin editor memakai fungsi gl
 - `meel_reserve_unique_filename()` — alokasi nama atomik `fopen(..., 'x')` (anti race condition)
 - `meel_allocate_unique_dir()` — alokasi direktori unik tanpa menimpa
 - `meel_sanitize_clean_name()` / `meel_sanitize_upload_filename()` — sanitasi nama
-- `meel_ffmpeg_thumbnail_webp()` — satu-satunya jalur konversi gambar → WebP (`libwebp`)
+- `meel_convert_image_to_webp()` — satu-satunya jalur konversi gambar → WebP (ffmpeg-lite → system ffmpeg → ImageMagick)
+- `meel_is_valid_webp()` — memastikan hasil konversi benar-benar WebP dan berdimensi valid
+- `meel_image_mime_allowlist()` / `meel_image_source_ok()` — matriks format gambar bersama
+- `meel_ffmpeg_thumbnail_webp()` — pemanggilan ffmpeg sekali pakai untuk ambil frame dan re-scale
 - `meel_ffmpeg_encode_opus()` — satu-satunya jalur encode audio → Ogg/Opus
 - `meel_insert_music_row()` — satu-satunya jalur INSERT baris tabel `music`
 - `meel_magic_extension_ok()` — validasi magic bytes + ekstensi per jenis media
@@ -224,6 +227,32 @@ atau kembalikan array hasil akhir untuk berhenti.**
 | `validateMusicUpload()` / `stageMusicFile()` | ekstensi, magic bytes, ukuran, durasi |
 | `buildMusicThumbnail()` | thumbnail dari user atau satu frame dari audio |
 | `maybeTranscodeToOgg()` | encode ulang ke Ogg kecuali admin melewatinya |
+
+#### Matriks format gambar (unggah thumbnail & cover)
+
+Hanya ada satu daftar format gambar yang diterima, yaitu di
+`modules/core/helpers/upload.php`. Halaman upload, editor admin, dan
+`BookUploader` semuanya membaca daftar itu, sehingga sebuah format tidak bisa
+lagi diterima di satu halaman tapi ditolak di halaman lain.
+
+| | Keterangan |
+|---|---|
+| Format diterima | JPEG, PNG, WebP, GIF, AVIF, BMP, ICO |
+| Deteksi | `meel_image_source_ok()` — `getimagesize()` lebih dulu (mengenali ICO/BMP), libmagic sebagai cadangan untuk format yang tidak dibaca PHP (sebagian build AVIF) |
+| Rantai konversi | `ffmpeg-lite` bawaan → `/usr/bin/ffmpeg` → ImageMagick `convert` |
+| Verifikasi hasil | `meel_is_valid_webp()` — MIME harus `image/webp` **dan** kedua dimensi > 0, kalau tidak file dihapus |
+| Bentuk tersimpan | selalu WebP asli dengan nama `.webp` |
+
+Dua aturan menjaga integritas berkas:
+
+1. **Tidak ada WebP palsu.** Konversi yang gagal tidak pernah jatuh ke
+   penyalinan byte asli ke target `.webp`. Pemanggil hanya mendapat WebP yang
+   terverifikasi, atau thumbnail default / pesan error. Inilah yang dulu
+   menghasilkan `fire-bird_cover.webp` yang isinya sebenarnya PNG.
+2. **ICO ditangani biner bawaan.** `ffmpeg-lite` dibangun dengan
+   `--enable-demuxer=ico`, jadi decode ICO tidak lagi bergantung pada ffmpeg
+   sistem atau ImageMagick; keduanya tinggal sebagai cadangan untuk format yang
+   tidak dibaca build lite. Lihat `tools/ffmpeg-lite/BUILD-INFO.txt`.
 
 ### 5. `modules/core/Transcoder.php` — facade + layanan terpecah
 
@@ -1152,8 +1181,10 @@ Bagian yang sama sekarang tinggal di satu tempat:
 | `admin/edit-video.php` | bagian khusus video: unggah subtitle, penulisan database |
 
 `admin/edit-music.php` mengecil dari 427 ke 357 baris dan `admin/edit-video.php`
-dari 468 ke 398. Panggilan shell ke ffmpeg berpindah dari dua berkas ke satu,
-jadi ada tepat satu tempat ter-audit tempat ffmpeg dipanggil.
+dari 468 ke 398. Panggilan shell ke ffmpeg keluar dari kedua halaman: editor
+kini memakai `meel_convert_image_to_webp()` dari `helpers/upload.php`, fungsi
+yang sama dengan jalur upload, jadi ada tepat satu tempat ter-audit untuk
+konversi gambar.
 
 Satu perbedaan sengaja dipertahankan. Kalau unggah thumbnail gagal, halaman
 musik tetap menyimpan judul dan deskripsi, sedangkan halaman video tidak
@@ -1360,8 +1391,11 @@ Mata uang internal untuk membatasi upload per-user. Semua perubahan saldo memaka
 class MeelCoin {
     public static function spend(mysqli $conn, int $userId, int $amount, string $reason): array; // [ok, error]
     public static function refund(mysqli $conn, int $userId, int $amount, string $reason): bool;
-    public static function refill(mysqli $conn, int $userId, string $role): bool;
-    public static function getRefillCountdown(mysqli $conn, int $userId, string $role): int;     // 0 = siap refill
+    public static function refill(mysqli $conn, int $userId, string $role): bool;              // catch-up + transaksi
+    public static function getDueRefillUsers(mysqli $conn, int $limit = 500): array;           // untuk cron
+    public static function refillDueUsers(mysqli $conn, int $limit = 500): array;               // untuk cron
+    public static function getRefillStatus(mysqli $conn, int $userId, string $role): array;     // countdown + jam server
+    public static function getRefillCountdown(mysqli $conn, int $userId, string $role): int;    // 0 = siap refill
 }
 ```
 
@@ -1369,12 +1403,27 @@ class MeelCoin {
 |---|---|
 | Potong saldo | `SET meelcoin = meelcoin - ? WHERE id = ? AND meelcoin >= ?` — 0 baris terpengaruh = saldo kurang |
 | Refund | `SET meelcoin = meelcoin + ?` (ditambah dari nilai DB terkini) |
-| Refill | Siklus per-user: grant dibatasi `LEAST(max, meelcoin + refill)` di DB. Jendela refill dimulai saat saldo **turun di bawah maksimum** (yaitu saat spend), jadi refill tidak bisa menumpuk dan tidak menutup potongan upload berikutnya |
-| Countdown | Mengikuti `meelcoin_last_refill` user tersebut, diukur dengan `TIMESTAMPDIFF(..., NOW())` — jam database di kedua sisi, jadi nilainya tidak melenceng terhadap waktu server. `0` = siap refill |
+| Reset jendela | Saat saldo **turun dari maksimum ke bawah maksimum**, `meelcoin_last_refill = NOW()` di statement `UPDATE` yang sama. Berlaku untuk `spend()`, capture reservasi (`captureHoldInTransaction()`), dan penghapusan manual admin — bukan hanya spend |
+| Refill | Catch-up semua siklus yang terlewat. `cycles = floor(TIMESTAMPDIFF(SECOND, meelcoin_last_refill, NOW()) / cycle)`, grant = `min(cycles * refill, max - saldo)`, lalu anchor dimajukan `applied_cycles * cycle` lewat `DATE_ADD`, **bukan** di-reset ke `NOW()`. Anchor `NULL` dianggap satu siklus. Guest, admin, dan akun nonaktif dilewati; `meelcoin_refill_hours` minimal 1 |
+| Penjadwal | `scripts/meelcoin_refill.php` dijalankan cron setiap 5 menit; lock file mencegah proses overlap. Dukungan `--dry-run`, `--limit`, dan `--user`. Refill lazy di halaman/API tetap menjadi fallback bila cron terlambat |
+| Countdown | Mengikuti `meelcoin_last_refill` user tersebut, diukur dengan `TIMESTAMPDIFF(..., NOW())` — jam database di kedua sisi. API mengembalikan `server_time`, `next_refill_at`, dan `cycle_seconds`; UI menghitung sisa waktu dari jam server + `performance.now()`, poll 60 detik, dan refetch saat tab kembali aktif. Saldo penuh ditampilkan sebagai **Maks** |
 | Biaya | Wajib ≥ 1 (ditegakkan panel admin). Biaya ≤ 0 → alur coin dilewati di runtime |
 | Admin | Dikecualikan dari pemotongan (`$is_admin`) dan dari dropdown penyesuaian manual |
 | Refund `upload_advanced.php` | Hanya untuk sentinel gagal eksplisit (`''`, `DISCONNECTED`, `Download gagal*`, `File audio tidak ditemukan*`); hasil tak dikenal tidak direfund + `error_log` |
 | Refund antrean gagal | Dijalankan **di momen kegagalan**: `modules/core/helpers/upload.php` (`upload_failed_refund` — download/upload) dan `transcode.php` (`transcode_refund` — transcode). Idempoten via `reason` unik |
+
+Cron produksi (sesuaikan path dengan instalasi):
+
+```cron
+*/5 * * * * /usr/bin/php /opt/lampp/htdocs/MEeL/scripts/meelcoin_refill.php >> /opt/lampp/htdocs/MEeL/logs/meelcoin_refill.log 2>&1
+```
+
+Contoh verifikasi tanpa mengubah saldo:
+
+```bash
+php scripts/meelcoin_refill.php --dry-run --limit=20
+php scripts/meelcoin_refill.php --user=123
+```
 
 **Status antrean & PID (`modules/transcoder/DownloadService.php`):**
 
