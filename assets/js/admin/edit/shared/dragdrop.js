@@ -23,10 +23,46 @@
       e.preventDefault();
       wrap.classList.remove('drag-over');
       var files = e.dataTransfer.files;
-      if (!files || !files[0] || !files[0].type.startsWith('image/')) return;
-      var dt = new DataTransfer();
-      dt.items.add(files[0]);
-      input.files = dt.files;
+      if (!files || !files[0]) return;
+      var file = files[0];
+      var name = (file.name || '').toLowerCase();
+      var looksLikeImage = (file.type && file.type.indexOf('image/') === 0) ||
+        /\.(jpe?g|png|webp|gif|avif|bmp|ico)$/.test(name);
+      if (!looksLikeImage) {
+        if (typeof window.meelAlert === 'function') {
+          window.meelAlert({
+            title: 'Format Tidak Didukung',
+            text: 'Gunakan JPEG, PNG, WebP, GIF, AVIF, BMP, atau ICO.',
+            icon: 'error'
+          });
+        }
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        if (typeof window.meelAlert === 'function') {
+          window.meelAlert({
+            title: 'File Terlalu Besar',
+            text: 'Ukuran thumbnail maksimal 5MB.',
+            icon: 'error'
+          });
+        }
+        return;
+      }
+      var dt;
+      try {
+        dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+      } catch (err) {
+        if (typeof window.meelAlert === 'function') {
+          window.meelAlert({
+            title: 'Gagal Menempel File',
+            text: 'Browser ini tidak mendukung drag & drop. Klik area thumbnail untuk memilih file.',
+            icon: 'error'
+          });
+        }
+        return;
+      }
       if (onChange) onChange(input);
     });
   };

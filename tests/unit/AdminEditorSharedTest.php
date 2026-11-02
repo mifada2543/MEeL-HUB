@@ -213,26 +213,31 @@ class AdminEditorSharedTest extends TestCase
     }
 
     /**
-     * Perilaku yang TIDAK sama antara kedua halaman harus tetap berbeda.
-     *
-     * Musik menyimpan perubahan walau unggah thumbnail gagal; video tidak
-     * menyimpan apa pun kalau ada error. Perbedaan ini bukan disengaja saat
-     * disatukan — ia muncul dari dua salinan yang terpisah lama. Menyatukan
-     * kode tidak boleh diam-diam mengubahnya; kalau memang mau disamakan,
-     * itu keputusan produk dan harus lewat review.
+     * Kedua halaman harus membatalkan penyimpanan kalau ada error, termasuk
+     * thumbnail yang gagal diunggah. Dulu musik tetap menyimpan dan bisa
+     * menampilkan sukses meski thumbnail lama tidak berubah.
      */
-    public function testTheSaveBehaviourDifferenceIsStillExplicit(): void
+    public function testBothPagesAbortSaveWhenThereIsAnError(): void
     {
-        $this->assertStringContainsString(
-            'if ($title === \'\') {',
-            $this->music,
-            'halaman musik harus menyimpan walau ada error'
-        );
-        $this->assertStringContainsString(
-            "} elseif (\$error_message === '') {",
-            $this->video,
-            'halaman video harus membatalkan simpan kalau ada error'
-        );
+        foreach (['edit-music.php' => $this->music, 'edit-video.php' => $this->video] as $page => $src) {
+            $this->assertStringContainsString(
+                "} elseif (\$error_message === '') {",
+                $src,
+                $page . ' harus membatalkan simpan kalau ada error'
+            );
+        }
+    }
+
+    /**
+     * Pemilik memakai halaman yang sama lewat /profile/edit-music.
+     * Konteks owner harus dipertahankan supaya redirect admin tidak
+     * memblokir pemilik non-admin.
+     */
+    public function testOwnerRouteUsesTheSameEditorWithOwnerContext(): void
+    {
+        $owner = $this->read('profile/edit-music.php');
+        $this->assertStringContainsString("\$_EDIT_CONTEXT = 'owner';", $owner);
+        $this->assertStringContainsString("admin/edit-music.php", $owner);
     }
 }
 

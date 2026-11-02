@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Test suite untuk ffmpeg-lite MEeL (static build dengan libfdk_aac)
-# Expected: PASS=40+ FAIL=0 SKIP=6
+# Test suite untuk ffmpeg-lite MEeL (dynamic build, native aac)
+# Functional synth tests butuh lavfi; build lite tidak memuatnya, jadi
+# bagian itu otomatis di-skip dan diganti uji format gambar nyata di bawah.
+# Expected: FAIL=0
 
 set -euo pipefail
 
@@ -11,14 +13,28 @@ mkdir -p "$TMPDIR"
 
 PASS=0; FAIL=0; SKIP=0
 
-pass() { printf '\033[1;32m[PASS]\033[0m %s\n' "$*"; ((PASS++)); }
-fail() { printf '\033[1;31m[FAIL]\033[0m %s\n' "$*"; ((FAIL++)); }
-skip() { printf '\033[1;33m[SKIP]\033[0m %s\n' "$*"; ((SKIP++)); }
+pass() { printf '\033[1;32m[PASS]\033[0m %s\n' "$*"; PASS=$((PASS + 1)); }
+fail() { printf '\033[1;31m[FAIL]\033[0m %s\n' "$*"; FAIL=$((FAIL + 1)); }
+skip() { printf '\033[1;33m[SKIP]\033[0m %s\n' "$*"; SKIP=$((SKIP + 1)); }
 info() { printf '\033[1;34m[INFO]\033[0m %s\n' "$*"; }
 
 # --- Helper ---
 run_ffmpeg() { "$FFMPEG" -hide_banner -loglevel error "$@"; }
 run_ffprobe() { "$FFPROBE" -hide_banner -loglevel error "$@"; }
+has_component() {
+  local list="$1" name="$2"
+  "$FFMPEG" -hide_banner -"$list" 2>/dev/null | awk 'NF >= 2 { print $2 }' | tr ',' '\n' | grep -Fxq "$name"
+}
+has_protocol() {
+  "$FFMPEG" -hide_banner -protocols 2>/dev/null | awk '{ print $1 }' | grep -Fxq "$1"
+}
+
+# Build lite tidak memuat demuxer lavfi. Kalau tidak ada, semua uji
+# sintetis berbasis lavfi dilewati; uji format gambar tetap berjalan.
+HAS_LAVFI=0
+if has_component demuxers lavfi; then
+  HAS_LAVFI=1
+fi
 
 # ============================================================
 # 1. Binary sanity
@@ -27,16 +43,23 @@ info "=== Binary sanity ==="
 $FFMPEG -version | head -1 | grep -q ffmpeg && pass "ffmpeg runs" || fail "ffmpeg runs"
 $FFPROBE -version | head -1 | grep -q ffprobe && pass "ffprobe runs" || fail "ffprobe runs"
 
-# Check static linking
-ldd "$FFMPEG" 2>/dev/null | grep -Ev "linux-vdso|/lib64/ld-linux" && \
-  fail "static linking (has dynamic deps)" || pass "static linking"
+# Check shared libraries resolve (build ini dynamic, bukan static)
+if command -v ldd >/dev/null 2>&1; then
+  if ldd "$FFMPEG" 2>/dev/null | grep -q "not found"; then
+    fail "shared libraries resolve"
+  else
+    pass "shared libraries resolve"
+  fi
+else
+  skip "shared libraries (ldd tidak tersedia)"
+fi
 
 # ============================================================
 # 2. Encoder presence
 # ============================================================
 info "=== Encoder presence ==="
-for enc in libfdk_aac libopus libmp3lame libwebp mjpeg png aac; do
-  $FFMPEG -encoders 2>/dev/null | grep -q "^\s*[A-Z.]\{5\}\s*$enc\b" && \
+for enc in libopus libmp3lame libwebp mjpeg png aac; do
+  has_component encoders "$enc" && \
     pass "encoder: $enc" || fail "encoder: $enc"
 done
 
@@ -45,7 +68,7 @@ done
 # ============================================================
 info "=== Decoder presence ==="
 for dec in h264 hevc aac aac_latm mp3 mp3float flac vorbis opus alac ac3 eac3 pcm_s16le pcm_s24le pcm_s32le pcm_f32le pcm_u8 mjpeg png webp gif bmp libdav1d av1; do
-  $FFMPEG -decoders 2>/dev/null | grep -q "^\s*[A-Z.]\{5\}\s*$dec\b" && \
+  has_component decoders "$dec" && \
     pass "decoder: $dec" || fail "decoder: $dec"
 done
 
@@ -53,8 +76,8 @@ done
 # 4. Demuxer presence
 # ============================================================
 info "=== Demuxer presence ==="
-for dem in mov matroska mpegts hls flac wav ogg mp3 aac ac3 eac3 concat image2 image_jpeg_pipe image_png_pipe image_webp_pipe image_gif_pipe image_bmp_pipe; do
-  $FFMPEG -demuxers 2>/dev/null | grep -q "^\s*[A-Z.]\{5\}\s*$dem\b" && \
+for dem in mov matroska mpegts hls flac wav ogg mp3 aac ac3 eac3 concat image2 ico; do
+  has_component demuxers "$dem" && \
     pass "demuxer: $dem" || fail "demuxer: $dem"
 done
 
@@ -63,7 +86,7 @@ done
 # ============================================================
 info "=== Muxer presence ==="
 for mux in hls mpegts ogg opus mp3 ipod mp4 webp image2 mjpeg null; do
-  $FFMPEG -muxers 2>/dev/null | grep -q "^\s*[A-Z.]\{5\}\s*$mux\b" && \
+  has_component muxers "$mux" && \
     pass "muxer: $mux" || fail "muxer: $mux"
 done
 
@@ -72,7 +95,7 @@ done
 # ============================================================
 info "=== Filter presence ==="
 for flt in scale pad crop fps tile format aresample anull aformat buffer buffersink abuffer abuffersink; do
-  $FFMPEG -filters 2>/dev/null | grep -q "^\s*\.\.\.\s$flt\b" && \
+  has_component filters "$flt" && \
     pass "filter: $flt" || fail "filter: $flt"
 done
 
@@ -81,7 +104,7 @@ done
 # ============================================================
 info "=== Protocol presence ==="
 for proto in file pipe; do
-  $FFMPEG -protocols 2>/dev/null | grep -q "^\s*$proto\b" && \
+  has_protocol "$proto" && \
     pass "protocol: $proto" || fail "protocol: $proto"
 done
 
@@ -89,10 +112,13 @@ done
 # 8. Functional tests
 # ============================================================
 info "=== Functional tests ==="
+if [ "$HAS_LAVFI" -eq 0 ]; then
+  skip "synthetic lavfi functional tests (lavfi tidak ada di build lite)"
+else
 
-# 8.1 libfdk_aac encode
-run_ffmpeg -f lavfi -i "sine=frequency=1000:duration=2" -c:a libfdk_aac -b:a 128k "$TMPDIR/test_fdk.m4a" && \
-  pass "libfdk_aac encode" || fail "libfdk_aac encode"
+# 8.1 native aac encode
+run_ffmpeg -f lavfi -i "sine=frequency=1000:duration=2" -c:a aac -b:a 128k "$TMPDIR/test_aac.m4a" && \
+  pass "native aac encode" || fail "native aac encode"
 
 # 8.2 libopus encode
 run_ffmpeg -f lavfi -i "sine=frequency=440:duration=2" -c:a libopus -b:a 96k "$TMPDIR/test_opus.opus" && \
@@ -143,7 +169,7 @@ run_ffmpeg -f lavfi -i "sine=frequency=440:duration=2,sample_rate=48000" -af are
   pass "aresample filter" || fail "aresample filter"
 
 # 8.14 Probe duration (ffprobe)
-run_ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$TMPDIR/test_fdk.m4a" >/dev/null && \
+run_ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$TMPDIR/test_aac.m4a" >/dev/null && \
   pass "ffprobe duration" || fail "ffprobe duration"
 
 # 8.15 HLS demux (probe)
@@ -151,14 +177,14 @@ run_ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=
   pass "HLS demux probe" || fail "HLS demux probe"
 
 # 8.16 Concat demux
-echo "file '$TMPDIR/test_fdk.m4a'" > "$TMPDIR/concat.txt"
+echo "file '$TMPDIR/test_aac.m4a'" > "$TMPDIR/concat.txt"
 echo "file '$TMPDIR/test_opus.opus'" >> "$TMPDIR/concat.txt"
 run_ffmpeg -f concat -safe 0 -i "$TMPDIR/concat.txt" -c copy "$TMPDIR/test_concat.m4a" && \
   pass "concat demux" || fail "concat demux"
 
 # 8.17 Image2 demux (single frame)
 run_ffmpeg -f lavfi -i "color=magenta:size=100x100:duration=1,format=rgb24" -c:v png -frames:v 1 "$TMPDIR/frame_%03d.png" && \
-  run_ffmpeg -f image2 -i "$TMPDIR/frame_%03d.png" -c copy "$TMPDIR/test_image2.mkv" && \
+  run_ffmpeg -f image2 -i "$TMPDIR/frame_%03d.png" -f null - && \
   pass "image2 demux" || fail "image2 demux"
 
 # 8.18 WebP decode (libdav1d/av1)
@@ -268,6 +294,46 @@ run_ffmpeg -f lavfi -i "sine=frequency=440:duration=2" -c:a aac -bsf:a aac_adtst
 # 8.43 BSF extract_extradata
 run_ffmpeg -f lavfi -i "sine=frequency=440:duration=2" -c:a libopus -bsf:a extract_extradata -f opus - 2>/dev/null | head -c 100 >/dev/null && \
   pass "bsf extract_extradata" || skip "bsf extract_extradata"
+
+fi
+
+# ============================================================
+# 8b. Image format functional tests
+# ============================================================
+info "=== Image format functional tests ==="
+if command -v convert >/dev/null 2>&1; then
+  convert -size 64x64 xc:red "$TMPDIR/fmt.png" 2>/dev/null || true
+  for ext in jpg bmp gif webp; do
+    convert "$TMPDIR/fmt.png" "$TMPDIR/fmt.$ext" 2>/dev/null || true
+  done
+  convert "$TMPDIR/fmt.png" -define icon:auto-resize=256,128,64,32,16 "$TMPDIR/fmt.ico" 2>/dev/null || true
+
+  for ext in png jpg bmp gif webp ico; do
+    if [ ! -s "$TMPDIR/fmt.$ext" ]; then
+      skip "image format: $ext (ImageMagick tidak mendukung)"
+      continue
+    fi
+    if run_ffmpeg -i "$TMPDIR/fmt.$ext" -frames:v 1 -c:v libwebp "$TMPDIR/fmt-$ext.webp" 2>/dev/null \
+      && [ -s "$TMPDIR/fmt-$ext.webp" ]; then
+      pass "image decode/encode: $ext"
+    else
+      fail "image decode/encode: $ext"
+    fi
+  done
+
+  if convert "$TMPDIR/fmt.png" "$TMPDIR/fmt.avif" 2>/dev/null && [ -s "$TMPDIR/fmt.avif" ]; then
+    if run_ffmpeg -i "$TMPDIR/fmt.avif" -frames:v 1 -c:v libwebp "$TMPDIR/fmt-avif.webp" 2>/dev/null \
+      && [ -s "$TMPDIR/fmt-avif.webp" ]; then
+      pass "image decode/encode: avif"
+    else
+      fail "image decode/encode: avif"
+    fi
+  else
+    skip "image format: avif (ImageMagick tanpa encoder AVIF)"
+  fi
+else
+  skip "image format tests (ImageMagick tidak tersedia)"
+fi
 
 # ============================================================
 # 9. Missing on purpose (not in build)

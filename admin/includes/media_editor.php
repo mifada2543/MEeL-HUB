@@ -60,8 +60,21 @@ if (!function_exists('meel_editor_upload_thumbnail')) {
      */
     function meel_editor_upload_thumbnail(array $files, array $cfg, string $title, string $current, string $error = ''): array
     {
-        if (!isset($files['thumbnail']) || ($files['thumbnail']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        if (!isset($files['thumbnail'])) {
             return ['url' => $current, 'error' => $error];
+        }
+
+        $thumb_error = (int) ($files['thumbnail']['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($thumb_error !== UPLOAD_ERR_OK) {
+            if ($thumb_error === UPLOAD_ERR_NO_FILE) {
+                return ['url' => $current, 'error' => $error];
+            }
+            $upload_error = meel_upload_error_message($thumb_error, 'File ' . $cfg['label']);
+            return ['url' => $current, 'error' => $error !== '' ? $error : $upload_error];
+        }
+
+        if (empty($files['thumbnail']['tmp_name']) || !is_file($files['thumbnail']['tmp_name'])) {
+            return ['url' => $current, 'error' => 'File ' . $cfg['label'] . ' tidak ditemukan setelah upload.'];
         }
 
         $max_size = 5 * 1024 * 1024;

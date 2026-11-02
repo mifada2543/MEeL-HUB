@@ -41,6 +41,9 @@ if (!$is_admin && !$is_owner) {
 }
 $status = "";
 $error_message = "";
+if (meel_post_upload_too_large()) {
+    $error_message = 'Ukuran upload melebihi batas server (post_max_size = ' . ini_get('post_max_size') . ').';
+}
 $cfg = meel_editor_media_config('video');
 if (isset($_POST['update'])) {
     if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
@@ -257,10 +260,11 @@ if ($thumb_src === '') {
                     </div>
                 <?php endif; ?>
                 <form id="edit-form" method="POST" enctype="multipart/form-data" onsubmit="handleSubmit()" style="display:flex;flex-direction:column;gap:20px;flex:1;">
-                    <?php if (isset($_SESSION['csrf_token'])): ?>
-                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token']; ?>">
-                        <input type="file" name="thumbnail" accept="image/*" id="thumb-file-hidden" style="display:none">
-                    <?php endif; ?>
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="MAX_FILE_SIZE" value="5242880">
+                    <input type="file" name="thumbnail"
+                        accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.bmp,.ico,image/*"
+                        id="thumb-file-hidden" style="display:none">
                     <div class="field-group">
                         <label class="field-label" for="f-title">Judul Video</label>
                         <input type="text" id="f-title" name="title" placeholder="Masukkan judul video..."

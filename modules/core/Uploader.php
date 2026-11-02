@@ -473,8 +473,8 @@ class Uploader
         $thumb_base = getRomajiName(pathinfo($file_name, PATHINFO_FILENAME));
         $thumb_dir = $base_dir . "upload/thumbnail/";
         if (!empty($files['thumbnail']['name']) && !empty($files['thumbnail']['tmp_name']) && is_uploaded_file($files['thumbnail']['tmp_name']) && ($files['thumbnail']['error'] ?? -1) === UPLOAD_ERR_OK) {
-            if (meel_magic_extension_ok($files['thumbnail']['tmp_name'], 'img', 'image') !== '') {
-                error_log("[MEeL] Music upload: thumbnail user ditolak (bukan gambar): " . ($files['thumbnail']['name'] ?? 'unknown'));
+            if (!meel_image_source_ok($files['thumbnail']['tmp_name'])) {
+                error_log("[MEeL] Music upload: thumbnail user ditolak (format tidak didukung): " . ($files['thumbnail']['name'] ?? 'unknown'));
             } else {
                 $t_clean = getRomajiName(pathinfo($files['thumbnail']['name'], PATHINFO_FILENAME));
                 $thumb_candidate = $this->getUniqueFilename($t_clean, "thumb.webp", $thumb_dir);
@@ -782,8 +782,8 @@ class Uploader
             !empty($files['thumbnail']['tmp_name']) && is_uploaded_file($files['thumbnail']['tmp_name'])
             && $files['thumbnail']['error'] === UPLOAD_ERR_OK
         ) {
-            if (meel_magic_extension_ok($files['thumbnail']['tmp_name'], 'img', 'image') !== '') {
-                error_log("[MEeL] Video upload: thumbnail ditolak (bukan gambar): " . ($files['thumbnail']['name'] ?? 'unknown'));
+            if (!meel_image_source_ok($files['thumbnail']['tmp_name'])) {
+                error_log("[MEeL] Video upload: thumbnail ditolak (format tidak didukung): " . ($files['thumbnail']['name'] ?? 'unknown'));
             } else {
                 $t_name = $folder_name . "_thumb.webp";
                 $t_dst = $thumb_dir . $t_name;

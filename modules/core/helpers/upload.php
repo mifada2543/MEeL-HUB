@@ -23,6 +23,51 @@ if (!function_exists('meel_read_magic_bytes')) {
         return $bytes;
     }
 }
+if (!function_exists('meel_upload_error_message')) {
+    /**
+     * Terjemahkan kode error PHP upload menjadi pesan yang bisa ditampilkan.
+     * Tanpa ini, UPLOAD_ERR_INI_SIZE / FORM_SIZE / PARTIAL hanya menghasilkan
+     * error kosong dan pengguna tidak tahu mengapa thumbnail tidak berubah.
+     */
+    function meel_upload_error_message(int $code, string $label = 'File'): string
+    {
+        switch ($code) {
+            case UPLOAD_ERR_INI_SIZE:
+                $limit = (string) ini_get('upload_max_filesize');
+                return $label . ' terlalu besar untuk batas upload server'
+                    . ($limit !== '' ? ' (upload_max_filesize = ' . $limit . ')' : '') . '.';
+            case UPLOAD_ERR_FORM_SIZE:
+                return $label . ' terlalu besar untuk batas ukuran form (MAX_FILE_SIZE).';
+            case UPLOAD_ERR_PARTIAL:
+                return $label . ' hanya terunggah sebagian. Silakan coba lagi.';
+            case UPLOAD_ERR_NO_TMP_DIR:
+                return 'Folder sementara upload tidak tersedia di server.';
+            case UPLOAD_ERR_CANT_WRITE:
+                return 'Server gagal menulis file upload ke disk.';
+            case UPLOAD_ERR_EXTENSION:
+                return 'Upload ' . $label . ' dihentikan oleh ekstensi PHP.';
+            default:
+                return 'Upload ' . $label . ' gagal (kode ' . $code . ').';
+        }
+    }
+}
+if (!function_exists('meel_post_upload_too_large')) {
+    /**
+     * Deteksi POST yang dibuang PHP karena melebihi post_max_size.
+     * Pada kasus ini $_POST dan $_FILES kosong, sehingga tanpa pengecekan
+     * halaman edit hanya reload tanpa pesan error.
+     */
+    function meel_post_upload_too_large(): bool
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            return false;
+        }
+        if ((int) ($_SERVER['CONTENT_LENGTH'] ?? 0) <= 0) {
+            return false;
+        }
+        return empty($_POST) && empty($_FILES);
+    }
+}
 if (!function_exists('meel_magic_extension_ok')) {
     function meel_magic_extension_ok(string $path, string $ext, string $mediaKind = 'audio'): string
     {
@@ -371,8 +416,11 @@ if (!function_exists('meel_convert_image_to_webp')) {
         if (is_executable('/usr/bin/convert')) {
             $im_cmd = '/usr/bin/convert ' . escapeshellarg($src)
                 . ' -resize ' . escapeshellarg("{$max_w}x{$max_h}>")
-                . ' -background black -gravity center -extent ' . escapeshellarg("{$max_w}x{$max_h}")
-                . ' ' . escapeshellarg($dst) . ' 2>&1';
+                . ' -quality 78';
+            if ($pad) {
+                $im_cmd .= ' -background black -gravity center -extent ' . escapeshellarg("{$max_w}x{$max_h}");
+            }
+            $im_cmd .= ' ' . escapeshellarg($dst) . ' 2>&1';
             $out = [];
             $ret = -1;
             exec($im_cmd, $out, $ret);

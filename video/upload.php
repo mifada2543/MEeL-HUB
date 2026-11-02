@@ -275,7 +275,7 @@ if (isset($_POST['upload'])) {
                             </div>
 
                             <div class="drop-zone" id="thumb-zone">
-                                <input type="file" name="thumbnail" accept="image/*"
+                                <input type="file" name="thumbnail" accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.bmp,.ico,image/*"
                                     id="thumb-input" onchange="handleThumbFile(this)" aria-label="Pilih atau jatuhkan file thumbnail (opsional)">
                                 <img id="thumb-preview" class="thumb-mini" alt="pratinjau">
                                 <div class="drop-zone-icon" id="thumb-icon-wrap">

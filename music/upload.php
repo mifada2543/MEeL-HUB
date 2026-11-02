@@ -312,7 +312,7 @@ if (isset($_POST['upload'])) {
                             </div>
 
                             <div class="drop-zone" id="cover-zone">
-                                <input type="file" name="thumbnail" accept="image/*"
+                                <input type="file" name="thumbnail" accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.bmp,.ico,image/*"
                                     id="cover-input" onchange="handleCoverFile(this)" aria-label="Pilih atau jatuhkan sampul untuk lagu">
                                 <img id="cover-preview" class="thumb-mini" alt="pratinjau">
                                 <div class="drop-zone-icon" id="cover-icon-wrap">
