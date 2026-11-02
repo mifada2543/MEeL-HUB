@@ -469,8 +469,9 @@ class DownloadService extends TranscoderBase
     private function reportDownloadProgress(string $line): void
     {
         if (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%\s+of\s+([\d.]+\s*\S+)\s+at\s+([\d.]+\s*\S+\/s)(?:\s+ETA\s+([\d:]+))?(?:\s+\(frag\s+(\d+)\/(\d+)\))?/', $line, $m)) {
+            $pct = min(100, (float) $m[1]);
             $this->emit('download_progress', [
-                'pct' => (int) $m[1],
+                'pct' => (int) round($pct),
                 'eta' => isset($m[4]) ? 'ETA ' . $m[4] : '',
                 'speed' => $m[3] ?? '',
                 'size' => $m[2] ?? '',
@@ -480,7 +481,8 @@ class DownloadService extends TranscoderBase
         }
 
         if (preg_match('/\[download\]\s+(\d+(?:\.\d+)?)%/', $line, $m)) {
-            $this->emit('download_progress', ['pct' => (int) $m[1]]);
+            $pct = min(100, (float) $m[1]);
+            $this->emit('download_progress', ['pct' => (int) round($pct)]);
         }
     }
 
@@ -1050,7 +1052,7 @@ class DownloadService extends TranscoderBase
             return;
         }
         $cur = ($m[2] * 3600) + ($m[3] * 60) + $m[4];
-        $pct = min($maxPct, round(($cur / $fileDur) * 100));
+        $pct = min($maxPct, (int) round(min(100, ($cur / max(1, $fileDur)) * 100)));
         $this->emit('transcode_progress', ['pct' => $pct]);
     }
     /**
