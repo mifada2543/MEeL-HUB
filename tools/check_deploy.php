@@ -389,6 +389,50 @@ if ($body === false) {
         : 'kode 404/403 — coba --url yang tepat untuk konfirmasi');
 }
 
+section('5. FFmpeg / FFprobe');
+
+require_once MEEL_ROOT . '/modules/core/helpers/media_binary.php';
+
+foreach (['ffmpeg', 'ffprobe'] as $name) {
+    $info = meel_media_binary_info($name);
+    $label = strtoupper($name) . ' (' . $info['source'] . ')';
+    if (!$info['exists']) {
+        report('FAIL', "$label tidak ditemukan: {$info['path']}", 'periksa tools/ffmpeg-lite/ atau set MEEL_FFMPEG_PATH/MEEL_FFPROBE_PATH');
+    } elseif (!$info['executable']) {
+        report('FAIL', "$label tidak executable: {$info['path']}", 'chmod +x atau perbaiki path di auth/settings.php');
+    } elseif (!$info['runnable']) {
+        report('FAIL', "$label tidak bisa dijalankan: {$info['path']}", $info['error']);
+    } else {
+        report('PASS', "$label: {$info['path']} (versi {$info['version']})");
+    }
+}
+
+$ff = meel_media_binary_info('ffmpeg');
+if ($ff['runnable']) {
+    $issues = meel_media_binary_capability_issues($ff['path']);
+    if ($issues) {
+        report('FAIL', 'FFmpeg tidak memuat komponen wajib: ' . implode(', ', $issues), 'rebuild ffmpeg-lite atau gunakan --use-system-ffmpeg');
+    } else {
+        report('PASS', 'FFmpeg memuat komponen wajib (encoder/decoder/muxer/filter)');
+    }
+
+    // Check bundled runtime libs if source is bundled
+    if ($ff['source'] === 'bundled') {
+        $missing = meel_media_binary_missing_libs($ff['path']);
+        if ($missing) {
+            report('FAIL', 'Bundled FFmpeg missing runtime libraries:', implode('; ', $missing));
+        } else {
+            report('PASS', 'Bundled runtime libraries resolved');
+        }
+    }
+}
+
+if (meel_media_system_allowed()) {
+    report('PASS', 'MEEL_FFMPEG_ALLOW_SYSTEM=true (system fallback diizinkan)');
+} else {
+    report('PASS', 'MEEL_FFMPEG_ALLOW_SYSTEM=false (bundled-only policy aktif)');
+}
+
 section('Ringkasan');
 echo '  PASS: ' . c('1;32', (string) $passed)
    . '  WARN: ' . c('1;33', (string) $warned)

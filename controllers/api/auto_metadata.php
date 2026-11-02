@@ -68,14 +68,11 @@ if ((int)($_FILES[$file_key]['size'] ?? 0) > $max_size) {
     exit;
 }
 
-$ffprobe = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
-    ? MEEL_FFPROBE_PATH
-    : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffprobe', '/usr/bin/ffprobe', '/usr/local/bin/ffprobe', 'ffprobe']);
-$ffmpeg = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
-    ? MEEL_FFMPEG_PATH
-    : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+$ffprobe = meel_ffprobe_bin();
+$ffmpeg = meel_ffmpeg_bin();
+$ffmpeg_ok = meel_media_binary_info('ffmpeg')['runnable'];
 
-if (!is_executable($ffprobe)) {
+if (!meel_media_binary_info('ffprobe')['runnable']) {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'Server tidak memiliki ffprobe. Auto-metadata tidak tersedia.']);
     exit;
@@ -121,7 +118,7 @@ if ($is_video) {
         }
     }
 
-    if (is_executable($ffmpeg)) {
+    if ($ffmpeg_ok) {
         $cover_path = $temp_dir . '/' . uniqid('thumb_', true) . '.jpg';
         $cover_cmd = 'export LD_LIBRARY_PATH=\'\'; ' . escapeshellarg($ffmpeg)
             . ' -y -i ' . escapeshellarg($temp_file)
@@ -164,7 +161,7 @@ if ($is_video) {
         }
     }
 
-    if (is_executable($ffmpeg)) {
+    if ($ffmpeg_ok) {
         $cover_path = $temp_dir . '/' . uniqid('cover_', true) . '.jpg';
         $cover_cmd = 'export LD_LIBRARY_PATH=\'\'; ' . escapeshellarg($ffmpeg)
             . ' -y -i ' . escapeshellarg($temp_file)

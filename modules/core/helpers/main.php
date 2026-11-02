@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/url.php';
+require_once __DIR__ . '/media_binary.php';
 require_once __DIR__ . '/datetime.php';
 require_once __DIR__ . '/storage.php';
 require_once __DIR__ . '/media.php';

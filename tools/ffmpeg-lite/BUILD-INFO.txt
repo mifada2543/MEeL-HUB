@@ -1,10 +1,19 @@
 ffmpeg-lite untuk MEeL
 Sumber     : https://github.com/FFmpeg/FFmpeg  tag n6.1.1  commit e38092ef9395d7049f871ef4d5411eb410e283e0
-Dibangun   : 2026-11-01, gcc 13 (Ubuntu 13.3.0-6ubuntu2~24.04.1)
+Dibangun   : 2026-11-02, gcc 13 (Ubuntu 13.3.0-6ubuntu2~24.04.1)
 Platform   : Linux x86_64 (dibangun di Ubuntu 24.04), glibc >= 2.35
 Lisensi    : LGPL 2.1 atau lebih baru (lihat COPYING.LGPLv2.1)
-Library dinamis: libopus0 libmp3lame0 libwebp7 libsharpyuv0 libdav1d7 zlib1g
-Cara build : build-ffmpeg-lite.sh (flag configure identik dengan yang dipakai biner ini)
+Binary     : dynamic, runtime libraries dibundel di lib/
+Library dibundel:
+  libdav1d.so.7     (dari Ubuntu 24.04 libdav1d7, GLIBC 2.34 max)
+  libopus.so.0      (dari Ubuntu 24.04 libopus0, GLIBC 2.29 max)
+  libwebp.so.7      (dari Ubuntu 24.04 libwebp7, GLIBC 2.34 max)
+  libsharpyuv.so.0  (dari Ubuntu 24.04 libsharpyuv0, GLIBC 2.29 max)
+  libmp3lame.so.0   (dari Ubuntu 22.04 libmp3lame0 3.100-3build2, GLIBC 2.29 max)
+  libz.so.1         (dari Ubuntu 24.04 zlib1g, GLIBC 2.14 max)
+Library sistem (TIDAK dibundel, disediakan host):
+  libc.so.6, libm.so.6, libpthread.so.0, ld-linux-x86-64.so.2 (glibc ≥ 2.35)
+Cara build : build-ffmpeg-lite.sh + bundel libs manual (lihat README.md)
 Konfigurasi penuh:
   --prefix=/tmp/opencode/ffmpeg-meel-build/out
   --disable-everything
@@ -36,3 +45,9 @@ Perubahan dari 6.1.1 (paket lama):
   + encoder: aac           (diperlukan transcode audio non-AAC ke HLS di Uploader)
   + filter:  pad, crop     (diperlukan auto_metadata, media_editor, profile_edit)
   + decoder: libdav1d,av1  (dukungan AVIF di admin/includes/media_editor.php)
+
+Kompatibilitas target:
+  - Ubuntu 22.04 (Jammy), 24.04 (Noble), 24.10+, Debian 12 (Bookworm), 13 (Trixie)
+  - glibc 2.35+ (binary max symbol GLIBC_2.35)
+  - Bundled libs dipilih dengan GLIBC ≤ 2.34 agar kompatibel
+  - libmp3lame dari Ubuntu 22.04 (soname 0, GLIBC 2.29 max) bukan 24.04 (GLIBC 2.38)

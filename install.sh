@@ -37,6 +37,9 @@ parse_args() {
     VERIFY_URL_OVERRIDE=""
     VERIFY_HDD_OVERRIDE=""
     VERIFY_NO_COLOR_OVERRIDE=""
+    USE_SYSTEM_FFMPEG=false
+    FFMPEG_PATH=""
+    FFPROBE_PATH=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --yes|-y) ASSUME_YES=true ;;
@@ -67,6 +70,9 @@ parse_args() {
             --verify-url=*) VERIFY_URL_OVERRIDE="${1#--verify-url=}" ;;
             --verify-hdd=*) VERIFY_HDD_OVERRIDE="${1#--verify-hdd=}" ;;
             --verify-no-color) VERIFY_NO_COLOR_OVERRIDE=true ;;
+            --use-system-ffmpeg) USE_SYSTEM_FFMPEG=true ;;
+            --ffmpeg=*) FFMPEG_PATH="${1#--ffmpeg=}" ;;
+            --ffprobe=*) FFPROBE_PATH="${1#--ffprobe=}" ;;
             --help|-h)
                 show_help
                 exit 0
@@ -84,6 +90,7 @@ parse_args() {
     export DB_USER_OVERRIDE DB_PASS_OVERRIDE ADMIN_USER_OVERRIDE ADMIN_PASS_OVERRIDE
     export CREATE_APP_USER_OVERRIDE ENABLE_REWRITE_OVERRIDE
     export VERIFY_URL_OVERRIDE VERIFY_HDD_OVERRIDE VERIFY_NO_COLOR_OVERRIDE
+    export USE_SYSTEM_FFMPEG FFMPEG_PATH FFPROBE_PATH
 }
 # ─── Help text ───
 show_help() {
@@ -122,6 +129,9 @@ Options:
   --verify-url=URL             URL for deployment verification (default: auto)
   --verify-hdd=PATH            Override HDD for verification
   --verify-no-color            Disable colors in verification output
+  --use-system-ffmpeg          Use system ffmpeg/ffprobe (explicit opt-in, skips bundled)
+  --ffmpeg=PATH                Custom ffmpeg binary path
+  --ffprobe=PATH               Custom ffprobe binary path
   --help, -h                   Show this help
 
 Steps:
@@ -199,6 +209,18 @@ main() {
 
     # Detect environment (required for all steps)
     detect_environment
+
+    # Resolve system ffmpeg/ffprobe if --use-system-ffmpeg given without explicit paths
+    if [ "$USE_SYSTEM_FFMPEG" = "true" ]; then
+        [ -z "$FFMPEG_PATH" ] && FFMPEG_PATH="$(command -v ffmpeg 2>/dev/null || true)"
+        [ -z "$FFPROBE_PATH" ] && FFPROBE_PATH="$(command -v ffprobe 2>/dev/null || true)"
+        if [ -z "$FFMPEG_PATH" ] || [ -z "$FFPROBE_PATH" ]; then
+            log_die "--use-system-ffmpeg requires ffmpeg and ffprobe in PATH"
+        fi
+        export FFMPEG_PATH FFPROBE_PATH
+        log_info "Using system FFmpeg: $FFMPEG_PATH"
+        log_info "Using system FFprobe: $FFPROBE_PATH"
+    fi
 
     # Apply web user override if provided
     if [ -n "$WEB_USER_OVERRIDE" ]; then

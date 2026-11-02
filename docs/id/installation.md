@@ -532,7 +532,7 @@ define('MEEL_USE_XSENDFILE', true);
 
 ### 8. Setup FFmpeg (ffmpeg-lite — bundled)
 
-MEeL menyertakan `ffmpeg-lite` yang sudah dikompilasi dengan komponen yang dibutuhkan (H.264, HEVC, AAC, HLS, filter pad/crop, decoder AV1). Tidak perlu instalasi via apt.
+MEeL menyertakan `ffmpeg-lite` yang sudah dikompilasi dengan komponen yang dibutuhkan (H.264, HEVC, AAC, HLS, filter pad/crop, decoder AV1) dan **library runtime dibundel** di `tools/ffmpeg-lite/lib/`. Tidak perlu instalasi via apt.
 
 ```bash
 # Verifikasi ffmpeg-lite terpasang
@@ -543,7 +543,7 @@ MEeL menyertakan `ffmpeg-lite` yang sudah dikompilasi dengan komponen yang dibut
 ./tools/ffmpeg-lite/test-ffmpeg-lite.sh
 ```
 
-Binary sistem (`/usr/bin/ffmpeg`) opsional — jika ada, dipakai sebagai fallback. Konfigurasi default di `auth/settings.php` mengarah ke `tools/ffmpeg-lite`.
+Binary sistem (`/usr/bin/ffmpeg`) **tidak dipakai sebagai fallback** secara default. Untuk secara eksplisit memilih system FFmpeg, set `MEEL_FFMPEG_ALLOW_SYSTEM=true` di `auth/settings.php` atau jalankan `./install.sh --use-system-ffmpeg`. Konfigurasi default di `auth/settings.php` mengarah ke `tools/ffmpeg-lite`.
 
 > 💡 `install.sh` otomatis mengonfigurasi `auth/settings.php` untuk memakai ffmpeg-lite. Jika ingin rebuild dengan komponen tambahan, lihat `tools/ffmpeg-lite/build-ffmpeg-lite.sh`.
 

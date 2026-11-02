@@ -142,6 +142,41 @@ sudo_cmd() {
     fi
 }
 
+# ─── FFmpeg/FFprobe resolution (shared by deps + config) ───
+# Default: bundled tools/ffmpeg-lite. System PATH is used only when the
+# caller explicitly opts in with USE_SYSTEM_FFMPEG=true.
+media_binary_path() {
+    local name="$1"
+    local override_var
+    case "$name" in
+        ffmpeg) override_var="FFMPEG_PATH" ;;
+        ffprobe) override_var="FFPROBE_PATH" ;;
+        *) return 1 ;;
+    esac
+
+    local override="${!override_var:-}"
+    if [ -n "$override" ]; then
+        printf '%s\n' "$override"
+        return 0
+    fi
+
+    if [ "${USE_SYSTEM_FFMPEG:-false}" = "true" ]; then
+        command -v "$name" 2>/dev/null || true
+        return 0
+    fi
+
+    printf '%s/tools/ffmpeg-lite/%s\n' "${PROJECT_ROOT:-$(pwd)}" "$name"
+}
+
+media_binary_real_path() {
+    local bin="$1"
+    if [ -f "$bin.bin" ]; then
+        printf '%s.bin\n' "$bin"
+    else
+        printf '%s\n' "$bin"
+    fi
+}
+
 # ─── Banner ───
 print_banner() {
     echo -e "${C_BOLD}"
@@ -168,4 +203,5 @@ if [ -n "${BASH_VERSION:-}" ]; then
     export -f confirm ask ask_secret 2>/dev/null || true
     export -f detect_project_root require_file require_dir require_command 2>/dev/null || true
     export -f detect_privileges detect_pkg_mgr run_cmd sudo_cmd print_banner join_array 2>/dev/null || true
+    export -f media_binary_path media_binary_real_path 2>/dev/null || true
 fi

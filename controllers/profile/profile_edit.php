@@ -84,10 +84,8 @@ if (isset($_POST['update_profile'])) {
 
             $upload_path = $upload_dir . $new_name;
 
-            $ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
-                ? MEEL_FFMPEG_PATH
-                : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
-            $ffmpeg_ok = $ffmpeg_bin !== '' && is_executable($ffmpeg_bin);
+            $ffmpeg_bin = meel_ffmpeg_bin();
+            $ffmpeg_ok = meel_media_binary_info('ffmpeg')['runnable'];
 
             if ($real_mime === 'image/webp') {
                 if (!$ffmpeg_ok) {

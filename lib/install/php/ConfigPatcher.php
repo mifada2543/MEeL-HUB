@@ -272,6 +272,13 @@ class ConfigPatcher
         return $this;
     }
 
+    /** Patch the explicit system-FFmpeg policy flag */
+    public function patchFfmpegPolicy(bool $allowSystem): self
+    {
+        $this->patchDefineUncomment('MEEL_FFMPEG_ALLOW_SYSTEM', $allowSystem ? 'true' : 'false', quote: false);
+        return $this;
+    }
+
     /** Patch binary paths */
     public function patchBinaries(array $binaries): self
     {
@@ -430,6 +437,9 @@ function patch_settings_cli(array $args): int
         if (!empty($args['binaries'])) {
             $patcher->patchBinaries($args['binaries']);
         }
+        if (isset($args['ffmpeg_allow_system'])) {
+            $patcher->patchFfmpegPolicy((bool) $args['ffmpeg_allow_system']);
+        }
         if (isset($args['trust_proxy'])) {
             $patcher->patchProxy($args['trust_proxy'], $args['trusted_proxies'] ?? []);
         }
@@ -476,6 +486,7 @@ if (php_sapi_name() === 'cli' && isset($argv[0]) && basename($argv[0]) === 'Conf
         echo "  --rate-limits=K=V,..  Rate limits (max_download_bytes, max_download_seconds, max_concurrent_queues)\n";
         echo "  --ffmpeg=PATH         FFmpeg binary path\n";
         echo "  --ffprobe=PATH        FFprobe binary path\n";
+        echo "  --ffmpeg-allow-system=true|false  Allow system FFmpeg fallback\n";
         echo "  --node=PATH           Node binary path\n";
         echo "  --ytdlp=PATH          yt-dlp binary path\n";
         echo "  --settings=PATH       Settings file path (default: auth/settings.php)\n";
@@ -493,7 +504,7 @@ if (php_sapi_name() === 'cli' && isset($argv[0]) && basename($argv[0]) === 'Conf
             if (str_contains($key, '=')) {
                 [$key, $value] = explode('=', $key, 2);
                 // Normalize documented boolean options (--debug=false, --trust-proxy=false, ...)
-                if (in_array($key, ['debug', 'trust-proxy', 'xsendfile'], true)) {
+                if (in_array($key, ['debug', 'trust-proxy', 'xsendfile', 'ffmpeg-allow-system'], true)) {
                     $value = (bool) filter_var($value, FILTER_VALIDATE_BOOL);
                 }
                 $args[$key] = $value;
@@ -567,6 +578,9 @@ if (php_sapi_name() === 'cli' && isset($argv[0]) && basename($argv[0]) === 'Conf
         }
         if ($binaries !== []) {
             $patcher->patchBinaries($binaries);
+        }
+        if (isset($args['ffmpeg-allow-system'])) {
+            $patcher->patchFfmpegPolicy((bool) $args['ffmpeg-allow-system']);
         }
         if (isset($args['trust-proxy'])) {
             $patcher->patchProxy((bool) $args['trust-proxy'], $trustedProxies);

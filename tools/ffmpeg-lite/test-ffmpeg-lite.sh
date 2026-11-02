@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Test suite untuk ffmpeg-lite MEeL (dynamic build, native aac)
+# Test suite untuk ffmpeg-lite MEeL (dynamic build with bundled libs, native aac)
 # Functional synth tests butuh lavfi; build lite tidak memuatnya, jadi
 # bagian itu otomatis di-skip dan diganti uji format gambar nyata di bawah.
 # Expected: FAIL=0
 
 set -euo pipefail
 
-FFMPEG="${FFMPEG:-./ffmpeg}"
-FFPROBE="${FFPROBE:-./ffprobe}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FFMPEG="${FFMPEG:-$SCRIPT_DIR/ffmpeg}"
+FFPROBE="${FFPROBE:-$SCRIPT_DIR/ffprobe}"
 TMPDIR="${TMPDIR:-/tmp/meel-ff-test}"
 mkdir -p "$TMPDIR"
 
@@ -43,15 +44,26 @@ info "=== Binary sanity ==="
 $FFMPEG -version | head -1 | grep -q ffmpeg && pass "ffmpeg runs" || fail "ffmpeg runs"
 $FFPROBE -version | head -1 | grep -q ffprobe && pass "ffprobe runs" || fail "ffprobe runs"
 
-# Check shared libraries resolve (build ini dynamic, bukan static)
+# Check shared libraries resolve (build ini dynamic, bundled libs)
 if command -v ldd >/dev/null 2>&1; then
-  if ldd "$FFMPEG" 2>/dev/null | grep -q "not found"; then
+  if LD_LIBRARY_PATH="$SCRIPT_DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" ldd "$SCRIPT_DIR/ffmpeg.bin" 2>/dev/null | grep -q "not found"; then
     fail "shared libraries resolve"
   else
     pass "shared libraries resolve"
   fi
 else
   skip "shared libraries (ldd tidak tersedia)"
+fi
+
+# Verify checksums if present (only when using default binaries)
+if [ -f "$SCRIPT_DIR/SHA256SUMS" ] && [ "$FFMPEG" = "$SCRIPT_DIR/ffmpeg" ] && [ "${SKIP_CHECKSUMS:-0}" != 1 ]; then
+  if (cd "$SCRIPT_DIR" && sha256sum -c --quiet SHA256SUMS); then
+    pass "SHA256SUMS verified"
+  else
+    fail "SHA256SUMS verification failed"
+  fi
+else
+  skip "SHA256SUMS (custom binary or missing file)"
 fi
 
 # ============================================================

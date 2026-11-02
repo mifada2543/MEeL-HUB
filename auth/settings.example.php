@@ -43,10 +43,14 @@ define('MEEL_HDD_BOOKS_UPLOAD', MEEL_HDD_BASE . '/books/upload/');
 define('MEEL_HDD_DRIVE',        MEEL_HDD_BASE . '/drive/');
 
 // ─── External Binary Paths ───
-// Leave empty for auto-detection (resolveBinary searches PATH + common locations).
+// FFmpeg/FFprobe default to the bundled tools/ffmpeg-lite binaries. Leave
+// empty for that default; set an absolute path only for a custom binary.
+// System FFmpeg is NOT used as a silent fallback. To opt in explicitly, set
+// MEEL_FFMPEG_ALLOW_SYSTEM to true (or run install.sh --use-system-ffmpeg).
 // yt-dlp: empty = MEEL_YTDLP_PATH -> tools/yt-dlp/yt-dlp -> PATH.
 define('MEEL_FFMPEG_PATH', '');
 define('MEEL_FFPROBE_PATH', '');
+define('MEEL_FFMPEG_ALLOW_SYSTEM', false);
 define('MEEL_NODE_PATH', '');
 define('MEEL_YTDLP_PATH', '');
 

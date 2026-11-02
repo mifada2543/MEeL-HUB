@@ -316,18 +316,71 @@ deps_check_optional_bins() {
         fi
     done
 
-    # ffmpeg/ffprobe checked separately via tools/ffmpeg-lite
-    if [ -x "$PROJECT_ROOT/tools/ffmpeg-lite/ffmpeg" ] && [ -x "$PROJECT_ROOT/tools/ffmpeg-lite/ffprobe" ]; then
-        log_ok "ffmpeg-lite found: $PROJECT_ROOT/tools/ffmpeg-lite/ffmpeg"
-    else
-        missing+=("ffmpeg-lite (tools/ffmpeg-lite)")
-    fi
-
     if [ ${#missing[@]} -gt 0 ]; then
         log_warn "Optional binaries not found: ${missing[*]}"
         return 1
     fi
     log_ok "All optional binaries found"
+    return 0
+}
+
+# ─── Check media binaries (ffmpeg/ffprobe) ───
+deps_check_media_binaries() {
+    local ffmpeg_path ffprobe_path
+    ffmpeg_path="$(media_binary_path ffmpeg)"
+    ffprobe_path="$(media_binary_path ffprobe)"
+
+    log_info "FFmpeg path: $ffmpeg_path"
+    log_info "FFprobe path: $ffprobe_path"
+
+    # Check executables
+    if [ ! -x "$ffmpeg_path" ]; then
+        log_fail "FFmpeg not executable: $ffmpeg_path"
+        return 1
+    fi
+    if [ ! -x "$ffprobe_path" ]; then
+        log_fail "FFprobe not executable: $ffprobe_path"
+        return 1
+    fi
+
+    # Run -version to verify they work (catches missing libs)
+    if ! "$ffmpeg_path" -version >/dev/null 2>&1; then
+        log_fail "FFmpeg -version failed (missing runtime libraries?)"
+        if [ "${USE_SYSTEM_FFMPEG:-false}" = "true" ]; then
+            log_fail "System FFmpeg explicitly chosen but not functional"
+        elif [ -f "$PROJECT_ROOT/tools/ffmpeg-lite/ffmpeg.bin" ]; then
+            log_fail "Bundled binary broken — try ./install.sh --use-system-ffmpeg"
+        fi
+        return 1
+    fi
+    if ! "$ffprobe_path" -version >/dev/null 2>&1; then
+        log_fail "FFprobe -version failed (missing runtime libraries?)"
+        return 1
+    fi
+
+    log_ok "FFmpeg: $("$ffmpeg_path" -version | head -1)"
+    log_ok "FFprobe: $("$ffprobe_path" -version | head -1)"
+
+    # Check required capabilities
+    local missing_caps=()
+    for cap in aac libopus libmp3lame libwebp mjpeg png; do
+        "$ffmpeg_path" -hide_banner -encoders 2>/dev/null | awk 'NF>=2 {print $2}' | grep -Fxq "$cap" || missing_caps+=("encoder:$cap")
+    done
+    for cap in h264 hevc aac mp3 libdav1d; do
+        "$ffmpeg_path" -hide_banner -decoders 2>/dev/null | awk 'NF>=2 {print $2}' | grep -Fxq "$cap" || missing_caps+=("decoder:$cap")
+    done
+    for cap in hls mpegts mp4 webp; do
+        "$ffmpeg_path" -hide_banner -muxers 2>/dev/null | awk '{print $2}' | grep -Fxq "$cap" || missing_caps+=("muxer:$cap")
+    done
+    for cap in scale pad crop; do
+        "$ffmpeg_path" -hide_banner -filters 2>/dev/null | awk 'NF>=2 {print $2}' | grep -Fxq "$cap" || missing_caps+=("filter:$cap")
+    done
+
+    if [ ${#missing_caps[@]} -gt 0 ]; then
+        log_fail "FFmpeg missing required components: ${missing_caps[*]}"
+        return 1
+    fi
+    log_ok "FFmpeg capabilities OK (encoders, decoders, muxers, filters)"
     return 0
 }
 
@@ -407,6 +460,7 @@ deps_run() {
     if [ "${SKIP_APT:-false}" = "true" ]; then
         log_info "Skipping package installation (--skip-apt)"
         deps_verify_php_ext || return 1
+        deps_check_media_binaries || return 1
         deps_offer_ytdlp
         deps_check_optional_bins || true
         return 0
@@ -430,6 +484,7 @@ deps_run() {
         log_info "Required: PHP 8.2+ (mysqli, pdo_mysql, fileinfo, mbstring, intl, gd, zip, xml, curl), MariaDB/MySQL"
     fi
 
+    deps_check_media_binaries || return 1
     deps_offer_ytdlp
     deps_check_optional_bins || true
 }
@@ -439,5 +494,5 @@ if [ -n "${BASH_VERSION:-}" ]; then
     export -f deps_php_has_ext deps_bootstrap_php deps_check_required deps_install_packages deps_install_required 2>/dev/null || true
     export -f deps_install_recommended deps_install_optional deps_verify_php_ext 2>/dev/null || true
     export -f deps_install_ytdlp deps_offer_ytdlp deps_download deps_sha256 deps_ytdlp_asset 2>/dev/null || true
-    export -f deps_check_optional_bins deps_run 2>/dev/null || true
+    export -f deps_check_optional_bins deps_check_media_binaries deps_run 2>/dev/null || true
 fi

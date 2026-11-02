@@ -119,9 +119,9 @@ if (!function_exists('meel_validate_video_codec')) {
         string $env_prefix = ''
     ): string {
         if ($ffprobe_bin === '') {
-            $ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
-                ? MEEL_FFPROBE_PATH
-                : '/usr/bin/ffprobe';
+            $ffprobe_bin = function_exists('meel_ffprobe_bin')
+                ? meel_ffprobe_bin()
+                : (defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== '' ? MEEL_FFPROBE_PATH : 'ffprobe');
         }
         if (!is_file($file_path) || filesize($file_path) < 4) {
             return 'File tidak valid atau terlalu kecil.';
@@ -152,9 +152,9 @@ if (!function_exists('meel_validate_audio_codec')) {
         string $env_prefix = ''
     ): array {
         if ($ffprobe_bin === '') {
-            $ffprobe_bin = defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== ''
-                ? MEEL_FFPROBE_PATH
-                : '/usr/bin/ffprobe';
+            $ffprobe_bin = function_exists('meel_ffprobe_bin')
+                ? meel_ffprobe_bin()
+                : (defined('MEEL_FFPROBE_PATH') && MEEL_FFPROBE_PATH !== '' ? MEEL_FFPROBE_PATH : 'ffprobe');
         }
         if (!is_file($file_path) || filesize($file_path) < 4) {
             return ['error' => 'File tidak valid atau terlalu kecil.', 'has_audio' => false, 'needs_audio_transcode' => false];
@@ -376,11 +376,10 @@ if (!function_exists('meel_is_valid_webp')) {
 }
 if (!function_exists('meel_convert_image_to_webp')) {
     /**
-     * Convert image to WebP using fallback chain:
-     * 1. Bundled ffmpeg-lite (via MEEL_FFMPEG_PATH or resolve_binary)
-     * 2. System ffmpeg (/usr/bin/ffmpeg, /usr/local/bin/ffmpeg)
-     * 3. ImageMagick convert (if available)
-     * Returns true on success, false on failure.
+     * Convert image to WebP using the configured FFmpeg binary.
+     * System ffmpeg is an explicit opt-in via MEEL_FFMPEG_ALLOW_SYSTEM, not a
+     * silent fallback when the bundled binary is broken. ImageMagick remains
+     * the last image-only fallback.
      */
     function meel_convert_image_to_webp(string $src, string $dst, int $max_w, int $max_h, bool $pad = false, string $ffmpeg_bin = '', string $env_prefix = ''): bool
     {
@@ -392,10 +391,14 @@ if (!function_exists('meel_convert_image_to_webp')) {
         if ($ffmpeg_bin !== '') {
             $bins[] = $ffmpeg_bin;
         }
-        if (defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== '') {
+        if (function_exists('meel_ffmpeg_bin')) {
+            $bins[] = meel_ffmpeg_bin();
+        } elseif (defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== '') {
             $bins[] = MEEL_FFMPEG_PATH;
         }
-        $bins = array_merge($bins, ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg']);
+        if (function_exists('meel_media_system_allowed') && meel_media_system_allowed()) {
+            $bins = array_merge($bins, ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg']);
+        }
         $bins = array_unique(array_filter($bins));
 
         foreach ($bins as $bin) {

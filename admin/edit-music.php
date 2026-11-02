@@ -268,13 +268,11 @@ $thumb_src = !empty($music['thumbnail'])
                                     <div class="lyrics-row">
                                         <i data-lucide="file-text" style="width:13px;height:13px;color:var(--accent);flex-shrink:0;"></i>
                                         <span class="lyrics-filename"><?= htmlspecialchars($_ly['file']) ?></span>
-                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Hapus lirik ini?')">
-                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                                            <input type="hidden" name="delete_lyrics_lang" value="<?= htmlspecialchars($_ly['lang']) ?>">
-                                            <button type="submit" class="lyrics-delete-btn" title="Hapus lirik">
-                                                <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" class="lyrics-delete-btn" title="Hapus lirik"
+                                            data-lang="<?= htmlspecialchars($_ly['lang']) ?>"
+                                            data-csrf="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                                            <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
+                                        </button>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -300,6 +298,29 @@ $thumb_src = !empty($music['thumbnail'])
     <script src="../assets/js/admin/edit/shared/dragdrop.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/edit/shared/dragdrop.js') ?>"></script>
     <script src="../assets/js/admin/edit/music.js?v=<?= filemtime(__DIR__ . '/../assets/js/admin/edit/music.js') ?>"></script>
     <script>
+        document.querySelectorAll('.lyrics-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const lang = this.dataset.lang;
+                const csrf = this.dataset.csrf;
+                if (!lang || !confirm('Hapus lirik ini?')) return;
+
+                const formData = new FormData();
+                formData.append('csrf_token', csrf);
+                formData.append('delete_lyrics_lang', lang);
+
+                try {
+                    const res = await fetch('', { method: 'POST', body: formData });
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        Swal.fire('Gagal', 'Gagal menghapus lirik.', 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+                }
+            });
+        });
+
         <?php if ($status === "success"): ?>
             Swal.fire({
                 title: 'Berhasil!',

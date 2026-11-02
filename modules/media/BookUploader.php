@@ -55,9 +55,7 @@ class BookUploader
 
             $name = time() . '_' . bin2hex(random_bytes(4)) . '.webp';
             $target_path = $this->base_path . '/upload/thumbnail/' . $name;
-            $ffmpeg_bin = defined('MEEL_FFMPEG_PATH') && MEEL_FFMPEG_PATH !== ''
-                ? MEEL_FFMPEG_PATH
-                : resolve_binary([__DIR__ . '/../../tools/ffmpeg-lite/ffmpeg', '/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', 'ffmpeg']);
+            $ffmpeg_bin = meel_ffmpeg_bin();
             if (meel_convert_image_to_webp($file['tmp_name'], $target_path, 500, 500, false, $ffmpeg_bin)) {
                 return $name;
             }

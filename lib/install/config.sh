@@ -40,6 +40,7 @@ config_patch_settings() {
     local trusted_hosts="${TRUSTED_HOSTS:-localhost,127.0.0.1,::1}"
     local ffmpeg_path="${FFMPEG_PATH:-}"
     local ffprobe_path="${FFPROBE_PATH:-}"
+    local allow_system="${FFMPEG_ALLOW_SYSTEM:-false}"
     local node_path="${NODE_PATH:-}"
     local ytdlp_path="${YTDLP_PATH:-}"
 
@@ -64,6 +65,7 @@ config_patch_settings() {
     [ -n "$canonical_host" ] && cmd+=("--canonical-host=${canonical_host}" "--trusted-hosts=${trusted_hosts}")
     [ -n "$ffmpeg_path" ] && cmd+=("--ffmpeg=${ffmpeg_path}")
     [ -n "$ffprobe_path" ] && cmd+=("--ffprobe=${ffprobe_path}")
+    cmd+=("--ffmpeg-allow-system=${allow_system}")
     [ -n "$node_path" ] && cmd+=("--node=${node_path}")
     [ -n "$ytdlp_path" ] && cmd+=("--ytdlp=${ytdlp_path}")
 
@@ -160,19 +162,22 @@ config_run() {
         fi
     fi
 
-    local default_ffmpeg="" default_ffprobe="" default_ytdlp=""
-    if [ ! -f "${PROJECT_ROOT:-}/auth/settings.php" ]; then
-        default_ffmpeg="$PROJECT_ROOT/tools/ffmpeg-lite/ffmpeg"
-        default_ffprobe="$PROJECT_ROOT/tools/ffmpeg-lite/ffprobe"
-        if [ -x "$PROJECT_ROOT/tools/yt-dlp/yt-dlp" ]; then
-            default_ytdlp="$PROJECT_ROOT/tools/yt-dlp/yt-dlp"
-        elif command -v yt-dlp >/dev/null 2>&1; then
-            default_ytdlp="$(command -v yt-dlp)"
-        fi
-        [ -x "$default_ffmpeg" ] || default_ffmpeg=""
-        [ -x "$default_ffprobe" ] || default_ffprobe=""
+    local default_ytdlp=""
+    if [ -x "${PROJECT_ROOT:-}/tools/yt-dlp/yt-dlp" ]; then
+        default_ytdlp="$PROJECT_ROOT/tools/yt-dlp/yt-dlp"
+    elif command -v yt-dlp >/dev/null 2>&1; then
+        default_ytdlp="$(command -v yt-dlp)"
     fi
-    local ffmpeg_path="${FFMPEG_PATH-$default_ffmpeg}" ffprobe_path="${FFPROBE_PATH-$default_ffprobe}" node_path="" ytdlp_path="${YTDLP_PATH-$default_ytdlp}"
+
+    # Empty FFmpeg paths mean "use the bundled resolver"; that survives a
+    # moved install and is the default policy. Explicit paths always win.
+    local ffmpeg_path="${FFMPEG_PATH:-}" ffprobe_path="${FFPROBE_PATH:-}"
+    local allow_system="${FFMPEG_ALLOW_SYSTEM:-false}"
+    if [ "$allow_system" = "true" ]; then
+        [ -n "$ffmpeg_path" ] || ffmpeg_path="$(command -v ffmpeg 2>/dev/null || true)"
+        [ -n "$ffprobe_path" ] || ffprobe_path="$(command -v ffprobe 2>/dev/null || true)"
+    fi
+    local node_path="" ytdlp_path="${YTDLP_PATH:-$default_ytdlp}"
     if ! [ "${ASSUME_YES:-false}" = "true" ] && confirm "Set binary paths manually? (empty = auto-detect)" N; then
         ffmpeg_path=$(ask "ffmpeg path" "$ffmpeg_path")
         ffprobe_path=$(ask "ffprobe path" "$ffprobe_path")
@@ -188,6 +193,7 @@ config_run() {
     export USE_XSENDFILE="$xsendfile"
     export FFMPEG_PATH="$ffmpeg_path"
     export FFPROBE_PATH="$ffprobe_path"
+    export FFMPEG_ALLOW_SYSTEM="$allow_system"
     export NODE_PATH="$node_path"
     export YTDLP_PATH="$ytdlp_path"
 

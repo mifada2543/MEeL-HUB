@@ -239,7 +239,7 @@ lagi diterima di satu halaman tapi ditolak di halaman lain.
 |---|---|
 | Format diterima | JPEG, PNG, WebP, GIF, AVIF, BMP, ICO |
 | Deteksi | `meel_image_source_ok()` — `getimagesize()` lebih dulu (mengenali ICO/BMP), libmagic sebagai cadangan untuk format yang tidak dibaca PHP (sebagian build AVIF) |
-| Rantai konversi | `ffmpeg-lite` bawaan → `/usr/bin/ffmpeg` → ImageMagick `convert` |
+| Rantai konversi | `meel_ffmpeg_bin()` (wrapper `ffmpeg-lite` bawaan) → **system ffmpeg hanya jika `MEEL_FFMPEG_ALLOW_SYSTEM=true`** → ImageMagick `convert` |
 | Verifikasi hasil | `meel_is_valid_webp()` — MIME harus `image/webp` **dan** kedua dimensi > 0, kalau tidak file dihapus |
 | Bentuk tersimpan | selalu WebP asli dengan nama `.webp` |
 
@@ -253,6 +253,7 @@ Dua aturan menjaga integritas berkas:
    `--enable-demuxer=ico`, jadi decode ICO tidak lagi bergantung pada ffmpeg
    sistem atau ImageMagick; keduanya tinggal sebagai cadangan untuk format yang
    tidak dibaca build lite. Lihat `tools/ffmpeg-lite/BUILD-INFO.txt`.
+3. **System FFmpeg adalah opt-in eksplisit.** Saat `MEEL_FFMPEG_ALLOW_SYSTEM=false` (default), biner bundled yang rusak **tidak** akan diam-diam jatuh ke `/usr/bin/ffmpeg`. Konversi akan gagal dengan error yang jelas.
 
 ### 5. `modules/core/Transcoder.php` — facade + layanan terpecah
 

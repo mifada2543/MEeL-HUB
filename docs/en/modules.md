@@ -243,7 +243,7 @@ rejected on another.
 |---|---|
 | Accepted formats | JPEG, PNG, WebP, GIF, AVIF, BMP, ICO |
 | Detection | `meel_image_source_ok()` — `getimagesize()` first (it recognises ICO/BMP), libmagic as fallback for formats PHP cannot parse (some AVIF builds) |
-| Conversion chain | bundled `ffmpeg-lite` → `/usr/bin/ffmpeg` → ImageMagick `convert` |
+| Conversion chain | `meel_ffmpeg_bin()` (bundled `ffmpeg-lite` wrapper) → **system ffmpeg only if `MEEL_FFMPEG_ALLOW_SYSTEM=true`** → ImageMagick `convert` |
 | Output check | `meel_is_valid_webp()` — MIME must be `image/webp` **and** both dimensions > 0, otherwise the file is deleted |
 | Stored form | always real WebP under a `.webp` name |
 
@@ -257,6 +257,7 @@ Two rules keep the files honest:
    `--enable-demuxer=ico`, so ICO decoding no longer relies on the system ffmpeg
    or ImageMagick; those two stay in the chain only as fallbacks for formats the
    lite build cannot read. See `tools/ffmpeg-lite/BUILD-INFO.txt`.
+3. **System FFmpeg is explicit opt-in.** When `MEEL_FFMPEG_ALLOW_SYSTEM=false` (default), a broken bundled binary will not silently fall back to `/usr/bin/ffmpeg`. The conversion will fail with a clear error instead.
 
 ### 5. `modules/core/Transcoder.php` — facade + split services
 
