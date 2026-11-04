@@ -10,7 +10,6 @@ class EncodeService extends TranscoderBase
     private int $currentQueueId = 0;
     private const ENCODE_TIMEOUT = 7200; // 2 jam hard cap
     private const ENCODE_KEEPALIVE_INTERVAL = 30; // detik
-
     public function encodeMusic(
         string $temp_file,
         string $title,
@@ -27,24 +26,34 @@ class EncodeService extends TranscoderBase
         $this->currentQueueId = max(0, $queueId);
         putenv("LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/lib");
         putenv("PATH=/usr/local/bin:/usr/bin:/bin");
-
         $music_dir = meel_media_base_path('music') . '/file';
         if (($err = $this->assertEncodeStorageReady($music_dir)) !== null) {
             return $err;
         }
-
         if (!$this->isValidSourceToken($temp_file)) {
             error_log("[MEeL] encodeMusic: token input tidak valid ($temp_file)");
             return ['status' => 'error', 'msg' => "Token file sumber audio tidak valid."];
         }
-
         $shm_temp = $this->getShmTempPath();
         $input_path = $shm_temp . '/' . $temp_file;
-
+        if (!file_exists($input_path)) {
+            error_log("[MEeL] encodeMusic: File input tidak ditemukan: $input_path");
+            return ['status' => 'error', 'msg' => "File sumber audio tidak ditemukan di server."];
+        }
+        if (filesize($input_path) === 0) {
+            error_log("[MEeL] encodeMusic: File input kosong: $input_path");
+            return ['status' => 'error', 'msg' => "File sumber audio kosong."];
+        }
         $lock_path = sys_get_temp_dir() . '/meel_encode_' . md5($temp_file) . '.lock';
         $lock_fp = fopen($lock_path, 'c');
         $lock_held = $lock_fp !== false && flock($lock_fp, LOCK_EX);
-
+        if (!$lock_held) {
+            error_log("[MEeL] encodeMusic: Gagal mendapatkan lock untuk file: $lock_path");
+            if (is_resource($lock_fp)) {
+                fclose($lock_fp);
+            }
+            return ['status' => 'error', 'msg' => "Gagal mengunci file untuk pemrosesan."];
+        }
         try {
             if ($lock_held && !file_exists($input_path)) {
                 $recent = $this->findRecentEncodedFile();
@@ -59,7 +68,6 @@ class EncodeService extends TranscoderBase
                     return ['status' => 'success', 'filename' => $recent, 'already_processed' => true];
                 }
             }
-
             $target = $this->reserveEncodeTarget($music_dir, $title);
             $final_fname = $target['filename'];
             $final_path = $target['path'];
@@ -71,7 +79,6 @@ class EncodeService extends TranscoderBase
                 ]);
             }
             $this->touchAccounting();
-
             $opus_result = $this->runOpusEncode($input_path, $final_path, [
                 'title' => $title,
                 'artist' => $artist,
@@ -88,7 +95,6 @@ class EncodeService extends TranscoderBase
                 $this->removeFile($final_path);
                 return ['status' => 'error', 'msg' => 'Koneksi upload terputus; encode dibatalkan tanpa memotong coin.'];
             }
-
             $temp_base = pathinfo($temp_file, PATHINFO_FILENAME);
             $temp_dir = $this->getShmTempPath();
             $thumb_result = $this->extractMusicThumbnail($input_path, $temp_dir, $temp_base, $thumb_name);
@@ -99,10 +105,7 @@ class EncodeService extends TranscoderBase
                     return ['status' => 'error', 'msg' => 'Thumbnail musik tidak ditemukan setelah encode.'];
                 }
             }
-
             $metadata = generate_search_metadata($title, $artist, $album);
-            // Pemanggil bisa mengirim durasi 0 (mis. sesi pending lama);
-            // ukur dari hasil encode supaya kolom duration tidak tersimpan 0.
             $final_duration = $duration > 0 ? $duration : (int) round($this->probeDuration($final_path));
             $this->touchAccounting();
             $this->conn->begin_transaction();
@@ -112,7 +115,6 @@ class EncodeService extends TranscoderBase
                     throw new \RuntimeException($ins[1]);
                 }
                 $musicId = (int)$this->conn->insert_id;
-
                 if ($this->currentHoldId > 0) {
                     $capture = MeelCoin::captureHoldInTransaction(
                         $this->conn,
@@ -136,32 +138,29 @@ class EncodeService extends TranscoderBase
                 }
                 return ['status' => 'error', 'msg' => 'Upload musik gagal diverifikasi: ' . $e->getMessage()];
             }
-
             $this->removeFile($input_path);
             foreach (glob("$temp_dir/$temp_base.*") ?: [] as $leftover) {
                 $this->removeFile($leftover);
             }
-
             if ($this->currentQueueId > 0) {
                 $this->settleQueue('completed');
             }
-
             return ['status' => 'success', 'filename' => $final_fname, 'id' => $musicId];
         } finally {
             if ($lock_held) {
                 flock($lock_fp, LOCK_UN);
+            }
+            if (is_resource($lock_fp)) {
                 fclose($lock_fp);
             }
         }
     }
-
     private function runOpusEncode(string $input, string $output, array $metadata): array
     {
         $timeout = self::ENCODE_TIMEOUT;
         if ($this->currentAttemptId > 0 && class_exists('UploadAttempt')) {
             UploadAttempt::setStage($this->conn, $this->currentAttemptId, 'encoding_music');
         }
-
         $args = [
             $this->ffmpeg_bin,
             '-y',
@@ -175,7 +174,6 @@ class EncodeService extends TranscoderBase
             $args[] = $key . '=' . $value;
         }
         $args[] = $output;
-
         $descriptors = [
             0 => ['file', '/dev/null', 'r'],
             1 => ['pipe', 'w'],
@@ -187,23 +185,21 @@ class EncodeService extends TranscoderBase
             'LANG' => 'C.UTF-8',
             'LC_ALL' => 'C.UTF-8',
         ];
-
         $process = proc_open($args, $descriptors, $pipes, null, $env);
         if (!is_resource($process)) {
             return ['exit' => -1, 'log' => 'Gagal menjalankan FFmpeg.'];
         }
-
-        fclose($pipes[0]);
+        if (is_resource($pipes[0])) {
+            fclose($pipes[0]);
+        }
         $stdout = $pipes[1];
         $stderr = $pipes[2];
         stream_set_blocking($stdout, false);
         stream_set_blocking($stderr, false);
-
         $start = time();
         $lastKeepalive = $start;
         $log = '';
         $exitCode = -1;
-
         while (true) {
             $now = time();
             if ($now - $start > $timeout) {
@@ -211,7 +207,6 @@ class EncodeService extends TranscoderBase
                 proc_close($process);
                 return ['exit' => 124, 'log' => $log . "\n[ERROR] Encode timeout ({$timeout}s)"]; 
             }
-
             if ($now - $lastKeepalive >= self::ENCODE_KEEPALIVE_INTERVAL) {
                 $lastKeepalive = $now;
                 if (PHP_SAPI !== 'cli') {
@@ -225,13 +220,11 @@ class EncodeService extends TranscoderBase
                 }
                 $this->touchAccounting();
             }
-
             $read = [$stdout, $stderr];
             $write = $except = null;
             if (stream_select($read, $write, $except, 1) === false) {
                 break;
             }
-
             foreach ($read as $stream) {
                 $data = fread($stream, 8192);
                 if ($data === '' || $data === false) {
@@ -242,26 +235,25 @@ class EncodeService extends TranscoderBase
                     $log = substr($log, -100000);
                 }
             }
-
             $status = proc_get_status($process);
             if (!$status['running']) {
                 $exitCode = (int)$status['exitcode'];
                 break;
             }
         }
-
         if ($exitCode === -1) {
             $exitCode = proc_close($process);
         } else {
             proc_close($process);
         }
-
-        fclose($stdout);
-        fclose($stderr);
-
+        if (is_resource($stdout)) {
+            fclose($stdout);
+        }
+        if (is_resource($stderr)) {
+            fclose($stderr);
+        }
         return ['exit' => $exitCode, 'log' => $log];
     }
-
     private function settleQueue(string $status): void
     {
         if ($this->currentQueueId <= 0) {
@@ -277,7 +269,6 @@ class EncodeService extends TranscoderBase
         $stmt->execute();
         $stmt->close();
     }
-
     private function touchAccounting(): void
     {
         if ($this->currentHoldId > 0) {
@@ -291,13 +282,11 @@ class EncodeService extends TranscoderBase
             UploadAttempt::setStage($this->conn, $this->currentAttemptId, 'encoding_music');
         }
     }
-
     private function assertEncodeStorageReady(string $music_dir): ?array
     {
         if (!is_dir($music_dir)) {
             $this->ensureDir($music_dir);
         }
-
         $hdd_free = disk_free_space($music_dir);
         if ($hdd_free !== false && $hdd_free < 500 * 1024 * 1024) {
             return [
@@ -306,17 +295,14 @@ class EncodeService extends TranscoderBase
                     . sprintf('%.1f', $hdd_free / (1024 ** 3)) . ' GB free).',
             ];
         }
-
         return null;
     }
-
     private function isValidSourceToken(string $temp_file): bool
     {
         return $temp_file !== ''
             && preg_match('/^[A-Za-z0-9._-]+$/', $temp_file) === 1
             && !str_contains($temp_file, '..');
     }
-
     private function findRecentEncodedFile(): ?string
     {
         $stmt_recent = $this->conn->prepare(
@@ -327,58 +313,47 @@ class EncodeService extends TranscoderBase
         if (!$stmt_recent) {
             return null;
         }
-
         $stmt_recent->bind_param("i", $this->user_id);
         $stmt_recent->execute();
         $row = $stmt_recent->get_result()->fetch_assoc();
         $stmt_recent->close();
-
         if (empty($row['filename'])) {
             return null;
         }
-
         return (string) $row['filename'];
     }
-
     private function reserveEncodeTarget(string $music_dir, string $title): array
     {
         $clean = meel_sanitize_clean_name(getRomajiName($title), 120);
         if ($clean === '') {
             $clean = 'track';
         }
-
         $final_fname = meel_reserve_unique_filename($music_dir, $clean, 'ogg');
         if ($final_fname === null) {
             $final_fname = $clean . "-" . time() . ".ogg";
         }
-
         return [
             'filename' => $final_fname,
             'path' => $music_dir . "/$final_fname",
             'thumb' => str_replace('.ogg', '.webp', $final_fname),
         ];
     }
-
     private function describeEncodeFailure(string $input_path, string $log): string
     {
         if (!file_exists($input_path)) {
             return "File sumber audio tidak ditemukan. Media mungkin sudah diproses — periksa library Anda, atau coba upload ulang.";
         }
-
         if ($log === '') {
             return "Gagal mengonversi audio. Silakan coba lagi nanti.";
         }
-
         $lines = array_values(array_filter(array_map('trim', explode("\n", $log))));
         foreach (array_reverse($lines) as $line) {
             if (preg_match('/error|failed|invalid/i', $line)) {
                 return "Gagal mengonversi audio: " . substr($line, 0, 160);
             }
         }
-
         return "Gagal mengonversi audio. Silakan coba lagi nanti.";
     }
-
     private function extractMusicThumbnail(
         string $audio_file,
         string $temp_dir,
@@ -389,20 +364,16 @@ class EncodeService extends TranscoderBase
         if (!is_dir($thumb_dir)) {
             $this->ensureDir($thumb_dir);
         }
-
         foreach (['.jpg', '.webp', '.png', '.jpeg'] as $ext) {
             $pattern = "$temp_dir/$temp_base$ext";
             if (file_exists($pattern) && filesize($pattern) > 0) {
                 return $this->convertAndSaveThumbnail($pattern, $thumb_dir, $target_name);
             }
         }
-
         $extracted = $this->extractThumbnailFromAudio($audio_file, $thumb_dir, $target_name);
         if ($extracted !== 'music_default.png') return $extracted;
-
         return 'music_default.png';
     }
-
     private function convertAndSaveThumbnail(
         string $source_image,
         string $target_dir,
@@ -410,28 +381,23 @@ class EncodeService extends TranscoderBase
     ): string {
         $target_path = "$target_dir/$target_name";
         $src_ext = strtolower(pathinfo($source_image, PATHINFO_EXTENSION));
-
         if ($src_ext === 'webp' && meel_is_valid_webp($source_image)) {
             if (copy($source_image, $target_path)) {
                 $this->removeFile($source_image);
                 return $target_name;
             }
         }
-
         $ok = meel_convert_image_to_webp($source_image, $target_path, 500, 500, false, $this->ffmpeg_bin, self::ENV_PREFIX);
-
         if ($ok && meel_is_valid_webp($target_path)) {
             $this->removeFile($source_image);
             return $target_name;
         }
-
         if (is_file($target_path)) {
             $this->removeFile($target_path);
         }
         $this->removeFile($source_image);
         return 'music_default.png';
     }
-
     private function extractThumbnailFromAudio(
         string $audio_file,
         string $target_dir,
@@ -440,11 +406,8 @@ class EncodeService extends TranscoderBase
         if (!file_exists($audio_file) || filesize($audio_file) === 0) {
             return 'music_default.png';
         }
-
         $temp_extracted = "$target_dir/.temp_thumb_" . time() . "_" . random_int(1000, 9999) . ".webp";
-
         $ok = meel_ffmpeg_thumbnail_webp($this->ffmpeg_bin, $audio_file, $temp_extracted, 500, '-an -vframes 1', self::ENV_PREFIX, 1);
-
         if ($ok && filesize($temp_extracted) > 1000) {
             $final_path = "$target_dir/$target_name";
             if (rename($temp_extracted, $final_path)) {
@@ -452,7 +415,6 @@ class EncodeService extends TranscoderBase
             }
             $this->removeFile($temp_extracted);
         }
-
         $this->removeFile($temp_extracted);
         return 'music_default.png';
     }
